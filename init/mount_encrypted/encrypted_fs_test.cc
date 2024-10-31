@@ -20,7 +20,7 @@
 #include <libstorage/platform/keyring/utils.h>
 #include <libstorage/platform/mock_platform.h>
 #include <libstorage/storage_container/backing_device.h>
-#include <libstorage/storage_container/dmcrypt_container.h>
+#include <libstorage/storage_container/dmsetup_container.h>
 #include <libstorage/storage_container/ext4_container.h>
 #include <libstorage/storage_container/fake_backing_device.h>
 #include <libstorage/storage_container/filesystem_key.h>
@@ -47,17 +47,17 @@ class EncryptedFsTest : public ::testing::Test {
                      .backend_type = libstorage::StorageContainerType::kDmcrypt,
                      .recovery = libstorage::RecoveryType::kEnforceCleaning,
                  },
-             .dmcrypt_config =
+             .dmsetup_config =
                  {.backing_device_config =
                       {.type = libstorage::BackingDeviceType::kLoopbackDevice,
                        .name = "encstateful"},
-                  .dmcrypt_device_name = dmcrypt_name_,
-                  .dmcrypt_cipher = "aes-cbc-essiv:sha256"}}),
+                  .dmsetup_device_name = dmcrypt_name_,
+                  .dmsetup_cipher = "aes-cbc-essiv:sha256"}}),
         device_mapper_(base::BindRepeating(&brillo::fake::CreateDevmapperTask)),
         fake_backing_device_factory_(&platform_) {
     // Set up a fake backing device.
     auto fake_backing_device = fake_backing_device_factory_.Generate(
-        config_.dmcrypt_config.backing_device_config);
+        config_.dmsetup_config.backing_device_config);
     backing_device_ = fake_backing_device.get();
 
     // Set encryption key.
@@ -70,9 +70,9 @@ class EncryptedFsTest : public ::testing::Test {
     key_descriptor_ = libstorage::dmcrypt::GenerateDmcryptKeyDescriptor(
         keyring_key_reference.fek_sig, key_.fek.size());
 
-    auto dmcrypt_container = std::make_unique<libstorage::DmcryptContainer>(
-        config_.dmcrypt_config, std::move(fake_backing_device), key_reference_,
-        &platform_, &keyring_,
+    auto dmcrypt_container = std::make_unique<libstorage::DmsetupContainer>(
+        libstorage::StorageContainerType::kDmcrypt, config_.dmsetup_config,
+        std::move(fake_backing_device), key_reference_, &platform_, &keyring_,
         std::make_unique<brillo::DeviceMapper>(
             base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
     auto ext4_container = std::make_unique<libstorage::Ext4Container>(

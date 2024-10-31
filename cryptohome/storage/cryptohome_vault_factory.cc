@@ -110,7 +110,7 @@ CryptohomeVaultFactory::GenerateStorageContainer(
       LOG_IF(INFO, dm_options.keylocker_enabled)
           << "Using Keylocker for encryption";
 
-      config.dmcrypt_config = {
+      config.dmsetup_config = {
           .backing_device_config =
               {.type =
                    libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
@@ -120,9 +120,9 @@ CryptohomeVaultFactory::GenerateStorageContainer(
                    (stateful_size * kLogicalVolumeSizePercent) /
                    (100 * 1024 * 1024)),
                .logical_volume = {.vg = vg_, .thinpool = thinpool_}},
-          .dmcrypt_device_name =
+          .dmsetup_device_name =
               DmcryptVolumePrefix(obfuscated_username) + container_identifier,
-          .dmcrypt_cipher = dm_options.keylocker_enabled
+          .dmsetup_cipher = dm_options.keylocker_enabled
                                 ? "capi:xts-aes-aeskl-plain64"
                                 : "aes-xts-plain64"};
 
@@ -179,6 +179,8 @@ CryptohomeVaultFactory::GenerateStorageContainer(
       // Not given directly, passed with the raw block device.
     case libstorage::StorageContainerType::kUnencrypted:
       // cryptohome does not use plain unencrypted device.
+    case libstorage::StorageContainerType::kDmDefaultKey:
+      // cryptohome does not use dm-default-key.:
     case libstorage::StorageContainerType::kEcryptfsToFscrypt:
     case libstorage::StorageContainerType::kEcryptfsToDmcrypt:
     case libstorage::StorageContainerType::kFscryptToDmcrypt:

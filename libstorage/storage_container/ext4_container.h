@@ -22,9 +22,8 @@ namespace libstorage {
 
 constexpr uint64_t kExt4BlockSize = 4096;
 
-// `DmcryptContainer` is a block-level encrypted container, complete with its
-// own filesystem (by default ext4). The backing storage for the dm-crypt
-// container is currently a loopback device over a sparse file.
+// `Ext4Container` is a block-level container that presents ext4 filesystem
+// over any existing container (dmsetup or unencrypted).
 class BRILLO_EXPORT Ext4Container : public StorageContainer {
  public:
   Ext4Container(const Ext4FileSystemConfig& config,

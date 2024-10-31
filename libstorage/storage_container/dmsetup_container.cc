@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libstorage/storage_container/dmcrypt_container.h"
+#include "libstorage/storage_container/dmsetup_container.h"
 
 #include <memory>
 #include <optional>
@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libstorage/platform/keyring/keyring.h>
 #include <libstorage/platform/keyring/utils.h>
 #include <libstorage/platform/platform.h>
@@ -24,6 +25,8 @@
 #include "libstorage/storage_container/backing_device.h"
 #include "libstorage/storage_container/filesystem_key.h"
 #include "libstorage/storage_container/storage_container.h"
+
+using hwsec_foundation::SecureBlobToHex;
 
 namespace libstorage {
 
@@ -35,15 +38,17 @@ constexpr char kDeviceMapperPathPrefix[] = "/dev/mapper";
 
 }  // namespace
 
-DmcryptContainer::DmcryptContainer(
-    const DmcryptConfig& config,
+DmsetupContainer::DmsetupContainer(
+    StorageContainerType type,
+    const DmsetupConfig& config,
     std::unique_ptr<BackingDevice> backing_device,
     const FileSystemKeyReference& key_reference,
     Platform* platform,
     Keyring* keyring,
     std::unique_ptr<brillo::DeviceMapper> device_mapper)
-    : dmcrypt_device_name_(config.dmcrypt_device_name),
-      dmcrypt_cipher_(config.dmcrypt_cipher),
+    : dmsetup_device_name_(config.dmsetup_device_name),
+      dmsetup_cipher_(config.dmsetup_cipher),
+      dmsetup_type_(type),
       iv_offset_(config.iv_offset),
       backing_device_(std::move(backing_device)),
       key_reference_(
@@ -52,20 +57,22 @@ DmcryptContainer::DmcryptContainer(
       keyring_(keyring),
       device_mapper_(std::move(device_mapper)) {}
 
-DmcryptContainer::DmcryptContainer(
-    const DmcryptConfig& config,
+DmsetupContainer::DmsetupContainer(
+    StorageContainerType type,
+    const DmsetupConfig& config,
     std::unique_ptr<BackingDevice> backing_device,
     const FileSystemKeyReference& key_reference,
     Platform* platform,
     Keyring* keyring)
-    : DmcryptContainer(config,
+    : DmsetupContainer(type,
+                       config,
                        std::move(backing_device),
                        key_reference,
                        platform,
                        keyring,
                        std::make_unique<brillo::DeviceMapper>()) {}
 
-bool DmcryptContainer::Purge() {
+bool DmsetupContainer::Purge() {
   // Stale dm-crypt containers may need an extra teardown before purging the
   // device.
   std::ignore = Teardown();
@@ -73,24 +80,37 @@ bool DmcryptContainer::Purge() {
   return backing_device_->Purge();
 }
 
-bool DmcryptContainer::Exists() {
+bool DmsetupContainer::Exists() {
   return backing_device_->Exists();
 }
 
-bool DmcryptContainer::IsDeviceKeyValid() {
+bool DmsetupContainer::IsDeviceKeyValid() {
   // Considered valid if the keys are anything other than repeating 0's.
-  return device_mapper_->GetTable(dmcrypt_device_name_)
+  return device_mapper_->GetTable(dmsetup_device_name_)
              .CryptGetKey()
              .to_string()
              .find_first_not_of("0") != std::string::npos;
 }
 
-bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
+bool DmsetupContainer::Setup(const FileSystemKey& encryption_key) {
   // Check whether the kernel keyring provisioning is supported by the current
   // kernel.
+  std::optional<std::string> type = GetDmsetupType(dmsetup_type_);
+  if (!type) {
+    LOG(ERROR) << "Invalid configuration";
+    return false;
+  }
+
+  brillo::DeviceMapperVersion version = device_mapper_->GetTargetVersion(*type);
+  if (version.major == 0) {
+    LOG(ERROR) << "dm-" << *type << " not supported.";
+  }
+
   bool created = false;
   if (!backing_device_->Exists()) {
-    LOG(INFO) << "Creating backing device for " << dmcrypt_device_name_;
+    LOG(INFO) << "Creating backing device for " << dmsetup_device_name_
+              << " type: dm-" << *type << "(" << version.major << ", "
+              << version.minor << ", " << version.patchlevel << ")";
     if (!backing_device_->Create()) {
       LOG(ERROR) << "Failed to create backing device";
       return false;
@@ -131,30 +151,38 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  if (!keyring_->AddKey(Keyring::KeyType::kDmcryptKey, encryption_key,
-                        &key_reference_)) {
-    LOG(ERROR) << "Failed to insert logon key to session keyring.";
-    return false;
+  brillo::SecureBlob key_descriptor;
+  if (dmsetup_type_ == StorageContainerType::kDmcrypt) {
+    if (!keyring_->AddKey(Keyring::KeyType::kDmcryptKey, encryption_key,
+                          &key_reference_)) {
+      LOG(ERROR) << "Failed to insert logon key to session keyring.";
+      return false;
+    }
+
+    // Once the key is inserted, update the key descriptor.
+    key_descriptor = dmcrypt::GenerateDmcryptKeyDescriptor(
+        key_reference_.fek_sig, encryption_key.fek.size());
+  } else {
+    // default-key does not support keyring, send the key on the command line.
+    key_descriptor = brillo::SecureBlob(SecureBlobToHex(encryption_key.fek));
   }
 
-  // Ensure that once the key has been used by dmcrypt or failed,
-  // remove it from the keyring.
+  // Ensure that once the key has been used by dmsetup or failed,
+  // remove it from the keyring when inserted.
   absl::Cleanup keyring_cleanup_runner = [this]() {
-    LOG(INFO) << "Removing provisioned dmcrypt key from kernel keyring.";
-    if (!keyring_->RemoveKey(Keyring::KeyType::kDmcryptKey, key_reference_)) {
-      LOG(ERROR) << "Failed to remove key from keyring";
+    if (dmsetup_type_ == StorageContainerType::kDmcrypt) {
+      LOG(INFO) << "Removing provisioned dmsetup key from kernel keyring.";
+      if (!keyring_->RemoveKey(Keyring::KeyType::kDmcryptKey, key_reference_)) {
+        LOG(ERROR) << "Failed to remove key from keyring";
+      }
     }
   };
-
-  // Once the key is inserted, update the key descriptor.
-  brillo::SecureBlob key_descriptor = dmcrypt::GenerateDmcryptKeyDescriptor(
-      key_reference_.fek_sig, encryption_key.fek.size());
 
   uint64_t sectors = blkdev_size / kSectorSize;
   brillo::SecureBlob dm_parameters =
       brillo::DevmapperTable::CryptCreateParameters(
           // cipher.
-          dmcrypt_cipher_,
+          dmsetup_cipher_,
           // encryption key descriptor.
           key_descriptor,
           // iv offset.
@@ -165,16 +193,18 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
           0,
           // allow discards.
           true);
-  brillo::DevmapperTable dm_table(0, sectors, "crypt", dm_parameters);
-  if (!device_mapper_->Setup(dmcrypt_device_name_, dm_table)) {
+  brillo::DevmapperTable dm_table(0, sectors, *GetDmsetupType(dmsetup_type_),
+                                  dm_parameters);
+  if (!device_mapper_->Setup(dmsetup_device_name_, dm_table)) {
     backing_device_->Teardown();
     LOG(ERROR) << "dm_setup failed";
     return false;
   }
 
-  // Wait for the dmcrypt device path to show up before continuing to setting
+  // Wait for the dmsetup device path to show up before continuing to setting
   // up the filesystem.
-  LOG(INFO) << "Waiting for dm-crypt device to appear";
+  LOG(INFO) << "Waiting for dm-" << *GetDmsetupType(dmsetup_type_)
+            << " device to appear";
   if (!platform_->UdevAdmSettle(GetPath(), true)) {
     LOG(ERROR) << "udevadm settle failed.";
     return false;
@@ -184,31 +214,31 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   return true;
 }
 
-bool DmcryptContainer::EvictKey() {
+bool DmsetupContainer::EvictKey() {
   if (!IsDeviceKeyValid()) {
-    LOG(INFO) << "Dm-crypt device EvictKey(" << dmcrypt_device_name_
-              << ") isn't valid.";
+    LOG(INFO) << "Dm-" << *GetDmsetupType(dmsetup_type_) << " device EvictKey("
+              << dmsetup_device_name_ << ") isn't valid.";
     return true;
   }
 
   // Suspend device to properly freeze block IO and flush data in cache.
-  if (!device_mapper_->Suspend(dmcrypt_device_name_)) {
-    LOG(ERROR) << "Dm-crypt device EvictKey(" << dmcrypt_device_name_
-               << ") Suspend failed.";
+  if (!device_mapper_->Suspend(dmsetup_device_name_)) {
+    LOG(ERROR) << "Dm-" << *GetDmsetupType(dmsetup_type_) << " device EvictKey("
+               << dmsetup_device_name_ << ") Suspend failed.";
     return false;
   }
 
-  // Remove the dmcrypt device key only, keeps the backing device
-  // attached and dmcrypt table.
-  if (!device_mapper_->Message(dmcrypt_device_name_, "key wipe")) {
-    LOG(ERROR) << "Dm-crypt device EvictKey(" << dmcrypt_device_name_
-               << ") failed.";
+  // Remove the dmsetup device key only, keeps the backing device
+  // attached and dmsetup table.
+  if (!device_mapper_->Message(dmsetup_device_name_, "key wipe")) {
+    LOG(ERROR) << "Dm-" << *GetDmsetupType(dmsetup_type_) << " device EvictKey("
+               << dmsetup_device_name_ << ") failed.";
     return false;
   }
   return true;
 }
 
-bool DmcryptContainer::Reset() {
+bool DmsetupContainer::Reset() {
   // Discard the entire device.
   if (!platform_->DiscardDevice(GetPath())) {
     LOG(ERROR) << "Failed to discard device";
@@ -218,8 +248,8 @@ bool DmcryptContainer::Reset() {
   return true;
 }
 
-bool DmcryptContainer::SetLazyTeardownWhenUnused() {
-  if (!device_mapper_->Remove(dmcrypt_device_name_, true /* deferred */)) {
+bool DmsetupContainer::SetLazyTeardownWhenUnused() {
+  if (!device_mapper_->Remove(dmsetup_device_name_, true /* deferred */)) {
     LOG(ERROR) << "Failed to mark the device mapper target for deferred remove";
     return false;
   }
@@ -237,28 +267,29 @@ bool DmcryptContainer::SetLazyTeardownWhenUnused() {
   return true;
 }
 
-bool DmcryptContainer::Teardown() {
-  if (!(device_mapper_->GetTable(dmcrypt_device_name_).GetType() == "") &&
+bool DmsetupContainer::Teardown() {
+  if (!(device_mapper_->GetTable(dmsetup_device_name_).GetType() == "") &&
       !IsDeviceKeyValid()) {
     // To force remove the block device, replace device with an error, read-only
     // target. It should stop processes from reading it and also removed
     // underlying device from mapping, so it is usable again. If some process
     // try to read temporary cryptsetup device, it is bug - no other process
     // should try touch it (e.g. udev).
-    if (!device_mapper_->WipeTable(dmcrypt_device_name_)) {
+    if (!device_mapper_->WipeTable(dmsetup_device_name_)) {
       LOG(ERROR) << "Failed to wipe device mapper table.";
       return false;
     }
     // Move error from inactive device mapper table to live one.
-    if (!device_mapper_->Resume(dmcrypt_device_name_)) {
+    if (!device_mapper_->Resume(dmsetup_device_name_)) {
       LOG(ERROR) << "Failed to teardown device mapper device.";
       return false;
     }
 
-    LOG(INFO) << "Dm-crypt device remapped to error target.";
+    LOG(INFO) << "Dm-" << *GetDmsetupType(dmsetup_type_)
+              << " device remapped to error target.";
   }
 
-  if (!device_mapper_->Remove(dmcrypt_device_name_)) {
+  if (!device_mapper_->Remove(dmsetup_device_name_)) {
     LOG(ERROR) << "Failed to teardown device mapper device.";
     // If we are unable to remove the device from the mapper, it could
     // have a running process still tied to it i.e. Chrome, even if remapped
@@ -274,11 +305,11 @@ bool DmcryptContainer::Teardown() {
   return true;
 }
 
-base::FilePath DmcryptContainer::GetPath() const {
-  return base::FilePath(kDeviceMapperPathPrefix).Append(dmcrypt_device_name_);
+base::FilePath DmsetupContainer::GetPath() const {
+  return base::FilePath(kDeviceMapperPathPrefix).Append(dmsetup_device_name_);
 }
 
-base::FilePath DmcryptContainer::GetBackingLocation() const {
+base::FilePath DmsetupContainer::GetBackingLocation() const {
   if (backing_device_ != nullptr && backing_device_->GetPath().has_value()) {
     return *(backing_device_->GetPath());
   }

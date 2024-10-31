@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBSTORAGE_STORAGE_CONTAINER_DMCRYPT_CONTAINER_H_
-#define LIBSTORAGE_STORAGE_CONTAINER_DMCRYPT_CONTAINER_H_
+#ifndef LIBSTORAGE_STORAGE_CONTAINER_DMSETUP_CONTAINER_H_
+#define LIBSTORAGE_STORAGE_CONTAINER_DMSETUP_CONTAINER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,25 +23,28 @@
 
 namespace libstorage {
 
-// `DmcryptContainer` is a block-level encrypted container, complete with its
-// own filesystem (by default ext4). The backing storage for the dm-crypt
-// container is currently a loopback device over a sparse file.
-class BRILLO_EXPORT DmcryptContainer : public StorageContainer {
+// `DmsetupContainer` is a block-level encrypted container, used to
+// set up a dm-default or dm-crypt device.
+// The backing storage for thatcontainer is a loopback device over a sparse
+// file, a LVM Logical Volume or a device partition.
+class BRILLO_EXPORT DmsetupContainer : public StorageContainer {
  public:
-  DmcryptContainer(const DmcryptConfig& config,
+  DmsetupContainer(StorageContainerType type,
+                   const DmsetupConfig& config,
                    std::unique_ptr<BackingDevice> backing_device,
                    const FileSystemKeyReference& key_reference,
                    Platform* platform,
                    Keyring* keyring,
                    std::unique_ptr<brillo::DeviceMapper> device_mapper);
 
-  DmcryptContainer(const DmcryptConfig& config,
+  DmsetupContainer(StorageContainerType type,
+                   const DmsetupConfig& config,
                    std::unique_ptr<BackingDevice> backing_device,
                    const FileSystemKeyReference& key_reference,
                    Platform* platform,
                    Keyring* keyring);
 
-  ~DmcryptContainer() {}
+  ~DmsetupContainer() {}
 
   bool Exists() override;
 
@@ -56,9 +60,7 @@ class BRILLO_EXPORT DmcryptContainer : public StorageContainer {
 
   bool EvictKey() override;
 
-  StorageContainerType GetType() const override {
-    return StorageContainerType::kDmcrypt;
-  }
+  StorageContainerType GetType() const override { return dmsetup_type_; }
 
   bool IsLazyTeardownSupported() const override { return true; }
 
@@ -68,10 +70,23 @@ class BRILLO_EXPORT DmcryptContainer : public StorageContainer {
 
   base::FilePath GetBackingLocation() const override;
 
+  static inline std::optional<const std::string> GetDmsetupType(
+      StorageContainerType type) {
+    switch (type) {
+      case StorageContainerType::kDmcrypt:
+        return "crypt";
+      case StorageContainerType::kDmDefaultKey:
+        return "default-key";
+      default:
+        return std::nullopt;
+    }
+  }
+
  private:
   // Configuration for the encrypted container.
-  const std::string dmcrypt_device_name_;
-  const std::string dmcrypt_cipher_;
+  const std::string dmsetup_device_name_;
+  const std::string dmsetup_cipher_;
+  const StorageContainerType dmsetup_type_;
 
   const uint32_t iv_offset_;
 
@@ -88,4 +103,4 @@ class BRILLO_EXPORT DmcryptContainer : public StorageContainer {
 
 }  // namespace libstorage
 
-#endif  // LIBSTORAGE_STORAGE_CONTAINER_DMCRYPT_CONTAINER_H_
+#endif  // LIBSTORAGE_STORAGE_CONTAINER_DMSETUP_CONTAINER_H_

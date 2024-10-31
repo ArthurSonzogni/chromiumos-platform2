@@ -29,6 +29,7 @@ enum class StorageContainerType {
   kEcryptfs,
   kFscrypt,
   kDmcrypt,
+  kDmDefaultKey,
   kEphemeral,
   kUnencrypted,
   kExt4,
@@ -37,10 +38,10 @@ enum class StorageContainerType {
   kFscryptToDmcrypt,
 };
 
-struct DmcryptConfig {
+struct DmsetupConfig {
   BackingDeviceConfig backing_device_config;
-  std::string dmcrypt_device_name;
-  std::string dmcrypt_cipher;
+  std::string dmsetup_device_name;
+  std::string dmsetup_cipher;
   uint32_t iv_offset;
 };
 
@@ -66,7 +67,7 @@ struct Ext4FileSystemConfig {
 struct StorageContainerConfig {
   base::FilePath backing_dir;
   Ext4FileSystemConfig filesystem_config;
-  DmcryptConfig dmcrypt_config;
+  DmsetupConfig dmsetup_config;
   UnencryptedConfig unencrypted_config;
 };
 

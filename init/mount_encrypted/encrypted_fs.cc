@@ -207,10 +207,10 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
             .backend_type = libstorage::StorageContainerType::kDmcrypt,
             .recovery = libstorage::RecoveryType::kEnforceCleaning,
             .metrics_prefix = "Platform.FileSystem.EncStateful"},
-       .dmcrypt_config = {
+       .dmsetup_config = {
            .backing_device_config = backing_device_config,
-           .dmcrypt_device_name = dmcrypt_name,
-           .dmcrypt_cipher = std::string(kDmCryptDefaultCipher)}});
+           .dmsetup_device_name = dmcrypt_name,
+           .dmsetup_cipher = std::string(kDmCryptDefaultCipher)}});
 
   libstorage::FileSystemKeyReference key_reference;
   key_reference.fek_sig = brillo::SecureBlob("encstateful");

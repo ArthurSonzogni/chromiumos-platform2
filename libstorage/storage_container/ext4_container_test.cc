@@ -14,6 +14,7 @@
 #include <libstorage/platform/mock_platform.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "libstorage/storage_container/dmsetup_container.h"
 #include "libstorage/storage_container/fake_storage_container.h"
 #include "libstorage/storage_container/filesystem_key.h"
 #include "libstorage/storage_container/partition_device.h"
@@ -317,5 +318,4 @@ TEST_F(Ext4ContainerPartitionTest, SetupNoSuperblock) {
   // superblock is too small, will fail.
   EXPECT_FALSE(container_->Setup(key));
 }
-
 }  // namespace libstorage

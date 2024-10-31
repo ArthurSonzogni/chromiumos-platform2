@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libstorage/storage_container/dmcrypt_container.h"
+#include "libstorage/storage_container/dmsetup_container.h"
 
 #include <memory>
 #include <string>
@@ -30,11 +30,11 @@ using ::testing::SetArgPointee;
 
 namespace libstorage {
 
-class DmcryptContainerTest : public ::testing::Test {
+class DmsetupContainerTest : public ::testing::Test {
  public:
-  DmcryptContainerTest()
-      : config_({.dmcrypt_device_name = "crypt_device",
-                 .dmcrypt_cipher = "aes-xts-plain64"}),
+  DmsetupContainerTest()
+      : config_({.dmsetup_device_name = "crypt_device",
+                 .dmsetup_cipher = "aes-xts-plain64"}),
         key_({.fek = brillo::SecureBlob("random key")}),
         key_reference_({.fek_sig = brillo::SecureBlob("random reference")}),
         device_mapper_(base::BindRepeating(&brillo::fake::CreateDevmapperTask)),
@@ -46,18 +46,18 @@ class DmcryptContainerTest : public ::testing::Test {
     key_descriptor_ = dmcrypt::GenerateDmcryptKeyDescriptor(
         keyring_key_reference.fek_sig, key_.fek.size());
   }
-  ~DmcryptContainerTest() override = default;
+  ~DmsetupContainerTest() override = default;
 
   void GenerateContainer() {
-    container_ = std::make_unique<DmcryptContainer>(
-        config_, std::move(backing_device_), key_reference_, &platform_,
-        &keyring_,
+    container_ = std::make_unique<DmsetupContainer>(
+        StorageContainerType::kDmcrypt, config_, std::move(backing_device_),
+        key_reference_, &platform_, &keyring_,
         std::make_unique<brillo::DeviceMapper>(
             base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
   }
 
  protected:
-  DmcryptConfig config_;
+  DmsetupConfig config_;
 
   FileSystemKey key_;
   FileSystemKeyReference key_reference_;
@@ -65,12 +65,12 @@ class DmcryptContainerTest : public ::testing::Test {
   FakeKeyring keyring_;
   brillo::DeviceMapper device_mapper_;
   std::unique_ptr<BackingDevice> backing_device_;
-  std::unique_ptr<DmcryptContainer> container_;
+  std::unique_ptr<DmsetupContainer> container_;
   brillo::SecureBlob key_descriptor_;
 };
 
 // Tests the creation path for the dm-crypt container.
-TEST_F(DmcryptContainerTest, SetupCreateCheck) {
+TEST_F(DmsetupContainerTest, SetupCreateCheck) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
@@ -79,13 +79,13 @@ TEST_F(DmcryptContainerTest, SetupCreateCheck) {
 
   EXPECT_TRUE(container_->Setup(key_));
   // Check that the device mapper target exists.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
+  EXPECT_EQ(device_mapper_.GetTable(config_.dmsetup_device_name).CryptGetKey(),
             key_descriptor_);
-  EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
+  EXPECT_TRUE(device_mapper_.Remove(config_.dmsetup_device_name));
 }
 
 // Tests the setup path with an existing container.
-TEST_F(DmcryptContainerTest, SetupNoCreateCheck) {
+TEST_F(DmsetupContainerTest, SetupNoCreateCheck) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
@@ -95,14 +95,14 @@ TEST_F(DmcryptContainerTest, SetupNoCreateCheck) {
 
   EXPECT_TRUE(container_->Setup(key_));
   // Check that the device mapper target exists.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
+  EXPECT_EQ(device_mapper_.GetTable(config_.dmsetup_device_name).CryptGetKey(),
             key_descriptor_);
-  EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
+  EXPECT_TRUE(device_mapper_.Remove(config_.dmsetup_device_name));
 }
 
 // Tests that teardown doesn't leave an active dm-crypt device or an attached
 // backing device.
-TEST_F(DmcryptContainerTest, TeardownCheck) {
+TEST_F(DmsetupContainerTest, TeardownCheck) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
@@ -114,12 +114,12 @@ TEST_F(DmcryptContainerTest, TeardownCheck) {
   // Now, attempt teardown of the device.
   EXPECT_TRUE(container_->Teardown());
   // Check that the device mapper target doesn't exist.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
+  EXPECT_EQ(device_mapper_.GetTable(config_.dmsetup_device_name).CryptGetKey(),
             brillo::SecureBlob());
 }
 
 // Tests that EvictKey doesn't leave an active dm-crypt device.
-TEST_F(DmcryptContainerTest, EvictKeyCheck) {
+TEST_F(DmsetupContainerTest, EvictKeyCheck) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
@@ -141,12 +141,12 @@ TEST_F(DmcryptContainerTest, EvictKeyCheck) {
 
   // Device mapper target still exists, but remapping to error allows
   // the device to be force unmounted later on for shutdown purposes.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).GetType(),
+  EXPECT_EQ(device_mapper_.GetTable(config_.dmsetup_device_name).GetType(),
             "error");
 }
 
 // Tests that the dmcrypt container can be reset.
-TEST_F(DmcryptContainerTest, ResetRawDeviceContainerTest) {
+TEST_F(DmsetupContainerTest, ResetRawDeviceContainerTest) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));

@@ -5,8 +5,6 @@
 #ifndef LIBSTORAGE_STORAGE_CONTAINER_FAKE_STORAGE_CONTAINER_FACTORY_H_
 #define LIBSTORAGE_STORAGE_CONTAINER_FAKE_STORAGE_CONTAINER_FACTORY_H_
 
-#include "libstorage/storage_container/storage_container_factory.h"
-
 #include <memory>
 #include <utility>
 
@@ -16,12 +14,13 @@
 #include <libstorage/platform/platform.h>
 
 #include "libstorage/storage_container/backing_device.h"
-#include "libstorage/storage_container/dmcrypt_container.h"
+#include "libstorage/storage_container/dmsetup_container.h"
 #include "libstorage/storage_container/ecryptfs_container.h"
 #include "libstorage/storage_container/ext4_container.h"
 #include "libstorage/storage_container/fake_backing_device.h"
 #include "libstorage/storage_container/fscrypt_container.h"
 #include "libstorage/storage_container/storage_container.h"
+#include "libstorage/storage_container/storage_container_factory.h"
 
 namespace libstorage {
 
@@ -57,16 +56,17 @@ class FakeStorageContainerFactory : public StorageContainerFactory {
       case StorageContainerType::kEcryptfs:
         return std::make_unique<EcryptfsContainer>(
             config.backing_dir, key_reference, platform_, keyring_.get());
-      case StorageContainerType::kDmcrypt: {
+      case StorageContainerType::kDmcrypt:
+      case StorageContainerType::kDmDefaultKey: {
         std::unique_ptr<BackingDevice> backing_device =
             backing_device_factory_.Generate(
-                config.dmcrypt_config.backing_device_config);
+                config.dmsetup_config.backing_device_config);
         if (create) {
           backing_device->Create();
         }
-        return std::make_unique<DmcryptContainer>(
-            config.dmcrypt_config, std::move(backing_device), key_reference,
-            platform_, keyring_.get(),
+        return std::make_unique<DmsetupContainer>(
+            type, config.dmsetup_config, std::move(backing_device),
+            key_reference, platform_, keyring_.get(),
             std::make_unique<brillo::DeviceMapper>(
                 base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
       }

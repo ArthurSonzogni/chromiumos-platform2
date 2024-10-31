@@ -36,7 +36,7 @@ shared_library("libstorage_storage_container") {
   ]
   if (use.device_mapper) {
     sources += [
-      "dmcrypt_container.cc",
+      "dmsetup_container.cc",
       "logical_volume_backing_device.cc",
     ]
   }
@@ -67,7 +67,7 @@ install_config("install_libstorage_container_headers") {
   sources = [
     "backing_device.h",
     "backing_device_factory.h",
-    "dmcrypt_container.h",
+    "dmsetup_container.h",
     "ecryptfs_container.h",
     "ephemeral_container.h",
     "ext4_container.h",
@@ -100,7 +100,7 @@ if (use.test) {
     ]
     if (use.device_mapper) {
       sources += [
-        "dmcrypt_container_test.cc",
+        "dmsetup_container_test.cc",
         "logical_volume_backing_device_test.cc",
       ]
     }

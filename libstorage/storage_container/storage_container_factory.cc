@@ -15,7 +15,7 @@
 #include "libstorage/storage_container/backing_device_factory.h"
 
 #if USE_DEVICE_MAPPER
-#include "libstorage/storage_container/dmcrypt_container.h"
+#include "libstorage/storage_container/dmsetup_container.h"
 #endif
 
 #include "libstorage/storage_container/ecryptfs_container.h"
@@ -101,16 +101,17 @@ std::unique_ptr<StorageContainer> StorageContainerFactory::Generate(
                                                     platform_);
     }
     case StorageContainerType::kDmcrypt:
+    case StorageContainerType::kDmDefaultKey:
 #if USE_DEVICE_MAPPER
     {
       auto backing_device = backing_device_factory_->Generate(
-          config.dmcrypt_config.backing_device_config);
+          config.dmsetup_config.backing_device_config);
       if (!backing_device) {
         LOG(ERROR) << "Could not create backing device for dmcrypt container";
         return nullptr;
       }
-      return std::make_unique<DmcryptContainer>(
-          config.dmcrypt_config, std::move(backing_device), key_reference,
+      return std::make_unique<DmsetupContainer>(
+          type, config.dmsetup_config, std::move(backing_device), key_reference,
           platform_, keyring_.get());
     }
 #endif

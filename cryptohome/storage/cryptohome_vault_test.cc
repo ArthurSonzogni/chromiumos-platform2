@@ -95,7 +95,7 @@ class CryptohomeVaultTest
             .backend_type = libstorage::StorageContainerType::kDmcrypt};
         ABSL_FALLTHROUGH_INTENDED;
       case libstorage::StorageContainerType::kDmcrypt:
-        config.dmcrypt_config = {
+        config.dmsetup_config = {
             .backing_device_config =
                 {.type =
                      libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
@@ -106,8 +106,8 @@ class CryptohomeVaultTest
                                     .thinpool =
                                         std::make_shared<brillo::Thinpool>(
                                             "thinpool", "vg", nullptr)}},
-            .dmcrypt_device_name = "dmcrypt-" + name,
-            .dmcrypt_cipher = "aes-xts-plain64"};
+            .dmsetup_device_name = "dmcrypt-" + name,
+            .dmsetup_cipher = "aes-xts-plain64"};
         break;
       default:
         break;
