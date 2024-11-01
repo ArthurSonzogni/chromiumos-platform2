@@ -4849,6 +4849,35 @@ def wpfc_encode(wpfc_config):
     )
 
 
+def dsbr_encode(dsbr_config):
+    """Creates and returns Drive Strength BRI with given config.
+
+    Args:
+        dsbr_config: Drive Strength BRI Configuration.
+
+    Returns:
+        Drive Strength BRI encoded as bytearray.
+    """
+
+    def encode_bri_rsp(dsbr_config):
+        if not dsbr_config.override:
+            return 0
+        data = 1
+        if dsbr_config.bluetooth_radio_resistor_ohm == 33:
+            data |= 0xF << 4
+        elif dsbr_config.bluetooth_radio_resistor_ohm == 10:
+            data |= 0xB << 4
+        else:
+            raise Exception("ERROR: Invalid BRI RSP resistor_ohm value")
+        return data
+
+    if dsbr_config.revision != 0:
+        return bytearray(0)
+    return hex_8bit(dsbr_config.revision) + hex_32bit(
+        encode_bri_rsp(dsbr_config)
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4917,6 +4946,9 @@ def _create_intel_sar_file_content(intel_config):
     # | WPFC      | 2 bytes  | Offset of Bluetooth WPFC table from |
     # | offset    |          | start of the header                 |
     # +------------------------------------------------------------+
+    # | DSBR      | 2 bytes  | Offset of Bluetooth DSBR table from |
+    # | offset    |          | start of the header                 |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4929,7 +4961,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 15
+    sar_configs = 16
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -5040,6 +5072,13 @@ def _create_intel_sar_file_content(intel_config):
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
         # reserve and set wpfc offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("dsbr"):
+        data = dsbr_encode(intel_config.dsbr)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set dsbr offset to 0
         header += hex_16bit(0)
 
     return marker + header + payload
