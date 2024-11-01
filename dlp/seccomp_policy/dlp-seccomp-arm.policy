@@ -38,6 +38,7 @@ getuid32: 1
 ioctl: 1
 madvise: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mremap: 1
 munmap: 1
