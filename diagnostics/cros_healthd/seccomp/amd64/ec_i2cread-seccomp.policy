@@ -50,6 +50,7 @@ mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
 brk: 1
 flock: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 dup2: 1
 arch_prctl: 1
 getpid: 1

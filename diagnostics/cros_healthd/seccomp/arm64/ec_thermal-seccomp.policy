@@ -47,4 +47,5 @@ memfd_create: 1
 eventfd2: 1
 epoll_pwait: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 close: 1

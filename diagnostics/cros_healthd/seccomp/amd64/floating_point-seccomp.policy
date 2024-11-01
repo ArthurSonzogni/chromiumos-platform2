@@ -33,5 +33,6 @@ signalfd4: 1
 uname: 1
 write: 1
 mmap: 1
+mseal: 1
 close: 1
 openat: 1

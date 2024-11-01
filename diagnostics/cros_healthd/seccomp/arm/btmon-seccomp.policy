@@ -5,6 +5,7 @@
 openat: 1
 statx: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 write: 1
 close: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

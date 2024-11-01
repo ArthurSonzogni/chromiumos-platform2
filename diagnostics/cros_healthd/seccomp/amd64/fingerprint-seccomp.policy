@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 gettid: 1
 close: 1
 # ioctl values:

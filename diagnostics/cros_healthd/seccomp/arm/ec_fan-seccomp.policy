@@ -47,5 +47,6 @@ memfd_create: 1
 eventfd2: 1
 epoll_wait: 1
 mmap2: 1
+mseal: 1
 close: 1
 futex: 1

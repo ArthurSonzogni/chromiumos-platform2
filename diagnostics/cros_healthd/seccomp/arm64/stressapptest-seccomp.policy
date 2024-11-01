@@ -11,6 +11,7 @@ rt_sigprocmask: 1
 sched_getaffinity: 1
 getppid: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 futex: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1

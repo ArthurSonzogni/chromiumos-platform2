@@ -12,6 +12,7 @@ fstat64: 1
 fstatat64: 1
 mlock: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 munlock: 1
 restart_syscall: 1
 rt_sigreturn: 1

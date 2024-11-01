@@ -30,6 +30,7 @@ brk: 1
 fcntl: 1
 getsockname: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 munmap: 1
 recvmsg: 1
 setsockopt: 1

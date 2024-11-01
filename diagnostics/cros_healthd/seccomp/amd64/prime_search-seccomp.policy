@@ -25,6 +25,7 @@ getgid: 1
 geteuid: 1
 getuid: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 openat: 1
 newfstatat: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

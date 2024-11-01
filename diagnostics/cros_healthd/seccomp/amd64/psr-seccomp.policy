@@ -26,6 +26,7 @@ fcntl: 1
 memfd_create: 1
 eventfd2: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 exit_group: 1
 write: 1
 close: 1

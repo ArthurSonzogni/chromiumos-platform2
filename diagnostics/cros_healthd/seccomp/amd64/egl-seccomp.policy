@@ -134,6 +134,7 @@ madvise: 1
 # Dangerous syscall needed for graphics fetcher
 memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 # Used occasionally by glibc discovered in production use (b/167617776)
 munmap: 1
