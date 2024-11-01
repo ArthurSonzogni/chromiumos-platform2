@@ -28,6 +28,7 @@ fcntl: 1
 pipe2: 1
 # Prevent PROT_WRITE | PROT_EXEC.
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 getdents: 1
 getdents64: 1
 munmap: 1
