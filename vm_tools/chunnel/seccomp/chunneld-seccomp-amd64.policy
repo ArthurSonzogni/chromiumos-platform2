@@ -22,6 +22,7 @@ bind: 1
 listen: 1
 openat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 stat: 1
 fstat: 1

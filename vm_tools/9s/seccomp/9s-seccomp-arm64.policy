@@ -17,6 +17,7 @@ ioctl: arg1 == FIOCLEX
 pread64: 1
 pwrite64: 1
 mmap: arg2 in ~PROT_EXEC
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC
 rt_sigaction: 1
 sigaltstack: 1
