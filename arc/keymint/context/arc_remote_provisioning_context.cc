@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
+#include <crypto/random.h>
 #include <keymaster/cppcose/cppcose.h>
 #include <libarc-attestation/lib/interface.h>
 #include <openssl/rand.h>
@@ -24,6 +25,7 @@ namespace arc::keymint::context {
 constexpr uint32_t kP256AffinePointSize = 32;
 constexpr uint32_t kP256SignatureLength = 64;
 constexpr uint32_t kP256EcdsaPrivateKeyLength = 32;
+constexpr uint32_t kSeedSize = 32;
 // Key is decided in agreement with Android Remote Provisioning Team.
 constexpr char kChromeOSQuotedBlobKey[] = "ChromeOS PCA ARC v1";
 // CDDL Schema version.
@@ -171,16 +173,6 @@ std::unique_ptr<cppbor::Map> ConvertDeviceIdMap(
 
 namespace {
 
-std::vector<uint8_t> GetRandomVector() {
-  std::vector<uint8_t> seed_vector(32, 0);
-  // This is used in code paths that cannot fail, so CHECK. If it turns
-  // out that we can actually run out of entropy during these code paths,
-  // we'll need to refactor the interfaces to allow errors to propagate.
-  CHECK_EQ(RAND_bytes(seed_vector.data(), seed_vector.size()), 1)
-      << "Unable to get random vector";
-  return seed_vector;
-}
-
 std::optional<std::vector<uint8_t>> provisionAndFetchDkCert() {
   // Provision certificate.
   arc_attestation::AndroidStatus provision_status =
@@ -225,7 +217,7 @@ cppcose::ErrMsgOr<cppbor::Array> GenerateBccForTestMode(
   absl::Span<uint8_t> private_key(private_key_vector);
 
   // Get ECDSA key from Seed in Test Mode.
-  std::vector<uint8_t> seed_vector = GetRandomVector();
+  std::vector<uint8_t> seed_vector = crypto::RandBytesAsVector(kSeedSize);
   absl::Span<uint8_t> seed(seed_vector);
   std::string private_key_pem;
   auto error = GenerateEcdsa256KeyFromSeed(test_mode, seed, private_key,
