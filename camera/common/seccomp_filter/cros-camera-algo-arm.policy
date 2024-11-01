@@ -70,6 +70,7 @@ mkdir: 1
 mknod: 1
 # Prevent PROT_WRITE | PROT_EXEC.
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 nanosleep: 1
