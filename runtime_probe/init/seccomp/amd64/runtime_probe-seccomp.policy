@@ -50,6 +50,7 @@ access: 1
 faccessat: 1
 faccessat2: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
 arch_prctl: 1
 rt_sigaction: 1

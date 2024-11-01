@@ -26,6 +26,7 @@ ioctl: arg1 == 0xc04064a0 || \
        arg1 == 0xc0406400
 lseek: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 newfstatat: 1

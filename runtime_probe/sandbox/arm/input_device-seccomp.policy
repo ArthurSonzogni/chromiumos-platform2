@@ -26,6 +26,7 @@ fstatfs: 1
 gettimeofday: 1
 lstat64: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 openat: 1

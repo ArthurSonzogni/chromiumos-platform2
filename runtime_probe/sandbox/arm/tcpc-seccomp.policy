@@ -23,6 +23,7 @@ gettimeofday: 1
 #        arg1 == 0xc014ec00 /* CROS_EC_DEV_IOCXCMD */
 ioctl: arg1 == 0x5401 || arg1 == 0xc014ec00
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 openat: 1
