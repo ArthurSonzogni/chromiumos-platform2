@@ -8,6 +8,7 @@ socket: arg0 == AF_LOCAL || arg0 == AF_INET || arg0 == AF_INET6 || \
 getsockopt: 1
 fcntl: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 prctl: arg0 == PR_CAPBSET_DROP || arg0 == PR_SET_SECCOMP || \
        arg0 == PR_SET_SECUREBITS || arg0 == PR_CAPBSET_READ
 newfstatat: 1

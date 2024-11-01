@@ -5,6 +5,7 @@
 prctl: arg0 == PR_CAPBSET_READ || arg0 == PR_SET_SECUREBITS || \
        arg0 == PR_SET_SECCOMP || arg0 == PR_CAPBSET_DROP
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 close: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 socket: arg0 == AF_LOCAL || arg0 == AF_INET || arg0 == AF_INET6 || \
