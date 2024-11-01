@@ -52,6 +52,7 @@ ioctl: arg1 == 0xc014ec00 || arg1 == 0x5401 || arg1 == 0x80041272 || \
        arg1 == 0x80200215 || arg1 == 0x1268 || arg1 == 0x5331 || \
        arg1 == 0x5395 || arg1 == 0x40084d02
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mount: 1
 umount2: 1
 uname: 1

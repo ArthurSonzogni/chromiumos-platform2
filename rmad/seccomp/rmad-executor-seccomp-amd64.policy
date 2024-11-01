@@ -15,6 +15,7 @@ clock_nanosleep: 1
 clock_gettime: 1
 dup2: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 getrandom: arg2 in ~GRND_RANDOM
 readlinkat: 1
 getppid: 1

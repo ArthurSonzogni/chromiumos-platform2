@@ -26,6 +26,7 @@ ioctl: arg1 == 0xc16cb403 || arg1 == 0xc014ec00 || \
        arg1 == 0x5421
 newfstatat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 faccessat: 1
 close: 1
 openat: 1
