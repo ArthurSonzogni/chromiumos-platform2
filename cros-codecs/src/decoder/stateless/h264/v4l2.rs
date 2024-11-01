@@ -24,6 +24,7 @@ use crate::codec::h264::parser::Sps;
 use crate::codec::h264::picture::PictureData;
 use crate::decoder::stateless::h264::StatelessH264DecoderBackend;
 use crate::decoder::stateless::h264::H264;
+use crate::decoder::stateless::NewPictureResult;
 use crate::decoder::stateless::StatelessBackendResult;
 use crate::decoder::stateless::StatelessDecoder;
 use crate::decoder::stateless::StatelessDecoderBackendPicture;
@@ -43,29 +44,20 @@ impl StatelessH264DecoderBackend for V4l2StatelessDecoderBackend {
         let mb_unit = 16;
         let map_unit = 16;
         let resolution = Resolution::from((
-            (sps.pic_width_in_mbs_minus1 + 1) * mb_unit,
-            (sps.pic_height_in_map_units_minus1 + 1) * map_unit,
+            (sps.pic_width_in_mbs_minus1 + 1) as u32 * mb_unit,
+            (sps.pic_height_in_map_units_minus1 + 1) as u32 * map_unit,
         ));
         self.device.set_resolution(resolution);
         Ok(())
     }
 
-    fn new_picture(
-        &mut self,
-        _: &PictureData,
-        timestamp: u64,
-    ) -> StatelessBackendResult<Self::Picture> {
+    fn new_picture(&mut self, timestamp: u64) -> NewPictureResult<Self::Picture> {
         Ok(Rc::new(RefCell::new(V4l2Picture::new(
             self.device.alloc_request(timestamp),
         ))))
     }
 
-    fn new_field_picture(
-        &mut self,
-        _: &PictureData,
-        _: u64,
-        _: &Self::Handle,
-    ) -> StatelessBackendResult<Self::Picture> {
+    fn new_field_picture(&mut self, _: u64, _: &Self::Handle) -> NewPictureResult<Self::Picture> {
         todo!()
     }
 
@@ -81,7 +73,7 @@ impl StatelessH264DecoderBackend for V4l2StatelessDecoderBackend {
         let mut dpb_entries = Vec::<V4l2CtrlH264DpbEntry>::new();
         let mut ref_pictures = Vec::<Rc<RefCell<V4l2Picture>>>::new();
         for entry in dpb.entries() {
-            let ref_picture = match &entry.handle {
+            let ref_picture = match &entry.reference {
                 Some(handle) => handle.handle.borrow().picture.clone(),
                 None => todo!(),
             };
