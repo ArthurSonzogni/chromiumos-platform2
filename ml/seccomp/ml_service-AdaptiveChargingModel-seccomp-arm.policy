@@ -41,6 +41,7 @@ gettimeofday: 1
 getuid32: 1
 ioctl: arg1 == TCGETS
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 openat: 1
