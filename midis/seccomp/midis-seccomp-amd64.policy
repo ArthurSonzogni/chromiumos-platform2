@@ -53,6 +53,7 @@ lseek: 1
 memfd_create: 1
 # mmap should only be allowed in READ mode.
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 # mprotect should only be allowed in READ mode.
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
