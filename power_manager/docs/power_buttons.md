@@ -95,9 +95,18 @@ behavior even when a folio or other external keyboard is attached.
 
 ### Legacy ACPI Power Buttons
 
-On devices that don't report power button releases properly, tapping the power
-button displays the power menu described above. Tapping the power button again
-while the menu is displayed shuts the system down.
+On systems where the firmware doesn't report power button releases (only
+presses, typically on devices with standard ACPI power buttons that only provide
+a way to notify of a press but not a release), tapping the power button displays
+the power menu described above. Tapping the power button again while the menu is
+displayed shuts the system down.
+
+The `legacy_power_button` USE flag (normally set in a Portage overlay) enables
+powerd's corresponding pref and enables this behavior via the
+`--aura-legacy-power-button` flag. The kernel will immediately generate a
+"release" event for the power button when it is notified by firmware of a power
+button press, so this flag informs Chrome that the timing between press and
+release events is meaningless.
 
 ### Universal Behavior
 
@@ -130,11 +139,6 @@ The always-tablet-like power button behavior used on touch-centric devices is
 controlled by the presence of the `touch_centric_device` USE flag, which
 instructs [session_manager] to pass a `--force-tablet-power-button` command-line
 flag to Chrome.
-
-Chromebox- and Chromebase-style behavior is enabled by setting the
-`legacy_power_button` USE flag in a Portage overlay, which causes powerd's
-`legacy_power_button` pref to be set and the `--aura-legacy-power-button` flag
-to be passed to Chrome.
 
 [`chromeos::PowerManagerClient`]: https://source.chromium.org/chromium/chromium/src/+/HEAD:chromeos/dbus/power/power_manager_client.h
 [`ash::PowerButtonController`]: https://source.chromium.org/chromium/chromium/src/+/HEAD:ash/system/power/power_button_controller.h
