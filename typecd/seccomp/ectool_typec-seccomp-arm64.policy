@@ -20,6 +20,7 @@ rseq: 1
 openat: 1
 write: 1
 mmap: arg2 in ~PROT_EXEC
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC
 fstat: 1
 newfstatat: 1
