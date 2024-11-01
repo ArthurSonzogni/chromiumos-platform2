@@ -1,0 +1,43 @@
+[package]
+name = "cros-codecs"
+version = "0.0.5"
+license = "BSD-3-Clause"
+description = "Hardware-accelerated codecs for Linux"
+repository = "https://github.com/chromeos/cros-codecs"
+authors = ["The ChromiumOS Authors"]
+edition = "2021"
+
+[features]
+default = []
+vaapi = ["libva", "anyhow", "byteorder", "thiserror", "crc32fast", "nix"]
+v4l2 = ["v4l2r", "anyhow", "byteorder", "thiserror", "crc32fast", "nix"]
+
+[dependencies]
+anyhow = { version = "1", optional = true }
+byteorder = { version = "1.4.3", optional = true }
+libva = { version = "0.0.7", package = "cros-libva", optional = true }
+v4l2r = { version = "0.0.3", package = "v4l2r", optional = true }
+log = { version = "0", features = ["release_max_level_off"] }
+thiserror = { version = "1.0.31", optional = true }
+crc32fast = { version = "1.3.2", optional = true }
+nix = { version = "0.29", features = ["fs", "event"], optional = true }
+
+[dev-dependencies]
+argh = "0.1"
+env_logger = "0.10.0"
+matroska-demuxer = "0.5.0"
+md5 = "0.7"
+drm = "0.11.0"
+gbm = { version = "0.14", default-features = false, features = ["drm-support"] }
+
+[lints.rust]
+# Required to allow #[cfg(fuzzing)]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+
+[[example]]
+name = "ccdec"
+required-features = ["vaapi"]
+
+[[example]]
+name = "ccenc"
+required-features = ["vaapi"]

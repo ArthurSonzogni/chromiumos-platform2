@@ -46,6 +46,7 @@ copies.
 | [codelab](./codelab/) | Codelab exercise |
 | [common-mk](./common-mk/) | Common build & test logic for platform2 projects |
 | [crash-reporter](./crash-reporter/) | The system crash handler & reporter |
+| [cros-codecs](./cros-codecs/) | Hardware accelerated video middleware |
 | [cros-disks](./cros-disks/) | Daemon for mounting removable media (e.g. USB sticks and SD cards) |
 | [crosdns](./crosdns/) | Hostname resolution service for ChromeOS |
 | [crosh](./crosh/) | The ChromiumOS shell |
