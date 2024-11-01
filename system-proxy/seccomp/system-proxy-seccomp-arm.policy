@@ -8,6 +8,7 @@ rseq: 1
 gettid: 1
 openat: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 clock_gettime: 1
 clock_gettime64: 1
 read: 1
