@@ -349,6 +349,7 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
 }
 
 bool BiometricsManagerWrapper::EnrollSessionCancel(brillo::ErrorPtr* error) {
+  LOG(INFO) << __func__;
   if (!enroll_session_) {
     LOG(WARNING) << "DBus client attempted to cancel null EnrollSession";
     *error = brillo::Error::Create(FROM_HERE, kDomain, kInvalidArguments,
