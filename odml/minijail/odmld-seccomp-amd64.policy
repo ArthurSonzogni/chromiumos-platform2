@@ -49,6 +49,7 @@ ioctl: arg1 == 0x5401 || arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x4
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 futex: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mremap: 1
 munmap: 1
 epoll_wait: 1
