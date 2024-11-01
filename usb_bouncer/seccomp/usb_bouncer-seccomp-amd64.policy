@@ -61,6 +61,7 @@ gettimeofday: 1
 ioctl: arg1 == TCGETS
 lstat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 rt_sigaction: 1
