@@ -18,6 +18,7 @@ connect: 1
 fcntl: 1
 statx: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 ioctl: arg1 == FIONBIO || arg1 == FIONREAD || arg1 == TCGETS || arg1 == TCSETS
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 recvmsg: 1
