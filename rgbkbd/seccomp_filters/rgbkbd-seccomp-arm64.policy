@@ -44,6 +44,7 @@ ioctl: arg1 == TCGETS || arg1 == 0xc0283a00 || arg1 == 0xc014ec00
 lseek: 1
 madvise: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 name_to_handle_at: 1
