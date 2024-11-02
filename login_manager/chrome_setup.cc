@@ -1133,6 +1133,11 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--arc-block-keymint");
   }
 
+  // Pass USE flag of enabling ARC Key and ID Attestation to Chrome.
+  if (builder->UseFlagIsSet("arc_enable_attestation")) {
+    builder->AddArg("--arc-enable-attestation");
+  }
+
   // Pass USE flags of ARM binary translation libraries to Chrome.
   if (builder->UseFlagIsSet("houdini")) {
     builder->AddArg("--enable-houdini");
