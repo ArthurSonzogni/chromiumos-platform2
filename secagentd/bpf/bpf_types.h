@@ -361,6 +361,15 @@ struct inode_attr {
   struct cros_timespec ctime;  // Last status change time.
 } __attribute__((aligned(8)));
 
+struct inode_info {
+  struct inode_attr attr;
+  uint64_t device_id;        // The device ID both major and minor.
+  uint64_t inode;            // The inode of the file.
+  uint64_t mnt_ns;           // The mount namespace of the inode
+  char path[MAX_PATH_SIZE];  // Path including mount information. This must be
+                             // null terminated
+} __attribute__((aligned(8)));
+
 struct before_attribute_map_value {
   uint8_t sensitive_file_type;
   struct inode_attr attr;
@@ -368,21 +377,15 @@ struct before_attribute_map_value {
 
 // File Events Structs
 struct cros_file_image {
-  char path[MAX_PATH_SIZE];  // Path including mount information. This must be
-                             // null terminated.
-  uint64_t mnt_ns;           // The mount namespace of the inode
-  uint64_t device_id;        // The device ID both major and minor.
-  uint64_t inode;            // The inode of the file.
-  uint32_t flags;            // Open Flags
-  uint8_t sensitive_file_type;    // sensitive_file_type
-  struct inode_attr before_attr;  // Attributes of the file before the change.
-  struct inode_attr after_attr;   // Attributes of the file after the change.
+  uint32_t flags;               // Open Flags
+  uint8_t sensitive_file_type;  // sensitive_file_type
+  struct inode_info
+      before_inode_info;  // Attributes of the file before the change.
+  struct inode_info
+      after_inode_info;     // Attributes of the file after the change.
   bool file_system_noexec;  // Indicates if the filesystem is mounted with the
                             // 'noexec' flag.
   uint32_t pid_for_setns;
-  uint64_t old_device_id;        // Old Device ID (Rename Only)
-  uint64_t old_inode;            // Old Inode (Rename Only)
-  char old_path[MAX_PATH_SIZE];  // Old Path (Rename Only)
 } __attribute__((aligned(8)));
 
 enum cros_event_type { kProcessEvent, kNetworkEvent, kFileEvent };

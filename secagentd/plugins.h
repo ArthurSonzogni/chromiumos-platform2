@@ -486,8 +486,7 @@ class FilePlugin : public PluginInterface {
   void OnSessionStateChange(const std::string& state);
 
   void FillFileImageInfo(cros_xdr::reporting::FileImage* file_image,
-                         const secagentd::bpf::cros_file_image& image_info,
-                         bool use_after_attribute);
+                         const secagentd::bpf::inode_info& inode_info);
 
   std::unique_ptr<cros_xdr::reporting::FileReadEvent> MakeFileReadEvent(
       const secagentd::bpf::cros_file_detailed_event& detailed_event);

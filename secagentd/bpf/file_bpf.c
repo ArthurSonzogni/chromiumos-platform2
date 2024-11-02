@@ -947,13 +947,32 @@ static __always_inline void get_inode_attributes(struct inode* inode,
  * Fills a cros_file_image structure with information about a file from its file
  * descriptor.
  *
- * This function extracts the following information from the kernel data
- * structures:
- *   - inode number
- *   - file mode (permissions)
- *   - device ID
- *   - file open flags
- *   - mount namespace ID
+Functionality:
+ *   1. Extracts and sets the following information in `image_info`:
+ *      - Sensitive file type.
+ *      - Process ID for setns (namespace switching) and mount namespace ID.
+ *      - File system `noexec` flag (from the superblock of the dentry).
+ *      - Inode attributes after the modification or file access (mode, UID,
+GID, size, etc.).
+ *      - File open flags, if the file struct is available.
+ *
+ *   2. Handles two scenarios for path, inode, and device ID population:
+ *      - Rename case (`rename_map_value` is provided):
+ *        Populates the "before" and "after" inode info using `rename_map_value`
+(new/old paths, inodes, device IDs).
+*         Also, populate before_attr using current_attr of the file
+ *      - Regular case:
+ *        Resolves the file path using `resolve_path_to_string()` and reads the
+inode and device ID from the dentry.
+ *
+ *   3. If `before_attr` (attribute change) is provided it fills the "before"
+inode info
+ *      (path, inode, device ID) using current resolved file path and file
+attributes using provided `before_attr`.
+ *
+ *   4. Always updates the "after" inode info with the latest inode attributes
+after the modification or access.
+ *
  */
 static inline __attribute__((always_inline)) void fill_file_image_info(
     struct cros_file_image* image_info,
@@ -971,52 +990,71 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
   // Read the inode from the dentry
   struct inode* inode = BPF_CORE_READ(dentry, d_inode);
 
-  if (rename_map_value) {
-    bpf_probe_read_str(image_info->path, MAX_PATH_SIZE,
-                       rename_map_value->new_path);
-    bpf_probe_read_str(image_info->old_path, MAX_PATH_SIZE,
-                       rename_map_value->old_path);
-    image_info->inode = rename_map_value->new_inode;
-    image_info->device_id = rename_map_value->new_device_id;
-    image_info->old_inode = rename_map_value->old_inode;
-    image_info->old_device_id = rename_map_value->old_device_id;
-  } else {
-    u_char* file_path = NULL;
-    resolve_path_to_string(&file_path, path, NULL, false);
-    bpf_core_read_str(image_info->path, MAX_PATH_SIZE, file_path);
-
-    // Fill inode information
-    image_info->inode = BPF_CORE_READ(inode, i_ino);
-    image_info->device_id = BPF_CORE_READ(inode, i_sb, s_dev);
-  }
-
+  // Set sensitive file type and task info
   image_info->sensitive_file_type = sensitive_file_type;
-
   const struct task_struct* n = normalize_to_last_newns(t);
   image_info->pid_for_setns = BPF_CORE_READ(n, tgid);
+  image_info->file_system_noexec =
+      BPF_CORE_READ(dentry, d_sb, s_flags) & MS_NOEXEC;
 
-  // Fill file flags if the file is not NULL
+  // Handle file flags if available
   if (file != NULL) {
     image_info->flags = BPF_CORE_READ(file, f_flags);
   }
 
-  image_info->mnt_ns = BPF_CORE_READ(t, nsproxy, mnt_ns, ns.inum);
-  image_info->file_system_noexec =
-      BPF_CORE_READ(dentry, d_sb, s_flags) & MS_NOEXEC;
+  u_char* file_path = NULL;
 
-  // If before_attr is provided, fill the before attributes
-  if (before_attr != NULL) {
-    image_info->before_attr.mode = before_attr->mode;
-    image_info->before_attr.uid = before_attr->uid;
-    image_info->before_attr.gid = before_attr->gid;
-    image_info->before_attr.size = before_attr->size;
-    image_info->before_attr.atime = before_attr->atime;
-    image_info->before_attr.mtime = before_attr->mtime;
-    image_info->before_attr.ctime = before_attr->ctime;
+  // Handle rename case
+  if (rename_map_value) {
+    bpf_probe_read_str(&image_info->after_inode_info.path, MAX_PATH_SIZE,
+                       rename_map_value->new_path);
+    bpf_probe_read_str(&image_info->before_inode_info.path, MAX_PATH_SIZE,
+                       rename_map_value->old_path);
+    image_info->after_inode_info.inode = rename_map_value->new_inode;
+    image_info->after_inode_info.device_id = rename_map_value->new_device_id;
+    image_info->after_inode_info.mnt_ns =
+        BPF_CORE_READ(t, nsproxy, mnt_ns, ns.inum);
+    image_info->before_inode_info.inode = rename_map_value->old_inode;
+    image_info->before_inode_info.device_id = rename_map_value->old_device_id;
+    image_info->before_inode_info.mnt_ns = image_info->after_inode_info.mnt_ns;
+
+    // Get before attributes if rename map is present
+    get_inode_attributes(inode, &image_info->before_inode_info.attr);
+
+  } else {
+    // Set the after inode info (path, inode, device_id)
+    resolve_path_to_string(&file_path, path, NULL, false);
+    bpf_core_read_str(&image_info->after_inode_info.path, MAX_PATH_SIZE,
+                      file_path);
+    image_info->after_inode_info.inode = BPF_CORE_READ(inode, i_ino);
+    image_info->after_inode_info.device_id = BPF_CORE_READ(inode, i_sb, s_dev);
+    image_info->after_inode_info.mnt_ns =
+        BPF_CORE_READ(t, nsproxy, mnt_ns, ns.inum);
+
+    // Handle before_attr case if provided
+    if (before_attr) {
+      if (file_path) {
+        bpf_probe_read_str(&image_info->before_inode_info.path, MAX_PATH_SIZE,
+                           file_path);
+      }
+      image_info->before_inode_info.inode = image_info->after_inode_info.inode;
+      image_info->before_inode_info.device_id =
+          image_info->after_inode_info.device_id;
+      image_info->before_inode_info.mnt_ns =
+          image_info->after_inode_info.mnt_ns;
+      image_info->before_inode_info.attr.mode = before_attr->mode;
+      image_info->before_inode_info.attr.uid = before_attr->uid;
+      image_info->before_inode_info.attr.gid = before_attr->gid;
+      image_info->before_inode_info.attr.size = before_attr->size;
+      image_info->before_inode_info.attr.atime = before_attr->atime;
+      image_info->before_inode_info.attr.mtime = before_attr->mtime;
+      image_info->before_inode_info.attr.ctime = before_attr->ctime;
+    }
   }
 
-  // Get the inode attributes for the after modification state
-  get_inode_attributes(inode, &image_info->after_attr);
+  // Get the inode attributes for the after modification state after setting
+  // inode and device ID
+  get_inode_attributes(inode, &image_info->after_inode_info.attr);
 }
 
 /**
@@ -1137,17 +1175,21 @@ static inline __attribute__((always_inline)) void print_umount_event(
  *
  */
 static inline __attribute__((always_inline)) void print_inode_attributes(
-    struct inode_attr* attr, const char* prefix) {
-  bpf_printk("%s Mode: %u\n", prefix, attr->mode);
-  bpf_printk("%s UID: %u\n", prefix, attr->uid);
-  bpf_printk("%s GID: %u\n", prefix, attr->gid);
-  bpf_printk("%s Size: %llu\n", prefix, attr->size);
-  bpf_printk("%s Access Time: %llu.%09lu\n", prefix, attr->atime.tv_sec,
-             attr->atime.tv_nsec);
-  bpf_printk("%s Modification Time: %llu.%09lu\n", prefix, attr->mtime.tv_sec,
-             attr->mtime.tv_nsec);
-  bpf_printk("%s Change Time: %llu.%09lu\n", prefix, attr->ctime.tv_sec,
-             attr->ctime.tv_nsec);
+    struct inode_info* info, const char* prefix) {
+  bpf_printk("%s Mode: %u\n", prefix, info->attr.mode);
+  bpf_printk("%s UID: %u\n", prefix, info->attr.uid);
+  bpf_printk("%s GID: %u\n", prefix, info->attr.gid);
+  bpf_printk("%s Size: %llu\n", prefix, info->attr.size);
+  bpf_printk("%s Access Time: %llu.%09lu\n", prefix, info->attr.atime.tv_sec,
+             info->attr.atime.tv_nsec);
+  bpf_printk("%s Modification Time: %llu.%09lu\n", prefix,
+             info->attr.mtime.tv_sec, info->attr.mtime.tv_nsec);
+  bpf_printk("%s Change Time: %llu.%09lu\n", prefix, info->attr.ctime.tv_sec,
+             info->attr.ctime.tv_nsec);
+  bpf_printk("Device ID: %llu\n", info->device_id);
+  bpf_printk("Inode: %llu\n", info->inode);
+  bpf_printk("Path: %s\n", info->path);
+  bpf_printk("Mnt_ns: %u\n", info->mnt_ns);
 }
 
 /**
@@ -1156,13 +1198,12 @@ static inline __attribute__((always_inline)) void print_inode_attributes(
  */
 static inline __attribute__((always_inline)) void print_cros_file_image(
     struct cros_file_image* file_image) {
-  bpf_printk("Mnt_ns: %llu\n", file_image->mnt_ns);
-  bpf_printk("Device ID: %llu\n", file_image->device_id);
-  bpf_printk("Inode: %llu\n", file_image->inode);
+  bpf_printk("File_system_noexec: %d\n", file_image->file_system_noexec);
+  bpf_printk("Pid_for_setns: %llu\n", file_image->pid_for_setns);
   bpf_printk("Flags: %u\n", file_image->flags);
   bpf_printk("Sensitive File Info: %u\n", file_image->sensitive_file_type);
-  print_inode_attributes(&file_image->before_attr, "Before");
-  print_inode_attributes(&file_image->after_attr, "After");
+  print_inode_attributes(&file_image->before_inode_info, "Before");
+  print_inode_attributes(&file_image->after_inode_info, "After");
 }
 
 // Function to print fields of cros_namespace_info

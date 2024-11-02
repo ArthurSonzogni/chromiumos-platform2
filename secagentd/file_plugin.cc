@@ -1274,18 +1274,18 @@ void FilePlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     }
   } else if (fe.type == bpf::kFileRenameEvent) {
     atomic_event->set_allocated_sensitive_modify(
-        MakeFileModifyEvent(fe.data.file_detailed_event).release());
+        MakeFileAttributeModifyEvent(fe.data.file_detailed_event).release());
   }
 
   std::unique_ptr<FileEventValue> fev = std::make_unique<FileEventValue>();
   auto& image_info = fe.data.file_detailed_event.image_info;
-  auto& file_attr = image_info.after_attr;
+  auto& inode_info = image_info.after_inode_info;
   fev->meta_data.is_noexec = image_info.file_system_noexec;
   fev->meta_data.pid_for_setns = image_info.pid_for_setns;
-  fev->meta_data.mtime.tv_sec = file_attr.mtime.tv_sec;
-  fev->meta_data.mtime.tv_nsec = file_attr.mtime.tv_nsec;
-  fev->meta_data.ctime.tv_sec = file_attr.ctime.tv_sec;
-  fev->meta_data.ctime.tv_nsec = file_attr.ctime.tv_nsec;
+  fev->meta_data.mtime.tv_sec = inode_info.attr.mtime.tv_sec;
+  fev->meta_data.mtime.tv_nsec = inode_info.attr.mtime.tv_nsec;
+  fev->meta_data.ctime.tv_sec = inode_info.attr.ctime.tv_sec;
+  fev->meta_data.ctime.tv_nsec = inode_info.attr.ctime.tv_nsec;
   fev->event = std::move(atomic_event);
   auto result = GetMutableImage(*fev->event);
   if (!result.ok()) {
@@ -1395,22 +1395,15 @@ void FilePlugin::OnDeviceUserRetrieved(
 // the provenance information.
 void FilePlugin::FillFileImageInfo(
     cros_xdr::reporting::FileImage* file_image,
-    const secagentd::bpf::cros_file_image& image_info,
-    bool use_after_modification_attribute) {
-  if (use_after_modification_attribute) {
-    file_image->set_pathname(std::string(image_info.path));
-    file_image->set_mnt_ns(image_info.mnt_ns);
-    file_image->set_inode_device_id(
-        KernelToUserspaceDeviceId(image_info.device_id));
-    file_image->set_inode(image_info.inode);
-    file_image->set_mode(image_info.after_attr.mode);
-    file_image->set_canonical_gid(image_info.after_attr.gid);
-    file_image->set_canonical_uid(image_info.after_attr.uid);
-  } else {
-    file_image->set_mode(image_info.before_attr.mode);
-    file_image->set_canonical_gid(image_info.before_attr.gid);
-    file_image->set_canonical_uid(image_info.before_attr.uid);
-  }
+    const secagentd::bpf::inode_info& inode_info) {
+  file_image->set_pathname(std::string(inode_info.path));
+  file_image->set_mnt_ns(inode_info.mnt_ns);
+  file_image->set_inode_device_id(
+      KernelToUserspaceDeviceId(inode_info.device_id));
+  file_image->set_inode(inode_info.inode);
+  file_image->set_mode(inode_info.attr.mode);
+  file_image->set_canonical_gid(inode_info.attr.gid);
+  file_image->set_canonical_uid(inode_info.attr.uid);
 }
 
 std::unique_ptr<cros_xdr::reporting::FileReadEvent>
@@ -1429,7 +1422,7 @@ FilePlugin::MakeFileReadEvent(
       file_detailed_event.image_info.sensitive_file_type));
 
   FillFileImageInfo(file_read_proto->mutable_image(),
-                    file_detailed_event.image_info, true);
+                    file_detailed_event.image_info.after_inode_info);
 
   return read_event_proto;
 }
@@ -1450,7 +1443,7 @@ FilePlugin::MakeFileModifyEvent(
   // optional FileProvenance file_provenance = 2;
 
   FillFileImageInfo(file_modify_proto->mutable_image_after(),
-                    file_detailed_event.image_info, true);
+                    file_detailed_event.image_info.after_inode_info);
 
   return modify_event_proto;
 }
@@ -1473,9 +1466,9 @@ FilePlugin::MakeFileAttributeModifyEvent(
   // optional FileProvenance file_provenance = 2;
 
   FillFileImageInfo(file_modify_proto->mutable_image_after(),
-                    file_detailed_event.image_info, true);
+                    file_detailed_event.image_info.after_inode_info);
   FillFileImageInfo(file_modify_proto->mutable_attributes_before(),
-                    file_detailed_event.image_info, false);
+                    file_detailed_event.image_info.before_inode_info);
 
   return modify_event_proto;
 }
