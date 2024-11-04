@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":dlc_metadata_util",
     ":install_header",
     ":install_pkgconfig",
     ":libdlcservice-metadata",
@@ -42,6 +43,14 @@ install_config("install_header") {
     "mock_metadata.h",
   ]
   install_path = "/usr/include/dlcservice/metadata"
+}
+
+# For dlc_metadata_util:
+executable("dlc_metadata_util") {
+  sources = [ "dlc_metadata_util.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libdlcservice-metadata" ]
+  install_path = "bin"
 }
 
 # For test:

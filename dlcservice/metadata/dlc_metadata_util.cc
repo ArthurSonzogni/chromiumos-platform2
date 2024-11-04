@@ -10,16 +10,15 @@
 #include <optional>
 #include <string>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/values.h>
 #include <brillo/flag_helper.h>
 #include <chromeos/constants/imageloader.h>
 #include <dlcservice/metadata/metadata.h>
-#include <libimageloader/manifest.h>
 
 using dlcservice::metadata::Metadata;
 
@@ -228,10 +227,6 @@ std::optional<Metadata::Entry> DlcMetadataUtil::ReadMetadataEntry() {
   auto* manifest_val = metadata_val->GetDict().FindDict("manifest");
   if (!manifest_val) {
     LOG(ERROR) << "Could not get manifest from the input";
-    return std::nullopt;
-  }
-  if (!imageloader::Manifest().ParseManifest(*manifest_val)) {
-    LOG(ERROR) << "Could not parse manifest from the input";
     return std::nullopt;
   }
   entry.manifest = std::move(*manifest_val);
