@@ -117,8 +117,6 @@ const char ChromiumCommandBuilder::kDisableBlinkFeaturesFlag[] =
 
 const char ChromiumCommandBuilder::kCrosConfigBluetoothFlagsPath[] =
     "/bluetooth/flags";
-const char ChromiumCommandBuilder::kCrosConfigBlockFlossAvailability[] =
-    "block-floss-availability";
 const char ChromiumCommandBuilder::kCrosConfigBlockLLPrivacyAvailability[] =
     "block-llprivacy-availability";
 
@@ -555,19 +553,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
   }
 
   brillo::CrosConfig cros_config;
-
-  // Disable Floss if the Floss USE flag was not set or the cros config
-  // was specified.
-  // TODO(b/292020117): Remove the USE flag check once we replace it with cros
-  // config.
-  std::string block_floss_availability;
-  if (!UseFlagIsSet("floss") ||
-      (cros_config.GetString(kCrosConfigBluetoothFlagsPath,
-                             kCrosConfigBlockFlossAvailability,
-                             &block_floss_availability) &&
-       block_floss_availability == "true")) {
-    AddFeatureDisableOverride("FlossIsAvailable");
-  }
 
   // Disable LLPrivacy if the cros config was specified.
   std::string block_llprivacy_availability;
