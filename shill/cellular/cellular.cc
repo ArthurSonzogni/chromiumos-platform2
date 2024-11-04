@@ -1710,7 +1710,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
 
     SetPendingConnect(service->iccid());
     if (auto_connect_disabled)
-      service_->SetForceAutoConnect(true);
+      service->SetForceAutoConnect(true);
 
     return;
   }
@@ -1721,7 +1721,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
               << service->log_name();
     SetPendingConnect(service->iccid());
     if (auto_connect_disabled)
-      service_->SetForceAutoConnect(true);
+      service->SetForceAutoConnect(true);
 
     return;
   }
@@ -1748,7 +1748,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
                  << ": Waiting for Modem registration.";
     SetPendingConnect(service->iccid());
     if (auto_connect_disabled)
-      service_->SetForceAutoConnect(true);
+      service->SetForceAutoConnect(true);
 
     return;
   }
