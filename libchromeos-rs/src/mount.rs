@@ -49,6 +49,8 @@ fn unmount_impl(path: &Path) -> Result<(), MountError> {
 
 /// Represents the different ways we have of managing our mount points.
 enum MountPoint {
+    /// Mounts a file system on an existing directory, then unmounts when dropped.
+    ExistingDir(PathBuf),
     /// Mounts a file system on a temporary directory, then unmounts when dropped..
     TempBacked(TempDir),
 }
@@ -66,6 +68,7 @@ impl Mount {
         // OK to unwrap: We only have None if we've unmounted, which consumes self.
         let mount_point = self.mount_point.as_ref().unwrap();
         match mount_point {
+            MountPoint::ExistingDir(dir) => dir,
             MountPoint::TempBacked(tempdir) => tempdir.path(),
         }
     }
@@ -81,6 +84,7 @@ impl Mount {
         let mount_point = self.mount_point.take().unwrap();
 
         match mount_point {
+            MountPoint::ExistingDir(dir) => unmount_impl(&dir),
             MountPoint::TempBacked(tempdir) => {
                 unmount_impl(tempdir.path())?;
 
@@ -104,6 +108,8 @@ impl Drop for Mount {
             // print it.
             error!("Error unmounting {}: {}", self.mount_path().display(), err);
         }
+
+        // In the `MountPoint::TempBacked` case the tempdir will clean itself up here.
     }
 }
 
@@ -165,20 +171,14 @@ impl Builder {
         self
     }
 
-    /// Mount the source to an owned temporary dir and return a `Mount` or an error.
-    ///
-    /// Consumes self (the Builder).
-    pub fn temp_backed_mount(self) -> Result<Mount, MountError> {
-        let mount_point = TempDir::new().map_err(MountError::Tempdir)?;
-        let mount_point = Some(MountPoint::TempBacked(mount_point));
-        let mount_holder = Mount { mount_point };
-
-        let fs_str = self.fs_type.map(|t| t.to_string());
+    // The bit that does the actual mounting.
+    fn mount_impl(&self, target: &Path) -> Result<(), MountError> {
+        let fs_str = self.fs_type.as_ref().map(|t| t.to_string());
 
         let mut message = format!(
             "mounting {} at {} with",
             self.source.display(),
-            mount_holder.mount_path().display()
+            target.display()
         );
         if let Some(fs_str) = &fs_str {
             write!(&mut message, " type: '{fs_str}'").unwrap();
@@ -191,14 +191,37 @@ impl Builder {
 
         nix::mount::mount(
             Some(self.source.as_path()),
-            mount_holder.mount_path(),
+            target,
             fs_str.as_deref(),
             self.flags,
             self.data.as_deref(),
         )
         .map_err(|e| MountError::Mount(self.source.to_path_buf(), e.into()))?;
 
-        Ok(mount_holder)
+        Ok(())
+    }
+
+    /// Mount the source to an owned temporary dir and return a `TempBackedMount` or an error.
+    ///
+    /// Consumes self (the Builder).
+    pub fn temp_backed_mount(self) -> Result<Mount, MountError> {
+        let mount_point = TempDir::new().map_err(MountError::Tempdir)?;
+        let mount_point = Some(MountPoint::TempBacked(mount_point));
+        let mount = Mount { mount_point };
+
+        self.mount_impl(mount.mount_path())?;
+
+        Ok(mount)
+    }
+
+    /// Mount the source to the `target` and return a `Mount` or an error.
+    pub fn mount(self, target: &Path) -> Result<Mount, MountError> {
+        let mount_point = Some(MountPoint::ExistingDir(target.to_path_buf()));
+        let mount = Mount { mount_point };
+
+        self.mount_impl(target)?;
+
+        Ok(mount)
     }
 }
 
@@ -253,6 +276,48 @@ mod tests {
         // The tempfile can't be deleted if the mount is still there,
         // so this is all we need to check.
         assert!(!path.exists());
+    }
+
+    #[test]
+    #[ignore]
+    fn test_mnt_basic() {
+        let mount_point = TempDir::new().map_err(MountError::Tempdir).unwrap();
+
+        let mnt = Builder::new(Path::new("tmpfs"))
+            .fs_type(FsType::Tmpfs)
+            .mount(mount_point.path())
+            .unwrap();
+
+        // Confirm that the mount is good by touching a file on it.
+        let mut file = mnt.mount_path().to_path_buf();
+        file.push("touched");
+
+        let status = Command::new("touch")
+            .arg(file.into_os_string())
+            .status()
+            .unwrap();
+
+        assert!(status.success());
+    }
+
+    #[test]
+    #[ignore]
+    fn test_mnt_drop() {
+        let mount_point = TempDir::new().map_err(MountError::Tempdir).unwrap();
+
+        let mnt = Builder::new(Path::new("tmpfs"))
+            .fs_type(FsType::Tmpfs)
+            .mount(mount_point.path())
+            .unwrap();
+
+        drop(mnt);
+
+        // Make sure we're not still mounted.
+        let mount_info = get_mount_info(mount_point.path());
+        assert!(mount_info.is_none());
+
+        // Make sure our mount point didn't get deleted.
+        assert!(mount_point.path().exists());
     }
 
     #[test]
