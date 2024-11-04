@@ -15,6 +15,12 @@ const LVM_FLAG_DEFAULT: bool = true;
 #[cfg(not(feature = "lvm_stateful_partition"))]
 const LVM_FLAG_DEFAULT: bool = false;
 
+#[cfg(feature = "default_key_stateful")]
+const DEFAULT_KEY_FLAG_DEFAULT: bool = true;
+
+#[cfg(not(feature = "default_key_stateful"))]
+const DEFAULT_KEY_FLAG_DEFAULT: bool = false;
+
 /// Arg parser with the set of args from the shell script.
 ///
 /// This drops the '--no<flag>' variant of each boolean arg (except for
@@ -82,6 +88,14 @@ pub struct Args {
     #[arg(long, conflicts_with("lvm_stateful"))]
     pub nolvm_stateful: bool,
 
+    /// Create dm-default-key encrypted stateful metadata partition
+    #[arg(long, conflicts_with("lvm_stateful"))]
+    pub default_key_stateful: bool,
+
+    /// Don't dm-default-key encrypted stateful metadata partition
+    #[arg(long, conflicts_with("default_key_stateful"))]
+    pub nodefault_key_stateful: bool,
+
     /// Path to a file containing logs to be preserved
     #[arg(long)]
     pub lab_preserve_logs: Option<String>,
@@ -115,6 +129,14 @@ impl Args {
         }
     }
 
+    fn default_key_stateful_arg(&self, default: bool) -> bool {
+        if default {
+            !self.nodefault_key_stateful
+        } else {
+            self.default_key_stateful
+        }
+    }
+
     /// Convert parsed args into "environment variables" (pairs of Strings) to be
     /// passed to the shell script.
     pub fn to_env(&self) -> Vec<(String, String)> {
@@ -122,6 +144,7 @@ impl Args {
 
         // Special handling for flag with USE-flag controlled default.
         let lvm_stateful = self.lvm_stateful_arg(LVM_FLAG_DEFAULT);
+        let default_key_stateful = self.default_key_stateful_arg(DEFAULT_KEY_FLAG_DEFAULT);
 
         // Boolean flags
         for (flag, value) in [
@@ -133,6 +156,7 @@ impl Args {
             ("FLAGS_skip_postinstall", self.skip_postinstall),
             ("FLAGS_storage_diags", self.storage_diags),
             ("FLAGS_lvm_stateful", lvm_stateful),
+            ("FLAGS_default_key_stateful", default_key_stateful),
             ("FLAGS_minimal_copy", self.minimal_copy),
             ("FLAGS_skip_gpt_creation", self.skip_gpt_creation),
         ] {
@@ -183,6 +207,10 @@ mod tests {
 
         // Can't specify both LVM flags at once
         let args = Args::try_parse_from(["arg0", "--lvm_stateful", "--nolvm_stateful"]);
+        assert!(args.is_err());
+
+        // Can't specify LVM flags and dm-default-key stateful support.
+        let args = Args::try_parse_from(["arg0", "--lvm_stateful", "--default_key_stateful"]);
         assert!(args.is_err());
     }
 
