@@ -437,5 +437,21 @@ TEST_F(SANETest, ReloadOption) {
   sane_close(handle);
 }
 
+TEST_F(SANETest, OpenStartClose) {
+  SANE_Handle handle_;
+
+  ASSERT_EQ(
+      sane_open(sane_backend_tests::scanner_under_test->c_str(), &handle_),
+      SANE_STATUS_GOOD)
+      << "Failed to open scanner";
+
+  std::cout << "Press enter when a page is ready to scan";
+  std::string ignored;
+  std::getline(std::cin, ignored);
+
+  ASSERT_EQ(sane_start(handle_), SANE_STATUS_GOOD) << "Failed to start scan";
+  sane_close(handle_);
+}
+
 }  // namespace
 }  // namespace sane_backend_tests
