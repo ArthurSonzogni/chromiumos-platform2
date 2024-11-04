@@ -11,7 +11,6 @@
 
 #include <iterator>
 #include <memory>
-#include <numeric>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -95,7 +94,7 @@ std::string* g_connection_state;
 // a hook to gain control in between the Now() calls.
 class MockClock : public base::Clock {
  public:
-  ~MockClock() override {}
+  ~MockClock() override = default;
   MOCK_METHOD(base::Time, Now, (), (const override));
 };
 
@@ -269,6 +268,8 @@ class CrashSenderUtilTest : public testing::Test {
       base::CommandLine::Reset();
     }
     brillo::FlagHelper::ResetForTesting();
+
+    base::DeletePathRecursively(paths::Get(paths::kSystemCrashDirectory));
   }
 
   // Checks to see if a file is locked by AcquireLockFileOrDie().
@@ -663,6 +664,11 @@ INSTANTIATE_TEST_SUITE_P(
       name << "dry_run_" << info.param;
       return name.str();
     });
+
+void SetPreConsentCompleted() {
+  ASSERT_TRUE(
+      test_util::CreateFile(paths::Get(paths::kPreConsentCompletePath), "1"));
+}
 
 }  // namespace
 
@@ -1224,6 +1230,78 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
 }
 
+TEST_F(CrashSenderUtilTest,
+       ChooseAction_ShouldSendDuringPostconsentWithPreConsentFeature) {
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+  // "/home/chronos/.oobe_completed" doesn't exist.
+  MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
+  SetPreConsentCompleted();
+
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled,
+                            raw_metrics_lib));
+
+  Sender::Options options;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  // Crash report should be sent because consent is true by default before it's
+  // explicitly set during OOBE.
+  std::string reason;
+  CrashInfo info;
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
+}
+
+TEST_F(CrashSenderUtilTest,
+       ChooseAction_ShouldSendDuringPreConsentWithPreConsentFeature) {
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+  // "/home/chronos/.oobe_completed" doesn't exist.
+  MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
+  // Pre-consent file doesn't exist.
+
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled,
+                            raw_metrics_lib));
+
+  Sender::Options options;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  // Crash report should be sent because consent is true by default before it's
+  // explicitly set during OOBE.
+  std::string reason;
+  CrashInfo info;
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
+}
+
+TEST_F(CrashSenderUtilTest,
+       ChooseAction_ShouldNotSendDuringPostconsentWithPreConsentFeature) {
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+  // "/home/chronos/.oobe_completed" doesn't exist.
+  MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
+  SetPreConsentCompleted();
+
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled,
+                            raw_metrics_lib));
+
+  Sender::Options options;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  // Crash report should not be sent because consent is true by default before
+  // it's explicitly set during OOBE.
+  std::string reason;
+  CrashInfo info;
+  EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
+}
+
 TEST_F(CrashSenderUtilTest, ChooseAction_UserDir) {
   const base::FilePath crash_directory =
       paths::Get(paths::kCryptohomeCrashDirectory).Append("fakehash");
@@ -1590,6 +1668,8 @@ TEST_F(CrashSenderUtilTest, FailRemoveReportFilesSendsMetric) {
 
   // chmod the file so RemoveReportFiles fails
   ASSERT_EQ(chmod(crash_directory.value().c_str(), 0500), 0);
+  // ASSERT_EQ(chmod(foo_log.value().c_str(), 0500), 0);
+  // ASSERT_EQ(chmod(foo_meta.value().c_str(), 0500), 0);
 
   sender.RemoveReportFiles(foo_meta);
 

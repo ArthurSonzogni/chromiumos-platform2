@@ -13,6 +13,14 @@
 #include <memory>
 
 #include <base/check_op.h>
+#include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+
+#if USE_DIRENCRYPTION
+#include <keyutils.h>
+#endif  // USE_DIRENCRYPTION
+
 #include <base/command_line.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
@@ -58,6 +66,11 @@ constexpr char kDevMode[] = "dev";
 
 // If the OS version is older than this we do not upload crash reports.
 constexpr base::TimeDelta kAgeForNoUploads = base::Days(180);
+
+// This value needs to be in-sync with the Chromium counterpart in
+// ash/constants/ash_features.cc.
+const char kPreConsentMetricFeatureFlag[] = "OOBEPreConsentMetrics";
+const char kEnableFeaturesFlag[] = "enable-features";
 
 #if USE_DIRENCRYPTION
 // Name of the session keyring.
@@ -137,10 +150,16 @@ bool UseLooseCoreSizeForChromeCrashEarly() {
                           paths::kRunningLooseChromeCrashEarlyTestFile));
 }
 
+// Returns true if pre-consent stage is completed. That is, user has expressed
+// the opinion on consent.
+bool IsPreConsentCompleted() {
+  return base::PathExists(paths::Get(paths::kPreConsentCompletePath));
+}
+
 bool IsFeedbackAllowed(
-    const scoped_refptr<
-        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
-        metrics_lib) {
+    const scoped_refptr<base::RefCountedData<
+        std::unique_ptr<MetricsLibraryInterface>>>& metrics_lib,
+    bool oobe_pre_consent_crashes) {
   if (HasMockConsent()) {
     LOG(INFO) << "mock-consent file present; assuming consent";
     return true;
@@ -150,6 +169,11 @@ bool IsFeedbackAllowed(
   // feedback.  Crash sending still obeys consent.
   if (IsDeveloperImage()) {
     LOG(INFO) << "developer build - not testing - always dumping";
+    return true;
+  }
+
+  // Enables feedback when consent is not provided prior to user action.
+  if (oobe_pre_consent_crashes && !IsPreConsentCompleted()) {
     return true;
   }
 
@@ -171,9 +195,9 @@ bool IsFeedbackAllowed(
 }
 
 bool IsBootFeedbackAllowed(
-    const scoped_refptr<
-        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
-        metrics_lib) {
+    const scoped_refptr<base::RefCountedData<
+        std::unique_ptr<MetricsLibraryInterface>>>& metrics_lib,
+    bool oobe_pre_consent_crashes) {
   std::string contents;
   if (base::ReadFileToString(paths::Get(paths::kBootConsentFile), &contents)) {
     if (contents != "1") {
@@ -182,7 +206,7 @@ bool IsBootFeedbackAllowed(
     // else fall back to normal consent -- checking policy, etc., as
     // metrics_library does.
   }
-  return IsFeedbackAllowed(metrics_lib);
+  return IsFeedbackAllowed(metrics_lib, oobe_pre_consent_crashes);
 }
 
 // Determine if the filter-in file tells us to skip
@@ -799,6 +823,60 @@ bool IsIgnoredRustPanicSignature(const std::string& rust_panic_sig) {
     }
   }
   return false;
+}
+
+// Splits |full|, a comma-separated list of values used for a flag like
+// --vmodule or --enable-features.
+std::vector<std::string> SplitFlagValues(const std::string& full) {
+  return base::SplitString(full, ",", base::TRIM_WHITESPACE,
+                           base::SPLIT_WANT_NONEMPTY);
+}
+
+bool IsOOBEPreConsentCrashesEnabled() {
+  bool is_enabled = false;
+  std::string data;
+  if (!base::ReadFileToString(paths::Get(paths::kChromeDevConfigPath), &data)) {
+    PLOG(WARNING) << "Unable to read " << paths::kChromeDevConfigPath;
+    return false;
+  }
+
+  std::vector<std::string> lines = base::SplitString(
+      data, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+
+  for (const std::string& original_line : lines) {
+    std::string line;
+    base::TrimWhitespaceASCII(original_line, base::TRIM_ALL, &line);
+    if (line.empty() || line[0] == '#') {
+      continue;
+    }
+
+    // '!' means removing all arguments beginning with "--a-prefix" from the
+    // command line.
+    if (line[0] == '!' &&
+        line.substr(1, line.size() - 1)
+            .starts_with(base::StrCat({"--", kEnableFeaturesFlag}))) {
+      is_enabled = false;
+      continue;
+    }
+
+    base::StringPairs pairs;
+    base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs);
+    if (pairs.size() != 1U) {
+      continue;
+    }
+    const std::string& name = pairs[0].first;
+    const std::string& value = pairs[0].second;
+
+    if (name != "--enable-features") {
+      continue;
+    }
+    for (const std::string& feature : SplitFlagValues(value)) {
+      if (feature == kPreConsentMetricFeatureFlag) {
+        is_enabled = true;
+      }
+    }
+  }
+  return is_enabled;
 }
 
 }  // namespace util

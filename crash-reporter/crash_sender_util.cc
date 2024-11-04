@@ -483,6 +483,13 @@ bool Sender::HasCrashUploadingConsent(const CrashInfo& info) {
     return crash_loop_mode;
   }
 
+  // If the feature flag is enabled, have consent by default set to true during
+  // pre-consent.
+  if (util::IsOOBEPreConsentCrashesEnabled() &&
+      !util::IsPreConsentCompleted()) {
+    return true;
+  }
+
   return metrics_lib_->AreMetricsEnabled();
 }
 

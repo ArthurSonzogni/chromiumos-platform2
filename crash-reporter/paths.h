@@ -37,6 +37,17 @@ inline constexpr char kEncryptedRebootVaultCrashDirectory[] =
 // Path to indicate OOBE completion.
 inline constexpr char kOobeCompletePath[] = "/home/chronos/.oobe_completed";
 
+// Path to indicate that user has explicitly set the consent. This needs to be
+// kept in-sync with the path used in Chromium
+// chrome/browser/metrics/cros_pre_consent_metrics_manager.cc.
+inline constexpr char kPreConsentCompletePath[] =
+    "/home/chronos/.pre_consent_complete";
+
+// Path to file containing developer-supplied modifications to Chrome's
+// environment and command line. Developers can use this file to enable/disable
+// crash report during OOBE pre-consent.
+const char kChromeDevConfigPath[] = "/etc/chrome_dev.conf";
+
 // Directory where system configuration files are located.
 inline constexpr char kEtcDirectory[] = "/etc";
 

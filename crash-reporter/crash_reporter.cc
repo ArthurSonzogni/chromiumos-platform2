@@ -114,6 +114,7 @@ bool InitializeSystem(std::shared_ptr<UserCollector> user_collector,
 
 int BootCollect(
     bool always_allow_feedback,
+    bool oobe_pre_consent_crashes,
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib,
@@ -127,7 +128,8 @@ int BootCollect(
   bool was_unclean_shutdown = false;
   LOG(INFO) << "Running boot collector";
 
-  if (always_allow_feedback || util::IsBootFeedbackAllowed(metrics_lib)) {
+  if (always_allow_feedback ||
+      util::IsBootFeedbackAllowed(metrics_lib, oobe_pre_consent_crashes)) {
     was_unclean_shutdown = unclean_shutdown_collector->Collect();
 
     // If there is an EC/BERT/Kernel crash and the unclean shutdown collector
@@ -757,6 +759,8 @@ int main(int argc, char* argv[]) {
   collectors.push_back(SecurityAnomalyCollector::GetHandlerInfo(
       FLAGS_weight, FLAGS_security_anomaly, metrics_lib));
 
+  bool oobe_pre_consent_crashes = util::IsOOBEPreConsentCrashesEnabled();
+
   for (const CollectorInfo& collector : collectors) {
     bool ran_init = false;
     for (const InvocationInfo& info : collector.handlers) {
@@ -789,10 +793,11 @@ int main(int argc, char* argv[]) {
         // it's running just after a disk clobber, the clobber may have
         // wiped out a user's preferences). Other collectors should not skip
         // consent checks.
-        bool consent = FLAGS_early || always_allow_feedback ||
-                       util::IsFeedbackAllowed(metrics_lib) ||
-                       (collector.collector == ephemeral_crash_collector &&
-                        ephemeral_crash_collector->SkipConsent());
+        bool consent =
+            FLAGS_early || always_allow_feedback ||
+            util::IsFeedbackAllowed(metrics_lib, oobe_pre_consent_crashes) ||
+            (collector.collector == ephemeral_crash_collector &&
+             ephemeral_crash_collector->SkipConsent());
 
         CallbackVisitor vistor(consent);
         if (std::visit(vistor, info.cb)) {
@@ -811,8 +816,9 @@ int main(int argc, char* argv[]) {
   // These special cases (which use multiple collectors) are at the end so that
   // it's clear that all relevant collectors have been initialized.
   if (FLAGS_boot_collect) {
-    return BootCollect(always_allow_feedback, metrics_lib, kernel_collector,
-                       ec_collector, gsc_collector, bert_collector,
+    return BootCollect(always_allow_feedback, oobe_pre_consent_crashes,
+                       metrics_lib, kernel_collector, ec_collector,
+                       gsc_collector, bert_collector,
                        unclean_shutdown_collector, ephemeral_crash_collector);
   }
 

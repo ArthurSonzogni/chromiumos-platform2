@@ -136,6 +136,11 @@ std::string CreateSemiRandomString(size_t size) {
   return result;
 }
 
+void SetPreConsentCompleted() {
+  ASSERT_TRUE(
+      test_util::CreateFile(paths::Get(paths::kPreConsentCompletePath), "1"));
+}
+
 }  // namespace
 
 class CrashCommonUtilTest : public testing::Test {
@@ -498,6 +503,7 @@ TEST_F(CrashCommonUtilTest, GetNextLine) {
 }
 
 TEST_F(CrashCommonUtilTest, IsFeedbackAllowedMock) {
+  SetPreConsentCompleted();
   std::unique_ptr<MetricsLibraryMock> mock_metrics =
       std::make_unique<MetricsLibraryMock>();
   mock_metrics->set_metrics_enabled(false);
@@ -520,6 +526,7 @@ TEST_F(CrashCommonUtilTest, IsFeedbackAllowedMock) {
 }
 
 TEST_F(CrashCommonUtilTest, IsFeedbackAllowedDev) {
+  SetPreConsentCompleted();
   std::unique_ptr<MetricsLibraryMock> mock_metrics =
       std::make_unique<MetricsLibraryMock>();
   mock_metrics->set_metrics_enabled(false);
@@ -535,12 +542,82 @@ TEST_F(CrashCommonUtilTest, IsFeedbackAllowedDev) {
   EXPECT_TRUE(IsFeedbackAllowed(mock_metrics_refptr));
 }
 
+TEST_F(CrashCommonUtilTest,
+       IsFeedbackAllowedShouldReturnTrueWithPreConsentEnabled) {
+  // Concent is not explicitly set before OOBE completion.
+  std::unique_ptr<MetricsLibraryMock> mock_metrics =
+      std::make_unique<MetricsLibraryMock>();
+  mock_metrics->set_metrics_enabled(false);
+  scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
+      mock_metrics_refptr = base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::move(mock_metrics));
+
+  EXPECT_TRUE(IsFeedbackAllowed(mock_metrics_refptr,
+                                true /* oobe_pre_consent_crashes */));
+}
+
+TEST_F(CrashCommonUtilTest,
+       IsFeedbackAllowedShouldReturnFalseWithPreConsentDisable) {
+  // Concent is not explicitly set before OOBE completion.
+  std::unique_ptr<MetricsLibraryMock> mock_metrics =
+      std::make_unique<MetricsLibraryMock>();
+  mock_metrics->set_metrics_enabled(false);
+  scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
+      mock_metrics_refptr = base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::move(mock_metrics));
+
+  EXPECT_FALSE(IsFeedbackAllowed(mock_metrics_refptr,
+                                 false /* oobe_pre_consent_crashes */));
+}
+
+TEST_F(CrashCommonUtilTest, IsOOBEPreconsentCrashesEnabledWithFeatureFlag) {
+  ASSERT_TRUE(test_util::CreateFile(paths::Get(paths::kChromeDevConfigPath),
+                                    "--enable-features=OOBEPreConsentMetrics"));
+
+  EXPECT_TRUE(IsOOBEPreConsentCrashesEnabled());
+}
+
+TEST_F(CrashCommonUtilTest, IsOOBEPreconsentCrashesEnabledWithoutFeatureFlag) {
+  // The feature flag is not set.
+  test_util::CreateFile(paths::Get(paths::kChromeDevConfigPath), "#");
+
+  EXPECT_FALSE(IsOOBEPreConsentCrashesEnabled());
+}
+
+TEST_F(CrashCommonUtilTest,
+       IsOOBEPreConsentCrashesEnabledShouldReturnFalseOnReadFileError) {
+  // Config file doesn't exist.
+
+  EXPECT_FALSE(IsOOBEPreConsentCrashesEnabled());
+}
+
+TEST_F(CrashCommonUtilTest,
+       IsOOBEPreConsentCrashesEnabledShouldReturnFalseOnFlagRemoval) {
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::Get(paths::kChromeDevConfigPath),
+      "--enable-features=OOBEPreConsentMetrics\n!--enable-features"));
+
+  EXPECT_FALSE(IsOOBEPreConsentCrashesEnabled());
+}
+
+TEST_F(CrashCommonUtilTest,
+       IsOOBEPreConsentCrashesEnabledWithMultipleFeatureFlags) {
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::Get(paths::kChromeDevConfigPath),
+      "--enable-features=OOBEPreConsentMetrics,AFlag,Bflag"));
+
+  EXPECT_TRUE(IsOOBEPreConsentCrashesEnabled());
+}
+
 // Disable this test when in a VM because there's no easy way to mock the
 // VmSupport class.
 // TODO(https://crbug.com/1150011): When that class can be replaced for tests,
 // use a fake implementation here to set metrics consent appropriately.
 #if !USE_KVM_GUEST
 TEST_F(CrashCommonUtilTest, IsFeedbackAllowedRespectsMetricsLib) {
+  SetPreConsentCompleted();
   std::unique_ptr<MetricsLibraryMock> mock_metrics =
       std::make_unique<MetricsLibraryMock>();
   MetricsLibraryMock* mock_metrics_ptr = mock_metrics.get();
@@ -557,6 +634,7 @@ TEST_F(CrashCommonUtilTest, IsFeedbackAllowedRespectsMetricsLib) {
 }
 
 TEST_F(CrashCommonUtilTest, IsBootFeedbackAllowedRespectsMetricsLib) {
+  SetPreConsentCompleted();
   std::unique_ptr<MetricsLibraryMock> mock_metrics =
       std::make_unique<MetricsLibraryMock>();
   MetricsLibraryMock* mock_metrics_ptr = mock_metrics.get();
@@ -573,6 +651,7 @@ TEST_F(CrashCommonUtilTest, IsBootFeedbackAllowedRespectsMetricsLib) {
 }
 
 TEST_F(CrashCommonUtilTest, IsBootFeedbackAllowedRespectsFile) {
+  SetPreConsentCompleted();
   std::unique_ptr<MetricsLibraryMock> mock_metrics =
       std::make_unique<MetricsLibraryMock>();
   MetricsLibraryMock* mock_metrics_ptr = mock_metrics.get();

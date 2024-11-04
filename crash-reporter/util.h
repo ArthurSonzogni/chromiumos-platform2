@@ -48,14 +48,21 @@ bool HasMockConsent();
 // larger core files in that mode.
 bool UseLooseCoreSizeForChromeCrashEarly();
 
+// Returns true if preconsent stage is completed. That is, user has expressed
+// the opinion on consent.
+bool IsPreConsentCompleted();
+
 // Determines whether feedback is allowed, based on:
 // * The presence/absence of mock consent
 // * Whether this is a developer image
+// * Whether it's in pre-consent stage when user hasn't expressed consent.
 // * Whether the metrics library indicates consent
+// `oobe_pre_consent_crashes` is a feature flag to control if the pre-consent
+// crash report should be enabled.
 bool IsFeedbackAllowed(
-    const scoped_refptr<
-        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
-        metrics_lib);
+    const scoped_refptr<base::RefCountedData<
+        std::unique_ptr<MetricsLibraryInterface>>>& metrics_lib,
+    bool oobe_pre_consent_crashes = false);
 
 // Determines whether feedback is allowed, for early boot collectors.
 // If the boot-collector-consent file is present, and contains anything other
@@ -64,10 +71,12 @@ bool IsFeedbackAllowed(
 // This mirrors metrics_lib's AreMetricsEnabled method, which checks the
 // per-user consent file and determines there's no consent if it's present and
 // contains anything but "1".
+// `oobe_pre_consent_crashes` is a feature flag to control if the pre-consent
+// crash report should be enabled.
 bool IsBootFeedbackAllowed(
-    const scoped_refptr<
-        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
-        metrics_lib);
+    const scoped_refptr<base::RefCountedData<
+        std::unique_ptr<MetricsLibraryInterface>>>& metrics_lib,
+    bool oobe_pre_consent_crashes = false);
 
 // Returns true if we should skip crash collection (based on the filter-in
 // and filter-out files).
@@ -220,6 +229,9 @@ std::optional<std::string> ExtractChromeVersionFromMetadata(
 // Returns true if the specified panic signature matches one of the known cases
 // that should be ignored rather than collected as a crash.
 bool IsIgnoredRustPanicSignature(const std::string& rust_panic_sig);
+
+// Returns true if the OOBE pre-consent crash reporting feature is enabled.
+bool IsOOBEPreConsentCrashesEnabled();
 
 }  // namespace util
 
