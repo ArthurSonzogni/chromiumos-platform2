@@ -344,6 +344,10 @@ enum SensitiveFileType {
   SYSTEM_TPM_PUBLIC_KEY = 11;
   // The file is located on device identified as USB mass storage.
   USB_MASS_STORAGE = 12;
+  // System passwords (/etc/passwd). Contains the passwords for system logins.
+  // In ChromeOS system users are typically associated with system services
+  // and not individual human users.
+  SYSTEM_PASSWORDS = 13;
 }
 
 message FileProvenance {
