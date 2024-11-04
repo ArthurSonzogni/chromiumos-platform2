@@ -72,6 +72,7 @@ enum class FilePathName {
   SESSION_MANAGER_POLICY_KEY,
   CRYPTOHOME_KEY,
   CRYPTOHOME_ECC_KEY,
+  SYSTEM_PASSWORDS,  // Linux system password file.
   // Add the last element of the enum, used for counting
   FILE_PATH_NAME_COUNT,
 };
