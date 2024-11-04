@@ -88,6 +88,7 @@ lgetxattr: 1
 linkat: 1
 llistxattr: 1
 lseek: 1
+lsetxattr: 1
 lstat: 1
 mkdir: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
