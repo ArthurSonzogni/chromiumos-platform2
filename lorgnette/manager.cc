@@ -727,6 +727,8 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
     if (!device->SetScanRegion(error, region)) {
       return false;  // brillo::Error::AddTo already called.
     }
+  } else {
+    LOG(INFO) << "User requested no specific scan region";
   }
 
   status = device->StartScan(error);
