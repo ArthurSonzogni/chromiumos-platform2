@@ -1430,8 +1430,10 @@ static int probe_common(struct virtio_device *vdev)
 	int i;
 	int ret;
 	struct virtwl_info *vi = NULL;
-	vq_callback_t *vq_callbacks[] = { vq_in_cb, vq_out_cb };
-	static const char * const vq_names[] = { "in", "out" };
+	struct virtqueue_info vqs_info[] = {
+		{ "in", vq_in_cb },
+		{ "out", vq_out_cb },
+	};
 
 	vi = kzalloc(sizeof(struct virtwl_info), GFP_KERNEL);
 	if (!vi)
@@ -1473,8 +1475,8 @@ static int probe_common(struct virtio_device *vdev)
 	for (i = 0; i < VIRTWL_QUEUE_COUNT; i++)
 		mutex_init(&vi->vq_locks[i]);
 
-	ret = virtio_find_vqs(vdev, VIRTWL_QUEUE_COUNT, vi->vqs, vq_callbacks,
-			      vq_names, NULL);
+	ret = virtio_find_vqs(vdev, VIRTWL_QUEUE_COUNT, vi->vqs, vqs_info,
+			      NULL);
 	if (ret) {
 		pr_warn("virtwl: failed to find virtio wayland queues: %d\n",
 			ret);
