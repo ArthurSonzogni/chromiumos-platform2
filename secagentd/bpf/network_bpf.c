@@ -883,10 +883,8 @@ int BPF_PROG(cros_handle_inet_recvmsg_exit,
   return 0;
 }
 
-// TODO(b/339679923): soft rollout on all platforms that support LSM hooks to
-// gather support for adding downstream tracepoint patches to support ARM64.
-#ifdef CROS_LSM_BPF_SUPPORTED
-SEC("lsm/socket_post_create")
+CROS_IF_FUNCTION_HOOK("lsm/socket_post_create",
+                      "tp_btf/cros_security_socket_post_create_enter")
 int BPF_PROG(cros_handle_socket_post_create,
              struct socket* sock,
              int family,
@@ -906,4 +904,3 @@ int BPF_PROG(cros_handle_socket_post_create,
   cros_maybe_new_socket(sock);
   return 0;
 }
-#endif
