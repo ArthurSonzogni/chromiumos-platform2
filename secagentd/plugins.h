@@ -56,10 +56,10 @@ static constexpr uint64_t kMaxDelayForLockscreenAttemptsS = 3;
 // File path types (from your original code)
 enum class FilePathName {
   USER_FILES_DIR,
-  COOKIES_DIR,
-  COOKIES_JOURNAL_DIR,
-  SAFE_BROWSING_COOKIES_DIR,
-  SAFE_BROWSING_COOKIES_JOURNAL_DIR,
+  COOKIES_File,
+  COOKIES_JOURNAL_FILE,
+  SAFE_BROWSING_COOKIES_FILE,
+  SAFE_BROWSING_COOKIES_JOURNAL_FILE,
   USER_SECRET_STASH_DIR,
   ROOT,
   MOUNTED_ARCHIVE,
@@ -506,6 +506,10 @@ class FilePlugin : public PluginInterface {
   absl::Status UpdateBPFMapForPathMaps(
       const std::optional<std::string>& optionalUserhash,
       const std::map<FilePathName, std::vector<PathInfo>>& paths_map);
+
+  absl::Status AddDeviceIdsToBPFMap(
+      int bpfMapFd,
+      const std::map<FilePathName, std::vector<PathInfo>>& pathsMap);
 
   absl::Status InitializeFileBpfMaps(const std::string& userhash);
 

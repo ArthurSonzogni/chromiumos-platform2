@@ -13,7 +13,9 @@
 #include "base/files/file_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/process/process_iterator.h"
 #include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
 #include "base/time/time.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/common.h"
@@ -62,6 +64,8 @@ static const std::map<std::string, base::FilePath> kBlocklistBinariesPathMap = {
     {"dlp", base::FilePath("/usr/sbin/dlp")},
     {"secagentd", base::FilePath("/usr/sbin/secagentd")}};
 
+static const char kCryptohomeMountBinary[] = "cryptohome-namespace-mounter";
+
 const std::vector<secagentd::FilePathName> kDeviceSettingMatchOptions{
     secagentd::FilePathName::DEVICE_SETTINGS_OWNER_KEY,
     secagentd::FilePathName::DEVICE_SETTINGS_POLICY_DIR};
@@ -74,22 +78,22 @@ static const std::map<secagentd::FilePathName, secagentd::PathInfo>
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_FILE,
           secagentd::FilePathCategory::USER_PATH}},
-        {secagentd::FilePathName::COOKIES_DIR,
+        {secagentd::FilePathName::COOKIES_File,
          {"home/chronos/u-", "/Cookies",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
           secagentd::FilePathCategory::USER_PATH}},
-        {secagentd::FilePathName::COOKIES_JOURNAL_DIR,
+        {secagentd::FilePathName::COOKIES_JOURNAL_FILE,
          {"home/chronos/u-", "/Cookies-journal",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
           secagentd::FilePathCategory::USER_PATH}},
-        {secagentd::FilePathName::SAFE_BROWSING_COOKIES_DIR,
+        {secagentd::FilePathName::SAFE_BROWSING_COOKIES_FILE,
          {"home/chronos/u-", "/Safe Browsing Cookies",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
           secagentd::FilePathCategory::USER_PATH}},
-        {secagentd::FilePathName::SAFE_BROWSING_COOKIES_JOURNAL_DIR,
+        {secagentd::FilePathName::SAFE_BROWSING_COOKIES_JOURNAL_FILE,
          {"home/chronos/u-", "/Safe Browsing Cookies-journal",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
@@ -163,10 +167,10 @@ const std::map<secagentd::FilePathCategory,
     kFilePathNamesByCategory = {
         {secagentd::FilePathCategory::USER_PATH,
          {secagentd::FilePathName::USER_FILES_DIR,
-          secagentd::FilePathName::COOKIES_DIR,
-          secagentd::FilePathName::COOKIES_JOURNAL_DIR,
-          secagentd::FilePathName::SAFE_BROWSING_COOKIES_DIR,
-          secagentd::FilePathName::SAFE_BROWSING_COOKIES_JOURNAL_DIR,
+          secagentd::FilePathName::COOKIES_File,
+          secagentd::FilePathName::COOKIES_JOURNAL_FILE,
+          secagentd::FilePathName::SAFE_BROWSING_COOKIES_FILE,
+          secagentd::FilePathName::SAFE_BROWSING_COOKIES_JOURNAL_FILE,
           secagentd::FilePathName::USER_SECRET_STASH_DIR,
           secagentd::FilePathName::STATEFUL_PARTITION,
           secagentd::FilePathName::SESSION_MANAGER_POLICY_DIR,
@@ -214,6 +218,15 @@ bool PathHasPrefixAndSuffix(const base::FilePath& path,
   return false;
 }
 
+// Function to find the PID of a process by name using ProcessIterator
+std::optional<uint32_t> FindPidByName(const std::string& process_name) {
+  base::NamedProcessIterator process_iter(process_name, nullptr);
+  if (const base::ProcessEntry* entry = process_iter.NextProcessEntry()) {
+    return entry->pid();
+  }
+  return std::nullopt;  // PID not found
+}
+
 // Function to match a path prefix to FilePathName
 std::optional<std::pair<const secagentd::FilePathName, secagentd::PathInfo>>
 MatchNonUserPathToFilePathName(
@@ -240,6 +253,55 @@ const std::optional<std::string> ConstructOptionalUserhash(
     return std::nullopt;
   }
   return userhash;
+}
+
+absl::StatusOr<base::FilePath> ResolvePathWithFallback(
+    const base::FilePath& input_file_path,
+    const base::FilePath& root_path,
+    const std::string& process_name) {
+  // Try to find the PID of the cryptohome process
+  std::optional<uint32_t> pid = FindPidByName(process_name);
+
+  // Prepare the path in the target namespace (cryptohome)
+  base::FilePath resolved_path;
+
+  if (pid.has_value()) {
+    base::FilePath ns_root_path = root_path.Append("proc")
+                                      .Append(std::to_string(pid.value()))
+                                      .Append("root");
+
+    // If input_path is absolute, concatenate directly
+    if (input_file_path.IsAbsolute()) {
+      resolved_path =
+          base::FilePath(ns_root_path.value() +
+                         input_file_path.value());  // Use string concatenation
+    } else {
+      // If relative, use Append method
+      resolved_path = ns_root_path.Append(input_file_path);
+    }
+
+    // Check if the path exists in the cryptohome process namespace
+    if (base::PathExists(resolved_path)) {
+      return resolved_path;
+    }
+  }
+
+  // Fallback to root namespace if cryptohome path doesn't exist or PID
+  // resolution fails
+  if (input_file_path.IsAbsolute()) {
+    resolved_path = input_file_path;
+  } else {
+    // If relative, use Append method
+    resolved_path = root_path.Append(input_file_path);
+  }
+  if (PathExists(resolved_path)) {
+    return resolved_path;
+  }
+
+  // If path does not exist in root namespace, return an error
+  return absl::NotFoundError(
+      "Path not found in both cryptohome and root namespaces: " +
+      input_file_path.value());
 }
 
 static uint64_t UserspaceToKernelDeviceId(uint64_t dev_t) {
@@ -835,8 +897,14 @@ absl::Status FilePlugin::UpdateBPFMapForPathInodes(
   // Iterate over the map of file paths and their associated information
   for (const auto& [pathName, pathInfoVector] : pathsMap) {
     for (const auto& pathInfo : pathInfoVector) {
-      const base::FilePath& path =
-          pathInfo.fullResolvedPath.value();  // Current path to process
+      const auto& pathOrStatus =
+          ResolvePathWithFallback(pathInfo.fullResolvedPath.value(), root_path_,
+                                  kCryptohomeMountBinary);
+      if (!pathOrStatus.ok()) {
+        LOG(WARNING) << "Failed to resolve path: " << pathOrStatus.status();
+        continue;
+      }
+      const base::FilePath path = pathOrStatus.value();
       secagentd::bpf::file_monitoring_settings monitoringSettings{
           (uint8_t)pathInfo.fileType, pathInfo.monitoringMode};
 
@@ -882,7 +950,7 @@ absl::Status FilePlugin::UpdateBPFMapForPathInodes(
   return absl::OkStatus();
 }
 
-absl::Status AddDeviceIdsToBPFMap(
+absl::Status FilePlugin::AddDeviceIdsToBPFMap(
     int bpfMapFd,
     const std::map<FilePathName, std::vector<PathInfo>>& pathsMap) {
   // Validate BPF map file descriptor
@@ -895,8 +963,14 @@ absl::Status AddDeviceIdsToBPFMap(
   // Iterate through each path and update the BPF map
   for (const auto& [pathName, pathInfoVector] : pathsMap) {
     for (const auto& pathInfo : pathInfoVector) {
-      const base::FilePath& path =
-          pathInfo.fullResolvedPath.value();  // Current path to process
+      const auto& pathOrStatus =
+          ResolvePathWithFallback(pathInfo.fullResolvedPath.value(), root_path_,
+                                  kCryptohomeMountBinary);
+      if (!pathOrStatus.ok()) {
+        LOG(WARNING) << "Failed to resolve path: " << pathOrStatus.status();
+        continue;
+      }
+      const base::FilePath path = pathOrStatus.value();
 
       // Retrieve file information for the current path using fstatat
       absl::StatusOr<const base::stat_wrapper_t> file_stat_result =
@@ -939,7 +1013,7 @@ absl::Status AddDeviceIdsToBPFMap(
       if (platform->BpfMapUpdateElementByFd(bpfMapFd, &deviceId, &bpfSettings,
                                             BPF_ANY) != 0) {
         LOG(ERROR) << "Failed to update BPF map entry for device ID "
-                   << deviceId;
+                   << deviceId << " for " << path.value();
         continue;  // Skip to the next path
       }
 
@@ -947,7 +1021,7 @@ absl::Status AddDeviceIdsToBPFMap(
                 << static_cast<int>(bpfSettings.file_monitoring_mode)
                 << " with device monitoring type "
                 << static_cast<int>(bpfSettings.device_monitoring_type)
-                << " to BPF map.";
+                << " to BPF map. For path " << path.value();
     }
   }
 
