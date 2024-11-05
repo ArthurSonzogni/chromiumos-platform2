@@ -256,7 +256,7 @@ class ArcVm final : public VmBaseImpl {
       GUARDED_BY_CONTEXT(sequence_checker_);
   base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  bool skip_swap_policy_ = false;
+  bool skip_swap_policy_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
 
   // Metrics reporter for virtio-blk performance.
   std::unique_ptr<VirtioBlkMetrics> virtio_blk_metrics_

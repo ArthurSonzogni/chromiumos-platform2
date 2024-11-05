@@ -287,6 +287,8 @@ std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
 }
 
 bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   // Open the tap device(s).
   bool no_tap_fd_added = true;
   for (const auto& tap : GetNetworkAllocation().tap_device_ifnames) {
