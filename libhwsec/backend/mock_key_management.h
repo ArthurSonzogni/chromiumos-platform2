@@ -26,8 +26,9 @@ class MockKeyManagement : public KeyManagement {
   MockKeyManagement() = default;
   explicit MockKeyManagement(KeyManagement* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, GetSupportedAlgo)
         .WillByDefault(Invoke(default_, &KeyManagement::GetSupportedAlgo));
     ON_CALL(*this, IsSupported)

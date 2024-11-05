@@ -19,8 +19,9 @@ class MockRandom : public Random {
   MockRandom() = default;
   explicit MockRandom(Random* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, RandomBlob)
         .WillByDefault(Invoke(default_, &Random::RandomBlob));
     ON_CALL(*this, RandomSecureBlob)

@@ -22,8 +22,9 @@ class MockDeriving : public Deriving {
   MockDeriving() = default;
   explicit MockDeriving(Deriving* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, Derive).WillByDefault(Invoke(default_, &Deriving::Derive));
     ON_CALL(*this, SecureDerive)
         .WillByDefault(Invoke(default_, &Deriving::SecureDerive));

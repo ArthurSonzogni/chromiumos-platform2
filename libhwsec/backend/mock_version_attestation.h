@@ -20,8 +20,9 @@ class MockVersionAttestation : public VersionAttestation {
   explicit MockVersionAttestation(VersionAttestation* on_call)
       : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, AttestVersion)
         .WillByDefault(Invoke(default_, &VersionAttestation::AttestVersion));
   }

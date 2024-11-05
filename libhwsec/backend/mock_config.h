@@ -23,8 +23,9 @@ class MockConfig : public Config {
   MockConfig() = default;
   explicit MockConfig(Config* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, ToOperationPolicy)
         .WillByDefault(Invoke(default_, &Config::ToOperationPolicy));
     ON_CALL(*this, SetCurrentUser)

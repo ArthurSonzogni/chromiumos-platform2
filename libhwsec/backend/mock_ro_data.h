@@ -21,8 +21,9 @@ class MockRoData : public RoData {
   MockRoData() = default;
   explicit MockRoData(RoData* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, IsReady).WillByDefault(Invoke(default_, &RoData::IsReady));
     ON_CALL(*this, Read).WillByDefault(Invoke(default_, &RoData::Read));
     ON_CALL(*this, Certify).WillByDefault(Invoke(default_, &RoData::Certify));

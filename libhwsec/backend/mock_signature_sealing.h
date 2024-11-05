@@ -24,8 +24,9 @@ class MockSignatureSealing : public SignatureSealing {
   MockSignatureSealing() = default;
   explicit MockSignatureSealing(SignatureSealing* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, Seal)
         .WillByDefault(Invoke(default_, &SignatureSealing::Seal));
     ON_CALL(*this, Challenge)

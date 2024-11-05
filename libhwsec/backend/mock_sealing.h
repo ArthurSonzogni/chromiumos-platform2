@@ -23,8 +23,9 @@ class MockSealing : public Sealing {
   MockSealing() = default;
   explicit MockSealing(Sealing* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, IsSupported)
         .WillByDefault(Invoke(default_, &Sealing::IsSupported));
     ON_CALL(*this, Seal).WillByDefault(Invoke(default_, &Sealing::Seal));

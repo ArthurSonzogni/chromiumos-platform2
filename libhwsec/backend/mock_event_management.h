@@ -23,8 +23,9 @@ class MockEventManagement : public EventManagement {
   MockEventManagement() = default;
   explicit MockEventManagement(EventManagement* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, Start)
         .WillByDefault(Invoke(default_, &EventManagement::Start));
     ON_CALL(*this, Stop)

@@ -21,8 +21,9 @@ class MockVendor : public Vendor {
   MockVendor() = default;
   explicit MockVendor(Vendor* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, GetFamily)
         .WillByDefault(Invoke(default_, &Vendor::GetFamily));
     ON_CALL(*this, GetSpecLevel)

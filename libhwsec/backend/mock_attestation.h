@@ -25,8 +25,9 @@ class MockAttestation : public Attestation {
   MockAttestation() = default;
   explicit MockAttestation(Attestation* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, Quote).WillByDefault(Invoke(default_, &Attestation::Quote));
     ON_CALL(*this, IsQuoted)
         .WillByDefault(Invoke(default_, &Attestation::IsQuoted));

@@ -73,50 +73,51 @@ class Backend {
   // A helper to get the subclass pointer with subclass type.
   template <class SubClass>
   SubClass* Get() {
-    if constexpr (std::is_same_v<SubClass, State>)
+    if constexpr (std::is_same_v<SubClass, State>) {
       return GetState();
-    else if constexpr (std::is_same_v<SubClass, DAMitigation>)
+    } else if constexpr (std::is_same_v<SubClass, DAMitigation>) {
       return GetDAMitigation();
-    else if constexpr (std::is_same_v<SubClass, Storage>)
+    } else if constexpr (std::is_same_v<SubClass, Storage>) {
       return GetStorage();
-    else if constexpr (std::is_same_v<SubClass, RoData>)
+    } else if constexpr (std::is_same_v<SubClass, RoData>) {
       return GetRoData();
-    else if constexpr (std::is_same_v<SubClass, Sealing>)
+    } else if constexpr (std::is_same_v<SubClass, Sealing>) {
       return GetSealing();
-    else if constexpr (std::is_same_v<SubClass, SignatureSealing>)
+    } else if constexpr (std::is_same_v<SubClass, SignatureSealing>) {
       return GetSignatureSealing();
-    else if constexpr (std::is_same_v<SubClass, Deriving>)
+    } else if constexpr (std::is_same_v<SubClass, Deriving>) {
       return GetDeriving();
-    else if constexpr (std::is_same_v<SubClass, Encryption>)
+    } else if constexpr (std::is_same_v<SubClass, Encryption>) {
       return GetEncryption();
-    else if constexpr (std::is_same_v<SubClass, Signing>)
+    } else if constexpr (std::is_same_v<SubClass, Signing>) {
       return GetSigning();
-    else if constexpr (std::is_same_v<SubClass, KeyManagement>)
+    } else if constexpr (std::is_same_v<SubClass, KeyManagement>) {
       return GetKeyManagement();
-    else if constexpr (std::is_same_v<SubClass, SessionManagement>)
+    } else if constexpr (std::is_same_v<SubClass, SessionManagement>) {
       return GetSessionManagement();
-    else if constexpr (std::is_same_v<SubClass, Config>)
+    } else if constexpr (std::is_same_v<SubClass, Config>) {
       return GetConfig();
-    else if constexpr (std::is_same_v<SubClass, Random>)
+    } else if constexpr (std::is_same_v<SubClass, Random>) {
       return GetRandom();
-    else if constexpr (std::is_same_v<SubClass, PinWeaver>)
+    } else if constexpr (std::is_same_v<SubClass, PinWeaver>) {
       return GetPinWeaver();
-    else if constexpr (std::is_same_v<SubClass, PinWeaverManager>)
+    } else if constexpr (std::is_same_v<SubClass, PinWeaverManager>) {
       return GetPinWeaverManager();
-    else if constexpr (std::is_same_v<SubClass, Vendor>)
+    } else if constexpr (std::is_same_v<SubClass, Vendor>) {
       return GetVendor();
-    else if constexpr (std::is_same_v<SubClass, RecoveryCrypto>)
+    } else if constexpr (std::is_same_v<SubClass, RecoveryCrypto>) {
       return GetRecoveryCrypto();
-    else if constexpr (std::is_same_v<SubClass, U2f>)
+    } else if constexpr (std::is_same_v<SubClass, U2f>) {
       return GetU2f();
-    else if constexpr (std::is_same_v<SubClass, Attestation>)
+    } else if constexpr (std::is_same_v<SubClass, Attestation>) {
       return GetAttestation();
-    else if constexpr (std::is_same_v<SubClass, VersionAttestation>)
+    } else if constexpr (std::is_same_v<SubClass, VersionAttestation>) {
       return GetVersionAttestation();
-    else if constexpr (std::is_same_v<SubClass, EventManagement>)
+    } else if constexpr (std::is_same_v<SubClass, EventManagement>) {
       return GetEventManagement();
-    else
+    } else {
       static_assert(base::AlwaysFalse<SubClass>, "Unknown SubClass.");
+    }
   }
 
  private:

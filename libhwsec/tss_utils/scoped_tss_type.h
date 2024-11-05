@@ -37,8 +37,9 @@ inline void ScopedTssContextRelease(overalls::Overalls& overalls,
   // used slightly differently, it may end up with a context in |unused|.
   // For now, treat that as a bug.
   if (unused) {
-    NOTREACHED_IN_MIGRATION() << "Unexpected data in the unused argument - a misuse of "
-                    "ScopedTssContext. Please report to b/240880669";
+    NOTREACHED_IN_MIGRATION()
+        << "Unexpected data in the unused argument - a misuse of "
+           "ScopedTssContext. Please report to b/240880669";
     return;
   }
   if (context) {
@@ -53,8 +54,9 @@ inline void ScopedTssMemoryRelease(overalls::Overalls& overalls,
     return;
   }
   if (!context) {
-    NOTREACHED_IN_MIGRATION() << "Leaking Trousers memory due to null context. Please "
-                    "report to b/240880669";
+    NOTREACHED_IN_MIGRATION()
+        << "Leaking Trousers memory due to null context. Please "
+           "report to b/240880669";
     return;
   }
   overalls.Ospi_Context_FreeMemory(context, memory);
@@ -67,8 +69,9 @@ inline void ScopedTssSecureMemoryRelease(overalls::Overalls& overalls,
     return;
   }
   if (!context) {
-    NOTREACHED_IN_MIGRATION() << "Leaking Trousers memory due to null context. Please "
-                    "report to b/240880669";
+    NOTREACHED_IN_MIGRATION()
+        << "Leaking Trousers memory due to null context. Please "
+           "report to b/240880669";
     return;
   }
   overalls.Ospi_Context_SecureFreeMemory(context, memory);
@@ -81,8 +84,9 @@ inline void ScopedTssObjectRelease(overalls::Overalls& overalls,
     return;
   }
   if (!context) {
-    NOTREACHED_IN_MIGRATION() << "Leaking Trousers handle due to null context. Please "
-                    "report to b/240880669";
+    NOTREACHED_IN_MIGRATION()
+        << "Leaking Trousers handle due to null context. Please "
+           "report to b/240880669";
     return;
   }
   overalls.Ospi_Context_CloseObject(context, handle);

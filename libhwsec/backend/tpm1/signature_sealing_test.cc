@@ -113,22 +113,26 @@ bool GenerateRsaKey(int key_size_bits,
                     brillo::Blob* key_spki_der) {
   crypto::ScopedEVP_PKEY_CTX pkey_context(
       EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
-  if (!pkey_context)
+  if (!pkey_context) {
     return false;
-  if (EVP_PKEY_keygen_init(pkey_context.get()) <= 0)
+  }
+  if (EVP_PKEY_keygen_init(pkey_context.get()) <= 0) {
     return false;
+  }
   if (EVP_PKEY_CTX_set_rsa_keygen_bits(pkey_context.get(), key_size_bits) <=
       0) {
     return false;
   }
   EVP_PKEY* pkey_raw = nullptr;
-  if (EVP_PKEY_keygen(pkey_context.get(), &pkey_raw) <= 0)
+  if (EVP_PKEY_keygen(pkey_context.get(), &pkey_raw) <= 0) {
     return false;
+  }
   pkey->reset(pkey_raw);
   // Obtain the DER-encoded Subject Public Key Info.
   const int key_spki_der_length = i2d_PUBKEY(pkey->get(), nullptr);
-  if (key_spki_der_length < 0)
+  if (key_spki_der_length < 0) {
     return false;
+  }
   key_spki_der->resize(key_spki_der_length);
   unsigned char* key_spki_der_buffer = key_spki_der->data();
   return i2d_PUBKEY(pkey->get(), &key_spki_der_buffer) == key_spki_der->size();

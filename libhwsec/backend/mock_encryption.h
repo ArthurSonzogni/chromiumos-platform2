@@ -22,8 +22,9 @@ class MockEncryption : public Encryption {
   MockEncryption() = default;
   explicit MockEncryption(Encryption* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, Encrypt)
         .WillByDefault(Invoke(default_, &Encryption::Encrypt));
     ON_CALL(*this, Decrypt)

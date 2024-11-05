@@ -23,8 +23,9 @@ class MockRecoveryCrypto : public RecoveryCrypto {
   MockRecoveryCrypto() = default;
   explicit MockRecoveryCrypto(RecoveryCrypto* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, GenerateKeyAuthValue)
         .WillByDefault(Invoke(default_, &RecoveryCrypto::GenerateKeyAuthValue));
     ON_CALL(*this, EncryptEccPrivateKey)

@@ -130,8 +130,9 @@ Blob BuildRsaTpmPubkeyBlob(const RSA& rsa) {
   Blob modulus(RSA_size(&rsa));
   const BIGNUM* n;
   RSA_get0_key(&rsa, &n, nullptr, nullptr);
-  if (BN_bn2bin(n, modulus.data()) != modulus.size())
+  if (BN_bn2bin(n, modulus.data()) != modulus.size()) {
     return Blob();
+  }
 
   // Build the TPM_RSA_KEY_PARMS structure.
   TPM_RSA_KEY_PARMS rsa_key_parms;
@@ -207,8 +208,9 @@ Blob FuzzedOaepMgf1Encode(const Blob& message,
   // Step #2. Unlike in the original, truncate the message if it's too long, in
   // order to simplify the fuzzer.
   size_t message_length = message.size();
-  if (message.size() + 2 * SHA_DIGEST_LENGTH + 1 > encoded_message_length)
+  if (message.size() + 2 * SHA_DIGEST_LENGTH + 1 > encoded_message_length) {
     message_length = encoded_message_length - 2 * SHA_DIGEST_LENGTH - 1;
+  }
   // Step #3. Generate "PS".
   const Blob zeroes_padding(encoded_message_length - message_length -
                             2 * SHA_DIGEST_LENGTH - 1);
@@ -225,16 +227,18 @@ Blob FuzzedOaepMgf1Encode(const Blob& message,
                       /*mask_size=*/padded_message.size());
   // Step #8. Generate "maskedDB".
   Blob masked_padded_message = padded_message;
-  for (size_t i = 0; i < masked_padded_message.size(); ++i)
+  for (size_t i = 0; i < masked_padded_message.size(); ++i) {
     masked_padded_message[i] ^= padded_message_mask[i];
+  }
   // Step #9. Generate "seedMask".
   const Blob seed_mask =
       GetOaepMgf1Mask(/*mgf_input_value=*/masked_padded_message,
                       /*mask_size=*/seed.size());
   // Step #10. Generate "maskedSeed".
   Blob masked_seed = seed;
-  for (size_t i = 0; i < masked_seed.size(); ++i)
+  for (size_t i = 0; i < masked_seed.size(); ++i) {
     masked_seed[i] ^= seed_mask[i];
+  }
   // Step #11. Generate "EM".
   const Blob encoded_message =
       CombineBlobs({masked_seed, masked_padded_message});
@@ -350,8 +354,9 @@ void PrepareMutatedArguments(const RSA& cmk_rsa,
   // Build the |xored_encoded_tpm_migrate_asymkey_blob| temporary value.
   Blob xored_encoded_tpm_migrate_asymkey_blob =
       fuzzed_encoded_tpm_migrate_asymkey_blob;
-  for (int i = 0; i < fuzzed_encoded_tpm_migrate_asymkey_blob.size(); ++i)
+  for (int i = 0; i < fuzzed_encoded_tpm_migrate_asymkey_blob.size(); ++i) {
     xored_encoded_tpm_migrate_asymkey_blob[i] ^= (*migration_random_blob)[i];
+  }
 
   // Build the |encrypted_tpm_migrate_asymkey_blob| temporary value.
   const Blob encrypted_tpm_migrate_asymkey_blob = FuzzedRsaOaepEncrypt(

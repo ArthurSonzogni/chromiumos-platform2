@@ -93,8 +93,9 @@ StatusOr<Blob> ParseEncDataFromKey12Blob(overalls::Overalls& overalls,
 void XorBytes(uint8_t* inplace_target_begin,
               const uint8_t* other_begin,
               size_t size) {
-  for (size_t index = 0; index < size; ++index)
+  for (size_t index = 0; index < size; ++index) {
     inplace_target_begin[index] ^= other_begin[index];
+  }
 }
 
 // Obtains the value from its MGF1-masked representation in |masked_value|. The

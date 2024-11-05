@@ -24,8 +24,9 @@ class MockPinWeaver : public PinWeaver {
   MockPinWeaver() = default;
   explicit MockPinWeaver(PinWeaver* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, IsEnabled)
         .WillByDefault(Invoke(default_, &PinWeaver::IsEnabled));
     ON_CALL(*this, GetVersion)

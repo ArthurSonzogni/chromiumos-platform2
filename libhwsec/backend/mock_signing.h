@@ -20,8 +20,9 @@ class MockSigning : public Signing {
   MockSigning() = default;
   explicit MockSigning(Signing* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, Sign).WillByDefault(Invoke(default_, &Signing::Sign));
     ON_CALL(*this, RawSign).WillByDefault(Invoke(default_, &Signing::RawSign));
     ON_CALL(*this, Verify).WillByDefault(Invoke(default_, &Signing::Verify));

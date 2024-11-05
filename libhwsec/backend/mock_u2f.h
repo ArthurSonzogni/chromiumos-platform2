@@ -22,8 +22,9 @@ class MockU2f : public U2f {
   MockU2f() = default;
   explicit MockU2f(U2f* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, IsEnabled).WillByDefault(Invoke(default_, &U2f::IsEnabled));
     ON_CALL(*this, GenerateUserPresenceOnly)
         .WillByDefault(Invoke(default_, &U2f::GenerateUserPresenceOnly));

@@ -104,8 +104,9 @@ std::vector<LogEntry> ConvertPinWeaverLog(
 }
 
 std::optional<brillo::Blob> BlobOrNullopt(const std::string& str) {
-  if (str.empty())
+  if (str.empty()) {
     return std::nullopt;
+  }
   return brillo::BlobFromString(str);
 }
 

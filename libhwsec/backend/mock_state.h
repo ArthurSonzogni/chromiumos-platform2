@@ -18,8 +18,9 @@ class MockState : public State {
   MockState() = default;
   explicit MockState(State* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, IsEnabled)
         .WillByDefault(Invoke(default_, &State::IsEnabled));
     ON_CALL(*this, IsReady).WillByDefault(Invoke(default_, &State::IsReady));

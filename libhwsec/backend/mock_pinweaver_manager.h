@@ -20,8 +20,9 @@ class MockPinWeaverManager : public PinWeaverManager {
   MockPinWeaverManager() = default;
   explicit MockPinWeaverManager(PinWeaverManager* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, StateIsReady)
         .WillByDefault(Invoke(default_, &PinWeaverManager::StateIsReady));
     ON_CALL(*this, HasAnyCredential)

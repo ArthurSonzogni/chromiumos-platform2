@@ -22,8 +22,9 @@ class MockSessionManagement : public SessionManagement {
   explicit MockSessionManagement(SessionManagement* on_call)
       : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, FlushInvalidSessions)
         .WillByDefault(
             Invoke(default_, &SessionManagement::FlushInvalidSessions));

@@ -18,8 +18,9 @@ class MockDAMitigation : public DAMitigation {
   MockDAMitigation() = default;
   explicit MockDAMitigation(DAMitigation* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, IsReady)
         .WillByDefault(Invoke(default_, &DAMitigation::IsReady));
     ON_CALL(*this, GetStatus)

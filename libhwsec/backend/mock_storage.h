@@ -22,8 +22,9 @@ class MockStorage : public Storage {
   MockStorage() = default;
   explicit MockStorage(Storage* on_call) : default_(on_call) {
     using testing::Invoke;
-    if (!default_)
+    if (!default_) {
       return;
+    }
     ON_CALL(*this, IsReady).WillByDefault(Invoke(default_, &Storage::IsReady));
     ON_CALL(*this, Prepare).WillByDefault(Invoke(default_, &Storage::Prepare));
     ON_CALL(*this, Load).WillByDefault(Invoke(default_, &Storage::Load));
