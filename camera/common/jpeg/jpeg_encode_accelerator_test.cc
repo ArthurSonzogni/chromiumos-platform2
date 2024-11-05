@@ -247,8 +247,9 @@ void JpegEncodeAcceleratorTest::PrepareMemory(Frame* frame) {
 double JpegEncodeAcceleratorTest::GetMeanAbsoluteDifference(
     uint8_t* hw_yuv_result, uint8_t* sw_yuv_result, size_t yuv_size) {
   double total_difference = 0;
-  for (size_t i = 0; i < yuv_size; i++)
+  for (size_t i = 0; i < yuv_size; i++) {
     total_difference += std::abs(hw_yuv_result[i] - sw_yuv_result[i]);
+  }
   return total_difference / yuv_size;
 }
 
@@ -447,10 +448,12 @@ int main(int argc, char** argv) {
       save_to_file = true;
       continue;
     }
-    if (it->first == "v" || it->first == "vmodule")
+    if (it->first == "v" || it->first == "vmodule") {
       continue;
-    if (it->first == "h" || it->first == "help")
+    }
+    if (it->first == "h" || it->first == "help") {
       continue;
+    }
     LOG(ERROR) << "Unexpected switch: " << it->first << ":" << it->second;
     return -EINVAL;
   }

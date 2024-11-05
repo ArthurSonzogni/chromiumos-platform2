@@ -961,10 +961,11 @@ static void ExpectKeyAvailable(camera_metadata_t* characteristics,
     if (actual_hw_level == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY &&
         hw_level != IGNORE_HARDWARE_LEVEL) {
       auto result = find_camera_metadata_ro_entry(characteristics, key, &entry);
-      if (result == 0)
+      if (result == 0) {
         LOGF(WARNING)
             << "Key " << get_camera_metadata_tag_name(key)
             << " is not required for LEGACY devices but still appears";
+      }
     }
     // OK: Key may or may not be present.
   }
@@ -1323,8 +1324,9 @@ static void AddGtestFilterNegativePattern(std::string negative) {
 static int GetCmdLineTestCameraFacing(const base::CommandLine& cmd_line) {
   const std::string facing_names[] = {"back", "front"};
   const auto& facing_name = cmd_line.GetSwitchValueASCII("camera_facing");
-  if (facing_name.empty())
+  if (facing_name.empty()) {
     return -ENOENT;
+  }
   int idx = std::distance(
       facing_names,
       std::find(facing_names, facing_names + std::size(facing_names),

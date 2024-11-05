@@ -21,16 +21,18 @@
  */
 
 V4lMcDev::~V4lMcDev() {
-  if (fd_)
+  if (fd_) {
     close(*fd_);
+  }
 }
 
 bool V4lMcDev::ResetLinks() {
   bool ok = true;
 
   for (auto link : all_links_) {
-    if (!link->IsDataLink() || link->IsImmutable())
+    if (!link->IsDataLink() || link->IsImmutable()) {
       continue;
+    }
 
     ok = ok && link->SetEnable(false);
   }
@@ -40,8 +42,9 @@ bool V4lMcDev::ResetLinks() {
 
 V4lMcEntity* V4lMcDev::EntityById(__u32 id) {
   for (auto& entity : entities_) {
-    if (entity->desc_.id == id)
+    if (entity->desc_.id == id) {
       return entity.get();
+    }
   }
 
   return nullptr;
@@ -49,8 +52,9 @@ V4lMcEntity* V4lMcDev::EntityById(__u32 id) {
 
 V4lMcEntity* V4lMcDev::EntityByName(std::string name) {
   for (auto& entity : entities_) {
-    if (std::string(entity->desc_.name) == name)
+    if (std::string(entity->desc_.name) == name) {
       return entity.get();
+    }
   }
 
   return nullptr;
@@ -58,12 +62,14 @@ V4lMcEntity* V4lMcDev::EntityByName(std::string name) {
 
 V4lMcEntity* V4lMcDev::EntityByNameRegex(std::string regex) {
   RE2 re(regex);
-  if (!re.ok())
+  if (!re.ok()) {
     MCTK_PANIC("Invalid regex: " + regex);
+  }
 
   for (auto& entity : entities_) {
-    if (RE2::FullMatch(entity->desc_.name, re))
+    if (RE2::FullMatch(entity->desc_.name, re)) {
       return entity.get();
+    }
   }
 
   return nullptr;
@@ -76,11 +82,13 @@ V4lMcEntity* V4lMcDev::EntityByNameRegex(std::string regex) {
 void V4lMcDev::BuildCrosslinks() {
   /* Build MC-wide lists of pads and links */
   for (auto& entity : entities_) {
-    for (auto& pad : entity->pads_)
+    for (auto& pad : entity->pads_) {
       all_pads_.push_back(pad.get());
+    }
 
-    for (auto& link : entity->links_)
+    for (auto& link : entity->links_) {
       all_links_.push_back(link.get());
+    }
   }
 
   /* Let links/pads point at each other */

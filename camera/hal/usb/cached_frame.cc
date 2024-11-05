@@ -226,18 +226,21 @@ int CachedFrame::Convert(
   // Convert |in_frame| into |nv12_frame|.
   if (in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG) {
     int ret = DecodeToNV12(in_frame, *nv12_frame);
-    if (ret)
+    if (ret) {
       return ret;
+    }
   } else {
     int ret = image_processor_->ConvertFormat(in_frame, *nv12_frame);
-    if (ret)
+    if (ret) {
       return ret;
+    }
   }
 
   if (rotate_degree > 0) {
     int ret = CropRotateScale(rotate_degree, *nv12_frame);
-    if (ret)
+    if (ret) {
       return ret;
+    }
   }
 
   if (faces && request_metadata.exists(ANDROID_STATISTICS_FACE_DETECT_MODE)) {
@@ -312,8 +315,9 @@ int CachedFrame::ConvertFromNV12(
       return -EINVAL;
     }
     int ret = image_processor_->Crop(in_frame, *temp_i420_frame_);
-    if (ret)
+    if (ret) {
       return ret;
+    }
     // Scale to the output size.
     if (!SharedFrameBuffer::Reallocate(
             out_frame.GetWidth(), out_frame.GetHeight(), V4L2_PIX_FMT_YUV420,
@@ -321,8 +325,9 @@ int CachedFrame::ConvertFromNV12(
       return -EINVAL;
     }
     ret = image_processor_->Scale(*temp_i420_frame_, *temp_i420_frame2_);
-    if (ret)
+    if (ret) {
       return ret;
+    }
     src_frame = temp_i420_frame2_.get();
   }
 
@@ -336,8 +341,9 @@ int CachedFrame::ConvertFromNV12(
         return -EINVAL;
       }
       int ret = image_processor_->ConvertFormat(*src_frame, *temp_nv12_frame2_);
-      if (ret)
+      if (ret) {
         return ret;
+      }
       src_frame = temp_nv12_frame2_.get();
     }
     return CompressNV12(static_metadata, request_metadata, *src_frame,
@@ -387,8 +393,9 @@ int CachedFrame::DecodeToNV12(FrameBuffer& in_frame, FrameBuffer& out_frame) {
 }
 
 int CachedFrame::DecodeByJDA(FrameBuffer& in_frame, FrameBuffer& out_frame) {
-  if (!jda_available_)
+  if (!jda_available_) {
     return -EINVAL;
+  }
 
   // For test case, don't need to cap the resolution.
   if (!force_jpeg_hw_decode_) {

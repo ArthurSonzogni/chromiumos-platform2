@@ -684,7 +684,7 @@ void GcamAeControllerImpl::SetManualSensorControls(
         return kExpTimeMsNoRounding;
       default:
         NOTREACHED_IN_MIGRATION() << "Unknown antibanding_mode enum: "
-                     << static_cast<int>(antibanding_mode);
+                                  << static_cast<int>(antibanding_mode);
         return kExpTimeMsNoRounding;
     }
   };

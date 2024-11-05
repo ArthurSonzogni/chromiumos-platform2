@@ -74,8 +74,9 @@ std::unique_ptr<YamlNode> YamlNode::FromParser(yaml_parser_t& parser) {
   std::unique_ptr<YamlNode> new_node = NULL;
   yaml_event_t event;
 
-  if (!yaml_parser_parse(&parser, &event))
+  if (!yaml_parser_parse(&parser, &event)) {
     return NULL;
+  }
 
   new_node = YamlNode::FromParserEvent(parser, event);
 

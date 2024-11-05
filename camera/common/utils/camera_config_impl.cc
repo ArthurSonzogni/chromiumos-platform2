@@ -82,8 +82,9 @@ std::vector<std::string> CameraConfigImpl::GetStrings(
     const std::string& path,
     const std::vector<std::string>& default_value) const {
   const base::Value::List* values = config_.FindListByDottedPath(path);
-  if (values == nullptr)
+  if (values == nullptr) {
     return default_value;
+  }
 
   std::vector<std::string> result;
   for (const auto& s : *values) {

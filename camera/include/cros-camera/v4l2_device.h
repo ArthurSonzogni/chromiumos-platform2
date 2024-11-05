@@ -51,15 +51,11 @@ class CROS_CAMERA_EXPORT V4L2Buffer {
   void SetFlags(uint32_t flags) { v4l2_buf_.flags = flags; }
   uint32_t Field() const { return v4l2_buf_.field; }
   void SetField(uint32_t field) { v4l2_buf_.field = field; }
-  struct timeval Timestamp() const {
-    return v4l2_buf_.timestamp;
-  }
+  struct timeval Timestamp() const { return v4l2_buf_.timestamp; }
   void SetTimestamp(struct timeval timestamp) {
     v4l2_buf_.timestamp = timestamp;
   }
-  struct v4l2_timecode Timecode() const {
-    return v4l2_buf_.timecode;
-  }
+  struct v4l2_timecode Timecode() const { return v4l2_buf_.timecode; }
   void SetTimecode(struct v4l2_timecode timecode) {
     v4l2_buf_.timecode = timecode;
   }

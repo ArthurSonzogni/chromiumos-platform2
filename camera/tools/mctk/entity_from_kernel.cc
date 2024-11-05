@@ -224,8 +224,9 @@ void QueryV4LPropsFromKernel(V4lMcEntity& entity, int fd_ent) {
     struct v4l2_modulator modulator = {};
     modulator.index = i;
 
-    if (ioctl(fd_ent, VIDIOC_G_MODULATOR, &modulator) < 0)
+    if (ioctl(fd_ent, VIDIOC_G_MODULATOR, &modulator) < 0) {
       break;
+    }
 
     entity.maindev_.modulators.push_back(modulator);
   }
@@ -314,8 +315,9 @@ void QueryV4LPropsFromKernel(V4lMcEntity& entity, int fd_ent) {
     struct v4l2_tuner tuner = {};
     tuner.index = i;
 
-    if (ioctl(fd_ent, VIDIOC_G_TUNER, &tuner) < 0)
+    if (ioctl(fd_ent, VIDIOC_G_TUNER, &tuner) < 0) {
       break;
+    }
 
     entity.maindev_.tuners.push_back(tuner);
   }
@@ -353,8 +355,9 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromKernel(
       DevNodeFromDevNum(entity->desc_.dev.major, entity->desc_.dev.minor);
   if (entity->devpath_.size()) {
     int fd_ent = open(entity->devpath_.c_str(), O_RDWR);
-    if (fd_ent < 0)
+    if (fd_ent < 0) {
       return nullptr;
+    }
 
     entity->fd_ = fd_ent;
   }
@@ -364,8 +367,9 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromKernel(
     std::unique_ptr<V4lMcPad> pad =
         V4lMcPad::CreateFromKernel(links_enum.pads[i], *entity, entity->fd_);
 
-    if (!pad)
+    if (!pad) {
       return nullptr;
+    }
 
     entity->pads_.push_back(std::move(pad));
   }
@@ -375,8 +379,9 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromKernel(
     /* Ignore incoming links.
      * For each entity, we only store the outgoing links.
      */
-    if (links_enum.links[i].source.entity != entity->desc_.id)
+    if (links_enum.links[i].source.entity != entity->desc_.id) {
       continue;
+    }
 
     auto link = std::make_unique<V4lMcLink>(fd_mc);
 
@@ -386,8 +391,9 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromKernel(
   }
 
   /* Query classic V4L properties */
-  if (entity->fd_)
+  if (entity->fd_) {
     QueryV4LPropsFromKernel(*entity, *entity->fd_);
+  }
 
   /* Query controls */
   if (entity->fd_) {
@@ -400,12 +406,14 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromKernel(
       int ret = ioctl(*entity->fd_, VIDIOC_QUERY_EXT_CTRL, &qec);
       if (ret) {
         /* Done enumerating? */
-        if (errno == EINVAL)
+        if (errno == EINVAL) {
           break;
+        }
 
         /* Does this device even have (extended) controls? */
-        if (errno == ENOTTY)
+        if (errno == ENOTTY) {
           break;
+        }
 
         /* Some error happened */
         MCTK_PANIC("VIDIOC_QUERY_EXT_CTRL");
@@ -415,11 +423,13 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromKernel(
       /* Feed the ID back to the loop, otherwise it won't stop */
       id = qec.id;
 
-      if (qec.type == V4L2_CTRL_TYPE_CTRL_CLASS)
+      if (qec.type == V4L2_CTRL_TYPE_CTRL_CLASS) {
         continue;
+      }
 
-      if (qec.flags & V4L2_CTRL_FLAG_DISABLED)
+      if (qec.flags & V4L2_CTRL_FLAG_DISABLED) {
         continue;
+      }
 
       std::unique_ptr<V4lMcControl> control =
           V4lMcControl::CreateFromKernel(qec, *entity->fd_);

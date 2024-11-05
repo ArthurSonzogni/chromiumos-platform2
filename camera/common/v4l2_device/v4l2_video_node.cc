@@ -80,10 +80,11 @@ void V4L2Buffer::SetOffset(uint32_t offset, uint32_t plane) {
   bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type);
   DCHECK((!mp && plane == 0) || (mp && plane < planes_.size()));
 
-  if (mp)
+  if (mp) {
     v4l2_buf_.m.planes[plane].m.mem_offset = offset;
-  else
+  } else {
     v4l2_buf_.m.offset = offset;
+  }
 }
 
 uint32_t V4L2Buffer::DataOffset(uint32_t plane) const {
@@ -99,8 +100,9 @@ void V4L2Buffer::SetDataOffset(uint32_t offset, uint32_t plane) {
   bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type);
   DCHECK((!mp && plane == 0) || (mp && plane < planes_.size()));
 
-  if (mp)
+  if (mp) {
     v4l2_buf_.m.planes[plane].data_offset = offset;
+  }
 }
 
 uintptr_t V4L2Buffer::Userptr(uint32_t plane) const {
@@ -116,10 +118,11 @@ void V4L2Buffer::SetUserptr(uintptr_t userptr, uint32_t plane) {
   bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type);
   DCHECK((!mp && plane == 0) || (mp && plane < planes_.size()));
 
-  if (mp)
+  if (mp) {
     v4l2_buf_.m.planes[plane].m.userptr = userptr;
-  else
+  } else {
     v4l2_buf_.m.userptr = userptr;
+  }
 }
 
 int V4L2Buffer::RequestFd() const {
@@ -164,10 +167,11 @@ void V4L2Buffer::SetFd(int fd, uint32_t plane) {
   bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type);
   DCHECK((!mp && plane == 0) || (mp && plane < planes_.size()));
 
-  if (mp)
+  if (mp) {
     v4l2_buf_.m.planes[plane].m.fd = fd;
-  else
+  } else {
     v4l2_buf_.m.fd = fd;
+  }
 }
 
 uint32_t V4L2Buffer::BytesUsed(uint32_t plane) const {
@@ -183,10 +187,11 @@ void V4L2Buffer::SetBytesUsed(uint32_t bytesused, uint32_t plane) {
   bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type);
   DCHECK((!mp && plane == 0) || (mp && plane < planes_.size()));
 
-  if (mp)
+  if (mp) {
     v4l2_buf_.m.planes[plane].bytesused = bytesused;
-  else
+  } else {
     v4l2_buf_.bytesused = bytesused;
+  }
 }
 
 uint32_t V4L2Buffer::Length(uint32_t plane) const {
@@ -202,10 +207,11 @@ void V4L2Buffer::SetLength(uint32_t length, uint32_t plane) {
   bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type);
   DCHECK((!mp && plane == 0) || (mp && plane < planes_.size()));
 
-  if (mp)
+  if (mp) {
     v4l2_buf_.m.planes[plane].length = length;
-  else
+  } else {
     v4l2_buf_.length = length;
+  }
 }
 
 const V4L2Buffer& V4L2Buffer::operator=(const V4L2Buffer& buf) {
@@ -485,10 +491,11 @@ int V4L2VideoNode::StopLocked(bool releaseBuffers) {
 
   if (state_ == VideoNodeState::PREPARED) {
     unsigned int flags;
-    if (is_buffer_cached_)
+    if (is_buffer_cached_) {
       flags = V4L2_MEMORY_FLAG_NON_COHERENT;
-    else
+    } else {
       flags = 0;
+    }
     RequestBuffers(0, memory_type_, flags);
     state_ = VideoNodeState::CONFIGURED;
   }
@@ -645,8 +652,9 @@ int V4L2VideoNode::GrabFrame(V4L2Buffer* buf) {
   }
 
   int ret = Dqbuf(buf);
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   PrintBufferInfo(__FUNCTION__, *buf);
   return buf->Index();
@@ -712,10 +720,11 @@ int V4L2VideoNode::SetupBuffers(size_t num_buffers,
   }
 
   unsigned int flags;
-  if (is_cached)
+  if (is_cached) {
     flags = V4L2_MEMORY_FLAG_NON_COHERENT;
-  else
+  } else {
     flags = 0;
+  }
   int ret = RequestBuffers(num_buffers, memory_type, flags);
   if (ret <= 0) {
     LOGF(ERROR) << name_ << " could not complete buffer request";
@@ -761,8 +770,9 @@ int V4L2VideoNode::QueryCap(struct v4l2_capability* cap) {
 int V4L2VideoNode::RequestBuffers(size_t num_buffers,
                                   enum v4l2_memory memory_type,
                                   unsigned int flags) {
-  if (state_ == VideoNodeState::CLOSED)
+  if (state_ == VideoNodeState::CLOSED) {
     return 0;
+  }
 
   struct v4l2_requestbuffers req_buf = {};
   req_buf.memory = memory_type;
@@ -781,9 +791,10 @@ int V4L2VideoNode::RequestBuffers(size_t num_buffers,
     return ret;
   }
 
-  if (req_buf.count < num_buffers)
+  if (req_buf.count < num_buffers) {
     LOGF(WARNING) << name_ << " got less buffers than requested! "
                   << req_buf.count << " < " << num_buffers;
+  }
 
   memory_type_ = memory_type;
   state_ = VideoNodeState::PREPARED;

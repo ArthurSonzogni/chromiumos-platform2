@@ -24,8 +24,9 @@ static std::vector<std::unique_ptr<YamlNode>> empty_sequence_vector;
 template <typename T>
 std::optional<T> YamlNode::Read() {
   YamlScalar* scalar = dynamic_cast<YamlScalar*>(this);
-  if (!scalar)
+  if (!scalar) {
     return std::nullopt;
+  }
 
   return scalar->Read<T>();
 }
@@ -36,8 +37,9 @@ std::optional<T> YamlNode::Read() {
 template <typename T>
 std::optional<std::vector<T>> YamlNode::ReadArray(size_t expected_count) {
   YamlSequence* sequence = dynamic_cast<YamlSequence*>(this);
-  if (!sequence)
+  if (!sequence) {
     return std::nullopt;
+  }
 
   return sequence->ReadArray<T>(expected_count);
 }
@@ -53,8 +55,9 @@ std::optional<std::vector<T>> YamlNode::ReadArray(size_t expected_count) {
 template <typename T>
 T YamlNode::ReadInt(bool& ok) {
   std::optional<T> val = this->Read<T>();
-  if (val)
+  if (val) {
     return *val;
+  }
 
   ok = false;
   return 0;
@@ -74,10 +77,11 @@ template <typename T>
 void YamlNode::ReadCArray(T* dest, size_t expected_count, bool& ok) {
   std::optional<std::vector<T>> temp = this->ReadArray<T>(expected_count);
 
-  if (!temp)
+  if (!temp) {
     ok = false;
-  else
+  } else {
     memcpy(dest, temp->data(), expected_count * sizeof(T));
+  }
 }
 
 template void YamlNode::ReadCArray<__u32>(__u32* dest,
@@ -111,8 +115,9 @@ void YamlNode::ReadCString(char* dest, size_t destlen, bool& ok) {
  */
 std::vector<std::unique_ptr<YamlNode>>& YamlNode::ReadSequence() {
   YamlSequence* sequence = dynamic_cast<YamlSequence*>(this);
-  if (!sequence)
+  if (!sequence) {
     return empty_sequence_vector;
+  }
 
   return sequence->list_;
 }

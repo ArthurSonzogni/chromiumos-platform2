@@ -14,8 +14,9 @@
 
 V4lMcLink* V4lMcPad::LinkBySinkIds(__u32 entity, __u16 index) {
   for (auto link : links_) {
-    if (link->desc_.sink.entity == entity && link->desc_.sink.index == index)
+    if (link->desc_.sink.entity == entity && link->desc_.sink.index == index) {
       return link;
+    }
   }
 
   return nullptr;

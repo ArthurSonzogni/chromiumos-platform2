@@ -134,8 +134,9 @@ bool ControlHelperDescLooksOK(struct v4l2_query_ext_ctrl& desc) {
   } else if (desc.nr_of_dims > 0) {
     /* This is an array */
     __u32 temp = 1;
-    for (size_t i = 0; i < desc.nr_of_dims; i++)
+    for (size_t i = 0; i < desc.nr_of_dims; i++) {
       temp *= desc.dims[i];
+    }
 
     if (temp != desc.elems) {
       MCTK_ERR("Array description and number of elements do not match.");

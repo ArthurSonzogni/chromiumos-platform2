@@ -122,14 +122,17 @@ std::optional<DeviceConfig> DeviceConfig::Create() {
 
 std::optional<int> DeviceConfig::GetCameraCount(
     Interface interface, std::optional<bool> detachable) const {
-  if (!count_.has_value())
+  if (!count_.has_value()) {
     return std::nullopt;
+  }
   // |count_| includes both MIPI and USB cameras. If |count_| is not 0, we need
   // the |cros_config_camera_devices_| information to determine the numbers.
-  if (*count_ == 0)
+  if (*count_ == 0) {
     return 0;
-  if (cros_config_cameras_.empty())
+  }
+  if (cros_config_cameras_.empty()) {
     return std::nullopt;
+  }
   return std::count_if(
       cros_config_cameras_.begin(), cros_config_cameras_.end(),
       [=](const CrosConfigCameraInfo& d) {
@@ -207,8 +210,9 @@ base::FilePath DeviceConfig::FindSubdevSysfsByDevId(int major, int minor) {
 
     std::ostringstream stream;
     stream << major << ":" << minor;
-    if (dev_id == stream.str())
+    if (dev_id == stream.str()) {
       return name;
+    }
   }
 
   return base::FilePath();
@@ -220,8 +224,9 @@ void DeviceConfig::ProbeMediaController(int media_fd) {
   for (desc.id = MEDIA_ENT_ID_FLAG_NEXT;
        !ioctl(media_fd, MEDIA_IOC_ENUM_ENTITIES, &desc);
        desc.id |= MEDIA_ENT_ID_FLAG_NEXT) {
-    if (desc.type != MEDIA_ENT_T_V4L2_SUBDEV_SENSOR)
+    if (desc.type != MEDIA_ENT_T_V4L2_SUBDEV_SENSOR) {
       continue;
+    }
 
     const base::FilePath& path =
         FindSubdevSysfsByDevId(desc.dev.major, desc.dev.minor);

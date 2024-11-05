@@ -24,11 +24,13 @@ static YamlEmpty empty_node;
 /* Look up a node by position in YAML sequences. */
 YamlNode& YamlNode::operator[](size_t index) {
   YamlSequence* sequence = dynamic_cast<YamlSequence*>(this);
-  if (!sequence)
+  if (!sequence) {
     return empty_node;
+  }
 
-  if (sequence->list_.size() <= index)
+  if (sequence->list_.size() <= index) {
     return empty_node;
+  }
 
   return *(sequence->list_[index]);
 }
@@ -36,12 +38,15 @@ YamlNode& YamlNode::operator[](size_t index) {
 /* Look up a node by key in YAML mappings. */
 YamlNode& YamlNode::operator[](std::string key) {
   YamlMap* map = dynamic_cast<YamlMap*>(this);
-  if (!map)
+  if (!map) {
     return empty_node;
+  }
 
-  for (YamlMapPair& pair : map->map_)
-    if (pair.first == key)
+  for (YamlMapPair& pair : map->map_) {
+    if (pair.first == key) {
       return *(pair.second);
+    }
+  }
 
   return empty_node;
 }

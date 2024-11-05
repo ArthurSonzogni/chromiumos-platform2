@@ -53,15 +53,17 @@ bool ParsePayloadValue(V4lMcControl& control, YamlNode& node) {
     case V4L2_CTRL_TYPE_BITMASK:
     case V4L2_CTRL_TYPE_INTEGER_MENU: {
       std::optional<__s32> tmp = node.Read<__s32>();
-      if (!tmp)
+      if (!tmp) {
         return false;
+      }
       control.values_s32_.push_back(*tmp);
       return true;
     }
     case V4L2_CTRL_TYPE_INTEGER64: {
       std::optional<__s64> tmp = node.Read<__s64>();
-      if (!tmp)
+      if (!tmp) {
         return false;
+      }
       control.values_s64_.push_back(*tmp);
       return true;
     }
@@ -85,22 +87,25 @@ bool ParsePayloadValue(V4lMcControl& control, YamlNode& node) {
     }
     case V4L2_CTRL_TYPE_U8: {
       std::optional<__u8> tmp = node.Read<__u8>();
-      if (!tmp)
+      if (!tmp) {
         return false;
+      }
       control.values_u8_.push_back(*tmp);
       return true;
     }
     case V4L2_CTRL_TYPE_U16: {
       std::optional<__u16> tmp = node.Read<__u16>();
-      if (!tmp)
+      if (!tmp) {
         return false;
+      }
       control.values_u16_.push_back(*tmp);
       return true;
     }
     case V4L2_CTRL_TYPE_U32: {
       std::optional<__u32> tmp = node.Read<__u32>();
-      if (!tmp)
+      if (!tmp) {
         return false;
+      }
       control.values_u32_.push_back(*tmp);
       return true;
     }
@@ -110,8 +115,9 @@ bool ParsePayloadValue(V4lMcControl& control, YamlNode& node) {
       struct v4l2_area tmp;
       tmp.width = node["width"].ReadInt<__u32>(ok);
       tmp.height = node["height"].ReadInt<__u32>(ok);
-      if (!ok)
+      if (!ok) {
         return false;
+      }
       control.values_area_.push_back(tmp);
       return true;
     }
@@ -160,8 +166,9 @@ std::unique_ptr<V4lMcControl> V4lMcControl::CreateFromYamlNode(
   }
 
   /* A control that was serialised has at least one value */
-  if (!control->desc_.elems)
+  if (!control->desc_.elems) {
     return nullptr;
+  }
 
   /* Consistency checks */
   MCTK_ASSERT_EQ(nodes_values.size(), control->desc_.elems);

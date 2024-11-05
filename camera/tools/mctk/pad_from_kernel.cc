@@ -40,8 +40,9 @@ std::unique_ptr<V4lMcPad> V4lMcPad::CreateFromKernel(
   /* If the pad is part of an entity without a /dev/videoX or /dev/v4l-subdevX
    * device, then there is nothing for us to ioctl() on - we're done.
    */
-  if (!fd_ent)
+  if (!fd_ent) {
     return pad;
+  }
 
   MCTK_ASSERT(*fd_ent >= 0);
 
@@ -50,19 +51,22 @@ std::unique_ptr<V4lMcPad> V4lMcPad::CreateFromKernel(
   struct v4l2_subdev_crop crop = {};
   crop.pad = pad->desc_.index;
   crop.which = V4L2_SUBDEV_FORMAT_ACTIVE;
-  if (ioctl(*fd_ent, VIDIOC_SUBDEV_G_CROP, &crop) >= 0)
+  if (ioctl(*fd_ent, VIDIOC_SUBDEV_G_CROP, &crop) >= 0) {
     pad->subdev_.crop = crop.rect;
+  }
 
   struct v4l2_subdev_format format = {};
   format.pad = pad->desc_.index;
   format.which = V4L2_SUBDEV_FORMAT_ACTIVE;
-  if (ioctl(*fd_ent, VIDIOC_SUBDEV_G_FMT, &format) >= 0)
+  if (ioctl(*fd_ent, VIDIOC_SUBDEV_G_FMT, &format) >= 0) {
     pad->subdev_.fmt = format.format;
+  }
 
   struct v4l2_subdev_frame_interval interval = {};
   interval.pad = pad->desc_.index;
-  if (ioctl(*fd_ent, VIDIOC_SUBDEV_G_FRAME_INTERVAL, &interval) >= 0)
+  if (ioctl(*fd_ent, VIDIOC_SUBDEV_G_FRAME_INTERVAL, &interval) >= 0) {
     pad->subdev_.frame_interval = interval.interval;
+  }
 
 #define QUERY_SUBDEV_SELECTION(tgt, dest)                       \
   do {                                                          \

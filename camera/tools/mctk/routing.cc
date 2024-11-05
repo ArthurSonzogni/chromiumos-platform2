@@ -166,44 +166,51 @@ bool RouteFrom(V4lMcDev& mcdev,
    * and match the string parts the simple way.
    */
   if (!memcmp(entity.desc_.name, "Intel IPU6 CSI-2 ", 17) &
-      !memcmp(&entity.desc_.name[18], " capture", 9))
+      !memcmp(&entity.desc_.name[18], " capture", 9)) {
     return false;
+  }
 
   /* IPU6 HACK:
    * Ignore this unknown device.
    * We want the "BE SOC" targets for now.
    */
-  if (!strcmp(entity.desc_.name, "Intel IPU6 CSI2 BE"))
+  if (!strcmp(entity.desc_.name, "Intel IPU6 CSI2 BE")) {
     return false;
+  }
 
   /* If there is already en entity connected to us, backtrack.
    * Our caller will try the next entity.
    */
   for (auto link : mcdev.all_links_) {
-    if (!link->IsDataLink())
+    if (!link->IsDataLink()) {
       /* We only look at data links */
       continue;
+    }
 
-    if (&link->sink_->entity_ != &entity)
+    if (&link->sink_->entity_ != &entity) {
       continue;
+    }
 
-    if (link->IsImmutable())
+    if (link->IsImmutable()) {
       /* Ignore these for now.
        * This is likely to be seen in devices with more complex routing
        * requirements, and never occurs in IPU6.
        */
       continue;
+    }
 
     /* Something is already connected to this entity,
      * so drop it from routing.
      */
-    if (link->IsEnabled())
+    if (link->IsEnabled()) {
       return false;
+    }
   }
 
-  if (entity.desc_.type == MEDIA_ENT_F_IO_V4L)
+  if (entity.desc_.type == MEDIA_ENT_F_IO_V4L) {
     /* Done, we've found a route! */
     return true;
+  }
 
   /* We're not the end of the line, and we're yet unconnected.
    * Try all outgoing links (they are all in the entity's array).
@@ -211,16 +218,18 @@ bool RouteFrom(V4lMcDev& mcdev,
    * link->src->entity_ == entity
    */
   for (auto& link : entity.links_) {
-    if (!link->IsDataLink())
+    if (!link->IsDataLink()) {
       /* We only look at data links */
       continue;
+    }
 
-    if (link->IsImmutable())
+    if (link->IsImmutable()) {
       /* Ignore these for now.
        * This is likely to be seen in devices with more complex routing
        * requirements, and never occurs in IPU6.
        */
       continue;
+    }
 
     /* If this is true, there is a path to a V4L video device. */
     if (RouteFrom(mcdev, link->sink_->entity_, route)) {
@@ -240,8 +249,9 @@ void V4lMcRouteSensors(V4lMcDev& mcdev) {
    * Warn if this is not run on IPU6
    */
   if (strcmp(mcdev.info_.driver, "intel-ipu6-isys") ||
-      strcmp(mcdev.info_.model, "ipu6"))
+      strcmp(mcdev.info_.model, "ipu6")) {
     MCTK_ERR("This is not an IPU6 device. Assumptions may not hold.");
+  }
 
   /* First, find a camera */
   for (auto& sensor_entity : mcdev.entities_) {
@@ -249,9 +259,10 @@ void V4lMcRouteSensors(V4lMcDev& mcdev) {
     V4lMcPad* camera_pad;
     struct v4l2_mbus_framefmt subfmt;
 
-    if (sensor_entity->desc_.type != MEDIA_ENT_T_V4L2_SUBDEV_SENSOR)
+    if (sensor_entity->desc_.type != MEDIA_ENT_T_V4L2_SUBDEV_SENSOR) {
       /* synonym: MEDIA_ENT_F_CAM_SENSOR */
       continue;
+    }
 
     /* Second, route it to whatever output we can */
     if (!(RouteFrom(mcdev, *sensor_entity, route))) {
@@ -276,8 +287,9 @@ void V4lMcRouteSensors(V4lMcDev& mcdev) {
      * Disable Intel IPU6 compression
      */
     auto* cc = route.back()->sink_->entity_.ControlById(0x00981983);
-    if (cc)
+    if (cc) {
       cc->Set<__s32>(0);
+    }
 
     /* Print the routing */
     fprintf(stdout, "Routed: %s = %s\n",

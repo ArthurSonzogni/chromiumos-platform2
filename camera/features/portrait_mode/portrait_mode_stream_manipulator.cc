@@ -263,8 +263,9 @@ bool PortraitModeStreamManipulator::OnConfiguredStreamsOnThread(
 
   // Set max buffers for the client streams not passed down.
   for (auto* s : client_streams_) {
-    if (s == portrait_blob_stream_)
+    if (s == portrait_blob_stream_) {
       s->max_buffers = 1;
+    }
   }
 
   // Restore client config.
@@ -577,8 +578,9 @@ void PortraitModeStreamManipulator::UploadMetricsOnThread() {
 bool PortraitModeStreamManipulator::IsPortraitModeStream(
     const camera3_stream_t* stream, const StreamEffectMap* stream_effects_map) {
   auto it = stream_effects_map->find(stream);
-  if (it == stream_effects_map->end())
+  if (it == stream_effects_map->end()) {
     return false;
+  }
 
   for (const auto& effect : it->second) {
     if (effect->type == StreamEffectType::kPortraitMode) {

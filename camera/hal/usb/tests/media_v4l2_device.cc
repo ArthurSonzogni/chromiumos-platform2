@@ -82,8 +82,9 @@ bool V4L2Device::OpenDevice(bool show_err) {
   }
 
   v4l2_capability cap;
-  if (!ProbeCaps(&cap))
+  if (!ProbeCaps(&cap)) {
     return false;
+  }
 
   if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
     if (show_err) {
@@ -97,8 +98,9 @@ bool V4L2Device::OpenDevice(bool show_err) {
 }
 
 void V4L2Device::CloseDevice() {
-  if (fd_ != -1)
+  if (fd_ != -1) {
     close(fd_);
+  }
   fd_ = -1;
 }
 
@@ -112,8 +114,9 @@ bool V4L2Device::InitDevice(IOMethod io,
   io_ = io;
 
   v4l2_format fmt;
-  if (!GetV4L2Format(&fmt))
+  if (!GetV4L2Format(&fmt)) {
     return false;
+  }
 
   fmt.fmt.pix.width = width;
   fmt.fmt.pix.height = height;
@@ -126,8 +129,9 @@ bool V4L2Device::InitDevice(IOMethod io,
   }
 
   v4l2_capability cap;
-  if (!ProbeCaps(&cap))
+  if (!ProbeCaps(&cap)) {
     return false;
+  }
 
   switch (io_) {
     case IO_METHOD_MMAP:
@@ -144,8 +148,9 @@ bool V4L2Device::InitDevice(IOMethod io,
   }
 
   v4l2_streamparm param;
-  if (!GetParam(&param))
+  if (!GetParam(&param)) {
     return false;
+  }
 
   if (param.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
     if (fps > 0) {
@@ -199,8 +204,9 @@ bool V4L2Device::InitDevice(IOMethod io,
       LOGF(ERROR) << "IO method should be defined";
       return false;
   }
-  if (ret)
+  if (ret) {
     initialized_ = true;
+  }
   return ret;
 }
 
@@ -213,12 +219,13 @@ bool V4L2Device::UninitDevice() {
   req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   switch (io_) {
     case IO_METHOD_MMAP:
-      for (uint32_t i = 0; i < num_buffers_; ++i)
+      for (uint32_t i = 0; i < num_buffers_; ++i) {
         if (-1 == munmap(v4l2_buffers_[i].start, v4l2_buffers_[i].length)) {
           PLOGF(ERROR) << base::StringPrintf("munmap() on %s failed",
                                              dev_name_);
           return false;
         }
+      }
 
       req.memory = V4L2_MEMORY_MMAP;
       if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
@@ -235,8 +242,9 @@ bool V4L2Device::UninitDevice() {
         return false;
       }
 
-      for (uint32_t i = 0; i < num_buffers_; ++i)
+      for (uint32_t i = 0; i < num_buffers_; ++i) {
         free(v4l2_buffers_[i].start);
+      }
       break;
     default:
       LOGF(ERROR) << "IO method should be defined";
@@ -249,8 +257,9 @@ bool V4L2Device::UninitDevice() {
 
 bool V4L2Device::StartCapture() {
   for (uint32_t i = 0; i < num_buffers_; ++i) {
-    if (!EnqueueBuffer(i))
+    if (!EnqueueBuffer(i)) {
       return false;
+    }
   }
   v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (-1 == DoIoctl(VIDIOC_STREAMON, &type)) {
@@ -265,10 +274,12 @@ bool V4L2Device::StartCapture() {
     do {
       ret = ReadOneFrame(&buf_index, &data_size, /*skip_frames=*/true);
     } while (ret == 0);
-    if (ret < 0)
+    if (ret < 0) {
       return false;
-    if (!EnqueueBuffer(buf_index))
+    }
+    if (!EnqueueBuffer(buf_index)) {
       return false;
+    }
   }
 
   return true;
@@ -299,26 +310,31 @@ bool V4L2Device::StopCapture() {
 // Do capture for duration of |time_in_sec|.
 bool V4L2Device::Run(uint32_t time_in_sec) {
   stopped_ = false;
-  if (!time_in_sec)
+  if (!time_in_sec) {
     return false;
+  }
 
   uint64_t start_in_nanosec = 0;
   uint32_t buffer_index, data_size;
   while (!stopped_) {
     int32_t r = ReadOneFrame(&buffer_index, &data_size, /*skip_frames=*/false);
-    if (r < 0)
+    if (r < 0) {
       return false;
+    }
     if (r) {
-      if (start_in_nanosec == 0)
+      if (start_in_nanosec == 0) {
         start_in_nanosec = Now();
+      }
       ProcessImage(v4l2_buffers_[buffer_index].start);
-      if (!EnqueueBuffer(buffer_index))
+      if (!EnqueueBuffer(buffer_index)) {
         return false;
+      }
     }
     if (start_in_nanosec) {
       uint64_t end_in_nanosec = Now();
-      if (end_in_nanosec - start_in_nanosec >= time_in_sec * 1000000000ULL)
+      if (end_in_nanosec - start_in_nanosec >= time_in_sec * 1000000000ULL) {
         break;
+      }
     }
   }
   // All resolutions should have at least 1 fps.
@@ -420,10 +436,12 @@ int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index,
       LOGF(ERROR) << "IO method should be defined";
       return -1;
   }
-  if (buffer_index)
+  if (buffer_index) {
     *buffer_index = buf.index;
-  if (data_size)
+  }
+  if (data_size) {
     *data_size = buf.bytesused;
+  }
   return 1;
 }
 
@@ -483,12 +501,13 @@ bool V4L2Device::InitMmapIO() {
   req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   req.memory = V4L2_MEMORY_MMAP;
   if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
-    if (EINVAL == errno)
+    if (EINVAL == errno) {
       LOGF(ERROR) << base::StringPrintf("mmap() io is not supported on %s",
                                         dev_name_);
-    else
+    } else {
       PLOGF(ERROR) << base::StringPrintf(
           "VIDIOC_REQBUFS for MMAP(%d) failed on %s", min_buffers_, dev_name_);
+    }
     return false;
   }
 
@@ -498,8 +517,9 @@ bool V4L2Device::InitMmapIO() {
     return false;
   }
 
-  if (!AllocateBuffer(req.count))
+  if (!AllocateBuffer(req.count)) {
     return false;
+  }
 
   for (num_buffers_ = 0; num_buffers_ < req.count; ++num_buffers_) {
     v4l2_buffer buf;
@@ -535,18 +555,20 @@ bool V4L2Device::InitUserPtrIO(uint32_t buffer_size) {
   uint32_t page_size = getpagesize();
   buffer_size = (buffer_size + page_size - 1) & ~(page_size - 1);
   if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
-    if (EINVAL == errno)
+    if (EINVAL == errno) {
       LOGF(ERROR) << base::StringPrintf("User pointer is not supported on %s",
                                         dev_name_);
-    else
+    } else {
       PLOGF(ERROR) << base::StringPrintf(
           "VIDIOC_REQBUFS for USERPTR(%d) failed on %s", min_buffers_,
           dev_name_);
+    }
     return false;
   }
 
-  if (!AllocateBuffer(req.count))
+  if (!AllocateBuffer(req.count)) {
     return false;
+  }
 
   for (num_buffers_ = 0; num_buffers_ < req.count; ++num_buffers_) {
     v4l2_buffers_[num_buffers_].length = buffer_size;
@@ -605,9 +627,10 @@ bool V4L2Device::EnumStandard() {
   memset(&standard, 0, sizeof(standard));
   standard.index = 0;
   while (0 == DoIoctl(VIDIOC_ENUMSTD, &standard)) {
-    if (standard.id & input.std)
+    if (standard.id & input.std) {
       LOGF(INFO) << base::StringPrintf(
           "%s", reinterpret_cast<const char*>(standard.name));
+    }
     standard.index++;
   }
   // EINVAL indicates the end of the enumeration, which cannot be
@@ -642,8 +665,9 @@ bool V4L2Device::EnumControl(bool show_menu) {
               reinterpret_cast<const char*>(query_ctrl.name),
               query_ctrl.minimum, query_ctrl.maximum, query_ctrl.default_value);
         }
-        if (query_ctrl.type == V4L2_CTRL_TYPE_MENU && show_menu)
+        if (query_ctrl.type == V4L2_CTRL_TYPE_MENU && show_menu) {
           EnumControlMenu(query_ctrl);
+        }
       } else if (errno != EINVAL) {
         LOGF(INFO) << "VIDIOC_query_ctrl not supported";
         return false;
@@ -653,20 +677,23 @@ bool V4L2Device::EnumControl(bool show_menu) {
 
   for (query_ctrl.id = V4L2_CID_PRIVATE_BASE;; query_ctrl.id++) {
     if (0 == DoIoctl(VIDIOC_QUERYCTRL, &query_ctrl)) {
-      if (query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED)
+      if (query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED) {
         LOGF(INFO) << base::StringPrintf(
             "Private Control %s is disabled",
             reinterpret_cast<const char*>(query_ctrl.name));
-      else
+      } else {
         LOGF(INFO) << base::StringPrintf(
             "Private Control %s is enabled",
             reinterpret_cast<const char*>(query_ctrl.name));
-      if (query_ctrl.type == V4L2_CTRL_TYPE_MENU && show_menu)
+      }
+      if (query_ctrl.type == V4L2_CTRL_TYPE_MENU && show_menu) {
         EnumControlMenu(query_ctrl);
+      }
     } else {
       // Assume private control ids are contiguous.
-      if (errno == EINVAL)
+      if (errno == EINVAL) {
         break;
+      }
       LOGF(INFO) << "VIDIOC_query_ctrl not supported";
       return false;
     }
@@ -707,7 +734,7 @@ bool V4L2Device::EnumFormat(uint32_t* num_formats, bool show_fmt) {
         break;
       }
     }
-    if (show_fmt)
+    if (show_fmt) {
       LOGF(INFO) << base::StringPrintf(
           "Supported format #%d: %s (%c%c%c%c)", i + 1,
           reinterpret_cast<const char*>(format_desc.description),
@@ -715,10 +742,12 @@ bool V4L2Device::EnumFormat(uint32_t* num_formats, bool show_fmt) {
           (format_desc.pixelformat >> 8) & 0xff,
           (format_desc.pixelformat >> 16) & 0xff,
           (format_desc.pixelformat >> 24) & 0xff);
+    }
   }
 
-  if (num_formats)
+  if (num_formats) {
     *num_formats = i;
+  }
   return true;
 }
 
@@ -727,10 +756,12 @@ bool V4L2Device::GetPixelFormat(uint32_t index, uint32_t* pixfmt) {
   memset(&format_desc, 0, sizeof(format_desc));
   format_desc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   format_desc.index = index;
-  if (-1 == DoIoctl(VIDIOC_ENUM_FMT, &format_desc))
+  if (-1 == DoIoctl(VIDIOC_ENUM_FMT, &format_desc)) {
     return false;
-  if (pixfmt)
+  }
+  if (pixfmt) {
     *pixfmt = format_desc.pixelformat;
+  }
   return true;
 }
 
@@ -785,8 +816,9 @@ bool V4L2Device::EnumFrameSize(uint32_t pixfmt,
       }
     }
   }
-  if (num_sizes)
+  if (num_sizes) {
     *num_sizes = i;
+  }
   return true;
 }
 
@@ -882,8 +914,9 @@ bool V4L2Device::EnumFrameInterval(uint32_t pixfmt,
       }
     }
   }
-  if (num_intervals)
+  if (num_intervals) {
     *num_intervals = i;
+  }
   return true;
 }
 
@@ -893,12 +926,14 @@ bool V4L2Device::OneCapture() {
   do {
     ret = ReadOneFrame(&buf_index, &data_size, /*skip_frames=*/false);
   } while (ret == 0);
-  if (ret < 0)
+  if (ret < 0) {
     return false;
+  }
   if (ret) {
     ProcessImage(v4l2_buffers_[buf_index].start);
-    if (!EnqueueBuffer(buf_index))
+    if (!EnqueueBuffer(buf_index)) {
       return false;
+    }
   }
   return true;
 }
@@ -935,8 +970,9 @@ bool V4L2Device::QueryControl(uint32_t id, v4l2_queryctrl* ctrl) {
   memset(ctrl, 0, sizeof(*ctrl));
   ctrl->id = id;
   if (-1 == DoIoctl(VIDIOC_QUERYCTRL, ctrl)) {
-    if (errno != EINVAL)
+    if (errno != EINVAL) {
       return false;
+    }
     LOGF(INFO) << base::StringPrintf("%d is not supported", id);
     return false;
   }
@@ -1017,21 +1053,26 @@ bool V4L2Device::ProbeCaps(v4l2_capability* cap, bool show_caps) {
 
   if (show_caps) {
     auto ShowCaps = [&](uint32_t caps) {
-      if (caps & V4L2_CAP_VIDEO_CAPTURE)
+      if (caps & V4L2_CAP_VIDEO_CAPTURE) {
         LOGF(INFO) << base::StringPrintf("%s support video capture interface",
                                          dev_name_);
-      if (caps & V4L2_CAP_VIDEO_OUTPUT)
+      }
+      if (caps & V4L2_CAP_VIDEO_OUTPUT) {
         LOGF(INFO) << base::StringPrintf("%s support video output interface",
                                          dev_name_);
-      if (caps & V4L2_CAP_VIDEO_OVERLAY)
+      }
+      if (caps & V4L2_CAP_VIDEO_OVERLAY) {
         LOGF(INFO) << base::StringPrintf("%s support video overlay interface",
                                          dev_name_);
-      if (caps & V4L2_CAP_AUDIO)
+      }
+      if (caps & V4L2_CAP_AUDIO) {
         LOGF(INFO) << base::StringPrintf("%s support audio i/o interface",
                                          dev_name_);
-      if (caps & V4L2_CAP_STREAMING)
+      }
+      if (caps & V4L2_CAP_STREAMING) {
         LOGF(INFO) << base::StringPrintf("%s support streaming i/o interface",
                                          dev_name_);
+      }
     };
     ShowCaps(cap->capabilities);
     if (cap->capabilities & V4L2_CAP_DEVICE_CAPS) {
@@ -1068,8 +1109,9 @@ bool V4L2Device::SetParam(v4l2_streamparm* param) {
 
 bool V4L2Device::SetFrameRate(float fps) {
   v4l2_streamparm param;
-  if (!GetParam(&param))
+  if (!GetParam(&param)) {
     return false;
+  }
 
   const int kFrameRatePrecision = 10000;
   param.parm.capture.timeperframe.numerator = kFrameRatePrecision;
@@ -1079,8 +1121,9 @@ bool V4L2Device::SetFrameRate(float fps) {
 
 float V4L2Device::GetFrameRate() {
   v4l2_streamparm param;
-  if (!GetParam(&param))
+  if (!GetParam(&param)) {
     return -1;
+  }
   return static_cast<float>(param.parm.capture.timeperframe.denominator) /
          param.parm.capture.timeperframe.numerator;
 }

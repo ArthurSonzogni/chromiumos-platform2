@@ -50,8 +50,9 @@ bool CreateUnixDomainSocket(base::ScopedFD* out_fd) {
     return false;
   }
 
-  if (fd.get() != out_fd->get())
+  if (fd.get() != out_fd->get()) {
     *out_fd = std::move(fd);
+  }
 
   return true;
 }
@@ -142,8 +143,9 @@ bool ServerAcceptConnection(int server_listen_fd, int* server_socket) {
   *server_socket = -1;
 
   base::ScopedFD accept_fd(HANDLE_EINTR(accept(server_listen_fd, NULL, 0)));
-  if (!accept_fd.is_valid())
+  if (!accept_fd.is_valid()) {
     return IsRecoverableError(errno);
+  }
   if (HANDLE_EINTR(fcntl(accept_fd.get(), F_SETFL, O_NONBLOCK)) < 0) {
     PLOGF(ERROR) << "fcntl(O_NONBLOCK) " << accept_fd.get();
     // It's safe to keep listening on |server_listen_fd| even if the attempt to
@@ -158,12 +160,14 @@ bool ServerAcceptConnection(int server_listen_fd, int* server_socket) {
 base::ScopedFD CreateClientUnixDomainSocket(const base::FilePath& socket_path) {
   struct sockaddr_un unix_addr;
   size_t unix_addr_len;
-  if (!MakeUnixAddrForPath(socket_path.value(), &unix_addr, &unix_addr_len))
+  if (!MakeUnixAddrForPath(socket_path.value(), &unix_addr, &unix_addr_len)) {
     return base::ScopedFD();
+  }
 
   base::ScopedFD fd;
-  if (!CreateUnixDomainSocket(&fd))
+  if (!CreateUnixDomainSocket(&fd)) {
     return base::ScopedFD();
+  }
 
   if (HANDLE_EINTR(connect(fd.get(), reinterpret_cast<sockaddr*>(&unix_addr),
                            unix_addr_len)) < 0) {

@@ -18,8 +18,9 @@ int mctk_verbosity = 0;
 
 /* Print a message, without a prefix. */
 void MCTK_VERBOSE(std::string_view msg) {
-  if (mctk_verbosity < 1)
+  if (mctk_verbosity < 1) {
     return;
+  }
 
   std::cerr << msg << std::endl;
 }

@@ -39,9 +39,11 @@
  *  - std::nullopt if there is no remap entry.
  */
 std::optional<V4lMcRemapEntry> V4lMcRemap::LookupEntry(__u32 source_id) {
-  for (V4lMcRemapEntry& entry : remap_list_)
-    if (entry.source_id_ == source_id)
+  for (V4lMcRemapEntry& entry : remap_list_) {
+    if (entry.source_id_ == source_id) {
       return entry;
+    }
+  }
 
   return std::nullopt;
 }
@@ -59,21 +61,24 @@ std::optional<__u32> V4lMcRemap::LookupRemappedId(__u32 source_id,
                                                   V4lMcDev& mc_target) {
   std::optional<V4lMcRemapEntry> entry = this->LookupEntry(source_id);
 
-  if (!entry)
+  if (!entry) {
     return std::nullopt;
+  }
 
   if (!entry->target_name_.empty()) {
     V4lMcEntity* te = mc_target.EntityByName(entry->target_name_);
 
-    if (te)
+    if (te) {
       return te->desc_.id;
+    }
   }
 
   if (!entry->target_name_regex_.empty()) {
     V4lMcEntity* te = mc_target.EntityByNameRegex(entry->target_name_regex_);
 
-    if (te)
+    if (te) {
       return te->desc_.id;
+    }
   }
 
   /* We tried to look up an entity with a name that doesn't exist
@@ -94,8 +99,9 @@ __u32 V4lMcRemap::LookupRemappedIdOrFallback(__u32 source_id,
                                              V4lMcDev& mc_target) {
   std::optional<__u32> target_id = this->LookupRemappedId(source_id, mc_target);
 
-  if (target_id)
+  if (target_id) {
     return *target_id;
+  }
 
   return source_id;
 }

@@ -29,8 +29,9 @@ std::unique_ptr<YamlMap> YamlMap::FromParserEvent(yaml_parser_t& parser,
   MCTK_ASSERT_EQ(start_event.type, YAML_MAPPING_START_EVENT);
 
   auto new_map = std::make_unique<YamlMap>();
-  if (!new_map)
+  if (!new_map) {
     return NULL;
+  }
 
   /* Store YAML formatting style for debugging purposes */
   new_map->implicit_ = start_event.data.mapping_start.implicit;
@@ -39,8 +40,9 @@ std::unique_ptr<YamlMap> YamlMap::FromParserEvent(yaml_parser_t& parser,
   while (true) {
     yaml_event_t event;
 
-    if (!yaml_parser_parse(&parser, &event))
+    if (!yaml_parser_parse(&parser, &event)) {
       goto error;
+    }
 
     if (event.type == YAML_MAPPING_END_EVENT) {
       yaml_event_delete(&event);
@@ -60,8 +62,9 @@ std::unique_ptr<YamlMap> YamlMap::FromParserEvent(yaml_parser_t& parser,
 
     /* Part 2: Parse any node type as a value */
     auto value = YamlNode::FromParser(parser);
-    if (!value)
+    if (!value) {
       goto error;
+    }
 
     new_map->map_.push_back(YamlMapPair(key, std::move(value)));
   }
@@ -75,27 +78,33 @@ bool YamlMap::Emit(yaml_emitter_t& emitter) {
 
   if (!yaml_mapping_start_event_initialize(
           &event, NULL, reinterpret_cast<const yaml_char_t*>(YAML_MAP_TAG),
-          implicit_, style_))
+          implicit_, style_)) {
     return false;
-  if (!yaml_emitter_emit(&emitter, &event))
+  }
+  if (!yaml_emitter_emit(&emitter, &event)) {
     return false;
+  }
 
   for (YamlMapPair& pair : this->map_) {
     if (!yaml_scalar_event_initialize(
             &event, NULL, NULL,
             reinterpret_cast<const yaml_char_t*>(pair.first.c_str()), -1, 1, 1,
-            YAML_ANY_SCALAR_STYLE))
+            YAML_ANY_SCALAR_STYLE)) {
       return false;
-    if (!yaml_emitter_emit(&emitter, &event))
+    }
+    if (!yaml_emitter_emit(&emitter, &event)) {
       return false;
+    }
 
     pair.second->Emit(emitter);
   }
 
-  if (!yaml_mapping_end_event_initialize(&event))
+  if (!yaml_mapping_end_event_initialize(&event)) {
     return false;
-  if (!yaml_emitter_emit(&emitter, &event))
+  }
+  if (!yaml_emitter_emit(&emitter, &event)) {
     return false;
+  }
 
   return true;
 }

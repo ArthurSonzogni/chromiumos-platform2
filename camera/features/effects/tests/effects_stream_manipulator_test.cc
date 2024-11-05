@@ -91,8 +91,9 @@ std::atomic<bool> effect_set_success = false;
 std::unique_ptr<base::RunLoop> loop;
 
 void SetEffectCallback(bool success) {
-  if (success)
+  if (success) {
     effect_set_success = true;
+  }
   loop->Quit();
 }
 

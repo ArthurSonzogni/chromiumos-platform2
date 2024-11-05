@@ -63,10 +63,11 @@ std::unique_ptr<V4lMcControl> V4lMcControl::CreateFromKernel(
       return nullptr;
     }
 
-    if (desc.type == V4L2_CTRL_TYPE_INTEGER64)
+    if (desc.type == V4L2_CTRL_TYPE_INTEGER64) {
       control->values_s64_.push_back(kernel_values.value64);
-    else
+    } else {
       control->values_s32_.push_back(kernel_values.value);
+    }
   } else {
     /* Complex data type - need to query size and allocate buffer */
 

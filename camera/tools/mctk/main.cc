@@ -133,8 +133,9 @@ int main(int argc, char** argv) {
         }
 
         mcdev = OpenMcDevKernel(optarg);
-        if (!mcdev)
+        if (!mcdev) {
           return EXIT_FAILURE;
+        }
 
         break;
       }
@@ -154,8 +155,9 @@ int main(int argc, char** argv) {
         }
 
         mcdev = OpenMcDevKernel(path.value());
-        if (!mcdev)
+        if (!mcdev) {
           return EXIT_FAILURE;
+        }
 
         break;
       }

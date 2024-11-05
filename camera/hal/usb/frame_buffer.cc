@@ -216,8 +216,9 @@ V4L2FrameBuffer::~V4L2FrameBuffer() {
 
 int V4L2FrameBuffer::Map() {
   base::AutoLock l(lock_);
-  if (is_mapped_)
+  if (is_mapped_) {
     return 0;
+  }
 
   // TODO(b/141517606): We should tweak the mapping implementation to:
   //   1. Mapped with PROT_READ | PROT_WRITE (Due to: crbug.com/178582)
@@ -266,8 +267,9 @@ int V4L2FrameBuffer::Map() {
 
 int V4L2FrameBuffer::Unmap() {
   base::AutoLock l(lock_);
-  if (!is_mapped_)
+  if (!is_mapped_) {
     return 0;
+  }
 
   if (munmap(data_[0], buffer_size_)) {
     PLOGF(ERROR) << "mummap() failed";

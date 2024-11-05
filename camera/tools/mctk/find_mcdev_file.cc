@@ -51,11 +51,13 @@ std::optional<std::string> MctkFindMcDevByBusInfo(std::string_view bus_info) {
   for (const auto& entry : std::filesystem::directory_iterator("/dev/")) {
     const std::string path_string = entry.path().string();
 
-    if (!path_string.starts_with("/dev/media"))
+    if (!path_string.starts_with("/dev/media")) {
       continue;
+    }
 
-    if (!entry.is_character_file())
+    if (!entry.is_character_file()) {
       continue;
+    }
 
     int fd = open(path_string.c_str(), O_RDWR);
     if (fd < 0) {
@@ -74,8 +76,9 @@ std::optional<std::string> MctkFindMcDevByBusInfo(std::string_view bus_info) {
       continue;
     }
 
-    if (std::string(info.bus_info) == bus_info)
+    if (std::string(info.bus_info) == bus_info) {
       return path_string;
+    }
   }
 
   return std::nullopt;

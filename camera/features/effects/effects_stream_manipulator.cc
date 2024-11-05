@@ -143,8 +143,9 @@ void LogAverageLatency(base::TimeDelta latency) {
 }
 
 void DeleteEffectsMarkerFile() {
-  if (!base::PathExists(kEffectsRunningMarker))
+  if (!base::PathExists(kEffectsRunningMarker)) {
     return;
+  }
 
   if (!brillo::DeleteFile(kEffectsRunningMarker)) {
     LOGF(WARNING) << "Couldn't delete effects marker file";
@@ -592,8 +593,9 @@ bool EffectsStreamManipulatorImpl::EnsurePipelineSetupOnGlThread() {
     CreatePipeline(base::FilePath(
         runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId)));
   }
-  if (!pipeline_)
+  if (!pipeline_) {
     return false;
+  }
 
   auto new_config = ConvertMojoConfig(
       runtime_options_->GetEffectsConfig(), default_segmentation_model_type_,
@@ -1038,8 +1040,9 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
   // The code after this point is only relevant if there is an
   // override file. Abort here so we don't set a 'default'
   // effects config.
-  if (!override_config_exists_)
+  if (!override_config_exists_) {
     return;
+  }
 
   EffectsConfig new_config;
   std::string effect_val;

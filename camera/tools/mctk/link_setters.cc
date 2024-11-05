@@ -33,8 +33,9 @@ bool V4lMcLink::SetEnable(bool enable) {
   }
 
   desc_.flags &= ~MEDIA_LNK_FL_ENABLED;
-  if (enable)
+  if (enable) {
     desc_.flags |= MEDIA_LNK_FL_ENABLED;
+  }
 
   /* If mc is linked to a real device, apply the update to the hardware */
   if (fd_mc_) {

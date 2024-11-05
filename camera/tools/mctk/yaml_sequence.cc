@@ -22,8 +22,9 @@
 bool YamlSequence::ParseOneListElement(yaml_parser_t& parser) {
   yaml_event_t event;
 
-  if (!yaml_parser_parse(&parser, &event))
+  if (!yaml_parser_parse(&parser, &event)) {
     return false;
+  }
 
   if (event.type == YAML_SEQUENCE_END_EVENT) {
     yaml_event_delete(&event);
@@ -32,8 +33,9 @@ bool YamlSequence::ParseOneListElement(yaml_parser_t& parser) {
 
   auto new_node = YamlNode::FromParserEvent(parser, event);
   yaml_event_delete(&event);
-  if (!new_node)
+  if (!new_node) {
     return false;
+  }
 
   this->list_.push_back(std::move(new_node));
   return this->ParseOneListElement(parser);
@@ -45,15 +47,17 @@ std::unique_ptr<YamlSequence> YamlSequence::FromParserEvent(
   MCTK_ASSERT_EQ(start_event.type, YAML_SEQUENCE_START_EVENT);
 
   auto new_seq = std::make_unique<YamlSequence>();
-  if (!new_seq)
+  if (!new_seq) {
     return NULL;
+  }
 
   /* Store YAML formatting style for debugging purposes */
   new_seq->implicit_ = start_event.data.sequence_start.implicit;
   new_seq->style_ = start_event.data.sequence_start.style;
 
-  if (new_seq->ParseOneListElement(parser))
+  if (new_seq->ParseOneListElement(parser)) {
     return new_seq;
+  }
 
   return NULL;
 }
@@ -63,19 +67,23 @@ bool YamlSequence::Emit(yaml_emitter_t& emitter) {
 
   if (!yaml_sequence_start_event_initialize(
           &event, NULL, reinterpret_cast<const yaml_char_t*>(YAML_SEQ_TAG),
-          implicit_, style_))
+          implicit_, style_)) {
     return false;
-  if (!yaml_emitter_emit(&emitter, &event))
+  }
+  if (!yaml_emitter_emit(&emitter, &event)) {
     return false;
+  }
 
   for (auto& node : this->list_) {
     node->Emit(emitter);
   }
 
-  if (!yaml_sequence_end_event_initialize(&event))
+  if (!yaml_sequence_end_event_initialize(&event)) {
     return false;
-  if (!yaml_emitter_emit(&emitter, &event))
+  }
+  if (!yaml_emitter_emit(&emitter, &event)) {
     return false;
+  }
 
   return true;
 }
@@ -85,15 +93,17 @@ bool YamlSequence::Emit(yaml_emitter_t& emitter) {
  */
 template <typename T>
 std::optional<std::vector<T>> YamlSequence::ReadArray(size_t expected_count) {
-  if (list_.size() != expected_count)
+  if (list_.size() != expected_count) {
     return std::nullopt;
+  }
 
   std::vector<T> out_vec;
 
   for (auto& node : list_) {
     std::optional<T> temp = node->Read<T>();
-    if (!temp)
+    if (!temp) {
       return std::nullopt;
+    }
 
     out_vec.push_back(*temp);
   }

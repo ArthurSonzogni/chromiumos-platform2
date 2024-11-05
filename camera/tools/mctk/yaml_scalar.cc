@@ -29,10 +29,12 @@ bool YamlScalar::Emit(yaml_emitter_t& emitter) {
 
   if (!yaml_scalar_event_initialize(&event, NULL, NULL,
                                     (const yaml_char_t*)(value_.c_str()), -1, 1,
-                                    1, YAML_ANY_SCALAR_STYLE))
+                                    1, YAML_ANY_SCALAR_STYLE)) {
     return false;
-  if (!yaml_emitter_emit(&emitter, &event))
+  }
+  if (!yaml_emitter_emit(&emitter, &event)) {
     return false;
+  }
 
   return true;
 }

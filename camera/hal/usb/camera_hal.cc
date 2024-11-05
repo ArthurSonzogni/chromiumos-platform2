@@ -83,13 +83,15 @@ void AdjustMetadataForAE(android::CameraMetadata* data) {
     return;
   }
 
-  if (entry.data.i64[0] <= kMaxMinExposureTime)
+  if (entry.data.i64[0] <= kMaxMinExposureTime) {
     return;
+  }
 
   LOGF(INFO) << "Remove AE related metadata";
 
-  if (data->erase(ANDROID_SENSOR_INFO_EXPOSURE_TIME_RANGE) != 0)
+  if (data->erase(ANDROID_SENSOR_INFO_EXPOSURE_TIME_RANGE) != 0) {
     LOGF(WARNING) << "Fail to delete ANDROID_SENSOR_INFO_EXPOSURE_TIME_RANGE";
+  }
 
   data->update(ANDROID_CONTROL_AE_AVAILABLE_MODES,
                std::vector<uint8_t>{ANDROID_CONTROL_AE_MODE_ON});
@@ -209,8 +211,9 @@ ScopedCameraMetadata RequestTemplateForAndroid(
     // Only support ANDROID_CONTROL_AE_MODE_ON
     if (ae_available_modes_entry.count == 1) {
       camera_metadata_entry entry = data.find(ANDROID_SENSOR_EXPOSURE_TIME);
-      if (entry.count == 1 && data.erase(ANDROID_SENSOR_EXPOSURE_TIME) != 0)
+      if (entry.count == 1 && data.erase(ANDROID_SENSOR_EXPOSURE_TIME) != 0) {
         LOGF(WARNING) << "Failed to delete ANDROID_SENSOR_EXPOSURE_TIME";
+      }
     }
   }
 
@@ -755,8 +758,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   }
   // Uses software timestamp from userspace for wugtrio, because the
   // hardware timestamp is not reliable in a dark environment.
-  if (IsModelRequiringUserSpaceTimestamp(
-          cros_device_config_->GetModelName())) {
+  if (IsModelRequiringUserSpaceTimestamp(cros_device_config_->GetModelName())) {
     LOGF(INFO) << "force enable kQuirkUserSpaceTimestamp on "
                << cros_device_config_->GetModelName();
     info.quirks |= kQuirkUserSpaceTimestamp;

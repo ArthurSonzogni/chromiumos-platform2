@@ -153,8 +153,9 @@ void AddNegativeGtestFilter(const std::string& pattern) {
 bool CheckTimestampsInOrder(const std::vector<int64_t>& timestamps) {
   std::vector<size_t> out_of_order_ids;
   for (size_t i = 1; i < timestamps.size(); i++) {
-    if (timestamps[i - 1] >= timestamps[i])
+    if (timestamps[i - 1] >= timestamps[i]) {
       out_of_order_ids.push_back(i);
+    }
   }
   if (out_of_order_ids.empty()) {
     return true;
@@ -858,8 +859,9 @@ class V4L2Test : public ::testing::Test {
       }
     }
     ExerciseFormat(format.width, format.height, GetMaxFrameRate(format));
-    if (!ValidateControl(V4L2_CID_UVC_REGION_OF_INTEREST_AUTO, "roi auto"))
+    if (!ValidateControl(V4L2_CID_UVC_REGION_OF_INTEREST_AUTO, "roi auto")) {
       return false;
+    }
 
     return true;
   }
@@ -1039,8 +1041,9 @@ TEST_F(V4L2Test, SetControl) {
 }
 
 TEST_F(V4L2Test, SetROI) {
-  if (!g_env->check_roi_control_)
+  if (!g_env->check_roi_control_) {
     GTEST_SKIP() << "Skipped because enable_face_detection is not set";
+  }
 
   if (ValidateControl(V4L2_CID_REGION_OF_INTEREST_AUTO, "roi auto")) {
     LOGF(INFO) << "Testing legacy ROI";
@@ -1272,8 +1275,9 @@ TEST_F(V4L2Test, FirstFrameAfterStreamOn) {
 // software uses V4L2_CID_FOCUS_AUTO control to toggle auto-focus on/off, which
 // maps to the Android AUTO/OFF AF mode.
 TEST_F(V4L2Test, AutoFocusSupported) {
-  if (g_env->lens_facing_ != LensFacing::kBack)
+  if (g_env->lens_facing_ != LensFacing::kBack) {
     GTEST_SKIP();
+  }
   ASSERT_TRUE(ExerciseControl(V4L2_CID_FOCUS_AUTO, "focus_auto"));
 }
 

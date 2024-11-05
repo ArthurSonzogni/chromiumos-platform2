@@ -100,11 +100,12 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
       if (remap_entry) {
         auto target_id = remap->LookupRemappedId(se->desc_.id, target);
 
-        if (!target_id)
+        if (!target_id) {
           MCTK_PANIC("Merge: According to the remap table, entity " +
                      std::to_string(se->desc_.id) +
                      " should be remapped, "
                      "but the target does not contain a matching entity.");
+        }
 
         /* Remapped entity found - continue checking next entity. */
         continue;
@@ -117,15 +118,17 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
      */
     auto te = target.EntityById(se->desc_.id);
 
-    if (!te)
+    if (!te) {
       MCTK_PANIC("Merge: target lacking an entity mentioned by source.");
+    }
   }
 
   /* Check: See if target contains all pads */
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
-    if (remap)
+    if (remap) {
       te_id = remap->LookupRemappedIdOrFallback(te_id, target);
+    }
 
     auto te = target.EntityById(te_id);
 
@@ -139,8 +142,9 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   /* Check: See if target contains all links */
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
-    if (remap)
+    if (remap) {
       te_id = remap->LookupRemappedIdOrFallback(te_id, target);
+    }
 
     auto te = target.EntityById(te_id);
 
@@ -149,9 +153,10 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
 
       for (auto* sl : sp->links_) {
         __u32 sink_entity_id = sl->desc_.sink.entity;
-        if (remap)
+        if (remap) {
           sink_entity_id =
               remap->LookupRemappedIdOrFallback(sink_entity_id, target);
+        }
 
         auto tl = tp->LinkBySinkIds(sink_entity_id, sl->desc_.sink.index);
         if (!tl) {
@@ -164,8 +169,9 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   /* Check: See if target contains all maindev properties */
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
-    if (remap)
+    if (remap) {
       te_id = remap->LookupRemappedIdOrFallback(te_id, target);
+    }
 
     auto te = target.EntityById(te_id);
 
@@ -256,8 +262,9 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   /* Check: See if target contains all controls */
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
-    if (remap)
+    if (remap) {
       te_id = remap->LookupRemappedIdOrFallback(te_id, target);
+    }
 
     auto te = target.EntityById(te_id);
 
@@ -273,8 +280,9 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   /* Check: See if target contains all subdev properties */
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
-    if (remap)
+    if (remap) {
       te_id = remap->LookupRemappedIdOrFallback(te_id, target);
+    }
 
     auto te = target.EntityById(te_id);
 
@@ -311,185 +319,237 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   /* Merge */
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
-    if (remap)
+    if (remap) {
       te_id = remap->LookupRemappedIdOrFallback(te_id, target);
+    }
 
     auto te = target.EntityById(te_id);
 
     /* Merge maindev properties */
-    if (se->maindev_.audio)
+    if (se->maindev_.audio) {
       te->SetAudio(*se->maindev_.audio);
+    }
 
-    if (se->maindev_.audout)
+    if (se->maindev_.audout) {
       te->SetAudout(*se->maindev_.audout);
+    }
 
-    if (se->maindev_.crop_video_capture)
+    if (se->maindev_.crop_video_capture) {
       te->SetCrop(V4L2_BUF_TYPE_VIDEO_CAPTURE,
                   *se->maindev_.crop_video_capture);
+    }
 
-    if (se->maindev_.crop_video_output)
+    if (se->maindev_.crop_video_output) {
       te->SetCrop(V4L2_BUF_TYPE_VIDEO_OUTPUT, *se->maindev_.crop_video_output);
+    }
 
-    if (se->maindev_.crop_video_overlay)
+    if (se->maindev_.crop_video_overlay) {
       te->SetCrop(V4L2_BUF_TYPE_VIDEO_OVERLAY,
                   *se->maindev_.crop_video_overlay);
+    }
 
-    if (se->maindev_.crop_video_capture_mplane)
+    if (se->maindev_.crop_video_capture_mplane) {
       te->SetCrop(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
                   *se->maindev_.crop_video_capture_mplane);
+    }
 
-    if (se->maindev_.dv_timings)
+    if (se->maindev_.dv_timings) {
       te->SetDvTimings(*se->maindev_.dv_timings);
+    }
 
-    if (se->maindev_.subdev_dv_timings)
+    if (se->maindev_.subdev_dv_timings) {
       te->SetSubdevDvTimings(*se->maindev_.subdev_dv_timings);
+    }
 
     /* Ignored: VIDIOC_S_EDID */
     /* Ignored: VIDIOC_SUBDEV_S_EDID */
 
-    if (se->maindev_.fbuf)
+    if (se->maindev_.fbuf) {
       te->SetFbuf(*se->maindev_.fbuf);
+    }
 
-    if (se->maindev_.fmt_video_capture)
+    if (se->maindev_.fmt_video_capture) {
       te->SetFmtVideoCapture(*se->maindev_.fmt_video_capture);
+    }
 
-    if (se->maindev_.fmt_video_output)
+    if (se->maindev_.fmt_video_output) {
       te->SetFmtVideoOutput(*se->maindev_.fmt_video_output);
+    }
 
-    if (se->maindev_.fmt_video_overlay)
+    if (se->maindev_.fmt_video_overlay) {
       te->SetFmtVideoOverlay(*se->maindev_.fmt_video_overlay);
+    }
 
-    if (se->maindev_.fmt_vbi_capture)
+    if (se->maindev_.fmt_vbi_capture) {
       te->SetFmtVbiCapture(*se->maindev_.fmt_vbi_capture);
+    }
 
-    if (se->maindev_.fmt_vbi_output)
+    if (se->maindev_.fmt_vbi_output) {
       te->SetFmtVbiOutput(*se->maindev_.fmt_vbi_output);
+    }
 
-    if (se->maindev_.fmt_sliced_vbi_capture)
+    if (se->maindev_.fmt_sliced_vbi_capture) {
       te->SetFmtSlicedVbiCapture(*se->maindev_.fmt_sliced_vbi_capture);
+    }
 
-    if (se->maindev_.fmt_sliced_vbi_output)
+    if (se->maindev_.fmt_sliced_vbi_output) {
       te->SetFmtSlicedVbiOutput(*se->maindev_.fmt_sliced_vbi_output);
+    }
 
-    if (se->maindev_.fmt_video_output_overlay)
+    if (se->maindev_.fmt_video_output_overlay) {
       te->SetFmtVideoOutputOverlay(*se->maindev_.fmt_video_output_overlay);
+    }
 
-    if (se->maindev_.fmt_video_capture_mplane)
+    if (se->maindev_.fmt_video_capture_mplane) {
       te->SetFmtVideoCaptureMplane(*se->maindev_.fmt_video_capture_mplane);
+    }
 
-    if (se->maindev_.fmt_video_output_mplane)
+    if (se->maindev_.fmt_video_output_mplane) {
       te->SetFmtVideoOutputMplane(*se->maindev_.fmt_video_output_mplane);
+    }
 
-    if (se->maindev_.fmt_sdr_capture)
+    if (se->maindev_.fmt_sdr_capture) {
       te->SetFmtSdrCapture(*se->maindev_.fmt_sdr_capture);
+    }
 
-    if (se->maindev_.fmt_sdr_output)
+    if (se->maindev_.fmt_sdr_output) {
       te->SetFmtSdrOutput(*se->maindev_.fmt_sdr_output);
+    }
 
-    if (se->maindev_.fmt_meta_capture)
+    if (se->maindev_.fmt_meta_capture) {
       te->SetFmtMetaCapture(*se->maindev_.fmt_meta_capture);
+    }
 
-    if (se->maindev_.fmt_meta_output)
+    if (se->maindev_.fmt_meta_output) {
       te->SetFmtMetaOutput(*se->maindev_.fmt_meta_output);
+    }
 
     /* Ignored: VIDIOC_S_FREQUENCY */
 
-    if (se->maindev_.input)
+    if (se->maindev_.input) {
       te->SetInput(*se->maindev_.input);
+    }
 
-    if (se->maindev_.jpegcomp)
+    if (se->maindev_.jpegcomp) {
       te->SetJpegcomp(*se->maindev_.jpegcomp);
+    }
 
     /* Ignored: VIDIOC_S_MODULATOR */
 
-    if (se->maindev_.output)
+    if (se->maindev_.output) {
       te->SetOutput(*se->maindev_.output);
+    }
 
-    if (se->maindev_.parm_video_capture)
+    if (se->maindev_.parm_video_capture) {
       te->SetParmVideoCapture(*se->maindev_.parm_video_capture);
+    }
 
-    if (se->maindev_.parm_video_output)
+    if (se->maindev_.parm_video_output) {
       te->SetParmVideoOutput(*se->maindev_.parm_video_output);
+    }
 
-    if (se->maindev_.parm_video_overlay)
+    if (se->maindev_.parm_video_overlay) {
       te->SetParmVideoOverlay(*se->maindev_.parm_video_overlay);
+    }
 
-    if (se->maindev_.parm_vbi_capture)
+    if (se->maindev_.parm_vbi_capture) {
       te->SetParmVbiCapture(*se->maindev_.parm_vbi_capture);
+    }
 
-    if (se->maindev_.parm_vbi_output)
+    if (se->maindev_.parm_vbi_output) {
       te->SetParmVbiOutput(*se->maindev_.parm_vbi_output);
+    }
 
-    if (se->maindev_.parm_sliced_vbi_capture)
+    if (se->maindev_.parm_sliced_vbi_capture) {
       te->SetParmSlicedVbiCapture(*se->maindev_.parm_sliced_vbi_capture);
+    }
 
-    if (se->maindev_.parm_sliced_vbi_output)
+    if (se->maindev_.parm_sliced_vbi_output) {
       te->SetParmSlicedVbiOutput(*se->maindev_.parm_sliced_vbi_output);
+    }
 
-    if (se->maindev_.parm_video_output_overlay)
+    if (se->maindev_.parm_video_output_overlay) {
       te->SetParmVideoOutputOverlay(*se->maindev_.parm_video_output_overlay);
+    }
 
-    if (se->maindev_.parm_video_capture_mplane)
+    if (se->maindev_.parm_video_capture_mplane) {
       te->SetParmVideoCaptureMplane(*se->maindev_.parm_video_capture_mplane);
+    }
 
-    if (se->maindev_.parm_video_output_mplane)
+    if (se->maindev_.parm_video_output_mplane) {
       te->SetParmVideoOutputMplane(*se->maindev_.parm_video_output_mplane);
+    }
 
-    if (se->maindev_.parm_sdr_capture)
+    if (se->maindev_.parm_sdr_capture) {
       te->SetParmSdrCapture(*se->maindev_.parm_sdr_capture);
+    }
 
-    if (se->maindev_.parm_sdr_output)
+    if (se->maindev_.parm_sdr_output) {
       te->SetParmSdrOutput(*se->maindev_.parm_sdr_output);
+    }
 
-    if (se->maindev_.parm_meta_capture)
+    if (se->maindev_.parm_meta_capture) {
       te->SetParmMetaCapture(*se->maindev_.parm_meta_capture);
+    }
 
-    if (se->maindev_.parm_meta_output)
+    if (se->maindev_.parm_meta_output) {
       te->SetParmMetaOutput(*se->maindev_.parm_meta_output);
+    }
 
-    if (se->maindev_.priority)
+    if (se->maindev_.priority) {
       te->SetPriority(*se->maindev_.priority);
+    }
 
     for (__u32 type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
          type <= V4L2_BUF_TYPE_META_OUTPUT; type++) {
-      if (se->maindev_.selection[type - 1].crop_)
+      if (se->maindev_.selection[type - 1].crop_) {
         te->SetSelection(type, V4L2_SEL_TGT_CROP,
                          *se->maindev_.selection[type - 1].crop_);
+      }
 
-      if (se->maindev_.selection[type - 1].crop_default_)
+      if (se->maindev_.selection[type - 1].crop_default_) {
         te->SetSelection(type, V4L2_SEL_TGT_CROP_DEFAULT,
                          *se->maindev_.selection[type - 1].crop_default_);
+      }
 
-      if (se->maindev_.selection[type - 1].crop_bounds_)
+      if (se->maindev_.selection[type - 1].crop_bounds_) {
         te->SetSelection(type, V4L2_SEL_TGT_CROP_BOUNDS,
                          *se->maindev_.selection[type - 1].crop_bounds_);
+      }
 
-      if (se->maindev_.selection[type - 1].native_size_)
+      if (se->maindev_.selection[type - 1].native_size_) {
         te->SetSelection(type, V4L2_SEL_TGT_NATIVE_SIZE,
                          *se->maindev_.selection[type - 1].native_size_);
+      }
 
-      if (se->maindev_.selection[type - 1].compose_)
+      if (se->maindev_.selection[type - 1].compose_) {
         te->SetSelection(type, V4L2_SEL_TGT_COMPOSE,
                          *se->maindev_.selection[type - 1].compose_);
+      }
 
-      if (se->maindev_.selection[type - 1].compose_default_)
+      if (se->maindev_.selection[type - 1].compose_default_) {
         te->SetSelection(type, V4L2_SEL_TGT_COMPOSE_DEFAULT,
                          *se->maindev_.selection[type - 1].compose_default_);
+      }
 
-      if (se->maindev_.selection[type - 1].compose_bounds_)
+      if (se->maindev_.selection[type - 1].compose_bounds_) {
         te->SetSelection(type, V4L2_SEL_TGT_COMPOSE_BOUNDS,
                          *se->maindev_.selection[type - 1].compose_bounds_);
+      }
 
-      if (se->maindev_.selection[type - 1].compose_padded_)
+      if (se->maindev_.selection[type - 1].compose_padded_) {
         te->SetSelection(type, V4L2_SEL_TGT_COMPOSE_PADDED,
                          *se->maindev_.selection[type - 1].compose_padded_);
+      }
     }
 
-    if (se->maindev_.std)
+    if (se->maindev_.std) {
       te->SetStd(*se->maindev_.std);
+    }
 
-    if (se->maindev_.subdev_std)
+    if (se->maindev_.subdev_std) {
       te->SetSubdevStd(*se->maindev_.subdev_std);
+    }
 
     /* Ignored: VIDIOC_S_TUNER */
 
@@ -520,51 +580,63 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
       auto tp = te->PadByIndex(sp->desc_.index);
 
       /* Merge subdev properties */
-      if (sp->subdev_.crop)
+      if (sp->subdev_.crop) {
         tp->SetCrop(*sp->subdev_.crop);
+      }
 
-      if (sp->subdev_.fmt)
+      if (sp->subdev_.fmt) {
         tp->SetFmt(*sp->subdev_.fmt);
+      }
 
-      if (sp->subdev_.frame_interval)
+      if (sp->subdev_.frame_interval) {
         tp->SetFrameInterval(*sp->subdev_.frame_interval);
+      }
 
-      if (sp->subdev_.selection.crop_)
+      if (sp->subdev_.selection.crop_) {
         tp->SetSelection(V4L2_SEL_TGT_CROP, *sp->subdev_.selection.crop_);
+      }
 
-      if (sp->subdev_.selection.crop_default_)
+      if (sp->subdev_.selection.crop_default_) {
         tp->SetSelection(V4L2_SEL_TGT_CROP_DEFAULT,
                          *sp->subdev_.selection.crop_default_);
+      }
 
-      if (sp->subdev_.selection.crop_bounds_)
+      if (sp->subdev_.selection.crop_bounds_) {
         tp->SetSelection(V4L2_SEL_TGT_CROP_BOUNDS,
                          *sp->subdev_.selection.crop_bounds_);
+      }
 
-      if (sp->subdev_.selection.native_size_)
+      if (sp->subdev_.selection.native_size_) {
         tp->SetSelection(V4L2_SEL_TGT_NATIVE_SIZE,
                          *sp->subdev_.selection.native_size_);
+      }
 
-      if (sp->subdev_.selection.compose_)
+      if (sp->subdev_.selection.compose_) {
         tp->SetSelection(V4L2_SEL_TGT_COMPOSE, *sp->subdev_.selection.compose_);
+      }
 
-      if (sp->subdev_.selection.compose_default_)
+      if (sp->subdev_.selection.compose_default_) {
         tp->SetSelection(V4L2_SEL_TGT_COMPOSE_DEFAULT,
                          *sp->subdev_.selection.compose_default_);
+      }
 
-      if (sp->subdev_.selection.compose_bounds_)
+      if (sp->subdev_.selection.compose_bounds_) {
         tp->SetSelection(V4L2_SEL_TGT_COMPOSE_BOUNDS,
                          *sp->subdev_.selection.compose_bounds_);
+      }
 
-      if (sp->subdev_.selection.compose_padded_)
+      if (sp->subdev_.selection.compose_padded_) {
         tp->SetSelection(V4L2_SEL_TGT_COMPOSE_PADDED,
                          *sp->subdev_.selection.compose_padded_);
+      }
 
       /* Merge links */
       for (auto* sl : sp->links_) {
         __u32 sink_entity_id = sl->desc_.sink.entity;
-        if (remap)
+        if (remap) {
           sink_entity_id =
               remap->LookupRemappedIdOrFallback(sink_entity_id, target);
+        }
 
         auto tl = tp->LinkBySinkIds(sink_entity_id, sl->desc_.sink.index);
         if (!tl) {

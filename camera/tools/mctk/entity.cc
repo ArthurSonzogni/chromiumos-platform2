@@ -17,14 +17,16 @@
 #include "tools/mctk/pad.h"
 
 V4lMcEntity::~V4lMcEntity() {
-  if (fd_)
+  if (fd_) {
     close(*fd_);
+  }
 }
 
 V4lMcControl* V4lMcEntity::ControlById(__u32 id) {
   for (auto& control : controls_) {
-    if (control->desc_.id == id)
+    if (control->desc_.id == id) {
       return control.get();
+    }
   }
 
   return nullptr;
@@ -32,8 +34,9 @@ V4lMcControl* V4lMcEntity::ControlById(__u32 id) {
 
 V4lMcPad* V4lMcEntity::PadByIndex(__u16 index) {
   for (auto& pad : pads_) {
-    if (pad->desc_.index == index)
+    if (pad->desc_.index == index) {
       return pad.get();
+    }
   }
 
   return nullptr;

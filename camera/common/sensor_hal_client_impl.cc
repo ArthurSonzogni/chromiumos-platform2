@@ -76,8 +76,9 @@ std::optional<cros::SensorHalClient::Location> ParseLocation(
   }
 
   for (const auto& mapping : kLocationMapping) {
-    if (*raw_location == mapping.first)
+    if (*raw_location == mapping.first) {
       return mapping.second;
+    }
   }
 
   return cros::SensorHalClient::Location::kNone;
@@ -111,8 +112,9 @@ bool SensorHalClientImpl::HasDevice(DeviceType type, Location location) {
   ipc_bridge_.AsyncCall(&SensorHalClientImpl::IPCBridge::HasDevice)
       .WithArgs(*device_type, location, GetFutureCallback(future));
 
-  if (!future->Wait())
+  if (!future->Wait()) {
     return false;
+  }
 
   return future->Get();
 }
@@ -144,8 +146,9 @@ bool SensorHalClientImpl::RegisterSamplesObserver(
       .WithArgs(*device_type, location, frequency, samples_observer,
                 GetFutureCallback(future));
 
-  if (!future->Wait())
+  if (!future->Wait()) {
     return false;
+  }
 
   return future->Get();
 }
@@ -312,8 +315,9 @@ void SensorHalClientImpl::IPCBridge::SetUpChannel(
 
 void SensorHalClientImpl::IPCBridge::OnNewDeviceAdded(
     int32_t iio_device_id, const std::vector<mojom::DeviceType>& types) {
-  if (base::Contains(devices_, iio_device_id))
+  if (base::Contains(devices_, iio_device_id)) {
     return;
+  }
 
   RegisterDevice(iio_device_id, types);
 }
@@ -333,8 +337,9 @@ void SensorHalClientImpl::IPCBridge::OnDeviceRemoved(int32_t iio_device_id) {
   std::vector<mojom::DeviceType> types = devices_[iio_device_id].types;
   std::optional<Location> location_opt = devices_[iio_device_id].location;
   devices_.erase(iio_device_id);
-  if (!location_opt.has_value())
+  if (!location_opt.has_value()) {
     return;
+  }
 
   auto location = location_opt.value();
   for (const mojom::DeviceType& type : types) {
@@ -389,8 +394,9 @@ void SensorHalClientImpl::IPCBridge::RegisterDevice(
     int32_t iio_device_id, const std::vector<mojom::DeviceType>& types) {
   DeviceData& device = devices_[iio_device_id];
 
-  if (device.ignored)
+  if (device.ignored) {
     return;
+  }
 
   // This should only be processed once.
   if (device.types.empty()) {
@@ -511,11 +517,13 @@ bool SensorHalClientImpl::IPCBridge::AreAllDevicesOfTypeInitialized(
   }
 
   for (auto& [iio_device_id, device] : devices_) {
-    if (device.ignored || !base::Contains(device.types, type))
+    if (device.ignored || !base::Contains(device.types, type)) {
       continue;
+    }
 
-    if (!device.location)
+    if (!device.location) {
       return false;
+    }
   }
 
   return true;

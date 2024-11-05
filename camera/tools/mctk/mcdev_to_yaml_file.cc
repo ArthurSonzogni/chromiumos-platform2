@@ -336,13 +336,15 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
     case V4L2_CTRL_TYPE_BUTTON:
     case V4L2_CTRL_TYPE_BITMASK:
     case V4L2_CTRL_TYPE_INTEGER_MENU: {
-      for (__s32 tmp : control.values_s32_)
+      for (__s32 tmp : control.values_s32_) {
         EMIT_S32(tmp);
+      }
       break;
     }
     case V4L2_CTRL_TYPE_INTEGER64: {
-      for (__s64 tmp : control.values_s64_)
+      for (__s64 tmp : control.values_s64_) {
         EMIT_S64(tmp);
+      }
       break;
     }
     case V4L2_CTRL_TYPE_CTRL_CLASS:
@@ -352,22 +354,26 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
       MCTK_PANIC("Attempted to serialise V4L2_CTRL_TYPE_CTRL_CLASS");
       break;
     case V4L2_CTRL_TYPE_STRING:
-      for (std::string str : control.values_string_)
+      for (std::string str : control.values_string_) {
         EMIT_CSTR(str.c_str());
+      }
       break;
     case V4L2_CTRL_TYPE_U8: {
-      for (__u8 tmp : control.values_u8_)
+      for (__u8 tmp : control.values_u8_) {
         EMIT_U8(tmp);
+      }
       break;
     }
     case V4L2_CTRL_TYPE_U16: {
-      for (__u16 tmp : control.values_u16_)
+      for (__u16 tmp : control.values_u16_) {
         EMIT_U16(tmp);
+      }
       break;
     }
     case V4L2_CTRL_TYPE_U32: {
-      for (__u32 tmp : control.values_u32_)
+      for (__u32 tmp : control.values_u32_) {
         EMIT_U32(tmp);
+      }
       break;
     }
 #ifdef V4L2_CTRL_TYPE_AREA
@@ -1403,8 +1409,9 @@ void EmitEntity(yaml_emitter_t& emitter, V4lMcEntity* entity) {
     EMIT_KEY_CSTR("selection");
     EMIT_MAP_START();
     for (int i = 1; i <= V4L2_BUF_TYPE_META_OUTPUT; i++) {
-      if (!entity->maindev_.selection[i - 1].HasAny())
+      if (!entity->maindev_.selection[i - 1].HasAny()) {
         continue;
+      }
 
       EMIT_U32(i); /* key */
       EMIT_SELECTION(&entity->maindev_.selection[i - 1]);
@@ -1442,8 +1449,9 @@ void EmitEntity(yaml_emitter_t& emitter, V4lMcEntity* entity) {
       EMIT_S64_ELEM(&control->desc_, default_value);
       EMIT_U32_ELEM(&control->desc_, flags);
       EMIT_U32_ELEM(&control->desc_, elem_size);
-      if (control->desc_.nr_of_dims)
+      if (control->desc_.nr_of_dims) {
         EMIT_U32_ELEM_ARRAY(&control->desc_, dims, control->desc_.nr_of_dims);
+      }
       EMIT_U32_ELEM_ARRAY(&control->desc_, reserved, 32);
       EMIT_MAP_END();
       EMIT_KEY_CSTR("values");

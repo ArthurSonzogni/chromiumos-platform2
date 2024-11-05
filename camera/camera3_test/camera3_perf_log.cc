@@ -25,8 +25,9 @@ Camera3PerfLog* Camera3PerfLog::GetInstance() {
 }
 
 Camera3PerfLog::~Camera3PerfLog() {
-  if (!base::CommandLine::ForCurrentProcess()->HasSwitch("output_log"))
+  if (!base::CommandLine::ForCurrentProcess()->HasSwitch("output_log")) {
     return;
+  }
 
   VLOGF(1) << "Outputing to log file: "
            << base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
@@ -112,8 +113,9 @@ std::vector<std::pair<std::string, int64_t>> Camera3PerfLog::CollectPerfLogs(
     }
     const base::TimeTicks start_ticks = events.at(DeviceEvent::OPENING);
     for (const auto& event_name : kDeviceEventNameMap) {
-      if (!base::Contains(events, event_name.first))
+      if (!base::Contains(events, event_name.first)) {
         continue;
+      }
       const base::TimeTicks end_ticks = events.at(event_name.first);
       perf_logs.emplace_back(event_name.second,
                              (end_ticks - start_ticks).InMicroseconds());
@@ -154,16 +156,18 @@ std::vector<std::pair<std::string, int64_t>> Camera3PerfLog::CollectPerfLogs(
       }
       const base::TimeTicks start_ticks = events.at(FrameEvent::SHUTTER);
       for (const auto& event_name : kFrameEventNameMap) {
-        if (!base::Contains(events, event_name.first))
+        if (!base::Contains(events, event_name.first)) {
           continue;
+        }
         const base::TimeTicks end_ticks = events.at(event_name.first);
         frame_perf_logs[event_name.second].push_back(
             (end_ticks - start_ticks).InMicroseconds());
       }
     }
     for (const auto& event_name : kFrameEventNameMap) {
-      if (!base::Contains(frame_perf_logs, event_name.second))
+      if (!base::Contains(frame_perf_logs, event_name.second)) {
         continue;
+      }
       const std::vector<int64_t>& logs = frame_perf_logs.at(event_name.second);
       if (!logs.empty()) {
         VLOGF(1) << "Calculate " << event_name.second << " from " << logs.size()
@@ -178,12 +182,14 @@ std::vector<std::pair<std::string, int64_t>> Camera3PerfLog::CollectPerfLogs(
     std::vector<int64_t> logs;
     std::optional<base::TimeTicks> start_ticks;
     for (const auto& it : frame_events_.at(cam_id)) {
-      if (!base::Contains(it.second, FrameEvent::STILL_CAPTURE_RESULT))
+      if (!base::Contains(it.second, FrameEvent::STILL_CAPTURE_RESULT)) {
         continue;
+      }
       const base::TimeTicks end_ticks =
           it.second.at(FrameEvent::STILL_CAPTURE_RESULT);
-      if (start_ticks)
+      if (start_ticks) {
         logs.push_back((end_ticks - *start_ticks).InMicroseconds());
+      }
       start_ticks.emplace(end_ticks);
     }
     if (!logs.empty()) {

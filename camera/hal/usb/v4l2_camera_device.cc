@@ -405,7 +405,8 @@ int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
                                     kExposureTypeMenuStringManual)) {
             manual_exposure_time_type_ = V4L2_EXPOSURE_MANUAL;
           } else {
-            NOTREACHED_IN_MIGRATION() << "No manual exposure time type supported";
+            NOTREACHED_IN_MIGRATION()
+                << "No manual exposure time type supported";
           }
           break;
 
@@ -448,7 +449,8 @@ int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
                                     kExposureTypeMenuStringShutterPriority)) {
             manual_exposure_time_type_ = V4L2_EXPOSURE_SHUTTER_PRIORITY;
           } else {
-            NOTREACHED_IN_MIGRATION() << "No manual exposure time type supported";
+            NOTREACHED_IN_MIGRATION()
+                << "No manual exposure time type supported";
           }
           break;
 
@@ -823,14 +825,16 @@ int V4L2CameraDevice::SetExposureTimeHundredUs(uint32_t exposure_time) {
   }
 
   if (exposure_time == kExposureTimeAuto) {
-    if (control_values_.count(kControlExposureTime))
+    if (control_values_.count(kControlExposureTime)) {
       control_values_.erase(kControlExposureTime);
+    }
     return SetControlValue(kControlExposureAuto, auto_exposure_time_type_);
   }
 
   int ret = SetControlValue(kControlExposureAuto, manual_exposure_time_type_);
-  if (ret != 0)
+  if (ret != 0) {
     return ret;
+  }
 
   return SetControlValue(kControlExposureTime, exposure_time);
 }
@@ -896,8 +900,9 @@ int V4L2CameraDevice::SetColorTemperature(uint32_t color_temperature) {
   }
 
   if (color_temperature == kColorTemperatureAuto) {
-    if (control_values_.count(kControlWhiteBalanceTemperature))
+    if (control_values_.count(kControlWhiteBalanceTemperature)) {
       control_values_.erase(kControlWhiteBalanceTemperature);
+    }
     return SetControlValue(kControlAutoWhiteBalance, 1);
   }
 
@@ -914,21 +919,24 @@ int V4L2CameraDevice::SetControlValue(ControlType type, int32_t value) {
   auto it = control_values_.find(type);
   // Has cached value
   if (it != control_values_.end()) {
-    if (it->second == value)
+    if (it->second == value) {
       return 0;
-    else
+    } else {
       control_values_.erase(type);
+    }
   }
 
   int ret = SetControlValue(device_fd_.get(), type, value);
-  if (ret != 0)
+  if (ret != 0) {
     return ret;
+  }
 
   int32_t current_value;
 
   ret = GetControlValue(type, &current_value);
-  if (ret != 0)
+  if (ret != 0) {
     return ret;
+  }
   if (value == current_value) {
     LOGF(INFO) << "Set " << ControlTypeToString(type) << " to " << value;
   } else {
@@ -948,8 +956,9 @@ int V4L2CameraDevice::GetControlValue(ControlType type, int32_t* value) {
   }
 
   int ret = GetControlValue(device_fd_.get(), type, value);
-  if (ret != 0)
+  if (ret != 0) {
     return ret;
+  }
 
   control_values_[type] = *value;
   return 0;
@@ -1414,8 +1423,9 @@ bool V4L2CameraDevice::IsRegionOfInterestSupported(
     return false;
   }
 
-  if (!GetRegionOfInterestInfo(fd, *api, &roi_control))
+  if (!GetRegionOfInterestInfo(fd, *api, &roi_control)) {
     return false;
+  }
 
   // enable max auto controls.
   *roi_flags = max_roi_auto;
@@ -1533,8 +1543,9 @@ int V4L2CameraDevice::QueryControl(const base::FilePath& device_path,
   if (!info->menu_items.empty()) {
     VLOGF(1) << ControlTypeToString(type) << " " << info->menu_items.size()
              << " menu items:";
-    for (const auto& item : info->menu_items)
+    for (const auto& item : info->menu_items) {
       VLOGF(1) << "    " << item;
+    }
   }
 
   return 0;
@@ -1660,8 +1671,9 @@ bool V4L2CameraDevice::IsFocusDistanceSupported(
     const base::FilePath& device_path, ControlRange* focus_distance_range) {
   DCHECK(focus_distance_range != nullptr);
 
-  if (!IsControlSupported(device_path, kControlFocusAuto))
+  if (!IsControlSupported(device_path, kControlFocusAuto)) {
     return false;
+  }
 
   ControlInfo info;
   if (QueryControl(device_path, kControlFocusDistance, &info) != 0) {
@@ -1680,8 +1692,9 @@ bool V4L2CameraDevice::IsManualExposureTimeSupported(
 
   DCHECK(exposure_time_range);
 
-  if (QueryControl(device_path, kControlExposureAuto, &info) != 0)
+  if (QueryControl(device_path, kControlExposureAuto, &info) != 0) {
     return false;
+  }
 
   bool found_manual_type = false;
   bool found_auto_type = false;
@@ -1697,8 +1710,9 @@ bool V4L2CameraDevice::IsManualExposureTimeSupported(
     }
   }
 
-  if (!found_manual_type || !found_auto_type)
+  if (!found_manual_type || !found_auto_type) {
     return false;
+  }
 
   if (QueryControl(device_path, kControlExposureTime, &info) != 0) {
     LOGF(WARNING) << "Can't get exposure time range";

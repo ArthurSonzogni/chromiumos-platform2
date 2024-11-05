@@ -370,11 +370,13 @@ bool CameraClient::IsValidStreamSet(
   for (const auto& stream : streams) {
     // A stream may be both input and output (bidirectional).
     if (stream->stream_type == CAMERA3_STREAM_INPUT ||
-        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL)
+        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL) {
       num_input++;
+    }
     if (stream->stream_type == CAMERA3_STREAM_OUTPUT ||
-        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL)
+        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL) {
       num_output++;
+    }
 
     if (stream->rotation != CAMERA3_STREAM_ROTATION_0) {
       LOGFID(ERROR, id_) << "Unsupported rotation " << stream->rotation;
@@ -405,8 +407,9 @@ void CameraClient::SetUpStreams(int num_buffers,
           GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE;
     }
     if (stream->stream_type == CAMERA3_STREAM_INPUT ||
-        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL)
+        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL) {
       stream->usage |= GRALLOC_USAGE_SW_READ_OFTEN;
+    }
     stream->max_buffers = num_buffers;
   }
 }
@@ -675,8 +678,9 @@ bool CameraClient::ShouldUseNativeSensorRatio(
       break;
     }
   }
-  if (!try_native_sensor_ratio)
+  if (!try_native_sensor_ratio) {
     return false;
+  }
 
   // Find maximum width and height of all streams.
   Size max_stream_resolution(0, 0);

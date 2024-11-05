@@ -386,9 +386,10 @@ bool V4lMcEntity::SetPriority(enum v4l2_priority priority) {
 }
 
 bool V4lMcEntity::SetSelection(__u32 type, __u32 target, struct v4l2_rect& r) {
-  if (type < V4L2_BUF_TYPE_VIDEO_CAPTURE || type > V4L2_BUF_TYPE_META_OUTPUT)
+  if (type < V4L2_BUF_TYPE_VIDEO_CAPTURE || type > V4L2_BUF_TYPE_META_OUTPUT) {
     /* Only 14 buffer types defined as of kernel 6.5 */
     return false;
+  }
 
   switch (target) {
     case V4L2_SEL_TGT_CROP:

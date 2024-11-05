@@ -73,8 +73,9 @@ void InsertJpegBlobDescriptor(buffer_handle_t jpeg_blob,
 bool ParseAppSections(base::span<uint8_t> blob,
                       std::vector<uint8_t>* out_buffer,
                       std::map<uint16_t, base::span<uint8_t>>* out_index) {
-  if (blob.empty())
+  if (blob.empty()) {
     return false;
+  }
   out_buffer->resize(blob.size());
   uint8_t* src_addr = blob.data();
   const uint8_t* src_end = blob.data() + blob.size();

@@ -57,8 +57,9 @@ uint32_t GetAwbTemperatureByMode(
     camera_metadata_enum_android_control_awb_mode mode) {
   const cros::AwbModeToTemperatureMap& map = GetAwbModeTemperatureMap();
 
-  if (mode == ANDROID_CONTROL_AWB_MODE_AUTO)
+  if (mode == ANDROID_CONTROL_AWB_MODE_AUTO) {
     return 0;
+  }
 
   auto it = map.find(mode);
   if (it == map.end()) {
@@ -71,8 +72,9 @@ uint32_t GetAwbTemperatureByMode(
   uint32_t temperature =
       range.minimum + range.step * ((it->second - range.minimum) / range.step);
 
-  if (temperature < range.minimum || temperature > range.maximum)
+  if (temperature < range.minimum || temperature > range.maximum) {
     return 0;
+  }
 
   return temperature;
 }
@@ -104,8 +106,9 @@ std::vector<float> GetPhysicalSize(float horiz_fov,
 uint32_t GetNormalizeFactorForV4l2FocusRange(float v4l2_range) {
   uint32_t normalize_factor = 1;
 
-  while (v4l2_range / normalize_factor > 100.0)
+  while (v4l2_range / normalize_factor > 100.0) {
     normalize_factor *= 10;
+  }
 
   return normalize_factor;
 }
@@ -173,8 +176,9 @@ bool IsFpsRangeSupported(const SupportedFormats& supported_formats,
             const int32_t fps = static_cast<int32_t>(x);
             return fps_range_min <= fps && fps <= fps_range_max;
           });
-      if (!has_fps_in_range)
+      if (!has_fps_in_range) {
         return false;
+      }
     }
   }
   return true;
@@ -632,19 +636,23 @@ AwbModeToTemperatureMap MetadataHandler::GetAvailableAwbTemperatures(
       kColorTemperatureAuto;
 
   if (!V4L2CameraDevice::IsControlSupported(device_info.device_path,
-                                            kControlAutoWhiteBalance))
+                                            kControlAutoWhiteBalance)) {
     return available_awb_temperatures;
+  }
 
   ControlInfo info;
-  if (V4L2CameraDevice::QueryControl(
-          device_info.device_path, kControlWhiteBalanceTemperature, &info) != 0)
+  if (V4L2CameraDevice::QueryControl(device_info.device_path,
+                                     kControlWhiteBalanceTemperature,
+                                     &info) != 0) {
     return available_awb_temperatures;
+  }
 
   for (auto& mode_temperature : GetAwbModeTemperatureMap()) {
     uint32_t temperature =
         GetAwbTemperatureByMode(info.range, mode_temperature.first);
-    if (!temperature)
+    if (!temperature) {
       continue;
+    }
     available_awb_temperatures[mode_temperature.first] = temperature;
   }
 
@@ -962,8 +970,9 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
   }
 
   std::vector<uint8_t> available_awb_modes;
-  for (auto const& it : GetAvailableAwbTemperatures(device_info))
+  for (auto const& it : GetAvailableAwbTemperatures(device_info)) {
     available_awb_modes.push_back(it.first);
+  }
 
   update_static(ANDROID_CONTROL_AWB_AVAILABLE_MODES, available_awb_modes);
 
@@ -1201,10 +1210,11 @@ int MetadataHandler::PreHandleRequest(int frame_number,
     camera_metadata_entry entry = metadata->find(ANDROID_CONTROL_AWB_MODE);
     auto mode = static_cast<camera_metadata_enum_android_control_awb_mode>(
         entry.data.u8[0]);
-    if (awb_temperature_.count(mode))
+    if (awb_temperature_.count(mode)) {
       device_->SetColorTemperature(awb_temperature_[mode]);
-    else
+    } else {
       LOGF(WARNING) << "Unsupported AWB mode:" << mode;
+    }
   }
 
   const int64_t rolling_shutter_skew = 33'300'000;
@@ -1398,32 +1408,39 @@ int MetadataHandler::PostHandleRequest(
 
   int32_t value;
   if (is_brightness_control_supported_ &&
-      device_->GetControlValue(kControlBrightness, &value) == 0)
+      device_->GetControlValue(kControlBrightness, &value) == 0) {
     update_request(kVendorTagControlBrightness, value);
+  }
 
   if (is_contrast_control_supported_ &&
-      device_->GetControlValue(kControlContrast, &value) == 0)
+      device_->GetControlValue(kControlContrast, &value) == 0) {
     update_request(kVendorTagControlContrast, value);
+  }
 
   if (is_pan_control_supported_ &&
-      device_->GetControlValue(kControlPan, &value) == 0)
+      device_->GetControlValue(kControlPan, &value) == 0) {
     update_request(kVendorTagControlPan, value);
+  }
 
   if (is_saturation_control_supported_ &&
-      device_->GetControlValue(kControlSaturation, &value) == 0)
+      device_->GetControlValue(kControlSaturation, &value) == 0) {
     update_request(kVendorTagControlSaturation, value);
+  }
 
   if (is_sharpness_control_supported_ &&
-      device_->GetControlValue(kControlSharpness, &value) == 0)
+      device_->GetControlValue(kControlSharpness, &value) == 0) {
     update_request(kVendorTagControlSharpness, value);
+  }
 
   if (is_tilt_control_supported_ &&
-      device_->GetControlValue(kControlTilt, &value) == 0)
+      device_->GetControlValue(kControlTilt, &value) == 0) {
     update_request(kVendorTagControlTilt, value);
+  }
 
   if (is_zoom_control_supported_ &&
-      device_->GetControlValue(kControlZoom, &value) == 0)
+      device_->GetControlValue(kControlZoom, &value) == 0) {
     update_request(kVendorTagControlZoom, value);
+  }
 
   if (metadata->exists(ANDROID_CONTROL_AWB_MODE)) {
     update_request(ANDROID_CONTROL_AWB_MODE, ANDROID_CONTROL_AWB_MODE_AUTO);

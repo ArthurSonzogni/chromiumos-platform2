@@ -30,8 +30,9 @@ std::unique_ptr<YamlNode> YamlNode::FromFile(FILE& file) {
   yaml_parser_set_input_file(&parser, &file);
 
   /* Assert that we're at the start of a file */
-  if (!yaml_parser_parse(&parser, &event))
+  if (!yaml_parser_parse(&parser, &event)) {
     goto del_parser;
+  }
   if (event.type != YAML_STREAM_START_EVENT) {
     yaml_event_delete(&event);
     goto del_parser;
@@ -39,8 +40,9 @@ std::unique_ptr<YamlNode> YamlNode::FromFile(FILE& file) {
   yaml_event_delete(&event);
 
   /* Assert that we're at the start of a YAML document */
-  if (!yaml_parser_parse(&parser, &event))
+  if (!yaml_parser_parse(&parser, &event)) {
     goto del_parser;
+  }
   if (event.type != YAML_DOCUMENT_START_EVENT) {
     yaml_event_delete(&event);
     goto del_parser;
@@ -49,8 +51,9 @@ std::unique_ptr<YamlNode> YamlNode::FromFile(FILE& file) {
 
   root = YamlNode::FromParser(parser);
 
-  if (!root)
+  if (!root) {
     goto del_parser;
+  }
 
   /* The next event should be a YAML_DOCUMENT_END_EVENT,
    * since we've just parsed the root node and all of its children.

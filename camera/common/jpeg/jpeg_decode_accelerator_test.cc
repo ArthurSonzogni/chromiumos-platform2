@@ -199,8 +199,9 @@ double JpegDecodeAcceleratorTest::GetMeanAbsoluteDifference(Frame* frame) {
   int output_size = frame->width * frame->height * kYUV420_BytesFactor;
   uint8_t* hw_ptr = frame->hw_out_shm_mapping.GetMemoryAs<uint8_t>();
   uint8_t* sw_ptr = frame->sw_out_shm_mapping.GetMemoryAs<uint8_t>();
-  for (size_t i = 0; i < output_size; i++)
+  for (size_t i = 0; i < output_size; i++) {
     total_difference += std::abs(hw_ptr[i] - sw_ptr[i]);
+  }
   return total_difference / output_size;
 }
 
@@ -457,10 +458,12 @@ int main(int argc, char** argv) {
       jpeg_filename2 = it->second.c_str();
       continue;
     }
-    if (it->first == "v" || it->first == "vmodule")
+    if (it->first == "v" || it->first == "vmodule") {
       continue;
-    if (it->first == "h" || it->first == "help")
+    }
+    if (it->first == "h" || it->first == "help") {
       continue;
+    }
     LOG(ERROR) << "Unexpected switch: " << it->first << ":" << it->second;
     return -EINVAL;
   }

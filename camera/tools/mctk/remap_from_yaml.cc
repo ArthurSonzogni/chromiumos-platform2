@@ -36,11 +36,13 @@ std::unique_ptr<V4lMcRemap> V4lMcRemap::CreateFromYamlNode(
         (*node_one)["name_regex"].Read<std::string>();
 
     /* Is the mapping entry complete? */
-    if (!id)
+    if (!id) {
       MCTK_PANIC("Remap entry without source ID.");
+    }
 
-    if (!name && !name_regex)
+    if (!name && !name_regex) {
       MCTK_PANIC("Remap entry without target name/regex.");
+    }
 
     /* Create the remap entry */
     V4lMcRemapEntry new_entry =

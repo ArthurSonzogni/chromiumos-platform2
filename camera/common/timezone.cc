@@ -37,8 +37,9 @@ class TimezoneMap {
   std::string CountryCodeForTimezone(const std::string& olson_code) {
     std::map<const char*, const char*, CompareCStrings>::iterator iter =
         map_.find(olson_code.c_str());
-    if (iter != map_.end())
+    if (iter != map_.end()) {
       return iter->second;
+    }
 
     return std::string();
   }
@@ -473,8 +474,9 @@ class TimezoneMap {
         {"GB", "Etc/UCT"},
     };
 
-    for (auto const& code_data : olson_code_data)
+    for (auto const& code_data : olson_code_data) {
       map_[code_data.olson_code] = code_data.country_code;
+    }
 
     // These are mapping from old codenames to new codenames. They are also
     // part of public domain, and available at
@@ -596,8 +598,9 @@ class TimezoneMap {
         {"Zulu", "Etc/UTC"},
     };
 
-    for (auto const& data : link_data)
+    for (auto const& data : link_data) {
       map_[data.old_code] = map_[data.new_code];
+    }
   }
 
  private:
@@ -630,8 +633,9 @@ std::string CountryCodeForCurrentTimezone() {
 
 std::optional<v4l2_power_line_frequency> GetPowerLineFrequencyForLocation() {
   const std::string current_country = CountryCodeForCurrentTimezone();
-  if (current_country.empty())
+  if (current_country.empty()) {
     return std::nullopt;
+  }
   DLOGF(INFO) << "Country: " << current_country;
   // Sorted out list of countries with 60Hz power line frequency, from
   // http://en.wikipedia.org/wiki/Mains_electricity_by_country

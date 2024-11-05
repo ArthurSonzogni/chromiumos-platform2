@@ -42,8 +42,9 @@ V4L2Subdevice::~V4L2Subdevice() {
 int V4L2Subdevice::Open(int flags) {
   base::AutoLock l(state_lock_);
   int status = V4L2Device::Open(flags);
-  if (status == 0)
+  if (status == 0) {
     state_ = SubdevState::OPEN;
+  }
   return status;
 }
 
@@ -61,8 +62,8 @@ int V4L2Subdevice::SetFormat(const struct v4l2_subdev_format& format) {
     return -EINVAL;
   }
 
-  VLOGF(1) << "VIDIOC_SUBDEV_S_FMT:"
-           << "    pad:" << format.pad << "    which:" << format.which
+  VLOGF(1) << "VIDIOC_SUBDEV_S_FMT:" << "    pad:" << format.pad
+           << "    which:" << format.which
            << "    width:" << format.format.width
            << "    height:" << format.format.height << "    format:0x"
            << std::hex << format.format.code << "    field:" << std::dec
@@ -75,8 +76,8 @@ int V4L2Subdevice::SetFormat(const struct v4l2_subdev_format& format) {
     return -EINVAL;
   }
 
-  VLOGF(2) << "VIDIOC_SUBDEV_S_FMT:"
-           << "    pad:" << format.pad << "    which:" << format.which
+  VLOGF(2) << "VIDIOC_SUBDEV_S_FMT:" << "    pad:" << format.pad
+           << "    which:" << format.which
            << "    width:" << format.format.width
            << "    height:" << format.format.height << "    format:0x"
            << std::hex << format.format.code << "    field:" << std::dec
@@ -100,8 +101,8 @@ int V4L2Subdevice::GetFormat(struct v4l2_subdev_format* format) {
     return -EINVAL;
   }
 
-  VLOGF(1) << "VIDIOC_SUBDEV_G_FMT:"
-           << "    pad:" << format->pad << "    which:" << format->which
+  VLOGF(1) << "VIDIOC_SUBDEV_G_FMT:" << "    pad:" << format->pad
+           << "    which:" << format->which
            << "    width:" << format->format.width
            << "    height:" << format->format.height << "    format:0x"
            << std::hex << format->format.code << "    field:" << std::dec
@@ -138,12 +139,11 @@ int V4L2Subdevice::SetSelection(const struct v4l2_subdev_selection& selection) {
     return -EINVAL;
   }
 
-  VLOGF(1) << "VIDIOC_SUBDEV_S_SELECTION:"
-           << "    which:" << selection.which << "    pad:" << selection.pad
-           << "    target:" << std::hex << selection.target
-           << "    flags:" << selection.flags << "    left:" << std::dec
-           << selection.r.left << "    top:" << selection.r.top
-           << "    width:" << selection.r.width
+  VLOGF(1) << "VIDIOC_SUBDEV_S_SELECTION:" << "    which:" << selection.which
+           << "    pad:" << selection.pad << "    target:" << std::hex
+           << selection.target << "    flags:" << selection.flags
+           << "    left:" << std::dec << selection.r.left
+           << "    top:" << selection.r.top << "    width:" << selection.r.width
            << "    height:" << selection.r.height;
 
   int ret = ::ioctl(fd_, VIDIOC_SUBDEV_S_SELECTION, &selection);

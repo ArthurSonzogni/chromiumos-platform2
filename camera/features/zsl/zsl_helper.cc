@@ -659,8 +659,9 @@ bool ZslHelper::SelectZslStreamSize(const camera_metadata_t* static_info,
   VLOGF(1) << "Iterating stream configuration map for ZSL streams";
   for (size_t i = 0; i < entry.count; i += 4) {
     const int32_t& format = entry.data.i32[i + STREAM_CONFIG_FORMAT_INDEX];
-    if (format != kZslPixelFormat)
+    if (format != kZslPixelFormat) {
       continue;
+    }
     const int32_t& width = entry.data.i32[i + STREAM_CONFIG_WIDTH_INDEX];
     const int32_t& height = entry.data.i32[i + STREAM_CONFIG_HEIGHT_INDEX];
     const int32_t& direction =
