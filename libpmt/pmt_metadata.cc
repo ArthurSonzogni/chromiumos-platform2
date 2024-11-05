@@ -18,8 +18,9 @@ std::string_view trim(const std::string_view& str) {
   std::string_view result(str);
   result.remove_prefix(
       std::min(str.find_first_not_of(whitespace), result.size()));
-  while (whitespace.find(result.back()) != whitespace.npos)
+  while (whitespace.find(result.back()) != whitespace.npos) {
     result.remove_suffix(1);
+  }
   return result;
 }
 
@@ -291,14 +292,16 @@ static IntegerTransformMap kIntegerTransforms = {
 };
 
 IntegerTransform GetIntegerTransform(const std::string_view& id) {
-  if (kIntegerTransforms.contains(id))
+  if (kIntegerTransforms.contains(id)) {
     return kIntegerTransforms.at(id);
+  }
   return nullptr;
 }
 
 FloatTransform GetFloatTransform(const std::string_view& id) {
-  if (kFloatTransforms.contains(id))
+  if (kFloatTransforms.contains(id)) {
     return kFloatTransforms.at(id);
+  }
   return nullptr;
 }
 

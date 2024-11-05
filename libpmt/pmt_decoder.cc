@@ -118,19 +118,22 @@ PmtDecoder::FindMetadata() {
 
   base::FilePath meta_path;
   meta_path = intf_->GetMetadataMappingsFile();
-  if (meta_path.empty())
+  if (meta_path.empty()) {
     PMT_XML_ERROR_EXIT("pmt.xml is missing");
+  }
 
   xml::XmlParser parser;
   int parse_result = parser.ParseFile(meta_path);
-  if (parse_result != 0)
+  if (parse_result != 0) {
     PMT_XML_ERROR_EXIT("Failed to parse " << meta_path << ": "
                                           << strerror(parse_result));
+  }
 
   xml::ScopedXmlXPathObject mappings_match = parser.XPathEval(kXPathMappings);
   if (!mappings_match || !mappings_match->nodesetval ||
-      !mappings_match->nodesetval->nodeTab)
+      !mappings_match->nodesetval->nodeTab) {
     PMT_XML_ERROR_EXIT("failed to find " << kXPathMappings);
+  }
 
   xmlNodeSetPtr mappings = mappings_match->nodesetval;
 
@@ -143,33 +146,40 @@ PmtDecoder::FindMetadata() {
 
     auto guid_str = parser.GetAttrValue(mapping, kAttrGuid);
     Guid guid;
-    if (!guid_str || !base::HexStringToUInt(*guid_str, &guid))
+    if (!guid_str || !base::HexStringToUInt(*guid_str, &guid)) {
       PMT_XML_ERROR_EXIT("could not decode GUID " << *guid_str);
+    }
 
     auto base_dir = parser.GetXPathNodeTextValue(mapping, kXPathBaseDir);
-    if (!base_dir)
+    if (!base_dir) {
       PMT_XML_ERROR_EXIT("malformed <basedir>");
+    }
 
     base::FilePath base_dir_path(meta_path.DirName().Append(base_dir->data()));
     // If the path doesn't exist it simply means it's not supported so skip it.
-    if (!base::DirectoryExists(base_dir_path))
+    if (!base::DirectoryExists(base_dir_path)) {
       continue;
+    }
 
     auto agg_file = parser.GetXPathNodeTextValue(mapping, kXPathAggregatorFile);
-    if (!agg_file)
+    if (!agg_file) {
       PMT_XML_ERROR_EXIT("malformed <aggregator>");
+    }
     guid_paths.aggregator_ = base_dir_path.Append(*agg_file);
-    if (!base::PathExists(guid_paths.aggregator_))
+    if (!base::PathExists(guid_paths.aggregator_)) {
       PMT_XML_ERROR_EXIT(guid_paths.aggregator_.value() << " doesn't exist");
+    }
 
     auto agg_intf =
         parser.GetXPathNodeTextValue(mapping, kXPathAggregatorInterfaceFile);
-    if (!agg_intf)
+    if (!agg_intf) {
       PMT_XML_ERROR_EXIT("malformed <aggregatorinterface>");
+    }
     guid_paths.aggregator_interface_ = base_dir_path.Append(*agg_intf);
-    if (!base::PathExists(guid_paths.aggregator_interface_))
+    if (!base::PathExists(guid_paths.aggregator_interface_)) {
       PMT_XML_ERROR_EXIT(guid_paths.aggregator_interface_.value()
                          << " doesn't exist");
+    }
 
     result[guid] = guid_paths;
   }
@@ -180,8 +190,9 @@ PmtDecoder::FindMetadata() {
 vector<Guid> PmtDecoder::DetectMetadata() {
   unordered_map<Guid, struct MetadataFilePaths> guid_map = FindMetadata();
   vector<Guid> result;
-  for (const auto& kv : guid_map)
+  for (const auto& kv : guid_map) {
     result.push_back(kv.first);
+  }
   std::sort(result.begin(), result.end());
   return result;
 }
@@ -190,8 +201,9 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
   // Sort by GUIDs. GUIDs need to be sorted because some transformations
   // are relying on data from other devices (see the 'pkgc_block_cause'
   // transformation).
-  if (!ctx_.info_.empty())
+  if (!ctx_.info_.empty()) {
     return -EBUSY;
+  }
 
   // Prepare RegExp for skipping reserved samples later.
   re2::RE2::Options opts;
@@ -220,9 +232,10 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
     xml::XmlParser agg_intf_parser;
     int result =
         agg_intf_parser.ParseFile(metadata_files.aggregator_interface_);
-    if (result)
+    if (result) {
       AGG_XML_ERROR_EXIT(metadata_files.aggregator_interface_
                          << ": " << strerror(result));
+    }
 
     agg_intf_parser.RegisterNamespace(kCommonNs, kCommonNsUri);
     agg_intf_parser.RegisterNamespace(kXiNs, kXiNsUri);
@@ -231,8 +244,9 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
     xml::ScopedXmlXPathObject transforms_match =
         agg_intf_parser.XPathEval(kXPathTransforms);
     if (!transforms_match || !transforms_match->nodesetval ||
-        !transforms_match->nodesetval->nodeTab)
+        !transforms_match->nodesetval->nodeTab) {
       AGG_XML_ERROR_EXIT("failed to find " << kXPathTransforms);
+    }
 
     xmlNodeSetPtr transforms = transforms_match->nodesetval;
     // For each transformation, read its output datatype as we'll need it later
@@ -241,13 +255,15 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
     for (size_t i = 0; i < transforms->nodeNr; i++) {
       auto transform = transforms->nodeTab[i];
       auto id = agg_intf_parser.GetAttrValue(transform, kAttrTransformId);
-      if (!id)
+      if (!id) {
         AGG_XML_ERROR_EXIT("failed to find " << kAttrTransformId
                                              << " in a transformation node");
+      }
       auto output_dataclass =
           agg_intf_parser.GetXPathNodeTextValue(transform, kXPathTransformType);
-      if (!output_dataclass)
+      if (!output_dataclass) {
         AGG_XML_ERROR_EXIT("failed to parse the type of " << *id);
+      }
       // Determine the type. Most samples are floats. For others, default to an
       // unsigned integer.
       DataType type = DataType::FLOAT;
@@ -256,17 +272,19 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
         // explicitly given but the "Sxxx" transformID seems to indicate a
         // signed integer as the transformation is essentially a U2
         // representation of it.
-        if (id->starts_with("S"))
+        if (id->starts_with("S")) {
           type = DataType::SINT;
-        else
+        } else {
           type = DataType::UINT;
+        }
       }
       auto transform_id = string(*id);
       if (transform_map.contains(transform_id)) {
-        if (transform_map[transform_id] != type)
+        if (transform_map[transform_id] != type) {
           AGG_XML_ERROR_EXIT("conflicting transformation types for "
                              << transform_id << ": "
                              << transform_map[transform_id] << " != " << type);
+        }
       } else {
         transform_map[transform_id] = type;
       }
@@ -296,13 +314,15 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
 
     // Setup parsers for aggregator and aggregator interface files.
     int result = agg_parser.ParseFile(metadata_files.aggregator_);
-    if (result)
+    if (result) {
       AGG_XML_ERROR_EXIT(metadata_files.aggregator_ << ": "
                                                     << strerror(result));
+    }
     result = agg_intf_parser.ParseFile(metadata_files.aggregator_interface_);
-    if (result)
+    if (result) {
       AGG_XML_ERROR_EXIT(metadata_files.aggregator_interface_
                          << ": " << strerror(result));
+    }
 
     agg_parser.RegisterNamespace(kXsiNs, kXsiNsUri);
     agg_parser.RegisterNamespace(kXiNs, kXiNsUri);
@@ -315,8 +335,9 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
     xml::ScopedXmlXPathObject samples_match =
         agg_parser.XPathEval(kXPathSamples);
     if (!samples_match || !samples_match->nodesetval ||
-        !samples_match->nodesetval->nodeTab)
+        !samples_match->nodesetval->nodeTab) {
       AGG_XML_ERROR_EXIT("failed to find " << kXPathSamples);
+    }
 
     xmlNodeSetPtr samples = samples_match->nodesetval;
     // Iterate over samples defined in the aggregator. For every sample decode
@@ -335,30 +356,35 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
 
       // Parse the extraction parameters.
       auto sample_id(agg_parser.GetAttrValue(sample, "sampleID"));
-      if (!sample_id)
+      if (!sample_id) {
         AGG_XML_ERROR_EXIT("failed to parse GUID 0x"
                            << hex << guid << " sample nr " << guid_sample_idx);
+      }
       auto sample_name(agg_parser.GetAttrValue(sample, "name"));
-      if (!sample_name)
+      if (!sample_name) {
         AGG_XML_ERROR_EXIT("failed to parse GUID 0x"
                            << hex << guid << " sample nr " << guid_sample_idx);
+      }
       auto lsb_str(agg_parser.GetXPathNodeTextValue(sample, kXPathLsb));
       auto msb_str(agg_parser.GetXPathNodeTextValue(sample, kXPathMsb));
-      if (!lsb_str || !msb_str)
+      if (!lsb_str || !msb_str) {
         AGG_XML_ERROR_EXIT("failed to find lsb and msb fields for GUID 0x"
                            << hex << guid << " sample " << *sample_id);
+      }
 
       struct SampleDecodingInfo info = {0};
       unsigned int integer;
-      if (!base::StringToUint(*lsb_str, &integer))
+      if (!base::StringToUint(*lsb_str, &integer)) {
         AGG_XML_ERROR_EXIT("failed to parse GUID 0x" << hex << guid
                                                      << " sample " << *sample_id
                                                      << " lsb: " << *lsb_str);
+      }
       info.lsb_ = integer;
-      if (!base::StringToUint(*msb_str, &integer))
+      if (!base::StringToUint(*msb_str, &integer)) {
         AGG_XML_ERROR_EXIT("failed to parse GUID 0x" << hex << guid
                                                      << " sample " << *sample_id
                                                      << " msb: " << *msb_str);
+      }
       info.msb_ = integer;
 
       // If sample group changed adjust the data offset.
@@ -371,8 +397,9 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
 
       // If this sample should be skipped, do so. The offset was updated
       // already.
-      if (RE2::PartialMatch(*sample_id, samples_to_skip))
+      if (RE2::PartialMatch(*sample_id, samples_to_skip)) {
         continue;
+      }
 
       // Find the corresponding aggregate interface definition.
       string xpath_sample_intf_id =
@@ -384,28 +411,32 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
           agg_intf_parser.XPathEval(xpath_sample_intf_id);
 
       if (!sample_intf_match || !sample_intf_match->nodesetval ||
-          sample_intf_match->nodesetval->nodeNr != 1)
+          sample_intf_match->nodesetval->nodeNr != 1) {
         AGG_XML_ERROR_EXIT("Failed to find aggregator interface for GUID 0x"
                            << hex << guid << " sample " << *sample_id);
+      }
       auto sample_intf = sample_intf_match->nodesetval->nodeTab[0];
 
       // Safety check: TELC:sample.name == TELI:T_AggregatorSample.sampleName.
       auto sample_intf_name =
           agg_intf_parser.GetAttrValue(sample_intf, "sampleName");
-      if (!sample_intf_name || *sample_intf_name != sample_name)
+      if (!sample_intf_name || *sample_intf_name != sample_name) {
         AGG_XML_ERROR_EXIT("aggregator interface for GUID 0x"
                            << hex << guid << " sample " << *sample_name
                            << " does not match: " << *sample_intf_name);
+      }
 
       // Find and fill transformation parameters.
       auto transform_ref = agg_intf_parser.GetXPathNodeTextValue(
           sample_intf, kXPathTransformRef);
-      if (!transform_ref)
+      if (!transform_ref) {
         AGG_XML_ERROR_EXIT("failed to find transformation type for GUID 0x"
                            << hex << guid << " sample " << *sample_id);
+      }
 
-      if (!transform_map.contains(*transform_ref))
+      if (!transform_map.contains(*transform_ref)) {
         AGG_XML_ERROR_EXIT("unknown transformation " << *transform_ref);
+      }
       auto data_type = transform_map[*transform_ref];
       if (data_type == DataType::FLOAT) {
         info.transform_.to_float_ = GetFloatTransform(*transform_ref);
@@ -428,35 +459,39 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
           sample_intf,
           "./cmn:TransFormInputs/cmn:TransFormInput/cmn:sampleIDREF");
       if (!parameters_match || !parameters_match->nodesetval ||
-          parameters_match->nodesetval->nodeNr < 1)
+          parameters_match->nodesetval->nodeNr < 1) {
         AGG_XML_ERROR_EXIT("invalid number of parameters for GUID 0x"
                            << hex << guid << " sample " << *sample_id);
+      }
       for (int param_idx = 0; param_idx < parameters_match->nodesetval->nodeNr;
            param_idx++) {
         auto param = parameters_match->nodesetval->nodeTab[param_idx];
         // This should never happen (nodeNr > 0), it means an error in
         // libxml2 or the metadata schema changed drastically.
-        if (!param || !param->children || !param->children->content)
+        if (!param || !param->children || !param->children->content) {
           AGG_XML_ERROR_EXIT("error in libxml child parsing for GUID 0x"
                              << hex << guid << " sample " << *sample_id);
+        }
         string param_name(xml::XmlCharCast(param->children->content));
         if (param_idx == 0) {
           // The first parameter in all supported transformations is the
           // sample. Make sure it is so.
-          if (param_name != sample_id)
+          if (param_name != sample_id) {
             AGG_XML_ERROR_EXIT("first parameter of GUID 0x"
                                << hex << guid << " sample " << *sample_id
                                << " is not the sample: " << param_name);
+          }
           // Now handle 2 special cases of a single-parameter transformation
           // with an implicit parameter.
           if (transform_ref == "pkgc_wake_cause") {
             // pkgc_wake_cause is a special case that in fact is a 2-parameter
             // transformation, with the PACKAGE_CSTATE_WAKE_REFCNT as the 2nd
             // parameter implicit in some metadata files and not in others.
-            if (!sample_name_map.contains(kSamplePkgcWakeRefcnt))
+            if (!sample_name_map.contains(kSamplePkgcWakeRefcnt)) {
               AGG_XML_ERROR_EXIT(
                   "failed to setup pkgc_wake_cause transformation, "
                   << kSamplePkgcWakeRefcnt << " missing.");
+            }
             size_t sample_idx = sample_name_map[kSamplePkgcWakeRefcnt];
             if (!extra_arg_map.contains(kSamplePkgcWakeRefcnt)) {
               extra_arg_map[kSamplePkgcWakeRefcnt] = ctx_.extra_args_.size();
@@ -470,10 +505,11 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
             // pkgc_block_cause is a special case that in fact is a 2-parameter
             // transformation, with the PACKAGE_CSTATE_BLOCK_REFCNT 2nd
             // parameter implicit in some metadata and not in others.
-            if (!sample_name_map.contains(kSamplePkgcBlockRefcnt))
+            if (!sample_name_map.contains(kSamplePkgcBlockRefcnt)) {
               AGG_XML_ERROR_EXIT(
                   "failed to setup pkgc_wake_cause transformation, "
                   << kSamplePkgcBlockRefcnt << " missing.");
+            }
             size_t sample_idx = sample_name_map[kSamplePkgcBlockRefcnt];
             if (!extra_arg_map.contains(kSamplePkgcBlockRefcnt)) {
               extra_arg_map[kSamplePkgcBlockRefcnt] = ctx_.extra_args_.size();
@@ -485,10 +521,11 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
             break;
           }
         } else if (param_idx == 1) {
-          if (!sample_name_map.contains(param_name))
+          if (!sample_name_map.contains(param_name)) {
             AGG_XML_ERROR_EXIT("failed to setup " << *transform_ref
                                                   << " transformation, "
                                                   << param_name << " missing.");
+          }
           size_t sample_idx = sample_name_map[param_name];
           if (!extra_arg_map.contains(param_name)) {
             extra_arg_map[param_name] = ctx_.extra_args_.size();
@@ -522,17 +559,19 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
       ctx_.result_.values_.push_back(SampleValue());
     }
     // Now that the vectors are set, update the extra_args pointers.
-    for (int i = 0; i < extra_arg_indexes.size(); i++)
+    for (int i = 0; i < extra_arg_indexes.size(); i++) {
       ctx_.extra_args_[i].parameter_1_ =
           &ctx_.result_.values_[extra_arg_indexes[i]];
+    }
   }
 
   return 0;
 }
 
 int PmtDecoder::CleanUpDecoding() {
-  if (ctx_.info_.empty())
+  if (ctx_.info_.empty()) {
     return -ENOENT;
+  }
   ctx_.extra_args_.clear();
   ctx_.info_.clear();
   ctx_.result_.meta_.clear();

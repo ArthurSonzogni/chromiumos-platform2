@@ -35,10 +35,12 @@ std::vector<Guid> PmtCollector::DetectDevices() {
 }
 
 int PmtCollector::SetUpCollection(const std::vector<Guid> guids) {
-  if (data_)
+  if (data_) {
     return -EBUSY;
-  if (guids.empty())
+  }
+  if (guids.empty()) {
     return -EINVAL;
+  }
   // First check if all requested GUIDs have been detected.
   for (const auto guid : guids) {
     if (!intf_->IsValid(guid)) {
@@ -88,8 +90,9 @@ fail:
 }
 
 int PmtCollector::CleanUpCollection() {
-  if (ctx_.empty())
+  if (ctx_.empty()) {
     return -ENOENT;
+  }
 
   for (auto dev : ctx_) {
     close(dev.telemetry_fd);

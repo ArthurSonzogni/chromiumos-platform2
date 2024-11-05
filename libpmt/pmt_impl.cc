@@ -39,8 +39,9 @@ std::vector<Guid> PmtSysfsData::DetectDevices() {
   std::vector<Guid> result;
   while (reader.Next()) {
     // Only process telem<x> directories.
-    if (strncmp("telem", reader.name(), 5))
+    if (strncmp("telem", reader.name(), 5)) {
       continue;
+    }
     base::FilePath dev_path =
         base::FilePath(kPmtSysfsPath).Append(reader.name());
     base::FilePath guid_path = dev_path.Append("guid");

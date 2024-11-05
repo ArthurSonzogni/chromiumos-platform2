@@ -29,8 +29,9 @@ std::optional<std::string> XmlParser::GetAttrValue(
   while (attr != nullptr) {
     if (attr->type == XML_ATTRIBUTE_NODE &&
         !xmlStrncmp(attr->name, XmlCharCast(name.data()), name.size()) &&
-        attr->children != nullptr && attr->children->type == XML_TEXT_NODE)
+        attr->children != nullptr && attr->children->type == XML_TEXT_NODE) {
       return std::string(XmlCharCast(attr->children->content));
+    }
     attr = attr->next;
   }
   return std::optional<std::string>();
@@ -43,8 +44,9 @@ int XmlParser::ParseFile(base::FilePath& file) {
   }
 
   doc_.reset(xmlParseMemory(buf.c_str(), buf.size()));
-  if (!doc_)
+  if (!doc_) {
     return EINVAL;
+  }
 
   return 0;
 }
@@ -87,9 +89,10 @@ std::optional<std::string> XmlParser::GetXPathNodeTextValue(
   if (match_obj && match_obj->nodesetval && match_obj->nodesetval->nodeTab &&
       match_obj->nodesetval->nodeNr == 1 &&
       match_obj->nodesetval->nodeTab[0]->children &&
-      match_obj->nodesetval->nodeTab[0]->children->type == XML_TEXT_NODE)
+      match_obj->nodesetval->nodeTab[0]->children->type == XML_TEXT_NODE) {
     return std::string(
         XmlCharCast(match_obj->nodesetval->nodeTab[0]->children->content));
+  }
   return {};
 }
 
