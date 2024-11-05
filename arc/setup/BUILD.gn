@@ -142,7 +142,7 @@ install_config("install_upstart_configs") {
     ]
   }
   if (use.arcvm_dlc) {
-    sources += [ "init/arcvm-install-android-image-dlc.conf" ]
+    sources += [ "init/arcvm-bind-mount-dlc-path.conf" ]
   }
   install_path = "upstart"
 }
