@@ -394,44 +394,50 @@ extern "C" {
 
 extern decltype(chmod) __real_chmod;
 int __wrap_chmod(const char* path, mode_t mode) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_chmod(path, mode);
+  }
   return 0;
 }
 
 extern decltype(chown) __real_chown;
 int __wrap_chown(const char* path, uid_t owner, gid_t group) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_chown(path, owner, group);
+  }
   return 0;
 }
 
 extern decltype(getuid) __real_getuid;
 uid_t __wrap_getuid(void) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_getuid();
+  }
   return 0;
 }
 
 extern decltype(kill) __real_kill;
 int __wrap_kill(pid_t pid, int sig) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_kill(pid, sig);
+  }
   libcontainer::g_mock_posix_state->kill_sigs.push_back(sig);
   return 0;
 }
 
 extern decltype(mkdir) __real_mkdir;
 int __wrap_mkdir(const char* pathname, mode_t mode) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_mkdir(pathname, mode);
+  }
   return 0;
 }
 
 extern decltype(mkdtemp) __real_mkdtemp;
 char* __wrap_mkdtemp(char* template_string) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_mkdtemp(template_string);
+  }
   libcontainer::g_mock_posix_state->mkdtemp_root =
       base::FilePath(template_string);
   return template_string;
@@ -443,8 +449,9 @@ int __wrap_mount(const char* source,
                  const char* filesystemtype,
                  unsigned long mountflags,
                  const void* data) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_mount(source, target, filesystemtype, mountflags, data);
+  }
 
   libcontainer::g_mock_posix_state->mount_args.emplace_back(
       libcontainer::MockPosixState::MountArgs{source, base::FilePath(target),
@@ -455,51 +462,58 @@ int __wrap_mount(const char* source,
 
 extern decltype(rmdir) __real_rmdir;
 int __wrap_rmdir(const char* pathname) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_rmdir(pathname);
+  }
   return 0;
 }
 
 extern decltype(umount) __real_umount;
 int __wrap_umount(const char* target) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_umount(target);
+  }
   return 0;
 }
 
 extern decltype(umount2) __real_umount2;
 int __wrap_umount2(const char* target, int flags) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_umount2(target, flags);
+  }
   return 0;
 }
 
 extern decltype(unlink) __real_unlink;
 int __wrap_unlink(const char* pathname) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_unlink(pathname);
+  }
   return 0;
 }
 
 extern decltype(mknod) __real_mknod;
 int __wrap_mknod(const char* pathname, mode_t mode, dev_t dev) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_mknod(pathname, mode, dev);
+  }
   return 0;
 }
 
 extern decltype(stat) __real_stat;
 int __wrap_stat(const char* path, struct stat* buf) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_stat(path, buf);
+  }
   buf->st_rdev = libcontainer::g_mock_posix_state->stat_rdev_ret;
   return 0;
 }
 
 extern decltype(setns) __real_setns;
 int __wrap_setns(int fd, int nstype) {
-  if (!libcontainer::g_mock_posix_state)
+  if (!libcontainer::g_mock_posix_state) {
     return __real_setns(fd, nstype);
+  }
   return 0;
 }
 
@@ -573,20 +587,23 @@ int minijail_run_pid_pipes_no_preload(struct minijail* j,
                                       int* pstdout_fd,
                                       int* pstderr_fd) {
   libcontainer::g_mock_minijail_state->pid = fork();
-  if (libcontainer::g_mock_minijail_state->pid == -1)
+  if (libcontainer::g_mock_minijail_state->pid == -1) {
     return libcontainer::g_mock_minijail_state->pid;
+  }
 
   if (libcontainer::g_mock_minijail_state->pid == 0) {
     for (minijail_hook_event_t event :
          {MINIJAIL_HOOK_EVENT_PRE_CHROOT, MINIJAIL_HOOK_EVENT_PRE_DROP_CAPS,
           MINIJAIL_HOOK_EVENT_PRE_EXECVE}) {
       auto it = libcontainer::g_mock_minijail_state->hooks.find(event);
-      if (it == libcontainer::g_mock_minijail_state->hooks.end())
+      if (it == libcontainer::g_mock_minijail_state->hooks.end()) {
         continue;
+      }
       for (auto& hook : it->second) {
         int rc = hook.Run();
-        if (rc)
+        if (rc) {
           _exit(rc);
+        }
       }
     }
     _exit(0);

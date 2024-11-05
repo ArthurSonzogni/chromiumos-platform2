@@ -180,22 +180,26 @@ bool ExecveCallbackHelper(base::FilePath filename,
 
 // Immediately removes the loop device from the system.
 void RemoveLoopDevice(int control_fd, int32_t device) {
-  if (ioctl(control_fd, LOOP_CTL_REMOVE, device) < 0)
+  if (ioctl(control_fd, LOOP_CTL_REMOVE, device) < 0) {
     PLOG(ERROR) << "Failed to free /dev/loop" << device;
+  }
 }
 
 }  // namespace
 
 WaitablePipe::WaitablePipe() {
-  if (pipe2(pipe_fds, O_CLOEXEC) < 0)
+  if (pipe2(pipe_fds, O_CLOEXEC) < 0) {
     PLOG(FATAL) << "Failed to create pipe";
+  }
 }
 
 WaitablePipe::~WaitablePipe() {
-  if (pipe_fds[0] != -1)
+  if (pipe_fds[0] != -1) {
     close(pipe_fds[0]);
-  if (pipe_fds[1] != -1)
+  }
+  if (pipe_fds[1] != -1) {
     close(pipe_fds[1]);
+  }
 }
 
 WaitablePipe::WaitablePipe(WaitablePipe&& other) {
@@ -264,8 +268,9 @@ bool HookState::WaitForHookAndRun(std::vector<HookCallback> callbacks,
 
   for (auto& callback : callbacks) {
     bool success = std::move(callback).Run(container_pid);
-    if (!success)
+    if (!success) {
       return false;
+    }
   }
 
   ready_pipe_.Signal();
@@ -284,8 +289,9 @@ int HookState::WaitHook(void* payload) {
 
 bool GetUsernsOutsideId(const std::string& map, int id, int* id_out) {
   if (map.empty()) {
-    if (id_out)
+    if (id_out) {
       *id_out = id;
+    }
     return true;
   }
 
@@ -311,8 +317,9 @@ bool GetUsernsOutsideId(const std::string& map, int id, int* id_out) {
     }
 
     if (id >= inside && id <= (inside + length)) {
-      if (id_out)
+      if (id_out) {
         *id_out = (id - inside) + outside;
+      }
       return true;
     }
   }
@@ -555,8 +562,9 @@ bool MountExternal(const std::string& src,
 
 bool Pipe2(base::ScopedFD* read_pipe, base::ScopedFD* write_pipe, int flags) {
   int fds[2];
-  if (pipe2(fds, flags) != 0)
+  if (pipe2(fds, flags) != 0) {
     return false;
+  }
   read_pipe->reset(fds[0]);
   write_pipe->reset(fds[1]);
   return true;
@@ -582,8 +590,9 @@ bool CreateDirectoryOwnedBy(const base::FilePath& full_path,
                             mode_t mode,
                             uid_t uid,
                             gid_t gid) {
-  if (base::DirectoryExists(full_path))
+  if (base::DirectoryExists(full_path)) {
     return true;
+  }
 
   // Collect a list of all missing directories.
   base::FilePath last_path = full_path;
@@ -599,10 +608,12 @@ bool CreateDirectoryOwnedBy(const base::FilePath& full_path,
   for (std::vector<base::FilePath>::reverse_iterator i =
            missing_subpaths.rbegin();
        i != missing_subpaths.rend(); ++i) {
-    if (mkdir(i->value().c_str(), mode) != 0)
+    if (mkdir(i->value().c_str(), mode) != 0) {
       return false;
-    if (chown(i->value().c_str(), uid, gid) != 0)
+    }
+    if (chown(i->value().c_str(), uid, gid) != 0) {
       return false;
+    }
   }
   return true;
 }

@@ -42,8 +42,9 @@ base::ScopedFD OpenCgroupFile(const base::FilePath& cgroup_path,
   // blocking file (e.g. an unopened FIFO or a device).
   flags |= O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC;
   base::ScopedFD fd(HANDLE_EINTR(open(path.value().c_str(), flags, 0664)));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return base::ScopedFD();
+  }
   // Ensure the opened file is a regular file.
   struct stat st;
   if (fstat(fd.get(), &st) < 0) {
@@ -71,10 +72,12 @@ bool WriteCgroupFile(const base::FilePath& cgroup_path,
                      std::string_view name,
                      std::string_view str) {
   base::ScopedFD fd = OpenCgroupFile(cgroup_path, name, true);
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
-  if (!base::WriteFileDescriptor(fd.get(), str))
+  }
+  if (!base::WriteFileDescriptor(fd.get(), str)) {
     return false;
+  }
   return true;
 }
 
@@ -87,12 +90,14 @@ bool WriteCgroupFileInt(const base::FilePath& cgroup_path,
 bool CopyCgroupParent(const base::FilePath& cgroup_path,
                       std::string_view name) {
   base::ScopedFD dest = OpenCgroupFile(cgroup_path, name, true);
-  if (!dest.is_valid())
+  if (!dest.is_valid()) {
     return false;
+  }
 
   base::ScopedFD source = OpenCgroupFile(cgroup_path.DirName(), name, false);
-  if (!source.is_valid())
+  if (!source.is_valid()) {
     return false;
+  }
 
   base::File infile(std::move(source));
   base::File outfile(std::move(dest));
@@ -100,14 +105,15 @@ bool CopyCgroupParent(const base::FilePath& cgroup_path,
 }
 
 std::string GetDeviceString(const int major, const int minor) {
-  if (major >= 0 && minor >= 0)
+  if (major >= 0 && minor >= 0) {
     return base::StringPrintf("%d:%d", major, minor);
-  else if (major >= 0)
+  } else if (major >= 0) {
     return base::StringPrintf("%d:*", major);
-  else if (minor >= 0)
+  } else if (minor >= 0) {
     return base::StringPrintf("*:%d", minor);
-  else
+  } else {
     return base::StringPrintf("*:*");
+  }
 }
 
 bool CreateCgroupAsOwner(const base::FilePath& cgroup_path,
@@ -123,10 +129,12 @@ bool CreateCgroupAsOwner(const base::FilePath& cgroup_path,
     // upreved again.
     runner.ReplaceClosure(base::BindOnce(
         [](uid_t euid, gid_t egid) {
-          if (seteuid(euid) != 0)
+          if (seteuid(euid) != 0) {
             PLOG(ERROR) << "Failed to reset euid";
-          if (setegid(egid) != 0)
+          }
+          if (setegid(egid) != 0) {
             PLOG(ERROR) << "Failed to reset egid";
+          }
         },
         geteuid(), getegid()));
 
@@ -263,8 +271,9 @@ std::unique_ptr<Cgroup> Cgroup::Create(std::string_view name,
 
   for (int32_t i = 0; i < Type::NUM_TYPES; ++i) {
     if (!CheckCgroupAvailable(cgroup_root, kCgroupNames[i])) {
-      if (errno == ENOENT)
+      if (errno == ENOENT) {
         continue;
+      }
       PLOG(ERROR) << "Cgroup " << kCgroupNames[i] << " not available";
       return nullptr;
     }
@@ -283,8 +292,9 @@ std::unique_ptr<Cgroup> Cgroup::Create(std::string_view name,
           return nullptr;
         }
 
-        if (i == Type::CPUSET && !CopyCpusetParent(parent_path))
+        if (i == Type::CPUSET && !CopyCpusetParent(parent_path)) {
           return nullptr;
+        }
       }
     } else {
       cg->cgroup_paths_[i] = cgroup_root.Append(kCgroupNames[i]).Append(name);
@@ -299,8 +309,9 @@ std::unique_ptr<Cgroup> Cgroup::Create(std::string_view name,
 
     cg->cgroup_tasks_paths_[i] = cg->cgroup_paths_[i].Append("tasks");
 
-    if (i == Type::CPUSET && !CopyCpusetParent(cg->cgroup_paths_[i]))
+    if (i == Type::CPUSET && !CopyCpusetParent(cg->cgroup_paths_[i])) {
       return nullptr;
+    }
   }
 
   cg->name_ = std::string(name);
@@ -312,8 +323,9 @@ Cgroup::Cgroup() = default;
 
 Cgroup::~Cgroup() {
   for (int32_t i = 0; i < Type::NUM_TYPES; ++i) {
-    if (cgroup_paths_[i].empty())
+    if (cgroup_paths_[i].empty()) {
       continue;
+    }
     rmdir(cgroup_paths_[i].value().c_str());
   }
 }

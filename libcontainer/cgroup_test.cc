@@ -31,21 +31,24 @@ bool CreateFile(const base::FilePath& path) {
 
 bool FileHasString(const base::FilePath& path, const std::string& expected) {
   std::string contents;
-  if (!base::ReadFileToString(path, &contents))
+  if (!base::ReadFileToString(path, &contents)) {
     return false;
+  }
 
   return contents.find(expected) != std::string::npos;
 }
 
 bool FileHasLine(const base::FilePath& path, const std::string& expected) {
   std::string contents;
-  if (!base::ReadFileToString(path, &contents))
+  if (!base::ReadFileToString(path, &contents)) {
     return false;
+  }
 
   for (const auto& line : base::SplitString(
            contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
-    if (line == expected)
+    if (line == expected) {
       return true;
+    }
   }
   return false;
 }

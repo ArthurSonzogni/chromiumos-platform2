@@ -372,8 +372,9 @@ void DumpConfig(std::ostream* stream,
           << "pid_file_path: " << QUOTE(c->pid_file_path.value()) << std::endl
           << "program_argv: size=" << c->program_argv.size() << std::endl;
 
-  for (const std::string& argv : c->program_argv)
+  for (const std::string& argv : c->program_argv) {
     *stream << " " << QUOTE(argv) << std::endl;
+  }
 
   *stream << "uid: " << c->uid << std::endl
           << "uid_map: " << QUOTE(c->uid_map) << std::endl
@@ -393,12 +394,14 @@ void DumpConfig(std::ostream* stream,
                                               rhs.source.value(), rhs.flags);
                      });
   }
-  for (const auto& mount : mount_sorted)
+  for (const auto& mount : mount_sorted) {
     *stream << mount;
+  }
 
   *stream << "namespaces: size=" << c->namespaces.size() << std::endl;
-  for (const std::string& ns : c->namespaces)
+  for (const std::string& ns : c->namespaces) {
     *stream << " " << QUOTE(ns) << std::endl;
+  }
 
   auto devices_sorted = c->devices;
   if (sort_vectors) {
@@ -407,8 +410,9 @@ void DumpConfig(std::ostream* stream,
                        return lhs.path.value() < rhs.path.value();
                      });
   }
-  for (const auto& device : devices_sorted)
+  for (const auto& device : devices_sorted) {
     *stream << device;
+  }
 
   auto cgroup_devices_sorted = c->cgroup_devices;
   if (sort_vectors) {
@@ -418,8 +422,9 @@ void DumpConfig(std::ostream* stream,
                               std::make_tuple(rhs.type, rhs.major, rhs.minor);
                      });
   }
-  for (const auto& cgroup_device : cgroup_devices_sorted)
+  for (const auto& cgroup_device : cgroup_devices_sorted) {
     *stream << cgroup_device;
+  }
 
   *stream << c->cpu_cgparams
           << "cgroup_parent: " << QUOTE(c->cgroup_parent.value()) << std::endl
@@ -428,8 +433,9 @@ void DumpConfig(std::ostream* stream,
           << "keep_fds_open: " << c->keep_fds_open << std::endl;
 
   *stream << "num_rlimits: " << c->num_rlimits << std::endl;
-  for (size_t i = 0; i < c->num_rlimits; ++i)
+  for (size_t i = 0; i < c->num_rlimits; ++i) {
     *stream << c->rlimits[i];
+  }
 
   *stream << "use_capmask: " << c->use_capmask << std::endl
           << "use_capmask_ambient: " << c->use_capmask_ambient << std::endl
@@ -444,8 +450,9 @@ void DumpConfig(std::ostream* stream,
           << std::endl
           << "inherited_fds: size=" << c->inherited_fds.size() << std::endl;
 
-  for (int fd : c->inherited_fds)
+  for (int fd : c->inherited_fds) {
     *stream << " " << fd << std::endl;
+  }
 
   *stream << "hooks: size=" << c->hooks.size() << std::endl;
 }
@@ -453,8 +460,9 @@ void DumpConfig(std::ostream* stream,
 // Returns the path for |path_in_container| in the outer namespace.
 base::FilePath GetPathInOuterNamespace(
     const base::FilePath& root, const base::FilePath& path_in_container) {
-  if (path_in_container.IsAbsolute())
+  if (path_in_container.IsAbsolute()) {
     return base::FilePath(root.value() + path_in_container.value());
+  }
   return root.Append(path_in_container);
 }
 
@@ -473,11 +481,13 @@ bool SetupMountDestination(const struct container_config* config,
   // Try to create the destination. Either make directory or touch a file
   // depending on the source type.
   int uid_userns;
-  if (!GetUsernsOutsideId(config->uid_map, mount.uid, &uid_userns))
+  if (!GetUsernsOutsideId(config->uid_map, mount.uid, &uid_userns)) {
     return false;
+  }
   int gid_userns;
-  if (!GetUsernsOutsideId(config->gid_map, mount.gid, &gid_userns))
+  if (!GetUsernsOutsideId(config->gid_map, mount.gid, &gid_userns)) {
     return false;
+  }
 
   if (stat(source.value().c_str(), &st_buf) != 0 || S_ISDIR(st_buf.st_mode) ||
       S_ISBLK(st_buf.st_mode)) {
@@ -501,15 +511,17 @@ bool UnmountExternalMounts(struct container* c) {
   c->ext_mounts.clear();
 
   for (auto it = c->loopdevs.rbegin(); it != c->loopdevs.rend(); ++it) {
-    if (!LoopdevDetach(&(*it)))
+    if (!LoopdevDetach(&(*it))) {
       ret = false;
+    }
   }
   c->loopdevs.clear();
 
   for (auto it = c->device_mappers.rbegin(); it != c->device_mappers.rend();
        ++it) {
-    if (!DeviceMapperDetach(*it))
+    if (!DeviceMapperDetach(*it)) {
       ret = false;
+    }
   }
   c->device_mappers.clear();
 
@@ -537,13 +549,15 @@ bool DoContainerMount(struct container* c,
   // Only create the destinations for external mounts, minijail will take
   // care of those mounted in the new namespace.
   if (mount.create && !mount.mount_in_ns) {
-    if (!SetupMountDestination(config, mount, source, dest))
+    if (!SetupMountDestination(config, mount, source, dest)) {
       return false;
+    }
   }
   if (mount.loopback) {
     Loopdev loopdev;
-    if (!LoopdevSetup(source, &loopdev))
+    if (!LoopdevSetup(source, &loopdev)) {
       return false;
+    }
 
     // Replace the mount source with the loopback device path.
     source = loopdev.path;
@@ -555,8 +569,9 @@ bool DoContainerMount(struct container* c,
     // Set this device up via dm-verity.
     std::string dm_name;
     base::FilePath dm_source = source;
-    if (!DeviceMapperSetup(dm_source, mount.verity, &source, &dm_name))
+    if (!DeviceMapperSetup(dm_source, mount.verity, &source, &dm_name)) {
       return false;
+    }
 
     // Save this to cleanup when shutting down.
     c->device_mappers.push_back(dm_name);
@@ -591,8 +606,9 @@ bool DoContainerMounts(struct container* c,
       base::IgnoreResult(&UnmountExternalMounts), base::Unretained(c)));
 
   for (const auto& mount : config->mounts) {
-    if (!DoContainerMount(c, config, mount))
+    if (!DoContainerMount(c, config, mount)) {
       return false;
+    }
   }
 
   // The mounts have been done successfully, no need to tear them down anymore.
@@ -619,11 +635,13 @@ bool ContainerCreateDevice(const struct container* c,
   }
 
   int uid_userns;
-  if (!GetUsernsOutsideId(config->uid_map, dev.uid, &uid_userns))
+  if (!GetUsernsOutsideId(config->uid_map, dev.uid, &uid_userns)) {
     return false;
+  }
   int gid_userns;
-  if (!GetUsernsOutsideId(config->gid_map, dev.gid, &gid_userns))
+  if (!GetUsernsOutsideId(config->gid_map, dev.gid, &gid_userns)) {
     return false;
+  }
 
   base::FilePath path = GetPathInOuterNamespace(c->runfsroot, dev.path);
   if (!libcontainer::CreateDirectoryOwnedBy(path.DirName(), 0755, uid_userns,
@@ -655,11 +673,13 @@ bool MountRunfs(struct container* c, const struct container_config* config) {
   }
 
   int uid_userns;
-  if (!GetUsernsOutsideId(config->uid_map, config->uid, &uid_userns))
+  if (!GetUsernsOutsideId(config->uid_map, config->uid, &uid_userns)) {
     return false;
+  }
   int gid_userns;
-  if (!GetUsernsOutsideId(config->gid_map, config->gid, &gid_userns))
+  if (!GetUsernsOutsideId(config->gid_map, config->gid, &gid_userns)) {
     return false;
+  }
 
   // Make sure the container uid can access the rootfs.
   if (chmod(c->runfs.value().c_str(), 0700) != 0) {
@@ -710,18 +730,23 @@ bool CreateDeviceNodes(struct container* c,
 
     if (dev.copy_major || dev.copy_minor) {
       struct stat st_buff;
-      if (stat(dev.path.value().c_str(), &st_buff) != 0)
+      if (stat(dev.path.value().c_str(), &st_buff) != 0) {
         continue;
+      }
 
-      if (dev.copy_major)
+      if (dev.copy_major) {
         major = major(st_buff.st_rdev);
-      if (dev.copy_minor)
+      }
+      if (dev.copy_minor) {
         minor = minor(st_buff.st_rdev);
+      }
     }
-    if (major < 0 || minor < 0)
+    if (major < 0 || minor < 0) {
       continue;
-    if (!ContainerCreateDevice(c, config, dev, major, minor))
+    }
+    if (!ContainerCreateDevice(c, config, dev, major, minor)) {
       return false;
+    }
   }
 
   return true;
@@ -821,8 +846,9 @@ bool ContainerTeardown(struct container* c) {
 }
 
 void CancelContainerStart(struct container* c) {
-  if (c->init_pid != -1)
+  if (c->init_pid != -1) {
     container_kill(c);
+  }
   ContainerTeardown(c);
 }
 
@@ -833,8 +859,9 @@ struct container_config* container_config_create() {
 }
 
 void container_config_destroy(struct container_config* c) {
-  if (c == nullptr)
+  if (c == nullptr) {
     return;
+  }
   delete c;
 }
 
@@ -901,8 +928,9 @@ int container_config_program_argv(struct container_config* c,
   }
   c->program_argv.clear();
   c->program_argv.reserve(num_args);
-  for (size_t i = 0; i < num_args; ++i)
+  for (size_t i = 0; i < num_args; ++i) {
     c->program_argv.emplace_back(argv[i]);
+  }
   return 0;
 }
 
@@ -912,8 +940,9 @@ size_t container_config_get_num_program_args(const struct container_config* c) {
 
 const char* container_config_get_program_arg(const struct container_config* c,
                                              size_t index) {
-  if (index >= c->program_argv.size())
+  if (index >= c->program_argv.size()) {
     return nullptr;
+  }
   return c->program_argv[index].c_str();
 }
 
@@ -1151,11 +1180,13 @@ const char* container_config_get_cgroup_parent(struct container_config* c) {
 int container_config_namespaces(struct container_config* c,
                                 const char** namespaces,
                                 size_t num_ns) {
-  if (num_ns < 1)
+  if (num_ns < 1) {
     return -EINVAL;
+  }
   c->namespaces.clear();
-  for (size_t i = 0; i < num_ns; ++i)
+  for (size_t i = 0; i < num_ns; ++i) {
     c->namespaces.emplace(namespaces[i]);
+  }
   return 0;
 }
 
@@ -1225,23 +1256,27 @@ int container_config_add_hook(struct container_config* c,
                               int* pstderr_fd) {
   std::vector<std::string> args;
   args.reserve(num_args);
-  for (size_t i = 0; i < num_args; ++i)
+  for (size_t i = 0; i < num_args; ++i) {
     args.emplace_back(argv[i]);
+  }
 
   // First element of the array belongs to the parent and the second one belongs
   // to the child.
   base::ScopedFD stdin_fds[2], stdout_fds[2], stderr_fds[2];
   if (pstdin_fd) {
-    if (!libcontainer::Pipe2(&stdin_fds[1], &stdin_fds[0], 0))
+    if (!libcontainer::Pipe2(&stdin_fds[1], &stdin_fds[0], 0)) {
       return -1;
+    }
   }
   if (pstdout_fd) {
-    if (!libcontainer::Pipe2(&stdout_fds[0], &stdout_fds[0], 0))
+    if (!libcontainer::Pipe2(&stdout_fds[0], &stdout_fds[0], 0)) {
       return -1;
+    }
   }
   if (pstderr_fd) {
-    if (!libcontainer::Pipe2(&stderr_fds[0], &stderr_fds[0], 0))
+    if (!libcontainer::Pipe2(&stderr_fds[0], &stderr_fds[0], 0)) {
       return -1;
+    }
   }
 
   // After this point the call has been successful, so we can now commit to
@@ -1273,15 +1308,17 @@ int container_config_inherit_fds(struct container_config* c,
     errno = EINVAL;
     return -1;
   }
-  for (size_t i = 0; i < inherited_fd_count; ++i)
+  for (size_t i = 0; i < inherited_fd_count; ++i) {
     c->inherited_fds.emplace_back(inherited_fds[i]);
+  }
   return 0;
 }
 
 struct container* container_new(const char* name, const char* rundir) {
   struct container* c = new (std::nothrow) container();
-  if (!c)
+  if (!c) {
     return nullptr;
+  }
   c->rundir = base::FilePath(rundir);
   c->name = name;
   return c;
@@ -1309,14 +1346,16 @@ int container_start(struct container* c, struct container_config* config) {
   base::ScopedClosureRunner teardown(
       base::BindOnce(&CancelContainerStart, base::Unretained(c)));
 
-  if (!config->config_root.empty())
+  if (!config->config_root.empty()) {
     c->config_root = config->config_root;
+  }
   if (!config->premounted_runfs.empty()) {
     c->runfs.clear();
     c->runfsroot = config->premounted_runfs;
   } else {
-    if (!MountRunfs(c, config))
+    if (!MountRunfs(c, config)) {
       return -1;
+    }
   }
 
   c->jail.reset(minijail_new());
@@ -1325,21 +1364,25 @@ int container_start(struct container* c, struct container_config* config) {
     return -1;
   }
 
-  if (!DoContainerMounts(c, config))
+  if (!DoContainerMounts(c, config)) {
     return -1;
+  }
 
   int cgroup_uid;
-  if (!GetUsernsOutsideId(config->uid_map, config->cgroup_owner, &cgroup_uid))
+  if (!GetUsernsOutsideId(config->uid_map, config->cgroup_owner, &cgroup_uid)) {
     return -1;
+  }
   int cgroup_gid;
-  if (!GetUsernsOutsideId(config->gid_map, config->cgroup_group, &cgroup_gid))
+  if (!GetUsernsOutsideId(config->gid_map, config->cgroup_group, &cgroup_gid)) {
     return -1;
+  }
 
   c->cgroup = libcontainer::Cgroup::Create(
       c->name, base::FilePath("/sys/fs/cgroup"), config->cgroup_parent,
       cgroup_uid, cgroup_gid);
-  if (!c->cgroup)
+  if (!c->cgroup) {
     return -1;
+  }
 
   // Must be root to modify device cgroup or mknod.
   std::map<minijail_hook_event_t, std::vector<libcontainer::HookCallback>>
@@ -1356,79 +1399,98 @@ int container_start(struct container* c, struct container_config* config) {
                              base::Unretained(config)),
               {CLONE_NEWNS}));
     }
-    if (!DeviceSetup(c, config))
+    if (!DeviceSetup(c, config)) {
       return -1;
+    }
   }
 
   /* Setup CPU cgroup params. */
   if (config->cpu_cgparams.shares) {
-    if (!c->cgroup->SetCpuShares(config->cpu_cgparams.shares))
+    if (!c->cgroup->SetCpuShares(config->cpu_cgparams.shares)) {
       return -1;
+    }
   }
   if (config->cpu_cgparams.period) {
-    if (!c->cgroup->SetCpuQuota(config->cpu_cgparams.quota))
+    if (!c->cgroup->SetCpuQuota(config->cpu_cgparams.quota)) {
       return -1;
-    if (!c->cgroup->SetCpuPeriod(config->cpu_cgparams.period))
+    }
+    if (!c->cgroup->SetCpuPeriod(config->cpu_cgparams.period)) {
       return -1;
+    }
   }
   if (config->cpu_cgparams.rt_period) {
-    if (!c->cgroup->SetCpuRtRuntime(config->cpu_cgparams.rt_runtime))
+    if (!c->cgroup->SetCpuRtRuntime(config->cpu_cgparams.rt_runtime)) {
       return -1;
-    if (!c->cgroup->SetCpuRtPeriod(config->cpu_cgparams.rt_period))
+    }
+    if (!c->cgroup->SetCpuRtPeriod(config->cpu_cgparams.rt_period)) {
       return -1;
+    }
   }
 
   /* Setup and start the container with libminijail. */
-  if (!config->pid_file_path.empty())
+  if (!config->pid_file_path.empty()) {
     c->pid_file_path = config->pid_file_path;
-  else if (!c->runfs.empty())
+  } else if (!c->runfs.empty()) {
     c->pid_file_path = c->runfs.Append("container.pid");
+  }
 
-  if (!c->pid_file_path.empty())
+  if (!c->pid_file_path.empty()) {
     minijail_write_pid_file(c->jail.get(), c->pid_file_path.value().c_str());
+  }
   minijail_forward_signals(c->jail.get());
   minijail_reset_signal_mask(c->jail.get());
   minijail_reset_signal_handlers(c->jail.get());
 
   /* Setup container namespaces. */
-  if (container_config_has_namespace(config, "ipc"))
+  if (container_config_has_namespace(config, "ipc")) {
     minijail_namespace_ipc(c->jail.get());
-  if (container_config_has_namespace(config, "mount"))
+  }
+  if (container_config_has_namespace(config, "mount")) {
     minijail_namespace_vfs(c->jail.get());
-  if (container_config_has_namespace(config, "network"))
+  }
+  if (container_config_has_namespace(config, "network")) {
     minijail_namespace_net(c->jail.get());
-  if (container_config_has_namespace(config, "pid"))
+  }
+  if (container_config_has_namespace(config, "pid")) {
     minijail_namespace_pids(c->jail.get());
+  }
 
   if (container_config_has_namespace(config, "user")) {
     minijail_namespace_user(c->jail.get());
-    if (minijail_uidmap(c->jail.get(), config->uid_map.c_str()) != 0)
+    if (minijail_uidmap(c->jail.get(), config->uid_map.c_str()) != 0) {
       return -1;
-    if (minijail_gidmap(c->jail.get(), config->gid_map.c_str()) != 0)
+    }
+    if (minijail_gidmap(c->jail.get(), config->gid_map.c_str()) != 0) {
       return -1;
+    }
   }
 
-  if (container_config_has_namespace(config, "cgroup"))
+  if (container_config_has_namespace(config, "cgroup")) {
     minijail_namespace_cgroups(c->jail.get());
+  }
 
-  if (getuid() != 0)
+  if (getuid() != 0) {
     minijail_namespace_user_disable_setgroups(c->jail.get());
+  }
 
   // Set the UID/GID inside the container if not 0.
-  if (!GetUsernsOutsideId(config->uid_map, config->uid, nullptr))
+  if (!GetUsernsOutsideId(config->uid_map, config->uid, nullptr)) {
     return -1;
-  else if (config->uid > 0)
+  } else if (config->uid > 0) {
     minijail_change_uid(c->jail.get(), config->uid);
-  if (!GetUsernsOutsideId(config->gid_map, config->gid, nullptr))
+  }
+  if (!GetUsernsOutsideId(config->gid_map, config->gid, nullptr)) {
     return -1;
-  else if (config->gid > 0)
+  } else if (config->gid > 0) {
     minijail_change_gid(c->jail.get(), config->gid);
+  }
 
   // Set the supplementary GIDs inside the container, if specified.
   if (!config->additional_gids.empty()) {
     for (const gid_t additional_gid : config->additional_gids) {
-      if (!GetUsernsOutsideId(config->gid_map, additional_gid, nullptr))
+      if (!GetUsernsOutsideId(config->gid_map, additional_gid, nullptr)) {
         return -1;
+      }
     }
     minijail_set_supplementary_gids(c->jail.get(),
                                     config->additional_gids.size(),
@@ -1450,8 +1512,9 @@ int container_start(struct container* c, struct container_config* config) {
     }
   }
 
-  if (!config->alt_syscall_table.empty())
+  if (!config->alt_syscall_table.empty()) {
     minijail_use_alt_syscall(c->jail.get(), config->alt_syscall_table.c_str());
+  }
 
   if (config->core_sched) {
     if (minijail_add_hook(c->jail.get(), &SetCoreSched, nullptr,
@@ -1462,8 +1525,9 @@ int container_start(struct container* c, struct container_config* config) {
 
   for (int i = 0; i < config->num_rlimits; i++) {
     const Rlimit& lim = config->rlimits[i];
-    if (minijail_rlimit(c->jail.get(), lim.type, lim.cur, lim.max) != 0)
+    if (minijail_rlimit(c->jail.get(), lim.type, lim.cur, lim.max) != 0) {
       return -1;
+    }
   }
 
   if (!config->selinux_context.empty()) {
@@ -1500,42 +1564,49 @@ int container_start(struct container* c, struct container_config* config) {
        {MINIJAIL_HOOK_EVENT_PRE_CHROOT, MINIJAIL_HOOK_EVENT_PRE_DROP_CAPS,
         MINIJAIL_HOOK_EVENT_PRE_EXECVE}) {
     const auto& it = hook_callbacks.find(event);
-    if (it == hook_callbacks.end())
+    if (it == hook_callbacks.end()) {
       continue;
+    }
     c->hook_states.emplace_back(
         std::make_pair(libcontainer::HookState(), std::move(it->second)));
-    if (!c->hook_states.back().first.InstallHook(c->jail.get(), event))
+    if (!c->hook_states.back().first.InstallHook(c->jail.get(), event)) {
       return -1;
+    }
   }
 
   for (int fd : config->inherited_fds) {
-    if (minijail_preserve_fd(c->jail.get(), fd, fd) != 0)
+    if (minijail_preserve_fd(c->jail.get(), fd, fd) != 0) {
       return -1;
+    }
   }
 
   /* TODO(dgreid) - remove this once shared mounts are cleaned up. */
   minijail_skip_remount_private(c->jail.get());
 
-  if (!config->keep_fds_open)
+  if (!config->keep_fds_open) {
     minijail_close_open_fds(c->jail.get());
+  }
 
   if (config->use_capmask) {
     minijail_use_caps(c->jail.get(), config->capmask);
-    if (config->use_capmask_ambient)
+    if (config->use_capmask_ambient) {
       minijail_set_ambient_caps(c->jail.get());
+    }
     if (config->securebits_skip_mask) {
       minijail_skip_setting_securebits(c->jail.get(),
                                        config->securebits_skip_mask);
     }
   }
 
-  if (!config->do_init)
+  if (!config->do_init) {
     minijail_run_as_init(c->jail.get());
+  }
 
   std::vector<char*> argv_cstr;
   argv_cstr.reserve(config->program_argv.size() + 1);
-  for (const auto& arg : config->program_argv)
+  for (const auto& arg : config->program_argv) {
     argv_cstr.emplace_back(const_cast<char*>(arg.c_str()));
+  }
   argv_cstr.emplace_back(nullptr);
 
   if (minijail_run_pid_pipes_no_preload(c->jail.get(), argv_cstr[0],
@@ -1547,8 +1618,9 @@ int container_start(struct container* c, struct container_config* config) {
   // |hook_states| is already sorted in the correct order.
   for (auto& hook_state : c->hook_states) {
     if (!hook_state.first.WaitForHookAndRun(std::move(hook_state.second),
-                                            c->init_pid))
+                                            c->init_pid)) {
       return -1;
+    }
   }
 
   // The container has started successfully, no need to tear it down anymore.
@@ -1573,8 +1645,9 @@ int container_wait(struct container* c) {
 
   // If the process had already been reaped, still perform teardown.
   if (rc == -ECHILD || rc >= 0) {
-    if (!ContainerTeardown(c))
+    if (!ContainerTeardown(c)) {
       rc = -errno;
+    }
   }
   return rc;
 }
