@@ -19,19 +19,22 @@ bool IioEvent::SetEnabledAndCheck(bool en) {
 }
 
 bool IioEvent::MatchMask(uint64_t mask) {
-  if (IIO_EVENT_CODE_EXTRACT_CHAN_TYPE(mask) != chan_type_)
+  if (IIO_EVENT_CODE_EXTRACT_CHAN_TYPE(mask) != chan_type_) {
     return false;
+  }
 
-  if (IIO_EVENT_CODE_EXTRACT_TYPE(mask) != event_type_)
+  if (IIO_EVENT_CODE_EXTRACT_TYPE(mask) != event_type_) {
     return false;
+  }
 
   if (direction_ != iio_event_direction::IIO_EV_DIR_EITHER &&
       IIO_EVENT_CODE_EXTRACT_DIR(mask) != direction_) {
     return false;
   }
 
-  if (channel_ != -1 && IIO_EVENT_CODE_EXTRACT_CHAN(mask) != channel_)
+  if (channel_ != -1 && IIO_EVENT_CODE_EXTRACT_CHAN(mask) != channel_) {
     return false;
+  }
 
   return true;
 }
@@ -55,8 +58,9 @@ int IioEvent::GetChannelNumber() const {
 std::optional<int64_t> IioEvent::ReadNumberAttribute(
     const std::string& name) const {
   std::optional<std::string> value = ReadStringAttribute(name);
-  if (!value.has_value())
+  if (!value.has_value()) {
     return std::nullopt;
+  }
 
   int64_t number;
   if (!base::StringToInt64(value.value(), &number)) {
@@ -70,8 +74,9 @@ std::optional<int64_t> IioEvent::ReadNumberAttribute(
 std::optional<double> IioEvent::ReadDoubleAttribute(
     const std::string& name) const {
   std::optional<std::string> value = ReadStringAttribute(name);
-  if (!value.has_value())
+  if (!value.has_value()) {
     return std::nullopt;
+  }
 
   double number;
   if (!base::StringToDouble(value.value(), &number)) {

@@ -38,15 +38,17 @@ const std::map<std::string, iio_chan_type> kChanTypeMap = {
 
 bool MatchString(std::string chan_str, const char prefix[]) {
   auto prefix_len = strlen(prefix);
-  if (chan_str.size() < prefix_len)
+  if (chan_str.size() < prefix_len) {
     return false;
+  }
 
   return chan_str.compare(0, prefix_len, prefix) == 0;
 }
 
 std::optional<iio_chan_type> GetChanType(std::string chan_str) {
-  if (MatchString(chan_str, kProximity))
+  if (MatchString(chan_str, kProximity)) {
     return iio_chan_type::IIO_PROXIMITY;
+  }
 
   return std::nullopt;
 }
@@ -70,8 +72,9 @@ int GetChannel(std::string chan_str, iio_chan_type chan_type) {
   // If there's only one channel, the `0` is omitted.
   // See |index| field in |struct iio_chan_spec| in include/linux/iio/iio.h
   // kernel include file.
-  if (substr.empty())
+  if (substr.empty()) {
     return 0;
+  }
 
   int channel;
   if (!base::StringToInt(substr, &channel)) {
@@ -84,33 +87,43 @@ int GetChannel(std::string chan_str, iio_chan_type chan_type) {
 
 std::optional<iio_event_type> GetEventType(std::string event_type_str,
                                            std::string prev_str) {
-  if (event_type_str.compare(kThresh) == 0)
+  if (event_type_str.compare(kThresh) == 0) {
     return iio_event_type::IIO_EV_TYPE_THRESH;
-  if (event_type_str.compare(kMag) == 0)
-    return iio_event_type::IIO_EV_TYPE_MAG;
-  if (event_type_str.compare(kRoc) == 0)
-    return iio_event_type::IIO_EV_TYPE_ROC;
-  if (event_type_str.compare(kAdaptive) == 0) {
-    if (prev_str.compare(kThresh) == 0)
-      return iio_event_type::IIO_EV_TYPE_THRESH_ADAPTIVE;
-    if (prev_str.compare(kMag) == 0)
-      return iio_event_type::IIO_EV_TYPE_MAG_ADAPTIVE;
   }
-  if (event_type_str.compare(kChange) == 0)
+  if (event_type_str.compare(kMag) == 0) {
+    return iio_event_type::IIO_EV_TYPE_MAG;
+  }
+  if (event_type_str.compare(kRoc) == 0) {
+    return iio_event_type::IIO_EV_TYPE_ROC;
+  }
+  if (event_type_str.compare(kAdaptive) == 0) {
+    if (prev_str.compare(kThresh) == 0) {
+      return iio_event_type::IIO_EV_TYPE_THRESH_ADAPTIVE;
+    }
+    if (prev_str.compare(kMag) == 0) {
+      return iio_event_type::IIO_EV_TYPE_MAG_ADAPTIVE;
+    }
+  }
+  if (event_type_str.compare(kChange) == 0) {
     return iio_event_type::IIO_EV_TYPE_CHANGE;
+  }
 
   return std::nullopt;
 }
 
 std::optional<iio_event_direction> GetDirection(std::string direction_str) {
-  if (direction_str.compare(kEither) == 0)
+  if (direction_str.compare(kEither) == 0) {
     return iio_event_direction::IIO_EV_DIR_EITHER;
-  if (direction_str.compare(kRising) == 0)
+  }
+  if (direction_str.compare(kRising) == 0) {
     return iio_event_direction::IIO_EV_DIR_RISING;
-  if (direction_str.compare(kFalling) == 0)
+  }
+  if (direction_str.compare(kFalling) == 0) {
     return iio_event_direction::IIO_EV_DIR_FALLING;
-  if (direction_str.compare(kNone) == 0)
+  }
+  if (direction_str.compare(kNone) == 0) {
     return iio_event_direction::IIO_EV_DIR_NONE;
+  }
 
   return std::nullopt;
 }
@@ -129,20 +142,23 @@ std::unique_ptr<IioEventImpl> IioEventImpl::Create(base::FilePath file) {
   }
 
   std::optional<iio_chan_type> chan_type = ::libmems::GetChanType(pieces[1]);
-  if (!chan_type.has_value())
+  if (!chan_type.has_value()) {
     return nullptr;
+  }
 
   int channel = ::libmems::GetChannel(pieces[1], chan_type.value());
 
   std::optional<iio_event_type> event_type = ::libmems::GetEventType(
       pieces[pieces.size() - 3], pieces[pieces.size() - 4]);
-  if (!event_type.has_value())
+  if (!event_type.has_value()) {
     return nullptr;
+  }
 
   std::optional<iio_event_direction> direction =
       ::libmems::GetDirection(pieces[pieces.size() - 2]);
-  if (!direction.has_value())
+  if (!direction.has_value()) {
     return nullptr;
+  }
 
   std::unique_ptr<IioEventImpl> iio_event_impl(new IioEventImpl(
       file.DirName(), file_name.substr(0, file_name.size() - 2),
@@ -170,8 +186,9 @@ bool IioEventImpl::IsEnabled() const {
     return false;
   }
 
-  if (!en.empty() && en.front() == '1')
+  if (!en.empty() && en.front() == '1') {
     return true;
+  }
 
   return false;
 }
@@ -179,8 +196,9 @@ bool IioEventImpl::IsEnabled() const {
 void IioEventImpl::SetEnabled(bool en) {
   base::FilePath file = GetAttributePath("en");
 
-  if (!WriteFile(file, en ? "1\n" : "0\n"))
+  if (!WriteFile(file, en ? "1\n" : "0\n")) {
     LOG(ERROR) << "Failed to write file: " << file.value();
+  }
 }
 
 std::optional<std::string> IioEventImpl::ReadStringAttribute(

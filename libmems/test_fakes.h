@@ -356,8 +356,9 @@ class LIBMEMS_EXPORT FakeIioContext : public IioContext {
   iio_context* GetCurrentContext() const override { return nullptr; };
   void Reload() override {}
   bool SetTimeout(uint32_t timeout) override {
-    if (!IsValid())
+    if (!IsValid()) {
       return false;
+    }
 
     timeout_ = timeout;
     return true;

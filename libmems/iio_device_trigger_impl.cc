@@ -33,8 +33,9 @@ std::optional<int> IioDeviceTriggerImpl::GetIdFromString(const char* id_str) {
 }
 
 std::string IioDeviceTriggerImpl::GetStringFromId(int id) {
-  if (id == -1)
+  if (id == -1) {
     return std::string(kIioSysfsTrigger);
+  }
   return base::StringPrintf("trigger%d", id);
 }
 
@@ -69,10 +70,11 @@ int IioDeviceTriggerImpl::GetId() const {
 
 base::FilePath IioDeviceTriggerImpl::GetPath() const {
   base::FilePath path;
-  if (GetId() >= 0)
+  if (GetId() >= 0) {
     path = GetPathById(GetId());
-  else
+  } else {
     path = base::FilePath(kSysDevString).Append(std::string(kIioSysfsTrigger));
+  }
 
   CHECK(base::DirectoryExists(path));
   return path;

@@ -15,8 +15,9 @@ namespace {
 
 struct UdevDeviceDeleter {
   void operator()(udev_device* dev) {
-    if (dev)
+    if (dev) {
       udev_device_unref(dev);
+    }
   }
 };
 
@@ -39,8 +40,9 @@ std::vector<std::string> GetDevlinks(const std::string& syspath) {
       udev_device_get_devlinks_list_entry(device.get());
   while (devlink) {
     const char* name = udev_list_entry_get_name(devlink);
-    if (name)
+    if (name) {
       out.push_back(name);
+    }
     devlink = udev_list_entry_get_next(devlink);
   }
 

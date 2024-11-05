@@ -42,14 +42,16 @@ bool IioContextImpl::IsValid() const {
 }
 
 iio_context* IioContextImpl::GetCurrentContext() const {
-  if (context_.empty())
+  if (context_.empty()) {
     return nullptr;
+  }
   return context_.back().get();
 }
 
 bool IioContextImpl::SetTimeout(uint32_t timeout) {
-  if (!IsValid())
+  if (!IsValid()) {
     return false;
+  }
 
   int error = iio_context_set_timeout(GetCurrentContext(), timeout);
   if (error) {
@@ -92,19 +94,22 @@ std::vector<IioDevice*> IioContextImpl::GetAllTriggers() {
 template <typename T>
 IioDevice* IioContextImpl::GetById(
     int id, std::map<int, std::unique_ptr<T>>* devices_map) {
-  if (!IsValid())
+  if (!IsValid()) {
     return nullptr;
+  }
 
   auto it_dev = devices_map->find(id);
-  if (it_dev != devices_map->end())
+  if (it_dev != devices_map->end()) {
     return it_dev->second.get();
+  }
 
   std::string id_str = T::GetStringFromId(id);
 
   iio_device* device =
       iio_context_find_device(GetCurrentContext(), id_str.c_str());
-  if (!device)
+  if (!device) {
     return nullptr;
+  }
 
   devices_map->emplace(id, std::make_unique<T>(this, device));
 
@@ -115,8 +120,9 @@ template <typename T>
 std::vector<IioDevice*> IioContextImpl::GetByName(
     const std::string& name, std::map<int, std::unique_ptr<T>>* devices_map) {
   std::vector<IioDevice*> devices;
-  if (!IsValid())
+  if (!IsValid()) {
     return devices;
+  }
 
   iio_context* ctx = GetCurrentContext();
   for (uint32_t i = 0; i < iio_context_get_devices_count(ctx); ++i) {
@@ -126,16 +132,19 @@ std::vector<IioDevice*> IioContextImpl::GetByName(
     }
 
     const char* id_str = iio_device_get_id(dev);
-    if (!id_str)
+    if (!id_str) {
       continue;
+    }
 
     auto id = T::GetIdFromString(id_str);
-    if (!id.has_value())
+    if (!id.has_value()) {
       continue;
+    }
 
     const char* dev_name = iio_device_get_name(dev);
-    if (dev_name && name.compare(dev_name) == 0)
+    if (dev_name && name.compare(dev_name) == 0) {
       devices.push_back(GetById(id.value(), devices_map));
+    }
   }
 
   return devices;
@@ -145,8 +154,9 @@ template <typename T>
 std::vector<IioDevice*> IioContextImpl::GetAll(
     std::map<int, std::unique_ptr<T>>* devices_map) {
   std::vector<IioDevice*> devices;
-  if (!IsValid())
+  if (!IsValid()) {
     return devices;
+  }
 
   iio_context* ctx = GetCurrentContext();
   for (uint32_t i = 0; i < iio_context_get_devices_count(ctx); ++i) {
@@ -156,15 +166,17 @@ std::vector<IioDevice*> IioContextImpl::GetAll(
     }
 
     const char* id_str = iio_device_get_id(dev);
-    if (!id_str)
+    if (!id_str) {
       continue;
+    }
 
     std::optional<int> id = T::GetIdFromString(id_str);
-    if (!id.has_value())
+    if (!id.has_value()) {
       continue;
+    }
 
-    // libiio does not support removal, make sure the device has not been removed
-    // by checking if its directory in sysfs still exists.
+    // libiio does not support removal, make sure the device has not been
+    // removed by checking if its directory in sysfs still exists.
     if (!base::DirectoryExists(T::GetPathById(id.value()))) {
       continue;
     }
@@ -178,8 +190,9 @@ std::vector<IioDevice*> IioContextImpl::GetAll(
 template <typename T>
 void IioContextImpl::Reload(std::map<int, std::unique_ptr<T>>* devices_map) {
   std::set<int> ids;
-  for (IioDevice* device : GetAll(devices_map))
+  for (IioDevice* device : GetAll(devices_map)) {
     ids.emplace(device->GetId());
+  }
 
   for (auto it = devices_map->begin(); it != devices_map->end();) {
     if (ids.find(it->first) == ids.end()) {

@@ -42,14 +42,17 @@ std::optional<base::FilePath> IioDevice::GetAbsoluteSysPath() const {
 std::optional<std::string> IioDevice::GetLocation() const {
   auto label = ReadStringAttribute(kLabelAttr);
   if (label.has_value()) {
-    if (label->find("-base") != std::string::npos)
+    if (label->find("-base") != std::string::npos) {
       return "base";
+    }
 
-    if (label->find("-display") != std::string::npos)
+    if (label->find("-display") != std::string::npos) {
       return "lid";
+    }
 
-    if (label->find("-camera") != std::string::npos)
+    if (label->find("-camera") != std::string::npos) {
       return "camera";
+    }
   }
 
   return ReadStringAttribute(kLocationAttr);
@@ -66,38 +69,43 @@ std::optional<int> IioDevice::GetIdAfterPrefix(const char* id_str,
 
   int value = 0;
   bool success = base::StringToInt(std::string(id_str + prefix_len), &value);
-  if (success)
+  if (success) {
     return value;
+  }
 
   return std::nullopt;
 }
 
 std::vector<IioChannel*> IioDevice::GetAllChannels() {
   std::vector<IioChannel*> channels;
-  for (const auto& channel_data : channels_)
+  for (const auto& channel_data : channels_) {
     channels.push_back(channel_data.chn.get());
+  }
 
   return channels;
 }
 
 void IioDevice::EnableAllChannels() {
   for (IioChannel* chn : GetAllChannels()) {
-    if (!chn->SetEnabledAndCheck(true))
+    if (!chn->SetEnabledAndCheck(true)) {
       LOG(ERROR) << "Failed to enable channel: " << chn->GetId();
+    }
   }
 }
 
 IioChannel* IioDevice::GetChannel(int32_t index) {
-  if (index < 0 || index >= channels_.size())
+  if (index < 0 || index >= channels_.size()) {
     return nullptr;
+  }
 
   return channels_[index].chn.get();
 }
 
 IioChannel* IioDevice::GetChannel(const std::string& name) {
   for (size_t i = 0; i < channels_.size(); ++i) {
-    if (channels_[i].chn_id == name)
+    if (channels_[i].chn_id == name) {
       return channels_[i].chn.get();
+    }
   }
 
   return nullptr;
@@ -105,22 +113,25 @@ IioChannel* IioDevice::GetChannel(const std::string& name) {
 
 std::vector<IioEvent*> IioDevice::GetAllEvents() {
   std::vector<IioEvent*> events;
-  for (const auto& event : events_)
+  for (const auto& event : events_) {
     events.push_back(event.get());
+  }
 
   return events;
 }
 
 void IioDevice::EnableAllEvents() {
   for (const auto& event : events_) {
-    if (!event->SetEnabledAndCheck(true))
+    if (!event->SetEnabledAndCheck(true)) {
       LOG(ERROR) << "Failed to enable event: " << event->GetChannelNumber();
+    }
   }
 }
 
 IioEvent* IioDevice::GetEvent(int32_t index) {
-  if (index < 0 || index >= events_.size())
+  if (index < 0 || index >= events_.size()) {
     return nullptr;
+  }
 
   return events_[index].get();
 }
@@ -135,8 +146,9 @@ bool IioDevice::GetMinMaxFrequency(double* min_freq, double* max_freq) {
   std::string sampling_frequency_available = available_opt.value();
   // Remove trailing '\0' for parsing
   auto pos = available_opt->find_first_of('\0');
-  if (pos != std::string::npos)
+  if (pos != std::string::npos) {
     sampling_frequency_available = available_opt->substr(0, pos);
+  }
 
   std::vector<std::string> sampling_frequencies =
       base::SplitString(sampling_frequency_available, " ",

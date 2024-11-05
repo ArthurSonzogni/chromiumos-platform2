@@ -50,15 +50,17 @@ void IioChannelImpl::SetEnabled(bool en) {
     }
   }
 
-  if (en)
+  if (en) {
     iio_channel_enable(channel_);
-  else
+  } else {
     iio_channel_disable(channel_);
+  }
 }
 
 bool IioChannelImpl::SetScanElementsEnabled(bool en) {
-  if (!iio_channel_is_scan_element(channel_))
+  if (!iio_channel_is_scan_element(channel_)) {
     return true;
+  }
 
   std::string en_attrib_name = base::StringPrintf(
       "scan_elements/%s_%s_en", iio_channel_is_output(channel_) ? "out" : "in",
@@ -155,8 +157,9 @@ std::optional<int64_t> IioChannelImpl::Convert(const uint8_t* src) const {
   }
 
   size_t len = format->length;
-  if (len == 0)
+  if (len == 0) {
     return 0;
+  }
 
   int64_t value = 0;
   iio_channel_convert(channel_, &value, src);

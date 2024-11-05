@@ -128,8 +128,9 @@ class IioDeviceTestOnMinMaxFrequencyWithParam
 
 TEST_P(IioDeviceTestOnMinMaxFrequencyWithParam, ParseMinMaxFrequency) {
   EXPECT_EQ(result_, std::get<1>(GetParam()));
-  if (!result_)
+  if (!result_) {
     return;
+  }
 
   EXPECT_EQ(min_freq_, std::get<2>(GetParam()));
   EXPECT_EQ(max_freq_, std::get<3>(GetParam()));

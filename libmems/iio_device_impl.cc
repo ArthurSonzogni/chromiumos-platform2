@@ -93,8 +93,9 @@ IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
 
   for (const auto& file : files) {
     auto iio_event = IioEventImpl::Create(file);
-    if (iio_event)
+    if (iio_event) {
       events_.push_back(std::move(iio_event));
+    }
   }
 }
 
@@ -207,8 +208,9 @@ bool IioDeviceImpl::SetTrigger(IioDevice* trigger_device) {
     LOG(WARNING) << log_prefix_ << "Unable to clean trigger, error: " << error;
     return false;
   }
-  if (trigger_device == nullptr)
+  if (trigger_device == nullptr) {
     return true;
+  }
 
   const iio_device* impl_device = nullptr;
   int id = trigger_device->GetId();
@@ -238,18 +240,21 @@ bool IioDeviceImpl::SetTrigger(IioDevice* trigger_device) {
 IioDevice* IioDeviceImpl::GetTrigger() {
   const iio_device* trigger;
   int error = iio_device_get_trigger(device_, &trigger);
-  if (error)
+  if (error) {
     return nullptr;
+  }
 
-  if (trigger == nullptr)
+  if (trigger == nullptr) {
     return nullptr;
+  }
 
   const char* id_str = iio_device_get_id(trigger);
   auto id = IioDeviceTriggerImpl::GetIdFromString(id_str);
 
   IioDevice* trigger_device = nullptr;
-  if (id.has_value())
+  if (id.has_value()) {
     trigger_device = GetContext()->GetTriggerById(id.value());
+  }
 
   if (trigger_device == nullptr) {
     LOG(WARNING) << log_prefix_ << "Has trigger device " << id_str
@@ -260,13 +265,15 @@ IioDevice* IioDeviceImpl::GetTrigger() {
 }
 
 IioDevice* IioDeviceImpl::GetHrtimer() {
-  if (hrtimer_)
+  if (hrtimer_) {
     return hrtimer_;
+  }
 
   auto triggers = context_->GetTriggersByName(
       base::StringPrintf(kHrtimerNameFormatString, GetId()));
-  if (triggers.empty())
+  if (triggers.empty()) {
     return nullptr;
+  }
 
   if (triggers.size() > 1) {
     LOG(WARNING) << log_prefix_ << triggers.size()
@@ -290,10 +297,12 @@ std::optional<size_t> IioDeviceImpl::GetSampleSize() const {
 }
 
 bool IioDeviceImpl::EnableBuffer(size_t count) {
-  if (!WriteNumberAttribute("buffer/length", count))
+  if (!WriteNumberAttribute("buffer/length", count)) {
     return false;
-  if (!WriteNumberAttribute("buffer/enable", 1))
+  }
+  if (!WriteNumberAttribute("buffer/enable", 1)) {
     return false;
+  }
 
   return true;
 }
@@ -304,15 +313,17 @@ bool IioDeviceImpl::DisableBuffer() {
 
 bool IioDeviceImpl::IsBufferEnabled(size_t* count) const {
   bool enabled = (ReadNumberAttribute("buffer/enable").value_or(0) == 1);
-  if (enabled && count)
+  if (enabled && count) {
     *count = ReadNumberAttribute("buffer/length").value_or(0);
+  }
 
   return enabled;
 }
 
 bool IioDeviceImpl::CreateBuffer() {
-  if (buffer_)
+  if (buffer_) {
     return false;
+  }
 
   buffer_.reset(iio_device_create_buffer(device_, kNumSamples, false));
 
@@ -327,8 +338,9 @@ bool IioDeviceImpl::CreateBuffer() {
 }
 
 std::optional<int32_t> IioDeviceImpl::GetBufferFd() {
-  if (!buffer_)
+  if (!buffer_) {
     return std::nullopt;
+  }
 
   int32_t fd = iio_buffer_get_poll_fd(buffer_.get());
   if (fd < 0) {
@@ -340,8 +352,9 @@ std::optional<int32_t> IioDeviceImpl::GetBufferFd() {
 }
 
 std::optional<IioDevice::IioSample> IioDeviceImpl::ReadSample() {
-  if (!buffer_)
+  if (!buffer_) {
     return std::nullopt;
+  }
 
   ssize_t ret = iio_buffer_refill(buffer_.get());
   if (ret < 0) {
@@ -374,8 +387,9 @@ void IioDeviceImpl::FreeBuffer() {
 }
 
 std::optional<int32_t> IioDeviceImpl::GetEventFd() {
-  if (event_fd_.has_value())
+  if (event_fd_.has_value()) {
     return event_fd_;
+  }
 
   const std::string file =
       base::StringPrintf("%s/%s", kDevString, iio_device_get_id(device_));
@@ -399,8 +413,9 @@ std::optional<int32_t> IioDeviceImpl::GetEventFd() {
 }
 
 std::optional<iio_event_data> IioDeviceImpl::ReadEvent() {
-  if (!event_fd_ && !GetEventFd().has_value())
+  if (!event_fd_ && !GetEventFd().has_value()) {
     return std::nullopt;
+  }
 
   struct iio_event_data iio_event_buf = {0};
   if (read(event_fd_.value(), &iio_event_buf, sizeof(iio_event_buf)) == -1) {
@@ -424,12 +439,14 @@ IioDevice::IioSample IioDeviceImpl::DeserializeSample(const uint8_t* src) {
   auto channels = GetAllChannels();
   for (int32_t i = 0; i < channels.size(); ++i) {
     IioChannelImpl* chn = dynamic_cast<IioChannelImpl*>(channels[i]);
-    if (!chn->IsEnabled())
+    if (!chn->IsEnabled()) {
       continue;
+    }
 
     size_t len = chn->Length().value_or(0);
-    if (len == 0)
+    if (len == 0) {
       continue;
+    }
     len /= CHAR_BIT;
 
     size_t space_in_block = sizeof(int64_t) - (pos % sizeof(int64_t));
@@ -440,8 +457,9 @@ IioDevice::IioSample IioDeviceImpl::DeserializeSample(const uint8_t* src) {
     std::optional<int64_t> value = chn->Convert(src + pos);
     pos += len;
 
-    if (value.has_value())
+    if (value.has_value()) {
       sample[i] = value.value();
+    }
   }
 
   return sample;
