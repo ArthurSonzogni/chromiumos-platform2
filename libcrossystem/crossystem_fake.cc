@@ -13,31 +13,35 @@ namespace fake {
 std::optional<int> CrossystemFake::VbGetSystemPropertyInt(
     const std::string& name) const {
   const auto it = system_int_properties_.find(name);
-  if (it == system_int_properties_.end())
+  if (it == system_int_properties_.end()) {
     return std::nullopt;
+  }
   return it->second;
 }
 
 std::optional<std::string> CrossystemFake::VbGetSystemPropertyString(
     const std::string& name) const {
   const auto it = system_str_properties_.find(name);
-  if (it == system_str_properties_.end())
+  if (it == system_str_properties_.end()) {
     return std::nullopt;
+  }
   return it->second;
 }
 
 bool CrossystemFake::VbSetSystemPropertyInt(const std::string& name,
                                             int value) {
-  if (readonly_system_peroperty_names_.count(name) > 0)
+  if (readonly_system_peroperty_names_.count(name) > 0) {
     return false;
+  }
   system_int_properties_[name] = value;
   return true;
 }
 
 bool CrossystemFake::VbSetSystemPropertyString(const std::string& name,
                                                const std::string& value) {
-  if (readonly_system_peroperty_names_.count(name) > 0)
+  if (readonly_system_peroperty_names_.count(name) > 0) {
     return false;
+  }
   system_str_properties_[name] = value;
   return true;
 }

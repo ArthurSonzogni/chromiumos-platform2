@@ -13,8 +13,9 @@ namespace crossystem {
 std::optional<int> CrossystemImpl::VbGetSystemPropertyInt(
     const std::string& name) const {
   int value = ::VbGetSystemPropertyInt(name.c_str());
-  if (value == -1)
+  if (value == -1) {
     return std::nullopt;
+  }
   return value;
 }
 
@@ -27,8 +28,9 @@ std::optional<std::string> CrossystemImpl::VbGetSystemPropertyString(
     const std::string& name) const {
   char value_buffer[VB_MAX_STRING_PROPERTY];
   if (::VbGetSystemPropertyString(name.c_str(), value_buffer,
-                                  sizeof(value_buffer)) != 0)
+                                  sizeof(value_buffer)) != 0) {
     return std::nullopt;
+  }
   return value_buffer;
 }
 
