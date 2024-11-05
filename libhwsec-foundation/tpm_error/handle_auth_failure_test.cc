@@ -25,7 +25,9 @@ constexpr uint32_t sample_hash = 0xd6ca7f57;
 constexpr uint32_t sample_hash2 = 0xb349c715;
 constexpr uint32_t wrong_password_hash = 0x2010c9ae;
 
-constexpr struct TpmErrorData sample_data { 1, 1 };
+constexpr struct TpmErrorData sample_data {
+  1, 1
+};
 
 bool HasError() {
   char error_msg[256] = {'\0'};

@@ -119,13 +119,15 @@ Blob MutateBlob(const Blob& input_blob,
         break;
       }
       case BlobMutatorCommand::kSkipInputByte: {
-        if (input_index < input_blob.size())
+        if (input_index < input_blob.size()) {
           ++input_index;
+        }
         break;
       }
       case BlobMutatorCommand::kAddNewByte: {
-        if (fuzzed_blob.size() < max_length)
+        if (fuzzed_blob.size() < max_length) {
           fuzzed_blob.push_back(to_add);
+        }
         break;
       }
       case BlobMutatorCommand::kEnd: {

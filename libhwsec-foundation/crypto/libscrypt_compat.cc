@@ -224,8 +224,9 @@ bool LibScryptCompat::ParseHeader(const brillo::Blob& encrypted_blob,
 bool LibScryptCompat::Decrypt(const brillo::Blob& encrypted_data,
                               const brillo::SecureBlob& derived_key,
                               brillo::SecureBlob* decrypted_data) {
-  if (!VerifyDerivedKey(encrypted_data, derived_key))
+  if (!VerifyDerivedKey(encrypted_data, derived_key)) {
     return false;
+  }
 
   // lib scrypt appends an HMAC.
   brillo::SecureBlob key_hmac(derived_key.begin() + kLibScryptHMACKeyOffset,

@@ -22,15 +22,18 @@ void BlobToHexToBufferHelper(const T& data,
   char* char_buffer = reinterpret_cast<char*>(buffer);
   char* char_buffer_end = char_buffer + buffer_length;
   for (uint8_t byte : data) {
-    if (char_buffer == char_buffer_end)
+    if (char_buffer == char_buffer_end) {
       break;
+    }
     *char_buffer++ = table[(byte >> 4) & 0x0f];
-    if (char_buffer == char_buffer_end)
+    if (char_buffer == char_buffer_end) {
       break;
+    }
     *char_buffer++ = table[byte & 0x0f];
   }
-  if (char_buffer != char_buffer_end)
+  if (char_buffer != char_buffer_end) {
     *char_buffer = '\x00';
+  }
 }
 
 }  // namespace

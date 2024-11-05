@@ -94,73 +94,98 @@ class ClientLoop : public brillo::Daemon {
   void FillHwsecStatus(const Reply& reply) {
     if constexpr (std::same_as<Reply,
                                tpm_manager::GetTpmNonsensitiveStatusReply>) {
-      if (reply.has_is_enabled())
+      if (reply.has_is_enabled()) {
         hwsec_status_.set_is_enabled(reply.is_enabled());
-      if (reply.has_is_owned())
+      }
+      if (reply.has_is_owned()) {
         hwsec_status_.set_is_owned(reply.is_owned());
-      if (reply.has_is_owner_password_present())
+      }
+      if (reply.has_is_owner_password_present()) {
         hwsec_status_.set_is_owner_password_present(
             reply.is_owner_password_present());
-      if (reply.has_has_reset_lock_permissions())
+      }
+      if (reply.has_has_reset_lock_permissions()) {
         hwsec_status_.set_has_reset_lock_permissions(
             reply.has_reset_lock_permissions());
-      if (reply.has_is_srk_default_auth())
+      }
+      if (reply.has_is_srk_default_auth()) {
         hwsec_status_.set_is_srk_default_auth(reply.is_srk_default_auth());
+      }
     } else if constexpr (std::same_as<Reply,
                                       tpm_manager::GetSupportedFeaturesReply>) {
-      if (reply.has_support_u2f())
+      if (reply.has_support_u2f()) {
         hwsec_status_.set_support_u2f(reply.support_u2f());
-      if (reply.has_support_pinweaver())
+      }
+      if (reply.has_support_pinweaver()) {
         hwsec_status_.set_support_pinweaver(reply.support_pinweaver());
-      if (reply.has_support_runtime_selection())
+      }
+      if (reply.has_support_runtime_selection()) {
         hwsec_status_.set_support_runtime_selection(
             reply.support_runtime_selection());
-      if (reply.has_is_allowed())
+      }
+      if (reply.has_is_allowed()) {
         hwsec_status_.set_is_allowed(reply.has_is_allowed());
-      if (reply.has_support_clear_request())
+      }
+      if (reply.has_support_clear_request()) {
         hwsec_status_.set_support_clear_request(reply.support_clear_request());
-      if (reply.has_support_clear_without_prompt())
+      }
+      if (reply.has_support_clear_without_prompt()) {
         hwsec_status_.set_support_clear_without_prompt(
             reply.support_clear_without_prompt());
+      }
     } else if constexpr (std::same_as<Reply,
                                       tpm_manager::GetVersionInfoReply>) {
-      if (reply.has_family())
+      if (reply.has_family()) {
         hwsec_status_.set_family(reply.family());
-      if (reply.has_spec_level())
+      }
+      if (reply.has_spec_level()) {
         hwsec_status_.set_spec_level(reply.spec_level());
-      if (reply.has_manufacturer())
+      }
+      if (reply.has_manufacturer()) {
         hwsec_status_.set_manufacturer(reply.manufacturer());
-      if (reply.has_tpm_model())
+      }
+      if (reply.has_tpm_model()) {
         hwsec_status_.set_tpm_model(reply.tpm_model());
-      if (reply.has_firmware_version())
+      }
+      if (reply.has_firmware_version()) {
         hwsec_status_.set_firmware_version(reply.firmware_version());
-      if (reply.has_vendor_specific())
+      }
+      if (reply.has_vendor_specific()) {
         hwsec_status_.set_vendor_specific(reply.vendor_specific());
-      if (reply.has_rw_version())
+      }
+      if (reply.has_rw_version()) {
         hwsec_status_.set_gsc_rw_version(reply.rw_version());
+      }
     } else if constexpr (std::same_as<
                              Reply,
                              tpm_manager::GetDictionaryAttackInfoReply>) {
-      if (reply.has_dictionary_attack_counter())
+      if (reply.has_dictionary_attack_counter()) {
         hwsec_status_.set_dictionary_attack_counter(
             reply.dictionary_attack_counter());
-      if (reply.has_dictionary_attack_threshold())
+      }
+      if (reply.has_dictionary_attack_threshold()) {
         hwsec_status_.set_dictionary_attack_threshold(
             reply.dictionary_attack_threshold());
-      if (reply.has_dictionary_attack_lockout_in_effect())
+      }
+      if (reply.has_dictionary_attack_lockout_in_effect()) {
         hwsec_status_.set_dictionary_attack_lockout_in_effect(
             reply.dictionary_attack_lockout_in_effect());
-      if (reply.has_dictionary_attack_lockout_seconds_remaining())
+      }
+      if (reply.has_dictionary_attack_lockout_seconds_remaining()) {
         hwsec_status_.set_dictionary_attack_lockout_seconds_remaining(
             reply.dictionary_attack_lockout_seconds_remaining());
+      }
     } else if constexpr (std::same_as<Reply, attestation::GetStatusReply>) {
-      if (reply.has_prepared_for_enrollment())
+      if (reply.has_prepared_for_enrollment()) {
         hwsec_status_.set_prepared_for_enrollment(
             reply.prepared_for_enrollment());
-      if (reply.has_enrolled())
+      }
+      if (reply.has_enrolled()) {
         hwsec_status_.set_enrolled(reply.enrolled());
-      if (reply.has_verified_boot())
+      }
+      if (reply.has_verified_boot()) {
         hwsec_status_.set_verified_boot(reply.verified_boot());
+      }
     } else if constexpr (std::same_as<Reply,
                                       device_management::
                                           InstallAttributesGetStatusReply>) {
@@ -171,8 +196,9 @@ class ClientLoop : public brillo::Daemon {
     } else if constexpr (std::same_as<
                              Reply, device_management::
                                         GetFirmwareManagementParametersReply>) {
-      if (reply.has_fwmp())
+      if (reply.has_fwmp()) {
         hwsec_status_.set_fwmp_flags(reply.fwmp().flags());
+      }
     } else if constexpr (std::same_as<
                              Reply,
                              user_data_auth::Pkcs11IsTpmTokenReadyReply>) {

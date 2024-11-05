@@ -205,8 +205,9 @@ bool UnobscureRsaMessage(const brillo::Blob& ciphertext,
 bool RsaOaepEncrypt(const brillo::SecureBlob& plaintext,
                     RSA* key,
                     brillo::Blob* ciphertext) {
-  if (plaintext.empty())
+  if (plaintext.empty()) {
     return false;
+  }
   ciphertext->resize(RSA_size(key));
   const int encryption_result =
       RSA_public_encrypt(plaintext.size(), plaintext.data(), ciphertext->data(),

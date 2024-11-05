@@ -90,8 +90,9 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
     return false;
   }
   if (tag.size() != kAesGcmTagSize) {
-    NOTREACHED_IN_MIGRATION() << "Wrong tag size passed to AesGcmDecrypt: " << tag.size()
-                 << ", expected " << kAesGcmTagSize << ".";
+    NOTREACHED_IN_MIGRATION()
+        << "Wrong tag size passed to AesGcmDecrypt: " << tag.size()
+        << ", expected " << kAesGcmTagSize << ".";
     return false;
   }
 
@@ -110,8 +111,9 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
   }
 
   if (iv.size() != kAesGcmIVSize) {
-    NOTREACHED_IN_MIGRATION() << "Wrong iv size passed to AesGcmDecrypt: " << iv.size()
-                 << ", expected " << kAesGcmIVSize << ".";
+    NOTREACHED_IN_MIGRATION()
+        << "Wrong iv size passed to AesGcmDecrypt: " << iv.size()
+        << ", expected " << kAesGcmIVSize << ".";
     return false;
   }
 
@@ -140,7 +142,8 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
 
   if (ad.has_value()) {
     if (ad.value().empty()) {
-      NOTREACHED_IN_MIGRATION() << "Empty associated data passed to AesGcmDecrypt.";
+      NOTREACHED_IN_MIGRATION()
+          << "Empty associated data passed to AesGcmDecrypt.";
       return false;
     }
     int out_size = 0;
@@ -237,7 +240,8 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
 
   if (ad.has_value()) {
     if (ad.value().empty()) {
-      NOTREACHED_IN_MIGRATION() << "Empty associated data passed to AesGcmEncrypt.";
+      NOTREACHED_IN_MIGRATION()
+          << "Empty associated data passed to AesGcmEncrypt.";
       return false;
     }
     int out_size = 0;
@@ -357,8 +361,9 @@ bool AesDecryptSpecifyBlockMode(const brillo::Blob& encrypted,
 
   // Make sure we're not pointing into an empty buffer or past the end.
   const unsigned char* encrypted_buf = NULL;
-  if (start < encrypted.size())
+  if (start < encrypted.size()) {
     encrypted_buf = &encrypted[start];
+  }
 
   if (!EVP_DecryptUpdate(decryption_context.get(), local_plain_text.data(),
                          &decrypt_size, encrypted_buf, count)) {
@@ -369,8 +374,9 @@ bool AesDecryptSpecifyBlockMode(const brillo::Blob& encrypted,
   // In the case of local_plain_text being full, we must avoid trying to
   // point past the end of the buffer when calling EVP_DecryptFinal_ex().
   unsigned char* final_buf = NULL;
-  if (static_cast<unsigned int>(decrypt_size) < local_plain_text.size())
+  if (static_cast<unsigned int>(decrypt_size) < local_plain_text.size()) {
     final_buf = &local_plain_text[decrypt_size];
+  }
 
   if (!EVP_DecryptFinal_ex(decryption_context.get(), final_buf, &final_size)) {
     unsigned long err = ERR_get_error();  // NOLINT openssl types
@@ -548,8 +554,9 @@ bool AesEncryptSpecifyBlockMode(const brillo::SecureBlob& plain_text,
 
   // Make sure we're not pointing into an empty buffer or past the end.
   const unsigned char* plain_buf = NULL;
-  if (start < plain_text.size())
+  if (start < plain_text.size()) {
     plain_buf = &plain_text[start];
+  }
 
   if (!EVP_EncryptUpdate(encryption_context.get(), &cipher_text[current_size],
                          &encrypt_size, plain_buf, count)) {
@@ -580,8 +587,9 @@ bool AesEncryptSpecifyBlockMode(const brillo::SecureBlob& plain_text,
   // In the case of cipher_text being full, we must avoid trying to
   // point past the end of the buffer when calling EVP_EncryptFinal_ex().
   unsigned char* final_buf = NULL;
-  if (static_cast<unsigned int>(current_size) < cipher_text.size())
+  if (static_cast<unsigned int>(current_size) < cipher_text.size()) {
     final_buf = &cipher_text[current_size];
+  }
 
   // Finally, finish the encryption
   if (!EVP_EncryptFinal_ex(encryption_context.get(), final_buf,

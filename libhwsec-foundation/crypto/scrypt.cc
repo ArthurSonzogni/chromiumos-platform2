@@ -97,22 +97,29 @@ bool Scrypt(const brillo::SecureBlob& input,
             int parallel_factor,
             brillo::SecureBlob* result) {
   crypto::ScopedEVP_PKEY_CTX pctx(EVP_PKEY_CTX_new_id(EVP_PKEY_SCRYPT, NULL));
-  if (EVP_PKEY_derive_init(pctx.get()) <= 0)
+  if (EVP_PKEY_derive_init(pctx.get()) <= 0) {
     return false;
+  }
 
   // OpenSSL 3.0 changed the input arg to const char*, other versions use const
   // unsigned char* or void*, so use ConstBytePtr to satisfy both.
   if (EVP_PKEY_CTX_set1_pbe_pass(pctx.get(), ConstBytePtr(input.data()),
-                                 input.size()) <= 0)
+                                 input.size()) <= 0) {
     return false;
-  if (EVP_PKEY_CTX_set1_scrypt_salt(pctx.get(), salt.data(), salt.size()) <= 0)
+  }
+  if (EVP_PKEY_CTX_set1_scrypt_salt(pctx.get(), salt.data(), salt.size()) <=
+      0) {
     return false;
-  if (EVP_PKEY_CTX_set_scrypt_N(pctx.get(), work_factor) <= 0)
+  }
+  if (EVP_PKEY_CTX_set_scrypt_N(pctx.get(), work_factor) <= 0) {
     return false;
-  if (EVP_PKEY_CTX_set_scrypt_r(pctx.get(), block_size) <= 0)
+  }
+  if (EVP_PKEY_CTX_set_scrypt_r(pctx.get(), block_size) <= 0) {
     return false;
-  if (EVP_PKEY_CTX_set_scrypt_p(pctx.get(), parallel_factor) <= 0)
+  }
+  if (EVP_PKEY_CTX_set_scrypt_p(pctx.get(), parallel_factor) <= 0) {
     return false;
+  }
 
   size_t outlen = result->size();
   int rc = EVP_PKEY_derive(pctx.get(), result->data(), &outlen);
