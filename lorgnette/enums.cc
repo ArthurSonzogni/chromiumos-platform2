@@ -370,6 +370,9 @@ DocumentScanSaneBackend BackendFromDeviceName(const std::string& device) {
   if (name == "r50") {
     return kR50;
   }
+  if (name == "pfufs") {
+    return kPfufs;
+  }
   LOG(WARNING) << "Unknown sane backend " << name;
   return kOtherBackend;
 }
