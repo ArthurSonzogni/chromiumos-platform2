@@ -10,8 +10,9 @@
 namespace {
 
 uint32_t TwosComplementEncoding(int value) {
-  if (value >= 0)
+  if (value >= 0) {
     return value;
+  }
   uint32_t binary = -static_cast<int64_t>(value);
   binary = ~binary;
   ++binary;
