@@ -268,11 +268,11 @@ struct SharedDataParam {
     uint32_t negative_timeout;
   };
   std::string to_string() const;
-  // Set VhostUserVirtioFsConfig proto message according to SharedDataParam,
+  // Get VhostUserVirtioFsConfig proto message according to SharedDataParam,
   // this message will be parsed by vhost_user_starter daemon and config
   // vhost-user-fs backend's --cfg option in crosvm.
-  void set_vhost_user_virtio_fs_cfg(
-      vm_tools::vhost_user_starter::VhostUserVirtioFsConfig* cfg) const;
+  vhost_user_starter::VhostUserVirtioFsConfig get_vhost_user_virtio_fs_cfg()
+      const;
 
   base::FilePath data_dir;
   std::string tag;

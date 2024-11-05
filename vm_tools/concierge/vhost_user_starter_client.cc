@@ -91,8 +91,7 @@ void VhostUserStarterClient::StartVhostUserFs(
     gid_item->set_range(item.range());
   }
 
-  auto cfg = request.mutable_cfg();
-  param.set_vhost_user_virtio_fs_cfg(cfg);
+  *request.mutable_cfg() = param.get_vhost_user_virtio_fs_cfg();
 
   vm_tools::vhost_user_starter::StartVhostUserFsResponse response;
 

@@ -574,6 +574,28 @@ TEST(VMUtilTest, SharedDataParamWithPrivilegedQuotaUids) {
             "negative_timeout=3600:privileged_quota_uids=0");
 }
 
+TEST(VMUtilTest, SharedDataParamSetVhostUserVirtioFsConfig) {
+  SharedDataParam param{.data_dir = base::FilePath("/var/run/arc/media"),
+                        .tag = "stub",
+                        .uid_map = kAndroidUidMap,
+                        .gid_map = kAndroidGidMap,
+                        .enable_caches = SharedDataParam::Cache::kAuto,
+                        .ascii_casefold = false,
+                        .posix_acl = true,
+                        .privileged_quota_uids = {0}};
+
+  auto cfg = param.get_vhost_user_virtio_fs_cfg();
+
+  ASSERT_EQ(cfg.cache(), "auto");
+  ASSERT_EQ(cfg.negative_timeout(), 1);
+  ASSERT_EQ(cfg.writeback(), false);
+  ASSERT_EQ(cfg.ascii_casefold(), false);
+  ASSERT_EQ(cfg.posix_acl(), true);
+  ASSERT_EQ(cfg.rewrite_security_xattrs(), true);
+  ASSERT_EQ(cfg.privileged_quota_uids().size(), 1);
+  ASSERT_EQ(cfg.privileged_quota_uids().Get(0), 0);
+}
+
 TEST(VMUtilTest, GetBalloonStats) {
   FakeCrosvmControl::Init();
   FakeCrosvmControl::Get()->actual_balloon_size_ = 100;

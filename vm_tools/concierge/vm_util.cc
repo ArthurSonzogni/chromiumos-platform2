@@ -776,24 +776,29 @@ std::string SharedDataParam::to_string() const {
   return result;
 }
 
-void SharedDataParam::set_vhost_user_virtio_fs_cfg(
-    vhost_user_starter::VhostUserVirtioFsConfig* cfg) const {
-  CHECK(cfg != nullptr);
+vhost_user_starter::VhostUserVirtioFsConfig
+SharedDataParam::get_vhost_user_virtio_fs_cfg() const {
+  vhost_user_starter::VhostUserVirtioFsConfig cfg;
   CacheParameters cache_params =
       create_cache_parameters(enable_caches, ascii_casefold);
 
-  cfg->set_cache(cache_params.cache);
-  cfg->set_timeout(cache_params.timeout);
-  cfg->set_writeback(cache_params.writeback);
-  cfg->set_negative_timeout(cache_params.negative_timeout);
+#define SET_CACHE_FIELD(field) cfg.set_##field(cache_params.field)
+  SET_CACHE_FIELD(cache);
+  SET_CACHE_FIELD(timeout);
+  SET_CACHE_FIELD(writeback);
+  SET_CACHE_FIELD(negative_timeout);
+#undef SET_CACHE_FIELD
 
-  cfg->set_rewrite_security_xattrs(rewrite_security_xattrs);
-  cfg->set_ascii_casefold(ascii_casefold);
-  cfg->set_posix_acl(posix_acl);
+#define SET_FIELD(field) cfg.set_##field(field)
+  SET_FIELD(rewrite_security_xattrs);
+  SET_FIELD(ascii_casefold);
+  SET_FIELD(posix_acl);
+#undef SET_FIELD
 
   for (uid_t uid : privileged_quota_uids) {
-    cfg->add_privileged_quota_uids(uid);
+    cfg.add_privileged_quota_uids(uid);
   }
+  return cfg;
 }
 
 SharedDataParam CreateFontsSharedDataParam() {
