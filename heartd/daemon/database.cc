@@ -116,8 +116,9 @@ bool Database::TableExists(const std::string& table_name) const {
     return false;
   }
 
-  if (table_count <= 0)
+  if (table_count <= 0) {
     return false;
+  }
 
   DCHECK(table_count == 1) << "There should be only one table with name '"
                            << table_name << "'";

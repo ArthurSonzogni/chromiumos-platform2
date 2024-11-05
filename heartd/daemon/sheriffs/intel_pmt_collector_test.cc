@@ -96,8 +96,9 @@ class IntelPMTCollectorTest : public testing::Test {
   }
   void TearDown() override {
     ASSERT_TRUE(temp_dir_.Delete());
-    if (fake_snapshot_)
+    if (fake_snapshot_) {
       delete fake_snapshot_;
+    }
   }
 
  protected:
