@@ -99,6 +99,11 @@ class MockPlatform : public PlatformInterface {
               (int fd, const base::RepeatingClosure& callback),
               (override));
 
+  MOCK_METHOD(std::optional<uint32_t>,
+              FindPidByName,
+              (const std::string& process_name),
+              (override));
+
   MOCK_METHOD(int,
               BpfMapUpdateElementByFd,
               (int fd, const void* key, const void* value, __u64 flags),

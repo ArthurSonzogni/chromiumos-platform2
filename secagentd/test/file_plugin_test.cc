@@ -7,13 +7,17 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <memory>
+#include <optional>
 
+#include <brillo/files/file_util.h>
+
+#include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/strings/stringprintf.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "gmock/gmock.h"
@@ -70,12 +74,35 @@ class FilePluginTestFixture : public ::testing::Test {
         ->SetBatchSenderForTesting(std::move(batch_sender));
   }
 
+  void CreateExpectedBinaries() {
+    std::vector<std::string> paths = {"usr/sbin/dlp", "usr/sbin/secagentd"};
+
+    for (const auto& path_string : paths) {
+      base::FilePath path =
+          fake_root_.GetPath().Append(base::FilePath(path_string));
+
+      base::FilePath parent_dir =
+          path.DirName();  // Extract the parent directory.
+      if (!base::CreateDirectory(parent_dir)) {
+        FAIL() << "Failed to create directory: " << parent_dir.value();
+      }
+
+      base::File file(path,
+                      base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+      if (!file.IsValid()) {
+        FAIL() << "Failed to create file at path: " << path.value();
+      }
+    }
+  }
+
   void SetupDirectoryForValidation(
       const std::string& path_string,
       bool is_file,
       bpf::device_monitoring_type device_monitoring_type,
       bpf::file_monitoring_mode file_monitoring_mode,
-      cros_xdr::reporting::SensitiveFileType sensitive_file_type) {
+      cros_xdr::reporting::SensitiveFileType sensitive_file_type,
+      std::optional<std::string> hardlinkPath = std::nullopt,
+      bool should_be_monitored = true) {
     base::FilePath path =
         fake_root_.GetPath().Append(base::FilePath(path_string));
     if (!is_file) {
@@ -94,22 +121,52 @@ class FilePluginTestFixture : public ::testing::Test {
       }
     }
 
+    // Handle optional hardlink creation.
+    if (hardlinkPath.has_value()) {
+      base::FilePath hardlinkFilePath =
+          fake_root_.GetPath().Append(base::FilePath(hardlinkPath.value()));
+      if (!is_file) {
+        ASSERT_TRUE(base::CreateDirectory(hardlinkFilePath));
+      } else {
+        base::FilePath parent_dir = hardlinkFilePath.DirName();
+        if (!base::CreateDirectory(parent_dir)) {
+          FAIL() << "Failed to create directory: " << parent_dir.value();
+        }
+
+        base::File file(hardlinkFilePath, base::File::FLAG_CREATE_ALWAYS |
+                                              base::File::FLAG_WRITE);
+        if (!file.IsValid()) {
+          FAIL() << "Failed to create file at path: " << path.value();
+        }
+      }
+    }
+
     base::stat_wrapper_t fileStat;
     if (base::File::Stat(path, &fileStat) != 0) {
       FAIL() << "Failed to get file stat";
     }
 
-    //   Expected value from UserspaceToKernelDeviceId().
+    // Expected value from UserspaceToKernelDeviceId().
     uint32_t expected_kernel_dev =
         ((major(fileStat.st_dev) << 20) | minor(fileStat.st_dev));
-    struct bpf::inode_dev_map_key expected_bpfMapKey = {
-        .inode_id = fileStat.st_ino, .dev_id = expected_kernel_dev};
+    bpf::inode_dev_map_key expected_bpfMapKey = {.inode_id = fileStat.st_ino,
+                                                 .dev_id = expected_kernel_dev};
 
+    int times = should_be_monitored ? 1 : 0;
     EXPECT_CALL(
         *platform_,
         BpfMapUpdateElementByFd(
             42, ::testing::Truly([expected_bpfMapKey](const void* arg) -> bool {
               auto* key = static_cast<const bpf::inode_dev_map_key*>(arg);
+              if (!(key->inode_id == expected_bpfMapKey.inode_id &&
+                    key->dev_id == expected_bpfMapKey.dev_id)) {
+                LOG(ERROR) << "BpfMapUpdateElementByFd (42) - Key:"
+                           << " inode_id=" << key->inode_id
+                           << ", dev_id=" << key->dev_id
+                           << " | Expected: inode_id="
+                           << expected_bpfMapKey.inode_id
+                           << ", dev_id=" << expected_bpfMapKey.dev_id;
+              }
               return key->inode_id == expected_bpfMapKey.inode_id &&
                      key->dev_id == expected_bpfMapKey.dev_id;
             }),
@@ -117,30 +174,65 @@ class FilePluginTestFixture : public ::testing::Test {
                               sensitive_file_type](const void* arg) -> bool {
               auto* settings =
                   static_cast<const bpf::file_monitoring_settings*>(arg);
+              if (!(settings->file_monitoring_mode == file_monitoring_mode &&
+                    settings->sensitive_file_type == sensitive_file_type)) {
+                LOG(ERROR) << "BpfMapUpdateElementByFd (42) - Settings:"
+                           << " file_monitoring_mode="
+                           << settings->file_monitoring_mode
+                           << ", sensitive_file_type="
+                           << static_cast<uint8_t>(
+                                  settings->sensitive_file_type)
+                           << " | Expected: file_monitoring_mode="
+                           << file_monitoring_mode
+                           << ", sensitive_file_type=" << sensitive_file_type;
+              }
               return settings->file_monitoring_mode == file_monitoring_mode &&
                      settings->sensitive_file_type == sensitive_file_type;
             }),
             0))
-        .WillOnce(Return(0));
+        .Times(times);
 
     EXPECT_CALL(
         *platform_,
         BpfMapUpdateElementByFd(
             43, ::testing::Truly([expected_bpfMapKey](const void* arg) -> bool {
               const auto* dev_id_arg = static_cast<const uint32_t*>(arg);
+              if (!(*dev_id_arg == expected_bpfMapKey.dev_id)) {
+                LOG(ERROR) << "BpfMapUpdateElementByFd (43) - Dev ID:"
+                           << " dev_id=" << *dev_id_arg
+                           << " | Expected: dev_id="
+                           << expected_bpfMapKey.dev_id;
+              }
               return *dev_id_arg == expected_bpfMapKey.dev_id;
             }),
             ::testing::Truly([device_monitoring_type, file_monitoring_mode,
                               sensitive_file_type](const void* arg) -> bool {
               auto* settings =
                   static_cast<const bpf::device_file_monitoring_settings*>(arg);
+              if (!(settings->device_monitoring_type ==
+                        device_monitoring_type &&
+                    settings->file_monitoring_mode == file_monitoring_mode &&
+                    settings->sensitive_file_type == sensitive_file_type)) {
+                LOG(ERROR) << "BpfMapUpdateElementByFd (43) - Settings:"
+                           << " device_monitoring_type="
+                           << settings->device_monitoring_type
+                           << ", file_monitoring_mode="
+                           << settings->file_monitoring_mode
+                           << ", sensitive_file_type="
+                           << static_cast<uint8_t>(
+                                  settings->sensitive_file_type)
+                           << " | Expected: device_monitoring_type="
+                           << device_monitoring_type
+                           << ", file_monitoring_mode=" << file_monitoring_mode
+                           << ", sensitive_file_type=" << sensitive_file_type;
+              }
               return settings->device_monitoring_type ==
                          device_monitoring_type &&
                      settings->file_monitoring_mode == file_monitoring_mode &&
                      settings->sensitive_file_type == sensitive_file_type;
             }),
             0))
-        .WillRepeatedly(Return(0));
+        .Times(::testing::AnyNumber());
   }
 
   void SetSHADetails(pb::FileEventAtomicVariant& pb_event,
@@ -176,6 +268,11 @@ class FilePluginTestFixture : public ::testing::Test {
         ->CollectEvent(std::move(event));
   }
 
+  void TearDown() override {
+    task_environment_.RunUntilIdle();
+    brillo::DeleteFile(fake_root_.GetPath());
+  }
+
   void SetUp() override {
     // For unit tests run everything on a single thread.
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
@@ -201,6 +298,8 @@ class FilePluginTestFixture : public ::testing::Test {
         kAsyncTimeoutS, fake_root_.GetPath());
     EXPECT_NE(nullptr, plugin_);
     SetPluginBatchSenderForTesting(plugin_.get(), std::move(batch_sender));
+
+    CreateExpectedBinaries();
 
     EXPECT_CALL(*skel_factory_,
                 Create(Types::BpfSkeleton::kFile, _, kBatchIntervalS))
@@ -233,6 +332,9 @@ class FilePluginTestFixture : public ::testing::Test {
     EXPECT_CALL(*platform_, BpfMapUpdateElementByFd(45, _, _, 0))
         .WillRepeatedly(Return(0));
 
+    EXPECT_CALL(*platform_, FindPidByName("cryptohome-namespace-mounter"))
+        .WillRepeatedly(Return(12345));
+
     SetupDirectoryForValidation(
         "", false, bpf::MONITOR_ALL_FILES, bpf::READ_WRITE_ONLY,
         cros_xdr::reporting::SensitiveFileType::ROOT_FS);
@@ -246,10 +348,6 @@ class FilePluginTestFixture : public ::testing::Test {
         cros_xdr::reporting::SensitiveFileType::DEVICE_POLICY_PUBLIC_KEY);
     SetupDirectoryForValidation(
         "home/.shadow/cryptohome.key", true, bpf::MONITOR_SPECIFIC_FILES,
-        bpf::READ_AND_READ_WRITE_BOTH,
-        cros_xdr::reporting::SensitiveFileType::SYSTEM_TPM_PUBLIC_KEY);
-    SetupDirectoryForValidation(
-        "home/.shadow/cryptohome.ecc.key", true, bpf::MONITOR_SPECIFIC_FILES,
         bpf::READ_AND_READ_WRITE_BOTH,
         cros_xdr::reporting::SensitiveFileType::SYSTEM_TPM_PUBLIC_KEY);
 
@@ -272,6 +370,14 @@ class FilePluginTestFixture : public ::testing::Test {
     rv->meta_data.pid_for_setns = tag * 10000;
     rv->meta_data.is_noexec = is_no_exec;
     return rv;
+  }
+
+  void TriggerUserLogin(std::string userhash) {
+    file_plugin_->OnUserLogin("device_user", userhash);
+  }
+
+  void TriggerUserLogout(std::string userhash) {
+    file_plugin_->OnUserLogout(userhash);
   }
 
   ImageCacheInterface::ImageCacheKeyType DeriveImageCacheKeyType(
@@ -365,6 +471,53 @@ TEST_F(FilePluginTestFixture, TestWrongBPFEvent) {
       bpf::cros_event{.type = bpf::kProcessEvent});
   task_environment_.AdvanceClock(
       base::Seconds(kBatchIntervalS + kAsyncTimeoutS));
+}
+
+TEST_F(FilePluginTestFixture, TestFilePathResolutionInCryptoHome) {
+  SetupDirectoryForValidation(
+      "proc/12345/root/home/chronos/u-1cyhmjegwxintuwmetwgehnexlobgoincsttxegg/"
+      "MyFiles",
+      false, bpf::MONITOR_SPECIFIC_FILES, bpf::READ_AND_READ_WRITE_BOTH,
+      cros_xdr::reporting::SensitiveFileType::USER_FILE,
+      "proc/12345/root/home/user/1cyhmjegwxintuwmetwgehnexlobgoincsttxegg/"
+      "MyFiles");
+
+  TriggerUserLogin("1cyhmjegwxintuwmetwgehnexlobgoincsttxegg");
+
+  base::stat_wrapper_t fileStat;
+  base::FilePath path = fake_root_.GetPath().Append(
+      base::FilePath("proc/12345/root/home/chronos/"
+                     "u-1cyhmjegwxintuwmetwgehnexlobgoincsttxegg/"
+                     "MyFiles"));
+  if (base::File::Stat(path, &fileStat) != 0) {
+    FAIL() << "Failed to get file stat";
+  }
+
+  // Expected value from UserspaceToKernelDeviceId().
+  uint32_t expected_kernel_dev =
+      ((major(fileStat.st_dev) << 20) | minor(fileStat.st_dev));
+  bpf::inode_dev_map_key expected_bpfMapKey = {.inode_id = fileStat.st_ino,
+                                               .dev_id = expected_kernel_dev};
+
+  EXPECT_CALL(
+      *platform_,
+      BpfMapDeleteElementByFd(
+          42, ::testing::Truly([expected_bpfMapKey](const void* arg) -> bool {
+            auto* key = static_cast<const bpf::inode_dev_map_key*>(arg);
+            if (!(key->inode_id == expected_bpfMapKey.inode_id &&
+                  key->dev_id == expected_bpfMapKey.dev_id)) {
+              LOG(ERROR) << "BpfMapDeleteElementByFd - Key:" << " inode_id="
+                         << key->inode_id << ", dev_id=" << key->dev_id
+                         << " | Expected: inode_id="
+                         << expected_bpfMapKey.inode_id
+                         << ", dev_id=" << expected_bpfMapKey.dev_id;
+            }
+            return key->inode_id == expected_bpfMapKey.inode_id &&
+                   key->dev_id == expected_bpfMapKey.dev_id;
+          })))
+      .Times(1);
+
+  TriggerUserLogout("1cyhmjegwxintuwmetwgehnexlobgoincsttxegg");
 }
 
 TEST_F(FilePluginTestFixture, TestReadWriteCoalescing) {
@@ -835,6 +988,75 @@ TEST_F(FilePluginTestFixture, TestChangeAttributesDoNotInvalidateSHA) {
       base::Seconds(kBatchIntervalS + kAsyncTimeoutS));
 }
 
+TEST_F(FilePluginTestFixture, TestOnDeviceMountUnknown) {
+  std::string path_string = "mnt/removable/usb1";
+  base::FilePath path =
+      fake_root_.GetPath().Append(base::FilePath(path_string));
+  base::CreateDirectory(path);
+  bpf::mount_data mount_data = {};
+  std::strncpy(const_cast<char*>(mount_data.dest_device_path),
+               path_string.c_str(), sizeof(mount_data.dest_device_path) - 1);
+  mount_data.dest_device_path[sizeof(mount_data.dest_device_path) - 1] =
+      '\0';  // Ensure null termination
+
+  SetupDirectoryForValidation(
+      path_string, false, bpf::MONITOR_SPECIFIC_FILES, bpf::READ_WRITE_ONLY,
+      cros_xdr::reporting::SensitiveFileType::USB_MASS_STORAGE, std::nullopt,
+      false);
+
+  bpf::cros_event bpf_event;
+  bpf_event.type = bpf::kFileEvent;
+  bpf_event.data.file_event.type = bpf::cros_file_event_type::kFileMountEvent;
+  bpf_event.data.file_event.data.mount_event = mount_data;
+  bpf_event.data.file_event.mod_type = bpf::FMOD_MOUNT;
+
+  cbs_.ring_buffer_event_callback.Run(bpf_event);
+}
+
+bool WriteFileWithDynamicMountInfo(const base::FilePath& file_path,
+                                   uint32_t device_major,
+                                   uint32_t device_minor,
+                                   bool add_device_line) {
+  // Ensure the directory exists
+  base::FilePath parent_directory = file_path.DirName();
+  if (!base::CreateDirectory(parent_directory)) {
+    LOG(ERROR) << "Failed to create directory: " << parent_directory.value();
+    return false;
+  }
+
+  // Prepare the content
+  std::string content =
+      "692 678 5:822 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw\n"
+      "693 678 3:232 / /sys rw,nosuid,nodev,noexec,relatime - sysfs sysfs rw\n";
+
+  // Add the dynamically generated mountinfo line
+  if (add_device_line) {
+    content += base::StringPrintf(
+        "694 692 %u:%u / /mnt/mock rw,relatime - ext4 ext4 rw,data=ordered\n",
+        device_major, device_minor);
+  }
+
+  // Append the remaining lines of mountinfo
+  content +=
+      "695 678 9:643 / /dev rw,nosuid,relatime master:2 - devtmpfs udev "
+      "rw,size=92777504k,nr_inodes=23194376,mode=755,inode64\n"
+      "700 695 2:224 / /dev/pts rw,nosuid,noexec,relatime master:3 - devpts "
+      "devpts rw,gid=5,mode=620,ptmxmode=000\n"
+      "703 695 3:273 / /dev/shm rw,nosuid,nodev master:4 - tmpfs tmpfs "
+      "rw,inode64\n"
+      "716 695 8:324 / /dev/hugepages rw,nosuid,nodev,relatime master:14 - "
+      "hugetlbfs hugetlbfs rw,pagesize=2M\n"
+      "720 695 7:231 / /dev/mqueue rw,nosuid,nodev,noexec,relatime master:16 - "
+      "mqueue mqueue rw\n";
+
+  // Write content to file using the 2-argument base::WriteFile
+  if (!base::WriteFile(file_path, content)) {
+    return false;
+  }
+
+  return true;
+}
+
 TEST_F(FilePluginTestFixture, TestOnDeviceMountMedia) {
   SetupDirectoryForValidation(
       "media/removable/usb1", false, bpf::MONITOR_SPECIFIC_FILES,
@@ -855,16 +1077,31 @@ TEST_F(FilePluginTestFixture, TestOnDeviceMountMedia) {
   bpf_event.data.file_event.mod_type = bpf::FMOD_MOUNT;
 
   cbs_.ring_buffer_event_callback.Run(bpf_event);
-}
 
-TEST_F(FilePluginTestFixture, TestOnDeviceMountUnknown) {
-  base::FilePath path =
-      fake_root_.GetPath().Append(base::FilePath("mnt/removable/usb1"));
-  base::CreateDirectory(path);
-  bpf::mount_data mount_data = {};
+  SetupDirectoryForValidation(
+      "media/fuse/drivefs-gegergegehh", false, bpf::MONITOR_SPECIFIC_FILES,
+      bpf::READ_AND_READ_WRITE_BOTH,
+      cros_xdr::reporting::SensitiveFileType::USER_GOOGLE_DRIVE_FILE);
+  path = fake_root_.GetPath().Append(
+      base::FilePath("media/fuse/drivefs-gegergegehh"));
+  mount_data = {};
   std::strncpy(const_cast<char*>(mount_data.dest_device_path),
                path.value().c_str(), sizeof(mount_data.dest_device_path) - 1);
   mount_data.dest_device_path[sizeof(mount_data.dest_device_path) - 1] =
+      '\0';  // Ensure null termination
+
+  bpf_event.type = bpf::kFileEvent;
+  bpf_event.data.file_event.type = bpf::cros_file_event_type::kFileMountEvent;
+  bpf_event.data.file_event.data.mount_event = mount_data;
+  bpf_event.data.file_event.mod_type = bpf::FMOD_MOUNT;
+
+  cbs_.ring_buffer_event_callback.Run(bpf_event);
+  // Test umount with already mounted device_id for usb
+  path = fake_root_.GetPath().Append(base::FilePath("media/removable/usb1"));
+  bpf::umount_event umount_data = {};
+  std::strncpy(const_cast<char*>(umount_data.dest_device_path),
+               path.value().c_str(), sizeof(umount_data.dest_device_path) - 1);
+  umount_data.dest_device_path[sizeof(umount_data.dest_device_path) - 1] =
       '\0';  // Ensure null termination
 
   base::stat_wrapper_t fileStat;
@@ -872,14 +1109,93 @@ TEST_F(FilePluginTestFixture, TestOnDeviceMountUnknown) {
     FAIL() << "Failed to get file stat";
   }
 
-  EXPECT_CALL(*platform_, BpfMapUpdateElementByFd(42, _, _, _)).Times(0);
+  LOG(ERROR) << "Path INODE " << fileStat.st_ino;
 
-  EXPECT_CALL(*platform_, BpfMapUpdateElementByFd(43, _, _, _)).Times(0);
-  bpf::cros_event bpf_event;
+  // Expected value from UserspaceToKernelDeviceId().
+  uint32_t expected_kernel_dev =
+      ((major(fileStat.st_dev) << 20) | minor(fileStat.st_dev));
+  umount_data.device_id = expected_kernel_dev;
+
   bpf_event.type = bpf::kFileEvent;
   bpf_event.data.file_event.type = bpf::cros_file_event_type::kFileMountEvent;
-  bpf_event.data.file_event.data.mount_event = mount_data;
-  bpf_event.data.file_event.mod_type = bpf::FMOD_MOUNT;
+  bpf_event.data.file_event.data.umount_event = umount_data;
+  bpf_event.data.file_event.mod_type = bpf::FMOD_UMOUNT;
+  base::FilePath mountPathInRoot =
+      fake_root_.GetPath().Append("proc/self/mountinfo");
+  base::FilePath mountPathInCryptoNamespace =
+      fake_root_.GetPath().Append("proc/12345/root/proc/self/mountinfo");
+  EXPECT_TRUE(WriteFileWithDynamicMountInfo(
+      mountPathInRoot, major(fileStat.st_dev), minor(fileStat.st_dev), true));
+  EXPECT_TRUE(WriteFileWithDynamicMountInfo(mountPathInCryptoNamespace,
+                                            major(fileStat.st_dev),
+                                            minor(fileStat.st_dev), true));
+
+  // Test umount with still mounted device_id for usb
+  EXPECT_CALL(
+      *platform_,
+      BpfMapDeleteElementByFd(
+          43, ::testing::Truly([expected_kernel_dev](const void* arg) -> bool {
+            auto* dev_id = static_cast<const uint32_t*>(arg);
+            LOG(ERROR) << "BpfMapDeleteElementByFd (43) - Device ID: "
+                       << *dev_id << " | Expected: " << expected_kernel_dev;
+            return *dev_id == expected_kernel_dev;
+          })))
+      .Times(0);
+
+  cbs_.ring_buffer_event_callback.Run(bpf_event);
+
+  // Test umount with non_mounted device_id for usb
+  umount_data.device_id = 16663;
+  bpf_event.data.file_event.data.umount_event = umount_data;
+  EXPECT_CALL(*platform_,
+              BpfMapDeleteElementByFd(
+                  43, ::testing::Truly([umount_data](const void* arg) -> bool {
+                    auto* dev_id = static_cast<const uint32_t*>(arg);
+                    LOG(ERROR)
+                        << "BpfMapDeleteElementByFd (43) - Device ID: (16663) "
+                        << *dev_id << " | Expected: " << umount_data.device_id;
+                    return *dev_id == 16663;
+                  })))
+      .Times(::testing::Exactly(1));
+
+  cbs_.ring_buffer_event_callback.Run(bpf_event);
+  // Test umount in cryptohome mountinfo
+  brillo::DeleteFile(mountPathInRoot);
+  EXPECT_TRUE(WriteFileWithDynamicMountInfo(
+      mountPathInRoot, major(fileStat.st_dev), minor(fileStat.st_dev), false));
+
+  path = fake_root_.GetPath().Append(
+      base::FilePath("media/fuse/drivefs-gegergegehh"));
+
+  // Test umount with still mounted device_id for usb
+  EXPECT_CALL(
+      *platform_,
+      BpfMapDeleteElementByFd(
+          43, ::testing::Truly([expected_kernel_dev](const void* arg) -> bool {
+            auto* dev_id = static_cast<const uint32_t*>(arg);
+            LOG(ERROR) << "BpfMapDeleteElementByFd (43) - Device ID: "
+                       << *dev_id << " | Expected: " << expected_kernel_dev;
+            return *dev_id == expected_kernel_dev;
+          })))
+      .Times(0);
+  umount_data.device_id = expected_kernel_dev;
+  bpf_event.data.file_event.data.umount_event = umount_data;
+
+  cbs_.ring_buffer_event_callback.Run(bpf_event);
+
+  // Test umount with non_mounted device_id for usb
+  umount_data.device_id = 16654;
+  bpf_event.data.file_event.data.umount_event = umount_data;
+  EXPECT_CALL(*platform_,
+              BpfMapDeleteElementByFd(
+                  43, ::testing::Truly([umount_data](const void* arg) -> bool {
+                    auto* dev_id = static_cast<const uint32_t*>(arg);
+                    LOG(ERROR)
+                        << "BpfMapDeleteElementByFd - Device ID (16654): "
+                        << *dev_id << " | Expected: " << umount_data.device_id;
+                    return *dev_id == 16654;
+                  })))
+      .Times(::testing::Exactly(1));
 
   cbs_.ring_buffer_event_callback.Run(bpf_event);
 }

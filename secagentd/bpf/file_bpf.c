@@ -1221,8 +1221,6 @@ static inline __attribute__((always_inline)) void print_umount_event(
 
   bpf_printk("Umount Dest Device Path: %s", data->dest_device_path);
   bpf_printk("Umount Device Id: %d", data->device_id);
-  bpf_printk("Umount Ref Count: %d", data->ref_count);
-  bpf_printk("Umount Active Counter: %d", data->active_counter);
 }
 
 /**
@@ -2187,9 +2185,6 @@ int BPF_PROG(fexit__path_umount, struct path* path, int flags, int ret) {
   }
 
   umount_event->device_id = BPF_CORE_READ(path, mnt, mnt_sb, s_dev);
-  umount_event->ref_count = BPF_CORE_READ(path, mnt, mnt_sb, s_count);
-  umount_event->active_counter =
-      BPF_CORE_READ(path, mnt, mnt_sb, s_active.counter);
 
   bpf_core_read_str(
       &(event->data.file_event.data.umount_event.dest_device_path),

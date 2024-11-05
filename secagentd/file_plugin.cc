@@ -21,6 +21,7 @@
 #include "secagentd/common.h"
 #include "secagentd/device_user.h"
 #include "secagentd/metrics_sender.h"
+#include "secagentd/platform.h"
 #include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
@@ -39,12 +40,11 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 
-#include <cerrno>
-#include <iostream>
 #include <map>
 #include <optional>
 #include <ostream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #define BUF_SIZE 4096
@@ -61,8 +61,8 @@ const base::FilePath kRootPath = base::FilePath("/");
 const base::FilePath kDeviceSettingsBasePath =
     base::FilePath("var/lib/devicesettings/");
 static const std::map<std::string, base::FilePath> kBlocklistBinariesPathMap = {
-    {"dlp", base::FilePath("/usr/sbin/dlp")},
-    {"secagentd", base::FilePath("/usr/sbin/secagentd")}};
+    {"dlp", base::FilePath("usr/sbin/dlp")},
+    {"secagentd", base::FilePath("usr/sbin/secagentd")}};
 
 static const char kCryptohomeMountBinary[] = "cryptohome-namespace-mounter";
 
@@ -186,13 +186,47 @@ const std::map<secagentd::FilePathCategory,
           secagentd::FilePathName::USB_STORAGE,
           secagentd::FilePathName::GOOGLE_DRIVE_FS}}};
 
+std::unordered_set<base::FilePath> GetResolutionRootPaths(
+    const base::FilePath& root_path, const std::string& process_name) {
+  std::unordered_set<base::FilePath> result;
+  base::WeakPtr<secagentd::PlatformInterface> platform =
+      secagentd::GetPlatform();
+  std::optional<uint32_t> pid = platform->FindPidByName(process_name);
+  if (pid.has_value()) {
+    result.insert(root_path.Append("proc")
+                      .Append(std::to_string(pid.value()))
+                      .Append("root"));
+  }
+  result.insert(root_path);
+  return result;
+}
+
 // Checks if the path has the specified prefix and if the first component after
 // the prefix starts with the suffix (if provided).prefix includes root path
 bool PathHasPrefixAndSuffix(const base::FilePath& path,
                             const base::FilePath& prefix,
-                            const std::optional<std::string>& suffix) {
-  // Check if the prefix is a parent of the path.
-  if (!prefix.IsParent(path)) {
+                            const std::optional<std::string>& suffix,
+                            const base::FilePath& rootpath) {
+  base::FilePath adjusted_path = path;
+
+  // Remove the ignored root paths from the start of the path
+  for (const auto& root :
+       GetResolutionRootPaths(rootpath, kCryptohomeMountBinary)) {
+    if (adjusted_path.value().find(root.value()) == 0) {
+      // Remove the root part from the path
+      adjusted_path =
+          base::FilePath(adjusted_path.value().substr(root.value().length()));
+      break;  // Once a root is matched, stop further checks for other roots.
+    }
+  }
+
+  // Remove leading separators from the adjusted path
+  if (!adjusted_path.empty() && adjusted_path.value().front() == '/') {
+    adjusted_path = base::FilePath(adjusted_path.value().substr(1));
+  }
+
+  // Check if the adjusted path matches the prefix or is a child of the prefix
+  if (adjusted_path != prefix && !prefix.IsParent(adjusted_path)) {
     return false;
   }
 
@@ -201,30 +235,22 @@ bool PathHasPrefixAndSuffix(const base::FilePath& path,
     return true;
   }
 
-  // Get the path relative to the prefix.
+  // Get the relative path after the root has been removed
   base::FilePath relative_path;
-  bool result =
-      prefix.StripTrailingSeparators().AppendRelativePath(path, &relative_path);
+  bool result = prefix.StripTrailingSeparators().AppendRelativePath(
+      adjusted_path, &relative_path);
 
   if (result) {
-    // Get the first component of the relative path.
+    // Get the first component of the relative path
     std::string relative_first_component =
         relative_path.GetComponents().front();
 
     // Check if the first component of the relative path starts with the
-    // provided suffix.
+    // provided suffix
     return relative_first_component.find(suffix.value()) == 0;
   }
-  return false;
-}
 
-// Function to find the PID of a process by name using ProcessIterator
-std::optional<uint32_t> FindPidByName(const std::string& process_name) {
-  base::NamedProcessIterator process_iter(process_name, nullptr);
-  if (const base::ProcessEntry* entry = process_iter.NextProcessEntry()) {
-    return entry->pid();
-  }
-  return std::nullopt;  // PID not found
+  return false;
 }
 
 // Function to match a path prefix to FilePathName
@@ -236,9 +262,8 @@ MatchNonUserPathToFilePathName(
   for (const auto& pathname : matchOptions) {
     auto it = kFilePathInfoMap.find(pathname);
     if (it != kFilePathInfoMap.end()) {
-      if (PathHasPrefixAndSuffix(
-              path, rootPath.Append(base::FilePath(it->second.pathPrefix)),
-              it->second.pathSuffix)) {
+      if (PathHasPrefixAndSuffix(path, base::FilePath(it->second.pathPrefix),
+                                 it->second.pathSuffix, rootPath)) {
         return *it;
       }
     }
@@ -255,52 +280,82 @@ const std::optional<std::string> ConstructOptionalUserhash(
   return userhash;
 }
 
+// Helper function to list directories from a given path and filter by hash
+// length
+void AddUserHashesFromDirectory(const base::FilePath& base_path,
+                                std::unordered_set<std::string>& userHashes) {
+  base::FileEnumerator enumerator(base_path, false,
+                                  base::FileEnumerator::DIRECTORIES);
+
+  for (base::FilePath current = enumerator.Next(); !current.empty();
+       current = enumerator.Next()) {
+    std::string dir_name = current.BaseName().MaybeAsASCII();
+    // Only add directories whose name matches the length of a user hash (40
+    // characters)
+    userHashes.insert(dir_name);
+  }
+}
+
+// Function to get user hashes from both root and cryptohome namespace
+std::unordered_set<std::string> GetUserHashesFromDirectories(
+    base::FilePath& root_path, std::optional<std::string> optionalUserhash) {
+  std::unordered_set<std::string> userHashes;
+
+  // Path from the root namespace
+  base::FilePath root_namespace_path = root_path.Append("home/user/");
+  AddUserHashesFromDirectory(root_namespace_path, userHashes);
+
+  // Assuming we have a valid cryptohome PID (e.g., from pgrep)
+  base::WeakPtr<secagentd::PlatformInterface> platform =
+      secagentd::GetPlatform();
+  std::optional<uint32_t> pid = platform->FindPidByName(kCryptohomeMountBinary);
+  if (pid.has_value()) {
+    // Path from the cryptohome namespace (this should point to the mount
+    // namespace)
+    base::FilePath cryptohome_namespace_path =
+        root_path.Append("proc")
+            .Append(std::to_string(pid.value()))
+            .Append("root/home/user/");
+    AddUserHashesFromDirectory(cryptohome_namespace_path, userHashes);
+  }
+
+  // If optional has values add to set
+  if (optionalUserhash.has_value()) {
+    userHashes.insert(optionalUserhash.value());
+  }
+
+  return userHashes;
+}
+
 absl::StatusOr<base::FilePath> ResolvePathWithFallback(
     const base::FilePath& input_file_path,
     const base::FilePath& root_path,
     const std::string& process_name) {
-  // Try to find the PID of the cryptohome process
-  std::optional<uint32_t> pid = FindPidByName(process_name);
+  // Get the set of potential root paths (including cryptohome and root)
+  std::unordered_set<base::FilePath> resolution_root_paths =
+      GetResolutionRootPaths(root_path, process_name);
 
-  // Prepare the path in the target namespace (cryptohome)
-  base::FilePath resolved_path;
-
-  if (pid.has_value()) {
-    base::FilePath ns_root_path = root_path.Append("proc")
-                                      .Append(std::to_string(pid.value()))
-                                      .Append("root");
+  // Try resolving the path in each root path
+  for (const auto& ns_root_path : resolution_root_paths) {
+    base::FilePath resolved_path;
 
     // If input_path is absolute, concatenate directly
     if (input_file_path.IsAbsolute()) {
-      resolved_path =
-          base::FilePath(ns_root_path.value() +
-                         input_file_path.value());  // Use string concatenation
+      resolved_path = ns_root_path.Append(input_file_path);
     } else {
       // If relative, use Append method
       resolved_path = ns_root_path.Append(input_file_path);
     }
 
-    // Check if the path exists in the cryptohome process namespace
+    // Check if the path exists in the current namespace
     if (base::PathExists(resolved_path)) {
       return resolved_path;
     }
   }
 
-  // Fallback to root namespace if cryptohome path doesn't exist or PID
-  // resolution fails
-  if (input_file_path.IsAbsolute()) {
-    resolved_path = input_file_path;
-  } else {
-    // If relative, use Append method
-    resolved_path = root_path.Append(input_file_path);
-  }
-  if (PathExists(resolved_path)) {
-    return resolved_path;
-  }
-
-  // If path does not exist in root namespace, return an error
+  // If path does not exist in any of the namespaces, return an error
   return absl::NotFoundError(
-      "Path not found in both cryptohome and root namespaces: " +
+      "Path not found in cryptohome or root namespaces: " +
       input_file_path.value());
 }
 
@@ -379,54 +434,92 @@ bool ReadLine(base::File* file,
   }
 }
 
-bool IsDeviceStillMounted(uint64_t kernel_dev) {
+bool IsDeviceStillMounted(base::FilePath& rootPath, uint64_t kernel_dev) {
   uint64_t user_dev = KernelToUserspaceDeviceId(kernel_dev);
   uint32_t dev_major = major(user_dev), dev_minor = minor(user_dev);
-  base::File mountinfo(base::FilePath("/proc/self/mountinfo"),
-                       base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!mountinfo.IsValid()) {
-    LOG(ERROR) << "Failed to open /proc/self/mountinfo";
-    return false;
-  }
 
-  std::string line;
-  std::string remaining_line;
+  // Helper lambda to check if device is mounted in a given mountinfo file
+  auto IsMountedInNamespace =
+      [&](const base::FilePath& mountinfo_path) -> bool {
+    base::File mountinfo(mountinfo_path,
+                         base::File::FLAG_OPEN | base::File::FLAG_READ);
+    if (!mountinfo.IsValid()) {
+      LOG(ERROR) << "Failed to open " << mountinfo_path.value();
+      return false;
+    }
 
-  while (ReadLine(&mountinfo, &line, &remaining_line)) {
-    std::vector<std::string> tokens = base::SplitString(
-        line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+    std::string line;
+    std::string remaining_line;
+    while (ReadLine(&mountinfo, &line, &remaining_line)) {
+      std::vector<std::string> tokens = base::SplitString(
+          line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
-    // The 3rd token (index 2) in /proc/self/mountinfo represents the
-    // major:minor device numbers
-    if (tokens.size() > 2) {
-      // Extract the device major:minor
-      unsigned int major, minor;
-      if (sscanf(tokens[2].c_str(), "%u:%u", &major, &minor) == 2) {
-        if (major == dev_major && minor == dev_minor) {
-          return true;  // Device is still mounted somewhere
+      // The 3rd token (index 2) in /proc/self/mountinfo represents the
+      // major:minor device numbers
+      if (tokens.size() > 2) {
+        // Extract the device major:minor
+        unsigned int major, minor;
+        if (sscanf(tokens[2].c_str(), "%u:%u", &major, &minor) == 2) {
+          if (major == dev_major && minor == dev_minor) {
+            return true;  // Device is still mounted
+          }
         }
       }
     }
+    return false;  // Device not found in this namespace
+  };
+
+  // Check in the root namespace
+  if (IsMountedInNamespace(rootPath.Append("proc/self/mountinfo"))) {
+    return true;  // Device is still mounted in the root namespace
   }
 
-  return false;  // Device is not mounted anywhere
+  // Validate that path is not mounted in cryptohome namespace
+  base::WeakPtr<secagentd::PlatformInterface> platform =
+      secagentd::GetPlatform();
+  std::optional<uint32_t> pid = platform->FindPidByName(kCryptohomeMountBinary);
+  if (pid.has_value()) {
+    // Check in the cryptohome namespace
+    base::FilePath cryptohome_mountinfo_path =
+        rootPath.Append("proc")
+            .Append(std::to_string(pid.value()))
+            .Append("root/proc/self/mountinfo");
+    if (IsMountedInNamespace(cryptohome_mountinfo_path)) {
+      return true;  // Device is still mounted in the cryptohome namespace
+    }
+  }
+
+  // Device is not mounted in either namespace
+  return false;
 }
 
 // Inspired by cros-disks/archive_manager.cc
 // TODO(b:363053701): find a better home for this code.
-bool IsExternalMedia(const base::FilePath& source_path) {
-  std::vector<std::string> parts = source_path.GetComponents();
+bool IsExternalMedia(const base::FilePath& source_path,
+                     const base::FilePath& rootPath) {
+  base::FilePath adjusted_path = source_path;
 
-  if (parts.size() < 2 || parts[0] != "/") {
+  // Remove the root path from the start of the source_path, if it matches.
+  if (adjusted_path.value().find(rootPath.value()) == 0) {
+    adjusted_path =
+        base::FilePath(adjusted_path.value().substr(rootPath.value().length()));
+  }
+
+  std::vector<std::string> parts = adjusted_path.GetComponents();
+
+  // Handle cases where the adjusted path doesn't start with a root separator.
+  if (parts.empty() || parts[0] != "/") {
     return false;
   }
 
-  if (parts[1] == "media") {
+  if (parts.size() > 1 && parts[1] == "media") {
+    // Check for "media/archive", "media/fuse", or "media/removable".
     return parts.size() > 4 && (parts[2] == "archive" || parts[2] == "fuse" ||
                                 parts[2] == "removable");
   }
 
-  if (parts[1] == "run") {
+  if (parts.size() > 1 && parts[1] == "run") {
+    // Check for "run/arc/sdcard/write/emulated/0".
     return parts.size() > 8 && parts[2] == "arc" && parts[3] == "sdcard" &&
            parts[4] == "write" && parts[5] == "emulated" && parts[6] == "0";
   }
@@ -436,7 +529,8 @@ bool IsExternalMedia(const base::FilePath& source_path) {
 
 absl::StatusOr<FilePlugin::HashComputeResult> AsyncHashCompute(
     FilePlugin::HashComputeInput input,
-    scoped_refptr<secagentd::ImageCacheInterface> image_cache) {
+    scoped_refptr<secagentd::ImageCacheInterface> image_cache,
+    const base::FilePath& rootPath) {
   // Ready to start calling image_cache with metadata.
 
   auto& meta = input.meta_data;
@@ -454,7 +548,7 @@ absl::StatusOr<FilePlugin::HashComputeResult> AsyncHashCompute(
   base::FilePath file_name(meta.file_name);
   // If the file resides on an exec filesystem or resides in a location where
   // external media is mounted then force the full SHA.
-  if (!meta.is_noexec || IsExternalMedia(file_name)) {
+  if (!meta.is_noexec || IsExternalMedia(file_name, rootPath)) {
     force_full_sha256 = true;
   }
   auto image_result = image_cache->InclusiveGetImage(
@@ -604,30 +698,42 @@ absl::StatusOr<const base::stat_wrapper_t> GetFStat(
 // subdirectory.
 
 void TraverseDirectories(
-    const base::FilePath& baseDir,
+    const base::FilePath& rootPath,
+    const base::FilePath& path,
     base::RepeatingCallback<void(const base::FilePath&)> callback,
     bool processSubDirectories,
-    bool processFiles) {
-  base::WeakPtr<PlatformInterface> platform = GetPlatform();
-  // Use Platform class to check if the base directory exists and is a directory
-  if (!base::DirectoryExists(baseDir)) {
-    LOG(ERROR) << "The directory " << baseDir
-               << " does not exist or is not a directory.";
-    return;
-  }
-  uint64_t flags = 0;
-  if (processSubDirectories) {
-    flags = flags | base::FileEnumerator::DIRECTORIES;
-  }
-  if (processSubDirectories) {
-    flags = flags | base::FileEnumerator::FILES;
-  }
+    bool processFiles,
+    const std::string& processName) {
+  // Get all potential root paths (including cryptohome and root paths)
+  std::unordered_set<base::FilePath> resolutionRootPaths =
+      GetResolutionRootPaths(rootPath, processName);
 
-  base::FileEnumerator iterator(baseDir, false, flags);
-  for (base::FilePath entry = iterator.Next(); !entry.empty();
-       entry = iterator.Next()) {
-    // Apply the callback function to the directory path
-    callback.Run(entry);
+  // Iterate over all root paths and resolve the path in each
+  for (const auto& nsRootPath : resolutionRootPaths) {
+    base::FilePath fullPath = nsRootPath.Append(path);
+
+    // Check if the resolved path exists and is a directory
+    if (!base::DirectoryExists(fullPath)) {
+      LOG(ERROR) << "The directory " << fullPath
+                 << " does not exist or is not a directory.";
+      continue;  // Skip this root path if the directory doesn't exist
+    }
+
+    uint64_t flags = 0;
+    if (processSubDirectories) {
+      flags |= base::FileEnumerator::DIRECTORIES;
+    }
+    if (processFiles) {
+      flags |= base::FileEnumerator::FILES;
+    }
+
+    // Iterate over the entries in the resolved path
+    base::FileEnumerator iterator(fullPath, false, flags);
+    for (base::FilePath entry = iterator.Next(); !entry.empty();
+         entry = iterator.Next()) {
+      // Apply the callback function to the directory path
+      callback.Run(entry);
+    }
   }
 }
 
@@ -753,74 +859,50 @@ absl::Status PopulatePathsMapByCategory(
 
     if (categoryIt->first == FilePathCategory::REMOVABLE_PATH) {
       TraverseDirectories(
-          rootPath.Append(base::FilePath(pathInfo.pathPrefix)),
+          rootPath, base::FilePath(pathInfo.pathPrefix),
           base::BindRepeating(
               [](std::map<FilePathName, std::vector<PathInfo>>* pathInfoMap,
                  PathInfo* pathInfo, FilePathName pathName,
                  base::FilePath rootPath, const base::FilePath& path) {
-                if (PathHasPrefixAndSuffix(
-                        path,
-                        rootPath.Append(base::FilePath(pathInfo->pathPrefix)),
-                        pathInfo->pathSuffix)) {
+                if (PathHasPrefixAndSuffix(path,
+                                           base::FilePath(pathInfo->pathPrefix),
+                                           pathInfo->pathSuffix, rootPath)) {
                   pathInfo->fullResolvedPath = path;
                   (*pathInfoMap)[pathName].push_back(*pathInfo);
                 }
               },
               base::Unretained(pathInfoMap), base::Unretained(&pathInfo),
               pathName, rootPath),
-          true, false);
+          true, false, kCryptohomeMountBinary);
     } else if (pathName == FilePathName::DEVICE_SETTINGS_POLICY_DIR) {
-      pathInfo.fullResolvedPath = rootPath.Append(kDeviceSettingsBasePath);
-      (*pathInfoMap)[pathName].push_back(pathInfo);
+      auto resolvedPath = ResolvePathWithFallback(
+          kDeviceSettingsBasePath, rootPath, kCryptohomeMountBinary);
+      if (resolvedPath.ok()) {
+        pathInfo.fullResolvedPath = resolvedPath.value();
+        (*pathInfoMap)[pathName].push_back(pathInfo);
+      }
     } else if (category == FilePathCategory::USER_PATH) {
-      pathInfo.fullResolvedPath = rootPath.Append(
+      auto resolvedPath = ResolvePathWithFallback(
           base::FilePath(pathInfo.pathPrefix + optionalUserHash.value() +
-                         pathInfo.pathSuffix.value()));
-      (*pathInfoMap)[pathName].push_back(pathInfo);
+                         pathInfo.pathSuffix.value()),
+          rootPath, kCryptohomeMountBinary);
+      if (resolvedPath.ok()) {
+        pathInfo.fullResolvedPath = resolvedPath.value();
+        (*pathInfoMap)[pathName].push_back(pathInfo);
+      }
     } else {
-      pathInfo.fullResolvedPath =
-          rootPath.Append(base::FilePath(pathInfo.pathPrefix));
-      (*pathInfoMap)[pathName].push_back(pathInfo);
+      auto resolvedPath =
+          ResolvePathWithFallback(base::FilePath(pathInfo.pathPrefix), rootPath,
+                                  kCryptohomeMountBinary);
+      if (resolvedPath.ok()) {
+        pathInfo.fullResolvedPath = resolvedPath.value();
+        (*pathInfoMap)[pathName].push_back(pathInfo);
+      }
     }
   }
 
   return absl::OkStatus();
 }
-
-std::map<FilePathName, std::vector<PathInfo>> ConstructAllPathsMap(
-    base::FilePath rootPath,
-    const std::optional<std::string>& optionalUserHash) {
-  std::map<FilePathName, std::vector<PathInfo>> pathInfoMap;
-
-  // Check if userHash is provided for USER_PATH category
-  if (optionalUserHash.has_value()) {
-    // Populate paths for USER_PATH category using the provided userHash
-    absl::Status status = PopulatePathsMapByCategory(
-        rootPath, FilePathCategory::USER_PATH, optionalUserHash, &pathInfoMap);
-    if (!status.ok()) {
-      LOG(ERROR) << "Failed to populate paths for USER_PATH category: "
-                 << status;
-    }
-  }
-
-  // Populate paths for SYSTEM_PATH and REMOVABLE_PATH categories without
-  // userHash
-  absl::Status status = PopulatePathsMapByCategory(
-      rootPath, FilePathCategory::SYSTEM_PATH, std::nullopt, &pathInfoMap);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to populate paths for SYSTEM_PATH category: "
-               << status;
-  }
-  status = PopulatePathsMapByCategory(
-      rootPath, FilePathCategory::REMOVABLE_PATH, std::nullopt, &pathInfoMap);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to populate paths for REMOVABLE_PATH category: "
-               << status;
-  }
-
-  return pathInfoMap;
-}
-
 absl::Status PopulateFlagsMap(int fd) {
   // Array of flag key-value pairs to populate the BPF map
   const std::vector<std::pair<uint32_t, uint64_t>> flagKeyValuePairs = {
@@ -859,7 +941,7 @@ absl::Status FilePlugin::PopulateProcessBlocklistMap() {
   for (const auto& [_, binary_path] : kBlocklistBinariesPathMap) {
     // Retrieve file information for the current path using fstatat
     absl::StatusOr<const base::stat_wrapper_t> file_stat_result =
-        GetFStat(binary_path);
+        GetFStat(root_path_.Append(binary_path));
     if (!file_stat_result.ok()) {
       // We always expect to find dlp/secagentd binary in stored location
       NOTREACHED_IN_MIGRATION()
@@ -898,14 +980,11 @@ absl::Status FilePlugin::UpdateBPFMapForPathInodes(
   // Iterate over the map of file paths and their associated information
   for (const auto& [pathName, pathInfoVector] : pathsMap) {
     for (const auto& pathInfo : pathInfoVector) {
-      const auto& pathOrStatus =
-          ResolvePathWithFallback(pathInfo.fullResolvedPath.value(), root_path_,
-                                  kCryptohomeMountBinary);
-      if (!pathOrStatus.ok()) {
-        LOG(WARNING) << "Failed to resolve path: " << pathOrStatus.status();
+      if (!pathInfo.fullResolvedPath.has_value()) {
+        LOG(WARNING) << "Failed to resolve path: " << pathInfo.pathPrefix;
         continue;
       }
-      const base::FilePath path = pathOrStatus.value();
+      const base::FilePath path = pathInfo.fullResolvedPath.value();
       secagentd::bpf::file_monitoring_settings monitoringSettings{
           (uint8_t)pathInfo.fileType, pathInfo.monitoringMode};
 
@@ -964,14 +1043,11 @@ absl::Status FilePlugin::AddDeviceIdsToBPFMap(
   // Iterate through each path and update the BPF map
   for (const auto& [pathName, pathInfoVector] : pathsMap) {
     for (const auto& pathInfo : pathInfoVector) {
-      const auto& pathOrStatus =
-          ResolvePathWithFallback(pathInfo.fullResolvedPath.value(), root_path_,
-                                  kCryptohomeMountBinary);
-      if (!pathOrStatus.ok()) {
-        LOG(WARNING) << "Failed to resolve path: " << pathOrStatus.status();
+      if (!pathInfo.fullResolvedPath.has_value()) {
+        LOG(WARNING) << "Failed to resolve path: " << pathInfo.pathPrefix;
         continue;
       }
-      const base::FilePath path = pathOrStatus.value();
+      const base::FilePath path = pathInfo.fullResolvedPath.value();
 
       // Retrieve file information for the current path using fstatat
       absl::StatusOr<const base::stat_wrapper_t> file_stat_result =
@@ -1123,9 +1199,6 @@ absl::Status FilePlugin::InitializeFileBpfMaps(const std::string& userhash) {
 
   const std::optional<std::string>& optionalUserhash =
       ConstructOptionalUserhash(userhash);
-  // Construct the paths map based on the user hash
-  std::map<FilePathName, std::vector<PathInfo>> paths_map =
-      ConstructAllPathsMap(root_path_, optionalUserhash);
 
   // Update map for flags
   absl::StatusOr<int> fd_result =
@@ -1146,9 +1219,52 @@ absl::Status FilePlugin::InitializeFileBpfMaps(const std::string& userhash) {
                << status.message();
   }
 
-  // TODO(b/360058671): Add hardlinks processing.
+  std::unordered_set<std::string> userhashSet =
+      GetUserHashesFromDirectories(root_path_, optionalUserhash);
 
-  return UpdateBPFMapForPathMaps(optionalUserhash, paths_map);
+  for (std::string userhash_entry : userhashSet) {
+    // Create a map to hold path information
+    std::map<FilePathName, std::vector<PathInfo>> pathInfoMap;
+    // Construct and populate paths for USER_PATH category
+    absl::Status status = PopulatePathsMapByCategory(
+        root_path_, FilePathCategory::USER_PATH, userhash_entry, &pathInfoMap);
+
+    if (!status.ok()) {
+      LOG(ERROR) << "FilePlugin::InitializeFileBpfMaps: Error constructing "
+                    "user paths for userhash: "
+                 << userhash_entry << " Error Message: " << status.message();
+      continue;
+    }
+
+    status = UpdateBPFMapForPathMaps(userhash_entry, pathInfoMap);
+    if (!status.ok()) {
+      LOG(ERROR) << "FilePlugin::InitializeFileBpfMaps: Error Populating BPF "
+                    "Maps for user paths for userhash: "
+                 << userhash_entry << " Error Message: " << status.message();
+    }
+  }
+
+  // Populate paths for SYSTEM_PATH and REMOVABLE_PATH categories
+  for (const auto& category :
+       {FilePathCategory::SYSTEM_PATH, FilePathCategory::REMOVABLE_PATH}) {
+    std::map<FilePathName, std::vector<PathInfo>> pathInfoMap;
+    absl::Status status = PopulatePathsMapByCategory(
+        root_path_, category, std::nullopt, &pathInfoMap);
+    if (!status.ok()) {
+      LOG(ERROR) << "FilePlugin::InitializeFileBpfMaps:Failed to constructing "
+                    "paths for category "
+                 << static_cast<int>(category) << ": " << status;
+      continue;
+    }
+    status = UpdateBPFMapForPathMaps(std::nullopt, pathInfoMap);
+    if (!status.ok()) {
+      LOG(ERROR) << "FilePlugin::InitializeFileBpfMaps: Error Populating BPF "
+                    "Maps for category "
+                 << static_cast<int>(category) << ": " << status;
+    }
+  }
+
+  return absl::OkStatus();
 }
 
 void FilePlugin::OnUserLogin(const std::string& device_user,
@@ -1159,25 +1275,30 @@ void FilePlugin::OnUserLogin(const std::string& device_user,
   // Check if userHash is not empty before processing
   const std::optional<std::string>& optionalUserhash =
       ConstructOptionalUserhash(userHash);
+
+  std::unordered_set<std::string> userhashSet =
+      GetUserHashesFromDirectories(root_path_, optionalUserhash);
   // Check if userHash is not empty before processing
-  if (!optionalUserhash.has_value()) {
-    LOG(ERROR) << "FilePlugin::OnUserLogin: " << "User hash is empty";
+  if (userhashSet.empty()) {
+    LOG(ERROR) << "FilePlugin::OnUserLogin: " << "User hash set is empty";
     return;
   }
 
-  // Construct and populate paths for USER_PATH category
-  absl::Status status = PopulatePathsMapByCategory(
-      root_path_, FilePathCategory::USER_PATH, userHash, &pathInfoMap);
+  for (std::string userhash_entry : userhashSet) {
+    // Construct and populate paths for USER_PATH category
+    absl::Status status = PopulatePathsMapByCategory(
+        root_path_, FilePathCategory::USER_PATH, userhash_entry, &pathInfoMap);
 
-  if (!status.ok()) {
-    LOG(ERROR) << "FilePlugin::OnUserLogin: Error Populating paths"
-               << status.message();
-  }
+    if (!status.ok()) {
+      LOG(ERROR) << "FilePlugin::OnUserLogin: Error Populating paths"
+                 << status.message();
+    }
 
-  status = UpdateBPFMapForPathMaps(userHash, pathInfoMap);
-  if (!status.ok()) {
-    LOG(ERROR) << "FilePlugin::OnUserLogin: Error Populating BPF Maps"
-               << status.message();
+    status = UpdateBPFMapForPathMaps(userhash_entry, pathInfoMap);
+    if (!status.ok()) {
+      LOG(ERROR) << "FilePlugin::OnUserLogin: Error Populating BPF Maps"
+                 << status.message();
+    }
   }
 }
 
@@ -1208,9 +1329,6 @@ void FilePlugin::OnUserLogout(const std::string& userHash) {
     LOG(WARNING) << "Failed to remove File monitoring paths from bpf_map. "
                  << status.message();
   }
-
-  // TODO(princya): Remove device if not used by another directory
-  // TODO(princya): Remove hard links from user directory
 }
 
 void FilePlugin::OnMountEvent(const secagentd::bpf::mount_data& data) {
@@ -1237,8 +1355,9 @@ void FilePlugin::OnMountEvent(const secagentd::bpf::mount_data& data) {
 
 void FilePlugin::OnUnmountEvent(
     const secagentd::bpf::umount_event& umount_event) {
+  auto destination_path = base::FilePath(umount_event.dest_device_path);
   auto pair = MatchNonUserPathToFilePathName(
-      root_path_, base::FilePath(umount_event.dest_device_path),
+      root_path_, destination_path,
       kFilePathNamesByCategory.at(FilePathCategory::REMOVABLE_PATH));
   if (!pair.has_value()) {
     LOG(INFO) << "Mount point not matched any known path. Path: "
@@ -1246,21 +1365,20 @@ void FilePlugin::OnUnmountEvent(
     return;
   }
 
-  if (umount_event.ref_count != 0 && umount_event.active_counter != 0 &&
-      IsDeviceStillMounted(umount_event.device_id)) {
+  if (IsDeviceStillMounted(root_path_, umount_event.device_id)) {
     return;
   }
 
   // Remove inodes for folders for that user
   absl::StatusOr<int> mapFdResult =
       bpf_skeleton_helper_->FindBpfMapByName("device_monitoring_allowlist");
+
   if (!mapFdResult.ok()) {
     LOG(ERROR) << "Unable to find bpf map device_monitoring_allowlist by name: "
                << mapFdResult.status().message();
     return;
   }
   int deviceMapFd = mapFdResult.value();
-
   absl::Status status =
       RemoveKeysFromBPFMapOnUnmount(deviceMapFd, umount_event.device_id);
   if (!status.ok()) {
@@ -1605,7 +1723,8 @@ void FilePlugin::StageEventsForAsyncProcessing() {
       // and then the time the result takes to come back.
       async_io_task_tracker_.PostTaskAndReplyWithResult(
           async_io_task_.get(), FROM_HERE,
-          base::BindOnce(&AsyncHashCompute, std::move(job), image_cache_),
+          base::BindOnce(&AsyncHashCompute, std::move(job), image_cache_,
+                         root_path_),
           base::BindOnce(&FilePlugin::ReceiveHashComputeResults,
                          weak_ptr_factory_.GetWeakPtr()));
     }

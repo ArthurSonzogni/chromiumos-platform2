@@ -346,8 +346,6 @@ struct mount_data {
 struct umount_event {
   char dest_device_path[MAX_PATH_SIZE];  // Root path of the vfs mnt_root
   uint64_t device_id;                    // The device ID both major and minor.
-  int ref_count;                         // Reference count of the vfsmount
-  int active_counter;
 } __attribute__((aligned(8)));
 
 // Define the structure to hold inode attribute information

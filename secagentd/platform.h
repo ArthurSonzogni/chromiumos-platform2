@@ -17,6 +17,7 @@
 #include "base/files/file_descriptor_watcher_posix.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/weak_ptr.h"
+#include "base/process/process_iterator.h"
 
 namespace secagentd {
 
@@ -69,6 +70,8 @@ class PlatformInterface {
   virtual void RingBufferFree(struct ring_buffer* rb) = 0;
   virtual std::unique_ptr<base::FileDescriptorWatcher::Controller>
   WatchReadable(int fd, const base::RepeatingClosure& callback) = 0;
+  virtual std::optional<uint32_t> FindPidByName(
+      const std::string& process_name) = 0;
   virtual ~PlatformInterface() = default;
 };
 
@@ -122,6 +125,9 @@ class Platform : public PlatformInterface {
   void RingBufferFree(struct ring_buffer* rb) override;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> WatchReadable(
       int fd, const base::RepeatingClosure& callback) override;
+
+  std::optional<uint32_t> FindPidByName(
+      const std::string& process_name) override;
 
  private:
   base::WeakPtrFactory<Platform> weak_ptr_factory_;

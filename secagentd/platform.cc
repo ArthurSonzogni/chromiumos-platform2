@@ -141,4 +141,14 @@ Platform::WatchReadable(int fd, const base::RepeatingClosure& callback) {
   return base::FileDescriptorWatcher::WatchReadable(fd, callback);
 }
 
+std::optional<uint32_t> Platform::FindPidByName(
+    const std::string& process_name) {
+  base::NamedProcessIterator process_iter(process_name, nullptr, false);
+
+  if (const base::ProcessEntry* entry = process_iter.NextProcessEntry()) {
+    return entry->pid();
+  }
+  return std::nullopt;  // PID not found
+}
+
 }  // namespace secagentd
