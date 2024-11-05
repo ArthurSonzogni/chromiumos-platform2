@@ -105,10 +105,10 @@ proto_library("ml_assist_ranker_proto") {
   ]
 }
 
-proto_library("ml_ica_proto") {
+proto_library("ml_raid_proto") {
   proto_in_dir = "${sysroot}/usr/include/ml_core"
-  proto_out_dir = "chrome/knowledge/ica/"
-  sources = [ "${proto_in_dir}/ica.proto" ]
+  proto_out_dir = "chrome/knowledge/raid/"
+  sources = [ "${proto_in_dir}/raid.proto" ]
 }
 
 source_set("example_preprocessor") {
@@ -213,7 +213,7 @@ static_library("ml_common") {
       "image_content_annotation.cc",
       "image_content_annotation_impl.cc",
     ]
-    deps += [ ":ml_ica_proto" ]
+    deps += [ ":ml_raid_proto" ]
   } else {
     sources += [ "image_content_annotation_impl_fake.cc" ]
   }

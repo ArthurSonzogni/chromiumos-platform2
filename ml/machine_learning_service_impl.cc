@@ -4,15 +4,15 @@
 
 #include "ml/machine_learning_service_impl.h"
 
+#include <unistd.h>
+
 #include <memory>
 #include <utility>
 
-#include <unistd.h>
-
 #include <base/check.h>
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/file.h>
 #include <base/files/memory_mapped_file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
@@ -949,19 +949,19 @@ void MachineLearningServiceImpl::InternalLoadImageAnnotator(
   request_metrics.StartRecordingPerformanceMetrics();
 
 #if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
-  auto* const ica_library = ImageContentAnnotationLibrary::GetInstance(
+  auto* const raid_library = ImageContentAnnotationLibrary::GetInstance(
       dlc_root.Append("libcros_ml_core_internal.so"));
-  if (ica_library->GetStatus() != ImageContentAnnotationLibrary::Status::kOk) {
+  if (raid_library->GetStatus() != ImageContentAnnotationLibrary::Status::kOk) {
     LOG(ERROR) << "Failed to initialize ImageContentAnnotationLibrary, error "
-               << static_cast<int>(ica_library->GetStatus());
+               << static_cast<int>(raid_library->GetStatus());
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     return;
   }
 #else
-  ImageContentAnnotationLibrary* const ica_library = nullptr;
+  ImageContentAnnotationLibrary* const raid_library = nullptr;
 #endif
   if (!ImageContentAnnotatorImpl::Create(std::move(config), std::move(receiver),
-                                         ica_library)) {
+                                         raid_library)) {
     LOG(ERROR) << "Image content annotator creation failed.";
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);

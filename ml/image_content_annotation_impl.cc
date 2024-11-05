@@ -12,8 +12,9 @@
 #include <brillo/message_loops/message_loop.h>
 
 #include "base/debug/leak_annotations.h"
-#include "chrome/knowledge/ica/ica.pb.h"
+#include "chrome/knowledge/raid/raid.pb.h"
 #include "ml/image_content_annotation.h"
+#include "ml/mojom/geometry.mojom.h"
 #include "ml/mojom/shared_memory.mojom.h"
 #include "ml/request_metrics.h"
 
@@ -24,6 +25,7 @@ using ::chromeos::machine_learning::mojom::ImageAnnotationResult;
 using ::chromeos::machine_learning::mojom::ImageAnnotationResultPtr;
 using ::chromeos::machine_learning::mojom::ImageAnnotationScore;
 using ::chromeos::machine_learning::mojom::ImageAnnotationScorePtr;
+using ::gfx::mojom::Rect;
 
 // Map the shared memory region into this process's address space.
 // Returns false if region is invalid.
@@ -37,16 +39,20 @@ bool MapRegion(const base::ReadOnlySharedMemoryRegion& region,
 }
 
 ImageAnnotationScorePtr AnnotationScorePtrFromProto(
-    const chrome_knowledge::AnnotationScoreList::AnnotationScore& score) {
+    const chrome_knowledge::DetectionResult& score) {
   auto p = ImageAnnotationScore::New();
   p->id = score.id();
   // confidence is deprecated and no longer in use.
   p->DEPRECATED_confidence = 0;
   p->mid = score.mid();
   p->name = score.name();
-  // TODO(b:343320265): Switching the actual confidence when the DLC is
-  // updated.
-  p->score = static_cast<float>(score.confidence()) / 255.0;
+  p->score = score.score();
+
+  p->bounding_box = Rect::New(
+      /*x=*/score.bounding_box().left(), /*y=*/score.bounding_box().top(),
+      /*width=*/score.bounding_box().right() - score.bounding_box().left(),
+      /*height=*/score.bounding_box().bottom() - score.bounding_box().top());
+
   return p;
 }
 
@@ -89,14 +95,13 @@ ImageContentAnnotatorImpl::ImageContentAnnotatorImpl(
       << "ImageContentAnnotatorImpl should only be created if "
          "ImageContentAnnotationLibrary initialized successfully.";
 
-  annotator_ = library_->CreateImageContentAnnotator();
+  annotator_ = library_->CreateImageAnnotator();
 
-  successfully_loaded_ =
-      library_->InitImageContentAnnotator(annotator_, config->locale.c_str());
+  successfully_loaded_ = library_->InitImageAnnotator(annotator_);
 }
 
 ImageContentAnnotatorImpl::~ImageContentAnnotatorImpl() {
-  library_->DestroyImageContentAnnotator(annotator_);
+  library_->DestroyImageAnnotator(annotator_);
 }
 
 void ImageContentAnnotatorImpl::ErrorCallback(
@@ -113,9 +118,9 @@ void ImageContentAnnotatorImpl::AnnotateImage(const uint8_t* rgb_bytes,
                                               uint32_t line_stride,
                                               AnnotateRawImageCallback callback,
                                               RequestMetrics& request_metrics) {
-  chrome_knowledge::AnnotationScoreList annotation_scores;
-  if (!library_->AnnotateImage(annotator_, rgb_bytes, width, height,
-                               line_stride, &annotation_scores)) {
+  chrome_knowledge::DetectionResultList annotation_scores;
+  if (!library_->Detect(annotator_, rgb_bytes, width, height,
+                        &annotation_scores)) {
     LOG(ERROR) << "Failed to annotate image.";
     ErrorCallback(callback, request_metrics);
     return;
@@ -123,8 +128,8 @@ void ImageContentAnnotatorImpl::AnnotateImage(const uint8_t* rgb_bytes,
 
   ImageAnnotationResultPtr result = ImageAnnotationResult::New();
   result->status = ImageAnnotationResult::Status::OK;
-  for (const auto& annotation : annotation_scores.annotation()) {
-    result->annotations.push_back(AnnotationScorePtrFromProto(annotation));
+  for (const auto& detection : annotation_scores.detection()) {
+    result->annotations.push_back(AnnotationScorePtrFromProto(detection));
   }
   request_metrics.FinishRecordingPerformanceMetrics();
   request_metrics.RecordRequestEvent(result->status);
@@ -180,18 +185,17 @@ void ImageContentAnnotatorImpl::AnnotateEncodedImage(
     return;
   }
 
-  chrome_knowledge::AnnotationScoreList annotation_scores;
-  if (!library_->AnnotateEncodedImage(annotator_, encoded_bytes.data(),
-                                      encoded_bytes.size(),
-                                      &annotation_scores)) {
+  chrome_knowledge::DetectionResultList annotation_scores;
+  if (!library_->DetectEncodedImage(annotator_, encoded_bytes.data(),
+                                    encoded_bytes.size(), &annotation_scores)) {
     LOG(ERROR) << "Failed to annotate image.";
     ErrorCallback(callback, request_metrics);
     return;
   }
   ImageAnnotationResultPtr result = ImageAnnotationResult::New();
   result->status = ImageAnnotationResult::Status::OK;
-  for (const auto& annotation : annotation_scores.annotation()) {
-    result->annotations.push_back(AnnotationScorePtrFromProto(annotation));
+  for (const auto& detection : annotation_scores.detection()) {
+    result->annotations.push_back(AnnotationScorePtrFromProto(detection));
   }
   request_metrics.FinishRecordingPerformanceMetrics();
   request_metrics.RecordRequestEvent(result->status);

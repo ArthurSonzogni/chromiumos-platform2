@@ -77,7 +77,7 @@ class ImageContentAnnotatorImpl
 
 #if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
   ImageContentAnnotationLibrary* library_ = nullptr;
-  ::ImageContentAnnotator* annotator_ = nullptr;
+  ::RaidV2ImageAnnotator* annotator_ = nullptr;
 #endif
   mojo::Receiver<chromeos::machine_learning::mojom::ImageContentAnnotator>
       receiver_;

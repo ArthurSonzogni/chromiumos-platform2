@@ -10,9 +10,9 @@
 #include <base/files/file_path.h>
 #include <base/no_destructor.h>
 #include <base/scoped_native_library.h>
-#include <ml_core/interface.h>
+#include <ml_core/raid_interface.h>
 
-#include "chrome/knowledge/ica/ica.pb.h"
+#include "chrome/knowledge/raid/raid.pb.h"
 #include "ml/util.h"
 
 namespace ml {
@@ -51,22 +51,20 @@ class ImageContentAnnotationLibrary {
   // Return `Status::kOk` if everything works fine.
   virtual Status GetStatus() const;
 
-  virtual ImageContentAnnotator* CreateImageContentAnnotator();
-  virtual void DestroyImageContentAnnotator(ImageContentAnnotator* annotator);
+  virtual RaidV2ImageAnnotator* CreateImageAnnotator();
+  virtual void DestroyImageAnnotator(RaidV2ImageAnnotator* annotator);
 
-  virtual bool InitImageContentAnnotator(ImageContentAnnotator* annotator,
-                                         const char* locale);
-  virtual bool AnnotateImage(ImageContentAnnotator* annotator,
-                             const uint8_t* rgb_bytes,
-                             int width,
-                             int height,
-                             int line_stride,
-                             chrome_knowledge::AnnotationScoreList* result);
-  virtual bool AnnotateEncodedImage(
-      ImageContentAnnotator* annotator,
+  bool InitImageAnnotator(RaidV2ImageAnnotator* annotator);
+  virtual bool Detect(RaidV2ImageAnnotator* annotator,
+                      const uint8_t* rgb_bytes,
+                      int width,
+                      int height,
+                      chrome_knowledge::DetectionResultList* result);
+  virtual bool DetectEncodedImage(
+      RaidV2ImageAnnotator* annotator,
       const uint8_t* encoded_bytes,
       int num_bytes,
-      chrome_knowledge::AnnotationScoreList* result);
+      chrome_knowledge::DetectionResultList* result);
 
  protected:
   explicit ImageContentAnnotationLibrary(const base::FilePath& dso_path);
@@ -77,12 +75,12 @@ class ImageContentAnnotationLibrary {
 
   base::ScopedNativeLibrary library_;
   Status status_ = Status::kUninitialized;
-  CreateImageContentAnnotatorFn create_image_content_annotator_ = nullptr;
-  DestroyImageContentAnnotatorFn destroy_image_content_annotator_ = nullptr;
-  InitImageContentAnnotatorFn init_image_content_annotator_ = nullptr;
-  AnnotateImageFn annotate_image_ = nullptr;
-  AnnotateEncodedImageFn annotate_encoded_image_ = nullptr;
-  DeleteAnnoteImageResultFn delete_annotate_image_result_ = nullptr;
+  cros_ml_raid_CreateImageAnnotatorFn create_image_annotator_ = nullptr;
+  cros_ml_raid_DestroyImageAnnotatorFn destroy_image_annotator_ = nullptr;
+  cros_ml_raid_InitImageAnnotatorFn init_image_annotator_ = nullptr;
+  cros_ml_raid_DetectFn detect_ = nullptr;
+  cros_ml_raid_DetectEncodedImageFn detect_encoded_image_ = nullptr;
+  cros_ml_raid_DeleteDetectImageResultFn delete_detect_image_result_ = nullptr;
 };
 
 }  // namespace ml

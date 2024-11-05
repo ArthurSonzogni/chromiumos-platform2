@@ -4,19 +4,20 @@
 
 #include "ml/image_content_annotation.h"
 
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
+#include <gmock/gmock.h>
+#include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
 
-#include "chrome/knowledge/ica/ica.pb.h"
+#include "chrome/knowledge/raid/raid.pb.h"
 
 namespace ml {
 
@@ -29,34 +30,73 @@ TEST(ImageContentAnnotationLibraryTest, CanLoadLibrary) {
   ASSERT_EQ(instance->GetStatus(), ImageContentAnnotationLibrary::Status::kOk);
 }
 
-TEST(ImageContentAnnotationLibraryTest, AnnotateImage) {
+TEST(ImageContentAnnotationLibraryTest, DetectEncodedImage) {
   auto* instance = ImageContentAnnotationLibrary::GetInstance(LibPath());
   ASSERT_EQ(instance->GetStatus(), ImageContentAnnotationLibrary::Status::kOk);
-  ImageContentAnnotator* annotator = instance->CreateImageContentAnnotator();
+  RaidV2ImageAnnotator* annotator = instance->CreateImageAnnotator();
   ASSERT_NE(annotator, nullptr);
-  ASSERT_TRUE(instance->InitImageContentAnnotator(annotator, "en-US"));
+  ASSERT_TRUE(instance->InitImageAnnotator(annotator));
 
-  std::string image_encoded;
-  ASSERT_TRUE(base::ReadFileToString(
-      base::FilePath("/build/share/ml_core/moon_big.jpg"), &image_encoded));
+  auto image_encoded = base::ReadFileToBytes(
+      base::FilePath("/build/share/ml_core/cat_and_dog.webp"));
+  ASSERT_NE(image_encoded, std::nullopt);
 
-  auto mat =
-      cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),
-                   cv::IMREAD_COLOR);
-  cv::cvtColor(mat, mat, cv::COLOR_BGR2RGB);
+  chrome_knowledge::DetectionResultList detection_scores;
+  instance->DetectEncodedImage(annotator, image_encoded.value().data(),
+                               image_encoded.value().size(), &detection_scores);
 
-  chrome_knowledge::AnnotationScoreList annotation_scores;
-  instance->AnnotateImage(annotator, mat.data, mat.cols, mat.rows, mat.step,
-                          &annotation_scores);
+  chrome_knowledge::DetectionResultList expected_detections;
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        detection {
+          score: 0.73828125
+          mid: "/m/01lrl"
+          name: "Carnivore"
+          bounding_box { left: 646 top: 245 right: 1195 bottom: 718 }
+        }
+        detection {
+          score: 0.73828125
+          mid: "/m/0jbk"
+          name: "Animal"
+          bounding_box { left: 646 top: 245 right: 1195 bottom: 718 }
+        }
+        detection {
+          score: 0.73828125
+          mid: "/m/04rky"
+          name: "Mammal"
+          bounding_box { left: 646 top: 245 right: 1195 bottom: 718 }
+        }
+        detection {
+          score: 0.73828125
+          mid: "/m/01yrx"
+          name: "Cat"
+          bounding_box { left: 646 top: 245 right: 1195 bottom: 718 }
+        }
+        detection {
+          score: 0.45703125
+          mid: "/m/0bt9lr"
+          name: "Dog"
+          bounding_box { left: 9 top: 94 right: 844 bottom: 722 }
+        }
+      )pb",
+      &expected_detections);
 
-  ASSERT_GE(annotation_scores.annotation_size(), 1);
-  EXPECT_EQ(annotation_scores.annotation(0).id(), 335);
-  EXPECT_GE(annotation_scores.annotation(0).confidence(), 232);
-  EXPECT_EQ(annotation_scores.annotation(0).mid(), "/m/06wqb");
-  EXPECT_EQ(base::ToLowerASCII(annotation_scores.annotation(0).name()),
-            "space");
+  // As chromeos does not support `IgnoringRepeatedFieldOrdering`, manually
+  // check each detection is returned as expected.
+  EXPECT_EQ(detection_scores.detection_size(), 5);
+  for (const auto& detection : detection_scores.detection()) {
+    bool match_expected = false;
+    for (const auto& detection_expected : expected_detections.detection()) {
+      if (detection.SerializeAsString() ==
+          detection_expected.SerializeAsString()) {
+        match_expected = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(match_expected);
+  }
 
-  instance->DestroyImageContentAnnotator(annotator);
+  instance->DestroyImageAnnotator(annotator);
 }
 
 }  // namespace ml

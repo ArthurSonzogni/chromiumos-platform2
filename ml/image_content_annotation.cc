@@ -9,9 +9,9 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/native_library.h>
-#include <ml_core/interface.h>
+#include <ml_core/raid_interface.h>
 
-#include "chrome/knowledge/ica/ica.pb.h"
+#include "chrome/knowledge/raid/raid.pb.h"
 
 namespace ml {
 
@@ -38,16 +38,17 @@ ImageContentAnnotationLibrary::ImageContentAnnotationLibrary(
     return;                                                           \
   }
   // Look up the function pointers.
-  ML_ICA_LOOKUP_FUNCTION(create_image_content_annotator_,
-                         CreateImageContentAnnotator);
-  ML_ICA_LOOKUP_FUNCTION(destroy_image_content_annotator_,
-                         DestroyImageContentAnnotator);
-  ML_ICA_LOOKUP_FUNCTION(init_image_content_annotator_,
-                         InitImageContentAnnotator);
-  ML_ICA_LOOKUP_FUNCTION(annotate_image_, AnnotateImage);
-  ML_ICA_LOOKUP_FUNCTION(annotate_encoded_image_, AnnotateEncodedImage);
-  ML_ICA_LOOKUP_FUNCTION(delete_annotate_image_result_,
-                         DeleteAnnoteImageResult);
+  ML_ICA_LOOKUP_FUNCTION(create_image_annotator_,
+                         cros_ml_raid_CreateImageAnnotator);
+  ML_ICA_LOOKUP_FUNCTION(destroy_image_annotator_,
+                         cros_ml_raid_DestroyImageAnnotator);
+  ML_ICA_LOOKUP_FUNCTION(init_image_annotator_,
+                         cros_ml_raid_InitImageAnnotator);
+  ML_ICA_LOOKUP_FUNCTION(detect_, cros_ml_raid_Detect);
+  ML_ICA_LOOKUP_FUNCTION(detect_encoded_image_,
+                         cros_ml_raid_DetectEncodedImage);
+  ML_ICA_LOOKUP_FUNCTION(delete_detect_image_result_,
+                         cros_ml_raid_DeleteDetectImageResult);
 
   status_ = Status::kOk;
   return;
@@ -64,62 +65,60 @@ ImageContentAnnotationLibrary::Status ImageContentAnnotationLibrary::GetStatus()
   return status_;
 }
 
-ImageContentAnnotator*
-ImageContentAnnotationLibrary::CreateImageContentAnnotator() {
+RaidV2ImageAnnotator* ImageContentAnnotationLibrary::CreateImageAnnotator() {
   DCHECK(status_ == Status::kOk);
-  return (*create_image_content_annotator_)();
+  return (*create_image_annotator_)();
 }
 
-void ImageContentAnnotationLibrary::DestroyImageContentAnnotator(
-    ImageContentAnnotator* annotator) {
+void ImageContentAnnotationLibrary::DestroyImageAnnotator(
+    RaidV2ImageAnnotator* annotator) {
   DCHECK(status_ == Status::kOk);
-  (*destroy_image_content_annotator_)(annotator);
+  (*destroy_image_annotator_)(annotator);
 }
 
-bool ImageContentAnnotationLibrary::InitImageContentAnnotator(
-    ImageContentAnnotator* annotator, const char* locale) {
+bool ImageContentAnnotationLibrary::InitImageAnnotator(
+    RaidV2ImageAnnotator* annotator) {
   DCHECK(status_ == Status::kOk);
-  return (*init_image_content_annotator_)(annotator, locale);
+  return (*init_image_annotator_)(annotator);
 }
 
-bool ImageContentAnnotationLibrary::AnnotateImage(
-    ImageContentAnnotator* annotator,
+bool ImageContentAnnotationLibrary::Detect(
+    RaidV2ImageAnnotator* annotator,
     const uint8_t* rgb_bytes,
     int width,
     int height,
-    int line_stride,
-    chrome_knowledge::AnnotationScoreList* result) {
+    chrome_knowledge::DetectionResultList* result) {
   DCHECK(status_ == Status::kOk);
   uint8_t* result_data = nullptr;
   int32_t result_size = 0;
-  bool successful = (*annotate_image_)(annotator, rgb_bytes, width, height,
-                                       line_stride, &result_data, &result_size);
+  bool successful = (*detect_)(annotator, rgb_bytes, width, height,
+                               &result_data, &result_size);
   if (successful) {
     result->Clear();
     const bool parse_result_status =
         result->ParseFromArray(result_data, result_size);
     DCHECK(parse_result_status);
-    (*delete_annotate_image_result_)(result_data);
+    (*delete_detect_image_result_)(result_data);
   }
   return successful;
 }
 
-bool ImageContentAnnotationLibrary::AnnotateEncodedImage(
-    ImageContentAnnotator* annotator,
+bool ImageContentAnnotationLibrary::DetectEncodedImage(
+    RaidV2ImageAnnotator* annotator,
     const uint8_t* encoded_bytes,
     int num_bytes,
-    chrome_knowledge::AnnotationScoreList* result) {
+    chrome_knowledge::DetectionResultList* result) {
   DCHECK(status_ == Status::kOk);
   uint8_t* result_data = nullptr;
   int32_t result_size = 0;
-  bool successful = (*annotate_encoded_image_)(
+  bool successful = (*detect_encoded_image_)(
       annotator, encoded_bytes, num_bytes, &result_data, &result_size);
   if (successful) {
     result->Clear();
     const bool parse_result_status =
         result->ParseFromArray(result_data, result_size);
     DCHECK(parse_result_status);
-    (*delete_annotate_image_result_)(result_data);
+    (*delete_detect_image_result_)(result_data);
   }
   return successful;
 }
