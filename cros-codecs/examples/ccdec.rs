@@ -32,6 +32,8 @@ use cros_codecs::decoder::DecodedHandle;
 use cros_codecs::decoder::DynDecodedHandle;
 use cros_codecs::decoder::StreamInfo;
 use cros_codecs::multiple_desc_type;
+use cros_codecs::md5::md5_digest;
+use cros_codecs::md5::MD5Context;
 use cros_codecs::utils::simple_playback_loop;
 use cros_codecs::utils::simple_playback_loop_owned_frames;
 use cros_codecs::utils::simple_playback_loop_userptr_frames;
@@ -393,7 +395,7 @@ fn main() {
         }
     };
 
-    let mut md5_context = md5::Context::new();
+    let mut md5_context = MD5Context::new();
     let mut output_filename_idx = 0;
 
     let mut on_new_frame = |handle: DynDecodedHandle<BufferDescriptor>| {
@@ -426,7 +428,7 @@ fn main() {
 
             match args.compute_md5 {
                 None => (),
-                Some(Md5Computation::Frame) => println!("{:x}", md5::compute(&frame_data)),
+                Some(Md5Computation::Frame) => println!("{}", md5_digest(&frame_data)),
                 Some(Md5Computation::Stream) => md5_context.consume(&frame_data),
             }
         }
@@ -466,6 +468,6 @@ fn main() {
     .expect("error during playback loop");
 
     if let Some(Md5Computation::Stream) = args.compute_md5 {
-        println!("{:x}", md5_context.compute());
+        println!("{}", md5_context.flush());
     }
 }
