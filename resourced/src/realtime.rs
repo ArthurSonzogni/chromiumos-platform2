@@ -12,7 +12,7 @@ use crate::feature;
 const INIT_DL_SERVER_FEATURE_NAME: &str = "CrOSLateBootInitDLServer";
 const INIT_DL_SERVER_FEATURE_DEFAULT_VALUE: bool = false;
 const FAIR_SERVER_PARAMS_PATH: &str = "/sys/kernel/debug/sched/fair_server/params";
-const DL_SERVER_RUNTIME: &str = "5000000";
+const DL_SERVER_RUNTIME: &str = "15000000";
 const DL_SERVER_PERIOD: &str = "25000000";
 const DL_SERVER_DEFAULT_RUNTIME: &str = "50000000";
 const DL_SERVER_DEFAULT_PERIOD: &str = "1000000000";
