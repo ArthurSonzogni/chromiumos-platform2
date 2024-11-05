@@ -9,7 +9,7 @@ use std::{fmt, io};
 use tempfile::TempDir;
 use thiserror::Error;
 
-/// A filesystem type for passing to `Mount::new`.
+/// A filesystem type for passing to `TempBackedMount::new`.
 pub enum FsType {
     Ext4,
     Vfat,
@@ -24,7 +24,7 @@ impl fmt::Display for FsType {
     }
 }
 
-/// Common error type for `Mount` failures.
+/// Common error type for `TempBackedMount` failures.
 #[derive(Error, Debug)]
 pub enum MountError {
     #[error("failed to create a temp dir to mount to")]
@@ -38,19 +38,19 @@ pub enum MountError {
 }
 
 /// Mounts a file system on a temporary directory, then unmounts when dropped.
-pub struct Mount {
+pub struct TempBackedMount {
     // The temporary directory we're mounted to.
     // Set to `None` when unmounting.
     mount_point: Option<TempDir>,
 }
 
-// Wrapper around `nix::mount::umount` used by Mount.
+// Wrapper around `nix::mount::umount` used by `TempBackedMount`.
 fn unmount_impl(path: &Path) -> Result<(), MountError> {
     info!("Unmounting {}", path.display());
     nix::mount::umount(path).map_err(|e| MountError::Unmount(path.to_path_buf(), e.into()))
 }
 
-impl Mount {
+impl TempBackedMount {
     /// Create a tempdir and mount `source` to it.
     ///
     /// Currently this will always mount with the standard security flags nodev,
@@ -108,7 +108,7 @@ impl Mount {
     }
 }
 
-impl Drop for Mount {
+impl Drop for TempBackedMount {
     fn drop(&mut self) {
         // If `unmount` has been called, `mount_point` will be `None`, and
         // we'll already have unmounted and removed the temp dir.
