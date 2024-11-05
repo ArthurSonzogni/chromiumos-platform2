@@ -262,8 +262,9 @@ static inline int sum_bytes(const void* data, int length) {
   const uint8_t* bytes = (const uint8_t*)data;
   int sum = 0;
 
-  for (int i = 0; i < length; i++)
+  for (int i = 0; i < length; i++) {
     sum += bytes[i];
+  }
   return sum;
 }
 
@@ -292,8 +293,9 @@ bool EcCommand<Params, Response>::Run(ec::EcUsbEndpointInterface& uep) {
   req->command_version = cmd_.version;
   req->reserved = 0;
   req->data_len = cmd_.outsize;
-  if (cmd_.outsize)
+  if (cmd_.outsize) {
     memcpy(req_data, &request_, cmd_.outsize);
+  }
   req->checksum = (uint8_t)(-sum_bytes(req, req_len));
 
   size_t res_len = sizeof(struct ec_host_response) + cmd_.insize;

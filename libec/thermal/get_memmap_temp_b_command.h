@@ -23,8 +23,9 @@ class BRILLO_EXPORT GetMemmapTempBCommand : public ReadMemmapMem8Command {
   ~GetMemmapTempBCommand() override = default;
 
   std::optional<uint8_t> Temp() const {
-    if (!Resp())
+    if (!Resp()) {
       return std::nullopt;
+    }
     return *Resp();
   }
 

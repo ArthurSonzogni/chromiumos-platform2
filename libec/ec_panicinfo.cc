@@ -27,10 +27,11 @@ static std::string PrintPanicReg(int regnum, const uint32_t* regs, int index) {
   std::string ret;
 
   ret = base::StringPrintf("%s:", regname[regnum]);
-  if (regs)
+  if (regs) {
     base::StrAppend(&ret, {base::StringPrintf("%08x", regs[index])});
-  else
+  } else {
     base::StrAppend(&ret, {base::StringPrintf("        ")});
+  }
   base::StrAppend(&ret, {(regnum & 3) == 3 ? "\n" : " "});
   return ret;
 }
@@ -62,10 +63,12 @@ static std::string PanicShowExtraCm(const struct panic_data* pdata) {
   }
 
   ret = base::StringPrintf("\n");
-  if (pdata->cm.cfsr & CPU_NVIC_CFSR_BFARVALID)
+  if (pdata->cm.cfsr & CPU_NVIC_CFSR_BFARVALID) {
     base::StrAppend(&ret, {base::StringPrintf("bfar=%08x, ", bfar)});
-  if (pdata->cm.cfsr & CPU_NVIC_CFSR_MFARVALID)
+  }
+  if (pdata->cm.cfsr & CPU_NVIC_CFSR_MFARVALID) {
     base::StrAppend(&ret, {base::StringPrintf("mfar=%08x, ", mfar)});
+  }
   base::StrAppend(
       &ret, {base::StringPrintf("cfsr=%08x, ", cfsr),
              base::StringPrintf("shcsr=%08x, ", shcsr),
@@ -88,25 +91,29 @@ static std::string ParsePanicInfoCm(const struct panic_data* pdata) {
       "Saved panic data: %02x%s\n", pdata->flags,
       (pdata->flags & PANIC_DATA_FLAG_OLD_HOSTCMD ? "" : " (NEW)"));
 
-  if (pdata->struct_version == 2)
+  if (pdata->struct_version == 2) {
     origin = ((lregs[11] & 0xf) == 1 || (lregs[11] & 0xf) == 9) ? ORIG_HANDLER
                                                                 : ORIG_PROCESS;
+  }
 
   /*
    * In pdata struct, 'regs', which is allocated before 'frame', has
    * one less elements in version 1. Choose the data according to the version.
    */
-  if (pdata->flags & PANIC_DATA_FLAG_FRAME_VALID)
+  if (pdata->flags & PANIC_DATA_FLAG_FRAME_VALID) {
     sregs = pdata->struct_version == 1 ? pdata->cm_v1.frame : pdata->cm.frame;
+  }
 
   base::StrAppend(&ret, {base::StringPrintf(
                             "=== %s EXCEPTION: %02x ====== xPSR: %08x ===\n",
                             panic_origins[origin], lregs[1] & 0xff,
                             sregs ? sregs[7] : -1)});
-  for (i = 0; i < 4; ++i)
+  for (i = 0; i < 4; ++i) {
     base::StrAppend(&ret, {PrintPanicReg(i, sregs, i)});
-  for (i = 4; i < 10; ++i)
+  }
+  for (i = 4; i < 10; ++i) {
     base::StrAppend(&ret, {PrintPanicReg(i, lregs, i - 1)});
+  }
   base::StrAppend(&ret,
                   {PrintPanicReg(10, lregs, 9), PrintPanicReg(11, lregs, 10),
                    PrintPanicReg(12, sregs, 4),
@@ -190,8 +197,9 @@ base::expected<std::vector<uint8_t>, std::string> GetPanicInput(
     if (read < 0) {
       return base::unexpected("Cannot read panicinfo from stdin.");
     }
-    if (read == 0)
+    if (read == 0) {
       break;
+    }
 
     size += read;
     if (size >= max_size) {
@@ -240,41 +248,46 @@ base::expected<std::string, std::string> ParsePanicInfo(
    * We only understand panic data with version in [1, 2]. Error on invalid
    * versions.
    */
-  if (pdata.struct_version > 2 || pdata.struct_version == 0)
+  if (pdata.struct_version > 2 || pdata.struct_version == 0) {
     return base::unexpected(
         warning +
         base::StringPrintf("ERROR: Unknown panic data version (%d).\n",
                            pdata.struct_version));
+  }
 
-  if (pdata.reserved != 0)
+  if (pdata.reserved != 0) {
     return base::unexpected(
         warning + base::StringPrintf("ERROR: Panic reserve is not 0 (%d).\n",
                                      pdata.reserved));
+  }
 
   /* Validate flag is within BIT(0) to BIT(6) inclusive. */
-  if (pdata.flags >> 7)
+  if (pdata.flags >> 7) {
     return base::unexpected(
         warning +
         base::StringPrintf("ERROR: Incorrect flag (%d).\n", pdata.flags));
+  }
 
   /*
    * Validate magic number. This is unlikely to happen but we should investigate
    * the mismatching in crash reports.
    */
-  if (pdata.magic != PANIC_DATA_MAGIC)
+  if (pdata.magic != PANIC_DATA_MAGIC) {
     base::StrAppend(
         &warning, {base::StringPrintf("WARNING: Incorrect panic magic (%d).\n",
                                       pdata.magic)});
+  }
 
   /*
    * The size mismatching is unlikely to happen but we should investiage this
    * case in crash reports.
    */
-  if (pdata.struct_size != size)
+  if (pdata.struct_size != size) {
     base::StrAppend(
         &warning, {base::StringPrintf(
                       "WARNING: Panic struct size inconsistent (%u vs %zd).\n",
                       pdata.struct_size, size)});
+  }
 
   std::string ret;
   switch (pdata.arch) {

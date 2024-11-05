@@ -24,11 +24,13 @@ int MkbpEvent::Wait(int timeout) {
   struct pollfd pf = {.fd = fd_, .events = POLLIN};
 
   int rv = poll(&pf, 1, timeout);
-  if (rv != 1)
+  if (rv != 1) {
     return rv;
+  }
 
-  if (pf.revents != POLLIN)
+  if (pf.revents != POLLIN) {
     return -pf.revents;
+  }
 
   return rv;
 }

@@ -10,8 +10,9 @@
 namespace ec {
 
 base::span<const uint8_t> I2cPassthruCommand::RespData() const {
-  if (I2cStatus())
+  if (I2cStatus()) {
     return {};
+  }
   CHECK(RespSize() - realsizeof<decltype(Resp()->resp)> >= 0);
   return {Resp()->data.begin(),
           RespSize() - realsizeof<decltype(Resp()->resp)>};

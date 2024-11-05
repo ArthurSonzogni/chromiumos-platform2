@@ -21,8 +21,9 @@ class BRILLO_EXPORT PwmGetFanTargetRpmCommand : public ReadMemmapMem16Command {
   ~PwmGetFanTargetRpmCommand() override = default;
 
   std::optional<uint16_t> Rpm() const {
-    if (!Resp())
+    if (!Resp()) {
       return std::nullopt;
+    }
     return *Resp();
   }
 };

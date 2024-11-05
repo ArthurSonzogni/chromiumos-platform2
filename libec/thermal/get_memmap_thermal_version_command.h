@@ -23,8 +23,9 @@ class BRILLO_EXPORT GetMemmapThermalVersionCommand
   ~GetMemmapThermalVersionCommand() override = default;
 
   std::optional<uint8_t> ThermalVersion() const {
-    if (!Resp())
+    if (!Resp()) {
       return std::nullopt;
+    }
     return *Resp();
   }
 

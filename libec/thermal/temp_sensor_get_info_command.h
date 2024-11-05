@@ -24,13 +24,15 @@ class BRILLO_EXPORT TempSensorGetInfoCommand
   }
   ~TempSensorGetInfoCommand() override = default;
   std::optional<std::string> SensorName() const {
-    if (!Resp())
+    if (!Resp()) {
       return std::nullopt;
+    }
     return Resp()->sensor_name;
   }
   std::optional<uint8_t> SensorType() const {
-    if (!Resp())
+    if (!Resp()) {
       return std::nullopt;
+    }
     return Resp()->sensor_type;
   }
 };

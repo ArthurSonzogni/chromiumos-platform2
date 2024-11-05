@@ -240,12 +240,14 @@ void EcUsbEndpoint::CloseDeviceHandle() {
 }
 
 void EcUsbEndpoint::CleanUp() {
-  if (!libusb_is_init_)
+  if (!libusb_is_init_) {
     return;
+  }
 
   if (endpoint_.dev_handle) {
-    if (endpoint_.interface_number)
+    if (endpoint_.interface_number) {
       ReleaseInterface();
+    }
   }
 
   libusb_->exit(nullptr);
