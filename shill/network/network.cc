@@ -877,11 +877,11 @@ void Network::DestroySockets(std::optional<uid_t> uid) {
   //   supported"). The reason is unclear.
   for (const auto& address : GetAddresses()) {
     if (!net_base::NetlinkSockDiag::Create()->DestroySockets(
-            IPPROTO_TCP, address.address())) {
+            IPPROTO_TCP, address.address(), uid)) {
       LOG(ERROR) << *this << ": failed to destroy tcp sockets for " << address;
     }
     if (!net_base::NetlinkSockDiag::Create()->DestroySockets(
-            IPPROTO_UDP, address.address())) {
+            IPPROTO_UDP, address.address(), uid)) {
       LOG(ERROR) << *this << ": failed to destroy udp sockets for " << address;
     }
   }
