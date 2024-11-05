@@ -9,10 +9,11 @@ use std::{fmt, io};
 use tempfile::TempDir;
 use thiserror::Error;
 
-/// A filesystem type for passing to `TempBackedMount::new`.
+/// A filesystem type for passing to mount calls.
 pub enum FsType {
     Ext4,
     Vfat,
+    Tmpfs,
 }
 
 impl fmt::Display for FsType {
@@ -20,6 +21,7 @@ impl fmt::Display for FsType {
         match self {
             Self::Ext4 => f.write_str("ext4"),
             Self::Vfat => f.write_str("vfat"),
+            Self::Tmpfs => f.write_str("tmpfs"),
         }
     }
 }
@@ -125,5 +127,42 @@ impl Drop for TempBackedMount {
                 err
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::process::Command;
+
+    // These tests require sudo, and won't run as part of the normal in-chroot testing when
+    // `emerge`ing, so just leave them as manual tests. You can run these like:
+    //     CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER='sudo -E' cargo test -- --ignored
+
+    #[test]
+    #[ignore]
+    fn test_tmpmnt_basic() {
+        let mnt = TempBackedMount::new(Path::new("tmpfs"), FsType::Tmpfs).unwrap();
+
+        // Confirm that the mount is good by touching a file on it.
+        let file = mnt.mount_path().join("touched");
+        let status = Command::new("touch").arg(file).status().unwrap();
+
+        assert!(status.success());
+    }
+
+    #[test]
+    #[ignore]
+    fn test_tmpmnt_drop() {
+        let mnt = TempBackedMount::new(Path::new("tmpfs"), FsType::Tmpfs).unwrap();
+
+        let path = mnt.mount_path().to_path_buf();
+
+        drop(mnt);
+
+        // The tempfile can't be deleted if the mount is still there,
+        // so this is all we need to check.
+        assert!(!path.exists());
     }
 }
