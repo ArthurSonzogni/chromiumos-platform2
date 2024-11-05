@@ -53,11 +53,11 @@ constexpr size_t kMaxCacheSize = 4;
 constexpr double kMaxGroupDifferenceRatioToReuseTitle = 0.2501;
 
 std::string AppToPromptLine(const mojom::App& app) {
-  return base::StringPrintf("app title: %s\n", app.title.c_str());
+  return base::StringPrintf("title: %s\n", app.title.c_str());
 }
 
 std::string TabToPromptLine(const mojom::Tab& tab) {
-  return base::StringPrintf("tab title: %s\n", tab.title.c_str());
+  return base::StringPrintf("title: %s\n", tab.title.c_str());
 }
 
 std::string EntitiesToTitlePrompt(
