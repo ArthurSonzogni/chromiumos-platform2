@@ -341,34 +341,34 @@ DocumentScanSaneBackend BackendFromDeviceName(const std::string& device) {
     return kXeroxMfp;
   }
   if (name == "p208ii") {
-    return kp208ii;
+    return kP208ii;
   }
   if (name == "drm260") {
-    return kdrm260;
+    return kDrm260;
   }
   if (name == "drp208ii") {
-    return kdrp208ii;
+    return kDrp208ii;
   }
   if (name == "p215ii") {
-    return kp215ii;
+    return kP215ii;
   }
   if (name == "drp215ii") {
-    return kdrp215ii;
+    return kDrp215ii;
   }
   if (name == "drc225ii") {
-    return kdrc225ii;
+    return kDrc225ii;
   }
   if (name == "drc230") {
-    return kdrc230;
+    return kDrc230;
   }
   if (name == "drc240") {
-    return kdrc240;
+    return kDrc240;
   }
   if (name == "r40") {
-    return kr40;
+    return kR40;
   }
   if (name == "r50") {
-    return kr50;
+    return kR50;
   }
   LOG(WARNING) << "Unknown sane backend " << name;
   return kOtherBackend;
