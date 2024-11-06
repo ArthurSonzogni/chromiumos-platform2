@@ -31,8 +31,9 @@ bool GetValueFromProcStatusValueStr(const std::string& value_str,
   const std::vector<std::string_view> split_value_str = base::SplitStringPiece(
       value_str, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
-  if (split_value_str.size() != 2 || split_value_str[1] != "kB")
+  if (split_value_str.size() != 2 || split_value_str[1] != "kB") {
     return false;
+  }
 
   return base::StringToSizeT(split_value_str[0], value);
 }
@@ -80,21 +81,25 @@ bool GetProcessMemoryUsageFromFile(MemoryUsage* memory_usage,
     base::TrimWhitespaceASCII(key, base::TRIM_ALL, &key);
 
     if (key == "VmRSS") {
-      if (vmrss_found)
+      if (vmrss_found) {
         return false;  // Duplicates should not happen.
+      }
 
       base::TrimWhitespaceASCII(value_str, base::TRIM_ALL, &value_str);
-      if (!GetValueFromProcStatusValueStr(value_str, &memory_usage->VmRSSKb))
+      if (!GetValueFromProcStatusValueStr(value_str, &memory_usage->VmRSSKb)) {
         return false;
+      }
       vmrss_found = true;
     }
     if (key == "VmSwap") {
-      if (vmswap_found)
+      if (vmswap_found) {
         return false;  // Duplicates should not happen.
+      }
 
       base::TrimWhitespaceASCII(value_str, base::TRIM_ALL, &value_str);
-      if (!GetValueFromProcStatusValueStr(value_str, &memory_usage->VmSwapKb))
+      if (!GetValueFromProcStatusValueStr(value_str, &memory_usage->VmSwapKb)) {
         return false;
+      }
       vmswap_found = true;
     }
   }

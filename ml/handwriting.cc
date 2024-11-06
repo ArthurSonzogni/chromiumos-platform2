@@ -73,11 +73,13 @@ HandwritingRecognizerModelPaths GetModelPaths(
     paths.set_reco_model_path(model_path.Append("latin_indy.tflite").value());
     // The following are optionals: segmentation and confidence models.
     const auto seg_file_path = model_path.Append("latin_indy_seg.tflite");
-    if (base::PathExists(seg_file_path))
+    if (base::PathExists(seg_file_path)) {
       paths.set_seg_model_path(seg_file_path.value());
+    }
     const auto conf_file_path = model_path.Append("latin_indy_conf.tflite");
-    if (base::PathExists(conf_file_path))
+    if (base::PathExists(conf_file_path)) {
       paths.set_conf_model_path(conf_file_path.value());
+    }
   }
 
   return paths;

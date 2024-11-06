@@ -65,8 +65,9 @@ bool SafeGetFeature(const std::string& key,
                     Feature* feature) {
   auto p_feature = example.features().find(key);
   if (p_feature != example.features().end()) {
-    if (feature)
+    if (feature) {
       *feature = p_feature->second;
+    }
     return true;
   }
   return false;

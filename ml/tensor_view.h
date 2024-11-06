@@ -60,14 +60,16 @@ class TensorView {
     const std::vector<int64_t>& dims = GetShape();
 
     // Special case: no entries.
-    if (dims.empty())
+    if (dims.empty()) {
       return GetValues().empty();
+    }
 
     // Otherwise, values size should be the product of all dimension lengths.
     int64_t num_entries = 1;
     for (const int64_t dim : dims) {
-      if (dim < 0)
+      if (dim < 0) {
         return false;
+      }
 
       num_entries *= dim;
     }

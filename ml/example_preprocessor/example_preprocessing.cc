@@ -94,8 +94,9 @@ int ExamplePreprocessor::AddBucketizedFeatures(
     const RepeatedField<float>& boundaries = bucketizer.second.boundaries();
     int index = 0;
     for (; index < boundaries.size(); ++index) {
-      if (value < boundaries[index])
+      if (value < boundaries[index]) {
         break;
+      }
     }
     // Set one hot feature as features[feature_name] = "index";
     feature_map[feature_name].set_string_value(base::NumberToString(index));

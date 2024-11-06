@@ -120,9 +120,10 @@ class MLServiceFuzzer {
     // Create input vector
     FuzzedDataProvider data_provider(data, size);
     std::vector<double> input_vec;
-    for (int i = 0; i < kSmartDim20190521InputSize; i++)
+    for (int i = 0; i < kSmartDim20190521InputSize; i++) {
       input_vec.push_back(
           data_provider.ConsumeFloatingPointInRange<double>(0, 1));
+    }
 
     inputs.emplace(
         "input", NewTensor<double>({1, kSmartDim20190521InputSize}, input_vec));

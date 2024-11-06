@@ -37,14 +37,17 @@ int main(int argc, char** argv) {
 
   // TODO(avg): add ability to run arbitrary models
   std::string processing = "CPU";
-  if (FLAGS_nnapi)
+  if (FLAGS_nnapi) {
     processing = "NNAPI";
-  if (FLAGS_gpu)
+  }
+  if (FLAGS_gpu) {
     processing = "GPU";
+  }
   std::cout << "Adding " << FLAGS_x << " and " << FLAGS_y << " with "
             << processing;
-  if (FLAGS_gpu)
+  if (FLAGS_gpu) {
     std::cout << " (API: " << FLAGS_gpu_delegate_api << ")";
+  }
   std::cout << std::endl;
   auto result = ml::simple::Add(FLAGS_x, FLAGS_y, FLAGS_nnapi, FLAGS_gpu,
                                 FLAGS_gpu_delegate_api);

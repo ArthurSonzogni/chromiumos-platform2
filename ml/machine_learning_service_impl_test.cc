@@ -1726,8 +1726,9 @@ TEST(SODARecognizerTest, FakeImplMojoCallback) {
   return;
 #else
   // TODO(b/261503945): remove after a proper gate is introduced.
-  if (IsAsan())
+  if (IsAsan()) {
     return;
+  }
 
   StrictMock<MockSodaClientImpl> soda_client_impl;
   mojo::Receiver<SodaClient> soda_client(&soda_client_impl);

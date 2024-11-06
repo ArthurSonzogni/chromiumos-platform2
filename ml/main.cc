@@ -28,15 +28,17 @@ int main(int argc, char* argv[]) {
   const std::string task =
       base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("task");
 
-  if (task == kMojoServiceTask)
+  if (task == kMojoServiceTask) {
     return ml::Process::GetInstance()->Run();
+  }
 
-  if (task == kAdaptiveChargingTask)
+  if (task == kAdaptiveChargingTask) {
     return ml::DBusServiceDaemon<
                ml::AdaptiveChargingService,
                org::chromium::MachineLearning::AdaptiveChargingAdaptor>(
                ml::kMachineLearningAdaptiveChargingServiceName)
         .Run();
+  }
 
   LOG(ERROR) << "ml-service received unknown task " << task;
   return 0;

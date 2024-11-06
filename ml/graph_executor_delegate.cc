@@ -33,11 +33,13 @@ ExecuteResult PopulateInput(const TensorPtr& tensor,
                             tflite::Interpreter* const interpreter) {
   const TensorView<TensorType> tensor_view(tensor);
 
-  if (!tensor_view.IsValidType())
+  if (!tensor_view.IsValidType()) {
     return ExecuteResult::INPUT_TYPE_ERROR;
+  }
 
-  if (!tensor_view.IsValidFormat())
+  if (!tensor_view.IsValidFormat()) {
     return ExecuteResult::INPUT_FORMAT_ERROR;
+  }
 
   // Check that given input shape matches that expected by TF lite.
 
@@ -49,8 +51,9 @@ ExecuteResult PopulateInput(const TensorPtr& tensor,
     shape_matches = expected_dims.data[i] == actual_dims[i];
   }
 
-  if (!shape_matches)
+  if (!shape_matches) {
     return ExecuteResult::INPUT_SHAPE_ERROR;
+  }
 
   MemoryType* const input_memory = interpreter->typed_tensor<MemoryType>(index);
   const std::vector<TensorType>& tensor_values = tensor_view.GetValues();
@@ -97,8 +100,9 @@ ExecuteResult PopulateOutput(const int index,
 
   // Empty output is not valid.
   const TfLiteIntArray& dims = *interpreter.tensor(index)->dims;
-  if (dims.size == 0)
+  if (dims.size == 0) {
     return ExecuteResult::EXECUTION_ERROR;
+  }
 
   // Copy across size information and calculate the number of elements being
   // output.
@@ -108,8 +112,9 @@ ExecuteResult PopulateOutput(const int index,
   for (int i = 0; i < dims.size; ++i) {
     const int64_t dim_length = dims.data[i];
 
-    if (dim_length <= 0)
+    if (dim_length <= 0) {
       return ExecuteResult::EXECUTION_ERROR;
+    }
 
     tensor_dims[i] = dim_length;
     num_entries *= dim_length;
