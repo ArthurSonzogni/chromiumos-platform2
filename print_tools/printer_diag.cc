@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string.h>
 #include <sysexits.h>
 
 #include <algorithm>
@@ -9,14 +10,12 @@
 #include <iostream>
 #include <optional>
 
-#include <string.h>
-#include <curl/curl.h>
-
 #include <brillo/flag_helper.h>
 #include <chromeos/libipp/attribute.h>
 #include <chromeos/libipp/builder.h>
 #include <chromeos/libipp/frame.h>
 #include <chromeos/libipp/parser.h>
+#include <curl/curl.h>
 
 #include "helpers.h"
 #include "ipp_in_json.h"
@@ -94,7 +93,6 @@ std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
     return std::nullopt;
   }
 
-  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
 
   // Add Content-Type header to request.
@@ -120,21 +118,31 @@ std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, static_cast<void*>(&output_data));
 
   // Actually do the request.
-  curl_result = curl_easy_perform(curl);
-  if (curl_result != CURLE_OK) {
-    std::cerr << "HTTP error: " << curl_easy_strerror(curl_result) << "\n";
-  } else {
+  size_t tries = 0;
+  do {
+    std::cerr << "URL: " << url << "\n";
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_result = curl_easy_perform(curl);
+    tries++;
+    if (curl_result != CURLE_OK) {
+      std::cerr << "HTTP error: " << curl_easy_strerror(curl_result) << "\n";
+      break;
+    }
+
     auto response_code = 999;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    if (response_code == 200) {
+      return_value = std::move(output_data);
+      break;
+    }
 
     // Per RFC 8010 section 3.4.3, any HTTP status code other than 200 means
     // the response does not contain an IPP message body.
-    if (response_code != 200) {
-      std::cerr << "HTTP error: HTTP response code " << response_code << "\n";
-    } else {
-      return_value = std::move(output_data);
+    std::cerr << "HTTP error: HTTP response code " << response_code << "\n";
+    if (response_code == 426 && url.starts_with("http://")) {
+      url.replace(0, 4, "https");
     }
-  }
+  } while (tries < 2);
 
   curl_slist_free_all(header_list);
   curl_easy_cleanup(curl);
