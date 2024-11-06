@@ -152,6 +152,7 @@ pub fn insert_thirteenth_partition(disk_path: &Path) -> Result<()> {
 /// 1. Since we've inserted the partition *after* the stateful partition, we can just
 ///    remove it and then grow the stateful partition back to its initial size.
 /// 2. Then we grow the partition's filesystem (ext4) to its maximum size.
+///
 /// Please note: This should never be called while either the stateful or the flex
 /// deployment partition is mounted.
 pub fn try_remove_thirteenth_partition(disk_path: &Path) -> Result<()> {

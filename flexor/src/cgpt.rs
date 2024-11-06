@@ -231,10 +231,10 @@ mod tests {
         // Create a fake disk at path.
         let status = Command::new("dd")
             .arg("if=/dev/zero")
-            .arg(&format!("of={}", path.display()))
+            .arg(format!("of={}", path.display()))
             .arg("conv=fsync")
             .arg("bs=512")
-            .arg(&format!("count={NUM_SECTORS}"))
+            .arg(format!("count={NUM_SECTORS}"))
             .status()?;
         assert!(status.success());
 
