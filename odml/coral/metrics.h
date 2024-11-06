@@ -46,6 +46,8 @@ inline constexpr char kEmbeddingModelLoaded[] =
     "Platform.CoralService.EmbeddingEngine.ModelLoaded";
 inline constexpr char kEmbeddingCacheHit[] =
     "Platform.CoralService.EmbeddingEngine.CacheHit";
+inline constexpr char kEmbeddingDatabaseEntriesCount[] =
+    "Platform.CoralService.EmbeddingEngine.DatabaseEntriesCount";
 inline constexpr char kClusteringInputCount[] =
     "Platform.CoralService.ClusteringEngine.InputCount";
 inline constexpr char kClusteringGeneratedGroupCount[] =
@@ -122,6 +124,9 @@ class CoralMetrics {
   void SendEmbeddingModelLoaded(bool is_loaded);
   // Whether a request entity already has its embedding cached.
   void SendEmbeddingCacheHit(bool is_cache_hit);
+  // Send the number of entries in the embedding database every time a user
+  // session starts.
+  void SendEmbeddingDatabaseEntriesCount(int count);
 
   // --------------------------------------------------------------------------
   // Clustering engine metrics.

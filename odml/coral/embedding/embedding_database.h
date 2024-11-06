@@ -15,6 +15,7 @@
 #include <base/time/time.h>
 
 #include "odml/coral/common.h"
+#include "odml/coral/metrics.h"
 
 namespace coral {
 
@@ -25,7 +26,9 @@ class EmbeddingDatabaseFactory {
   virtual ~EmbeddingDatabaseFactory() = default;
   // Creates a EmbeddingDatabaseInterface instance with the given parameters.
   virtual std::unique_ptr<EmbeddingDatabaseInterface> Create(
-      const base::FilePath& file_path, base::TimeDelta ttl) const;
+      raw_ref<CoralMetrics> metrics,
+      const base::FilePath& file_path,
+      base::TimeDelta ttl) const;
 };
 
 // Interface to a file-backed embedding database.
@@ -49,7 +52,9 @@ class EmbeddingDatabaseInterface {
 class EmbeddingDatabase : public EmbeddingDatabaseInterface {
  public:
   static std::unique_ptr<EmbeddingDatabase> Create(
-      const base::FilePath& file_path, base::TimeDelta ttl);
+      raw_ref<CoralMetrics> metrics,
+      const base::FilePath& file_path,
+      base::TimeDelta ttl);
 
   ~EmbeddingDatabase() override;
   EmbeddingDatabase(const EmbeddingDatabase&) = delete;
@@ -69,7 +74,9 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
   // Backed by file |file_path|.
   // Records older than |ttl| are removed when (and only when) loading and
   // syncing. |ttl| with value 0 means no TTL.
-  EmbeddingDatabase(const base::FilePath& file_path, base::TimeDelta ttl);
+  EmbeddingDatabase(raw_ref<CoralMetrics> metrics,
+                    const base::FilePath& file_path,
+                    base::TimeDelta ttl);
 
   // Returns true if a record is stale.
   bool IsRecordExpired(base::Time now, const EmbeddingEntry& record) const;
@@ -81,6 +88,8 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
   // according to last updated time.
   void MaybePruneEntries();
 
+  const raw_ref<CoralMetrics> metrics_;
+
   bool dirty_;
   const base::FilePath file_path_;
   const base::TimeDelta ttl_;
@@ -89,6 +98,8 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
   // `embeddings_map_`. The 2 containers should be updated together and always
   // stay consistent. This is sorted by updated_time so we can efficiently find
   // the oldest entries to prune when we need to.
+  // The default behavior of pair comparison is lexicographical, so it will be
+  // first sorted by updated_time, then by the key string.
   std::set<std::pair<base::Time, std::string>> updated_time_of_keys_;
 };
 

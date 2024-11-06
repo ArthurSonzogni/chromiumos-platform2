@@ -106,6 +106,11 @@ void CoralMetrics::SendEmbeddingCacheHit(bool is_cache_hit) {
   metrics_->SendBoolToUMA(metrics::kEmbeddingCacheHit, is_cache_hit);
 }
 
+void CoralMetrics::SendEmbeddingDatabaseEntriesCount(int count) {
+  metrics_->SendToUMA(metrics::kEmbeddingDatabaseEntriesCount, count, 1, 1001,
+                      50);
+}
+
 void CoralMetrics::SendClusteringInputCount(int count) {
   metrics_->SendToUMA(metrics::kClusteringInputCount, count, 1, 101, 50);
 }

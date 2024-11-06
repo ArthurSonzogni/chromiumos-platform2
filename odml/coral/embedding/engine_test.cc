@@ -112,7 +112,9 @@ class FakeEmbeddingDatabaseFactory : public EmbeddingDatabaseFactory {
  public:
   MOCK_METHOD(std::unique_ptr<EmbeddingDatabaseInterface>,
               Create,
-              (const base::FilePath& file_path, base::TimeDelta ttl),
+              (raw_ref<CoralMetrics> metrics,
+               const base::FilePath& file_path,
+               base::TimeDelta ttl),
               (const override));
 };
 
@@ -403,7 +405,7 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   EXPECT_CALL(*database_2, Put(cache_keys[4], fake_embeddings[4])).Times(1);
 
   // Ownership of |database_1| and |database_2| are transferred.
-  EXPECT_CALL(*embedding_database_factory_, Create(_, _))
+  EXPECT_CALL(*embedding_database_factory_, Create(_, _, _))
       .WillOnce(Return(base::WrapUnique(database_1)))
       .WillOnce(Return(base::WrapUnique(database_2)));
 

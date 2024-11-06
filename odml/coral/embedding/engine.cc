@@ -165,6 +165,7 @@ void EmbeddingEngine::OnUserLoggedIn(
     const odml::SessionStateManagerInterface::User& user) {
   LOG(INFO) << "EmbeddingEngine::OnUserLoggedIn";
   embedding_database_ = embedding_database_factory_->Create(
+      metrics_,
       base::FilePath(kEmbeddingDatabaseRootDir)
           .Append(user.hash)
           .Append(kEmbeddingDatabaseSubDir)

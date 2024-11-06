@@ -33,15 +33,20 @@ constexpr size_t kEntriesToPrune = 100;
 
 // class EmbeddingDatabaseFactory.
 std::unique_ptr<EmbeddingDatabaseInterface> EmbeddingDatabaseFactory::Create(
-    const base::FilePath& file_path, const base::TimeDelta ttl) const {
-  return EmbeddingDatabase::Create(file_path, ttl);
+    raw_ref<CoralMetrics> metrics,
+    const base::FilePath& file_path,
+    const base::TimeDelta ttl) const {
+  return EmbeddingDatabase::Create(metrics, file_path, ttl);
 }
 
 // class EmbeddingDatabase.
 std::unique_ptr<EmbeddingDatabase> EmbeddingDatabase::Create(
-    const base::FilePath& file_path, const base::TimeDelta ttl) {
+    raw_ref<CoralMetrics> metrics,
+    const base::FilePath& file_path,
+    const base::TimeDelta ttl) {
   // EmbeddingDatabase() is private, so can not use make_unique.
-  auto instance = base::WrapUnique(new EmbeddingDatabase(file_path, ttl));
+  auto instance =
+      base::WrapUnique(new EmbeddingDatabase(metrics, file_path, ttl));
 
   if (base::PathExists(file_path)) {
     // Do not return nullptr, since we can try overwriting the file later when
@@ -64,9 +69,10 @@ std::unique_ptr<EmbeddingDatabase> EmbeddingDatabase::Create(
   return instance;
 }
 
-EmbeddingDatabase::EmbeddingDatabase(const base::FilePath& file_path,
+EmbeddingDatabase::EmbeddingDatabase(raw_ref<CoralMetrics> metrics,
+                                     const base::FilePath& file_path,
                                      const base::TimeDelta ttl)
-    : dirty_(false), file_path_(file_path), ttl_(ttl) {}
+    : metrics_(metrics), dirty_(false), file_path_(file_path), ttl_(ttl) {}
 
 EmbeddingDatabase::~EmbeddingDatabase() {
   // Ignore errors.
@@ -187,6 +193,7 @@ bool EmbeddingDatabase::LoadFromFile() {
   MaybePruneEntries();
   LOG(INFO) << "Load from embedding database with now: " << now
             << ", ttl: " << ttl_ << ", size: " << embeddings_map_.size();
+  metrics_->SendEmbeddingDatabaseEntriesCount(embeddings_map_.size());
   return true;
 }
 
@@ -201,6 +208,7 @@ void EmbeddingDatabase::MaybePruneEntries() {
         << "embeddings_map_ isn't consistent with updated_time_of_keys_";
     return;
   }
+  static_assert(kEntriesToPrune < kMaxEntries);
   for (int i = 0; i < kEntriesToPrune; i++) {
     embeddings_map_.erase(updated_time_of_keys_.begin()->second);
     updated_time_of_keys_.erase(updated_time_of_keys_.begin());

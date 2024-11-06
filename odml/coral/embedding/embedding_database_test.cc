@@ -16,12 +16,14 @@
 #include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 namespace coral {
 
 namespace {
 
 using ::testing::ElementsAre;
+using ::testing::NiceMock;
 using ::testing::Optional;
 
 }  // namespace
@@ -29,7 +31,8 @@ using ::testing::Optional;
 class EmbeddingDatabaseTest : public testing::Test {
  public:
   EmbeddingDatabaseTest()
-      : task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
+      : task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME),
+        coral_metrics_(raw_ref(metrics_)) {}
 
   void SetUp() override {
     CHECK(database_file_.Create());
@@ -41,18 +44,21 @@ class EmbeddingDatabaseTest : public testing::Test {
   }
 
  protected:
+  base::test::SingleThreadTaskEnvironment task_environment_;
+
+  NiceMock<MetricsLibraryMock> metrics_;
+  CoralMetrics coral_metrics_;
+
   base::ScopedTempFile database_file_;
   base::FilePath file_path_;
 
   EmbeddingDatabaseFactory factory_;
-
-  base::test::SingleThreadTaskEnvironment task_environment_;
 };
 
 TEST_F(EmbeddingDatabaseTest, InMemoryWriteRead) {
   // Empty database.
   std::unique_ptr<EmbeddingDatabaseInterface> database =
-      factory_.Create(file_path_, base::Seconds(0));
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), std::nullopt);
   EXPECT_THAT(database->Get("key2"), std::nullopt);
 
@@ -76,7 +82,7 @@ TEST_F(EmbeddingDatabaseTest, InMemoryWriteRead) {
 
 TEST_F(EmbeddingDatabaseTest, WriteThenRead) {
   std::unique_ptr<EmbeddingDatabaseInterface> database =
-      factory_.Create(file_path_, base::Seconds(0));
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   database->Put("key1", {1, 2, 3});
   database->Put("key2", {4, 5, 6});
   database->Put("key3", {7, 8, 9});
@@ -84,14 +90,15 @@ TEST_F(EmbeddingDatabaseTest, WriteThenRead) {
   database.reset();
 
   // Reads it back from the file.
-  database = factory_.Create(file_path_, base::Seconds(0));
+  database =
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), Optional(ElementsAre(1, 2, 3)));
   EXPECT_THAT(database->Get("key3"), Optional(ElementsAre(7, 8, 9)));
 }
 
 TEST_F(EmbeddingDatabaseTest, RecordsPruned) {
   std::unique_ptr<EmbeddingDatabaseInterface> database =
-      factory_.Create(file_path_, base::Seconds(0));
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   // When the 1001st entry is inserted, the first 100 entries will be pruned.
   for (int i = 0; i < 1100; i++) {
     database->Put(std::string("key") + std::to_string(i), {1, 2, 3});
@@ -109,7 +116,8 @@ TEST_F(EmbeddingDatabaseTest, RecordsPruned) {
   database.reset();
 
   // Reads it back from the file.
-  database = factory_.Create(file_path_, base::Seconds(0));
+  database =
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   // The result should be the same.
   for (int i = 0; i < 1100; i++) {
     std::string key = std::string("key") + std::to_string(i);
@@ -123,7 +131,7 @@ TEST_F(EmbeddingDatabaseTest, RecordsPruned) {
 
 TEST_F(EmbeddingDatabaseTest, RecordsExpire) {
   std::unique_ptr<EmbeddingDatabaseInterface> database =
-      factory_.Create(file_path_, base::Seconds(10));
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(10));
   // timestamp 0.
   database->Put("key1", {1, 2, 3});
   database->Put("key2", {4, 5, 6});
@@ -154,7 +162,8 @@ TEST_F(EmbeddingDatabaseTest, RecordsExpire) {
 
   // timestamp 11.
   // Reads it back from the file with no ttl set.
-  database = factory_.Create(file_path_, base::Seconds(0));
+  database =
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), std::nullopt);
   EXPECT_THAT(database->Get("key2"), Optional(ElementsAre(4, 5, 6)));
   EXPECT_THAT(database->Get("key3"), std::nullopt);
@@ -165,7 +174,8 @@ TEST_F(EmbeddingDatabaseTest, RecordsExpire) {
 
   // timestamp 11.
   // Reads it back again from the file.
-  database = factory_.Create(file_path_, base::Seconds(30));
+  database =
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(30));
   EXPECT_THAT(database->Get("key1"), std::nullopt);
   EXPECT_THAT(database->Get("key2"), Optional(ElementsAre(4, 5, 6)));
   EXPECT_THAT(database->Get("key3"), std::nullopt);
@@ -176,7 +186,8 @@ TEST_F(EmbeddingDatabaseTest, RecordsExpire) {
 
   // timestamp 11.
   // Reads it back again from the file.
-  database = factory_.Create(file_path_, base::Seconds(3));
+  database =
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(3));
   EXPECT_THAT(database->Get("key1"), std::nullopt);
   EXPECT_THAT(database->Get("key2"), Optional(ElementsAre(4, 5, 6)));
   EXPECT_THAT(database->Get("key3"), std::nullopt);
@@ -200,7 +211,8 @@ TEST_F(EmbeddingDatabaseTest, RecordsExpire) {
   // Reads it back again from the file. Records with timestamp < 14 (key4)
   // are expired. But since we don't remove stale records when loading the file,
   // it is kept.
-  database = factory_.Create(file_path_, base::Seconds(5));
+  database =
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(5));
   // Now key3, key4 has timestamp 17.
   EXPECT_THAT(database->Get("key1"), std::nullopt);
   EXPECT_THAT(database->Get("key2"), std::nullopt);
@@ -213,7 +225,8 @@ TEST_F(EmbeddingDatabaseTest, RecordsExpire) {
   database.reset();
 
   // timestamp 23.
-  database = factory_.Create(file_path_, base::Seconds(0));
+  database =
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), std::nullopt);
   EXPECT_THAT(database->Get("key2"), std::nullopt);
   EXPECT_THAT(database->Get("key3"), std::nullopt);
@@ -226,7 +239,7 @@ TEST_F(EmbeddingDatabaseTest, FileNotExist) {
   ASSERT_TRUE(database_file_.Delete());
 
   std::unique_ptr<EmbeddingDatabaseInterface> database =
-      factory_.Create(file_path_, base::Seconds(0));
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   database->Put("key1", {1, 2, 3});
   database->Put("key2", {4, 5, 6});
   database->Put("key3", {7, 8, 9});
@@ -234,7 +247,8 @@ TEST_F(EmbeddingDatabaseTest, FileNotExist) {
   database.reset();
 
   // Reads it back from the file.
-  database = factory_.Create(file_path_, base::Seconds(0));
+  database =
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), Optional(ElementsAre(1, 2, 3)));
   EXPECT_THAT(database->Get("key2"), Optional(ElementsAre(4, 5, 6)));
   EXPECT_THAT(database->Get("key3"), Optional(ElementsAre(7, 8, 9)));
@@ -246,7 +260,7 @@ TEST_F(EmbeddingDatabaseTest, FileCorrupted) {
   ASSERT_TRUE(base::WriteFile(file_path_, buf));
 
   std::unique_ptr<EmbeddingDatabaseInterface> database =
-      factory_.Create(file_path_, base::Seconds(0));
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   database->Put("key1", {1, 2, 3});
   database->Put("key2", {4, 5, 6});
   database->Put("key3", {7, 8, 9});
@@ -254,7 +268,8 @@ TEST_F(EmbeddingDatabaseTest, FileCorrupted) {
   database.reset();
 
   // Reads it back from the file.
-  database = factory_.Create(file_path_, base::Seconds(0));
+  database =
+      factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), Optional(ElementsAre(1, 2, 3)));
   EXPECT_THAT(database->Get("key2"), Optional(ElementsAre(4, 5, 6)));
   EXPECT_THAT(database->Get("key3"), Optional(ElementsAre(7, 8, 9)));
@@ -267,7 +282,7 @@ TEST_F(EmbeddingDatabaseTest, TestCreateDirectory) {
   base::FilePath file_path = dir_path.Append("sub_dir").Append("database");
 
   std::unique_ptr<EmbeddingDatabaseInterface> database =
-      factory_.Create(file_path, base::Seconds(0));
+      factory_.Create(raw_ref(coral_metrics_), file_path, base::Seconds(0));
   database->Put("key1", {1, 2, 3});
   database->Put("key2", {4, 5, 6});
   database->Put("key3", {7, 8, 9});
@@ -275,7 +290,8 @@ TEST_F(EmbeddingDatabaseTest, TestCreateDirectory) {
   database.reset();
 
   // Reads it back from the file.
-  database = factory_.Create(file_path, base::Seconds(0));
+  database =
+      factory_.Create(raw_ref(coral_metrics_), file_path, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), Optional(ElementsAre(1, 2, 3)));
   EXPECT_THAT(database->Get("key2"), Optional(ElementsAre(4, 5, 6)));
   EXPECT_THAT(database->Get("key3"), Optional(ElementsAre(7, 8, 9)));
@@ -287,7 +303,7 @@ TEST_F(EmbeddingDatabaseTest, TestCreateDirectoryFailure) {
   base::FilePath file_path = dir_path.Append("sub_dir").Append("database");
 
   std::unique_ptr<EmbeddingDatabaseInterface> database =
-      factory_.Create(file_path, base::Seconds(0));
+      factory_.Create(raw_ref(coral_metrics_), file_path, base::Seconds(0));
   EXPECT_EQ(database.get(), nullptr);
 }
 
