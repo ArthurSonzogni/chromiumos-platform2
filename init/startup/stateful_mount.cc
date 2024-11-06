@@ -556,6 +556,12 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
     base::FilePath preserve_dir =
         stateful_.Append(kUnencrypted).Append(kPreserve);
 
+    // Allow traversal of preserve_dir, it contains link for /var/log
+    if (platform_->DirectoryExists(preserve_dir)) {
+      AllowSymlink(platform_, root_, preserve_dir.value());
+      AllowFifo(platform_, root_, preserve_dir.value());
+    }
+
     // Find everything in stateful and delete it, except for protected paths,
     // and non-empty directories. The non-empty directories contain protected
     // content or they would already be empty from depth first traversal.
