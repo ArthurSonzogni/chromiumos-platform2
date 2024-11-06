@@ -22,6 +22,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <fstream>
 #include <memory>
 #include <optional>
@@ -273,7 +274,11 @@ ssize_t NDProxy::TranslateNDPacket(
         // proxy in only one direction so there should be no loop.
       }
       ra->nd_ra_flags_reserved |= 0x04;
-      ra->nd_ra_curhoplimit += cur_hop_limit_diff;
+      if (ra->nd_ra_curhoplimit != 0) {
+        int new_curhoplimit =
+            std::min(ra->nd_ra_curhoplimit + cur_hop_limit_diff, UINT8_MAX);
+        ra->nd_ra_curhoplimit = static_cast<uint8_t>(new_curhoplimit);
+      }
 
       ReplaceMacInIcmpOption(reinterpret_cast<uint8_t*>(icmp6), icmp6_len,
                              sizeof(nd_router_advert), ND_OPT_SOURCE_LINKADDR,

@@ -341,6 +341,7 @@ class NDProxyUnderTest : public NDProxy {
 
   FRIEND_TEST(NDProxyTest, ResolveDestinationMac);
   FRIEND_TEST(NDProxyTest, TranslateFrame);
+  FRIEND_TEST(NDProxyTest, IncreaseRACurHopLimit);
   FRIEND_TEST(NDProxyTest, GuestDiscoveryCallback);
   FRIEND_TEST(NDProxyTest, RouterDiscoveryCallback);
 };
@@ -500,6 +501,49 @@ TEST(NDProxyTest, TranslateFrame) {
       EXPECT_EQ(expected, received);
     }
   }
+
+  delete[] in_buffer;
+  delete[] out_buffer;
+}
+
+TEST(NDProxyTest, IncreaseRACurHopLimit) {
+  // Separating this from TranslateFrame cases to avoid need of full in-and-out
+  // frame data, as we only care about CurHopLimit in this test.
+  uint8_t* in_buffer = new uint8_t[IP_MAXPACKET];
+  uint8_t* out_buffer = new uint8_t[IP_MAXPACKET];
+  nd_router_advert* ra_in =
+      reinterpret_cast<nd_router_advert*>(in_buffer + sizeof(ip6_hdr));
+  nd_router_advert* ra_out =
+      reinterpret_cast<nd_router_advert*>(out_buffer + sizeof(ip6_hdr));
+
+  size_t packet_len = sizeof(ra_frame) - ETHER_HDR_LEN;
+  memcpy(in_buffer, ra_frame + ETHER_HDR_LEN, packet_len);
+
+  ssize_t result = NDProxyUnderTest::TranslateNDPacket(
+      in_buffer, packet_len, /*local_mac_addr=*/guest_if_mac,
+      /*new_src_ip=*/std::nullopt, /*new_dst_ip=*/std::nullopt,
+      /*cur_hop_limit_diff=*/1, out_buffer);
+  EXPECT_EQ(packet_len, result);
+  EXPECT_EQ(65, ra_out->nd_ra_curhoplimit);  // 64 (in |ra_frame|) + 1
+
+  ra_in->nd_ra_curhoplimit = 0;
+  // We are skipping recalculating checksum as that's not relevant in this test.
+  result = NDProxyUnderTest::TranslateNDPacket(
+      in_buffer, packet_len, /*local_mac_addr=*/guest_if_mac,
+      /*new_src_ip=*/std::nullopt, /*new_dst_ip=*/std::nullopt,
+      /*cur_hop_limit_diff=*/1, out_buffer);
+  EXPECT_EQ(packet_len, result);
+  // 0 (unspecified) should not be modified.
+  EXPECT_EQ(0, ra_out->nd_ra_curhoplimit);
+
+  ra_in->nd_ra_curhoplimit = 255;
+  result = NDProxyUnderTest::TranslateNDPacket(
+      in_buffer, packet_len, /*local_mac_addr=*/guest_if_mac,
+      /*new_src_ip=*/std::nullopt, /*new_dst_ip=*/std::nullopt,
+      /*cur_hop_limit_diff=*/1, out_buffer);
+  EXPECT_EQ(packet_len, result);
+  // Increasing CurHopLimit should not cause overflow.
+  EXPECT_EQ(255, ra_out->nd_ra_curhoplimit);
 
   delete[] in_buffer;
   delete[] out_buffer;
