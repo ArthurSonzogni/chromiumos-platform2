@@ -101,16 +101,19 @@ FeatureManagementImpl::FeatureManagementImpl(crossystem::Crossystem* crossystem,
 
 bool FeatureManagementImpl::IsFeatureEnabled(const std::string& name) {
   int prefix_len = strlen(FeatureManagement::kPrefix);
-  if (name.compare(0, prefix_len, FeatureManagement::kPrefix))
+  if (name.compare(0, prefix_len, FeatureManagement::kPrefix)) {
     return false;
+  }
 
   enum FeatureLevel feature_level = GetFeatureLevel();
-  if (feature_level == FEATURE_LEVEL_UNKNOWN)
+  if (feature_level == FEATURE_LEVEL_UNKNOWN) {
     feature_level = FEATURE_LEVEL_0;
+  }
 
   enum ScopeLevel scope_level = GetScopeLevel();
-  if (scope_level == SCOPE_LEVEL_UNKNOWN)
+  if (scope_level == SCOPE_LEVEL_UNKNOWN) {
     scope_level = SCOPE_LEVEL_0;
+  }
 
   // Now we have the feature_level and the scope_level, after we
   // found that the feature exist, check if its level is equal or
@@ -133,12 +136,14 @@ bool FeatureManagementImpl::IsFeatureEnabled(const std::string& name) {
 const std::set<std::string> FeatureManagementImpl::ListFeatures(
     const FeatureUsage usage) {
   enum FeatureLevel feature_level = GetFeatureLevel();
-  if (feature_level == FEATURE_LEVEL_UNKNOWN)
+  if (feature_level == FEATURE_LEVEL_UNKNOWN) {
     feature_level = FEATURE_LEVEL_0;
+  }
 
   enum ScopeLevel scope_level = GetScopeLevel();
-  if (scope_level == SCOPE_LEVEL_UNKNOWN)
+  if (scope_level == SCOPE_LEVEL_UNKNOWN) {
     scope_level = SCOPE_LEVEL_0;
+  }
 
   // Now we have the feature_level and the scope_level, return all features
   // that:
@@ -153,8 +158,9 @@ const std::set<std::string> FeatureManagementImpl::ListFeatures(
     if (std::find(feature.usages().begin(), feature.usages().end(), usage) !=
             feature.usages().end() &&
         feature_level - FEATURE_LEVEL_VALID_OFFSET >= feature.feature_level() &&
-        it != feature.scopes().end())
+        it != feature.scopes().end()) {
       features.emplace(FeatureManagement::kPrefix + feature.name());
+    }
   }
   return features;
 }

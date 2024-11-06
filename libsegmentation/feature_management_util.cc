@@ -139,26 +139,30 @@ std::optional<std::string> FeatureManagementUtil::DecodeHWID(
   std::string decoded_bit_string;
   std::vector<std::string_view> payload = base::SplitStringPiece(
       hwid, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  if (payload.size() != 2)
+  if (payload.size() != 2) {
     return std::nullopt;
+  }
 
   for (const auto& key : base::SplitStringPiece(
            payload[1], "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
-    if (key.size() != 3)
+    if (key.size() != 3) {
       return std::nullopt;
+    }
 
     decoded_bit_string.append(BASE32_MAP[key[0]]);
     decoded_bit_string.append(BASE8_MAP[key[1]]);
     decoded_bit_string.append(BASE32_MAP[key[2]]);
   }
-  if (decoded_bit_string.size() <= kHWIDChecksumBits)
+  if (decoded_bit_string.size() <= kHWIDChecksumBits) {
     return std::nullopt;
+  }
 
   auto pos = decoded_bit_string.find_last_of(
       '1', decoded_bit_string.size() - kHWIDChecksumBits - 1);
 
-  if (pos == std::string::npos)
+  if (pos == std::string::npos) {
     return std::nullopt;
+  }
 
   return decoded_bit_string.substr(0, pos);
 }
@@ -253,8 +257,9 @@ std::optional<base::FilePath> FeatureManagementUtil::GetDefaultRoot(
     }
 
     globfree(&glob_result);
-    if (path)
+    if (path) {
       return path;
+    }
   }
   return std::nullopt;
 }

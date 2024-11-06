@@ -22,8 +22,9 @@ std::optional<DeviceSelection> FeatureManagementHwid::GetSelectionFromHWID(
     bool check_prefix_only) {
   const std::optional<std::string> hwid =
       FeatureManagementUtil::DecodeHWID(user_readable_hwid);
-  if (!hwid)
+  if (!hwid) {
     return std::nullopt;
+  }
   for (const auto& selection : selection_bundle_.selections()) {
     for (const auto& hwid_profile : selection.hwid_profiles()) {
       // Look into the database for a prefix match.
@@ -34,10 +35,12 @@ std::optional<DeviceSelection> FeatureManagementHwid::GetSelectionFromHWID(
           break;
         }
       }
-      if (!prefix_match)
+      if (!prefix_match) {
         continue;
-      if (check_prefix_only)
+      }
+      if (check_prefix_only) {
         return selection;
+      }
 
       bool all_requirement_met = true;
       for (const auto& requirement : hwid_profile.encoding_requirements()) {
@@ -84,9 +87,10 @@ libsegmentation::DeviceInfo_FeatureLevel HwComplianceVersionToFeatureLevel(
 
 libsegmentation::DeviceInfo_ScopeLevel HwComplianceVersionToScopeLevel(
     bool is_chassis_x_branded) {
-  if (is_chassis_x_branded)
+  if (is_chassis_x_branded) {
     return libsegmentation::DeviceInfo_ScopeLevel::
         DeviceInfo_ScopeLevel_SCOPE_LEVEL_1;
+  }
 
   return libsegmentation::DeviceInfo_ScopeLevel::
       DeviceInfo_ScopeLevel_SCOPE_LEVEL_0;

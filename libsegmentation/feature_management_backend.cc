@@ -167,15 +167,17 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
     device_info_result = FeatureManagementUtil::ReadDeviceInfo(tpmfs_cache);
     // To overwrite hash check: it eases testing and prevent entering the real
     // logic.
-    if (device_info_result)
+    if (device_info_result) {
       device_info_result->set_cached_version_hash(current_version_hash_);
+    }
   }
   // No luck from tmpfs, read from the cached location in vpd.
   if (!device_info_result) {
     std::optional<std::string> encoded =
         vpd_->GetValue(vpd::VpdRw, kVpdKeyDeviceInfo);
-    if (encoded)
+    if (encoded) {
       device_info_result = FeatureManagementUtil::ReadDeviceInfo(*encoded);
+    }
   }
 
   // If the device info isn't cached, read it form the hardware id and write it
@@ -231,8 +233,9 @@ std::optional<DeviceSelection> FeatureManagementImpl::GetDeviceInfoFromHwid(
   std::optional<DeviceSelection> selection =
       FeatureManagementHwid::GetSelectionFromHWID(
           selection_bundle_, hwid.value(), check_prefix_only);
-  if (!selection)
+  if (!selection) {
     return std::nullopt;
+  }
 
   if (!check_prefix_only && !Check_HW_Requirement(selection.value())) {
     LOG(ERROR) << hwid.value() << " do not meet feature level "
@@ -260,8 +263,9 @@ bool FeatureManagementImpl::Check_HW_Requirement(
   // settle for 7GiB.
   // Obtain the size of the physical memory of the system.
   const size_t k7GiB = 7 * 1024 * 1024 * 1024ULL;
-  if (base::SysInfo::AmountOfPhysicalMemory() < k7GiB)
+  if (base::SysInfo::AmountOfPhysicalMemory() < k7GiB) {
     return false;
+  }
 
   // SSD >= 128GB
   // But since SSD counts in power of 10 and controller may even take a bigger
@@ -270,17 +274,20 @@ bool FeatureManagementImpl::Check_HW_Requirement(
   // underlying filesystem.
   std::optional<base::FilePath> root_device =
       FeatureManagementUtil::GetDefaultRoot(base::FilePath("/"));
-  if (!root_device)
+  if (!root_device) {
     return false;
+  }
 
   std::optional<int64_t> size =
       FeatureManagementUtil::GetDiskSpace(*root_device);
-  if (!size)
+  if (!size) {
     return false;
+  }
 
   const size_t k110GiB = 110 * 1024 * 1024 * 1024ULL;
-  if (*size < k110GiB)
+  if (*size < k110GiB) {
     return false;
+  }
 
   return true;
 }

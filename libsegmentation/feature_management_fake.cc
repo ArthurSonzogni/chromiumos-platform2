@@ -13,8 +13,9 @@ namespace fake {
 
 bool FeatureManagementFake::IsFeatureEnabled(const std::string& name) {
   for (auto feature_set : system_features_properties_) {
-    if (feature_set.second.count(name) > 0)
+    if (feature_set.second.count(name) > 0) {
       return true;
+    }
   }
 
   return false;
@@ -64,8 +65,9 @@ void FeatureManagementFake::UnsetFeature(const std::string& name) {
 const std::set<std::string> FeatureManagementFake::ListFeatures(
     const FeatureUsage usage) {
   auto feature_set = system_features_properties_.find(usage);
-  if (feature_set != system_features_properties_.end())
+  if (feature_set != system_features_properties_.end()) {
     return feature_set->second;
+  }
 
   return std::set<std::string>();
 }
