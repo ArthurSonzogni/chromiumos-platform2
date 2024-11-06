@@ -278,7 +278,7 @@ void DrawUtils::ShowIndeterminateProgressBar() {
 }
 
 void DrawUtils::HideIndeterminateProgressBar() {
-  timer_.AbandonAndStop();
+  timer_.Stop();
   // Clear progress bar.
   ShowProgressBar(kFreconNoOffset, frecon_canvas_size_, kMenuBlack);
 }
