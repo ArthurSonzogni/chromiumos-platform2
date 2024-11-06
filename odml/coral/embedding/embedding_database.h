@@ -6,8 +6,10 @@
 #define ODML_CORAL_EMBEDDING_EMBEDDING_DATABASE_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
@@ -75,10 +77,19 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
   // Loads the database from |file_path_|.
   bool LoadFromFile();
 
+  // If the embeddings map contains too many entries, prune some of them
+  // according to last updated time.
+  void MaybePruneEntries();
+
   bool dirty_;
   const base::FilePath file_path_;
   const base::TimeDelta ttl_;
   std::unordered_map<std::string, EmbeddingEntry> embeddings_map_;
+  // Each entry (updated_time, key) corresponds to an entry in
+  // `embeddings_map_`. The 2 containers should be updated together and always
+  // stay consistent. This is sorted by updated_time so we can efficiently find
+  // the oldest entries to prune when we need to.
+  std::set<std::pair<base::Time, std::string>> updated_time_of_keys_;
 };
 
 }  // namespace coral

@@ -20,6 +20,17 @@
 
 namespace coral {
 
+namespace {
+
+// Roughly 3KB per entry, leading to max 3MB for the in-memory/on-device
+// database.
+constexpr size_t kMaxEntries = 1000;
+// Prune around 10% of entries when it exceeds kMaxEntries, so we don't have to
+// trigger prune operations that often when the map is nearly full.
+constexpr size_t kEntriesToPrune = 100;
+
+}  // namespace
+
 // class EmbeddingDatabaseFactory.
 std::unique_ptr<EmbeddingDatabaseInterface> EmbeddingDatabaseFactory::Create(
     const base::FilePath& file_path, const base::TimeDelta ttl) const {
@@ -63,20 +74,36 @@ EmbeddingDatabase::~EmbeddingDatabase() {
 }
 
 void EmbeddingDatabase::Put(std::string key, Embedding embedding) {
-  // Overwrites existing keys, if any.
-  embeddings_map_[std::move(key)] = EmbeddingEntry{
-      .embedding = std::move(embedding),
-      .updated_time_ms = base::Time::Now(),
-  };
+  auto now = base::Time::Now();
+  auto it = embeddings_map_.find(key);
+  if (it == embeddings_map_.end()) {
+    updated_time_of_keys_.insert({now, key});
+    embeddings_map_[std::move(key)] = EmbeddingEntry{
+        .embedding = std::move(embedding),
+        .updated_time_ms = now,
+    };
+    MaybePruneEntries();
+  } else {
+    updated_time_of_keys_.erase({it->second.updated_time_ms, key});
+    updated_time_of_keys_.insert({now, key});
+    it->second = EmbeddingEntry{
+        .embedding = std::move(embedding),
+        .updated_time_ms = now,
+    };
+  }
+
   dirty_ = true;
 }
 
 std::optional<Embedding> EmbeddingDatabase::Get(const std::string& key) {
+  auto now = base::Time::Now();
   auto it = embeddings_map_.find(key);
   if (it == embeddings_map_.end()) {
     return std::nullopt;
   }
-  it->second.updated_time_ms = base::Time::Now();
+  updated_time_of_keys_.erase({it->second.updated_time_ms, key});
+  updated_time_of_keys_.insert({now, key});
+  it->second.updated_time_ms = now;
   dirty_ = true;
   return it->second.embedding;
 }
@@ -89,6 +116,7 @@ bool EmbeddingDatabase::Sync() {
   std::erase_if(embeddings_map_, [this, &now, &num_removed](const auto& entry) {
     if (IsRecordExpired(now, entry.second)) {
       ++num_removed;
+      updated_time_of_keys_.erase({entry.second.updated_time_ms, entry.first});
       return true;
     }
     return false;
@@ -149,15 +177,34 @@ bool EmbeddingDatabase::LoadFromFile() {
 
   base::Time now = base::Time::Now();
   for (const auto& [key, record] : records.records()) {
+    auto updated_time_ms =
+        base::Time::FromMillisecondsSinceUnixEpoch(record.updated_time_ms());
     embeddings_map_[key] = EmbeddingEntry{
         .embedding = Embedding(record.values().begin(), record.values().end()),
-        .updated_time_ms = base::Time::FromMillisecondsSinceUnixEpoch(
-            record.updated_time_ms()),
-    };
+        .updated_time_ms = updated_time_ms};
+    updated_time_of_keys_.insert({updated_time_ms, key});
   }
+  MaybePruneEntries();
   LOG(INFO) << "Load from embedding database with now: " << now
             << ", ttl: " << ttl_ << ", size: " << embeddings_map_.size();
   return true;
+}
+
+void EmbeddingDatabase::MaybePruneEntries() {
+  if (embeddings_map_.size() <= kMaxEntries) {
+    return;
+  }
+  // This shouldn't happen, but if it does, we fail gracefully by not doing the
+  // pruning.
+  if (embeddings_map_.size() != updated_time_of_keys_.size()) {
+    LOG(WARNING)
+        << "embeddings_map_ isn't consistent with updated_time_of_keys_";
+    return;
+  }
+  for (int i = 0; i < kEntriesToPrune; i++) {
+    embeddings_map_.erase(updated_time_of_keys_.begin()->second);
+    updated_time_of_keys_.erase(updated_time_of_keys_.begin());
+  }
 }
 
 }  // namespace coral

@@ -89,6 +89,38 @@ TEST_F(EmbeddingDatabaseTest, WriteThenRead) {
   EXPECT_THAT(database->Get("key3"), Optional(ElementsAre(7, 8, 9)));
 }
 
+TEST_F(EmbeddingDatabaseTest, RecordsPruned) {
+  std::unique_ptr<EmbeddingDatabaseInterface> database =
+      factory_.Create(file_path_, base::Seconds(0));
+  // When the 1001st entry is inserted, the first 100 entries will be pruned.
+  for (int i = 0; i < 1100; i++) {
+    database->Put(std::string("key") + std::to_string(i), {1, 2, 3});
+    FastForwardBy(base::Seconds(1));
+  }
+  for (int i = 0; i < 1100; i++) {
+    std::string key = std::string("key") + std::to_string(i);
+    if (i < 100) {
+      EXPECT_EQ(database->Get(key), std::nullopt);
+    } else {
+      EXPECT_THAT(database->Get(key), Optional(ElementsAre(1, 2, 3)));
+    }
+  }
+  // Synced to file in destructor.
+  database.reset();
+
+  // Reads it back from the file.
+  database = factory_.Create(file_path_, base::Seconds(0));
+  // The result should be the same.
+  for (int i = 0; i < 1100; i++) {
+    std::string key = std::string("key") + std::to_string(i);
+    if (i < 100) {
+      EXPECT_EQ(database->Get(key), std::nullopt);
+    } else {
+      EXPECT_THAT(database->Get(key), Optional(ElementsAre(1, 2, 3)));
+    }
+  }
+}
+
 TEST_F(EmbeddingDatabaseTest, RecordsExpire) {
   std::unique_ptr<EmbeddingDatabaseInterface> database =
       factory_.Create(file_path_, base::Seconds(10));
