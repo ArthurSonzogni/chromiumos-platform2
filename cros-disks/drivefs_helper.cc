@@ -304,6 +304,11 @@ MountError DrivefsHelper::ConfigureSandbox(const std::string& source,
   // datadir for sqlite temporary file storage instead.
   sandbox->AddEnvironmentVariable("SQLITE_TMPDIR", data_dir.value());
 
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  // Enable ipcz in the DriveFS sandbox if it's enabled outside.
+  sandbox->AddEnvironmentVariable("MOJO_IPCZ", "1");
+#endif  // ENABLE_IPCZ_ON_CHROMEOS
+
   std::vector<std::string> args;
   SetParamValue(&args, "uid", base::NumberToString(kChronosUID));
   SetParamValue(&args, "gid", base::NumberToString(kChronosAccessGID));
