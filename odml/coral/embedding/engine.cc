@@ -77,11 +77,11 @@ namespace internal {
 // TODO(b/361429567): Switch to the final prompt for the feature.
 std::string EntityToEmbeddingPrompt(const mojom::Entity& entity) {
   if (entity.is_app()) {
-    return base::StringPrintf("A page with title: \"%s\"\n",
+    return base::StringPrintf("A page with title: \"%s\"",
                               entity.get_app()->title.c_str());
   } else if (entity.is_tab()) {
     const mojom::Tab& tab = *entity.get_tab();
-    return base::StringPrintf("A page with title: \"%s\" and URL: \"%s\"\n",
+    return base::StringPrintf("A page with title: \"%s\" and URL: \"%s\"",
                               tab.title.c_str(), tab.url->url.c_str());
   }
   return "";
