@@ -1558,11 +1558,10 @@ TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
   platform_->ReadFileToString(mount_log_, &mount_log_contents);
   EXPECT_EQ(mount_contents, mount_log_contents);
 
-  // 3 locations are allowed to have symlinks: portage, preserve and dev_image.
-  EXPECT_EQ(base_dir_.Append("var/tmp/portage").value() +
-                stateful_dev_image_.value() +
-                stateful_.Append("unencrypted/preserve").value(),
-            allow_sym_contents_);
+  // 2 locations are allowed to have symlinks: portage and dev_image.
+  EXPECT_EQ(
+      base_dir_.Append("var/tmp/portage").value() + stateful_dev_image_.value(),
+      allow_sym_contents_);
 }
 
 class RestoreContextsForVarTest : public ::testing::Test {
