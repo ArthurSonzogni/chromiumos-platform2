@@ -10,14 +10,14 @@ mod command_line;
 mod logger;
 mod process_util;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Error, Result};
 use clap::Parser;
-use log::{debug, info};
 use nix::unistd;
 use std::path::Path;
 use std::process::Command;
 
 use command_line::Args;
+use process_util::log_and_run_command;
 
 fn main() -> Result<()> {
     libchromeos::panic_handler::install_memfd_handler();
@@ -41,16 +41,5 @@ fn main() -> Result<()> {
     let mut install_cmd = Command::new("/usr/sbin/chromeos-install.sh");
     install_cmd.envs(args.to_env());
 
-    info!("Running: {:?}", &install_cmd);
-    debug!("with env: {:?}", install_cmd.get_envs());
-
-    let status = install_cmd
-        .status()
-        .context("Couldn't launch chromeos-install.sh")?;
-
-    if !status.success() {
-        bail!("chromeos-install failed with code: {:?}", status.code());
-    }
-
-    Ok(())
+    log_and_run_command(install_cmd).map_err(Error::msg)
 }
