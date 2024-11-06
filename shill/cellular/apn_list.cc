@@ -30,8 +30,9 @@ ApnList::ApnList(bool merge_similar_apns)
     : merge_similar_apns_(merge_similar_apns) {}
 
 void ApnList::AddApns(const std::vector<MobileAPN>& apns, ApnSource source) {
-  for (const auto& mobile_apn : apns)
+  for (const auto& mobile_apn : apns) {
     AddApn(mobile_apn, source);
+  }
 }
 
 ApnList::ApnIndexKey ApnList::GetKey(const MobileAPN& mobile_apn) {
@@ -58,18 +59,24 @@ void ApnList::AddApn(const MobileAPN& mobile_apn, ApnSource source) {
     apn_dict_list_.emplace_back();
     props = &apn_dict_list_.back();
   }
-  if (!mobile_apn.apn.empty())
+  if (!mobile_apn.apn.empty()) {
     (*props)[kApnProperty] = mobile_apn.apn;
-  if (!mobile_apn.username.empty())
+  }
+  if (!mobile_apn.username.empty()) {
     (*props)[kApnUsernameProperty] = mobile_apn.username;
-  if (!mobile_apn.password.empty())
+  }
+  if (!mobile_apn.password.empty()) {
     (*props)[kApnPasswordProperty] = mobile_apn.password;
-  if (!mobile_apn.authentication.empty())
+  }
+  if (!mobile_apn.authentication.empty()) {
     (*props)[kApnAuthenticationProperty] = mobile_apn.authentication;
-  if (!mobile_apn.ip_type.empty())
+  }
+  if (!mobile_apn.ip_type.empty()) {
     (*props)[kApnIpTypeProperty] = mobile_apn.ip_type;
-  if (!mobile_apn.roaming_ip_type.empty())
+  }
+  if (!mobile_apn.roaming_ip_type.empty()) {
     (*props)[kApnRoamingIpTypeProperty] = mobile_apn.roaming_ip_type;
+  }
 
   (*props)[kApnIsRequiredByCarrierSpecProperty] =
       mobile_apn.is_required_by_carrier_spec ? kApnIsRequiredByCarrierSpecTrue
@@ -77,15 +84,17 @@ void ApnList::AddApn(const MobileAPN& mobile_apn, ApnSource source) {
   (*props)[cellular::kApnVersionProperty] =
       base::NumberToString(cellular::kCurrentApnCacheVersion);
   // Find the first localized and non-localized name, if any.
-  if (!mobile_apn.operator_name_list.empty())
+  if (!mobile_apn.operator_name_list.empty()) {
     (*props)[kApnNameProperty] = mobile_apn.operator_name_list[0].name;
+  }
 
   (*props)[kApnTypesProperty] = ApnList::JoinApnTypes(
       {mobile_apn.apn_types.begin(), mobile_apn.apn_types.end()});
   // TODO(b/251512775): Chrome still uses the "attach" property in ONC. Keep
   // the property untouched until the old UI is obsoleted.
-  if (IsAttachApn(*props))
+  if (IsAttachApn(*props)) {
     (*props)[kApnAttachProperty] = kApnAttachProperty;
+  }
 
   switch (source) {
     case ApnSource::kModb:
@@ -94,14 +103,16 @@ void ApnList::AddApn(const MobileAPN& mobile_apn, ApnSource source) {
       break;
     case ApnSource::kModem:
       (*props)[kApnSourceProperty] = kApnSourceModem;
-      if (mobile_apn.profile_id.has_value())
+      if (mobile_apn.profile_id.has_value()) {
         (*props)[kApnProfileIdProperty] =
             base::NumberToString(mobile_apn.profile_id.value());
+      }
       break;
   }
   for (const auto& lname : mobile_apn.operator_name_list) {
-    if (!lname.language.empty())
+    if (!lname.language.empty()) {
       (*props)[kApnLocalizedNameProperty] = lname.name;
+    }
   }
 }
 

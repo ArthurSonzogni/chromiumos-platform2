@@ -406,8 +406,9 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(),
             num_of_peers);
   auto group_clients = group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty);
-  for (auto const& client : group_clients)
+  for (auto const& client : group_clients) {
     EXPECT_TRUE(base::Contains(client, kP2PGroupInfoClientMACAddressProperty));
+  }
 
   // kGOStopping
   EXPECT_TRUE(go_device_->RemoveGroup(false));

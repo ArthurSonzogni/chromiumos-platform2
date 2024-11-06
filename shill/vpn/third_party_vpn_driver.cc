@@ -555,8 +555,9 @@ void ThirdPartyVpnDriver::Disconnect() {
 
 void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
     DefaultPhysicalServiceEvent event) {
-  if (!event_handler_)
+  if (!event_handler_) {
     return;
+  }
 
   if (event == DefaultPhysicalServiceEvent::kDown ||
       event == DefaultPhysicalServiceEvent::kChanged) {

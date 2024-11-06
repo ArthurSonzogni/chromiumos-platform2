@@ -36,8 +36,9 @@ void AddLastSeenTime(GeolocationInfo* info, const base::Time& time) {
 
 GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info) {
   const auto& it = info.find(kLastSeenKey);
-  if (it == info.end())
+  if (it == info.end()) {
     return info;
+  }
 
   int64_t last_seen;
   if (!base::StringToInt64(it->second, &last_seen)) {

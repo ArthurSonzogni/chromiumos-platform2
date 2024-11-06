@@ -55,8 +55,9 @@ KeyValueStore ServiceUnderTest::GetKeyValueStore(Error* error) {
 }
 
 bool ServiceUnderTest::IsDisconnectable(Error* error) const {
-  if (!Service::IsDisconnectable(error))
+  if (!Service::IsDisconnectable(error)) {
     return false;
+  }
   return disconnectable_;
 }
 

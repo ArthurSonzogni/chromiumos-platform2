@@ -51,11 +51,13 @@ void PackSecurity(const WiFiEndpoint::SecurityFlags& flags,
                   KeyValueStore* args) {
   Strings wpa, rsn;
 
-  if (flags.rsn_8021x_wpa3)
+  if (flags.rsn_8021x_wpa3) {
     rsn.push_back(std::string(WPASupplicant::kKeyManagementMethodPrefixEAP) +
                   std::string(WPASupplicant::kKeyManagementMethodSuiteB));
-  if (flags.rsn_sae)
+  }
+  if (flags.rsn_sae) {
     rsn.push_back(WPASupplicant::kKeyManagementMethodSAE);
+  }
   if (flags.rsn_8021x) {
     rsn.push_back(std::string("wpa2") +
                   WPASupplicant::kKeyManagementMethodSuffixEAP);
@@ -67,15 +69,18 @@ void PackSecurity(const WiFiEndpoint::SecurityFlags& flags,
   if (flags.rsn_owe) {
     rsn.push_back(WPASupplicant::kKeyManagementMethodOWE);
   }
-  if (flags.wpa_8021x)
+  if (flags.wpa_8021x) {
     wpa.push_back(std::string("wpa") +
                   WPASupplicant::kKeyManagementMethodSuffixEAP);
-  if (flags.wpa_psk)
+  }
+  if (flags.wpa_psk) {
     wpa.push_back(std::string("wpa") +
                   WPASupplicant::kKeyManagementMethodSuffixPSK);
+  }
 
-  if (flags.privacy)
+  if (flags.privacy) {
     args->Set<bool>(WPASupplicant::kPropertyPrivacy, true);
+  }
 
   if (!rsn.empty()) {
     KeyValueStore rsn_args;
@@ -303,11 +308,12 @@ std::map<std::string, std::string> WiFiEndpoint::GetVendorInformation() const {
 
 // static
 uint32_t WiFiEndpoint::ModeStringToUint(const std::string& mode_string) {
-  if (mode_string == kModeManaged)
+  if (mode_string == kModeManaged) {
     return WPASupplicant::kNetworkModeInfrastructureInt;
-  else
+  } else {
     NOTIMPLEMENTED() << "Shill does not support " << mode_string
                      << " mode at this time.";
+  }
   return 0;
 }
 
@@ -651,10 +657,11 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
   if (frequency < 3000) {
     // 2.4GHz legacy, check for tx rate for 11b-only
     // (note 22M is valid)
-    if (max_rate < 24000000)
+    if (max_rate < 24000000) {
       phy_mode = Metrics::kWiFiNetworkPhyMode11b;
-    else
+    } else {
       phy_mode = Metrics::kWiFiNetworkPhyMode11g;
+    }
   } else {
     phy_mode = Metrics::kWiFiNetworkPhyMode11a;
   }

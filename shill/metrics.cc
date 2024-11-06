@@ -235,54 +235,62 @@ void Metrics::SendSparseToUMA(const SparseMetric<NameByTechnology>& metric,
 Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16_t frequency) {
   WiFiChannel channel = kWiFiChannelUndef;
   if (kWiFiFrequency2412 <= frequency && frequency <= kWiFiFrequency2472) {
-    if (((frequency - kWiFiFrequency2412) % kWiFiBandwidth5MHz) == 0)
+    if (((frequency - kWiFiFrequency2412) % kWiFiBandwidth5MHz) == 0) {
       channel = static_cast<WiFiChannel>(kWiFiChannel2412 +
                                          (frequency - kWiFiFrequency2412) /
                                              kWiFiBandwidth5MHz);
+    }
   } else if (frequency == kWiFiFrequency2484) {
     channel = kWiFiChannel2484;
   } else if (kWiFiFrequency5170 <= frequency &&
              frequency <= kWiFiFrequency5230) {
-    if ((frequency % kWiFiBandwidth20MHz) == 0)
+    if ((frequency % kWiFiBandwidth20MHz) == 0) {
       channel = static_cast<WiFiChannel>(kWiFiChannel5180 +
                                          (frequency - kWiFiFrequency5180) /
                                              kWiFiBandwidth20MHz);
-    if ((frequency % kWiFiBandwidth20MHz) == 10)
+    }
+    if ((frequency % kWiFiBandwidth20MHz) == 10) {
       channel = static_cast<WiFiChannel>(kWiFiChannel5170 +
                                          (frequency - kWiFiFrequency5170) /
                                              kWiFiBandwidth20MHz);
+    }
   } else if (kWiFiFrequency5240 <= frequency &&
              frequency <= kWiFiFrequency5320) {
-    if (((frequency - kWiFiFrequency5180) % kWiFiBandwidth20MHz) == 0)
+    if (((frequency - kWiFiFrequency5180) % kWiFiBandwidth20MHz) == 0) {
       channel = static_cast<WiFiChannel>(kWiFiChannel5180 +
                                          (frequency - kWiFiFrequency5180) /
                                              kWiFiBandwidth20MHz);
+    }
   } else if (kWiFiFrequency5500 <= frequency &&
              frequency <= kWiFiFrequency5700) {
-    if (((frequency - kWiFiFrequency5500) % kWiFiBandwidth20MHz) == 0)
+    if (((frequency - kWiFiFrequency5500) % kWiFiBandwidth20MHz) == 0) {
       channel = static_cast<WiFiChannel>(kWiFiChannel5500 +
                                          (frequency - kWiFiFrequency5500) /
                                              kWiFiBandwidth20MHz);
+    }
   } else if (kWiFiFrequency5745 <= frequency &&
              frequency <= kWiFiFrequency5825) {
-    if (((frequency - kWiFiFrequency5745) % kWiFiBandwidth20MHz) == 0)
+    if (((frequency - kWiFiFrequency5745) % kWiFiBandwidth20MHz) == 0) {
       channel = static_cast<WiFiChannel>(kWiFiChannel5745 +
                                          (frequency - kWiFiFrequency5745) /
                                              kWiFiBandwidth20MHz);
+    }
   } else if (kWiFiFrequency5955 <= frequency &&
              frequency <= kWiFiFrequency7115) {
-    if (((frequency - kWiFiFrequency5955) % kWiFiBandwidth20MHz) == 0)
+    if (((frequency - kWiFiFrequency5955) % kWiFiBandwidth20MHz) == 0) {
       channel = static_cast<WiFiChannel>(kWiFiChannel5955 +
                                          (frequency - kWiFiFrequency5955) /
                                              kWiFiBandwidth20MHz);
+    }
   }
   CHECK(kWiFiChannelUndef <= channel && channel < kWiFiChannelMax);
 
-  if (channel == kWiFiChannelUndef)
+  if (channel == kWiFiChannelUndef) {
     LOG(WARNING) << "no mapping for frequency " << frequency;
-  else
+  } else {
     SLOG(3) << "mapped frequency " << frequency << " to enum bucket "
             << channel;
+  }
 
   return channel;
 }
@@ -506,8 +514,9 @@ bool Metrics::IsDeviceRegistered(int interface_index, Technology technology) {
   SLOG(2) << __func__ << ": interface index: " << interface_index
           << ", technology: " << technology;
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return false;
+  }
   // Make sure the device technologies match.
   return (technology == device_metrics->technology);
 }
@@ -530,8 +539,9 @@ void Metrics::NotifyDeviceInitialized(int interface_index) {
 
 void Metrics::NotifyDeviceEnableStarted(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
+  }
   device_metrics->enable_timer->Start();
 }
 
@@ -599,15 +609,17 @@ void Metrics::ReportDeviceScanResultToUma(Metrics::WiFiScanResult result) {
 
 void Metrics::ResetScanTimer(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
+  }
   device_metrics->scan_timer->Reset();
 }
 
 void Metrics::NotifyDeviceConnectStarted(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
+  }
   device_metrics->connect_timer->Start();
 }
 
@@ -621,8 +633,9 @@ void Metrics::NotifyDeviceConnectFinished(int interface_index) {
   }
   ReportMilliseconds(*device_metrics->connect_timer);
 
-  if (!device_metrics->scan_connect_timer->Stop())
+  if (!device_metrics->scan_connect_timer->Stop()) {
     return;
+  }
   ReportMilliseconds(*device_metrics->scan_connect_timer);
 }
 
@@ -696,8 +709,9 @@ int64_t Metrics::HashApn(const std::string& uuid,
 
 std::optional<int64_t> Metrics::IntGid1(const std::string& gid1) {
   // Ignore if GID1 not populated in the SIM card
-  if (gid1.empty())
+  if (gid1.empty()) {
     return std::nullopt;
+  }
   // GID1 has no predefined max length defined, so limit it ourselves
   //   * Input string is in HEX (so 2 chars per byte).
   //   * Limit the input string to 8 bytes in order to fit it in a
@@ -733,12 +747,15 @@ void Metrics::NotifyCellularNetworkValidationResult(
   if (base::Contains(result.apn_info, kApnSourceProperty)) {
     if (result.apn_info.at(kApnSourceProperty) == kApnSourceMoDb ||
         result.apn_info.at(kApnSourceProperty) == kApnSourceModem) {
-      if (base::Contains(result.apn_info, kApnProperty))
+      if (base::Contains(result.apn_info, kApnProperty)) {
         apn_name = result.apn_info.at(kApnProperty);
-      if (base::Contains(result.apn_info, kApnUsernameProperty))
+      }
+      if (base::Contains(result.apn_info, kApnUsernameProperty)) {
         username = result.apn_info.at(kApnUsernameProperty);
-      if (base::Contains(result.apn_info, kApnPasswordProperty))
+      }
+      if (base::Contains(result.apn_info, kApnPasswordProperty)) {
         password = result.apn_info.at(kApnPasswordProperty);
+      }
     }
   }
 
@@ -791,33 +808,38 @@ void Metrics::NotifyDetailedCellularConnectionResult(
   base::StringToInt64(result.serving_mccmnc, &serving);
   crypto::SHA256HashString(result.detailed_error, &detailed_error_hash, 8);
 
-  if (result.roaming_state == kRoamingStateHome)
+  if (result.roaming_state == kRoamingStateHome) {
     roaming = kCellularRoamingStateHome;
-  else if (result.roaming_state == kRoamingStateRoaming)
+  } else if (result.roaming_state == kRoamingStateRoaming) {
     roaming = kCellularRoamingStateRoaming;
+  }
 
   DCHECK(base::Contains(result.apn_info, kApnSourceProperty));
   if (base::Contains(result.apn_info, kApnSourceProperty)) {
-    if (result.apn_info.at(kApnSourceProperty) == kApnSourceMoDb)
+    if (result.apn_info.at(kApnSourceProperty) == kApnSourceMoDb) {
       apn_source = kCellularApnSourceMoDb;
-    else if (result.apn_info.at(kApnSourceProperty) == kApnSourceUi)
+    } else if (result.apn_info.at(kApnSourceProperty) == kApnSourceUi) {
       apn_source = kCellularApnSourceUi;
-    else if (result.apn_info.at(kApnSourceProperty) == kApnSourceModem)
+    } else if (result.apn_info.at(kApnSourceProperty) == kApnSourceModem) {
       apn_source = kCellularApnSourceModem;
-    else if (result.apn_info.at(kApnSourceProperty) == kApnSourceAdmin)
+    } else if (result.apn_info.at(kApnSourceProperty) == kApnSourceAdmin) {
       apn_source = kCellularApnSourceAdmin;
-    else if (result.apn_info.at(kApnSourceProperty) ==
-             cellular::kApnSourceFallback)
+    } else if (result.apn_info.at(kApnSourceProperty) ==
+               cellular::kApnSourceFallback) {
       apn_source = kCellularApnSourceFallback;
+    }
 
     if (result.apn_info.at(kApnSourceProperty) == kApnSourceMoDb ||
         result.apn_info.at(kApnSourceProperty) == kApnSourceModem) {
-      if (base::Contains(result.apn_info, kApnProperty))
+      if (base::Contains(result.apn_info, kApnProperty)) {
         apn_name = result.apn_info.at(kApnProperty);
-      if (base::Contains(result.apn_info, kApnUsernameProperty))
+      }
+      if (base::Contains(result.apn_info, kApnUsernameProperty)) {
         username = result.apn_info.at(kApnUsernameProperty);
-      if (base::Contains(result.apn_info, kApnPasswordProperty))
+      }
+      if (base::Contains(result.apn_info, kApnPasswordProperty)) {
         password = result.apn_info.at(kApnPasswordProperty);
+      }
     }
   }
   // apn_types is represented by a bit mask.

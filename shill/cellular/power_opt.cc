@@ -32,8 +32,9 @@ void PowerOpt::Stop() {
 }
 
 void PowerOpt::NotifyConnectionFailInvalidApn(const std::string& iccid) {
-  if (opt_info_.count(iccid) == 0)
+  if (opt_info_.count(iccid) == 0) {
     return;
+  }
   PowerOptimizationInfo& info = opt_info_[iccid];
   if (!info.last_connect_fail_invalid_apn_time.is_null()) {
     info.no_service_invalid_apn_duration +=
@@ -52,21 +53,24 @@ void PowerOpt::NotifyConnectionFailInvalidApn(const std::string& iccid) {
 }
 
 void PowerOpt::NotifyRegistrationSuccess(const std::string& iccid) {
-  if (opt_info_.count(iccid) == 0)
+  if (opt_info_.count(iccid) == 0) {
     return;
+  }
   opt_info_[iccid].no_service_invalid_apn_duration = base::Seconds(0);
   opt_info_[iccid].last_connect_fail_invalid_apn_time = base::Time();
 }
 
 void PowerOpt::UpdateManualConnectTime(const base::Time& connect_time) {
-  if (!connect_time.is_null())
+  if (!connect_time.is_null()) {
     user_connect_request_time_ = connect_time;
+  }
 }
 
 void PowerOpt::UpdateDurationSinceLastOnline(
     const base::Time& last_online_time) {
-  if (!current_opt_info_)
+  if (!current_opt_info_) {
     return;
+  }
 
   if (!last_online_time.is_null()) {
     current_opt_info_->last_online_time = last_online_time;
@@ -81,8 +85,9 @@ void PowerOpt::UpdateDurationSinceLastOnline(
   if (!user_connect_request_time_.is_null()) {
     base::TimeDelta since_last_user_connect_request =
         base::Time::Now() - user_connect_request_time_;
-    if (since_last_user_connect_request < kLastUserRequestThreshold)
+    if (since_last_user_connect_request < kLastUserRequestThreshold) {
       return;
+    }
   }
 
   if (!device_last_online_time_.is_null()) {
@@ -97,8 +102,9 @@ void PowerOpt::UpdateDurationSinceLastOnline(
 }
 
 bool PowerOpt::UpdatePowerState(const std::string& iccid, PowerState state) {
-  if (opt_info_.count(iccid) == 0)
+  if (opt_info_.count(iccid) == 0) {
     return false;
+  }
   current_opt_info_ = &opt_info_[iccid];
   if (state != opt_info_[iccid].power_state) {
     opt_info_[iccid].power_state = state;
@@ -119,10 +125,11 @@ base::TimeDelta PowerOpt::GetInvalidApnDuration(const std::string& iccid) {
 }
 
 PowerOpt::PowerState PowerOpt::GetPowerState(const std::string& iccid) {
-  if (opt_info_.count(iccid) > 0)
+  if (opt_info_.count(iccid) > 0) {
     return opt_info_[iccid].power_state;
-  else
+  } else {
     return PowerState::kUnknown;
+  }
 }
 
 bool PowerOpt::RequestPowerStateChange(PowerOpt::PowerState power_state) {
@@ -135,8 +142,9 @@ bool PowerOpt::RequestPowerStateChange(PowerOpt::PowerState power_state) {
 }
 
 bool PowerOpt::AddOptInfoForNewService(const std::string& iccid) {
-  if (opt_info_.count(iccid) > 0)
+  if (opt_info_.count(iccid) > 0) {
     return false;
+  }
   // either |opt_info_| is empty or no match
   PowerOptimizationInfo info;
   info.power_state = PowerState::kOn;

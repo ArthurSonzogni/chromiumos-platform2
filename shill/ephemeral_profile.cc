@@ -44,8 +44,9 @@ bool EphemeralProfile::AdoptService(const ServiceRefPtr& service) {
 }
 
 bool EphemeralProfile::AbandonService(const ServiceRefPtr& service) {
-  if (service->profile() == this)
+  if (service->profile() == this) {
     service->SetProfile(nullptr);
+  }
   SLOG(this, 2) << "Removing service " << service->log_name()
                 << " from ephemeral profile.";
   return true;

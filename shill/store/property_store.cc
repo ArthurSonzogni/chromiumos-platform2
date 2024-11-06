@@ -117,7 +117,8 @@ void PropertyStore::SetAnyProperty(std::string_view name,
     }
     SetKeyValueStoresProperty(name, dicts, error);
   } else {
-    NOTREACHED_IN_MIGRATION() << " unknown type: " << value.GetUndecoratedTypeName();
+    NOTREACHED_IN_MIGRATION()
+        << " unknown type: " << value.GetUndecoratedTypeName();
     error->Populate(Error::kInternalError);
   }
 }

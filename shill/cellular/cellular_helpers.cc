@@ -21,8 +21,9 @@ namespace shill {
 std::string GetStringmapValue(const Stringmap& string_map,
                               const std::string& key,
                               const std::string& default_value) {
-  if (!base::Contains(string_map, key))
+  if (!base::Contains(string_map, key)) {
     return default_value;
+  }
 
   return string_map.at(key);
 }

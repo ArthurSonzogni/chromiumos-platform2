@@ -232,8 +232,9 @@ class ManagerTest : public PropertyStoreTest {
   Profile* CreateProfileForManager(Manager* manager) {
     Profile::Identifier id("rather", "irrelevant");
     auto storage = std::make_unique<FakeStore>();
-    if (!storage->Open())
+    if (!storage->Open()) {
       return nullptr;
+    }
     Profile* profile(new Profile(manager, id, base::FilePath(), false));
     profile->SetStorageForTest(std::move(storage));
     return profile;  // Passes ownership of "profile".
@@ -466,8 +467,9 @@ class ManagerTest : public PropertyStoreTest {
 
   bool HasService(const Manager& manager, const std::string& id) {
     for (const auto& service : manager.services_) {
-      if (id == service->GetDBusObjectPathIdentifier())
+      if (id == service->GetDBusObjectPathIdentifier()) {
         return true;
+      }
     }
     return false;
   }

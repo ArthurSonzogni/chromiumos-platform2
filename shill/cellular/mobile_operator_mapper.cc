@@ -138,14 +138,16 @@ bool MobileOperatorMapper::Init(
 
   // |databases_| is guaranteed to be set once |Init| is called.
   databases_.clear();
-  if (database_paths_.empty())
+  if (database_paths_.empty()) {
     return false;
+  }
 
   for (const auto& database_path : database_paths_) {
     const mobile_operator_db::MobileOperatorDB* database =
         MobileOperatorStorage::GetInstance()->GetDatabase(database_path);
-    if (!database)
+    if (!database) {
       return false;
+    }
 
     databases_.push_back(database);
   }
@@ -322,10 +324,11 @@ void MobileOperatorMapper::UpdateIMSI(const std::string& imsi) {
   } else {
     // Attempt to determine the MNO from IMSI since MCCMNC is absent.
     if (!(AppendToCandidatesByMCCMNC(imsi.substr(0, kMCCMNCMinLen)) ||
-          AppendToCandidatesByMCCMNC(imsi.substr(0, kMCCMNCMinLen + 1))))
+          AppendToCandidatesByMCCMNC(imsi.substr(0, kMCCMNCMinLen + 1)))) {
       LOG(WARNING) << GetLogPrefix(__func__) << "Unknown MCCMNC values ["
                    << imsi.substr(0, kMCCMNCMinLen) << "] ["
                    << imsi.substr(0, kMCCMNCMinLen + 1) << "].";
+    }
 
     if (!candidates_by_operator_code_.empty()) {
       // We found some candidates using IMSI.
@@ -334,8 +337,9 @@ void MobileOperatorMapper::UpdateIMSI(const std::string& imsi) {
   }
   operator_changed |= UpdateMVNO();
   if (db_info_.raw_apn_filters_types.count(
-          mobile_operator_db::Filter_Type::Filter_Type_IMSI))
+          mobile_operator_db::Filter_Type::Filter_Type_IMSI)) {
     HandleAPNListUpdate();
+  }
 
   // No special notification should be sent for this property, since the object
   // does not expose |imsi| as a property at all.
@@ -353,8 +357,9 @@ void MobileOperatorMapper::UpdateICCID(const std::string& iccid) {
   SLOG(1) << GetLogPrefix(__func__) << ": " << iccid;
   user_iccid_ = iccid;
   if (db_info_.raw_apn_filters_types.count(
-          mobile_operator_db::Filter_Type::Filter_Type_ICCID))
+          mobile_operator_db::Filter_Type::Filter_Type_ICCID)) {
     HandleAPNListUpdate();
+  }
 
   // |iccid| is not an exposed property, so don't raise event for just this
   // property update.
@@ -373,13 +378,15 @@ void MobileOperatorMapper::UpdateMCCMNC(const std::string& mccmnc) {
   user_mccmnc_ = mccmnc;
   HandleMCCMNCUpdate();
   candidates_by_operator_code_.clear();
-  if (!AppendToCandidatesByMCCMNC(mccmnc))
+  if (!AppendToCandidatesByMCCMNC(mccmnc)) {
     LOG(WARNING) << GetLogPrefix(__func__) << "Unknown MCCMNC value [" << mccmnc
                  << "].";
+  }
 
   if (db_info_.raw_apn_filters_types.count(
-          mobile_operator_db::Filter_Type::Filter_Type_MCCMNC))
+          mobile_operator_db::Filter_Type::Filter_Type_MCCMNC)) {
     HandleAPNListUpdate();
+  }
 
   // Always update M[V]NO, even if we found no candidates, since we might have
   // lost some candidates due to an incorrect MCCMNC.
@@ -704,8 +711,9 @@ const shill::mobile_operator_db::MobileNetworkOperator*
 MobileOperatorMapper::PickOneFromDuplicates(
     const std::vector<const shill::mobile_operator_db::MobileNetworkOperator*>&
         duplicates) const {
-  if (duplicates.empty())
+  if (duplicates.empty()) {
     return nullptr;
+  }
 
   for (auto candidate : duplicates) {
     if (candidate->earmarked()) {
@@ -766,8 +774,9 @@ bool MobileOperatorMapper::FilterMatches(
     }
 
     for (auto r : filter.range()) {
-      if ((r.start() <= match_value) && (match_value <= r.end()))
+      if ((r.start() <= match_value) && (match_value <= r.end())) {
         return true;
+      }
     }
     // No range is matching
     return false;
@@ -985,10 +994,11 @@ void MobileOperatorMapper::HandleOperatorNameUpdate() {
 // MCCMNC is in use, otherwise unused.
 void MobileOperatorMapper::HandleGID1Update() {
   if (!db_info_.mccmnc.empty() && (db_info_.mccmnc == user_mccmnc_) &&
-      !user_gid1_.empty())
+      !user_gid1_.empty()) {
     db_info_.gid1 = user_gid1_;
-  else
+  } else {
     db_info_.gid1.clear();
+  }
 }
 
 // Warning: Currently, an MCCMNC update by itself does not result in
@@ -1034,8 +1044,9 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
         break;
       }
     }
-    if (!passed_all_filters)
+    if (!passed_all_filters) {
       continue;
+    }
 
     MobileAPN apn;
     apn.apn = apn_data.apn();
@@ -1158,8 +1169,9 @@ std::string MobileOperatorMapper::NormalizeOperatorName(
 
 bool MobileOperatorMapper::RequiresRoamingOnOperator(
     const MobileOperatorMapper* serving_operator) const {
-  if (!serving_operator || serving_operator->mccmnc().empty())
+  if (!serving_operator || serving_operator->mccmnc().empty()) {
     return false;
+  }
 
   for (const auto& filter : db_info_.roaming_filter_list) {
     if (filter.type() != mobile_operator_db::Filter_Type_MCCMNC ||

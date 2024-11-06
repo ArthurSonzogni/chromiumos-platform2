@@ -396,8 +396,9 @@ void PasspointCredentials::RecordProvisioningEvent(
 }
 
 std::string PasspointCredentials::GetFQDN() const {
-  if (domains_.empty())
+  if (domains_.empty()) {
     return std::string();
+  }
 
   return domains_[0];
 }

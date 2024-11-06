@@ -358,8 +358,9 @@ void Service::Connect(Error* error, const char* reason) {
   // If there is no record of a manual connect, record the first time a
   // connection is attempted so there is way to track how long it's been since
   // the first connection attempt.
-  if (last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero())
+  if (last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero()) {
     SetLastManualConnectAttemptProperty(base::Time::Now());
+  }
 
   if (!connectable()) {
     Error::PopulateAndLog(
@@ -405,8 +406,9 @@ void Service::Connect(Error* error, const char* reason) {
             << ": " << reason;
 
   // Clear any failure state from a previous connect attempt.
-  if (IsInFailState())
+  if (IsInFailState()) {
     SetState(kStateIdle);
+  }
 
   // Perform connection logic defined by children. This logic will
   // drive the state from kStateIdle.
@@ -602,8 +604,9 @@ void Service::SetState(ConnectState state) {
   // Because we can bounce between `online` and 'limited-connectivity' states
   // while connected, this value will store the last time the service
   // transitioned to the `online` state.
-  if (state == kStateOnline)
+  if (state == kStateOnline) {
     SetLastOnlineProperty(base::Time::Now());
+  }
 
   UpdateErrorProperty();
   manager_->NotifyServiceStateChanged(this);
@@ -674,8 +677,9 @@ void Service::SetFailureSilent(ConnectFailure failure) {
 }
 
 std::optional<base::TimeDelta> Service::GetTimeSinceFailed() const {
-  if (failed_time_.is_null())
+  if (failed_time_.is_null()) {
     return std::nullopt;
+  }
   return base::Time::Now() - failed_time_;
 }
 
@@ -942,20 +946,24 @@ bool Service::Save(StoreInterface* storage) {
   storage->SetUint64(id, kStorageTrafficCounterResetTime,
                      GetTrafficCounterResetTimeProperty(/*error=*/nullptr));
 
-  if (!last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero())
+  if (!last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero()) {
     storage->SetUint64(id, kStorageLastManualConnectAttempt,
                        GetLastManualConnectAttemptProperty(/*error=*/nullptr));
+  }
 
-  if (!last_connected_.ToDeltaSinceWindowsEpoch().is_zero())
+  if (!last_connected_.ToDeltaSinceWindowsEpoch().is_zero()) {
     storage->SetUint64(id, kStorageLastConnected,
                        GetLastConnectedProperty(/*error=*/nullptr));
+  }
 
-  if (!last_online_.ToDeltaSinceWindowsEpoch().is_zero())
+  if (!last_online_.ToDeltaSinceWindowsEpoch().is_zero()) {
     storage->SetUint64(id, kStorageLastOnline,
                        GetLastOnlineProperty(/*error=*/nullptr));
-  if (!start_time_.ToDeltaSinceWindowsEpoch().is_zero())
+  }
+  if (!start_time_.ToDeltaSinceWindowsEpoch().is_zero()) {
     storage->SetUint64(id, kStorageStartTime,
                        GetStartTimeProperty(/*error=*/nullptr));
+  }
 
   return true;
 }
@@ -1609,8 +1617,9 @@ void Service::NoteFailureEvent() {
 
 void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
   // Report stats for wifi only for now.
-  if (technology_ != Technology::kWiFi)
+  if (technology_ != Technology::kWiFi) {
     return;
+  }
 
   int result;
   switch (state) {
@@ -1647,8 +1656,9 @@ bool Service::HasRecentConnectionIssues() {
 
 // static
 bool Service::DecideBetween(int a, int b, bool* decision) {
-  if (a == b)
+  if (a == b) {
     return false;
+  }
   *decision = (a > b);
   return true;
 }
@@ -1969,8 +1979,9 @@ RpcIdentifier Service::GetIPConfigRpcIdentifier(Error* error) const {
 }
 
 void Service::SetConnectable(bool connectable) {
-  if (connectable_ == connectable)
+  if (connectable_ == connectable) {
     return;
+  }
   connectable_ = connectable;
   adaptor_->EmitBoolChanged(kConnectableProperty, connectable_);
 }
@@ -2357,8 +2368,9 @@ bool Service::SetNameProperty(const std::string& name, Error* error) {
 }
 
 void Service::SetHasEverConnected(bool has_ever_connected) {
-  if (has_ever_connected_ == has_ever_connected)
+  if (has_ever_connected_ == has_ever_connected) {
     return;
+  }
   has_ever_connected_ = has_ever_connected;
 }
 
@@ -2418,8 +2430,9 @@ bool Service::SetProxyConfig(const std::string& proxy_config, Error* error) {
 
 void Service::NotifyIfVisibilityChanged() {
   const bool is_visible = IsVisible();
-  if (was_visible_ != is_visible)
+  if (was_visible_ != is_visible) {
     adaptor_->EmitBoolChanged(kVisibleProperty, is_visible);
+  }
   was_visible_ = is_visible;
 }
 
@@ -2437,8 +2450,9 @@ uint64_t Service::GetTrafficCounterResetTimeProperty(Error* /*error*/) const {
 }
 
 void Service::SetLastManualConnectAttemptProperty(const base::Time& value) {
-  if (last_manual_connect_attempt_ == value)
+  if (last_manual_connect_attempt_ == value) {
     return;
+  }
   last_manual_connect_attempt_ = value;
   if (technology_ == Technology::kCellular) {
     manager_->power_opt()->UpdateManualConnectTime(
@@ -2454,8 +2468,9 @@ uint64_t Service::GetLastManualConnectAttemptProperty(Error* /*error*/) const {
 }
 
 void Service::SetLastConnectedProperty(const base::Time& value) {
-  if (last_connected_ == value)
+  if (last_connected_ == value) {
     return;
+  }
   last_connected_ = value;
   adaptor_->EmitUint64Changed(kLastConnectedProperty,
                               GetLastConnectedProperty(nullptr));
@@ -2466,8 +2481,9 @@ uint64_t Service::GetLastConnectedProperty(Error* /*error*/) const {
 }
 
 void Service::SetLastOnlineProperty(const base::Time& value) {
-  if (last_online_ == value)
+  if (last_online_ == value) {
     return;
+  }
   last_online_ = value;
   adaptor_->EmitUint64Changed(kLastOnlineProperty,
                               GetLastOnlineProperty(nullptr));
@@ -2478,8 +2494,9 @@ uint64_t Service::GetLastOnlineProperty(Error* /*error*/) const {
 }
 
 void Service::SetStartTimeProperty(const base::Time& value) {
-  if (start_time_ == value)
+  if (start_time_ == value) {
     return;
+  }
   start_time_ = value;
   adaptor_->EmitUint64Changed(kStartTimeProperty,
                               GetStartTimeProperty(nullptr));
@@ -2518,8 +2535,9 @@ void Service::ClearMeteredProperty(Error* /*error*/) {
   metered_override_ = std::nullopt;
 
   bool is_metered = IsMetered();
-  if (was_metered != is_metered)
+  if (was_metered != is_metered) {
     adaptor_->EmitBoolChanged(kMeteredProperty, is_metered);
+  }
 }
 
 std::string Service::GetONCSource(Error* error) {
@@ -2577,8 +2595,9 @@ void Service::SaveToProfile() {
 }
 
 void Service::SetFriendlyName(const std::string& friendly_name) {
-  if (friendly_name == friendly_name_)
+  if (friendly_name == friendly_name_) {
     return;
+  }
   friendly_name_ = friendly_name;
   adaptor()->EmitStringChanged(kNameProperty, friendly_name_);
 }

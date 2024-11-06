@@ -597,8 +597,9 @@ bool Ethernet::DisableOffloadFeatures() {
 
   // Ensure strings are null terminated
   unsigned int i;
-  for (i = 0; i < num_features; i++)
+  for (i = 0; i < num_features; i++) {
     gstrings_buf->features[i][ETH_GSTRING_LEN - 1] = 0;
+  }
 
   // Prepare & send a ETHTOOL_GFEATURES command to get the current state of
   // features
@@ -634,8 +635,9 @@ bool Ethernet::DisableOffloadFeatures() {
 
   for (i = 0; i < num_features && !features_to_disable.empty(); i++) {
     std::string feature = gstrings_buf->features[i];
-    if (features_to_disable.find(feature) == features_to_disable.end())
+    if (features_to_disable.find(feature) == features_to_disable.end()) {
       continue;
+    }
 
     features_to_disable.erase(feature);
 
@@ -662,8 +664,9 @@ bool Ethernet::DisableOffloadFeatures() {
     LOG(INFO) << LoggingTag() << ": Disabling [" << i << "] " << feature;
   }
 
-  for (const auto& feature : features_to_disable)
+  for (const auto& feature : features_to_disable) {
     LOG(INFO) << "[No Such Feature] Skipped disabling: " << feature;
+  }
 
   interface_command.ifr_data = sfeatures;
   if (!RunEthtoolCmd(&interface_command)) {

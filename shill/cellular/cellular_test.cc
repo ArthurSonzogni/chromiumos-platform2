@@ -207,8 +207,9 @@ class CellularTest : public testing::Test {
     metrics_.DeregisterDevice(device_->interface_index());
     device_->set_state_for_testing(Cellular::State::kDisabled);
     auto capability = GetCapability3gpp();
-    if (capability)
+    if (capability) {
       capability->ReleaseProxies();
+    }
     // Break cycle between Cellular and CellularService.
     device_->service_ = nullptr;
     device_->SelectService(nullptr);
@@ -274,14 +275,16 @@ class CellularTest : public testing::Test {
   void InvokeDisconnect(const RpcIdentifier& bearer,
                         ResultCallback callback,
                         base::TimeDelta timeout) {
-    if (!callback.is_null())
+    if (!callback.is_null()) {
       std::move(callback).Run(Error());
+    }
   }
   void InvokeDisconnectFail(const RpcIdentifier& bearer,
                             ResultCallback callback,
                             base::TimeDelta timeout) {
-    if (!callback.is_null())
+    if (!callback.is_null()) {
       std::move(callback).Run(Error(Error::kOperationFailed));
+    }
   }
   void InvokeList(ResultVariantDictionariesOnceCallback callback,
                   base::TimeDelta timeout) {
@@ -454,42 +457,48 @@ class CellularTest : public testing::Test {
     std::unique_ptr<mm1::ModemModem3gppProxyInterface>
     CreateMM1ModemModem3gppProxy(const RpcIdentifier& path,
                                  const std::string& service) override {
-      if (!test_->mm1_modem_3gpp_proxy_)
+      if (!test_->mm1_modem_3gpp_proxy_) {
         test_->mm1_modem_3gpp_proxy_.reset(new mm1::MockModemModem3gppProxy());
+      }
       return std::move(test_->mm1_modem_3gpp_proxy_);
     }
 
     std::unique_ptr<mm1::ModemModem3gppProfileManagerProxyInterface>
     CreateMM1ModemModem3gppProfileManagerProxy(
         const RpcIdentifier& path, const std::string& service) override {
-      if (!test_->mm1_modem_3gpp_profile_manager_proxy_)
+      if (!test_->mm1_modem_3gpp_profile_manager_proxy_) {
         test_->mm1_modem_3gpp_profile_manager_proxy_.reset(
             new mm1::MockModemModem3gppProfileManagerProxy());
+      }
       return std::move(test_->mm1_modem_3gpp_profile_manager_proxy_);
     }
 
     std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
         const RpcIdentifier& path, const std::string& service) override {
-      if (!test_->mm1_modem_proxy_)
+      if (!test_->mm1_modem_proxy_) {
         test_->mm1_modem_proxy_.reset(new mm1::MockModemProxy());
-      if (!on_modem_proxy_created_callback_.is_null())
+      }
+      if (!on_modem_proxy_created_callback_.is_null()) {
         on_modem_proxy_created_callback_.Run(test_->mm1_modem_proxy_.get());
+      }
       return std::move(test_->mm1_modem_proxy_);
     }
 
     std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
         const RpcIdentifier& /*path*/,
         const std::string& /*service*/) override {
-      if (!test_->mm1_simple_proxy_)
+      if (!test_->mm1_simple_proxy_) {
         test_->mm1_simple_proxy_.reset(new mm1::MockModemSimpleProxy());
+      }
       return std::move(test_->mm1_simple_proxy_);
     }
 
     std::unique_ptr<mm1::ModemSignalProxyInterface> CreateMM1ModemSignalProxy(
         const RpcIdentifier& /*path*/,
         const std::string& /*service*/) override {
-      if (!test_->mm1_signal_proxy_)
+      if (!test_->mm1_signal_proxy_) {
         test_->mm1_signal_proxy_.reset(new mm1::MockModemSignalProxy());
+      }
       return std::move(test_->mm1_signal_proxy_);
     }
 

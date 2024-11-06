@@ -249,8 +249,9 @@ void VPNService::OnDriverReconnecting(base::TimeDelta timeout) {
   SetState(Service::kStateAssociating);
   // If physical network changes before driver connection finished, this could
   // be called before device_ was initialized.
-  if (!device_)
+  if (!device_) {
     return;
+  }
   device_->ResetConnection();
 }
 
@@ -270,8 +271,9 @@ bool VPNService::CreateDevice(const std::string& if_name, int if_index) {
 }
 
 void VPNService::CleanupDevice() {
-  if (!device_)
+  if (!device_) {
     return;
+  }
   device_->DropConnection();
   device_->SetEnabled(false);
   device_ = nullptr;

@@ -211,8 +211,9 @@ void Error::PopulateAndLog(const base::Location& from_here,
 
 // static
 std::string Error::GetLocationAsString(const base::Location& location) {
-  if (!location.has_source_info())
+  if (!location.has_source_info()) {
     return "";
+  }
   const std::string file_name =
       base::FilePath(location.file_name()).BaseName().value();
   return "[" + file_name + "(" + std::to_string(location.line_number()) +

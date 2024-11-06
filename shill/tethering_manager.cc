@@ -88,8 +88,9 @@ bool StoreToConfigBool(const StoreInterface* storage,
                        KeyValueStore* config,
                        const std::string& name) {
   bool bool_val;
-  if (!storage->GetBool(storage_id, name, &bool_val))
+  if (!storage->GetBool(storage_id, name, &bool_val)) {
     return false;
+  }
 
   config->Set<bool>(name, bool_val);
   return true;
@@ -99,8 +100,9 @@ bool StoreToConfigString(const StoreInterface* storage,
                          KeyValueStore* config,
                          const std::string& name) {
   std::string string_val;
-  if (!storage->GetString(storage_id, name, &string_val))
+  if (!storage->GetString(storage_id, name, &string_val)) {
     return false;
+  }
 
   config->Set<std::string>(name, string_val);
   return true;
@@ -466,8 +468,9 @@ void TetheringManager::RefreshCapabilities() {
   upstream_technologies.push_back(TechnologyName(Technology::kEthernet));
 
   if (manager_->cellular_service_provider()->HardwareSupportsTethering(
-          experimental_tethering_functionality_))
+          experimental_tethering_functionality_)) {
     upstream_technologies.push_back(TechnologyName(Technology::kCellular));
+  }
 
   // TODO(b/244335143): This should be based on static SoC capability
   // information. Need to revisit this when Shill has a SoC capability
@@ -525,8 +528,9 @@ size_t TetheringManager::GetClientCount() {
 }
 
 void TetheringManager::SetState(TetheringState state) {
-  if (state_ == state)
+  if (state_ == state) {
     return;
+  }
 
   LOG(INFO) << "State changed from " << state_ << " to " << state;
   state_ = state;
@@ -1478,8 +1482,9 @@ void TetheringManager::HelpRegisterDerivedBool(
 
 bool TetheringManager::SetExperimentalTetheringFunctionality(const bool& value,
                                                              Error* error) {
-  if (experimental_tethering_functionality_ == value)
+  if (experimental_tethering_functionality_ == value) {
     return false;
+  }
 
   LOG(INFO) << __func__ << " set to " << std::boolalpha << value;
   experimental_tethering_functionality_ = value;

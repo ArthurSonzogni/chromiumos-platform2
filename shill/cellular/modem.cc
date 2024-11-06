@@ -44,12 +44,14 @@ Modem::Modem(const std::string& service,
 
 Modem::~Modem() {
   SLOG(this, 1) << "~Modem() Path: " << path_.value();
-  if (!interface_index_.has_value())
+  if (!interface_index_.has_value()) {
     return;
+  }
 
   CellularRefPtr cellular = GetExistingCellularDevice();
-  if (cellular)
+  if (cellular) {
     cellular->OnModemDestroyed();
+  }
 }
 
 void Modem::CreateDevice(const InterfaceToProperties& properties) {
@@ -81,8 +83,9 @@ void Modem::CreateDevice(const InterfaceToProperties& properties) {
 void Modem::OnDeviceInfoAvailable(const std::string& link_name) {
   SLOG(this, 1) << __func__ << ": " << link_name
                 << " pending: " << has_pending_device_info_;
-  if (link_name_ != link_name || !has_pending_device_info_)
+  if (link_name_ != link_name || !has_pending_device_info_) {
     return;
+  }
 
   // has_pending_device_info_ is only set if we've already been through
   // CreateDeviceFromModemProperties() and saved our initial properties.
@@ -242,8 +245,9 @@ CellularRefPtr Modem::GetExistingCellularDevice() const {
   device =
       device_info_->manager()->GetDeviceWithTechnology(Technology::kCellular);
   LOG(INFO) << __func__ << "device: " << device;
-  if (!device)
+  if (!device) {
     return nullptr;
+  }
   CHECK_EQ(device->technology(), Technology::kCellular);
   return static_cast<Cellular*>(device.get());
 }

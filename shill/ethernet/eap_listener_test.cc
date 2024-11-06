@@ -124,10 +124,11 @@ void EapListenerTest::StartListener(bool expect_drop) {
         EXPECT_CALL(*socket, SetSockOpt(SOL_PACKET, PACKET_ADD_MEMBERSHIP, _))
             .WillOnce(Return(true));
 
-        if (expect_drop)
+        if (expect_drop) {
           EXPECT_CALL(*socket,
                       SetSockOpt(SOL_PACKET, PACKET_DROP_MEMBERSHIP, _))
               .WillOnce(Return(true));
+        }
 
         return socket;
       });

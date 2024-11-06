@@ -44,8 +44,9 @@ LocalDevice::~LocalDevice() {
 }
 
 bool LocalDevice::SetEnabled(bool enable) {
-  if (enabled_ == enable)
+  if (enabled_ == enable) {
     return true;
+  }
 
   LOG(INFO) << (enable ? "Enable " : "Disable ")
             << "device: " << link_name_.value_or("(no link_name)");

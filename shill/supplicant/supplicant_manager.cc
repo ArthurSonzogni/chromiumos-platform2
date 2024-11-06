@@ -43,8 +43,9 @@ void SupplicantManager::AddSupplicantListener(
     const SupplicantListenerCallback& present_callback) {
   listeners_.push_back(present_callback);
   // Give an immediate notification.
-  if (present_)
+  if (present_) {
     dispatcher_->PostTask(FROM_HERE, base::BindOnce(present_callback, true));
+  }
 }
 
 void SupplicantManager::RemoveSupplicantListener(
@@ -60,9 +61,11 @@ void SupplicantManager::RemoveSupplicantListener(
 
 void SupplicantManager::OnSupplicantPresence(bool present) {
   present_ = present;
-  for (const auto& listener : listeners_)
-    if (!listener.is_null())
+  for (const auto& listener : listeners_) {
+    if (!listener.is_null()) {
       listener.Run(present);
+    }
+  }
 }
 
 void SupplicantManager::set_proxy(SupplicantProcessProxyInterface* proxy) {

@@ -69,8 +69,9 @@ std::string ScopeLogger::GetAllScopeNames() const {
 std::string ScopeLogger::GetEnabledScopeNames() const {
   std::vector<std::string> names;
   for (size_t i = 0; i < std::size(kScopeNames); ++i) {
-    if (scope_enabled_[i])
+    if (scope_enabled_[i]) {
       names.push_back(kScopeNames[i]);
+    }
   }
   return base::JoinString(names, "+");
 }
@@ -85,8 +86,9 @@ void ScopeLogger::EnableScopesByName(const std::string& expression) {
   // sequence specified by |expression| is not prefixed by a plus or
   // minus sign, it indicates that all scopes are first disabled before
   // enabled by |expression|.
-  if (expression[0] != '+' && expression[0] != '-')
+  if (expression[0] != '+' && expression[0] != '-') {
     DisableAllScopes();
+  }
 
   bool enable_scope = true;
   base::StringTokenizer tokenizer(expression, "+-");
@@ -97,8 +99,9 @@ void ScopeLogger::EnableScopesByName(const std::string& expression) {
       continue;
     }
 
-    if (tokenizer.token().empty())
+    if (tokenizer.token().empty()) {
       continue;
+    }
 
     size_t i;
     for (i = 0; i < std::size(kScopeNames); ++i) {

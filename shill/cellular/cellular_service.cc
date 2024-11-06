@@ -144,8 +144,9 @@ void LoadApn(const StoreInterface* storage,
     LOG(ERROR) << __func__ << ": Failed to load APN field: " << keytag;
     return;
   }
-  if (keytag == CellularService::kStorageAPN)
+  if (keytag == CellularService::kStorageAPN) {
     FetchDetailsFromApnList(apn_list, apn_info);
+  }
   LoadApnField(storage, storage_group, keytag, kApnUsernameProperty, apn_info);
   LoadApnField(storage, storage_group, keytag, kApnPasswordProperty, apn_info);
   LoadApnField(storage, storage_group, keytag, kApnAuthenticationProperty,
@@ -172,8 +173,9 @@ void LoadApn(const StoreInterface* storage,
   // reason why kApnAttachProperty is deleted a few lines before, just to be
   // added again, is to keep the migration logic separate from the ONC issue.
   // The ONC might be updated before the old UI is obsoleted.
-  if (ApnList::IsAttachApn(*apn_info))
+  if (ApnList::IsAttachApn(*apn_info)) {
     (*apn_info)[kApnAttachProperty] = kApnAttachProperty;
+  }
 
   LoadApnField(storage, storage_group, keytag, cellular::kApnVersionProperty,
                apn_info);
@@ -186,10 +188,11 @@ void SaveApnField(StoreInterface* storage,
                   const std::string& apntag) {
   const std::string key = keytag + "." + apntag;
   std::string str;
-  if (apn_info && GetNonEmptyField(*apn_info, apntag, &str))
+  if (apn_info && GetNonEmptyField(*apn_info, apntag, &str)) {
     storage->SetString(storage_group, key, str);
-  else
+  } else {
     storage->DeleteKey(storage_group, key);
+  }
 }
 
 void SaveApn(StoreInterface* storage,
@@ -320,8 +323,9 @@ std::string CellularService::GetLoadableStorageIdentifier(
                  << " is not available in the persistent store";
     return std::string();
   }
-  if (groups.size() == 1)
+  if (groups.size() == 1) {
     return *groups.begin();
+  }
 
   // If there are multiple candidates, find the best matching entry. This may
   // happen when loading older profiles.
@@ -330,15 +334,17 @@ std::string CellularService::GetLoadableStorageIdentifier(
 
   // If the storage identifier matches, always use that.
   auto iter = std::find(groups.begin(), groups.end(), storage_identifier_);
-  if (iter != groups.end())
+  if (iter != groups.end()) {
     return *iter;
+  }
 
   // If an entry with a non-empty IMSI exists, use that.
   for (const std::string& group : groups) {
     std::string imsi;
     storage.GetString(group, kStorageImsi, &imsi);
-    if (!imsi.empty())
+    if (!imsi.empty()) {
       return group;
+    }
   }
   // Otherwise use the first entry.
   return *groups.begin();
@@ -395,8 +401,9 @@ bool CellularService::Load(const StoreInterface* storage) {
   LoadApn(storage, id, kStorageLastConnectedAttachAPN, apn_list,
           &last_connected_attach_apn_info_);
   Stringmaps custom_apn_list;
-  if (storage->GetStringmaps(id, kStorageCustomApnList, &custom_apn_list))
+  if (storage->GetStringmaps(id, kStorageCustomApnList, &custom_apn_list)) {
     custom_apn_list_ = std::move(custom_apn_list);
+  }
 
   const std::string old_username = ppp_username_;
   const std::string old_password = ppp_password_;
@@ -415,8 +422,9 @@ bool CellularService::Load(const StoreInterface* storage) {
 bool CellularService::Save(StoreInterface* storage) {
   SLOG(this, 2) << __func__;
   // Save properties common to all Services.
-  if (!Service::Save(storage))
+  if (!Service::Save(storage)) {
     return false;
+  }
 
   const std::string id = GetStorageIdentifier();
   SaveStringOrClear(storage, id, kStorageIccid, iccid_);
@@ -430,10 +438,11 @@ bool CellularService::Save(StoreInterface* storage) {
   SaveApn(storage, id, GetLastConnectedAttachApn(),
           kStorageLastConnectedAttachAPN);
 
-  if (custom_apn_list_.has_value())
+  if (custom_apn_list_.has_value()) {
     storage->SetStringmaps(id, kStorageCustomApnList, custom_apn_list_.value());
-  else
+  } else {
     storage->DeleteKey(id, kStorageCustomApnList);
+  }
 
   SaveStringOrClear(storage, id, kStoragePPPUsername, ppp_username_);
   SaveStringOrClear(storage, id, kStoragePPPPassword, ppp_password_);
@@ -448,8 +457,9 @@ bool CellularService::IsVisible() const {
 }
 
 const std::string& CellularService::GetSimCardId() const {
-  if (!eid_.empty())
+  if (!eid_.empty()) {
     return eid_;
+  }
   return iccid_;
 }
 
@@ -481,15 +491,17 @@ std::string CellularService::GetActivationTypeString() const {
 }
 
 void CellularService::SetActivationState(const std::string& state) {
-  if (state == activation_state_)
+  if (state == activation_state_) {
     return;
+  }
 
   SLOG(this, 2) << __func__ << ": " << state;
 
   // If AutoConnect has not been explicitly set by the client, set it to true
   // when the service becomes activated.
-  if (!retain_auto_connect() && state == kActivationStateActivated)
+  if (!retain_auto_connect() && state == kActivationStateActivated) {
     SetAutoConnect(true);
+  }
 
   activation_state_ = state;
   adaptor()->EmitStringChanged(kActivationStateProperty, state);
@@ -521,8 +533,9 @@ void CellularService::SetUsageURL(const std::string& url) {
 }
 
 void CellularService::SetServingOperator(const Stringmap& serving_operator) {
-  if (serving_operator_ == serving_operator)
+  if (serving_operator_ == serving_operator) {
     return;
+  }
 
   serving_operator_ = serving_operator;
   adaptor()->EmitStringmapChanged(kServingOperatorProperty, serving_operator_);
@@ -551,29 +564,33 @@ void CellularService::SetRoamingState(const std::string& state) {
 }
 
 bool CellularService::IsRoamingAllowed() {
-  if (cellular_ && cellular_->provider_requires_roaming())
+  if (cellular_ && cellular_->provider_requires_roaming()) {
     return true;
+  }
   return allow_roaming_ && cellular_ && cellular_->policy_allow_roaming();
 }
 
 bool CellularService::IsRoamingRuleViolated() {
-  if (roaming_state_ != kRoamingStateRoaming)
+  if (roaming_state_ != kRoamingStateRoaming) {
     return false;
+  }
 
   return !IsRoamingAllowed();
 }
 
 Stringmap* CellularService::GetUserSpecifiedApn() {
   Stringmap::iterator it = apn_info_.find(kApnProperty);
-  if (it == apn_info_.end() || it->second.empty())
+  if (it == apn_info_.end() || it->second.empty()) {
     return nullptr;
+  }
   return &apn_info_;
 }
 
 Stringmap* CellularService::GetLastGoodApn() {
   Stringmap::iterator it = last_good_apn_info_.find(kApnProperty);
-  if (it == last_good_apn_info_.end() || it->second.empty())
+  if (it == last_good_apn_info_.end() || it->second.empty()) {
     return nullptr;
+  }
   return &last_good_apn_info_;
 }
 
@@ -594,8 +611,9 @@ void CellularService::ClearLastGoodApn() {
 
 Stringmap* CellularService::GetLastAttachApn() {
   Stringmap::iterator it = last_attach_apn_info_.find(kApnProperty);
-  if (it == last_attach_apn_info_.end() || it->second.empty())
+  if (it == last_attach_apn_info_.end() || it->second.empty()) {
     return nullptr;
+  }
   return &last_attach_apn_info_;
 }
 
@@ -627,8 +645,9 @@ void CellularService::NotifySubscriptionStateChanged(
     SubscriptionState subscription_state) {
   bool new_out_of_credits =
       (subscription_state == SubscriptionState::kOutOfCredits);
-  if (out_of_credits_ == new_out_of_credits)
+  if (out_of_credits_ == new_out_of_credits) {
     return;
+  }
 
   out_of_credits_ = new_out_of_credits;
   SLOG(this, 2) << (out_of_credits_ ? "Marking service out-of-credits"
@@ -783,8 +802,9 @@ bool CellularService::IsMeteredByServiceProperties() const {
 
 RpcIdentifier CellularService::GetDeviceRpcId(Error* error) const {
   // Only provide cellular_->GetRpcIdentifier() if this is the active service.
-  if (!cellular_ || iccid() != cellular_->iccid())
+  if (!cellular_ || iccid() != cellular_->iccid()) {
     return DBusControl::NullRpcIdentifier();
+  }
   return cellular_->GetRpcIdentifier();
 }
 
@@ -859,17 +879,22 @@ Stringmap CellularService::ValidateCustomApn(const Stringmap& value,
     // If this is a user-entered APN, then one or more of the following
     // details should exist, even if they are empty.
     std::string str;
-    if (GetNonEmptyField(value, kApnUsernameProperty, &str))
+    if (GetNonEmptyField(value, kApnUsernameProperty, &str)) {
       new_apn_info[kApnUsernameProperty] = str;
-    if (GetNonEmptyField(value, kApnPasswordProperty, &str))
+    }
+    if (GetNonEmptyField(value, kApnPasswordProperty, &str)) {
       new_apn_info[kApnPasswordProperty] = str;
-    if (GetNonEmptyField(value, kApnAuthenticationProperty, &str))
+    }
+    if (GetNonEmptyField(value, kApnAuthenticationProperty, &str)) {
       new_apn_info[kApnAuthenticationProperty] = str;
+    }
     if (using_apn_revamp_ui) {
-      if (GetNonEmptyField(value, kApnTypesProperty, &str))
+      if (GetNonEmptyField(value, kApnTypesProperty, &str)) {
         new_apn_info[kApnTypesProperty] = str;
-      if (GetNonEmptyField(value, kApnIdProperty, &str))
+      }
+      if (GetNonEmptyField(value, kApnIdProperty, &str)) {
         new_apn_info[kApnIdProperty] = str;
+      }
       if (GetNonEmptyField(value, kApnSourceProperty, &str)) {
         new_apn_info[kApnSourceProperty] = str;
         if (str != kApnSourceAdmin && str != kApnSourceUi) {
@@ -884,8 +909,9 @@ Stringmap CellularService::ValidateCustomApn(const Stringmap& value,
         DCHECK(false);
         new_apn_info[kApnSourceProperty] = kApnSourceUi;
       }
-      if (GetNonEmptyField(value, kApnIpTypeProperty, &str))
+      if (GetNonEmptyField(value, kApnIpTypeProperty, &str)) {
         new_apn_info[kApnIpTypeProperty] = str;
+      }
     } else {
       // TODO(b/251512775): Chrome will keep sending the "attach" value on
       // |SetApn| until the old UI is obsoleted. Convert the attach value into
@@ -963,15 +989,17 @@ bool CellularService::CustomApnUpdated(bool configure_attach_apn,
 
 Stringmap* CellularService::GetLastConnectedDefaultApn() {
   Stringmap::iterator it = last_connected_default_apn_info_.find(kApnProperty);
-  if (it == last_connected_default_apn_info_.end() || it->second.empty())
+  if (it == last_connected_default_apn_info_.end() || it->second.empty()) {
     return nullptr;
+  }
   return &last_connected_default_apn_info_;
 }
 
 Stringmap* CellularService::GetLastConnectedAttachApn() {
   Stringmap::iterator it = last_connected_attach_apn_info_.find(kApnProperty);
-  if (it == last_connected_attach_apn_info_.end() || it->second.empty())
+  if (it == last_connected_attach_apn_info_.end() || it->second.empty()) {
     return nullptr;
+  }
   return &last_connected_attach_apn_info_;
 }
 
@@ -1062,8 +1090,9 @@ bool CellularService::IsOutOfCredits(Error* /*error*/) {
 
 bool CellularService::SetAllowRoaming(const bool& value, Error* error) {
   SLOG(this, 2) << __func__ << ": " << value;
-  if (allow_roaming_ == value)
+  if (allow_roaming_ == value) {
     return false;
+  }
 
   allow_roaming_ = value;
   manager()->UpdateService(this);

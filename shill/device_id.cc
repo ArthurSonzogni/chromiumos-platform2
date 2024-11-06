@@ -36,8 +36,9 @@ constexpr char kExternalAttribute[] = "untrusted";
 bool ReadDeviceIdFile(const base::FilePath& path, std::string* out_id) {
   DCHECK(out_id);
   std::string contents;
-  if (!base::ReadFileToString(path, &contents))
+  if (!base::ReadFileToString(path, &contents)) {
     return false;
+  }
 
   *out_id = base::CollapseWhitespaceASCII(base::ToLowerASCII(contents), true);
   return true;
@@ -46,11 +47,13 @@ bool ReadDeviceIdFile(const base::FilePath& path, std::string* out_id) {
 bool HextetToUInt16(const std::string& input, uint16_t* output) {
   DCHECK(output);
   std::vector<uint8_t> bytes;
-  if (!base::HexStringToBytes(input, &bytes))
+  if (!base::HexStringToBytes(input, &bytes)) {
     return false;
+  }
 
-  if (bytes.size() != 2)
+  if (bytes.size() != 2) {
     return false;
+  }
 
   *output = bytes[0] << 8 | bytes[1];
   return true;
@@ -137,12 +140,13 @@ std::string DeviceId::AsString() const {
   }
 
   const char* loc;
-  if (location_type_ == LocationType::kExternal)
+  if (location_type_ == LocationType::kExternal) {
     loc = " (External)";
-  else if (location_type_ == LocationType::kInternal)
+  } else if (location_type_ == LocationType::kInternal) {
     loc = " (Internal)";
-  else
+  } else {
     loc = "";
+  }
 
   if (!vendor_id_.has_value()) {
     return base::StringPrintf("%s:*:*%s", bus_name, loc);

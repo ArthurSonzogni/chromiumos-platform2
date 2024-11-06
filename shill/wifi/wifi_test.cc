@@ -1109,14 +1109,16 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
     wifi_->supplicant_present_ = supplicant_present;
     wifi_->SetEnabled(true);  // Start(nullptr, ResultCallback());
-    if (supplicant_present)
+    if (supplicant_present) {
       // Mimic the callback from |supplicant_process_proxy_|.
       wifi_->OnSupplicantPresence(true);
+    }
   }
   void StartWiFi() { StartWiFi(true); }
   void OnAfterResume() {
-    if (wifi_->enabled_)
+    if (wifi_->enabled_) {
       EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
+    }
     wifi_->OnAfterResume();
   }
   void OnBeforeSuspend() {
@@ -1345,8 +1347,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
       EXPECT_CALL(*GetSupplicantInterfaceProxy(), GetCapabilities(_))
           .WillOnce(Return(false));
     } else {
-      if (limit >= 0)
+      if (limit >= 0) {
         caps[WPASupplicant::kInterfaceCapabilityMaxScanSSID] = limit;
+      }
 
       EXPECT_CALL(*GetSupplicantInterfaceProxy(), GetCapabilities(_))
           .WillOnce(
@@ -2975,12 +2978,14 @@ MATCHER_P(ScanRequestHasHiddenSSIDs, hidden_ssids, "") {
   // A valid Scan containing a N SSIDs should contain N+1 SSID entries: one for
   // each SSID we are looking for, and an empty entry, signifying that we also
   // want to do a broadcast probe request for all non-hidden APs as well.
-  if (ssids.size() != hidden_ssids.size() + 1)
+  if (ssids.size() != hidden_ssids.size() + 1) {
     return false;
+  }
 
   for (size_t i = 0; i < hidden_ssids.size(); ++i) {
-    if (ssids[i] != hidden_ssids[i])
+    if (ssids[i] != hidden_ssids[i]) {
       return false;
+    }
   }
 
   return ssids[ssids.size() - 1].empty();

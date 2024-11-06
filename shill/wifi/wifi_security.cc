@@ -93,8 +93,9 @@ bool WiFiSecurity::IsValid() const {
 }
 
 bool WiFiSecurity::IsWpa() const {
-  if (!IsValid())
+  if (!IsValid()) {
     return false;
+  }
 
   switch (mode_) {
     case kNone:
@@ -112,8 +113,9 @@ bool WiFiSecurity::IsPsk() const {
 }
 
 bool WiFiSecurity::IsEnterprise() const {
-  if (!IsValid())
+  if (!IsValid()) {
     return false;
+  }
 
   switch (mode_) {
     case kNone:
@@ -138,8 +140,9 @@ bool WiFiSecurity::IsEnterprise() const {
 }
 
 bool WiFiSecurity::IsSubsetOf(const WiFiSecurity& sec) const {
-  if (IsValid() != sec.IsValid())
+  if (IsValid() != sec.IsValid()) {
     return false;
+  }
 
   switch (sec.mode_) {
     case kNone:
@@ -174,8 +177,9 @@ bool WiFiSecurity::IsSubsetOf(const WiFiSecurity& sec) const {
 }
 
 bool WiFiSecurity::HasCommonMode(const WiFiSecurity& sec) const {
-  if (IsValid() != sec.IsValid())
+  if (IsValid() != sec.IsValid()) {
     return false;
+  }
 
   switch (sec.mode_) {
     case kNone:
@@ -224,8 +228,9 @@ bool WiFiSecurity::HasCommonMode(const WiFiSecurity& sec) const {
 }
 
 void WiFiSecurity::Freeze() {
-  if (!IsValid())
+  if (!IsValid()) {
     return;
+  }
   is_frozen_ = true;
 }
 
@@ -342,15 +347,17 @@ WiFiSecurity WiFiSecurity::Combine(WiFiSecurity::Mode mode) const {
       break;
     default:
       // It should be impossible for other modes to get here.
-      NOTREACHED_IN_MIGRATION() << "Unhandled combination of " << *this << " and " << mode;
+      NOTREACHED_IN_MIGRATION()
+          << "Unhandled combination of " << *this << " and " << mode;
   }
 
   return {};
 }
 
 std::string WiFiSecurity::ToString() const {
-  if (!IsValid())
+  if (!IsValid()) {
     return std::string();
+  }
 
   auto it = std::find_if(std::begin(modes_map), std::end(modes_map),
                          [this](auto& p) { return p.second == mode_; });

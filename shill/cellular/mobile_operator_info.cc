@@ -50,10 +50,11 @@ MobileOperatorInfo::MobileOperatorInfo(EventDispatcher* dispatcher,
 MobileOperatorInfo::~MobileOperatorInfo() = default;
 
 void MobileOperatorInfo::AddDefaultDatabasePaths() {
-  if (base::PathExists(base::FilePath(kExclusiveOverrideDatabasePath)))
+  if (base::PathExists(base::FilePath(kExclusiveOverrideDatabasePath))) {
     AddDatabasePath(base::FilePath(kExclusiveOverrideDatabasePath));
-  else
+  } else {
     AddDatabasePath(base::FilePath(kDefaultDatabasePath));
+  }
 }
 void MobileOperatorInfo::ClearDatabasePaths() {
   SLOG(3) << GetLogPrefix(__func__);
@@ -92,14 +93,16 @@ void MobileOperatorInfo::RemoveObserver(
 
 void MobileOperatorInfo::OnHomeOperatorChanged() {
   SLOG(3) << GetLogPrefix(__func__);
-  for (MobileOperatorInfo::Observer& observer : observers_)
+  for (MobileOperatorInfo::Observer& observer : observers_) {
     observer.OnOperatorChanged();
+  }
 }
 
 void MobileOperatorInfo::OnServingOperatorChanged() {
   SLOG(3) << GetLogPrefix(__func__);
-  for (MobileOperatorInfo::Observer& observer : observers_)
+  for (MobileOperatorInfo::Observer& observer : observers_) {
     observer.OnOperatorChanged();
+  }
 }
 
 bool MobileOperatorInfo::IsHomeOperatorKnown() const {
@@ -228,8 +231,9 @@ std::string MobileOperatorInfo::friendly_operator_name(bool is_roaming) const {
 
 bool MobileOperatorInfo::requires_roaming() const {
   if (!home_->IsMobileNetworkOperatorKnown() &&
-      !home_->IsMobileVirtualNetworkOperatorKnown())
+      !home_->IsMobileVirtualNetworkOperatorKnown()) {
     return false;
+  }
   return home_->requires_roaming() ||
          home_->RequiresRoamingOnOperator(serving_.get());
 }
@@ -250,10 +254,11 @@ MobileOperatorInfo::entitlement_config() const {
 int32_t MobileOperatorInfo::mtu() const {
   // Choose the smaller mtu size.
   if (serving_->mtu() != IPConfig::kUndefinedMTU &&
-      home_->mtu() != IPConfig::kUndefinedMTU)
+      home_->mtu() != IPConfig::kUndefinedMTU) {
     return std::min(serving_->mtu(), home_->mtu());
-  else if (home_->mtu() != IPConfig::kUndefinedMTU)
+  } else if (home_->mtu() != IPConfig::kUndefinedMTU) {
     return home_->mtu();
+  }
 
   return serving_->mtu();
 }

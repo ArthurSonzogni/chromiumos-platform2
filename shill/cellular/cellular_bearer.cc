@@ -266,8 +266,9 @@ void CellularBearer::ResetProperties() {
 void CellularBearer::UpdateProperties() {
   ResetProperties();
 
-  if (!dbus_properties_proxy_)
+  if (!dbus_properties_proxy_) {
     return;
+  }
 
   auto properties = dbus_properties_proxy_->GetAll(MM_DBUS_INTERFACE_BEARER);
   OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties);
@@ -278,8 +279,9 @@ void CellularBearer::OnPropertiesChanged(
   SLOG(3) << __func__ << ": path=" << dbus_path_.value()
           << ", interface=" << interface;
 
-  if (interface != MM_DBUS_INTERFACE_BEARER)
+  if (interface != MM_DBUS_INTERFACE_BEARER) {
     return;
+  }
 
   if (changed_properties.Contains<KeyValueStore>(
           MM_BEARER_PROPERTY_PROPERTIES)) {
@@ -290,12 +292,15 @@ void CellularBearer::OnPropertiesChanged(
     }
     if (properties.Contains<uint32_t>(kMMApnTypeProperty)) {
       uint32_t apns_mask = properties.Get<uint32_t>(kMMApnTypeProperty);
-      if (apns_mask & MM_BEARER_APN_TYPE_DEFAULT)
+      if (apns_mask & MM_BEARER_APN_TYPE_DEFAULT) {
         apn_types_.push_back(ApnList::ApnType::kDefault);
-      if (apns_mask & MM_BEARER_APN_TYPE_INITIAL)
+      }
+      if (apns_mask & MM_BEARER_APN_TYPE_INITIAL) {
         apn_types_.push_back(ApnList::ApnType::kAttach);
-      if (apns_mask & MM_BEARER_APN_TYPE_TETHERING)
+      }
+      if (apns_mask & MM_BEARER_APN_TYPE_TETHERING) {
         apn_types_.push_back(ApnList::ApnType::kDun);
+      }
     }
   }
 

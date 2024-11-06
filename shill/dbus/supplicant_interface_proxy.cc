@@ -361,9 +361,10 @@ bool SupplicantInterfaceProxy::EnableMacAddressRandomization(
   std::map<std::string, std::vector<uint8_t>> mac_randomization_args;
   mac_randomization_args.insert(
       std::pair<std::string, std::vector<uint8_t>>("scan", mask));
-  if (sched_scan)
+  if (sched_scan) {
     mac_randomization_args.insert(
         std::pair<std::string, std::vector<uint8_t>>("sched_scan", mask));
+  }
 
   if (!(properties_->mac_address_randomization_mask.SetAndBlock(
           mac_randomization_args))) {

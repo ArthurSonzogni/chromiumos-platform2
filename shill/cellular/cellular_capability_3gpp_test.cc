@@ -251,8 +251,9 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     KeyValueStore modem_properties;
     modem_properties.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, path);
     RpcIdentifiers slots;
-    for (const auto& path : sim_paths_)
+    for (const auto& path : sim_paths_) {
       slots.push_back(path);
+    }
     modem_properties.Set<RpcIdentifiers>(MM_MODEM_PROPERTY_SIMSLOTS, slots);
     capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
     dispatcher_.DispatchPendingEvents();
@@ -454,8 +455,9 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
  protected:
   brillo::VariantDictionary GetSimProperties(const RpcIdentifier& sim_path) {
     const auto iter = std::find(sim_paths_.begin(), sim_paths_.end(), sim_path);
-    if (iter == sim_paths_.end())
+    if (iter == sim_paths_.end()) {
       return brillo::VariantDictionary();
+    }
     size_t idx = iter - sim_paths_.begin();
     return sim_properties_[idx].properties();
   }

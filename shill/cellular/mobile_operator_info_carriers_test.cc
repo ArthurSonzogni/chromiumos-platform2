@@ -128,8 +128,9 @@ class MobileOperatorInfoCarriersTest : public Test {
   }
   void CheckIfApnExists(ApnBuilder apn_builder) {
     for (const auto& apn_info : operator_info_->apn_list()) {
-      if (PrepareModbApnForComparison(apn_info) == apn_builder.apn())
+      if (PrepareModbApnForComparison(apn_info) == apn_builder.apn()) {
         return;
+      }
     }
     FAIL() << "APN: " << apn_builder.apn().apn << " not found";
   }
@@ -159,8 +160,9 @@ class MobileOperatorInfoCarriersTest : public Test {
     while (true) {
       int gid1 = base::RandInt(0, 0xFFFF);
       std::string gid1_s = base::HexEncode(&gid1, 2);
-      if (gid1s.count(gid1_s) == 0)
+      if (gid1s.count(gid1_s) == 0) {
         return gid1_s;
+      }
     }
   }
 
@@ -210,8 +212,9 @@ class MobileOperatorInfoCarriersAttTest
   std::vector<string> GetUsMnoOnlyMccmncs() {
     std::vector<string> value;
     for (auto& mccmnc : kAttUsMccmncs) {
-      if (!kCricketMccmncs.count(mccmnc) && !kFirstnetMccmncs.count(mccmnc))
+      if (!kCricketMccmncs.count(mccmnc) && !kFirstnetMccmncs.count(mccmnc)) {
         value.push_back(mccmnc);
+      }
     }
     return value;
   }
@@ -324,10 +327,11 @@ TEST_F(MobileOperatorInfoCarriersAttTest, FirstnetHome_AttServing) {
       EXPECT_EQ(operator_info_->mtu(), 1342);
       CheckFirstApn(ApnBuilder("firstnet-broadband")
                         .ApnTypes({kApnTypeDefault, kApnTypeIA}));
-      if (home != "313110" && home != "313120")
+      if (home != "313110" && home != "313120") {
         CheckIfApnExists(ApnBuilder("firstnet-hotspot")
                              .IsRequiredByCarrierSpec(true)
                              .ApnTypes({kApnTypeDun}));
+      }
     }
   }
 }
@@ -355,12 +359,15 @@ class MobileOperatorInfoCarriersUsCellularTest
  protected:
   std::vector<string> GetMccmncsFromAllUsCarriers() {
     std::vector<string> value;
-    for (auto& mccmnc : kAttUsMccmncs)
+    for (auto& mccmnc : kAttUsMccmncs) {
       value.push_back(mccmnc);
-    for (auto& mccmnc : kVerizonUsMccmncs)
+    }
+    for (auto& mccmnc : kVerizonUsMccmncs) {
       value.push_back(mccmnc);
-    for (auto& mccmnc : kTmobileUsMccmncs)
+    }
+    for (auto& mccmnc : kTmobileUsMccmncs) {
       value.push_back(mccmnc);
+    }
     return value;
   }
 
@@ -396,13 +403,15 @@ TEST_F(MobileOperatorInfoCarriersUsCellularTest, RoamOutsideTheUs) {
   serving_mccmncs.push_back("317000");
   while (serving_mccmncs.size() < 10) {
     std::string mccmnc = CreateRandomMccmnc("", 5);
-    if (!base::StartsWith(mccmnc, "31"))
+    if (!base::StartsWith(mccmnc, "31")) {
       serving_mccmncs.push_back(mccmnc);
+    }
   }
   while (serving_mccmncs.size() < 20) {
     std::string mccmnc = CreateRandomMccmnc("", 6);
-    if (!base::StartsWith(mccmnc, "31"))
+    if (!base::StartsWith(mccmnc, "31")) {
       serving_mccmncs.push_back(mccmnc);
+    }
   }
 
   for (const auto& serving_mccmnc : serving_mccmncs) {

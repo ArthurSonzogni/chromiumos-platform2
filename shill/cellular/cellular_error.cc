@@ -19,8 +19,9 @@ namespace shill {
 // static
 void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
                                              Error* error) {
-  if (!error)
+  if (!error) {
     return;
+  }
 
   if (!dbus_error) {
     error->Reset();
@@ -74,14 +75,16 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
           {MM_CORE_ERROR_DBUS_PREFIX ".WrongState", Error::kWrongState},
       });
   const auto it = errorMapping.find(name);
-  if (it != errorMapping.end())
+  if (it != errorMapping.end()) {
     type = it->second;
-  else
+  } else {
     type = Error::kOperationFailed;
+  }
 
-  if (!msg.empty())
+  if (!msg.empty()) {
     return error->Populate(type, msg, name);
-  else
+  } else {
     return error->Populate(type, "", name);
+  }
 }
 }  // namespace shill

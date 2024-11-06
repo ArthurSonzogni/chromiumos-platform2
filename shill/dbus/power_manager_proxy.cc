@@ -26,8 +26,9 @@ bool SerializeProtocolBuffer(const google::protobuf::MessageLite& protobuf,
   CHECK(out);
   out->clear();
   std::string serialized_protobuf;
-  if (!protobuf.SerializeToString(&serialized_protobuf))
+  if (!protobuf.SerializeToString(&serialized_protobuf)) {
     return false;
+  }
   out->assign(serialized_protobuf.begin(), serialized_protobuf.end());
   return true;
 }
@@ -37,8 +38,9 @@ bool SerializeProtocolBuffer(const google::protobuf::MessageLite& protobuf,
 bool DeserializeProtocolBuffer(const std::vector<uint8_t>& serialized_protobuf,
                                google::protobuf::MessageLite* protobuf_out) {
   CHECK(protobuf_out);
-  if (serialized_protobuf.empty())
+  if (serialized_protobuf.empty()) {
     return false;
+  }
   return protobuf_out->ParseFromArray(&serialized_protobuf.front(),
                                       serialized_protobuf.size());
 }

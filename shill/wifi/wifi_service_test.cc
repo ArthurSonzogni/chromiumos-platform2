@@ -101,8 +101,9 @@ class WiFiServiceTest : public testing::Test {
                         const char* passphrase,
                         bool is_1x_connectable) {
     WiFiServiceRefPtr service = MakeSimpleService(security_class);
-    if (passphrase)
+    if (passphrase) {
       SetPassphrase(service, passphrase);
+    }
     MockEapCredentials* eap = SetMockEap(service);
     EXPECT_CALL(*eap, IsConnectable())
         .WillRepeatedly(Return(is_1x_connectable));
@@ -303,8 +304,9 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
     WiFiServiceRefPtr service = MakeSimpleService(security_class);
 
     // For security classes, we don't need an endpoint.
-    if (sec == security_class)
+    if (sec == security_class) {
       return service;
+    }
 
     // For others, we need an endpoint to help specialize the Service.
     WiFiEndpoint::SecurityFlags flags;

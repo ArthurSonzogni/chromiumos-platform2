@@ -48,8 +48,9 @@ Profile::Profile(Manager* manager,
                                  base::Unretained(this))),
       name_(name),
       slot_getter_(new Pkcs11SlotGetter(name_.user_hash)) {
-  if (connect_to_rpc)
+  if (connect_to_rpc) {
     adaptor_ = manager->control_interface()->CreateProfileAdaptor(this);
+  }
 
   // kCheckPortalListProperty: Registered in DefaultProfile
   store_.RegisterConstString(kNameProperty, &name_.identifier);
@@ -200,8 +201,9 @@ bool Profile::UpdateService(const ServiceRefPtr& service) {
 }
 
 bool Profile::LoadService(const ServiceRefPtr& service) {
-  if (!ContainsService(service))
+  if (!ContainsService(service)) {
     return false;
+  }
   service->SetEapSlotGetter(slot_getter_.get());
   bool ret = service->Load(storage_.get());
   service->MigrateDeprecatedStorage(storage_.get());
@@ -209,8 +211,9 @@ bool Profile::LoadService(const ServiceRefPtr& service) {
 }
 
 bool Profile::ConfigureService(const ServiceRefPtr& service) {
-  if (!LoadService(service))
+  if (!LoadService(service)) {
     return false;
+  }
   service->SetProfile(this);
   return true;
 }
@@ -457,8 +460,9 @@ std::vector<std::string> Profile::EnumerateEntries(Error* /*error*/) {
   // Filter this list down to only entries that correspond
   // to a technology.  (wifi_*, etc)
   for (const auto& group : storage_->GetGroups()) {
-    if (TechnologyFromStorageGroup(group) != Technology::kUnknown)
+    if (TechnologyFromStorageGroup(group) != Technology::kUnknown) {
       service_groups.push_back(group);
+    }
   }
 
   return service_groups;

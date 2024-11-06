@@ -481,8 +481,9 @@ WiFiServiceRefPtr WiFiProvider::FindServiceForEndpoint(
     const WiFiEndpointConstRefPtr& endpoint) {
   EndpointServiceMap::iterator service_it =
       service_by_endpoint_.find(endpoint.get());
-  if (service_it == service_by_endpoint_.end())
+  if (service_it == service_by_endpoint_.end()) {
     return nullptr;
+  }
   return service_it->second;
 }
 

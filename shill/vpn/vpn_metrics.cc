@@ -221,8 +221,8 @@ vpn_metrics::ConnectionLostReason InterpretEndReasonAsConnectionLost(
     case VPNEndReason::kConnectFailureDNSLookup:
     case VPNEndReason::kConnectTimeout:
     case VPNEndReason::kInvalidConfig:
-      NOTREACHED_IN_MIGRATION() << __func__ << ": unexpected reason "
-                   << VPNEndReasonToString(reason);
+      NOTREACHED_IN_MIGRATION()
+          << __func__ << ": unexpected reason " << VPNEndReasonToString(reason);
       return vpn_metrics::kConnectionLostReasonInternal;
     case VPNEndReason::kFailureInternal:
       return vpn_metrics::kConnectionLostReasonInternal;

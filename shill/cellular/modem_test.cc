@@ -65,12 +65,14 @@ class TestDeviceInfo : public MockDeviceInfo {
 
   // DeviceInfo override:
   void RegisterDevice(const DeviceRefPtr& device) override {
-    if (device->technology() == Technology::kCellular)
+    if (device->technology() == Technology::kCellular) {
       cellular_ = static_cast<Cellular*>(device.get());
+    }
   }
   DeviceRefPtr GetDevice(int interface_index) const override {
-    if (cellular_ && interface_index == cellular_->interface_index())
+    if (cellular_ && interface_index == cellular_->interface_index()) {
       return cellular_;
+    }
     return nullptr;
   }
 

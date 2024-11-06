@@ -49,8 +49,9 @@ namespace {
 // so that wpa_supplicant does not auto-retry. The auto-retry would expect shill
 // to send a new identity/password (https://crbug.com/1027323).
 std::string AddAdditionalInnerEapParams(const std::string& inner_eap) {
-  if (inner_eap.empty())
+  if (inner_eap.empty()) {
     return std::string();
+  }
   std::vector<std::string_view> params = base::SplitStringPiece(
       inner_eap, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   bool has_mschapv2_auth = false;
@@ -61,8 +62,9 @@ std::string AddAdditionalInnerEapParams(const std::string& inner_eap) {
     }
   }
 
-  if (!has_mschapv2_auth)
+  if (!has_mschapv2_auth) {
     return inner_eap;
+  }
 
   return inner_eap + " " + WPASupplicant::kFlagInnerEapNoMSCHAPV2Retry;
 }
@@ -609,8 +611,9 @@ bool EapCredentials::ValidSubjectAlternativeNameMatchType(
 // static
 bool EapCredentials::ValidDomainSuffixMatch(
     const std::string& domain_suffix_match) {
-  if (domain_suffix_match.empty() || domain_suffix_match.size() > 255)
+  if (domain_suffix_match.empty() || domain_suffix_match.size() > 255) {
     return false;
+  }
 
   std::vector<std::string_view> labels = base::SplitStringPiece(
       domain_suffix_match, ".", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
@@ -618,17 +621,20 @@ bool EapCredentials::ValidDomainSuffixMatch(
   DCHECK(!labels.empty());
 
   for (std::string_view label : labels) {
-    if (label.size() == 0 || label.size() > 63)
+    if (label.size() == 0 || label.size() > 63) {
       return false;
+    }
     // Labels can't start and end with hyphens.
-    if (label.front() == '-' || label.back() == '-')
+    if (label.front() == '-' || label.back() == '-') {
       return false;
+    }
 
     for (auto it = label.begin(); it != label.end(); ++it) {
       // The top level domain must contain only letters.
       if (label == labels.back()) {
-        if (!base::IsAsciiAlpha(*it))
+        if (!base::IsAsciiAlpha(*it)) {
           return false;
+        }
       } else {
         if (!base::IsAsciiAlpha(*it) && !base::IsAsciiDigit(*it) &&
             (*it) != '-') {
@@ -644,8 +650,9 @@ bool EapCredentials::ValidDomainSuffixMatch(
 // static
 std::optional<std::string> EapCredentials::TranslateDomainSuffixMatch(
     const std::vector<std::string>& domain_suffix_match_list) {
-  if (domain_suffix_match_list.empty())
+  if (domain_suffix_match_list.empty()) {
     return std::nullopt;
+  }
   std::vector<std::string> filtered_domains;
   for (const std::string& domain : domain_suffix_match_list) {
     if (ValidDomainSuffixMatch(domain)) {
@@ -656,8 +663,9 @@ std::optional<std::string> EapCredentials::TranslateDomainSuffixMatch(
           << domain;
     }
   }
-  if (filtered_domains.empty())
+  if (filtered_domains.empty()) {
     return std::nullopt;
+  }
 
   return base::JoinString(filtered_domains, ";");
 }

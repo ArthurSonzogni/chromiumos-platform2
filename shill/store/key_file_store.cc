@@ -774,8 +774,9 @@ bool KeyFileStore::GetStringmaps(
     }
   }
 
-  if (value)
+  if (value) {
     *value = std::move(read_stringmaps);
+  }
 
   return true;
 }

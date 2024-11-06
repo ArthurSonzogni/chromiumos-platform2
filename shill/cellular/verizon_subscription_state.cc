@@ -21,8 +21,9 @@ bool FindVerizonSubscriptionStateFromPco(
   //    05: unprovisioned
 
   const CellularPco::Element* element = pco.FindElement(0xFF00);
-  if (!element)
+  if (!element) {
     return false;
+  }
 
   const std::vector<uint8_t>& pco_data = element->data;
   if (pco_data.size() != 4 || pco_data[0] != 0x13 || pco_data[1] != 0x01 ||

@@ -231,8 +231,9 @@ bool HotspotDevice::RemoveInterface() {
 
 void HotspotDevice::StateChanged(const std::string& new_state) {
   CHECK(link_name());
-  if (supplicant_state_ == new_state)
+  if (supplicant_state_ == new_state) {
     return;
+  }
 
   LOG(INFO) << "Interface " << *link_name() << " state changed from "
             << supplicant_state_ << " to " << new_state;

@@ -289,8 +289,9 @@ std::string WiFiService::GetWiFiPassphrase(Error* error) {
 }
 
 std::string WiFiService::GetPasspointMatchType(Error* error) {
-  if (!parent_credentials_)
+  if (!parent_credentials_) {
     return std::string();
+  }
 
   switch (match_priority_) {
     case WiFiProvider::MatchPriority::kHome:
@@ -303,22 +304,25 @@ std::string WiFiService::GetPasspointMatchType(Error* error) {
 }
 
 std::string WiFiService::GetPasspointFQDN(Error* error) {
-  if (!parent_credentials_)
+  if (!parent_credentials_) {
     return std::string();
+  }
 
   return parent_credentials_->GetFQDN();
 }
 
 std::string WiFiService::GetPasspointOrigin(Error* error) {
-  if (!parent_credentials_)
+  if (!parent_credentials_) {
     return std::string();
+  }
 
   return parent_credentials_->GetOrigin();
 }
 
 std::string WiFiService::GetPasspointID(Error* error) {
-  if (!parent_credentials_)
+  if (!parent_credentials_) {
     return std::string();
+  }
 
   return parent_credentials_->id();
 }
@@ -1286,15 +1290,17 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
       if (mgmt == WPASupplicant::kKeyManagementWPAPSK ||
           mgmt == WPASupplicant::kKeyManagementWPAPSKSHA256) {
         // FT is already SHA256, so it matches both PSK and PSK-SHA256.
-        if (ft_psk)
+        if (ft_psk) {
           continue;  // Already added this once.
+        }
         ft_mgmt = WPASupplicant::kKeyManagementFTPSK;
         ft_psk = true;
       } else if (mgmt == WPASupplicant::kKeyManagementWPAEAP ||
                  mgmt == WPASupplicant::kKeyManagementWPAEAPSHA256) {
         // FT is already SHA256, so it matches both EAP and EAP-SHA256.
-        if (ft_eap)
+        if (ft_eap) {
           continue;  // Already added this once.
+        }
         ft_mgmt = WPASupplicant::kKeyManagementFTEAP;
         ft_eap = true;
       } else if (mgmt == WPASupplicant::kKeyManagementSAE) {
@@ -1357,8 +1363,9 @@ void WiFiService::OnDisconnect(Error* error, const char* /*reason*/) {
 }
 
 bool WiFiService::IsDisconnectable(Error* error) const {
-  if (!Service::IsDisconnectable(error))
+  if (!Service::IsDisconnectable(error)) {
     return false;
+  }
 
   if (!wifi_) {
     CHECK(!IsConnected())
@@ -1682,8 +1689,9 @@ Service::CryptoAlgorithm WiFiService::ComputeCipher8021x(
     const std::set<WiFiEndpointConstRefPtr>& endpoints) {
   // If there are no endpoints available return minimal value possible. This
   // will be updated upon endpoint discovery.
-  if (endpoints.empty())
+  if (endpoints.empty()) {
     return kCryptoRc4;
+  }
 
   // Find weakest cipher (across endpoints) of the strongest ciphers
   // (per endpoint).
@@ -1774,14 +1782,16 @@ void WiFiService::ParseWEPPassphrase(const std::string& passphrase,
   }
 
   if (error->IsSuccess()) {
-    if (key_index)
+    if (key_index) {
       *key_index = key_index_local;
+    }
     if (password_bytes) {
-      if (is_hex)
+      if (is_hex) {
         base::HexStringToBytes(password_text, password_bytes);
-      else
+      } else {
         password_bytes->insert(password_bytes->end(), password_text.begin(),
                                password_text.end());
+      }
     }
   }
 }
@@ -1953,8 +1963,9 @@ void WiFiService::OnCredentialChange(Service::UpdateCredentialsReason reason) {
   ClearCachedCredentials();
   // Credential changes due to a property update are new and have not
   // necessarily been used for a successful connection.
-  if (reason == kReasonPropertyUpdate)
+  if (reason == kReasonPropertyUpdate) {
     SetHasEverConnected(false);
+  }
   UpdateConnectable();
   ResetSuspectedCredentialFailures();
 }

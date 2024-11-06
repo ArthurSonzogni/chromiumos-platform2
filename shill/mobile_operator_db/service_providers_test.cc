@@ -109,11 +109,14 @@ TEST_F(ServiceProvidersTest, CheckIMSIMatchesMCCMNC) {
       if (filter.type() == mobile_operator_db::Filter_Type_IMSI) {
         // Combine MNO and MVNO MCCMNCs
         std::set<std::string> mccmncs;
-        for (const auto& mccmnc : mvno->data().mccmnc())
+        for (const auto& mccmnc : mvno->data().mccmnc()) {
           mccmncs.insert(mccmnc);
-        if (mno)
-          for (const auto& mccmnc : mno->data().mccmnc())
+        }
+        if (mno) {
+          for (const auto& mccmnc : mno->data().mccmnc()) {
             mccmncs.insert(mccmnc);
+          }
+        }
 
         // Validate ranges
         for (auto range : filter.range()) {
@@ -199,7 +202,7 @@ TEST_F(ServiceProvidersTest, VerifyUniquenessOfApnHashes) {
       // Only check for uniqueness when not using apn_filter, as carriers
       // might use the same apn name with different localized_names when using
       // apn filters.
-      if (hashes.count(hash) == 0 || !mobile_apn.apn_filter_size())
+      if (hashes.count(hash) == 0 || !mobile_apn.apn_filter_size()) {
         ASSERT_EQ(hashes.count(hash), 0)
             << " Non unique hash '" << hash
             << "' for uuid:" << mno.data().uuid()
@@ -207,6 +210,7 @@ TEST_F(ServiceProvidersTest, VerifyUniquenessOfApnHashes) {
             << " username: " << mobile_apn.username()
             << ", password:" << mobile_apn.password() << ", and "
             << hashes[hash];
+      }
       hashes[hash] = mno.data().uuid() + ":" + mobile_apn.apn();
     }
   }
@@ -384,14 +388,16 @@ TEST_F(ServiceProvidersTest, CheckThatDunAsDefaultHasRequiredApn) {
   // CustomApnList is used.
   auto check_dun_apn = [](const std::string& mno_mvno,
                           const ::shill::mobile_operator_db::Data& data) {
-    if (!data.use_dun_apn_as_default())
+    if (!data.use_dun_apn_as_default()) {
       return;
+    }
     for (int i = 0; i < data.mobile_apn_size(); i++) {
       auto mobile_apn = &data.mobile_apn()[i];
       if (base::Contains(mobile_apn->type(),
                          shill::mobile_operator_db::MobileAPN_ApnType_DUN) &&
-          mobile_apn->is_required_by_carrier_spec())
+          mobile_apn->is_required_by_carrier_spec()) {
         return;
+      }
     }
     // No match found.
     ASSERT_TRUE(false)

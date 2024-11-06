@@ -304,8 +304,9 @@ std::vector<std::string> DeviceInfo::GetUninitializedTechnologies() const {
       continue;
     }
     if (IsPrimaryConnectivityTechnology(technology) &&
-        !base::Contains(initialized_technologies, technology))
+        !base::Contains(initialized_technologies, technology)) {
       unique_technologies.insert(TechnologyName(technology));
+    }
   }
   return std::vector<std::string>(unique_technologies.begin(),
                                   unique_technologies.end());
@@ -619,8 +620,9 @@ bool DeviceInfo::HasSubdir(const base::FilePath& base_dir,
   base::FileEnumerator dir_enum(base_dir, true, type);
   for (auto curr_dir = dir_enum.Next(); !curr_dir.empty();
        curr_dir = dir_enum.Next()) {
-    if (curr_dir.BaseName() == subdir)
+    if (curr_dir.BaseName() == subdir) {
       return true;
+    }
   }
   return false;
 }
@@ -722,8 +724,9 @@ DeviceRefPtr DeviceInfo::CreateDevice(
 // static
 bool DeviceInfo::GetLinkNameFromMessage(const net_base::RTNLMessage& msg,
                                         std::string* link_name) {
-  if (!msg.HasAttribute(IFLA_IFNAME))
+  if (!msg.HasAttribute(IFLA_IFNAME)) {
     return false;
+  }
 
   *link_name = msg.GetStringAttribute(IFLA_IFNAME);
   return true;
@@ -732,18 +735,22 @@ bool DeviceInfo::GetLinkNameFromMessage(const net_base::RTNLMessage& msg,
 bool DeviceInfo::IsRenamedBlockedDevice(const net_base::RTNLMessage& msg) {
   int interface_index = msg.interface_index();
   const Info* info = GetInfo(interface_index);
-  if (!info)
+  if (!info) {
     return false;
+  }
 
-  if (!info->device || info->device->technology() != Technology::kBlocked)
+  if (!info->device || info->device->technology() != Technology::kBlocked) {
     return false;
+  }
 
   std::string interface_name;
-  if (!GetLinkNameFromMessage(msg, &interface_name))
+  if (!GetLinkNameFromMessage(msg, &interface_name)) {
     return false;
+  }
 
-  if (interface_name == info->name)
+  if (interface_name == info->name) {
     return false;
+  }
 
   LOG(INFO) << __func__ << ": interface index " << interface_index
             << " renamed from " << info->name << " to " << interface_name;

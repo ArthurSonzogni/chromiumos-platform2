@@ -553,8 +553,9 @@ std::ostream& operator<<(std::ostream& out, const nl80211_iftype& it) {
 std::ostream& operator<<(std::ostream& out,
                          const std::vector<nl80211_iftype>& it) {
   out << "{ ";
-  for (const auto& i : it)
+  for (const auto& i : it) {
     out << i << ", ";
+  }
   out << "\b\b }";
   return out;
 }
@@ -565,8 +566,9 @@ std::ostream& operator<<(std::ostream& out, const IfaceLimit& il) {
 
 std::ostream& operator<<(std::ostream& out, const std::vector<IfaceLimit>& il) {
   out << "{ ";
-  for (const auto& c : il)
+  for (const auto& c : il) {
     out << c << ", ";
+  }
   out << "\b\b }";
   return out;
 }
@@ -579,8 +581,9 @@ std::ostream& operator<<(std::ostream& out, const ConcurrencyCombination& cc) {
 std::ostream& operator<<(std::ostream& out,
                          const std::vector<ConcurrencyCombination>& cc) {
   out << "{ ";
-  for (const auto& c : cc)
+  for (const auto& c : cc) {
     out << c << ", ";
+  }
   out << "\b\b }";
   return out;
 }

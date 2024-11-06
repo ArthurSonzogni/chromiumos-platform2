@@ -159,8 +159,9 @@ Nl80211Frame::Nl80211Frame(base::span<const uint8_t> raw_frame)
   const IEEE_80211::ieee80211_frame* frame =
       reinterpret_cast<const IEEE_80211::ieee80211_frame*>(frame_.data());
 
-  if (frame_.size() < sizeof(frame->hdr))
+  if (frame_.size() < sizeof(frame->hdr)) {
     return;
+  }
 
   mac_from_ =
       Nl80211AttributeMac::StringFromMacAddress(&frame->hdr.destination_mac[0]);

@@ -482,8 +482,9 @@ void P2PManager::HelpRegisterDerivedKeyValueStores(
 }
 
 bool P2PManager::SetAllowed(const bool& value, Error* error) {
-  if (allowed_ == value)
+  if (allowed_ == value) {
     return false;
+  }
 
   LOG(INFO) << __func__ << " Allowed set to " << std::boolalpha << value;
   allowed_ = value;
@@ -515,8 +516,9 @@ void P2PManager::CancelActionTimerAndPostResult(
 }
 
 void P2PManager::DeleteP2PDevice(P2PDeviceRefPtr p2p_dev) {
-  if (!p2p_dev)
+  if (!p2p_dev) {
     return;
+  }
 
   if (p2p_dev->iface_type() == LocalDevice::IfaceType::kP2PGO) {
     p2p_group_owners_.erase(p2p_dev->shill_id());

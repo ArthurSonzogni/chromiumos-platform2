@@ -1922,8 +1922,9 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
         LOG(ERROR) << "Failed to get supported cmd " << cmds_iter.GetId();
         return;
       }
-      if (cmd == NL80211_CMD_START_SCHED_SCAN)
+      if (cmd == NL80211_CMD_START_SCHED_SCAN) {
         sched_scan_supported_ = true;
+      }
     }
   }
 
@@ -2530,8 +2531,9 @@ void WiFi::UpdateScanStateAfterScanDone() {
 void WiFi::GetAndUseInterfaceCapabilities() {
   KeyValueStore caps;
 
-  if (!supplicant_interface_proxy_->GetCapabilities(&caps))
+  if (!supplicant_interface_proxy_->GetCapabilities(&caps)) {
     LOG(ERROR) << "Failed to obtain interface capabilities";
+  }
 
   ConfigureScanSSIDLimit(caps);
 }
@@ -2543,17 +2545,19 @@ void WiFi::ConfigureScanSSIDLimit(const KeyValueStore& caps) {
     max_ssids_per_scan_ =
         std::min(static_cast<int>(WPASupplicant::kMaxMaxSSIDsPerScan),
                  std::max(0, value));
-    if (max_ssids_per_scan_ != value)
+    if (max_ssids_per_scan_ != value) {
       SLOG(this, 2) << "MaxScanSSID trimmed to: " << max_ssids_per_scan_;
+    }
   } else {
     LOG(WARNING) << "Missing MaxScanSSID capability, using default value: "
                  << WPASupplicant::kDefaultMaxSSIDsPerScan;
     max_ssids_per_scan_ = WPASupplicant::kDefaultMaxSSIDsPerScan;
   }
 
-  if (max_ssids_per_scan_ <= 1)
+  if (max_ssids_per_scan_ <= 1) {
     LOG(WARNING) << "MaxScanSSID <= 1, scans will alternate between single "
                  << "hidden SSID and broadcast scan.";
+  }
 }
 
 void WiFi::ScanTask(bool is_active_scan) {
@@ -3866,8 +3870,9 @@ bool WiFi::GetWakeOnWiFiSupported(Error* /* error */) {
 void WiFi::SetPhyState(WiFiState::PhyState new_state,
                        WiFiState::ScanMethod new_method,
                        const char* reason) {
-  if (new_state == WiFiState::PhyState::kIdle)
+  if (new_state == WiFiState::PhyState::kIdle) {
     new_method = WiFiState::ScanMethod::kNone;
+  }
   if (new_state == WiFiState::PhyState::kConnected) {
     // The scan method shouldn't be changed by the connection process, so
     // we'll put a CHECK, here, to verify.  NOTE: this assumption is also
@@ -3925,8 +3930,9 @@ void WiFi::SetPhyState(WiFiState::PhyState new_state,
   }
 
   // Avoid reporting metrics if nothing changed.
-  if (!state_or_method_changed)
+  if (!state_or_method_changed) {
     return;
+  }
 
   if (old_scan_pending != new_scan_pending) {
     adaptor()->EmitBoolChanged(kScanningProperty, new_scan_pending);

@@ -22,8 +22,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static std::string ObjectID(const DBusAdaptor* d) {
-  if (d == nullptr)
+  if (d == nullptr) {
     return "(dbus_adaptor)";
+  }
   return d->dbus_path().value();
 }
 }  // namespace Logging

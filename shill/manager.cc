@@ -447,8 +447,9 @@ void Manager::InitializeProfiles() {
       this, storage_path_, DefaultProfile::kDefaultId, props_));
   // The default profile may fail to initialize if it's corrupted.
   // If so, recreate the default profile.
-  if (!default_profile->InitStorage(Profile::kCreateOrOpenExisting, nullptr))
+  if (!default_profile->InitStorage(Profile::kCreateOrOpenExisting, nullptr)) {
     CHECK(default_profile->InitStorage(Profile::kCreateNew, nullptr));
+  }
   // In case we created a new profile, initialize its default values,
   // and then save. This is required for properties such as
   // PortalDetector::kDefaultCheckPortalList to be initialized correctly.
@@ -985,8 +986,9 @@ RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error* /*error*/) {
 
 bool Manager::IsTechnologyInList(const std::string& technology_list,
                                  Technology tech) const {
-  if (technology_list.empty())
+  if (technology_list.empty()) {
     return false;
+  }
 
   Error error;
   std::vector<Technology> technologies;
@@ -1022,8 +1024,9 @@ bool Manager::IsServiceEphemeral(const ServiceConstRefPtr& service) const {
 bool Manager::IsTechnologyAutoConnectDisabled(Technology technology) const {
   if (!has_user_session_) {
     for (auto disabled_technology : kNoAutoConnectTechnologiesBeforeLoggedIn) {
-      if (technology == disabled_technology)
+      if (technology == disabled_technology) {
         return true;
+      }
     }
   }
   if (technology == Technology::kVPN &&
@@ -1155,8 +1158,9 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
   if (id == Technology::kWiFi && enabled_state) {
     std::vector<WiFiRefPtr> wifi_devices;
     for (auto& device : devices_) {
-      if (device->technology() != Technology::kWiFi)
+      if (device->technology() != Technology::kWiFi) {
         continue;
+      }
       auto dev = WiFiRefPtr(static_cast<WiFi*>(device.get()));
       wifi_devices.push_back(dev);
     }
@@ -1170,8 +1174,9 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
       std::move(callback), FROM_HERE,
       "Enable " + technology_name + " failed: "));
   for (auto& device : devices_) {
-    if (device->technology() != id)
+    if (device->technology() != id) {
       continue;
+    }
 
     ResultCallback aggregator_callback(
         base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
@@ -1213,8 +1218,9 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
   LOG(INFO) << "Device " << to_manage->link_name() << " registered.";
 
   for (const auto& device : devices_) {
-    if (to_manage == device)
+    if (to_manage == device) {
       return;
+    }
   }
   devices_.push_back(to_manage);
 
@@ -1435,8 +1441,9 @@ std::string Manager::GetDisconnectingWiFiOnEthernet(Error* /*error*/) {
 
 bool Manager::HasService(const ServiceRefPtr& service) {
   for (const auto& manager_service : services_) {
-    if (manager_service->serial_number() == service->serial_number())
+    if (manager_service->serial_number() == service->serial_number()) {
       return true;
+    }
   }
   return false;
 }
@@ -1643,8 +1650,9 @@ void Manager::RunTerminationActions(ResultCallback done_callback) {
 
 bool Manager::RunTerminationActionsAndNotifyMetrics(
     ResultCallback done_callback) {
-  if (termination_actions_.IsEmpty())
+  if (termination_actions_.IsEmpty()) {
     return false;
+  }
 
   RunTerminationActions(std::move(done_callback));
   return true;
@@ -1779,8 +1787,9 @@ void Manager::OnDarkResumeActionsComplete(const Error& error) {
 std::vector<DeviceRefPtr> Manager::FilterByTechnology(Technology tech) const {
   std::vector<DeviceRefPtr> found;
   for (const auto& device : devices_) {
-    if (device->technology() == tech)
+    if (device->technology() == tech) {
       found.push_back(device);
+    }
   }
   return found;
 }
@@ -1932,8 +1941,9 @@ void Manager::SortServicesTask() {
   EmitDefaultService();
   UpdateDefaultPhysicalService(new_physical);
   RefreshConnectionState();
-  if (ethernet_provider_)
+  if (ethernet_provider_) {
     ethernet_provider_->RefreshGenericEthernetService();
+  }
 
   AutoConnect();
   ApplyAlwaysOnVpn(new_physical);
@@ -2043,8 +2053,9 @@ void Manager::SetAlwaysOnVpn(const std::string& mode,
   }
 
   // Update VpnLockdown mode below if necessary.
-  if (!patchpanel_client_ || previous_mode == mode)
+  if (!patchpanel_client_ || previous_mode == mode) {
     return;
+  }
 
   if (mode == kAlwaysOnVpnModeStrict) {
     LOG(INFO) << "Starting VPN lockdown";
@@ -2250,8 +2261,9 @@ void Manager::ConnectToBestServicesForTechnologies(bool is_wifi) {
       // We have already started a connection for this technology.
       continue;
     }
-    if (service->explicitly_disconnected())
+    if (service->explicitly_disconnected()) {
       continue;
+    }
     connecting_technologies.insert(technology);
     if (!service->IsConnected() && !service->IsConnecting()) {
       // At first blush, it may seem that using Service::AutoConnect might
@@ -2384,8 +2396,9 @@ std::vector<std::string> Manager::AvailableTechnologies(Error* /*error*/) {
 std::vector<std::string> Manager::ConnectedTechnologies(Error* /*error*/) {
   std::set<std::string> unique_technologies;
   for (const auto& device : devices_) {
-    if (device->IsConnected())
+    if (device->IsConnected()) {
       unique_technologies.insert(device->GetTechnologyName());
+    }
   }
   return std::vector<std::string>(unique_technologies.begin(),
                                   unique_technologies.end());
@@ -2393,8 +2406,9 @@ std::vector<std::string> Manager::ConnectedTechnologies(Error* /*error*/) {
 
 bool Manager::IsTechnologyConnected(Technology technology) const {
   for (const auto& device : devices_) {
-    if (device->technology() == technology && device->IsConnected())
+    if (device->technology() == technology && device->IsConnected()) {
       return true;
+    }
   }
   return false;
 }
@@ -2408,8 +2422,9 @@ std::string Manager::DefaultTechnology(Error* /*error*/) {
 std::vector<std::string> Manager::EnabledTechnologies(Error* /*error*/) {
   std::set<std::string> unique_technologies;
   for (const auto& device : devices_) {
-    if (device->enabled())
+    if (device->enabled()) {
       unique_technologies.insert(device->GetTechnologyName());
+    }
   }
   return std::vector<std::string>(unique_technologies.begin(),
                                   unique_technologies.end());
@@ -3047,8 +3062,9 @@ bool Manager::SetAlwaysOnVpnPackage(const std::string& package_name,
 
 bool Manager::SetDNSProxyAddresses(const std::vector<std::string>& addrs,
                                    Error* error) {
-  if (props_.dns_proxy_addresses == addrs)
+  if (props_.dns_proxy_addresses == addrs) {
     return false;
+  }
 
   if (addrs.empty()) {
     ClearDNSProxyAddresses();
@@ -3091,8 +3107,9 @@ void Manager::ClearDNSProxyAddresses() {
 }
 
 void Manager::UseDNSProxy(const std::vector<std::string>& proxy_addrs) {
-  if (!running_)
+  if (!running_) {
     return;
+  }
 
   resolver_->SetDNSProxyAddresses(proxy_addrs);
 }
@@ -3103,11 +3120,13 @@ KeyValueStore Manager::GetDNSProxyDOHProviders(Error* /* error */) {
 
 bool Manager::SetDNSProxyDOHProviders(const KeyValueStore& providers,
                                       Error* error) {
-  if (error)
+  if (error) {
     error->Reset();
+  }
 
-  if (providers == props_.dns_proxy_doh_providers)
+  if (providers == props_.dns_proxy_doh_providers) {
     return false;
+  }
 
   for (const auto& [url, nameservers] : providers.properties()) {
     if (!net_base::HttpUrl().ParseFromString(url)) {
@@ -3196,8 +3215,9 @@ KeyValueStores Manager::GetWiFiInterfacePriorities(Error* error) {
 bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
                                       const KeyValueStore& properties,
                                       Error* error) {
-  if (error)
+  if (error) {
     error->Reset();
+  }
 
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
@@ -3252,8 +3272,9 @@ bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
 bool Manager::RemovePasspointCredentials(const std::string& profile_rpcid,
                                          const KeyValueStore& properties,
                                          Error* error) {
-  if (error)
+  if (error) {
     error->Reset();
+  }
 
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {

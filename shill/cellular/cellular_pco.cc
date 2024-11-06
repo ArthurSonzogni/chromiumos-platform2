@@ -43,29 +43,34 @@ constexpr uint8_t kPcoIei = 0x27;
 
 std::unique_ptr<CellularPco> CellularPco::CreateFromRawData(
     const std::vector<uint8_t>& raw_data) {
-  if (raw_data.size() < kMinNumOfOctets || raw_data.size() > kMaxNumOfOctets)
+  if (raw_data.size() < kMinNumOfOctets || raw_data.size() > kMaxNumOfOctets) {
     return nullptr;
+  }
 
-  if (raw_data[0] != kPcoIei)
+  if (raw_data[0] != kPcoIei) {
     return nullptr;
+  }
 
-  if (raw_data[1] != raw_data.size() - 2)
+  if (raw_data[1] != raw_data.size() - 2) {
     return nullptr;
+  }
 
   std::vector<Element> elements;
   const uint8_t* data_ptr = raw_data.data() + kPcoHeaderLength;
   size_t data_length = raw_data.size() - kPcoHeaderLength;
   while (data_length > 0) {
-    if (data_length < kElementHeaderLength)
+    if (data_length < kElementHeaderLength) {
       return nullptr;
+    }
 
     uint16_t element_id = (data_ptr[0] << 8) | data_ptr[1];
     size_t element_length = data_ptr[2];
     data_ptr += kElementHeaderLength;
     data_length -= kElementHeaderLength;
 
-    if (data_length < element_length)
+    if (data_length < element_length) {
       return nullptr;
+    }
 
     elements.emplace_back(
         element_id, std::vector<uint8_t>(data_ptr, data_ptr + element_length));
@@ -84,8 +89,9 @@ CellularPco::~CellularPco() = default;
 const CellularPco::Element* CellularPco::FindElement(
     uint16_t element_id) const {
   for (const Element& element : elements_) {
-    if (element.id == element_id)
+    if (element.id == element_id) {
       return &element;
+    }
   }
   return nullptr;
 }

@@ -42,24 +42,28 @@ bool DNSDomainFromDot(std::string_view dotted, std::string* out) {
   char ch;
 
   for (;;) {
-    if (!n)
+    if (!n) {
       break;
+    }
     ch = *buf++;
     --n;
     if (ch == '.') {
       // Don't allow empty labels per http://crbug.com/456391.
-      if (!labellen)
+      if (!labellen) {
         return false;
-      if (namelen + labellen + 1 > sizeof name)
+      }
+      if (namelen + labellen + 1 > sizeof name) {
         return false;
+      }
       name[namelen++] = static_cast<char>(labellen);
       memcpy(name + namelen, label, labellen);
       namelen += labellen;
       labellen = 0;
       continue;
     }
-    if (labellen >= sizeof label)
+    if (labellen >= sizeof label) {
       return false;
+    }
     if (!IsValidHostLabelCharacter(ch, labellen == 0)) {
       return false;
     }
@@ -68,18 +72,21 @@ bool DNSDomainFromDot(std::string_view dotted, std::string* out) {
 
   // Allow empty label at end of name to disable suffix search.
   if (labellen) {
-    if (namelen + labellen + 1 > sizeof name)
+    if (namelen + labellen + 1 > sizeof name) {
       return false;
+    }
     name[namelen++] = static_cast<char>(labellen);
     memcpy(name + namelen, label, labellen);
     namelen += labellen;
     labellen = 0;
   }
 
-  if (namelen + 1 > sizeof name)
+  if (namelen + 1 > sizeof name) {
     return false;
-  if (namelen == 0)  // Empty names e.g. "", "." are not valid.
+  }
+  if (namelen == 0) {  // Empty names e.g. "", "." are not valid.
     return false;
+  }
   name[namelen++] = 0;  // This is the root label (of length 0).
 
   *out = std::string(name, namelen);

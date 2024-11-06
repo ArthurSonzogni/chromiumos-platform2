@@ -59,36 +59,43 @@ int main(int argc, char* argv[]) {
   mobile_operator_info->AddDatabasePath(database_path);
   mobile_operator_info->Init();
 
-  if (!FLAGS_mccmnc.empty())
+  if (!FLAGS_mccmnc.empty()) {
     mobile_operator_info->UpdateMCCMNC(FLAGS_mccmnc);
+  }
 
   mobile_operator_info->IsHomeOperatorKnown();
 
-  if (!FLAGS_name.empty())
+  if (!FLAGS_name.empty()) {
     mobile_operator_info->UpdateOperatorName(FLAGS_name);
+  }
 
   mobile_operator_info->IsHomeOperatorKnown();
 
-  if (!FLAGS_iccid.empty())
+  if (!FLAGS_iccid.empty()) {
     mobile_operator_info->UpdateICCID(FLAGS_iccid);
+  }
 
   mobile_operator_info->IsHomeOperatorKnown();
 
-  if (!FLAGS_imsi.empty())
+  if (!FLAGS_imsi.empty()) {
     mobile_operator_info->UpdateIMSI(FLAGS_imsi);
+  }
 
   mobile_operator_info->IsHomeOperatorKnown();
 
-  if (!FLAGS_gid1.empty())
+  if (!FLAGS_gid1.empty()) {
     mobile_operator_info->UpdateGID1(FLAGS_gid1);
+  }
 
   mobile_operator_info->IsHomeOperatorKnown();
 
-  if (!FLAGS_serving_mccmnc.empty())
+  if (!FLAGS_serving_mccmnc.empty()) {
     mobile_operator_info->UpdateServingMCCMNC(FLAGS_serving_mccmnc);
+  }
 
-  if (!FLAGS_serving_name.empty())
+  if (!FLAGS_serving_name.empty()) {
     mobile_operator_info->UpdateServingOperatorName(FLAGS_serving_name);
+  }
 
   mobile_operator_info->IsServingMobileNetworkOperatorKnown();
 

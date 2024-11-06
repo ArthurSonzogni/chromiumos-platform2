@@ -185,15 +185,17 @@ void CarrierEntitlement::Reset() {
 std::unique_ptr<base::Value> CarrierEntitlement::BuildContentPayload(
     const Stringmap& params) {
   base::Value::Dict dict;
-  for (auto pair : params)
+  for (auto pair : params) {
     dict.Set(pair.first, pair.second);
+  }
 
   return std::make_unique<base::Value>(std::move(dict));
 }
 
 void CarrierEntitlement::SendResult(Result result) {
-  if (transport_)
+  if (transport_) {
     transport_.reset();
+  }
   dispatcher()->PostTask(FROM_HERE, base::BindOnce(check_cb_, result));
 }
 

@@ -154,8 +154,9 @@ CK_OBJECT_HANDLE Pkcs11DataStore::FindObject(CK_SESSION_HANDLE session_handle,
     LOG(ERROR) << "Key search failed: " << key_name;
     return CK_INVALID_HANDLE;
   }
-  if (count == 1)
+  if (count == 1) {
     return key_handle;
+  }
   return CK_INVALID_HANDLE;
 }
 

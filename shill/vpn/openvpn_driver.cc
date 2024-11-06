@@ -1230,8 +1230,9 @@ std::vector<std::string> OpenVPNDriver::GetCommandLineArgs() {
 
 void OpenVPNDriver::OnDefaultPhysicalServiceEvent(
     DefaultPhysicalServiceEvent event) {
-  if (!event_handler_)
+  if (!event_handler_) {
     return;
+  }
 
   // When this happens, it means the service is connecting but the management
   // server and the OpenVPN client have not been started yet. We don't need to

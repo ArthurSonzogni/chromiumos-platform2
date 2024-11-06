@@ -145,8 +145,9 @@ bool CanReportAdapterInfo(const Metrics::WiFiAdapterInfo& info) {
     if (item.vendor_id == info.vendor_id &&
         item.product_id == info.product_id &&
         (item.subsystem_id == info.subsystem_id ||
-         item.subsystem_id == Metrics::kWiFiStructuredMetricsErrorValue))
+         item.subsystem_id == Metrics::kWiFiStructuredMetricsErrorValue)) {
       return true;
+    }
   }
   return false;
 }

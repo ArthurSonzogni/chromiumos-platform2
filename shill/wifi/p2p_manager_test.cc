@@ -678,8 +678,9 @@ TEST_F(P2PManagerTest, GroupStarted_IgnoreDuplicates) {
             p2p_device);
 
   EXPECT_CALL(*p2p_device, GroupStarted(_)).Times(0);
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 10; i++) {
     PostGroupStarted(properties);
+  }
 
   EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
             nullptr);
@@ -712,8 +713,9 @@ TEST_F(P2PManagerTest, GroupStarted_IgnoreMissingDevice) {
             p2p_device);
 
   EXPECT_CALL(*p2p_device, GroupStarted(_)).Times(0);
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 10; i++) {
     PostGroupStarted(kDefaultShillId + 1);
+  }
 
   EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
             nullptr);
@@ -740,8 +742,9 @@ TEST_F(P2PManagerTest, GroupStarted_IgnoreMissingProperties) {
             p2p_device);
 
   EXPECT_CALL(*p2p_device, GroupStarted(_)).Times(0);
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 10; i++) {
     PostGroupStarted(properties);
+  }
 
   EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
             p2p_device);
@@ -856,8 +859,9 @@ TEST_F(P2PManagerTest, GroupFinished_IgnoreDuplicates) {
             nullptr);
 
   EXPECT_CALL(*p2p_device, GroupFinished(_)).Times(0);
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 10; i++) {
     PostGroupFinished(properties);
+  }
 
   EXPECT_EQ(p2p_manager_
                 ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
@@ -888,8 +892,9 @@ TEST_F(P2PManagerTest, GroupFinished_IgnoreMissingDevice) {
             p2p_device);
 
   EXPECT_CALL(*p2p_device, GroupFinished(_)).Times(0);
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 10; i++) {
     PostGroupFinished(kDefaultShillId + 1);
+  }
 
   EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
             nullptr);
@@ -916,8 +921,9 @@ TEST_F(P2PManagerTest, GroupFinished_IgnoreMissingProperties) {
             p2p_device);
 
   EXPECT_CALL(*p2p_device, GroupFinished(_)).Times(0);
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 10; i++) {
     PostGroupFinished(properties);
+  }
 
   EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
             p2p_device);
@@ -961,8 +967,9 @@ TEST_F(P2PManagerTest, GroupFormationFailure_IgnoreDuplicates) {
             nullptr);
 
   EXPECT_CALL(*p2p_device, GroupFormationFailure(_)).Times(0);
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 10; i++) {
     PostGroupFormationFailure(reason);
+  }
 
   EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
             nullptr);
@@ -993,8 +1000,9 @@ TEST_F(P2PManagerTest, GroupFormationFailure_IgnoreMissingDevice) {
             p2p_device);
 
   EXPECT_CALL(*p2p_device, GroupFormationFailure(_)).Times(0);
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 10; i++) {
     PostGroupFormationFailure(reason);
+  }
 
   EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
             nullptr);

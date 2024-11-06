@@ -27,8 +27,9 @@ const char PendingActivationStore::kStorageFileName[] =
 PendingActivationStore::PendingActivationStore() = default;
 
 PendingActivationStore::~PendingActivationStore() {
-  if (storage_)
+  if (storage_) {
     storage_->Flush();  // Make certain that everything is persisted.
+  }
 }
 
 namespace {
@@ -93,12 +94,14 @@ bool PendingActivationStore::InitStorage(const base::FilePath& storage_path) {
   bool already_exists = !storage->IsEmpty();
   if (!storage->Open()) {
     LOG(ERROR) << "Failed to open file at '" << path.value() << "'";
-    if (already_exists)
+    if (already_exists) {
       storage->MarkAsCorrupted();
+    }
     return false;
   }
-  if (!already_exists)
+  if (!already_exists) {
     storage->SetHeader("Identifiers pending cellular activation.");
+  }
   storage_ = std::move(storage);
   return true;
 }

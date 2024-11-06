@@ -117,8 +117,9 @@ void CellularServiceProvider::CreateServicesFromProfile(
   // Cellular services associated with a Device are loaded in
   // LoadServicesForDevice when the Device is created. We store |profile| here
   // so that we always use the default profile (see comment in header).
-  if (!profile_)
+  if (!profile_) {
     profile_ = profile;
+  }
 }
 
 ServiceRefPtr CellularServiceProvider::FindSimilarService(
@@ -147,8 +148,9 @@ ServiceRefPtr CellularServiceProvider::GetService(const KeyValueStore& args,
   std::string iccid = args.Lookup<std::string>(kIccidProperty,
                                                /*default_value=*/"");
   CellularServiceRefPtr service = FindService(iccid);
-  if (service)
+  if (service) {
     return service;
+  }
   std::string eid = args.Lookup<std::string>(kEidProperty,
                                              /*default_value=*/"");
   SLOG(2) << "Creating new cellular service with iccid: " << iccid
@@ -212,11 +214,13 @@ void CellularServiceProvider::RemoveNonDeviceServices(Cellular* device) {
   SLOG(2) << __func__ << " Device ICCID: " << device->iccid();
   std::vector<CellularServiceRefPtr> services_to_remove;
   for (CellularServiceRefPtr& service : services_) {
-    if (!device->HasIccid(service->iccid()))
+    if (!device->HasIccid(service->iccid())) {
       services_to_remove.push_back(service);
+    }
   }
-  for (CellularServiceRefPtr& service : services_to_remove)
+  for (CellularServiceRefPtr& service : services_to_remove) {
     RemoveService(service);
+  }
 }
 
 CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
@@ -271,12 +275,14 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
       SLOG(2) << "Cellular service exists for ICCID: " << service_iccid;
       service->SetDevice(device);
     }
-    if (service_iccid == iccid)
+    if (service_iccid == iccid) {
       active_service = service;
+    }
   }
 
-  if (active_service)
+  if (active_service) {
     return active_service;
+  }
 
   // If a Service was never saved, it may still exist in |services_|.
   active_service = FindService(iccid);
@@ -307,14 +313,16 @@ void CellularServiceProvider::LoadServicesForSecondarySim(
 
 void CellularServiceProvider::UpdateServices(Cellular* device) {
   SLOG(2) << __func__;
-  for (CellularServiceRefPtr& service : services_)
+  for (CellularServiceRefPtr& service : services_) {
     service->SetDevice(device);
+  }
 }
 
 void CellularServiceProvider::RemoveServices() {
   SLOG(1) << __func__;
-  while (!services_.empty())
+  while (!services_.empty()) {
     RemoveService(services_.back());
+  }
 }
 
 CellularServiceRefPtr CellularServiceProvider::FindService(
@@ -322,8 +330,9 @@ CellularServiceRefPtr CellularServiceProvider::FindService(
   const auto iter = std::find_if(
       services_.begin(), services_.end(),
       [iccid](const auto& service) { return service->iccid() == iccid; });
-  if (iter != services_.end())
+  if (iter != services_.end()) {
     return *iter;
+  }
   return nullptr;
 }
 
@@ -354,8 +363,9 @@ void CellularServiceProvider::RemoveService(CellularServiceRefPtr service) {
 
 CellularService* CellularServiceProvider::GetActiveService() {
   for (CellularServiceRefPtr& service : services_) {
-    if (service->IsActive(nullptr))
+    if (service->IsActive(nullptr)) {
       return service.get();
+    }
   }
   return nullptr;
 }
@@ -390,8 +400,9 @@ bool CellularServiceProvider::ModemFirmwareSupportsTethering(
     SLOG(3) << __func__ << " cellular device doesn't exist";
     return false;
   }
-  if (experimental_tethering)
+  if (experimental_tethering) {
     return true;
+  }
 
   return cellular_device->FirmwareSupportsTethering();
 }
@@ -400,8 +411,9 @@ bool CellularServiceProvider::VariantSupportsTethering(
     bool experimental_tethering) {
   // For now, the flag will allow all variants. If there is a need to block a
   // variant under any conditions, this has to be modified.
-  if (experimental_tethering)
+  if (experimental_tethering) {
     return true;
+  }
   if (!variant_.has_value()) {
     SLOG(3) << __func__ << " reading modem firmware variant";
     std::string temp_variant;

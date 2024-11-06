@@ -494,8 +494,9 @@ void P2PDevice::DeleteService() {
 }
 
 void P2PDevice::SetState(P2PDeviceState state) {
-  if (state_ == state)
+  if (state_ == state) {
     return;
+  }
   LOG(INFO) << log_name() << ": State changed: " << P2PDeviceStateName(state_)
             << " -> " << P2PDeviceStateName(state);
   state_ = state;

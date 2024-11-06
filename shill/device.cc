@@ -207,8 +207,9 @@ void Device::Reset(ResultCallback callback) {
 }
 
 bool Device::IsConnected() const {
-  if (selected_service_)
+  if (selected_service_) {
     return selected_service_->IsConnected();
+  }
   return false;
 }
 
@@ -617,8 +618,9 @@ void Device::OnEnabledStateChanged(ResultCallback callback,
     enabled_pending_ = enabled_;
   }
 
-  if (!callback.is_null())
+  if (!callback.is_null()) {
     std::move(callback).Run(error);
+  }
 }
 
 void Device::UpdateEnabledState() {
@@ -681,8 +683,9 @@ void Device::SetEnabledChecked(bool enable,
       manager_->UpdateDevice(this);
     }
 
-    if (!callback.is_null())
+    if (!callback.is_null()) {
       std::move(callback).Run(Error(Error::kSuccess));
+    }
     return;
   }
 
@@ -739,8 +742,9 @@ void Device::BringNetworkInterfaceDown() {
   DCHECK(implicit_network_->interface_index() == interface_index());
 
   // If fixed_ip_params is true, we don't manipulate the interface state.
-  if (!implicit_network_->fixed_ip_params())
+  if (!implicit_network_->fixed_ip_params()) {
     rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
+  }
 }
 
 ControlInterface* Device::control_interface() const {
