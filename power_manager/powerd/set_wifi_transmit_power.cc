@@ -181,6 +181,7 @@ WirelessDriver GetWirelessDriverType(const std::string& device_name) {
       {"rtw89_8852ae", WirelessDriver::RTW89},
       {"rtw89_8852ce", WirelessDriver::RTW89},
       {"rtw89_8852be", WirelessDriver::RTW89},
+      {"rtw89_8852bte", WirelessDriver::RTW89},
       {"mt7921e", WirelessDriver::MTK},
       {"mt7921s", WirelessDriver::MTK},
       {"mt7925e", WirelessDriver::MTK},
