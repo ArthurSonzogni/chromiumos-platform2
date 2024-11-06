@@ -4,7 +4,9 @@
 
 #include "ml_core/cacher/utils.h"
 
+#include <algorithm>
 #include <string>
+#include <string_view>
 
 #include <base/files/dir_reader_posix.h>
 #include <base/files/file_path.h>
@@ -17,6 +19,7 @@ namespace {
 const char kPrebuiltOpenCLCacheDir[] = "cl_cache";
 constexpr size_t kProcModulesMaxFileSize = 65536;
 const base::FilePath kProcModulesPath("/proc/modules");
+constexpr std::string_view kNpuModuleNameList[] = {"intel_vpu", "mtk_apusys"};
 }  // namespace
 
 namespace cros {
@@ -48,12 +51,18 @@ bool DirIsEmpty(const base::FilePath& source_dir) {
 }
 
 bool NPUIsReady() {
-  std::string contents;
   // Cache the value.
-  static bool npu_is_ready =
-      base::ReadFileToStringWithMaxSize(kProcModulesPath, &contents,
-                                        kProcModulesMaxFileSize) &&
-      contents.find("intel_vpu") != std::string::npos;
+  static const bool npu_is_ready = [] {
+    std::string contents;
+    if (!base::ReadFileToStringWithMaxSize(kProcModulesPath, &contents,
+                                           kProcModulesMaxFileSize)) {
+      return false;
+    }
+    return std::ranges::any_of(
+        kNpuModuleNameList, [&contents](const std::string_view module_name) {
+          return contents.find(module_name) != std::string::npos;
+        });
+  }();
   return npu_is_ready;
 }
 
