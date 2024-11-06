@@ -857,8 +857,12 @@ absl::Status FilePlugin::UpdateBPFMapForPathInodes(
         userhash_inodes_map_[optionalUserhash.value()].push_back(bpfMapKey);
       }
       // Log success message for the current path
-      LOG(INFO) << "Successfully added entry to BPF map for path " << path
-                << ". Inode: " << bpfMapKey.inode_id
+      // DO NOT CHANGE - secagentd.FileEvent.* tast tests depend on this
+      // specific string. Changing this string will likely break integration
+      // tests.
+      LOG(INFO) << "FileEvents: Now monitoring TYPE: "
+                << pb::SensitiveFileType_Name(pathInfo.fileType)
+                << " path:" << path << ". Inode: " << bpfMapKey.inode_id
                 << ", Device ID: " << bpfMapKey.dev_id;
     }
   }
