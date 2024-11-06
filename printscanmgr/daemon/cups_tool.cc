@@ -119,8 +119,9 @@ int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
 // Translates a return code from lpadmin to an AddPrinterResult value.
 AddPrinterResult LpadminReturnCodeToAddPrinterResult(int return_code,
                                                      bool autoconf) {
-  if (return_code != 0)
+  if (return_code != 0) {
     LOG(WARNING) << "lpadmin failed: " << return_code;
+  }
 
   switch (return_code) {
     case 0:  // OK
@@ -160,8 +161,9 @@ AddPrinterResult LpadminReturnCodeToAddPrinterResult(int return_code,
 bool IppEverywhereURI(const std::string& uri) {
   static const char* const kValidSchemes[] = {"ipp://", "ipps://", "ippusb://"};
   for (const char* scheme : kValidSchemes) {
-    if (base::StartsWith(uri, scheme, base::CompareCase::INSENSITIVE_ASCII))
+    if (base::StartsWith(uri, scheme, base::CompareCase::INSENSITIVE_ASCII)) {
       return true;
+    }
   }
 
   return false;
