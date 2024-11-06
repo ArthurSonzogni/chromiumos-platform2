@@ -79,8 +79,9 @@ class AndroidOciWrapperTest : public ::testing::Test {
     std::vector<std::string> argv;
     argv.push_back(AndroidOciWrapper::kRunOciPath);
     argv.push_back(AndroidOciWrapper::kRunOciLogging);
-    if (forceful)
+    if (forceful) {
       argv.push_back(AndroidOciWrapper::kRunOciKillSignal);
+    }
     argv.push_back(AndroidOciWrapper::kRunOciKillCommand);
     argv.push_back(AndroidOciWrapper::kContainerId);
     EXPECT_CALL(system_utils_, LaunchAndWait(argv, _))

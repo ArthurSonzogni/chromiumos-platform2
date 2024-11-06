@@ -145,8 +145,9 @@ bool DevModeUnblockBroker::IsDevModeBlocked() {
     std::string block_devmode_sysfs;
     base::ReadFileToString(rw_vpd_block_devmode_path, &block_devmode_sysfs);
     LOG(INFO) << "block_devmode_sysfs " << block_devmode_sysfs;
-    if (block_devmode_sysfs == "1")
+    if (block_devmode_sysfs == "1") {
       return true;
+    }
   }
 
   std::optional<int> block_devmode_system = crossystem_->VbGetSystemPropertyInt(
@@ -210,14 +211,16 @@ void DevModeUnblockBroker::UnblockDevModeVpdFwmpIfReady(
             << " DevModeUnblocked: " << dev_mode_unblocked_;
   // Dev mode is already unblocked
   if (dev_mode_unblocked_) {
-    if (!completion.is_null())
+    if (!completion.is_null()) {
       std::move(completion).Run(brillo::ErrorPtr());
+    }
     return;
   }
   if (awaiting_unblock_init_state_determination_ ||
       awaiting_unblock_enrollment_ || awaiting_unblock_carrier_lock_) {
-    if (!completion.is_null())
+    if (!completion.is_null()) {
       std::move(completion).Run(brillo::ErrorPtr());
+    }
     return;
   }
   UnblockDevModeInFwmp(std::move(completion));
@@ -339,8 +342,9 @@ void DevModeUnblockBroker::UnblockDevModeInVpd(CompletionCallback completion) {
 }
 
 void DevModeUnblockBroker::UpdateVpdDevModeUnblockResult(bool success) {
-  if (success)
+  if (success) {
     dev_mode_unblocked_ = true;
+  }
 }
 
 void DevModeUnblockBroker::HandleVpdDevModeUnblockResult(
@@ -351,8 +355,9 @@ void DevModeUnblockBroker::HandleVpdDevModeUnblockResult(
   // Update when block_devmode is cleared successfully in FWMP and VPD
   UpdateVpdDevModeUnblockResult(success);
 
-  if (completion.is_null())
+  if (completion.is_null()) {
     return;
+  }
 
   if (success || ignore_error) {
     std::move(completion).Run(brillo::ErrorPtr());

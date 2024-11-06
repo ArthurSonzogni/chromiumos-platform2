@@ -99,12 +99,14 @@ bool DeviceIdentifierGenerator::ParseMachineInfo(
        pair != pairs.end(); ++pair) {
     std::string name;
     base::TrimString(pair->first, kTrimChars, &name);
-    if (name.empty())
+    if (name.empty()) {
       continue;
+    }
 
     // Use the first pair present in the input.
-    if (params->find(name) != params->end())
+    if (params->find(name) != params->end()) {
       continue;
+    }
 
     std::string value;
     base::TrimString(pair->second, kTrimChars, &value);

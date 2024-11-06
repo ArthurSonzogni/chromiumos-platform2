@@ -603,8 +603,9 @@ class SessionManagerImplTest : public ::testing::Test,
           "ARC_SIGNED_IN=" + std::to_string(arc_signed_in_),
       });
 
-      if (arc_generate_pai_)
+      if (arc_generate_pai_) {
         result.emplace_back("ARC_GENERATE_PAI=1");
+      }
 
       if (arc_lcd_density_ >= 0) {
         result.emplace_back(
@@ -915,8 +916,9 @@ class SessionManagerImplTest : public ::testing::Test,
   void VerifyAndClearExpectations() {
     Mock::VerifyAndClearExpectations(device_policy_store_);
     Mock::VerifyAndClearExpectations(device_policy_service_);
-    for (auto& entry : user_policy_services_)
+    for (auto& entry : user_policy_services_) {
       Mock::VerifyAndClearExpectations(entry.second);
+    }
     Mock::VerifyAndClearExpectations(init_controller_);
     Mock::VerifyAndClearExpectations(&manager_);
     Mock::VerifyAndClearExpectations(&metrics_);

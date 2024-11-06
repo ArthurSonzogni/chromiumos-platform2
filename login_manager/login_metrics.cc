@@ -89,13 +89,15 @@ bool LoginMetrics::HasRecordedChromeExec() {
 }
 
 void LoginMetrics::StartTrackingArcUseTime() {
-  if (arc_cumulative_use_time_)
+  if (arc_cumulative_use_time_) {
     arc_cumulative_use_time_->Start();
+  }
 }
 
 void LoginMetrics::StopTrackingArcUseTime() {
-  if (arc_cumulative_use_time_)
+  if (arc_cumulative_use_time_) {
     arc_cumulative_use_time_->Stop();
+  }
 }
 
 void LoginMetrics::SendInvalidPolicyFilesStatus(
@@ -164,17 +166,21 @@ void LoginMetrics::SendDevicePolicyFilesMetrics(
 // respectively in normal mode. In developer mode they are 3, 4 and 5.
 int LoginMetrics::LoginUserTypeCode(bool dev_mode, bool guest, bool owner) {
   if (!dev_mode) {
-    if (guest)
+    if (guest) {
       return GUEST;
-    if (owner)
+    }
+    if (owner) {
       return OWNER;
+    }
     return OTHER;
   }
   // If we get here, we're in dev mode.
-  if (guest)
+  if (guest) {
     return DEV_GUEST;
-  if (owner)
+  }
+  if (owner) {
     return DEV_OWNER;
+  }
   return DEV_OTHER;
 }
 

@@ -89,8 +89,9 @@ bool PolicyKey::PopulateFromBuffer(const std::vector<uint8_t>& public_key_der) {
 
 bool PolicyKey::PopulateFromKeypair(crypto::RSAPrivateKey* pair) {
   std::vector<uint8_t> public_key_der;
-  if (pair && pair->ExportPublicKey(&public_key_der))
+  if (pair && pair->ExportPublicKey(&public_key_der)) {
     return PopulateFromBuffer(public_key_der);
+  }
   LOG(ERROR) << "Failed to export public key from key pair";
   return false;
 }

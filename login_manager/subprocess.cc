@@ -151,8 +151,9 @@ bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
 
 void Subprocess::KillEverything(int signal) {
   DCHECK(pid_.has_value());
-  if (system_->kill(-pid_.value(), desired_uid_, signal) == 0)
+  if (system_->kill(-pid_.value(), desired_uid_, signal) == 0) {
     return;
+  }
 
   // If we failed to kill the process group (maybe it doesn't exist yet because
   // the forked process hasn't had a chance to call setsid()), just kill the

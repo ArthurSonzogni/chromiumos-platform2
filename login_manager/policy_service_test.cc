@@ -70,14 +70,18 @@ class PolicyServiceTest : public testing::Test {
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& key_signature) {
     policy_proto_.Clear();
-    if (!data.empty())
+    if (!data.empty()) {
       policy_proto_.set_policy_data(BlobToString(data));
-    if (!signature.empty())
+    }
+    if (!signature.empty()) {
       policy_proto_.set_policy_data_signature(BlobToString(signature));
-    if (!key.empty())
+    }
+    if (!key.empty()) {
       policy_proto_.set_new_public_key(BlobToString(key));
-    if (!key_signature.empty())
+    }
+    if (!key_signature.empty()) {
       policy_proto_.set_new_public_key_signature(BlobToString(key_signature));
+    }
   }
 
   void ExpectVerifyAndSetPolicy(Sequence* sequence) {
@@ -525,8 +529,9 @@ class PolicyServiceNamespaceTest : public testing::Test {
   // error.
   std::string RetrievePolicy(const PolicyNamespace& ns) {
     std::vector<uint8_t> policy_blob;
-    if (!service_->Retrieve(ns, &policy_blob))
+    if (!service_->Retrieve(ns, &policy_blob)) {
       return std::string();
+    }
     return BlobToPolicyValue(policy_blob);
   }
 
@@ -534,8 +539,9 @@ class PolicyServiceNamespaceTest : public testing::Test {
   // an empty string on error.
   std::string LoadPolicyFromFile(const base::FilePath& policy_path) {
     std::string policy_blob;
-    if (!base::ReadFileToString(policy_path, &policy_blob))
+    if (!base::ReadFileToString(policy_path, &policy_blob)) {
       return std::string();
+    }
     return BlobToPolicyValue(StringToBlob(policy_blob));
   }
 

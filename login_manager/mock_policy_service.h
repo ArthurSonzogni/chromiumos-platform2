@@ -61,10 +61,11 @@ class MockPolicyService : public PolicyService {
   class ExpectingErrorHandler {
    public:
     explicit ExpectingErrorHandler(bool expect_match) {
-      if (expect_match)
+      if (expect_match) {
         EXPECT_CALL(*this, HandleErrorInternal(testing::IsNull()));
-      else
+      } else {
         EXPECT_CALL(*this, HandleErrorInternal(testing::NotNull()));
+      }
     }
     ExpectingErrorHandler(const ExpectingErrorHandler&) = delete;
     ExpectingErrorHandler& operator=(const ExpectingErrorHandler&) = delete;

@@ -32,8 +32,9 @@ namespace login_manager {
 std::vector<std::string> GetSmallCoreCpuIdsFromAttr(
     const base::FilePath& cpu_bus_dir, std::string_view attribute) {
   base::FilePath cpu0_attr_file = cpu_bus_dir.Append("cpu0").Append(attribute);
-  if (!base::PathExists(cpu0_attr_file))
+  if (!base::PathExists(cpu0_attr_file)) {
     return {};
+  }
 
   // Gets attribute values through traversing the attribute of each cpu, and
   // stores them into a map.
@@ -62,8 +63,9 @@ std::vector<std::string> GetSmallCoreCpuIdsFromAttr(
 
   // If the number of attribute value is 1, the cpu arch is not hybrid, the
   // small core cpu id list is empty.
-  if (attr_to_cpu_ids_map.size() <= 1)
+  if (attr_to_cpu_ids_map.size() <= 1) {
     return {};
+  }
 
   auto it = attr_to_cpu_ids_map.begin();
   std::vector<std::string> small_cpu_ids = it->second;
@@ -121,8 +123,9 @@ bool ConfigureNonUrgentCpuset(brillo::CrosConfigInterface* cros_config) {
   // specified in cros_config.
   std::vector<std::string> ecpu_ids =
       CalculateSmallCoreCpusIfHybrid(base::FilePath(kCpuBusDir));
-  if (ecpu_ids.empty())
+  if (ecpu_ids.empty()) {
     return false;
+  }
 
   std::string ecpu_mask = base::JoinString(ecpu_ids, ",");
   LOG(INFO) << "The board has hybrid arch cpu, the non-urgent cpuset is "

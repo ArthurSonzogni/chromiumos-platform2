@@ -60,8 +60,9 @@ void InitPolicyFetchResponse(const std::string& policy_value_str,
 
   policy_proto->Clear();
   policy_proto->set_policy_data(policy_data_str);
-  if (!signature.empty())
+  if (!signature.empty()) {
     policy_proto->set_policy_data_signature(signature);
+  }
 }
 
 }  // namespace

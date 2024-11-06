@@ -38,8 +38,9 @@ UserPolicyService::~UserPolicyService() = default;
 
 void UserPolicyService::PersistKeyCopy() {
   // Create a copy at |key_copy_path_| that is readable by chronos.
-  if (key_copy_path_.empty())
+  if (key_copy_path_.empty()) {
     return;
+  }
   if (scoped_policy_key_->IsPopulated()) {
     base::FilePath dir(key_copy_path_.DirName());
     base::CreateDirectory(dir);
@@ -90,8 +91,9 @@ void UserPolicyService::Store(const PolicyNamespace& ns,
 }
 
 void UserPolicyService::OnKeyPersisted(bool status) {
-  if (status)
+  if (status) {
     PersistKeyCopy();
+  }
   // Only notify the delegate after writing the copy, so that chrome can find
   // the file after being notified that the key is ready.
   PolicyService::OnKeyPersisted(status);

@@ -47,20 +47,23 @@ bool ChildExitDispatcher::OnSigChld(const struct signalfd_siginfo& sig_info) {
     memset(&info, 0, sizeof(info));
     int result = waitid(P_ALL, 0, &info, WEXITED | WNOHANG);
     if (result != 0) {
-      if (errno != ECHILD)
+      if (errno != ECHILD) {
         PLOG(FATAL) << "waitid failed";
+      }
       break;
     }
-    if (info.si_pid == 0)
+    if (info.si_pid == 0) {
       break;
+    }
     // Before calling Dispatch(), check if this class is still alive.
     // If not, do not call Dispatch() to avoid use-after-free.
     // The situation happens when this instance is destroyed in HandleExit().
     // Note that this still consumes all pending children even in the case
     // for consistent behavior.
     // TODO(crbug.com/1053782): Migrate to libbrillo library.
-    if (ptr)
+    if (ptr) {
       Dispatch(info);
+    }
   }
   // Continue listening to SIGCHLD
   return false;

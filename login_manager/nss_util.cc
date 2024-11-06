@@ -99,8 +99,9 @@ std::unique_ptr<NssUtil> NssUtil::Create() {
 const uint16_t NssUtilImpl::kKeySizeInBits = 2048;
 
 NssUtilImpl::NssUtilImpl() {
-  if (setenv("NSS_SDB_USE_CACHE", "no", 1) == -1)
+  if (setenv("NSS_SDB_USE_CACHE", "no", 1) == -1) {
     PLOG(WARNING) << "Can't set NSS_SDB_USE_CACHE=no in the environment!";
+  }
   crypto::EnsureNSSInit();
 }
 
@@ -117,8 +118,9 @@ bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8_t>& blob) {
   spki_der.len = blob.size();
   ScopedCERTSubjectPublicKeyInfo spki(
       SECKEY_DecodeDERSubjectPublicKeyInfo(&spki_der));
-  if (!spki)
+  if (!spki) {
     return false;
+  }
 
   ScopedSECKEYPublicKey public_key(SECKEY_ExtractPublicKey(spki.get()));
   return static_cast<bool>(public_key);

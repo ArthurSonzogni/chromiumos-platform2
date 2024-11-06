@@ -34,8 +34,9 @@ ACTION_TEMPLATE(MovePointee,
 
 namespace {
 void UnblockAtInit(brillo::ErrorPtr error) {
-  if (!error)
+  if (!error) {
     return;
+  }
   const std::string name = error->GetCode();
   const std::string msg = error->GetMessage();
   DVLOG(1) << "DBus Error: " << name;

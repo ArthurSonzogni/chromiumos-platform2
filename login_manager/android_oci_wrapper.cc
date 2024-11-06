@@ -44,8 +44,9 @@ AndroidOciWrapper::AndroidOciWrapper(SystemUtils* system_utils,
 AndroidOciWrapper::~AndroidOciWrapper() = default;
 
 bool AndroidOciWrapper::HandleExit(const siginfo_t& status) {
-  if (!container_pid_ || status.si_pid != container_pid_)
+  if (!container_pid_ || status.si_pid != container_pid_) {
     return false;
+  }
 
   LOG(INFO) << "Android container " << status.si_pid << " exited with "
             << GetExitDescription(status);
@@ -56,14 +57,16 @@ bool AndroidOciWrapper::HandleExit(const siginfo_t& status) {
 }
 
 void AndroidOciWrapper::RequestJobExit(ArcContainerStopReason reason) {
-  if (!container_pid_)
+  if (!container_pid_) {
     return;
+  }
 
   exit_reason_ = reason;
 
   if (stateful_mode_ == StatefulMode::STATEFUL) {
-    if (RequestTermination())
+    if (RequestTermination()) {
       return;
+    }
   }
 
   std::vector<std::string> argv = {kRunOciPath, kRunOciLogging,
@@ -87,16 +90,18 @@ void AndroidOciWrapper::EnsureJobExit(base::TimeDelta timeout) {
   pid_t pid;
   if (GetContainerPID(&pid) && !system_utils_->ProcessIsGone(pid, timeout)) {
     LOG(INFO) << "Killing container " << pid;
-    if (system_utils_->kill(pid, -1, SIGKILL))
+    if (system_utils_->kill(pid, -1, SIGKILL)) {
       PLOG(ERROR) << "Failed to kill container " << pid;
+    }
 
     // Reap container process here. run_oci uses kill(2) to detect whether the
     // process is gone, so reap it here to avoid kernel telling run_oci that
     // the process is still there. We killed |pid| just now so we won't need
     // more than 1s to reap it, but I'll give it 5s because this failure is not
     // recoverable until next reboot.
-    if (!system_utils_->ProcessIsGone(pid, base::Seconds(5)))
+    if (!system_utils_->ProcessIsGone(pid, base::Seconds(5))) {
       LOG(ERROR) << "Container process " << pid << " is still here";
+    }
   }
 
   CleanUpContainer();
@@ -127,10 +132,11 @@ bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
   int status = -1;
   pid_t result = system_utils_->Wait(pid, base::Seconds(90), &status);
   if (result != pid) {
-    if (result)
+    if (result) {
       PLOG(ERROR) << "Failed to wait on run_oci exit";
-    else
+    } else {
       LOG(ERROR) << "Timed out to wait on run_oci exit";
+    }
 
     // We assume libcontainer won't create a new process group for init process,
     // so we can use run_oci's PID as the PGID to kill all processes in the
@@ -189,8 +195,9 @@ bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
 }
 
 bool AndroidOciWrapper::GetContainerPID(pid_t* pid_out) const {
-  if (!container_pid_)
+  if (!container_pid_) {
     return false;
+  }
 
   *pid_out = container_pid_;
   return true;
@@ -207,20 +214,24 @@ void AndroidOciWrapper::SetStatefulMode(StatefulMode mode) {
 void AndroidOciWrapper::ExecuteRunOciToStartContainer(
     const std::vector<std::string>& env) {
   // Clear signal mask.
-  if (!system_utils_->ChangeBlockedSignals(SIG_SETMASK, std::vector<int>()))
+  if (!system_utils_->ChangeBlockedSignals(SIG_SETMASK, std::vector<int>())) {
     PLOG(FATAL) << "Failed to clear blocked signals";
+  }
 
   base::FilePath container_absolute_path =
       containers_directory_.Append(kContainerPath);
-  if (system_utils_->chdir(container_absolute_path))
+  if (system_utils_->chdir(container_absolute_path)) {
     PLOG(FATAL) << "Failed to change directory";
+  }
 
   // Close all FDs inherited from session manager.
-  if (!CloseOpenedFiles())
+  if (!CloseOpenedFiles()) {
     PLOG(FATAL) << "Failed to close all fds";
+  }
 
-  if (system_utils_->setsid() < 0)
+  if (system_utils_->setsid() < 0) {
     PLOG(FATAL) << "Failed to create a new session";
+  }
 
   constexpr const char* const args[] = {kRunOciPath,       kRunOciLogging,
                                         kRunOciConfigPath, kRunOciStartCommand,
@@ -241,11 +252,14 @@ void AndroidOciWrapper::ExecuteRunOciToStartContainer(
 
   std::vector<const char*> cstr_env;
   cstr_env.reserve(env.size() + 1);
-  for (const std::string& keyval : env)
+  for (const std::string& keyval : env) {
     cstr_env.emplace_back(keyval.c_str());
+  }
   cstr_env.emplace_back(nullptr);
-  if (system_utils_->execve(base::FilePath(kRunOciPath), args, cstr_env.data()))
+  if (system_utils_->execve(base::FilePath(kRunOciPath), args,
+                            cstr_env.data())) {
     PLOG(FATAL) << "Failed to run run_oci";
+  }
 }
 
 bool AndroidOciWrapper::RequestTermination() {
@@ -269,8 +283,9 @@ bool AndroidOciWrapper::RequestTermination() {
 
 void AndroidOciWrapper::CleanUpContainer() {
   pid_t pid;
-  if (!GetContainerPID(&pid))
+  if (!GetContainerPID(&pid)) {
     return;
+  }
 
   LOG(INFO) << "Cleaning up container " << pid;
   std::vector<std::string> argv = {kRunOciPath, kRunOciLogging,
@@ -290,8 +305,9 @@ void AndroidOciWrapper::CleanUpContainer() {
   std::swap(old_callback, exit_callback_);
   container_pid_ = 0;
 
-  if (!old_callback.is_null())
+  if (!old_callback.is_null()) {
     std::move(old_callback).Run(pid, exit_reason_);
+  }
 }
 
 bool AndroidOciWrapper::CloseOpenedFiles() {
@@ -311,8 +327,9 @@ bool AndroidOciWrapper::CloseOpenedFiles() {
       continue;
     }
 
-    if (fd <= STDERR_FILENO)
+    if (fd <= STDERR_FILENO) {
       continue;
+    }
 
     if (system_utils_->close(fd)) {
       PLOG(ERROR) << "Failed to close FD " << fd;
@@ -327,8 +344,9 @@ void AndroidOciWrapper::KillProcessGroup(pid_t pgid) {
   CHECK_GT(pgid, 1);
 
   if (!system_utils_->ProcessGroupIsGone(pgid, base::TimeDelta()) &&
-      system_utils_->kill(-pgid, -1, SIGKILL))
+      system_utils_->kill(-pgid, -1, SIGKILL)) {
     PLOG(ERROR) << "Failed to kill run_oci pgroup";
+  }
 }
 
 }  // namespace login_manager

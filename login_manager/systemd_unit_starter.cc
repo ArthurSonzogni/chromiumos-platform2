@@ -125,8 +125,9 @@ SystemdUnitStarter::TriggerImpulseWithTimeoutAndError(
       break;
   }
 
-  if (!UnsetEnvironment(systemd_dbus_proxy_, args_keyvals))
+  if (!UnsetEnvironment(systemd_dbus_proxy_, args_keyvals)) {
     DLOG(WARNING) << "Unable to unset environment after starting" << unit_name;
+  }
 
   return response;
 }

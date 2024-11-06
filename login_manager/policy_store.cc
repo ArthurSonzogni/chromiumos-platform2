@@ -23,8 +23,9 @@ PolicyStore::PolicyStore(const base::FilePath& policy_path, bool is_resilient)
 PolicyStore::~PolicyStore() {}
 
 bool PolicyStore::EnsureLoadedOrCreated() {
-  if (load_result_ == NOT_LOADED)
+  if (load_result_ == NOT_LOADED) {
     load_result_ = LoadOrCreate() ? LOAD_SUCCEEDED : LOAD_FAILED;
+  }
 
   return load_result_ == LOAD_SUCCEEDED;
 }
@@ -69,8 +70,9 @@ bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
 
 bool PolicyStore::PersistToPath(const base::FilePath& policy_path) {
   // Skip if there's no change in policy data.
-  if (!explicit_update_persist_pending_)
+  if (!explicit_update_persist_pending_) {
     return true;
+  }
 
   SystemUtilsImpl utils;
   std::string policy_blob;
@@ -79,8 +81,9 @@ bool PolicyStore::PersistToPath(const base::FilePath& policy_path) {
     return false;
   }
 
-  if (!utils.AtomicFileWrite(policy_path, policy_blob))
+  if (!utils.AtomicFileWrite(policy_path, policy_blob)) {
     return false;
+  }
 
   LOG(INFO) << "Persisted policy to disk, path: " << policy_path.value();
   explicit_update_persist_pending_ = false;

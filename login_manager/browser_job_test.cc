@@ -256,8 +256,9 @@ TEST_F(BrowserJobTest, EnterMountNamespaceForRegularUser) {
 TEST_F(BrowserJobTest, ShouldStopTest) {
   EXPECT_CALL(utils_, time(nullptr))
       .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds));
-  for (int i = 0; i < BrowserJob::kRestartTries - 1; ++i)
+  for (int i = 0; i < BrowserJob::kRestartTries - 1; ++i) {
     job_->RecordTime();
+  }
   // We haven't yet saturated the list of start times, so...
   EXPECT_FALSE(job_->ShouldStop());
 
@@ -280,8 +281,9 @@ TEST_F(BrowserJobTest, ShouldDropExtraArgumentsTest) {
       .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds));
 
   // Simulate restart kUseExtraArgsRuns - 1 times and no dropping.
-  for (int i = 0; i < BrowserJob::kUseExtraArgsRuns - 1; ++i)
+  for (int i = 0; i < BrowserJob::kUseExtraArgsRuns - 1; ++i) {
     job_->RecordTime();
+  }
   EXPECT_FALSE(job_->ShouldDropExtraArguments());
 
   // One more restart and extra args should be dropped.

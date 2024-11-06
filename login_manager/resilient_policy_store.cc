@@ -67,8 +67,9 @@ ResilientPolicyStore::ResilientPolicyStore(const base::FilePath& policy_path,
 
 bool ResilientPolicyStore::LoadOrCreate() {
   DCHECK(metrics_);
-  if (!device_policy_)
+  if (!device_policy_) {
     device_policy_ = std::make_unique<policy::DevicePolicyImpl>();
+  }
   bool policy_loaded =
       device_policy_->LoadPolicy(/*delete_invalid_files=*/true);
   if (device_policy_->get_number_of_policy_files() == 0) {
@@ -76,10 +77,11 @@ bool ResilientPolicyStore::LoadOrCreate() {
     return true;
   }
 
-  if (policy_loaded)
+  if (policy_loaded) {
     policy_ = device_policy_->get_policy_fetch_response();
-  else
+  } else {
     policy_.Clear();
+  }
 
   int number_of_invalid_files = device_policy_->get_number_of_invalid_files();
   ReportInvalidDevicePolicyFilesStatus(
@@ -127,8 +129,9 @@ void ResilientPolicyStore::CleanupPolicyFiles(
   for (const auto& map_pair : sorted_policy_file_paths) {
     // Allow one less file, since we need room for the new file to be persisted
     // after cleanup.
-    if (remaining_files < kMaxPolicyFileCount)
+    if (remaining_files < kMaxPolicyFileCount) {
       break;
+    }
 
     const base::FilePath& policy_path = map_pair.second;
     brillo::DeleteFile(policy_path);

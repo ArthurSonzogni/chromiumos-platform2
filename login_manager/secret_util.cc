@@ -67,14 +67,16 @@ base::ScopedFD SharedMemoryUtil::WriteDataToSharedMemory(
   // base::WritableSharedMemoryMapping, which is the only way to modify the
   // content of the newly created region.
   auto shmem = base::ReadOnlySharedMemoryRegion::Create(data.size());
-  if (!shmem.IsValid())
+  if (!shmem.IsValid()) {
     return base::ScopedFD();
+  }
   memcpy(shmem.mapping.GetMemoryAs<uint8_t>(), data.data(), data.size());
   base::subtle::PlatformSharedMemoryRegion platform_shm =
       base::ReadOnlySharedMemoryRegion::TakeHandleForSerialization(
           std::move(shmem.region));
-  if (!platform_shm.IsValid())
+  if (!platform_shm.IsValid()) {
     return base::ScopedFD();
+  }
   return base::ScopedFD(std::move(platform_shm.PassPlatformHandle().fd));
 }
 
@@ -89,11 +91,13 @@ bool SharedMemoryUtil::ReadDataFromSharedMemory(
               std::move(dup_in_data_fd),
               base::subtle::PlatformSharedMemoryRegion::Mode::kReadOnly,
               data_size, base::UnguessableToken::Create()));
-  if (!shm_region.IsValid())
+  if (!shm_region.IsValid()) {
     return false;
+  }
   base::ReadOnlySharedMemoryMapping shm_mapping = shm_region.Map();
-  if (!shm_mapping.IsValid())
+  if (!shm_mapping.IsValid()) {
     return false;
+  }
   out_data->assign(shm_mapping.GetMemoryAs<uint8_t>(),
                    shm_mapping.GetMemoryAs<uint8_t>() + data_size);
   return true;
@@ -117,8 +121,9 @@ base::ScopedFD WriteSizeAndDataToPipe(const std::vector<uint8_t>& data) {
 bool SaveSecretFromPipe(password_provider::PasswordProviderInterface* provider,
                         const base::ScopedFD& in_secret_fd) {
   size_t data_size = 0;
-  if (!GetSecretDataSizeFromPipe(in_secret_fd.get(), &data_size))
+  if (!GetSecretDataSizeFromPipe(in_secret_fd.get(), &data_size)) {
     return false;
+  }
 
   auto secret = password_provider::Password::CreateFromFileDescriptor(
       in_secret_fd.get(), data_size);

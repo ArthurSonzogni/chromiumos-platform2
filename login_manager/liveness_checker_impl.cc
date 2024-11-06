@@ -382,8 +382,9 @@ void LivenessCheckerImpl::PrintTopCommand() {
 
   std::vector<std::string> top_output_lines = base::SplitString(
       top_output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  if (top_output_lines.size() > 20)
+  if (top_output_lines.size() > 20) {
     top_output_lines.resize(20);
+  }
   top_output = base::JoinString(top_output_lines, "\n");
 
   LOG(WARNING) << "Top output (trimmed): " << top_output;

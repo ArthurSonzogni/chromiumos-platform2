@@ -105,16 +105,18 @@ void PolicyService::PersistPolicy(const PolicyNamespace& ns,
 
 PolicyStore* PolicyService::GetOrCreateStore(const PolicyNamespace& ns) {
   PolicyStoreMap::const_iterator iter = policy_stores_.find(ns);
-  if (iter != policy_stores_.end())
+  if (iter != policy_stores_.end()) {
     return iter->second.get();
+  }
 
   bool resilient =
       (ns == MakeChromePolicyNamespace() && resilient_chrome_policy_store_);
   std::unique_ptr<PolicyStore> store;
-  if (resilient)
+  if (resilient) {
     store = std::make_unique<ResilientPolicyStore>(GetPolicyPath(ns), metrics_);
-  else
+  } else {
     store = std::make_unique<PolicyStore>(GetPolicyPath(ns));
+  }
 
   store->EnsureLoadedOrCreated();
   PolicyStore* policy_store_ptr = store.get();
@@ -213,12 +215,14 @@ void PolicyService::StorePolicy(const PolicyNamespace& ns,
 }
 
 void PolicyService::OnKeyPersisted(bool status) {
-  if (status)
+  if (status) {
     LOG(INFO) << "Persisted policy key to disk.";
-  else
+  } else {
     LOG(ERROR) << "Failed to persist policy key to disk.";
-  if (delegate_)
+  }
+  if (delegate_) {
     delegate_->OnKeyPersisted(status);
+  }
 }
 
 void PolicyService::OnPolicyPersisted(Completion completion,
@@ -237,8 +241,9 @@ void PolicyService::OnPolicyPersisted(Completion completion,
     std::move(completion).Run(std::move(error));
   }
 
-  if (delegate_)
+  if (delegate_) {
     delegate_->OnPolicyPersisted(dbus_error_code == dbus_error::kNone);
+  }
 }
 
 void PolicyService::PersistKey() {
@@ -248,8 +253,9 @@ void PolicyService::PersistKey() {
 base::FilePath PolicyService::GetPolicyPath(const PolicyNamespace& ns) {
   // If the store has already been already created, return the store's path.
   PolicyStoreMap::const_iterator iter = policy_stores_.find(ns);
-  if (iter != policy_stores_.end())
+  if (iter != policy_stores_.end()) {
     return iter->second->policy_path();
+  }
 
   const PolicyDomain& domain = ns.first;
   const std::string& component_id = ns.second;

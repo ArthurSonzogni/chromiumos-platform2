@@ -27,8 +27,9 @@ bool FakeSharedMemoryUtil::ReadDataFromSharedMemory(
     const base::ScopedFD& in_data_fd,
     size_t data_size,
     std::vector<uint8_t>* out_data) {
-  if (!data_.count(in_data_fd.get()))
+  if (!data_.count(in_data_fd.get())) {
     return false;
+  }
   *out_data = data_[in_data_fd.get()];
   return true;
 }

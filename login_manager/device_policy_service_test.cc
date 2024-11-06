@@ -82,10 +82,12 @@ void InitPolicyFetchResponse(const std::string& policy_value_str,
   em::PolicyData policy_data;
   policy_data.set_policy_type(policy_type);
   policy_data.set_policy_value(policy_value_str);
-  if (!owner.empty())
+  if (!owner.empty()) {
     policy_data.set_username(owner);
-  if (!request_token.empty())
+  }
+  if (!request_token.empty()) {
     policy_data.set_request_token(request_token);
+  }
   std::string policy_data_str;
   ASSERT_TRUE(policy_data.SerializeToString(&policy_data_str));
 
@@ -206,10 +208,11 @@ class DevicePolicyServiceTest : public ::testing::Test {
     // Make sure that no policy other than Chrome policy triggers
     // [May]UpdateSystemSettings(). This is done by making sure that
     // IsPopulated() isn't run, which is called by MayUpdateSystemSettings().
-    if (ns == MakeChromePolicyNamespace())
+    if (ns == MakeChromePolicyNamespace()) {
       EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
-    else
+    } else {
       EXPECT_CALL(key_, IsPopulated()).Times(0);
+    }
     EXPECT_CALL(key_, Verify(_, _, _)).WillRepeatedly(Return(true));
 
     EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));

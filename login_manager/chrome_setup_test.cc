@@ -78,8 +78,9 @@ class ChromeSetupTest : public ::testing::Test {
       std::vector<std::string> tokens =
           SplitString(arg, "=", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
       CHECK_LE(tokens.size(), 2U);
-      if (tokens[0] == name)
+      if (tokens[0] == name) {
         return tokens.size() == 1 ? "" : tokens[1];
+      }
     }
     return kNotPresent;
   }

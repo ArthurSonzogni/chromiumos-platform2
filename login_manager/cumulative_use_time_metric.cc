@@ -108,8 +108,9 @@ void CumulativeUseTimeMetric::AccumulatedActiveTime::Init(int os_version_hash) {
   // read), accumulated usage time should be reset - the goal of this is to
   // avoid usage time from before version update to be reported as part of the
   // current version usage.
-  if (ReadMetricsFile() && os_version_hash == os_version_hash_)
+  if (ReadMetricsFile() && os_version_hash == os_version_hash_) {
     return;
+  }
 
   os_version_hash_ = os_version_hash;
 
@@ -120,8 +121,9 @@ void CumulativeUseTimeMetric::AccumulatedActiveTime::Init(int os_version_hash) {
 
 void CumulativeUseTimeMetric::AccumulatedActiveTime::AddTime(
     const base::TimeDelta& time) {
-  if (time.is_zero())
+  if (time.is_zero()) {
     return;
+  }
 
   accumulated_time_ += time;
   WriteMetricsFile();
@@ -247,8 +249,9 @@ void CumulativeUseTimeMetric::Start() {
 
 void CumulativeUseTimeMetric::Stop() {
   CHECK(initialized_);
-  if (!last_update_time_.is_null())
+  if (!last_update_time_.is_null()) {
     UpdateStats();
+  }
 
   update_stats_timer_.Stop();
   last_update_time_ = base::TimeTicks();

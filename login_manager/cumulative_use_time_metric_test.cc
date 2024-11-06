@@ -119,8 +119,9 @@ class FakeSingleThreadTaskRunner : public base::SingleThreadTaskRunner {
     base::TimeDelta remaining_delta = delta;
     while (!pending_tasks_.empty()) {
       base::TimeTicks task_time = pending_tasks_.front().first;
-      if (task_time > tick_clock_->NowTicks() + remaining_delta)
+      if (task_time > tick_clock_->NowTicks() + remaining_delta) {
         break;
+      }
       base::TimeDelta time_to_task = task_time - tick_clock_->NowTicks();
       // Verify the assumption that posted tasks are posted in order of their
       // expected execution - if this assumption starts not holding,

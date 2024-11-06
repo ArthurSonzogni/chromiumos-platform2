@@ -147,8 +147,9 @@ void SetUpAutoNightLightFlag(ChromiumCommandBuilder* builder,
     return;
   }
 
-  if (auto_night_light_str != "true")
+  if (auto_night_light_str != "true") {
     return;
+  }
 
   builder->AddFeatureEnableOverride("AutoNightLight");
 }
@@ -259,19 +260,23 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   brillo::DeleteFile(data_dir.Append("SingletonSocket"));
 
   // Some targets (embedded, VMs) do not need component updates.
-  if (!builder->UseFlagIsSet("compupdates"))
+  if (!builder->UseFlagIsSet("compupdates")) {
     builder->AddArg("--disable-component-update");
+  }
 
   // On developer systems, set a flag to let the browser know.
-  if (builder->is_developer_end_user())
+  if (builder->is_developer_end_user()) {
     builder->AddArg("--system-developer-mode");
+  }
 
-  if (builder->UseFlagIsSet("diagnostics"))
+  if (builder->UseFlagIsSet("diagnostics")) {
     builder->AddFeatureEnableOverride("UmaStorageDimensions");
+  }
 
   // TODO(b/187516317): remove when the issue is resolved in FW.
-  if (builder->UseFlagIsSet("broken_24hours_wake"))
+  if (builder->UseFlagIsSet("broken_24hours_wake")) {
     builder->AddFeatureDisableOverride("SupportsRtcWakeOver24Hours");
+  }
 
   // Enable Wilco only features.
   if (builder->UseFlagIsSet("wilco")) {
@@ -281,20 +286,24 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   }
 
   // Some platforms have SMT enabled by default.
-  if (builder->UseFlagIsSet("scheduler_configuration_performance"))
+  if (builder->UseFlagIsSet("scheduler_configuration_performance")) {
     builder->AddArg("--scheduler-configuration-default=performance");
+  }
 
   // Enable runtime TPM selection. This UseFlag is set only on reven board.
-  if (builder->UseFlagIsSet("tpm_dynamic"))
+  if (builder->UseFlagIsSet("tpm_dynamic")) {
     builder->AddArg("--tpm-is-dynamic");
+  }
 
   // Enable special branded strings. This UseFlag is set only on reven board.
-  if (builder->UseFlagIsSet("reven_branding"))
+  if (builder->UseFlagIsSet("reven_branding")) {
     builder->AddArg("--reven-branding");
+  }
 
   // TODO(b/274706377): remove when the GPU Hang issue is resolved.
-  if (builder->UseFlagIsSet("disable_webrtc_hw_decoding"))
+  if (builder->UseFlagIsSet("disable_webrtc_hw_decoding")) {
     builder->AddFeatureDisableOverride("webrtc-hw-decoding");
+  }
 
   // In ash, we use mojo service manager as the mojo broker so disable it here.
   builder->AddArg("--disable-mojo-broker");
@@ -330,8 +339,9 @@ void SetUpHPEngageOneProAIOSystem(ChromiumCommandBuilder* builder) {
   auto udev = brillo::Udev::Create();
   auto enumerate = udev->CreateEnumerate();
 
-  if (!enumerate->AddMatchSubsystem("input") || !enumerate->ScanDevices())
+  if (!enumerate->AddMatchSubsystem("input") || !enumerate->ScanDevices()) {
     return;
+  }
 
   for (std::unique_ptr<brillo::UdevListEntry> list_entry =
            enumerate->GetListEntry();
@@ -340,8 +350,9 @@ void SetUpHPEngageOneProAIOSystem(ChromiumCommandBuilder* builder) {
 
     std::unique_ptr<brillo::UdevDevice> device =
         udev->CreateDeviceFromSysPath(sys_path.c_str());
-    if (!device)
+    if (!device) {
       continue;
+    }
 
     double touch_slop_distance = 0;
 
@@ -350,9 +361,10 @@ void SetUpHPEngageOneProAIOSystem(ChromiumCommandBuilder* builder) {
 
     if (!base::StringToDouble(touch_slop_distance_string,
                               &touch_slop_distance)) {
-      if (touch_slop_distance_string != "")
+      if (touch_slop_distance_string != "") {
         LOG(WARNING) << "Invalid touch-slop-distance: '"
                      << touch_slop_distance_string << "'.";
+      }
       continue;
     }
     builder->AddArg(
@@ -373,8 +385,9 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   }
 
   // Disable logging redirection on test images to make debugging easier.
-  if (builder->is_test_build())
+  if (builder->is_test_build()) {
     builder->AddArg("--disable-logging-redirect");
+  }
 
   if (builder->UseFlagIsSet("cfm_enabled_device") &&
       builder->UseFlagIsSet("screenshare_sw_codec")) {
@@ -391,29 +404,39 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   builder->AddArg("--login-manager");
   builder->AddArg("--login-profile=user");
 
-  if (builder->UseFlagIsSet("natural_scroll_default"))
+  if (builder->UseFlagIsSet("natural_scroll_default")) {
     builder->AddArg("--enable-natural-scroll-default");
-  if (!builder->UseFlagIsSet("legacy_keyboard"))
+  }
+  if (!builder->UseFlagIsSet("legacy_keyboard")) {
     builder->AddArg("--has-chromeos-keyboard");
-  if (builder->UseFlagIsSet("legacy_power_button"))
+  }
+  if (builder->UseFlagIsSet("legacy_power_button")) {
     builder->AddArg("--aura-legacy-power-button");
-  if (builder->UseFlagIsSet("touchview"))
+  }
+  if (builder->UseFlagIsSet("touchview")) {
     builder->AddArg("--enable-touchview");
-  if (builder->UseFlagIsSet("touchscreen_wakeup"))
+  }
+  if (builder->UseFlagIsSet("touchscreen_wakeup")) {
     builder->AddArg("--touchscreen-usable-while-screen-off");
-  if (builder->UseFlagIsSet("oobe_skip_to_login"))
+  }
+  if (builder->UseFlagIsSet("oobe_skip_to_login")) {
     builder->AddArg("--oobe-skip-to-login");
-  if (builder->UseFlagIsSet("oobe_skip_postlogin"))
+  }
+  if (builder->UseFlagIsSet("oobe_skip_postlogin")) {
     builder->AddArg("--oobe-skip-postlogin");
+  }
 
-  if (builder->UseFlagIsSet("disable_background_blur"))
+  if (builder->UseFlagIsSet("disable_background_blur")) {
     builder->AddFeatureDisableOverride("EnableBackgroundBlur");
+  }
 
-  if (builder->UseFlagIsSet("disable_explicit_dma_fences"))
+  if (builder->UseFlagIsSet("disable_explicit_dma_fences")) {
     builder->AddArg("--disable-explicit-dma-fences");
+  }
 
-  if (builder->UseFlagIsSet("shelf-hotseat"))
+  if (builder->UseFlagIsSet("shelf-hotseat")) {
     builder->AddFeatureEnableOverride("ShelfHotseat");
+  }
 
   if (builder->UseFlagIsSet("webui-tab-strip")) {
     builder->AddFeatureEnableOverride("WebUITabStrip");
@@ -427,8 +450,9 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 
   // TODO(b/180138001): Remove the following flag when a proper fix for
   // the freeze issue is found.
-  if (builder->UseFlagIsSet("set_hw_overlay_strategy_none"))
+  if (builder->UseFlagIsSet("set_hw_overlay_strategy_none")) {
     builder->AddArg("--enable-hardware-overlays=\"\"");
+  }
 
   SetUpAutoDimFlag(builder, cros_config);
   SetUpFormFactorFlag(builder, cros_config);
@@ -438,20 +462,25 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 
   // TODO(yongjaek): Remove the following flag when the kiosk mode app is ready
   // at crbug.com/309806.
-  if (builder->UseFlagIsSet("moblab"))
+  if (builder->UseFlagIsSet("moblab")) {
     builder->AddArg("--disable-demo-mode");
+  }
 
-  if (builder->UseFlagIsSet("allow_consumer_kiosk"))
+  if (builder->UseFlagIsSet("allow_consumer_kiosk")) {
     builder->AddArg("--enable-consumer-kiosk");
+  }
 
-  if (builder->UseFlagIsSet("biod"))
+  if (builder->UseFlagIsSet("biod")) {
     builder->AddFeatureEnableOverride("QuickUnlockFingerprint");
+  }
 
-  if (builder->UseFlagIsSet("clear_fast_ink_buffer"))
+  if (builder->UseFlagIsSet("clear_fast_ink_buffer")) {
     builder->AddArg("--ash-clear-fast-ink-buffer");
+  }
 
-  if (builder->UseFlagIsSet("enable_dsp_hotword"))
+  if (builder->UseFlagIsSet("enable_dsp_hotword")) {
     builder->AddFeatureEnableOverride("EnableDspHotword");
+  }
 
   // TODO(http://b/367799751): Remove when the issue gets fixed.
   if (builder->UseFlagIsSet("ignore_holdback_experiments")) {
@@ -763,10 +792,11 @@ void AddSerializedAshSwitches(ChromiumCommandBuilder* builder,
       CHECK_GE(pieces.size(), 2u);
       const bool is_enable_features = pieces[0] == "--enable-features";
       for (size_t i = 1; i < pieces.size(); i++) {
-        if (is_enable_features)
+        if (is_enable_features) {
           builder->AddFeatureEnableOverride(pieces[i]);
-        else
+        } else {
           builder->AddFeatureDisableOverride(pieces[i]);
+        }
       }
     } else {
       builder->AddArg(flag);
@@ -971,8 +1001,9 @@ void SetUpAllowAmbientEQFlag(ChromiumCommandBuilder* builder,
     return;
   }
 
-  if (allow_ambient_eq_str != "1")
+  if (allow_ambient_eq_str != "1") {
     return;
+  }
 
   builder->AddFeatureEnableOverride("AllowAmbientEQ");
 }
@@ -1020,8 +1051,9 @@ void SetUpInstantTetheringFlag(ChromiumCommandBuilder* builder,
     return;
   }
 
-  if (disable_instant_tethering_str == "true")
+  if (disable_instant_tethering_str == "true") {
     builder->AddFeatureDisableOverride("InstantTethering");
+  }
 }
 
 // Adds ARC related flags.
@@ -1044,34 +1076,47 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     disallowed_params_out->insert("-arc-available");
   }
 
-  if (builder->UseFlagIsSet("arc_adb_sideloading"))
+  if (builder->UseFlagIsSet("arc_adb_sideloading")) {
     builder->AddFeatureEnableOverride("ArcAdbSideloading");
-  if (builder->UseFlagIsSet("arc_container_app_killer"))
+  }
+  if (builder->UseFlagIsSet("arc_container_app_killer")) {
     builder->AddFeatureEnableOverride("ContainerAppKiller");
-  if (builder->UseFlagIsSet("arc_transition_m_to_n"))
+  }
+  if (builder->UseFlagIsSet("arc_transition_m_to_n")) {
     builder->AddArg("--arc-transition-migration-required");
-  if (builder->UseFlagIsSet("arc_force_2x_scaling"))
+  }
+  if (builder->UseFlagIsSet("arc_force_2x_scaling")) {
     builder->AddArg("--force-remote-shell-scale=2");
-  if (builder->UseFlagIsSet("arcvm") && !builder->UseFlagIsSet("arcpp"))
+  }
+  if (builder->UseFlagIsSet("arcvm") && !builder->UseFlagIsSet("arcpp")) {
     builder->AddArg("--enable-arcvm");
-  if (builder->UseFlagIsSet("arcvm_dlc"))
+  }
+  if (builder->UseFlagIsSet("arcvm_dlc")) {
     builder->AddArg("--enable-arcvm-dlc");
-  if (builder->UseFlagIsSet("arcvm_data_migration"))
+  }
+  if (builder->UseFlagIsSet("arcvm_data_migration")) {
     builder->AddFeatureEnableOverride("ArcVmDataMigration");
-  if (builder->UseFlagIsSet("arcvm_virtio_blk_data"))
+  }
+  if (builder->UseFlagIsSet("arcvm_virtio_blk_data")) {
     builder->AddFeatureEnableOverride("ArcEnableVirtioBlkForData");
-  if (builder->UseFlagIsSet("arcvm_block_io_scheduler"))
+  }
+  if (builder->UseFlagIsSet("arcvm_block_io_scheduler")) {
     builder->AddFeatureEnableOverride("ArcBlockIoScheduler");
-  if (builder->UseFlagIsSet("arcvm_virtio_blk_multiple_workers"))
+  }
+  if (builder->UseFlagIsSet("arcvm_virtio_blk_multiple_workers")) {
     builder->AddFeatureEnableOverride("ArcEnableVirtioBlkMultipleWorkers");
-  if (builder->UseFlagIsSet("lvm_application_containers"))
+  }
+  if (builder->UseFlagIsSet("lvm_application_containers")) {
     builder->AddFeatureEnableOverride("ArcLvmApplicationContainers");
+  }
   // Devices of tablet form factor will have special app behaviour.
-  if (builder->UseFlagIsSet("tablet_form_factor"))
+  if (builder->UseFlagIsSet("tablet_form_factor")) {
     builder->AddArg("--enable-tablet-form-factor");
+  }
 
-  if (builder->UseFlagIsSet("arc_erofs"))
+  if (builder->UseFlagIsSet("arc_erofs")) {
     builder->AddArg("--arc-erofs");
+  }
   if (builder->UseFlagIsSet("arcvm_gki")) {
     builder->AddFeatureEnableOverride("ArcVmGki");
     // Disable VMMMS as it's not supported on GKI (b/333650576 for context).
@@ -1093,41 +1138,52 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
   }
 
   // Pass USE flags of ARM binary translation libraries to Chrome.
-  if (builder->UseFlagIsSet("houdini"))
+  if (builder->UseFlagIsSet("houdini")) {
     builder->AddArg("--enable-houdini");
-  if (builder->UseFlagIsSet("houdini64"))
+  }
+  if (builder->UseFlagIsSet("houdini64")) {
     builder->AddArg("--enable-houdini64");
-  if (builder->UseFlagIsSet("houdini_dlc"))
+  }
+  if (builder->UseFlagIsSet("houdini_dlc")) {
     builder->AddArg("--enable-houdini-dlc");
-  if (builder->UseFlagIsSet("ndk_translation"))
+  }
+  if (builder->UseFlagIsSet("ndk_translation")) {
     builder->AddArg("--enable-ndk-translation");
-  if (builder->UseFlagIsSet("ndk_translation64"))
+  }
+  if (builder->UseFlagIsSet("ndk_translation64")) {
     builder->AddArg("--enable-ndk-translation64");
+  }
 }
 
 // Adds flags related to machine learning features that are enabled only on a
 // supported subset of devices.
 void AddMlFlags(ChromiumCommandBuilder* builder,
                 brillo::CrosConfigInterface* cros_config) {
-  if (builder->UseFlagIsSet("ml_service"))
+  if (builder->UseFlagIsSet("ml_service")) {
     builder->AddArg("--ml_service=enabled");
+  }
 
-  if (builder->UseFlagIsSet("smartdim"))
+  if (builder->UseFlagIsSet("smartdim")) {
     builder->AddFeatureEnableOverride("SmartDim");
+  }
 
-  if (builder->UseFlagIsSet("enable_neural_palm_detection_filter"))
+  if (builder->UseFlagIsSet("enable_neural_palm_detection_filter")) {
     builder->AddFeatureEnableOverride("EnableNeuralPalmDetectionFilter");
+  }
 
-  if (builder->UseFlagIsSet("enable_heuristic_palm_detection_filter"))
+  if (builder->UseFlagIsSet("enable_heuristic_palm_detection_filter")) {
     builder->AddFeatureEnableOverride("EnableHeuristicPalmDetectionFilter");
+  }
 
-  if (!builder->UseFlagIsSet("ondevice_grammar"))
+  if (!builder->UseFlagIsSet("ondevice_grammar")) {
     builder->AddFeatureDisableOverride("OnDeviceGrammarCheck");
+  }
 
-  if (builder->UseFlagIsSet("ondevice_handwriting"))
+  if (builder->UseFlagIsSet("ondevice_handwriting")) {
     builder->AddArg("--ondevice_handwriting=use_rootfs");
-  else if (builder->UseFlagIsSet("ondevice_handwriting_dlc"))
+  } else if (builder->UseFlagIsSet("ondevice_handwriting_dlc")) {
     builder->AddArg("--ondevice_handwriting=use_dlc");
+  }
 
   if (builder->UseFlagIsSet("ondevice_speech")) {
     // libsoda is supported on devices with 4GB+ of physical RAM. base::SysInfo
@@ -1136,14 +1192,16 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
     // Theoretically: this will match devices with RAM > (3GiB + something).
     // In practice:   all such devices have 4GB+.
     constexpr int kSodaLibraryMinRamMB = 3072;
-    if (base::SysInfo::AmountOfPhysicalMemoryMB() >= kSodaLibraryMinRamMB)
+    if (base::SysInfo::AmountOfPhysicalMemoryMB() >= kSodaLibraryMinRamMB) {
       builder->AddFeatureEnableOverride("OnDeviceSpeechRecognition");
+    }
   }
 
-  if (builder->UseFlagIsSet("ondevice_document_scanner"))
+  if (builder->UseFlagIsSet("ondevice_document_scanner")) {
     builder->AddArg("--ondevice_document_scanner=use_rootfs");
-  else if (builder->UseFlagIsSet("ondevice_document_scanner_dlc"))
+  } else if (builder->UseFlagIsSet("ondevice_document_scanner_dlc")) {
     builder->AddArg("--ondevice_document_scanner=use_dlc");
+  }
 
   if (!builder->UseFlagIsSet("federated_service")) {
     builder->AddFeatureDisableOverride("FederatedService");

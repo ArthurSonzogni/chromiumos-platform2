@@ -49,8 +49,9 @@ std::unique_ptr<crypto::RSAPrivateKey> MockNssUtil::CreateShortKey() {
 }
 
 base::FilePath MockNssUtil::GetOwnerKeyFilePath() {
-  if (!EnsureTempDir())
+  if (!EnsureTempDir()) {
     return base::FilePath();
+  }
   return temp_dir_.GetPath().AppendASCII("fake");
 }
 

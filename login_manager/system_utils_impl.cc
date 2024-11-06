@@ -75,8 +75,9 @@ class ResetSigmaskDelegate : public base::LaunchOptions::PreExecDelegate {
     sigemptyset(&new_sigset);
     // We cannot use PCHECK() here since that's not async-signal safe. Do the
     // next best thing which is call abort(3).
-    if (sigprocmask(SIG_SETMASK, &new_sigset, nullptr) != 0)
+    if (sigprocmask(SIG_SETMASK, &new_sigset, nullptr) != 0) {
       abort();
+    }
   }
 };
 
@@ -206,8 +207,9 @@ bool SystemUtilsImpl::ProcessIsGone(pid_t child_spec, base::TimeDelta timeout) {
     // larger than 0, i.e. no more zombie process to reap.
     ret =
         Wait(child_spec, std::max(time_remaining, base::TimeDelta()), nullptr);
-    if (ret == -1 && errno == ECHILD)
+    if (ret == -1 && errno == ECHILD) {
       return true;
+    }
   } while (ret > 0);
 
   return false;
@@ -224,16 +226,19 @@ pid_t SystemUtilsImpl::Wait(pid_t child_spec,
     pid_t pid = waitpid(child_spec, status_out, WNOHANG);
 
     // Error (including no children remaining).
-    if (pid == -1 && errno != EINTR)
+    if (pid == -1 && errno != EINTR) {
       return -1;
+    }
 
     // Process was reaped.
-    if (pid > 0)
+    if (pid > 0) {
       return pid;
+    }
 
     // Timeout.
-    if (base::TimeTicks::Now() - start > timeout)
+    if (base::TimeTicks::Now() - start > timeout) {
       return 0;
+    }
 
     base::PlatformThread::Sleep(base::Milliseconds(10));
   }
@@ -292,8 +297,9 @@ bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
 
 bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
   const base::FilePath filename_in_base_dir = PutInsideBaseDir(filename);
-  if (base::DirectoryExists(filename_in_base_dir))
+  if (base::DirectoryExists(filename_in_base_dir)) {
     return false;
+  }
   return brillo::DeleteFile(filename_in_base_dir);
 }
 
@@ -340,11 +346,13 @@ base::FilePath SystemUtilsImpl::PutInsideBaseDirForTesting(
 }
 
 base::FilePath SystemUtilsImpl::PutInsideBaseDir(const base::FilePath& path) {
-  if (base_dir_for_testing_.empty())
+  if (base_dir_for_testing_.empty()) {
     return path;  // for production, this function does nothing.
+  }
 
-  if (base_dir_for_testing_.IsParent(path))
+  if (base_dir_for_testing_.IsParent(path)) {
     return path;  // already chroot'ed.
+  }
 
   base::FilePath to_append(path);
   while (to_append.IsAbsolute()) {
@@ -462,13 +470,15 @@ bool SystemUtilsImpl::RunInMinijail(const ScopedMinijail& jail,
                                     const std::vector<std::string>& env_vars,
                                     pid_t* pchild_pid) {
   auto argv = std::make_unique<char*[]>(args.size() + 1);
-  for (size_t i = 0; i < args.size(); ++i)
+  for (size_t i = 0; i < args.size(); ++i) {
     argv[i] = const_cast<char*>(args[i].c_str());
+  }
   argv[args.size()] = nullptr;
 
   auto envp = std::make_unique<char*[]>(env_vars.size() + 1);
-  for (size_t i = 0; i < env_vars.size(); ++i)
+  for (size_t i = 0; i < env_vars.size(); ++i) {
     envp[i] = const_cast<char*>(env_vars[i].c_str());
+  }
   envp[env_vars.size()] = nullptr;
 
   int res = minijail_run_env_pid_pipes_no_preload(

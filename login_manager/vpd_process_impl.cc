@@ -26,8 +26,9 @@ VpdProcessImpl::VpdProcessImpl(SystemUtils* system_utils)
 }
 
 void VpdProcessImpl::RequestJobExit(const std::string& reason) {
-  if (subprocess_ && subprocess_->GetPid() > 0)
+  if (subprocess_ && subprocess_->GetPid() > 0) {
     subprocess_->Kill(SIGTERM);
+  }
 }
 
 void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
@@ -86,8 +87,9 @@ bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
   LOG_IF(ERROR, !success) << "Failed to update VPD, code = " << info.si_status;
 
   // Reset the completion to ensure we won't call it again.
-  if (!completion_.is_null())
+  if (!completion_.is_null()) {
     std::move(completion_).Run(success);
+  }
   return true;
 }
 

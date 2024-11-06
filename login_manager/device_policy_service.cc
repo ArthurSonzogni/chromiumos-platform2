@@ -73,8 +73,9 @@ bool IsConsumerPolicy(const em::PolicyFetchResponse& policy) {
 
   // Look at management_mode first. Refer to PolicyData::management_mode docs
   // for details.
-  if (poldata.has_management_mode())
+  if (poldata.has_management_mode()) {
     return poldata.management_mode() == em::PolicyData::LOCAL_OWNER;
+  }
   return !poldata.has_request_token() && poldata.has_username();
 }
 
@@ -146,20 +147,23 @@ DevicePolicyService::DevicePolicyService(
 
 bool DevicePolicyService::Initialize() {
   bool key_success = key()->PopulateFromDiskIfPossible();
-  if (!key_success)
+  if (!key_success) {
     LOG(ERROR) << "Failed to load device policy key from disk.";
+  }
 
   bool policy_success = GetChromeStore()->EnsureLoadedOrCreated();
-  if (!policy_success)
+  if (!policy_success) {
     LOG(WARNING) << "Failed to load device policy data, continuing anyway.";
+  }
 
   if (!key_success && policy_success &&
       GetChromeStore()->Get().has_new_public_key()) {
     LOG(WARNING) << "Recovering missing owner key from policy blob!";
     key_success = key()->PopulateFromBuffer(
         StringToBlob(GetChromeStore()->Get().new_public_key()));
-    if (key_success)
+    if (key_success) {
       PersistKey();
+    }
   }
 
   if (install_attributes_reader_->IsLocked()) {
@@ -302,8 +306,9 @@ bool DevicePolicyService::GivenUserIsOwner(
     return false;
   }
 
-  if (!IsConsumerPolicy(policy))
+  if (!IsConsumerPolicy(policy)) {
     return false;
+  }
 
   return (poldata.has_username() && poldata.username() == current_user);
 }
@@ -396,8 +401,9 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
   // for FRE check during OOBE.
   if (!install_attributes_reader_->IsLocked()) {
     // Probably the first sign in, install attributes file is not created yet.
-    if (!completion.is_null())
+    if (!completion.is_null()) {
       std::move(completion).Run(brillo::ErrorPtr());
+    }
 
     return true;
   }
@@ -421,8 +427,9 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
     LOG(ERROR) << "Can't store contradictory values in VPD";
     // Return true to be on the safe side here since not allowing to continue
     // would make the device unusable.
-    if (!completion.is_null())
+    if (!completion.is_null()) {
       std::move(completion).Run(brillo::ErrorPtr());
+    }
 
     return true;
   }

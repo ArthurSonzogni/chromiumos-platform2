@@ -57,8 +57,9 @@ class FakeSystemUtils : public SystemUtilsImpl {
   ~FakeSystemUtils() override {}
 
   time_t time(time_t* t) override {
-    if (t)
+    if (t) {
       *t = time_;
+    }
     return time_;
   }
 

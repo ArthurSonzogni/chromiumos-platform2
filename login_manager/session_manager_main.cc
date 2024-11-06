@@ -129,8 +129,9 @@ int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader);
 
   // Allow waiting for all descendants, not just immediate children.
-  if (::prctl(PR_SET_CHILD_SUBREAPER, 1))
+  if (::prctl(PR_SET_CHILD_SUBREAPER, 1)) {
     PLOG(ERROR) << "Couldn't set child subreaper";
+  }
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
@@ -140,8 +141,9 @@ int main(int argc, char* argv[]) {
   // Parse the base Chrome command.
   // TODO(hidehiko): move to ChromeSetup.
   string command_flag(switches::kChromeCommandDefault);
-  if (cl->HasSwitch(switches::kChromeCommand))
+  if (cl->HasSwitch(switches::kChromeCommand)) {
     command_flag = cl->GetSwitchValueASCII(switches::kChromeCommand);
+  }
   vector<string> command =
       base::SplitString(command_flag, base::kWhitespaceASCII,
                         base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -167,15 +169,17 @@ int main(int argc, char* argv[]) {
   // running while stopping and starting the browser manually.
   string magic_chrome_file =
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
-  if (magic_chrome_file.empty())
+  if (magic_chrome_file.empty()) {
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
+  }
   FileChecker checker((base::FilePath(magic_chrome_file)));  // So vexing!
 
   // Used to report various metrics around user type (guest vs non), dev-mode,
   // and policy/key file status.
   base::FilePath flag_file_dir(kFlagFileDir);
-  if (!base::CreateDirectory(flag_file_dir))
+  if (!base::CreateDirectory(flag_file_dir)) {
     PLOG(FATAL) << "Cannot create flag file directory at " << kFlagFileDir;
+  }
   LoginMetrics metrics(flag_file_dir);
 
   // The session_manager supports pinging the browser periodically to check that

@@ -142,8 +142,9 @@ LoginScreenStorageIndex LoginScreenStorage::ReadIndexFromFile() {
   LoginScreenStorageIndex index;
   if (base::ReadFileToString(
           persistent_storage_path_.Append(kLoginScreenStorageIndexFilename),
-          &index_blob))
+          &index_blob)) {
     index.ParseFromString(index_blob);
+  }
   return index;
 }
 

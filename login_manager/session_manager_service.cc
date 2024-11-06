@@ -256,8 +256,9 @@ bool SessionManagerService::Initialize() {
       &owner_key_, android_container_.get(), &install_attributes_reader_,
       powerd_dbus_proxy_, system_clock_proxy, debugd_dbus_proxy_,
       fwmp_dbus_proxy_, arc_sideload_status);
-  if (!InitializeImpl())
+  if (!InitializeImpl()) {
     return false;
+  }
 
   InitializeBrowser();
 
@@ -377,8 +378,9 @@ void SessionManagerService::RestartBrowser() {
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  if (browser_->CurrentPid() > 0)
+  if (browser_->CurrentPid() > 0) {
     browser_->KillEverything(SIGKILL, "Restarting browser on-demand.");
+  }
   // The browser will be restarted in HandleExit().
 }
 
@@ -421,8 +423,9 @@ base::TimeTicks SessionManagerService::GetLastBrowserRestartTime() {
 }
 
 bool SessionManagerService::HandleExit(const siginfo_t& status) {
-  if (!IsBrowser(status.si_pid))
+  if (!IsBrowser(status.si_pid)) {
     return false;
+  }
 
   // The browser process is terminated. Stop the aborting process.
   abort_timer_.Stop();
@@ -447,8 +450,9 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
   impl_->EmitStopArcVmInstanceImpulse();
 
   // Do nothing if already shutting down.
-  if (shutting_down_)
+  if (shutting_down_) {
     return true;
+  }
 
   liveness_checker_->Stop();
 
@@ -513,8 +517,9 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                    << ") is no child of mine!";
       DBusMessage* denial = dbus_message_new_error(
           message, DBUS_ERROR_ACCESS_DENIED, "Sender is not browser.");
-      if (!denial || !::dbus_connection_send(conn, denial, nullptr))
+      if (!denial || !::dbus_connection_send(conn, denial, nullptr)) {
         LOG(ERROR) << "Could not create error response to RestartJob.";
+      }
       return DBUS_HANDLER_RESULT_HANDLED;
     }
   }
@@ -555,11 +560,13 @@ void SessionManagerService::RevertHandlers() {
 base::TimeDelta SessionManagerService::GetKillTimeout() {
   // When Chrome is configured to write core files (which only happens during
   // testing), give it extra time to exit.
-  if (base::PathExists(base::FilePath(kCollectChromeFile)))
+  if (base::PathExists(base::FilePath(kCollectChromeFile))) {
     return kLongKillTimeout;
+  }
 
-  if (use_long_kill_timeout_)
+  if (use_long_kill_timeout_) {
     return kLongKillTimeout;
+  }
 
   return kill_timeout_;
 }

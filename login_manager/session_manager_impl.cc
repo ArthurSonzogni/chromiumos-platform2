@@ -278,11 +278,13 @@ void HandleDBusSignalConnected(const std::string& interface,
 // https://crbug.com/904850.
 void DisconnectLogFile(const base::FilePath& symlink_path) {
   base::FilePath log_path;
-  if (!base::ReadSymbolicLink(symlink_path, &log_path))
+  if (!base::ReadSymbolicLink(symlink_path, &log_path)) {
     return;
+  }
 
-  if (!log_path.IsAbsolute())
+  if (!log_path.IsAbsolute()) {
     log_path = symlink_path.DirName().Append(log_path);
+  }
 
   // Perform a basic safety check.
   if (log_path.DirName() != symlink_path.DirName()) {
@@ -547,8 +549,9 @@ void SessionManagerImpl::AnnounceSessionStopped() {
 
 bool SessionManagerImpl::ShouldEndSession(std::string* reason_out) {
   auto set_reason = [&](const std::string& reason) {
-    if (reason_out)
+    if (reason_out) {
       *reason_out = reason;
+    }
   };
 
   if (screen_locked_) {
@@ -635,8 +638,9 @@ bool SessionManagerImpl::Initialize() {
     // moving it down? Note that device_policy_->Initialize() might call
     // OnKeyPersisted() on the delegate, so be sure it's safe.
     device_policy_->set_delegate(this);
-    if (!device_policy_->Initialize())
+    if (!device_policy_->Initialize()) {
       return false;
+    }
 
     DCHECK(!user_policy_factory_);
     user_policy_factory_ =
@@ -646,8 +650,9 @@ bool SessionManagerImpl::Initialize() {
         base::FilePath(kDeviceLocalAccountStateDir), owner_key_),
     device_local_account_manager_->UpdateDeviceSettings(
         device_policy_->GetSettings());
-    if (device_policy_->MayUpdateSystemSettings())
+    if (device_policy_->MayUpdateSystemSettings()) {
       device_policy_->UpdateSystemSettings(PolicyService::Completion());
+    }
   } else {
     device_policy_->set_delegate(this);
   }
@@ -679,8 +684,9 @@ void SessionManagerImpl::Finalize() {
 bool SessionManagerImpl::StartDBusService() {
   DCHECK(!dbus_service_);
   auto dbus_service = std::make_unique<DBusService>(&adaptor_);
-  if (!dbus_service->Start(bus_))
+  if (!dbus_service->Start(bus_)) {
     return false;
+  }
 
   dbus_service_ = std::move(dbus_service);
   return true;
@@ -797,8 +803,9 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   const bool is_test_image = base::SysInfo::GetLsbReleaseValue(
                                  "CHROMEOS_RELEASE_TRACK", &channel_string) &&
                              base::StartsWith(channel_string, "test");
-  if (user_sessions_.empty() && !is_test_image)
+  if (user_sessions_.empty() && !is_test_image) {
     DisconnectLogFile(ui_log_symlink_path_);
+  }
 
   init_controller_->TriggerImpulse(kStartUserSessionImpulse,
                                    {"CHROMEOS_USER=" + actual_account_id},
@@ -998,10 +1005,12 @@ bool SessionManagerImpl::RetrievePolicyEx(
 }
 
 std::string SessionManagerImpl::RetrieveSessionState() {
-  if (!session_started_)
+  if (!session_started_) {
     return kStopped;
-  if (session_stopping_)
+  }
+  if (session_stopping_) {
     return kStopping;
+  }
   return kStarted;
 }
 
@@ -1009,8 +1018,9 @@ std::map<std::string, std::string>
 SessionManagerImpl::RetrieveActiveSessions() {
   std::map<std::string, std::string> result;
   for (const auto& entry : user_sessions_) {
-    if (!entry.second)
+    if (!entry.second) {
       continue;
+    }
     result[entry.second->username] = entry.second->userhash;
   }
   return result;
@@ -1351,8 +1361,9 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
 
   if (network_synchronized) {
     system_clock_synchronized_ = true;
-    for (auto& callback : pending_state_key_callbacks_)
+    for (auto& callback : pending_state_key_callbacks_) {
       device_identifier_generator_->RequestStateKeys(std::move(callback));
+    }
     pending_state_key_callbacks_.clear();
   } else {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
@@ -1417,8 +1428,9 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("ARC_SIGNED_IN=%d", request.arc_signed_in()),
   };
 
-  if (request.arc_generate_pai())
+  if (request.arc_generate_pai()) {
     env_vars.push_back("ARC_GENERATE_PAI=1");
+  }
 
   if (request.lcd_density() > 0) {
     env_vars.push_back(
@@ -1799,8 +1811,9 @@ bool SessionManagerImpl::AllSessionsAreIncognito() {
   size_t incognito_count = 0;
   for (UserSessionMap::const_iterator it = user_sessions_.begin();
        it != user_sessions_.end(); ++it) {
-    if (it->second)
+    if (it->second) {
       incognito_count += it->second->is_incognito;
+    }
   }
   return incognito_count == user_sessions_.size();
 }
@@ -1845,8 +1858,9 @@ PolicyService* SessionManagerImpl::GetPolicyService(
       break;
     }
   }
-  if (policy_service)
+  if (policy_service) {
     return policy_service;
+  }
 
   // Error case
   const std::string message =
@@ -2033,8 +2047,9 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
 
   std::string preferred_languages;
   for (int i = 0; i < request.preferred_languages_size(); ++i) {
-    if (i != 0)
+    if (i != 0) {
       preferred_languages += ",";
+    }
     preferred_languages += request.preferred_languages(i);
   }
   env_vars.emplace_back("PREFERRED_LANGUAGES=" + preferred_languages);
@@ -2050,8 +2065,9 @@ void SessionManagerImpl::OnContinueArcBootFailed() {
 bool SessionManagerImpl::StopArcInstanceInternal(
     ArcContainerStopReason reason) {
   pid_t pid;
-  if (!android_container_->GetContainerPID(&pid))
+  if (!android_container_->GetContainerPID(&pid)) {
     return false;
+  }
 
   android_container_->RequestJobExit(reason);
   android_container_->EnsureJobExit(kContainerTimeout);

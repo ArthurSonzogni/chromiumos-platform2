@@ -81,8 +81,9 @@ constexpr char kSessionManagerSafeModeEnabled[] =
 bool RemoveArgs(std::vector<std::string>* args, const std::string& arg) {
   std::vector<std::string>::iterator new_end =
       std::remove(args->begin(), args->end(), arg);
-  if (new_end == args->end())
+  if (new_end == args->end()) {
     return false;
+  }
 
   args->erase(new_end, args->end());
   return true;
@@ -140,8 +141,9 @@ void MergeSwitches(std::vector<std::string>* args,
       *head++ = arg;
     }
   }
-  if (head != args->end())
+  if (head != args->end()) {
     args->erase(head, args->end());
+  }
 
   // Add the enable arg if the set of enabled values is non-empty or if existing
   // instance of that arg is present and retained. The `!keep_existing` case is
@@ -238,8 +240,9 @@ bool BrowserJob::RunInBackground() {
   RecordTime();
 
   extra_one_time_arguments_.clear();
-  if (first_boot)
+  if (first_boot) {
     extra_one_time_arguments_.push_back(kFirstExecAfterBootFlag);
+  }
 
   // Must happen after RecordTime(). After RecordTime(), ShouldStop() is
   // basically returning what it would return if this instance of the browser
@@ -290,8 +293,9 @@ bool BrowserJob::RunInBackground() {
 }
 
 void BrowserJob::KillEverything(int signal, const std::string& message) {
-  if (subprocess_->GetPid() < 0)
+  if (subprocess_->GetPid() < 0) {
     return;
+  }
 
   LOG(INFO) << "Terminating process group for browser " << subprocess_->GetPid()
             << " with signal " << signal << ": " << message;
@@ -300,8 +304,9 @@ void BrowserJob::KillEverything(int signal, const std::string& message) {
 
 void BrowserJob::Kill(int signal, const std::string& message) {
   const pid_t pid = subprocess_->GetPid();
-  if (pid < 0)
+  if (pid < 0) {
     return;
+  }
 
   LOG(INFO) << "Terminating browser process " << pid << " with signal "
             << signal << ": " << message;
@@ -310,16 +315,18 @@ void BrowserJob::Kill(int signal, const std::string& message) {
 
 bool BrowserJob::WaitForExit(base::TimeDelta timeout) {
   const pid_t pid = subprocess_->GetPid();
-  if (pid < 0)
+  if (pid < 0) {
     return true;
+  }
 
   return system_->ProcessGroupIsGone(pid, timeout);
 }
 
 void BrowserJob::AbortAndKillAll(base::TimeDelta timeout) {
   const pid_t pid = subprocess_->GetPid();
-  if (pid < 0)
+  if (pid < 0) {
     return;
+  }
 
   if (system_->ProcessGroupIsGone(pid, base::TimeDelta())) {
     DLOG(INFO) << "Cleaned up browser process " << pid;
@@ -385,16 +392,18 @@ const std::string BrowserJob::GetName() const {
 void BrowserJob::SetArguments(const std::vector<std::string>& arguments) {
   // Ensure we preserve the program name to be executed, if we have one.
   std::string argv0;
-  if (!arguments_.empty())
+  if (!arguments_.empty()) {
     argv0 = arguments_[0];
+  }
 
   arguments_ = arguments;
 
   if (!argv0.empty()) {
-    if (arguments_.size())
+    if (arguments_.size()) {
       arguments_[0] = argv0;
-    else
+    } else {
       arguments_.push_back(argv0);
+    }
   }
 }
 

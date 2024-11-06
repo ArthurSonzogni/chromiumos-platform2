@@ -55,8 +55,9 @@ class ChromiumCommandBuilderTest : public testing::Test {
   void WriteFileUnderBasePath(const std::string& path,
                               const std::string& data) {
     base::FilePath reparented_path(util::GetReparentedPath(path, base_path_));
-    if (!base::DirectoryExists(reparented_path.DirName()))
+    if (!base::DirectoryExists(reparented_path.DirName())) {
       PCHECK(base::CreateDirectory(reparented_path.DirName()));
+    }
     PCHECK(base::WriteFile(reparented_path, data));
   }
 
@@ -74,8 +75,9 @@ class ChromiumCommandBuilderTest : public testing::Test {
   std::string GetFirstArgWithPrefix(const std::string& prefix) {
     const ChromiumCommandBuilder::StringVector& args = builder_.arguments();
     for (size_t i = 0; i < args.size(); ++i) {
-      if (args[i].find(prefix) == 0)
+      if (args[i].find(prefix) == 0) {
         return args[i];
+      }
     }
     return std::string();
   }

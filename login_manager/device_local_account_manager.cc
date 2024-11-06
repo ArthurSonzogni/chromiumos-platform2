@@ -64,8 +64,9 @@ void DeviceLocalAccountManager::UpdateDeviceSettings(
     if (IsValidAccountKey(subdir.BaseName().value()) &&
         policy_map_.find(subdir.BaseName().value()) == policy_map_.end()) {
       LOG(INFO) << "Purging " << subdir.value();
-      if (!brillo::DeletePathRecursively(subdir))
+      if (!brillo::DeletePathRecursively(subdir)) {
         LOG(ERROR) << "Failed to delete " << subdir.value();
+      }
     }
   }
 }
@@ -81,8 +82,9 @@ bool DeviceLocalAccountManager::MigrateUppercaseDirs() {
     if (IsValidAccountKey(lower) && lower != upper) {
       base::FilePath subdir_to(subdir.DirName().Append(lower));
       LOG(INFO) << "Migrating " << upper << " to " << lower;
-      if (!base::ReplaceFile(subdir, subdir_to, nullptr))
+      if (!base::ReplaceFile(subdir, subdir_to, nullptr)) {
         LOG(ERROR) << "Failed to migrate " << subdir.value();
+      }
     }
   }
 
@@ -93,8 +95,9 @@ PolicyService* DeviceLocalAccountManager::GetPolicyService(
     const std::string& account_id) {
   const std::string key = GetAccountKey(account_id);
   auto entry = policy_map_.find(key);
-  if (entry == policy_map_.end())
+  if (entry == policy_map_.end()) {
     return nullptr;
+  }
 
   // Lazily create and initialize the policy service instance.
   if (!entry->second) {

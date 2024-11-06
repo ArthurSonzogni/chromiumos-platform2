@@ -44,15 +44,17 @@ constexpr char kTestPrefix[] = "test";
 std::string LookUpInStringPairs(const base::StringPairs& pairs,
                                 const std::string& key) {
   for (size_t i = 0; i < pairs.size(); ++i) {
-    if (key != pairs[i].first)
+    if (key != pairs[i].first) {
       continue;
+    }
 
     // Strip quotes.
     std::string value = pairs[i].second;
     if (value.size() >= 2U &&
         ((value[0] == '"' && value[value.size() - 1] == '"') ||
-         (value[0] == '\'' && value[value.size() - 1] == '\'')))
+         (value[0] == '\'' && value[value.size() - 1] == '\''))) {
       value = value.substr(1, value.size() - 2);
+    }
 
     return value;
   }
@@ -61,12 +63,14 @@ std::string LookUpInStringPairs(const base::StringPairs& pairs,
 
 // Returns true if |name| matches /^[A-Z][_A-Z0-9]+$/.
 bool IsEnvironmentVariableName(const std::string& name) {
-  if (name.empty() || !(name[0] >= 'A' && name[0] <= 'Z'))
+  if (name.empty() || !(name[0] >= 'A' && name[0] <= 'Z')) {
     return false;
+  }
   for (size_t i = 1; i < name.size(); ++i) {
     char ch = name[i];
-    if (ch != '_' && !(ch >= '0' && ch <= '9') && !(ch >= 'A' && ch <= 'Z'))
+    if (ch != '_' && !(ch >= '0' && ch <= '9') && !(ch >= 'A' && ch <= 'Z')) {
       return false;
+    }
   }
   return true;
 }
@@ -85,8 +89,9 @@ bool IsTestBuild(const std::string& lsb_data) {
            lsb_data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
     std::vector<std::string_view> tokens = base::SplitStringPiece(
         field, "=", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    if (tokens.size() == 2 && tokens[0] == kChromeosReleaseTrack)
+    if (tokens.size() == 2 && tokens[0] == kChromeosReleaseTrack) {
       return base::StartsWith(tokens[1], kTestPrefix);
+    }
   }
   return false;
 }
@@ -94,8 +99,9 @@ bool IsTestBuild(const std::string& lsb_data) {
 // Returns true if |str| has prefix in |prefixes|.
 bool HasPrefix(const std::string& str, const std::set<std::string>& prefixes) {
   for (const auto& prefix : prefixes) {
-    if (base::StartsWith(str, prefix, base::CompareCase::SENSITIVE))
+    if (base::StartsWith(str, prefix, base::CompareCase::SENSITIVE)) {
       return true;
+    }
   }
   return false;
 }
@@ -125,8 +131,9 @@ ChromiumCommandBuilder::ChromiumCommandBuilder() = default;
 ChromiumCommandBuilder::~ChromiumCommandBuilder() = default;
 
 bool ChromiumCommandBuilder::Init() {
-  if (!brillo::userdb::GetUserInfo(kUser, &uid_, &gid_))
+  if (!brillo::userdb::GetUserInfo(kUser, &uid_, &gid_)) {
     return false;
+  }
 
   // Read the list of USE flags that were set at build time.
   std::string data;
@@ -137,8 +144,9 @@ bool ChromiumCommandBuilder::Init() {
   std::vector<std::string> lines = base::SplitString(
       data, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (size_t i = 0; i < lines.size(); ++i) {
-    if (!lines[i].empty() && lines[i][0] != '#')
+    if (!lines[i].empty() && lines[i][0] != '#') {
       use_flags_.insert(lines[i]);
+    }
   }
 
   base::CommandLine cl(base::FilePath("crossystem"));
@@ -191,27 +199,31 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   struct rlimit limit;
   limit.rlim_cur = 2048;
   limit.rlim_max = 16384;
-  if (setrlimit(RLIMIT_NOFILE, &limit) < 0)
+  if (setrlimit(RLIMIT_NOFILE, &limit) < 0) {
     PLOG(ERROR) << "Setting max FDs with setrlimit() failed";
+  }
 
   // Increase the limits of mlockable memory so that Chrome may mlock text
   // pages that have been copied into memory that can be backed by huge pages.
   limit.rlim_cur = 256 * 1024 * 1024;
   limit.rlim_max = 256 * 1024 * 1024;
-  if (setrlimit(RLIMIT_MEMLOCK, &limit) < 0)
+  if (setrlimit(RLIMIT_MEMLOCK, &limit) < 0) {
     PLOG(ERROR) << "Setting memlock limit failed";
+  }
 
   // Disable sandboxing as it causes crashes in ASAN: crbug.com/127536
   bool disable_sandbox = false;
   disable_sandbox |= SetUpASAN();
-  if (disable_sandbox)
+  if (disable_sandbox) {
     AddArg("--no-sandbox");
+  }
 
   SetUpPepperPlugins();
   AddUiFlags();
 
-  if (UseFlagIsSet("passive_event_listeners"))
+  if (UseFlagIsSet("passive_event_listeners")) {
     AddArg("--passive-listeners-default=true");
+  }
 
   AddArg("--enable-logging");
   AddArg("--log-level=1");
@@ -238,8 +250,9 @@ bool ChromiumCommandBuilder::ApplyUserConfig(
   for (size_t i = 0; i < lines.size(); ++i) {
     std::string line;
     base::TrimWhitespaceASCII(lines[i], base::TRIM_ALL, &line);
-    if (line.empty() || line[0] == '#')
+    if (line.empty() || line[0] == '#') {
       continue;
+    }
 
     if (line[0] == '!' && line.size() > 1) {
       DeleteArgsWithPrefix(line.substr(1, line.size() - 1));
@@ -249,8 +262,9 @@ bool ChromiumCommandBuilder::ApplyUserConfig(
     base::StringPairs pairs;
     base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs);
     if (pairs.size() != 1U) {
-      if (!HasPrefix(line, disallowed_prefixes))
+      if (!HasPrefix(line, disallowed_prefixes)) {
         AddArg(line);
+      }
       continue;
     }
 
@@ -263,21 +277,26 @@ bool ChromiumCommandBuilder::ApplyUserConfig(
     // with existing configs and developer behavior.
     if (name == kVmoduleFlag || name == std::string("--") + kVmoduleFlag) {
       has_vmodule_flag = true;
-      for (const auto& pattern : SplitFlagValues(value))
+      for (const auto& pattern : SplitFlagValues(value)) {
         AddVmodulePattern(pattern);
+      }
     } else if (name == kEnableFeaturesFlag ||
                name == std::string("--") + kEnableFeaturesFlag) {
-      for (const auto& feature : SplitFlagValues(value))
+      for (const auto& feature : SplitFlagValues(value)) {
         AddFeatureEnableOverride(feature);
+      }
     } else if (name == std::string("--") + kDisableFeaturesFlag) {
-      for (const auto& feature : SplitFlagValues(value))
+      for (const auto& feature : SplitFlagValues(value)) {
         AddFeatureDisableOverride(feature);
+      }
     } else if (name == std::string("--") + kEnableBlinkFeaturesFlag) {
-      for (const auto& feature : SplitFlagValues(value))
+      for (const auto& feature : SplitFlagValues(value)) {
         AddBlinkFeatureEnableOverride(feature);
+      }
     } else if (name == std::string("--") + kDisableBlinkFeaturesFlag) {
-      for (const auto& feature : SplitFlagValues(value))
+      for (const auto& feature : SplitFlagValues(value)) {
         AddBlinkFeatureDisableOverride(feature);
+      }
     } else if (IsEnvironmentVariableName(name)) {
       AddEnvVar(name, value);
     } else if (!HasPrefix(line, disallowed_prefixes)) {
@@ -379,8 +398,9 @@ void ChromiumCommandBuilder::DeleteArgsWithPrefix(const std::string& prefix) {
         list_argument_indexes_.erase(list_it++);
       } else {
         // Otherwise, decrement the index if it was after the deleted arg.
-        if (list_it->second > src_index)
+        if (list_it->second > src_index) {
           list_it->second--;
+        }
         ++list_it;
       }
     }
@@ -393,8 +413,9 @@ void ChromiumCommandBuilder::AddListFlagEntry(
     const std::string& entry_separator,
     const std::string& new_entry,
     bool prepend) {
-  if (new_entry.empty())
+  if (new_entry.empty()) {
     return;
+  }
 
   const std::string flag_prefix =
       base::StringPrintf("--%s=", flag_name.c_str());
@@ -417,8 +438,9 @@ void ChromiumCommandBuilder::AddListFlagEntry(
 }
 
 bool ChromiumCommandBuilder::SetUpASAN() {
-  if (!UseFlagIsSet("asan"))
+  if (!UseFlagIsSet("asan")) {
     return false;
+  }
 
   // Make glib use system malloc.
   AddEnvVar("G_SLICE", "always-malloc");
@@ -446,11 +468,13 @@ void ChromiumCommandBuilder::SetUpPepperPlugins() {
                                   base::FileEnumerator::FILES);
   while (true) {
     const base::FilePath path = enumerator.Next();
-    if (path.empty())
+    if (path.empty()) {
       break;
+    }
 
-    if (path.Extension() != ".info")
+    if (path.Extension() != ".info") {
       continue;
+    }
 
     std::string data;
     if (!base::ReadFileToString(path, &data)) {
@@ -500,26 +524,33 @@ void ChromiumCommandBuilder::AddUiFlags() {
   // On boards with ARM NEON support, force libvpx to use the NEON-optimized
   // code paths. Remove once http://crbug.com/161834 is fixed.
   // This is needed because libvpx cannot check cpuinfo within the sandbox.
-  if (UseFlagIsSet("neon"))
+  if (UseFlagIsSet("neon")) {
     AddEnvVar("VPX_SIMD_CAPS", "0xf");
+  }
 
-  if (UseFlagIsSet("edge_touch_filtering"))
+  if (UseFlagIsSet("edge_touch_filtering")) {
     AddArg("--edge-touch-filtering");
+  }
 
-  if (UseFlagIsSet("native_gpu_memory_buffers"))
+  if (UseFlagIsSet("native_gpu_memory_buffers")) {
     AddArg("--enable-native-gpu-memory-buffers");
+  }
 
-  if (UseFlagIsSet("disable_cros_video_decoder"))
+  if (UseFlagIsSet("disable_cros_video_decoder")) {
     AddFeatureDisableOverride("UseChromeOSDirectVideoDecoder");
+  }
 
-  if (UseFlagIsSet("arc_disable_cros_video_decoder"))
+  if (UseFlagIsSet("arc_disable_cros_video_decoder")) {
     AddFeatureDisableOverride("ArcVideoDecoder");
+  }
 
-  if (UseFlagIsSet("disable_video_decode_batching"))
+  if (UseFlagIsSet("disable_video_decode_batching")) {
     AddFeatureDisableOverride("VideoDecodeBatching");
+  }
 
-  if (UseFlagIsSet("reduce_hardware_video_decoder_buffers"))
+  if (UseFlagIsSet("reduce_hardware_video_decoder_buffers")) {
     AddFeatureEnableOverride("ReduceHardwareVideoDecoderBuffers");
+  }
 
   // TODO(dcastagna): Get rid of the following code once the proper
   // configuration will be chosen at runtime on DRM atomic boards.
@@ -534,17 +565,21 @@ void ChromiumCommandBuilder::AddUiFlags() {
               ? "yes"
               : "no"));
 
-  if (UseFlagIsSet("gpu_sandbox_allow_sysv_shm"))
+  if (UseFlagIsSet("gpu_sandbox_allow_sysv_shm")) {
     AddArg("--gpu-sandbox-allow-sysv-shm");
+  }
 
-  if (UseFlagIsSet("gpu_sandbox_start_early"))
+  if (UseFlagIsSet("gpu_sandbox_start_early")) {
     AddArg("--gpu-sandbox-start-early");
+  }
 
-  if (UseFlagIsSet("video_capture_use_gpu_memory_buffer"))
+  if (UseFlagIsSet("video_capture_use_gpu_memory_buffer")) {
     AddArg("--video-capture-use-gpu-memory-buffer");
+  }
 
-  if (UseFlagIsSet("disable_spectre_variant2_mitigation"))
+  if (UseFlagIsSet("disable_spectre_variant2_mitigation")) {
     AddFeatureDisableOverride("SpectreVariant2Mitigation");
+  }
 
   if (UseFlagIsSet("vulkan_chrome")) {
     AddFeatureEnableOverride("Vulkan");

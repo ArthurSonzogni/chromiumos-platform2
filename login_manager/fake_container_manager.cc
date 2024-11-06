@@ -41,8 +41,9 @@ void FakeContainerManager::SetStatefulMode(StatefulMode mode) {
 }
 
 bool FakeContainerManager::GetContainerPID(pid_t* pid_out) const {
-  if (!running_)
+  if (!running_) {
     return false;
+  }
   *pid_out = pid_;
   return true;
 }

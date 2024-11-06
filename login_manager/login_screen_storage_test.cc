@@ -86,8 +86,9 @@ class LoginScreenStorageTestBase : public ::testing::Test {
 
     std::string index_blob;
     LoginScreenStorageIndex index;
-    if (base::ReadFileToString(index_path, &index_blob))
+    if (base::ReadFileToString(index_path, &index_blob)) {
       index.ParseFromString(index_blob);
+    }
     return index;
   }
 
