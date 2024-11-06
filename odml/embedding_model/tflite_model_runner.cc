@@ -191,7 +191,9 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
     // Apply GPU delegate
     TfLiteGpuDelegateOptionsV2 options(TfLiteGpuDelegateOptionsV2Default());
     options.experimental_flags |= TFLITE_GPU_EXPERIMENTAL_FLAGS_CL_ONLY;
-    TfLiteDelegate* delegate = TfLiteGpuDelegateV2Create(&options);
+    TfliteModelRunner::TfLiteDelegatePtr delegate =
+        TfliteModelRunner::TfLiteDelegatePtr(
+            TfLiteGpuDelegateV2Create(&options), TfLiteGpuDelegateV2Delete);
     if (!delegate) {
       LOG(ERROR) << "GPU requested but not available.";
       metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
@@ -199,7 +201,8 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
       std::move(callback).Run(false);
       return;
     }
-    if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk) {
+    if (interpreter->ModifyGraphWithDelegate(std::move(delegate)) !=
+        kTfLiteOk) {
       LOG(ERROR) << "Could not use GPU delegate.";
       metrics_->SendEnumToUMA(
           kTfliteRunnerLoadStatusHistogramName,
@@ -231,9 +234,10 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
       std::move(callback).Run(false);
       return;
     }
-    TfLiteDelegatePtr delegate =
-        TfLiteDelegatePtr(stable_delegate->delegate_plugin->create(opts),
-                          stable_delegate->delegate_plugin->destroy);
+    TfliteModelRunner::TfLiteDelegatePtr delegate =
+        TfliteModelRunner::TfLiteDelegatePtr(
+            stable_delegate->delegate_plugin->create(opts),
+            stable_delegate->delegate_plugin->destroy);
     if (!delegate) {
       LOG(ERROR) << "Failed to create Mediatek Neuron Tflite delegate.";
       metrics_->SendEnumToUMA(
