@@ -61,8 +61,9 @@ class FakeStorageContainerFactory : public StorageContainerFactory {
         std::unique_ptr<BackingDevice> backing_device =
             backing_device_factory_.Generate(
                 config.dmcrypt_config.backing_device_config);
-        if (create)
+        if (create) {
           backing_device->Create();
+        }
         return std::make_unique<DmcryptContainer>(
             config.dmcrypt_config, std::move(backing_device), key_reference,
             platform_, keyring_.get(),
@@ -72,8 +73,9 @@ class FakeStorageContainerFactory : public StorageContainerFactory {
       case StorageContainerType::kExt4: {
         auto backing_device = Generate(
             config, config.filesystem_config.backend_type, key_reference);
-        if (!backing_device)
+        if (!backing_device) {
           return nullptr;
+        }
         return std::make_unique<Ext4Container>(
             config.filesystem_config, std::move(backing_device), platform_,
             /* metrics */ nullptr);

@@ -66,8 +66,9 @@ base::ScopedFD GetStatefulPartitionScopedFd() {
   base::ScopedFD fd = base::ScopedFD(
       HANDLE_EINTR(open(kStatefulPartitionPath, O_RDONLY | O_DIRECTORY)));
 
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     PLOG(ERROR) << "Failed to open file descriptor " << kStatefulPartitionPath;
+  }
 
   return fd;
 }
@@ -167,8 +168,9 @@ static bool UnlinkSessionKey(const KeyReference& key_reference) {
     return false;
   }
 
-  if (keyring == kInvalidKeySerial)
+  if (keyring == kInvalidKeySerial) {
     return false;
+  }
 
   if (keyctl_unlink(key, keyring) == -1) {
     PLOG(ERROR) << "Failed to unlink the key";
@@ -240,12 +242,14 @@ bool CheckFscryptKeyIoctlSupport() {
   bool ret = false;
 
   ioctl(fd.get(), FS_IOC_ADD_ENCRYPTION_KEY, nullptr);
-  if (errno != EOPNOTSUPP && errno != ENOTTY)
+  if (errno != EOPNOTSUPP && errno != ENOTTY) {
     ret = true;
+  }
 
-  if (!ret)
+  if (!ret) {
     VLOG(3) << "fscrypt v2 encryption policies not supported; "
             << "falling back to v1 encryption policies.";
+  }
 
   return ret;
 }
@@ -313,10 +317,11 @@ static int GetDirectoryPolicy(const base::FilePath& dir,
 
   int err = 0;
   // FS_IOC_GET_ENCRYPTION_POLICY only supports v1 policies.
-  if (CheckFscryptKeyIoctlSupport())
+  if (CheckFscryptKeyIoctlSupport()) {
     err = ioctl(fd.get(), FS_IOC_GET_ENCRYPTION_POLICY_EX, arg);
-  else
+  } else {
     err = ioctl(fd.get(), FS_IOC_GET_ENCRYPTION_POLICY, &(arg->policy.v1));
+  }
 
   return err;
 }
@@ -326,8 +331,9 @@ int GetDirectoryPolicyVersion(const base::FilePath& dir) {
   memset(&arg, 0, sizeof(arg));
   arg.policy_size = sizeof(arg.policy);
 
-  if (GetDirectoryPolicy(dir, &arg) < 0)
+  if (GetDirectoryPolicy(dir, &arg) < 0) {
     return -1;
+  }
 
   return arg.policy.version;
 }
@@ -366,8 +372,9 @@ static bool AddFscryptKey(const brillo::SecureBlob& key,
   memcpy(arg->raw, key.char_data(), key.size());
 
   base::ScopedFD fd = GetStatefulPartitionScopedFd();
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
+  }
 
   if (ioctl(fd.get(), FS_IOC_ADD_ENCRYPTION_KEY, arg) < 0) {
     PLOG(ERROR) << "Failed to add encryption key";
@@ -397,8 +404,9 @@ static bool RemoveFscryptKey(const KeyReference& key_reference) {
   }
 
   auto fd = GetStatefulPartitionScopedFd();
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
+  }
 
   if (ioctl(fd.get(), FS_IOC_REMOVE_ENCRYPTION_KEY, &arg) < 0) {
     PLOG(ERROR) << "Failed to remove encryption key";

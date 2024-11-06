@@ -180,16 +180,18 @@ crossystem::Crossystem* Platform::GetCrosssystem() {
 
 std::vector<DecodedProcMountInfo> Platform::ReadMountInfoFile() {
   std::string contents;
-  if (!base::ReadFileToString(mount_info_path_, &contents))
+  if (!base::ReadFileToString(mount_info_path_, &contents)) {
     return std::vector<DecodedProcMountInfo>();
+  }
 
   std::vector<std::string> lines = SplitString(
       contents, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   std::vector<DecodedProcMountInfo> mount_info_content;
   for (const auto& line : lines) {
     DecodedProcMountInfo mount_info;
-    if (!DecodeProcInfoLine(line, &mount_info))
+    if (!DecodeProcInfoLine(line, &mount_info)) {
       return std::vector<DecodedProcMountInfo>();
+    }
     mount_info_content.push_back(mount_info);
   }
   return mount_info_content;
@@ -214,12 +216,14 @@ bool Platform::GetMountsBySourcePrefix(
   // we use the root directory .
   for (const auto& mount : proc_mounts) {
     FilePath root_dir;
-    if (mount.filesystem_type == kEcryptFS)
+    if (mount.filesystem_type == kEcryptFS) {
       root_dir = FilePath(mount.mount_source);
-    else
+    } else {
       root_dir = FilePath(mount.root);
-    if (!from_prefix.IsParent(root_dir))
+    }
+    if (!from_prefix.IsParent(root_dir)) {
       continue;
+    }
 
     mounts->insert(std::pair<const FilePath, const FilePath>(
         root_dir, FilePath(mount.mount_point)));
@@ -255,8 +259,9 @@ bool Platform::IsDirectoryMounted(const FilePath& directory) {
   // only way /home/chronos/user should be mounted is if cryptohome mounted it.
   auto ret = AreDirectoriesMounted({directory});
 
-  if (!ret)
+  if (!ret) {
     return false;
+  }
 
   return ret.value()[0];
 }
@@ -310,8 +315,9 @@ bool Platform::Bind(const FilePath& from,
 
   // To apply options specific to a bind mount, we have to call mount(2) twice.
   if (mount(from.value().c_str(), to.value().c_str(), nullptr, MS_BIND,
-            nullptr))
+            nullptr)) {
     return false;
+  }
 
   uint32_t mount_flags = MS_REMOUNT | MS_BIND | kDefaultMountFlags;
   std::string options;
@@ -319,8 +325,10 @@ bool Platform::Bind(const FilePath& from,
     mount_flags |= MS_NOSYMFOLLOW;
   }
 
-  if (mount(nullptr, to.value().c_str(), nullptr, mount_flags, options.c_str()))
+  if (mount(nullptr, to.value().c_str(), nullptr, mount_flags,
+            options.c_str())) {
     return false;
+  }
 
   if (remount != RemountOption::kNoRemount) {
     uint32_t remount_mode;
@@ -340,8 +348,9 @@ bool Platform::Bind(const FilePath& from,
       default:
         return false;
     }
-    if (mount(nullptr, to.value().c_str(), nullptr, remount_mode, nullptr))
+    if (mount(nullptr, to.value().c_str(), nullptr, remount_mode, nullptr)) {
       return false;
+    }
   }
 
   return true;
@@ -411,20 +420,23 @@ bool Platform::GetOwnership(const FilePath& path,
 
   struct stat path_status;
   int ret;
-  if (follow_links)
+  if (follow_links) {
     ret = stat(path.value().c_str(), &path_status);
-  else
+  } else {
     ret = lstat(path.value().c_str(), &path_status);
+  }
 
   if (ret != 0) {
     PLOG(ERROR) << (follow_links ? "" : "l") << "stat() of \"" << path.value()
                 << "\" failed";
     return false;
   }
-  if (user_id)
+  if (user_id) {
     *user_id = path_status.st_uid;
-  if (group_id)
+  }
+  if (group_id) {
     *group_id = path_status.st_gid;
+  }
   return true;
 }
 
@@ -435,10 +447,11 @@ bool Platform::SetOwnership(const FilePath& path,
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
   int ret;
-  if (follow_links)
+  if (follow_links) {
     ret = chown(path.value().c_str(), user_id, group_id);
-  else
+  } else {
     ret = lchown(path.value().c_str(), user_id, group_id);
+  }
   if (ret) {
     PLOG(ERROR) << (follow_links ? "" : "l") << "chown() of \"" << path.value()
                 << "\" to (" << user_id << "," << group_id << ") failed";
@@ -666,8 +679,9 @@ bool Platform::WriteSecureBlobToFileAtomicDurable(
     const FilePath& path, const brillo::SecureBlob& blob, mode_t mode) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
-  if (!WriteSecureBlobToFileAtomic(path, blob, mode))
+  if (!WriteSecureBlobToFileAtomic(path, blob, mode)) {
     return false;
+  }
 
   return SyncDirectory(FilePath(path).DirName());
 }
@@ -677,8 +691,9 @@ bool Platform::WriteStringToFileAtomicDurable(const FilePath& path,
                                               mode_t mode) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
-  if (!WriteStringToFileAtomic(path, data, mode))
+  if (!WriteStringToFileAtomic(path, data, mode)) {
     return false;
+  }
   return SyncDirectory(FilePath(path).DirName());
 }
 
@@ -686,8 +701,9 @@ bool Platform::TouchFileDurable(const FilePath& path) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
   brillo::Blob empty_blob(0);
-  if (!WriteFile(path, empty_blob))
+  if (!WriteFile(path, empty_blob)) {
     return false;
+  }
   return SyncDirectory(FilePath(path).DirName());
 }
 
@@ -840,8 +856,9 @@ bool Platform::UdevAdmSettle(const base::FilePath& device_path,
 
   // Start the process and return.
   int rc = udevadm_process.Run();
-  if (rc != 0)
+  if (rc != 0) {
     return false;
+  }
 
   return true;
 }
@@ -852,14 +869,16 @@ bool Platform::IsStatefulLogicalVolumeSupported() {
   base::ScopedFD fd(HANDLE_EINTR(
       open(stateful_device.value().c_str(), O_RDONLY | O_CLOEXEC)));
 
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
+  }
 
   char lvm_signature[kLvmSignatureSize + 1];
 
   if (HANDLE_EINTR(pread(fd.get(), &lvm_signature, kLvmSignatureSize,
-                         kLvmSignatureOffset)) != kLvmSignatureSize)
+                         kLvmSignatureOffset)) != kLvmSignatureSize) {
     return false;
+  }
   lvm_signature[kLvmSignatureSize] = '\0';
 
   return std::string(lvm_signature) == std::string(kLvmSignature);
@@ -868,8 +887,9 @@ bool Platform::IsStatefulLogicalVolumeSupported() {
 base::FilePath Platform::GetStatefulDevice() {
   // Check if the stateful hibernation dm-snapshot device is active and use it.
   base::FilePath stateful_hibernation_device(kStatefulHibernationDevice);
-  if (FileExists(stateful_hibernation_device))
+  if (FileExists(stateful_hibernation_device)) {
     return stateful_hibernation_device;
+  }
 
   char root_device[PATH_MAX];
   int ret = rootdev(root_device, sizeof(root_device),
@@ -898,8 +918,9 @@ bool Platform::DeletePathRecursively(const FilePath& path) {
 bool Platform::DeleteFileDurable(const FilePath& path) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
-  if (!brillo::DeletePathRecursively(path))
+  if (!brillo::DeletePathRecursively(path)) {
     return false;
+  }
   return SyncDirectory(path.DirName());
 }
 
@@ -926,8 +947,9 @@ bool Platform::EnumerateDirectoryEntries(const FilePath& path,
       base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
       base::FileEnumerator::SHOW_SYM_LINKS);
   base::FileEnumerator ent_enum(path, recursive, ft);
-  for (FilePath path = ent_enum.Next(); !path.empty(); path = ent_enum.Next())
+  for (FilePath path = ent_enum.Next(); !path.empty(); path = ent_enum.Next()) {
     ent_list->push_back(path);
+  }
   return true;
 }
 
@@ -1104,8 +1126,9 @@ bool Platform::Rename(const FilePath& from, const FilePath& to, bool cros_fs) {
 
   // Try ReplaceFile first, but will not work when |to| and |from| are on
   // a different volume.
-  if (base::ReplaceFile(from, to, /*error=*/nullptr))
+  if (base::ReplaceFile(from, to, /*error=*/nullptr)) {
     return true;
+  }
 
   return cros_fs && base::Move(from, to);
 }
@@ -1184,12 +1207,13 @@ bool Platform::ReportFilesystemDetails(const FilePath& device,
     tune2fs_process.AddArg(device.value());
 
     tune2fs_rc = tune2fs_process.Run();
-    if (tune2fs_rc == 0)
+    if (tune2fs_rc == 0) {
       base::AppendToFile(logfile,
                          tune2fs_process.GetOutputString(STDOUT_FILENO));
-    else
+    } else {
       LOG(ERROR) << "Failed to run tune2fs on " << device.value() << ", exit "
                  << tune2fs_rc << ")";
+    }
   }
 
   if (FileExists(FilePath(kPathDumpe2fs))) {
@@ -1200,12 +1224,13 @@ bool Platform::ReportFilesystemDetails(const FilePath& device,
     dumpe2fs_process.AddArg(device.value());
 
     dumpe2fs_rc = dumpe2fs_process.Run();
-    if (dumpe2fs_rc == 0)
+    if (dumpe2fs_rc == 0) {
       base::AppendToFile(logfile,
                          dumpe2fs_process.GetOutputString(STDOUT_FILENO));
-    else
+    } else {
       LOG(ERROR) << "Failed to run dumpe2fs on " << device.value() << ", exit "
                  << dumpe2fs_rc << ")";
+    }
   }
 
   return (dumpe2fs_rc == 0) && (tune2fs_rc == 0);
@@ -1410,12 +1435,14 @@ bool Platform::FormatExt4(const base::FilePath& file,
   brillo::ProcessImpl format_process;
   format_process.AddArg("/sbin/mkfs.ext4");
 
-  for (const auto& arg : opts)
+  for (const auto& arg : opts) {
     format_process.AddArg(arg);
+  }
 
   format_process.AddArg(file.value());
-  if (blocks != 0)
+  if (blocks != 0) {
     format_process.AddArg(std::to_string(blocks));
+  }
 
   // Close unused file descriptors in child process.
   format_process.SetCloseUnusedFileDescriptors(true);
@@ -1456,8 +1483,9 @@ bool Platform::Fsck(const base::FilePath& file,
 
   brillo::ProcessImpl fsck_process;
   fsck_process.AddArg(kPathE2fsck);
-  for (const auto& arg : raw_opts)
+  for (const auto& arg : raw_opts) {
     fsck_process.AddArg(arg);
+  }
 
   fsck_process.AddArg(file.value());
 
@@ -1477,8 +1505,9 @@ bool Platform::Tune2Fs(const base::FilePath& file,
 
   brillo::ProcessImpl tune_process;
   tune_process.AddArg(kPathTune2fs);
-  for (const auto& arg : opts)
+  for (const auto& arg : opts) {
     tune_process.AddArg(arg);
+  }
 
   tune_process.AddArg(file.value());
 
@@ -1511,8 +1540,9 @@ bool Platform::ResizeFilesystem(const base::FilePath& file, uint64_t blocks) {
   // Start the process and return.
   LOG(INFO) << "Resizing filesystem on " << file.value() << " to " << blocks;
   int rc = resize_process.Run();
-  if (rc != 0)
+  if (rc != 0) {
     return false;
+  }
 
   LOG(INFO) << "Resizing process completed.";
   return true;
@@ -1526,8 +1556,9 @@ bool Platform::RestoreSELinuxContexts(const base::FilePath& path,
   LOG(INFO) << "Restoring SELinux contexts for: " << path.value()
             << ", recursive=" << std::boolalpha << recursive;
   int restorecon_flag = 0;
-  if (recursive)
+  if (recursive) {
     restorecon_flag |= SELINUX_RESTORECON_RECURSE;
+  }
   if (selinux_restorecon(path.value().c_str(), restorecon_flag) != 0) {
     LOG(ERROR) << "restorecon(" << path.value() << ") failed";
     return false;
@@ -1701,32 +1732,37 @@ FileEnumerator::FileInfo& FileEnumerator::FileInfo::operator=(
 }
 
 bool FileEnumerator::FileInfo::IsDirectory() const {
-  if (info_.get())
+  if (info_.get()) {
     return info_->IsDirectory();
+  }
   return ::IsDirectory(stat_);
 }
 
 FilePath FileEnumerator::FileInfo::GetName() const {
-  if (info_.get())
+  if (info_.get()) {
     return info_->GetName();
+  }
   return name_;
 }
 
 int64_t FileEnumerator::FileInfo::GetSize() const {
-  if (info_.get())
+  if (info_.get()) {
     return info_->GetSize();
+  }
   return stat_.st_size;
 }
 
 base::Time FileEnumerator::FileInfo::GetLastModifiedTime() const {
-  if (info_.get())
+  if (info_.get()) {
     return info_->GetLastModifiedTime();
+  }
   return base::Time::FromTimeT(stat_.st_mtime);
 }
 
 const base::stat_wrapper_t& FileEnumerator::FileInfo::stat() const {
-  if (info_.get())
+  if (info_.get()) {
     return info_->stat();
+  }
   return stat_;
 }
 
@@ -1750,8 +1786,9 @@ FileEnumerator::FileEnumerator() = default;
 FileEnumerator::~FileEnumerator() = default;
 
 FilePath FileEnumerator::Next() {
-  if (!enumerator_.get())
+  if (!enumerator_.get()) {
     return FilePath();
+  }
   return enumerator_->Next();
 }
 

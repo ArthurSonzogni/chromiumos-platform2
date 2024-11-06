@@ -99,8 +99,9 @@ class BRILLO_EXPORT Ext4Container : public StorageContainer {
   // metrics_library.h for a description of the arguments.
   void SendSample(
       const std::string& name, int sample, int min, int max, int nbuckets) {
-    if (metrics_prefix_.empty() || !metrics_)
+    if (metrics_prefix_.empty() || !metrics_) {
       return;
+    }
 
     metrics_->SendToUMA(metrics_prefix_ + name, sample, min, max, nbuckets);
   }
@@ -109,8 +110,9 @@ class BRILLO_EXPORT Ext4Container : public StorageContainer {
   // MetricsLibrary::SendBoolToUMA in metrics_library.h for a description of the
   // arguments.
   void SendBool(const std::string& name, int sample) {
-    if (metrics_prefix_.empty() || !metrics_)
+    if (metrics_prefix_.empty() || !metrics_) {
       return;
+    }
 
     metrics_->SendBoolToUMA(metrics_prefix_ + name, sample);
   }
@@ -120,8 +122,9 @@ class BRILLO_EXPORT Ext4Container : public StorageContainer {
   // arguments.
   template <typename T>
   void SendEnum(const std::string& name, T sample) {
-    if (metrics_prefix_.empty() || !metrics_)
+    if (metrics_prefix_.empty() || !metrics_) {
       return;
+    }
 
     metrics_->SendEnumToUMA(metrics_prefix_ + name, sample);
   }

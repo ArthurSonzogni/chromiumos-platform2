@@ -665,17 +665,21 @@ bool FakePlatform::GetOwnership(const base::FilePath& path,
   }
   // Can not do it at present due to weird test dependencies.
   if (file_owners_.find(real_path) == file_owners_.end()) {
-    if (user_id)
+    if (user_id) {
       *user_id = kChronosUid;
-    if (group_id)
+    }
+    if (group_id) {
       *group_id = kChronosGid;
+    }
     return true;
   }
 
-  if (user_id)
+  if (user_id) {
     *user_id = file_owners_.at(real_path).first;
-  if (group_id)
+  }
+  if (group_id) {
     *group_id = file_owners_.at(real_path).second;
+  }
   return true;
 }
 

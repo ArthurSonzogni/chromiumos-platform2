@@ -50,12 +50,14 @@ bool PartitionDevice::Teardown() {
 }
 
 bool PartitionDevice::Exists() {
-  if (!platform_->FileExists(name_))
+  if (!platform_->FileExists(name_)) {
     return false;
+  }
 
   base::stat_wrapper_t statbuf;
-  if (!platform_->Stat(name_, &statbuf))
+  if (!platform_->Stat(name_, &statbuf)) {
     return false;
+  }
 
   return S_ISBLK(statbuf.st_mode);
 }

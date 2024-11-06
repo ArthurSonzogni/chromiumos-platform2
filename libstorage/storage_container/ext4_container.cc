@@ -69,10 +69,12 @@ std::vector<UmaFsckResult> MapFsckResultToEnum(int fsck_result) {
       fsck_result &= ~error.first;
     }
   }
-  if (fsck_result != 0)
+  if (fsck_result != 0) {
     errors.push_back(UmaFsckResult::kUnexpected);
-  if (errors.size() > 1)
+  }
+  if (errors.size() > 1) {
     errors.push_back(UmaFsckResult::kCombinedError);
+  }
   return errors;
 }
 
@@ -105,8 +107,9 @@ std::string GetMetricsPrefix(const base::FilePath backing) {
       {"unencrypted", "Platform.FileSystem.Stateful"},
       {"-data", "Platform.FileSystem.UserData"}};
 
-  if (backing.empty())
+  if (backing.empty()) {
     return std::string();
+  }
 
   for (auto tracked_entry : tracked) {
     if (backing.value().find(tracked_entry.first) != std::string::npos) {
@@ -132,8 +135,9 @@ Ext4Container::Ext4Container(
       blk_count_(0) {}
 
 bool Ext4Container::Exists() {
-  if (!backing_container_->Exists())
+  if (!backing_container_->Exists()) {
     return false;
+  }
 
   // TODO(gwendal): Check there is a valid superblock by checking the signature,
   // sb->s_magic == EXT2_SUPER_MAGIC.
@@ -209,8 +213,9 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
         << ": fsck found uncorrected errors: error returned: " << fsck_err;
 
     // Finally, print the overall results of the last fsck.
-    for (auto fsck_error : MapFsckResultToEnum(fsck_err))
+    for (auto fsck_error : MapFsckResultToEnum(fsck_err)) {
       SendEnum(".fsckResult", fsck_error);
+    }
   }
 
   if (created) {
@@ -242,8 +247,9 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
   }
 
   struct ext2_super_block super_block;
-  if (!ReadSuperBlock(platform_, backing, &super_block))
+  if (!ReadSuperBlock(platform_, backing, &super_block)) {
     return false;
+  }
 
   // Gather Filesystem errors from superblock.
   SendSample("_ErrorCount", super_block.s_error_count, 0, 100000, 20);

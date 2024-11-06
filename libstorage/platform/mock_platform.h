@@ -50,8 +50,9 @@ class MockFileEnumerator : public FileEnumerator {
 
  protected:
   virtual base::FilePath MockNext() {
-    if (entries_.empty())
+    if (entries_.empty()) {
       return base::FilePath();
+    }
     current_ = entries_.at(0);
     entries_.erase(entries_.begin(), entries_.begin() + 1);
     return current_.GetName();
