@@ -35,9 +35,10 @@ absl::Status Reader::Start() {
         fd_.get(), base::BindRepeating(&Reader::OnFileCanReadWithoutBlocking,
                                        base::Unretained(this), fd_.get()));
 
-    if (!watcher_)
+    if (!watcher_) {
       return absl::UnavailableError(
           "failed to create a file descriptor watcher");
+    }
   }
 
   LOG(INFO) << "Start watching device " << fd_.get();
@@ -61,10 +62,12 @@ void Reader::OnFileCanReadWithoutBlocking(int fd) {
   while (attempts-- > 0) {
     read_size = read(fd, buf, kHIDMaxSize);
     if (read_size < 0) {
-      if (errno == EINTR || errno == EAGAIN)
+      if (errno == EINTR || errno == EAGAIN) {
         continue;
-      if (errno != ENODEV)
+      }
+      if (errno != ENODEV) {
         LOG(ERROR) << "Error reading fd " << fd << ": " << strerror(errno);
+      }
       Stop();
       return;
     } else {

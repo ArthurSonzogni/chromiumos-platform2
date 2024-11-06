@@ -61,8 +61,9 @@ void Defragmenter::DefragmentHeatmap(
       hm_->scan_time = chunk->scan_time;
       byte_count_ = chunk->byte_count.value();
 
-      if (!GetPayloadHeader(chunk->payload))
+      if (!GetPayloadHeader(chunk->payload)) {
         return;
+      }
 
       size = std::min(static_cast<uint32_t>(chunk->payload.size()),
                       chunk->byte_count.value());
@@ -114,8 +115,9 @@ void Defragmenter::DefragmentHeatmap(
   scan_time_ = chunk->scan_time;
   if (hm_->payload.size() ==
       hm_->length) {  // All chunks of a frame have arrived.
-    if (!ValidatePadding(chunk->payload, size))
+    if (!ValidatePadding(chunk->payload, size)) {
       return;
+    }
     // TODO: b/320785596 - Add more validations if necessary.
     q_->Push(std::move(hm_));
     hm_ = std::make_unique<Heatmap>();
