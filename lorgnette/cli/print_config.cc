@@ -153,15 +153,12 @@ void PrintConstraintRange(std::optional<T> val,
   if (!val.has_value()) {
     out << range.min() << ".." << range.max();
   } else if (val.value() <= range.min()) {
-    out << "[" << range.min() << "]"
-        << ".." << range.max();
+    out << "[" << range.min() << "]" << ".." << range.max();
   } else if (val.value() >= range.max()) {
-    out << range.min() << ".."
-        << "[" << range.max() << "]";
+    out << range.min() << ".." << "[" << range.max() << "]";
   } else {
-    out << range.min() << ".."
-        << "[" << val.value() << "]"
-        << ".." << range.max();
+    out << range.min() << ".." << "[" << val.value() << "]" << ".."
+        << range.max();
   }
   out << UnitName(unit);
   if (range.quant() != 0.0 && range.quant() != 1.0) {
@@ -226,8 +223,7 @@ void PrintSaneOption(const lorgnette::ScannerOption& option,
   out << "    " << description << std::endl;
 
   // Value and constraints on a row.
-  out << "    "
-      << "Value: ";
+  out << "    " << "Value: ";
   if (option.has_constraint()) {
     PrintSaneConstraint(option, out);
   } else {
@@ -236,8 +232,7 @@ void PrintSaneOption(const lorgnette::ScannerOption& option,
   out << std::endl;
 
   // Flags on a row.
-  out << "    "
-      << "Flags: ";
+  out << "    " << "Flags: ";
   PrintSaneFlags(option, out);
   out << std::endl;
 }

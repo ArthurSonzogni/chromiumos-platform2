@@ -110,8 +110,9 @@ TEST_F(SaneDeviceImplTest, GetValidOptionValuesSuccess) {
       device_->GetValidOptionValues(nullptr);
   ASSERT_TRUE(values.has_value());
   ASSERT_EQ(values->resolutions.size(), 1200);
-  for (int i = 0; i < 1200; i++)
+  for (int i = 0; i < 1200; i++) {
     EXPECT_EQ(values->resolutions[i], i + 1);
+  }
 
   std::vector<ColorMode> color_modes = {MODE_GRAYSCALE, MODE_COLOR};
   std::vector<uint32_t> resolutions = {75, 100, 150, 200, 300, 600};
@@ -133,8 +134,9 @@ TEST_F(SaneDeviceImplTest, SetResolution) {
       device_->GetValidOptionValues(nullptr);
   ASSERT_TRUE(values.has_value());
 
-  for (int resolution : values->resolutions)
+  for (int resolution : values->resolutions) {
     EXPECT_TRUE(device_->SetScanResolution(nullptr, resolution));
+  }
 }
 
 // Check the SetDocumentSource rejects invalid values and works properly for all

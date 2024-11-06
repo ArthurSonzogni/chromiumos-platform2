@@ -37,12 +37,13 @@ DocumentSource CreateDocumentSource(const std::string& name) {
 }
 
 ColorMode ColorModeFromSaneString(const std::string& mode) {
-  if (mode == kScanPropertyModeLineart)
+  if (mode == kScanPropertyModeLineart) {
     return MODE_LINEART;
-  else if (mode == kScanPropertyModeGray)
+  } else if (mode == kScanPropertyModeGray) {
     return MODE_GRAYSCALE;
-  else if (mode == kScanPropertyModeColor)
+  } else if (mode == kScanPropertyModeColor) {
     return MODE_COLOR;
+  }
   return MODE_UNSPECIFIED;
 }
 
@@ -230,8 +231,9 @@ bool SaneDeviceImpl::SetDocumentSource(brillo::ErrorPtr* error,
 std::optional<ColorMode> SaneDeviceImpl::GetColorMode(brillo::ErrorPtr* error) {
   std::optional<std::string> sane_color_mode =
       GetOption<std::string>(error, kScanMode);
-  if (!sane_color_mode.has_value())
+  if (!sane_color_mode.has_value()) {
     return std::nullopt;  // brillo::Error::AddTo already called.
+  }
 
   return ColorModeFromSaneString(sane_color_mode.value());
 }
@@ -281,8 +283,9 @@ bool SaneDeviceImpl::SetScanRegion(brillo::ErrorPtr* error,
   // device's coordinates. We provide the appearance to the user that all
   // region options start at (0, 0).
   std::optional<double> x_offset = GetOptionOffset(error, kTopLeftX);
-  if (!x_offset.has_value())
+  if (!x_offset.has_value()) {
     return false;  // brillo::Error::AddTo already called.
+  }
 
   // Get ADF justification offset modification if justification is specified.
   std::optional<uint32_t> justification_x_offset =
@@ -293,8 +296,9 @@ bool SaneDeviceImpl::SetScanRegion(brillo::ErrorPtr* error,
   x_offset.value() += justification_x_offset.value();
 
   std::optional<double> y_offset = GetOptionOffset(error, kTopLeftY);
-  if (!y_offset.has_value())
+  if (!y_offset.has_value()) {
     return false;  // brillo::Error::AddTo already called.
+  }
 
   const base::flat_map<ScanOption, double> values{
       {kTopLeftX, region.top_left_x() + x_offset.value()},

@@ -66,8 +66,9 @@ std::optional<std::vector<ScannerInfo>> SaneClientImpl::DeviceListToScannerInfo(
   std::vector<ScannerInfo> scanners;
   for (int i = 0; device_list[i]; i++) {
     const SANE_Device* dev = device_list[i];
-    if (!dev->name || strcmp(dev->name, "") == 0)
+    if (!dev->name || strcmp(dev->name, "") == 0) {
       continue;
+    }
 
     if (names.count(dev->name) != 0) {
       LOG(ERROR) << "Duplicate device name: " << dev->name;
@@ -106,14 +107,16 @@ std::unique_ptr<SaneDevice> SaneClientImpl::ConnectToDeviceInternal(
           error, FROM_HERE, kDbusDomain, kManagerServiceError,
           "Device '%s' is currently in-use", device_name.c_str());
 
-      if (sane_status)
+      if (sane_status) {
         *sane_status = SANE_STATUS_DEVICE_BUSY;
+      }
       return nullptr;
     }
 
     SANE_Status status = libsane_->sane_open(device_name.c_str(), &handle);
-    if (sane_status)
+    if (sane_status) {
       *sane_status = status;
+    }
 
     if (status != SANE_STATUS_GOOD) {
       brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,

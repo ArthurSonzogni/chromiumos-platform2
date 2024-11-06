@@ -52,8 +52,9 @@ std::string SerializeError(const brillo::ErrorPtr& error_ptr) {
   const brillo::Error* error = error_ptr.get();
   while (error) {
     // Format error string as "domain/code:message".
-    if (!message.empty())
+    if (!message.empty()) {
       message += ';';
+    }
     message +=
         error->GetDomain() + '/' + error->GetCode() + ':' + error->GetMessage();
     error = error->GetInnerError();
@@ -137,12 +138,13 @@ ScanJobFailureReason GetScanJobFailureReason(
 namespace impl {
 
 ColorMode ColorModeFromSaneString(const std::string& mode) {
-  if (mode == kScanPropertyModeLineart)
+  if (mode == kScanPropertyModeLineart) {
     return MODE_LINEART;
-  else if (mode == kScanPropertyModeGray)
+  } else if (mode == kScanPropertyModeGray) {
     return MODE_GRAYSCALE;
-  else if (mode == kScanPropertyModeColor)
+  } else if (mode == kScanPropertyModeColor) {
     return MODE_COLOR;
+  }
   return MODE_UNSPECIFIED;
 }
 
@@ -317,8 +319,9 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
   }
   response.set_result(OperationResult::OPERATION_RESULT_SUCCESS);
 
-  if (!activity_callback_.is_null())
+  if (!activity_callback_.is_null()) {
     activity_callback_.Run(Daemon::kNormalShutdownTimeout);
+  }
 
   *scanner_list_out = std::move(response);
   return true;
@@ -345,13 +348,15 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
       firewall_manager_->RequestPortAccessIfNeeded(device_name);
   std::unique_ptr<SaneDevice> device =
       sane_client_->ConnectToDevice(error, nullptr, device_name);
-  if (!device)
+  if (!device) {
     return false;  // brillo::Error::AddTo already called.
+  }
 
   std::optional<ValidOptionValues> options =
       device->GetValidOptionValues(error);
-  if (!options.has_value())
+  if (!options.has_value()) {
     return false;  // brillo::Error::AddTo already called.
+  }
 
   // These values correspond to the values of Chromium's
   // ScanJobSettingsResolution enum in
@@ -365,8 +370,9 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
   // TODO(b/179492658): Once the scan app is using the resolutions from
   // DocumentSource instead of ScannerCapabilities, remove this logic.
   for (const uint32_t resolution : options->resolutions) {
-    if (base::Contains(supported_resolutions, resolution))
+    if (base::Contains(supported_resolutions, resolution)) {
       capabilities.add_resolutions(resolution);
+    }
   }
 
   for (const DocumentSource& source : options->sources) {
@@ -381,12 +387,14 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
   // DocumentSource instead of ScannerCapabilities, remove this logic.
   for (const std::string& mode : options->color_modes) {
     const ColorMode color_mode = impl::ColorModeFromSaneString(mode);
-    if (color_mode != MODE_UNSPECIFIED)
+    if (color_mode != MODE_UNSPECIFIED) {
       capabilities.add_color_modes(color_mode);
+    }
   }
 
-  if (!activity_callback_.is_null())
+  if (!activity_callback_.is_null()) {
     activity_callback_.Run(Daemon::kNormalShutdownTimeout);
+  }
 
   *capabilities_out = std::move(capabilities);
   return true;
@@ -401,8 +409,9 @@ StartScanResponse Manager::StartScan(const StartScanRequest& request) {
 
   // Give extra time to start the scan because some devices don't return from
   // the SANE call until the hardware has started to scan.
-  if (!activity_callback_.is_null())
+  if (!activity_callback_.is_null()) {
     activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
+  }
 
   // Ensure the timeout is restored to normal no matter how this function exits.
   base::ScopedClosureRunner restore_timeout(base::BindOnce(
@@ -448,8 +457,9 @@ StartScanResponse Manager::StartScan(const StartScanRequest& request) {
   active_scans_.emplace(uuid, std::move(scan_state));
   LOG(INFO) << __func__ << ": Started tracking active scan " << uuid;
 
-  if (!activity_callback_.is_null())
+  if (!activity_callback_.is_null()) {
     activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
+  }
   (void)restore_timeout.Release();  // Don't undo the extended timeout.
 
   response.set_scan_uuid(uuid);
@@ -489,8 +499,9 @@ void Manager::GetNextImage(
       [](base::WeakPtr<Manager> manager, const std::string& uuid) {
         if (manager) {
           auto state_entry = manager->active_scans_.find(uuid);
-          if (state_entry == manager->active_scans_.end())
+          if (state_entry == manager->active_scans_.end()) {
             return;
+          }
 
           ScanJobState& state = state_entry->second;
           if (state.cancelled) {
@@ -587,8 +598,9 @@ CancelScanResponse Manager::CancelScan(const CancelScanRequest& request) {
     LOG(INFO) << __func__ << ": Stopped tracking cancelled scan " << uuid;
   }
 
-  if (!activity_callback_.is_null())
+  if (!activity_callback_.is_null()) {
     activity_callback_.Run(Daemon::kNormalShutdownTimeout);
+  }
 
   response.set_success(true);
   return response;
@@ -666,8 +678,9 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
   std::unique_ptr<SaneDevice> device =
       sane_client_->ConnectToDevice(error, &status, request.device_name());
   if (!device) {
-    if (failure_mode)
+    if (failure_mode) {
       *failure_mode = GetScanFailureMode(status);
+    }
 
     return false;  // brillo::Error::AddTo already called.
   }
@@ -721,8 +734,9 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
     brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
                                kManagerServiceError, "Failed to start scan: %s",
                                sane_strstatus(status));
-    if (failure_mode)
+    if (failure_mode) {
       *failure_mode = GetScanFailureMode(status);
+    }
 
     ReportScanFailed(request.device_name(), GetScanFailureMode(status));
     return false;
@@ -739,8 +753,9 @@ void Manager::GetNextImageInternal(const std::string& uuid,
   DCHECK(expected_lines);
 
   // Give extra time to read the page data.
-  if (!activity_callback_.is_null())
+  if (!activity_callback_.is_null()) {
     activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
+  }
 
   // Ensure the timeout is restored to normal no matter how this function exits.
   base::ScopedClosureRunner restore_timeout(base::BindOnce(
@@ -760,8 +775,9 @@ void Manager::GetNextImageInternal(const std::string& uuid,
 
   // Reading the page data may have taken a while.  There are several additional
   // steps below that can take a few seconds, so extend the timeout again.
-  if (!activity_callback_.is_null())
+  if (!activity_callback_.is_null()) {
     activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
+  }
 
   switch (result) {
     case SCAN_STATE_PAGE_COMPLETED:
@@ -840,8 +856,9 @@ void Manager::GetNextImageInternal(const std::string& uuid,
   // timeout in place.
   scan_state->current_page++;
   (void)restore_timeout.Release();
-  if (!activity_callback_.is_null())
+  if (!activity_callback_.is_null()) {
     activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
+  }
 }
 
 ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
@@ -891,8 +908,9 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
       brillo::Error::AddToPrintf(
           error, FROM_HERE, kDbusDomain, kManagerServiceError,
           "Reading scan data failed: %s", sane_strstatus(result));
-      if (failure_mode)
+      if (failure_mode) {
         *failure_mode = GetScanFailureMode(result);
+      }
 
       return SCAN_STATE_FAILED;
     }

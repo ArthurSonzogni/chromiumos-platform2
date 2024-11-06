@@ -35,8 +35,9 @@ std::unique_ptr<SaneDevice> SaneClient::ConnectToDevice(
           "Didn't get a corrected backend string for ippusb device %s.  Cannot "
           "contact scanner.",
           device_name.c_str());
-      if (sane_status)
-	*sane_status = SANE_STATUS_INVAL;
+      if (sane_status) {
+        *sane_status = SANE_STATUS_INVAL;
+      }
       return nullptr;
     }
 

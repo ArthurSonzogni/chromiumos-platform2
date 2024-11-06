@@ -290,8 +290,9 @@ bool ScanRunner::RunScanner(const std::string& scanner,
   std::cout << "Getting device capabilities for " << scanner << std::endl;
   std::optional<lorgnette::ScannerCapabilities> capabilities =
       GetScannerCapabilities(manager_, scanner);
-  if (!capabilities.has_value())
+  if (!capabilities.has_value()) {
     return false;
+  }
   PrintScannerCapabilities(capabilities.value());
 
   if (!base::Contains(capabilities->resolutions(), resolution_)) {
@@ -341,14 +342,18 @@ bool ScanRunner::RunScanner(const std::string& scanner,
       return false;
     }
 
-    if (region_->top_left_x() == -1.0)
+    if (region_->top_left_x() == -1.0) {
       region_->set_top_left_x(0.0);
-    if (region_->top_left_y() == -1.0)
+    }
+    if (region_->top_left_y() == -1.0) {
       region_->set_top_left_y(0.0);
-    if (region_->bottom_right_x() == -1.0)
+    }
+    if (region_->bottom_right_x() == -1.0) {
       region_->set_bottom_right_x(scan_source->area().width());
-    if (region_->bottom_right_y() == -1.0)
+    }
+    if (region_->bottom_right_y() == -1.0) {
       region_->set_bottom_right_y(scan_source->area().height());
+    }
   }
 
   if (!base::Contains(capabilities->color_modes(), color_mode_)) {
@@ -392,13 +397,15 @@ std::vector<std::string> BuildScannerList(ManagerProxy* manager) {
 
   std::cout << "Getting scanner list." << std::endl;
   std::optional<std::vector<std::string>> sane_scanners = ListScanners(manager);
-  if (!sane_scanners.has_value())
+  if (!sane_scanners.has_value()) {
     return {};
+  }
 
   std::optional<std::vector<std::string>> airscan_scanners =
       ReadAirscanOutput(&discover);
-  if (!airscan_scanners.has_value())
+  if (!airscan_scanners.has_value()) {
     return {};
+  }
 
   std::vector<std::string> scanners = std::move(sane_scanners.value());
   scanners.insert(scanners.end(), airscan_scanners.value().begin(),
@@ -725,8 +732,9 @@ int main(int argc, char** argv) {
 
       std::optional<lorgnette::CancelScanResponse> response =
           CancelScan(manager.get(), FLAGS_uuid);
-      if (!response.has_value())
+      if (!response.has_value()) {
         return 1;
+      }
 
       if (!response->success()) {
         LOG(ERROR) << "Failed to cancel scan: " << response->failure_reason();

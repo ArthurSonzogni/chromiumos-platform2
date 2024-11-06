@@ -67,8 +67,9 @@ bool ScanHandler::StartScan(
   request.mutable_settings()->set_resolution(resolution);
   request.mutable_settings()->set_source_name(scan_source.name());
   request.mutable_settings()->set_color_mode(color_mode);
-  if (scan_region.has_value())
+  if (scan_region.has_value()) {
     *request.mutable_settings()->mutable_scan_region() = scan_region.value();
+  }
   request.mutable_settings()->set_image_format(image_format);
   format_extension_ = ExtensionForFormat(image_format);
 
@@ -107,8 +108,9 @@ void ScanHandler::HandleScanStatusChangedSignal(
   } else if (signal.state() == lorgnette::SCAN_STATE_PAGE_COMPLETED) {
     std::cout << "Page " << signal.page() << " completed." << std::endl;
     current_page_ += 1;
-    if (signal.more_pages())
+    if (signal.more_pages()) {
       RequestNextPage();
+    }
   } else if (signal.state() == lorgnette::SCAN_STATE_COMPLETED) {
     std::cout << "Scan completed successfully." << std::endl;
     quit_closure_.Run();

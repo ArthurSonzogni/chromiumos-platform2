@@ -403,8 +403,9 @@ bool SaneOption::Set(const ScannerOption& value) {
 
 template <>
 std::optional<int> SaneOption::Get() const {
-  if (!active_)
+  if (!active_) {
     return std::nullopt;
+  }
 
   switch (type_) {
     case SANE_TYPE_INT:
@@ -441,8 +442,9 @@ std::optional<std::vector<int>> SaneOption::Get() const {
 
 template <>
 std::optional<double> SaneOption::Get() const {
-  if (!active_)
+  if (!active_) {
     return std::nullopt;
+  }
 
   switch (type_) {
     case SANE_TYPE_INT:
@@ -482,8 +484,9 @@ std::optional<std::vector<double>> SaneOption::Get() const {
 
 template <>
 std::optional<bool> SaneOption::Get() const {
-  if (!active_)
+  if (!active_) {
     return std::nullopt;
+  }
 
   if (type_ != SANE_TYPE_BOOL) {
     LOG(ERROR) << "Requested bool from option type " << type_;
@@ -495,8 +498,9 @@ std::optional<bool> SaneOption::Get() const {
 
 template <>
 std::optional<std::string> SaneOption::Get() const {
-  if (!active_)
+  if (!active_) {
     return std::nullopt;
+  }
 
   if (type_ != SANE_TYPE_STRING) {
     LOG(ERROR) << "Requested string from option type " << type_;
@@ -507,16 +511,17 @@ std::optional<std::string> SaneOption::Get() const {
 }
 
 void* SaneOption::GetPointer() {
-  if (type_ == SANE_TYPE_STRING)
+  if (type_ == SANE_TYPE_STRING) {
     return string_data_->data();
-  else if (type_ == SANE_TYPE_INT)
+  } else if (type_ == SANE_TYPE_INT) {
     return int_data_->data();
-  else if (type_ == SANE_TYPE_FIXED)
+  } else if (type_ == SANE_TYPE_FIXED) {
     return fixed_data_->data();
-  else if (type_ == SANE_TYPE_BOOL)
+  } else if (type_ == SANE_TYPE_BOOL) {
     return &bool_data_;
-  else
+  } else {
     return nullptr;
+  }
 }
 
 int SaneOption::GetIndex() const {

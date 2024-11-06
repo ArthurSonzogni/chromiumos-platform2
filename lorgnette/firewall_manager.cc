@@ -42,8 +42,9 @@ PortToken::PortToken(PortToken&& token) : firewall_manager_(nullptr), port_(0) {
 }
 
 PortToken::~PortToken() {
-  if (firewall_manager_)
+  if (firewall_manager_) {
     firewall_manager_->ReleaseUdpPortAccess(port_);
+  }
 }
 
 FirewallManager::FirewallManager(const std::string& interface)

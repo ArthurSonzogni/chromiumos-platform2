@@ -21,11 +21,13 @@ void PrintTo(const lorgnette::DocumentSource& ds, std::ostream* os) {
     *os << "  area.height = " << ds.area().height() << "," << std::endl;
   }
 
-  for (const auto resolution : ds.resolutions())
+  for (const auto resolution : ds.resolutions()) {
     *os << "  resolution = " << resolution << "," << std::endl;
+  }
 
-  for (const auto color_mode : ds.color_modes())
+  for (const auto color_mode : ds.color_modes()) {
     *os << "  color_mode = " << color_mode << "," << std::endl;
+  }
 
   *os << ")";
 }

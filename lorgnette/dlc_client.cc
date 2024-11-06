@@ -18,7 +18,8 @@
 namespace lorgnette {
 
 DlcClient::DlcClient()
-    : supported_dlc_ids_(std::set<std::string>({kSaneBackendsPfuDlcId,kSaneBackendsCanonDlcId})) {}
+    : supported_dlc_ids_(std::set<std::string>(
+          {kSaneBackendsPfuDlcId, kSaneBackendsCanonDlcId})) {}
 
 void DlcClient::Init(
     std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>

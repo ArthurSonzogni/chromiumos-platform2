@@ -56,10 +56,11 @@ DocumentScanSaneBackend GuessManufacturer(DocumentScanSaneBackend base_type,
     std::string regex =
         base::StringPrintf("(?i)\\b%s\\b", manufacturer.name_regex);
     if (RE2::PartialMatch(scanner_name, regex)) {
-      if (base_type == kAirscanOther)
+      if (base_type == kAirscanOther) {
         return manufacturer.airscan;
-      else if (base_type == kIppUsbOther)
+      } else if (base_type == kIppUsbOther) {
         return manufacturer.ippusb;
+      }
     }
   }
 
@@ -73,206 +74,302 @@ DocumentScanSaneBackend BackendFromDeviceName(const std::string& device) {
       device, ":", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
   const std::string& name = components[0];
-  if (name == "abaton")
+  if (name == "abaton") {
     return kAbaton;
-  if (name == "agfafocus")
+  }
+  if (name == "agfafocus") {
     return kAgfafocus;
+  }
   if (name == "airscan") {
-    if (kScannerNameIndex < components.size())
+    if (kScannerNameIndex < components.size()) {
       return GuessManufacturer(kAirscanOther, components[kScannerNameIndex]);
-    else
+    } else {
       return kAirscanOther;
+    }
   }
-  if (name == "apple")
+  if (name == "apple") {
     return kApple;
-  if (name == "artec")
-    return kArtec;
-  if (name == "artec_eplus48u")
-    return kArtecEplus48U;
-  if (name == "as6e")
-    return kAs6E;
-  if (name == "avision")
-    return kAvision;
-  if (name == "bh")
-    return kBh;
-  if (name == "canon")
-    return kCanon;
-  if (name == "canon630u")
-    return kCanon630U;
-  if (name == "canon_dr")
-    return kCanonDr;
-  if (name == "canon_lide70")
-    return kCanonLide70;
-  if (name == "cardscan")
-    return kCardscan;
-  if (name == "coolscan")
-    return kCoolscan;
-  if (name == "coolscan2")
-    return kCoolscan2;
-  if (name == "coolscan3")
-    return kCoolscan3;
-  if (name == "dc210")
-    return kDc210;
-  if (name == "dc240")
-    return kDc240;
-  if (name == "dc25")
-    return kDc25;
-  if (name == "dell1600n_net")
-    return kDell1600NNet;
-  if (name == "dmc")
-    return kDmc;
-  if (name == "epjitsu")
-    return kEpjitsu;
-  if (name == "epson")
-    return kEpson;
-  if (name == "epson2")
-    return kEpson2;
-  if (name == "epsonds")
-    return kEpsonDs;
-  if (name == "escl")
-    return kEscl;
-  if (name == "fujitsu")
-    return kFujitsu;
-  if (name == "genesys")
-    return kGenesys;
-  if (name == "gt68xx")
-    return kGt68Xx;
-  if (name == "hp")
-    return kHp;
-  if (name == "hp3500")
-    return kHp3500;
-  if (name == "hp3900")
-    return kHp3900;
-  if (name == "hp4200")
-    return kHp4200;
-  if (name == "hp5400")
-    return kHp5400;
-  if (name == "hp5590")
-    return kHp5590;
-  if (name == "hpljm1005")
-    return kHpljm1005;
-  if (name == "hs2p")
-    return kHs2P;
-  if (name == "ibm")
-    return kIbm;
-  if (name == "ippusb") {
-    if (kScannerNameIndex < components.size())
-      return GuessManufacturer(kIppUsbOther, components[kScannerNameIndex]);
-    else
-      return kIppUsbOther;
   }
-  if (name == "kodak")
+  if (name == "artec") {
+    return kArtec;
+  }
+  if (name == "artec_eplus48u") {
+    return kArtecEplus48U;
+  }
+  if (name == "as6e") {
+    return kAs6E;
+  }
+  if (name == "avision") {
+    return kAvision;
+  }
+  if (name == "bh") {
+    return kBh;
+  }
+  if (name == "canon") {
+    return kCanon;
+  }
+  if (name == "canon630u") {
+    return kCanon630U;
+  }
+  if (name == "canon_dr") {
+    return kCanonDr;
+  }
+  if (name == "canon_lide70") {
+    return kCanonLide70;
+  }
+  if (name == "cardscan") {
+    return kCardscan;
+  }
+  if (name == "coolscan") {
+    return kCoolscan;
+  }
+  if (name == "coolscan2") {
+    return kCoolscan2;
+  }
+  if (name == "coolscan3") {
+    return kCoolscan3;
+  }
+  if (name == "dc210") {
+    return kDc210;
+  }
+  if (name == "dc240") {
+    return kDc240;
+  }
+  if (name == "dc25") {
+    return kDc25;
+  }
+  if (name == "dell1600n_net") {
+    return kDell1600NNet;
+  }
+  if (name == "dmc") {
+    return kDmc;
+  }
+  if (name == "epjitsu") {
+    return kEpjitsu;
+  }
+  if (name == "epson") {
+    return kEpson;
+  }
+  if (name == "epson2") {
+    return kEpson2;
+  }
+  if (name == "epsonds") {
+    return kEpsonDs;
+  }
+  if (name == "escl") {
+    return kEscl;
+  }
+  if (name == "fujitsu") {
+    return kFujitsu;
+  }
+  if (name == "genesys") {
+    return kGenesys;
+  }
+  if (name == "gt68xx") {
+    return kGt68Xx;
+  }
+  if (name == "hp") {
+    return kHp;
+  }
+  if (name == "hp3500") {
+    return kHp3500;
+  }
+  if (name == "hp3900") {
+    return kHp3900;
+  }
+  if (name == "hp4200") {
+    return kHp4200;
+  }
+  if (name == "hp5400") {
+    return kHp5400;
+  }
+  if (name == "hp5590") {
+    return kHp5590;
+  }
+  if (name == "hpljm1005") {
+    return kHpljm1005;
+  }
+  if (name == "hs2p") {
+    return kHs2P;
+  }
+  if (name == "ibm") {
+    return kIbm;
+  }
+  if (name == "ippusb") {
+    if (kScannerNameIndex < components.size()) {
+      return GuessManufacturer(kIppUsbOther, components[kScannerNameIndex]);
+    } else {
+      return kIppUsbOther;
+    }
+  }
+  if (name == "kodak") {
     return kKodak;
-  if (name == "kodakaio")
+  }
+  if (name == "kodakaio") {
     return kKodakaio;
-  if (name == "kvs1025")
+  }
+  if (name == "kvs1025") {
     return kKvs1025;
-  if (name == "kvs20xx")
+  }
+  if (name == "kvs20xx") {
     return kKvs20Xx;
-  if (name == "kvs40xx")
+  }
+  if (name == "kvs40xx") {
     return kKvs40Xx;
-  if (name == "leo")
+  }
+  if (name == "leo") {
     return kLeo;
-  if (name == "lexmark")
+  }
+  if (name == "lexmark") {
     return kLexmark;
-  if (name == "ma1509")
+  }
+  if (name == "ma1509") {
     return kMa1509;
-  if (name == "magicolor")
+  }
+  if (name == "magicolor") {
     return kMagicolor;
-  if (name == "matsushita")
+  }
+  if (name == "matsushita") {
     return kMatsushita;
-  if (name == "microtek")
+  }
+  if (name == "microtek") {
     return kMicrotek;
-  if (name == "microtek2")
+  }
+  if (name == "microtek2") {
     return kMicrotek2;
-  if (name == "mustek")
+  }
+  if (name == "mustek") {
     return kMustek;
-  if (name == "mustek_usb")
+  }
+  if (name == "mustek_usb") {
     return kMustekUsb;
-  if (name == "mustek_usb2")
+  }
+  if (name == "mustek_usb2") {
     return kMustekUsb2;
-  if (name == "nec")
+  }
+  if (name == "nec") {
     return kNec;
-  if (name == "net")
+  }
+  if (name == "net") {
     return kNet;
-  if (name == "niash")
+  }
+  if (name == "niash") {
     return kNiash;
-  if (name == "p5")
+  }
+  if (name == "p5") {
     return kP5;
-  if (name == "pie")
+  }
+  if (name == "pie") {
     return kPie;
-  if (name == "pixma")
+  }
+  if (name == "pixma") {
     return kPixma;
-  if (name == "plustek")
+  }
+  if (name == "plustek") {
     return kPlustek;
-  if (name == "plustek_pp")
+  }
+  if (name == "plustek_pp") {
     return kPlustekPp;
-  if (name == "qcam")
+  }
+  if (name == "qcam") {
     return kQcam;
-  if (name == "ricoh")
+  }
+  if (name == "ricoh") {
     return kRicoh;
-  if (name == "ricoh2")
+  }
+  if (name == "ricoh2") {
     return kRicoh2;
-  if (name == "rts8891")
+  }
+  if (name == "rts8891") {
     return kRts8891;
-  if (name == "s9036")
+  }
+  if (name == "s9036") {
     return kS9036;
-  if (name == "sceptre")
+  }
+  if (name == "sceptre") {
     return kSceptre;
-  if (name == "sharp")
+  }
+  if (name == "sharp") {
     return kSharp;
-  if (name == "sm3600")
+  }
+  if (name == "sm3600") {
     return kSm3600;
-  if (name == "sm3840")
+  }
+  if (name == "sm3840") {
     return kSm3840;
-  if (name == "snapscan")
+  }
+  if (name == "snapscan") {
     return kSnapscan;
-  if (name == "sp15c")
+  }
+  if (name == "sp15c") {
     return kSp15C;
-  if (name == "st400")
+  }
+  if (name == "st400") {
     return kSt400;
-  if (name == "stv680")
+  }
+  if (name == "stv680") {
     return kStv680;
-  if (name == "tamarack")
+  }
+  if (name == "tamarack") {
     return kTamarack;
-  if (name == "teco1")
+  }
+  if (name == "teco1") {
     return kTeco1;
-  if (name == "teco2")
+  }
+  if (name == "teco2") {
     return kTeco2;
-  if (name == "teco3")
+  }
+  if (name == "teco3") {
     return kTeco3;
-  if (name == "test")
+  }
+  if (name == "test") {
     return kTest;
-  if (name == "u12")
+  }
+  if (name == "u12") {
     return kU12;
-  if (name == "umax")
+  }
+  if (name == "umax") {
     return kUmax;
-  if (name == "umax1220u")
+  }
+  if (name == "umax1220u") {
     return kUmax1220U;
-  if (name == "umax_pp")
+  }
+  if (name == "umax_pp") {
     return kUmaxPp;
-  if (name == "xerox_mfp")
+  }
+  if (name == "xerox_mfp") {
     return kXeroxMfp;
-  if (name == "p208ii")
+  }
+  if (name == "p208ii") {
     return kp208ii;
-  if (name == "drm260")
+  }
+  if (name == "drm260") {
     return kdrm260;
-  if (name == "drp208ii")
+  }
+  if (name == "drp208ii") {
     return kdrp208ii;
-  if (name == "p215ii")
+  }
+  if (name == "p215ii") {
     return kp215ii;
-  if (name == "drp215ii")
+  }
+  if (name == "drp215ii") {
     return kdrp215ii;
-  if (name == "drc225ii")
+  }
+  if (name == "drc225ii") {
     return kdrc225ii;
-  if (name == "drc230")
+  }
+  if (name == "drc230") {
     return kdrc230;
-  if (name == "drc240")
+  }
+  if (name == "drc240") {
     return kdrc240;
-  if (name == "r40")
+  }
+  if (name == "r40") {
     return kr40;
-  if (name == "r50")
+  }
+  if (name == "r50") {
     return kr50;
+  }
   LOG(WARNING) << "Unknown sane backend " << name;
   return kOtherBackend;
 }
