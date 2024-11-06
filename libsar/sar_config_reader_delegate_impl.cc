@@ -11,8 +11,9 @@ namespace libsar {
 std::optional<std::string> SarConfigReaderDelegateImpl::ReadFileToString(
     const base::FilePath& fp) {
   std::string data;
-  if (!base::ReadFileToString(fp, &data))
+  if (!base::ReadFileToString(fp, &data)) {
     return std::nullopt;
+  }
 
   return data;
 }

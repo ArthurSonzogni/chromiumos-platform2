@@ -63,8 +63,9 @@ std::optional<base::Value::Dict> SarConfigReader::GetSarConfigDict() const {
       continue;
     }
 
-    if (isWifi() && system_path_base.find(kWifi) == std::string::npos)
+    if (isWifi() && system_path_base.find(kWifi) == std::string::npos) {
       continue;
+    }
 
     config_filename = system_path;
     break;

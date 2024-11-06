@@ -10,8 +10,9 @@ namespace fakes {
 std::optional<std::string> FakeSarConfigReaderDelegate::ReadFileToString(
     const base::FilePath& fp) {
   auto it = existing_files_with_data_.find(fp);
-  if (it == existing_files_with_data_.end())
+  if (it == existing_files_with_data_.end()) {
     return std::nullopt;
+  }
 
   return it->second;
 }
