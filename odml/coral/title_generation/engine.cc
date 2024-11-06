@@ -172,7 +172,6 @@ void TitleGenerationEngine::Process(
     std::optional<std::string> title = MaybeGetCachedTitle(cluster.entities);
     // If the title is cached, set the title field directly. Otherwise, generate
     // the prompt and set the entities.
-    metrics_->SendTitleCacheHit(title.has_value());
     if (title.has_value()) {
       group_data.title = std::move(title);
     } else {
@@ -195,14 +194,14 @@ void TitleGenerationEngine::Process(
     ReplyGroupsWithoutTitles(groups, std::move(callback));
     on_complete =
         base::BindOnce(&TitleGenerationEngine::OnAllTitleGenerationFinished,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(timer))
-            .Then(std::move(on_process_completed));
+                       weak_ptr_factory_.GetWeakPtr(), std::move(timer),
+                       std::move(on_process_completed));
 
   } else {
-    on_complete = base::BindOnce(&TitleGenerationEngine::ReplyGroupsWithTitles,
-                                 weak_ptr_factory_.GetWeakPtr(),
-                                 std::move(timer), std::move(callback))
-                      .Then(std::move(on_process_completed));
+    on_complete =
+        base::BindOnce(&TitleGenerationEngine::ReplyGroupsWithTitles,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(timer),
+                       std::move(callback), std::move(on_process_completed));
   }
   metrics_->SendTitleGenerationModelLoaded(model_.is_bound());
   EnsureModelLoaded(base::BindOnce(&TitleGenerationEngine::DoProcess,
@@ -281,7 +280,9 @@ void TitleGenerationEngine::ReplyGroupsWithoutTitles(
 void TitleGenerationEngine::ReplyGroupsWithTitles(
     PerformanceTimer::Ptr timer,
     TitleGenerationEngine::TitleGenerationCallback callback,
+    base::OnceClosure on_complete,
     mojo::Remote<mojom::TitleObserver> observer,
+    SimpleSession::Ptr session,
     std::vector<GroupData> groups,
     CoralResult<void> result) {
   ReportTitleGenerationMetrics(std::move(timer), result);
@@ -298,18 +299,24 @@ void TitleGenerationEngine::ReplyGroupsWithTitles(
     response.groups.push_back(std::move(group));
   }
   std::move(callback).Run(std::move(response));
-  CacheGroupTitles(std::move(groups));
+  CacheGroupTitles(groups);
+  ReportPromptSizes(0, std::move(session), std::move(groups),
+                    std::move(on_complete));
 }
 
 void TitleGenerationEngine::OnAllTitleGenerationFinished(
     PerformanceTimer::Ptr timer,
+    base::OnceClosure on_complete,
     mojo::Remote<mojom::TitleObserver> observer,
+    SimpleSession::Ptr session,
     std::vector<GroupData> groups,
     CoralResult<void> result) {
   ReportTitleGenerationMetrics(std::move(timer), result);
   if (result.has_value()) {
     // All titles should have been updated to the observer.
-    CacheGroupTitles(std::move(groups));
+    CacheGroupTitles(groups);
+    ReportPromptSizes(0, std::move(session), std::move(groups),
+                      std::move(on_complete));
     return;
   }
   LOG(ERROR) << "Failed to generate titles with code: "
@@ -329,7 +336,7 @@ void TitleGenerationEngine::DoProcess(
     std::vector<GroupData> groups,
     ProcessCallback callback) {
   if (!model_) {
-    std::move(callback).Run(std::move(observer), std::move(groups),
+    std::move(callback).Run(std::move(observer), nullptr, std::move(groups),
                             base::unexpected(CoralError::kLoadModelFailed));
     return;
   }
@@ -337,7 +344,7 @@ void TitleGenerationEngine::DoProcess(
   auto session = SimpleSession::New();
   model_->StartSession(session->BindReceiver());
   if (!session->is_bound()) {
-    std::move(callback).Run(std::move(observer), std::move(groups),
+    std::move(callback).Run(std::move(observer), nullptr, std::move(groups),
                             base::unexpected(CoralError::kLoadModelFailed));
     return;
   }
@@ -358,7 +365,8 @@ void TitleGenerationEngine::ProcessEachPrompt(
 
   // > covers the index out-of-range case although it shouldn't happen.
   if (index >= groups.size()) {
-    std::move(callback).Run(std::move(observer), std::move(groups), base::ok());
+    std::move(callback).Run(std::move(observer), std::move(session),
+                            std::move(groups), base::ok());
     return;
   }
   // Cached title is reused for this group, skip and process the next one.
@@ -452,12 +460,13 @@ void TitleGenerationEngine::OnProcessCompleted() {
   std::move(callback).Run();
 }
 
-void TitleGenerationEngine::CacheGroupTitles(std::vector<GroupData> groups) {
+void TitleGenerationEngine::CacheGroupTitles(
+    const std::vector<GroupData>& groups) {
   // Title cache needs to be bound to a specific user.
   if (!current_user_.has_value()) {
     return;
   }
-  for (GroupData& group_data : groups) {
+  for (const GroupData& group_data : groups) {
     if (!group_data.title.has_value()) {
       continue;
     }
@@ -465,7 +474,7 @@ void TitleGenerationEngine::CacheGroupTitles(std::vector<GroupData> groups) {
     for (const mojom::EntityPtr& entity : group_data.entities) {
       entity_titles.insert(GetTitle(entity));
     }
-    title_cache_.Put(std::move(*group_data.title),
+    title_cache_.Put(*group_data.title,
                      TitleCacheEntry{
                          .entity_titles = std::move(entity_titles),
                          .user = *current_user_,
@@ -475,16 +484,65 @@ void TitleGenerationEngine::CacheGroupTitles(std::vector<GroupData> groups) {
 
 std::optional<std::string> TitleGenerationEngine::MaybeGetCachedTitle(
     const std::vector<mojom::EntityPtr>& entities) {
+  std::optional<std::string> ret;
+  float min_difference = 1.0;
   for (const auto& [title, title_cache_entry] : title_cache_) {
     if (current_user_ != title_cache_entry.user) {
       continue;
     }
-    if (GetDifferenceRatio(entities, title_cache_entry.entity_titles) <
-        kMaxGroupDifferenceRatioToReuseTitle) {
-      return title;
+    float difference =
+        GetDifferenceRatio(entities, title_cache_entry.entity_titles);
+    if (difference < min_difference) {
+      min_difference = difference;
+      if (difference < kMaxGroupDifferenceRatioToReuseTitle) {
+        ret = title;
+      }
     }
   }
-  return std::nullopt;
+  metrics_->SendTitleCacheDifferenceRatio(min_difference);
+  metrics_->SendTitleCacheHit(ret.has_value());
+  return ret;
+}
+
+// TODO(b/353900545): We can use the token sizes from ResponseSummary result
+// after we sync with Chrome and after APU backend supports calculating token
+// during Execute as well.
+void TitleGenerationEngine::ReportPromptSizes(size_t index,
+                                              SimpleSession::Ptr session,
+                                              std::vector<GroupData> groups,
+                                              base::OnceClosure on_complete) {
+  CHECK(session->is_bound());
+
+  // > covers the index out-of-range case although it shouldn't happen.
+  if (index >= groups.size()) {
+    std::move(on_complete).Run();
+    return;
+  }
+
+  // Cached title is reused for this group.
+  if (groups[index].prompt.empty()) {
+    ReportPromptSizes(index + 1, std::move(session), std::move(groups),
+                      std::move(on_complete));
+    return;
+  }
+
+  session->SizeInTokens(
+      groups[index].prompt,
+      base::BindOnce(&TitleGenerationEngine::OnSizeInTokensResponse,
+                     weak_ptr_factory_.GetWeakPtr(), index, std::move(session),
+                     std::move(groups), std::move(on_complete)));
+}
+
+void TitleGenerationEngine::OnSizeInTokensResponse(
+    size_t index,
+    SimpleSession::Ptr session,
+    std::vector<GroupData> groups,
+    base::OnceClosure on_complete,
+    uint32_t size_in_tokens) {
+  CHECK(index < groups.size());
+  metrics_->SendTitleInputTokenSize(size_in_tokens);
+  ReportPromptSizes(index + 1, std::move(session), std::move(groups),
+                    std::move(on_complete));
 }
 
 }  // namespace coral

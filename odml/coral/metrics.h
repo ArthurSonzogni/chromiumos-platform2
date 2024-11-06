@@ -60,10 +60,14 @@ inline constexpr char kTitleGenerationModelLoaded[] =
     "Platform.CoralService.TitleGenerationEngine.ModelLoaded";
 inline constexpr char kTitleCacheHit[] =
     "Platform.CoralService.TitleGenerationEngine.CacheHit";
+inline constexpr char kTitleCacheDifferenceRatio[] =
+    "Platform.CoralService.TitleGenerationEngine.CacheDifferenceRatio";
 inline constexpr char kTitleLengthInCharacters[] =
     "Platform.CoralService.TitleGenerationEngine.LengthInCharacters";
 inline constexpr char kTitleLengthInWords[] =
     "Platform.CoralService.TitleGenerationEngine.LengthInWords";
+inline constexpr char kTitleGenerationInputTokenSize[] =
+    "Platform.CoralService.TitleGenerationEngine.InputTokenSize";
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -152,6 +156,12 @@ class CoralMetrics {
   void SendTitleGenerationModelLoaded(bool is_loaded);
   // Whether a request group finds a title to reuse in the cache.
   void SendTitleCacheHit(bool is_cache_hit);
+  // The lowest difference ratio found in the title cache. If this is lower than
+  // the threshold, `is_cache_hit` above will be true. The ratio could be larger
+  // than 1.0, but we cap it to 1.0 when reporting metrics. This is used to
+  // determine the best threshold to set, and we won't set the threshold
+  // above 1.0 anyway.
+  void SendTitleCacheDifferenceRatio(float ratio);
   // Number of chars (i.e., bytes) in the generated title.
   void SendTitleLengthInCharacters(int count);
   // Number of "words" in the generated title, defined by "number of white
@@ -159,6 +169,8 @@ class CoralMetrics {
   // not useful in languages other than English, and should only be reported for
   // English titles after we support i18n.
   void SendTitleLengthInWords(int count);
+  // The token size of the title generation prompt.
+  void SendTitleInputTokenSize(int count);
 
  private:
   // Helper function for Send*Status methods.

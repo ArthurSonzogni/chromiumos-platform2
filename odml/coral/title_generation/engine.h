@@ -95,14 +95,18 @@ class TitleGenerationEngine
   void ReplyGroupsWithTitles(
       PerformanceTimer::Ptr timer,
       TitleGenerationEngine::TitleGenerationCallback callback,
+      base::OnceClosure on_complete,
       mojo::Remote<mojom::TitleObserver> unused_observer,
+      SimpleSession::Ptr session,
       std::vector<GroupData> groups,
       CoralResult<void> result);
   // Used as the DoProcess callback in the case that observer is provided, so
   // the title generation response is already returned and here we just have to
   // handle title generation failure.
   void OnAllTitleGenerationFinished(PerformanceTimer::Ptr timer,
+                                    base::OnceClosure on_complete,
                                     mojo::Remote<mojom::TitleObserver> observer,
+                                    SimpleSession::Ptr session,
                                     std::vector<GroupData> groups,
                                     CoralResult<void> result);
 
@@ -113,6 +117,7 @@ class TitleGenerationEngine
 
   using ProcessCallback =
       base::OnceCallback<void(mojo::Remote<mojom::TitleObserver>,
+                              SimpleSession::Ptr,
                               std::vector<GroupData>,
                               CoralResult<void>)>;
   void DoProcess(mojom::GroupRequestPtr request,
@@ -141,9 +146,19 @@ class TitleGenerationEngine
   // we receive request groups, we first check against all entries of LRU cache
   // to see whether any cached group is similar enough to the request group. If
   // so, we can reuse the title without using the model to generate one.
-  void CacheGroupTitles(std::vector<GroupData> groups);
+  void CacheGroupTitles(const std::vector<GroupData>& groups);
   std::optional<std::string> MaybeGetCachedTitle(
       const std::vector<mojom::EntityPtr>& entities);
+
+  void ReportPromptSizes(size_t index,
+                         SimpleSession::Ptr session,
+                         std::vector<GroupData> groups,
+                         base::OnceClosure on_complete);
+  void OnSizeInTokensResponse(size_t index,
+                              SimpleSession::Ptr session,
+                              std::vector<GroupData> groups,
+                              base::OnceClosure on_complete,
+                              uint32_t size_in_tokens);
 
   const raw_ref<CoralMetrics> metrics_;
 

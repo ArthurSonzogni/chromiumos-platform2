@@ -33,9 +33,12 @@ class SimpleSession : public on_device_model::mojom::StreamingResponder {
   // This implementation doesn't support request queueing. The caller should
   // wait until the last Execute completes before sending another Execute.
   // Otherwise, the operation will do nothing and the `callback` argument will
-  // be dropped silently.
+  // be run with an empty string.
   void Execute(on_device_model::mojom::InputOptionsPtr options,
                base::OnceCallback<void(std::string)> callback);
+
+  void SizeInTokens(const std::string& text,
+                    base::OnceCallback<void(uint32_t)> callback);
 
  private:
   // on_device_model::mojom::StreamingResponder

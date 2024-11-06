@@ -4,6 +4,7 @@
 
 #include "odml/coral/metrics.h"
 
+#include <algorithm>
 #include <string>
 
 #include <base/time/time.h>
@@ -134,12 +135,23 @@ void CoralMetrics::SendTitleCacheHit(bool is_cache_hit) {
   metrics_->SendBoolToUMA(metrics::kTitleCacheHit, is_cache_hit);
 }
 
+void CoralMetrics::SendTitleCacheDifferenceRatio(float ratio) {
+  int percentage = std::min(100, static_cast<int>(ratio * 100));
+  metrics_->SendPercentageToUMA(metrics::kTitleCacheDifferenceRatio,
+                                percentage);
+}
+
 void CoralMetrics::SendTitleLengthInCharacters(int count) {
   metrics_->SendLinearToUMA(metrics::kTitleLengthInCharacters, count, 101);
 }
 
 void CoralMetrics::SendTitleLengthInWords(int count) {
   metrics_->SendLinearToUMA(metrics::kTitleLengthInWords, count, 101);
+}
+
+void CoralMetrics::SendTitleInputTokenSize(int count) {
+  metrics_->SendToUMA(metrics::kTitleGenerationInputTokenSize, count, 1, 1025,
+                      50);
 }
 
 }  // namespace coral

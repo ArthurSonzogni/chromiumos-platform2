@@ -33,9 +33,11 @@ namespace {
 using base::test::TestFuture;
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::Between;
 using ::testing::Gt;
 using ::testing::InSequence;
 using ::testing::IsEmpty;
+using ::testing::Le;
 using ::testing::NiceMock;
 using ::testing::Optional;
 using ::testing::Return;
@@ -98,6 +100,7 @@ class TitleGenerationEngineTest : public testing::Test {
     mojo::core::Init();
     // A catch-all so that we don't have to explicitly EXPECT every metrics
     // call.
+    EXPECT_CALL(metrics_, SendToUMA).Times(AnyNumber());
     EXPECT_CALL(metrics_, SendEnumToUMA).Times(AnyNumber());
     EXPECT_CALL(metrics_, SendTimeToUMA).Times(AnyNumber());
     EXPECT_CALL(metrics_, SendBoolToUMA).Times(AnyNumber());
@@ -158,6 +161,12 @@ class TitleGenerationEngineTest : public testing::Test {
         .Times(times);
     EXPECT_CALL(metrics_, SendLinearToUMA(metrics::kTitleLengthInWords, _, _))
         .Times(times);
+    // If the title is cached, the metrics won't be sent. Instead of specifying
+    // the exact number of times it'll be called, just set expectation that it's
+    // between 1 and times.
+    EXPECT_CALL(metrics_,
+                SendToUMA(metrics::kTitleGenerationInputTokenSize, _, _, _, _))
+        .Times(Between(1, times));
   }
 
   void ExpectSendModelLoaded(bool is_loaded, int times = 1) {
@@ -169,6 +178,15 @@ class TitleGenerationEngineTest : public testing::Test {
   void ExpectSendCacheHit(bool is_cache_hit, int times = 1) {
     EXPECT_CALL(metrics_, SendBoolToUMA(metrics::kTitleCacheHit, is_cache_hit))
         .Times(times);
+    if (is_cache_hit) {
+      EXPECT_CALL(metrics_, SendPercentageToUMA(
+                                metrics::kTitleCacheDifferenceRatio, Le(25)))
+          .Times(times);
+    } else {
+      EXPECT_CALL(metrics_, SendPercentageToUMA(
+                                metrics::kTitleCacheDifferenceRatio, Gt(25)))
+          .Times(times);
+    }
   }
 
   base::test::TaskEnvironment task_environment_;
