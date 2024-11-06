@@ -118,8 +118,9 @@ TEST(BenchmarkResultsToJson, MetricsCardinality) {
       [](const BenchmarkResults& results) -> std::optional<size_t> {
     const std::optional<base::Value::Dict> json =
         ml_benchmark::BenchmarkResultsToJson(results);
-    if (!json)
+    if (!json) {
       return std::nullopt;
+    }
 
     const base::Value::List* metrics = json->FindList("metrics");
     CHECK(metrics);

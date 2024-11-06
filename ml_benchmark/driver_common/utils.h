@@ -49,17 +49,20 @@ void FreeSerializedResults(void* results_data);
 // percent of samples. If there aren't any samples, returns 0.
 template <typename T>
 T ComputePercentile(const std::vector<T>& samples, double percent) {
-  if (samples.size() == 0)
+  if (samples.size() == 0) {
     return T(0);
+  }
 
   CHECK(std::is_sorted(samples.begin(), samples.end()));
 
   double fraction = percent / 100.0;
 
-  if (fraction <= 0.0)
+  if (fraction <= 0.0) {
     return *(samples.begin());
-  if (fraction >= 1.0)
+  }
+  if (fraction >= 1.0) {
     return *(samples.rbegin());
+  }
 
   size_t index = static_cast<size_t>(std::ceil(fraction * samples.size())) - 1;
   return samples[index];

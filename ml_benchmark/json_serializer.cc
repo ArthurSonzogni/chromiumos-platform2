@@ -96,16 +96,19 @@ std::optional<base::Value::Dict> BenchmarkResultsToJson(
     base::Value::Dict metric;
     metric.Set("name", m.name());
     const auto direction = metric_direction(m.direction());
-    if (!direction)
+    if (!direction) {
       return std::nullopt;
+    }
     metric.Set("improvement_direction", *direction);
     const auto units = metric_units(m.units());
-    if (!units)
+    if (!units) {
       return std::nullopt;
+    }
     metric.Set("units", *units);
     const auto cardinality = metric_cardinality(m.cardinality());
-    if (!cardinality)
+    if (!cardinality) {
       return std::nullopt;
+    }
     metric.Set("cardinality", *cardinality);
 
     if (m.cardinality() == Metric::SINGLE && m.values().size() != 1) {

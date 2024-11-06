@@ -46,8 +46,9 @@ int64_t PeakMemorySampler::GetMaxSample() {
 
 void PeakMemorySampler::SampleMemory(scoped_refptr<PeakMemorySampler> sampler) {
   base::AutoLock auto_lock(sampler->lock_);
-  if (!sampler->running_)
+  if (!sampler->running_) {
     return;
+  }
 
   sampler->sample_counter_++;
   sampler->max_sample_ = std::max(sampler->max_sample_, GetSwapAndRSSBytes());
