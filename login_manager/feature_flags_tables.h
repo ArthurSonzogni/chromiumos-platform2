@@ -923,8 +923,6 @@ constexpr FeatureMappingEntry kFeaturesMap[] = {
      "enable-navigation-predictor-renderer-warmup", 1},
     {"NearbySharing", "0", "nearby-sharing", 2},
     {"NearbySharing", "1", "nearby-sharing", 1},
-    {"NearbySharingDeviceContacts", "0", "nearby-sharing-device-contacts", 2},
-    {"NearbySharingDeviceContacts", "1", "nearby-sharing-device-contacts", 1},
     {"NearbySharingWebRtc", "0", "nearby-sharing-webrtc", 2},
     {"NearbySharingWebRtc", "1", "nearby-sharing-webrtc", 1},
     {"NewDragSpecInLauncher", "0", "enable-launcher-app-paging", 2},
