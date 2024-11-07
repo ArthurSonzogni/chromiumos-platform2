@@ -33,8 +33,9 @@ Service::Service(const base::FilePath& fuse_mount_path, SizeMap* size_map)
 
 Service::~Service() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  if (bus_)
+  if (bus_) {
     bus_->ShutdownAndBlock();
+  }
 }
 
 bool Service::Initialize() {

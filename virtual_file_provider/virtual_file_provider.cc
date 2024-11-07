@@ -67,8 +67,9 @@ class ServiceThread : public base::Thread {
         return false;
       }
       // Compare with FUSE_SUPER_MAGIC (defined in <kernel>/fs/fuse/inode.c).
-      if (buf.f_type == 0x65735546)
+      if (buf.f_type == 0x65735546) {
         return true;
+      }
 
       base::PlatformThread::Sleep(kRetryInterval);
     }
