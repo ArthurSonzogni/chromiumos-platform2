@@ -159,6 +159,24 @@ def GetArcCodecFiles(config):
         print(files.dest)
 
 
+def GetArcAudioCodecsFiles(config):
+    """Print a list of arc audio codecs files across all models
+
+    The output is one line for the source file (typically relative to
+    ${FILESDIR}) and one line for the install file, e.g.:
+       media_codecs_codec1.xml
+       /etc/media_codecs_codec1.xml
+       media_codecs_codec2.xml
+       /etc/media_codecs_codec2.xml
+
+    Args:
+        config: A CrosConfig instance
+    """
+    for files in config.GetArcAudioCodecsFiles():
+        print(files.source)
+        print(files.dest)
+
+
 def get_arc_properties(config):
     """Prints a list of ARC properties required by ARC board_specific_setup.
 
@@ -512,6 +530,12 @@ def GetParser(description):
         help="Lists pairs of arc media codec files in sequence: first line is "
         "the relative source file, second line is the full install pathname",
     )
+    # Parser: get-arc-audio-codecs-files
+    subparsers.add_parser(
+        "get-arc-audio-codecs-files",
+        help="Lists pairs of arc audio codecs files in sequence: first line is"
+        "the relative source file, second line is the full install pathname",
+    )
     # Parser: get-arc-properties
     subparsers.add_parser(
         "get-arc-properties",
@@ -724,6 +748,8 @@ def main(argv=None):
         GetArcFiles(config)
     elif opts.subcommand == "get-arc-codec-files":
         GetArcCodecFiles(config)
+    elif opts.subcommand == "get-arc-audio-codecs-files":
+        GetArcAudioCodecsFiles(config)
     elif opts.subcommand == "get-arc-properties":
         get_arc_properties(config)
     elif opts.subcommand == "get-audio-files":

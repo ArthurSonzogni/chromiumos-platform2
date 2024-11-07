@@ -278,6 +278,14 @@ class DeviceConfig:
             List of BaseFile objects representing the arc codec files needed.
         """
 
+    def GetArcAudioCodecsFiles(self):
+        """Get a list of arc audio codecs files for this device
+
+        Returns:
+            List of BaseFile objects representing all arc audio codecs files
+            needed.
+        """
+
     def get_arc_properties(self):
         """Get a dict of ARC properties required by board_specific_setup.
 
@@ -416,6 +424,7 @@ class CrosConfigBaseImpl:
         ] = self.GetDetachableBaseFirmwareFiles()
         result["GetArcFiles"] = self.GetArcFiles()
         result["GetArcCodecFiles"] = self.GetArcCodecFiles()
+        result["GetArcAudioCodecsFiles"] = self.GetArcAudioCodecsFiles()
         result["get_arc_properties"] = self.GetArcProperties()
         result["GetAudioFiles"] = self.GetAudioFiles()
         bluetooth_files = self.GetBluetoothFiles()
@@ -580,6 +589,15 @@ class CrosConfigBaseImpl:
             referenced by all devices
         """
         return self._GetFiles("GetArcCodecFiles")
+
+    def GetArcAudioCodecsFiles(self):
+        """Get a list of arc audio codecs files
+
+        Returns:
+            List of BaseFile objects representing all arc audio codecs files
+            referenced by all device.
+        """
+        return self._GetFiles("GetArcAudioCodecsFiles")
 
     def get_arc_properties(self) -> Dict[str, str]:
         """Get a dict of ARC properties required by board_specific_setup.

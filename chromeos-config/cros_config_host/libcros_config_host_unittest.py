@@ -142,6 +142,30 @@ class CrosConfigHostTest(unittest.TestCase):
             ],
         )
 
+    def testGetArcAudioCodecsFiles(self):
+        config = CrosConfig(self.filepath)
+        audio_codecs_files = config.GetArcAudioCodecsFiles()
+        self.assertEqual(
+            audio_codecs_files,
+            [
+                # Files are sorted alphabetically.
+                BaseFile(
+                    source="some/media_codecs_another_codec.xml",
+                    dest=(
+                        "/etc/arc-audio-codecs-files/"
+                        "media_codecs_another_codec.xml"
+                    ),
+                ),
+                BaseFile(
+                    source="some/media_codecs_my_codec.xml",
+                    dest=(
+                        "/etc/arc-audio-codecs-files/"
+                        "media_codecs_my_codec.xml"
+                    ),
+                ),
+            ],
+        )
+
     def test_get_arc_properties(self):
         config = CrosConfig(self.filepath)
         arc_props = config.get_arc_properties()

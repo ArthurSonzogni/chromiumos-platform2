@@ -518,12 +518,25 @@ In the tables below,
 ### arc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| audio-codecs-files | array - [audio-codecs-files](#audio_codecs_files) |  | False |  | False |  |
 | build-properties | [build-properties](#build_properties) |  | True |  | False |  |
 | hardware-features | [hardware-features](#hardware_features) |  | False |  | False | Defines hardware_features.xml file provided to ARC during initialization.  |
 | media-codecs | [media-codecs](#media_codecs) |  | False |  | False | Defines media_codecs_c2.xml file provided to ARC during initialization.  |
 | media-codecs-performance | [media-codecs-performance](#media_codecs_performance) |  | False |  | False | Defines media_codecs_performance_c2.xml file provided to ARC during initialization.  |
 | media-profiles | [media-profiles](#media_profiles) |  | False |  | False | Defines media_profiles.xml file provided to ARC during initialization.  |
 | scale | integer |  | False |  | False | The screen density value in dpi that will be used for ARC apps. This value should be from the list of DPIs in android cdd. |
+
+### audio-codecs-files
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| file | [file](#file) |  | True |  | False |  |
+| name | string |  | True |  | False |  |
+
+### file
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| build-path | string |  | True |  | True | Source of the file relative to the build system. |
+| system-path | string |  | True |  | False | Installation path for the file on the system image. |
 
 ### build-properties
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

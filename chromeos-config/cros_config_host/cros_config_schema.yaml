@@ -489,6 +489,19 @@ properties:
               required:
                 - build-properties
               properties:
+                audio-codecs-files:
+                  description: List of all audio codecs files to be included in ARC.
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - name
+                      - file
+                    properties:
+                      name:
+                        type: string
+                      file:
+                        <<: *system_file_v2
                 build-properties:
                   type: object
                   required:

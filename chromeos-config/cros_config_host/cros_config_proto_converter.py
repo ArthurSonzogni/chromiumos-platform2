@@ -67,6 +67,7 @@ ConfigFiles = collections.namedtuple(
         "wifi_sar_map",
         "wifi_mtcl_map",
         "proximity_map",
+        "arc_audio_codecs_map",
     ],
 )
 
@@ -179,6 +180,13 @@ def _build_arc(config, config_files):
             f"media_codecs_performance_c2{suffix}.xml",
             f"/etc/media_codecs_performance_c2{suffix}.xml",
         )
+
+    # Add audio codecs files property
+    design = _get_name_for_config(config.hw_design.id)
+    audio_codecs_files = config_files.arc_audio_codecs_map.get(design, [])
+    if audio_codecs_files:
+        result["audio-codecs-files"] = audio_codecs_files
+
     return result
 
 
@@ -3080,6 +3088,7 @@ def _transform_build_configs(
         wifi_sar_map={},
         wifi_mtcl_map={},
         proximity_map={},
+        arc_audio_codecs_map={},
     ),
 ):
     # pylint: disable=too-many-locals,too-many-branches
@@ -3770,6 +3779,58 @@ def _dptf_map(project_name):
         }
         result[relative_path] = dptf_file
     return result
+
+
+def _arc_audio_codecs_map(project_name, build_root_dir):
+    """Produces an ARC audio codecs mapping.
+
+    Produces a map that maps from design name to the audio codecs files for
+    that design.
+
+    It looks for audio codec file files at:
+    - file_path + '/' + design_name + '/' + file_pattern
+
+    At this moment, the only file_pattern is for:
+    - Media codecs file
+
+    Unlike _dptf_map(), this does not use global and sku level.
+
+    Args:
+        project_name: Name of project processing for.
+        build_root_dir: Path to the config directory from portage's perspective.
+
+    Returns:
+        Map from design name to audio codecs file to be included in ARC.
+    """
+
+    file_path = "sw_build_config/platform/chromeos-config/arc/audio_codecs"
+    file_patterns = ["media_codecs_*.xml"]
+
+    # ARC audio codecs is only applicable for private build config.
+    if "public_sw_build_config" in build_root_dir:
+        return {}
+
+    result = collections.defaultdict(list)
+    for file_pattern in file_patterns:
+        for file in glob.iglob(
+            os.path.join(file_path, "*", file_pattern), recursive=True
+        ):
+            design_name = (
+                os.path.dirname(file).partition(file_path)[2].strip("/")
+            )
+            filename = os.path.basename(file)
+            result[design_name].append(
+                {
+                    "name": filename,
+                    "file": _file_v2(
+                        os.path.join(
+                            project_name, file_path, design_name, filename
+                        ),
+                        os.path.join("/etc/arc-audio-codecs-files", filename),
+                    ),
+                }
+            )
+    return dict(result)
 
 
 def _proximity_map(configs, project_name, output_dir, build_root_dir):
@@ -5204,6 +5265,10 @@ def Main(
             configs, project_name, output_dir, build_root_dir
         )
 
+        arc_audio_codecs_map = _arc_audio_codecs_map(
+            project_name, build_root_dir
+        )
+
     wifi_sar_map = _wifi_sar_map(configs, output_dir, build_root_dir)
     wifi_mtcl_map = _wifi_mtcl_map(configs, output_dir, build_root_dir)
     if os.path.exists(TOUCH_PATH):
@@ -5225,6 +5290,7 @@ def Main(
         wifi_sar_map=wifi_sar_map,
         wifi_mtcl_map=wifi_mtcl_map,
         proximity_map=proximity_map,
+        arc_audio_codecs_map=arc_audio_codecs_map,
     )
     write_output(_transform_build_configs(configs, config_files), output)
 

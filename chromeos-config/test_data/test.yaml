@@ -55,6 +55,15 @@ some_base_config: &some_base_config
       product: "{{$name}}"
       device: "{{$name}}_cheets"
       metrics-tag: "abc123"
+    audio-codecs-files:
+      - name: "media_codecs_my_codec.xml"
+        file:
+          build-path: "some/media_codecs_my_codec.xml"
+          system-path: "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+      - name: "media_codecs_another_codec.xml"
+        file:
+          build-path: "some/media_codecs_another_codec.xml"
+          system-path: "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
   camera:
     count: 1
   firmware:

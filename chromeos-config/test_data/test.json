@@ -3,6 +3,22 @@
     "configs": [
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "some_cheets",
             "metrics-tag": "abc123",
@@ -90,6 +106,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "some_cheets",
             "metrics-tag": "abc123",
@@ -177,6 +209,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "some_cheets",
             "metrics-tag": "abc123",
@@ -274,6 +322,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "some_cheets",
             "metrics-tag": "abc123",
@@ -371,6 +435,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "some2_cheets",
             "metrics-tag": "abc123",
@@ -450,6 +530,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "some2_cheets",
             "metrics-tag": "abc123",
@@ -625,6 +721,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "whitelabel_cheets",
             "metrics-tag": "abc123",
@@ -697,6 +809,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "whitelabel_cheets",
             "metrics-tag": "abc123",
@@ -763,6 +891,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "whitelabel_cheets",
             "metrics-tag": "abc123",
@@ -835,6 +979,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "whitelabel_cheets",
             "metrics-tag": "abc123",
@@ -901,6 +1061,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "badrecovery1_cheets",
             "metrics-tag": "abc123",
@@ -962,6 +1138,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "badrecovery1_cheets",
             "metrics-tag": "abc123",
@@ -1023,6 +1215,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "badrecovery1_cheets",
             "metrics-tag": "abc123",
@@ -1084,6 +1292,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "badrecovery1_cheets",
             "metrics-tag": "abc123",
@@ -1145,6 +1369,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "badrecovery2_cheets",
             "metrics-tag": "abc123",
@@ -1205,6 +1445,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "badrecovery2_cheets",
             "metrics-tag": "abc123",
@@ -1265,6 +1521,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "badrecovery2_cheets",
             "metrics-tag": "abc123",
@@ -1325,6 +1597,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "badrecovery2_cheets",
             "metrics-tag": "abc123",
@@ -1385,6 +1673,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "multi_cheets",
             "metrics-tag": "abc123",
@@ -1451,6 +1755,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "multi_cheets",
             "metrics-tag": "abc123",
@@ -1517,6 +1837,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "multi_cheets",
             "metrics-tag": "abc123",
@@ -1583,6 +1919,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "multi_cheets",
             "metrics-tag": "abc123",
@@ -1649,6 +2001,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "multi_cheets",
             "metrics-tag": "abc123",
@@ -1715,6 +2083,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "multi_cheets",
             "metrics-tag": "abc123",
@@ -1781,6 +2165,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "multi_cheets",
             "metrics-tag": "abc123",
@@ -1847,6 +2247,22 @@
       },
       {
         "arc": {
+          "audio-codecs-files": [
+            {
+              "file": {
+                "build-path": "some/media_codecs_my_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_my_codec.xml"
+              },
+              "name": "media_codecs_my_codec.xml"
+            },
+            {
+              "file": {
+                "build-path": "some/media_codecs_another_codec.xml",
+                "system-path": "/etc/arc-audio-codecs-files/media_codecs_another_codec.xml"
+              },
+              "name": "media_codecs_another_codec.xml"
+            }
+          ],
           "build-properties": {
             "device": "multi_cheets",
             "metrics-tag": "abc123",

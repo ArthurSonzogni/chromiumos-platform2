@@ -12,6 +12,41 @@
               "arc": {
                 "additionalProperties": false,
                 "properties": {
+                  "audio-codecs-files": {
+                    "description": "List of all audio codecs files to be included in ARC.",
+                    "items": {
+                      "properties": {
+                        "file": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "build-path": {
+                              "build-only-element": true,
+                              "description": "Source of the file relative to the build system.",
+                              "type": "string"
+                            },
+                            "system-path": {
+                              "description": "Installation path for the file on the system image.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "build-path",
+                            "system-path"
+                          ],
+                          "type": "object"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "file"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
                   "build-properties": {
                     "additionalProperties": false,
                     "properties": {
