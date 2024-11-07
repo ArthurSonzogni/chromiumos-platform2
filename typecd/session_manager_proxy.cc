@@ -68,13 +68,15 @@ bool SessionManagerProxy::IsSessionStarted() {
 }
 
 void SessionManagerProxy::OnScreenIsLocked() {
-  for (SessionManagerObserverInterface& observer : observer_list_)
+  for (SessionManagerObserverInterface& observer : observer_list_) {
     observer.OnScreenIsLocked();
+  }
 }
 
 void SessionManagerProxy::OnScreenIsUnlocked() {
-  for (SessionManagerObserverInterface& observer : observer_list_)
+  for (SessionManagerObserverInterface& observer : observer_list_) {
     observer.OnScreenIsUnlocked();
+  }
 }
 
 void SessionManagerProxy::OnSessionStateChanged(const std::string& state) {
@@ -95,11 +97,13 @@ void SessionManagerProxy::OnSessionStateChanged(const std::string& state) {
 
     // If it's not a guest session, proceed with notifying the observers (they
     // can then change alt modes if appropriate).
-    for (SessionManagerObserverInterface& observer : observer_list_)
+    for (SessionManagerObserverInterface& observer : observer_list_) {
       observer.OnSessionStarted();
+    }
   } else if (state == "stopped") {
-    for (SessionManagerObserverInterface& observer : observer_list_)
+    for (SessionManagerObserverInterface& observer : observer_list_) {
       observer.OnSessionStopped();
+    }
   }
 }
 

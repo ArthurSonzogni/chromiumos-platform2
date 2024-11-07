@@ -32,14 +32,17 @@ bool AltMode::UpdateValuesFromSysfs() {
   uint32_t vdo;
   uint32_t mode_index;
 
-  if (!ReadHexFromPath(svid_path, &svid))
+  if (!ReadHexFromPath(svid_path, &svid)) {
     return false;
+  }
 
-  if (!ReadHexFromPath(vdo_path, &vdo))
+  if (!ReadHexFromPath(vdo_path, &vdo)) {
     return false;
+  }
 
-  if (!ReadHexFromPath(mode_index_path, &mode_index))
+  if (!ReadHexFromPath(mode_index_path, &mode_index)) {
     return false;
+  }
 
   svid_ = svid;
   vdo_ = vdo;

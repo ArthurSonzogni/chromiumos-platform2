@@ -29,11 +29,13 @@ void Cable::RegisterCablePlug(const base::FilePath& syspath) {
   // Search for all alt modes which were already registered prior to daemon
   // init.
   base::FileEnumerator iter(syspath, false, base::FileEnumerator::DIRECTORIES);
-  for (auto path = iter.Next(); !path.empty(); path = iter.Next())
+  for (auto path = iter.Next(); !path.empty(); path = iter.Next()) {
     AddAltMode(path);
+  }
 
-  if (GetNumAltModes() != -1)
+  if (GetNumAltModes() != -1) {
     return;
+  }
 
   UpdateNumAltModes(syspath);
 }
@@ -41,8 +43,9 @@ void Cable::RegisterCablePlug(const base::FilePath& syspath) {
 bool Cable::AddAltMode(const base::FilePath& mode_syspath) {
   int port, index;
   if (!RE2::FullMatch(mode_syspath.BaseName().value(), kSOPPrimeAltModeRegex,
-                      &port, &index))
+                      &port, &index)) {
     return false;
+  }
 
   if (IsAltModePresent(index)) {
     LOG(INFO) << "Alt mode already registered for syspath "
@@ -121,24 +124,27 @@ bool Cable::IsAltModePresent(int index) {
 
 bool Cable::IsAltModeSVIDPresent(uint16_t altmode_sid) {
   for (const auto& [index, mode] : alt_modes_) {
-    if (mode->GetSVID() == altmode_sid)
+    if (mode->GetSVID() == altmode_sid) {
       return true;
+    }
   }
 
   return false;
 }
 
 AltMode* Cable::GetAltMode(int index) {
-  if (!IsAltModePresent(index))
+  if (!IsAltModePresent(index)) {
     return nullptr;
+  }
 
   return alt_modes_.find(index)->second.get();
 }
 
 std::vector<AltMode*> Cable::GetAltModes() {
   std::vector<AltMode*> ret = {};
-  for (int i = 0; i < num_alt_modes_; i++)
+  for (int i = 0; i < num_alt_modes_; i++) {
     ret.push_back(GetAltMode(i));
+  }
 
   return ret;
 }
@@ -221,42 +227,49 @@ bool Cable::USB4PDIdentityCheck() {
     // NOTE: The meaning of this field is inverted; the bit field being set
     // means USB4 is *not* supported.
     if (vdo_version == kActiveCableVDO1VDOVersion13) {
-      if (GetProductTypeVDO2() & kActiveCableVDO2USB4SupportedBitField)
+      if (GetProductTypeVDO2() & kActiveCableVDO2USB4SupportedBitField) {
         return false;
-      else
+      } else {
         return true;
+      }
     }
 
     // For VDO version != 1.3, don't enable USB4 if the cable:
     // - doesn't support modal operation, or
     // - doesn't have an Intel SVID Alt mode, or
     // - doesn't have rounded support.
-    if (!(GetIdHeaderVDO() & kIDHeaderVDOModalOperationBitField))
+    if (!(GetIdHeaderVDO() & kIDHeaderVDOModalOperationBitField)) {
       return false;
+    }
 
-    if (!IsAltModeSVIDPresent(kTBTAltModeVID))
+    if (!IsAltModeSVIDPresent(kTBTAltModeVID)) {
       return false;
+    }
 
     // Go through cable alt modes and check for rounded support in the TBT VDO.
     auto num_altmodes = GetNumAltModes();
     for (int i = 0; i < num_altmodes; i++) {
       AltMode* altmode = GetAltMode(i);
-      if (!altmode || altmode->GetSVID() != kTBTAltModeVID)
+      if (!altmode || altmode->GetSVID() != kTBTAltModeVID) {
         continue;
+      }
       auto rounded_support =
           altmode->GetVDO() >> kTBT3CableDiscModeVDORoundedSupportOffset &
           kTBT3CableDiscModeVDORoundedSupportMask;
-      if (rounded_support == kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded)
+      if (rounded_support ==
+          kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded) {
         return true;
+      }
     }
     return false;
   } else if (cable_type == kIDHeaderVDOProductTypeCablePassive) {
     // Apart from USB2.0, USB4 is supported for all other speeds.
     auto speed = GetProductTypeVDO1() & kUSBSpeedBitMask;
-    if (speed != kUSBSpeed20)
+    if (speed != kUSBSpeed20) {
       return true;
-    else
+    } else {
       return false;
+    }
   }
   return false;
 }
@@ -270,18 +283,20 @@ CableSpeedMetric Cable::GetCableSpeedMetric(bool captive) {
 
   // If there is no ID header, this is a non-emarked cable.
   if (!GetIdHeaderVDO()) {
-    if (captive)
+    if (captive) {
       return CableSpeedMetric::kNonEmarkedCaptive;
-    else
+    } else {
       return CableSpeedMetric::kNonEmarked;
+    }
   }
 
   // If we can't identify a valid cable in the ID Header, return early.
   auto cable_type = (GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
                     kIDHeaderVDOProductTypeMask;
   if (!(cable_type == kIDHeaderVDOProductTypeCableActive ||
-        cable_type == kIDHeaderVDOProductTypeCablePassive))
+        cable_type == kIDHeaderVDOProductTypeCablePassive)) {
     return ret;
+  }
 
   // Parse the speed field in the Cable VDO.
   auto cable_vdo = GetProductTypeVDO1();
@@ -313,14 +328,16 @@ CableSpeedMetric Cable::GetCableSpeedMetric(bool captive) {
     }
   }
 
-  if (ret != CableSpeedMetric::kUSB2_0)
+  if (ret != CableSpeedMetric::kUSB2_0) {
     return ret;
+  }
 
   // Finally, handle TBT-only cables (only if the VDOs claim to only
   // support USB 2.0 speeds).
   for (const auto& [index, mode] : alt_modes_) {
-    if (mode->GetSVID() != kTBTAltModeVID)
+    if (mode->GetSVID() != kTBTAltModeVID) {
       continue;
+    }
 
     uint32_t tbt_vdo = mode->GetVDO();
 
@@ -328,21 +345,24 @@ CableSpeedMetric Cable::GetCableSpeedMetric(bool captive) {
     auto rounded_support =
         (tbt_vdo >> kTBT3CableDiscModeVDORoundedSupportOffset) &
         kTBT3CableDiscModeVDORoundedSupportMask;
-    if (rounded_support == kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded)
+    if (rounded_support == kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded) {
       continue;
+    }
 
     auto speed = (tbt_vdo >> kTBT3CableDiscModeVDOSpeedOffset) &
                  kTBT3CableDiscModeVDOSpeedMask;
-    if (speed == kTBT3CableDiscModeVDOSpeed10G20G)
+    if (speed == kTBT3CableDiscModeVDOSpeed10G20G) {
       ret = CableSpeedMetric::kTBTOnly10G20G;
+    }
   }
 
   return ret;
 }
 
 void Cable::ReportMetrics(Metrics* metrics, bool captive) {
-  if (!metrics || metrics_reported_)
+  if (!metrics || metrics_reported_) {
     return;
+  }
 
   if (!DiscoveryComplete()) {
     LOG(WARNING)

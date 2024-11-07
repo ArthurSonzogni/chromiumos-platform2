@@ -60,8 +60,9 @@ void PortManager::SetModeEntrySupported(bool supported) {
 
   mode_entry_supported_ = supported;
   if (run_mode_entry) {
-    for (int i = 0; i < ports_.size(); i++)
+    for (int i = 0; i < ports_.size(); i++) {
       RunModeEntry(i);
+    }
   }
 }
 
@@ -125,8 +126,9 @@ void PortManager::OnPartnerAltModeAddedOrRemoved(const base::FilePath& path,
 
   auto port = it->second.get();
   port->AddRemovePartnerAltMode(path, added);
-  if (added)
+  if (added) {
     RunModeEntry(port_num);
+  }
 }
 
 void PortManager::OnCableAddedOrRemoved(const base::FilePath& path,
@@ -157,8 +159,9 @@ void PortManager::OnPdDeviceAddedOrRemoved(const base::FilePath& path,
   }
 
   int port_num;
-  if (!RE2::FullMatch(target.BaseName().value(), kPartnerRegex, &port_num))
+  if (!RE2::FullMatch(target.BaseName().value(), kPartnerRegex, &port_num)) {
     return;
+  }
 
   auto it = ports_.find(port_num);
   if (it == ports_.end()) {
@@ -266,8 +269,9 @@ void PortManager::OnSessionStopped() {
 }
 
 void PortManager::HandleSessionStopped() {
-  if (!GetModeEntrySupported())
+  if (!GetModeEntrySupported()) {
     return;
+  }
 
   SetUserActive(false);
   for (auto const& x : ports_) {
@@ -280,12 +284,14 @@ void PortManager::HandleSessionStopped() {
 
     // If the current mode is anything other than kTBT, we don't care about
     // changing modes.
-    if (port->GetCurrentMode() != TypeCMode::kTBT)
+    if (port->GetCurrentMode() != TypeCMode::kTBT) {
       continue;
+    }
 
     // If DP mode entry isn't supported, there is nothing left to do.
-    if (!port->CanEnterDPAltMode(nullptr))
+    if (!port->CanEnterDPAltMode(nullptr)) {
       continue;
+    }
 
     // First try exiting the alt mode.
     if (ec_util_->ExitMode(port_num)) {
@@ -304,11 +310,13 @@ void PortManager::HandleSessionStopped() {
 }
 
 void PortManager::HandleUnlock() {
-  if (!GetModeEntrySupported())
+  if (!GetModeEntrySupported()) {
     return;
+  }
 
-  if (features_client_)
+  if (features_client_) {
     SetPeripheralDataAccess(features_client_->GetPeripheralDataAccessEnabled());
+  }
 
   SetUserActive(true);
   for (auto const& x : ports_) {
@@ -316,22 +324,26 @@ void PortManager::HandleUnlock() {
     int port_num = x.first;
     // If the current mode is anything other than DP, we don't care about
     // changing modes.
-    if (port->GetCurrentMode() != TypeCMode::kDP)
+    if (port->GetCurrentMode() != TypeCMode::kDP) {
       continue;
+    }
 
     // If TBT mode entry isn't supported, there is nothing left to do.
-    if (port->CanEnterTBTCompatibilityMode() != ModeEntryResult::kSuccess)
+    if (port->CanEnterTBTCompatibilityMode() != ModeEntryResult::kSuccess) {
       continue;
+    }
 
     // If peripheral data access is disabled, we shouldn't switch modes at all.
-    if (!GetPeripheralDataAccess())
+    if (!GetPeripheralDataAccess()) {
       continue;
+    }
 
     // If the port had initially entered the mode during an unlocked state,
     // we shouldn't change modes now. Doing so will abruptly kick storage
     // devices off the peripheral without a safe unmount.
-    if (port->GetActiveStateOnModeEntry())
+    if (port->GetActiveStateOnModeEntry()) {
       continue;
+    }
 
     // First try exiting the alt mode.
     if (ec_util_->ExitMode(port_num)) {
@@ -388,15 +400,17 @@ void PortManager::RunModeEntry(int port_num) {
   }
 
   if (!GetModeEntrySupported()) {
-    if (!dbus_mgr_)
+    if (!dbus_mgr_) {
       return;
+    }
 
     // If mode entry is not attempted because the AP cannot enter modes, still
     // check for cable notifications.
     bool invalid_dpalt_cable = false;
     port->CanEnterDPAltMode(&invalid_dpalt_cable);
-    if (invalid_dpalt_cable)
+    if (invalid_dpalt_cable) {
       dbus_mgr_->NotifyCableWarning(CableWarningType::kInvalidDpCable);
+    }
 
     return;
   }
@@ -416,8 +430,9 @@ void PortManager::RunModeEntry(int port_num) {
 
   port->SetActiveStateOnModeEntry(GetUserActive());
 
-  if (features_client_)
+  if (features_client_) {
     SetPeripheralDataAccess(features_client_->GetPeripheralDataAccessEnabled());
+  }
 
   // If the host supports USB4 and we can enter USB4 in this partner, do so.
   auto can_enter_usb4 = port->CanEnterUSB4();
@@ -433,8 +448,9 @@ void PortManager::RunModeEntry(int port_num) {
     // If the cable limits USB speed, warn the user.
     if (port->CableLimitingUSBSpeed(false)) {
       LOG(INFO) << "Cable limiting USB speed on port " << port_num;
-      if (dbus_mgr_)
+      if (dbus_mgr_) {
         dbus_mgr_->NotifyCableWarning(CableWarningType::kSpeedLimitingCable);
+      }
     }
 
     return;
@@ -460,8 +476,9 @@ void PortManager::RunModeEntry(int port_num) {
 
     if (ec_util_->EnterMode(port_num, cur_mode)) {
       port->SetCurrentMode(cur_mode);
-      if (cur_mode == TypeCMode::kTBT)
+      if (cur_mode == TypeCMode::kTBT) {
         port->SetTbtDeviceCount(GetTbtDeviceCount());
+      }
 
       LOG(INFO) << "Entered " << ModeToString(cur_mode) << " mode on port "
                 << port_num;
@@ -473,14 +490,16 @@ void PortManager::RunModeEntry(int port_num) {
     if (can_enter_usb4 == ModeEntryResult::kCableError) {
       // If TBT is entered due to a USB4 cable error, warn the user.
       LOG(WARNING) << "USB4 partner with TBT cable on port " << port_num;
-      if (dbus_mgr_)
+      if (dbus_mgr_) {
         dbus_mgr_->NotifyCableWarning(
             CableWarningType::kInvalidUSB4ValidTBTCable);
+      }
     } else if (port->CableLimitingUSBSpeed(true)) {
       // Cable limits the speed of TBT3 partner.
       LOG(INFO) << "Cable limiting USB speed on port " << port_num;
-      if (dbus_mgr_)
+      if (dbus_mgr_) {
         dbus_mgr_->NotifyCableWarning(CableWarningType::kSpeedLimitingCable);
+      }
     }
 
     return;
@@ -514,15 +533,17 @@ void PortManager::RunModeEntry(int port_num) {
   }
 
   // Notify user of potential cable issue.
-  if (dbus_mgr_ && cable_warning != CableWarningType::kOther)
+  if (dbus_mgr_ && cable_warning != CableWarningType::kOther) {
     dbus_mgr_->NotifyCableWarning(cable_warning);
+  }
 
   return;
 }
 
 void PortManager::ReportMetrics(int port_num, bool is_hotplug) {
-  if (!metrics_)
+  if (!metrics_) {
     return;
+  }
 
   auto it = ports_.find(port_num);
   if (it == ports_.end()) {
@@ -537,9 +558,10 @@ void PortManager::ReportMetrics(int port_num, bool is_hotplug) {
   if (port->GetPanel() != Panel::kUnknown) {
     metrics_->ReportPartnerLocation(
         GetPartnerLocationMetric(port_num, is_hotplug));
-    if (port->GetPowerRole() == PowerRole::kSink)
+    if (port->GetPowerRole() == PowerRole::kSink) {
       metrics_->ReportPowerSourceLocation(
           GetPowerSourceLocationMetric(port_num));
+    }
   }
 }
 
@@ -570,8 +592,9 @@ PartnerLocationMetric PortManager::GetPartnerLocationMetric(int port_num,
   }
 
   for (auto it = ports_.begin(); it != ports_.end(); it++) {
-    if (it->first == port_num)
+    if (it->first == port_num) {
       continue;
+    }
     auto port_to_check = it->second.get();
     if (port_to_check->HasPartner()) {
       num_ports_already_in_use++;
@@ -586,31 +609,33 @@ PartnerLocationMetric PortManager::GetPartnerLocationMetric(int port_num,
   }
 
   if (panel == Panel::kLeft) {
-    if (num_available_ports_on_right == 0)
+    if (num_available_ports_on_right == 0) {
       ret = PartnerLocationMetric::kUserHasNoChoice;
-    else if (num_ports_already_in_use == 0)
+    } else if (num_ports_already_in_use == 0) {
       ret = PartnerLocationMetric::kLeftFirst;
-    else if (num_ports_already_in_use == 1 &&
-             panel_already_in_use == Panel::kLeft)
+    } else if (num_ports_already_in_use == 1 &&
+               panel_already_in_use == Panel::kLeft) {
       ret = PartnerLocationMetric::kLeftSecondSameSideWithFirst;
-    else if (num_ports_already_in_use == 1 &&
-             panel_already_in_use == Panel::kRight)
+    } else if (num_ports_already_in_use == 1 &&
+               panel_already_in_use == Panel::kRight) {
       ret = PartnerLocationMetric::kLeftSecondOppositeSideToFirst;
-    else if (num_ports_already_in_use >= 2)
+    } else if (num_ports_already_in_use >= 2) {
       ret = PartnerLocationMetric::kLeftThirdOrLater;
+    }
   } else if (panel == Panel::kRight) {
-    if (num_available_ports_on_left == 0)
+    if (num_available_ports_on_left == 0) {
       ret = PartnerLocationMetric::kUserHasNoChoice;
-    else if (num_ports_already_in_use == 0)
+    } else if (num_ports_already_in_use == 0) {
       ret = PartnerLocationMetric::kRightFirst;
-    else if (num_ports_already_in_use == 1 &&
-             panel_already_in_use == Panel::kRight)
+    } else if (num_ports_already_in_use == 1 &&
+               panel_already_in_use == Panel::kRight) {
       ret = PartnerLocationMetric::kRightSecondSameSideWithFirst;
-    else if (num_ports_already_in_use == 1 &&
-             panel_already_in_use == Panel::kLeft)
+    } else if (num_ports_already_in_use == 1 &&
+               panel_already_in_use == Panel::kLeft) {
       ret = PartnerLocationMetric::kRightSecondOppositeSideToFirst;
-    else if (num_ports_already_in_use >= 2)
+    } else if (num_ports_already_in_use >= 2) {
       ret = PartnerLocationMetric::kRightThirdOrLater;
+    }
   }
 
 end:
@@ -650,23 +675,25 @@ PowerSourceLocationMetric PortManager::GetPowerSourceLocationMetric(
 
   PowerSourceLocationMetric ret = PowerSourceLocationMetric::kOther;
   if (panel == Panel::kLeft) {
-    if (num_ports_on_right == 0)
+    if (num_ports_on_right == 0) {
       ret = PowerSourceLocationMetric::kUserHasNoChoice;
-    else if (panel_prev == Panel::kUnknown)
+    } else if (panel_prev == Panel::kUnknown) {
       ret = PowerSourceLocationMetric::kLeftFirst;
-    else if (panel_prev == Panel::kRight)
+    } else if (panel_prev == Panel::kRight) {
       ret = PowerSourceLocationMetric::kLeftSwitched;
-    else if (panel_prev == Panel::kLeft)
+    } else if (panel_prev == Panel::kLeft) {
       ret = PowerSourceLocationMetric::kLeftConstant;
+    }
   } else if (panel == Panel::kRight) {
-    if (num_ports_on_left == 0)
+    if (num_ports_on_left == 0) {
       ret = PowerSourceLocationMetric::kUserHasNoChoice;
-    else if (panel_prev == Panel::kUnknown)
+    } else if (panel_prev == Panel::kUnknown) {
       ret = PowerSourceLocationMetric::kRightFirst;
-    else if (panel_prev == Panel::kLeft)
+    } else if (panel_prev == Panel::kLeft) {
       ret = PowerSourceLocationMetric::kRightSwitched;
-    else if (panel_prev == Panel::kRight)
+    } else if (panel_prev == Panel::kRight) {
       ret = PowerSourceLocationMetric::kRightConstant;
+    }
   }
 
   port_num_previously_sink = port_num;
@@ -693,40 +720,45 @@ void PortManager::SetPortsUsingDisplays(
 
 Panel PortManager::GetPanel(uint32_t port) {
   auto it = ports_.find(port);
-  if (it == ports_.end())
+  if (it == ports_.end()) {
     return Panel::kUnknown;
+  }
 
   return ports_[port]->GetPanel();
 }
 
 HorizontalPosition PortManager::GetHorizontalPosition(uint32_t port) {
   auto it = ports_.find(port);
-  if (it == ports_.end())
+  if (it == ports_.end()) {
     return HorizontalPosition::kUnknown;
+  }
 
   return ports_[port]->GetHorizontalPosition();
 }
 
 VerticalPosition PortManager::GetVerticalPosition(uint32_t port) {
   auto it = ports_.find(port);
-  if (it == ports_.end())
+  if (it == ports_.end()) {
     return VerticalPosition::kUnknown;
+  }
 
   return ports_[port]->GetVerticalPosition();
 }
 
 bool PortManager::HasPartner(uint32_t port) {
   auto it = ports_.find(port);
-  if (it == ports_.end())
+  if (it == ports_.end()) {
     return false;
+  }
 
   return ports_[port]->HasPartner();
 }
 
 TypeCMode PortManager::GetCurrentMode(uint32_t port) {
   auto it = ports_.find(port);
-  if (it == ports_.end())
+  if (it == ports_.end()) {
     return TypeCMode::kNone;
+  }
 
   return ports_[port]->GetCurrentMode();
 }
@@ -734,8 +766,9 @@ TypeCMode PortManager::GetCurrentMode(uint32_t port) {
 std::vector<AltMode*> PortManager::GetAltModes(uint32_t port,
                                                uint32_t recipient) {
   auto it = ports_.find(port);
-  if (it == ports_.end())
+  if (it == ports_.end()) {
     return {};
+  }
 
   return ports_[port]->GetAltModes(recipient);
 }
@@ -743,16 +776,18 @@ std::vector<AltMode*> PortManager::GetAltModes(uint32_t port,
 std::vector<uint32_t> PortManager::GetIdentity(uint32_t port,
                                                uint32_t recipient) {
   auto it = ports_.find(port);
-  if (it == ports_.end())
+  if (it == ports_.end()) {
     return {};
+  }
 
   return ports_[port]->GetIdentity(recipient);
 }
 
 PDRevision PortManager::GetPDRevision(uint32_t port, uint32_t recipient) {
   auto it = ports_.find(port);
-  if (it == ports_.end())
+  if (it == ports_.end()) {
     return PDRevision::kNone;
+  }
 
   return ports_[port]->GetPDRevision(recipient);
 }

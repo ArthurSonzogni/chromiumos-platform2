@@ -121,22 +121,23 @@ bool UdevMonitor::HandleDeviceAddedRemoved(const base::FilePath& path,
   int port_num;
 
   for (TypecObserver& observer : typec_observer_list_) {
-    if (RE2::FullMatch(name.value(), kPortRegex, &port_num))
+    if (RE2::FullMatch(name.value(), kPortRegex, &port_num)) {
       observer.OnPortAddedOrRemoved(path, port_num, added);
-    else if (RE2::FullMatch(name.value(), kPartnerRegex, &port_num))
+    } else if (RE2::FullMatch(name.value(), kPartnerRegex, &port_num)) {
       observer.OnPartnerAddedOrRemoved(path, port_num, added, !is_initial_scan);
-    else if (RE2::FullMatch(name.value(), kPartnerAltModeRegex, &port_num))
+    } else if (RE2::FullMatch(name.value(), kPartnerAltModeRegex, &port_num)) {
       observer.OnPartnerAltModeAddedOrRemoved(path, port_num, added);
-    else if (RE2::FullMatch(name.value(), kCableRegex, &port_num))
+    } else if (RE2::FullMatch(name.value(), kCableRegex, &port_num)) {
       observer.OnCableAddedOrRemoved(path, port_num, added);
-    else if (RE2::FullMatch(name.value(), kSOPPrimePlugRegex, &port_num))
+    } else if (RE2::FullMatch(name.value(), kSOPPrimePlugRegex, &port_num)) {
       observer.OnCablePlugAdded(path, port_num);
-    else if (RE2::FullMatch(name.value(), kSOPPrimePlugAltModeRegex,
-                            &port_num) &&
-             added)
+    } else if (RE2::FullMatch(name.value(), kSOPPrimePlugAltModeRegex,
+                              &port_num) &&
+               added) {
       observer.OnCableAltModeAdded(path, port_num);
-    else if (RE2::FullMatch(name.value(), kPdRegex))
+    } else if (RE2::FullMatch(name.value(), kPdRegex)) {
       observer.OnPdDeviceAddedOrRemoved(path, added);
+    }
   }
 
   return true;
@@ -147,14 +148,15 @@ void UdevMonitor::HandleDeviceChange(const base::FilePath& path) {
   int port_num;
 
   for (auto& observer : typec_observer_list_) {
-    if (RE2::FullMatch(name.value(), kPartnerRegex, &port_num))
+    if (RE2::FullMatch(name.value(), kPartnerRegex, &port_num)) {
       observer.OnPartnerChanged(port_num);
-    else if (RE2::FullMatch(name.value(), kCableRegex, &port_num))
+    } else if (RE2::FullMatch(name.value(), kCableRegex, &port_num)) {
       observer.OnCableChanged(port_num);
-    else if (RE2::FullMatch(name.value(), kSOPPrimePlugRegex, &port_num))
+    } else if (RE2::FullMatch(name.value(), kSOPPrimePlugRegex, &port_num)) {
       observer.OnCablePlugChanged(path, port_num);
-    else if (RE2::FullMatch(name.value(), kPortRegex, &port_num))
+    } else if (RE2::FullMatch(name.value(), kPortRegex, &port_num)) {
       observer.OnPortChanged(port_num);
+    }
   }
 }
 
@@ -177,12 +179,13 @@ void UdevMonitor::HandleUdevEvent() {
     return;
   }
 
-  if (action == "add")
+  if (action == "add") {
     HandleDeviceAddedRemoved(path, true);
-  else if (action == "remove")
+  } else if (action == "remove") {
     HandleDeviceAddedRemoved(path, false);
-  else if (action == "change")
+  } else if (action == "change") {
     HandleDeviceChange(path);
+  }
 }
 
 }  // namespace typecd

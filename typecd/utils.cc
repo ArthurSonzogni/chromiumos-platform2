@@ -56,10 +56,11 @@ std::string FormatHexString(uint32_t val, int width) {
 bool DeviceComp(policy::DevicePolicy::UsbDeviceId dev1,
                 policy::DevicePolicy::UsbDeviceId dev2) {
   // Allowlist entries are first sorted by VID.
-  if (dev1.vendor_id < dev2.vendor_id)
+  if (dev1.vendor_id < dev2.vendor_id) {
     return true;
-  else if (dev1.vendor_id > dev2.vendor_id)
+  } else if (dev1.vendor_id > dev2.vendor_id) {
     return false;
+  }
 
   // If 2 entries have the same VID, they are sorted by PID.
   return (dev1.product_id < dev2.product_id);
@@ -78,8 +79,9 @@ int GetTbtDeviceCount() {
       base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
   for (base::FilePath tbt_link = tbt_links.Next(); !tbt_link.empty();
        tbt_link = tbt_links.Next()) {
-    if (RE2::FullMatch(tbt_link.BaseName().value(), kTbtDeviceRegex))
+    if (RE2::FullMatch(tbt_link.BaseName().value(), kTbtDeviceRegex)) {
       ret++;
+    }
   }
 
   return ret;

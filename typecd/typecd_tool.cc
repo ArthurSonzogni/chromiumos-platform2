@@ -49,7 +49,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Print unformatted port data.
-    for (int i = 0; i < port_data.size(); i++)
+    for (int i = 0; i < port_data.size(); i++) {
       typecd::PrintRawPortData(&port_data[i]);
+    }
   }
 }

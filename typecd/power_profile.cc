@@ -31,8 +31,9 @@ void PowerProfile::ParseSinkCaps() {
                             base::FileEnumerator::DIRECTORIES);
   for (auto path = iter.Next(); !path.empty(); path = iter.Next()) {
     auto pdo = CreatePdo(path);
-    if (!pdo)
+    if (!pdo) {
       continue;
+    }
 
     sink_caps_.emplace(pdo->GetIndex(), std::move(pdo));
   }
@@ -44,8 +45,9 @@ void PowerProfile::ParseSourceCaps() {
                             base::FileEnumerator::DIRECTORIES);
   for (auto path = iter.Next(); !path.empty(); path = iter.Next()) {
     auto pdo = CreatePdo(path);
-    if (!pdo)
+    if (!pdo) {
       continue;
+    }
 
     source_caps_.emplace(pdo->GetIndex(), std::move(pdo));
   }

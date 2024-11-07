@@ -38,8 +38,9 @@ bool DBusManager::GetAltModes(
   }
 
   alt_modes->clear();
-  for (AltMode* mode : port_mgr_->GetAltModes(port, recipient))
+  for (AltMode* mode : port_mgr_->GetAltModes(port, recipient)) {
     alt_modes->push_back(std::make_tuple(mode->GetSVID(), mode->GetVDO()));
+  }
 
   return true;
 }
@@ -86,8 +87,9 @@ bool DBusManager::GetIdentity(brillo::ErrorPtr* err,
   }
 
   identity->clear();
-  for (uint32_t vdo : port_mgr_->GetIdentity(port, recipient))
+  for (uint32_t vdo : port_mgr_->GetIdentity(port, recipient)) {
     identity->push_back(vdo);
+  }
 
   return true;
 }

@@ -127,8 +127,9 @@ void AddCableMatters20GbpsCable(Port& port) {
 
 void AddUnbrandedTBT3Cable(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddCable(base::FilePath(kFakePort0CableSysPath));
@@ -146,20 +147,23 @@ void AddUnbrandedTBT3Cable(Port& port) {
   port.cable_->SetNumAltModes(2);
   auto mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, 0x4b4, 0x1, 0))
+  if (!CreateFakeAltMode(mode_path, 0x4b4, 0x1, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x30001, 0))
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x30001, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
 }
 
 void AddBelkinTBT3PassiveCable(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddCable(base::FilePath(kFakePort0CableSysPath));
@@ -177,15 +181,17 @@ void AddBelkinTBT3PassiveCable(Port& port) {
   port.cable_->SetNumAltModes(1);
   auto mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x30001, 0))
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x30001, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
 }
 
 void AddBelkinTBT3ActiveCable(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddCable(base::FilePath(kFakePort0CableSysPath));
@@ -203,20 +209,23 @@ void AddBelkinTBT3ActiveCable(Port& port) {
   port.cable_->SetNumAltModes(2);
   auto mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x430001, 0))
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x430001, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, 0x04b4, 0x1, 0))
+  if (!CreateFakeAltMode(mode_path, 0x04b4, 0x1, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
 }
 
 void AddAppleTBT3ProCable(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddCable(base::FilePath(kFakePort0CableSysPath));
@@ -234,35 +243,41 @@ void AddAppleTBT3ProCable(Port& port) {
   port.cable_->SetNumAltModes(5);
   auto mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0xcb0001, 0))
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0xcb0001, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0xc0c0c, 0))
+  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0xc0c0c, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 2);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, 0x05ac, 0x5, 0))
+  if (!CreateFakeAltMode(mode_path, 0x05ac, 0x5, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 3);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, 0x05ac, 0x7, 1))
+  if (!CreateFakeAltMode(mode_path, 0x05ac, 0x7, 1)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 4);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, 0x05ac, 0x2, 2))
+  if (!CreateFakeAltMode(mode_path, 0x05ac, 0x2, 2)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
 }
 
 void AddCalDigitTBT4Cable(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddCable(base::FilePath(kFakePort0CableSysPath));
@@ -280,20 +295,23 @@ void AddCalDigitTBT4Cable(Port& port) {
   port.cable_->SetNumAltModes(2);
   auto mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, 0x1e4e, 0x90310119, 0))
+  if (!CreateFakeAltMode(mode_path, 0x1e4e, 0x90310119, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x430001, 0))
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x430001, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
 }
 
 void AddCableMattersTBT4LRDCable(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddCable(base::FilePath(kFakePort0CableSysPath));
@@ -311,18 +329,21 @@ void AddCableMattersTBT4LRDCable(Port& port) {
   port.cable_->SetNumAltModes(3);
   auto mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, 0x04b4, 0x1, 0))
+  if (!CreateFakeAltMode(mode_path, 0x04b4, 0x1, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x28b0001, 0))
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x28b0001, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 2);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0xc0c0c, 0))
+  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0xc0c0c, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
 }
 
@@ -367,8 +388,9 @@ void AddTargusUSB3p2Gen2Cable(Port& port) {
 
 void AddCableMattersDock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -386,8 +408,9 @@ void AddCableMattersDock(Port& port) {
   port.partner_->SetNumAltModes(1);
   std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode0_path = temp_dir_.Append(mode0_dirname);
-  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x405, 0))
+  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x405, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode0_path, true);
 
   port.AddCable(base::FilePath(kFakePort0CableSysPath));
@@ -404,8 +427,9 @@ void AddCableMattersDock(Port& port) {
 
 void AddDellWD19TBDock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -423,23 +447,27 @@ void AddDellWD19TBDock(Port& port) {
   port.partner_->SetNumAltModes(4);
   std::string mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex))
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, kDPVDO_WD19TB, 0))
+  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, kDPVDO_WD19TB, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 2);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kDellSVID_WD19TB, kDell_WD19TB_VDO1, 0))
+  if (!CreateFakeAltMode(mode_path, kDellSVID_WD19TB, kDell_WD19TB_VDO1, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 3);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kDellSVID_WD19TB, kDell_WD19TB_VDO2, 1))
+  if (!CreateFakeAltMode(mode_path, kDellSVID_WD19TB, kDell_WD19TB_VDO2, 1)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
 
   port.AddCable(base::FilePath(kFakePort0CableSysPath));
@@ -456,8 +484,9 @@ void AddDellWD19TBDock(Port& port) {
 
 void AddStartechDock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -467,21 +496,24 @@ void AddStartechDock(Port& port) {
   std::string mode0_dirname =
       base::StringPrintf("port%d-partner.%d", 0, kDPAltModeIndex);
   auto mode0_path = temp_dir_.Append(mode0_dirname);
-  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, kDPVDO, kDPVDOIndex))
+  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, kDPVDO, kDPVDOIndex)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode0_path, true);
   std::string mode1_dirname =
       base::StringPrintf("port%d-partner.%d", 0, kTBTAltModeIndex);
   auto mode1_path = temp_dir_.Append(mode1_dirname);
-  if (!CreateFakeAltMode(mode1_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex))
+  if (!CreateFakeAltMode(mode1_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode1_path, true);
 }
 
 void AddStartechTB3DK2DPWDock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -499,15 +531,17 @@ void AddStartechTB3DK2DPWDock(Port& port) {
   port.partner_->SetNumAltModes(1);
   std::string mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO, 0))
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
 }
 
 void AddThinkpadTBT3Dock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -525,25 +559,29 @@ void AddThinkpadTBT3Dock(Port& port) {
   port.partner_->SetNumAltModes(3);
   std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode0_path = temp_dir_.Append(mode0_dirname);
-  if (!CreateFakeAltMode(mode0_path, kTBTAltModeVID, 0x1, 0))
+  if (!CreateFakeAltMode(mode0_path, kTBTAltModeVID, 0x1, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode0_path, true);
   std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   auto mode1_path = temp_dir_.Append(mode1_dirname);
-  if (!CreateFakeAltMode(mode1_path, kDPAltModeSID, 0xc3c47, 0))
+  if (!CreateFakeAltMode(mode1_path, kDPAltModeSID, 0xc3c47, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode1_path, true);
   std::string mode2_dirname = base::StringPrintf("port%d-partner.%d", 0, 2);
   auto mode2_path = temp_dir_.Append(mode2_dirname);
-  if (!CreateFakeAltMode(mode2_path, 0x17ef, 0x1, 0))
+  if (!CreateFakeAltMode(mode2_path, 0x17ef, 0x1, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode2_path, true);
 }
 
 void AddIntelUSB4GatkexCreekDock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -562,21 +600,24 @@ void AddIntelUSB4GatkexCreekDock(Port& port) {
   auto mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
   if (!CreateFakeAltMode(mode_path, kDPAltModeSID, kDPVDO_GatkexCreek,
-                         kDPVDOIndex_GatkexCreek))
+                         kDPVDOIndex_GatkexCreek)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
   if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO_GatkexCreek,
-                         kTBTVDOIndex_GatkexCreek))
+                         kTBTVDOIndex_GatkexCreek)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
 }
 
 void AddOWCTBT4Dock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -594,20 +635,23 @@ void AddOWCTBT4Dock(Port& port) {
   port.partner_->SetNumAltModes(2);
   std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode0_path = temp_dir_.Append(mode0_dirname);
-  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x1c0045, 0))
+  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x1c0045, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode0_path, true);
   std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   auto mode1_path = temp_dir_.Append(mode1_dirname);
-  if (!CreateFakeAltMode(mode1_path, kTBTAltModeVID, 0x1, 0))
+  if (!CreateFakeAltMode(mode1_path, kTBTAltModeVID, 0x1, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode1_path, true);
 }
 
 void AddWimaxitDisplay(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -625,20 +669,23 @@ void AddWimaxitDisplay(Port& port) {
   port.partner_->SetNumAltModes(2);
   std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode0_path = temp_dir_.Append(mode0_dirname);
-  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x40045, 0))
+  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x40045, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode0_path, true);
   std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   auto mode1_path = temp_dir_.Append(mode1_dirname);
-  if (!CreateFakeAltMode(mode1_path, 0x04e8, 0x40045, 0))
+  if (!CreateFakeAltMode(mode1_path, 0x04e8, 0x40045, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode1_path, true);
 }
 
 void AddTargusDV4KDock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -656,15 +703,17 @@ void AddTargusDV4KDock(Port& port) {
   port.partner_->SetNumAltModes(1);
   std::string mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0xc0045, 1))
+  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0xc0045, 1)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
 }
 
 void AddTargus180Dock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -682,20 +731,23 @@ void AddTargus180Dock(Port& port) {
   port.partner_->SetNumAltModes(2);
   std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode0_path = temp_dir_.Append(mode0_dirname);
-  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, 0xc0045, 1))
+  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, 0xc0045, 1)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode0_path, true);
   std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   auto mode1_path = temp_dir_.Append(mode1_dirname);
-  if (!CreateFakeAltMode(mode1_path, 0x0451, 0x1, 1))
+  if (!CreateFakeAltMode(mode1_path, 0x0451, 0x1, 1)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode1_path, true);
 }
 
 void AddHPG4Dock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -713,18 +765,21 @@ void AddHPG4Dock(Port& port) {
   port.partner_->SetNumAltModes(3);
   std::string mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0x1c0045, 0))
+  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0x1c0045, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x4000001, 0))
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x4000001, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 2);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, 0x03f0, 0x60000000, 0))
+  if (!CreateFakeAltMode(mode_path, 0x03f0, 0x60000000, 0)) {
     return;
+  }
   port.AddRemovePartnerAltMode(mode_path, true);
 
   // The HP G4 has a captive cable.
@@ -743,13 +798,15 @@ void AddHPG4Dock(Port& port) {
   port.cable_->SetNumAltModes(2);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x30001, 0))
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x30001, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  if (!CreateFakeAltMode(mode_path, 0x1e4e, 0x9031011c, 0))
+  if (!CreateFakeAltMode(mode_path, 0x1e4e, 0x9031011c, 0)) {
     return;
+  }
   port.AddCableAltMode(mode_path);
 }
 

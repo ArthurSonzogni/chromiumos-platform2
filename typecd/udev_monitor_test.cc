@@ -36,20 +36,22 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
   void OnPortAddedOrRemoved(const base::FilePath& path,
                             int port_num,
                             bool added) override {
-    if (added)
+    if (added) {
       num_ports_++;
-    else
+    } else {
       num_ports_--;
+    }
   };
 
   void OnPartnerAddedOrRemoved(const base::FilePath& path,
                                int port_num,
                                bool added,
                                bool is_hotplug) override {
-    if (added)
+    if (added) {
       num_partners_++;
-    else
+    } else {
       num_partners_--;
+    }
   };
 
   void OnPartnerAltModeAddedOrRemoved(const base::FilePath& path,
@@ -59,10 +61,11 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
   void OnCableAddedOrRemoved(const base::FilePath& path,
                              int port_num,
                              bool added) override {
-    if (added)
+    if (added) {
       num_cables_++;
-    else
+    } else {
       num_cables_--;
+    }
   };
 
   void OnCablePlugAdded(const base::FilePath& path, int port_num) override {}
@@ -73,10 +76,11 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
 
   void OnPdDeviceAddedOrRemoved(const base::FilePath& path,
                                 bool added) override {
-    if (added)
+    if (added) {
       num_pd_devices_++;
-    else
+    } else {
       num_pd_devices_--;
+    }
   };
 
   void OnPartnerChanged(int port_num) override { num_partner_change_events_++; }
@@ -100,10 +104,11 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
 
   // Helper to return whether a port change event was received for |port_num|.
   bool PortChanged(int port_num) {
-    if (port_change_tracker_.find(port_num) == port_change_tracker_.end())
+    if (port_change_tracker_.find(port_num) == port_change_tracker_.end()) {
       return false;
-    else
+    } else {
       return port_change_tracker_[port_num];
+    }
   }
 
   // Helper to reset |port_change_tracker_| state for |port_num|.

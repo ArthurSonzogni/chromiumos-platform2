@@ -55,30 +55,36 @@ void Peripheral::UpdatePDIdentityVDOs() {
   uint32_t product_type_vdo2;
   uint32_t product_type_vdo3;
 
-  if (!ReadHexFromPath(product, &product_vdo))
+  if (!ReadHexFromPath(product, &product_vdo)) {
     return;
+  }
   LOG(INFO) << type_ << " Product VDO: " << FormatHexString(product_vdo, 8);
 
-  if (!ReadHexFromPath(cert_stat, &cert_stat_vdo))
+  if (!ReadHexFromPath(cert_stat, &cert_stat_vdo)) {
     return;
+  }
   LOG(INFO) << type_ << " Cert stat VDO: " << FormatHexString(cert_stat_vdo, 8);
 
-  if (!ReadHexFromPath(id_header, &id_header_vdo))
+  if (!ReadHexFromPath(id_header, &id_header_vdo)) {
     return;
+  }
   LOG(INFO) << type_ << " Id Header VDO: " << FormatHexString(id_header_vdo, 8);
 
-  if (!ReadHexFromPath(product_type1, &product_type_vdo1))
+  if (!ReadHexFromPath(product_type1, &product_type_vdo1)) {
     return;
+  }
   LOG(INFO) << type_
             << " Product Type VDO 1: " << FormatHexString(product_type_vdo1, 8);
 
-  if (!ReadHexFromPath(product_type2, &product_type_vdo2))
+  if (!ReadHexFromPath(product_type2, &product_type_vdo2)) {
     return;
+  }
   LOG(INFO) << type_
             << " Product Type VDO 2: " << FormatHexString(product_type_vdo2, 8);
 
-  if (!ReadHexFromPath(product_type3, &product_type_vdo3))
+  if (!ReadHexFromPath(product_type3, &product_type_vdo3)) {
     return;
+  }
   LOG(INFO) << type_
             << " Product Type VDO 3: " << FormatHexString(product_type_vdo3, 8);
 
@@ -91,8 +97,9 @@ void Peripheral::UpdatePDIdentityVDOs() {
 }
 
 void Peripheral::UpdatePDRevision() {
-  if (GetPDRevision() != PDRevision::kNone)
+  if (GetPDRevision() != PDRevision::kNone) {
     return;
+  }
 
   auto path = syspath_.Append("usb_power_delivery_revision");
 
@@ -110,12 +117,13 @@ void Peripheral::UpdatePDRevision() {
   }
 
   if (maj == 3) {
-    if (min == 2)
+    if (min == 2) {
       SetPDRevision(PDRevision::k32);
-    else if (min == 1)
+    } else if (min == 1) {
       SetPDRevision(PDRevision::k31);
-    else
+    } else {
       SetPDRevision(PDRevision::k30);
+    }
   } else if (maj == 2) {
     SetPDRevision(PDRevision::k20);
   } else {

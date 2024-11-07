@@ -90,8 +90,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   typecd::UdevMonitorFuzzer fuzzer;
 
   // We should at least have 2 1 character length strings.
-  if (size < 2)
+  if (size < 2) {
     return 0;
+  }
 
   auto entry2_str = data_provider.ConsumeRandomLengthString(size / 2);
   auto list_entry2 = std::make_unique<brillo::MockUdevListEntry>();

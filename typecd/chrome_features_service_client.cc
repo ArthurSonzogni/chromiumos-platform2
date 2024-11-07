@@ -26,8 +26,9 @@ ChromeFeaturesServiceClient::ChromeFeaturesServiceClient(
   proxy_ = bus->GetObjectProxy(
       chromeos::kChromeFeaturesServiceName,
       dbus::ObjectPath(chromeos::kChromeFeaturesServicePath));
-  if (!proxy_)
+  if (!proxy_) {
     LOG(ERROR) << "Didn't get valid proxy.";
+  }
 }
 
 void ChromeFeaturesServiceClient::FetchPeripheralDataAccessEnabled() {

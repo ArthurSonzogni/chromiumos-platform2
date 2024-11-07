@@ -26,8 +26,9 @@ bool CheckInventoryForModeEntry(const std::string& inventory) {
       continue;
     }
 
-    if (feature == kAPModeEntryFeatureNumber)
+    if (feature == kAPModeEntryFeatureNumber) {
       return true;
+    }
   }
 
   return false;
@@ -46,8 +47,9 @@ bool CrosECUtil::ModeEntrySupported() {
   int retries = 40;
 
   while (retries--) {
-    if (debugd_proxy_->EcGetInventory(&inventory, &error))
+    if (debugd_proxy_->EcGetInventory(&inventory, &error)) {
       return CheckInventoryForModeEntry(inventory);
+    }
 
     LOG(INFO) << "Inventory attempts remaining: " << retries;
     base::PlatformThread::Sleep(base::Milliseconds(kTypeCControlWaitMs));
@@ -64,8 +66,9 @@ bool CrosECUtil::EnterMode(int port, TypeCMode mode) {
 
   while (retries--) {
     if (debugd_proxy_->EcTypeCEnterMode(port, static_cast<int>(mode), &result,
-                                        &error))
+                                        &error)) {
       return true;
+    }
 
     LOG(INFO) << "Enter mode attempts remaining: " << retries;
     base::PlatformThread::Sleep(base::Milliseconds(kTypeCControlWaitMs));
@@ -82,8 +85,9 @@ bool CrosECUtil::ExitMode(int port) {
   int retries = 5;
 
   while (retries--) {
-    if (debugd_proxy_->EcTypeCExitMode(port, &result, &error))
+    if (debugd_proxy_->EcTypeCExitMode(port, &result, &error)) {
       return true;
+    }
 
     LOG(INFO) << "Exit mode attempts remaining: " << retries;
     base::PlatformThread::Sleep(base::Milliseconds(kTypeCControlWaitMs));

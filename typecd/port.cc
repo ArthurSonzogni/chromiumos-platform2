@@ -113,9 +113,10 @@ void Port::AddRemovePartnerAltMode(const base::FilePath& path, bool added) {
   }
 
   if (added) {
-    if (!partner_->AddAltMode(path))
+    if (!partner_->AddAltMode(path)) {
       LOG(ERROR) << "Failed to add alt mode for port " << port_num_
                  << " at path " << path;
+    }
   } else {
     partner_->RemoveAltMode(path);
   }
@@ -129,10 +130,11 @@ void Port::AddRemovePartnerPowerProfile(bool added) {
     return;
   }
 
-  if (added)
+  if (added) {
     partner_->AddPowerProfile();
-  else
+  } else {
     partner_->RemovePowerProfile();
+  }
 }
 
 void Port::AddCableAltMode(const base::FilePath& path) {
@@ -186,12 +188,14 @@ void Port::PortChanged() {
 std::vector<AltMode*> Port::GetAltModes(uint32_t recipient) {
   switch (recipient) {
     case ((uint32_t)Recipient::kPartner):
-      if (partner_)
+      if (partner_) {
         return partner_->GetAltModes();
+      }
       break;
     case ((uint32_t)Recipient::kCable):
-      if (cable_)
+      if (cable_) {
         return cable_->GetAltModes();
+      }
       break;
     default:
       break;
@@ -202,12 +206,14 @@ std::vector<AltMode*> Port::GetAltModes(uint32_t recipient) {
 std::vector<uint32_t> Port::GetIdentity(uint32_t recipient) {
   switch (recipient) {
     case ((uint32_t)Recipient::kPartner):
-      if (partner_)
+      if (partner_) {
         return partner_->GetIdentity();
+      }
       break;
     case ((uint32_t)Recipient::kCable):
-      if (cable_)
+      if (cable_) {
         return cable_->GetIdentity();
+      }
       break;
     default:
       break;
@@ -218,12 +224,14 @@ std::vector<uint32_t> Port::GetIdentity(uint32_t recipient) {
 PDRevision Port::GetPDRevision(uint32_t recipient) {
   switch (recipient) {
     case ((uint32_t)Recipient::kPartner):
-      if (partner_)
+      if (partner_) {
         return partner_->GetPDRevision();
+      }
       break;
     case ((uint32_t)Recipient::kCable):
-      if (cable_)
+      if (cable_) {
         return cable_->GetPDRevision();
+      }
       break;
     default:
       break;
@@ -252,23 +260,27 @@ VerticalPosition Port::GetVerticalPosition() {
 }
 
 bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
-  if (!partner_->SupportsDp())
+  if (!partner_->SupportsDp()) {
     return false;
+  }
 
   bool partner_is_receptacle = false;
   for (int i = 0; i < partner_->GetNumAltModes(); i++) {
     auto alt_mode = partner_->GetAltMode(i);
-    if (!alt_mode || alt_mode->GetSVID() != kDPAltModeSID)
+    if (!alt_mode || alt_mode->GetSVID() != kDPAltModeSID) {
       continue;
+    }
 
-    if (alt_mode->GetVDO() & kDPModeReceptacle)
+    if (alt_mode->GetVDO() & kDPModeReceptacle) {
       partner_is_receptacle = true;
+    }
   }
 
   // Partner supports DPAltMode. Clear the invalid_dpalt_cable_ptr flag to
   // assume the cable can support driving displays.
-  if (invalid_dpalt_cable_ptr != nullptr)
+  if (invalid_dpalt_cable_ptr != nullptr) {
     *invalid_dpalt_cable_ptr = false;
+  }
 
   // Only check the cable if the partner is a receptacle.
   if (partner_is_receptacle) {
@@ -276,8 +288,9 @@ bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
     // displays. Return true, but set the invalid_dpalt_cable_ptr flag to
     // warn the user.
     if (!cable_ || !(cable_->GetIdHeaderVDO())) {
-      if (invalid_dpalt_cable_ptr != nullptr)
+      if (invalid_dpalt_cable_ptr != nullptr) {
         *invalid_dpalt_cable_ptr = true;
+      }
 
       return true;
     }
@@ -286,8 +299,9 @@ bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
     // support. If the idenity check fails, prevent mode entry and set the
     // invalid_dpalt_cable_ptr flag to warn the user.
     if (!cable_->DPPDIdentityCheck()) {
-      if (invalid_dpalt_cable_ptr != nullptr)
+      if (invalid_dpalt_cable_ptr != nullptr) {
         *invalid_dpalt_cable_ptr = true;
+      }
 
       return false;
     }
@@ -335,8 +349,9 @@ ModeEntryResult Port::CanEnterTBTCompatibilityMode() {
   // Check if the Cable meets TBT3 speed requirements.
   // NOTE: Since we aren't configuring the TBT3 entry speed, we don't
   // need to check for the existence of TBT3 alt mode in the SOP' discovery.
-  if (!cable_->TBT3PDIdentityCheck())
+  if (!cable_->TBT3PDIdentityCheck()) {
     return ModeEntryResult::kCableError;
+  }
 
   return ModeEntryResult::kSuccess;
 }
@@ -356,8 +371,9 @@ ModeEntryResult Port::CanEnterUSB4() {
     return ModeEntryResult::kPartnerError;
   }
 
-  if (!partner_->SupportsUsb4())
+  if (!partner_->SupportsUsb4()) {
     return ModeEntryResult::kPartnerError;
+  }
 
   if (!cable_) {
     LOG(ERROR) << "Attempting USB4 entry without a registered cable on port: "
@@ -425,14 +441,16 @@ void Port::ParseDataRole() {
         << port_num_;
   }
 
-  if (role_str == "")
+  if (role_str == "") {
     role_str = sysfs_str;
+  }
 
   base::TrimWhitespaceASCII(role_str, base::TRIM_ALL, &role_str);
-  if (role_str == "host")
+  if (role_str == "host") {
     role = DataRole::kHost;
-  else if (role_str == "device")
+  } else if (role_str == "device") {
     role = DataRole::kDevice;
+  }
 
 end:
   data_role_ = role;
@@ -457,14 +475,16 @@ void Port::ParsePowerRole() {
         << port_num_;
   }
 
-  if (role_str == "")
+  if (role_str == "") {
     role_str = sysfs_str;
+  }
 
   base::TrimWhitespaceASCII(role_str, base::TRIM_ALL, &role_str);
-  if (role_str == "source")
+  if (role_str == "source") {
     role = PowerRole::kSource;
-  else if (role_str == "sink")
+  } else if (role_str == "sink") {
     role = PowerRole::kSink;
+  }
 
 end:
   power_role_ = role;
@@ -489,34 +509,37 @@ void Port::ParsePhysicalLocation() {
   }
 
   base::TrimWhitespaceASCII(panel_str, base::TRIM_ALL, &panel_str);
-  if (panel_str == "top")
+  if (panel_str == "top") {
     panel = Panel::kTop;
-  else if (panel_str == "bottom")
+  } else if (panel_str == "bottom") {
     panel = Panel::kBottom;
-  else if (panel_str == "left")
+  } else if (panel_str == "left") {
     panel = Panel::kLeft;
-  else if (panel_str == "right")
+  } else if (panel_str == "right") {
     panel = Panel::kRight;
-  else if (panel_str == "front")
+  } else if (panel_str == "front") {
     panel = Panel::kFront;
-  else if (panel_str == "back")
+  } else if (panel_str == "back") {
     panel = Panel::kBack;
+  }
 
   base::TrimWhitespaceASCII(hpos_str, base::TRIM_ALL, &hpos_str);
-  if (hpos_str == "left")
+  if (hpos_str == "left") {
     hpos = HorizontalPosition::kLeft;
-  else if (hpos_str == "center")
+  } else if (hpos_str == "center") {
     hpos = HorizontalPosition::kCenter;
-  else if (hpos_str == "right")
+  } else if (hpos_str == "right") {
     hpos = HorizontalPosition::kRight;
+  }
 
   base::TrimWhitespaceASCII(vpos_str, base::TRIM_ALL, &vpos_str);
-  if (vpos_str == "upper")
+  if (vpos_str == "upper") {
     vpos = VerticalPosition::kUpper;
-  else if (vpos_str == "center")
+  } else if (vpos_str == "center") {
     vpos = VerticalPosition::kCenter;
-  else if (vpos_str == "lower")
+  } else if (vpos_str == "lower") {
     vpos = VerticalPosition::kLower;
+  }
 
 end:
   panel_ = panel;
@@ -525,8 +548,9 @@ end:
 }
 
 bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
-  if (!partner_ || !cable_)
+  if (!partner_ || !cable_) {
     return false;
+  }
 
   // Initialize cable speeds from USB PD identity response.
   auto cable_speed = cable_->GetProductTypeVDO1() & kUSBSpeedBitMask;
@@ -537,12 +561,14 @@ bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
       (cable_->GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
       kIDHeaderVDOProductTypeMask;
   if (cable_type != kIDHeaderVDOProductTypeCableActive &&
-      cable_type != kIDHeaderVDOProductTypeCablePassive)
+      cable_type != kIDHeaderVDOProductTypeCablePassive) {
     return false;
+  }
 
   // Check for captive cable.
-  if (IsCaptiveCableConnected())
+  if (IsCaptiveCableConnected()) {
     return false;
+  }
 
   // In Thunderbolt 3 alternate mode, the partner will support 40 Gbps.
   // Otherwise, check partner type to confirm product_type_vdo1 speed is
@@ -559,8 +585,9 @@ bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
       // PD rev 2.0, v 1.3
       // Table 6-24 Product Types (UFP)
       // Only AMAs use a product type VDO.
-      if (partner_type != kIDHeaderVDOProductTypeUFPAMA)
+      if (partner_type != kIDHeaderVDOProductTypeUFPAMA) {
         return false;
+      }
     } else if (partner_pd_revision == PDRevision::k30) {
       // PD rev 3.0, v 2.0
       // Table 6-30 Product Types (UFP)
@@ -568,8 +595,9 @@ bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
       // USB speed.
       if (partner_type != kIDHeaderVDOProductTypeUFPHub &&
           partner_type != kIDHeaderVDOProductTypeUFPPeripheral &&
-          partner_type != kIDHeaderVDOProductTypeUFPAMA)
+          partner_type != kIDHeaderVDOProductTypeUFPAMA) {
         return false;
+      }
     } else if (partner_pd_revision == PDRevision::k31 ||
                partner_pd_revision == PDRevision::k32) {
       // PD rev 3.1, v1.8 Table 6-36 Product Types (UFP)
@@ -603,12 +631,14 @@ bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
   for (int i = 0; i < cable_->GetNumAltModes(); i++) {
     auto alt_mode = cable_->GetAltMode(i);
 
-    if (!alt_mode || alt_mode->GetSVID() != kTBTAltModeVID)
+    if (!alt_mode || alt_mode->GetSVID() != kTBTAltModeVID) {
       continue;
+    }
 
     // Return false after finding TBT3 cable in TBT3 mode.
-    if (tbt3_alt_mode)
+    if (tbt3_alt_mode) {
       return false;
+    }
 
     auto cable_tbt_mode =
         (alt_mode->GetVDO() >> kTBT3CableDiscModeVDOModeOffset) &
@@ -625,8 +655,9 @@ bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
         (cable_type == kIDHeaderVDOProductTypeCablePassive ||
          (cable_type == kIDHeaderVDOProductTypeCableActive &&
           cable_tbt_rounded_support ==
-              kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded)))
+              kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded))) {
       cable_speed = kUSB40SuperSpeedGen3;
+    }
 
     break;
   }
@@ -653,11 +684,13 @@ void Port::ReportCableMetrics(Metrics* metrics, bool captive) {
 }
 
 void Port::ReportPortMetrics(Metrics* metrics) {
-  if (!metrics || metrics_reported_)
+  if (!metrics || metrics_reported_) {
     return;
+  }
 
-  if (!IsCableDiscoveryComplete() || !IsPartnerDiscoveryComplete())
+  if (!IsCableDiscoveryComplete() || !IsPartnerDiscoveryComplete()) {
     return;
+  }
 
   // Check cable for tracking DPAltMode cable metrics.
   bool invalid_dpalt_cable = false;
@@ -666,17 +699,18 @@ void Port::ReportPortMetrics(Metrics* metrics) {
       CanEnterUSB4() != ModeEntryResult::kSuccess &&
       CanEnterTBTCompatibilityMode() == ModeEntryResult::kSuccess;
 
-  if (CanEnterUSB4() == ModeEntryResult::kCableError)
+  if (CanEnterUSB4() == ModeEntryResult::kCableError) {
     metrics->ReportWrongCableError(WrongConfigurationMetric::kUSB4WrongCable);
-  else if (CanEnterTBTCompatibilityMode() == ModeEntryResult::kCableError)
+  } else if (CanEnterTBTCompatibilityMode() == ModeEntryResult::kCableError) {
     metrics->ReportWrongCableError(WrongConfigurationMetric::kTBTWrongCable);
-  else if (can_enter_dpalt_mode && invalid_dpalt_cable)
+  } else if (can_enter_dpalt_mode && invalid_dpalt_cable) {
     metrics->ReportWrongCableError(WrongConfigurationMetric::kDPAltWrongCable);
-  else if (CableLimitingUSBSpeed(cable_limiting_speed_mode))
+  } else if (CableLimitingUSBSpeed(cable_limiting_speed_mode)) {
     metrics->ReportWrongCableError(
         WrongConfigurationMetric::kSpeedLimitingCable);
-  else
+  } else {
     metrics->ReportWrongCableError(WrongConfigurationMetric::kNone);
+  }
 
   metrics_reported_ = true;
   return;
@@ -684,18 +718,21 @@ void Port::ReportPortMetrics(Metrics* metrics) {
 
 bool Port::GetDpEntryState(DpSuccessMetric& result) {
   bool hpd;
-  if (!ec_util_->HpdState(port_num_, &hpd))
+  if (!ec_util_->HpdState(port_num_, &hpd)) {
     return false;
+  }
 
   bool dp;
-  if (!ec_util_->DpState(port_num_, &dp))
+  if (!ec_util_->DpState(port_num_, &dp)) {
     return false;
+  }
 
   if (dp) {
-    if (hpd)
+    if (hpd) {
       result = DpSuccessMetric::kSuccessHpd;
-    else
+    } else {
       result = DpSuccessMetric::kSuccessNoHpd;
+    }
   } else {
     result = DpSuccessMetric::kFail;
   }
@@ -718,27 +755,31 @@ bool Port::GetModeEntryResult(ModeEntryMetric& result,
       break;
     case TypeCMode::kDP:
       bool dp;
-      if (!ec_util_->DpState(port_num_, &dp))
+      if (!ec_util_->DpState(port_num_, &dp)) {
         return false;
+      }
 
-      if (dp)
+      if (dp) {
         result = ModeEntryMetric::kDpSuccess;
-      else
+      } else {
         result = ModeEntryMetric::kDpFailure;
+      }
 
       break;
     case TypeCMode::kTBT:
-      if (GetTbtDeviceCount() > tbt_device_count_)
+      if (GetTbtDeviceCount() > tbt_device_count_) {
         result = ModeEntryMetric::kTbtSuccess;
-      else
+      } else {
         result = ModeEntryMetric::kTbtFailure;
+      }
 
       break;
     case TypeCMode::kUSB4:
-      if (GetTbtDeviceCount() > tbt_device_count_)
+      if (GetTbtDeviceCount() > tbt_device_count_) {
         result = ModeEntryMetric::kUsb4Success;
-      else
+      } else {
         result = ModeEntryMetric::kUsb4Failure;
+      }
 
       break;
     default:
@@ -750,14 +791,16 @@ bool Port::GetModeEntryResult(ModeEntryMetric& result,
 
 void Port::ReportDpMetric(Metrics* metrics) {
   DpSuccessMetric result;
-  if (!GetDpEntryState(result))
+  if (!GetDpEntryState(result)) {
     return;
+  }
   metrics->ReportDpSuccess(result);
 }
 
 void Port::ReportQualityMetrics(Metrics* metrics, bool mode_entry_supported) {
-  if (!metrics)
+  if (!metrics) {
     return;
+  }
 
   std::string boot_id;
   if (!base::ReadFileToString(base::FilePath("/proc/sys/kernel/random/boot_id"),
@@ -781,11 +824,13 @@ void Port::ReportQualityMetrics(Metrics* metrics, bool mode_entry_supported) {
 
     partner_type = partner_->GetPartnerTypeMetric();
     base::FilePath usb2_device, usb3_device;
-    if (!boot_id.empty() && partner_->GetUsbDevice(0, 480, &usb2_device))
+    if (!boot_id.empty() && partner_->GetUsbDevice(0, 480, &usb2_device)) {
       usb2_id = GetConnectionId(boot_id, usb2_device);
+    }
 
-    if (!boot_id.empty() && partner_->GetUsbDevice(5000, 20000, &usb3_device))
+    if (!boot_id.empty() && partner_->GetUsbDevice(5000, 20000, &usb3_device)) {
       usb3_id = GetConnectionId(boot_id, usb3_device);
+    }
   }
 
   CableSpeedMetric cable_speed = CableSpeedMetric::kOther;
@@ -802,16 +847,19 @@ void Port::ReportQualityMetrics(Metrics* metrics, bool mode_entry_supported) {
 }
 
 void Port::ReportMetrics(Metrics* metrics, bool mode_entry_supported) {
-  if (!metrics)
+  if (!metrics) {
     return;
+  }
 
   ReportPartnerMetrics(metrics);
   ReportCableMetrics(metrics, IsCaptiveCableConnected());
   ReportQualityMetrics(metrics, mode_entry_supported);
-  if (mode_entry_supported)
+  if (mode_entry_supported) {
     ReportPortMetrics(metrics);
-  if (CanEnterDPAltMode(nullptr))
+  }
+  if (CanEnterDPAltMode(nullptr)) {
     ReportDpMetric(metrics);
+  }
 }
 
 void Port::EnqueueMetricsTask(Metrics* metrics, bool mode_entry_supported) {
@@ -828,34 +876,39 @@ void Port::CancelMetricsTask() {
 }
 
 bool Port::IsCaptiveCableConnected() {
-  if (!partner_)
+  if (!partner_) {
     return false;
+  }
 
   // If cable enumerated, check cable plug type.
   if (cable_) {
     auto cable_plug_type =
         (cable_->GetProductTypeVDO1() >> kCableVDO1VDOPlugTypeOffset) &
         kCableVDO1VDOPlugTypeBitMask;
-    if (cable_plug_type == kCableVDO1VDOPlugTypeCaptive)
+    if (cable_plug_type == kCableVDO1VDOPlugTypeCaptive) {
       return true;
+    }
   }
 
   // Check partner ID Header VDO connector type.
   auto partner_connector_type =
       (partner_->GetIdHeaderVDO() >> kIDHeaderVDOConnectorTypeBitOffset) &
       kIDHeaderVDOConnectorTypeMask;
-  if (partner_connector_type == kIDHeaderVDOConnectorTypePlug)
+  if (partner_connector_type == kIDHeaderVDOConnectorTypePlug) {
     return true;
+  }
 
   // Check partners DP alt mode connector type.
   if (partner_->SupportsDp()) {
     for (int i = 0; i < partner_->GetNumAltModes(); i++) {
       auto alt_mode = partner_->GetAltMode(i);
-      if (!alt_mode || alt_mode->GetSVID() != kDPAltModeSID)
+      if (!alt_mode || alt_mode->GetSVID() != kDPAltModeSID) {
         continue;
+      }
 
-      if (!(alt_mode->GetVDO() & kDPModeReceptacle))
+      if (!(alt_mode->GetVDO() & kDPModeReceptacle)) {
         return true;
+      }
     }
   }
 

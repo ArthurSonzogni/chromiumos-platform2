@@ -29,8 +29,9 @@ Daemon::~Daemon() {}
 
 int Daemon::OnInit() {
   int exit_code = DBusServiceDaemon::OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     return exit_code;
+  }
 
   LOG(INFO) << "Daemon started.";
   if (!udev_monitor_->InitUdev()) {
@@ -70,8 +71,9 @@ int Daemon::OnInit() {
   port_manager_->SetModeEntrySupported(mode_entry_supported);
 
   auto config = std::make_unique<CrosConfigUtil>();
-  if (mode_entry_supported && config->APModeEntryDPOnly())
+  if (mode_entry_supported && config->APModeEntryDPOnly()) {
     port_manager_->SetSupportsUSB4(false);
+  }
 
   InitUserActiveState();
   session_manager_proxy_->AddObserver(port_manager_.get());
@@ -107,8 +109,9 @@ void Daemon::DebugdListener(const std::string& owner) {
   LOG(INFO) << "Update received from debugd (" << owner << ").";
 
   bool mode_entry_supported = cros_ec_util_->ModeEntrySupported();
-  if (!mode_entry_supported)
+  if (!mode_entry_supported) {
     return;
+  }
 
   port_manager_->SetModeEntrySupported(mode_entry_supported);
   LOG(INFO) << "Mode entry now supported on this device.";

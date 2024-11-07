@@ -39,8 +39,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // If the input corpus doesn't have sufficient bytes to fill out the VDOs, we
   // should return immediately.
-  if (size < 1024)
+  if (size < 1024) {
     return 0;
+  }
 
   // Set up fake sysfs paths.
   auto partner_path = fuzzer.temp_dir_.Append(std::string("port0-partner"));

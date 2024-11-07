@@ -807,8 +807,9 @@ TEST_F(PortTest, CaptiveCableTrueIdHeaderVDO) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   base::ScopedTempDir scoped_temp_dir_;
-  if (!scoped_temp_dir_.CreateUniqueTempDir())
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     return;
+  }
   base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
 
   port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));

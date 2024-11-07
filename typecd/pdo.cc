@@ -16,16 +16,17 @@ constexpr char kPdoTypeRegex[] = R"((\d):(\w+))";
 
 // Helper function to map type names to their corresponding enum.
 typecd::Pdo::Type ParseType(const std::string& type) {
-  if (type == "fixed_supply")
+  if (type == "fixed_supply") {
     return typecd::Pdo::Type::kFixedSupply;
-  else if (type == "variable_supply")
+  } else if (type == "variable_supply") {
     return typecd::Pdo::Type::kVariableSupply;
-  else if (type == "battery")
+  } else if (type == "battery") {
     return typecd::Pdo::Type::kBattery;
-  else if (type == "programmable_supply")
+  } else if (type == "programmable_supply") {
     return typecd::Pdo::Type::kPPS;
-  else
+  } else {
     return typecd::Pdo::Type::kNone;
+  }
 }
 
 }  // namespace
@@ -41,8 +42,9 @@ std::unique_ptr<Pdo> Pdo::MakePdo(const base::FilePath& syspath) {
   int index;
   std::string type_str;
   if (!RE2::FullMatch(syspath.BaseName().value(), kPdoTypeRegex, &index,
-                      &type_str))
+                      &type_str)) {
     return nullptr;
+  }
 
   auto type = ParseType(type_str);
   if (type == Type::kNone) {

@@ -47,8 +47,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   auto pdo_path = fuzzer.temp_dir_.Append(pdo_dirname);
 
   // CreateDirectory() failures shouldn't be flagged as PdoFuzzer errors.
-  if (!base::CreateDirectory(pdo_path))
+  if (!base::CreateDirectory(pdo_path)) {
     return 0;
+  }
 
   auto pdo = typecd::Pdo::MakePdo(pdo_path);
   return 0;

@@ -53,8 +53,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // D-Bus Spec needs UTF-8 strings. Let's ensure that since we are not
   // testing D-Bus functionality here.
   auto resp_str = data_provider.ConsumeRemainingBytesAsString();
-  if (!base::IsStringUTF8(resp_str))
+  if (!base::IsStringUTF8(resp_str)) {
     return 0;
+  }
 
   // Set up a fake debugd D-Bus proxy.
   dbus::Bus::Options options;

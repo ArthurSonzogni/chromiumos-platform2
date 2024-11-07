@@ -45,8 +45,9 @@ Partner::Partner(const base::FilePath& syspath)
   // This needs to be called explicitly since it's not in the base Peripheral
   // class.
   UpdateSupportsPD();
-  for (auto path = iter.Next(); !path.empty(); path = iter.Next())
+  for (auto path = iter.Next(); !path.empty(); path = iter.Next()) {
     AddAltMode(path);
+  }
 
   SetNumAltModes(ParseNumAltModes());
 }
@@ -54,8 +55,9 @@ Partner::Partner(const base::FilePath& syspath)
 bool Partner::AddAltMode(const base::FilePath& mode_syspath) {
   int port, index;
   if (!RE2::FullMatch(mode_syspath.BaseName().value(), kPartnerAltModeRegex,
-                      &port, &index))
+                      &port, &index)) {
     return false;
+  }
 
   if (IsAltModePresent(index)) {
     LOG(INFO) << "Alt mode already registered for syspath "
@@ -108,12 +110,14 @@ bool Partner::IsAltModePresent(int index) {
 }
 
 void Partner::AddPowerProfile() {
-  if (power_profile_ || !supports_pd_)
+  if (power_profile_ || !supports_pd_) {
     return;
+  }
   auto path = GetSysPath().Append("usb_power_delivery");
   // Not all devices have USB power delivery directories.
-  if (base::DirectoryExists(path))
+  if (base::DirectoryExists(path)) {
     power_profile_ = std::make_unique<PowerProfile>(path);
+  }
 }
 
 void Partner::RemovePowerProfile() {
@@ -121,8 +125,9 @@ void Partner::RemovePowerProfile() {
 }
 
 void Partner::UpdatePDInfoFromSysfs() {
-  if (GetNumAltModes() == -1)
+  if (GetNumAltModes() == -1) {
     SetNumAltModes(ParseNumAltModes());
+  }
   UpdatePDIdentityVDOs();
   UpdatePDRevision();
   UpdateSupportsPD();
@@ -133,8 +138,9 @@ int Partner::ParseNumAltModes() {
   auto path = GetSysPath().Append("number_of_alternate_modes");
 
   std::string val_str;
-  if (!base::ReadFileToString(path, &val_str))
+  if (!base::ReadFileToString(path, &val_str)) {
     return -1;
+  }
 
   base::TrimWhitespaceASCII(val_str, base::TRIM_TRAILING, &val_str);
 
@@ -148,16 +154,18 @@ int Partner::ParseNumAltModes() {
 }
 
 AltMode* Partner::GetAltMode(int index) {
-  if (!IsAltModePresent(index))
+  if (!IsAltModePresent(index)) {
     return nullptr;
+  }
 
   return alt_modes_.find(index)->second.get();
 }
 
 std::vector<AltMode*> Partner::GetAltModes() {
   std::vector<AltMode*> ret = {};
-  for (int i = 0; i < num_alt_modes_; i++)
+  for (int i = 0; i < num_alt_modes_; i++) {
     ret.push_back(GetAltMode(i));
+  }
 
   return ret;
 }
@@ -175,10 +183,11 @@ void Partner::UpdateSupportsPD() {
   }
 
   base::TrimWhitespaceASCII(val_str, base::TRIM_TRAILING, &val_str);
-  if (val_str == "yes")
+  if (val_str == "yes") {
     supports_pd_ = true;
-  else
+  } else {
     supports_pd_ = false;
+  }
 }
 
 PartnerTypeMetric Partner::GetPartnerTypeMetric() {
@@ -201,51 +210,59 @@ PartnerTypeMetric Partner::GetPartnerTypeMetric() {
     // Check the AMA VDO. If only billboard is supported, we guess that it's a
     // peripheral. In all other cases, we consider it's a hub.
     auto usb_speed = GetProductTypeVDO1() & kAMAVDOUSBSpeedBitMask;
-    if (usb_speed != kAMAVDOUSBSpeedBillboard)
+    if (usb_speed != kAMAVDOUSBSpeedBillboard) {
       hub = true;
-    else
+    } else {
       peripheral = true;
+    }
   }
 
   // Now that we have all the data, let's make a type selection.
   PartnerTypeMetric ret = PartnerTypeMetric::kOther;
   if (usb4) {
-    if (hub)
+    if (hub) {
       ret = PartnerTypeMetric::kUSB4Hub;
-    else if (peripheral)
+    } else if (peripheral) {
       ret = PartnerTypeMetric::kUSB4Peripheral;
+    }
   } else if (tbt_present && dp_present) {
-    if (hub)
+    if (hub) {
       ret = PartnerTypeMetric::kTBTDPAltHub;
-    else if (peripheral)
+    } else if (peripheral) {
       ret = PartnerTypeMetric::kTBTDPAltPeripheral;
+    }
   } else if (tbt_present) {
-    if (hub)
+    if (hub) {
       ret = PartnerTypeMetric::kTBTHub;
-    else if (peripheral)
+    } else if (peripheral) {
       ret = PartnerTypeMetric::kTBTPeripheral;
+    }
   } else if (dp_present) {
-    if (hub)
+    if (hub) {
       ret = PartnerTypeMetric::kDPAltHub;
-    else if (peripheral)
+    } else if (peripheral) {
       ret = PartnerTypeMetric::kDPAltPeripheral;
+    }
   } else if (usb_present) {
-    if (hub)
+    if (hub) {
       ret = PartnerTypeMetric::kUSBHub;
-    else if (peripheral)
+    } else if (peripheral) {
       ret = PartnerTypeMetric::kUSBPeripheral;
+    }
   }
 
   // Edge case of power brick.
   auto product_type_dfp =
       GetIdHeaderVDO() >> kIDHeaderVDOProductTypeDFPBitOffset &
       kIDHeaderVDOProductTypeMask;
-  if (product_type_dfp == kIDHeaderVDOProductTypePowerBrick)
+  if (product_type_dfp == kIDHeaderVDOProductTypePowerBrick) {
     ret = PartnerTypeMetric::kPowerBrick;
+  }
 
   // If we've found a valid category let's return.
-  if (ret != PartnerTypeMetric::kOther)
+  if (ret != PartnerTypeMetric::kOther) {
     return ret;
+  }
 
   // If we still haven't been able to categorize the partner, we make a guess
   // based on current port state and hints about partner capabilities.
@@ -262,19 +279,21 @@ PartnerTypeMetric Partner::GetPartnerTypeMetric() {
   // Refer to b/195056095 for details about the selection matrix.
   if (port_pr == PowerRole::kSink) {
     if (partner_has_pd) {
-      if (port_dr == DataRole::kHost)
+      if (port_dr == DataRole::kHost) {
         ret = PartnerTypeMetric::kPDSourcingDevice;
-      else if (port_dr == DataRole::kDevice)
+      } else if (port_dr == DataRole::kDevice) {
         ret = PartnerTypeMetric::kPDPowerSource;
+      }
     } else {
       ret = PartnerTypeMetric::kNonPDPowerSource;
     }
   } else if (port_pr == PowerRole::kSource) {
     if (partner_has_pd) {
-      if (port_dr == DataRole::kHost)
+      if (port_dr == DataRole::kHost) {
         ret = PartnerTypeMetric::kPDSink;
-      else if (port_dr == DataRole::kDevice)
+      } else if (port_dr == DataRole::kDevice) {
         ret = PartnerTypeMetric::kPDSinkingHost;
+      }
     } else {
       ret = PartnerTypeMetric::kNonPDSink;
     }
@@ -287,10 +306,11 @@ DataRoleMetric Partner::GetDataRoleMetric() {
   DataRoleMetric ret = DataRoleMetric::kOther;
   DataRole port_dr = port_->GetDataRole();
 
-  if (port_dr == DataRole::kHost)
+  if (port_dr == DataRole::kHost) {
     ret = DataRoleMetric::kDevice;
-  else if (port_dr == DataRole::kDevice)
+  } else if (port_dr == DataRole::kDevice) {
     ret = DataRoleMetric::kHost;
+  }
 
   return ret;
 }
@@ -299,17 +319,19 @@ PowerRoleMetric Partner::GetPowerRoleMetric() {
   PowerRoleMetric ret = PowerRoleMetric::kOther;
   PowerRole port_pr = port_->GetPowerRole();
 
-  if (port_pr == PowerRole::kSource)
+  if (port_pr == PowerRole::kSource) {
     ret = PowerRoleMetric::kSink;
-  else if (port_pr == PowerRole::kSink)
+  } else if (port_pr == PowerRole::kSink) {
     ret = PowerRoleMetric::kSource;
+  }
 
   return ret;
 }
 
 void Partner::ReportMetrics(Metrics* metrics) {
-  if (!metrics || metrics_reported_)
+  if (!metrics || metrics_reported_) {
     return;
+  }
 
   if (GetSupportsPD() && !DiscoveryComplete()) {
     LOG(WARNING)
@@ -335,24 +357,27 @@ bool Partner::SupportsUsb() {
       product_type == kIDHeaderVDOProductTypeUFPHub) {
     auto device_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
                       kDeviceCapabilityMask;
-    if (device_cap != kDeviceCapabilityBillboard)
+    if (device_cap != kDeviceCapabilityBillboard) {
       return true;
+    }
   }
   return false;
 }
 
 bool Partner::SupportsDp() {
   for (const auto& [index, mode] : alt_modes_) {
-    if ((mode->GetSVID() == kDPAltModeSID) && (mode->GetVDO() & kDPModeSnk))
+    if ((mode->GetSVID() == kDPAltModeSID) && (mode->GetVDO() & kDPModeSnk)) {
       return true;
+    }
   }
   return false;
 }
 
 bool Partner::SupportsTbt() {
   for (const auto& [index, mode] : alt_modes_) {
-    if (mode->GetSVID() == kTBTAltModeVID)
+    if (mode->GetSVID() == kTBTAltModeVID) {
       return true;
+    }
   }
   return false;
 }
@@ -363,8 +388,9 @@ bool Partner::SupportsUsb4() {
   auto product_type = (GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
                       kIDHeaderVDOProductTypeMask;
   if (product_type != kIDHeaderVDOProductTypeUFPHub &&
-      product_type != kIDHeaderVDOProductTypeUFPPeripheral)
+      product_type != kIDHeaderVDOProductTypeUFPPeripheral) {
     return false;
+  }
 
   // Product Type VDO1 is UFP VDO at this point.
   auto partner_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
@@ -378,20 +404,23 @@ bool Partner::GetUsbDevice(int min_speed, int max_speed, base::FilePath* path) {
       base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
   for (base::FilePath typec_path = typec_paths.Next(); !typec_path.empty();
        typec_path = typec_paths.Next()) {
-    if (!RE2::FullMatch(typec_path.BaseName().value(), kUsbDeviceRegex))
+    if (!RE2::FullMatch(typec_path.BaseName().value(), kUsbDeviceRegex)) {
       continue;
+    }
 
     base::FilePath usb_path =
         base::ReadSymbolicLinkAbsolute(typec_path).value();
 
     std::string speed_str;
-    if (!base::ReadFileToString(usb_path.Append("speed"), &speed_str))
+    if (!base::ReadFileToString(usb_path.Append("speed"), &speed_str)) {
       continue;
+    }
 
     int speed;
     base::TrimWhitespaceASCII(speed_str, base::TRIM_ALL, &speed_str);
-    if (!base::StringToInt(speed_str, &speed))
+    if (!base::StringToInt(speed_str, &speed)) {
       continue;
+    }
 
     // If the current USB device meets the provided speed constraints, return
     // true. There should only be one USB 2.0 and USB 3.2 device link per PD
