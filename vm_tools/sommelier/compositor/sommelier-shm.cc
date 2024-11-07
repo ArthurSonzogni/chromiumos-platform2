@@ -81,8 +81,9 @@ static void sl_host_shm_pool_resize(struct wl_client* client,
   struct sl_host_shm_pool* host =
       static_cast<sl_host_shm_pool*>(wl_resource_get_user_data(resource));
 
-  if (host->proxy)
+  if (host->proxy) {
     wl_shm_pool_resize(host->proxy, size);
+  }
 }
 
 static const struct wl_shm_pool_interface sl_shm_pool_implementation = {
@@ -93,10 +94,12 @@ static void sl_destroy_host_shm_pool(struct wl_resource* resource) {
   struct sl_host_shm_pool* host =
       static_cast<sl_host_shm_pool*>(wl_resource_get_user_data(resource));
 
-  if (host->fd >= 0)
+  if (host->fd >= 0) {
     close(host->fd);
-  if (host->proxy)
+  }
+  if (host->proxy) {
     wl_shm_pool_destroy(host->proxy);
+  }
   wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
@@ -188,10 +191,12 @@ static void sl_destroy_host_shm(struct wl_resource* resource) {
   struct sl_host_shm* host =
       static_cast<sl_host_shm*>(wl_resource_get_user_data(resource));
 
-  if (host->shm_proxy)
+  if (host->shm_proxy) {
     wl_shm_destroy(host->shm_proxy);
-  if (host->linux_dmabuf_proxy)
+  }
+  if (host->linux_dmabuf_proxy) {
     zwp_linux_dmabuf_v1_destroy(host->linux_dmabuf_proxy);
+  }
   wl_resource_set_user_data(resource, nullptr);
   delete host;
 }

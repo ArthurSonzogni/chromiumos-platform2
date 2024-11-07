@@ -103,8 +103,9 @@ bool sl_mmap_begin_access(struct sl_mmap* map) {
   // If we have any other mmap type, we should simply return true
   // under the assumption that they do not need to perform this extra
   // check
-  if (map->map_type != SL_MMAP_DRM_PRIME)
+  if (map->map_type != SL_MMAP_DRM_PRIME) {
     return true;
+  }
 
   // Attempt to import (and map) the GBM BO
   // If we cannot do so, return false so the upper layers
@@ -132,8 +133,9 @@ bool sl_mmap_begin_access(struct sl_mmap* map) {
 }
 
 void sl_mmap_end_access(struct sl_mmap* map) {
-  if (map->map_type != SL_MMAP_DRM_PRIME)
+  if (map->map_type != SL_MMAP_DRM_PRIME) {
     return;
+  }
 
   if (map->addr && map->gbm_map_data) {
     gbm_bo_unmap(map->gbmbo, map->gbm_map_data);
@@ -157,16 +159,18 @@ void sl_mmap_unref(struct sl_mmap* map) {
     switch (map->map_type) {
       case SL_MMAP_SHM:
         munmap(map->addr, map->size + map->offset[0]);
-        if (map->fd != -1)
+        if (map->fd != -1) {
           close(map->fd);
+        }
         delete map;
         break;
 
       case SL_MMAP_DRM_PRIME:
         // Invoke end_access just in case
         sl_mmap_end_access(map);
-        if (map->fd != -1)
+        if (map->fd != -1) {
           close(map->fd);
+        }
         delete map;
         break;
 

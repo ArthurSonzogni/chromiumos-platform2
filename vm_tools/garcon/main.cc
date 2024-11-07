@@ -495,10 +495,11 @@ int main(int argc, char** argv) {
       return 0;
     } else if (cl->HasSwitch(kTerminalSwitch)) {
       std::vector<std::string> args = cl->GetArgs();
-      if (host_notifier->OpenTerminal(std::move(args)))
+      if (host_notifier->OpenTerminal(std::move(args))) {
         return 0;
-      else
+      } else {
         return -1;
+      }
     } else if (cl->HasSwitch(kSelectFileSwitch)) {
       std::string type = cl->GetSwitchValueNative(kSelectFileTypeSwitch);
       std::string title = cl->GetSwitchValueNative(kSelectFileTitleSwitch);

@@ -22,22 +22,25 @@ static void sl_attach_shape_region(struct sl_context* ctx,
   int i;
 
   sl_window = sl_lookup_window(ctx, window);
-  if (!sl_window)
+  if (!sl_window) {
     return;
+  }
 
   reply = xcb_shape_get_rectangles_reply(
       ctx->connection,
       xcb_shape_get_rectangles(ctx->connection, window, XCB_SHAPE_SK_BOUNDING),
       nullptr);
 
-  if (!reply)
+  if (!reply) {
     return;
+  }
 
   int nrects = xcb_shape_get_rectangles_rectangles_length(reply);
   xcb_rectangle_t* rects = xcb_shape_get_rectangles_rectangles(reply);
 
-  if (!rects || nrects <= 0)
+  if (!rects || nrects <= 0) {
     return;
+  }
 
   pixman_box32_t* boxes =
       static_cast<pixman_box32_t*>(calloc(sizeof(pixman_box32_t), nrects));
@@ -68,13 +71,15 @@ void sl_handle_shape_notify(struct sl_context* ctx,
 
   window = sl_lookup_window(ctx, event->affected_window);
 
-  if (!window)
+  if (!window) {
     return;
+  }
 
   sl_clear_shape_region(window);
 
-  if (event->shaped)
+  if (event->shaped) {
     sl_attach_shape_region(ctx, event->affected_window);
+  }
 
   return;
 }
@@ -84,15 +89,17 @@ void sl_shape_query(struct sl_context* ctx, xcb_window_t xwindow) {
   sl_window* sl_window = nullptr;
 
   sl_window = sl_lookup_window(ctx, xwindow);
-  if (!sl_window)
+  if (!sl_window) {
     return;
+  }
 
   reply = xcb_shape_query_extents_reply(
       ctx->connection, xcb_shape_query_extents(ctx->connection, xwindow),
       nullptr);
 
-  if (!reply)
+  if (!reply) {
     return;
+  }
 
   sl_clear_shape_region(sl_window);
 
@@ -151,8 +158,9 @@ void sl_xshape_generate_argb_image(struct sl_context* ctx,
   buf_width = pixman_image_get_width(dst_image);
   buf_height = pixman_image_get_height(dst_image);
 
-  if (buf_width <= 0 || buf_height <= 0)
+  if (buf_width <= 0 || buf_height <= 0) {
     return;
+  }
 
   // Intersect with the pixmap bounds to ensure we do not perform
   // any OOB accesses

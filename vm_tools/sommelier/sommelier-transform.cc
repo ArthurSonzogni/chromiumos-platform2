@@ -212,11 +212,13 @@ bool sl_transform_viewport_scale(struct sl_context* ctx,
     // In these cases, fix it up here by forcing the logical output
     // to be at least 1 pixel
 
-    if (*width <= 0)
+    if (*width <= 0) {
       *width = 1;
+    }
 
-    if (*height <= 0)
+    if (*height <= 0) {
       *height = 1;
+    }
 
   } else {
     if (ctx->stable_scaling) {
@@ -419,8 +421,9 @@ void sl_transform_try_window_scale(struct sl_context* ctx,
   int32_t logical_height;
 
   // This function should only have an effect in direct scale mode
-  if (!ctx->use_direct_scale)
+  if (!ctx->use_direct_scale) {
     return;
+  }
 
   // Reset scale so that calls to sl_transform_get_scale_factors will not
   // use the current scale.
@@ -462,11 +465,13 @@ void sl_transform_try_window_scale(struct sl_context* ctx,
     sl_transform_guest_to_host(ctx, surface, &reverse_width, &reverse_height);
     sl_transform_host_to_guest(ctx, surface, &reverse_width, &reverse_height);
 
-    if (reverse_width != width_in_pixels)
+    if (reverse_width != width_in_pixels) {
       surface->scale_round_on_x = true;
+    }
 
-    if (reverse_height != height_in_pixels)
+    if (reverse_height != height_in_pixels) {
       surface->scale_round_on_y = true;
+    }
   }
 }
 

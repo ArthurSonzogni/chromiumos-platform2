@@ -163,8 +163,9 @@ bool VmBaseImpl::ResumeCrosvm() const {
 }
 
 uint32_t VmBaseImpl::seneschal_server_handle() const {
-  if (seneschal_server_proxy_)
+  if (seneschal_server_proxy_) {
     return seneschal_server_proxy_->handle();
+  }
 
   return 0;
 }

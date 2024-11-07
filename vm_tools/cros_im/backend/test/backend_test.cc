@@ -60,8 +60,9 @@ BackendTest* BackendTest::GetInstance() {
 }
 
 void BackendTest::ProcessRequest(const Request& request) {
-  if (FindIgnore(request) != ignored_requests_.end())
+  if (FindIgnore(request) != ignored_requests_.end()) {
     return;
+  }
 
   if (actions_.empty()) {
     FAILED() << "Received request " << request
@@ -99,8 +100,9 @@ void BackendTest::RunNextEvent() {
 }
 
 void BackendTest::PostEventIfNeeded() {
-  if (actions_.empty() || actions_.front().is_request_)
+  if (actions_.empty() || actions_.front().is_request_) {
     return;
+  }
   // This only applies when running with a GTK frontend and we'll need different
   // logic when we add a XIM server.
   g_idle_add(OnIdle, this);

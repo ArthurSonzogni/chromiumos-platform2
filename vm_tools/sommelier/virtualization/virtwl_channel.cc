@@ -21,8 +21,9 @@
 #define MAX_SEND_SIZE (DEFAULT_BUFFER_SIZE - sizeof(struct virtwl_ioctl_txn))
 
 VirtWaylandChannel::~VirtWaylandChannel() {
-  if (virtwl_ >= 0)
+  if (virtwl_ >= 0) {
     close(virtwl_);
+  }
 }
 
 int32_t VirtWaylandChannel::init() {
@@ -32,8 +33,9 @@ int32_t VirtWaylandChannel::init() {
   struct WaylandBufferCreateOutput create_output = {};
   create_output.fd = -1;
 
-  if (virtwl_ == -1)
+  if (virtwl_ == -1) {
     return -errno;
+  }
 
   create_info.dmabuf = true;
   supports_dmabuf_ = true;
@@ -66,8 +68,9 @@ int32_t VirtWaylandChannel::create_context(int& out_channel_fd) {
   };
 
   ret = ioctl(virtwl_, VIRTWL_IOCTL_NEW, &new_ctx);
-  if (ret)
+  if (ret) {
     return -errno;
+  }
 
   out_channel_fd = new_ctx.fd;
 
@@ -85,8 +88,9 @@ int32_t VirtWaylandChannel::create_pipe(int& out_pipe_fd) {
   new_pipe.size = 0;
 
   ret = ioctl(virtwl_, VIRTWL_IOCTL_NEW, &new_pipe);
-  if (ret)
+  if (ret) {
     return -errno;
+  }
 
   out_pipe_fd = new_pipe.fd;
 
@@ -100,8 +104,9 @@ int32_t VirtWaylandChannel::send(const struct WaylandSendReceive& send) {
   struct virtwl_ioctl_txn* txn = (struct virtwl_ioctl_txn*)ioctl_buffer;
   void* send_data = &txn->data;
 
-  if (send.data_size > max_send_size())
+  if (send.data_size > max_send_size()) {
     return -EINVAL;
+  }
 
   memcpy(send_data, send.data, send.data_size);
 
@@ -115,8 +120,9 @@ int32_t VirtWaylandChannel::send(const struct WaylandSendReceive& send) {
 
   txn->len = send.data_size;
   ret = ioctl(send.channel_fd, VIRTWL_IOCTL_SEND, txn);
-  if (ret)
+  if (ret) {
     return -errno;
+  }
 
   return 0;
 }
@@ -134,8 +140,9 @@ int32_t VirtWaylandChannel::handle_channel_event(
 
   txn->len = max_recv_size;
   ret = ioctl(receive.channel_fd, VIRTWL_IOCTL_RECV, txn);
-  if (ret)
+  if (ret) {
     return -errno;
+  }
 
   for (uint32_t i = 0; i < WAYLAND_MAX_FDs; i++) {
     if (txn->fds[i] >= 0) {
@@ -148,8 +155,9 @@ int32_t VirtWaylandChannel::handle_channel_event(
 
   if (txn->len > 0) {
     receive.data = reinterpret_cast<uint8_t*>(calloc(1, txn->len));
-    if (!receive.data)
+    if (!receive.data) {
       return -ENOMEM;
+    }
 
     memcpy(receive.data, recv_data, txn->len);
   }
@@ -181,8 +189,9 @@ int32_t VirtWaylandChannel::allocate(
   }
 
   ret = ioctl(virtwl_, VIRTWL_IOCTL_NEW, &ioctl_new);
-  if (ret)
+  if (ret) {
     return -errno;
+  }
 
   if (create_info.dmabuf) {
     create_output.strides[0] = ioctl_new.dmabuf.stride0;
@@ -208,8 +217,9 @@ int32_t VirtWaylandChannel::sync(int dmabuf_fd, uint64_t flags) {
 
   sync.flags = flags;
   ret = ioctl(dmabuf_fd, VIRTWL_IOCTL_DMABUF_SYNC, &sync);
-  if (ret)
+  if (ret) {
     return -errno;
+  }
 
   return 0;
 }

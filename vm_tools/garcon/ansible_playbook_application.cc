@@ -202,8 +202,9 @@ void AnsiblePlaybookApplication::OnStdoutReadable() {
       index = i;
     }
   }
-  if (index != count)
+  if (index != count) {
     lines.push_back(std::string(buffer, index, count));
+  }
   for (auto& observer : observers_) {
     observer.OnApplyAnsiblePlaybookProgress(lines);
   }
@@ -226,24 +227,27 @@ void AnsiblePlaybookApplication::OnStderrReadable() {
       index = i;
     }
   }
-  if (index != count)
+  if (index != count) {
     lines.push_back(std::string(buffer, index, count));
+  }
   for (auto& observer : observers_) {
     observer.OnApplyAnsiblePlaybookProgress(lines);
   }
 }
 
 void AnsiblePlaybookApplication::OnStdIOProcessed(bool is_stderr) {
-  if (is_stderr)
+  if (is_stderr) {
     is_stderr_finished_ = true;
-  else
+  } else {
     is_stdout_finished_ = true;
+  }
 
   if (is_stderr_finished_ && is_stdout_finished_) {
     std::string failure_reason;
     bool success = GetPlaybookApplicationResult(&failure_reason);
-    for (auto& observer : observers_)
+    for (auto& observer : observers_) {
       observer.OnApplyAnsiblePlaybookCompletion(success, failure_reason);
+    }
   }
 }
 
@@ -278,9 +282,10 @@ void AnsiblePlaybookApplication::KillAnsibleProcess(pid_t pid) {
                << base::safe_strerror(errno);
   }
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnApplyAnsiblePlaybookCompletion(false /*success*/,
                                               "ansible process timed out");
+  }
 }
 
 }  // namespace garcon

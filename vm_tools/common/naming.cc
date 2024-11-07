@@ -20,9 +20,11 @@ std::string GetEncodedName(const std::string& base_name) {
 
 std::string GetDecodedName(const std::string& encoded_name) {
   std::string decoded;
-  if (!base::Base64UrlDecode(
-          encoded_name, base::Base64UrlDecodePolicy::IGNORE_PADDING, &decoded))
+  if (!base::Base64UrlDecode(encoded_name,
+                             base::Base64UrlDecodePolicy::IGNORE_PADDING,
+                             &decoded)) {
     return "";
+  }
   return decoded;
 }
 

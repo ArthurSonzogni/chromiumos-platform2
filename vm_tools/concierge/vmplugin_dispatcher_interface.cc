@@ -238,8 +238,9 @@ bool IsVmRegistered(scoped_refptr<dbus::Bus> bus,
   LOG(INFO) << "Checking whether VM " << vm_id << " is registered";
 
   std::optional<vm_tools::plugin_dispatcher::VmInfo> info;
-  if (!GetVmInfo(bus, proxy, vm_id, &info))
+  if (!GetVmInfo(bus, proxy, vm_id, &info)) {
     return false;
+  }
 
   *result = info.has_value();
   return true;
@@ -252,8 +253,9 @@ bool IsVmShutDown(scoped_refptr<dbus::Bus> bus,
   LOG(INFO) << "Checking whether VM " << vm_id << " is shut down";
 
   std::optional<vm_tools::plugin_dispatcher::VmInfo> info;
-  if (!GetVmInfo(bus, proxy, vm_id, &info))
+  if (!GetVmInfo(bus, proxy, vm_id, &info)) {
     return false;
+  }
 
   *result =
       info.has_value() &&

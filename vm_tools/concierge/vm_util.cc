@@ -260,8 +260,9 @@ bool WaitForChild(pid_t child, base::TimeDelta timeout) {
 }
 
 bool CheckProcessExists(pid_t pid) {
-  if (pid == 0)
+  if (pid == 0) {
     return false;
+  }
 
   // Try to reap child process in case it just exited.
   waitpid(pid, nullptr, WNOHANG);
@@ -306,8 +307,9 @@ udev_device* FindUdevDevice(const std::string& path) {
     udev_device* device = udev_device_new_from_syspath(udev, syspath);
 
     const char* devnode = udev_device_get_devnode(device);
-    if (devnode && !strcmp(devnode, path.c_str()))
+    if (devnode && !strcmp(devnode, path.c_str())) {
       return device;
+    }
   }
 
   return nullptr;
@@ -515,10 +517,11 @@ bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent) {
   }
 
   int quota_int;
-  if (percent == -1)
+  if (percent == -1) {
     quota_int = -1;
-  else
+  } else {
     quota_int = percent * 1000;
+  }
 
   const std::string cpu_quota_str = std::to_string(quota_int);
   const base::FilePath cfs_quota_us = cpu_cgroup.Append("cpu.cfs_quota_us");
@@ -585,8 +588,9 @@ CustomParametersForDev::CustomParametersForDev(const std::string& data) {
       data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   for (auto& line : lines) {
-    if (line.empty() || line[0] == '#')
+    if (line.empty() || line[0] == '#') {
       continue;
+    }
 
     // Split line with first = sign. --key=value and KEY=VALUE parameters both
     // use = to split. value will be an empty string in case of '--key'.
@@ -633,8 +637,9 @@ CustomParametersForDev::CustomParametersForDev(const std::string& data) {
 }
 
 void CustomParametersForDev::Apply(base::StringPairs& args) {
-  if (!initialized_)
+  if (!initialized_) {
     return;
+  }
   for (const auto& prefix : run_prefix_to_remove_) {
     std::erase_if(args, [&prefix](const auto& pair) {
       return base::StartsWith(pair.first, prefix);
@@ -657,8 +662,9 @@ void CustomParametersForDev::AppendPrerunParams(
 
 std::optional<const std::string> CustomParametersForDev::ObtainSpecialParameter(
     const std::string& key) const {
-  if (!initialized_)
+  if (!initialized_) {
     return std::nullopt;
+  }
   if (auto it = special_parameters_.find(key);
       it != special_parameters_.end()) {
     DCHECK(it->second.size());
@@ -670,8 +676,9 @@ std::optional<const std::string> CustomParametersForDev::ObtainSpecialParameter(
 
 std::vector<std::string> CustomParametersForDev::ObtainSpecialParameters(
     const std::string& key) const {
-  if (!initialized_)
+  if (!initialized_) {
     return {};
+  }
   if (auto it = special_parameters_.find(key);
       it != special_parameters_.end()) {
     DCHECK(it->second.size());
@@ -760,8 +767,9 @@ std::string SharedDataParam::to_string() const {
   if (!privileged_quota_uids.empty()) {
     result += ":privileged_quota_uids=";
     for (size_t i = 0; i < privileged_quota_uids.size(); ++i) {
-      if (i != 0)
+      if (i != 0) {
         result += ' ';
+      }
       result += base::NumberToString(privileged_quota_uids[i]);
     }
   }
@@ -808,8 +816,9 @@ void ArcVmCPUTopology::CreateAffinity() {
   int last_non_rt_cpu = -1;
   for (const auto& cap : capacity_) {
     for (const auto cpu : cap.second) {
-      if (cap.first)
+      if (cap.first) {
         cpu_list.push_back(base::StringPrintf("%d=%d", cpu, cap.first));
+      }
       // last_non_rt_cpu should be the last cpu with a lowest capacity.
       if (min_cap == -1 || min_cap >= cap.first) {
         min_cap = cap.first;
@@ -848,11 +857,12 @@ void ArcVmCPUTopology::CreateAffinity() {
   std::string boost;
   if (cros_config.GetString(kSchedulerTunePath, kBoostTopAppProperty, &boost)) {
     int uclamp_min;
-    if (base::StringToInt(boost, &uclamp_min))
+    if (base::StringToInt(boost, &uclamp_min)) {
       top_app_uclamp_min_ = uclamp_min;
-    else
+    } else {
       LOG(WARNING) << "Failed to convert value of " << kSchedulerTunePath << "/"
                    << kBoostTopAppProperty << " to number";
+    }
   }
 
   // The board may request to boost the whole ARCVM globally, in order to reduce
@@ -986,16 +996,18 @@ void ArcVmCPUTopology::CreateTopology() {
     auto package = GetCpuPackageId(cpu, base::FilePath(kCpuInfosPath));
 
     // Do not fail, carry on, but use an aritifical capacity group.
-    if (!capacity)
+    if (!capacity) {
       capacity_[0].push_back(cpu);
-    else
+    } else {
       capacity_[*capacity].push_back(cpu);
+    }
 
     // Ditto.
-    if (!package)
+    if (!package) {
       package_[0].push_back(cpu);
-    else
+    } else {
       package_[*package].push_back(cpu);
+    }
   }
 }
 

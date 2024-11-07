@@ -104,8 +104,9 @@ void RunListenerService(grpc::Service* listener,
 
   // Build the grpc server.
   grpc::ServerBuilder builder;
-  for (auto& addr : listener_addresses)
+  for (auto& addr : listener_addresses) {
     builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
+  }
   builder.RegisterService(listener);
 
   std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
@@ -911,8 +912,9 @@ void Service::SendListeningPorts() {
             break;
           }
         }
-        if (is_restricted)
+        if (is_restricted) {
           continue;
+        }
 
         chunneld::UpdateListeningPortsRequest_Tcp4ForwardTarget target;
         target.set_vm_name(vm_pair.first.second);
@@ -1546,8 +1548,9 @@ bool Service::CheckReportMetricsRateLimit(const std::string& vm_name) {
     state.count = 1;
     return true;
   }
-  if (++state.count <= kMetricRateLimit)
+  if (++state.count <= kMetricRateLimit) {
     return true;
+  }
   // Only log the first one over the limit to prevent log spam if this is
   // getting hit quickly.
   LOG_IF(ERROR, state.count == kMetricRateLimit + 1)
@@ -3413,8 +3416,9 @@ void Service::RegisterHostname(const std::string& hostname,
         << "Failed to send dbus message to crosdns to register hostname";
   } else {
     hostname_mappings_[hostname] = ip;
-    if (hostname == kDefaultContainerHostname)
+    if (hostname == kDefaultContainerHostname) {
       linuxhost_ip_ = ip;
+    }
   }
 }
 
@@ -3422,8 +3426,9 @@ void Service::UnregisterVmContainers(VirtualMachine* vm,
                                      const std::string& owner_id,
                                      const std::string& vm_name) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  if (!vm)
+  if (!vm) {
     return;
+  }
   // When we were in concierge, this method was important because we shared a
   // D-Bus thread with concierge who was stopping the VM. Now that we are in a
   // separate process, we should receive the gRPC call from the container for
@@ -3477,8 +3482,9 @@ void Service::UnregisterHostname(const std::string& hostname) {
                  << "hostname";
   }
   hostname_mappings_.erase(hostname);
-  if (hostname == kDefaultContainerHostname)
+  if (hostname == kDefaultContainerHostname) {
     linuxhost_ip_ = "";
+  }
 }
 
 void Service::OnCrosDnsNameOwnerChanged(const std::string& old_owner,
@@ -3545,15 +3551,17 @@ VirtualMachine* Service::FindVm(const std::string& owner_id,
                                 const std::string& vm_name) {
   VmKey vm_key = std::make_pair(owner_id, vm_name);
   auto iter = vms_.find(vm_key);
-  if (iter != vms_.end())
+  if (iter != vms_.end()) {
     return iter->second.get();
+  }
   if (!owner_id.empty()) {
     // TODO(jkardatzke): Remove this empty owner check once the other CLs land
     // for setting this everywhere.
     vm_key = std::make_pair("", vm_name);
     auto iter = vms_.find(vm_key);
-    if (iter != vms_.end())
+    if (iter != vms_.end()) {
       return iter->second.get();
+    }
   }
   return nullptr;
 }

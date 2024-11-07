@@ -37,11 +37,13 @@ constexpr char kDefaultContainerName[] = "penguin";
 VirtualMachine::VmType DetermineTypeFromCidAndToken(uint32_t cid,
                                                     const std::string& token) {
   // PluginVm does not have a CID
-  if (cid == 0)
+  if (cid == 0) {
     return VirtualMachine::VmType::PLUGIN_VM;
+  }
   // Termina hosts containers, so it does not have a VM token.
-  if (token.empty())
+  if (token.empty()) {
     return VirtualMachine::VmType::TERMINA;
+  }
   return VirtualMachine::VmType::BOREALIS;
 }
 
@@ -84,8 +86,9 @@ bool VirtualMachine::IsContainerless() const {
 
 bool VirtualMachine::ConnectTremplin() {
   // Tremplin manages LXD/containers, so containerless VMs dont use it.
-  if (IsContainerless())
+  if (IsContainerless()) {
     return false;
+  }
   if (!using_mock_tremplin_stub_) {
     std::string tremplin_address =
         base::StringPrintf("vsock:%u:%u", vsock_cid_, kTremplinPort);
@@ -129,8 +132,9 @@ bool VirtualMachine::SetTimezone(
 
   request.set_timezone_name(timezone_name);
   request.set_posix_tz_string(posix_tz_string);
-  for (const std::string& name : container_names)
+  for (const std::string& name : container_names) {
     request.add_container_names(name);
+  }
 
   grpc::ClientContext ctx;
   ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
@@ -199,8 +203,9 @@ bool VirtualMachine::UnregisterContainer(const std::string& container_token) {
 
 std::string VirtualMachine::GenerateContainerToken(
     const std::string& container_name) {
-  if (IsContainerless())
+  if (IsContainerless()) {
     return "";
+  }
   std::string token = base::Uuid::GenerateRandomV4().AsLowercaseString();
   pending_containers_[token] = std::make_unique<Container>(
       container_name, token, weak_ptr_factory_.GetWeakPtr());

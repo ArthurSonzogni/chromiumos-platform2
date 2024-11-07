@@ -103,10 +103,12 @@ static int handle_host_to_sommelier_event(int fd, uint32_t mask, void* data) {
     return 0;
   }
 
-  if (mask & WL_EVENT_READABLE)
+  if (mask & WL_EVENT_READABLE) {
     count = wl_display_dispatch(ctx->display);
-  if (mask & WL_EVENT_WRITABLE)
+  }
+  if (mask & WL_EVENT_WRITABLE) {
     wl_display_flush(ctx->display);
+  }
 
   if (mask == 0) {
     count = wl_display_dispatch_pending(ctx->display);

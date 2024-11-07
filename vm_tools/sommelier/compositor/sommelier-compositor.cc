@@ -71,8 +71,9 @@ static void sl_output_buffer_destroy(struct sl_output_buffer* buffer) {
   pixman_region32_fini(&buffer->buffer_damage);
   wl_list_remove(&buffer->link);
 
-  if (buffer->shape_image)
+  if (buffer->shape_image) {
     pixman_image_unref(buffer->shape_image);
+  }
 
   delete buffer;
 }
@@ -128,8 +129,9 @@ static void sl_host_surface_attach(struct wl_client* client,
   // The window_shaped flag should only be set if the xshape functionality
   // has been explicitly enabled
   window = sl_context_lookup_window_for_surface(host->ctx, resource);
-  if (window && host->ctx->enable_xshape)
+  if (window && host->ctx->enable_xshape) {
     window_shaped = window->shaped;
+  }
 
   host->current_buffer = nullptr;
   if (host->contents_shm_mmap) {
@@ -145,8 +147,9 @@ static void sl_host_surface_attach(struct wl_client* client,
     buffer_proxy = host_buffer->proxy;
 
     if (!host_buffer->is_drm) {
-      if (host_buffer->shm_mmap)
+      if (host_buffer->shm_mmap) {
         host->contents_shm_mmap = sl_mmap_ref(host_buffer->shm_mmap);
+      }
     } else {
       if (window_shaped && host_buffer->shm_mmap) {
         host->contents_shm_mmap = sl_mmap_ref(host_buffer->shm_mmap);
@@ -355,8 +358,9 @@ static void sl_host_surface_attach(struct wl_client* client,
       }
     }
 
-    if (needs_sync)
+    if (needs_sync) {
       host_buffer->sync_point->sync(host->ctx, host_buffer->sync_point);
+    }
   }
 
   if (host->current_buffer) {
@@ -368,8 +372,9 @@ static void sl_host_surface_attach(struct wl_client* client,
 
   wl_list_for_each(window, &host->ctx->windows, link) {
     if (window->host_surface_id == try_wl_resource_get_id(resource)) {
-      while (sl_process_pending_configure_acks(window, host))
+      while (sl_process_pending_configure_acks(window, host)) {
         continue;
+      }
 
       break;
     }
@@ -476,8 +481,9 @@ static void sl_host_surface_damage_buffer(struct wl_client* client,
   double scale_x, scale_y;
   wl_fixed_t offset_x, offset_y;
   struct sl_viewport* viewport = nullptr;
-  if (!wl_list_empty(&host->contents_viewport))
+  if (!wl_list_empty(&host->contents_viewport)) {
     viewport = wl_container_of(host->contents_viewport.next, viewport, link);
+  }
 
   compute_buffer_scale_and_offset(host, viewport, &scale_x, &scale_y, &offset_x,
                                   &offset_y);
@@ -613,8 +619,9 @@ void sl_host_surface_commit(struct wl_client* client,
   struct sl_window* window = host->window;
   struct sl_viewport* viewport = nullptr;
 
-  if (!wl_list_empty(&host->contents_viewport))
+  if (!wl_list_empty(&host->contents_viewport)) {
     viewport = wl_container_of(host->contents_viewport.next, viewport, link);
+  }
 
   // We are doing this check outside the contents_shm_mmap check below so
   // we can bail out on the shaped processing of a DRM buffer in case mapping
@@ -651,10 +658,11 @@ void sl_host_surface_commit(struct wl_client* client,
     } else {
       // In this case, perform the image manipulation if we are dealing
       // with a shaped surface.
-      if (host->contents_shaped)
+      if (host->contents_shaped) {
         sl_xshape_generate_argb_image(
             host->ctx, &host->contents_shape, host->contents_shm_mmap,
             host->current_buffer->shape_image, host->contents_shm_format);
+      }
     }
   }
 
@@ -665,9 +673,10 @@ void sl_host_surface_commit(struct wl_client* client,
                                     &contents_scale_y, &contents_offset_x,
                                     &contents_offset_y);
 
-    if (host->current_buffer->mmap->begin_write)
+    if (host->current_buffer->mmap->begin_write) {
       host->current_buffer->mmap->begin_write(host->current_buffer->mmap->fd,
                                               host->ctx);
+    }
 
     // Copy damaged regions (surface-relative coordinates).
     int n;
@@ -698,9 +707,10 @@ void sl_host_surface_commit(struct wl_client* client,
       ++rect;
     }
 
-    if (host->current_buffer->mmap->end_write)
+    if (host->current_buffer->mmap->end_write) {
       host->current_buffer->mmap->end_write(host->current_buffer->mmap->fd,
                                             host->ctx);
+    }
 
     pixman_region32_clear(&host->current_buffer->surface_damage);
     pixman_region32_clear(&host->current_buffer->buffer_damage);
@@ -797,8 +807,9 @@ void sl_host_surface_commit(struct wl_client* client,
       if (window->host_surface_id == try_wl_resource_get_id(resource)) {
         if (window->xdg_surface) {
           wl_surface_commit(host->proxy);
-          if (host->contents_width && host->contents_height)
+          if (host->contents_width && host->contents_height) {
             window->realized = 1;
+          }
         }
         break;
       }
@@ -890,8 +901,9 @@ static void sl_destroy_host_surface(struct wl_resource* resource) {
     sl_window_update(surface_window);
   }
 
-  if (host->contents_shm_mmap)
+  if (host->contents_shm_mmap) {
     sl_mmap_unref(host->contents_shm_mmap);
+  }
 
   while (!wl_list_empty(&host->released_buffers)) {
     buffer = wl_container_of(host->released_buffers.next, buffer, link);
@@ -901,11 +913,13 @@ static void sl_destroy_host_surface(struct wl_resource* resource) {
     buffer = wl_container_of(host->busy_buffers.next, buffer, link);
     sl_output_buffer_destroy(buffer);
   }
-  while (!wl_list_empty(&host->contents_viewport))
+  while (!wl_list_empty(&host->contents_viewport)) {
     wl_list_remove(host->contents_viewport.next);
+  }
 
-  if (host->viewport)
+  if (host->viewport) {
     wp_viewport_destroy(host->viewport);
+  }
   wl_surface_destroy(host->proxy);
   wl_resource_set_user_data(resource, nullptr);
   if (host->surface_sync) {
@@ -1082,8 +1096,9 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
     }
   }
 
-  if (unpaired_window)
+  if (unpaired_window) {
     sl_window_update(window);
+  }
 }
 
 static void sl_compositor_create_host_region(struct wl_client* client,

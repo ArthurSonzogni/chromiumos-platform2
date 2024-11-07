@@ -36,8 +36,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // it can end up timing out on larger input sizes that have lots of
   // whitespace.
   constexpr int kMaxInputSize = 102400;
-  if (size > kMaxInputSize)
+  if (size > kMaxInputSize) {
     return 0;
+  }
 
   // The filename has no impact on this function's execution.
   base::FilePath file_path(env.temp_dir_.GetPath().Append("mime_types"));

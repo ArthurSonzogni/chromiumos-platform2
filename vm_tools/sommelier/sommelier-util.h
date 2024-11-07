@@ -74,8 +74,9 @@ struct ConvertRequestArg<int32_t, int32_t> {
 template <typename OutArg>
 struct ConvertRequestArg<wl_resource*, OutArg*> {
   static OutArg* Convert(wl_resource* resource) {
-    if (!resource)
+    if (!resource) {
       return nullptr;
+    }
     using SlType = typename WlToSl<OutArg>::type;
     SlType* host = static_cast<SlType*>(wl_resource_get_user_data(resource));
     return host ? host->proxy : nullptr;

@@ -234,10 +234,12 @@ static int sl_handle_clipboard_event(int fd, uint32_t mask, void* data) {
   bool readable = false;
   bool hang_up = false;
 
-  if (mask & WL_EVENT_READABLE)
+  if (mask & WL_EVENT_READABLE) {
     readable = true;
-  if (mask & WL_EVENT_HANGUP)
+  }
+  if (mask & WL_EVENT_HANGUP) {
     hang_up = true;
+  }
 
   rv = ctx->channel->handle_pipe(fd, readable, hang_up);
   if (rv) {
@@ -316,11 +318,13 @@ static int sl_handle_wayland_channel_event(int fd, uint32_t mask, void* data) {
   bytes = sendmsg(ctx->virtwl_socket_fd, &msg, MSG_NOSIGNAL);
   errno_assert(bytes == static_cast<ssize_t>(receive.data_size));
 
-  while (receive.num_fds--)
+  while (receive.num_fds--) {
     close(receive.fds[receive.num_fds]);
+  }
 
-  if (receive.data)
+  if (receive.data) {
     free(receive.data);
+  }
 
   return 1;
 }
@@ -362,8 +366,9 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
        cmsg = CMSG_NXTHDR(&msg, cmsg)) {
     size_t cmsg_fd_count;
 
-    if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
+    if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
       continue;
+    }
 
     cmsg_fd_count = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
 
@@ -381,8 +386,9 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
   rv = ctx->channel->send(send);
   errno_assert(!rv);
 
-  while (send.num_fds--)
+  while (send.num_fds--) {
     close(send.fds[send.num_fds]);
+  }
 
   return 1;
 }

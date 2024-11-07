@@ -1408,15 +1408,17 @@ bool Init::Setup() {
     for (const auto& mt : mounts) {
       if (mkdir(mt.target, 0755) != 0 && errno != EEXIST) {
         PLOG(ERROR) << "Failed to create " << mt.target;
-        if (mt.failure_is_fatal)
+        if (mt.failure_is_fatal) {
           return false;
+        }
       }
 
       if (mount(mt.source, mt.target, mt.fstype, mt.flags, mt.data) != 0) {
         rmdir(mt.target);
         PLOG(ERROR) << "Failed to mount " << mt.target;
-        if (mt.failure_is_fatal)
+        if (mt.failure_is_fatal) {
           return false;
+        }
       }
     }
 

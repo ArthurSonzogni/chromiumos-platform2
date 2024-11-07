@@ -354,11 +354,13 @@ grpc::Status ServiceImpl::GetDebugInformation(
         pkg_line, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
         base::SPLIT_WANT_NONEMPTY);
     // Filter out unrelated lines.
-    if (pkg_info.size() < 3)
+    if (pkg_info.size() < 3) {
       continue;
+    }
     // Only collect installed packages.
-    if (pkg_info[0] != "ii")
+    if (pkg_info[0] != "ii") {
       continue;
+    }
 
     std::string_view pkg_name = pkg_info[1];
     std::string_view pkg_version = pkg_info[2];
@@ -431,11 +433,13 @@ grpc::Status ServiceImpl::ConnectChunnel(
     vm_tools::container::ConnectChunnelResponse* response) {
   LOG(INFO) << "Received request to connect to chunnel";
 
-  if (request->chunneld_port() == 0)
+  if (request->chunneld_port() == 0) {
     return grpc::Status(grpc::INVALID_ARGUMENT, "invalid chunneld port");
+  }
 
-  if (request->target_tcp4_port() == 0)
+  if (request->target_tcp4_port() == 0) {
     return grpc::Status(grpc::INVALID_ARGUMENT, "invalid target TCP4 port");
+  }
 
   std::vector<std::string> argv{
       "/opt/google/cros-containers/bin/chunnel", "--remote",

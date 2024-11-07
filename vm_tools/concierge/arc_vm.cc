@@ -184,8 +184,9 @@ bool ShutdownArcVm(int cid) {
   while (base::Time::Now() < connect_deadline) {
     bool vm_is_dead = false;
     std::tie(vsock, vm_is_dead) = ConnectVSock(cid);
-    if (vsock.is_valid())
+    if (vsock.is_valid()) {
       break;
+    }
     if (vm_is_dead) {
       DLOG(INFO) << "ARCVM is already gone.";
       return true;
@@ -193,8 +194,9 @@ bool ShutdownArcVm(int cid) {
     base::PlatformThread::Sleep(kArcPowerctlConnectDelay);
   }
 
-  if (!vsock.is_valid())
+  if (!vsock.is_valid()) {
     return false;
+  }
 
   const std::string command("poweroff");
   if (HANDLE_EINTR(write(vsock.get(), command.c_str(), command.size())) !=
@@ -1052,10 +1054,12 @@ std::vector<std::string> ArcVm::GetKernelParams(
   LOG(INFO) << base::StringPrintf("Setting ARCVM guest's zram size to %" PRId64,
                                   zram_size);
 
-  if (request.enable_web_view_zygote_lazy_init())
+  if (request.enable_web_view_zygote_lazy_init()) {
     params.push_back("androidboot.arc.web_view_zygote.lazy_init=1");
-  if (request.rootfs_writable())
+  }
+  if (request.rootfs_writable()) {
     params.push_back("rw");
+  }
 
   auto guest_swappiness = request.guest_swappiness();
   if (guest_swappiness > 0) {
@@ -1065,10 +1069,12 @@ std::vector<std::string> ArcVm::GetKernelParams(
 
   // We run vshd under a restricted domain on non-test images.
   // (go/arcvm-android-sh-restricted)
-  if (channel == "testimage")
+  if (channel == "testimage") {
     params.push_back("androidboot.vshd_service_override=vshd_for_test");
-  if (request.enable_broadcast_anr_prenotify())
+  }
+  if (request.enable_broadcast_anr_prenotify()) {
     params.push_back("androidboot.arc.broadcast_anr_prenotify=1");
+  }
   if (request.vm_memory_psi_period() >= 0) {
     // Since Android performs parameter validation, not doing it here.
     params.push_back(
@@ -1127,17 +1133,20 @@ std::vector<std::string> ArcVm::GetKernelParams(
       break;
   }
 
-  if (mini_instance_request.arc_generate_pai())
+  if (mini_instance_request.arc_generate_pai()) {
     params.push_back("androidboot.arc_generate_pai=1");
-  if (mini_instance_request.disable_download_provider())
+  }
+  if (mini_instance_request.disable_download_provider()) {
     params.push_back("androidboot.disable_download_provider=1");
+  }
   // Only add boot property if flag to disable media store maintenance is set.
   if (mini_instance_request.disable_media_store_maintenance()) {
     params.push_back("androidboot.disable_media_store_maintenance=1");
     LOG(INFO) << "MediaStore maintenance task(s) are disabled";
   }
-  if (mini_instance_request.enable_tts_caching())
+  if (mini_instance_request.enable_tts_caching()) {
     params.push_back("androidboot.arc.tts.caching=1");
+  }
 
   switch (mini_instance_request.play_store_auto_update()) {
     case arc::StartArcMiniInstanceRequest::AUTO_UPDATE_DEFAULT:

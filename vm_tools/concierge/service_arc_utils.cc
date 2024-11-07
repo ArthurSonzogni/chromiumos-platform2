@@ -66,14 +66,16 @@ bool IsValidDataImagePath(const base::FilePath& path) {
   const std::vector<std::string> c = path.GetComponents();
   // A disk image created by concierge:
   // /run/daemon-store/crosvm/<hash>/YXJjdm0=.img
-  if (IsValidConciergeImagePath(path, ".img"))
+  if (IsValidConciergeImagePath(path, ".img")) {
     return true;
+  }
   // An LVM block device:
   // /dev/mapper/vm/dmcrypt-<hash>-arcvm
   if (c.size() == 5 && c[0] == "/" && c[1] == "dev" && c[2] == "mapper" &&
       c[3] == "vm" && base::StartsWith(c[4], "dmcrypt-") &&
-      base::EndsWith(c[4], "-arcvm"))
+      base::EndsWith(c[4], "-arcvm")) {
     return true;
+  }
   return false;
 }
 

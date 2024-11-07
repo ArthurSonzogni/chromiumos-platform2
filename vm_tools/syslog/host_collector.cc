@@ -90,8 +90,9 @@ bool HostCollector::SendUserLogs() {
   grpc::Status status =
       log_pipe_manager_->WriteSyslogRecords(cid_, syslog_request());
 
-  if (!anomaly_detector_proxy_)
+  if (!anomaly_detector_proxy_) {
     return status.ok();
+  }
 
   dbus::MethodCall method_call(anomaly_detector::kAnomalyEventServiceInterface,
                                anomaly_detector::kAnomalyVmKernelLogMethod);

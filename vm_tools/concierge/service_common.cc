@@ -93,8 +93,9 @@ bool GetPluginIsoDirectory(const VmId& vm_id,
 
 // Valid owner/cryptohome ID is a hexadecimal string.
 bool IsValidOwnerId(const std::string& owner_id) {
-  if (owner_id.empty())
+  if (owner_id.empty()) {
     return false;
+  }
 
   return base::ContainsOnlyChars(owner_id, kValidCryptoHomeCharacters);
 }

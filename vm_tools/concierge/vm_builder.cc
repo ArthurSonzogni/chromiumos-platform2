@@ -455,8 +455,9 @@ std::optional<base::StringPairs> VmBuilder::BuildVmArgs(
   base::StringPairs post_run_args = BuildRunParams();
 
   // Early-return when BuildRunParams() failed.
-  if (post_run_args.empty())
+  if (post_run_args.empty()) {
     return std::nullopt;
+  }
 
   base::StringPairs pre_run_args = BuildPreRunParams();
   std::vector<std::string> pre_crosvm_args;
@@ -478,63 +479,78 @@ std::optional<base::StringPairs> VmBuilder::BuildVmArgs(
   args.insert(args.end(), post_run_args.begin(), post_run_args.end());
 
   // Kernel should be at the end.
-  if (!kernel_.empty())
+  if (!kernel_.empty()) {
     args.emplace_back(kernel_.value(), "");
+  }
 
   return args;
 }
 
 base::StringPairs VmBuilder::BuildPreRunParams() const {
   base::StringPairs args;
-  if (!syslog_tag_.empty())
+  if (!syslog_tag_.empty()) {
     args.emplace_back("--syslog-tag", syslog_tag_);
+  }
   return args;
 }
 
 base::StringPairs VmBuilder::BuildRunParams() const {
   base::StringPairs args = {{"--cpus", std::to_string(cpus_)}};
 
-  if (!memory_in_mib_.empty())
+  if (!memory_in_mib_.empty()) {
     args.emplace_back("--mem", memory_in_mib_);
-
-  if (!balloon_bias_mib_.empty())
-    args.emplace_back("--balloon-bias-mib", balloon_bias_mib_);
-
-  if (enable_working_set_reporting_)
-    args.emplace_back("--balloon-ws-reporting", "");
-
-  for (const auto& tap_fd : tap_fds_)
-    args.emplace_back(
-        "--net", "packed-queue=true,tap-fd=" + std::to_string(tap_fd.get()));
-
-  if (vsock_cid_.has_value())
-    args.emplace_back("--cid", std::to_string(vsock_cid_.value()));
-
-  if (!vm_socket_path_.empty())
-    args.emplace_back("--socket", vm_socket_path_);
-
-  for (const auto& w : wayland_sockets_)
-    args.emplace_back("--wayland-sock", w);
-
-  for (const auto& s : serial_devices_)
-    args.emplace_back("--serial", s);
-
-  if (enable_smt_.has_value()) {
-    if (!enable_smt_.value())
-      args.emplace_back("--no-smt", "");
   }
 
-  if (enable_delay_rt_)
+  if (!balloon_bias_mib_.empty()) {
+    args.emplace_back("--balloon-bias-mib", balloon_bias_mib_);
+  }
+
+  if (enable_working_set_reporting_) {
+    args.emplace_back("--balloon-ws-reporting", "");
+  }
+
+  for (const auto& tap_fd : tap_fds_) {
+    args.emplace_back(
+        "--net", "packed-queue=true,tap-fd=" + std::to_string(tap_fd.get()));
+  }
+
+  if (vsock_cid_.has_value()) {
+    args.emplace_back("--cid", std::to_string(vsock_cid_.value()));
+  }
+
+  if (!vm_socket_path_.empty()) {
+    args.emplace_back("--socket", vm_socket_path_);
+  }
+
+  for (const auto& w : wayland_sockets_) {
+    args.emplace_back("--wayland-sock", w);
+  }
+
+  for (const auto& s : serial_devices_) {
+    args.emplace_back("--serial", s);
+  }
+
+  if (enable_smt_.has_value()) {
+    if (!enable_smt_.value()) {
+      args.emplace_back("--no-smt", "");
+    }
+  }
+
+  if (enable_delay_rt_) {
     args.emplace_back("--delay-rt", "");
+  }
 
-  if (enable_per_vm_core_scheduling_)
+  if (enable_per_vm_core_scheduling_) {
     args.emplace_back("--per-vm-core-scheduling", "");
+  }
 
-  if (kernel_params_.size() > 0)
+  if (kernel_params_.size() > 0) {
     args.emplace_back("--params", base::JoinString(kernel_params_, " "));
+  }
 
-  for (const auto& s : oem_strings_)
+  for (const auto& s : oem_strings_) {
     args.emplace_back("--oem-strings", s);
+  }
 
   if (rootfs_.has_value()) {
     const auto& rootfs = rootfs_.value();
@@ -647,18 +663,21 @@ base::StringPairs VmBuilder::BuildRunParams() const {
     }
   }
 
-  if (enable_vtpm_proxy_)
+  if (enable_vtpm_proxy_) {
     args.emplace_back("--vtpm-proxy", "");
+  }
 
   if (enable_video_decoder_) {
     args.emplace_back("--video-decoder", video_decoder_);
   }
 
-  if (enable_video_encoder_)
+  if (enable_video_encoder_) {
     args.emplace_back("--video-encoder", "libvda");
+  }
 
-  if (enable_battery_)
+  if (enable_battery_) {
     args.emplace_back("--battery", "type=goldfish");
+  }
 
   if (enable_pvclock_) {
     args.emplace_back("--pvclock", "");
@@ -672,32 +691,39 @@ base::StringPairs VmBuilder::BuildRunParams() const {
 #endif
   }
 
-  for (const auto& shared_dir : shared_dirs_)
+  for (const auto& shared_dir : shared_dirs_) {
     args.emplace_back("--shared-dir", shared_dir.to_string());
+  }
 
-  for (const auto& custom_param : custom_params_)
+  for (const auto& custom_param : custom_params_) {
     args.emplace_back(custom_param.first, custom_param.second);
+  }
 
-  if (!initrd_.empty())
+  if (!initrd_.empty()) {
     args.emplace_back("-i", initrd_.value());
+  }
 
-  if (!bios_.empty())
+  if (!bios_.empty()) {
     args.emplace_back("--bios", bios_.value());
+  }
 
-  if (!pflash_.empty())
+  if (!pflash_.empty()) {
     args.emplace_back("--pflash", "path=" + pflash_.value());
+  }
 
   if (!vmm_swap_dir_.empty()) {
     args.emplace_back("--swap", vmm_swap_dir_.value());
   }
 
   if (vm_cpu_args_.has_value()) {
-    if (!vm_cpu_args_->cpu_affinity.empty())
+    if (!vm_cpu_args_->cpu_affinity.empty()) {
       args.emplace_back("--cpu-affinity", vm_cpu_args_->cpu_affinity);
+    }
 
-    if (!vm_cpu_args_->cpu_capacity.empty())
+    if (!vm_cpu_args_->cpu_capacity.empty()) {
       args.emplace_back("--cpu-capacity",
                         base::JoinString(vm_cpu_args_->cpu_capacity, ","));
+    }
 
     for (const auto& cluster : vm_cpu_args_->cpu_clusters) {
       if (!cluster.empty()) {

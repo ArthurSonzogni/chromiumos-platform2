@@ -60,12 +60,14 @@ static void sl_touchrecorder_record_event(struct sl_touchrecorder* recorder,
   }
 
   if (type == SL_TOUCHRECORDER_EVENT_FRAME) {
-    if (recorder->frame_cb)
+    if (recorder->frame_cb) {
       recorder->frame_cb(recorder->data, recorder);
+    }
     sl_touchrecorder_reset(recorder);
   } else if (type == SL_TOUCHRECORDER_EVENT_CANCEL) {
-    if (recorder->cancel_cb)
+    if (recorder->cancel_cb) {
       recorder->cancel_cb(recorder->data, recorder);
+    }
     sl_touchrecorder_reset(recorder);
   }
 }

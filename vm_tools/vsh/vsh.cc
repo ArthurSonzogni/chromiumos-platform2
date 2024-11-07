@@ -224,8 +224,9 @@ bool ListenForVshd(dbus::ObjectProxy* cicerone_proxy,
   // The socket is listening. Request that cicerone start vshd.
   uint32_t expected_cid;
   if (!LaunchVshd(cicerone_proxy, owner_id, vm_name, container_name,
-                  container_features, addr.svm_port, &expected_cid))
+                  container_features, addr.svm_port, &expected_cid)) {
     return false;
+  }
 
   struct pollfd pollfds[] = {
       {listen_fd.get(), POLLIN, 0},
@@ -374,8 +375,9 @@ int main(int argc, char** argv) {
     cicerone_proxy =
         GetServiceProxy(bus, vm_tools::cicerone::kVmCiceroneServiceName,
                         vm_tools::cicerone::kVmCiceroneServicePath);
-    if (!cicerone_proxy)
+    if (!cicerone_proxy) {
       return EXIT_FAILURE;
+    }
 
     std::vector<int> container_features =
         ParseContainerFeatures(FLAGS_container_features);
@@ -421,10 +423,12 @@ int main(int argc, char** argv) {
       dbus::ObjectProxy* proxy =
           GetServiceProxy(bus, vm_tools::concierge::kVmConciergeServiceName,
                           vm_tools::concierge::kVmConciergeServicePath);
-      if (!proxy)
+      if (!proxy) {
         return EXIT_FAILURE;
-      if (!GetCid(proxy, FLAGS_owner_id, FLAGS_vm_name, &cid))
+      }
+      if (!GetCid(proxy, FLAGS_owner_id, FLAGS_vm_name, &cid)) {
         return EXIT_FAILURE;
+      }
     }
 
     base::ScopedFD sock_fd(socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0));

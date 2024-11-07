@@ -66,8 +66,9 @@ static bool sl_dmabuf_sync_is_driver(int sync_file_fd, const char* name) {
   int ret = 0;
   ret = sl_ioctl(sync_file_fd, SYNC_IOC_FILE_INFO, &sfi);
 
-  if (ret == 0 && strncmp(sfi.name, name, strlen(name)) == 0)
+  if (ret == 0 && strncmp(sfi.name, name, strlen(name)) == 0) {
     return true;
+  }
 
   return false;
 }
@@ -81,8 +82,9 @@ bool sl_dmabuf_sync_is_virtgpu(int sync_file_fd) {
 void sl_dmabuf_sync_wait(int sync_file_fd) {
   int ret;
   // "stub" means there was no real fence attached.
-  if (sl_dmabuf_sync_is_driver(sync_file_fd, "stub"))
+  if (sl_dmabuf_sync_is_driver(sync_file_fd, "stub")) {
     return;
+  }
 
   // Wait at most for 1 second, otherwise all wayland event processing is
   // blocked.

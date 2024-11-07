@@ -29,8 +29,9 @@ bool QueryVmPermission(scoped_refptr<dbus::Bus> bus,
                        vm_permission_service::Permission::Kind permission) {
   // TODO(dtor): remove when we remove Camera/Mic Chrome flags and
   // always have non-empty token.
-  if (vm_token.empty())
+  if (vm_token.empty()) {
     return false;
+  }
 
   dbus::MethodCall method_call(
       chromeos::kVmPermissionServiceInterface,
@@ -69,8 +70,9 @@ bool QueryVmPermission(scoped_refptr<dbus::Bus> bus,
   }
 
   for (const auto& p : response.permissions()) {
-    if (p.kind() == permission)
+    if (p.kind() == permission) {
       return p.allowed();
+    }
   }
 
   return false;

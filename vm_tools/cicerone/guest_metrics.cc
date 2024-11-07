@@ -324,8 +324,9 @@ bool GuestMetrics::HandleMetric(const std::string& owner_id,
     } else if (name == kBorealisDiskBytesWrittenGuest) {
       daily_metrics_.Add(kBorealisDiskBytesWritten, value);
     } else if (name == kBorealisDiskHighestDirtyPagesDailyGuest) {
-      if (daily_metrics_.Get(kBorealisDiskHighestDirtyPagesDaily) < value)
+      if (daily_metrics_.Get(kBorealisDiskHighestDirtyPagesDaily) < value) {
         daily_metrics_.Set(kBorealisDiskHighestDirtyPagesDaily, value);
+      }
     } else if (name == kBorealisDiskInodeCountAtStartupGuest) {
       GenerateSpaceMetrics(owner_id, vm_name, value);
     } else if (name == kBorealisStartupFsckResultGuest) {

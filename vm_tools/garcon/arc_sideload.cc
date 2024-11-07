@@ -64,10 +64,12 @@ bool GetIpv4Address(std::string* out_result) {
   *out_result = std::string("Failed to find device ") + kDeviceName;
   for (struct ifaddrs* current = head; current != nullptr;
        current = current->ifa_next) {
-    if (current->ifa_addr->sa_family != AF_INET)
+    if (current->ifa_addr->sa_family != AF_INET) {
       continue;
-    if (std::strcmp(current->ifa_name, kDeviceName) != 0)
+    }
+    if (std::strcmp(current->ifa_name, kDeviceName) != 0) {
       continue;
+    }
 
     char host_info[NI_MAXHOST];
     if (getnameinfo(current->ifa_addr, sizeof(struct sockaddr_in), host_info,
@@ -124,8 +126,9 @@ bool GetArcBridgeAddress(std::string* out_result) {
 bool ArcSideload::Enable(std::string* out_error) {
   // This only needs to be done once per-session, so we short circuit in the
   // event that another instance succeeded.
-  if (enable_completed_successfully_this_session_)
+  if (enable_completed_successfully_this_session_) {
     return true;
+  }
 
   std::string ip_address;
   if (!GetIpv4Address(&ip_address)) {

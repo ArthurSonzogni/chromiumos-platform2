@@ -72,8 +72,9 @@ SetContentTypeRequest::SetContentTypeRequest(int text_input_id,
 SetContentTypeRequest::~SetContentTypeRequest() = default;
 
 bool SetContentTypeRequest::RequestMatches(const Request& actual) const {
-  if (!Request::RequestMatches(actual))
+  if (!Request::RequestMatches(actual)) {
     return false;
+  }
   const SetContentTypeRequest* other =
       dynamic_cast<const SetContentTypeRequest*>(&actual);
   if (!other) {
@@ -104,8 +105,9 @@ SetInputTypeRequest::SetInputTypeRequest(int text_input_id,
 SetInputTypeRequest::~SetInputTypeRequest() = default;
 
 bool SetInputTypeRequest::RequestMatches(const Request& actual) const {
-  if (!Request::RequestMatches(actual))
+  if (!Request::RequestMatches(actual)) {
     return false;
+  }
   const SetInputTypeRequest* other =
       dynamic_cast<const SetInputTypeRequest*>(&actual);
   if (!other) {
@@ -138,8 +140,9 @@ SetSurroundingTextSupportRequest::~SetSurroundingTextSupportRequest() = default;
 
 bool SetSurroundingTextSupportRequest::RequestMatches(
     const Request& actual) const {
-  if (!Request::RequestMatches(actual))
+  if (!Request::RequestMatches(actual)) {
     return false;
+  }
   const SetSurroundingTextSupportRequest* other =
       dynamic_cast<const SetSurroundingTextSupportRequest*>(&actual);
   if (!other) {

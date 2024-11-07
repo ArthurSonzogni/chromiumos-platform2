@@ -15,8 +15,9 @@ gulong signal_handler_id;
 
 // Disconnect the signal handler if there is one in use.
 void MaybeDisconnectSignalHandler() {
-  if (signal_handler_id != kInvalidSignalHandlerId)
+  if (signal_handler_id != kInvalidSignalHandlerId) {
     g_signal_handler_disconnect(gdk_display_manager_get(), signal_handler_id);
+  }
 
   signal_handler_id = kInvalidSignalHandlerId;
 }

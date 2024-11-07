@@ -70,8 +70,9 @@ static struct sl_format_metadata* get_metadata_for_format(uint32_t format,
   if (last_accessed_format) {
     test_format = is_drm_format ? last_accessed_format->drm_format
                                 : last_accessed_format->shm_format;
-    if (format == test_format)
+    if (format == test_format) {
       return last_accessed_format;
+    }
   }
 
   for (auto& meta : format_table) {

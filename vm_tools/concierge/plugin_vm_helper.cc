@@ -119,13 +119,15 @@ bool ExecutePvmHelper(const std::string& owner_id,
                       std::string* stderr_str = nullptr) {
   const base::FilePath path_prefix(kApplicationDir);
   ScopedMinijail jail = SetupSandbox(path_prefix.Append(kPolicyPath));
-  if (!jail)
+  if (!jail) {
     return false;
+  }
 
   std::vector<std::string> args;
   args.emplace_back(path_prefix.Append(kCommand).value());
-  for (auto& param : params)
+  for (auto& param : params) {
     args.emplace_back(std::move(param));
+  }
   args.emplace_back("--socket-path");
   args.emplace_back(dispatcher::kSocketPath);
   args.emplace_back("--user-identity");
@@ -133,8 +135,9 @@ bool ExecutePvmHelper(const std::string& owner_id,
 
   // Convert args to array of pointers. Must be nullptr terminated.
   std::vector<char*> args_ptr;
-  for (const auto& arg : args)
+  for (const auto& arg : args) {
     args_ptr.emplace_back(const_cast<char*>(arg.c_str()));
+  }
   args_ptr.emplace_back(nullptr);
 
   pid_t pid = -1;
@@ -270,8 +273,9 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
   }
 
   for (const auto& [key, value] : *hardware) {
-    if (!base::StartsWith(key, "cdrom"))
+    if (!base::StartsWith(key, "cdrom")) {
       continue;
+    }
 
     if (!value.is_dict()) {
       LOG(WARNING) << "Hardware node " << key << " in " << vm_id
@@ -281,14 +285,16 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
     const base::Value::Dict& cdrom = value.GetDict();
 
     const std::string* image_name = cdrom.FindString("image");
-    if (!image_name)
+    if (!image_name) {
       continue;  // The device is not backed by an image.
+    }
 
     LOG(INFO) << "CDROM image: " << *image_name;
 
     if (*image_name != plugin::kInstallIsoPath &&
-        *image_name != plugin::kToolsIsoPath)
+        *image_name != plugin::kToolsIsoPath) {
       continue;
+    }
 
     const std::string* state = cdrom.FindString("state");
     if (!state || *state != "disconnected") {

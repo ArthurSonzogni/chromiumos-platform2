@@ -1827,8 +1827,9 @@ StartVmResponse Service::StartVmInternal(
   for (const auto& disk : request.disks()) {
     std::string src = base::StringPrintf("/dev/vd%c", disk_letter++);
 
-    if (!disk.do_mount())
+    if (!disk.do_mount()) {
       continue;
+    }
 
     uint64_t flags = disk.flags();
     if (!disk.writable()) {
@@ -1855,8 +1856,9 @@ StartVmResponse Service::StartVmInternal(
   // Determine the VM token. Termina doesnt use a VM token because it has
   // per-container tokens.
   std::string vm_token = "";
-  if (!request.start_termina())
+  if (!request.start_termina()) {
     vm_token = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  }
 
   // Notify cicerone that we have started a VM.
   // We must notify cicerone now before calling StartTermina, but we will only
@@ -4698,8 +4700,9 @@ void Service::SetUpVmUser(
   std::vector<std::string> group_names(request.group_names().begin(),
                                        request.group_names().end());
   std::optional<uid_t> uid;
-  if (request.has_uid())
+  if (request.has_uid()) {
     uid = request.uid();
+  }
 
   auto success = vm->SetUpUser(uid, request.username(), group_names,
                                response.mutable_username(),

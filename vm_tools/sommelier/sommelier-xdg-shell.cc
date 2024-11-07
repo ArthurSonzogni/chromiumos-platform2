@@ -105,10 +105,11 @@ static struct sl_host_surface* get_host_surface(
   // For xdg_popup/xdg_toplevel they will point to the
   // originating xdg_surface. The originating surface
   // will point to the source sl_host_surface
-  if (xdg && xdg->originator)
+  if (xdg && xdg->originator) {
     return xdg->originator;
-  else
+  } else {
     return nullptr;
+  }
 }
 
 static void sl_xdg_popup_configure(void* data,

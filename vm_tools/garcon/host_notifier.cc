@@ -411,8 +411,9 @@ void HostNotifier::OnApplyAnsiblePlaybookProgress(
   info.set_token(token_);
   info.set_status(
       vm_tools::container::ApplyAnsiblePlaybookProgressInfo::IN_PROGRESS);
-  for (auto line : status_lines)
+  for (auto line : status_lines) {
     info.add_status_string(line);
+  }
 
   task_runner_->PostTask(
       FROM_HERE,

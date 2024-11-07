@@ -28,8 +28,9 @@ class WeakResourcePtr {
   ~WeakResourcePtr() { wl_list_remove(&destroy_listener_.link); }
 
   WeakResourcePtr& operator=(SlHostType* host) {
-    if (host == host_)
+    if (host == host_) {
       return *this;
+    }
 
     Reset();
     if (host) {

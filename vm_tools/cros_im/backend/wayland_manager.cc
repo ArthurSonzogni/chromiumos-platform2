@@ -110,8 +110,9 @@ void WaylandManager::DispatchEvents() {
 
 zwp_text_input_v1* WaylandManager::CreateTextInput(
     const zwp_text_input_v1_listener* listener, void* listener_data) {
-  if (!IsInitialized())
+  if (!IsInitialized()) {
     return nullptr;
+  }
   auto* text_input =
       zwp_text_input_manager_v1_create_text_input(text_input_manager_);
   zwp_text_input_v1_add_listener(text_input, listener, listener_data);
@@ -122,8 +123,9 @@ zcr_extended_text_input_v1* WaylandManager::CreateExtendedTextInput(
     zwp_text_input_v1* text_input,
     const zcr_extended_text_input_v1_listener* listener,
     void* listener_data) {
-  if (!IsInitialized())
+  if (!IsInitialized()) {
     return nullptr;
+  }
   auto* extended_text_input =
       zcr_text_input_extension_v1_get_extended_text_input(text_input_extension_,
                                                           text_input);
@@ -213,8 +215,9 @@ WaylandManager::WaylandManager(AppType app_type, wl_display* display)
 }
 
 WaylandManager::~WaylandManager() {
-  if (app_type_ == AppType::kX11)
+  if (app_type_ == AppType::kX11) {
     wl_display_disconnect(display_);
+  }
 }
 
 bool WaylandManager::IsInitialized() const {

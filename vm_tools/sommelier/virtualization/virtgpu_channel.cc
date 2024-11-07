@@ -63,8 +63,9 @@ int open_virtgpu(char** drm_device) {
   uint32_t max_render_node = (min_render_node + num_nodes);
 
   for (uint32_t idx = min_render_node; idx < max_render_node; idx++) {
-    if (asprintf(&node, "%s/renderD%d", DRM_DIR_NAME, idx) < 0)
+    if (asprintf(&node, "%s/renderD%d", DRM_DIR_NAME, idx) < 0) {
       continue;
+    }
 
     fd = open(node, O_RDWR | O_CLOEXEC);
 
@@ -117,22 +118,27 @@ int32_t fstat_pipe(int fd, uint32_t& inode) {
 }
 
 VirtGpuChannel::~VirtGpuChannel() {
-  if (query_ring_addr_ != MAP_FAILED)
+  if (query_ring_addr_ != MAP_FAILED) {
     munmap(query_ring_addr_, PAGE_SIZE);
+  }
 
-  if (channel_ring_addr_ != MAP_FAILED)
+  if (channel_ring_addr_ != MAP_FAILED) {
     munmap(channel_ring_addr_, PAGE_SIZE);
+  }
 
   // An unwritten rule for the DRM subsystem is a valid GEM valid must be
   // non-zero.  Checkout drm_gem_handle_create_tail in the kernel.
-  if (query_ring_handle_)
+  if (query_ring_handle_) {
     close_gem_handle(query_ring_handle_);
+  }
 
-  if (channel_ring_handle_)
+  if (channel_ring_handle_) {
     close_gem_handle(channel_ring_handle_);
+  }
 
-  if (virtgpu_ >= 0)
+  if (virtgpu_ >= 0) {
     close(virtgpu_);
+  }
 }
 
 int32_t VirtGpuChannel::init() {
@@ -175,8 +181,9 @@ int32_t VirtGpuChannel::init() {
     }
 
     if (param.param == VIRTGPU_PARAM_SUPPORTED_CAPSET_IDs) {
-      if ((param.value & (1 << CAPSET_CROSS_DOMAIN)) == 0)
+      if ((param.value & (1 << CAPSET_CROSS_DOMAIN)) == 0) {
         return -ENOTSUP;
+      }
     }
   }
 
@@ -190,8 +197,9 @@ int32_t VirtGpuChannel::init() {
     return ret;
   }
 
-  if (cross_domain_caps.supports_dmabuf)
+  if (cross_domain_caps.supports_dmabuf) {
     supports_dmabuf_ = true;
+  }
 
   supports_wayland = cross_domain_caps.supported_channels &
                      (1 << CROSS_DOMAIN_CHANNEL_TYPE_WAYLAND);
@@ -278,14 +286,16 @@ int32_t VirtGpuChannel::create_context(int& out_channel_fd) {
 
   // Create a shared ring buffer to read metadata queries.
   ret = create_ring(query_ring_handle_, query_ring_res_id, query_ring_addr_);
-  if (ret)
+  if (ret) {
     return ret;
+  }
 
   // Create a shared ring buffer to read channel responses
   ret = create_ring(channel_ring_handle_, channel_ring_res_id,
                     channel_ring_addr_);
-  if (ret)
+  if (ret) {
     return ret;
+  }
 
   // Notify host about ring buffer
   cmd_init.hdr.cmd = CROSS_DOMAIN_CMD_INIT;
@@ -295,13 +305,15 @@ int32_t VirtGpuChannel::create_context(int& out_channel_fd) {
   cmd_init.channel_type = CROSS_DOMAIN_CHANNEL_TYPE_WAYLAND;
   ret = submit_cmd(reinterpret_cast<uint32_t*>(&cmd_init),
                    cmd_init.hdr.cmd_size, CROSS_DOMAIN_RING_NONE, 0, false);
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   // Start polling right after initialization
   ret = channel_poll();
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   out_channel_fd = virtgpu_;
   return 0;
@@ -328,11 +340,13 @@ int32_t VirtGpuChannel::send(const struct WaylandSendReceive& send) {
 
   memset(cmd_send, 0, sizeof(struct CrossDomainSendReceive));
 
-  if (send.data_size > max_send_size())
+  if (send.data_size > max_send_size()) {
     return -EINVAL;
+  }
 
-  if (send.num_fds > CROSS_DOMAIN_MAX_IDENTIFIERS)
+  if (send.num_fds > CROSS_DOMAIN_MAX_IDENTIFIERS) {
     return -EINVAL;
+  }
 
   cmd_send->hdr.cmd = CROSS_DOMAIN_CMD_SEND;
   cmd_send->hdr.cmd_size =
@@ -342,21 +356,24 @@ int32_t VirtGpuChannel::send(const struct WaylandSendReceive& send) {
   cmd_send->opaque_data_size = send.data_size;
 
   for (uint32_t i = 0; i < CROSS_DOMAIN_MAX_IDENTIFIERS; i++) {
-    if (i >= send.num_fds)
+    if (i >= send.num_fds) {
       break;
+    }
 
     ret = fd_analysis(send.fds[i], cmd_send->identifiers[i],
                       cmd_send->identifier_types[i]);
-    if (ret)
+    if (ret) {
       return ret;
+    }
 
     cmd_send->num_identifiers++;
   }
 
   ret = submit_cmd(reinterpret_cast<uint32_t*>(cmd_send),
                    cmd_send->hdr.cmd_size, CROSS_DOMAIN_RING_NONE, 0, false);
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   return 0;
 }
@@ -385,21 +402,24 @@ int32_t VirtGpuChannel::handle_channel_event(
   if (cmd_hdr->cmd == CROSS_DOMAIN_CMD_RECEIVE) {
     event_type = WaylandChannelEvent::Receive;
     ret = handle_receive(event_type, receive, out_read_pipe);
-    if (ret)
+    if (ret) {
       return ret;
+    }
   } else if (cmd_hdr->cmd == CROSS_DOMAIN_CMD_READ) {
     event_type = WaylandChannelEvent::Read;
     ret = handle_read();
-    if (ret)
+    if (ret) {
       return ret;
+    }
   } else {
     return -EINVAL;
   }
 
   // Start polling again
   ret = channel_poll();
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   return 0;
 }
@@ -442,18 +462,20 @@ int32_t VirtGpuChannel::handle_pipe(int read_fd, bool readable, bool& hang_up) {
 
   ret = pipe_lookup(CROSS_DOMAIN_ID_TYPE_WRITE_PIPE, cmd_write->identifier,
                     read_fd, index);
-  if (ret < 0)
+  if (ret < 0) {
     return -EINVAL;
+  }
 
   if (readable) {
     bytes_read = read(read_fd, write_data, MAX_WRITE_SIZE);
     if (bytes_read > 0) {
       cmd_write->opaque_data_size = bytes_read;
 
-      if ((size_t)bytes_read < MAX_WRITE_SIZE)
+      if ((size_t)bytes_read < MAX_WRITE_SIZE) {
         hang_up = true;
-      else
+      } else {
         hang_up = false;
+      }
 
     } else if (bytes_read == 0) {
       hang_up = true;
@@ -468,8 +490,9 @@ int32_t VirtGpuChannel::handle_pipe(int read_fd, bool readable, bool& hang_up) {
 
   ret = submit_cmd(reinterpret_cast<uint32_t*>(cmd_write),
                    cmd_write->hdr.cmd_size, CROSS_DOMAIN_RING_NONE, 0, false);
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   if (hang_up) {
     close(read_fd);
@@ -561,8 +584,9 @@ int32_t VirtGpuChannel::image_query(const struct WaylandBufferCreateInfo& input,
   ret = submit_cmd(reinterpret_cast<uint32_t*>(&cmd_get_reqs),
                    cmd_get_reqs.hdr.cmd_size, CROSS_DOMAIN_QUERY_RING,
                    query_ring_handle_, true);
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   new_desc.output.fd = -1;
   memcpy(&new_desc.input, &input, sizeof(struct WaylandBufferCreateInfo));
@@ -614,8 +638,9 @@ int32_t VirtGpuChannel::channel_poll() {
   // is `VIRTGPU_CONTEXT_PARAM_POLL_RINGS_MASK` for channel responses.
   ret = submit_cmd(reinterpret_cast<uint32_t*>(&cmd_poll),
                    cmd_poll.hdr.cmd_size, CROSS_DOMAIN_CHANNEL_RING, 0, false);
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   return 0;
 }
@@ -649,8 +674,9 @@ int32_t VirtGpuChannel::create_host_blob(uint64_t blob_id,
 
   // dma-buf owns the reference to underlying memory now.
   ret = close_gem_handle(drm_rc_blob.bo_handle);
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   return 0;
 }
@@ -692,8 +718,9 @@ int32_t VirtGpuChannel::fd_analysis(int fd,
     // If it's not a blob, the only other option is a pipe.  Check to confirm.
     uint32_t inode;
     ret = fstat_pipe(fd, inode);
-    if (ret)
+    if (ret) {
       return ret;
+    }
 
     for (const auto& pipe_desc : pipe_cache_) {
       if (pipe_desc.inode == inode) {
@@ -719,12 +746,13 @@ int32_t VirtGpuChannel::create_pipe_internal(int& out_pipe_fd,
 
   // When proxying a Wayland pipe, we return one end to the WaylandChannel
   // consumer and keep one end to ourselves.  Keeping both ends isn't useful.
-  if (identifier_type == CROSS_DOMAIN_ID_TYPE_READ_PIPE)
+  if (identifier_type == CROSS_DOMAIN_ID_TYPE_READ_PIPE) {
     return_read_pipe = true;
-  else if (identifier_type == CROSS_DOMAIN_ID_TYPE_WRITE_PIPE)
+  } else if (identifier_type == CROSS_DOMAIN_ID_TYPE_WRITE_PIPE) {
     return_read_pipe = false;
-  else
+  } else {
     return -EINVAL;
+  }
 
   ret = pipe(fds);
   if (ret < 0) {
@@ -734,8 +762,9 @@ int32_t VirtGpuChannel::create_pipe_internal(int& out_pipe_fd,
 
   // The same inode number is used for the read/write ends of the pipe.
   ret = fstat_pipe(fds[0], pipe_desc.inode);
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   pipe_desc.read_fd = fds[0];
   pipe_desc.write_fd = fds[1];
@@ -743,10 +772,11 @@ int32_t VirtGpuChannel::create_pipe_internal(int& out_pipe_fd,
   pipe_desc.identifier_type = identifier_type;
   pipe_cache_.push_back(pipe_desc);
 
-  if (return_read_pipe)
+  if (return_read_pipe) {
     out_pipe_fd = fds[0];
-  else
+  } else {
     out_pipe_fd = fds[1];
+  }
 
   return 0;
 }
@@ -766,21 +796,24 @@ int32_t VirtGpuChannel::handle_receive(enum WaylandChannelEvent& event_type,
       ret = create_fd(cmd_receive->identifiers[i],
                       cmd_receive->identifier_types[i],
                       cmd_receive->identifier_sizes[i], receive.fds[i]);
-      if (ret)
+      if (ret) {
         return ret;
+      }
 
       receive.num_fds++;
 
       if (cmd_receive->identifier_types[i] == CROSS_DOMAIN_ID_TYPE_WRITE_PIPE) {
         size_t index;
         int ret = 0;
-        if (out_read_pipe >= 0)
+        if (out_read_pipe >= 0) {
           return -EINVAL;
+        }
 
         ret = pipe_lookup(cmd_receive->identifier_types[i],
                           cmd_receive->identifiers[i], out_read_pipe, index);
-        if (ret < 0)
+        if (ret < 0) {
           return -EINVAL;
+        }
 
         event_type = WaylandChannelEvent::ReceiveAndProxy;
       }
@@ -792,8 +825,9 @@ int32_t VirtGpuChannel::handle_receive(enum WaylandChannelEvent& event_type,
   if (cmd_receive->opaque_data_size > 0) {
     receive.data =
         reinterpret_cast<uint8_t*>(calloc(1, cmd_receive->opaque_data_size));
-    if (!receive.data)
+    if (!receive.data) {
       return -ENOMEM;
+    }
 
     memcpy(receive.data, recv_data, cmd_receive->opaque_data_size);
   }
@@ -815,8 +849,9 @@ int32_t VirtGpuChannel::handle_read() {
 
   ret = pipe_lookup(CROSS_DOMAIN_ID_TYPE_READ_PIPE, cmd_read->identifier,
                     write_fd, index);
-  if (ret < 0)
+  if (ret < 0) {
     return -EINVAL;
+  }
 
   bytes_written = write(write_fd, read_data, cmd_read->opaque_data_size);
 

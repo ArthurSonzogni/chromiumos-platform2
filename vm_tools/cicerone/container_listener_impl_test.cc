@@ -125,10 +125,11 @@ TEST(ContainerListenerImplTest,
 void ValidUpdateApplicationListCallShouldProduceDBusMessageGeneric(
     bool plugin_vm, const char* container_name) {
   ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
-  if (plugin_vm)
+  if (plugin_vm) {
     test_framework.SetUpPluginVm();
-  else
+  } else {
     test_framework.SetUpDefaultVmAndContainer();
+  }
   test_framework.ExpectNoDBusMessages();
 
   vm_tools::container::UpdateApplicationListRequest request;
@@ -397,10 +398,11 @@ void CompareUpdateApplicationListRequestToApplicationList(
 void LongerUpdateApplicationListCallShouldProduceDBusMessageGeneric(
     bool plugin_vm, const char* container_name) {
   ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
-  if (plugin_vm)
+  if (plugin_vm) {
     test_framework.SetUpPluginVm();
-  else
+  } else {
     test_framework.SetUpDefaultVmAndContainer();
+  }
   test_framework.ExpectNoDBusMessages();
 
   vm_tools::container::UpdateApplicationListRequest request(
@@ -448,10 +450,11 @@ TEST(ContainerListenerImplTest,
 
 void ValidOpenUrlCallShouldProduceDBusMessageGeneric(bool plugin_vm) {
   ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
-  if (plugin_vm)
+  if (plugin_vm) {
     test_framework.SetUpPluginVm();
-  else
+  } else {
     test_framework.SetUpDefaultVmAndContainer();
+  }
   test_framework.ExpectNoDBusMessages();
 
   vm_tools::container::OpenUrlRequest request;

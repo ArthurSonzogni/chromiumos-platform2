@@ -83,8 +83,9 @@ base::ScopedFD OpenTapDevice(const std::string& ifname_in,
     }
   }
 
-  if (ifname_out)
+  if (ifname_out) {
     ifname_out->assign(ifr.ifr_name);
+  }
 
   return dev;
 }

@@ -125,8 +125,9 @@ std::unique_ptr<NotificationShellClient> NotificationShellClient::Create(
       new NotificationShellClient(interface, std::move(quit_closure)));
 
   if (!client->Init(display_name.empty() ? nullptr : display_name.c_str(),
-                    virtwl_device.empty() ? nullptr : virtwl_device.c_str()))
+                    virtwl_device.empty() ? nullptr : virtwl_device.c_str())) {
     return nullptr;
+  }
 
   return client;
 }
@@ -224,8 +225,9 @@ void NotificationShellClient::WaitForSync() {
   wl_callback_add_listener(callback.get(), &::kSyncListener, &done);
   wl_display_flush(display_.get());
 
-  while (!done)
+  while (!done) {
     wl_event_loop_dispatch(event_loop_.get(), -1 /*no timeout*/);
+  }
 }
 
 bool NotificationShellClient::CreateNotification(
@@ -321,8 +323,9 @@ int NotificationShellClient::HandleEvent(uint32_t mask) {
   }
 
   int count = 0;
-  if (mask & WL_EVENT_READABLE)
+  if (mask & WL_EVENT_READABLE) {
     count = wl_display_dispatch(display_.get());
+  }
 
   if (mask == 0) {
     count = wl_display_dispatch_pending(display_.get());
@@ -367,8 +370,9 @@ void NotificationShellClient::HandleVirtwlCtxEvent() {
   // We can do this because noification shell protocol does not use FDs.
   size_t fd_count = 0;
   for (; fd_count < VIRTWL_SEND_MAX_ALLOCS; ++fd_count) {
-    if (ioctl_recv->fds[fd_count] < 0)
+    if (ioctl_recv->fds[fd_count] < 0) {
       break;
+    }
   }
 
   DCHECK_EQ(fd_count, 0);
@@ -382,8 +386,9 @@ void NotificationShellClient::HandleVirtwlSocketEvent() {
   virtwl_ioctl_txn* ioctl_send =
       reinterpret_cast<virtwl_ioctl_txn*>(ioctl_buffer);
 
-  for (int i = 0; i < VIRTWL_SEND_MAX_ALLOCS; ++i)
+  for (int i = 0; i < VIRTWL_SEND_MAX_ALLOCS; ++i) {
     ioctl_send->fds[i] = -1;
+  }
 
   // iovec::iov_len is the reserved size of iovec::iov_base. Because the data
   // element in virtwl_ioctl_txn is defined as zero-length array, its size can
@@ -414,8 +419,9 @@ void NotificationShellClient::HandleVirtwlSocketEvent() {
   size_t fd_count = 0;
   for (auto* cmsg = msg.msg_controllen != 0 ? CMSG_FIRSTHDR(&msg) : nullptr;
        cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-    if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
+    if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
       continue;
+    }
 
     const auto cmsg_fd_count = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
     fd_count += cmsg_fd_count;

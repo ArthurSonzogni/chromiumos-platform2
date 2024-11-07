@@ -291,8 +291,9 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     }
   }
 
-  if (features_.vtpm_proxy)
+  if (features_.vtpm_proxy) {
     vm_builder.EnableVtpmProxy(true /* enable */);
+  }
 
   // TODO(b/193370101) Remove borealis specific code once crostini uses
   // permission service.
@@ -321,11 +322,13 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     }
   }
 
-  for (const std::string& p : features_.kernel_params)
+  for (const std::string& p : features_.kernel_params) {
     vm_builder.AppendKernelParam(p);
+  }
 
-  for (const std::string& s : features_.oem_strings)
+  for (const std::string& s : features_.oem_strings) {
     vm_builder.AppendOemString(s);
+  }
 
   // Switch off kmsg throttling so we can log all relevant startup messages
   vm_builder.AppendKernelParam("printk.devkmsg=on");
@@ -830,8 +833,9 @@ bool TerminaVm::ResizeFilesystem(uint64_t new_size) {
   vm_tools::ResizeFilesystemResponse response;
   request.set_size(new_size);
   grpc::Status status = stub_->ResizeFilesystem(&ctx, request, &response);
-  if (status.ok())
+  if (status.ok()) {
     return true;
+  }
   LOG(ERROR) << "Resize filesystem failed (" << status.error_code()
              << "): " << status.error_message();
   return false;
@@ -1144,8 +1148,9 @@ bool TerminaVm::SetUpUser(std::optional<uid_t> uid,
   }
 
   vm_tools::SetUpUserRequest request;
-  if (uid.has_value())
+  if (uid.has_value()) {
     request.set_uid(uid.value());
+  }
   request.set_username(username);
   request.mutable_group_names()->Assign(group_names.begin(), group_names.end());
 
@@ -1162,8 +1167,9 @@ bool TerminaVm::SetUpUser(std::optional<uid_t> uid,
   }
 
   *out_username = response.username();
-  if (response.success())
+  if (response.success()) {
     return true;
+  }
 
   *out_error = response.failure_reason();
   LOG(ERROR) << "SetUpUser RPC returned an error: " << *out_error;

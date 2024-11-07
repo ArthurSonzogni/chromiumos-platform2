@@ -193,8 +193,9 @@ std::vector<base::FilePath> GetPciDevicesList(PciDeviceType device_type) {
     switch (device_type) {
       case PciDeviceType::PCI_DEVICE_TYPE_DGPU_PASSTHROUGH:
         // Check if this is a dGPU passthough device.
-        if (!IsDGpuPassthroughDevice(pci_device))
+        if (!IsDGpuPassthroughDevice(pci_device)) {
           continue;
+        }
         dev_name = "DGPU passthrough";
         break;
       default:

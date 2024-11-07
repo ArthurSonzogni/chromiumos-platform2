@@ -32,8 +32,9 @@ struct FormatModifier {
 
 bool format_in_list(uint32_t format, const std::vector<uint32_t>& format_list) {
   for (const auto& fmt : format_list) {
-    if (fmt == format)
+    if (fmt == format) {
       return true;
+    }
   }
   return false;
 }
@@ -41,8 +42,9 @@ bool format_in_list(uint32_t format, const std::vector<uint32_t>& format_list) {
 bool modifier_in_list(struct FormatModifier modifier,
                       const std::vector<struct FormatModifier>& modifier_list) {
   for (auto& mod : modifier_list) {
-    if (mod == modifier)
+    if (mod == modifier) {
       return true;
+    }
   }
   return false;
 }

@@ -63,8 +63,9 @@ static void sl_host_pointer_set_cursor(struct wl_client* client,
     host_surface = static_cast<sl_host_surface*>(
         wl_resource_get_user_data(surface_resource));
     host_surface->has_role = 1;
-    if (host_surface->contents_width && host_surface->contents_height)
+    if (host_surface->contents_width && host_surface->contents_height) {
       wl_surface_commit(host_surface->proxy);
+    }
   }
 
   sl_transform_guest_to_host(host->seat->ctx, nullptr, &hsx, &hsy);
@@ -99,11 +100,13 @@ static void sl_pointer_set_focus(struct sl_host_pointer* host,
   wl_fixed_t ix = x;
   wl_fixed_t iy = y;
 
-  if (surface_resource == host->focus_resource)
+  if (surface_resource == host->focus_resource) {
     return;
+  }
 
-  if (host->focus_resource)
+  if (host->focus_resource) {
     wl_pointer_send_leave(host->resource, serial, host->focus_resource);
+  }
 
   wl_list_remove(&host->focus_resource_listener.link);
   wl_list_init(&host->focus_resource_listener.link);
@@ -138,13 +141,15 @@ static void sl_pointer_enter(void* data,
       surface ? static_cast<sl_host_surface*>(wl_surface_get_user_data(surface))
               : nullptr;
 
-  if (!host_surface)
+  if (!host_surface) {
     return;
+  }
 
   sl_pointer_set_focus(host, serial, host_surface, x, y);
 
-  if (host->focus_resource)
+  if (host->focus_resource) {
     sl_set_last_event_serial(host->focus_resource, serial);
+  }
   host->seat->last_serial = serial;
 }
 
@@ -184,8 +189,9 @@ static void sl_pointer_button(void* data,
 
   wl_pointer_send_button(host->resource, serial, time, button, state);
 
-  if (host->focus_resource)
+  if (host->focus_resource) {
     sl_set_last_event_serial(host->focus_resource, serial);
+  }
   host->seat->last_serial = serial;
 }
 
@@ -300,8 +306,9 @@ static void sl_keyboard_keymap(void* data,
 
     assert(data != MAP_FAILED);
 
-    if (host->keymap)
+    if (host->keymap) {
       xkb_keymap_unref(host->keymap);
+    }
 
     host->keymap = xkb_keymap_new_from_string(
         host->seat->ctx->xkb_context, static_cast<char*>(data),
@@ -311,8 +318,9 @@ static void sl_keyboard_keymap(void* data,
 
     munmap(data, size);
 
-    if (host->state)
+    if (host->state) {
       xkb_state_unref(host->state);
+    }
     host->state = xkb_state_new(host->keymap);
     assert(host->state);
 
@@ -331,11 +339,13 @@ static void sl_keyboard_set_focus(struct sl_host_keyboard* host,
   struct wl_resource* surface_resource =
       host_surface ? host_surface->resource : nullptr;
 
-  if (surface_resource == host->focus_resource)
+  if (surface_resource == host->focus_resource) {
     return;
+  }
 
-  if (host->focus_resource)
+  if (host->focus_resource) {
     wl_keyboard_send_leave(host->resource, serial, host->focus_resource);
+  }
 
   wl_list_remove(&host->focus_resource_listener.link);
   wl_list_init(&host->focus_resource_listener.link);
@@ -362,8 +372,9 @@ static void sl_keyboard_enter(void* data,
       surface ? static_cast<sl_host_surface*>(wl_surface_get_user_data(surface))
               : nullptr;
 
-  if (!host_surface)
+  if (!host_surface) {
     return;
+  }
 
   wl_array_copy(&host->pressed_keys, keys);
   sl_keyboard_set_focus(host, serial, host_surface, keys);
@@ -387,8 +398,9 @@ static int sl_array_set_add(struct wl_array* array, uint32_t key) {
   uint32_t* k;
 
   sl_array_for_each(k, array) {
-    if (*k == key)
+    if (*k == key) {
       return 0;
+    }
   }
   k = static_cast<uint32_t*>(wl_array_add(array, sizeof(key)));
   assert(k);
@@ -430,8 +442,9 @@ static void sl_keyboard_key(void* data,
       uint32_t code = key + 8;
 
       num_symbols = xkb_state_key_get_syms(host->state, code, &symbols);
-      if (num_symbols == 1)
+      if (num_symbols == 1) {
         symbol = symbols[0];
+      }
 
       for (auto accelerator : host->seat->ctx->accelerators) {
         if (host->modifiers == accelerator->modifiers &&
@@ -455,18 +468,21 @@ static void sl_keyboard_key(void* data,
     // Forward key pressed event if it should be handled and not
     // already pressed.
     if (handled) {
-      if (sl_array_set_add(&host->pressed_keys, key))
+      if (sl_array_set_add(&host->pressed_keys, key)) {
         wl_keyboard_send_key(host->resource, serial, time, key, state);
+      }
     }
   } else {
     // Forward key release event if currently pressed.
     handled = sl_array_set_remove(&host->pressed_keys, key);
-    if (handled)
+    if (handled) {
       wl_keyboard_send_key(host->resource, serial, time, key, state);
+    }
   }
 
-  if (host->focus_resource)
+  if (host->focus_resource) {
     sl_set_last_event_serial(host->focus_resource, serial);
+  }
   host->seat->last_serial = serial;
 
   if (host->extended_keyboard_proxy) {
@@ -491,12 +507,14 @@ static void sl_keyboard_modifiers(void* data,
   wl_keyboard_send_modifiers(host->resource, serial, mods_depressed,
                              mods_latched, mods_locked, group);
 
-  if (host->focus_resource)
+  if (host->focus_resource) {
     sl_set_last_event_serial(host->focus_resource, serial);
+  }
   host->seat->last_serial = serial;
 
-  if (!host->keymap)
+  if (!host->keymap) {
     return;
+  }
 
   xkb_state_update_mask(host->state, mods_depressed, mods_latched, mods_locked,
                         0, 0, group);
@@ -504,12 +522,15 @@ static void sl_keyboard_modifiers(void* data,
       host->state, static_cast<xkb_state_component>(XKB_STATE_MODS_DEPRESSED |
                                                     XKB_STATE_MODS_LATCHED));
   host->modifiers = 0;
-  if (mask & host->control_mask)
+  if (mask & host->control_mask) {
     host->modifiers |= CONTROL_MASK;
-  if (mask & host->alt_mask)
+  }
+  if (mask & host->alt_mask) {
     host->modifiers |= ALT_MASK;
-  if (mask & host->shift_mask)
+  }
+  if (mask & host->shift_mask) {
     host->modifiers |= SHIFT_MASK;
+  }
 }
 
 static void sl_keyboard_repeat_info(void* data,
@@ -550,8 +571,9 @@ static void sl_host_touch_down(void* data,
   wl_fixed_t ix = x;
   wl_fixed_t iy = y;
 
-  if (!host_surface)
+  if (!host_surface) {
     return;
+  }
 
   if (host_surface->resource != host->focus_resource) {
     wl_list_remove(&host->focus_resource_listener.link);
@@ -573,8 +595,9 @@ static void sl_host_touch_down(void* data,
   wl_touch_send_down(host->resource, serial, time, host_surface->resource, id,
                      ix, iy);
 
-  if (host->focus_resource)
+  if (host->focus_resource) {
     sl_set_last_event_serial(host->focus_resource, serial);
+  }
   host->seat->last_serial = serial;
 }
 
@@ -592,8 +615,9 @@ static void sl_host_touch_up(void* data,
 
   wl_touch_send_up(host->resource, serial, time, id);
 
-  if (host->focus_resource)
+  if (host->focus_resource) {
     sl_set_last_event_serial(host->focus_resource, serial);
+  }
   host->seat->last_serial = serial;
 }
 
@@ -701,14 +725,17 @@ static void sl_destroy_host_keyboard(struct wl_resource* resource) {
   struct sl_host_keyboard* host =
       static_cast<sl_host_keyboard*>(wl_resource_get_user_data(resource));
 
-  if (host->extended_keyboard_proxy)
+  if (host->extended_keyboard_proxy) {
     zcr_extended_keyboard_v1_destroy(host->extended_keyboard_proxy);
+  }
 
   wl_array_release(&host->pressed_keys);
-  if (host->keymap)
+  if (host->keymap) {
     xkb_keymap_unref(host->keymap);
-  if (host->state)
+  }
+  if (host->state) {
     xkb_state_unref(host->state);
+  }
 
   if (wl_keyboard_get_version(host->proxy) >=
       WL_KEYBOARD_RELEASE_SINCE_VERSION) {
@@ -838,8 +865,9 @@ static void sl_seat_name(void* data, struct wl_seat* seat, const char* name) {
   struct sl_host_seat* host =
       static_cast<sl_host_seat*>(wl_seat_get_user_data(seat));
 
-  if (wl_resource_get_version(host->resource) >= WL_SEAT_NAME_SINCE_VERSION)
+  if (wl_resource_get_version(host->resource) >= WL_SEAT_NAME_SINCE_VERSION) {
     wl_seat_send_name(host->resource, name);
+  }
 }
 
 static const struct wl_seat_listener sl_seat_listener = {sl_seat_capabilities,
@@ -851,10 +879,11 @@ static void sl_destroy_host_seat(struct wl_resource* resource) {
 
   sl_host_seat_removed(host);
 
-  if (wl_seat_get_version(host->proxy) >= WL_SEAT_RELEASE_SINCE_VERSION)
+  if (wl_seat_get_version(host->proxy) >= WL_SEAT_RELEASE_SINCE_VERSION) {
     wl_seat_release(host->proxy);
-  else
+  } else {
     wl_seat_destroy(host->proxy);
+  }
   wl_resource_set_user_data(resource, nullptr);
   delete host;
 }

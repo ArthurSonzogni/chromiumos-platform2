@@ -242,11 +242,13 @@ static void sl_touch_stylus_touch_down(void* data,
   wl_fixed_t ix = x;
   wl_fixed_t iy = y;
 
-  if (!host_surface)
+  if (!host_surface) {
     return;
+  }
 
-  if (id != stylus_tablet->tablet->touch_id)
+  if (id != stylus_tablet->tablet->touch_id) {
     return;
+  }
 
   if (host_surface->resource != stylus_tablet->focus_resource) {
     wl_list_remove(&stylus_tablet->focus_resource_listener.link);
@@ -273,8 +275,9 @@ static void sl_touch_stylus_touch_down(void* data,
   zwp_tablet_tool_v2_send_down(tool, serial);
   sl_host_tablet_send_pressure_and_tilt(stylus_tablet->tablet, tool);
 
-  if (stylus_tablet->focus_resource)
+  if (stylus_tablet->focus_resource) {
     sl_set_last_event_serial(stylus_tablet->focus_resource, serial);
+  }
   stylus_tablet->seat->last_serial = serial;
   stylus_tablet->tablet->last_time = time;
 }
@@ -288,8 +291,9 @@ static void sl_touch_stylus_touch_up(void* data,
       static_cast<sl_host_stylus_tablet*>(data);
   struct wl_resource* tool = sl_host_tablet_active_tool(stylus_tablet->tablet);
 
-  if (id != stylus_tablet->tablet->touch_id)
+  if (id != stylus_tablet->tablet->touch_id) {
     return;
+  }
 
   wl_list_remove(&stylus_tablet->focus_resource_listener.link);
   wl_list_init(&stylus_tablet->focus_resource_listener.link);
@@ -301,8 +305,9 @@ static void sl_touch_stylus_touch_up(void* data,
   zwp_tablet_tool_v2_send_proximity_out(tool);
   stylus_tablet->tablet->valid = false;
 
-  if (stylus_tablet->focus_resource)
+  if (stylus_tablet->focus_resource) {
     sl_set_last_event_serial(stylus_tablet->focus_resource, serial);
+  }
   stylus_tablet->seat->last_serial = serial;
   stylus_tablet->tablet->last_time = time;
 }
@@ -320,11 +325,13 @@ static void sl_touch_stylus_touch_motion(void* data,
   wl_fixed_t ix = x;
   wl_fixed_t iy = y;
 
-  if (id != stylus_tablet->tablet->touch_id)
+  if (id != stylus_tablet->tablet->touch_id) {
     return;
+  }
 
-  if (!stylus_tablet->focus_surface)
+  if (!stylus_tablet->focus_surface) {
     return;
+  }
 
   sl_transform_host_to_guest_fixed(stylus_tablet->seat->ctx,
                                    stylus_tablet->focus_surface, &ix, &iy);
@@ -491,8 +498,9 @@ static void sl_host_tablet_manager_get_tablet_seat(
       wl_resource_create(client, &zwp_tablet_seat_v2_interface,
                          wl_resource_get_version(tablet_manager), id);
 
-  if (host_seat->seat->stylus_tablet)
+  if (host_seat->seat->stylus_tablet) {
     return;
+  }
 
   if (ctx->stylus_input_manager && ctx->stylus_input_manager->internal) {
     host_seat->seat->stylus_tablet =

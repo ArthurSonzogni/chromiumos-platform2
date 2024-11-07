@@ -325,28 +325,39 @@ void perfetto_annotate_size_hints(const perfetto::EventContext& perfetto,
   auto* dbg = perfetto.event()->add_debug_annotations();
   dbg->set_name("size_hints.flags");
   std::string flags;
-  if (size_hints.flags & US_POSITION)
+  if (size_hints.flags & US_POSITION) {
     flags += "US_POSITION|";
-  if (size_hints.flags & US_SIZE)
+  }
+  if (size_hints.flags & US_SIZE) {
     flags += "US_SIZE|";
-  if (size_hints.flags & P_POSITION)
+  }
+  if (size_hints.flags & P_POSITION) {
     flags += "P_POSITION|";
-  if (size_hints.flags & P_SIZE)
+  }
+  if (size_hints.flags & P_SIZE) {
     flags += "P_SIZE|";
-  if (size_hints.flags & P_MIN_SIZE)
+  }
+  if (size_hints.flags & P_MIN_SIZE) {
     flags += "P_MIN_SIZE|";
-  if (size_hints.flags & P_MAX_SIZE)
+  }
+  if (size_hints.flags & P_MAX_SIZE) {
     flags += "P_MAX_SIZE|";
-  if (size_hints.flags & P_RESIZE_INC)
+  }
+  if (size_hints.flags & P_RESIZE_INC) {
     flags += "P_RESIZE_INC|";
-  if (size_hints.flags & P_ASPECT)
+  }
+  if (size_hints.flags & P_ASPECT) {
     flags += "P_ASPECT|";
-  if (size_hints.flags & P_BASE_SIZE)
+  }
+  if (size_hints.flags & P_BASE_SIZE) {
     flags += "P_BASE_SIZE|";
-  if (size_hints.flags & P_WIN_GRAVITY)
+  }
+  if (size_hints.flags & P_WIN_GRAVITY) {
     flags += "P_WIN_GRAVITY|";
-  if (!flags.empty())
+  }
+  if (!flags.empty()) {
     flags.pop_back();  // remove trailing '|'
+  }
   dbg->set_string_value(flags);
 
   dbg = perfetto.event()->add_debug_annotations();

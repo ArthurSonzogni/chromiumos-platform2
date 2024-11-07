@@ -525,8 +525,9 @@ class GetDetailsTransaction : public PackageKitTransaction {
   void GeneralError(const std::string& details) override {
     LOG(ERROR) << "Problem with GetDetailsLocal transaction: " << details;
     // Check if we've already indicated we are done.
-    if (data_->event.IsSignaled())
+    if (data_->event.IsSignaled()) {
       return;
+    }
     data_->error.assign(details);
     data_->event.Signal();
   }
@@ -559,8 +560,9 @@ class GetDetailsTransaction : public PackageKitTransaction {
   void ErrorReceived(uint32_t error_code, const std::string& details) override {
     LOG(ERROR) << "Failure querying Linux package of: " << details;
     // Check if we've already indicated we are done.
-    if (data_->event.IsSignaled())
+    if (data_->event.IsSignaled()) {
       return;
+    }
     // We will still get a Finished signal where we finalize everything.
     data_->error.assign(details);
   }
@@ -568,8 +570,9 @@ class GetDetailsTransaction : public PackageKitTransaction {
   void FinishedReceived(uint32_t exit_code) override {
     LOG(INFO) << "Finished with query for Linux package info";
     // Check if we've already indicated we are done.
-    if (data_->event.IsSignaled())
+    if (data_->event.IsSignaled()) {
       return;
+    }
     // If this is a failure, the error message should have already been set via
     // that callback.
     data_->result = kPackageKitExitCodeSuccess == exit_code;
@@ -583,8 +586,9 @@ class GetDetailsTransaction : public PackageKitTransaction {
                        uint64_t size,
                        const std::string& summary) override {
     // Check if we've already indicated we are done.
-    if (data_->event.IsSignaled())
+    if (data_->event.IsSignaled()) {
       return;
+    }
     data_->pkg_info->package_id.assign(package_id);
     data_->pkg_info->license.assign(license);
     data_->pkg_info->description.assign(description);
@@ -639,8 +643,9 @@ class SearchFilesTransaction : public PackageKitTransaction {
     LOG(ERROR) << "Problem with SearchFiles transaction for file "
                << file_path_.value() << ": " << details;
     // Check if we've already done the callback.
-    if (!callback_)
+    if (!callback_) {
       return;
+    }
     std::move(callback_).Run(false /*success*/, false /*pkg_found*/,
                              PackageKitProxy::LinuxPackageInfo(), details);
   }
@@ -649,8 +654,9 @@ class SearchFilesTransaction : public PackageKitTransaction {
     LOG(ERROR) << "Failure searching local Linux Packages by file "
                << file_path_.value() << ": " << details;
     // Check if we've already done the callback.
-    if (!callback_)
+    if (!callback_) {
       return;
+    }
     // We will still get a Finished signal where we finalize everything, but
     // no need to wait for it.
     std::move(callback_).Run(false /*success*/, false /*pkg_found*/,
@@ -662,8 +668,9 @@ class SearchFilesTransaction : public PackageKitTransaction {
                        const std::string& summary) override {
     LOG(INFO) << "Got a package for local file " << file_path_.value();
     // Check if we've already done the callback.
-    if (!callback_)
+    if (!callback_) {
       return;
+    }
     PackageKitProxy::LinuxPackageInfo pkg_info;
     pkg_info.package_id = package_id;
     pkg_info.summary = summary;
@@ -674,8 +681,9 @@ class SearchFilesTransaction : public PackageKitTransaction {
   void FinishedReceived(uint32_t exit_code) override {
     LOG(INFO) << "Finished with SearchFiles transaction for local file "
               << file_path_.value();
-    if (!callback_)
+    if (!callback_) {
       return;
+    }
 
     // If we got here without calling the callback, PackageKit couldn't find a
     // package corresponding to the file.
@@ -730,8 +738,9 @@ class InstallTransaction : public PackageKitTransaction {
         observer_(observer) {}
 
   void GeneralError(const std::string& details) override {
-    if (!observer_)
+    if (!observer_) {
       return;
+    }
     observer_->OnInstallCompletion(command_uuid_, false, details);
     observer_ = nullptr;
   }
@@ -763,16 +772,18 @@ class InstallTransaction : public PackageKitTransaction {
 
   void ErrorReceived(uint32_t error_code, const std::string& details) override {
     LOG(ERROR) << "Failure installing Linux package of: " << details;
-    if (!observer_)
+    if (!observer_) {
       return;
+    }
     observer_->OnInstallCompletion(command_uuid_, false, details);
     observer_ = nullptr;
   }
 
   void FinishedReceived(uint32_t exit_code) override {
     LOG(INFO) << "Finished installing Linux package result: " << exit_code;
-    if (!observer_)
+    if (!observer_) {
       return;
+    }
     observer_->OnInstallCompletion(
         command_uuid_, kPackageKitExitCodeSuccess == exit_code,
         "Exit Code: " + base::NumberToString(exit_code));
@@ -782,8 +793,9 @@ class InstallTransaction : public PackageKitTransaction {
   void PropertyChangeReceived(
       const std::string& name,
       PackageKitTransactionProperties* properties) override {
-    if (!observer_)
+    if (!observer_) {
       return;
+    }
     // There's only 2 progress states we actually care about which are logical
     // to report to the user. These are downloading and installing, which
     // correspond to similar experiences in Android and elsewhere. There are
@@ -811,8 +823,9 @@ class InstallTransaction : public PackageKitTransaction {
     int percentage = properties->percentage.value();
     // PackageKit uses 101 for the percent when it doesn't know, treat that as
     // zero because you see this at the beginning of phases.
-    if (percentage == 101)
+    if (percentage == 101) {
       percentage = 0;
+    }
     observer_->OnInstallProgress(command_uuid_, status, percentage);
   }
 
@@ -1178,8 +1191,9 @@ class ResolveTransaction : public PackageKitTransaction {
     LOG(ERROR) << "Problem with Resolve transaction for package: "
                << package_name_ << ": " << details;
     // Check if we've already done the callback.
-    if (!callback_)
+    if (!callback_) {
       return;
+    }
     std::move(callback_).Run(false /*success*/, false /*pkg_found*/,
                              PackageKitProxy::LinuxPackageInfo(), details);
   }
@@ -1188,8 +1202,9 @@ class ResolveTransaction : public PackageKitTransaction {
     LOG(ERROR) << "Failure resolving package " << package_name_ << ": "
                << details;
     // Check if we've already done the callback.
-    if (!callback_)
+    if (!callback_) {
       return;
+    }
     // We will still get a Finished signal where we finalize everything, but
     // no need to wait for it.
     std::move(callback_).Run(false /*success*/, false /*pkg_found*/,
@@ -1201,8 +1216,9 @@ class ResolveTransaction : public PackageKitTransaction {
                        const std::string& summary) override {
     LOG(INFO) << "Got a package for package name: " << package_name_;
     // Check if we've already done the callback.
-    if (!callback_)
+    if (!callback_) {
       return;
+    }
     PackageKitProxy::LinuxPackageInfo pkg_info;
     pkg_info.package_id = package_id;
     pkg_info.summary = summary;
@@ -1212,8 +1228,9 @@ class ResolveTransaction : public PackageKitTransaction {
 
   void FinishedReceived(uint32_t exit_code) override {
     LOG(INFO) << "Finished resolving package name";
-    if (!callback_)
+    if (!callback_) {
       return;
+    }
 
     // If we got here without calling the callback, PackageKit couldn't resolve
     // the package name into a package id.
@@ -1259,8 +1276,9 @@ PackageKitProxy::PackageInfoTransactionData::PackageInfoTransactionData(
 // static
 std::unique_ptr<PackageKitProxy> PackageKitProxy::Create(
     PackageKitObserver* observer) {
-  if (!observer)
+  if (!observer) {
     return nullptr;
+  }
   auto pk_proxy = base::WrapUnique(new PackageKitProxy(observer));
   if (!pk_proxy->Init()) {
     pk_proxy.reset();
@@ -1616,8 +1634,9 @@ void PackageKitProxy::OnPackageKitNameOwnerChanged(
     const std::string& old_owner, const std::string& new_owner) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   if (new_owner.empty()) {
-    for (PackageKitDeathObserver& obs : death_observers_)
+    for (PackageKitDeathObserver& obs : death_observers_) {
       obs.OnPackageKitDeath();
+    }
   }
 }
 

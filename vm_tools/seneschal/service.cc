@@ -99,8 +99,9 @@ bool MkdirRecursively(const base::FilePath& full_path) {
   DCHECK(!components.empty());
 
   base::ScopedFD fd(open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
+  }
 
   // Iterate through the parents and create the missing ones. '+ 1' is for
   // skipping "/".
@@ -153,8 +154,9 @@ void HandleSynchronousDBusMethodCall(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   std::unique_ptr<dbus::Response> response = handler.Run(method_call);
-  if (!response)
+  if (!response) {
     response = dbus::Response::FromMethodCall(method_call);
+  }
   std::move(response_sender).Run(std::move(response));
 }
 

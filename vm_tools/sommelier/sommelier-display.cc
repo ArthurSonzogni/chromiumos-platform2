@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"          // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
@@ -22,8 +22,9 @@ static void sl_registry_bind(struct wl_client* client,
   struct sl_global* global;
 
   wl_list_for_each(global, &host->ctx->globals, link) {
-    if (global->name == name)
+    if (global->name == name) {
       break;
+    }
   }
 
   // matches the behavior of libwayland's `registry_bind()`

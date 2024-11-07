@@ -19,8 +19,9 @@ ScopedTermios::ScopedTermios(base::ScopedFD tty_fd)
     : tty_fd_(std::move(tty_fd)) {}
 
 ScopedTermios::~ScopedTermios() {
-  if (!Restore())
+  if (!Restore()) {
     LOG(ERROR) << "Failed to reset termios settings. Terminal may be broken.";
+  }
 }
 
 bool ScopedTermios::SetTermiosMode(TermiosMode mode) {
@@ -63,8 +64,9 @@ bool ScopedTermios::SetTermiosMode(TermiosMode mode) {
 
 bool ScopedTermios::Restore() {
   // If SetTermiosMode() was never called, Restore() should do nothing.
-  if (!has_termios_)
+  if (!has_termios_) {
     return true;
+  }
 
   if (tcsetattr(tty_fd_.get(), TCSAFLUSH, &saved_termios_) < 0) {
     PLOG(ERROR) << "Error restoring termios attributes";

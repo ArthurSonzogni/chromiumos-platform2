@@ -42,8 +42,9 @@ void InitLoop(cros_im::qt::CrosQtIMContext* qt_im_context) {
 
 cros_im::qt::CrosQtIMContext* QCrosPlatformInputContextPlugin::create(
     const QString& system, const QStringList&) {
-  if (system.compare("cros", Qt::CaseInsensitive) != 0)
+  if (system.compare("cros", Qt::CaseInsensitive) != 0) {
     return nullptr;
+  }
 
   if (!qGuiApp) {
     LOG(WARNING) << "qGuiApp is nullptr when trying to create cros IME plugin "

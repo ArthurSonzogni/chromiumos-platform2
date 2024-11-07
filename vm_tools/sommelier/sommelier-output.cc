@@ -103,8 +103,9 @@ void sl_output_get_host_output_state(struct sl_host_output* host,
     //  - Increasing the zoom makes lengths appear longer (i.e. fewer mm to work
     //    with over the same real length).
     //  - Scaling the screen does the inverse.
-    if (scale)
+    if (scale) {
       *scale = 1;
+    }
     *width = host->width * host->ctx->scale / applied_scale;
     *height = host->height * host->ctx->scale / applied_scale;
 
@@ -127,8 +128,9 @@ void sl_output_get_host_output_state(struct sl_host_output* host,
     // has chosen 130% zoom, we are applying 2.6x scale factor.
     int s = MIN(ceil(applied_scale / host->ctx->scale), MAX_OUTPUT_SCALE);
 
-    if (scale)
+    if (scale) {
       *scale = s;
+    }
     *physical_width = host->physical_width;
     *physical_height = host->physical_height;
     *width = host->width * host->ctx->scale * s / applied_scale;
@@ -143,8 +145,9 @@ void sl_output_get_host_output_state(struct sl_host_output* host,
     // calculated above.
     int* dpi;
     sl_array_for_each(dpi, &host->ctx->dpi) {
-      if (abs(*dpi - target_dpi) < abs(adjusted_dpi - target_dpi))
+      if (abs(*dpi - target_dpi) < abs(adjusted_dpi - target_dpi)) {
         adjusted_dpi = *dpi;
+      }
     }
 
     *physical_width = dpi_to_physical_mm(adjusted_dpi, *width);
@@ -402,10 +405,13 @@ void sl_output_send_host_output_state(struct sl_host_output* host) {
     wl_output_send_mode(host->resource, host->flags | WL_OUTPUT_MODE_CURRENT,
                         host->virt_width, host->virt_height, host->refresh);
     if (wl_resource_get_version(host->resource) >=
-        WL_OUTPUT_SCALE_SINCE_VERSION)
+        WL_OUTPUT_SCALE_SINCE_VERSION) {
       wl_output_send_scale(host->resource, host->scale_factor);
-    if (wl_resource_get_version(host->resource) >= WL_OUTPUT_DONE_SINCE_VERSION)
+    }
+    if (wl_resource_get_version(host->resource) >=
+        WL_OUTPUT_DONE_SINCE_VERSION) {
       wl_output_send_done(host->resource);
+    }
     host->needs_update = false;
   }
 }
@@ -473,8 +479,9 @@ static void sl_output_done(void* data, struct wl_output* output) {
       static_cast<sl_host_output*>(wl_output_get_user_data(output));
 
   // Early out if scale is expected but not yet know.
-  if (host->expecting_scale)
+  if (host->expecting_scale) {
     return;
+  }
 
   // Recalculate according to any information that's been modified.
   sl_output_calculate_virtual_dimensions(host);
@@ -483,8 +490,9 @@ static void sl_output_done(void* data, struct wl_output* output) {
   sl_output_send_host_output_state(host);
 
   // Expect scale if aura output exists.
-  if (host->aura_output)
+  if (host->aura_output) {
     host->expecting_scale = 1;
+  }
 }
 
 static void sl_output_scale(void* data,
@@ -506,10 +514,12 @@ static void sl_aura_output_scale(void* data,
   struct sl_host_output* host =
       static_cast<sl_host_output*>(zaura_output_get_user_data(output));
 
-  if (flags & ZAURA_OUTPUT_SCALE_PROPERTY_CURRENT)
+  if (flags & ZAURA_OUTPUT_SCALE_PROPERTY_CURRENT) {
     host->current_scale = scale;
-  if (flags & ZAURA_OUTPUT_SCALE_PROPERTY_PREFERRED)
+  }
+  if (flags & ZAURA_OUTPUT_SCALE_PROPERTY_PREFERRED) {
     host->preferred_scale = scale;
+  }
 
   host->expecting_scale = 0;
 }
@@ -541,8 +551,9 @@ static void sl_destroy_host_output(struct wl_resource* resource) {
   struct sl_host_output* host =
       static_cast<sl_host_output*>(wl_resource_get_user_data(resource));
 
-  if (host->aura_output)
+  if (host->aura_output) {
     zaura_output_destroy(host->aura_output);
+  }
   if (wl_output_get_version(host->proxy) >= WL_OUTPUT_RELEASE_SINCE_VERSION) {
     wl_output_release(host->proxy);
   } else {

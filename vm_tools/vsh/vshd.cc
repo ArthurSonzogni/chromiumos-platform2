@@ -220,8 +220,9 @@ int main(int argc, char** argv) {
     }
 
     for (int i = 0; i < num_pollfds; i++) {
-      if (!(pollfds[i].revents & POLLIN))
+      if (!(pollfds[i].revents & POLLIN)) {
         continue;
+      }
 
       if (i == 0) {
         // signalfd.
@@ -235,10 +236,12 @@ int main(int argc, char** argv) {
 
         // Reap any child exit statuses.
         int waitpid_exit;
-        while ((waitpid_exit = waitpid(-1, nullptr, WNOHANG)) > 0)
+        while ((waitpid_exit = waitpid(-1, nullptr, WNOHANG)) > 0) {
           continue;
-        if (waitpid_exit < 0 && errno != ECHILD)
+        }
+        if (waitpid_exit < 0 && errno != ECHILD) {
           PLOG(ERROR) << "Failed to clean up child process";
+        }
       } else if (i == 1) {
         // sock_fd.
         struct sockaddr_vm peer_addr;

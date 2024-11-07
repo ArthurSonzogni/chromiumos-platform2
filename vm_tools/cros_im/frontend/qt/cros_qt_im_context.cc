@@ -40,11 +40,13 @@ bool CrosQtIMContext::isValid() const {
 
 void CrosQtIMContext::setFocusObject(QObject* object) {
   is_in_focus_ = object != nullptr;
-  if (!inited_)
+  if (!inited_) {
     return;
+  }
 
-  if (!inputMethodAccepted())
+  if (!inputMethodAccepted()) {
     return;
+  }
 
   if (object) {
     // focus in
@@ -58,8 +60,9 @@ void CrosQtIMContext::setFocusObject(QObject* object) {
 
 void CrosQtIMContext::Activate() {
   Q_ASSERT(inited_);
-  if (!qApp)
+  if (!qApp) {
     return;
+  }
   QWindow* window = qApp->focusWindow();
   if (is_x11_) {
     backend_->ActivateX11(window->winId());
@@ -90,8 +93,9 @@ void CrosQtIMContext::Activate() {
 
 void CrosQtIMContext::invokeAction(QInputMethod::Action action,
                                    int cursorPosition) {
-  if (!inited_)
+  if (!inited_) {
     return;
+  }
 
   if (action == QInputMethod::Click) {
     commit();
@@ -99,8 +103,9 @@ void CrosQtIMContext::invokeAction(QInputMethod::Action action,
 }
 
 void CrosQtIMContext::reset() {
-  if (!inited_)
+  if (!inited_) {
     return;
+  }
 
   backend_->Reset();
 }
@@ -112,14 +117,17 @@ void CrosQtIMContext::commit() {
   // dependent, e.g. in Japanese, commit preedit should do fine, but in Chinese
   // we would want latin without space or simply reset.
 
-  if (!inited_)
+  if (!inited_) {
     return;
+  }
 
-  if (!qApp)
+  if (!qApp) {
     return;
+  }
   QObject* input = qApp->focusObject();
-  if (!input)
+  if (!input) {
     return;
+  }
   QInputMethodEvent event;
   event.setCommitString(QString::fromStdString(preedit_));
   QCoreApplication::sendEvent(input, &event);
@@ -129,15 +137,18 @@ void CrosQtIMContext::commit() {
 }
 
 void CrosQtIMContext::update(Qt::InputMethodQueries queries) {
-  if (!inited_ || !qApp)
+  if (!inited_ || !qApp) {
     return;
+  }
 
-  if (!is_activated_ && inputMethodAccepted())
+  if (!is_activated_ && inputMethodAccepted()) {
     Activate();
+  }
 
   QObject* input_object = qApp->focusObject();
-  if (!input_object)
+  if (!input_object) {
     return;
+  }
 
   // TODO(zihanchen): Listen to Qt::ImSurroundingText when adding support for
   // surrounding text
@@ -168,17 +179,21 @@ bool CrosQtIMContext::hasCapability(
 }
 
 void CrosQtIMContext::cursorRectangleChanged() {
-  if (!inited_)
+  if (!inited_) {
     return;
+  }
 
-  if (!qApp)
+  if (!qApp) {
     return;
+  }
   QWindow* window = qApp->focusWindow();
-  if (!window)
+  if (!window) {
     return;
+  }
   QRect rect = qApp->inputMethod()->cursorRectangle().toRect();
-  if (!rect.isValid())
+  if (!rect.isValid()) {
     return;
+  }
 
   // In some HiDPI situations, crOS will let Qt handle integer scaling and (if
   // needed) do its fractional scaling based on already-scaled windows. We need
@@ -222,8 +237,9 @@ bool CrosQtIMContext::init() {
   }
 
   // Init sequence is a critical path, and need to be guarded
-  if (!init_lock.try_lock())
+  if (!init_lock.try_lock()) {
     return false;
+  }
 
   std::lock_guard<std::mutex> lock(init_lock, std::adopt_lock);
   if (inited_) {
@@ -237,8 +253,9 @@ bool CrosQtIMContext::init() {
     backend_observer_ = std::make_unique<BackendObserver>(this);
     backend_ = std::make_unique<IMContextBackend>(backend_observer_.get());
     inited_ = true;
-    if (is_in_focus_)
+    if (is_in_focus_) {
       Activate();
+    }
     return true;
   } else if (QGuiApplication::platformName() == "wayland") {
     // wayland backend is used and seems initialized (otherwise won't return
@@ -257,8 +274,9 @@ bool CrosQtIMContext::init() {
     backend_ = std::make_unique<IMContextBackend>(backend_observer_.get());
     inited_ = true;
     qInfo() << "Successfully initialized cros IME plugin in wayland mode";
-    if (is_in_focus_)
+    if (is_in_focus_) {
       Activate();
+    }
     return true;
   } else if (QGuiApplication::platformName() == "") {
     LOG(INFO)
@@ -278,8 +296,9 @@ IMContextBackend::ContentTypeOld CrosQtIMContext::GetUpdatedHints() {
   Q_ASSERT(inited_ && qApp);
 
   QObject* input_object = qApp->focusObject();
-  if (!input_object)
+  if (!input_object) {
     return {};
+  }
 
   QInputMethodQueryEvent query(Qt::ImHints);
 
@@ -304,10 +323,12 @@ IMContextBackend::ContentTypeOld CrosQtIMContext::GetUpdatedHints() {
 
   // Map exclusive hint to content_purpose
   if (hints.testFlag(Qt::ImhExclusiveInputMask)) {
-    if (hints.testFlag(Qt::ImhDigitsOnly))
+    if (hints.testFlag(Qt::ImhDigitsOnly)) {
       content_purpose = ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_DIGITS;
-    if (hints.testFlag(Qt::ImhFormattedNumbersOnly))
+    }
+    if (hints.testFlag(Qt::ImhFormattedNumbersOnly)) {
       content_purpose = ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NUMBER;
+    }
     if (hints.testFlag(Qt::ImhUppercaseOnly)) {
       // wayland content_purpose can't specify upper case only,
       // so combining alphabetic content_purpose with upper case hint
@@ -319,30 +340,36 @@ IMContextBackend::ContentTypeOld CrosQtIMContext::GetUpdatedHints() {
       content_purpose = ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_ALPHA;
       content_hint |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_LOWERCASE;
     }
-    if (hints.testFlag(Qt::ImhDialableCharactersOnly))
+    if (hints.testFlag(Qt::ImhDialableCharactersOnly)) {
       content_purpose = ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_PHONE;
-    if (hints.testFlag(Qt::ImhEmailCharactersOnly))
+    }
+    if (hints.testFlag(Qt::ImhEmailCharactersOnly)) {
       content_purpose = ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_EMAIL;
-    if (hints.testFlag(Qt::ImhUrlCharactersOnly))
+    }
+    if (hints.testFlag(Qt::ImhUrlCharactersOnly)) {
       content_purpose = ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_URL;
-    if (hints.testFlag(Qt::ImhLatinOnly))
+    }
+    if (hints.testFlag(Qt::ImhLatinOnly)) {
       // Latin character only doesn't map to any content_type
       // It's also not supported but pass it anyway
       content_hint |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_LATIN;
+    }
 
     // When there are more than 1 exclusive hints, we have to reset
     // content_purpose to prevent some should-be allowed type rejected by IME
     auto exclusive_hints = hints & Qt::ImhExclusiveInputMask;
-    if ((exclusive_hints & (exclusive_hints - 1)) != 0)
+    if ((exclusive_hints & (exclusive_hints - 1)) != 0) {
       content_purpose = ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NORMAL;
+    }
   }
 
   // Map normal hints to content_hint
   if (hints & ~Qt::ImhExclusiveInputMask) {
     // Qt's hint model expect auto_capitalization/correction/spellcheck to be
     // on by default
-    if (hints.testFlag(Qt::ImhHiddenText))
+    if (hints.testFlag(Qt::ImhHiddenText)) {
       content_hint |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_HIDDEN_TEXT;
+    }
     if (hints.testFlag(Qt::ImhSensitiveData)) {
       content_hint |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_SENSITIVE_DATA;
       // dictionary related features should all be disabled when inputting
@@ -353,14 +380,17 @@ IMContextBackend::ContentTypeOld CrosQtIMContext::GetUpdatedHints() {
       // set it to password content_purpose as they are corresponded
       content_purpose = ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_PASSWORD;
     }
-    if (hints.testFlag(Qt::ImhNoAutoUppercase))
+    if (hints.testFlag(Qt::ImhNoAutoUppercase)) {
       content_hint &= ~ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_CAPITALIZATION;
+    }
     // Prefer numbers not necessarily means disabling non-numbers, and no
     // content_hint corresponds to this scenario, ignored.
-    if (hints.testFlag(Qt::ImhPreferUppercase))
+    if (hints.testFlag(Qt::ImhPreferUppercase)) {
       content_hint |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_UPPERCASE;
-    if (hints.testFlag(Qt::ImhPreferLowercase))
+    }
+    if (hints.testFlag(Qt::ImhPreferLowercase)) {
       content_hint |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_LOWERCASE;
+    }
     if (hints.testFlag(Qt::ImhNoPredictiveText)) {
       // predictive text covers all dictionary related hints
       content_hint &= ~ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_COMPLETION;
@@ -369,12 +399,14 @@ IMContextBackend::ContentTypeOld CrosQtIMContext::GetUpdatedHints() {
     // Time / Date / Datetime are not supported in our host implementation,
     // and they don't map to content_hint in wayland protocol. Ignore Qt's
     // hint for these.
-    if (hints.testFlag(Qt::ImhPreferLatin))
+    if (hints.testFlag(Qt::ImhPreferLatin)) {
       // Latin hint is not supported but pass it anyway
       content_hint |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_LATIN;
-    if (hints.testFlag(Qt::ImhMultiLine))
+    }
+    if (hints.testFlag(Qt::ImhMultiLine)) {
       // multiline is not supported, but pass it anyway
       content_hint |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_MULTILINE;
+    }
   }
 
   return {.hints = content_hint, .purpose = content_purpose};
@@ -385,8 +417,9 @@ void CrosQtIMContext::BackendObserver::SetPreedit(
     int cursor,
     const std::vector<PreeditStyle>& styles) {
   QObject* input = qApp->focusObject();
-  if (!input)
+  if (!input) {
     return;
+  }
   context_->preedit_attributes_.clear();
 
   for (auto& backend_style : styles) {
@@ -425,11 +458,13 @@ void CrosQtIMContext::BackendObserver::Commit(const std::string& commit) {
     LOG(WARNING) << "IME backend request to commit empty string";
     return;
   }
-  if (!qApp)
+  if (!qApp) {
     return;
+  }
   QObject* input = qApp->focusObject();
-  if (!input)
+  if (!input) {
     return;
+  }
   QInputMethodEvent event;
   event.setCommitString(QString::fromStdString(commit));
   QCoreApplication::sendEvent(input, &event);
@@ -443,12 +478,14 @@ void CrosQtIMContext::BackendObserver::KeySym(uint32_t keysym,
   // to IME when IME is active
 
   // Modifier is unsupported for now
-  if (!qApp)
+  if (!qApp) {
     return;
+  }
 
   QObject* input = qApp->focusObject();
-  if (!input)
+  if (!input) {
     return;
+  }
 
   QEvent::Type type;
 

@@ -24,8 +24,9 @@ void HandleSynchronousDBusMethodCall(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   auto response = handler.Run(method_call);
-  if (!response)
+  if (!response) {
     response = dbus::Response::FromMethodCall(method_call);
+  }
 
   std::move(response_sender).Run(std::move(response));
 }
@@ -41,13 +42,15 @@ std::unique_ptr<dbus::ErrorResponse> GetErrorResponseWithLog(
 bool PopStringArray(dbus::MessageReader* reader,
                     std::vector<std::string>* value) {
   dbus::MessageReader array_reader(nullptr);
-  if (!reader->PopArray(&array_reader))
+  if (!reader->PopArray(&array_reader)) {
     return false;
+  }
 
   while (array_reader.HasMoreData()) {
     std::string data;
-    if (!array_reader.PopString(&data))
+    if (!array_reader.PopString(&data)) {
       return false;
+    }
     value->push_back(std::move(data));
   }
   return true;
@@ -56,13 +59,15 @@ bool PopStringArray(dbus::MessageReader* reader,
 bool PopStringVariantDict(dbus::MessageReader* reader,
                           std::map<std::string, std::string>* value) {
   dbus::MessageReader array_reader(nullptr);
-  if (!reader->PopArray(&array_reader))
+  if (!reader->PopArray(&array_reader)) {
     return false;
+  }
 
   while (array_reader.HasMoreData()) {
     dbus::MessageReader dict_entry_reader(nullptr);
-    if (!array_reader.PopDictEntry(&dict_entry_reader))
+    if (!array_reader.PopDictEntry(&dict_entry_reader)) {
       return false;
+    }
     // We just skip to parse entries because thier values (not key) may contain
     // complex variant parameters.
     // TODO(toshikikikuchi): Add reader for variant parameters.
@@ -81,8 +86,9 @@ DBusService::DBusService(DBusInterface* interface) : interface_(interface) {}
 std::unique_ptr<DBusService> DBusService::Create(DBusInterface* interface) {
   auto service = base::WrapUnique(new DBusService(interface));
 
-  if (!service->Init())
+  if (!service->Init()) {
     return nullptr;
+  }
 
   return service;
 }

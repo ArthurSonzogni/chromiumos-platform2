@@ -548,8 +548,9 @@ void VshForwarder::HandleVsockReadable() {
       DataMessage data_message = guest_message.data_message();
       DCHECK_EQ(data_message.stream(), STDIN_STREAM);
 
-      if (!interactive_ && !stdio_pipes_[STDIN_FILENO].is_valid())
+      if (!interactive_ && !stdio_pipes_[STDIN_FILENO].is_valid()) {
         return;
+      }
 
       int target_fd =
           interactive_ ? ptm_fd_.get() : stdio_pipes_[STDIN_FILENO].get();

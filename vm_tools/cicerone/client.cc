@@ -530,8 +530,9 @@ int GetIcon(dbus::ObjectProxy* proxy,
   // file ID.
   CHECK_LE(response.icons_size(), 1);
   for (vm_tools::cicerone::DesktopIcon icon : response.icons()) {
-    if (!icon.icon().empty())
+    if (!icon.icon().empty()) {
       Write(output_filepath, icon.icon());
+    }
   }
 
   return 0;

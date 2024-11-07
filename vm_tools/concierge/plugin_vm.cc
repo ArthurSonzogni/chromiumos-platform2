@@ -71,8 +71,9 @@ void TrySuspendVm(scoped_refptr<dbus::Bus> bus,
         break;
 
       case pvm::dispatcher::VmOpResult::DISPATCHER_NOT_AVAILABLE:
-        if (!dispatcher_shutting_down)
+        if (!dispatcher_shutting_down) {
           LOG(ERROR) << "Failed to suspend VM: dispatcher is not available";
+        }
         return;
 
       default:
@@ -572,8 +573,9 @@ void PluginVm::VmToolsStateChanged(bool running) {
   LOG(INFO) << "Tools are " << (running ? "" : "not ")
             << "running in plugin VM";
 
-  if (running)
+  if (running) {
     pvm::helper::CleanUpAfterInstall(id_, iso_dir_);
+  }
 }
 
 PluginVm::PluginVm(Config config)
@@ -679,8 +681,9 @@ bool PluginVm::Start(base::FilePath stateful_dir,
   bind_mounts.push_back(base::StringPrintf("%s:%s:false", pvm::kApplicationDir,
                                            pvm::plugin::kPitaDir));
 
-  for (auto& mount : bind_mounts)
+  for (auto& mount : bind_mounts) {
     vm_builder.AppendCustomParam("--plugin-mount", std::move(mount));
+  }
 
   // Because some of the static paths are mounted in /run/pvm... in the
   // plugin jail, they have to come after the dynamic paths above.

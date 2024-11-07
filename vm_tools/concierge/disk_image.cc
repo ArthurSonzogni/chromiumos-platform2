@@ -51,8 +51,9 @@ void DiskImageOperation::Run(uint64_t io_limit) {
 
 int DiskImageOperation::GetProgress() const {
   if (status() == DISK_STATUS_IN_PROGRESS) {
-    if (source_size_ == 0)
+    if (source_size_ == 0) {
       return 0;  // We do not know any better.
+    }
 
     return processed_size_ * 100 / source_size_;
   }
@@ -629,8 +630,9 @@ bool PluginVmImportOperation::ExecuteIo(uint64_t io_limit) {
 
       auto dest_path = output_dir_.GetPath();
       auto i = path_parts.begin();
-      if (base::FilePath(*i).FinalExtension() == ".pvm")
+      if (base::FilePath(*i).FinalExtension() == ".pvm") {
         i++;
+      }
       for (; i != path_parts.end(); i++) {
         dest_path = dest_path.Append(*i);
       }

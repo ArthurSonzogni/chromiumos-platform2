@@ -124,8 +124,9 @@ bool VshClient::Init(const std::string& user,
 
   // Default to forwarding the current TERM variable.
   const char* term_env = getenv("TERM");
-  if (term_env)
+  if (term_env) {
     (*env)["TERM"] = std::string(term_env);
+  }
 
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   std::vector<std::string> args = cl->GetArgs();

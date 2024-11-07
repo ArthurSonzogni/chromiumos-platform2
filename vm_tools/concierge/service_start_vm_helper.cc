@@ -47,17 +47,22 @@ namespace internal {
 // determine its properties from that.
 apps::VmType ClassifyVm(const StartVmRequest& request) {
   // Identify Baguette VM by vm_type only
-  if (request.vm_type() == VmInfo::BAGUETTE)
+  if (request.vm_type() == VmInfo::BAGUETTE) {
     return apps::VmType::BAGUETTE;
+  }
   if (request.vm_type() == VmInfo::BOREALIS ||
-      request.vm().dlc_id() == kBorealisBiosDlcId)
+      request.vm().dlc_id() == kBorealisBiosDlcId) {
     return apps::VmType::BOREALIS;
-  if (request.vm_type() == VmInfo::TERMINA || request.start_termina())
+  }
+  if (request.vm_type() == VmInfo::TERMINA || request.start_termina()) {
     return apps::VmType::TERMINA;
+  }
   // Bruschetta VMs are distinguished by having a separate bios as a dlc.
   if (request.vm_type() == VmInfo::BRUSCHETTA ||
-      request.vm().dlc_id() == kBruschettaBiosDlcId || request.name() == "bru")
+      request.vm().dlc_id() == kBruschettaBiosDlcId ||
+      request.name() == "bru") {
     return apps::VmType::BRUSCHETTA;
+  }
   return apps::VmType::UNKNOWN;
 }
 
@@ -75,8 +80,9 @@ VmBuilder::VmCpuArgs GetVmCpuArgs(int32_t cpus,
         GetCpuPackageId(cpu, cpu_info_path);
     if (physical_package_id) {
       CHECK_GE(*physical_package_id, 0);
-      if (*physical_package_id + 1 > cpu_clusters.size())
+      if (*physical_package_id + 1 > cpu_clusters.size()) {
         cpu_clusters.resize(*physical_package_id + 1);
+      }
       cpu_clusters[*physical_package_id].push_back(std::to_string(cpu));
     }
 
@@ -120,8 +126,9 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
   if (kernel_fd.has_value()) {
     int raw_fd = kernel_fd.value().get();
     failure_reason = internal::RemoveCloseOnExec(raw_fd);
-    if (!failure_reason.empty())
+    if (!failure_reason.empty()) {
       return {};
+    }
     kernel = base::FilePath(kProcFileDescriptorsPath)
                  .Append(base::NumberToString(raw_fd));
   } else if (vmDlcPath.has_value()) {
@@ -131,8 +138,9 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
   if (rootfs_fd.has_value()) {
     int raw_fd = rootfs_fd.value().get();
     failure_reason = internal::RemoveCloseOnExec(raw_fd);
-    if (!failure_reason.empty())
+    if (!failure_reason.empty()) {
       return {};
+    }
     rootfs = base::FilePath(kProcFileDescriptorsPath)
                  .Append(base::NumberToString(raw_fd));
   } else if (vmDlcPath.has_value()) {
@@ -142,8 +150,9 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
   if (initrd_fd.has_value()) {
     int raw_fd = initrd_fd.value().get();
     failure_reason = internal::RemoveCloseOnExec(raw_fd);
-    if (!failure_reason.empty())
+    if (!failure_reason.empty()) {
       return {};
+    }
     initrd = base::FilePath(kProcFileDescriptorsPath)
                  .Append(base::NumberToString(raw_fd));
   }
@@ -151,8 +160,9 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
   if (bios_fd.has_value()) {
     int raw_fd = bios_fd.value().get();
     failure_reason = internal::RemoveCloseOnExec(raw_fd);
-    if (!failure_reason.empty())
+    if (!failure_reason.empty()) {
       return {};
+    }
     bios = base::FilePath(kProcFileDescriptorsPath)
                .Append(base::NumberToString(raw_fd));
   } else if (biosDlcPath.has_value() && !biosDlcPath->empty()) {
@@ -163,8 +173,9 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
   if (pflash_fd.has_value()) {
     int raw_fd = pflash_fd.value().get();
     failure_reason = internal::RemoveCloseOnExec(raw_fd);
-    if (!failure_reason.empty())
+    if (!failure_reason.empty()) {
       return {};
+    }
     pflash = base::FilePath(kProcFileDescriptorsPath)
                  .Append(base::NumberToString(raw_fd));
   }

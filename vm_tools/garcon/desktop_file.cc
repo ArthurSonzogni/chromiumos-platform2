@@ -119,8 +119,9 @@ base::FilePath DesktopFile::FindFileForDesktopId(
     for (const auto& curr_path : search_paths) {
       for (const auto& rel_path : rel_paths) {
         base::FilePath test_path(curr_path.Append(rel_path));
-        if (base::PathExists(test_path))
+        if (base::PathExists(test_path)) {
           return test_path;
+        }
       }
     }
     return base::FilePath();
@@ -144,8 +145,9 @@ base::FilePath DesktopFile::FindFileForDesktopId(
     for (const auto& curr_path : search_paths) {
       base::FilePath test_path(
           curr_path.Append(mutable_desktop_id + kDesktopFileExtension));
-      if (base::PathExists(test_path))
+      if (base::PathExists(test_path)) {
         return test_path;
+      }
     }
   }
   return base::FilePath();
@@ -426,8 +428,9 @@ std::vector<std::string> DesktopFile::GenerateArgvWithFiles(
 
 std::string DesktopFile::GenerateExecutableFileName() const {
   std::vector<std::string> ArgvWithFiles = GenerateArgvWithFiles({});
-  if (ArgvWithFiles.empty())
+  if (ArgvWithFiles.empty()) {
     return "";
+  }
   return base::FilePath(ArgvWithFiles.at(0)).BaseName().MaybeAsASCII();
 }
 

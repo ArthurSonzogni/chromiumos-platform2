@@ -345,8 +345,9 @@ grpc::Status ContainerListenerImpl::ApplyAnsiblePlaybookProgress(
       static_cast<ApplyAnsiblePlaybookProgressSignal::Status>(
           request->status()));
   progress_signal.set_failure_details(request->failure_details());
-  for (auto line : request->status_string())
+  for (auto line : request->status_string()) {
     progress_signal.add_status_string(line);
+  }
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
@@ -672,8 +673,9 @@ bool ContainerListenerImpl::CheckOpenRateLimit() {
     open_count_ = 1;
     return true;
   }
-  if (++open_count_ <= kOpenRateLimit)
+  if (++open_count_ <= kOpenRateLimit) {
     return true;
+  }
   // Only log the first one over the limit to prevent log spam if this is
   // getting hit quickly.
   LOG_IF(ERROR, open_count_ == kOpenRateLimit + 1)

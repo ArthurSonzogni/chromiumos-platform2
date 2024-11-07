@@ -212,8 +212,9 @@ bool CrosGtkIMContext::InitializeWaylandManager() {
     return false;
   }
   if (GDK_IS_X11_DISPLAY(gdk_display)) {
-    if (!SetUpWaylandForX11())
+    if (!SetUpWaylandForX11()) {
       return false;
+    }
   } else if (GDK_IS_WAYLAND_DISPLAY(gdk_display)) {
     WaylandManager::CreateInstance(
         gdk_wayland_display_get_wl_display(gdk_display));
@@ -253,10 +254,12 @@ void CrosGtkIMContext::SetClientWidget(GtkWidget* widget) {
     GdkSurface* surface =
         gtk_native_get_surface(GTK_NATIVE(gtk_widget_get_root(widget)));
     g_set_object(&root_surface_, surface);
-    if (!root_surface_)
+    if (!root_surface_) {
       LOG(WARNING) << "Root GdkSurface was null";
-    if (pending_activation_)
+    }
+    if (pending_activation_) {
       Activate();
+    }
   } else {
     g_set_object(&client_widget_, nullptr);
     g_set_object(&root_surface_, nullptr);
@@ -268,10 +271,12 @@ void CrosGtkIMContext::SetClientWindow(GdkWindow* window) {
     GdkWindow* toplevel = gdk_window_get_effective_toplevel(window);
     g_set_object(&gdk_window_, window);
     g_set_object(&top_level_gdk_window_, toplevel);
-    if (!top_level_gdk_window_)
+    if (!top_level_gdk_window_) {
       LOG(WARNING) << "Top-level GdkWindow was null";
-    if (pending_activation_)
+    }
+    if (pending_activation_) {
       Activate();
+    }
   } else {
     g_set_object(&gdk_window_, nullptr);
     g_set_object(&top_level_gdk_window_, nullptr);
@@ -282,14 +287,17 @@ void CrosGtkIMContext::SetClientWindow(GdkWindow* window) {
 void CrosGtkIMContext::GetPreeditString(char** preedit,
                                         PangoAttrList** styles,
                                         int* cursor_pos) {
-  if (preedit)
+  if (preedit) {
     *preedit = g_strdup(preedit_.c_str());
-  if (cursor_pos)
+  }
+  if (cursor_pos) {
     *cursor_pos = g_utf8_strlen(preedit_.c_str(), preedit_cursor_pos_);
+  }
   if (styles) {
     *styles = pango_attr_list_new();
-    for (const auto& style : preedit_styles_)
+    for (const auto& style : preedit_styles_) {
       pango_attr_list_insert(*styles, ToPangoAttribute(style));
+    }
   }
 }
 
@@ -385,8 +393,9 @@ void CrosGtkIMContext::Reset() {
 void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
   double x = 0, y = 0;
 #ifdef GTK4
-  if (!client_widget_)
+  if (!client_widget_) {
     return;
+  }
 
   auto* native = gtk_widget_get_native(client_widget_);
   auto top_level_point = GRAPHENE_POINT_INIT(0.f, 0.f);
@@ -406,8 +415,9 @@ void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
   x += offset_x;
   y += offset_y;
 #else
-  if (!gdk_window_)
+  if (!gdk_window_) {
     return;
+  }
 
   int offset_x = 0, offset_y = 0;
   gdk_window_get_origin(gdk_window_, &offset_x, &offset_y);
@@ -451,11 +461,13 @@ void CrosGtkIMContext::BackendObserver::SetPreedit(
   context_->preedit_ = preedit;
   context_->preedit_cursor_pos_ = cursor;
   context_->preedit_styles_ = styles;
-  if (was_empty && !preedit.empty())
+  if (was_empty && !preedit.empty()) {
     g_signal_emit_by_name(context_, "preedit-start");
+  }
   g_signal_emit_by_name(context_, "preedit-changed");
-  if (!was_empty && preedit.empty())
+  if (!was_empty && preedit.empty()) {
     g_signal_emit_by_name(context_, "preedit-end");
+  }
 }
 
 void CrosGtkIMContext::BackendObserver::Commit(const std::string& text) {
@@ -483,8 +495,9 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   // TODO(b/283915925): In GTK4, gdkevent struct is readonly and we cannot
   // construct new events. Consider moving KeySym to sommelier side.
 #else
-  if (!context_->gdk_window_)
+  if (!context_->gdk_window_) {
     return;
+  }
 
   // TODO(timloh): Chrome appears to only send press events currently.
   GdkEvent* raw_event = gdk_event_new(
@@ -536,8 +549,9 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
 void CrosGtkIMContext::Activate() {
 #ifdef GTK4
   // GTK4 may trigger multiple calls to Activate() (b/294469470).
-  if (backend_->IsActive())
+  if (backend_->IsActive()) {
     return;
+  }
 
   if (!root_surface_) {
     LOG(WARNING) << "Tried to activate without an active window.";
@@ -586,8 +600,9 @@ void CrosGtkIMContext::Activate() {
   backend_->SetContentType(
       ConvertContentType(gtk_hints, gtk_purpose, supports_preedit_));
 
-  if (!(gtk_hints & GTK_INPUT_HINT_INHIBIT_OSK))
+  if (!(gtk_hints & GTK_INPUT_HINT_INHIBIT_OSK)) {
     backend_->ShowInputPanel();
+  }
 }
 
 }  // namespace gtk

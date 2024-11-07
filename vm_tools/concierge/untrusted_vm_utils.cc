@@ -56,10 +56,12 @@ UntrustedVMUtils::MitigationStatus GetL1TFMitigationStatus(
   }
 
   std::string_view processor_mitigation_status = l1tf_statuses[0];
-  if (processor_mitigation_status == "Not affected")
+  if (processor_mitigation_status == "Not affected") {
     return UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE;
-  if (processor_mitigation_status != "Mitigation: PTE Inversion")
+  }
+  if (processor_mitigation_status != "Mitigation: PTE Inversion") {
     return UntrustedVMUtils::MitigationStatus::VULNERABLE;
+  }
 
   if (num_statuses >= 2) {
     std::string_view vmx_mitigation_status = l1tf_statuses[1];
@@ -72,10 +74,12 @@ UntrustedVMUtils::MitigationStatus GetL1TFMitigationStatus(
   // Only a maximum of 3 statuses are expected.
   if (num_statuses == 3) {
     std::string_view smt_mitigation_status = l1tf_statuses[2];
-    if (smt_mitigation_status == "SMT vulnerable")
+    if (smt_mitigation_status == "SMT vulnerable") {
       return UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED;
-    if (smt_mitigation_status != "SMT disabled")
+    }
+    if (smt_mitigation_status != "SMT disabled") {
       return UntrustedVMUtils::MitigationStatus::VULNERABLE;
+    }
   }
 
   return UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE;
@@ -103,24 +107,32 @@ UntrustedVMUtils::MitigationStatus GetMDSMitigationStatus(
   }
 
   std::string_view processor_mitigation_status = mds_statuses[0];
-  if (processor_mitigation_status == "Not affected")
+  if (processor_mitigation_status == "Not affected") {
     return UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE;
-  if (processor_mitigation_status.find("Vulnerable") != std::string_view::npos)
+  }
+  if (processor_mitigation_status.find("Vulnerable") !=
+      std::string_view::npos) {
     return UntrustedVMUtils::MitigationStatus::VULNERABLE;
-  if (processor_mitigation_status != "Mitigation: Clear CPU buffers")
+  }
+  if (processor_mitigation_status != "Mitigation: Clear CPU buffers") {
     return UntrustedVMUtils::MitigationStatus::VULNERABLE;
+  }
 
   // Only a maximum of 2 statuses are expected.
   if (num_statuses == 2) {
     std::string_view smt_mitigation_status = mds_statuses[1];
-    if (smt_mitigation_status == "SMT vulnerable")
+    if (smt_mitigation_status == "SMT vulnerable") {
       return UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED;
-    if (smt_mitigation_status == "SMT mitigated")
+    }
+    if (smt_mitigation_status == "SMT mitigated") {
       return UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED;
-    if (smt_mitigation_status == "SMT Host state unknown")
+    }
+    if (smt_mitigation_status == "SMT Host state unknown") {
       return UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED;
-    if (smt_mitigation_status != "SMT disabled")
+    }
+    if (smt_mitigation_status != "SMT disabled") {
       return UntrustedVMUtils::MitigationStatus::VULNERABLE;
+    }
   }
 
   return UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE;
@@ -132,8 +144,9 @@ UntrustedVMUtils::MitigationStatus GetMDSMitigationStatus(
 UntrustedVMUtils::KernelVersionAndMajorRevision
 UntrustedVMUtils::GetKernelVersion() {
   struct utsname buf;
-  if (uname(&buf))
+  if (uname(&buf)) {
     return std::make_pair(INT_MIN, INT_MIN);
+  }
 
   // Parse uname result in the form of x.yy.zzz. The parsed data should be in
   // the expected format.
@@ -167,8 +180,9 @@ UntrustedVMUtils::UntrustedVMUtils(base::FilePath l1tf_status_path,
 UntrustedVMUtils::MitigationStatus
 UntrustedVMUtils::CheckUntrustedVMMitigationStatus() const {
   MitigationStatus status = GetL1TFMitigationStatus(l1tf_status_path_);
-  if (status != MitigationStatus::NOT_VULNERABLE)
+  if (status != MitigationStatus::NOT_VULNERABLE) {
     return status;
+  }
 
   return GetMDSMitigationStatus(mds_status_path_);
 }

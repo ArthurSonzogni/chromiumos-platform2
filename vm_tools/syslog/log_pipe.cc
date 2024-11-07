@@ -304,8 +304,9 @@ void LogPipeManager::OnSignalConnected(const std::string& interface_name,
                                        const std::string& signal_name,
                                        bool is_connected) {
   DCHECK_EQ(interface_name, concierge::kVmConciergeInterface);
-  if (!is_connected)
+  if (!is_connected) {
     LOG(ERROR) << "Failed to connect to signal: " << signal_name;
+  }
 
   if (signal_name == concierge::kVmStartingUpSignal) {
     is_vm_started_signal_connected_ = is_connected;

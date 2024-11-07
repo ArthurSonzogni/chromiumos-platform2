@@ -26,8 +26,9 @@ void HandleSynchronousDBusMethodCall(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   auto response = handler.Run(method_call);
-  if (!response)
+  if (!response) {
     response = dbus::Response::FromMethodCall(method_call);
+  }
 
   std::move(response_sender).Run(std::move(response));
 }
@@ -46,8 +47,9 @@ std::unique_ptr<FileChooserDBusService> FileChooserDBusService::Create(
     vm_tools::garcon::HostNotifier* host_notifier) {
   auto service = base::WrapUnique(new FileChooserDBusService(host_notifier));
 
-  if (!service->Init())
+  if (!service->Init()) {
     return nullptr;
+  }
 
   return service;
 }

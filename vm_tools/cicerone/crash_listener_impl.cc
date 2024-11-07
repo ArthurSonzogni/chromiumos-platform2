@@ -126,8 +126,9 @@ grpc::Status CrashListenerImpl::SendCrashReport(grpc::ServerContext* ctx,
   crash_reporter.BindFd(read.get(), 0 /* stdin */);
   crash_reporter.SetCloseUnusedFileDescriptors(true);
 
-  if (!crash_reporter.Start())
+  if (!crash_reporter.Start()) {
     return {grpc::UNKNOWN, "Failed to start crash_reporter"};
+  }
 
   // Close the read end of the pipe after passing it to the child process.
   read.reset();
@@ -149,10 +150,11 @@ grpc::Status CrashListenerImpl::SendCrashReport(grpc::ServerContext* ctx,
   write.reset();
 
   int exit_status = crash_reporter.Wait();
-  if (exit_status == 0)
+  if (exit_status == 0) {
     return grpc::Status::OK;
-  else
+  } else {
     return {grpc::UNKNOWN, "Crash_reporter encountered an error"};
+  }
 }
 
 CrashReport CrashListenerImpl::ModifyCrashReport(

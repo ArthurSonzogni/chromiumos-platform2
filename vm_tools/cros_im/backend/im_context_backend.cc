@@ -82,12 +82,15 @@ IMContextBackend::~IMContextBackend() {
     Deactivate();
   }
 
-  if (text_input_crostini_)
+  if (text_input_crostini_) {
     zcr_text_input_crostini_v1_destroy(text_input_crostini_);
-  if (extended_text_input_)
+  }
+  if (extended_text_input_) {
     zcr_extended_text_input_v1_destroy(extended_text_input_);
-  if (text_input_)
+  }
+  if (text_input_) {
     zwp_text_input_v1_destroy(text_input_);
+  }
 }
 
 bool IMContextBackend::IsActive() {
@@ -118,42 +121,48 @@ void IMContextBackend::ActivateX11(uint32_t x11_id) {
 }
 
 void IMContextBackend::Deactivate() {
-  if (!text_input_)
+  if (!text_input_) {
     return;
+  }
   if (!is_active_) {
     LOG(WARNING)
         << "Attempted to deactivate text input which was not activated.";
     return;
   }
 
-  if (virtual_keyboard_enabled_)
+  if (virtual_keyboard_enabled_) {
     zwp_text_input_v1_hide_input_panel(text_input_);
+  }
   zwp_text_input_v1_deactivate(text_input_, WaylandManager::Get()->GetSeat());
   is_active_ = false;
 }
 
 void IMContextBackend::ShowInputPanel() {
-  if (!EnsureInitialized() || !virtual_keyboard_enabled_)
+  if (!EnsureInitialized() || !virtual_keyboard_enabled_) {
     return;
+  }
   zwp_text_input_v1_show_input_panel(text_input_);
 }
 
 void IMContextBackend::Reset() {
-  if (!text_input_)
+  if (!text_input_) {
     return;
+  }
   zwp_text_input_v1_reset(text_input_);
 }
 
 void IMContextBackend::SetContentTypeOld(ContentTypeOld content_type) {
-  if (!EnsureInitialized())
+  if (!EnsureInitialized()) {
     return;
+  }
   zwp_text_input_v1_set_content_type(text_input_, content_type.hints,
                                      content_type.purpose);
 }
 
 void IMContextBackend::SetContentType(ContentType content_type) {
-  if (!EnsureInitialized())
+  if (!EnsureInitialized()) {
     return;
+  }
   zcr_extended_text_input_v1_set_input_type(
       extended_text_input_, content_type.input_type, content_type.input_mode,
       content_type.input_flags, content_type.learning_mode,
@@ -161,24 +170,28 @@ void IMContextBackend::SetContentType(ContentType content_type) {
 }
 
 void IMContextBackend::SetCursorLocation(int x, int y, int width, int height) {
-  if (!EnsureInitialized())
+  if (!EnsureInitialized()) {
     return;
+  }
   zwp_text_input_v1_set_cursor_rectangle(text_input_, x, y, width, height);
 }
 
 void IMContextBackend::SetSupportsSurrounding(bool is_supported) {
-  if (!EnsureInitialized())
+  if (!EnsureInitialized()) {
     return;
+  }
   if (WaylandManager::Get()->GetTextInputExtensionVersion() <
-      ZCR_EXTENDED_TEXT_INPUT_V1_SET_SURROUNDING_TEXT_SUPPORT_SINCE_VERSION)
+      ZCR_EXTENDED_TEXT_INPUT_V1_SET_SURROUNDING_TEXT_SUPPORT_SINCE_VERSION) {
     return;
+  }
   zcr_extended_text_input_v1_set_surrounding_text_support(extended_text_input_,
                                                           is_supported);
 }
 
 bool IMContextBackend::EnsureInitialized() {
-  if (text_input_)
+  if (text_input_) {
     return true;
+  }
 
   text_input_ =
       WaylandManager::Get()->CreateTextInput(&text_input_listener_, this);

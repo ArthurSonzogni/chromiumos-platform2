@@ -109,8 +109,9 @@ const VariationsFeature kOverrideLmkdPsiDefaultsFeature{
 // file when in dev mode.
 base::FilePath GetImagePath(const base::FilePath& image_path,
                             bool is_dev_mode) {
-  if (!is_dev_mode)
+  if (!is_dev_mode) {
     return image_path;
+  }
 
   // When in dev mode, the Android images might be on the stateful partition and
   // |kRootfsPath| might be a symlink to the stateful partition image file. In
@@ -123,10 +124,12 @@ base::FilePath GetImagePath(const base::FilePath& image_path,
   // We cannot use base::NormalizeFilePath because the function fails
   // if |path| points to a directory (for Windows compatibility.)
   char buf[PATH_MAX] = {};
-  if (realpath(image_path.value().c_str(), buf))
+  if (realpath(image_path.value().c_str(), buf)) {
     return base::FilePath(buf);
-  if (errno != ENOENT)
+  }
+  if (errno != ENOENT) {
     PLOG(WARNING) << "Failed to resolve " << image_path.value();
+  }
   return image_path;
 }
 
@@ -214,17 +217,21 @@ bool BoostArcVmCgroups(double boost_value) {
   const base::FilePath arcvm_cgroup = base::FilePath(kArcvmCpuCgroup);
   const base::FilePath arcvm_vcpu_cgroup = base::FilePath(kArcvmVcpuCpuCgroup);
 
-  if (!UpdateCpuLatencySensitive(arcvm_cgroup, true))
+  if (!UpdateCpuLatencySensitive(arcvm_cgroup, true)) {
     ret = false;
+  }
 
-  if (!UpdateCpuLatencySensitive(arcvm_vcpu_cgroup, true))
+  if (!UpdateCpuLatencySensitive(arcvm_vcpu_cgroup, true)) {
     ret = false;
+  }
 
-  if (!UpdateCpuUclampMin(arcvm_cgroup, boost_value))
+  if (!UpdateCpuUclampMin(arcvm_cgroup, boost_value)) {
     ret = false;
+  }
 
-  if (!UpdateCpuUclampMin(arcvm_vcpu_cgroup, boost_value))
+  if (!UpdateCpuUclampMin(arcvm_vcpu_cgroup, boost_value)) {
     ret = false;
+  }
 
   return ret;
 }
@@ -408,8 +415,9 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   base::FilePath data_disk_path;
   if (request.disks().size() > kDataDiskIndex) {
     const std::string disk_path = request.disks()[kDataDiskIndex].path();
-    if (IsValidDataImagePath(base::FilePath(disk_path)))
+    if (IsValidDataImagePath(base::FilePath(disk_path))) {
       data_disk_path = base::FilePath(disk_path);
+    }
   }
 
   // Create the runtime directory.
@@ -526,8 +534,9 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   ArcVmCPUTopology topology(request.cpus(), 0);
 
   // We create only 1 RT VCPU for the time being
-  if (request.enable_rt_vcpu())
+  if (request.enable_rt_vcpu()) {
     topology.SetNumRTCPUs(1);
+  }
 
   topology.CreateCPUAffinity();
 
@@ -721,8 +730,9 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   double vm_boost = topology.GlobalVMBoost();
   if (vm_boost > 0.0) {
-    if (!BoostArcVmCgroups(vm_boost))
+    if (!BoostArcVmCgroups(vm_boost)) {
       LOG(WARNING) << "Failed to boost the ARCVM to " << vm_boost;
+    }
   }
 
   response.set_success(true);

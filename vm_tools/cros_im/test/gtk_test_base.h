@@ -141,8 +141,9 @@ class GtkTestBase : public ::testing::Test {
 
   void RunUntilIdle() {
     GMainContext* main_context = g_main_context_default();
-    while (g_main_context_pending(main_context))
+    while (g_main_context_pending(main_context)) {
       g_main_context_iteration(main_context, /*may_block=*/TRUE);
+    }
   }
 
   // The existing g_application_run() in GTK will complete all queued requests

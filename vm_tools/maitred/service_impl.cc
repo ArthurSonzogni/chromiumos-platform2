@@ -603,8 +603,9 @@ grpc::Status ServiceImpl::OnHostNetworkChanged(
 
   // Send SIGHUP to dnsmasq to flush caches.
   base::NamedProcessIterator iter("dnsmasq", nullptr);
-  while (const base::ProcessEntry* entry = iter.NextProcessEntry())
+  while (const base::ProcessEntry* entry = iter.NextProcessEntry()) {
     kill(entry->pid(), SIGHUP);
+  }
 
   // TODO(http://crbug/1058730): Existing sockets should also be shut down.
   return grpc::Status::OK;

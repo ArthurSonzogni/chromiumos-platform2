@@ -77,16 +77,21 @@ void sl_configure_window(struct sl_window* window) {
                             window->next_config.mask,
                             window->next_config.values);
 
-    if (window->next_config.mask & XCB_CONFIG_WINDOW_X)
+    if (window->next_config.mask & XCB_CONFIG_WINDOW_X) {
       x = window->next_config.values[i++];
-    if (window->next_config.mask & XCB_CONFIG_WINDOW_Y)
+    }
+    if (window->next_config.mask & XCB_CONFIG_WINDOW_Y) {
       y = window->next_config.values[i++];
-    if (window->next_config.mask & XCB_CONFIG_WINDOW_WIDTH)
+    }
+    if (window->next_config.mask & XCB_CONFIG_WINDOW_WIDTH) {
       window->width = window->next_config.values[i++];
-    if (window->next_config.mask & XCB_CONFIG_WINDOW_HEIGHT)
+    }
+    if (window->next_config.mask & XCB_CONFIG_WINDOW_HEIGHT) {
       window->height = window->next_config.values[i++];
-    if (window->next_config.mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
+    }
+    if (window->next_config.mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) {
       window->border_width = window->next_config.values[i++];
+    }
 
     // Set x/y to origin in case window gravity is not northwest as expected.
     assert(window->managed);
@@ -158,16 +163,19 @@ void sl_send_configure_notify(struct sl_window* window) {
 
 int sl_process_pending_configure_acks(struct sl_window* window,
                                       struct sl_host_surface* host_surface) {
-  if (!window->pending_config.serial)
+  if (!window->pending_config.serial) {
     return 0;
+  }
 
 #ifdef COMMIT_LOOP_FIX
   // Do not commit/ack if there is nothing to change.
   //
   // TODO(b/181077580): we should never do this, but avoiding it requires a
   // more systemic fix
-  if (!window->pending_config.mask && window->pending_config.states_length == 0)
+  if (!window->pending_config.mask &&
+      window->pending_config.states_length == 0) {
     return 0;
+  }
 #endif
 
   if (window->managed && host_surface) {
@@ -197,16 +205,18 @@ int sl_process_pending_configure_acks(struct sl_window* window,
   }
   window->pending_config.serial = 0;
 
-  if (window->next_config.serial)
+  if (window->next_config.serial) {
     sl_configure_window(window);
+  }
 
   return 1;
 }
 
 void sl_commit(struct sl_window* window, struct sl_host_surface* host_surface) {
   if (sl_process_pending_configure_acks(window, host_surface)) {
-    if (host_surface)
+    if (host_surface) {
       wl_surface_commit(host_surface->proxy);
+    }
   }
 }
 
@@ -231,9 +241,10 @@ static void sl_internal_xdg_surface_configure(void* data,
 
     host_resource =
         wl_client_get_object(window->ctx->client, window->host_surface_id);
-    if (host_resource)
+    if (host_resource) {
       host_surface = static_cast<sl_host_surface*>(
           wl_resource_get_user_data(host_resource));
+    }
 
     sl_configure_window(window);
     sl_commit(window, host_surface);
@@ -813,8 +824,9 @@ void sl_internal_toplevel_configure_state(struct sl_window* window,
       window->next_config.states[state_idx++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_FOCUSED].value;
     }
-    if (*state == XDG_TOPLEVEL_STATE_RESIZING)
+    if (*state == XDG_TOPLEVEL_STATE_RESIZING) {
       window->allow_resize = 0;
+    }
   }
 
   sl_internal_toplevel_configure_set_activated(window, activated);
@@ -1016,16 +1028,20 @@ void sl_toplevel_send_window_bounds_to_host(struct sl_window* window) {
   int32_t w = window->width;
   int32_t h = window->height;
   if (window->size_flags & P_MIN_SIZE) {
-    if (w < window->min_width)
+    if (w < window->min_width) {
       w = window->min_width;
-    if (h < window->min_height)
+    }
+    if (h < window->min_height) {
       h = window->min_height;
+    }
   }
   if (window->size_flags & P_MAX_SIZE) {
-    if (w > window->max_width)
+    if (w > window->max_width) {
       w = window->max_width;
-    if (h > window->max_height)
+    }
+    if (h > window->max_height) {
       h = window->max_height;
+    }
   }
 
   sl_host_output* output = sl_transform_guest_position_to_host_position(
@@ -1048,8 +1064,9 @@ void sl_toplevel_send_window_bounds_to_host(struct sl_window* window) {
 void sl_update_application_id(struct sl_context* ctx,
                               struct sl_window* window) {
   TRACE_EVENT("other", "sl_update_application_id");
-  if (!window->aura_surface)
+  if (!window->aura_surface) {
     return;
+  }
   if (ctx->application_id) {
     zaura_surface_set_application_id(window->aura_surface, ctx->application_id);
     return;
@@ -1143,8 +1160,9 @@ void sl_window_update(struct sl_window* window) {
 
       wl_list_for_each(sibling, &ctx->windows, link) {
         if (sibling->id == window->transient_for) {
-          if (sibling->xdg_toplevel)
+          if (sibling->xdg_toplevel) {
             parent = sibling;
+          }
           break;
         }
       }
@@ -1165,23 +1183,27 @@ void sl_window_update(struct sl_window* window) {
       struct wl_resource* sibling_host_resource;
       struct sl_host_surface* sibling_host_surface;
 
-      if (!sibling->realized)
+      if (!sibling->realized) {
         continue;
+      }
 
       sibling_host_resource =
           wl_client_get_object(ctx->client, sibling->host_surface_id);
-      if (!sibling_host_resource)
+      if (!sibling_host_resource) {
         continue;
+      }
 
       // Any parent will do but prefer last event window.
       sibling_host_surface = static_cast<sl_host_surface*>(
           wl_resource_get_user_data(sibling_host_resource));
-      if (parent_last_event_serial > sibling_host_surface->last_event_serial)
+      if (parent_last_event_serial > sibling_host_surface->last_event_serial) {
         continue;
+      }
 
       // Do not use ourselves as the parent.
-      if (sibling->host_surface_id == window->host_surface_id)
+      if (sibling->host_surface_id == window->host_surface_id) {
         continue;
+      }
 
       parent = sibling;
       parent_last_event_serial = sibling_host_surface->last_event_serial;
@@ -1266,10 +1288,12 @@ void sl_window_update(struct sl_window* window) {
                                   &sl_internal_zaura_toplevel_listener, window);
     }
 
-    if (parent)
+    if (parent) {
       xdg_toplevel_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
-    if (window->name)
+    }
+    if (window->name) {
       xdg_toplevel_set_title(window->xdg_toplevel, window->name);
+    }
     if (window->size_flags & P_MIN_SIZE) {
       int32_t minw = window->min_width;
       int32_t minh = window->min_height;
@@ -1331,8 +1355,9 @@ void sl_window_update(struct sl_window* window) {
   wl_surface_commit(host_surface->proxy);
 #endif
 
-  if (host_surface->contents_width && host_surface->contents_height)
+  if (host_surface->contents_width && host_surface->contents_height) {
     window->realized = 1;
+  }
 }
 
 #ifdef QUIRKS_SUPPORT

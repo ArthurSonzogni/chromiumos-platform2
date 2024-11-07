@@ -425,10 +425,12 @@ static void sl_internal_gamepad_removed(void* data,
          host_gamepad->state == kStateActivated ||
          host_gamepad->state == kStateError);
 
-  if (host_gamepad->uinput_dev != nullptr)
+  if (host_gamepad->uinput_dev != nullptr) {
     Libevdev::Get()->uinput_destroy(host_gamepad->uinput_dev);
-  if (host_gamepad->ev_dev != nullptr)
+  }
+  if (host_gamepad->ev_dev != nullptr) {
     Libevdev::Get()->free(host_gamepad->ev_dev);
+  }
 
   zcr_gamepad_v2_destroy(gamepad);
 
@@ -464,11 +466,13 @@ static void sl_internal_gamepad_axis(void* data,
   TRACE_EVENT("gaming", "sl_internal_gamepad_axis");
   struct sl_host_gamepad* host_gamepad = (struct sl_host_gamepad*)data;
 
-  if (host_gamepad->state != kStateActivated)
+  if (host_gamepad->state != kStateActivated) {
     return;
+  }
 
-  if (!remap_input(host_gamepad, axis))
+  if (!remap_input(host_gamepad, axis)) {
     return;
+  }
 
   // Note: incoming time is ignored, it will be regenerated from current time.
   Libevdev::Get()->uinput_write_event(host_gamepad->uinput_dev, EV_ABS, axis,
@@ -484,12 +488,14 @@ static void sl_internal_gamepad_button(void* data,
   TRACE_EVENT("gaming", "sl_internal_gamepad_button");
   struct sl_host_gamepad* host_gamepad = (struct sl_host_gamepad*)data;
 
-  if (host_gamepad->state != kStateActivated)
+  if (host_gamepad->state != kStateActivated) {
     return;
+  }
 
   uint32_t original_button = button;
-  if (!remap_input(host_gamepad, button))
+  if (!remap_input(host_gamepad, button)) {
     return;
+  }
 
   // Note: Exo wayland server always sends analog==0, only pay attention
   // to state.
@@ -503,9 +509,10 @@ static void sl_internal_gamepad_button(void* data,
          original_button == BTN_DPAD_RIGHT)) {
       // BTN_DPAD_UP and BTN_DPAD_LEFT are the equivalent of negative DPAD axis
       // events and we need to correct their pressed (1) values.
-      if (value == 1 &&
-          (original_button == BTN_DPAD_UP || original_button == BTN_DPAD_LEFT))
+      if (value == 1 && (original_button == BTN_DPAD_UP ||
+                         original_button == BTN_DPAD_LEFT)) {
         value = -1;
+      }
       Libevdev::Get()->uinput_write_event(host_gamepad->uinput_dev, EV_ABS,
                                           button, value);
       return;
@@ -523,8 +530,9 @@ static void sl_internal_gamepad_frame(void* data,
   TRACE_EVENT("gaming", "sl_internal_gamepad_frame");
   struct sl_host_gamepad* host_gamepad = (struct sl_host_gamepad*)data;
 
-  if (host_gamepad->state != kStateActivated)
+  if (host_gamepad->state != kStateActivated) {
     return;
+  }
 
   // Note: incoming time is ignored, it will be regenerated from current time.
   Libevdev::Get()->uinput_write_event(host_gamepad->uinput_dev, EV_SYN,
@@ -553,8 +561,9 @@ static void sl_internal_gamepad_axis_added(void* data,
     return;
   }
 
-  if (!remap_input(host_gamepad, index))
+  if (!remap_input(host_gamepad, index)) {
     return;
+  }
 
   Libevdev::Get()->enable_event_code(host_gamepad->ev_dev, EV_ABS, index,
                                      &info);
@@ -659,9 +668,10 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
   Libevdev::Get()->set_id_version(host_gamepad->ev_dev, kXboxVersion);
 
   // Enable common set of buttons
-  for (unsigned int i = 0; i < ARRAY_SIZE(kButtons); i++)
+  for (unsigned int i = 0; i < ARRAY_SIZE(kButtons); i++) {
     Libevdev::Get()->enable_event_code(host_gamepad->ev_dev, EV_KEY,
                                        kButtons[i], nullptr);
+  }
   LOG(INFO) << "Gamepad added: " << host_gamepad;
 }
 

@@ -125,8 +125,9 @@ base::FilePath LocateIconFile(const std::string& desktop_file_id,
   // Also check the default pixmaps dir as a last resort.
   base::FilePath test_path =
       base::FilePath(kDefaultPixmapsDir).Append(icon_filename);
-  if (base::PathExists(test_path))
+  if (base::PathExists(test_path)) {
     return test_path;
+  }
 
   LOG(INFO) << "No icon file found for " << desktop_file_id;
   return base::FilePath();

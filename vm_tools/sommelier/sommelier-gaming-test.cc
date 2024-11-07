@@ -311,8 +311,9 @@ TEST_F(GamepadTest, MappingsWorkCorrectly) {
   for (auto& it : kDeviceMappings) {
     // The DualShock3 (PS3) gamepad has special-case handling and we
     // cover this in a separate test.
-    if (it.second == &kDualShock3Mapping)
+    if (it.second == &kDualShock3Mapping) {
       continue;
+    }
     struct zcr_gamepad_v2* gamepad;
     struct libevdev* ev_dev;
     SetupGamepad(&ctx, gamepad, ev_dev, "Xbox",

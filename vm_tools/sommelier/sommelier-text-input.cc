@@ -100,8 +100,9 @@ static void sl_text_input_set_cursor_rectangle(wl_client* client,
   struct sl_host_text_input* host =
       static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
 
-  if (!host->active_surface)
+  if (!host->active_surface) {
     return;
+  }
 
   int32_t x1 = x;
   int32_t y1 = y;
@@ -569,14 +570,17 @@ static void sl_text_input_crostini_activate_x11(wl_client* client,
 
   struct sl_window* window;
   wl_list_for_each(window, &ctx->windows, link) {
-    if (window->id != x11_window_id)
+    if (window->id != x11_window_id) {
       continue;
-    if (!window->host_surface_id)
+    }
+    if (!window->host_surface_id) {
       return;
+    }
     struct wl_resource* host_window_resource =
         wl_client_get_object(ctx->client, window->host_surface_id);
-    if (!host_window_resource)
+    if (!host_window_resource) {
       return;
+    }
     sl_host_surface* host_surface = static_cast<sl_host_surface*>(
         wl_resource_get_user_data(host_window_resource));
     host_text_input->active_surface = host_surface;
