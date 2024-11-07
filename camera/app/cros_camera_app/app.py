@@ -11,7 +11,6 @@ is not powerful enough in your use cases.
 import base64
 import contextlib
 import enum
-import json
 import logging
 import pathlib
 import time
@@ -28,19 +27,23 @@ _TEST_EXTENSION_URL = (
 
 _CCA_URL = "chrome://camera-app/views/main.html"
 
-# Evaluating this template would dynamically import a JS module via a blob
-# string, and exposes it on window.ext.
-_EXTENSION_JS_TEMPLATE = """
-(async () => {
-  const blob = new Blob([%s], {type: 'text/javascript'});
+# Calling this function will dynamically import a JS module via a blob string,
+# and exposes it under `window` with the given name.
+_IMPORT_JS_MODULE = """
+async (name, code) => {
+  const blob = new Blob([code], {type: 'text/javascript'});
   const url = URL.createObjectURL(blob);
   try {
-    window.ext = await import(url);
+    window[name] = await import(url);
   } finally {
     URL.revokeObjectURL(url);
   }
-})()
+}
 """
+
+
+def _script_path(file: str) -> pathlib.Path:
+    return pathlib.Path(__file__).parent / file
 
 
 class Facing(enum.Enum):
@@ -62,7 +65,7 @@ class Facing(enum.Enum):
         elif self is Facing.EXTERNAL:
             return "external"
         else:
-            raise Exception("Unexpected enum value %s" % self)
+            raise Exception(f"Unexpected enum value {self}")
 
 
 class Mode(enum.Enum):
@@ -106,10 +109,8 @@ class CameraApp:
         # The JavaScript code is encapsulated as a module here, so it's safe to
         # be evaluated multiple times in case the previous connection is
         # broken. The global `window.ext` would be overridden by the latest run.
-        extension_js_path = pathlib.Path(__file__).parent / "extension.js"
-        with open(extension_js_path, encoding="utf-8") as f:
-            code = _EXTENSION_JS_TEMPLATE % json.dumps(f.read())
-            page.eval(code)
+        with open(_script_path("extension.js"), encoding="utf-8") as f:
+            page.call(_IMPORT_JS_MODULE, "ext", f.read())
 
         return page
 
@@ -141,6 +142,19 @@ class CameraApp:
         if mode is not None:
             opts["mode"] = mode.to_js_value()
         self.ext.call("ext.cca.open", opts)
+
+        if self.page is None:
+            raise Exception("Failed to open CCA")
+
+        # A reload is necessary because `page.setBypassCSP` only takes effect
+        # on the next navigation. Omitting this reload may appear to work
+        # sometimes due to a race condition between the Content Security Policy
+        # (CSP) initialization and the Chrome DevTools Protocol (CDP)
+        # connection.
+        self.page.rpc("Page.reload", {})
+        with open(_script_path("app.js"), encoding="utf-8") as f:
+            self.page.call(_IMPORT_JS_MODULE, "app", f.read())
+        self.page.call("app.log", "App opened")
 
     def close(self) -> None:
         """Closes all the camera app windows."""

@@ -3,6 +3,11 @@
 // found in the LICENSE file.
 
 /**
+ * @fileoverview This file will be dynamic imported under the test extension
+ * page with access to the chrome.* API.
+ */
+
+/**
  * Promisifies the given function that is using the callback style with
  * chrome.runtime.lastError for error handling.
  * @param {function(*): *} fn A function to be promisified.
@@ -127,6 +132,7 @@ const autotest = promisifyObject(chrome.autotestPrivate);
 const automation = promisifyObject(chrome.automation);
 
 class CCA {
+  static appFinder = {attributes: {name: 'Camera', className: 'BrowserFrame'}};
   /**
    * Gets the target automation node in CCA window with automatic polling.
    * @param {!FindParams} finder
@@ -135,8 +141,7 @@ class CCA {
   async getNode(finder) {
     return poll(async () => {
       let node = await automation.getDesktop();
-      const finders =
-          [{attributes: {name: 'Camera', className: 'BrowserFrame'}}, finder];
+      const finders = [CCA.appFinder, finder];
       for (const finder of finders) {
         node = node.find(finder);
         assert(
@@ -171,7 +176,7 @@ class CCA {
 
     await autotest.waitForSystemWebAppsInstall();
 
-    const url = new URL('chrome://camera-app/views/main.html')
+    const url = new URL('chrome://camera-app/views/main.html');
     if (facing !== undefined) {
       url.searchParams.append('facing', facing);
     }
@@ -179,6 +184,14 @@ class CCA {
       url.searchParams.append('mode', mode);
     }
     await autotest.launchSystemWebApp('Camera', url.href);
+
+    // Even if the launchSystemWebApp is resolved, the app may not be ready
+    // there to be connected by the CDP client. Wait until the BrowserFrame is
+    // there to avoid the race condition.
+    await poll(async () => {
+      const desktop = await automation.getDesktop();
+      assert(desktop.find(CCA.appFinder) !== null, 'Failed to find app');
+    });
 
     // TODO(shik): Wait until the preview is streaming.
     // TODO(shik): Check the landed facing.
