@@ -48,22 +48,25 @@ void AddFileToPack(Pack* pack,
 }
 
 bool PacksMatch(Pack* pack1, Pack* pack2) {
-  if (pack1->GetFileCount() != pack2->GetFileCount())
+  if (pack1->GetFileCount() != pack2->GetFileCount()) {
     return false;
+  }
 
   for (size_t i = 0; i < pack1->GetFileCount(); ++i) {
     FileEntry* const file1 = pack1->GetFile(i);
     FileEntry* const file2 = pack2->GetFile(i);
 
-    if (file1->pack_path() != file2->pack_path())
+    if (file1->pack_path() != file2->pack_path()) {
       return false;
+    }
 
     const std::vector<PackBlock> requests1 =
         file1->GetReadRequests(i /* pathidx */);
     const std::vector<PackBlock> requests2 =
         file2->GetReadRequests(i /* pathidx */);
-    if (requests1 != requests2)
+    if (requests1 != requests2) {
       return false;
+    }
   }
 
   return true;
@@ -250,8 +253,9 @@ TEST(Pack, InvalidFile) {
   content_broken = content;
   char* const path =
       (reinterpret_cast<PackPath*>(&content_broken[0] + paths_offset))->path;
-  for (size_t i = 0; i <= PACK_PATH_MAX; ++i)
+  for (size_t i = 0; i <= PACK_PATH_MAX; ++i) {
     path[i] = 'a';
+  }
   EXPECT_TRUE(base::WriteFile(pack_path, content_broken));
   EXPECT_FALSE(pack.Read(pack_name));
 

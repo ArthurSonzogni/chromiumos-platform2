@@ -63,8 +63,9 @@ void FileEntry::BuildFromReadRequests(
   read_map_.resize(max_offset, false);
   for (const auto& request : read_requests) {
     const off_t offset = request.offset / page_size;
-    for (size_t i = 0; i < request.length / page_size; ++i)
+    for (size_t i = 0; i < request.length / page_size; ++i) {
       read_map_[i + offset] = true;
+    }
   }
 }
 
@@ -78,15 +79,18 @@ std::vector<PackBlock> FileEntry::GetReadRequests(size_t pathidx) const {
   pack_block.pathidx = pathidx;
   while (true) {
     // Skip next empty pages.
-    while (index < read_map_.size() && !read_map_[index])
+    while (index < read_map_.size() && !read_map_[index]) {
       ++index;
-    if (index >= read_map_.size())
+    }
+    if (index >= read_map_.size()) {
       break;
+    }
     // Find continues range.
     pack_block.offset = page_size * index;
     ++index;
-    while (index < read_map_.size() && read_map_[index])
+    while (index < read_map_.size() && read_map_[index]) {
       ++index;
+    }
     pack_block.length = (page_size * index - pack_block.offset);
     pack_blocks.emplace_back(pack_block);
   }
@@ -95,8 +99,9 @@ std::vector<PackBlock> FileEntry::GetReadRequests(size_t pathidx) const {
 
 bool FileEntry::IsEmpty() const {
   for (bool value : read_map_) {
-    if (value)
+    if (value) {
       return false;
+    }
   }
   return true;
 }
@@ -136,34 +141,38 @@ void Pack::AddFile(std::unique_ptr<FileEntry> file) {
 
 FileEntry* Pack::FindFile(FileEntry* other_file) {
   for (auto& file : files_) {
-    if (file->pack_path() == other_file->pack_path())
+    if (file->pack_path() == other_file->pack_path()) {
       return file.get();
+    }
   }
   return nullptr;
 }
 
 bool Pack::Read(const std::string& path) {
   base::ScopedFD fd(open(path.c_str(), O_RDONLY | O_CLOEXEC));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
+  }
   return Read(fd.get());
 }
 
 bool Pack::Write(const std::string& path) const {
   base::ScopedFD fd(
       open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
+  }
   return Write(fd.get());
 }
 
 void Pack::TrimEmptyFiles() {
   auto it = files_.begin();
   while (it != files_.end()) {
-    if ((*it)->IsEmpty())
+    if ((*it)->IsEmpty()) {
       it = files_.erase(it);
-    else
+    } else {
       ++it;
+    }
   }
 }
 
@@ -172,8 +181,9 @@ void Pack::CalculateDifference(Pack* pack1, Pack* pack2, Pack* common) {
   for (size_t i = 0; i < pack1->GetFileCount(); ++i) {
     FileEntry* const file1 = pack1->GetFile(i);
     FileEntry* const file2 = pack2->FindFile(file1);
-    if (!file2)
+    if (!file2) {
       continue;
+    }
     std::unique_ptr<FileEntry> common_file =
         std::make_unique<FileEntry>(file1->pack_path());
     FileEntry::CalculateDifference(file1, file2, common_file.get());
@@ -189,8 +199,9 @@ bool Pack::Read(int fd) {
   files_.clear();
 
   char header[8];
-  if (!ReadBuffer(fd, header, sizeof(header)))
+  if (!ReadBuffer(fd, header, sizeof(header))) {
     return false;
+  }
 
   if (header[0] != 'u' || header[1] != 'r' || header[2] != 'a' ||
       header[3] != 2 ||                 /* version */
@@ -201,8 +212,9 @@ bool Pack::Read(int fd) {
   }
 
   // Rotational ureadahead pack is not used and not supported.
-  if (header[4] & PACK_ROTATIONAL)
+  if (header[4] & PACK_ROTATIONAL) {
     return false;
+  }
 
   time_t created;
   size_t num_groups;
@@ -213,12 +225,14 @@ bool Pack::Read(int fd) {
   }
 
   // ureadahead pack with groups is not used and not supported.
-  if (num_groups)
+  if (num_groups) {
     return false;
+  }
 
   size_t num_paths;
-  if (!ReadBuffer(fd, &num_paths, sizeof(num_paths)))
+  if (!ReadBuffer(fd, &num_paths, sizeof(num_paths))) {
     return false;
+  }
 
   for (size_t i = 0; i < num_paths; ++i) {
     PackPath pack_path;
@@ -227,14 +241,16 @@ bool Pack::Read(int fd) {
       return false;
     }
     // Validate 0 - terminated.
-    if (strnlen(pack_path.path, PACK_PATH_MAX) == PACK_PATH_MAX)
+    if (strnlen(pack_path.path, PACK_PATH_MAX) == PACK_PATH_MAX) {
       return false;
+    }
     files_.emplace_back(std::make_unique<FileEntry>(pack_path));
   }
 
   size_t num_blocks;
-  if (!ReadBuffer(fd, &num_blocks, sizeof(num_blocks)))
+  if (!ReadBuffer(fd, &num_blocks, sizeof(num_blocks))) {
     return false;
+  }
 
   std::vector<std::vector<PackBlock>> read_requests_per_file_index(
       files_.size());
@@ -249,13 +265,15 @@ bool Pack::Read(int fd) {
     read_requests_per_file_index[pack_block.pathidx].emplace_back(pack_block);
   }
   // Flash read requests for the each file.
-  for (size_t i = 0; i < read_requests_per_file_index.size(); ++i)
+  for (size_t i = 0; i < read_requests_per_file_index.size(); ++i) {
     files_[i]->BuildFromReadRequests(read_requests_per_file_index[i]);
+  }
 
   // Check if anything else is left for sanity.
   char temp;
-  if (ReadBuffer(fd, &temp, sizeof(temp)))
+  if (ReadBuffer(fd, &temp, sizeof(temp))) {
     return false;
+  }
 
   return true;
 }
@@ -275,12 +293,14 @@ bool Pack::Write(int fd) const {
   }
 
   const size_t num_paths = files_.size();
-  if (!WriteBuffer(fd, &num_paths, sizeof(num_paths)))
+  if (!WriteBuffer(fd, &num_paths, sizeof(num_paths))) {
     return false;
+  }
 
   for (size_t i = 0; i < num_paths; ++i) {
-    if (!WriteBuffer(fd, &files_[i]->pack_path(), sizeof(PackPath)))
+    if (!WriteBuffer(fd, &files_[i]->pack_path(), sizeof(PackPath))) {
       return false;
+    }
   }
 
   std::vector<PackBlock> pack_blocks;
@@ -293,12 +313,14 @@ bool Pack::Write(int fd) const {
 
   // Flash blocks for the whole pack.
   const size_t num_blocks = pack_blocks.size();
-  if (!WriteBuffer(fd, &num_blocks, sizeof(num_blocks)))
+  if (!WriteBuffer(fd, &num_blocks, sizeof(num_blocks))) {
     return false;
+  }
 
   for (size_t i = 0; i < num_blocks; ++i) {
-    if (!WriteBuffer(fd, &pack_blocks[i], sizeof(PackBlock)))
+    if (!WriteBuffer(fd, &pack_blocks[i], sizeof(PackBlock))) {
       return false;
+    }
   }
 
   return true;
