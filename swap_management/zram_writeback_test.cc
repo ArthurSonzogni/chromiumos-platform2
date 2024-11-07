@@ -4,6 +4,9 @@
 
 #include "swap_management/zram_writeback.h"
 
+#include <memory>
+#include <optional>
+#include <string>
 #include <utility>
 
 #include <absl/status/status.h>
@@ -65,6 +68,37 @@ class ZramWritebackTest : public ::testing::Test {
   MockUtils mock_util_;
   base::test::TaskEnvironment task_environment{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+
+  void ExpectWriteback(std::string mode,
+                       std::optional<uint32_t> idle_duration_seconds,
+                       uint32_t after_writeback_limit,
+                       int available,
+                       int total) {
+    // GetCurrentIdleTimeSec
+    if (idle_duration_seconds.has_value()) {
+      base::SystemMemoryInfoKB mock_meminfo;
+      mock_meminfo.available = available;
+      mock_meminfo.total = total;
+      EXPECT_CALL(mock_util_, GetSystemMemoryInfo())
+          .WillOnce(Return(mock_meminfo));
+      // MarkIdle
+      EXPECT_CALL(mock_util_,
+                  WriteFile(base::FilePath("/sys/block/zram0/idle"),
+                            std::to_string(idle_duration_seconds.value())))
+          .WillOnce(Return(absl::OkStatus()));
+    }
+    // InitiateWriteback
+    EXPECT_CALL(mock_util_,
+                WriteFile(base::FilePath("/sys/block/zram0/writeback"), mode))
+        .WillOnce(Return(absl::OkStatus()));
+    // GetWritebackLimit
+    EXPECT_CALL(
+        mock_util_,
+        ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
+        .WillOnce(DoAll(
+            SetArgPointee<1>(std::to_string(after_writeback_limit) + "\n"),
+            Return(absl::OkStatus())));
+  }
 };
 
 TEST_F(ZramWritebackTest, EnableWriteback) {
@@ -213,44 +247,46 @@ TEST_F(ZramWritebackTest, PeriodicWriteback) {
       mock_util_,
       ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
       .WillOnce(DoAll(SetArgPointee<1>("21918\n"), Return(absl::OkStatus())));
-  // huge_idle
-  // GetCurrentIdleTimeSec
-  base::SystemMemoryInfoKB mock_meminfo;
-  mock_meminfo.available = 346452;
-  mock_meminfo.total = 8144296;
-  EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
-  // MarkIdle
+
+  ExpectWriteback("huge_idle", 72150, 8845, 346452, 8144296);
+  ExpectWriteback("idle", 72150, 5000, 348332, 8144296);
+  ExpectWriteback("huge", std::nullopt, 5000, 348332, 8144296);
+
+  mock_zram_writeback_->PeriodicWriteback();
+}
+
+TEST_F(ZramWritebackTest, PeriodicWritebackSkipOnWriteLimit) {
+  InSequence s;
+
+  // GetAllowedWritebackLimit
   EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/idle"), "72150"))
-      .WillOnce(Return(absl::OkStatus()));
-  // InitiateWriteback
+              ReadFileToString(base::FilePath("/sys/block/zram0/mm_stat"), _))
+      .WillOnce(DoAll(
+          SetArgPointee<1>("4760850432 1936262113 1973989376        0 "
+                           "1975132160     8534     5979      530      531\n"),
+          Return(absl::OkStatus())));
+  EXPECT_CALL(mock_util_,
+              ReadFileToString(base::FilePath("/sys/block/zram0/bd_stat"), _))
+      .WillOnce(DoAll(SetArgPointee<1>("       1        0        1\n"),
+                      Return(absl::OkStatus())));
+  // SetWritebackLimit
   EXPECT_CALL(
       mock_util_,
-      WriteFile(base::FilePath("/sys/block/zram0/writeback"), "huge_idle"))
+      WriteFile(base::FilePath("/sys/block/zram0/writeback_limit_enable"), "1"))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(
+      mock_util_,
+      WriteFile(base::FilePath("/sys/block/zram0/writeback_limit"), "21918"))
       .WillOnce(Return(absl::OkStatus()));
   // GetWritebackLimit
   EXPECT_CALL(
       mock_util_,
       ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
-      .WillOnce(DoAll(SetArgPointee<1>("8845\n"), Return(absl::OkStatus())));
-  // idle
-  // GetCurrentIdleTimeSec
-  mock_meminfo.available = 348332;
-  EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
-  // MarkIdle
-  EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/idle"), "72150"))
-      .WillOnce(Return(absl::OkStatus()));
-  // InitiateWriteback
-  EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/writeback"), "idle"))
-      .WillOnce(Return(absl::UnknownError("Error: Input/output error Failed to "
-                                          "write /sys/block/zram0/writeback")));
-  // GetWritebackLimit
-  EXPECT_CALL(
-      mock_util_,
-      ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
-      .WillOnce(DoAll(SetArgPointee<1>("0\n"), Return(absl::OkStatus())));
+      .WillOnce(DoAll(SetArgPointee<1>("21918\n"), Return(absl::OkStatus())));
+
+  ExpectWriteback("huge_idle", 72150, 8845, 346452, 8144296);
+  ExpectWriteback("idle", 72150, 0, 348332, 8144296);
+  // Skip huge page writeback since after_writeback_limit was 0.
 
   mock_zram_writeback_->PeriodicWriteback();
 }
@@ -402,16 +438,9 @@ TEST_F(ZramWritebackTest, AdjustThresholdBySuspendTime) {
       mock_util_,
       ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
       .WillOnce(DoAll(SetArgPointee<1>("21918\n"), Return(absl::OkStatus())));
-  // huge_idle
-  // GetCurrentIdleTimeSec
-  base::SystemMemoryInfoKB mock_meminfo;
-  mock_meminfo.available = 346452;
-  mock_meminfo.total = 8144296;
-  EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
-  // MarkIdle (72150 + 3600)
-  EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/idle"), "75750"))
-      .WillOnce(Return(absl::CancelledError()));
+
+  // MarkIdle 75750 (= 72150 + 3600)
+  ExpectWriteback("huge_idle", 75750, 0, 346452, 8144296);
 
   SuspendHistory::Get()->OnSuspendImminent();
   SuspendHistory::Get()->OnSuspendDone(base::Hours(1));
