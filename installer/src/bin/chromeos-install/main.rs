@@ -13,7 +13,6 @@ mod process_util;
 use anyhow::{bail, Error, Result};
 use clap::Parser;
 use nix::unistd;
-use std::path::Path;
 use std::process::Command;
 
 use command_line::Args;
@@ -33,8 +32,8 @@ fn main() -> Result<()> {
 
     // If using a payload image, make sure it exists.
     if let Some(payload_image) = &args.payload_image {
-        if !Path::new(&payload_image).exists() {
-            bail!("No payload image found at {}", payload_image);
+        if !payload_image.exists() {
+            bail!("No payload image found at {}", payload_image.display());
         }
     }
 

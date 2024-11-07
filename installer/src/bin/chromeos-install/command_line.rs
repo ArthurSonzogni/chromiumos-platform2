@@ -8,6 +8,7 @@
 use crate::process_util::Environment;
 use clap::Parser;
 use std::ffi::OsString;
+use std::path::PathBuf;
 
 // To allow the default use of lvm to be controlled by USE flag, toggle this
 // bool based on the feature `lvm_default`.
@@ -33,7 +34,7 @@ const DEFAULT_KEY_FLAG_DEFAULT: bool = false;
 pub struct Args {
     /// Destination device
     #[arg(long)]
-    pub dst: Option<String>,
+    pub dst: Option<PathBuf>,
 
     /// Skip check to ensure destination is not removable
     #[arg(long)]
@@ -60,11 +61,11 @@ pub struct Args {
     // See `check_payload_image` in chromeos-install.sh to understand why.
     // I expect this to get worked out as we continue to rustify.
     #[arg(long, conflicts_with("skip_rootfs"))]
-    pub payload_image: Option<String>,
+    pub payload_image: Option<PathBuf>,
 
     /// Path to PMBR code to be installed
     #[arg(long)]
-    pub pmbr_code: Option<String>,
+    pub pmbr_code: Option<PathBuf>,
 
     /// Bios type to boot with (see postinst --bios)
     #[arg(long)]
@@ -100,7 +101,7 @@ pub struct Args {
 
     /// Path to a file containing logs to be preserved
     #[arg(long)]
-    pub lab_preserve_logs: Option<String>,
+    pub lab_preserve_logs: Option<PathBuf>,
 
     /// Skip postinstall for situations where you're building for a non-native
     /// arch. Note that this will probably break verity.
@@ -150,8 +151,8 @@ impl Args {
             if value { "0" } else { "1" }.into()
         }
 
-        // Convert from `Option<String>` to `OsString`, with `None` producing an empty string.
-        fn sh_path(value: &Option<String>) -> OsString {
+        // Convert from `Option<PathBuf>` to `OsString`, with `None` producing an empty string.
+        fn sh_path(value: &Option<PathBuf>) -> OsString {
             value.clone().unwrap_or_default().into()
         }
 
@@ -159,7 +160,6 @@ impl Args {
         let lvm_stateful = self.lvm_stateful_arg(LVM_FLAG_DEFAULT);
         let default_key_stateful = self.default_key_stateful_arg(DEFAULT_KEY_FLAG_DEFAULT);
 
-        // Boolean flags
         output.extend([
             ("FLAGS_skip_dst_removable", sh_bool(self.skip_dst_removable)),
             ("FLAGS_skip_rootfs", sh_bool(self.skip_rootfs)),
@@ -178,9 +178,14 @@ impl Args {
             ("FLAGS_dst", sh_path(&self.dst)),
             ("FLAGS_payload_image", sh_path(&self.payload_image)),
             ("FLAGS_pmbr_code", sh_path(&self.pmbr_code)),
-            ("FLAGS_target_bios", sh_path(&self.target_bios)),
             ("FLAGS_lab_preserve_logs", sh_path(&self.lab_preserve_logs)),
         ]);
+
+        // --target-bios is a String, so can't go in the loop with the PathBufs.
+        output.insert(
+            "FLAGS_target_bios",
+            self.target_bios.clone().unwrap_or_default().into(),
+        );
 
         output
     }
