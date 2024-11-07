@@ -20,8 +20,9 @@ OpenSSLHasher::OpenSSLHasher(const char* alg_name)
       digest_alg_(EVP_get_digestbyname(alg_name)) {}
 
 ssize_t OpenSSLHasher::DigestSize() const {
-  if (!digest_alg_)
+  if (!digest_alg_) {
     return -1;
+  }
   return EVP_MD_size(digest_alg_);
 }
 
@@ -43,7 +44,7 @@ bool OpenSSLHasher::Final(uint8_t* out) {
 }
 
 Blake2bHasher::Blake2bHasher(ssize_t digest_size)
-  : Hasher(), digest_size_(digest_size) {}
+    : Hasher(), digest_size_(digest_size) {}
 
 ssize_t Blake2bHasher::DigestSize() const {
   return digest_size_;

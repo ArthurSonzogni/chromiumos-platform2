@@ -118,8 +118,9 @@ int DmVerityAction::Verify(const base::FilePath& payload_path,
                             std::move(hashtree_file), data_dev.block_count,
                             alg.c_str());
   LOG_IF(FATAL, !hasher.Initialize()) << "Failed to initialize hasher";
-  if (salt)
+  if (salt) {
     hasher.set_salt(std::string(salt->data()).c_str());
+  }
   LOG_IF(FATAL, !hasher.Hash()) << "Failed to hash hasher";
   LOG_IF(FATAL, !hasher.Store()) << "Failed to store hasher";
   const auto& actual_table =

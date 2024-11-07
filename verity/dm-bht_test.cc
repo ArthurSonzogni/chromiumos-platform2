@@ -18,8 +18,9 @@ namespace verity {
 
 void* my_memalign(size_t boundary, size_t size) {
   void* memptr;
-  if (posix_memalign(&memptr, boundary, size))
+  if (posix_memalign(&memptr, boundary, size)) {
     return NULL;
+  }
   return memptr;
 }
 
@@ -55,8 +56,9 @@ TEST(DmBht, CreateZeroPopulateDestroy) {
     EXPECT_EQ(dm_bht_store_block(&bht, blocks - 1, data), 0);
   } while (--blocks > 0);
   // Load the tree from the pre-populated hash data
-  for (blocks = 0; blocks < total_blocks; blocks += bht.node_count)
+  for (blocks = 0; blocks < total_blocks; blocks += bht.node_count) {
     EXPECT_GE(dm_bht_populate(&bht, reinterpret_cast<void*>(this), blocks), 0);
+  }
   EXPECT_EQ(0, dm_bht_compute(&bht));
   EXPECT_EQ(0, dm_bht_destroy(&bht));
   free(data);
@@ -68,8 +70,9 @@ class MemoryBhtTest : public ::testing::Test {
 
   void TearDown() {
     hash_data_.clear();
-    if (bht_)
+    if (bht_) {
       delete bht_;
+    }
     bht_ = NULL;
   }
 
@@ -104,8 +107,9 @@ class MemoryBhtTest : public ::testing::Test {
     memset(data, 0, PAGE_SIZE);
 
     EXPECT_EQ(0, dm_bht_create(&bht, total_blocks, digest_algorithm));
-    if (salt)
+    if (salt) {
       dm_bht_set_salt(&bht, salt);
+    }
     dm_bht_set_buffer(&bht, hash_data);
 
     unsigned int blocks = total_blocks;
@@ -125,25 +129,28 @@ class MemoryBhtTest : public ::testing::Test {
   void SetupBht(const unsigned int total_blocks,
                 const char* digest_algorithm,
                 const char* salt) {
-    if (bht_)
+    if (bht_) {
       delete bht_;
+    }
     bht_ = new dm_bht;
 
     EXPECT_EQ(0, dm_bht_create(bht_, total_blocks, digest_algorithm));
     sectors_ = dm_bht_sectors(bht_);
     hash_data_.resize(verity_to_bytes(sectors_));
 
-    if (salt)
+    if (salt) {
       dm_bht_set_salt(bht_, salt);
+    }
 
     SetupHash(total_blocks, digest_algorithm, salt, &hash_data_[0]);
     dm_bht_set_read_cb(bht_, MemoryBhtTest::ReadCallback);
 
     // Load the tree from the pre-populated hash data
     unsigned int blocks;
-    for (blocks = 0; blocks < total_blocks; blocks += bht_->node_count)
+    for (blocks = 0; blocks < total_blocks; blocks += bht_->node_count) {
       EXPECT_GE(dm_bht_populate(bht_, reinterpret_cast<void*>(this), blocks),
                 0);
+    }
   }
 
   struct dm_bht* bht_;

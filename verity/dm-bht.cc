@@ -46,18 +46,22 @@ namespace {
 inline void* alloc_page(void) {
   void* memptr;
 
-  if (posix_memalign(static_cast<void**>(&memptr), PAGE_SIZE, PAGE_SIZE))
+  if (posix_memalign(static_cast<void**>(&memptr), PAGE_SIZE, PAGE_SIZE)) {
     return NULL;
+  }
   return memptr;
 }
 
 uint8_t from_hex(uint8_t ch) {
-  if ((ch >= '0') && (ch <= '9'))
+  if ((ch >= '0') && (ch <= '9')) {
     return ch - '0';
-  if ((ch >= 'a') && (ch <= 'f'))
+  }
+  if ((ch >= 'a') && (ch <= 'f')) {
     return ch - 'a' + 10;
-  if ((ch >= 'A') && (ch <= 'F'))
+  }
+  if ((ch >= 'A') && (ch <= 'F')) {
     return ch - 'A' + 10;
+  }
   return -1;
 }
 
@@ -140,8 +144,7 @@ int dm_bht_compute_hash(struct dm_bht* bht,
     return -1;
   }
 
-  if (bht->have_salt &&
-      !bht->hasher->Update(bht->salt, sizeof(bht->salt))) {
+  if (bht->have_salt && !bht->hasher->Update(bht->salt, sizeof(bht->salt))) {
     LOG(ERROR) << "Couldn't hash-in salt.";
     return -1;
   }
@@ -260,8 +263,9 @@ int dm_bht_create(struct dm_bht* bht,
   return 0;
 
 bad_entries_alloc:
-  while (bht->depth-- > 0)
+  while (bht->depth-- > 0) {
     free(bht->levels[bht->depth].entries);
+  }
   free(bht->levels);
 bad_node_count:
 bad_level_alloc:
@@ -393,8 +397,9 @@ int dm_bht_verify_path(struct dm_bht* bht,
     node = dm_bht_get_node(bht, entry, depth, block);
 
     if (dm_bht_compute_hash(bht, buffer, digest) ||
-        memcmp(digest, node, bht->digest_size))
+        memcmp(digest, node, bht->digest_size)) {
       goto mismatch;
+    }
 
     /* Keep the containing block of hashes to be verified in the
      * next pass.
@@ -404,8 +409,9 @@ int dm_bht_verify_path(struct dm_bht* bht,
 
   if (depth == 0 && state != DM_BHT_ENTRY_VERIFIED) {
     if (dm_bht_compute_hash(bht, buffer, digest) ||
-        memcmp(digest, bht->root_digest, bht->digest_size))
+        memcmp(digest, bht->root_digest, bht->digest_size)) {
       goto mismatch;
+    }
     entry->state = DM_BHT_ENTRY_VERIFIED;
   }
 
@@ -469,8 +475,9 @@ bool dm_bht_is_populated(struct dm_bht* bht, unsigned int block) {
 
   for (depth = bht->depth - 1; depth >= 0; depth--) {
     struct dm_bht_entry* entry = dm_bht_get_entry(bht, depth, block);
-    if (entry->state < DM_BHT_ENTRY_READY)
+    if (entry->state < DM_BHT_ENTRY_READY) {
       return false;
+    }
   }
 
   return true;
@@ -503,20 +510,25 @@ int dm_bht_populate(struct dm_bht* bht, void* ctx, unsigned int block) {
 
     entry = dm_bht_get_entry(bht, depth, block);
     state = entry->state;
-    if (state == DM_BHT_ENTRY_UNALLOCATED)
+    if (state == DM_BHT_ENTRY_UNALLOCATED) {
       entry->state = DM_BHT_ENTRY_PENDING;
+    }
 
-    if (state == DM_BHT_ENTRY_VERIFIED)
+    if (state == DM_BHT_ENTRY_VERIFIED) {
       break;
-    if (state <= DM_BHT_ENTRY_ERROR)
+    }
+    if (state <= DM_BHT_ENTRY_ERROR) {
       goto error_state;
-    if (state != DM_BHT_ENTRY_UNALLOCATED)
+    }
+    if (state != DM_BHT_ENTRY_UNALLOCATED) {
       continue;
+    }
 
     /* Current entry is claimed for allocation and loading */
     buffer = static_cast<uint8_t*>(alloc_page());
-    if (!buffer)
+    if (!buffer) {
       goto nomem;
+    }
 
     /* dm-bht guarantees page-aligned memory for callbacks. */
     entry->nodes = buffer;
@@ -643,10 +655,12 @@ int dm_bht_compute(struct dm_bht* bht) {
       memset(entry->nodes, 0, PAGE_SIZE);
       entry->state = DM_BHT_ENTRY_READY;
 
-      if (i == (level->count - 1))
+      if (i == (level->count - 1)) {
         count = child_level->count % bht->node_count;
-      if (count == 0)
+      }
+      if (count == 0) {
         count = bht->node_count;
+      }
       for (j = 0; j < count; j++, child++) {
         uint8_t* digest = dm_bht_node(bht, entry, j);
 
@@ -659,8 +673,9 @@ int dm_bht_compute(struct dm_bht* bht) {
     }
   }
   r = dm_bht_compute_hash(bht, bht->levels[0].entries->nodes, bht->root_digest);
-  if (r)
+  if (r) {
     DLOG(ERROR) << "Failed to update root hash";
+  }
 
 out:
   return r;
@@ -768,8 +783,9 @@ void dm_bht_set_salt(struct dm_bht* bht, const char* hexsalt) {
  * @hexsalt: buffer to put salt into, of length DM_BHT_SALT_SIZE * 2 + 1.
  */
 int dm_bht_salt(struct dm_bht* bht, char* hexsalt) {
-  if (!bht->have_salt)
+  if (!bht->have_salt) {
     return -EINVAL;
+  }
   dm_bht_bin_to_hex(bht->salt, reinterpret_cast<uint8_t*>(hexsalt),
                     sizeof(bht->salt));
   return 0;

@@ -55,6 +55,7 @@ class Blake2bHasher : public Hasher {
   bool Init() override;
   bool Update(const uint8_t* buf, size_t buflen) override;
   bool Final(uint8_t* out) override;
+
  private:
   blake2b_state state_;
   ssize_t digest_size_;

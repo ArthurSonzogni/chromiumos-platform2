@@ -246,8 +246,9 @@ std::optional<std::string> DmVerityTable::Print(Format format) {
           "alg=" + std::string(alg_),
           "root_hexdigest=" + root_digest,
       };
-      if (salt_)
+      if (salt_) {
         parts.push_back("salt=" + std::string(salt_.value().data()));
+      }
       break;
     }
   }

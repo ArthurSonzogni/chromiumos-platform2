@@ -19,8 +19,9 @@
 static __always_inline int fls(int x) {
   int r = 32;
 
-  if (!x)
+  if (!x) {
     return 0;
+  }
   if (!(x & 0xffff0000u)) {
     x <<= 16;
     r -= 16;

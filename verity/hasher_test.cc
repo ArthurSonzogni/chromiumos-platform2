@@ -15,7 +15,9 @@ namespace {
 
 bool hash_helper(const uint8_t* in, size_t inlen, uint8_t* out, size_t outlen) {
   Blake2bHasher hasher(outlen);
-  if (!hasher.Init()) return false;
+  if (!hasher.Init()) {
+    return false;
+  }
   hasher.Update(in, inlen);
   hasher.Final(out);
   return true;

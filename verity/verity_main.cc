@@ -44,8 +44,9 @@ int verity_create(const std::string& alg,
   verity::FileHasher hasher(std::move(source), std::move(destination),
                             image_blocks, alg.c_str());
   LOG_IF(FATAL, !hasher.Initialize()) << "Failed to initialize hasher";
-  if (!salt.empty())
+  if (!salt.empty()) {
     hasher.set_salt(salt.c_str());
+  }
   LOG_IF(FATAL, !hasher.Hash()) << "Failed to hash hasher";
   LOG_IF(FATAL, !hasher.Store()) << "Failed to store hasher";
   hasher.PrintTable({
@@ -68,8 +69,9 @@ int main(int argc, char** argv) {
   for (int i = 1; i < argc; i++) {
     auto [key, val] = brillo::string_utils::SplitAtFirst(
         argv[i], "=", /*trim_whitespaces=*/true);
-    if (key.empty())
+    if (key.empty()) {
       continue;
+    }
 
     if (val.empty() && !base::StartsWith(key, "--")) {
       LOG(ERROR) << "missing value: " << key;

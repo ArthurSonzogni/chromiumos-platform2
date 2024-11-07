@@ -47,8 +47,9 @@ int64_t GetFileSize(base::File* file) {
 }  // namespace
 
 FileHasher::~FileHasher() {
-  if (initialized_)
+  if (initialized_) {
     dm_bht_destroy(&tree_);
+  }
 }
 
 bool FileHasher::Initialize() {
@@ -122,8 +123,9 @@ bool FileHasher::Hash() {
 }
 
 void FileHasher::set_salt(const char* salt) {
-  if (!strcmp(salt, "random"))
+  if (!strcmp(salt, "random")) {
     salt = RandomSalt();
+  }
   dm_bht_set_salt(&tree_, salt);
   salt_ = salt;
 }
