@@ -1321,6 +1321,14 @@ void Cellular::OnNetworkValidationResult(int interface_index,
                                 result.num_attempts);
 }
 
+void Cellular::set_link_name(std::string link_name) {
+  if (link_name_ == link_name) {
+    return;
+  }
+  link_name_ = link_name;
+  adaptor()->EmitStringChanged(kInterfaceProperty, link_name);
+}
+
 void Cellular::OnModemDestroyed() {
   SLOG(1) << LoggingTag() << ": " << __func__;
   StopLocationPolling();

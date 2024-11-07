@@ -540,7 +540,7 @@ class Cellular : public Device,
   void set_interface_index(int interface_index) {
     interface_index_ = interface_index;
   }
-  void set_link_name(std::string link_name) { link_name_ = link_name; }
+  void set_link_name(std::string link_name);
 
   enum class LinkState { kUnknown, kDown, kUp };
   void SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
