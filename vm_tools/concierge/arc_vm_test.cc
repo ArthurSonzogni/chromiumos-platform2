@@ -137,28 +137,6 @@ TEST(ArcVmParamsTest, EnableConsumerAutoUpdateToggleParamFalse) {
       params, "androidboot.enable_consumer_auto_update_toggle=0"));
 }
 
-TEST(ArcVmParamsTest, ArcFilePickerParamTrue) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  auto* mini_instance_request = request.mutable_mini_instance_request();
-  mini_instance_request->set_arc_file_picker_experiment(true);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc_file_picker=1"));
-}
-
-TEST(ArcVmParamsTest, ArcFilePickerParamFalse) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  auto* mini_instance_request = request.mutable_mini_instance_request();
-  mini_instance_request->set_arc_file_picker_experiment(false);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(is_parameter_set(params, "androidboot.arc_file_picker"));
-}
-
 TEST(ArcVmParamsTest, CustomTabsParamTrue) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=canary-channel", base::Time::Now());

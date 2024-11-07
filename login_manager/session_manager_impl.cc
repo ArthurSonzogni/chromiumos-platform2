@@ -1411,8 +1411,6 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
       base::StringPrintf("NATIVE_BRIDGE_EXPERIMENT=%d",
                          request.native_bridge_experiment()),
-      base::StringPrintf("ARC_FILE_PICKER_EXPERIMENT=%d",
-                         request.arc_file_picker_experiment()),
       base::StringPrintf("ARC_CUSTOM_TABS_EXPERIMENT=%d",
                          request.arc_custom_tabs_experiment()),
       base::StringPrintf("DISABLE_MEDIA_STORE_MAINTENANCE=%d",

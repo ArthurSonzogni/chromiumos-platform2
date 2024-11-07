@@ -505,11 +505,6 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
-    StartArcInstanceExpectationsBuilder& SetArcFilePickerExperiment(bool v) {
-      arc_file_picker_experiment_ = v;
-      return *this;
-    }
-
     StartArcInstanceExpectationsBuilder& SetArcCustomTabExperiment(bool v) {
       arc_custom_tab_experiment_ = v;
       return *this;
@@ -586,8 +581,6 @@ class SessionManagerImplTest : public ::testing::Test,
           "CHROMEOS_INSIDE_VM=0",
           "NATIVE_BRIDGE_EXPERIMENT=" +
               std::to_string(native_bridge_experiment_),
-          "ARC_FILE_PICKER_EXPERIMENT=" +
-              std::to_string(arc_file_picker_experiment_),
           "ARC_CUSTOM_TABS_EXPERIMENT=" +
               std::to_string(arc_custom_tab_experiment_),
           "DISABLE_MEDIA_STORE_MAINTENANCE=" +
@@ -661,7 +654,6 @@ class SessionManagerImplTest : public ::testing::Test,
    private:
     bool dev_mode_ = false;
     bool native_bridge_experiment_ = false;
-    bool arc_file_picker_experiment_ = false;
     bool arc_custom_tab_experiment_ = false;
 
     bool disable_media_store_maintenance_ = false;
@@ -2875,23 +2867,6 @@ TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
   brillo::ErrorPtr error;
   arc::StartArcMiniInstanceRequest request;
   request.set_native_bridge_experiment(true);
-  // Use for login screen mode for minimalistic test.
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
-  EXPECT_FALSE(error.get());
-}
-
-TEST_F(SessionManagerImplTest, ArcFilePickerExperiment) {
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
-                             StartArcInstanceExpectationsBuilder()
-                                 .SetArcFilePickerExperiment(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
-
-  brillo::ErrorPtr error;
-  arc::StartArcMiniInstanceRequest request;
-  request.set_arc_file_picker_experiment(true);
   // Use for login screen mode for minimalistic test.
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
   EXPECT_FALSE(error.get());

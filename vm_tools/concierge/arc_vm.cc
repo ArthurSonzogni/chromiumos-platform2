@@ -1001,6 +1001,7 @@ std::vector<std::string> ArcVm::GetKernelParams(
                          verified_boot_state.c_str()),
       base::StringPrintf("androidboot.vbmeta.device_state=%s",
                          vb_device_state.c_str()),
+      "androidboot.arc_file_picker=1",
       // Avoid the RCU synchronization from blocking. See b/285791678#comment74
       // for the context.
       "rcupdate.rcu_expedited=1",
@@ -1023,10 +1024,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
 
   if (mini_instance_request.arc_custom_tabs_experiment()) {
     params.push_back("androidboot.arc_custom_tabs=1");
-  }
-
-  if (mini_instance_request.arc_file_picker_experiment()) {
-    params.push_back("androidboot.arc_file_picker=1");
   }
 
   if (zram_size) {

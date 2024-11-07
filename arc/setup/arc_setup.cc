@@ -1399,8 +1399,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   LOG(INFO) << "ChromeOS channel is \"" << chromeos_channel << "\"";
   const int arc_lcd_density = config_.GetIntOrDie("ARC_LCD_DENSITY");
   LOG(INFO) << "lcd_density is " << arc_lcd_density;
-  const int arc_file_picker = config_.GetIntOrDie("ARC_FILE_PICKER_EXPERIMENT");
-  LOG(INFO) << "arc_file_picker is " << arc_file_picker;
   const int arc_custom_tabs = config_.GetIntOrDie("ARC_CUSTOM_TABS_EXPERIMENT");
   LOG(INFO) << "arc_custom_tabs is " << arc_custom_tabs;
   LOG(INFO) << "MediaStore maintenance is " << !disable_media_store_maintenance;
@@ -1482,7 +1480,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "androidboot.host_is_in_vm=%d "
       "androidboot.lcd_density=%d "
       "androidboot.native_bridge=%s "
-      "androidboot.arc_file_picker=%d "
+      "androidboot.arc_file_picker=1 "
       "androidboot.arc_custom_tabs=%d "
       "androidboot.chromeos_channel=%s "
       "%s" /* Play Store auto-update mode */
@@ -1499,8 +1497,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "androidboot.arc.signed_in=%d "
       "%s\n" /* Host ureadahead mode */,
       is_dev_mode, !is_dev_mode, is_inside_vm, arc_lcd_density,
-      native_bridge.c_str(), arc_file_picker, arc_custom_tabs,
-      chromeos_channel.c_str(),
+      native_bridge.c_str(), arc_custom_tabs, chromeos_channel.c_str(),
       GetPlayStoreAutoUpdateParam(play_store_auto_update).c_str(),
       GetDalvikMemoryProfileParam(dalvik_memory_profile).c_str(),
       GetDisableMediaStoreMaintenance(disable_media_store_maintenance).c_str(),

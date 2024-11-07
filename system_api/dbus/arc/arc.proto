@@ -49,7 +49,9 @@ message StartArcMiniInstanceRequest {
   optional int32 lcd_density = 2 [default = -1];
 
   // Experiment flag for go/arc-file-picker.
-  optional bool arc_file_picker_experiment = 3 [default = false];
+  // DEPRECATED. Going to be removed.
+  optional bool arc_file_picker_experiment = 3
+      [default = false, deprecated = true];
 
   // Optional mode for play store auto-update.
   optional PlayStoreAutoUpdate play_store_auto_update = 4
