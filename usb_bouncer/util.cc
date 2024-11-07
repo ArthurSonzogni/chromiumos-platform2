@@ -596,13 +596,15 @@ void ReportMetricsUdev(UdevMetric* udev_metric) {
     skip_session_metric = true;
   }
 
-  if (udev_metric->action == UdevAction::kAdd)
+  if (udev_metric->action == UdevAction::kAdd) {
     ReportMetricsUdevAdd(udev_metric);
-  else if (udev_metric->action == UdevAction::kRemove)
+  } else if (udev_metric->action == UdevAction::kRemove) {
     ReportMetricsUdevRemove(udev_metric);
+  }
 
-  if (skip_session_metric)
+  if (skip_session_metric) {
     return;
+  }
 
   metrics::structured::events::usb_session::UsbSessionEvent()
       .SetBootId(std::move(GetBootId()))
@@ -647,28 +649,33 @@ void ReportMetricsUdevAdd(UdevMetric* udev_metric) {
   // Resize data to structured metric limits before logging
   int max_interface_class = metrics::structured::events::usb_quality::
       UsbBusConnect::GetInterfaceClassMaxLength();
-  if (interface_class.size() > max_interface_class)
+  if (interface_class.size() > max_interface_class) {
     interface_class.resize(max_interface_class);
+  }
 
   int max_interface_subclass = metrics::structured::events::usb_quality::
       UsbBusConnect::GetInterfaceSubClassMaxLength();
-  if (interface_subclass.size() > max_interface_subclass)
+  if (interface_subclass.size() > max_interface_subclass) {
     interface_subclass.resize(max_interface_subclass);
+  }
 
   int max_interface_protocol = metrics::structured::events::usb_quality::
       UsbBusConnect::GetInterfaceProtocolMaxLength();
-  if (interface_protocol.size() > max_interface_protocol)
+  if (interface_protocol.size() > max_interface_protocol) {
     interface_protocol.resize(max_interface_protocol);
+  }
 
   int max_interface_driver = metrics::structured::events::usb_quality::
       UsbBusConnect::GetInterfaceDriverMaxLength();
-  if (interface_driver.size() > max_interface_driver)
+  if (interface_driver.size() > max_interface_driver) {
     interface_driver.resize(max_interface_driver);
+  }
 
   int max_endpoint = metrics::structured::events::usb_quality::UsbBusConnect::
       GetEndpointMaxLength();
-  if (endpoint.size() > max_endpoint)
+  if (endpoint.size() > max_endpoint) {
     endpoint.resize(max_endpoint);
+  }
 
   // USB PD metrics log separate connection IDs for USB 2.0 and 3.2 devices in
   // a peripheral. Because the connection ID is hashed based on the metric field
@@ -677,10 +684,11 @@ void ReportMetricsUdevAdd(UdevMetric* udev_metric) {
   // USB device, only one of the connection IDs will be valid.
   std::string usb2_connection_id("");
   std::string usb3_connection_id("");
-  if (speed < UMADeviceSpeed::k5000)
+  if (speed < UMADeviceSpeed::k5000) {
     usb2_connection_id = connection_id;
-  else
+  } else {
     usb3_connection_id = connection_id;
+  }
 
   metrics::structured::events::usb_quality::UsbBusConnect()
       .SetBootId(std::move(GetBootId()))
@@ -716,16 +724,18 @@ void ReportMetricsUdevRemove(UdevMetric* udev_metric) {
   for (auto err : device_error) {
     // Skip device not authorized errors for UMA metric. This is typically
     // intended behavior and the UMA metric does not include session data.
-    if (err != UMADeviceError::kNotAuthorized)
+    if (err != UMADeviceError::kNotAuthorized) {
       uma_metrics.SendEnumToUMA(kUmaDeviceErrorHistogram, err);
+    }
 
     device_error_int.push_back(static_cast<int64_t>(err));
   }
 
   int max_device_error = metrics::structured::events::usb_quality::
       UsbBusDisconnect::GetDeviceErrorMaxLength();
-  if (device_error_int.size() > max_device_error)
+  if (device_error_int.size() > max_device_error) {
     device_error_int.resize(max_device_error);
+  }
 
   metrics::structured::events::usb_quality::UsbBusDisconnect()
       .SetBootId(std::move(GetBootId()))
@@ -839,8 +849,9 @@ bool IsLockscreenShown() {
 }
 
 std::string StripLeadingPathSeparators(const std::string& path) {
-  if (path.find_first_not_of('/') == std::string::npos)
+  if (path.find_first_not_of('/') == std::string::npos) {
     return std::string();
+  }
 
   return path.substr(path.find_first_not_of('/'));
 }
@@ -1042,8 +1053,9 @@ std::ostream& operator<<(std::ostream& out, UMAPortType port) {
 
 bool IsCamera(std::vector<int64_t> interfaces) {
   for (auto& interface : interfaces) {
-    if (interface == 0xe)
+    if (interface == 0xe) {
       return true;
+    }
   }
   return false;
 }
@@ -1135,28 +1147,32 @@ base::FilePath GetRootDevice(base::FilePath dev) {
 
 base::FilePath GetInterfaceDevice(base::FilePath intf) {
   std::string dev;
-  if (!RE2::PartialMatch(intf.value(), R"((.*\/).*)", &dev))
+  if (!RE2::PartialMatch(intf.value(), R"((.*\/).*)", &dev)) {
     return base::FilePath();
+  }
 
   return base::FilePath(dev);
 }
 
 bool IsExternalDevice(base::FilePath normalized_devpath) {
-  if (GetDevicePropString(normalized_devpath, kRemovablePath) == "removable")
+  if (GetDevicePropString(normalized_devpath, kRemovablePath) == "removable") {
     return true;
+  }
 
   auto dev_components = normalized_devpath.GetComponents();
   auto it = dev_components.begin();
   base::FilePath dev(*it++);
   for (; it != dev_components.end(); it++) {
     dev = dev.Append(*it);
-    if (GetDevicePropString(dev, kRemovablePath) == "removable")
+    if (GetDevicePropString(dev, kRemovablePath) == "removable") {
       return true;
+    }
   }
 
   std::string panel = GetDevicePropString(dev, kPanelPath);
-  if (!panel.empty() && panel != "unknown")
+  if (!panel.empty() && panel != "unknown") {
     return true;
+  }
 
   return false;
 }
@@ -1219,8 +1235,9 @@ void GetVidPidFromEnvVar(std::string product, int* vendor_id, int* product_id) {
   *product_id = 0;
   std::size_t index1 = product.find('/');
   std::size_t index2 = product.find('/', index1 + 1);
-  if (index1 == std::string::npos || index2 == std::string::npos)
+  if (index1 == std::string::npos || index2 == std::string::npos) {
     return;
+  }
 
   base::HexStringToInt(product.substr(0, index1), vendor_id);
   base::HexStringToInt(product.substr(index1 + 1, index2 - index1 - 1),
@@ -1533,8 +1550,9 @@ std::vector<UMADeviceError> GetDeviceErrors(UdevMetric* udev_metric) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus = new dbus::Bus(options);
-    if (!bus->Connect())
+    if (!bus->Connect()) {
       return {};
+    }
   }
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy =
       std::make_unique<org::chromium::debugdProxy>(bus);

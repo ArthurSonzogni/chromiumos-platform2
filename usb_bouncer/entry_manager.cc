@@ -82,8 +82,9 @@ EntryManager::EntryManager(const std::string& root_dir,
 bool EntryManager::GarbageCollect() {
   size_t num_removed = GarbageCollectInternal(false);
 
-  if (num_removed == 0)
+  if (num_removed == 0) {
     return true;
+  }
 
   return PersistChanges();
 }
@@ -347,16 +348,18 @@ void EntryManager::ReportMetrics(const std::string& devpath,
   UMALogDeviceAttached(&metrics_, rule, new_entry, timing);
 
   // Device metrics not supported for empty devpath
-  if (devpath.empty())
+  if (devpath.empty()) {
     return;
+  }
 
   base::FilePath normalized_devpath =
       root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
 
   // We cannot distinguish external devices on Flex, so exclude it from
   // reporting further metrics.
-  if (IsFlexBoard())
+  if (IsFlexBoard()) {
     return;
+  }
 
   // Report further metrics only for external USB devices.
   if (IsExternalDevice(normalized_devpath)) {

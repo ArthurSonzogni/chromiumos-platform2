@@ -129,8 +129,9 @@ void DropPrivileges(const Configuration& config, PrivilegeLevel privileges) {
   }
   std::string global_db_path("/");
   int global_db_path_writeable = 1;
-  if (privileges == PrivilegeLevel::kMetricsOnly)
+  if (privileges == PrivilegeLevel::kMetricsOnly) {
     global_db_path_writeable = 0;
+  }
 
   global_db_path.append(usb_bouncer::kDefaultGlobalDir);
   if (minijail_bind(j.get(), global_db_path.c_str(), global_db_path.c_str(),
@@ -261,14 +262,16 @@ int HandleGenRules(const Configuration& config,
 
 int HandleReportError(const Configuration& config,
                       const std::vector<std::string>& argv) {
-  if (argv.size() != 3)
+  if (argv.size() != 3) {
     return EXIT_FAILURE;
+  }
 
   int error_code;
   std::string subsystem = argv[0];
   std::string devpath = argv[1];
-  if (!base::StringToInt(argv[2], &error_code))
+  if (!base::StringToInt(argv[2], &error_code)) {
     return EXIT_FAILURE;
+  }
 
   // Drop privileges before reading from sysfs.
   DropPrivileges(config, PrivilegeLevel::kMetricsOnly);
@@ -279,10 +282,11 @@ int HandleReportError(const Configuration& config,
 
   if (!base::DirectoryExists(normalized_devpath)) {
     // If the device sysfs path is no longer available, record the error code.
-    if (subsystem == "usb")
+    if (subsystem == "usb") {
       usb_bouncer::StructuredMetricsHubError(abs(error_code), 0, 0, 0, "", 0);
-    else if (subsystem == "pci")
+    } else if (subsystem == "pci") {
       usb_bouncer::StructuredMetricsXhciError(abs(error_code), 0);
+    }
   } else {
     if (subsystem == "usb") {
       if (base::PathExists(normalized_devpath.Append("bInterfaceClass"))) {
@@ -404,8 +408,9 @@ int HandleUdev(const Configuration& config,
   }
 
   // Record udev metrics if available.
-  if (udev_metric_available)
+  if (udev_metric_available) {
     usb_bouncer::ReportMetricsUdev(&udev_metric);
+  }
 
   return EXIT_SUCCESS;
 }
