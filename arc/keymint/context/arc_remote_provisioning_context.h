@@ -133,6 +133,7 @@ class ArcRemoteProvisioningContext
   void set_property_dir_for_tests(base::FilePath& path);
   void set_device_id_map_for_tests(
       const base::flat_map<std::string, std::string>& device_id_map);
+  void set_serial_number_for_tests(const std::string& serial_number);
   friend class ArcRemoteProvisioningContextTestPeer;
 };
 }  // namespace arc::keymint::context

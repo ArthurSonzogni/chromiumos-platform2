@@ -483,6 +483,11 @@ void ArcRemoteProvisioningContext::set_device_id_map_for_tests(
   device_id_map_ = device_id_map;
 }
 
+void ArcRemoteProvisioningContext::set_serial_number_for_tests(
+    const std::string& serial_number) {
+  serial_number_ = serial_number;
+}
+
 void ArcRemoteProvisioningContext::SetSystemVersion(uint32_t os_version,
                                                     uint32_t os_patchlevel) {
   os_version_ = os_version;
@@ -624,8 +629,17 @@ keymaster_error_t ArcRemoteProvisioningContext::VerifyAndCopyDeviceIds(
 
       case KM_TAG_ATTESTATION_ID_IMEI:
       case KM_TAG_ATTESTATION_ID_MEID:
-      case KM_TAG_ATTESTATION_ID_SERIAL:
         found_mismatch = true;
+        break;
+
+      case KM_TAG_ATTESTATION_ID_SERIAL:
+        if (!serial_number_.has_value()) {
+          found_mismatch = true;
+          break;
+        }
+        found_mismatch =
+            !matchAttestationId(entry.blob, serial_number_.value());
+        attestation->push_back(entry);
         break;
 
       default:
