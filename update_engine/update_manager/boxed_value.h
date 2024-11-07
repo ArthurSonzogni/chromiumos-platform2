@@ -71,17 +71,20 @@ class BoxedValue {
   // Deletes the |value| passed on construction using the delete for the passed
   // type.
   ~BoxedValue() {
-    if (deleter_)
+    if (deleter_) {
       deleter_(value_);
+    }
   }
 
   const void* value() const { return value_; }
 
   std::string ToString() const {
-    if (!printer_)
+    if (!printer_) {
       return "(no printer)";
-    if (!value_)
+    }
+    if (!value_) {
       return "(no value)";
+    }
     return printer_(value_);
   }
 

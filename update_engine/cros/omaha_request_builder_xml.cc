@@ -71,8 +71,9 @@ bool XmlEncode(const string& input, string* output) {
 
 string XmlEncodeWithDefault(const string& input, const string& default_value) {
   string output;
-  if (XmlEncode(input, &output))
+  if (XmlEncode(input, &output)) {
     return output;
+  }
   return default_value;
 }
 
@@ -81,8 +82,9 @@ string OmahaRequestBuilderXml::GetPing() const {
   // |name| and value |ping_days| if |ping_days| has a value that needs
   // to be sent, or an empty string otherwise.
   auto GetPingAttribute = [](const char* name, int ping_days) -> string {
-    if (ping_days > 0 || ping_days == kPingNeverPinged)
+    if (ping_days > 0 || ping_days == kPingNeverPinged) {
       return base::StringPrintf(" %s=\"%d\"", name, ping_days);
+    }
     return "";
   };
 
@@ -97,8 +99,9 @@ string OmahaRequestBuilderXml::GetPing() const {
 
 string OmahaRequestBuilderXml::GetPingDateBased(
     const OmahaRequestParams::AppParams& app_params) const {
-  if (!app_params.send_ping)
+  if (!app_params.send_ping) {
     return "";
+  }
   string ping_active = "";
   string ping_ad = "";
   if (app_params.ping_active == kPingActiveValue) {
@@ -239,10 +242,12 @@ string OmahaRequestBuilderXml::GetCohortArg(
     // There's nothing wrong with not having a given cohort setting, so we check
     // existence first to avoid the warning log message.
     const auto* prefs = SystemState::Get()->prefs();
-    if (!prefs->Exists(prefs_key))
+    if (!prefs->Exists(prefs_key)) {
       return "";
-    if (!prefs->GetString(prefs_key, &cohort_value) || cohort_value.empty())
+    }
+    if (!prefs->GetString(prefs_key, &cohort_value) || cohort_value.empty()) {
       return "";
+    }
   }
   // This is a validity check to avoid sending a huge XML file back to Ohama due
   // to a compromised stateful partition making the update check fail in low
@@ -267,8 +272,9 @@ string OmahaRequestBuilderXml::GetCohortArg(
 
 bool IsValidComponentID(const string& id) {
   for (char c : id) {
-    if (!isalnum(c) && c != '-' && c != '_' && c != '.')
+    if (!isalnum(c) && c != '-' && c != '_' && c != '.') {
       return false;
+    }
   }
   return true;
 }
@@ -496,8 +502,9 @@ string OmahaRequestBuilderXml::GetApps() const {
 }
 
 string OmahaRequestBuilderXml::GetHw() const {
-  if (!SystemState::Get()->request_params()->hw_details())
+  if (!SystemState::Get()->request_params()->hw_details()) {
     return "";
+  }
 
   auto* telemetry_info = SystemState::Get()->cros_healthd()->GetTelemetryInfo();
   std::unique_ptr<TelemetryInfo> default_telemetry_info;

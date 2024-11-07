@@ -51,8 +51,9 @@ bool PartitionConfig::ValidateExists() const {
 }
 
 bool PartitionConfig::OpenFilesystem() {
-  if (path.empty())
+  if (path.empty()) {
     return true;
+  }
   fs_interface.reset();
   if (diff_utils::IsExtFilesystem(path)) {
     fs_interface = Ext2Filesystem::CreateFromFile(path);
@@ -99,8 +100,9 @@ bool ImageConfig::ValidateIsEmpty() const {
 
 bool ImageConfig::LoadImageSize() {
   for (PartitionConfig& part : partitions) {
-    if (part.path.empty())
+    if (part.path.empty()) {
       continue;
+    }
     part.size = utils::FileSize(part.path);
   }
   return true;
@@ -111,8 +113,9 @@ bool ImageConfig::LoadPostInstallConfig(const brillo::KeyValueStore& store) {
   for (PartitionConfig& part : partitions) {
     bool run_postinstall;
     if (!store.GetBoolean("RUN_POSTINSTALL_" + part.name, &run_postinstall) ||
-        !run_postinstall)
+        !run_postinstall) {
       continue;
+    }
     found_postinstall = true;
     part.postinstall.run = true;
     store.GetString("POSTINSTALL_PATH_" + part.name, &part.postinstall.path);
@@ -292,8 +295,9 @@ bool PayloadGenerationConfig::Validate() const {
   for (const PartitionConfig& part : target.partitions) {
     TEST_AND_RETURN_FALSE(part.ValidateExists());
     TEST_AND_RETURN_FALSE(part.size % block_size == 0);
-    if (version.minor < kVerityMinorPayloadVersion)
+    if (version.minor < kVerityMinorPayloadVersion) {
       TEST_AND_RETURN_FALSE(part.verity.IsEmpty());
+    }
   }
 
   if (version.minor < kPartialUpdateMinorPayloadVersion) {

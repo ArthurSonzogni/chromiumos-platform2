@@ -65,8 +65,9 @@ class BasePrefsTest : public ::testing::Test {
     vector<string> keys2;
     EXPECT_TRUE(common_prefs_->GetSubKeys("ns1/nsB/", &keys2));
     EXPECT_THAT(keys2, ElementsAre(key2));
-    for (const auto& key : keys2)
+    for (const auto& key : keys2) {
       EXPECT_TRUE(common_prefs_->Delete(key));
+    }
     EXPECT_TRUE(common_prefs_->Exists(key0));
     EXPECT_TRUE(common_prefs_->Exists(key0corner));
     EXPECT_TRUE(common_prefs_->Exists(key1A));
@@ -77,15 +78,17 @@ class BasePrefsTest : public ::testing::Test {
     vector<string> keys2corner;
     EXPECT_TRUE(common_prefs_->GetSubKeys("ns1/nsB", &keys2corner));
     EXPECT_THAT(keys2corner, ElementsAre(key2corner));
-    for (const auto& key : keys2corner)
+    for (const auto& key : keys2corner) {
       EXPECT_TRUE(common_prefs_->Delete(key));
+    }
     EXPECT_FALSE(common_prefs_->Exists(key2corner));
 
     vector<string> keys1;
     EXPECT_TRUE(common_prefs_->GetSubKeys("ns1/nsA/", &keys1));
     EXPECT_THAT(keys1, UnorderedElementsAre(key1A, key1B));
-    for (const auto& key : keys1)
+    for (const auto& key : keys1) {
       EXPECT_TRUE(common_prefs_->Delete(key));
+    }
     EXPECT_TRUE(common_prefs_->Exists(key0));
     EXPECT_TRUE(common_prefs_->Exists(key0corner));
     EXPECT_FALSE(common_prefs_->Exists(key1A));
@@ -94,16 +97,18 @@ class BasePrefsTest : public ::testing::Test {
     vector<string> keys0;
     EXPECT_TRUE(common_prefs_->GetSubKeys("ns1/", &keys0));
     EXPECT_THAT(keys0, ElementsAre(key0));
-    for (const auto& key : keys0)
+    for (const auto& key : keys0) {
       EXPECT_TRUE(common_prefs_->Delete(key));
+    }
     EXPECT_FALSE(common_prefs_->Exists(key0));
     EXPECT_TRUE(common_prefs_->Exists(key0corner));
 
     vector<string> keys0corner;
     EXPECT_TRUE(common_prefs_->GetSubKeys("ns1", &keys0corner));
     EXPECT_THAT(keys0corner, ElementsAre(key0corner));
-    for (const auto& key : keys0corner)
+    for (const auto& key : keys0corner) {
       EXPECT_TRUE(common_prefs_->Delete(key));
+    }
     EXPECT_FALSE(common_prefs_->Exists(key0corner));
 
     // Test sub directory namespace.

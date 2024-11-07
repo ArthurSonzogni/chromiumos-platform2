@@ -65,8 +65,9 @@ class UpdateEngineClient : public brillo::Daemon {
  protected:
   int OnInit() override {
     int ret = Daemon::OnInit();
-    if (ret != EX_OK)
+    if (ret != EX_OK) {
       return ret;
+    }
 
     client_ = update_engine::UpdateEngineClient::CreateInstance();
 
@@ -191,8 +192,9 @@ void UpdateWaitHandler::HandleStatusUpdate(const UpdateEngineStatus& status) {
   if (exit_on_error_ && status.status == UpdateStatus::IDLE) {
     int last_attempt_error = static_cast<int>(ErrorCode::kSuccess);
     ErrorCode code = ErrorCode::kSuccess;
-    if (client_ && client_->GetLastAttemptError(&last_attempt_error))
+    if (client_ && client_->GetLastAttemptError(&last_attempt_error)) {
       code = static_cast<ErrorCode>(last_attempt_error);
+    }
 
     LOG(ERROR) << "Update failed, current operation is "
                << UpdateStatusToString(status.status) << ", last error code is "
@@ -223,8 +225,9 @@ void InstallWaitHandler::HandleStatusUpdate(const UpdateEngineStatus& status) {
     auto success = static_cast<int>(ErrorCode::kSuccess);
     auto last_attempt_error = success;
     ErrorCode code = ErrorCode::kSuccess;
-    if (client_ && client_->GetLastAttemptError(&last_attempt_error))
+    if (client_ && client_->GetLastAttemptError(&last_attempt_error)) {
       code = static_cast<ErrorCode>(last_attempt_error);
+    }
 
     if (last_attempt_error == success) {
       LOG(INFO) << "Install succeeded.";
@@ -489,8 +492,9 @@ int UpdateEngineClient::ProcessFlags() {
 
     LOG(INFO) << "Current Channel: " << current_channel;
 
-    if (!target_channel.empty())
+    if (!target_channel.empty()) {
       LOG(INFO) << "Target Channel (pending update): " << target_channel;
+    }
   }
 
   if (FLAGS_apply_deferred_update) {
@@ -536,8 +540,9 @@ int UpdateEngineClient::ProcessFlags() {
   bool do_update_request = FLAGS_check_for_update || FLAGS_update ||
                            !FLAGS_app_version.empty() ||
                            !FLAGS_omaha_url.empty();
-  if (FLAGS_update)
+  if (FLAGS_update) {
     FLAGS_follow = true;
+  }
 
   if (do_update_request && FLAGS_rollback) {
     LOG(ERROR) << "Incompatible flags specified with rollback."
@@ -710,8 +715,9 @@ int UpdateEngineClient::ProcessFlags() {
 
 void UpdateEngineClient::ProcessFlagsAndExit() {
   int ret = ProcessFlags();
-  if (ret != kContinueRunning)
+  if (ret != kContinueRunning) {
     QuitWithExitCode(ret);
+  }
 }
 
 }  // namespace

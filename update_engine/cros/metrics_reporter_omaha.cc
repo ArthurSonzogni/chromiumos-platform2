@@ -347,8 +347,9 @@ void MetricsReporterOmaha::ReportSuccessfulUpdateMetrics(
       metric += utils::ToString(source);
       mbs = num_bytes_downloaded[i] / kNumBytesInOneMiB;
       total_bytes += num_bytes_downloaded[i];
-      if (mbs > 0)
+      if (mbs > 0) {
         download_sources_used |= (1 << i);
+      }
     } else {
       mbs = total_bytes / kNumBytesInOneMiB;
     }

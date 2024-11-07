@@ -65,8 +65,9 @@ const char kNoVersion[] = "0.0.0.0";
 const char kMiniOsAppIdSuffix[] = "_minios";
 
 OmahaRequestParams::~OmahaRequestParams() {
-  if (!root_.empty())
+  if (!root_.empty()) {
     test::SetImagePropertiesRootPrefix(nullptr);
+  }
 }
 
 bool OmahaRequestParams::Init(const string& app_version,
@@ -77,18 +78,21 @@ bool OmahaRequestParams::Init(const string& app_version,
   mutable_image_props_ = LoadMutableImageProperties();
 
   // Validation check the channel names.
-  if (!IsValidChannel(image_props_.current_channel))
+  if (!IsValidChannel(image_props_.current_channel)) {
     image_props_.current_channel = kStableChannel;
-  if (!IsValidChannel(mutable_image_props_.target_channel))
+  }
+  if (!IsValidChannel(mutable_image_props_.target_channel)) {
     mutable_image_props_.target_channel = image_props_.current_channel;
+  }
   UpdateDownloadChannel();
 
   LOG(INFO) << "Running from channel " << image_props_.current_channel;
 
   os_platform_ = constants::kOmahaPlatformName;
   os_version_ = OmahaRequestParams::kOsVersion;
-  if (!app_version.empty())
+  if (!app_version.empty()) {
     image_props_.version = app_version;
+  }
 
   os_sp_ = image_props_.version + "_" + GetMachineType();
   const auto* hardware = SystemState::Get()->hardware();
@@ -120,10 +124,11 @@ bool OmahaRequestParams::Init(const string& app_version,
     delta_okay_ = false;
   }
 
-  if (update_url.empty())
+  if (update_url.empty()) {
     update_url_ = image_props_.omaha_url;
-  else
+  } else {
     update_url_ = update_url;
+  }
 
   market_segment_.clear();
 
@@ -232,8 +237,9 @@ bool OmahaRequestParams::SetTargetChannel(const string& new_target_channel,
   new_props.is_powerwash_allowed = is_powerwash_allowed;
 
   if (!StoreMutableImageProperties(new_props)) {
-    if (error_message)
+    if (error_message) {
       *error_message = "Error storing the new channel value.";
+    }
     return false;
   }
   mutable_image_props_ = new_props;
@@ -250,8 +256,9 @@ void OmahaRequestParams::UpdateDownloadChannel() {
 string OmahaRequestParams::GetMachineType() const {
   struct utsname buf;
   string ret;
-  if (uname(&buf) == 0)
+  if (uname(&buf) == 0) {
     ret = buf.machine;
+  }
   return ret;
 }
 
@@ -292,9 +299,11 @@ void OmahaRequestParams::set_root(const string& root) {
 }
 
 int OmahaRequestParams::GetChannelIndex(const string& channel) const {
-  for (size_t t = 0; t < std::size(kChannelsByStability); ++t)
-    if (channel == kChannelsByStability[t])
+  for (size_t t = 0; t < std::size(kChannelsByStability); ++t) {
+    if (channel == kChannelsByStability[t]) {
       return t;
+    }
+  }
 
   return -1;
 }
@@ -307,11 +316,13 @@ bool OmahaRequestParams::ToMoreStableChannel() const {
 }
 
 bool OmahaRequestParams::ShouldPowerwash() const {
-  if (!mutable_image_props_.is_powerwash_allowed)
+  if (!mutable_image_props_.is_powerwash_allowed) {
     return false;
+  }
   // If arbitrary channels are allowed, always powerwash on channel change.
-  if (image_props_.allow_arbitrary_channels)
+  if (image_props_.allow_arbitrary_channels) {
     return image_props_.current_channel != download_channel_;
+  }
   // Otherwise only powerwash if we are moving from less stable (higher version)
   // to more stable channel (lower version).
   return ToMoreStableChannel();
@@ -334,16 +345,18 @@ bool OmahaRequestParams::IsDlcAppId(const std::string& app_id) const {
 
 bool OmahaRequestParams::GetDlcId(const string& app_id, string* dlc_id) const {
   auto itr = dlc_apps_params_.find(app_id);
-  if (itr == dlc_apps_params_.end())
+  if (itr == dlc_apps_params_.end()) {
     return false;
+  }
   *dlc_id = itr->second.name;
   return true;
 }
 
 void OmahaRequestParams::SetDlcNoUpdate(const string& app_id) {
   auto itr = dlc_apps_params_.find(app_id);
-  if (itr == dlc_apps_params_.end())
+  if (itr == dlc_apps_params_.end()) {
     return;
+  }
   itr->second.updated = false;
 }
 

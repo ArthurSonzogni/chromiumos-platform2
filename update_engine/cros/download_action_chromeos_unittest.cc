@@ -164,9 +164,10 @@ void TestWithData(const brillo::Blob& data,
   if (use_download_delegate) {
     InSequence s;
     download_action->set_delegate(&download_delegate);
-    if (data.size() > kMockHttpFetcherChunkSize)
+    if (data.size() > kMockHttpFetcherChunkSize) {
       EXPECT_CALL(download_delegate,
                   BytesReceived(_, kMockHttpFetcherChunkSize, _));
+    }
     EXPECT_CALL(download_delegate, BytesReceived(_, _, _)).Times(AtLeast(1));
     EXPECT_CALL(download_delegate, DownloadComplete())
         .Times(fail_write == 0 ? 1 : 0);
@@ -374,9 +375,10 @@ void TestTerminateEarly(bool use_download_delegate) {
   // 1 or 0 chunks should have come through
   const off_t resulting_file_size(utils::FileSize(temp_file.path()));
   EXPECT_GE(resulting_file_size, 0);
-  if (resulting_file_size != 0)
+  if (resulting_file_size != 0) {
     EXPECT_EQ(kMockHttpFetcherChunkSize,
               static_cast<size_t>(resulting_file_size));
+  }
 }
 
 }  // namespace
@@ -625,8 +627,9 @@ TEST_F(P2PDownloadActionTest, CanAppend) {
       {'1', '2', '3', '4', 'h', 'a', 's', 'h'}, data_.length());
   ASSERT_TRUE(p2p_manager_->FileShare(file_id, data_.length()));
   string existing_data;
-  for (unsigned int i = 0; i < 1000; i++)
+  for (unsigned int i = 0; i < 1000; i++) {
     existing_data += '0' + (i % 10);
+  }
   ASSERT_TRUE(WriteFile(p2p_manager_->FileGetPath(file_id), existing_data));
 
   StartDownload(true);  // use_p2p_to_share
@@ -659,8 +662,9 @@ TEST_F(P2PDownloadActionTest, DeletePartialP2PFileIfResumingWithoutP2P) {
       {'1', '2', '3', '4', 'h', 'a', 's', 'h'}, data_.length());
   ASSERT_TRUE(p2p_manager_->FileShare(file_id, data_.length()));
   string existing_data;
-  for (unsigned int i = 0; i < 1000; i++)
+  for (unsigned int i = 0; i < 1000; i++) {
     existing_data += '0' + (i % 10);
+  }
   ASSERT_TRUE(WriteFile(p2p_manager_->FileGetPath(file_id), existing_data));
 
   // Check that the file is there.
@@ -756,8 +760,9 @@ class RestrictedTimeIntervalDownloadActionTest : public ::testing::Test {
 
   bool SetNow(const base::Time::Exploded& exploded_now) {
     base::Time now;
-    if (!base::Time::FromLocalExploded(exploded_now, &now))
+    if (!base::Time::FromLocalExploded(exploded_now, &now)) {
       return false;
+    }
 
     test_clock_.SetNow(now);
     FakeSystemState::Get()->fake_clock()->SetWallclockTime(now);

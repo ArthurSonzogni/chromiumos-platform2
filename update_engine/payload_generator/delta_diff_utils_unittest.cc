@@ -40,8 +40,9 @@ bool WriteExtents(const string& part_path,
   TEST_AND_RETURN_FALSE(fp.get());
 
   for (const Extent& extent : extents) {
-    if (offset >= data.size())
+    if (offset >= data.size()) {
       break;
+    }
     TEST_AND_RETURN_FALSE(
         fseek(fp.get(), extent.start_block() * block_size, SEEK_SET) == 0);
     uint64_t to_write =
@@ -387,8 +388,9 @@ TEST_F(DeltaDiffUtilsTest, IdenticalBlocksAreCopiedInOder) {
 
   // Create two identical partitions with 5 copies of the same unique "file".
   brillo::Blob file_data(block_size_ * 10, 'a');
-  for (size_t offset = 0; offset < file_data.size(); offset += block_size_)
+  for (size_t offset = 0; offset < file_data.size(); offset += block_size_) {
     file_data[offset] = 'a' + offset / block_size_;
+  }
 
   brillo::Blob partition_data(old_part_.size);
   for (size_t offset = 0; offset < partition_data.size();
@@ -478,8 +480,9 @@ TEST_F(DeltaDiffUtilsTest, ZeroBlocksUseReplaceBz) {
 TEST_F(DeltaDiffUtilsTest, ShuffledBlocksAreTracked) {
   vector<uint64_t> permutation = {0, 1, 5, 6, 7, 2, 3, 4, 9, 10, 11, 12, 8};
   vector<Extent> perm_extents;
-  for (uint64_t x : permutation)
+  for (uint64_t x : permutation) {
     AppendBlockToExtents(&perm_extents, x);
+  }
 
   // We use a smaller partition for this test.
   old_part_.size = block_size_ * permutation.size();
@@ -538,8 +541,9 @@ TEST_F(DeltaDiffUtilsTest, GetOldFileTest) {
   }
 
   // Always return exact match if possible.
-  for (const auto& name : file_list)
+  for (const auto& name : file_list) {
     EXPECT_EQ(diff_utils::GetOldFile(old_files_map, name).name, name);
+  }
 
   EXPECT_EQ(diff_utils::GetOldFile(old_files_map, "file_name").name,
             "filename");

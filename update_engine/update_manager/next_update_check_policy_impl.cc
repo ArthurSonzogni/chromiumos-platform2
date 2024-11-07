@@ -129,8 +129,9 @@ EvalStatus NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime(
   }
 
   // We cannot back off longer than the predetermined maximum interval.
-  if (interval > constants.timeout_max_backoff_interval)
+  if (interval > constants.timeout_max_backoff_interval) {
     interval = constants.timeout_max_backoff_interval;
+  }
 
   // We cannot back off shorter than the predetermined periodic interval. Also,
   // in this case set the fuzz to a predetermined regular value.
@@ -140,8 +141,9 @@ EvalStatus NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime(
   }
 
   // If not otherwise determined, defer to a fuzz of +/-(interval / 2).
-  if (fuzz == 0)
+  if (fuzz == 0) {
     fuzz = interval;
+  }
 
   *next_update_check =
       *last_checked_time + FuzzedInterval(&prng, interval, fuzz);

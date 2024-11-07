@@ -16,8 +16,9 @@ PolicyEvaluator::~PolicyEvaluator() {
 }
 
 void PolicyEvaluator::Unregister() {
-  if (unregister_cb_)
+  if (unregister_cb_) {
     std::move(unregister_cb_).Run(this);
+  }
 }
 
 EvalStatus PolicyEvaluator::Evaluate() {
@@ -74,10 +75,11 @@ void PolicyEvaluator::OnPolicyReadyToEvaluate(
   }
 
   // Re-schedule the policy request based on used variables.
-  if (ec_->RunOnValueChangeOrTimeout(
-          base::BindOnce(&PolicyEvaluator::OnPolicyReadyToEvaluate,
-                         weak_ptr_factory_.GetWeakPtr(), std::move(callback))))
+  if (ec_->RunOnValueChangeOrTimeout(base::BindOnce(
+          &PolicyEvaluator::OnPolicyReadyToEvaluate,
+          weak_ptr_factory_.GetWeakPtr(), std::move(callback)))) {
     return;  // Reevaluation scheduled successfully.
+  }
 
   // Scheduling a reevaluation can fail because policy method didn't use any
   // non-const variable nor there's any time-based event that will change the

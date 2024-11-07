@@ -170,15 +170,17 @@ bool FullUpdateGenerator::GenerateOperations(
   base::DelegateSimpleThreadPool thread_pool("full-update-generator",
                                              max_threads);
   thread_pool.Start();
-  for (ChunkProcessor& processor : chunk_processors)
+  for (ChunkProcessor& processor : chunk_processors) {
     thread_pool.AddWork(&processor);
+  }
   thread_pool.JoinAll();
 
   // All the operations must have a type set at this point. Otherwise, a
   // ChunkProcessor failed to complete.
   for (const AnnotatedOperation& aop : *aops) {
-    if (!aop.op.has_type())
+    if (!aop.op.has_type()) {
       return false;
+    }
   }
   return true;
 }

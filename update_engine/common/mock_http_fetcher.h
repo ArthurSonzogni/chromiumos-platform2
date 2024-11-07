@@ -55,8 +55,9 @@ class MockHttpFetcher : public HttpFetcher {
   // Ignores this.
   void SetOffset(off_t offset) override {
     sent_offset_ = offset;
-    if (delegate_)
+    if (delegate_) {
       delegate_->SeekToOffset(offset);
+    }
   }
 
   // Do nothing.

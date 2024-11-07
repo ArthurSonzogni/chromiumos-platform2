@@ -49,8 +49,9 @@ UpdateTimeRestrictionsMonitor::UpdateTimeRestrictionsMonitor(
       device_policy_provider_(device_policy_provider),
       delegate_(delegate),
       weak_ptr_factory_(this) {
-  if (device_policy_provider_ != nullptr && delegate_ != nullptr)
+  if (device_policy_provider_ != nullptr && delegate_ != nullptr) {
     StartMonitoring();
+  }
 }
 
 UpdateTimeRestrictionsMonitor::~UpdateTimeRestrictionsMonitor() {
@@ -61,8 +62,9 @@ void UpdateTimeRestrictionsMonitor::StartMonitoring() {
   DCHECK(device_policy_provider_);
   const WeeklyTimeIntervalVector* new_intervals = evaluation_context_.GetValue(
       device_policy_provider_->var_disallowed_time_intervals());
-  if (new_intervals && !new_intervals->empty())
+  if (new_intervals && !new_intervals->empty()) {
     WaitForRestrictedIntervalStarts(*new_intervals);
+  }
 
   const bool is_registered = evaluation_context_.RunOnValueChangeOrTimeout(
       base::BindOnce(&UpdateTimeRestrictionsMonitor::OnIntervalsChanged,
@@ -100,8 +102,9 @@ void UpdateTimeRestrictionsMonitor::WaitForRestrictedIntervalStarts(
 
 void UpdateTimeRestrictionsMonitor::HandleRestrictedIntervalStarts() {
   timeout_event_ = MessageLoop::kTaskIdNull;
-  if (delegate_)
+  if (delegate_) {
     delegate_->OnRestrictedIntervalStarts();
+  }
 }
 
 void UpdateTimeRestrictionsMonitor::StopMonitoring() {

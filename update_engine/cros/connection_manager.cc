@@ -105,8 +105,9 @@ bool ConnectionManager::GetConnectionProperties(ConnectionType* out_type,
                                                 bool* out_metered) {
   dbus::ObjectPath default_service_path;
   TEST_AND_RETURN_FALSE(GetDefaultServicePath(&default_service_path));
-  if (!default_service_path.IsValid())
+  if (!default_service_path.IsValid()) {
     return false;
+  }
   // Shill uses the "/" service path to indicate that it is not connected.
   if (default_service_path.value() == "/") {
     *out_type = ConnectionType::kDisconnected;
@@ -122,14 +123,16 @@ bool ConnectionManager::GetDefaultServicePath(dbus::ObjectPath* out_path) {
   brillo::VariantDictionary properties;
   brillo::ErrorPtr error;
   ManagerProxyInterface* manager_proxy = shill_proxy_->GetManagerProxy();
-  if (!manager_proxy)
+  if (!manager_proxy) {
     return false;
+  }
   TEST_AND_RETURN_FALSE(manager_proxy->GetProperties(&properties, &error));
 
   const auto& prop_default_service =
       properties.find(shill::kDefaultServiceProperty);
-  if (prop_default_service == properties.end())
+  if (prop_default_service == properties.end()) {
     return false;
+  }
 
   *out_path = prop_default_service->second.TryGet<dbus::ObjectPath>();
   return out_path->IsValid();

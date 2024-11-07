@@ -24,8 +24,9 @@ string HwidOverride::Read(const base::FilePath& root) {
   brillo::KeyValueStore lsb_release;
   lsb_release.Load(base::FilePath(root.value() + "/etc/lsb-release"));
   string result;
-  if (lsb_release.GetString(kHwidOverrideKey, &result))
+  if (lsb_release.GetString(kHwidOverrideKey, &result)) {
     return result;
+  }
   return "";
 }
 

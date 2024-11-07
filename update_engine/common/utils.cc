@@ -87,8 +87,9 @@ bool GetTempName(const string& path, base::FilePath* template_path) {
 
   base::FilePath temp_dir;
   TEST_AND_RETURN_FALSE(base::GetTempDir(&temp_dir));
-  if (!base::PathExists(temp_dir))
+  if (!base::PathExists(temp_dir)) {
     TEST_AND_RETURN_FALSE(base::CreateDirectory(temp_dir));
+  }
   *template_path = temp_dir.Append(path);
   return true;
 }
@@ -96,8 +97,9 @@ bool GetTempName(const string& path, base::FilePath* template_path) {
 // Generate a simple hash.
 uint64_t GenerateExclusionHash(const std::string& sp) {
   uint64_t result = 0;
-  for (const auto& c : sp)
+  for (const auto& c : sp) {
     result = (result * 131) + static_cast<uint64_t>(c);
+  }
   return result;
 }
 
@@ -310,8 +312,9 @@ static bool ReadFileChunkAndAppend(const string& path,
   CHECK_GE(offset, 0);
   CHECK(size == -1 || size >= 0);
   base::ScopedFILE fp(fopen(path.c_str(), "r"));
-  if (!fp.get())
+  if (!fp.get()) {
     return false;
+  }
   if (offset) {
     // Return success without appending any data if a chunk beyond the end of
     // the file is requested.
@@ -327,8 +330,9 @@ static bool ReadFileChunkAndAppend(const string& path,
 // Read<string>() defined here. Expose Read<string>() or move to base/ version.
 bool ReadPipe(const string& cmd, string* out_p) {
   FILE* fp = popen(cmd.c_str(), "r");
-  if (!fp)
+  if (!fp) {
     return false;
+  }
   bool success = Read(fp, -1, out_p);
   return (success && pclose(fp) >= 0);
 }
@@ -366,10 +370,12 @@ off_t FileSize(int fd) {
     PLOG(ERROR) << "Error stat-ing " << fd;
     return rc;
   }
-  if (S_ISREG(stbuf.st_mode))
+  if (S_ISREG(stbuf.st_mode)) {
     return stbuf.st_size;
-  if (S_ISBLK(stbuf.st_mode))
+  }
+  if (S_ISBLK(stbuf.st_mode)) {
     return BlockDevSize(fd);
+  }
   LOG(ERROR) << "Couldn't determine the type of " << fd;
   return -1;
 }
@@ -381,8 +387,9 @@ off_t FileSize(const string& path) {
     return fd;
   }
   off_t size = FileSize(fd);
-  if (size == -1)
+  if (size == -1) {
     PLOG(ERROR) << "Error getting file size of " << path;
+  }
   close(fd);
   return size;
 }
@@ -511,8 +518,9 @@ bool SetBlockDeviceReadOnly(const string& device, bool read_only) {
   int expected_flag = read_only ? 1 : 0;
   int rc = ioctl(fd, BLKROGET, &read_only_flag);
   // In case of failure reading the setting we will try to set it anyway.
-  if (rc == 0 && read_only_flag == expected_flag)
+  if (rc == 0 && read_only_flag == expected_flag) {
     return true;
+  }
 
   rc = ioctl(fd, BLKROSET, &expected_flag);
   if (rc != 0) {
@@ -537,8 +545,9 @@ bool MountFilesystem(const string& device,
   for (const char* fstype : fstypes) {
     int rc = mount(device.c_str(), mountpoint.c_str(), fstype, mountflags,
                    fs_mount_options.c_str());
-    if (rc == 0)
+    if (rc == 0) {
       return true;
+    }
 
     PLOG(WARNING) << "Unable to mount destination device " << device << " on "
                   << mountpoint << " as " << fstype;
@@ -552,10 +561,12 @@ bool MountFilesystem(const string& device,
 bool UnmountFilesystem(const string& mountpoint) {
   int num_retries = 1;
   for (;; ++num_retries) {
-    if (umount(mountpoint.c_str()) == 0)
+    if (umount(mountpoint.c_str()) == 0) {
       return true;
-    if (errno != EBUSY || num_retries >= kUnmountMaxNumOfRetries)
+    }
+    if (errno != EBUSY || num_retries >= kUnmountMaxNumOfRetries) {
       break;
+    }
     usleep(kUnmountRetryIntervalInMicroseconds);
   }
   if (errno == EINVAL) {
@@ -584,8 +595,9 @@ bool IsMountpoint(const std::string& mountpoint) {
     PLOG(ERROR) << "Error stat'ing " << mountpoint;
     return false;
   }
-  if (!S_ISDIR(stdir.st_mode))
+  if (!S_ISDIR(stdir.st_mode)) {
     return false;
+  }
 
   base::FilePath parent(mountpoint);
   parent = parent.Append("..");
@@ -603,13 +615,15 @@ static bool GetFileFormatELF(const uint8_t* buffer,
                              size_t size,
                              string* output) {
   // 0x00: EI_MAG - ELF magic header, 4 bytes.
-  if (size < SELFMAG || memcmp(buffer, ELFMAG, SELFMAG) != 0)
+  if (size < SELFMAG || memcmp(buffer, ELFMAG, SELFMAG) != 0) {
     return false;
+  }
   *output = "ELF";
 
   // 0x04: EI_CLASS, 1 byte.
-  if (size < EI_CLASS + 1)
+  if (size < EI_CLASS + 1) {
     return true;
+  }
   switch (buffer[EI_CLASS]) {
     case ELFCLASS32:
       *output += " 32-bit";
@@ -622,8 +636,9 @@ static bool GetFileFormatELF(const uint8_t* buffer,
   }
 
   // 0x05: EI_DATA, endianness, 1 byte.
-  if (size < EI_DATA + 1)
+  if (size < EI_DATA + 1) {
     return true;
+  }
   uint8_t ei_data = buffer[EI_DATA];
   switch (ei_data) {
     case ELFDATA2LSB:
@@ -641,14 +656,16 @@ static bool GetFileFormatELF(const uint8_t* buffer,
   const Elf32_Ehdr* hdr = reinterpret_cast<const Elf32_Ehdr*>(buffer);
   // 0x12: e_machine, 2 byte endianness based on ei_data. The position (0x12)
   // and size is the same for both 32 and 64 bits.
-  if (size < offsetof(Elf32_Ehdr, e_machine) + sizeof(hdr->e_machine))
+  if (size < offsetof(Elf32_Ehdr, e_machine) + sizeof(hdr->e_machine)) {
     return true;
+  }
   uint16_t e_machine;
   // Fix endianness regardless of the host endianness.
-  if (ei_data == ELFDATA2LSB)
+  if (ei_data == ELFDATA2LSB) {
     e_machine = le16toh(hdr->e_machine);
-  else
+  } else {
     e_machine = be16toh(hdr->e_machine);
+  }
 
   switch (e_machine) {
     case EM_386:
@@ -671,12 +688,14 @@ static bool GetFileFormatELF(const uint8_t* buffer,
 
 string GetFileFormat(const string& path) {
   brillo::Blob buffer;
-  if (!ReadFileChunkAndAppend(path, 0, kGetFileFormatMaxHeaderSize, &buffer))
+  if (!ReadFileChunkAndAppend(path, 0, kGetFileFormatMaxHeaderSize, &buffer)) {
     return "File not found.";
+  }
 
   string result;
-  if (GetFileFormatELF(buffer.data(), buffer.size(), &result))
+  if (GetFileFormatELF(buffer.data(), buffer.size(), &result)) {
     return result;
+  }
 
   return "data";
 }
@@ -711,12 +730,15 @@ string FormatTimeDelta(TimeDelta delta) {
   delta -= base::Seconds(secs);
   unsigned usecs = delta.InMicroseconds();
 
-  if (days)
+  if (days) {
     base::StringAppendF(&str, "%ud", days);
-  if (days || hours)
+  }
+  if (days || hours) {
     base::StringAppendF(&str, "%uh", hours);
-  if (days || hours || mins)
+  }
+  if (days || hours || mins) {
     base::StringAppendF(&str, "%um", mins);
+  }
   base::StringAppendF(&str, "%u", secs);
   if (usecs) {
     int width = 6;
@@ -801,8 +823,9 @@ string StringVectorToString(const vector<string>& vec_str) {
   string str = "[";
   for (vector<string>::const_iterator i = vec_str.begin(); i != vec_str.end();
        ++i) {
-    if (i != vec_str.begin())
+    if (i != vec_str.begin()) {
       str += ", ";
+    }
     str += '"';
     str += *i;
     str += '"';
@@ -834,8 +857,9 @@ bool ConvertToOmahaInstallDate(Time time, int* out_num_days) {
 
   time_t omaha_time = unix_time - kOmahaEpoch;
 
-  if (omaha_time < 0)
+  if (omaha_time < 0) {
     return false;
+  }
 
   // Note, as per the comment in utils.h we are deliberately not
   // handling DST correctly.
@@ -899,8 +923,9 @@ int VersionPrefix(const std::string& version) {
   vector<string> tokens = base::SplitString(version, ".", base::KEEP_WHITESPACE,
                                             base::SPLIT_WANT_ALL);
   int value;
-  if (tokens.empty() || !base::StringToInt(tokens[0], &value))
+  if (tokens.empty() || !base::StringToInt(tokens[0], &value)) {
     return -1;  // Target version is invalid.
+  }
   return value;
 }
 

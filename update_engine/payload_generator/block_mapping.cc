@@ -36,10 +36,13 @@ BlockMapping::BlockId BlockMapping::AddBlock(const brillo::Blob& block_data) {
 BlockMapping::BlockId BlockMapping::AddDiskBlock(int fd, off_t byte_offset) {
   brillo::Blob blob(block_size_);
   ssize_t bytes_read = 0;
-  if (!utils::PReadAll(fd, blob.data(), block_size_, byte_offset, &bytes_read))
+  if (!utils::PReadAll(fd, blob.data(), block_size_, byte_offset,
+                       &bytes_read)) {
     return -1;
-  if (static_cast<size_t>(bytes_read) != block_size_)
+  }
+  if (static_cast<size_t>(bytes_read) != block_size_) {
     return -1;
+  }
   return AddBlock(fd, byte_offset, blob);
 }
 
@@ -60,8 +63,9 @@ bool BlockMapping::AddManyDiskBlocks(int fd,
 BlockMapping::BlockId BlockMapping::AddBlock(int fd,
                                              off_t byte_offset,
                                              const brillo::Blob& block_data) {
-  if (block_data.size() != block_size_)
+  if (block_data.size() != block_size_) {
     return -1;
+  }
   size_t h = HashValue(block_data);
 
   // We either reuse a UniqueBlock or create a new one. If we need a new
@@ -75,10 +79,12 @@ BlockMapping::BlockId BlockMapping::AddBlock(int fd,
   } else {
     for (UniqueBlock& existing_block : mapping_it->second) {
       bool equals = false;
-      if (!existing_block.CompareData(block_data, &equals))
+      if (!existing_block.CompareData(block_data, &equals)) {
         return -1;
-      if (equals)
+      }
+      if (equals) {
         return existing_block.block_id;
+      }
     }
     bucket = &mapping_it->second;
   }
@@ -93,8 +99,9 @@ BlockMapping::BlockId BlockMapping::AddBlock(int fd,
   new_ublock->byte_offset = byte_offset;
   new_ublock->block_id = used_block_ids++;
   // We need to cache blocks that are not referencing any disk location.
-  if (fd == -1)
+  if (fd == -1) {
     new_ublock->block_data = block_data;
+  }
 
   return new_ublock->block_id;
 }
@@ -108,10 +115,12 @@ bool BlockMapping::UniqueBlock::CompareData(const brillo::Blob& other_block,
   const size_t block_size = other_block.size();
   brillo::Blob blob(block_size);
   ssize_t bytes_read = 0;
-  if (!utils::PReadAll(fd, blob.data(), block_size, byte_offset, &bytes_read))
+  if (!utils::PReadAll(fd, blob.data(), block_size, byte_offset, &bytes_read)) {
     return false;
-  if (static_cast<size_t>(bytes_read) != block_size)
+  }
+  if (static_cast<size_t>(bytes_read) != block_size) {
     return false;
+  }
   *equals = blob == other_block;
 
   // We increase the number of times we had to read this block from disk and
@@ -120,8 +129,9 @@ bool BlockMapping::UniqueBlock::CompareData(const brillo::Blob& other_block,
   // but have few repeated blocks inside each partition, such as the block
   // with all zeros or duplicated files.
   times_read++;
-  if (times_read > 3)
+  if (times_read > 3) {
     block_data = std::move(blob);
+  }
   return true;
 }
 
@@ -133,8 +143,9 @@ bool MapPartitionBlocks(const string& old_part,
                         vector<BlockMapping::BlockId>* old_block_ids,
                         vector<BlockMapping::BlockId>* new_block_ids) {
   BlockMapping mapping(block_size);
-  if (mapping.AddBlock(brillo::Blob(block_size, '\0')) != 0)
+  if (mapping.AddBlock(brillo::Blob(block_size, '\0')) != 0) {
     return false;
+  }
   int old_fd = HANDLE_EINTR(open(old_part.c_str(), O_RDONLY));
   int new_fd = HANDLE_EINTR(open(new_part.c_str(), O_RDONLY));
   ScopedFdCloser old_fd_closer(&old_fd);

@@ -50,8 +50,9 @@ void OmahaParserXml::ParserHandlerStart(void* user_data,
                                         const XML_Char* element,
                                         const XML_Char** attr) {
   OmahaParserXml* parser = reinterpret_cast<OmahaParserXml*>(user_data);
-  if (parser->failed_)
+  if (parser->failed_) {
     return;
+  }
 
   parser->current_path_ += string("/") + element;
 
@@ -72,12 +73,15 @@ void OmahaParserXml::ParserHandlerStart(void* user_data,
     };
   } else if (parser->current_path_ == "/response/app") {
     data->apps.push_back({.id = attrs[kAttrAppId]});
-    if (attrs.find(kAttrCohort) != attrs.end())
+    if (attrs.find(kAttrCohort) != attrs.end()) {
       data->apps.back().cohort = attrs[kAttrCohort];
-    if (attrs.find(kAttrCohortHint) != attrs.end())
+    }
+    if (attrs.find(kAttrCohortHint) != attrs.end()) {
       data->apps.back().cohorthint = attrs[kAttrCohortHint];
-    if (attrs.find(kAttrCohortName) != attrs.end())
+    }
+    if (attrs.find(kAttrCohortName) != attrs.end()) {
       data->apps.back().cohortname = attrs[kAttrCohortName];
+    }
   } else if (parser->current_path_ == "/response/app/updatecheck") {
     data->apps.back().updatecheck = {
         .status = attrs[kAttrStatus],
@@ -147,8 +151,9 @@ void OmahaParserXml::ParserHandlerStart(void* user_data,
 void OmahaParserXml::ParserHandlerEnd(void* user_data,
                                       const XML_Char* element) {
   OmahaParserXml* parser = reinterpret_cast<OmahaParserXml*>(user_data);
-  if (parser->failed_)
+  if (parser->failed_) {
     return;
+  }
 
   const string path_suffix = string("/") + element;
 

@@ -143,12 +143,15 @@ bool BootControlChromeOS::Init() {
     boot_device = GetBootDevice();
   }
 
-  if (boot_device.empty())
+  if (boot_device.empty()) {
     return false;
+  }
 
   int partition_num;
-  if (!utils::SplitPartitionName(boot_device, &boot_disk_name_, &partition_num))
+  if (!utils::SplitPartitionName(boot_device, &boot_disk_name_,
+                                 &partition_num)) {
     return false;
+  }
 
   // All installed Chrome OS devices have two slots. We don't update removable
   // devices, so we will pretend we have only one slot in that case.
@@ -198,12 +201,14 @@ BootControlInterface::Slot BootControlChromeOS::GetCurrentSlot() const {
 
 BootControlInterface::Slot BootControlChromeOS::GetFirstInactiveSlot() const {
   if (GetCurrentSlot() == BootControlInterface::kInvalidSlot ||
-      GetNumSlots() < 2)
+      GetNumSlots() < 2) {
     return BootControlInterface::kInvalidSlot;
+  }
 
   for (Slot slot = 0; slot < GetNumSlots(); slot++) {
-    if (slot != GetCurrentSlot())
+    if (slot != GetCurrentSlot()) {
       return slot;
+    }
   }
   return BootControlInterface::kInvalidSlot;
 }
@@ -268,8 +273,9 @@ bool BootControlChromeOS::GetPartitionDevice(const std::string& partition_name,
   if (base::StartsWith(partition_name, kPartitionNamePrefixDlc,
                        base::CompareCase::SENSITIVE)) {
     string dlc_id, dlc_package;
-    if (!ParseDlcPartitionName(partition_name, &dlc_id, &dlc_package))
+    if (!ParseDlcPartitionName(partition_name, &dlc_id, &dlc_package)) {
       return false;
+    }
 
     auto manifest = SystemState::Get()->dlc_utils()->GetDlcManifest(
         dlc_id, base::FilePath(imageloader::kDlcManifestRootpath));
@@ -284,8 +290,9 @@ bool BootControlChromeOS::GetPartitionDevice(const std::string& partition_name,
                   .Append(kPartitionNameDlcImage)
                   .value();
 #if USE_LVM_STATEFUL_PARTITION
-    if (manifest->user_tied() || !manifest->use_logical_volume())
+    if (manifest->user_tied() || !manifest->use_logical_volume()) {
       return true;
+    }
     // Override with logical volume path if valid.
     // DLC logical volumes follow a specific naming scheme.
     brillo::LogicalVolumeManager lvm;
@@ -311,12 +318,14 @@ bool BootControlChromeOS::GetPartitionDevice(const std::string& partition_name,
     return true;
   }
   int partition_num = GetPartitionNumber(partition_name, slot);
-  if (partition_num < 0)
+  if (partition_num < 0) {
     return false;
+  }
 
   string part_device = utils::MakePartitionName(boot_disk_name_, partition_num);
-  if (part_device.empty())
+  if (part_device.empty()) {
     return false;
+  }
 
   *device = part_device;
   if (is_dynamic) {
@@ -334,8 +343,9 @@ bool BootControlChromeOS::GetPartitionDevice(const string& partition_name,
 bool BootControlChromeOS::GetErrorCounter(BootControlInterface::Slot slot,
                                           int* error_counter) const {
   int partition_num = GetPartitionNumber(kChromeOSPartitionNameKernel, slot);
-  if (partition_num < 0)
+  if (partition_num < 0) {
     return false;
+  }
 
   CgptAddParams params;
   memset(&params, '\0', sizeof(params));
@@ -343,8 +353,9 @@ bool BootControlChromeOS::GetErrorCounter(BootControlInterface::Slot slot,
   params.partition = partition_num;
 
   int retval = CgptGetPartitionDetails(&params);
-  if (retval != CGPT_OK)
+  if (retval != CGPT_OK) {
     return false;
+  }
 
   *error_counter = params.error_counter;
   return true;
@@ -353,8 +364,9 @@ bool BootControlChromeOS::GetErrorCounter(BootControlInterface::Slot slot,
 bool BootControlChromeOS::SetErrorCounter(BootControlInterface::Slot slot,
                                           int error_counter) {
   int partition_num = GetPartitionNumber(kChromeOSPartitionNameKernel, slot);
-  if (partition_num < 0)
+  if (partition_num < 0) {
     return false;
+  }
 
   CgptAddParams add_params;
   memset(&add_params, 0, sizeof(add_params));
@@ -377,8 +389,9 @@ bool BootControlChromeOS::SetErrorCounter(BootControlInterface::Slot slot,
 
 bool BootControlChromeOS::IsSlotBootable(Slot slot) const {
   int partition_num = GetPartitionNumber(kChromeOSPartitionNameKernel, slot);
-  if (partition_num < 0)
+  if (partition_num < 0) {
     return false;
+  }
 
   CgptAddParams params;
   memset(&params, '\0', sizeof(params));
@@ -386,8 +399,9 @@ bool BootControlChromeOS::IsSlotBootable(Slot slot) const {
   params.partition = partition_num;
 
   int retval = CgptGetPartitionDetails(&params);
-  if (retval != CGPT_OK)
+  if (retval != CGPT_OK) {
     return false;
+  }
 
   return params.successful || params.tries > 0;
 }
@@ -401,8 +415,9 @@ bool BootControlChromeOS::MarkSlotUnbootable(Slot slot) {
   }
 
   int partition_num = GetPartitionNumber(kChromeOSPartitionNameKernel, slot);
-  if (partition_num < 0)
+  if (partition_num < 0) {
     return false;
+  }
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -429,8 +444,9 @@ bool BootControlChromeOS::SetActiveBootSlot(Slot slot) {
   LOG(INFO) << "Marking slot " << SlotName(slot) << " active.";
 
   int partition_num = GetPartitionNumber(kChromeOSPartitionNameKernel, slot);
-  if (partition_num < 0)
+  if (partition_num < 0) {
     return false;
+  }
 
   return SetActiveBootPartition(partition_num, SlotName(slot));
 }
@@ -529,11 +545,13 @@ int BootControlChromeOS::GetPartitionNumber(
   string partition_lower = base::ToLowerASCII(partition_name);
   int base_part_num = 2 + 2 * slot;
   if (partition_lower == kChromeOSPartitionNameKernel ||
-      partition_lower == kAndroidPartitionNameKernel)
+      partition_lower == kAndroidPartitionNameKernel) {
     return base_part_num + 0;
+  }
   if (partition_lower == kChromeOSPartitionNameRoot ||
-      partition_lower == kAndroidPartitionNameRoot)
+      partition_lower == kAndroidPartitionNameRoot) {
     return base_part_num + 1;
+  }
   if (partition_lower == kChromeOSPartitionNameMiniOS) {
     return slot + kMiniOsPartitionANum;
   }
@@ -624,16 +642,18 @@ BootControlInterface::Slot BootControlChromeOS::GetHighestOffsetSlot(
   uint64_t last_offset = 0;
   for (BootControlInterface::Slot i = 0; i < num_slots_; ++i) {
     int partition_num = GetPartitionNumber(partition_name, i);
-    if (partition_num < 0)
+    if (partition_num < 0) {
       continue;
+    }
 
     CgptAddParams params = {
         .drive_name = const_cast<char*>(boot_disk_name_.c_str()),
         .partition = static_cast<uint32_t>(partition_num)};
 
     int retval = CgptGetPartitionDetails(&params);
-    if (retval != CGPT_OK)
+    if (retval != CGPT_OK) {
       continue;
+    }
 
     if (slot == kInvalidSlot || params.begin > last_offset) {
       last_offset = params.begin;

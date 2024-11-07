@@ -118,8 +118,9 @@ void CrosHealthd::ProbeTelemetryInfo(
   std::vector<ProbeCategoryEnum> categories_mojo;
   for (const auto& category : categories) {
     auto it = kTelemetryMojoMapping.find(category);
-    if (it != kTelemetryMojoMapping.end())
+    if (it != kTelemetryMojoMapping.end()) {
       categories_mojo.push_back(it->second);
+    }
   }
   auto callback =
       base::BindOnce(&CrosHealthd::OnProbeTelemetryInfo,
@@ -139,16 +140,21 @@ void CrosHealthd::OnProbeTelemetryInfo(
   }
   LOG(INFO) << "Probed telemetry info from cros_healthd.";
   telemetry_info_ = std::make_unique<TelemetryInfo>();
-  if (!ParseSystemResult(&result, telemetry_info_.get()))
+  if (!ParseSystemResult(&result, telemetry_info_.get())) {
     LOG(WARNING) << "Failed to parse system information.";
-  if (!ParseMemoryResult(&result, telemetry_info_.get()))
+  }
+  if (!ParseMemoryResult(&result, telemetry_info_.get())) {
     LOG(WARNING) << "Failed to parse memory information.";
-  if (!ParseNonRemovableBlockDeviceResult(&result, telemetry_info_.get()))
+  }
+  if (!ParseNonRemovableBlockDeviceResult(&result, telemetry_info_.get())) {
     LOG(WARNING) << "Failed to parse non-removable block device information.";
-  if (!ParseCpuResult(&result, telemetry_info_.get()))
+  }
+  if (!ParseCpuResult(&result, telemetry_info_.get())) {
     LOG(WARNING) << "Failed to parse physical CPU information.";
-  if (!ParseBusResult(&result, telemetry_info_.get()))
+  }
+  if (!ParseBusResult(&result, telemetry_info_.get())) {
     LOG(WARNING) << "Failed to parse bus information.";
+  }
   std::move(once_callback).Run();
 }
 
@@ -165,18 +171,22 @@ bool CrosHealthd::ParseSystemResult(
 
     const auto& dmi_info = system_info->dmi_info;
     if (dmi_info) {
-      if (dmi_info->sys_vendor.has_value())
+      if (dmi_info->sys_vendor.has_value()) {
         telemetry_info->system_info.dmi_info.sys_vendor =
             dmi_info->sys_vendor.value();
-      if (dmi_info->product_name.has_value())
+      }
+      if (dmi_info->product_name.has_value()) {
         telemetry_info->system_info.dmi_info.product_name =
             dmi_info->product_name.value();
-      if (dmi_info->product_version.has_value())
+      }
+      if (dmi_info->product_version.has_value()) {
         telemetry_info->system_info.dmi_info.product_version =
             dmi_info->product_version.value();
-      if (dmi_info->bios_version.has_value())
+      }
+      if (dmi_info->bios_version.has_value()) {
         telemetry_info->system_info.dmi_info.bios_version =
             dmi_info->bios_version.value();
+      }
     }
 
     const auto& os_info = system_info->os_info;
@@ -262,8 +272,9 @@ bool CrosHealthd::ParseBusResult(
     }
     const auto& bus_devices = bus_result->get_bus_devices();
     for (const auto& bus_device : bus_devices) {
-      if (!bus_device->bus_info)
+      if (!bus_device->bus_info) {
         continue;
+      }
       switch (bus_device->bus_info->which()) {
         case ash::cros_healthd::mojom::BusInfo::Tag::kPciBusInfo: {
           const auto& pci_bus_info = bus_device->bus_info->get_pci_bus_info();

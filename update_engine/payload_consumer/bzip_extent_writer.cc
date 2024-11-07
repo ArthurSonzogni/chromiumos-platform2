@@ -53,16 +53,19 @@ bool BzipExtentWriter::Write(const void* bytes, size_t count) {
     int rc = BZ2_bzDecompress(&stream_);
     TEST_AND_RETURN_FALSE(rc == BZ_OK || rc == BZ_STREAM_END);
 
-    if (stream_.avail_out == output_buffer.size())
+    if (stream_.avail_out == output_buffer.size()) {
       break;  // got no new bytes
+    }
 
     TEST_AND_RETURN_FALSE(next_->Write(
         output_buffer.data(), output_buffer.size() - stream_.avail_out));
 
-    if (rc == BZ_STREAM_END)
+    if (rc == BZ_STREAM_END) {
       CHECK_EQ(stream_.avail_in, 0u);
-    if (stream_.avail_in == 0)
+    }
+    if (stream_.avail_in == 0) {
       break;  // no more input to process
+    }
   }
 
   // Store unconsumed data (if any) in |input_buffer_|.

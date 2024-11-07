@@ -61,8 +61,9 @@ EvalStatus P2PEnabledChangedPolicy::Evaluate(EvaluationContext* ec,
   EvalStatus status = policy.Evaluate(ec, state, error, data);
   auto p2p_data = static_cast<P2PEnabledPolicyData*>(data);
   if (status == EvalStatus::kSucceeded &&
-      p2p_data->enabled() == p2p_data->prev_enabled())
+      p2p_data->enabled() == p2p_data->prev_enabled()) {
     return EvalStatus::kAskMeAgainLater;
+  }
   return status;
 }
 

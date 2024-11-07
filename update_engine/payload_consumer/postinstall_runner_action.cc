@@ -103,8 +103,9 @@ void PostinstallRunnerAction::PerformPartitionPostinstall() {
             << install_plan_.partitions[current_partition_].name;
     current_partition_++;
   }
-  if (current_partition_ == install_plan_.partitions.size())
+  if (current_partition_ == install_plan_.partitions.size()) {
     return CompletePostinstall(ErrorCode::kSuccess);
+  }
 
   const InstallPlan::Partition& partition =
       install_plan_.partitions[current_partition_];
@@ -258,16 +259,19 @@ bool PostinstallRunnerAction::ProcessProgressLine(const string& line) {
 }
 
 void PostinstallRunnerAction::ReportProgress(double frac) {
-  if (!delegate_)
+  if (!delegate_) {
     return;
+  }
   if (current_partition_ >= partition_weight_.size() || total_weight_ == 0) {
     delegate_->ProgressUpdate(1.);
     return;
   }
-  if (!std::isfinite(frac) || frac < 0)
+  if (!std::isfinite(frac) || frac < 0) {
     frac = 0;
-  if (frac > 1)
+  }
+  if (frac > 1) {
     frac = 1;
+  }
   double postinst_action_progress =
       (accumulated_weight_ + partition_weight_[current_partition_] * frac) /
       total_weight_;
@@ -368,8 +372,9 @@ void PostinstallRunnerAction::CompletePostinstall(ErrorCode error_code) {
     LOG(ERROR) << "Postinstall action failed.";
 
     // Undo any changes done to trigger Powerwash.
-    if (powerwash_scheduled_)
+    if (powerwash_scheduled_) {
       hardware_->CancelPowerwash();
+    }
 
     return;
   }
@@ -381,8 +386,9 @@ void PostinstallRunnerAction::CompletePostinstall(ErrorCode error_code) {
 }
 
 void PostinstallRunnerAction::SuspendAction() {
-  if (!current_command_)
+  if (!current_command_) {
     return;
+  }
   if (kill(current_command_, SIGSTOP) != 0) {
     PLOG(ERROR) << "Couldn't pause child process " << current_command_;
   } else {
@@ -391,8 +397,9 @@ void PostinstallRunnerAction::SuspendAction() {
 }
 
 void PostinstallRunnerAction::ResumeAction() {
-  if (!current_command_)
+  if (!current_command_) {
     return;
+  }
   if (kill(current_command_, SIGCONT) != 0) {
     PLOG(ERROR) << "Couldn't resume child process " << current_command_;
   } else {
@@ -401,8 +408,9 @@ void PostinstallRunnerAction::ResumeAction() {
 }
 
 void PostinstallRunnerAction::TerminateProcessing() {
-  if (!current_command_)
+  if (!current_command_) {
     return;
+  }
   // Calling KillExec() will discard the callback we registered and therefore
   // the unretained reference to this object.
   Subprocess::Get().KillExec(current_command_);

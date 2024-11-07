@@ -70,8 +70,9 @@ int LibcurlHttpFetcher::LibcurlCloseSocketCallback(void* clientp,
   }
 
   // Documentation for this callback says to return 0 on success or 1 on error.
-  if (!IGNORE_EINTR(close(item)))
+  if (!IGNORE_EINTR(close(item))) {
     return 0;
+  }
   return 1;
 }
 
@@ -80,10 +81,12 @@ LibcurlHttpFetcher::LibcurlHttpFetcher(ProxyResolver* proxy_resolver,
     : HttpFetcher(proxy_resolver), hardware_(hardware) {
   // Dev users want a longer timeout (180 seconds) because they may
   // be waiting on the dev server to build an image.
-  if (!hardware_->IsOfficialBuild())
+  if (!hardware_->IsOfficialBuild()) {
     low_speed_time_seconds_ = kDownloadDevModeLowSpeedTimeSeconds;
-  if (hardware_->IsOOBEEnabled() && !hardware_->IsOOBEComplete(nullptr))
+  }
+  if (hardware_->IsOOBEEnabled() && !hardware_->IsOOBEComplete(nullptr)) {
     max_retry_count_ = kDownloadMaxRetryCountOobeNotComplete;
+  }
 }
 
 LibcurlHttpFetcher::~LibcurlHttpFetcher() {
@@ -208,8 +211,9 @@ void LibcurlHttpFetcher::ResumeTransfer(const string& url) {
     // Create a string representation of the desired range.
     string range_str = base::StringPrintf(
         "%" PRIu64 "-", static_cast<uint64_t>(resume_offset_));
-    if (end_offset)
+    if (end_offset) {
       range_str += std::to_string(end_offset);
+    }
     CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_RANGE, range_str.c_str()),
              CURLE_OK);
   }
@@ -359,8 +363,9 @@ void LibcurlHttpFetcher::SetHeader(const string& header_name,
                                    const string& header_value) {
   string header_line = header_name + ": " + header_value;
   // Avoid the space if no data on the right side of the semicolon.
-  if (header_value.empty())
+  if (header_value.empty()) {
     header_line = header_name + ":";
+  }
   TEST_AND_RETURN(header_line.find('\n') == string::npos);
   TEST_AND_RETURN(header_name.find(':') == string::npos);
   extra_headers_[base::ToLowerASCII(header_name)] = header_line;
@@ -384,8 +389,9 @@ bool LibcurlHttpFetcher::GetHeader(const string& header_name,
   auto header_key = base::ToLowerASCII(header_name);
   auto header_line_itr = extra_headers_.find(header_key);
   // If the |header_name| was never set, indicate so by returning false.
-  if (header_line_itr == extra_headers_.end())
+  if (header_line_itr == extra_headers_.end()) {
     return false;
+  }
   // From |SetHeader()| the check for |header_name| to not include ":" is
   // verified, so finding the first index of ":" is a safe operation.
   auto header_line = header_line_itr->second;
@@ -534,16 +540,18 @@ void LibcurlHttpFetcher::CurlPerformOnce() {
     } else {
       // Out of proxies. Give up.
       LOG(INFO) << "No further proxies, indicating transfer complete";
-      if (delegate_)
+      if (delegate_) {
         delegate_->TransferComplete(this, false);  // signal fail
+      }
       return;
     }
   } else if ((transfer_size_ >= 0) && (bytes_downloaded_ < transfer_size_)) {
     // If the response happens to be partial data, don't increase the retry
     // count, as we should retry without treating it as an error.
     bool partial_content = IsHttpResponseSuccessPartialContent();
-    if (!ignore_failure_ && !partial_content)
+    if (!ignore_failure_ && !partial_content) {
       retry_count_++;
+    }
 
     auto bytes_left = transfer_size_ - bytes_downloaded_;
     if (partial_content) {
@@ -563,8 +571,9 @@ void LibcurlHttpFetcher::CurlPerformOnce() {
 
     if (retry_count_ > max_retry_count_) {
       LOG(INFO) << "Reached max attempts (" << retry_count_ << ")";
-      if (delegate_)
+      if (delegate_) {
         delegate_->TransferComplete(this, false);  // signal fail
+      }
       return;
     }
     // Need to restart transfer
@@ -689,8 +698,9 @@ void LibcurlHttpFetcher::SetupMessageLoopSources() {
   // We should iterate through all file descriptors up to libcurl's fd_max or
   // the highest one we're tracking, whichever is larger.
   for (const auto& map : fd_controller_maps_) {
-    if (!map.empty())
+    if (!map.empty()) {
       fd_max = max(fd_max, map.rbegin()->first);
+    }
   }
 
   // For each fd, if we're not tracking it, track it. If we are tracking it, but
@@ -717,8 +727,9 @@ void LibcurlHttpFetcher::SetupMessageLoopSources() {
       }
 
       // If we are already tracking this fd, continue -- nothing to do.
-      if (tracked)
+      if (tracked) {
         continue;
+      }
 
       // Track a new fd. Instead of watching the original fd we watch a
       // duplicate so we can ensure the fd outlives the file descriptor watcher.
@@ -786,8 +797,9 @@ void LibcurlHttpFetcher::TimeoutCallback() {
 
   // CurlPerformOnce() may call CleanUp(), so we need to schedule our callback
   // first, since it could be canceled by this call.
-  if (transfer_in_progress_)
+  if (transfer_in_progress_) {
     CurlPerformOnce();
+  }
 }
 
 void LibcurlHttpFetcher::CleanUp() {
@@ -844,8 +856,9 @@ CURLcode LibcurlHttpFetcher::GetCurlCode() {
     int msgs_in_queue;
     CURLMsg* curl_msg =
         curl_multi_info_read(curl_multi_handle_, &msgs_in_queue);
-    if (curl_msg == nullptr)
+    if (curl_msg == nullptr) {
       break;
+    }
     // When |curl_msg| is |CURLMSG_DONE|, a transfer of an easy handle is done,
     // and then data contains the return code for this transfer.
     if (curl_msg->msg == CURLMSG_DONE) {

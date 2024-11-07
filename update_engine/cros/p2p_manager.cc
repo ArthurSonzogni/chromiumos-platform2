@@ -255,8 +255,9 @@ bool P2PManagerImpl::EnsureP2P(bool should_be_running) {
     const char* expected_error_message =
         should_be_running ? "initctl: Job is already running: p2p\n"
                           : "initctl: Unknown instance \n";
-    if (stderr != expected_error_message)
+    if (stderr != expected_error_message) {
       return false;
+    }
   }
 
   may_be_running_ = should_be_running;  // Successful after all.
@@ -335,8 +336,9 @@ bool P2PManagerImpl::PerformHousekeeping() {
     if (max_file_age_ != TimeDelta() &&
         SystemState::Get()->clock()->GetWallclockTime() - time >
             max_file_age_) {
-      if (!DeleteP2PFile(name, "file too old"))
+      if (!DeleteP2PFile(name, "file too old")) {
         deletion_failed = true;
+      }
     } else {
       matches.push_back(std::make_pair(name, time));
     }
@@ -349,8 +351,9 @@ bool P2PManagerImpl::PerformHousekeeping() {
     std::sort(matches.begin(), matches.end(), MatchCompareFunc);
     vector<pair<FilePath, Time>>::const_iterator i;
     for (i = matches.begin() + num_files_to_keep_; i < matches.end(); ++i) {
-      if (!DeleteP2PFile(i->first, "too many files"))
+      if (!DeleteP2PFile(i->first, "too many files")) {
         deletion_failed = true;
+      }
     }
   }
 
@@ -364,10 +367,12 @@ class LookupData {
       : callback_(std::move(callback)) {}
 
   ~LookupData() {
-    if (timeout_task_ != MessageLoop::kTaskIdNull)
+    if (timeout_task_ != MessageLoop::kTaskIdNull) {
       MessageLoop::current()->CancelTask(timeout_task_);
-    if (child_pid_)
+    }
+    if (child_pid_) {
       Subprocess::Get().KillExec(child_pid_);
+    }
   }
 
   void InitiateLookup(const vector<string>& cmd, TimeDelta timeout) {
@@ -408,24 +413,28 @@ class LookupData {
   }
 
   void IssueCallback(const string& url) {
-    if (!callback_.is_null())
+    if (!callback_.is_null()) {
       std::move(callback_).Run(url);
+    }
   }
 
   void ReportError() {
-    if (reported_)
+    if (reported_) {
       return;
+    }
     IssueCallback("");
     reported_ = true;
   }
 
   void ReportSuccess(const string& output) {
-    if (reported_)
+    if (reported_) {
       return;
+    }
     string url = output;
     size_t newline_pos = url.find('\n');
-    if (newline_pos != string::npos)
+    if (newline_pos != string::npos) {
       url.resize(newline_pos);
+    }
 
     // Since p2p-client(1) is constructing this URL itself strictly
     // speaking there's no need to validate it... but, anyway, can't
@@ -584,8 +593,9 @@ bool P2PManagerImpl::FileGetVisible(const string& file_id, bool* out_result) {
     LOG(ERROR) << "No file for id " << file_id;
     return false;
   }
-  if (out_result != nullptr)
+  if (out_result != nullptr) {
     *out_result = path.MatchesExtension(kP2PExtension);
+  }
   return true;
 }
 
@@ -597,8 +607,9 @@ bool P2PManagerImpl::FileMakeVisible(const string& file_id) {
   }
 
   // Already visible?
-  if (path.MatchesExtension(kP2PExtension))
+  if (path.MatchesExtension(kP2PExtension)) {
     return true;
+  }
 
   LOG_ASSERT(path.MatchesExtension(kTmpExtension));
   FilePath new_path = path.RemoveExtension();
@@ -614,16 +625,18 @@ bool P2PManagerImpl::FileMakeVisible(const string& file_id) {
 
 ssize_t P2PManagerImpl::FileGetSize(const string& file_id) {
   FilePath path = FileGetPath(file_id);
-  if (path.empty())
+  if (path.empty()) {
     return -1;
+  }
 
   return utils::FileSize(path.value());
 }
 
 ssize_t P2PManagerImpl::FileGetExpectedSize(const string& file_id) {
   FilePath path = FileGetPath(file_id);
-  if (path.empty())
+  if (path.empty()) {
     return -1;
+  }
 
   char ea_value[64] = {0};
   ssize_t ea_size;
@@ -666,8 +679,9 @@ int P2PManagerImpl::CountSharedFiles() {
 }
 
 void P2PManagerImpl::ScheduleEnabledStatusChange() {
-  if (waiting_for_enabled_status_change_)
+  if (waiting_for_enabled_status_change_) {
     return;
+  }
 
   policy_data_->set_prev_enabled(policy_data_->enabled());
   update_manager_->PolicyRequest(

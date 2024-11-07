@@ -34,8 +34,9 @@ std::unique_ptr<DlcUtilsInterface> CreateDlcUtils() {
 }
 
 bool DlcServiceChromeOS::GetDlcsToUpdate(vector<string>* dlc_ids) {
-  if (!dlc_ids)
+  if (!dlc_ids) {
     return false;
+  }
   dlc_ids->clear();
 
   brillo::ErrorPtr err;

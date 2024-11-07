@@ -30,12 +30,14 @@ namespace chromeos_update_engine {
 
 std::unique_ptr<MapfileFilesystem> MapfileFilesystem::CreateFromFile(
     const string& filename, const string& mapfile_filename) {
-  if (filename.empty() || mapfile_filename.empty())
+  if (filename.empty() || mapfile_filename.empty()) {
     return nullptr;
+  }
 
   off_t file_size = utils::FileSize(filename);
-  if (file_size < 0)
+  if (file_size < 0) {
     return nullptr;
+  }
 
   if (file_size % kMapfileBlockSize) {
     LOG(ERROR) << "Image file " << filename << " has a size of " << file_size
@@ -119,8 +121,9 @@ bool MapfileFilesystem::GetFiles(vector<File>* files) const {
     // the Extents in the file.
     std::reverse(mapped_file.extents.begin(), mapped_file.extents.end());
 
-    if (last_delim == string::npos)
+    if (last_delim == string::npos) {
       continue;
+    }
     mapped_file.name = std::string(line.substr(0, last_delim));
 
     files->push_back(mapped_file);

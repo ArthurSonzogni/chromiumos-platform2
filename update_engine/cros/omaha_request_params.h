@@ -408,8 +408,8 @@ class OmahaRequestParams {
   // Normally is set by |OmahaRequestParamsPolicy|.
   std::string release_lts_tag_;
 
-  std::string hwid_;  // Hardware Qualification ID of the client
-  bool delta_okay_ = true;          // If this client can accept a delta
+  std::string hwid_;          // Hardware Qualification ID of the client
+  bool delta_okay_ = true;    // If this client can accept a delta
   bool interactive_ = false;  // Whether this is a user-initiated update check
 
   // The URL to send the Omaha request to.

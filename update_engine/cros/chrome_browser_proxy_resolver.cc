@@ -42,8 +42,9 @@ void ChromeBrowserProxyResolver::OnGetChromeProxyServers(
   // If |success| is false, |proxies| will still hold the direct proxy option
   // which is what we do in our error case.
   auto it = pending_callbacks_.find(request_id);
-  if (it == pending_callbacks_.end())
+  if (it == pending_callbacks_.end()) {
     return;
+  }
 
   ProxiesResolvedFn callback = std::move(it->second);
   pending_callbacks_.erase(it);

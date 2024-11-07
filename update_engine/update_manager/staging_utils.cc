@@ -62,8 +62,9 @@ int GetStagingSchedule(const DevicePolicy* device_policy,
     previous_percentage = percentage;
   }
   // Modify staging schedule only if the schedule in the device policy is valid.
-  if (staging_schedule_out)
+  if (staging_schedule_out) {
     *staging_schedule_out = std::move(staging_schedule);
+  }
 
   return previous_days;
 }
@@ -91,8 +92,9 @@ StagingCase CalculateStagingCase(const DevicePolicy* device_policy,
   // Check that the schedule in the device policy is correct.
   StagingSchedule new_staging_schedule;
   int max_days = GetStagingSchedule(device_policy, &new_staging_schedule);
-  if (max_days == 0)
+  if (max_days == 0) {
     return StagingCase::kOff;
+  }
 
   // Calculate the new wait time.
   TimeDelta new_staging_wait_time =

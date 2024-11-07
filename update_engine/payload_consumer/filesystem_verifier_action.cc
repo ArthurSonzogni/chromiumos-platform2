@@ -42,8 +42,9 @@ void FilesystemVerifierAction::PerformAction() {
 
   if (install_plan_.partitions.empty()) {
     LOG(INFO) << "No partitions to verify.";
-    if (HasOutputPipe())
+    if (HasOutputPipe()) {
       SetOutputObject(install_plan_);
+    }
     abort_action_completer.set_code(ErrorCode::kSuccess);
     return;
   }
@@ -63,10 +64,12 @@ void FilesystemVerifierAction::Cleanup(ErrorCode code) {
   // This memory is not used anymore.
   buffer_.clear();
 
-  if (cancelled_)
+  if (cancelled_) {
     return;
-  if (code == ErrorCode::kSuccess && HasOutputPipe())
+  }
+  if (code == ErrorCode::kSuccess && HasOutputPipe()) {
     SetOutputObject(install_plan_);
+  }
   UpdateProgress(1.0);
   processor_->ActionComplete(this, code);
 }
@@ -164,11 +167,14 @@ void FilesystemVerifierAction::ScheduleRead() {
   // applies to FEC.
   uint64_t read_end = partition_size_;
   if (partition.hash_tree_size != 0 &&
-      offset_ < partition.hash_tree_data_offset + partition.hash_tree_data_size)
+      offset_ <
+          partition.hash_tree_data_offset + partition.hash_tree_data_size) {
     read_end = std::min(read_end, partition.hash_tree_offset);
+  }
   if (partition.fec_size != 0 &&
-      offset_ < partition.fec_data_offset + partition.fec_data_size)
+      offset_ < partition.fec_data_offset + partition.fec_data_size) {
     read_end = std::min(read_end, partition.fec_offset);
+  }
   size_t bytes_to_read =
       std::min(static_cast<uint64_t>(buffer_.size()), read_end - offset_);
   if (!bytes_to_read) {

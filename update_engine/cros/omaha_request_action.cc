@@ -134,8 +134,9 @@ int OmahaRequestAction::GetInstallDate() {
   if (prefs->GetInt64(kPrefsInstallDateDays, &stored_value)) {
     // Convert and validity-check.
     int install_date_days = static_cast<int>(stored_value);
-    if (install_date_days >= 0)
+    if (install_date_days >= 0) {
       return install_date_days;
+    }
     LOG(ERROR) << "Dropping stored Omaha InstallData since its value num_days="
                << install_date_days << " looks suspicious.";
     prefs->Delete(kPrefsInstallDateDays);
@@ -178,8 +179,9 @@ int OmahaRequestAction::GetInstallDate() {
 
   // Persist this to disk, for future use.
   if (!OmahaRequestAction::PersistInstallDate(num_days,
-                                              kProvisionedFromOOBEMarker))
+                                              kProvisionedFromOOBEMarker)) {
     return -1;
+  }
 
   LOG(INFO) << "Set the Omaha InstallDate from OOBE time-stamp to " << num_days
             << " days.";
@@ -191,29 +193,33 @@ void OmahaRequestAction::StorePingReply() const {
   const auto* params = SystemState::Get()->request_params();
   for (const auto& app : parser_data_.apps) {
     auto it = params->dlc_apps_params().find(app.id);
-    if (it == params->dlc_apps_params().end())
+    if (it == params->dlc_apps_params().end()) {
       continue;
+    }
 
     const OmahaRequestParams::AppParams& dlc_params = it->second;
     const string& dlc_id = dlc_params.name;
     // Skip if the ping for this DLC was not sent.
-    if (!dlc_params.send_ping)
+    if (!dlc_params.send_ping) {
       continue;
+    }
 
     auto* prefs = SystemState::Get()->prefs();
     // Reset the active metadata value to |kPingInactiveValue|.
     auto active_key =
         prefs->CreateSubKey({kDlcPrefsSubDir, dlc_id, kPrefsPingActive});
-    if (!prefs->SetInt64(active_key, kPingInactiveValue))
+    if (!prefs->SetInt64(active_key, kPingInactiveValue)) {
       LOG(ERROR) << "Failed to set the value of ping metadata '" << active_key
                  << "'.";
+    }
 
     auto last_rollcall_key =
         prefs->CreateSubKey({kDlcPrefsSubDir, dlc_id, kPrefsPingLastRollcall});
     if (!prefs->SetString(last_rollcall_key,
-                          parser_data_.daystart.elapsed_days))
+                          parser_data_.daystart.elapsed_days)) {
       LOG(ERROR) << "Failed to set the value of ping metadata '"
                  << last_rollcall_key << "'.";
+    }
 
     if (dlc_params.ping_active) {
       // Write the value of elapsed_days into |kPrefsPingLastActive| only if
@@ -221,9 +227,10 @@ void OmahaRequestAction::StorePingReply() const {
       auto last_active_key =
           prefs->CreateSubKey({kDlcPrefsSubDir, dlc_id, kPrefsPingLastActive});
       if (!prefs->SetString(last_active_key,
-                            parser_data_.daystart.elapsed_days))
+                            parser_data_.daystart.elapsed_days)) {
         LOG(ERROR) << "Failed to set the value of ping metadata '"
                    << last_active_key << "'.";
+      }
     }
   }
 }
@@ -340,13 +347,15 @@ bool OmahaRequestAction::ParsePackage(OmahaParserData::App* app,
       return false;
     }
 
-    if (i < app->postinstall_action->metadata_sizes.size())
+    if (i < app->postinstall_action->metadata_sizes.size()) {
       base::StringToUint64(app->postinstall_action->metadata_sizes[i],
                            &out_package.metadata_size);
+    }
 
-    if (i < app->postinstall_action->metadata_signature_rsas.size())
+    if (i < app->postinstall_action->metadata_signature_rsas.size()) {
       out_package.metadata_signature =
           app->postinstall_action->metadata_signature_rsas[i];
+    }
 
     out_package.hash = package.hash;
     if (out_package.hash.empty()) {
@@ -357,9 +366,10 @@ bool OmahaRequestAction::ParsePackage(OmahaParserData::App* app,
 
     out_package.fp = package.fp;
 
-    if (i < app->postinstall_action->is_delta_payloads.size())
+    if (i < app->postinstall_action->is_delta_payloads.size()) {
       out_package.is_delta =
           ParseBool(app->postinstall_action->is_delta_payloads[i]);
+    }
 
     response_.packages.push_back(std::move(out_package));
   }
@@ -469,9 +479,11 @@ void OmahaRequestAction::PersistExtendedOptInRequired(
 void OmahaRequestAction::PersistDisableMarketSegment(const string& value) {
   auto prefs = SystemState::Get()->prefs();
   if (ParseBool(value)) {
-    if (!prefs->Exists(kPrefsMarketSegmentDisabled))
-      if (!prefs->SetBoolean(kPrefsMarketSegmentDisabled, true))
+    if (!prefs->Exists(kPrefsMarketSegmentDisabled)) {
+      if (!prefs->SetBoolean(kPrefsMarketSegmentDisabled, true)) {
         LOG(ERROR) << "Failed to disable sending market segment info.";
+      }
+    }
   } else {
     // Normally the pref doesn't exist, so this becomes just a no-op;
     prefs->Delete(kPrefsMarketSegmentDisabled);
@@ -549,11 +561,13 @@ bool OmahaRequestAction::ParseResponse(ScopedActionCompleter* completer) {
   // We persist the cohorts sent by omaha even if the status is "noupdate".
   PersistCohorts();
 
-  if (!ParseStatus(completer))
+  if (!ParseStatus(completer)) {
     return false;
+  }
 
-  if (!ParseParams(completer))
+  if (!ParseParams(completer)) {
     return false;
+  }
 
   // Package has to be parsed after Params now because ParseParams need to make
   // sure that postinstall action exists.
@@ -566,8 +580,9 @@ bool OmahaRequestAction::ParseResponse(ScopedActionCompleter* completer) {
         (!params->is_install() && params->IsDlcAppId(app.id) &&
          !params->dlc_apps_params().at(app.id).critical_update) ||
         params->IsMiniOSAppId(app.id);
-    if (!ParsePackage(&app, can_exclude, completer))
+    if (!ParsePackage(&app, can_exclude, completer)) {
       return false;
+    }
   }
 
   return true;
@@ -675,8 +690,9 @@ bool OmahaRequestAction::ParseParams(ScopedActionCompleter* completer) {
   response_.public_key_rsa = app.postinstall_action->public_key_rsa;
 
   if (!base::StringToUint(app.postinstall_action->max_failure_count_per_url,
-                          &response_.max_failure_count_per_url))
+                          &response_.max_failure_count_per_url)) {
     response_.max_failure_count_per_url = kDefaultMaxFailureCountPerUrl;
+  }
 
   response_.disable_payload_backoff =
       ParseBool(app.postinstall_action->disable_payload_backoff);
@@ -773,8 +789,9 @@ void OmahaRequestAction::TransferComplete(HttpFetcher* fetcher,
     return;
   }
 
-  if (!ParseResponse(&completer))
+  if (!ParseResponse(&completer)) {
     return;
+  }
   ProcessExclusions(SystemState::Get()->request_params(),
                     SystemState::Get()->update_attempter()->GetExcluder());
   response_.update_exists = true;
@@ -906,8 +923,9 @@ void OmahaRequestAction::LookupPayloadViaP2P() {
 
   // TODO(senj): Fix P2P for multiple package.
   brillo::Blob raw_hash;
-  if (!base::HexStringToBytes(response_.packages[0].hash, &raw_hash))
+  if (!base::HexStringToBytes(response_.packages[0].hash, &raw_hash)) {
     return;
+  }
   string file_id =
       utils::CalculateP2PFileId(raw_hash, response_.packages[0].size);
   if (SystemState::Get()->p2p_manager()) {
@@ -1000,8 +1018,9 @@ OmahaRequestAction::IsWallClockBasedWaitingSatisfied() {
   // Use staging and its default max value if staging is on.
   if (SystemState::Get()->prefs()->GetInt64(kPrefsWallClockStagingWaitPeriod,
                                             &staging_wait_time_in_days) &&
-      staging_wait_time_in_days > 0)
+      staging_wait_time_in_days > 0) {
     max_scatter_period = kMaxWaitTimeStagingIn;
+  }
 
   const auto* params = SystemState::Get()->request_params();
   LOG(INFO) << "Waiting Period = "
@@ -1113,11 +1132,13 @@ bool OmahaRequestAction::IsUpdateCheckCountBasedWaitingSatisfied() {
 
 bool OmahaRequestAction::ParseInstallDate() {
   int64_t elapsed_days = 0;
-  if (!base::StringToInt64(parser_data_.daystart.elapsed_days, &elapsed_days))
+  if (!base::StringToInt64(parser_data_.daystart.elapsed_days, &elapsed_days)) {
     return false;
+  }
 
-  if (elapsed_days < 0)
+  if (elapsed_days < 0) {
     return false;
+  }
 
   response_.install_date_days = elapsed_days;
   return true;
@@ -1134,8 +1155,9 @@ bool OmahaRequestAction::PersistInstallDate(
   TEST_AND_RETURN_FALSE(install_date_days >= 0);
 
   auto* prefs = SystemState::Get()->prefs();
-  if (!prefs->SetInt64(kPrefsInstallDateDays, install_date_days))
+  if (!prefs->SetInt64(kPrefsInstallDateDays, install_date_days)) {
     return false;
+  }
 
   SystemState::Get()->metrics_reporter()->ReportInstallDateProvisioningSource(
       static_cast<int>(source),  // Sample.
@@ -1145,20 +1167,23 @@ bool OmahaRequestAction::PersistInstallDate(
 
 void OmahaRequestAction::PersistCohortData(
     const string& prefs_key, const std::optional<string>& new_value) {
-  if (!new_value)
+  if (!new_value) {
     return;
+  }
   const string& value = new_value.value();
   if (value.empty() && SystemState::Get()->prefs()->Exists(prefs_key)) {
-    if (!SystemState::Get()->prefs()->Delete(prefs_key))
+    if (!SystemState::Get()->prefs()->Delete(prefs_key)) {
       LOG(ERROR) << "Failed to remove stored " << prefs_key << "value.";
-    else
+    } else {
       LOG(INFO) << "Removed stored " << prefs_key << " value.";
+    }
   } else if (!value.empty()) {
-    if (!SystemState::Get()->prefs()->SetString(prefs_key, value))
+    if (!SystemState::Get()->prefs()->SetString(prefs_key, value)) {
       LOG(INFO) << "Failed to store new setting " << prefs_key << " as "
                 << value;
-    else
+    } else {
       LOG(INFO) << "Stored cohort setting " << prefs_key << " as " << value;
+    }
   }
 }
 
@@ -1195,8 +1220,9 @@ void OmahaRequestAction::PersistCohorts() {
 
 void OmahaRequestAction::ActionCompleted(ErrorCode code) {
   // We only want to report this on "update check".
-  if (ping_only_ || event_ != nullptr)
+  if (ping_only_ || event_ != nullptr) {
     return;
+  }
 
   metrics::CheckResult result = metrics::CheckResult::kUnset;
   metrics::CheckReaction reaction = metrics::CheckReaction::kUnset;
@@ -1266,8 +1292,9 @@ bool OmahaRequestAction::ShouldIgnoreUpdate(ErrorCode* error) const {
 
   const auto* hardware = SystemState::Get()->hardware();
   // Never ignore valid update when running from MiniOS.
-  if (hardware->IsRunningFromMiniOs())
+  if (hardware->IsRunningFromMiniOs()) {
     return false;
+  }
 
   // Note: policy decision to not update to a version we rolled back from.
   string rollback_version =
@@ -1435,8 +1462,9 @@ bool OmahaRequestAction::IsUpdateAllowedOverCurrentConnection(
     // There's no need to further check user preferences as the device policy
     // is set regarding updates over metered network.
     LOG(INFO) << "Current connection is metered, checking device policy.";
-    if (!(is_allowed = connection_manager->IsUpdateAllowedOverMetered()))
+    if (!(is_allowed = connection_manager->IsUpdateAllowedOverMetered())) {
       *error = ErrorCode::kOmahaUpdateIgnoredPerPolicy;
+    }
   } else if (!(is_allowed = IsUpdateAllowedOverCellularByPrefs())) {
     // Deivce policy is not set, so user preferences overwrite whether to
     // allow updates over metered network.

@@ -31,8 +31,9 @@ class MockSignalHandler {
  public:
   MockSignalHandler() = default;
   ~MockSignalHandler() {
-    if (callback_connected_task_ != brillo::MessageLoop::kTaskIdNull)
+    if (callback_connected_task_ != brillo::MessageLoop::kTaskIdNull) {
       brillo::MessageLoop::current()->CancelTask(callback_connected_task_);
+    }
   }
 
   // Returns whether the signal handler is registered.

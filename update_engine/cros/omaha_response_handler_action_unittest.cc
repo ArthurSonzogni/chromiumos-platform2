@@ -122,8 +122,9 @@ bool OmahaResponseHandlerActionTest::DoTest(const OmahaResponse& in,
   feeder_action->set_obj(in);
   if (in.update_exists && in.version != kBadVersion) {
     string expected_hash;
-    for (const auto& package : in.packages)
+    for (const auto& package : in.packages) {
       expected_hash += package.hash + ":";
+    }
     EXPECT_CALL(*(FakeSystemState::Get()->mock_prefs()),
                 SetString(kPrefsUpdateCheckResponseHash, expected_hash))
         .WillOnce(Return(true));
@@ -156,8 +157,9 @@ bool OmahaResponseHandlerActionTest::DoTest(const OmahaResponse& in,
   EXPECT_TRUE(!processor.IsRunning())
       << "Update test to handle non-async actions";
 
-  if (out && delegate_.collector_action_install_plan_)
+  if (out && delegate_.collector_action_install_plan_) {
     *out = *delegate_.collector_action_install_plan_;
+  }
 
   EXPECT_TRUE(delegate_.code_set_);
   action_result_code_ = delegate_.code_;

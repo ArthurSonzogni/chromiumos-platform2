@@ -121,8 +121,9 @@ class PythonHttpServer : public HttpServer {
     // Wait for server to begin accepting connections, obtain its port.
     brillo::StreamPtr stdout = brillo::FileStream::FromFileDescriptor(
         http_server->GetPipe(STDOUT_FILENO), false /* own */, nullptr);
-    if (!stdout)
+    if (!stdout) {
       return;
+    }
 
     vector<char> buf(128);
     string line;
@@ -133,8 +134,9 @@ class PythonHttpServer : public HttpServer {
         return;
       }
       line.append(buf.data(), read);
-      if (read == 0)
+      if (read == 0) {
         break;
+      }
     }
     // Parse the port from the output line.
     const size_t listening_msg_prefix_len = strlen(kServerListeningMsgPrefix);
@@ -159,8 +161,9 @@ class PythonHttpServer : public HttpServer {
 
   ~PythonHttpServer() {
     // If there's no process, do nothing.
-    if (!http_server_)
+    if (!http_server_) {
       return;
+    }
     // Wait up to 10 seconds for the process to finish. Destroying the process
     // will kill it with a SIGKILL otherwise.
     http_server_->Kill(SIGTERM, 10);
@@ -416,8 +419,9 @@ class HttpFetcherTest : public ::testing::Test {
  private:
   static void TypeConstraint(T* a) {
     AnyHttpFetcherTest* b = a;
-    if (b == 0)  // Silence compiler warning of unused variable.
+    if (b == 0) {  // Silence compiler warning of unused variable.
       *b = a;
+    }
   }
 };
 
@@ -445,10 +449,11 @@ class HttpFetcherTestDelegate : public HttpFetcherDelegate {
   }
 
   void TransferComplete(HttpFetcher* fetcher, bool successful) override {
-    if (is_expect_error_)
+    if (is_expect_error_) {
       EXPECT_EQ(kHttpResponseNotFound, fetcher->http_response_code());
-    else
+    } else {
       EXPECT_EQ(kHttpResponseOk, fetcher->http_response_code());
+    }
     MessageLoop::current()->BreakLoop();
 
     // Update counter
@@ -510,8 +515,9 @@ TYPED_TEST(HttpFetcherTest, SimpleBigTest) {
 // Issue #9648: when server returns an error HTTP response, the fetcher needs to
 // terminate transfer prematurely, rather than try to process the error payload.
 TYPED_TEST(HttpFetcherTest, ErrorTest) {
-  if (this->test_.IsMock() || this->test_.IsMulti())
+  if (this->test_.IsMock() || this->test_.IsMulti()) {
     return;
+  }
   HttpFetcherTestDelegate delegate;
 
   // Delegate should expect an error response.
@@ -539,8 +545,9 @@ TYPED_TEST(HttpFetcherTest, ErrorTest) {
 }
 
 TYPED_TEST(HttpFetcherTest, ExtraHeadersInRequestTest) {
-  if (this->test_.IsMock() || !this->test_.IsHttpSupported())
+  if (this->test_.IsMock() || !this->test_.IsHttpSupported()) {
     return;
+  }
 
   HttpFetcherTestDelegate delegate;
   unique_ptr<HttpFetcher> fetcher(this->test_.NewSmallFetcher());
@@ -601,8 +608,9 @@ class PausingHttpFetcherTestDelegate : public HttpFetcherDelegate {
 
 void UnpausingTimeoutCallback(PausingHttpFetcherTestDelegate* delegate,
                               MessageLoop::TaskId* my_id) {
-  if (delegate->paused_)
+  if (delegate->paused_) {
     delegate->Unpause();
+  }
   // Update the task id with the new scheduled callback.
   *my_id = MessageLoop::current()->PostDelayedTask(
       FROM_HERE, base::BindOnce(&UnpausingTimeoutCallback, delegate, my_id),
@@ -634,8 +642,9 @@ TYPED_TEST(HttpFetcherTest, PauseTest) {
 // This test will pause the fetcher while the download is not yet started
 // because it is waiting for the proxy to be resolved.
 TYPED_TEST(HttpFetcherTest, PauseWhileResolvingProxyTest) {
-  if (this->test_.IsMock() || !this->test_.IsHttpSupported())
+  if (this->test_.IsMock() || !this->test_.IsHttpSupported()) {
     return;
+  }
   MockProxyResolver mock_resolver;
   unique_ptr<HttpFetcher> fetcher(this->test_.NewLargeFetcher(&mock_resolver));
 
@@ -729,8 +738,9 @@ TYPED_TEST(HttpFetcherTest, AbortTest) {
 }
 
 TYPED_TEST(HttpFetcherTest, TerminateTransferWhileResolvingProxyTest) {
-  if (this->test_.IsMock() || !this->test_.IsHttpSupported())
+  if (this->test_.IsMock() || !this->test_.IsHttpSupported()) {
     return;
+  }
   MockProxyResolver mock_resolver;
   unique_ptr<HttpFetcher> fetcher(this->test_.NewLargeFetcher(&mock_resolver));
 
@@ -774,8 +784,9 @@ class FlakyHttpFetcherTestDelegate : public HttpFetcherDelegate {
 }  // namespace
 
 TYPED_TEST(HttpFetcherTest, FlakyTest) {
-  if (this->test_.IsMock() || !this->test_.IsHttpSupported())
+  if (this->test_.IsMock() || !this->test_.IsHttpSupported()) {
     return;
+  }
   {
     FlakyHttpFetcherTestDelegate delegate;
     unique_ptr<HttpFetcher> fetcher(this->test_.NewSmallFetcher());
@@ -850,8 +861,9 @@ class FailureHttpFetcherTestDelegate : public HttpFetcherDelegate {
 TYPED_TEST(HttpFetcherTest, FailureTest) {
   // This test ensures that a fetcher responds correctly when a server isn't
   // available at all.
-  if (this->test_.IsMock())
+  if (this->test_.IsMock()) {
     return;
+  }
   FailureHttpFetcherTestDelegate delegate(nullptr);
   unique_ptr<HttpFetcher> fetcher(this->test_.NewSmallFetcher());
   fetcher->set_delegate(&delegate);
@@ -869,8 +881,9 @@ TYPED_TEST(HttpFetcherTest, FailureTest) {
 TYPED_TEST(HttpFetcherTest, NoResponseTest) {
   // This test starts a new http server but the server doesn't respond and just
   // closes the connection.
-  if (this->test_.IsMock())
+  if (this->test_.IsMock()) {
     return;
+  }
 
   PythonHttpServer* server = new PythonHttpServer();
   int port = server->GetPort();
@@ -907,8 +920,9 @@ TYPED_TEST(HttpFetcherTest, ServerDiesTest) {
   // This test starts a new http server and kills it after receiving its first
   // set of bytes. It test whether or not our fetcher eventually gives up on
   // retries and aborts correctly.
-  if (this->test_.IsMock())
+  if (this->test_.IsMock()) {
     return;
+  }
   PythonHttpServer* server = new PythonHttpServer();
   int port = server->GetPort();
   ASSERT_TRUE(server->started_);
@@ -937,8 +951,9 @@ TYPED_TEST(HttpFetcherTest, ServerDiesTest) {
 // Test that we can cancel a transfer while it is still trying to connect to the
 // server. This test kills the server after a few bytes are received.
 TYPED_TEST(HttpFetcherTest, TerminateTransferWhenServerDiedTest) {
-  if (this->test_.IsMock() || !this->test_.IsHttpSupported())
+  if (this->test_.IsMock() || !this->test_.IsHttpSupported()) {
     return;
+  }
 
   PythonHttpServer* server = new PythonHttpServer();
   int port = server->GetPort();
@@ -1034,8 +1049,9 @@ void RedirectTest(const HttpServer* server,
 }  // namespace
 
 TYPED_TEST(HttpFetcherTest, SimpleRedirectTest) {
-  if (this->test_.IsMock() || !this->test_.IsHttpSupported())
+  if (this->test_.IsMock() || !this->test_.IsHttpSupported()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
@@ -1048,8 +1064,9 @@ TYPED_TEST(HttpFetcherTest, SimpleRedirectTest) {
 }
 
 TYPED_TEST(HttpFetcherTest, MaxRedirectTest) {
-  if (this->test_.IsMock() || !this->test_.IsHttpSupported())
+  if (this->test_.IsMock() || !this->test_.IsHttpSupported()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
@@ -1064,8 +1081,9 @@ TYPED_TEST(HttpFetcherTest, MaxRedirectTest) {
 }
 
 TYPED_TEST(HttpFetcherTest, BeyondMaxRedirectTest) {
-  if (this->test_.IsMock() || !this->test_.IsHttpSupported())
+  if (this->test_.IsMock() || !this->test_.IsHttpSupported()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
@@ -1096,8 +1114,9 @@ class MultiHttpFetcherTestDelegate : public HttpFetcherDelegate {
   void TransferComplete(HttpFetcher* fetcher, bool successful) override {
     EXPECT_EQ(fetcher, fetcher_.get());
     EXPECT_EQ(expected_response_code_ != kHttpResponseUndefined, successful);
-    if (expected_response_code_ != 0)
+    if (expected_response_code_ != 0) {
       EXPECT_EQ(expected_response_code_, fetcher->http_response_code());
+    }
     // Destroy the fetcher (because we're allowed to).
     fetcher_.reset(nullptr);
     MessageLoop::current()->BreakLoop();
@@ -1151,8 +1170,9 @@ void MultiTest(HttpFetcher* fetcher_in,
 }  // namespace
 
 TYPED_TEST(HttpFetcherTest, MultiHttpFetcherSimpleTest) {
-  if (!this->test_.IsMulti())
+  if (!this->test_.IsMulti()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
@@ -1168,8 +1188,9 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherSimpleTest) {
 }
 
 TYPED_TEST(HttpFetcherTest, MultiHttpFetcherUnspecifiedEndTest) {
-  if (!this->test_.IsMulti() || this->test_.IsFileFetcher())
+  if (!this->test_.IsMulti() || this->test_.IsFileFetcher()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
@@ -1184,8 +1205,9 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherUnspecifiedEndTest) {
 }
 
 TYPED_TEST(HttpFetcherTest, MultiHttpFetcherLengthLimitTest) {
-  if (!this->test_.IsMulti())
+  if (!this->test_.IsMulti()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
@@ -1200,8 +1222,9 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherLengthLimitTest) {
 }
 
 TYPED_TEST(HttpFetcherTest, MultiHttpFetcherMultiEndTest) {
-  if (!this->test_.IsMulti() || this->test_.IsFileFetcher())
+  if (!this->test_.IsMulti() || this->test_.IsFileFetcher()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
@@ -1215,8 +1238,9 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherMultiEndTest) {
 }
 
 TYPED_TEST(HttpFetcherTest, MultiHttpFetcherInsufficientTest) {
-  if (!this->test_.IsMulti())
+  if (!this->test_.IsMulti()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
@@ -1238,8 +1262,9 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherInsufficientTest) {
 // (1) successful recovery: The offset fetch will fail twice but succeed with
 // the third proxy.
 TYPED_TEST(HttpFetcherTest, MultiHttpFetcherErrorIfOffsetRecoverableTest) {
-  if (!this->test_.IsMulti() || this->test_.IsFileFetcher())
+  if (!this->test_.IsMulti() || this->test_.IsFileFetcher()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
@@ -1258,8 +1283,9 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherErrorIfOffsetRecoverableTest) {
 // (2) unsuccessful recovery: The offset fetch will fail repeatedly.  The
 // fetcher will signal a (failed) completed transfer to the delegate.
 TYPED_TEST(HttpFetcherTest, MultiHttpFetcherErrorIfOffsetUnrecoverableTest) {
-  if (!this->test_.IsMulti() || this->test_.IsFileFetcher())
+  if (!this->test_.IsMulti() || this->test_.IsFileFetcher()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
@@ -1320,8 +1346,9 @@ class MultiHttpFetcherTerminateTestDelegate : public HttpFetcherDelegate {
 }  // namespace
 
 TYPED_TEST(HttpFetcherTest, MultiHttpFetcherTerminateBetweenRangesTest) {
-  if (!this->test_.IsMulti())
+  if (!this->test_.IsMulti()) {
     return;
+  }
   const size_t kRangeTrigger = 1000;
   MultiHttpFetcherTerminateTestDelegate delegate(kRangeTrigger);
 
@@ -1366,8 +1393,9 @@ class BlockedTransferTestDelegate : public HttpFetcherDelegate {
 
 void BlockedTransferTestHelper(AnyHttpFetcherTest* fetcher_test,
                                bool is_official_build) {
-  if (fetcher_test->IsMock() || fetcher_test->IsMulti())
+  if (fetcher_test->IsMock() || fetcher_test->IsMulti()) {
     return;
+  }
 
   unique_ptr<HttpServer> server(fetcher_test->CreateServer());
   ASSERT_TRUE(server->started_);

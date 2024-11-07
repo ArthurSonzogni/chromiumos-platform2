@@ -75,10 +75,11 @@ void ExtentsToVector(const google::protobuf::RepeatedPtrField<Extent>& extents,
 
 string ExtentsToString(const vector<Extent>& extents) {
   string ext_str;
-  for (const Extent& e : extents)
+  for (const Extent& e : extents) {
     ext_str += base::StringPrintf("[%" PRIu64 ", %" PRIu64 "] ",
                                   static_cast<uint64_t>(e.start_block()),
                                   static_cast<uint64_t>(e.num_blocks()));
+  }
   return ext_str;
 }
 
@@ -107,8 +108,9 @@ vector<Extent> ExtentsSublist(const vector<Extent>& extents,
                               uint64_t block_count) {
   vector<Extent> result;
   uint64_t scanned_blocks = 0;
-  if (block_count == 0)
+  if (block_count == 0) {
     return result;
+  }
   uint64_t end_block_offset = block_offset + block_count;
   for (const Extent& extent : extents) {
     // The loop invariant is that if |extents| has enough blocks, there's
@@ -131,8 +133,9 @@ vector<Extent> ExtentsSublist(const vector<Extent>& extents,
       result.push_back(ExtentForRange(new_start, new_num_blocks));
     }
     scanned_blocks += extent.num_blocks();
-    if (scanned_blocks >= end_block_offset)
+    if (scanned_blocks >= end_block_offset) {
       break;
+    }
   }
   return result;
 }

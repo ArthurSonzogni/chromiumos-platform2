@@ -52,8 +52,9 @@ void CPULimiter::StopLimiter() {
 
 bool CPULimiter::SetCpuShares(CpuShares shares) {
   // Short-circuit to avoid re-setting the shares.
-  if (shares_ == shares)
+  if (shares_ == shares) {
     return true;
+  }
 
   std::string string_shares = base::NumberToString(static_cast<int>(shares));
   LOG(INFO) << "Setting cgroup cpu shares to  " << string_shares;

@@ -84,8 +84,9 @@ class LastCheckedTimeVariable : public UpdaterVariableBase<Time> {
  private:
   const Time* GetValue(TimeDelta /* timeout */, string* errmsg) override {
     GetStatusHelper raw(errmsg);
-    if (!raw.is_success())
+    if (!raw.is_success()) {
       return nullptr;
+    }
 
     return new Time(Time::FromTimeT(raw.last_checked_time()));
   }
@@ -103,8 +104,9 @@ class ProgressVariable : public UpdaterVariableBase<double> {
  private:
   const double* GetValue(TimeDelta /* timeout */, string* errmsg) override {
     GetStatusHelper raw(errmsg);
-    if (!raw.is_success())
+    if (!raw.is_success()) {
       return nullptr;
+    }
 
     if (raw.progress() < 0.0 || raw.progress() > 1.0) {
       if (errmsg) {
@@ -155,15 +157,19 @@ const StageVariable::CurrOpStrToStage StageVariable::curr_op_str_to_stage[] = {
 
 const Stage* StageVariable::GetValue(TimeDelta /* timeout */, string* errmsg) {
   GetStatusHelper raw(errmsg);
-  if (!raw.is_success())
+  if (!raw.is_success()) {
     return nullptr;
+  }
 
-  for (auto& key_val : curr_op_str_to_stage)
-    if (raw.update_status() == key_val.str)
+  for (auto& key_val : curr_op_str_to_stage) {
+    if (raw.update_status() == key_val.str) {
       return new Stage(key_val.stage);
+    }
+  }
 
-  if (errmsg)
+  if (errmsg) {
     *errmsg = string("Unknown update status: ") + raw.update_status();
+  }
   return nullptr;
 }
 
@@ -178,8 +184,9 @@ class NewVersionVariable : public UpdaterVariableBase<string> {
  private:
   const string* GetValue(TimeDelta /* timeout */, string* errmsg) override {
     GetStatusHelper raw(errmsg);
-    if (!raw.is_success())
+    if (!raw.is_success()) {
       return nullptr;
+    }
 
     return new string(raw.new_version());
   }
@@ -196,8 +203,9 @@ class PayloadSizeVariable : public UpdaterVariableBase<uint64_t> {
  private:
   const uint64_t* GetValue(TimeDelta /* timeout */, string* errmsg) override {
     GetStatusHelper raw(errmsg);
-    if (!raw.is_success())
+    if (!raw.is_success()) {
       return nullptr;
+    }
 
     return new uint64_t(raw.payload_size());
   }
@@ -223,16 +231,18 @@ class UpdateCompletedTimeVariable : public UpdaterVariableBase<Time> {
     Time update_boottime;
     if (!SystemState::Get()->update_attempter()->GetBootTimeAtUpdate(
             &update_boottime)) {
-      if (errmsg)
+      if (errmsg) {
         *errmsg = "Update completed time could not be read";
+      }
       return nullptr;
     }
 
     const auto* clock = SystemState::Get()->clock();
     Time curr_boottime = clock->GetBootTime();
     if (curr_boottime < update_boottime) {
-      if (errmsg)
+      if (errmsg) {
         *errmsg = "Update completed time more recent than current time";
+      }
       return nullptr;
     }
     TimeDelta duration_since_update = curr_boottime - update_boottime;
@@ -253,8 +263,9 @@ class CurrChannelVariable : public UpdaterVariableBase<string> {
     OmahaRequestParams* request_params = SystemState::Get()->request_params();
     string channel = request_params->current_channel();
     if (channel.empty()) {
-      if (errmsg)
+      if (errmsg) {
         *errmsg = "No current channel";
+      }
       return nullptr;
     }
     return new string(channel);
@@ -274,8 +285,9 @@ class NewChannelVariable : public UpdaterVariableBase<string> {
     OmahaRequestParams* request_params = SystemState::Get()->request_params();
     string channel = request_params->target_channel();
     if (channel.empty()) {
-      if (errmsg)
+      if (errmsg) {
         *errmsg = "No new channel";
+      }
       return nullptr;
     }
     return new string(channel);
@@ -305,8 +317,9 @@ class BooleanPrefVariable
   void OnPrefSet(const string& key) override {
     bool result = default_val_;
     auto* prefs = SystemState::Get()->prefs();
-    if (prefs->Exists(key_) && !prefs->GetBoolean(key_, &result))
+    if (prefs->Exists(key_) && !prefs->GetBoolean(key_, &result)) {
       result = default_val_;
+    }
     // AsyncCopyVariable will take care of values that didn't change.
     SetValue(result);
   }
@@ -385,9 +398,10 @@ class ForcedUpdateRequestedVariable
 
   void Reset(bool forced_update_requested, bool interactive) {
     UpdateRequestStatus new_value = UpdateRequestStatus::kNone;
-    if (forced_update_requested)
+    if (forced_update_requested) {
       new_value = (interactive ? UpdateRequestStatus::kInteractive
                                : UpdateRequestStatus::kPeriodic);
+    }
     if (update_request_status_ != new_value) {
       update_request_status_ = new_value;
       NotifyValueChanged();
@@ -420,8 +434,9 @@ class TestUpdateCheckIntervalTimeoutVariable : public Variable<int64_t> {
     if (prefs->Exists(key) && prefs->GetInt64(key, &result)) {
       // This specific value is used for testing only. So it should not be kept
       // around and should be deleted after a few reads.
-      if (++read_count_ > 5)
+      if (++read_count_ > 5) {
         prefs->Delete(key);
+      }
 
       // Limit the timeout interval to 10 minutes so it is not abused if it is
       // seen on official images.

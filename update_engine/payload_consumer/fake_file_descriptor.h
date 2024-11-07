@@ -31,8 +31,9 @@ class FakeFileDescriptor : public FileDescriptor {
 
   // FileDescriptor override methods.
   bool Open(const char* path, int flags, mode_t mode) override {
-    if (open_)
+    if (open_) {
       return false;
+    }
     open_ = true;
     return true;
   }
@@ -63,8 +64,9 @@ class FakeFileDescriptor : public FileDescriptor {
   bool Flush() override { return open_; }
 
   bool Close() override {
-    if (!open_)
+    if (!open_) {
       return false;
+    }
     open_ = false;
     return true;
   }
@@ -81,8 +83,9 @@ class FakeFileDescriptor : public FileDescriptor {
   // Marks the range starting from |offset| bytes into the file and |length|
   // size as a failure range. Reads from this range will always fail.
   void AddFailureRange(uint64_t offset, uint64_t length) {
-    if (length == 0)
+    if (length == 0) {
       return;
+    }
     failure_ranges_.emplace_back(offset, length);
   }
 

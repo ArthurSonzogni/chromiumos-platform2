@@ -98,8 +98,9 @@ string BoxedValue::ValuePrinter<set<ConnectionType>>(const void* value) {
       reinterpret_cast<const set<ConnectionType>*>(value);
   for (auto& it : *val) {
     ConnectionType type = it;
-    if (ret.size() > 0)
+    if (ret.size() > 0) {
       ret += ",";
+    }
     ret += StringForConnectionType(type);
   }
   return ret;
@@ -226,8 +227,9 @@ string BoxedValue::ValuePrinter<ChannelDowngradeBehavior>(const void* value) {
 template <>
 string BoxedValue::ValuePrinter<base::Version>(const void* value) {
   const base::Version* val = reinterpret_cast<const base::Version*>(value);
-  if (val->IsValid())
+  if (val->IsValid()) {
     return val->GetString();
+  }
   return "Unknown";
 }
 

@@ -36,8 +36,9 @@ int main(int argc, char** argv) {
   bool log_to_system = FLAGS_logtostderr;
   bool log_to_file = FLAGS_logtofile || !FLAGS_logtostderr;
   chromeos_update_engine::SetupLogging(log_to_system, log_to_file);
-  if (!FLAGS_foreground)
+  if (!FLAGS_foreground) {
     PLOG_IF(FATAL, daemon(0, 0) == 1) << "daemon() failed";
+  }
 
   LOG(INFO) << "A/B Update Engine starting";
 

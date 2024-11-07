@@ -32,19 +32,22 @@ namespace {
 // |ref_time| is sooner than the current value of |*reeval_time|, in which case
 // the latter is updated to the former.
 bool IsTimeGreaterThanHelper(Time ref_time, Time curr_time, Time* reeval_time) {
-  if (curr_time > ref_time)
+  if (curr_time > ref_time) {
     return true;
+  }
   // Remember the nearest reference we've checked against in this evaluation.
-  if (*reeval_time > ref_time)
+  if (*reeval_time > ref_time) {
     *reeval_time = ref_time;
+  }
   return false;
 }
 
 // If |expires| never happens (maximal value), returns the maximal interval;
 // otherwise, returns the difference between |expires| and |curr|.
 TimeDelta GetTimeout(Time curr, Time expires) {
-  if (expires.is_max())
+  if (expires.is_max()) {
     return TimeDelta::Max();
+  }
   return expires - curr;
 }
 
@@ -67,8 +70,9 @@ EvaluationContext::~EvaluationContext() {
 
 unique_ptr<base::OnceClosure> EvaluationContext::RemoveObserversAndTimeout() {
   for (auto& it : value_cache_) {
-    if (it.first->GetMode() == kVariableModeAsync)
+    if (it.first->GetMode() == kVariableModeAsync) {
       it.first->RemoveObserver(this);
+    }
   }
   MessageLoop::current()->CancelTask(timeout_event_);
   timeout_event_ = MessageLoop::kTaskIdNull;
@@ -77,8 +81,9 @@ unique_ptr<base::OnceClosure> EvaluationContext::RemoveObserversAndTimeout() {
 }
 
 TimeDelta EvaluationContext::RemainingTime(Time monotonic_deadline) const {
-  if (monotonic_deadline.is_max())
+  if (monotonic_deadline.is_max()) {
     return TimeDelta::Max();
+  }
   TimeDelta remaining =
       monotonic_deadline - SystemState::Get()->clock()->GetMonotonicTime();
   return std::max(remaining, TimeDelta());
@@ -107,8 +112,9 @@ void EvaluationContext::OnValueChangedOrTimeout() {
   // Copy the callback handle locally, allowing it to be reassigned.
   unique_ptr<base::OnceClosure> callback = RemoveObserversAndTimeout();
 
-  if (callback.get())
+  if (callback.get()) {
     std::move(*callback).Run();
+  }
 }
 
 bool EvaluationContext::IsWallclockTimeGreaterThan(Time timestamp) {
@@ -184,14 +190,16 @@ bool EvaluationContext::RunOnValueChangeOrTimeout(base::OnceClosure callback) {
 
   // Check if the re-evaluation is actually being scheduled. If there are no
   // events waited for, this function should return false.
-  if (!waiting_for_value_change && timeout.is_max())
+  if (!waiting_for_value_change && timeout.is_max()) {
     return false;
+  }
 
   // Ensure that we take into account the expiration timeout.
   TimeDelta expiration = RemainingTime(expiration_monotonic_deadline_);
   timeout_marks_expiration_ = expiration < timeout;
-  if (timeout_marks_expiration_)
+  if (timeout_marks_expiration_) {
     timeout = expiration;
+  }
 
   // Store the reevaluation callback.
   callback_.reset(new base::OnceClosure(std::move(callback)));

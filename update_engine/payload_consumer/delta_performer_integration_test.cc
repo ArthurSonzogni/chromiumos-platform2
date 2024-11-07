@@ -515,24 +515,28 @@ static void GenerateDeltaFile(bool full_kernel,
       payload_config.source.partitions.emplace_back(kPartitionNameRoot);
       payload_config.source.partitions.emplace_back(kPartitionNameKernel);
       payload_config.source.partitions.front().path = state->a_img->path();
-      if (!full_kernel)
+      if (!full_kernel) {
         payload_config.source.partitions.back().path =
             state->old_kernel->path();
+      }
       EXPECT_TRUE(payload_config.source.LoadImageSize());
-      for (PartitionConfig& part : payload_config.source.partitions)
+      for (PartitionConfig& part : payload_config.source.partitions) {
         EXPECT_TRUE(part.OpenFilesystem());
+      }
     } else {
-      if (payload_config.hard_chunk_size == -1)
+      if (payload_config.hard_chunk_size == -1) {
         // Use 1 MiB chunk size for the full unittests.
         payload_config.hard_chunk_size = 1024 * 1024;
+      }
     }
     payload_config.target.partitions.emplace_back(kPartitionNameRoot);
     payload_config.target.partitions.back().path = state->b_img->path();
     payload_config.target.partitions.emplace_back(kPartitionNameKernel);
     payload_config.target.partitions.back().path = state->new_kernel->path();
     EXPECT_TRUE(payload_config.target.LoadImageSize());
-    for (PartitionConfig& part : payload_config.target.partitions)
+    for (PartitionConfig& part : payload_config.target.partitions) {
       EXPECT_TRUE(part.OpenFilesystem());
+    }
 
     EXPECT_TRUE(payload_config.Validate());
     EXPECT_TRUE(GenerateUpdatePayloadFile(payload_config,
@@ -618,10 +622,11 @@ static void ApplyDeltaFile(bool full_kernel,
                         manifest.signatures_offset()],
           manifest.signatures_size()));
       if (signature_test == kSignatureGeneratedShellRotateCl1 ||
-          signature_test == kSignatureGeneratedShellRotateCl2)
+          signature_test == kSignatureGeneratedShellRotateCl2) {
         EXPECT_EQ(2, sigs_message.signatures_size());
-      else
+      } else {
         EXPECT_EQ(1, sigs_message.signatures_size());
+      }
       const Signatures::Signature& signature = sigs_message.signatures(0);
 
       vector<string> key_paths{GetBuildArtifactsPath(kUnittestPrivateKeyPath)};
@@ -812,10 +817,11 @@ static void ApplyDeltaFile(bool full_kernel,
   // If we had continued all the way through, Close should succeed.
   // Otherwise, it should fail. Check appropriately.
   bool close_result = (*performer)->Close();
-  if (continue_writing)
+  if (continue_writing) {
     EXPECT_EQ(0, close_result);
-  else
+  } else {
     EXPECT_LE(0, close_result);
+  }
 }
 
 void VerifyPayloadResult(DeltaPerformer* performer,

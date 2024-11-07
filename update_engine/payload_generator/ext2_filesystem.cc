@@ -89,19 +89,23 @@ int UpdateFileAndAppend(ext2_ino_t dir,
       static_cast<UpdateFileAndAppendState*>(priv_data);
   uint32_t file_type = dirent->name_len >> 8;
   // Directories can't have hard links, and they are added from the outer loop.
-  if (file_type == EXT2_FT_DIR)
+  if (file_type == EXT2_FT_DIR) {
     return 0;
+  }
 
   auto ino_file = state->inodes->find(dirent->inode);
-  if (ino_file == state->inodes->end())
+  if (ino_file == state->inodes->end()) {
     return 0;
+  }
   auto dir_file = state->inodes->find(dir);
-  if (dir_file == state->inodes->end())
+  if (dir_file == state->inodes->end()) {
     return 0;
+  }
   string basename(dirent->name, dirent->name_len & 0xff);
   ino_file->second.name = dir_file->second.name;
-  if (dir_file->second.name != "/")
+  if (dir_file->second.name != "/") {
     ino_file->second.name += "/";
+  }
   ino_file->second.name += basename;
 
   // Append this file to the output. If the file has a hard link, it will be
@@ -116,8 +120,9 @@ int UpdateFileAndAppend(ext2_ino_t dir,
 
 unique_ptr<Ext2Filesystem> Ext2Filesystem::CreateFromFile(
     const string& filename) {
-  if (filename.empty())
+  if (filename.empty()) {
     return nullptr;
+  }
   unique_ptr<Ext2Filesystem> result(new Ext2Filesystem());
   result->filename_ = filename;
 
@@ -172,12 +177,14 @@ bool Ext2Filesystem::GetFiles(vector<File>* files) const {
       ok = false;
       break;
     }
-    if (it_ino == 0)
+    if (it_ino == 0) {
       break;
+    }
 
     // Skip inodes that are not in use.
-    if (!ext2fs_test_inode_bitmap(filsys_->inode_map, it_ino))
+    if (!ext2fs_test_inode_bitmap(filsys_->inode_map, it_ino)) {
       continue;
+    }
 
     File& file = inodes[it_ino];
     if (it_ino == EXT2_RESIZE_INO) {
@@ -200,11 +207,13 @@ bool Ext2Filesystem::GetFiles(vector<File>* files) const {
     file.file_stat.st_ctime = it_inode.i_ctime;
 
     bool is_dir = (ext2fs_check_directory(filsys_, it_ino) == 0);
-    if (is_dir)
+    if (is_dir) {
       directories.push_back(it_ino);
+    }
 
-    if (!ext2fs_inode_has_valid_blocks(&it_inode))
+    if (!ext2fs_inode_has_valid_blocks(&it_inode)) {
       continue;
+    }
 
     // Process the inode data and metadata blocks.
     // For normal files, inode blocks are indirect, double indirect
@@ -226,8 +235,9 @@ bool Ext2Filesystem::GetFiles(vector<File>* files) const {
     }
   }
   ext2fs_close_inode_scan(iscan);
-  if (!ok)
+  if (!ok) {
     return false;
+  }
 
   // The set of inodes already added to the output. There can be less elements
   // here than in files since the later can contain repeated inodes due to
@@ -284,8 +294,9 @@ bool Ext2Filesystem::GetFiles(vector<File>* files) const {
     blk64_t blk_start = ext2fs_get_block_bitmap_start2(filsys_->block_map);
     blk64_t blk_end = ext2fs_get_block_bitmap_end2(filsys_->block_map);
     for (blk64_t block = blk_start; block < blk_end; block++) {
-      if (!ext2fs_test_block_bitmap2(filsys_->block_map, block))
+      if (!ext2fs_test_block_bitmap2(filsys_->block_map, block)) {
         AppendBlockToExtents(&free_space.extents, block);
+      }
     }
     files->push_back(free_space);
   }
@@ -293,10 +304,12 @@ bool Ext2Filesystem::GetFiles(vector<File>* files) const {
   // Add all the unreachable files plus the pseudo-files with an inode. Since
   // these inodes aren't files in the filesystem, ignore the empty ones.
   for (const auto& ino_file : inodes) {
-    if (used_inodes.find(ino_file.first) != used_inodes.end())
+    if (used_inodes.find(ino_file.first) != used_inodes.end()) {
       continue;
-    if (ino_file.second.extents.empty())
+    }
+    if (ino_file.second.extents.empty()) {
       continue;
+    }
 
     File file = ino_file.second;
     ExtentRanges ranges;
@@ -315,29 +328,34 @@ bool Ext2Filesystem::LoadSettings(brillo::KeyValueStore* store) const {
   errcode_t err = ext2fs_namei_follow(filsys_, EXT2_ROOT_INO /* root */,
                                       EXT2_ROOT_INO /* cwd */,
                                       "/etc/update_engine.conf", &ino_num);
-  if (err != 0)
+  if (err != 0) {
     return false;
+  }
 
   ext2_inode ino_data;
-  if (ext2fs_read_inode(filsys_, ino_num, &ino_data) != 0)
+  if (ext2fs_read_inode(filsys_, ino_num, &ino_data) != 0) {
     return false;
+  }
 
   // Load the list of blocks and then the contents of the inodes.
   vector<Extent> extents;
   err = ext2fs_block_iterate2(filsys_, ino_num, BLOCK_FLAG_DATA_ONLY,
                               nullptr,  // block_buf
                               ProcessInodeAllBlocks, &extents);
-  if (err != 0)
+  if (err != 0) {
     return false;
+  }
 
   brillo::Blob blob;
   uint64_t physical_size = utils::BlocksInExtents(extents) * filsys_->blocksize;
   // Sparse holes in the settings file are not supported.
-  if (EXT2_I_SIZE(&ino_data) > physical_size)
+  if (EXT2_I_SIZE(&ino_data) > physical_size) {
     return false;
+  }
   if (!utils::ReadExtents(filename_, extents, &blob, physical_size,
-                          filsys_->blocksize))
+                          filsys_->blocksize)) {
     return false;
+  }
 
   string text(blob.begin(), blob.begin() + EXT2_I_SIZE(&ino_data));
   return store->LoadFromString(text);

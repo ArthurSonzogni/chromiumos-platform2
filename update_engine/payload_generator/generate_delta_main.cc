@@ -78,9 +78,10 @@ void CalculateHashForSigning(const vector<size_t>& sizes,
                                              &metadata_hash));
   CHECK(utils::WriteFile(out_hash_file.c_str(), payload_hash.data(),
                          payload_hash.size()));
-  if (!out_metadata_hash_file.empty())
+  if (!out_metadata_hash_file.empty()) {
     CHECK(utils::WriteFile(out_metadata_hash_file.c_str(), metadata_hash.data(),
                            metadata_hash.size()));
+  }
 
   LOG(INFO) << "Done calculating hash for signing.";
 }
@@ -495,8 +496,9 @@ int Main(int argc, char** argv) {
     payload_config.target.partitions.back().path = new_partitions[i];
     payload_config.target.partitions.back().disable_fec_computation =
         FLAGS_disable_fec_computation;
-    if (i < new_mapfiles.size())
+    if (i < new_mapfiles.size()) {
       payload_config.target.partitions.back().mapfile_path = new_mapfiles[i];
+    }
   }
 
   if (payload_config.is_delta) {
@@ -513,8 +515,9 @@ int Main(int argc, char** argv) {
     for (size_t i = 0; i < partition_names.size(); i++) {
       payload_config.source.partitions.emplace_back(partition_names[i]);
       payload_config.source.partitions.back().path = old_partitions[i];
-      if (i < old_mapfiles.size())
+      if (i < old_mapfiles.size()) {
         payload_config.source.partitions.back().mapfile_path = old_mapfiles[i];
+      }
     }
   }
 
@@ -556,10 +559,12 @@ int Main(int argc, char** argv) {
 
   if (payload_config.is_delta) {
     // Avoid opening the filesystem interface for full payloads.
-    for (PartitionConfig& part : payload_config.target.partitions)
+    for (PartitionConfig& part : payload_config.target.partitions) {
       CHECK(part.OpenFilesystem());
-    for (PartitionConfig& part : payload_config.source.partitions)
+    }
+    for (PartitionConfig& part : payload_config.source.partitions) {
       CHECK(part.OpenFilesystem());
+    }
   }
 
   payload_config.version.major = FLAGS_major_version;
@@ -608,8 +613,9 @@ int Main(int argc, char** argv) {
   }
 
   if (payload_config.is_delta &&
-      payload_config.version.minor >= kVerityMinorPayloadVersion)
+      payload_config.version.minor >= kVerityMinorPayloadVersion) {
     CHECK(payload_config.target.LoadVerityConfig());
+  }
 
   LOG(INFO) << "Generating " << (payload_config.is_delta ? "delta" : "full")
             << " update";

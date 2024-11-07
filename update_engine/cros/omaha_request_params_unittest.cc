@@ -60,12 +60,14 @@ class OmahaRequestParamsTest : public ::testing::Test {
 namespace {
 string GetMachineType() {
   string machine_type;
-  if (!utils::ReadPipe("uname -m", &machine_type))
+  if (!utils::ReadPipe("uname -m", &machine_type)) {
     return "";
+  }
   // Strip anything from the first newline char.
   size_t newline_pos = machine_type.find('\n');
-  if (newline_pos != string::npos)
+  if (newline_pos != string::npos) {
     machine_type.erase(newline_pos);
+  }
   return machine_type;
 }
 }  // namespace

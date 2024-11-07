@@ -22,8 +22,9 @@ namespace chromeos_update_manager {
 
 bool RealShillProvider::Init() {
   ManagerProxyInterface* manager_proxy = shill_proxy_->GetManagerProxy();
-  if (!manager_proxy)
+  if (!manager_proxy) {
     return false;
+  }
 
   // Subscribe to the manager's PropertyChanged signal.
   manager_proxy->RegisterPropertyChangedSignalHandler(
@@ -37,8 +38,9 @@ bool RealShillProvider::Init() {
   // signal as soon as it comes up, so this is not a critical step.
   brillo::VariantDictionary properties;
   brillo::ErrorPtr error;
-  if (!manager_proxy->GetProperties(&properties, &error))
+  if (!manager_proxy->GetProperties(&properties, &error)) {
     return true;
+  }
 
   const auto& prop_default_service =
       properties.find(shill::kDefaultServiceProperty);
@@ -78,8 +80,9 @@ bool RealShillProvider::ProcessDefaultService(
     const dbus::ObjectPath& default_service_path) {
   // We assume that if the service path didn't change, then the connection
   // type of it also didn't change.
-  if (default_service_path_ == default_service_path)
+  if (default_service_path_ == default_service_path) {
     return true;
+  }
 
   // Update the connection status.
   default_service_path_ = default_service_path;

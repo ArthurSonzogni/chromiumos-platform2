@@ -41,8 +41,9 @@ const char* GetHttpResponseDescription(HttpResponseCode code) {
   };
 
   for (const auto& response : http_response_table) {
-    if (response.code == code)
+    if (response.code == code) {
       return response.description;
+    }
   }
 
   return "(unsupported)";
@@ -61,8 +62,9 @@ const char* GetHttpContentTypeString(HttpContentType type) {
   };
 
   for (const auto& content_type : http_content_type_table) {
-    if (content_type.type == type)
+    if (content_type.type == type) {
       return content_type.str;
+    }
   }
 
   return nullptr;

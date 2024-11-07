@@ -43,8 +43,9 @@ class FakeVariable : public Variable<T> {
   // message.
   const T* GetValue(base::TimeDelta /* timeout */,
                     std::string* errmsg) override {
-    if (ptr_ == nullptr && errmsg != nullptr)
+    if (ptr_ == nullptr && errmsg != nullptr) {
       *errmsg = this->GetName() + " is an empty FakeVariable";
+    }
     // Passes the pointer ownership to the caller.
     return ptr_.release();
   }

@@ -31,8 +31,9 @@ class FakeExtentWriter : public ExtentWriter {
     return true;
   };
   bool Write(const void* bytes, size_t count) override {
-    if (!init_called_)
+    if (!init_called_) {
       return false;
+    }
     written_data_.insert(written_data_.end(),
                          reinterpret_cast<const uint8_t*>(bytes),
                          reinterpret_cast<const uint8_t*>(bytes) + count);

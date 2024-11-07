@@ -58,8 +58,9 @@ void HttpFetcher::NoProxyResolverCallback() {
 
 void HttpFetcher::ProxiesResolved(const deque<string>& proxies) {
   proxy_request_ = kProxyRequestIdNull;
-  if (!proxies.empty())
+  if (!proxies.empty()) {
     SetProxies(proxies);
+  }
   CHECK(callback_.get()) << "ProxiesResolved but none pending.";
   base::OnceClosure* callback = callback_.release();
   // This may indirectly call back into ResolveProxiesForUrl():

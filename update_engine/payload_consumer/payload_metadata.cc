@@ -40,8 +40,9 @@ uint64_t PayloadMetadata::GetManifestOffset() const {
 MetadataParseResult PayloadMetadata::ParsePayloadHeader(
     const brillo::Blob& payload, ErrorCode* error) {
   // Ensure we have data to cover the major payload version.
-  if (payload.size() < kDeltaManifestSizeOffset)
+  if (payload.size() < kDeltaManifestSizeOffset) {
     return MetadataParseResult::kInsufficientData;
+  }
 
   // Validate the magic string.
   if (memcmp(payload.data(), kDeltaMagic, sizeof(kDeltaMagic)) != 0) {
@@ -58,8 +59,9 @@ MetadataParseResult PayloadMetadata::ParsePayloadHeader(
 
   uint64_t manifest_offset = GetManifestOffset();
   // Check again with the manifest offset.
-  if (payload.size() < manifest_offset)
+  if (payload.size() < manifest_offset) {
     return MetadataParseResult::kInsufficientData;
+  }
 
   // Extract the payload version from the metadata.
   static_assert(sizeof(major_payload_version_) == kDeltaVersionSize,
@@ -127,8 +129,9 @@ ErrorCode PayloadMetadata::ValidateMetadataSignature(
     const brillo::Blob& payload,
     const string& metadata_signature,
     const PayloadVerifier& payload_verifier) const {
-  if (payload.size() < metadata_size_ + metadata_signature_size_)
+  if (payload.size() < metadata_size_ + metadata_signature_size_) {
     return ErrorCode::kDownloadMetadataSignatureError;
+  }
 
   // A single signature in raw bytes.
   brillo::Blob metadata_signature_blob;

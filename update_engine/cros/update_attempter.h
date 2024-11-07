@@ -462,8 +462,9 @@ class UpdateAttempter : public ActionProcessorDelegate,
   void MarkDeltaUpdateFailure();
 
   ProxyResolver* GetProxyResolver() {
-    if (obeying_proxies_)
+    if (obeying_proxies_) {
       return &chrome_proxy_resolver_;
+    }
     return &direct_proxy_resolver_;
   }
 

@@ -447,10 +447,11 @@ TEST_F(UmRealUpdaterProviderTest, TestUpdateCheckIntervalTimeout) {
   fake_prefs->SetInt64(
       chromeos_update_engine::kPrefsTestUpdateCheckIntervalTimeout, 11 * 60);
   // The next 5 reads should return valid values.
-  for (int i = 0; i < 5; ++i)
+  for (int i = 0; i < 5; ++i) {
     UmTestUtils::ExpectVariableHasValue(
         static_cast<int64_t>(10 * 60),
         provider_->var_test_update_check_interval_timeout());
+  }
 
   // Just to make sure it is not cached anywhere and deleted. The variable is
   // allowd to be read 6 times.

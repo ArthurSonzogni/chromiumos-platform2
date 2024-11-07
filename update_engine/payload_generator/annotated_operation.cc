@@ -44,8 +44,9 @@ std::ostream& operator<<(std::ostream& os, const AnnotatedOperation& aop) {
   //   name: /foo/bar
   //    dst: (123, 3) (127, 2)
   os << InstallOperationTypeName(aop.op.type()) << " " << aop.op.data_length();
-  if (aop.op.data_length() > 0)
+  if (aop.op.data_length() > 0) {
     os << " @" << aop.op.data_offset();
+  }
   if (!aop.name.empty()) {
     os << std::endl << "  name: " << aop.name;
   }

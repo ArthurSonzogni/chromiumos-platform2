@@ -59,8 +59,9 @@ bool DBusUpdateEngineClient::Init() {
   options.bus_type = Bus::SYSTEM;
   scoped_refptr<Bus> bus{new Bus{options}};
 
-  if (!bus->Connect())
+  if (!bus->Connect()) {
     return false;
+  }
 
   proxy_.reset(new UpdateEngineInterfaceProxy{bus});
   return true;

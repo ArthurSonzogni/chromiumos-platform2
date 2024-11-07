@@ -92,8 +92,9 @@ class FailingPolicy : public PolicyInterface {
                       State* state,
                       string* error,
                       PolicyDataInterface* data) const override {
-    if (num_called_p_)
+    if (num_called_p_) {
       (*num_called_p_)++;
+    }
     *error = "FailingPolicy failed.";
     return EvalStatus::kFailed;
   }
@@ -133,18 +134,21 @@ class DelayPolicy : public PolicyInterface {
                       State* state,
                       string* error,
                       PolicyDataInterface* data) const override {
-    if (num_called_p_)
+    if (num_called_p_) {
       (*num_called_p_)++;
+    }
 
     // Sleep for a predetermined amount of time.
-    if (sleep_secs_ > 0)
+    if (sleep_secs_ > 0) {
       sleep(sleep_secs_);
+    }
 
     // Check for a time threshold. This can be used to ensure that the policy
     // has some non-constant dependency.
     if (time_threshold_ < Time::Max() &&
-        ec->IsWallclockTimeGreaterThan(time_threshold_))
+        ec->IsWallclockTimeGreaterThan(time_threshold_)) {
       return EvalStatus::kSucceeded;
+    }
 
     return EvalStatus::kAskMeAgainLater;
   }

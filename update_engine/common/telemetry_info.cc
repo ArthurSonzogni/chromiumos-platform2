@@ -30,13 +30,15 @@ std::string TelemetryInfo::GetBusDeviceDrivers(
     BusDevice::BusDeviceClass bus_device_class) const {
   std::vector<std::string> drivers;
   for (const auto& bus_device : bus_devices) {
-    if (bus_device.device_class != bus_device_class)
+    if (bus_device.device_class != bus_device_class) {
       continue;
+    }
     if (const auto* pci_bus_info =
             std::get_if<BusDevice::PciBusInfo>(&bus_device.bus_type_info)) {
       const auto& driver = pci_bus_info->driver;
-      if (!driver.empty())
+      if (!driver.empty()) {
         drivers.push_back(driver);
+      }
     }
   }
   return base::JoinString(drivers, " ");
@@ -46,8 +48,9 @@ std::string TelemetryInfo::GetBusDeviceIds(
     BusDevice::BusDeviceClass bus_device_class) const {
   std::vector<std::string> ids;
   for (const auto& bus_device : bus_devices) {
-    if (bus_device.device_class != bus_device_class)
+    if (bus_device.device_class != bus_device_class) {
       continue;
+    }
     if (const auto* pci_bus_info =
             std::get_if<BusDevice::PciBusInfo>(&bus_device.bus_type_info)) {
       ids.push_back(base::JoinString(

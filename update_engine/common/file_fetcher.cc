@@ -51,8 +51,9 @@ void FileFetcher::BeginTransfer(const string& url) {
     // No HTTP error code when the URL is not supported.
     http_response_code_ = 0;
     CleanUp();
-    if (delegate_)
+    if (delegate_) {
       delegate_->TransferComplete(this, false);
+    }
     return;
   }
 
@@ -73,14 +74,16 @@ void FileFetcher::BeginTransfer(const string& url) {
     LOG(ERROR) << "Couldn't open " << file_path;
     http_response_code_ = kHttpResponseNotFound;
     CleanUp();
-    if (delegate_)
+    if (delegate_) {
       delegate_->TransferComplete(this, false);
+    }
     return;
   }
   http_response_code_ = kHttpResponseOk;
 
-  if (offset_)
+  if (offset_) {
     stream_->SetPosition(offset_, nullptr);
+  }
   bytes_copied_ = 0;
   transfer_in_progress_ = true;
   ScheduleRead();
@@ -95,8 +98,9 @@ void FileFetcher::TerminateTransfer() {
 }
 
 void FileFetcher::ScheduleRead() {
-  if (transfer_paused_ || ongoing_read_ || !transfer_in_progress_)
+  if (transfer_paused_ || ongoing_read_ || !transfer_in_progress_) {
     return;
+  }
 
   buffer_.resize(kReadBufferSize);
   size_t bytes_to_read = buffer_.size();
@@ -119,8 +123,9 @@ void FileFetcher::ScheduleRead() {
   if (!ongoing_read_) {
     LOG(ERROR) << "Unable to schedule an asynchronous read from the stream.";
     CleanUp();
-    if (delegate_)
+    if (delegate_) {
       delegate_->TransferComplete(this, false);
+    }
   }
 }
 
@@ -128,13 +133,15 @@ void FileFetcher::OnReadDoneCallback(size_t bytes_read) {
   ongoing_read_ = false;
   if (bytes_read == 0) {
     CleanUp();
-    if (delegate_)
+    if (delegate_) {
       delegate_->TransferComplete(this, true);
+    }
   } else {
     bytes_copied_ += bytes_read;
     if (delegate_ &&
-        !delegate_->ReceivedBytes(this, buffer_.data(), bytes_read))
+        !delegate_->ReceivedBytes(this, buffer_.data(), bytes_read)) {
       return;
+    }
     ScheduleRead();
   }
 }
@@ -142,8 +149,9 @@ void FileFetcher::OnReadDoneCallback(size_t bytes_read) {
 void FileFetcher::OnReadErrorCallback(const brillo::Error* error) {
   LOG(ERROR) << "Asynchronous read failed: " << error->GetMessage();
   CleanUp();
-  if (delegate_)
+  if (delegate_) {
     delegate_->TransferComplete(this, false);
+  }
 }
 
 void FileFetcher::Pause() {

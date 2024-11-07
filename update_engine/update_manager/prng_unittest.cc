@@ -60,8 +60,9 @@ TEST(UmPRNGTest, RandCoversRange) {
     hits[r]++;
   }
 
-  for (auto& hit : hits)
+  for (auto& hit : hits) {
     EXPECT_LT(0, hit);
+  }
 }
 
 }  // namespace chromeos_update_manager

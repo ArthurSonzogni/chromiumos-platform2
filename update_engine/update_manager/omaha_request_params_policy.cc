@@ -95,9 +95,10 @@ EvalStatus OmahaRequestParamsPolicy::Evaluate(EvaluationContext* ec,
   // Determine allowed milestones for rollback
   const int* rollback_allowed_milestones_p =
       ec->GetValue(dp_provider->var_rollback_allowed_milestones());
-  if (rollback_allowed_milestones_p)
+  if (rollback_allowed_milestones_p) {
     request_params->set_rollback_allowed_milestones(
         *rollback_allowed_milestones_p);
+  }
 
   return EvalStatus::kSucceeded;
 }

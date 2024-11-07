@@ -18,8 +18,9 @@ bool ZstdCompressWithOptions(const brillo::Blob& in,
                              bool window_log) {
   TEST_AND_RETURN_FALSE(out);
   out->clear();
-  if (in.size() == 0)
+  if (in.size() == 0) {
     return true;
+  }
 
   out->resize(in.size());
 
@@ -47,8 +48,9 @@ bool ZstdCompressWithOptions(const brillo::Blob& in,
   ZSTD_freeCCtx(ctx);
 
   // Handle error / result step.
-  if (ZSTD_isError(size))
+  if (ZSTD_isError(size)) {
     return false;
+  }
   out->resize(size);
   return true;
 }

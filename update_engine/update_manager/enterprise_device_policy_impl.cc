@@ -103,8 +103,9 @@ EvalStatus EnterpriseDevicePolicyImpl::Evaluate(
       // Determine whether a target version prefix is dictated by policy.
       const string* target_version_prefix_p =
           ec->GetValue(dp_provider->var_target_version_prefix());
-      if (target_version_prefix_p)
+      if (target_version_prefix_p) {
         result->target_version_prefix = *target_version_prefix_p;
+      }
     }
 
     // Determine whether a target channel is dictated by policy and whether we

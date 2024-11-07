@@ -109,8 +109,9 @@ void DownloadAction::WriteToP2PFile(const void* data,
                                     size_t length,
                                     off_t file_offset) {
   if (p2p_sharing_fd_ == -1) {
-    if (!SetupP2PSharingFd())
+    if (!SetupP2PSharingFd()) {
       return;
+    }
   }
 
   // Check that the file is at least |file_offset| bytes long - if
@@ -163,8 +164,9 @@ void DownloadAction::PerformAction() {
   bytes_received_ = 0;
   bytes_received_previous_payloads_ = 0;
   bytes_total_ = 0;
-  for (const auto& payload : install_plan_.payloads)
+  for (const auto& payload : install_plan_.payloads) {
     bytes_total_ += payload.size;
+  }
 
   if (install_plan_.is_resume) {
     int64_t payload_index = 0;
@@ -173,13 +175,15 @@ void DownloadAction::PerformAction() {
       // Save the index for the resume payload before downloading any previous
       // payload, otherwise it will be overwritten.
       resume_payload_index_ = payload_index;
-      for (int i = 0; i < payload_index; i++)
+      for (int i = 0; i < payload_index; i++) {
         install_plan_.payloads[i].already_applied = true;
+      }
     }
   }
   // TODO(senj): check that install plan has at least one payload.
-  if (!payload_)
+  if (!payload_) {
     payload_ = &install_plan_.payloads[0];
+  }
 
   LOG(INFO) << "Marking new slot as unbootable";
   if (!boot_control_->MarkSlotUnbootable(install_plan_.target_slot)) {
@@ -362,8 +366,9 @@ bool DownloadAction::ReceivedBytes(HttpFetcher* fetcher,
                  << "processing the received payload -- Terminating processing";
     }
     // Delete p2p file, if applicable.
-    if (!p2p_file_id_.empty())
+    if (!p2p_file_id_.empty()) {
       CloseP2PSharingFd(true);
+    }
     // Don't tell the action processor that the action is complete until we get
     // the TransferTerminated callback. Otherwise, this and the HTTP fetcher
     // objects may get destroyed before all callbacks are complete.
@@ -394,15 +399,17 @@ void DownloadAction::TransferComplete(HttpFetcher* fetcher, bool successful) {
   ErrorCode code =
       successful ? ErrorCode::kSuccess : ErrorCode::kDownloadTransferError;
   if (code == ErrorCode::kSuccess) {
-    if (delta_performer_ && !payload_->already_applied)
+    if (delta_performer_ && !payload_->already_applied) {
       code = delta_performer_->VerifyPayload(payload_->hash, payload_->size);
+    }
     if (code == ErrorCode::kSuccess) {
       if (payload_ < &install_plan_.payloads.back() &&
           SystemState::Get()->payload_state()->NextPayload()) {
         LOG(INFO) << "Incrementing to next payload";
         // No need to reset if this payload was already applied.
-        if (delta_performer_ && !payload_->already_applied)
+        if (delta_performer_ && !payload_->already_applied) {
           DeltaPerformer::ResetUpdateProgress(prefs_, false);
+        }
         // Start downloading next payload.
         bytes_received_previous_payloads_ += payload_->size;
         payload_++;
@@ -413,8 +420,9 @@ void DownloadAction::TransferComplete(HttpFetcher* fetcher, bool successful) {
       }
 
       // All payloads have been applied and verified.
-      if (delegate_)
+      if (delegate_) {
         delegate_->DownloadComplete();
+      }
 
       // Log UpdateEngine.DownloadAction.* histograms to help diagnose
       // long-blocking operations.
@@ -426,14 +434,16 @@ void DownloadAction::TransferComplete(HttpFetcher* fetcher, bool successful) {
       LOG(ERROR) << "Download of " << install_plan_.download_url
                  << " failed due to payload verification error.";
       // Delete p2p file, if applicable.
-      if (!p2p_file_id_.empty())
+      if (!p2p_file_id_.empty()) {
         CloseP2PSharingFd(true);
+      }
     }
   }
 
   // Write the path to the output pipe if we're successful.
-  if (code == ErrorCode::kSuccess && HasOutputPipe())
+  if (code == ErrorCode::kSuccess && HasOutputPipe()) {
     SetOutputObject(install_plan_);
+  }
   processor_->ActionComplete(this, code);
 }
 

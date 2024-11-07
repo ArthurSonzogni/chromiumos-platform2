@@ -75,15 +75,17 @@ TEST_F(BlockMappingTest, BlocksAreNotKeptInMemory) {
 TEST_F(BlockMappingTest, MapPartitionBlocks) {
   // A string with 10 blocks where all the blocks are different.
   string old_contents(10 * block_size_, '\0');
-  for (size_t i = 0; i < old_contents.size(); ++i)
+  for (size_t i = 0; i < old_contents.size(); ++i) {
     old_contents[i] = 4 + i / block_size_;
+  }
   test_utils::WriteFileString(old_part_.path(), old_contents);
 
   // A string including the block with all zeros and overlapping some of the
   // other blocks in old_contents.
   string new_contents(6 * block_size_, '\0');
-  for (size_t i = 0; i < new_contents.size(); ++i)
+  for (size_t i = 0; i < new_contents.size(); ++i) {
     new_contents[i] = i / block_size_;
+  }
   test_utils::WriteFileString(new_part_.path(), new_contents);
 
   vector<BlockMapping::BlockId> old_ids, new_ids;

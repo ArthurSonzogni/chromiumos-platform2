@@ -24,8 +24,9 @@ void MultiRangeHttpFetcher::BeginTransfer(const std::string& url) {
 
   if (ranges_.empty()) {
     // Note that after the callback returns this object may be destroyed.
-    if (delegate_)
+    if (delegate_) {
       delegate_->TransferComplete(this, true);
+    }
     return;
   }
   url_ = url;
@@ -41,8 +42,9 @@ void MultiRangeHttpFetcher::TerminateTransfer() {
   if (!base_fetcher_active_) {
     LOG(INFO) << "Called TerminateTransfer but not active.";
     // Note that after the callback returns this object may be destroyed.
-    if (delegate_)
+    if (delegate_) {
       delegate_->TransferTerminated(this);
+    }
     return;
   }
   terminating_ = true;
@@ -64,12 +66,14 @@ void MultiRangeHttpFetcher::StartTransfer() {
 
   bytes_received_this_range_ = 0;
   base_fetcher_->SetOffset(range.offset());
-  if (range.HasLength())
+  if (range.HasLength()) {
     base_fetcher_->SetLength(range.length());
-  else
+  } else {
     base_fetcher_->UnsetLength();
-  if (delegate_)
+  }
+  if (delegate_) {
     delegate_->SeekToOffset(range.offset());
+  }
   base_fetcher_active_ = true;
   base_fetcher_->BeginTransfer(url_);
 }
@@ -92,8 +96,9 @@ bool MultiRangeHttpFetcher::ReceivedBytes(HttpFetcher* fetcher,
   // result, because it will be used to determine a successful transfer in
   // TransferEnded().
   bytes_received_this_range_ += length;
-  if (delegate_ && !delegate_->ReceivedBytes(this, bytes, next_size))
+  if (delegate_ && !delegate_->ReceivedBytes(this, bytes, next_size)) {
     return false;
+  }
 
   if (range.HasLength() && bytes_received_this_range_ >= range.length()) {
     // Terminates the current fetcher. Waits for its TransferTerminated
@@ -120,8 +125,9 @@ void MultiRangeHttpFetcher::TransferEnded(HttpFetcher* fetcher,
     LOG(INFO) << "Terminating.";
     Reset();
     // Note that after the callback returns this object may be destroyed.
-    if (delegate_)
+    if (delegate_) {
       delegate_->TransferTerminated(this);
+    }
     return;
   }
 
@@ -133,8 +139,9 @@ void MultiRangeHttpFetcher::TransferEnded(HttpFetcher* fetcher,
       LOG(INFO) << "Didn't get enough bytes. Ending w/ failure.";
       Reset();
       // Note that after the callback returns this object may be destroyed.
-      if (delegate_)
+      if (delegate_) {
         delegate_->TransferComplete(this, false);
+      }
       return;
     }
     // We got enough bytes and there were bytes specified, so this is success.
@@ -152,8 +159,9 @@ void MultiRangeHttpFetcher::TransferEnded(HttpFetcher* fetcher,
   LOG(INFO) << "Done w/ all transfers";
   Reset();
   // Note that after the callback returns this object may be destroyed.
-  if (delegate_)
+  if (delegate_) {
     delegate_->TransferComplete(this, successful);
+  }
 }
 
 void MultiRangeHttpFetcher::TransferComplete(HttpFetcher* fetcher,
@@ -175,10 +183,11 @@ void MultiRangeHttpFetcher::Reset() {
 
 std::string MultiRangeHttpFetcher::Range::ToString() const {
   std::string range_str = base::StringPrintf("%jd+", offset());
-  if (HasLength())
+  if (HasLength()) {
     range_str += std::to_string(length());
-  else
+  } else {
     range_str += "?";
+  }
   return range_str;
 }
 
@@ -189,12 +198,14 @@ void MultiRangeHttpFetcher::SetOffset(off_t offset) {
       bytes_received_this_range_ = offset;
 
       base_fetcher_->SetOffset(range.offset() + offset);
-      if (range.HasLength())
+      if (range.HasLength()) {
         base_fetcher_->SetLength(range.length());
-      else
+      } else {
         base_fetcher_->UnsetLength();
-      if (delegate_)
+      }
+      if (delegate_) {
         delegate_->SeekToOffset(range.offset() + offset);
+      }
       return;
     }
     current_index_++;

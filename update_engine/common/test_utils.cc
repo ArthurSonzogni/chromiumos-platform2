@@ -77,8 +77,9 @@ const uint8_t kRandomString[] = {
 string Readlink(const string& path) {
   vector<char> buf(PATH_MAX + 1);
   ssize_t r = readlink(path.c_str(), buf.data(), buf.size());
-  if (r < 0)
+  if (r < 0) {
     return "";
+  }
   CHECK_LT(r, static_cast<ssize_t>(buf.size()));
   return string(buf.begin(), buf.begin() + r);
 }
@@ -171,16 +172,18 @@ bool BindToUnusedLoopDevice(const string& filename,
 bool UnbindLoopDevice(const string& lo_dev_name) {
   int loop_device_fd =
       HANDLE_EINTR(open(lo_dev_name.c_str(), O_RDWR | O_LARGEFILE));
-  if (loop_device_fd == -1 && errno == ENOENT)
+  if (loop_device_fd == -1 && errno == ENOENT) {
     return true;
+  }
   TEST_AND_RETURN_FALSE_ERRNO(loop_device_fd != -1);
   ScopedFdCloser loop_device_fd_closer(&loop_device_fd);
 
   struct loop_info64 device_info;
   // Check if the device is bound before trying to unbind it.
   int get_stat_err = ioctl(loop_device_fd, LOOP_GET_STATUS64, &device_info);
-  if (get_stat_err == -1 && errno == ENXIO)
+  if (get_stat_err == -1 && errno == ENXIO) {
     return true;
+  }
 
   TEST_AND_RETURN_FALSE_ERRNO(ioctl(loop_device_fd, LOOP_CLR_FD) == 0);
   return true;
@@ -188,8 +191,9 @@ bool UnbindLoopDevice(const string& lo_dev_name) {
 
 bool ExpectVectorsEq(const brillo::Blob& expected, const brillo::Blob& actual) {
   EXPECT_EQ(expected.size(), actual.size());
-  if (expected.size() != actual.size())
+  if (expected.size() != actual.size()) {
     return false;
+  }
   bool is_all_eq = true;
   for (unsigned int i = 0; i < expected.size(); i++) {
     EXPECT_EQ(expected[i], actual[i]) << "offset: " << i;

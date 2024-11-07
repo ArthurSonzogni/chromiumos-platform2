@@ -272,8 +272,9 @@ bool SquashfsFilesystem::Init(const string& map,
 
 unique_ptr<SquashfsFilesystem> SquashfsFilesystem::CreateFromFile(
     const string& sqfs_path, bool extract_deflates, bool load_settings) {
-  if (sqfs_path.empty())
+  if (sqfs_path.empty()) {
     return nullptr;
+  }
 
   brillo::StreamPtr sqfs_file = brillo::FileStream::Open(
       FilePath(sqfs_path), brillo::Stream::AccessMode::READ,

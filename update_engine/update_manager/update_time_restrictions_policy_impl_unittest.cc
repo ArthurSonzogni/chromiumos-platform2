@@ -54,9 +54,10 @@ class UmUpdateTimeRestrictionsPolicyImplTest : public UmPolicyTestBase {
     EXPECT_EQ(expected_value, evaluator_->Evaluate());
     EXPECT_EQ(install_plan_.can_download_be_canceled,
               expected_can_download_be_canceled);
-    if (expected_value == EvalStatus::kSucceeded)
+    if (expected_value == EvalStatus::kSucceeded) {
       EXPECT_EQ(ucba_data_->error_code(),
                 ErrorCode::kOmahaUpdateDeferredPerPolicy);
+    }
   }
 
   InstallPlan install_plan_;

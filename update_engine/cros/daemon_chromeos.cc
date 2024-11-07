@@ -27,8 +27,9 @@ int DaemonChromeOS::OnInit() {
   subprocess_.Init(this);
 
   int exit_code = Daemon::OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     return exit_code;
+  }
 
   // Initialize update engine global state.
   // TODO(deymo): Move the initialization to a factory method avoiding the

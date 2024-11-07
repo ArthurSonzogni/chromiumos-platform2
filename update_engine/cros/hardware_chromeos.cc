@@ -185,8 +185,9 @@ bool HardwareChromeOS::IsRunningFromMiniOs() const {
 bool HardwareChromeOS::AreDevFeaturesEnabled() const {
   // Even though the debugd tools are also gated on devmode, checking here can
   // save us a D-Bus call so it's worth doing explicitly.
-  if (IsNormalBootMode())
+  if (IsNormalBootMode()) {
     return false;
+  }
 
   int32_t dev_features = debugd::DEV_FEATURES_DISABLED;
   brillo::ErrorPtr error;
@@ -216,8 +217,9 @@ bool HardwareChromeOS::IsOOBEComplete(base::Time* out_time_of_oobe) const {
     return false;
   }
 
-  if (out_time_of_oobe != nullptr)
+  if (out_time_of_oobe != nullptr) {
     *out_time_of_oobe = base::Time::FromTimeT(statbuf.st_mtime);
+  }
   return true;
 }
 
@@ -254,8 +256,9 @@ bool HardwareChromeOS::SetMaxFirmwareKeyRollforward(
     int firmware_max_rollforward) {
   // Not all devices have this field yet. So first try to read
   // it and if there is an error just fail.
-  if (GetMaxFirmwareKeyRollforward() == -1)
+  if (GetMaxFirmwareKeyRollforward() == -1) {
     return false;
+  }
 
   return VbSetSystemPropertyInt("firmware_max_rollforward",
                                 firmware_max_rollforward) == 0;
@@ -275,11 +278,13 @@ int HardwareChromeOS::GetPowerwashCount() const {
   base::FilePath marker_path =
       base::FilePath(kPowerwashSafeDirectory).Append(kPowerwashCountMarker);
   string contents;
-  if (!utils::ReadFile(marker_path.value(), &contents))
+  if (!utils::ReadFile(marker_path.value(), &contents)) {
     return -1;
+  }
   base::TrimWhitespaceASCII(contents, base::TRIM_TRAILING, &contents);
-  if (!base::StringToInt(contents, &powerwash_count))
+  if (!base::StringToInt(contents, &powerwash_count)) {
     return -1;
+  }
   return powerwash_count;
 }
 
@@ -438,8 +443,9 @@ void HardwareChromeOS::LoadConfig(const string& root_prefix, bool normal_mode) {
     }
   }
 
-  if (!store.GetBoolean(kConfigOptsIsOOBEEnabled, &is_oobe_enabled_))
+  if (!store.GetBoolean(kConfigOptsIsOOBEEnabled, &is_oobe_enabled_)) {
     is_oobe_enabled_ = true;  // Default value.
+  }
 }
 
 bool HardwareChromeOS::GetFirstActiveOmahaPingSent() const {

@@ -59,9 +59,10 @@ bool InteractiveUpdateCheckAllowedPolicyImpl::CheckInteractiveUpdateRequested(
       ec->GetValue(updater_provider->var_forced_update_requested());
   if (forced_update_requested_p != nullptr &&
       *forced_update_requested_p != UpdateRequestStatus::kNone) {
-    if (interactive_out)
+    if (interactive_out) {
       *interactive_out =
           (*forced_update_requested_p == UpdateRequestStatus::kInteractive);
+    }
     return true;
   }
   return false;

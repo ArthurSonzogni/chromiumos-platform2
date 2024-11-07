@@ -56,9 +56,10 @@ bool PayloadFile::Init(const PayloadGenerationConfig& config) {
   manifest_.set_block_size(config.block_size);
   manifest_.set_max_timestamp(config.max_timestamp);
 
-  if (config.target.dynamic_partition_metadata != nullptr)
+  if (config.target.dynamic_partition_metadata != nullptr) {
     *(manifest_.mutable_dynamic_partition_metadata()) =
         *(config.target.dynamic_partition_metadata);
+  }
 
   if (config.is_partial_update) {
     manifest_.set_partial_update(true);
@@ -78,9 +79,10 @@ bool PayloadFile::AddPartition(const PartitionConfig& old_conf,
   part.verity = new_conf.verity;
   part.version = new_conf.version;
   // Initialize the PartitionInfo objects if present.
-  if (!old_conf.path.empty())
+  if (!old_conf.path.empty()) {
     TEST_AND_RETURN_FALSE(
         diff_utils::InitializePartitionInfo(old_conf, &part.old_info));
+  }
   TEST_AND_RETURN_FALSE(
       diff_utils::InitializePartitionInfo(new_conf, &part.new_info));
   part_vec_.push_back(std::move(part));
@@ -100,8 +102,9 @@ bool PayloadFile::WritePayload(const string& payload_file,
   uint64_t next_blob_offset = 0;
   for (const auto& part : part_vec_) {
     for (const auto& aop : part.aops) {
-      if (!aop.op.has_data_offset())
+      if (!aop.op.has_data_offset()) {
         continue;
+      }
       if (aop.op.data_offset() != next_blob_offset) {
         LOG(FATAL) << "bad blob offset! " << aop.op.data_offset()
                    << " != " << next_blob_offset;
@@ -120,10 +123,12 @@ bool PayloadFile::WritePayload(const string& payload_file,
     }
     if (part.postinstall.run) {
       partition->set_run_postinstall(true);
-      if (!part.postinstall.path.empty())
+      if (!part.postinstall.path.empty()) {
         partition->set_postinstall_path(part.postinstall.path);
-      if (!part.postinstall.filesystem_type.empty())
+      }
+      if (!part.postinstall.filesystem_type.empty()) {
         partition->set_filesystem_type(part.postinstall.filesystem_type);
+      }
       partition->set_postinstall_optional(part.postinstall.optional);
     }
     if (!part.verity.IsEmpty()) {
@@ -132,9 +137,10 @@ bool PayloadFile::WritePayload(const string& payload_file,
             part.verity.hash_tree_data_extent;
         *partition->mutable_hash_tree_extent() = part.verity.hash_tree_extent;
         partition->set_hash_tree_algorithm(part.verity.hash_tree_algorithm);
-        if (!part.verity.hash_tree_salt.empty())
+        if (!part.verity.hash_tree_salt.empty()) {
           partition->set_hash_tree_salt(part.verity.hash_tree_salt.data(),
                                         part.verity.hash_tree_salt.size());
+        }
       }
       if (part.verity.fec_extent.num_blocks() != 0) {
         *partition->mutable_fec_data_extent() = part.verity.fec_data_extent;
@@ -149,10 +155,12 @@ bool PayloadFile::WritePayload(const string& payload_file,
       *partition->add_merge_operations() = merge_op;
     }
 
-    if (part.old_info.has_size() || part.old_info.has_hash())
+    if (part.old_info.has_size() || part.old_info.has_hash()) {
       *(partition->mutable_old_partition_info()) = part.old_info;
-    if (part.new_info.has_size() || part.new_info.has_hash())
+    }
+    if (part.new_info.has_size() || part.new_info.has_hash()) {
       *(partition->mutable_new_partition_info()) = part.new_info;
+    }
   }
 
   // Signatures appear at the end of the blobs. Note the offset in the
@@ -268,8 +276,9 @@ bool PayloadFile::ReorderDataBlobs(const string& data_blobs_path,
 
   for (auto& part : part_vec_) {
     for (AnnotatedOperation& aop : part.aops) {
-      if (!aop.op.has_data_offset())
+      if (!aop.op.has_data_offset()) {
         continue;
+      }
       CHECK(aop.op.has_data_length());
       brillo::Blob buf(aop.op.data_length());
       ssize_t rc = pread(in_fd, buf.data(), buf.size(), aop.op.data_offset());

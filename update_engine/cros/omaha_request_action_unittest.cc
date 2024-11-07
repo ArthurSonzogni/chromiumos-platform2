@@ -97,8 +97,9 @@ struct FakeUpdateResponse {
 
   string GetNoUpdateResponse() const {
     string entity_str;
-    if (include_entity)
+    if (include_entity) {
       entity_str = "<!DOCTYPE response [<!ENTITY CrOS \"ChromeOS\">]>";
+    }
     return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" + entity_str +
            "<response protocol=\"3.0\">"
            "<daystart elapsed_seconds=\"100\"/>"
@@ -584,8 +585,9 @@ bool OmahaRequestActionTest::TestUpdateCheck() {
       base::Unretained(&processor)));
   loop_.Run();
   EXPECT_FALSE(loop_.PendingTasks());
-  if (delegate_.omaha_response_)
+  if (delegate_.omaha_response_) {
     response_ = *delegate_.omaha_response_;
+  }
   post_str_ = string(delegate_.post_data_.begin(), delegate_.post_data_.end());
   return delegate_.omaha_response_ != nullptr;
 }

@@ -42,8 +42,9 @@ class UmMinimumVersionPolicyImplTest : public UmPolicyTestBase {
 
   void TestPolicy(const EvalStatus& expected_status) {
     EvalStatus status = evaluator_->Evaluate();
-    if (status == EvalStatus::kSucceeded)
+    if (status == EvalStatus::kSucceeded) {
       EXPECT_EQ(ucba_data_->error_code(), ErrorCode::kSuccess);
+    }
   }
 
   InstallPlan install_plan_;

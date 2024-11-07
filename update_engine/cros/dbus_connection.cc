@@ -35,8 +35,9 @@ const scoped_refptr<dbus::Bus>& DBusConnection::GetDBus() {
 }
 
 DBusConnection* DBusConnection::Get() {
-  if (!dbus_connection_singleton)
+  if (!dbus_connection_singleton) {
     dbus_connection_singleton = new DBusConnection();
+  }
   return dbus_connection_singleton;
 }
 

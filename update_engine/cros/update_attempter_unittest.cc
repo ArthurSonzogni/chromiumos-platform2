@@ -194,8 +194,9 @@ class UpdateAttempterUnderTest : public UpdateAttempter {
   // updates for testing purposes.
   bool ScheduleUpdates(const ScheduleUpdatesParams& params = {}) override {
     schedule_updates_called_ = true;
-    if (do_schedule_updates_)
+    if (do_schedule_updates_) {
       return UpdateAttempter::ScheduleUpdates();
+    }
     LOG(INFO) << "[TEST] Update scheduling disabled.";
     waiting_for_scheduled_check_ = true;
     return true;
@@ -290,8 +291,9 @@ class UpdateAttempterTest : public ::testing::Test {
     // Dry out the message loop.
     // Each individual test should account for posted tasks so there are no
     // tasks that leak, but leverage this path to dry out the message loop.
-    if (loop_.PendingTasks())
+    if (loop_.PendingTasks()) {
       loop_.Run();
+    }
     // Don't leak the recorder singleton.
     ::metrics::structured::RecorderSingleton::GetInstance()
         ->DestroyRecorderForTest();
@@ -412,18 +414,20 @@ void UpdateAttempterTest::TestProcessingDone() {
   attempter_.skip_applying_ = pd_params_.skip_applying;
 
   // Expects
-  if (pd_params_.should_install_completed_be_called)
+  if (pd_params_.should_install_completed_be_called) {
     EXPECT_CALL(mock_dlcservice_,
                 InstallCompleted(pd_params_.args_to_install_completed))
         .WillOnce(Return(true));
-  else
+  } else {
     EXPECT_CALL(mock_dlcservice_, InstallCompleted(_)).Times(0);
-  if (pd_params_.should_update_completed_be_called)
+  }
+  if (pd_params_.should_update_completed_be_called) {
     EXPECT_CALL(mock_dlcservice_,
                 UpdateCompleted(pd_params_.args_to_update_completed))
         .WillOnce(Return(true));
-  else
+  } else {
     EXPECT_CALL(mock_dlcservice_, UpdateCompleted(_)).Times(0);
+  }
 
   // Invocation
   attempter_.ProcessingDone(pd_params_.processor, pd_params_.code);
@@ -509,8 +513,9 @@ void UpdateAttempterTest::SessionIdTestConsistencyInUpdateFlow() {
   unordered_set<string> session_ids;
   // Gather all the session IDs being passed to |OmahaRequestActions|.
   auto CheckSessionId = [&session_ids](AbstractAction* aa) {
-    if (aa->Type() == OmahaRequestAction::StaticType())
+    if (aa->Type() == OmahaRequestAction::StaticType()) {
       session_ids.insert(static_cast<OmahaRequestAction*>(aa)->session_id_);
+    }
   };
   EXPECT_CALL(*processor_, EnqueueAction(Pointee(_)))
       .WillRepeatedly(Invoke(CheckSessionId));

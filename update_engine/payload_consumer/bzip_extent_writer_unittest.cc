@@ -80,8 +80,9 @@ TEST_F(BzipExtentWriterTest, ChunkedTest) {
   const size_t kChunkSize = 3;
 
   brillo::Blob decompressed_data(kDecompressedLength);
-  for (size_t i = 0; i < decompressed_data.size(); ++i)
+  for (size_t i = 0; i < decompressed_data.size(); ++i) {
     decompressed_data[i] = static_cast<uint8_t>("ABC\n"[i % 4]);
+  }
 
   vector<Extent> extents = {ExtentForBytes(kBlockSize, 0, kDecompressedLength)};
 

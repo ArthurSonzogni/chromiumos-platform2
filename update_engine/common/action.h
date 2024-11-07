@@ -91,17 +91,19 @@ class AbstractAction {
   // Called by the ActionProcessor to tell this Action which processor
   // it belongs to.
   void SetProcessor(ActionProcessor* processor) {
-    if (processor)
+    if (processor) {
       CHECK(!processor_);
-    else
+    } else {
       CHECK(processor_);
+    }
     processor_ = processor;
   }
 
   // Returns true iff the action is the current action of its ActionProcessor.
   bool IsRunning() const {
-    if (!processor_)
+    if (!processor_) {
       return false;
+    }
     return processor_->current_action() == this;
   }
 

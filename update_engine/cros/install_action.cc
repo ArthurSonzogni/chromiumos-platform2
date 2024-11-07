@@ -76,8 +76,9 @@ void InstallAction::PerformAction() {
   image_props_ = LoadImageProperties();
   http_fetcher_->set_delegate(this);
   bool user_tied = manifest_->user_tied();
-  if (user_tied)
+  if (user_tied) {
     http_fetcher_->set_payload_info_visible(false);
+  }
 
   // Get the DLC device partition.
   auto* boot_control = SystemState::Get()->boot_control();

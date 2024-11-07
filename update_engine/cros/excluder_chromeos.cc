@@ -40,11 +40,14 @@ bool ExcluderChromeOS::Reset() {
   auto* prefs = SystemState::Get()->prefs();
   bool ret = true;
   vector<string> keys;
-  if (!prefs->GetSubKeys(kExclusionPrefsSubDir, &keys))
+  if (!prefs->GetSubKeys(kExclusionPrefsSubDir, &keys)) {
     return false;
-  for (const auto& key : keys)
-    if (!(ret &= prefs->Delete(key)))
+  }
+  for (const auto& key : keys) {
+    if (!(ret &= prefs->Delete(key))) {
       LOG(ERROR) << "Failed to delete exclusion pref for " << key;
+    }
+  }
   return ret;
 }
 

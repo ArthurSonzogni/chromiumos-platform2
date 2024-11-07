@@ -248,8 +248,9 @@ class DeltaPerformerTest : public ::testing::Test {
     aop.op.set_type(InstallOperation::SOURCE_COPY);
     brillo::Blob src_hash;
     EXPECT_TRUE(HashCalculator::RawHashOfData(copied_data, &src_hash));
-    if (add_hash)
+    if (add_hash) {
       aop.op.set_src_sha256_hash(src_hash.data(), src_hash.size());
+    }
 
     return GeneratePayload(brillo::Blob(), {aop}, false, old_part);
   }

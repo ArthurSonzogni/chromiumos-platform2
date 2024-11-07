@@ -17,21 +17,24 @@
 #define EX_USAGE_ERROR 100
 
 void usage(const char* program, const char* error) {
-  if (error)
+  if (error) {
     fprintf(stderr, "ERROR: %s\n", error);
+  }
   fprintf(stderr, "Usage: %s <cmd> [args..]\n", program);
   exit(EX_USAGE_ERROR);
 }
 
 int main(int argc, char** argv, char** envp) {
-  if (argc < 2)
+  if (argc < 2) {
     usage(argv[0], "No command passed");
+  }
 
   std::string cmd(argv[1]);
   if (cmd == "fstat") {
     // Call fstat on the passed file descriptor number
-    if (argc < 3)
+    if (argc < 3) {
       usage(argv[0], "No fd passed to fstat");
+    }
     int fd = atoi(argv[2]);
     struct stat buf;
     int rc = fstat(fd, &buf);

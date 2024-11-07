@@ -18,8 +18,9 @@ using std::min;
 namespace chromeos_update_engine {
 
 bool DirectExtentWriter::Write(const void* bytes, size_t count) {
-  if (count == 0)
+  if (count == 0) {
     return true;
+  }
   const char* c_bytes = reinterpret_cast<const char*>(bytes);
   size_t bytes_written = 0;
   while (bytes_written < count) {

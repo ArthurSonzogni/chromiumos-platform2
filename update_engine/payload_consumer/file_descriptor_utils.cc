@@ -31,8 +31,9 @@ bool CommonHashExtents(FileDescriptorPtr source,
   auto total_blocks = utils::BlocksInExtents(src_extents);
   auto buffer_blocks = kMaxCopyBufferSize / block_size;
   // Ensure we copy at least one block at a time.
-  if (buffer_blocks < 1)
+  if (buffer_blocks < 1) {
     buffer_blocks = 1;
+  }
   brillo::Blob buf(buffer_blocks * block_size);
 
   DirectExtentReader reader;

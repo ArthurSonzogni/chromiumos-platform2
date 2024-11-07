@@ -46,11 +46,13 @@ class FakeBootControl : public BootControlInterface {
                           bool not_in_payload,
                           std::string* device,
                           bool* is_dynamic) const override {
-    if (slot >= num_slots_)
+    if (slot >= num_slots_) {
       return false;
+    }
     auto part_it = devices_[slot].find(partition_name);
-    if (part_it == devices_[slot].end())
+    if (part_it == devices_[slot].end()) {
       return false;
+    }
     *device = part_it->second;
     if (is_dynamic != nullptr) {
       *is_dynamic = false;
@@ -79,8 +81,9 @@ class FakeBootControl : public BootControlInterface {
   }
 
   bool MarkSlotUnbootable(BootControlInterface::Slot slot) override {
-    if (slot >= num_slots_)
+    if (slot >= num_slots_) {
       return false;
+    }
     is_bootable_[slot] = false;
     return true;
   }

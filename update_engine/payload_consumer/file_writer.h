@@ -77,9 +77,10 @@ class ScopedFileWriterCloser {
 
   ~ScopedFileWriterCloser() {
     int err = writer_->Close();
-    if (err)
+    if (err) {
       LOG(ERROR) << "FileWriter::Close failed: "
                  << utils::ErrnoNumberAsString(-err);
+    }
   }
 
  private:

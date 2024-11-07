@@ -17,8 +17,9 @@ namespace chromeos_update_engine {
 bool BzipCompress(const brillo::Blob& in, brillo::Blob* out) {
   TEST_AND_RETURN_FALSE(out);
   out->clear();
-  if (in.size() == 0)
+  if (in.size() == 0) {
     return true;
+  }
 
   // We expect a compression ratio of about 35% with bzip2, so we start with
   // that much output space, which will then be doubled if needed.
@@ -27,8 +28,9 @@ bool BzipCompress(const brillo::Blob& in, brillo::Blob* out) {
 
   // Try increasing buffer size until it works
   for (;;) {
-    if (buf_size > std::numeric_limits<uint32_t>::max())
+    if (buf_size > std::numeric_limits<uint32_t>::max()) {
       return false;
+    }
     uint32_t data_size = buf_size;
     int rc = BZ2_bzBuffToBuffCompress(
         reinterpret_cast<char*>(out->data()), &data_size,

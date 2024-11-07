@@ -73,8 +73,9 @@ class UmUpdateTimeRestrictionsMonitorTest : public ::testing::Test {
 
   bool SetNow(const base::Time::Exploded& exploded_now) {
     base::Time now;
-    if (!base::Time::FromLocalExploded(exploded_now, &now))
+    if (!base::Time::FromLocalExploded(exploded_now, &now)) {
       return false;
+    }
 
     test_clock_.SetNow(now);
     FakeSystemState::Get()->fake_clock()->SetWallclockTime(now);
@@ -107,10 +108,11 @@ class UmUpdateTimeRestrictionsMonitorTest : public ::testing::Test {
   void BuildMonitorAndVerify(const WeeklyTimeIntervalVector* policy_value,
                              bool expect_delegate_called,
                              bool expect_monitoring) {
-    if (expect_delegate_called)
+    if (expect_delegate_called) {
       EXPECT_CALL(mock_delegate_, OnRestrictedIntervalStarts()).Times(1);
-    else
+    } else {
       EXPECT_CALL(mock_delegate_, OnRestrictedIntervalStarts()).Times(0);
+    }
 
     fake_state_.device_policy_provider()
         ->var_disallowed_time_intervals()
@@ -118,14 +120,16 @@ class UmUpdateTimeRestrictionsMonitorTest : public ::testing::Test {
                     ? new WeeklyTimeIntervalVector(*policy_value)
                     : nullptr);
     monitor_.emplace(fake_state_.device_policy_provider(), &mock_delegate_);
-    if (expect_delegate_called)
+    if (expect_delegate_called) {
       MessageLoopRunMaxIterations(MessageLoop::current(), 10);
+    }
     VerifyExpectationsOnDelegate();
 
-    if (expect_monitoring)
+    if (expect_monitoring) {
       EXPECT_TRUE(IsMonitoringInterval());
-    else
+    } else {
       EXPECT_FALSE(IsMonitoringInterval());
+    }
   }
 
   base::SimpleTestClock test_clock_;

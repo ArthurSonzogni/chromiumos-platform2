@@ -69,8 +69,9 @@ void FuzzDeltaPerformer(const uint8_t* data, size_t size) {
   do {
     auto chunk_size = data_provider.ConsumeIntegralInRange<size_t>(0, 100);
     auto data = data_provider.ConsumeBytes<uint8_t>(chunk_size);
-    if (!performer.Write(data.data(), data.size()))
+    if (!performer.Write(data.data(), data.size())) {
       break;
+    }
   } while (data_provider.remaining_bytes() > 0);
 }
 

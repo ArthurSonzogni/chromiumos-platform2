@@ -101,20 +101,23 @@ class ScopedLoopbackDeviceBinder {
     is_bound_ = BindToUnusedLoopDevice(file, writable, &dev_);
     EXPECT_TRUE(is_bound_);
 
-    if (is_bound_ && dev)
+    if (is_bound_ && dev) {
       *dev = dev_;
+    }
   }
   ScopedLoopbackDeviceBinder(const ScopedLoopbackDeviceBinder&) = delete;
   ScopedLoopbackDeviceBinder& operator=(const ScopedLoopbackDeviceBinder&) =
       delete;
 
   ~ScopedLoopbackDeviceBinder() {
-    if (!is_bound_)
+    if (!is_bound_) {
       return;
+    }
 
     for (int retry = 0; retry < 5; retry++) {
-      if (UnbindLoopDevice(dev_))
+      if (UnbindLoopDevice(dev_)) {
         return;
+      }
       sleep(1);
     }
     ADD_FAILURE();

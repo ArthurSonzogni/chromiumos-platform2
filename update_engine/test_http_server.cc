@@ -110,18 +110,20 @@ bool ParseRequest(int fd, HttpRequest* request) {
             range.find('-') != string::npos);
       request->start_offset = atoll(range.c_str() + strlen("bytes="));
       // Decode end offset and increment it by one (so it is non-inclusive).
-      if (range.find('-') < range.length() - 1)
+      if (range.find('-') < range.length() - 1) {
         request->end_offset = atoll(range.c_str() + range.find('-') + 1) + 1;
+      }
       request->return_code = kHttpResponsePartialContent;
       string tmp_str = base::StringPrintf(
           "decoded range offsets: "
           "start=%jd end=",
           (intmax_t)request->start_offset);
-      if (request->end_offset > 0)
+      if (request->end_offset > 0) {
         base::StringAppendF(&tmp_str, "%jd (non-inclusive)",
                             (intmax_t)request->end_offset);
-      else
+      } else {
         base::StringAppendF(&tmp_str, "unspecified");
+      }
       LOG(INFO) << tmp_str;
     } else if (terms[0] == "Host:") {
       CHECK_EQ(terms.size(), static_cast<vector<string>::size_type>(2));
@@ -173,8 +175,9 @@ ssize_t WriteHeaders(int fd,
                             GetHttpResponseDescription(return_code) +
                             EOL "Content-Type: application/octet-stream" EOL
                                 "Connection: close" EOL);
-  if (ret < 0)
+  if (ret < 0) {
     return -1;
+  }
   written += ret;
 
   // Compute content legnth.
@@ -187,15 +190,17 @@ ssize_t WriteHeaders(int fd,
         fd, string("Accept-Ranges: bytes" EOL "Content-Range: bytes ") +
                 Itoa(start_offset == end_offset ? 0 : start_offset) + "-" +
                 Itoa(end_offset - 1) + "/" + Itoa(end_offset) + EOL);
-    if (ret < 0)
+    if (ret < 0) {
       return -1;
+    }
     written += ret;
   }
 
   ret = WriteString(
       fd, string("Content-Length: ") + Itoa(content_length) + EOL EOL);
-  if (ret < 0)
+  if (ret < 0) {
     return -1;
+  }
   written += ret;
 
   return written;
@@ -221,8 +226,9 @@ size_t WritePayload(int fd,
   line.reserve(line_len);
   char byte = first_byte;
   size_t i;
-  for (i = 0; i < line_len; i++)
+  for (i = 0; i < line_len; i++) {
     line += byte++;
+  }
 
   const size_t total_len = end_offset - start_offset;
   size_t remaining_len = total_len;
@@ -234,23 +240,26 @@ size_t WritePayload(int fd,
   if (start_modulo) {
     string partial = line.substr(start_modulo, remaining_len);
     ssize_t ret = WriteString(fd, partial);
-    if ((success = (ret >= 0 && (size_t)ret == partial.length())))
+    if ((success = (ret >= 0 && (size_t)ret == partial.length()))) {
       remaining_len -= partial.length();
+    }
   }
 
   // Output full lines up to the maximal line boundary below the end offset.
   while (success && remaining_len >= line_len) {
     ssize_t ret = WriteString(fd, line);
-    if ((success = (ret >= 0 && (size_t)ret == line_len)))
+    if ((success = (ret >= 0 && (size_t)ret == line_len))) {
       remaining_len -= line_len;
+    }
   }
 
   // Output a partial line up to the end offset.
   if (success && remaining_len) {
     string partial = line.substr(0, remaining_len);
     ssize_t ret = WriteString(fd, partial);
-    if ((success = (ret >= 0 && (size_t)ret == partial.length())))
+    if ((success = (ret >= 0 && (size_t)ret == partial.length()))) {
       remaining_len -= partial.length();
+    }
   }
 
   return (total_len - remaining_len);
@@ -314,8 +323,9 @@ ssize_t HandleGet(int fd,
             << (end_offset - 1) << "/" << (end_offset - start_offset)
             << ", return code=" << request.return_code;
   if ((ret = WriteHeaders(fd, start_offset, end_offset, request.return_code)) <
-      0)
+      0) {
     return -1;
+  }
   LOG(INFO) << ret << " header bytes written";
   written += ret;
 
@@ -336,22 +346,26 @@ ssize_t HandleGet(int fd,
       start_offset % (truncate_length * sleep_every_ms) == 0) {
     const off_t midway_offset = start_offset + payload_length / 2;
 
-    if ((ret = WritePayload(fd, start_offset, midway_offset)) < 0)
+    if ((ret = WritePayload(fd, start_offset, midway_offset)) < 0) {
       return -1;
+    }
     LOG(INFO) << ret << " payload bytes written (first chunk)";
     written += ret;
 
     LOG(INFO) << "sleeping for " << sleep_ms << " milliseconds...";
-    for (int remain = sleep_ms; remain > 0; remain -= 1000)
+    for (int remain = sleep_ms; remain > 0; remain -= 1000) {
       usleep(std::min(remain, 1000) * 1000);
+    }
 
-    if ((ret = WritePayload(fd, midway_offset, end_offset)) < 0)
+    if ((ret = WritePayload(fd, midway_offset, end_offset)) < 0) {
       return -1;
+    }
     LOG(INFO) << ret << " payload bytes written (second chunk)";
     written += ret;
   } else {
-    if ((ret = WritePayload(fd, start_offset, end_offset)) < 0)
+    if ((ret = WritePayload(fd, start_offset, end_offset)) < 0) {
       return -1;
+    }
     LOG(INFO) << ret << " payload bytes written";
     written += ret;
   }
@@ -380,15 +394,17 @@ void HandleRedirect(int fd, const HttpRequest& request) {
   url.erase(0, url_start);
   url = "http://" + request.host + url;
   const char* status = GetHttpResponseDescription(code);
-  if (!status)
+  if (!status) {
     CHECK(false) << "Unrecognized redirection code: " << code;
+  }
   LOG(INFO) << "Code: " << code << " " << status;
   LOG(INFO) << "New URL: " << url;
 
   ssize_t ret;
   if ((ret = WriteString(fd, "HTTP/1.1 " + Itoa(code) + " " + status + EOL)) <
-      0)
+      0) {
     return;
+  }
   WriteString(fd, "Connection: close" EOL);
   WriteString(fd, "Location: " + url + EOL);
 }
@@ -403,12 +419,14 @@ ssize_t HandleError(int fd, const HttpRequest& request) {
 
   const string data("This is an error page.");
 
-  if ((ret = WriteHeaders(fd, 0, data.size(), kHttpResponseNotFound)) < 0)
+  if ((ret = WriteHeaders(fd, 0, data.size(), kHttpResponseNotFound)) < 0) {
     return -1;
+  }
   written += ret;
 
-  if ((ret = WriteString(fd, data)) < 0)
+  if ((ret = WriteString(fd, data)) < 0) {
     return -1;
+  }
   written += ret;
 
   return written;
@@ -432,12 +450,14 @@ ssize_t HandleErrorIfOffset(int fd,
     const string data("This is an error page.");
 
     if ((ret = WriteHeaders(fd, 0, data.size(),
-                            kHttpResponseInternalServerError)) < 0)
+                            kHttpResponseInternalServerError)) < 0) {
       return -1;
+    }
     written += ret;
 
-    if ((ret = WriteString(fd, data)) < 0)
+    if ((ret = WriteString(fd, data)) < 0) {
       return -1;
+    }
     written += ret;
 
     num_fails++;
@@ -468,8 +488,9 @@ void HandleDefault(int fd, const HttpRequest& request) {
   const size_t size = data.size();
   ssize_t ret;
 
-  if ((ret = WriteHeaders(fd, start_offset, size, request.return_code)) < 0)
+  if ((ret = WriteHeaders(fd, start_offset, size, request.return_code)) < 0) {
     return;
+  }
   WriteString(
       fd, (start_offset < static_cast<off_t>(size) ? data.substr(start_offset)
                                                    : ""));
@@ -554,8 +575,9 @@ void usage(const char* prog_arg) {
 
 int main(int argc, char** argv) {
   // Check invocation.
-  if (argc > 2)
+  if (argc > 2) {
     errx(RC_BAD_ARGS, "unexpected number of arguments (use -h for usage)");
+  }
 
   // Parse (optional) argument.
   int report_fd = STDOUT_FILENO;
@@ -572,8 +594,9 @@ int main(int argc, char** argv) {
   signal(SIGPIPE, SIG_IGN);
 
   int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (listen_fd < 0)
+  if (listen_fd < 0) {
     LOG(FATAL) << "socket() failed";
+  }
 
   struct sockaddr_in server_addr = sockaddr_in();
   server_addr.sin_family = AF_INET;
@@ -621,17 +644,19 @@ int main(int argc, char** argv) {
   CHECK_EQ(write(report_fd, listening_msg.c_str(), listening_msg.length()),
            static_cast<int>(listening_msg.length()));
   CHECK_EQ(write(report_fd, "\n", 1), 1);
-  if (report_fd == STDOUT_FILENO)
+  if (report_fd == STDOUT_FILENO) {
     fsync(report_fd);
-  else
+  } else {
     close(report_fd);
+  }
 
   while (1) {
     LOG(INFO) << "pid(" << getpid() << "): waiting to accept new connection";
     int client_fd = accept(listen_fd, nullptr, nullptr);
     LOG(INFO) << "got past accept";
-    if (client_fd < 0)
+    if (client_fd < 0) {
       LOG(FATAL) << "ERROR on accept";
+    }
     HandleConnection(client_fd);
   }
 }

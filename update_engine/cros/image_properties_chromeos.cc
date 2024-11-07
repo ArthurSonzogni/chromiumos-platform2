@@ -41,8 +41,9 @@ std::string GetStringWithDefault(const brillo::KeyValueStore& store,
                                  const std::string& key,
                                  const std::string& default_value) {
   std::string result;
-  if (store.GetString(key, &result))
+  if (store.GetString(key, &result)) {
     return result;
+  }
   LOG(INFO) << "Cannot load ImageProperty " << key << ", using default value "
             << default_value;
   return default_value;
@@ -59,10 +60,12 @@ enum class LsbReleaseSource {
 // existing values.
 void LoadLsbRelease(LsbReleaseSource source, brillo::KeyValueStore* store) {
   std::string path;
-  if (root_prefix)
+  if (root_prefix) {
     path = root_prefix;
-  if (source == LsbReleaseSource::kStateful)
+  }
+  if (source == LsbReleaseSource::kStateful) {
     path += chromeos_update_engine::kStatefulPartition;
+  }
   store->Load(base::FilePath(path + kLsbRelease));
 }
 
@@ -88,8 +91,9 @@ ImageProperties LoadImageProperties() {
   // in the system image with the ones from the stateful partition, except the
   // channel of the current image.
   HardwareInterface* const hardware = SystemState::Get()->hardware();
-  if (!hardware->IsOfficialBuild() || !hardware->IsNormalBootMode())
+  if (!hardware->IsOfficialBuild() || !hardware->IsNormalBootMode()) {
     LoadLsbRelease(LsbReleaseSource::kStateful, &lsb_release);
+  }
 
   // The release_app_id is used as the default appid, but can be override by
   // the board appid in the general case or the canary appid for the canary
@@ -123,8 +127,9 @@ MutableImageProperties LoadMutableImageProperties() {
   result.target_channel = GetStringWithDefault(
       lsb_release, kLsbReleaseUpdateChannelKey, kStableChannel);
   if (!lsb_release.GetBoolean(kLsbReleaseIsPowerwashAllowedKey,
-                              &result.is_powerwash_allowed))
+                              &result.is_powerwash_allowed)) {
     result.is_powerwash_allowed = false;
+  }
   return result;
 }
 
@@ -137,8 +142,9 @@ bool StoreMutableImageProperties(const MutableImageProperties& properties) {
 
   std::string root_prefix_str = root_prefix ? root_prefix : "";
   base::FilePath path(root_prefix_str + kStatefulPartition + kLsbRelease);
-  if (!base::DirectoryExists(path.DirName()))
+  if (!base::DirectoryExists(path.DirName())) {
     base::CreateDirectory(path.DirName());
+  }
   return lsb_release.Save(path);
 }
 

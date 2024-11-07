@@ -69,8 +69,9 @@ class RandomSeedVariable : public Variable<uint64_t> {
 
 bool RealRandomProvider::Init(void) {
   FILE* fp = fopen(kRandomDevice, "r");
-  if (!fp)
+  if (!fp) {
     return false;
+  }
   var_seed_.reset(new RandomSeedVariable("seed", fp));
   return true;
 }

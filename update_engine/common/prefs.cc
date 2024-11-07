@@ -48,16 +48,18 @@ bool PrefsBase::SetString(const string& key, const string& value) {
   const auto observers_for_key = observers_.find(key);
   if (observers_for_key != observers_.end()) {
     std::vector<ObserverInterface*> copy_observers(observers_for_key->second);
-    for (ObserverInterface* observer : copy_observers)
+    for (ObserverInterface* observer : copy_observers) {
       observer->OnPrefSet(key);
+    }
   }
   return true;
 }
 
 bool PrefsBase::GetInt64(const string& key, int64_t* value) const {
   string str_value;
-  if (!GetString(key, &str_value))
+  if (!GetString(key, &str_value)) {
     return false;
+  }
   base::TrimWhitespaceASCII(str_value, base::TRIM_ALL, &str_value);
   TEST_AND_RETURN_FALSE(base::StringToInt64(str_value, value));
   return true;
@@ -69,8 +71,9 @@ bool PrefsBase::SetInt64(const string& key, const int64_t value) {
 
 bool PrefsBase::GetBoolean(const string& key, bool* value) const {
   string str_value;
-  if (!GetString(key, &str_value))
+  if (!GetString(key, &str_value)) {
     return false;
+  }
   base::TrimWhitespaceASCII(str_value, base::TRIM_ALL, &str_value);
   if (str_value == "false") {
     *value = false;
@@ -96,8 +99,9 @@ bool PrefsBase::Delete(const string& key) {
   const auto observers_for_key = observers_.find(key);
   if (observers_for_key != observers_.end()) {
     std::vector<ObserverInterface*> copy_observers(observers_for_key->second);
-    for (ObserverInterface* observer : copy_observers)
+    for (ObserverInterface* observer : copy_observers) {
       observer->OnPrefDeleted(key);
+    }
   }
   return true;
 }
@@ -132,8 +136,9 @@ void PrefsBase::RemoveObserver(const string& key, ObserverInterface* observer) {
   std::vector<ObserverInterface*>& observers_for_key = observers_[key];
   auto observer_it =
       std::find(observers_for_key.begin(), observers_for_key.end(), observer);
-  if (observer_it != observers_for_key.end())
+  if (observer_it != observers_for_key.end()) {
     observers_for_key.erase(observer_it);
+  }
 }
 
 string PrefsInterface::CreateSubKey(const vector<string>& ns_and_key) {
@@ -213,9 +218,10 @@ bool Prefs::FileStorage::GetFileNameForKey(const string& key,
                                            base::FilePath* filename) const {
   // Allows only non-empty keys containing [A-Za-z0-9_-/].
   TEST_AND_RETURN_FALSE(!key.empty());
-  for (char c : key)
+  for (char c : key) {
     TEST_AND_RETURN_FALSE(base::IsAsciiAlpha(c) || base::IsAsciiDigit(c) ||
                           c == '_' || c == '-' || c == kKeySeparator);
+  }
   *filename = prefs_dir_.Append(key);
   return true;
 }
@@ -225,8 +231,9 @@ bool Prefs::FileStorage::GetFileNameForKey(const string& key,
 bool MemoryPrefs::MemoryStorage::GetKey(const string& key,
                                         string* value) const {
   auto it = values_.find(key);
-  if (it == values_.end())
+  if (it == values_.end()) {
     return false;
+  }
   *value = it->second;
   return true;
 }
@@ -244,8 +251,9 @@ bool MemoryPrefs::MemoryStorage::GetSubKeys(const string& ns,
   auto lower_it =
       std::lower_bound(begin(values_), end(values_), ns, lower_comp);
   auto upper_it = std::upper_bound(lower_it, end(values_), ns, upper_comp);
-  while (lower_it != upper_it)
+  while (lower_it != upper_it) {
     keys->push_back((lower_it++)->first);
+  }
   return true;
 }
 
@@ -261,8 +269,9 @@ bool MemoryPrefs::MemoryStorage::KeyExists(const string& key) const {
 
 bool MemoryPrefs::MemoryStorage::DeleteKey(const string& key) {
   auto it = values_.find(key);
-  if (it != values_.end())
+  if (it != values_.end()) {
     values_.erase(it);
+  }
   return true;
 }
 

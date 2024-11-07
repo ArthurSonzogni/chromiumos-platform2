@@ -58,8 +58,9 @@ bool ABGenerator::GenerateOperations(const PayloadGenerationConfig& config,
       aops, config.version, merge_chunk_blocks, new_part.path, blob_file));
   LOG(INFO) << aops->size() << " operations after merge.";
 
-  if (config.version.minor >= kOpSrcHashMinorPayloadVersion)
+  if (config.version.minor >= kOpSrcHashMinorPayloadVersion) {
     TEST_AND_RETURN_FALSE(AddSourceHash(aops, old_part.path));
+  }
 
   return true;
 }
@@ -226,8 +227,9 @@ bool ABGenerator::MergeOperations(vector<AnnotatedOperation>* aops,
       ExtendExtents(last_aop.op.mutable_dst_extents(),
                     curr_aop.op.dst_extents());
       // Set the data length to zero so we know to add the blob later.
-      if (is_a_replace)
+      if (is_a_replace) {
         last_aop.op.set_data_length(0);
+      }
     } else {
       // Otherwise just include the extent as is.
       new_aops.push_back(curr_aop);
@@ -278,8 +280,9 @@ bool ABGenerator::AddDataAndSetType(AnnotatedOperation* aop,
 bool ABGenerator::AddSourceHash(vector<AnnotatedOperation>* aops,
                                 const string& source_part_path) {
   for (AnnotatedOperation& aop : *aops) {
-    if (aop.op.src_extents_size() == 0)
+    if (aop.op.src_extents_size() == 0) {
       continue;
+    }
 
     vector<Extent> src_extents;
     ExtentsToVector(aop.op.src_extents(), &src_extents);

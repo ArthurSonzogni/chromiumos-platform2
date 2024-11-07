@@ -62,8 +62,9 @@ PayloadState::PayloadState()
       attempt_num_bytes_downloaded_(0),
       attempt_connection_type_(metrics::ConnectionType::kUnknown),
       attempt_type_(AttemptType::kUpdate) {
-  for (int i = 0; i <= kNumDownloadSources; i++)
+  for (int i = 0; i <= kNumDownloadSources; i++) {
     total_bytes_downloaded_[i] = current_bytes_downloaded_[i] = 0;
+  }
 }
 
 bool PayloadState::Initialize() {
@@ -155,8 +156,9 @@ void PayloadState::DownloadComplete() {
 }
 
 void PayloadState::DownloadProgress(size_t count) {
-  if (count == 0)
+  if (count == 0) {
     return;
+  }
 
   CalculateUpdateDurationUptime();
   UpdateBytesDownloaded(count);
@@ -170,8 +172,9 @@ void PayloadState::DownloadProgress(size_t count) {
   // good unless it hits 10 (or configured number of) consecutive failures
   // again.
 
-  if (GetUrlFailureCount() == 0)
+  if (GetUrlFailureCount() == 0) {
     return;
+  }
 
   LOG(INFO) << "Resetting failure count of Url" << GetUrlIndex()
             << " to 0 as we received " << count << " bytes successfully";
@@ -203,8 +206,9 @@ void PayloadState::AttemptStarted(AttemptType attempt_type) {
   }
   attempt_connection_type_ = type;
 
-  if (attempt_type == AttemptType::kUpdate)
+  if (attempt_type == AttemptType::kUpdate) {
     PersistAttemptMetrics();
+  }
 }
 
 void PayloadState::UpdateResumed() {
@@ -506,8 +510,9 @@ void PayloadState::IncrementUrlIndex() {
   }
 
   // If we have multiple URLs, record that we just switched to another one
-  if (max_url_size > 1)
+  if (max_url_size > 1) {
     SetUrlSwitchCount(url_switch_count_ + 1);
+  }
 
   // Whenever we update the URL index, we should also clear the URL failure
   // count so we can start over fresh for the new URL.
@@ -539,12 +544,13 @@ void PayloadState::ExcludeCurrentPayload() {
     return;
   }
   auto exclusion_name = utils::GetExclusionName(GetCurrentUrl());
-  if (!excluder_->Exclude(exclusion_name))
+  if (!excluder_->Exclude(exclusion_name)) {
     LOG(WARNING) << "Failed to exclude " << " Package Hash=" << package.hash
                  << " CurrentUrl=" << GetCurrentUrl();
-  else
+  } else {
     LOG(INFO) << "Excluded " << " Package Hash=" << package.hash
               << " CurrentUrl=" << GetCurrentUrl();
+  }
 }
 
 void PayloadState::UpdateBackoffExpiryTime() {
@@ -715,10 +721,12 @@ void PayloadState::ClearPersistedAttemptMetrics() {
 
 void PayloadState::ReportAndClearPersistedAttemptMetrics() {
   bool attempt_in_progress = false;
-  if (!prefs_->GetBoolean(kPrefsAttemptInProgress, &attempt_in_progress))
+  if (!prefs_->GetBoolean(kPrefsAttemptInProgress, &attempt_in_progress)) {
     return;
-  if (!attempt_in_progress)
+  }
+  if (!attempt_in_progress) {
     return;
+  }
 
   SystemState::Get()
       ->metrics_reporter()
@@ -853,9 +861,10 @@ string PayloadState::CalculateResponseSignature() {
         package.metadata_signature.c_str(), package.is_delta,
         candidate_urls_[i].size());
 
-    for (size_t j = 0; j < candidate_urls_[i].size(); j++)
+    for (size_t j = 0; j < candidate_urls_[i].size(); j++) {
       response_sign += base::StringPrintf("  Candidate Url%zu = %s\n", j,
                                           candidate_urls_[i][j].c_str());
+    }
   }
 
   response_sign += base::StringPrintf(
@@ -909,11 +918,13 @@ void PayloadState::SetPayloadIndex(size_t payload_index) {
 }
 
 bool PayloadState::NextPayload() {
-  if (payload_index_ >= candidate_urls_.size())
+  if (payload_index_ >= candidate_urls_.size()) {
     return false;
+  }
   SetPayloadIndex(payload_index_ + 1);
-  if (payload_index_ >= candidate_urls_.size())
+  if (payload_index_ >= candidate_urls_.size()) {
     return false;
+  }
   SetUrlIndex(0);
   return true;
 }
@@ -988,11 +999,13 @@ void PayloadState::SetUrlFailureCount(uint32_t url_failure_count) {
 
 void PayloadState::LoadBackoffExpiryTime() {
   int64_t stored_value;
-  if (!prefs_->Exists(kPrefsBackoffExpiryTime))
+  if (!prefs_->Exists(kPrefsBackoffExpiryTime)) {
     return;
+  }
 
-  if (!prefs_->GetInt64(kPrefsBackoffExpiryTime, &stored_value))
+  if (!prefs_->GetInt64(kPrefsBackoffExpiryTime, &stored_value)) {
     return;
+  }
 
   Time stored_time = Time::FromInternalValue(stored_value);
   if (stored_time > Time::Now() + kMaxBackoff) {
@@ -1171,8 +1184,9 @@ void PayloadState::LoadCurrentBytesDownloaded(DownloadSource source) {
 void PayloadState::SetCurrentBytesDownloaded(DownloadSource source,
                                              uint64_t current_bytes_downloaded,
                                              bool log) {
-  if (source >= kNumDownloadSources)
+  if (source >= kNumDownloadSources) {
     return;
+  }
 
   // Update the in-memory value.
   current_bytes_downloaded_[source] = current_bytes_downloaded;
@@ -1192,8 +1206,9 @@ void PayloadState::LoadTotalBytesDownloaded(DownloadSource source) {
 void PayloadState::SetTotalBytesDownloaded(DownloadSource source,
                                            uint64_t total_bytes_downloaded,
                                            bool log) {
-  if (source >= kNumDownloadSources)
+  if (source >= kNumDownloadSources) {
     return;
+  }
 
   // Update the in-memory value.
   total_bytes_downloaded_[source] = total_bytes_downloaded;
@@ -1220,8 +1235,10 @@ void PayloadState::ComputeCandidateUrls() {
 
   if (SystemState::Get()->hardware()->IsOfficialBuild()) {
     const policy::DevicePolicy* policy = SystemState::Get()->device_policy();
-    if (policy && policy->GetHttpDownloadsEnabled(&http_url_ok) && !http_url_ok)
+    if (policy && policy->GetHttpDownloadsEnabled(&http_url_ok) &&
+        !http_url_ok) {
       LOG(INFO) << "Downloads via HTTP Url are not enabled by device policy";
+    }
   } else {
     LOG(INFO) << "Allowing HTTP downloads for unofficial builds";
     http_url_ok = true;
@@ -1252,8 +1269,9 @@ void PayloadState::UpdateEngineStarted() {
 
   // Avoid the UpdateEngineStarted actions if this is not the first time we
   // run the update engine since reboot.
-  if (!SystemState::Get()->system_rebooted())
+  if (!SystemState::Get()->system_rebooted()) {
     return;
+  }
 
   prefs_->Delete(kPrefsSystemUpdatedMarker);
 
@@ -1313,8 +1331,9 @@ void PayloadState::ExpectRebootInNewVersion(const string& target_version_uid) {
       prefs_->GetString(kPrefsTargetVersionUniqueId,
                         &stored_target_version_uid) &&
       stored_target_version_uid == target_version_uid) {
-    if (!prefs_->GetInt64(kPrefsTargetVersionAttempt, &target_attempt))
+    if (!prefs_->GetInt64(kPrefsTargetVersionAttempt, &target_attempt)) {
       target_attempt = 0;
+    }
   } else {
     prefs_->SetString(kPrefsTargetVersionUniqueId, target_version_uid);
     target_attempt = 0;
@@ -1333,8 +1352,9 @@ void PayloadState::ResetUpdateStatus() {
 
   // Also decrement the attempt number if it exists.
   int64_t target_attempt;
-  if (prefs_->GetInt64(kPrefsTargetVersionAttempt, &target_attempt))
+  if (prefs_->GetInt64(kPrefsTargetVersionAttempt, &target_attempt)) {
     prefs_->SetInt64(kPrefsTargetVersionAttempt, target_attempt - 1);
+  }
 }
 
 int PayloadState::GetP2PNumAttempts() {
@@ -1411,8 +1431,9 @@ bool PayloadState::P2PAttemptAllowed() {
 
 int64_t PayloadState::GetPayloadSize() {
   int64_t payload_size = 0;
-  for (const auto& package : response_.packages)
+  for (const auto& package : response_.packages) {
     payload_size += package.size;
+  }
   return payload_size;
 }
 

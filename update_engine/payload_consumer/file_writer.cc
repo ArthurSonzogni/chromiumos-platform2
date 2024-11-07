@@ -11,8 +11,9 @@ namespace chromeos_update_engine {
 int DirectFileWriter::Open(const char* path, int flags, mode_t mode) {
   CHECK_EQ(fd_, -1);
   fd_ = open(path, flags, mode);
-  if (fd_ < 0)
+  if (fd_ < 0) {
     return -errno;
+  }
   return 0;
 }
 
@@ -23,8 +24,9 @@ bool DirectFileWriter::Write(const void* bytes, size_t count) {
   size_t bytes_written = 0;
   while (bytes_written < count) {
     ssize_t rc = write(fd_, char_bytes + bytes_written, count - bytes_written);
-    if (rc < 0)
+    if (rc < 0) {
       return false;
+    }
     bytes_written += rc;
   }
   CHECK_EQ(bytes_written, count);
@@ -39,8 +41,9 @@ int DirectFileWriter::Close() {
   // won't be used again for another file.
   fd_ = -2;
 
-  if (rc < 0)
+  if (rc < 0) {
     return -errno;
+  }
   return rc;
 }
 

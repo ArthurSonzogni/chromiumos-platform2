@@ -12,8 +12,9 @@ namespace chromeos_update_engine {
 
 off_t BlobFileWriter::StoreBlob(const brillo::Blob& blob) {
   base::AutoLock auto_lock(blob_mutex_);
-  if (!utils::PWriteAll(blob_fd_, blob.data(), blob.size(), *blob_file_size_))
+  if (!utils::PWriteAll(blob_fd_, blob.data(), blob.size(), *blob_file_size_)) {
     return -1;
+  }
 
   off_t result = *blob_file_size_;
   *blob_file_size_ += blob.size();

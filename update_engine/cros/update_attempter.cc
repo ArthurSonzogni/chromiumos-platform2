@@ -124,18 +124,23 @@ string ConvertToString(ProcessMode op) {
 }  // namespace
 
 ErrorCode GetErrorCodeForAction(AbstractAction* action, ErrorCode code) {
-  if (code != ErrorCode::kError)
+  if (code != ErrorCode::kError) {
     return code;
+  }
 
   const string type = action->Type();
-  if (type == OmahaRequestAction::StaticType())
+  if (type == OmahaRequestAction::StaticType()) {
     return ErrorCode::kOmahaRequestError;
-  if (type == OmahaResponseHandlerAction::StaticType())
+  }
+  if (type == OmahaResponseHandlerAction::StaticType()) {
     return ErrorCode::kOmahaResponseHandlerError;
-  if (type == FilesystemVerifierAction::StaticType())
+  }
+  if (type == FilesystemVerifierAction::StaticType()) {
     return ErrorCode::kFilesystemVerifierError;
-  if (type == PostinstallRunnerAction::StaticType())
+  }
+  if (type == PostinstallRunnerAction::StaticType()) {
     return ErrorCode::kPostinstallRunnerError;
+  }
 
   return code;
 }
@@ -153,8 +158,9 @@ UpdateAttempter::~UpdateAttempter() {
   ClearObservers();
 
   // CertificateChecker might not be initialized in unittests.
-  if (cert_checker_)
+  if (cert_checker_) {
     cert_checker_->SetObserver(nullptr);
+  }
   // Release ourselves as the ActionProcessor's delegate to prevent
   // re-scheduling the updates due to the processing stopped.
   processor_->set_delegate(nullptr);
@@ -168,16 +174,18 @@ void UpdateAttempter::Init() {
   omaha_request_params_ = SystemState::Get()->request_params();
   excluder_ = CreateExcluder();
 
-  if (cert_checker_)
+  if (cert_checker_) {
     cert_checker_->SetObserver(this);
+  }
 
   // In case of update_engine restart without a reboot we need to restore the
   // reboot needed state.
   if (GetBootTimeAtUpdate(nullptr)) {
-    if (prefs_->Exists(kPrefsDeferredUpdateCompleted))
+    if (prefs_->Exists(kPrefsDeferredUpdateCompleted)) {
       status_ = UpdateStatus::UPDATED_BUT_DEFERRED;
-    else
+    } else {
       status_ = UpdateStatus::UPDATED_NEED_REBOOT;
+    }
 
     // Check if the pending update should be invalidated due to the enterprise
     // invalidation after update_engine restart.
@@ -345,9 +353,10 @@ void UpdateAttempter::ReportConsecutiveUpdateMetric() {
   int64_t num_consecutive_updates = 0;
   SystemState::Get()->prefs()->GetInt64(kPrefsConsecutiveUpdateCount,
                                         &num_consecutive_updates);
-  if (num_consecutive_updates != 0)
+  if (num_consecutive_updates != 0) {
     SystemState::Get()->metrics_reporter()->ReportConsecutiveUpdateCount(
         num_consecutive_updates);
+  }
 }
 
 void UpdateAttempter::ReportOSAge() {
@@ -483,18 +492,21 @@ void UpdateAttempter::Install() {
 
 void UpdateAttempter::RefreshDevicePolicy() {
   // Lazy initialize the policy provider, or reload the latest policy data.
-  if (!policy_provider_.get())
+  if (!policy_provider_.get()) {
     policy_provider_.reset(new policy::PolicyProvider());
+  }
   policy_provider_->Reload();
 
   const policy::DevicePolicy* device_policy = nullptr;
-  if (policy_provider_->device_policy_is_loaded())
+  if (policy_provider_->device_policy_is_loaded()) {
     device_policy = &policy_provider_->GetDevicePolicy();
+  }
 
-  if (device_policy)
+  if (device_policy) {
     LOG(INFO) << "Device policies/settings present";
-  else
+  } else {
     LOG(INFO) << "No device policies/settings present.";
+  }
 
   SystemState::Get()->set_device_policy(device_policy);
   SystemState::Get()->p2p_manager()->SetDevicePolicy(device_policy);
@@ -630,8 +642,9 @@ void UpdateAttempter::CalculateScatteringParams(bool interactive) {
   if (device_policy) {
     int64_t new_scatter_factor_in_secs = 0;
     device_policy->GetScatterFactorInSeconds(&new_scatter_factor_in_secs);
-    if (new_scatter_factor_in_secs < 0)  // sanitize input, just in case.
+    if (new_scatter_factor_in_secs < 0) {  // sanitize input, just in case.
       new_scatter_factor_in_secs = 0;
+    }
     scatter_factor_ = base::Seconds(new_scatter_factor_in_secs);
   }
 
@@ -793,12 +806,14 @@ bool UpdateAttempter::ResetDlcPrefs(const string& dlc_id) {
   for (auto& sub_key :
        {kPrefsPingActive, kPrefsPingLastActive, kPrefsPingLastRollcall}) {
     auto key = prefs_->CreateSubKey({kDlcPrefsSubDir, dlc_id, sub_key});
-    if (!prefs_->Delete(key))
+    if (!prefs_->Delete(key)) {
       failures.emplace_back(sub_key);
+    }
   }
-  if (failures.size() != 0)
+  if (failures.size() != 0) {
     PLOG(ERROR) << "Failed to delete prefs (" << base::JoinString(failures, ",")
                 << " for DLC (" << dlc_id << ").";
+  }
 
   return failures.size() == 0;
 }
@@ -808,10 +823,11 @@ void UpdateAttempter::SetPref(const string& pref_key,
                               const string& payload_id) {
   string dlc_id;
   string key = pref_key;
-  if (omaha_request_params_->IsMiniOSAppId(payload_id))
+  if (omaha_request_params_->IsMiniOSAppId(payload_id)) {
     key = prefs_->CreateSubKey({kMiniOSPrefsSubDir, pref_key});
-  else if (omaha_request_params_->GetDlcId(payload_id, &dlc_id))
+  } else if (omaha_request_params_->GetDlcId(payload_id, &dlc_id)) {
     key = prefs_->CreateSubKey({kDlcPrefsSubDir, dlc_id, pref_key});
+  }
   prefs_->SetString(key, pref_value);
 }
 
@@ -840,12 +856,14 @@ int64_t UpdateAttempter::GetPingMetadata(const string& metadata_key) const {
   // The first time a ping is sent, the metadata files containing the values
   // sent back by the server still don't exist. A value of -1 is used to
   // indicate this.
-  if (!SystemState::Get()->prefs()->Exists(metadata_key))
+  if (!SystemState::Get()->prefs()->Exists(metadata_key)) {
     return kPingNeverPinged;
+  }
 
   int64_t value;
-  if (SystemState::Get()->prefs()->GetInt64(metadata_key, &value))
+  if (SystemState::Get()->prefs()->GetInt64(metadata_key, &value)) {
     return value;
+  }
 
   // Return -2 when the file exists and there is a problem reading from it, or
   // the value cannot be converted to an integer.
@@ -953,8 +971,9 @@ void UpdateAttempter::BuildUpdateActions(const UpdateCheckParams& params) {
   auto download_fetcher = std::make_unique<LibcurlHttpFetcher>(
       GetProxyResolver(), SystemState::Get()->hardware());
   download_fetcher->set_server_to_check(ServerToCheck::kDownload);
-  if (interactive)
+  if (interactive) {
     download_fetcher->set_max_retry_count(kDownloadMaxRetryCountInteractive);
+  }
   download_fetcher->SetHeader(kXGoogleUpdateSessionId, session_id_);
   auto download_action = std::make_unique<DownloadActionChromeos>(
       std::move(download_fetcher), interactive);
@@ -1267,23 +1286,26 @@ bool UpdateAttempter::CheckForInstall(const vector<string>& dlc_ids,
 }
 
 bool UpdateAttempter::RebootIfNeeded() {
-  if (SystemState::Get()->power_manager()->RequestReboot())
+  if (SystemState::Get()->power_manager()->RequestReboot()) {
     return true;
+  }
 
   return RebootDirectly();
 }
 
 bool UpdateAttempter::ShutdownIfNeeded() {
-  if (SystemState::Get()->power_manager()->RequestShutdown())
+  if (SystemState::Get()->power_manager()->RequestShutdown()) {
     return true;
+  }
 
   return ShutdownDirectly();
 }
 
 void UpdateAttempter::WriteUpdateCompletedMarker() {
   string boot_id;
-  if (!utils::GetBootId(&boot_id))
+  if (!utils::GetBootId(&boot_id)) {
     return;
+  }
   prefs_->SetString(kPrefsUpdateCompletedOnBootId, boot_id);
 
   int64_t value = SystemState::Get()->clock()->GetBootTime().ToInternalValue();
@@ -1455,17 +1477,20 @@ void UpdateAttempter::ProcessingDoneInternal(const ActionProcessor* processor,
 
 vector<string> UpdateAttempter::GetSuccessfulDlcIds() {
   vector<string> dlc_ids;
-  for (const auto& pr : omaha_request_params_->dlc_apps_params())
-    if (pr.second.updated)
+  for (const auto& pr : omaha_request_params_->dlc_apps_params()) {
+    if (pr.second.updated) {
       dlc_ids.push_back(pr.second.name);
+    }
+  }
   return dlc_ids;
 }
 
 void UpdateAttempter::ProcessingDoneInstall(const ActionProcessor* processor,
                                             ErrorCode code) {
   if (!SystemState::Get()->dlcservice()->InstallCompleted(
-          GetSuccessfulDlcIds()))
+          GetSuccessfulDlcIds())) {
     LOG(WARNING) << "dlcservice didn't successfully handle install completion.";
+  }
   SetStatusAndNotify(UpdateStatus::IDLE);
   ScheduleUpdates();
   LOG(INFO) << "DLC successfully installed, no reboot needed.";
@@ -1511,8 +1536,10 @@ void UpdateAttempter::ProcessingDoneUpdate(const ActionProcessor* processor,
                                            ErrorCode code) {
   WriteUpdateCompletedMarker();
 
-  if (!SystemState::Get()->dlcservice()->UpdateCompleted(GetSuccessfulDlcIds()))
+  if (!SystemState::Get()->dlcservice()->UpdateCompleted(
+          GetSuccessfulDlcIds())) {
     LOG(WARNING) << "dlcservice didn't successfully handle update completion.";
+  }
 
   if (install_plan_) {
     switch (install_plan_->defer_update_action) {
@@ -1699,8 +1726,9 @@ void UpdateAttempter::ActionCompleted(ActionProcessor* processor,
       UpdateLastCheckedTime();
       new_version_ = install_plan_->version;
       new_payload_size_ = 0;
-      for (const auto& payload : install_plan_->payloads)
+      for (const auto& payload : install_plan_->payloads) {
         new_payload_size_ += payload.size;
+      }
       cpu_limiter_.StartLimiter();
       SetStatusAndNotify(UpdateStatus::UPDATE_AVAILABLE);
     }
@@ -1780,8 +1808,9 @@ void UpdateAttempter::ActionCompleted(ActionProcessor* processor,
 
 void UpdateAttempter::ProgressUpdate(uint64_t bytes_received, uint64_t total) {
   double progress = 0;
-  if (total)
+  if (total) {
     progress = static_cast<double>(bytes_received) / static_cast<double>(total);
+  }
   if (status_ != UpdateStatus::DOWNLOADING || bytes_received == total) {
     download_progress_ = progress;
     SetStatusAndNotify(UpdateStatus::DOWNLOADING);
@@ -1900,9 +1929,10 @@ void UpdateAttempter::ResetInteractivityFlags() {
   // Reset the state that's only valid for a single update pass.
   current_update_flags_.Clear();
 
-  if (forced_update_pending_callback_.get())
+  if (forced_update_pending_callback_.get()) {
     // Clear prior interactive requests once the processor is done.
     forced_update_pending_callback_->Run(false, false);
+  }
 }
 
 bool UpdateAttempter::ResetBootSlot() {
@@ -2001,15 +2031,17 @@ bool UpdateAttempter::GetStatus(UpdateEngineStatus* out_status) {
   string str_eol_date;
   if (SystemState::Get()->prefs()->Exists(kPrefsOmahaEolDate) &&
       !SystemState::Get()->prefs()->GetString(kPrefsOmahaEolDate,
-                                              &str_eol_date))
+                                              &str_eol_date)) {
     LOG(ERROR) << "Failed to retrieve kPrefsOmahaEolDate pref.";
+  }
   out_status->eol_date = StringToDate(str_eol_date);
 
   string str_extended_date;
   if (SystemState::Get()->prefs()->Exists(kPrefsOmahaExtendedDate) &&
       !SystemState::Get()->prefs()->GetString(kPrefsOmahaExtendedDate,
-                                              &str_extended_date))
+                                              &str_extended_date)) {
     LOG(ERROR) << "Failed to retrieve kPrefsOmahaExtendedDate pref.";
+  }
   out_status->extended_date = StringToDate(str_extended_date);
 
   out_status->extended_opt_in_required = false;
@@ -2091,14 +2123,17 @@ void UpdateAttempter::BroadcastStatus() {
 uint32_t UpdateAttempter::GetErrorCodeFlags() {
   uint32_t flags = 0;
 
-  if (!SystemState::Get()->hardware()->IsNormalBootMode())
+  if (!SystemState::Get()->hardware()->IsNormalBootMode()) {
     flags |= static_cast<uint32_t>(ErrorCode::kDevModeFlag);
+  }
 
-  if (install_plan_ && install_plan_->is_resume)
+  if (install_plan_ && install_plan_->is_resume) {
     flags |= static_cast<uint32_t>(ErrorCode::kResumedFlag);
+  }
 
-  if (!SystemState::Get()->hardware()->IsOfficialBuild())
+  if (!SystemState::Get()->hardware()->IsOfficialBuild()) {
     flags |= static_cast<uint32_t>(ErrorCode::kTestImageFlag);
+  }
 
   if (!omaha_request_params_->IsUpdateUrlOfficial()) {
     flags |= static_cast<uint32_t>(ErrorCode::kTestOmahaUrlFlag);
@@ -2171,8 +2206,9 @@ void UpdateAttempter::CreatePendingErrorEvent(AbstractAction* action,
 }
 
 bool UpdateAttempter::ScheduleErrorEventAction() {
-  if (error_event_.get() == nullptr)
+  if (error_event_.get() == nullptr) {
     return false;
+  }
 
   LOG(ERROR) << "Update failed.";
   SystemState::Get()->payload_state()->UpdateFailed(error_event_->error_code);
@@ -2231,8 +2267,9 @@ void UpdateAttempter::DisableDeltaUpdateIfNeeded() {
 void UpdateAttempter::DetermineExtendedUpdateValue() {
   const policy::DevicePolicy* device_policy =
       SystemState::Get()->device_policy();
-  if (!device_policy)
+  if (!device_policy) {
     return;
+  }
   // Always default `extended_okay` to false in case retrieval fails.
   bool extend_okay =
       device_policy->GetDeviceExtendedAutoUpdateEnabled().value_or(false);
@@ -2314,10 +2351,11 @@ bool UpdateAttempter::DecrementUpdateCheckCount() {
       return true;
     }
 
-    if (update_check_count_value > 0)
+    if (update_check_count_value > 0) {
       update_check_count_value--;
-    else
+    } else {
       update_check_count_value = 0;
+    }
 
     // Write out the new value of update_check_count_value.
     if (prefs_->SetInt64(kPrefsUpdateCheckCount, update_check_count_value)) {
@@ -2427,8 +2465,9 @@ bool UpdateAttempter::GetBootTimeAtUpdate(Time* out_boot_time) {
       (!prefs_->Exists(kPrefsUpdateCompletedOnBootId) ||
        !prefs_->GetString(kPrefsUpdateCompletedOnBootId,
                           &update_completed_on_boot_id) ||
-       update_completed_on_boot_id != boot_id))
+       update_completed_on_boot_id != boot_id)) {
     return false;
+  }
 
   // Short-circuit avoiding the read in case out_boot_time is nullptr.
   if (out_boot_time) {

@@ -64,8 +64,9 @@ class FakeHardware : public HardwareInterface {
   bool IsOOBEEnabled() const override { return is_oobe_enabled_; }
 
   bool IsOOBEComplete(base::Time* out_time_of_oobe) const override {
-    if (out_time_of_oobe != nullptr)
+    if (out_time_of_oobe != nullptr) {
       *out_time_of_oobe = oobe_timestamp_;
+    }
     return is_oobe_complete_;
   }
 
@@ -84,8 +85,9 @@ class FakeHardware : public HardwareInterface {
   }
 
   bool SetMaxFirmwareKeyRollforward(int firmware_max_rollforward) override {
-    if (GetMaxFirmwareKeyRollforward() == -1)
+    if (GetMaxFirmwareKeyRollforward() == -1) {
       return false;
+    }
 
     firmware_max_rollforward_ = firmware_max_rollforward;
     return true;

@@ -147,10 +147,12 @@ class BootControlInterface {
 
   // Return a human-readable slot name used for logging.
   static std::string SlotName(Slot slot) {
-    if (slot == kInvalidSlot)
+    if (slot == kInvalidSlot) {
       return "INVALID";
-    if (slot < 26)
+    }
+    if (slot < 26) {
       return std::string(1, 'A' + slot);
+    }
     return "TOO_BIG";
   }
 

@@ -20,8 +20,9 @@ using std::unique_ptr;
 namespace chromeos_update_engine {
 
 ActionProcessor::~ActionProcessor() {
-  if (IsRunning())
+  if (IsRunning()) {
     StopProcessing();
+  }
 }
 
 void ActionProcessor::EnqueueAction(unique_ptr<AbstractAction> action) {
@@ -55,8 +56,9 @@ void ActionProcessor::StopProcessing() {
   suspended_ = false;
   // Delete all the actions before calling the delegate.
   actions_.clear();
-  if (delegate_)
+  if (delegate_) {
     delegate_->ProcessingStopped(this);
+  }
 }
 
 void ActionProcessor::SuspendProcessing() {
@@ -98,8 +100,9 @@ void ActionProcessor::ResumeProcessing() {
 void ActionProcessor::ActionComplete(AbstractAction* actionptr,
                                      ErrorCode code) {
   CHECK_EQ(actionptr, current_action_.get());
-  if (delegate_)
+  if (delegate_) {
     delegate_->ActionCompleted(this, actionptr, code);
+  }
   string old_type = current_action_->Type();
   current_action_->ActionCompleted(code);
   current_action_.reset();

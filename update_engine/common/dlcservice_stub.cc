@@ -20,8 +20,9 @@ std::unique_ptr<DlcUtilsInterface> CreateDlcUtils() {
 }
 
 bool DlcServiceStub::GetDlcsToUpdate(vector<string>* dlc_ids) {
-  if (dlc_ids)
+  if (dlc_ids) {
     dlc_ids->clear();
+  }
   return true;
 }
 

@@ -83,15 +83,18 @@ bool XzExtentWriter::Write(const void* bytes, size_t count) {
       return false;
     }
 
-    if (request.out_pos == 0)
+    if (request.out_pos == 0) {
       break;
+    }
 
     TEST_AND_RETURN_FALSE(
         underlying_writer_->Write(output_buffer.data(), request.out_pos));
-    if (ret == XZ_STREAM_END)
+    if (ret == XZ_STREAM_END) {
       CHECK_EQ(request.in_size, request.in_pos);
-    if (request.in_size == request.in_pos)
+    }
+    if (request.in_size == request.in_pos) {
       break;  // No more input to process.
+    }
   }
   output_buffer.clear();
 

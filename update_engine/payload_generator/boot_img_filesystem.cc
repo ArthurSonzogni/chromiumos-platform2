@@ -21,8 +21,9 @@ namespace chromeos_update_engine {
 
 unique_ptr<BootImgFilesystem> BootImgFilesystem::CreateFromFile(
     const string& filename) {
-  if (filename.empty())
+  if (filename.empty()) {
     return nullptr;
+  }
 
   if (brillo::Blob header_magic;
       !utils::ReadFileChunk(filename, 0, BOOT_MAGIC_SIZE, &header_magic) ||

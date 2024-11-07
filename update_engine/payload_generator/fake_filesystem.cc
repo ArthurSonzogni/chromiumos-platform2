@@ -37,8 +37,9 @@ void FakeFilesystem::AddFile(const std::string& filename,
 }
 
 bool FakeFilesystem::LoadSettings(brillo::KeyValueStore* store) const {
-  if (minor_version_ < 0)
+  if (minor_version_ < 0) {
     return false;
+  }
   store->SetString("PAYLOAD_MINOR_VERSION", std::to_string(minor_version_));
   return true;
 }

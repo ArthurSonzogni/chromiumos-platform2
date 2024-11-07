@@ -292,12 +292,14 @@ metrics::ConnectionType GetConnectionType(ConnectionType type, bool metered) {
 
 int64_t GetPersistedValue(const std::string& key, PrefsInterface* prefs) {
   CHECK(prefs);
-  if (!prefs->Exists(key))
+  if (!prefs->Exists(key)) {
     return 0;
+  }
 
   int64_t stored_value;
-  if (!prefs->GetInt64(key, &stored_value))
+  if (!prefs->GetInt64(key, &stored_value)) {
     return 0;
+  }
 
   if (stored_value < 0) {
     LOG(ERROR) << key << ": Invalid value (" << stored_value

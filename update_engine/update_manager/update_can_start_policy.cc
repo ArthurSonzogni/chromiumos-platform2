@@ -205,8 +205,9 @@ EvalStatus UpdateCanStartPolicy::Evaluate(EvaluationContext* ec,
   UpdateBackoffAndDownloadUrlResult backoff_url_result;
   EvalStatus backoff_url_status = UpdateBackoffAndDownloadUrl(
       ec, state, error, &backoff_url_result, update_state);
-  if (backoff_url_status == EvalStatus::kFailed)
+  if (backoff_url_status == EvalStatus::kFailed) {
     return EvalStatus::kFailed;
+  }
   result->download_url_idx = backoff_url_result.url_idx;
   result->download_url_num_errors = backoff_url_result.url_num_errors;
   result->do_increment_failures = backoff_url_result.do_increment_failures;
@@ -256,8 +257,9 @@ EvalStatus UpdateCanStartPolicy::Evaluate(EvaluationContext* ec,
         result->scatter_wait_period = scatter_result.wait_period;
         result->scatter_check_threshold = scatter_result.check_threshold;
         if (scattering_status == EvalStatus::kAskMeAgainLater ||
-            scatter_result.is_scattering)
+            scatter_result.is_scattering) {
           is_scattering_active = true;
+        }
       }
     }
   }
@@ -267,8 +269,9 @@ EvalStatus UpdateCanStartPolicy::Evaluate(EvaluationContext* ec,
   P2PEnabledPolicyData p2p_enabled_data;
   EvalStatus p2p_enabled_status =
       p2p_enabled_policy.Evaluate(ec, state, error, &p2p_enabled_data);
-  if (p2p_enabled_status != EvalStatus::kSucceeded)
+  if (p2p_enabled_status != EvalStatus::kSucceeded) {
     return EvalStatus::kFailed;
+  }
 
   // Is P2P is enabled, consider allowing it for downloading and/or sharing.
   if (p2p_enabled_data.enabled()) {
@@ -399,8 +402,9 @@ EvalStatus UpdateBackoffAndDownloadUrl(
   }
 
   int url_idx = update_state.last_download_url_idx;
-  if (url_idx < 0)
+  if (url_idx < 0) {
     url_idx = -1;
+  }
   bool do_advance_url = false;
   bool is_failure_occurred = false;
   Time err_time;
@@ -451,8 +455,9 @@ EvalStatus UpdateBackoffAndDownloadUrl(
 
     // Ignore errors that happened before the last known failed attempt.
     if (!update_state.failures_last_updated.is_null() &&
-        err_time <= update_state.failures_last_updated)
+        err_time <= update_state.failures_last_updated) {
       continue;
+    }
 
     if (prev_url_idx >= 0) {
       if (url_idx < prev_url_idx) {
@@ -474,8 +479,9 @@ EvalStatus UpdateBackoffAndDownloadUrl(
     }
 
     if (HandleErrorCode(std::get<1>(err_tuple), &url_num_errors) ||
-        url_num_errors > update_state.download_errors_max)
+        url_num_errors > update_state.download_errors_max) {
       do_advance_url = true;
+    }
 
     prev_url_idx = url_idx;
   }
@@ -490,14 +496,16 @@ EvalStatus UpdateBackoffAndDownloadUrl(
       if (++url_idx == num_urls) {
         url_idx = 0;
         // We only mark failure if an actual advancing of a URL was required.
-        if (do_advance_url)
+        if (do_advance_url) {
           is_failure_occurred = true;
+        }
       }
 
-      if (start_url_idx < 0)
+      if (start_url_idx < 0) {
         start_url_idx = url_idx;
-      else if (url_idx == start_url_idx)
+      } else if (url_idx == start_url_idx) {
         url_idx = -1;  // No usable URL.
+      }
     } while (url_idx >= 0 &&
              !IsUrlUsable(update_state.download_urls[url_idx], http_allowed));
   }
@@ -526,8 +534,9 @@ EvalStatus UpdateBackoffAndDownloadUrl(
     backoff_expiry = err_time + wait_period;
 
     // If the newly computed backoff already expired, nullify it.
-    if (ec->IsWallclockTimeGreaterThan(backoff_expiry))
+    if (ec->IsWallclockTimeGreaterThan(backoff_expiry)) {
       backoff_expiry = Time();
+    }
   }
 
   result->do_increment_failures = is_failure_occurred;
@@ -556,14 +565,16 @@ EvalStatus UpdateScattering(EvaluationContext* ec,
   // Ensure that a device policy is loaded.
   const bool* device_policy_is_loaded_p =
       ec->GetValue(dp_provider->var_device_policy_is_loaded());
-  if (!(device_policy_is_loaded_p && *device_policy_is_loaded_p))
+  if (!(device_policy_is_loaded_p && *device_policy_is_loaded_p)) {
     return EvalStatus::kSucceeded;
+  }
 
   // Is scattering enabled by policy?
   const TimeDelta* scatter_factor_p =
       ec->GetValue(dp_provider->var_scatter_factor());
-  if (!scatter_factor_p || *scatter_factor_p == kZeroInterval)
+  if (!scatter_factor_p || *scatter_factor_p == kZeroInterval) {
     return EvalStatus::kSucceeded;
+  }
 
   // Obtain a pseudo-random number generator.
   const uint64_t* seed = ec->GetValue(state->random_provider()->var_seed());
@@ -585,8 +596,9 @@ EvalStatus UpdateScattering(EvaluationContext* ec,
   Time wait_expires =
       (update_state.first_seen +
        std::min(wait_period, update_state.scatter_wait_period_max));
-  if (ec->IsWallclockTimeGreaterThan(wait_expires))
+  if (ec->IsWallclockTimeGreaterThan(wait_expires)) {
     wait_period = kZeroInterval;
+  }
 
   // Step 2: Maintain the update check threshold count.
   //
@@ -603,18 +615,21 @@ EvalStatus UpdateScattering(EvaluationContext* ec,
   // OmahaRequestAction::IsUpdateCheckCountBasedWaitingSatisfied(). We may want
   // to change it so that it behaves similarly to the wait period case, namely
   // if the current value exceeds the maximum, we set a new one within range.
-  if (check_threshold > update_state.scatter_check_threshold_max)
+  if (check_threshold > update_state.scatter_check_threshold_max) {
     check_threshold = 0;
+  }
 
   // If the update check threshold is non-zero and satisfied, then nullify it.
-  if (check_threshold > 0 && update_state.num_checks >= check_threshold)
+  if (check_threshold > 0 && update_state.num_checks >= check_threshold) {
     check_threshold = 0;
+  }
 
   bool is_scattering = (wait_period != kZeroInterval || check_threshold);
   EvalStatus ret = EvalStatus::kSucceeded;
   if (is_scattering && wait_period == update_state.scatter_wait_period &&
-      check_threshold == update_state.scatter_check_threshold)
+      check_threshold == update_state.scatter_check_threshold) {
     ret = EvalStatus::kAskMeAgainLater;
+  }
   result->is_scattering = is_scattering;
   result->wait_period = wait_period;
   result->check_threshold = check_threshold;

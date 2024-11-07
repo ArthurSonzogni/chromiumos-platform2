@@ -17,8 +17,9 @@ std::string DateToString(DateType date) {
 
 DateType StringToDate(const std::string& date_str) {
   DateType date;
-  if (!base::StringToInt64(date_str, &date))
+  if (!base::StringToInt64(date_str, &date)) {
     return kInvalidDate;
+  }
   return date;
 }
 

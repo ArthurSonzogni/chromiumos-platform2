@@ -86,10 +86,11 @@ class UmUpdateCheckAllowedPolicyTest : public UmPolicyTestBase {
     SetUpDefaultState();
     SetUpDefaultDevicePolicy();
     Time curr_time = next_update_check;
-    if (allow_check)
+    if (allow_check) {
       curr_time += base::Seconds(1);
-    else
+    } else {
       curr_time -= base::Seconds(1);
+    }
     fake_clock_->SetWallclockTime(curr_time);
   }
 

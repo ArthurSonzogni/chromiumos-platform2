@@ -20,10 +20,12 @@ using std::vector;
 namespace chromeos_update_engine {
 
 bool ExtentRanges::ExtentsOverlapOrTouch(const Extent& a, const Extent& b) {
-  if (a.start_block() == b.start_block())
+  if (a.start_block() == b.start_block()) {
     return true;
-  if (a.start_block() == kSparseHole || b.start_block() == kSparseHole)
+  }
+  if (a.start_block() == kSparseHole || b.start_block() == kSparseHole) {
     return false;
+  }
   if (a.start_block() < b.start_block()) {
     return a.start_block() + a.num_blocks() >= b.start_block();
   } else {
@@ -32,10 +34,12 @@ bool ExtentRanges::ExtentsOverlapOrTouch(const Extent& a, const Extent& b) {
 }
 
 bool ExtentRanges::ExtentsOverlap(const Extent& a, const Extent& b) {
-  if (a.start_block() == b.start_block())
+  if (a.start_block() == b.start_block()) {
     return true;
-  if (a.start_block() == kSparseHole || b.start_block() == kSparseHole)
+  }
+  if (a.start_block() == kSparseHole || b.start_block() == kSparseHole) {
     return false;
+  }
   if (a.start_block() < b.start_block()) {
     return a.start_block() + a.num_blocks() > b.start_block();
   } else {
@@ -65,8 +69,9 @@ Extent UnionOverlappingExtents(const Extent& first, const Extent& second) {
 }  // namespace
 
 void ExtentRanges::AddExtent(Extent extent) {
-  if (extent.start_block() == kSparseHole || extent.num_blocks() == 0)
+  if (extent.start_block() == kSparseHole || extent.num_blocks() == 0) {
     return;
+  }
 
   ExtentSet::iterator begin_del = extent_set_.end();
   ExtentSet::iterator end_del = extent_set_.end();
@@ -77,8 +82,9 @@ void ExtentRanges::AddExtent(Extent extent) {
       end_del = it;
       ++end_del;
       del_blocks += it->num_blocks();
-      if (begin_del == extent_set_.end())
+      if (begin_del == extent_set_.end()) {
         begin_del = it;
+      }
 
       extent = UnionOverlappingExtents(extent, *it);
     }
@@ -108,8 +114,9 @@ ExtentRanges::ExtentSet SubtractOverlappingExtents(const Extent& base,
 }  // namespace
 
 void ExtentRanges::SubtractExtent(const Extent& extent) {
-  if (extent.start_block() == kSparseHole || extent.num_blocks() == 0)
+  if (extent.start_block() == kSparseHole || extent.num_blocks() == 0) {
     return;
+  }
 
   ExtentSet::iterator begin_del = extent_set_.end();
   ExtentSet::iterator end_del = extent_set_.end();
@@ -117,11 +124,13 @@ void ExtentRanges::SubtractExtent(const Extent& extent) {
   ExtentSet new_extents;
   for (ExtentSet::iterator it = extent_set_.begin(), e = extent_set_.end();
        it != e; ++it) {
-    if (!ExtentsOverlap(*it, extent))
+    if (!ExtentsOverlap(*it, extent)) {
       continue;
+    }
 
-    if (begin_del == extent_set_.end())
+    if (begin_del == extent_set_.end()) {
       begin_del = it;
+    }
     end_del = it;
     ++end_del;
 
@@ -195,8 +204,9 @@ bool ExtentRanges::OverlapsWithExtent(const Extent& extent) const {
 bool ExtentRanges::ContainsBlock(uint64_t block) const {
   auto lower = extent_set_.lower_bound(ExtentForRange(block, 1));
   // The block could be on the extent before the one in |lower|.
-  if (lower != extent_set_.begin())
+  if (lower != extent_set_.begin()) {
     lower--;
+  }
   // Any extent starting at block+1 or later is not interesting, so this is the
   // upper limit.
   auto upper = extent_set_.lower_bound(ExtentForRange(block + 1, 0));
@@ -235,8 +245,9 @@ Extent ExtentForBytes(uint64_t block_size,
 
 vector<Extent> ExtentRanges::GetExtentsForBlockCount(uint64_t count) const {
   vector<Extent> out;
-  if (count == 0)
+  if (count == 0) {
     return out;
+  }
   uint64_t out_blocks = 0;
   CHECK(count <= blocks_);
   for (ExtentSet::const_iterator it = extent_set_.begin(),
@@ -246,10 +257,12 @@ vector<Extent> ExtentRanges::GetExtentsForBlockCount(uint64_t count) const {
     const Extent& extent = *it;
     out.push_back(extent);
     out_blocks += extent.num_blocks();
-    if (extent.num_blocks() < blocks_needed)
+    if (extent.num_blocks() < blocks_needed) {
       continue;
-    if (extent.num_blocks() == blocks_needed)
+    }
+    if (extent.num_blocks() == blocks_needed) {
       break;
+    }
     // If we get here, we just added the last extent needed, but it's too big
     out_blocks -= extent.num_blocks();
     out_blocks += blocks_needed;
@@ -273,13 +286,15 @@ vector<Extent> FilterExtentRanges(const vector<Extent>& extents,
     auto lower = extent_set.lower_bound(extent);
     // We need to decrement the lower_bound to look at the extent that could
     // overlap the beginning of the current |extent|.
-    if (lower != extent_set.begin())
+    if (lower != extent_set.begin()) {
       lower--;
+    }
     auto upper = extent_set.lower_bound(
         ExtentForRange(extent.start_block() + extent.num_blocks(), 0));
     for (auto iter = lower; iter != upper; ++iter) {
-      if (!ExtentRanges::ExtentsOverlap(extent, *iter))
+      if (!ExtentRanges::ExtentsOverlap(extent, *iter)) {
         continue;
+      }
       if (iter->start_block() <= extent.start_block()) {
         // We need to cut blocks from the beginning of the |extent|.
         uint64_t cut_blocks =
@@ -304,8 +319,9 @@ vector<Extent> FilterExtentRanges(const vector<Extent>& extents,
         extent = ExtentForRange(new_start, old_end - new_start);
       }
     }
-    if (extent.num_blocks() > 0)
+    if (extent.num_blocks() > 0) {
       result.push_back(extent);
+    }
   }
   return result;
 }

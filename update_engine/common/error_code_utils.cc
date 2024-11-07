@@ -31,9 +31,10 @@ ErrorCode StripErrorCode(ErrorCode code) {
   // have case statements only for the base error code or a single flag but
   // don't support any combinations of those.
   if ((static_cast<int>(code) & static_cast<int>(ErrorCode::kSpecialFlags)) &&
-      (static_cast<int>(code) & ~static_cast<int>(ErrorCode::kSpecialFlags)))
+      (static_cast<int>(code) & ~static_cast<int>(ErrorCode::kSpecialFlags))) {
     code = static_cast<ErrorCode>(static_cast<int>(code) &
                                   ~static_cast<int>(ErrorCode::kSpecialFlags));
+  }
   return code;
 }
 }  // namespace

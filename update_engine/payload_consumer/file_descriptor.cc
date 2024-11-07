@@ -42,8 +42,9 @@ ssize_t EintrSafeFileDescriptor::Write(const void* buf, size_t count) {
     ssize_t ret = HANDLE_EINTR(write(fd_, char_buf, count));
 
     // Fail on either an error or no progress.
-    if (ret <= 0)
+    if (ret <= 0) {
       return (written ? written : ret);
+    }
     written += ret;
     count -= ret;
     char_buf += ret;
@@ -57,15 +58,17 @@ off64_t EintrSafeFileDescriptor::Seek(off64_t offset, int whence) {
 }
 
 uint64_t EintrSafeFileDescriptor::BlockDevSize() {
-  if (fd_ < 0)
+  if (fd_ < 0) {
     return 0;
+  }
   struct stat stbuf;
   if (fstat(fd_, &stbuf) < 0) {
     PLOG(ERROR) << "Error stat-ing fd " << fd_;
     return 0;
   }
-  if (!S_ISBLK(stbuf.st_mode))
+  if (!S_ISBLK(stbuf.st_mode)) {
     return 0;
+  }
   off_t block_size = utils::BlockDevSize(fd_);
   return block_size < 0 ? 0 : block_size;
 }
@@ -85,8 +88,9 @@ bool EintrSafeFileDescriptor::BlkIoctl(int request,
   // of "undefined" data. The BLKDISCARDZEROES ioctl tells whether that's the
   // case, so we issue a BLKDISCARD in those cases to speed up the writes.
   unsigned int arg;
-  if (request == BLKZEROOUT && ioctl(fd_, BLKDISCARDZEROES, &arg) == 0 && arg)
+  if (request == BLKZEROOUT && ioctl(fd_, BLKDISCARDZEROES, &arg) == 0 && arg) {
     request = BLKDISCARD;
+  }
 
   // Ensure the |fd_| is in O_DIRECT mode during this operation, so the write
   // cache for this region is invalidated. This is required since otherwise
@@ -119,8 +123,9 @@ bool EintrSafeFileDescriptor::Flush() {
 
 bool EintrSafeFileDescriptor::Close() {
   CHECK_GE(fd_, 0);
-  if (IGNORE_EINTR(close(fd_)))
+  if (IGNORE_EINTR(close(fd_))) {
     return false;
+  }
   fd_ = -1;
   return true;
 }

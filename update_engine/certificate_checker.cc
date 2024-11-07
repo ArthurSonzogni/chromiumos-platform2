@@ -30,15 +30,17 @@ bool OpenSSLWrapper::GetCertificateDigest(X509_STORE_CTX* x509_ctx,
   X509* certificate = X509_STORE_CTX_get_current_cert(x509_ctx);
   TEST_AND_RETURN_FALSE(certificate);
   int depth = X509_STORE_CTX_get_error_depth(x509_ctx);
-  if (out_depth)
+  if (out_depth) {
     *out_depth = depth;
+  }
 
   unsigned int len;
   const EVP_MD* digest_function = EVP_sha256();
   bool success = X509_digest(certificate, digest_function, out_digest, &len);
 
-  if (success && out_digest_length)
+  if (success && out_digest_length) {
     *out_digest_length = len;
+  }
   return success;
 }
 
@@ -50,8 +52,9 @@ CertificateChecker::CertificateChecker(PrefsInterface* prefs,
     : prefs_(prefs), openssl_wrapper_(openssl_wrapper) {}
 
 CertificateChecker::~CertificateChecker() {
-  if (cert_checker_singleton_ == this)
+  if (cert_checker_singleton_ == this) {
     cert_checker_singleton_ = nullptr;
+  }
 }
 
 void CertificateChecker::Init() {
@@ -183,8 +186,9 @@ bool CertificateChecker::CheckCertificateChange(int preverify_ok,
 
 void CertificateChecker::NotifyCertificateChecked(
     ServerToCheck server_to_check, CertificateCheckResult result) {
-  if (observer_)
+  if (observer_) {
     observer_->CertificateChecked(server_to_check, result);
+  }
 }
 
 }  // namespace chromeos_update_engine

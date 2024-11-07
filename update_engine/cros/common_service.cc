@@ -364,8 +364,9 @@ bool UpdateEngineService::GetUpdateOverCellularPermission(ErrorPtr* error,
 bool UpdateEngineService::ToggleFeature(ErrorPtr* error,
                                         const std::string& feature,
                                         bool enable) {
-  if (SystemState::Get()->update_attempter()->ToggleFeature(feature, enable))
+  if (SystemState::Get()->update_attempter()->ToggleFeature(feature, enable)) {
     return true;
+  }
   LogAndSetError(error, FROM_HERE,
                  string("Failed to toggle feature ") + feature);
   return false;
@@ -375,8 +376,9 @@ bool UpdateEngineService::IsFeatureEnabled(ErrorPtr* error,
                                            const std::string& feature,
                                            bool* out_enabled) {
   if (SystemState::Get()->update_attempter()->IsFeatureEnabled(feature,
-                                                               out_enabled))
+                                                               out_enabled)) {
     return true;
+  }
   LogAndSetError(error, FROM_HERE, string("Failed to get feature ") + feature);
   return false;
 }

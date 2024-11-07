@@ -32,8 +32,9 @@ void MockHttpFetcher::BeginTransfer(const std::string& url) {
     SignalTransferComplete();
     return;
   }
-  if (sent_offset_ < data_.size())
+  if (sent_offset_ < data_.size()) {
     SendData(true);
+  }
 }
 
 void MockHttpFetcher::SendData(bool skip_delivery) {
@@ -101,8 +102,9 @@ void MockHttpFetcher::SetHeader(const std::string& header_name,
 
 std::string MockHttpFetcher::GetHeader(const std::string& header_name) const {
   const auto it = extra_headers_.find(base::ToLowerASCII(header_name));
-  if (it == extra_headers_.end())
+  if (it == extra_headers_.end()) {
     return "";
+  }
   return it->second;
 }
 

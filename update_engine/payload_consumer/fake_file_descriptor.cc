@@ -11,8 +11,9 @@ ssize_t FakeFileDescriptor::Read(void* buf, size_t count) {
   read_ops_.emplace_back(offset_, count);
 
   // Check for the EOF condition first to avoid reporting it as a failure.
-  if (offset_ >= static_cast<uint64_t>(size_) || count == 0)
+  if (offset_ >= static_cast<uint64_t>(size_) || count == 0) {
     return 0;
+  }
   // Find the first offset greater or equal than the current position where a
   // failure will occur. This will mark the end of the read chunk.
   uint64_t first_failure = size_;
@@ -23,8 +24,9 @@ ssize_t FakeFileDescriptor::Read(void* buf, size_t count) {
       errno = EIO;
       return -1;
     }
-    if (failure.first > offset_)
+    if (failure.first > offset_) {
       first_failure = std::min(first_failure, failure.first);
+    }
   }
   count = std::min(static_cast<uint64_t>(count), first_failure - offset_);
   static const char kHexChars[] = "0123456789ABCDEF";
@@ -49,10 +51,11 @@ off64_t FakeFileDescriptor::Seek(off64_t offset, int whence) {
       offset_ += offset;
       break;
     case SEEK_END:
-      if (offset > size_)
+      if (offset > size_) {
         offset_ = 0;
-      else
+      } else {
         offset_ = size_ - offset_;
+      }
       break;
     default:
       errno = EINVAL;

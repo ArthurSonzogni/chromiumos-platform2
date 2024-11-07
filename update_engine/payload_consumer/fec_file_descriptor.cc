@@ -13,8 +13,9 @@ bool FecFileDescriptor::Open(const char* path, int flags) {
 }
 
 bool FecFileDescriptor::Open(const char* path, int flags, mode_t mode) {
-  if (!fh_.open(path, flags, mode))
+  if (!fh_.open(path, flags, mode)) {
     return false;
+  }
 
   if (!fh_.has_ecc()) {
     LOG(ERROR) << "No ECC data in the passed file";

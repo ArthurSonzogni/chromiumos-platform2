@@ -34,15 +34,17 @@ static string FindAttributeKeyValueInXml(const string& xml,
                                          const size_t val_size) {
   string key_with_quotes = key + "=\"";
   const size_t val_start_pos = xml.find(key);
-  if (val_start_pos == string::npos)
+  if (val_start_pos == string::npos) {
     return "";
+  }
   return xml.substr(val_start_pos + key_with_quotes.size(), val_size);
 }
 // Helper to find the count of substring in a string.
 static size_t CountSubstringInString(const string& str, const string& substr) {
   size_t count = 0, pos = 0;
-  while ((pos = str.find(substr, pos ? pos + 1 : 0)) != string::npos)
+  while ((pos = str.find(substr, pos ? pos + 1 : 0)) != string::npos) {
     ++count;
+  }
   return count;
 }
 }  // namespace
@@ -129,8 +131,9 @@ TEST_F(OmahaRequestBuilderXmlTest, GetRequestXmlRequestIdTest) {
   const string request_id =
       FindAttributeKeyValueInXml(request_xml, key, kGuidSize);
   // A valid |request_id| is either a GUID version 4 or empty string.
-  if (!request_id.empty())
+  if (!request_id.empty()) {
     EXPECT_TRUE(base::Uuid::ParseLowercase(request_id).is_valid());
+  }
 }
 
 TEST_F(OmahaRequestBuilderXmlTest, GetRequestXmlSessionIdTest) {

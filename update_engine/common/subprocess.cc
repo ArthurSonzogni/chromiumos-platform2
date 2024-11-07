@@ -41,15 +41,18 @@ bool SetupChild(const std::map<string, string>& env, uint32_t flags) {
   }
 
   if ((flags & Subprocess::kRedirectStderrToStdout) != 0) {
-    if (HANDLE_EINTR(dup2(STDOUT_FILENO, STDERR_FILENO)) != STDERR_FILENO)
+    if (HANDLE_EINTR(dup2(STDOUT_FILENO, STDERR_FILENO)) != STDERR_FILENO) {
       return false;
+    }
   }
 
   int fd = HANDLE_EINTR(open("/dev/null", O_RDONLY));
-  if (fd < 0)
+  if (fd < 0) {
     return false;
-  if (HANDLE_EINTR(dup2(fd, STDIN_FILENO)) != STDIN_FILENO)
+  }
+  if (HANDLE_EINTR(dup2(fd, STDIN_FILENO)) != STDIN_FILENO) {
     return false;
+  }
   IGNORE_EINTR(close(fd));
 
   return true;
@@ -64,8 +67,9 @@ bool LaunchProcess(const vector<string>& cmd,
                    uint32_t flags,
                    const vector<int>& output_pipes,
                    brillo::Process* proc) {
-  for (const string& arg : cmd)
+  for (const string& arg : cmd) {
     proc->AddArg(arg);
+  }
   proc->SetSearchPath((flags & Subprocess::kSearchPath) != 0);
 
   // Create an environment for the child process with just the required PATHs.
@@ -75,8 +79,9 @@ bool LaunchProcess(const vector<string>& cmd,
                                                  "UBSAN_OPTIONS"};
   for (const char* key : allowed_envs) {
     const char* value = getenv(key);
-    if (value)
+    if (value) {
       env.emplace(key, value);
+    }
   }
 
   for (const int fd : output_pipes) {
@@ -94,8 +99,9 @@ bool LaunchProcess(const vector<string>& cmd,
 
 void Subprocess::Init(
     brillo::AsynchronousSignalHandlerInterface* async_signal_handler) {
-  if (subprocess_singleton_ == this)
+  if (subprocess_singleton_ == this) {
     return;
+  }
   CHECK(subprocess_singleton_ == nullptr);
   subprocess_singleton_ = this;
 
@@ -103,8 +109,9 @@ void Subprocess::Init(
 }
 
 Subprocess::~Subprocess() {
-  if (subprocess_singleton_ == this)
+  if (subprocess_singleton_ == this) {
     subprocess_singleton_ = nullptr;
+  }
 }
 
 void Subprocess::OnStdoutReady(SubprocessRecord* record) {
@@ -127,8 +134,9 @@ void Subprocess::OnStdoutReady(SubprocessRecord* record) {
 
 void Subprocess::ChildExitedCallback(const siginfo_t& info) {
   auto pid_record = subprocess_records_.find(info.si_pid);
-  if (pid_record == subprocess_records_.end())
+  if (pid_record == subprocess_records_.end()) {
     return;
+  }
   SubprocessRecord* record = pid_record->second.get();
 
   // Make sure we read any remaining process output and then close the pipe.
@@ -199,8 +207,9 @@ pid_t Subprocess::ExecFlags(const vector<string>& cmd,
 
 void Subprocess::KillExec(pid_t pid) {
   auto pid_record = subprocess_records_.find(pid);
-  if (pid_record == subprocess_records_.end())
+  if (pid_record == subprocess_records_.end()) {
     return;
+  }
   pid_record->second->callback.Reset();
   // We don't care about output/return code, so we use SIGKILL here to ensure it
   // will be killed, SIGTERM might lead to leaked subprocess.
@@ -214,8 +223,9 @@ void Subprocess::KillExec(pid_t pid) {
 
 int Subprocess::GetPipeFd(pid_t pid, int fd) const {
   auto pid_record = subprocess_records_.find(pid);
-  if (pid_record == subprocess_records_.end())
+  if (pid_record == subprocess_records_.end()) {
     return -1;
+  }
   return pid_record->second->proc.GetPipe(fd);
 }
 
@@ -256,8 +266,9 @@ bool Subprocess::SynchronousExecFlags(const vector<string>& cmd,
       int rc = HANDLE_EINTR(read(stdout_fd, buffer.data(), buffer.size()));
       if (rc <= 0) {
         stdout_closed = true;
-        if (rc < 0)
+        if (rc < 0) {
           PLOG(ERROR) << "Reading from child's stdout";
+        }
       } else if (stdout != nullptr) {
         stdout->append(buffer.data(), rc);
       }
@@ -267,8 +278,9 @@ bool Subprocess::SynchronousExecFlags(const vector<string>& cmd,
       int rc = HANDLE_EINTR(read(stderr_fd, buffer.data(), buffer.size()));
       if (rc <= 0) {
         stderr_closed = true;
-        if (rc < 0)
+        if (rc < 0) {
           PLOG(ERROR) << "Reading from child's stderr";
+        }
       } else if (stderr != nullptr) {
         stderr->append(buffer.data(), rc);
       }
@@ -278,8 +290,9 @@ bool Subprocess::SynchronousExecFlags(const vector<string>& cmd,
   // At this point, the subprocess already closed the output, so we only need to
   // wait for it to finish.
   int proc_return_code = proc.Wait();
-  if (return_code)
+  if (return_code) {
     *return_code = proc_return_code;
+  }
   return proc_return_code != brillo::Process::kErrorExitStatus;
 }
 

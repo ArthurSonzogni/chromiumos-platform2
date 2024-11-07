@@ -333,8 +333,9 @@ class ScopedFdCloser {
   ScopedFdCloser& operator=(const ScopedFdCloser&) = delete;
 
   ~ScopedFdCloser() {
-    if (should_close_ && fd_ && (*fd_ >= 0) && !IGNORE_EINTR(close(*fd_)))
+    if (should_close_ && fd_ && (*fd_ >= 0) && !IGNORE_EINTR(close(*fd_))) {
       *fd_ = -1;
+    }
   }
   void set_should_close(bool should_close) { should_close_ = should_close; }
 
@@ -415,8 +416,9 @@ class ScopedActionCompleter {
   ScopedActionCompleter& operator=(const ScopedActionCompleter&) = delete;
 
   ~ScopedActionCompleter() {
-    if (should_complete_)
+    if (should_complete_) {
       processor_->ActionComplete(action_, code_);
+    }
   }
   void set_code(ErrorCode code) { code_ = code; }
   void set_should_complete(bool should_complete) {

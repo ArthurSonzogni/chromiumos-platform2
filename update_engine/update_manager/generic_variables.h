@@ -84,10 +84,11 @@ class PollCopyVariable : public Variable<T> {
                            std::string* errmsg) override {
     if (is_set_p_ && !(*is_set_p_)) {
       if (errmsg) {
-        if (errmsg_.empty())
+        if (errmsg_.empty()) {
           *errmsg = "No value set for " + this->GetName();
-        else
+        } else {
           *errmsg = errmsg_;
+        }
       }
       return nullptr;
     }
@@ -148,8 +149,9 @@ class CallCopyVariable : public Variable<T> {
   // Variable override.
   const T* GetValue(base::TimeDelta /* timeout */,
                     std::string* /* errmsg */) override {
-    if (func_.is_null())
+    if (func_.is_null()) {
       return nullptr;
+    }
     return new T(func_.Run());
   }
 
@@ -182,8 +184,9 @@ class AsyncCopyVariable : public Variable<T> {
     bool should_notify = !(has_value_ && new_value == value_);
     value_ = new_value;
     has_value_ = true;
-    if (should_notify)
+    if (should_notify) {
       this->NotifyValueChanged();
+    }
   }
 
   void UnsetValue() {
@@ -198,8 +201,9 @@ class AsyncCopyVariable : public Variable<T> {
   const T* GetValue(base::TimeDelta /* timeout */,
                     std::string* errmsg) override {
     if (!has_value_) {
-      if (errmsg)
+      if (errmsg) {
         *errmsg = "No value set for " + this->GetName();
+      }
       return nullptr;
     }
     return new T(value_);

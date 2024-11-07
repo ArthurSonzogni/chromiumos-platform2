@@ -90,8 +90,9 @@ bool FakePrefs::Delete(const string& key) {
   const auto observers_for_key = observers_.find(key);
   if (observers_for_key != observers_.end()) {
     std::vector<ObserverInterface*> copy_observers(observers_for_key->second);
-    for (ObserverInterface* observer : copy_observers)
+    for (ObserverInterface* observer : copy_observers) {
       observer->OnPrefDeleted(key);
+    }
   }
   return true;
 }
@@ -113,9 +114,11 @@ bool FakePrefs::Delete(const string& key, const vector<string>& nss) {
 }
 
 bool FakePrefs::GetSubKeys(const string& ns, vector<string>* keys) const {
-  for (const auto& pr : values_)
-    if (pr.first.compare(0, ns.length(), ns) == 0)
+  for (const auto& pr : values_) {
+    if (pr.first.compare(0, ns.length(), ns) == 0) {
       keys->push_back(pr.first);
+    }
+  }
   return true;
 }
 
@@ -146,8 +149,9 @@ void FakePrefs::SetValue(const string& key, const T& value) {
   const auto observers_for_key = observers_.find(key);
   if (observers_for_key != observers_.end()) {
     std::vector<ObserverInterface*> copy_observers(observers_for_key->second);
-    for (ObserverInterface* observer : copy_observers)
+    for (ObserverInterface* observer : copy_observers) {
       observer->OnPrefSet(key);
+    }
   }
 }
 
@@ -155,8 +159,9 @@ template <typename T>
 bool FakePrefs::GetValue(const string& key, T* value) const {
   CheckKeyType(key, PrefConsts<T>::type);
   auto it = values_.find(key);
-  if (it == values_.end())
+  if (it == values_.end()) {
     return false;
+  }
   CheckNotNull(key, value);
   *value = it->second.value.*(PrefConsts<T>::member);
   return true;
@@ -172,10 +177,12 @@ void FakePrefs::RemoveObserver(const string& key, ObserverInterface* observer) {
       std::find(observers_for_key.begin(), observers_for_key.end(), observer);
   EXPECT_NE(observer_it, observers_for_key.end())
       << "Trying to remove an observer instance not watching the key " << key;
-  if (observer_it != observers_for_key.end())
+  if (observer_it != observers_for_key.end()) {
     observers_for_key.erase(observer_it);
-  if (observers_for_key.empty())
+  }
+  if (observers_for_key.empty()) {
     observers_.erase(key);
+  }
 }
 
 }  // namespace chromeos_update_engine

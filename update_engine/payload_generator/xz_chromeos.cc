@@ -13,8 +13,9 @@ void XzCompressInit() {}
 
 bool XzCompress(const brillo::Blob& in, brillo::Blob* out) {
   out->clear();
-  if (in.empty())
+  if (in.empty()) {
     return true;
+  }
 
   // Resize the output buffer to get enough memory for writing the compressed
   // data.

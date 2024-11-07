@@ -20,8 +20,9 @@ const T* EvaluationContext::GetValue(Variable<T>* var) {
 
   // Search for the value on the cache first.
   ValueCacheMap::iterator it = value_cache_.find(var);
-  if (it != value_cache_.end())
+  if (it != value_cache_.end()) {
     return reinterpret_cast<const T*>(it->second.value());
+  }
 
   // Get the value from the variable if not found on the cache.
   std::string errmsg;

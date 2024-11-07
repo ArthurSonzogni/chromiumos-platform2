@@ -292,9 +292,10 @@ void OmahaResponseHandlerAction::PerformAction() {
     } else {
       install_plan_.update_urgency =
           update_engine::UpdateUrgencyInternal::REGULAR;
-      if (!response.deadline.empty())
+      if (!response.deadline.empty()) {
         LOG(WARNING) << response.deadline
                      << " is not a valid deadline value for critical updates.";
+      }
     }
   }
 
@@ -310,8 +311,9 @@ void OmahaResponseHandlerAction::PerformAction() {
   // |Policy::UpdateCanBeApplied| as it can set
   // |InstallPlan::can_download_be_canceled|.
   TEST_AND_RETURN(HasOutputPipe());
-  if (HasOutputPipe())
+  if (HasOutputPipe()) {
     SetOutputObject(install_plan_);
+  }
   install_plan_.Dump();
 
   const auto allowed_milestones = params->rollback_allowed_milestones();

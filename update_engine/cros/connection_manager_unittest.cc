@@ -105,8 +105,9 @@ void ConnectionManagerTest::SetServiceReply(const string& service_path,
   brillo::VariantDictionary reply_dict;
   reply_dict["SomeOtherProperty"] = 0xC0FFEE;
 
-  if (service_type)
+  if (service_type) {
     reply_dict[shill::kTypeProperty] = string(service_type);
+  }
 
   if (physical_technology) {
     reply_dict[shill::kPhysicalTechnologyProperty] =

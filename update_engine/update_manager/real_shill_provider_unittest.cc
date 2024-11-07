@@ -125,8 +125,9 @@ class UmRealShillProviderTest : public ::testing::Test {
         shill::kDefaultServiceProperty, dbus::ObjectPath(service_path));
     FakeSystemState::Get()->fake_clock()->SetWallclockTime(conn_change_time +
                                                            base::Seconds(5));
-    if (conn_change_time_p)
+    if (conn_change_time_p) {
       *conn_change_time_p = conn_change_time;
+    }
   }
 
   // Sets up expectations for detection of a connection `service_path` with type
@@ -152,8 +153,9 @@ class UmRealShillProviderTest : public ::testing::Test {
                                         provider_->var_conn_last_changed());
 
     // Write the connection change time to the output argument.
-    if (conn_change_time_p)
+    if (conn_change_time_p) {
       *conn_change_time_p = conn_change_time;
+    }
   }
 
   // Sets up a connection and tests that its type is being properly detected by
@@ -231,16 +233,18 @@ ServiceProxyMock* UmRealShillProviderTest::SetServiceReply(
   brillo::VariantDictionary reply_dict;
   reply_dict["SomeOtherProperty"] = 0xC0FFEE;
 
-  if (service_type)
+  if (service_type) {
     reply_dict[shill::kTypeProperty] = std::string(service_type);
+  }
 
   if (physical_technology) {
     reply_dict[shill::kPhysicalTechnologyProperty] =
         std::string(physical_technology);
   }
 
-  if (service_metered)
+  if (service_metered) {
     reply_dict[shill::kMeteredProperty] = *service_metered;
+  }
 
   ServiceProxyMock* service_proxy_mock = new ServiceProxyMock();
 

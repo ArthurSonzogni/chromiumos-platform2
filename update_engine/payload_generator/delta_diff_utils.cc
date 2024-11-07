@@ -84,8 +84,9 @@ bool IsDiffOperationBetter(const InstallOperation& op,
                            size_t old_blob_size,
                            size_t diff_size,
                            size_t num_src_extents) {
-  if (!diff_utils::IsAReplaceOperation(op.type()))
+  if (!diff_utils::IsAReplaceOperation(op.type())) {
     return diff_size < old_blob_size;
+  }
 
   // Reference: https://developers.google.com/protocol-buffers/docs/encoding
   // For |src_sha256_hash| we need 1 byte field number/type, 1 byte size and 32
@@ -214,8 +215,9 @@ void FileDeltaProcessor::Run() {
 }
 
 bool FileDeltaProcessor::MergeOperation(vector<AnnotatedOperation>* aops) {
-  if (failed_)
+  if (failed_) {
     return false;
+  }
   aops->reserve(aops->size() + file_aops_.size());
   std::move(file_aops_.begin(), file_aops_.end(), std::back_inserter(*aops));
   return true;
@@ -224,12 +226,14 @@ bool FileDeltaProcessor::MergeOperation(vector<AnnotatedOperation>* aops) {
 FilesystemInterface::File GetOldFile(
     const map<string, FilesystemInterface::File>& old_files_map,
     const string& new_file_name) {
-  if (old_files_map.empty())
+  if (old_files_map.empty()) {
     return {};
+  }
 
   auto old_file_iter = old_files_map.find(new_file_name);
-  if (old_file_iter != old_files_map.end())
+  if (old_file_iter != old_files_map.end()) {
     return old_file_iter->second;
+  }
 
   // No old file matches the new file name. Use a similar file with the
   // shortest levenshtein distance instead.
@@ -283,8 +287,9 @@ bool DeltaReadPartition(vector<AnnotatedOperation>* aops,
     vector<FilesystemInterface::File> old_files;
     TEST_AND_RETURN_FALSE(deflate_utils::PreprocessPartitionFiles(
         old_part, &old_files, puffdiff_allowed));
-    for (const FilesystemInterface::File& file : old_files)
+    for (const FilesystemInterface::File& file : old_files) {
       old_files_map[file.name] = file;
+    }
   }
 
   TEST_AND_RETURN_FALSE(new_part.fs_interface);
@@ -310,8 +315,9 @@ bool DeltaReadPartition(vector<AnnotatedOperation>* aops,
         FilterExtentRanges(new_file.extents, new_visited_blocks);
     new_visited_blocks.AddExtents(new_file_extents);
 
-    if (new_file_extents.empty())
+    if (new_file_extents.empty()) {
       continue;
+    }
 
     // We can't visit each dst image inode more than once, as that would
     // duplicate work. Here, we avoid visiting each source image inode
@@ -405,15 +411,18 @@ bool DeltaMovedAndZeroBlocks(vector<AnnotatedOperation>* aops,
   map<BlockMapping::BlockId, vector<uint64_t>> old_blocks_map;
 
   for (uint64_t block = old_num_blocks; block-- > 0;) {
-    if (old_block_ids[block] != 0 && !old_visited_blocks->ContainsBlock(block))
+    if (old_block_ids[block] != 0 &&
+        !old_visited_blocks->ContainsBlock(block)) {
       old_blocks_map[old_block_ids[block]].push_back(block);
+    }
 
     // Mark all zeroed blocks in the old image as "used" since it doesn't make
     // any sense to spend I/O to read zeros from the source partition and more
     // importantly, these could sometimes be blocks discarded in the SSD which
     // would read non-zero values.
-    if (old_block_ids[block] == 0)
+    if (old_block_ids[block] == 0) {
       old_zero_blocks->AddBlock(block);
+    }
   }
   old_visited_blocks->AddRanges(*old_zero_blocks);
 
@@ -429,8 +438,9 @@ bool DeltaMovedAndZeroBlocks(vector<AnnotatedOperation>* aops,
 
   for (uint64_t block = 0; block < new_num_blocks; block++) {
     // Only produce operations for blocks that were not yet visited.
-    if (new_visited_blocks->ContainsBlock(block))
+    if (new_visited_blocks->ContainsBlock(block)) {
       continue;
+    }
     if (new_block_ids[block] == 0) {
       AppendBlockToExtents(&new_zeros, block);
       continue;
@@ -439,16 +449,18 @@ bool DeltaMovedAndZeroBlocks(vector<AnnotatedOperation>* aops,
     auto old_blocks_map_it = old_blocks_map.find(new_block_ids[block]);
     // Check if the block exists in the old partition at all.
     if (old_blocks_map_it == old_blocks_map.end() ||
-        old_blocks_map_it->second.empty())
+        old_blocks_map_it->second.empty()) {
       continue;
+    }
 
     AppendBlockToExtents(&old_identical_blocks,
                          old_blocks_map_it->second.back());
     AppendBlockToExtents(&new_identical_blocks, block);
   }
 
-  if (chunk_blocks == -1)
+  if (chunk_blocks == -1) {
     chunk_blocks = new_num_blocks;
+  }
 
   // Produce operations for the zero blocks split per output extent.
   size_t num_ops = aops->size();
@@ -541,8 +553,9 @@ bool DeltaReadFile(vector<AnnotatedOperation>* aops,
     return false;
   }
 
-  if (chunk_blocks == -1)
+  if (chunk_blocks == -1) {
     chunk_blocks = total_blocks;
+  }
 
   for (uint64_t block_offset = 0; block_offset < total_blocks;
        block_offset += chunk_blocks) {
@@ -587,8 +600,9 @@ bool GenerateBestFullOperation(const brillo::Blob& new_data,
                                const PayloadVersion& version,
                                brillo::Blob* out_blob,
                                InstallOperation::Type* out_type) {
-  if (new_data.empty())
+  if (new_data.empty()) {
     return false;
+  }
 
   if (version.OperationAllowed(InstallOperation::ZERO) &&
       std::all_of(new_data.begin(), new_data.end(),
@@ -854,9 +868,11 @@ bool InitializePartitionInfo(const PartitionConfig& part, PartitionInfo* info) {
 bool CompareAopsByDestination(AnnotatedOperation first_aop,
                               AnnotatedOperation second_aop) {
   // We want empty operations to be at the end of the payload.
-  if (!first_aop.op.dst_extents().size() || !second_aop.op.dst_extents().size())
+  if (!first_aop.op.dst_extents().size() ||
+      !second_aop.op.dst_extents().size()) {
     return ((!first_aop.op.dst_extents().size()) <
             (!second_aop.op.dst_extents().size()));
+  }
   uint32_t first_dst_start = first_aop.op.dst_extents(0).start_block();
   uint32_t second_dst_start = second_aop.op.dst_extents(0).start_block();
   return first_dst_start < second_dst_start;
@@ -869,8 +885,9 @@ bool IsExtFilesystem(const string& device) {
   // library.
   if (!utils::ReadFileChunk(device, 0, SUPERBLOCK_OFFSET + SUPERBLOCK_SIZE,
                             &header) ||
-      header.size() < SUPERBLOCK_OFFSET + SUPERBLOCK_SIZE)
+      header.size() < SUPERBLOCK_OFFSET + SUPERBLOCK_SIZE) {
     return false;
+  }
 
   const uint8_t* superblock = header.data() + SUPERBLOCK_OFFSET;
 
@@ -890,8 +907,9 @@ bool IsExtFilesystem(const string& device) {
   log_block_size = le32toh(log_block_size) + EXT2_MIN_BLOCK_LOG_SIZE;
   magic = le16toh(magic);
 
-  if (magic != EXT2_SUPER_MAGIC)
+  if (magic != EXT2_SUPER_MAGIC) {
     return false;
+  }
 
   // Validation check the parameters.
   TEST_AND_RETURN_FALSE(log_block_size >= EXT2_MIN_BLOCK_LOG_SIZE &&
