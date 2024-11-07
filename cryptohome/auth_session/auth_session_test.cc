@@ -1795,9 +1795,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
                       AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
@@ -1892,9 +1892,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
                       AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
@@ -1990,9 +1990,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUssFails) {
                       AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
@@ -2085,9 +2085,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUss) {
                       AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakePinLabel, *wrapping_key),
@@ -2175,9 +2175,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUssWithRecreate) {
                       AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakePinLabel, *wrapping_key),
@@ -2286,9 +2286,9 @@ TEST_F(AuthSessionWithUssTest,
                       AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakePinLabel, *wrapping_key),
@@ -2386,9 +2386,9 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
                       AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakePinLabel, *wrapping_key),
@@ -2543,9 +2543,9 @@ TEST_F(AuthSessionWithUssTest,
                       AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
@@ -2622,9 +2622,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
 
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
@@ -2760,9 +2760,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
   auth_factor_map.Add(auth_factor, AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
@@ -2940,9 +2940,9 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
                       AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
@@ -5075,9 +5075,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinGenerateKeyStoreState) {
   auth_factor_map.Add(auth_factor, AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakePinLabel, *wrapping_key),
@@ -5196,9 +5196,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinUpdateKeyStoreState) {
   auth_factor_map.Add(auth_factor, AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
-  std::optional<brillo::SecureBlob> wrapping_key =
+  CryptohomeStatusOr<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(wrapping_key.has_value());
+  ASSERT_THAT(wrapping_key, IsOk());
   {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakePinLabel, *wrapping_key),

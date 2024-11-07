@@ -1577,6 +1577,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockCreateAuthFactorIsNotSupportedType = 2185,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockDeriveAuthFactorIsNotSupportedType = 2186,
+  /* ./key_objects.cc */
+  kLocKeyBlobsDeriveUssSecretMissingInput = 2187,
+  /* ./key_objects.cc */
+  kLocKeyBlobsDeriveUssSecretHkdfDerivationFailed = 2188,
+  /* ./auth_factor_vault_keyset_converter.cc */
+  kLocAuthFactorVkConverterFailedPopulateNoKeyset = 2189,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInStartAuthSession = 2190,
   /* ./user_secret_stash/manager.cc */

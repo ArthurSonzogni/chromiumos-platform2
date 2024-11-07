@@ -36,11 +36,12 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/vault_keyset.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 namespace {
 
+using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::hwsec_foundation::error::testing::ReturnOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
@@ -326,9 +327,9 @@ TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToVaultKeysetDataSuccess) {
 
   KeyData key_data;
   std::string auth_factor_label = kLabel0;
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-            converter_->PopulateKeyDataForVK(user.obfuscated, auth_factor_label,
-                                             key_data));
+  EXPECT_THAT(converter_->PopulateKeyDataForVK(user.obfuscated,
+                                               auth_factor_label, key_data),
+              IsOk());
   EXPECT_EQ(kLabel0, key_data.label());
 }
 
@@ -340,9 +341,9 @@ TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToVaultKeysetDataFail) {
 
   KeyData key_data;
   std::string auth_factor_label = kLabel1;
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND,
-            converter_->PopulateKeyDataForVK(user.obfuscated, auth_factor_label,
-                                             key_data));
+  EXPECT_THAT(converter_->PopulateKeyDataForVK(user.obfuscated,
+                                               auth_factor_label, key_data),
+              NotOk());
 }
 
 // Test that AuthFactorToKeyData generates correct KeyData for the given

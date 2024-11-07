@@ -1008,9 +1008,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   // Verify that migrator created the user_secret_stash and uss_main_key.
   UssStorage uss_storage(&system_apis_.platform);
   UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
-  std::optional<brillo::SecureBlob> uss_credential_secret =
+  CryptohomeStatusOr<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(uss_credential_secret.has_value());
+  ASSERT_THAT(uss_credential_secret, IsOk());
   CryptohomeStatusOr<DecryptedUss> decrypted_uss =
       DecryptedUss::FromStorageUsingWrappedKey(user_uss_storage, kDefaultLabel,
                                                *uss_credential_secret);
@@ -1064,9 +1064,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
   // Verify that migrator loaded the user_secret_stash and uss_main_key.
   UssStorage uss_storage(&system_apis_.platform);
   UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
-  std::optional<brillo::SecureBlob> uss_credential_secret =
+  CryptohomeStatusOr<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(uss_credential_secret.has_value());
+  ASSERT_THAT(uss_credential_secret, IsOk());
   CryptohomeStatusOr<DecryptedUss> decrypted_uss =
       DecryptedUss::FromStorageUsingWrappedKey(user_uss_storage, kPasswordLabel,
                                                *uss_credential_secret);
@@ -1125,9 +1125,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
   // Verify that migrator loaded the user_secret_stash and uss_main_key.
   UssStorage uss_storage(&system_apis_.platform);
   UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
-  std::optional<brillo::SecureBlob> uss_credential_secret =
+  CryptohomeStatusOr<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(uss_credential_secret.has_value());
+  ASSERT_THAT(uss_credential_secret, IsOk());
   CryptohomeStatusOr<DecryptedUss> decrypted_uss =
       DecryptedUss::FromStorageUsingWrappedKey(user_uss_storage, kPasswordLabel,
                                                *uss_credential_secret);
@@ -1177,9 +1177,9 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   // Verify that migrator created the user_secret_stash and uss_main_key.
   UssStorage uss_storage(&system_apis_.platform);
   UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
-  std::optional<brillo::SecureBlob> uss_credential_secret =
+  CryptohomeStatusOr<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
-  ASSERT_TRUE(uss_credential_secret.has_value());
+  ASSERT_THAT(uss_credential_secret, IsOk());
   CryptohomeStatusOr<DecryptedUss> decrypted_uss =
       DecryptedUss::FromStorageUsingWrappedKey(user_uss_storage, kPasswordLabel,
                                                *uss_credential_secret);

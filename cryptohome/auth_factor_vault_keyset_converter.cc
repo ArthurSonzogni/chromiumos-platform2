@@ -17,6 +17,7 @@
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
@@ -24,14 +25,21 @@
 #include "cryptohome/auth_factor/label.h"
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/type.h"
+#include "cryptohome/error/action.h"
+#include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/vault_keyset.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
-
 namespace {
+
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
 
 // Prefix for the smartphone (easyunlock, smartunlock) VaultKeyset label.
 constexpr char kEasyUnlockLabelPrefix[] = "easy-unlock-";
@@ -226,8 +234,7 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
-user_data_auth::CryptohomeErrorCode
-AuthFactorVaultKeysetConverter::PopulateKeyDataForVK(
+CryptohomeStatus AuthFactorVaultKeysetConverter::PopulateKeyDataForVK(
     const ObfuscatedUsername& obfuscated_username,
     const std::string& auth_factor_label,
     KeyData& out_vk_key_data) {
@@ -235,11 +242,13 @@ AuthFactorVaultKeysetConverter::PopulateKeyDataForVK(
       obfuscated_username, auth_factor_label);
   if (!vk) {
     LOG(ERROR) << "No keyset found for the label " << auth_factor_label;
-    return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorVkConverterFailedPopulateNoKeyset),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   }
   out_vk_key_data = vk->GetKeyDataOrDefault();
-
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  return OkStatus<CryptohomeError>();
 }
 
 user_data_auth::CryptohomeErrorCode

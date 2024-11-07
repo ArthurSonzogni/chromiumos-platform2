@@ -17,6 +17,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/type.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/username.h"
 
@@ -52,7 +53,7 @@ class AuthFactorVaultKeysetConverter {
 
   // Takes a label, which was sent from an AuthFactor API, find the VaultKeyset
   // identified with that label and returns its KeyData.
-  user_data_auth::CryptohomeErrorCode PopulateKeyDataForVK(
+  CryptohomeStatus PopulateKeyDataForVK(
       const ObfuscatedUsername& obfuscated_username,
       const std::string& auth_factor_label,
       KeyData& out_vk_key_data);

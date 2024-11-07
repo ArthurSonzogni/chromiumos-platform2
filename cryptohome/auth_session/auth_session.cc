@@ -382,9 +382,6 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   // Force a reload of the AuthFactorMap for this session's user. This preserves
   // the original "caching" behavior of in-memory AuthFactor objects from when
   // each session loaded its own copy.
-  //
-  // TODO(b/306423754): Remove this once we're sure nothing is relying on
-  // modifying the auth factor files externally.
   backing_apis.auth_factor_manager->DiscardAuthFactorMap(obfuscated_username);
 
   // Assumption here is that keyset_management_ will outlive this AuthSession.
@@ -3753,18 +3750,18 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssTransaction(
     const KeyBlobs& key_blobs,
     DecryptedUss::Transaction& transaction) {
   // Derive the credential secret for the USS from the key blobs.
-  std::optional<brillo::SecureBlob> uss_credential_secret =
+  CryptohomeStatusOr<brillo::SecureBlob> uss_credential_secret =
       key_blobs.DeriveUssCredentialSecret();
-  if (!uss_credential_secret.has_value()) {
+  if (!uss_credential_secret.ok()) {
     LOG(ERROR) << "AuthSession: Failed to derive credential secret for "
                   "updated auth factor.";
-    // TODO(b/229834676): Migrate USS and wrap the error.
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocAuthSessionDeriveUSSSecretFailedInAddSecretToUSS),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
-                        PossibleAction::kDeleteVault}),
-        user_data_auth::CRYPTOHOME_UPDATE_CREDENTIALS_FAILED);
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthSessionDeriveUSSSecretFailedInAddSecretToUSS),
+               ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
+                               PossibleAction::kDeleteVault}),
+               user_data_auth::CRYPTOHOME_UPDATE_CREDENTIALS_FAILED)
+        .Wrap(std::move(uss_credential_secret).err_status());
   }
 
   // This wraps the USS Main Key with the credential secret. The wrapping_id
@@ -3950,8 +3947,6 @@ void AuthSession::AuthenticateViaUserSecretStash(
     const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done) {
   // Determine the auth block type to use.
-  // TODO(b/223207622): This step is the same for both USS and VaultKeyset other
-  // than how the AuthBlock state is obtained, they can be merged.
   std::optional<AuthBlockType> auth_block_type =
       auth_block_utility_->GetAuthBlockTypeFromState(
           auth_factor.auth_block_state());
@@ -4006,15 +4001,16 @@ void AuthSession::AuthenticateViaSingleFactor(
 
   // If user does not have USS AuthFactors, then we switch to authentication
   // with Vaultkeyset. Status is flipped on the successful authentication.
-  user_data_auth::CryptohomeErrorCode error = converter_.PopulateKeyDataForVK(
+  CryptohomeStatus populate_status = converter_.PopulateKeyDataForVK(
       obfuscated_username_, auth_factor_label, key_data_);
-  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+  if (!populate_status.ok()) {
     LOG(ERROR) << "Failed to authenticate auth session via vk-factor "
                << auth_factor_label;
-    // TODO(b/229834676): Migrate The USS VKK converter then wrap the error.
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionVKConverterFailedInAuthAuthFactor),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}), error));
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionVKConverterFailedInAuthAuthFactor))
+            .Wrap(std::move(populate_status)));
     return;
   }
   // Record current time for timing for how long AuthenticateAuthFactor will
@@ -4101,15 +4097,17 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   }
 
   // Derive the credential secret for the USS from the key blobs.
-  std::optional<brillo::SecureBlob> uss_credential_secret =
+  CryptohomeStatusOr<brillo::SecureBlob> uss_credential_secret =
       key_blobs->DeriveUssCredentialSecret();
-  if (!uss_credential_secret.has_value()) {
+  if (!uss_credential_secret.ok()) {
     LOG(ERROR)
         << "Failed to derive credential secret for authenticating auth factor";
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveUSSSecretFailedInLoadUSS),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveUSSSecretFailedInLoadUSS),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)
+            .Wrap(std::move(uss_credential_secret).err_status()));
     return;
   }
 

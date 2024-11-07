@@ -14,6 +14,7 @@
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/recoverable_key_store/type.h"
@@ -153,7 +154,7 @@ struct KeyBlobs {
   // Derives a secret used for wrapping the UserSecretStash main key. This
   // secret is not returned by auth blocks directly, but rather calculated as a
   // KDF of their output, allowing for adding new derived keys in the future.
-  std::optional<brillo::SecureBlob> DeriveUssCredentialSecret() const;
+  CryptohomeStatusOr<brillo::SecureBlob> DeriveUssCredentialSecret() const;
 
   // The file encryption key. TODO(b/216474361): Rename to reflect this value is
   // used for deriving various values and not only for vault keysets, and add a
