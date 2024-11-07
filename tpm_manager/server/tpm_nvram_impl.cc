@@ -38,26 +38,36 @@ const unsigned int kTpmPCRLocality = 1;
 
 void MapAttributesFromTpm(TPM_NV_PER_ATTRIBUTES tpm_flags,
                           std::vector<NvramSpaceAttribute>* attributes) {
-  if (tpm_flags & TPM_NV_PER_WRITEDEFINE)
+  if (tpm_flags & TPM_NV_PER_WRITEDEFINE) {
     attributes->push_back(NVRAM_PERSISTENT_WRITE_LOCK);
-  if (tpm_flags & TPM_NV_PER_WRITE_STCLEAR)
+  }
+  if (tpm_flags & TPM_NV_PER_WRITE_STCLEAR) {
     attributes->push_back(NVRAM_BOOT_WRITE_LOCK);
-  if (tpm_flags & TPM_NV_PER_READ_STCLEAR)
+  }
+  if (tpm_flags & TPM_NV_PER_READ_STCLEAR) {
     attributes->push_back(NVRAM_BOOT_READ_LOCK);
-  if (tpm_flags & TPM_NV_PER_AUTHWRITE)
+  }
+  if (tpm_flags & TPM_NV_PER_AUTHWRITE) {
     attributes->push_back(NVRAM_WRITE_AUTHORIZATION);
-  if (tpm_flags & TPM_NV_PER_AUTHREAD)
+  }
+  if (tpm_flags & TPM_NV_PER_AUTHREAD) {
     attributes->push_back(NVRAM_READ_AUTHORIZATION);
-  if (tpm_flags & TPM_NV_PER_GLOBALLOCK)
+  }
+  if (tpm_flags & TPM_NV_PER_GLOBALLOCK) {
     attributes->push_back(NVRAM_GLOBAL_LOCK);
-  if (tpm_flags & TPM_NV_PER_PPREAD)
+  }
+  if (tpm_flags & TPM_NV_PER_PPREAD) {
     attributes->push_back(NVRAM_PLATFORM_READ);
-  if (tpm_flags & TPM_NV_PER_PPWRITE)
+  }
+  if (tpm_flags & TPM_NV_PER_PPWRITE) {
     attributes->push_back(NVRAM_PLATFORM_WRITE);
-  if (tpm_flags & TPM_NV_PER_OWNERWRITE)
+  }
+  if (tpm_flags & TPM_NV_PER_OWNERWRITE) {
     attributes->push_back(NVRAM_OWNER_WRITE);
-  if (tpm_flags & TPM_NV_PER_OWNERREAD)
+  }
+  if (tpm_flags & TPM_NV_PER_OWNERREAD) {
     attributes->push_back(NVRAM_OWNER_READ);
+  }
 }
 
 TPM_NV_PER_ATTRIBUTES MapAttributesToTpm(

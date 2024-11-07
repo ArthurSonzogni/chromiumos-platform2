@@ -255,8 +255,9 @@ DEFINE_PROTO_FUZZER(const tpm_manager::TpmManagerServiceFuzzerData& input) {
   static Environment env;
 
   // The fuzzer will never call |Quit| if there is no request.
-  if (input.requests().empty())
+  if (input.requests().empty()) {
     return;
+  }
   TpmManagerServiceFuzzer fuzzer(input);
   CHECK_EQ(fuzzer.Run(), EX_OK);
 }

@@ -30,30 +30,42 @@ namespace {
 
 void MapAttributesFromTpm(trunks::TPMA_NV tpm_flags,
                           std::vector<NvramSpaceAttribute>* attributes) {
-  if (tpm_flags & trunks::TPMA_NV_WRITEDEFINE)
+  if (tpm_flags & trunks::TPMA_NV_WRITEDEFINE) {
     attributes->push_back(NVRAM_PERSISTENT_WRITE_LOCK);
-  if (tpm_flags & trunks::TPMA_NV_WRITE_STCLEAR)
+  }
+  if (tpm_flags & trunks::TPMA_NV_WRITE_STCLEAR) {
     attributes->push_back(NVRAM_BOOT_WRITE_LOCK);
-  if (tpm_flags & trunks::TPMA_NV_READ_STCLEAR)
+  }
+  if (tpm_flags & trunks::TPMA_NV_READ_STCLEAR) {
     attributes->push_back(NVRAM_BOOT_READ_LOCK);
-  if (tpm_flags & (trunks::TPMA_NV_AUTHWRITE))
+  }
+  if (tpm_flags & (trunks::TPMA_NV_AUTHWRITE)) {
     attributes->push_back(NVRAM_WRITE_AUTHORIZATION);
-  if (tpm_flags & (trunks::TPMA_NV_AUTHREAD))
+  }
+  if (tpm_flags & (trunks::TPMA_NV_AUTHREAD)) {
     attributes->push_back(NVRAM_READ_AUTHORIZATION);
-  if (tpm_flags & trunks::TPMA_NV_GLOBALLOCK)
+  }
+  if (tpm_flags & trunks::TPMA_NV_GLOBALLOCK) {
     attributes->push_back(NVRAM_GLOBAL_LOCK);
-  if (tpm_flags & trunks::TPMA_NV_PPWRITE)
+  }
+  if (tpm_flags & trunks::TPMA_NV_PPWRITE) {
     attributes->push_back(NVRAM_PLATFORM_WRITE);
-  if (tpm_flags & trunks::TPMA_NV_OWNERWRITE)
+  }
+  if (tpm_flags & trunks::TPMA_NV_OWNERWRITE) {
     attributes->push_back(NVRAM_OWNER_WRITE);
-  if (tpm_flags & trunks::TPMA_NV_OWNERREAD)
+  }
+  if (tpm_flags & trunks::TPMA_NV_OWNERREAD) {
     attributes->push_back(NVRAM_OWNER_READ);
-  if (tpm_flags & trunks::TPMA_NV_EXTEND)
+  }
+  if (tpm_flags & trunks::TPMA_NV_EXTEND) {
     attributes->push_back(NVRAM_WRITE_EXTEND);
-  if (tpm_flags & (trunks::TPMA_NV_PPREAD))
+  }
+  if (tpm_flags & (trunks::TPMA_NV_PPREAD)) {
     attributes->push_back(NVRAM_PLATFORM_READ);
-  if (tpm_flags & (trunks::TPMA_NV_PLATFORMCREATE))
+  }
+  if (tpm_flags & (trunks::TPMA_NV_PLATFORMCREATE)) {
     attributes->push_back(NVRAM_PLATFORM_CREATE);
+  }
 }
 
 bool MapAttributesToTpm(const std::vector<NvramSpaceAttribute>& attributes,

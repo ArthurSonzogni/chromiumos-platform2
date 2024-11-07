@@ -22,8 +22,9 @@ void Tpm2FuzzerUtilsImpl::SetupTpm(TpmManagerService* tpm_manager) {
       data_provider_, kMaxTpmMessageLength);
   auto trunks_factory =
       std::make_unique<trunks::TrunksFactoryImpl>(command_transceiver_.get());
-  if (!trunks_factory->Initialize())
+  if (!trunks_factory->Initialize()) {
     LOG(ERROR) << "Failed to initialize TrunksFactory.";
+  }
   tpm_manager->SetTrunksFactoryForTesting(std::move(trunks_factory));
 }
 

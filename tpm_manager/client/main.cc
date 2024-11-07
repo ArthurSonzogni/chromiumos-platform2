@@ -154,10 +154,11 @@ std::string GetAuthValueFromPassword(const std::string& password) {
   // For NULL password auth, we should pass a Empty Buffer as authorization
   // value to TPM. Otherwise, we use SHA256(password) to transform the
   // variable-length password to fixed-length authorization value.
-  if (password.empty())
+  if (password.empty()) {
     return "";
-  else
+  } else {
     return crypto::SHA256HashString(password);
+  }
 }
 
 using ClientLoopBase = brillo::Daemon;
