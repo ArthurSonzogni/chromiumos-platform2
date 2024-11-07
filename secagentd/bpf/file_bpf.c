@@ -216,28 +216,6 @@ struct {
   __uint(max_entries, 1);
 } file_path_buffer_map SEC(".maps");
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-struct {
-  __uint(type, BPF_MAP_TYPE_TASK_STORAGE);
-  __uint(map_flags, BPF_F_NO_PREALLOC);
-  __type(key, u32);
-  __type(value, char[MAX_PATH_SIZE]);
-} before_umount_path_map SEC(".maps");
-#else
-struct {
-  __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-  __type(key, uint32_t);
-  __type(value, char[MAX_PATH_SIZE]);
-  __uint(max_entries, TASK_MAP_SIZE);
-} before_umount_path_map SEC(".maps");
-struct {
-  __uint(type, BPF_MAP_TYPE_LRU_PERCPU_HASH);
-  __type(key, uint64_t);
-  __type(value, uint32_t);
-  __uint(max_entries, TASK_MAP_SIZE);
-} unmount_task_hash_map SEC(".maps");
-#endif
-
 static __attribute__((__always_inline__)) struct buffer*
 get_file_path_buffer() {
   u32 zero = 0;
@@ -281,6 +259,43 @@ static inline __attribute__((always_inline)) void cros_rename_map_delete() {
     bpf_task_storage_delete(&rename_map, task);
   }
 }
+
+struct {
+  __uint(type, BPF_MAP_TYPE_TASK_STORAGE);
+  __uint(map_flags, BPF_F_NO_PREALLOC);
+  __type(key, u32);
+  __type(value, char[MAX_PATH_SIZE]);
+} before_umount_path_map SEC(".maps");
+
+static inline __attribute__((always_inline)) const char*
+cros_umount_map_get_or_create() {
+  struct task_struct* task = bpf_get_current_task_btf();
+  if (!task) {
+    bpf_printk("cros_umount_map_get_or_create failed, task is NULL");
+    return (const char*)NULL;
+  }
+  return (const char*)bpf_task_storage_get(&before_umount_path_map, task, NULL,
+                                           BPF_LOCAL_STORAGE_GET_F_CREATE);
+}
+
+static inline __attribute__((always_inline)) const char*
+cros_umount_map_lookup() {
+  struct task_struct* task = bpf_get_current_task_btf();
+  if (!task) {
+    bpf_printk("cros_umount_map_lookup failed, task is NULL");
+    return (const char*)NULL;
+  }
+  return (const char*)bpf_task_storage_get(&before_umount_path_map, task, NULL,
+                                           0);
+}
+
+static inline __attribute__((always_inline)) void cros_umount_map_delete() {
+  struct task_struct* task = bpf_get_current_task_btf();
+  if (task) {
+    bpf_task_storage_delete(&before_umount_path_map, task);
+  }
+}
+
 #else
 struct {
   __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -306,7 +321,8 @@ cros_rename_map_get_or_create() {
 static inline __attribute__((always_inline)) struct rename_map_value*
 cros_rename_map_lookup() {
   uint64_t pid_tid = bpf_get_current_pid_tgid();
-  uint32_t* index_value = bpf_map_lookup_elem(&rename_task_hash_map, &pid_tid);
+  uint32_t* index_value =
+      (uint32_t*)bpf_map_lookup_elem(&rename_task_hash_map, &pid_tid);
   if (!index_value) {
     return (struct rename_map_value*)NULL;
   }
@@ -318,6 +334,45 @@ static inline __attribute__((always_inline)) void cros_rename_map_delete() {
   uint64_t pid_tid = bpf_get_current_pid_tgid();
   bpf_map_delete_elem(&rename_task_hash_map, &pid_tid);
 }
+
+struct {
+  __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+  __type(key, uint32_t);
+  __type(value, char[MAX_PATH_SIZE]);
+  __uint(max_entries, TASK_MAP_SIZE);
+} before_umount_path_map SEC(".maps");
+struct {
+  __uint(type, BPF_MAP_TYPE_LRU_PERCPU_HASH);
+  __type(key, uint64_t);
+  __type(value, uint32_t);
+  __uint(max_entries, TASK_MAP_SIZE);
+} unmount_task_hash_map SEC(".maps");
+
+static inline __attribute__((always_inline)) const char*
+cros_umount_map_get_or_create() {
+  uint64_t pid_tid = bpf_get_current_pid_tgid();
+  uint32_t index = pid_tid % TASK_MAP_SIZE;
+  bpf_map_update_elem(&unmount_task_hash_map, &pid_tid, &index, BPF_ANY);
+  return (char*)bpf_map_lookup_elem(&before_umount_path_map, &index);
+}
+
+static inline __attribute__((always_inline)) const char*
+cros_umount_map_lookup() {
+  uint64_t pid_tid = bpf_get_current_pid_tgid();
+  uint32_t* index_value =
+      (uint32_t*)bpf_map_lookup_elem(&unmount_task_hash_map, &pid_tid);
+  if (!index_value) {
+    return (const char*)NULL;
+  }
+  uint32_t index = *index_value;
+  return (const char*)bpf_map_lookup_elem(&before_umount_path_map, &index);
+}
+
+static inline __attribute__((always_inline)) void cros_umount_map_delete() {
+  uint64_t pid_tid = bpf_get_current_pid_tgid();
+  bpf_map_delete_elem(&unmount_task_hash_map, &pid_tid);
+}
+
 #endif
 
 /**
@@ -2077,19 +2132,7 @@ int BPF_PROG(fentry__path_umount, struct path* path, int flags) {
     return 0;
   }
 
-  char* dest_path = NULL;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-  struct task_struct* task = bpf_get_current_task_btf();
-
-  dest_path = bpf_task_storage_get(&before_umount_path_map, task, 0,
-                                   BPF_LOCAL_STORAGE_GET_F_CREATE);
-#else
-  uint64_t pid_tid = bpf_get_current_pid_tgid();
-  uint32_t index = pid_tid % TASK_MAP_SIZE;
-  bpf_map_update_elem(&unmount_task_hash_map, &pid_tid, &index, BPF_ANY);
-  dest_path = bpf_map_lookup_elem(&before_umount_path_map, &index);
-#endif
+  const char* dest_path = cros_umount_map_get_or_create();
 
   if (!dest_path) {
     return 0;
@@ -2111,22 +2154,7 @@ int BPF_PROG(fexit__path_umount, struct path* path, int flags, int ret) {
     return 0;
   }
 
-  char* ptr = NULL;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-  struct task_struct* task = bpf_get_current_task_btf();
-  ptr = bpf_task_storage_get(&before_umount_path_map, task, NULL, 0);
-
-#else
-
-  uint64_t pid_tid = bpf_get_current_pid_tgid();
-  uint32_t* index_value = bpf_map_lookup_elem(&unmount_task_hash_map, &pid_tid);
-
-  if (index_value) {
-    uint32_t index = *index_value;
-    ptr = bpf_map_lookup_elem(&before_umount_path_map, &index);
-  }
-
-#endif
+  const char* ptr = cros_umount_map_lookup();
 
   if (!ptr) {
     return 0;
@@ -2162,11 +2190,7 @@ int BPF_PROG(fexit__path_umount, struct path* path, int flags, int ret) {
       &(event->data.file_event.data.umount_event.dest_device_path),
       MAX_PATH_SIZE, ptr);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-  bpf_task_storage_delete(&before_umount_path_map, task);
-#else
-  bpf_map_delete_elem(&unmount_task_hash_map, &pid_tid);
-#endif
+  cros_umount_map_delete();
 
   // Submit the event to the ring buffer
   bpf_ringbuf_submit(event, 0);
