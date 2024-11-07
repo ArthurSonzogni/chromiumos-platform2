@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/mock_utils.h"
 #include "swap_management/zram_recompression.h"
 
 #include <memory>
@@ -10,6 +9,8 @@
 #include <absl/status/status.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <gtest/gtest.h>
+
+#include "swap_management/mock_utils.h"
 
 using testing::_;
 using testing::DoAll;

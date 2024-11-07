@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/utils.h"
 #include "swap_management/zram_idle.h"
 
 #include <base/logging.h>
+
+#include "swap_management/utils.h"
 
 namespace swap_management {
 
@@ -25,13 +26,13 @@ absl::Status MarkIdle(uint32_t age_seconds) {
   return Utils::Get()->WriteFile(filepath, std::to_string(age.InSeconds()));
 }
 
-std::optional<uint64_t> GetCurrentIdleTimeSec(uint64_t min_sec,
-                                              uint64_t max_sec) {
+uint64_t GetCurrentIdleTimeSec(uint64_t min_sec, uint64_t max_sec) {
   absl::StatusOr<base::SystemMemoryInfoKB> meminfo =
       Utils::Get()->GetSystemMemoryInfo();
   if (!meminfo.ok()) {
     LOG(ERROR) << "Can not read meminfo: " << meminfo.status();
-    return std::nullopt;
+    // Fallback to use the safest value.
+    return max_sec;
   }
 
   // Stay between idle_(min|max)_time.

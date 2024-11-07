@@ -11,8 +11,7 @@
 namespace swap_management {
 
 absl::Status MarkIdle(uint32_t age_seconds);
-std::optional<uint64_t> GetCurrentIdleTimeSec(uint64_t min_sec,
-                                              uint64_t max_sec);
+uint64_t GetCurrentIdleTimeSec(uint64_t min_sec, uint64_t max_sec);
 
 }  // namespace swap_management
 

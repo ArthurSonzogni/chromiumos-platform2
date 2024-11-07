@@ -5,7 +5,9 @@
 #include "swap_management/zram_writeback.h"
 
 #include <algorithm>
+#include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -643,15 +645,10 @@ void ZramWriteback::PeriodicWriteback() {
       // If currently working on huge_idle or idle mode, mark idle for pages.
       if (current_writeback_mode == WRITEBACK_HUGE_IDLE ||
           current_writeback_mode == WRITEBACK_IDLE) {
-        std::optional<uint64_t> idle_age_sec =
+        uint64_t idle_age_sec =
             GetCurrentIdleTimeSec(params_.idle_min_time.InSeconds(),
                                   params_.idle_max_time.InSeconds());
-        if (!idle_age_sec.has_value()) {
-          // Failed to calculate idle age, directly move to huge page.
-          current_writeback_mode = WRITEBACK_HUGE;
-          continue;
-        }
-        base::TimeDelta idle_age = base::Seconds(*idle_age_sec);
+        base::TimeDelta idle_age = base::Seconds(idle_age_sec);
         if (params_.suspend_aware) {
           base::TimeDelta suspend_adjustment =
               SuspendHistory::Get()->CalculateTotalSuspendedDuration(idle_age);

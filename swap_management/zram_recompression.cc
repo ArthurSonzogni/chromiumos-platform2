@@ -179,15 +179,10 @@ void ZramRecompression::PeriodicRecompress() {
       // If currently working on huge_idle or idle mode, mark idle for pages.
       if (current_recompression_mode == RECOMPRESSION_HUGE_IDLE ||
           current_recompression_mode == RECOMPRESSION_IDLE) {
-        std::optional<uint64_t> idle_age_sec =
+        uint64_t idle_age_sec =
             GetCurrentIdleTimeSec(params_.idle_min_time.InSeconds(),
                                   params_.idle_max_time.InSeconds());
-        if (!idle_age_sec.has_value()) {
-          // Failed to calculate idle age, directly move to huge page.
-          current_recompression_mode = RECOMPRESSION_HUGE;
-          continue;
-        }
-        status = MarkIdle(*idle_age_sec);
+        status = MarkIdle(idle_age_sec);
         if (!status.ok()) {
           LOG(ERROR) << "Can not mark zram idle:" << status;
           return;
