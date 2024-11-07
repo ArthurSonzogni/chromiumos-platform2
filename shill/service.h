@@ -724,17 +724,18 @@ class Service : public base::RefCounted<Service> {
   // connection is confirmed or inferred to be metered.
   bool IsMetered() const;
 
-  // Initializes the traffic_counter_snapshot_ map to the counter values. The
-  // snapshots should never be updated without also refreshing the counters.
+  // Initializes the |traffic_counter_snapshot_| map to the raw counter values
+  // received from patchpanel.
   mockable void InitializeTrafficCounterSnapshot(
-      const std::vector<patchpanel::Client::TrafficCounter>& counters);
-  // Increment the current_traffic_counters_ map by the difference between the
-  // counter values and the traffic_counter_snapshot_ values, and then update
-  // the snapshots as well in one atomic step.
+      const std::vector<patchpanel::Client::TrafficCounter>& raw_counters);
+  // Increment the |current_traffic_counters_| map by the difference between the
+  // raw counter values received from patchpanel and the
+  // traffic_counter_snapshot_ values, and then update the snapshots as well in
+  // one atomic step.
   mockable void RefreshTrafficCounters(
-      const std::vector<patchpanel::Client::TrafficCounter>& counters);
-  // Requests traffic counters from patchpanel and returns the result in
-  // |callback|.
+      const std::vector<patchpanel::Client::TrafficCounter>& raw_counters);
+  // Requests raw traffic counters for from patchpanel for the Network currently
+  // attached to this service and returns the result in |callback|.
   mockable void RequestTrafficCounters(
       ResultVariantDictionariesCallback callback);
   // Resets traffic counters for |this|.
@@ -802,6 +803,11 @@ class Service : public base::RefCounted<Service> {
   // dnsproxy. This property is available on Service of all technologies, but
   // should only be used in WiFi.
   bool enable_rfc_8925() const { return enable_rfc_8925_; }
+
+  // Get the storage key for current traffic counters corresponding
+  // to |source| and |suffix| (one of kStorageTrafficCounterSuffixes).
+  static std::string GetCurrentTrafficCounterKey(
+      patchpanel::Client::TrafficSource source, std::string suffix);
 
   // Gets a weak ptr to this object.
   base::WeakPtr<Service> AsWeakPtr() { return weak_ptr_factory_.GetWeakPtr(); }
@@ -997,7 +1003,6 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, IsNotMeteredByDefault);
   FRIEND_TEST(ServiceTest, Load);
-  FRIEND_TEST(ServiceTest, LoadTrafficCounters);
   FRIEND_TEST(ServiceTest, MeteredOverride);
   FRIEND_TEST(ServiceTest, NetworkValidationMode);
   FRIEND_TEST(ServiceTest, Save);
@@ -1103,16 +1108,17 @@ class Service : public base::RefCounted<Service> {
   // authentication) for comparison.
   uint16_t SecurityLevel();
 
-  // Get the storage key for current traffic counters corresponding
-  // to |source| and |suffix| (one of kStorageTrafficCounterSuffixes).
-  static std::string GetCurrentTrafficCounterKey(
-      patchpanel::Client::TrafficSource source, std::string suffix);
+  // Converts the current traffic counter |current_traffic_counters_| into a
+  // DBus dictionary and invoke |callback| with that dictionary.
+  void GetTrafficCounters(ResultVariantDictionariesCallback callback);
 
-  // Refreshes and processes the traffic counters using |counters| and returns
-  // the result through |callback|.
+  // Refreshes and processes the persisted traffic counters of this Service
+  // using the raw |raw_counters| received from patchpanel for the Network
+  // attached to this Service and returns the current persisted traffic counters
+  // through |callback|.
   void RequestTrafficCountersCallback(
       ResultVariantDictionariesCallback callback,
-      const std::vector<patchpanel::Client::TrafficCounter>& counters);
+      const std::vector<patchpanel::Client::TrafficCounter>& raw_counters);
 
   // Invokes |static_ipconfig_changed_callback_| to notify the listener of the
   // change of static IP config.

@@ -798,6 +798,9 @@ bool Service::Load(const StoreInterface* storage) {
                        GetCurrentTrafficCounterKey(
                            source, kStorageTrafficCounterTxPacketsSuffix),
                        &counters.tx_packets);
+    if (counters.rx_bytes == 0 && counters.tx_bytes == 0) {
+      continue;
+    }
     current_traffic_counters_[source] = counters;
   }
 
@@ -1159,6 +1162,9 @@ void Service::AttachNetwork(base::WeakPtr<Network> network) {
       &Service::EmitIPConfigPropertyChange, weak_ptr_factory_.GetWeakPtr()));
   attached_network_->OnStaticIPConfigChanged(static_ip_parameters_.config());
   attached_network_->RegisterEventHandler(network_event_handler_.get());
+  attached_network_->RequestTrafficCounters(
+      base::BindOnce(&Service::InitializeTrafficCounterSnapshot,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Service::DetachNetwork() {
@@ -1166,6 +1172,9 @@ void Service::DetachNetwork() {
     LOG(ERROR) << log_name() << ": no Network to detach";
     return;
   }
+  // Schedule a final traffic counter refresh.
+  attached_network_->RequestTrafficCounters(base::BindOnce(
+      &Service::RefreshTrafficCounters, weak_ptr_factory_.GetWeakPtr()));
   // Clear the handler and static IP config registered on the previous
   // Network.
   attached_network_->UnregisterEventHandler(network_event_handler_.get());
@@ -1686,18 +1695,19 @@ bool Service::IsMeteredByServiceProperties() const {
 }
 
 void Service::InitializeTrafficCounterSnapshot(
-    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
+    const std::vector<patchpanel::Client::TrafficCounter>& raw_counters) {
   traffic_counter_snapshot_.clear();
-  for (const auto& counter : counters) {
+  for (const auto& counter : raw_counters) {
     traffic_counter_snapshot_[counter.source] += counter.traffic;
   }
 }
 
 void Service::RefreshTrafficCounters(
-    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
-  // 1: Group all counters by source over all other dimensions (IP family, ...).
+    const std::vector<patchpanel::Client::TrafficCounter>& raw_counters) {
+  // 1: Group all raw counters by source over all other dimensions (IP family,
+  // ...).
   TrafficCounterMap new_snapshot;
-  for (const auto& counter : counters) {
+  for (const auto& counter : raw_counters) {
     new_snapshot[counter.source] += counter.traffic;
   }
 
@@ -1734,10 +1744,7 @@ void Service::RefreshTrafficCounters(
   SaveToProfile();
 }
 
-void Service::RequestTrafficCountersCallback(
-    ResultVariantDictionariesCallback callback,
-    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
-  RefreshTrafficCounters(counters);
+void Service::GetTrafficCounters(ResultVariantDictionariesCallback callback) {
   std::vector<brillo::VariantDictionary> traffic_counters;
   for (const auto& [source, traffic] : current_traffic_counters_) {
     brillo::VariantDictionary dict;
@@ -1750,35 +1757,37 @@ void Service::RequestTrafficCountersCallback(
   std::move(callback).Run(Error(Error::kSuccess), std::move(traffic_counters));
 }
 
+void Service::RequestTrafficCountersCallback(
+    ResultVariantDictionariesCallback callback,
+    const std::vector<patchpanel::Client::TrafficCounter>& raw_counters) {
+  RefreshTrafficCounters(raw_counters);
+  GetTrafficCounters(std::move(callback));
+}
+
 void Service::RequestTrafficCounters(
     ResultVariantDictionariesCallback callback) {
-  DeviceRefPtr device = manager_->FindDeviceFromService(this);
-  if (!device) {
-    Error error;
-    Error::PopulateAndLog(
-        FROM_HERE, &error, Error::kOperationFailed,
-        "Failed to find device from service: " + GetRpcIdentifier().value());
-    std::move(callback).Run(error, std::vector<brillo::VariantDictionary>());
+  LOG(INFO) << __func__ << ": " << log_name();
+
+  // When the Service has no attached Network, reply with the current traffic
+  // counters.
+  if (!attached_network_) {
+    LOG(INFO) << __func__
+              << ": no attached network, pass the current counters directly";
+    GetTrafficCounters(std::move(callback));
     return;
   }
 
-  std::set<std::string> devices{device->link_name()};
-  patchpanel::Client* client = manager_->patchpanel_client();
-  if (!client) {
-    Error error;
-    Error::PopulateAndLog(FROM_HERE, &error, Error::kOperationFailed,
-                          "Failed to get patchpanel client");
-    std::move(callback).Run(error, std::vector<brillo::VariantDictionary>());
-    return;
-  }
-
-  client->GetTrafficCounters(
-      devices,
+  // Otherwise update the raw traffic counter snapshot and reply with the
+  // refreshed traffic counters. This only takes into account the main Network
+  // of this Service. Any technology specific Service with additional secondary
+  // Networks must query traffic counters for these networks separately.
+  attached_network_->RequestTrafficCounters(
       base::BindOnce(&Service::RequestTrafficCountersCallback,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void Service::ResetTrafficCounters(Error* /*error*/) {
+  LOG(INFO) << __func__ << ": " << log_name();
   current_traffic_counters_.clear();
   traffic_counter_reset_time_ = base::Time::Now();
   SaveToProfile();

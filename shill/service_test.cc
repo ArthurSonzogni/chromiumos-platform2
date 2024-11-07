@@ -78,6 +78,7 @@ using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::Test;
 using testing::Values;
+using testing::WithArgs;
 
 namespace {
 const char kConnectDisconnectReason[] = "RPC";
@@ -450,34 +451,59 @@ class ServiceWithOnEapCredentialsChangedOverride : public ServiceUnderTest {
 
 TEST_F(ServiceTest, LoadTrafficCounters) {
   FakeStore storage;
-  const uint64_t kUserRxBytes = 1234;
-  const uint64_t kChromeTxPackets = 9876;
-  patchpanel::Client::TrafficVector kUserCounters = {.rx_bytes = kUserRxBytes,
-                                                     .tx_bytes = 0,
-                                                     .rx_packets = 0,
-                                                     .tx_packets = 0};
-  patchpanel::Client::TrafficVector kChromeCounters = {
-      .rx_bytes = 0,
-      .tx_bytes = 0,
-      .rx_packets = 0,
-      .tx_packets = kChromeTxPackets};
+
+  patchpanel::Client::TrafficVector kUserCounters = {
+      .rx_bytes = 1234, .tx_bytes = 3456, .rx_packets = 10, .tx_packets = 20};
   storage.SetUint64(storage_id_,
                     Service::GetCurrentTrafficCounterKey(
                         patchpanel::Client::TrafficSource::kUser,
                         Service::kStorageTrafficCounterRxBytesSuffix),
-                    kUserRxBytes);
+                    1234);
+  storage.SetUint64(storage_id_,
+                    Service::GetCurrentTrafficCounterKey(
+                        patchpanel::Client::TrafficSource::kUser,
+                        Service::kStorageTrafficCounterTxBytesSuffix),
+                    3456);
+  storage.SetUint64(storage_id_,
+                    Service::GetCurrentTrafficCounterKey(
+                        patchpanel::Client::TrafficSource::kUser,
+                        Service::kStorageTrafficCounterRxPacketsSuffix),
+                    10);
+  storage.SetUint64(storage_id_,
+                    Service::GetCurrentTrafficCounterKey(
+                        patchpanel::Client::TrafficSource::kUser,
+                        Service::kStorageTrafficCounterTxPacketsSuffix),
+                    20);
+
+  patchpanel::Client::TrafficVector kChromeCounters = {
+      .rx_bytes = 567, .tx_bytes = 975, .rx_packets = 20, .tx_packets = 90};
+  storage.SetUint64(storage_id_,
+                    Service::GetCurrentTrafficCounterKey(
+                        patchpanel::Client::TrafficSource::kChrome,
+                        Service::kStorageTrafficCounterRxBytesSuffix),
+                    567);
+  storage.SetUint64(storage_id_,
+                    Service::GetCurrentTrafficCounterKey(
+                        patchpanel::Client::TrafficSource::kChrome,
+                        Service::kStorageTrafficCounterTxBytesSuffix),
+                    975);
+  storage.SetUint64(storage_id_,
+                    Service::GetCurrentTrafficCounterKey(
+                        patchpanel::Client::TrafficSource::kChrome,
+                        Service::kStorageTrafficCounterRxPacketsSuffix),
+                    20);
   storage.SetUint64(storage_id_,
                     Service::GetCurrentTrafficCounterKey(
                         patchpanel::Client::TrafficSource::kChrome,
                         Service::kStorageTrafficCounterTxPacketsSuffix),
-                    kChromeTxPackets);
+                    90);
+
   EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_EQ(service_->current_traffic_counters()
-                [patchpanel::Client::TrafficSource::kUser],
-            kUserCounters);
-  EXPECT_EQ(service_->current_traffic_counters()
-                [patchpanel::Client::TrafficSource::kChrome],
-            kChromeCounters);
+  EXPECT_EQ(2, service_->current_traffic_counters().size());
+  EXPECT_EQ(kUserCounters, service_->current_traffic_counters()
+                               [patchpanel::Client::TrafficSource::kUser]);
+  EXPECT_EQ(kChromeCounters, service_->current_traffic_counters()
+                                 [patchpanel::Client::TrafficSource::kChrome]);
 }
 
 TEST_F(ServiceTest, Load) {
@@ -2785,42 +2811,192 @@ TEST_F(ServiceTest, TrafficCountersRefreshWithSameSource) {
             chrome_counters_diff);
 }
 
-TEST_F(ServiceTest, RequestTrafficCounters) {
+TEST_F(ServiceTest, RequestTrafficCountersWithAttachedNetwork) {
   auto source0 = patchpanel::Client::TrafficSource::kChrome;
   auto source1 = patchpanel::Client::TrafficSource::kUser;
+  auto source2 = patchpanel::Client::TrafficSource::kArc;
 
-  patchpanel::Client::TrafficVector init_counter_arr0 = {0, 0, 0, 0};
-  patchpanel::Client::TrafficVector init_counter_arr1 = {0, 0, 0, 0};
-  patchpanel::Client::TrafficCounter init_counter0 =
-      CreateCounter(init_counter_arr0, source0, kIfName);
-  patchpanel::Client::TrafficCounter init_counter1 =
-      CreateCounter(init_counter_arr1, source1, kIfName);
+  // Initial counter snapshot
+  patchpanel::Client::TrafficVector init_counter_arr0 = {200, 410, 5, 8};
+  patchpanel::Client::TrafficVector init_counter_arr1 = {1432, 3451, 7, 10};
+  std::vector<patchpanel::Client::TrafficCounter> init_counters{
+      CreateCounter(init_counter_arr0, source0, kIfName),
+      CreateCounter(init_counter_arr1, source1, kIfName),
+  };
+  auto network = std::make_unique<MockNetwork>(1, kIfName, Technology::kWiFi);
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>(
+          [&](patchpanel::Client::GetTrafficCountersCallback callback) {
+            std::move(callback).Run(init_counters);
+          }));
 
-  service_->InitializeTrafficCounterSnapshot({init_counter0, init_counter1});
+  service_->AttachNetwork(network->AsWeakPtr());
+  Mock::VerifyAndClearExpectations(network.get());
 
+  // Traffic counter snapshot at the time of the next request.
   patchpanel::Client::TrafficVector counter_arr0 = {
-      .rx_bytes = 12, .tx_bytes = 34, .rx_packets = 56, .tx_packets = 78};
+      .rx_bytes = 212, .tx_bytes = 434, .rx_packets = 6, .tx_packets = 10};
   patchpanel::Client::TrafficVector counter_arr1 = {
-      .rx_bytes = 90, .tx_bytes = 87, .rx_packets = 65, .tx_packets = 43};
-  patchpanel::Client::TrafficCounter counter0 =
-      CreateCounter(counter_arr0, source0, kIfName);
-  patchpanel::Client::TrafficCounter counter1 =
-      CreateCounter(counter_arr1, source1, kIfName);
+      .rx_bytes = 1856, .tx_bytes = 5612, .rx_packets = 15, .tx_packets = 12};
+  patchpanel::Client::TrafficVector counter_arr2 = {
+      .rx_bytes = 1123, .tx_bytes = 2390, .rx_packets = 10, .tx_packets = 8};
+  std::vector<patchpanel::Client::TrafficCounter> counters{
+      CreateCounter(counter_arr0, source0, kIfName),
+      CreateCounter(counter_arr1, source1, kIfName),
+      CreateCounter(counter_arr2, source2, kIfName),
+  };
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>(
+          [&](patchpanel::Client::GetTrafficCountersCallback callback) {
+            std::move(callback).Run(counters);
+          }));
 
-  std::vector<patchpanel::Client::TrafficCounter> counters{counter0, counter1};
+  bool successfully_requested_traffic_counters = false;
+  std::vector<brillo::VariantDictionary> actual_traffic_counters;
+  service_->RequestTrafficCounters(base::BindOnce(
+      [](bool* success, std::vector<brillo::VariantDictionary>* output,
+         const Error& error,
+         const std::vector<brillo::VariantDictionary>& input) {
+        *success = error.IsSuccess();
+        output->assign(input.begin(), input.end());
+      },
+      &successfully_requested_traffic_counters, &actual_traffic_counters));
 
-  auto client = std::make_unique<patchpanel::FakeClient>();
-  patchpanel::FakeClient* patchpanel_client = client.get();
-  mock_manager_.set_patchpanel_client_for_testing(std::move(client));
+  // Expect to see the delta of the later snapshot minus the initial snapshot
+  EXPECT_TRUE(successfully_requested_traffic_counters);
+  for (const auto& dict : actual_traffic_counters) {
+    EXPECT_EQ(3, dict.size());
+    EXPECT_TRUE(base::Contains(dict, "source"));
+    EXPECT_TRUE(base::Contains(dict, "rx_bytes"));
+    EXPECT_TRUE(base::Contains(dict, "tx_bytes"));
 
-  patchpanel_client->set_stored_traffic_counters(counters);
+    if (dict.at("source").TryGet<std::string>() == "CHROME") {
+      EXPECT_EQ(12, dict.at("rx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(24, dict.at("tx_bytes").TryGet<uint64_t>());
+      continue;
+    }
 
-  scoped_refptr<MockDevice> mock_device = new MockDevice(
-      &mock_manager_, kIfName,
-      net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05), 0);
-  mock_device->set_selected_service_for_testing(service_);
-  ON_CALL(mock_manager_, FindDeviceFromService(_))
-      .WillByDefault(Return(mock_device));
+    if (dict.at("source").TryGet<std::string>() == "USER") {
+      EXPECT_EQ(424, dict.at("rx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(2161, dict.at("tx_bytes").TryGet<uint64_t>());
+      continue;
+    }
+
+    if (dict.at("source").TryGet<std::string>() == "ARC") {
+      EXPECT_EQ(1123, dict.at("rx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(2390, dict.at("tx_bytes").TryGet<uint64_t>());
+      continue;
+    }
+
+    FAIL() << "Unxpected source " << dict.at("source").TryGet<std::string>();
+  }
+}
+
+TEST_F(ServiceTest, RequestTrafficCountersAfterDetachingNetwork) {
+  auto source0 = patchpanel::Client::TrafficSource::kChrome;
+  auto source1 = patchpanel::Client::TrafficSource::kUser;
+  auto source2 = patchpanel::Client::TrafficSource::kArc;
+
+  // Initial counter snapshot
+  patchpanel::Client::TrafficVector init_counter_arr0 = {200, 410, 5, 8};
+  patchpanel::Client::TrafficVector init_counter_arr1 = {1432, 3451, 7, 10};
+  std::vector<patchpanel::Client::TrafficCounter> init_counters{
+      CreateCounter(init_counter_arr0, source0, kIfName),
+      CreateCounter(init_counter_arr1, source1, kIfName),
+  };
+  auto network = std::make_unique<MockNetwork>(1, kIfName, Technology::kWiFi);
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>(
+          [&](patchpanel::Client::GetTrafficCountersCallback callback) {
+            std::move(callback).Run(init_counters);
+          }));
+
+  service_->AttachNetwork(network->AsWeakPtr());
+  Mock::VerifyAndClearExpectations(network.get());
+
+  // Final traffic counter snapshot.
+  patchpanel::Client::TrafficVector final_counter_arr0 = {
+      .rx_bytes = 212, .tx_bytes = 434, .rx_packets = 6, .tx_packets = 10};
+  patchpanel::Client::TrafficVector final_counter_arr1 = {
+      .rx_bytes = 1856, .tx_bytes = 5612, .rx_packets = 15, .tx_packets = 12};
+  patchpanel::Client::TrafficVector final_counter_arr2 = {
+      .rx_bytes = 1123, .tx_bytes = 2390, .rx_packets = 10, .tx_packets = 8};
+  std::vector<patchpanel::Client::TrafficCounter> counters{
+      CreateCounter(final_counter_arr0, source0, kIfName),
+      CreateCounter(final_counter_arr1, source1, kIfName),
+      CreateCounter(final_counter_arr2, source2, kIfName),
+  };
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>(
+          [&](patchpanel::Client::GetTrafficCountersCallback callback) {
+            std::move(callback).Run(counters);
+          }));
+
+  service_->DetachNetwork();
+  Mock::VerifyAndClearExpectations(network.get());
+
+  EXPECT_CALL(*network, RequestTrafficCounters).Times(0);
+  bool successfully_requested_traffic_counters = false;
+  std::vector<brillo::VariantDictionary> actual_traffic_counters;
+  service_->RequestTrafficCounters(base::BindOnce(
+      [](bool* success, std::vector<brillo::VariantDictionary>* output,
+         const Error& error,
+         const std::vector<brillo::VariantDictionary>& input) {
+        *success = error.IsSuccess();
+        output->assign(input.begin(), input.end());
+      },
+      &successfully_requested_traffic_counters, &actual_traffic_counters));
+
+  // Expect to see the delta of the final snapshot minus the initial snapshot
+  EXPECT_TRUE(successfully_requested_traffic_counters);
+  for (const auto& dict : actual_traffic_counters) {
+    EXPECT_EQ(3, dict.size());
+    EXPECT_TRUE(base::Contains(dict, "source"));
+    EXPECT_TRUE(base::Contains(dict, "rx_bytes"));
+    EXPECT_TRUE(base::Contains(dict, "tx_bytes"));
+
+    if (dict.at("source").TryGet<std::string>() == "CHROME") {
+      EXPECT_EQ(12, dict.at("rx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(24, dict.at("tx_bytes").TryGet<uint64_t>());
+      continue;
+    }
+
+    if (dict.at("source").TryGet<std::string>() == "USER") {
+      EXPECT_EQ(424, dict.at("rx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(2161, dict.at("tx_bytes").TryGet<uint64_t>());
+      continue;
+    }
+
+    if (dict.at("source").TryGet<std::string>() == "ARC") {
+      EXPECT_EQ(1123, dict.at("rx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(2390, dict.at("tx_bytes").TryGet<uint64_t>());
+      continue;
+    }
+
+    FAIL() << "Unxpected source " << dict.at("source").TryGet<std::string>();
+  }
+}
+
+TEST_F(ServiceTest, RequestTrafficCountersWithoutAttachedNetwork) {
+  auto chromeRxBytesStorageKey = Service::GetCurrentTrafficCounterKey(
+      patchpanel::Client::TrafficSource::kChrome,
+      Service::kStorageTrafficCounterRxBytesSuffix);
+  auto chromeTxBytesStorageKey = Service::GetCurrentTrafficCounterKey(
+      patchpanel::Client::TrafficSource::kChrome,
+      Service::kStorageTrafficCounterTxBytesSuffix);
+  auto userRxBytesStorageKey = Service::GetCurrentTrafficCounterKey(
+      patchpanel::Client::TrafficSource::kUser,
+      Service::kStorageTrafficCounterRxBytesSuffix);
+  auto userTxBytesStorageKey = Service::GetCurrentTrafficCounterKey(
+      patchpanel::Client::TrafficSource::kUser,
+      Service::kStorageTrafficCounterTxBytesSuffix);
+
+  FakeStore storage;
+  storage.SetUint64(storage_id_, chromeRxBytesStorageKey, 48926);
+  storage.SetUint64(storage_id_, chromeTxBytesStorageKey, 9324);
+  storage.SetUint64(storage_id_, userRxBytesStorageKey, 4532);
+  storage.SetUint64(storage_id_, userTxBytesStorageKey, 1234);
+  EXPECT_TRUE(service_->Load(&storage));
 
   bool successfully_requested_traffic_counters = false;
   std::vector<brillo::VariantDictionary> actual_traffic_counters;
@@ -2834,6 +3010,7 @@ TEST_F(ServiceTest, RequestTrafficCounters) {
       &successfully_requested_traffic_counters, &actual_traffic_counters));
 
   EXPECT_TRUE(successfully_requested_traffic_counters);
+  EXPECT_EQ(2, actual_traffic_counters.size());
   for (const auto& dict : actual_traffic_counters) {
     EXPECT_EQ(3, dict.size());
     EXPECT_TRUE(base::Contains(dict, "source"));
@@ -2841,14 +3018,14 @@ TEST_F(ServiceTest, RequestTrafficCounters) {
     EXPECT_TRUE(base::Contains(dict, "tx_bytes"));
 
     if (dict.at("source").TryGet<std::string>() == "CHROME") {
-      EXPECT_EQ(12, dict.at("rx_bytes").TryGet<uint64_t>());
-      EXPECT_EQ(34, dict.at("tx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(48926, dict.at("rx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(9324, dict.at("tx_bytes").TryGet<uint64_t>());
       continue;
     }
 
     if (dict.at("source").TryGet<std::string>() == "USER") {
-      EXPECT_EQ(90, dict.at("rx_bytes").TryGet<uint64_t>());
-      EXPECT_EQ(87, dict.at("tx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(4532, dict.at("rx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(1234, dict.at("tx_bytes").TryGet<uint64_t>());
       continue;
     }
 
