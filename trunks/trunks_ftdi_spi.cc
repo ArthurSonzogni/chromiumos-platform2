@@ -54,8 +54,9 @@ struct SpiFrameHeader {
 };
 
 TrunksFtdiSpi::~TrunksFtdiSpi() {
-  if (mpsse_)
+  if (mpsse_) {
     Close(mpsse_);
+  }
 
   mpsse_ = NULL;
 }
@@ -82,8 +83,9 @@ void TrunksFtdiSpi::StartTransaction(bool read_write,
   header.body[0] = (read_write ? 0x80 : 0) | 0x40 | (bytes - 1);
 
   // The rest of the frame header is the internal address in the TPM
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 3; i++) {
     header.body[i + 1] = (addr >> (8 * (2 - i))) & 0xff;
+  }
 
   Start(mpsse_);
 
@@ -112,8 +114,9 @@ void TrunksFtdiSpi::StartTransaction(bool read_write,
 bool TrunksFtdiSpi::FtdiWriteReg(unsigned reg_number,
                                  size_t bytes,
                                  const void* buffer) {
-  if (!mpsse_)
+  if (!mpsse_) {
     return false;
+  }
 
   StartTransaction(false, bytes, reg_number + locality_ * 0x10000);
   Write(mpsse_, buffer, bytes);
@@ -126,13 +129,15 @@ bool TrunksFtdiSpi::FtdiReadReg(unsigned reg_number,
                                 void* buffer) {
   unsigned char* value;
 
-  if (!mpsse_)
+  if (!mpsse_) {
     return false;
+  }
 
   StartTransaction(true, bytes, reg_number + locality_ * 0x10000);
   value = Read(mpsse_, bytes);
-  if (buffer)
+  if (buffer) {
     memcpy(buffer, value, bytes);
+  }
   free(value);
   Stop(mpsse_);
   return true;
@@ -149,12 +154,14 @@ bool TrunksFtdiSpi::Init() {
   uint32_t did_vid, status;
   uint8_t cmd;
 
-  if (mpsse_)
+  if (mpsse_) {
     return true;
+  }
 
   mpsse_ = MPSSE(SPI0, ONE_MHZ, MSB);
-  if (!mpsse_)
+  if (!mpsse_) {
     return false;
+  }
 
   // Reset the TPM using GPIOL0, issue a 100 ms long pulse.
   PinLow(mpsse_, GPIOL0);
@@ -256,8 +263,9 @@ std::string TrunksFtdiSpi::SendCommandAndWait(const std::string& command) {
   WriteTpmSts(tpmGo);
 
   expected_status_bits = stsValid | dataAvail;
-  if (!WaitForStatus(expected_status_bits, expected_status_bits))
+  if (!WaitForStatus(expected_status_bits, expected_status_bits)) {
     return rv;
+  }
 
   // The response is ready, let's read it.
   // First we read the FIFO payload header, to see how much data to expect.

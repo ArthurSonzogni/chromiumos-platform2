@@ -301,7 +301,7 @@ class CommandFlowTest : public testing::Test {
   }
 
   base::test::TaskEnvironment task_environment_{
-          base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
+      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
 
   TPM_RC response_code_;
   std::string signature_;

@@ -43,35 +43,40 @@ TPM_RC Tpm::SerializeCommand_PolicyFidoSigned(
   std::string command_code_bytes;
 
   rc = Serialize_TPM_CC(command_code, &command_code_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   // Serialize handles
   std::string auth_object_bytes;
 
   rc = Serialize_TPMI_DH_OBJECT(auth_object, &auth_object_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   std::string policy_session_bytes;
 
   rc = Serialize_TPMI_SH_POLICY(policy_session, &policy_session_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   // Serialize Command parameters
   std::string auth_data_size_bytes;
 
   rc = Serialize_UINT16(auth_data.size(), &auth_data_size_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   std::string auth_data_bytes;
 
   for (const char& ch : auth_data) {
     rc = Serialize_BYTE(ch, &auth_data_bytes);
-    if (rc != TPM_RC_SUCCESS)
+    if (rc != TPM_RC_SUCCESS) {
       return rc;
+    }
   }
 
   // auth_data_descr is an array of tuples of (UINT16, UINT16).
@@ -81,31 +86,36 @@ TPM_RC Tpm::SerializeCommand_PolicyFidoSigned(
   UINT16 auth_data_descr_count = auth_data_descr.size();
 
   rc = Serialize_UINT16(auth_data_descr_count, &auth_data_descr_count_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   std::string auth_data_descr_bytes;
 
   for (const auto& descr : auth_data_descr) {
     rc = Serialize_UINT16(descr.offset, &auth_data_descr_bytes);
-    if (rc != TPM_RC_SUCCESS)
+    if (rc != TPM_RC_SUCCESS) {
       return rc;
+    }
 
     rc = Serialize_UINT16(descr.size, &auth_data_descr_bytes);
-    if (rc != TPM_RC_SUCCESS)
+    if (rc != TPM_RC_SUCCESS) {
       return rc;
+    }
   }
 
   std::string auth_bytes;
 
   rc = Serialize_TPMT_SIGNATURE(auth, &auth_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   if (authorization_delegate) {
     // Encrypt just the auth_data, not the auth_data_size.
-    if (!authorization_delegate->EncryptCommandParameter(&auth_data_bytes))
+    if (!authorization_delegate->EncryptCommandParameter(&auth_data_bytes)) {
       return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
   }
 
   // Get a hash and construct a command by concatenation parts
@@ -158,16 +168,18 @@ TPM_RC Tpm::SerializeCommand_PolicyFidoSigned(
     if (!authorization_delegate->GetCommandAuthorization(
             command_hash, is_command_parameter_encryption_possible,
             is_response_parameter_encryption_possible,
-            &authorization_section_bytes))
+            &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
+    }
 
     if (!authorization_section_bytes.empty()) {
       tag = TPM_ST_SESSIONS;
 
       rc = Serialize_UINT32(authorization_section_bytes.size(),
                             &authorization_size_bytes);
-      if (rc != TPM_RC_SUCCESS)
+      if (rc != TPM_RC_SUCCESS) {
         return rc;
+      }
 
       command_size +=
           authorization_size_bytes.size() + authorization_section_bytes.size();
@@ -178,14 +190,16 @@ TPM_RC Tpm::SerializeCommand_PolicyFidoSigned(
   std::string tag_bytes;
 
   rc = Serialize_TPMI_ST_COMMAND_TAG(tag, &tag_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   std::string command_size_bytes;
 
   rc = Serialize_UINT32(command_size, &command_size_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   *serialized_command = tag_bytes + command_size_bytes + command_code_bytes +
                         handle_section_bytes + authorization_size_bytes +
@@ -209,33 +223,39 @@ TPM_RC Tpm::ParseResponse_PolicyFidoSigned(
   std::string tag_bytes;
 
   rc = Parse_TPM_ST(&buffer, &tag, &tag_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   UINT32 response_size;
   std::string response_size_bytes;
 
   rc = Parse_UINT32(&buffer, &response_size, &response_size_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   TPM_RC response_code;
   std::string response_code_bytes;
 
   rc = Parse_TPM_RC(&buffer, &response_code, &response_code_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
-  if (response_size != response.size())
+  }
+  if (response_size != response.size()) {
     return TPM_RC_SIZE;
-  if (response_code != TPM_RC_SUCCESS)
+  }
+  if (response_code != TPM_RC_SUCCESS) {
     return response_code;
+  }
 
   TPM_CC command_code = TPM_CCE_PolicyFidoSigned;
   std::string command_code_bytes;
 
   rc = Serialize_TPM_CC(command_code, &command_code_bytes);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   std::string authorization_section_bytes;
 
@@ -243,10 +263,12 @@ TPM_RC Tpm::ParseResponse_PolicyFidoSigned(
     UINT32 parameter_section_size = buffer.size();
 
     rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
-    if (rc != TPM_RC_SUCCESS)
+    if (rc != TPM_RC_SUCCESS) {
       return rc;
-    if (parameter_section_size > buffer.size())
+    }
+    if (parameter_section_size > buffer.size()) {
       return TPM_RC_INSUFFICIENT;
+    }
 
     authorization_section_bytes = buffer.substr(parameter_section_size);
     // Keep the parameter section in |buffer|.
@@ -260,11 +282,13 @@ TPM_RC Tpm::ParseResponse_PolicyFidoSigned(
   std::string response_hash(32, 0);
   hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
-    if (!authorization_delegate)
+    if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
+    }
     if (!authorization_delegate->CheckResponseAuthorization(
-            response_hash, authorization_section_bytes))
+            response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
+    }
   }
 
   return TPM_RC_SUCCESS;

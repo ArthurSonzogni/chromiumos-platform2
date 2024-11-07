@@ -261,14 +261,17 @@ TPM_RC TpmUtilityImpl::CheckState() {
     return result;
   }
 
-  if (tpm_state->IsPlatformHierarchyEnabled())
+  if (tpm_state->IsPlatformHierarchyEnabled()) {
     LOG(WARNING) << __func__ << ": Platform Hierarchy Enabled!";
+  }
 
-  if (!tpm_state->IsStorageHierarchyEnabled())
+  if (!tpm_state->IsStorageHierarchyEnabled()) {
     LOG(WARNING) << __func__ << ": Storage Hierarchy Disabled!";
+  }
 
-  if (!tpm_state->IsEndorsementHierarchyEnabled())
+  if (!tpm_state->IsEndorsementHierarchyEnabled()) {
     LOG(WARNING) << __func__ << ": Endorsement Hierarchy Disabled!";
+  }
 
   LOG(INFO) << __func__ << ": TPM State verified.";
   return TPM_RC_SUCCESS;
@@ -900,8 +903,9 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
   TPMT_SIGNATURE signature_out;
 
   // Default scheme is TPM_ALG_RSASSA
-  if (scheme == TPM_ALG_NULL)
+  if (scheme == TPM_ALG_NULL) {
     scheme = TPM_ALG_RSASSA;
+  }
 
   result = RawSign(key_handle, scheme, hash_alg, plaintext, generate_hash,
                    delegate, &signature_out);
@@ -3472,18 +3476,21 @@ int base32_decode(uint8_t* dest,
   for (; *src; src++) {
     int sym, sbits, dbits, b;
 
-    if (isspace(*src) || *src == '-')
+    if (isspace(*src) || *src == '-') {
       continue;
+    }
 
     sym = decode_sym(*src);
-    if (sym < 0)
+    if (sym < 0) {
       return -1; /* Bad input symbol */
+    }
 
     /* Check CRC if needed */
     if (crc_after_every) {
       if (crc_count == crc_after_every) {
-        if (crc != sym)
+        if (crc != sym) {
           return -1;
+        }
         crc_count = crc = 0;
         continue;
       } else {
@@ -3496,19 +3503,22 @@ int base32_decode(uint8_t* dest,
      * Stop if we're out of space. Have to do this after checking
      * the CRC, or we might not check the last CRC.
      */
-    if (out_bits >= destlen_bits)
+    if (out_bits >= destlen_bits) {
       break;
+    }
 
     /* See how many bits we get to use from this symbol */
     sbits = std::min(5, destlen_bits - out_bits);
-    if (sbits < 5)
+    if (sbits < 5) {
       sym >>= (5 - sbits);
+    }
 
     /* Fill up the rest of the current byte */
     dbits = 8 - (out_bits & 7);
     b = std::min(dbits, sbits);
-    if (dbits == 8)
+    if (dbits == 8) {
       dest[out_bits / 8] = 0; /* Starting a new byte */
+    }
     dest[out_bits / 8] |= (sym << (dbits - b)) >> (sbits - b);
     out_bits += b;
     sbits -= b;
@@ -3521,8 +3531,9 @@ int base32_decode(uint8_t* dest,
   }
 
   /* If we have CRCs, should have a full group */
-  if (crc_after_every && crc_count)
+  if (crc_after_every && crc_count) {
     return -1;
+  }
 
   return out_bits;
 }
@@ -3556,8 +3567,9 @@ TPM_RC TpmUtilityImpl::GetRsuDeviceIdInternal(std::string* device_id) {
 
 TPM_RC TpmUtilityImpl::GetRsuDeviceId(std::string* device_id) {
   TPM_RC result = TPM_RC_SUCCESS;
-  if (cached_rsu_device_id_.empty())
+  if (cached_rsu_device_id_.empty()) {
     result = GetRsuDeviceIdInternal(&cached_rsu_device_id_);
+  }
   *device_id = cached_rsu_device_id_;
   return result;
 }
@@ -3616,24 +3628,29 @@ TPM_RC TpmUtilityImpl::GetTi50Stats(Ti50Stats* stats) {
   CHECK(stats);
   std::string res;
   TPM_RC result = GscVendorCommand(kTi50GetMetrics, std::string(), &res);
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->fs_init_time, nullptr);
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->fs_size, nullptr);
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->aprov_time, nullptr);
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->aprov_status, nullptr);
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->misc_status, nullptr);
   // If the response ends here, we got the original version of the struct. Set
@@ -3642,8 +3659,9 @@ TPM_RC TpmUtilityImpl::GetTi50Stats(Ti50Stats* stats) {
     stats->version = 0;
     return TPM_RC_SUCCESS;
   }
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->version, nullptr);
   // If the response ends here, we got version 1 of the struct. Set version 1
@@ -3652,24 +3670,29 @@ TPM_RC TpmUtilityImpl::GetTi50Stats(Ti50Stats* stats) {
     stats->version = 1;
     return TPM_RC_SUCCESS;
   }
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->filesystem_busy_count, nullptr);
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->crypto_busy_count, nullptr);
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->dispatcher_busy_count, nullptr);
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->timeslices_expired, nullptr);
-  if (result != TPM_RC_SUCCESS)
+  if (result != TPM_RC_SUCCESS) {
     return result;
+  }
 
   result = Parse_UINT32(&res, &stats->crypto_init_time, nullptr);
 

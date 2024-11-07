@@ -34,8 +34,9 @@ int raw_read(struct mpsse_context* mpsse, uint8_t* buf, int size) {
   if (mpsse->mode) {
     while (n < size) {
       r = ftdi_read_data(&mpsse->ftdi, buf, size);
-      if (r < 0)
+      if (r < 0) {
         break;
+      }
       n += r;
     }
 

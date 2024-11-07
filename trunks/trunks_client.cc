@@ -297,8 +297,9 @@ char* TpmPropertyToStr(uint32_t value) {
   int shift = 24;
   for (; i < 4; i++, shift -= 8) {
     c = static_cast<char>((value >> shift) & 0xFF);
-    if (c == 0)
+    if (c == 0) {
       break;
+    }
     str[i] = (c >= 32 && c < 127) ? c : ' ';
   }
   str[i] = 0;

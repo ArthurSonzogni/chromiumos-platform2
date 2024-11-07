@@ -207,8 +207,9 @@ bool HmacAuthorizationDelegate::DecryptResponseParameter(
 }
 
 bool HmacAuthorizationDelegate::GetTpmNonce(std::string* nonce) {
-  if (!tpm_nonce_.size)
+  if (!tpm_nonce_.size) {
     return false;
+  }
   nonce->assign(tpm_nonce_.buffer, tpm_nonce_.buffer + tpm_nonce_.size);
   return true;
 }

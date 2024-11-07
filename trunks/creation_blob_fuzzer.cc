@@ -19,8 +19,9 @@ struct Environment {
 };
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  if (size < 1)
+  if (size < 1) {
     return 0;
+  }
   static Environment env;
   static trunks::BlobParser blob_parser;
 
@@ -30,8 +31,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   trunks::TPM2B_DIGEST creation_hash;
   trunks::TPMT_TK_CREATION creation_ticket;
   if (!blob_parser.ParseCreationBlob(creation_blob, &creation_data,
-                                     &creation_hash, &creation_ticket))
+                                     &creation_hash, &creation_ticket)) {
     return 0;  // Quit early on failure to avoid serializing unitialized data.
+  }
 
   // Serialize.
   std::string serialized;

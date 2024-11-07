@@ -116,8 +116,9 @@ struct mpsse_context* OpenIndex(int vid,
   struct mpsse_context* mpsse = NULL;
 
   mpsse = malloc(sizeof(struct mpsse_context));
-  if (!mpsse)
+  if (!mpsse) {
     return NULL;
+  }
 
   memset(mpsse, 0, sizeof(struct mpsse_context));
 
@@ -143,10 +144,11 @@ struct mpsse_context* OpenIndex(int vid,
     mpsse->endianess = endianess;
 
     /* Set the appropriate transfer size for the requested protocol */
-    if (mpsse->mode == I2C)
+    if (mpsse->mode == I2C) {
       mpsse->xsize = I2C_TRANSFER_SIZE;
-    else
+    } else {
       mpsse->xsize = SPI_RW_SIZE;
+    }
 
     status |= ftdi_usb_reset(&mpsse->ftdi);
     status |= ftdi_set_latency_timer(&mpsse->ftdi, LATENCY_MS);
@@ -180,8 +182,9 @@ struct mpsse_context* OpenIndex(int vid,
       } else {
         /* Skip the setup functions if we're just operating in BITBANG mode
          */
-        if (!ftdi_set_bitmode(&mpsse->ftdi, 0xFF, BITMODE_BITBANG))
+        if (!ftdi_set_bitmode(&mpsse->ftdi, 0xFF, BITMODE_BITBANG)) {
           mpsse->opened = 1;
+        }
       }
     }
   }
@@ -203,8 +206,9 @@ struct mpsse_context* OpenIndex(int vid,
  * Returns void.
  */
 void Close(struct mpsse_context* mpsse) {
-  if (!mpsse)
+  if (!mpsse) {
     return;
+  }
 
   if (mpsse->opened) {
     /* Shut these down only if initialization succeeded before. */

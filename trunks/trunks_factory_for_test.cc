@@ -952,8 +952,9 @@ TrunksFactoryForTest::GetPasswordAuthorization(
     const std::string& password) const {
   // The `password` parameter is not used since we don't really check the
   // content of delegate in unit tests.
-  if (used_password_)
+  if (used_password_) {
     used_password_->push_back(password);
+  }
   return std::make_unique<AuthorizationDelegateForwarder>(
       password_authorization_delegate_);
 }

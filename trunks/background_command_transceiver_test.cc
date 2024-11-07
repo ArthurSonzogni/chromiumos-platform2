@@ -64,7 +64,7 @@ class BackgroundTransceiverTest : public testing::Test {
 
  protected:
   base::test::TaskEnvironment task_environment_{
-    base::test::TaskEnvironment::MainThreadType::IO};
+      base::test::TaskEnvironment::MainThreadType::IO};
   base::Thread test_thread_;
   MockCommandTransceiver next_transceiver_;
 };

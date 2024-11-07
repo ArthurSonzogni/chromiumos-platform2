@@ -148,10 +148,11 @@ static uint32_t VendorCommand(TrunksDBusProxy* proxy,
   struct TpmCmdHeader header;
   header.tag = base::HostToNet16(trunks::TPM_ST_NO_SESSIONS);
   header.size = base::HostToNet32(sizeof(header) + input.size());
-  if (extendedCommandMode)
+  if (extendedCommandMode) {
     header.code = base::HostToNet32(CR50_EXTENSION_COMMAND);
-  else
+  } else {
     header.code = base::HostToNet32(TPM_CC_VENDOR_BIT | TPM_CC_VENDOR_CR50);
+  }
   header.subcommand_code = base::HostToNet16(cc);
 
   std::string command(reinterpret_cast<char*>(&header), sizeof(header));
@@ -370,10 +371,12 @@ static bool SetupConnection(TrunksDBusProxy* proxy, FirstResponsePdu* rpdu) {
 //
 static bool ImageIsNewer(const EssentialHeader& header,
                          const SignedHeaderVersion& shv) {
-  if (header.epoch != shv.epoch)
+  if (header.epoch != shv.epoch) {
     return header.epoch > shv.epoch;
-  if (header.major != shv.major)
+  }
+  if (header.major != shv.major) {
     return header.major > shv.major;
+  }
   return header.minor > shv.minor;
 }
 
@@ -543,8 +546,9 @@ static int VcGetLock(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   std::string out;
   uint32_t rc = VendorCommand(proxy, VENDOR_CC_GET_LOCK, out, &out);
 
-  if (!rc)
+  if (!rc) {
     printf("lock is %s\n", out[0] ? "enabled" : "disabled");
+  }
 
   return rc != 0;
 }
@@ -554,8 +558,9 @@ static int VcSetLock(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   std::string out;
   uint32_t rc = VendorCommand(proxy, VENDOR_CC_SET_LOCK, out, &out);
 
-  if (!rc)
+  if (!rc) {
     printf("lock is enabled\n");
+  }
 
   return rc != 0;
 }
@@ -564,10 +569,11 @@ static const char* key_type(uint32_t key_id) {
   // It is a mere convention, but all prod keys are required to have key
   // IDs such that bit D2 is set, and all dev keys are required to have
   // key IDs such that bit D2 is not set.
-  if (key_id & (1 << 2))
+  if (key_id & (1 << 2)) {
     return "prod";
-  else
+  } else {
     return "dev";
+  }
 }
 
 // SysInfo command:
@@ -584,8 +590,9 @@ static int VcSysInfo(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   std::string out;
   uint32_t rc = VendorCommand(proxy, VENDOR_CC_SYSINFO, out, &out);
 
-  if (rc)
+  if (rc) {
     return 1;
+  }
 
   if (out.size() != sizeof(struct sysinfo_s)) {
     LOG(ERROR) << "Wrong TPM response size.";
@@ -624,8 +631,9 @@ static int VcPopLogEntry(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   base::Time ts;
   base::Time::Exploded ts_exploded;
 
-  if (rc)
+  if (rc) {
     return 1;
+  }
 
   if (out.size() == 0) {
     LOG(INFO) << "No log entry available.";
@@ -675,16 +683,18 @@ static int SendU2fApdu(TrunksDBusProxy* proxy,
   apdu.p1 = p1;
   apdu.p2 = p2;
   // Record the size of the payload, only supports small sizes < 256 bytes.
-  if (payload.size() > 255)
+  if (payload.size() > 255) {
     return -EINVAL;
+  }
   apdu.lc = payload.size();
 
   std::string request =
       std::string(reinterpret_cast<char*>(&apdu), sizeof(apdu)) + payload;
   uint32_t rc = VendorCommand(proxy, VENDOR_CC_U2F_APDU, request, &out);
   if (!rc) {
-    if (out.length() < sizeof(uint16_t))
+    if (out.length() < sizeof(uint16_t)) {
       return -EINVAL;
+    }
     // The status word is stored in the last 2 bytes.
     size_t sw_off = out.length() - sizeof(uint16_t);
     uint16_t sw;
@@ -712,10 +722,11 @@ static int VcU2fCert(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   int sw = SendU2fApdu(proxy, kCmdU2fVendorMode, kSetMode, kU2fExtended,
                        std::string(), &resp);
   if (sw < 0) {
-    if ((-sw & VENDOR_RC_MASK) == VENDOR_RC_NO_SUCH_COMMAND)
+    if ((-sw & VENDOR_RC_MASK) == VENDOR_RC_NO_SUCH_COMMAND) {
       LOG(ERROR) << "U2F Feature not available in firmware.";
-    else
+    } else {
       LOG(ERROR) << "U2F vendor command failed with error " << std::hex << -sw;
+    }
     return 1;
   } else if (sw != kSwNoError) {
     LOG(ERROR) << "Set U2F Mode failed SW=" << std::hex << sw;
@@ -849,26 +860,33 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if (cl->HasSwitch(kRaw))
+  if (cl->HasSwitch(kRaw)) {
     return HandleRaw(&proxy, cl);
+  }
 
-  if (cl->HasSwitch(kGetLock))
+  if (cl->HasSwitch(kGetLock)) {
     return VcGetLock(&proxy, cl);
+  }
 
-  if (cl->HasSwitch(kPopLogEntry))
+  if (cl->HasSwitch(kPopLogEntry)) {
     return VcPopLogEntry(&proxy, cl);
+  }
 
-  if (cl->HasSwitch(kSetLock))
+  if (cl->HasSwitch(kSetLock)) {
     return VcSetLock(&proxy, cl);
+  }
 
-  if (cl->HasSwitch(kSysInfo))
+  if (cl->HasSwitch(kSysInfo)) {
     return VcSysInfo(&proxy, cl);
+  }
 
-  if (cl->HasSwitch(kU2fCert))
+  if (cl->HasSwitch(kU2fCert)) {
     return VcU2fCert(&proxy, cl);
+  }
 
-  if (cl->HasSwitch(kUpdate))
+  if (cl->HasSwitch(kUpdate)) {
     return HandleUpdate(&proxy, cl);
+  }
 
   PrintUsage();
   return 1;

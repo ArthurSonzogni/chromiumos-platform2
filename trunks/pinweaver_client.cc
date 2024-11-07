@@ -327,23 +327,27 @@ int HandleInsert(base::CommandLine::StringVector::const_iterator begin,
     label = std::stoul(begin[0]);
 
     std::vector<uint8_t> bytes;
-    if (!base::HexStringToBytes(begin[1], &bytes))
+    if (!base::HexStringToBytes(begin[1], &bytes)) {
       return EXIT_FAILURE;
+    }
     h_aux.assign(bytes.begin(), bytes.end());
 
     bytes.clear();
-    if (!base::HexStringToBytes(begin[2], &bytes))
+    if (!base::HexStringToBytes(begin[2], &bytes)) {
       return EXIT_FAILURE;
+    }
     le_secret.assign(bytes.begin(), bytes.end());
 
     bytes.clear();
-    if (!base::HexStringToBytes(begin[3], &bytes))
+    if (!base::HexStringToBytes(begin[3], &bytes)) {
       return EXIT_FAILURE;
+    }
     he_secret.assign(bytes.begin(), bytes.end());
 
     bytes.clear();
-    if (!base::HexStringToBytes(begin[4], &bytes))
+    if (!base::HexStringToBytes(begin[4], &bytes)) {
       return EXIT_FAILURE;
+    }
     reset_secret.assign(bytes.begin(), bytes.end());
 
     begin += 5;
@@ -385,13 +389,15 @@ int HandleRemove(base::CommandLine::StringVector::const_iterator begin,
   uint64_t label = std::stoul(begin[0]);
 
   std::vector<uint8_t> bytes;
-  if (!base::HexStringToBytes(begin[1], &bytes))
+  if (!base::HexStringToBytes(begin[1], &bytes)) {
     return EXIT_FAILURE;
+  }
   std::string h_aux(bytes.begin(), bytes.end());
 
   bytes.clear();
-  if (!base::HexStringToBytes(begin[2], &bytes))
+  if (!base::HexStringToBytes(begin[2], &bytes)) {
     return EXIT_FAILURE;
+  }
   std::string mac(bytes.begin(), bytes.end());
 
   uint32_t result_code = 0;
@@ -421,18 +427,21 @@ int HandleAuth(base::CommandLine::StringVector::const_iterator begin,
     return EXIT_FAILURE;
   } else {
     std::vector<uint8_t> bytes;
-    if (!base::HexStringToBytes(begin[0], &bytes))
+    if (!base::HexStringToBytes(begin[0], &bytes)) {
       return EXIT_FAILURE;
+    }
     h_aux.assign(bytes.begin(), bytes.end());
 
     bytes.clear();
-    if (!base::HexStringToBytes(begin[1], &bytes))
+    if (!base::HexStringToBytes(begin[1], &bytes)) {
       return EXIT_FAILURE;
+    }
     le_secret.assign(bytes.begin(), bytes.end());
 
     bytes.clear();
-    if (!base::HexStringToBytes(begin[2], &bytes))
+    if (!base::HexStringToBytes(begin[2], &bytes)) {
       return EXIT_FAILURE;
+    }
     cred_metadata.assign(bytes.begin(), bytes.end());
   }
 
@@ -474,18 +483,21 @@ int HandleResetLeaf(base::CommandLine::StringVector::const_iterator begin,
     return EXIT_FAILURE;
   } else {
     std::vector<uint8_t> bytes;
-    if (!base::HexStringToBytes(begin[0], &bytes))
+    if (!base::HexStringToBytes(begin[0], &bytes)) {
       return EXIT_FAILURE;
+    }
     h_aux.assign(bytes.begin(), bytes.end());
 
     bytes.clear();
-    if (!base::HexStringToBytes(begin[1], &bytes))
+    if (!base::HexStringToBytes(begin[1], &bytes)) {
       return EXIT_FAILURE;
+    }
     reset_secret.assign(bytes.begin(), bytes.end());
 
     bytes.clear();
-    if (!base::HexStringToBytes(begin[2], &bytes))
+    if (!base::HexStringToBytes(begin[2], &bytes)) {
       return EXIT_FAILURE;
+    }
     cred_metadata.assign(bytes.begin(), bytes.end());
   }
 
@@ -521,8 +533,9 @@ int HandleGetLog(base::CommandLine::StringVector::const_iterator begin,
     root.assign(static_cast<size_t>(SHA256_DIGEST_SIZE), '\0');
   } else {
     std::vector<uint8_t> bytes;
-    if (!base::HexStringToBytes(begin[0], &bytes))
+    if (!base::HexStringToBytes(begin[0], &bytes)) {
       return EXIT_FAILURE;
+    }
     root.assign(bytes.begin(), bytes.end());
   }
 
@@ -580,18 +593,21 @@ int HandleReplay(base::CommandLine::StringVector::const_iterator begin,
     return EXIT_FAILURE;
   } else {
     std::vector<uint8_t> bytes;
-    if (!base::HexStringToBytes(begin[0], &bytes))
+    if (!base::HexStringToBytes(begin[0], &bytes)) {
       return EXIT_FAILURE;
+    }
     h_aux.assign(bytes.begin(), bytes.end());
 
     bytes.clear();
-    if (!base::HexStringToBytes(begin[1], &bytes))
+    if (!base::HexStringToBytes(begin[1], &bytes)) {
       return EXIT_FAILURE;
+    }
     log_root.assign(bytes.begin(), bytes.end());
 
     bytes.clear();
-    if (!base::HexStringToBytes(begin[2], &bytes))
+    if (!base::HexStringToBytes(begin[2], &bytes)) {
       return EXIT_FAILURE;
+    }
     cred_metadata.assign(bytes.begin(), bytes.end());
   }
 
@@ -638,8 +654,9 @@ int HandleGenerateBiometricsAuthPk(
 
     bytes.clear();
     if (!base::HexStringToBytes(begin[2], &bytes) ||
-        bytes.size() != trunks::PinWeaverEccPointSize)
+        bytes.size() != trunks::PinWeaverEccPointSize) {
       return EXIT_FAILURE;
+    }
     memcpy(client_pt.y, bytes.data(), bytes.size());
   }
 

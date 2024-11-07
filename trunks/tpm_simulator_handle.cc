@@ -88,8 +88,9 @@ void TpmSimulatorHandle::InitializeSimulator() {
     TPM_Manufacture(TRUE);
     // TODO(b/132145000): Verify if the second call to _TPM_Init() is necessary.
     _TPM_Init();
-    if (!tpm_endorse())
+    if (!tpm_endorse()) {
       LOG(ERROR) << __func__ << " Failed to endorse TPM with a fixed key.";
+    }
   }
 
   // Send TPM2_Startup(TPM_SU_CLEAR), ignore the result. This is normally done

@@ -105,7 +105,7 @@ TEST_F(ScopedGlobalHmacSessionTest, HmacSessionFailureExisting) {
     }
   }
 }
-#else  // TRUNKS_USE_PER_OP_SESSIONS
+#else   // TRUNKS_USE_PER_OP_SESSIONS
 TEST_F(ScopedGlobalHmacSessionTest, HmacSessionNew) {
   for (bool salted : {true, false}) {
     for (bool enable_encryption : {true, false}) {

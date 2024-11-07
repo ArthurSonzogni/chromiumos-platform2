@@ -35,8 +35,9 @@ TPM_RC Parse_unimported_leaf_data_t(std::string::const_iterator begin,
                                     std::string* cred_metadata,
                                     std::string* mac) {
   auto size = end - begin;
-  if (size < sizeof(unimported_leaf_data_t))
+  if (size < sizeof(unimported_leaf_data_t)) {
     return SAPI_RC_BAD_SIZE;
+  }
 
   const struct unimported_leaf_data_t* unimported_leaf_data =
       reinterpret_cast<const struct unimported_leaf_data_t*>(&*begin);
@@ -46,8 +47,9 @@ TPM_RC Parse_unimported_leaf_data_t(std::string::const_iterator begin,
     return SAPI_RC_BAD_SIZE;
   }
 
-  if (cred_metadata)
+  if (cred_metadata) {
     cred_metadata->assign(begin, end);
+  }
   if (mac) {
     mac->assign(
         unimported_leaf_data->hmac,
@@ -133,8 +135,9 @@ TPM_RC Serialize_pw_insert_leaf_t(
     for (const ValidPcrValue& value : valid_pcr_criteria.valid_pcr_values()) {
       data.valid_pcr_criteria[x].bitmask[0] = value.bitmask()[0];
       data.valid_pcr_criteria[x].bitmask[1] = value.bitmask()[1];
-      if (value.digest().size() > sizeof(data.valid_pcr_criteria[0].digest))
+      if (value.digest().size() > sizeof(data.valid_pcr_criteria[0].digest)) {
         return SAPI_RC_BAD_PARAMETER;
+      }
       std::copy(value.digest().begin(), value.digest().end(),
                 data.valid_pcr_criteria[x].digest);
       ++x;
@@ -398,8 +401,9 @@ TPM_RC Parse_pw_response_header_t(const std::string& buffer,
                                   std::string* root_hash,
                                   uint16_t* data_length) {
   *result_code = 0;
-  if (root_hash)
+  if (root_hash) {
     root_hash->clear();
+  }
   *data_length = 0;
 
   if (buffer.empty()) {
@@ -422,8 +426,9 @@ TPM_RC Parse_pw_response_header_t(const std::string& buffer,
   const struct pw_response_header_t* header =
       reinterpret_cast<const struct pw_response_header_t*>(buffer.data());
   *result_code = le32toh(header->result_code);
-  if (root_hash)
+  if (root_hash) {
     root_hash->assign(header->root, header->root + sizeof(header->root));
+  }
   *data_length = le16toh(header->data_length);
 
   if (buffer.size() != sizeof(struct pw_response_header_t) + *data_length) {
@@ -442,8 +447,9 @@ TPM_RC Parse_pw_short_message(const std::string& buffer,
   uint16_t data_length;
   TPM_RC rc =
       Parse_pw_response_header_t(buffer, result_code, root_hash, &data_length);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   if (data_length != 0) {
     LOG(ERROR) << "Pinweaver error contained an unexpected number of bytes.";
@@ -456,11 +462,13 @@ TPM_RC Parse_pw_short_message(const std::string& buffer,
 TPM_RC Parse_pw_pong_t(const std::string& buffer, uint8_t* protocol_version) {
   uint32_t result_code;
   TPM_RC rc = Parse_pw_short_message(buffer, &result_code, nullptr);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
   if (result_code != PW_ERR_TYPE_INVALID &&
-      result_code != PW_ERR_VERSION_MISMATCH)
+      result_code != PW_ERR_VERSION_MISMATCH) {
     return SAPI_RC_ABI_MISMATCH;
+  }
   *protocol_version = (uint8_t)buffer[0];
   return TPM_RC_SUCCESS;
 }
@@ -476,8 +484,9 @@ TPM_RC Parse_pw_insert_leaf_t(const std::string& buffer,
   uint16_t response_length;
   TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
                                          &response_length);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   if (*result_code != 0) {
     return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
@@ -505,8 +514,9 @@ TPM_RC Parse_pw_try_auth_t(const std::string& buffer,
   uint16_t response_length;
   TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
                                          &response_length);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   // For EC_SUCCESS, PW_ERR_RATE_LIMIT_REACHED, PW_ERR_LOWENT_AUTH_FAILED, and
   // PW_ERR_EXPIRED a full size response is sent. However, only particular
@@ -517,12 +527,14 @@ TPM_RC Parse_pw_try_auth_t(const std::string& buffer,
     return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
   }
 
-  if (response_length < sizeof(pw_response_try_auth01_t))
+  if (response_length < sizeof(pw_response_try_auth01_t)) {
     return SAPI_RC_BAD_SIZE;
+  }
 
   // For PW_ERR_EXPIRED, no fields from the response are valid.
-  if (*result_code == PW_ERR_EXPIRED)
+  if (*result_code == PW_ERR_EXPIRED) {
     return TPM_RC_SUCCESS;
+  }
 
   auto itr = buffer.begin() + sizeof(pw_response_header_t);
   // This field may not be aligned so it is retrieved in a way that will work
@@ -549,8 +561,9 @@ TPM_RC Parse_pw_try_auth_t(const std::string& buffer,
 
   // For PW_ERR_RATE_LIMIT_REACHED the only valid result field is
   // seconds_to_wait.
-  if (*result_code == PW_ERR_RATE_LIMIT_REACHED)
+  if (*result_code == PW_ERR_RATE_LIMIT_REACHED) {
     return TPM_RC_SUCCESS;
+  }
 
   return Parse_unimported_leaf_data_t(itr, buffer.end(), cred_metadata_out,
                                       mac_out);
@@ -567,8 +580,9 @@ TPM_RC Parse_pw_reset_auth_t(const std::string& buffer,
   uint16_t response_length;
   TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
                                          &response_length);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   if (*result_code != 0) {
     return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
@@ -609,15 +623,17 @@ TPM_RC Parse_pw_get_log_t(const std::string& buffer,
   uint16_t response_length;
   TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
                                          &response_length);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   if (*result_code != 0) {
     return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
   }
 
-  if (response_length % sizeof(struct pw_get_log_entry_t) != 0)
+  if (response_length % sizeof(struct pw_get_log_entry_t) != 0) {
     return SAPI_RC_BAD_SIZE;
+  }
 
   log->resize(response_length / sizeof(struct pw_get_log_entry_t));
   TPM_RC ret = TPM_RC_SUCCESS;
@@ -668,15 +684,17 @@ TPM_RC Parse_pw_log_replay_t(const std::string& buffer,
   uint16_t response_length;
   TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
                                          &response_length);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   if (*result_code != 0) {
     return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
   }
 
-  if (response_length < sizeof(struct pw_response_reset_auth00_t))
+  if (response_length < sizeof(struct pw_response_reset_auth00_t)) {
     return SAPI_RC_BAD_SIZE;
+  }
 
   auto itr = buffer.begin() + sizeof(struct pw_response_header_t);
 
@@ -695,15 +713,17 @@ TPM_RC Parse_pw_sys_info_t(const std::string& buffer,
   uint16_t response_length;
   TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
                                          &response_length);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   if (*result_code != 0) {
     return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
   }
 
-  if (response_length < sizeof(struct pw_response_sys_info02_t))
+  if (response_length < sizeof(struct pw_response_sys_info02_t)) {
     return SAPI_RC_BAD_SIZE;
+  }
 
   auto payload =
       base::as_byte_span(buffer).subspan(sizeof(struct pw_response_header_t));
@@ -721,20 +741,23 @@ TPM_RC Parse_pw_generate_ba_pk_t(const std::string& buffer,
   uint16_t response_length;
   TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
                                          &response_length);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   if (*result_code != 0) {
     return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
   }
 
-  if (response_length < sizeof(struct pw_response_generate_ba_pk02_t))
+  if (response_length < sizeof(struct pw_response_generate_ba_pk02_t)) {
     return SAPI_RC_BAD_SIZE;
+  }
 
   const auto* pbk = reinterpret_cast<const struct pw_ba_pbk_t*>(
       buffer.data() + sizeof(struct pw_response_header_t));
-  if (pbk->version != 0)
+  if (pbk->version != 0) {
     return SAPI_RC_BAD_SEQUENCE;
+  }
 
   memcpy(server_public_key->x, pbk->pt.x, PW_BA_ECC_CORD_SIZE);
   memcpy(server_public_key->y, pbk->pt.y, PW_BA_ECC_CORD_SIZE);
@@ -760,8 +783,9 @@ Parse_pw_start_bio_auth_t(const std::string& buffer,
   uint16_t response_length;
   TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
                                          &response_length);
-  if (rc != TPM_RC_SUCCESS)
+  if (rc != TPM_RC_SUCCESS) {
     return rc;
+  }
 
   // For EC_SUCCESS and PW_ERR_LOWENT_AUTH_FAILED a full size response is sent.
   // However, only particular fields are valid.
@@ -769,8 +793,9 @@ Parse_pw_start_bio_auth_t(const std::string& buffer,
     return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
   }
 
-  if (response_length < sizeof(pw_response_start_bio_auth02_t))
+  if (response_length < sizeof(pw_response_start_bio_auth02_t)) {
     return SAPI_RC_BAD_SIZE;
+  }
 
   auto itr = buffer.begin() + sizeof(pw_response_header_t);
 

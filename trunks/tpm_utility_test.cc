@@ -245,8 +245,9 @@ class NVTpmUtilityTest : public TpmUtilityTest {
 
   TPM_RC GetNVRAMMap(uint32_t index, TPMS_NV_PUBLIC* public_area) const {
     auto it = utility_.nvram_public_area_map_.find(index);
-    if (it == utility_.nvram_public_area_map_.end())
+    if (it == utility_.nvram_public_area_map_.end()) {
       return TPM_RC_FAILURE;
+    }
     *public_area = it->second;
     return TPM_RC_SUCCESS;
   }

@@ -57,7 +57,7 @@ class ScopedGlobalHmacSession {
  private:
   std::unique_ptr<HmacSession>* target_session_;
 };
-#else  // TRUNKS_USE_PER_OP_SESSIONS
+#else   // TRUNKS_USE_PER_OP_SESSIONS
 class ScopedGlobalHmacSession {
  public:
   ScopedGlobalHmacSession(const TrunksFactory* /* factory */,
