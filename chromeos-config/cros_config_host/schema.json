@@ -3812,6 +3812,19 @@
                 "description": "ChromeOS flash name mappings used by ap_wpsr.",
                 "type": "object"
               },
+              "swap": {
+                "additionalProperties": false,
+                "description": "ChromeOS swap settings.",
+                "properties": {
+                  "size-multiplier": {
+                    "description": "The size of zram swap as a multiplier of the physical memory.",
+                    "maximum": 2.0,
+                    "minimum": 0.0,
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
               "test-label": {
                 "description": "Test alias (model) label that will be applied in Autotest and reported for test results.",
                 "type": "string"

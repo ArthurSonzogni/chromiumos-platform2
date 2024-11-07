@@ -505,6 +505,7 @@ In the tables below,
 | schedqos | [schedqos](#schedqos) |  | False |  | False | ChromeOS scheduler QoS settings. |
 | scheduler-tune | [scheduler-tune](#scheduler_tune) |  | False |  | False | ChromeOS scheduler's tunable values. |
 | spi-flash-transform | [spi-flash-transform](#spi_flash_transform) |  | False |  | False | ChromeOS flash name mappings used by ap_wpsr. |
+| swap | [swap](#swap) |  | False |  | False | ChromeOS swap settings. |
 | test-label | string |  | False |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | thermal | [thermal](#thermal) |  | False |  | False |  |
 | touch | [touch](#touch) |  | False |  | False |  |
@@ -2531,6 +2532,11 @@ In the tables below,
 ### spi-flash-transform
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### swap
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| size-multiplier | number |  | False |  | False | The size of zram swap as a multiplier of the physical memory. |
 
 ### thermal
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

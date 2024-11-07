@@ -2986,6 +2986,18 @@ def _build_scheduler_tune(config):
     return result
 
 
+def _build_swap_config(config):
+    """Build the swap management configuration."""
+    if not config.program.platform.HasField("swap_config"):
+        return None
+
+    swap = config.program.platform.swap_config
+    result = {}
+    _upsert(swap.size_multiplier, result, "size-multiplier")
+
+    return result
+
+
 def _build_thermal_config(config, dptf_map):
     if not dptf_map:
         return None
@@ -3191,6 +3203,7 @@ def _transform_build_config(config, config_files, custom_label):
     _upsert(
         _build_thermal_config(config, config_files.dptf_map), result, "thermal"
     )
+    _upsert(_build_swap_config(config), result, "swap")
     if config_files.camera_map:
         camera_file = config_files.camera_map.get(config.hw_design.name, {})
         _upsert(camera_file, result, "camera")

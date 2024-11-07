@@ -1803,6 +1803,17 @@ properties:
               description: ChromeOS scheduler QoS settings.
               properties:
                 default: *schedqos_config
+            swap:
+              type: object
+              description: ChromeOS swap settings.
+              properties:
+                size-multiplier:
+                  type: number
+                  description: The size of zram swap as a multiplier of the
+                    physical memory.
+                  minimum: 0.0
+                  maximum: 2.0
+              additionalProperties: false
             branding:
               type: object
               description: Contains branding characteristics for this model.

@@ -380,6 +380,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "typecd": {
           "mode-entry-dp-only": true
         },
@@ -716,6 +719,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-enabled-features": [
@@ -1058,6 +1064,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-enabled-features": [
@@ -1512,6 +1521,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -1834,6 +1846,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-enabled-features": [
@@ -2164,6 +2179,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-disabled-features": [
@@ -2530,6 +2548,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -2868,6 +2889,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
@@ -3186,6 +3210,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
@@ -3533,6 +3560,9 @@
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -3847,6 +3877,9 @@
         },
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-disabled-features": [
@@ -4172,6 +4205,9 @@
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -4486,6 +4522,9 @@
         },
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-disabled-features": [
@@ -4807,6 +4846,9 @@
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -5126,6 +5168,9 @@
         },
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-disabled-features": [
@@ -5452,6 +5497,9 @@
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -5767,6 +5815,9 @@
         },
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-disabled-features": [
@@ -6093,6 +6144,9 @@
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -6408,6 +6462,9 @@
         },
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-disabled-features": [
@@ -6730,6 +6787,9 @@
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -7051,6 +7111,9 @@
         "spi-flash-transform": {
           "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -7365,6 +7428,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-enabled-features": [
@@ -7688,6 +7754,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
@@ -8009,6 +8078,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-enabled-features": [
@@ -8332,6 +8404,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
@@ -8644,6 +8719,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-enabled-features": [
             "CloudGamingDevice",
@@ -8937,6 +9015,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
@@ -9224,6 +9305,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "swap": {
+          "size-multiplier": 1.5
+        },
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
@@ -9510,6 +9594,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "swap": {
+          "size-multiplier": 1.5
         },
         "ui": {
           "ash-enabled-features": [
