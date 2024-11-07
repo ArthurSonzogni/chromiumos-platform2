@@ -32,7 +32,7 @@ TEST(KeyBlobsTest, UssCredentialSecretDerivation) {
   const KeyBlobs key_blobs = GetFakeKeyBlobs();
   const auto uss_credential_secret = key_blobs.DeriveUssCredentialSecret();
   ASSERT_THAT(uss_credential_secret, IsOk());
-  EXPECT_FALSE(uss_credential_secret.value().empty());
+  EXPECT_FALSE(uss_credential_secret->empty());
 }
 
 // Test that `DeriveUssCredentialSecret()` returns the same result for the same
