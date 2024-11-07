@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <brillo/brillo_export.h>
@@ -120,6 +121,32 @@ BRILLO_EXPORT bool SyncFileOrDirectory(const base::FilePath& path,
                                        bool is_directory,
                                        bool data_sync);
 
+// Atomically writes the entirety of the given `data` to `path` with `mode`
+// permissions (modulo umask).  If missing, parent (and parent of parent etc.)
+// directories are created with 0700 permissions (modulo umask).
+// The created file is owned by the user/group specified with uid/gid
+// respectively, if set. CAP_CHOWN is required for this. (Practically
+// CAP_FOWNER is also required in many cases).
+// Returns true if the file has been written successfully and it has physically
+// hit the disk.  Returns false if either writing the file has failed or if it
+// cannot be guaranteed that it has hit the disk.
+//
+// Parameters
+//   path - Path of the file to write
+//   data - data to be written.
+//   mode - File permission bit-pattern, eg. 0644 for rw-r--r--
+//   options - (optional) specify uid/gid of user/group to own the created
+//             file.
+struct WriteFileOptions {
+  std::optional<uid_t> uid;
+  std::optional<gid_t> gid;
+};
+BRILLO_EXPORT bool WriteFileAtomically(const base::FilePath&,
+                                       base::span<const uint8_t> data,
+                                       mode_t mode,
+                                       WriteFileOptions options = {});
+
+// DEPRECATED: please use WriteFileAtomically.
 // Atomically writes the entirety of the given data to |path| with |mode|
 // permissions (modulo umask).  If missing, parent (and parent of parent etc.)
 // directories are created with 0700 permissions (modulo umask).  Returns true
@@ -132,10 +159,15 @@ BRILLO_EXPORT bool SyncFileOrDirectory(const base::FilePath& path,
 //   blob/data - blob/array to populate from
 //   (size - array size)
 //   mode - File permission bit-pattern, eg. 0644 for rw-r--r--
-BRILLO_EXPORT bool WriteToFileAtomic(const base::FilePath& path,
-                                     const char* data,
-                                     size_t size,
-                                     mode_t mode);
+inline bool WriteToFileAtomic(const base::FilePath& path,
+                              const char* data,
+                              size_t size,
+                              mode_t mode) {
+  return WriteFileAtomically(
+      path,
+      base::span<const uint8_t>(reinterpret_cast<const uint8_t*>(data), size),
+      mode);
+}
 template <class T>
 BRILLO_EXPORT bool WriteBlobToFileAtomic(const base::FilePath& path,
                                          const T& blob,

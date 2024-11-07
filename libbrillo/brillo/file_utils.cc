@@ -233,6 +233,14 @@ base::ScopedFD OpenSafelyInternal(int parent_fd,
   return OpenPathComponentInternal(parent_fd, *itr, flags, mode);
 }
 
+// Provides operator<< for std::optional<T> where T supports it for LOG(...)
+// macro use.
+template <typename T>
+  requires requires(std::ostream os, T value) { os << value; }
+std::ostream& operator<<(std::ostream& os, const std::optional<T>& v) {
+  return v ? (os << v.value()) : (os << "(nullopt)");
+}
+
 }  // namespace
 
 bool TouchFile(const base::FilePath& path,
@@ -446,10 +454,10 @@ bool SyncFileOrDirectory(const base::FilePath& path,
   return true;
 }
 
-bool WriteToFileAtomic(const base::FilePath& path,
-                       const char* data,
-                       size_t size,
-                       mode_t mode) {
+bool WriteFileAtomically(const base::FilePath& path,
+                         base::span<const uint8_t> data,
+                         mode_t mode,
+                         WriteFileOptions options) {
   if (!base::DirectoryExists(path.DirName())) {
     if (!base::CreateDirectory(path.DirName())) {
       LOG(ERROR) << "Cannot create directory: " << path.DirName().value();
@@ -470,17 +478,11 @@ bool WriteToFileAtomic(const base::FilePath& path,
     return false;
   }
 
-  size_t position = 0;
-  while (position < size) {
-    ssize_t bytes_written =
-        HANDLE_EINTR(write(fd, data + position, size - position));
-    if (bytes_written < 0) {
-      PLOG(WARNING) << "Could not write " << temp_name;
-      close(fd);
-      unlink(temp_name.c_str());
-      return false;
-    }
-    position += bytes_written;
+  if (!base::WriteFileDescriptor(fd, data)) {
+    PLOG(WARNING) << "Could not write " << temp_name;
+    close(fd);
+    unlink(temp_name.c_str());
+    return false;
   }
 
   if (HANDLE_EINTR(fdatasync(fd)) < 0) {
@@ -488,6 +490,15 @@ bool WriteToFileAtomic(const base::FilePath& path,
     close(fd);
     unlink(temp_name.c_str());
     return false;
+  }
+  if (options.uid || options.gid) {
+    if (fchown(fd, options.uid.value_or(-1), options.gid.value_or(-1)) < 0) {
+      PLOG(WARNING) << "Could not fchown: " << options.uid << ", "
+                    << options.gid;
+      close(fd);
+      unlink(temp_name.c_str());
+      return false;
+    }
   }
   if (close(fd) < 0) {
     PLOG(WARNING) << "Could not close " << temp_name;
