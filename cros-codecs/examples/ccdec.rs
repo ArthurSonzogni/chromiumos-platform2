@@ -251,6 +251,10 @@ struct Args {
     /// frame)
     #[argh(option)]
     compute_md5: Option<Md5Computation>,
+
+    /// path to JSON file containing golden MD5 sums of each frame.
+    #[argh(option)]
+    golden: Option<PathBuf>,
 }
 
 /// Detects the container type (IVF or MKV) and returns the corresponding frame iterator.
@@ -305,6 +309,31 @@ fn main() {
     } else {
         BlockingMode::NonBlocking
     };
+
+    let golden_md5s: Vec<String> = match args.golden {
+        None => vec![],
+        Some(ref path) => {
+            let mut golden_file_content = String::new();
+            File::open(&path)
+                .expect("error opening golden file")
+                .read_to_string(&mut golden_file_content)
+                .expect("error reading golden file");
+            let parsed_json: serde_json::Value = serde_json::from_str(&golden_file_content)
+                .expect("error parsing golden file");
+            match &parsed_json["md5_checksums"] {
+                serde_json::Value::Array(checksums) => {
+                    checksums.iter().map(|x| {
+                        match x {
+                            serde_json::Value::String(checksum) => String::from(checksum),
+                            _ => panic!("error parsing golden file"),
+                        }
+                    }).collect()
+                },
+                _ => panic!("error parsing golden file"),
+            }
+        },
+    };
+    let mut golden_iter = golden_md5s.iter();
 
     let gbm = match args.frame_memory {
         FrameMemoryType::Managed | FrameMemoryType::User => None,
@@ -397,9 +426,15 @@ fn main() {
 
     let mut md5_context = MD5Context::new();
     let mut output_filename_idx = 0;
+    let need_per_frame_md5 = match args.compute_md5 {
+        Some(Md5Computation::Frame) => true,
+        _ => args.golden.is_some(),
+    };
 
     let mut on_new_frame = |handle: DynDecodedHandle<BufferDescriptor>| {
-        if args.output.is_some() || args.compute_md5.is_some() {
+        if args.output.is_some() ||
+           args.compute_md5.is_some() ||
+           args.golden.is_some() {
             handle.sync().unwrap();
             let picture = handle.dyn_picture();
             let mut handle = picture.dyn_mappable_handle().unwrap();
@@ -426,10 +461,20 @@ fn main() {
                     .expect("failed to write to output file");
             }
 
+            let frame_md5: String = if need_per_frame_md5 {
+                md5_digest(&frame_data)
+            } else {
+                "".to_string()
+            };
+
             match args.compute_md5 {
                 None => (),
-                Some(Md5Computation::Frame) => println!("{}", md5_digest(&frame_data)),
+                Some(Md5Computation::Frame) => println!("{}", frame_md5),
                 Some(Md5Computation::Stream) => md5_context.consume(&frame_data),
+            }
+
+            if args.golden.is_some() {
+                assert_eq!(&frame_md5, golden_iter.next().unwrap());
             }
         }
     };
