@@ -199,8 +199,8 @@ class ArcVm final : public VmBaseImpl {
 
   base::TimeDelta CalculateVmmSwapDurationTarget() const;
   void HandleSwapVmEnableRequest(SwapVmCallback callback);
-  void HandleSwapVmForceEnableRequest(SwapVmResponse& response);
-  void HandleSwapVmDisableRequest(SwapVmResponse& response);
+  void HandleSwapVmForceEnableRequest(SuccessFailureResponse& response);
+  void HandleSwapVmDisableRequest(SuccessFailureResponse& response);
   bool DisableVmmSwap(VmmSwapDisableReason reason, bool slow_file_cleanup);
   void OnVmmSwapLowDiskPolicyResult(bool can_enable);
   void ApplyVmmSwapPolicyResult(SwapVmCallback callback,

@@ -914,7 +914,7 @@ impl Methods {
             request.params.push(param.to_string());
         }
 
-        let response: AdjustVmResponse = ProtoMessage::parse_from_bytes(
+        let response: SuccessFailureResponse = ProtoMessage::parse_from_bytes(
             &self
                 .concierge_client()?
                 .adjust_vm(request.write_to_bytes()?)?,
@@ -1654,7 +1654,7 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.name = vm_name.to_owned();
 
-        let response: StopVmResponse = ProtoMessage::parse_from_bytes(
+        let response: SuccessFailureResponse = ProtoMessage::parse_from_bytes(
             &self
                 .concierge_client()?
                 .stop_vm(request.write_to_bytes()?)?,
@@ -2050,7 +2050,7 @@ impl Methods {
         request.vm_name = vm_name.to_owned();
         request.guest_port = port as u32;
 
-        let response: DetachUsbDeviceResponse = ProtoMessage::parse_from_bytes(
+        let response: SuccessFailureResponse = ProtoMessage::parse_from_bytes(
             &self
                 .concierge_client()?
                 .detach_usb_device(request.write_to_bytes()?)?,
@@ -2059,7 +2059,7 @@ impl Methods {
         if response.success {
             Ok(())
         } else {
-            Err(FailedDetachUsb(response.reason).into())
+            Err(FailedDetachUsb(response.failure_reason).into())
         }
     }
 

@@ -181,7 +181,7 @@ void VmBaseImpl::MakeRtVcpu() {
 
 void VmBaseImpl::HandleSwapVmRequest(const SwapVmRequest& request,
                                      SwapVmCallback callback) {
-  SwapVmResponse response;
+  SuccessFailureResponse response;
   response.set_success(false);
   response.set_failure_reason("vmm-swap is not supported on this vm");
   std::move(callback).Run(response);

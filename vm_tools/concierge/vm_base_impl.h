@@ -86,7 +86,8 @@ class VmBaseImpl {
     bool storage_ballooning;
   };
 
-  using SwapVmCallback = base::OnceCallback<void(SwapVmResponse response)>;
+  using SwapVmCallback =
+      base::OnceCallback<void(SuccessFailureResponse response)>;
 
   // Suspends the VM.
   void Suspend() {

@@ -109,7 +109,7 @@ class VmConciergeClientTest : public ::testing::Test {
   void ResolveDetachAsFail(testing::Unused,
                            testing::Unused,
                            dbus::ObjectProxy::ResponseCallback* callback) {
-    vm_tools::concierge::DetachNetDeviceResponse detach_response;
+    vm_tools::concierge::SuccessFailureResponse detach_response;
     detach_response.set_success(false);
     detach_response.set_failure_reason(kMockFailReason);
     std::unique_ptr<dbus::Response> dbus_response =

@@ -60,7 +60,7 @@ bool ReadDetachResponse(dbus::Response* dbus_response) {
     return false;
   }
   dbus::MessageReader reader(dbus_response);
-  vm_tools::concierge::DetachNetDeviceResponse detach_response;
+  vm_tools::concierge::SuccessFailureResponse detach_response;
   if (!reader.PopArrayOfBytesAsProto(&detach_response)) {
     LOG(ERROR) << __func__ << ": response decode failed";
     return false;

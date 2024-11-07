@@ -625,7 +625,7 @@ vm_tools::concierge::DiskImageStatus ArcVm::GetDiskResizeStatus(
 void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
                                 SwapVmCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  SwapVmResponse response;
+  SuccessFailureResponse response;
   switch (request.operation()) {
     case SwapOperation::ENABLE:
       LOG(INFO) << "Enable vmm-swap";
@@ -698,7 +698,7 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
   vmm_swap_usage_policy_.OnEnabled();
 
   if (!pending_swap_vm_callback_.is_null()) {
-    SwapVmResponse response;
+    SuccessFailureResponse response;
     response.set_failure_reason("Previous enable request is being executed");
     std::move(callback).Run(response);
     return;
@@ -775,7 +775,7 @@ void ArcVm::ApplyVmmSwapPolicyResult(SwapVmCallback callback,
 
   vmm_swap_metrics_->ReportPolicyResult(policy_result, !is_vmm_swap_enabled_);
 
-  SwapVmResponse response;
+  SuccessFailureResponse response;
   if (policy_result == VmmSwapPolicyResult::kApprove ||
       (is_vmm_swap_enabled_ && !swap_policy_timer_->IsRunning())) {
     if (!CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath())) {
@@ -822,7 +822,7 @@ void ArcVm::ApplyVmmSwapPolicyResult(SwapVmCallback callback,
   std::move(callback).Run(response);
 }
 
-void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {
+void ArcVm::HandleSwapVmForceEnableRequest(SuccessFailureResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath())) {
     vmm_swap_metrics_->OnVmmSwapEnabled();
@@ -838,7 +838,7 @@ void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {
   }
 }
 
-void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
+void ArcVm::HandleSwapVmDisableRequest(SuccessFailureResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   vmm_swap_usage_policy_.OnDisabled();
   if (DisableVmmSwap(VmmSwapDisableReason::kDisableRequest, true)) {
@@ -863,7 +863,7 @@ bool ArcVm::DisableVmmSwap(VmmSwapDisableReason reason,
   }
   if (!pending_swap_vm_callback_.is_null()) {
     LOG(INFO) << "Cancel pending enable vmm-swap";
-    SwapVmResponse response;
+    SuccessFailureResponse response;
     response.set_failure_reason("Aborted on disable vmm-swap");
     std::move(pending_swap_vm_callback_).Run(response);
   }

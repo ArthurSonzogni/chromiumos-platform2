@@ -919,10 +919,12 @@ class FakeSwapVmCallback {
                           weak_ptr_factory_.GetWeakPtr());
   }
 
-  std::optional<SwapVmResponse> latest_response_;
+  std::optional<SuccessFailureResponse> latest_response_;
 
  private:
-  void Response(SwapVmResponse response) { latest_response_ = response; }
+  void Response(SuccessFailureResponse response) {
+    latest_response_ = response;
+  }
 
   base::WeakPtrFactory<FakeSwapVmCallback> weak_ptr_factory_{this};
 };

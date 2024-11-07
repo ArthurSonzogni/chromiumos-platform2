@@ -736,7 +736,7 @@ void SessionManagerService::MaybeStopArcVm() {
   }
 
   dbus::MessageReader reader(dbus_response.value().get());
-  vm_tools::concierge::StopVmResponse response;
+  vm_tools::concierge::SuccessFailureResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse response";
     return;

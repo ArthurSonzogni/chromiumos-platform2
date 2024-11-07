@@ -33,7 +33,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::AdjustVmResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful, see failure_reason when not.
         </tp:docstring>
@@ -51,7 +51,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::AggressiveBalloonResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
       </arg>
     </method>
     <method name="ArcVmCompleteBoot">
@@ -143,7 +143,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::CancelDiskImageResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful, see failure_reason when not.
         </tp:docstring>
@@ -201,7 +201,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::DetachNetDeviceResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful, see failure_reason when not.
         </tp:docstring>
@@ -218,7 +218,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::DetachUsbDeviceResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful, see reason when not.
         </tp:docstring>
@@ -413,7 +413,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::InstallPflashResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful, failure_reason is set on failure.
         </tp:docstring>
@@ -516,7 +516,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::ResumeVmResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful, failure_reason is set on failure.
         </tp:docstring>
@@ -533,7 +533,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SetBalloonTimerResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful.
         </tp:docstring>
@@ -655,7 +655,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::StopVmResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful, failure_reason is set on failure.
         </tp:docstring>
@@ -675,7 +675,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::StopVmResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful, failure_reason is set on failure.
         </tp:docstring>
@@ -692,7 +692,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuspendVmResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful, failure_reason is set on failure.
         </tp:docstring>
@@ -709,7 +709,7 @@
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SwapVmResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
         <tp:docstring>
           Returns success==true when successful, failure_reason is set on failure.
         </tp:docstring>

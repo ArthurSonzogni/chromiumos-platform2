@@ -183,18 +183,17 @@ class Service final : public org::chromium::VmConciergeInterface,
       const StartArcVmRequest& request) override;
 
   // Handles a request to stop a VM.
-  void StopVm(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
-          response_cb,
-      const StopVmRequest& request) override;
+  void StopVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                  SuccessFailureResponse>> response_cb,
+              const StopVmRequest& request) override;
 
   // Handles a request to stop a VM, but ignores the owner_id in the request and
   // stops the given VM for all owners.
   // TODO(b/305120263): Remove owner_id from StopVmRequest and merge this method
   // into StopVm.
   void StopVmWithoutOwnerId(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
-          response_cb,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          SuccessFailureResponse>> response_cb,
       const StopVmRequest& request) override;
 
   // Handles a request to stop a VM.
@@ -204,16 +203,14 @@ class Service final : public org::chromium::VmConciergeInterface,
   void StopVmInternalAsTask(VmId vm_id, VmStopReason reason);
 
   // Handles a request to suspend a VM.
-  void SuspendVm(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SuspendVmResponse>>
-          response_cb,
-      const SuspendVmRequest& request) override;
+  void SuspendVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                     SuccessFailureResponse>> response_cb,
+                 const SuspendVmRequest& request) override;
 
   // Handles a request to resume a VM.
-  void ResumeVm(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<ResumeVmResponse>>
-          response_cb,
-      const ResumeVmRequest& request) override;
+  void ResumeVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                    SuccessFailureResponse>> response_cb,
+                const ResumeVmRequest& request) override;
 
   // Handles a request to stop all running VMs.
   void StopAllVmsImpl(VmStopReason reason);
@@ -239,7 +236,7 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Handles a request to update balloon timer.
   void SetBalloonTimer(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                           SetBalloonTimerResponse>> response_cb,
+                           SuccessFailureResponse>> response_cb,
                        const SetBalloonTimerRequest& request) override;
 
   // Handles a request to update all VMs' times to the current host time.
@@ -293,7 +290,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Handles a request to cancel a disk image operation.
   void CancelDiskImageOperation(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          CancelDiskImageResponse>> response_cb,
+          SuccessFailureResponse>> response_cb,
       const CancelDiskImageRequest& request) override;
 
   // Run import/export disk image operation with given UUID.
@@ -314,7 +311,7 @@ class Service final : public org::chromium::VmConciergeInterface,
       const AttachKeyRequest& request,
       const base::ScopedFD& hidraw) override;
   void DetachUsbDevice(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                           DetachUsbDeviceResponse>> response_cb,
+                           SuccessFailureResponse>> response_cb,
                        const DetachUsbDeviceRequest& request) override;
   void ListUsbDevices(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                           ListUsbDeviceResponse>> response_cb,
@@ -327,7 +324,7 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Detach a net tap device
   void DetachNetDevice(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                           DetachNetDeviceResponse>> response_cb,
+                           SuccessFailureResponse>> response_cb,
                        const DetachNetDeviceRequest& request) override;
 
   void GetDnsSettings(
@@ -340,10 +337,9 @@ class Service final : public org::chromium::VmConciergeInterface,
       const SetVmCpuRestrictionRequest& request) override;
 
   // Handles a request to adjust parameters of a given VM.
-  void AdjustVm(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<AdjustVmResponse>>
-          response_cb,
-      const AdjustVmRequest& request) override;
+  void AdjustVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                    SuccessFailureResponse>> response_cb,
+                const AdjustVmRequest& request) override;
 
   // Handles a request to list all the VMs.
   void ListVms(
@@ -375,16 +371,15 @@ class Service final : public org::chromium::VmConciergeInterface,
       const GetVmLogsRequest& request) override;
 
   // Handles a request to change VM swap state.
-  void SwapVm(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SwapVmResponse>>
-          response_sender,
-      const SwapVmRequest& request) override;
+  void SwapVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                  SuccessFailureResponse>> response_sender,
+              const SwapVmRequest& request) override;
 
   void NotifyVmSwapping(const VmId& vm_id, SwappingState swapping_state);
 
   // Handles a request to install the Pflash image associated with a VM.
   void InstallPflash(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                         InstallPflashResponse>> response_cb,
+                         SuccessFailureResponse>> response_cb,
                      const InstallPflashRequest& request,
                      const base::ScopedFD& pflash_src_fd) override;
 
@@ -397,13 +392,13 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Inflate balloon in a vm until perceptible processes in the guest are tried
   // to kill.
   void AggressiveBalloon(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                             AggressiveBalloonResponse>> response_cb,
+                             SuccessFailureResponse>> response_cb,
                          const AggressiveBalloonRequest& request) override;
 
   // Run when the aggressive balloon operation finishes.
   void OnAggressiveBalloonFinished(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          AggressiveBalloonResponse>> response_sender,
+          SuccessFailureResponse>> response_sender,
       int cid,
       bool success,
       const char* err_msg);

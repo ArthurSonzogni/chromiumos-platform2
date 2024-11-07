@@ -1931,13 +1931,12 @@ StartVmResponse Service::StartVmInternal(
   return response;
 }
 
-void Service::StopVm(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
-        response_cb,
-    const StopVmRequest& request) {
+void Service::StopVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                         SuccessFailureResponse>> response_cb,
+                     const StopVmRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  StopVmResponse response;
+  SuccessFailureResponse response;
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
@@ -1956,12 +1955,12 @@ void Service::StopVm(
 }
 
 void Service::StopVmWithoutOwnerId(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
-        response_cb,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        SuccessFailureResponse>> response_cb,
     const StopVmRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  StopVmResponse response;
+  SuccessFailureResponse response;
 
   if (request.name().empty()) {
     response_cb->Return(response);
@@ -2095,13 +2094,12 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
   }
 }
 
-void Service::SuspendVm(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SuspendVmResponse>>
-        response_cb,
-    const SuspendVmRequest& request) {
+void Service::SuspendVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                            SuccessFailureResponse>> response_cb,
+                        const SuspendVmRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  SuspendVmResponse response;
+  SuccessFailureResponse response;
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
@@ -2136,13 +2134,12 @@ void Service::SuspendVm(
   return;
 }
 
-void Service::ResumeVm(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<ResumeVmResponse>>
-        response_cb,
-    const ResumeVmRequest& request) {
+void Service::ResumeVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           SuccessFailureResponse>> response_cb,
+                       const ResumeVmRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  ResumeVmResponse response;
+  SuccessFailureResponse response;
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
@@ -2247,11 +2244,11 @@ void Service::GetVmEnterpriseReportingInfo(
 
 void Service::SetBalloonTimer(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        SetBalloonTimerResponse>> response_cb,
+        SuccessFailureResponse>> response_cb,
     const SetBalloonTimerRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  SetBalloonTimerResponse response;
+  SuccessFailureResponse response;
 
   if (request.timer_interval_millis() == 0) {
     LOG(INFO) << "timer_interval_millis is 0. Stop the timer.";
@@ -2273,13 +2270,12 @@ void Service::SetBalloonTimer(
   return;
 }
 
-void Service::AdjustVm(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<AdjustVmResponse>>
-        response_cb,
-    const AdjustVmRequest& request) {
+void Service::AdjustVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           SuccessFailureResponse>> response_cb,
+                       const AdjustVmRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  AdjustVmResponse response;
+  SuccessFailureResponse response;
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
@@ -3264,11 +3260,11 @@ void Service::DiskImageStatus(
 
 void Service::CancelDiskImageOperation(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        CancelDiskImageResponse>> response_cb,
+        SuccessFailureResponse>> response_cb,
     const CancelDiskImageRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  CancelDiskImageResponse response;
+  SuccessFailureResponse response;
 
   // Locate the pending command in the list.
   auto iter = std::find_if(disk_image_ops_.begin(), disk_image_ops_.end(),
@@ -3369,11 +3365,11 @@ void Service::AttachNetDevice(
 
 void Service::DetachNetDevice(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        DetachNetDeviceResponse>> response_cb,
+        SuccessFailureResponse>> response_cb,
     const DetachNetDeviceRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  DetachNetDeviceResponse response;
+  SuccessFailureResponse response;
 
   VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
@@ -3479,11 +3475,11 @@ void Service::AttachUsbDevice(
 
 void Service::DetachUsbDevice(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        DetachUsbDeviceResponse>> response_cb,
+        SuccessFailureResponse>> response_cb,
     const DetachUsbDeviceRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  DetachUsbDeviceResponse response;
+  SuccessFailureResponse response;
 
   VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
@@ -3494,7 +3490,7 @@ void Service::DetachUsbDevice(
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
-    response.set_reason("Requested VM does not exist");
+    response.set_failure_reason("Requested VM does not exist");
     response_cb->Return(response);
     return;
   }
@@ -3502,7 +3498,7 @@ void Service::DetachUsbDevice(
   if (request.guest_port() > 0xFF) {
     LOG(ERROR) << "Guest port number out of valid range "
                << request.guest_port();
-    response.set_reason("Invalid guest port number");
+    response.set_failure_reason("Invalid guest port number");
     response_cb->Return(response);
     return;
   }
@@ -3718,13 +3714,13 @@ void Service::ReclaimVmMemory(
 }
 
 using AggressiveBalloonResponder = std::unique_ptr<
-    brillo::dbus_utils::DBusMethodResponse<AggressiveBalloonResponse>>;
+    brillo::dbus_utils::DBusMethodResponse<SuccessFailureResponse>>;
 
 void Service::AggressiveBalloon(AggressiveBalloonResponder response_cb,
                                 const AggressiveBalloonRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  AggressiveBalloonResponse response;
+  SuccessFailureResponse response;
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
@@ -3784,7 +3780,7 @@ void Service::OnAggressiveBalloonFinished(
         cid, mm::ResizePriority::kAggressiveBalloon);
   }
 
-  AggressiveBalloonResponse response;
+  SuccessFailureResponse response;
   response.set_success(success);
   if (!success) {
     response.set_failure_reason(err_msg);
@@ -4453,13 +4449,12 @@ void Service::GetVmLogs(
   response_cb->Return(response);
 }
 
-void Service::SwapVm(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SwapVmResponse>>
-        response_cb,
-    const SwapVmRequest& request) {
+void Service::SwapVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                         SuccessFailureResponse>> response_cb,
+                     const SwapVmRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  SwapVmResponse response;
+  SuccessFailureResponse response;
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
@@ -4478,8 +4473,8 @@ void Service::SwapVm(
   iter->second->HandleSwapVmRequest(
       request, base::BindOnce(
                    [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                          SwapVmResponse>> response_sender,
-                      SwapVmResponse response) {
+                          SuccessFailureResponse>> response_sender,
+                      SuccessFailureResponse response) {
                      std::move(response_sender)->Return(response);
                    },
                    std::move(response_cb)));
@@ -4499,12 +4494,12 @@ void Service::NotifyVmSwapping(const VmId& vm_id,
 
 void Service::InstallPflash(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        InstallPflashResponse>> response_cb,
+        SuccessFailureResponse>> response_cb,
     const InstallPflashRequest& request,
     const base::ScopedFD& pflash_src_fd) {
   ASYNC_SERVICE_METHOD();
 
-  InstallPflashResponse response;
+  SuccessFailureResponse response;
 
   VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
