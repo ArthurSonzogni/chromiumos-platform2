@@ -107,6 +107,7 @@ constexpr char kArcVmVendorImagePath[] =
 constexpr char kApkCacheDir[] = "/mnt/stateful_partition/unencrypted/apkcache";
 constexpr char kArcBridgeSocketContext[] = "u:object_r:arc_bridge_socket:s0";
 constexpr char kArcBridgeSocketPath[] = "/run/chrome/arc_bridge.sock";
+constexpr char kAudioCodecsFilesDirectoryRelative[] = "etc/";
 constexpr char kBinFmtMiscDirectory[] = "/proc/sys/fs/binfmt_misc";
 constexpr char kBootIdFile[] = "/proc/sys/kernel/random/boot_id";
 constexpr char kBuildPropFile[] = "/usr/share/arc/properties/build.prop";
@@ -187,6 +188,7 @@ constexpr const char* kBinFmtMiscEntryNames[] = {"arm_dyn", "arm_exe",
 // https://chromium.googlesource.com/chromiumos/config/
 // For an example, see:
 // https://chromium.googlesource.com/chromiumos/config/+/HEAD/test/project/fake/fake/sw_build_config/platform/chromeos-config/generated/arc/
+constexpr char kAudioCodecsFilesSetting[] = "/arc/audio-codecs-files";
 constexpr char kHardwareFeaturesSetting[] = "/arc/hardware-features";
 constexpr char kMediaProfilesSetting[] = "/arc/media-profiles";
 constexpr char kMediaCodecsSetting[] = "/arc/media-codecs";
@@ -734,6 +736,8 @@ struct ArcPaths {
   const base::FilePath arc_bridge_socket_path{kArcBridgeSocketPath};
   const base::FilePath apk_cache_dir{kApkCacheDir};
   const base::FilePath art_dalvik_cache_directory{kArtDalvikCacheDirectory};
+  const base::FilePath audio_codecs_files_directory_relative{
+      kAudioCodecsFilesDirectoryRelative};
   const base::FilePath binfmt_misc_directory{kBinFmtMiscDirectory};
   const base::FilePath camera_profile_dir{kCameraProfileDir};
   const base::FilePath camera_test_config{kCameraTestConfig};
@@ -2877,6 +2881,42 @@ void ArcSetup::OnApplyPerBoardConfig() {
                               .first.OpenExistingDir(per_board_config_path)
                               .first,
                           0644, crosvm_uid, crosvm_gid));
+  }
+
+  // Mount per-model ARC Audio codecs files.
+  // Custom label tag must not exist to prevent misconfiguration when a model is
+  // shared between multiple OEMs.
+  std::string custom_label_tag;
+  const bool custom_label_tag_exist =
+      config->GetString("/identity", "custom-label-tag", &custom_label_tag);
+  if (!custom_label_tag_exist || custom_label_tag.empty()) {
+    // There may be multiple files, so loop through all of them.
+    //
+    // Example codecs files:
+    // - Source: /etc/arc-audio-codecs-files/media_codecs_codec1.xml
+    //   Dest: ${per_board_config_path}/etc/media_codecs_codec1.xml
+    //   Dest inside ARC: /oem/etc/media_codecs_codec1.xml
+    //
+    // /oem/etc/media_codecs_codec1.xml will be bind mounted to /vendor/etc/
+    for (int i = 0;; ++i) {
+      const std::string config_path =
+          base::StringPrintf("%s/%d", kAudioCodecsFilesSetting, i);
+      std::string file_name;
+      if (!config->GetString(config_path, "name", &file_name)) {
+        break;
+      }
+      if (auto audio_codecs_file =
+              GetConfigPath(*config, config_path + "/file");
+          audio_codecs_file && base::PathExists(*audio_codecs_file)) {
+        EXIT_IF(!SafeCopyFile(
+            *audio_codecs_file, brillo::SafeFD::Root().first,
+            arc_paths_->audio_codecs_files_directory_relative.Append(file_name),
+            brillo::SafeFD::Root()
+                .first.OpenExistingDir(per_board_config_path)
+                .first,
+            0644, crosvm_uid, crosvm_gid));
+      }
+    }
   }
 }
 
