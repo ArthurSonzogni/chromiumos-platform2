@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libhwsec-foundation/status/status_chain.h"
+
 #include <memory>
 #include <sstream>
 #include <string>
@@ -9,12 +11,11 @@
 #include <type_traits>
 #include <vector>
 
-#include "libhwsec-foundation/status/status_chain.h"
-#include "libhwsec-foundation/status/status_chain_macros.h"
-#include "libhwsec-foundation/status/status_chain_or.h"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "libhwsec-foundation/status/status_chain_macros.h"
+#include "libhwsec-foundation/status/status_chain_or.h"
 
 namespace hwsec_foundation {
 namespace status {
@@ -461,7 +462,17 @@ TEST_F(StatusChainTest, StatusChainOrAssignAndRead) {
   StatusChainOr<std::string, Fake1Error> status_or4 = std::move(status_or1);
   EXPECT_TRUE(status_or4.ok());
   EXPECT_EQ(*status_or4, "data");
+  EXPECT_EQ(status_or4.value(), "data");
   EXPECT_EQ(status_or4.value_or("fake"), "data");
+  EXPECT_EQ(status_or4->size(), 4);
+
+  // Const StatusChainOr should allow you to access const members.
+  const StatusChainOr<std::string, Fake1Error> status_or5("const");
+  EXPECT_TRUE(status_or5.ok());
+  EXPECT_EQ(*status_or5, "const");
+  EXPECT_EQ(status_or5.value(), "const");
+  EXPECT_EQ(status_or5.value_or("fake"), "const");
+  EXPECT_EQ(status_or5->size(), 5);
 }
 
 TEST_F(StatusChainTest, StatusChainOrLambda) {

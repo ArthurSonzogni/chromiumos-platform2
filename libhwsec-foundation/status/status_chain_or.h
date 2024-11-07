@@ -97,6 +97,12 @@ class [[clang::consumable(unknown)]]   //
     return *this;
   }
 
+  [[clang::callable_when("consumed")]] constexpr const value_type* operator->()
+      const noexcept {
+    CHECK(ok()) << " Arrow operator on a non-OK StatusChainOr is not allowed";
+    return std::get_if<value_type>(&value_);
+  }
+
   [[clang::callable_when("consumed")]] value_type* operator->() noexcept {
     CHECK(ok()) << " Arrow operator on a non-OK StatusChainOr is not allowed";
     return std::get_if<value_type>(&value_);
