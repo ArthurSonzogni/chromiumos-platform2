@@ -105,8 +105,9 @@ U2fCommandProcessorVendor::U2fGenerate(
     }
   } else {
     // Non-versioned KH must be signed with power button press.
-    if (presence_requirement != PresenceRequirement::kPowerButton)
+    if (presence_requirement != PresenceRequirement::kPowerButton) {
       return MakeCredentialResponse::INTERNAL_ERROR;
+    }
     return SendU2fGenerateWaitForPresence(
         /*is_up_only=*/true, rp_id_hash, credential_secret, std::nullopt,
         credential_id, credential_public_key);
@@ -153,8 +154,9 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorVendor::U2fSign(
         signature);
   } else if (credential_id.size() == config.up_only_kh_size) {
     // Non-versioned KH must be signed with power button press.
-    if (presence_requirement != PresenceRequirement::kPowerButton)
+    if (presence_requirement != PresenceRequirement::kPowerButton) {
       return GetAssertionResponse::INTERNAL_ERROR;
+    }
 
     return SendU2fSignWaitForPresence(
         /*is_up_only=*/true, rp_id_hash, credential_secret,

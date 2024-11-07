@@ -368,8 +368,9 @@ MATCHER_P(EqCommandCode, value, "Matches the specified command code") {
 }
 
 ACTION_P4(PrepareInitResponse, copy_nonce, req, resp, str) {
-  if (copy_nonce)
+  if (copy_nonce) {
     *resp = *req;
+  }
   std::vector<uint8_t> bytes;
   LOG(ERROR) << str;
   CHECK(base::HexStringToBytes(str, &bytes));
@@ -404,10 +405,11 @@ void U2FHidTest::ExpectMsg(U2FHid::CommandCode cmd, bool echo_req) {
   EXPECT_CALL(device_, SendRequest(_, EqCommandCode(cmd), _))
       .WillOnce(DoAll(SaveArg<2>(&request.payload),
                       InvokeWithoutArgs([this, echo_req]() {
-                        if (echo_req)
+                        if (echo_req) {
                           response.payload = request.payload;
-                        else
+                        } else {
                           response.payload.clear();
+                        }
                       }),
                       Return(true)));
 

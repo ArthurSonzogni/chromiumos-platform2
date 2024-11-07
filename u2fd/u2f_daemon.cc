@@ -71,8 +71,9 @@ U2fMode ReadU2fPolicy() {
 
   const policy::DevicePolicy* policy = &policy_provider.GetDevicePolicy();
   std::optional<int> mode = policy->GetSecondFactorAuthenticationMode();
-  if (!mode.has_value())
+  if (!mode.has_value()) {
     return U2fMode::kUnset;
+  }
 
   return static_cast<U2fMode>(*mode);
 }
@@ -159,8 +160,9 @@ U2fDaemon::U2fDaemon(bool force_u2f,
 
 int U2fDaemon::OnInit() {
   int rc = brillo::DBusServiceDaemon::OnInit();
-  if (rc != EX_OK)
+  if (rc != EX_OK) {
     return rc;
+  }
 
   if (!InitializeDBusProxies()) {
     return EX_IOERR;
@@ -181,8 +183,9 @@ int U2fDaemon::OnInit() {
     // If U2F is not currently enabled, we'll wait for policy updates
     // that may enable it. We don't ever disable U2F on policy updates.
     // TODO(louiscollard): Fix the above.
-    if (status != EX_CONFIG)
+    if (status != EX_CONFIG) {
       return status;
+    }
   }
 
   if (policy_ready) {
@@ -196,11 +199,13 @@ int U2fDaemon::OnInit() {
 
 void U2fDaemon::TryStartService(
     const std::string& /* unused dbus signal status */) {
-  if (service_started_)
+  if (service_started_) {
     return;
+  }
 
-  if (!U2fPolicyReady())
+  if (!U2fPolicyReady()) {
     return;
+  }
 
   int status = StartService();
 

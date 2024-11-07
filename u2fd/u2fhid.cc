@@ -93,8 +93,9 @@ class U2fHid::HidPacket {
 U2fHid::HidPacket::HidPacket(const std::string& report)
     : valid_(false), cid_(0), tcs_(0), bcnt_(0) {
   // the report is prefixed by the report ID (we skip it below).
-  if (report.size() != kU2fReportSize + 1) /* Invalid U2FHID report */
+  if (report.size() != kU2fReportSize + 1) { /* Invalid U2FHID report */
     return;
+  }
 
   // U2FHID frame bytes parsing.
   // As defined in the "FIDO U2F HID Protocol Specification":
@@ -230,8 +231,9 @@ void U2fHid::ReturnError(U2fHidError errcode, uint32_t cid, bool clear) {
   msg.AddByte(static_cast<uint8_t>(errcode));
   VLOG(1) << "ERROR/" << std::hex << static_cast<int>(errcode)
           << " CID:" << std::hex << cid;
-  if (clear)
+  if (clear) {
     transaction_ = std::make_unique<Transaction>();
+  }
 
   std::string report;
   msg.BuildReport(0, &report);
@@ -243,8 +245,9 @@ void U2fHid::TransactionTimeout() {
 }
 
 void U2fHid::LockTimeout() {
-  if (locked_cid_)
+  if (locked_cid_) {
     LOG(WARNING) << "Cancelled lock CID:" << std::hex << locked_cid_;
+  }
   locked_cid_ = 0;
 }
 
@@ -276,8 +279,9 @@ void U2fHid::CmdInit(uint32_t cid, const std::string& payload) {
   if (cid == kCidBroadcast) {  // Allocate Channel ID
     cid = free_cid_++;
     // Roll-over if needed
-    if (free_cid_ == kCidBroadcast)
+    if (free_cid_ == kCidBroadcast) {
       free_cid_ = 1;
+    }
   }
 
   // Keep the nonce in the first 8 bytes
@@ -404,8 +408,9 @@ void U2fHid::ExecuteCmd() {
       return;
   }
 
-  if (rc >= 0)
+  if (rc >= 0) {
     ReturnResponse(resp);
+  }
 
   // we are done with this transaction
   transaction_ = std::make_unique<Transaction>();
@@ -416,8 +421,9 @@ void U2fHid::ProcessReport(const std::string& report) {
 
   VLOG(2) << "RX RPT/" << report.size() << " ["
           << base::HexEncode(report.data(), report.size()) << "]";
-  if (!pkt.IsValidFrame())
+  if (!pkt.IsValidFrame()) {
     return;  // Invalid report
+  }
 
   // Check frame validity
   if (pkt.ChannelId() == 0) {
@@ -500,8 +506,9 @@ void U2fHid::ProcessReport(const std::string& report) {
     transaction_->seq++;
   }
   // Are we done with this transaction ?
-  if (transaction_->payload.size() >= transaction_->total_size)
+  if (transaction_->payload.size() >= transaction_->total_size) {
     ExecuteCmd();
+  }
 }
 
 }  // namespace u2f

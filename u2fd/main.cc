@@ -28,8 +28,9 @@ int main(int argc, char* argv[]) {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
-  if (FLAGS_verbose)
+  if (FLAGS_verbose) {
     logging::SetMinLogLevel(-1);
+  }
 
   LOG(INFO) << "Daemon version " << brillo::kShortVCSID.value_or("<unknown>");
 

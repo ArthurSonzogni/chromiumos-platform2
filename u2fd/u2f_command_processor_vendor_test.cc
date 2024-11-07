@@ -271,8 +271,9 @@ TEST_F(U2fCommandProcessorVendorTest, CallAndWaitForPresenceDirectSuccess) {
 
 TEST_F(U2fCommandProcessorVendorTest, CallAndWaitForPresenceRequestSuccess) {
   EXPECT_THAT(CallAndWaitForPresence([this]() -> hwsec::StatusOr<int> {
-                if (PresenceRequested())
+                if (PresenceRequested()) {
                   return 0;
+                }
                 return MakeStatus<TPMError>("Not allowed",
                                             TPMRetryAction::kUserPresence);
               }),

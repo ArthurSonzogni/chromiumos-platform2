@@ -128,16 +128,18 @@ std::string ExtractCredentialId(const std::string& authenticator_data) {
   size_t credential_id_length_offset =
       kRpIdHashBytes + kFlagsBytes + kCounterBytes + kAaguidBytes;
   if (authenticator_data.size() <
-      credential_id_length_offset + kCredentialIdLengthBytes)
+      credential_id_length_offset + kCredentialIdLengthBytes) {
     return std::string();
+  }
   std::string length_str = authenticator_data.substr(
       credential_id_length_offset, kCredentialIdLengthBytes);
   uint16_t length = ((static_cast<uint16_t>(length_str.at(0))) << 8) +
                     static_cast<uint16_t>(length_str.at(1));
   size_t credential_id_offset =
       credential_id_length_offset + kCredentialIdLengthBytes;
-  if (authenticator_data.size() < credential_id_offset + length)
+  if (authenticator_data.size() < credential_id_offset + length) {
     return std::string();
+  }
   return authenticator_data.substr(credential_id_offset, length);
 }
 

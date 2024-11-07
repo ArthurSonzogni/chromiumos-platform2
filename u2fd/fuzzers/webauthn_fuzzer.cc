@@ -279,13 +279,15 @@ bool IsProtoValidUtf8Only(const Message& message, int level = 0) {
           int size = reflection->FieldSize(message, f);
           for (int j = 0; j < size; ++j) {
             const Message& m = reflection->GetRepeatedMessage(message, f, j);
-            if (!IsProtoValidUtf8Only(m, level + 1))
+            if (!IsProtoValidUtf8Only(m, level + 1)) {
               return false;
+            }
           }
         } else if (reflection->HasField(message, f)) {  // singular message
           const Message& m = reflection->GetMessage(message, f);
-          if (!IsProtoValidUtf8Only(m, level + 1))
+          if (!IsProtoValidUtf8Only(m, level + 1)) {
             return false;
+          }
         }
         break;
       }
@@ -295,13 +297,15 @@ bool IsProtoValidUtf8Only(const Message& message, int level = 0) {
           int size = reflection->FieldSize(message, f);
           for (int j = 0; j < size; ++j) {
             std::string s = reflection->GetRepeatedString(message, f, j);
-            if (!base::IsStringUTF8(s))
+            if (!base::IsStringUTF8(s)) {
               return false;
+            }
           }
         } else if (reflection->HasField(message, f)) {  // singular string
           std::string s = reflection->GetString(message, f);
-          if (!base::IsStringUTF8(s))
+          if (!base::IsStringUTF8(s)) {
             return false;
+          }
         }
         break;
       }

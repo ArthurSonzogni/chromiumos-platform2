@@ -145,9 +145,10 @@ void WebAuthnHandler::Initialize(
       chromeos::kUserAuthenticationServiceName,
       dbus::ObjectPath(chromeos::kUserAuthenticationServicePath));
   // Testing can inject a mock.
-  if (!cryptohome_proxy_)
+  if (!cryptohome_proxy_) {
     cryptohome_proxy_ =
         std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus_);
+  }
   DCHECK(auth_dialog_dbus_proxy_);
 
   u2f_command_processor_ = std::move(u2f_command_processor);
@@ -624,12 +625,14 @@ std::optional<std::vector<uint8_t>> WebAuthnHandler::MakeAuthenticatorData(
   std::vector<uint8_t> authenticator_data(rp_id_hash);
   uint8_t flags =
       static_cast<uint8_t>(AuthenticatorDataFlag::kTestOfUserPresence);
-  if (user_verified)
+  if (user_verified) {
     flags |=
         static_cast<uint8_t>(AuthenticatorDataFlag::kTestOfUserVerification);
-  if (include_attested_credential_data)
+  }
+  if (include_attested_credential_data) {
     flags |=
         static_cast<uint8_t>(AuthenticatorDataFlag::kAttestedCredentialData);
+  }
   authenticator_data.emplace_back(flags);
 
   // The U2F authenticator keeps a user-global signature counter in UserState.
@@ -941,8 +944,9 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
     std::vector<uint8_t> credential_key_blob;
 
     if (!webauthn_storage_->GetSecretAndKeyBlobByCredentialId(
-            credential_id, &credential_secret, &credential_key_blob))
+            credential_id, &credential_secret, &credential_key_blob)) {
       continue;
+    }
 
     auto ret = u2f_command_processor_->U2fSignCheckOnly(
         rp_id_hash, util::ToVector(credential_id), credential_secret,

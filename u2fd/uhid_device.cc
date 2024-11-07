@@ -60,8 +60,9 @@ UHidDevice::UHidDevice(uint32_t vendor_id,
       phys_(phys) {}
 
 UHidDevice::~UHidDevice() {
-  if (created_)
+  if (created_) {
     DestroyDev();
+  }
 }
 
 bool UHidDevice::Init(uint32_t hid_version, const std::string& report_desc) {
@@ -113,8 +114,9 @@ void UHidDevice::FdEvent() {
       break;
     case UHID_OUTPUT:
       VLOG(1) << "uhid event " << GetUhidEventName(ev.type);
-      if (ev.u.output.rtype != UHID_OUTPUT_REPORT)
+      if (ev.u.output.rtype != UHID_OUTPUT_REPORT) {
         break;
+      }
       VLOG(2) << "HID Report: "
               << base::HexEncode(ev.u.output.data, ev.u.output.size);
 
@@ -135,16 +137,18 @@ bool UHidDevice::WriteEvent(const struct uhid_event& ev) {
 }
 
 bool UHidDevice::SendReport(const std::string& report) {
-  if (report.size() > UINT16_MAX)
+  if (report.size() > UINT16_MAX) {
     return false;
+  }
 
   struct uhid_event ev = {
       .type = UHID_INPUT2,
       .u.input2.size = static_cast<uint16_t>(report.size()),
   };
 
-  if (report.size() > sizeof(ev.u.input2.data))
+  if (report.size() > sizeof(ev.u.input2.data)) {
     return false;
+  }
 
   std::copy(report.begin(), report.end(), ev.u.input2.data);
 
@@ -153,8 +157,9 @@ bool UHidDevice::SendReport(const std::string& report) {
 
 bool UHidDevice::CreateDev(uint32_t interface_version,
                            const std::string& report_desc) {
-  if (report_desc.size() > UINT16_MAX)
+  if (report_desc.size() > UINT16_MAX) {
     return false;
+  }
 
   struct uhid_event ev = {
       .type = UHID_CREATE2,
@@ -164,8 +169,9 @@ bool UHidDevice::CreateDev(uint32_t interface_version,
       .u.create2.product = product_id_,
       .u.create2.version = interface_version,
   };
-  if (report_desc.size() > sizeof(ev.u.create2.rd_data))
+  if (report_desc.size() > sizeof(ev.u.create2.rd_data)) {
     return false;
+  }
 
   base::strlcpy(reinterpret_cast<char*>(ev.u.create2.name), name_.c_str(),
                 sizeof(ev.u.create2.name));

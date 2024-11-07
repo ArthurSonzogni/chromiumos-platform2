@@ -576,8 +576,9 @@ bool U2F::Register(std::optional<uint8_t> p1,
   // If P1 is not set, use default value of 0x3 - "check-user-presence"
   p1 = p1 ? *p1 : U2F_AUTH_ENFORCE;
 
-  if (use_g2f_att_key)
+  if (use_g2f_att_key) {
     *p1 |= G2F_ATTEST;
+  }
 
   // Message format defined in sections 3 and 4.1 of the
   // U2F Raw Message Formats Spec v1.2.

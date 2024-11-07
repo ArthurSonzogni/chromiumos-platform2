@@ -86,8 +86,9 @@ class U2fCommandApdu::Parser {
     lc_ = 0;
 
     // No Lc.
-    if (Remaining() == 0)
+    if (Remaining() == 0) {
       return true;
+    }
 
     lc_ = Consume();
 
@@ -101,11 +102,13 @@ class U2fCommandApdu::Parser {
   }
 
   bool ParseBody() {
-    if (lc_ == 0)
+    if (lc_ == 0) {
       return true;
+    }
 
-    if (Remaining() < lc_)
+    if (Remaining() < lc_) {
       return false;
+    }
 
     apdu_.data_.append(pos_, pos_ + lc_);
     pos_ += lc_;
@@ -123,8 +126,9 @@ class U2fCommandApdu::Parser {
 
     if (Remaining() > 0) {
       apdu_.max_response_length_ = apdu_.max_response_length_ << 8 | Consume();
-      if (apdu_.max_response_length_ == 0)
+      if (apdu_.max_response_length_ == 0) {
         apdu_.max_response_length_ = 65536;
+      }
     }
 
     return true;
@@ -161,8 +165,9 @@ U2fCommandApdu U2fCommandApdu::CreateForU2fIns(U2fIns ins) {
 namespace {
 
 void AppendLc(std::string* apdu, size_t lc) {
-  if (lc == 0)
+  if (lc == 0) {
     return;
+  }
 
   if (lc < 256) {
     apdu->append(1, lc);
@@ -173,19 +178,22 @@ void AppendLc(std::string* apdu, size_t lc) {
 }
 
 void AppendLe(std::string* apdu, size_t lc, size_t le) {
-  if (le == 0)
+  if (le == 0) {
     return;
+  }
 
   if (le < 256) {
     apdu->append(1, le);
   } else if (le == 256) {
     apdu->append(1, 0);
   } else {
-    if (lc == 0)
+    if (lc == 0) {
       apdu->append(1, 0);
+    }
 
-    if (le == 65536)
+    if (le == 65536) {
       le = 0;
+    }
 
     apdu->append(1, le >> 8);
     apdu->append(1, le & 0xff);
@@ -223,8 +231,9 @@ bool ParseApduBody(
     int field_start = field.first.first;
     int field_length = field.first.second;
 
-    if (field_start < 0 || (field_start + field_length) > body.size())
+    if (field_start < 0 || (field_start + field_length) > body.size()) {
       return false;
+    }
 
     util::AppendSubstringToVector(body, field_start, field_length,
                                   field.second);
