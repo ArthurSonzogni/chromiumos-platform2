@@ -73,10 +73,23 @@ void SetLtrIgnore(const std::string_view ip_index) {
 }
 
 void exe_boardwa(const std::string_view brd) {
+  const std::string_view dis_dcc_cmd = "/usr/local/factory/py/tools/dis_dcc.py";
+  base::FilePath dis_dcc_file_path(dis_dcc_cmd);
+  int ret;
+
   // Ignore CNVi LTR, it's cross-platform case.
   SetLtrIgnore("10");
 
-  if (brd == "ovis") {
+  if (brd == "brask") {
+    // Ignore LAN
+    SetLtrIgnore("1");
+    if (base::PathExists(dis_dcc_file_path)) {
+      ret = ::system(dis_dcc_cmd.data());
+      if (ret) {
+        PLOG(WARNING) << "Failed for calling `" << dis_dcc_cmd << "`";
+      }
+    }
+  } else if (brd == "ovis") {
     // Ignore LAN
     SetLtrIgnore("1");
     SetLtrIgnore("40");
