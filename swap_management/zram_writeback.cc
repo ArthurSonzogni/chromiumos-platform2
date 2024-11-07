@@ -439,16 +439,6 @@ absl::Status ZramWriteback::SetWritebackLimit(uint32_t num_pages) {
   return Utils::Get()->WriteFile(filepath, std::to_string(num_pages));
 }
 
-absl::Status ZramWriteback::InitiateWriteback(ZramWritebackMode mode) {
-  base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("writeback");
-  absl::StatusOr<std::string> mode_str = WritebackModeToName(mode);
-  if (!mode_str.ok()) {
-    return mode_str.status();
-  }
-
-  return Utils::Get()->WriteFile(filepath, *mode_str);
-}
-
 ZramWriteback::~ZramWriteback() {
   writeback_timer_.Stop();
   Cleanup();
@@ -627,7 +617,7 @@ void ZramWriteback::PeriodicWriteback() {
 
   // If no writeback quota available then do not writeback.
   absl::StatusOr<uint64_t> writeback_limit = GetWritebackLimit();
-  if (!writeback_limit.ok() || *writeback_limit == 0) {
+  if (!writeback_limit.ok()) {
     LOG_IF(ERROR, !writeback_limit.ok())
         << "Can not read zram writeback_limit: " << writeback_limit.status();
     return;
@@ -635,75 +625,80 @@ void ZramWriteback::PeriodicWriteback() {
 
   // We started on huge idle page writeback, then idle, then huge pages, if
   // enabled accordingly.
-  ZramWritebackMode current_writeback_mode = WRITEBACK_HUGE_IDLE;
-  while (current_writeback_mode != WRITEBACK_NONE) {
-    // Is writeback enabled at current mode?
-    if ((current_writeback_mode == WRITEBACK_HUGE_IDLE &&
-         params_.writeback_huge_idle) ||
-        (current_writeback_mode == WRITEBACK_IDLE && params_.writeback_idle) ||
-        (current_writeback_mode == WRITEBACK_HUGE && params_.writeback_huge)) {
-      // If currently working on huge_idle or idle mode, mark idle for pages.
-      if (current_writeback_mode == WRITEBACK_HUGE_IDLE ||
-          current_writeback_mode == WRITEBACK_IDLE) {
-        uint64_t idle_age_sec =
-            GetCurrentIdleTimeSec(params_.idle_min_time.InSeconds(),
-                                  params_.idle_max_time.InSeconds());
-        base::TimeDelta idle_age = base::Seconds(idle_age_sec);
-        if (params_.suspend_aware) {
-          base::TimeDelta suspend_adjustment =
-              SuspendHistory::Get()->CalculateTotalSuspendedDuration(idle_age);
-          idle_age += suspend_adjustment;
-        }
-        status = MarkIdle(idle_age.InSeconds());
-        if (!status.ok()) {
-          LOG(ERROR) << "Can not mark zram idle:" << status;
-          return;
-        }
-      }
-
-      // Then we initiate writeback.
-      status = InitiateWriteback(current_writeback_mode);
-      // It could fail because of depleted writeback limit quota.
-      absl::StatusOr<uint64_t> writeback_limit_after = GetWritebackLimit();
-      if (!writeback_limit_after.ok()) {
-        LOG(ERROR) << "Can not read zram writeback_limit: "
-                   << writeback_limit_after.status();
-        return;
-      }
-      if (!status.ok() && *writeback_limit_after != 0) {
-        LOG(ERROR) << "Can not initiate zram writeback: " << status;
-        return;
-      }
-      last_writeback_ = base::Time::Now();
-
-      // Log the number of writeback pages.
-      int64_t num_wb_pages = *writeback_limit - *writeback_limit_after;
-      if (num_wb_pages > 0) {
-        absl::StatusOr<std::string> mode =
-            WritebackModeToName(current_writeback_mode);
-        if (mode.ok()) {
-          LOG(INFO) << "zram writeback " << num_wb_pages << " " << *mode
-                    << " pages.";
-        }
-        AddRecord(num_wb_pages);
-      }
-
-      // Update writeback_limit for next mode, or exit if no more quota.
-      if (*writeback_limit_after == 0) {
-        return;
-      }
-      writeback_limit = writeback_limit_after;
-    }
-
-    // Move to the next stage.
-    if (current_writeback_mode == WRITEBACK_HUGE_IDLE) {
-      current_writeback_mode = WRITEBACK_IDLE;
-    } else if (current_writeback_mode == WRITEBACK_IDLE) {
-      current_writeback_mode = WRITEBACK_HUGE;
-    } else {
-      current_writeback_mode = WRITEBACK_NONE;
+  if (*writeback_limit > 0 && params_.writeback_huge_idle) {
+    writeback_limit = InitiateWriteback(*writeback_limit,
+                                        ZramWritebackMode::WRITEBACK_HUGE_IDLE);
+    if (!writeback_limit.ok()) {
+      LOG(ERROR) << "Can not initiate zram writeback for huge idle pages: "
+                 << writeback_limit.status();
+      return;
     }
   }
+  if (*writeback_limit > 0 && params_.writeback_idle) {
+    writeback_limit =
+        InitiateWriteback(*writeback_limit, ZramWritebackMode::WRITEBACK_IDLE);
+    if (!writeback_limit.ok()) {
+      LOG(ERROR) << "Can not initiate zram writeback for idle pages: "
+                 << writeback_limit.status();
+      return;
+    }
+  }
+  if (*writeback_limit > 0 && params_.writeback_huge) {
+    writeback_limit =
+        InitiateWriteback(*writeback_limit, ZramWritebackMode::WRITEBACK_HUGE);
+    if (!writeback_limit.ok()) {
+      LOG(ERROR) << "Can not initiate zram writeback for huge pages: "
+                 << writeback_limit.status();
+      return;
+    }
+  }
+}
+
+absl::StatusOr<int64_t> ZramWriteback::InitiateWriteback(
+    int64_t writeback_limit, ZramWritebackMode mode) {
+  absl::StatusOr<std::string> mode_str = WritebackModeToName(mode);
+  if (!mode_str.ok()) {
+    return mode_str.status();
+  }
+
+  if (mode == WRITEBACK_HUGE_IDLE || mode == WRITEBACK_IDLE) {
+    uint64_t idle_age_sec = GetCurrentIdleTimeSec(
+        params_.idle_min_time.InSeconds(), params_.idle_max_time.InSeconds());
+    base::TimeDelta idle_age = base::Seconds(idle_age_sec);
+    if (params_.suspend_aware) {
+      base::TimeDelta suspend_adjustment =
+          SuspendHistory::Get()->CalculateTotalSuspendedDuration(idle_age);
+      idle_age += suspend_adjustment;
+    }
+    absl::Status status = MarkIdle(idle_age.InSeconds());
+    if (!status.ok()) {
+      return status;
+    }
+  }
+
+  // Initiate writeback.
+  absl::Status status = Utils::Get()->WriteFile(
+      base::FilePath(kZramSysfsDir).Append("writeback"), *mode_str);
+  // It could fail because of depleted writeback limit quota.
+  absl::StatusOr<uint64_t> writeback_limit_after = GetWritebackLimit();
+  if (!writeback_limit_after.ok()) {
+    return writeback_limit_after.status();
+  }
+  if (!status.ok() && *writeback_limit_after != 0) {
+    // The failure on writeback while non-zero write is left means real failure.
+    return status;
+  }
+
+  // Log the number of writeback pages.
+  int64_t num_wb_pages = writeback_limit - *writeback_limit_after;
+  if (num_wb_pages > 0) {
+    LOG(INFO) << "zram writeback " << num_wb_pages << " " << *mode_str
+              << " pages.";
+    AddRecord(num_wb_pages);
+  }
+  last_writeback_ = base::Time::Now();
+
+  return writeback_limit_after;
 }
 
 absl::Status ZramWriteback::Start() {

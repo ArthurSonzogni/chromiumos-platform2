@@ -83,8 +83,9 @@ class ZramWriteback {
   friend ZramWriteback** GetSingleton<ZramWriteback>();
 
   absl::Status EnableWriteback(uint32_t size_mb);
+  absl::StatusOr<int64_t> InitiateWriteback(int64_t writeback_limit,
+                                            ZramWritebackMode mode);
   absl::Status SetWritebackLimit(uint32_t num_pages);
-  absl::Status InitiateWriteback(ZramWritebackMode mode);
 
   void Cleanup();
   absl::Status PrerequisiteCheck(uint32_t size);
