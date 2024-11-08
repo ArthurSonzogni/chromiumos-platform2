@@ -12,7 +12,7 @@ for attr in calibbias calibscale raw; do
 done
 
 # Gather per device attributes.
-for attr in sampling_frequency sampling_frequency_available name location scale; do
+for attr in sampling_frequency sampling_frequency_available name location label scale; do
   for path in /sys/bus/iio/devices/iio:device*/${attr}; do
     printf '%s: ' "${path}"
     cat "${path}"
