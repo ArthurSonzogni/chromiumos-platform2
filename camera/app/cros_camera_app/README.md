@@ -12,10 +12,10 @@ To deploy the code directly for faster development iteration:
 
 ```shell
 # Deploy the code
-(host) $ rsync -avp . rex:~/cca
+(host) $ rsync -avp . rex:~/cros_camera_app
 
 # Run the code
-(dut) $ python -m cca.cli.main
+(dut) $ python -m cros_camera_app.cli.main
 ```
 
 ## Related docs
