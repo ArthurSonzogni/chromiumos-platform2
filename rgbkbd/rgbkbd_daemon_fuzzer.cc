@@ -42,7 +42,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   dbus::Bus::Options options;
   scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
   auto adaptor_ = std::make_unique<DBusAdaptor>(bus, /*cros_config=*/nullptr,
-                                                /*crossystem=*/nullptr,
                                                 /*daemon=*/nullptr);
   FuzzedDataProvider provider(data, size);
 

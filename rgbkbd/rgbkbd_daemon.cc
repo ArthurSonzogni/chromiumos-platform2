@@ -13,7 +13,6 @@
 #include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <dbus/bus.h>
 #include <dbus/rgbkbd/dbus-constants.h>
-#include <libcrossystem/crossystem.h>
 
 #include "base/check.h"
 #include "base/files/file_path.h"
@@ -24,29 +23,17 @@ namespace {
 
 constexpr char kLogFilePathForTesting[] = "/run/rgbkbd/log";
 
-bool IsDevMode(crossystem::Crossystem* crossystem) {
-  std::optional<int> value = crossystem->VbGetSystemPropertyInt("cros_debug");
-  if (!value) {
-    LOG(INFO) << "crossystem cros_debug value: Empty";
-  } else {
-    LOG(INFO) << "crossystem cros_debug value: " << *value;
-  }
-  return value && *value == 1;
-}
-
 }  // namespace
 
 namespace rgbkbd {
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
                          brillo::CrosConfigInterface* cros_config,
-                         crossystem::Crossystem* crossystem,
                          RgbkbdDaemon* daemon)
     : org::chromium::RgbkbdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kRgbkbdServicePath)),
       internal_keyboard_(std::make_unique<InternalRgbKeyboard>()),
       rgb_keyboard_controller_(internal_keyboard_.get()),
       cros_config_(cros_config),
-      crossystem_(crossystem),
       daemon_(daemon) {}
 
 DBusAdaptor::~DBusAdaptor() {
@@ -139,11 +126,6 @@ void DBusAdaptor::SetZoneColor(int zone_idx, uint8_t r, uint8_t g, uint8_t b) {
 }
 
 void DBusAdaptor::SetTestingMode(bool enable_testing, uint32_t capability) {
-  // Null crossystem is valid for testing.
-  if (crossystem_ && !IsDevMode(crossystem_)) {
-    return;
-  }
-
   if (enable_testing) {
     if (capability >
         static_cast<uint32_t>(RgbKeyboardCapabilities::kMaxValue)) {
@@ -178,7 +160,7 @@ RgbkbdDaemon::RgbkbdDaemon() : DBusServiceDaemon(kRgbkbdServiceName) {}
 
 void RgbkbdDaemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  adaptor_.reset(new DBusAdaptor(bus_, &cros_config_, &crossystem_, this));
+  adaptor_ = std::make_unique<DBusAdaptor>(bus_, &cros_config_, this);
   adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
 

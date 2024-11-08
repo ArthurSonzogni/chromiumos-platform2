@@ -15,7 +15,6 @@
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <dbus/rgbkbd/dbus-constants.h>
-#include <libcrossystem/crossystem.h>
 
 #include "rgbkbd/dbus_adaptors/org.chromium.Rgbkbd.h"
 #include "rgbkbd/internal_rgb_keyboard.h"
@@ -31,7 +30,6 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
  public:
   DBusAdaptor(scoped_refptr<dbus::Bus> bus,
               brillo::CrosConfigInterface* cros_config,
-              crossystem::Crossystem* crossystem,
               RgbkbdDaemon* daemon);
   DBusAdaptor(const DBusAdaptor&) = delete;
   DBusAdaptor& operator=(const DBusAdaptor&) = delete;
@@ -64,7 +62,6 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
 
   // Non-owning
   raw_ptr<brillo::CrosConfigInterface> cros_config_;
-  raw_ptr<crossystem::Crossystem> crossystem_;
   raw_ptr<RgbkbdDaemon> daemon_;
 };
 
@@ -82,7 +79,6 @@ class RgbkbdDaemon : public brillo::DBusServiceDaemon {
  private:
   std::unique_ptr<DBusAdaptor> adaptor_;
   brillo::CrosConfig cros_config_;
-  crossystem::Crossystem crossystem_;
 };
 
 }  // namespace rgbkbd
