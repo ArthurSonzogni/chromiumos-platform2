@@ -4,7 +4,6 @@
 
 #include "swap_management/zram_recompression.h"
 
-#include <absl/cleanup/cleanup.h>
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <base/logging.h>
@@ -168,12 +167,6 @@ void ZramRecompression::PeriodicRecompress() {
     }
   }
 
-  // Is recompression ongoing? If not then set the flag.
-  if (is_currently_recompressing_.exchange(true)) {
-    return;
-  }
-
-  absl::Cleanup cleanup = [&] { is_currently_recompressing_ = false; };
   absl::Status status = absl::OkStatus();
 
   // Did we recompress too recently?

@@ -71,7 +71,6 @@ class ZramRecompression {
     }
   } params_;
 
-  std::atomic<bool> is_currently_recompressing_ = false;
   base::Time last_recompression_ = base::Time::Min();
   base::WeakPtrFactory<ZramRecompression> weak_factory_{this};
 };
