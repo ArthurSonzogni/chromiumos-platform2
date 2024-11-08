@@ -1327,13 +1327,12 @@ TEST_P(StorageTest, WriteIntoStorageAndUploadWithKeyUpdate) {
   // Wait to trigger encryption key request on the next upload.
   task_environment_.FastForwardBy(kKeyRenewalTime + base::Milliseconds(100));
 
-  // Set uploader expectations for MANUAL upload with key delivery.
-  // Expect at least one KEY_DELIVERY, but allow for more if other MANUAL queues
-  // also need the key.
+  // Set uploader expectations for MANUAL upload; key needs to be updated, but
+  // not together with the records.
   expect_to_need_key_ = true;
   test::TestCallbackAutoWaiter waiter;
   EXPECT_CALL(set_mock_uploader_expectations_,
-              Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
+              Call(Eq(UploaderInterface::UploadReason::MANUAL)))
       .Times(AtLeast(1))
       .WillRepeatedly(
           Invoke([&waiter, this](UploaderInterface::UploadReason reason) {

@@ -21,8 +21,8 @@
 #include <base/functional/callback_forward.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/ref_counted_delete_on_sequence.h>
-#include <base/task/sequenced_task_runner.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
@@ -196,7 +196,7 @@ class QueueUploaderInterface : public UploaderInterface {
       const scoped_refptr<HealthModule> health_module,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
-      UploaderInterface::UploadReason reason,
+      UploaderInterface::UploadReason upload_reason,
       UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       UploaderInterfaceResultCb start_uploader_cb);
 

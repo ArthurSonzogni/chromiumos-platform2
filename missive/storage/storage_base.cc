@@ -70,14 +70,9 @@ void QueueUploaderInterface::AsyncProvideUploader(
     const scoped_refptr<HealthModule> health_module,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
-    UploaderInterface::UploadReason reason,
+    UploaderInterface::UploadReason upload_reason,
     UploaderInterface::InformAboutCachedUploadsCb inform_cb,
     UploaderInterfaceResultCb start_uploader_cb) {
-  const auto upload_reason =
-      (/*need_encryption_key=*/encryption_module->is_enabled() &&
-       encryption_module->need_encryption_key())
-          ? UploaderInterface::UploadReason::KEY_DELIVERY
-          : reason;
   auto recorder = health_module->NewRecorder();
   if (recorder) {
     auto* const record = recorder->mutable_upload_encrypted_record_call();
