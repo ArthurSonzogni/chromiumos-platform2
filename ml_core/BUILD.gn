@@ -74,6 +74,8 @@ install_config("install_headers") {
     sources += [
       "ica.proto",
       "interface.h",
+      "raid.proto",
+      "raid_interface.h",
     ]
   }
   install_path = "/usr/include/ml_core"
@@ -94,6 +96,7 @@ install_config("unittest_deps") {
   # Use either local or DLC version of ml-core-dlc.
   if (use.local_ml_core_internal) {
     sources += [
+      "cat_and_dog.webp",
       "libcros_ml_core_internal.so",
       "moon_big.jpg",
     ]
