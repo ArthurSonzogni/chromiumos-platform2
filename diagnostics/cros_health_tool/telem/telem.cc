@@ -1001,7 +1001,15 @@ void DisplayTpmInfo(const mojom::TpmResultPtr& result) {
   SET_DICT(manufacturer, version, &out_version);
   SET_DICT(tpm_model, version, &out_version);
   SET_DICT(firmware_version, version, &out_version);
-  SET_DICT(vendor_specific, version, &out_version);
+
+  // vendor_specific is bytes originally and is not guaranteed to contain
+  // only valid UTF-8 characters. Convert it to hex string for better
+  // testability when outputting.
+  if (version->vendor_specific.has_value()) {
+    out_version.Set("vendor_specific",
+                    base::HexEncode(version->vendor_specific.value()));
+  }
+
   SET_DICT(gsc_device, version, &out_version);
   output.Set("version", std::move(out_version));
 
