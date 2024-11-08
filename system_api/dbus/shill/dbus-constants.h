@@ -1271,6 +1271,10 @@ constexpr char kDisconnectFromP2PGroupResultOperationFailed[] =
 // Manager DNSProxyDOHProviders wildcard IP address value.
 constexpr char kDNSProxyDOHProvidersMatchAnyIPAddress[] = "*";
 
+// Default cellular interface name which may appear in the kInterfaceProperty of
+// Device. This value means that the Cellular Device is not active.
+constexpr char kCellularDefaultInterfaceName[] = "cell_iface";
+
 // Represents the priority level of a Wi-Fi interface. When a new interface is
 // requested, existing interfaces of lower priority may be destroyed to make
 // room for the new interfaces.

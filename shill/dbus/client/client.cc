@@ -217,6 +217,13 @@ std::pair<int, Client::NetworkConfig> ParseNetworkConfigProperty(
   return std::make_pair(session_id, config);
 }
 
+// For a Cellular Device, its interface name can be empty or a placeholder name,
+// which indicates that the Device is not active. In both cases, Shill::Client
+// should not expose this Device to the users.
+bool IsActiveInterfaceName(std::string_view ifname) {
+  return !ifname.empty() && ifname != kCellularDefaultInterfaceName;
+}
+
 }  // namespace
 
 Client::NetworkConfig::NetworkConfig() = default;
@@ -465,9 +472,9 @@ void Client::HandleDevicesChanged(const brillo::Any& property_value) {
   for (auto it = devices_.begin(); it != devices_.end();) {
     if (latest.find(it->first) == latest.end()) {
       VLOG(2) << "Device [" << it->first << "] removed";
-      if (!it->second->device()->ifname.empty()) {
-        // If the ifname is empty, it should not be exposed so we don't need to
-        // invoke the removed callback.
+      if (IsActiveInterfaceName(it->second->device()->ifname)) {
+        // If the ifname does not indicate an active Device, the Device should
+        // not be exposed so we don't need to invoke the removed callback.
         for (auto& handler : device_removed_handlers_) {
           handler.Run(it->second->device());
         }
@@ -553,7 +560,7 @@ void Client::OnDevicePropertyChange(const std::string& device_path,
 
   // For a device without interface name, it should not be exposed so no
   // callback should be triggered.
-  if (device->ifname.empty()) {
+  if (!IsActiveInterfaceName(device->ifname)) {
     return;
   }
 
@@ -614,21 +621,24 @@ void Client::HandleDeviceInterfaceChanged(const std::string& device_path,
                                           Device* device) {
   CHECK(device);
   std::string new_ifname = property_value.TryGet<std::string>();
-  if (device->ifname.empty() && !new_ifname.empty()) {
+  if (!IsActiveInterfaceName(device->ifname) &&
+      IsActiveInterfaceName(new_ifname)) {
     device->ifname = new_ifname;
     // Added callback should be called after we modify the |device|.
     for (auto& handler : device_added_handlers_) {
       handler.Run(device);
     }
-  } else if (!device->ifname.empty() && new_ifname.empty()) {
+  } else if (IsActiveInterfaceName(device->ifname) &&
+             !IsActiveInterfaceName(new_ifname)) {
     // Removed callback should be called before we modify the |device|.
     for (auto& handler : device_removed_handlers_) {
       handler.Run(device);
     }
     device->ifname = new_ifname;
-  } else if (!device->ifname.empty() && !new_ifname.empty()) {
-    // This should not happen. The interface name should go to empty before
-    // change to another value.
+  } else if (IsActiveInterfaceName(device->ifname) &&
+             IsActiveInterfaceName(new_ifname)) {
+    // This should not happen. The interface name should go to an inactive value
+    // before change to another value.
     LOG(ERROR) << "Device [" << device_path << "] ifname changed from "
                << device->ifname << " to " << new_ifname;
   }
@@ -758,9 +768,9 @@ void Client::OnServicePropertyChange(const std::string& device_path,
 
 std::vector<std::unique_ptr<Client::Device>> Client::GetDevices() const {
   std::vector<std::unique_ptr<Client::Device>> devices;
-  // Provide the devices with an interface name.
+  // Provide the active devices.
   for (const auto& [_, dev] : devices_) {
-    if (dev->device()->ifname.empty()) {
+    if (!IsActiveInterfaceName(dev->device()->ifname)) {
       continue;
     }
     auto device = std::make_unique<Device>();

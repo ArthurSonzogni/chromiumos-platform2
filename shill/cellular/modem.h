@@ -60,7 +60,6 @@ class Modem {
                                                         0x00, 0x00, 0x00};
   static constexpr int kFakeDevInterfaceIndex = -1;
   static constexpr char kCellularDeviceName[] = "cellular_device";
-  static constexpr char kCellularDefaultInterfaceName[] = "cellular_interface";
   static constexpr int kCellularDefaultInterfaceIndex = -2;
 
  private:
