@@ -545,6 +545,7 @@ std::optional<ChromeSetup::Result> ChromeSetup::Run() {
   AddFeatureManagementFlags(&builder, &feature_management_);
   AddDeviceSpecificFlags(&builder);
   AddMantisFlags(&builder);
+  AddXSFlags(&builder);
 
   // Apply any modifications requested by the developer.
   if (builder.is_developer_end_user()) {
@@ -1255,6 +1256,12 @@ void AddMantisFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("mantis")) {
     // The CrosSafetyService is required for the MantisService
     builder->AddFeatureEnableOverride("CrosSafetyService");
+  }
+}
+
+void AddXSFlags(ChromiumCommandBuilder* builder) {
+  if (builder->UseFlagIsSet("odml_xs_base_model")) {
+    builder->AddFeatureEnableOverride("ConchLargeModel");
   }
 }
 
