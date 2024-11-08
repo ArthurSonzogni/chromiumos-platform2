@@ -3033,6 +3033,91 @@ TEST_F(ServiceTest, RequestTrafficCountersWithoutAttachedNetwork) {
   }
 }
 
+TEST_F(ServiceTest, RequestTrafficCountersBackgroundRefresh) {
+  auto source0 = patchpanel::Client::TrafficSource::kChrome;
+  auto source1 = patchpanel::Client::TrafficSource::kUser;
+  auto source2 = patchpanel::Client::TrafficSource::kArc;
+
+  // Initial counter snapshot
+  patchpanel::Client::TrafficVector init_counter_arr0 = {200, 410, 5, 8};
+  patchpanel::Client::TrafficVector init_counter_arr1 = {1432, 3451, 7, 10};
+  std::vector<patchpanel::Client::TrafficCounter> init_counters{
+      CreateCounter(init_counter_arr0, source0, kIfName),
+      CreateCounter(init_counter_arr1, source1, kIfName),
+  };
+  auto network = std::make_unique<MockNetwork>(1, kIfName, Technology::kWiFi);
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>(
+          [&](patchpanel::Client::GetTrafficCountersCallback callback) {
+            std::move(callback).Run(init_counters);
+          }));
+
+  service_->AttachNetwork(network->AsWeakPtr());
+  Mock::VerifyAndClearExpectations(network.get());
+
+  // Traffic counter snapshot at the time of the next background refresh.
+  patchpanel::Client::TrafficVector counter_arr0 = {
+      .rx_bytes = 212, .tx_bytes = 434, .rx_packets = 6, .tx_packets = 10};
+  patchpanel::Client::TrafficVector counter_arr1 = {
+      .rx_bytes = 1856, .tx_bytes = 5612, .rx_packets = 15, .tx_packets = 12};
+  patchpanel::Client::TrafficVector counter_arr2 = {
+      .rx_bytes = 1123, .tx_bytes = 2390, .rx_packets = 10, .tx_packets = 8};
+  std::vector<patchpanel::Client::TrafficCounter> counters{
+      CreateCounter(counter_arr0, source0, kIfName),
+      CreateCounter(counter_arr1, source1, kIfName),
+      CreateCounter(counter_arr2, source2, kIfName),
+  };
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>(
+          [&](patchpanel::Client::GetTrafficCountersCallback callback) {
+            std::move(callback).Run(counters);
+          }));
+  dispatcher()->task_environment().FastForwardBy(
+      Service::kTrafficCountersRefreshInterval);
+  dispatcher()->task_environment().FastForwardBy(base::Seconds(1));
+  Mock::VerifyAndClearExpectations(network.get());
+
+  // Expect to see the delta of the later snapshot minus the initial snapshot
+  for (const auto& [source, counters] : service_->current_traffic_counters()) {
+    if (source == source0) {
+      EXPECT_EQ(12, counters.rx_bytes);
+      EXPECT_EQ(24, counters.tx_bytes);
+      continue;
+    }
+
+    if (source == source1) {
+      EXPECT_EQ(424, counters.rx_bytes);
+      EXPECT_EQ(2161, counters.tx_bytes);
+      continue;
+    }
+
+    if (source == source2) {
+      EXPECT_EQ(1123, counters.rx_bytes);
+      EXPECT_EQ(2390, counters.tx_bytes);
+      continue;
+    }
+
+    FAIL() << "Unxpected source " << source << " for counters " << counters;
+  }
+
+  // The Network is detached and the Service disconnects, there is one final
+  // traffic counter refresh expected
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>(
+          [&](patchpanel::Client::GetTrafficCountersCallback callback) {
+            std::move(callback).Run(counters);
+          }));
+  service_->DetachNetwork();
+  Mock::VerifyAndClearExpectations(network.get());
+
+  // There is no background refresh when the Service has no attached Network.
+  EXPECT_CALL(*network, RequestTrafficCounters).Times(0);
+  dispatcher()->task_environment().FastForwardBy(
+      Service::kTrafficCountersRefreshInterval);
+  dispatcher()->task_environment().FastForwardBy(base::Seconds(1));
+  Mock::VerifyAndClearExpectations(network.get());
+}
+
 TEST_F(ServiceTest, ResetTrafficCounters) {
   auto source0 = patchpanel::Client::TrafficSource::kChrome;
   auto source1 = patchpanel::Client::TrafficSource::kUser;

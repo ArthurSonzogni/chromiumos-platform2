@@ -1162,9 +1162,7 @@ void Service::AttachNetwork(base::WeakPtr<Network> network) {
       &Service::EmitIPConfigPropertyChange, weak_ptr_factory_.GetWeakPtr()));
   attached_network_->OnStaticIPConfigChanged(static_ip_parameters_.config());
   attached_network_->RegisterEventHandler(network_event_handler_.get());
-  attached_network_->RequestTrafficCounters(
-      base::BindOnce(&Service::InitializeTrafficCounterSnapshot,
-                     weak_ptr_factory_.GetWeakPtr()));
+  RefreshTrafficCountersTask(/*initialize=*/true);
 }
 
 void Service::DetachNetwork() {
@@ -1172,7 +1170,9 @@ void Service::DetachNetwork() {
     LOG(ERROR) << log_name() << ": no Network to detach";
     return;
   }
-  // Schedule a final traffic counter refresh.
+  // Cancel traffic counter refresh recurring task and schedule immediately a
+  // final traffic counter refresh.
+  refresh_traffic_counter_task_.Cancel();
   attached_network_->RequestTrafficCounters(base::BindOnce(
       &Service::RefreshTrafficCounters, weak_ptr_factory_.GetWeakPtr()));
   // Clear the handler and static IP config registered on the previous
@@ -1791,6 +1791,29 @@ void Service::ResetTrafficCounters(Error* /*error*/) {
   current_traffic_counters_.clear();
   traffic_counter_reset_time_ = base::Time::Now();
   SaveToProfile();
+}
+
+void Service::RefreshTrafficCountersTask(bool initialize) {
+  if (!attached_network_) {
+    LOG(WARNING)
+        << __func__
+        << ": no attached network, cancelling traffic counter refreshing task";
+    return;
+  }
+  if (initialize) {
+    attached_network_->RequestTrafficCounters(
+        base::BindOnce(&Service::InitializeTrafficCounterSnapshot,
+                       weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    attached_network_->RequestTrafficCounters(base::BindOnce(
+        &Service::RefreshTrafficCounters, weak_ptr_factory_.GetWeakPtr()));
+  }
+  refresh_traffic_counter_task_.Reset(
+      base::BindOnce(&Service::RefreshTrafficCountersTask,
+                     weak_ptr_factory_.GetWeakPtr(), /*initialize=*/false));
+  dispatcher()->PostDelayedTask(FROM_HERE,
+                                refresh_traffic_counter_task_.callback(),
+                                kTrafficCountersRefreshInterval);
 }
 
 bool Service::CompareWithSameTechnology(const ServiceRefPtr& service,

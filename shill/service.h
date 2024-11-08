@@ -123,6 +123,10 @@ class Service : public base::RefCounted<Service> {
   static constexpr char kAutoConnRecentBadPassphraseFailure[] =
       "recent bad passphrase failure";
 
+  // Interval for polling patchpanel and refreshing traffic counters.
+  static constexpr base::TimeDelta kTrafficCountersRefreshInterval =
+      base::Minutes(1);
+
   enum ConnectFailure {
     kFailureNone,
     kFailureAAA,
@@ -1120,6 +1124,12 @@ class Service : public base::RefCounted<Service> {
       ResultVariantDictionariesCallback callback,
       const std::vector<patchpanel::Client::TrafficCounter>& raw_counters);
 
+  // If |initialize| is true, fetches the raw traffic counters to initialize
+  // |traffic_counter_snapshot_| with InitializeTrafficCounterSnapshot,
+  // otherwise simply refresh the current traffic counter. This function
+  // reschedules itself while a Network is attached to this Service.
+  void RefreshTrafficCountersTask(bool initialize);
+
   // Invokes |static_ipconfig_changed_callback_| to notify the listener of the
   // change of static IP config.
   void NotifyStaticIPConfigChanged();
@@ -1235,6 +1245,9 @@ class Service : public base::RefCounted<Service> {
   TrafficCounterMap traffic_counter_snapshot_;
   // Represents when traffic counters were last reset.
   base::Time traffic_counter_reset_time_;
+  // Task for periodically refreshing traffic counters when this Service has a
+  // Network attached to it.
+  base::CancelableOnceClosure refresh_traffic_counter_task_;
 
   // Uplink and downlink speed for the service in Kbps.
   uint32_t uplink_speed_kbps_ = 0;
