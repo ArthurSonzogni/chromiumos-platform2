@@ -120,6 +120,16 @@ absl::Status ZramRecompression::EnableRecompression() {
 
 absl::Status ZramRecompression::InitiateRecompression(
     ZramRecompressionMode mode) {
+  // If currently working on huge_idle or idle mode, mark idle for pages.
+  if (mode == RECOMPRESSION_HUGE_IDLE || mode == RECOMPRESSION_IDLE) {
+    uint64_t idle_age_sec = GetCurrentIdleTimeSec(
+        params_.idle_min_time.InSeconds(), params_.idle_max_time.InSeconds());
+    absl::Status status = MarkIdle(idle_age_sec);
+    if (!status.ok()) {
+      return status;
+    }
+  }
+
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("recompress");
   std::stringstream ss;
   if (mode == RECOMPRESSION_IDLE) {
@@ -136,7 +146,14 @@ absl::Status ZramRecompression::InitiateRecompression(
     ss << " threshold=" << std::to_string(params_.threshold_mib);
   }
 
-  return Utils::Get()->WriteFile(filepath, ss.str());
+  absl::Status status = Utils::Get()->WriteFile(filepath, ss.str());
+  if (!status.ok()) {
+    return status;
+  }
+
+  last_recompression_ = base::Time::Now();
+
+  return absl::OkStatus();
 }
 
 void ZramRecompression::PeriodicRecompress() {
@@ -165,46 +182,28 @@ void ZramRecompression::PeriodicRecompress() {
     return;
   }
 
-  // We started on huge idle page recompression, then idle, then huge pages, if
-  // enabled accordingly.
-  ZramRecompressionMode current_recompression_mode = RECOMPRESSION_HUGE_IDLE;
-  while (current_recompression_mode != RECOMPRESSION_NONE) {
-    // Is recompression enabled at current mode?
-    if ((current_recompression_mode == RECOMPRESSION_HUGE_IDLE &&
-         params_.recompression_huge_idle) ||
-        (current_recompression_mode == RECOMPRESSION_IDLE &&
-         params_.recompression_idle) ||
-        (current_recompression_mode == RECOMPRESSION_HUGE &&
-         params_.recompression_huge)) {
-      // If currently working on huge_idle or idle mode, mark idle for pages.
-      if (current_recompression_mode == RECOMPRESSION_HUGE_IDLE ||
-          current_recompression_mode == RECOMPRESSION_IDLE) {
-        uint64_t idle_age_sec =
-            GetCurrentIdleTimeSec(params_.idle_min_time.InSeconds(),
-                                  params_.idle_max_time.InSeconds());
-        status = MarkIdle(idle_age_sec);
-        if (!status.ok()) {
-          LOG(ERROR) << "Can not mark zram idle:" << status;
-          return;
-        }
-      }
-
-      // Then we initiate recompression.
-      status = InitiateRecompression(current_recompression_mode);
-      if (!status.ok()) {
-        LOG(ERROR) << "Can not initiate zram recompression" << status;
-        return;
-      }
-      last_recompression_ = base::Time::Now();
+  if (params_.recompression_huge_idle) {
+    absl::Status status = InitiateRecompression(RECOMPRESSION_HUGE_IDLE);
+    if (!status.ok()) {
+      LOG(ERROR) << "Can not initiate zram recompression for huge idle pages: "
+                 << status;
+      return;
     }
-
-    // Move to the next stage.
-    if (current_recompression_mode == RECOMPRESSION_HUGE_IDLE) {
-      current_recompression_mode = RECOMPRESSION_IDLE;
-    } else if (current_recompression_mode == RECOMPRESSION_IDLE) {
-      current_recompression_mode = RECOMPRESSION_HUGE;
-    } else {
-      current_recompression_mode = RECOMPRESSION_NONE;
+  }
+  if (params_.recompression_idle) {
+    absl::Status status = InitiateRecompression(RECOMPRESSION_IDLE);
+    if (!status.ok()) {
+      LOG(ERROR) << "Can not initiate zram recompression for idle pages: "
+                 << status;
+      return;
+    }
+  }
+  if (params_.recompression_huge) {
+    absl::Status status = InitiateRecompression(RECOMPRESSION_HUGE);
+    if (!status.ok()) {
+      LOG(ERROR) << "Can not initiate zram recompression for huge pages: "
+                 << status;
+      return;
     }
   }
 }
