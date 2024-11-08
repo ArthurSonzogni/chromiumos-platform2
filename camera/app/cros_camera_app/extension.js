@@ -60,7 +60,7 @@ function assert(cond, message = 'Assertion failed') {
 /**
  * Sleeps for the given duration.
  * @param {number} duration How long to sleep in milliseconds.
- * @return {!Promise<void>} Resolved when |duration| milliseconds is passed.
+ * @return {!Promise<void>} Resolved when `duration` milliseconds is passed.
  */
 async function sleep(duration) {
   return new Promise((resolve) => {

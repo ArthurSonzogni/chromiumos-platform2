@@ -169,9 +169,23 @@ def cmd_take_photo(facing: app.Facing, output: pathlib.Path):
     help="output path to save the video",
     type=pathlib.Path,
 )
-def cmd_record_video(facing: app.Facing, duration: float, output: pathlib.Path):
+@cli.option(
+    "--resolution",
+    help="video resolution to be recorded",
+    type=app.Resolution.from_str,
+)
+def cmd_record_video(
+    facing: app.Facing,
+    resolution: Optional[app.Resolution],
+    duration: float,
+    output: pathlib.Path,
+):
     cca = app.CameraApp()
-    path = cca.record_video(facing=facing, duration=duration)
+    path = cca.record_video(
+        facing=facing,
+        resolution=resolution,
+        duration=duration,
+    )
     if output:
         shutil.copy2(path, output)
         logging.info("Copied video from %s to %s", path, output)

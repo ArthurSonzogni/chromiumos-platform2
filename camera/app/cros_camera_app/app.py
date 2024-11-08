@@ -10,11 +10,12 @@ is not powerful enough in your use cases.
 
 import base64
 import contextlib
+import dataclasses
 import enum
 import logging
 import pathlib
 import time
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from cros_camera_app import chrome
 from cros_camera_app import device
@@ -82,6 +83,23 @@ class Mode(enum.Enum):
 
     def to_js_value(self) -> str:
         return self.name.lower()
+
+
+@dataclasses.dataclass(frozen=True)
+class Resolution:
+    width: int
+    height: int
+
+    @classmethod
+    def from_str(cls, s: str) -> "Resolution":
+        w, h = s.split("x")
+        return cls(int(w), int(h))
+
+    def __str__(self) -> str:
+        return f"{self.width}x{self.height}"
+
+    def to_js_value(self) -> Dict[str, int]:
+        return dataclasses.asdict(self)
 
 
 def get_camera_file_watcher(pattern: str) -> device.FileWatcher:
@@ -215,18 +233,24 @@ class CameraApp:
         self,
         *,
         facing: Optional[Facing] = None,
+        resolution: Optional[Resolution] = None,
         duration: float = 3,
     ) -> pathlib.Path:
         """Records a video.
 
         Args:
             facing: The facing of the camera to be recorded.
+            resolution: The video resolution to be recorded.
             duration: The duration in seconds to be recorded.
 
         Returns:
             The path of the recorded video.
         """
-        with self.session(facing=facing, mode=Mode.VIDEO):
+        with self.session(facing=facing, mode=Mode.VIDEO) as page:
+            if resolution is not None:
+                logging.info("Set resolution to %s", resolution)
+                page.call("app.setVideoResolution", resolution.to_js_value())
+
             watcher = get_camera_file_watcher("*.mp4")
             self.ext.call("ext.cca.startRecording")
             logging.info("Recording video for %g seconds", duration)
