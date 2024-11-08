@@ -105,9 +105,6 @@ constexpr base::TimeDelta kDeviceStatusCheckInterval = base::Minutes(3);
 // Interval for attempting to initialize patchpanel connection.
 constexpr base::TimeDelta kInitPatchpanelClientInterval = base::Minutes(1);
 
-// Interval for polling patchpanel and refreshing traffic counters.
-constexpr base::TimeDelta kTrafficCounterRefreshInterval = base::Minutes(5);
-
 // Technologies to probe for.
 const char* const kProbeTechnologies[] = {
     kTypeEthernet,
@@ -216,7 +213,6 @@ Manager::Manager(ControlInterface* control_interface,
       bluetooth_manager_(new BluetoothManager(control_interface)),
 #endif  // DISABLE_FLOSS
       technology_order_(kDefaultTechnologyOrder),
-      pending_traffic_counter_request_(false),
       termination_actions_(dispatcher),
       is_wake_on_lan_enabled_(true),
       suppress_autoconnect_(false),
@@ -428,7 +424,6 @@ void Manager::Stop() {
   device_status_check_task_.Cancel();
   sort_services_task_.Cancel();
   init_patchpanel_client_task_.Cancel();
-  refresh_traffic_counter_task_.Cancel();
 #if !defined(DISABLE_FLOSS)
   bluetooth_manager_->Stop();
 #endif  // DISABLE_FLOSS
@@ -1874,9 +1869,6 @@ void Manager::SortServicesTask() {
   SLOG(4) << "In " << __func__;
   sort_services_task_.Cancel();
 
-  // Refresh all traffic counters before the sort.
-  RefreshAllTrafficCountersTask();
-
   SortServicesImpl(/*compare_connectivity_state=*/true, technology_order_,
                    &services_);
 
@@ -2972,57 +2964,10 @@ void Manager::OnPatchpanelClientReady(bool service_is_available) {
   // Kick off any patchpanel related communication below.
   device_info_.OnPatchpanelClientReady();
 
-  // Start task for refreshing traffic counters.
-  refresh_traffic_counter_task_.Reset(base::BindOnce(
-      &Manager::RefreshAllTrafficCountersTask, weak_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-                               refresh_traffic_counter_task_.callback(),
-                               kTrafficCounterRefreshInterval);
-
   // Ensure that VPN lockdown starts if needed.
   std::string always_on_vpn_mode = always_on_vpn_mode_;
   always_on_vpn_mode_ = kAlwaysOnVpnModeOff;
   SetAlwaysOnVpn(always_on_vpn_mode, always_on_vpn_service_);
-}
-
-void Manager::RefreshAllTrafficCountersCallback(
-    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
-  std::map<std::string, std::vector<patchpanel::Client::TrafficCounter>>
-      counter_map;
-  for (const auto& counter : counters) {
-    std::string link_name = counter.ifname;
-    counter_map[link_name].push_back(counter);
-  }
-  for (const auto& device : devices_) {
-    if (device->selected_service()) {
-      device->selected_service()->RefreshTrafficCounters(
-          counter_map[device->link_name()]);
-    }
-  }
-  pending_traffic_counter_request_ = false;
-}
-
-void Manager::RefreshAllTrafficCountersTask() {
-  SLOG(2) << __func__;
-  refresh_traffic_counter_task_.Reset(base::BindOnce(
-      &Manager::RefreshAllTrafficCountersTask, weak_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-                               refresh_traffic_counter_task_.callback(),
-                               kTrafficCounterRefreshInterval);
-
-  if (pending_traffic_counter_request_) {
-    return;
-  }
-
-  patchpanel::Client* client = patchpanel_client();
-  if (!client) {
-    return;
-  }
-  pending_traffic_counter_request_ = true;
-  client->GetTrafficCounters(
-      std::set<std::string>() /* all devices */,
-      base::BindOnce(&Manager::RefreshAllTrafficCountersCallback,
-                     weak_factory_.GetWeakPtr()));
 }
 
 std::string Manager::GetAlwaysOnVpnPackage(Error* /*error*/) {

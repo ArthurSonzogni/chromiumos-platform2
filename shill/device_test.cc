@@ -127,10 +127,6 @@ class TestDevice : public Device {
 class DeviceTest : public testing::Test {
  public:
   DeviceTest() : manager_(control_interface(), dispatcher(), metrics()) {
-    auto client = std::make_unique<patchpanel::FakeClient>();
-    patchpanel_client_ = client.get();
-    manager_.patchpanel_client_ = std::move(client);
-
     device_ =
         new NiceMock<TestDevice>(manager(), kDeviceName, kDeviceAddress,
                                  kDeviceInterfaceIndex, Technology::kUnknown);
@@ -155,17 +151,6 @@ class DeviceTest : public testing::Test {
     device_->GetPrimaryNetwork()->OnDHCPDrop(/*is_voluntary=*/false);
   }
 
-  patchpanel::Client::TrafficCounter CreateCounter(
-      patchpanel::Client::TrafficVector counters,
-      patchpanel::Client::TrafficSource source,
-      const std::string& ifname) {
-    patchpanel::Client::TrafficCounter counter;
-    counter.traffic = counters;
-    counter.source = source;
-    counter.ifname = ifname;
-    return counter;
-  }
-
   DeviceMockAdaptor* GetDeviceMockAdaptor() {
     return static_cast<DeviceMockAdaptor*>(device_->adaptor_.get());
   }
@@ -188,7 +173,6 @@ class DeviceTest : public testing::Test {
 
   scoped_refptr<TestDevice> device_;
   StrictMock<net_base::MockRTNLHandler> rtnl_handler_;
-  patchpanel::FakeClient* patchpanel_client_;
   MockNetwork* network_;  // owned by |device_|
   scoped_refptr<MockService> service_;
 };
@@ -597,55 +581,6 @@ TEST_F(DeviceTest, SetMacAddress) {
   EXPECT_NE(kNewAddress, device_->mac_address());
   device_->device_set_mac_address(kNewAddress);
   EXPECT_EQ(kNewAddress, device_->mac_address());
-}
-
-TEST_F(DeviceTest, FetchTrafficCounters) {
-  auto source0 = patchpanel::Client::TrafficSource::kChrome;
-  auto source1 = patchpanel::Client::TrafficSource::kUser;
-  patchpanel::Client::TrafficVector counter_arr0 = {.rx_bytes = 2842,
-                                                    .tx_bytes = 1243,
-                                                    .rx_packets = 240598,
-                                                    .tx_packets = 43095};
-  patchpanel::Client::TrafficVector counter_arr1 = {.rx_bytes = 4554666,
-                                                    .tx_bytes = 43543,
-                                                    .rx_packets = 5999,
-                                                    .tx_packets = 500000};
-  auto counter0 = CreateCounter(counter_arr0, source0, kDeviceName);
-  auto counter1 = CreateCounter(counter_arr1, source1, kDeviceName);
-  std::vector<patchpanel::Client::TrafficCounter> counters{counter0, counter1};
-  patchpanel_client_->set_stored_traffic_counters(counters);
-
-  EXPECT_EQ(nullptr, device_->selected_service_);
-  scoped_refptr<MockService> service0(new NiceMock<MockService>(manager()));
-  EXPECT_TRUE(service0->traffic_counter_snapshot().empty());
-  EXPECT_TRUE(service0->current_traffic_counters().empty());
-  EXPECT_CALL(*service0, AttachNetwork(IsWeakPtrTo(network_)));
-  device_->SelectService(service0);
-  EXPECT_EQ(service0, device_->selected_service_);
-  EXPECT_TRUE(service0->current_traffic_counters().empty());
-  EXPECT_EQ(2, service0->traffic_counter_snapshot().size());
-  EXPECT_EQ(counter_arr0, service0->traffic_counter_snapshot()[source0]);
-  EXPECT_EQ(counter_arr1, service0->traffic_counter_snapshot()[source1]);
-
-  patchpanel::Client::TrafficVector counter_diff0{12, 98, 34, 76};
-  patchpanel::Client::TrafficVector counter_diff1{324534, 23434, 785676, 256};
-  auto new_total0 = counter_arr0 + counter_diff0;
-  auto new_total1 = counter_arr1 + counter_diff1;
-  auto new_counter0 = CreateCounter(new_total0, source0, kDeviceName);
-  auto new_counter1 = CreateCounter(new_total1, source1, kDeviceName);
-  counters = {new_counter0, new_counter1};
-  patchpanel_client_->set_stored_traffic_counters(counters);
-
-  scoped_refptr<MockService> service1(new NiceMock<MockService>(manager()));
-  EXPECT_CALL(*service0, DetachNetwork());
-  EXPECT_CALL(*service1, AttachNetwork(IsWeakPtrTo(network_)));
-  device_->SelectService(service1);
-  EXPECT_EQ(service1, device_->selected_service_);
-  EXPECT_EQ(counter_diff0, service0->current_traffic_counters()[source0]);
-  EXPECT_EQ(counter_diff1, service0->current_traffic_counters()[source1]);
-  EXPECT_EQ(new_total0, service1->traffic_counter_snapshot()[source0]);
-  EXPECT_EQ(new_total1, service1->traffic_counter_snapshot()[source1]);
-  EXPECT_TRUE(service1->current_traffic_counters().empty());
 }
 
 }  // namespace shill

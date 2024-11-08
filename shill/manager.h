@@ -599,7 +599,6 @@ class Manager {
   FRIEND_TEST(ManagerTest, IsTechnologyProhibited);
   FRIEND_TEST(ManagerTest, IsWifiIdle);
   FRIEND_TEST(ManagerTest, MoveService);
-  FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ManagerTest, RegisterKnownService);
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
   FRIEND_TEST(ManagerTest, ReleaseBlockedDevice);
@@ -793,10 +792,6 @@ class Manager {
   // Callback called when patchpanel becomes available for RPC.
   void OnPatchpanelClientReady(bool service_is_available);
 
-  void RefreshAllTrafficCountersCallback(
-      const std::vector<patchpanel::Client::TrafficCounter>& counters);
-  void RefreshAllTrafficCountersTask();
-
   // Returns the names of all of the claimed devices by ClaimDevice().
   std::vector<std::string> ClaimedDevices(Error* error);
 
@@ -883,12 +878,6 @@ class Manager {
 
   // Task for initializing patchpanel connection.
   base::CancelableOnceClosure init_patchpanel_client_task_;
-
-  // Task for periodically refreshing traffic counters.
-  base::CancelableOnceClosure refresh_traffic_counter_task_;
-
-  // Whether we're currently waiting on a traffic counter fetch from patchpanel.
-  bool pending_traffic_counter_request_;
 
   // Actions to take when shill is terminating.
   HookTable termination_actions_;

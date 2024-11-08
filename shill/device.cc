@@ -74,7 +74,6 @@ Device::Device(Manager* manager,
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
       rtnl_handler_(net_base::RTNLHandler::GetInstance()),
-      traffic_counter_callback_id_(0),
       weak_ptr_factory_(this) {
   HelpRegisterConstDerivedString(kAddressProperty,
                                  &Device::GetMacAddressString);
@@ -345,26 +344,6 @@ void Device::ForceIPConfigUpdate() {
   GetPrimaryNetwork()->InvalidateIPv6Config();
 }
 
-void Device::FetchTrafficCounters(const ServiceRefPtr& old_service,
-                                  const ServiceRefPtr& new_service) {
-  patchpanel::Client* client = manager_->patchpanel_client();
-  if (!client) {
-    return;
-  }
-  auto primary_network = GetPrimaryNetwork();
-  if (!primary_network) {
-    return;
-  }
-  std::set<std::string> devices{primary_network->interface_name()};
-  traffic_counter_callback_id_++;
-  traffic_counters_callback_map_[traffic_counter_callback_id_] =
-      base::BindOnce(&Device::GetTrafficCountersCallback, AsWeakPtr(),
-                     old_service, new_service);
-  client->GetTrafficCounters(
-      devices, base::BindOnce(&Device::GetTrafficCountersPatchpanelCallback,
-                              AsWeakPtr(), traffic_counter_callback_id_));
-}
-
 void Device::HelpRegisterConstDerivedString(
     std::string_view name, std::string (Device::*get)(Error* error)) {
   store_.RegisterDerivedString(
@@ -459,38 +438,6 @@ void Device::OnIPConfigFailure() {
 
 void Device::OnConnected() {}
 
-void Device::GetTrafficCountersCallback(
-    const ServiceRefPtr& old_service,
-    const ServiceRefPtr& new_service,
-    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
-  if (old_service) {
-    old_service->RefreshTrafficCounters(counters);
-  }
-  if (new_service) {
-    // Update the snapshot values, which will be used in future refreshes to
-    // diff against the counter values. Snapshot must be initialized before
-    // layer 3 configuration to ensure that we capture all traffic for the
-    // service.
-    new_service->InitializeTrafficCounterSnapshot(counters);
-  }
-}
-
-void Device::GetTrafficCountersPatchpanelCallback(
-    unsigned int id,
-    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
-  auto iter = traffic_counters_callback_map_.find(id);
-  if (iter == traffic_counters_callback_map_.end() || iter->second.is_null()) {
-    LOG(ERROR) << LoggingTag() << ": No callback found for ID " << id;
-    return;
-  }
-  if (counters.empty()) {
-    LOG(WARNING) << LoggingTag() << ": No counters found";
-  }
-  auto callback = std::move(iter->second);
-  traffic_counters_callback_map_.erase(iter);
-  std::move(callback).Run(counters);
-}
-
 void Device::SelectService(const ServiceRefPtr& service,
                            bool reset_old_service_state) {
   LOG(INFO) << __func__ << ": " << LoggingTag() << " service "
@@ -522,7 +469,6 @@ void Device::SelectService(const ServiceRefPtr& service,
   ResetServiceAttachedNetwork();
 
   OnSelectedServiceChanged(old_service);
-  FetchTrafficCounters(old_service, selected_service_);
   adaptor_->EmitRpcIdentifierChanged(kSelectedServiceProperty,
                                      GetSelectedServiceRpcIdentifier(nullptr));
 }

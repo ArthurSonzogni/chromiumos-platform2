@@ -266,7 +266,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularTest, DefaultLinkDeleted);
   FRIEND_TEST(DeviceTest, AvailableIPConfigs);
-  FRIEND_TEST(DeviceTest, FetchTrafficCounters);
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, Save);
@@ -284,7 +283,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, GetEnabledDeviceWithTechnology);
   FRIEND_TEST(ManagerTest, ConnectToMostSecureWiFi);
-  FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
   FRIEND_TEST(ManagerTest, TechnologyEnabledCheck);
   FRIEND_TEST(VirtualDeviceTest, ResetConnection);
@@ -415,27 +413,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
 
-  // Atomically update the counters of the old service and the snapshot of the
-  // new service. |GetTrafficCountersPatchpanelCallback| calls
-  // |GetTrafficCountersCallback| using the |get_traffic_counters_callback_|
-  // callback below. This is necessary because the callback that holds a
-  // reference to the ServiceRefPtrs needs to be reset to release the
-  // references. We can't directly cancel the callback we give to patchpanel
-  // client since it expects a OnceCallback.
-  void GetTrafficCountersCallback(
-      const ServiceRefPtr& old_service,
-      const ServiceRefPtr& new_service,
-      const std::vector<patchpanel::Client::TrafficCounter>& counters);
-  void GetTrafficCountersPatchpanelCallback(
-      unsigned int id,
-      const std::vector<patchpanel::Client::TrafficCounter>& counters);
-
-  // Asynchronously get all the traffic counters for this device during a
-  // selected_service_ change and update the counters and snapshots for the old
-  // and new selected_service_ respectively.
-  void FetchTrafficCounters(const ServiceRefPtr& old_service,
-                            const ServiceRefPtr& new_service);
-
   // Necessary getter signature for kTypeProperty. Cannot be const.
   std::string GetTechnologyString(Error* error);
   // Necessary getter signature for kAddressProperty. Cannot be const.
@@ -487,16 +464,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // Cache singleton pointers for performance and test purposes.
   net_base::RTNLHandler* rtnl_handler_;
-
-  // See GetTrafficCountersCallback.
-  unsigned int traffic_counter_callback_id_;
-
-  // Maps the callback ID, created when FetchTrafficCounters is called, to the
-  // corresponding callback.
-  std::map<unsigned int,
-           base::OnceCallback<void(
-               const std::vector<patchpanel::Client::TrafficCounter>&)>>
-      traffic_counters_callback_map_;
 
   base::WeakPtrFactory<Device> weak_ptr_factory_;
 };
