@@ -894,6 +894,19 @@ TEST(KernelUtilTest, ComputeNoCErrorSignature) {
 
   EXPECT_EQ("kernel-(NOC-Error)-MMSS-2CBA847E",
             kernel_util::ComputeNoCErrorSignature(kNoCError));
+
+  const char kA1NoCError[] =
+      "QTISECLIB [2955535e38]A1NOC ERROR: ERRLOG0_LOW = 0x00000101\n"
+      "QTISECLIB [2955535e9e]A1NOC ERROR: ERRLOG0_HIGH = 0x00000007\n"
+      "QTISECLIB [2955535ec1]A1NOC ERROR: ERRLOG1_LOW = 0x00000080\n"
+      "QTISECLIB [2955535ee9]A1NOC ERROR: ERRLOG1_HIGH = 0x0000b202\n"
+      "QTISECLIB [2955535f0b]A1NOC ERROR: ERRLOG2_LOW = 0xfe456000\n"
+      "QTISECLIB [2955535f30]A1NOC ERROR: ERRLOG2_HIGH = 0x00000007\n"
+      "QTISECLIB [2955535f51]A1NOC ERROR: ERRLOG3_LOW = 0x00018009\n"
+      "QTISECLIB [2955535f74]A1NOC ERROR: ERRLOG3_HIGH = 0x00000000\n"
+      "";
+  EXPECT_EQ("kernel-(NOC-Error)-A1-58D6807C",
+            kernel_util::ComputeNoCErrorSignature(kA1NoCError));
 }
 
 TEST(KernelUtilTest, ComputeKernelStackSignatureCommonAllArches) {

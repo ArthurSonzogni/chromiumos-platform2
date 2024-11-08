@@ -410,7 +410,7 @@ std::string ComputeNoCErrorSignature(const std::string& dump) {
   //
   // QTISECLIB [1727120e379]MMSS_NOC ERROR: ERRLOG0_LOW = 0x00000105
   //
-  RE2 noc_entry_re(R"(QTISECLIB \[[[:xdigit:]]+\]([a-zA-Z]+)_NOC ERROR: )"
+  RE2 noc_entry_re(R"(QTISECLIB \[[[:xdigit:]]+\]([a-zA-Z0-9]+)_?NOC ERROR: )"
                    R"(ERRLOG[0-9]_(?:(LOW|HIGH)) = ([[:xdigit:]]+))");
   std::string line;
   std::string hashable;
