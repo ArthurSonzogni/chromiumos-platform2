@@ -18,43 +18,6 @@
 
 namespace reporting {
 
-namespace {
-
-// Parameters of individual queues.
-// TODO(b/159352842): Deliver space and upload parameters from outside.
-
-constexpr char kSecurityQueueSubdir[] = "Security";
-constexpr char kSecurityQueuePrefix[] = "P_Security";
-
-constexpr char kImmediateQueueSubdir[] = "Immediate";
-constexpr char kImmediateQueuePrefix[] = "P_Immediate";
-
-constexpr char kFastBatchQueueSubdir[] = "FastBatch";
-constexpr char kFastBatchQueuePrefix[] = "P_FastBatch";
-constexpr base::TimeDelta kFastBatchUploadPeriod = base::Seconds(1);
-
-constexpr char kSlowBatchQueueSubdir[] = "SlowBatch";
-constexpr char kSlowBatchQueuePrefix[] = "P_SlowBatch";
-constexpr base::TimeDelta kSlowBatchUploadPeriod = base::Seconds(20);
-
-constexpr char kBackgroundQueueSubdir[] = "Background";
-constexpr char kBackgroundQueuePrefix[] = "P_Background";
-constexpr base::TimeDelta kBackgroundQueueUploadPeriod = base::Minutes(1);
-
-constexpr char kManualQueueSubdir[] = "Manual";
-constexpr char kManualQueuePrefix[] = "P_Manual";
-constexpr base::TimeDelta kManualUploadPeriod = base::TimeDelta::Max();
-
-constexpr char kManualLacrosQueueSubdir[] = "ManualLacros";
-constexpr char kManualLacrosQueuePrefix[] = "P_ManualLacros";
-
-// Failed upload retry delay: if an upload fails and there are no more incoming
-// events, collected events will not get uploaded for an indefinite time (see
-// b/192666219).
-constexpr base::TimeDelta kFailedUploadRetryDelay = base::Seconds(1);
-
-}  // namespace
-
 StorageOptions::MultiGenerational::MultiGenerational() {
   for (const auto& priority : StorageOptions::GetPrioritiesOrder()) {
     is_multi_generational_[priority].store(false);
@@ -130,8 +93,7 @@ QueueOptions StorageOptions::PopulateQueueOptions(Priority priority) const {
           .set_upload_retry_delay(kFailedUploadRetryDelay)
           .set_can_shed_records(false);
     case UNDEFINED_PRIORITY:
-      NOTREACHED_IN_MIGRATION() << "No QueueOptions for priority UNDEFINED_PRIORITY.";
-      return QueueOptions(*this);
+      NOTREACHED() << "No QueueOptions for priority UNDEFINED_PRIORITY.";
   }
 }
 

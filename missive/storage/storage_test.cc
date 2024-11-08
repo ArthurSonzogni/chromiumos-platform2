@@ -1280,7 +1280,7 @@ TEST_P(StorageTest, WriteIntoStorageAndUpload) {
       .RetiresOnSaturation();
 
   // Trigger upload.
-  task_environment_.FastForwardBy(base::Seconds(1));
+  task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
 }
 
 TEST_P(StorageTest, WriteIntoStorageAndUploadWithKeyUpdate) {
@@ -1289,10 +1289,10 @@ TEST_P(StorageTest, WriteIntoStorageAndUploadWithKeyUpdate) {
     return;
   }
 
-  static constexpr auto kKeyRenewalTime = base::Milliseconds(500);
   CreateTestStorageOrDie(
       BuildTestStorageOptions(),
-      EncryptionModule::Create(is_encryption_enabled(), kKeyRenewalTime));
+      EncryptionModule::Create(is_encryption_enabled(),
+                               StorageOptions::kDefaultKeyCheckPeriod));
   WriteStringOrDie(MANUAL_BATCH, kData[0]);
   WriteStringOrDie(MANUAL_BATCH, kData[1]);
   WriteStringOrDie(MANUAL_BATCH, kData[2]);
@@ -1325,7 +1325,8 @@ TEST_P(StorageTest, WriteIntoStorageAndUploadWithKeyUpdate) {
   WriteStringOrDie(MANUAL_BATCH, kMoreData[2]);
 
   // Wait to trigger encryption key request on the next upload.
-  task_environment_.FastForwardBy(kKeyRenewalTime + base::Milliseconds(100));
+  task_environment_.FastForwardBy(StorageOptions::kDefaultKeyCheckPeriod +
+                                  base::Milliseconds(100));
 
   // Set uploader expectations for MANUAL upload; key needs to be updated, but
   // not together with the records.
@@ -1417,7 +1418,7 @@ TEST_P(StorageTest, WriteIntoStorageReopenWriteMoreAndUpload) {
   // number of uploads or else the tests will not pass.
 
   // Trigger upload.
-  task_environment_.FastForwardBy(base::Seconds(1));
+  task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
 
   // Wait for the TestUploader to finish because it runs on Storage's
   // sequenced task runner, not the main test thread.
@@ -1558,7 +1559,7 @@ TEST_P(StorageTest, EmptyMultigenerationalQueuesAreDeletedOnStartup) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #0 and forward time again, removing data #0
@@ -1599,7 +1600,7 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #0 and forward time again, removing data #0
@@ -1619,7 +1620,7 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #1 and forward time again, removing data #1
@@ -1638,7 +1639,7 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Add more records and verify that #2 and new records are returned.
@@ -1661,7 +1662,7 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #2 and forward time again, removing data #2
@@ -1680,7 +1681,7 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 }
 
@@ -1707,7 +1708,7 @@ TEST_P(StorageTest, WriteAndUploadWithBadConfirmation) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #0 with bad generation.
@@ -1993,7 +1994,7 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    task_environment_.FastForwardBy(base::Seconds(20));
+    task_environment_.FastForwardBy(StorageOptions::kSlowBatchUploadPeriod);
   }
 
   // Confirm #0 SLOW_BATCH, removing data #0
@@ -2031,7 +2032,7 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    task_environment_.FastForwardBy(base::Seconds(20));
+    task_environment_.FastForwardBy(StorageOptions::kSlowBatchUploadPeriod);
   }
 }
 
@@ -2064,7 +2065,7 @@ TEST_P(StorageTest, WriteAndImmediateUploadWithFailure) {
     WriteStringOrDie(IMMEDIATE,
                      kData[0]);  // Immediately uploads and fails.
     // Let it retry upload and verify.
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 }
 
@@ -2114,7 +2115,7 @@ TEST_P(StorageTest, ForceConfirm) {
             }))
         .RetiresOnSaturation();
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #1 and forward time again, possibly removing records #0 and #1
@@ -2132,7 +2133,7 @@ TEST_P(StorageTest, ForceConfirm) {
             }))
         .RetiresOnSaturation();
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Now force confirm #0 and forward time again.
@@ -2159,7 +2160,7 @@ TEST_P(StorageTest, ForceConfirm) {
             }))
         .RetiresOnSaturation();
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Force confirm #0 and forward time again.
@@ -2183,7 +2184,7 @@ TEST_P(StorageTest, ForceConfirm) {
             }))
         .RetiresOnSaturation();
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 }
 
@@ -2281,7 +2282,7 @@ TEST_P(StorageTest, MultipleUsersWriteSamePriorityAndUpload) {
   // One queue for each distinct DM token will write data.
 
   // Trigger upload.
-  task_environment_.FastForwardBy(base::Seconds(1));
+  task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   task_environment_.RunUntilIdle();
 }
 

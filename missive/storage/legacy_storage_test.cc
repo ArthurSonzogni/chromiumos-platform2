@@ -1292,7 +1292,7 @@ TEST_P(LegacyStorageTest, WriteIntoStorageAndUpload) {
       .RetiresOnSaturation();
 
   // Trigger upload.
-  task_environment_.FastForwardBy(base::Seconds(1));
+  task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
 }
 
 TEST_P(LegacyStorageTest, WriteIntoStorageAndUploadWithKeyUpdate) {
@@ -1301,10 +1301,10 @@ TEST_P(LegacyStorageTest, WriteIntoStorageAndUploadWithKeyUpdate) {
     return;
   }
 
-  static constexpr auto kKeyRenewalTime = base::Milliseconds(500);
   CreateTestStorageOrDie(
       BuildTestStorageOptions(),
-      EncryptionModule::Create(is_encryption_enabled(), kKeyRenewalTime));
+      EncryptionModule::Create(is_encryption_enabled(),
+                               StorageOptions::kDefaultKeyCheckPeriod));
   WriteStringOrDie(MANUAL_BATCH, kData[0]);
   WriteStringOrDie(MANUAL_BATCH, kData[1]);
   WriteStringOrDie(MANUAL_BATCH, kData[2]);
@@ -1337,7 +1337,8 @@ TEST_P(LegacyStorageTest, WriteIntoStorageAndUploadWithKeyUpdate) {
   WriteStringOrDie(MANUAL_BATCH, kMoreData[2]);
 
   // Wait to trigger encryption key request on the next upload.
-  task_environment_.FastForwardBy(kKeyRenewalTime + base::Milliseconds(100));
+  task_environment_.FastForwardBy(StorageOptions::kDefaultKeyCheckPeriod +
+                                  base::Milliseconds(100));
 
   // Set uploader expectations for MANUAL upload; key needs to be updated, but
   // not together with the records.
@@ -1423,7 +1424,7 @@ TEST_P(LegacyStorageTest, WriteIntoStorageReopenWriteMoreAndUpload) {
       .RetiresOnSaturation();
 
   // Trigger upload.
-  task_environment_.FastForwardBy(base::Seconds(1));
+  task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   task_environment_.RunUntilIdle();
 
   const std::vector<TestRecord> all_uploaded_records = {
@@ -1537,7 +1538,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #0 and forward time again, removing data #0
@@ -1557,7 +1558,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #1 and forward time again, removing data #1
@@ -1576,7 +1577,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Add more records and verify that #2 and new records are returned.
@@ -1599,7 +1600,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #2 and forward time again, removing data #2
@@ -1618,7 +1619,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 }
 
@@ -1645,7 +1646,7 @@ TEST_P(LegacyStorageTest, WriteAndUploadWithBadConfirmation) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #0 with bad generation.
@@ -1931,7 +1932,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    task_environment_.FastForwardBy(base::Seconds(20));
+    task_environment_.FastForwardBy(StorageOptions::kSlowBatchUploadPeriod);
   }
 
   // Confirm #0 SLOW_BATCH, removing data #0
@@ -1969,7 +1970,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    task_environment_.FastForwardBy(base::Seconds(20));
+    task_environment_.FastForwardBy(StorageOptions::kSlowBatchUploadPeriod);
   }
 }
 
@@ -2002,7 +2003,7 @@ TEST_P(LegacyStorageTest, WriteAndImmediateUploadWithFailure) {
     WriteStringOrDie(IMMEDIATE,
                      kData[0]);  // Immediately uploads and fails.
     // Let it retry upload and verify.
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 }
 
@@ -2052,7 +2053,7 @@ TEST_P(LegacyStorageTest, ForceConfirm) {
             }))
         .RetiresOnSaturation();
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Confirm #1 and forward time again, possibly removing records #0 and #1
@@ -2070,7 +2071,7 @@ TEST_P(LegacyStorageTest, ForceConfirm) {
             }))
         .RetiresOnSaturation();
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Now force confirm #0 and forward time again.
@@ -2097,7 +2098,7 @@ TEST_P(LegacyStorageTest, ForceConfirm) {
             }))
         .RetiresOnSaturation();
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 
   // Force confirm #0 and forward time again.
@@ -2121,7 +2122,7 @@ TEST_P(LegacyStorageTest, ForceConfirm) {
             }))
         .RetiresOnSaturation();
     // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
   }
 }
 

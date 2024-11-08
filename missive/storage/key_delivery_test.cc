@@ -20,6 +20,7 @@
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/encryption_module_interface.h"
+#include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
@@ -34,8 +35,6 @@ using ::testing::WithArg;
 
 namespace reporting {
 namespace {
-
-const base::TimeDelta kPeriod = base::Seconds(5);
 
 class KeyDeliveryTest : public ::testing::Test {
  protected:
@@ -99,7 +98,7 @@ class MockUploader : public UploaderInterface {
 
 TEST_F(KeyDeliveryTest, DeliveryOnRequest) {
   auto key_delivery = KeyDelivery::Create(
-      kPeriod, encryption_module_,
+      StorageOptions::kDefaultKeyCheckPeriod, encryption_module_,
       base::BindRepeating(
           &::testing::MockFunction<void(
               UploaderInterface::UploadReason,
@@ -130,7 +129,7 @@ TEST_F(KeyDeliveryTest, DeliveryOnRequest) {
 
 TEST_F(KeyDeliveryTest, FailedDeliveryOnRequest) {
   auto key_delivery = KeyDelivery::Create(
-      kPeriod, encryption_module_,
+      StorageOptions::kDefaultKeyCheckPeriod, encryption_module_,
       base::BindRepeating(
           &::testing::MockFunction<void(
               UploaderInterface::UploadReason,
@@ -163,7 +162,7 @@ TEST_F(KeyDeliveryTest, FailedDeliveryOnRequest) {
 
 TEST_F(KeyDeliveryTest, PeriodicDelivery) {
   auto key_delivery = KeyDelivery::Create(
-      kPeriod, encryption_module_,
+      StorageOptions::kDefaultKeyCheckPeriod, encryption_module_,
       base::BindRepeating(
           &::testing::MockFunction<void(
               UploaderInterface::UploadReason,
@@ -202,12 +201,12 @@ TEST_F(KeyDeliveryTest, PeriodicDelivery) {
       .WillOnce(Return(true))
       .RetiresOnSaturation();
 
-  task_environment_.FastForwardBy(2 * kPeriod);
+  task_environment_.FastForwardBy(2 * StorageOptions::kDefaultKeyCheckPeriod);
 }
 
 TEST_F(KeyDeliveryTest, ImplicitPeriodicDelivery) {
   auto key_delivery = KeyDelivery::Create(
-      kPeriod, encryption_module_,
+      StorageOptions::kDefaultKeyCheckPeriod, encryption_module_,
       base::BindRepeating(
           &::testing::MockFunction<void(
               UploaderInterface::UploadReason,
@@ -263,12 +262,12 @@ TEST_F(KeyDeliveryTest, ImplicitPeriodicDelivery) {
       .WillOnce(Return(true))
       .RetiresOnSaturation();
 
-  task_environment_.FastForwardBy(2 * kPeriod);
+  task_environment_.FastForwardBy(2 * StorageOptions::kDefaultKeyCheckPeriod);
 }
 
 TEST_F(KeyDeliveryTest, ExpirationWhileRequestsPending) {
   auto key_delivery = KeyDelivery::Create(
-      kPeriod, encryption_module_,
+      StorageOptions::kDefaultKeyCheckPeriod, encryption_module_,
       base::BindRepeating(
           &::testing::MockFunction<void(
               UploaderInterface::UploadReason,

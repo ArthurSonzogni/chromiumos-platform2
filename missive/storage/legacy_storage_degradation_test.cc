@@ -724,7 +724,8 @@ class LegacyStorageDegradationTest
       scoped_refptr<EncryptionModuleInterface> encryption_module =
           EncryptionModule::Create(
               /*is_enabled=*/false,
-              /*renew_encryption_key_period=*/base::Minutes(30))) {
+              /*renew_encryption_key_period=*/StorageOptions::
+                  kBackgroundQueueUploadPeriod)) {
     // No attempts to deliver key.
     EXPECT_CALL(set_mock_uploader_expectations_,
                 Call(UploaderInterface::UploadReason::KEY_DELIVERY))
@@ -1065,7 +1066,7 @@ TEST_P(LegacyStorageDegradationTest,
               }))
           .RetiresOnSaturation();
       // Trigger upload on FAST_BATCH.
-      task_environment_.FastForwardBy(base::Seconds(1));
+      task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
     }
 
     // Add one more record, so that the last file is not empty (otherwise
@@ -1112,7 +1113,7 @@ TEST_P(LegacyStorageDegradationTest,
               }))
           .RetiresOnSaturation();
       // Trigger upload on FAST_BATCH.
-      task_environment_.FastForwardBy(base::Seconds(1));
+      task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
     }
     {
       test::TestCallbackAutoWaiter waiter;
@@ -1198,7 +1199,7 @@ TEST_P(LegacyStorageDegradationTest,
               }))
           .RetiresOnSaturation();
       // Trigger upload on FAST_BATCH.
-      task_environment_.FastForwardBy(base::Seconds(1));
+      task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
     }
     {
       test::TestCallbackAutoWaiter waiter;
@@ -1242,7 +1243,7 @@ TEST_P(LegacyStorageDegradationTest,
               }))
           .RetiresOnSaturation();
       // Trigger upload on FAST_BATCH.
-      task_environment_.FastForwardBy(base::Seconds(1));
+      task_environment_.FastForwardBy(StorageOptions::kFastBatchUploadPeriod);
     }
     {
       test::TestCallbackAutoWaiter waiter;

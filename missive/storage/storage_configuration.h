@@ -41,8 +41,42 @@ class QueueOptions;
 //                 callback);
 class StorageOptions {
  public:
+  // Parameters of individual queues.
+  // TODO(b/159352842): Deliver space and upload parameters from outside.
+
+  static constexpr char kSecurityQueueSubdir[] = "Security";
+  static constexpr char kSecurityQueuePrefix[] = "P_Security";
+
+  static constexpr char kImmediateQueueSubdir[] = "Immediate";
+  static constexpr char kImmediateQueuePrefix[] = "P_Immediate";
+
+  static constexpr char kFastBatchQueueSubdir[] = "FastBatch";
+  static constexpr char kFastBatchQueuePrefix[] = "P_FastBatch";
+  static constexpr base::TimeDelta kFastBatchUploadPeriod = base::Seconds(2);
+
+  static constexpr char kSlowBatchQueueSubdir[] = "SlowBatch";
+  static constexpr char kSlowBatchQueuePrefix[] = "P_SlowBatch";
+  static constexpr base::TimeDelta kSlowBatchUploadPeriod = base::Seconds(40);
+
+  static constexpr char kBackgroundQueueSubdir[] = "Background";
+  static constexpr char kBackgroundQueuePrefix[] = "P_Background";
+  static constexpr base::TimeDelta kBackgroundQueueUploadPeriod =
+      base::Minutes(2);
+
+  static constexpr char kManualQueueSubdir[] = "Manual";
+  static constexpr char kManualQueuePrefix[] = "P_Manual";
+  static constexpr base::TimeDelta kManualUploadPeriod = base::TimeDelta::Max();
+
+  static constexpr char kManualLacrosQueueSubdir[] = "ManualLacros";
+  static constexpr char kManualLacrosQueuePrefix[] = "P_ManualLacros";
+
+  // Failed upload retry delay: if an upload fails and there are no more
+  // incoming events, collected events will not get uploaded for an indefinite
+  // time (see b/192666219).
+  static constexpr base::TimeDelta kFailedUploadRetryDelay = base::Seconds(1);
+
   // Default period for Storage to check for encryption key.
-  static constexpr base::TimeDelta kDefaultKeyCheckPeriod = base::Seconds(1);
+  static constexpr base::TimeDelta kDefaultKeyCheckPeriod = base::Seconds(5);
 
   // Default delay until unused queue is garbage collected.
   static constexpr base::TimeDelta kDefaultQueueGarbageCollectionPeriod =
