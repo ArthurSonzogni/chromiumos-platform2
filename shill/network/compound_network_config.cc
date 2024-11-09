@@ -271,7 +271,7 @@ std::ostream& operator<<(std::ostream& stream,
     stream << " SLAAC " << *config.slaac_network_config_ << ";";
   }
   if (config.dhcpv6_network_config_) {
-    stream << " DHCPv6 " << *config.dhcp_network_config_ << ";";
+    stream << " DHCPv6 " << *config.dhcpv6_network_config_ << ";";
   }
   stream << " combined config " << *config.combined_network_config_;
   return stream;
