@@ -67,13 +67,17 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "bash",
     "bootstat",
     "brcm_patchram_p",
-    "chromeos-cleanu",
+    "chromeos-cleanu",  // b/378173769
+    "chromeos-firmwa",  // b/376119815
     "chromeos-kip-mo",
+    "chromeos-send-k",  // b/378173769
     "chromeos-setgoo",
     "chromeos-trim",
+    "crash_sender",  // b/378177565
     "cr50_disable_sl",
     "cros-disks",
     "cros_healthd",
+    "cros_installer",  // b/378172996
     "crossystem",  // b/376120383
     "crx-import.sh",
     "cryptohomed",
@@ -84,6 +88,8 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "dlcservice",
     "dnsproxyd",
     "dump_kernel_con",
+    "elogtool",  // b/378176115
+    "eventlog",  // b/378176115
     "evtest",
     "featured",
     "flashrom",
@@ -100,6 +106,7 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "init",
     "ipf_ufd",
     "iptables",
+    "keyctl",  // b/378174893
     "logger",
     "lvmd",
     "metrics_client",
@@ -111,12 +118,16 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "os_install_serv",
     "patchpaneld",
     "periodic_schedu",
+    "postinst",  // b/378172996
     "powerd-pre-star",
     "pvs",
     "quipper",
+    "restorecon"  // b/378176161
     "rialto_cellular",
     "rialto_modem_wa",
+    "runtime_probe",  // b/378177081
     "sed",
+    "send-metrics-on",  // b/378176109
     "send-uptime-met",
     "session_manager",
     "sh",
@@ -124,6 +135,7 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "spaced_cli",
     "sshd",
     "start",
+    "status",  // b/378176904
     "swap_management",
     "systemd-tmpfile",
     "thermal.sh",
