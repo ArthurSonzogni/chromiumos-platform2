@@ -37,6 +37,7 @@
 #   0xc0108027 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x27, 0x10)
 #   0xc0188030 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x30, 0x18)
 #   0xc0188033 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x33, 0x18)
+#   0xc0208032 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x32, 0x20)
 #   0xc040803b == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x3b, 0x40)
 #   0xc070803a == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x3a, 0x70)
 ioctl: arg1 == 0x5401 || arg1 == 0x8004  || arg1 == 0x40048001 || \
@@ -51,7 +52,7 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8004  || arg1 == 0x40048001 || \
        arg1 == 0x40108014 || arg1 == 0x40108024 || arg1 == 0x8008802d || \
        arg1 == 0xc0048034 || arg1 == 0xc0108006 || arg1 == 0xc0108027 || \
        arg1 == 0xc0188030 || arg1 == 0xc0188033 || arg1 == 0xc040803b || \
-       arg1 == 0xc070803a
+       arg1 == 0xc070803a || arg1 == 0xc0208032
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 write: 1
 futex: 1
