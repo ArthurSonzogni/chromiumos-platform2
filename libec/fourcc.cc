@@ -4,16 +4,29 @@
 
 #include "libec/fourcc.h"
 
+#include <array>
+#include <cctype>
+#include <format>
 #include <string>
-
-#include "base/strings/stringprintf.h"
 
 namespace ec {
 
 std::string FourCCToString(uint32_t a) {
-  return base::StringPrintf(
-      "%c%c%c%c", static_cast<char>(a), static_cast<char>(a >> 8),
-      static_cast<char>(a >> 16), static_cast<char>(a >> 24));
+  const std::array<char, 4> chars = {
+      static_cast<char>(a),
+      static_cast<char>(a >> 8),
+      static_cast<char>(a >> 16),
+      static_cast<char>(a >> 24),
+  };
+
+  // The unsigned char conversion is intentional. See isprint documentation.
+  for (unsigned char c : chars) {
+    if (!std::isprint(c)) {
+      return std::format("0x{:X}", a);
+    }
+  }
+
+  return std::string(chars.data(), chars.size());
 }
 
 }  // namespace ec

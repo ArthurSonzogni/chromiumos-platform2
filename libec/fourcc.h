@@ -11,6 +11,15 @@
 
 namespace ec {
 
+/**
+ * Convert a Four Character Code to a printable string.
+ *
+ * If the FourCC contains non-printable characters, return a hex
+ * representation of the four bytes.
+ *
+ * @param a FourCC code.
+ * @return A printable form of the FourCC, of length 3 to 10.
+ */
 BRILLO_EXPORT std::string FourCCToString(uint32_t a);
 
 }  // namespace ec
