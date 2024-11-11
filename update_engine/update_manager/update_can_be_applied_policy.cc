@@ -34,7 +34,7 @@ EvalStatus UpdateCanBeAppliedPolicy::Evaluate(EvaluationContext* ec,
   UpdateTimeRestrictionsPolicyImpl update_time_restrictions_policy;
   DeferredUpdatePolicyImpl deferred_update_policy;
 
-  vector<PolicyInterface const*> policies_to_consult = {
+  vector<PolicyInterface*> policies_to_consult = {
       // Check to see if an interactive update has been requested.
       &interactive_update_policy,
 

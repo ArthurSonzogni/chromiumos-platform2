@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "update_engine/update_manager/update_check_allowed_policy.h"
+
 #include <string>
 #include <vector>
 
@@ -20,7 +22,6 @@
 #include "update_engine/update_manager/policy_utils.h"
 #include "update_engine/update_manager/recovery_policy.h"
 #include "update_engine/update_manager/shill_provider.h"
-#include "update_engine/update_manager/update_check_allowed_policy.h"
 
 using chromeos_update_engine::SystemState;
 using std::string;
@@ -60,7 +61,7 @@ EvalStatus UpdateCheckAllowedPolicy::Evaluate(EvaluationContext* ec,
   OobePolicyImpl oobe_policy;
   NextUpdateCheckTimePolicyImpl next_update_check_time_policy;
 
-  vector<PolicyInterface* const> policies_to_consult = {
+  vector<PolicyInterface*> policies_to_consult = {
       // If this is an installation, allow performing.
       &installation_policy,
 
