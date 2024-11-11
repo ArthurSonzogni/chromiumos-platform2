@@ -57,6 +57,7 @@ fn get_install_disk_info(disk: LsBlkDevice) -> Option<DiskInfo> {
     fn has_install_payload(device: &Path) -> bool {
         let Ok(mount) = mount::Builder::new(device)
             .fs_type(FsType::Vfat)
+            .add_flags(mount::MsFlags::MS_RDONLY)
             .temp_backed_mount()
         else {
             return false;
