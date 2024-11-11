@@ -58,7 +58,11 @@ impl<'a> Reader<'a> {
     /// integer in the bitstream. (The unsigned integer corresponds to the
     /// bottom n bits of the signed integer.). See 4.10.6
     pub fn read_su(&mut self, num_bits: usize) -> Result<i32, String> {
-        let mut value: i32 = self.0.read_bits::<u32>(num_bits)?.try_into().map_err(|_| String::from("Read more than 31 signed bits!"))?;
+        let mut value: i32 = self
+            .0
+            .read_bits::<u32>(num_bits)?
+            .try_into()
+            .map_err(|_| String::from("Read more than 31 signed bits!"))?;
         let sign_mask = 1 << (num_bits - 1);
 
         if (value & sign_mask) != 0 {
@@ -73,7 +77,9 @@ impl<'a> Reader<'a> {
     pub fn read_ns(&mut self, num_bits: usize) -> Result<u32, String> {
         let w = helpers::floor_log2(num_bits as u32) + 1;
         let m = (1 << w) - num_bits as u32;
-        let v = self.0.read_bits::<u32>(usize::try_from(w).map_err(|_| String::from("Invalid num_bits"))? - 1)?;
+        let v = self.0.read_bits::<u32>(
+            usize::try_from(w).map_err(|_| String::from("Invalid num_bits"))? - 1,
+        )?;
 
         if v < m.into() {
             return Ok(v);
@@ -117,8 +123,7 @@ impl<'a> Reader<'a> {
         } else if annexb_state.temporal_unit_consumed > annexb_state.temporal_unit_size {
             return Err(format!(
                 "temporal_unit_size is {} but we consumed {} bytes",
-                annexb_state.temporal_unit_size,
-                annexb_state.temporal_unit_consumed,
+                annexb_state.temporal_unit_size, annexb_state.temporal_unit_consumed,
             ));
         }
 
@@ -137,8 +142,7 @@ impl<'a> Reader<'a> {
         } else if annexb_state.frame_unit_consumed > annexb_state.frame_unit_size {
             return Err(format!(
                 "frame_unit_size is {} but we consumed {} bytes",
-                annexb_state.frame_unit_size,
-                annexb_state.frame_unit_consumed,
+                annexb_state.frame_unit_size, annexb_state.frame_unit_consumed,
             ));
         }
 

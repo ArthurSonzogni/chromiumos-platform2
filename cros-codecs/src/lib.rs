@@ -20,19 +20,19 @@
 //! The [utils] module contains some useful code that is shared between different parts of this
 //! crate and didn't fit any of the modules above.
 
-pub mod codec;
 pub mod bitstream_utils;
+pub mod codec;
 
-#[cfg(any(feature = "vaapi", feature = "v4l2"))]
-pub mod utils;
-#[cfg(any(feature = "vaapi", feature = "v4l2"))]
-pub mod image_processing;
 #[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod backend;
 #[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod decoder;
 #[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod encoder;
+#[cfg(any(feature = "vaapi", feature = "v4l2"))]
+pub mod image_processing;
+#[cfg(any(feature = "vaapi", feature = "v4l2"))]
+pub mod utils;
 
 use std::str::FromStr;
 

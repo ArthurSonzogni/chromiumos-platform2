@@ -7,15 +7,15 @@
 
 use std::collections::BTreeMap;
 use std::io::Cursor;
+use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
-use std::io::Read;
 use std::rc::Rc;
 
+use crate::bitstream_utils::BitReader;
 use crate::codec::h264::nalu;
 use crate::codec::h264::nalu::Header;
 use crate::codec::h264::picture::Field;
-use crate::bitstream_utils::BitReader;
 
 pub type Nalu<'a> = nalu::Nalu<'a, NaluHeader>;
 
@@ -2155,7 +2155,10 @@ impl Parser {
         let mut r = BitReader::new(&data[nalu.header.len()..], true);
         let pic_parameter_set_id = r.read_ue_max(MAX_PPS_COUNT as u32 - 1)?;
         let seq_parameter_set_id = r.read_ue_max(MAX_SPS_COUNT as u32 - 1)?;
-        let sps = self.get_sps(seq_parameter_set_id).ok_or::<String>(format!("Could not get SPS for seq_parameter_set_id {}", seq_parameter_set_id))?;
+        let sps = self.get_sps(seq_parameter_set_id).ok_or::<String>(format!(
+            "Could not get SPS for seq_parameter_set_id {}",
+            seq_parameter_set_id
+        ))?;
         let mut pps = Pps {
             pic_parameter_set_id,
             seq_parameter_set_id,
@@ -2476,7 +2479,12 @@ impl Parser {
 
         header.pic_parameter_set_id = r.read_ue()?;
 
-        let pps = self.get_pps(header.pic_parameter_set_id).ok_or::<String>(format!("Could not get PPS for pic_parameter_set_id {}", header.pic_parameter_set_id))?;
+        let pps = self
+            .get_pps(header.pic_parameter_set_id)
+            .ok_or::<String>(format!(
+                "Could not get PPS for pic_parameter_set_id {}",
+                header.pic_parameter_set_id
+            ))?;
 
         let sps = &pps.sps;
 
@@ -2623,7 +2631,9 @@ pub struct NaluHeader {
 impl Header for NaluHeader {
     fn parse<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Result<Self, String> {
         let mut byte_buf = [0u8; 1];
-        cursor.read_exact(&mut byte_buf).map_err(|_| String::from("Broken Data"))?;
+        cursor
+            .read_exact(&mut byte_buf)
+            .map_err(|_| String::from("Broken Data"))?;
         let byte = byte_buf[0];
         let _ = cursor.seek(SeekFrom::Current(-1 * byte_buf.len() as i64));
 

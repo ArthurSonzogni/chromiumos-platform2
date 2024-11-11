@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::fmt;
 use std::cell::Ref;
 use std::cell::RefMut;
+use std::fmt;
 use std::rc::Rc;
 
 use log::debug;
@@ -118,9 +118,16 @@ pub enum MmcoError {
 impl fmt::Display for MmcoError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            MmcoError::NoShortTermPic => write!(f, "could not find ShortTerm picture to mark in the DPB"),
-            MmcoError::ExpectedMarked => write!(f, "a ShortTerm picture was expected to be marked for MMCO=3"),
-            MmcoError::ExpectedExisting => write!(f, "picture cannot be marked as nonexisting for MMCO=3"),
+            MmcoError::NoShortTermPic => {
+                write!(f, "could not find ShortTerm picture to mark in the DPB")
+            }
+            MmcoError::ExpectedMarked => write!(
+                f,
+                "a ShortTerm picture was expected to be marked for MMCO=3"
+            ),
+            MmcoError::ExpectedExisting => {
+                write!(f, "picture cannot be marked as nonexisting for MMCO=3")
+            }
             MmcoError::UnknownMmco(x) => write!(f, "unknown MMCO: {}", x),
         }
     }

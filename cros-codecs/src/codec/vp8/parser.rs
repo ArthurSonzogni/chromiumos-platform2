@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::fmt;
 use std::convert::TryFrom;
+use std::fmt;
 
 use log::debug;
 
+use crate::bitstream_utils::BitReader;
 use crate::codec::vp8::bool_decoder::BoolDecoder;
 use crate::codec::vp8::bool_decoder::BoolDecoderError;
 use crate::codec::vp8::bool_decoder::BoolDecoderResult;
@@ -19,7 +20,6 @@ use crate::codec::vp8::probs::MV_DEFAULT_PROBS;
 use crate::codec::vp8::probs::MV_UPDATE_PROBS;
 use crate::codec::vp8::probs::NK_UV_MODE_PROBS;
 use crate::codec::vp8::probs::NK_Y_MODE_PROBS;
-use crate::bitstream_utils::BitReader;
 
 /// Dequantization indices as parsed from the quant_indices() syntax.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -202,7 +202,9 @@ pub enum ParseUncompressedChunkError {
 impl fmt::Display for ParseUncompressedChunkError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ParseUncompressedChunkError::InvalidStartCode(x) => write!(f, "invalid start code {}", x),
+            ParseUncompressedChunkError::InvalidStartCode(x) => {
+                write!(f, "invalid start code {}", x)
+            }
             ParseUncompressedChunkError::IoError(x) => write!(f, "I/O error: {}", x),
         }
     }
@@ -218,7 +220,9 @@ impl fmt::Display for ComputePartitionSizesError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ComputePartitionSizesError::EndOfHeader => write!(f, "unexpected end of header"),
-            ComputePartitionSizesError::PartitionTooLarge => write!(f, "partition size not fitting in a u32"),
+            ComputePartitionSizesError::PartitionTooLarge => {
+                write!(f, "partition size not fitting in a u32")
+            }
         }
     }
 }
@@ -258,7 +262,9 @@ impl Header {
 
         let mut reader = BitReader::new(bitstream, false);
 
-        let frame_tag = reader.read_le::<u32>(3).map_err(|err| ParseUncompressedChunkError::IoError(err))?;
+        let frame_tag = reader
+            .read_le::<u32>(3)
+            .map_err(|err| ParseUncompressedChunkError::IoError(err))?;
 
         let mut header = Header {
             key_frame: (frame_tag & 0x1) == 0,
@@ -269,23 +275,31 @@ impl Header {
         };
 
         if header.key_frame {
-            let start_code = reader.read_le::<u32>(3).map_err(|err| ParseUncompressedChunkError::IoError(err))?;
+            let start_code = reader
+                .read_le::<u32>(3)
+                .map_err(|err| ParseUncompressedChunkError::IoError(err))?;
 
             if start_code != 0x2a019d {
                 return Err(ParseUncompressedChunkError::InvalidStartCode(start_code));
             }
 
-            let size_code = reader.read_le::<u16>(2).map_err(|err| ParseUncompressedChunkError::IoError(err))?;
+            let size_code = reader
+                .read_le::<u16>(2)
+                .map_err(|err| ParseUncompressedChunkError::IoError(err))?;
             header.horiz_scale_code = (size_code >> 14) as u8;
             header.width = size_code & 0x3fff;
 
-            let size_code = reader.read_le::<u16>(2).map_err(|err| ParseUncompressedChunkError::IoError(err))?;
+            let size_code = reader
+                .read_le::<u16>(2)
+                .map_err(|err| ParseUncompressedChunkError::IoError(err))?;
             header.vert_scale_code = (size_code >> 14) as u8;
             header.height = size_code & 0x3fff;
         }
 
         if reader.position() % 8 != 0 {
-            Err(ParseUncompressedChunkError::IoError("Misaligned VP8 header".into()))
+            Err(ParseUncompressedChunkError::IoError(
+                "Misaligned VP8 header".into(),
+            ))
         } else {
             header.data_chunk_size = (reader.position() / 8) as u8;
             Ok(header)
@@ -366,11 +380,25 @@ pub enum ParseFrameError {
 impl fmt::Display for ParseFrameError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ParseFrameError::ParseUncompressedChunk(x) => write!(f, "error while parsing uncompressed chunk of frame: {}", x),
-            ParseFrameError::InvalidPartitionSize(x, y) => write!(f, "partition end {} is bigger than bitstream length {}", x, y),
-            ParseFrameError::ParseFrameHeader(x) => write!(f, "error while parsing frame header: {}", x),
-            ParseFrameError::ComputePartitionSizes(x) => write!(f, "error while computing frames partitions sizes: {}", x),
-            ParseFrameError::BitstreamTooShort(x, y) => write!(f, "bitstream is shorter ({} bytes) than computed length of frame {}", x, y),
+            ParseFrameError::ParseUncompressedChunk(x) => {
+                write!(f, "error while parsing uncompressed chunk of frame: {}", x)
+            }
+            ParseFrameError::InvalidPartitionSize(x, y) => write!(
+                f,
+                "partition end {} is bigger than bitstream length {}",
+                x, y
+            ),
+            ParseFrameError::ParseFrameHeader(x) => {
+                write!(f, "error while parsing frame header: {}", x)
+            }
+            ParseFrameError::ComputePartitionSizes(x) => {
+                write!(f, "error while computing frames partitions sizes: {}", x)
+            }
+            ParseFrameError::BitstreamTooShort(x, y) => write!(
+                f,
+                "bitstream is shorter ({} bytes) than computed length of frame {}",
+                x, y
+            ),
         }
     }
 }
@@ -412,10 +440,7 @@ impl Parser {
         }
     }
 
-    fn update_segmentation(
-        bd: &mut BoolDecoder,
-        seg: &mut Segmentation,
-    ) -> BoolDecoderResult<()> {
+    fn update_segmentation(bd: &mut BoolDecoder, seg: &mut Segmentation) -> BoolDecoderResult<()> {
         seg.update_mb_segmentation_map = false;
         seg.update_segment_feature_data = false;
 
@@ -502,10 +527,7 @@ impl Parser {
         Ok(())
     }
 
-    fn parse_quant_indices(
-        bd: &mut BoolDecoder,
-        q: &mut QuantIndices,
-    ) -> BoolDecoderResult<()> {
+    fn parse_quant_indices(bd: &mut BoolDecoder, q: &mut QuantIndices) -> BoolDecoderResult<()> {
         q.y_ac_qi = bd.read_uint(7)?;
 
         let y_dc_delta_present = bd.read_bool()?;

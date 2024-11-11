@@ -1249,10 +1249,16 @@ where
     fn process_nalu(&mut self, timestamp: u64, nalu: Nalu) -> Result<(), DecodeError> {
         match nalu.header.type_ {
             NaluType::Sps => {
-                self.codec.parser.parse_sps(&nalu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                self.codec
+                    .parser
+                    .parse_sps(&nalu)
+                    .map_err(|err| DecodeError::ParseFrameError(err))?;
             }
             NaluType::Pps => {
-                self.codec.parser.parse_pps(&nalu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                self.codec
+                    .parser
+                    .parse_pps(&nalu)
+                    .map_err(|err| DecodeError::ParseFrameError(err))?;
             }
             NaluType::Slice
             | NaluType::SliceDpa
@@ -1260,7 +1266,11 @@ where
             | NaluType::SliceDpc
             | NaluType::SliceIdr
             | NaluType::SliceExt => {
-                let slice = self.codec.parser.parse_slice_header(nalu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                let slice = self
+                    .codec
+                    .parser
+                    .parse_slice_header(nalu)
+                    .map_err(|err| DecodeError::ParseFrameError(err))?;
                 let mut cur_pic = match self.codec.current_pic.take() {
                     // No current picture, start a new one.
                     None => self.begin_picture(timestamp, &slice)?,
@@ -1306,7 +1316,12 @@ where
         let nalu = Nalu::next(&mut cursor).map_err(|err| DecodeError::ParseFrameError(err))?;
 
         if nalu.header.type_ == NaluType::Sps {
-            let sps = self.codec.parser.parse_sps(&nalu).map_err(|err| DecodeError::ParseFrameError(err))?.clone();
+            let sps = self
+                .codec
+                .parser
+                .parse_sps(&nalu)
+                .map_err(|err| DecodeError::ParseFrameError(err))?
+                .clone();
             if matches!(self.decoding_state, DecodingState::AwaitingStreamInfo) {
                 // If more SPS come along we will renegotiate in begin_picture().
                 self.renegotiate_if_needed(&sps)?;
@@ -1376,6 +1391,7 @@ where
 
 #[cfg(test)]
 pub mod tests {
+    use crate::bitstream_utils::NalIterator;
     use crate::codec::h264::parser::Nalu;
     use crate::decoder::stateless::h264::H264;
     use crate::decoder::stateless::tests::test_decode_stream;
@@ -1384,7 +1400,6 @@ pub mod tests {
     use crate::decoder::BlockingMode;
     use crate::utils::simple_playback_loop;
     use crate::utils::simple_playback_loop_owned_frames;
-    use crate::bitstream_utils::NalIterator;
     use crate::DecodedFormat;
 
     /// Run `test` using the dummy decoder, in both blocking and non-blocking modes.

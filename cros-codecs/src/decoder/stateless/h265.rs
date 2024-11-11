@@ -1074,7 +1074,8 @@ where
         // decide whether to bump.
         self.codec
             .dpb
-            .store_picture(Rc::new(RefCell::new(pic)), handle).map_err(|err| anyhow!(err))?;
+            .store_picture(Rc::new(RefCell::new(pic)), handle)
+            .map_err(|err| anyhow!(err))?;
         let bumped = self.bump_as_needed(BumpingType::AfterDecoding)?;
 
         log::debug!(
@@ -1136,10 +1137,17 @@ where
 
         match nalu.header.type_ {
             NaluType::VpsNut => {
-                self.codec.parser.parse_vps(&nalu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                self.codec
+                    .parser
+                    .parse_vps(&nalu)
+                    .map_err(|err| DecodeError::ParseFrameError(err))?;
             }
             NaluType::SpsNut => {
-                let sps = self.codec.parser.parse_sps(&nalu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                let sps = self
+                    .codec
+                    .parser
+                    .parse_sps(&nalu)
+                    .map_err(|err| DecodeError::ParseFrameError(err))?;
                 self.codec.max_pic_order_cnt_lsb = 1 << (sps.log2_max_pic_order_cnt_lsb_minus4 + 4);
 
                 let pending_pps = std::mem::take(&mut self.codec.pending_pps);
@@ -1175,13 +1183,19 @@ where
             | NaluType::RaslN
             | NaluType::RaslR
             | NaluType::CraNut => {
-                let mut slice = self.codec.parser.parse_slice_header(nalu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                let mut slice = self
+                    .codec
+                    .parser
+                    .parse_slice_header(nalu)
+                    .map_err(|err| DecodeError::ParseFrameError(err))?;
 
                 let first_slice_segment_in_pic_flag = slice.header.first_slice_segment_in_pic_flag;
 
                 if slice.header.dependent_slice_segment_flag {
                     let previous_independent_header = self.codec.last_independent_slice_header.as_ref().ok_or(anyhow!("Cannot process an dependent slice without first processing and independent one"))?.clone();
-                    slice.replace_header(previous_independent_header).map_err(|err| DecodeError::ParseFrameError(err))?;
+                    slice
+                        .replace_header(previous_independent_header)
+                        .map_err(|err| DecodeError::ParseFrameError(err))?;
                 } else {
                     self.codec.last_independent_slice_header = Some(slice.header.clone());
                 }
@@ -1244,7 +1258,12 @@ where
         let nalu = Nalu::next(&mut cursor).map_err(|err| DecodeError::ParseFrameError(err))?;
 
         if nalu.header.type_ == NaluType::SpsNut {
-            let sps = self.codec.parser.parse_sps(&nalu).map_err(|err| DecodeError::ParseFrameError(err))?.clone();
+            let sps = self
+                .codec
+                .parser
+                .parse_sps(&nalu)
+                .map_err(|err| DecodeError::ParseFrameError(err))?
+                .clone();
             if matches!(self.decoding_state, DecodingState::AwaitingStreamInfo) {
                 // If more SPS come along we will renegotiate in begin_picture().
                 self.renegotiate_if_needed(RenegotiationType::NewSps(&sps))?;
@@ -1319,6 +1338,7 @@ where
 #[cfg(test)]
 pub mod tests {
 
+    use crate::bitstream_utils::NalIterator;
     use crate::codec::h265::parser::Nalu;
     use crate::decoder::stateless::h265::H265;
     use crate::decoder::stateless::tests::test_decode_stream;
@@ -1327,7 +1347,6 @@ pub mod tests {
     use crate::decoder::BlockingMode;
     use crate::utils::simple_playback_loop;
     use crate::utils::simple_playback_loop_owned_frames;
-    use crate::bitstream_utils::NalIterator;
     use crate::DecodedFormat;
 
     /// Run `test` using the dummy decoder, in both blocking and non-blocking modes.

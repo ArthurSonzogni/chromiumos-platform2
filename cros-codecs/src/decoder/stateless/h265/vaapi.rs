@@ -866,6 +866,7 @@ impl<M: SurfaceMemoryDescriptor + 'static> StatelessDecoder<H265, VaapiBackend<M
 mod tests {
     use libva::Display;
 
+    use crate::bitstream_utils::NalIterator;
     use crate::codec::h265::parser::Nalu;
     use crate::decoder::stateless::h265::H265;
     use crate::decoder::stateless::tests::test_decode_stream;
@@ -874,7 +875,6 @@ mod tests {
     use crate::decoder::BlockingMode;
     use crate::utils::simple_playback_loop;
     use crate::utils::simple_playback_loop_owned_frames;
-    use crate::bitstream_utils::NalIterator;
     use crate::DecodedFormat;
 
     /// Run `test` using the vaapi decoder, in both blocking and non-blocking modes.

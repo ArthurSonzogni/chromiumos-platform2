@@ -56,9 +56,13 @@ pub(crate) enum ReadBitsError {
 impl fmt::Display for ReadBitsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ReadBitsError::TooManyBytesRequested(bits) => write!(f, "more than 31 ({}) bits were requested", bits),
+            ReadBitsError::TooManyBytesRequested(bits) => {
+                write!(f, "more than 31 ({}) bits were requested", bits)
+            }
             ReadBitsError::GetByte(_) => write!(f, "failed to advance the current byte"),
-            ReadBitsError::ConversionFailed => write!(f, "failed to convert read input to target type"),
+            ReadBitsError::ConversionFailed => {
+                write!(f, "failed to convert read input to target type")
+            }
         }
     }
 }
@@ -120,7 +124,10 @@ impl<'a> BitReader<'a> {
 
     /// Reads a two's complement signed integer of length |num_bits|.
     pub fn read_bits_signed<U: TryFrom<i32>>(&mut self, num_bits: usize) -> Result<U, String> {
-        let mut out: i32 = self.read_bits::<u32>(num_bits)?.try_into().map_err(|_| ReadBitsError::ConversionFailed.to_string())?;
+        let mut out: i32 = self
+            .read_bits::<u32>(num_bits)?
+            .try_into()
+            .map_err(|_| ReadBitsError::ConversionFailed.to_string())?;
         if out >> (num_bits - 1) != 0 {
             out |= -1i32 ^ ((1 << num_bits) - 1);
         }
@@ -213,9 +220,7 @@ impl<'a> BitReader<'a> {
         if ue > max || ue < min {
             Err(format!(
                 "Value out of bounds: expected {} - {}, got {}",
-                min,
-                max,
-                ue
+                min, max, ue
             ))
         } else {
             Ok(U::try_from(ue).map_err(|_| String::from("Conversion error"))?)
@@ -245,9 +250,7 @@ impl<'a> BitReader<'a> {
         if se < min || se > max {
             Err(format!(
                 "Value out of bounds, expected between {}-{}, got {}",
-                min,
-                max,
-                se
+                min, max, se
             ))
         } else {
             Ok(U::try_from(se).map_err(|_| String::from("Conversion error"))?)
@@ -273,7 +276,9 @@ impl<'a> BitReader<'a> {
 
     fn get_byte(&mut self) -> Result<u8, GetByteError> {
         let mut buf = [0u8; 1];
-        self.data.read_exact(&mut buf).map_err(|_| GetByteError::OutOfBits)?;
+        self.data
+            .read_exact(&mut buf)
+            .map_err(|_| GetByteError::OutOfBits)?;
         Ok(buf[0])
     }
 
@@ -321,16 +326,19 @@ impl<'a> Iterator for IvfIterator<'a> {
         // Make sure we have a header.
         let mut len_buf = [0u8; 4];
         self.cursor.read_exact(&mut len_buf).ok()?;
-        let len = ((len_buf[3] as usize) << 24) |
-            ((len_buf[2] as usize) << 16) |
-            ((len_buf[1] as usize) << 8) |
-            (len_buf[0] as usize);
+        let len = ((len_buf[3] as usize) << 24)
+            | ((len_buf[2] as usize) << 16)
+            | ((len_buf[1] as usize) << 8)
+            | (len_buf[0] as usize);
 
         // Skip PTS.
         self.cursor.seek(std::io::SeekFrom::Current(8)).ok()?;
 
         let start = self.cursor.position() as usize;
-        let _ = self.cursor.seek(std::io::SeekFrom::Current(len as i64)).ok()?;
+        let _ = self
+            .cursor
+            .seek(std::io::SeekFrom::Current(len as i64))
+            .ok()?;
         let end = self.cursor.position() as usize;
 
         Some(&self.cursor.get_ref()[start..end])
@@ -740,16 +748,19 @@ mod tests {
         reader.read_ue::<u32>().unwrap_err();
 
         // u32 max value: 31 0-bits, 1 bit marker, 31 bits 1-bits.
-        let mut reader = BitReader::new(&[
-            0b0000_0000,
-            0b0000_0000,
-            0b0000_0000,
-            0b0000_0001,
-            0b1111_1111,
-            0b1111_1111,
-            0b1111_1111,
-            0b1111_1110,
-        ], true);
+        let mut reader = BitReader::new(
+            &[
+                0b0000_0000,
+                0b0000_0000,
+                0b0000_0000,
+                0b0000_0001,
+                0b1111_1111,
+                0b1111_1111,
+                0b1111_1111,
+                0b1111_1110,
+            ],
+            true,
+        );
         assert_eq!(reader.read_ue::<u32>().unwrap(), 0xffff_fffe);
         assert_eq!(reader.data.position(), 8);
         assert_eq!(reader.num_remaining_bits_in_curr_byte, 1);

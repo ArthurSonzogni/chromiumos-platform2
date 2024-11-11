@@ -301,7 +301,10 @@ where
             }
         }
 
-        self.codec.parser.ref_frame_update(&header).map_err(|err| anyhow!(err))?;
+        self.codec
+            .parser
+            .ref_frame_update(&header)
+            .map_err(|err| anyhow!(err))?;
         self.codec.frame_count += 1;
         Ok(())
     }
@@ -321,7 +324,12 @@ where
     /// method will only consume a single OBU. The caller must be careful to check the return value
     /// and resubmit the remainder if the whole bitstream has not been consumed.
     fn decode(&mut self, timestamp: u64, bitstream: &[u8]) -> Result<usize, DecodeError> {
-        let obu = match self.codec.parser.parse_obu(bitstream).map_err(|err| DecodeError::ParseFrameError(err))? {
+        let obu = match self
+            .codec
+            .parser
+            .parse_obu(bitstream)
+            .map_err(|err| DecodeError::ParseFrameError(err))?
+        {
             ParsedObu::Process(obu) => obu,
             // This OBU should be dropped.
             ParsedObu::Drop(length) => return Ok(length as usize),
@@ -350,11 +358,15 @@ where
 
                     let is_key_frame = match obu.header.obu_type {
                         ObuType::Frame => {
-                            let frame = parser.parse_frame_obu(obu.clone()).map_err(|err| DecodeError::ParseFrameError(err))?;
+                            let frame = parser
+                                .parse_frame_obu(obu.clone())
+                                .map_err(|err| DecodeError::ParseFrameError(err))?;
                             frame.header.frame_type == FrameType::KeyFrame
                         }
                         ObuType::FrameHeader => {
-                            let fh = parser.parse_frame_header_obu(&obu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                            let fh = parser
+                                .parse_frame_header_obu(&obu)
+                                .map_err(|err| DecodeError::ParseFrameError(err))?;
                             fh.frame_type == FrameType::KeyFrame
                         }
                         _ => false,
@@ -374,7 +386,11 @@ where
 
         match obu.header.obu_type {
             ObuType::SequenceHeader => {
-                let sequence = self.codec.parser.parse_sequence_header_obu(&obu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                let sequence = self
+                    .codec
+                    .parser
+                    .parse_sequence_header_obu(&obu)
+                    .map_err(|err| DecodeError::ParseFrameError(err))?;
                 let sequence_differs = match &self.codec.sequence {
                     Some(old_sequence) => **old_sequence != *sequence,
                     None => true,
@@ -416,7 +432,11 @@ where
                     self.await_format_change(sequence);
                 }
             }
-            ObuType::TemporalDelimiter => self.codec.parser.parse_temporal_delimiter_obu(&obu).map_err(|err| DecodeError::ParseFrameError(err))?,
+            ObuType::TemporalDelimiter => self
+                .codec
+                .parser
+                .parse_temporal_delimiter_obu(&obu)
+                .map_err(|err| DecodeError::ParseFrameError(err))?,
             ObuType::FrameHeader => {
                 if self.codec.current_pic.is_some() {
                     /* submit this frame immediately, as we need to update the
@@ -424,15 +444,27 @@ where
                      * next frame */
                     self.submit_frame(timestamp)?;
                 }
-                let frame_header = self.codec.parser.parse_frame_header_obu(&obu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                let frame_header = self
+                    .codec
+                    .parser
+                    .parse_frame_header_obu(&obu)
+                    .map_err(|err| DecodeError::ParseFrameError(err))?;
                 self.decode_frame_header(frame_header, timestamp)?;
             }
             ObuType::TileGroup => {
-                let tile_group = self.codec.parser.parse_tile_group_obu(obu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                let tile_group = self
+                    .codec
+                    .parser
+                    .parse_tile_group_obu(obu)
+                    .map_err(|err| DecodeError::ParseFrameError(err))?;
                 self.decode_tile_group(tile_group)?;
             }
             ObuType::Frame => {
-                let frame = self.codec.parser.parse_frame_obu(obu).map_err(|err| DecodeError::ParseFrameError(err))?;
+                let frame = self
+                    .codec
+                    .parser
+                    .parse_frame_obu(obu)
+                    .map_err(|err| DecodeError::ParseFrameError(err))?;
                 self.decode_frame(frame, timestamp)?;
                 /* submit this frame immediately, as we need to update the
                  * DPB and the reference info state *before* processing the
@@ -486,6 +518,7 @@ where
 
 #[cfg(test)]
 pub mod tests {
+    use crate::bitstream_utils::IvfIterator;
     use crate::decoder::stateless::av1::Av1;
     use crate::decoder::stateless::tests::test_decode_stream;
     use crate::decoder::stateless::tests::TestStream;
@@ -493,7 +526,6 @@ pub mod tests {
     use crate::decoder::BlockingMode;
     use crate::utils::simple_playback_loop;
     use crate::utils::simple_playback_loop_owned_frames;
-    use crate::bitstream_utils::IvfIterator;
     use crate::DecodedFormat;
 
     /// Run `test` using the dummy decoder, in both blocking and non-blocking modes.

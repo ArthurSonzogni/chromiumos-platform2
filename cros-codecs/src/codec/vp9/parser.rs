@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use crate::bitstream_utils::BitReader;
 use crate::codec::vp9::lookups::AC_QLOOKUP;
 use crate::codec::vp9::lookups::AC_QLOOKUP_10;
 use crate::codec::vp9::lookups::AC_QLOOKUP_12;
 use crate::codec::vp9::lookups::DC_QLOOKUP;
 use crate::codec::vp9::lookups::DC_QLOOKUP_10;
 use crate::codec::vp9::lookups::DC_QLOOKUP_12;
-use crate::bitstream_utils::BitReader;
 
 pub const REFS_PER_FRAME: usize = 3;
 
@@ -76,7 +76,6 @@ impl TryFrom<u32> for InterpolationFilter {
         }
     }
 }
-
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ReferenceFrameType {
@@ -733,8 +732,7 @@ impl Parser {
         if sync_code != SYNC_CODE {
             return Err(format!(
                 "Broken stream: expected sync code == {:?}, found {:?}",
-                SYNC_CODE,
-                sync_code
+                SYNC_CODE, sync_code
             ));
         }
 
@@ -940,7 +938,11 @@ impl Parser {
     fn read_prob(r: &mut BitReader) -> Result<u8, String> {
         let prob_coded = r.read_bit()?;
 
-        let prob = if prob_coded { r.read_bits::<u8>(8)? } else { 255 };
+        let prob = if prob_coded {
+            r.read_bits::<u8>(8)?
+        } else {
+            255
+        };
 
         Ok(prob)
     }
@@ -1071,8 +1073,7 @@ impl Parser {
             return Ok(hdr);
         }
 
-        hdr.frame_type =
-            FrameType::try_from(r.read_bits::<u8>(1)?)?;
+        hdr.frame_type = FrameType::try_from(r.read_bits::<u8>(1)?)?;
 
         hdr.show_frame = r.read_bit()?;
         hdr.error_resilient_mode = r.read_bit()?;
@@ -1216,6 +1217,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+    use crate::bitstream_utils::IvfIterator;
     use crate::codec::vp9::parser::BitDepth;
     use crate::codec::vp9::parser::ColorSpace;
     use crate::codec::vp9::parser::FrameType;
@@ -1224,7 +1226,6 @@ mod tests {
     use crate::codec::vp9::parser::Profile;
     use crate::codec::vp9::parser::MAX_SEGMENTS;
     use crate::codec::vp9::parser::SEG_LVL_MAX;
-    use crate::bitstream_utils::IvfIterator;
 
     #[test]
     fn test_parse_superframe() {

@@ -65,10 +65,14 @@ where
             Some(offset) => offset,
             None => {
                 let cur_pos = cursor.position();
-                let end_pos = cursor.seek(SeekFrom::End(0)).map_err(|err| err.to_string())?;
-                let _ = cursor.seek(SeekFrom::Start(cur_pos)).map_err(|err| err.to_string())?;
+                let end_pos = cursor
+                    .seek(SeekFrom::End(0))
+                    .map_err(|err| err.to_string())?;
+                let _ = cursor
+                    .seek(SeekFrom::Start(cur_pos))
+                    .map_err(|err| err.to_string())?;
                 (end_pos - cur_pos) as usize
-            }, // Whatever data is left must be part of the current NALU
+            } // Whatever data is left must be part of the current NALU
         };
 
         while next_nalu_offset > 0 && cursor.get_ref()[nalu_offset + next_nalu_offset - 1] == 00 {

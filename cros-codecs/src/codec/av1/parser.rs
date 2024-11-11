@@ -1486,7 +1486,8 @@ impl Parser {
         }
 
         if fh.use_superres {
-            fh.superres_denom = r.0.read_bits::<u32>(SUPERRES_DENOM_BITS)? + SUPERRES_DENOM_MIN as u32;
+            fh.superres_denom =
+                r.0.read_bits::<u32>(SUPERRES_DENOM_BITS)? + SUPERRES_DENOM_MIN as u32;
         } else {
             fh.superres_denom = SUPERRES_NUM as u32;
         }
@@ -1752,7 +1753,8 @@ impl Parser {
             self.should_probe_for_annexb = false;
         }
 
-        let obu_length: usize = if let StreamFormat::AnnexB(annexb_state) = &mut self.stream_format {
+        let obu_length: usize = if let StreamFormat::AnnexB(annexb_state) = &mut self.stream_format
+        {
             // Read the length to skip to the start of the open_bitstream_unit()
             // syntax element.
             let obu_length = reader.current_annexb_obu_length(annexb_state)?;
@@ -1778,8 +1780,10 @@ impl Parser {
         } else {
             /* trap any bugs when computing the final length */
             obu_length
-                .checked_sub(1).ok_or::<String>("obu_length must be greater than 0".into())?
-                .checked_sub(usize::from(header.extension_flag)).ok_or::<String>("obu_length too short".into())?
+                .checked_sub(1)
+                .ok_or::<String>("obu_length must be greater than 0".into())?
+                .checked_sub(usize::from(header.extension_flag))
+                .ok_or::<String>("obu_length too short".into())?
         };
 
         let consumed = reader.consumed(start_pos);
@@ -1856,9 +1860,9 @@ impl Parser {
 
         cc.color_description_present_flag = r.0.read_bit()?;
         if cc.color_description_present_flag {
-            cc.color_primaries =
-                ColorPrimaries::try_from(r.0.read_bits::<u32>(8)?)?;
-            cc.transfer_characteristics = TransferCharacteristics::try_from(r.0.read_bits::<u32>(8)?)?;
+            cc.color_primaries = ColorPrimaries::try_from(r.0.read_bits::<u32>(8)?)?;
+            cc.transfer_characteristics =
+                TransferCharacteristics::try_from(r.0.read_bits::<u32>(8)?)?;
             cc.matrix_coefficients = MatrixCoefficients::try_from(r.0.read_bits::<u32>(8)?)?;
         } else {
             cc.color_primaries = ColorPrimaries::Unspecified;
@@ -1901,7 +1905,8 @@ impl Parser {
             }
 
             if cc.subsampling_x && cc.subsampling_y {
-                cc.chroma_sample_position = ChromaSamplePosition::try_from(r.0.read_bits::<u32>(2)?)?;
+                cc.chroma_sample_position =
+                    ChromaSamplePosition::try_from(r.0.read_bits::<u32>(2)?)?;
             }
         }
 
@@ -2049,7 +2054,8 @@ impl Parser {
                     s.operating_points[i].initial_display_delay_present_for_this_op =
                         r.0.read_bit()?;
                     if s.operating_points[i].initial_display_delay_present_for_this_op {
-                        s.operating_points[i].initial_display_delay_minus_1 = r.0.read_bits::<u32>(4)?;
+                        s.operating_points[i].initial_display_delay_minus_1 =
+                            r.0.read_bits::<u32>(4)?;
                     }
                 }
             }
@@ -2058,9 +2064,11 @@ impl Parser {
         s.frame_width_bits_minus_1 = r.0.read_bits::<u32>(4)? as u8;
         s.frame_height_bits_minus_1 = r.0.read_bits::<u32>(4)? as u8;
         // frame_width_bits_minus_1 has been read from 4 bits, meaning we can read 16 bits at most.
-        s.max_frame_width_minus_1 = r.0.read_bits::<u32>(s.frame_width_bits_minus_1 as usize + 1)? as u16;
+        s.max_frame_width_minus_1 =
+            r.0.read_bits::<u32>(s.frame_width_bits_minus_1 as usize + 1)? as u16;
         // frame_height_bits_minus_1 has been read from 4 bits, meaning we can read 16 bits at most.
-        s.max_frame_height_minus_1 = r.0.read_bits::<u32>(s.frame_height_bits_minus_1 as usize + 1)? as u16;
+        s.max_frame_height_minus_1 =
+            r.0.read_bits::<u32>(s.frame_height_bits_minus_1 as usize + 1)? as u16;
         if s.reduced_still_picture_header {
             s.frame_id_numbers_present_flag = false;
         } else {
@@ -2504,7 +2512,9 @@ impl Parser {
                                 let clipped_value = helpers::clip3(
                                     0,
                                     limit,
-                                    feature_value.try_into().map_err(|_| "Invalid feature_value")?,
+                                    feature_value
+                                        .try_into()
+                                        .map_err(|_| "Invalid feature_value")?,
                                 );
                                 s.feature_data[i][j] = clipped_value as _;
                             }
@@ -3172,8 +3182,7 @@ impl Parser {
                 if i > 0 && fg.point_cb_value[i - 1] >= fg.point_cb_value[i] {
                     return Err(format!(
                         "Invalid point_cb_value[{}] {}",
-                        i,
-                        fg.point_cb_value[i]
+                        i, fg.point_cb_value[i]
                     ));
                 }
                 fg.point_cb_scaling[i] = r.0.read_bits::<u32>(8)? as u8;
@@ -3185,8 +3194,7 @@ impl Parser {
                 if i > 0 && fg.point_cr_value[i - 1] >= fg.point_cr_value[i] {
                     return Err(format!(
                         "Invalid point_cr_value[{}] {}",
-                        i,
-                        fg.point_cr_value[i]
+                        i, fg.point_cr_value[i]
                     ));
                 }
                 fg.point_cr_scaling[i] = r.0.read_bits::<u32>(8)? as u8;
@@ -3319,7 +3327,8 @@ impl Parser {
                 fh.frame_to_show_map_idx = r.0.read_bits::<u32>(3)? as u8;
 
                 if decoder_model_info_present_flag && !equal_picture_interval {
-                    fh.frame_presentation_time = r.0.read_bits::<u32>(frame_presentation_time_length_minus_1 as usize + 1)?;
+                    fh.frame_presentation_time =
+                        r.0.read_bits::<u32>(frame_presentation_time_length_minus_1 as usize + 1)?;
                 }
 
                 let ref_frame = &self.ref_info[fh.frame_to_show_map_idx as usize];
@@ -3466,8 +3475,7 @@ impl Parser {
                 {
                     return Err(format!(
                         "Invalid frame_id: prev_frame_id = {}, current_frame_id = {}",
-                        self.prev_frame_id,
-                        self.current_frame_id
+                        self.prev_frame_id, self.current_frame_id
                     ));
                 }
             }
@@ -3610,8 +3618,7 @@ impl Parser {
                     if expected_frame_id[i] != actual_frame_id {
                         return Err(format!(
                             "Invalid frame id, expected {} got {}",
-                            expected_frame_id[i],
-                            actual_frame_id
+                            expected_frame_id[i], actual_frame_id
                         ));
                     }
                 }
@@ -3829,7 +3836,8 @@ impl Parser {
             if last_tile {
                 tile_size = u32::try_from(sz).unwrap();
             } else {
-                tile_size = r.0.read_le::<u32>(self.tile_size_bytes.try_into().unwrap())? + 1;
+                tile_size =
+                    r.0.read_le::<u32>(self.tile_size_bytes.try_into().unwrap())? + 1;
                 sz -= u64::from(tile_size + self.tile_size_bytes);
             }
 
@@ -4050,8 +4058,8 @@ impl Clone for Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::codec::av1::parser::{ParsedObu, Parser, StreamFormat};
     use crate::bitstream_utils::IvfIterator;
+    use crate::codec::av1::parser::{ParsedObu, Parser, StreamFormat};
 
     use super::ObuType;
 

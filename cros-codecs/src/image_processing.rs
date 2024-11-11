@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 /// TODO(greenjustin): This entire file should be replaced with LibYUV.
-
 use byteorder::ByteOrder;
 use byteorder::LittleEndian;
 

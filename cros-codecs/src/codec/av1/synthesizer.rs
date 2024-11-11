@@ -66,7 +66,9 @@ impl fmt::Display for SynthesizerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             SynthesizerError::Unsupported => write!(f, "tried to synthesize unsupported settings"),
-            SynthesizerError::InvalidSyntaxElementValue(x) => write!(f, "invalid syntax element for value {}", x),
+            SynthesizerError::InvalidSyntaxElementValue(x) => {
+                write!(f, "invalid syntax element for value {}", x)
+            }
             SynthesizerError::ConversionError(x) => write!(f, "{}", x.to_string()),
             SynthesizerError::ObuWriter(x) => write!(f, "{}", x.to_string()),
             SynthesizerError::Io(x) => write!(f, "{}", x.to_string()),

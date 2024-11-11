@@ -122,7 +122,9 @@ impl fmt::Display for EncodeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             EncodeError::Unsupported => write!(f, "unsupported"),
-            EncodeError::InvalidInternalState => write!(f, "invalid internal state. This is likely a bug."),
+            EncodeError::InvalidInternalState => {
+                write!(f, "invalid internal state. This is likely a bug.")
+            }
             EncodeError::StatelessBackendError(x) => write!(f, "{}", x.to_string()),
             EncodeError::StatefulBackendError(x) => write!(f, "{}", x.to_string()),
             EncodeError::H264SynthesizerError(x) => write!(f, "{}", x.to_string()),

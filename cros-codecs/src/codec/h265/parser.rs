@@ -11,11 +11,11 @@ use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
 
+use crate::bitstream_utils::BitReader;
 use crate::codec::h264::nalu;
 use crate::codec::h264::nalu::Header;
 use crate::codec::h264::parser::Point;
 use crate::codec::h264::parser::Rect;
-use crate::bitstream_utils::BitReader;
 
 // Given the max VPS id.
 const MAX_VPS_COUNT: usize = 16;
@@ -239,7 +239,9 @@ pub struct NaluHeader {
 impl Header for NaluHeader {
     fn parse<T: AsRef<[u8]>>(cursor: &mut std::io::Cursor<T>) -> Result<Self, String> {
         let mut data = [0u8; 2];
-        cursor.read_exact(&mut data).map_err(|_| String::from("Broken Data"))?;
+        cursor
+            .read_exact(&mut data)
+            .map_err(|_| String::from("Broken Data"))?;
         let mut r = BitReader::new(&data, false);
         let _ = cursor.seek(SeekFrom::Current(-1 * data.len() as i64));
 
@@ -1556,7 +1558,6 @@ impl TryFrom<u32> for SliceType {
     }
 }
 
-
 impl SliceType {
     /// Whether this is a P slice. See table 7-7 in the specification.
     pub fn is_p(&self) -> bool {
@@ -2302,16 +2303,14 @@ impl Parser {
                 if vps.max_dec_pic_buffering_minus1[i] < vps.max_dec_pic_buffering_minus1[i - 1] {
                     return Err(format!(
                         "Invalid max_dec_pic_buffering_minus1[{}]: {}",
-                        i,
-                        vps.max_dec_pic_buffering_minus1[i]
+                        i, vps.max_dec_pic_buffering_minus1[i]
                     ));
                 }
 
                 if vps.max_num_reorder_pics[i] < vps.max_num_reorder_pics[i - 1] {
                     return Err(format!(
                         "Invalid max_num_reorder_pics[{}]: {}",
-                        i,
-                        vps.max_num_reorder_pics[i]
+                        i, vps.max_num_reorder_pics[i]
                     ));
                 }
             }
@@ -2493,8 +2492,7 @@ impl Parser {
         }
 
         let level: u8 = r.read_bits(8)?;
-        ptl.general_level_idc =
-            Level::try_from(level)?;
+        ptl.general_level_idc = Level::try_from(level)?;
 
         for i in 0..sps_max_sub_layers_minus_1 as usize {
             ptl.sub_layer_profile_present_flag[i] = r.read_bit()?;
@@ -2593,8 +2591,7 @@ impl Parser {
 
                 if ptl.sub_layer_level_present_flag[i] {
                     let level: u8 = r.read_bits(8)?;
-                    ptl.sub_layer_level_idc[i] =
-                        Level::try_from(level)?;
+                    ptl.sub_layer_level_idc[i] = Level::try_from(level)?;
                 }
             }
         }
@@ -3440,7 +3437,12 @@ impl Parser {
         pps.pic_parameter_set_id = r.read_ue_max(MAX_PPS_COUNT as u32 - 1)?;
         pps.seq_parameter_set_id = r.read_ue_max(MAX_SPS_COUNT as u32 - 1)?;
 
-        let sps = self.get_sps(pps.seq_parameter_set_id).ok_or::<String>(format!("Could not get SPS for seq_parameter_set_id {}", pps.seq_parameter_set_id))?;
+        let sps = self
+            .get_sps(pps.seq_parameter_set_id)
+            .ok_or::<String>(format!(
+                "Could not get SPS for seq_parameter_set_id {}",
+                pps.seq_parameter_set_id
+            ))?;
 
         pps.dependent_slice_segments_enabled_flag = r.read_bit()?;
         pps.output_flag_present_flag = r.read_bit()?;
@@ -3612,7 +3614,10 @@ impl Parser {
             pwt.delta_chroma_log2_weight_denom = r.read_se()?;
             pwt.chroma_log2_weight_denom = (pwt.luma_log2_weight_denom as i32
                 + pwt.delta_chroma_log2_weight_denom as i32)
-                .try_into().map_err(|_| String::from("Integer overflow on chroma_log2_weight_denom calculation"))?;
+                .try_into()
+                .map_err(|_| {
+                    String::from("Integer overflow on chroma_log2_weight_denom calculation")
+                })?;
         }
 
         for i in 0..=usize::from(hdr.num_ref_idx_l0_active_minus1) {
@@ -3778,9 +3783,19 @@ impl Parser {
 
         hdr.pic_parameter_set_id = r.read_ue_max(63)?;
 
-        let pps = self.get_pps(hdr.pic_parameter_set_id).ok_or::<String>(format!("Could not get PPS for pic_parameter_set_id {}", hdr.pic_parameter_set_id))?;
+        let pps = self
+            .get_pps(hdr.pic_parameter_set_id)
+            .ok_or::<String>(format!(
+                "Could not get PPS for pic_parameter_set_id {}",
+                hdr.pic_parameter_set_id
+            ))?;
 
-        let sps = self.get_sps(pps.seq_parameter_set_id).ok_or::<String>(format!("Could not get SPS for seq_parameter_set_id {}", pps.seq_parameter_set_id))?;
+        let sps = self
+            .get_sps(pps.seq_parameter_set_id)
+            .ok_or::<String>(format!(
+                "Could not get SPS for seq_parameter_set_id {}",
+                pps.seq_parameter_set_id
+            ))?;
 
         Self::slice_header_set_defaults(&mut hdr, sps, pps);
 
@@ -3892,8 +3907,7 @@ impl Parser {
                                 if hdr.lt_idx_sps[i] > sps.num_long_term_ref_pics_sps - 1 {
                                     return Err(format!(
                                         "Invalid lt_idx_sps[{}] {}",
-                                        i,
-                                        hdr.lt_idx_sps[i]
+                                        i, hdr.lt_idx_sps[i]
                                     ));
                                 }
                             }

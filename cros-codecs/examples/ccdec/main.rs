@@ -20,6 +20,8 @@ use std::str::FromStr;
 mod md5;
 
 use argh::FromArgs;
+use cros_codecs::bitstream_utils::IvfIterator;
+use cros_codecs::bitstream_utils::NalIterator;
 use cros_codecs::codec::h264::parser::Nalu as H264Nalu;
 use cros_codecs::codec::h265::parser::Nalu as H265Nalu;
 use cros_codecs::decoder::stateless::av1::Av1;
@@ -39,8 +41,6 @@ use cros_codecs::utils::simple_playback_loop_owned_frames;
 use cros_codecs::utils::simple_playback_loop_userptr_frames;
 use cros_codecs::utils::DmabufFrame;
 use cros_codecs::utils::UserPtrFrame;
-use cros_codecs::bitstream_utils::IvfIterator;
-use cros_codecs::bitstream_utils::NalIterator;
 use cros_codecs::DecodedFormat;
 use cros_codecs::Fourcc;
 use cros_codecs::FrameLayout;
@@ -320,20 +320,19 @@ fn main() {
                 .expect("error opening golden file")
                 .read_to_string(&mut golden_file_content)
                 .expect("error reading golden file");
-            let parsed_json: serde_json::Value = serde_json::from_str(&golden_file_content)
-                .expect("error parsing golden file");
+            let parsed_json: serde_json::Value =
+                serde_json::from_str(&golden_file_content).expect("error parsing golden file");
             match &parsed_json["md5_checksums"] {
-                serde_json::Value::Array(checksums) => {
-                    checksums.iter().map(|x| {
-                        match x {
-                            serde_json::Value::String(checksum) => String::from(checksum),
-                            _ => panic!("error parsing golden file"),
-                        }
-                    }).collect()
-                },
+                serde_json::Value::Array(checksums) => checksums
+                    .iter()
+                    .map(|x| match x {
+                        serde_json::Value::String(checksum) => String::from(checksum),
+                        _ => panic!("error parsing golden file"),
+                    })
+                    .collect(),
                 _ => panic!("error parsing golden file"),
             }
-        },
+        }
     };
     let mut golden_iter = golden_md5s.iter();
 
@@ -434,9 +433,7 @@ fn main() {
     };
 
     let mut on_new_frame = |handle: DynDecodedHandle<BufferDescriptor>| {
-        if args.output.is_some() ||
-           args.compute_md5.is_some() ||
-           args.golden.is_some() {
+        if args.output.is_some() || args.compute_md5.is_some() || args.golden.is_some() {
             handle.sync().unwrap();
             let picture = handle.dyn_picture();
             let mut handle = picture.dyn_mappable_handle().unwrap();

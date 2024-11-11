@@ -4,8 +4,8 @@
 
 //! A VP8 boolean decoder based on the implementation in Chromium and GStreamer.
 
-use std::fmt;
 use std::convert::TryFrom;
+use std::fmt;
 
 use crate::bitstream_utils::BitReader;
 
@@ -47,7 +47,9 @@ impl fmt::Display for BoolDecoderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             BoolDecoderError::EndOfInput => write!(f, "end of input reached"),
-            BoolDecoderError::CannotConvert => write!(f, "could not convert number of read bits to target type"),
+            BoolDecoderError::CannotConvert => {
+                write!(f, "could not convert number of read bits to target type")
+            }
         }
     }
 }
