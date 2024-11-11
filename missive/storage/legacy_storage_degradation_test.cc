@@ -722,10 +722,7 @@ class LegacyStorageDegradationTest
   void CreateTestStorageOrDie(
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module =
-          EncryptionModule::Create(
-              /*is_enabled=*/false,
-              /*renew_encryption_key_period=*/StorageOptions::
-                  kBackgroundQueueUploadPeriod)) {
+          EncryptionModule::Create(/*is_enabled=*/false)) {
     // No attempts to deliver key.
     EXPECT_CALL(set_mock_uploader_expectations_,
                 Call(UploaderInterface::UploadReason::KEY_DELIVERY))

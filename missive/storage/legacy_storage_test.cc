@@ -944,9 +944,7 @@ class LegacyStorageTest
   void CreateTestStorageOrDie(
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module =
-          EncryptionModule::Create(
-              /*is_enabled=*/true,
-              /*renew_encryption_key_period=*/base::Minutes(30))) {
+          EncryptionModule::Create(/*is_enabled=*/true)) {
     encryption_module->SetValue(is_encryption_enabled());
     if (expect_to_need_key_) {
       // Set uploader expectations for any queue; expect no records and need
@@ -995,9 +993,7 @@ class LegacyStorageTest
   StatusOr<scoped_refptr<Storage>> CreateTestStorageWithFailedKeyDelivery(
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module =
-          EncryptionModule::Create(
-              /*is_enabled=*/true,
-              /*renew_encryption_key_period=*/base::Minutes(30))) {
+          EncryptionModule::Create(/*is_enabled=*/true)) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
     Storage::Create(
@@ -1301,10 +1297,8 @@ TEST_P(LegacyStorageTest, WriteIntoStorageAndUploadWithKeyUpdate) {
     return;
   }
 
-  CreateTestStorageOrDie(
-      BuildTestStorageOptions(),
-      EncryptionModule::Create(is_encryption_enabled(),
-                               StorageOptions::kDefaultKeyCheckPeriod));
+  CreateTestStorageOrDie(BuildTestStorageOptions(),
+                         EncryptionModule::Create(is_encryption_enabled()));
   WriteStringOrDie(MANUAL_BATCH, kData[0]);
   WriteStringOrDie(MANUAL_BATCH, kData[1]);
   WriteStringOrDie(MANUAL_BATCH, kData[2]);

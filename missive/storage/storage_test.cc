@@ -1289,10 +1289,8 @@ TEST_P(StorageTest, WriteIntoStorageAndUploadWithKeyUpdate) {
     return;
   }
 
-  CreateTestStorageOrDie(
-      BuildTestStorageOptions(),
-      EncryptionModule::Create(is_encryption_enabled(),
-                               StorageOptions::kDefaultKeyCheckPeriod));
+  CreateTestStorageOrDie(BuildTestStorageOptions(),
+                         EncryptionModule::Create(is_encryption_enabled()));
   WriteStringOrDie(MANUAL_BATCH, kData[0]);
   WriteStringOrDie(MANUAL_BATCH, kData[1]);
   WriteStringOrDie(MANUAL_BATCH, kData[2]);

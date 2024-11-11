@@ -16,9 +16,9 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <base/types/expected.h>
 #include <base/types/expected_macros.h>
-#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -195,7 +195,7 @@ TEST_F(EncryptionModuleTest, PublicKeyUpdate) {
   ASSERT_OK(encrypted_result) << encrypted_result.error();
 
   // Simulate long wait. Key is still available, but is needed now.
-  task_environment_.FastForwardBy(base::Days(1));
+  task_environment_.FastForwardBy(kDefaultKeyRefreshPeriod);
   ASSERT_TRUE(encryption_module_->has_encryption_key());
   ASSERT_TRUE(encryption_module_->need_encryption_key());
   encrypted_result = EncryptSync(kTestString);

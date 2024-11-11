@@ -22,6 +22,9 @@ namespace reporting {
 constexpr char kEncryptionKeyFilePrefix[] = "EncryptionKey.";
 constexpr int32_t kEncryptionKeyMaxFileSize = 256;
 
+// Default period to refresh encryption key.
+constexpr base::TimeDelta kDefaultKeyRefreshPeriod = base::Days(2);
+
 class EncryptionModuleInterface
     : public DynamicFlag,
       public base::RefCountedThreadSafe<EncryptionModuleInterface> {
@@ -31,7 +34,7 @@ class EncryptionModuleInterface
 
   explicit EncryptionModuleInterface(
       bool is_enabled,
-      base::TimeDelta renew_encryption_key_period = base::Days(1));
+      base::TimeDelta renew_encryption_key_period = kDefaultKeyRefreshPeriod);
   EncryptionModuleInterface(const EncryptionModuleInterface& other) = delete;
   EncryptionModuleInterface& operator=(const EncryptionModuleInterface& other) =
       delete;
