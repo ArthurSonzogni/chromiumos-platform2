@@ -108,7 +108,7 @@ std::optional<std::vector<SysBlockStat>> GetSysBlockStats(
 
 void MakeVsh(brillo::ProcessImpl& process,
              uint32_t cid,
-             const std::vector<const std::string>& args) {
+             const std::vector<std::string>& args) {
   process.AddArg("/usr/bin/vsh");
   process.AddArg(base::StringPrintf("--cid=%u", cid));
   process.AddArg("--user=root");

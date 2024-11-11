@@ -668,7 +668,7 @@ std::optional<const std::string> CustomParametersForDev::ObtainSpecialParameter(
   }
 }
 
-std::vector<const std::string> CustomParametersForDev::ObtainSpecialParameters(
+std::vector<std::string> CustomParametersForDev::ObtainSpecialParameters(
     const std::string& key) const {
   if (!initialized_)
     return {};
