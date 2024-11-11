@@ -1326,7 +1326,7 @@ bool UserDataAuth::FilterActiveMounts(
   AssertOnMountThread();
 
   bool skipped = false;
-  std::set<const FilePath> children_to_preserve;
+  std::set<FilePath> children_to_preserve;
 
   for (auto match = mounts->begin(); match != mounts->end();) {
     // curr->first is the source device of the group that we are processing in
