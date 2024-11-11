@@ -31,6 +31,8 @@
 #include <libec/reboot_command.h>
 #include <libec/versions_command.h>
 
+#include "libec/fourcc.h"
+
 using ec::EcCmdVersionSupportStatus;
 using ec::EcCommand;
 using ec::EcCommandAsync;
@@ -46,16 +48,6 @@ using ec::GetProtocolInfoCommand;
 using ec::GetVersionCommand;
 using ec::RebootCommand;
 using ec::VersionsCommand;
-
-namespace {
-
-std::string FourCC(const uint32_t a) {
-  return base::StringPrintf(
-      "%c%c%c%c", static_cast<char>(a), static_cast<char>(a >> 8),
-      static_cast<char>(a >> 16), static_cast<char>(a >> 24));
-}
-
-}  // namespace
 
 namespace biod {
 
@@ -455,7 +447,8 @@ bool CrosFpDevice::Init() {
   }
 
   LOG(INFO) << "CROS FP Sensor Info ";
-  LOG(INFO) << "  Vendor ID  : " << FourCC(info_->sensor_id()->vendor_id);
+  LOG(INFO) << "  Vendor ID  : "
+            << ec::FourCCToString(info_->sensor_id()->vendor_id);
   LOG(INFO) << "  Product ID : " << info_->sensor_id()->product_id;
   LOG(INFO) << "  Model ID   : 0x" << std::hex << info_->sensor_id()->model_id;
   LOG(INFO) << "  Version    : " << info_->sensor_id()->version;
@@ -488,7 +481,7 @@ bool CrosFpDevice::Init() {
   LOG(INFO) << "CROS FP Image Info ";
   // Prints the pixel format in FOURCC format.
   LOG(INFO) << "  Pixel Format     : "
-            << FourCC(info_->sensor_image()->pixel_format);
+            << ec::FourCCToString(info_->sensor_image()->pixel_format);
   LOG(INFO) << "  Image Data Size  : " << info_->sensor_image()->frame_size;
   LOG(INFO) << "  Image Dimensions : " << info_->sensor_image()->width << "x"
             << info_->sensor_image()->height << " "
