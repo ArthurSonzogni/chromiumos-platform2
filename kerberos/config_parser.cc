@@ -248,7 +248,7 @@ ConfigErrorInfo ConfigParser::ParseConfig(
 
     // Remove final marker.
     std::string& key = parts.at(0);
-    if (key.back() == '*') {
+    if (!key.empty() && key.back() == '*') {
       key.pop_back();
     }
 
