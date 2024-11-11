@@ -44,6 +44,7 @@ bool CompoundNetworkConfig::HasSLAAC() {
 void CompoundNetworkConfig::ClearNonStaticConfigs() {
   link_protocol_network_config_ = nullptr;
   dhcp_network_config_ = nullptr;
+  dhcpv6_network_config_ = nullptr;
   slaac_network_config_ = nullptr;
   Recalculate();
 }
