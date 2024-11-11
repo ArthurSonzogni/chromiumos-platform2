@@ -9,7 +9,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Context, Result};
-use libchromeos::mount::{FsType, TempBackedMount};
+use libchromeos::mount::{self, FsType};
 use libchromeos::panic_handler;
 use log::{error, info};
 use nix::sys::{reboot::reboot, stat::Mode};
@@ -58,7 +58,9 @@ impl InstallConfig {
 /// disk and can't loose the image. Since the image size is about 2.5GB, we
 /// assume that much free space in RAM.
 fn copy_installation_files_to_rootfs(config: &InstallConfig) -> Result<()> {
-    let mount = TempBackedMount::new(&config.install_partition, FsType::Vfat)
+    let mount = mount::Builder::new(&config.install_partition)
+        .fs_type(FsType::Vfat)
+        .temp_backed_mount()
         .context("Unable to mount the install partition")?;
 
     // Copy the image to rootfs.
@@ -106,7 +108,9 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
     disk::mkfs_ext4(new_partition_path.as_path())
         .context("Unable to write ext4 to the flex deployment partition")?;
 
-    let new_part_mount = TempBackedMount::new(new_partition_path.as_path(), FsType::Ext4)
+    let new_part_mount = mount::Builder::new(new_partition_path.as_path())
+        .fs_type(FsType::Ext4)
+        .temp_backed_mount()
         .context("Unable to mount flex deployment partition")?;
 
     // Then uncompress the image on disk.
@@ -130,14 +134,14 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
 
 /// Copies the flex config to stateful partition.
 fn copy_flex_config_to_stateful(config: &InstallConfig) -> Result<()> {
-    let stateful_mount = TempBackedMount::new(
-        &libchromeos::disk::get_partition_device(
-            &config.target_device,
-            disk::STATEFUL_PARTITION_NUM,
-        )
-        .context("Unable to find stateful partition")?,
-        FsType::Ext4,
-    )?;
+    let stateful_partition = &libchromeos::disk::get_partition_device(
+        &config.target_device,
+        disk::STATEFUL_PARTITION_NUM,
+    )
+    .context("Unable to find stateful partition")?;
+    let stateful_mount = mount::Builder::new(stateful_partition)
+        .fs_type(FsType::Ext4)
+        .temp_backed_mount()?;
 
     let config_path = stateful_mount
         .mount_path()
@@ -239,7 +243,9 @@ fn run(config: &InstallConfig) -> Result<()> {
 fn try_save_logs(config: &InstallConfig) -> Result<()> {
     // Case 1: The install partition still exists, so we write the logs to it.
     if matches!(config.install_partition.try_exists(), Ok(true)) {
-        let install_mount = TempBackedMount::new(&config.install_partition, FsType::Vfat)?;
+        let install_mount = mount::Builder::new(&config.install_partition)
+            .fs_type(FsType::Vfat)
+            .temp_backed_mount()?;
         std::fs::copy(FLEXOR_LOG_FILE, install_mount.mount_path())
             .context("Unable to copy the logfile to the install partition")?;
         return Ok(());
@@ -251,7 +257,10 @@ fn try_save_logs(config: &InstallConfig) -> Result<()> {
 
     // Case 2: We already have the Flex layout and can try to write to the FLEX_DEPLOY partition.
     if let Ok(true) = flex_depl_partition_path.try_exists() {
-        match TempBackedMount::new(&flex_depl_partition_path, FsType::Ext4) {
+        match mount::Builder::new(&flex_depl_partition_path)
+            .fs_type(FsType::Ext4)
+            .temp_backed_mount()
+        {
             Ok(flex_depl_mount) => {
                 std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path())
                     .context("Unable to copy the logfile to the flex deployment partition")?;
@@ -260,8 +269,9 @@ fn try_save_logs(config: &InstallConfig) -> Result<()> {
                 // The partition seems to exist, but we can't mount it as ext4,
                 // so we try to create a file system and retry.
                 disk::mkfs_ext4(&flex_depl_partition_path)?;
-                let flex_depl_mount =
-                    TempBackedMount::new(&flex_depl_partition_path, FsType::Ext4)?;
+                let flex_depl_mount = mount::Builder::new(&flex_depl_partition_path)
+                    .fs_type(FsType::Ext4)
+                    .temp_backed_mount()?;
                 std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path()).context(
                     "Unable to copy the logfile to the formatted flex deployment partition",
                 )?;

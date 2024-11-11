@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use gpt_disk_types::{BlockSize, GptPartitionEntry, Lba, LbaRangeInclusive};
-use libchromeos::mount::{FsType, TempBackedMount};
+use libchromeos::mount::{self, FsType};
 use log::info;
 use std::fs::File;
 use std::process::Command;
@@ -55,7 +55,10 @@ pub fn disk_info() -> Result<DiskInfo> {
 /// Checks if one of a disk's partitions contains the installation payload.
 fn get_install_disk_info(disk: LsBlkDevice) -> Option<DiskInfo> {
     fn has_install_payload(device: &Path) -> bool {
-        let Ok(mount) = TempBackedMount::new(device, FsType::Vfat) else {
+        let Ok(mount) = mount::Builder::new(device)
+            .fs_type(FsType::Vfat)
+            .temp_backed_mount()
+        else {
             return false;
         };
         matches!(

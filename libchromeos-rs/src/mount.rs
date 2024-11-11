@@ -41,57 +41,60 @@ pub enum MountError {
     RemoveTempdir(#[source] io::Error),
 }
 
-/// Mounts a file system on a temporary directory, then unmounts when dropped.
-pub struct TempBackedMount {
-    // The temporary directory we're mounted to.
-    // Set to `None` when unmounting.
-    mount_point: Option<TempDir>,
-}
-
-// Wrapper around `nix::mount::umount` used by `TempBackedMount`.
+// Wrapper around `nix::mount::umount` used by `Mount`.
 fn unmount_impl(path: &Path) -> Result<(), MountError> {
     info!("Unmounting {}", path.display());
     nix::mount::umount(path).map_err(|e| MountError::Unmount(path.to_path_buf(), e.into()))
 }
 
-impl TempBackedMount {
-    /// Create a tempdir and mount `source` to it.
-    ///
-    /// This is designed around the common case, and will always mount with the
-    /// standard security flags: nodev, noexec, and nosuid.
-    pub fn new(source: &Path, fs_type: FsType) -> Result<Self, MountError> {
-        Builder::new(source).fs_type(fs_type).temp_backed_mount()
-    }
+/// Represents the different ways we have of managing our mount points.
+enum MountPoint {
+    /// Mounts a file system on a temporary directory, then unmounts when dropped..
+    TempBacked(TempDir),
+}
 
+/// A managed mount.
+///
+/// `mount_point` is set to `None` when unmounting. Use the Builder to construct.
+pub struct Mount {
+    mount_point: Option<MountPoint>,
+}
+
+impl Mount {
     /// The Path to the mounted files.
     pub fn mount_path(&self) -> &Path {
-        // OK to unwrap: We only have None if we've unmounted, which consumes
-        // self.
-        self.mount_point.as_ref().unwrap().path()
+        // OK to unwrap: We only have None if we've unmounted, which consumes self.
+        let mount_point = self.mount_point.as_ref().unwrap();
+        match mount_point {
+            MountPoint::TempBacked(tempdir) => tempdir.path(),
+        }
     }
 
     // TODO(b/362703366): consider adding ability to retry on failure.
-    /// Explicily unmounts and removes the tempdir. Consumes self.
+    /// Explicily unmounts and does any other necessary cleanup. Consumes self.
     pub fn unmount(mut self) -> Result<(), MountError> {
-        // Take the `TempDir`, leaving `self.mount_point` as `None`, so that we
-        // can consume it. We must `take` before calling `unmount_impl` or an
-        // `Err` from `unmount_impl` leaves `Some` in `mount_point` and when
-        // `drop` is eventually called it will `unmount_impl` a second time.
-        // OK to unwrap: we only have `None` if we've called `unmount` before,
-        // but it consumes self so that can't have happened.
+        // Take the `MountPoint`, leaving `mount_point` as `None` so that we can consume it. We must
+        // `take` before calling `unmount_impl` or an `Err` from `unmount_impl` leaves `Some` in
+        // `mount_point` and when `drop` is eventually called it will `unmount_impl` a second time.
+        // OK to unwrap: we only have `None` if we've called `unmount` before, but it consumes self
+        // so that can't have happened.
         let mount_point = self.mount_point.take().unwrap();
 
-        unmount_impl(mount_point.path())?;
+        match mount_point {
+            MountPoint::TempBacked(tempdir) => {
+                unmount_impl(tempdir.path())?;
 
-        // We explicitly close the `TempDir` to return any errors.
-        mount_point.close().map_err(MountError::RemoveTempdir)
+                // We explicitly close the `TempDir` to return any errors.
+                tempdir.close().map_err(MountError::RemoveTempdir)
+            }
+        }
     }
 }
 
-impl Drop for TempBackedMount {
+impl Drop for Mount {
     fn drop(&mut self) {
-        // If `unmount` has been called, `mount_point` will be `None`, and
-        // we'll already have unmounted and removed the temp dir.
+        // If `unmount` has been called the Option will be `None`, and
+        // we'll already have unmounted and done any other cleanup.
         if self.mount_point.is_none() {
             return;
         }
@@ -99,11 +102,7 @@ impl Drop for TempBackedMount {
         if let Err(err) = unmount_impl(self.mount_path()) {
             // No way to propagate the error from drop(), so just
             // print it.
-            error!(
-                "Error unmounting temp directory at {}: {}",
-                self.mount_path().display(),
-                err
-            );
+            error!("Error unmounting {}: {}", self.mount_path().display(), err);
         }
     }
 }
@@ -166,13 +165,13 @@ impl Builder {
         self
     }
 
-    /// Mount the source to an owned temporary dir and return a `TempBackedMount` or an error.
+    /// Mount the source to an owned temporary dir and return a `Mount` or an error.
     ///
     /// Consumes self (the Builder).
-    pub fn temp_backed_mount(self) -> Result<TempBackedMount, MountError> {
+    pub fn temp_backed_mount(self) -> Result<Mount, MountError> {
         let mount_point = TempDir::new().map_err(MountError::Tempdir)?;
-        let mount_point = Some(mount_point);
-        let mount_holder = TempBackedMount { mount_point };
+        let mount_point = Some(MountPoint::TempBacked(mount_point));
+        let mount_holder = Mount { mount_point };
 
         let fs_str = self.fs_type.map(|t| t.to_string());
 
@@ -227,7 +226,10 @@ mod tests {
     #[test]
     #[ignore]
     fn test_tmpmnt_basic() {
-        let mnt = TempBackedMount::new(Path::new("tmpfs"), FsType::Tmpfs).unwrap();
+        let mnt = Builder::new(Path::new("tmpfs"))
+            .fs_type(FsType::Tmpfs)
+            .temp_backed_mount()
+            .unwrap();
 
         // Confirm that the mount is good by touching a file on it.
         let file = mnt.mount_path().join("touched");
@@ -239,7 +241,10 @@ mod tests {
     #[test]
     #[ignore]
     fn test_tmpmnt_drop() {
-        let mnt = TempBackedMount::new(Path::new("tmpfs"), FsType::Tmpfs).unwrap();
+        let mnt = Builder::new(Path::new("tmpfs"))
+            .fs_type(FsType::Tmpfs)
+            .temp_backed_mount()
+            .unwrap();
 
         let path = mnt.mount_path().to_path_buf();
 
