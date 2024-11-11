@@ -959,7 +959,7 @@ bool WiFiProvider::DeleteCredentials(const KeyValueStore& properties) {
       kPasspointCredentialsAndroidPackageNameProperty, std::string());
 
   bool success = true;
-  std::vector<const PasspointCredentialsRefPtr> removed_credentials;
+  std::vector<PasspointCredentialsRefPtr> removed_credentials;
   for (const auto& credentials : credentials_by_id_) {
     if (!fqdn.empty() && credentials.second->GetFQDN() != fqdn) {
       continue;
