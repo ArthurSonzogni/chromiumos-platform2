@@ -184,7 +184,7 @@ std::string TimberSlide::ProcessLogBuffer(const std::string& buffer,
                                           const base::Time& now) {
   int64_t ec_current_uptime_ms = 0;
   std::string log =
-      (tokenized_logging_ ? detokenizer_.DetokenizeText(buffer) : buffer);
+      (tokenized_logging_ ? detokenizer_.DetokenizeBase64(buffer) : buffer);
   std::istringstream iss(log);
 
   if (GetEcUptime(&ec_current_uptime_ms)) {
