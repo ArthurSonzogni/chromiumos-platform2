@@ -17,6 +17,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+mod md5;
+
 use argh::FromArgs;
 use cros_codecs::codec::h264::parser::Nalu as H264Nalu;
 use cros_codecs::codec::h265::parser::Nalu as H265Nalu;
@@ -32,8 +34,6 @@ use cros_codecs::decoder::DecodedHandle;
 use cros_codecs::decoder::DynDecodedHandle;
 use cros_codecs::decoder::StreamInfo;
 use cros_codecs::multiple_desc_type;
-use cros_codecs::md5::md5_digest;
-use cros_codecs::md5::MD5Context;
 use cros_codecs::utils::simple_playback_loop;
 use cros_codecs::utils::simple_playback_loop_owned_frames;
 use cros_codecs::utils::simple_playback_loop_userptr_frames;
@@ -48,6 +48,8 @@ use cros_codecs::PlaneLayout;
 use cros_codecs::Resolution;
 use matroska_demuxer::Frame;
 use matroska_demuxer::MatroskaFile;
+use md5::md5_digest;
+use md5::MD5Context;
 
 // Our buffer descriptor type.
 //

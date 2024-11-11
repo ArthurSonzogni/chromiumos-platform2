@@ -22,7 +22,6 @@
 
 pub mod codec;
 pub mod bitstream_utils;
-pub mod md5;
 
 #[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod utils;
