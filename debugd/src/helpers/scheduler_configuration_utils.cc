@@ -330,7 +330,7 @@ bool SchedulerConfigurationUtils::GetControlFDs() {
 }
 
 bool SchedulerConfigurationUtils::GetCPUSetFDs() {
-  std::vector<const base::FilePath> cpu_sets;
+  std::vector<base::FilePath> cpu_sets;
   cpu_sets.push_back(base_path_.Append(kChromeCPUSubsetSubpath));
   cpu_sets.push_back(base_path_.Append(kChronosContainerCPUSubsetSubpath));
   cpu_sets.push_back(base_path_.Append(kSessionManagerCPUSubsetSubpath));
