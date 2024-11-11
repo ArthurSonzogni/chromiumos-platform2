@@ -29,7 +29,7 @@ class PolicyTool {
       "/etc/chromium/policies/managed";
 
   // PolicyList is a list of policy names.
-  typedef std::vector<const std::string> PolicyList;
+  typedef std::vector<std::string> PolicyList;
 
   // Create a PolicyTool instance that writes policy JSON files to the specified
   // directory. Use one of the standard paths above for overriding policies in
