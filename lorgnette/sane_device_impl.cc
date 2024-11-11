@@ -851,46 +851,91 @@ std::optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
 std::optional<uint32_t> SaneDeviceImpl::GetMaxWidth(brillo::ErrorPtr* error) {
   // This function assumes the caller verified the presence of the tl-x and br-x
   // options.
-  ScanOption which_option;
   if (base::Contains(known_options_, kPageWidth)) {
-    which_option = kPageWidth;
-  } else {
-    which_option = kTopLeftX;
+    // We can just return max page-width directly
+    const SaneOption& page_width = known_options_.at(kPageWidth);
+    std::optional<OptionRange> page_width_range = page_width.GetValidRange();
+    if (!page_width_range.has_value()) {
+      brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
+                                 kManagerServiceError,
+                                 "Invalid page-width constraint in option %s",
+                                 page_width.GetName().c_str());
+      return std::nullopt;
+    }
+
+    // OptionRange->size is the distance between min and max values, so add
+    // start to get the total max.
+    return page_width_range.value().size + page_width_range.value().start;
   }
 
-  const SaneOption& option = known_options_.at(which_option);
-  std::optional<OptionRange> x_range = option.GetValidRange();
-  if (!x_range.has_value()) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Invalid top-left X constraint in option %s", option.GetName().c_str());
+  const SaneOption& brx = known_options_.at(kBottomRightX);
+  std::optional<OptionRange> brx_range = brx.GetValidRange();
+  if (!brx_range.has_value()) {
+    brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
+                               kManagerServiceError,
+                               "Invalid bottom-right X constraint in option %s",
+                               brx.GetName().c_str());
     return std::nullopt;
   }
 
-  return x_range.value().size;
+  // We have to adjust br-x/page-width with tl-x origin to get a 0,0 origin
+  // because br-x/page-width may have a larger minimum value than tl-x.
+  const SaneOption& tlx = known_options_.at(kTopLeftX);
+  std::optional<OptionRange> tlx_range = tlx.GetValidRange();
+  if (!tlx_range.has_value()) {
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, kDbusDomain, kManagerServiceError,
+        "Invalid top-left X constraint in option %s", tlx.GetName().c_str());
+    return std::nullopt;
+  }
+
+  return (brx_range.value().start + brx_range.value().size) -
+         tlx_range.value().start;
 }
 
 std::optional<uint32_t> SaneDeviceImpl::GetMaxHeight(brillo::ErrorPtr* error) {
   // This function assumes the caller verified the presence of the tl-y and br-y
   // options.
-  ScanOption which_option;
   if (base::Contains(known_options_, kPageHeight)) {
-    which_option = kPageHeight;
-  } else {
-    which_option = kBottomRightY;
+    // We can just return max page-height directly
+    const SaneOption& page_height = known_options_.at(kPageHeight);
+    std::optional<OptionRange> page_height_range = page_height.GetValidRange();
+    if (!page_height_range.has_value()) {
+      brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
+                                 kManagerServiceError,
+                                 "Invalid page-height constraint in option %s",
+                                 page_height.GetName().c_str());
+      return std::nullopt;
+    }
+
+    // OptionRange->size is the distance between min and max values, so add
+    // start to get the total max.
+    return page_height_range.value().size + page_height_range.value().start;
   }
 
-  const SaneOption& option = known_options_.at(which_option);
-  std::optional<OptionRange> y_range = option.GetValidRange();
-  if (!y_range.has_value()) {
+  const SaneOption& bry = known_options_.at(kBottomRightY);
+  std::optional<OptionRange> bry_range = bry.GetValidRange();
+  if (!bry_range.has_value()) {
     brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
                                kManagerServiceError,
                                "Invalid bottom-right Y constraint in option %s",
-                               option.GetName().c_str());
+                               bry.GetName().c_str());
     return std::nullopt;
   }
 
-  return y_range.value().size;
+  // We have to adjust br-y/page-height with tl-y origin to get a 0,0 origin
+  // because br-y/page-height may have a larger minimum value than tl-y.
+  const SaneOption& tly = known_options_.at(kTopLeftY);
+  std::optional<OptionRange> tly_range = tly.GetValidRange();
+  if (!tly_range.has_value()) {
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, kDbusDomain, kManagerServiceError,
+        "Invalid top-left Y constraint in option %s", tly.GetName().c_str());
+    return std::nullopt;
+  }
+
+  return (bry_range.value().start + bry_range.value().size) -
+         tly_range.value().start;
 }
 
 }  // namespace lorgnette

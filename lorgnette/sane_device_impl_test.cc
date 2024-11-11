@@ -9,6 +9,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <base/containers/contains.h>
@@ -20,6 +21,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
+#include <sane/sane.h>
+#include <sane/saneopts.h>
 
 #include "lorgnette/constants.h"
 #include "lorgnette/libsane_wrapper.h"
@@ -317,6 +320,453 @@ class SaneDeviceImplPeer : public SaneDeviceImpl {
     return known_options_;
   }
 };
+
+TEST(SaneDeviceImplFakeSaneTest, ScannableAreaHasPositiveBrOrigin) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+  // min/max for dimensions taken from http://b/377679004#comment3
+  // All other OptionDescriptor constraints/values in this test are arbitrarily
+  // chosen.
+  SANE_Range test_tlx_range = {
+      .min = 0,
+      .max = 190,
+      .quant = 0,
+  };
+  SANE_Range test_tly_range = {
+      .min = 0,
+      .max = 3200,
+      .quant = 0,
+  };
+  SANE_Range test_brx_range = {
+      .min = 26,
+      .max = 216,
+      .quant = 0,
+  };
+  SANE_Range test_bry_range = {
+      .min = 26,
+      .max = 5588,
+      .quant = 0,
+  };
+
+  SANE_Word resolutions[] = {1, 300};
+  char platen[] = "platen";
+  char* sources[] = {platen, nullptr};
+  char gray[] = "Gray";
+  char* colors[] = {gray, nullptr};
+
+  // Even though we're really only testing with scan dimensions we need this
+  // boiler-plate to reach the private method through the public API.
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      {
+          .name = SANE_NAME_SCAN_TL_X,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_tlx_range},
+      },
+      {
+          .name = SANE_NAME_SCAN_TL_Y,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_tly_range},
+      },
+      {
+          .name = SANE_NAME_SCAN_BR_X,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_brx_range},
+      },
+      {
+          .name = SANE_NAME_SCAN_BR_Y,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_bry_range},
+      },
+      {
+          .name = "resolution",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_DPI,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_WORD_LIST,
+          .constraint = {.word_list = resolutions},
+      },
+      {
+          .name = "source",
+          .type = SANE_TYPE_STRING,
+          .size = sizeof(platen),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_STRING_LIST,
+          .constraint = {.string_list = sources},
+      },
+      {
+          .name = "mode",
+          .type = SANE_TYPE_STRING,
+          .size = sizeof(gray),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_STRING_LIST,
+          .constraint = {.string_list = colors},
+      },
+  };
+
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 8;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int tlx_value = 20;  // arbitrary
+  libsane.SetOptionValue(h, 1, &tlx_value);
+
+  SANE_Int tly_value = 30;  // arbitrary
+  libsane.SetOptionValue(h, 2, &tly_value);
+
+  SANE_Int brx_value = 170;  // arbitrary
+  libsane.SetOptionValue(h, 3, &brx_value);
+
+  SANE_Int bry_value = 3100;  // arbitrary
+  libsane.SetOptionValue(h, 4, &bry_value);
+
+  libsane.SetOptionValue(h, 5, &resolutions[0]);
+  libsane.SetOptionValue(h, 6, sources[0]);
+  libsane.SetOptionValue(h, 7, colors[0]);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr) << error.get()->GetMessage();
+  std::optional<ValidOptionValues> opts = device.GetValidOptionValues(&error);
+  EXPECT_EQ(error, nullptr) << error.get()->GetMessage();
+  ASSERT_TRUE(opts.has_value());
+  for (DocumentSource source : opts.value().sources) {
+    // 0,0 origin so the max values should be the same as calculated area
+    // width/height.
+    EXPECT_EQ(test_brx_range.max, source.area().width());
+    EXPECT_EQ(test_bry_range.max, source.area().height());
+  }
+}
+
+TEST(SaneDeviceImplFakeSaneTest,
+     ScannableAreaHasPositiveBrOriginUsingPageDims) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+  // min/max for dimensions taken from http://b/377679004#comment3
+  // All other OptionDescriptor constraints/values in this test are arbitrarily
+  // chosen.
+  SANE_Range test_tlx_range = {
+      .min = 0,
+      .max = 190,
+      .quant = 0,
+  };
+  SANE_Range test_tly_range = {
+      .min = 0,
+      .max = 3200,
+      .quant = 0,
+  };
+  SANE_Range test_brx_range = {
+      .min = 26,
+      .max = 216,
+      .quant = 0,
+  };
+  SANE_Range test_bry_range = {
+      .min = 26,
+      .max = 5588,
+      .quant = 0,
+  };
+  SANE_Range test_page_width_range = {
+      .min = 26,
+      .max = 216,
+      .quant = 0,
+  };
+  SANE_Range test_page_height_range = {
+      .min = 26,
+      .max = 5588,
+      .quant = 0,
+  };
+
+  SANE_Word resolutions[] = {1, 300};
+  char platen[] = "platen";
+  char* sources[] = {platen, nullptr};
+  char gray[] = "Gray";
+  char* colors[] = {gray, nullptr};
+
+  // Even though we're really only testing with scan dimensions we need this
+  // boiler-plate to reach the private method through the public API.
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      {
+          .name = SANE_NAME_SCAN_TL_X,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_tlx_range},
+      },
+      {
+          .name = SANE_NAME_SCAN_TL_Y,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_tly_range},
+      },
+      {
+          .name = SANE_NAME_SCAN_BR_X,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_brx_range},
+      },
+      {
+          .name = SANE_NAME_SCAN_BR_Y,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_bry_range},
+      },
+      {
+          .name = SANE_NAME_PAGE_WIDTH,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_page_width_range},
+      },
+      {
+          .name = SANE_NAME_PAGE_HEIGHT,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_page_height_range},
+      },
+      {
+          .name = "resolution",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_DPI,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_WORD_LIST,
+          .constraint = {.word_list = resolutions},
+      },
+      {
+          .name = "source",
+          .type = SANE_TYPE_STRING,
+          .size = sizeof(platen),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_STRING_LIST,
+          .constraint = {.string_list = sources},
+      },
+      {
+          .name = "mode",
+          .type = SANE_TYPE_STRING,
+          .size = sizeof(gray),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_STRING_LIST,
+          .constraint = {.string_list = colors},
+      },
+  };
+
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 10;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int tlx_value = 20;  // arbitrary
+  libsane.SetOptionValue(h, 1, &tlx_value);
+
+  SANE_Int tly_value = 30;  // arbitrary
+  libsane.SetOptionValue(h, 2, &tly_value);
+
+  SANE_Int brx_value = 170;  // arbitrary
+  libsane.SetOptionValue(h, 3, &brx_value);
+
+  SANE_Int bry_value = 3100;  // arbitrary
+  libsane.SetOptionValue(h, 4, &bry_value);
+
+  SANE_Int page_width_value = 210;  // arbitrary
+  libsane.SetOptionValue(h, 5, &page_width_value);
+
+  SANE_Int page_height_value = 297;  // arbitrary
+  libsane.SetOptionValue(h, 6, &page_height_value);
+
+  libsane.SetOptionValue(h, 7, &resolutions[0]);
+  libsane.SetOptionValue(h, 8, sources[0]);
+  libsane.SetOptionValue(h, 9, colors[0]);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr) << error.get()->GetMessage();
+  std::optional<ValidOptionValues> opts = device.GetValidOptionValues(&error);
+  EXPECT_EQ(error, nullptr) << error.get()->GetMessage();
+  ASSERT_TRUE(opts.has_value());
+  for (DocumentSource source : opts.value().sources) {
+    // page-width/height directly encodes the dimensions so we compare to the
+    // max values directly.
+    EXPECT_EQ(test_page_width_range.max, source.area().width());
+    EXPECT_EQ(test_page_height_range.max, source.area().height());
+  }
+}
+
+TEST(SaneDeviceImplFakeSaneTest, ScannableAreaHasNegativeTlOrigin) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+  // Besides min values being negative, the rest of these are arbitrary.
+  SANE_Range test_tlx_range = {
+      .min = -80,
+      .max = 80,
+      .quant = 0,
+  };
+  SANE_Range test_tly_range = {
+      .min = -1800,
+      .max = 1800,
+      .quant = 0,
+  };
+  SANE_Range test_brx_range = {
+      .min = 0,
+      .max = 160,
+      .quant = 0,
+  };
+  SANE_Range test_bry_range = {
+      .min = 0,
+      .max = 3600,
+      .quant = 0,
+  };
+
+  SANE_Word resolutions[] = {1, 300};
+  char platen[] = "platen";
+  char* sources[] = {platen, nullptr};
+  char gray[] = "Gray";
+  char* colors[] = {gray, nullptr};
+
+  // Even though we're really only testing with scan dimensions we need this
+  // boiler-plate to reach the private method through the public API.
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      {
+          .name = SANE_NAME_SCAN_TL_X,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_tlx_range},
+      },
+      {
+          .name = SANE_NAME_SCAN_TL_Y,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_tly_range},
+      },
+      {
+          .name = SANE_NAME_SCAN_BR_X,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_brx_range},
+      },
+      {
+          .name = SANE_NAME_SCAN_BR_Y,
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_MM,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_RANGE,
+          .constraint = {.range = &test_bry_range},
+      },
+      {
+          .name = "resolution",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_DPI,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_WORD_LIST,
+          .constraint = {.word_list = resolutions},
+      },
+      {
+          .name = "source",
+          .type = SANE_TYPE_STRING,
+          .size = sizeof(platen),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_STRING_LIST,
+          .constraint = {.string_list = sources},
+      },
+      {
+          .name = "mode",
+          .type = SANE_TYPE_STRING,
+          .size = sizeof(gray),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_STRING_LIST,
+          .constraint = {.string_list = colors},
+      },
+  };
+
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 8;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int tlx_value = 20;  // arbitrary
+  libsane.SetOptionValue(h, 1, &tlx_value);
+
+  SANE_Int tly_value = 30;  // arbitrary
+  libsane.SetOptionValue(h, 2, &tly_value);
+
+  SANE_Int brx_value = 170;  // arbitrary
+  libsane.SetOptionValue(h, 3, &brx_value);
+
+  SANE_Int bry_value = 3100;  // arbitrary
+  libsane.SetOptionValue(h, 4, &bry_value);
+
+  libsane.SetOptionValue(h, 5, &resolutions[0]);
+  libsane.SetOptionValue(h, 6, sources[0]);
+  libsane.SetOptionValue(h, 7, colors[0]);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr) << error.get()->GetMessage();
+  std::optional<ValidOptionValues> opts = device.GetValidOptionValues(&error);
+  EXPECT_EQ(error, nullptr) << error.get()->GetMessage();
+  ASSERT_TRUE(opts.has_value());
+  for (DocumentSource source : opts.value().sources) {
+    // The returned scannable area should be the width and height from a 0,0
+    // origin.
+    EXPECT_EQ(test_brx_range.max - test_tlx_range.min, source.area().width());
+    EXPECT_EQ(test_bry_range.max - test_tly_range.min, source.area().height());
+  }
+}
 
 TEST(SaneDeviceImplFakeSaneTest, LoadOptionsNoOptionZero) {
   LibsaneWrapperFake libsane;
