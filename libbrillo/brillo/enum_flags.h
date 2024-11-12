@@ -70,11 +70,12 @@ struct IsFlagEnum<T, Void<typename FlagEnumTraits<T>::EnumFlagType>>
 // The operators themselves, conditional on having been declared that they are
 // flag-style enums.
 
-// T operator~(T&)
+// int operator~(T&)
 template <typename T>
-constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
+constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value,
+                                  std::underlying_type_t<T>>::type
 operator~(const T& l) {
-  return static_cast<T>(~base::to_underlying(l));
+  return ~base::to_underlying(l);
 }
 
 // T operator|(T&, T&)
@@ -89,6 +90,20 @@ template <typename T>
 constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
 operator&(const T& l, const T& r) {
   return static_cast<T>(base::to_underlying(l) & base::to_underlying(r));
+}
+
+// T operator&(int&, T&)
+template <typename T>
+constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
+operator&(const std::underlying_type_t<T>& l, const T& r) {
+  return static_cast<T>(l & base::to_underlying(r));
+}
+
+// T operator&(T&, int&)
+template <typename T>
+constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
+operator&(const T& l, const std::underlying_type_t<T>& r) {
+  return static_cast<T>(base::to_underlying(l) & r);
 }
 
 // T operator^(T&, T&)
@@ -110,6 +125,14 @@ template <typename T>
 constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
 operator&=(T& l, const T& r) {  // NOLINT(runtime/references)
   return l = static_cast<T>(base::to_underlying(l) & base::to_underlying(r));
+}
+
+// T operator&=(T&, int&)
+template <typename T>
+constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
+operator&=(T& l,
+           const std::underlying_type_t<T>& r) {  // NOLINT(runtime/references)
+  return l = static_cast<T>(base::to_underlying(l) & r);
 }
 
 // T operator^=(T&, T&)
