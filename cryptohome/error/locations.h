@@ -1661,7 +1661,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCreateVaultKeysetRpcImplAddFailedInAddKeyset = 2323,
   /* =Obsolete= */
   kLocUserDataAuthKeyEvictionFailedInEvictDeviceKey = 2324,
-  /* ./user_session/real_user_session.cc */
+  /* =Obsolete= */
   kLocUserSessionEvictCryptohomeKeyInEvictDeviceKey = 2325,
   /* =Obsolete= */
   kLocUserDataAuthNoActiveMountInEvictDeviceKey = 2326,

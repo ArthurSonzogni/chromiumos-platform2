@@ -96,10 +96,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   virtual bool IsNonEphemeralMounted() const;
 
-  // EvictCryptohomeKey evicts the keys from a user's cryptohome vault &
-  // dmcrypt device.
-  virtual StorageStatus EvictCryptohomeKey();
-
   // RestoreCryptohomeKey restores the key into the cryptohome vault.
   // Currently only support dmcrypt based vault.
   virtual StorageStatus RestoreCryptohomeKey(

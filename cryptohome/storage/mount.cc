@@ -258,14 +258,6 @@ bool Mount::OwnsMountPoint(const FilePath& path) const {
   return active_mounter_ && active_mounter_->IsPathMounted(path);
 }
 
-StorageStatus Mount::EvictCryptohomeKey() {
-  if (user_cryptohome_vault_) {
-    return user_cryptohome_vault_->EvictKey();
-  }
-  return StorageStatus::Make(FROM_HERE, "Failed to evict cryptohome key.",
-                             MOUNT_ERROR_INVALID_ARGS);
-}
-
 StorageStatus Mount::RestoreCryptohomeKey(
     const FileSystemKeyset& file_system_keyset) {
   if (!user_cryptohome_vault_) {
