@@ -51,7 +51,8 @@ class StatefulMount {
   void MountStateful(const base::FilePath& root_dev,
                      const base::Value& image_vars);
 
-  bool DevUpdateStatefulPartition(const std::string& args);
+  bool DevUpdateStatefulPartition(const std::string& args,
+                                  bool enable_stateful_security_hardening);
   void DevGatherLogs(const base::FilePath& base_dir);
   void DevMountPackages(bool enable_stateful_security_hardening);
   void RemoveEmptyDirectory(std::vector<base::FilePath> preserved_paths,

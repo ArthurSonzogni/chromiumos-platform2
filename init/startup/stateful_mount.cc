@@ -459,7 +459,8 @@ void StatefulMount::RemoveEmptyDirectory(
 // Updates stateful partition if pending
 // update is available.
 // Returns true if there is no need to update or successful update.
-bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
+bool StatefulMount::DevUpdateStatefulPartition(
+    const std::string& args, bool enable_stateful_security_hardening) {
   base::FilePath stateful_update_file = stateful_.Append(kUpdateAvailable);
   std::string stateful_update_args = args;
   if (stateful_update_args.empty()) {
@@ -554,12 +555,6 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
     base::FilePath preserve_dir =
         stateful_.Append(kUnencrypted).Append(kPreserve);
 
-    // Allow traversal of preserve_dir, it contains link for /var/log
-    if (platform_->DirectoryExists(preserve_dir)) {
-      AllowSymlink(platform_, root_, preserve_dir.value());
-      AllowFifo(platform_, root_, preserve_dir.value());
-    }
-
     // Find everything in stateful and delete it, except for protected paths,
     // and non-empty directories. The non-empty directories contain protected
     // content or they would already be empty from depth first traversal.
@@ -571,6 +566,17 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
         stateful_dev_image,
         var_target,
         preserve_dir};
+    if (enable_stateful_security_hardening) {
+      // Allow traversal of preserve_dir, it contains link for /var/log
+      // Allow traversal of /var and dev_image: they may have been just created,
+      // and are usually allowed later.
+      for (auto& preserved_path : preserved_paths) {
+        if (platform_->DirectoryExists(preserved_path)) {
+          AllowSymlink(platform_, root_, preserved_path.value());
+        }
+      }
+    }
+
     std::unique_ptr<libstorage::FileEnumerator> enumerator(
         platform_->GetFileEnumerator(stateful_, true,
                                      base::FileEnumerator::FILES));
@@ -593,6 +599,11 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
 
     // Let's really be done before coming back.
     sync();
+
+    if (enable_stateful_security_hardening) {
+      // Reapply base symlink exemption if needed.
+      SymlinkExceptions(platform_, root_);
+    }
   }
 
   platform_->DeleteFile(stateful_update_file);
@@ -676,7 +687,7 @@ void StatefulMount::DevMountPackages(bool enable_stateful_security_hardening) {
   }
 
   // Checks and updates stateful partition.
-  DevUpdateStatefulPartition("");
+  DevUpdateStatefulPartition("", enable_stateful_security_hardening);
 
   // Mount and then remount to enable exec/suid.
   base::FilePath usrlocal = root_.Append(kUsrLocal);

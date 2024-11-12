@@ -1103,7 +1103,8 @@ bool ChromeosStartup::DevUpdateStatefulPartition(const std::string& args) {
   if (!dev_mode_) {
     return true;
   }
-  return stateful_mount_->DevUpdateStatefulPartition(args);
+  return stateful_mount_->DevUpdateStatefulPartition(
+      args, enable_stateful_security_hardening_);
 }
 
 void ChromeosStartup::DevGatherLogs() {

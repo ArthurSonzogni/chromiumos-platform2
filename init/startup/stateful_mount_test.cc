@@ -235,7 +235,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
 };
 
 TEST_F(DevUpdateStatefulTest, NoUpdateAvailable) {
-  EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition(""));
+  EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition("", false));
 }
 
 TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
@@ -256,7 +256,7 @@ TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
   ASSERT_TRUE(
       platform_->WriteStringToFile(var_target.Append("var_target_file"), "1"));
 
-  EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition(""));
+  EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition("", false));
 
   EXPECT_FALSE(platform_->FileExists(developer_new.Append("dev_new_file")));
   EXPECT_FALSE(platform_->FileExists(var_new.Append("var_new_file")));
@@ -297,7 +297,7 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   ASSERT_TRUE(platform_->WriteStringToFile(test, "1"));
   ASSERT_TRUE(platform_->WriteStringToFile(preserve_test, "1"));
 
-  EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition(""));
+  EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition("", false));
   EXPECT_TRUE(
       platform_->FileExists(developer_target.Append("dev_target_file")));
   EXPECT_TRUE(platform_->FileExists(var_target.Append("var_target_file")));
