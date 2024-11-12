@@ -126,19 +126,6 @@ MountStatus RealUserSession::MountGuest() {
       status->error(), std::nullopt);
 }
 
-MountStatus RealUserSession::RestoreDeviceKey(
-    const FileSystemKeyset& fs_keyset) {
-  StorageStatus status = mount_->RestoreCryptohomeKey(fs_keyset);
-  if (!status.ok()) {
-    return MakeStatus<CryptohomeMountError>(
-        CRYPTOHOME_ERR_LOC(kLocUserSessionRestoreKeyFailed),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kDeleteVault}),
-        status->error());
-  }
-
-  return OkStatus<CryptohomeMountError>();
-}
-
 bool RealUserSession::Unmount() {
   if (pkcs11_token_) {
     pkcs11_token_->Remove();

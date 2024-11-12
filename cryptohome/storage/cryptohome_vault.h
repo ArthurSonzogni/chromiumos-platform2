@@ -51,10 +51,6 @@ class CryptohomeVault {
   // Sets up the cryptohome vault for mounting.
   StorageStatus Setup(const libstorage::FileSystemKey& filesystem_key);
 
-  // Restore the in-memory cryptohome filesystem key. Currently only
-  // dmcrypt container based vault supports this operation.
-  StorageStatus RestoreKey(const libstorage::FileSystemKey& filesystem_key);
-
   // Removes the vault.
   bool Purge();
 

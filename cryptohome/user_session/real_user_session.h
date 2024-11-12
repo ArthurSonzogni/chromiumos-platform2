@@ -60,8 +60,6 @@ class RealUserSession : public UserSession {
 
   MountStatus MountGuest() override;
 
-  MountStatus RestoreDeviceKey(const FileSystemKeyset& fs_keyset) override;
-
   bool Unmount() override;
 
   std::unique_ptr<brillo::SecureBlob> GetWebAuthnSecret() override;

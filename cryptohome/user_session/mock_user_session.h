@@ -40,10 +40,6 @@ class MockUserSession : public UserSession {
               (override));
   MOCK_METHOD(MountStatus, MountEphemeral, (const Username&), (override));
   MOCK_METHOD(MountStatus, MountGuest, (), (override));
-  MOCK_METHOD(MountStatus,
-              RestoreDeviceKey,
-              (const FileSystemKeyset&),
-              (override));
   MOCK_METHOD(bool, Unmount, (), (override));
   MOCK_METHOD(std::unique_ptr<brillo::SecureBlob>,
               GetWebAuthnSecret,

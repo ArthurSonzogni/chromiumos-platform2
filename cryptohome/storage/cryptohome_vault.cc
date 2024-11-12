@@ -135,34 +135,6 @@ StorageStatus CryptohomeVault::Setup(
   return StorageStatus::Ok();
 }
 
-StorageStatus CryptohomeVault::RestoreKey(
-    const libstorage::FileSystemKey& filesystem_key) {
-  if (container_->GetType() != libstorage::StorageContainerType::kDmcrypt) {
-    return StorageStatus::Make(FROM_HERE,
-                               "Not supported: container type is not dm-crypt.",
-                               MOUNT_ERROR_INVALID_ARGS);
-  }
-  if (!container_->RestoreKey(filesystem_key)) {
-    return StorageStatus::Make(FROM_HERE, "Failed to restore container key.",
-                               MOUNT_ERROR_KEY_RESTORE_FAILED);
-  }
-  if (cache_container_ && !cache_container_->RestoreKey(filesystem_key)) {
-    return StorageStatus::Make(FROM_HERE,
-                               "Failed to restore cache container key.",
-                               MOUNT_ERROR_KEY_RESTORE_FAILED);
-  }
-  for (auto& [name, container] : application_containers_) {
-    if (!container->RestoreKey(filesystem_key)) {
-      LOG(ERROR) << "Failed to restore key for an application container "
-                 << name;
-      return StorageStatus::Make(
-          FROM_HERE, "Failed to restore key for an application container.",
-          MOUNT_ERROR_KEY_RESTORE_FAILED);
-    }
-  }
-  return StorageStatus::Ok();
-}
-
 void CryptohomeVault::ReportVaultEncryptionType() {
   libstorage::StorageContainerType type = migrating_container_
                                               ? migrating_container_->GetType()

@@ -65,9 +65,6 @@ class UserSession {
   // user.
   virtual MountStatus MountGuest() = 0;
 
-  // Restore key to the user's active mount.
-  virtual MountStatus RestoreDeviceKey(const FileSystemKeyset& fs_keyset) = 0;
-
   // Unmounts the session.
   virtual bool Unmount() = 0;
 

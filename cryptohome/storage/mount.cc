@@ -258,24 +258,6 @@ bool Mount::OwnsMountPoint(const FilePath& path) const {
   return active_mounter_ && active_mounter_->IsPathMounted(path);
 }
 
-StorageStatus Mount::RestoreCryptohomeKey(
-    const FileSystemKeyset& file_system_keyset) {
-  if (!user_cryptohome_vault_) {
-    return StorageStatus::Make(FROM_HERE, "Cryptohome vault has not set up.",
-                               MOUNT_ERROR_KEY_RESTORE_FAILED);
-  }
-  if (!IsNonEphemeralMounted()) {
-    return StorageStatus::Make(
-        FROM_HERE, "Non-mounted or ephemeral mount can't restore key.",
-        MOUNT_ERROR_KEY_RESTORE_FAILED);
-  }
-
-  RETURN_IF_ERROR(user_cryptohome_vault_->RestoreKey(file_system_keyset.Key()))
-          .LogError()
-      << "Failed to restore key of the persistent vault";
-  return StorageStatus::Ok();
-}
-
 MountType Mount::GetMountType() const {
   if (!user_cryptohome_vault_) {
     return MountType::NONE;
