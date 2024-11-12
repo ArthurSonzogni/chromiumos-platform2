@@ -23,7 +23,7 @@ constexpr char kEncryptionKeyFilePrefix[] = "EncryptionKey.";
 constexpr int32_t kEncryptionKeyMaxFileSize = 256;
 
 // Default period to refresh encryption key.
-constexpr base::TimeDelta kDefaultKeyRefreshPeriod = base::Days(2);
+constexpr base::TimeDelta kDefaultKeyRefreshPeriod = base::Days(3);
 
 class EncryptionModuleInterface
     : public DynamicFlag,
