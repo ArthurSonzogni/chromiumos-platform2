@@ -48,7 +48,7 @@ impl fmt::Display for GetByteError {
 
 #[derive(Debug)]
 pub(crate) enum ReadBitsError {
-    TooManyBytesRequested(usize),
+    TooManyBitsRequested(usize),
     GetByte(GetByteError),
     ConversionFailed,
 }
@@ -56,7 +56,7 @@ pub(crate) enum ReadBitsError {
 impl fmt::Display for ReadBitsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ReadBitsError::TooManyBytesRequested(bits) => {
+            ReadBitsError::TooManyBitsRequested(bits) => {
                 write!(f, "more than 31 ({}) bits were requested", bits)
             }
             ReadBitsError::GetByte(_) => write!(f, "failed to advance the current byte"),
@@ -102,7 +102,7 @@ impl<'a> BitReader<'a> {
     /// header parsing anyway.
     pub fn read_bits<U: TryFrom<u32>>(&mut self, num_bits: usize) -> Result<U, String> {
         if num_bits > 31 {
-            return Err(ReadBitsError::TooManyBytesRequested(num_bits).to_string());
+            return Err(ReadBitsError::TooManyBitsRequested(num_bits).to_string());
         }
 
         let mut bits_left = num_bits;
