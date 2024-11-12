@@ -5,7 +5,9 @@
 //! Command line argument parsing, with a focus on matching the old shell
 //! script's arguments.
 
+use crate::process_util::Environment;
 use clap::Parser;
+use std::ffi::OsString;
 
 // To allow the default use of lvm to be controlled by USE flag, toggle this
 // bool based on the feature `lvm_default`.
@@ -139,44 +141,46 @@ impl Args {
 
     /// Convert parsed args into "environment variables" (pairs of Strings) to be
     /// passed to the shell script.
-    pub fn to_env(&self) -> Vec<(String, String)> {
-        let mut output = Vec::new();
+    pub fn to_env(&self) -> Environment {
+        let mut output = Environment::new();
+
+        // Convert from `bool` to `OsString`, using the shflags format of "0"/"1"
+        // for true and false.
+        fn sh_bool(value: bool) -> OsString {
+            if value { "0" } else { "1" }.into()
+        }
+
+        // Convert from `Option<String>` to `OsString`, with `None` producing an empty string.
+        fn sh_path(value: &Option<String>) -> OsString {
+            value.clone().unwrap_or_default().into()
+        }
 
         // Special handling for flag with USE-flag controlled default.
         let lvm_stateful = self.lvm_stateful_arg(LVM_FLAG_DEFAULT);
         let default_key_stateful = self.default_key_stateful_arg(DEFAULT_KEY_FLAG_DEFAULT);
 
         // Boolean flags
-        for (flag, value) in [
-            ("FLAGS_skip_dst_removable", self.skip_dst_removable),
-            ("FLAGS_skip_rootfs", self.skip_rootfs),
-            ("FLAGS_yes", self.yes),
-            ("FLAGS_preserve_stateful", self.preserve_stateful),
-            ("FLAGS_debug", self.debug),
-            ("FLAGS_skip_postinstall", self.skip_postinstall),
-            ("FLAGS_storage_diags", self.storage_diags),
-            ("FLAGS_lvm_stateful", lvm_stateful),
-            ("FLAGS_default_key_stateful", default_key_stateful),
-            ("FLAGS_minimal_copy", self.minimal_copy),
-            ("FLAGS_skip_gpt_creation", self.skip_gpt_creation),
-        ] {
-            output.push((
-                flag.to_string(),
-                // Convert from bool to String, using the shflags format of "0"/"1"
-                // for true and false.
-                if value { '0' } else { '1' }.to_string(),
-            ));
-        }
+        output.extend([
+            ("FLAGS_skip_dst_removable", sh_bool(self.skip_dst_removable)),
+            ("FLAGS_skip_rootfs", sh_bool(self.skip_rootfs)),
+            ("FLAGS_yes", sh_bool(self.yes)),
+            ("FLAGS_preserve_stateful", sh_bool(self.preserve_stateful)),
+            ("FLAGS_debug", sh_bool(self.debug)),
+            ("FLAGS_skip_postinstall", sh_bool(self.skip_postinstall)),
+            ("FLAGS_storage_diags", sh_bool(self.storage_diags)),
+            ("FLAGS_lvm_stateful", sh_bool(lvm_stateful)),
+            ("FLAGS_default_key_stateful", sh_bool(default_key_stateful)),
+            ("FLAGS_minimal_copy", sh_bool(self.minimal_copy)),
+            ("FLAGS_skip_gpt_creation", sh_bool(self.skip_gpt_creation)),
+        ]);
 
-        for (flag, value) in [
-            ("FLAGS_dst", &self.dst),
-            ("FLAGS_payload_image", &self.payload_image),
-            ("FLAGS_pmbr_code", &self.pmbr_code),
-            ("FLAGS_target_bios", &self.target_bios),
-            ("FLAGS_lab_preserve_logs", &self.lab_preserve_logs),
-        ] {
-            output.push((flag.to_string(), value.clone().unwrap_or_default()));
-        }
+        output.extend([
+            ("FLAGS_dst", sh_path(&self.dst)),
+            ("FLAGS_payload_image", sh_path(&self.payload_image)),
+            ("FLAGS_pmbr_code", sh_path(&self.pmbr_code)),
+            ("FLAGS_target_bios", sh_path(&self.target_bios)),
+            ("FLAGS_lab_preserve_logs", sh_path(&self.lab_preserve_logs)),
+        ]);
 
         output
     }
@@ -185,6 +189,8 @@ impl Args {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use std::ffi::OsString;
 
     #[test]
     fn test_lvm_stateful_arg() {
@@ -222,16 +228,16 @@ mod tests {
         // Boolean flags come through with the right format.
         assert!(env
             .iter()
-            .any(|(key, val)| key == "FLAGS_yes" && val == "0"));
+            .any(|(key, val)| *key == "FLAGS_yes" && val == "0"));
 
         // Boolean flags have the right default.
         assert!(env
             .iter()
-            .any(|(key, val)| key == "FLAGS_debug" && val == "1"));
+            .any(|(key, val)| *key == "FLAGS_debug" && val == "1"));
 
         // String flags are empty if not specified.
-        let target_bios = env.iter().find(|(key, _)| key == "FLAGS_target_bios");
-        assert_eq!(target_bios.unwrap().1, String::new());
+        let target_bios = env.iter().find(|(key, _)| **key == "FLAGS_target_bios");
+        assert_eq!(*target_bios.unwrap().1, OsString::new());
     }
 
     #[test]

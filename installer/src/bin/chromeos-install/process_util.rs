@@ -47,6 +47,13 @@ impl fmt::Display for ProcessError {
 
 impl std::error::Error for ProcessError {}
 
+/// A type for passing to `Command::envs`.
+///
+/// Using `OsString` rather than `String` reduces the number of conversions between Path(Buf) and
+/// String we need to do, since `envs` takes things AsRef<OsStr>. All of our keys should be known
+/// at compile time, so we can just hold a reference to a static str for those.
+pub type Environment = std::collections::BTreeMap<&'static str, std::ffi::OsString>;
+
 /// Format the command as a string for logging.
 ///
 /// There's no good built-in method for this, so use the debug format
