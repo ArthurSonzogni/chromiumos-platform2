@@ -465,6 +465,12 @@ where
                     .parser
                     .parse_frame_obu(obu)
                     .map_err(|err| DecodeError::ParseFrameError(err))?;
+                if self.codec.current_pic.is_some() {
+                    /* submit this frame immediately, as we need to update the
+                     * DPB and the reference info state *before* processing the
+                     * next frame */
+                    self.submit_frame(timestamp)?;
+                }
                 self.decode_frame(frame, timestamp)?;
                 /* submit this frame immediately, as we need to update the
                  * DPB and the reference info state *before* processing the
