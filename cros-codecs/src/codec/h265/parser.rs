@@ -942,6 +942,9 @@ pub struct Sps {
     pub max_tb_log2_size_y: u32,
     /// Equivalent to PicSizeInSamplesY in the specification.
     pub pic_size_in_samples_y: u32,
+
+    /// The VPS referenced by this SPS, if any.
+    pub vps: Option<Rc<Vps>>,
 }
 
 impl Sps {
@@ -3088,10 +3091,16 @@ impl Parser {
         // Skip the header
         let mut r = BitReader::new(&data[hdr_len..], true);
 
+        let video_parameter_set_id = r.read_bits(4)?;
+
+        // A non-existing VPS means the SPS is not using any VPS.
+        let vps = self.get_vps(video_parameter_set_id).cloned();
+
         let mut sps = Sps {
-            video_parameter_set_id: r.read_bits(4)?,
+            video_parameter_set_id,
             max_sub_layers_minus1: r.read_bits(3)?,
             temporal_id_nesting_flag: r.read_bit()?,
+            vps,
             ..Default::default()
         };
 
