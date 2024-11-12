@@ -479,7 +479,7 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
   std::string dev_image(kStatefulDevImage);
   base::FilePath var_new = stateful_.Append(var + kNew);
   base::FilePath developer_new = stateful_.Append(dev_image + kNew);
-  base::FilePath developer_target = stateful_.Append(dev_image);
+  base::FilePath stateful_dev_image = stateful_.Append(kStatefulDevImage);
   base::FilePath var_target = stateful_.Append(var + kOverlay);
   std::vector<base::FilePath> paths_to_rm;
 
@@ -491,7 +491,7 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
                          var_new.value() + ".";
     startup_dep_->ClobberLog(update);
 
-    for (const std::string& path : {var, dev_image}) {
+    for (const std::string& path : {kVar, kStatefulDevImage}) {
       base::FilePath path_new = stateful_.Append(path + kNew);
       base::FilePath path_target;
       if (path == "var") {
@@ -570,7 +570,7 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
         stateful_.Append(kDevModeFile),
         stateful_.Append("encrypted.block"),
         stateful_.Append("encrypted.key"),
-        developer_target,
+        stateful_dev_image,
         var_target,
         preserve_dir};
     std::unique_ptr<libstorage::FileEnumerator> enumerator(
