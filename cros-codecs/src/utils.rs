@@ -8,6 +8,7 @@
 //! new code here unless it really doesn't belong anywhere else.
 
 use std::os::fd::OwnedFd;
+use std::time::Duration;
 
 use crate::decoder::stateless::DecodeError;
 use crate::decoder::stateless::PoolLayer;
@@ -92,6 +93,7 @@ where
                     }
                 }
                 Err(DecodeError::CheckEvents) | Err(DecodeError::NotEnoughOutputBuffers(_)) => {
+                    decoder.wait_for_next_event(Duration::from_secs(3))?;
                     check_events(decoder)?
                 }
                 Err(e) => anyhow::bail!(e),
