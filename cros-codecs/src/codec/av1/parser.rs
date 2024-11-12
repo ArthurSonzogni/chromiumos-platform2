@@ -170,6 +170,49 @@ impl<'a> AsRef<[u8]> for Obu<'a> {
     }
 }
 
+/// A fully parsed OBU, with additional data when relevant.
+pub enum ParsedObu<'a> {
+    Reserved,
+    SequenceHeader(Rc<SequenceHeaderObu>),
+    TemporalDelimiter,
+    FrameHeader(FrameHeaderObu),
+    TileGroup(TileGroupObu<'a>),
+    Metadata,
+    Frame(FrameObu<'a>),
+    RedundantFrameHeader,
+    TileList,
+    Reserved2,
+    Reserved3,
+    Reserved4,
+    Reserved5,
+    Reserved6,
+    Reserved7,
+    Padding,
+}
+
+impl<'a> ParsedObu<'a> {
+    pub fn obu_type(&self) -> ObuType {
+        match self {
+            ParsedObu::Reserved => ObuType::Reserved,
+            ParsedObu::SequenceHeader(_) => ObuType::SequenceHeader,
+            ParsedObu::TemporalDelimiter => ObuType::TemporalDelimiter,
+            ParsedObu::FrameHeader(_) => ObuType::FrameHeader,
+            ParsedObu::TileGroup(_) => ObuType::TileGroup,
+            ParsedObu::Metadata => ObuType::Metadata,
+            ParsedObu::Frame(_) => ObuType::Frame,
+            ParsedObu::RedundantFrameHeader => ObuType::RedundantFrameHeader,
+            ParsedObu::TileList => ObuType::TileList,
+            ParsedObu::Reserved2 => ObuType::Reserved2,
+            ParsedObu::Reserved3 => ObuType::Reserved3,
+            ParsedObu::Reserved4 => ObuType::Reserved4,
+            ParsedObu::Reserved5 => ObuType::Reserved5,
+            ParsedObu::Reserved6 => ObuType::Reserved6,
+            ParsedObu::Reserved7 => ObuType::Reserved7,
+            ParsedObu::Padding => ObuType::Padding,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Tile {
     /// Same as TileOffset in the specification.
@@ -1959,29 +2002,12 @@ impl Parser {
         Ok(())
     }
 
-    pub fn parse_temporal_delimiter_obu(&mut self, obu: &Obu) -> Result<(), String> {
-        if !matches!(obu.header.obu_type, ObuType::TemporalDelimiter) {
-            return Err(format!(
-                "Expected a TemporalDelimiterOBU, got {:?}",
-                obu.header.obu_type
-            ));
-        }
-
+    fn parse_temporal_delimiter_obu(&mut self) -> Result<(), String> {
         self.seen_frame_header = false;
         Ok(())
     }
 
-    pub fn parse_sequence_header_obu(
-        &mut self,
-        obu: &Obu,
-    ) -> Result<Rc<SequenceHeaderObu>, String> {
-        if !matches!(obu.header.obu_type, ObuType::SequenceHeader) {
-            return Err(format!(
-                "Expected a SequenceHeaderOBU, got {:?}",
-                obu.header.obu_type
-            ));
-        }
-
+    fn parse_sequence_header_obu(&mut self, obu: &Obu) -> Result<Rc<SequenceHeaderObu>, String> {
         let mut s = SequenceHeaderObu {
             obu_header: obu.header.clone(),
             ..Default::default()
@@ -3789,7 +3815,7 @@ impl Parser {
         Ok(fh)
     }
 
-    pub fn parse_tile_group_obu<'a>(&mut self, obu: Obu<'a>) -> Result<TileGroupObu<'a>, String> {
+    fn parse_tile_group_obu<'a>(&mut self, obu: Obu<'a>) -> Result<TileGroupObu<'a>, String> {
         let mut tg = TileGroupObu {
             obu,
             ..Default::default()
@@ -3875,7 +3901,7 @@ impl Parser {
         Ok(tg)
     }
 
-    pub fn parse_frame_obu<'a>(&mut self, obu: Obu<'a>) -> Result<FrameObu<'a>, String> {
+    fn parse_frame_obu<'a>(&mut self, obu: Obu<'a>) -> Result<FrameObu<'a>, String> {
         if !matches!(obu.header.obu_type, ObuType::Frame) {
             return Err(format!(
                 "Expected a FrameOBU, got {:?}",
@@ -3994,6 +4020,34 @@ impl Parser {
             None
         } else {
             Some(helpers::floor_log2((self.operating_point_idc >> 8) as u32))
+        }
+    }
+
+    /// Fully parse an OBU.
+    pub fn parse_obu<'a>(&mut self, obu: Obu<'a>) -> Result<ParsedObu<'a>, String> {
+        match obu.header.obu_type {
+            ObuType::Reserved => Ok(ParsedObu::Reserved),
+            ObuType::SequenceHeader => self
+                .parse_sequence_header_obu(&obu)
+                .map(ParsedObu::SequenceHeader),
+            ObuType::TemporalDelimiter => self
+                .parse_temporal_delimiter_obu()
+                .map(|_| ParsedObu::TemporalDelimiter),
+            ObuType::FrameHeader => self
+                .parse_frame_header_obu(&obu)
+                .map(ParsedObu::FrameHeader),
+            ObuType::TileGroup => self.parse_tile_group_obu(obu).map(ParsedObu::TileGroup),
+            ObuType::Metadata => Ok(ParsedObu::Metadata),
+            ObuType::Frame => self.parse_frame_obu(obu).map(ParsedObu::Frame),
+            ObuType::RedundantFrameHeader => Ok(ParsedObu::RedundantFrameHeader),
+            ObuType::TileList => Ok(ParsedObu::TileList),
+            ObuType::Reserved2 => Ok(ParsedObu::Reserved2),
+            ObuType::Reserved3 => Ok(ParsedObu::Reserved3),
+            ObuType::Reserved4 => Ok(ParsedObu::Reserved4),
+            ObuType::Reserved5 => Ok(ParsedObu::Reserved5),
+            ObuType::Reserved6 => Ok(ParsedObu::Reserved6),
+            ObuType::Reserved7 => Ok(ParsedObu::Reserved7),
+            ObuType::Padding => Ok(ParsedObu::Padding),
         }
     }
 }
