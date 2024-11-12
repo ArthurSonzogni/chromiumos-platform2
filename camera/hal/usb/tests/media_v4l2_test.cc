@@ -397,7 +397,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
   bool check_1920x1080_ = true;
   bool check_constant_framerate_ = false;
   bool check_timestamps_in_order_ = true;
-  bool check_roi_control_ = false;
+  bool check_roi_control_ = true;
 
   bool support_constant_framerate_ = false;
   uint32_t skip_frames_ = 0;
