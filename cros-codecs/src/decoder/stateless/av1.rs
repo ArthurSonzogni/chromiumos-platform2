@@ -334,7 +334,7 @@ where
             // This OBU should be dropped.
             ParsedObu::Drop(length) => return Ok(length as usize),
         };
-        let obu_length = obu.data.len();
+        let obu_length = obu.bytes_used;
 
         let is_decode_op = matches!(
             obu.header.obu_type,
