@@ -598,6 +598,15 @@ message StopVmResponse {
   string failure_reason = 2;
 }
 
+// Response sent back by vm_concierge when DBus RPC is simple.
+message SuccessFailureResponse {
+  // If true, what was requested with the DBus request was successful.
+  bool success = 1;
+
+  // The reason of failure in human readable English text form.
+  string failure_reason = 2;
+}
+
 enum VmStopReason {
   // VM exited.
   VM_EXITED = 0;
