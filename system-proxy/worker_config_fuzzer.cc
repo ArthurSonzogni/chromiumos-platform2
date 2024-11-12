@@ -4,7 +4,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -36,15 +35,15 @@ struct Environment {
 // instead of the default standard input file descriptor (STDIN_FILENO).
 class FakeServerProxy : public system_proxy::ServerProxy {
  public:
-  FakeServerProxy(base::ScopedFD stdin_fd, base::OnceClosure quit_task)
+  FakeServerProxy(int stdin_fd, base::OnceClosure quit_task)
       : system_proxy::ServerProxy(base::BindOnce(&NullClosure)),
-        stdin_fd_(std::move(stdin_fd)),
+        stdin_fd_(stdin_fd),
         quit_task_(std::move(quit_task)) {}
   FakeServerProxy(const FakeServerProxy&) = delete;
   FakeServerProxy& operator=(const FakeServerProxy&) = delete;
   ~FakeServerProxy() override = default;
 
-  int GetStdinPipe() override { return stdin_fd_.get(); }
+  int GetStdinPipe() override { return stdin_fd_; }
 
  private:
   void HandleStdinReadable() override {
@@ -52,7 +51,7 @@ class FakeServerProxy : public system_proxy::ServerProxy {
     std::move(quit_task_).Run();
   }
 
-  base::ScopedFD stdin_fd_;
+  int stdin_fd_;
   base::OnceClosure quit_task_;
 };
 
@@ -70,7 +69,7 @@ DEFINE_PROTO_FUZZER(const system_proxy::worker::WorkerConfigs& configs) {
   base::ScopedFD stdin_read_fd(fds[0]);
   base::ScopedFD stdin_write_fd(fds[1]);
 
-  auto server = std::make_unique<FakeServerProxy>(std::move(stdin_read_fd),
+  auto server = std::make_unique<FakeServerProxy>(stdin_read_fd.get(),
                                                   run_loop.QuitClosure());
   server->Init();
   // Send the config to the worker's stdin input.
