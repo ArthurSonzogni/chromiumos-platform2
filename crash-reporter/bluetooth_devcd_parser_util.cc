@@ -366,7 +366,7 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
 
   // Always report the event header whenever available, even if parsing fails.
   if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
-                           base::as_bytes(base::make_span(line)))) {
+                           base::as_bytes(base::span(line)))) {
     PLOG(ERROR) << "Error writing to target file " << target_path;
     return false;
   }
@@ -446,7 +446,7 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
     }
 
     if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
-                             base::as_bytes(base::make_span(line)))) {
+                             base::as_bytes(base::span(line)))) {
       PLOG(ERROR) << "Error writing to target file " << target_path;
       return false;
     }
@@ -653,7 +653,7 @@ bool ParseRealtekDump(const base::FilePath& coredump_path,
 
   // Always report the event header whenever available, even if parsing fails.
   if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
-                           base::as_bytes(base::make_span(line)))) {
+                           base::as_bytes(base::span(line)))) {
     PLOG(ERROR) << "Error writing to target file " << target_path;
     return false;
   }
@@ -693,7 +693,7 @@ bool ParseRealtekDump(const base::FilePath& coredump_path,
   }
 
   if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
-                           base::as_bytes(base::make_span(line)))) {
+                           base::as_bytes(base::span(line)))) {
     PLOG(ERROR) << "Error writing to target file " << target_path;
     return false;
   }
@@ -880,7 +880,7 @@ bool ParseMediatekDump(const base::FilePath& coredump_path,
 
     if (!parsed_lines.empty() &&
         !target_file.WriteAtCurrentPosAndCheck(
-            base::as_bytes(base::make_span(parsed_lines)))) {
+            base::as_bytes(base::span(parsed_lines)))) {
       PLOG(ERROR) << "Error writing to target file " << target_path;
       return false;
     }
@@ -1016,7 +1016,7 @@ bool ParseQualcommDump(const base::FilePath& coredump_path,
     }
 
     if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
-                             base::as_bytes(base::make_span(line)))) {
+                             base::as_bytes(base::span(line)))) {
       PLOG(ERROR) << "Error writing to target file " << target_path;
       return false;
     }
@@ -1058,7 +1058,7 @@ int64_t GetDumpPos(base::File& file) {
 bool ReportDefaultPC(base::File& file, std::string* pc) {
   *pc = kCoredumpDefaultPC;
   std::string line = CreateDumpEntry("PC", kCoredumpDefaultPC);
-  if (!file.WriteAtCurrentPosAndCheck(base::as_bytes(base::make_span(line)))) {
+  if (!file.WriteAtCurrentPosAndCheck(base::as_bytes(base::span(line)))) {
     return false;
   }
   return true;
@@ -1068,7 +1068,7 @@ bool ReportParseError(ParseErrorReason error_code, base::File& file) {
   std::string line =
       CreateDumpEntry("Parse Failure Reason",
                       base::StringPrintf("%d", static_cast<int>(error_code)));
-  return file.WriteAtCurrentPosAndCheck(base::as_bytes(base::make_span(line)));
+  return file.WriteAtCurrentPosAndCheck(base::as_bytes(base::span(line)));
 }
 
 // Cannot use base::file_util::CopyFile() here as it copies the entire file,
@@ -1093,8 +1093,9 @@ bool SaveDumpData(const base::FilePath& coredump_path,
     return false;
   }
 
-  if (!target_file.WriteAtCurrentPosAndCheck(base::as_bytes(base::make_span(
-          coredump_content.substr(dump_start, std::string::npos))))) {
+  if (!target_file.WriteAtCurrentPosAndCheck(
+          base::as_bytes(base::span<const char>(
+              coredump_content.substr(dump_start, std::string::npos))))) {
     PLOG(ERROR) << "Error writing to target file " << target_path;
     return false;
   }
@@ -1170,8 +1171,8 @@ bool ParseDumpHeader(const base::FilePath& coredump_path,
       *controller_name = value;
     }
 
-    if (!target_file.WriteAtCurrentPosAndCheck(
-            base::as_bytes(base::make_span(CreateDumpEntry(key, value))))) {
+    if (!target_file.WriteAtCurrentPosAndCheck(base::as_bytes(
+            base::span<const char>(CreateDumpEntry(key, value))))) {
       PLOG(ERROR) << "Error writing to target file " << target_path;
       return false;
     }
