@@ -27,6 +27,7 @@ group("all") {
         ":coral_testrunner",
         ":mantis_testrunner",
         ":odml_testrunner",
+        ":utils_testrunner",
       ]
     }
   }
@@ -320,6 +321,17 @@ if (use.test) {
       ":odml",
       "//common-mk/testrunner",
     ]
+  }
+
+  executable("utils_testrunner") {
+    sources = [ "utils/no_default_init_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    run_test = true
+    deps = [ "//common-mk/testrunner" ]
   }
 }
 
