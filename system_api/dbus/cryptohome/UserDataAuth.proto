@@ -1650,14 +1650,6 @@ message MountCompleted {
   CryptohomeErrorInfo error_info = 3;
 }
 
-// The message sent in signal EvictedKeyRestoreSignal
-message EvictedKeyRestored {
-  // Unique ID associated with the current suspend request,
-  // when RestoreDeviceKey completes, correlated to a unique
-  // suspend attempt.
-  int64 eviction_id = 1;
-}
-
 // GetRecoverableKeyStores fetches all of the recoverable key stores of the
 // given user.
 

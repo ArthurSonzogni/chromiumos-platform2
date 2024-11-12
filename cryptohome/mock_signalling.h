@@ -64,10 +64,6 @@ class MockSignalling : public SignallingInterface {
               (const user_data_auth::AuthSessionExpiring&),
               (override));
   MOCK_METHOD(void,
-              SendEvictedKeyRestored,
-              (const user_data_auth::EvictedKeyRestored&),
-              (override));
-  MOCK_METHOD(void,
               SendRemoveCompleted,
               (const user_data_auth::RemoveCompleted&),
               (override));

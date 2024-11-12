@@ -448,10 +448,6 @@ class UserDataAuthAdaptor
         const user_data_auth::AuthSessionExpiring& signal) override {
       adaptor_->SendAuthSessionExpiringSignal(signal);
     }
-    void SendEvictedKeyRestored(
-        const user_data_auth::EvictedKeyRestored& signal) override {
-      adaptor_->SendEvictedKeyRestoredSignal(signal);
-    }
     void SendRemoveCompleted(
         const user_data_auth::RemoveCompleted& signal) override {
       adaptor_->SendRemoveCompletedSignal(signal);
