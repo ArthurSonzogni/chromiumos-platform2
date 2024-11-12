@@ -50,6 +50,7 @@ constexpr const char kFormat[] = "format";
 constexpr const char kFormatField[] = "format_field";
 constexpr const char kRequestSafety[] = "request_safety";
 constexpr const char kResponseSafety[] = "response_safety";
+constexpr const char kDelimiter[] = "delimiter";
 
 base::FilePath GetModelTestDataDir() {
   return base::FilePath("/tmp");
@@ -189,6 +190,13 @@ int main(int argc, char** argv) {
                              &*response_safety));
   }
 
+  std::optional<char> delimiter;
+  if (cl->HasSwitch(kDelimiter)) {
+    std::string specified_delimiter = cl->GetSwitchValueASCII(kDelimiter);
+    CHECK_EQ(specified_delimiter.size(), 1);
+    delimiter = specified_delimiter[0];
+  }
+
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams("thread_pool");
 
   base::SingleThreadTaskExecutor io_task_executor(base::MessagePumpType::IO);
@@ -269,7 +277,7 @@ int main(int argc, char** argv) {
     printf("> ");
     ResponseHolder response;
     std::string input;
-    std::getline(std::cin, input);
+    std::getline(std::cin, input, delimiter.value_or('\n'));
     input = base::TrimWhitespaceASCII(input, base::TRIM_ALL);
     if (request_safety.has_value() &&
         !ValidateSafetyResult(*service, *model, *request_safety, input)) {
