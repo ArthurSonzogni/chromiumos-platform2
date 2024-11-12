@@ -17,7 +17,6 @@ allow cros_cryptohomed cros_cryptohome_namespace_mounter:process {
   sigkill };
 
 # Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
-# TODO(betuls): Reevaluate after OOP flags are removed from the cryptohome code.
 allow cros_cryptohomed cros_cryptohomed:fifo_file w_file_perms;
 
 #Access rule for devices without ARC (e.g. Flex)

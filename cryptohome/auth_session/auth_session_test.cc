@@ -1425,7 +1425,6 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaUss) {
       Optional(_));
 }
 
-// TODO(betuls) : migrate to uss test
 // Test that AuthenticateAuthFactor succeeds in the `AuthIntent::kWebAuthn`
 // scenario.
 TEST_F(AuthSessionWithUssTest, AuthenticateAuthFactorWebAuthnIntent) {

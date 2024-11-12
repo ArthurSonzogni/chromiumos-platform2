@@ -16,7 +16,6 @@ allow cros_cryptohome_namespace_mounter cros_cryptohomed:{
   tcp_socket } { read write };
 
 # Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
-# TODO(betuls): Define a cryptohome domain and add these rules to there.
 allow cros_cryptohome_namespace_mounter cros_cryptohomed:fifo_file rw_file_perms;
 create_dir_file(cros_cryptohome_namespace_mounter, {
   cros_downloads_file
