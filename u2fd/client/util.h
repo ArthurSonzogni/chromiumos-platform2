@@ -55,7 +55,7 @@ VectorToObject(const std::vector<uint8_t, VectorAllocator>& from,
   if (size < from.size()) {
     return false;
   }
-  memcpy(to, &from.front(), from.size());
+  memcpy(to, from.data(), from.size());
   return true;
 }
 
@@ -82,8 +82,8 @@ std::vector<uint8_t> U2F_CLIENT_EXPORT Sha256(const Blob& data) {
   SHA256_CTX sha_context;
 
   SHA256_Init(&sha_context);
-  SHA256_Update(&sha_context, &data.front(), data.size());
-  SHA256_Final(&hash.front(), &sha_context);
+  SHA256_Update(&sha_context, data.data(), data.size());
+  SHA256_Final(hash.data(), &sha_context);
 
   return hash;
 }
