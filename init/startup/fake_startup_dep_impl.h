@@ -39,10 +39,7 @@ class FakeStartupDep : public StartupDep {
 
   void Clobber(const std::vector<std::string>& args) override;
 
-  void RemoveInBackground(const std::vector<base::FilePath>& paths) override;
-
  private:
-  libstorage::Platform* platform_;
   std::unordered_map<std::string, int> alert_result_map_;
   std::string clobber_log_;
   std::set<std::string> clobber_args_;

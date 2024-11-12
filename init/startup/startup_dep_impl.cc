@@ -94,16 +94,6 @@ void StartupDep::Clobber(const std::string& boot_alert_msg,
   Clobber(args);
 }
 
-void StartupDep::RemoveInBackground(const std::vector<base::FilePath>& paths) {
-  pid_t pid = fork();
-  if (pid == 0) {
-    for (auto path : paths) {
-      brillo::DeletePathRecursively(path);
-    }
-    exit(0);
-  }
-}
-
 void StartupDep::AddClobberCrashReport(const std::vector<std::string> args) {
   std::unique_ptr<brillo::Process> crash = platform_->CreateProcessInstance();
   crash->AddArg("/sbin/crash_reporter");

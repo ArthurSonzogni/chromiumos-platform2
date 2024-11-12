@@ -18,7 +18,7 @@
 namespace startup {
 
 FakeStartupDep::FakeStartupDep(libstorage::Platform* platform)
-    : StartupDep(platform), platform_(platform) {}
+    : StartupDep(platform) {}
 
 int FakeStartupDep::GetBootAlertForArg(const std::string& arg) {
   return alert_result_map_[arg];
@@ -34,13 +34,6 @@ std::set<std::string> FakeStartupDep::GetClobberArgs() {
 
 void FakeStartupDep::BootAlert(const std::string& arg) {
   alert_result_map_[arg] = 1;
-}
-
-void FakeStartupDep::RemoveInBackground(
-    const std::vector<base::FilePath>& paths) {
-  for (auto path : paths) {
-    platform_->DeletePathRecursively(path);
-  }
 }
 
 void FakeStartupDep::ClobberLog(const std::string& msg) {

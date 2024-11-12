@@ -481,7 +481,6 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
   base::FilePath developer_new = stateful_.Append(dev_image + kNew);
   base::FilePath stateful_dev_image = stateful_.Append(kStatefulDevImage);
   base::FilePath var_target = stateful_.Append(var + kOverlay);
-  std::vector<base::FilePath> paths_to_rm;
 
   // Only replace the developer and var_overlay directories if new replacements
   // are available.
@@ -525,9 +524,8 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
                         << path_target.value();
         }
       }
-      paths_to_rm.push_back(path_new);
+      platform_->DeletePathRecursively(path_new);
     }
-    startup_dep_->RemoveInBackground(paths_to_rm);
   } else {
     std::string update = "Stateful update did not find " +
                          developer_new.value() + " & " + var_new.value() +

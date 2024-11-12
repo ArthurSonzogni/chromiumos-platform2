@@ -55,8 +55,6 @@ class StartupDep {
                        const std::vector<std::string>& args,
                        const std::string& clobber_log_msg);
 
-  virtual void RemoveInBackground(const std::vector<base::FilePath>& paths);
-
   // Runs crash_reporter with the given args.
   virtual void AddClobberCrashReport(const std::vector<std::string> args);
 
