@@ -40,7 +40,8 @@ DEFINE_PROTO_FUZZER(const RollbackData& input) {
   // TODO(b/234826714): Pass data directly to load_config instead of relying on
   // files. Could use a fake file handler to easily do so.
   FileHandlerForTesting file_handler;
-  CHECK(file_handler.WriteDecryptedRollbackData(serialized_input));
+  CHECK(file_handler.WriteDecryptedRollbackData(serialized_input))
+      << "Failed to write decrypted rollback data: " << serialized_input;
 
   OobeConfig oobe_config(nullptr, file_handler);
   EnterpriseRollbackMetricsHandlerForTesting rollback_metrics;
