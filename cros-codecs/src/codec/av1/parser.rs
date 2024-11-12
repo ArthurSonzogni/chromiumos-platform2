@@ -2186,7 +2186,7 @@ impl Parser {
     /// header, so we must save them now, as they will not be parsed from the
     /// bitstream. We also save some internal parser state which will be useful
     /// later.
-    fn load_reference_frame(&mut self, fh: &mut FrameHeaderObu) -> Result<(), String> {
+    fn load_reference_frame(&self, fh: &mut FrameHeaderObu) -> Result<(), String> {
         let rf = &self.ref_info[fh.frame_to_show_map_idx as usize];
 
         // Section 6.8.1: It is a requirement of bitstream conformance that a
