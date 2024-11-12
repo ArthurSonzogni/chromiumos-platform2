@@ -414,7 +414,7 @@ wipe_stateful() {
     stateful_size=$(( lv_size * 1024 * 1024 / DST_BLKSIZE ))
     DEV="/dev/${vg_name}/unencrypted"
   else
-    stateful_size="$(partsize "${DST}" "${PARTITION_NUM_STATE}")"
+    stateful_size="$(partsize "${DST}" "${PARTITION_NUM_STATE:?}")"
   fi
 
   mkfs "${stateful_size}" "${DEV}" "H-STATE"
@@ -472,12 +472,12 @@ install_stateful() {
   echo "Installing the stateful partition..."
   if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
     dst_stateful_partition="$(make_partition_dev "${DST}" \
-      "${PARTITION_NUM_STATE}")"
+      "${PARTITION_NUM_STATE:?}")"
     vg_name="$(get_volume_group "${dst_stateful_partition}")"
     vgchange -ay "${vg_name}"
     LOOP_DEV="/dev/${vg_name}/unencrypted"
   else
-    LOOP_DEV="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE}")"
+    LOOP_DEV="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")"
   fi
   mount_on_loop_dev rw
 
@@ -665,15 +665,15 @@ copy_partition() {
     ;;
   "${PARTITION_NUM_ROOT_A:?}"|"${PARTITION_NUM_ROOT_B:?}")
     # Always copy from ROOT_A for rootfs partitions.
-    part_size=$(partsize "${src}" "${PARTITION_NUM_ROOT_A}")
-    src_block="$(make_partition_dev "${src}" "${PARTITION_NUM_ROOT_A}")"
+    part_size=$(partsize "${src}" "${PARTITION_NUM_ROOT_A:?}")
+    src_block="$(make_partition_dev "${src}" "${PARTITION_NUM_ROOT_A:?}")"
     write_partition "${part_size}" "${src_block}" "${dst_block}" \
       "${chunk_num}" "${total_chunks}" "${cache_input}"
     ;;
   "${PARTITION_NUM_KERN_A:?}"|"${PARTITION_NUM_KERN_B:?}")
     # Use kernel B from the source into both kernel A and B in the destination.
-    part_size="$(partsize "${src}" "${PARTITION_NUM_KERN_B}")"
-    src_block="$(make_partition_dev "${src}" "${PARTITION_NUM_KERN_B}")"
+    part_size="$(partsize "${src}" "${PARTITION_NUM_KERN_B:?}")"
+    src_block="$(make_partition_dev "${src}" "${PARTITION_NUM_KERN_B:?}")"
     write_partition "${part_size}" "${src_block}" "${dst_block}" \
       "${chunk_num}" "${total_chunks}" "${cache_input}"
     ;;
@@ -688,9 +688,9 @@ copy_partition() {
       echo "Using recovery key version=\"${RECOVERY_KEY_VERSION}\""
     fi
     if [ "${RECOVERY_KEY_VERSION}" -eq "1" ]; then
-      src_part_num="${PARTITION_NUM_MINIOS_A}"
+      src_part_num="${PARTITION_NUM_MINIOS_A:?}"
     else
-      src_part_num="${PARTITION_NUM_MINIOS_B}"
+      src_part_num="${PARTITION_NUM_MINIOS_B:?}"
     fi
     part_size="$(partsize "${src}" "${src_part_num}")"
     src_block="$(make_partition_dev "${src}" "${src_part_num}")"
@@ -770,7 +770,7 @@ do_post_install() {
   fi
   local dst_rootfs
 
-  dst_rootfs="$(make_partition_dev "${DST}" "${PARTITION_NUM_ROOT_A}")"
+  dst_rootfs="$(make_partition_dev "${DST}" "${PARTITION_NUM_ROOT_A:?}")"
   # Now run the postinstall script on one new rootfs. Note that even though
   # we're passing the new destination partition number as an arg, the postinst
   # script had better not try to access it, for the reasons we just gave.
@@ -859,7 +859,7 @@ main() {
   # partition may be active. Deactivate the partitions.
   if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
     local dst_stateful
-    dst_stateful="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE}")"
+    dst_stateful="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")"
     local vg_name
     vg_name="$(get_volume_group "${dst_stateful}")"
     if [ -n "${vg_name}" ]; then
@@ -918,9 +918,9 @@ main() {
   if [ "${FLAGS_minimal_copy:?}" -eq "${FLAGS_TRUE}" ]; then
     echo "Skipping copy of B kernel partition."
   else
-    copy_partition "${PARTITION_NUM_KERN_B}" "${SRC}" "${DST}" 1 1 true    # 4
+    copy_partition "${PARTITION_NUM_KERN_B:?}" "${SRC}" "${DST}" 1 1 true    # 4
   fi
-  copy_partition "${PARTITION_NUM_KERN_A}" "${SRC}" "${DST}" 1 1 false     # 2
+  copy_partition "${PARTITION_NUM_KERN_A:?}" "${SRC}" "${DST}" 1 1 false     # 2
 
   # We want to chunk up the root filesystem.  We do this because we're
   # going to read the source once and write it to the destination twice.
@@ -933,15 +933,15 @@ main() {
     if [ "${FLAGS_minimal_copy:?}" -eq "${FLAGS_TRUE}" ]; then
       echo "Skipping copy of B root partition."
     else
-      copy_partition "${PARTITION_NUM_ROOT_B}" "${SRC}" "${DST}" \
+      copy_partition "${PARTITION_NUM_ROOT_B:?}" "${SRC}" "${DST}" \
          "${chunk_num}" "${NUM_ROOTFS_CHUNKS}" true                        # 5
     fi
-    copy_partition "${PARTITION_NUM_ROOT_A}" "${SRC}" "${DST}" \
+    copy_partition "${PARTITION_NUM_ROOT_A:?}" "${SRC}" "${DST}" \
        "${chunk_num}" "${NUM_ROOTFS_CHUNKS}" false                         # 3
   done
 
   # Second to last is stateful.
-  copy_partition "${PARTITION_NUM_STATE}" "${SRC}" "${DST}" 1 1 false      # 1
+  copy_partition "${PARTITION_NUM_STATE:?}" "${SRC}" "${DST}" 1 1 false      # 1
 
   # We want the MINIOS partitions be last just in case writing to other
   # partitions fail at some point, we don't lose the ability to do recovery.
