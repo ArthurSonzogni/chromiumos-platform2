@@ -204,7 +204,6 @@ void TpmNotBoundToPcrAuthBlock::DerivePassword(
                             ? tpm_state->password_rounds.value()
                             : kDefaultLegacyPasswordRounds;
 
-  // TODO(b/204200132): check if this branch is unnecessary.
   if (tpm_state->scrypt_derived.value()) {
     if (!DeriveSecretsScrypt(auth_input.user_input.value(),
                              tpm_state->salt.value(),
@@ -266,9 +265,6 @@ void TpmNotBoundToPcrAuthBlock::DerivePassword(
   }
   local_vault_key = std::move(*result);
 
-  // TODO(zuan): Handle cases in which all retries failed.
-
-  // TODO(b/204200132): check if this branch is unnecessary.
   if (tpm_state->scrypt_derived.value()) {
     *key_blobs->vkk_key = HmacSha256(kdf_skey, local_vault_key);
   } else {

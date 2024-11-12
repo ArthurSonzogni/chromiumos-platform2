@@ -119,8 +119,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   KeyChallengeServiceFactory* key_challenge_service_factory_;
 
   // Biometrics service, used by operations that need to interact with biod.
-  // TODO(b/276453357): Replace with BiometricsAuthBlockService* once that
-  // object is guaranteed to always be available.
   AsyncInitPtr<BiometricsAuthBlockService> bio_service_;
 };
 

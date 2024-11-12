@@ -54,8 +54,6 @@ LockboxCacheManager::LockboxCacheManager(const base::FilePath& root)
   lockbox_nvram_file_path_ = root_.Append(filepaths::kLocLockboxNvram);
 }
 
-// TODO(b/312392273): call the underlying library directly instead of calling
-// the binary
 void LockboxCacheManager::InvokeLockboxCacheTool() {
   std::string output;
   std::vector<std::string> argv = {
@@ -108,8 +106,6 @@ MigrationStatus LockboxCacheManager::MigrateInstallAttributesIfNeeded() {
 
 #if USE_TPM_DYNAMIC
 
-// TODO(b/312392273): call the underlying library directly instead of calling
-// the binary
 void LockboxCacheManager::PopulateLockboxNvramFile() {
   // Use tpm_manager to read the NV space.
   // Note: tpm_manager should be available at this stage.

@@ -46,8 +46,6 @@ CryptoError TpmAuthBlockUtils::TPMRetryActionToCrypto(
     case hwsec::TPMRetryAction::kPinWeaverExpired:
       return CryptoError::CE_LE_EXPIRED;
     default:
-      // TODO(chromium:709646): kNoRetry maps here now. Find
-      // a better corresponding CryptoError.
       return CryptoError::CE_TPM_CRYPTO;
   }
 }

@@ -928,7 +928,6 @@ class AuthSession final {
   // The user session map and a verifier forwarder associated with it.
   UserSessionMap* const user_session_map_;
   UserSessionMap::VerifierForwarder verifier_forwarder_;
-  // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.
   KeysetManagement* const keyset_management_;
   AuthBlockUtility* const auth_block_utility_;
   AuthFactorDriverManager* const auth_factor_driver_manager_;

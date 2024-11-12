@@ -442,7 +442,6 @@ pkg_config("libcrosplatform_dependent_config") {
 }
 
 # Common objects.
-# TODO(b/260536618): Merge this into libcryptohome.
 static_library("libcrosplatform") {
   sources = [
     "../auth_factor/label.cc",

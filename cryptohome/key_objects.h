@@ -156,9 +156,8 @@ struct KeyBlobs {
   // KDF of their output, allowing for adding new derived keys in the future.
   CryptohomeStatusOr<brillo::SecureBlob> DeriveUssCredentialSecret() const;
 
-  // The file encryption key. TODO(b/216474361): Rename to reflect this value is
-  // used for deriving various values and not only for vault keysets, and add a
-  // getter that returns the VKK.
+  // The file encryption key. This value is also used for deriving various
+  // values and not only for vault keysets.
   std::optional<brillo::SecureBlob> vkk_key;
   // The Scrypt chaps key. Used for ScryptAuthBlock for storing the chaps key.
   std::optional<brillo::SecureBlob> scrypt_chaps_key;

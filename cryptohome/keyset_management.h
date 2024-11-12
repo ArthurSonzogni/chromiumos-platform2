@@ -80,8 +80,6 @@ class KeysetManagement {
   // Removes the keyset specified by |index| from the list for the user
   // vault identified by its |obfuscated| username.
   // The caller should check credentials if the call is user-sourced.
-  // TODO(wad,ellyjones) Determine a better keyset priotization and management
-  //                     scheme than just integer indices, like fingerprints.
   virtual CryptohomeStatus ForceRemoveKeyset(
       const ObfuscatedUsername& obfuscated, int index);
 
