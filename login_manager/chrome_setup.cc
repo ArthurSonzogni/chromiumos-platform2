@@ -1254,6 +1254,7 @@ void AddDeviceSpecificFlags(ChromiumCommandBuilder* builder) {
 
 void AddMantisFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("mantis")) {
+    builder->AddFeatureEnableOverride("MediaAppImageMantis");
     // The CrosSafetyService is required for the MantisService
     builder->AddFeatureEnableOverride("CrosSafetyService");
   }
