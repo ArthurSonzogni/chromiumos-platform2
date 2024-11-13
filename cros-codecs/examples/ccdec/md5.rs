@@ -5,6 +5,10 @@
 // Simple implementation of MD5 based heavily around the pseudocode in the
 // Wikipedia article on this topic: https://en.wikipedia.org/wiki/MD5
 
+// The Wikipedia article pseudocode is not idiomatic Rust. To keep the variables
+// as closely matched to the pseudocode some of the warning are turned off.
+#![allow(non_snake_case)]
+#![allow(non_upper_case_globals)]
 const shift_amounts: [u8; 64] = [
     7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9,
     14, 20, 5, 9, 14, 20, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15,
@@ -48,6 +52,7 @@ fn little_to_big_endian(x: u32) -> u32 {
         | ((x << 24) & 0xFF000000)
 }
 
+#[allow(unused_comparisons)]
 fn process_chunk(byte_chunk: &[u8], a0: u32, b0: u32, c0: u32, d0: u32) -> (u32, u32, u32, u32) {
     assert_eq!(byte_chunk.len(), 64);
 
