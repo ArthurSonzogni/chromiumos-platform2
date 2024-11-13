@@ -158,13 +158,14 @@ static void CompareFilesByBlock(const string& a_file,
   EXPECT_TRUE(utils::ReadFile(a_file, &a_data)) << "file failed: " << a_file;
   EXPECT_TRUE(utils::ReadFile(b_file, &b_data)) << "file failed: " << b_file;
 
-  EXPECT_GE(a_data.size(), image_size);
-  EXPECT_GE(b_data.size(), image_size);
+  ASSERT_GE(a_data.size(), image_size);
+  ASSERT_GE(b_data.size(), image_size);
   for (size_t i = 0; i < image_size; i += kBlockSize) {
     EXPECT_EQ(0U, i % kBlockSize);
-    brillo::Blob a_sub(&a_data[i], &a_data[i + kBlockSize]);
-    brillo::Blob b_sub(&b_data[i], &b_data[i + kBlockSize]);
-    EXPECT_TRUE(a_sub == b_sub) << "Block " << (i / kBlockSize) << " differs";
+    auto a_iter = a_data.begin() + i;
+    bool blocks_equal =
+        std::equal(a_iter, a_iter + kBlockSize, b_data.begin() + i);
+    EXPECT_TRUE(blocks_equal) << "Block " << (i / kBlockSize) << " differs";
   }
   if (::testing::Test::HasNonfatalFailure()) {
     LOG(INFO) << "Compared filesystems with size " << image_size
