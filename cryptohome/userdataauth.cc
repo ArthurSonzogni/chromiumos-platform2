@@ -1467,9 +1467,6 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
   //
   // (*) Relies on the expectation that all processes have been killed off.
 
-  // TODO(b:225769250, dlunev): figure out cleanup for non-mounted application
-  // containers.
-
   // Stale shadow and ephemeral mounts.
   std::multimap<const FilePath, const FilePath> shadow_mounts;
   std::multimap<const FilePath, const FilePath> ephemeral_mounts;
@@ -2496,11 +2493,6 @@ void UserDataAuth::StartAuthSession(
   // Determine if the request is for an ephemeral user.
   bool is_ephemeral_user = request.is_ephemeral_user();
 
-  if (request.intent() == user_data_auth::AUTH_INTENT_UNSPECIFIED) {
-    // TODO(b/240596931): Stop allowing the UNSPECIFIED value after Chrome's
-    // change to populate this field lives for some time.
-    request.set_intent(user_data_auth::AUTH_INTENT_DECRYPT);
-  }
   std::optional<AuthIntent> auth_intent = AuthIntentFromProto(request.intent());
   if (!auth_intent.has_value()) {
     ReplyWithError(
@@ -3091,7 +3083,6 @@ void UserDataAuth::CreatePersistentUserWithSession(
   auto exists_or = homedirs_->CryptohomeExists(obfuscated_username);
   if (exists_or.ok() && exists_or.value()) {
     LOG(ERROR) << "User already exists: " << obfuscated_username;
-    // TODO(b/208898186, dlunev): replace with a more appropriate error
     ReplyWithError(std::move(on_done_with_signal), reply,
                    MakeStatus<CryptohomeError>(
                        CRYPTOHOME_ERR_LOC(
@@ -3965,13 +3956,13 @@ void UserDataAuth::ListAuthFactors(
     }
   }
 
-  // TODO(b/247122507): Remove this with configured_auth_factor field once tast
-  // test cleanup is done.
+  // This field is technically unnecessary since it is just a subset of
+  // configured_auth_factors_with_status but since both fields are in use by
+  // clients it's kept for compatibility.
   for (auto configured_auth_factors_with_status :
        reply.configured_auth_factors_with_status()) {
-    user_data_auth::AuthFactor auth_factor;
-    auth_factor.CopyFrom(configured_auth_factors_with_status.auth_factor());
-    *reply.add_configured_auth_factors() = std::move(auth_factor);
+    *reply.add_configured_auth_factors() =
+        configured_auth_factors_with_status.auth_factor();
   }
 
   // Successfully completed, send the response with OK.

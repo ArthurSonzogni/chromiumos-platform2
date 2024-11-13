@@ -2183,6 +2183,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
     remove_homedir_req_ = std::make_unique<user_data_auth::RemoveRequest>();
     start_auth_session_req_ =
         std::make_unique<user_data_auth::StartAuthSessionRequest>();
+    start_auth_session_req_->set_intent(user_data_auth::AUTH_INTENT_DECRYPT);
   }
 
   template <class ProtoBuf>
@@ -3539,6 +3540,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   // times during the test.
   user_data_auth::StartAuthSessionRequest start_request;
   start_request.mutable_account_id()->set_account_id(*kUser);
+  start_request.set_intent(user_data_auth::AUTH_INTENT_DECRYPT);
   TestFuture<user_data_auth::StartAuthSessionReply> start_reply_future_1;
 
   // List all the auth factors, there should be none at the start.
@@ -3665,6 +3667,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   // times during the test.
   user_data_auth::StartAuthSessionRequest start_request;
   start_request.mutable_account_id()->set_account_id(*kUser);
+  start_request.set_intent(user_data_auth::AUTH_INTENT_DECRYPT);
   TestFuture<user_data_auth::StartAuthSessionReply> start_reply_future_1;
 
   // List all the auth factors, there should be none at the start.
@@ -3791,6 +3794,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionFingerprintLocked) {
   // times during the test.
   user_data_auth::StartAuthSessionRequest start_request;
   start_request.mutable_account_id()->set_account_id(*kUser);
+  start_request.set_intent(user_data_auth::AUTH_INTENT_DECRYPT);
   TestFuture<user_data_auth::StartAuthSessionReply> start_reply_future_1;
 
   // List all the auth factors, there should be none at the start.

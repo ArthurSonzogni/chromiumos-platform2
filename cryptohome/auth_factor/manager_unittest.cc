@@ -9,11 +9,11 @@
 #include <utility>
 #include <vector>
 
-#include <absl/types/variant.h>
 #include <base/functional/callback_forward.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/secure_blob.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -32,7 +32,6 @@
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "gmock/gmock.h"
 
 namespace cryptohome {
 namespace {
@@ -46,8 +45,8 @@ using ::hwsec_foundation::kAesGcm256KeySize;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
-using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
+using ::testing::AnyOf;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
@@ -56,6 +55,7 @@ using ::testing::Not;
 using ::testing::Pair;
 using ::testing::Return;
 using ::testing::StrictMock;
+using ::testing::VariantWith;
 
 constexpr char kSomeIdpLabel[] = "some-idp";
 constexpr char kSomeLegacyFpLabel[] = "legacy-fp-some";
@@ -85,6 +85,28 @@ AuthFactor CreatePasswordAuthFactor() {
       .metadata = PasswordMetadata()};
   return AuthFactor(AuthFactorType::kPassword, kSomeIdpLabel, metadata,
                     CreatePasswordAuthBlockState());
+}
+
+AuthBlockState CreatePinAuthBlockState() {
+  return {.state = PinWeaverAuthBlockState{
+              .le_label = 0xbaadf00d,
+              .salt = BlobFromString("fake salt"),
+              .chaps_iv = BlobFromString("fake chaps IV"),
+              .fek_iv = BlobFromString("fake file encryption IV"),
+              .reset_salt = BlobFromString("more fake salt"),
+          }};
+}
+
+AuthFactor CreatePinAuthFactor() {
+  AuthFactorMetadata metadata = {
+      .common =
+          CommonMetadata{
+              .chromeos_version_last_updated = kChromeosVersion,
+              .chrome_version_last_updated = kChromeVersion,
+          },
+      .metadata = PinMetadata()};
+  return AuthFactor(AuthFactorType::kPin, kSomeIdpLabel, metadata,
+                    CreatePinAuthBlockState());
 }
 
 AuthFactor CreateMigratedFingerprintAuthFactor() {
@@ -147,11 +169,10 @@ TEST_F(AuthFactorManagerTest, Save) {
             kChromeosVersion);
   EXPECT_EQ(loaded_auth_factor->metadata().common.chrome_version_last_updated,
             kChromeVersion);
-  EXPECT_TRUE(absl::holds_alternative<PasswordMetadata>(
-      loaded_auth_factor->metadata().metadata));
+  EXPECT_THAT(loaded_auth_factor->metadata().metadata,
+              VariantWith<PasswordMetadata>(_));
   EXPECT_EQ(auth_factor.auth_block_state(),
             loaded_auth_factor->auth_block_state());
-  // TODO(b/204441443): Check other fields too. Consider using a GTest matcher.
 }
 
 // Test the `SaveAuthFactorFile()` method fails when the label is empty.
@@ -305,8 +326,51 @@ TEST_F(AuthFactorManagerTest, ListBadUnknownType) {
               ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
 }
 
-// TODO(b:208348570): Test clash of labels once more than one factor type is
-// supported by AuthFactorManager.
+// Test that if multiple factors with the same label are created, the files will
+// work correctly but listing them will have a collision.
+TEST_F(AuthFactorManagerTest, SaveMultipleFactorsWithSameLabel) {
+  AuthFactor pass_factor = CreatePasswordAuthFactor();
+  AuthFactor pin_factor = CreatePinAuthFactor();
+
+  // Persist the auth factors.
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername, pass_factor)
+          .ok());
+  EXPECT_TRUE(platform_.FileExists(
+      AuthFactorPath(kObfuscatedUsername,
+                     /*auth_factor_type_string=*/"password", kSomeIdpLabel)));
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername, pin_factor)
+          .ok());
+  EXPECT_TRUE(platform_.FileExists(
+      AuthFactorPath(kObfuscatedUsername,
+                     /*auth_factor_type_string=*/"pin", kSomeIdpLabel)));
+
+  // Load the auth factors and verify both can be accessed.
+  CryptohomeStatusOr<AuthFactor> loaded_pass =
+      auth_factor_manager_.LoadAuthFactor(
+          kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
+  ASSERT_TRUE(loaded_pass.ok());
+  EXPECT_EQ(loaded_pass->type(), AuthFactorType::kPassword);
+  EXPECT_EQ(loaded_pass->label(), kSomeIdpLabel);
+  EXPECT_THAT(loaded_pass->metadata().metadata,
+              VariantWith<PasswordMetadata>(_));
+  CryptohomeStatusOr<AuthFactor> loaded_pin =
+      auth_factor_manager_.LoadAuthFactor(kObfuscatedUsername,
+                                          AuthFactorType::kPin, kSomeIdpLabel);
+  ASSERT_TRUE(loaded_pin.ok());
+  EXPECT_EQ(loaded_pin->type(), AuthFactorType::kPin);
+  EXPECT_EQ(loaded_pin->label(), kSomeIdpLabel);
+  EXPECT_THAT(loaded_pin->metadata().metadata, VariantWith<PinMetadata>(_));
+
+  // Verify that listing the factors reports the label, although we don't know
+  // if it will be the password or pin listed.
+  AuthFactorManager::LabelToTypeMap factor_map =
+      auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
+  EXPECT_THAT(factor_map,
+              ElementsAre(Pair(kSomeIdpLabel, AnyOf(AuthFactorType::kPassword,
+                                                    AuthFactorType::kPin))));
+}
 
 TEST_F(AuthFactorManagerTest, RemoveSuccess) {
   AuthFactor auth_factor = CreatePasswordAuthFactor();

@@ -604,6 +604,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, StartAuthSessionWithoutKeyData) {
   user_data_auth::StartAuthSessionRequest start_auth_session_req;
   start_auth_session_req.mutable_account_id()->set_account_id(
       *users_[0].username);
+  start_auth_session_req.set_intent(user_data_auth::AUTH_INTENT_DECRYPT);
   user_data_auth::StartAuthSessionReply auth_session_reply;
 
   userdataauth_.StartAuthSession(
