@@ -4,13 +4,13 @@
 
 #include <memory>
 
-#include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
+#include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
-#include <base/files/file_path.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 
 #include "oobe_config/filesystem/file_handler_for_testing.h"
 #include "oobe_config/load_oobe_config_rollback.h"
@@ -40,6 +40,7 @@ DEFINE_PROTO_FUZZER(const RollbackData& input) {
   // TODO(b/234826714): Pass data directly to load_config instead of relying on
   // files. Could use a fake file handler to easily do so.
   FileHandlerForTesting file_handler;
+  CHECK(file_handler.CreateDefaultExistingPaths());
   CHECK(file_handler.WriteDecryptedRollbackData(serialized_input))
       << "Failed to write decrypted rollback data: " << serialized_input;
 
