@@ -124,60 +124,60 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
 
   base::FilePath kernel, rootfs, initrd, bios, pflash;
   if (kernel_fd.has_value()) {
-    int raw_fd = kernel_fd.value().get();
-    failure_reason = internal::RemoveCloseOnExec(raw_fd);
+    const base::ScopedFD& fd = kernel_fd.value();
+    failure_reason = internal::RemoveCloseOnExec(fd);
     if (!failure_reason.empty()) {
       return {};
     }
     kernel = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(raw_fd));
+                 .Append(base::NumberToString(fd.get()));
   } else if (vmDlcPath.has_value()) {
     kernel = vmDlcPath.value().Append(kVmKernelName);
   }
 
   if (rootfs_fd.has_value()) {
-    int raw_fd = rootfs_fd.value().get();
-    failure_reason = internal::RemoveCloseOnExec(raw_fd);
+    const base::ScopedFD& fd = rootfs_fd.value();
+    failure_reason = internal::RemoveCloseOnExec(fd);
     if (!failure_reason.empty()) {
       return {};
     }
     rootfs = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(raw_fd));
+                 .Append(base::NumberToString(fd.get()));
   } else if (vmDlcPath.has_value()) {
     rootfs = vmDlcPath.value().Append(kVmRootfsName);
   }
 
   if (initrd_fd.has_value()) {
-    int raw_fd = initrd_fd.value().get();
-    failure_reason = internal::RemoveCloseOnExec(raw_fd);
+    const base::ScopedFD& fd = initrd_fd.value();
+    failure_reason = internal::RemoveCloseOnExec(fd);
     if (!failure_reason.empty()) {
       return {};
     }
     initrd = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(raw_fd));
+                 .Append(base::NumberToString(fd.get()));
   }
 
   if (bios_fd.has_value()) {
-    int raw_fd = bios_fd.value().get();
-    failure_reason = internal::RemoveCloseOnExec(raw_fd);
+    const base::ScopedFD& fd = bios_fd.value();
+    failure_reason = internal::RemoveCloseOnExec(fd);
     if (!failure_reason.empty()) {
       return {};
     }
     bios = base::FilePath(kProcFileDescriptorsPath)
-               .Append(base::NumberToString(raw_fd));
+               .Append(base::NumberToString(fd.get()));
   } else if (biosDlcPath.has_value() && !biosDlcPath->empty()) {
     bios = biosDlcPath.value();
     bios = bios.Append(kBruschettaBiosDlcPath);
   }
 
   if (pflash_fd.has_value()) {
-    int raw_fd = pflash_fd.value().get();
-    failure_reason = internal::RemoveCloseOnExec(raw_fd);
+    const base::ScopedFD& fd = pflash_fd.value();
+    failure_reason = internal::RemoveCloseOnExec(fd);
     if (!failure_reason.empty()) {
       return {};
     }
     pflash = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(raw_fd));
+                 .Append(base::NumberToString(fd.get()));
   }
 
   base::FilePath tools_disk;
@@ -197,7 +197,12 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
   };
 }
 
-std::string RemoveCloseOnExec(int raw_fd) {
+std::string RemoveCloseOnExec(const base::ScopedFD& fd) {
+  if (!fd.is_valid()) {
+    return "Invalid fd";
+  }
+  int raw_fd = fd.get();
+
   int flags = fcntl(raw_fd, F_GETFD);
   if (flags == -1) {
     return "Failed to get flags for passed fd";

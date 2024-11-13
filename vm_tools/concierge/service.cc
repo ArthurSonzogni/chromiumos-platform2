@@ -1531,8 +1531,8 @@ StartVmResponse Service::StartVmInternal(
 
   // Check if an opened storage image was passed over D-BUS.
   if (vm_start_image_fds.storage_fd.has_value()) {
-    int raw_fd = vm_start_image_fds.storage_fd.value().get();
-    std::string failure_reason = internal::RemoveCloseOnExec(raw_fd);
+    const base::ScopedFD& fd = vm_start_image_fds.storage_fd.value();
+    std::string failure_reason = internal::RemoveCloseOnExec(fd);
     if (!failure_reason.empty()) {
       LOG(ERROR) << "failed to remove close-on-exec flag: " << failure_reason;
       response.set_failure_reason(
@@ -1541,14 +1541,14 @@ StartVmResponse Service::StartVmInternal(
     }
 
     bool writable = false;
-    int mode = fcntl(raw_fd, F_GETFL);
+    int mode = fcntl(fd.get(), F_GETFL);
     if (mode & O_RDWR || mode & O_WRONLY) {
       writable = true;
     }
 
     vm_builder.AppendDisk(
         VmBuilder::Disk{.path = base::FilePath(kProcFileDescriptorsPath)
-                                    .Append(base::NumberToString(raw_fd)),
+                                    .Append(base::NumberToString(fd.get())),
                         .writable = writable,
                         .block_id = "cr-extra-disk"});
   }

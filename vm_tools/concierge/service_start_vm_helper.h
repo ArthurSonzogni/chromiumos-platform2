@@ -142,7 +142,7 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
 
 // Clears close-on-exec flag for a file descriptor to pass it to a subprocess
 // such as crosvm. Returns a failure reason on failure.
-std::string RemoveCloseOnExec(int raw_fd);
+std::string RemoveCloseOnExec(const base::ScopedFD& fd);
 
 }  // namespace internal
 

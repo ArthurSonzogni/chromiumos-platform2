@@ -15,6 +15,7 @@
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/vm_builder.h"
+
 namespace vm_tools {
 namespace concierge {
 
@@ -157,21 +158,17 @@ TEST(StartVMHelperTest, TestGetImageSpec) {
 
 TEST(StartVMHelperTest, TestRemoveCloseOnExec) {
   base::FilePath path;
-  base::ScopedFILE test_file = base::CreateAndOpenTemporaryStream(&path);
-  ASSERT_NE(test_file.get(), nullptr);
-
-  int fd = fileno(test_file.get());
-
-  // Set CLOEXEC flag
-  int flags = fcntl(fd, F_GETFD);
-  EXPECT_NE(flags, -1);
-  flags |= FD_CLOEXEC;
-  EXPECT_NE(fcntl(fd, F_SETFD, flags), -1);
-  EXPECT_NE(fcntl(fd, F_GETFD) & FD_CLOEXEC, 0);
+  int fds[2];
+  ASSERT_NE(pipe2(fds, O_CLOEXEC), -1);
+  base::ScopedFD fd(fds[0]);
+  close(fds[1]);
+  // Has CLOEXEC flag
+  EXPECT_NE(fcntl(fd.get(), F_GETFD) & FD_CLOEXEC, 0);
 
   // Test remove CLOEXEC flag
   internal::RemoveCloseOnExec(fd);
-  EXPECT_EQ(fcntl(fd, F_GETFD) & FD_CLOEXEC, 0);
+
+  EXPECT_EQ(fcntl(fd.get(), F_GETFD) & FD_CLOEXEC, 0);
 }
 
 }  // namespace concierge
