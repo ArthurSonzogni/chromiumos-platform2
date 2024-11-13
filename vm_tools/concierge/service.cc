@@ -1542,7 +1542,7 @@ StartVmResponse Service::StartVmInternal(
 
     bool writable = false;
     int mode = fcntl(fd.get(), F_GETFL);
-    if (mode & O_RDWR || mode & O_WRONLY) {
+    if ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_WRONLY) {
       writable = true;
     }
 
