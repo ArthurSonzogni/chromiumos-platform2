@@ -194,6 +194,7 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
       state_change_callbacks_;
   std::map<std::string, std::vector<base::RepeatingClosure>>
       power_state_change_callbacks_;
+  std::map<std::string, base::OneShotTimer> power_off_timers_;
 
   std::set<std::string> device_ids_seen_;
 

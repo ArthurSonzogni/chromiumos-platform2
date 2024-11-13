@@ -434,17 +434,22 @@ void Daemon::OnPoweredChange(const std::string device_id, bool powered) {
     return;
   }
   if (powered) {
-    modems_[power_device_id]->UpdatePowerOffPendingFlag(false);
+    if (power_off_timers_[power_device_id].IsRunning()) {
+      power_off_timers_[power_device_id].Stop();
+      EVLOG(1) << __func__ << ": power off timer for device: " << device_id
+               << " has stopped.";
+    }
     ChangeModemPowerState(power_device_id, Modem::PowerState::ON);
   } else {
-    // post delayed task (hysteresis timer) for modem power off
-    if (!modems_[power_device_id]->IsPowerOffPending()) {
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-          FROM_HERE,
+    if (!power_off_timers_[power_device_id].IsRunning()) {
+      // post delayed task (hysteresis timer) for modem power off
+      power_off_timers_[power_device_id].Start(
+          FROM_HERE, kPowerOffHystTime,
           base::BindOnce(&Daemon::ModemPowerOff, weak_ptr_factory_.GetWeakPtr(),
-                         power_device_id),
-          kPowerOffHystTime);
-      modems_[power_device_id]->UpdatePowerOffPendingFlag(true);
+                         power_device_id));
+      EVLOG(1) << __func__ << ": power off timer for device: " << device_id
+               << " has started with remaining time: "
+               << kPowerOffHystTime.InSeconds() << " seconds.";
     }
   }
 }
@@ -647,18 +652,16 @@ void Daemon::ModemPowerOff(const std::string& device_id) {
       // Delay powering off the modem when flashing is ongoing
       // TODO(b/372748517): remove this delay and retry when requests to
       // the modem helpers are serialized.
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-          FROM_HERE,
-          base::BindOnce(&Daemon::ModemPowerOff, weak_ptr_factory_.GetWeakPtr(),
-                         device_id),
-          kPowerOffHystTime);
+      if (power_off_timers_[device_id].IsRunning()) {
+        power_off_timers_[device_id].Start(
+            FROM_HERE, kPowerOffHystTime,
+            base::BindOnce(&Daemon::ModemPowerOff,
+                           weak_ptr_factory_.GetWeakPtr(), device_id));
+      }
       return;
     }
   }
-  if (modems_[device_id]->IsPowerOffPending()) {
-    modems_[device_id]->UpdatePowerOffPendingFlag(false);
-    ChangeModemPowerState(device_id, Modem::PowerState::OFF);
-  }
+  ChangeModemPowerState(device_id, Modem::PowerState::OFF);
 }
 
 void Daemon::ForceFlashIfInFlashMode(const std::string& device_id,

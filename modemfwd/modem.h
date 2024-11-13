@@ -82,9 +82,6 @@ class Modem {
   // Handle modem state.
   virtual State GetState() const = 0;
   virtual bool UpdateState(State new_state) = 0;
-
-  virtual bool IsPowerOffPending() const = 0;
-  virtual void UpdatePowerOffPendingFlag(bool power_off_request) = 0;
 };
 
 std::unique_ptr<Modem> CreateModem(
