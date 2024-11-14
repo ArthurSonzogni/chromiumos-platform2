@@ -51,7 +51,7 @@ PoliciesFeaturesBroker::PoliciesFeaturesBroker(
             false}},
           {Feature::kCrOSLateBootSecagentdXDRFileEvents,
            {{.name = "CrOSLateBootSecagentdXDRFileEvents",
-             .default_state = FEATURE_DISABLED_BY_DEFAULT},
+             .default_state = FEATURE_ENABLED_BY_DEFAULT},
             false}},
           {Feature::kCrosLateBootSecagentdXDRStopReportingForUnaffiliated,
            {{.name = "CrOSLateBootSecagentdXDRStopReportingForUnaffiliated",
