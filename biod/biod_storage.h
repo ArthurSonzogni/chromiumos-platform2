@@ -182,8 +182,8 @@ class BiodStorage : public BiodStorageInterface {
   // std::nullopt is returned. If record is invalid then |valid| field in the
   // Record structure will be set to false.
   std::optional<Record> ReadRecordFromPath(const base::FilePath& record_path);
-  base::FilePath root_path_;
-  std::string biometrics_manager_name_;
+  const base::FilePath root_path_;
+  const std::string biometrics_manager_name_;
   bool allow_access_;
 };
 }  // namespace biod
