@@ -89,7 +89,6 @@ generate_mojom_bindings("mojo_bindings") {
     "mojom/mantis_service.mojom",
     "mojom/on_device_model.mojom",
     "mojom/on_device_model_service.mojom",
-    "mojom/read_only_file.mojom",
     "mojom/token.mojom",
     "mojom/url.mojom",
     "mojom/uuid.mojom",

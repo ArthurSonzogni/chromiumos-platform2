@@ -715,7 +715,6 @@ void ChromeosPlatformModelLoader::LoadBasePlatformModel(
   params->assets = std::move(model_assets);
   params->max_tokens = max_tokens.value_or(kDefaultMaxTokens);
   params->adaptation_ranks = adaptation_ranks;
-  params->support_multiple_sessions = true;
 
   model->backend_type() = backend_type;
   mojom::TextSafetyModel* ts_model = nullptr;

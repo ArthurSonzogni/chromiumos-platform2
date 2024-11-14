@@ -7,7 +7,7 @@
 
 #include <base/files/file.h>
 
-#include "odml/mojom/read_only_file.mojom.h"
+#include "odml/mojom/file.mojom.h"
 
 namespace mojo {
 

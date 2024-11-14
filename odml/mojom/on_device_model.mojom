@@ -11,7 +11,6 @@ module on_device_model.mojom;
 
 import "odml/mojom/file.mojom";
 import "odml/mojom/file_path.mojom";
-import "odml/mojom/read_only_file.mojom";
 
 // Opened file resources needed to define an adaptation.
 [Stable]
@@ -68,6 +67,14 @@ struct ResponseChunk {
 struct ResponseSummary {
   // Optional safety information computed against the full response.
   SafetyInfo? safety_info;
+
+  // The total number of input tokens from the call to Execute().
+  [MinVersion=1]
+  uint32 input_token_count;
+
+  // The total number of output tokens for this response.
+  [MinVersion=1]
+  uint32 output_token_count;
 };
 
 // Streams a response from a call to execute a model. Close this pipe to cancel

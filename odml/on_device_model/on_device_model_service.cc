@@ -5,7 +5,6 @@
 #include "odml/on_device_model/on_device_model_service.h"
 
 #include <algorithm>
-#include <cstdint>
 #include <memory>
 #include <optional>
 #include <queue>
@@ -116,17 +115,17 @@ class ModelWrapper final : public mojom::OnDeviceModel {
  public:
   explicit ModelWrapper(
       raw_ref<MetricsLibraryInterface> metrics,
-      bool support_multiple_sessions,
       std::unique_ptr<ml::OnDeviceModelExecutor> model,
       mojo::PendingReceiver<mojom::OnDeviceModel> receiver,
       base::OnceCallback<void(base::WeakPtr<mojom::OnDeviceModel>)> on_delete,
       mojom::TextSafetyModel* ts_model)
       : metrics_(metrics),
-        support_multiple_sessions_(support_multiple_sessions),
         model_(std::move(model)),
         on_delete_(std::move(on_delete)),
         ts_model_(ts_model) {
-    receivers_.Add(this, std::move(receiver), std::nullopt);
+    receivers_.Add(
+        this, std::move(receiver),
+        std::unique_ptr<ml::OnDeviceModelExecutor::ScopedAdaptation>());
     receivers_.set_disconnect_handler(base::BindRepeating(
         &ModelWrapper::ModelDisconnected, weak_ptr_factory_.GetWeakPtr()));
   }
@@ -135,30 +134,24 @@ class ModelWrapper final : public mojom::OnDeviceModel {
   ModelWrapper(const ModelWrapper&) = delete;
   ModelWrapper& operator=(const ModelWrapper&) = delete;
 
-  bool support_multiple_sessions() const { return support_multiple_sessions_; }
-
   void AddAndRunPendingTask(
       base::OnceCallback<void(base::OnceClosure finish_callback)> task,
       base::WeakPtr<SessionWrapper> session = nullptr) {
-    if (support_multiple_sessions_) {
-      base::ScopedClosureRunner task_finished(base::BindOnce(
-          &ModelWrapper::TaskFinished, weak_ptr_factory_.GetWeakPtr()));
-      pending_tasks_.push(PendingTask{
-          .session = session,
-          .task = base::BindOnce(
-              std::move(task), base::BindOnce([](base::ScopedClosureRunner) {},
+    base::ScopedClosureRunner task_finished(
+        base::BindPostTaskToCurrentDefault(base::BindOnce(
+            &ModelWrapper::TaskFinished, weak_ptr_factory_.GetWeakPtr())));
+    pending_tasks_.push(PendingTask{
+        .session = session,
+        .task = base::BindOnce(std::move(task),
+                               base::BindOnce([](base::ScopedClosureRunner) {},
                                               std::move(task_finished))),
-      });
-      RunTaskIfPossible();
-      return;
-    }
-
-    std::move(task).Run(base::DoNothing());
+    });
+    RunTaskIfPossible();
   }
 
   void StartSession(mojo::PendingReceiver<mojom::Session> session) override {
     AddSession(std::move(session),
-               model_->CreateSession(receivers_.current_context()), {});
+               model_->CreateSession(receivers_.current_context().get()), {});
   }
 
   void ClassifyTextSafety(const std::string& text,
@@ -182,10 +175,6 @@ class ModelWrapper final : public mojom::OnDeviceModel {
   void LoadAdaptation(mojom::LoadAdaptationParamsPtr params,
                       mojo::PendingReceiver<mojom::OnDeviceModel> model,
                       LoadAdaptationCallback callback) override {
-    if (!support_multiple_sessions_) {
-      sessions_.clear();
-    }
-
     auto load_adaptation = base::BindOnce(
         &ModelWrapper::LoadAdaptationInternal, weak_ptr_factory_.GetWeakPtr(),
         std::move(params), std::move(model), std::move(callback));
@@ -204,10 +193,6 @@ class ModelWrapper final : public mojom::OnDeviceModel {
       current_session->AddPreviousContext(context.Clone());
     }
     SessionWrapper* current_session_ptr = current_session.get();
-
-    if (!support_multiple_sessions_) {
-      sessions_.clear();
-    }
 
     sessions_.insert(std::move(current_session));
     current_session_ptr->receiver().set_disconnect_handler(
@@ -257,15 +242,11 @@ class ModelWrapper final : public mojom::OnDeviceModel {
       std::move(callback).Run(result.error());
       return;
     }
-    receivers_.Add(this, std::move(model), *result);
+    receivers_.Add(this, std::move(model), std::move(*result));
     std::move(callback).Run(mojom::LoadModelResult::kSuccess);
   }
 
   void RunTaskIfPossible() {
-    if (!support_multiple_sessions_) {
-      return;
-    }
-
     if (is_running_) {
       return;
     }
@@ -290,11 +271,13 @@ class ModelWrapper final : public mojom::OnDeviceModel {
   }
 
   const raw_ref<MetricsLibraryInterface> metrics_;
-  bool support_multiple_sessions_;
   std::set<std::unique_ptr<SessionWrapper>, base::UniquePtrComparator>
       sessions_;
   std::unique_ptr<ml::OnDeviceModelExecutor> model_;
-  mojo::ReceiverSet<mojom::OnDeviceModel, std::optional<uint32_t>> receivers_;
+  mojo::ReceiverSet<
+      mojom::OnDeviceModel,
+      std::unique_ptr<ml::OnDeviceModelExecutor::ScopedAdaptation>>
+      receivers_;
   base::OnceCallback<void(base::WeakPtr<mojom::OnDeviceModel>)> on_delete_;
   std::queue<PendingTask> pending_tasks_;
   bool is_running_ = false;
@@ -312,12 +295,9 @@ void SessionWrapper::AddContext(
     return;
   }
 
-  base::OnceClosure save_context = base::DoNothing();
-  if (model_->support_multiple_sessions()) {
-    save_context =
-        base::BindOnce(&SessionWrapper::AddPreviousContext,
-                       weak_ptr_factory_.GetWeakPtr(), input.Clone());
-  }
+  base::OnceClosure save_context =
+      base::BindOnce(&SessionWrapper::AddPreviousContext,
+                     weak_ptr_factory_.GetWeakPtr(), input.Clone());
 
   auto add_context_internal = base::BindOnce(
       &SessionWrapper::AddContextInternal, weak_ptr_factory_.GetWeakPtr(),
@@ -428,7 +408,6 @@ void OnDeviceModelService::LoadModel(
     LoadPlatformModelCallback callback,
     mojom::TextSafetyModel* ts_model) {
   auto start = base::TimeTicks::Now();
-  bool support_multiple_sessions = params->support_multiple_sessions;
   const ml::ChromeML* chrome_ml = ml::ChromeML::Get(metrics_, shim_loader_);
   if (!chrome_ml) {
     std::move(callback).Run(mojom::LoadModelResult::kFailedToLoadLibrary);
@@ -456,8 +435,7 @@ void OnDeviceModelService::LoadModel(
   }
 
   models_.insert(std::make_unique<ModelWrapper>(
-      metrics_, support_multiple_sessions, std::move(model_impl.value()),
-      std::move(model),
+      metrics_, std::move(model_impl.value()), std::move(model),
       base::BindOnce(&OnDeviceModelService::DeleteModel,
                      base::Unretained(this)),
       ts_model));

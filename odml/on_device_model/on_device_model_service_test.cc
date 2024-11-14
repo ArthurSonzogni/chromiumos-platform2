@@ -26,6 +26,7 @@
 
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
+#include "odml/on_device_model/fake/fake_chrome_ml_api.h"
 #include "odml/on_device_model/fake/on_device_model_fake.h"
 #include "odml/on_device_model/features.h"
 #include "odml/on_device_model/ml/chrome_ml_types.h"
@@ -217,26 +218,7 @@ TEST_F(OnDeviceModelServiceTest, AddContext) {
       ElementsAre("Context: cheese\n", "Context: more\n", "Input: cheddar\n"));
 }
 
-TEST_F(OnDeviceModelServiceTest, CloneContext) {
-  auto model = LoadModel();
-
-  TestResponseHolder response;
-  mojo::Remote<mojom::Session> session;
-  model->StartSession(session.BindNewPipeAndPassReceiver());
-  session->AddContext(MakeInput("cheese"), {});
-  session->AddContext(MakeInput("more"), {});
-
-  mojo::Remote<mojom::Session> cloned;
-  session->Clone(cloned.BindNewPipeAndPassReceiver());
-  cloned->Execute(MakeInput("cheddar"), response.BindRemote());
-  response.WaitForCompletion();
-
-  EXPECT_THAT(
-      response.responses(),
-      ElementsAre("Context: cheese\n", "Context: more\n", "Input: cheddar\n"));
-}
-
-TEST_F(OnDeviceModelServiceTest, MultipleSessionsCloneContextAndContinue) {
+TEST_F(OnDeviceModelServiceTest, CloneContextAndContinue) {
   auto model = LoadModel();
 
   mojo::Remote<mojom::Session> session;
@@ -377,6 +359,24 @@ TEST_F(OnDeviceModelServiceTest, MultipleSessionsIgnoreContext) {
       ElementsAre("Context: apple\n", "Context: banana\n", "Input: orange\n"));
 }
 
+TEST_F(OnDeviceModelServiceTest, CountTokens) {
+  auto model = LoadModel();
+
+  TestResponseHolder response;
+  mojo::Remote<mojom::Session> session;
+  model->StartSession(session.BindNewPipeAndPassReceiver());
+  session->AddContext(MakeInput("cheese"), {});
+  session->AddContext(MakeInput("more"), {});
+
+  std::string input = "cheddar";
+  session->Execute(MakeInput(input), response.BindRemote());
+  response.WaitForCompletion();
+
+  EXPECT_THAT(response.input_token_count(), input.size());
+  // 2 context + 1 input.
+  EXPECT_THAT(response.output_token_count(), 3);
+}
+
 TEST_F(OnDeviceModelServiceTest, AddContextWithTokenLimits) {
   auto model = LoadModel();
 
@@ -453,6 +453,30 @@ TEST_F(OnDeviceModelServiceTest, LoadsAdaptation) {
               ElementsAre("Adaptation: Adapt2\n", "Input: foo\n"));
 }
 
+TEST_F(OnDeviceModelServiceTest, DestroysAdaptationSession) {
+  FakeFile weights1("Adapt1");
+  FakeFile weights2("Adapt2");
+  auto model = LoadModel();
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(fake_ml::GetActiveNonCloneSessions(), 1);
+
+  auto adaptation1 = LoadAdaptation(*model, weights1.Open());
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(fake_ml::GetActiveNonCloneSessions(), 2);
+
+  auto adaptation2 = LoadAdaptation(*model, weights2.Open());
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(fake_ml::GetActiveNonCloneSessions(), 3);
+
+  adaptation1.reset();
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(fake_ml::GetActiveNonCloneSessions(), 2);
+
+  adaptation2.reset();
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(fake_ml::GetActiveNonCloneSessions(), 1);
+}
+
 TEST_F(OnDeviceModelServiceTest, LoadsAdaptationWithPath) {
   FakeFile weights1("Adapt1");
   FakeFile weights2("Adapt2");
@@ -470,8 +494,7 @@ TEST_F(OnDeviceModelServiceTest, LoadsAdaptationWithPath) {
               ElementsAre("Adaptation: Adapt2\n", "Input: foo\n"));
 }
 
-TEST_F(OnDeviceModelServiceTest,
-       MultipleSessionsLoadingAdaptationNotCancelsSession) {
+TEST_F(OnDeviceModelServiceTest, LoadingAdaptationDoesNotCancelSession) {
   FakeFile weights1("Adapt1");
   auto model = LoadModel();
 

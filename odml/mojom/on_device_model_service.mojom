@@ -12,7 +12,6 @@ module on_device_model.mojom;
 import "odml/mojom/file.mojom";
 import "odml/mojom/file_path.mojom";
 import "odml/mojom/on_device_model.mojom";
-import "odml/mojom/read_only_file.mojom";
 import "odml/mojom/uuid.mojom";
 
 // Opened file resources needed to define the model.
@@ -54,11 +53,6 @@ struct LoadModelParams {
 
   // List of adaptation ranks the model should support.
   array<uint32> adaptation_ranks;
-
-  // If this is true, the multiple sessions support will be enabled.
-  // The previous session will not be canceled when starting new session if
-  // this feature is enabled.
-  bool support_multiple_sessions;
 };
 
 struct TextSafetyModelAssets {
