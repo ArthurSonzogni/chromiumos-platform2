@@ -11,7 +11,6 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <tensorflow/lite/context.h>
-#include <tensorflow/lite/delegates/nnapi/nnapi_delegate.h>
 #include <tensorflow/lite/delegates/gpu/delegate.h>
 #include <tensorflow/lite/interpreter.h>
 #include <tensorflow/lite/kernels/register.h>
@@ -125,21 +124,12 @@ CreateGraphExecutorResult ModelDelegate::CreateGraphExecutorDelegate(
     return CreateGraphExecutorResult::DELEGATE_CONFIG_ERROR;
   }
 
-  // If requested, load and apply NNAPI
+  // Return an error if NNAPI is requested
   if (use_nnapi) {
-    TfLiteDelegate* delegate = tflite::NnApiDelegate();
-    if (!delegate) {
-      LOG(ERROR) << "NNAPI requested but not available.";
-      request_metrics.RecordRequestEvent(
-          CreateGraphExecutorResult::NNAPI_UNAVAILABLE);
-      return CreateGraphExecutorResult::NNAPI_UNAVAILABLE;
-    }
-    if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk) {
-      LOG(ERROR) << "Could not use NNAPI delegate.";
-      request_metrics.RecordRequestEvent(
-          CreateGraphExecutorResult::NNAPI_USE_ERROR);
-      return CreateGraphExecutorResult::NNAPI_USE_ERROR;
-    }
+    LOG(ERROR) << "NNAPI is deprecated and unavailable.";
+    request_metrics.RecordRequestEvent(
+        CreateGraphExecutorResult::NNAPI_UNAVAILABLE);
+    return CreateGraphExecutorResult::NNAPI_UNAVAILABLE;
   }
 
   // If requested, load and apply GPU
