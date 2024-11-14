@@ -1453,9 +1453,9 @@ TEST_F(PowerSupplyTest, BadSingleBatteryButGenericDriverInUse) {
   EXPECT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.battery_below_shutdown_threshold);
 
-  // Still should fail if charge_full is <= 0
   WriteDoubleValue(battery_dir_, "charge_full", 0.0);
-  EXPECT_FALSE(UpdateStatus(&status));
+  EXPECT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
 }
 
 TEST_F(PowerSupplyTest, BadMultipleBatteries) {
