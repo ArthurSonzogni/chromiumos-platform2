@@ -8,6 +8,6 @@ edition = "2021"
 getopts = "0.2"
 libc = "0.2"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
-p9 = "0.2.3"
+p9 = "0.3.1"
 log = "0.4"
 vsock = "0.5"
