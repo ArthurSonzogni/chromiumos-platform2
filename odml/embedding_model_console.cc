@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include <base/command_line.h>
+#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
@@ -41,6 +42,7 @@ constexpr const char kGenerateEmbedding[] = "generate_embedding";
 constexpr const char kContent[] = "content";
 constexpr const char kTaskType[] = "task_type";
 constexpr const char kTruncateInput[] = "truncate_input";
+constexpr const char kBinaryOutput[] = "binary_output";
 
 TaskType GetTaskTypeFromString(std::string s) {
   if (s == "clustering") {
@@ -62,6 +64,18 @@ void PrintEmbedding(const std::vector<float>& embedding) {
     }
   }
   printf(" ]\n");
+}
+
+void WriteEmbedding(const std::vector<float>& embedding,
+                    const std::string& path) {
+  std::vector<uint8_t> embedding_content(embedding.size() * sizeof(float), 0);
+  std::copy(
+      reinterpret_cast<const uint8_t*>(embedding.data()),
+      reinterpret_cast<const uint8_t*>(embedding.data() + embedding.size()),
+      embedding_content.begin());
+
+  bool ret = base::WriteFile(base::FilePath(path), embedding_content);
+  CHECK(ret) << "Failed to write file.";
 }
 
 }  // namespace
@@ -148,18 +162,22 @@ int main(int argc, char** argv) {
       model->GenerateEmbedding(
           generate_embedding_request.Clone(),
           base::BindOnce(
-              [](base::RunLoop* run_loop,
+              [](base::RunLoop* run_loop, base::CommandLine* cl,
                  OnDeviceEmbeddingModelInferenceError error,
                  const std::vector<float>& embeddings) {
                 if (error == OnDeviceEmbeddingModelInferenceError::kSuccess) {
                   PrintEmbedding(embeddings);
+                  if (cl->HasSwitch(kBinaryOutput)) {
+                    WriteEmbedding(embeddings,
+                                   cl->GetSwitchValueASCII(kBinaryOutput));
+                  }
                 } else {
                   LOG(ERROR)
                       << "Failed to generate embedding, error: " << error;
                 }
                 run_loop->Quit();
               },
-              &run_loop));
+              &run_loop, base::Unretained(cl)));
 
       run_loop.Run();
     }
