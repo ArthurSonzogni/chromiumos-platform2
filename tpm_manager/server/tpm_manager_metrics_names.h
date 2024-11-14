@@ -42,12 +42,12 @@ inline constexpr char kApRoVerificationTime[] =
 inline constexpr char kExpandedApRoVerificationStatus[] =
     "Platform.TPM.ExpandedApRoVerificationStatus";
 inline constexpr char kFilesystemBusyCount[] =
-    "Platform.Tpm.FilesystemBusyCount";
-inline constexpr char kCryptoBusyCount[] = "Platform.Tpm.CryptoBusyCount";
+    "Platform.TPM.FilesystemBusyCount";
+inline constexpr char kCryptoBusyCount[] = "Platform.TPM.CryptoBusyCount";
 inline constexpr char kDispatcherBusyCount[] =
-    "Platform.Tpm.DispatcherBusyCount";
-inline constexpr char kTimeslicesExpired[] = "Platform.Tpm.TimeslicesExpired";
-inline constexpr char kCryptoInitTime[] = "Platform.Tpm.CryptoInitTime";
+    "Platform.TPM.DispatcherBusyCount";
+inline constexpr char kTimeslicesExpired[] = "Platform.TPM.TimeslicesExpired";
+inline constexpr char kCryptoInitTime[] = "Platform.TPM.CryptoInitTime";
 
 }  // namespace tpm_manager
 
