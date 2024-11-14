@@ -767,19 +767,12 @@ do_post_install() {
   local dst_rootfs
 
   dst_rootfs="$(make_partition_dev "${DST}" "${PARTITION_NUM_ROOT_A:?}")"
-  # Now run the postinstall script on one new rootfs. Note that even though
-  # we're passing the new destination partition number as an arg, the postinst
-  # script had better not try to access it, for the reasons we just gave.
-  # We can't run this if the target arch isn't the same as the host arch
+  # Now run the postinstall script on one new rootfs.
   if [ "${FLAGS_skip_postinstall:?}" -eq "${FLAGS_FALSE}" ]; then
-    if [ -n "${FLAGS_payload_image}" ]; then
-      LOOP_DEV="${dst_rootfs}"
-      mount_on_loop_dev
-      IS_INSTALL="1" "${TMPMNT}/postinst" "${dst_rootfs}" "$@"
-      umount_from_loop_dev
-    else
-      IS_INSTALL="1" "/postinst" "${dst_rootfs}" "$@"
-    fi
+    # NB: postinst changes its behavior depending on the path it's called with.
+    # If `ROOT` is non-empty it will set up additional mounts for the chroot.
+    echo "Running postinst from '${ROOT}'."
+    IS_INSTALL="1" "${ROOT}/postinst" "${dst_rootfs}" "$@"
   fi
 }
 
