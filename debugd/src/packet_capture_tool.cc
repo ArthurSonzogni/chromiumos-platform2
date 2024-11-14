@@ -4,11 +4,12 @@
 
 #include "debugd/src/packet_capture_tool.h"
 
+#include <sys/select.h>
+#include <unistd.h>
+
 #include <memory>
 #include <string>
-#include <unistd.h>
 #include <utility>
-#include <sys/select.h>
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
@@ -21,7 +22,6 @@
 #include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_id.h"
 #include "debugd/src/variant_utils.h"
-
 #include "policy/device_policy.h"
 #include "policy/libpolicy.h"
 
@@ -93,6 +93,8 @@ bool AddValidatedStringOption(debugd::ProcessWithId* p,
     case debugd::ParseResult::NOT_PRESENT:
       return true;
     case debugd::ParseResult::PARSE_ERROR:
+      DEBUGD_ADD_ERROR_FMT(error, kPacketCaptureToolErrorString,
+                           "Failed to parse option: %s", dbus_option.c_str());
       return false;
     case debugd::ParseResult::PARSED:
       break;
@@ -152,8 +154,6 @@ bool CheckDeviceBasedCaptureMode(const brillo::VariantDictionary& options,
   // present in device based capture mode.
   if (debugd::GetOption(options, "device", &device_value, error) !=
       debugd::ParseResult::PARSED) {
-    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
-                     "Option 'device' is required.");
     return false;
   }
   int freq_value;
@@ -161,9 +161,6 @@ bool CheckDeviceBasedCaptureMode(const brillo::VariantDictionary& options,
   // present in device based capture mode.
   if (debugd::GetOption(options, "frequency", &freq_value, error) ==
       debugd::ParseResult::PARSED) {
-    DEBUGD_ADD_ERROR(
-        error, kPacketCaptureToolErrorString,
-        "Option 'frequency' cannot be present in device based capture mode.");
     return false;
   }
   std::string frequency_based_options[] = {"ht_location", "vht_width",
@@ -175,11 +172,6 @@ bool CheckDeviceBasedCaptureMode(const brillo::VariantDictionary& options,
     debugd::ParseResult result =
         debugd::GetOption(options, option, &val, error);
     if (result == debugd::ParseResult::PARSED) {
-      DEBUGD_ADD_ERROR_FMT(
-          error, kPacketCaptureToolErrorString,
-          "Frequency-based option '%s' cannot be present in device based "
-          "capture mode.",
-          val.c_str());
       return false;
     }
   }
