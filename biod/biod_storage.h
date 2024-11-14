@@ -120,7 +120,7 @@ class BiodStorageInterface {
 class BiodStorage : public BiodStorageInterface {
  public:
   // Constructor sets the file path to be
-  // <root_path>/<biometrics_manager_name>/<record_id>.
+  // <root_path>/<user_id>/<biometrics_manager_name>/<record_id>.
   BiodStorage(const base::FilePath& root_path,
               const std::string& biometrics_manager_name);
 
