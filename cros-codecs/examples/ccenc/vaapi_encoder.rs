@@ -6,11 +6,8 @@ use std::borrow::Borrow;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
-use std::path::PathBuf;
 use std::rc::Rc;
-use std::str::FromStr;
 
-use argh::FromArgs;
 use cros_codecs::backend::vaapi::surface_pool::PooledVaSurface;
 use cros_codecs::backend::vaapi::surface_pool::VaSurfacePool;
 use cros_codecs::bitstream_utils::IvfFileHeader;
@@ -30,62 +27,8 @@ use cros_codecs::FrameLayout;
 use cros_codecs::PlaneLayout;
 use cros_codecs::Resolution;
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Default)]
-enum Codec {
-    #[default]
-    H264,
-    VP9,
-    AV1,
-}
-
-impl FromStr for Codec {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "h264" | "H264" => Ok(Self::H264),
-            "vp9" | "VP9" => Ok(Self::VP9),
-            "av1" | "AV1" => Ok(Self::AV1),
-            _ => Err("unrecognized codec. Valid values: h264, vp9, av1"),
-        }
-    }
-}
-
-/// Simple encoder
-#[derive(Debug, FromArgs)]
-struct Args {
-    /// input file
-    #[argh(positional)]
-    input: PathBuf,
-
-    /// input frames width
-    #[argh(option)]
-    width: u32,
-
-    /// input frames height
-    #[argh(option)]
-    height: u32,
-
-    /// input frames count
-    #[argh(option)]
-    count: usize,
-
-    /// codec
-    #[argh(option)]
-    codec: Option<Codec>,
-
-    /// framerate
-    #[argh(option)]
-    framerate: Option<u32>,
-
-    /// output file to write the decoded frames to
-    #[argh(option)]
-    output: Option<PathBuf>,
-
-    /// set to true if low power version of the API shall be used
-    #[argh(switch)]
-    low_power: bool,
-}
+use crate::util::Args;
+use crate::util::Codec;
 
 fn upload_img<M: libva::SurfaceMemoryDescriptor>(
     display: &Rc<libva::Display>,
@@ -249,13 +192,7 @@ fn new_av1_vaapi_encoder(
     Box::new(encoder)
 }
 
-fn main() {
-    env_logger::init();
-
-    let args: Args = argh::from_env();
-
-    let mut input = File::open(&args.input).expect("error opening input file");
-
+pub fn do_encode(mut input: File, args: Args) -> () {
     let display = libva::Display::open().unwrap();
 
     let codec = args.codec.unwrap_or_default();
@@ -264,6 +201,7 @@ fn main() {
         Codec::H264 => new_h264_vaapi_encoder(&args, &display),
         Codec::VP9 => new_vp9_vaapi_encoder(&args, &display),
         Codec::AV1 => new_av1_vaapi_encoder(&args, &display),
+        _ => panic!("Unsupported format!"),
     };
 
     let mut pool = VaSurfacePool::new(
