@@ -84,18 +84,25 @@ void NetworkBpfSkeleton::AddExternalDevice(
       default_bpf_skeleton_->skel_->maps.cros_network_external_interfaces;
   int64_t key = platform_->IfNameToIndex(device->ifname.c_str());
   int64_t value = key;
+  if (key == 0) {
+    LOG(ERROR) << "Network: Could not determine ifindex for ifname "
+               << device->ifname;
+    return;
+  }
   int rv = platform_->BpfMapUpdateElem(map, &key, sizeof(key), &value,
                                        sizeof(value), BPF_NOEXIST);
   if (rv == EEXIST) {
     LOG(WARNING) << "Network: External device " << device->ifname
+                 << " idx: " << value
                  << " already in the BPF external device map.";
   } else if (rv < 0) {
     LOG(ERROR) << "Network: Unable to add " << device->ifname
-               << " to the BPF external device map.";
+               << " idx: " << value << " to the BPF external device map.";
     // TODO(b:277815178): Add a UMA metric to log errors related to external
     // interface fetching.
   } else {
-    VLOG(1) << device->ifname << ":" << key << " added to external device map.";
+    LOG(INFO) << "ifname: " << device->ifname << " ifindex: " << key
+              << " added to external device map.";
   }
 }
 
