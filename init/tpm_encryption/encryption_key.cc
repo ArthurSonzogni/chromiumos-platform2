@@ -41,7 +41,9 @@ namespace {
 
 const char kKernelCmdlineOption[] = "encrypted-stateful-key=";
 const char kStaticKeyDefault[] = "default unsafe static key";
+#if READ_ON_DISK_FINALIZATION || WRITE_ON_DISK_FINALIZATION
 const char kStaticKeyFinalizationNeeded[] = "needs finalization";
+#endif  // READ_ON_DISK_FINALIZATION || WRITE_ON_DISK_FINALIZATION
 
 const size_t kMaxReadSize = 4 * 1024;
 
@@ -129,9 +131,11 @@ brillo::SecureBlob Sha256(const std::string& str) {
   return hwsec_foundation::Sha256(blob);
 }
 
+#if READ_ON_DISK_FINALIZATION || WRITE_ON_DISK_FINALIZATION
 brillo::SecureBlob GetUselessKey() {
   return Sha256(kStaticKeyFinalizationNeeded);
 }
+#endif  // READ_ON_DISK_FINALIZATION || WRITE_ON_DISK_FINALIZATION
 
 // Extract the desired system key from the kernel's boot command line.
 brillo::SecureBlob GetKeyFromKernelCmdline(libstorage::Platform* platform,
@@ -294,17 +298,23 @@ bool EncryptionKey::LoadEncryptionKey() {
   platform_->DeleteFile(key_path_);
   encryption_key_.clear();
 
-  // Check if there's a to-be-finalized key on disk.
-  if (!ReadKeyFile(platform_, needs_finalization_path_, &encryption_key_,
-                   GetUselessKey())) {
+  // Check if there's a to-be-finalized key on disk on boards that support
+  // restoring finalization data from disk: all TPM1.2 and dynamic TPM boards,
+  // and selected TPM2.0 boards.
+#if READ_ON_DISK_FINALIZATION
+  if (ReadKeyFile(platform_, needs_finalization_path_, &encryption_key_,
+                  GetUselessKey())) {
+    encryption_key_status_ = EncryptionKeyStatus::kNeedsFinalization;
+    LOG(ERROR) << "Finalization unfinished! Encryption key still on disk!";
+  } else {
+#else   // READ_ON_DISK_FINALIZATION
+  {
+#endif  // READ_ON_DISK_FINALIZATION
     // This is a brand new system with no keys, so generate a fresh one.
     LOG(INFO) << "Generating new encryption key.";
     encryption_key_ =
         hwsec_foundation::CreateSecureRandomBlob(SHA256_DIGEST_LENGTH);
     encryption_key_status_ = EncryptionKeyStatus::kFresh;
-  } else {
-    encryption_key_status_ = EncryptionKeyStatus::kNeedsFinalization;
-    LOG(ERROR) << "Finalization unfinished! Encryption key still on disk!";
   }
 
   // At this point, we have an encryption key but it has not been finalized yet
@@ -312,7 +322,9 @@ bool EncryptionKey::LoadEncryptionKey() {
   //
   // However, when we are creating the encrypted mount for the first time, the
   // TPM might not be in a state where we have a system key. In this case we
-  // fall back to writing the obfuscated encryption key to disk (*sigh*).
+  // fall back to writing the obfuscated encryption key to disk (*sigh*) if we
+  // are on a board that supports writing finalization data to disk: a TPM1.2
+  // or a dynamic TPM board.
   //
   // NB: We'd ideally never write an insufficiently protected key to disk. This
   // is already the case for TPM 2.0 devices as they can create system keys as
@@ -320,6 +332,7 @@ bool EncryptionKey::LoadEncryptionKey() {
   // using an NVRAM space that doesn't get lost on TPM clear and (2) allowing
   // mount-encrypted to take ownership and create the NVRAM space if necessary.
   if (system_key_.empty()) {
+#if WRITE_ON_DISK_FINALIZATION
     if (is_fresh()) {
       LOG(INFO) << "Writing finalization intent " << needs_finalization_path_;
       if (!WriteKeyFile(platform_, needs_finalization_path_, encryption_key_,
@@ -327,6 +340,7 @@ bool EncryptionKey::LoadEncryptionKey() {
         LOG(ERROR) << "Failed to write " << needs_finalization_path_;
       }
     }
+#endif  // WRITE_ON_DISK_FINALIZATION
     return true;
   }
 

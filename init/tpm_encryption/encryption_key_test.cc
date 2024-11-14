@@ -25,6 +25,27 @@ namespace {
 // Size of the encryption key (256 bit AES) in bytes.
 const size_t kEncryptionKeySize = 32;
 
+#if !USE_TPM_DYNAMIC
+
+// A random encryption key used in tests that exercise the situation where NVRAM
+// space is missing and we fall back to writing the encryption key to disk.
+brillo::SecureBlob kEncryptionKeyNeedsFinalization = {
+    0xa4, 0x46, 0x75, 0x14, 0x38, 0x66, 0x83, 0x14, 0x2f, 0x88, 0x03,
+    0x31, 0x0c, 0x13, 0x47, 0x6a, 0x52, 0x78, 0xcd, 0xff, 0xb9, 0x9c,
+    0x99, 0x9e, 0x30, 0x0b, 0x79, 0xf7, 0xad, 0x34, 0x2f, 0xb0,
+};
+
+// This is kEncryptionKeyNeedsFinalization, obfuscated by encrypting it with a
+// well-known hard-coded system key (the SHA-256 hash of "needs finalization").
+brillo::SecureBlob kWrappedKeyNeedsFinalization = {
+    0x38, 0x38, 0x9e, 0x59, 0x39, 0x88, 0xae, 0xb8, 0x74, 0xe8, 0x14, 0x58,
+    0x78, 0x12, 0x1b, 0xb1, 0xf4, 0x70, 0xb9, 0x0f, 0x76, 0x22, 0x97, 0xe6,
+    0x43, 0x21, 0x59, 0x0f, 0x36, 0x86, 0x90, 0x74, 0x23, 0x7f, 0x14, 0xd1,
+    0x3d, 0xef, 0x01, 0x92, 0x9c, 0x89, 0x15, 0x85, 0xc5, 0xe5, 0x78, 0x10,
+};
+
+#endif  // !USE_TPM_DYNAMIC
+
 #if USE_TPM2
 
 #if !USE_TPM_DYNAMIC
@@ -103,23 +124,6 @@ brillo::SecureBlob kWrappedKeyLockboxV2 = {
     0x19, 0x2a, 0xe0, 0xd6, 0xdf, 0x56, 0xf7, 0x64, 0xa0, 0xd6, 0x51, 0xe0,
     0xc1, 0x46, 0x85, 0x80, 0x41, 0xbd, 0x41, 0xab, 0xbf, 0x56, 0x32, 0xaa,
     0xe8, 0x04, 0x5b, 0x69, 0xd4, 0x23, 0x8d, 0x99, 0x84, 0xff, 0x20, 0xc3,
-};
-
-// A random encryption key used in tests that exercise the situation where NVRAM
-// space is missing and we fall back to writing the encryption key to disk.
-brillo::SecureBlob kEncryptionKeyNeedsFinalization = {
-    0xa4, 0x46, 0x75, 0x14, 0x38, 0x66, 0x83, 0x14, 0x2f, 0x88, 0x03,
-    0x31, 0x0c, 0x13, 0x47, 0x6a, 0x52, 0x78, 0xcd, 0xff, 0xb9, 0x9c,
-    0x99, 0x9e, 0x30, 0x0b, 0x79, 0xf7, 0xad, 0x34, 0x2f, 0xb0,
-};
-
-// This is kEncryptionKeyNeedsFinalization, obfuscated by encrypting it with a
-// well-known hard-coded system key (the SHA-256 hash of "needs finalization").
-brillo::SecureBlob kWrappedKeyNeedsFinalization = {
-    0x38, 0x38, 0x9e, 0x59, 0x39, 0x88, 0xae, 0xb8, 0x74, 0xe8, 0x14, 0x58,
-    0x78, 0x12, 0x1b, 0xb1, 0xf4, 0x70, 0xb9, 0x0f, 0x76, 0x22, 0x97, 0xe6,
-    0x43, 0x21, 0x59, 0x0f, 0x36, 0x86, 0x90, 0x74, 0x23, 0x7f, 0x14, 0xd1,
-    0x3d, 0xef, 0x01, 0x92, 0x9c, 0x89, 0x15, 0x85, 0xc5, 0xe5, 0x78, 0x10,
 };
 
 // Contents of the encstateful TPM NVRAM space used in tests that set up
@@ -302,9 +306,10 @@ class EncryptionKeyTest : public testing::Test {
     std::ignore = read_end.release();
   }
 
-  void ExpectNeedsFinalization() {
+  void ExpectNeedsFinalization(bool pre_existing_needs_finalization) {
     EXPECT_FALSE(key_->did_finalize());
-    EXPECT_TRUE(platform_->FileExists(key_->needs_finalization_path()));
+    EXPECT_EQ(WRITE_ON_DISK_FINALIZATION || pre_existing_needs_finalization,
+              platform_->FileExists(key_->needs_finalization_path()));
     EXPECT_FALSE(platform_->FileExists(key_->key_path()));
   }
 
@@ -391,7 +396,7 @@ TEST_F(EncryptionKeyTest, TpmOwnedNoSpaces) {
 
   ExpectFreshKey();
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
-  ExpectNeedsFinalization();
+  ExpectNeedsFinalization(false);
   EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
@@ -426,7 +431,7 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceBadAttributes) {
 
   ExpectFreshKey();
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
-  ExpectNeedsFinalization();
+  ExpectNeedsFinalization(false);
   EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
@@ -481,7 +486,7 @@ TEST_F(EncryptionKeyTest, TpmOwnedNoSpaces) {
 
   ExpectFreshKey();
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
-  ExpectNeedsFinalization();
+  ExpectNeedsFinalization(false);
   EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
@@ -525,29 +530,6 @@ TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2BadDecrypt) {
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
   EXPECT_EQ(SystemKeyStatus::kNVRAMLockbox, key_->system_key_status());
-}
-
-TEST_F(EncryptionKeyTest, TpmClearNeedsFinalization) {
-  WriteWrappedKey(key_->needs_finalization_path(),
-                  kWrappedKeyNeedsFinalization);
-
-  ExpectExistingKey(kEncryptionKeyNeedsFinalization);
-  EXPECT_EQ(EncryptionKeyStatus::kNeedsFinalization,
-            key_->encryption_key_status());
-  ExpectFinalized(true);
-  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
-}
-
-TEST_F(EncryptionKeyTest, TpmOwnedNeedsFinalization) {
-  SetOwned();
-  WriteWrappedKey(key_->needs_finalization_path(),
-                  kWrappedKeyNeedsFinalization);
-
-  ExpectExistingKey(kEncryptionKeyNeedsFinalization);
-  EXPECT_EQ(EncryptionKeyStatus::kNeedsFinalization,
-            key_->encryption_key_status());
-  ExpectNeedsFinalization();
-  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, EncStatefulTpmClearExisting) {
@@ -864,5 +846,42 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryTpmOwnership) {
 }
 
 #endif  // !USE_TPM2
+
+#if !USE_TPM_DYNAMIC
+
+TEST_F(EncryptionKeyTest, TpmClearNeedsFinalization) {
+  WriteWrappedKey(key_->needs_finalization_path(),
+                  kWrappedKeyNeedsFinalization);
+
+#if READ_ON_DISK_FINALIZATION
+  ExpectExistingKey(kEncryptionKeyNeedsFinalization);
+  EXPECT_EQ(EncryptionKeyStatus::kNeedsFinalization,
+            key_->encryption_key_status());
+#else   // READ_ON_DISK_FINALIZATION
+  ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
+#endif  // READ_ON_DISK_FINALIZATION
+  ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
+}
+
+TEST_F(EncryptionKeyTest, TpmOwnedNeedsFinalization) {
+  SetOwned();
+  WriteWrappedKey(key_->needs_finalization_path(),
+                  kWrappedKeyNeedsFinalization);
+
+#if READ_ON_DISK_FINALIZATION
+  ExpectExistingKey(kEncryptionKeyNeedsFinalization);
+  EXPECT_EQ(EncryptionKeyStatus::kNeedsFinalization,
+            key_->encryption_key_status());
+#else   // READ_ON_DISK_FINALIZATION
+  ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
+#endif  // READ_ON_DISK_FINALIZATION
+  ExpectNeedsFinalization(true);
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
+}
+
+#endif  // !USE_TPM_DYNAMIC
 
 }  // namespace encryption

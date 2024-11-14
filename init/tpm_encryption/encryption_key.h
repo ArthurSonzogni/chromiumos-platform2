@@ -15,6 +15,10 @@
 #include <brillo/secure_blob.h>
 #include <libstorage/platform/platform.h>
 
+#define WRITE_ON_DISK_FINALIZATION (!USE_TPM2 || USE_TPM_DYNAMIC)
+#define READ_ON_DISK_FINALIZATION \
+  (WRITE_ON_DISK_FINALIZATION || USE_ENCSTATEFUL_ONDISK_FINALIZATION)
+
 namespace encryption {
 
 class SystemKeyLoader;

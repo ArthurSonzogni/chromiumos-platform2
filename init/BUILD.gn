@@ -57,6 +57,7 @@ pkg_config("target_defaults") {
     "USE_DIRENCRYPTION=${use.direncryption}",
     "USE_ENCRYPTED_REBOOT_VAULT=${use.encrypted_reboot_vault}",
     "USE_ENCRYPTED_STATEFUL=${use.encrypted_stateful}",
+    "USE_ENCSTATEFUL_ONDISK_FINALIZATION=${use.encstateful_ondisk_finalization}",
     "USE_FSVERITY=${use.fsverity}",
     "USE_LVM_MIGRATION=${use.lvm_migration}",
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",

@@ -101,6 +101,7 @@ _IUSE = [
     "enable_slow_boot_notify",
     "encrypted_reboot_vault",
     "encrypted_stateful",
+    "encstateful_ondisk_finalization",
     # TODO(b:262689487): Remove when all limitations of enterprise rollback in
     # reven have been addressed.
     "enterprise_rollback_reven",
