@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include <string>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -31,8 +32,7 @@ bool PolicyKey::Equals(const std::string& key_der) const {
 }
 
 bool PolicyKey::VEquals(const std::vector<uint8_t>& key_der) const {
-  return ((key_.empty() == key_der.empty()) &&
-          memcmp(&key_der[0], &key_[0], key_.size()) == 0);
+  return std::equal(key_.begin(), key_.end(), key_der.begin(), key_der.end());
 }
 
 bool PolicyKey::HaveCheckedDisk() const {
@@ -56,19 +56,17 @@ bool PolicyKey::PopulateFromDiskIfPossible() {
     return false;
   }
 
-  std::vector<uint8_t> buffer(safe_file_size, 0);
-  int data_read = base::ReadFile(key_file_, reinterpret_cast<char*>(&buffer[0]),
-                                 safe_file_size);
-  if (data_read != safe_file_size) {
+  std::optional<std::vector<uint8_t>> buffer = base::ReadFileToBytes(key_file_);
+  if (!buffer || buffer->size() != safe_file_size) {
     PLOG(ERROR) << key_file_.value() << " could not be read in its entirety!";
     return false;
   }
 
-  if (!nss_->CheckPublicKeyBlob(buffer)) {
+  if (!nss_->CheckPublicKeyBlob(*buffer)) {
     LOG(ERROR) << "Policy key " << key_file_.value() << " is corrupted!";
     return false;
   }
-  key_.assign(buffer.begin(), buffer.end());
+  key_ = std::move(buffer).value();
   return true;
 }
 
