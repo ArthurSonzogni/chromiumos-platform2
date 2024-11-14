@@ -13,8 +13,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
-#include <libstorage/platform/mock_platform.h>
 #include <libhwsec-foundation/tlcl_wrapper/fake_tlcl_wrapper.h>
+#include <libstorage/platform/mock_platform.h>
 #include <openssl/sha.h>
 
 #include "init/tpm_encryption/tpm.h"
@@ -27,7 +27,7 @@ const size_t kEncryptionKeySize = 32;
 
 #if USE_TPM2
 
-#ifndef USE_TPM_DYNAMIC
+#if !USE_TPM_DYNAMIC
 
 const uint32_t kEncStatefulAttributesTpm2 =
     TPMA_NV_AUTHWRITE | TPMA_NV_AUTHREAD | TPMA_NV_WRITEDEFINE |
@@ -377,7 +377,7 @@ class EncryptionKeyTest : public testing::Test {
 
 #if USE_TPM2
 
-#ifndef USE_TPM_DYNAMIC
+#if !USE_TPM_DYNAMIC
 TEST_F(EncryptionKeyTest, TpmClearNoSpaces) {
   ExpectFreshKey();
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
