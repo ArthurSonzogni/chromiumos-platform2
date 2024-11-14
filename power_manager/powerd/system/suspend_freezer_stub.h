@@ -22,7 +22,6 @@ class SuspendFreezerStub : public SuspendFreezerInterface {
     return FreezeResult::SUCCESS;
   }
   bool ThawProcesses() override { return true; }
-  bool ThawEssentialProcesses() override { return true; }
 };
 
 }  // namespace power_manager::system

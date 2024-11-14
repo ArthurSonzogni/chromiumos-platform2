@@ -46,10 +46,6 @@ class SuspendFreezerInterface {
                                        bool wakeup_count_valid) = 0;
   // Thaw a subset of userspace processes.
   virtual bool ThawProcesses() = 0;
-
-  // Thaw a subset of userspace processes prior to evicting key. This will be
-  // the login CGroup.
-  virtual bool ThawEssentialProcesses() = 0;
 };
 
 class SuspendFreezer : public SuspendFreezerInterface {
@@ -92,10 +88,6 @@ class SuspendFreezer : public SuspendFreezerInterface {
   FreezeResult FreezeUserspace(uint64_t wakeup_count,
                                bool wakeup_count_valid) override;
   bool ThawProcesses() override;
-
-  // Thaw a subset of userspace processes prior to evicting key. This will be
-  // the login CGroup.
-  bool ThawEssentialProcesses() override;
 
  private:
   struct CgroupNode {
