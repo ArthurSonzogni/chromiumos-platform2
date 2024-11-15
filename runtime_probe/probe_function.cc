@@ -111,8 +111,7 @@ bool ProbeFunction::ParseArguments(const base::Value::Dict& arguments) {
 }
 
 DataType ProbeFunction::EvalImpl() const {
-  NOTREACHED_NORETURN()
-      << "Either |EvalImpl| or |EvalAsyncImpl| should be implemented.";
+  NOTREACHED() << "Either |EvalImpl| or |EvalAsyncImpl| should be implemented.";
 }
 
 void ProbeFunction::EvalAsyncImpl(
