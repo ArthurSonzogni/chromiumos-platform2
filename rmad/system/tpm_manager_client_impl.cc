@@ -56,7 +56,7 @@ GscDevice TpmManagerGscDeviceToRmadGscDevice(tpm_manager::GscDevice device) {
     default:
       break;
   }
-  NOTREACHED_NORETURN();
+  NOTREACHED();
 }
 
 }  // namespace

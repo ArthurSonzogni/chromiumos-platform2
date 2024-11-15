@@ -277,7 +277,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
           break;
         default:
           feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_0;
-          NOTREACHED_NORETURN();
+          NOTREACHED();
       }
     }
   } else {
