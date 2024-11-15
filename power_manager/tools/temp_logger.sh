@@ -10,7 +10,7 @@ log_message() {
 }
 
 get_fans_speed() {
-  if [ ! -d /dev/cros_ec ]; then
+  if [ ! -e /dev/cros_ec ]; then
     return
   fi
 
