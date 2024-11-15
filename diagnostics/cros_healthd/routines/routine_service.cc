@@ -167,7 +167,7 @@ template <typename Arg>
 CreateRoutineResult CreateRoutineHelperSync(Context* context, Arg arg) {
   static_assert(false,
                 "CreateRoutineHelperSync for specific type not defined.");
-  NOTREACHED_NORETURN();
+  NOTREACHED();
 }
 
 // Default implementation of `CreateRoutineHelper` calls
@@ -373,7 +373,7 @@ void RoutineService::HandleCheckAndCreateRoutineResponseForCreateRoutine(
   switch (result.error()->which()) {
     case mojom::SupportStatus::Tag::kUnmappedUnionField:
     case mojom::SupportStatus::Tag::kSupported:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     case mojom::SupportStatus::Tag::kException:
       routine_receiver.ResetWithReason(
           static_cast<uint32_t>(mojom::Exception::Reason::kUnexpected),

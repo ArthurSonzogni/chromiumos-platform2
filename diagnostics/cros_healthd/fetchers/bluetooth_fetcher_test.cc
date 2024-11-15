@@ -96,7 +96,7 @@ std::string ConvertDeviceType(mojom::BluetoothDeviceType type) {
       return "DUAL";
     case mojom::BluetoothDeviceType::kUnknown:
     case mojom::BluetoothDeviceType::kUnmappedEnumField:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
   }
 }
 

@@ -959,7 +959,7 @@ base::Value::Dict GetBusDeviceJson(const mojom::BusDevicePtr& device) {
       break;
     }
     case mojom::BusInfo::Tag::kUnmappedField: {
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     }
   }
   out_device.Set("bus_info", std::move(out_bus_info));

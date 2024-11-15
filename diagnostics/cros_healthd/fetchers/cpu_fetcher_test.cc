@@ -154,7 +154,7 @@ class FakeUdevDevice : public brillo::MockUdevDevice {
           } else if (std::string(key) == kThermalAttributeTemperature) {
             return temperature_.c_str();
           } else {
-            NOTREACHED_NORETURN() << "Unknown key: " << key;
+            NOTREACHED() << "Unknown key: " << key;
           }
         });
     ON_CALL(*this, GetSysPath).WillByDefault([this]() {
@@ -455,7 +455,7 @@ class CpuFetcherTest : public BaseFileTest {
     } else if (logical_id == kThirdLogicalId) {
       return kThirdCStates;
     }
-    NOTREACHED_NORETURN();
+    NOTREACHED();
   }
 
   // Verifies that the received PhysicalCpuInfoPtrs matched the expected default

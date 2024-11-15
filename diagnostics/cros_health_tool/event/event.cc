@@ -117,7 +117,7 @@ int event_main(int argc, char** argv) {
         event_subscriber.SubscribeToNetworkEvents();
         break;
       case mojom::EventCategoryEnum::kUnmappedEnumField:
-        NOTREACHED_NORETURN();
+        NOTREACHED();
     }
 
     std::cout << "Subscribe to " << FLAGS_category << " events successfully."

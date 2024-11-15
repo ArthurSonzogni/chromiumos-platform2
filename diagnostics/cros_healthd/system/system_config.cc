@@ -95,7 +95,7 @@ PathLiteral GetSensorPropertyPath(SensorType sensor) {
     case SensorType::kLidGravitySensor:
       // There are no |has-base-gravity-sensor| and |has-lid-gravity-sensor|
       // configurations.
-      NOTREACHED_NORETURN();
+      NOTREACHED();
   }
 }
 

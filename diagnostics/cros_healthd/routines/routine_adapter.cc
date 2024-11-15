@@ -111,14 +111,14 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
   }
   switch (detail->which()) {
     case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
-      NOTREACHED_NORETURN() << "Got unrecognized RoutineDetail";
+      NOTREACHED() << "Got unrecognized RoutineDetail";
     }
     // Not exposed in the v1 interface.
     case mojom::RoutineDetail::Tag::kCameraAvailability:
     case mojom::RoutineDetail::Tag::kNetworkBandwidth:
     case mojom::RoutineDetail::Tag::kCameraFrameAnalysis:
     case mojom::RoutineDetail::Tag::kBatteryDischarge:
-      NOTREACHED_NORETURN() << "Not exposed in the v1 interface";
+      NOTREACHED() << "Not exposed in the v1 interface";
     case mojom::RoutineDetail::Tag::kMemory:
       return ConvertToValueInV1Format(detail->get_memory());
     case mojom::RoutineDetail::Tag::kAudioDriver:
@@ -272,7 +272,7 @@ void RoutineAdapter::PopulateStatusUpdate(bool include_output,
 
   switch (cached_state_->state_union->which()) {
     case mojom::RoutineStateUnion::Tag::kUnrecognizedArgument: {
-      NOTREACHED_NORETURN() << "Got unrecognized RoutineState";
+      NOTREACHED() << "Got unrecognized RoutineState";
       break;
     }
     case mojom::RoutineStateUnion::Tag::kInitialized: {

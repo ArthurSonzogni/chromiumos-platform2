@@ -41,7 +41,7 @@ void FakeSensorDevice::GetAttributes(const std::vector<std::string>& attr_names,
     } else if (attr_names[i] == cros::mojom::kLocation) {
       values[i] = sensor_location_;
     } else {
-      NOTREACHED_NORETURN() << "Unexpected attribute name: " << attr_names[i];
+      NOTREACHED() << "Unexpected attribute name: " << attr_names[i];
     }
   }
   std::move(callback).Run(values);

@@ -7,8 +7,8 @@
 #include <string>
 #include <utility>
 
-#include <base/values.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/values.h>
 
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -21,7 +21,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 std::string EnumToString(mojom::HardwarePresenceStatus state) {
   switch (state) {
     case mojom::HardwarePresenceStatus::kUnmappedEnumField:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     case mojom::HardwarePresenceStatus::kMatched:
       return "Matched";
     case mojom::HardwarePresenceStatus::kNotMatched:
@@ -35,7 +35,7 @@ std::string EnumToStringInSensitiveSensorV1Format(
     mojom::HardwarePresenceStatus state) {
   switch (state) {
     case mojom::HardwarePresenceStatus::kUnmappedEnumField:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     case mojom::HardwarePresenceStatus::kMatched:
       return "passed";
     case mojom::HardwarePresenceStatus::kNotMatched:
@@ -49,7 +49,7 @@ std::string EnumToString(
     mojom::BluetoothPairingPeripheralInfo_PairError error) {
   switch (error) {
     case mojom::BluetoothPairingPeripheralInfo_PairError::kUnmappedEnumField:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     case mojom::BluetoothPairingPeripheralInfo_PairError::kNone:
       return "None";
     case mojom::BluetoothPairingPeripheralInfo_PairError::kBondFailed:
@@ -67,7 +67,7 @@ std::string EnumToString(
     mojom::BluetoothPairingPeripheralInfo_ConnectError error) {
   switch (error) {
     case mojom::BluetoothPairingPeripheralInfo_ConnectError::kUnmappedEnumField:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     case mojom::BluetoothPairingPeripheralInfo_ConnectError::kNone:
       return "None";
     case mojom::BluetoothPairingPeripheralInfo_ConnectError::kNoConnectedEvent:
@@ -81,7 +81,7 @@ std::string EnumToString(
     mojom::BluetoothPairingPeripheralInfo_AddressType address_type) {
   switch (address_type) {
     case mojom::BluetoothPairingPeripheralInfo_AddressType::kUnmappedEnumField:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     case mojom::BluetoothPairingPeripheralInfo_AddressType::kUnknown:
       return "Unknown";
     case mojom::BluetoothPairingPeripheralInfo_AddressType::kPublic:
@@ -94,7 +94,7 @@ std::string EnumToString(
 std::string EnumToString(mojom::CameraSubtestResult subtest_result) {
   switch (subtest_result) {
     case mojom::CameraSubtestResult::kUnmappedEnumField:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     case mojom::CameraSubtestResult::kNotRun:
       return "Not Run";
     case mojom::CameraSubtestResult::kPassed:
@@ -107,7 +107,7 @@ std::string EnumToString(mojom::CameraSubtestResult subtest_result) {
 std::string EnumToString(mojom::SensitiveSensorInfo::Type type) {
   switch (type) {
     case mojom::SensitiveSensorInfo::Type::kUnmappedEnumField:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     case mojom::SensitiveSensorInfo::Type::kAccel:
       return "Accel";
     case mojom::SensitiveSensorInfo::Type::kGyro:
@@ -122,7 +122,7 @@ std::string EnumToString(mojom::SensitiveSensorInfo::Type type) {
 std::string EnumToString(mojom::CameraFrameAnalysisRoutineDetail::Issue issue) {
   switch (issue) {
     case mojom::CameraFrameAnalysisRoutineDetail::Issue::kUnmappedEnumField:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     case mojom::CameraFrameAnalysisRoutineDetail::Issue::kNone:
       return "None";
     case mojom::CameraFrameAnalysisRoutineDetail::Issue::

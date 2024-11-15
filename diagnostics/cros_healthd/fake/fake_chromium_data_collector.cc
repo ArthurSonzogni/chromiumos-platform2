@@ -52,7 +52,7 @@ void FakeChromiumDataCollector::SetPrivacyScreenState(
 
 void FakeChromiumDataCollector::DEPRECATED_SetAudioOutputMute(
     bool mute_on, DEPRECATED_SetAudioOutputMuteCallback callback) {
-  NOTREACHED_NORETURN();
+  NOTREACHED();
 }
 
 }  // namespace diagnostics

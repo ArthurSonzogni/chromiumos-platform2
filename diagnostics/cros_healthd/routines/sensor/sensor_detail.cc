@@ -56,7 +56,7 @@ std::string ConvertDeviceTypeToChannelPrefix(cros::mojom::DeviceType type) {
       return cros::mojom::kMagnetometerChannel;
     default:
       // The other sensor types are not supported in this routine.
-      NOTREACHED_NORETURN();
+      NOTREACHED();
   }
 }
 
@@ -73,7 +73,7 @@ mojom::SensitiveSensorInfo::Type Convert(cros::mojom::DeviceType type) {
       return mojom::SensitiveSensorInfo::Type::kGravity;
     default:
       // The other sensor types are not supported in this routine.
-      NOTREACHED_NORETURN();
+      NOTREACHED();
   }
 }
 

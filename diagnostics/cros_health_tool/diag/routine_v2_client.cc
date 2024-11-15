@@ -76,7 +76,7 @@ void RoutineV2Client::OnRoutineStateChange(mojom::RoutineStatePtr state) {
       OnFinishedState(state->percentage, state->state_union->get_finished());
       return;
     case mojom::RoutineStateUnion::Tag::kUnrecognizedArgument:
-      NOTREACHED_NORETURN() << "Got unrecognized RoutineState";
+      NOTREACHED() << "Got unrecognized RoutineState";
   }
 }
 
@@ -137,7 +137,7 @@ void RoutineV2Client::OnRunningState(
   base::Value::Dict running_value;
   switch (running->info->which()) {
     case mojom::RoutineRunningInfo::Tag::kUnrecognizedArgument: {
-      NOTREACHED_NORETURN() << "Got unrecognized RoutineRunningInfo";
+      NOTREACHED() << "Got unrecognized RoutineRunningInfo";
     }
     case mojom::RoutineRunningInfo::Tag::kNetworkBandwidth:
       running_value = ConvertToValue(running->info->get_network_bandwidth());
@@ -200,7 +200,7 @@ void RoutineV2Client::OnFinishedState(
   if (!detail.is_null()) {
     switch (detail->which()) {
       case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
-        NOTREACHED_NORETURN() << "Got unrecognized RoutineDetail";
+        NOTREACHED() << "Got unrecognized RoutineDetail";
         break;
       }
       case mojom::RoutineDetail::Tag::kMemory:

@@ -31,7 +31,7 @@ std::string GetMetricName(mojom::ProbeCategoryEnum category) {
     case mojom::ProbeCategoryEnum::kUnknown:
       // `kUnknown` should have been filtered out in
       // `SendTelemetryResultToUMA()`.
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     case mojom::ProbeCategoryEnum::kBattery:
       return metrics_name::kTelemetryResultBattery;
     case mojom::ProbeCategoryEnum::kCpu:
