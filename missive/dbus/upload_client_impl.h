@@ -5,8 +5,6 @@
 #ifndef MISSIVE_DBUS_UPLOAD_CLIENT_IMPL_H_
 #define MISSIVE_DBUS_UPLOAD_CLIENT_IMPL_H_
 
-#include "missive/dbus/upload_client.h"
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -19,6 +17,7 @@
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
+#include "missive/dbus/upload_client.h"
 #include "missive/health/health_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/disconnectable_client.h"
@@ -38,7 +37,7 @@ class UploadClientImpl : public UploadClient {
   // `UploadClient` overrides.
   void SendEncryptedRecords(
       std::vector<EncryptedRecord> records,
-      bool need_encryption_keys,
+      bool need_encryption_key,
       scoped_refptr<HealthModule> health_module,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
@@ -61,7 +60,7 @@ class UploadClientImpl : public UploadClient {
   friend class base::RefCountedDeleteOnSequence<UploadClientImpl>;
   friend class base::DeleteHelper<UploadClientImpl>;
   void MaybeMakeCall(std::vector<EncryptedRecord> records,
-                     const bool need_encryption_keys,
+                     const bool need_encryption_key,
                      scoped_refptr<HealthModule> health_module,
                      uint64_t remaining_storage_capacity,
                      std::optional<uint64_t> new_events_rate,

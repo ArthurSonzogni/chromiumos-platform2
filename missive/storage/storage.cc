@@ -269,7 +269,7 @@ void Storage::Create(
         // Encryption key has been found and set up. Must be available now.
         CHECK(storage_->encryption_module_->has_encryption_key());
         // Enable periodic updates of the key.
-        storage_->key_delivery_->StartPeriodicKeyUpdate();
+        storage_->key_delivery_->ScheduleNextKeyUpdate();
       } else {
         LOG(WARNING)
             << "Encryption is enabled, but the key is not available yet, "
@@ -360,6 +360,7 @@ Storage::Storage(const Storage::Settings& settings)
       health_module_(settings.health_module),
       encryption_module_(settings.encryption_module),
       key_delivery_(KeyDelivery::Create(options_.key_check_period(),
+                                        options_.lazy_key_check_period(),
                                         settings.encryption_module,
                                         settings.async_start_upload_cb)),
       compression_module_(settings.compression_module),

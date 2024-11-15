@@ -46,7 +46,7 @@ class UploadClient : public base::RefCountedDeleteOnSequence<UploadClient> {
   // `remaining_storage_capacity`).
   virtual void SendEncryptedRecords(
       std::vector<EncryptedRecord> records,
-      bool need_encryption_keys,
+      bool need_encryption_key,
       scoped_refptr<HealthModule> health_module,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,

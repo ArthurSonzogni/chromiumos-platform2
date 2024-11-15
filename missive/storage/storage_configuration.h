@@ -8,6 +8,7 @@
 #include <atomic>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -76,7 +77,10 @@ class StorageOptions {
   static constexpr base::TimeDelta kFailedUploadRetryDelay = base::Seconds(1);
 
   // Default period for Storage to check for encryption key.
+  // Eagerly retried, if there is no key:
   static constexpr base::TimeDelta kDefaultKeyCheckPeriod = base::Seconds(5);
+  // Lazily retried, if the key is available (although could be outdated):
+  static constexpr base::TimeDelta kLazyDefaultKeyCheckPeriod = base::Hours(8);
 
   // Default delay until unused queue is garbage collected.
   static constexpr base::TimeDelta kDefaultQueueGarbageCollectionPeriod =
@@ -153,8 +157,10 @@ class StorageOptions {
         base::MakeRefCounted<ResourceManager>(max_total_memory_size);
     return *this;
   }
-  StorageOptions& set_key_check_period(base::TimeDelta key_check_period) {
+  StorageOptions& set_key_check_period(base::TimeDelta key_check_period,
+                                       base::TimeDelta lazy_key_check_period) {
     key_check_period_ = key_check_period;
+    lazy_key_check_period_ = lazy_key_check_period;
     return *this;
   }
   StorageOptions& set_inactive_queue_self_destruct_delay(
@@ -192,6 +198,9 @@ class StorageOptions {
   }
 
   base::TimeDelta key_check_period() const { return key_check_period_; }
+  base::TimeDelta lazy_key_check_period() const {
+    return lazy_key_check_period_;
+  }
 
   base::TimeDelta inactive_queue_self_destruct_delay() const {
     return inactive_queue_self_destruct_delay_;
@@ -210,7 +219,9 @@ class StorageOptions {
 
   // Frequency with which Storage will check to see if a new encryption key
   // should be requested.
-  base::TimeDelta key_check_period_;
+  base::TimeDelta key_check_period_;       // eager - when there is no key.
+  base::TimeDelta lazy_key_check_period_;  // lazy - when the key is present,
+                                           // but may be outdated.
 
   // Delay until inactive queue self-destruct.
   base::TimeDelta inactive_queue_self_destruct_delay_ =

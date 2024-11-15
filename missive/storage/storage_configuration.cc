@@ -41,7 +41,8 @@ void StorageOptions::MultiGenerational::set(Priority priority, bool state) {
 StorageOptions::StorageOptions(
     base::RepeatingCallback<void(Priority, QueueOptions&)>
         modify_queue_options_for_tests)
-    : key_check_period_(kDefaultKeyCheckPeriod),  // 1 second by default
+    : key_check_period_(kDefaultKeyCheckPeriod),
+      lazy_key_check_period_(kLazyDefaultKeyCheckPeriod),
       is_multi_generational_(base::MakeRefCounted<MultiGenerational>()),
       memory_resource_(base::MakeRefCounted<ResourceManager>(
           4u * 1024uLL * 1024uLL)),  // 4 MiB by default

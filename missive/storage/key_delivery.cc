@@ -29,25 +29,27 @@ namespace reporting {
 // Factory method, returns smart pointer with deletion on sequence.
 std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter> KeyDelivery::Create(
     base::TimeDelta key_check_period,
+    base::TimeDelta lazy_key_check_period,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb) {
   auto sequence_task_runner = base::ThreadPool::CreateSequencedTaskRunner(
       {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   return std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter>(
-      new KeyDelivery(key_check_period, encryption_module,
-                      async_start_upload_cb, sequence_task_runner),
+      new KeyDelivery(key_check_period, lazy_key_check_period,
+                      encryption_module, async_start_upload_cb,
+                      sequence_task_runner),
       base::OnTaskRunnerDeleter(sequence_task_runner));
 }
 
 KeyDelivery::~KeyDelivery() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  upload_timer_.Stop();
+  request_timer_.Stop();
   PostResponses(
       Status(error::UNAVAILABLE, "Key not delivered - Storage shuts down"));
 }
 
 void KeyDelivery::Request(RequestCallback callback) {
-  StartPeriodicKeyUpdate();
+  ScheduleNextKeyUpdate();
   sequenced_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&KeyDelivery::EnqueueRequestAndPossiblyStart,
@@ -57,16 +59,16 @@ void KeyDelivery::Request(RequestCallback callback) {
 void KeyDelivery::OnKeyUpdateResult(Status status) {
   // Log the request status in UMA.
   const auto res = analytics::Metrics::SendEnumToUMA(
-      /*name=*/KeyDelivery::kResultUma, status.code(), error::Code::MAX_VALUE);
-  LOG_IF(ERROR, !res) << "SendEnumToUMA failure, " << KeyDelivery::kResultUma
-                      << " " << static_cast<int>(status.code());
+      /*name=*/kResultUma, status.code(), error::Code::MAX_VALUE);
+  LOG_IF(ERROR, !res) << "SendEnumToUMA failure, " << kResultUma << " "
+                      << static_cast<int>(status.code());
 
   sequenced_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&KeyDelivery::PostResponses,
                                 weak_ptr_factory_.GetWeakPtr(), status));
 }
 
-void KeyDelivery::StartPeriodicKeyUpdate() {
+void KeyDelivery::ScheduleNextKeyUpdate() {
   sequenced_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
@@ -75,12 +77,11 @@ void KeyDelivery::StartPeriodicKeyUpdate() {
               return;
             }
             DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-            if (self->upload_timer_.IsRunning()) {
-              // We've already started the periodic key update.
-              return;
-            }
-            self->upload_timer_.Start(
-                FROM_HERE, self->key_check_period_,
+            self->request_timer_.Start(
+                FROM_HERE,
+                self->encryption_module_->has_encryption_key()
+                    ? self->lazy_key_check_period_
+                    : self->key_check_period_,
                 base::BindRepeating(&KeyDelivery::RequestKeyIfNeeded, self));
           },
           weak_ptr_factory_.GetWeakPtr()));
@@ -88,11 +89,13 @@ void KeyDelivery::StartPeriodicKeyUpdate() {
 
 KeyDelivery::KeyDelivery(
     base::TimeDelta key_check_period,
+    base::TimeDelta lazy_key_check_period,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
     : sequenced_task_runner_(sequenced_task_runner),
       key_check_period_(key_check_period),
+      lazy_key_check_period_(lazy_key_check_period),
       async_start_upload_cb_(async_start_upload_cb),
       encryption_module_(encryption_module) {
   CHECK(encryption_module_) << "Encryption module pointer not set";
@@ -103,6 +106,7 @@ void KeyDelivery::RequestKeyIfNeeded() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (encryption_module_->has_encryption_key() &&
       !encryption_module_->need_encryption_key()) {
+    ScheduleNextKeyUpdate();
     return;
   }
   // Request the key, do not expect any callback.

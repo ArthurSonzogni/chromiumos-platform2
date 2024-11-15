@@ -2127,7 +2127,8 @@ TEST_P(LegacyStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
 
   // Initialize Storage with failure to deliver key.
   ASSERT_FALSE(storage_) << "Legacy storage already assigned";
-  options_.set_key_check_period(base::Seconds(4));
+  options_.set_key_check_period(/*key_check_period=*/base::Seconds(4),
+                                /*lazy_key_check_period=*/base::Seconds(30));
   StatusOr<scoped_refptr<Storage>> storage_result =
       CreateTestStorageWithFailedKeyDelivery(
           BuildTestStorageOptions(),

@@ -27,12 +27,13 @@ class KeyDelivery {
  public:
   using RequestCallback = base::OnceCallback<void(Status)>;
 
-  // Key delivery UMA name
+  // Key delivery UMA name.
   static constexpr char kResultUma[] = "Platform.Missive.KeyDeliveryResult";
 
   // Factory method, returns smart pointer with deletion on sequence.
   static std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter> Create(
       base::TimeDelta key_check_period,
+      base::TimeDelta lazy_key_check_period,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb);
 
@@ -45,7 +46,7 @@ class KeyDelivery {
   // Starts periodic updates of the key (every time `period` has passed).
   // Does nothing if the periodic update is already scheduled.
   // Should be called after the initial key is set up.
-  void StartPeriodicKeyUpdate();
+  void ScheduleNextKeyUpdate();
 
   // Called upon key update success/failure.
   void OnKeyUpdateResult(Status status);
@@ -54,6 +55,7 @@ class KeyDelivery {
   // Constructor called by factory only.
   explicit KeyDelivery(
       base::TimeDelta key_check_period,
+      base::TimeDelta lazy_key_check_period,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
@@ -71,7 +73,10 @@ class KeyDelivery {
   SEQUENCE_CHECKER(sequence_checker_);
 
   // Period of checking possible key update.
-  const base::TimeDelta key_check_period_;
+  const base::TimeDelta key_check_period_;  // eager - when there is no key.
+  const base::TimeDelta
+      lazy_key_check_period_;  // lazy - when the key is present, but may be
+                               // outdated.
 
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
@@ -83,8 +88,9 @@ class KeyDelivery {
   // request the key.
   const scoped_refptr<EncryptionModuleInterface> encryption_module_;
 
-  // Used to periodically trigger check for encryption key
-  base::RepeatingTimer upload_timer_ GUARDED_BY_CONTEXT(sequence_checker_);
+  // Used to schedule the next check for encryption key.
+  base::RetainingOneShotTimer request_timer_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Weak pointer factory.
   base::WeakPtrFactory<KeyDelivery> weak_ptr_factory_{this};

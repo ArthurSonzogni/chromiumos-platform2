@@ -2193,7 +2193,8 @@ TEST_P(StorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
 
   // Initialize Storage with failure to deliver key.
   ASSERT_FALSE(storage_) << "StorageTest already assigned";
-  options_.set_key_check_period(base::Seconds(4));
+  options_.set_key_check_period(/*key_check_period=*/base::Seconds(4),
+                                /*lazy_key_check_period=*/base::Seconds(30));
   StatusOr<scoped_refptr<Storage>> storage_result = CreateTestStorage(
       BuildTestStorageOptions(),
       // Set the renew encryption key period to be 1 second less than the
@@ -2287,7 +2288,8 @@ TEST_P(StorageTest, MultipleUsersWriteSamePriorityAndUpload) {
 TEST_P(StorageTest, GarbageCollectEmptyMultigenerationQueueWithDefaultPeriod) {
   StorageOptions options(BuildTestStorageOptions());
   // Extend key update period to avoid extraneous key delivery.
-  options.set_key_check_period(base::Days(30));
+  options.set_key_check_period(/*key_check_period=*/base::Days(30),
+                               /*lazy_key_check_period=*/base::Days(30));
   // Only multigeneration queues are garbage collected.
   options.set_multi_generational(MANUAL_BATCH, true);
 
@@ -2348,7 +2350,8 @@ TEST_P(StorageTest, GarbageCollectEmptyMultigenerationQueueWithDefaultPeriod) {
 TEST_P(StorageTest, DoNotGarbageCollectQueuesWithUnconfirmedRecords) {
   StorageOptions options(BuildTestStorageOptions());
   // Extend key update period to avoid extraneous key delivery.
-  options.set_key_check_period(base::Days(30));
+  options.set_key_check_period(/*key_check_period=*/base::Days(30),
+                               /*lazy_key_check_period=*/base::Days(30));
   // Use a shorter collection period to keep test fast.
   options.set_inactive_queue_self_destruct_delay(base::Hours(1));
   options.set_multi_generational(MANUAL_BATCH, true);
@@ -2371,7 +2374,8 @@ TEST_P(StorageTest, DoNotGarbageCollectQueuesWithUnconfirmedRecords) {
 TEST_P(StorageTest, LegacyQueuesAreNeverGarbageCollected) {
   StorageOptions options(BuildTestStorageOptions());
   // Extend key update period to avoid extraneous key delivery.
-  options.set_key_check_period(base::Days(30));
+  options.set_key_check_period(/*key_check_period=*/base::Days(30),
+                               /*lazy_key_check_period=*/base::Days(30));
   // Set queue to legacy mode.
   options.set_multi_generational(MANUAL_BATCH, false);
   ASSERT_THAT(options.inactive_queue_self_destruct_delay(),

@@ -53,8 +53,7 @@ class UploaderInterface {
   // Asynchronous callback that instantiates uploader.
   // To start upload, call |AsyncStartUploaderCb| on a thread pool. Once
   // uploader is instantiated, |AsyncStartUploaderCb| calls its parameter
-  // passing uploader instance (or error Status). Set |need_encryption_key| if
-  // key is needed (initially or periodically).
+  // passing uploader instance (or error Status).
   using UploaderInterfaceResultCb =
       base::OnceCallback<void(StatusOr<std::unique_ptr<UploaderInterface>>)>;
   // Callback type for asynchronous UploadInterface provider.

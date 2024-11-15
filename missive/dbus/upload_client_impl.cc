@@ -118,7 +118,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
  public:
   UploadEncryptedRecordDelegate(
       std::vector<EncryptedRecord> records,
-      const bool need_encryption_keys,
+      const bool need_encryption_key,
       scoped_refptr<HealthModule> health_module,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
@@ -134,7 +134,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
     for (const auto& record : records) {
       request_.add_encrypted_record()->CheckTypeAndMergeFrom(record);
     }
-    request_.set_need_encryption_keys(need_encryption_keys);
+    request_.set_need_encryption_keys(need_encryption_key);
     request_.set_remaining_storage_capacity(remaining_storage_capacity);
     // If for some reason new events rate couldn't be calculated, leave the
     // field absent.
@@ -260,14 +260,14 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
 
 void UploadClientImpl::MaybeMakeCall(
     std::vector<EncryptedRecord> records,
-    const bool need_encryption_keys,
+    const bool need_encryption_key,
     scoped_refptr<HealthModule> health_module,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
     HandleUploadResponseCallback response_callback) {
   bus_->AssertOnOriginThread();
   auto delegate = std::make_unique<UploadEncryptedRecordDelegate>(
-      std::move(records), need_encryption_keys, std::move(health_module),
+      std::move(records), need_encryption_key, std::move(health_module),
       remaining_storage_capacity, new_events_rate, bus_, chrome_proxy_,
       std::move(response_callback));
   GetDisconnectableClient()->MaybeMakeCall(std::move(delegate));
@@ -285,7 +285,7 @@ DisconnectableClient* UploadClientImpl::GetDisconnectableClient() {
 
 void UploadClientImpl::SendEncryptedRecords(
     std::vector<EncryptedRecord> records,
-    const bool need_encryption_keys,
+    const bool need_encryption_key,
     scoped_refptr<HealthModule> health_module,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
@@ -294,7 +294,7 @@ void UploadClientImpl::SendEncryptedRecords(
       FROM_HERE,
       base::BindOnce(
           &UploadClientImpl::MaybeMakeCall, weak_ptr_factory_.GetWeakPtr(),
-          std::move(records), need_encryption_keys, std::move(health_module),
+          std::move(records), need_encryption_key, std::move(health_module),
           remaining_storage_capacity, new_events_rate,
           Scoped<StatusOr<UploadEncryptedRecordResponse>>(
               std::move(response_callback),

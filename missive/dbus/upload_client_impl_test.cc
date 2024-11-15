@@ -147,7 +147,7 @@ TEST_F(UploadClientTest, SuccessfulCall) {
 
   upload_client_->SendEncryptedRecords(
       std::vector<EncryptedRecord>(1, encrypted_record),
-      /*need_encryption_keys=*/false, health_module_,
+      /*need_encryption_key=*/false, health_module_,
       /*remaining_storage_capacity=*/0U,
       /*new_events_rate=*/1U, std::move(response_callback));
   waiter.Wait();
@@ -191,7 +191,7 @@ TEST_F(UploadClientTest, CallUnavailable) {
 
   upload_client_->SendEncryptedRecords(
       std::vector<EncryptedRecord>(1, encrypted_record),
-      /*need_encryption_keys=*/false, health_module_,
+      /*need_encryption_key=*/false, health_module_,
       /*remaining_storage_capacity=*/std::numeric_limits<uint64_t>::max(),
       /*new_events_rate=*/10U, std::move(response_callback));
   waiter.Wait();
@@ -235,7 +235,7 @@ TEST_F(UploadClientTest, CallBecameUnavailable) {
 
   upload_client_->SendEncryptedRecords(
       std::vector<EncryptedRecord>(1, encrypted_record),
-      /*need_encryption_keys=*/false, health_module_,
+      /*need_encryption_key=*/false, health_module_,
       /*remaining_storage_capacity=*/3000U,
       /*new_events_rate=*/std::nullopt, std::move(response_callback));
 
