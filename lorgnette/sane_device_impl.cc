@@ -666,17 +666,17 @@ std::optional<ScannableArea> SaneDeviceImpl::CalculateScannableArea(
   // define the real maximum values.  If these are present, they are handled
   // automatically in the GetXRange and GetYRange functions.
   ScannableArea area;
-  std::optional<OptionRange> x_range = GetXRange(error);
-  if (!x_range.has_value()) {
+  std::optional<uint32_t> max_width = GetMaxWidth(error);
+  if (!max_width.has_value()) {
     return std::nullopt;  // brillo::Error::AddTo already called.
   }
-  area.set_width(x_range.value().size);
+  area.set_width(max_width.value());
 
-  std::optional<OptionRange> y_range = GetYRange(error);
-  if (!y_range.has_value()) {
+  std::optional<uint32_t> max_height = GetMaxHeight(error);
+  if (!max_height.has_value()) {
     return std::nullopt;  // brillo::Error::AddTo already called.
   }
-  area.set_height(y_range.value().size);
+  area.set_height(max_height.value());
   return area;
 }
 
@@ -825,8 +825,8 @@ std::optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
     return 0;
   }
 
-  std::optional<OptionRange> x_range = GetXRange(error);
-  if (!x_range.has_value()) {
+  std::optional<uint32_t> max_width = GetMaxWidth(error);
+  if (!max_width.has_value()) {
     return std::nullopt;  // brillo::Error::AddTo already called.
   }
 
@@ -836,20 +836,21 @@ std::optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
     return 0;
   }
 
-  int max_width = (x_range.value().size);
   int width = region.bottom_right_x() - region.top_left_x();
   // Calculate offset based off of Epson-provided math.
   uint32_t x_offset = 0;
   if (x_justification.value() == kRightJustification) {
-    x_offset = max_width - width;
+    x_offset = max_width.value() - width;
   } else if (x_justification.value() == kCenterJustification) {
-    x_offset = (max_width - width) / 2;
+    x_offset = (max_width.value() - width) / 2;
   }
 
   return x_offset;
 }
 
-std::optional<OptionRange> SaneDeviceImpl::GetXRange(brillo::ErrorPtr* error) {
+std::optional<uint32_t> SaneDeviceImpl::GetMaxWidth(brillo::ErrorPtr* error) {
+  // This function assumes the caller verified the presence of the tl-x and br-x
+  // options.
   ScanOption which_option;
   if (base::Contains(known_options_, kPageWidth)) {
     which_option = kPageWidth;
@@ -866,10 +867,12 @@ std::optional<OptionRange> SaneDeviceImpl::GetXRange(brillo::ErrorPtr* error) {
     return std::nullopt;
   }
 
-  return x_range;
+  return x_range.value().size;
 }
 
-std::optional<OptionRange> SaneDeviceImpl::GetYRange(brillo::ErrorPtr* error) {
+std::optional<uint32_t> SaneDeviceImpl::GetMaxHeight(brillo::ErrorPtr* error) {
+  // This function assumes the caller verified the presence of the tl-y and br-y
+  // options.
   ScanOption which_option;
   if (base::Contains(known_options_, kPageHeight)) {
     which_option = kPageHeight;
@@ -887,7 +890,7 @@ std::optional<OptionRange> SaneDeviceImpl::GetYRange(brillo::ErrorPtr* error) {
     return std::nullopt;
   }
 
-  return y_range;
+  return y_range.value().size;
 }
 
 }  // namespace lorgnette

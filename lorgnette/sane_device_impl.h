@@ -99,8 +99,8 @@ class SaneDeviceImpl : public SaneDevice {
       brillo::ErrorPtr* error);
   std::optional<uint32_t> GetJustificationXOffset(const ScanRegion& region,
                                                   brillo::ErrorPtr* error);
-  std::optional<OptionRange> GetXRange(brillo::ErrorPtr* error);
-  std::optional<OptionRange> GetYRange(brillo::ErrorPtr* error);
+  std::optional<uint32_t> GetMaxWidth(brillo::ErrorPtr* error);
+  std::optional<uint32_t> GetMaxHeight(brillo::ErrorPtr* error);
 
   LibsaneWrapper* libsane_;  // Not owned.
   SANE_Handle handle_;
