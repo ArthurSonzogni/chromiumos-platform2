@@ -161,5 +161,5 @@ int main(int argc, char* argv[]) {
                : EXIT_FAILURE;
   }
 
-  NOTREACHED_NORETURN();
+  NOTREACHED();
 }
