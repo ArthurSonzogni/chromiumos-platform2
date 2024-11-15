@@ -20,7 +20,9 @@
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
+#include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/bind_post_task.h>
@@ -29,8 +31,6 @@
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/threading/thread.h>
-#include <base/memory/scoped_refptr.h>
-#include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -463,11 +463,10 @@ void Storage::Write(Priority priority,
                   self->queues_container_->GetOrCreateGenerationGuid(dm_token,
                                                                      priority);
 
-              if (!generation_guid_result.has_value()) {
-                // This should never happen. We should always be able to create
-                // a generation guid if one doesn't exist.
-                NOTREACHED_NORETURN();
-              }
+              // This should never happen. We should always be able to create a
+              // generation guid if one doesn't exist.
+              CHECK(generation_guid_result.has_value());
+
               generation_guid = generation_guid_result.value();
             }
 
