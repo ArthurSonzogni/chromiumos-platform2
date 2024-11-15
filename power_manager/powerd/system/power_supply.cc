@@ -1392,7 +1392,7 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
     // and do not signal an error otherwise: b/291920258
     bool is_generic_battery_driver = false;
     prefs_->GetBool(kAllowZeroChargeReadOnACPref, &is_generic_battery_driver);
-    if (is_generic_battery_driver) {
+    if (charge_full > 0.0 && is_generic_battery_driver) {
       LOG(WARNING) << "Got reading with battery charge 0,"
                    << " battery may be dead.";
     } else {
