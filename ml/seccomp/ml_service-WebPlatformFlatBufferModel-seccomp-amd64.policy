@@ -50,6 +50,7 @@ socket: arg0 == AF_UNIX
 socketpair: arg0 == AF_UNIX
 uname: 1
 write: 1
+writev: 1
 set_robust_list: 1
 statx: 1
 sysinfo: 1

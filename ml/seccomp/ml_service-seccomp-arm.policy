@@ -110,6 +110,7 @@ uname: 1
 unshare: 1
 wait4: 1
 write: 1
+writev: 1
 
 ftruncate64: 1
 fallocate: 1

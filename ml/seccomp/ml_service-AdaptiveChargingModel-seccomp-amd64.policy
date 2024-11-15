@@ -65,6 +65,7 @@ socketpair: arg0 == AF_UNIX
 sysinfo: 1
 uname: 1
 write: 1
+writev: 1
 
 # For emitting perfetto trace events.
 clone: arg0 & CLONE_THREAD

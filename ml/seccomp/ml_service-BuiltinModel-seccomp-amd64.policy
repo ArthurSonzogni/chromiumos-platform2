@@ -50,6 +50,7 @@ statx: 1
 sysinfo: 1
 uname: 1
 write: 1
+writev: 1
 
 # For emitting perfetto trace events.
 access: 1

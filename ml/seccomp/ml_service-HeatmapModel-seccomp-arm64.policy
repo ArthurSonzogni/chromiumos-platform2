@@ -41,6 +41,7 @@ write: 1
 readlinkat: 1
 faccessat: 1
 pread64: 1
+writev: 1
 
 # For emitting perfetto trace events.
 clone: arg0 & CLONE_THREAD

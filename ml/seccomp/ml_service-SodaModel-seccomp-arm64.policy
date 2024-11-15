@@ -60,3 +60,4 @@ socket: arg0 == AF_UNIX
 socketpair: arg0 == AF_UNIX
 uname: 1
 write: 1
+writev: 1

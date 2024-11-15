@@ -40,6 +40,7 @@ uname: 1
 write: 1
 readlinkat: 1
 pread64: 1
+writev: 1
 
 # For emitting perfetto trace events.
 access: 1

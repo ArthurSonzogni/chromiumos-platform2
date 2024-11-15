@@ -65,6 +65,7 @@ statx: 1
 ugetrlimit: 1
 uname: 1
 write: 1
+writev: 1
 
 # For emitting perfetto trace events.
 clone: arg0 & CLONE_THREAD

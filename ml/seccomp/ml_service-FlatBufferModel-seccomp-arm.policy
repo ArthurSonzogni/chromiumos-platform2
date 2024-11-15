@@ -52,6 +52,7 @@ socketpair: arg0 == AF_UNIX
 statx: 1
 uname: 1
 write: 1
+writev: 1
 
 # For emitting perfetto trace events.
 access: 1
