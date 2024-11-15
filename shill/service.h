@@ -61,9 +61,6 @@ class StoreInterface;
 // becomes populated over time.
 class Service : public base::RefCounted<Service> {
  public:
-  using TrafficCounterMap = std::map<patchpanel::Client::TrafficSource,
-                                     patchpanel::Client::TrafficVector>;
-
   static constexpr std::string_view kErrorDetailsNone = "";
 
   // TODO(pstew): Storage constants shouldn't need to be public
@@ -744,13 +741,13 @@ class Service : public base::RefCounted<Service> {
   // Initializes the |traffic_counter_snapshot_| map to the raw counter values
   // received from patchpanel.
   mockable void InitializeTrafficCounterSnapshot(
-      const std::vector<patchpanel::Client::TrafficCounter>& raw_counters);
+      const Network::TrafficCounterMap& raw_counters);
   // Increment the |current_traffic_counters_| map by the difference between the
   // raw counter values received from patchpanel and the
   // traffic_counter_snapshot_ values, and then update the snapshots as well in
   // one atomic step.
   mockable void RefreshTrafficCounters(
-      const std::vector<patchpanel::Client::TrafficCounter>& raw_counters);
+      const Network::TrafficCounterMap& new_snapshot);
   // Requests raw traffic counters for from patchpanel for the Network currently
   // attached to this service and returns the result in |callback|.
   mockable void RequestTrafficCounters(
@@ -779,10 +776,10 @@ class Service : public base::RefCounted<Service> {
   void set_unreliable(bool unreliable) { unreliable_ = unreliable; }
   bool unreliable() const { return unreliable_; }
 
-  TrafficCounterMap& current_traffic_counters() {
+  Network::TrafficCounterMap& current_traffic_counters() {
     return current_traffic_counters_;
   }
-  TrafficCounterMap& traffic_counter_snapshot() {
+  Network::TrafficCounterMap& traffic_counter_snapshot() {
     return traffic_counter_snapshot_;
   }
 
@@ -1135,7 +1132,7 @@ class Service : public base::RefCounted<Service> {
   // through |callback|.
   void RequestTrafficCountersCallback(
       ResultVariantDictionariesCallback callback,
-      const std::vector<patchpanel::Client::TrafficCounter>& raw_counters);
+      const Network::TrafficCounterMap& raw_counters);
 
   // If |initialize| is true, fetches the raw traffic counters to initialize
   // |traffic_counter_snapshot_| with InitializeTrafficCounterSnapshot,
@@ -1255,9 +1252,9 @@ class Service : public base::RefCounted<Service> {
   ONCSource source_;
 
   // Current traffic counter values.
-  TrafficCounterMap current_traffic_counters_;
+  Network::TrafficCounterMap current_traffic_counters_;
   // Snapshot of the counter values from the last time they were refreshed.
-  TrafficCounterMap traffic_counter_snapshot_;
+  Network::TrafficCounterMap traffic_counter_snapshot_;
   // Represents when traffic counters were last reset.
   base::Time traffic_counter_reset_time_;
   // Task for periodically refreshing traffic counters when this Service has a

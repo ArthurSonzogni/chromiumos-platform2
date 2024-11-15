@@ -1368,7 +1368,7 @@ bool Network::IsTrafficCounterRequestInFlight() {
 }
 
 void Network::RequestTrafficCounters(
-    patchpanel::Client::GetTrafficCountersCallback callback) {
+    Network::GetTrafficCountersCallback callback) {
   bool is_request_in_flight = IsTrafficCounterRequestInFlight();
   traffic_counter_request_callbacks_.push_back(std::move(callback));
   if (is_request_in_flight) {
@@ -1384,12 +1384,19 @@ void Network::RequestTrafficCounters(
 }
 
 void Network::OnGetTrafficCountersResponse(
-    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
+    const std::vector<patchpanel::Client::TrafficCounter>& raw_counters) {
+  // Group raw counters by source over all other dimensions (IP family, ...).
+  TrafficCounterMap grouped_counters;
+  for (const auto& counter : raw_counters) {
+    grouped_counters[counter.source] += counter.traffic;
+  }
+
+  // Update all listeners.
   for (auto& ev : event_handlers_) {
-    ev.OnTrafficCountersUpdate(interface_index_, counters);
+    ev.OnTrafficCountersUpdate(interface_index_, grouped_counters);
   }
   for (auto& cb : traffic_counter_request_callbacks_) {
-    std::move(cb).Run(counters);
+    std::move(cb).Run(grouped_counters);
   }
   traffic_counter_request_callbacks_.clear();
 }

@@ -5,6 +5,7 @@
 #ifndef SHILL_NETWORK_NETWORK_H_
 #define SHILL_NETWORK_NETWORK_H_
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <ostream>
@@ -78,6 +79,11 @@ inline NetworkConfigArea& operator|=(NetworkConfigArea& a,
 // maintains the layer 3 configuration on this interface.
 class Network : public NetworkMonitor::ClientNetwork {
  public:
+  using TrafficCounterMap = std::map<patchpanel::Client::TrafficSource,
+                                     patchpanel::Client::TrafficVector>;
+  using GetTrafficCountersCallback =
+      base::OnceCallback<void(const TrafficCounterMap&)>;
+
   // Handler of the events of the Network class, can be added to (or removed
   // from) a Network object by `RegisterEventHandler()` (or
   // `UnregisterEventHandler()`). The object implements this interface must have
@@ -169,9 +175,8 @@ class Network : public NetworkMonitor::ClientNetwork {
     virtual void OnNetworkDestroyed(int network_id, int interface_index) {}
 
     // Called when a patchpanel TrafficCounters request completes.
-    virtual void OnTrafficCountersUpdate(
-        int interface_index,
-        const std::vector<patchpanel::Client::TrafficCounter>& counters) {}
+    virtual void OnTrafficCountersUpdate(int interface_index,
+                                         const TrafficCounterMap& counters) {}
   };
 
   // Options for starting a network.
@@ -467,8 +472,7 @@ class Network : public NetworkMonitor::ClientNetwork {
   // request is coalesced into the existing request and |callback| is queued
   // until the current request completes. A request for fetching counters can be
   // sent even if the Network is connecting or disconnected.
-  mockable void RequestTrafficCounters(
-      patchpanel::Client::GetTrafficCountersCallback callback);
+  mockable void RequestTrafficCounters(GetTrafficCountersCallback callback);
 
  protected:
   // Only NetworkManager could construct Network instances.
@@ -688,8 +692,7 @@ class Network : public NetworkMonitor::ClientNetwork {
   Resolver* resolver_;
 
   // All callbacks currently queued by callers of RequestTrafficCounters.
-  std::vector<patchpanel::Client::GetTrafficCountersCallback>
-      traffic_counter_request_callbacks_;
+  std::vector<GetTrafficCountersCallback> traffic_counter_request_callbacks_;
 
   // All the weak pointers created by this factory will be invalidated when the
   // Network state becomes kIdle. Can be useful when the concept of a connected

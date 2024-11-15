@@ -89,7 +89,7 @@ class MockNetwork : public Network {
   MOCK_METHOD(int, network_id, (), (const, override));
   MOCK_METHOD(void,
               RequestTrafficCounters,
-              (patchpanel::Client::GetTrafficCountersCallback),
+              (Network::GetTrafficCountersCallback),
               (override));
 };
 
@@ -123,7 +123,7 @@ class MockNetworkEventHandler : public Network::EventHandler {
   MOCK_METHOD(void, OnNetworkDestroyed, (int, int), (override));
   MOCK_METHOD(void,
               OnTrafficCountersUpdate,
-              (int, const std::vector<patchpanel::Client::TrafficCounter>&),
+              (int, const Network::TrafficCounterMap&),
               (override));
 };
 

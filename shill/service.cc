@@ -1698,34 +1698,29 @@ bool Service::IsMeteredByServiceProperties() const {
 }
 
 void Service::InitializeTrafficCounterSnapshot(
-    const std::vector<patchpanel::Client::TrafficCounter>& raw_counters) {
-  traffic_counter_snapshot_.clear();
-  for (const auto& counter : raw_counters) {
-    traffic_counter_snapshot_[counter.source] += counter.traffic;
-  }
+    const Network::TrafficCounterMap& raw_counters) {
+  traffic_counter_snapshot_ = raw_counters;
 }
 
 void Service::RefreshTrafficCounters(
-    const std::vector<patchpanel::Client::TrafficCounter>& raw_counters) {
-  // 1: Group all raw counters by source over all other dimensions (IP family,
-  // ...).
-  TrafficCounterMap new_snapshot;
-  for (const auto& counter : raw_counters) {
-    new_snapshot[counter.source] += counter.traffic;
-  }
-
-  // 2: Compute the delta compared to the last snapshot.
-  TrafficCounterMap delta = new_snapshot;
-  // 2.1: If any counter decreased it means that there has been a counter reset,
+    const Network::TrafficCounterMap& new_snapshot) {
+  // 1: Compute the delta between |new_snapshot| and |traffic_counter_snapshot_|
+  Network::TrafficCounterMap delta = new_snapshot;
+  // 1.1: If any counter decreased it means that there has been a counter reset,
   // maybe because of patchpanel restart. If that's the case simply take the new
-  // snapshot instead of computing delta. See b/324992164.
+  // snapshot instead of computing delta. A source found in the previous
+  // snapshot but not found in the new snapshot also indicates that a reset
+  // happened. See b/324992164.
   bool counter_reset = false;
   for (const auto& [source, traffic] : traffic_counter_snapshot_) {
-    const auto& new_traffic = new_snapshot[source];
-    if (new_traffic.rx_bytes < traffic.rx_bytes ||
-        new_traffic.tx_bytes < traffic.tx_bytes ||
-        new_traffic.rx_packets < traffic.rx_packets ||
-        new_traffic.tx_packets < traffic.tx_packets) {
+    const auto it = new_snapshot.find(source);
+    if (it == new_snapshot.end()) {
+      counter_reset = true;
+      break;
+    } else if (it->second.rx_bytes < traffic.rx_bytes ||
+               it->second.tx_bytes < traffic.tx_bytes ||
+               it->second.rx_packets < traffic.rx_packets ||
+               it->second.tx_packets < traffic.tx_packets) {
       counter_reset = true;
       break;
     }
@@ -1736,12 +1731,12 @@ void Service::RefreshTrafficCounters(
     }
   }
 
-  // 3: Update the current counters.
+  // 2: Update the current counters.
   for (const auto& [source, traffic] : delta) {
     current_traffic_counters_[source] += traffic;
   }
 
-  // 4: Replace the snapshot point.
+  // 3: Replace the snapshot point.
   traffic_counter_snapshot_ = new_snapshot;
 
   SaveToProfile();
@@ -1762,7 +1757,7 @@ void Service::GetTrafficCounters(ResultVariantDictionariesCallback callback) {
 
 void Service::RequestTrafficCountersCallback(
     ResultVariantDictionariesCallback callback,
-    const std::vector<patchpanel::Client::TrafficCounter>& raw_counters) {
+    const Network::TrafficCounterMap& raw_counters) {
   RefreshTrafficCounters(raw_counters);
   GetTrafficCounters(std::move(callback));
 }

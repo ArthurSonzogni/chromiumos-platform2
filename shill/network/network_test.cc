@@ -307,7 +307,7 @@ class NetworkTest : public ::testing::Test {
 
   MOCK_METHOD(void,
               RequestTrafficCountersCallback,
-              (const std::vector<patchpanel::Client::TrafficCounter>&),
+              (const Network::TrafficCounterMap&),
               ());
 
  protected:
@@ -2457,9 +2457,14 @@ TEST_F(NetworkTest, RequestTrafficCountersWhenConnected) {
 
   network_->set_state_for_testing(Network::State::kConnected);
 
-  EXPECT_CALL(*this, RequestTrafficCountersCallback(counters));
-  EXPECT_CALL(event_handler_, OnTrafficCountersUpdate(kTestIfindex, counters));
-  EXPECT_CALL(event_handler2_, OnTrafficCountersUpdate(kTestIfindex, counters));
+  Network::TrafficCounterMap counter_map;
+  counter_map[TrafficSource::kChrome] = counters0;
+  counter_map[TrafficSource::kUser] = counters1;
+  EXPECT_CALL(*this, RequestTrafficCountersCallback(counter_map));
+  EXPECT_CALL(event_handler_,
+              OnTrafficCountersUpdate(kTestIfindex, counter_map));
+  EXPECT_CALL(event_handler2_,
+              OnTrafficCountersUpdate(kTestIfindex, counter_map));
   network_->RequestTrafficCounters(base::BindOnce(
       &NetworkTest::RequestTrafficCountersCallback, base::Unretained(this)));
 
@@ -2485,9 +2490,56 @@ TEST_F(NetworkTest, RequestTrafficCountersWhenIdle) {
 
   network_->set_state_for_testing(Network::State::kIdle);
 
-  EXPECT_CALL(*this, RequestTrafficCountersCallback(counters));
-  EXPECT_CALL(event_handler_, OnTrafficCountersUpdate(kTestIfindex, counters));
-  EXPECT_CALL(event_handler2_, OnTrafficCountersUpdate(kTestIfindex, counters));
+  Network::TrafficCounterMap counter_map;
+  counter_map[TrafficSource::kArc] = counters0;
+  counter_map[TrafficSource::kSystem] = counters1;
+  EXPECT_CALL(*this, RequestTrafficCountersCallback(counter_map));
+  EXPECT_CALL(event_handler_,
+              OnTrafficCountersUpdate(kTestIfindex, counter_map));
+  EXPECT_CALL(event_handler2_,
+              OnTrafficCountersUpdate(kTestIfindex, counter_map));
+  network_->RequestTrafficCounters(base::BindOnce(
+      &NetworkTest::RequestTrafficCountersCallback, base::Unretained(this)));
+
+  Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(&event_handler_);
+  Mock::VerifyAndClearExpectations(&event_handler2_);
+}
+
+TEST_F(NetworkTest, RequestTrafficCountersWithSameSource) {
+  using TrafficSource = patchpanel::Client::TrafficSource;
+  patchpanel::Client::TrafficVector ipv4_counters = {
+      .rx_bytes = 2345,
+      .tx_bytes = 723,
+      .rx_packets = 10,
+      .tx_packets = 20,
+  };
+  patchpanel::Client::TrafficVector ipv6_counters = {
+      .rx_bytes = 4592,
+      .tx_bytes = 489,
+      .rx_packets = 73,
+      .tx_packets = 34,
+  };
+  std::vector<patchpanel::Client::TrafficCounter> counters = {
+      CreateCounter(ipv4_counters, TrafficSource::kChrome, kTestIfname),
+      CreateCounter(ipv6_counters, TrafficSource::kChrome, kTestIfname)};
+  patchpanel_client_.set_stored_traffic_counters(counters);
+
+  network_->set_state_for_testing(Network::State::kConnected);
+
+  Network::TrafficCounterMap counter_map;
+  counter_map[TrafficSource::kChrome] = {
+      .rx_bytes = 6937,
+      .tx_bytes = 1212,
+      .rx_packets = 83,
+      .tx_packets = 54,
+  };
+
+  EXPECT_CALL(*this, RequestTrafficCountersCallback(counter_map));
+  EXPECT_CALL(event_handler_,
+              OnTrafficCountersUpdate(kTestIfindex, counter_map));
+  EXPECT_CALL(event_handler2_,
+              OnTrafficCountersUpdate(kTestIfindex, counter_map));
   network_->RequestTrafficCounters(base::BindOnce(
       &NetworkTest::RequestTrafficCountersCallback, base::Unretained(this)));
 
