@@ -907,7 +907,7 @@ KeyValueStore CellularCapability3gpp::ConnectionAttemptNextProperties(
     properties.Set<uint32_t>(CellularBearer::kMMApnTypeProperty,
                              MM_BEARER_APN_TYPE_TETHERING);
   } else {
-    NOTREACHED_NORETURN();
+    NOTREACHED();
   }
 
   // Initialize APN related properties from the first entry in the try list.
