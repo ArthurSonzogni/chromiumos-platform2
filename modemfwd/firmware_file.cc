@@ -64,7 +64,7 @@ bool FirmwareFile::PrepareFrom(const base::FilePath& firmware_dir,
     }
   }
 
-  NOTREACHED_NORETURN();
+  NOTREACHED();
 }
 
 }  // namespace modemfwd
