@@ -1704,37 +1704,10 @@ void Service::InitializeTrafficCounterSnapshot(
 
 void Service::RefreshTrafficCounters(
     const Network::TrafficCounterMap& new_snapshot) {
-  // 1: Compute the delta between |new_snapshot| and |traffic_counter_snapshot_|
-  Network::TrafficCounterMap delta = new_snapshot;
-  // 1.1: If any counter decreased it means that there has been a counter reset,
-  // maybe because of patchpanel restart. If that's the case simply take the new
-  // snapshot instead of computing delta. A source found in the previous
-  // snapshot but not found in the new snapshot also indicates that a reset
-  // happened. See b/324992164.
-  bool counter_reset = false;
-  for (const auto& [source, traffic] : traffic_counter_snapshot_) {
-    const auto it = new_snapshot.find(source);
-    if (it == new_snapshot.end()) {
-      counter_reset = true;
-      break;
-    } else if (it->second.rx_bytes < traffic.rx_bytes ||
-               it->second.tx_bytes < traffic.tx_bytes ||
-               it->second.rx_packets < traffic.rx_packets ||
-               it->second.tx_packets < traffic.tx_packets) {
-      counter_reset = true;
-      break;
-    }
-  }
-  if (!counter_reset) {
-    for (const auto& [source, traffic] : traffic_counter_snapshot_) {
-      delta[source] -= traffic;
-    }
-  }
-
-  // 2: Update the current counters.
-  for (const auto& [source, traffic] : delta) {
-    current_traffic_counters_[source] += traffic;
-  }
+  Network::TrafficCounterMap delta =
+      Network::DiffTrafficCounters(new_snapshot, traffic_counter_snapshot_);
+  current_traffic_counters_ =
+      Network::AddTrafficCounters(current_traffic_counters_, delta);
 
   // 3: Replace the snapshot point.
   traffic_counter_snapshot_ = new_snapshot;

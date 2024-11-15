@@ -1401,6 +1401,43 @@ void Network::OnGetTrafficCountersResponse(
   traffic_counter_request_callbacks_.clear();
 }
 
+// static
+Network::TrafficCounterMap Network::AddTrafficCounters(
+    const Network::TrafficCounterMap& in1,
+    const Network::TrafficCounterMap& in2) {
+  TrafficCounterMap out = in1;
+  for (const auto& [source, traffic] : in2) {
+    out[source] += traffic;
+  }
+  return out;
+}
+
+// static
+Network::TrafficCounterMap Network::DiffTrafficCounters(
+    const Network::TrafficCounterMap& new_map,
+    const Network::TrafficCounterMap& old_map) {
+  TrafficCounterMap out = new_map;
+  // If any counter decreased it means that there has been a counter reset,
+  // maybe because of a patchpanel restart. If that's the case simply take the
+  // new snapshot instead of computing delta. A source found in the previous
+  // snapshot but not found in the new snapshot also indicates that a reset
+  // happened. See b/324992164.
+  for (const auto& [source, traffic] : old_map) {
+    const auto it = out.find(source);
+    if (it == out.end()) {
+      return new_map;
+    }
+    if (it->second.rx_bytes < traffic.rx_bytes ||
+        it->second.tx_bytes < traffic.tx_bytes ||
+        it->second.rx_packets < traffic.rx_packets ||
+        it->second.tx_packets < traffic.tx_packets) {
+      return new_map;
+    }
+    it->second -= traffic;
+  }
+  return out;
+}
+
 std::ostream& operator<<(std::ostream& stream, const Network& network) {
   return stream << network.context_.logging_tag();
 }

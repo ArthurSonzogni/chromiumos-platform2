@@ -2548,6 +2548,158 @@ TEST_F(NetworkTest, RequestTrafficCountersWithSameSource) {
   Mock::VerifyAndClearExpectations(&event_handler2_);
 }
 
+TEST_F(NetworkTest, AddEmptyTrafficCounterMaps) {
+  using TrafficSource = patchpanel::Client::TrafficSource;
+
+  Network::TrafficCounterMap empty_map;
+
+  Network::TrafficCounterMap non_empty_map;
+  non_empty_map[TrafficSource::kChrome] = {
+      .rx_bytes = 2345,
+      .tx_bytes = 723,
+      .rx_packets = 10,
+      .tx_packets = 20,
+  };
+
+  ASSERT_EQ(empty_map, Network::AddTrafficCounters(empty_map, empty_map));
+  ASSERT_EQ(non_empty_map,
+            Network::AddTrafficCounters(non_empty_map, empty_map));
+  ASSERT_EQ(non_empty_map,
+            Network::AddTrafficCounters(empty_map, non_empty_map));
+}
+
+TEST_F(NetworkTest, AddTrafficCounters) {
+  using TrafficSource = patchpanel::Client::TrafficSource;
+
+  Network::TrafficCounterMap map1;
+  map1[TrafficSource::kUser] = {
+      .rx_bytes = 1,
+      .tx_bytes = 2,
+      .rx_packets = 3,
+      .tx_packets = 4,
+  };
+  map1[TrafficSource::kChrome] = {
+      .rx_bytes = 10,
+      .tx_bytes = 20,
+      .rx_packets = 30,
+      .tx_packets = 40,
+  };
+
+  Network::TrafficCounterMap map2;
+  map2[TrafficSource::kChrome] = {
+      .rx_bytes = 4,
+      .tx_bytes = 5,
+      .rx_packets = 6,
+      .tx_packets = 7,
+  };
+  map2[TrafficSource::kArc] = {
+      .rx_bytes = 100,
+      .tx_bytes = 200,
+      .rx_packets = 300,
+      .tx_packets = 400,
+  };
+
+  Network::TrafficCounterMap map3;
+  map3[TrafficSource::kUser] = {
+      .rx_bytes = 1,
+      .tx_bytes = 2,
+      .rx_packets = 3,
+      .tx_packets = 4,
+  };
+  map3[TrafficSource::kChrome] = {
+      .rx_bytes = 14,
+      .tx_bytes = 25,
+      .rx_packets = 36,
+      .tx_packets = 47,
+  };
+  map3[TrafficSource::kArc] = {
+      .rx_bytes = 100,
+      .tx_bytes = 200,
+      .rx_packets = 300,
+      .tx_packets = 400,
+  };
+
+  ASSERT_EQ(map3, Network::AddTrafficCounters(map1, map2));
+}
+
+TEST_F(NetworkTest, DiffEmptyTrafficCounterMaps) {
+  using TrafficSource = patchpanel::Client::TrafficSource;
+
+  Network::TrafficCounterMap empty_map;
+
+  Network::TrafficCounterMap non_empty_map;
+  non_empty_map[TrafficSource::kChrome] = {
+      .rx_bytes = 2345,
+      .tx_bytes = 723,
+      .rx_packets = 10,
+      .tx_packets = 20,
+  };
+
+  ASSERT_EQ(empty_map, Network::DiffTrafficCounters(empty_map, empty_map));
+  ASSERT_EQ(non_empty_map,
+            Network::DiffTrafficCounters(non_empty_map, empty_map));
+}
+
+TEST_F(NetworkTest, DiffTrafficCounters) {
+  using TrafficSource = patchpanel::Client::TrafficSource;
+
+  Network::TrafficCounterMap map1;
+  map1[TrafficSource::kChrome] = {
+      .rx_bytes = 10,
+      .tx_bytes = 20,
+      .rx_packets = 30,
+      .tx_packets = 40,
+  };
+
+  Network::TrafficCounterMap map2;
+  map2[TrafficSource::kChrome] = {
+      .rx_bytes = 4,
+      .tx_bytes = 5,
+      .rx_packets = 6,
+      .tx_packets = 7,
+  };
+
+  Network::TrafficCounterMap map3;
+  map3[TrafficSource::kChrome] = {
+      .rx_bytes = 6,
+      .tx_bytes = 15,
+      .rx_packets = 24,
+      .tx_packets = 33,
+  };
+
+  ASSERT_EQ(map3, Network::DiffTrafficCounters(map1, map2));
+}
+
+TEST_F(NetworkTest, DiffTrafficCountersWithReset) {
+  using TrafficSource = patchpanel::Client::TrafficSource;
+
+  Network::TrafficCounterMap map1;
+  map1[TrafficSource::kChrome] = {
+      .rx_bytes = 10,
+      .tx_bytes = 20,
+      .rx_packets = 30,
+      .tx_packets = 40,
+  };
+
+  Network::TrafficCounterMap map2;
+  map2[TrafficSource::kChrome] = {
+      .rx_bytes = 1,
+      .tx_bytes = 21,
+      .rx_packets = 2,
+      .tx_packets = 3,
+  };
+
+  Network::TrafficCounterMap map3;
+  map3[TrafficSource::kChrome] = {
+      .rx_bytes = 1,
+      .tx_bytes = 21,
+      .rx_packets = 2,
+      .tx_packets = 3,
+  };
+
+  ASSERT_EQ(map1, Network::DiffTrafficCounters(map1, map2));
+}
+
 }  // namespace
 }  // namespace
 }  // namespace shill

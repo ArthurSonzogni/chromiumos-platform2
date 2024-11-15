@@ -220,6 +220,18 @@ class Network : public NetworkMonitor::ClientNetwork {
     kConnected,
   };
 
+  // Adds together all TrafficVector of all sources of |in1| and |in2| and
+  // returns the result as a new TrafficCounterMap.
+  static TrafficCounterMap AddTrafficCounters(const TrafficCounterMap& in1,
+                                              const TrafficCounterMap& in2);
+  // Subtracts from |new_map| all the traffic for all the sources found in
+  // |old_map|. It is assumed that |new_map| is a newer version of |old_map|
+  // where all TrafficVector entries can be still be found and have no field
+  // smaller than in |old_map|. If this invariant is not true, |new_map| is
+  // returned as is.
+  static TrafficCounterMap DiffTrafficCounters(
+      const TrafficCounterMap& new_map, const TrafficCounterMap& old_map);
+
   // Creates a Network instance, only for testing.
   static std::unique_ptr<Network> CreateForTesting(
       int interface_index,
