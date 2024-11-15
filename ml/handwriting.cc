@@ -62,7 +62,7 @@ HandwritingRecognizerModelPaths GetModelPaths(
           model_path.Append("gic.reco_model.tflite").value());
       paths.set_recospec_path(model_path.Append("gic.recospec.pb").value());
     } else {
-      NOTREACHED_NORETURN();
+      NOTREACHED();
     }
   } else {
     // Language Packs `model_path`.
