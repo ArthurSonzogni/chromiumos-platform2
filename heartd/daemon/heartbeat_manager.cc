@@ -57,7 +57,7 @@ void HeartbeatManager::EstablishHeartbeatTracker(
     LOG(INFO) << "Rebind pacemaker for service: " << ToStr(name);
     heartbeat_trackers_[name]->RebindPacemaker(std::move(receiver));
   } else {
-    NOTREACHED_NORETURN();
+    NOTREACHED();
   }
 
   heartbeat_trackers_[name]->SetupArgument(std::move(argument));

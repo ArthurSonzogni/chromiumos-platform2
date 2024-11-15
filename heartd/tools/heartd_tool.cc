@@ -66,7 +66,7 @@ mojom::ActionType GetActionEnum(std::string& action) {
   }
 
   LOG(ERROR) << "Unknow action: " << action;
-  NOTREACHED_NORETURN();
+  NOTREACHED();
 }
 
 }  // namespace

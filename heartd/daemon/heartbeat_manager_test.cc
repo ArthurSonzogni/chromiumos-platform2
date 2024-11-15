@@ -85,9 +85,7 @@ TEST_F(HeartbeatManagerTest, RemoveUnusedHeartbeatTrackers) {
 
   base::test::TestFuture<void> test_future;
   pacemaker_->StopMonitor(test_future.GetCallback());
-  if (!test_future.Wait()) {
-    NOTREACHED_NORETURN();
-  }
+  CHECK(test_future.Wait());
 
   // This should remove the unused heartbeat trackers.
   heartbeat_manager_->VerifyHeartbeatAndTakeAction();

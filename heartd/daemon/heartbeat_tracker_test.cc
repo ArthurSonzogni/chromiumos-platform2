@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/functional/callback_forward.h"
+#include <base/functional/callback_forward.h>
 #include <base/notreached.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
@@ -36,9 +36,7 @@ class HeartbeatTrackerTest : public testing::Test {
   mojom::HeartbeatResponse SendHeartbeatSync() {
     base::test::TestFuture<mojom::HeartbeatResponse> test_future;
     pacemaker_->SendHeartbeat(test_future.GetCallback());
-    if (!test_future.Wait()) {
-      NOTREACHED_NORETURN();
-    }
+    CHECK(test_future.Wait());
     return test_future.Get();
   }
 
@@ -59,9 +57,7 @@ TEST_F(HeartbeatTrackerTest, PacemakerStopMonitor) {
   base::test::TestFuture<void> test_future;
 
   pacemaker_->StopMonitor(test_future.GetCallback());
-  if (!test_future.Wait()) {
-    NOTREACHED_NORETURN();
-  }
+  CHECK(test_future.Wait());
 
   EXPECT_TRUE(heartbeat_tracker_->IsStopMonitor());
 }
