@@ -623,9 +623,9 @@ bool SessionManagerImpl::Initialize() {
       InstallAttributesReader::kDeviceModeEnterpriseAD) {
     RestartDevice(
         "Device is in an unsupported management mode (Active Directory)");
-    NOTREACHED_NORETURN() << "Device is in an unsupported management mode "
-                             "(Active Directory) - crashing this service to "
-                             "force ChromeOS boot to fail.";
+    NOTREACHED() << "Device is in an unsupported management mode "
+                    "(Active Directory) - crashing this service to "
+                    "force ChromeOS boot to fail.";
   }
 
   // Note: If SetPolicyServicesForTesting has been called, all services have
