@@ -184,7 +184,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
     }
 
     // Make a dBus call.
-    chrome_proxy_->CallMethod(
+    chrome_proxy_->CallMethodWithErrorResponse(
         &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
         base::BindPostTask(
             bus_->GetOriginTaskRunner(),
@@ -231,11 +231,22 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
   }
 
  private:
-  void DoResponse(base::ScopedClosureRunner autorun, dbus::Response* response) {
+  void DoResponse(base::ScopedClosureRunner autorun,
+                  dbus::Response* response,
+                  dbus::ErrorResponse* error_response) {
     bus_->AssertOnOriginThread();
     if (!response) {
-      Respond(Status(error::UNAVAILABLE, "Returned no response"));
-
+      if (error_response) {
+        std::string error_name = error_response->GetErrorName();
+        std::string error_message;
+        dbus::MessageReader reader(error_response);
+        reader.PopString(&error_message);
+        Respond(Status(error::UNAVAILABLE,
+                       base::StrCat({"Returned error response: ", error_name,
+                                     ": ", error_message})));
+      } else {
+        Respond(Status(error::UNAVAILABLE, "Returned no response"));
+      }
       analytics::Metrics::SendEnumToUMA(
           kUmaUnavailableErrorReason,
           UnavailableErrorReason::UPLOAD_CLIENT_NO_DBUS_RESPONSE,

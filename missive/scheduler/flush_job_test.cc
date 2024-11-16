@@ -1,8 +1,8 @@
-// Copyright 2021 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/scheduler/enqueue_job.h"
+#include "missive/scheduler/flush_job.h"
 
 #include <memory>
 #include <string>
@@ -54,19 +54,16 @@ class MockStorageModule : public StorageModuleInterface {
               (override));
 };
 
-class EnqueueJobTest : public ::testing::Test {
+class FlushJobTest : public ::testing::Test {
  public:
-  EnqueueJobTest() = default;
+  FlushJobTest() = default;
 
  protected:
   void SetUp() override {
     response_ = std::make_unique<
-        brillo::dbus_utils::MockDBusMethodResponse<EnqueueRecordResponse>>();
+        brillo::dbus_utils::MockDBusMethodResponse<FlushPriorityResponse>>();
 
-    record_.set_data("TEST_VALUE");
-    record_.set_destination(Destination::UPLOAD_EVENTS);
-    record_.set_dm_token("TEST_DM_TOKEN");
-    record_.set_timestamp_us(1234567);
+    priority_ = Priority::FAST_BATCH;
 
     health_module_ =
         HealthModule::Create(std::make_unique<HealthModuleDelegateMock>());
@@ -81,35 +78,33 @@ class EnqueueJobTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   std::unique_ptr<
-      brillo::dbus_utils::MockDBusMethodResponse<EnqueueRecordResponse>>
+      brillo::dbus_utils::MockDBusMethodResponse<FlushPriorityResponse>>
       response_;
-  Record record_;
+  Priority priority_;
 
   scoped_refptr<MockStorageModule> storage_module_;
 
   scoped_refptr<HealthModule> health_module_;
 };
 
-TEST_F(EnqueueJobTest, CompletesSuccessfully) {
+TEST_F(FlushJobTest, CompletesSuccessfully) {
   response_->set_return_callback(
-      base::BindOnce([](const EnqueueRecordResponse& response) {
+      base::BindOnce([](const FlushPriorityResponse& response) {
         EXPECT_THAT(response.status().code(), Eq(error::OK));
       }));
-  auto delegate = std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
+  auto delegate = std::make_unique<FlushJob::FlushResponseDelegate>(
       health_module_, std::move(response_));
 
-  EnqueueRecordRequest request;
-  *request.mutable_record() = record_;
-  request.set_priority(Priority::BACKGROUND_BATCH);
+  FlushPriorityRequest request;
+  request.set_priority(priority_);
 
-  EXPECT_CALL(*storage_module_, AddRecord(Eq(Priority::BACKGROUND_BATCH),
-                                          EqualsProto(record_), _))
-      .WillOnce(WithArgs<2>(Invoke([](base::OnceCallback<void(Status)> cb) {
+  EXPECT_CALL(*storage_module_, Flush(Eq(priority_), _))
+      .WillOnce(WithArgs<1>(Invoke([](base::OnceCallback<void(Status)> cb) {
         std::move(cb).Run(Status::StatusOK());
       })));
 
-  auto job = EnqueueJob::Create(storage_module_, health_module_, request,
-                                std::move(delegate));
+  auto job = FlushJob::Create(storage_module_, health_module_, request,
+                              std::move(delegate));
 
   test::TestEvent<Status> enqueued;
   job->Start(enqueued.cb());
@@ -117,26 +112,25 @@ TEST_F(EnqueueJobTest, CompletesSuccessfully) {
   EXPECT_OK(status) << status;
 }
 
-TEST_F(EnqueueJobTest, CancelsSuccessfully) {
+TEST_F(FlushJobTest, CancelsSuccessfully) {
   Status failure_status(error::INTERNAL, "Failing for tests");
   response_->set_return_callback(base::BindOnce(
-      [](Status failure_status, const EnqueueRecordResponse& response) {
+      [](Status failure_status, const FlushPriorityResponse& response) {
         EXPECT_THAT(response.status().code(), Eq(failure_status.error_code()));
         EXPECT_THAT(response.status().error_message(),
                     StrEq(std::string(failure_status.error_message())));
       },
       failure_status));
-  auto delegate = std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
+  auto delegate = std::make_unique<FlushJob::FlushResponseDelegate>(
       health_module_, std::move(response_));
 
-  EnqueueRecordRequest request;
-  *request.mutable_record() = std::move(record_);
-  request.set_priority(Priority::BACKGROUND_BATCH);
+  FlushPriorityRequest request;
+  request.set_priority(priority_);
 
-  EXPECT_CALL(*storage_module_, AddRecord(_, _, _)).Times(0);
+  EXPECT_CALL(*storage_module_, Flush(_, _)).Times(0);
 
-  auto job = EnqueueJob::Create(storage_module_, health_module_, request,
-                                std::move(delegate));
+  auto job = FlushJob::Create(storage_module_, health_module_, request,
+                              std::move(delegate));
 
   auto status = job->Cancel(failure_status);
   EXPECT_OK(status) << status;

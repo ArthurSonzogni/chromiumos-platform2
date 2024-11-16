@@ -35,8 +35,12 @@
 #include "missive/proto/health.pb.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
+#include "missive/scheduler/confirm_records_job.h"
 #include "missive/scheduler/enqueue_job.h"
+#include "missive/scheduler/flush_job.h"
 #include "missive/scheduler/scheduler.h"
+#include "missive/scheduler/update_config_job.h"
+#include "missive/scheduler/update_key_job.h"
 #include "missive/scheduler/upload_job.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module.h"
@@ -52,35 +56,6 @@ namespace {
 constexpr CompressionInformation::CompressionAlgorithm kCompressionType =
     CompressionInformation::COMPRESSION_SNAPPY;
 constexpr size_t kCompressionThreshold = 512U;
-
-template <class Response>
-void HandleResponse(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Response>>
-        out_response,
-    Response response_body,
-    scoped_refptr<HealthModule> health_module,
-    Status status) {
-  status.SaveTo(response_body.mutable_status());
-
-  if (!health_module->is_debugging()) {
-    out_response->Return(response_body);
-    return;
-  }
-
-  // Attach health data to response.
-  auto response_cb = base::BindPostTaskToCurrentDefault(base::BindOnce(
-      [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Response>>
-             out_response,
-         Response response_body) { out_response->Return(response_body); },
-      std::move(out_response)));
-  health_module->GetHealthData(base::BindOnce(
-      [](base::OnceCallback<void(Response)> response_cb, Response response_body,
-         ERPHealthData health_data) {
-        *response_body.mutable_health_data() = std::move(health_data);
-        std::move(response_cb).Run(response_body);
-      },
-      std::move(response_cb), std::move(response_body)));
-}
 
 template <typename ResponseType>
 ResponseType RespondMissiveDisabled() {
@@ -452,22 +427,6 @@ void MissiveImpl::EnqueueRecord(
     out_response->Return(RespondMissiveDisabled<EnqueueRecordResponse>());
     return;
   }
-  if (!in_request.has_record()) {
-    EnqueueRecordResponse response_body;
-    auto* status = response_body.mutable_status();
-    status->set_code(error::INVALID_ARGUMENT);
-    status->set_error_message("Request had no Record");
-    out_response->Return(response_body);
-    return;
-  }
-  if (!in_request.has_priority()) {
-    EnqueueRecordResponse response_body;
-    auto* status = response_body.mutable_status();
-    status->set_code(error::INVALID_ARGUMENT);
-    status->set_error_message("Request had no Priority");
-    out_response->Return(response_body);
-    return;
-  }
 
   // Tally the enqueuing record
   if (in_request.has_record()) {
@@ -495,12 +454,10 @@ void MissiveImpl::FlushPriority(
     health_module_->set_debugging(in_request.health_data_logging_enabled());
   }
 
-  FlushPriorityResponse response_body;
-  storage_module_->Flush(
-      in_request.priority(),
-      base::BindPostTaskToCurrentDefault(base::BindOnce(
-          &HandleResponse<FlushPriorityResponse>, std::move(out_response),
-          std::move(response_body), health_module_)));
+  scheduler_.EnqueueJob(
+      FlushJob::Create(storage_module_, health_module_, in_request,
+                       std::make_unique<FlushJob::FlushResponseDelegate>(
+                           health_module_, std::move(out_response))));
 }
 
 void MissiveImpl::ConfirmRecordUpload(
@@ -513,33 +470,15 @@ void MissiveImpl::ConfirmRecordUpload(
     out_response->Return(RespondMissiveDisabled<ConfirmRecordUploadResponse>());
     return;
   }
-  ConfirmRecordUploadResponse response_body;
-  if (!in_request.has_sequence_information()) {
-    auto* status = response_body.mutable_status();
-    status->set_code(error::INVALID_ARGUMENT);
-    status->set_error_message("Request had no SequenceInformation");
-    out_response->Return(response_body);
-    return;
-  }
 
   if (in_request.has_health_data_logging_enabled()) {
     health_module_->set_debugging(in_request.health_data_logging_enabled());
   }
 
-  storage_module_->ReportSuccess(
-      in_request.sequence_information(), in_request.force_confirm(),
-      base::BindPostTaskToCurrentDefault(base::BindOnce(
-          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                 ConfirmRecordUploadResponse>> out_response,
-             ConfirmRecordUploadResponse response_body,
-             scoped_refptr<HealthModule> health_module, Status status) {
-            LOG_IF(ERROR, !status.ok())
-                << "Unable to confirm record deletion: " << status;
-            HandleResponse<ConfirmRecordUploadResponse>(
-                std::move(out_response), std::move(response_body),
-                health_module, Status::StatusOK());
-          },
-          std::move(out_response), std::move(response_body), health_module_)));
+  scheduler_.EnqueueJob(ConfirmRecordsJob::Create(
+      storage_module_, health_module_, in_request,
+      std::make_unique<ConfirmRecordsJob::ConfirmRecordsResponseDelegate>(
+          health_module_, std::move(out_response))));
 }
 
 void MissiveImpl::UpdateConfigInMissive(
@@ -553,19 +492,12 @@ void MissiveImpl::UpdateConfigInMissive(
         RespondMissiveDisabled<UpdateConfigInMissiveResponse>());
     return;
   }
-  UpdateConfigInMissiveResponse response_body;
-  if (!in_request.has_list_of_blocked_destinations()) {
-    auto status = response_body.mutable_status();
-    status->set_code(error::INVALID_ARGUMENT);
-    status->set_error_message("Request had no ListOfBlockedDestinations");
-    out_response->Return(response_body);
-    return;
-  }
-  // Provide health module recorder, if debugging is enabled.
-  auto recorder = health_module_->NewRecorder();
-  server_configuration_controller_->UpdateConfiguration(
-      in_request.list_of_blocked_destinations(), std::move(recorder));
-  out_response->Return(response_body);
+
+  scheduler_.EnqueueJob(UpdateConfigInMissiveJob::Create(
+      health_module_, server_configuration_controller_, in_request,
+      std::make_unique<
+          UpdateConfigInMissiveJob::UpdateConfigInMissiveResponseDelegate>(
+          std::move(out_response))));
 }
 
 void MissiveImpl::UpdateEncryptionKey(
@@ -578,17 +510,12 @@ void MissiveImpl::UpdateEncryptionKey(
     out_response->Return(RespondMissiveDisabled<UpdateEncryptionKeyResponse>());
     return;
   }
-  UpdateEncryptionKeyResponse response_body;
-  if (!in_request.has_signed_encryption_info()) {
-    auto status = response_body.mutable_status();
-    status->set_code(error::INVALID_ARGUMENT);
-    status->set_error_message("Request had no SignedEncryptionInfo");
-    out_response->Return(response_body);
-    return;
-  }
 
-  storage_module_->UpdateEncryptionKey(in_request.signed_encryption_info());
-  out_response->Return(response_body);
+  scheduler_.EnqueueJob(UpdateEncryptionKeyJob::Create(
+      storage_module_, in_request,
+      std::make_unique<
+          UpdateEncryptionKeyJob::UpdateEncryptionKeyResponseDelegate>(
+          std::move(out_response))));
 }
 
 void MissiveImpl::HandleUploadResponse(

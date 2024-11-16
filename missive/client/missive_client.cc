@@ -148,18 +148,30 @@ class MissiveClientImpl : public MissiveClient {
       }
 
       // Make a dBus call.
-      owner_->missive_service_proxy_->CallMethod(
+      owner_->missive_service_proxy_->CallMethodWithErrorResponse(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
           base::BindOnce(
               [](base::ScopedClosureRunner autorun,
-                 base::WeakPtr<DBusDelegate> self, dbus::Response* response) {
+                 base::WeakPtr<DBusDelegate> self, dbus::Response* response,
+                 dbus::ErrorResponse* error_response) {
                 if (!self) {
                   return;  // Delegate already deleted.
                 }
                 DCHECK_CALLED_ON_VALID_SEQUENCE(self->owner_->origin_checker_);
                 if (!response) {
-                  self->Respond(
-                      Status(error::UNAVAILABLE, "Returned no response"));
+                  if (error_response) {
+                    std::string error_name = error_response->GetErrorName();
+                    std::string error_message;
+                    dbus::MessageReader reader(error_response);
+                    reader.PopString(&error_message);
+                    self->Respond(Status(
+                        error::UNAVAILABLE,
+                        base::StrCat({"Returned error response: ", error_name,
+                                      ": ", error_message})));
+                  } else {
+                    self->Respond(
+                        Status(error::UNAVAILABLE, "Returned no response"));
+                  }
 
                   analytics::Metrics::SendEnumToUMA(
                       kUmaUnavailableErrorReason,

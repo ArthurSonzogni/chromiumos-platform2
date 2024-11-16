@@ -112,11 +112,12 @@ TEST_F(UploadClientTest, SuccessfulCall) {
   std::unique_ptr<dbus::Response> dbus_response = dbus::Response::CreateEmpty();
 
   EXPECT_CALL(*dbus_test_environment_.mock_chrome_proxy(),
-              DoCallMethod(_, _, _))
-      .WillOnce(WithArgs<0, 2>(Invoke([&encrypted_record, &dbus_response](
-                                          dbus::MethodCall* call,
-                                          dbus::ObjectProxy::ResponseCallback*
-                                              response_cb) {
+              DoCallMethodWithErrorResponse(_, _, _))
+      .WillOnce(WithArgs<
+                0, 2>(Invoke([&encrypted_record, &dbus_response](
+                                 dbus::MethodCall* call,
+                                 dbus::ObjectProxy::ResponseOrErrorCallback*
+                                     response_cb) {
         ASSERT_NE(call, nullptr);
         ASSERT_THAT(call->GetInterface(),
                     Eq(chromeos::kChromeReportingServiceInterface));
@@ -142,7 +143,8 @@ TEST_F(UploadClientTest, SuccessfulCall) {
 
         ASSERT_TRUE(dbus::MessageWriter(dbus_response.get())
                         .AppendProtoAsArrayOfBytes(upload_response));
-        std::move(*response_cb).Run(dbus_response.get());
+        std::move(*response_cb)
+            .Run(dbus_response.get(), /*error_response=*/nullptr);
       })));
 
   upload_client_->SendEncryptedRecords(
@@ -186,7 +188,7 @@ TEST_F(UploadClientTest, CallUnavailable) {
   std::unique_ptr<dbus::Response> dbus_response = dbus::Response::CreateEmpty();
 
   EXPECT_CALL(*dbus_test_environment_.mock_chrome_proxy(),
-              DoCallMethod(_, _, _))
+              DoCallMethodWithErrorResponse(_, _, _))
       .Times(0);
 
   upload_client_->SendEncryptedRecords(
@@ -223,12 +225,12 @@ TEST_F(UploadClientTest, CallBecameUnavailable) {
   sequence_information->set_generation_id(kGenerationId);
   sequence_information->set_priority(kPriority);
 
-  dbus::ObjectProxy::ResponseCallback delayed_response_cb;
+  dbus::ObjectProxy::ResponseOrErrorCallback delayed_response_cb;
   EXPECT_CALL(*dbus_test_environment_.mock_chrome_proxy(),
-              DoCallMethod(_, _, _))
+              DoCallMethodWithErrorResponse(_, _, _))
       .WillOnce(WithArg<2>(
           Invoke([&delayed_response_cb](
-                     dbus::ObjectProxy::ResponseCallback* response_cb) {
+                     dbus::ObjectProxy::ResponseOrErrorCallback* response_cb) {
             // Simulate dBus loss: do nothing, do not respond.
             delayed_response_cb = std::move(*response_cb);
           })));

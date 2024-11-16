@@ -34,6 +34,58 @@ static_library("enqueue_job") {
   ]
 }
 
+static_library("flush_job") {
+  sources = [ "flush_job.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":scheduler",
+    "//missive/health:health_module_test_support",
+    "//missive/proto:libmissiveprotointerface",
+    "//missive/storage:storage_module_interface",
+    "//missive/util:status",
+    "//missive/util:task_runner_context",
+  ]
+}
+
+static_library("update_key_job") {
+  sources = [ "update_key_job.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":scheduler",
+    "//missive/health:health_module_test_support",
+    "//missive/proto:libmissiveprotointerface",
+    "//missive/storage:storage_module_interface",
+    "//missive/util:status",
+    "//missive/util:task_runner_context",
+  ]
+}
+
+static_library("update_config_job") {
+  sources = [ "update_config_job.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":scheduler",
+    "//missive/health:health_module_test_support",
+    "//missive/proto:libmissiveprotointerface",
+    "//missive/storage:storage_module_interface",
+    "//missive/util:status",
+    "//missive/util:task_runner_context",
+  ]
+}
+
+static_library("confirm_records_job") {
+  sources = [ "confirm_records_job.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":scheduler",
+    "//missive/health:health_module_test_support",
+    "//missive/proto:libmissiveprotointerface",
+    "//missive/storage:storage_module_interface",
+    "//missive/util:status",
+    "//missive/util:task_runner_context",
+  ]
+}
+
 static_library("upload_job") {
   sources = [ "upload_job.cc" ]
   configs += [ ":target_defaults" ]
