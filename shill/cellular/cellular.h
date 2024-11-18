@@ -34,6 +34,7 @@
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/device.h"
 #include "shill/device_id.h"
+#include "shill/network/network.h"
 #include "shill/network/network_manager.h"
 #include "shill/network/network_monitor.h"
 #include "shill/refptr_types.h"
@@ -560,6 +561,12 @@ class Cellular : public Device,
       Network* network,
       const Error& error);
 
+  // Returns the total raw traffic counters for the secondary multiplexed PDN
+  // used for tethering. This account for all tethering traffic so far on this
+  // Device.
+  void GetTetheringTrafficCounters(
+      Network::GetTrafficCountersCallback callback);
+
   // Public to ease testing without real RTNL link events.
   void DefaultLinkDeleted();
   void DefaultLinkUp();
@@ -870,6 +877,14 @@ class Cellular : public Device,
                                    const KeyValueStore& changed_properties);
   void ProcessModemfwdInProgressTasks(const InProgressTasks& tasks);
 
+  void GetTetheringTrafficCountersCallback(
+      const std::string& tethering_ifname,
+      Network::GetTrafficCountersCallback callback,
+      const Network::TrafficCounterMap& raw_counters);
+
+  void RunTrafficCountersCallback(
+      Network::GetTrafficCountersCallback callback) const;
+
   // Nested network info associated to a single PDN connection in the cellular
   // device.
   class NetworkInfo {
@@ -1102,6 +1117,15 @@ class Cellular : public Device,
   bool firmware_supports_tethering_ = true;
   std::unique_ptr<net_base::RTNLListener> link_listener_;
   std::unique_ptr<DBusPropertiesProxy> modemfwd_dbus_properties_proxy_;
+
+  // Total traffic counters on all multiplexed PDN connections established for
+  // tethering for this Device, keyed by the interface names used for the
+  // multiplexed PDNs. Since the network interface for the multiplexed tethering
+  // PDN may be created dynamically, its name may not be stable. This map allows
+  // to remember all traffic counter snapshots on all network interfaces used
+  // for tethering.
+  std::map<std::string, Network::TrafficCounterMap>
+      total_tethering_traffic_counters_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_{this};
 };

@@ -1109,4 +1109,12 @@ bool CellularService::GetAllowRoaming(Error* /*error*/) {
   return allow_roaming_;
 }
 
+void CellularService::GetExtraTrafficCounters(
+    Network::GetTrafficCountersCallback callback) {
+  if (!cellular_) {
+    std::move(callback).Run({});
+  }
+  cellular_->GetTetheringTrafficCounters(std::move(callback));
+}
+
 }  // namespace shill

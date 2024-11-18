@@ -160,6 +160,10 @@ class CellularService : public Service {
   bool IsDisconnectable(Error* error) const override;
   bool IsMeteredByServiceProperties() const override;
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
+  // Delegates to the Cellular Device to obtain the total raw traffic counters
+  // from tethering on secondary multiplexed networks.
+  void GetExtraTrafficCounters(
+      Network::GetTrafficCountersCallback callback) override;
 
  private:
   friend class CellularCapability3gppTest;

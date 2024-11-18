@@ -4914,4 +4914,34 @@ void Cellular::NetworkInfo::DestroySockets() {
   SLOG(2) << LoggingTag() << ": " << __func__ << " complete.";
 }
 
+void Cellular::GetTetheringTrafficCounters(
+    Network::GetTrafficCountersCallback callback) {
+  if (!multiplexed_tethering_pdn_) {
+    RunTrafficCountersCallback(std::move(callback));
+    return;
+  }
+  multiplexed_tethering_pdn_->network()->RequestTrafficCounters(
+      base::BindOnce(&Cellular::GetTetheringTrafficCountersCallback,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     multiplexed_tethering_pdn_->network()->interface_name(),
+                     std::move(callback)));
+}
+
+void Cellular::GetTetheringTrafficCountersCallback(
+    const std::string& tethering_ifname,
+    Network::GetTrafficCountersCallback callback,
+    const Network::TrafficCounterMap& raw_counters) {
+  total_tethering_traffic_counters_[tethering_ifname] = raw_counters;
+  RunTrafficCountersCallback(std::move(callback));
+}
+
+void Cellular::RunTrafficCountersCallback(
+    Network::GetTrafficCountersCallback callback) const {
+  Network::TrafficCounterMap total;
+  for (const auto& [_, counters] : total_tethering_traffic_counters_) {
+    Network::AddTrafficCounters(total, counters);
+  }
+  std::move(callback).Run(total);
+}
+
 }  // namespace shill
