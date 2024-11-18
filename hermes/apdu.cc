@@ -141,12 +141,14 @@ size_t CommandApdu::GetNextFragment(uint8_t** fragment) {
   data_[current_index_ + 2] =
       is_last_fragment ? kApduP1LastBlock : kApduP1MoreBlocks;
   data_[current_index_ + 3] = current_fragment_++;
-  if (is_extended_length_) {
-    data_[current_index_ + 4] = 0;
-    data_[current_index_ + 5] = static_cast<uint8_t>(current_size & 0xFF);
-    data_[current_index_ + 6] = static_cast<uint8_t>(current_size >> 8);
-  } else {
-    data_[current_index_ + 4] = static_cast<uint8_t>(current_size);
+  if (current_size > 0) {
+    if (is_extended_length_) {
+      data_[current_index_ + 4] = 0;
+      data_[current_index_ + 5] = static_cast<uint8_t>(current_size & 0xFF);
+      data_[current_index_ + 6] = static_cast<uint8_t>(current_size >> 8);
+    } else {
+      data_[current_index_ + 4] = static_cast<uint8_t>(current_size);
+    }
   }
   size_t le_size = 0;
   // Last fragment is the only one that will potentially have an Le field, as we
