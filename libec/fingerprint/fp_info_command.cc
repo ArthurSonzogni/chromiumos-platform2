@@ -58,7 +58,7 @@ int FpInfoCommand::NumDeadPixels() {
   if (!Resp()) {
     return kDeadPixelsUnknown;
   }
-  uint16_t num_dead_pixels = Resp()->errors;
+  uint16_t num_dead_pixels = FP_ERROR_DEAD_PIXELS(Resp()->errors);
   if (num_dead_pixels == FP_ERROR_DEAD_PIXELS_UNKNOWN) {
     return kDeadPixelsUnknown;
   }

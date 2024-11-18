@@ -127,7 +127,8 @@ TEST_F(FpInfoCommandNumDeadPixelsTest, NoResponse) {
 }
 
 TEST_F(FpInfoCommandNumDeadPixelsTest, DeadPixelsUnknown) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_DEAD_PIXELS_UNKNOWN};
+  struct ec_response_fp_info resp = {.errors = FP_ERROR_BAD_HWID |
+                                               FP_ERROR_DEAD_PIXELS_UNKNOWN};
 
   EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
 
@@ -136,7 +137,8 @@ TEST_F(FpInfoCommandNumDeadPixelsTest, DeadPixelsUnknown) {
 }
 
 TEST_F(FpInfoCommandNumDeadPixelsTest, ZeroDeadPixels) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_DEAD_PIXELS(0)};
+  struct ec_response_fp_info resp = {.errors = FP_ERROR_INIT_FAIL |
+                                               FP_ERROR_DEAD_PIXELS(0)};
 
   EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
 
@@ -144,7 +146,8 @@ TEST_F(FpInfoCommandNumDeadPixelsTest, ZeroDeadPixels) {
 }
 
 TEST_F(FpInfoCommandNumDeadPixelsTest, OneDeadPixel) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_DEAD_PIXELS(1)};
+  struct ec_response_fp_info resp = {.errors = FP_ERROR_SPI_COMM |
+                                               FP_ERROR_DEAD_PIXELS(1)};
 
   EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
 
