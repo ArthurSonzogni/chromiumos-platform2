@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "libec/fingerprint/fp_info_command.h"
+
 #include <bitset>
 
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include "libec/ec_command.h"
-#include "libec/fingerprint/fp_info_command.h"
 
 namespace ec {
 namespace {
