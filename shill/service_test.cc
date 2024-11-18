@@ -2708,7 +2708,9 @@ TEST_F(ServiceTest, TrafficCountersRefreshWithMultipleSources) {
       .rx_bytes = 12, .tx_bytes = 34, .rx_packets = 56, .tx_packets = 78};
   initial_snapshot[patchpanel::Client::TrafficSource::kUser] = {
       .rx_bytes = 90, .tx_bytes = 87, .rx_packets = 65, .tx_packets = 43};
-  service_->InitializeTrafficCounterSnapshot(initial_snapshot);
+  Network::TrafficCounterMap initial_extra_snapshot;
+  service_->InitializeTrafficCounterSnapshots(initial_snapshot,
+                                              initial_extra_snapshot);
 
   EXPECT_EQ(service_->current_total_traffic_counters().size(), 0);
 
@@ -2717,7 +2719,8 @@ TEST_F(ServiceTest, TrafficCountersRefreshWithMultipleSources) {
       .rx_bytes = 20, .tx_bytes = 40, .rx_packets = 60, .tx_packets = 80};
   refresh_snapshot[patchpanel::Client::TrafficSource::kUser] = {
       .rx_bytes = 100, .tx_bytes = 90, .rx_packets = 80, .tx_packets = 70};
-  service_->RefreshTrafficCounters(refresh_snapshot);
+  Network::TrafficCounterMap refresh_extra_snapshot;
+  service_->RefreshTrafficCounters(refresh_snapshot, refresh_extra_snapshot);
 
   EXPECT_EQ(service_->current_total_traffic_counters().size(), 2);
   patchpanel::Client::TrafficVector chrome_counters_diff = {
@@ -2806,7 +2809,80 @@ TEST_F(ServiceTest, RequestTrafficCountersWithAttachedNetwork) {
       continue;
     }
 
-    FAIL() << "Unxpected source " << dict.at("source").TryGet<std::string>();
+    FAIL() << "Unexpected source " << dict.at("source").TryGet<std::string>();
+  }
+}
+
+TEST_F(ServiceTest, RequestTrafficCountersWithExtraSource) {
+  auto network_source = patchpanel::Client::TrafficSource::kChrome;
+  auto extra_source = patchpanel::Client::TrafficSource::kTethering;
+
+  // Initial network traffic counters snapshot
+  Network::TrafficCounterMap network_counters;
+  network_counters[network_source] = {100, 200, 10, 20};
+  auto network = std::make_unique<MockNetwork>(1, kIfName, Technology::kWiFi);
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>([&](Network::GetTrafficCountersCallback callback) {
+        std::move(callback).Run(network_counters);
+      }));
+
+  // Initial extra traffic counters snapshot
+  Network::TrafficCounterMap extra_counters;
+  extra_counters[extra_source] = {40, 50, 4, 5};
+  service_->SetExtraTrafficCounters(extra_counters);
+
+  // Initial Network attach
+  service_->AttachNetwork(network->AsWeakPtr());
+  Mock::VerifyAndClearExpectations(network.get());
+  EXPECT_EQ(service_->current_total_traffic_counters().size(), 0);
+
+  // Network traffic counter snapshot at the time of the next request.
+  network_counters.clear();
+  network_counters[network_source] = {140, 250, 14, 25};
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>([&](Network::GetTrafficCountersCallback callback) {
+        std::move(callback).Run(network_counters);
+      }));
+
+  // Extra traffic counter snapshot at the time of the next request.
+  extra_counters.clear();
+  extra_counters[extra_source] = {80, 95, 8, 9};
+  service_->SetExtraTrafficCounters(extra_counters);
+
+  // DBus request to refresh and get counters
+  bool successfully_requested_traffic_counters = false;
+  std::vector<brillo::VariantDictionary> actual_traffic_counters;
+  service_->RequestTrafficCounters(base::BindOnce(
+      [](bool* success, std::vector<brillo::VariantDictionary>* output,
+         const Error& error,
+         const std::vector<brillo::VariantDictionary>& input) {
+        *success = error.IsSuccess();
+        output->assign(input.begin(), input.end());
+      },
+      &successfully_requested_traffic_counters, &actual_traffic_counters));
+  Mock::VerifyAndClearExpectations(network.get());
+
+  // Expect to see the delta of the later snapshot minus the initial snapshot
+  EXPECT_TRUE(successfully_requested_traffic_counters);
+  for (const auto& dict : actual_traffic_counters) {
+    EXPECT_EQ(3, dict.size());
+    EXPECT_TRUE(base::Contains(dict, "source"));
+    EXPECT_TRUE(base::Contains(dict, "rx_bytes"));
+    EXPECT_TRUE(base::Contains(dict, "tx_bytes"));
+
+    if (dict.at("source").TryGet<std::string>() == "CHROME") {
+      EXPECT_EQ(40, dict.at("rx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(50, dict.at("tx_bytes").TryGet<uint64_t>());
+      continue;
+    }
+
+    if (dict.at("source").TryGet<std::string>() == "TETHERING") {
+      EXPECT_EQ(40, dict.at("rx_bytes").TryGet<uint64_t>());
+      EXPECT_EQ(45, dict.at("tx_bytes").TryGet<uint64_t>());
+      continue;
+    }
+
+    FAIL() << "Unexpected source " << dict.at("source").TryGet<std::string>();
   }
 }
 
@@ -2887,7 +2963,7 @@ TEST_F(ServiceTest, RequestTrafficCountersAfterDetachingNetwork) {
       continue;
     }
 
-    FAIL() << "Unxpected source " << dict.at("source").TryGet<std::string>();
+    FAIL() << "Unexpected source " << dict.at("source").TryGet<std::string>();
   }
 }
 
@@ -2943,7 +3019,7 @@ TEST_F(ServiceTest, RequestTrafficCountersWithoutAttachedNetwork) {
       continue;
     }
 
-    FAIL() << "Unxpected source " << dict.at("source").TryGet<std::string>();
+    FAIL() << "Unexpected source " << dict.at("source").TryGet<std::string>();
   }
 }
 
@@ -3008,7 +3084,7 @@ TEST_F(ServiceTest, RequestTrafficCountersBackgroundRefresh) {
       continue;
     }
 
-    FAIL() << "Unxpected source " << source << " for counters " << counters;
+    FAIL() << "Unexpected source " << source << " for counters " << counters;
   }
 
   // The Network is detached and the Service disconnects, there is one final
@@ -3038,7 +3114,9 @@ TEST_F(ServiceTest, ResetTrafficCounters) {
       .rx_bytes = 10, .tx_bytes = 20, .rx_packets = 30, .tx_packets = 40};
   initial_snapshot[source1] = {
       .rx_bytes = 50, .tx_bytes = 60, .rx_packets = 70, .tx_packets = 80};
-  service_->InitializeTrafficCounterSnapshot(initial_snapshot);
+  Network::TrafficCounterMap initial_extra_snapshot;
+  service_->InitializeTrafficCounterSnapshots(initial_snapshot,
+                                              initial_extra_snapshot);
 
   EXPECT_EQ(service_->current_total_traffic_counters().size(), 0);
 
@@ -3049,7 +3127,8 @@ TEST_F(ServiceTest, ResetTrafficCounters) {
       .rx_bytes = 100, .tx_bytes = 200, .rx_packets = 300, .tx_packets = 400};
   counters[source1] = {
       .rx_bytes = 500, .tx_bytes = 600, .rx_packets = 700, .tx_packets = 800};
-  service_->RefreshTrafficCounters(counters);
+  Network::TrafficCounterMap extra_counters;
+  service_->RefreshTrafficCounters(counters, extra_counters);
 
   EXPECT_EQ(service_->current_total_traffic_counters().size(), 2);
   patchpanel::Client::TrafficVector chrome_counters_diff = {
@@ -3078,7 +3157,8 @@ TEST_F(ServiceTest, ResetTrafficCounters) {
                        .tx_bytes = 6000,
                        .rx_packets = 7000,
                        .tx_packets = 8000};
-  service_->RefreshTrafficCounters(counters);
+  extra_counters.clear();
+  service_->RefreshTrafficCounters(counters, extra_counters);
 
   EXPECT_EQ(service_->current_total_traffic_counters().size(), 2);
   chrome_counters_diff = {.rx_bytes = 990,

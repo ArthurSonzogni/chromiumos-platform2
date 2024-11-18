@@ -1698,18 +1698,25 @@ bool Service::IsMeteredByServiceProperties() const {
   return false;
 }
 
-void Service::InitializeTrafficCounterSnapshot(
-    const Network::TrafficCounterMap& network_raw_counters) {
+void Service::InitializeTrafficCounterSnapshots(
+    const Network::TrafficCounterMap& network_raw_counters,
+    const Network::TrafficCounterMap& extra_raw_counters) {
   total_traffic_counter_snapshot_ = current_total_traffic_counters_;
   network_raw_traffic_counter_snapshot_ = network_raw_counters;
+  extra_raw_traffic_counter_snapshot_ = extra_raw_counters;
 }
 
 void Service::RefreshTrafficCounters(
-    const Network::TrafficCounterMap& network_raw_counters) {
-  Network::TrafficCounterMap delta = Network::DiffTrafficCounters(
+    const Network::TrafficCounterMap& network_raw_counters,
+    const Network::TrafficCounterMap& extra_raw_counters) {
+  Network::TrafficCounterMap network_delta = Network::DiffTrafficCounters(
       network_raw_counters, network_raw_traffic_counter_snapshot_);
+  Network::TrafficCounterMap extra_delta = Network::DiffTrafficCounters(
+      extra_raw_counters, extra_raw_traffic_counter_snapshot_);
+  Network::TrafficCounterMap total_delta =
+      Network::AddTrafficCounters(network_delta, extra_delta);
   current_total_traffic_counters_ =
-      Network::AddTrafficCounters(total_traffic_counter_snapshot_, delta);
+      Network::AddTrafficCounters(total_traffic_counter_snapshot_, total_delta);
 
   SaveToProfile();
 }
@@ -1729,8 +1736,9 @@ void Service::GetTrafficCounters(ResultVariantDictionariesCallback callback) {
 
 void Service::RequestTrafficCountersCallback(
     ResultVariantDictionariesCallback callback,
-    const Network::TrafficCounterMap& raw_counters) {
-  RefreshTrafficCounters(raw_counters);
+    const Network::TrafficCounterMap& raw_counters,
+    const Network::TrafficCounterMap& extra_raw_counters) {
+  RefreshTrafficCounters(raw_counters, extra_raw_counters);
   GetTrafficCounters(std::move(callback));
 }
 
@@ -1777,7 +1785,7 @@ void Service::RefreshTrafficCountersTask(bool initialize) {
   }
   if (initialize) {
     RequestRawTrafficCounters(
-        base::BindOnce(&Service::InitializeTrafficCounterSnapshot,
+        base::BindOnce(&Service::InitializeTrafficCounterSnapshots,
                        weak_ptr_factory_.GetWeakPtr()));
   } else {
     RequestRawTrafficCounters(base::BindOnce(&Service::RefreshTrafficCounters,
@@ -1792,12 +1800,22 @@ void Service::RefreshTrafficCountersTask(bool initialize) {
 }
 
 void Service::RequestRawTrafficCounters(
-    Network::GetTrafficCountersCallback callback) {
+    RequestRawTrafficCountersCallback callback) {
   if (!attached_network_) {
     LOG(WARNING) << __func__ << ": no attached network";
     return;
   }
-  attached_network_->RequestTrafficCounters(std::move(callback));
+
+  attached_network_->RequestTrafficCounters(
+      base::BindOnce(&Service::RequestExtraRawTrafficCounters,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void Service::RequestExtraRawTrafficCounters(
+    RequestRawTrafficCountersCallback callback,
+    const Network::TrafficCounterMap& network_raw_counters) {
+  GetExtraTrafficCounters(
+      base::BindOnce(std::move(callback), network_raw_counters));
 }
 
 bool Service::CompareWithSameTechnology(const ServiceRefPtr& service,
@@ -2876,6 +2894,11 @@ void Service::UpdateEnableRFC8925() {
   // For other cases, there is either a) no DNS server or b) only IPv4 DNS
   // server. In either case, we don't have enough information to change the flag
   // value.
+}
+
+void Service::GetExtraTrafficCounters(
+    Network::GetTrafficCountersCallback callback) {
+  std::move(callback).Run({});
 }
 
 }  // namespace shill

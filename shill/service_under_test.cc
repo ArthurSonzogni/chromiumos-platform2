@@ -69,4 +69,14 @@ void ServiceUnderTest::OnDisconnect(Error* /*error*/, const char* /*reason*/) {
   disconnect_calls_++;
 }
 
+void ServiceUnderTest::SetExtraTrafficCounters(
+    const Network::TrafficCounterMap& extra_traffic_counters) {
+  extra_traffic_counters_ = extra_traffic_counters;
+}
+
+void ServiceUnderTest::GetExtraTrafficCounters(
+    Network::GetTrafficCountersCallback callback) {
+  std::move(callback).Run(extra_traffic_counters_);
+}
+
 }  // namespace shill

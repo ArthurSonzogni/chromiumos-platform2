@@ -312,6 +312,9 @@ class Service : public base::RefCounted<Service> {
     TimerReportersByState stop_on_state;
   };
 
+  using RequestRawTrafficCountersCallback = base::OnceCallback<void(
+      const Network::TrafficCounterMap&, const Network::TrafficCounterMap&)>;
+
   // A constructor for the Service object
   Service(Manager* manager, Technology technology);
   Service(const Service&) = delete;
@@ -742,16 +745,22 @@ class Service : public base::RefCounted<Service> {
   // of |current_total_traffic_counters_| and initializes the
   // |network_raw_traffic_counter_snapshot_| map to the raw counter values
   // |raw_counters| received from patchpanel.
-  void InitializeTrafficCounterSnapshot(
-      const Network::TrafficCounterMap& network_raw_counters);
-  // Increments the |current_total_traffic_counters_| map by the difference
+  void InitializeTrafficCounterSnapshots(
+      const Network::TrafficCounterMap& network_raw_counters,
+      const Network::TrafficCounterMap& extra_raw_counters);
+  // Increments the |current_total_traffic_counters| map by the differences
   // between:
   //   - 1) the raw counter values received from patchpanel
   //   |network_raw_counters| for the Network attached to this service and the
-  //   - 2) the snapshot counter values |network_raw_traffic_counter_snapshot_|
-  //   for that Network when it was attached to this Service.
+  //   snapshot counter values |network_raw_traffic_counter_snapshot_| for that
+  //   Network when it was attached to this Service.
+  //   - 2) the extra raw counter values |extra_raw_counters| provided by the
+  //   technology specific accounting for this service and the snapshot counter
+  //   values |extra_raw_traffic_counter_snapshot_| of these extra counters
+  //   taken when the Network was attached to this Service.
   void RefreshTrafficCounters(
-      const Network::TrafficCounterMap& network_raw_counter);
+      const Network::TrafficCounterMap& network_raw_counter,
+      const Network::TrafficCounterMap& extra_raw_counters);
   // Returns the current total traffic counters for this Service as a DBus
   // Variant and pass it to |callback|. If a Network is currently attached, also
   // updates the current total traffic counters first.
@@ -972,6 +981,13 @@ class Service : public base::RefCounted<Service> {
                                       ConnectState start_state,
                                       ConnectState stop_state);
 
+  // Returns any extra source of traffic counter data from any secondary Network
+  // associated with this Service. By default this method returns an empty
+  // traffic counter map, and technology specific subclasses of Service can
+  // override it to account for extra data usage like tethering.
+  virtual void GetExtraTrafficCounters(
+      Network::GetTrafficCountersCallback callback);
+
   // Update the value of |enable_rfc_8925_| based on the current dns servers of
   // the attached network. Also see comments for `enable_rfc_8925()`.
   void UpdateEnableRFC8925();
@@ -1136,19 +1152,28 @@ class Service : public base::RefCounted<Service> {
   // through |callback|.
   void RequestTrafficCountersCallback(
       ResultVariantDictionariesCallback callback,
-      const Network::TrafficCounterMap& raw_counters);
+      const Network::TrafficCounterMap& raw_counters,
+      const Network::TrafficCounterMap& extra_raw_counters);
 
   // If |initialize| is true, fetches the raw traffic counters to initialize
   // |total_traffic_counter_snapshot_| and
   // |network_raw_traffic_counter_snapshot_| with
-  // InitializeTrafficCounterSnapshot, otherwise simply refresh the current
+  // InitializeTrafficCounterSnapshots, otherwise simply refresh the current
   // traffic counter with RefreshTrafficCounters. This function reschedules
   // itself when a Network is attached to this Service.
   void RefreshTrafficCountersTask(bool initialize);
 
   // Requests raw traffic counters for from patchpanel for the Network currently
   // attached to this Service and pass it to |callback|.
-  void RequestRawTrafficCounters(Network::GetTrafficCountersCallback callback);
+  void RequestRawTrafficCounters(RequestRawTrafficCountersCallback callback);
+
+  // Requests additional raw traffic counters from the technology specific
+  // implementation of RequestExtraTrafficCounters and passes the counters to
+  // |callback|. This function is meant to be used by RequestRawTrafficCounters
+  // in a callback chain.
+  void RequestExtraRawTrafficCounters(
+      RequestRawTrafficCountersCallback callback,
+      const Network::TrafficCounterMap& network_raw_counters);
 
   // Invokes |static_ipconfig_changed_callback_| to notify the listener of the
   // change of static IP config.
@@ -1268,6 +1293,8 @@ class Service : public base::RefCounted<Service> {
   //    = total counter snapshot for the service
   //    + current raw counter for the attached Network
   //    - raw counter snapshot for the attached Network
+  //    + current raw counter from extra sources
+  //    - raw counter snapshot for the extra sources
   Network::TrafficCounterMap current_total_traffic_counters_;
   // Snapshot of the total counter values for this Service taken at the last
   // time a Network was attached. This is used as a reference point to
@@ -1277,6 +1304,10 @@ class Service : public base::RefCounted<Service> {
   // taken when this Network was attached. This is used as a reference point to
   // recalculate |current_total_traffic_counters_|.
   Network::TrafficCounterMap network_raw_traffic_counter_snapshot_;
+  // Snapshot of any extra raw counter values specific to the subtype of this
+  // Service, taken when the Network was attached. This is used as a reference
+  // point to recalculate |current_total_traffic_counters_|.
+  Network::TrafficCounterMap extra_raw_traffic_counter_snapshot_;
   // Represents when total traffic counters for this Service were last reset.
   base::Time traffic_counter_reset_time_;
   // Task for periodically refreshing traffic counters when this Service has a

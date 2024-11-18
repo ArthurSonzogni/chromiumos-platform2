@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "shill/network/network.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
 
@@ -47,6 +48,11 @@ class ServiceUnderTest : public Service {
     disconnectable_ = disconnectable;
   }
 
+  void SetExtraTrafficCounters(
+      const Network::TrafficCounterMap& extra_traffic_counters);
+  void GetExtraTrafficCounters(
+      Network::GetTrafficCountersCallback callback) override;
+
   int connect_calls() const { return connect_calls_; }
   int disconnect_calls() const { return disconnect_calls_; }
 
@@ -65,6 +71,8 @@ class ServiceUnderTest : public Service {
   bool disconnectable_ = true;
   int connect_calls_ = 0;
   int disconnect_calls_ = 0;
+
+  Network::TrafficCounterMap extra_traffic_counters_;
 };
 
 }  // namespace shill
