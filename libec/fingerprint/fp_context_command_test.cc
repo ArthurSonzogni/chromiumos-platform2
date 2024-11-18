@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/fingerprint/fp_context_command.h"
+
 #include <vector>
 
+#include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
-#include <base/strings/string_number_conversions.h>
-
 #include "libec/ec_command.h"
-#include "libec/fingerprint/fp_context_command.h"
 
 namespace ec {
 namespace {

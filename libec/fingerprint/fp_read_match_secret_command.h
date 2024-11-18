@@ -9,6 +9,7 @@
 
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
+
 #include "libec/ec_command.h"
 #include "libec/fingerprint/fp_read_match_secret_command.h"
 

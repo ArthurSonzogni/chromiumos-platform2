@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/i2c_passthru_command.h"
+
 #include <algorithm>
 #include <memory>
 #include <vector>
@@ -10,7 +12,6 @@
 #include <gtest/gtest.h>
 
 #include "libec/ec_command.h"
-#include "libec/i2c_passthru_command.h"
 
 namespace ec {
 

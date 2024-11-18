@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/thermal/thermal_auto_fan_ctrl_command.h"
+
 #include <cstdint>
 #include <cstdlib>
-#include <gtest/gtest.h>
 
-#include "libec/thermal/thermal_auto_fan_ctrl_command.h"
+#include <gtest/gtest.h>
 
 namespace ec {
 namespace {

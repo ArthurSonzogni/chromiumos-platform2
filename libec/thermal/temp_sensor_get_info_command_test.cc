@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/thermal/temp_sensor_get_info_command.h"
+
 #include <cstdint>
 #include <cstdlib>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "libec/thermal/temp_sensor_get_info_command.h"
 
 namespace ec {
 namespace {

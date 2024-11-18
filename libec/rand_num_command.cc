@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/rand_num_command.h"
+
 #include <chromeos/ec/ec_commands.h>
 
 #include "libec/ec_command.h"
-#include "libec/rand_num_command.h"
 
 namespace ec {
 

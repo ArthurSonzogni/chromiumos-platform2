@@ -5,8 +5,9 @@
 #ifndef LIBEC_FINGERPRINT_FP_ENCRYPTION_STATUS_COMMAND_H_
 #define LIBEC_FINGERPRINT_FP_ENCRYPTION_STATUS_COMMAND_H_
 
-#include <brillo/brillo_export.h>
 #include <string>
+
+#include <brillo/brillo_export.h>
 
 #include "libec/ec_command.h"
 

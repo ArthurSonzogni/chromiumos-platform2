@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/ec_usb_endpoint.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libusb-1.0/libusb.h>
-
-#include "libec/ec_usb_endpoint.h"
 
 using ::testing::_;
 using ::testing::AtLeast;

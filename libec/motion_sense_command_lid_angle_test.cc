@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/motion_sense_command_lid_angle.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "libec/motion_sense_command_lid_angle.h"
 
 namespace ec {
 namespace {

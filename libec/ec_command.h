@@ -12,14 +12,14 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
-#include <libusb-1.0/libusb.h>
-
 #include <string>
 #include <unordered_map>
 
 #include <base/logging.h>
 #include <chromeos/ec/cros_ec_dev.h>
 #include <chromeos/ec/ec_commands.h>
+#include <libusb-1.0/libusb.h>
+
 #include "libec/ec_usb_endpoint.h"
 
 namespace ec {

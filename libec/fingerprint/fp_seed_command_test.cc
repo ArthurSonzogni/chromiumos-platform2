@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/fingerprint/fp_seed_command.h"
+
 #include <memory>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "libec/fingerprint/fp_seed_command.h"
 
 namespace ec {
 namespace {

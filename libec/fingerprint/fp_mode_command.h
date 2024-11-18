@@ -7,6 +7,7 @@
 
 #include <base/check_op.h>
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command.h"
 #include "libec/fingerprint/fp_mode.h"
 

@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/i2c_read_command.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "libec/i2c_passthru_params.h"
-#include "libec/i2c_read_command.h"
 
 namespace ec {
 

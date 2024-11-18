@@ -7,6 +7,7 @@
 
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
+
 #include "libec/ec_command.h"
 
 namespace ec {

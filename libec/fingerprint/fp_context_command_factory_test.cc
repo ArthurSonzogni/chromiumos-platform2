@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/fingerprint/fp_context_command_factory.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "biod/mock_cros_fp_device.h"
-#include "libec/fingerprint/fp_context_command_factory.h"
 
 using testing::Return;
 

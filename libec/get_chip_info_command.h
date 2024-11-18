@@ -8,6 +8,7 @@
 #include <string>
 
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command.h"
 
 namespace ec {

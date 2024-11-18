@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "libec/fingerprint/fp_read_match_secret_command.h"
 
 #include <algorithm>
 #include <array>
 #include <optional>
 
-#include "libec/fingerprint/fp_read_match_secret_command.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace ec {
 namespace {

@@ -6,6 +6,7 @@
 #define LIBEC_SET_FORCE_LID_OPEN_COMMAND_H_
 
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command.h"
 
 namespace ec {

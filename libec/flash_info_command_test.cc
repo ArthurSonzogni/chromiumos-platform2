@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/flash_info_command.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "libec/ec_command.h"
-#include "libec/flash_info_command.h"
 
 using testing::Return;
 

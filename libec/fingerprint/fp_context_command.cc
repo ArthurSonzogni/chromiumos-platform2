@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/fingerprint/fp_context_command.h"
+
 #include <algorithm>
 #include <utility>
 #include <vector>
@@ -13,7 +15,6 @@
 
 #include "libec/ec_command.h"
 #include "libec/ec_command_async.h"
-#include "libec/fingerprint/fp_context_command.h"
 
 namespace ec {
 

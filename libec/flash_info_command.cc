@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libec/ec_command.h"
 #include "libec/flash_info_command.h"
+
+#include "libec/ec_command.h"
 
 namespace ec {
 

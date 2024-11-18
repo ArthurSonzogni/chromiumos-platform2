@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+
 #include "libec/ec_command.h"
 
 namespace ec {

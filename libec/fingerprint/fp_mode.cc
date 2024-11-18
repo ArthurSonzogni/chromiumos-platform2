@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/fingerprint/fp_mode.h"
+
 #include <base/logging.h>
 #include <chromeos/ec/ec_commands.h>
-
-#include "libec/fingerprint/fp_mode.h"
 
 namespace ec {
 

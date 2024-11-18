@@ -6,6 +6,7 @@
 #define LIBEC_EC_PANICINFO_H_
 
 #include <stdio.h>
+
 #include <string>
 #include <vector>
 

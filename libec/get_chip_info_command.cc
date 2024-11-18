@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string>
-
 #include "libec/get_chip_info_command.h"
+
+#include <string>
 
 namespace ec {
 

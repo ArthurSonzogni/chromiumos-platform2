@@ -6,6 +6,7 @@
 #define LIBEC_GET_FEATURES_COMMAND_H_
 
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command.h"
 
 namespace ec {

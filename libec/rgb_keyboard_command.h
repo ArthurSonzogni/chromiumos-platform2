@@ -11,6 +11,7 @@
 
 #include <base/memory/ptr_util.h>
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command.h"
 #include "libec/rgb_keyboard_params.h"
 

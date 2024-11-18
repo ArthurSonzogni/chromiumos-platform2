@@ -5,10 +5,10 @@
 #ifndef LIBEC_THERMAL_GET_MEMMAP_TEMP_B_COMMAND_H_
 #define LIBEC_THERMAL_GET_MEMMAP_TEMP_B_COMMAND_H_
 
-#include <brillo/brillo_export.h>
-
 #include <cstdint>
 #include <string>
+
+#include <brillo/brillo_export.h>
 
 #include "libec/ec_command.h"
 #include "libec/read_memmap_command.h"

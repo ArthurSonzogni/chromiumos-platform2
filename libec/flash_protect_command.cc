@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/flash_protect_command.h"
+
 #include <base/stl_util.h>
 #include <chromeos/ec/ec_commands.h>
 
 #include "libec/ec_command.h"
-#include "libec/flash_protect_command.h"
 
 namespace ec {
 

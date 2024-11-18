@@ -10,6 +10,7 @@
 
 #include <brillo/brillo_export.h>
 #include <brillo/enum_flags.h>
+
 #include "libec/ec_command.h"
 #include "libec/ec_command_async.h"
 

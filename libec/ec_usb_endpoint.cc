@@ -4,11 +4,12 @@
 
 #include "libec/ec_usb_endpoint.h"
 
+#include <string.h>
+
 #include <absl/time/clock.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <libusb-1.0/libusb.h>
-#include <string.h>
 
 #include "libec/ec_command.h"
 

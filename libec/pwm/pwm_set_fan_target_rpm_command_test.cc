@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cstdlib>
-#include <gtest/gtest.h>
-
 #include "libec/pwm/pwm_set_fan_target_rpm_command.h"
+
+#include <cstdlib>
+
+#include <gtest/gtest.h>
 
 namespace ec {
 namespace {

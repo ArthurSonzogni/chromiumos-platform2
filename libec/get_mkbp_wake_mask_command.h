@@ -6,6 +6,7 @@
 #define LIBEC_GET_MKBP_WAKE_MASK_COMMAND_H_
 
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command.h"
 
 namespace ec {

@@ -6,6 +6,7 @@
 #define LIBEC_ADD_ENTROPY_COMMAND_H_
 
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command_async.h"
 
 namespace ec {

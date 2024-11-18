@@ -6,6 +6,7 @@
 #define LIBEC_CHARGE_CONTROL_SET_COMMAND_H_
 
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command.h"
 
 namespace ec {

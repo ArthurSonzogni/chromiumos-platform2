@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/rgb_keyboard_command.h"
+
 #include <algorithm>
 #include <array>
 #include <cstdlib>
@@ -13,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "libec/ec_command.h"
-#include "libec/rgb_keyboard_command.h"
 
 namespace ec {
 namespace {

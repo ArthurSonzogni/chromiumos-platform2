@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/led_control_command.h"
+
 #include <algorithm>
 #include <string>
-
-#include "libec/led_control_command.h"
 
 namespace ec {
 

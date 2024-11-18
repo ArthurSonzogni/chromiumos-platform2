@@ -5,10 +5,11 @@
 #ifndef LIBEC_EC_USB_ENDPOINT_H_
 #define LIBEC_EC_USB_ENDPOINT_H_
 
-#include <brillo/brillo_export.h>
-#include <libusb-1.0/libusb.h>
 #include <memory>
 #include <utility>
+
+#include <brillo/brillo_export.h>
+#include <libusb-1.0/libusb.h>
 
 #include "libec/libusb_wrapper.h"
 

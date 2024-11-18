@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <chromeos/ec/ec_commands.h>
+#include "libec/fingerprint/fp_encryption_status_command.h"
+
 #include <string>
 
+#include <chromeos/ec/ec_commands.h>
+
 #include "libec/ec_command.h"
-#include "libec/fingerprint/fp_encryption_status_command.h"
 
 namespace ec {
 

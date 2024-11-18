@@ -12,6 +12,7 @@
 
 #include <base/memory/ptr_util.h>
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command.h"
 #include "libec/flash_write_params.h"
 

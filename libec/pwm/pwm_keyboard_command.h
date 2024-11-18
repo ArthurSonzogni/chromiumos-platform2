@@ -6,6 +6,7 @@
 #define LIBEC_PWM_PWM_KEYBOARD_COMMAND_H_
 
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command.h"
 
 namespace ec {

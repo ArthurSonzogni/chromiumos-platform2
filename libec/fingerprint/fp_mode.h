@@ -7,8 +7,9 @@
 
 #include <ostream>
 
-#include "base/types/cxx23_to_underlying.h"
 #include <brillo/brillo_export.h>
+
+#include "base/types/cxx23_to_underlying.h"
 
 namespace ec {
 

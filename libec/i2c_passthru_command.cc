@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/i2c_passthru_command.h"
+
 #include <base/check.h>
 #include <base/containers/span.h>
-
-#include "libec/i2c_passthru_command.h"
 
 namespace ec {
 

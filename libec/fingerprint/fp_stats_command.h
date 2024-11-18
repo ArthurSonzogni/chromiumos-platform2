@@ -9,6 +9,7 @@
 
 #include <base/time/time.h>
 #include <brillo/brillo_export.h>
+
 #include "libec/ec_command.h"
 
 namespace ec {

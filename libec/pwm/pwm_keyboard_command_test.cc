@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/pwm/pwm_keyboard_command.h"
+
 #include <cstdlib>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "libec/pwm/pwm_keyboard_command.h"
 
 namespace ec {
 namespace {
