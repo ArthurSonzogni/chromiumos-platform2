@@ -142,10 +142,23 @@ void MantisService::OnInstallDlcComplete(
   // thread.
   MantisComponent component = api->Initialize(result->value());
 
-  processor_ = std::make_unique<MantisProcessor>(
+  CreateMantisProcessor(
       component, api, std::move(processor), service_manager_,
       base::BindOnce(&MantisService::DeleteProcessor, base::Unretained(this)),
       std::move(callback));
+}
+
+void MantisService::CreateMantisProcessor(
+    MantisComponent component,
+    const MantisAPI* api,
+    mojo::PendingReceiver<mojom::MantisProcessor> processor,
+    raw_ref<mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
+        service_manager,
+    base::OnceCallback<void()> on_disconnected,
+    base::OnceCallback<void(mantis::mojom::InitializeResult)> callback) {
+  processor_ = std::make_unique<MantisProcessor>(
+      component, api, std::move(processor), service_manager,
+      std::move(on_disconnected), std::move(callback));
 }
 
 void MantisService::OnDlcProgress(

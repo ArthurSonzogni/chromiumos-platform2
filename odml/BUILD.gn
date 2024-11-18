@@ -18,6 +18,7 @@ group("all") {
       ":install_service_manager_policy_config",
       ":install_tmpfiles_config",
       ":libdmabufheap",
+      ":mantis_console",
       ":odml_console",
       ":odmld",
       ":safety_console",
@@ -194,6 +195,16 @@ executable("odml_console") {
   sources = [ "odml_console.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":odml" ]
+}
+
+executable("mantis_console") {
+  install_path = "/usr/local/bin"
+  sources = [ "mantis_console.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":mantis",
+    ":odml",
+  ]
 }
 
 executable("embedding_model_console") {

@@ -79,17 +79,18 @@ class MantisProcessor : public mojom::MantisProcessor {
   void ClassifyImageSafety(const std::vector<uint8_t>& image,
                            ClassifyImageSafetyCallback callback) override;
 
+ protected:
+  virtual void ClassifyImageSafetyInternal(
+      const std::vector<uint8_t>& image,
+      const std::string& text,
+      base::OnceCallback<void(mojom::SafetyClassifierVerdict)> callback);
+
  private:
   void OnDisconnected();
 
   void OnCreateCloudSafetySessionComplete(
       base::OnceCallback<void(mojom::InitializeResult)> callback,
       cros_safety::mojom::GetCloudSafetySessionResult result);
-
-  void ClassifyImageSafetyInternal(
-      const std::vector<uint8_t>& image,
-      const std::string& text,
-      base::OnceCallback<void(mojom::SafetyClassifierVerdict)> callback);
 
   void OnClassifyImageInputDone(std::unique_ptr<MantisProcess> process,
                                 mojom::SafetyClassifierVerdict result);

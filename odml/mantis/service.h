@@ -50,6 +50,17 @@ class MantisService : public mojom::MantisService {
 
   bool IsProcessorNullForTesting() { return processor_ == nullptr; }
 
+ protected:
+  virtual void CreateMantisProcessor(
+      MantisComponent component,
+      const MantisAPI* api,
+      mojo::PendingReceiver<mojom::MantisProcessor> receiver,
+      raw_ref<
+          mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
+          service_manager,
+      base::OnceCallback<void()> on_disconnected,
+      base::OnceCallback<void(mantis::mojom::InitializeResult)> callback);
+
  private:
   // Duplicate from on_device_model_service.h
   // TODO(b/368261193): Move this function to a common place and reuse it here.
