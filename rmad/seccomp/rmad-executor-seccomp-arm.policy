@@ -83,3 +83,5 @@ chown32: 1
 fsync: 1
 futex: 1
 sync: 1
+fstat: 1
+fstat64: 1

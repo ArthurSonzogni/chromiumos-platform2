@@ -110,3 +110,4 @@ clock_gettime: 1
 fsync: 1
 sendfile: 1
 sync: 1
+fstat: 1
