@@ -8,9 +8,9 @@
 
 syntax = "proto2";
 
-option optimize_for = LITE_RUNTIME;
-
 package reporting;
+
+option optimize_for = LITE_RUNTIME;
 
 // Common information about Session Affiliated User accounts.
 message SessionAffiliatedUser {
@@ -22,9 +22,12 @@ message SessionUnaffiliatedUser {
   // String user id is deprecated because it was filled using a cryptographic
   // hash which generated a non-readable byte string. The ID must be human
   // readable since it's displayed in a UI.
-  optional string user_id = 1 [deprecated = true];
+  optional string user_id = 1 [
+    deprecated = true
+  ];
 
   // Unique per-device user id. Used to track unaffiliated user activity on a
   // given device without revealing the identity of the user.
-  optional uint32 user_id_num = 2;
+  optional int64 user_id_num = 2
+      ;
 }

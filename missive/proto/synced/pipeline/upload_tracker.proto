@@ -6,9 +6,9 @@
 // See google3/chrome/cros/reporting/api/proto/synced/README.md
 syntax = "proto2";
 
-option optimize_for = LITE_RUNTIME;
-
 package reporting;
+
+option optimize_for = LITE_RUNTIME;
 
 import "status.proto";
 
@@ -53,7 +53,8 @@ message UploadTracker {
   // finalize the upload at the end (after that, this field should be cleared).
   // This field is implementation-dependent; having it generic allows to choose
   // the actual upload protocol and/or unit test the whole process.
-  optional string session_token = 4;  // required, while upload is in progress.
+  optional string session_token = 4
+      ;  // required, while upload is in progress.
 
   // URL and optionally other parameters to access the uploaded file from the
   // server side. Populated once the upload has been finalized successfully.
