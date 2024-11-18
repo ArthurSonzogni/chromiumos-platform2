@@ -803,7 +803,8 @@ bool Service::Load(const StoreInterface* storage) {
     if (counters.rx_bytes == 0 && counters.tx_bytes == 0) {
       continue;
     }
-    current_traffic_counters_[source] = counters;
+    current_total_traffic_counters_[source] = counters;
+    total_traffic_counter_snapshot_[source] = counters;
   }
 
   uint64_t temp_ms;
@@ -875,7 +876,7 @@ bool Service::Unload() {
     Error error;  // Ignored.
     Disconnect(&error, Service::kDisconnectReasonUnload);
   }
-  current_traffic_counters_.clear();
+  current_total_traffic_counters_.clear();
   static_ip_parameters_.Reset();
   return false;
 }
@@ -927,7 +928,7 @@ bool Service::Save(StoreInterface* storage) {
   }
 
   for (auto source : patchpanel::Client::kAllTrafficSources) {
-    const auto& counter = current_traffic_counters_[source];
+    const auto& counter = current_total_traffic_counters_[source];
     if (counter == patchpanel::Client::kZeroTraffic) {
       continue;
     }
@@ -1698,26 +1699,24 @@ bool Service::IsMeteredByServiceProperties() const {
 }
 
 void Service::InitializeTrafficCounterSnapshot(
-    const Network::TrafficCounterMap& raw_counters) {
-  traffic_counter_snapshot_ = raw_counters;
+    const Network::TrafficCounterMap& network_raw_counters) {
+  total_traffic_counter_snapshot_ = current_total_traffic_counters_;
+  network_raw_traffic_counter_snapshot_ = network_raw_counters;
 }
 
 void Service::RefreshTrafficCounters(
-    const Network::TrafficCounterMap& new_snapshot) {
-  Network::TrafficCounterMap delta =
-      Network::DiffTrafficCounters(new_snapshot, traffic_counter_snapshot_);
-  current_traffic_counters_ =
-      Network::AddTrafficCounters(current_traffic_counters_, delta);
-
-  // 3: Replace the snapshot point.
-  traffic_counter_snapshot_ = new_snapshot;
+    const Network::TrafficCounterMap& network_raw_counters) {
+  Network::TrafficCounterMap delta = Network::DiffTrafficCounters(
+      network_raw_counters, network_raw_traffic_counter_snapshot_);
+  current_total_traffic_counters_ =
+      Network::AddTrafficCounters(total_traffic_counter_snapshot_, delta);
 
   SaveToProfile();
 }
 
 void Service::GetTrafficCounters(ResultVariantDictionariesCallback callback) {
   std::vector<brillo::VariantDictionary> traffic_counters;
-  for (const auto& [source, traffic] : current_traffic_counters_) {
+  for (const auto& [source, traffic] : current_total_traffic_counters_) {
     brillo::VariantDictionary dict;
     // Only export rx_bytes and tx_bytes.
     dict.emplace("source", patchpanel::Client::TrafficSourceName(source));
@@ -1759,7 +1758,12 @@ void Service::RequestTrafficCounters(
 
 void Service::ResetTrafficCounters(Error* /*error*/) {
   LOG(INFO) << __func__ << ": " << log_name();
-  current_traffic_counters_.clear();
+  // TODO(b/335299463): Any raw snapshot also need to be reset to the current
+  // value which requires an async query. To avoid inconsistency change this
+  // function to do the reinitialization asynchronously (without waiting here
+  // and without a callback).
+  current_total_traffic_counters_.clear();
+  total_traffic_counter_snapshot_.clear();
   traffic_counter_reset_time_ = base::Time::Now();
   SaveToProfile();
 }

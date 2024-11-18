@@ -738,16 +738,20 @@ class Service : public base::RefCounted<Service> {
   // connection is confirmed or inferred to be metered.
   bool IsMetered() const;
 
-  // Initializes the |traffic_counter_snapshot_| map to the raw counter values
-  // received from patchpanel.
+  // Initializes the |total_traffic_counter_snapshot_| map to the current value
+  // of |current_total_traffic_counters_| and initializes the
+  // |network_raw_traffic_counter_snapshot_| map to the raw counter values
+  // |raw_counters| received from patchpanel.
   mockable void InitializeTrafficCounterSnapshot(
-      const Network::TrafficCounterMap& raw_counters);
-  // Increment the |current_traffic_counters_| map by the difference between the
-  // raw counter values received from patchpanel and the
-  // traffic_counter_snapshot_ values, and then update the snapshots as well in
-  // one atomic step.
+      const Network::TrafficCounterMap& network_raw_counters);
+  // Increments the |current_total_traffic_counters_| map by the difference
+  // between:
+  //   - 1) the raw counter values received from patchpanel
+  //   |network_raw_counters| for the Network attached to this service and the
+  //   - 2) the snapshot counter values |network_raw_traffic_counter_snapshot_|
+  //   for that Network when it was attached to this Service.
   mockable void RefreshTrafficCounters(
-      const Network::TrafficCounterMap& new_snapshot);
+      const Network::TrafficCounterMap& network_raw_counters);
   // Requests raw traffic counters for from patchpanel for the Network currently
   // attached to this service and returns the result in |callback|.
   mockable void RequestTrafficCounters(
@@ -776,11 +780,9 @@ class Service : public base::RefCounted<Service> {
   void set_unreliable(bool unreliable) { unreliable_ = unreliable; }
   bool unreliable() const { return unreliable_; }
 
-  Network::TrafficCounterMap& current_traffic_counters() {
-    return current_traffic_counters_;
-  }
-  Network::TrafficCounterMap& traffic_counter_snapshot() {
-    return traffic_counter_snapshot_;
+  // Returns the total current traffic counters for this Service.
+  Network::TrafficCounterMap& current_total_traffic_counters() {
+    return current_total_traffic_counters_;
   }
 
   const std::string& probe_url_string() const { return probe_url_string_; }
@@ -1122,8 +1124,9 @@ class Service : public base::RefCounted<Service> {
   // authentication) for comparison.
   uint16_t SecurityLevel();
 
-  // Converts the current traffic counter |current_traffic_counters_| into a
-  // DBus dictionary and invoke |callback| with that dictionary.
+  // Converts the current traffic counter for this Service
+  // |current_total_traffic_counters_| into a DBus dictionary and invokes
+  // |callback| with that dictionary.
   void GetTrafficCounters(ResultVariantDictionariesCallback callback);
 
   // Refreshes and processes the persisted traffic counters of this Service
@@ -1135,9 +1138,11 @@ class Service : public base::RefCounted<Service> {
       const Network::TrafficCounterMap& raw_counters);
 
   // If |initialize| is true, fetches the raw traffic counters to initialize
-  // |traffic_counter_snapshot_| with InitializeTrafficCounterSnapshot,
-  // otherwise simply refresh the current traffic counter. This function
-  // reschedules itself while a Network is attached to this Service.
+  // |total_traffic_counter_snapshot_| and
+  // |network_raw_traffic_counter_snapshot_| with
+  // InitializeTrafficCounterSnapshot, otherwise simply refresh the current
+  // traffic counter with RefreshTrafficCounters. This function reschedules
+  // itself when a Network is attached to this Service.
   void RefreshTrafficCountersTask(bool initialize);
 
   // Invokes |static_ipconfig_changed_callback_| to notify the listener of the
@@ -1251,11 +1256,23 @@ class Service : public base::RefCounted<Service> {
   // Source of the service (user/policy).
   ONCSource source_;
 
-  // Current traffic counter values.
-  Network::TrafficCounterMap current_traffic_counters_;
-  // Snapshot of the counter values from the last time they were refreshed.
-  Network::TrafficCounterMap traffic_counter_snapshot_;
-  // Represents when traffic counters were last reset.
+  // Current total traffic counter values for this Service. This map is
+  // recalculated every time the raw traffic counter are refreshed using the
+  // following rule:
+  //  current total counter for the service
+  //    = total counter snapshot for the service
+  //    + current raw counter for the attached Network
+  //    - raw counter snapshot for the attached Network
+  Network::TrafficCounterMap current_total_traffic_counters_;
+  // Snapshot of the total counter values for this Service taken at the last
+  // time a Network was attached. This is used as a reference point to
+  // recalculate |current_total_traffic_counters_|.
+  Network::TrafficCounterMap total_traffic_counter_snapshot_;
+  // Snapshot of the raw counter values of the Network attached to this Service,
+  // taken when this Network was attached. This is used as a reference point to
+  // recalculate |current_total_traffic_counters_|.
+  Network::TrafficCounterMap network_raw_traffic_counter_snapshot_;
+  // Represents when total traffic counters for this Service were last reset.
   base::Time traffic_counter_reset_time_;
   // Task for periodically refreshing traffic counters when this Service has a
   // Network attached to it.
