@@ -32,14 +32,14 @@ class FakeCrosSafetyService : public cros_safety::mojom::CrosSafetyService {
 
   void CreateOnDeviceSafetySession(
       mojo::PendingReceiver<cros_safety::mojom::OnDeviceSafetySession> session,
-      CreateOnDeviceSafetySessionCallback callback) {
+      CreateOnDeviceSafetySessionCallback callback) override {
     std::move(callback).Run(
         cros_safety::mojom::GetOnDeviceSafetySessionResult::kOk);
   }
 
   void CreateCloudSafetySession(
       mojo::PendingReceiver<cros_safety::mojom::CloudSafetySession> session,
-      CreateCloudSafetySessionCallback callback) {
+      CreateCloudSafetySessionCallback callback) override {
     cloud_safety_session_->AddReceiver(std::move(session));
     std::move(callback).Run(
         cros_safety::mojom::GetCloudSafetySessionResult::kOk);

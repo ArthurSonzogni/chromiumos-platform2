@@ -9,6 +9,7 @@
 
 #include <base/check.h>
 #include <base/containers/fixed_flat_map.h>
+#include <base/logging.h>
 #include <base/run_loop.h>
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
@@ -49,6 +50,8 @@ constexpr auto kMapSafetyResult =
         {cros_safety::mojom::SafetyClassifierVerdict::kFailedImage,
          SafetyClassifierVerdict::kFailedImage},
     });
+
+constexpr base::TimeDelta kRemoteRequestTimeout = base::Milliseconds(10 * 1000);
 }  // namespace
 
 MantisProcessor::MantisProcessor(
@@ -73,8 +76,16 @@ MantisProcessor::MantisProcessor(
   (*service_manager)
       ->Request(
           /*service_name=*/chromeos::mojo_services::kCrosSafetyService,
-          /*timeout=*/std::nullopt,
+          /*timeout=*/kRemoteRequestTimeout,
           safety_service_.BindNewPipeAndPassReceiver().PassPipe());
+
+  if (!safety_service_ || !safety_service_.is_bound() ||
+      !safety_service_.is_connected()) {
+    LOG(ERROR) << "Cannot receive CrosSafetyService from mojo service manager";
+    std::move(callback).Run(
+        mojom::InitializeResult::kFailedToLoadSafetyService);
+    return;
+  }
 
   safety_service_->CreateCloudSafetySession(
       cloud_safety_session_.BindNewPipeAndPassReceiver(),
@@ -106,6 +117,15 @@ void MantisProcessor::OnCreateCloudSafetySessionComplete(
     cros_safety::mojom::GetCloudSafetySessionResult result) {
   if (result != cros_safety::mojom::GetCloudSafetySessionResult::kOk) {
     LOG(ERROR) << "Can't initialize CloudSafetySession " << result;
+    std::move(callback).Run(
+        mojom::InitializeResult::kFailedToLoadSafetyService);
+    return;
+  }
+
+  if (!cloud_safety_session_ || !cloud_safety_session_.is_bound() ||
+      !cloud_safety_session_.is_connected()) {
+    LOG(ERROR)
+        << "CreateCloudSafetySession returns ok but session isn't connected";
     std::move(callback).Run(
         mojom::InitializeResult::kFailedToLoadSafetyService);
     return;
@@ -234,6 +254,14 @@ void MantisProcessor::ClassifyImageSafetyInternal(
     const std::vector<uint8_t>& image,
     const std::string& text,
     base::OnceCallback<void(SafetyClassifierVerdict)> callback) {
+  if (!cloud_safety_session_ || !cloud_safety_session_.is_bound() ||
+      !cloud_safety_session_.is_connected()) {
+    LOG(ERROR) << "Cloud safety session is not connected when trying to "
+                  "classify image";
+    std::move(callback).Run(SafetyClassifierVerdict::kFail);
+    return;
+  }
+
   cloud_safety_session_->ClassifyImageSafety(
       cros_safety::mojom::SafetyRuleset::kMantis, text,
       mojo_base::mojom::BigBuffer::NewBytes(image),
