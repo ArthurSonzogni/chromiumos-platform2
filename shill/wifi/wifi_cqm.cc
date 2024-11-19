@@ -5,6 +5,7 @@
 #include "shill/wifi/wifi_cqm.h"
 
 #include <fcntl.h>
+
 #include <string>
 
 #include <base/files/file_path.h>
@@ -15,6 +16,7 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/scope_logger.h"
+#include "shill/technology.h"
 #include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/wifi.h"
 
@@ -29,35 +31,6 @@ constexpr int16_t kTriggerFwDumpThresholdDbm = -80;
 // Have a large enough time interval to rate limit the number of
 // triggered FW dumps from shill.
 constexpr auto kFwDumpCoolDownPeriod = base::Seconds(360);
-constexpr char kFwDumpIntelSysFs[] =
-    "/sys/kernel/debug/ieee80211/phy0/iwlwifi/iwlmvm/fw_dbg_collect";
-
-bool WriteToFwDumpSysPath(const base::FilePath& path) {
-  base::ScopedFD fd(HANDLE_EINTR(open(path.value().c_str(), O_WRONLY)));
-  if (!fd.is_valid()) {
-    LOG(ERROR) << "Failed to open sysfs file, " << path.value();
-    return false;
-  }
-
-  if (!base::WriteFileDescriptor(fd.get(), "1")) {
-    LOG(ERROR) << "failed to write to sys fs FW dump file";
-    return false;
-  }
-
-  return true;
-}
-
-// Currently it supports Intel and this will support other chipsets once
-// they are enabled.
-void SetUpFwDumpPath(base::FilePath* path) {
-  if (base::PathExists(base::FilePath(kFwDumpIntelSysFs))) {
-    *path = base::FilePath(kFwDumpIntelSysFs);
-    return;
-  }
-
-  // Path existence check for new chipsets goes here.
-}
-
 }  // namespace
 
 // CQM thresholds for RSSI notification and Packet loss is configurable
@@ -67,10 +40,6 @@ WiFiCQM::WiFiCQM(Metrics* metrics, WiFi* wifi)
     : wifi_(wifi), metrics_(metrics) {
   CHECK(wifi_) << "Passed wifi object was found null.";
   CHECK(metrics_) << "Passed metrics object was found null.";
-  SetUpFwDumpPath(&fw_dump_path_);
-  if (fw_dump_path_.empty()) {
-    SLOG(2) << "Firmware dump not supported.";
-  }
 }
 
 WiFiCQM::~WiFiCQM() = default;
@@ -82,12 +51,6 @@ void WiFiCQM::TriggerFwDump() {
             << kTriggerFwDumpThresholdDbm << " dBm, Ignore.";
     return;
   }
-
-  if (fw_dump_path_.empty()) {
-    SLOG(2) << "FW dump is not supported, cannot trigger FW dump.";
-    return;
-  }
-
   auto current = base::Time::NowFromSystemTime();
 
   if (current < (previous_fw_dump_time_ + kFwDumpCoolDownPeriod) &&
@@ -102,11 +65,10 @@ void WiFiCQM::TriggerFwDump() {
 
   fw_dump_count_++;
 
-  SLOG(2) << "Triggering FW dump.";
-  if (WriteToFwDumpSysPath(fw_dump_path_)) {
-    SLOG(2) << "FW dump trigger succeeded.";
+  if (wifi_) {
+    SLOG(2) << "Triggering FW dump.";
+    wifi_->GenerateFirmwareDump();
   }
-
   previous_fw_dump_time_ = current;
 }
 

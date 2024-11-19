@@ -313,6 +313,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   void OnDeviceClaimed() override;
 
+  // Generate firmware dump for WiFi technology.
+  mockable void GenerateFirmwareDump() const;
+
  private:
   std::string DeviceStorageSuffix() const override;
 

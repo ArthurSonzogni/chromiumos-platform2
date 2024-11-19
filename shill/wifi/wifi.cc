@@ -1335,7 +1335,7 @@ void WiFi::DisconnectReasonChanged(const int32_t new_value) {
   // generated reason code 3 (|-IEEE_80211::kReasonCodeSenderHasLeft|). Examples
   // include suspend/resume, user-triggered disconnections, etc.
   if (!(new_reason == IEEE_80211::kReasonCodeSenderHasLeft && new_value < 0)) {
-    manager()->GenerateFirmwareDumpForTechnology(Technology::kWiFi);
+    GenerateFirmwareDump();
   }
 
   WiFiService* affected_service =
@@ -4477,6 +4477,12 @@ void WiFi::OnDeviceClaimed() {
   // Remove interface from supplicant.
   if (supplicant_present_ && supplicant_interface_proxy_) {
     supplicant_process_proxy()->RemoveInterface(supplicant_interface_path_);
+  }
+}
+
+void WiFi::GenerateFirmwareDump() const {
+  if (manager()) {
+    manager()->GenerateFirmwareDumpForTechnology(Technology::kWiFi);
   }
 }
 

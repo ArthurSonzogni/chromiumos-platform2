@@ -80,26 +80,9 @@ class WiFiCQMTest : public ::testing::Test {
     Nl80211Message::SetMessageType(kNl80211FamilyId);
   }
 
-  void SetUp() override {
-    CHECK(temp_dir_.CreateUniqueTempDir());
-    base::FilePath fw_dump_path =
-        temp_dir_.GetPath()
-            .Append("sys/kernel/debug/ieee80211/phy0/iwlwifi/iwlmvm")
-            .Append("fw_dbg_collect");
-    EXPECT_TRUE(base::CreateDirectory(fw_dump_path.DirName()));
-    EXPECT_TRUE(base::WriteFile(fw_dump_path, "1"));
-    EXPECT_TRUE(base::PathExists(fw_dump_path));
-    wifi_cqm_->fw_dump_path_ = fw_dump_path;
-  }
-
-  void TearDown() override { EXPECT_TRUE(temp_dir_.Delete()); }
-
   ~WiFiCQMTest() override = default;
 
  protected:
-  // Used to create a virtual sysfs path.
-  base::ScopedTempDir temp_dir_;
-
   MockMetrics* metrics() { return &metrics_; }
 
   void OnCQMNotify(const Nl80211Message& nl80211_message) {
@@ -129,7 +112,7 @@ TEST_F(WiFiCQMTest, TriggerFwDump) {
   ScopeLogger::GetInstance()->set_verbose_level(3);
 
   EXPECT_CALL(log, Log(_, _, HasSubstr("Triggering FW dump")));
-  EXPECT_CALL(log, Log(_, _, HasSubstr("FW dump trigger succeeded")));
+  EXPECT_CALL(*wifi(), GenerateFirmwareDump());
   TriggerFwDump();
   EXPECT_EQ(FwDumpCount(), 1);
 

@@ -57,7 +57,6 @@ class WiFiCQM {
   base::Time previous_fw_dump_time_ = base::Time::NowFromSystemTime();
   WiFi* wifi_;        // |wifi_| owns |this|.
   Metrics* metrics_;  // Owned by wifi_->manager().
-  base::FilePath fw_dump_path_;
 };
 
 }  // namespace shill

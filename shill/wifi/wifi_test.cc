@@ -4454,6 +4454,11 @@ TEST_F(WiFiMainTest, ReportConnectedToServiceAfterWake_CallsWakeOnWiFi) {
   ReportConnectedToServiceAfterWake();
 }
 
+TEST_F(WiFiMainTest, GenerateFirmwareDumpForWiFi) {
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi));
+  wifi()->GenerateFirmwareDump();
+}
+
 // Scanning tests will use a mock of the event dispatcher instead of a real
 // one.
 class WiFiTimerTest : public WiFiObjectTest {

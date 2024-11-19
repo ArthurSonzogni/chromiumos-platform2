@@ -80,6 +80,7 @@ class MockWiFi : public WiFi {
               (bool, bool, ResultCallback),
               (override));
   MOCK_METHOD(void, SetEnabled, (bool), (override));
+  MOCK_METHOD(void, GenerateFirmwareDump, (), (const, override));
 };
 
 }  // namespace shill
