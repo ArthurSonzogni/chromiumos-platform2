@@ -450,7 +450,7 @@ TEST_F(FirmwareManagementParametersPlatformIndexTest, StoreFlagsOnly) {
   EXPECT_EQ(nvram_data, kContentsNoHash);
 }
 
-TEST_F(FirmwareManagementParametersPlatformIndexTest, CreateSetsDefaultFlags) {
+TEST_F(FirmwareManagementParametersPlatformIndexTest, CreateDoesntSetDefaults) {
   SecureBlob default_nvram_data;
   SetExpectationForStore(&default_nvram_data);
   EXPECT_TRUE(fwmp_.Store(/*flags=*/0, /*developer_key_hash=*/nullptr));
@@ -463,11 +463,10 @@ TEST_F(FirmwareManagementParametersPlatformIndexTest, CreateSetsDefaultFlags) {
   EXPECT_TRUE(fwmp_.IsLoaded());
   EXPECT_EQ(nvram_data, kContentsWithHash);
 
-  // `Create()` is supposed to write the default content.
-  SetExpectationForStore(&nvram_data);
+  // `Create()` does not update the content since set should be called after.
   EXPECT_TRUE(fwmp_.Create());
   EXPECT_TRUE(fwmp_.IsLoaded());
-  EXPECT_EQ(nvram_data.to_string(), default_nvram_data.to_string());
+  EXPECT_EQ(nvram_data, kContentsWithHash);
 
   // Modify the content of FWMP again.
   SetExpectationForStore(&nvram_data);

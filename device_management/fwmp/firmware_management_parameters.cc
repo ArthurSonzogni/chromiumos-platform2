@@ -101,10 +101,6 @@ bool fwmp::FirmwareManagementParameters::Destroy(void) {
 }
 
 bool fwmp::FirmwareManagementParameters::Create() {
-  if (fwmp_type_ == hwsec::Space::kPlatformFirmwareManagementParameters) {
-    return Store(/*flags=*/0, /*developer_key_hash=*/nullptr);
-  }
-
   if (hwsec::Status status = hwsec_->PrepareSpace(fwmp_type_, kNvramBytes);
       !status.ok()) {
     LOG(ERROR) << "Failed to prepare FWMP: " << status;
