@@ -1078,9 +1078,7 @@ std::vector<std::string> ArcVm::GetKernelParams(
   if (channel == "testimage") {
     params.push_back("androidboot.vshd_service_override=vshd_for_test");
   }
-  if (request.enable_broadcast_anr_prenotify()) {
-    params.push_back("androidboot.arc.broadcast_anr_prenotify=1");
-  }
+  params.push_back("androidboot.arc.broadcast_anr_prenotify=1");
   if (request.vm_memory_psi_period() >= 0) {
     // Since Android performs parameter validation, not doing it here.
     params.push_back(

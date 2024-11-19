@@ -364,9 +364,6 @@ message StartArcVmRequest {
   // Whether to lock guest memory (for the purpose of disabling host swap).
   bool lock_guest_memory = 18;
 
-  // Whether broadcast anr prenotify is enabled.
-  bool enable_broadcast_anr_prenotify = 25;
-
   // Whether virtio blk data is enabled
   bool enable_virtio_blk_data = 27;
 

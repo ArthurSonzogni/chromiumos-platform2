@@ -240,28 +240,15 @@ TEST(ArcVmParamsTest, ArcDataBlockIoSchedulerFalse) {
       base::Contains(params, "androidboot.arcvm.data_block_io_scheduler=0"));
 }
 
-TEST(ArcVmParamsTest, EnableBroadcastAnrPrenotifyTrue) {
+TEST(ArcVmParamsTest, EnableBroadcastAnrPrenotify) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
-  request.set_enable_broadcast_anr_prenotify(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_TRUE(
       base::Contains(params, "androidboot.arc.broadcast_anr_prenotify=1"));
 }
-
-TEST(ArcVmParamsTest, EnableBroadcastAnrPrenotifyFalse) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  request.set_enable_broadcast_anr_prenotify(false);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(
-      base::Contains(params, "androidboot.arc.broadcast_anr_prenotify=1"));
-}
-
 TEST(ArcVmParamsTest, VmMemoryPSIReports) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
