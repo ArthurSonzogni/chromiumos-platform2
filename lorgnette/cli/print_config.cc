@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <limits>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -246,6 +247,7 @@ void PrintScannerConfig(const lorgnette::ScannerConfig& config,
   out << "--- Scanner Config ---" << std::endl;
 
   bool first_group = true;
+  std::set<std::string> grouped_options;
   for (const auto& group : config.option_groups()) {
     if (!first_group) {
       out << std::endl;
@@ -253,6 +255,7 @@ void PrintScannerConfig(const lorgnette::ScannerConfig& config,
     bool header_shown = false;
     for (const auto& opt_name : group.members()) {
       const auto& option = config.options().at(opt_name);
+      grouped_options.insert(option.name());
       if (!show_inactive && !option.active()) {
         continue;
       }
@@ -266,6 +269,25 @@ void PrintScannerConfig(const lorgnette::ScannerConfig& config,
       }
       PrintSaneOption(config.options().at(opt_name), out);
     }
+  }
+
+  // Special case: Print options that are not in any group.
+  bool header_shown = false;
+  for (const auto& option : config.options()) {
+    if (grouped_options.contains(option.second.name())) {
+      continue;
+    }
+    if (!show_inactive && !option.second.active()) {
+      continue;
+    }
+    if (!show_advanced && option.second.advanced()) {
+      continue;
+    }
+    if (!header_shown) {
+      header_shown = true;
+      out << " Ungrouped Options:" << std::endl;
+    }
+    PrintSaneOption(option.second, out);
   }
   out << "--- End Scanner Config ---" << std::endl;
 }
