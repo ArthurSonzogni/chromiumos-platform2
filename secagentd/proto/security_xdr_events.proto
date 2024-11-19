@@ -90,8 +90,11 @@ message Namespaces {
 // batch.
 message CommonEventVariantDataFields {
   optional int64 create_timestamp_us = 1;
-  // ${COPYBARA_DATAPOL_ST_USERNAME}
-  optional string device_user = 2;
+  optional string device_user = 2
+      // copybara:datapol_begin
+      // [(datapol.semantic_type) = ST_USERNAME]
+      // copybara:datapol_end
+      ;
   // Possible values of device_user:
   // User’s email (affiliated)
   // "UnaffiliatedUser-" prepended to Random UUID (unaffiliated)
@@ -219,24 +222,42 @@ message NetworkFlow {
     DNS = 3;
   }
   optional string community_id_v1 = 1;
-  // ${COPYBARA_DATAPOL_ST_IP_ADDRESS}
-  optional string local_ip = 2;
+  optional string local_ip = 2
+      // copybara:datapol_begin
+      // [(datapol.semantic_type) = ST_IP_ADDRESS]
+      // copybara:datapol_end
+      ;
   optional uint64 local_port = 3;
-  // ${COPYBARA_DATAPOL_ST_IP_ADDRESS}
-  optional string remote_ip = 4;
-  // ${COPYBARA_DATAPOL_ST_NOT_REQUIRED}
-  optional uint64 remote_port = 5;
+  optional string remote_ip = 4
+      // copybara:datapol_begin
+      // [(datapol.semantic_type) = ST_IP_ADDRESS]
+      // copybara:datapol_end
+      ;
+  optional uint64 remote_port = 5
+      // copybara:datapol_begin
+      // [(datapol.semantic_type) = ST_NOT_REQUIRED]
+      // copybara:datapol_end
+      ;
   optional NetworkProtocol protocol = 6;
   optional Direction direction = 7;
-  // ${COPYBARA_DATAPOL_ST_NETWORK_ENDPOINT}
-  optional string remote_hostname = 8;
+  optional string remote_hostname = 8
+      // copybara:datapol_begin
+      // [(datapol.semantic_type) = ST_NETWORK_ENDPOINT]
+      // copybara:datapol_end
+      ;
   optional uint64 rx_bytes = 9;
   optional uint64 tx_bytes = 10;
   optional ApplicationProtocol application_protocol = 11;
-  // ${COPYBARA_DATAPOL_ST_NETWORK_ENDPOINT}
-  optional string http_host = 12;
-  // ${COPYBARA_DATAPOL_ST_NETWORK_ENDPOINT}
-  optional string sni_host = 13;
+  optional string http_host = 12
+      // copybara:datapol_begin
+      // [(datapol.semantic_type) = ST_NETWORK_ENDPOINT]
+      // copybara:datapol_end
+      ;
+  optional string sni_host = 13
+      // copybara:datapol_begin
+      // [(datapol.semantic_type) = ST_NETWORK_ENDPOINT]
+      // copybara:datapol_end
+      ;
 }
 
 // Acting process communicated externally over the network.
@@ -248,8 +269,11 @@ message NetworkFlowEvent {
 
 message Socket {
   optional NetworkProtocol protocol = 1;
-  // ${COPYBARA_DATAPOL_ST_IP_ADDRESS}
-  optional string bind_addr = 2;
+  optional string bind_addr = 2
+      // copybara:datapol_begin
+      // [(datapol.semantic_type) = ST_IP_ADDRESS]
+      // copybara:datapol_end
+      ;
   optional uint64 bind_port = 3;
   optional SocketType socket_type = 4;
 }
@@ -351,8 +375,11 @@ enum SensitiveFileType {
 }
 
 message FileProvenance {
-  // ${COPYBARA_DATAPOL_ST_REFERER_URL}
-  optional string referer_url = 1;  // The URL that refers to the source url.
+  optional string referer_url = 1
+      // copybara:datapol_begin
+      // [(datapol.semantic_type) = ST_REFERER_URL]
+      // copybara:datapol_end
+      ;                            // The URL that refers to the source url.
   optional string source_url = 2;  // The URL that the file was downloaded from.
 }
 
