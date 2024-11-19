@@ -47,6 +47,8 @@ bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
   std::string polstr;
   policy::LoadPolicyResult result =
       policy::LoadPolicyFromPath(policy_path, &polstr, &policy_);
+  LOG(INFO) << "Policy loaded, result: " << static_cast<int>(result)
+            << ", path: " << policy_path.value();
   switch (result) {
     case policy::LoadPolicyResult::kSuccess:
       return true;
