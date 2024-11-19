@@ -36,11 +36,11 @@ class Gpio {
 
   // Asserts the GPIO signal. If |active_high_| is true, a value 1 is output to
   // the GPIO node. Otherwise, a value 0 is output.
-  bool Assert() { return Set(active_high_ ? true : false); }
+  bool Assert() { return Set(active_high_); }
 
   // De-asserts the GPIO signal. If |active_high_| is true, a value 0 is output
   // to the GPIO node. Otherwise, a value 1 is output.
-  bool Deassert() { return Set(active_high_ ? false : true); }
+  bool Deassert() { return Set(!active_high_); }
 
  private:
   // Exports the sysfs entry for the GPIO node so that the attributes for the
