@@ -177,9 +177,16 @@ get_toplevel_s0ix_count() {
 get_verify_s0ix_count() {
   if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
     # From Tigerlake with kernel >= 5.4
-    # Larger number means deeper state,
-    # so we sort all substates and check last one.
-    grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies | sort | \
+    #
+    # Larger number means deeper state, so we sort all substates and check last
+    # one.
+    #
+    # The substate_residencies file format differs between the 5.4 kernel and
+    # later versions; on 5.4, inactive substates are also included and active
+    # substates are prefixed with the string "Enabled". Sorting the file will
+    # move "Enabled" lines to the bottom, so all we have to do to handle both
+    # formats is strip the "Enabled" prefix after sorting.
+    sort /sys/kernel/debug/pmc_core/substate_residencies | grep -o 'S0i.*' | \
       awk '{print $2}' | tail -n 1
   else
     get_toplevel_s0ix_count
