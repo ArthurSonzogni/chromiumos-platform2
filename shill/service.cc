@@ -1177,8 +1177,8 @@ void Service::DetachNetwork() {
   // Cancel traffic counter refresh recurring task and schedule immediately a
   // final traffic counter refresh.
   refresh_traffic_counter_task_.Cancel();
-  attached_network_->RequestTrafficCounters(base::BindOnce(
-      &Service::RefreshTrafficCounters, weak_ptr_factory_.GetWeakPtr()));
+  RequestRawTrafficCounters(base::BindOnce(&Service::RefreshTrafficCounters,
+                                           weak_ptr_factory_.GetWeakPtr()));
   // Clear the handler and static IP config registered on the previous
   // Network.
   attached_network_->UnregisterEventHandler(network_event_handler_.get());
@@ -1751,7 +1751,7 @@ void Service::RequestTrafficCounters(
   // refreshed traffic counters. This only takes into account the main Network
   // of this Service. Any technology specific Service with additional secondary
   // Networks must query traffic counters for these networks separately.
-  attached_network_->RequestTrafficCounters(
+  RequestRawTrafficCounters(
       base::BindOnce(&Service::RequestTrafficCountersCallback,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
@@ -1776,12 +1776,12 @@ void Service::RefreshTrafficCountersTask(bool initialize) {
     return;
   }
   if (initialize) {
-    attached_network_->RequestTrafficCounters(
+    RequestRawTrafficCounters(
         base::BindOnce(&Service::InitializeTrafficCounterSnapshot,
                        weak_ptr_factory_.GetWeakPtr()));
   } else {
-    attached_network_->RequestTrafficCounters(base::BindOnce(
-        &Service::RefreshTrafficCounters, weak_ptr_factory_.GetWeakPtr()));
+    RequestRawTrafficCounters(base::BindOnce(&Service::RefreshTrafficCounters,
+                                             weak_ptr_factory_.GetWeakPtr()));
   }
   refresh_traffic_counter_task_.Reset(
       base::BindOnce(&Service::RefreshTrafficCountersTask,
@@ -1789,6 +1789,15 @@ void Service::RefreshTrafficCountersTask(bool initialize) {
   dispatcher()->PostDelayedTask(FROM_HERE,
                                 refresh_traffic_counter_task_.callback(),
                                 kTrafficCountersRefreshInterval);
+}
+
+void Service::RequestRawTrafficCounters(
+    Network::GetTrafficCountersCallback callback) {
+  if (!attached_network_) {
+    LOG(WARNING) << __func__ << ": no attached network";
+    return;
+  }
+  attached_network_->RequestTrafficCounters(std::move(callback));
 }
 
 bool Service::CompareWithSameTechnology(const ServiceRefPtr& service,

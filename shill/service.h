@@ -742,7 +742,7 @@ class Service : public base::RefCounted<Service> {
   // of |current_total_traffic_counters_| and initializes the
   // |network_raw_traffic_counter_snapshot_| map to the raw counter values
   // |raw_counters| received from patchpanel.
-  mockable void InitializeTrafficCounterSnapshot(
+  void InitializeTrafficCounterSnapshot(
       const Network::TrafficCounterMap& network_raw_counters);
   // Increments the |current_total_traffic_counters_| map by the difference
   // between:
@@ -750,10 +750,11 @@ class Service : public base::RefCounted<Service> {
   //   |network_raw_counters| for the Network attached to this service and the
   //   - 2) the snapshot counter values |network_raw_traffic_counter_snapshot_|
   //   for that Network when it was attached to this Service.
-  mockable void RefreshTrafficCounters(
-      const Network::TrafficCounterMap& network_raw_counters);
-  // Requests raw traffic counters for from patchpanel for the Network currently
-  // attached to this service and returns the result in |callback|.
+  void RefreshTrafficCounters(
+      const Network::TrafficCounterMap& network_raw_counter);
+  // Returns the current total traffic counters for this Service as a DBus
+  // Variant and pass it to |callback|. If a Network is currently attached, also
+  // updates the current total traffic counters first.
   mockable void RequestTrafficCounters(
       ResultVariantDictionariesCallback callback);
   // Resets traffic counters for |this|.
@@ -1144,6 +1145,10 @@ class Service : public base::RefCounted<Service> {
   // traffic counter with RefreshTrafficCounters. This function reschedules
   // itself when a Network is attached to this Service.
   void RefreshTrafficCountersTask(bool initialize);
+
+  // Requests raw traffic counters for from patchpanel for the Network currently
+  // attached to this Service and pass it to |callback|.
+  void RequestRawTrafficCounters(Network::GetTrafficCountersCallback callback);
 
   // Invokes |static_ipconfig_changed_callback_| to notify the listener of the
   // change of static IP config.
