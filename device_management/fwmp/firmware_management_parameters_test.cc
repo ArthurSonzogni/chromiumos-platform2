@@ -5,17 +5,17 @@
 // Unit tests for FirmwareManagementParameters.
 
 #include "device_management/fwmp/firmware_management_parameters.h"
-#include "device_management/fwmp/mock_firmware_management_parameters.h"
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/process/process_mock.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
-#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 
 #include "device_management/crc.h"
+#include "device_management/fwmp/mock_firmware_management_parameters.h"
 
 namespace device_management {
 using brillo::SecureBlob;
