@@ -25,7 +25,7 @@ inline constexpr struct VariationsFeature kCrOSLateBootEnableModernPin = {
 // Control switch value for migrating existing users to modern pin.
 inline constexpr struct VariationsFeature kCrOSLateBootMigrateToModernPin = {
     .name = "CrOSLateBootMigrateToModernPin",
-    .default_state = FEATURE_DISABLED_BY_DEFAULT,
+    .default_state = FEATURE_ENABLED_BY_DEFAULT,
 };
 
 // Control switch value for generating recoverable key stores.

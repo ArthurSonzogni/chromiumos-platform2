@@ -39,6 +39,7 @@
 #include "cryptohome/auth_blocks/cryptorecovery/service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
+#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
@@ -246,6 +247,8 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
           ReturnValue(hwsec::PinWeaverManagerFrontend::CheckCredentialReply{}));
   EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
       .Times(Exactly(1));
+  EXPECT_CALL(hwsec_pw_manager_, GetDelaySchedule(_))
+      .WillOnce(Return(PinDelaySchedule()));
 
   MakeAuthBlockUtilityImpl();
 

@@ -648,6 +648,8 @@ TEST_F(PinWeaverAuthBlockTest, DeriveOptionalValuesTest) {
           ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{}));
   EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
       .Times(Exactly(1));
+  EXPECT_CALL(hwsec_pw_manager_, GetDelaySchedule(_))
+      .WillOnce(Return(PinDelaySchedule()));
 
   // Construct the vault keyset.
   // Notice that it does not set fek_iv and le_chaps_iv;

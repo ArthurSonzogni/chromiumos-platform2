@@ -1244,6 +1244,8 @@ TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
   FakeFeaturesForTesting features;
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
       features.async, crypto_.GetPinWeaverManager());
+  EXPECT_CALL(hwsec_pw_manager_, GetDelaySchedule(_))
+      .WillOnce(Return(PinDelaySchedule()));
 
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::optional<AuthBlock::SuggestedAction>>
