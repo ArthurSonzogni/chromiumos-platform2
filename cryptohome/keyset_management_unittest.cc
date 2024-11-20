@@ -312,7 +312,7 @@ class KeysetManagementTest : public ::testing::Test {
         keyset_management_->GetValidKeyset(obfuscated_username,
                                            std::move(key_blobs), label);
     ASSERT_THAT(vk_status, IsOk());
-    EXPECT_EQ(vk_status.value()->GetLegacyIndex(), index);
+    EXPECT_EQ(vk_status.value()->GetIndex(), index);
     EXPECT_TRUE(vk_status.value()->HasWrappedChapsKey());
     EXPECT_TRUE(vk_status.value()->HasWrappedResetSeed());
   }
@@ -729,7 +729,7 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   vk_status =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kNewLabel);
   ASSERT_THAT(vk_status, IsOk());
-  int index = vk_status.value()->GetLegacyIndex();
+  int index = vk_status.value()->GetIndex();
   VerifyKeysetIndicies({kInitialKeysetIndex, index});
 
   VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kSecureBlob32,

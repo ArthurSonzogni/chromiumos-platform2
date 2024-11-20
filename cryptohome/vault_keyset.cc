@@ -58,15 +58,23 @@ using ::hwsec_foundation::status::OkStatus;
 const mode_t kVaultFilePermissions = 0600;
 const char kKeyLegacyPrefix[] = "legacy-";
 
-// Defines the actual physical layout of a keyset.
-struct VaultKeysetKeys {
-  unsigned char fek[kCryptohomeDefaultKeySize];
-  unsigned char fek_sig[kCryptohomeDefaultKeySignatureSize];
-  unsigned char fek_salt[kCryptohomeDefaultKeySaltSize];
-  unsigned char fnek[kCryptohomeDefaultKeySize];
-  unsigned char fnek_sig[kCryptohomeDefaultKeySignatureSize];
-  unsigned char fnek_salt[kCryptohomeDefaultKeySaltSize];
-} __attribute__((__packed__));
+// Offsets for all of the fields within a key blob. The layout of fields is:
+//    (FEK, signature, salt, FNEK, signature, salt)
+// The fields contain no padding so each offset is just the prior field offset
+// plus the length of the prior field.
+constexpr size_t kKeyBlobFekOffset = 0;
+constexpr size_t kKeyBlobFekSigOffset =
+    kKeyBlobFekOffset + kCryptohomeDefaultKeySize;
+constexpr size_t kKeyBlobFekSaltOffset =
+    kKeyBlobFekSigOffset + kCryptohomeDefaultKeySignatureSize;
+constexpr size_t kKeyBlobFnekOffset =
+    kKeyBlobFekSaltOffset + kCryptohomeDefaultKeySaltSize;
+constexpr size_t kKeyBlobFnekSigOffset =
+    kKeyBlobFnekOffset + kCryptohomeDefaultKeySize;
+constexpr size_t kKeyBlobFnekSaltOffset =
+    kKeyBlobFnekSigOffset + kCryptohomeDefaultKeySignatureSize;
+constexpr size_t kKeyBlobEndOffset =
+    kKeyBlobFnekSaltOffset + kCryptohomeDefaultKeySaltSize;
 
 }  // namespace
 
@@ -117,61 +125,52 @@ void VaultKeyset::InitializeToAdd(const VaultKeyset& vault_keyset) {
 }
 
 bool VaultKeyset::FromKeysBlob(const SecureBlob& keys_blob) {
-  if (keys_blob.size() != sizeof(VaultKeysetKeys)) {
+  if (keys_blob.size() != kKeyBlobEndOffset) {
     return false;
   }
-  VaultKeysetKeys keys;
-  memcpy(&keys, keys_blob.data(), sizeof(keys));
-
-  fek_.resize(sizeof(keys.fek));
-  memcpy(fek_.data(), keys.fek, fek_.size());
-  fek_sig_.resize(sizeof(keys.fek_sig));
-  memcpy(fek_sig_.data(), keys.fek_sig, fek_sig_.size());
-  fek_salt_.resize(sizeof(keys.fek_salt));
-  memcpy(fek_salt_.data(), keys.fek_salt, fek_salt_.size());
-  fnek_.resize(sizeof(keys.fnek));
-  memcpy(fnek_.data(), keys.fnek, fnek_.size());
-  fnek_sig_.resize(sizeof(keys.fnek_sig));
-  memcpy(fnek_sig_.data(), keys.fnek_sig, fnek_sig_.size());
-  fnek_salt_.resize(sizeof(keys.fnek_salt));
-  memcpy(fnek_salt_.data(), keys.fnek_salt, fnek_salt_.size());
-
-  brillo::SecureClearObject(keys);
+  auto copy_from_offset = [&keys_blob](brillo::SecureBlob& dest, size_t size,
+                                       size_t offset) {
+    dest.resize(size);
+    memcpy(dest.data(), keys_blob.data() + offset, size);
+  };
+  copy_from_offset(fek_, kCryptohomeDefaultKeySize, kKeyBlobFekOffset);
+  copy_from_offset(fek_sig_, kCryptohomeDefaultKeySignatureSize,
+                   kKeyBlobFekSigOffset);
+  copy_from_offset(fek_salt_, kCryptohomeDefaultKeySaltSize,
+                   kKeyBlobFekSaltOffset);
+  copy_from_offset(fnek_, kCryptohomeDefaultKeySize, kKeyBlobFnekOffset);
+  copy_from_offset(fnek_sig_, kCryptohomeDefaultKeySignatureSize,
+                   kKeyBlobFnekSigOffset);
+  copy_from_offset(fnek_salt_, kCryptohomeDefaultKeySaltSize,
+                   kKeyBlobFnekSaltOffset);
   return true;
 }
 
 bool VaultKeyset::ToKeysBlob(SecureBlob* keys_blob) const {
-  VaultKeysetKeys keys;
-  brillo::SecureClearObject(keys);
-
-  if (fek_.size() != sizeof(keys.fek)) {
+  SecureBlob local_buffer(kKeyBlobEndOffset);
+  auto copy_to_offset = [&local_buffer](const brillo::SecureBlob& src,
+                                        size_t size, size_t offset) {
+    if (src.size() != size) {
+      return false;
+    }
+    memcpy(local_buffer.data() + offset, src.data(), size);
+    return true;
+  };
+  bool success =
+      copy_to_offset(fek_, kCryptohomeDefaultKeySize, kKeyBlobFekOffset) &&
+      copy_to_offset(fek_sig_, kCryptohomeDefaultKeySignatureSize,
+                     kKeyBlobFekSigOffset) &&
+      copy_to_offset(fek_salt_, kCryptohomeDefaultKeySaltSize,
+                     kKeyBlobFekSaltOffset) &&
+      copy_to_offset(fnek_, kCryptohomeDefaultKeySize, kKeyBlobFnekOffset) &&
+      copy_to_offset(fnek_sig_, kCryptohomeDefaultKeySignatureSize,
+                     kKeyBlobFnekSigOffset) &&
+      copy_to_offset(fnek_salt_, kCryptohomeDefaultKeySaltSize,
+                     kKeyBlobFnekSaltOffset);
+  if (!success) {
     return false;
   }
-  memcpy(keys.fek, fek_.data(), sizeof(keys.fek));
-  if (fek_sig_.size() != sizeof(keys.fek_sig)) {
-    return false;
-  }
-  memcpy(keys.fek_sig, fek_sig_.data(), sizeof(keys.fek_sig));
-  if (fek_salt_.size() != sizeof(keys.fek_salt)) {
-    return false;
-  }
-  memcpy(keys.fek_salt, fek_salt_.data(), sizeof(keys.fek_salt));
-  if (fnek_.size() != sizeof(keys.fnek)) {
-    return false;
-  }
-  memcpy(keys.fnek, fnek_.data(), sizeof(keys.fnek));
-  if (fnek_sig_.size() != sizeof(keys.fnek_sig)) {
-    return false;
-  }
-  memcpy(keys.fnek_sig, fnek_sig_.data(), sizeof(keys.fnek_sig));
-  if (fnek_salt_.size() != sizeof(keys.fnek_salt)) {
-    return false;
-  }
-  memcpy(keys.fnek_salt, fnek_salt_.data(), sizeof(keys.fnek_salt));
-
-  SecureBlob local_buffer(sizeof(keys));
-  memcpy(local_buffer.data(), &keys, sizeof(keys));
-  keys_blob->swap(local_buffer);
+  *keys_blob = std::move(local_buffer);
   return true;
 }
 
@@ -443,7 +442,6 @@ CryptoStatus VaultKeyset::UnwrapScryptVaultKeyset(
   // There is a SHA hash included at the end of the decrypted blob. However,
   // scrypt already appends a MAC, so if the payload is corrupted we will fail
   // on the first call to DecryptScryptBlob.
-  // TODO(crbug.com/984782): get rid of this entirely.
   if (decrypted.size() < SHA_DIGEST_LENGTH) {
     LOG(ERROR) << "Message length underflow: " << decrypted.size() << " bytes?";
     return MakeStatus<CryptohomeCryptoError>(
@@ -654,7 +652,6 @@ CryptoStatus VaultKeyset::UnwrapVaultKeyset(
     // is initialized, and we were able to successfully decrypt a
     // TPM-wrapped keyset. So, for TPMs with updateable firmware, we assume
     // that it is stable (and the TPM can invalidate the old version).
-    // TODO(dlunev): We shall try to get this out of cryptohome eventually.
     const bool tpm_backed =
         (serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED) ||
         (serialized.flags() & SerializedVaultKeyset::LE_CREDENTIAL);
@@ -726,7 +723,6 @@ void VaultKeyset::SetPinWeaverState(const PinWeaverAuthBlockState& auth_state) {
 void VaultKeyset::SetScryptState(const ScryptAuthBlockState& auth_state) {
   flags_ = kScryptFlags.require_flags;
 
-  // TODO(b/198394243): We should remove this because it's not actually used.
   if (auth_state.salt.has_value()) {
     auth_salt_ = auth_state.salt.value();
   }
@@ -736,7 +732,6 @@ void VaultKeyset::SetChallengeCredentialState(
     const ChallengeCredentialAuthBlockState& auth_state) {
   flags_ = kChallengeCredentialFlags.require_flags;
 
-  // TODO(b/198394243): We should remove this because it's not actually used.
   if (auth_state.scrypt_state.salt.has_value()) {
     auth_salt_ = auth_state.scrypt_state.salt.value();
   }
@@ -1009,7 +1004,7 @@ std::string VaultKeyset::GetLabel() const {
   }
   // Fallback for legacy keys, for which the label has to be inferred from the
   // index number.
-  return base::StringPrintf("%s%d", kKeyLegacyPrefix, legacy_index_);
+  return base::StringPrintf("%s%d", kKeyLegacyPrefix, index_);
 }
 
 bool VaultKeyset::IsLECredential() const {
@@ -1318,7 +1313,7 @@ void VaultKeyset::ResetVaultKeyset() {
   backup_vk_ = false;
   migrated_vk_ = false;
   auth_salt_.clear();
-  legacy_index_ = -1;
+  index_ = -1;
   tpm_public_key_hash_.reset();
   password_rounds_.reset();
   key_data_.reset();
@@ -1371,8 +1366,6 @@ void VaultKeyset::InitializeFromSerialized(
     auth_locked_ = serialized.key_data().policy().auth_locked();
 
     // For LECredentials, set the key policy appropriately.
-    // TODO(crbug.com/832398): get rid of having two ways to identify an
-    // LECredential: LE_CREDENTIAL and key_data.policy.low_entropy_credential.
     if (flags_ & SerializedVaultKeyset::LE_CREDENTIAL) {
       key_data_->mutable_policy()->set_low_entropy_credential(true);
     }
@@ -1447,12 +1440,12 @@ int32_t VaultKeyset::GetFlags() const {
   return flags_;
 }
 
-void VaultKeyset::SetLegacyIndex(int index) {
-  legacy_index_ = index;
+void VaultKeyset::SetIndex(int index) {
+  index_ = index;
 }
 
-const int VaultKeyset::GetLegacyIndex() const {
-  return legacy_index_;
+const int VaultKeyset::GetIndex() const {
+  return index_;
 }
 
 const brillo::SecureBlob& VaultKeyset::GetFek() const {

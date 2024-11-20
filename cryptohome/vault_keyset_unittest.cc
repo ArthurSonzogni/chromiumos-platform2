@@ -245,7 +245,7 @@ TEST_F(VaultKeysetTest, WriteError) {
   static const int kFscryptPolicyVersion = 2;
   vault_keyset.SetResetIV(reset_iv);
   vault_keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
-  vault_keyset.SetLegacyIndex(kLegacyIndex);
+  vault_keyset.SetIndex(kLegacyIndex);
   KeyBlobs key_blobs = {.vkk_key = brillo::SecureBlob(32, 'A'),
                         .vkk_iv = brillo::Blob(16, 'B'),
                         .chaps_iv = brillo::Blob(16, 'C')};
@@ -576,7 +576,7 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
 TEST_F(VaultKeysetTest, GetLegacyLabelTest) {
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto_);
-  vault_keyset.SetLegacyIndex(kLegacyIndex);
+  vault_keyset.SetIndex(kLegacyIndex);
 
   ASSERT_EQ(vault_keyset.GetLabel(), kLegacyLabel);
 }
@@ -586,7 +586,7 @@ TEST_F(VaultKeysetTest, GetLabelTest) {
   vault_keyset.Initialize(&platform_, &crypto_);
   KeyData key_data;
   key_data.set_label(kTempLabel);
-  vault_keyset.SetLegacyIndex(kLegacyIndex);
+  vault_keyset.SetIndex(kLegacyIndex);
   vault_keyset.SetKeyData(key_data);
 
   ASSERT_EQ(vault_keyset.GetLabel(), kTempLabel);
@@ -600,7 +600,7 @@ TEST_F(VaultKeysetTest, GetEmptyLabelTest) {
   // Setting empty label.
   key_data.set_label("");
 
-  vault_keyset.SetLegacyIndex(kLegacyIndex);
+  vault_keyset.SetIndex(kLegacyIndex);
   vault_keyset.SetKeyData(key_data);
 
   ASSERT_EQ(vault_keyset.GetLabel(), kLegacyLabel);
@@ -618,7 +618,7 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
   static const int kFscryptPolicyVersion = 2;
   vault_keyset.SetResetIV(reset_iv);
   vault_keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
-  vault_keyset.SetLegacyIndex(kLegacyIndex);
+  vault_keyset.SetIndex(kLegacyIndex);
   KeyBlobs key_blobs = {.vkk_key = brillo::SecureBlob(32, 'A'),
                         .vkk_iv = brillo::Blob(16, 'B'),
                         .chaps_iv = brillo::Blob(16, 'C')};
@@ -655,7 +655,7 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
   // int32_t flags_
   ASSERT_NE(vault_keyset_copy.GetFlags(), vault_keyset.GetFlags());
   // int legacy_index_
-  ASSERT_NE(vault_keyset_copy.GetLegacyIndex(), vault_keyset.GetLegacyIndex());
+  ASSERT_NE(vault_keyset_copy.GetIndex(), vault_keyset.GetIndex());
 }
 
 TEST_F(VaultKeysetTest, GetTpmWritePasswordRounds) {
@@ -750,7 +750,7 @@ TEST_F(VaultKeysetTest, DecryptWithAuthBlockFailNotLoaded) {
 TEST_F(VaultKeysetTest, KeyData) {
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.SetLegacyIndex(0);
+  vk.SetIndex(0);
   EXPECT_FALSE(vk.HasKeyData());
 
   // When there's no key data stored, |GetKeyDataOrDefault()| should return an

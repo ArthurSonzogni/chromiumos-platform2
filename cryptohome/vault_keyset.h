@@ -83,6 +83,7 @@ class VaultKeyset {
   // Methods to access runtime class state.
   const base::FilePath& GetSourceFile() const;
 
+  // Indicates that the credential was locked when last attempting to access it.
   void SetAuthLocked(bool locked);
   bool GetAuthLocked() const;
 
@@ -91,10 +92,9 @@ class VaultKeyset {
   int32_t GetFlags() const;
   void SetFlags(int32_t flags);
 
-  // Getters and setters for the index. See the |legacy_index_| member for a
-  // comment explaining the legacy name.
-  void SetLegacyIndex(int index);
-  const int GetLegacyIndex() const;
+  // Getters and setters for the index.
+  void SetIndex(int index);
+  const int GetIndex() const;
 
   bool HasTpmPublicKeyHash() const;
   const brillo::Blob& GetTpmPublicKeyHash() const;
@@ -314,11 +314,10 @@ class VaultKeyset {
   brillo::Blob auth_salt_;
   // The IV used to encrypt the encryption key.
   std::optional<brillo::Blob> vkk_iv_;
-  // legacy_index_ is the index of the keyset for the user. It is called legacy
-  // due to previous plans to fully switch to label-based addressing, which,
-  // unfortunately, wasn't followed through.
-  // TODO(dlunev): rename it not to say legacy.
-  int legacy_index_ = -1;
+  // Index of the keyset for the user.
+  int index_ = -1;
+  // Set if the credential was locked upon our last attempt to use it. Cannot be
+  // assumed to be in sync with the actual state of the credential.
   bool auth_locked_ = false;
   // This is used by the TPM AuthBlocks to make sure the keyset was sealed to
   // the TPM on this system. It's not a security check, but a diagnostic.

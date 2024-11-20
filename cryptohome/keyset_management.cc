@@ -216,7 +216,7 @@ KeysetManagement::AddInitialKeyset(
   if (vk_intent.backup) {
     vk.reset(vault_keyset_factory_->NewBackup(platform_, crypto_));
   }
-  vk->SetLegacyIndex(kInitialKeysetIndex);
+  vk->SetIndex(kInitialKeysetIndex);
   vk->SetKeyData(key_data);
   vk->CreateFromFileSystemKeyset(file_system_keyset);
   if (key_data.type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
@@ -253,7 +253,7 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
 
   if (!vault_keyset->HasWrappedChapsKey()) {
     vault_keyset->CreateRandomChapsKey();
-    LOG(INFO) << "Migrating keyset " << vault_keyset->GetLegacyIndex()
+    LOG(INFO) << "Migrating keyset " << vault_keyset->GetIndex()
               << " as Cryptohome has taken TPM ownership";
     return true;
   }
@@ -305,7 +305,7 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
   // If the keyset was TPM-wrapped, but there was no public key hash,
   // always re-save.
   if (tpm_wrapped && !has_tpm_public_key_hash) {
-    LOG(INFO) << "Migrating keyset " << vault_keyset->GetLegacyIndex()
+    LOG(INFO) << "Migrating keyset " << vault_keyset->GetIndex()
               << " as there is no public hash";
     return true;
   }
@@ -321,7 +321,7 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
     return false;  // 7
   }
 
-  LOG(INFO) << "Migrating keyset " << vault_keyset->GetLegacyIndex()
+  LOG(INFO) << "Migrating keyset " << vault_keyset->GetIndex()
             << ": should_tpm=" << should_tpm
             << ", has_hash=" << has_tpm_public_key_hash
             << ", flags=" << crypt_flags << ", pcr_bound=" << pcr_bound
@@ -541,7 +541,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(
     LOG(ERROR) << "Failed to load keyset file for user " << obfuscated_user;
     return nullptr;
   }
-  keyset->SetLegacyIndex(index);
+  keyset->SetIndex(index);
   return keyset;
 }
 

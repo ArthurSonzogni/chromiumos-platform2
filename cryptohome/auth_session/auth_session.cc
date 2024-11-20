@@ -202,7 +202,7 @@ CryptohomeStatus RemoveKeysetByLabel(
   }
 
   CryptohomeStatus status = keyset_management.ForceRemoveKeyset(
-      obfuscated_username, remove_vk->GetLegacyIndex());
+      obfuscated_username, remove_vk->GetIndex());
   if (!status.ok()) {
     LOG(ERROR) << "RemoveKeysetByLabel: failed to remove keyset file.";
     return MakeStatus<CryptohomeError>(
