@@ -11,6 +11,17 @@ Chromebooks.
 A `<SCANNER>` may be obtained from lorgnette by invoking:
 `(root-on-dut) $ lorgnette_cli discover`.
 
+---
+
+**NOTE:**
+
+The test binary creates multiple scanned images that may take up to
+one gb of disk space while running because the test saves artifacts
+from each test. Therefore it is prudent to run the test binary in the
+stateful partition, like in `/mnt/stateful_partition`.
+
+---
+
 
 ### GoogleTest Options
 
