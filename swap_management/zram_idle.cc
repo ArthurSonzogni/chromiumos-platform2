@@ -10,20 +10,9 @@
 
 namespace swap_management {
 
-namespace {
-constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
-}
-
 absl::Status MarkIdle(uint32_t age_seconds) {
-  const auto age = base::Seconds(age_seconds);
-
-  // Only allow marking pages as idle between 0 sec and 30 days.
-  if (age > kMaxIdleAge) {
-    return absl::OutOfRangeError("Invalid age " + std::to_string(age_seconds));
-  }
-
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("idle");
-  return Utils::Get()->WriteFile(filepath, std::to_string(age.InSeconds()));
+  return Utils::Get()->WriteFile(filepath, std::to_string(age_seconds));
 }
 
 uint64_t GetCurrentIdleTimeSec(uint64_t min_sec, uint64_t max_sec) {
