@@ -494,6 +494,9 @@ bool BuildStartAuthSessionRequest(
   if (cl.HasSwitch(switches::kEnsureEphemeralSwitch)) {
     req.set_is_ephemeral_user(true);
   }
+  // Set the intent from the switches. If one is not specified then the intent
+  // defaults to decrypt.
+  req.set_intent(user_data_auth::AUTH_INTENT_DECRYPT);
   if (cl.HasSwitch(switches::kAuthIntentSwitch)) {
     std::string intent_string =
         cl.GetSwitchValueASCII(switches::kAuthIntentSwitch);
