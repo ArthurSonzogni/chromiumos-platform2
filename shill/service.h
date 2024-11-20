@@ -391,6 +391,8 @@ class Service : public base::RefCounted<Service> {
   mockable bool IsInFailState() const;
   mockable bool IsOnline() const;
 
+  bool link_monitor_disabled() const { return link_monitor_disabled_; }
+
   mockable ConnectFailure failure() const { return failure_; }
   // Sets the |previous_error_| property based on the current |failure_|, and
   // sets a serial number for this failure.
@@ -1240,6 +1242,8 @@ class Service : public base::RefCounted<Service> {
   // The |serial_number_| for the next Service.
   static unsigned int next_serial_number_;
 
+  // When set to true, link monitor signals from patchpanel will be ignored.
+  bool link_monitor_disabled_;
   // When set to true, the credentials for this service will be considered
   // valid, and will not require an initial connection to rank it highly for
   // auto-connect.

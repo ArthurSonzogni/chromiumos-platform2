@@ -186,6 +186,7 @@ Service::Service(Manager* manager, Technology technology)
       network_event_handler_(std::make_unique<NetworkEventHandler>(this)),
       adaptor_(manager->control_interface()->CreateServiceAdaptor(this)),
       manager_(manager),
+      link_monitor_disabled_(false),
       managed_credentials_(false),
       unreliable_(false),
       source_(ONCSource::kONCSourceUnknown),
@@ -259,6 +260,7 @@ Service::Service(Manager* manager, Technology technology)
                                   &Service::GetDisconnectsProperty);
   HelpRegisterConstDerivedStrings(kDiagnosticsMisconnectsProperty,
                                   &Service::GetMisconnectsProperty);
+  store_.RegisterBool(kLinkMonitorDisableProperty, &link_monitor_disabled_);
   store_.RegisterBool(kManagedCredentialsProperty, &managed_credentials_);
   HelpRegisterDerivedBool(kMeteredProperty, &Service::GetMeteredProperty,
                           &Service::SetMeteredProperty,
@@ -862,6 +864,7 @@ bool Service::Unload() {
   proxy_config_ = "";
   save_credentials_ = true;
   ui_data_ = "";
+  link_monitor_disabled_ = false;
   managed_credentials_ = false;
   source_ = ONCSource::kONCSourceUnknown;
   if (mutable_eap()) {

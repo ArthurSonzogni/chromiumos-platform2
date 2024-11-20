@@ -2767,7 +2767,7 @@ void WiFi::StateChanged(const std::string& new_state) {
       const Network::StartOptions opts = {
           .dhcp = dhcp_opts,
           .accept_ra = true,
-          .ignore_link_monitoring = false,
+          .ignore_link_monitoring = affected_service->link_monitor_disabled(),
           .probing_configuration =
               manager()->GetPortalDetectorProbingConfiguration(),
           .validation_mode = affected_service->GetNetworkValidationMode(),

@@ -983,6 +983,16 @@ Properties	boolean AutoConnect [readwrite]
 			The timestamp's value equals the number of milliseconds since the
 			Windows epoch (1601-01-01 00:00:00 UTC).
 
+
+		boolean LinkMonitorDisable [readwrite]
+
+			Specifies whether to disable or enable link monitoring
+			for this service. If true, Link Monitor signals from
+			the patchpanel will be ignored. This value is not
+			persistent and is only used for testing. This property
+			is used only for Wi-Fi and Ethernet, and its default
+			value is false for both.
+
 		boolean ManagedCredentials [readwrite]
 
 			Specifies whether the credentials for this service
