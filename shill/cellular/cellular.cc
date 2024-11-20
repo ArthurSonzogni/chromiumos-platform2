@@ -620,6 +620,13 @@ void Cellular::Start(EnabledStateChangedCallback callback) {
     return;
   }
 
+  if (state_ == State::kModemStopping) {
+    LOG(WARNING) << LoggingTag() << ": " << __func__
+                 << ": Abort start (stopping modem in progress).";
+    std::move(callback).Run(Error(Error::Type::kOperationFailed));
+    return;
+  }
+
   StartModem(std::move(callback));
 }
 
@@ -627,6 +634,12 @@ void Cellular::Stop(EnabledStateChangedCallback callback) {
   LOG(INFO) << LoggingTag() << ": Stop requested (modem "
             << GetStateString(state_) << ")";
   DCHECK(!stop_step_.has_value()) << "Already stopping. Unexpected Stop call.";
+  if (state_ == State::kModemStarting) {
+    LOG(WARNING) << LoggingTag() << ": " << __func__
+                 << ": Abort stop (starting modem in progress).";
+    std::move(callback).Run(Error(Error::Type::kOperationFailed));
+    return;
+  }
   stop_step_ = StopSteps::kStopModem;
   StopStep(std::move(callback), Error());
 }
