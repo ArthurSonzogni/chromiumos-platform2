@@ -120,7 +120,9 @@ class EmbeddingBenchmark {
                      TaskType task_type)
       : model_(model), task_type_(task_type) {}
 
-  void Run(int run_count, int max_seconds);
+  void Run(int run_count,
+           int max_seconds,
+           const std::optional<base::FilePath>& output_json_path);
 
  private:
   // How many times do we want to run during the benchmark?
@@ -143,6 +145,8 @@ class EmbeddingBenchmark {
   base::TimeTicks end_;
   raw_ref<mojo::Remote<OnDeviceEmbeddingModel>> model_;
   TaskType task_type_;
+  // If not empty, will write the result to the specified path.
+  std::optional<base::FilePath> output_json_path_;
   std::unique_ptr<base::RunLoop> run_loop_;
 
   // This is the maximum number of concurrent request send to the embedding
@@ -163,7 +167,10 @@ class EmbeddingBenchmark {
   void PrintStats();
 };
 
-void EmbeddingBenchmark::Run(int run_count, int max_seconds) {
+void EmbeddingBenchmark::Run(
+    int run_count,
+    int max_seconds,
+    const std::optional<base::FilePath>& output_json_path) {
   CHECK_EQ(target_run_count_, -1);  // run() should only be called once.
   target_run_count_ = run_count;
   max_seconds_ = max_seconds;
@@ -171,6 +178,7 @@ void EmbeddingBenchmark::Run(int run_count, int max_seconds) {
   finish_count_ = 0;
   in_flight_count_ = 0;
   has_been_cut_short_ = false;
+  output_json_path_ = output_json_path;
   run_loop_ = std::make_unique<base::RunLoop>();
   start_ = base::TimeTicks::Now();
   LaunchOne();
@@ -228,6 +236,13 @@ void EmbeddingBenchmark::PrintStats() {
   base::TimeDelta run_time = end_ - start_;
   std::cout << "Embedding benchmark result: " << run_time.InMilliseconds()
             << " ms for " << target_run_count_ << " invocations" << std::endl;
+  if (output_json_path_.has_value()) {
+    std::string json_out =
+        "{\"runtime_ms\": " + std::to_string(run_time.InMilliseconds()) +
+        ", \"count\": " + std::to_string(target_run_count_) + "}\n";
+    bool ret = base::WriteFile(output_json_path_.value(), json_out);
+    CHECK(ret) << "Failed to write JSON result file.";
+  }
 }
 
 void RunBenchmark(raw_ref<mojo::Remote<OnDeviceEmbeddingModel>> model,
@@ -242,7 +257,12 @@ void RunBenchmark(raw_ref<mojo::Remote<OnDeviceEmbeddingModel>> model,
   if (!cl->GetSwitchValueASCII(kBenchmarkMaxSeconds).empty()) {
     max_seconds = std::stoi(cl->GetSwitchValueASCII(kBenchmarkMaxSeconds));
   }
-  bench.Run(run_count, max_seconds);
+  std::optional<base::FilePath> output_json_path;
+  std::string output_json_option = cl->GetSwitchValueASCII(kBenchmark);
+  if (!output_json_option.empty()) {
+    output_json_path = base::FilePath(output_json_option);
+  }
+  bench.Run(run_count, max_seconds, output_json_path);
 }
 
 }  // namespace
