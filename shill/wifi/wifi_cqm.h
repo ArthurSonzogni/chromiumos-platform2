@@ -17,8 +17,8 @@ class WiFi;
 // notification for different kinds of adverse network situations such as beacon
 // losses, packet losses, poor signal levels. Shill listens to Connection
 // Quality Monitor notifications from the kernel and takes next steps such as,
-// adding metrics and/or FW dumps. Following are the attributes supported by
-// connection quality monitor:
+// adding metrics and/or firmware dumps. Following are the attributes supported
+// by connection quality monitor:
 //  NL80211_ATTR_CQM_RSSI_THOLD,
 //  NL80211_ATTR_CQM_RSSI_HYST,
 //  NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
@@ -43,18 +43,16 @@ class WiFiCQM {
 
   // When this is triggered in response to a CQM msg from the kernel, this
   // evaluates the validity of the message, and captures metrics and
-  // conditionally triggers FW dump for Beacon and Packet losses.
+  // conditionally triggers firmware dump for Beacon and Packet losses.
   void OnCQMNotify(const Nl80211Message& nl80211_message);
 
  private:
   friend class WiFiCQMTest;
 
-  // This internally rate limits the FW dump count and triggers FW dump.
+  // Triggers firmware dump with a rate-limiting mechanism.
   void TriggerFwDump();
 
-  // This is consumed by the unit test to validate the number of FW dumps.
-  int fw_dump_count_ = 0;
-  base::Time previous_fw_dump_time_ = base::Time::NowFromSystemTime();
+  base::Time previous_fw_dump_time_;
   WiFi* wifi_;        // |wifi_| owns |this|.
   Metrics* metrics_;  // Owned by wifi_->manager().
 };

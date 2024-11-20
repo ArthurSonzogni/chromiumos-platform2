@@ -28,8 +28,7 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 
 namespace {
 constexpr int16_t kTriggerFwDumpThresholdDbm = -80;
-// Have a large enough time interval to rate limit the number of
-// triggered FW dumps from shill.
+// Have a large enough time interval to rate limit the number of firmware dumps.
 constexpr auto kFwDumpCoolDownPeriod = base::Seconds(360);
 }  // namespace
 
@@ -40,6 +39,9 @@ WiFiCQM::WiFiCQM(Metrics* metrics, WiFi* wifi)
     : wifi_(wifi), metrics_(metrics) {
   CHECK(wifi_) << "Passed wifi object was found null.";
   CHECK(metrics_) << "Passed metrics object was found null.";
+  // Set the previous time to UnixEpoch() so that we can trigger firmware dump
+  // upon shill WiFi initialization.
+  previous_fw_dump_time_ = base::Time::UnixEpoch();
 }
 
 WiFiCQM::~WiFiCQM() = default;
@@ -53,8 +55,7 @@ void WiFiCQM::TriggerFwDump() {
   }
   auto current = base::Time::NowFromSystemTime();
 
-  if (current < (previous_fw_dump_time_ + kFwDumpCoolDownPeriod) &&
-      fw_dump_count_) {
+  if (current < (previous_fw_dump_time_ + kFwDumpCoolDownPeriod)) {
     auto time_left = previous_fw_dump_time_ + kFwDumpCoolDownPeriod - current;
     SLOG(2) << "In FW dump cool down period, no FW dump triggered, "
             << "Time left (in sec): " << time_left.InSecondsF() << " "
@@ -62,8 +63,6 @@ void WiFiCQM::TriggerFwDump() {
             << kFwDumpCoolDownPeriod.InSecondsF();
     return;
   }
-
-  fw_dump_count_++;
 
   if (wifi_) {
     SLOG(2) << "Triggering FW dump.";

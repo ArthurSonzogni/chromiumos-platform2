@@ -39,6 +39,8 @@ namespace {
 // Fake MAC address.
 constexpr net_base::MacAddress kDeviceAddress(
     0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
+// Cooldown period for triggering firmware dumps configured by wifi_cqm.
+constexpr auto kFwDumpCoolDownPeriod = base::Seconds(360);
 const uint16_t kNl80211FamilyId = 0x13;
 
 // Bytes representing NL80211 CQM message to pass to unit tests.
@@ -73,7 +75,8 @@ const uint8_t kCQMPacketLossNLMsg[] = {
 class WiFiCQMTest : public ::testing::Test {
  public:
   WiFiCQMTest()
-      : manager_(&control_interface_, &dispatcher_, &metrics_),
+      : dispatcher_(std::make_unique<EventDispatcherForTest>()),
+        manager_(&control_interface_, dispatcher_.get(), &metrics_),
         wifi_(new MockWiFi(
             &manager_, "wifi", kDeviceAddress, 0, 0, new MockWakeOnWiFi())),
         wifi_cqm_(new WiFiCQM(&metrics_, wifi().get())) {
@@ -81,6 +84,8 @@ class WiFiCQMTest : public ::testing::Test {
   }
 
   ~WiFiCQMTest() override = default;
+
+  std::unique_ptr<EventDispatcherForTest> dispatcher_;
 
  protected:
   MockMetrics* metrics() { return &metrics_; }
@@ -91,14 +96,11 @@ class WiFiCQMTest : public ::testing::Test {
 
   void TriggerFwDump() { return wifi_cqm_->TriggerFwDump(); }
 
-  int FwDumpCount() { return wifi_cqm_->fw_dump_count_; }
-
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
 
  private:
   MockMetrics metrics_;
   MockControl control_interface_;
-  EventDispatcherForTest dispatcher_;
   NiceMock<MockManager> manager_;
 
   scoped_refptr<MockWiFi> wifi_;
@@ -114,14 +116,24 @@ TEST_F(WiFiCQMTest, TriggerFwDump) {
   EXPECT_CALL(log, Log(_, _, HasSubstr("Triggering FW dump")));
   EXPECT_CALL(*wifi(), GenerateFirmwareDump());
   TriggerFwDump();
-  EXPECT_EQ(FwDumpCount(), 1);
-
   Mock::VerifyAndClearExpectations(&log);
+  Mock::VerifyAndClearExpectations(wifi().get());
 
+  // No new firmware dump should be triggered in cool down period, e.g. we
+  // forward time by half of the cooldown period.
+  dispatcher_->task_environment().FastForwardBy(kFwDumpCoolDownPeriod / 2);
+  EXPECT_CALL(*wifi(), GenerateFirmwareDump()).Times(0);
   TriggerFwDump();
-  // No new FW dump should be triggered in cool down period, so this should
-  // still be one.
-  EXPECT_EQ(FwDumpCount(), 1);
+  Mock::VerifyAndClearExpectations(wifi().get());
+
+  // After the cooldown time, firmware dump can be triggered again.
+  dispatcher_->task_environment().FastForwardBy(kFwDumpCoolDownPeriod);
+  EXPECT_CALL(log, Log(_, _, HasSubstr("Triggering FW dump")));
+  EXPECT_CALL(*wifi(), GenerateFirmwareDump());
+  TriggerFwDump();
+  Mock::VerifyAndClearExpectations(&log);
+  Mock::VerifyAndClearExpectations(wifi().get());
+
   ScopeLogger::GetInstance()->set_verbose_level(0);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
 }
