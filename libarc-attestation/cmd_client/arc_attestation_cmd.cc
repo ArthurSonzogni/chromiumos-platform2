@@ -114,9 +114,12 @@ int main(int argc, char** argv) {
   std::string command = command_line->GetArgs()[0];
   if (command == kCommandProvision) {
     bool non_blocking = command_line->HasSwitch(kNonBlockingTimeoutSwitch);
-    std::string non_blocking_switch =
-        command_line->GetSwitchValueASCII(kNonBlockingTimeoutSwitch);
-    int non_blocking_timeout = std::stoi(non_blocking_switch);
+    int non_blocking_timeout = 0;
+    if (non_blocking) {
+      std::string non_blocking_switch =
+          command_line->GetSwitchValueASCII(kNonBlockingTimeoutSwitch);
+      non_blocking_timeout = std::stoi(non_blocking_switch);
+    }
 
     arc_attestation::AndroidStatus status =
         arc_attestation::ProvisionDkCert(!non_blocking);
@@ -131,6 +134,7 @@ int main(int argc, char** argv) {
       return (status.is_ok()) ? 0 : 1;
     }
 
+    // This will be reached only when |non_blocking = true|.
     // For non-blocking operation, we'll need to wait and try again.
     if (non_blocking_timeout < 0) {
       LOG(ERROR) << "Illegal value entered for timeout";
