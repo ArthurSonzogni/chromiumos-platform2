@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -182,13 +183,13 @@ struct MockDbusWithProxies {
       : refptr(base::MakeRefCounted<BusType>(dbus::Bus::Options())) {
     EXPECT_CALL(*refptr, GetObjectProxy(_, _))
         .WillRepeatedly(
-            [this](const std::string& service_name,
+            [this](std::string_view service_name,
                    const dbus::ObjectPath& object_path) -> dbus::ObjectProxy* {
               KeyType key(service_name, object_path.value());
               auto iter = proxies.find(key);
               if (iter == proxies.end()) {
                 auto proxy = base::MakeRefCounted<ProxyType>(
-                    refptr.get(), service_name, object_path);
+                    refptr.get(), std::string(service_name), object_path);
                 iter = proxies.emplace(key, std::move(proxy)).first;
               }
               return iter->second.get();
