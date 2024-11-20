@@ -1,3 +1,6 @@
+# The GSC firmware teams own the code in this repo.
+include chromiumos/owners:v1:/firmware/OWNERS.cros_gsc
+
 sadmansakib@google.com
 hcyang@google.com
 yich@google.com
