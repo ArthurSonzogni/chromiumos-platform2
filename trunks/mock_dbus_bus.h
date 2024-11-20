@@ -6,6 +6,7 @@
 #define TRUNKS_MOCK_DBUS_BUS_H_
 
 #include <string>
+#include <string_view>
 
 #include <dbus/bus.h>
 #include <gmock/gmock.h>
@@ -23,7 +24,7 @@ class MockDBusBus : public dbus::Bus {
                            dbus::Bus::GetServiceOwnerOption));
   using dbus::Bus::GetObjectProxy;
   MOCK_METHOD2(GetObjectProxy,
-               dbus::ObjectProxy*(const std::string&, const dbus::ObjectPath&));
+               dbus::ObjectProxy*(std::string_view, const dbus::ObjectPath&));
 };
 
 }  // namespace trunks

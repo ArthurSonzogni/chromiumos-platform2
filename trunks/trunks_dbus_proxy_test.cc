@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -92,7 +93,7 @@ class TrunksDBusProxyTest : public testing::Test {
 
   void SetUp() override {
     ON_CALL(*bus_, Connect()).WillByDefault(Return(true));
-    ON_CALL(*bus_, GetObjectProxy(A<const std::string&>(),
+    ON_CALL(*bus_, GetObjectProxy(A<std::string_view>(),
                                   A<const dbus::ObjectPath&>()))
         .WillByDefault(Return(object_proxy_.get()));
     ON_CALL(*bus_,
