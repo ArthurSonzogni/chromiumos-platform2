@@ -31,7 +31,6 @@ using ::testing::Return;
 using ::testing::ReturnNull;
 using ::testing::StrEq;
 
-constexpr char kUsbPropertyValue[] = "usb";
 constexpr char kSysnamePropertyValue[] = "event6";
 constexpr char kDevnamePropertyValue[] = "/dev/input/event16";
 constexpr char kDevpathPropertyValue[] =
@@ -145,35 +144,6 @@ TEST_F(TouchpadFetcherTest, NoDeviceInSyspathReturnsEmptyDeviceVector) {
   EXPECT_EQ(result.value().size(), 0);
 }
 
-TEST_F(TouchpadFetcherTest, UsbDeviceReturnsEmptyDeviceVector) {
-  const char* fake_sys_path = "/path/to/device";
-  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
-
-  EXPECT_CALL(*udev_enumerate_, GetListEntry())
-      .WillOnce(Return(std::move(udev_list_entry_)));
-
-  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
-      .WillOnce(Return(true));
-
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
-
-  EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(Return(std::move(udev_enumerate_)));
-
-  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
-      .WillOnce(Return("1"));
-  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(Return(kUsbPropertyValue));
-  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
-
-  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
-      .WillOnce(Return(std::move(dev_)));
-
-  auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
-  EXPECT_TRUE(result.has_value());
-  EXPECT_EQ(result.value().size(), 0);
-}
-
 TEST_F(TouchpadFetcherTest,
        InternalDeviceNonDeviceHandlerReturnsEmptyDeviceVector) {
   const char* fake_sys_path = "/path/to/device";
@@ -192,8 +162,6 @@ TEST_F(TouchpadFetcherTest,
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
       .WillOnce(Return("1"));
-  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(Return(kUsbPropertyValue));
   EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return("input7"));
 
   EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
@@ -221,8 +189,6 @@ TEST_F(TouchpadFetcherTest, NoMajorMinorNumbersReturnsError) {
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
       .WillOnce(Return("1"));
-  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(Return(""));
   EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
@@ -255,8 +221,6 @@ TEST_F(TouchpadFetcherTest, NoDriverSymlinkReturnsError) {
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
       .WillOnce(Return("1"));
-  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(Return(""));
   EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
@@ -293,8 +257,6 @@ TEST_F(TouchpadFetcherTest, NonPsmouseDriverReturnsDevice) {
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
       .WillOnce(Return("1"));
-  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(Return(""));
   EXPECT_CALL(*dev_, GetSysName())
       .WillRepeatedly(Return(kSysnamePropertyValue));
 
@@ -344,8 +306,6 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverNoProtocolReturnsDevice) {
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
       .WillOnce(Return("1"));
-  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(Return(""));
   EXPECT_CALL(*dev_, GetSysName())
       .WillRepeatedly(Return(kSysnamePropertyValue));
 
@@ -399,8 +359,6 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverWithProtocolReturnsDevice) {
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
       .WillOnce(Return("1"));
-  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(Return(""));
   EXPECT_CALL(*dev_, GetSysName())
       .WillRepeatedly(Return(kSysnamePropertyValue));
 
@@ -453,8 +411,6 @@ TEST_F(TouchpadFetcherTest, NonPsmouseDriverNoPidReturnsDevice) {
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
       .WillOnce(Return("1"));
-  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(Return(""));
   EXPECT_CALL(*dev_, GetSysName())
       .WillRepeatedly(Return(kSysnamePropertyValue));
 
@@ -504,8 +460,6 @@ TEST_F(TouchpadFetcherTest, NonPsmouseDriverNoVidReturnsDevice) {
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
       .WillOnce(Return("1"));
-  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(Return(""));
   EXPECT_CALL(*dev_, GetSysName())
       .WillRepeatedly(Return(kSysnamePropertyValue));
 

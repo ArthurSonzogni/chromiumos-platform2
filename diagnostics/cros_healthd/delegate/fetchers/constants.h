@@ -11,7 +11,6 @@ constexpr char kSubsystemInput[] = "input";
 
 namespace touchpad {
 inline constexpr char kUdevPropertyIdInputTouchpad[] = "ID_INPUT_TOUCHPAD";
-inline constexpr char kUdevPropertyIdBus[] = "ID_BUS";
 inline constexpr char kUdevPropertyDevname[] = "DEVNAME";
 inline constexpr char kUdevPropertyDevpath[] = "DEVPATH";
 inline constexpr char kUdevPropertyMajor[] = "MAJOR";

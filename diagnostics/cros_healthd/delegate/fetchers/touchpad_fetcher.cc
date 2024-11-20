@@ -113,13 +113,13 @@ std::string GetPsmouseDriver(const brillo::UdevDevice& dev,
 }
 
 bool IsInternalTouchpad(const brillo::UdevDevice& dev) {
+  // TODO(jdenose): b/380058247 - implement internal device check using the
+  // CROS_USB_LOCATION udev attribute by March 2025
   std::string id_input_touchpad_str = CharToNonNullStr(
       dev.GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad));
   int id_input_touchpad;
   bool is_touchpad;
-  bool is_internal =
-      CharToNonNullStr(dev.GetPropertyValue(touchpad::kUdevPropertyIdBus)) !=
-      "usb";
+
   if (id_input_touchpad_str.empty()) {
     is_touchpad = false;
   } else {
@@ -135,7 +135,7 @@ bool IsInternalTouchpad(const brillo::UdevDevice& dev) {
   bool is_device_handler =
       CharToNonNullStr(dev.GetSysName()).find("event") != std::string::npos;
 
-  return is_touchpad && is_device_handler && is_internal;
+  return is_touchpad && is_device_handler;
 }
 }  // namespace
 
