@@ -330,10 +330,10 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   if ((sys_memory_mb >= kDefaultHighMemDeviceThreshold ||
        features_.low_mem_jemalloc_arenas_enabled) &&
       !base::IsLink(jemalloc_config_file)) {
-    const base::FilePath jemalloc_setting(kJemallocHighMemDeviceConfig);
     // This symbolic link does not point to any file. It is used as a string
     // which contains the allocator config.
-    if (!base::CreateSymbolicLink(jemalloc_setting, jemalloc_config_file)) {
+    if (!base::CreateSymbolicLink(base::FilePath(kJemallocHighMemDeviceConfig),
+                                  jemalloc_config_file)) {
       LOG(ERROR) << "Could not create a jemalloc config";
       return false;
     }
@@ -961,11 +961,10 @@ std::vector<std::string> ArcVm::GetKernelParams(
   arc::StartArcMiniInstanceRequest mini_instance_request =
       request.mini_instance_request();
 
-  const base::FilePath vbmeta_digest_file(kVbMetaDigestFileName);
   const std::string vb_device_state = DeriveBootloaderState(is_dev_mode);
   const std::string verified_boot_state = DeriveVerifiedBootState(is_dev_mode);
   const std::optional<std::vector<uint8_t>> vbmeta_digest_opt =
-      GetVbMetaDigestFromFile(vbmeta_digest_file);
+      GetVbMetaDigestFromFile(base::FilePath(kVbMetaDigestFileName));
 
   int64_t zram_size = MiB(request.guest_zram_mib());
 
