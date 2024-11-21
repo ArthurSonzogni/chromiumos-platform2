@@ -226,6 +226,24 @@ TEST_F(VpdUtilsTest, GetStableDeviceSecret_Success) {
   EXPECT_EQ(stable_dev_secret, "abc");
 }
 
+TEST_F(VpdUtilsTest, GetShimlessMode_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>("0x5"), Return(true)));
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  uint64_t shimless_mode;
+  EXPECT_TRUE(vpd_utils->GetShimlessMode(&shimless_mode));
+  EXPECT_EQ(shimless_mode, 0x5);
+}
+
+TEST_F(VpdUtilsTest, GetShimlessMode_Nullptr) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_DEATH(vpd_utils->GetShimlessMode(nullptr), "");
+}
+
 TEST_F(VpdUtilsTest, SetSerialNumber_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
@@ -405,6 +423,38 @@ TEST_F(VpdUtilsTest, RemoveCustomLabelTag_Failed) {
 
   std::string stable_dev_secret;
   EXPECT_FALSE(vpd_utils->RemoveCustomLabelTag());
+}
+
+TEST_F(VpdUtilsTest, RemoveShimlessMode_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  // Expect this to be called when flushing the cached values in destructor.
+  // The command can be in either order.
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
+        const std::vector<std::string> expect = {
+            "/usr/sbin/vpd", "-i", "RW_VPD", "-d", "shimless_mode"};
+        EXPECT_EQ(argv, expect);
+        return true;
+      });
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(vpd_utils->RemoveShimlessMode());
+}
+
+TEST_F(VpdUtilsTest, RemoveShimlessMode_Failed) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  // Expect this to be called when flushing the cached values in destructor.
+  // The command can be in either order.
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
+        const std::vector<std::string> expect = {
+            "/usr/sbin/vpd", "-i", "RW_VPD", "-d", "shimless_mode"};
+        EXPECT_EQ(argv, expect);
+        return false;
+      });
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_FALSE(vpd_utils->RemoveShimlessMode());
 }
 
 TEST_F(VpdUtilsTest, FlushRoSuccess) {

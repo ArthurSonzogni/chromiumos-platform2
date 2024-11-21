@@ -33,6 +33,7 @@ class VpdUtilsImpl : public VpdUtils {
   bool GetRegistrationCode(std::string* ubind,
                            std::string* gbind) const override;
   bool GetStableDeviceSecret(std::string* stable_device_secret) const override;
+  bool GetShimlessMode(uint64_t* flags) const override;
   bool SetSerialNumber(const std::string& serial_number) override;
   bool SetCustomLabelTag(const std::string& custom_label_tag,
                          bool use_legacy) override;
@@ -42,6 +43,7 @@ class VpdUtilsImpl : public VpdUtils {
                            const std::string& gbind) override;
   bool SetStableDeviceSecret(const std::string& stable_device_secret) override;
   bool RemoveCustomLabelTag() override;
+  bool RemoveShimlessMode() override;
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
   void ClearRoVpdCache() override;

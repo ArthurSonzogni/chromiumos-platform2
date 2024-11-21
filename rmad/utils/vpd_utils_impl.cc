@@ -29,6 +29,7 @@ constexpr char kVpdKeyUbindAttribute[] = "ubind_attribute";
 constexpr char kVpdKeyGbindAttribute[] = "gbind_attribute";
 constexpr char kVpdKeyStableDeviceSecret[] =
     "stable_device_secret_DO_NOT_SHARE";
+constexpr char kVpdKeyShimlessMode[] = "shimless_mode";
 
 }  // namespace
 
@@ -111,6 +112,23 @@ bool VpdUtilsImpl::GetStableDeviceSecret(
   return GetRoVpd(kVpdKeyStableDeviceSecret, stable_device_secret);
 }
 
+bool VpdUtilsImpl::GetShimlessMode(uint64_t* flags) const {
+  CHECK(flags);
+
+  std::string mode;
+  if (!GetRwVpd(kVpdKeyShimlessMode, &mode)) {
+    LOG(ERROR) << "Failed to get shimless_mode from vpd.";
+    return false;
+  }
+
+  if (!base::HexStringToUInt64(mode, flags)) {
+    LOG(ERROR) << "Failed to parse shimless_mode to flags";
+    return false;
+  }
+
+  return true;
+}
+
 bool VpdUtilsImpl::SetSerialNumber(const std::string& serial_number) {
   cache_ro_[kVpdKeySerialNumber] = serial_number;
   return true;
@@ -155,6 +173,11 @@ bool VpdUtilsImpl::SetStableDeviceSecret(
 bool VpdUtilsImpl::RemoveCustomLabelTag() {
   cache_ro_.erase(kVpdKeyCustomLabelTag);
   return DelRoVpd(kVpdKeyCustomLabelTag);
+}
+
+bool VpdUtilsImpl::RemoveShimlessMode() {
+  cache_rw_.erase(kVpdKeyShimlessMode);
+  return DelRwVpd(kVpdKeyShimlessMode);
 }
 
 bool VpdUtilsImpl::FlushOutRoVpdCache() {

@@ -43,6 +43,10 @@ class VpdUtils {
   virtual bool GetStableDeviceSecret(
       std::string* stable_device_secret) const = 0;
 
+  // Get the Shimless Mode from vpd.
+  // Return true if it succeeds, otherwise return false.
+  virtual bool GetShimlessMode(uint64_t* flags) const = 0;
+
   // Save the serial number in the cache until flush is called and set to vpd.
   // Return true if it succeeds, otherwise return false.
   virtual bool SetSerialNumber(const std::string& serial_number) = 0;
@@ -75,6 +79,10 @@ class VpdUtils {
   // Remove custom-label-tag from the cache and the vpd.
   // Return true if it succeeds, otherwise return false.
   virtual bool RemoveCustomLabelTag() = 0;
+
+  // Remove Shimless Mode from the cache and the vpd.
+  // Return true if it succeeds, otherwise return false.
+  virtual bool RemoveShimlessMode() = 0;
 
   // Since setting the value to vpd requires a lot of overhead, we cache all
   // (key, value) pairs and then flush it all at once.

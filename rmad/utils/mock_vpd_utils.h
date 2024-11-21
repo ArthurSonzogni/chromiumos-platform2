@@ -32,6 +32,7 @@ class MockVpdUtils : public VpdUtils {
               (std::string*, std::string*),
               (const, override));
   MOCK_METHOD(bool, GetStableDeviceSecret, (std::string*), (const, override));
+  MOCK_METHOD(bool, GetShimlessMode, (uint64_t*), (const, override));
   MOCK_METHOD(bool, SetSerialNumber, (const std::string&), (override));
   MOCK_METHOD(bool, SetCustomLabelTag, (const std::string&, bool), (override));
   MOCK_METHOD(bool, SetRegion, (const std::string&), (override));
@@ -45,6 +46,7 @@ class MockVpdUtils : public VpdUtils {
               (override));
   MOCK_METHOD(bool, SetStableDeviceSecret, (const std::string&), (override));
   MOCK_METHOD(bool, RemoveCustomLabelTag, (), (override));
+  MOCK_METHOD(bool, RemoveShimlessMode, (), (override));
   MOCK_METHOD(bool, FlushOutRoVpdCache, (), (override));
   MOCK_METHOD(bool, FlushOutRwVpdCache, (), (override));
   MOCK_METHOD(void, ClearRoVpdCache, (), (override));
