@@ -668,6 +668,11 @@ void ChromeSetup::CreateDirectories(ChromiumCommandBuilder* builder) {
   CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/signin_profile_extensions"), uid, gid, 0700));
 
+  // Create the directory where IWAs for device-local accounts are cached.
+  // These IWAs are read and written by chronos.
+  CHECK(EnsureDirectoryExists(
+      base::FilePath("/var/cache/device_local_account_iwa"), uid, gid, 0700));
+
   SetUpTimezoneSymlink(builder->uid(), builder->gid());
   SetUpDebugfsGpu();
 
