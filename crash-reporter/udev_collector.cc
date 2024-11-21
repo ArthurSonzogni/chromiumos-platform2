@@ -4,6 +4,7 @@
 
 #include "crash-reporter/udev_collector.h"
 
+#include <errno.h>
 #include <fcntl.h>
 
 #include <map>
@@ -142,18 +143,19 @@ bool UdevCollector::IsConnectivityWiFiFwdump(int instance_number) {
 }
 
 bool UdevCollector::CheckConnectivityFwdumpAllowedFinchFlagStatus() {
+  const base::FilePath flag_path =
+      paths::Get(paths::kAllowFirmwareDumpsFlagPath);
   std::string val;
-
-  if (!base::ReadFileToStringWithMaxSize(
-          paths::Get(paths::kAllowFirmwareDumpsFlagPath), &val,
-          /*max_size*/ 1)) {
-    if (val.empty()) {
-      LOG(ERROR) << "Failed to read "
-                 << paths::Get(paths::kAllowFirmwareDumpsFlagPath) << ".";
+  if (!base::ReadFileToStringWithMaxSize(flag_path, &val, /*max_size*/ 1)) {
+    // This finch flag is managed by fbpreprocessor as a single source of truth.
+    // If the path doesn't exist, fbpreprocessor is likely not enabled or the
+    // flag hasn't been fetched.
+    if (errno == ENOENT) {
       return false;
     }
-    LOG(ERROR)
-        << "Connectivity fwdump Finch value is larger than expected size (1).";
+
+    LOG(ERROR) << "Connectivity fwdump Finch flag value doesn't match expected "
+                  "size (1).";
     return false;
   }
 

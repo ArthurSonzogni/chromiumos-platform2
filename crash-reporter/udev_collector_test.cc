@@ -15,6 +15,7 @@
 #include <base/strings/stringprintf.h>
 #include <bindings/cloud_policy.pb.h>
 #include <bindings/device_management_backend.pb.h>
+#include <brillo/files/file_util.h>
 #include <brillo/strings/string_utils.h>
 #include <brillo/syslog_logging.h>
 #include <crash-reporter-client/crash-reporter/dbus-constants.h>
@@ -709,6 +710,8 @@ TEST_F(UdevCollectorTest,
   GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
   auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
   collector_.SetSessionManagerProxy(mock);
+  FilePath fwdump_allowed_path = paths::Get(paths::kAllowFirmwareDumpsFlagPath);
+  ASSERT_TRUE(brillo::DeleteFile(fwdump_allowed_path));
 
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
   EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
