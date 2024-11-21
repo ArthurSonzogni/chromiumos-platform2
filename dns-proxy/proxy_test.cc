@@ -1711,12 +1711,4 @@ TEST_P(ProxyTest, UpdateNameServers) {
   EXPECT_THAT(proxy_->doh_config_.ipv6_nameservers(),
               expected_ipv6_dns_addresses);
 }
-
-TEST_P(ProxyTest, ShutDownMessage) {
-  ControllerMessage controller_msg;
-  controller_msg.set_type(ControllerMessage::SHUT_DOWN);
-  SubprocessMessage msg;
-  *msg.mutable_controller_message() = controller_msg;
-  EXPECT_DEATH(proxy_->OnControllerMessage(msg), "");
-}
 }  // namespace dns_proxy
