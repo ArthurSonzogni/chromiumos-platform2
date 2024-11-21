@@ -140,3 +140,81 @@ pub fn y410_to_i410(
         }
     }
 }
+
+/// Simple implementation of MM21 to NV12 detiling. Note that this Rust-only implementation is
+/// unlikely to be fast enough for production code, and is for testing purposes only.
+/// TODO(b:380280455): We will want to speed this up and also add MT2T support.
+pub fn detile_plane(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    tile_width: usize,
+    tile_height: usize,
+) -> Result<(), String> {
+    if width % tile_width != 0 || height % tile_height != 0 {
+        return Err("Buffers must be aligned to tile dimensions for detiling".to_owned());
+    }
+
+    let tile_size = tile_width * tile_height;
+    let mut output_idx = 0;
+    for y_start in (0..height).step_by(tile_height) {
+        let tile_row_start = y_start * width;
+        for y in 0..tile_height {
+            let row_start = tile_row_start + y * tile_width;
+            for x in (0..width).step_by(tile_width) {
+                let input_idx = row_start + x / tile_width * tile_size;
+                dst[output_idx..(output_idx + tile_width)]
+                    .copy_from_slice(&src[input_idx..(input_idx + tile_width)]);
+                output_idx += tile_width;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn mm21_to_nv12(
+    src_y: &[u8],
+    dst_y: &mut [u8],
+    src_uv: &[u8],
+    dst_uv: &mut [u8],
+    width: usize,
+    height: usize,
+) -> Result<(), String> {
+    let y_tile_width = 16;
+    let y_tile_height = 32;
+    detile_plane(src_y, dst_y, width, height, y_tile_width, y_tile_height)?;
+    detile_plane(
+        src_uv,
+        dst_uv,
+        width,
+        height / 2,
+        y_tile_width,
+        y_tile_height / 2,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mm21_to_nv12() {
+        let test_input = include_bytes!("test_data/puppets-480x270_20230825.mm21.yuv");
+        let test_expected_output = include_bytes!("test_data/puppets-480x270_20230825.nv12.yuv");
+
+        let mut test_output = [0u8; 480 * 288 * 3 / 2];
+        let (test_y_output, test_uv_output) = test_output.split_at_mut(480 * 288);
+        mm21_to_nv12(
+            &test_input[0..480 * 288],
+            test_y_output,
+            &test_input[480 * 288..480 * 288 * 3 / 2],
+            test_uv_output,
+            480,
+            288,
+        )
+        .expect("Failed to detile!");
+        assert_eq!(test_output, *test_expected_output);
+    }
+}
