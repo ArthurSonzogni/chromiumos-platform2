@@ -26,7 +26,7 @@ constexpr char kRootHomeSuffix[] = "root";
 
 constexpr char kEphemeralMountDir[] = "ephemeral_mount";
 constexpr char kEphemeralMountType[] = "ext4";
-constexpr char kEphemeralMountOptions[] = "";
+constexpr char kEphemeralMountOptions[] = "discard";
 
 constexpr char kEtcDaemonStoreBaseDir[] = "/etc/daemon-store/";
 constexpr char kRunDaemonStoreBaseDir[] = "/run/daemon-store/";
