@@ -5,6 +5,7 @@
 //! V4L2 backend
 
 pub mod decoder;
+#[cfg(feature = "v4l2")]
 pub mod encoder;
 
 impl From<v4l2r::PixelFormat> for crate::Fourcc {
