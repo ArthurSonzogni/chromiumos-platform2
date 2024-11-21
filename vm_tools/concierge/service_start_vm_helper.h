@@ -10,11 +10,9 @@
 #include <sys/types.h>
 
 #include <string>
-#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
-#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/system/sys_info.h>
 
@@ -45,13 +43,6 @@ constexpr char kVmToolsDiskName[] = "vm_tools.img";
 
 // File path for the Bruschetta Bios file inside the DLC root.
 constexpr char kBruschettaBiosDlcPath[] = "opt/CROSVM_CODE.fd";
-
-// Socket pair for connecting vhost_user frontend and backend. The frontend
-// socket is for crosvm run, and the backend socket is for crosvm device.
-struct VhostUserSocketPair {
-  base::ScopedFD front_end_fd;
-  base::ScopedFD back_end_fd;
-};
 
 // Check Cpu setting in request not exceeds processor number
 template <class T>
@@ -152,12 +143,6 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
 // Clears close-on-exec flag for a file descriptor to pass it to a subprocess
 // such as crosvm. Returns a failure reason on failure.
 std::string RemoveCloseOnExec(const base::ScopedFD& fd);
-
-// Create a socket pair for connecting vhost_user frontend and backend.
-std::optional<VhostUserSocketPair> SetupVhostUserSocketPair();
-
-// Creates a std::vector containing the given base::ScopedFD.
-std::vector<base::ScopedFD> ScopedFDToVector(base::ScopedFD fd);
 
 }  // namespace internal
 

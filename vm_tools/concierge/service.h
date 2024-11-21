@@ -54,7 +54,6 @@
 #include "vm_tools/concierge/startup_listener_impl.h"
 #include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/untrusted_vm_utils.h"
-#include "vm_tools/concierge/vhost_user_starter_client.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -629,10 +628,6 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // The power manager D-Bus client.
   std::unique_ptr<PowerManagerClient> power_manager_client_
-      GUARDED_BY_CONTEXT(sequence_checker_);
-
-  // The vhost_user_starter D-Bus client.
-  std::unique_ptr<VhostUserStarterClient> vhost_user_starter_client_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // The dlcservice helper D-Bus client.

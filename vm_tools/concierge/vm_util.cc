@@ -811,16 +811,6 @@ SharedDataParam CreateFontsSharedDataParam() {
                          .posix_acl = true};
 }
 
-std::string VhostUserFsFrontParam::to_string() const {
-  CHECK(!tag.empty());
-  CHECK_GE(socket_fd.get(), 0);
-
-  std::string result = base::StrCat(
-      {"socket-fd=", std::to_string(socket_fd.get()), ",tag=", tag});
-
-  return result;
-}
-
 void ArcVmCPUTopology::CreateAffinity() {
   std::vector<std::string> cpu_list;
   std::vector<std::string> affinities;
