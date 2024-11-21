@@ -630,4 +630,20 @@ TEST_F(ArcRemoteProvisioningContextTest, SetSerialNumber_Failure) {
   EXPECT_EQ(error, KM_ERROR_UNKNOWN_ERROR);
 }
 
+TEST_F(ArcRemoteProvisioningContextTest, SetSerialNumberTwice_Failure) {
+  // Prepare.
+  std::string serial_number_1("4987fwehjn1271j231293fqdesb02vs912e");
+  std::string serial_number_2("304730947georgnert9holhxlhsi713nvlb");
+
+  // Execute.
+  keymaster_error_t error_1 =
+      remote_provisioning_context_->SetSerialNumber(serial_number_1);
+  keymaster_error_t error_2 =
+      remote_provisioning_context_->SetSerialNumber(serial_number_2);
+
+  // Test.
+  EXPECT_EQ(error_1, KM_ERROR_OK);
+  EXPECT_EQ(error_2, KM_ERROR_UNKNOWN_ERROR);
+}
+
 }  // namespace arc::keymint::context

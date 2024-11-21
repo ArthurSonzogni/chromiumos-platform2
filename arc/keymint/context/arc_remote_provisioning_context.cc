@@ -564,6 +564,10 @@ keymaster_error_t ArcRemoteProvisioningContext::SetSerialNumber(
     return KM_ERROR_UNKNOWN_ERROR;
   }
 
+  if (serial_number_.has_value()) {
+    LOG(ERROR) << "Cannot set serial number more than once in KeyMint.";
+    return KM_ERROR_UNKNOWN_ERROR;
+  }
   serial_number_ = serial_number;
   return KM_ERROR_OK;
 }
