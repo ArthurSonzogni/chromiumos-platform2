@@ -45,6 +45,8 @@ namespace concierge {
 namespace internal {
 std::string GetDevConfPath(apps::VmType type);
 int64_t GetVmMemoryMiBInternal(int64_t system, bool is_32bit);
+std::vector<vm_tools::vhost_user_starter::IdMapItem> IdMapStringToIdMapItem(
+    const std::string& id_map_string);
 }  // namespace internal
 
 enum VmInfo_VmType : int;
@@ -271,8 +273,8 @@ struct SharedDataParam {
   // Get VhostUserVirtioFsConfig proto message according to SharedDataParam,
   // this message will be parsed by vhost_user_starter daemon and config
   // vhost-user-fs backend's --cfg option in crosvm.
-  vhost_user_starter::VhostUserVirtioFsConfig get_vhost_user_virtio_fs_cfg()
-      const;
+  vhost_user_starter::StartVhostUserFsRequest
+  get_start_vhost_user_virtio_fs_request() const;
 
   base::FilePath data_dir;
   std::string tag;

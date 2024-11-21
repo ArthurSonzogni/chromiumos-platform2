@@ -114,6 +114,41 @@ int64_t GetVmMemoryMiBInternal(int64_t sys_memory_mb, bool is_32bit) {
 
   return vm_memory_mb;
 }
+
+std::vector<vm_tools::vhost_user_starter::IdMapItem> IdMapStringToIdMapItem(
+    const std::string& id_map_string) {
+  std::vector<vm_tools::vhost_user_starter::IdMapItem> id_map;
+
+  std::vector<std::string> id_map_items = base::SplitString(
+      id_map_string, ",", base::WhitespaceHandling::KEEP_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+  for (std::string& id_map_item : id_map_items) {
+    vm_tools::vhost_user_starter::IdMapItem item;
+    std::stringstream item_ss(id_map_item);
+    std::vector<std::string> parse_result = base::SplitString(
+        id_map_item, " ", base::WhitespaceHandling::KEEP_WHITESPACE,
+        base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+    int in_id, out_id, range;
+    if (parse_result.size() != 3 ||
+        !base::StringToInt(parse_result[0], &in_id) ||
+        !base::StringToInt(parse_result[1], &out_id) ||
+        !base::StringToInt(parse_result[2], &range)) {
+      LOG(ERROR) << "IdMapStringToIdMapItem parses wrong input: "
+                 << id_map_string;
+      return std::vector<vm_tools::vhost_user_starter::IdMapItem>();
+    }
+
+    item.set_in_id(in_id);
+    item.set_out_id(out_id);
+    item.set_range(range);
+
+    id_map.push_back(item);
+  }
+
+  return id_map;
+}
 }  // namespace internal
 
 int64_t GetVmMemoryMiB() {
@@ -776,29 +811,49 @@ std::string SharedDataParam::to_string() const {
   return result;
 }
 
-vhost_user_starter::VhostUserVirtioFsConfig
-SharedDataParam::get_vhost_user_virtio_fs_cfg() const {
-  vhost_user_starter::VhostUserVirtioFsConfig cfg;
+vhost_user_starter::StartVhostUserFsRequest
+SharedDataParam::get_start_vhost_user_virtio_fs_request() const {
+  CHECK_NE(uid_map, "");
+  CHECK_NE(gid_map, "");
+
+  vm_tools::vhost_user_starter::StartVhostUserFsRequest request;
+  request.set_tag(tag);
+  request.set_shared_dir(data_dir.value());
+  for (auto item : internal::IdMapStringToIdMapItem(uid_map)) {
+    auto uid_item = request.add_uid_map();
+    uid_item->set_in_id(item.in_id());
+    uid_item->set_out_id(item.out_id());
+    uid_item->set_range(item.range());
+  }
+  for (auto item : internal::IdMapStringToIdMapItem(gid_map)) {
+    auto gid_item = request.add_gid_map();
+    gid_item->set_in_id(item.in_id());
+    gid_item->set_out_id(item.out_id());
+    gid_item->set_range(item.range());
+  }
+
   CacheParameters cache_params =
       create_cache_parameters(enable_caches, ascii_casefold);
 
-#define SET_CACHE_FIELD(field) cfg.set_##field(cache_params.field)
+#define SET_CACHE_FIELD(field) \
+  request.mutable_cfg()->set_##field(cache_params.field)
   SET_CACHE_FIELD(cache);
   SET_CACHE_FIELD(timeout);
   SET_CACHE_FIELD(writeback);
   SET_CACHE_FIELD(negative_timeout);
 #undef SET_CACHE_FIELD
 
-#define SET_FIELD(field) cfg.set_##field(field)
+#define SET_FIELD(field) request.mutable_cfg()->set_##field(field)
   SET_FIELD(rewrite_security_xattrs);
   SET_FIELD(ascii_casefold);
   SET_FIELD(posix_acl);
 #undef SET_FIELD
 
   for (uid_t uid : privileged_quota_uids) {
-    cfg.add_privileged_quota_uids(uid);
+    request.mutable_cfg()->add_privileged_quota_uids(uid);
   }
-  return cfg;
+
+  return request;
 }
 
 SharedDataParam CreateFontsSharedDataParam() {

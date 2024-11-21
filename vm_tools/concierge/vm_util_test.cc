@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/vm_util.h"
 
+#include <cstdint>
 #include <cstring>
 #include <optional>
 #include <string>
@@ -30,6 +31,25 @@ void LoadCustomParameters(const std::string& data, base::StringPairs& args) {
   custom.Apply(args);
 }
 
+// Creates an IdMapItem with the specified inner, outer ID,and range.
+vm_tools::vhost_user_starter::IdMapItem CreateIdMapItem(uint32_t in_id,
+                                                        uint32_t out_id,
+                                                        uint32_t range) {
+  vm_tools::vhost_user_starter::IdMapItem item;
+  item.set_in_id(in_id);
+  item.set_out_id(out_id);
+  item.set_range(range);
+  return item;
+}
+
+MATCHER_P(EqualsProto,
+          message,
+          "Match a proto Message equal to the matcher's argument.") {
+  std::string expected_serialized, actual_serialized;
+  message.SerializeToString(&expected_serialized);
+  arg.SerializeToString(&actual_serialized);
+  return expected_serialized == actual_serialized;
+}
 }  // namespace
 
 TEST(VMUtilTest, LoadCustomParametersSupportsEmptyInput) {
@@ -584,16 +604,41 @@ TEST(VMUtilTest, SharedDataParamSetVhostUserVirtioFsConfig) {
                         .posix_acl = true,
                         .privileged_quota_uids = {0}};
 
-  auto cfg = param.get_vhost_user_virtio_fs_cfg();
+  auto request = param.get_start_vhost_user_virtio_fs_request();
 
-  ASSERT_EQ(cfg.cache(), "auto");
-  ASSERT_EQ(cfg.negative_timeout(), 1);
-  ASSERT_EQ(cfg.writeback(), false);
-  ASSERT_EQ(cfg.ascii_casefold(), false);
-  ASSERT_EQ(cfg.posix_acl(), true);
-  ASSERT_EQ(cfg.rewrite_security_xattrs(), true);
-  ASSERT_EQ(cfg.privileged_quota_uids().size(), 1);
-  ASSERT_EQ(cfg.privileged_quota_uids().Get(0), 0);
+  ASSERT_EQ(request.shared_dir(), "/var/run/arc/media");
+  ASSERT_EQ(request.tag(), "stub");
+  ASSERT_EQ(request.uid(), 0);
+  ASSERT_EQ(request.gid(), 0);
+
+  ASSERT_EQ(request.uid_map().size(), 3);
+  EXPECT_THAT(request.uid_map().Get(0),
+              EqualsProto(CreateIdMapItem(0, 655360, 5000)));
+  EXPECT_THAT(request.uid_map().Get(1),
+              EqualsProto(CreateIdMapItem(5000, 600, 50)));
+  EXPECT_THAT(request.uid_map().Get(2),
+              EqualsProto(CreateIdMapItem(5050, 660410, 1994950)));
+
+  ASSERT_EQ(request.gid_map().size(), 5);
+  EXPECT_THAT(request.gid_map().Get(0),
+              EqualsProto(CreateIdMapItem(0, 655360, 1065)));
+  EXPECT_THAT(request.gid_map().Get(1),
+              EqualsProto(CreateIdMapItem(1065, 20119, 1)));
+  EXPECT_THAT(request.gid_map().Get(2),
+              EqualsProto(CreateIdMapItem(1066, 656426, 3934)));
+  EXPECT_THAT(request.gid_map().Get(3),
+              EqualsProto(CreateIdMapItem(5000, 600, 50)));
+  EXPECT_THAT(request.gid_map().Get(4),
+              EqualsProto(CreateIdMapItem(5050, 660410, 1994950)));
+
+  ASSERT_EQ(request.cfg().cache(), "auto");
+  ASSERT_EQ(request.cfg().negative_timeout(), 1);
+  ASSERT_EQ(request.cfg().writeback(), false);
+  ASSERT_EQ(request.cfg().ascii_casefold(), false);
+  ASSERT_EQ(request.cfg().posix_acl(), true);
+  ASSERT_EQ(request.cfg().rewrite_security_xattrs(), true);
+  ASSERT_EQ(request.cfg().privileged_quota_uids().size(), 1);
+  ASSERT_EQ(request.cfg().privileged_quota_uids().Get(0), 0);
 }
 
 TEST(VMUtilTest, GetBalloonStats) {
@@ -803,6 +848,24 @@ TEST(VMUtilTest, VmInfoConversionWithoutSensitive) {
   ASSERT_EQ(vm_info.vm_type(), VmInfo::TERMINA);
   ASSERT_TRUE(vm_info.storage_ballooning());
   ASSERT_EQ(vm_info.status(), VM_STATUS_RUNNING);
+}
+
+TEST(VMUtilTest, IdMapStringToIdMapItem) {
+  std::string mock_uid_map = "0 0 1,100 300 200";
+  std::vector<vm_tools::vhost_user_starter::IdMapItem> id_map_items =
+      internal::IdMapStringToIdMapItem(mock_uid_map);
+
+  EXPECT_EQ(id_map_items.size(), 2);
+  EXPECT_EQ(id_map_items[0].in_id(), 0);
+  EXPECT_EQ(id_map_items[0].out_id(), 0);
+  EXPECT_EQ(id_map_items[0].range(), 1);
+  EXPECT_EQ(id_map_items[1].in_id(), 100);
+  EXPECT_EQ(id_map_items[1].out_id(), 300);
+  EXPECT_EQ(id_map_items[1].range(), 200);
+
+  std::string invalid_mock_uid_map = "0 0 1,100 300";
+  id_map_items = internal::IdMapStringToIdMapItem(invalid_mock_uid_map);
+  EXPECT_TRUE(id_map_items.empty());
 }
 
 }  // namespace concierge

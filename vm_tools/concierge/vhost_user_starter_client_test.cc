@@ -107,23 +107,5 @@ TEST_F(VhostUserStarterClientTest, StartVhostUserFs) {
   task_environment_.RunUntilIdle();
   EXPECT_EQ(client->GetStartedDeviceCnt(), 1);
 }
-
-TEST(VhostUserStarterClientFunctionTest, IdMapStringToIdMapItem) {
-  std::string mock_uid_map = "0 0 1,100 300 200";
-  std::vector<vm_tools::vhost_user_starter::IdMapItem> id_map_items =
-      internal::IdMapStringToIdMapItem(mock_uid_map);
-
-  EXPECT_EQ(id_map_items.size(), 2);
-  EXPECT_EQ(id_map_items[0].in_id(), 0);
-  EXPECT_EQ(id_map_items[0].out_id(), 0);
-  EXPECT_EQ(id_map_items[0].range(), 1);
-  EXPECT_EQ(id_map_items[1].in_id(), 100);
-  EXPECT_EQ(id_map_items[1].out_id(), 300);
-  EXPECT_EQ(id_map_items[1].range(), 200);
-
-  std::string invalid_mock_uid_map = "0 0 1,100 300";
-  id_map_items = internal::IdMapStringToIdMapItem(mock_uid_map);
-}
-
 }  // namespace
 }  // namespace vm_tools::concierge

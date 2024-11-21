@@ -23,11 +23,6 @@
 
 namespace vm_tools::concierge {
 
-namespace internal {
-std::vector<vm_tools::vhost_user_starter::IdMapItem> IdMapStringToIdMapItem(
-    const std::string& id_map_string);
-}  // namespace internal
-
 // Provides a proxy connection to the vhost_user_starter dbus service.
 class VhostUserStarterClient final {
  public:
