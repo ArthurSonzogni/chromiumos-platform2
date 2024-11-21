@@ -430,11 +430,13 @@ std::string RTNLMessage::NeighborStatus::ToString() const {
 // |lifetime| is unsigned. Printing as signed so that infinity (0xfffffff) get
 // printed as -1. Same below.
 std::string RTNLMessage::RdnssOption::ToString() const {
-  return base::StringPrintf("RdnssOption lifetime %d", lifetime);
+  return base::StringPrintf("RdnssOption lifetime %d",
+                            static_cast<int>(lifetime));
 }
 
 std::string RTNLMessage::DnsslOption::ToString() const {
-  return base::StringPrintf("DnsslOption lifetime %d", lifetime);
+  return base::StringPrintf("DnsslOption lifetime %d",
+                            static_cast<int>(lifetime));
 }
 
 std::string RTNLMessage::NdUserOption::ToString() const {
