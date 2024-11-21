@@ -1,3 +1,5 @@
+<!-- Format this doc with `mdformat --compatibility --w ANALYSIS.md`. -->
+
 # Fingerprint System Performance Analysis and Qualification
 
 This document gives a high level overview of what is required to analyze the
@@ -86,7 +88,7 @@ MCU (FPMCU), and matching library that runs on the FPMCU.
 
     -   Plot of FAR vs. matching threshold (threshold on x-axis)
     -   Plot of FRR vs. matching threshold (threshold on x-axis)
-    -   Plot of [Detection Error Tradeoff] (FAR on x-axis, FRR on y-axis)
+    -   Plot of [Detection Error Tradeoff] \(FAR on x-axis, FRR on y-axis\)
     -   The FRR statistics at 1/50k and 1/100k FAR
     -   Any Failure to Enrolls (FTE) that occurred
 
