@@ -392,7 +392,9 @@ void TitleGenerationEngine::ProcessEachPrompt(
           return;
         }
         auto input_options = on_device_model::mojom::InputOptions::New();
-        input_options->text = *formatted;
+        auto input = on_device_model::mojom::Input::New();
+        input->pieces.push_back(*formatted);
+        input_options->input = std::move(input);
         session->Execute(std::move(input_options), std::move(callback));
         return;
       },

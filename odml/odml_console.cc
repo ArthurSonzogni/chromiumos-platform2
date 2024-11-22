@@ -59,9 +59,11 @@ base::FilePath GetModelTestDataDir() {
   return base::FilePath("/tmp");
 }
 
-InputOptionsPtr MakeInput(const std::string& input) {
+InputOptionsPtr MakeInput(const std::string& text) {
   auto options = InputOptions::New();
-  options->text = input;
+  auto input = on_device_model::mojom::Input::New();
+  input->pieces.push_back(text);
+  options->input = std::move(input);
   options->ignore_context = false;
   return options;
 }
