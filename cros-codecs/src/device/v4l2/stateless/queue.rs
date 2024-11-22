@@ -10,10 +10,10 @@ use v4l2r::bindings::v4l2_format;
 use v4l2r::device::queue::direction::Capture;
 use v4l2r::device::queue::direction::Output;
 use v4l2r::device::queue::dqbuf::DqBuffer;
-use v4l2r::device::queue::qbuf::get_free::GetFreeCaptureBuffer;
-use v4l2r::device::queue::qbuf::get_free::GetFreeOutputBuffer;
-use v4l2r::device::queue::qbuf::weak::QBufferWeak;
+use v4l2r::device::queue::qbuf::QBuffer;
 use v4l2r::device::queue::BuffersAllocated;
+use v4l2r::device::queue::GetFreeCaptureBuffer;
+use v4l2r::device::queue::GetFreeOutputBuffer;
 use v4l2r::device::queue::Queue;
 use v4l2r::device::queue::QueueInit;
 use v4l2r::device::AllocatedQueue;
@@ -32,12 +32,25 @@ use crate::Resolution;
 //TODO: handle memory backends other than mmap
 pub struct V4l2OutputBuffer {
     queue: V4l2OutputQueue,
-    handle: QBufferWeak<Vec<MmapHandle>, Vec<MmapHandle>>,
+    handle: QBuffer<
+        Output,
+        Vec<MmapHandle>,
+        Vec<MmapHandle>,
+        Rc<Queue<Output, BuffersAllocated<Vec<MmapHandle>>>>,
+    >,
     length: usize,
 }
 
 impl V4l2OutputBuffer {
-    fn new(queue: V4l2OutputQueue, handle: QBufferWeak<Vec<MmapHandle>, Vec<MmapHandle>>) -> Self {
+    fn new(
+        queue: V4l2OutputQueue,
+        handle: QBuffer<
+            Output,
+            Vec<MmapHandle>,
+            Vec<MmapHandle>,
+            Rc<Queue<Output, BuffersAllocated<Vec<MmapHandle>>>>,
+        >,
+    ) -> Self {
         Self {
             queue,
             handle,
@@ -74,7 +87,7 @@ impl V4l2OutputBuffer {
         self.handle
             .set_timestamp(TimeVal::new(/* FIXME: sec */ 0, timestamp as i64))
             .set_request(request_fd)
-            .queue(&[self.length], queue)
+            .queue(&[self.length])
             .expect("Failed to queue output buffer");
     }
 }
@@ -86,7 +99,7 @@ impl V4l2OutputBuffer {
 #[derive(Default)]
 enum V4l2OutputQueueHandle {
     Init(Queue<Output, QueueInit>),
-    Streaming(Queue<Output, BuffersAllocated<Vec<MmapHandle>>>),
+    Streaming(Rc<Queue<Output, BuffersAllocated<Vec<MmapHandle>>>>),
     #[default]
     Unknown,
 }
@@ -145,7 +158,7 @@ impl V4l2OutputQueue {
                 handle.stream_on().expect("Failed to start output queue");
 
                 println!("Output queue:\n\tstate: Init -> Streaming\n");
-                V4l2OutputQueueHandle::Streaming(handle)
+                V4l2OutputQueueHandle::Streaming(handle.into())
             }
             _ => {
                 /* TODO: handle DRC */
@@ -175,8 +188,7 @@ impl V4l2OutputQueue {
                 self.clone(),
                 handle
                     .try_get_free_buffer()
-                    .expect("Failed to alloc output buffer")
-                    .take(),
+                    .expect("Failed to alloc output buffer"),
             ),
             _ => panic!("ERROR"),
         }
