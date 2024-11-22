@@ -57,7 +57,7 @@ MCU (FPMCU), and matching library that runs on the FPMCU.
     The BPET is a software application that simulates fingerprint matches using
     the raw fingerprint captures, produced by the fingerprint study tool. It is
     expected to accurately evaluate whether the fingerprint system meets the
-    [Chrome OS Fingerprint Requirements] for FRR/FAR, as true to real world
+    [Chrome OS Fingerprint Requirements] for FRR/FAR/SAR, as true to real world
     conditions as possible.
 
     See [Biometric Performance Evaluation Tool (BPET) Requirements](BPET.md) for

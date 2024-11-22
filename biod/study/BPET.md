@@ -5,8 +5,8 @@
 The BPET is a software application that simulates fingerprint matches using the
 raw fingerprint captures, produced by the fingerprint study tool. It is expected
 to accurately evaluate whether the fingerprint system meets the
-[Chrome OS Fingerprint Requirements] for FRR/FAR, as true to real world
-conditions as possible. In general, it should demonstrate the FAR/FRR
+[Chrome OS Fingerprint Requirements] for FRR/FAR/SAR, as true to real world
+conditions as possible. In general, it should demonstrate the FRR/FAR/SAR
 performance throughout the range of possible matching thresholds and the FRR at
 predefined thresholds (corresponding to 1/50k and 1/100k FAR).
 
