@@ -10,6 +10,8 @@
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/system_utils_impl.h"
+
 namespace em = enterprise_management;
 
 namespace login_manager {
@@ -44,15 +46,16 @@ class PolicyStoreTest : public ::testing::Test {
 
   base::ScopedTempDir tmpdir_;
   base::FilePath tmpfile_;
+  SystemUtilsImpl system_utils_;
 };
 
 TEST_F(PolicyStoreTest, InitialEmptyStore) {
-  PolicyStore store(tmpfile_);
+  PolicyStore store(&system_utils_, tmpfile_);
   CheckExpectedPolicy(&store, em::PolicyFetchResponse());
 }
 
 TEST_F(PolicyStoreTest, CreateEmptyStore) {
-  PolicyStore store(tmpfile_);
+  PolicyStore store(&system_utils_, tmpfile_);
   ASSERT_TRUE(store.EnsureLoadedOrCreated());  // Should create an empty policy.
   CheckExpectedPolicy(&store, em::PolicyFetchResponse());
 }
@@ -60,20 +63,20 @@ TEST_F(PolicyStoreTest, CreateEmptyStore) {
 TEST_F(PolicyStoreTest, FailBrokenStore) {
   base::FilePath bad_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.GetPath(), &bad_file));
-  PolicyStore store(bad_file);
+  PolicyStore store(&system_utils_, bad_file);
   ASSERT_FALSE(store.EnsureLoadedOrCreated());
 }
 
 TEST_F(PolicyStoreTest, VerifyPolicyStorage) {
   enterprise_management::PolicyFetchResponse policy;
   policy.set_error_message("policy");
-  PolicyStore store(tmpfile_);
+  PolicyStore store(&system_utils_, tmpfile_);
   store.Set(policy);
   CheckExpectedPolicy(&store, policy);
 }
 
 TEST_F(PolicyStoreTest, VerifyPolicyUpdate) {
-  PolicyStore store(tmpfile_);
+  PolicyStore store(&system_utils_, tmpfile_);
   enterprise_management::PolicyFetchResponse policy;
   policy.set_error_message("policy");
   store.Set(policy);
@@ -86,14 +89,14 @@ TEST_F(PolicyStoreTest, VerifyPolicyUpdate) {
 }
 
 TEST_F(PolicyStoreTest, LoadStoreFromDisk) {
-  PolicyStore store(tmpfile_);
+  PolicyStore store(&system_utils_, tmpfile_);
   enterprise_management::PolicyFetchResponse policy;
   policy.set_error_message("policy");
   store.Set(policy);
   ASSERT_TRUE(store.Persist());
   CheckExpectedPolicy(&store, policy);
 
-  PolicyStore store2(tmpfile_);
+  PolicyStore store2(&system_utils_, tmpfile_);
   ASSERT_TRUE(store2.EnsureLoadedOrCreated());
   CheckExpectedPolicy(&store2, policy);
 }

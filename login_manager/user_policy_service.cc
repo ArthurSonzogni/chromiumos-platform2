@@ -25,14 +25,13 @@ namespace em = enterprise_management;
 
 namespace login_manager {
 
-UserPolicyService::UserPolicyService(const base::FilePath& policy_dir,
+UserPolicyService::UserPolicyService(SystemUtils* system_utils,
+                                     const base::FilePath& policy_dir,
                                      std::unique_ptr<PolicyKey> policy_key,
-                                     const base::FilePath& key_copy_path,
-                                     SystemUtils* system_utils)
-    : PolicyService(policy_dir, policy_key.get(), nullptr, false),
+                                     const base::FilePath& key_copy_path)
+    : PolicyService(system_utils, policy_dir, policy_key.get(), nullptr, false),
       scoped_policy_key_(std::move(policy_key)),
-      key_copy_path_(key_copy_path),
-      system_utils_(system_utils) {}
+      key_copy_path_(key_copy_path) {}
 
 UserPolicyService::~UserPolicyService() = default;
 
@@ -48,13 +47,13 @@ void UserPolicyService::PersistKeyCopy() {
     chmod(dir.value().c_str(), mode);
 
     const std::vector<uint8_t>& key = scoped_policy_key_->public_key_der();
-    system_utils_->AtomicFileWrite(key_copy_path_,
-                                   std::string(key.begin(), key.end()));
+    system_utils()->AtomicFileWrite(key_copy_path_,
+                                    std::string(key.begin(), key.end()));
     mode = S_IRUSR | S_IRGRP | S_IROTH;
     chmod(key_copy_path_.value().c_str(), mode);
   } else {
     // Remove the key if it has been cleared.
-    system_utils_->RemoveFile(key_copy_path_);
+    system_utils()->RemoveFile(key_copy_path_);
   }
 }
 

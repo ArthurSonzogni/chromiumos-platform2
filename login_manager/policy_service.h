@@ -30,6 +30,7 @@ namespace login_manager {
 class LoginMetrics;
 class PolicyKey;
 class PolicyStore;
+class SystemUtils;
 
 // Policies are namespaced by domain and component ID.
 using PolicyNamespace = std::pair<PolicyDomain, std::string>;
@@ -79,7 +80,8 @@ class PolicyService {
   // |metrics| is transferred to policy stores created by this instance.
   // |resilient_chrome_policy_store| is used to decide if the policy store has
   // to be created with backup files for resilience.
-  PolicyService(const base::FilePath& policy_dir,
+  PolicyService(SystemUtils* system_utils,
+                const base::FilePath& policy_dir,
                 PolicyKey* policy_key,
                 LoginMetrics* metrics,
                 bool resilient_chrome_policy_store);
@@ -152,6 +154,8 @@ class PolicyService {
   void OnPolicyPersisted(Completion completion,
                          const std::string& dbus_error_code);
 
+  SystemUtils* system_utils() { return system_utils_; }
+
   // Owned by the caller. Passed to the policy stores at creation and used by
   // device policy service.
   LoginMetrics* metrics_ = nullptr;
@@ -160,6 +164,7 @@ class PolicyService {
   // Returns the file path of the policy for the given namespace |ns|.
   base::FilePath GetPolicyPath(const PolicyNamespace& ns);
 
+  SystemUtils* const system_utils_;
   using PolicyStoreMap =
       std::map<PolicyNamespace, std::unique_ptr<PolicyStore>>;
   PolicyStoreMap policy_stores_;

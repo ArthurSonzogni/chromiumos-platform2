@@ -29,6 +29,7 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
+#include "login_manager/system_utils_impl.h"
 
 namespace em = enterprise_management;
 
@@ -58,8 +59,8 @@ class PolicyServiceTest : public testing::Test {
   void SetUp() override {
     fake_loop_.SetAsCurrent();
     store_ = new StrictMock<MockPolicyStore>;
-    service_ = std::make_unique<PolicyService>(base::FilePath(), &key_, nullptr,
-                                               false);
+    service_ = std::make_unique<PolicyService>(&system_utils_, base::FilePath(),
+                                               &key_, nullptr, false);
     service_->SetStoreForTesting(MakeChromePolicyNamespace(),
                                  std::unique_ptr<PolicyStore>(store_));
     service_->set_delegate(&delegate_);
@@ -157,6 +158,7 @@ class PolicyServiceTest : public testing::Test {
   em::PolicyFetchResponse policy_proto_;
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
+  SystemUtilsImpl system_utils_;
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
@@ -485,8 +487,8 @@ class PolicyServiceNamespaceTest : public testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     fake_loop_.SetAsCurrent();
-    service_ = std::make_unique<PolicyService>(temp_dir_.GetPath(), &key_,
-                                               nullptr, false);
+    service_ = std::make_unique<PolicyService>(
+        &system_utils_, temp_dir_.GetPath(), &key_, nullptr, false);
 
     const std::string kExtensionId1 = "abcdefghijklmnopabcdefghijklmnop";
     ns1_ = PolicyNamespace(POLICY_DOMAIN_CHROME, "");
@@ -552,6 +554,7 @@ class PolicyServiceNamespaceTest : public testing::Test {
   }
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
+  SystemUtilsImpl system_utils_;
   std::unique_ptr<PolicyService> service_;
   StrictMock<MockPolicyKey> key_;
   base::ScopedTempDir temp_dir_;

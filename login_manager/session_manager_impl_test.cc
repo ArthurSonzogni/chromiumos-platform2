@@ -417,8 +417,8 @@ class SessionManagerImplTest : public ::testing::Test,
     device_local_accounts_dir_ =
         tmpdir_.GetPath().Append(kDeviceLocalAccountsDir);
     auto device_local_account_manager =
-        std::make_unique<DeviceLocalAccountManager>(device_local_accounts_dir_,
-                                                    &owner_key_);
+        std::make_unique<DeviceLocalAccountManager>(
+            &system_utils_, device_local_accounts_dir_, &owner_key_);
 
     impl_->SetPolicyServicesForTesting(
         base::WrapUnique(device_policy_service_),

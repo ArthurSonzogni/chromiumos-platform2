@@ -14,11 +14,16 @@
 
 namespace login_manager {
 
-PolicyStore::PolicyStore(const base::FilePath& policy_path)
-    : PolicyStore(policy_path, /*is_resilient=*/false) {}
+PolicyStore::PolicyStore(SystemUtils* system_utils,
+                         const base::FilePath& policy_path)
+    : PolicyStore(system_utils, policy_path, /*is_resilient=*/false) {}
 
-PolicyStore::PolicyStore(const base::FilePath& policy_path, bool is_resilient)
-    : policy_path_(policy_path), is_resilient_store_(is_resilient) {}
+PolicyStore::PolicyStore(SystemUtils* system_utils,
+                         const base::FilePath& policy_path,
+                         bool is_resilient)
+    : policy_path_(policy_path),
+      system_utils_(system_utils),
+      is_resilient_store_(is_resilient) {}
 
 PolicyStore::~PolicyStore() {}
 
@@ -76,14 +81,13 @@ bool PolicyStore::PersistToPath(const base::FilePath& policy_path) {
     return true;
   }
 
-  SystemUtilsImpl system_utils;
   std::string policy_blob;
   if (!policy_.SerializeToString(&policy_blob)) {
     LOG(ERROR) << "Could not serialize policy!";
     return false;
   }
 
-  if (!system_utils.AtomicFileWrite(policy_path, policy_blob)) {
+  if (!system_utils_->AtomicFileWrite(policy_path, policy_blob)) {
     return false;
   }
 

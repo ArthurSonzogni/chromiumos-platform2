@@ -23,6 +23,7 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
+#include "login_manager/system_utils_impl.h"
 
 namespace em = enterprise_management;
 
@@ -61,8 +62,8 @@ class DeviceLocalAccountManagerTest : public ::testing::Test {
             .Append(DeviceLocalAccountManager::kPolicyDir)
             .Append(PolicyService::kChromePolicyFileName);
 
-    manager_ =
-        std::make_unique<DeviceLocalAccountManager>(temp_dir_.GetPath(), &key_);
+    manager_ = std::make_unique<DeviceLocalAccountManager>(
+        &system_utils_, temp_dir_.GetPath(), &key_);
   }
 
   void SetupAccount() {
@@ -89,6 +90,7 @@ class DeviceLocalAccountManagerTest : public ::testing::Test {
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
   base::ScopedTempDir temp_dir_;
+  SystemUtilsImpl system_utils_;
 
   MockPolicyKey key_;
 

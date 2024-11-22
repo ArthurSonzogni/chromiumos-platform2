@@ -138,7 +138,7 @@ DevicePolicyService::DevicePolicyService(
     crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     InstallAttributesReader* install_attributes_reader)
-    : PolicyService(policy_dir, policy_key, metrics, true),
+    : PolicyService(system_utils, policy_dir, policy_key, metrics, true),
       nss_(nss),
       system_utils_(system_utils),
       crossystem_(crossystem),

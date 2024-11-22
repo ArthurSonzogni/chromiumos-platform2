@@ -24,8 +24,9 @@ class LoginMetrics;
 class ResilientPolicyStore : public PolicyStore {
  public:
   // Expected to have non-null |metrics|.
-  explicit ResilientPolicyStore(const base::FilePath& default_policy_path,
-                                LoginMetrics* metrics);
+  ResilientPolicyStore(SystemUtils* system_utils,
+                       const base::FilePath& default_policy_path,
+                       LoginMetrics* metrics);
   ResilientPolicyStore(const ResilientPolicyStore&) = delete;
   ResilientPolicyStore& operator=(const ResilientPolicyStore&) = delete;
 

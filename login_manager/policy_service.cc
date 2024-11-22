@@ -61,11 +61,13 @@ constexpr char PolicyService::kExtensionsPolicyFileNamePrefix[] =
 constexpr char PolicyService::kSignInExtensionsPolicyFileNamePrefix[] =
     "policy_signin_extension_id_";
 
-PolicyService::PolicyService(const base::FilePath& policy_dir,
+PolicyService::PolicyService(SystemUtils* system_utils,
+                             const base::FilePath& policy_dir,
                              PolicyKey* policy_key,
                              LoginMetrics* metrics,
                              bool resilient_chrome_policy_store)
     : metrics_(metrics),
+      system_utils_(system_utils),
       policy_dir_(policy_dir),
       policy_key_(policy_key),
       resilient_chrome_policy_store_(resilient_chrome_policy_store),
@@ -113,9 +115,10 @@ PolicyStore* PolicyService::GetOrCreateStore(const PolicyNamespace& ns) {
       (ns == MakeChromePolicyNamespace() && resilient_chrome_policy_store_);
   std::unique_ptr<PolicyStore> store;
   if (resilient) {
-    store = std::make_unique<ResilientPolicyStore>(GetPolicyPath(ns), metrics_);
+    store = std::make_unique<ResilientPolicyStore>(system_utils_,
+                                                   GetPolicyPath(ns), metrics_);
   } else {
-    store = std::make_unique<PolicyStore>(GetPolicyPath(ns));
+    store = std::make_unique<PolicyStore>(system_utils_, GetPolicyPath(ns));
   }
 
   store->EnsureLoadedOrCreated();

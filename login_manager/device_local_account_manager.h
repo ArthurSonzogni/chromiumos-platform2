@@ -24,6 +24,7 @@ namespace login_manager {
 
 class PolicyKey;
 class PolicyService;
+class SystemUtils;
 
 // Manages policy services for device-local accounts. Restricts access to
 // accounts defined in device settings.
@@ -32,7 +33,8 @@ class DeviceLocalAccountManager {
   // Name of the subdirectory to store policy in.
   static const char kPolicyDir[];
 
-  DeviceLocalAccountManager(const base::FilePath& state_dir,
+  DeviceLocalAccountManager(SystemUtils* system_utils,
+                            const base::FilePath& state_dir,
                             PolicyKey* owner_key);
   DeviceLocalAccountManager(const DeviceLocalAccountManager&) = delete;
   DeviceLocalAccountManager& operator=(const DeviceLocalAccountManager&) =
@@ -65,6 +67,8 @@ class DeviceLocalAccountManager {
 
   // Checks whether the passed string is a properly formatted account key.
   bool IsValidAccountKey(const std::string& str);
+
+  SystemUtils* const system_utils_;
 
   // The base path for storing device-local account information on disk.
   base::FilePath state_dir_;

@@ -26,8 +26,12 @@ namespace login_manager {
 constexpr char DeviceLocalAccountManager::kPolicyDir[] = "policy";
 
 DeviceLocalAccountManager::DeviceLocalAccountManager(
-    const base::FilePath& state_dir, PolicyKey* owner_key)
-    : state_dir_(state_dir), owner_key_(owner_key) {}
+    SystemUtils* system_utils,
+    const base::FilePath& state_dir,
+    PolicyKey* owner_key)
+    : system_utils_(system_utils),
+      state_dir_(state_dir),
+      owner_key_(owner_key) {}
 
 DeviceLocalAccountManager::~DeviceLocalAccountManager() = default;
 
@@ -109,8 +113,8 @@ PolicyService* DeviceLocalAccountManager::GetPolicyService(
       return nullptr;
     }
 
-    entry->second =
-        std::make_unique<PolicyService>(policy_dir, owner_key_, nullptr, false);
+    entry->second = std::make_unique<PolicyService>(system_utils_, policy_dir,
+                                                    owner_key_, nullptr, false);
   }
 
   return entry->second.get();

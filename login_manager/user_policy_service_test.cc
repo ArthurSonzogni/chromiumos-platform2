@@ -80,9 +80,9 @@ class UserPolicyServiceTest : public ::testing::Test {
 
     key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;
-    service_.reset(new UserPolicyService(tmpdir_.GetPath(),
+    service_.reset(new UserPolicyService(&system_utils_, tmpdir_.GetPath(),
                                          std::unique_ptr<PolicyKey>(key_),
-                                         key_copy_file_, &system_utils_));
+                                         key_copy_file_));
     service_->SetStoreForTesting(MakeChromePolicyNamespace(),
                                  std::unique_ptr<PolicyStore>(store_));
   }

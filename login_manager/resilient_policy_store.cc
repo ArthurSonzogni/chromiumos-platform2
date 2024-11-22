@@ -60,9 +60,11 @@ bool CreateCleanupDoneFile(const base::FilePath& policy_path) {
 
 }  // namespace
 
-ResilientPolicyStore::ResilientPolicyStore(const base::FilePath& policy_path,
+ResilientPolicyStore::ResilientPolicyStore(SystemUtils* system_utils,
+                                           const base::FilePath& policy_path,
                                            LoginMetrics* metrics)
-    : PolicyStore(policy_path, /*is_resilient=*/true), metrics_(metrics) {}
+    : PolicyStore(system_utils, policy_path, /*is_resilient=*/true),
+      metrics_(metrics) {}
 
 bool ResilientPolicyStore::LoadOrCreate() {
   DCHECK(metrics_);

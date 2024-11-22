@@ -53,17 +53,18 @@ class ResilientPolicyStoreTest : public ::testing::Test {
 
   base::ScopedTempDir tmpdir_;
   base::FilePath tmpfile_;
+  SystemUtilsImpl system_utils_;
 };
 
 TEST_F(ResilientPolicyStoreTest, LoadResilientMissingPolicy) {
   MockMetrics metrics;
-  ResilientPolicyStore store(tmpfile_, &metrics);
+  ResilientPolicyStore store(&system_utils_, tmpfile_, &metrics);
   ASSERT_TRUE(store.EnsureLoadedOrCreated());
 }
 
 TEST_F(ResilientPolicyStoreTest, CheckDeleteAtLoadResilient) {
   MockMetrics metrics;
-  ResilientPolicyStore store(tmpfile_, &metrics);
+  ResilientPolicyStore store(&system_utils_, tmpfile_, &metrics);
   std::unique_ptr<policy::DevicePolicyImpl> device_policy =
       std::make_unique<policy::DevicePolicyImpl>();
   device_policy->set_policy_path_for_testing(tmpfile_);
@@ -87,8 +88,7 @@ TEST_F(ResilientPolicyStoreTest, CheckDeleteAtLoadResilient) {
 
   // Create the file with next index, containing some invalid data.
   base::FilePath policy_path2 = base::FilePath(tmpfile_.value() + ".2");
-  SystemUtilsImpl system_utils;
-  system_utils.AtomicFileWrite(policy_path2, "invalid_data");
+  system_utils_.AtomicFileWrite(policy_path2, "invalid_data");
 
   // Check that LoadResilient succeeds and ignores the last file.
   ASSERT_TRUE(store.EnsureLoadedOrCreated());
@@ -100,7 +100,7 @@ TEST_F(ResilientPolicyStoreTest, CheckDeleteAtLoadResilient) {
 
 TEST_F(ResilientPolicyStoreTest, CheckCleanupFromPersistResilient) {
   MockMetrics metrics;
-  ResilientPolicyStore store(tmpfile_, &metrics);
+  ResilientPolicyStore store(&system_utils_, tmpfile_, &metrics);
   enterprise_management::PolicyFetchResponse policy;
   policy.set_error_message("foo");
   store.Set(policy);
@@ -122,8 +122,7 @@ TEST_F(ResilientPolicyStoreTest, CheckCleanupFromPersistResilient) {
   ASSERT_TRUE(base::PathExists(policy_path2));
 
   // Create the file with next index, containing some invalid data.
-  SystemUtilsImpl system_utils;
-  system_utils.AtomicFileWrite(policy_path3, "invalid_data");
+  system_utils_.AtomicFileWrite(policy_path3, "invalid_data");
 
   // Change the policy data and store again, having a new file.
   policy.set_error_message("foo");

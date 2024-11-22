@@ -13,6 +13,7 @@
 
 namespace login_manager {
 class PolicyKey;
+class SystemUtils;
 
 // This class holds policy settings and takes care of reading from and writing
 // it to a file on disk. The policy is represented as a PolicyFetchResponse
@@ -27,7 +28,7 @@ class PolicyKey;
 // signature validation.
 class PolicyStore {
  public:
-  explicit PolicyStore(const base::FilePath& policy_path);
+  PolicyStore(SystemUtils* system_utils, const base::FilePath& policy_path);
   PolicyStore(const PolicyStore&) = delete;
   PolicyStore& operator=(const PolicyStore&) = delete;
 
@@ -51,7 +52,9 @@ class PolicyStore {
   bool resilient_for_testing() const { return is_resilient_store_; }
 
  protected:
-  PolicyStore(const base::FilePath& policy_path, bool is_resilient);
+  PolicyStore(SystemUtils* system_utils,
+              const base::FilePath& policy_path,
+              bool is_resilient);
 
   // Load the signed policy off of disk into |policy_|. Returns true unless
   // there is a policy on disk and loading it fails.
@@ -76,6 +79,8 @@ class PolicyStore {
   // Load the signed policy off of disk into |policy_| from |policy_path|.
   // Returns true unless there is a policy on disk and loading it fails.
   bool LoadOrCreateFromPath(const base::FilePath& policy_path);
+
+  SystemUtils* const system_utils_;
 
   // The type of policy store. If resilient, the latest policy data are stored
   // in multiple files.

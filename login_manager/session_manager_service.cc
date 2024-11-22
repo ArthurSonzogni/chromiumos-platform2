@@ -163,7 +163,7 @@ SessionManagerService::SessionManagerService(
       login_metrics_(metrics),
       system_utils_(system_utils),
       nss_(NssUtil::Create()),
-      owner_key_(nss_->GetOwnerKeyFilePath(), nss_.get()),
+      owner_key_(system_utils, nss_->GetOwnerKeyFilePath(), nss_.get()),
       device_identifier_generator_(system_utils, metrics),
       vpd_process_(system_utils),
       android_container_(std::make_unique<AndroidOciWrapper>(

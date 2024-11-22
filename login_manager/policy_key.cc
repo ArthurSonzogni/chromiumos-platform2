@@ -21,8 +21,10 @@
 
 namespace login_manager {
 
-PolicyKey::PolicyKey(const base::FilePath& key_file, NssUtil* nss)
-    : key_file_(key_file), nss_(nss), system_utils_(new SystemUtilsImpl) {}
+PolicyKey::PolicyKey(SystemUtils* system_utils,
+                     const base::FilePath& key_file,
+                     NssUtil* nss)
+    : system_utils_(system_utils), key_file_(key_file), nss_(nss) {}
 
 PolicyKey::~PolicyKey() {}
 

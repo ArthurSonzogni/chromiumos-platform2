@@ -23,10 +23,10 @@ class SystemUtils;
 // Policy service implementation for user policy.
 class UserPolicyService : public PolicyService {
  public:
-  UserPolicyService(const base::FilePath& policy_dir,
+  UserPolicyService(SystemUtils* system_utils,
+                    const base::FilePath& policy_dir,
                     std::unique_ptr<PolicyKey> policy_key,
-                    const base::FilePath& key_copy_path,
-                    SystemUtils* system_utils);
+                    const base::FilePath& key_copy_path);
   UserPolicyService(const UserPolicyService&) = delete;
   UserPolicyService& operator=(const UserPolicyService&) = delete;
 

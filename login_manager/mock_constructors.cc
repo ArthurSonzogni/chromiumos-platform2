@@ -59,17 +59,18 @@ MockLivenessChecker::~MockLivenessChecker() = default;
 MockMetrics::MockMetrics() : LoginMetrics(base::FilePath()) {}
 MockMetrics::~MockMetrics() = default;
 
-MockPolicyKey::MockPolicyKey() : PolicyKey(base::FilePath(), nullptr) {}
+MockPolicyKey::MockPolicyKey()
+    : PolicyKey(nullptr, base::FilePath(), nullptr) {}
 MockPolicyKey::~MockPolicyKey() = default;
 
 MockPolicyService::MockPolicyService()
-    : PolicyService(base::FilePath(), nullptr, nullptr, false) {}
+    : PolicyService(nullptr, base::FilePath(), nullptr, nullptr, false) {}
 MockPolicyService::~MockPolicyService() = default;
 
 MockPolicyServiceDelegate::MockPolicyServiceDelegate() = default;
 MockPolicyServiceDelegate::~MockPolicyServiceDelegate() = default;
 
-MockPolicyStore::MockPolicyStore() : PolicyStore(base::FilePath()) {}
+MockPolicyStore::MockPolicyStore() : PolicyStore(nullptr, base::FilePath()) {}
 MockPolicyStore::~MockPolicyStore() = default;
 
 MockProcessManagerService::MockProcessManagerService() = default;

@@ -63,8 +63,8 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::Create(
     return nullptr;
   }
 
-  auto key =
-      std::make_unique<PolicyKey>(policy_dir.Append(kPolicyKeyFile), nss_);
+  auto key = std::make_unique<PolicyKey>(
+      system_utils_, policy_dir.Append(kPolicyKeyFile), nss_);
   bool key_load_success = key->PopulateFromDiskIfPossible();
   if (!key_load_success) {
     LOG(ERROR) << "Failed to load user policy key from disk.";
@@ -77,8 +77,8 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::Create(
       "%s/%s/%s", kPolicyKeyCopyDir, sanitized->c_str(), kPolicyKeyCopyFile));
 
   std::unique_ptr<UserPolicyService> service =
-      std::make_unique<UserPolicyService>(policy_dir, std::move(key),
-                                          key_copy_file, system_utils_);
+      std::make_unique<UserPolicyService>(system_utils_, policy_dir,
+                                          std::move(key), key_copy_file);
   service->PersistKeyCopy();
   return service;
 }

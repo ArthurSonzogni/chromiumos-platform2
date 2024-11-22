@@ -647,7 +647,7 @@ bool SessionManagerImpl::Initialize() {
         std::make_unique<UserPolicyServiceFactory>(nss_, system_utils_);
 
     device_local_account_manager_ = std::make_unique<DeviceLocalAccountManager>(
-        base::FilePath(kDeviceLocalAccountStateDir), owner_key_),
+        system_utils_, base::FilePath(kDeviceLocalAccountStateDir), owner_key_),
     device_local_account_manager_->UpdateDeviceSettings(
         device_policy_->GetSettings());
     if (device_policy_->MayUpdateSystemSettings()) {

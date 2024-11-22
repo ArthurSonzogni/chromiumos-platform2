@@ -33,7 +33,9 @@ class SystemUtils;
 // before on-disk storage has been checked will be denied.
 class PolicyKey {
  public:
-  PolicyKey(const base::FilePath& key_file, NssUtil* nss);
+  PolicyKey(SystemUtils* system_utils,
+            const base::FilePath& key_file,
+            NssUtil* nss);
   PolicyKey(const PolicyKey&) = delete;
   PolicyKey& operator=(const PolicyKey&) = delete;
 
@@ -94,12 +96,12 @@ class PolicyKey {
   virtual const std::vector<uint8_t>& public_key_der() const { return key_; }
 
  private:
+  SystemUtils* const system_utils_;
   const base::FilePath key_file_;
   bool have_checked_disk_ = false;
   bool have_replaced_ = false;
   std::vector<uint8_t> key_;
   NssUtil* nss_;
-  std::unique_ptr<SystemUtils> system_utils_;
 };
 }  // namespace login_manager
 
