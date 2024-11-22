@@ -4,15 +4,15 @@
 
 // Unit tests for BootLockboxDbusAdaptor
 
+#include <string_view>
 #include <utility>
 
+#include <base/check.h>
 #include <gtest/gtest.h>
 
-#include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
 #include "bootlockbox/boot_lockbox_dbus_adaptor.h"
 #include "bootlockbox/mock_nvram_boot_lockbox.h"
-
-#include <base/check.h>
+#include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
 
 using ::testing::_;
 using ::testing::NiceMock;
@@ -33,7 +33,7 @@ class MockDBusBus : public dbus::Bus {
               (override));
   MOCK_METHOD(dbus::ObjectProxy*,
               GetObjectProxy,
-              (const std::string&, const dbus::ObjectPath&),
+              (std::string_view, const dbus::ObjectPath&),
               (override));
 };
 
