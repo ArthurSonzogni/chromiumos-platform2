@@ -755,6 +755,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     if (!info.is_detachable) {
       info.quirks |= kQuirkUserSpaceTimestamp;
     }
+    info.enable_face_detection = false;
   }
   // Uses software timestamp from userspace for wugtrio, because the
   // hardware timestamp is not reliable in a dark environment.
@@ -798,6 +799,10 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   if (info.lens_facing == LensFacing::kExternal) {
     callbacks_->camera_device_status_change(callbacks_, info.camera_id,
                                             CAMERA_DEVICE_STATUS_PRESENT);
+  }
+
+  if (info.enable_face_detection) {
+    LOGF(INFO) << "Enable face detection for camera:" << GetModelId(info);
   }
 }
 
