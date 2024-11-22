@@ -225,14 +225,14 @@ const char* ToSuccessSignal(bool success) {
 }
 
 #if USE_CHEETS
-bool IsDevMode(SystemUtils* system) {
+bool IsDevMode(SystemUtils* system_utils) {
   // When GetDevModeState() returns UNKNOWN, return true.
-  return system->GetDevModeState() != DevModeState::DEV_MODE_OFF;
+  return system_utils->GetDevModeState() != DevModeState::DEV_MODE_OFF;
 }
 
-bool IsInsideVm(SystemUtils* system) {
+bool IsInsideVm(SystemUtils* system_utils) {
   // When GetVmState() returns UNKNOWN, return false.
-  return system->GetVmState() == VmState::INSIDE_VM;
+  return system_utils->GetVmState() == VmState::INSIDE_VM;
 }
 #endif
 
@@ -461,7 +461,7 @@ SessionManagerImpl::SessionManagerImpl(
     LoginMetrics* metrics,
     NssUtil* nss,
     std::optional<base::FilePath> ns_path,
-    SystemUtils* utils,
+    SystemUtils* system_utils,
     crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     PolicyKey* owner_key,
@@ -484,7 +484,7 @@ SessionManagerImpl::SessionManagerImpl(
       login_metrics_(metrics),
       nss_(nss),
       chrome_mount_ns_path_(ns_path),
-      system_(utils),
+      system_utils_(system_utils),
       crossystem_(crossystem),
       vpd_process_(vpd_process),
       owner_key_(owner_key),
@@ -632,8 +632,8 @@ bool SessionManagerImpl::Initialize() {
   // already been set and initialized.
   if (!device_policy_) {
     device_policy_ = DevicePolicyService::Create(
-        owner_key_, login_metrics_, nss_, system_, crossystem_, vpd_process_,
-        install_attributes_reader_);
+        owner_key_, login_metrics_, nss_, system_utils_, crossystem_,
+        vpd_process_, install_attributes_reader_);
     // Thinking about combining set_delegate() with the 'else' block below and
     // moving it down? Note that device_policy_->Initialize() might call
     // OnKeyPersisted() on the delegate, so be sure it's safe.
@@ -644,7 +644,7 @@ bool SessionManagerImpl::Initialize() {
 
     DCHECK(!user_policy_factory_);
     user_policy_factory_ =
-        std::make_unique<UserPolicyServiceFactory>(nss_, system_);
+        std::make_unique<UserPolicyServiceFactory>(nss_, system_utils_);
 
     device_local_account_manager_ = std::make_unique<DeviceLocalAccountManager>(
         base::FilePath(kDeviceLocalAccountStateDir), owner_key_),
@@ -711,7 +711,7 @@ bool SessionManagerImpl::EnableChromeTesting(
 
   if (!already_enabled) {
     base::FilePath temp_file_path;  // So we don't clobber chrome_testing_path_;
-    if (!system_->GetUniqueFilenameInWriteOnlyTempDir(&temp_file_path)) {
+    if (!system_utils_->GetUniqueFilenameInWriteOnlyTempDir(&temp_file_path)) {
       *error = CreateError(dbus_error::kTestingChannelError,
                            "Could not create testing channel filename.");
       return false;
@@ -721,7 +721,7 @@ bool SessionManagerImpl::EnableChromeTesting(
 
   if (!already_enabled || in_force_relaunch) {
     // Delete testing channel file if it already exists.
-    system_->RemoveFile(chrome_testing_path_);
+    system_utils_->RemoveFile(chrome_testing_path_);
 
     // Add testing channel argument to arguments.
     std::string testing_argument = kTestingChannelFlag;
@@ -820,7 +820,7 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   DeleteArcBugReportBackup(actual_account_id);
 
   // Record that a login has successfully completed on this boot.
-  system_->AtomicFileWrite(base::FilePath(kLoggedInFlag), "1");
+  system_utils_->AtomicFileWrite(base::FilePath(kLoggedInFlag), "1");
   return true;
 }
 
@@ -1123,7 +1123,7 @@ bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
 }
 
 bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
-  if (system_->Exists(base::FilePath(kLoggedInFlag))) {
+  if (system_utils_->Exists(base::FilePath(kLoggedInFlag))) {
     *error = CREATE_ERROR_AND_LOG(dbus_error::kSessionExists,
                                   "A user has already logged in this boot.");
     return false;
@@ -1168,7 +1168,7 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
   }
 
   // Verify that we haven't seen a user log in since boot.
-  if (system_->Exists(base::FilePath(kLoggedInFlag))) {
+  if (system_utils_->Exists(base::FilePath(kLoggedInFlag))) {
     *error = CREATE_ERROR_AND_LOG(dbus_error::kSessionExists,
                                   "A user has already logged in since boot.");
     return false;
@@ -1208,11 +1208,11 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
       update_mode == kTPMFirmwareUpdateModePreserveStateful) {
     std::string update_location;
     available =
-        system_->ReadFileToString(
+        system_utils_->ReadFileToString(
             base::FilePath(kTPMFirmwareUpdateLocationFile), &update_location) &&
         update_location.size();
   } else if (update_mode == kTPMFirmwareUpdateModeCleanup) {
-    available = system_->Exists(
+    available = system_utils_->Exists(
         base::FilePath(kTPMFirmwareUpdateSRKVulnerableROCAFile));
   }
 
@@ -1223,7 +1223,7 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
   }
 
   // Put the update request into place.
-  if (!system_->AtomicFileWrite(
+  if (!system_utils_->AtomicFileWrite(
           base::FilePath(kTPMFirmwareUpdateRequestFlagFile), update_mode)) {
     *error = CREATE_ERROR_AND_LOG(dbus_error::kNotAvailable,
                                   "Failed to persist update request.");
@@ -1235,7 +1235,7 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
     InitiateDeviceWipe("tpm_firmware_update_" + update_mode);
   } else if (update_mode == kTPMFirmwareUpdateModePreserveStateful) {
     // This flag file indicates that encrypted stateful should be preserved.
-    if (!system_->AtomicFileWrite(
+    if (!system_utils_->AtomicFileWrite(
             base::FilePath(kStatefulPreservationRequestFile), update_mode)) {
       *error = CREATE_ERROR_AND_LOG(dbus_error::kNotAvailable,
                                     "Failed to request stateful preservation.");
@@ -1403,8 +1403,8 @@ bool SessionManagerImpl::StartArcMiniContainer(
   }
 
   std::vector<std::string> env_vars = {
-      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
-      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
+      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_utils_)),
+      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_utils_)),
       base::StringPrintf("NATIVE_BRIDGE_EXPERIMENT=%d",
                          request.native_bridge_experiment()),
       base::StringPrintf("ARC_CUSTOM_TABS_EXPERIMENT=%d",
@@ -1522,7 +1522,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
 
   // To upgrade the ARC mini-container, a certain amount of disk space is
   // needed under /home. We first check it.
-  if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
+  if (system_utils_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
       kArcCriticalDiskFreeBytes) {
     *error = CREATE_ERROR_AND_LOG(dbus_error::kLowFreeDisk,
                                   "Low free disk under /home");
@@ -1693,7 +1693,7 @@ void SessionManagerImpl::EnableAdbSideloadCallbackAdaptor(
 
 void SessionManagerImpl::EnableAdbSideload(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  if (system_->Exists(base::FilePath(kLoggedInFlag))) {
+  if (system_utils_->Exists(base::FilePath(kLoggedInFlag))) {
     auto error = CREATE_ERROR_AND_LOG(dbus_error::kSessionExists,
                                       "EnableAdbSideload is not allowed "
                                       "once a user logged in this boot.");
@@ -1751,7 +1751,7 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
   const base::FilePath reset_path(kResetFile);
   const std::string reset_file_content =
       "fast safe keepimg preserve_lvs reason=" + sanitized_reason;
-  system_->AtomicFileWrite(reset_path, reset_file_content);
+  system_utils_->AtomicFileWrite(reset_path, reset_file_content);
 
   RestartDevice(sanitized_reason);
 }
@@ -1961,8 +1961,8 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
       request.is_managed_adb_sideloading_allowed();
 
   std::vector<std::string> env_vars = {
-      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
-      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
+      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_utils_)),
+      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_utils_)),
       "CHROMEOS_USER=" + account_id,
       base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
                          request.skip_boot_completed_broadcast()),

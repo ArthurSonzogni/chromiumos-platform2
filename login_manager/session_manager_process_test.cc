@@ -84,7 +84,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   static const pid_t kFakePid;
   static const int kExit;
 
-  void MockUtils() { manager_->test_api().set_systemutils(&utils_); }
+  void MockUtils() { manager_->test_api().set_system_utils(&system_utils_); }
 
   void ExpectShutdown() {
     EXPECT_CALL(*session_manager_impl_, AnnounceSessionStoppingIfNeeded())
@@ -117,7 +117,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   void InitManager(std::unique_ptr<BrowserJobInterface> job) {
     manager_ = new SessionManagerService(
         std::move(job), getuid(), std::nullopt, base::Seconds(3), false,
-        base::TimeDelta(), 0, &metrics_, &utils_);
+        base::TimeDelta(), 0, &metrics_, &system_utils_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
     manager_->test_api().set_aborted_browser_pid_path(
@@ -147,7 +147,7 @@ class SessionManagerProcessTest : public ::testing::Test {
 
   scoped_refptr<SessionManagerService> manager_;
   MockMetrics metrics_;
-  SystemUtilsImpl utils_;
+  SystemUtilsImpl system_utils_;
   base::FilePath aborted_browser_pid_path_;
 
   // These are bare pointers, not unique_ptrs, because we need to give them

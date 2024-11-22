@@ -128,7 +128,7 @@ class BrowserJob : public BrowserJobInterface {
              const std::vector<std::string>& environment_variables,
              FileChecker* checker,
              LoginMetrics* metrics,
-             SystemUtils* utils,
+             SystemUtils* system_utils,
              const BrowserJob::Config& cfg,
              std::unique_ptr<SubprocessInterface> subprocess);
   BrowserJob(const BrowserJob&) = delete;
@@ -219,7 +219,7 @@ class BrowserJob : public BrowserJobInterface {
   LoginMetrics* login_metrics_;
 
   // Wrapper for system library calls. Externally owned.
-  SystemUtils* system_;
+  SystemUtils* system_utils_;
 
   // FIFO of job-start timestamps. Used to determine if we've restarted too many
   // times too quickly. The most recent job-start timestamp is at the end.

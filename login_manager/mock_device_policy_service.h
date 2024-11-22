@@ -46,7 +46,9 @@ class MockDevicePolicyService : public DevicePolicyService {
        enterprise_management::PolicyFetchRequest::SignatureType signature_type),
       (override));
 
-  void set_system_utils(SystemUtils* system) { system_ = system; }
+  void set_system_utils(SystemUtils* system_utils) {
+    system_utils_ = system_utils;
+  }
   void set_crossystem(crossystem::Crossystem* crossystem) {
     crossystem_ = crossystem;
   }

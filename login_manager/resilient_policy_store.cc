@@ -20,7 +20,6 @@
 #include <policy/resilient_policy_util.h>
 
 #include "login_manager/login_metrics.h"
-#include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
 

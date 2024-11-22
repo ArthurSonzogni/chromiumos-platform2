@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
   base::Extend(command, std::move(chrome_setup->args));
 
   // Shim that wraps system calls, file system ops, etc.
-  SystemUtilsImpl system;
+  SystemUtilsImpl system_utils;
 
   // Checks magic file that causes the session_manager to stop managing the
   // browser process. Devs and tests can use this to keep the session_manager
@@ -267,8 +267,9 @@ int main(int argc, char* argv[]) {
   // This job encapsulates the command specified on the command line, and the
   // runtime options for it.
   auto browser_job = std::make_unique<BrowserJob>(
-      command, chrome_setup->env, &checker, &metrics, &system, config,
-      std::make_unique<login_manager::Subprocess>(chrome_setup->uid, &system));
+      command, chrome_setup->env, &checker, &metrics, &system_utils, config,
+      std::make_unique<login_manager::Subprocess>(chrome_setup->uid,
+                                                  &system_utils));
   bool should_run_browser = browser_job->ShouldRunBrowser();
 
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
@@ -278,7 +279,7 @@ int main(int argc, char* argv[]) {
   scoped_refptr<SessionManagerService> manager = new SessionManagerService(
       std::move(browser_job), chrome_setup->uid, ns_path, kKillTimeout,
       enable_hang_detection, hang_detection_interval, hang_detection_retires,
-      &metrics, &system);
+      &metrics, &system_utils);
 
   if (manager->Initialize()) {
     // Allows devs to start/stop browser manually.

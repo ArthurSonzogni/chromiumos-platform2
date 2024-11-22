@@ -153,8 +153,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
   void InitService(NssUtil* nss, bool use_mock_store) {
     metrics_ = std::make_unique<MockMetrics>();
     service_.reset(new DevicePolicyService(
-        tmpdir_.GetPath(), &key_, metrics_.get(), nss, &utils_, &crossystem_,
-        &vpd_process_, &install_attributes_reader_));
+        tmpdir_.GetPath(), &key_, metrics_.get(), nss, &system_utils_,
+        &crossystem_, &vpd_process_, &install_attributes_reader_));
     if (use_mock_store) {
       auto store_ptr = std::make_unique<StrictMock<MockPolicyStore>>();
       store_ = store_ptr.get();
@@ -301,7 +301,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   StrictMock<MockPolicyKey> key_;
   StrictMock<MockPolicyStore>* store_ = nullptr;
   std::unique_ptr<MockMetrics> metrics_;
-  testing::NiceMock<MockSystemUtils> utils_;
+  testing::NiceMock<MockSystemUtils> system_utils_;
   crossystem::Crossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockInstallAttributesReader install_attributes_reader_;
@@ -422,7 +422,7 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is cloud managed.
-  EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
+  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
       .WillOnce(Return(true));
 
   SetDataInInstallAttributes("enterprise");
@@ -451,7 +451,7 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is cloud managed.
-  EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
+  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
       .WillOnce(Return(true));
 
   SetDataInInstallAttributes("enterprise");
@@ -475,7 +475,7 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   service.SetStoreForTesting(MakeChromePolicyNamespace(),
                              std::unique_ptr<MockPolicyStore>(store));
 
-  service.set_system_utils(&utils_);
+  service.set_system_utils(&system_utils_);
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
   service.set_install_attributes_reader(&install_attributes_reader_);
@@ -498,7 +498,7 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is owned by a consumer.
-  EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
+  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
       .WillOnce(Return(true));
 
   PersistPolicy(&service);
@@ -516,7 +516,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   service.SetStoreForTesting(MakeChromePolicyNamespace(),
                              std::unique_ptr<MockPolicyStore>(store));
 
-  service.set_system_utils(&utils_);
+  service.set_system_utils(&system_utils_);
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
   service.set_install_attributes_reader(&install_attributes_reader_);
@@ -539,7 +539,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is cloud managed.
-  EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
+  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
       .WillOnce(Return(true));
 
   PersistPolicy(&service);
@@ -553,7 +553,7 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
   MockPolicyKey key;
   MockDevicePolicyService service;
 
-  service.set_system_utils(&utils_);
+  service.set_system_utils(&system_utils_);
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
   service.set_install_attributes_reader(&install_attributes_reader_);
@@ -575,7 +575,7 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
       .WillOnce(Return(false));
 
   // This file should be removed, because the device is cloud managed.
-  EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
+  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
       .WillOnce(Return(true));
 
   EXPECT_FALSE(UpdateSystemSettings(&service));
@@ -600,7 +600,7 @@ TEST_F(DevicePolicyServiceTest, CheckMissingInstallAttributes) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
 
   // No file should be removed, because the management mode is unknown.
-  EXPECT_CALL(utils_, RemoveFile(_)).Times(0);
+  EXPECT_CALL(system_utils_, RemoveFile(_)).Times(0);
 
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
 }
@@ -624,7 +624,7 @@ TEST_F(DevicePolicyServiceTest, CheckWeirdInstallAttributes) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
 
   // This file should be removed, because the device is owned by a consumer.
-  EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
+  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));

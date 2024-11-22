@@ -87,8 +87,8 @@ TEST_F(ResilientPolicyStoreTest, CheckDeleteAtLoadResilient) {
 
   // Create the file with next index, containing some invalid data.
   base::FilePath policy_path2 = base::FilePath(tmpfile_.value() + ".2");
-  SystemUtilsImpl utils;
-  utils.AtomicFileWrite(policy_path2, "invalid_data");
+  SystemUtilsImpl system_utils;
+  system_utils.AtomicFileWrite(policy_path2, "invalid_data");
 
   // Check that LoadResilient succeeds and ignores the last file.
   ASSERT_TRUE(store.EnsureLoadedOrCreated());
@@ -122,8 +122,8 @@ TEST_F(ResilientPolicyStoreTest, CheckCleanupFromPersistResilient) {
   ASSERT_TRUE(base::PathExists(policy_path2));
 
   // Create the file with next index, containing some invalid data.
-  SystemUtilsImpl utils;
-  utils.AtomicFileWrite(policy_path3, "invalid_data");
+  SystemUtilsImpl system_utils;
+  system_utils.AtomicFileWrite(policy_path3, "invalid_data");
 
   // Change the policy data and store again, having a new file.
   policy.set_error_message("foo");

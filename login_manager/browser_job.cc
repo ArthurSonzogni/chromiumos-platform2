@@ -191,14 +191,14 @@ BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
                        const std::vector<std::string>& environment_variables,
                        FileChecker* checker,
                        LoginMetrics* metrics,
-                       SystemUtils* utils,
+                       SystemUtils* system_utils,
                        const BrowserJob::Config& cfg,
                        std::unique_ptr<SubprocessInterface> subprocess)
     : arguments_(arguments),
       environment_variables_(environment_variables),
       file_checker_(checker),
       login_metrics_(metrics),
-      system_(utils),
+      system_utils_(system_utils),
       start_times_(std::deque<time_t>(kRestartTries, 0)),
       config_(cfg),
       subprocess_(std::move(subprocess)) {
@@ -224,11 +224,12 @@ bool BrowserJob::ShouldRunBrowser() {
 }
 
 bool BrowserJob::ShouldStop() const {
-  return system_->time(nullptr) - start_times_.front() < kRestartWindowSeconds;
+  return system_utils_->time(nullptr) - start_times_.front() <
+         kRestartWindowSeconds;
 }
 
 void BrowserJob::RecordTime() {
-  start_times_.push_back(system_->time(nullptr));
+  start_times_.push_back(system_utils_->time(nullptr));
   start_times_.pop_front();
   DCHECK_EQ(kRestartTries, start_times_.size());
 }
@@ -319,7 +320,7 @@ bool BrowserJob::WaitForExit(base::TimeDelta timeout) {
     return true;
   }
 
-  return system_->ProcessGroupIsGone(pid, timeout);
+  return system_utils_->ProcessGroupIsGone(pid, timeout);
 }
 
 void BrowserJob::AbortAndKillAll(base::TimeDelta timeout) {
@@ -328,12 +329,12 @@ void BrowserJob::AbortAndKillAll(base::TimeDelta timeout) {
     return;
   }
 
-  if (system_->ProcessGroupIsGone(pid, base::TimeDelta())) {
+  if (system_utils_->ProcessGroupIsGone(pid, base::TimeDelta())) {
     DLOG(INFO) << "Cleaned up browser process " << pid;
     return;
   }
 
-  if (!system_->ProcessIsGone(pid, base::TimeDelta())) {
+  if (!system_utils_->ProcessIsGone(pid, base::TimeDelta())) {
     LOG(WARNING) << "Aborting browser process " << pid;
 
     std::string message = "Browser aborted";
@@ -343,7 +344,7 @@ void BrowserJob::AbortAndKillAll(base::TimeDelta timeout) {
     Kill(SIGABRT, message);
 
     // Wait to allow Breakpad or Crashpad time to collect the crash report.
-    if (system_->ProcessGroupIsGone(pid, timeout)) {
+    if (system_utils_->ProcessGroupIsGone(pid, timeout)) {
       DLOG(INFO) << "browser group " << pid << " gone after SIGABRT wait";
       return;
     }
@@ -357,7 +358,7 @@ void BrowserJob::AbortAndKillAll(base::TimeDelta timeout) {
   KillEverything(SIGKILL, message);
 
   constexpr base::TimeDelta kTimeoutForSecondKill = base::Seconds(1);
-  if (!system_->ProcessGroupIsGone(pid, kTimeoutForSecondKill)) {
+  if (!system_utils_->ProcessGroupIsGone(pid, kTimeoutForSecondKill)) {
     LOG(WARNING) << "Browser process " << pid << "'s group still not gone "
                  << kTimeoutForSecondKill << " after sending SIGKILL signal";
   }
@@ -540,7 +541,7 @@ bool BrowserJob::ShouldDropExtraArguments() const {
   const time_t start_time_with_extra_args =
       start_times_[kRestartTries - kUseExtraArgsRuns];
   return (start_time_with_extra_args != 0 &&
-          system_->time(nullptr) - start_time_with_extra_args <
+          system_utils_->time(nullptr) - start_time_with_extra_args <
               kRestartWindowSeconds);
 }
 

@@ -55,7 +55,7 @@ class DevicePolicyService : public PolicyService {
       PolicyKey* owner_key,
       LoginMetrics* metrics,
       NssUtil* nss,
-      SystemUtils* system,
+      SystemUtils* system_utils,
       crossystem::Crossystem* crossystem,
       VpdProcess* vpd_process,
       InstallAttributesReader* install_attributes_reader);
@@ -131,7 +131,7 @@ class DevicePolicyService : public PolicyService {
                       PolicyKey* owner_key,
                       LoginMetrics* metrics,
                       NssUtil* nss,
-                      SystemUtils* system,
+                      SystemUtils* system_utils,
                       crossystem::Crossystem* crossystem,
                       VpdProcess* vpd_process,
                       InstallAttributesReader* install_attributes_reader);
@@ -173,7 +173,7 @@ class DevicePolicyService : public PolicyService {
   bool IsChromeStoreResilientForTesting();
 
   NssUtil* nss_;
-  SystemUtils* system_;                                 // Owned by the caller.
+  SystemUtils* system_utils_;                           // Owned by the caller.
   crossystem::Crossystem* crossystem_;                  // Owned by the caller.
   VpdProcess* vpd_process_;                             // Owned by the caller.
   InstallAttributesReader* install_attributes_reader_;  // Owned by the caller.

@@ -76,8 +76,8 @@ class SessionManagerService
   // any other methods on this class.
   class TestApi {
    public:
-    void set_systemutils(SystemUtils* utils) {
-      session_manager_service_->system_ = utils;
+    void set_system_utils(SystemUtils* system_utils) {
+      session_manager_service_->system_utils_ = system_utils;
     }
     void set_login_metrics(LoginMetrics* metrics) {
       session_manager_service_->login_metrics_ = metrics;
@@ -132,7 +132,7 @@ class SessionManagerService
                         base::TimeDelta hang_detection_interval,
                         int hang_detection_retries,
                         LoginMetrics* metrics,
-                        SystemUtils* system);
+                        SystemUtils* system_utils);
   SessionManagerService(const SessionManagerService&) = delete;
   SessionManagerService& operator=(const SessionManagerService&) = delete;
 
@@ -283,7 +283,7 @@ class SessionManagerService
   bool vm_concierge_available_ = false;
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
-  SystemUtils* system_;          // Owned by the caller.
+  SystemUtils* system_utils_;    // Owned by the caller.
 
   std::unique_ptr<NssUtil> nss_;
   PolicyKey owner_key_;

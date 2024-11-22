@@ -324,7 +324,7 @@ class SessionManagerImplTest : public ::testing::Test,
  public:
   SessionManagerImplTest()
       : bus_(new FakeBus()),
-        device_identifier_generator_(&utils_, &metrics_),
+        device_identifier_generator_(&system_utils_, &metrics_),
         crossystem_(std::make_unique<crossystem::fake::CrossystemFake>()),
         android_container_(kAndroidPid),
         powerd_proxy_(new dbus::MockObjectProxy(
@@ -341,40 +341,48 @@ class SessionManagerImplTest : public ::testing::Test,
   ~SessionManagerImplTest() override = default;
 
   void SetUp() override {
-    ON_CALL(utils_, GetDevModeState())
+    ON_CALL(system_utils_, GetDevModeState())
         .WillByDefault(Return(DevModeState::DEV_MODE_OFF));
-    ON_CALL(utils_, GetVmState()).WillByDefault(Return(VmState::OUTSIDE_VM));
+    ON_CALL(system_utils_, GetVmState())
+        .WillByDefault(Return(VmState::OUTSIDE_VM));
 
-    // Forward file operation calls to |real_utils_| so that the tests can
-    // actually create/modify/delete files in |tmpdir_|.
-    ON_CALL(utils_, EnsureAndReturnSafeFileSize(_, _))
-        .WillByDefault(Invoke(&real_utils_,
+    // Forward file operation calls to |real_system_utils_| so that the tests
+    // can actually create/modify/delete files in |tmpdir_|.
+    ON_CALL(system_utils_, EnsureAndReturnSafeFileSize(_, _))
+        .WillByDefault(Invoke(&real_system_utils_,
                               &SystemUtilsImpl::EnsureAndReturnSafeFileSize));
-    ON_CALL(utils_, Exists(_))
-        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::Exists));
-    ON_CALL(utils_, DirectoryExists(_))
-        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::DirectoryExists));
-    ON_CALL(utils_, CreateDir(_))
-        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::CreateDir));
-    ON_CALL(utils_, GetUniqueFilenameInWriteOnlyTempDir(_))
+    ON_CALL(system_utils_, Exists(_))
+        .WillByDefault(Invoke(&real_system_utils_, &SystemUtilsImpl::Exists));
+    ON_CALL(system_utils_, DirectoryExists(_))
         .WillByDefault(
-            Invoke(&real_utils_,
+            Invoke(&real_system_utils_, &SystemUtilsImpl::DirectoryExists));
+    ON_CALL(system_utils_, CreateDir(_))
+        .WillByDefault(
+            Invoke(&real_system_utils_, &SystemUtilsImpl::CreateDir));
+    ON_CALL(system_utils_, GetUniqueFilenameInWriteOnlyTempDir(_))
+        .WillByDefault(
+            Invoke(&real_system_utils_,
                    &SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir));
-    ON_CALL(utils_, RemoveFile(_))
-        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::RemoveFile));
-    ON_CALL(utils_, AtomicFileWrite(_, _))
-        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::AtomicFileWrite));
+    ON_CALL(system_utils_, RemoveFile(_))
+        .WillByDefault(
+            Invoke(&real_system_utils_, &SystemUtilsImpl::RemoveFile));
+    ON_CALL(system_utils_, AtomicFileWrite(_, _))
+        .WillByDefault(
+            Invoke(&real_system_utils_, &SystemUtilsImpl::AtomicFileWrite));
 
     // 10 GB Free Disk Space for ARC launch.
-    ON_CALL(utils_, AmountOfFreeDiskSpace(_)).WillByDefault(Return(10LL << 30));
+    ON_CALL(system_utils_, AmountOfFreeDiskSpace(_))
+        .WillByDefault(Return(10LL << 30));
 
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    real_utils_.set_base_dir_for_testing(tmpdir_.GetPath());
+    real_system_utils_.set_base_dir_for_testing(tmpdir_.GetPath());
     SetSystemSalt(&fake_salt_);
 
     // AtomicFileWrite calls in TEST_F assume that these directories exist.
-    ASSERT_TRUE(utils_.CreateDir(base::FilePath("/run/session_manager")));
-    ASSERT_TRUE(utils_.CreateDir(base::FilePath("/mnt/stateful_partition")));
+    ASSERT_TRUE(
+        system_utils_.CreateDir(base::FilePath("/run/session_manager")));
+    ASSERT_TRUE(
+        system_utils_.CreateDir(base::FilePath("/mnt/stateful_partition")));
 
     ASSERT_TRUE(log_dir_.CreateUniqueTempDir());
     log_symlink_ = log_dir_.GetPath().Append("ui.LATEST");
@@ -384,7 +392,7 @@ class SessionManagerImplTest : public ::testing::Test,
     impl_ = std::make_unique<SessionManagerImpl>(
         this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
         &device_identifier_generator_, &manager_, &metrics_, &nss_,
-        std::nullopt, &utils_, &crossystem_, &vpd_process_, &owner_key_,
+        std::nullopt, &system_utils_, &crossystem_, &vpd_process_, &owner_key_,
         &android_container_, &install_attributes_reader_, powerd_proxy_.get(),
         system_clock_proxy_.get(), debugd_proxy_.get(), fwmp_proxy_.get(),
         arc_sideload_status_);
@@ -915,7 +923,7 @@ class SessionManagerImplTest : public ::testing::Test,
     Mock::VerifyAndClearExpectations(&manager_);
     Mock::VerifyAndClearExpectations(&metrics_);
     Mock::VerifyAndClearExpectations(&nss_);
-    Mock::VerifyAndClearExpectations(&utils_);
+    Mock::VerifyAndClearExpectations(&system_utils_);
     Mock::VerifyAndClearExpectations(exported_object());
   }
 
@@ -958,8 +966,8 @@ class SessionManagerImplTest : public ::testing::Test,
   MockProcessManagerService manager_;
   MockMetrics metrics_;
   MockNssUtil nss_;
-  SystemUtilsImpl real_utils_;
-  testing::NiceMock<MockSystemUtils> utils_;
+  SystemUtilsImpl real_system_utils_;
+  testing::NiceMock<MockSystemUtils> system_utils_;
   crossystem::Crossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockPolicyKey owner_key_;
@@ -2022,8 +2030,8 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe) {
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
-  ASSERT_FALSE(utils_.Exists(logged_in_path));
-  ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1"));
+  ASSERT_FALSE(system_utils_.Exists(logged_in_path));
+  ASSERT_TRUE(system_utils_.AtomicFileWrite(logged_in_path, "1"));
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->StartDeviceWipe(&error));
   ASSERT_TRUE(error.get());
@@ -2063,13 +2071,13 @@ TEST_F(SessionManagerImplTest,
 }
 
 TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
-  ASSERT_TRUE(
-      utils_.RemoveFile(base::FilePath(SessionManagerImpl::kLoggedInFlag)));
+  ASSERT_TRUE(system_utils_.RemoveFile(
+      base::FilePath(SessionManagerImpl::kLoggedInFlag)));
   ExpectDeviceRestart(1);
   impl_->InitiateDeviceWipe(
       "overly long test message with\nspecial/chars$\t\xa4\xd6 1234567890");
   std::string contents;
-  base::FilePath reset_path = real_utils_.PutInsideBaseDirForTesting(
+  base::FilePath reset_path = real_system_utils_.PutInsideBaseDirForTesting(
       base::FilePath(SessionManagerImpl::kResetFile));
   ASSERT_TRUE(base::ReadFileToString(reset_path, &contents));
   ASSERT_EQ(
@@ -2938,7 +2946,7 @@ TEST_F(SessionManagerImplTest, ArcLowDisk) {
   ExpectAndRunStartSession(kSaneEmail);
   SetUpArcMiniContainer();
   // Emulate no free disk space.
-  ON_CALL(utils_, AmountOfFreeDiskSpace(_)).WillByDefault(Return(0));
+  ON_CALL(system_utils_, AmountOfFreeDiskSpace(_)).WillByDefault(Return(0));
 
   brillo::ErrorPtr error;
 
@@ -2957,7 +2965,7 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
   ExpectAndRunStartSession(kSaneEmail);
 
   // Overrides dev mode state.
-  ON_CALL(utils_, GetDevModeState())
+  ON_CALL(system_utils_, GetDevModeState())
       .WillByDefault(Return(DevModeState::DEV_MODE_ON));
 
   EXPECT_CALL(
@@ -3186,8 +3194,8 @@ TEST_F(SessionManagerImplTest, EnableAdbSideload) {
 
 TEST_F(SessionManagerImplTest, EnableAdbSideloadAfterLoggedIn) {
   base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
-  ASSERT_FALSE(utils_.Exists(logged_in_path));
-  ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1"));
+  ASSERT_FALSE(system_utils_.Exists(logged_in_path));
+  ASSERT_TRUE(system_utils_.AtomicFileWrite(logged_in_path, "1"));
 
   EXPECT_CALL(*arc_sideload_status_, EnableAdbSideload(_)).Times(0);
 
@@ -3209,11 +3217,11 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
   void SetUp() override {
     SessionManagerImplTest::SetUp();
 
-    ON_CALL(utils_, Exists(_))
+    ON_CALL(system_utils_, Exists(_))
         .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::FileExists));
-    ON_CALL(utils_, ReadFileToString(_, _))
+    ON_CALL(system_utils_, ReadFileToString(_, _))
         .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::ReadFile));
-    ON_CALL(utils_, AtomicFileWrite(_, _))
+    ON_CALL(system_utils_, AtomicFileWrite(_, _))
         .WillByDefault(
             Invoke(this, &StartTPMFirmwareUpdateTest::AtomicWriteFile));
     SetDeviceMode("consumer");

@@ -99,7 +99,7 @@ class PolicyKey {
   bool have_replaced_ = false;
   std::vector<uint8_t> key_;
   NssUtil* nss_;
-  std::unique_ptr<SystemUtils> utils_;
+  std::unique_ptr<SystemUtils> system_utils_;
 };
 }  // namespace login_manager
 

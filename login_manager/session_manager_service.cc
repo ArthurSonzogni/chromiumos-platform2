@@ -154,20 +154,20 @@ SessionManagerService::SessionManagerService(
     base::TimeDelta hang_detection_interval,
     int hang_detection_retries,
     LoginMetrics* metrics,
-    SystemUtils* utils)
+    SystemUtils* system_utils)
     : browser_(std::move(child_job)),
       chrome_mount_ns_path_(ns_path),
       kill_timeout_(kill_timeout),
       match_rule_(base::StringPrintf("type='method_call', interface='%s'",
                                      kSessionManagerInterface)),
       login_metrics_(metrics),
-      system_(utils),
+      system_utils_(system_utils),
       nss_(NssUtil::Create()),
       owner_key_(nss_->GetOwnerKeyFilePath(), nss_.get()),
-      device_identifier_generator_(utils, metrics),
-      vpd_process_(utils),
+      device_identifier_generator_(system_utils, metrics),
+      vpd_process_(system_utils),
       android_container_(std::make_unique<AndroidOciWrapper>(
-          utils, base::FilePath(kContainerInstallDirectory))),
+          system_utils, base::FilePath(kContainerInstallDirectory))),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
       liveness_checking_retries_(hang_detection_retries),
@@ -252,10 +252,10 @@ bool SessionManagerService::Initialize() {
       std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy), bus_,
       &device_identifier_generator_,
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
-      nss_.get(), chrome_mount_ns_path_, system_, &crossystem_, &vpd_process_,
-      &owner_key_, android_container_.get(), &install_attributes_reader_,
-      powerd_dbus_proxy_, system_clock_proxy, debugd_dbus_proxy_,
-      fwmp_dbus_proxy_, arc_sideload_status);
+      nss_.get(), chrome_mount_ns_path_, system_utils_, &crossystem_,
+      &vpd_process_, &owner_key_, android_container_.get(),
+      &install_attributes_reader_, powerd_dbus_proxy_, system_clock_proxy,
+      debugd_dbus_proxy_, fwmp_dbus_proxy_, arc_sideload_status);
   if (!InitializeImpl()) {
     return false;
   }

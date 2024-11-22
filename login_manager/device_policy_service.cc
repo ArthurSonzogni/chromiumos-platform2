@@ -116,13 +116,13 @@ std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
     PolicyKey* owner_key,
     LoginMetrics* metrics,
     NssUtil* nss,
-    SystemUtils* system,
+    SystemUtils* system_utils,
     crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     InstallAttributesReader* install_attributes_reader) {
   return base::WrapUnique(new DevicePolicyService(
-      base::FilePath(kPolicyDir), owner_key, metrics, nss, system, crossystem,
-      vpd_process, install_attributes_reader));
+      base::FilePath(kPolicyDir), owner_key, metrics, nss, system_utils,
+      crossystem, vpd_process, install_attributes_reader));
 }
 
 bool DevicePolicyService::UserIsOwner(const std::string& current_user) {
@@ -134,13 +134,13 @@ DevicePolicyService::DevicePolicyService(
     PolicyKey* policy_key,
     LoginMetrics* metrics,
     NssUtil* nss,
-    SystemUtils* system,
+    SystemUtils* system_utils,
     crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     InstallAttributesReader* install_attributes_reader)
     : PolicyService(policy_dir, policy_key, metrics, true),
       nss_(nss),
-      system_(system),
+      system_utils_(system_utils),
       crossystem_(crossystem),
       vpd_process_(vpd_process),
       install_attributes_reader_(install_attributes_reader) {}
@@ -414,7 +414,8 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
   //
   // TODO(b/263367348): Delete this `RemoveFile()` call, when all supported
   // devices are guaranteed to not have this file persisted.
-  system_->RemoveFile(base::FilePath(kChromadMigrationSkipOobePreservePath));
+  system_utils_->RemoveFile(
+      base::FilePath(kChromadMigrationSkipOobePreservePath));
 
   bool is_enrolled =
       GetEnterpriseMode() == InstallAttributesReader::kDeviceModeEnterprise;

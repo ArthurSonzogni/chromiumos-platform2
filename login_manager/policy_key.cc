@@ -22,7 +22,7 @@
 namespace login_manager {
 
 PolicyKey::PolicyKey(const base::FilePath& key_file, NssUtil* nss)
-    : key_file_(key_file), nss_(nss), utils_(new SystemUtilsImpl) {}
+    : key_file_(key_file), nss_(nss), system_utils_(new SystemUtilsImpl) {}
 
 PolicyKey::~PolicyKey() {}
 
@@ -51,7 +51,7 @@ bool PolicyKey::PopulateFromDiskIfPossible() {
   }
 
   int32_t safe_file_size = 0;
-  if (!utils_->EnsureAndReturnSafeFileSize(key_file_, &safe_file_size)) {
+  if (!system_utils_->EnsureAndReturnSafeFileSize(key_file_, &safe_file_size)) {
     LOG(ERROR) << key_file_.value() << " is too large!";
     return false;
   }
@@ -104,13 +104,13 @@ bool PolicyKey::Persist() {
 
   // Remove the key if it has been cleared.
   if (key_.empty()) {
-    bool removed = utils_->RemoveFile(key_file_);
+    bool removed = system_utils_->RemoveFile(key_file_);
     PLOG_IF(ERROR, !removed) << "Failed to delete " << key_file_.value();
     return removed;
   }
 
-  if (!utils_->AtomicFileWrite(key_file_,
-                               std::string(key_.begin(), key_.end()))) {
+  if (!system_utils_->AtomicFileWrite(key_file_,
+                                      std::string(key_.begin(), key_.end()))) {
     PLOG(ERROR) << "Could not write data to " << key_file_.value();
     return false;
   }

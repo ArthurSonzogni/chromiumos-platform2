@@ -171,7 +171,7 @@ class SessionManagerImpl
                      LoginMetrics* metrics,
                      NssUtil* nss,
                      std::optional<base::FilePath> ns_path,
-                     SystemUtils* utils,
+                     SystemUtils* system_utils,
                      crossystem::Crossystem* crossystem,
                      VpdProcess* vpd_process,
                      PolicyKey* owner_key,
@@ -472,7 +472,7 @@ class SessionManagerImpl
   LoginMetrics* login_metrics_;
   NssUtil* nss_;
   std::optional<base::FilePath> chrome_mount_ns_path_;
-  SystemUtils* system_;
+  SystemUtils* system_utils_;
   crossystem::Crossystem* crossystem_;
   VpdProcess* vpd_process_;
   PolicyKey* owner_key_;

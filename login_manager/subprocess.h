@@ -46,7 +46,7 @@ class SubprocessInterface {
 // Intended to be embedded in an implementation of ChildJobInterface.
 class Subprocess : public SubprocessInterface {
  public:
-  Subprocess(uid_t uid, SystemUtils* system);
+  Subprocess(uid_t uid, SystemUtils* system_utils);
   Subprocess(const Subprocess&) = delete;
   Subprocess& operator=(const Subprocess&) = delete;
 
@@ -76,7 +76,7 @@ class Subprocess : public SubprocessInterface {
   // Mutually exclusive with |new_mount_namespace_|.
   std::optional<base::FilePath> ns_mnt_path_;
 
-  SystemUtils* const system_;  // weak; owned by embedder.
+  SystemUtils* const system_utils_;  // weak; owned by embedder.
 };
 
 }  // namespace login_manager
