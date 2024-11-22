@@ -1002,8 +1002,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
                          verified_boot_state.c_str()),
       base::StringPrintf("androidboot.vbmeta.device_state=%s",
                          vb_device_state.c_str()),
-      // TODO(b/378836019): this can be removed with ARC side code change.
-      "androidboot.arc_file_picker=1",
       // Avoid the RCU synchronization from blocking. See b/285791678#comment74
       // for the context.
       "rcupdate.rcu_expedited=1",
