@@ -153,11 +153,6 @@ static const std::map<secagentd::FilePathName, secagentd::PathInfo>
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::SYSTEM_TPM_PUBLIC_KEY,
           secagentd::FilePathCategory::SYSTEM_PATH}},
-        {secagentd::FilePathName::SYSTEM_PASSWORDS,
-         {"/etc/passwd", std::nullopt,
-          secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::SYSTEM_PASSWORDS,
-          secagentd::FilePathCategory::SYSTEM_PATH}},
 };
 
 // Path Category -> List of FilePathName enums
@@ -179,8 +174,7 @@ const std::map<secagentd::FilePathCategory,
           secagentd::FilePathName::DEVICE_SETTINGS_POLICY_DIR,
           secagentd::FilePathName::DEVICE_SETTINGS_OWNER_KEY,
           secagentd::FilePathName::CRYPTOHOME_KEY,
-          secagentd::FilePathName::CRYPTOHOME_ECC_KEY,
-          secagentd::FilePathName::SYSTEM_PASSWORDS}},
+          secagentd::FilePathName::CRYPTOHOME_ECC_KEY}},
         {secagentd::FilePathCategory::REMOVABLE_PATH,
          {secagentd::FilePathName::MOUNTED_ARCHIVE,
           secagentd::FilePathName::USB_STORAGE,
