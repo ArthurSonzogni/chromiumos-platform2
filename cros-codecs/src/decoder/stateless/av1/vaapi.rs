@@ -58,9 +58,9 @@ impl VaStreamInfo for &Rc<SequenceHeaderObu> {
         match self.seq_profile {
             Profile::Profile0 => {
                 if self.bit_depth == BitDepth::Depth8 {
-                    Ok(libva::constants::VA_RT_FORMAT_YUV420)
+                    Ok(libva::VA_RT_FORMAT_YUV420)
                 } else if self.bit_depth == BitDepth::Depth10 {
-                    Ok(libva::constants::VA_RT_FORMAT_YUV420_10)
+                    Ok(libva::VA_RT_FORMAT_YUV420_10)
                 } else {
                     Err(anyhow!(
                         "Unsupported bit depth {:?} for profile {:?}",
@@ -71,9 +71,9 @@ impl VaStreamInfo for &Rc<SequenceHeaderObu> {
             }
             Profile::Profile1 => {
                 if self.bit_depth == BitDepth::Depth8 {
-                    Ok(libva::constants::VA_RT_FORMAT_YUV444)
+                    Ok(libva::VA_RT_FORMAT_YUV444)
                 } else if self.bit_depth == BitDepth::Depth10 {
-                    Ok(libva::constants::VA_RT_FORMAT_YUV444_10)
+                    Ok(libva::VA_RT_FORMAT_YUV444_10)
                 } else {
                     Err(anyhow!(
                         "Unsupported bit depth {:?} for profile {:?}",
@@ -423,8 +423,8 @@ fn build_pic_param<M: SurfaceMemoryDescriptor>(
             .context("Invalid matrix_coefficients")?,
         &seq_info_fields,
         current_frame,
-        libva::constants::VA_INVALID_SURFACE, /* film grain is unsupported for now */
-        vec![],                               /* anchor_frames_list */
+        libva::VA_INVALID_SURFACE, /* film grain is unsupported for now */
+        vec![],                    /* anchor_frames_list */
         u16::try_from(hdr.upscaled_width - 1).context("Invalid frame width")?,
         u16::try_from(hdr.frame_height - 1).context("Invalid frame height")?,
         0, /* output_frame_width_in_tiles_minus_1 */
