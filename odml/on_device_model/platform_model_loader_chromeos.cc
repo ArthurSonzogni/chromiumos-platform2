@@ -452,6 +452,8 @@ void ChromeosPlatformModelLoader::LoadModelFromDlcPath(
     return;
   }
 
+  std::optional<int> max_tokens = model_dict->FindInt(kMaxTokensKey);
+
   const base::Value::Dict* base_model = model_dict->FindDict(kBaseModelKey);
 
   if (base_model) {
@@ -485,7 +487,8 @@ void ChromeosPlatformModelLoader::LoadModelFromDlcPath(
         base::BindOnce(
             &ChromeosPlatformModelLoader::LoadAdaptationPlatformModel,
             weak_ptr_factory_.GetWeakPtr(), base_model_uuid, *base_version,
-            uuid, dlc_root, *version, *weight_path, std::move(platform_model)));
+            uuid, dlc_root, *version, *weight_path, max_tokens,
+            std::move(platform_model)));
 
     return;
   }
@@ -519,7 +522,7 @@ void ChromeosPlatformModelLoader::LoadModelFromDlcPath(
         std::move(pending_remote),
         base::BindOnce(&ChromeosPlatformModelLoader::LoadBasePlatformModel,
                        weak_ptr_factory_.GetWeakPtr(), std::move(model_dict),
-                       uuid, dlc_root, *version, *weight_path,
+                       uuid, dlc_root, *version, *weight_path, max_tokens,
                        std::move(platform_model)));
     return;
   }
@@ -527,7 +530,7 @@ void ChromeosPlatformModelLoader::LoadModelFromDlcPath(
   auto platform_model =
       base::MakeRefCounted<PlatformModel<mojom::OnDeviceModel>>();
   LoadBasePlatformModel(model_dict, uuid, dlc_root, *version, *weight_path,
-                        std::move(platform_model),
+                        max_tokens, std::move(platform_model),
                         mojom::LoadModelResult::kSuccess);
 }
 
@@ -600,6 +603,7 @@ void ChromeosPlatformModelLoader::LoadAdaptationPlatformModel(
     const base::FilePath& dlc_root,
     const std::string& version,
     const std::string& weight_path,
+    std::optional<int> max_tokens,
     scoped_refptr<PlatformModel<mojom::OnDeviceModel>> model,
     mojom::LoadModelResult result) {
   if (result != mojom::LoadModelResult::kSuccess) {
@@ -635,6 +639,7 @@ void ChromeosPlatformModelLoader::LoadAdaptationPlatformModel(
     assets.weights_path = dlc_root.Append(weight_path);
     params->assets = std::move(assets);
   }
+  params->max_tokens = max_tokens.value_or(0);
 
   mojo::PendingReceiver<mojom::OnDeviceModel> pending =
       model->cur_model().BindNewPipeAndPassReceiver();
@@ -651,6 +656,7 @@ void ChromeosPlatformModelLoader::LoadBasePlatformModel(
     const base::FilePath& dlc_root,
     const std::string& version,
     const std::string& weight_path,
+    std::optional<int> max_tokens,
     scoped_refptr<PlatformModel<mojom::OnDeviceModel>> model,
     mojom::LoadModelResult result) {
   if (result != mojom::LoadModelResult::kSuccess) {
@@ -678,8 +684,6 @@ void ChromeosPlatformModelLoader::LoadBasePlatformModel(
     }
     backend_type = *parsed_backend_type;
   }
-
-  std::optional<int> max_tokens = model_dict->FindInt(kMaxTokensKey);
 
   const base::Value::List* ada_list = model_dict->FindList(kAdaptationRanksKey);
   std::vector<uint32_t> adaptation_ranks;

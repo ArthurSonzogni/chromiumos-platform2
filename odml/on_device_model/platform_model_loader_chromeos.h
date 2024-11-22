@@ -141,6 +141,7 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
       const base::FilePath& dlc_root,
       const std::string& version,
       const std::string& weight_path,
+      std::optional<int> max_tokens,
       scoped_refptr<PlatformModel<mojom::OnDeviceModel>> model,
       mojom::LoadModelResult result);
 
@@ -150,6 +151,7 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
       const base::FilePath& dlc_root,
       const std::string& version,
       const std::string& weight_path,
+      std::optional<int> max_tokens,
       scoped_refptr<PlatformModel<mojom::OnDeviceModel>> model,
       mojom::LoadModelResult result);
 
