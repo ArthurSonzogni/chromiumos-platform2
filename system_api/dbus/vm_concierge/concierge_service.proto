@@ -601,6 +601,7 @@ message SuccessFailureResponse {
   bool success = 1;
 
   // The reason of failure in human readable English text form.
+  // TODO(b/380358552): Revisit this to be an enum or remove altogether.
   string failure_reason = 2;
 }
 
