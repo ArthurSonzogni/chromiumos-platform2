@@ -20,6 +20,7 @@ use cros_codecs::encoder::stateless::h264;
 use cros_codecs::encoder::stateless::vp9;
 use cros_codecs::encoder::vp9::EncoderConfig as VP9EncoderConfig;
 use cros_codecs::encoder::FrameMetadata;
+use cros_codecs::encoder::Tunings;
 use cros_codecs::encoder::VideoEncoder;
 use cros_codecs::BlockingMode;
 use cros_codecs::Fourcc;
@@ -107,12 +108,12 @@ fn new_h264_vaapi_encoder(
 
     let mut config = H264EncoderConfig {
         resolution,
+        initial_tunings: Tunings {
+            framerate: args.framerate,
+            ..Default::default()
+        },
         ..Default::default()
     };
-
-    if let Some(framerate) = args.framerate {
-        config.initial_tunings.framerate = framerate;
-    }
 
     let fourcc = b"NV12".into();
     let encoder = h264::StatelessEncoder::new_vaapi(
@@ -139,12 +140,12 @@ fn new_vp9_vaapi_encoder(
 
     let mut config = VP9EncoderConfig {
         resolution,
+        initial_tunings: Tunings {
+            framerate: args.framerate,
+            ..Default::default()
+        },
         ..Default::default()
     };
-
-    if let Some(framerate) = args.framerate {
-        config.initial_tunings.framerate = framerate;
-    }
 
     let fourcc = b"NV12".into();
     let encoder = vp9::StatelessEncoder::new_vaapi(
@@ -171,12 +172,12 @@ fn new_av1_vaapi_encoder(
 
     let mut config = AV1EncoderConfig {
         resolution,
+        initial_tunings: Tunings {
+            framerate: args.framerate,
+            ..Default::default()
+        },
         ..Default::default()
     };
-
-    if let Some(framerate) = args.framerate {
-        config.initial_tunings.framerate = framerate;
-    }
 
     let fourcc = b"NV12".into();
     let encoder = av1::StatelessEncoder::new_vaapi(

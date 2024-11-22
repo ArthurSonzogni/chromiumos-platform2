@@ -6,39 +6,26 @@
 use byteorder::ByteOrder;
 use byteorder::LittleEndian;
 
-/// Copies `src` into `dst` as NV12, removing any extra padding.
+/// Copies `src` into `dst` as NV12, handling padding.
 pub fn nv12_copy(
-    src: &[u8],
-    dst: &mut [u8],
+    src_y: &[u8],
+    src_y_stride: usize,
+    dst_y: &mut [u8],
+    dst_y_stride: usize,
+    src_uv: &[u8],
+    src_uv_stride: usize,
+    dst_uv: &mut [u8],
+    dst_uv_stride: usize,
     width: usize,
     height: usize,
-    strides: [usize; 3],
-    offsets: [usize; 3],
 ) {
-    // Copy Y.
-    let src_y_lines = src[offsets[0]..]
-        .chunks(strides[0])
-        .map(|line| &line[..width]);
-    let dst_y_lines = dst.chunks_mut(width);
-
-    for (src_line, dst_line) in src_y_lines.zip(dst_y_lines).take(height) {
-        dst_line.copy_from_slice(src_line);
+    for y in 0..height {
+        dst_y[(y * dst_y_stride)..(y * dst_y_stride + width)]
+            .copy_from_slice(&src_y[(y * src_y_stride)..(y * src_y_stride + width)]);
     }
-
-    let dst_u_offset = width * height;
-
-    // Align width and height to 2 for UV plane.
-    // 1 sample per 4 pixels, but we have two components per line so width can remain as-is.
-    let uv_width = if width % 2 == 1 { width + 1 } else { width };
-    let uv_height = if height % 2 == 1 { height + 1 } else { height } / 2;
-
-    // Copy UV.
-    let src_uv_lines = src[offsets[1]..]
-        .chunks(strides[1])
-        .map(|line| &line[..uv_width]);
-    let dst_uv_lines = dst[dst_u_offset..].chunks_mut(uv_width);
-    for (src_line, dst_line) in src_uv_lines.zip(dst_uv_lines).take(uv_height) {
-        dst_line.copy_from_slice(src_line);
+    for y in 0..(height / 2) {
+        dst_uv[(y * dst_uv_stride)..(y * dst_uv_stride + width)]
+            .copy_from_slice(&src_uv[(y * src_uv_stride)..(y * src_uv_stride + width)]);
     }
 }
 
@@ -195,6 +182,44 @@ pub fn mm21_to_nv12(
     )
 }
 
+/// Simple implementation of NV12 to I420. Again, probably not fast enough for production, should
+/// TODO(b:380280455): We may want to speed this up.
+pub fn nv12_to_i420_chroma(src_uv: &[u8], dst_u: &mut [u8], dst_v: &mut [u8]) {
+    for i in 0..src_uv.len() {
+        if i % 2 == 0 {
+            dst_u[i / 2] = src_uv[i];
+        } else {
+            dst_v[i / 2] = src_uv[i];
+        }
+    }
+}
+
+pub fn nv12_to_i420(
+    src_y: &[u8],
+    dst_y: &mut [u8],
+    src_uv: &[u8],
+    dst_u: &mut [u8],
+    dst_v: &mut [u8],
+) {
+    dst_y.copy_from_slice(src_y);
+    nv12_to_i420_chroma(src_uv, dst_u, dst_v);
+}
+
+pub fn i420_to_nv12_chroma(src_u: &[u8], src_v: &[u8], dst_uv: &mut [u8]) {
+    for i in 0..dst_uv.len() {
+        if i % 2 == 0 {
+            dst_uv[i] = src_u[i / 2];
+        } else {
+            dst_uv[i] = src_v[i / 2];
+        }
+    }
+}
+
+pub fn i420_to_nv12(src_y: &[u8], dst_y: &mut [u8], src_u: &[u8], src_v: &[u8], dst_uv: &mut [u8]) {
+    dst_y.copy_from_slice(src_y);
+    i420_to_nv12_chroma(src_u, src_v, dst_uv);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -215,6 +240,41 @@ mod tests {
             288,
         )
         .expect("Failed to detile!");
+        assert_eq!(test_output, *test_expected_output);
+    }
+
+    #[test]
+    fn test_nv12_to_i420() {
+        let test_input = include_bytes!("test_data/puppets-480x270_20230825.nv12.yuv");
+        let test_expected_output = include_bytes!("test_data/puppets-480x270_20230825.i420.yuv");
+
+        let mut test_output = [0u8; 480 * 288 * 3 / 2];
+        let (test_y_output, test_uv_output) = test_output.split_at_mut(480 * 288);
+        let (test_u_output, test_v_output) = test_uv_output.split_at_mut(480 * 288 / 4);
+        nv12_to_i420(
+            &test_input[0..480 * 288],
+            test_y_output,
+            &test_input[480 * 288..480 * 288 * 3 / 2],
+            test_u_output,
+            test_v_output,
+        );
+        assert_eq!(test_output, *test_expected_output);
+    }
+
+    #[test]
+    fn test_i420_to_nv12() {
+        let test_input = include_bytes!("test_data/puppets-480x270_20230825.i420.yuv");
+        let test_expected_output = include_bytes!("test_data/puppets-480x270_20230825.nv12.yuv");
+
+        let mut test_output = [0u8; 480 * 288 * 3 / 2];
+        let (test_y_output, test_uv_output) = test_output.split_at_mut(480 * 288);
+        i420_to_nv12(
+            &test_input[0..(480 * 288)],
+            test_y_output,
+            &test_input[(480 * 288)..(480 * 288 * 5 / 4)],
+            &test_input[(480 * 288 * 5 / 4)..(480 * 288 * 3 / 2)],
+            test_uv_output,
+        );
         assert_eq!(test_output, *test_expected_output);
     }
 }

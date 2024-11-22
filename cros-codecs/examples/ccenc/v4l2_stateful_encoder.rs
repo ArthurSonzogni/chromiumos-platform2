@@ -24,7 +24,11 @@ use cros_codecs::encoder::stateful::vp9::v4l2::V4L2StatefulVP9Encoder;
 use cros_codecs::encoder::stateful::StatefulEncoder;
 use cros_codecs::encoder::CodedBitstreamBuffer;
 use cros_codecs::encoder::FrameMetadata;
+use cros_codecs::encoder::RateControl;
 use cros_codecs::encoder::Tunings;
+use cros_codecs::image_processing::i420_to_nv12_chroma;
+use cros_codecs::image_processing::nv12_copy;
+use cros_codecs::DecodedFormat;
 use cros_codecs::Fourcc;
 use cros_codecs::FrameLayout;
 use cros_codecs::Resolution;
@@ -44,39 +48,124 @@ use crate::util::Codec;
 struct MmapNM12Frame<'a> {
     resolution: Resolution,
     file: &'a File,
+    input_fourcc: DecodedFormat,
     pos: u64,
+    input_coded_resolution: Resolution,
+    queue_layout: FrameLayout,
 }
 
 impl OutputBufferHandle for MmapNM12Frame<'_> {
     type PrimitiveBufferHandles = Vec<MmapHandle>;
 
     fn queue(self, buffer: OutputBuffer<'_, Self::PrimitiveBufferHandles>) -> anyhow::Result<()> {
-        // TODO(b:378856977) : This assumes the input file is NV12 frames. This is actually
-        // somewhat uncommon though, as FFMPEG defaults to I420, and all of existing tast tests
-        // use I420. So we should add format conversion support.
-        let y_plane_size = (self.resolution.width * self.resolution.height) as usize;
-        let uv_plane_size = (self.resolution.width * self.resolution.height / 2) as usize;
-        let mut y_plane = buffer.get_plane_mapping(0).unwrap();
-        let mut uv_plane = buffer.get_plane_mapping(1).unwrap();
+        let mut input_y = vec![0u8; self.input_coded_resolution.get_area()];
+        let mut input_uv = vec![0u8; self.input_coded_resolution.get_area() / 2];
+
         // Use |read_at()| instead of |read()| so we don't need to take a mutable reference to the
         // File. We don't know how many in flight OutputBufferHandles will be created in advance,
         // and we can only mutably borrow once. We could get around this with an Rc RefCell or an
         // Arc if we decide we need to use |read()| because we want to support non-POSIX platforms.
         assert_eq!(
             self.file
-                .read_at(&mut y_plane.as_mut()[0..y_plane_size], self.pos)
+                .read_at(input_y.as_mut_slice(), self.pos)
                 .expect("Unexpected EOF!"),
-            y_plane_size
+            self.input_coded_resolution.get_area()
         );
-        assert_eq!(
-            self.file
-                .read_at(
-                    &mut uv_plane.as_mut()[0..uv_plane_size],
-                    self.pos + y_plane_size as u64
-                )
-                .expect("Unexpected EOF!"),
-            uv_plane_size
+
+        match self.input_fourcc {
+            DecodedFormat::NV12 => {
+                assert_eq!(
+                    self.file
+                        .read_at(
+                            input_uv.as_mut_slice(),
+                            self.pos + self.input_coded_resolution.get_area() as u64
+                        )
+                        .expect("Unexpected EOF!"),
+                    self.input_coded_resolution.get_area() / 2
+                );
+            }
+            DecodedFormat::I420 => {
+                let mut input_u = vec![0u8; self.input_coded_resolution.get_area() / 4];
+                let mut input_v = vec![0u8; self.input_coded_resolution.get_area() / 4];
+                assert_eq!(
+                    self.file
+                        .read_at(
+                            input_u.as_mut_slice(),
+                            self.pos + self.input_coded_resolution.get_area() as u64
+                        )
+                        .expect("Unexpected EOF!"),
+                    self.input_coded_resolution.get_area() / 4
+                );
+                assert_eq!(
+                    self.file
+                        .read_at(
+                            input_v.as_mut_slice(),
+                            self.pos + self.input_coded_resolution.get_area() as u64 * 5 / 4
+                        )
+                        .expect("Unexpected EOF!"),
+                    self.input_coded_resolution.get_area() / 4
+                );
+                i420_to_nv12_chroma(
+                    input_u.as_slice(),
+                    input_v.as_slice(),
+                    input_uv.as_mut_slice(),
+                );
+            }
+            _ => panic!("Unsupported input format!"),
+        };
+
+        let mut y_plane = buffer.get_plane_mapping(0).unwrap();
+        let mut uv_plane = buffer.get_plane_mapping(1).unwrap();
+        nv12_copy(
+            input_y.as_slice(),
+            self.input_coded_resolution.width as usize,
+            y_plane.as_mut(),
+            self.queue_layout.planes[0].stride,
+            input_uv.as_slice(),
+            self.input_coded_resolution.width as usize,
+            uv_plane.as_mut(),
+            self.queue_layout.planes[1].stride,
+            self.resolution.width as usize,
+            self.resolution.height as usize,
         );
+
+        // Replace 0 padding with the last pixels of the real image. This helps reduce compression
+        // artifacts caused by the sharp transition between real image data and 0.
+        assert!(self.resolution.width > 1);
+        assert!(self.resolution.height > 1);
+        for y in 0..(self.resolution.height as usize) {
+            let row_start = y * self.queue_layout.planes[0].stride;
+            for x in (self.resolution.width as usize)..self.queue_layout.planes[0].stride {
+                y_plane.as_mut()[row_start + x] = y_plane.as_ref()[row_start + x - 1]
+            }
+        }
+        for y in (self.resolution.height as usize)..(self.queue_layout.size.height as usize) {
+            let (src, dst) = y_plane
+                .as_mut()
+                .split_at_mut(y * self.queue_layout.planes[0].stride);
+            dst[0..self.queue_layout.planes[0].stride].copy_from_slice(
+                &src[((y - 1) * self.queue_layout.planes[0].stride)
+                    ..(y * self.queue_layout.planes[0].stride)],
+            );
+        }
+        for y in 0..(self.resolution.height as usize / 2) {
+            let row_start = y * self.queue_layout.planes[1].stride;
+            for x in (self.resolution.width as usize)..self.queue_layout.planes[1].stride {
+                // We use minus 2 here because we want to actually repeat the last 2 UV values.
+                uv_plane.as_mut()[row_start + x] = uv_plane.as_ref()[row_start + x - 2]
+            }
+        }
+        for y in (self.resolution.height as usize / 2)..(self.queue_layout.size.height as usize / 2)
+        {
+            let (src, dst) = uv_plane
+                .as_mut()
+                .split_at_mut(y * self.queue_layout.planes[1].stride);
+            dst[0..self.queue_layout.planes[1].stride].copy_from_slice(
+                &src[((y - 1) * self.queue_layout.planes[1].stride)
+                    ..(y * self.queue_layout.planes[1].stride)],
+            );
+        }
+
         buffer.queue(&[y_plane.len(), uv_plane.len()])?;
         Ok(())
     }
@@ -86,8 +175,9 @@ impl OutputBufferHandle for MmapNM12Frame<'_> {
 // just basically just keeps track of offsets.
 struct DiskFrameReader<'a> {
     file: &'a File,
-    width: u32,
-    height: u32,
+    input_fourcc: DecodedFormat,
+    visible_size: Resolution,
+    input_coded_size: Resolution,
     layout: FrameLayout,
     pos: u64,
     frame_num: usize,
@@ -102,10 +192,6 @@ impl<'a> Iterator for DiskFrameReader<'a> {
             return None;
         }
 
-        let resolution = Resolution {
-            width: self.width,
-            height: self.height,
-        };
         let meta = FrameMetadata {
             timestamp: self.frame_num as u64,
             layout: self.layout.clone(),
@@ -113,14 +199,18 @@ impl<'a> Iterator for DiskFrameReader<'a> {
         };
 
         let handle = MmapNM12Frame {
-            resolution: resolution,
+            resolution: self.visible_size,
             file: &self.file,
+            input_fourcc: self.input_fourcc.clone(),
             pos: self.pos,
+            input_coded_resolution: self.input_coded_size,
+            queue_layout: self.layout.clone(),
         };
 
         self.frame_num += 1;
-        // TODO(b:378856977): This assumes coded size and visible size are the same.
-        self.pos += (self.width * self.height * 3 / 2) as u64;
+        // The 3/2 is an implicit assumption about 4:2:0 subsampling. We probably don't need to
+        // support other subsampling methods, but if we do, make sure to change this line!
+        self.pos += self.input_coded_size.get_area() as u64 * 3 / 2;
 
         Some((meta, handle))
     }
@@ -129,15 +219,17 @@ impl<'a> Iterator for DiskFrameReader<'a> {
 impl<'a> DiskFrameReader<'_> {
     pub fn new(
         file: &'a File,
-        width: u32,
-        height: u32,
+        input_fourcc: DecodedFormat,
+        visible_size: Resolution,
+        input_coded_size: Resolution,
         layout: FrameLayout,
         total_frames: usize,
     ) -> DiskFrameReader<'a> {
         DiskFrameReader {
             file: file,
-            width: width,
-            height: height,
+            input_fourcc: input_fourcc,
+            visible_size: visible_size,
+            input_coded_size: input_coded_size,
             layout: layout,
             pos: 0,
             frame_num: 0,
@@ -180,11 +272,21 @@ fn do_encode_loop<'a, Codecz>(
 where
     V4L2Backend<MmapNM12Frame<'a>, MmapingCapture, Codecz>: EncoderCodec,
 {
-    let fps = args.framerate.unwrap_or(30);
-
+    // This is the part where we G_FMT to get the actual dimensions of the queue buffers.
     let layout = v4l2_format_to_frame_layout(&encoder.backend().output_format().unwrap());
-    let mut frame_reader =
-        DiskFrameReader::new(&input, args.width, args.height, layout, args.count);
+
+    let mut frame_reader = DiskFrameReader::new(
+        &input,
+        args.fourcc,
+        (args.width, args.height).into(),
+        (
+            args.coded_width.unwrap_or(args.width),
+            args.coded_height.unwrap_or(args.height),
+        )
+            .into(),
+        layout,
+        args.count,
+    );
 
     let codec = args.codec.unwrap_or_default();
     let output_file = args.output.map(|path| {
@@ -195,7 +297,7 @@ where
                 codec_to_ivf_magic(codec),
                 args.width as u16,
                 args.height as u16,
-                fps,
+                args.framerate,
                 args.count as u32,
             );
             hdr.writo_into(&mut output)
@@ -243,8 +345,12 @@ pub fn do_encode(input: File, args: Args) -> () {
         width: args.width,
         height: args.height,
     };
-    let fourcc = Fourcc::from(b"NM12");
-    let tunings: Tunings = Default::default();
+    let queue_fourcc = Fourcc::from(b"NM12");
+    let tunings: Tunings = Tunings {
+        rate_control: RateControl::ConstantBitrate(args.bitrate),
+        framerate: args.framerate,
+        ..Default::default()
+    };
 
     match codec {
         Codec::H264 => do_encode_loop(
@@ -253,9 +359,10 @@ pub fn do_encode(input: File, args: Args) -> () {
                 MmapingCapture,
                 cros_codecs::encoder::h264::EncoderConfig {
                     resolution: resolution.clone(),
+                    initial_tunings: tunings.clone(),
                     ..Default::default()
                 },
-                fourcc,
+                queue_fourcc,
                 resolution,
                 tunings,
             )
@@ -271,7 +378,7 @@ pub fn do_encode(input: File, args: Args) -> () {
                     resolution: resolution.clone(),
                     ..Default::default()
                 },
-                fourcc,
+                queue_fourcc,
                 resolution,
                 tunings,
             )
@@ -287,7 +394,7 @@ pub fn do_encode(input: File, args: Args) -> () {
                     resolution: resolution.clone(),
                     ..Default::default()
                 },
-                fourcc,
+                queue_fourcc,
                 resolution,
                 tunings,
             )
@@ -301,9 +408,10 @@ pub fn do_encode(input: File, args: Args) -> () {
                 MmapingCapture,
                 cros_codecs::encoder::vp9::EncoderConfig {
                     resolution: resolution.clone(),
+                    initial_tunings: tunings.clone(),
                     ..Default::default()
                 },
-                fourcc,
+                queue_fourcc,
                 resolution,
                 tunings,
             )

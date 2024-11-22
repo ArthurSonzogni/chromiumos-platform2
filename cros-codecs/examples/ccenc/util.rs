@@ -7,6 +7,8 @@ use std::str::FromStr;
 
 use argh::FromArgs;
 
+use cros_codecs::DecodedFormat;
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Default)]
 pub enum Codec {
     #[default]
@@ -47,17 +49,33 @@ pub struct Args {
     #[argh(option)]
     pub height: u32,
 
+    /// input frame coded width
+    #[argh(option)]
+    pub coded_width: Option<u32>,
+
+    /// input frame coded height
+    #[argh(option)]
+    pub coded_height: Option<u32>,
+
     /// input frames count
     #[argh(option)]
     pub count: usize,
+
+    /// input fourcc
+    #[argh(option)]
+    pub fourcc: DecodedFormat,
 
     /// codec
     #[argh(option)]
     pub codec: Option<Codec>,
 
     /// framerate
-    #[argh(option)]
-    pub framerate: Option<u32>,
+    #[argh(option, default = "30")]
+    pub framerate: u32,
+
+    /// bitrate
+    #[argh(option, default = "200000")]
+    pub bitrate: u64,
 
     /// output file to write the decoded frames to
     #[argh(option)]

@@ -477,7 +477,12 @@ impl<'a> MappableHandle for Image<'a> {
 
         match image_inner.format.fourcc {
             libva::constants::VA_FOURCC_NV12 => {
-                nv12_copy(self.as_ref(), buffer, width, height, pitches, offsets);
+                let (src_y, src_uv) = self.as_ref().split_at(offsets[1]);
+                let (dst_y, dst_uv) = buffer.split_at_mut(width * height);
+                nv12_copy(
+                    src_y, pitches[0], dst_y, width, src_uv, pitches[1], dst_uv, width, width,
+                    height,
+                );
             }
             libva::constants::VA_FOURCC_I420 => {
                 i4xx_copy(

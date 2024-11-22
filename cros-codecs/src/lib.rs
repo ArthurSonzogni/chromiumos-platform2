@@ -79,6 +79,10 @@ impl Resolution {
 
         self
     }
+
+    pub fn get_area(&self) -> usize {
+        (self.width as usize) * (self.height as usize)
+    }
 }
 
 impl From<(u32, u32)> for Resolution {

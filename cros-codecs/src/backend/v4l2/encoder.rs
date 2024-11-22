@@ -643,8 +643,8 @@ where
         let output_pixfmt: PixelFormat = fourcc.0.into();
 
         let output_format = Format {
-            width: visible_size.width,
-            height: visible_size.height,
+            width: coded_size.width,
+            height: coded_size.height,
             pixelformat: output_pixfmt,
             // Let the driver pick
             plane_fmt: vec![],
@@ -662,11 +662,13 @@ where
 
         Self::apply_ctrl(&device, "header mode", VideoHeaderMode::JoinedWith1stFrame)?;
 
-        if visible_size.width > coded_size.width || visible_size.height > coded_size.height {
+        if visible_size.width > output_format.width || visible_size.height > output_format.height {
             return Err(InitializationError::Unsupported(
                 UnsupportedError::FrameUpscaling,
             ));
-        } else if visible_size != coded_size {
+        } else if visible_size.width != output_format.width
+            || visible_size.height != output_format.height
+        {
             log::info!("The frame visible size is not aligned to coded size, applying selection");
             if let Err(err) = Self::apply_selection(&device, visible_size) {
                 log::error!("Failed to set selection: {err:?}");
