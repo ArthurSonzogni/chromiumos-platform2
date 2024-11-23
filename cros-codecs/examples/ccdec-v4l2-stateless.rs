@@ -11,17 +11,18 @@ use std::str::FromStr;
 
 use argh::FromArgs;
 use cros_codecs::backend::v4l2::decoder::stateless::V4l2StatelessDecoderHandle;
+use cros_codecs::bitstream_utils::NalIterator;
 use cros_codecs::codec::h264::parser::Nalu as H264Nalu;
 use cros_codecs::decoder::stateless::h264::H264;
 use cros_codecs::decoder::stateless::StatelessDecoder;
 use cros_codecs::decoder::stateless::StatelessVideoDecoder;
 use cros_codecs::decoder::BlockingMode;
 use cros_codecs::decoder::DecodedHandle;
+use cros_codecs::decoder::DynDecodedHandle;
 use cros_codecs::multiple_desc_type;
 use cros_codecs::utils::simple_playback_loop;
 use cros_codecs::utils::simple_playback_loop_owned_frames;
 use cros_codecs::utils::DmabufFrame;
-use cros_codecs::utils::NalIterator;
 use cros_codecs::utils::UserPtrFrame;
 use cros_codecs::DecodedFormat;
 
@@ -141,8 +142,7 @@ fn main() {
             let frame_iter = Box::new(NalIterator::<H264Nalu>::new(&input))
                 as Box<dyn Iterator<Item = Cow<[u8]>>>;
 
-            let decoder = Box::new(StatelessDecoder::<H264, _>::new_v4l2(blocking_mode))
-                as Box<dyn StatelessVideoDecoder<_>>;
+            let decoder = StatelessDecoder::<H264, _>::new_v4l2(blocking_mode).into_trait_object();
 
             (decoder, frame_iter)
         }
@@ -152,7 +152,7 @@ fn main() {
         EncodedFormat::AV1 => todo!(),
     };
 
-    let mut on_new_frame = |handle: V4l2StatelessDecoderHandle| {
+    let mut on_new_frame = |handle: DynDecodedHandle<()>| {
         let picture = handle.dyn_picture();
         let mut handle = picture.dyn_mappable_handle().unwrap();
         let buffer_size = handle.image_size();
