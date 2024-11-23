@@ -42,7 +42,7 @@ main() {
 
     # Install dependencies in the new virtual environment.
     local requirements=(
-        "${script_dir}/requirements.txt"
+        "${script_dir}/collection-tool/requirements.txt"
         "${script_dir}/analysis-tool/requirements.txt"
     )
     local req

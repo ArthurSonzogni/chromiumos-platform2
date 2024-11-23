@@ -1,8 +1,8 @@
-# Running Fingerprint Study Using Python Virtualenv
+# Use Virtualenv to Run the Fingerprint Study Collection Tool
 
-This is an **alternative method** to install the fingerprint study tool on a
-test device. It bypasses the Chrome OS/Gentoo dependencies and allows using
-providing a clean virtualenv for the execution on the test device.
+This is an **alternative method** to install the fingerprint study collection
+tool onto a test device. It bypasses the Chrome OS/Gentoo dependencies and
+allows using providing a clean virtualenv for the execution on the test device.
 
 ## 1) Build python3 virtual environment bundle
 

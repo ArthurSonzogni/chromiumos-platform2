@@ -1,7 +1,7 @@
 # Prepare Captured Samples for Analysis
 
 This doc outlines the steps that need to be taken to prepare the samples for the
-analysis tool.
+biometric performance evaluation tool.
 
 Assume the following definitions:
 
