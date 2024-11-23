@@ -5,6 +5,7 @@
 #include "arc/setup/arc_property_util.h"
 
 #include <memory>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -639,7 +640,7 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties) {
   constexpr const char kProductBuildProp[] = "ro.c=d\n";
   base::WriteFile(product_build_prop, kProductBuildProp);
 
-  EXPECT_CALL(*bus_, GetObjectProxy(A<const std::string&>(),
+  EXPECT_CALL(*bus_, GetObjectProxy(A<std::string_view>(),
                                     A<const dbus::ObjectPath&>()))
       .WillOnce(Return(cdm_factory_daemon_object_proxy_.get()));
 
@@ -703,7 +704,7 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties_DbusFailure) {
   constexpr const char kProductBuildProp[] = "ro.c=d\n";
   base::WriteFile(product_build_prop, kProductBuildProp);
 
-  EXPECT_CALL(*bus_, GetObjectProxy(A<const std::string&>(),
+  EXPECT_CALL(*bus_, GetObjectProxy(A<std::string_view>(),
                                     A<const dbus::ObjectPath&>()))
       .WillOnce(Return(cdm_factory_daemon_object_proxy_.get()));
 
