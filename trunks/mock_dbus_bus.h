@@ -21,6 +21,7 @@ class MockDBusBus : public dbus::Bus {
   MOCK_METHOD2(GetServiceOwnerAndBlock,
                std::string(const std::string&,
                            dbus::Bus::GetServiceOwnerOption));
+  using dbus::Bus::GetObjectProxy;
   MOCK_METHOD2(GetObjectProxy,
                dbus::ObjectProxy*(const std::string&, const dbus::ObjectPath&));
 };
