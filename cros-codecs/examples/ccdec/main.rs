@@ -245,6 +245,10 @@ struct Args {
     #[argh(option)]
     gbm_device: Option<PathBuf>,
 
+    /// path to VA-API device. This option is ignored on V4L2 systems.
+    #[argh(option)]
+    libva_device: Option<PathBuf>,
+
     /// whether to decode frames synchronously
     #[argh(switch)]
     synchronous: bool,
@@ -371,7 +375,14 @@ fn main() {
         }
     };
 
-    let display = libva::Display::open().expect("failed to open libva display");
+    let display = match args.libva_device {
+        Some(libva_device_path) => libva::Display::open_drm_display(libva_device_path.clone())
+            .expect(&format!(
+                "failed to open libva display {}",
+                libva_device_path.display()
+            )),
+        None => libva::Display::open().expect("failed to open libva display"),
+    };
 
     // The created `decoder` is turned into a `DynStatelessVideoDecoder` trait object. This allows
     // the same code to control the decoder no matter what codec or backend we are using.
