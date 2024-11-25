@@ -29,6 +29,41 @@ pub fn nv12_copy(
     }
 }
 
+/// Replace 0 padding with the last pixels of the real image. This helps reduce compression
+/// artifacts caused by the sharp transition between real image data and 0.
+pub fn extend_border_nv12(
+    y_plane: &mut [u8],
+    uv_plane: &mut [u8],
+    visible_width: usize,
+    visible_height: usize,
+    coded_width: usize,
+    coded_height: usize,
+) {
+    assert!(visible_width > 1);
+    assert!(visible_height > 1);
+    for y in 0..visible_height {
+        let row_start = y * coded_width;
+        for x in visible_width..coded_width {
+            y_plane[row_start + x] = y_plane[row_start + x - 1]
+        }
+    }
+    for y in visible_height..coded_height {
+        let (src, dst) = y_plane.split_at_mut(y * coded_width);
+        dst[0..coded_width].copy_from_slice(&src[((y - 1) * coded_width)..(y * coded_width)]);
+    }
+    for y in 0..(visible_height / 2) {
+        let row_start = y * coded_width;
+        for x in visible_width..coded_width {
+            // We use minus 2 here because we want to actually repeat the last 2 UV values.
+            uv_plane[row_start + x] = uv_plane[row_start + x - 2]
+        }
+    }
+    for y in (visible_height / 2)..(coded_height / 2) {
+        let (src, dst) = uv_plane.split_at_mut(y * coded_width);
+        dst[0..coded_width].copy_from_slice(&src[((y - 1) * coded_width)..(y * coded_width)]);
+    }
+}
+
 /// Copies `src` into `dst` as I4xx (YUV tri-planar).
 ///
 /// This function does not change the data layout beyond removing any padding in the source, i.e.

@@ -26,6 +26,7 @@ use cros_codecs::encoder::CodedBitstreamBuffer;
 use cros_codecs::encoder::FrameMetadata;
 use cros_codecs::encoder::RateControl;
 use cros_codecs::encoder::Tunings;
+use cros_codecs::image_processing::extend_border_nv12;
 use cros_codecs::image_processing::i420_to_nv12_chroma;
 use cros_codecs::image_processing::nv12_copy;
 use cros_codecs::DecodedFormat;
@@ -128,43 +129,14 @@ impl OutputBufferHandle for MmapNM12Frame<'_> {
             self.resolution.width as usize,
             self.resolution.height as usize,
         );
-
-        // Replace 0 padding with the last pixels of the real image. This helps reduce compression
-        // artifacts caused by the sharp transition between real image data and 0.
-        assert!(self.resolution.width > 1);
-        assert!(self.resolution.height > 1);
-        for y in 0..(self.resolution.height as usize) {
-            let row_start = y * self.queue_layout.planes[0].stride;
-            for x in (self.resolution.width as usize)..self.queue_layout.planes[0].stride {
-                y_plane.as_mut()[row_start + x] = y_plane.as_ref()[row_start + x - 1]
-            }
-        }
-        for y in (self.resolution.height as usize)..(self.queue_layout.size.height as usize) {
-            let (src, dst) = y_plane
-                .as_mut()
-                .split_at_mut(y * self.queue_layout.planes[0].stride);
-            dst[0..self.queue_layout.planes[0].stride].copy_from_slice(
-                &src[((y - 1) * self.queue_layout.planes[0].stride)
-                    ..(y * self.queue_layout.planes[0].stride)],
-            );
-        }
-        for y in 0..(self.resolution.height as usize / 2) {
-            let row_start = y * self.queue_layout.planes[1].stride;
-            for x in (self.resolution.width as usize)..self.queue_layout.planes[1].stride {
-                // We use minus 2 here because we want to actually repeat the last 2 UV values.
-                uv_plane.as_mut()[row_start + x] = uv_plane.as_ref()[row_start + x - 2]
-            }
-        }
-        for y in (self.resolution.height as usize / 2)..(self.queue_layout.size.height as usize / 2)
-        {
-            let (src, dst) = uv_plane
-                .as_mut()
-                .split_at_mut(y * self.queue_layout.planes[1].stride);
-            dst[0..self.queue_layout.planes[1].stride].copy_from_slice(
-                &src[((y - 1) * self.queue_layout.planes[1].stride)
-                    ..(y * self.queue_layout.planes[1].stride)],
-            );
-        }
+        extend_border_nv12(
+            y_plane.as_mut(),
+            uv_plane.as_mut(),
+            self.resolution.width as usize,
+            self.resolution.height as usize,
+            self.queue_layout.planes[0].stride as usize,
+            self.queue_layout.size.height as usize,
+        );
 
         buffer.queue(&[y_plane.len(), uv_plane.len()])?;
         Ok(())

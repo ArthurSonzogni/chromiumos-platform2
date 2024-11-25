@@ -20,9 +20,14 @@ use cros_codecs::encoder::stateless::h264;
 use cros_codecs::encoder::stateless::vp9;
 use cros_codecs::encoder::vp9::EncoderConfig as VP9EncoderConfig;
 use cros_codecs::encoder::FrameMetadata;
+use cros_codecs::encoder::RateControl;
 use cros_codecs::encoder::Tunings;
 use cros_codecs::encoder::VideoEncoder;
+use cros_codecs::image_processing::extend_border_nv12;
+use cros_codecs::image_processing::i420_to_nv12_chroma;
+use cros_codecs::image_processing::nv12_copy;
 use cros_codecs::BlockingMode;
+use cros_codecs::DecodedFormat;
 use cros_codecs::Fourcc;
 use cros_codecs::FrameLayout;
 use cros_codecs::PlaneLayout;
@@ -34,63 +39,83 @@ use crate::util::Codec;
 fn upload_img<M: libva::SurfaceMemoryDescriptor>(
     display: &Rc<libva::Display>,
     surface: &libva::Surface<M>,
-    width: u32,
-    height: u32,
+    resolution: Resolution,
+    input_coded_resolution: Resolution,
     data: &[u8],
+    input_fourcc: DecodedFormat,
 ) -> FrameLayout {
+    let input_y = &data[0..input_coded_resolution.get_area()];
+    let mut tmp_input_uv: Vec<u8> = Vec::new();
+    let input_uv = match input_fourcc {
+        DecodedFormat::NV12 => {
+            &data[input_coded_resolution.get_area()..(input_coded_resolution.get_area() * 3 / 2)]
+        }
+        DecodedFormat::I420 => {
+            tmp_input_uv.resize(input_coded_resolution.get_area() / 2, 0);
+            let input_u = &data
+                [input_coded_resolution.get_area()..(input_coded_resolution.get_area() * 5 / 4)];
+            let input_v = &data[(input_coded_resolution.get_area() * 5 / 4)
+                ..(input_coded_resolution.get_area() * 3 / 2)];
+            i420_to_nv12_chroma(input_u, input_v, tmp_input_uv.as_mut_slice());
+            tmp_input_uv.as_slice()
+        }
+        _ => panic!("Unsupported input format!"),
+    };
+
     let image_fmts = display.query_image_formats().unwrap();
     let image_fmt = image_fmts
         .into_iter()
         .find(|f| f.fourcc == libva::VA_FOURCC_NV12)
         .unwrap();
-
-    let mut image =
-        libva::Image::create_from(surface, image_fmt, (width, height), (width, height)).unwrap();
-
+    let mut image = libva::Image::create_from(
+        surface,
+        image_fmt,
+        (resolution.width, resolution.height),
+        (resolution.width, resolution.height),
+    )
+    .unwrap();
     let va_image = *image.image();
-    let dest = image.as_mut();
-    let width = width as usize;
-    let height = height as usize;
-    let orig_height = height;
+    let dst = image.as_mut();
+    let (dst_y, dst_uv) =
+        (&mut dst[va_image.offsets[0] as usize..]).split_at_mut(va_image.offsets[1] as usize);
 
-    let mut src: &[u8] = data;
-    let mut dst = &mut dest[va_image.offsets[0] as usize..];
+    nv12_copy(
+        input_y,
+        input_coded_resolution.width as usize,
+        dst_y,
+        va_image.pitches[0] as usize,
+        input_uv,
+        input_coded_resolution.width as usize,
+        dst_uv,
+        va_image.pitches[1] as usize,
+        resolution.width as usize,
+        resolution.height as usize,
+    );
+    extend_border_nv12(
+        dst_y,
+        dst_uv,
+        resolution.width as usize,
+        resolution.height as usize,
+        va_image.pitches[0] as usize,
+        va_image.height as usize,
+    );
 
-    // Copy luma
-    for _ in 0..height {
-        dst[..width].copy_from_slice(&src[..width]);
-        dst = &mut dst[va_image.pitches[0] as usize..];
-        src = &src[width..];
-    }
-
-    // Advance to the offset of the chroma plane
-    let mut src = &data[width * height..];
-    let mut dst = &mut dest[va_image.offsets[1] as usize..];
-
-    let height = height / 2;
-
-    // Copy chroma
-    for _ in 0..height {
-        dst[..width].copy_from_slice(&src[..width]);
-        dst = &mut dst[va_image.pitches[1] as usize..];
-        src = &src[width..];
-    }
     drop(image);
 
     surface.sync().unwrap();
 
     FrameLayout {
         format: (Fourcc::from(b"NV12"), 0),
-        size: Resolution::from((width as u32, orig_height as u32)),
+        size: resolution,
         planes: vec![
             PlaneLayout {
                 buffer_index: 0,
-                offset: 0,
+                offset: va_image.offsets[0] as usize,
                 stride: va_image.pitches[0] as usize,
             },
             PlaneLayout {
                 buffer_index: 0,
-                offset: va_image.offsets[0] as usize,
+                offset: va_image.offsets[1] as usize,
                 stride: va_image.pitches[1] as usize,
             },
         ],
@@ -106,10 +131,11 @@ fn new_h264_vaapi_encoder(
         height: args.height,
     };
 
-    let mut config = H264EncoderConfig {
+    let config = H264EncoderConfig {
         resolution,
         initial_tunings: Tunings {
             framerate: args.framerate,
+            rate_control: RateControl::ConstantBitrate(args.bitrate),
             ..Default::default()
         },
         ..Default::default()
@@ -138,10 +164,11 @@ fn new_vp9_vaapi_encoder(
         height: args.height,
     };
 
-    let mut config = VP9EncoderConfig {
+    let config = VP9EncoderConfig {
         resolution,
         initial_tunings: Tunings {
             framerate: args.framerate,
+            rate_control: RateControl::ConstantBitrate(args.bitrate),
             ..Default::default()
         },
         ..Default::default()
@@ -170,10 +197,11 @@ fn new_av1_vaapi_encoder(
         height: args.height,
     };
 
-    let mut config = AV1EncoderConfig {
+    let config = AV1EncoderConfig {
         resolution,
         initial_tunings: Tunings {
             framerate: args.framerate,
+            rate_control: RateControl::ConstantBitrate(args.bitrate),
             ..Default::default()
         },
         ..Default::default()
@@ -217,7 +245,9 @@ pub fn do_encode(mut input: File, args: Args) -> () {
 
     pool.add_frames(vec![(); 16]).unwrap();
 
-    let frame_size: usize = (args.width * args.height + args.width * args.height / 2) as usize;
+    let coded_width = args.coded_width.unwrap_or(args.width);
+    let coded_height = args.coded_height.unwrap_or(args.height);
+    let coded_frame_size: usize = (coded_width * coded_height * 3 / 2) as usize;
 
     let mut output = args.output.map(|output| File::create(output).unwrap());
 
@@ -234,11 +264,18 @@ pub fn do_encode(mut input: File, args: Args) -> () {
         }
     }
 
-    let mut buf = vec![0u8; frame_size];
+    let mut buf = vec![0u8; coded_frame_size];
     for i in 0..args.count {
         input.read_exact(&mut buf[..]).unwrap();
         let handle = pool.get_surface().unwrap();
-        let layout = upload_img(&display, handle.borrow(), args.width, args.height, &buf[..]);
+        let layout = upload_img(
+            &display,
+            handle.borrow(),
+            (args.width, args.height).into(),
+            (coded_width, coded_height).into(),
+            &buf[..],
+            args.fourcc,
+        );
 
         let input_frame = FrameMetadata {
             layout,
