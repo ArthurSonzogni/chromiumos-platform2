@@ -13,6 +13,7 @@ enum class GscDevice {
   GSC_DEVICE_NOT_GSC = 0,
   GSC_DEVICE_H1 = 1,
   GSC_DEVICE_DT = 2,
+  GSC_DEVICE_NT = 3,
 };
 
 class TpmManagerClient {

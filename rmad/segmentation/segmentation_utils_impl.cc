@@ -107,6 +107,7 @@ bool SegmentationUtilsImpl::IsFeatureMutable() const {
     case GscDevice::GSC_DEVICE_H1:
       return IsBoardIdTypeEmpty();
     case GscDevice::GSC_DEVICE_DT:
+    case GscDevice::GSC_DEVICE_NT:
       return IsInitialFactoryMode();
   }
 

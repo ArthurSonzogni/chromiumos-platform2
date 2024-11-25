@@ -451,7 +451,8 @@ bool Tpm2StatusImpl::GetRwVersion(std::string* rw_version) {
 }
 
 void Tpm2StatusImpl::SendVendorSpecificMetrics(TpmManagerMetrics* metrics) {
-  if (GetGscDevice() == GscDevice::GSC_DEVICE_DT) {
+  if (GetGscDevice() == GscDevice::GSC_DEVICE_DT ||
+      GetGscDevice() == GscDevice::GSC_DEVICE_NT) {
     trunks::Ti50Stats stats = {0};
     if (GetTi50Stats(&stats)) {
       metrics->ReportFilesystemInitTime(stats.fs_init_time);

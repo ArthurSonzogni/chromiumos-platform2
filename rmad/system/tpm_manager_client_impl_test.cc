@@ -319,7 +319,25 @@ TEST_F(TpmManagerClientTest, GetGscVersion_Cr50) {
   EXPECT_EQ(gsc_device, GscDevice::GSC_DEVICE_H1);
 }
 
-TEST_F(TpmManagerClientTest, GetGscVersion_Ti50) {
+TEST_F(TpmManagerClientTest, GetGscVersion_Ti50Nt) {
+  tpm_manager::GetVersionInfoReply reply;
+  reply.set_status(tpm_manager::STATUS_SUCCESS);
+  reply.set_gsc_device(tpm_manager::GSC_DEVICE_NT);
+
+  auto mock_tpm_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();
+  EXPECT_CALL(*mock_tpm_manager_proxy, GetVersionInfo(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  auto tpm_manager_client =
+      std::make_unique<TpmManagerClientImpl>(std::move(mock_tpm_manager_proxy));
+
+  GscDevice gsc_device;
+  EXPECT_TRUE(tpm_manager_client->GetGscDevice(&gsc_device));
+  EXPECT_EQ(gsc_device, GscDevice::GSC_DEVICE_NT);
+}
+
+TEST_F(TpmManagerClientTest, GetGscVersion_Ti50Dt) {
   tpm_manager::GetVersionInfoReply reply;
   reply.set_status(tpm_manager::STATUS_SUCCESS);
   reply.set_gsc_device(tpm_manager::GSC_DEVICE_DT);

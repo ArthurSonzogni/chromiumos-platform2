@@ -579,7 +579,8 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
   }
 
   if (GscDevice device; tpm_manager_client_->GetGscDevice(&device) &&
-                        device == GscDevice::GSC_DEVICE_DT) {
+                        (device == GscDevice::GSC_DEVICE_DT ||
+                         device == GscDevice::GSC_DEVICE_NT)) {
     ProvisionTi50();
     return;
   }

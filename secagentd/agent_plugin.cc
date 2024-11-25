@@ -271,6 +271,7 @@ metrics::Tpm AgentPlugin::GetTpmInformation(bool available) {
       }
       case tpm_manager::GSC_DEVICE_H1:
       case tpm_manager::GSC_DEVICE_DT:
+      case tpm_manager::GSC_DEVICE_NT:
         security_chip->set_kind(
             pb::TcbAttributes_SecurityChip::Kind::
                 TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP);

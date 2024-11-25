@@ -424,7 +424,7 @@ TEST_F(Tpm2StatusTest, SendVendorSpecificMetricsV0) {
   tpm_status_->SendVendorSpecificMetrics(&metrics);
 }
 
-TEST_F(Tpm2StatusTest, SendVendorSpecificMetricsV2) {
+TEST_F(Tpm2StatusTest, SendVendorSpecificMetricsV2Dt) {
   StrictMock<MockTpmManagerMetrics> metrics{};
   if (tpm_status_->GetGscDevice() == GscDevice::GSC_DEVICE_DT) {
     EXPECT_CALL(mock_tpm_utility_, GetTi50Stats(_))

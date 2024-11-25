@@ -187,14 +187,28 @@ TEST_F(SegmentationUtilsTest, IsFeatureMutable_Cr50_BoardIdTypeFailed) {
   EXPECT_FALSE(segmentation_utils->IsFeatureMutable());
 }
 
-TEST_F(SegmentationUtilsTest, IsFeatureMutable_Ti50_InitialFactoryMode) {
+TEST_F(SegmentationUtilsTest, IsFeatureMutable_Ti50Nt_InitialFactoryMode) {
+  auto segmentation_utils =
+      CreateSegmentationUtils({.gsc_device = GscDevice::GSC_DEVICE_NT,
+                               .is_initial_factory_mode = true});
+  EXPECT_TRUE(segmentation_utils->IsFeatureMutable());
+}
+
+TEST_F(SegmentationUtilsTest, IsFeatureMutable_Ti50Dt_InitialFactoryMode) {
   auto segmentation_utils =
       CreateSegmentationUtils({.gsc_device = GscDevice::GSC_DEVICE_DT,
                                .is_initial_factory_mode = true});
   EXPECT_TRUE(segmentation_utils->IsFeatureMutable());
 }
 
-TEST_F(SegmentationUtilsTest, IsFeatureMutable_Ti50_NotInitialFactoryMode) {
+TEST_F(SegmentationUtilsTest, IsFeatureMutable_Ti50Nt_NotInitialFactoryMode) {
+  auto segmentation_utils =
+      CreateSegmentationUtils({.gsc_device = GscDevice::GSC_DEVICE_NT,
+                               .is_initial_factory_mode = false});
+  EXPECT_FALSE(segmentation_utils->IsFeatureMutable());
+}
+
+TEST_F(SegmentationUtilsTest, IsFeatureMutable_Ti50Dt_NotInitialFactoryMode) {
   auto segmentation_utils =
       CreateSegmentationUtils({.gsc_device = GscDevice::GSC_DEVICE_DT,
                                .is_initial_factory_mode = false});

@@ -43,9 +43,8 @@ mojom::TpmGSCVersion GetGscVersion(
     case tpm_manager::GSC_DEVICE_H1:
       return mojom::TpmGSCVersion::kCr50;
     case tpm_manager::GSC_DEVICE_DT:
+    case tpm_manager::GSC_DEVICE_NT:
       return mojom::TpmGSCVersion::kTi50;
-      // TODO(b/375326146): select NT once TPM manager is able to report the new
-      // variant.
   }
 }
 
@@ -58,8 +57,8 @@ mojom::TpmGSCDevice GetGscDevice(
       return mojom::TpmGSCDevice::kH1;
     case tpm_manager::GSC_DEVICE_DT:
       return mojom::TpmGSCDevice::kDT;
-      // TODO(b/375326146): select NT once TPM manager is able to report the new
-      // variant.
+    case tpm_manager::GSC_DEVICE_NT:
+      return mojom::TpmGSCDevice::kNT;
   }
 }
 

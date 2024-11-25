@@ -585,6 +585,9 @@ INSTANTIATE_TEST_SUITE_P(
         {false, pb::TcbAttributes_FirmwareSecureBoot_NONE,
          tpm_manager::GscDevice::GSC_DEVICE_DT,
          pb::TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP},
+        {false, pb::TcbAttributes_FirmwareSecureBoot_NONE,
+         tpm_manager::GscDevice::GSC_DEVICE_NT,
+         pb::TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP},
         {true, pb::TcbAttributes_FirmwareSecureBoot_CROS_VERIFIED_BOOT,
          tpm_manager::GscDevice::GSC_DEVICE_NOT_GSC,
          pb::TcbAttributes_SecurityChip::Kind::
@@ -594,6 +597,9 @@ INSTANTIATE_TEST_SUITE_P(
          pb::TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP},
         {true, pb::TcbAttributes_FirmwareSecureBoot_CROS_VERIFIED_BOOT,
          tpm_manager::GscDevice::GSC_DEVICE_DT,
+         pb::TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP},
+        {true, pb::TcbAttributes_FirmwareSecureBoot_CROS_VERIFIED_BOOT,
+         tpm_manager::GscDevice::GSC_DEVICE_NT,
          pb::TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP},
     }),
     [](const ::testing::TestParamInfo<AgentPluginTestFixture::ParamType>&
@@ -607,10 +613,13 @@ INSTANTIATE_TEST_SUITE_P(
           gsc_device = "NotGSC";
           break;
         case tpm_manager::GscDevice::GSC_DEVICE_H1:
-          gsc_device = "CR50";
+          gsc_device = "H1";
           break;
         case tpm_manager::GscDevice::GSC_DEVICE_DT:
-          gsc_device = "TI50";
+          gsc_device = "DT";
+          break;
+        case tpm_manager::GscDevice::GSC_DEVICE_NT:
+          gsc_device = "NT";
           break;
       }
       return base::StringPrintf("%s_%s", boot_mode.c_str(), gsc_device.c_str());

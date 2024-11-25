@@ -157,7 +157,8 @@ struct GetVersionInfo {
            vendor_specific_str.c_str());
 
     if (tpm_model == tpm_manager::GscDevice::GSC_DEVICE_H1 ||
-        tpm_model == tpm_manager::GscDevice::GSC_DEVICE_DT) {
+        tpm_model == tpm_manager::GscDevice::GSC_DEVICE_DT ||
+        tpm_model == tpm_manager::GscDevice::GSC_DEVICE_NT) {
       ASSIGN_OR_RETURN(hwsec::Vendor::RwVersion rw_version,
                        hwsec->GetRwVersion(), _.LogError().As(EXIT_FAILURE));
       printf("rw_version %" PRId32 ".%" PRId32 ".%" PRId32 "\n",

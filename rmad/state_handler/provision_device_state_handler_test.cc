@@ -1435,6 +1435,192 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
 }
 
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50Nt_Succeeded) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  FlashInfo flash_info = {
+      .flash_name = "fake flash name", .wpsr_start = 0x0, .wpsr_length = 0x40};
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .gsc_device = GscDevice::GSC_DEVICE_NT,
+      .flash_info = flash_info,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50Nt_FlashSizeNull_Failed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .flash_size = std::nullopt,
+      .gsc_device = GscDevice::GSC_DEVICE_NT,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50Nt_SetAddressing_Failed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .set_addressing_success = false,
+      .gsc_device = GscDevice::GSC_DEVICE_NT,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50Nt_ApWpsrProvisioned_Successed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .ap_wpsr_provisioned = true,
+      .gsc_device = GscDevice::GSC_DEVICE_NT,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_GetFlashInfoNt_Failed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  // Run the state handler.
+  auto handler =
+      CreateInitializedStateHandler({.gsc_device = GscDevice::GSC_DEVICE_NT});
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50Nt_GetApWpsr_NonBlocking) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  FlashInfo flash_info = {
+      .flash_name = "fake flash name", .wpsr_start = 0x0, .wpsr_length = 0x40};
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .get_ap_wpsr_success = false,
+      .gsc_device = GscDevice::GSC_DEVICE_NT,
+      .flash_info = flash_info,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50Nt_InvalidApWpsrOutput_Failed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  FlashInfo flash_info = {
+      .flash_name = "fake flash name", .wpsr_start = 0x0, .wpsr_length = 0x40};
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .ap_wpsr_output = "INVALID\nOUTPUT\n",
+      .gsc_device = GscDevice::GSC_DEVICE_NT,
+      .flash_info = flash_info,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50Nt_SetWpsr_Failed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  FlashInfo flash_info = {
+      .flash_name = "fake flash name", .wpsr_start = 0x0, .wpsr_length = 0x40};
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .set_ap_wpsr_success = false,
+      .gsc_device = GscDevice::GSC_DEVICE_NT,
+      .flash_info = flash_info,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
+}
+
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingState) {
   // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);

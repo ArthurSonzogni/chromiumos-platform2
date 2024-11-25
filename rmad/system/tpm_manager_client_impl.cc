@@ -9,7 +9,9 @@
 
 #include <base/notreached.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
+#include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
@@ -53,6 +55,8 @@ GscDevice TpmManagerGscDeviceToRmadGscDevice(tpm_manager::GscDevice device) {
       return GscDevice::GSC_DEVICE_H1;
     case tpm_manager::GSC_DEVICE_DT:
       return GscDevice::GSC_DEVICE_DT;
+    case tpm_manager::GSC_DEVICE_NT:
+      return GscDevice::GSC_DEVICE_NT;
     default:
       break;
   }
