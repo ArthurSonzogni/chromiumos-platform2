@@ -682,5 +682,12 @@ TEST_F(ClientTest, TagSocketFail) {
   EXPECT_FALSE(result);
 }
 
+TEST_F(ClientTest, TrafficVectorInitialization) {
+  Client::TrafficVector v;
+  EXPECT_EQ(0, v.rx_bytes);
+  EXPECT_EQ(0, v.tx_bytes);
+  EXPECT_EQ(0, v.rx_packets);
+  EXPECT_EQ(0, v.tx_packets);
+}
 }  // namespace
 }  // namespace patchpanel

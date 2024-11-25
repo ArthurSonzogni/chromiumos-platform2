@@ -82,10 +82,10 @@ class BRILLO_EXPORT Client {
       TrafficSource::kWiFiDirect,   TrafficSource::kWiFiLOHS};
 
   struct TrafficVector {
-    uint64_t rx_bytes;
-    uint64_t tx_bytes;
-    uint64_t rx_packets;
-    uint64_t tx_packets;
+    uint64_t rx_bytes = 0;
+    uint64_t tx_bytes = 0;
+    uint64_t rx_packets = 0;
+    uint64_t tx_packets = 0;
 
     bool operator==(const TrafficVector&) const;
     TrafficVector& operator+=(const TrafficVector&);
