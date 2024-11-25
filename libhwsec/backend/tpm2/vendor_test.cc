@@ -70,8 +70,16 @@ TEST_F(BackendVendorTpm2Test, GetVersionInfo) {
   EXPECT_THAT(backend_->GetVendorTpm2().GetFingerprint(),
               IsOkAndHolds(0x2A0797FD));
 
-  EXPECT_THAT(backend_->GetVendorTpm2().GetGscType(),
-              IsOkAndHolds(Vendor::GscType::kCr50));
+  if (USE_CR50_ONBOARD) {
+    EXPECT_THAT(backend_->GetVendorTpm2().GetGscFwType(),
+                IsOkAndHolds(Vendor::GscFwType::kCr50));
+  } else if (USE_TI50_ONBOARD) {
+    EXPECT_THAT(backend_->GetVendorTpm2().GetGscFwType(),
+                IsOkAndHolds(Vendor::GscFwType::kTi50));
+  } else {
+    EXPECT_THAT(backend_->GetVendorTpm2().GetGscFwType(),
+                IsOkAndHolds(Vendor::GscFwType::kNotGsc));
+  }
   hwsec::StatusOr<VendorTpm2::RwVersion> version =
       backend_->GetVendorTpm2().GetRwVersion();
   ASSERT_OK(version);

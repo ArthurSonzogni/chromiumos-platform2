@@ -169,7 +169,7 @@ using FuzzCommandList =
                 &Backend::Vendor::GetFirmwareVersion,
                 &Backend::Vendor::GetVendorSpecific,
                 &Backend::Vendor::GetFingerprint,
-                &Backend::Vendor::GetGscType,
+                &Backend::Vendor::GetGscFwType,
                 &Backend::Vendor::IsSrkRocaVulnerable,
                 &Backend::Vendor::GetRsuDeviceId,
                 &Backend::Vendor::GetIFXFieldUpgradeInfo,

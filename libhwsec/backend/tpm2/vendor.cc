@@ -154,16 +154,16 @@ StatusOr<int32_t> VendorTpm2::GetFingerprint() {
   return result & 0x7fffffff;
 }
 
-StatusOr<VendorTpm2::GscType> VendorTpm2::GetGscType() {
-  RETURN_IF_ERROR(EnsureVersionInfo());
-
-  switch (version_info_->gsc_device()) {
-    case tpm_manager::GscDevice::GSC_DEVICE_H1:
-      return GscType::kCr50;
-    case tpm_manager::GscDevice::GSC_DEVICE_DT:
-      return GscType::kTi50;
-    default:
-      return GscType::kNotGsc;
+StatusOr<VendorTpm2::GscFwType> VendorTpm2::GetGscFwType() {
+  // We know at OS build-time what the GSC FW type is, so use
+  // the build time flag instead of performing a runtime query on
+  // the GSC device
+  if (USE_CR50_ONBOARD) {
+    return GscFwType::kCr50;
+  } else if (USE_TI50_ONBOARD) {
+    return GscFwType::kTi50;
+  } else {
+    return GscFwType::kNotGsc;
   }
 }
 

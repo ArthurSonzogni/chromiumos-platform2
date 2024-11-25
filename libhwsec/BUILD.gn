@@ -57,6 +57,8 @@ pkg_config("target_defaults") {
     "USE_TPM1=${use.tpm}||${use.test}",
     "USE_TPM2=${use.tpm2}||${use.test}",
     "USE_FUZZER=${use.fuzzer}",
+    "USE_CR50_ONBOARD=${use.cr50_onboard}",
+    "USE_TI50_ONBOARD=${use.ti50_onboard}",
   ]
 
   cflags = [ "-Wconsumed" ]

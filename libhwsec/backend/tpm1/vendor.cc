@@ -133,8 +133,8 @@ StatusOr<int32_t> VendorTpm1::GetFingerprint() {
   return result & 0x7fffffff;
 }
 
-StatusOr<VendorTpm1::GscType> VendorTpm1::GetGscType() {
-  return GscType::kNotGsc;
+StatusOr<VendorTpm1::GscFwType> VendorTpm1::GetGscFwType() {
+  return GscFwType::kNotGsc;
 }
 
 StatusOr<bool> VendorTpm1::IsSrkRocaVulnerable() {

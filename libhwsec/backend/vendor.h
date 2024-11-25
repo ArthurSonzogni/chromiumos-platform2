@@ -23,7 +23,7 @@ class Vendor {
     uint32_t minor;
   };
 
-  enum class GscType {
+  enum class GscFwType {
     kNotGsc,
     kCr50,
     kTi50,
@@ -50,8 +50,8 @@ class Vendor {
   // Gets the TPM fingerprint.
   virtual StatusOr<int32_t> GetFingerprint() = 0;
 
-  // Gets the TPM GSC type.
-  virtual StatusOr<GscType> GetGscType() = 0;
+  // Gets the TPM GSC FW type.
+  virtual StatusOr<GscFwType> GetGscFwType() = 0;
 
   // Is the SRK ROCA vulnerable or not.
   virtual StatusOr<bool> IsSrkRocaVulnerable() = 0;

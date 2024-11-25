@@ -38,7 +38,7 @@ class VendorTpm1 : public Vendor {
   StatusOr<uint64_t> GetFirmwareVersion() override;
   StatusOr<brillo::Blob> GetVendorSpecific() override;
   StatusOr<int32_t> GetFingerprint() override;
-  StatusOr<GscType> GetGscType() override;
+  StatusOr<GscFwType> GetGscFwType() override;
   StatusOr<bool> IsSrkRocaVulnerable() override;
   StatusOr<brillo::Blob> GetRsuDeviceId() override;
   StatusOr<IFXFieldUpgradeInfo> GetIFXFieldUpgradeInfo() override;

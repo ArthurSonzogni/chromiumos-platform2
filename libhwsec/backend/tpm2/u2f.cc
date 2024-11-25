@@ -395,18 +395,18 @@ StatusOr<u2f::Config> U2fTpm2::GetConfig() {
 }
 
 StatusOr<FipsInfo> U2fTpm2::GetFipsInfo() {
-  ASSIGN_OR_RETURN(Vendor::GscType gsc_type, vendor_.GetGscType(),
+  ASSIGN_OR_RETURN(Vendor::GscFwType gsc_type, vendor_.GetGscFwType(),
                    _.WithStatus<TPMError>("Failed to get GSC type"));
   switch (gsc_type) {
-    case Vendor::GscType::kNotGsc:
+    case Vendor::GscFwType::kNotGsc:
       return MakeStatus<TPMError>("Invalid GSC type", TPMRetryAction::kNoRetry);
-    case Vendor::GscType::kTi50:
+    case Vendor::GscFwType::kTi50:
       // Ti50's U2F implementation is always in FIPS mode.
       return FipsInfo{
           .activation_status = FipsStatus::kActive,
           .certification_level = kTi50FipsCertificationLevel,
       };
-    case Vendor::GscType::kCr50:
+    case Vendor::GscFwType::kCr50:
       // Rest of this function assumes Cr50 GSC type.
       break;
   }
@@ -430,15 +430,15 @@ StatusOr<FipsInfo> U2fTpm2::GetFipsInfo() {
 }
 
 Status U2fTpm2::ActivateFips() {
-  ASSIGN_OR_RETURN(Vendor::GscType gsc_type, vendor_.GetGscType(),
+  ASSIGN_OR_RETURN(Vendor::GscFwType gsc_type, vendor_.GetGscFwType(),
                    _.WithStatus<TPMError>("Failed to get GSC type"));
   switch (gsc_type) {
-    case Vendor::GscType::kNotGsc:
+    case Vendor::GscFwType::kNotGsc:
       return MakeStatus<TPMError>("Invalid GSC type", TPMRetryAction::kNoRetry);
-    case Vendor::GscType::kTi50:
+    case Vendor::GscFwType::kTi50:
       // Ti50's U2F implementation is always in FIPS mode.
       return OkStatus();
-    case Vendor::GscType::kCr50:
+    case Vendor::GscFwType::kCr50:
       // Rest of this function assumes Cr50 GSC type.
       break;
   }
