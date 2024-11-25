@@ -286,8 +286,7 @@ bool TpmSystemKey::ShallUseTpmForSystemKey() {
 }
 
 bool TpmSystemKey::MigrateTpmOwnerShipStateFile() {
-  base::FilePath tpm_owned =
-      stateful_mount_.Append("unencrypted/tpm_manager/tpm_owned");
+  base::FilePath tpm_owned = stateful_mount_.Append(kTpmOwned);
   base::FilePath old_tpm_state =
       stateful_mount_.Append(kOldTpmOwnershipStateFile);
 
