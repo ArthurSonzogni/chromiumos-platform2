@@ -673,6 +673,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GetConsoleLogs(logs);
   }
 
+  TPM_RC GetChipIdInfo(uint32_t* vid_pid) override {
+    return target_->GetChipIdInfo(vid_pid);
+  }
+
  private:
   TpmUtility* target_;
 };

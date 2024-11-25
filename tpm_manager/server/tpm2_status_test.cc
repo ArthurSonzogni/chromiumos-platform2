@@ -299,6 +299,66 @@ TEST_F(Tpm2StatusTest, GetGscDevice) {
   tpm_status_->GetGscDevice();
 }
 
+#if USE_TI50_ONBOARD
+TEST_F(Tpm2StatusTest, GetGscDeviceDt) {
+  EXPECT_CALL(mock_tpm_utility_, GetRwVersion(_, _, _))
+      .WillOnce([](uint32_t* epoch, uint32_t* major, uint32_t* minor) {
+        *epoch = 1;
+        *major = 22;
+        *minor = 334;
+        return TPM_RC_SUCCESS;
+      });
+  EXPECT_EQ(tpm_status_->GetGscDevice(), GscDevice::GSC_DEVICE_DT);
+}
+
+TEST_F(Tpm2StatusTest, GetGscDeviceNt) {
+  EXPECT_CALL(mock_tpm_utility_, GetRwVersion(_, _, _))
+      .WillOnce([](uint32_t* epoch, uint32_t* major, uint32_t* minor) {
+        *epoch = 0;
+        *major = 38;
+        *minor = 934;
+        return TPM_RC_SUCCESS;
+      });
+  EXPECT_EQ(tpm_status_->GetGscDevice(), GscDevice::GSC_DEVICE_NT);
+}
+
+TEST_F(Tpm2StatusTest, GetGscDeviceFutureNt) {
+  EXPECT_CALL(mock_tpm_utility_, GetRwVersion(_, _, _))
+      .WillOnce([](uint32_t* epoch, uint32_t* major, uint32_t* minor) {
+        *epoch = 0;
+        *major = 50;
+        *minor = 934;
+        return TPM_RC_SUCCESS;
+      });
+
+  EXPECT_CALL(mock_tpm_utility_, GetChipIdInfo(_))
+      .WillOnce([](uint32_t* vid_pid) {
+        *vid_pid = 0x50666666;
+        return TPM_RC_SUCCESS;
+      });
+
+  EXPECT_EQ(tpm_status_->GetGscDevice(), GscDevice::GSC_DEVICE_NT);
+}
+
+TEST_F(Tpm2StatusTest, GetGscDeviceFutureDt) {
+  EXPECT_CALL(mock_tpm_utility_, GetRwVersion(_, _, _))
+      .WillOnce([](uint32_t* epoch, uint32_t* major, uint32_t* minor) {
+        *epoch = 0;
+        *major = 50;
+        *minor = 934;
+        return TPM_RC_SUCCESS;
+      });
+
+  EXPECT_CALL(mock_tpm_utility_, GetChipIdInfo(_))
+      .WillOnce([](uint32_t* vid_pid) {
+        *vid_pid = 0x504a6666;
+        return TPM_RC_SUCCESS;
+      });
+
+  EXPECT_EQ(tpm_status_->GetGscDevice(), GscDevice::GSC_DEVICE_DT);
+}
+#endif
+
 TEST_F(Tpm2StatusTest, GetRoVerificationStatusSuccess) {
   EXPECT_CALL(mock_tpm_utility_, GetRoVerificationStatus(_))
       .WillRepeatedly(Invoke([](ap_ro_status* status) {
@@ -379,7 +439,7 @@ TEST_F(Tpm2StatusTest, GetTi50StatsNoSuchCommand) {
 #if USE_CR50_ONBOARD || USE_TI50_ONBOARD
 TEST_F(Tpm2StatusTest, GetRwVersionSuccess) {
   EXPECT_CALL(mock_tpm_utility_, GetRwVersion(_, _, _))
-      .WillOnce([](uint32_t* epoch, uint32_t* major, uint32_t* minor) {
+      .WillRepeatedly([](uint32_t* epoch, uint32_t* major, uint32_t* minor) {
         *epoch = 1;
         *major = 2;
         *minor = 3;

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "trunks/tpm_utility.h"
+
 #include <iterator>
 
 #include <base/check_op.h>
@@ -23,7 +25,6 @@
 #include "trunks/mock_tpm_cache.h"
 #include "trunks/mock_tpm_state.h"
 #include "trunks/tpm_constants.h"
-#include "trunks/tpm_utility.h"
 #include "trunks/tpm_utility_impl.h"
 #include "trunks/trunks_factory_for_test.h"
 
@@ -3965,5 +3966,23 @@ TEST_F(TpmUtilityTest, GetConsoleLogs) {
   std::string logs;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetConsoleLogs(&logs));
   EXPECT_EQ(logs, "ABCDEFGHIJKL");
+}
+
+TEST_F(TpmUtilityTest, GetChipIdInfo) {
+  std::string command_response(
+      "\x80\x01"           // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x14"   // size=20
+      "\x00\x00\x00\x00"   // code=TPM_RC_SUCCESS
+      "\x00\x4B"           // subcommand=kGscGetChipId
+      "\x12\x34\x56\x78"   // 0x12345678 in BE
+      "\x90\xAB\xCD\xEF",  // 0x90ABCDEF in BE
+      20);
+  SetGsc(true);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(command_response));
+
+  uint32_t vid_pid;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetChipIdInfo(&vid_pid));
+  EXPECT_EQ(vid_pid, 0x12345678);
 }
 }  // namespace trunks

@@ -1085,6 +1085,9 @@ class TRUNKS_EXPORT TpmUtility {
 
   // Get TPM console logs.
   virtual TPM_RC GetConsoleLogs(std::string* logs) = 0;
+
+  // Get the chip id information.
+  virtual TPM_RC GetChipIdInfo(uint32_t* vid_pid) = 0;
 };
 
 }  // namespace trunks

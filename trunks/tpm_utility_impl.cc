@@ -77,6 +77,7 @@ const uint16_t kGscSubcmdFipsCmd = 55;
 const uint16_t kGscSubcmdGetRoStatus = 57;
 const uint16_t kTi50GetMetrics = 65;
 const uint16_t kTi50GetConsoleLogs = 67;
+const uint16_t kGscGetChipId = 75;
 
 // Salt used exclusively for the Remote Server Unlock process due to the privacy
 // reasons.
@@ -3765,5 +3766,23 @@ TPM_RC TpmUtilityImpl::GetRwVersion(uint32_t* epoch,
 
 TPM_RC TpmUtilityImpl::GetConsoleLogs(std::string* logs) {
   return GscVendorCommand(kTi50GetConsoleLogs, std::string(), logs);
+}
+
+TPM_RC TpmUtilityImpl::GetChipIdInfo(uint32_t* vid_pid) {
+  CHECK(vid_pid);
+  if (!IsGsc()) {
+    return TPM_RC_COMMAND_CODE;
+  }
+
+  std::string res;
+  TPM_RC result = GscVendorCommand(kGscGetChipId, std::string(), &res);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+
+  // From src/platform/gsc-utils/extra/usb_updater.c, the first 4 bytes are the
+  // tpm_vid_pid. There is more information, but OS doesn't need it yet.
+  result = Parse_UINT32(&res, vid_pid, nullptr);
+  return result;
 }
 }  // namespace trunks

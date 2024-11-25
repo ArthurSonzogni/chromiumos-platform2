@@ -325,6 +325,41 @@ GscDevice Tpm2StatusImpl::GetGscDevice() {
   if (USE_CR50_ONBOARD) {
     return GscDevice::GSC_DEVICE_H1;
   } else if (USE_TI50_ONBOARD) {
+    // Determine the chip via version number since not all versions support
+    // the GET_CHIP_ID command. Only use the new GET_CHIP_ID query
+    // if the chip version is outside of the known version numbers.
+    uint32_t epoch, major, minor;
+    TPM_RC result = trunks_tpm_utility_->GetRwVersion(&epoch, &major, &minor);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(WARNING) << "Failed getting GSC version: "
+                   << trunks::GetErrorString(result);
+      // If we cannot get version number, then the GSC_CHIP_ID will fail too.
+      return GscDevice::GSC_DEVICE_DT;
+    }
+    if (major >= 20 && major < 30) {
+      return GscDevice::GSC_DEVICE_DT;
+    } else if (major >= 30 && major < 40) {
+      return GscDevice::GSC_DEVICE_NT;
+    }
+
+    // The major version is outside the known range, so perform the
+    // chip id query.
+    uint32_t vid_pid;
+    result = trunks_tpm_utility_->GetChipIdInfo(&vid_pid);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(WARNING) << "ChipId TPMV not supported"
+                   << trunks::GetErrorString(result);
+      // We have to pick something, but things are in a bad state.
+      return GscDevice::GSC_DEVICE_DT;
+    }
+    switch (vid_pid) {
+      case 0x504a6666:
+        return GSC_DEVICE_DT;
+      case 0x50666666:
+        return GSC_DEVICE_NT;
+    }
+    LOG(WARNING) << "Unknown VID_PID: " << vid_pid;
+    // We have to pick something, but things are in a bad state.
     return GscDevice::GSC_DEVICE_DT;
   }
 

@@ -5,8 +5,6 @@
 #ifndef TRUNKS_TPM_UTILITY_IMPL_H_
 #define TRUNKS_TPM_UTILITY_IMPL_H_
 
-#include "trunks/tpm_utility.h"
-
 #include <functional>
 #include <map>
 #include <memory>
@@ -19,6 +17,7 @@
 
 #include "trunks/cr50_headers/ap_ro_status.h"
 #include "trunks/scoped_key_handle.h"
+#include "trunks/tpm_utility.h"
 #include "trunks/trunks_export.h"
 
 namespace trunks {
@@ -393,6 +392,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                       uint32_t* minor) override;
 
   TPM_RC GetConsoleLogs(std::string* logs) override;
+
+  TPM_RC GetChipIdInfo(uint32_t* vid_pid) override;
 
  private:
   friend class TpmUtilityTest;

@@ -392,6 +392,7 @@ class MockTpmUtility : public TpmUtility {
               (uint32_t*, uint32_t*, uint32_t*),
               (override));
   MOCK_METHOD(TPM_RC, GetConsoleLogs, (std::string*), (override));
+  MOCK_METHOD(TPM_RC, GetChipIdInfo, (std::uint32_t*), (override));
 };
 
 }  // namespace trunks
