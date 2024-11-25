@@ -11,6 +11,7 @@ getegid32: 1
 # ioctl values:
 #   0xc014ec00 == CROS_EC_DEV_IOCXCMD
 ioctl: arg1 == 0xc014ec00
+epoll_create: 1
 epoll_create1: 1
 pipe2: 1
 epoll_ctl: 1

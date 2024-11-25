@@ -18,6 +18,7 @@ brk: 1
 close: 1
 connect: 1
 dup: 1
+epoll_create: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1

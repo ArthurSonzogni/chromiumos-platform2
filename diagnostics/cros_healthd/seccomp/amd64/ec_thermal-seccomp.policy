@@ -46,6 +46,7 @@ getrandom: arg2 in ~GRND_RANDOM
 geteuid: 1
 getgid: 1
 getegid: 1
+epoll_create: 1
 epoll_create1: 1
 epoll_ctl: 1
 pipe2: 1

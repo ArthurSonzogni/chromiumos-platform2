@@ -39,6 +39,7 @@ set_tid_address: 1
 rseq: 1
 prlimit64: 1
 munmap: 1
+epoll_create: 1
 epoll_create1: 1
 uname: 1
 memfd_create: 1

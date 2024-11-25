@@ -14,6 +14,7 @@ getuid: 1
 geteuid: 1
 getgid: 1
 getegid: 1
+epoll_create: 1
 epoll_create1: 1
 gettid: 1
 pipe2: 1

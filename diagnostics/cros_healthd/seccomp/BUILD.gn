@@ -105,6 +105,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
                         # These syscalls are required by all executor delegates.
                         # Filter arg2 to disallow GRND_RANDOM (2).
                         "getrandom: arg2 in ~GRND_RANDOM",
+                        "epoll_create1",
 
                         # Required for syslog.
                         "connect",
@@ -116,10 +117,19 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
     required_syscalls += [
       # `futex` is used in `libc_start_call_main`.
       "futex",
+
+      # `epoll_create` is used by executor delegates when kernel does not have epoll_create1.
+      "epoll_create",
     ]
   }
   if (_arch == "arm64") {
     required_syscalls += [ "process_vm_readv" ]
+  }
+  if (_arch == "amd64") {
+    required_syscalls += [
+      # `epoll_create` is used by executor delegates when kernel does not have epoll_create1.
+      "epoll_create",
+    ]
   }
   denied_syscalls = BASE_DENIED_SYSCALLS
 }

@@ -12,6 +12,7 @@ socket: arg0 == AF_UNIX
 socketpair: arg0 == AF_UNIX
 
 close: 1
+epoll_create: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1

@@ -33,6 +33,7 @@ getuid32: 1
 geteuid32: 1
 getgid32: 1
 getegid32: 1
+epoll_create: 1
 epoll_create1: 1
 pipe2: 1
 epoll_ctl: 1
