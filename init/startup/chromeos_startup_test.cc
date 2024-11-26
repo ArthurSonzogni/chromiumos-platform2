@@ -387,7 +387,7 @@ TEST_F(TPMTest, PcrExtended) {
 class StatefulWipeTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    stateful_ = base_dir_.Append("mnt/stateful_partition");
+    stateful_dir_ = base_dir_.Append("mnt/stateful_partition");
     platform_ = std::make_unique<libstorage::FakePlatform>();
     crossystem_ = platform_->GetCrosssystem();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
@@ -395,20 +395,21 @@ class StatefulWipeTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_, base_dir_,
-        platform_.get(), startup_dep_.get(),
+        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
+        base_dir_, platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_,
+            platform_.get(), startup_dep_.get(), flags_, base_dir_,
+            stateful_dir_,
             std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
             std::unique_ptr<libstorage::StorageContainerFactory>()),
         std::move(tlcl), nullptr);
-    ASSERT_TRUE(platform_->CreateDirectory(stateful_));
+    ASSERT_TRUE(platform_->CreateDirectory(stateful_dir_));
   }
 
   crossystem::Crossystem* crossystem_;
   startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
-  base::FilePath stateful_{"/stateful"};
+  base::FilePath stateful_dir_{"/stateful"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -417,7 +418,7 @@ class StatefulWipeTest : public ::testing::Test {
 
 // Tests path for requested powerwash, but the reset file is now owned by us.
 TEST_F(StatefulWipeTest, PowerwashForced) {
-  base::FilePath reset_file = stateful_.Append("factory_install_reset");
+  base::FilePath reset_file = stateful_dir_.Append("factory_install_reset");
   ASSERT_TRUE(platform_->CreateSymbolicLink(reset_file,
                                             base::FilePath("/file_not_exist")));
   startup_->CheckForStatefulWipe();
@@ -431,7 +432,7 @@ TEST_F(StatefulWipeTest, PowerwashForced) {
 
 // Tests normal path for user requested powerwash.
 TEST_F(StatefulWipeTest, PowerwashNormal) {
-  base::FilePath reset_file = stateful_.Append("factory_install_reset");
+  base::FilePath reset_file = stateful_dir_.Append("factory_install_reset");
   ASSERT_TRUE(
       platform_->WriteStringToFile(reset_file, "keepimg slow test powerwash"));
   ASSERT_TRUE(platform_->SetOwnership(reset_file, getuid(), 8888, false));
@@ -461,7 +462,7 @@ TEST_F(StatefulWipeTest, NoStateDev) {
 TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 0));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
-  base::FilePath dev_mode_allowed = stateful_.Append(".developer_mode");
+  base::FilePath dev_mode_allowed = stateful_dir_.Append(".developer_mode");
   ASSERT_TRUE(platform_->WriteStringToFile(dev_mode_allowed, "0"));
   ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, getuid(), 8888, false));
   startup_->SetDevMode(false);
@@ -482,7 +483,7 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
 TEST_F(StatefulWipeTest, TransitionToDevModeNoDebugBuild) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 1));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
-  base::FilePath dev_mode_allowed = stateful_.Append(".developer_mode");
+  base::FilePath dev_mode_allowed = stateful_dir_.Append(".developer_mode");
   ASSERT_TRUE(platform_->WriteStringToFile(dev_mode_allowed, "0"));
   ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, -1, 8888, false));
   startup_->SetDevMode(false);
@@ -502,7 +503,7 @@ class StatefulWipeTestDevMode : public ::testing::Test {
   StatefulWipeTestDevMode() {}
 
   void SetUp() override {
-    stateful_ = base_dir_.Append("mnt/stateful_partition");
+    stateful_dir_ = base_dir_.Append("mnt/stateful_partition");
     platform_ = std::make_unique<libstorage::FakePlatform>();
     crossystem_ = platform_->GetCrosssystem();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
@@ -510,20 +511,21 @@ class StatefulWipeTestDevMode : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_, base_dir_,
-        platform_.get(), startup_dep_.get(),
+        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
+        base_dir_, platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_,
+            platform_.get(), startup_dep_.get(), flags_, base_dir_,
+            stateful_dir_,
             std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
             std::unique_ptr<libstorage::StorageContainerFactory>()),
         std::move(tlcl), nullptr);
-    ASSERT_TRUE(platform_->CreateDirectory(stateful_));
+    ASSERT_TRUE(platform_->CreateDirectory(stateful_dir_));
   }
 
   crossystem::Crossystem* crossystem_;
   startup::Flags flags_;
   base::FilePath base_dir_{"/"};
-  base::FilePath stateful_;
+  base::FilePath stateful_dir_;
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -538,7 +540,7 @@ TEST_F(StatefulWipeTestDevMode, TransitionToVerifiedDebugBuild) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 0));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 1));
-  base::FilePath dev_mode_allowed = stateful_.Append(".developer_mode");
+  base::FilePath dev_mode_allowed = stateful_dir_.Append(".developer_mode");
   ASSERT_TRUE(platform_->WriteStringToFile(dev_mode_allowed, "0"));
   ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, getuid(), 8888, false));
   startup_->SetDevMode(true);
@@ -561,7 +563,7 @@ TEST_F(StatefulWipeTestDevMode, TransitionToDevModeDebugBuild) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 1));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 1));
-  base::FilePath dev_mode_allowed = stateful_.Append(".developer_mode");
+  base::FilePath dev_mode_allowed = stateful_dir_.Append(".developer_mode");
   ASSERT_TRUE(platform_->TouchFileDurable(dev_mode_allowed));
   ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, -1, 8888, false));
   startup_->SetDevMode(true);
@@ -703,7 +705,7 @@ class ConfigTest : public ::testing::Test {
  protected:
   void SetUp() override {
     lsb_file_ = base_dir_.Append(kLsbRelease);
-    stateful_ = base_dir_.Append(kStatefulPartition);
+    stateful_dir_ = base_dir_.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     crossystem_ = platform_->GetCrosssystem();
@@ -713,7 +715,8 @@ class ConfigTest : public ::testing::Test {
     startup::Flags flags;
     startup::ChromeosStartup::ParseFlags(&flags);
     startup::MountHelperFactory factory(platform_.get(), startup_dep_.get(),
-                                        flags, base_dir_, stateful_, lsb_file_);
+                                        flags, base_dir_, stateful_dir_,
+                                        lsb_file_);
     return factory.Generate(
         std::unique_ptr<libstorage::StorageContainerFactory>());
   }
@@ -721,7 +724,7 @@ class ConfigTest : public ::testing::Test {
   crossystem::Crossystem* crossystem_;
   base::FilePath base_dir_{"/"};
   base::FilePath lsb_file_;
-  base::FilePath stateful_;
+  base::FilePath stateful_dir_;
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
 };
@@ -781,7 +784,7 @@ TEST_F(ConfigTest, DevModeTestFactoryTest) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 1));
   ASSERT_TRUE(platform_->WriteStringToFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=testimage-channel\n"));
-  base::FilePath factory_en = stateful_.Append("dev_image/factory/enabled");
+  base::FilePath factory_en = stateful_dir_.Append("dev_image/factory/enabled");
   ASSERT_TRUE(platform_->WriteStringToFile(factory_en, "Enabled"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
   EXPECT_NE(dynamic_cast<startup::FactoryModeMountHelper*>(
@@ -1444,25 +1447,25 @@ TEST_F(CheckVarLogTest, SymLinkOutsideVarLog) {
 class DevMountPackagesTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    stateful_ = base_dir_.Append("stateful_test");
-    base::CreateDirectory(stateful_);
+    stateful_dir_ = base_dir_.Append("stateful_test");
+    base::CreateDirectory(stateful_dir_);
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_,
+        platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::unique_ptr<libstorage::StorageContainerFactory>()),
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir_, stateful_, platform_.get(), startup_dep_.get(),
+        flags_, base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
         mount_helper_.get());
     proc_mounts_ = base_dir_.Append("proc/mounts");
     mount_log_ = base_dir_.Append("var/log/mount_options.log");
-    stateful_dev_image_ = stateful_.Append("dev_image");
+    stateful_dev_image_ = stateful_dir_.Append("dev_image");
     usrlocal_ = base_dir_.Append("usr/local");
     asan_dir_ = base_dir_.Append("var/log/asan");
     lsm_dir_ = base_dir_.Append(kLSMDir);
     allow_sym_ = lsm_dir_.Append("allow_symlink");
-    var_overlay_ = stateful_.Append("var_overlay");
+    var_overlay_ = stateful_dir_.Append("var_overlay");
     var_portage_ = base_dir_.Append("var/lib/portage");
     ASSERT_TRUE(platform_->WriteStringToFile(allow_sym_, ""));
     ASSERT_TRUE(platform_->CreateDirectory(stateful_dev_image_));
@@ -1484,7 +1487,7 @@ class DevMountPackagesTest : public ::testing::Test {
   startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
-  base::FilePath stateful_;
+  base::FilePath stateful_dir_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
