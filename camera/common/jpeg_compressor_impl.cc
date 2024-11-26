@@ -6,18 +6,19 @@
 
 #include "common/jpeg_compressor_impl.h"
 
-#include <memory>
-#include <utility>
-
 #include <errno.h>
 #include <libyuv.h>
 #include <linux/videodev2.h>
 #include <time.h>
 
+#include <memory>
+#include <utility>
+
 #include <base/check.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/writable_shared_memory_region.h>
 #include <base/timer/elapsed_timer.h>
+
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/common.h"
@@ -67,8 +68,11 @@ JpegCompressorImpl::JpegCompressorImpl(CameraMojoChannelManagerToken* token)
   // Read force_jpeg_hw_enc configs
   std::unique_ptr<CameraConfig> camera_config =
       CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
-  force_jpeg_hw_encode_for_testing_ = camera_config->GetBoolean(
-      constants::kCrosForceJpegHardwareEncodeOption, false);
+  if (camera_config != nullptr) {
+    force_jpeg_hw_encode_for_testing_ = camera_config->GetBoolean(
+        constants::kCrosForceJpegHardwareEncodeOption, false);
+  }
+
   if (force_jpeg_hw_encode_for_testing_) {
     LOGF(INFO) << "Force JPEG hardware encode for testing";
   }
