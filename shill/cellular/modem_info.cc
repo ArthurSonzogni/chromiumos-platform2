@@ -42,6 +42,8 @@ void ModemInfo::Start() {
   pending_activation_store_.reset(new PendingActivationStore());
   pending_activation_store_->InitStorage(manager_->storage_path());
 
+  CreateCellularDevice();
+
   CHECK(!proxy_);
   proxy_ = CreateProxy();
 }
