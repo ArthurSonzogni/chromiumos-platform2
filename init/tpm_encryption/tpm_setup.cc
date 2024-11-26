@@ -122,15 +122,15 @@ TpmSystemKey::TpmSystemKey(libstorage::Platform* platform,
                            hwsec_foundation::TlclWrapper* tlcl,
                            init_metrics::InitMetrics* metrics,
                            base::FilePath rootdir,
-                           base::FilePath stateful_mount)
+                           base::FilePath tpm_data_dir)
     : platform_(platform),
       tlcl_(tlcl),
       metrics_(metrics),
       rootdir_(rootdir),
-      stateful_mount_(stateful_mount),
+      tpm_data_dir_(tpm_data_dir),
       tpm_(tlcl_),
       loader_(encryption::SystemKeyLoader::Create(
-          platform_, &tpm_, rootdir_, stateful_mount_)) {}
+          platform_, &tpm_, rootdir_, tpm_data_dir_)) {}
 
 bool TpmSystemKey::Set(base::FilePath key_material_file) {
   if (!tpm_.is_tpm2()) {
@@ -169,7 +169,7 @@ std::optional<encryption::EncryptionKey> TpmSystemKey::Load(
   }
 
   encryption::EncryptionKey key(platform_, loader_.get(), rootdir_,
-                                stateful_mount_);
+                                tpm_data_dir_);
   if (ShallUseTpmForSystemKey() && safe_mount) {
     if (!tpm_.available()) {
       // The TPM should be available before we load the system_key.
@@ -286,9 +286,9 @@ bool TpmSystemKey::ShallUseTpmForSystemKey() {
 }
 
 bool TpmSystemKey::MigrateTpmOwnerShipStateFile() {
-  base::FilePath tpm_owned = stateful_mount_.Append(kTpmOwned);
+  base::FilePath tpm_owned = tpm_data_dir_.Append(kTpmOwned);
   base::FilePath old_tpm_state =
-      stateful_mount_.Append(kOldTpmOwnershipStateFile);
+      tpm_data_dir_.Append(kOldTpmOwnershipStateFile);
 
   if (!platform_->CreateDirectory(tpm_owned.DirName())) {
     LOG(ERROR) << "Failed to create dir for TPM pwnership state file.";

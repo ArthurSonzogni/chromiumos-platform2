@@ -7,10 +7,11 @@
 #ifndef INIT_TPM_ENCRYPTION_TPM_SETUP_H_
 #define INIT_TPM_ENCRYPTION_TPM_SETUP_H_
 
-#include <memory>
-#include <optional>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <memory>
+#include <optional>
 
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
@@ -28,7 +29,7 @@ class BRILLO_EXPORT TpmSystemKey {
                hwsec_foundation::TlclWrapper* tlcl,
                init_metrics::InitMetrics* metrics,
                base::FilePath rootdir,
-               base::FilePath stateful_mount);
+               base::FilePath tpm_data_dir);
 
   // Reads key material from the file |key_material_file|, creates a system key
   // using the material, and persists the system key in NVRAM.
@@ -58,7 +59,7 @@ class BRILLO_EXPORT TpmSystemKey {
   hwsec_foundation::TlclWrapper* tlcl_;
   init_metrics::InitMetrics* metrics_;
   base::FilePath rootdir_;
-  base::FilePath stateful_mount_;
+  base::FilePath tpm_data_dir_;
   Tpm tpm_;
   std::unique_ptr<SystemKeyLoader> loader_;
   std::optional<bool> has_chromefw_;

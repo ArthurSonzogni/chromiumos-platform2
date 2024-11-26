@@ -226,7 +226,7 @@ class BRILLO_EXPORT SystemKeyLoader {
       libstorage::Platform* platform,
       Tpm* tpm,
       const base::FilePath& rootdir,
-      const base::FilePath& stateful_mount);
+      const base::FilePath& tpm_data_dir);
 
   // Load the encryption key from TPM NVRAM. Returns true if successful and
   // fills in key, false if the key is not available or there is an error.

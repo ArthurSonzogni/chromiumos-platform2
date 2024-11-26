@@ -245,7 +245,7 @@ std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(
     libstorage::Platform* platform,
     Tpm* tpm,
     const base::FilePath& rootdir,
-    const base::FilePath& stateful_mount) {
+    const base::FilePath& unused) {
   return std::make_unique<Tpm2SystemKeyLoader>(tpm);
 }
 
