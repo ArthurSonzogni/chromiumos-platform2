@@ -71,7 +71,7 @@ class MountHelper {
 
   // Returns a location to save the initial random TPM system key seed.
   // Used only in test mode.
-  virtual base::FilePath GetKeyBackupFile() { return base::FilePath(); }
+  virtual base::FilePath GetKeyBackupFile() const { return base::FilePath(); }
 
  protected:
   raw_ptr<libstorage::Platform> platform_;

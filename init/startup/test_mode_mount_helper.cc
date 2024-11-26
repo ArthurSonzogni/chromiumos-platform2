@@ -55,7 +55,7 @@ TestModeMountHelper::TestModeMountHelper(
                   std::move(impl),
                   std::move(storage_container_factory)) {}
 
-base::FilePath TestModeMountHelper::GetKeyBackupFile() {
+base::FilePath TestModeMountHelper::GetKeyBackupFile() const {
   // If this a TPM 2.0 device that supports encrypted stateful, creates and
   // persists a system key into NVRAM and backs the key up if it doesn't exist.
   // If the call create_system_key is successful, mount_var_and_home_chronos

@@ -34,7 +34,7 @@ class TestModeMountHelper : public MountHelper {
 
   bool DoMountVarAndHomeChronos(
       std::optional<encryption::EncryptionKey> key) override;
-  base::FilePath GetKeyBackupFile() override;
+  base::FilePath GetKeyBackupFile() const override;
 };
 
 }  // namespace startup
