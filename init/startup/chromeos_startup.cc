@@ -317,6 +317,44 @@ bool ChromeosStartup::IsVarFull() {
   return (st.f_bavail < kVarFullThreshold / st.f_bsize || st.f_favail < 100);
 }
 
+std::optional<encryption::EncryptionKey> ChromeosStartup::LoadTpmKey(
+    const base::FilePath& tpm_data_dir, const base::FilePath& backup_file) {
+  // Setup the TPM
+  // In case of error, reboot once.
+  // If it fails again, trigger a recovery.
+  auto tpm_system_key = encryption::TpmSystemKey(platform_, tlcl_.get(),
+                                                 metrics_, root_, tpm_data_dir);
+
+  base::FilePath encrypted_failed =
+      tpm_data_dir.Append(kMountEncryptedFailedFile);
+  crossystem::Crossystem* crossystem = platform_->GetCrosssystem();
+  std::optional<encryption::EncryptionKey> key =
+      tpm_system_key.Load(true /* safe */, backup_file);
+  if (!key) {
+    uid_t uid;
+    if (!platform_->GetOwnership(encrypted_failed, &uid, nullptr,
+                                 false /* follow_links */) ||
+        (uid != getuid())) {
+      platform_->TouchFileDurable(encrypted_failed);
+    } else {
+      crossystem->VbSetSystemPropertyInt("recovery_request", 1);
+    }
+    utils::Reboot();
+    return std::nullopt;
+  }
+  if (!tpm_system_key.Export()) {
+    // Unable to write to /tmp. Clobber will not help, the root or
+    // kernel has a problem, request a recovery.
+    crossystem->VbSetSystemPropertyInt("recovery_request", 1);
+    utils::Reboot();
+    return std::nullopt;
+  }
+  if (platform_->FileExists(encrypted_failed)) {
+    platform_->DeleteFile(encrypted_failed);
+  }
+  return key;
+}
+
 ChromeosStartup::ChromeosStartup(
     std::unique_ptr<vpd::Vpd> vpd,
     std::unique_ptr<Flags> flags,
@@ -604,9 +642,9 @@ void ChromeosStartup::StartTpm2Simulator() {
 // Clean up after a TPM firmware update.
 // Called before initiatlizing the TPM, which is done just before
 // mount encrypted stateful.
-void ChromeosStartup::CleanupTpm() {
+void ChromeosStartup::CleanupTpm(const base::FilePath& tpm_data_dir) {
   base::FilePath tpm_update_req =
-      stateful_.Append(kTpmFirmwareUpdateRequestFlagFile);
+      tpm_data_dir.Append(kTpmFirmwareUpdateRequestFlagFile);
   if (platform_->FileExists(tpm_update_req)) {
     base::FilePath tpm_cleanup = root_.Append(kTpmFirmwareUpdateCleanup);
     if (platform_->FileExists(tpm_cleanup)) {
@@ -950,45 +988,10 @@ int ChromeosStartup::Run() {
 
   StartTpm2Simulator();
 
-  CleanupTpm();
-
   std::optional<encryption::EncryptionKey> key;
-
   if (flags_->encstateful) {
-    base::FilePath encrypted_failed =
-        stateful_.Append(kMountEncryptedFailedFile);
-    // Setup the TPM
-    // In case of error, reboot once.
-    // If it fails again, trigger a recovery.
-    auto tpm_system_key = encryption::TpmSystemKey(platform_, tlcl_.get(),
-                                                   metrics_, root_, stateful_);
-
-    key =
-        tpm_system_key.Load(true /* safe */, mount_helper_->GetKeyBackupFile());
-    if (!key) {
-      uid_t uid;
-      if (!platform_->GetOwnership(encrypted_failed, &uid, nullptr,
-                                   false /* follow_links */) ||
-          (uid != getuid())) {
-        platform_->TouchFileDurable(encrypted_failed);
-      } else {
-        crossystem->VbSetSystemPropertyInt("recovery_request", 1);
-      }
-
-      utils::Reboot();
-      return 0;
-    }
-    if (platform_->FileExists(encrypted_failed)) {
-      platform_->DeleteFile(encrypted_failed);
-    }
-
-    if (!tpm_system_key.Export()) {
-      // Unable to write to /tmp. Clobber will not help, the root or
-      // kernel has a problem, request a recovery.
-      crossystem->VbSetSystemPropertyInt("recovery_request", 1);
-      utils::Reboot();
-      return 0;
-    }
+    CleanupTpm(stateful_);
+    key = LoadTpmKey(stateful_, mount_helper_->GetKeyBackupFile());
   }
 
   // Mount encstateful

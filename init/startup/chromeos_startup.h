@@ -72,6 +72,10 @@ class ChromeosStartup {
 
   // Returns if the TPM is owned or couldn't be determined.
   bool IsTPMOwned();
+  // Load the TPM system key, based on data in the directory.
+  std::optional<encryption::EncryptionKey> LoadTpmKey(
+      const base::FilePath& tpm_data_dir, const base::FilePath& backup_file);
+
   // Returns if device needs to clobber even though there's no devmode file
   // present and boot is in verified mode.
   bool NeedsClobberWithoutDevModeFile();
@@ -108,7 +112,7 @@ class ChromeosStartup {
   void SetDevMode(bool dev_mode);
 
   // Clean up after a TPM firmware update.
-  void CleanupTpm();
+  void CleanupTpm(const base::FilePath& tpm_data_dir);
 
   // Move from /var/lib/whitelist to /var/lib/devicesettings.
   void MoveToLibDeviceSettings();

@@ -682,14 +682,14 @@ class TpmCleanupTest : public ::testing::Test {
 TEST_F(TpmCleanupTest, TpmCleanupNoFlagFile) {
   brillo::ProcessMock* process = platform_->mock_process();
   EXPECT_CALL(*process, Run()).Times(0);
-  startup_->CleanupTpm();
+  startup_->CleanupTpm(stateful_dir_);
 }
 
 TEST_F(TpmCleanupTest, TpmCleanupNoCmdPath) {
   ASSERT_TRUE(platform_->WriteStringToFile(flag_file_, "exists"));
   brillo::ProcessMock* process = platform_->mock_process();
   EXPECT_CALL(*process, Run()).Times(0);
-  startup_->CleanupTpm();
+  startup_->CleanupTpm(stateful_dir_);
 }
 
 TEST_F(TpmCleanupTest, TpmCleanupSuccess) {
@@ -697,7 +697,7 @@ TEST_F(TpmCleanupTest, TpmCleanupSuccess) {
   ASSERT_TRUE(platform_->WriteStringToFile(tpm_cleanup_, "exists"));
   brillo::ProcessMock* process = platform_->mock_process();
   EXPECT_CALL(*process, Run()).Times(1);
-  startup_->CleanupTpm();
+  startup_->CleanupTpm(stateful_dir_);
 }
 
 class ParseFlagsTest : public ::testing::Test {
