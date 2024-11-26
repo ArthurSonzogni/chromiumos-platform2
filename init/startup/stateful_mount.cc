@@ -99,18 +99,6 @@ uint64_t GetDirtyExpireCentisecs(libstorage::Platform* platform,
   }
   return dirty_expire_centisecs;
 }
-
-// Get the partition number for the given key,
-// e.g. "PARTITION_NUM_STATE". Fails with a `CHECK()` if any error occurs.
-int GetPartitionNumFromImageVars(const base::Value::Dict& image_dict,
-                                 std::string_view key) {
-  const std::string* value = image_dict.FindString(key);
-  CHECK_NE(value, nullptr);
-  int num = 0;
-  CHECK(base::StringToInt(*value, &num));
-  return num;
-}
-
 }  // namespace
 
 namespace startup {
@@ -283,8 +271,8 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
 
   // Find our stateful partition mount point.
   stateful_mount_flags = kCommonMountFlags | MS_NOATIME;
-  const int part_num_state =
-      GetPartitionNumFromImageVars(image_vars_dict, "PARTITION_NUM_STATE");
+  const int part_num_state = utils::GetPartitionNumFromImageVars(
+      image_vars_dict, "PARTITION_NUM_STATE");
   const std::string* fs_form_state =
       image_vars_dict.FindString("FS_FORMAT_STATE");
   state_dev_ = brillo::AppendPartition(root_dev, part_num_state);
@@ -410,7 +398,7 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
   // on some boards.
   int32_t oem_flags = MS_RDONLY | kCommonMountFlags;
   const int part_num_oem =
-      GetPartitionNumFromImageVars(image_vars_dict, "PARTITION_NUM_OEM");
+      utils::GetPartitionNumFromImageVars(image_vars_dict, "PARTITION_NUM_OEM");
   const std::string* fs_form_oem = image_vars_dict.FindString("FS_FORMAT_OEM");
   const base::FilePath oem_dev =
       brillo::AppendPartition(root_dev, part_num_oem);

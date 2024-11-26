@@ -4,9 +4,6 @@
 
 #include "init/utils.h"
 
-#include <selinux/restorecon.h>
-#include <selinux/selinux.h>
-
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -18,6 +15,8 @@
 #include <base/strings/string_util.h>
 #include <brillo/process/process.h>
 #include <rootdev/rootdev.h>
+#include <selinux/restorecon.h>
+#include <selinux/selinux.h>
 #include <vboot/cgpt_params.h>
 #include <vboot/vboot_host.h>
 
@@ -228,6 +227,15 @@ void EnsureKernelIsBootable(const base::FilePath root_disk,
   }
 
   sync();
+}
+
+int GetPartitionNumFromImageVars(const base::Value::Dict& image_dict,
+                                 std::string_view key) {
+  const std::string* value = image_dict.FindString(key);
+  CHECK_NE(value, nullptr);
+  int num = 0;
+  CHECK(base::StringToInt(*value, &num));
+  return num;
 }
 
 }  // namespace utils

@@ -7,11 +7,12 @@
 
 #include <string>
 #include <vector>
-#include <libstorage/platform/platform.h>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/values.h>
 #include <brillo/brillo_export.h>
+#include <libstorage/platform/platform.h>
 
 namespace utils {
 
@@ -37,6 +38,11 @@ void BRILLO_EXPORT Restorecon(libstorage::Platform* platform_,
 // -1 on error.
 int BRILLO_EXPORT GetPartitionNumber(const base::FilePath& drive_name,
                                      const std::string& partition_label);
+
+// Get the partition number for the given key,
+// e.g. "PARTITION_NUM_STATE". Fails with a `CHECK()` if any error occurs.
+int BRILLO_EXPORT GetPartitionNumFromImageVars(
+    const base::Value::Dict& image_dict, std::string_view key);
 
 // Splits a device path, for example /dev/mmcblk0p1, /dev/sda3,
 // into the base device and partition numbers,
