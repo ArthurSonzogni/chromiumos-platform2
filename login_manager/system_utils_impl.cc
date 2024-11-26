@@ -244,23 +244,9 @@ pid_t SystemUtilsImpl::Wait(pid_t child_spec,
   }
 }
 
-bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                                  int32_t* file_size_32) {
-  const base::FilePath file_in_base_dir = PutInsideBaseDir(file);
-  // Get the file size (must fit in a 32 bit int for NSS).
-  std::optional<int64_t> raw_file_size = base::GetFileSize(file_in_base_dir);
-  if (!raw_file_size.has_value()) {
-    LOG(ERROR) << "Could not get size of " << file_in_base_dir.value();
-    return false;
-  }
-  int64_t file_size = raw_file_size.value();
-  if (file_size > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
-    LOG(ERROR) << file_in_base_dir.value() << "is " << file_size
-               << "bytes!!!  Too big!";
-    return false;
-  }
-  *file_size_32 = static_cast<int32_t>(file_size);
-  return true;
+std::optional<int64_t> SystemUtilsImpl::GetFileSize(
+    const base::FilePath& path) {
+  return base::GetFileSize(PutInsideBaseDir(path));
 }
 
 bool SystemUtilsImpl::Exists(const base::FilePath& file) {

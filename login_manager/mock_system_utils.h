@@ -45,9 +45,9 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD(bool, ProcessGroupIsGone, (pid_t, base::TimeDelta), (override));
   MOCK_METHOD(bool, ProcessIsGone, (pid_t, base::TimeDelta), (override));
   MOCK_METHOD(pid_t, Wait, (pid_t, base::TimeDelta, int*), (override));
-  MOCK_METHOD(bool,
-              EnsureAndReturnSafeFileSize,
-              (const base::FilePath&, int32_t*),
+  MOCK_METHOD(std::optional<int64_t>,
+              GetFileSize,
+              (const base::FilePath&),
               (override));
   MOCK_METHOD(bool, Exists, (const base::FilePath&), (override));
   MOCK_METHOD(bool, DirectoryExists, (const base::FilePath&), (override));

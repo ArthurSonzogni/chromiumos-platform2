@@ -48,24 +48,31 @@ bool PolicyKey::IsPopulated() const {
 bool PolicyKey::PopulateFromDiskIfPossible() {
   have_checked_disk_ = true;
   if (!base::PathExists(key_file_)) {
-    LOG(INFO) << "No policy key on disk at " << key_file_.value();
+    LOG(INFO) << "No policy key on disk at " << key_file_;
     return true;
   }
 
-  int32_t safe_file_size = 0;
-  if (!system_utils_->EnsureAndReturnSafeFileSize(key_file_, &safe_file_size)) {
-    LOG(ERROR) << key_file_.value() << " is too large!";
+  auto file_size = system_utils_->GetFileSize(key_file_);
+  if (!file_size) {
+    PLOG(ERROR) << "Failed to find a file at: " << key_file_;
+    return false;
+  }
+
+  // For historical reason, the max size is 4GB.
+  static constexpr int64_t kMaxPolicyKeyFileSize = 0xFFFFFFFF;
+  if (*file_size > kMaxPolicyKeyFileSize) {
+    LOG(ERROR) << key_file_ << " is too large";
     return false;
   }
 
   std::optional<std::vector<uint8_t>> buffer = base::ReadFileToBytes(key_file_);
-  if (!buffer || buffer->size() != safe_file_size) {
-    PLOG(ERROR) << key_file_.value() << " could not be read in its entirety!";
+  if (!buffer || buffer->size() != *file_size) {
+    PLOG(ERROR) << key_file_ << " could not be read in its entirety!";
     return false;
   }
 
   if (!nss_->CheckPublicKeyBlob(*buffer)) {
-    LOG(ERROR) << "Policy key " << key_file_.value() << " is corrupted!";
+    LOG(ERROR) << "Policy key " << key_file_ << " is corrupted!";
     return false;
   }
   key_ = std::move(buffer).value();

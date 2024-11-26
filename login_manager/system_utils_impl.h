@@ -54,8 +54,7 @@ class SystemUtilsImpl : public SystemUtils {
              base::TimeDelta timeout,
              int* status_out) override;
 
-  bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                   int32_t* file_size_32) override;
+  std::optional<int64_t> GetFileSize(const base::FilePath& path) override;
   bool Exists(const base::FilePath& file) override;
   bool DirectoryExists(const base::FilePath& dir) override;
   bool CreateDir(const base::FilePath& dir) override;

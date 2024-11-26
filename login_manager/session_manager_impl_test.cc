@@ -348,9 +348,9 @@ class SessionManagerImplTest : public ::testing::Test,
 
     // Forward file operation calls to |real_system_utils_| so that the tests
     // can actually create/modify/delete files in |tmpdir_|.
-    ON_CALL(system_utils_, EnsureAndReturnSafeFileSize(_, _))
-        .WillByDefault(Invoke(&real_system_utils_,
-                              &SystemUtilsImpl::EnsureAndReturnSafeFileSize));
+    ON_CALL(system_utils_, GetFileSize(_))
+        .WillByDefault(
+            Invoke(&real_system_utils_, &SystemUtilsImpl::GetFileSize));
     ON_CALL(system_utils_, Exists(_))
         .WillByDefault(Invoke(&real_system_utils_, &SystemUtilsImpl::Exists));
     ON_CALL(system_utils_, DirectoryExists(_))

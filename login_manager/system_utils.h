@@ -112,8 +112,9 @@ class SystemUtils {
                      base::TimeDelta timeout,
                      int* status_out) = 0;
 
-  virtual bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                           int32_t* file_size_32) = 0;
+  // Returns the size of the file at the given `path`. Returns std::nullopt
+  // on failure.
+  virtual std::optional<int64_t> GetFileSize(const base::FilePath& path) = 0;
 
   // Returns whether a file exists.
   virtual bool Exists(const base::FilePath& file) = 0;
