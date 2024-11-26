@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fstream>
 #include <iostream>
 #include <utility>
 
@@ -51,6 +52,8 @@ constexpr const char kFormatField[] = "format_field";
 constexpr const char kRequestSafety[] = "request_safety";
 constexpr const char kResponseSafety[] = "response_safety";
 constexpr const char kDelimiter[] = "delimiter";
+constexpr const char kInput[] = "input";
+constexpr const char kOutput[] = "output";
 
 base::FilePath GetModelTestDataDir() {
   return base::FilePath("/tmp");
@@ -157,6 +160,71 @@ std::string FormatInput(OnDeviceModelPlatformService& service,
   return *result;
 }
 
+struct ProcessingParams {
+  mojo::Remote<OnDeviceModelPlatformService>& service;
+  mojo::Remote<OnDeviceModel>& model;
+  mojo::Remote<Session>& session;
+  std::string uuid;
+  std::optional<uint32_t> request_safety;
+  std::optional<uint32_t> response_safety;
+  std::optional<uint32_t> format_feature;
+  std::string format_field;
+  std::optional<char> delimiter;
+};
+
+std::string Infer(const struct ProcessingParams& params, std::string input) {
+  ResponseHolder response;
+  if (params.request_safety.has_value() &&
+      !ValidateSafetyResult(*params.service, *params.model,
+                            *params.request_safety, input)) {
+    LOG(WARNING) << "Request safety violation detected!";
+  }
+  if (params.format_feature.has_value()) {
+    input =
+        FormatInput(*params.service, base::Uuid::ParseLowercase(params.uuid),
+                    *params.format_feature, params.format_field, input);
+  }
+  params.session->Execute(MakeInput(input), response.BindRemote());
+  std::string output = response.WaitForCompletion();
+  if (params.response_safety.has_value() &&
+      !ValidateSafetyResult(*params.service, *params.model,
+                            *params.response_safety, output)) {
+    LOG(WARNING) << "Response safety violation detected!";
+  }
+  return output;
+}
+
+void InteractiveProcess(const struct ProcessingParams& params) {
+  while (true) {
+    printf("> ");
+    std::string input;
+    std::getline(std::cin, input, params.delimiter.value_or('\n'));
+    input = base::TrimWhitespaceASCII(input, base::TRIM_ALL);
+    Infer(params, input);
+    puts("");
+    puts("-------------------");
+  }
+}
+
+void BatchProcess(const ProcessingParams& params,
+                  const std::string& input_file_path,
+                  const std::string& output_file_path) {
+  std::ifstream in_file(input_file_path);
+  CHECK(in_file) << "failed at opening file: " << input_file_path;
+
+  std::ofstream out_file(output_file_path);
+  CHECK(out_file) << "failed at opening file: " << output_file_path;
+
+  std::string input;
+  while (std::getline(in_file, input, params.delimiter.value_or('\n'))) {
+    std::string output = Infer(params, input);
+    out_file << output << params.delimiter.value_or('\n');
+  }
+
+  in_file.close();
+  out_file.close();
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -195,6 +263,18 @@ int main(int argc, char** argv) {
     std::string specified_delimiter = cl->GetSwitchValueASCII(kDelimiter);
     CHECK_EQ(specified_delimiter.size(), 1);
     delimiter = specified_delimiter[0];
+  }
+
+  std::optional<std::string> input_file_path;
+  std::optional<std::string> output_file_path;
+  if (cl->HasSwitch(kInput)) {
+    CHECK(cl->HasSwitch(kOutput))
+        << "`output` must be specified when `input` is given";
+    input_file_path = cl->GetSwitchValueASCII(kInput);
+    output_file_path = cl->GetSwitchValueASCII(kOutput);
+  } else {
+    CHECK(!cl->HasSwitch(kOutput))
+        << "`output` has no effect when `input` is not given";
   }
 
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams("thread_pool");
@@ -273,27 +353,15 @@ int main(int argc, char** argv) {
   mojo::Remote<Session> session;
   model->StartSession(session.BindNewPipeAndPassReceiver());
 
-  while (true) {
-    printf("> ");
-    ResponseHolder response;
-    std::string input;
-    std::getline(std::cin, input, delimiter.value_or('\n'));
-    input = base::TrimWhitespaceASCII(input, base::TRIM_ALL);
-    if (request_safety.has_value() &&
-        !ValidateSafetyResult(*service, *model, *request_safety, input)) {
-      LOG(WARNING) << "Request safety violation detected!";
-    }
-    if (format_feature.has_value()) {
-      input = FormatInput(*service, base::Uuid::ParseLowercase(uuid),
-                          *format_feature, format_field, input);
-    }
-    session->Execute(MakeInput(input), response.BindRemote());
-    const std::string& output = response.WaitForCompletion();
-    if (response_safety.has_value() &&
-        !ValidateSafetyResult(*service, *model, *response_safety, output)) {
-      LOG(WARNING) << "Response safety violation detected!";
-    }
-    puts("");
-    puts("-------------------");
+  const struct ProcessingParams params {
+    .service = service, .model = model, .session = session, .uuid = uuid,
+    .request_safety = request_safety, .response_safety = response_safety,
+    .format_feature = format_feature, .format_field = format_field,
+    .delimiter = delimiter
+  };
+  if (input_file_path.has_value()) {
+    BatchProcess(params, *input_file_path, *output_file_path);
+  } else {
+    InteractiveProcess(params);
   }
 }
