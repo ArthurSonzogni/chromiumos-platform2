@@ -33,7 +33,7 @@ class MountHelper {
   // For testing, we can change how we mount encstateful.
   MountHelper(libstorage::Platform* platform,
               StartupDep* startup_dep,
-              const Flags& flags,
+              const Flags* flags,
               const base::FilePath& root,
               const base::FilePath& stateful,
               std::unique_ptr<MountVarAndHomeChronosInterface> impl,
@@ -76,7 +76,7 @@ class MountHelper {
  protected:
   raw_ptr<libstorage::Platform> platform_;
   raw_ptr<StartupDep> startup_dep_;
-  const Flags flags_;
+  const Flags* flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;
 

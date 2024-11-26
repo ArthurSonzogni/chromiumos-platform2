@@ -71,12 +71,12 @@ int main(int argc, const char* argv[]) {
     PLOG(ERROR) << "Failed to write " << kPrintkDevkmsg;
   }
 
-  startup::Flags flags;
-  if (!startup::ChromeosStartup::ParseFlags(&flags, argc, argv)) {
+  std::unique_ptr<startup::Flags> flags = std::make_unique<startup::Flags>();
+  if (!startup::ChromeosStartup::ParseFlags(flags.get(), argc, argv)) {
     LOG(ERROR) << "Invalid usage, see --help.";
   }
   // A decreasing number is more verbose and numbers below zero are OK.
-  logging::SetMinLogLevel(logging::LOGGING_WARNING - flags.verbosity);
+  logging::SetMinLogLevel(logging::LOGGING_WARNING - flags->verbosity);
 
   // Create metric object to store UMA stats.
   init_metrics::ScopedInitMetricsSingleton scoped_metrics(
@@ -90,19 +90,19 @@ int main(int argc, const char* argv[]) {
   std::unique_ptr<startup::StartupDep> startup_dep =
       std::make_unique<startup::StartupDep>(platform.get());
 
-  startup::MountHelperFactory mount_helper_factory(
-      platform.get(), startup_dep.get(), flags, base::FilePath("/"),
-      base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease));
-  std::unique_ptr<startup::MountHelper> mount_helper =
-      mount_helper_factory.Generate(std::move(storage_container_factory));
+  std::unique_ptr<startup::MountHelperFactory> mount_helper_factory =
+      std::make_unique<startup::MountHelperFactory>(
+          platform.get(), startup_dep.get(), base::FilePath("/"),
+          base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease));
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl =
       std::make_unique<hwsec_foundation::TlclWrapperImpl>();
   std::unique_ptr<startup::ChromeosStartup> startup =
       std::make_unique<startup::ChromeosStartup>(
-          std::make_unique<vpd::Vpd>(), flags, base::FilePath("/"),
+          std::make_unique<vpd::Vpd>(), std::move(flags), base::FilePath("/"),
           base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease),
-          platform.get(), startup_dep.get(), std::move(mount_helper),
-          std::move(tlcl), init_metrics::InitMetrics::Get());
+          platform.get(), startup_dep.get(), std::move(mount_helper_factory),
+          std::move(storage_container_factory), std::move(tlcl),
+          init_metrics::InitMetrics::Get());
 
   return startup->Run();
 }

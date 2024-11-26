@@ -41,7 +41,7 @@ namespace startup {
 TestModeMountHelper::TestModeMountHelper(
     libstorage::Platform* platform,
     StartupDep* startup_dep,
-    const Flags& flags,
+    const Flags* flags,
     const base::FilePath& root,
     const base::FilePath& stateful,
     std::unique_ptr<MountVarAndHomeChronosInterface> impl,
@@ -62,7 +62,7 @@ base::FilePath TestModeMountHelper::GetKeyBackupFile() const {
   // will skip the normal system key generation procedure; otherwise, it will
   // generate and persist a key via its normal workflow.
   base::FilePath no_early = stateful_.Append(kNoEarlyKeyFile);
-  if (flags_.sys_key_util && !platform_->FileExists(no_early)) {
+  if (flags_->sys_key_util && !platform_->FileExists(no_early)) {
     LOG(INFO) << "Creating System Key";
     return stateful_.Append(kSysKeyBackupFile);
   }

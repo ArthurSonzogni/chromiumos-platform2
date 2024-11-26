@@ -20,6 +20,7 @@
 #include "init/metrics/metrics.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
+#include "init/startup/mount_helper_factory.h"
 #include "init/startup/startup_dep_impl.h"
 #include "init/startup/stateful_mount.h"
 
@@ -39,13 +40,15 @@ class ChromeosStartup {
 
   // Constructor for the class
   ChromeosStartup(std::unique_ptr<vpd::Vpd> vpd,
-                  const Flags& flags,
+                  std::unique_ptr<Flags> flags,
                   const base::FilePath& root,
                   const base::FilePath& stateful,
                   const base::FilePath& lsb_file,
                   libstorage::Platform* platform,
                   StartupDep* startup_dep,
-                  std::unique_ptr<MountHelper> mount_helper,
+                  std::unique_ptr<MountHelperFactory> mount_helper_factory,
+                  std::unique_ptr<libstorage::StorageContainerFactory>
+                      storage_container_factory,
                   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl,
                   init_metrics::InitMetrics* metrics);
 
@@ -160,13 +163,15 @@ class ChromeosStartup {
 
   raw_ptr<libstorage::Platform> platform_;
   std::unique_ptr<vpd::Vpd> vpd_;
-  const Flags flags_;
+  std::unique_ptr<Flags> flags_;
   const base::FilePath lsb_file_;
   const base::FilePath root_;
+  base::FilePath root_dev_;
   const base::FilePath stateful_;
   bootstat::BootStat bootstat_;
   raw_ptr<StartupDep> startup_dep_;
   std::unique_ptr<MountHelper> mount_helper_;
+  std::unique_ptr<MountHelperFactory> mount_helper_factory_;
   bool enable_stateful_security_hardening_;
   std::unique_ptr<StatefulMount> stateful_mount_;
   bool dev_mode_;

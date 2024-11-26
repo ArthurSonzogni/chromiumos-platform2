@@ -97,17 +97,15 @@ class EarlySetupTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::unique_ptr<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::unique_ptr<vpd::Vpd>(), std::make_unique<Flags>(), base_dir_,
+        stateful_dir_, base_dir_, platform_.get(), startup_dep_.get(),
+        std::make_unique<MountHelperFactory>(platform_.get(),
+                                             startup_dep_.get(), base_dir_,
+                                             stateful_dir_, base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
   }
 
-  startup::Flags flags_{};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -165,14 +163,14 @@ class DevCheckBlockTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(std::move(vpd_fake)), flags_, base_dir_,
-        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(std::move(vpd_fake)),
+        std::make_unique<Flags>(), base_dir_, stateful_dir_, base_dir_,
+        platform_.get(), startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
     ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 1));
     platform_->CreateDirectory(dev_mode_file.DirName());
     startup_->SetDevMode(true);
@@ -180,7 +178,6 @@ class DevCheckBlockTest : public ::testing::Test {
 
   crossystem::Crossystem* crossystem_;
   vpd::FakeVpd* vpd_;
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   base::FilePath dev_mode_file;
@@ -231,17 +228,15 @@ class TPMTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<Flags>(), base_dir_,
+        stateful_dir_, base_dir_, platform_.get(), startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
   }
 
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
@@ -395,19 +390,18 @@ class StatefulWipeTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
+        base_dir_, stateful_dir_, base_dir_, platform_.get(),
+        startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
     ASSERT_TRUE(platform_->CreateDirectory(stateful_dir_));
   }
 
   crossystem::Crossystem* crossystem_;
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
@@ -511,19 +505,18 @@ class StatefulWipeTestDevMode : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
+        base_dir_, stateful_dir_, base_dir_, platform_.get(),
+        startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
     ASSERT_TRUE(platform_->CreateDirectory(stateful_dir_));
   }
 
   crossystem::Crossystem* crossystem_;
-  startup::Flags flags_;
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_;
   std::unique_ptr<libstorage::FakePlatform> platform_;
@@ -590,19 +583,18 @@ class TpmCleanupTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
+        base_dir_, stateful_dir_, base_dir_, platform_.get(),
+        startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
     flag_file_ = stateful_dir_.Append(kTpmFirmwareUpdateRequestFlagFile);
     tpm_cleanup_ = base_dir_.Append(kTpmFirmwareUpdateCleanup);
   }
 
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
@@ -715,10 +707,9 @@ class ConfigTest : public ::testing::Test {
     startup::Flags flags;
     startup::ChromeosStartup::ParseFlags(&flags);
     startup::MountHelperFactory factory(platform_.get(), startup_dep_.get(),
-                                        flags, base_dir_, stateful_dir_,
-                                        lsb_file_);
+                                        base_dir_, stateful_dir_, lsb_file_);
     return factory.Generate(
-        std::unique_ptr<libstorage::StorageContainerFactory>());
+        std::unique_ptr<libstorage::StorageContainerFactory>(), &flags);
   }
 
   crossystem::Crossystem* crossystem_;
@@ -844,7 +835,7 @@ class MountStackTest : public ::testing::Test {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::unique_ptr<libstorage::StorageContainerFactory>());
   }
@@ -884,7 +875,7 @@ class MountVarAndHomeChronosEncryptedTest : public ::testing::Test {
     mock_mount_impl_ = std::make_unique<startup::MockMountVarAndHomeChronos>();
     mock_mount_impl_ptr_ = mock_mount_impl_.get();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
         std::move(mock_mount_impl_),
         std::unique_ptr<libstorage::StorageContainerFactory>());
     encryption_key_ = std::make_unique<encryption::EncryptionKey>(
@@ -937,8 +928,8 @@ class DoMountTest : public ::testing::Test {
 TEST_F(DoMountTest, StandardMountHelper) {
   std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
       std::make_unique<startup::StandardMountHelper>(
-          platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
-          std::move(mock_mount_impl_),
+          platform_.get(), startup_dep_.get(), &flags_, base_dir_,
+          stateful_dir_, std::move(mock_mount_impl_),
           std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(true));
   EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(*encryption_key_));
@@ -953,8 +944,8 @@ TEST_F(DoMountTest, TestModeMountHelperCreateSystemKey) {
 
   std::unique_ptr<startup::TestModeMountHelper> mount_helper_ =
       std::make_unique<startup::TestModeMountHelper>(
-          platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
-          std::move(mock_mount_impl_),
+          platform_.get(), startup_dep_.get(), &flags_, base_dir_,
+          stateful_dir_, std::move(mock_mount_impl_),
           std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(true));
   EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(*encryption_key_));
@@ -967,7 +958,7 @@ TEST_F(DoMountTest, TestModeMountHelperMountEncryptFailed) {
 
   ASSERT_TRUE(platform_->TouchFileDurable(mnt_encrypt_fail));
   mount_helper_ = std::make_unique<startup::TestModeMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+      platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
       std::move(mock_mount_impl_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(true));
@@ -980,7 +971,7 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarSuccess) {
   flags_.sys_key_util = false;
 
   mount_helper_ = std::make_unique<startup::TestModeMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+      platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
       std::move(mock_mount_impl_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(true));
@@ -1001,7 +992,7 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarFail) {
   ASSERT_TRUE(platform_->WriteStringToFile(encrypted_test2, "1"));
 
   mount_helper_ = std::make_unique<startup::TestModeMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+      platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
       std::move(mock_mount_impl_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillRepeatedly(Return(false));
@@ -1021,7 +1012,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntVar) {
   EXPECT_CALL(*platform_, Mount(_, var, "tmpfs", _, _)).WillOnce(Return(false));
 
   mount_helper_ = std::make_unique<FactoryModeMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+      platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
       std::unique_ptr<MountVarAndHomeChronosUnencryptedImpl>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
@@ -1038,7 +1029,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntHomeChronos) {
       .WillOnce(Return(false));
 
   mount_helper_ = std::make_unique<FactoryModeMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+      platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
       std::unique_ptr<MountVarAndHomeChronosUnencryptedImpl>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
@@ -1057,7 +1048,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsSuccess) {
       .WillOnce(Return(true));
 
   mount_helper_ = std::make_unique<FactoryModeMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+      platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
       std::unique_ptr<MountVarAndHomeChronosUnencryptedImpl>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
@@ -1070,7 +1061,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntVar) {
       .WillOnce(Return(false));
 
   mount_helper_ = std::make_unique<FactoryModeMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+      platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
       std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
           platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
@@ -1090,7 +1081,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntHomeChronos) {
       .WillOnce(Return(false));
 
   mount_helper_ = std::make_unique<FactoryModeMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+      platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
       std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
           platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
@@ -1110,7 +1101,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptSuccess) {
       .WillOnce(Return(true));
 
   mount_helper_ = std::make_unique<FactoryModeMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+      platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
       std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
           platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
@@ -1128,17 +1119,15 @@ class IsVarFullTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<Flags>(), base_dir_,
+        stateful_dir_, base_dir_, platform_.get(), startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
   }
 
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
@@ -1197,20 +1186,19 @@ class DeviceSettingsTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
+        base_dir_, stateful_dir_, base_dir_, platform_.get(),
+        startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
     base::FilePath var_lib = base_dir_.Append("var/lib");
     whitelist_ = var_lib.Append("whitelist");
     devicesettings_ = var_lib.Append("devicesettings");
   }
 
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
@@ -1267,17 +1255,16 @@ class DaemonStoreTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
+        base_dir_, stateful_dir_, base_dir_, platform_.get(),
+        startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
   }
 
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
@@ -1331,19 +1318,18 @@ class RemoveVarEmptyTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
+        base_dir_, stateful_dir_, base_dir_, platform_.get(),
+        startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
   }
 
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -1372,21 +1358,20 @@ class CheckVarLogTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
+        base_dir_, stateful_dir_, base_dir_, platform_.get(),
+        startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
     var_log_ = base_dir_.Append("var/log");
     platform_->CreateDirectory(var_log_);
   }
 
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -1452,12 +1437,11 @@ class DevMountPackagesTest : public ::testing::Test {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::unique_ptr<libstorage::StorageContainerFactory>()),
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
-        mount_helper_.get());
+        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get());
     proc_mounts_ = base_dir_.Append("proc/mounts");
     mount_log_ = base_dir_.Append("var/log/mount_options.log");
     stateful_dev_image_ = stateful_dir_.Append("dev_image");
@@ -1518,7 +1502,7 @@ TEST_F(DevMountPackagesTest, NoDeviceDisableStatefulSecurity) {
   EXPECT_CALL(*platform_, Mount(base::FilePath(), usrlocal_, _, MS_REMOUNT, _))
       .WillOnce(Return(true));
 
-  stateful_mount_->DevMountPackages(false);
+  stateful_mount_->DevMountPackages(mount_helper_.get(), false);
 
   EXPECT_TRUE(platform_->DirectoryExists(asan_dir_));
 
@@ -1549,7 +1533,7 @@ TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
   EXPECT_CALL(*platform_, Mount(portage, var_portage_, _, MS_BIND, _))
       .WillOnce(Return(true));
 
-  stateful_mount_->DevMountPackages(true);
+  stateful_mount_->DevMountPackages(mount_helper_.get(), true);
 
   EXPECT_TRUE(platform_->DirectoryExists(asan_dir_));
 
@@ -1572,17 +1556,16 @@ class RestoreContextsForVarTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
+        base_dir_, stateful_dir_, base_dir_, platform_.get(),
+        startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
   }
 
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -1619,20 +1602,19 @@ class RestorePreservedPathsTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<vpd::Vpd>(), flags_, base_dir_, stateful_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
-        std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_,
-            stateful_dir_,
-            std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-            std::unique_ptr<libstorage::StorageContainerFactory>()),
-        std::move(tlcl), nullptr);
+        std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
+        base_dir_, stateful_dir_, base_dir_, platform_.get(),
+        startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
     startup_->SetDevMode(true);
   }
 
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   hwsec_foundation::MockTlclWrapper* tlcl_;

@@ -315,27 +315,31 @@ bool ChromeosStartup::IsVarFull() {
 
 ChromeosStartup::ChromeosStartup(
     std::unique_ptr<vpd::Vpd> vpd,
-    const Flags& flags,
+    std::unique_ptr<Flags> flags,
     const base::FilePath& root,
     const base::FilePath& stateful,
     const base::FilePath& lsb_file,
     libstorage::Platform* platform,
     StartupDep* startup_dep,
-    std::unique_ptr<MountHelper> mount_helper,
+    std::unique_ptr<MountHelperFactory> mount_helper_factory,
+    std::unique_ptr<libstorage::StorageContainerFactory>
+        storage_container_factory,
     std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl,
     init_metrics::InitMetrics* metrics)
     : platform_(platform),
       vpd_(std::move(vpd)),
-      flags_(flags),
+      flags_(std::move(flags)),
       lsb_file_(lsb_file),
       root_(root),
       stateful_(stateful),
       startup_dep_(startup_dep),
-      mount_helper_(std::move(mount_helper)),
+      mount_helper_factory_(std::move(mount_helper_factory)),
       tlcl_(std::move(tlcl)),
       metrics_(metrics) {
-  stateful_mount_ = std::make_unique<StatefulMount>(
-      flags_, root_, stateful_, platform_, startup_dep_, mount_helper_.get());
+  stateful_mount_ = std::make_unique<StatefulMount>(root_, stateful_, platform_,
+                                                    startup_dep_);
+  mount_helper_ = mount_helper_factory_->Generate(
+      std::move(storage_container_factory), flags_.get());
 }
 
 void ChromeosStartup::EarlySetup() {
@@ -836,7 +840,7 @@ int ChromeosStartup::Run() {
 
   EarlySetup();
 
-  stateful_mount_->MountStateful();
+  stateful_mount_->MountStateful(flags_.get(), mount_helper_.get());
   state_dev_ = stateful_mount_->GetStateDev();
 
   if (enable_stateful_security_hardening_) {
@@ -865,7 +869,7 @@ int ChromeosStartup::Run() {
 
   std::optional<encryption::EncryptionKey> key;
 
-  if (flags_.encstateful) {
+  if (flags_->encstateful) {
     base::FilePath encrypted_failed =
         stateful_.Append(kMountEncryptedFailedFile);
     // Setup the TPM
@@ -929,7 +933,7 @@ int ChromeosStartup::Run() {
   // is available. If unlocking the encrypted reboot vault failed (due to
   // power loss/reboot/invalid vault), attempt to recreate the encrypted reboot
   // vault.
-  if (flags_.encrypted_reboot_vault) {
+  if (flags_->encrypted_reboot_vault) {
     encrypted_reboot_vault::EncryptedRebootVault vault(platform_);
     if (!vault.UnlockVault()) {
       vault.CreateVault();
@@ -1112,7 +1116,8 @@ void ChromeosStartup::DevMountPackages() {
   if (!dev_mode_) {
     return;
   }
-  stateful_mount_->DevMountPackages(enable_stateful_security_hardening_);
+  stateful_mount_->DevMountPackages(mount_helper_.get(),
+                                    enable_stateful_security_hardening_);
 }
 
 void ChromeosStartup::RestorePreservedPaths() {

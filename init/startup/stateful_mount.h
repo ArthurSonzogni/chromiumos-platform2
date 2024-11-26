@@ -25,14 +25,12 @@ namespace startup {
 // as well as other functionality related to the stateful partition.
 class StatefulMount {
  public:
-  std::vector<std::string> GenerateExt4Features();
+  std::vector<std::string> GenerateExt4Features(const Flags* flags);
 
-  StatefulMount(const Flags& flags,
-                const base::FilePath& root,
+  StatefulMount(const base::FilePath& root,
                 const base::FilePath& stateful,
                 libstorage::Platform* platform,
-                StartupDep* startup_dep,
-                MountHelper* mount_helper);
+                StartupDep* startup_dep);
 
   virtual ~StatefulMount() = default;
 
@@ -45,36 +43,37 @@ class StatefulMount {
                        const std::string& clobber_message);
 
   bool AttemptStatefulMigration();
-  void MountStateful();
+  void MountStateful(const Flags* flags, MountHelper* mount_helper);
+
   // For testing purposes, allow injecting partition variables,
   // instead of gathering them from the local .json file.
   void MountStateful(const base::FilePath& root_dev,
+                     const Flags* flags,
+                     MountHelper* mount_helper,
                      const base::Value& image_vars);
 
   bool DevUpdateStatefulPartition(const std::string& args,
                                   bool enable_stateful_security_hardening);
   void DevGatherLogs(const base::FilePath& base_dir);
-  void DevMountPackages(bool enable_stateful_security_hardening);
+  void DevMountPackages(MountHelper* mount_helper,
+                        bool enable_stateful_security_hardening);
   void RemoveEmptyDirectory(std::vector<base::FilePath> preserved_paths,
                             base::FilePath directory);
 
  private:
-  void AppendQuotaFeaturesAndOptions(std::vector<std::string>* sb_options,
+  void AppendQuotaFeaturesAndOptions(const Flags* flags,
+                                     std::vector<std::string>* sb_options,
                                      std::vector<std::string>* sb_features);
-  const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;
 
   raw_ptr<libstorage::Platform> platform_;
   raw_ptr<StartupDep> startup_dep_;
-  raw_ptr<MountHelper> mount_helper_;
   bootstat::BootStat bootstat_;
 
   base::FilePath root_device_;
   base::FilePath state_dev_;
   std::optional<brillo::VolumeGroup> volume_group_;
-  std::unique_ptr<libstorage::StorageContainerFactory>
-      storage_container_factory_;
 };
 
 }  // namespace startup

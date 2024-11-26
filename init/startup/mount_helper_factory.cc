@@ -27,13 +27,11 @@ namespace startup {
 
 MountHelperFactory::MountHelperFactory(libstorage::Platform* platform,
                                        StartupDep* startup_dep,
-                                       const Flags& flags,
                                        const base::FilePath& root,
                                        const base::FilePath& stateful,
                                        const base::FilePath& lsb_file)
     : platform_(platform),
       startup_dep_(startup_dep),
-      flags_(flags),
       root_(root),
       stateful_(stateful),
       lsb_file_(lsb_file) {}
@@ -47,7 +45,8 @@ MountHelperFactory::MountHelperFactory(libstorage::Platform* platform,
 // factory_utils.sh and factory_utils.sh.
 std::unique_ptr<MountHelper> MountHelperFactory::Generate(
     std::unique_ptr<libstorage::StorageContainerFactory>
-        storage_container_factory) {
+        storage_container_factory,
+    const Flags* flags) {
   bool dev_mode = InDevMode(platform_->GetCrosssystem());
   bool is_test_image = IsTestImage(platform_, lsb_file_);
   bool is_factory_mode = IsFactoryMode(platform_, root_, stateful_);
@@ -55,39 +54,39 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
   // Use factory mount helper.
   if (dev_mode && is_test_image && is_factory_mode) {
     return std::make_unique<FactoryModeMountHelper>(
-        platform_, startup_dep_, flags_, root_, stateful_,
+        platform_, startup_dep_, flags, root_, stateful_,
         std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
             platform_, startup_dep_, root_, stateful_),
         std::move(storage_container_factory));
   }
 
   if (dev_mode && is_test_image) {
-    if (USE_ENCRYPTED_STATEFUL && flags_.encstateful) {
+    if (USE_ENCRYPTED_STATEFUL && flags->encstateful) {
       return std::make_unique<TestModeMountHelper>(
-          platform_, startup_dep_, flags_, root_, stateful_,
+          platform_, startup_dep_, flags, root_, stateful_,
           std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
               platform_, startup_dep_, storage_container_factory.get(), root_,
               stateful_),
           std::move(storage_container_factory));
     } else {
       return std::make_unique<TestModeMountHelper>(
-          platform_, startup_dep_, flags_, root_, stateful_,
+          platform_, startup_dep_, flags, root_, stateful_,
           std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
               platform_, startup_dep_, root_, stateful_),
           std::move(storage_container_factory));
     }
   }
 
-  if (USE_ENCRYPTED_STATEFUL && flags_.encstateful) {
+  if (USE_ENCRYPTED_STATEFUL && flags->encstateful) {
     return std::make_unique<StandardMountHelper>(
-        platform_, startup_dep_, flags_, root_, stateful_,
+        platform_, startup_dep_, flags, root_, stateful_,
         std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
             platform_, startup_dep_, storage_container_factory.get(), root_,
             stateful_),
         std::move(storage_container_factory));
   }
   return std::make_unique<StandardMountHelper>(
-      platform_, startup_dep_, flags_, root_, stateful_,
+      platform_, startup_dep_, flags, root_, stateful_,
       std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
           platform_, startup_dep_, root_, stateful_),
       std::move(storage_container_factory));

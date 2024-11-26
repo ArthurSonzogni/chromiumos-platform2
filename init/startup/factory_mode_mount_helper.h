@@ -26,7 +26,7 @@ class FactoryModeMountHelper : public MountHelper {
  public:
   FactoryModeMountHelper(libstorage::Platform* platform,
                          StartupDep* startup_dep,
-                         const Flags& flags,
+                         const Flags* flags,
                          const base::FilePath& root,
                          const base::FilePath& stateful,
                          std::unique_ptr<MountVarAndHomeChronosInterface> impl,

@@ -28,7 +28,6 @@ class MountHelperFactory {
  public:
   MountHelperFactory(libstorage::Platform* platform,
                      StartupDep* startup_dep,
-                     const Flags& flags,
                      const base::FilePath& root,
                      const base::FilePath& stateful,
                      const base::FilePath& lsb_file);
@@ -40,12 +39,12 @@ class MountHelperFactory {
   // functions DoMountVarAndHomeChronos and DoUmountVarAndHomeChronos.
   virtual std::unique_ptr<MountHelper> Generate(
       std::unique_ptr<libstorage::StorageContainerFactory>
-          storage_container_factory);
+          storage_container_factory,
+      const Flags* flags);
 
  private:
   raw_ptr<libstorage::Platform> platform_;
   raw_ptr<StartupDep> startup_dep_;
-  const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;
   const base::FilePath lsb_file_;

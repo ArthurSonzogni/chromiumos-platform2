@@ -103,18 +103,14 @@ uint64_t GetDirtyExpireCentisecs(libstorage::Platform* platform,
 
 namespace startup {
 
-StatefulMount::StatefulMount(const Flags& flags,
-                             const base::FilePath& root,
+StatefulMount::StatefulMount(const base::FilePath& root,
                              const base::FilePath& stateful,
                              libstorage::Platform* platform,
-                             StartupDep* startup_dep,
-                             MountHelper* mount_helper)
-    : flags_(flags),
-      root_(root),
+                             StartupDep* startup_dep)
+    : root_(root),
       stateful_(stateful),
       platform_(platform),
-      startup_dep_(startup_dep),
-      mount_helper_(mount_helper) {}
+      startup_dep_(startup_dep) {}
 
 std::optional<base::Value> StatefulMount::GetImageVars(base::FilePath json_file,
                                                        std::string key) {
@@ -143,6 +139,7 @@ std::optional<base::Value> StatefulMount::GetImageVars(base::FilePath json_file,
 }
 
 void StatefulMount::AppendQuotaFeaturesAndOptions(
+    const Flags* flags,
     std::vector<std::string>* sb_options,
     std::vector<std::string>* sb_features) {
   // Enable/disable quota feature.
@@ -154,28 +151,29 @@ void StatefulMount::AppendQuotaFeaturesAndOptions(
   // the filesystem
   sb_options->push_back(kQuotaOpt);
   sb_features->push_back("-Qusrquota,grpquota");
-  if (flags_.prjquota) {
+  if (flags->prjquota) {
     sb_features->push_back("-Qprjquota");
   } else {
     sb_features->push_back("-Q^prjquota");
   }
 }
 
-std::vector<std::string> StatefulMount::GenerateExt4Features() {
+std::vector<std::string> StatefulMount::GenerateExt4Features(
+    const Flags* flags) {
   std::vector<std::string> sb_features;
   std::vector<std::string> sb_options;
 
   base::FilePath encryption = root_.Append(kExt4Features).Append("encryption");
-  if (flags_.direncryption && platform_->FileExists(encryption)) {
+  if (flags->direncryption && platform_->FileExists(encryption)) {
     sb_options.push_back("encrypt");
   }
 
   base::FilePath verity_file = root_.Append(kExt4Features).Append("verity");
-  if (flags_.fsverity && platform_->FileExists(verity_file)) {
+  if (flags->fsverity && platform_->FileExists(verity_file)) {
     sb_options.push_back("verity");
   }
 
-  AppendQuotaFeaturesAndOptions(&sb_options, &sb_features);
+  AppendQuotaFeaturesAndOptions(flags, &sb_options, &sb_features);
 
   if (!sb_features.empty() || !sb_options.empty()) {
     if (!sb_options.empty()) {
@@ -214,7 +212,8 @@ bool StatefulMount::AttemptStatefulMigration() {
   return true;
 }
 
-void StatefulMount::MountStateful() {
+void StatefulMount::MountStateful(const Flags* flags,
+                                  MountHelper* mount_helper) {
   // Prepare to mount stateful partition.
   root_device_ = utils::GetRootDevice(true);
 
@@ -249,10 +248,12 @@ void StatefulMount::MountStateful() {
     utils::Reboot();
     return;
   }
-  return MountStateful(root_device_, *image_vars);
+  return MountStateful(root_device_, flags, mount_helper, *image_vars);
 }
 
 void StatefulMount::MountStateful(const base::FilePath& root_dev,
+                                  const Flags* flags,
+                                  MountHelper* mount_helper,
                                   const base::Value& image_vars) {
   const auto& image_vars_dict = image_vars.GetDict();
   bool status;
@@ -290,7 +291,7 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
 
   bool should_mount_lvm = false;
   std::optional<brillo::Thinpool> thinpool;
-  if (USE_LVM_STATEFUL_PARTITION && flags_.lvm_stateful) {
+  if (USE_LVM_STATEFUL_PARTITION && flags->lvm_stateful) {
     brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
 
     // Attempt to get a valid volume group name.
@@ -298,7 +299,7 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
     std::optional<brillo::PhysicalVolume> pv =
         lvm->GetPhysicalVolume(state_dev_);
 
-    if (!pv && flags_.lvm_migration) {
+    if (!pv && flags->lvm_migration) {
       // Attempt to migrate to thinpool if migration is enabled: if the
       // migration fails, then we expect the stateful partition to be back to
       // its original state.
@@ -360,13 +361,13 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
             .name = state_dev_.value()}};
   }
   config.filesystem_config = {
-      .tune2fs_opts = GenerateExt4Features(),
+      .tune2fs_opts = GenerateExt4Features(flags),
       .backend_type = libstorage::StorageContainerType::kUnencrypted,
       .recovery = libstorage::RecoveryType::kDoNothing,
       .metrics_prefix = "Platform.FileSystem.Stateful"};
 
   std::unique_ptr<libstorage::StorageContainer> container =
-      mount_helper_->GetStorageContainerFactory()->Generate(
+      mount_helper->GetStorageContainerFactory()->Generate(
           config, libstorage::StorageContainerType::kExt4,
           libstorage::FileSystemKeyReference());
 
@@ -640,7 +641,8 @@ void StatefulMount::DevGatherLogs(const base::FilePath& base_dir) {
   }
 }
 
-void StatefulMount::DevMountPackages(bool enable_stateful_security_hardening) {
+void StatefulMount::DevMountPackages(MountHelper* mount_helper,
+                                     bool enable_stateful_security_hardening) {
   // Set up the logging dir that ASAN compiled programs will write to. We want
   // any privileged account to be able to write here so unittests need not worry
   // about setting things up ahead of time. See crbug.com/453579 for details.
@@ -683,7 +685,7 @@ void StatefulMount::DevMountPackages(bool enable_stateful_security_hardening) {
 
   // Mount and then remount to enable exec/suid.
   base::FilePath usrlocal = root_.Append(kUsrLocal);
-  mount_helper_->BindMountOrFail(stateful_dev_image, usrlocal);
+  mount_helper->BindMountOrFail(stateful_dev_image, usrlocal);
   if (!platform_->Mount(base::FilePath(), usrlocal, "", MS_REMOUNT, "")) {
     PLOG(WARNING) << "Failed to remount " << usrlocal.value();
   }
@@ -726,7 +728,7 @@ void StatefulMount::DevMountPackages(bool enable_stateful_security_hardening) {
           continue;
         }
       }
-      mount_helper_->BindMountOrFail(full, dest);
+      mount_helper->BindMountOrFail(full, dest);
     }
   }
 }

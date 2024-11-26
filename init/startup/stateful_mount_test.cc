@@ -65,14 +65,13 @@ class GetImageVarsTest : public ::testing::Test {
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir, base_dir,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::unique_ptr<libstorage::StorageContainerFactory>());
     json_file_ = base_dir.Append("vars.json");
     ASSERT_TRUE(platform_->WriteStringToFile(json_file_, kImageVarsContent));
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
-        mount_helper_.get());
+        base_dir, base_dir, platform_.get(), startup_dep_.get());
   }
 
   base::FilePath json_file_;
@@ -117,7 +116,6 @@ class Ext4FeaturesTest : public ::testing::Test {
   base::FilePath base_dir{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
 };
 
 TEST_F(Ext4FeaturesTest, Encrypt) {
@@ -126,14 +124,10 @@ TEST_F(Ext4FeaturesTest, Encrypt) {
       base_dir.Append("sys/fs/ext4/features/encryption");
   ASSERT_TRUE(platform_->WriteStringToFile(encrypt_file, "1"));
 
-  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
-      std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-      std::unique_ptr<libstorage::StorageContainerFactory>());
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
-      mount_helper_.get());
-  std::vector<std::string> features = stateful_mount_->GenerateExt4Features();
+      base_dir, base_dir, platform_.get(), startup_dep_.get());
+  std::vector<std::string> features =
+      stateful_mount_->GenerateExt4Features(&flags_);
   std::string features_str = base::JoinString(features, " ");
   EXPECT_EQ(features_str,
             "-g 20119 -Qusrquota,grpquota -Q^prjquota -O encrypt,quota");
@@ -144,28 +138,20 @@ TEST_F(Ext4FeaturesTest, Verity) {
   base::FilePath verity_file = base_dir.Append("sys/fs/ext4/features/verity");
   ASSERT_TRUE(platform_->WriteStringToFile(verity_file, "1"));
 
-  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
-      std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-      std::unique_ptr<libstorage::StorageContainerFactory>());
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
-      mount_helper_.get());
-  std::vector<std::string> features = stateful_mount_->GenerateExt4Features();
+      base_dir, base_dir, platform_.get(), startup_dep_.get());
+  std::vector<std::string> features =
+      stateful_mount_->GenerateExt4Features(&flags_);
   std::string features_str = base::JoinString(features, " ");
   EXPECT_EQ(features_str,
             "-g 20119 -Qusrquota,grpquota -Q^prjquota -O verity,quota");
 }
 
 TEST_F(Ext4FeaturesTest, ReservedBlocksGID) {
-  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
-      std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-      std::unique_ptr<libstorage::StorageContainerFactory>());
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
-      mount_helper_.get());
-  std::vector<std::string> features = stateful_mount_->GenerateExt4Features();
+      base_dir, base_dir, platform_.get(), startup_dep_.get());
+  std::vector<std::string> features =
+      stateful_mount_->GenerateExt4Features(&flags_);
   std::string features_str = base::JoinString(features, " ");
   EXPECT_EQ(features_str, "-g 20119 -Qusrquota,grpquota -Q^prjquota -O quota");
 }
@@ -173,27 +159,19 @@ TEST_F(Ext4FeaturesTest, ReservedBlocksGID) {
 TEST_F(Ext4FeaturesTest, EnableQuotaWithPrjQuota) {
   flags_.prjquota = true;
 
-  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
-      std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-      std::unique_ptr<libstorage::StorageContainerFactory>());
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
-      mount_helper_.get());
-  std::vector<std::string> features = stateful_mount_->GenerateExt4Features();
+      base_dir, base_dir, platform_.get(), startup_dep_.get());
+  std::vector<std::string> features =
+      stateful_mount_->GenerateExt4Features(&flags_);
   std::string features_str = base::JoinString(features, " ");
   EXPECT_EQ(features_str, "-g 20119 -Qusrquota,grpquota -Qprjquota -O quota");
 }
 
 TEST_F(Ext4FeaturesTest, EnableQuotaNoPrjQuota) {
-  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
-      std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-      std::unique_ptr<libstorage::StorageContainerFactory>());
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
-      mount_helper_.get());
-  std::vector<std::string> features = stateful_mount_->GenerateExt4Features();
+      base_dir, base_dir, platform_.get(), startup_dep_.get());
+  std::vector<std::string> features =
+      stateful_mount_->GenerateExt4Features(&flags_);
   std::string features_str = base::JoinString(features, " ");
   EXPECT_EQ(features_str, "-g 20119 -Qusrquota,grpquota -Q^prjquota -O quota");
 }
@@ -210,20 +188,14 @@ class DevUpdateStatefulTest : public ::testing::Test {
     developer_target = stateful.Append("dev_image");
     developer_new = stateful.Append("dev_image_new");
     preserve_dir = stateful.Append("unencrypted/preserve");
-    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
-        std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-        std::unique_ptr<libstorage::StorageContainerFactory>());
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir, stateful, platform_.get(), startup_dep_.get(),
-        mount_helper_.get());
+        base_dir, stateful, platform_.get(), startup_dep_.get());
   }
 
   base::FilePath base_dir{"/"};
   base::FilePath stateful;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::Flags flags_{};
-  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::FilePath stateful_update_file;
@@ -345,13 +317,8 @@ class DevGatherLogsTest : public ::testing::Test {
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
-    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
-        std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-        std::unique_ptr<libstorage::StorageContainerFactory>());
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir, stateful, platform_.get(), startup_dep_.get(),
-        mount_helper_.get());
+        base_dir, stateful, platform_.get(), startup_dep_.get());
     lab_preserve_logs_ = stateful.Append(".gatherme");
     prior_log_dir_ = stateful.Append("unencrypted/prior_logs");
     var_dir_ = base_dir.Append("var");
@@ -370,7 +337,6 @@ class DevGatherLogsTest : public ::testing::Test {
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::Flags flags_{};
-  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
 };
 
@@ -428,14 +394,13 @@ class RunMountStatefulLVM : public ::testing::Test {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir, base_dir,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::make_unique<libstorage::StorageContainerFactory>(platform_.get(),
                                                               nullptr));
     flags_.lvm_stateful = true;
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir, stateful_dir, platform_.get(), startup_dep_.get(),
-        mount_helper_.get());
+        base_dir, stateful_dir, platform_.get(), startup_dep_.get());
 
     // Setup a default partition information.
     std::string vars_content = R"""(
@@ -465,7 +430,8 @@ TEST_F(RunMountStatefulLVM, NoStatefulPartition) {
   base::FilePath rootdev{"/dev/mmc0blk1"};
   EXPECT_CALL(*platform_, Fsck(_, _, _)).Times(0);
   EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
-  stateful_mount_->MountStateful(rootdev, *partition_info_);
+  stateful_mount_->MountStateful(rootdev, &flags_, mount_helper_.get(),
+                                 *partition_info_);
 
   std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -483,7 +449,8 @@ TEST_F(RunMountStatefulLVM, StatefulPartitionEmpty) {
   EXPECT_CALL(*platform_, Tune2Fs(statefuldev, _)).WillOnce(Return(false));
   EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
 
-  stateful_mount_->MountStateful(rootdev, *partition_info_);
+  stateful_mount_->MountStateful(rootdev, &flags_, mount_helper_.get(),
+                                 *partition_info_);
 
   std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -498,13 +465,12 @@ class RunMountStateful : public ::testing::Test {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir, base_dir,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::make_unique<libstorage::StorageContainerFactory>(platform_.get(),
                                                               nullptr));
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir, stateful_dir, platform_.get(), startup_dep_.get(),
-        mount_helper_.get());
+        base_dir, stateful_dir, platform_.get(), startup_dep_.get());
 
     // Setup a default partition information.
     std::string vars_content = R"""(
@@ -534,7 +500,8 @@ TEST_F(RunMountStateful, NoStatefulPartition) {
   base::FilePath rootdev{"/dev/mmc0blk1"};
   EXPECT_CALL(*platform_, Fsck(_, _, _)).Times(0);
   EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
-  stateful_mount_->MountStateful(rootdev, *partition_info_);
+  stateful_mount_->MountStateful(rootdev, &flags_, mount_helper_.get(),
+                                 *partition_info_);
 
   std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -552,7 +519,8 @@ TEST_F(RunMountStateful, StatefulPartitionEmpty) {
   EXPECT_CALL(*platform_, Tune2Fs(statefuldev, _)).WillOnce(Return(false));
   EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
 
-  stateful_mount_->MountStateful(rootdev, *partition_info_);
+  stateful_mount_->MountStateful(rootdev, &flags_, mount_helper_.get(),
+                                 *partition_info_);
 
   std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
