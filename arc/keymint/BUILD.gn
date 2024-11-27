@@ -33,6 +33,9 @@ group("all") {
   if (use.test) {
     deps += [ ":arc-keymintd_testrunner" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":arc_keymintd_fuzzer" ]
+  }
 }
 
 # Binary
@@ -89,7 +92,10 @@ generate_mojom_bindings("keymint_mojo_bindings") {
 
 # LibKeyMint Support
 shared_library("libkeymint-support") {
-  configs += [ ":support_config" ]
+  configs += [
+    ":boringssl_config",
+    ":support_config",
+  ]
   deps = [
     ":libbase",
     ":libcppbor_external",
@@ -398,6 +404,29 @@ if (use.test) {
       ":libkeymint",
       ":liblog",
       "//common-mk/testrunner:testrunner",
+    ]
+  }
+}
+
+# Fuzzer target.
+if (use.fuzzer) {
+  pkg_config("arc_keymintd_fuzzer_config") {
+    pkg_deps = [ "libchrome" ]
+  }
+  executable("arc_keymintd_fuzzer") {
+    sources = [
+      "conversion.cc",
+      "conversion_fuzzer.cc",
+      "keymint_logger.cc",
+    ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":arc_keymintd_fuzzer_config",
+    ]
+    deps = [
+      ":keymint_mojo_bindings",
+      ":libarckeymint_context",
+      ":libkeymint",
     ]
   }
 }
