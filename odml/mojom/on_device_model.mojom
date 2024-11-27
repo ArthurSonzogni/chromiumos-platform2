@@ -13,7 +13,6 @@ import "odml/mojom/file.mojom";
 import "odml/mojom/file_path.mojom";
 
 // Opened file resources needed to define an adaptation.
-[Stable]
 struct AdaptationAssets {
   // Model weights could be passed as an opened file or a file path.
   // The backend type will decide which one should be used, or
@@ -29,7 +28,6 @@ struct AdaptationAssets {
 };
 
 // Conveys the result of a language detection attempt on output text.
-[Stable]
 struct LanguageDetectionResult {
   // Language code of the detected language. If detection was indeterminate,
   // this is "und" per ISO 639-2.
@@ -40,7 +38,6 @@ struct LanguageDetectionResult {
 };
 
 // Aggregated text safety evaluation results.
-[Stable]
 struct SafetyInfo {
   // Independent safety class probabilities in the range [0, 1].
   array<float> class_scores;
@@ -51,7 +48,6 @@ struct SafetyInfo {
 };
 
 // Partial response received via StreamingResponder.OnResponse().
-[Stable]
 struct ResponseChunk {
   // Text for this chunk of the response.
   string text;
@@ -63,7 +59,6 @@ struct ResponseChunk {
 
 // Information pertaining to a complete response that was streamed by a
 // StreamingResponder.
-[Stable]
 struct ResponseSummary {
   // Optional safety information computed against the full response.
   SafetyInfo? safety_info;
@@ -79,7 +74,6 @@ struct ResponseSummary {
 
 // Streams a response from a call to execute a model. Close this pipe to cancel
 // the call to |Execute()|.
-[Stable]
 interface StreamingResponder {
   // This is called each time a new chunk of text is available.
   OnResponse@0(ResponseChunk chunk);
@@ -92,7 +86,6 @@ interface StreamingResponder {
 
 // Notifies the caller when the model is done processing context. Close this
 // pipe to cancel the call to |AddContext()|.
-[Stable]
 interface ContextClient {
   // Called when the context has finished processing with the number of tokens
   // processed.
@@ -100,7 +93,6 @@ interface ContextClient {
 };
 
 // Params to describe the adaptation to load.
-[Stable]
 struct LoadAdaptationParams {
   // Assets for an adaptation.
   AdaptationAssets assets;
@@ -115,7 +107,7 @@ struct LoadAdaptationParams {
 };
 
 // The set of tokens that can be added as part of an input.
-[Stable, Extensible]
+[Extensible]
 enum Token {
   // Prefix for system text.
   kSystem,
@@ -127,7 +119,6 @@ enum Token {
   [Default] kEnd,
 };
 
-[Stable]
 union InputPiece {
   // A token which may have different internal representations depending on the
   // loaded model.
@@ -136,7 +127,6 @@ union InputPiece {
   string text;
 };
 
-[Stable]
 struct Input {
   // A list of tokens and text that the model will use to construct the final
   // input.
@@ -144,7 +134,6 @@ struct Input {
 };
 
 // Options to control how the model handles input.
-[Stable]
 struct InputOptions {
   // Deprecated, use input instead.
   string deprecated_text;
@@ -187,7 +176,6 @@ struct InputOptions {
 
 // A session for a model that allows adding context and then executing an input
 // with that context.
-[Stable]
 interface Session {
   // Adds context to this session. Any context added here will build off of
   // previous calls to |AddContext()|.
@@ -217,7 +205,6 @@ interface Session {
 
 // A loaded model which can be queried. This interface must be controlled by the
 // browser and consumers must take care to sanitize inputs.
-[Stable]
 interface OnDeviceModel {
   // Starts a session with this model. If a session starts before the previous
   // one has completed and the multiple sessions support is not enabled for
@@ -244,7 +231,6 @@ interface OnDeviceModel {
       => (LoadModelResult result);
 };
 
-[Stable]
 interface TextSafetyModel {
   // Infers multiclass safety scores for the given `text` using this model's
   // underlying safety classifier, if any. Returns null if classification fails
@@ -258,7 +244,7 @@ interface TextSafetyModel {
 
 // Classifies the device based on how fast it is estimated to be able to run a
 // model.
-[Stable, Extensible]
+[Extensible]
 enum PerformanceClass {
   // There was an error running the benchmark. The device is likely not able to
   // run any models.
@@ -276,7 +262,7 @@ enum PerformanceClass {
   kVeryHigh,
 };
 
-[Stable, Extensible]
+[Extensible]
 enum LoadModelResult {
   kSuccess,
   kGpuBlocked,

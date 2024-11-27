@@ -70,13 +70,12 @@ struct TextSafetyModelParams {
 };
 
 // An observer to report the current platform model loading progress.
-[Stable]
 interface PlatformModelProgressObserver {
   // The progress value is between 0.0 and 1.0.
   Progress@0(double progress);
 };
 
-[Stable, Extensible]
+[Extensible]
 enum PlatformModelState {
   [Default] kUnknownState,
   kInstalledOnDisk,
@@ -90,7 +89,7 @@ enum PlatformModelState {
   kInvalidBaseModelDescriptor,
 };
 
-[Stable, Extensible]
+[Extensible]
 enum FormatFeature {
   [Default] kNone = 0,
   kPrompt = 1,
@@ -98,7 +97,7 @@ enum FormatFeature {
   kAudioTitle = 3,
 };
 
-[Stable, Extensible]
+[Extensible]
 enum SafetyFeature {
   [Default] kGeneral = 0,
   kAudioSummaryRequest = 1,
@@ -111,7 +110,6 @@ enum SafetyFeature {
 // on-device and which may process untrustworthy data.
 // This is a ChromeOS specific interface. And the service will be implemented
 // in the ChromeOS platform side instead of the Chrome browser side.
-[Stable]
 interface OnDeviceModelPlatformService {
   // Initializes a new model instance given platform model `uuid`, this can be
   // used on some specific platforms(e.g. ChromeOS). The model can be either
