@@ -58,13 +58,6 @@ bool PolicyKey::PopulateFromDiskIfPossible() {
     return false;
   }
 
-  // For historical reason, the max size is 4GB.
-  static constexpr int64_t kMaxPolicyKeyFileSize = 0xFFFFFFFF;
-  if (*file_size > kMaxPolicyKeyFileSize) {
-    LOG(ERROR) << key_file_ << " is too large";
-    return false;
-  }
-
   std::optional<std::vector<uint8_t>> buffer = base::ReadFileToBytes(key_file_);
   if (!buffer || buffer->size() != *file_size) {
     PLOG(ERROR) << key_file_ << " could not be read in its entirety!";
