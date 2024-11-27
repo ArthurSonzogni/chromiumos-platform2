@@ -232,8 +232,6 @@ class KeyboardBacklightController : public BacklightController,
   TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
   std::optional<PowerSource> power_source_;  // nullopt for unknown
 
-  bool dimmed_for_inactivity_ = false;
-  bool off_for_inactivity_ = false;
   bool suspended_ = false;
   bool shutting_down_ = false;
   bool forced_off_ = false;

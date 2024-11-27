@@ -344,23 +344,11 @@ void KeyboardBacklightController::HandleBatterySaverModeChange(
               BacklightBrightnessChange_Cause_BATTERY_SAVER_STATE_CHANGED);
 }
 
-void KeyboardBacklightController::SetDimmedForInactivity(bool dimmed) {
-  if (dimmed == dimmed_for_inactivity_) {
-    return;
-  }
-  dimmed_for_inactivity_ = dimmed;
-  UpdateState(Transition::SLOW,
-              BacklightBrightnessChange_Cause_USER_INACTIVITY);
-}
+void KeyboardBacklightController::SetDimmedForInactivity(bool dimmed) {}
 
-void KeyboardBacklightController::SetOffForInactivity(bool off) {
-  if (off == off_for_inactivity_) {
-    return;
-  }
-  off_for_inactivity_ = off;
-  UpdateState(Transition::SLOW,
-              BacklightBrightnessChange_Cause_USER_INACTIVITY);
-}
+// Inactivity is determined by the keep_on_during_video_delay_ and
+// keep_on_delay_ values instead of this function.
+void KeyboardBacklightController::SetOffForInactivity(bool off) {}
 
 void KeyboardBacklightController::SetSuspended(bool suspended) {
   if (suspended == suspended_) {
@@ -782,19 +770,14 @@ bool KeyboardBacklightController::UpdateState(
     return ApplyBrightnessPercent(0.0, transition, cause, signal_behavior);
   }
 
-  // If the user has asked for a specific brightness level, use it unless the
-  // user is inactive.
-  if (user_brightness_percent_.has_value()) {
-    double percent = *user_brightness_percent_;
-    if ((off_for_inactivity_ || dimmed_for_inactivity_) && !hovering_) {
-      percent = off_for_inactivity_ ? 0.0 : std::min(kDimPercent, percent);
-    }
-    return ApplyBrightnessPercent(percent, transition, cause, signal_behavior);
-  }
+  // If the user has asked for a specific brightness level, use it.
+  double percent = user_brightness_percent_.has_value()
+                       ? *user_brightness_percent_
+                       : automated_percent_;
 
   // If requested, force the backlight on if the user is currently or was
   // recently active and off otherwise.
-  double percent = RecentlyHoveringOrUserActive() ? automated_percent_ : 0.0;
+  percent = RecentlyHoveringOrUserActive() ? percent : 0.0;
   return ApplyBrightnessPercent(percent, transition, cause, signal_behavior);
 }
 

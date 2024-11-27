@@ -220,6 +220,10 @@ TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercentWithScaling) {
   user_steps_pref_ = "0.0\n5.0\n20.0\n30.0\n50.0";
   initial_backlight_level_ = 0;
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  CallSetKeyboardBrightness(/*percent=*/0,
+                            SetBacklightBrightnessRequest_Transition_FAST,
+                            SetBacklightBrightnessRequest_Cause_USER_REQUEST);
 
   // Level              0    5   20   30    50
   // Raw percentages    0.0  5.0 20.0 30.0  50.0
@@ -283,13 +287,19 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffFasterForFullscreenVideo) {
   controller_.HandleVideoActivity(true);
   EXPECT_EQ(20, backlight_.current_level());
 
-  // It should also be ignored after the brightness has been set by the user.
+  // The same timeout policy should apply when the brightness has been set by
+  // the user.
   controller_.HandleSessionStateChange(SessionState::STARTED);
   controller_.HandleVideoActivity(true);
   EXPECT_EQ(0, backlight_.current_level());
   CallIncreaseKeyboardBrightness();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(100, backlight_.current_level());
+  AdvanceTime(KeyboardBacklightController::kVideoTimeoutInterval);
   EXPECT_EQ(100, backlight_.current_level());
   controller_.HandleVideoActivity(true);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(100, backlight_.current_level());
   CallDecreaseKeyboardBrightness();
   EXPECT_EQ(0, backlight_.current_level());
@@ -360,20 +370,13 @@ TEST_F(KeyboardBacklightControllerTest, InactivityInManualMode) {
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
-  // Requests to dim the backlight and turn it off should be honored, as
-  // should changes to turn it back on and undim.
-  controller_.SetDimmedForInactivity(true);
-  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
-  controller_.SetOffForInactivity(true);
+  // In manual mode, we should still follow the timeout preferences
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
-  controller_.SetOffForInactivity(false);
-  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
-  controller_.SetDimmedForInactivity(false);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 }
 
 TEST_F(KeyboardBacklightControllerTest, DeferChangesWhileOffForInactivty) {
@@ -474,6 +477,9 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
   Init();
 
   EXPECT_EQ(0, backlight_.current_level());
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(KeyboardBacklightController::kDimPercent,
+            backlight_.current_level());
 
   dbus_wrapper_.ClearSentSignals();
   CallIncreaseKeyboardBrightness();
@@ -486,27 +492,22 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
   // Brightness change signal is emitted.
   test::CheckBrightnessChangedSignal(
       &dbus_wrapper_, /*index=*/1,
-      /*signal_name=*/kKeyboardBrightnessChangedSignal, 10.0,
+      /*signal_name=*/kKeyboardBrightnessChangedSignal, 40.0,
       BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_EQ(10, backlight_.current_level());
+  EXPECT_EQ(40, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
   EXPECT_EQ(2, dbus_wrapper_.num_sent_signals());
 
   CallIncreaseKeyboardBrightness();
-  EXPECT_EQ(40, backlight_.current_level());
+  EXPECT_EQ(60, backlight_.current_level());
   EXPECT_EQ(2, controller_.GetNumUserAdjustments());
   EXPECT_EQ(3, dbus_wrapper_.num_sent_signals());
 
   CallIncreaseKeyboardBrightness();
-  EXPECT_EQ(60, backlight_.current_level());
+  EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(3, controller_.GetNumUserAdjustments());
   EXPECT_EQ(4, dbus_wrapper_.num_sent_signals());
-
-  CallIncreaseKeyboardBrightness();
-  EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_EQ(4, controller_.GetNumUserAdjustments());
-  EXPECT_EQ(5, dbus_wrapper_.num_sent_signals());
 
   // A no-op increase should still emit a signal.
   dbus_wrapper_.ClearSentSignals();
@@ -516,7 +517,7 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
       BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_EQ(1, dbus_wrapper_.num_sent_signals());
   EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_EQ(5, controller_.GetNumUserAdjustments());
+  EXPECT_EQ(4, controller_.GetNumUserAdjustments());
 
   // The count should be reset after a new session starts.
   controller_.HandleSessionStateChange(SessionState::STARTED);
@@ -666,30 +667,22 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
-  // Increase the brightness to 100, dim for inactivity, and check that hover
-  // restores the user-requested level.
+  // Increase the brightness to 100, and check that hover keeps the
+  // user-requested level.
+  controller_.HandleHoverStateChange(true);
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
-  controller_.SetDimmedForInactivity(true);
-  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
-  controller_.HandleHoverStateChange(true);
-  EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
-
-  // The backlight should stay on while hovering even if it's requested to turn
-  // off for inactivity.
-  controller_.SetOffForInactivity(true);
+  // The backlight should stay on while hovering.
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
   EXPECT_EQ(100, backlight_.current_level());
-
-  // Stop hovering and check that starting again turns the backlight on again.
   controller_.HandleHoverStateChange(false);
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
-  controller_.HandleHoverStateChange(true);
-  EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // A notification that the system is shutting down should take precedence.
+  controller_.HandleHoverStateChange(true);
+  EXPECT_EQ(100, backlight_.current_level());
   controller_.SetShuttingDown(true);
   EXPECT_EQ(0, backlight_.current_level());
 }
@@ -849,10 +842,11 @@ TEST_F(KeyboardBacklightControllerTest, ToggleKeyboardBacklight) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   Init();
   ASSERT_EQ(backlight_.current_level(), 0);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(KeyboardBacklightController::kDimPercent,
+            backlight_.current_level());
 
-  // Increase the brightness twice, as if the user did two increases with the
-  // keyboard.
-  CallIncreaseKeyboardBrightness();
+  // Increase the brightness as if the user did with the keyboard.
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(backlight_.current_level(), 40);
 
@@ -892,6 +886,9 @@ TEST_F(KeyboardBacklightControllerTest, ToggleBacklightAfterInactivity) {
   keep_on_ms_pref_ = 30'000;  // 30 seconds
   initial_backlight_level_ = 40.0;
   Init();
+  ASSERT_EQ(backlight_.current_level(), 0);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(backlight_.current_level(), 40.0);
 
   // Wait for the backlight to dim due to inactivity.
   AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
@@ -899,18 +896,8 @@ TEST_F(KeyboardBacklightControllerTest, ToggleBacklightAfterInactivity) {
 
   // Hit the toggle button. Backlight should come back to the default value.
   CallToggleKeyboardBacklight();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(backlight_.current_level(), 40.0);
-
-  // Now that it has been manually set, the backlight should not dim
-  // after the keep-on delay expires.
-  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
-  EXPECT_EQ(backlight_.current_level(), 40.0);
-
-  // However, it should still dim an turn off for the system-wide inactivity.
-  controller_.SetDimmedForInactivity(true);
-  EXPECT_EQ(backlight_.current_level(), 10.0);
-  controller_.SetOffForInactivity(true);
-  EXPECT_EQ(backlight_.current_level(), 0.0);
 }
 
 TEST_F(KeyboardBacklightControllerTest, ToggleBacklightAfterUserActivity) {
@@ -943,6 +930,8 @@ TEST_F(KeyboardBacklightControllerTest, ToggleBacklightAfterAlsDim) {
   initial_backlight_level_ = 60;
   initial_als_lux_ = 100;
   Init();
+  EXPECT_EQ(backlight_.current_level(), 0);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
 
   // Expect the backlight to turn off.
   light_sensor_.NotifyObservers();
@@ -963,6 +952,8 @@ TEST_F(KeyboardBacklightControllerTest,
   initial_backlight_level_ = 0;
   initial_als_lux_ = 100;
   Init();
+  EXPECT_EQ(backlight_.current_level(), 0);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
 
   // Expect the backlight to turn off.
   light_sensor_.NotifyObservers();
@@ -979,6 +970,10 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightness) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   Init();
   EXPECT_EQ(backlight_.current_level(), 0);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(KeyboardBacklightController::kDimPercent,
+            backlight_.current_level());
+  dbus_wrapper_.ClearSentSignals();
 
   // Call SetUserBrightness, and ensure the brightness was updated and
   // a signal emitted.
@@ -1040,6 +1035,9 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightnessCauses) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   Init();
   ASSERT_EQ(backlight_.current_level(), 0);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(KeyboardBacklightController::kDimPercent,
+            backlight_.current_level());
 
   dbus_wrapper_.ClearSentSignals();
   const double kBrightnessPercent = 55.0;
@@ -1107,6 +1105,9 @@ TEST_F(KeyboardBacklightControllerTest,
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   Init();
   EXPECT_EQ(backlight_.current_level(), 0);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(KeyboardBacklightController::kDimPercent,
+            backlight_.current_level());
 
   // Calls with a brightness >= 10 should use the user-specified value.
   CallSetKeyboardBrightness(/*percent=*/10,
@@ -1121,36 +1122,14 @@ TEST_F(KeyboardBacklightControllerTest,
   EXPECT_EQ(backlight_.current_level(), 0);
 }
 
-TEST_F(KeyboardBacklightControllerTest,
-       SetKeyboardBrightnessSetsManualControl) {
-  // Set up a system with no ALS, but user activity-based dimming enabled.
-  user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
-  pass_light_sensor_ = false;
-  no_als_brightness_pref_ = 40.0;
-  keep_on_ms_pref_ = 30'000;  // 30 seconds
-  initial_backlight_level_ = 40.0;
-  Init();
-
-  // Wait 30 seconds for the backlight to turn off due to inactivity.
-  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
-  EXPECT_EQ(backlight_.current_level(), 0);
-
-  // Call SetUserBrightness with a custom brightness. Backlight should turn on.
-  CallSetKeyboardBrightness(/*percent=*/45,
-                            SetBacklightBrightnessRequest_Transition_FAST,
-                            SetBacklightBrightnessRequest_Cause_USER_REQUEST);
-  EXPECT_EQ(backlight_.current_level(), 45);
-
-  // The backlight should remain on, even after `keep_on_ms_pref_` has passed.
-  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
-  EXPECT_EQ(backlight_.current_level(), 45);
-}
-
 TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightnessWithIncrease) {
   initial_backlight_level_ = 0;
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   Init();
   ASSERT_EQ(backlight_.current_level(), 0);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(KeyboardBacklightController::kDimPercent,
+            backlight_.current_level());
 
   // Call SetUserBrightness, followed by an increase in brightness for various
   // values. The brightness should jump up by a non-trivial step.
@@ -1188,6 +1167,9 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightnessWithDecrease) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   Init();
   ASSERT_EQ(backlight_.current_level(), 0);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(KeyboardBacklightController::kDimPercent,
+            backlight_.current_level());
 
   // Call SetUserBrightness, followed by an decrease in brightness for various
   // values. The brightness should decrease by a non-trivial step.
@@ -1225,6 +1207,10 @@ TEST_F(KeyboardBacklightControllerTest,
   initial_backlight_level_ = 0;
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   Init();
+  ASSERT_EQ(backlight_.current_level(), 0);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(KeyboardBacklightController::kDimPercent,
+            backlight_.current_level());
 
   // Test bad `brightness` values.
   struct TestCase {
@@ -1450,13 +1436,12 @@ TEST_F(KeyboardBacklightControllerTest, ChangeBacklightDevice) {
   backlight_.set_device_exists(false);
   Init();
   CallIncreaseKeyboardBrightness();
-  controller_.SetOffForInactivity(true);
 
   // Connect a device and check that the earlier off state is applied to it.
   backlight_.set_device_exists(true);
   backlight_.NotifyDeviceChanged();
   EXPECT_EQ(0, backlight_.current_level());
-  controller_.SetOffForInactivity(false);
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   CallIncreaseKeyboardBrightness();
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(max_backlight_level_, backlight_.current_level());
