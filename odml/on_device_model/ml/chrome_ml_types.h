@@ -21,7 +21,10 @@ enum class Token {
   kEnd,
 };
 
-using InputPiece = std::variant<Token, std::string>;
+// TODO(b/353900545): Fix the skia code, and sync skia definition with g3.
+struct SkBitmap {};
+
+using InputPiece = std::variant<Token, std::string, SkBitmap, bool>;
 
 }  // namespace ml
 

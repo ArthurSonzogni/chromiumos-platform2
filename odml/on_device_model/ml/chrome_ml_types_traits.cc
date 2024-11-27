@@ -53,6 +53,9 @@ UnionTraits<on_device_model::mojom::InputPieceDataView, ml::InputPiece>::GetTag(
     return on_device_model::mojom::InputPieceDataView::Tag::kToken;
   } else if (std::holds_alternative<std::string>(input_piece)) {
     return on_device_model::mojom::InputPieceDataView::Tag::kText;
+  } else {
+    // TODO(b/353900545): Add skia support for crrev.com/c/6038925
+    return on_device_model::mojom::InputPieceDataView::Tag::kUnknownType;
   }
   NOTREACHED();
 }
@@ -61,20 +64,28 @@ UnionTraits<on_device_model::mojom::InputPieceDataView, ml::InputPiece>::GetTag(
 bool UnionTraits<on_device_model::mojom::InputPieceDataView, ml::InputPiece>::
     Read(on_device_model::mojom::InputPieceDataView in, ml::InputPiece* out) {
   switch (in.tag()) {
-    case on_device_model::mojom::InputPieceDataView::Tag::kToken:
+    case on_device_model::mojom::InputPieceDataView::Tag::kToken: {
       ml::Token token;
       if (!in.ReadToken(&token)) {
         return false;
       }
       *out = token;
       return true;
-    case on_device_model::mojom::InputPieceDataView::Tag::kText:
+    }
+    case on_device_model::mojom::InputPieceDataView::Tag::kText: {
       std::string text;
       if (!in.ReadText(&text)) {
         return false;
       }
       *out = std::move(text);
       return true;
+    }
+    // TODO(b/353900545): Add skia support for crrev.com/c/6038925
+    case on_device_model::mojom::InputPieceDataView::Tag::kBitmap:
+    case on_device_model::mojom::InputPieceDataView::Tag::kUnknownType: {
+      *out = in.unknown_type();
+      return true;
+    }
   }
   return false;
 }

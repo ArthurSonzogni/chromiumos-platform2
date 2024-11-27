@@ -42,7 +42,9 @@ void SimpleSession::Execute(on_device_model::mojom::InputOptionsPtr options,
 
 void SimpleSession::SizeInTokens(const std::string& text,
                                  base::OnceCallback<void(uint32_t)> callback) {
-  session_->GetSizeInTokensDeprecated(text, std::move(callback));
+  auto input = on_device_model::mojom::Input::New();
+  input->pieces.push_back(text);
+  session_->GetSizeInTokens(std::move(input), std::move(callback));
 }
 
 void SimpleSession::OnResponse(on_device_model::mojom::ResponseChunkPtr chunk) {

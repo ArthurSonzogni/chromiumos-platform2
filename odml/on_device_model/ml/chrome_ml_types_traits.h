@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include "odml/mojom/bitmap.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom-shared.h"
 #include "odml/on_device_model/ml/chrome_ml_types.h"
 
@@ -29,6 +30,16 @@ struct UnionTraits<on_device_model::mojom::InputPieceDataView, ml::InputPiece> {
 
   static const std::string& text(const ml::InputPiece& input_piece) {
     return std::get<std::string>(input_piece);
+  }
+
+  // TODO(b/353900545): Add skia support for crrev.com/c/6038925
+  static skia::mojom::BitmapMappedFromTrustedProcessPtr bitmap(
+      const ml::InputPiece& input_piece) {
+    return skia::mojom::BitmapMappedFromTrustedProcess::New();
+  }
+
+  static bool unknown_type(const ml::InputPiece& input_piece) {
+    return std::get<bool>(input_piece);
   }
 
   static bool Read(on_device_model::mojom::InputPieceDataView in,

@@ -79,12 +79,14 @@ generate_mojom_bindings("mojo_bindings") {
   }
   sources = [
     "mojom/big_buffer.mojom",
+    "mojom/bitmap.mojom",
     "mojom/coral_service.mojom",
     "mojom/cros_safety.mojom",
     "mojom/cros_safety_service.mojom",
     "mojom/embedding_model.mojom",
     "mojom/file.mojom",
     "mojom/file_path.mojom",
+    "mojom/image_info.mojom",
     "mojom/mantis_processor.mojom",
     "mojom/mantis_service.mojom",
     "mojom/on_device_model.mojom",

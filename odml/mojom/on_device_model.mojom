@@ -9,10 +9,12 @@
 //      to and must not sync this file to chromium.
 module on_device_model.mojom;
 
+import "odml/mojom/bitmap.mojom";
 import "odml/mojom/file.mojom";
 import "odml/mojom/file_path.mojom";
 
 // Opened file resources needed to define an adaptation.
+[Stable]
 struct AdaptationAssets {
   // Model weights could be passed as an opened file or a file path.
   // The backend type will decide which one should be used, or
@@ -22,12 +24,11 @@ struct AdaptationAssets {
   // GPU backend: weights should be used.
   // TODO(b/313919363): This should also be a ReadOnlyFile.
   mojo_base.mojom.File? weights;
-
-  [MinVersion=1]
   mojo_base.mojom.FilePath? weights_path;
 };
 
 // Conveys the result of a language detection attempt on output text.
+[Stable]
 struct LanguageDetectionResult {
   // Language code of the detected language. If detection was indeterminate,
   // this is "und" per ISO 639-2.
@@ -38,6 +39,7 @@ struct LanguageDetectionResult {
 };
 
 // Aggregated text safety evaluation results.
+[Stable]
 struct SafetyInfo {
   // Independent safety class probabilities in the range [0, 1].
   array<float> class_scores;
@@ -48,6 +50,7 @@ struct SafetyInfo {
 };
 
 // Partial response received via StreamingResponder.OnResponse().
+[Stable]
 struct ResponseChunk {
   // Text for this chunk of the response.
   string text;
@@ -59,21 +62,21 @@ struct ResponseChunk {
 
 // Information pertaining to a complete response that was streamed by a
 // StreamingResponder.
+[Stable]
 struct ResponseSummary {
   // Optional safety information computed against the full response.
   SafetyInfo? safety_info;
 
   // The total number of input tokens from the call to Execute().
-  [MinVersion=1]
   uint32 input_token_count;
 
   // The total number of output tokens for this response.
-  [MinVersion=1]
   uint32 output_token_count;
 };
 
 // Streams a response from a call to execute a model. Close this pipe to cancel
 // the call to |Execute()|.
+[Stable]
 interface StreamingResponder {
   // This is called each time a new chunk of text is available.
   OnResponse@0(ResponseChunk chunk);
@@ -86,6 +89,7 @@ interface StreamingResponder {
 
 // Notifies the caller when the model is done processing context. Close this
 // pipe to cancel the call to |AddContext()|.
+[Stable]
 interface ContextClient {
   // Called when the context has finished processing with the number of tokens
   // processed.
@@ -93,6 +97,7 @@ interface ContextClient {
 };
 
 // Params to describe the adaptation to load.
+[Stable]
 struct LoadAdaptationParams {
   // Assets for an adaptation.
   AdaptationAssets assets;
@@ -100,14 +105,13 @@ struct LoadAdaptationParams {
   // The maximum number of input+output tokens the adaptation model can handle.
   // This is needed when initializing the model. Currently this is only
   // supported by the APU backend.
-  // When set to 0 or not set, the original `max_tokens` set by the base model
-  // will be used.
-  [MinVersion=1]
-  uint32? max_tokens;
+  // When set to 0, the original `max_tokens` set by the base model will be
+  // used.
+  uint32 max_tokens = 0;
 };
 
 // The set of tokens that can be added as part of an input.
-[Extensible]
+[Stable, Extensible]
 enum Token {
   // Prefix for system text.
   kSystem,
@@ -119,14 +123,24 @@ enum Token {
   [Default] kEnd,
 };
 
+[Stable, Extensible]
 union InputPiece {
   // A token which may have different internal representations depending on the
   // loaded model.
   Token token;
   // Text to be provided as input.
   string text;
+  // Bitmap provided as input. This is not ImageSkia because there is no desire
+  // to support multiple scale factors. The bitmap is supplied by the
+  // browser process.
+  skia.mojom.BitmapMappedFromTrustedProcess bitmap;
+
+  // Used to handle version skew.
+  [Default]
+  bool unknown_type;
 };
 
+[Stable]
 struct Input {
   // A list of tokens and text that the model will use to construct the final
   // input.
@@ -134,17 +148,18 @@ struct Input {
 };
 
 // Options to control how the model handles input.
+[Stable]
 struct InputOptions {
-  // Deprecated, use input instead.
-  string deprecated_text;
+  // The input for the model.
+  Input input;
 
-  // The maximum number of tokens that should be processed. If not set, will
+  // The maximum number of tokens that should be processed. If zero, will
   // process all tokens from this input.
-  uint32? max_tokens;
+  uint32 max_tokens = 0;
 
   // After text is tokenized, the offset into that vector to start processing.
-  // If not set, will start at the first token.
-  uint32? token_offset;
+  // If zero, will start at the first token.
+  uint32 token_offset = 0;
 
   // If this is true, indicates this is a one-off call that wants to ignore the
   // context for this input. Note that this is less efficient than running on
@@ -152,12 +167,9 @@ struct InputOptions {
   bool ignore_context;
 
   // The maximum number of tokens that should be output from a call to
-  // Execute(). If not set, will output tokens until an end token or the maximum
+  // Execute(). If zero, will output tokens until an end token or the maximum
   // sequence length.
-  uint32? max_output_tokens;
-
-  // DEPRECATED: No longer does anything.
-  uint32? unused_safety_interval;
+  uint32 max_output_tokens = 0;
 
   // These params control the output sampling. Higher `top_k` means more tokens
   // are considered, higher `temperature` means less likely tokens are more
@@ -168,14 +180,11 @@ struct InputOptions {
   // `temperature` should be a value greater than 0.0. Values above 1.0 may give
   // poor results.
   float? temperature;
-
-  // The input for the model.
-  [MinVersion=1]
-  Input? input;
 };
 
 // A session for a model that allows adding context and then executing an input
 // with that context.
+[Stable]
 interface Session {
   // Adds context to this session. Any context added here will build off of
   // previous calls to |AddContext()|.
@@ -188,10 +197,7 @@ interface Session {
 
   // Gets the size of the given text in tokens. Will return 0 if the text is
   // empty or error occurred.
-  [MinVersion=2]
   GetSizeInTokens@5(Input input) => (uint32 size);
-
-  GetSizeInTokensDeprecated@2(string text) => (uint32 size);
 
   // Gets the probability score of the first token in `text` on top of the
   // current context.
@@ -199,12 +205,12 @@ interface Session {
 
   // Clones the current session. The cloned session will have the same context
   // as the current session.
-  [MinVersion=1]
   Clone@4(pending_receiver<Session> session);
 };
 
 // A loaded model which can be queried. This interface must be controlled by the
 // browser and consumers must take care to sanitize inputs.
+[Stable]
 interface OnDeviceModel {
   // Starts a session with this model. If a session starts before the previous
   // one has completed and the multiple sessions support is not enabled for
@@ -231,6 +237,7 @@ interface OnDeviceModel {
       => (LoadModelResult result);
 };
 
+[Stable]
 interface TextSafetyModel {
   // Infers multiclass safety scores for the given `text` using this model's
   // underlying safety classifier, if any. Returns null if classification fails
@@ -244,7 +251,7 @@ interface TextSafetyModel {
 
 // Classifies the device based on how fast it is estimated to be able to run a
 // model.
-[Extensible]
+[Stable, Extensible]
 enum PerformanceClass {
   // There was an error running the benchmark. The device is likely not able to
   // run any models.
@@ -262,7 +269,7 @@ enum PerformanceClass {
   kVeryHigh,
 };
 
-[Extensible]
+[Stable, Extensible]
 enum LoadModelResult {
   kSuccess,
   kGpuBlocked,

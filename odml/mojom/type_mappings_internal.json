@@ -109,7 +109,7 @@
       "typename": "::ml::Token"
     },
     "on_device_model.mojom.InputPiece": {
-      "copyable_pass_by_value": true,
+      "copyable_pass_by_value": false,
       "default_constructible": true,
       "force_serialize": false,
       "forward_declaration": null,
