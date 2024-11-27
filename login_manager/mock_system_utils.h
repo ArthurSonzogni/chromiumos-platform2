@@ -83,6 +83,13 @@ class MockSystemUtils : public SystemUtils {
               (const base::FilePath&, const std::string&),
               (override));
 
+  MOCK_METHOD(policy::LoadPolicyResult,
+              LoadPolicyFromPath,
+              (const base::FilePath&,
+               std::string*,
+               enterprise_management::PolicyFetchResponse*),
+              (override));
+
   MOCK_METHOD(bool,
               ChangeBlockedSignals,
               (int, const std::vector<int>&),

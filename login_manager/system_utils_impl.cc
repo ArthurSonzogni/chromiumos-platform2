@@ -274,10 +274,12 @@ bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
     PLOG(ERROR) << "Can't chmod " << temp_file_path->value() << " to 0333.";
     return false;
   }
+
   if (!RemoveFile(*temp_file_path)) {
     PLOG(ERROR) << "Can't clear temp file in " << temp_file_path->value();
     return false;
   }
+
   return true;
 }
 
@@ -402,6 +404,14 @@ bool SystemUtilsImpl::ReadFileToString(const base::FilePath& path,
 bool SystemUtilsImpl::WriteStringToFile(const base::FilePath& path,
                                         const std::string& data) {
   return brillo::WriteStringToFile(path, data);
+}
+
+policy::LoadPolicyResult SystemUtilsImpl::LoadPolicyFromPath(
+    const base::FilePath& policy_path,
+    std::string* policy_data_str_out,
+    enterprise_management::PolicyFetchResponse* policy_out) {
+  return policy::LoadPolicyFromPath(policy_path, policy_data_str_out,
+                                    policy_out);
 }
 
 bool SystemUtilsImpl::ChangeBlockedSignals(int how,

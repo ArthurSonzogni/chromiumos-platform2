@@ -15,15 +15,18 @@
 #include "login_manager/dbus_util.h"
 #include "login_manager/login_screen_storage/login_screen_storage_index.pb.h"
 #include "login_manager/secret_util.h"
+#include "login_manager/system_utils.h"
 
 namespace login_manager {
 
 const char kLoginScreenStorageIndexFilename[] = "index";
 
 LoginScreenStorage::LoginScreenStorage(
+    SystemUtils* system_utils,
     const base::FilePath& persistent_storage_path,
     std::unique_ptr<secret_util::SharedMemoryUtil> shared_memory_util)
-    : persistent_storage_path_(persistent_storage_path),
+    : system_utils_(system_utils),
+      persistent_storage_path_(persistent_storage_path),
       shared_memory_util_(std::move(shared_memory_util)) {}
 
 bool LoginScreenStorage::Store(brillo::ErrorPtr* error,
@@ -49,8 +52,7 @@ bool LoginScreenStorage::Store(brillo::ErrorPtr* error,
   }
 
   base::FilePath storage_dir_path(persistent_storage_path_);
-  if (!base::DirectoryExists(storage_dir_path) &&
-      !base::CreateDirectory(storage_dir_path)) {
+  if (!system_utils_->CreateDir(storage_dir_path)) {
     *error = CreateError(DBUS_ERROR_IO_ERROR,
                          "couldn't create login screen storage directory.");
     return false;
@@ -65,7 +67,9 @@ bool LoginScreenStorage::Store(brillo::ErrorPtr* error,
     return false;
   }
 
-  if (!base::WriteFile(GetPersistentStoragePathForKey(key), value)) {
+  if (!system_utils_->WriteStringToFile(
+          GetPersistentStoragePathForKey(key),
+          std::string(base::as_string_view(base::span(value))))) {
     *error = CreateError(DBUS_ERROR_IO_ERROR,
                          "couldn't write key/value pair to the disk.");
     return false;
@@ -86,9 +90,7 @@ bool LoginScreenStorage::Retrieve(brillo::ErrorPtr* error,
 
   base::FilePath value_path = GetPersistentStoragePathForKey(key);
   std::string value;
-  if (!base::PathExists(value_path) ||
-      !base::ReadFileToStringWithMaxSize(
-          value_path, &value, secret_util::kSharedMemorySecretSizeLimit)) {
+  if (!system_utils_->ReadFileToString(value_path, &value)) {
     *error = CreateError(DBUS_ERROR_INVALID_ARGS,
                          "no value was found for the given key.");
     return false;
@@ -132,7 +134,7 @@ void LoginScreenStorage::RemoveKeyFromLoginScreenStorage(
     // Deleting the file first and then updating the index. So if a crash
     // happens in between, we don't have an incorrect state (a key is present,
     // but not listed by |ListKeys()|).
-    brillo::DeleteFile(GetPersistentStoragePathForKey(key));
+    system_utils_->RemoveFile(GetPersistentStoragePathForKey(key));
     WriteIndexToFile(*index);
   }
 }
@@ -140,7 +142,7 @@ void LoginScreenStorage::RemoveKeyFromLoginScreenStorage(
 LoginScreenStorageIndex LoginScreenStorage::ReadIndexFromFile() {
   std::string index_blob;
   LoginScreenStorageIndex index;
-  if (base::ReadFileToString(
+  if (system_utils_->ReadFileToString(
           persistent_storage_path_.Append(kLoginScreenStorageIndexFilename),
           &index_blob)) {
     index.ParseFromString(index_blob);
@@ -151,7 +153,7 @@ LoginScreenStorageIndex LoginScreenStorage::ReadIndexFromFile() {
 bool LoginScreenStorage::WriteIndexToFile(
     const LoginScreenStorageIndex& index) {
   const std::string index_blob = index.SerializeAsString();
-  return base::WriteFile(
+  return system_utils_->WriteStringToFile(
       persistent_storage_path_.Append(kLoginScreenStorageIndexFilename),
       index_blob);
 }

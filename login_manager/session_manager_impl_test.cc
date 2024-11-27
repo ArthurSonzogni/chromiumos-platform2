@@ -67,6 +67,7 @@
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/fake_container_manager.h"
 #include "login_manager/fake_secret_util.h"
+#include "login_manager/fake_system_utils.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_arc_sideload_status.h"
@@ -266,8 +267,6 @@ MATCHER_P(IncludesSlot, slot, "") {
 constexpr pid_t kAndroidPid = 10;
 
 constexpr char kSaneEmail[] = "user@somewhere.com";
-constexpr char kDeviceLocalAccountsDir[] = "device_local_accounts";
-constexpr char kLoginScreenStoragePath[] = "login_screen_storage";
 
 #if USE_CHEETS
 constexpr char kDefaultLocale[] = "en_US";
@@ -341,48 +340,7 @@ class SessionManagerImplTest : public ::testing::Test,
   ~SessionManagerImplTest() override = default;
 
   void SetUp() override {
-    ON_CALL(system_utils_, GetDevModeState())
-        .WillByDefault(Return(DevModeState::DEV_MODE_OFF));
-    ON_CALL(system_utils_, GetVmState())
-        .WillByDefault(Return(VmState::OUTSIDE_VM));
-
-    // Forward file operation calls to |real_system_utils_| so that the tests
-    // can actually create/modify/delete files in |tmpdir_|.
-    ON_CALL(system_utils_, GetFileSize(_))
-        .WillByDefault(
-            Invoke(&real_system_utils_, &SystemUtilsImpl::GetFileSize));
-    ON_CALL(system_utils_, Exists(_))
-        .WillByDefault(Invoke(&real_system_utils_, &SystemUtilsImpl::Exists));
-    ON_CALL(system_utils_, DirectoryExists(_))
-        .WillByDefault(
-            Invoke(&real_system_utils_, &SystemUtilsImpl::DirectoryExists));
-    ON_CALL(system_utils_, CreateDir(_))
-        .WillByDefault(
-            Invoke(&real_system_utils_, &SystemUtilsImpl::CreateDir));
-    ON_CALL(system_utils_, GetUniqueFilenameInWriteOnlyTempDir(_))
-        .WillByDefault(
-            Invoke(&real_system_utils_,
-                   &SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir));
-    ON_CALL(system_utils_, RemoveFile(_))
-        .WillByDefault(
-            Invoke(&real_system_utils_, &SystemUtilsImpl::RemoveFile));
-    ON_CALL(system_utils_, AtomicFileWrite(_, _))
-        .WillByDefault(
-            Invoke(&real_system_utils_, &SystemUtilsImpl::AtomicFileWrite));
-
-    // 10 GB Free Disk Space for ARC launch.
-    ON_CALL(system_utils_, AmountOfFreeDiskSpace(_))
-        .WillByDefault(Return(10LL << 30));
-
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    real_system_utils_.set_base_dir_for_testing(tmpdir_.GetPath());
     SetSystemSalt(&fake_salt_);
-
-    // AtomicFileWrite calls in TEST_F assume that these directories exist.
-    ASSERT_TRUE(
-        system_utils_.CreateDir(base::FilePath("/run/session_manager")));
-    ASSERT_TRUE(
-        system_utils_.CreateDir(base::FilePath("/mnt/stateful_partition")));
 
     ASSERT_TRUE(log_dir_.CreateUniqueTempDir());
     log_symlink_ = log_dir_.GetPath().Append("ui.LATEST");
@@ -414,11 +372,11 @@ class SessionManagerImplTest : public ::testing::Test,
         .WillByDefault(
             Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
 
-    device_local_accounts_dir_ =
-        tmpdir_.GetPath().Append(kDeviceLocalAccountsDir);
     auto device_local_account_manager =
         std::make_unique<DeviceLocalAccountManager>(
-            &system_utils_, device_local_accounts_dir_, &owner_key_);
+            &system_utils_,
+            base::FilePath(SessionManagerImpl::kDeviceLocalAccountsDir),
+            &owner_key_);
 
     impl_->SetPolicyServicesForTesting(
         base::WrapUnique(device_policy_service_),
@@ -430,13 +388,13 @@ class SessionManagerImplTest : public ::testing::Test,
     tick_clock_->SetNowTicks(base::TimeTicks() + base::Hours(1));
     impl_->SetTickClockForTesting(base::WrapUnique(tick_clock_));
 
-    login_screen_storage_path_ =
-        tmpdir_.GetPath().Append(kLoginScreenStoragePath);
     auto shared_memory_util =
         std::make_unique<secret_util::FakeSharedMemoryUtil>();
     shared_memory_util_ = shared_memory_util.get();
     impl_->SetLoginScreenStorageForTesting(std::make_unique<LoginScreenStorage>(
-        login_screen_storage_path_, std::move(shared_memory_util)));
+        &system_utils_,
+        base::FilePath(SessionManagerImpl::kLoginScreenStoragePath),
+        std::move(shared_memory_util)));
 
     EXPECT_CALL(*debugd_proxy_, CallMethodAndBlock(_, _))
         .WillRepeatedly(
@@ -907,7 +865,7 @@ class SessionManagerImplTest : public ::testing::Test,
 
   base::FilePath GetDeviceLocalAccountPolicyPath(
       const std::string& account_id) {
-    return device_local_accounts_dir_
+    return base::FilePath(SessionManagerImpl::kDeviceLocalAccountsDir)
         .Append(*SanitizeUserName(Username(account_id)))
         .Append(DeviceLocalAccountManager::kPolicyDir)
         .Append(PolicyService::kChromePolicyFileName);
@@ -923,7 +881,6 @@ class SessionManagerImplTest : public ::testing::Test,
     Mock::VerifyAndClearExpectations(&manager_);
     Mock::VerifyAndClearExpectations(&metrics_);
     Mock::VerifyAndClearExpectations(&nss_);
-    Mock::VerifyAndClearExpectations(&system_utils_);
     Mock::VerifyAndClearExpectations(exported_object());
   }
 
@@ -944,7 +901,7 @@ class SessionManagerImplTest : public ::testing::Test,
   }
 
   base::FilePath GetTestLoginScreenStoragePath(const std::string& key) {
-    return base::FilePath(login_screen_storage_path_)
+    return base::FilePath(SessionManagerImpl::kLoginScreenStoragePath)
         .Append(secret_util::StringToSafeFilename(key));
   }
 
@@ -966,8 +923,7 @@ class SessionManagerImplTest : public ::testing::Test,
   MockProcessManagerService manager_;
   MockMetrics metrics_;
   MockNssUtil nss_;
-  SystemUtilsImpl real_system_utils_;
-  testing::NiceMock<MockSystemUtils> system_utils_;
+  FakeSystemUtils system_utils_;
   crossystem::Crossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockPolicyKey owner_key_;
@@ -990,10 +946,7 @@ class SessionManagerImplTest : public ::testing::Test,
   base::FilePath log_symlink_;   // simulates ui.LATEST; not created by default
 
   std::unique_ptr<SessionManagerImpl> impl_;
-  base::ScopedTempDir tmpdir_;
-  base::FilePath device_local_accounts_dir_;
   secret_util::SharedMemoryUtil* shared_memory_util_;
-  base::FilePath login_screen_storage_path_;
 
   static const pid_t kFakePid;
   static const char kNothing[];
@@ -1305,7 +1258,7 @@ TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreEphemeral) {
       MakeLoginScreenStorageMetadata(/*clear_on_session_exit=*/true),
       kTestValue.size(), value_fd);
   EXPECT_FALSE(error.get());
-  EXPECT_FALSE(base::PathExists(GetTestLoginScreenStoragePath(kTestKey)));
+  EXPECT_FALSE(system_utils_.Exists(GetTestLoginScreenStoragePath(kTestKey)));
 
   base::ScopedFD out_value_fd;
   uint64_t out_value_size;
@@ -1333,7 +1286,7 @@ TEST_F(SessionManagerImplTest, LoginScreenStorage_StorePersistent) {
       MakeLoginScreenStorageMetadata(/*clear_on_session_exit=*/false),
       kTestValue.size(), value_fd);
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(base::PathExists(GetTestLoginScreenStoragePath(kTestKey)));
+  EXPECT_TRUE(system_utils_.Exists(GetTestLoginScreenStoragePath(kTestKey)));
 
   base::ScopedFD out_value_fd;
   uint64_t out_value_size;
@@ -1364,7 +1317,7 @@ TEST_F(SessionManagerImplTest,
       MakeLoginScreenStorageMetadata(/*clear_on_session_exit=*/false),
       kTestValue.size(), value_fd);
   EXPECT_TRUE(error.get());
-  EXPECT_FALSE(base::PathExists(GetTestLoginScreenStoragePath(kTestKey)));
+  EXPECT_FALSE(system_utils_.Exists(GetTestLoginScreenStoragePath(kTestKey)));
   base::ScopedFD out_value_fd;
   uint64_t out_value_size;
   impl_->LoginScreenStorageRetrieve(&error, kTestKey, &out_value_size,
@@ -1633,14 +1586,14 @@ TEST_F(SessionManagerImplTest, StoreDeviceLocalAccountPolicyNoAccount) {
   EXPECT_EQ(dbus_error::kGetServiceFail, capturer.response()->GetErrorName());
   VerifyAndClearExpectations();
 
-  EXPECT_FALSE(base::PathExists(policy_path));
+  EXPECT_FALSE(system_utils_.Exists(policy_path));
 }
 
 TEST_F(SessionManagerImplTest, StoreDeviceLocalAccountPolicySuccess) {
   const std::vector<uint8_t> policy_blob = CreatePolicyFetchResponseBlob();
   base::FilePath policy_path = GetDeviceLocalAccountPolicyPath(kSaneEmail);
   SetupDeviceLocalAccount(kSaneEmail);
-  EXPECT_FALSE(base::PathExists(policy_path));
+  EXPECT_FALSE(system_utils_.Exists(policy_path));
   EXPECT_CALL(owner_key_, Verify(_, _, _)).WillOnce(Return(true));
 
   brillo::FakeMessageLoop io_loop(nullptr);
@@ -1654,7 +1607,7 @@ TEST_F(SessionManagerImplTest, StoreDeviceLocalAccountPolicySuccess) {
   VerifyAndClearExpectations();
 
   io_loop.Run();
-  EXPECT_TRUE(base::PathExists(policy_path));
+  EXPECT_TRUE(system_utils_.Exists(policy_path));
 }
 
 TEST_F(SessionManagerImplTest, RetrieveDeviceLocalAccountPolicyNoAccount) {
@@ -1672,8 +1625,9 @@ TEST_F(SessionManagerImplTest, RetrieveDeviceLocalAccountPolicySuccess) {
   const std::vector<uint8_t> policy_blob = CreatePolicyFetchResponseBlob();
   base::FilePath policy_path = GetDeviceLocalAccountPolicyPath(kSaneEmail);
   SetupDeviceLocalAccount(kSaneEmail);
-  ASSERT_TRUE(base::CreateDirectory(policy_path.DirName()));
-  ASSERT_TRUE(base::WriteFile(policy_path, policy_blob));
+  ASSERT_TRUE(system_utils_.CreateDir(policy_path.DirName()));
+  ASSERT_TRUE(system_utils_.WriteStringToFile(
+      policy_path, std::string(base::as_string_view(base::span(policy_blob)))));
 
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
@@ -2077,9 +2031,8 @@ TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
   impl_->InitiateDeviceWipe(
       "overly long test message with\nspecial/chars$\t\xa4\xd6 1234567890");
   std::string contents;
-  base::FilePath reset_path = real_system_utils_.PutInsideBaseDirForTesting(
-      base::FilePath(SessionManagerImpl::kResetFile));
-  ASSERT_TRUE(base::ReadFileToString(reset_path, &contents));
+  ASSERT_TRUE(system_utils_.ReadFileToString(
+      base::FilePath(SessionManagerImpl::kResetFile), &contents));
   ASSERT_EQ(
       "fast safe keepimg preserve_lvs reason="
       "overly_long_test_message_with_special_chars_____12",
@@ -2946,7 +2899,7 @@ TEST_F(SessionManagerImplTest, ArcLowDisk) {
   ExpectAndRunStartSession(kSaneEmail);
   SetUpArcMiniContainer();
   // Emulate no free disk space.
-  ON_CALL(system_utils_, AmountOfFreeDiskSpace(_)).WillByDefault(Return(0));
+  system_utils_.set_free_disk_space(0);
 
   brillo::ErrorPtr error;
 
@@ -2963,10 +2916,7 @@ TEST_F(SessionManagerImplTest, ArcLowDisk) {
 
 TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
   ExpectAndRunStartSession(kSaneEmail);
-
-  // Overrides dev mode state.
-  ON_CALL(system_utils_, GetDevModeState())
-      .WillByDefault(Return(DevModeState::DEV_MODE_ON));
+  system_utils_.set_dev_mode_state(DevModeState::DEV_MODE_ON);
 
   EXPECT_CALL(
       *init_controller_,
@@ -3217,13 +3167,6 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
   void SetUp() override {
     SessionManagerImplTest::SetUp();
 
-    ON_CALL(system_utils_, Exists(_))
-        .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::FileExists));
-    ON_CALL(system_utils_, ReadFileToString(_, _))
-        .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::ReadFile));
-    ON_CALL(system_utils_, AtomicFileWrite(_, _))
-        .WillByDefault(
-            Invoke(this, &StartTPMFirmwareUpdateTest::AtomicWriteFile));
     SetDeviceMode("consumer");
 
     SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile,
@@ -3238,14 +3181,15 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     if (expected_error_.empty()) {
       EXPECT_TRUE(result);
       EXPECT_FALSE(error);
-      const auto& contents = file_contents_.find(
-          SessionManagerImpl::kTPMFirmwareUpdateRequestFlagFile);
-      ASSERT_NE(contents, file_contents_.end());
-      EXPECT_EQ(update_mode_, contents->second);
+      std::string contents;
+      ASSERT_TRUE(ReadFile(
+          base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateRequestFlagFile),
+          &contents));
+      EXPECT_EQ(update_mode_, contents);
 
       if (update_mode_ == "preserve_stateful") {
-        EXPECT_EQ(1, file_contents_.count(
-                         SessionManagerImpl::kStatefulPreservationRequestFile));
+        FileExists(base::FilePath(
+            SessionManagerImpl::kStatefulPreservationRequestFile));
         EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(
                          crossystem::Crossystem::kClearTpmOwnerRequest));
       }
@@ -3258,29 +3202,27 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     SessionManagerImplTest::TearDown();
   }
 
+  // TODO(b/380997377): Remove these proxy methods.
   void SetFileContents(const std::string& path, const std::string& contents) {
-    file_contents_[path] = contents;
+    CHECK(system_utils_.CreateDir(base::FilePath(path).DirName()));
+    CHECK(system_utils_.WriteStringToFile(base::FilePath(path), contents))
+        << path;
   }
 
-  void DeleteFile(const std::string& path) { file_contents_.erase(path); }
+  void DeleteFile(const std::string& path) {
+    system_utils_.RemoveFile(base::FilePath(path));
+  }
 
   bool FileExists(const base::FilePath& path) {
-    const auto entry = file_contents_.find(path.MaybeAsASCII());
-    return entry != file_contents_.end();
+    return system_utils_.Exists(path);
   }
 
   bool ReadFile(const base::FilePath& path, std::string* str_out) {
-    const auto entry = file_contents_.find(path.MaybeAsASCII());
-    if (entry == file_contents_.end()) {
-      return false;
-    }
-    *str_out = entry->second;
-    return true;
+    return system_utils_.ReadFileToString(path, str_out);
   }
 
   bool AtomicWriteFile(const base::FilePath& path, const std::string& value) {
-    file_contents_[path.value()] = value;
-    return file_write_status_;
+    return system_utils_.AtomicFileWrite(path, value);
   }
 
   void ExpectError(const std::string& error) { expected_error_ = error; }
@@ -3289,7 +3231,6 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
 
   std::string update_mode_ = "first_boot";
   std::string expected_error_;
-  std::map<std::string, std::string> file_contents_;
   bool file_write_status_ = true;
 };
 
@@ -3376,7 +3317,7 @@ TEST_F(StartTPMFirmwareUpdateTest, CleanupSRKNotVulnerable) {
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, RequestFileWriteFailure) {
-  file_write_status_ = false;
+  system_utils_.set_atomic_file_write_success(false);
   ExpectError(dbus_error::kNotAvailable);
 }
 

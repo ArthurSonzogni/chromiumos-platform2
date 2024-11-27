@@ -17,6 +17,7 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/policy_store.h"
+#include "login_manager/system_utils.h"
 
 namespace em = enterprise_management;
 
@@ -107,7 +108,7 @@ PolicyService* DeviceLocalAccountManager::GetPolicyService(
   if (!entry->second) {
     const base::FilePath policy_dir =
         state_dir_.AppendASCII(key).Append(kPolicyDir);
-    if (!base::CreateDirectory(policy_dir)) {
+    if (!system_utils_->CreateDir(policy_dir)) {
       LOG(ERROR) << "Failed to create device-local account policy directory "
                  << policy_dir.value();
       return nullptr;

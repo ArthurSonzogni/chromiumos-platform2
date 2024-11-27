@@ -19,6 +19,7 @@
 #include "login_manager/fake_secret_util.h"
 #include "login_manager/login_screen_storage/login_screen_storage_index.pb.h"
 #include "login_manager/secret_util.h"
+#include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
 
@@ -66,7 +67,7 @@ class LoginScreenStorageTestBase : public ::testing::Test {
         std::make_unique<secret_util::FakeSharedMemoryUtil>();
     shared_memory_util_ = shared_memory_util.get();
     storage_ = std::make_unique<LoginScreenStorage>(
-        storage_path_, std::move(shared_memory_util));
+        &system_utils_, storage_path_, std::move(shared_memory_util));
   }
 
  protected:
@@ -96,6 +97,7 @@ class LoginScreenStorageTestBase : public ::testing::Test {
     return shared_memory_util_->WriteDataToSharedMemory(value);
   }
 
+  SystemUtilsImpl system_utils_;
   base::ScopedTempDir tmpdir_;
   base::FilePath storage_path_;
   secret_util::SharedMemoryUtil* shared_memory_util_;

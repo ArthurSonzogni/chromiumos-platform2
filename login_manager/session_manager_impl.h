@@ -94,6 +94,15 @@ class SessionManagerImpl
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
+  // Path to the device local account's state directory.
+  inline static constexpr char kDeviceLocalAccountsDir[] =
+      "/var/lib/device_local_accounts";
+
+  // A path of the directory that contains all the key-value pairs stored to the
+  // persistent login screen storage.
+  inline static constexpr char kLoginScreenStoragePath[] =
+      "/var/lib/login_screen_storage";
+
   // File containing the path to the updated TPM firmware binary.
   static const char kTPMFirmwareUpdateLocationFile[];
 

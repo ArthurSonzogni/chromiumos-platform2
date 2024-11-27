@@ -1,39 +1,51 @@
-// Copyright 2012 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_SYSTEM_UTILS_IMPL_H_
-#define LOGIN_MANAGER_SYSTEM_UTILS_IMPL_H_
-
-#include <stdint.h>
-#include <time.h>
-#include <unistd.h>
+#ifndef LOGIN_MANAGER_FAKE_SYSTEM_UTILS_H_
+#define LOGIN_MANAGER_FAKE_SYSTEM_UTILS_H_
 
 #include <string>
 #include <vector>
 
-#include <base/check.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/strings/stringprintf.h>
-#include <base/time/time.h>
-#include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/system_utils.h"
 
-namespace base {
-class FilePath;
-}
-
 namespace login_manager {
 
-class SystemUtilsImpl : public SystemUtils {
+// Fake implementation of SystemUtils for unittests.
+// Specifically, in unittest environments, the test processes do not have
+// permissions/capabilities to run some critical operations.
+// This is to capture such things and to replace them with do-able operations
+// to exercise remaining upper layer code.
+class FakeSystemUtils : public SystemUtils {
  public:
-  SystemUtilsImpl();
-  SystemUtilsImpl(const SystemUtilsImpl&) = delete;
-  SystemUtilsImpl& operator=(const SystemUtilsImpl&) = delete;
+  FakeSystemUtils();
+  FakeSystemUtils(const FakeSystemUtils&) = delete;
+  FakeSystemUtils& operator=(const FakeSystemUtils&) = delete;
+  ~FakeSystemUtils() override;
 
-  ~SystemUtilsImpl() override;
+  // FakeSystemUtils creates a temp directory as a "root" of the
+  // files/directories handled by this instance.
+  // Returns the root path of the fake "root" directory.
+  const base::FilePath& GetRoot() const;
 
+  // Takes an abs `path`, and rebase the path to the fake "root"
+  // of this instance.
+  base::FilePath RebasePath(const base::FilePath& path) const;
+
+  void set_dev_mode_state(DevModeState dev_mode_state) {
+    dev_mode_state_ = dev_mode_state;
+  }
+  void set_free_disk_space(int64_t free_disk_space) {
+    free_disk_space_ = free_disk_space;
+  }
+  void set_atomic_file_write_success(bool success) {
+    atomic_file_write_success_ = success;
+  }
+
+  // SystemUtils override:
   int kill(pid_t pid, uid_t owner, int signal) override;
   time_t time(time_t* t) override;
   pid_t fork() override;
@@ -53,7 +65,6 @@ class SystemUtilsImpl : public SystemUtils {
   pid_t Wait(pid_t child_spec,
              base::TimeDelta timeout,
              int* status_out) override;
-
   std::optional<int64_t> GetFileSize(const base::FilePath& path) override;
   bool Exists(const base::FilePath& file) override;
   bool DirectoryExists(const base::FilePath& dir) override;
@@ -75,36 +86,26 @@ class SystemUtilsImpl : public SystemUtils {
   bool WriteStringToFile(const base::FilePath& path,
                          const std::string& data) override;
   policy::LoadPolicyResult LoadPolicyFromPath(
-      const base::FilePath& path,
+      const base::FilePath& policy_path,
       std::string* policy_data_str_out,
       enterprise_management::PolicyFetchResponse* policy_out) override;
   bool ChangeBlockedSignals(int how, const std::vector<int>& signals) override;
-  bool LaunchAndWait(const std::vector<std::string>& args,
+  bool LaunchAndWait(const std::vector<std::string>& argv,
                      int* exit_code_out) override;
   bool RunInMinijail(const ScopedMinijail& jail,
                      const std::vector<std::string>& args,
                      const std::vector<std::string>& env_vars,
                      pid_t* pchild_pid) override;
 
-  void set_base_dir_for_testing(const base::FilePath& base_dir) {
-    CHECK(!base_dir.empty());
-    CHECK(base_dir_for_testing_.empty());
-    base_dir_for_testing_ = base_dir;
-  }
-
-  // Returns the given path "chrooted" inside |base_dir_for_testing_| if set.
-  // Ex: /run/foo -> /tmp/.org.Chromium.whatever/run/foo
-  base::FilePath PutInsideBaseDirForTesting(const base::FilePath& path);
-
  private:
-  // Provides the real implementation of PutInsideBaseDirForTesting.
-  base::FilePath PutInsideBaseDir(const base::FilePath& path);
+  base::ScopedTempDir temp_dir_;
 
-  DevModeState dev_mode_state_ = DevModeState::DEV_MODE_UNKNOWN;
-  VmState vm_state_ = VmState::UNKNOWN;
-  base::FilePath base_dir_for_testing_;
+  DevModeState dev_mode_state_ = DevModeState::DEV_MODE_OFF;
+  // 10GB as default value, which is enough size to launch ARC.
+  int64_t free_disk_space_ = 10LL << 30;
+  bool atomic_file_write_success_ = true;
 };
 
 }  // namespace login_manager
 
-#endif  // LOGIN_MANAGER_SYSTEM_UTILS_IMPL_H_
+#endif  // LOGIN_MANAGER_FAKE_SYSTEM_UTILS_H_

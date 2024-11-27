@@ -19,6 +19,7 @@
 namespace login_manager {
 
 class LoginScreenStorageIndex;
+class SystemUtils;
 
 namespace secret_util {
 class SharedMemoryUtil;
@@ -45,6 +46,7 @@ extern const char kLoginScreenStorageIndexFilename[];
 class LoginScreenStorage {
  public:
   explicit LoginScreenStorage(
+      SystemUtils* system_utils,
       const base::FilePath& persistent_storage_path,
       std::unique_ptr<secret_util::SharedMemoryUtil> shared_memory_util);
 
@@ -104,6 +106,7 @@ class LoginScreenStorage {
                                   const std::vector<uint8_t>& data,
                                   base::ScopedFD* out_shared_memory_fd);
 
+  SystemUtils* const system_utils_;
   base::FilePath persistent_storage_path_;
   std::unique_ptr<secret_util::SharedMemoryUtil> shared_memory_util_;
   std::map<std::string, std::vector<uint8_t>> in_memory_storage_;

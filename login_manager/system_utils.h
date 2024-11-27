@@ -18,6 +18,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <policy/policy_util.h>
 // clang-format off
 #include <scoped_minijail.h>
 // clang-format on
@@ -163,6 +164,13 @@ class SystemUtils {
   // Writes string |data| to file at |path|.
   virtual bool WriteStringToFile(const base::FilePath& path,
                                  const std::string& data) = 0;
+
+  // Reads and parses the policy data from the file at `path`.
+  // See policy::LoadPolicyFromPath in libbrillo for details.
+  virtual policy::LoadPolicyResult LoadPolicyFromPath(
+      const base::FilePath& path,
+      std::string* policy_data_str_out,
+      enterprise_management::PolicyFetchResponse* policy_out) = 0;
 
   // Changes blocked signals. |how| takes one of |SIG_BLOCK|, |SIG_UNBLOCK|, and
   // |SIG_SETMASK|. See man page of sigprocmask(2) for more details. |signals|

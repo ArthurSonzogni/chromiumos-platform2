@@ -234,6 +234,7 @@ if (use.test) {
       "fake_child_process.cc",
       "fake_container_manager.cc",
       "fake_secret_util.cc",
+      "fake_system_utils.cc",
       "feature_flags_util_test.cc",
       "landlock_policy_test.cc",
       "liveness_checker_impl_test.cc",

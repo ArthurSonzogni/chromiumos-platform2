@@ -148,9 +148,6 @@ const base::TimeDelta kBackupArcBugReportTimeout = base::Minutes(1);
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 
-// Device-local account state directory.
-const char kDeviceLocalAccountStateDir[] = "/var/lib/device_local_accounts";
-
 #if USE_CHEETS
 // To launch ARC, certain amount of free disk space is needed.
 // Path and the amount for the check.
@@ -190,10 +187,6 @@ constexpr char kGetPolicyServiceFailMessage[] = "Failed to get policy service.";
 // Default path of symlink to log file where stdout and stderr from
 // session_manager and Chrome are redirected.
 constexpr char kDefaultUiLogSymlinkPath[] = "/var/log/ui/ui.LATEST";
-
-// A path of the directory that contains all the key-value pairs stored to the
-// persistent login screen storage.
-constexpr char kLoginScreenStoragePath[] = "/var/lib/login_screen_storage";
 
 constexpr auto kStateKeysComputationErrorMessages = base::MakeFixedFlatMap<
     DeviceIdentifierGenerator::StateKeysComputationError,
@@ -499,6 +492,7 @@ SessionManagerImpl::SessionManagerImpl(
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()),
       login_screen_storage_(std::make_unique<LoginScreenStorage>(
+          system_utils_,
           base::FilePath(kLoginScreenStoragePath),
           std::make_unique<secret_util::SharedMemoryUtil>())),
       weak_ptr_factory_(this) {
@@ -647,7 +641,7 @@ bool SessionManagerImpl::Initialize() {
         std::make_unique<UserPolicyServiceFactory>(nss_, system_utils_);
 
     device_local_account_manager_ = std::make_unique<DeviceLocalAccountManager>(
-        system_utils_, base::FilePath(kDeviceLocalAccountStateDir), owner_key_),
+        system_utils_, base::FilePath(kDeviceLocalAccountsDir), owner_key_),
     device_local_account_manager_->UpdateDeviceSettings(
         device_policy_->GetSettings());
     if (device_policy_->MayUpdateSystemSettings()) {

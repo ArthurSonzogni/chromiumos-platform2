@@ -51,7 +51,7 @@ bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
   DCHECK(!is_resilient_store_);
   std::string polstr;
   policy::LoadPolicyResult result =
-      policy::LoadPolicyFromPath(policy_path, &polstr, &policy_);
+      system_utils_->LoadPolicyFromPath(policy_path, &polstr, &policy_);
   LOG(INFO) << "Policy loaded, result: " << static_cast<int>(result)
             << ", path: " << policy_path.value();
   switch (result) {
