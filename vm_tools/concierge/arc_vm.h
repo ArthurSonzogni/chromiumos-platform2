@@ -107,7 +107,6 @@ class ArcVm final : public VmBaseImpl {
         std::make_unique<base::OneShotTimer>()};
     std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer{
         std::make_unique<base::RepeatingTimer>()};
-    std::vector<base::ScopedFD> vhost_user_front_socket_fds;
     VmBuilder vm_builder;
   };
 
@@ -261,11 +260,6 @@ class ArcVm final : public VmBaseImpl {
 
   // Metrics reporter for virtio-blk performance.
   std::unique_ptr<VirtioBlkMetrics> virtio_blk_metrics_
-      GUARDED_BY_CONTEXT(sequence_checker_);
-
-  // Fds will be released in `Start()` after the concierge finishes forking
-  // crosvm or the arcvm fails to start.
-  std::vector<base::ScopedFD> vhost_user_front_socket_fds_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   base::WeakPtrFactory<ArcVm> weak_ptr_factory_;

@@ -325,12 +325,9 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     return response;
   }
 
-  std::vector<base::ScopedFD> vhost_user_front_socket_fds =
-      internal::ScopedFDToVector(
-          std::move(stub_device_socket_fds->front_end_fd));
-
   VhostUserFsFrontParam shared_stub_frontend_param{
-      .tag = "stub", .socket_fd = vhost_user_front_socket_fds.back()};
+      .tag = "stub",
+      .socket_fd = std::move(stub_device_socket_fds->front_end_fd)};
 
   base::FilePath data_dir = base::FilePath(kAndroidDataDir);
   if (!base::PathExists(data_dir)) {
@@ -619,7 +616,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                              pstore_path.value().c_str(), kArcVmRamoopsSize))
       .AppendSharedDir(shared_data)
       .AppendSharedDir(shared_data_media)
-      .AppendVhostUserFsFrontend(shared_stub_frontend_param)
+      .AppendVhostUserFsFrontend(std::move(shared_stub_frontend_param))
       .EnableSmt(false /* enable */)
       .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling())
       .SetWaylandSocket(request.vm().wayland_server());
@@ -753,7 +750,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .runtime_dir = std::move(runtime_dir),
       .data_disk_path = std::move(data_disk_path),
       .features = features,
-      .vhost_user_front_socket_fds = std::move(vhost_user_front_socket_fds),
       .vm_builder = std::move(vm_builder)});
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
