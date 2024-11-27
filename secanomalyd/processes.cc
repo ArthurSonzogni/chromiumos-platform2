@@ -76,6 +76,7 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "crash_sender",  // b/378177565
     "cr50_disable_sl",
     "cros-disks",
+    "cros_config",  // b/381155800
     "cros_healthd",
     "cros_installer",  // b/378172996
     "crossystem",  // b/376120383
@@ -102,8 +103,10 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "gsctool",
     "heartd",  // b/376119061
     "hiberman",
+    "hwclock",  // b/381135217
     "imageloader",
     "init",
+    "initctl",
     "ipf_ufd",
     "iptables",
     "keyctl",  // b/378174893
@@ -119,7 +122,8 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "patchpaneld",
     "periodic_schedu",
     "postinst",  // b/378172996
-    "powerd-pre-star",
+    "powerd-pre-star",  // b/381142468
+    "powerd_suspend",  // b/381142468
     "pvs",
     "quipper",
     "restorecon"  // b/378176161
@@ -127,10 +131,12 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "rialto_modem_wa",
     "runtime_probe",  // b/378177081
     "sed",
-    "send-metrics-on",  // b/378176109
-    "send-uptime-met",
+    "send-metrics-on",  // b/381142468
+    "send-uptime-met",  // b/b/381140979
     "session_manager",
+    "set_blkdev_pm",  // b/381142468
     "sh",
+    "shill-login-use",  // b/381141816
     "sleep",
     "spaced_cli",
     "sshd",
@@ -143,6 +149,7 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "timberslide-wat",
     "udevadm",
     "udevd",
+    "ui-post-stop",  // b/381140979
     "update_engine",
     "update_engine_c",
     "update_rw_vpd",
