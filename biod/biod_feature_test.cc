@@ -35,8 +35,6 @@ MATCHER_P(IsMember, name, "") {
   return true;
 }
 
-constexpr char kUserID[] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-
 class MockFirmwareSelector : public updater::FirmwareSelectorInterface {
  public:
   MOCK_METHOD(bool, IsBetaFirmwareAllowed, (), (const, override));
@@ -88,123 +86,17 @@ TEST_F(BiodFeatureTest, TestFirmwareDefaultProductionFirmwareSelected) {
               CallMethodAndBlock(IsMember(power_manager::kRequestRestartMethod),
                                  A<int>()))
       .Times(0);
-  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   BiodFeature biod_feature(bus_, session_manager_.get(), &features,
                            std::move(selector));
-  features.TriggerRefetchSignal();
-  base::RunLoop().RunUntilIdle();
 }
 
-TEST_F(BiodFeatureTest, TestBetaFirmwareDisabledProductionFirmwareSelected) {
+TEST_F(BiodFeatureTest, TestForceTransitionToProductionFirmware) {
   feature::FakePlatformFeatures features(bus_);
   auto selector = std::make_unique<MockFirmwareSelector>();
 
-  features.SetEnabled("CrOSLateBootAllowFpmcuBetaFirmware", false);
-  EXPECT_CALL(*selector, IsBetaFirmwareAllowed).WillOnce(Return(false));
-  EXPECT_CALL(*selector, AllowBetaFirmware).Times(0);
-  // Make sure reboot was not requested.
-  EXPECT_CALL(*proxy_,
-              CallMethodAndBlock(IsMember(power_manager::kRequestRestartMethod),
-                                 A<int>()))
-      .Times(0);
-  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
-
-  BiodFeature biod_feature(bus_, session_manager_.get(), &features,
-                           std::move(selector));
-  features.TriggerRefetchSignal();
-  base::RunLoop().RunUntilIdle();
-}
-
-TEST_F(BiodFeatureTest, TestBetaFirmwareEnabledBetaFirmwareSelected) {
-  feature::FakePlatformFeatures features(bus_);
-  auto selector = std::make_unique<MockFirmwareSelector>();
-
-  features.SetEnabled("CrOSLateBootAllowFpmcuBetaFirmware", true);
-  EXPECT_CALL(*selector, IsBetaFirmwareAllowed).WillOnce(Return(true));
-  EXPECT_CALL(*selector, AllowBetaFirmware).Times(0);
-  // Make sure reboot was not requested.
-  EXPECT_CALL(*proxy_,
-              CallMethodAndBlock(IsMember(power_manager::kRequestRestartMethod),
-                                 A<int>()))
-      .Times(0);
-  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
-
-  BiodFeature biod_feature(bus_, session_manager_.get(), &features,
-                           std::move(selector));
-  features.TriggerRefetchSignal();
-  base::RunLoop().RunUntilIdle();
-}
-
-TEST_F(BiodFeatureTest, TestTransitionToBetaFirmware) {
-  feature::FakePlatformFeatures features(bus_);
-  auto selector = std::make_unique<MockFirmwareSelector>();
-
-  features.SetEnabled("CrOSLateBootAllowFpmcuBetaFirmware", true);
-  EXPECT_CALL(*selector, IsBetaFirmwareAllowed).WillOnce(Return(false));
-  EXPECT_CALL(*selector, AllowBetaFirmware(true)).Times(1);
-
-  // Make sure reboot was requested.
-  EXPECT_CALL(*proxy_,
-              CallMethodAndBlock(IsMember(power_manager::kRequestRestartMethod),
-                                 A<int>()))
-      .WillOnce(
-          [](dbus::MethodCall* method_call, int timeout_ms)
-              -> base::expected<std::unique_ptr<dbus::Response>, dbus::Error> {
-            dbus::MessageReader request_reader(method_call);
-            int32_t reason;
-            request_reader.PopInt32(&reason);
-            EXPECT_THAT(
-                reason,
-                power_manager::RequestRestartReason::REQUEST_RESTART_OTHER);
-            return base::ok(dbus::Response::CreateEmpty());
-          });
-  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
-
-  BiodFeature biod_feature(bus_, session_manager_.get(), &features,
-                           std::move(selector));
-  features.TriggerRefetchSignal();
-  base::RunLoop().RunUntilIdle();
-}
-
-TEST_F(BiodFeatureTest, TestTransitionToProductionFirmware) {
-  feature::FakePlatformFeatures features(bus_);
-  auto selector = std::make_unique<MockFirmwareSelector>();
-
-  features.SetEnabled("CrOSLateBootAllowFpmcuBetaFirmware", false);
   EXPECT_CALL(*selector, IsBetaFirmwareAllowed).WillOnce(Return(true));
   EXPECT_CALL(*selector, AllowBetaFirmware(false)).Times(1);
-
-  // Make sure reboot was requested.
-  EXPECT_CALL(*proxy_,
-              CallMethodAndBlock(IsMember(power_manager::kRequestRestartMethod),
-                                 A<int>()))
-      .WillOnce(
-          [](dbus::MethodCall* method_call, int timeout_ms)
-              -> base::expected<std::unique_ptr<dbus::Response>, dbus::Error> {
-            dbus::MessageReader request_reader(method_call);
-            int32_t reason;
-            request_reader.PopInt32(&reason);
-            EXPECT_THAT(
-                reason,
-                power_manager::RequestRestartReason::REQUEST_RESTART_OTHER);
-            return base::ok(dbus::Response::CreateEmpty());
-          });
-  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
-
-  BiodFeature biod_feature(bus_, session_manager_.get(), &features,
-                           std::move(selector));
-  features.TriggerRefetchSignal();
-  base::RunLoop().RunUntilIdle();
-}
-
-TEST_F(BiodFeatureTest, TestRefetchSignalIgnoredIfNoUser) {
-  feature::FakePlatformFeatures features(bus_);
-  auto selector = std::make_unique<MockFirmwareSelector>();
-
-  features.SetEnabled("CrOSLateBootAllowFpmcuBetaFirmware", true);
-  EXPECT_CALL(*selector, IsBetaFirmwareAllowed).Times(0);
-  EXPECT_CALL(*selector, AllowBetaFirmware).Times(0);
   // Make sure reboot was not requested.
   EXPECT_CALL(*proxy_,
               CallMethodAndBlock(IsMember(power_manager::kRequestRestartMethod),
@@ -213,8 +105,6 @@ TEST_F(BiodFeatureTest, TestRefetchSignalIgnoredIfNoUser) {
 
   BiodFeature biod_feature(bus_, session_manager_.get(), &features,
                            std::move(selector));
-  features.TriggerRefetchSignal();
-  base::RunLoop().RunUntilIdle();
 }
 
 }  // namespace biod
