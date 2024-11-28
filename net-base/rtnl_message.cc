@@ -4,7 +4,9 @@
 
 #include "net-base/rtnl_message.h"
 
+// clang-format off
 #include <net/if.h>     // NB: order matters; this conflicts with <linux/if.h>
+// clang-format on
 #include <arpa/inet.h>  // NOLINT(build/include_alpha)
 #include <linux/fib_rules.h>
 #include <linux/if_addr.h>
@@ -495,13 +497,13 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
   if (data.size() < header->nlmsg_len) {
     return nullptr;
   }
-  data = data.subspan(0, header->nlmsg_len);
+  data = data.first(static_cast<size_t>(header->nlmsg_len));
 
   // Split the remaining data after the header.
   if (data.size() < NLMSG_HDRLEN) {
     return nullptr;
   }
-  const base::span<const uint8_t> payload = data.subspan(NLMSG_HDRLEN);
+  const base::span<const uint8_t> payload = data.subspan<NLMSG_HDRLEN>();
 
   Mode mode = kModeUnknown;
   switch (header->nlmsg_type) {
@@ -603,7 +605,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeLink(
   }
   const struct ifinfomsg* ifi =
       reinterpret_cast<const struct ifinfomsg*>(payload.data());
-  payload = payload.subspan(NLMSG_ALIGN(sizeof(struct ifinfomsg)));
+  payload = payload.subspan<NLMSG_ALIGN(sizeof(struct ifinfomsg))>();
 
   // Parse the attributes.
   // Note: |payload.data()| here is equivalent to IFLA_RTA() with the original
@@ -699,7 +701,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
   }
   const struct nduseroptmsg* nd_user_opt =
       reinterpret_cast<const struct nduseroptmsg*>(payload.data());
-  payload = payload.subspan(sizeof(struct nduseroptmsg));
+  payload = payload.subspan<sizeof(struct nduseroptmsg)>();
 
   // Verify IP family.
   const int32_t interface_index = nd_user_opt->nduseropt_ifindex;
@@ -714,7 +716,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
   }
   const NDUserOptionHeader* nd_user_option_header =
       reinterpret_cast<const NDUserOptionHeader*>(payload.data());
-  payload = payload.subspan(sizeof(NDUserOptionHeader));
+  payload = payload.subspan<sizeof(NDUserOptionHeader)>();
 
   // Verify option length.
   // The length field in the header is in units of 8 octets, which indicates the
@@ -726,7 +728,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
   if (payload.size() < opt_len - sizeof(NDUserOptionHeader)) {
     return nullptr;
   }
-  payload = payload.subspan(0, opt_len - sizeof(NDUserOptionHeader));
+  payload = payload.first(opt_len - sizeof(NDUserOptionHeader));
 
   std::unique_ptr<RTNLMessage> msg;
   switch (nd_user_option_header->type) {
@@ -796,18 +798,18 @@ bool RTNLMessage::ParseDnsslOption(base::span<const uint8_t> data) {
   }
 
   // Skip the reserved field.
-  data = data.subspan(2);
+  data = data.subspan<2>();
 
   // Parse the lifetime.
   const uint32_t lifetime =
-      ntohl(*byte_utils::FromBytes<uint32_t>(data.subspan(0, 4)));
-  data = data.subspan(4);
+      ntohl(*byte_utils::FromBytes<uint32_t>(data.first<4>()));
+  data = data.subspan<4>();
 
   std::vector<std::string> domains;
   std::vector<std::string_view> tokens;
   while (!data.empty()) {
     const uint8_t token_size = data[0];
-    data = data.subspan(1);
+    data = data.subspan<1>();
 
     if (data.size() < token_size) {
       return false;
@@ -842,12 +844,12 @@ bool RTNLMessage::ParseRdnssOption(base::span<const uint8_t> data) {
   }
 
   // Skip the reserved field.
-  data = data.subspan(2);
+  data = data.subspan<2>();
 
   // Parse the lifetime.
   const uint32_t lifetime =
-      ntohl(*byte_utils::FromBytes<uint32_t>(data.subspan(0, 4)));
-  data = data.subspan(4);
+      ntohl(*byte_utils::FromBytes<uint32_t>(data.first<4>()));
+  data = data.subspan<4>();
 
   // Parse the recursive DNS servers.
   // Verify data size are multiple of individual address size.
@@ -859,7 +861,7 @@ bool RTNLMessage::ParseRdnssOption(base::span<const uint8_t> data) {
   std::vector<IPv6Address> dns_server_addresses;
   while (!data.empty()) {
     dns_server_addresses.push_back(
-        *IPv6Address::CreateFromBytes(data.subspan(0, addr_length)));
+        *IPv6Address::CreateFromBytes(data.first(addr_length)));
     data = data.subspan(addr_length);
   }
   set_rdnss_option(RdnssOption(lifetime, dns_server_addresses));
@@ -922,7 +924,7 @@ bool RTNLMessage::ParsePref64Option(base::span<const uint8_t> data) {
       LOG(ERROR) << "Invalid PLC value: " << static_cast<int>(plc);
       return false;
   }
-  data = data.subspan(2);
+  data = data.subspan<2>();
   std::array<uint8_t, IPv6Address::kAddressLength> address_data{};
   std::copy(data.begin(), data.end(), address_data.begin());
   set_pref64(*IPv6CIDR::CreateFromBytesAndPrefix(address_data, prefix_len));
@@ -958,7 +960,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodePrefix(
   PrefixStatus status;
   status.prefix_flags = pm->prefix_flags;
 
-  payload = payload.subspan(sizeof(struct prefixmsg));
+  payload = payload.subspan<sizeof(struct prefixmsg)>();
   std::unique_ptr<RTNLAttrMap> attrs = ParseAttrs(
       reinterpret_cast<const rtattr*>(payload.data()), payload.size());
   if (!attrs) {

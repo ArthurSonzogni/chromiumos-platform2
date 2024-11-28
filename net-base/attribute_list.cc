@@ -93,14 +93,17 @@ bool AttributeList::IterateAttributes(
 
     base::span<const uint8_t> value;
     if (attribute->nla_len > NLA_HDRLEN) {
-      value = remaining.subspan(NLA_HDRLEN, attribute->nla_len - NLA_HDRLEN);
+      value = remaining.subspan(
+          static_cast<size_t>(NLA_HDRLEN),
+          static_cast<size_t>(attribute->nla_len - NLA_HDRLEN));
     }
     if (!method.Run(attribute->nla_type, value)) {
       return false;
     }
 
     if (remaining.size() >= NLA_ALIGN(attribute->nla_len)) {
-      remaining = remaining.subspan(NLA_ALIGN(attribute->nla_len));
+      remaining =
+          remaining.subspan(static_cast<size_t>(NLA_ALIGN(attribute->nla_len)));
     } else {
       remaining = {};
     }

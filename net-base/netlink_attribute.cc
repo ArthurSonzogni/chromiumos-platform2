@@ -212,7 +212,7 @@ bool NetlinkU8Attribute::InitFromValue(base::span<const uint8_t> input) {
   }
 
   SetU8Value(*net_base::byte_utils::FromBytes<uint8_t>(
-      input.subspan(0, sizeof(uint8_t))));
+      input.first<sizeof(uint8_t)>()));
   return NetlinkAttribute::InitFromValue(input);
 }
 
@@ -266,7 +266,7 @@ bool NetlinkU16Attribute::InitFromValue(base::span<const uint8_t> input) {
   }
 
   SetU16Value(*net_base::byte_utils::FromBytes<uint16_t>(
-      input.subspan(0, sizeof(uint16_t))));
+      input.first<sizeof(uint16_t)>()));
   return NetlinkAttribute::InitFromValue(input);
 }
 
@@ -320,7 +320,7 @@ bool NetlinkU32Attribute::InitFromValue(base::span<const uint8_t> input) {
   }
 
   SetU32Value(*net_base::byte_utils::FromBytes<uint32_t>(
-      input.subspan(0, sizeof(uint32_t))));
+      input.first<sizeof(uint32_t)>()));
   return NetlinkAttribute::InitFromValue(input);
 }
 
@@ -374,7 +374,7 @@ bool NetlinkU64Attribute::InitFromValue(base::span<const uint8_t> input) {
   }
 
   SetU64Value(*net_base::byte_utils::FromBytes<uint64_t>(
-      input.subspan(0, sizeof(uint64_t))));
+      input.first<sizeof(uint64_t)>()));
   return NetlinkAttribute::InitFromValue(input);
 }
 

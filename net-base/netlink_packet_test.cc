@@ -25,12 +25,12 @@ TEST(NetlinkPacketTest, Constructor) {
   memset(&data, 0, sizeof(data));
 
   // A packet that is too short to contain an nlmsghdr should be invalid.
-  NetlinkPacket short_packet(data_span.subspan(0, sizeof(nlmsghdr) - 1));
+  NetlinkPacket short_packet(data_span.first<sizeof(nlmsghdr) - 1>());
   EXPECT_FALSE(short_packet.IsValid());
 
   // A packet that contains an invalid nlmsg_len (should be at least
   // as large as sizeof(nlmgsghdr)) should be invalid.
-  NetlinkPacket invalid_packet(data_span.subspan(0, sizeof(nlmsghdr)));
+  NetlinkPacket invalid_packet(data_span.first<sizeof(nlmsghdr)>());
   EXPECT_FALSE(invalid_packet.IsValid());
 
   // Successfully parse a well-formed packet that has no payload.
@@ -39,7 +39,7 @@ TEST(NetlinkPacketTest, Constructor) {
   hdr.nlmsg_len = sizeof(hdr);
   hdr.nlmsg_type = 1;
   memcpy(&data, &hdr, sizeof(hdr));
-  NetlinkPacket empty_packet(data_span.subspan(0, sizeof(nlmsghdr)));
+  NetlinkPacket empty_packet(data_span.first<sizeof(nlmsghdr)>());
   EXPECT_TRUE(empty_packet.IsValid());
   EXPECT_EQ(sizeof(nlmsghdr), empty_packet.GetLength());
   EXPECT_EQ(1, empty_packet.GetMessageType());
@@ -51,7 +51,7 @@ TEST(NetlinkPacketTest, Constructor) {
   hdr.nlmsg_len = sizeof(hdr) + 1;
   hdr.nlmsg_type = 2;
   memcpy(&data, &hdr, sizeof(hdr));
-  NetlinkPacket incomplete_packet(data_span.subspan(0, sizeof(nlmsghdr)));
+  NetlinkPacket incomplete_packet(data_span.first<sizeof(nlmsghdr)>());
   EXPECT_FALSE(incomplete_packet.IsValid());
 
   // Retrieve a byte from a well-formed packet.  After that byte is
