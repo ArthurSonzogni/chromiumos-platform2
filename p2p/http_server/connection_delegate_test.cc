@@ -764,7 +764,7 @@ TEST_F(ConnectionDelegateTest, URIArgumentsNotParsed) {
   SetupDelegate();
 
   const string content = "Hello World!";
-  WriteFile(testdir_path_.Append("hello.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("hello.p2p"), content);
 
   EXPECT_CALL(mock_server_,
               ReportServerMessage(p2p::util::kP2PServerRequestResult,
@@ -809,7 +809,7 @@ TEST_F(ConnectionDelegateTest, MalformedInversedRange) {
   SetupDelegate();
 
   const string content = "Hello World!";
-  WriteFile(testdir_path_.Append("hello.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("hello.p2p"), content);
 
   EXPECT_CALL(mock_server_,
               ReportServerMessage(p2p::util::kP2PServerRequestResult,
