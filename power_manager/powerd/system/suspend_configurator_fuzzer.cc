@@ -2,19 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/suspend_configurator.h"
+#include <memory>
+#include <string_view>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
 #include <featured/fake_platform_features.h>
-#include <memory>
-#include "fuzzer/FuzzedDataProvider.h"
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/system/suspend_configurator.h"
 
 namespace {
 constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
@@ -29,7 +30,7 @@ void CreateSysfsFileInTempRootDir(const base::FilePath& temp_root_dir,
   CHECK(base::StartsWith(sys_path, "/"));
   base::FilePath path = temp_root_dir.Append(sys_path.substr(1));
   CHECK(base::CreateDirectory(path.DirName()));
-  CHECK_EQ(base::WriteFile(path, "", 0), 0);
+  CHECK(base::WriteFile(path, std::string_view()));
 }
 
 }  // namespace
