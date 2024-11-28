@@ -10,6 +10,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   if (use.feature_management) {
     deps = [
+      ":coral_console",
       ":embedding_model_console",
       ":install_dbus_config",
       ":install_init",
@@ -203,6 +204,16 @@ executable("mantis_console") {
   configs += [ ":target_defaults" ]
   deps = [
     ":mantis",
+    ":odml",
+  ]
+}
+
+executable("coral_console") {
+  install_path = "/usr/local/bin"
+  sources = [ "coral_console.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":coral",
     ":odml",
   ]
 }
