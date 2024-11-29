@@ -8,7 +8,6 @@ package main
 
 import (
 	"flag"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -41,7 +40,7 @@ func main() {
 
 	var introspections []introspect.Introspection
 	for _, path := range flag.Args() {
-		b, err := ioutil.ReadFile(path)
+		b, err := os.ReadFile(path)
 		if err != nil {
 			log.Fatalf("Failed to read file %s: %v\n", path, err)
 		}

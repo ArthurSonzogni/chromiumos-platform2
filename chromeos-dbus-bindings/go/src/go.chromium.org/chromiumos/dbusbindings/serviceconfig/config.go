@@ -8,7 +8,7 @@ package serviceconfig
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 )
 
 // ObjectManagerConfig is a way to configure the object manager class generation.
@@ -36,7 +36,7 @@ type Config struct {
 
 // Load reads and parses a file at path into Config.
 func Load(path string) (*Config, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
