@@ -1480,7 +1480,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "androidboot.host_is_in_vm=%d "
       "androidboot.lcd_density=%d "
       "androidboot.native_bridge=%s "
-      "androidboot.arc_file_picker=1 "
       "androidboot.arc_custom_tabs=%d "
       "androidboot.chromeos_channel=%s "
       "%s" /* Play Store auto-update mode */
