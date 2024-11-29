@@ -48,11 +48,6 @@ message StartArcMiniInstanceRequest {
   // The density value passed to "ro.sf.lcd_density" property.
   optional int32 lcd_density = 2 [default = -1];
 
-  // Experiment flag for go/arc-file-picker.
-  // DEPRECATED. Going to be removed.
-  optional bool arc_file_picker_experiment = 3
-      [default = false, deprecated = true];
-
   // Optional mode for play store auto-update.
   optional PlayStoreAutoUpdate play_store_auto_update = 4
       [default = AUTO_UPDATE_DEFAULT];
