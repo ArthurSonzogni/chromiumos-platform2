@@ -647,7 +647,7 @@ Status StorageQueue::ScanLastFile() {
     // Verify record hash.
     auto read_result_data = base::as_byte_span(read_result.value());
     uint32_t actual_record_hash =
-        base::PersistentHash(read_result_data.subspan(0, header.record_size));
+        base::PersistentHash(read_result_data.first(header.record_size));
     if (header.record_hash != actual_record_hash) {
       LOG(ERROR) << "Hash mismatch, seq=" << header.record_sequencing_id
                  << " actual_hash=" << std::hex << actual_record_hash
@@ -1560,7 +1560,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // Verify record hash.
     auto read_result_data = base::as_byte_span(read_result.value());
     uint32_t actual_record_hash =
-        base::PersistentHash(read_result_data.subspan(0, header.record_size));
+        base::PersistentHash(read_result_data.first(header.record_size));
     if (header.record_hash != actual_record_hash) {
       return base::unexpected(Status(
           error::INTERNAL,
