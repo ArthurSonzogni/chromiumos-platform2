@@ -21,8 +21,7 @@
 namespace vm_tools::concierge {
 
 VhostUserStarterClient::VhostUserStarterClient(scoped_refptr<dbus::Bus> bus)
-    : bus_(bus),
-      vhost_user_starter_proxy_(org::chromium::VhostUserStarterProxy(bus)),
+    : vhost_user_starter_proxy_(org::chromium::VhostUserStarterProxy(bus)),
       weak_factory_(this) {}
 
 void VhostUserStarterClient::StartVhostUserFsSuccessCallback(

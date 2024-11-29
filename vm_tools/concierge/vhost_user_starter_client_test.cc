@@ -105,7 +105,7 @@ TEST_F(VhostUserStarterClientTest, StartVhostUserFs) {
   client->StartVhostUserFs(in_socket, test_param);
 
   task_environment_.RunUntilIdle();
-  EXPECT_EQ(client->GetStartedDeviceCnt(), 1);
+  EXPECT_EQ(client->GetStartedDeviceCount(), 1);
 }
 }  // namespace
 }  // namespace vm_tools::concierge

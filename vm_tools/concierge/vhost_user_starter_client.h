@@ -35,13 +35,12 @@ class VhostUserStarterClient final {
   // Pass socket to vhost_user fs
   void StartVhostUserFs(const std::vector<base::ScopedFD>& in_socket,
                         const SharedDataParam& param);
-  int GetStartedDeviceCnt() const {
+  int GetStartedDeviceCount() const {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     return started_device_count;
   }
 
  private:
-  scoped_refptr<dbus::Bus> bus_;
   org::chromium::VhostUserStarterProxy vhost_user_starter_proxy_;
 
   // Ensure calls are made on the right thread.
