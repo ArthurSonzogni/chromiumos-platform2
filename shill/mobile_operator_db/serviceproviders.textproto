@@ -2334,6 +2334,62 @@ mno {
 
 mno {
   data {
+    uuid: "272564c2-4c6c-423f-bc19-43c4d97f1c15"
+    country: "ca"
+    localized_name {
+      name: "Eastlink"
+    }
+    mccmnc: "302270"
+    mobile_apn {
+      apn: "wisp.mobi.eastlink.ca"
+      type: DEFAULT
+    }
+  }
+}
+
+mno {
+  data {
+    uuid: "0def4911-e4e2-4306-a2e7-a9b64cdc8b0a"
+    country: "ca"
+    localized_name {
+      name: "Xplore-mobile"
+    }
+    mccmnc: "302130"
+  }
+}
+
+mno {
+  data {
+    uuid: "f8568297-a8a2-432e-8547-415d9d4dbe3e"
+    country: "ca"
+    localized_name {
+      name: "Execulink"
+    }
+    mccmnc: "302340"
+    mobile_apn {
+      apn: "internet.execulink"
+      type: DEFAULT
+    }
+  }
+}
+
+mno {
+  data {
+    uuid: "b839e299-29fa-4cd0-9fd9-c52b0b4362d2"
+    country: "ca"
+    localized_name {
+      name: "Wightman"
+    }
+    mccmnc: "302940"
+    mobile_apn {
+      apn: "internet.wightman"
+      type: DEFAULT
+    }
+  }
+}
+
+mno {
+  data {
     uuid: "8cee7c28-4696-4ac0-8926-cf674baf647c"
     country: "cd"
     localized_name {
