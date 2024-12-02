@@ -323,11 +323,11 @@ impl V4l2CaptureQueue {
         match handle {
             V4l2CaptureQueueHandle::Streaming(handle) => {
                 while handle.num_free_buffers() != 0 {
-                    handle
+                    let buffer = handle
                         .try_get_free_buffer()
-                        .expect("Failed to alloc capture buffer")
-                        .queue()
-                        .expect("Failed to queue capture buffer");
+                        .expect("Failed to alloc capture buffer");
+                    println!("capture >> index: {}\n", buffer.index());
+                    buffer.queue().expect("Failed to queue capture buffer");
                 }
             }
             _ => panic!("ERROR"),
