@@ -745,14 +745,14 @@ std::unique_ptr<CustomParametersForDev> MaybeLoadCustomParametersForDev(
   return std::make_unique<CustomParametersForDev>(data);
 }
 
-SharedDataParam::CacheParameters SharedDataParam::create_cache_parameters(
-    SharedDataParam::Cache enable_caches, bool ascii_casefold) const {
+SharedDirParam::CacheParameters SharedDirParam::create_cache_parameters(
+    SharedDirParam::Cache enable_caches, bool ascii_casefold) const {
   static constexpr auto params_map =
-      base::MakeFixedFlatMap<SharedDataParam::Cache, CacheParameters>(
-          {{SharedDataParam::Cache::kAuto, {.cache = "auto", 1, false, 1}},
-           {SharedDataParam::Cache::kAlways,
+      base::MakeFixedFlatMap<SharedDirParam::Cache, CacheParameters>(
+          {{SharedDirParam::Cache::kAuto, {.cache = "auto", 1, false, 1}},
+           {SharedDirParam::Cache::kAlways,
             {.cache = "always", 3600, true, 3600}},
-           {SharedDataParam::Cache::kNever, {.cache = "never", 1, false, 1}}});
+           {SharedDirParam::Cache::kNever, {.cache = "never", 1, false, 1}}});
   CacheParameters params = params_map.at(enable_caches);
   // Disable negative dentry cache when ascii_casefold is enabled because it
   // won't work for scenarios like the following:
@@ -767,7 +767,7 @@ SharedDataParam::CacheParameters SharedDataParam::create_cache_parameters(
   return params;
 }
 
-std::string SharedDataParam::to_string() const {
+std::string SharedDirParam::to_string() const {
   // We can relax this condition later if we want to serve users which do not
   // set uid_map and gid_map, but today there is none.
   CHECK_NE(uid_map, "");
@@ -817,7 +817,7 @@ std::string SharedDataParam::to_string() const {
 }
 
 vhost_user_starter::StartVhostUserFsRequest
-SharedDataParam::get_start_vhost_user_virtio_fs_request(
+SharedDirParam::get_start_vhost_user_virtio_fs_request(
     std::string_view syslog_tag) const {
   CHECK_NE(uid_map, "");
   CHECK_NE(gid_map, "");
@@ -868,14 +868,14 @@ SharedDataParam::get_start_vhost_user_virtio_fs_request(
   return request;
 }
 
-SharedDataParam CreateFontsSharedDataParam() {
-  return SharedDataParam{.data_dir = base::FilePath(kFontsSharedDir),
-                         .tag = kFontsSharedDirTag,
-                         .uid_map = kAndroidUidMap,
-                         .gid_map = kAndroidGidMap,
-                         .enable_caches = SharedDataParam::Cache::kAlways,
-                         .ascii_casefold = false,
-                         .posix_acl = true};
+SharedDirParam CreateFontsSharedDirParam() {
+  return SharedDirParam{.data_dir = base::FilePath(kFontsSharedDir),
+                        .tag = kFontsSharedDirTag,
+                        .uid_map = kAndroidUidMap,
+                        .gid_map = kAndroidGidMap,
+                        .enable_caches = SharedDirParam::Cache::kAlways,
+                        .ascii_casefold = false,
+                        .posix_acl = true};
 }
 
 std::string VhostUserFrontParam::to_string() const {
@@ -1224,9 +1224,9 @@ std::unique_ptr<VmStartChecker> VmStartChecker::Create(int32_t signal_fd) {
     return nullptr;
   }
 
-  struct epoll_event ep_event {
-    .events = EPOLLIN,
-    .data.u32 = static_cast<uint32_t>(vm_start_event_fd.get()),
+  struct epoll_event ep_event{
+      .events = EPOLLIN,
+      .data.u32 = static_cast<uint32_t>(vm_start_event_fd.get()),
   };
   if (HANDLE_EINTR(epoll_ctl(vm_start_epoll_fd.get(), EPOLL_CTL_ADD,
                              vm_start_event_fd.get(), &ep_event)) < 0) {

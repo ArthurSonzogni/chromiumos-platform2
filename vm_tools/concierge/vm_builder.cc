@@ -220,7 +220,7 @@ VmBuilder& VmBuilder::AddExtraWaylandSocket(std::string_view socket) {
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendSharedDir(SharedDataParam shared_dir) {
+VmBuilder& VmBuilder::AppendSharedDir(SharedDirParam shared_dir) {
   shared_dirs_.push_back(std::move(shared_dir));
   return *this;
 }

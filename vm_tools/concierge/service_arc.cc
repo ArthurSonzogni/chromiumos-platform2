@@ -291,16 +291,16 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   std::optional<VhostUserFrontParam> shared_stub_vhost_user_front_param =
       InvokeVhostUserFsBackend(
-          SharedDataParam{.data_dir = base::FilePath(kStubVolumeSharedDir),
-                          .tag = "stub",
-                          .uid_map = kStubUidMap,
-                          .gid_map = kStubGidMap,
-                          .enable_caches = SharedDataParam::Cache::kAuto,
-                          .ascii_casefold = true,
-                          .posix_acl = false,
-                          .max_dynamic_perm = 2,
-                          .max_dynamic_xattr = 2,
-                          .privileged_quota_uids = privileged_quota_uids},
+          SharedDirParam{.data_dir = base::FilePath(kStubVolumeSharedDir),
+                         .tag = "stub",
+                         .uid_map = kStubUidMap,
+                         .gid_map = kStubGidMap,
+                         .enable_caches = SharedDirParam::Cache::kAuto,
+                         .ascii_casefold = true,
+                         .posix_acl = false,
+                         .max_dynamic_perm = 2,
+                         .max_dynamic_xattr = 2,
+                         .privileged_quota_uids = privileged_quota_uids},
           syslog_tag);
   if (!shared_stub_vhost_user_front_param.has_value()) {
     response.set_failure_reason(
@@ -316,20 +316,20 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     return response;
   }
 
-  SharedDataParam shared_data{.data_dir = data_dir,
-                              .tag = "_data",
-                              .uid_map = kAndroidUidMap,
-                              .gid_map = kAndroidGidMap,
-                              .enable_caches = SharedDataParam::Cache::kAlways,
-                              .ascii_casefold = false,
-                              .posix_acl = true,
-                              .privileged_quota_uids = privileged_quota_uids};
-  SharedDataParam shared_data_media{
+  SharedDirParam shared_data{.data_dir = data_dir,
+                             .tag = "_data",
+                             .uid_map = kAndroidUidMap,
+                             .gid_map = kAndroidGidMap,
+                             .enable_caches = SharedDirParam::Cache::kAlways,
+                             .ascii_casefold = false,
+                             .posix_acl = true,
+                             .privileged_quota_uids = privileged_quota_uids};
+  SharedDirParam shared_data_media{
       .data_dir = data_dir,
       .tag = "_data_media",
       .uid_map = kAndroidUidMap,
       .gid_map = kAndroidGidMap,
-      .enable_caches = SharedDataParam::Cache::kAlways,
+      .enable_caches = SharedDirParam::Cache::kAlways,
       .ascii_casefold = true,
       .posix_acl = true,
       .privileged_quota_uids = privileged_quota_uids};

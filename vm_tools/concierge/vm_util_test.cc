@@ -509,14 +509,14 @@ TEST(VMUtilTest, CreateArcVMAffinitySMP4Core) {
   EXPECT_EQ(package[0], "0,1,2,3,4");
 }
 
-TEST(VMUtilTest, SharedDataParamCacheAlways) {
-  SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
-                        .tag = "usr_local_bin",
-                        .uid_map = kAndroidUidMap,
-                        .gid_map = kAndroidGidMap,
-                        .enable_caches = SharedDataParam::Cache::kAlways,
-                        .ascii_casefold = false,
-                        .posix_acl = true};
+TEST(VMUtilTest, SharedDirParamCacheAlways) {
+  SharedDirParam param{.data_dir = base::FilePath("/usr/local/bin"),
+                       .tag = "usr_local_bin",
+                       .uid_map = kAndroidUidMap,
+                       .gid_map = kAndroidGidMap,
+                       .enable_caches = SharedDirParam::Cache::kAlways,
+                       .ascii_casefold = false,
+                       .posix_acl = true};
   ASSERT_EQ(param.to_string(),
             "/usr/local/bin:usr_local_bin:type=fs:cache=always:uidmap=0 655360 "
             "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
@@ -525,13 +525,13 @@ TEST(VMUtilTest, SharedDataParamCacheAlways) {
             "negative_timeout=3600");
 }
 
-TEST(VMUtilTest, SharedDataParamCacheAlwaysCaseFold) {
-  SharedDataParam param{
+TEST(VMUtilTest, SharedDirParamCacheAlwaysCaseFold) {
+  SharedDirParam param{
       .data_dir = base::FilePath("/run/arcvm/android-data"),
       .tag = "_data_media",
       .uid_map = kAndroidUidMap,
       .gid_map = kAndroidGidMap,
-      .enable_caches = SharedDataParam::Cache::kAlways,
+      .enable_caches = SharedDirParam::Cache::kAlways,
       .ascii_casefold = true,
       .posix_acl = true,
       .privileged_quota_uids = {0},
@@ -544,14 +544,14 @@ TEST(VMUtilTest, SharedDataParamCacheAlwaysCaseFold) {
             "true:writeback=true:negative_timeout=0:privileged_quota_uids=0");
 }
 
-TEST(VMUtilTest, SharedDataParamCacheAuto) {
-  SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
-                        .tag = "usr_local_bin",
-                        .uid_map = kAndroidUidMap,
-                        .gid_map = kAndroidGidMap,
-                        .enable_caches = SharedDataParam::Cache::kAuto,
-                        .ascii_casefold = false,
-                        .posix_acl = true};
+TEST(VMUtilTest, SharedDirParamCacheAuto) {
+  SharedDirParam param{.data_dir = base::FilePath("/usr/local/bin"),
+                       .tag = "usr_local_bin",
+                       .uid_map = kAndroidUidMap,
+                       .gid_map = kAndroidGidMap,
+                       .enable_caches = SharedDirParam::Cache::kAuto,
+                       .ascii_casefold = false,
+                       .posix_acl = true};
   ASSERT_EQ(param.to_string(),
             "/usr/local/bin:usr_local_bin:type=fs:cache=auto:uidmap=0 655360 "
             "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
@@ -560,14 +560,14 @@ TEST(VMUtilTest, SharedDataParamCacheAuto) {
             "negative_timeout=1");
 }
 
-TEST(VMUtilTest, SharedDataParamCacheNever) {
-  SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
-                        .tag = "usr_local_bin",
-                        .uid_map = kAndroidUidMap,
-                        .gid_map = kAndroidGidMap,
-                        .enable_caches = SharedDataParam::Cache::kNever,
-                        .ascii_casefold = false,
-                        .posix_acl = true};
+TEST(VMUtilTest, SharedDirParamCacheNever) {
+  SharedDirParam param{.data_dir = base::FilePath("/usr/local/bin"),
+                       .tag = "usr_local_bin",
+                       .uid_map = kAndroidUidMap,
+                       .gid_map = kAndroidGidMap,
+                       .enable_caches = SharedDirParam::Cache::kNever,
+                       .ascii_casefold = false,
+                       .posix_acl = true};
   ASSERT_EQ(param.to_string(),
             "/usr/local/bin:usr_local_bin:type=fs:cache=never:uidmap=0 655360 "
             "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
@@ -577,15 +577,15 @@ TEST(VMUtilTest, SharedDataParamCacheNever) {
 }
 
 // privileged_quota_uids is passed in.
-TEST(VMUtilTest, SharedDataParamWithPrivilegedQuotaUids) {
-  SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
-                        .tag = "usr_local_bin",
-                        .uid_map = kAndroidUidMap,
-                        .gid_map = kAndroidGidMap,
-                        .enable_caches = SharedDataParam::Cache::kAlways,
-                        .ascii_casefold = false,
-                        .posix_acl = true,
-                        .privileged_quota_uids = {0}};
+TEST(VMUtilTest, SharedDirParamWithPrivilegedQuotaUids) {
+  SharedDirParam param{.data_dir = base::FilePath("/usr/local/bin"),
+                       .tag = "usr_local_bin",
+                       .uid_map = kAndroidUidMap,
+                       .gid_map = kAndroidGidMap,
+                       .enable_caches = SharedDirParam::Cache::kAlways,
+                       .ascii_casefold = false,
+                       .posix_acl = true,
+                       .privileged_quota_uids = {0}};
   ASSERT_EQ(param.to_string(),
             "/usr/local/bin:usr_local_bin:type=fs:cache=always:uidmap=0 655360 "
             "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
@@ -594,17 +594,17 @@ TEST(VMUtilTest, SharedDataParamWithPrivilegedQuotaUids) {
             "negative_timeout=3600:privileged_quota_uids=0");
 }
 
-TEST(VMUtilTest, SharedDataParamSetVhostUserVirtioFsConfig) {
-  SharedDataParam param{.data_dir = base::FilePath("/var/run/arc/media"),
-                        .tag = "stub",
-                        .uid_map = kAndroidUidMap,
-                        .gid_map = kAndroidGidMap,
-                        .enable_caches = SharedDataParam::Cache::kAuto,
-                        .ascii_casefold = false,
-                        .posix_acl = true,
-                        .max_dynamic_perm = 3,
-                        .max_dynamic_xattr = 5,
-                        .privileged_quota_uids = {0}};
+TEST(VMUtilTest, SharedDirParamSetVhostUserVirtioFsConfig) {
+  SharedDirParam param{.data_dir = base::FilePath("/var/run/arc/media"),
+                       .tag = "stub",
+                       .uid_map = kAndroidUidMap,
+                       .gid_map = kAndroidGidMap,
+                       .enable_caches = SharedDirParam::Cache::kAuto,
+                       .ascii_casefold = false,
+                       .posix_acl = true,
+                       .max_dynamic_perm = 3,
+                       .max_dynamic_xattr = 5,
+                       .privileged_quota_uids = {0}};
 
   const std::string syslog_tag = "ARCVM(0)";
   auto request = param.get_start_vhost_user_virtio_fs_request(syslog_tag);

@@ -67,7 +67,7 @@ struct ArcVmFeatures {
 };
 
 // Obtain virtiofs shared dir command-line parameter string for oem directory.
-SharedDataParam GetOemEtcSharedDataParam(uid_t euid, gid_t egid);
+SharedDirParam GetOemEtcSharedDirParam(uid_t euid, gid_t egid);
 
 enum class VerifiedBootState {
   kUnverifiedBoot,

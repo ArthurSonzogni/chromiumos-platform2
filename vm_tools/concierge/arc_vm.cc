@@ -225,16 +225,16 @@ std::string GetChromeOsChannelFromLsbRelease() {
 
 }  // namespace
 
-SharedDataParam GetOemEtcSharedDataParam(uid_t euid, gid_t egid) {
+SharedDirParam GetOemEtcSharedDirParam(uid_t euid, gid_t egid) {
   std::string oem_etc_uid_map =
       base::StringPrintf(kOemEtcUgidMapTemplate, euid);
   std::string oem_etc_gid_map =
       base::StringPrintf(kOemEtcUgidMapTemplate, egid);
-  return SharedDataParam{.data_dir = base::FilePath(kOemEtcSharedDir),
-                         .tag = kOemEtcSharedDirTag,
-                         .uid_map = oem_etc_uid_map,
-                         .gid_map = oem_etc_gid_map,
-                         .enable_caches = SharedDataParam::Cache::kAlways};
+  return SharedDirParam{.data_dir = base::FilePath(kOemEtcSharedDir),
+                        .tag = kOemEtcSharedDirTag,
+                        .uid_map = oem_etc_uid_map,
+                        .gid_map = oem_etc_gid_map,
+                        .enable_caches = SharedDirParam::Cache::kAlways};
 }
 
 ArcVm::ArcVm(Config config)
@@ -346,31 +346,31 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
           "num_output_devices=4,"
           "output_device_config=[[],[],[],[stream_type=pro_audio]],"
           "input_device_config=[[],[],[stream_type=pro_audio]]")
-      .AppendSharedDir(GetOemEtcSharedDataParam(geteuid(), getegid()))
+      .AppendSharedDir(GetOemEtcSharedDirParam(geteuid(), getegid()))
       .AppendSharedDir(
-          SharedDataParam{.data_dir = base::FilePath(kTestHarnessSharedDir),
-                          .tag = kTestHarnessSharedDirTag,
-                          .uid_map = kAndroidUidMap,
-                          .gid_map = kAndroidGidMap,
-                          .enable_caches = SharedDataParam::Cache::kAlways,
-                          .ascii_casefold = false,
-                          .posix_acl = true})
+          SharedDirParam{.data_dir = base::FilePath(kTestHarnessSharedDir),
+                         .tag = kTestHarnessSharedDirTag,
+                         .uid_map = kAndroidUidMap,
+                         .gid_map = kAndroidGidMap,
+                         .enable_caches = SharedDirParam::Cache::kAlways,
+                         .ascii_casefold = false,
+                         .posix_acl = true})
       .AppendSharedDir(
-          SharedDataParam{.data_dir = base::FilePath(kApkCacheSharedDir),
-                          .tag = kApkCacheSharedDirTag,
-                          .uid_map = kAndroidUidMap,
-                          .gid_map = kAndroidGidMap,
-                          .enable_caches = SharedDataParam::Cache::kAlways,
-                          .ascii_casefold = false,
-                          .posix_acl = true})
+          SharedDirParam{.data_dir = base::FilePath(kApkCacheSharedDir),
+                         .tag = kApkCacheSharedDirTag,
+                         .uid_map = kAndroidUidMap,
+                         .gid_map = kAndroidGidMap,
+                         .enable_caches = SharedDirParam::Cache::kAlways,
+                         .ascii_casefold = false,
+                         .posix_acl = true})
       .AppendSharedDir(
-          SharedDataParam{.data_dir = base::FilePath(kReadonlySharedDir),
-                          .tag = kReadonlySharedDirTag,
-                          .uid_map = kAndroidUidMap,
-                          .gid_map = kAndroidGidMap,
-                          .enable_caches = SharedDataParam::Cache::kAlways,
-                          .ascii_casefold = false,
-                          .posix_acl = true})
+          SharedDirParam{.data_dir = base::FilePath(kReadonlySharedDir),
+                         .tag = kReadonlySharedDirTag,
+                         .uid_map = kAndroidUidMap,
+                         .gid_map = kAndroidGidMap,
+                         .enable_caches = SharedDirParam::Cache::kAlways,
+                         .ascii_casefold = false,
+                         .posix_acl = true})
       .EnableBattery(true /* enable */)
       .EnableDelayRt(true /* enable */);
 

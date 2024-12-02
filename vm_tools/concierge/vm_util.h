@@ -263,8 +263,8 @@ constexpr char kAndroidGidMap[] =
 constexpr char kStubUidMap[] = "0 1000 1";
 constexpr char kStubGidMap[] = "0 1001 1,1000 656360 1";
 
-// Shared data parameter for crosvm.
-struct SharedDataParam {
+// shared-dir parameter for crosvm.
+struct SharedDirParam {
   enum class Cache {
     kAuto,
     kAlways,
@@ -276,8 +276,10 @@ struct SharedDataParam {
     bool writeback;
     uint32_t negative_timeout;
   };
+  // Get command line parameter string for use with crosvm's --shared-dir
+  // command-line option.
   std::string to_string() const;
-  // Get VhostUserVirtioFsConfig proto message according to SharedDataParam,
+  // Get VhostUserVirtioFsConfig proto message according to SharedDirParam,
   // this message will be parsed by vhost_user_starter daemon and config
   // vhost-user-fs backend's --cfg option in crosvm.
   vhost_user_starter::StartVhostUserFsRequest
@@ -296,7 +298,7 @@ struct SharedDataParam {
   std::vector<uid_t> privileged_quota_uids;
 
  private:
-  CacheParameters create_cache_parameters(SharedDataParam::Cache enable_caches,
+  CacheParameters create_cache_parameters(SharedDirParam::Cache enable_caches,
                                           bool ascii_casefold) const;
 };
 
@@ -309,8 +311,8 @@ struct VhostUserFrontParam {
   std::string to_string() const;
 };
 
-// Creates the font-specific shared data parameter for crosvm.
-SharedDataParam CreateFontsSharedDataParam();
+// Creates the font-specific shared dir parameter for crosvm.
+SharedDirParam CreateFontsSharedDirParam();
 
 class ArcVmCPUTopology {
  public:

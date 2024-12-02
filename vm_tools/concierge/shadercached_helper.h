@@ -19,7 +19,7 @@
 namespace vm_tools::concierge {
 
 // Creates the shader-cache-specific shared data parameter for crosvm.
-SharedDataParam CreateShaderSharedDataParam(base::FilePath data_dir);
+SharedDirParam CreateShaderSharedDirParam(base::FilePath data_dir);
 
 base::expected<shadercached::PrepareShaderCacheResponse, std::string>
 PrepareShaderCache(const VmId& vm_id,

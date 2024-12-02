@@ -1832,7 +1832,7 @@ StartVmResponse Service::StartVmInternal(
       .SetPflash(std::move(pflash))
       .SetInitrd(std::move(image_spec.initrd))
       .SetCpus(cpus)
-      .AppendSharedDir(CreateFontsSharedDataParam())
+      .AppendSharedDir(CreateFontsSharedDirParam())
       .EnableSmt(false /* enable */)
       .SetGpuCachePath(std::move(gpu_cache_spec.device))
       .AppendCustomParam("--vcpu-cgroup-path",
@@ -1845,7 +1845,7 @@ StartVmResponse Service::StartVmInternal(
           base::FilePath(prepare_result.value().precompiled_cache_path());
       vm_builder.SetFozDbListPath(std::move(gpu_cache_spec.foz_db_list))
           .SetPrecompiledCachePath(precompiled_cache_path)
-          .AppendSharedDir(CreateShaderSharedDataParam(precompiled_cache_path));
+          .AppendSharedDir(CreateShaderSharedDirParam(precompiled_cache_path));
     } else {
       LOG(ERROR) << "Unable to initialize shader cache: "
                  << prepare_result.error();
@@ -5068,7 +5068,7 @@ void Service::GetBaguetteImageUrl(
 }
 
 std::optional<VhostUserFrontParam> Service::InvokeVhostUserFsBackend(
-    SharedDataParam param, std::string_view syslog_tag) {
+    SharedDirParam param, std::string_view syslog_tag) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Vhost-user-fs frontend device should share same tag with backend device.
   std::string shared_tag = param.tag;

@@ -596,7 +596,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   // StartVhostUserFsRequest to vhost_user_starter daemon.
   // Return a corresponding frontend parameter.
   std::optional<VhostUserFrontParam> InvokeVhostUserFsBackend(
-      SharedDataParam param, std::string_view syslog_tag);
+      SharedDirParam param, std::string_view syslog_tag);
 
   // Destructor will need to run last after all metrics logging to allow
   // flushing of all metrics in AsynchronousMetricsWriter destructor.

@@ -32,15 +32,15 @@ constexpr char kShaderSharedDirTag[] = "precompiled_gpu_cache";
 
 }  // namespace
 
-SharedDataParam CreateShaderSharedDataParam(base::FilePath data_dir) {
+SharedDirParam CreateShaderSharedDirParam(base::FilePath data_dir) {
   // Write performance is not a concern, we only need to make sure if a write
   // happens from the guest side, it is guaranteed to be persisted in the host.
-  return SharedDataParam{
+  return SharedDirParam{
       .data_dir = data_dir,
       .tag = kShaderSharedDirTag,
       .uid_map = kShadercachedUidMap,
       .gid_map = kShadercachedGidMap,
-      .enable_caches = SharedDataParam::Cache::kNever,
+      .enable_caches = SharedDirParam::Cache::kNever,
       .rewrite_security_xattrs = false,
       .posix_acl = true,
   };

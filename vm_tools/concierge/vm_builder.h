@@ -122,7 +122,7 @@ class VmBuilder {
   VmBuilder& AppendAudioDevice(std::string_view params);
   VmBuilder& AppendSerialDevice(std::string_view device);
   VmBuilder& AppendPmemDevice(PmemDevice device);
-  VmBuilder& AppendSharedDir(SharedDataParam shared_data_param);
+  VmBuilder& AppendSharedDir(SharedDirParam shared_data_param);
   VmBuilder& AppendCustomParam(std::string_view key, std::string_view value);
   VmBuilder& AppendVhostUserFrontend(VhostUserFrontParam param);
 
@@ -260,7 +260,7 @@ class VmBuilder {
   std::vector<AudioDevice> audio_devices_;
   std::vector<std::string> serial_devices_;
   std::vector<std::string> wayland_sockets_;
-  std::vector<SharedDataParam> shared_dirs_;
+  std::vector<SharedDirParam> shared_dirs_;
   std::vector<std::vector<int32_t>> cpu_clusters_;
   std::vector<PmemDevice> pmem_devices_;
   std::vector<VhostUserFrontParam> vhost_user_fronts_;

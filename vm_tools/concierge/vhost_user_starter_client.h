@@ -31,7 +31,7 @@ class VhostUserStarterClient final {
 
   // Pass socket to vhost_user fs
   void StartVhostUserFs(base::ScopedFD in_socket,
-                        const SharedDataParam& param,
+                        const SharedDirParam& param,
                         std::string_view syslog_tag);
   int GetStartedDeviceCount() const {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);

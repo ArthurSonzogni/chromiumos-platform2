@@ -9,13 +9,13 @@
 namespace vm_tools::concierge {
 namespace {
 
-TEST(ShadercachedHelper, CreateShaderSharedDataParamTest) {
+TEST(ShadercachedHelper, CreateShaderSharedDirParamTest) {
   ASSERT_EQ(
+      CreateShaderSharedDirParam(base::FilePath("/")).to_string(),
       "/:precompiled_gpu_cache:type=fs:cache=never:uidmap=0 65534 1,1000 333 "
       "1:gidmap=0 65534 1,1000 333 "
       "1:timeout=1:rewrite-security-xattrs=false:writeback=false:"
-      "negative_timeout=1",
-      CreateShaderSharedDataParam(base::FilePath("/")).to_string());
+      "negative_timeout=1");
 }
 
 }  // anonymous namespace

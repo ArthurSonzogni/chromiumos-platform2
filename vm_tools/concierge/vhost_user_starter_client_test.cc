@@ -87,14 +87,14 @@ TEST_F(VhostUserStarterClientTest, StartVhostUserFs) {
 
   base::FilePath data_dir = base::FilePath("test");
   const std::vector<uid_t> privileged_quota_uids = {0};
-  SharedDataParam test_param{.data_dir = data_dir,
-                             .tag = "stub",
-                             .uid_map = "0 0 1",
-                             .gid_map = "0 0 1",
-                             .enable_caches = SharedDataParam::Cache::kAuto,
-                             .ascii_casefold = true,
-                             .posix_acl = false,
-                             .privileged_quota_uids = privileged_quota_uids};
+  SharedDirParam test_param{.data_dir = data_dir,
+                            .tag = "stub",
+                            .uid_map = "0 0 1",
+                            .gid_map = "0 0 1",
+                            .enable_caches = SharedDirParam::Cache::kAuto,
+                            .ascii_casefold = true,
+                            .posix_acl = false,
+                            .privileged_quota_uids = privileged_quota_uids};
   // Set up vhost-user-virtio-fs device
   int fds[2];
   socketpair(AF_UNIX, SOCK_STREAM, 0 /* protocol */, fds);

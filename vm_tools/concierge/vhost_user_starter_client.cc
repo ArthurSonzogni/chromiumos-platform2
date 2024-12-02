@@ -49,7 +49,7 @@ void VhostUserStarterClient::StartVhostUserFsErrorCallback(
 }
 
 void VhostUserStarterClient::StartVhostUserFs(base::ScopedFD in_socket,
-                                              const SharedDataParam& param,
+                                              const SharedDirParam& param,
                                               std::string_view syslog_tag) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   vm_tools::vhost_user_starter::StartVhostUserFsRequest request =
