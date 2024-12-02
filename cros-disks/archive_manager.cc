@@ -49,6 +49,7 @@ bool ArchiveManager::Initialize() {
         37};  // ZIP_ER_BASE + ZIP_ER_WRONGPASSWD
 
     std::vector<std::string> opts = {"-o", "nosymlinks,nospecials"};
+
     if (LOG_IS_ON(INFO)) {
       opts.push_back("--verbose");
     } else {
@@ -106,6 +107,7 @@ bool ArchiveManager::Initialize() {
       "z",      //
       "zst",    //
   };
+
   for (const char* const ext : archivemount_extensions) {
     SandboxedExecutable executable = {
         base::FilePath("/usr/bin/fuse-archive"),
@@ -126,8 +128,13 @@ bool ArchiveManager::Initialize() {
         // couldn't use the password even if it's correct.
     };
 
-    std::vector<std::string> opts = {"--passphrase"};
-    if (!LOG_IS_ON(INFO)) {
+    // Don't use fuse-archive in cached mode, since we're not sure to have
+    // enough disk space in /tmp.
+    std::vector<std::string> opts = {"-o", "nocache,nospecials,nosymlinks"};
+
+    if (LOG_IS_ON(INFO)) {
+      opts.push_back("--verbose");
+    } else {
       opts.push_back("--redact");
     }
 

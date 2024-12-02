@@ -20,6 +20,7 @@ exit: 1
 exit_group: 1
 faccessat: 1
 faccessat2: 1
+fallocate: 1
 fcntl: 1
 fstat: 1
 fstatfs: 1
@@ -38,6 +39,7 @@ ioctl: arg1 == TCGETS
 kill: arg1 == SIGKILL || arg1 == SIGTERM
 lseek: 1
 madvise: arg2 == MADV_DONTNEED
+mkdirat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
@@ -50,6 +52,7 @@ ppoll: 1
 pread64: 1
 prctl: arg0 == PR_SET_NAME
 prlimit64: 1
+pwrite64: 1
 read: 1
 readlinkat: 1
 restart_syscall: 1
@@ -69,6 +72,7 @@ socket: arg0 == AF_UNIX
 statfs: 1
 tgkill: arg2 == SIGABRT
 uname: 1
+unlinkat: 1
 wait4: 1
 write: 1
 writev: 1
