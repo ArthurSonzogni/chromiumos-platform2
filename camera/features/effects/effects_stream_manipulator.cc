@@ -408,7 +408,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   // Load the pipeline with effects config from |runtime_options_|.
   bool EnsurePipelineSetupOnGlThread();
   void ShutdownOnGlThread();
-  void CreatePipeline(const base::FilePath& dlc_root_path);
+  bool CreatePipeline(const base::FilePath& dlc_root_path);
   void UploadAndResetMetricsData();
   void ResetState();
   void PostProcess(int64_t timestamp,
@@ -582,9 +582,10 @@ bool EffectsStreamManipulatorImpl::Initialize(
 bool EffectsStreamManipulatorImpl::EnsurePipelineSetupOnGlThread() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   if (!pipeline_ &&
-      !runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId).empty()) {
-    CreatePipeline(base::FilePath(
-        runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId)));
+      !runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId).empty() &&
+      !CreatePipeline(base::FilePath(
+          runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId)))) {
+    return false;
   }
   if (!pipeline_) {
     return false;
@@ -1276,7 +1277,7 @@ bool EffectsStreamManipulatorImpl::SetupGlThread(
   return true;
 }
 
-void EffectsStreamManipulatorImpl::CreatePipeline(
+bool EffectsStreamManipulatorImpl::CreatePipeline(
     const base::FilePath& dlc_root_path) {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   // Check to see if the cache dir is empty, and if so,
@@ -1305,6 +1306,10 @@ void EffectsStreamManipulatorImpl::CreatePipeline(
 
   pipeline_ = EffectsPipeline::Create(dlc_root_path, egl_context_->Get(),
                                       cache_dir_override);
+  if (!pipeline_) {
+    LOGF(ERROR) << "Failed to create pipeline";
+    return false;
+  }
   pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
       base::BindRepeating(&EffectsStreamManipulatorImpl::OnFrameProcessed,
                           base::Unretained(this))));
@@ -1319,6 +1324,7 @@ void EffectsStreamManipulatorImpl::CreatePipeline(
   }
   config_->SetCallback(base::BindRepeating(
       &EffectsStreamManipulatorImpl::OnOptionsUpdated, base::Unretained(this)));
+  return true;
 }
 
 void EffectsStreamManipulatorImpl::UploadAndResetMetricsData() {
