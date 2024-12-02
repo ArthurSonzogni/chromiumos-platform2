@@ -13,6 +13,7 @@ rseq: 1
 # LOOP_CONFIGURE = 0x4c0a
 # CDROM_LAST_WRITTEN = 0x5395
 # FS_IOC_FIEMAP = 0xc020660b
+# BLKGETZONESZ = 0x80041284
 ioctl: arg1 == BLKALIGNOFF || arg1 == BLKDISCARD || \
        arg1 == BLKDISCARDZEROES || arg1 == BLKGETSIZE64 || \
        arg1 == BLKIOMIN || arg1 == BLKIOOPT || arg1 == BLKPBSZGET || \
@@ -24,7 +25,7 @@ ioctl: arg1 == BLKALIGNOFF || arg1 == BLKDISCARD || \
        arg1 == TIOCGWINSZ || arg1 == 0x1269 || arg1 == 0x5331 || \
        arg1 == 0x301 || arg1 == 0x80306d02 || arg1 == 0x5382 || \
        arg1 == 0x4c0a || arg1 == 0x5395 || arg1 == FDGETFDCSTAT || \
-       arg1 == 0xc020660b
+       arg1 == 0xc020660b || arg1 == 0x80041284
 
 access: 1
 arch_prctl: 1
