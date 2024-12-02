@@ -7456,10 +7456,6 @@ mno {
     }
     mccmnc: "44002"
     tethering_allowed: true
-    mobile_apn {
-      apn: "APN9"
-      type: DEFAULT
-    }
   }
 }
 
