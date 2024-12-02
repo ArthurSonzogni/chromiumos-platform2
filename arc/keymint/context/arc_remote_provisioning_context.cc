@@ -428,9 +428,8 @@ ArcRemoteProvisioningContext::BuildProtectedDataPayload(
     }
     // Create a Cppbor Map with pre-defined key and value as Chrome OS blob
     // returned from libarc-attestation.
-    cros_blob_map =
-        cppbor::Map().add(cppbor::Tstr(kChromeOSQuotedBlobKey),
-                          cppbor::Bstr(brillo::BlobToString(cros_quoted_blob)));
+    cros_blob_map = cppbor::Map().add(cppbor::Tstr(kChromeOSQuotedBlobKey),
+                                      cppbor::Array().add(cros_quoted_blob));
 
     signed_mac = constructCoseSign1FromDK(/*Protected Params*/ {}, mac_key,
                                           additional_auth_data);
@@ -455,7 +454,7 @@ ArcRemoteProvisioningContext::BuildProtectedDataPayload(
                              .add(std::move(boot_cert_chain));
 
   if (cros_blob_map.has_value()) {
-    result.add(cros_blob_map.value().canonicalize().encode());
+    result.add(std::move(cros_blob_map.value().canonicalize()));
   }
 
   return result.encode();
