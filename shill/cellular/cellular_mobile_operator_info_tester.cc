@@ -41,6 +41,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(gid1, "", "Home GID1");
   DEFINE_string(serving_mccmnc, "", "Serving MCCMNC.");
   DEFINE_string(serving_name, "", "Serving Operator Name.");
+  DEFINE_int32(verbose_level, 5, "Logging level.");
 
   brillo::FlagHelper::Init(argc, argv, "cellular_mobile_operator_info_tester");
 
@@ -53,7 +54,7 @@ int main(int argc, char* argv[]) {
       base::FilePath(executable_path).Append("serviceproviders.pbf");
 
   logging::SetMinLogLevel(logging::LOGGING_INFO);
-  shill::ScopeLogger::GetInstance()->set_verbose_level(5);
+  shill::ScopeLogger::GetInstance()->set_verbose_level(FLAGS_verbose_level);
   shill::ScopeLogger::GetInstance()->EnableScopesByName("cellular");
 
   mobile_operator_info->AddDatabasePath(database_path);
@@ -124,12 +125,20 @@ int main(int argc, char* argv[]) {
          << mobile_operator_info->IsMobileVirtualNetworkOperatorKnown() << "\n";
   report << "IsServingMobileNetworkOperatorKnown: " << std::boolalpha
          << mobile_operator_info->IsServingMobileNetworkOperatorKnown() << "\n";
+  report << "IsPrivateNetwork: " << std::boolalpha
+         << mobile_operator_info->IsPrivateNetwork() << "\n";
+  report << "IsTestNetwork: " << std::boolalpha
+         << mobile_operator_info->IsTestNetwork() << "\n";
   report << "friendly_operator_name when roaming: "
          << mobile_operator_info->friendly_operator_name(true) << "\n";
   report << "friendly_operator_name when not roaming: "
          << mobile_operator_info->friendly_operator_name(false) << "\n";
   report << "use_fallback_apn: " << std::boolalpha
          << mobile_operator_info->use_fallback_apn() << "\n";
+  report << "tethering_disallowed: " << std::boolalpha
+         << mobile_operator_info->tethering_disallowed() << "\n";
+  report << "use_dun_apn_as_default: " << std::boolalpha
+         << mobile_operator_info->use_dun_apn_as_default() << "\n";
 
   shill::ApnList apn_list(/* merge_similar_apns */ false);
   apn_list.AddApns(mobile_operator_info->apn_list(),
