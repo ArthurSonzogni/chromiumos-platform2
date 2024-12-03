@@ -112,34 +112,6 @@ class MockPlatform : public PlatformInterface {
               (int fd, const void* key, void* value),
               (override));
 
-  MOCK_METHOD(int,
-              Sys_statx,
-              (int dir_fd,
-               const std::string& path,
-               int flags,
-               unsigned int mask,
-               struct statx* statxbuf),
-              (override));
-
-  MOCK_METHOD(bool,
-              FilePathExists,
-              (const std::string& path),
-              (const override));
-
-  MOCK_METHOD(bool,
-              IsFilePathDirectory,
-              (const std::string& path),
-              (const override));
-
-  MOCK_METHOD(std::vector<std::filesystem::directory_entry>,
-              FileSystemDirectoryIterator,
-              (const std::string& path),
-              (const override));
-
-  MOCK_METHOD(int, OpenDirectory, (const std::string& path), (const override));
-
-  MOCK_METHOD(int, CloseDirectory, (int fd), (const override));
-
  private:
   base::WeakPtrFactory<MockPlatform> weak_ptr_factory_;
 };

@@ -69,17 +69,6 @@ class PlatformInterface {
   virtual void RingBufferFree(struct ring_buffer* rb) = 0;
   virtual std::unique_ptr<base::FileDescriptorWatcher::Controller>
   WatchReadable(int fd, const base::RepeatingClosure& callback) = 0;
-  virtual int Sys_statx(int dir_fd,
-                        const std::string& path,
-                        int flags,
-                        unsigned int mask,
-                        struct statx* statxbuf) = 0;
-  virtual bool FilePathExists(const std::string& path) const = 0;
-  virtual bool IsFilePathDirectory(const std::string& path) const = 0;
-  virtual std::vector<std::filesystem::directory_entry>
-  FileSystemDirectoryIterator(const std::string& path) const = 0;
-  virtual int OpenDirectory(const std::string& path) const = 0;
-  virtual int CloseDirectory(int fd) const = 0;
   virtual ~PlatformInterface() = default;
 };
 
@@ -133,17 +122,6 @@ class Platform : public PlatformInterface {
   void RingBufferFree(struct ring_buffer* rb) override;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> WatchReadable(
       int fd, const base::RepeatingClosure& callback) override;
-  int Sys_statx(int dir_fd,
-                const std::string& path,
-                int flags,
-                unsigned int mask,
-                struct statx* statxbuf) override;
-  bool FilePathExists(const std::string& path) const override;
-  bool IsFilePathDirectory(const std::string& path) const override;
-  std::vector<std::filesystem::directory_entry> FileSystemDirectoryIterator(
-      const std::string& path) const override;
-  int OpenDirectory(const std::string& path) const override;
-  int CloseDirectory(int fd) const override;
 
  private:
   base::WeakPtrFactory<Platform> weak_ptr_factory_;

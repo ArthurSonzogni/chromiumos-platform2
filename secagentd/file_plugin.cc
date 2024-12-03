@@ -38,7 +38,6 @@
 #include <sys/types.h>
 
 #include <cerrno>
-#include <filesystem>
 #include <iostream>
 #include <map>
 #include <optional>
@@ -56,9 +55,12 @@ using secagentd::FilePlugin;
 
 static constexpr size_t bytes_per_kib{1024};
 static constexpr size_t bytes_per_mib{bytes_per_kib * 1024};
-const char kDeviceSettingsBasePath[] = "/var/lib/devicesettings/";
-static const std::map<std::string, std::string> kBlocklistBinariesPathMap = {
-    {"dlp", "/usr/sbin/dlp"}, {"secagentd", "/usr/sbin/secagentd"}};
+const base::FilePath kRootPath = base::FilePath("/");
+const base::FilePath kDeviceSettingsBasePath =
+    base::FilePath("var/lib/devicesettings/");
+static const std::map<std::string, base::FilePath> kBlocklistBinariesPathMap = {
+    {"dlp", base::FilePath("/usr/sbin/dlp")},
+    {"secagentd", base::FilePath("/usr/sbin/secagentd")}};
 
 const std::vector<secagentd::FilePathName> kDeviceSettingMatchOptions{
     secagentd::FilePathName::DEVICE_SETTINGS_OWNER_KEY,
@@ -68,88 +70,88 @@ const std::vector<secagentd::FilePathName> kDeviceSettingMatchOptions{
 static const std::map<secagentd::FilePathName, secagentd::PathInfo>
     kFilePathInfoMap = {
         {secagentd::FilePathName::USER_FILES_DIR,
-         {"/home/chronos/u-", "/MyFiles",
+         {"home/chronos/u-", "/MyFiles",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_FILE,
           secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::COOKIES_DIR,
-         {"/home/chronos/u-", "/Cookies",
+         {"home/chronos/u-", "/Cookies",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
           secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::COOKIES_JOURNAL_DIR,
-         {"/home/chronos/u-", "/Cookies-journal",
+         {"home/chronos/u-", "/Cookies-journal",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
           secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::SAFE_BROWSING_COOKIES_DIR,
-         {"/home/chronos/u-", "/Safe Browsing Cookies",
+         {"home/chronos/u-", "/Safe Browsing Cookies",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
           secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::SAFE_BROWSING_COOKIES_JOURNAL_DIR,
-         {"/home/chronos/u-", "/Safe Browsing Cookies-journal",
+         {"home/chronos/u-", "/Safe Browsing Cookies-journal",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
           secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::USER_SECRET_STASH_DIR,
-         {"/home/.shadow/", "/user_secret_stash",
+         {"home/.shadow/", "/user_secret_stash",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_ENCRYPTED_CREDENTIAL,
           secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::ROOT,
-         {"/", std::nullopt,
+         {"", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::ROOT_FS,
           secagentd::FilePathCategory::SYSTEM_PATH, false, std::nullopt,
           secagentd::bpf::device_monitoring_type::MONITOR_ALL_FILES}},
         {secagentd::FilePathName::MOUNTED_ARCHIVE,
-         {"/media/archive", std::nullopt,
+         {"media/archive", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_FILE,
           secagentd::FilePathCategory::REMOVABLE_PATH, false}},
         {secagentd::FilePathName::GOOGLE_DRIVE_FS,
-         {"/media/fuse/", "drivefs",
+         {"media/fuse/", "drivefs",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_GOOGLE_DRIVE_FILE,
           secagentd::FilePathCategory::REMOVABLE_PATH, false}},
         {secagentd::FilePathName::STATEFUL_PARTITION,
-         {"/home/.shadow/", "/auth_factors",
+         {"home/.shadow/", "/auth_factors",
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::USER_AUTH_FACTORS_FILE,
           secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::USB_STORAGE,
-         {"/media/removable/", std::nullopt,
+         {"media/removable/", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::USB_MASS_STORAGE,
           secagentd::FilePathCategory::REMOVABLE_PATH, false}},
         {secagentd::FilePathName::DEVICE_SETTINGS_POLICY_DIR,
-         {"/var/lib/devicesettings/policy.", std::nullopt,
+         {"var/lib/devicesettings/policy.", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::DEVICE_POLICY,
           secagentd::FilePathCategory::SYSTEM_PATH}},
         {secagentd::FilePathName::DEVICE_SETTINGS_OWNER_KEY,
-         {"/var/lib/devicesettings/owner.key", std::nullopt,
+         {"var/lib/devicesettings/owner.key", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::DEVICE_POLICY_PUBLIC_KEY,
           secagentd::FilePathCategory::SYSTEM_PATH}},
         {secagentd::FilePathName::SESSION_MANAGER_POLICY_DIR,
-         {"/run/daemon-store/session_manager/", "/policy",
+         {"run/daemon-store/session_manager/", "/policy",
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::USER_POLICY,
           secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::SESSION_MANAGER_POLICY_KEY,
-         {"/run/daemon-store/session_manager/", "/policy/key",
+         {"run/daemon-store/session_manager/", "/policy/key",
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::USER_POLICY_PUBLIC_KEY,
           secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::CRYPTOHOME_KEY,
-         {"/home/.shadow/cryptohome.key", std::nullopt,
+         {"home/.shadow/cryptohome.key", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::SYSTEM_TPM_PUBLIC_KEY,
           secagentd::FilePathCategory::SYSTEM_PATH}},
         {secagentd::FilePathName::CRYPTOHOME_ECC_KEY,
-         {"/home/.shadow/cryptohome.ecc.key", std::nullopt,
+         {"home/.shadow/cryptohome.ecc.key", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::SYSTEM_TPM_PUBLIC_KEY,
           secagentd::FilePathCategory::SYSTEM_PATH}},
@@ -180,19 +182,50 @@ const std::map<secagentd::FilePathCategory,
           secagentd::FilePathName::USB_STORAGE,
           secagentd::FilePathName::GOOGLE_DRIVE_FS}}};
 
+// Checks if the path has the specified prefix and if the first component after
+// the prefix starts with the suffix (if provided).prefix includes root path
+bool PathHasPrefixAndSuffix(const base::FilePath& path,
+                            const base::FilePath& prefix,
+                            const std::optional<std::string>& suffix) {
+  // Check if the prefix is a parent of the path.
+  if (!prefix.IsParent(path)) {
+    return false;
+  }
+
+  // If no suffix is provided, just return true since prefix matches.
+  if (!suffix.has_value()) {
+    return true;
+  }
+
+  // Get the path relative to the prefix.
+  base::FilePath relative_path;
+  bool result =
+      prefix.StripTrailingSeparators().AppendRelativePath(path, &relative_path);
+
+  if (result) {
+    // Get the first component of the relative path.
+    std::string relative_first_component =
+        relative_path.GetComponents().front();
+
+    // Check if the first component of the relative path starts with the
+    // provided suffix.
+    return relative_first_component.find(suffix.value()) == 0;
+  }
+  return false;
+}
+
 // Function to match a path prefix to FilePathName
 std::optional<std::pair<const secagentd::FilePathName, secagentd::PathInfo>>
 MatchNonUserPathToFilePathName(
-    const std::string& path,
+    const base::FilePath rootPath,
+    const base::FilePath& path,
     const std::vector<secagentd::FilePathName>& matchOptions) {
   for (const auto& pathname : matchOptions) {
     auto it = kFilePathInfoMap.find(pathname);
     if (it != kFilePathInfoMap.end()) {
-      std::string pathPrefix = it->second.pathPrefix;
-      if (it->second.pathSuffix.has_value()) {
-        pathPrefix += it->second.pathSuffix.value();
-      }
-      if (path.find(pathPrefix) == 0) {
+      if (PathHasPrefixAndSuffix(
+              path, rootPath.Append(base::FilePath(it->second.pathPrefix)),
+              it->second.pathSuffix)) {
         return *it;
       }
     }
@@ -207,11 +240,6 @@ const std::optional<std::string> ConstructOptionalUserhash(
     return std::nullopt;
   }
   return userhash;
-}
-
-static uint64_t UserspaceToKernelDeviceId(const struct statx& fileStatx) {
-  // Combine the major and minor numbers to form the kernel-space device ID
-  return ((fileStatx.stx_dev_major << 20) | fileStatx.stx_dev_minor);
 }
 
 static uint64_t UserspaceToKernelDeviceId(uint64_t dev_t) {
@@ -446,7 +474,8 @@ FilePlugin::FilePlugin(
                  policies_features_broker,
                  device_user,
                  batch_interval_s,
-                 std::max((batch_interval_s / 10), 1u)) {}
+                 std::max((batch_interval_s / 10), 1u),
+                 kRootPath) {}
 
 // Constructor for testing only, allows for image cache injection.
 FilePlugin::FilePlugin(
@@ -457,7 +486,8 @@ FilePlugin::FilePlugin(
     scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
     scoped_refptr<DeviceUserInterface> device_user,
     uint32_t batch_interval_s,
-    uint32_t async_timeout_s)
+    uint32_t async_timeout_s,
+    base::FilePath(root_path))
     : weak_ptr_factory_(this),
       process_cache_(process_cache),
       image_cache_(image_cache),
@@ -481,20 +511,20 @@ FilePlugin::FilePlugin(
           std::make_unique<BpfSkeletonHelper<Types::BpfSkeleton::kFile>>(
               bpf_skeleton_factory, batch_interval_s)),
       batch_interval_s_(batch_interval_s),
-      async_timeout_s_(async_timeout_s) {
+      async_timeout_s_(async_timeout_s),
+      root_path_(root_path) {
   CHECK(message_sender != nullptr);
   CHECK(process_cache != nullptr);
   CHECK(bpf_skeleton_factory);
   CHECK(async_timeout_s < (batch_interval_s / 2));
 }
 
-absl::StatusOr<const struct statx> GetFStat(int dirFd,
-                                            const std::string& path) {
-  struct statx fileStatx;
+absl::StatusOr<const base::stat_wrapper_t> GetFStat(
+    const base::FilePath& path) {
+  base::stat_wrapper_t fileStat;
   // Retrieve file information for the current path using statx
   base::WeakPtr<PlatformInterface> platform = GetPlatform();
-  if (platform->Sys_statx(dirFd, path.c_str(), AT_STATX_DONT_SYNC,
-                          STATX_INO | STATX_BASIC_STATS, &fileStatx) == -1) {
+  if (base::File::Stat(path, &fileStat) != 0) {
     // Check the type of error encountered
     if (errno == ENOENT) {
       // Path does not exist
@@ -504,36 +534,38 @@ absl::StatusOr<const struct statx> GetFStat(int dirFd,
       return absl::InternalError(strerror(errno));
     }
   }
-  // File statistics retrieved successfully
-  return fileStatx;
+  // Filestat retrieved successfully
+  return fileStat;
 }
 
 // Traverses the base directory and applies a callback function to each
 // subdirectory.
 
 void TraverseDirectories(
-    const std::string& baseDir,
-    base::RepeatingCallback<void(const std::string&)> callback,
+    const base::FilePath& baseDir,
+    base::RepeatingCallback<void(const base::FilePath&)> callback,
     bool processSubDirectories,
     bool processFiles) {
   base::WeakPtr<PlatformInterface> platform = GetPlatform();
   // Use Platform class to check if the base directory exists and is a directory
-  if (!platform->FilePathExists(baseDir) ||
-      !platform->IsFilePathDirectory(baseDir)) {
+  if (!base::DirectoryExists(baseDir)) {
     LOG(ERROR) << "The directory " << baseDir
                << " does not exist or is not a directory.";
     return;
   }
+  uint64_t flags = 0;
+  if (processSubDirectories) {
+    flags = flags | base::FileEnumerator::DIRECTORIES;
+  }
+  if (processSubDirectories) {
+    flags = flags | base::FileEnumerator::FILES;
+  }
 
-  // Iterate over all entries in the base directory using Platform's
-  // DirectoryIterator
-  for (const auto& entry : platform->FileSystemDirectoryIterator(baseDir)) {
-    // Check if the entry is a directory or a regular file
-    if ((entry.is_directory() && processSubDirectories) ||
-        (entry.is_regular_file() && processFiles)) {
-      // Apply the callback function to the directory path
-      callback.Run(entry.path().string());
-    }
+  base::FileEnumerator iterator(baseDir, false, flags);
+  for (base::FilePath entry = iterator.Next(); !entry.empty();
+       entry = iterator.Next()) {
+    // Apply the callback function to the directory path
+    callback.Run(entry);
   }
 }
 
@@ -625,6 +657,7 @@ void FilePlugin::ProcessHardLinkTaskResult(
 }
 
 absl::Status PopulatePathsMapByCategory(
+    base::FilePath& rootPath,
     FilePathCategory category,
     const std::optional<std::string>& optionalUserHash,
     std::map<FilePathName, std::vector<PathInfo>>* pathInfoMap) {
@@ -658,34 +691,33 @@ absl::Status PopulatePathsMapByCategory(
 
     if (categoryIt->first == FilePathCategory::REMOVABLE_PATH) {
       TraverseDirectories(
-          pathInfo.pathPrefix,
+          rootPath.Append(base::FilePath(pathInfo.pathPrefix)),
           base::BindRepeating(
               [](std::map<FilePathName, std::vector<PathInfo>>* pathInfoMap,
                  PathInfo* pathInfo, FilePathName pathName,
-                 const std::string& path) {
-                if (pathInfo->pathSuffix.has_value() &&
-                    !pathInfo->pathSuffix->empty()) {
-                  if (!path.starts_with(pathInfo->pathPrefix +
-                                        pathInfo->pathSuffix.value())) {
-                    return;
-                  }
+                 base::FilePath rootPath, const base::FilePath& path) {
+                if (PathHasPrefixAndSuffix(
+                        path,
+                        rootPath.Append(base::FilePath(pathInfo->pathPrefix)),
+                        pathInfo->pathSuffix)) {
+                  pathInfo->fullResolvedPath = path;
+                  (*pathInfoMap)[pathName].push_back(*pathInfo);
                 }
-                pathInfo->fullResolvedPath = path;
-                (*pathInfoMap)[pathName].push_back(*pathInfo);
               },
               base::Unretained(pathInfoMap), base::Unretained(&pathInfo),
-              pathName),
+              pathName, rootPath),
           true, false);
     } else if (pathName == FilePathName::DEVICE_SETTINGS_POLICY_DIR) {
-      pathInfo.fullResolvedPath = kDeviceSettingsBasePath;
+      pathInfo.fullResolvedPath = rootPath.Append(kDeviceSettingsBasePath);
       (*pathInfoMap)[pathName].push_back(pathInfo);
     } else if (category == FilePathCategory::USER_PATH) {
-      pathInfo.fullResolvedPath = pathInfo.pathPrefix +
-                                  optionalUserHash.value() +
-                                  pathInfo.pathSuffix.value();
+      pathInfo.fullResolvedPath = rootPath.Append(
+          base::FilePath(pathInfo.pathPrefix + optionalUserHash.value() +
+                         pathInfo.pathSuffix.value()));
       (*pathInfoMap)[pathName].push_back(pathInfo);
     } else {
-      pathInfo.fullResolvedPath = pathInfo.pathPrefix;
+      pathInfo.fullResolvedPath =
+          rootPath.Append(base::FilePath(pathInfo.pathPrefix));
       (*pathInfoMap)[pathName].push_back(pathInfo);
     }
   }
@@ -694,6 +726,7 @@ absl::Status PopulatePathsMapByCategory(
 }
 
 std::map<FilePathName, std::vector<PathInfo>> ConstructAllPathsMap(
+    base::FilePath rootPath,
     const std::optional<std::string>& optionalUserHash) {
   std::map<FilePathName, std::vector<PathInfo>> pathInfoMap;
 
@@ -701,7 +734,7 @@ std::map<FilePathName, std::vector<PathInfo>> ConstructAllPathsMap(
   if (optionalUserHash.has_value()) {
     // Populate paths for USER_PATH category using the provided userHash
     absl::Status status = PopulatePathsMapByCategory(
-        FilePathCategory::USER_PATH, optionalUserHash, &pathInfoMap);
+        rootPath, FilePathCategory::USER_PATH, optionalUserHash, &pathInfoMap);
     if (!status.ok()) {
       LOG(ERROR) << "Failed to populate paths for USER_PATH category: "
                  << status;
@@ -711,13 +744,13 @@ std::map<FilePathName, std::vector<PathInfo>> ConstructAllPathsMap(
   // Populate paths for SYSTEM_PATH and REMOVABLE_PATH categories without
   // userHash
   absl::Status status = PopulatePathsMapByCategory(
-      FilePathCategory::SYSTEM_PATH, std::nullopt, &pathInfoMap);
+      rootPath, FilePathCategory::SYSTEM_PATH, std::nullopt, &pathInfoMap);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to populate paths for SYSTEM_PATH category: "
                << status;
   }
-  status = PopulatePathsMapByCategory(FilePathCategory::REMOVABLE_PATH,
-                                      std::nullopt, &pathInfoMap);
+  status = PopulatePathsMapByCategory(
+      rootPath, FilePathCategory::REMOVABLE_PATH, std::nullopt, &pathInfoMap);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to populate paths for REMOVABLE_PATH category: "
                << status;
@@ -760,28 +793,23 @@ absl::Status FilePlugin::PopulateProcessBlocklistMap() {
   // Weak pointer to platform interface for updating BPF map
   base::WeakPtr<PlatformInterface> platform = GetPlatform();
 
-  int root_fd = platform->OpenDirectory("/");
-  if (root_fd == -1) {
-    return absl::InternalError(strerror(errno));
-  }
-
   // Iterate over the blocklisted process map, which contains the binary paths
   for (const auto& [_, binary_path] : kBlocklistBinariesPathMap) {
     // Retrieve file information for the current path using fstatat
-    absl::StatusOr<const struct statx> file_statx_result =
-        GetFStat(root_fd, binary_path.c_str());
-    if (!file_statx_result.ok()) {
+    absl::StatusOr<const base::stat_wrapper_t> file_stat_result =
+        GetFStat(binary_path);
+    if (!file_stat_result.ok()) {
       // We always expect to find dlp/secagentd binary in stored location
       NOTREACHED() << "FilePlugin::PopulateProcessBlocklistMap Failed to "
                       "retrieve file stat for "
-                   << binary_path << ": " << file_statx_result.status();
+                   << binary_path << ": " << file_stat_result.status();
     }
-    const struct statx& fileStatx = file_statx_result.value();
+    const base::stat_wrapper_t fileStat = file_stat_result.value();
 
     // Prepare the BPF map key with inode ID and device ID
     struct bpf::inode_dev_map_key key = {
-        .inode_id = fileStatx.stx_ino,
-        .dev_id = UserspaceToKernelDeviceId(fileStatx)};
+        .inode_id = fileStat.st_ino,
+        .dev_id = UserspaceToKernelDeviceId(fileStat.st_dev)};
 
     // Update the BPF map with inode_device_key as the key, and dummy value (1)
     // as the value
@@ -791,12 +819,9 @@ absl::Status FilePlugin::PopulateProcessBlocklistMap() {
       return absl::InternalError(
           absl::StrFormat("Failed to update BPF map with inode %lu and "
                           "device %u for binary: %s",
-                          key.inode_id, key.dev_id, binary_path));
+                          key.inode_id, key.dev_id, binary_path.value()));
     }
   }
-  // TODO(princya): Handle close file descriptor more gracefully
-  platform->CloseDirectory(
-      root_fd);  // Close the root directory file descriptor
 
   return absl::OkStatus();
 }
@@ -806,35 +831,29 @@ absl::Status FilePlugin::UpdateBPFMapForPathInodes(
     const std::map<FilePathName, std::vector<PathInfo>>& pathsMap,
     const std::optional<std::string>& optionalUserhash) {
   base::WeakPtr<PlatformInterface> platform = GetPlatform();
-  // Open the root directory to use with fstatat for file information
-  // retrieval
-  int root_fd = platform->OpenDirectory("/");
-  if (root_fd == -1) {
-    return absl::InternalError(strerror(errno));
-  }
 
   // Iterate over the map of file paths and their associated information
   for (const auto& [pathName, pathInfoVector] : pathsMap) {
     for (const auto& pathInfo : pathInfoVector) {
-      const std::string& path =
+      const base::FilePath& path =
           pathInfo.fullResolvedPath.value();  // Current path to process
       secagentd::bpf::file_monitoring_settings monitoringSettings{
           (uint8_t)pathInfo.fileType, pathInfo.monitoringMode};
 
       // Retrieve file information for the current path using fstatat
-      absl::StatusOr<const struct statx> file_statx_result =
-          GetFStat(root_fd, path.c_str());
-      if (!file_statx_result.ok()) {
-        LOG(ERROR) << "Failed to retrieve file statistics for " << path << ": "
-                   << file_statx_result.status();
+      absl::StatusOr<const base::stat_wrapper_t> file_stat_result =
+          GetFStat(path);
+      if (!file_stat_result.ok()) {
+        LOG(ERROR) << "Failed to retrieve filestat for " << path << ": "
+                   << file_stat_result.status();
         continue;  // Skip to the next path in the map
       }
-      const struct statx& fileStatx = file_statx_result.value();
+      const base::stat_wrapper_t fileStat = file_stat_result.value();
 
       // Prepare the BPF map key with inode ID and device ID
       struct bpf::inode_dev_map_key bpfMapKey = {
-          .inode_id = fileStatx.stx_ino,
-          .dev_id = UserspaceToKernelDeviceId(fileStatx)};
+          .inode_id = fileStat.st_ino,
+          .dev_id = UserspaceToKernelDeviceId(fileStat.st_dev)};
 
       // Update the BPF map with the inode key and monitoring mode value
 
@@ -860,8 +879,6 @@ absl::Status FilePlugin::UpdateBPFMapForPathInodes(
                 << ", Device ID: " << bpfMapKey.dev_id;
     }
   }
-  platform->CloseDirectory(
-      root_fd);  // Close the root directory file descriptor
   return absl::OkStatus();
 }
 
@@ -874,31 +891,25 @@ absl::Status AddDeviceIdsToBPFMap(
   }
 
   base::WeakPtr<PlatformInterface> platform = GetPlatform();
-  // Open the root directory to use with fstatat for file information
-  // retrieval
-  int root_fd = platform->OpenDirectory("/");
-  if (root_fd == -1) {
-    return absl::InternalError(strerror(errno));
-  }
 
   // Iterate through each path and update the BPF map
   for (const auto& [pathName, pathInfoVector] : pathsMap) {
     for (const auto& pathInfo : pathInfoVector) {
-      const std::string& path =
+      const base::FilePath& path =
           pathInfo.fullResolvedPath.value();  // Current path to process
 
       // Retrieve file information for the current path using fstatat
-      absl::StatusOr<const struct statx> file_statx_result =
-          GetFStat(root_fd, path.c_str());
-      if (!file_statx_result.ok()) {
-        LOG(ERROR) << "Failed to retrieve file statistics for " << path << ": "
-                   << file_statx_result.status();
+      absl::StatusOr<const base::stat_wrapper_t> file_stat_result =
+          GetFStat(path);
+      if (!file_stat_result.ok()) {
+        LOG(ERROR) << "Failed to retrieve filestat for " << path << ": "
+                   << file_stat_result.status();
         continue;  // Skip to the next path in the map
       }
-      const struct statx& fileStatx = file_statx_result.value();
+      const base::stat_wrapper_t fileStat = file_stat_result.value();
 
       // Convert userspace device ID to kernel device ID
-      uint64_t deviceId = UserspaceToKernelDeviceId(fileStatx);
+      uint64_t deviceId = UserspaceToKernelDeviceId(fileStat.st_dev);
 
       struct bpf::device_file_monitoring_settings bpfSettings = {
           .device_monitoring_type = pathInfo.deviceMonitoringType,
@@ -940,8 +951,6 @@ absl::Status AddDeviceIdsToBPFMap(
     }
   }
 
-  platform->CloseDirectory(
-      root_fd);  // Close the root directory file descriptor
   return absl::OkStatus();
 }
 
@@ -1041,7 +1050,7 @@ absl::Status FilePlugin::InitializeFileBpfMaps(const std::string& userhash) {
       ConstructOptionalUserhash(userhash);
   // Construct the paths map based on the user hash
   std::map<FilePathName, std::vector<PathInfo>> paths_map =
-      ConstructAllPathsMap(optionalUserhash);
+      ConstructAllPathsMap(root_path_, optionalUserhash);
 
   // Update map for flags
   absl::StatusOr<int> fd_result =
@@ -1082,8 +1091,8 @@ void FilePlugin::OnUserLogin(const std::string& device_user,
   }
 
   // Construct and populate paths for USER_PATH category
-  absl::Status status = PopulatePathsMapByCategory(FilePathCategory::USER_PATH,
-                                                   userHash, &pathInfoMap);
+  absl::Status status = PopulatePathsMapByCategory(
+      root_path_, FilePathCategory::USER_PATH, userHash, &pathInfoMap);
 
   if (!status.ok()) {
     LOG(ERROR) << "FilePlugin::OnUserLogin: Error Populating paths"
@@ -1130,10 +1139,9 @@ void FilePlugin::OnUserLogout(const std::string& userHash) {
 }
 
 void FilePlugin::OnMountEvent(const secagentd::bpf::mount_data& data) {
-  std::string destination_path = data.dest_device_path;
-
+  auto destination_path = base::FilePath(data.dest_device_path);
   auto pair = MatchNonUserPathToFilePathName(
-      destination_path,
+      root_path_, destination_path,
       kFilePathNamesByCategory.at(FilePathCategory::REMOVABLE_PATH));
   if (!pair.has_value()) {
     return;
@@ -1155,7 +1163,7 @@ void FilePlugin::OnMountEvent(const secagentd::bpf::mount_data& data) {
 void FilePlugin::OnUnmountEvent(
     const secagentd::bpf::umount_event& umount_event) {
   auto pair = MatchNonUserPathToFilePathName(
-      umount_event.dest_device_path,
+      root_path_, base::FilePath(umount_event.dest_device_path),
       kFilePathNamesByCategory.at(FilePathCategory::REMOVABLE_PATH));
   if (!pair.has_value()) {
     LOG(INFO) << "Mount point not matched any known path. Path: "

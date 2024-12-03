@@ -89,7 +89,7 @@ struct PathInfo {
   cros_xdr::reporting::SensitiveFileType fileType;
   FilePathCategory pathCategory;
   bool monitorHardLink = true;
-  std::optional<std::string> fullResolvedPath;
+  std::optional<base::FilePath> fullResolvedPath;
   bpf::device_monitoring_type deviceMonitoringType =
       bpf::device_monitoring_type::MONITOR_SPECIFIC_FILES;
 };
@@ -331,6 +331,7 @@ class ProcessPlugin : public PluginInterface {
   std::unique_ptr<BatchSenderType> batch_sender_;
   std::unique_ptr<BpfSkeletonHelperInterface> bpf_skeleton_helper_;
 };
+
 class FilePlugin : public PluginInterface {
  public:
   class InodeKey {
@@ -451,7 +452,8 @@ class FilePlugin : public PluginInterface {
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
       scoped_refptr<DeviceUserInterface> device_user,
       uint32_t batch_interval_s,
-      uint32_t async_timeout_s);
+      uint32_t async_timeout_s,
+      base::FilePath root_path);
 
   template <typename... Args>
   static std::unique_ptr<PluginInterface> CreateForTesting(Args&&... args) {
@@ -558,6 +560,7 @@ class FilePlugin : public PluginInterface {
   // Timer to prevent long running async tasks from blocking forward progress
   // of file events.
   base::OneShotTimer async_abort_timer_;
+  base::FilePath root_path_;
 
   void ProcessHardLinkTaskResult(
       int fd,
