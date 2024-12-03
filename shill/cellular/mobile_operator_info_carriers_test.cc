@@ -241,6 +241,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, AttUsHome_AttServing) {
     EXPECT_EQ(operator_info_->serving_operator_name(), kAttOperatorName);
     EXPECT_EQ(operator_info_->mtu(), kAttMtu);
     operator_info_->UpdateGID1(CreateRandomGid1NotInSet({"52FF", "53FF"}));
+    EXPECT_FALSE(operator_info_->tethering_disallowed());
     CheckFirstApn(kAttApn4G);
     CheckIfApnExists(kAttApnHotspot);
   }
@@ -253,6 +254,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, UnknownHome_AttServing) {
   EXPECT_EQ(operator_info_->serving_operator_name(), kAttOperatorName);
   EXPECT_EQ(operator_info_->mtu(), kAttMtu);
   EXPECT_EQ(operator_info_->apn_list().size(), 0);
+  EXPECT_FALSE(operator_info_->tethering_disallowed());
 }
 
 TEST_F(MobileOperatorInfoCarriersAttTest, AttHome_UnknownServing) {
@@ -261,6 +263,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, AttHome_UnknownServing) {
   EXPECT_EQ(operator_info_->operator_name(), kAttOperatorName);
   EXPECT_EQ(operator_info_->serving_operator_name(), "");
   EXPECT_EQ(operator_info_->mtu(), kAttMtu);
+  EXPECT_FALSE(operator_info_->tethering_disallowed());
   CheckFirstApn(kAttApn4G);
   CheckIfApnExists(kAttApnHotspot);
 }
@@ -275,6 +278,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, Att5gUsHome_AttServing) {
       EXPECT_EQ(operator_info_->operator_name(), kAttOperatorName);
       EXPECT_EQ(operator_info_->serving_operator_name(), kAttOperatorName);
       EXPECT_EQ(operator_info_->mtu(), kAttMtu);
+      EXPECT_FALSE(operator_info_->tethering_disallowed());
       CheckFirstApn(kAttApn5G);
       CheckIfApnExists(kAttApn4G);
       CheckIfApnExists(kAttApnHotspot);
@@ -292,6 +296,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, Att5gcUsHome_AttServing) {
       EXPECT_EQ(operator_info_->operator_name(), kAttOperatorName);
       EXPECT_EQ(operator_info_->serving_operator_name(), kAttOperatorName);
       EXPECT_EQ(operator_info_->mtu(), kAttMtu);
+      EXPECT_FALSE(operator_info_->tethering_disallowed());
       CheckFirstApn(kAttApn5GC);
       CheckIfApnExists(kAttApn4G);
       CheckIfApnExists(kAttApnHotspot);
@@ -306,6 +311,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, CricketHome_AttServing) {
       operator_info_->UpdateServingMCCMNC(serving);
       // Cricket has an OPERATOR_NAME filter
       operator_info_->UpdateOperatorName("Cricket");
+      EXPECT_FALSE(operator_info_->tethering_disallowed());
       EXPECT_EQ(operator_info_->operator_name(), "Cricket");
       EXPECT_EQ(operator_info_->serving_operator_name(), kAttOperatorName);
       EXPECT_EQ(operator_info_->mtu(), 1430 /* Cricket mtu */);
@@ -325,6 +331,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, FirstnetHome_AttServing) {
       // Even though firstnet might use AT&T as serving operator, the firstnet
       // mtu is smaller than AT&T's, so it'a always chosen.
       EXPECT_EQ(operator_info_->mtu(), 1342);
+      EXPECT_FALSE(operator_info_->tethering_disallowed());
       CheckFirstApn(ApnBuilder("firstnet-broadband")
                         .ApnTypes({kApnTypeDefault, kApnTypeIA}));
       if (home != "313110" && home != "313120") {
@@ -343,6 +350,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, AttMxHome_AttMxServing) {
     EXPECT_EQ(operator_info_->operator_name(), kAttOperatorName);
     EXPECT_EQ(operator_info_->serving_operator_name(), kAttOperatorName);
     EXPECT_EQ(operator_info_->mtu(), IPConfig::kUndefinedMTU);
+    EXPECT_FALSE(operator_info_->tethering_disallowed());
     CheckFirstApn(kAttApn4G);
   }
 }
@@ -391,6 +399,7 @@ TEST_F(MobileOperatorInfoCarriersUsCellularTest, RoamOnUsCarriers) {
       EXPECT_EQ(operator_info_->operator_name(), kUsCellularOperatorName);
       EXPECT_EQ(operator_info_->requires_roaming(), true)
           << " serving_mccmnc: " << serving_mccmnc;
+      EXPECT_FALSE(operator_info_->tethering_disallowed());
       CheckFirstApn(kUsCellularApn);
     }
   }
@@ -421,6 +430,7 @@ TEST_F(MobileOperatorInfoCarriersUsCellularTest, RoamOutsideTheUs) {
       EXPECT_EQ(operator_info_->operator_name(), kUsCellularOperatorName);
       EXPECT_EQ(operator_info_->requires_roaming(), false)
           << " serving_mccmnc: " << serving_mccmnc;
+      EXPECT_FALSE(operator_info_->tethering_disallowed());
       CheckFirstApn(kUsCellularApn);
     }
   }
@@ -464,6 +474,7 @@ TEST_F(MobileOperatorInfoCarriersRogersTest, RogersHome_RogersServing) {
     operator_info_->UpdateGID1("FF");
     EXPECT_EQ(operator_info_->operator_name(), kRogersOperatorName);
     EXPECT_EQ(operator_info_->serving_operator_name(), kRogersOperatorName);
+    EXPECT_FALSE(operator_info_->tethering_disallowed());
     CheckFirstApn(kRogersApn4G);
     CheckIfApnExists(kRogersApn4GDun);
   }
@@ -474,6 +485,7 @@ TEST_F(MobileOperatorInfoCarriersRogersTest, UnknownHome_RogersServing) {
     operator_info_->UpdateMCCMNC(kUnknownMccmnc);
     operator_info_->UpdateServingMCCMNC(home);
     operator_info_->UpdateGID1("FF");
+    EXPECT_FALSE(operator_info_->tethering_disallowed());
     EXPECT_EQ(operator_info_->operator_name(), "");
     EXPECT_EQ(operator_info_->serving_operator_name(), kRogersOperatorName);
     EXPECT_EQ(operator_info_->apn_list().size(), 0);
@@ -488,6 +500,7 @@ TEST_F(MobileOperatorInfoCarriersRogersTest, Rogers5gHome_RogersServing) {
     operator_info_->UpdateGID1("A4");
     EXPECT_EQ(operator_info_->operator_name(), kRogersOperatorName);
     EXPECT_EQ(operator_info_->serving_operator_name(), kRogersOperatorName);
+    EXPECT_FALSE(operator_info_->tethering_disallowed());
     CheckFirstApn(kRogersApn5G);
     CheckIfApnExists(kRogersApn4G);
     CheckIfApnExists(kRogersApn5GDun);
@@ -501,6 +514,7 @@ TEST_F(MobileOperatorInfoCarriersRogersTest, Unknown5gHome_RogersServing) {
     operator_info_->UpdateServingMCCMNC(home);
     // Rogers 5G has a GID1 filter
     operator_info_->UpdateGID1("A4");
+    EXPECT_FALSE(operator_info_->tethering_disallowed());
     EXPECT_EQ(operator_info_->operator_name(), "");
     EXPECT_EQ(operator_info_->serving_operator_name(), kRogersOperatorName);
     EXPECT_EQ(operator_info_->apn_list().size(), 0);
