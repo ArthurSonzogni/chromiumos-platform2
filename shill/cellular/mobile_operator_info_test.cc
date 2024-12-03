@@ -373,15 +373,11 @@ TEST_F(MobileOperatorInfoMainTest, requires_roaming_set_on_home) {
   EXPECT_TRUE(operator_info_->requires_roaming());
 }
 
-TEST_F(MobileOperatorInfoMainTest, tethering_allowed) {
-  EXPECT_CALL(*home_, tethering_allowed(false)).WillOnce(Return(true));
-  EXPECT_TRUE(operator_info_->tethering_allowed(false));
-  EXPECT_CALL(*home_, tethering_allowed(false)).WillOnce(Return(false));
-  EXPECT_FALSE(operator_info_->tethering_allowed(false));
-  EXPECT_CALL(*home_, tethering_allowed(true)).WillOnce(Return(true));
-  EXPECT_TRUE(operator_info_->tethering_allowed(true));
-  EXPECT_CALL(*home_, tethering_allowed(true)).WillOnce(Return(false));
-  EXPECT_FALSE(operator_info_->tethering_allowed(true));
+TEST_F(MobileOperatorInfoMainTest, tethering_disallowed) {
+  EXPECT_CALL(*home_, tethering_disallowed()).WillOnce(Return(true));
+  EXPECT_TRUE(operator_info_->tethering_disallowed());
+  EXPECT_CALL(*home_, tethering_disallowed()).WillOnce(Return(false));
+  EXPECT_FALSE(operator_info_->tethering_disallowed());
 }
 
 TEST_F(MobileOperatorInfoMainTest, use_dun_apn_as_default) {

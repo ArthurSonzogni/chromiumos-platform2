@@ -2399,7 +2399,7 @@ void Cellular::ReuseDefaultPdnForTethering(
 }
 
 Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
-    bool experimental_tethering, Error* out_error) {
+    Error* out_error) {
   Error error(Error::kSuccess);
   if (!service_) {
     error = Error(Error::kWrongState, "No service.");
@@ -2409,8 +2409,7 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
     error = Error(Error::kWrongState, "Inhibited.");
   } else if (state_ != State::kLinked) {
     error = Error(Error::kWrongState, "Default connection not available.");
-  } else if (!mobile_operator_info_->tethering_allowed(
-                 experimental_tethering)) {
+  } else if (mobile_operator_info_->tethering_disallowed()) {
     error = Error(Error::kWrongState, "Not allowed by operator.");
   }
 
@@ -2509,7 +2508,7 @@ void Cellular::AcquireTetheringNetwork(
       base::BindOnce(&Cellular::OnAcquireTetheringNetworkReady,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   Error error;
-  switch (GetTetheringOperationType(experimental_tethering, &error)) {
+  switch (GetTetheringOperationType(&error)) {
     case TetheringOperationType::kConnectDunMultiplexed:
       ConnectMultiplexedTetheringPdn(std::move(internal_callback));
       return;
@@ -4634,7 +4633,7 @@ void Cellular::EntitlementCheck(EntitlementCheckResultCallback callback,
     return;
   }
 
-  if (!mobile_operator_info_->tethering_allowed(experimental_tethering)) {
+  if (mobile_operator_info_->tethering_disallowed()) {
     // Make sure this logging doesn't contain the signature in
     // |BuildEntitlementCheckAnomalyDetectorPrefix| to exclude it from the
     // anomaly detector.

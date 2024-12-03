@@ -284,8 +284,8 @@ class MobileOperatorMapperMainTest
     EXPECT_EQ(operator_info_->db_info_.olp_list, db_info.olp_list);
     EXPECT_EQ(operator_info_->db_info_.requires_roaming,
               db_info.requires_roaming);
-    EXPECT_EQ(operator_info_->db_info_.tethering_allowed,
-              db_info.tethering_allowed);
+    EXPECT_EQ(operator_info_->db_info_.tethering_disallowed,
+              db_info.tethering_disallowed);
     EXPECT_EQ(operator_info_->db_info_.use_dun_apn_as_default,
               db_info.use_dun_apn_as_default);
     EXPECT_EQ(operator_info_->db_info_.mtu, db_info.mtu);
@@ -322,7 +322,7 @@ TEST_P(MobileOperatorMapperMainTest, InitialConditions) {
   EXPECT_TRUE(operator_info_->use_fallback_apn());
   EXPECT_TRUE(operator_info_->olp_list().empty());
   EXPECT_FALSE(operator_info_->requires_roaming());
-  EXPECT_FALSE(operator_info_->tethering_allowed(false));
+  EXPECT_FALSE(operator_info_->tethering_disallowed());
   EXPECT_FALSE(operator_info_->use_dun_apn_as_default());
   EXPECT_EQ(0, operator_info_->mtu());
   EXPECT_TRUE(operator_info_->entitlement_config().url.empty());
@@ -1171,8 +1171,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   }
 
   void VerifyNonInheritableDatabaseDataMNO(std::string imsi) {
-    EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed(
-                                      false /*allow_untested_carriers*/));
+    EXPECT_EQ(tethering_disallowed_, operator_info_->tethering_disallowed());
     EXPECT_EQ(use_dun_apn_as_default_,
               operator_info_->use_dun_apn_as_default());
     EXPECT_EQ(use_fallback_apn_, operator_info_->use_fallback_apn());
@@ -1184,8 +1183,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   }
 
   void VerifyNonInheritableDatabaseDataMVNO() {
-    EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed(
-                                      false /*allow_untested_carriers*/));
+    EXPECT_EQ(tethering_disallowed_, operator_info_->tethering_disallowed());
     EXPECT_EQ(use_dun_apn_as_default_,
               operator_info_->use_dun_apn_as_default());
     EXPECT_EQ(use_fallback_apn_, operator_info_->use_fallback_apn());
@@ -1194,10 +1192,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     EXPECT_TRUE(operator_info_->entitlement_config().params.empty());
   }
   void VerifyNonInheritableDatabaseDataEmptyMVNO() {
-    EXPECT_FALSE(
-        operator_info_->tethering_allowed(false /*allow_untested_carriers*/));
-    EXPECT_TRUE(
-        operator_info_->tethering_allowed(true /*allow_untested_carriers*/));
+    EXPECT_FALSE(operator_info_->tethering_disallowed());
     EXPECT_TRUE(use_fallback_apn_);
     EXPECT_TRUE(operator_info_->entitlement_config().url.empty());
     EXPECT_EQ("POST", operator_info_->entitlement_config().method);
@@ -1225,7 +1220,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   void PopulateMNOData() {
     country_ = "us";
     requires_roaming_ = true;
-    tethering_allowed_ = true;
+    tethering_disallowed_ = false;
     use_dun_apn_as_default_ = true;
     use_fallback_apn_ = true;
     mtu_ = 1400;
@@ -1252,7 +1247,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   void PopulateMVNOData() {
     country_ = "ca";
     requires_roaming_ = false;
-    tethering_allowed_ = false;
+    tethering_disallowed_ = true;
     use_dun_apn_as_default_ = false;
     use_fallback_apn_ = false;
     mtu_ = 1200;
@@ -1276,7 +1271,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   // Data to be verified against the database.
   std::string country_;
   bool requires_roaming_;
-  bool tethering_allowed_;
+  bool tethering_disallowed_;
   bool use_dun_apn_as_default_;
   bool use_fallback_apn_;
   int32_t mtu_;

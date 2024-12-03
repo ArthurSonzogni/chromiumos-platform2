@@ -341,8 +341,7 @@ class Cellular : public Device,
     // Used to report errors in GetTetheringOperationType()
     kFailed,
   };
-  TetheringOperationType GetTetheringOperationType(bool experimental_tethering,
-                                                   Error* error);
+  TetheringOperationType GetTetheringOperationType(Error* error);
 
   // Takes the currently connected default PDN and reuses it for tethering
   // purposes, without bringing up any other PDN connection.

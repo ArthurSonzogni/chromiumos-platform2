@@ -3148,9 +3148,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DisallowedByOperator) {
 
   SetMockMobileOperatorInfoObjects();
   CHECK(mock_mobile_operator_info_);
-  EXPECT_CALL(*mock_mobile_operator_info_,
-              tethering_allowed(false /*allow_untested_carriers*/))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_disallowed())
+      .WillRepeatedly(Return(true));
 
   base::test::TestFuture<Network*, const Error&> future;
   base::test::TestFuture<TetheringManager::CellularUpstreamEvent> future_event;
@@ -3182,9 +3181,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_OperationType_Reuse_DefaultNoDun) {
 
   SetMockMobileOperatorInfoObjects();
   CHECK(mock_mobile_operator_info_);
-  EXPECT_CALL(*mock_mobile_operator_info_,
-              tethering_allowed(false /*allow_untested_carriers*/))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_disallowed())
+      .WillRepeatedly(Return(false));
 
   // No DUN APN in the list
   Stringmap apn;
@@ -3198,8 +3196,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_OperationType_Reuse_DefaultNoDun) {
   device_->SetApnList(apn_list);
 
   // Test only the operation type selection
-  EXPECT_EQ(device_->GetTetheringOperationType(false /*experimental_tethering*/,
-                                               nullptr),
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
             Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
@@ -3211,9 +3208,8 @@ TEST_F(CellularTest,
 
   SetMockMobileOperatorInfoObjects();
   CHECK(mock_mobile_operator_info_);
-  EXPECT_CALL(*mock_mobile_operator_info_,
-              tethering_allowed(false /*allow_untested_carriers*/))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_disallowed())
+      .WillRepeatedly(Return(false));
 
   // Last good APN is also in the APN list
   Stringmaps apn_list;
@@ -3227,8 +3223,7 @@ TEST_F(CellularTest,
   service->SetLastGoodApn(apn);
 
   // Test only the operation type selection
-  EXPECT_EQ(device_->GetTetheringOperationType(false /*experimental_tethering*/,
-                                               nullptr),
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
             Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
@@ -3240,9 +3235,8 @@ TEST_F(CellularTest,
 
   SetMockMobileOperatorInfoObjects();
   CHECK(mock_mobile_operator_info_);
-  EXPECT_CALL(*mock_mobile_operator_info_,
-              tethering_allowed(false /*allow_untested_carriers*/))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_disallowed())
+      .WillRepeatedly(Return(false));
 
   // Last good APN is also in the APN list, and is flagged as required.
   Stringmaps apn_list;
@@ -3257,8 +3251,7 @@ TEST_F(CellularTest,
   service->SetLastGoodApn(apn);
 
   // Test only the operation type selection
-  EXPECT_EQ(device_->GetTetheringOperationType(false /*experimental_tethering*/,
-                                               nullptr),
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
             Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
@@ -3270,9 +3263,8 @@ TEST_F(CellularTest,
 
   SetMockMobileOperatorInfoObjects();
   CHECK(mock_mobile_operator_info_);
-  EXPECT_CALL(*mock_mobile_operator_info_,
-              tethering_allowed(false /*allow_untested_carriers*/))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_disallowed())
+      .WillRepeatedly(Return(false));
 
   // Last good APN is NOT in the APN list (e.g. coming from UI), and there is
   // another APN flagged as required, so the network cannot be reused.
@@ -3293,8 +3285,7 @@ TEST_F(CellularTest,
   device_->SetApnList(apn_list);
 
   // Test only the operation type selection. It MUST NOT BE kReuseDefaultPdn.
-  EXPECT_NE(device_->GetTetheringOperationType(false /*experimental_tethering*/,
-                                               nullptr),
+  EXPECT_NE(device_->GetTetheringOperationType(nullptr),
             Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
@@ -3548,9 +3539,8 @@ TEST_F(CellularTest,
 
   SetMockMobileOperatorInfoObjects();
   CHECK(mock_mobile_operator_info_);
-  EXPECT_CALL(*mock_mobile_operator_info_,
-              tethering_allowed(false /*allow_untested_carriers*/))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_disallowed())
+      .WillRepeatedly(Return(false));
 
   // Device supports multiplexing more than one PDN.
   device_->SetMaxActiveMultiplexedBearers(4);
@@ -3578,8 +3568,7 @@ TEST_F(CellularTest,
   service->SetLastGoodApn(apn1);
 
   // Test only the operation type selection.
-  EXPECT_EQ(device_->GetTetheringOperationType(false /*experimental_tethering*/,
-                                               nullptr),
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
             Cellular::TetheringOperationType::kConnectDunAsDefaultPdn);
 }
 
@@ -3593,9 +3582,8 @@ TEST_F(CellularTest,
 
   SetMockMobileOperatorInfoObjects();
   CHECK(mock_mobile_operator_info_);
-  EXPECT_CALL(*mock_mobile_operator_info_,
-              tethering_allowed(false /*allow_untested_carriers*/))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_disallowed())
+      .WillRepeatedly(Return(false));
 
   // Operator does not require DUN as DEFAULT.
   EXPECT_CALL(*mock_mobile_operator_info_, use_dun_apn_as_default())
@@ -3623,8 +3611,7 @@ TEST_F(CellularTest,
   service->SetLastGoodApn(apn1);
 
   // Test only the operation type selection.
-  EXPECT_EQ(device_->GetTetheringOperationType(false /*experimental_tethering*/,
-                                               nullptr),
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
             Cellular::TetheringOperationType::kConnectDunAsDefaultPdn);
 }
 
@@ -3914,9 +3901,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_OperationType_DunMultiplexed) {
 
   SetMockMobileOperatorInfoObjects();
   CHECK(mock_mobile_operator_info_);
-  EXPECT_CALL(*mock_mobile_operator_info_,
-              tethering_allowed(false /*allow_untested_carriers*/))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_disallowed())
+      .WillRepeatedly(Return(false));
 
   // Operator does not require DUN as DEFAULT.
   EXPECT_CALL(*mock_mobile_operator_info_, use_dun_apn_as_default())
@@ -3944,8 +3930,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_OperationType_DunMultiplexed) {
   service->SetLastGoodApn(apn1);
 
   // Test only the operation type selection.
-  EXPECT_EQ(device_->GetTetheringOperationType(false /*experimental_tethering*/,
-                                               nullptr),
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
             Cellular::TetheringOperationType::kConnectDunMultiplexed);
 }
 

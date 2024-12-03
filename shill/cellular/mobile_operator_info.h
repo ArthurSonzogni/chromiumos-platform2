@@ -150,7 +150,7 @@ class MobileOperatorInfo {
   // Chrome.
   bool requires_roaming() const;
   // Weather the carrier allows tethering or not.
-  virtual bool tethering_allowed(bool allow_untested_carriers) const;
+  virtual bool tethering_disallowed() const;
   // If specified, the MTU value to be used on the network interface.
   // If the carrier requires all traffic to go through the DUN APN when
   // tethering.

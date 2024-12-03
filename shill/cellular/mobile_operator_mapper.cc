@@ -283,12 +283,10 @@ bool MobileOperatorMapper::requires_roaming() const {
   return db_info_.requires_roaming;
 }
 
-bool MobileOperatorMapper::tethering_allowed(
-    bool allow_untested_carriers) const {
+bool MobileOperatorMapper::tethering_disallowed() const {
   SLOG(3) << GetLogPrefix(__func__) << ": Result["
-          << db_info_.tethering_allowed.value_or(allow_untested_carriers)
-          << "]";
-  return db_info_.tethering_allowed.value_or(allow_untested_carriers);
+          << db_info_.tethering_disallowed << "]";
+  return db_info_.tethering_disallowed;
 }
 
 bool MobileOperatorMapper::use_dun_apn_as_default() const {
@@ -869,10 +867,8 @@ void MobileOperatorMapper::ReloadData(
 
   // The following tethering properties are always overwritten because each
   // MNO/MVNO decides how tethering works on their network.
-  db_info_.tethering_allowed.reset();
-  if (data.has_tethering_allowed()) {
-    db_info_.tethering_allowed = data.tethering_allowed();
-  }
+  db_info_.tethering_disallowed =
+      data.has_tethering_disallowed() && data.tethering_disallowed();
   db_info_.use_dun_apn_as_default = data.use_dun_apn_as_default();
   db_info_.entitlement_config.url = data.mhs_entitlement_url();
   switch (data.mhs_entitlement_method()) {

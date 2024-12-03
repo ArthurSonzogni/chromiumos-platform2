@@ -16,7 +16,6 @@ mno {
       name: "name200002"
     }
     requires_roaming: true
-    tethering_allowed: true
     use_dun_apn_as_default: true
     mhs_entitlement_url: "uuid200001.com"
     mhs_entitlement_param: IMSI
@@ -67,7 +66,7 @@ mno {
         name: "name200102"
       }
       requires_roaming: false
-      tethering_allowed: false
+      tethering_disallowed: true
       mhs_entitlement_url: "uuid200101.com"
       mtu: 1200
       olp {

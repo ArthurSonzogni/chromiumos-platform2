@@ -132,7 +132,7 @@ class MobileOperatorMapper {
   // Chrome.
   virtual bool requires_roaming() const;
   // Weather the carrier allows tethering or not.
-  virtual bool tethering_allowed(bool allow_untested_carriers) const;
+  virtual bool tethering_disallowed() const;
   // If the carrier requires all traffic to go through the DUN APN when
   // tethering.
   virtual bool use_dun_apn_as_default() const;
@@ -286,7 +286,7 @@ class MobileOperatorMapper {
     std::vector<MobileOperatorMapper::OnlinePortal> olp_list;
     std::vector<mobile_operator_db::OnlinePortal> raw_olp_list;
     bool requires_roaming = false;
-    std::optional<bool> tethering_allowed;
+    bool tethering_disallowed = false;
     bool use_dun_apn_as_default = false;
     std::vector<mobile_operator_db::Filter> roaming_filter_list;
     int32_t mtu = IPConfig::kUndefinedMTU;
