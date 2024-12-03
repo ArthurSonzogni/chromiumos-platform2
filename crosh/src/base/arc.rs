@@ -26,7 +26,10 @@ const HELP: &str = r#"Usage: arc
     proxy <url> |
     list [ networks ] |
     stats [ sockets | traffic | idle ]
-    tracing [on | off]
+    tracing [on | off] |
+    top |
+    cpuinfo |
+    meminfo
   ]
   where NETWORK := [ wifi | eth | ethernet | cell | cellular | vpn ]
   If NETWORK is not specified, the default network is used.
