@@ -433,25 +433,28 @@ StringPieceType SafelyReadFile(const base::FilePath& path,
 //   - Unlaunched MT8186
 //       manufacturer = Mediatek
 //       model        = Kompanio 520 MT8186/Kompanio 528 MT8186T
+//   - MT8188
+//       manufacturer = Mediatek
+//       model        = Kompanio 838 MT8188
 //   - New platforms
 //       manufacturer = Mediatek
-//       model        = Kompanio xxx MTyyyy(T)
+//       model        = MTxxxx(T)
 static std::tuple<std::string, std::string> FixUpMediaTekInfo(
-    std::string_view machine, brillo::CrosConfigInterface* config) {
+    std::string soc_id,
+    std::string machine,
+    brillo::CrosConfigInterface* config) {
   constexpr std::string kMtkManufacturerName = "Mediatek";
   constexpr int kFridPrefixLength = 7;  // Frid format is Google_XXXX
+  base::TrimString(soc_id, "\r\n", &soc_id);
+  base::TrimString(machine, "\r\n", &machine);
 
-  // Older platforms before MT8186
-  static constexpr const char* kMtkLegacyModel[] = {"MT8173", "MT8183",
-                                                    "MT8192", "MT8195"};
-  for (const auto& model : kMtkLegacyModel) {
-    if (machine.find(model) != std::string::npos) {
-      return {kMtkManufacturerName, model};
-    }
+  // For historical reasons, both MT8192 and MT8192T are mapped to "MT8192".
+  if (soc_id.find("MT8192") != std::string::npos) {
+    return {kMtkManufacturerName, "MT8192"};
   }
 
   // MT8186 has new devices in the pipeline and requires special attention.
-  if (machine.find("MT8186") != std::string::npos) {
+  if (soc_id.find("MT8186") != std::string::npos) {
     std::string frid;
 
     // Not able to read frid, assume it is legacy
@@ -470,13 +473,15 @@ static std::tuple<std::string, std::string> FixUpMediaTekInfo(
     }
   }
 
-  // New platforms uses the new names
-  // Remove brackets to align the SOC_MODEL requirement in Android CCD - "The
-  // value of this field MUST be encodable as 7-bit ASCII and match the
-  // regular expression “^([0-9A-Za-z ._/+-]+)$”"
-  std::string model;
-  base::RemoveChars(machine, "()\n", &model);
-  return {kMtkManufacturerName, model};
+  // Unlaunched/follower MT8186 devices and MT8188 devices
+  if (soc_id.find("MT8186") != std::string::npos ||
+      soc_id.find("MT8188") != std::string::npos) {
+    return {kMtkManufacturerName, machine + " " + soc_id};
+  }
+
+  // New platforms are expected to use "MTxxxx" pattern for the the model field.
+  // Some older platforms can also be handled here.
+  return {kMtkManufacturerName, soc_id};
 }
 
 static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
@@ -537,7 +542,10 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
   if (family == "Snapdragon\n" && machine != "") {
     manufacturer = "Qualcomm";
   } else if (family == "MediaTek\n") {
-    std::tie(manufacturer, machine) = FixUpMediaTekInfo(machine, config);
+    // For promoting MTK's marketing name e.g. Kompanio xxx
+    *dest += "ro.mediatek.platform=" + machine;
+    std::tie(manufacturer, machine) =
+        FixUpMediaTekInfo(soc_id, machine, config);
     machine = machine + "\n";
   } else {
     return false;
