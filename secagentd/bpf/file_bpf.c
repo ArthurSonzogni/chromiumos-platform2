@@ -1689,7 +1689,12 @@ static inline __attribute__((always_inline)) int close_file_handler(
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+// In Linux 6.12 close_fd_get_file was renamed into file_close_fd.
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+SEC("fexit/file_close_fd")
+#else
 SEC("fexit/close_fd_get_file")
+#endif
 int BPF_PROG(fexit__close_fd_get_file, unsigned int fd, struct file* file) {
   if (!file) {
     return 0;

@@ -737,7 +737,7 @@ int BPF_PROG(cros_handle_trace_net_dev_queue, struct sk_buff* skb) {
 }
 
 static inline __attribute__((always_inline)) int cros_handle_inet_accept_exit(
-    struct socket* sock, struct socket* newsock, int flags, bool kern, int rv) {
+    struct socket* sock, struct socket* newsock, int flags, int rv) {
   if (rv < 0) {
     return 0;
   }
@@ -783,8 +783,7 @@ int BPF_PROG(cros_trampoline_handle_inet_accept_exit,
     return 0;
   }
   int flags = BPF_CORE_READ(arg, flags);
-  bool kern = BPF_CORE_READ(arg, kern);
-  return cros_handle_inet_accept_exit(sock, newsock, flags, kern, rv);
+  return cros_handle_inet_accept_exit(sock, newsock, flags, rv);
 }
 #else
 int BPF_PROG(cros_trampoline_handle_inet_accept_exit,
@@ -793,7 +792,7 @@ int BPF_PROG(cros_trampoline_handle_inet_accept_exit,
              int flags,
              bool kern,
              int rv) {
-  return cros_handle_inet_accept_exit(sock, newsock, flags, kern, rv);
+  return cros_handle_inet_accept_exit(sock, newsock, flags, rv);
 }
 #endif
 
