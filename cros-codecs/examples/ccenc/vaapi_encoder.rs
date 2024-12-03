@@ -257,7 +257,7 @@ pub fn do_encode(mut input: File, args: Args) -> () {
                 IvfFileHeader::CODEC_VP9,
                 args.width as u16,
                 args.height as u16,
-                30,
+                args.framerate,
                 args.count as u32,
             );
             hdr.writo_into(output).unwrap();
