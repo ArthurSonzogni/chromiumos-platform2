@@ -4,7 +4,10 @@
 
 // Provides the command "dlc_install" for crosh.
 
-use std::process;
+use std::{process, time::Duration};
+
+use anyhow::Context;
+use dbus::{blocking::BlockingSender, Message};
 
 use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 
@@ -20,7 +23,7 @@ const EXECUTABLE: &str = "/usr/bin/dlcservice_util";
 const TESTSERVER: &str = "autest";
 
 const CMD: &str = "dlc_install";
-const USAGE: &str = "<dlc-id>";
+const USAGE: &str = "<dlc-id>|--audio";
 const HELP: &str = "Trigger a DLC installation against a **test** update server.
 
 The **test** update server will serve signed DLC payloads which will only
@@ -39,6 +42,12 @@ pub fn register(dispatcher: &mut Dispatcher) {
 }
 
 fn dlc_install_callback(_cmd: &Command, _args: &Arguments) -> Result<(), dispatcher::Error> {
+    if _args.get_args() == ["--audio"] {
+        return install_audio_dlcs().map_err(|err| {
+            println!("ERROR: {err:#}");
+            dispatcher::Error::CommandReturnedError
+        });
+    }
     match validate_args(_args) {
         Ok(dlc_id) => execute_dlc_install(&dlc_id),
         Err(err) => Err(err),
@@ -91,6 +100,34 @@ fn validate_dlc(_dlc_id: &str) -> Result<(), dispatcher::Error> {
     }
 }
 
+fn install_audio_dlcs() -> Result<(), anyhow::Error> {
+    let connection =
+        dbus::blocking::Connection::new_system().context("D-Bus system connection failed")?;
+    let reply = connection
+        .send_with_reply_and_block(
+            Message::new_method_call(
+                "org.chromium.cras",
+                "/org/chromium/cras",
+                "org.chromium.cras.Control",
+                "GetAudioEffectDlcs",
+            )
+            .map_err(|err: String| anyhow::anyhow!("{err}"))?,
+            Duration::from_secs(10),
+        )
+        .context("GetAudioEffectDlcs failed")?;
+    let comma_separated_dlcs = reply.get1::<String>().context("failed to get reply")?;
+    let dlcs: Vec<&str> = comma_separated_dlcs.split(",").collect();
+    println!("DLCs to install: {dlcs:?}");
+    for dlc in dlcs {
+        // Here we give up early when any DLCs fail to validate or install.
+        // The DLCs returned from GetAudioEffectDlcs should always be valid;
+        // any installation failures are better troubleshooted manually.
+        validate_dlc(dlc).map_err(|_| anyhow::anyhow!("failed to validate {dlc}"))?;
+        execute_dlc_install(dlc).map_err(|_| anyhow::anyhow!("failed to install {dlc}"))?;
+    }
+    Ok(())
+}
+
 fn is_dlc_supported(_dlc_id: &str) -> Result<(), dispatcher::Error> {
     wait_for_result(
         process::Command::new(EXECUTABLE)
@@ -133,8 +170,8 @@ mod tests {
             "just-exactly-forty-character-long-dlc-id"
         ));
         assert!(valid_dlc_id_format(
-            &("just-exactly-forty-character-long-dlc-id".to_owned() +
-            "just-exactly-forty-character-long-dlc-id")
+            &("just-exactly-forty-character-long-dlc-id".to_owned()
+                + "just-exactly-forty-character-long-dlc-id")
         ));
         assert!(valid_dlc_id_format(
             "1234567890123456789012345678901234567890"
@@ -147,9 +184,9 @@ mod tests {
         assert!(!valid_dlc_id_format("-starts-with-dash"));
         assert!(!valid_dlc_id_format("nöt-ascii"));
         assert!(!valid_dlc_id_format(
-            &("just-exactly-forty-character-long-dlc-id".to_owned() +
-            "just-exactly-forty-character-long-dlc-id" +
-            "bitmore")
+            &("just-exactly-forty-character-long-dlc-id".to_owned()
+                + "just-exactly-forty-character-long-dlc-id"
+                + "bitmore")
         ));
     }
 }
