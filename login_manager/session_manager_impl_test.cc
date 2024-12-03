@@ -1625,9 +1625,7 @@ TEST_F(SessionManagerImplTest, RetrieveDeviceLocalAccountPolicySuccess) {
   const std::vector<uint8_t> policy_blob = CreatePolicyFetchResponseBlob();
   base::FilePath policy_path = GetDeviceLocalAccountPolicyPath(kSaneEmail);
   SetupDeviceLocalAccount(kSaneEmail);
-  ASSERT_TRUE(system_utils_.CreateDir(policy_path.DirName()));
-  ASSERT_TRUE(system_utils_.WriteStringToFile(
-      policy_path, std::string(base::as_string_view(base::span(policy_blob)))));
+  ASSERT_TRUE(system_utils_.EnsureFile(policy_path, policy_blob));
 
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
@@ -3169,17 +3167,10 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
 
     SetDeviceMode("consumer");
 
-    ASSERT_TRUE(system_utils_.CreateDir(
-        base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile)
-            .DirName()));
-    ASSERT_TRUE(system_utils_.WriteStringToFile(
+    ASSERT_TRUE(system_utils_.EnsureFile(
         base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile),
         "/lib/firmware/tpm/fake.bin"));
-    ASSERT_TRUE(system_utils_.CreateDir(
-        base::FilePath(
-            SessionManagerImpl::kTPMFirmwareUpdateSRKVulnerableROCAFile)
-            .DirName()));
-    ASSERT_TRUE(system_utils_.WriteStringToFile(
+    ASSERT_TRUE(system_utils_.EnsureFile(
         base::FilePath(
             SessionManagerImpl::kTPMFirmwareUpdateSRKVulnerableROCAFile),
         ""));
@@ -3226,9 +3217,7 @@ TEST_F(StartTPMFirmwareUpdateTest, Success) {
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, AlreadyLoggedIn) {
-  ASSERT_TRUE(system_utils_.CreateDir(
-      base::FilePath(SessionManagerImpl::kLoggedInFlag).DirName()));
-  ASSERT_TRUE(system_utils_.WriteStringToFile(
+  ASSERT_TRUE(system_utils_.EnsureFile(
       base::FilePath(SessionManagerImpl::kLoggedInFlag), ""));
   ExpectError(dbus_error::kSessionExists);
 }
@@ -3270,10 +3259,7 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulAllowed) {
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterpriseCleanupDisallowed) {
   SetUpdateMode("cleanup");
-  ASSERT_TRUE(system_utils_.CreateDir(
-      base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile)
-          .DirName()));
-  ASSERT_TRUE(system_utils_.WriteStringToFile(
+  ASSERT_TRUE(system_utils_.EnsureFile(
       base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile), ""));
   SetDeviceMode("enterprise");
   ExpectError(dbus_error::kNotAvailable);
@@ -3281,10 +3267,7 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterpriseCleanupDisallowed) {
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterpriseCleanupAllowed) {
   SetUpdateMode("cleanup");
-  ASSERT_TRUE(system_utils_.CreateDir(
-      base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile)
-          .DirName()));
-  ASSERT_TRUE(system_utils_.WriteStringToFile(
+  ASSERT_TRUE(system_utils_.EnsureFile(
       base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile), ""));
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_tpm_firmware_update_settings()
@@ -3300,28 +3283,19 @@ TEST_F(StartTPMFirmwareUpdateTest, AvailabilityNotDecided) {
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, NoUpdateAvailable) {
-  ASSERT_TRUE(system_utils_.CreateDir(
-      base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile)
-          .DirName()));
-  ASSERT_TRUE(system_utils_.WriteStringToFile(
+  ASSERT_TRUE(system_utils_.EnsureFile(
       base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile), ""));
   ExpectError(dbus_error::kNotAvailable);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, CleanupSRKVulnerable) {
-  ASSERT_TRUE(system_utils_.CreateDir(
-      base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile)
-          .DirName()));
-  ASSERT_TRUE(system_utils_.WriteStringToFile(
+  ASSERT_TRUE(system_utils_.EnsureFile(
       base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile), ""));
   ExpectError(dbus_error::kNotAvailable);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, CleanupSRKNotVulnerable) {
-  ASSERT_TRUE(system_utils_.CreateDir(
-      base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile)
-          .DirName()));
-  ASSERT_TRUE(system_utils_.WriteStringToFile(
+  ASSERT_TRUE(system_utils_.EnsureFile(
       base::FilePath(SessionManagerImpl::kTPMFirmwareUpdateLocationFile), ""));
   ASSERT_TRUE(system_utils_.RemoveFile(base::FilePath(
       SessionManagerImpl::kTPMFirmwareUpdateSRKVulnerableROCAFile)));

@@ -27,6 +27,21 @@ FakeSystemUtils::FakeSystemUtils() {
 
 FakeSystemUtils::~FakeSystemUtils() = default;
 
+bool FakeSystemUtils::EnsureFile(const base::FilePath& path,
+                                 std::string_view data) {
+  return EnsureFile(path, base::as_byte_span(data));
+}
+
+bool FakeSystemUtils::EnsureFile(const base::FilePath& path,
+                                 base::span<const uint8_t> data) {
+  base::FilePath rebased = RebasePath(path);
+  // Ensure the parent dir.
+  if (!base::CreateDirectoryAndGetError(rebased.DirName(), nullptr)) {
+    return false;
+  }
+  return base::WriteFile(rebased, data);
+}
+
 // TODO(hidehiko): Support NOTREACHED() functions when needed.
 
 int FakeSystemUtils::kill(pid_t pid, uid_t owner, int signal) {

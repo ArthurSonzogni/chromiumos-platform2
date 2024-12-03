@@ -46,7 +46,9 @@ class DevicePolicyService : public PolicyService {
   // should be skipped after the device was powerwashed - during the Chromad
   // migration to cloud management. See comment of the ".cc" file for details
   // about deleting this variable in the future.
-  static const char kChromadMigrationSkipOobePreservePath[];
+  static inline constexpr char kChromadMigrationSkipOobePreservePath[] =
+      "/mnt/stateful_partition/unencrypted/preserve/"
+      "chromad_migration_skip_oobe";
 
   ~DevicePolicyService() override;
 

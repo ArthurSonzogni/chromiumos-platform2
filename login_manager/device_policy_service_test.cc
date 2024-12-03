@@ -27,6 +27,7 @@
 #include "bindings/device_management_backend.pb.h"
 #include "bindings/install_attributes.pb.h"
 #include "login_manager/blob_util.h"
+#include "login_manager/fake_system_utils.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_install_attributes_reader.h"
@@ -35,7 +36,6 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
-#include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_vpd_process.h"
 
 namespace em = enterprise_management;
@@ -60,9 +60,6 @@ namespace login_manager {
 namespace {
 
 constexpr char kTestUser[] = "user@example.com";
-
-const base::FilePath kChromadMigrationFilePath =
-    base::FilePath(DevicePolicyService::kChromadMigrationSkipOobePreservePath);
 
 ACTION_P(AssignVector, str) {
   arg0->assign(str.begin(), str.end());
@@ -292,6 +289,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
   const std::vector<uint8_t> fake_sig_ = StringToBlob("fake_signature");
   const std::vector<uint8_t> fake_key_ = StringToBlob("fake_key");
   const std::vector<uint8_t> new_fake_sig_ = StringToBlob("new_fake_signature");
+  const base::FilePath chromad_migration_file_path_{
+      DevicePolicyService::kChromadMigrationSkipOobePreservePath};
 
   base::ScopedTempDir tmpdir_;
   base::FilePath install_attributes_file_;
@@ -301,7 +300,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   StrictMock<MockPolicyKey> key_;
   StrictMock<MockPolicyStore>* store_ = nullptr;
   std::unique_ptr<MockMetrics> metrics_;
-  testing::NiceMock<MockSystemUtils> system_utils_;
+  FakeSystemUtils system_utils_;
   crossystem::Crossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockInstallAttributesReader install_attributes_reader_;
@@ -422,8 +421,7 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is cloud managed.
-  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
-      .WillOnce(Return(true));
+  ASSERT_TRUE(system_utils_.EnsureFile(chromad_migration_file_path_, ""));
 
   SetDataInInstallAttributes("enterprise");
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
@@ -432,6 +430,7 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
                    crossystem::Crossystem::kNvramCleared));
   EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(
                    crossystem::Crossystem::kBlockDevmode));
+  EXPECT_FALSE(system_utils_.Exists(chromad_migration_file_path_));
 }
 
 // Ensure block devmode is unset properly in NVRAM.
@@ -451,8 +450,7 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is cloud managed.
-  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
-      .WillOnce(Return(true));
+  ASSERT_TRUE(system_utils_.EnsureFile(chromad_migration_file_path_, ""));
 
   SetDataInInstallAttributes("enterprise");
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
@@ -461,6 +459,7 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
                    crossystem::Crossystem::kNvramCleared));
   EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(
                    crossystem::Crossystem::kBlockDevmode));
+  EXPECT_FALSE(system_utils_.Exists(chromad_migration_file_path_));
 }
 
 // Ensure non-enrolled and non-blockdevmode device will call VPD update
@@ -498,10 +497,10 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is owned by a consumer.
-  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
-      .WillOnce(Return(true));
+  ASSERT_TRUE(system_utils_.EnsureFile(chromad_migration_file_path_, ""));
 
   PersistPolicy(&service);
+  EXPECT_FALSE(system_utils_.Exists(chromad_migration_file_path_));
 }
 
 // Ensure enrolled device gets VPD updated. A MockDevicePolicyService object is
@@ -539,10 +538,10 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is cloud managed.
-  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
-      .WillOnce(Return(true));
+  ASSERT_TRUE(system_utils_.EnsureFile(chromad_migration_file_path_, ""));
 
   PersistPolicy(&service);
+  EXPECT_FALSE(system_utils_.Exists(chromad_migration_file_path_));
 }
 
 // Check enrolled device that fails at VPD update.
@@ -575,10 +574,10 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
       .WillOnce(Return(false));
 
   // This file should be removed, because the device is cloud managed.
-  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
-      .WillOnce(Return(true));
+  ASSERT_TRUE(system_utils_.EnsureFile(chromad_migration_file_path_, ""));
 
   EXPECT_FALSE(UpdateSystemSettings(&service));
+  EXPECT_FALSE(system_utils_.Exists(chromad_migration_file_path_));
 }
 
 // Check the behavior when install attributes file is missing.
@@ -600,9 +599,11 @@ TEST_F(DevicePolicyServiceTest, CheckMissingInstallAttributes) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
 
   // No file should be removed, because the management mode is unknown.
-  EXPECT_CALL(system_utils_, RemoveFile(_)).Times(0);
+  ASSERT_TRUE(system_utils_.EnsureFile(chromad_migration_file_path_, ""));
 
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
+
+  EXPECT_TRUE(system_utils_.Exists(chromad_migration_file_path_));
 }
 
 // Check the behavior when devmode is blocked for consumer owned device.
@@ -624,10 +625,11 @@ TEST_F(DevicePolicyServiceTest, CheckWeirdInstallAttributes) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
 
   // This file should be removed, because the device is owned by a consumer.
-  EXPECT_CALL(system_utils_, RemoveFile(kChromadMigrationFilePath))
-      .WillOnce(Return(true));
+  ASSERT_TRUE(system_utils_.EnsureFile(chromad_migration_file_path_, ""));
 
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
+
+  EXPECT_FALSE(system_utils_.Exists(chromad_migration_file_path_));
 }
 
 TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {

@@ -48,9 +48,6 @@ namespace login_manager {
 using crypto::RSAPrivateKey;
 using google::protobuf::RepeatedPtrField;
 
-constexpr char DevicePolicyService::kChromadMigrationSkipOobePreservePath[] =
-    "/mnt/stateful_partition/unencrypted/preserve/chromad_migration_skip_oobe";
-
 namespace {
 
 constexpr auto attrs_to_ownership =

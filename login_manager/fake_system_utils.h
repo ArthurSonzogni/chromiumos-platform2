@@ -5,9 +5,14 @@
 #ifndef LOGIN_MANAGER_FAKE_SYSTEM_UTILS_H_
 #define LOGIN_MANAGER_FAKE_SYSTEM_UTILS_H_
 
+#include <stdint.h>
+
 #include <string>
+#include <string_view>
 #include <vector>
 
+#include <base/containers/span.h>
+#include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 
 #include "login_manager/system_utils.h"
@@ -35,6 +40,13 @@ class FakeSystemUtils : public SystemUtils {
   void set_atomic_file_write_success(bool success) {
     atomic_file_write_success_ = success;
   }
+
+  // Writes the given `data` into a file at `path` considering the fake "root".
+  // If the parent directories are missing, also creates them.
+  [[nodiscard]] bool EnsureFile(const base::FilePath& path,
+                                std::string_view data);
+  [[nodiscard]] bool EnsureFile(const base::FilePath& path,
+                                base::span<const uint8_t> data);
 
   // SystemUtils override:
   int kill(pid_t pid, uid_t owner, int signal) override;
