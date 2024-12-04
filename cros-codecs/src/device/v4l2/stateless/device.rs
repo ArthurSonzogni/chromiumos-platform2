@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use crate::decoder::stateless::DecodeError;
 use crate::device::v4l2::stateless::queue::V4l2CaptureBuffer;
 use crate::device::v4l2::stateless::queue::V4l2CaptureQueue;
 use crate::device::v4l2::stateless::queue::V4l2OutputBuffer;
@@ -69,7 +70,7 @@ impl DeviceHandle {
     fn alloc_request(&self) -> ioctl::Request {
         ioctl::Request::alloc(&self.media_device).expect("Failed to alloc request handle")
     }
-    fn alloc_buffer(&self) -> V4l2OutputBuffer {
+    fn alloc_buffer(&self) -> Result<V4l2OutputBuffer, DecodeError> {
         self.output_queue.alloc_buffer()
     }
     fn sync(&mut self, timestamp: u64) -> V4l2CaptureBuffer {
@@ -124,13 +125,15 @@ impl V4l2Device {
             .set_resolution(resolution);
         self
     }
-    pub fn alloc_request(&self, timestamp: u64) -> V4l2Request {
-        V4l2Request::new(
+    pub fn alloc_request(&self, timestamp: u64) -> Result<V4l2Request, DecodeError> {
+        let output_buffer = self.handle.borrow().alloc_buffer()?;
+
+        Ok(V4l2Request::new(
             self.clone(),
             timestamp,
             self.handle.borrow().alloc_request(),
-            self.handle.borrow().alloc_buffer(),
-        )
+            output_buffer,
+        ))
     }
     pub fn sync(&self, timestamp: u64) -> V4l2CaptureBuffer {
         self.handle.borrow_mut().sync(timestamp)

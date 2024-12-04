@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use anyhow::anyhow;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -27,6 +28,7 @@ use v4l2r::Format;
 use v4l2r::PixelFormat;
 use v4l2r::PlaneLayout;
 
+use crate::decoder::stateless::DecodeError;
 use crate::Resolution;
 
 //TODO: handle memory backends other than mmap
@@ -181,16 +183,16 @@ impl V4l2OutputQueue {
             _ => 0,
         }
     }
-    pub fn alloc_buffer(&self) -> V4l2OutputBuffer {
+    pub fn alloc_buffer(&self) -> Result<V4l2OutputBuffer, DecodeError> {
         let handle = &*self.handle.borrow();
         match handle {
-            V4l2OutputQueueHandle::Streaming(handle) => V4l2OutputBuffer::new(
-                self.clone(),
-                handle
-                    .try_get_free_buffer()
-                    .expect("Failed to alloc output buffer"),
-            ),
-            _ => panic!("ERROR"),
+            V4l2OutputQueueHandle::Streaming(handle) => match handle.try_get_free_buffer() {
+                Ok(buffer) => Ok(V4l2OutputBuffer::new(self.clone(), buffer)),
+                Err(_) => Err(DecodeError::NotEnoughOutputBuffers(1)),
+            },
+            _ => Err(DecodeError::DecoderError(anyhow!(
+                "Invalid hardware handle"
+            ))),
         }
     }
     pub fn drain(&self) {
