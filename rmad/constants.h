@@ -14,6 +14,11 @@
 
 namespace rmad {
 
+// Mode flags to control Shimless RMA's behaviors
+enum {
+  kShimlessModeFlagsTriggerable = 1 << 0,  // 0x1
+};
+
 // Pipe name for internal mojo connection between D-Bus daemon and executor.
 inline constexpr char kRmadInternalMojoPipeName[] = "rmad_internal";
 

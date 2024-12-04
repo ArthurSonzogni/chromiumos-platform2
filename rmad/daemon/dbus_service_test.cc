@@ -18,10 +18,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/constants.h"
 #include "rmad/interface/mock_rmad_interface.h"
 #include "rmad/system/mock_tpm_manager_client.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"
+#include "rmad/utils/mock_vpd_utils.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
 using testing::_;
@@ -49,6 +51,7 @@ class DBusServiceTestBase : public testing::Test {
     // Sets to std::nullopt makes getter return error.
     std::optional<bool> is_cros_debug = false;
     bool is_test_directory_exist = false;
+    uint64_t shimless_mode_flags = 0x0;
   };
 
   DBusServiceTestBase() {
@@ -81,6 +84,7 @@ class DBusServiceTestBase : public testing::Test {
         std::make_unique<NiceMock<MockCrosConfigUtils>>();
     auto mock_crossystem_utils =
         std::make_unique<NiceMock<MockCrosSystemUtils>>();
+    auto mock_vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
 
     base::FilePath state_file_path = GetStateFilePath();
     if (options.is_state_file_exist) {
@@ -92,14 +96,20 @@ class DBusServiceTestBase : public testing::Test {
     if (options.is_test_directory_exist) {
       brillo::TouchFile(test_dir_path);
     }
+
+    // Mock |TpmManagerClient|.
     ON_CALL(*mock_tpm_manager_client, GetRoVerificationStatus(_))
         .WillByDefault(DoAll(SetArgPointee<0>(options.ro_verification_status),
                              Return(true)));
+
+    // Mock |CrosConfigUtils|.
     ON_CALL(*mock_cros_config_utils, GetRmadCrosConfig(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(RmadCrosConfig(
                       {.enabled = options.is_rmad_enabled_in_cros_config})),
                   Return(true)));
+
+    // Mock |CrosSystemUtils|.
     if (options.is_cros_debug.has_value()) {
       ON_CALL(*mock_crossystem_utils,
               GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
@@ -114,13 +124,20 @@ class DBusServiceTestBase : public testing::Test {
             GetString(Eq(CrosSystemUtils::kMainFwTypeProperty), _))
         .WillByDefault(
             DoAll(SetArgPointee<1>(options.main_fw_type), Return(true)));
+
+    // Mock |VpdUtils|.
+    ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(options.shimless_mode_flags), Return(true)));
+
+    // Mock |RmadInterface|.
     ON_CALL(mock_rmad_service_, SetUp(_))
         .WillByDefault(Return(options.rmad_setup_result));
 
     dbus_service_ = std::make_unique<DBusService>(
         mock_bus_, &mock_rmad_service_, state_file_path, test_dir_path,
         std::move(mock_tpm_manager_client), std::move(mock_cros_config_utils),
-        std::move(mock_crossystem_utils));
+        std::move(mock_crossystem_utils), std::move(mock_vpd_utils));
     ASSERT_EQ(dbus_service_->OnEventLoopStarted(), EX_OK);
 
     auto sequencer = base::MakeRefCounted<AsyncEventSequencer>();
@@ -342,6 +359,18 @@ TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_IsDevMode) {
       .main_fw_type = "not_normal",
       .is_cros_debug = true,
       .is_test_directory_exist = true,
+  });
+  bool is_rma_required;
+  ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
+  EXPECT_EQ(is_rma_required, true);
+}
+
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_Triggerable) {
+  StartDBusService({
+      .ro_verification_status = RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED,
+      .is_rmad_enabled_in_cros_config = false,
+      .main_fw_type = "normal",
+      .shimless_mode_flags = kShimlessModeFlagsTriggerable,
   });
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);

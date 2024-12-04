@@ -31,6 +31,8 @@
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/futility_utils.h"
+#include "rmad/utils/vpd_utils.h"
+#include "rmad/utils/vpd_utils_impl.h"
 
 namespace {
 
@@ -96,7 +98,8 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
                          const base::FilePath& test_dir_path,
                          std::unique_ptr<TpmManagerClient> tpm_manager_client,
                          std::unique_ptr<CrosConfigUtils> cros_config_utils,
-                         std::unique_ptr<CrosSystemUtils> crossystem_utils)
+                         std::unique_ptr<CrosSystemUtils> crossystem_utils,
+                         std::unique_ptr<VpdUtils> vpd_utils)
     : brillo::DBusServiceDaemon(kRmadServiceName),
       rmad_interface_(rmad_interface),
       state_file_path_(state_file_path),
@@ -104,6 +107,7 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
       tpm_manager_client_(std::move(tpm_manager_client)),
       cros_config_utils_(std::move(cros_config_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
+      vpd_utils_(std::move(vpd_utils)),
       is_external_utils_initialized_(true),
       is_interface_set_up_(false) {
   dbus_object_ = std::make_unique<DBusObject>(
@@ -120,6 +124,7 @@ int DBusService::OnEventLoopStarted() {
     tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
     cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
     crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+    vpd_utils_ = std::make_unique<VpdUtilsImpl>();
     is_external_utils_initialized_ = true;
   }
   is_rma_required_ = CheckRmaCriteria();
@@ -225,6 +230,13 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 }
 
 bool DBusService::IsRMAAllowed() const {
+  // Allow Shimless RMA in FSI testing mode.
+  if (uint64_t shimless_mode; vpd_utils_->GetShimlessMode(&shimless_mode) &&
+                              (shimless_mode & kShimlessModeFlagsTriggerable)) {
+    LOG(INFO) << "Shimless RMA is allowed by VPD flags.";
+    return true;
+  }
+
   // Always allow Shimless RMA if test directory exist for development.
   int cros_debug;
   if (crossystem_utils_->GetCrosDebug(&cros_debug) && cros_debug == 1 &&
