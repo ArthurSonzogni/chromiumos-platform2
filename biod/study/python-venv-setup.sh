@@ -3,8 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# Setup a python3 virtual environment for running the study_serve.py.
-# This will install the require dependencies automatically.
+# Setup a python3 virtual environment for running the analysis-tool and
+# collection-tool locally. This will install the require dependencies
+# automatically.
 #
 # Usage: python-venv-setup.sh [venv-path]
 #

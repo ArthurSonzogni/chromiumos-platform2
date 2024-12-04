@@ -90,3 +90,10 @@ The tool supports encryption of the collected samples. See
 2.  Open the platform2/biod directory in VS Code. You must explicitly open this
     directory for the [`biod/pyproject.toml`](../pyproject.toml) to
     automatically configure VS Code for Python.
+
+## Terminal/Shell Python Setup
+
+1.  Run `python-venv-setup.sh`, as mentioned above.
+2.  Run `. sourceme.bash` from any terminal that you will be developing with, to
+    active the Python3 virtual environment. This will need to be rerun in every
+    new terminal/shell.
