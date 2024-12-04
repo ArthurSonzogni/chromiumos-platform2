@@ -104,7 +104,7 @@ bool IPAddress::operator<(const IPAddress& rhs) const {
 }
 
 IPFamily IPAddress::GetFamily() const {
-  if (const auto ipv4 = std::get_if<IPv4Address>(&address_)) {
+  if (std::get_if<IPv4Address>(&address_)) {
     return IPFamily::kIPv4;
   }
   return IPFamily::kIPv6;
@@ -284,7 +284,7 @@ bool IPCIDR::operator!=(const IPCIDR& rhs) const {
 }
 
 IPFamily IPCIDR::GetFamily() const {
-  if (const auto ipv4 = std::get_if<IPv4CIDR>(&cidr_)) {
+  if (std::get_if<IPv4CIDR>(&cidr_)) {
     return IPFamily::kIPv4;
   }
   return IPFamily::kIPv6;
