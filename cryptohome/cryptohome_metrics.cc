@@ -140,8 +140,6 @@ constexpr TimerHistogramParams kTimerHistogramParams[] = {
     // The time for AuthSession to authenticate an auth factor with USS.
     {kAuthSessionAuthenticateAuthFactorUSSTimer,
      "Cryptohome.TimeToAuthSessionAuthenticateAuthFactorUSS", 0, 6000, 60},
-    // TODO(b/236415538, thomascedeno) - Add metric once UpdateAuthFactor is
-    // implemented.
     {kAuthSessionUpdateAuthFactorVKTimer,
      "Cryptohome.TimeToAuthSessionUpdateAuthFactorVK", 0, 6000, 60},
     {kAuthSessionUpdateAuthFactorUSSTimer,

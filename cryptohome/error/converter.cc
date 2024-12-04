@@ -4,23 +4,17 @@
 
 #include "cryptohome/error/converter.h"
 
-#include <map>
-#include <memory>
+#include <bitset>
 #include <optional>
-#include <set>
 #include <string>
-#include <utility>
 
 #include <base/logging.h>
 #include <libhwsec-foundation/error/error.h>
 
 #include "cryptohome/error/action.h"
-#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/reporting.h"
 
 namespace cryptohome::error {
-
 namespace {
 
 class PrimaryActions : public std::bitset<kPrimaryActionEnumSize> {
@@ -111,8 +105,6 @@ std::string ErrorIDFromStack(
 // worth a try anyway. Currently when there are multiple primary actions in the
 // stack, the first one (upper-layer) is used. This behavior might be changed in
 // the future.
-// TODO(b/275676828): Determine best way to choose one primary action from the
-// stack.
 template <typename ErrorType>
 void ActionsFromStack(
     const hwsec_foundation::status::StatusChain<ErrorType>& stack,
@@ -121,10 +113,6 @@ void ActionsFromStack(
   PrimaryActions primary_actions;
   // Collect all actions in the stack.
   for (const auto& err : stack.const_range()) {
-    // NOTE(b/229708597) The underlying StatusChain will prohibit the iteration
-    // of the stack soon, and therefore other users of StatusChain should avoid
-    // iterating through the StatusChain without consulting the owner of the
-    // bug.
     if (std::holds_alternative<PrimaryAction>(err.local_actions())) {
       primary_actions[std::get<PrimaryAction>(err.local_actions())] = true;
     } else {

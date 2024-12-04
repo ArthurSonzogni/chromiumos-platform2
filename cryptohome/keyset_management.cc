@@ -35,21 +35,20 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 
-using base::FilePath;
-using cryptohome::error::CryptohomeError;
-using cryptohome::error::CryptohomeMountError;
-using cryptohome::error::ErrorActionSet;
-using cryptohome::error::PossibleAction;
-using cryptohome::error::PrimaryAction;
-using hwsec_foundation::status::MakeStatus;
-using hwsec_foundation::status::OkStatus;
-using hwsec_foundation::status::StatusChain;
-
 namespace cryptohome {
+
+using ::base::FilePath;
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::CryptohomeMountError;
+using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
 
 KeysetManagement::KeysetManagement(
     libstorage::Platform* platform,
@@ -536,7 +535,6 @@ std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(
   // Load the encrypted keyset
   base::FilePath user_key_file = VaultKeysetPath(obfuscated_user, index);
   // We don't have keys yet, so just load it.
-  // TODO(wad) Move to passing around keysets and not serialized versions.
   if (!keyset->Load(user_key_file)) {
     LOG(ERROR) << "Failed to load keyset file for user " << obfuscated_user;
     return nullptr;
@@ -612,7 +610,6 @@ void KeysetManagement::RecordVaultKeysetMetrics(
     // would be misclassified below, based on |type()|s default return value
     // |KEY_TYPE_PASSWORD|.
     keyset_metrics.untyped_count++;
-    // TODO(b/204482221): Remove this log after collecting stats.
     LOG(INFO) << "Untyped vault keyset " << vk.GetLabel() << ".";
   } else {
     switch (vk.GetKeyData().type()) {
@@ -638,7 +635,6 @@ void KeysetManagement::RecordVaultKeysetMetrics(
         keyset_metrics.kiosk_count++;
         break;
       default:
-        // TODO(b/204482221): Remove this log after collecting stats.
         LOG(WARNING) << "Unexpected type " << vk.GetKeyData().type()
                      << " in vault keyset " << vk.GetLabel() << ".";
         keyset_metrics.unclassified_count++;

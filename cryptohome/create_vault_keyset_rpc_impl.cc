@@ -314,7 +314,6 @@ CryptohomeStatus CreateVaultKeysetRpcImpl::AddVaultKeyset(
   CHECK(key_blobs);
   CHECK(auth_state);
   if (is_initial_keyset) {
-    // TODO(b/229825202): Migrate KeysetManagement and wrap the returned error.
     CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
         keyset_management_->AddInitialKeyset(
             vk_backup_intent, obfuscated_username, key_data,
@@ -324,15 +323,16 @@ CryptohomeStatus CreateVaultKeysetRpcImpl::AddVaultKeyset(
     if (!vk_status.ok()) {
       initial_vault_keyset_ = nullptr;
       return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocCreateVaultKeysetRpcImplAddInitialFailedInAddKeyset),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                          PossibleAction::kReboot}),
-          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+                 CRYPTOHOME_ERR_LOC(
+                     kLocCreateVaultKeysetRpcImplAddInitialFailedInAddKeyset),
+                 ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                                 PossibleAction::kReboot}),
+                 user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+          .Wrap(std::move(vk_status).err_status());
     }
     LOG(INFO) << "CreateVaultKeysetRpcImpl: added initial keyset "
               << key_data.label() << ".";
-    initial_vault_keyset_ = std::move(vk_status).value();
+    initial_vault_keyset_ = *std::move(vk_status);
   } else {
     if (!initial_vault_keyset_) {
       // This shouldn't normally happen, but is possible if, e.g., the backup VK
