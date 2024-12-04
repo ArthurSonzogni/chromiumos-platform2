@@ -4,9 +4,10 @@
 
 #include "dlp/dlp_database.h"
 
+#include <sqlite3.h>
+
 #include <cinttypes>
 #include <utility>
-#include "dlp/dlp_metrics.h"
 
 #include <base/containers/contains.h>
 #include <base/files/file_path.h>
@@ -17,7 +18,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/sequenced_task_runner.h>
-#include <sqlite3.h>
+
+#include "dlp/dlp_metrics.h"
 
 namespace dlp {
 
@@ -576,8 +578,8 @@ DlpDatabase::DlpDatabase(const base::FilePath& db_path, Delegate* delegate)
 }
 
 DlpDatabase::~DlpDatabase() {
-  core_.reset();
   database_thread_.Stop();
+  core_.reset();
 }
 
 void DlpDatabase::Init(
