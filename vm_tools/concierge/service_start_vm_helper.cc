@@ -17,7 +17,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/version.h>
 
-#include "base/files/scoped_file.h"
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/thread_utils.h"
 
@@ -213,25 +212,6 @@ std::string RemoveCloseOnExec(const base::ScopedFD& fd) {
     return "Failed to clear close-on-exec flag for fd";
   }
   return "";
-}
-
-std::optional<VhostUserSocketPair> SetupVhostUserSocketPair() {
-  int fds[2];
-  if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds) == -1) {
-    PLOG(ERROR) << "Failed to create socket pair for test";
-    return std::nullopt;
-  }
-
-  return VhostUserSocketPair{
-      .front_end_fd = base::ScopedFD{fds[0]},
-      .back_end_fd = base::ScopedFD(fds[1]),
-  };
-}
-
-std::vector<base::ScopedFD> ScopedFDToVector(base::ScopedFD fd) {
-  std::vector<base::ScopedFD> fds;
-  fds.emplace_back(std::move(fd));
-  return fds;
 }
 
 }  // namespace internal
