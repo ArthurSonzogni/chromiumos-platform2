@@ -8,6 +8,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":dnsproxyd",
+    ":install_config_cros_startup",
     ":install_init_config",
     ":install_seccomp_policy",
     ":libdnsproxy",
