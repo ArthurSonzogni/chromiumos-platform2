@@ -874,8 +874,11 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | backlight | boolean |  | False |  | False | Specifies the existence of backlight. |
+| bottom-left-layout | string |  | False |  | False | Specifies type of layout of bottom left function keys. |
+| bottom-right-layout | string |  | False |  | False | Specifies type of layout of bottom right function keys. |
 | mcutype | string |  | False |  | False | Type of MCU firmware, if present. |
 | numpad | boolean |  | False |  | False | Specifies the existence of numpad. |
+| numpad-layout | string |  | False |  | False | Specifies the layout of the numpad, if present. |
 
 ### modem
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

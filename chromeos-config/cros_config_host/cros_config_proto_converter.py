@@ -1201,6 +1201,13 @@ def _build_ui(config: Config) -> dict:
     return result
 
 
+def _get_keyboard_enum_name(
+    keyboard_enum: topology_pb2.HardwareFeatures.Keyboard,
+    numeric_value: int,
+) -> str:
+    return keyboard_enum.Name(numeric_value)
+
+
 def _build_keyboard(hw_features):
     if not hw_features.HasField("keyboard"):
         return None
@@ -1216,6 +1223,21 @@ def _build_keyboard(hw_features):
         == topology_pb2.HardwareFeatures.Keyboard.KEYBOARD_MCU_PRISM
     ):
         result["mcutype"] = "prism_rgb_controller"
+    if keyboard.bottom_left_layout:
+        result["bottom-left-layout"] = _get_keyboard_enum_name(
+            topology_pb2.HardwareFeatures.Keyboard.KeyboardBottomLeftLayout,
+            keyboard.bottom_left_layout,
+        ).lower()
+    if keyboard.bottom_right_layout:
+        result["bottom-right-layout"] = _get_keyboard_enum_name(
+            topology_pb2.HardwareFeatures.Keyboard.KeyboardBottomRightLayout,
+            keyboard.bottom_right_layout,
+        ).lower()
+    if keyboard.numeric_pad_layout:
+        result["numpad-layout"] = _get_keyboard_enum_name(
+            topology_pb2.HardwareFeatures.Keyboard.NumericPadLayout,
+            keyboard.numeric_pad_layout,
+        ).lower()
 
     return result
 

@@ -926,8 +926,10 @@
         },
         "keyboard": {
           "backlight": true,
-          "mcutype": "prism_rgb_controller",
-          "numpad": true
+          "bottom-left-layout": "keyboard_bottom_left_3_keys",
+          "bottom-right-layout": "keyboard_bottom_right_2_keys",
+          "numpad": true,
+          "numpad-layout": "numeric_pad_4_column"
         },
         "modem": {
           "firmware-variant": "fakemodem",
@@ -941,8 +943,6 @@
           "has-ambient-light-sensor": "3",
           "has-keyboard-backlight": "1",
           "internal-backlight-als-steps": "80.0 63.4 -1 400\n100.0 100 -1",
-          "keyboard-backlight-als-steps": "40.0 -1 20\n0.0 15 -1",
-          "keyboard-backlight-user-steps": "0.0\n10.0\n20.0\n40.0\n60.0\n100.0",
           "suspend-to-idle": "0",
           "turn-off-screen-timeout-ms": "3000",
           "usb-min-ac-watts": "20",

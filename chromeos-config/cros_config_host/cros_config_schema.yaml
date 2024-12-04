@@ -1115,6 +1115,25 @@ properties:
                   type: string
                   enum:
                   - prism_rgb_controller
+                bottom-left-layout:
+                  description: Specifies type of layout of bottom left function keys.
+                  type: string
+                  enum:
+                  - keyboard_bottom_left_3_keys
+                  - keyboard_bottom_left_4_keys
+                bottom-right-layout:
+                  description: Specifies type of layout of bottom right function keys.
+                  type: string
+                  enum:
+                  - keyboard_bottom_right_2_keys
+                  - keyboard_bottom_right_3_keys
+                  - keyboard_bottom_right_4_keys
+                numpad-layout:
+                  description: Specifies the layout of the numpad, if present.
+                  type: string
+                  enum:
+                  - numeric_pad_3_column
+                  - numeric_pad_4_column
             name:
               type: string
               pattern: "^[_a-zA-Z0-9]{3,}"

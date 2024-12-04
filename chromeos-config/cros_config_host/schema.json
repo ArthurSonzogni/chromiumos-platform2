@@ -1215,6 +1215,23 @@
                     "description": "Specifies the existence of backlight.",
                     "type": "boolean"
                   },
+                  "bottom-left-layout": {
+                    "description": "Specifies type of layout of bottom left function keys.",
+                    "enum": [
+                      "keyboard_bottom_left_3_keys",
+                      "keyboard_bottom_left_4_keys"
+                    ],
+                    "type": "string"
+                  },
+                  "bottom-right-layout": {
+                    "description": "Specifies type of layout of bottom right function keys.",
+                    "enum": [
+                      "keyboard_bottom_right_2_keys",
+                      "keyboard_bottom_right_3_keys",
+                      "keyboard_bottom_right_4_keys"
+                    ],
+                    "type": "string"
+                  },
                   "mcutype": {
                     "description": "Type of MCU firmware, if present.",
                     "enum": [
@@ -1225,6 +1242,14 @@
                   "numpad": {
                     "description": "Specifies the existence of numpad.",
                     "type": "boolean"
+                  },
+                  "numpad-layout": {
+                    "description": "Specifies the layout of the numpad, if present.",
+                    "enum": [
+                      "numeric_pad_3_column",
+                      "numeric_pad_4_column"
+                    ],
+                    "type": "string"
                   }
                 },
                 "type": "object"
