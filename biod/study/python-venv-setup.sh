@@ -20,6 +20,14 @@ main() {
         exit 1
     fi
 
+    if [[ -n "${VIRTUAL_ENV}" ]]; then
+        echo "Error - Running inside of a venv, already." >&2
+        echo >&2
+        echo "Please deactivate the venv, by running the 'deactivate'" \
+            "command, before calling this script." >&2
+        exit 1
+    fi
+
     # Default the location to ".venv" in the study directory.
     if [[ -z "${loc}" ]]; then
         loc="${script_dir}/.venv"
