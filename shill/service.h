@@ -766,7 +766,7 @@ class Service : public base::RefCounted<Service> {
   // updates the current total traffic counters first.
   mockable void RequestTrafficCounters(
       ResultVariantDictionariesCallback callback);
-  // Resets traffic counters for |this|.
+  // Resets traffic counters for |this| asynchronously.
   mockable void ResetTrafficCounters(Error* error);
 
   // Updates the validation mode of the Network currently attached to this
@@ -1152,6 +1152,17 @@ class Service : public base::RefCounted<Service> {
   // through |callback|.
   void RequestTrafficCountersCallback(
       ResultVariantDictionariesCallback callback,
+      const Network::TrafficCounterMap& raw_counters,
+      const Network::TrafficCounterMap& extra_raw_counters);
+
+  // Resets |current_total_traffic_counters_| and
+  // |total_traffic_counter_snapshot_|, and also reinitializes the raw traffic
+  // counter snapshots |network_raw_traffic_counter_snapshot_| and
+  // |extra_raw_traffic_counter_snapshot_| to the given value and
+  // |traffic_counter_reset_time_| to now. Saves to storage the newly reset
+  // traffic counter values. Used by ResetTrafficCounters to complete the
+  // traffic counter reset request.
+  void ResetTrafficCountersCallback(
       const Network::TrafficCounterMap& raw_counters,
       const Network::TrafficCounterMap& extra_raw_counters);
 

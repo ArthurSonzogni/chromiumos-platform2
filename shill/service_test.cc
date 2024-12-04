@@ -3107,74 +3107,105 @@ TEST_F(ServiceTest, RequestTrafficCountersBackgroundRefresh) {
 TEST_F(ServiceTest, ResetTrafficCounters) {
   auto source0 = patchpanel::Client::TrafficSource::kChrome;
   auto source1 = patchpanel::Client::TrafficSource::kUser;
+  auto extra_source = patchpanel::Client::TrafficSource::kTethering;
+
+  auto network = std::make_unique<MockNetwork>(1, kIfName, Technology::kWiFi);
 
   // Initialize the Service's traffic counter snapshot.
-  Network::TrafficCounterMap initial_snapshot;
-  initial_snapshot[source0] = {
-      .rx_bytes = 10, .tx_bytes = 20, .rx_packets = 30, .tx_packets = 40};
-  initial_snapshot[source1] = {
-      .rx_bytes = 50, .tx_bytes = 60, .rx_packets = 70, .tx_packets = 80};
-  Network::TrafficCounterMap initial_extra_snapshot;
-  service_->InitializeTrafficCounterSnapshots(initial_snapshot,
-                                              initial_extra_snapshot);
+  Network::TrafficCounterMap network_counters;
+  network_counters[source0] = {10, 20, 30, 40};
+  network_counters[source1] = {50, 60, 70, 80};
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>([&](Network::GetTrafficCountersCallback callback) {
+        std::move(callback).Run(network_counters);
+      }));
 
-  EXPECT_EQ(service_->current_total_traffic_counters().size(), 0);
-
-  // Refresh traffic counters, updating the traffic counter snapshot and current
-  // traffic counters.
-  Network::TrafficCounterMap counters;
-  counters[source0] = {
-      .rx_bytes = 100, .tx_bytes = 200, .rx_packets = 300, .tx_packets = 400};
-  counters[source1] = {
-      .rx_bytes = 500, .tx_bytes = 600, .rx_packets = 700, .tx_packets = 800};
+  // Initial extra traffic counters snapshot
   Network::TrafficCounterMap extra_counters;
-  service_->RefreshTrafficCounters(counters, extra_counters);
+  extra_counters[extra_source] = {100, 200, 10, 20};
+  service_->SetExtraTrafficCounters(extra_counters);
 
-  EXPECT_EQ(service_->current_total_traffic_counters().size(), 2);
-  patchpanel::Client::TrafficVector chrome_counters_diff = {
-      .rx_bytes = 90, .tx_bytes = 180, .rx_packets = 270, .tx_packets = 360};
-  patchpanel::Client::TrafficVector user_counters_diff = {
-      .rx_bytes = 450, .tx_bytes = 540, .rx_packets = 630, .tx_packets = 720};
-  EXPECT_EQ(service_->current_total_traffic_counters()
-                [patchpanel::Client::TrafficSource::kChrome],
-            chrome_counters_diff);
-  EXPECT_EQ(service_->current_total_traffic_counters()
-                [patchpanel::Client::TrafficSource::kUser],
-            user_counters_diff);
-
-  // Reset the traffic counters.
-  service_->ResetTrafficCounters(/*error=*/nullptr);
+  // Initial Network attach
+  service_->AttachNetwork(network->AsWeakPtr());
+  Mock::VerifyAndClearExpectations(network.get());
   EXPECT_EQ(service_->current_total_traffic_counters().size(), 0);
 
-  // Refresh traffic counters, updating the traffic counter snapshot and current
-  // traffic counters.
-  counters.clear();
-  counters[source0] = {.rx_bytes = 1000,
-                       .tx_bytes = 2000,
-                       .rx_packets = 3000,
-                       .tx_packets = 4000};
-  counters[source1] = {.rx_bytes = 5000,
-                       .tx_bytes = 6000,
-                       .rx_packets = 7000,
-                       .tx_packets = 8000};
-  extra_counters.clear();
-  service_->RefreshTrafficCounters(counters, extra_counters);
+  // Refresh traffic counters with a DBus request, updating the traffic counter
+  // snapshot and current traffic counters.
+  network_counters.clear();
+  network_counters[source0] = {100, 200, 300, 400};
+  network_counters[source1] = {500, 600, 700, 800};
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>([&](Network::GetTrafficCountersCallback callback) {
+        std::move(callback).Run(network_counters);
+      }));
 
-  EXPECT_EQ(service_->current_total_traffic_counters().size(), 2);
-  chrome_counters_diff = {.rx_bytes = 990,
-                          .tx_bytes = 1980,
-                          .rx_packets = 2970,
-                          .tx_packets = 3960};
-  user_counters_diff = {.rx_bytes = 4950,
-                        .tx_bytes = 5940,
-                        .rx_packets = 6930,
-                        .tx_packets = 7920};
+  extra_counters.clear();
+  extra_counters[extra_source] = {110, 220, 11, 22};
+  service_->SetExtraTrafficCounters(extra_counters);
+
+  service_->RequestTrafficCounters(base::DoNothing());
+  Mock::VerifyAndClearExpectations(network.get());
+
+  EXPECT_EQ(service_->current_total_traffic_counters().size(), 3);
+  patchpanel::Client::TrafficVector chrome_counters_diff = {90, 180, 270, 360};
+  patchpanel::Client::TrafficVector user_counters_diff = {450, 540, 630, 720};
+  patchpanel::Client::TrafficVector tethering_counters_diff = {10, 20, 1, 2};
   EXPECT_EQ(service_->current_total_traffic_counters()
                 [patchpanel::Client::TrafficSource::kChrome],
             chrome_counters_diff);
   EXPECT_EQ(service_->current_total_traffic_counters()
                 [patchpanel::Client::TrafficSource::kUser],
             user_counters_diff);
+  EXPECT_EQ(service_->current_total_traffic_counters()
+                [patchpanel::Client::TrafficSource::kTethering],
+            tethering_counters_diff);
+
+  // Reset the traffic counters. New snapshots are set.
+  network_counters.clear();
+  network_counters[source0] = {110, 220, 330, 440};
+  network_counters[source1] = {550, 660, 770, 880};
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>([&](Network::GetTrafficCountersCallback callback) {
+        std::move(callback).Run(network_counters);
+      }));
+  extra_counters.clear();
+  extra_counters[extra_source] = {120, 230, 12, 23};
+  service_->SetExtraTrafficCounters(extra_counters);
+
+  service_->ResetTrafficCounters(/*error=*/nullptr);
+  Mock::VerifyAndClearExpectations(network.get());
+  EXPECT_EQ(service_->current_total_traffic_counters().size(), 0);
+
+  // Refresh traffic counters a second time, updating the traffic counter
+  // snapshot and current traffic counters.
+  network_counters.clear();
+  network_counters[source0] = {1000, 2000, 3000, 4000};
+  network_counters[source1] = {5000, 6000, 7000, 8000};
+  EXPECT_CALL(*network, RequestTrafficCounters)
+      .WillOnce(WithArgs<0>([&](Network::GetTrafficCountersCallback callback) {
+        std::move(callback).Run(network_counters);
+      }));
+  extra_counters.clear();
+  extra_counters[extra_source] = {200, 300, 20, 30};
+  service_->SetExtraTrafficCounters(extra_counters);
+
+  service_->RequestTrafficCounters(base::DoNothing());
+  Mock::VerifyAndClearExpectations(network.get());
+
+  chrome_counters_diff = {890, 1780, 2670, 3560};
+  user_counters_diff = {4450, 5340, 6230, 7120};
+  tethering_counters_diff = {80, 70, 8, 7};
+  EXPECT_EQ(service_->current_total_traffic_counters().size(), 3);
+  EXPECT_EQ(service_->current_total_traffic_counters()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters_diff);
+  EXPECT_EQ(service_->current_total_traffic_counters()
+                [patchpanel::Client::TrafficSource::kUser],
+            user_counters_diff);
+  EXPECT_EQ(service_->current_total_traffic_counters()
+                [patchpanel::Client::TrafficSource::kTethering],
+            tethering_counters_diff);
 }
 
 TEST_F(ServiceTest, UpdateLinkSpeed) {

@@ -1765,13 +1765,22 @@ void Service::RequestTrafficCounters(
 }
 
 void Service::ResetTrafficCounters(Error* /*error*/) {
+  // Any raw snapshot also need to be reset to the current value which requires
+  // an async query. To avoid inconsistency change this function to do the
+  // reinitialization asynchronously (without waiting here and without a
+  // callback).
+  RequestRawTrafficCounters(base::BindOnce(
+      &Service::ResetTrafficCountersCallback, weak_ptr_factory_.GetWeakPtr()));
+}
+
+void Service::ResetTrafficCountersCallback(
+    const Network::TrafficCounterMap& raw_counters,
+    const Network::TrafficCounterMap& extra_raw_counters) {
   LOG(INFO) << __func__ << ": " << log_name();
-  // TODO(b/335299463): Any raw snapshot also need to be reset to the current
-  // value which requires an async query. To avoid inconsistency change this
-  // function to do the reinitialization asynchronously (without waiting here
-  // and without a callback).
   current_total_traffic_counters_.clear();
   total_traffic_counter_snapshot_.clear();
+  network_raw_traffic_counter_snapshot_ = raw_counters;
+  extra_raw_traffic_counter_snapshot_ = extra_raw_counters;
   traffic_counter_reset_time_ = base::Time::Now();
   SaveToProfile();
 }
