@@ -73,8 +73,8 @@ struct Attributes {
 };
 
 // TODO(hardigoyal, b:290897808): Cleanup the rest of this file, there is
-// duplicated mount_helper_unittest.cc. This would require migrating tests
-// to just use MountHelper and not Mount+MountHelper.
+// duplicated mount_helper_test.cc. This would require migrating tests to just
+// use MountHelper and not Mount+MountHelper.
 constexpr char kEtc[] = "/etc";
 constexpr char kEtcSkel[] = "/etc/skel";
 constexpr char kEtcDaemonStore[] = "/etc/daemon-store";
