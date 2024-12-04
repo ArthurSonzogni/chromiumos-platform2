@@ -151,8 +151,6 @@ class BRILLO_EXPORT Tpm {
 
   bool IsOwned(bool* owned);
 
-  bool GetRandomBytes(uint8_t* buffer, int wanted);
-
   // Returns the PCR value for PCR |index|, possibly from the cache.
   bool ReadPCR(uint32_t index, std::vector<uint8_t>* value);
 

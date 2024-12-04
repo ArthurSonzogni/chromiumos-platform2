@@ -352,36 +352,6 @@ bool Tpm::IsOwned(bool* owned) {
   return true;
 }
 
-bool Tpm::GetRandomBytes(uint8_t* buffer, int wanted) {
-  if (available()) {
-    // Read random bytes from TPM, which can return short reads.
-    int remaining = wanted;
-    while (remaining) {
-      uint32_t result, size;
-      result =
-          tlcl_->GetRandom(buffer + (wanted - remaining), remaining, &size);
-      if (result != TPM_SUCCESS) {
-        LOG(ERROR) << "TPM GetRandom failed: error " << result;
-        return false;
-      }
-      CHECK_LE(size, remaining);
-      remaining -= size;
-    }
-
-    if (remaining == 0) {
-      return true;
-    }
-  }
-
-  // Fall back to system random source.
-  if (RAND_bytes(buffer, wanted)) {
-    return true;
-  }
-
-  LOG(ERROR) << "Failed to obtain randomness.";
-  return false;
-}
-
 bool Tpm::ReadPCR(uint32_t index, std::vector<uint8_t>* value) {
   // See whether the PCR is available in the cache. Note that we currently
   // assume PCR values remain constant during the lifetime of the process, so we
