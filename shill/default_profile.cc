@@ -91,6 +91,10 @@ void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
                      &manager_props->arp_gateway);
   storage()->GetBool(kStorageId, kStorageEnableRFC8925,
                      &manager_props->enable_rfc_8925);
+  storage()->GetBool(kStorageId, kStorageEnableSingleCACertVerificationPhase1,
+                     &manager_props->enable_single_ca_cert_verification_phase1);
+  storage()->GetBool(kStorageId, kStorageEnableSingleCACertVerificationPhase2,
+                     &manager_props->enable_single_ca_cert_verification_phase2);
   storage()->GetBool(kStorageId, kStorageUseLegacyDHCPCD,
                      &manager_props->use_legacy_dhcpcd);
   if (!storage()->GetString(kStorageId, kStorageCheckPortalList,
@@ -171,6 +175,10 @@ bool DefaultProfile::Save() {
 
   storage()->SetBool(kStorageId, kStorageArpGateway, props_.arp_gateway);
   storage()->SetBool(kStorageId, kStorageEnableRFC8925, props_.enable_rfc_8925);
+  storage()->SetBool(kStorageId, kStorageEnableSingleCACertVerificationPhase1,
+                     props_.enable_single_ca_cert_verification_phase1);
+  storage()->SetBool(kStorageId, kStorageEnableSingleCACertVerificationPhase2,
+                     props_.enable_single_ca_cert_verification_phase2);
   storage()->SetBool(kStorageId, kStorageUseLegacyDHCPCD,
                      props_.use_legacy_dhcpcd);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());

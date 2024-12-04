@@ -230,6 +230,10 @@ Manager::Manager(ControlInterface* control_interface,
   store_.RegisterBool(kArpGatewayProperty, &props_.arp_gateway);
   store_.RegisterBool(kEnableDHCPQoSProperty, &props_.enable_dhcp_qos);
   store_.RegisterBool(kEnableRFC8925Property, &props_.enable_rfc_8925);
+  store_.RegisterBool(kEnableSingleCACertVerificationPhase1Property,
+                      &props_.enable_single_ca_cert_verification_phase1);
+  store_.RegisterBool(kEnableSingleCACertVerificationPhase2Property,
+                      &props_.enable_single_ca_cert_verification_phase2);
   store_.RegisterBool(kUseLegacyDHCPCDProperty, &props_.use_legacy_dhcpcd);
   HelpRegisterConstDerivedStrings(kAvailableTechnologiesProperty,
                                   &Manager::AvailableTechnologies);

@@ -71,6 +71,10 @@ class DefaultProfile : public Profile {
   static constexpr char kStorageDisableWiFiOnEthernetConnected[] = "connected";
   static constexpr char kStorageDisableWiFiOnEthernetOnline[] = "online";
   static constexpr char kStorageEnableRFC8925[] = "RFC8925";
+  static constexpr char kStorageEnableSingleCACertVerificationPhase1[] =
+      "SingleCACertVerificationPhase1";
+  static constexpr char kStorageEnableSingleCACertVerificationPhase2[] =
+      "SingleCACertVerificationPhase2";
   static constexpr char kStorageUseLegacyDHCPCD[] = "UseLegacyDHCPCD";
 
   void HelpRegisterConstDerivedBool(std::string_view name,

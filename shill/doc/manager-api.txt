@@ -1054,6 +1054,21 @@ Properties	object ActiveProfile [readonly]
 			"Services" property above.  Change events for this property are not
 			emitted.
 
+		boolean EnableSingleCACertVerificationPhase1 [readwrite]
+
+			Enables or disables experiment for usage of single CA certificate
+			(if it was provided) for the server's certificate verification
+			in the EAP network. During Phase 1, a fallback to the previous
+			verification configuration remains in place; if a connection attempt
+			fails, a retry will be made using the previous configuration.
+
+		boolean EnableSingleCACertVerificationPhase2 [readwrite]
+
+			Enables or disables experiment for usage of single CA certificate
+			(if it was provided) for the server's certificate verification
+			in the EAP network. Phase 2 has no fallback to the previous
+			verification config and has no re-try mechanism.
+
 		string SupportedVPNTypes [readonly]
 
 			The list of supported vpn types. This is a comma-separated string;

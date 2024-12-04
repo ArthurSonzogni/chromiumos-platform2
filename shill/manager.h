@@ -97,6 +97,12 @@ struct ManagerProperties {
   bool arp_gateway = true;
   // Whether DHCP client should request for IPv6-only mode on a capable network.
   bool enable_rfc_8925 = false;
+  // Try to use only a single CA cert for the EAP network if CA cert was
+  // selected, fallback to the previous config.
+  bool enable_single_ca_cert_verification_phase1 = false;
+  // Use a single CA cert for the EAP network if CA cert was selected, no
+  // fallback.
+  bool enable_single_ca_cert_verification_phase2 = false;
   // Whether to use the legacy dhcpcd7 or to enable the latest dhcpcd for
   // IPv4 provisioning.
   bool use_legacy_dhcpcd = true;

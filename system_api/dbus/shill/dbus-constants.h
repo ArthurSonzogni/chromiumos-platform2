@@ -114,6 +114,10 @@ constexpr char kDOHIncludedDomainsProperty[] = "DOHIncludedDomains";
 constexpr char kEnabledTechnologiesProperty[] = "EnabledTechnologies";
 constexpr char kEnableDHCPQoSProperty[] = "EnableDHCPQoS";
 constexpr char kEnableRFC8925Property[] = "EnableRFC8925";
+constexpr char kEnableSingleCACertVerificationPhase1Property[] =
+    "EnableSingleCACertVerificationPhase1";
+constexpr char kEnableSingleCACertVerificationPhase2Property[] =
+    "EnableSingleCACertVerificationPhase2";
 constexpr char kExperimentalTetheringFunctionality[] =
     "ExperimentalTetheringFunctionality";
 constexpr char kLOHSConfigProperty[] = "LOHSConfig";
