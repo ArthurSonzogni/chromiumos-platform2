@@ -17,7 +17,7 @@
 
 _study_env_setup() {
     local STUDY_DIR
-    STUDY_DIR="$( dirname "${BASH_SOURCE[0]}" )"
+    STUDY_DIR="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
     local STUDY_VENV_DIR="${STUDY_DIR}/.venv"
 
     if [[ ! -d "${STUDY_VENV_DIR}" ]]; then
