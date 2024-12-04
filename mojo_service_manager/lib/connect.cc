@@ -34,9 +34,9 @@ namespace {
 // The retry interval of connecting to the service manager. It is expected that
 // normally the first retry should be able to perform the bootstrap on all
 // devices.
-constexpr base::TimeDelta kRetryInterval = base::Milliseconds(1);
+constexpr base::TimeDelta kRetryInterval = base::Milliseconds(100);
 // The retry timeout of connecting to the service manager.
-constexpr base::TimeDelta kRetryTimeout = base::Seconds(10);
+constexpr base::TimeDelta kRetryTimeout = base::Seconds(120);
 
 base::ScopedFD ConnectToServiceManagerUnixSocket(
     const base::FilePath& socket_path) {
@@ -73,7 +73,7 @@ mojo::PendingRemote<mojom::ServiceManager> AcceptMojoInvitationAndPassRemote(
   return mojo::PendingRemote<mojom::ServiceManager>(std::move(pipe), 0u);
 }
 
-mojo::PendingRemote<mojom::ServiceManager> ConnectToMojoServiceManagerInteral(
+mojo::PendingRemote<mojom::ServiceManager> ConnectToMojoServiceManagerInternal(
     const base::FilePath& socket_path) {
   for (base::ElapsedTimer timer; timer.Elapsed() < kRetryTimeout;
        base::PlatformThread::Sleep(kRetryInterval)) {
@@ -91,12 +91,12 @@ mojo::PendingRemote<mojom::ServiceManager> ConnectToMojoServiceManagerInteral(
 
 BRILLO_EXPORT mojo::PendingRemote<mojom::ServiceManager>
 ConnectToMojoServiceManager() {
-  return ConnectToMojoServiceManagerInteral(base::FilePath{kSocketPath});
+  return ConnectToMojoServiceManagerInternal(base::FilePath{kSocketPath});
 }
 
 mojo::PendingRemote<mojom::ServiceManager>
 ConnectToMojoServiceManagerForTesting(const base::FilePath& socket_path) {
-  return ConnectToMojoServiceManagerInteral(socket_path);
+  return ConnectToMojoServiceManagerInternal(socket_path);
 }
 
 }  // namespace chromeos::mojo_service_manager
