@@ -1079,26 +1079,22 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   std::vector<std::string> args = {"--repeat-arg", "--one-time-arg"};
   const std::vector<std::string> kEnvVars = {"FOO=", "BAR=/tmp"};
 
-  base::FilePath temp_dir;
-  ASSERT_TRUE(base::CreateNewTempDirectory("" /* ignored */, &temp_dir));
-
-  const size_t random_suffix_len = strlen("XXXXXX");
-  ASSERT_LT(random_suffix_len, temp_dir.value().size()) << temp_dir.value();
-
   // Check that SetBrowserTestArgs() is called with a randomly chosen
   // --testing-channel path name.
-  const string expected_testing_path_prefix =
-      temp_dir.value().substr(0, temp_dir.value().size() - random_suffix_len);
-  EXPECT_CALL(manager_,
-              SetBrowserTestArgs(ElementsAre(
-                  args[0], args[1], HasSubstr(expected_testing_path_prefix))))
-      .Times(1);
-  EXPECT_CALL(manager_, SetBrowserAdditionalEnvironmentalVariables(
-                            ElementsAre(kEnvVars[0], kEnvVars[1])))
-      .Times(1);
-  EXPECT_CALL(manager_, RestartBrowser()).Times(1);
+  const std::string expected_testing_path_prefix =
+      base::FormatTemporaryFileName("").value();
 
   {
+    ::testing::InSequence sequence;
+    EXPECT_CALL(manager_,
+                SetBrowserTestArgs(ElementsAre(
+                    args[0], args[1], HasSubstr(expected_testing_path_prefix))))
+        .Times(1);
+    EXPECT_CALL(manager_, SetBrowserAdditionalEnvironmentalVariables(
+                              ElementsAre(kEnvVars[0], kEnvVars[1])))
+        .Times(1);
+    EXPECT_CALL(manager_, RestartBrowser()).Times(1);
+
     brillo::ErrorPtr error;
     std::string testing_path;
     ASSERT_TRUE(impl_->EnableChromeTesting(&error, false, args, kEnvVars,
@@ -1107,6 +1103,7 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
     EXPECT_NE(std::string::npos,
               testing_path.find(expected_testing_path_prefix))
         << testing_path;
+    Mock::VerifyAndClearExpectations(&manager_);
   }
 
   {
@@ -1119,21 +1116,23 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
     EXPECT_NE(std::string::npos,
               testing_path.find(expected_testing_path_prefix))
         << testing_path;
+    Mock::VerifyAndClearExpectations(&manager_);
   }
 
   // Force relaunch.  Should go through the whole path again.
-  args[0] = "--some-switch";
-  args[1] = "--repeat-arg";
-  EXPECT_CALL(manager_,
-              SetBrowserTestArgs(ElementsAre(
-                  args[0], args[1], HasSubstr(expected_testing_path_prefix))))
-      .Times(1);
-  EXPECT_CALL(manager_, SetBrowserAdditionalEnvironmentalVariables(
-                            ElementsAre(kEnvVars[0], kEnvVars[1])))
-      .Times(1);
-  EXPECT_CALL(manager_, RestartBrowser()).Times(1);
-
   {
+    args[0] = "--some-switch";
+    args[1] = "--repeat-arg";
+    ::testing::InSequence sequence;
+    EXPECT_CALL(manager_,
+                SetBrowserTestArgs(ElementsAre(
+                    args[0], args[1], HasSubstr(expected_testing_path_prefix))))
+        .Times(1);
+    EXPECT_CALL(manager_, SetBrowserAdditionalEnvironmentalVariables(
+                              ElementsAre(kEnvVars[0], kEnvVars[1])))
+        .Times(1);
+    EXPECT_CALL(manager_, RestartBrowser()).Times(1);
+
     brillo::ErrorPtr error;
     std::string testing_path;
     ASSERT_TRUE(impl_->EnableChromeTesting(&error, true, args, kEnvVars,
@@ -1142,6 +1141,7 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
     EXPECT_NE(std::string::npos,
               testing_path.find(expected_testing_path_prefix))
         << testing_path;
+    Mock::VerifyAndClearExpectations(&manager_);
   }
 }
 

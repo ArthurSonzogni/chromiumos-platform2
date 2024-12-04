@@ -29,17 +29,6 @@ FakeSystemUtils::~FakeSystemUtils() = default;
 
 // TODO(hidehiko): Support NOTREACHED() functions when needed.
 
-const base::FilePath& FakeSystemUtils::GetRoot() const {
-  return temp_dir_.GetPath();
-}
-
-base::FilePath FakeSystemUtils::RebasePath(const base::FilePath& path) const {
-  CHECK(path.IsAbsolute());
-  base::FilePath result = temp_dir_.GetPath();
-  CHECK(base::FilePath("/").AppendRelativePath(path, &result));
-  return result;
-}
-
 int FakeSystemUtils::kill(pid_t pid, uid_t owner, int signal) {
   NOTREACHED();
 }
@@ -151,12 +140,8 @@ bool FakeSystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
     return false;
   }
 
-  // Rebase the path to the root.
-  if (temp_dir_.GetPath().AppendRelativePath(base::FilePath("/"), &filepath)) {
-    LOG(ERROR) << "Failed to rebase the path";
-    return false;
-  }
-  *temp_file_path = filepath;
+  // Convert back the real path under fake root as if the fake root is the root.
+  *temp_file_path = RestorePath(filepath);
   return true;
 }
 
@@ -220,6 +205,22 @@ bool FakeSystemUtils::RunInMinijail(const ScopedMinijail& jail,
                                     const std::vector<std::string>& env_vars,
                                     pid_t* pchild_pid) {
   NOTREACHED();
+}
+
+base::FilePath FakeSystemUtils::RebasePath(const base::FilePath& path) const {
+  CHECK(path.IsAbsolute());
+  base::FilePath result = temp_dir_.GetPath();
+  CHECK(base::FilePath("/").AppendRelativePath(path, &result));
+  return result;
+}
+
+base::FilePath FakeSystemUtils::RestorePath(const base::FilePath& path) const {
+  CHECK(path.IsAbsolute());
+  const auto& fake_root = temp_dir_.GetPath();
+  CHECK(fake_root.IsParent(path));
+  base::FilePath result("/");
+  CHECK(fake_root.AppendRelativePath(path, &result));
+  return result;
 }
 
 }  // namespace login_manager

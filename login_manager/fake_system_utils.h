@@ -26,15 +26,6 @@ class FakeSystemUtils : public SystemUtils {
   FakeSystemUtils& operator=(const FakeSystemUtils&) = delete;
   ~FakeSystemUtils() override;
 
-  // FakeSystemUtils creates a temp directory as a "root" of the
-  // files/directories handled by this instance.
-  // Returns the root path of the fake "root" directory.
-  const base::FilePath& GetRoot() const;
-
-  // Takes an abs `path`, and rebase the path to the fake "root"
-  // of this instance.
-  base::FilePath RebasePath(const base::FilePath& path) const;
-
   void set_dev_mode_state(DevModeState dev_mode_state) {
     dev_mode_state_ = dev_mode_state;
   }
@@ -98,6 +89,17 @@ class FakeSystemUtils : public SystemUtils {
                      pid_t* pchild_pid) override;
 
  private:
+  // Takes an abs `path`, and rebase the path to the fake "root"
+  // of this instance.
+  // E.g. If `path` is "/var/run/chrome", and the fake "root" is
+  // "/tmp/abcde", then "/tmp/abcde/var/run/chrome" will be returned.
+  base::FilePath RebasePath(const base::FilePath& path) const;
+
+  // Takes an abs `path` under the fake "root", and converts it
+  // as if the fake "root" is the real root.
+  // In other words, this is reverse conversion of RebasePath.
+  base::FilePath RestorePath(const base::FilePath& path) const;
+
   base::ScopedTempDir temp_dir_;
 
   DevModeState dev_mode_state_ = DevModeState::DEV_MODE_OFF;
