@@ -15,9 +15,11 @@
 // the log from parsing it. When `compressed_json` is true, produced JSON
 // content contains no unnecessary whitespaces what makes it as short as
 // possible. When `compressed_json` is false, produced JSON is formatted to
-// maximize readability.
+// maximize readability.  If `filter` is non-empty, only attributes containing
+// `filter` will be emitted.
 bool ConvertToJson(const ipp::Frame& response,
                    const ipp::SimpleParserLog& log,
+                   const std::string& filter,
                    bool compressed_json,
                    std::string* json);
 

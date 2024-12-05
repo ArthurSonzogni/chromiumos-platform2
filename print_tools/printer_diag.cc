@@ -10,6 +10,7 @@
 #include <iostream>
 #include <optional>
 
+#include <base/strings/string_split.h>
 #include <brillo/flag_helper.h>
 #include <chromeos/libipp/attribute.h>
 #include <chromeos/libipp/builder.h>
@@ -204,6 +205,14 @@ int main(int argc, char** argv) {
   DEFINE_string(
       binary, "",
       "Dump the response to given file as a binary content (use - for stdout)");
+  DEFINE_string(
+      document_format, "",
+      "MIME type for document-format in the Get-Printer-Attributes request");
+  DEFINE_string(requested_attributes, "all,media-col-database",
+                "Comma-separated list of attributes to request");
+  DEFINE_string(
+      filter, "",
+      "Limit JSON output to attributes that contain this string in their name");
   brillo::FlagHelper::Init(argc, argv, app_info);
   auto free_params = base::CommandLine::ForCurrentProcess()->GetArgs();
   if (!free_params.empty()) {
@@ -236,8 +245,14 @@ int main(int argc, char** argv) {
   ipp::Frame request(ipp::Operation::Get_Printer_Attributes, version);
   ipp::Collection& grp = request.Groups(ipp::GroupTag::operation_attributes)[0];
   grp.AddAttr("printer-uri", ipp::ValueTag::uri, FLAGS_url);
-  grp.AddAttr("requested-attributes", ipp::ValueTag::keyword,
-              std::vector<std::string>{"all", "media-col-database"});
+  grp.AddAttr(
+      "requested-attributes", ipp::ValueTag::keyword,
+      base::SplitString(FLAGS_requested_attributes, ",", base::TRIM_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY));
+  if (!FLAGS_document_format.empty()) {
+    grp.AddAttr("document-format", ipp::ValueTag::mimeMediaType,
+                FLAGS_document_format);
+  }
   std::vector<uint8_t> data = ipp::BuildBinaryFrame(request);
   // Resolve the IP after setting printer-uri so the printer can see the
   // original name.
@@ -269,7 +284,7 @@ int main(int argc, char** argv) {
   }
   if (!FLAGS_jsonc.empty()) {
     std::string json;
-    if (!ConvertToJson(response, log, true, &json)) {
+    if (!ConvertToJson(response, log, FLAGS_filter, true, &json)) {
       std::cerr << "Error when preparing a report in JSON (compressed)."
                 << std::endl;
       return -4;
@@ -280,7 +295,7 @@ int main(int argc, char** argv) {
   }
   if (!FLAGS_jsonf.empty()) {
     std::string json;
-    if (!ConvertToJson(response, log, false, &json)) {
+    if (!ConvertToJson(response, log, FLAGS_filter, false, &json)) {
       std::cerr << "Error when preparing a report in JSON (formatted)."
                 << std::endl;
       return -4;

@@ -28,7 +28,7 @@ TEST(IppToJson, StringAttribute) {
       ipp::Code::kOK);
 
   std::string json;
-  EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
+  EXPECT_TRUE(ConvertToJson(frame, log, "", true, &json));
   EXPECT_EQ(json,
             R"({"response":{"document-attributes":{)"
             R"("test-attr":{"type":"textWithoutLanguage","value":"value"})"
@@ -48,7 +48,7 @@ TEST(IppToJson, StringWithLanguageAttribute) {
             ipp::Code::kOK);
 
   std::string json;
-  EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
+  EXPECT_TRUE(ConvertToJson(frame, log, "", true, &json));
   EXPECT_EQ(json, R"({"response":{"document-attributes":{)"
                   R"("test-attr":{"type":"textWithLanguage",)"
                   R"("value":{"language":"Language","value":"Value"})"
@@ -64,7 +64,7 @@ TEST(IppToJson, IntegerAttribute) {
   EXPECT_EQ(grp->AddAttr("abc", ipp::ValueTag::integer, 123), ipp::Code::kOK);
 
   std::string json;
-  EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
+  EXPECT_TRUE(ConvertToJson(frame, log, "", true, &json));
   EXPECT_EQ(json, R"({"response":{"job-attributes":{)"
                   R"("abc":{"type":"integer","value":123})"
                   R"(}},"status":"successful-ok"})");
@@ -79,7 +79,7 @@ TEST(IppToJson, EnumAttribute) {
   EXPECT_EQ(grp->AddAttr("abcd", ipp::ValueTag::enum_, 1234), ipp::Code::kOK);
 
   std::string json;
-  EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
+  EXPECT_TRUE(ConvertToJson(frame, log, "", true, &json));
   EXPECT_EQ(json, R"({"response":{"job-attributes":{)"
                   R"("abcd":{"type":"enum","value":1234})"
                   R"(}},"status":"successful-ok"})");
@@ -95,7 +95,7 @@ TEST(IppToJson, BooleanAttribute) {
   EXPECT_EQ(grp->AddAttr("attr2", false), ipp::Code::kOK);
 
   std::string json;
-  EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
+  EXPECT_TRUE(ConvertToJson(frame, log, "", true, &json));
   EXPECT_EQ(json, R"({"response":{"job-attributes":{)"
                   R"("attr1":{"type":"boolean","value":true},)"
                   R"("attr2":{"type":"boolean","value":false})"
@@ -112,7 +112,7 @@ TEST(IppToJson, OutOfBandAttribute) {
   EXPECT_EQ(grp->AddAttr("attr", ipp::ValueTag::not_settable), ipp::Code::kOK);
 
   std::string json;
-  EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
+  EXPECT_TRUE(ConvertToJson(frame, log, "", true, &json));
   EXPECT_EQ(json, R"({"response":{"printer-attributes":{)"
                   R"("attr":"not-settable")"
                   R"(}},"status":"successful-ok"})");
@@ -128,7 +128,7 @@ TEST(IppToJson, SetOfIntegersAttribute) {
             ipp::Code::kOK);
 
   std::string json;
-  EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
+  EXPECT_TRUE(ConvertToJson(frame, log, "", true, &json));
   EXPECT_EQ(json, R"({"response":{"job-attributes":{)"
                   R"("attr":{"type":"integer","value":[1,2,3]})"
                   R"(}},"status":"successful-ok"})");
@@ -145,9 +145,35 @@ TEST(IppToJson, CollectionAttribute) {
   EXPECT_EQ(coll->AddAttr("attr", true), ipp::Code::kOK);
 
   std::string json;
-  EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
+  EXPECT_TRUE(ConvertToJson(frame, log, "", true, &json));
   EXPECT_EQ(json, R"({"response":{"job-attributes":{)"
                   R"("attr":{"type":"collection","value":)"
+                  R"({"attr":{"type":"boolean","value":true}})"
+                  R"(}}},"status":"successful-ok"})");
+}
+
+TEST(IppToJson, FilteredAttribute) {
+  ipp::CollsView::iterator grp;
+  ipp::SimpleParserLog log;
+
+  ipp::Frame frame(ipp::Status::successful_ok, ipp::Version::_1_1, 1, false);
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
+  ipp::CollsView::iterator col1;
+  ASSERT_EQ(grp->AddAttr("col1-in", col1), ipp::Code::kOK);
+  EXPECT_EQ(col1->AddAttr("attr", true), ipp::Code::kOK);
+  ipp::CollsView::iterator col2;
+  ASSERT_EQ(grp->AddAttr("col2-out", col2), ipp::Code::kOK);
+  EXPECT_EQ(col2->AddAttr("attr", true), ipp::Code::kOK);
+  ipp::CollsView::iterator col3;
+  ASSERT_EQ(grp->AddAttr("col3-in", col3), ipp::Code::kOK);
+  EXPECT_EQ(col3->AddAttr("attr", true), ipp::Code::kOK);
+
+  std::string json;
+  EXPECT_TRUE(ConvertToJson(frame, log, "-in", true, &json));
+  EXPECT_EQ(json, R"({"response":{"job-attributes":{)"
+                  R"("col1-in":{"type":"collection","value":)"
+                  R"({"attr":{"type":"boolean","value":true}}},)"
+                  R"("col3-in":{"type":"collection","value":)"
                   R"({"attr":{"type":"boolean","value":true}})"
                   R"(}}},"status":"successful-ok"})");
 }
@@ -161,7 +187,7 @@ TEST(IppToJson, TwoEmptyGroups) {
   ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
 
   std::string json;
-  EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
+  EXPECT_TRUE(ConvertToJson(frame, log, "", true, &json));
   EXPECT_EQ(json, R"({"response":{"job-attributes":[{},{}]},)"
                   R"("status":"successful-ok"})");
 }
@@ -176,7 +202,7 @@ TEST(IppToJson, ParsingLogs) {
                    false);
 
   std::string json;
-  EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
+  EXPECT_TRUE(ConvertToJson(frame, log, "", true, &json));
   EXPECT_EQ(json, R"({"parsing_logs":["job-attributes; ValueInvalidSize"],)"
                   R"("response":{},"status":"client-error-gone"})");
 }

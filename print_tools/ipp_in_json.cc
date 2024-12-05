@@ -17,7 +17,7 @@
 
 namespace {
 
-base::Value SaveAsJson(const ipp::Collection& coll);
+base::Value SaveAsJson(const ipp::Collection& coll, const std::string& filter);
 
 // Converts `value` from the attribute `attr` to base::Value.
 template <typename ValueType>
@@ -80,11 +80,15 @@ base::Value SaveValuesAsJsonTyped<const ipp::Collection&>(
   if (colls.size() > 1) {
     base::Value::List arr;
     for (const ipp::Collection& coll : colls) {
-      arr.Append(SaveAsJson(coll));
+      // Don't filter inner collection attributes.  The outer collection itself
+      // would have already been skipped if it didn't match the user's filter.
+      arr.Append(SaveAsJson(coll, ""));
     }
     return base::Value(std::move(arr));
   } else {
-    return SaveAsJson(colls[0]);
+    // Don't filter inner collection attributes.  The outer collection itself
+    // would have already been skipped if it didn't match the user's filter.
+    return SaveAsJson(colls[0], "");
   }
 }
 
@@ -111,10 +115,13 @@ base::Value SaveValuesAsJson(const ipp::Attribute& attr) {
 }
 
 // It saves a given Collection as JSON object.
-base::Value SaveAsJson(const ipp::Collection& coll) {
+base::Value SaveAsJson(const ipp::Collection& coll, const std::string& filter) {
   base::Value::Dict obj;
 
   for (const ipp::Attribute& a : coll) {
+    if (!filter.empty() && a.Name().find(filter) == std::string::npos) {
+      continue;
+    }
     auto tag = a.Tag();
     if (!ipp::IsOutOfBand(tag)) {
       base::Value::Dict obj2;
@@ -130,21 +137,31 @@ base::Value SaveAsJson(const ipp::Collection& coll) {
 }
 
 // It saves all groups from given Package as JSON object.
-base::Value SaveAsJson(const ipp::Frame& pkg) {
+base::Value SaveAsJson(const ipp::Frame& pkg, const std::string& filter) {
   base::Value::Dict obj;
   for (ipp::GroupTag gt : ipp::kGroupTags) {
     auto groups = pkg.Groups(gt);
     if (groups.empty()) {
       continue;
     }
+    if (gt == ipp::GroupTag::operation_attributes && !filter.empty()) {
+      // Skip operation-attributes group if the user is filtering because the
+      // values returned will never be of interest.
+      continue;
+    }
+    // Don't apply the output filter to the unsupported-attributes group because
+    // the user may have no other way to see that their request was not
+    // processed as expected.
+    const std::string& apply_filter =
+        gt != ipp::GroupTag::unsupported_attributes ? filter : "";
     if (groups.size() > 1) {
       base::Value::List arr;
       for (const ipp::Collection& g : groups) {
-        arr.Append(SaveAsJson(g));
+        arr.Append(SaveAsJson(g, apply_filter));
       }
       obj.Set(ToString(gt), std::move(arr));
     } else {
-      obj.Set(ToString(gt), SaveAsJson(groups[0]));
+      obj.Set(ToString(gt), SaveAsJson(groups[0], apply_filter));
     }
   }
   return base::Value(std::move(obj));
@@ -163,6 +180,7 @@ base::Value SaveAsJson(const ipp::SimpleParserLog& log) {
 
 bool ConvertToJson(const ipp::Frame& response,
                    const ipp::SimpleParserLog& log,
+                   const std::string& filter,
                    bool compressed_json,
                    std::string* json) {
   // Build structure.
@@ -171,7 +189,7 @@ bool ConvertToJson(const ipp::Frame& response,
   if (!log.Errors().empty()) {
     doc.Set("parsing_logs", SaveAsJson(log));
   }
-  doc.Set("response", SaveAsJson(response));
+  doc.Set("response", SaveAsJson(response, filter));
   // Convert to JSON.
   bool result;
   if (compressed_json) {
