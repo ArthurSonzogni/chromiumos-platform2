@@ -173,8 +173,6 @@ std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
     }
 
     if (!pattern.empty() && !base::MatchPattern(*output_lv_name, pattern)) {
-      LOG(INFO) << "Logical volume=" << *output_lv_name
-                << " does not match pattern=" << pattern;
       continue;
     }
 
