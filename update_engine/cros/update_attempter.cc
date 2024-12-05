@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -105,6 +106,8 @@ const char kMigrationDlcId[] = "migration-dlc";
 constexpr unsigned int kPartitionNumberBootA = 13;
 constexpr char kPartitionNameBootA[] = "boot_a";
 constexpr char kPartitionNameRoot[] = "root";
+
+constexpr std::string_view kPartitionsAttributePrefix = "_PARTITIONS_";
 
 string ConvertToString(ProcessMode op) {
   switch (op) {
@@ -1500,6 +1503,7 @@ void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
                                             ErrorCode code) {
   // TODO(b/356338530): Create a `PartitionMigrateAction`.
   // Partition migration.
+  // Get partition number.
   BootControlInterface* boot_control = SystemState::Get()->boot_control();
   const auto& boot_device = boot_control->GetBootDevicePath();
   if (boot_device.empty()) {
@@ -1510,7 +1514,28 @@ void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
       boot_control->GetHighestOffsetSlot(kPartitionNameRoot);
   const auto& last_root =
       boot_control->GetPartitionNumber(kPartitionNameRoot, last_slot);
-  if (!installer::MigratePartition(boot_device, last_root,
+
+  // Get partition layout.
+  const auto& manifest = SystemState::Get()->dlc_utils()->GetDlcManifest(
+      kMigrationDlcId, base::FilePath(imageloader::kDlcManifestRootpath));
+  if (!manifest) {
+    LOG(ERROR) << "Unable to load the manifest for migration DLC.";
+    return;
+  }
+  std::string partitions_json;
+  for (std::string_view attr : manifest->attributes()) {
+    if (attr.starts_with(kPartitionsAttributePrefix) &&
+        base::Base64Decode(attr.substr(kPartitionsAttributePrefix.size()),
+                           &partitions_json)) {
+      break;
+    }
+  }
+  if (partitions_json.empty()) {
+    LOG(ERROR) << "Failed to get partitions layout.";
+    return;
+  }
+
+  if (!installer::MigratePartition(boot_device, last_root, partitions_json,
                                    /*revert=*/false)) {
     LOG(ERROR) << "Failed to update partitions.";
     return;
@@ -1521,7 +1546,7 @@ void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
                                             kPartitionNameBootA)) {
     LOG(ERROR) << "Failed to set the boot priority on " << kPartitionNameBootA
                << ", restoring partitions.";
-    installer::MigratePartition(boot_device, last_root,
+    installer::MigratePartition(boot_device, last_root, partitions_json,
                                 /*revert=*/true);
     return;
   }

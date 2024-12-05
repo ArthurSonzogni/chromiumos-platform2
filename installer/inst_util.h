@@ -166,6 +166,7 @@ namespace installer {
 // migrated partition.
 BRILLO_EXPORT bool MigratePartition(const base::FilePath& device,
                                     int reclaimed_partition_num,
+                                    const std::string_view& partition_layout,
                                     bool revert);
 }  // namespace installer
 

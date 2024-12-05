@@ -22,7 +22,9 @@
 #include <unistd.h>
 
 #include <array>
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -33,6 +35,7 @@ extern "C" {
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -53,13 +56,18 @@ const char kEnvIsFactoryInstall[] = "IS_FACTORY_INSTALL";
 const char kEnvIsRecoveryInstall[] = "IS_RECOVERY_INSTALL";
 
 namespace {
+constexpr char kPartitionNumKey[] = "num";
+constexpr char kPartitionLabelKey[] = "label";
+constexpr char kPartitionSizeKey[] = "size";
+constexpr char kPartitionTypeKey[] = "type";
+constexpr char kPartitionTypeKernel[] = "kernel";
+
+constexpr char kReclaimedPartitionLabel[] = "super";
 
 // This is an array of device names that are allowed in end in a digit, and
 // which use the 'p' notation to denote partitions.
 constexpr std::array<std::string_view, 3> kNumberedDevices = {
     "/dev/loop", "/dev/mmcblk", "/dev/nvme"};
-
-constexpr uint64_t kMiB = 1024 * 1024;
 
 std::optional<uint64_t> GetSectorSize(const base::FilePath& device) {
   DCHECK(device.IsAbsolute()) << "device=" << device;
@@ -76,6 +84,49 @@ std::optional<uint64_t> GetSectorSize(const base::FilePath& device) {
     return std::nullopt;
   }
   return size;
+}
+
+std::optional<installer::Partition> ParsePartition(const base::Value& part_info,
+                                                   uint64_t sector_size) {
+  if (!part_info.is_dict()) {
+    return std::nullopt;
+  }
+
+  installer::Partition part;
+  const auto& part_dict = part_info.GetDict();
+  if (auto num = part_dict.FindInt(kPartitionNumKey)) {
+    part.number = *num;
+  } else {
+    return std::nullopt;
+  }
+
+  if (auto label = part_dict.FindString(kPartitionLabelKey)) {
+    part.label = *label;
+  } else {
+    LOG(ERROR) << "Missing label for partition num=" << part.number;
+    return std::nullopt;
+  }
+
+  if (auto size = part_dict.FindString(kPartitionSizeKey);
+      !size || !base::StringToUint64(*size, &part.size)) {
+    LOG(ERROR) << "Invalid size for partition num=" << part.number;
+    return std::nullopt;
+  } else {
+    part.size /= sector_size;
+  }
+
+  if (auto type = part_dict.FindString(kPartitionTypeKey)) {
+    if (*type == kPartitionTypeKernel) {
+      part.type = GPT_ENT_TYPE_CHROMEOS_KERNEL;
+    } else {
+      part.type = GPT_ENT_TYPE_BASIC_DATA;
+    }
+  } else {
+    LOG(ERROR) << "Missing type for partition num=" << part.number;
+    return std::nullopt;
+  }
+
+  return part;
 }
 
 }  // namespace
@@ -564,92 +615,60 @@ namespace installer {
 
 bool MigratePartition(const base::FilePath& device,
                       int reclaimed_partition_num,
+                      const std::string_view& partition_layout,
                       bool revert) {
+  auto part_info =
+      base::JSONReader::ReadAndReturnValueWithError(partition_layout);
+  if (!part_info.has_value()) {
+    LOG(ERROR) << "Could not parse the partition layout as JSON. Error: "
+               << part_info.error().message;
+    return false;
+  }
+  if (!part_info->is_list() || part_info->GetList().empty()) {
+    LOG(ERROR) << "Partition layout is not a valid JSON list or empty";
+    return false;
+  }
+  const auto& new_layout = part_info->GetList();
+
   auto sector_size = GetSectorSize(device);
-  if (!sector_size) {
+  if (!sector_size || sector_size.value() == 0) {
     LOG(ERROR) << "Failed to get device size for " << device;
     return false;
   }
 
-  std::vector<installer::Partition> new_partitions = {
-      {
-          .number = 13,
-          .label = "boot_a",
-          .size = (64 * kMiB) / *sector_size,
-          .type = GPT_ENT_TYPE_CHROMEOS_KERNEL,
-      },
-      {
-          .number = 14,
-          .label = "boot_b",
-          .size = (64 * kMiB) / *sector_size,
-          .type = GPT_ENT_TYPE_CHROMEOS_KERNEL,
-      },
-      {
-          .number = 15,
-          .label = "vbmeta_a",
-          .size = (4 * kMiB) / *sector_size,
-          .type = GPT_ENT_TYPE_BASIC_DATA,
-      },
-      {
-          .number = 16,
-          .label = "vbmeta_b",
-          .size = (4 * kMiB) / *sector_size,
-          .type = GPT_ENT_TYPE_BASIC_DATA,
-      },
-      {
-          .number = 17,
-          .label = "metadata",
-          .size = (16 * kMiB) / *sector_size,
-          .type = GPT_ENT_TYPE_LINUX_FS,
-      },
-      {
-          .number = 18,
-          .label = "init_boot_a",
-          .size = (32 * kMiB) / *sector_size,
-          .type = GPT_ENT_TYPE_BASIC_DATA,
-      },
-      {
-          .number = 19,
-          .label = "init_boot_b",
-          .size = (32 * kMiB) / *sector_size,
-          .type = GPT_ENT_TYPE_BASIC_DATA,
-      },
-      {
-          .number = 20,
-          .label = "vendor_boot_a",
-          .size = (32 * kMiB) / *sector_size,
-          .type = GPT_ENT_TYPE_BASIC_DATA,
-      },
-      {
-          .number = 21,
-          .label = "vendor_boot_b",
-          .size = (32 * kMiB) / *sector_size,
-          .type = GPT_ENT_TYPE_BASIC_DATA,
-      },
-      {
-          .number = 22,
-          .label = "misc",
-          .size = (4 * kMiB) / *sector_size,
-          .type = GPT_ENT_TYPE_BASIC_DATA,
-      },
-  };
-
-  std::vector<installer::Partition> relabeled_partitions = {
+  std::vector<Partition> relabeled_partitions = {
       {
           .number = 1,
           .label = "userdata",
           .old_label = "STATE",
       },
-      {
-          .number = reclaimed_partition_num,
-          .label = "super",
-          .old_label = reclaimed_partition_num == 3 ? "ROOT-A" : "ROOT-B",
-      },
   };
 
+  if (auto part = ParsePartition(new_layout[0], *sector_size)) {
+    if (part->label != kReclaimedPartitionLabel) {
+      LOG(ERROR) << "Unexpected reclaimed partition label: " << part->label;
+      return false;
+    }
+    part->number = reclaimed_partition_num;
+    part->old_label = reclaimed_partition_num == 3 ? "ROOT-A" : "ROOT-B",
+    relabeled_partitions.push_back(*part);
+  } else {
+    LOG(ERROR) << "Unable to parse reclaimed partition info";
+    return false;
+  }
   installer::Partition reclaimed_partition = {
       .number = reclaimed_partition_num,
   };
+
+  std::vector<Partition> new_partitions;
+  for (int i = 1; i < new_layout.size(); ++i) {
+    if (auto part = ParsePartition(new_layout[i], *sector_size)) {
+      new_partitions.push_back(*part);
+    } else {
+      LOG(ERROR) << "Invalid partition layout.";
+      return false;
+    }
+  }
 
   std::unique_ptr<CgptManager> cgpt_manager = std::make_unique<CgptManager>();
 
