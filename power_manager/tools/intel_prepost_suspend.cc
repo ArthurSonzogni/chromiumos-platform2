@@ -30,29 +30,30 @@ bool is_sighting_alert(void) {
   substate_sts_path = pmc_core_file_path.Append("substate_status_registers");
   if (base::PathExists(substate_sts_path)) {
     std::ifstream file(substate_sts_path.value());
-    std::string_view lpm_sts_0;
-    std::string line;
 
     /*********************************************************************
      * Search 'PMC0:LPM_STATUS_0' and get the register value for checking.
      * EX: "PMC0:LPM_STATUS_0:   0xf57c0074", check 0xf57c0074
      *********************************************************************
      */
-    while (std::getline(file, line)) {
-      if (line.find("PMC0:LPM_STATUS_0") == std::string::npos) {
-        continue;
-      }
-
+    auto is_alert_present = [](std::string_view line) {
       size_t pos = line.find("0x");
-      if (pos != std::string::npos) {
-        lpm_sts_0 = line.substr(pos);
+      if (pos == std::string::npos) {
+        return false;
       }
-      break;
-    }
+      std::string_view lpm_sts_0 = line.substr(pos);
+      return lpm_sts_0 == "0xf57c0074" || lpm_sts_0 == "0xf57c00f4";
+    };
 
-    if (lpm_sts_0 == "0xf57c0074" || lpm_sts_0 == "0xf57c00f4") {
-      printf("CNVi Sighting Alert 772439!\n");
-      return true;
+    std::string line;
+    while (std::getline(file, line)) {
+      if (line.find("PMC0:LPM_STATUS_0") != std::string::npos) {
+        if (is_alert_present(line)) {
+          printf("CNVi Sighting Alert 772439!\n");
+          return true;
+        }
+        return false;
+      }
     }
   }
 
