@@ -95,8 +95,8 @@ constexpr char kInvalidApnAnomalyDetectorPrefix[] =
     "Invalid APN anomaly detected: ";
 
 // Longer tethering start timeout value, used when the upstream network setup
-// requires the connection of a new PDN.
-static constexpr base::TimeDelta kLongTetheringStartTimeout = base::Seconds(45);
+// requires the connection of a new PDN. The default one is 10s.
+static constexpr base::TimeDelta kLongTetheringStartTimeout = base::Seconds(20);
 
 bool IsEnabledModemState(Cellular::ModemState state) {
   switch (state) {
