@@ -76,6 +76,7 @@ class BRILLO_EXPORT PmtDecoder {
   struct MetadataFilePaths {
     base::FilePath aggregator_;
     base::FilePath aggregator_interface_;
+    base::FilePath common_;
   };
   // Prepares a list of metadata files present in the system along with their
   // corresponding GUID.

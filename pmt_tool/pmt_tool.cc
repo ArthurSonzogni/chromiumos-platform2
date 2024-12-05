@@ -286,6 +286,7 @@ bool CsvFormatter::Format(const pmt::Snapshot& snapshot) {
   HeaderWriter<std::string, &pmt::SampleMetadata::name_, false> name_writer;
   HeaderWriter<std::string, &pmt::SampleMetadata::description_, false>
       desc_writer;
+  HeaderWriter<std::string, &pmt::SampleMetadata::unit_, false> unit_writer;
   ValueWriter value_writer;
 
   if (print_header_) [[unlikely]] {
@@ -296,6 +297,9 @@ bool CsvFormatter::Format(const pmt::Snapshot& snapshot) {
       return false;
     }
     if (!PrintCsvRow(*result, buffer_, fd_, desc_writer, "Description")) {
+      return false;
+    }
+    if (!PrintCsvRow(*result, buffer_, fd_, unit_writer, "Unit")) {
       return false;
     }
     if (!PrintCsvRow(*result, buffer_, fd_, name_writer, "Timestamp\\Sample")) {

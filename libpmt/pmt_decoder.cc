@@ -49,12 +49,14 @@ namespace {
 // Node names used in metadata file parsing.
 constexpr char kAttrGuid[] = "guid";
 constexpr char kAttrTransformId[] = "transformID";
+constexpr char kAttrDataTypeId[] = "datatypeID";
 
 // XPaths used in metadata file parsing.
 constexpr char kXPathMappings[] = "/pmt/mappings/mapping";
 constexpr char kXPathBaseDir[] = "./xmlset/basedir";
 constexpr char kXPathAggregatorFile[] = "./xmlset/aggregator";
 constexpr char kXPathAggregatorInterfaceFile[] = "./xmlset/aggregatorinterface";
+constexpr char kXPathCommonFile[] = "./xmlset/common";
 constexpr char kXPathTransforms[] =
     "/TELI:AggregatorInterface/cmn:TransFormations/cmn:TransFormation";
 constexpr char kXPathTransformType[] = "./cmn:output_dataclass";
@@ -65,6 +67,7 @@ constexpr char kXPathMsb[] = "./TELC:msb";
 constexpr char kXPathDescription[] = "./TELC:description";
 constexpr char kXPathSubgroup[] = "./TELC:sampleSubGroup";
 constexpr char kXPathTransformRef[] = "./TELI:transformREF";
+constexpr char kXPathDataTypes[] = "/TELC:DataTypes/TELC:dataType";
 
 // XML namespaces present within metadata files.
 constexpr char kXsiNs[] = "xsi";
@@ -181,6 +184,15 @@ PmtDecoder::FindMetadata() {
                          << " doesn't exist");
     }
 
+    auto common_file = parser.GetXPathNodeTextValue(mapping, kXPathCommonFile);
+    if (!common_file) {
+      PMT_XML_ERROR_EXIT("malformed <common>");
+    }
+    guid_paths.common_ = base_dir_path.Append(*common_file);
+    if (!base::PathExists(guid_paths.common_)) {
+      PMT_XML_ERROR_EXIT(guid_paths.common_.value() << " doesn't exist");
+    }
+
     result[guid] = guid_paths;
   }
 
@@ -291,6 +303,69 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
     }
   }
 
+  // Do a pass on common files to gather sample unit information.
+  unordered_map<string, string> unit_map;
+  for (const auto& guid : guids) {
+    auto& metadata_files = supported_guids[guid];
+
+    // Setup parser for common file. That's where sample units
+    // are defined.
+    xml::XmlParser common_parser;
+    int result = common_parser.ParseFile(metadata_files.common_);
+    if (result) {
+      AGG_XML_ERROR_EXIT(metadata_files.common_ << ": " << strerror(result));
+    }
+
+    common_parser.RegisterNamespace(kXsiNs, kXsiNsUri);
+    common_parser.RegisterNamespace(kTELCNs, kTELCNsUri);
+
+    xml::ScopedXmlXPathObject datatypes_match =
+        common_parser.XPathEval(kXPathDataTypes);
+    if (!datatypes_match || !datatypes_match->nodesetval ||
+        !datatypes_match->nodesetval->nodeTab) {
+      AGG_XML_ERROR_EXIT("failed to find " << kXPathDataTypes);
+    }
+
+    xmlNodeSetPtr datatypes = datatypes_match->nodesetval;
+    // For each datatype, read its datatypeID attribute
+    // as it serves as reference in aggregator files.
+    for (size_t i = 0; i < datatypes->nodeNr; i++) {
+      auto datatype = datatypes->nodeTab[i];
+      auto id = common_parser.GetAttrValue(datatype, kAttrDataTypeId);
+      if (!id) {
+        AGG_XML_ERROR_EXIT("failed to find " << kAttrDataTypeId
+                                             << " in a dataype node");
+      }
+      // Check if we already have a unit for this datatypeID.
+      if (unit_map.contains(*id)) {
+        continue;
+      }
+
+      // Read unit name and symbol if unit is defined
+      // and save it in unit_map for later use.
+      auto units_match = common_parser.XPathNodeEval(datatype, "./TELC:units");
+      if (!units_match || !units_match->nodesetval ||
+          units_match->nodesetval->nodeNr < 1) {
+        unit_map[*id] = "";
+        continue;
+      }
+      if (units_match->nodesetval->nodeNr > 1) {
+        LOG(WARNING) << "More than one unit defined for TELC:datatype " << *id
+                     << ".";
+      }
+      auto unit = units_match->nodesetval->nodeTab[0];
+      auto unit_name = common_parser.GetAttrValue(unit, "name");
+      if (!unit_name) {
+        LOG(INFO) << "No unit name for TELC:datatype " << *id << ".";
+        unit_map[*id] = "";
+        continue;
+      }
+      auto unit_symbol =
+          common_parser.GetXPathNodeTextValue(unit, "./TELC:symbol");
+      unit_map[*id] = *unit_name + " (" + unit_symbol.value_or("-") + ")";
+    }
+  }
+
   // Now a final pass to extract sample extraction and transformation rules.
 
   // Maps to track the encountered samples and their position in the result.
@@ -312,7 +387,7 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
     xml::XmlParser agg_parser;
     xml::XmlParser agg_intf_parser;
 
-    // Setup parsers for aggregator and aggregator interface files.
+    // Setup parsers for aggregator, aggregator interface and common files.
     int result = agg_parser.ParseFile(metadata_files.aggregator_);
     if (result) {
       AGG_XML_ERROR_EXIT(metadata_files.aggregator_ << ": "
@@ -363,6 +438,15 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
       auto sample_name(agg_parser.GetAttrValue(sample, "name"));
       if (!sample_name) {
         AGG_XML_ERROR_EXIT("failed to parse GUID 0x"
+                           << hex << guid << " sample nr " << guid_sample_idx);
+      }
+      auto sample_unit_id(agg_parser.GetAttrValue(sample, "datatypeIDREF"));
+      if (!sample_unit_id) {
+        AGG_XML_ERROR_EXIT("failed to parse GUID 0x"
+                           << hex << guid << " sample nr " << guid_sample_idx);
+      }
+      if (!unit_map.contains(*sample_unit_id)) {
+        AGG_XML_ERROR_EXIT("failed to find unit for GUID 0x"
                            << hex << guid << " sample nr " << guid_sample_idx);
       }
       auto lsb_str(agg_parser.GetXPathNodeTextValue(sample, kXPathLsb));
@@ -548,6 +632,7 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
           .description_ =
               agg_parser.GetXPathNodeTextValue(sample, kXPathDescription)
                   .value_or(""),
+          .unit_ = unit_map[*sample_unit_id],
           .type_ = data_type,
           .guid_ = guid,
       };

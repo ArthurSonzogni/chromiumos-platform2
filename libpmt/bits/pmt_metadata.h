@@ -34,6 +34,8 @@ struct SampleMetadata {
   const std::string group_;
   // Description of the sample.
   const std::string description_;
+  // Measurement unit of the sample.
+  const std::string unit_;
   // Type of this sample.
   DataType type_;
   // GUID identifying a PMT device this sample belongs to.
