@@ -202,7 +202,7 @@ int main(int argc, char** argv) {
 
   CHECK(cl->HasSwitch(kInput));
   group_request->entities =
-      ParseEntitiesFromInput(cl->GetSwitchValueASCII(kInput));
+      ParseEntitiesFromInput(cl->GetSwitchValueNative(kInput));
 
   mojo::PendingRemote<coral::mojom::TitleObserver> observer;
 
