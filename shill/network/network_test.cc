@@ -2700,6 +2700,19 @@ TEST_F(NetworkTest, DiffTrafficCountersWithReset) {
   ASSERT_EQ(map1, Network::DiffTrafficCounters(map1, map2));
 }
 
+TEST_F(NetworkTest, ByteCountToString) {
+  ASSERT_EQ("0B", Network::ByteCountToString(0));
+  ASSERT_EQ("1023B", Network::ByteCountToString(1023));
+  ASSERT_EQ("1KiB", Network::ByteCountToString(1024));
+  ASSERT_EQ("1023.99KiB", Network::ByteCountToString(1024 * 1024 - 1));
+  ASSERT_EQ("1MiB", Network::ByteCountToString(1024 * 1024));
+  ASSERT_EQ("1023.99MiB", Network::ByteCountToString(1024 * 1024 * 1024 - 1));
+  ASSERT_EQ("1GiB", Network::ByteCountToString(1024 * 1024 * 1024));
+  ASSERT_EQ("1.23KiB", Network::ByteCountToString(1260));
+  ASSERT_EQ("47.81MiB", Network::ByteCountToString(50132419));
+  ASSERT_EQ("2.57GiB", Network::ByteCountToString(2759516488));
+}
+
 }  // namespace
 }  // namespace
 }  // namespace shill

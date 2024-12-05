@@ -294,6 +294,9 @@ void Network::Start(const Network::StartOptions& opts) {
                        NetworkConfigArea::kIPv6Route, base::DoNothing()));
   }
 
+  RequestTrafficCounters(base::BindOnce(
+      &Network::InitializeTrafficCounterSnapshot, weak_factory_.GetWeakPtr()));
+
   // Preliminary set up routing policy to enable basic local connectivity
   // (needed for DHCPv6). Note that priority is not assigned until Network
   // became Connected, so here the rules are set up with default (lowest)
@@ -468,6 +471,10 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
       ev.OnNetworkStopped(interface_index_, is_failure);
     }
   }
+
+  RequestTrafficCounters(
+      base::BindOnce(&Network::LogTrafficCounter, weak_factory_.GetWeakPtr(),
+                     context_.logging_tag(), raw_traffic_counter_snapshot_));
 
   // Clear session_id at the end so that logs before this can contain the proper
   // session_id.
@@ -1185,11 +1192,14 @@ void Network::StartConnectivityTest(
                      weak_factory_.GetWeakPtr(), context_.logging_tag()));
 }
 
-void Network::ConnectivityTestCallback(const std::string& device_logging_tag,
+void Network::ConnectivityTestCallback(const std::string& logging_tag,
                                        const PortalDetector::Result& result) {
-  LOG(INFO) << device_logging_tag
-            << ": Completed connectivity test: " << result;
+  LOG(INFO) << logging_tag << ": Completed connectivity test: " << result;
   connectivity_test_portal_detector_.reset();
+
+  RequestTrafficCounters(base::BindOnce(&Network::LogTrafficCounter,
+                                        weak_factory_.GetWeakPtr(), logging_tag,
+                                        raw_traffic_counter_snapshot_));
 }
 
 RpcIdentifiers Network::AvailableIPConfigIdentifiers() const {
@@ -1401,6 +1411,27 @@ void Network::OnGetTrafficCountersResponse(
   traffic_counter_request_callbacks_.clear();
 }
 
+void Network::InitializeTrafficCounterSnapshot(
+    const Network::TrafficCounterMap& raw_traffic_counters) {
+  raw_traffic_counter_snapshot_ = raw_traffic_counters;
+}
+
+void Network::LogTrafficCounter(
+    const std::string& logging_tag,
+    const Network::TrafficCounterMap& initial_raw_traffic_counters,
+    const Network::TrafficCounterMap& final_raw_traffic_counters) {
+  const auto diff = DiffTrafficCounters(final_raw_traffic_counters,
+                                        initial_raw_traffic_counters);
+  for (const auto& [source, vec] : diff) {
+    if (vec.rx_bytes == 0 && vec.tx_bytes == 0) {
+      continue;
+    }
+    LOG(INFO) << logging_tag << " " << __func__ << " " << source
+              << ": rx=" << ByteCountToString(vec.rx_bytes)
+              << ", tx=" << ByteCountToString(vec.tx_bytes);
+  }
+}
+
 // static
 Network::TrafficCounterMap Network::AddTrafficCounters(
     const Network::TrafficCounterMap& in1,
@@ -1440,6 +1471,33 @@ Network::TrafficCounterMap Network::DiffTrafficCounters(
 
 std::ostream& operator<<(std::ostream& stream, const Network& network) {
   return stream << network.context_.logging_tag();
+}
+
+// static
+std::string Network::ByteCountToString(uint64_t b) {
+  // Adds 2 digits precision but avoid rounding up errors with floating point
+  // precision which may lead to print "1023.99KiB" as "1024KiB" instead of
+  // "1MiB".
+  b = b * 100;
+  std::string unit = "B";
+  if (b >= 102400) {
+    unit = "KiB";
+    b = b / 1024;
+  }
+  if (b >= 102400) {
+    unit = "MiB";
+    b = b / 1024;
+  }
+  if (b >= 102400) {
+    unit = "GiB";
+    b = b / 1024;
+  }
+  if (b % 100 == 0) {
+    return std::to_string(b / 100) + unit;
+  } else {
+    double d = static_cast<double>(b) / 100L;
+    return base::StringPrintf("%.2lf%s", d, unit.c_str());
+  }
 }
 
 }  // namespace shill

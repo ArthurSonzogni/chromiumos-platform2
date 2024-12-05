@@ -232,6 +232,9 @@ class Network : public NetworkMonitor::ClientNetwork {
   static TrafficCounterMap DiffTrafficCounters(
       const TrafficCounterMap& new_map, const TrafficCounterMap& old_map);
 
+  // Returns a human readable string of the byte count value |b|.
+  static std::string ByteCountToString(uint64_t b);
+
   // Creates a Network instance, only for testing.
   static std::unique_ptr<Network> CreateForTesting(
       int interface_index,
@@ -542,7 +545,7 @@ class Network : public NetworkMonitor::ClientNetwork {
   // will be invoked with |is_failure|.
   void StopInternal(bool is_failure, bool trigger_callback);
 
-  void ConnectivityTestCallback(const std::string& device_logging_tag,
+  void ConnectivityTestCallback(const std::string& logging_tag,
                                 const PortalDetector::Result& result);
 
   // Functions for IPv4.
@@ -606,6 +609,18 @@ class Network : public NetworkMonitor::ClientNetwork {
   // Returns true if a traffic counter request is currently in-flight for this
   // Network.
   bool IsTrafficCounterRequestInFlight();
+  // Initializes |raw_traffic_counter_snapshot_|. Used as a callback to
+  // RequestTrafficCounters scheduled from Start.
+  void InitializeTrafficCounterSnapshot(
+      const Network::TrafficCounterMap& raw_traffic_counters);
+  // Logs the traffic counter delta between |final_raw_traffic_counters| and
+  // |initial_raw_traffic_counters| with the given |logging_tag|. This function
+  // takes all logging parameters explicitly to allow logging accurate
+  // information asynchronously after a given Network session has finished.
+  void LogTrafficCounter(
+      const std::string& logging_tag,
+      const Network::TrafficCounterMap& initial_raw_traffic_counters,
+      const Network::TrafficCounterMap& final_raw_traffic_counters);
 
   // The network_id of the next constructed Network instance.
   // TODO(b/273743901): Centralize the the network id allocation at patchpanel.
@@ -705,6 +720,12 @@ class Network : public NetworkMonitor::ClientNetwork {
 
   // All callbacks currently queued by callers of RequestTrafficCounters.
   std::vector<GetTrafficCountersCallback> traffic_counter_request_callbacks_;
+
+  // Raw traffic counter snapshot initialized at the beginning of the last
+  // session, only used for logging the traffic associated with a single
+  // session. Since raw traffic counters monotonically increase, there is no
+  // need to clear this variable across sessions.
+  Network::TrafficCounterMap raw_traffic_counter_snapshot_;
 
   // All the weak pointers created by this factory will be invalidated when the
   // Network state becomes kIdle. Can be useful when the concept of a connected
