@@ -293,21 +293,30 @@ int CameraHalServerImpl::LoadCameraHal() {
 
   std::vector<std::pair<camera_module_t*, cros_camera_hal_t*>>
       camera_interfaces;
-  std::unique_ptr<CameraConfig> config =
-      CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
-  bool enable_front =
-           config->GetBoolean(constants::kCrosEnableFrontCameraOption, true),
-       enable_back =
-           config->GetBoolean(constants::kCrosEnableBackCameraOption, true),
-       enable_external =
-           config->GetBoolean(constants::kCrosEnableExternalCameraOption, true);
-
+  bool enable_front = true;
+  bool enable_back = true;
+  bool enable_external = true;
   std::optional<base::flat_set<std::string>> enabled_hal_names;
-  if (config->HasKey(constants::kCrosEnabledHalsOption)) {
-    auto hal_names = config->GetStrings(constants::kCrosEnabledHalsOption,
-                                        std::vector<std::string>());
-    enabled_hal_names =
-        base::flat_set<std::string>(hal_names.begin(), hal_names.end());
+
+  // Limit the use of CameraConfig in this scope only --
+  // don't forget nullptr check.
+  {
+    std::unique_ptr<CameraConfig> config =
+        CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
+    if (config != nullptr) {
+      enable_front =
+          config->GetBoolean(constants::kCrosEnableFrontCameraOption, true);
+      enable_back =
+          config->GetBoolean(constants::kCrosEnableBackCameraOption, true);
+      enable_external =
+          config->GetBoolean(constants::kCrosEnableExternalCameraOption, true);
+      if (config->HasKey(constants::kCrosEnabledHalsOption)) {
+        auto hal_names = config->GetStrings(constants::kCrosEnabledHalsOption,
+                                            std::vector<std::string>());
+        enabled_hal_names =
+            base::flat_set<std::string>(hal_names.begin(), hal_names.end());
+      }
+    }
   }
 
   for (const auto& dll : GetCameraHalPaths()) {
