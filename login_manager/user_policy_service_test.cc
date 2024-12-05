@@ -22,12 +22,12 @@
 
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/blob_util.h"
+#include "login_manager/fake_system_utils.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
 #include "login_manager/policy_service.h"
-#include "login_manager/system_utils_impl.h"
 
 namespace em = enterprise_management;
 
@@ -74,13 +74,16 @@ class UserPolicyServiceTest : public ::testing::Test {
   UserPolicyServiceTest& operator=(const UserPolicyServiceTest&) = delete;
 
   void SetUp() override {
+    const base::FilePath policy_dir(
+        "/run/daemon-store/session_manager/__userhash__");
+    ASSERT_TRUE(system_utils_.CreateDir(policy_dir));
+    key_copy_file_ = base::FilePath("/run/user_policy/__userhash__/policy.pub");
+
     fake_loop_.SetAsCurrent();
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    key_copy_file_ = tmpdir_.GetPath().Append("hash/key_copy.pub");
 
     key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;
-    service_.reset(new UserPolicyService(&system_utils_, tmpdir_.GetPath(),
+    service_.reset(new UserPolicyService(&system_utils_, policy_dir,
                                          std::unique_ptr<PolicyKey>(key_),
                                          key_copy_file_));
     service_->SetStoreForTesting(MakeChromePolicyNamespace(),
@@ -99,8 +102,7 @@ class UserPolicyServiceTest : public ::testing::Test {
   }
 
  protected:
-  SystemUtilsImpl system_utils_;
-  base::ScopedTempDir tmpdir_;
+  FakeSystemUtils system_utils_;
   base::FilePath key_copy_file_;
 
   const std::string fake_signature_ = "fake_signature";
@@ -159,15 +161,15 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
   EXPECT_CALL(*key_, ClobberCompromisedKey(ElementsAre())).InSequence(s2);
   EXPECT_CALL(*key_, Persist()).InSequence(s2).WillOnce(Return(true));
 
-  EXPECT_FALSE(base::PathExists(key_copy_file_));
+  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
   service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
                   PolicyService::KEY_NONE,
                   MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
 
-  EXPECT_TRUE(base::PathExists(key_copy_file_));
+  EXPECT_TRUE(system_utils_.Exists(key_copy_file_));
   std::string content;
-  EXPECT_TRUE(base::ReadFileToString(key_copy_file_, &content));
+  EXPECT_TRUE(system_utils_.ReadFileToString(key_copy_file_, &content));
   ASSERT_EQ(1u, content.size());
   EXPECT_EQ(key_value[0], content[0]);
 }
@@ -184,7 +186,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
                   PolicyService::KEY_NONE,
                   MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
-  EXPECT_FALSE(base::PathExists(key_copy_file_));
+  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
 }
 
 TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
@@ -205,19 +207,19 @@ TEST_F(UserPolicyServiceTest, PersistKeyCopy) {
   key_value.push_back(0x12);
   EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(*key_, public_key_der()).WillOnce(ReturnRef(key_value));
-  EXPECT_FALSE(base::PathExists(key_copy_file_));
+  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
 
   service_->PersistKeyCopy();
-  EXPECT_TRUE(base::PathExists(key_copy_file_));
+  EXPECT_TRUE(system_utils_.Exists(key_copy_file_));
   std::string content;
-  EXPECT_TRUE(base::ReadFileToString(key_copy_file_, &content));
+  EXPECT_TRUE(system_utils_.ReadFileToString(key_copy_file_, &content));
   ASSERT_EQ(1u, content.size());
   EXPECT_EQ(key_value[0], content[0]);
 
   // Now persist an empty key, and verify that the copy is removed.
   EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(false));
   service_->PersistKeyCopy();
-  EXPECT_FALSE(base::PathExists(key_copy_file_));
+  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
 }
 
 TEST_F(UserPolicyServiceTest, PersistPolicyMultipleNamespaces) {
