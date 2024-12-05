@@ -178,7 +178,7 @@ void Network::UnregisterEventHandler(EventHandler* handler) {
 void Network::Start(const Network::StartOptions& opts) {
   if (state_ != State::kIdle) {
     LOG(WARNING)
-        << *this
+        << *this << " " << __func__
         << ": Network has been started, stop it before starting with the "
            "new options";
     StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
@@ -188,7 +188,7 @@ void Network::Start(const Network::StartOptions& opts) {
   // contain the proper session_id.
   context_.UpdateSessionId();
 
-  LOG(INFO) << *this << ": Starting with options=" << opts.ToString();
+  LOG(INFO) << *this << " " << __func__ << ": options=" << opts.ToString();
 
   // If the execution of this function fails, StopInternal() will be called and
   // turn the state to kIdle.
@@ -256,11 +256,12 @@ void Network::Start(const Network::StartOptions& opts) {
                      base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()));
     dhcp_started = dhcp_controller_->RenewIP();
     if (!dhcp_started) {
-      LOG(ERROR) << "Failed to request DHCP IP";
+      LOG(ERROR) << *this << " " << __func__ << ": Failed to request DHCP IP";
     }
   }
   if (opts.dhcp_pd && !opts.accept_ra) {
-    LOG(ERROR) << "DHCP-PD needs accept_ra to function correctly";
+    LOG(ERROR) << *this << " " << __func__
+               << ": DHCP-PD needs accept_ra to function correctly";
   }
   if (opts.dhcp_pd && opts.accept_ra) {
     StartDHCPPD();
@@ -276,7 +277,8 @@ void Network::Start(const Network::StartOptions& opts) {
         FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
   } else if (!dhcp_started && !ipv6_started) {
     // Neither v4 nor v6 is running, trigger the failure callback directly.
-    LOG(WARNING) << *this << ": Failed to start IP provisioning";
+    LOG(WARNING) << *this << " " << __func__
+                 << ": Failed to start IP provisioning";
     dispatcher_->PostTask(
         FROM_HERE,
         base::BindOnce(&Network::StopInternal, AsWeakPtr(),
@@ -303,10 +305,10 @@ void Network::Start(const Network::StartOptions& opts) {
   // priority.
   ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy);
 
-  LOG(INFO) << *this << ": Started IP provisioning, dhcp: "
+  LOG(INFO) << *this << " " << __func__ << ": Started IP provisioning, dhcp: "
             << (dhcp_started ? "started" : "no")
-            << ", accept_ra: " << std::boolalpha << opts.accept_ra;
-  LOG(INFO) << *this << " initial config: " << config_;
+            << ", accept_ra: " << std::boolalpha << opts.accept_ra
+            << ",  initial config: " << config_;
 }
 
 std::unique_ptr<SLAACController> Network::CreateSLAACController() {
@@ -323,14 +325,16 @@ void Network::StartDHCPPD() {
       base::BindRepeating(&Network::OnDHCPv6Drop, AsWeakPtr()),
       net_base::IPFamily::kIPv6);
   if (!dhcp_pd_controller_) {
-    LOG(ERROR) << "Failed to create DHCPv6-PD controller";
+    LOG(ERROR) << *this << " " << __func__
+               << ": Failed to create DHCPv6-PD controller";
   } else if (!dhcp_pd_controller_->RenewIP()) {
-    LOG(ERROR) << "Failed to start DHCPv6-PD";
+    LOG(ERROR) << *this << " " << __func__ << ": Failed to start DHCPv6-PD";
   }
 }
 
 void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
-  LOG(INFO) << *this << ": Setting " << family << " connection";
+  LOG(INFO) << *this << " " << __func__ << ": family: " << family
+            << ", is_slaac: " << is_slaac;
 
   if (state_ == State::kIdle) {
     LOG(ERROR) << *this << ": Unexpected " << __func__
@@ -374,8 +378,8 @@ void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
 }
 
 void Network::OnSetupConnectionFinished(bool success) {
-  LOG(INFO) << *this << ": " << __func__ << "(success: " << std::boolalpha
-            << success << ")";
+  LOG(INFO) << *this << " " << __func__ << ": success: " << std::boolalpha
+            << success;
   if (!success) {
     StopInternal(/*is_failure=*/true,
                  /*trigger_callback=*/state_ == State::kConnected);
@@ -417,8 +421,7 @@ void Network::Stop() {
 }
 
 void Network::StopInternal(bool is_failure, bool trigger_callback) {
-  LOG(INFO) << *this << ": Stopping "
-            << (is_failure ? "after failure" : "normally")
+  LOG(INFO) << *this << " " << __func__ << ": is_failure: " << is_failure
             << ", network config: " << config_.Get();
 
   weak_factory_for_connection_.InvalidateWeakPtrs();
@@ -601,7 +604,7 @@ void Network::OnIPConfigUpdatedFromDHCP(
 }
 
 void Network::OnDHCPDrop(bool is_voluntary) {
-  LOG(INFO) << *this << ": " << __func__ << ": is_voluntary = " << is_voluntary;
+  LOG(INFO) << *this << ": " << __func__ << ": is_voluntary: " << is_voluntary;
   if (!is_voluntary) {
     for (auto& ev : event_handlers_) {
       ev.OnGetDHCPFailure(interface_index_);
@@ -654,7 +657,7 @@ void Network::OnNetworkConfigUpdatedFromDHCPv6(
     bool /*new_lease_acquired*/) {
   // |dhcp_pd_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_pd_controller_);
-  LOG(INFO) << *this << ": " << __func__ << ": " << network_config;
+  LOG(INFO) << *this << " " << __func__ << ": " << network_config;
 
   // Filter all prefixes longer than /64, and use ::2 in each prefix as ChromeOS
   // host's own address.
@@ -663,7 +666,8 @@ void Network::OnNetworkConfigUpdatedFromDHCPv6(
   for (auto iter = edited_config->ipv6_delegated_prefixes.begin();
        iter != edited_config->ipv6_delegated_prefixes.end();) {
     if (iter->prefix_length() > 64) {
-      LOG(WARNING) << "Ignoring too-long prefix " << *iter << " from DHCP-PD.";
+      LOG(WARNING) << *this << " " << __func__ << ": Ignoring too-long prefix "
+                   << *iter << " from DHCP-PD.";
       iter = edited_config->ipv6_delegated_prefixes.erase(iter);
       continue;
     }
@@ -952,7 +956,7 @@ void Network::OnNeighborReachabilityEvent(
 
   const auto ip_address = net_base::IPAddress::CreateFromString(event.ip_addr);
   if (!ip_address) {
-    LOG(ERROR) << *this << ": " << __func__ << ": invalid IP address "
+    LOG(ERROR) << *this << " " << __func__ << ": invalid IP address "
                << event.ip_addr;
     return;
   }
@@ -962,7 +966,7 @@ void Network::OnNeighborReachabilityEvent(
     case Status::kReachable:
       break;
     default:
-      LOG(ERROR) << *this << ": " << __func__ << ": invalid event " << event;
+      LOG(ERROR) << *this << " " << __func__ << ": invalid event " << event;
       return;
   }
 
@@ -972,13 +976,12 @@ void Network::OnNeighborReachabilityEvent(
   }
 
   if (state_ == State::kIdle) {
-    LOG(INFO) << *this << ": " << __func__ << ": Idle state, ignoring "
-              << event;
+    LOG(INFO) << *this << " " << __func__ << ": Idle state, ignoring " << event;
     return;
   }
 
   if (ignore_link_monitoring_) {
-    LOG(INFO) << *this << ": " << __func__
+    LOG(INFO) << *this << " " << __func__
               << " link monitor events ignored, ignoring " << event;
     return;
   }
@@ -993,7 +996,7 @@ void Network::OnNeighborReachabilityEvent(
         // current connection: patchpanel would not emit reachability event for
         // the correct connection yet.
         if (!network_config.ipv4_address) {
-          LOG(INFO) << *this << ": " << __func__ << ": "
+          LOG(INFO) << *this << " " << __func__ << ": "
                     << ip_address->GetFamily()
                     << " not configured, ignoring neighbor reachability event"
                     << event;
@@ -1001,7 +1004,7 @@ void Network::OnNeighborReachabilityEvent(
         }
         // Ignore reachability events related to a prior connection.
         if (network_config.ipv4_gateway != ip_address->ToIPv4Address()) {
-          LOG(INFO) << *this << ": " << __func__
+          LOG(INFO) << *this << " " << __func__
                     << ": ignored neighbor reachability event with conflicting "
                        "gateway address "
                     << event;
@@ -1011,7 +1014,7 @@ void Network::OnNeighborReachabilityEvent(
         break;
       case net_base::IPFamily::kIPv6:
         if (network_config.ipv6_addresses.empty()) {
-          LOG(INFO) << *this << ": " << __func__ << ": "
+          LOG(INFO) << *this << " " << __func__ << ": "
                     << ip_address->GetFamily()
                     << " not configured, ignoring neighbor reachability event"
                     << event;
@@ -1019,7 +1022,7 @@ void Network::OnNeighborReachabilityEvent(
         }
         // Ignore reachability events related to a prior connection.
         if (network_config.ipv6_gateway != ip_address->ToIPv6Address()) {
-          LOG(INFO) << *this << ": " << __func__
+          LOG(INFO) << *this << " " << __func__
                     << ": ignored neighbor reachability event with conflicting "
                        "gateway address "
                     << event;
@@ -1038,8 +1041,8 @@ void Network::OnNeighborReachabilityEvent(
 
 void Network::UpdateNetworkValidationMode(NetworkMonitor::ValidationMode mode) {
   if (!IsConnected()) {
-    LOG(INFO) << *this << ": " << __func__ << ": not possible to set to "
-              << mode << " if the network is not connected";
+    LOG(INFO) << *this << " " << __func__ << ": not possible to set to " << mode
+              << " if the network is not connected";
     return;
   }
   // TODO(b/314693271): Define OnValidationStopped and move this logic inside
@@ -1073,14 +1076,14 @@ void Network::SetCapportEnabled(bool enabled) {
 void Network::RequestNetworkValidation(
     NetworkMonitor::ValidationReason reason) {
   if (!IsConnected()) {
-    LOG(INFO) << *this << ": " << __func__ << "(" << reason
+    LOG(INFO) << *this << " " << __func__ << "(" << reason
               << "): Network is not connected";
     return;
   }
 
   if (network_monitor_->GetValidationMode() ==
       NetworkMonitor::ValidationMode::kDisabled) {
-    LOG(INFO) << *this << ": " << __func__ << "(" << reason
+    LOG(INFO) << *this << " " << __func__ << "(" << reason
               << "): Network validation is disabled";
     return;
   }
@@ -1138,7 +1141,7 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
     previous_validation_state = PortalDetector::ValidationStateToString(
         network_validation_result_->validation_state);
   }
-  LOG(INFO) << *this << ": " << __func__ << ": " << previous_validation_state
+  LOG(INFO) << *this << " " << __func__ << ": " << previous_validation_state
             << " -> " << result.validation_state;
 
   if (!IsConnected()) {
@@ -1273,7 +1276,7 @@ void Network::ApplyNetworkConfig(NetworkConfigArea area,
   // This function should only be called when network is not idle, so empty
   // session_id is unexpected.
   if (context_.session_id() == std::nullopt) {
-    LOG(ERROR) << __func__ << ": " << *this << ": missing session_id";
+    LOG(ERROR) << *this << " " << __func__ << ": missing session_id";
   }
 
   CHECK(patchpanel_client_);
@@ -1311,14 +1314,14 @@ void Network::CallPatchpanelConfigureNetwork(
 void Network::CallPatchpanelDestroyNetwork() {
   // TODO(b/273742756): Connect with patchpanel DestroyNetwork API.
   if (!patchpanel_client_) {
-    LOG(ERROR) << __func__ << ": " << *this << ": missing patchpanel client.";
+    LOG(ERROR) << *this << " " << __func__ << ": missing patchpanel client.";
     return;
   }
 
   // This function should only be called when network is not idle, so empty
   // session_id is unexpected.
   if (context_.session_id() == std::nullopt) {
-    LOG(ERROR) << __func__ << ": " << *this << ": missing session_id";
+    LOG(ERROR) << *this << " " << __func__ << ": missing session_id";
   }
 
   // Note that we cannot use RegisterOnAvailableCallback here, as it is very
@@ -1385,7 +1388,7 @@ void Network::RequestTrafficCounters(
     return;
   }
   if (!patchpanel_client_) {
-    LOG(ERROR) << __func__ << ": " << *this << ": no patchpanel client";
+    LOG(ERROR) << *this << " " << __func__ << ": no patchpanel client";
     return;
   }
   patchpanel_client_->GetTrafficCounters(
