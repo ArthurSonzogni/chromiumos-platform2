@@ -18,6 +18,19 @@
 
 namespace screenshot {
 
+enum class ColorEncoding {
+  kYCbCrBT601,
+  kYCbCrBT709,
+  kYCbCrBT2020,
+  kUnknown,
+};
+
+enum class ColorRange {
+  kYCbCrLimited,
+  kYCbCrFull,
+  kUnknown,
+};
+
 struct PlaneConfiguration {
   float crop_x;
   float crop_y;
@@ -29,6 +42,18 @@ struct PlaneConfiguration {
   int32_t y;
   uint32_t w;
   uint32_t h;
+
+  // |color_encoding| is optional: it will be kUnknown if the driver does not
+  // provide the COLOR_ENCODING DRM property for the plane. It can also be
+  // kUnknown if the driver reports it, but the value can't be associated with a
+  // ColorEncoding value.
+  ColorEncoding color_encoding;
+
+  // |color_range| is optional: it will be kUnknown if the driver does not
+  // provide the COLOR_RANGE DRM property for the plane. It can also be kUnknown
+  // if the driver reports it, but the value can't be associated with a
+  // ColorRange value.
+  ColorRange color_range;
 };
 
 enum class PanelRotation { k0, k90, k180, k270 };

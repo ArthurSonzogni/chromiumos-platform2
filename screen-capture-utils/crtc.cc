@@ -30,13 +30,83 @@ float FixedPoint1616ToFloat(uint32_t n) {
   return result;
 }
 
+// Translates |property_value| to a name assuming that it corresponds to the
+// value of an enum DRM property described by |property_metadata|. This function
+// crashes if |property_metadata| does not correspond to an enum property or if
+// |property_value| is not a valid enum value.
+std::string DRMEnumValueToString(const drmModePropertyRes& property_metadata,
+                                 uint64_t property_value) {
+  LOG_ASSERT(property_metadata.flags & DRM_MODE_PROP_ENUM)
+      << "DRMEnumValueToString() is being called for a non-enum property";
+
+  std::optional<std::string> drm_enum_name;
+  for (int i = 0; i < property_metadata.count_enums; i++) {
+    const drm_mode_property_enum& drm_enum = property_metadata.enums[i];
+    if (drm_enum.value == property_value) {
+      drm_enum_name = std::string(drm_enum.name);
+      break;
+    }
+  }
+
+  LOG_ASSERT(drm_enum_name.has_value())
+      << "|property_value| does not correspond to a valid enum value";
+  return drm_enum_name.value();
+}
+
+// Assuming that |property_value| is the value of the COLOR_ENCODING DRM
+// property described by |property_metadata|, this function converts that value
+// to a ColorEncoding enum value.
+ColorEncoding DRMColorEncodingPropertyToEnum(
+    const drmModePropertyRes& property_metadata, uint64_t property_value) {
+  LOG_ASSERT(strcmp(property_metadata.name, "COLOR_ENCODING") == 0);
+
+  const std::string drm_enum_name =
+      DRMEnumValueToString(property_metadata, property_value);
+  if (drm_enum_name == "ITU-R BT.601 YCbCr") {
+    return ColorEncoding::kYCbCrBT601;
+  } else if (drm_enum_name == "ITU-R BT.709 YCbCr") {
+    return ColorEncoding::kYCbCrBT709;
+  } else if (drm_enum_name == "ITU-R BT.2020 YCbCr") {
+    return ColorEncoding::kYCbCrBT2020;
+  }
+
+  return ColorEncoding::kUnknown;
+}
+
+// Assuming that |property_value| is the value of the COLOR_RANGE DRM property
+// described by |property_metadata|, this function converts that value to a
+// ColorRange enum value.
+ColorRange DRMColorRangePropertyToEnum(
+    const drmModePropertyRes& property_metadata, uint64_t property_value) {
+  LOG_ASSERT(strcmp(property_metadata.name, "COLOR_RANGE") == 0);
+
+  const std::string drm_enum_name =
+      DRMEnumValueToString(property_metadata, property_value);
+  if (drm_enum_name == "YCbCr limited range") {
+    return ColorRange::kYCbCrLimited;
+  } else if (drm_enum_name == "YCbCr full range") {
+    return ColorRange::kYCbCrFull;
+  }
+
+  return ColorRange::kUnknown;
+}
+
 bool PopulatePlaneConfiguration(int fd,
                                 uint32_t plane_id,
                                 PlaneConfiguration* conf) {
   // TODO(andrescj): Handle rotation.
-  std::map<std::string, uint64_t> interesting_props{
-      {"CRTC_X", 0}, {"CRTC_Y", 0}, {"CRTC_W", 0}, {"CRTC_H", 0},
-      {"SRC_X", 0},  {"SRC_Y", 0},  {"SRC_W", 0},  {"SRC_H", 0}};
+  static const std::array<std::string, 8> required_props{
+      "CRTC_X", "CRTC_Y", "CRTC_W", "CRTC_H",
+      "SRC_X",  "SRC_Y",  "SRC_W",  "SRC_H",
+  };
+  static const std::array<std::string, 2> optional_props{
+      "COLOR_ENCODING",
+      "COLOR_RANGE",
+  };
+
+  std::map<std::string,
+           std::pair<ScopedDrmPropertyPtr /* metadata */, uint64_t /* value */>>
+      interesting_props;
 
   ScopedDrmObjectPropertiesPtr props(
       drmModeObjectGetProperties(fd, plane_id, DRM_MODE_OBJECT_PLANE));
@@ -44,31 +114,76 @@ bool PopulatePlaneConfiguration(int fd,
     return false;
   }
 
-  int found = 0;
+  size_t num_required_props_found = 0;
   for (int i = 0; i < props->count_props; i++) {
     ScopedDrmPropertyPtr prop(drmModeGetProperty(fd, props->props[i]));
     if (!prop) {
       continue;
     }
 
-    if (interesting_props.find(prop->name) != interesting_props.end()) {
-      interesting_props[prop->name] = props->prop_values[i];
-      found++;
+    const std::string prop_name(prop->name);
+
+    if (std::find(required_props.cbegin(), required_props.cend(), prop_name) !=
+        required_props.cend()) {
+      num_required_props_found++;
+    } else if (std::find(optional_props.cbegin(), optional_props.cend(),
+                         prop_name) == optional_props.cend()) {
+      // We don't care about this property as it's neither required nor
+      // optional.
+      continue;
+    }
+
+    if (!interesting_props
+             .emplace(prop_name,
+                      std::make_pair(/*metadata=*/std::move(prop),
+                                     /*value=*/props->prop_values[i]))
+             .second) {
+      LOG(ERROR) << "Detected a duplicate property";
+      return false;
     }
   }
 
-  if (found != interesting_props.size()) {
+  if (num_required_props_found != required_props.size()) {
+    LOG(ERROR) << "Could not find all required properties";
     return false;
   }
 
-  conf->x = static_cast<int32_t>(interesting_props["CRTC_X"]);
-  conf->y = static_cast<int32_t>(interesting_props["CRTC_Y"]);
-  conf->w = static_cast<uint32_t>(interesting_props["CRTC_W"]);
-  conf->h = static_cast<uint32_t>(interesting_props["CRTC_H"]);
-  conf->crop_x = FixedPoint1616ToFloat(interesting_props["SRC_X"]);
-  conf->crop_y = FixedPoint1616ToFloat(interesting_props["SRC_Y"]);
-  conf->crop_w = FixedPoint1616ToFloat(interesting_props["SRC_W"]);
-  conf->crop_h = FixedPoint1616ToFloat(interesting_props["SRC_H"]);
+  conf->x = static_cast<int32_t>(interesting_props["CRTC_X"].second);
+  conf->y = static_cast<int32_t>(interesting_props["CRTC_Y"].second);
+  conf->w = static_cast<uint32_t>(interesting_props["CRTC_W"].second);
+  conf->h = static_cast<uint32_t>(interesting_props["CRTC_H"].second);
+  conf->crop_x = FixedPoint1616ToFloat(interesting_props["SRC_X"].second);
+  conf->crop_y = FixedPoint1616ToFloat(interesting_props["SRC_Y"].second);
+  conf->crop_w = FixedPoint1616ToFloat(interesting_props["SRC_W"].second);
+  conf->crop_h = FixedPoint1616ToFloat(interesting_props["SRC_H"].second);
+
+  // While the COLOR_ENCODING and COLOR_RANGE properties are optional, we do
+  // expect consistency: either both are present or both are absent.
+  if (interesting_props.count("COLOR_ENCODING") !=
+      interesting_props.count("COLOR_RANGE")) {
+    LOG(ERROR)
+        << "Detected an inconsistency between the COLOR_ENCODING and the "
+           "COLOR_RANGE properties";
+    return false;
+  }
+
+  conf->color_encoding = ColorEncoding::kUnknown;
+  if (interesting_props.count("COLOR_ENCODING")) {
+    const auto color_encoding_prop_it =
+        interesting_props.find("COLOR_ENCODING");
+    conf->color_encoding = DRMColorEncodingPropertyToEnum(
+        /*property_metadata=*/*color_encoding_prop_it->second.first,
+        /*property_value=*/color_encoding_prop_it->second.second);
+  }
+
+  conf->color_range = ColorRange::kUnknown;
+  if (interesting_props.count("COLOR_RANGE")) {
+    const auto color_range_prop_it = interesting_props.find("COLOR_RANGE");
+    conf->color_range = DRMColorRangePropertyToEnum(
+        /*property_metadata=*/*color_range_prop_it->second.first,
+        /*property_value=*/color_range_prop_it->second.second);
+  }
+
   return true;
 }
 
