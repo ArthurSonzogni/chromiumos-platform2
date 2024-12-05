@@ -205,6 +205,9 @@ int main(int argc, char** argv) {
   DEFINE_string(
       binary, "",
       "Dump the response to given file as a binary content (use - for stdout)");
+  DEFINE_string(simplified, "",
+                "Save the response as a simpler JSON representation to given "
+                "file (use - for stdout)");
   DEFINE_string(
       document_format, "",
       "MIME type for document-format in the Get-Printer-Attributes request");
@@ -237,7 +240,8 @@ int main(int argc, char** argv) {
   }
   std::cerr << "IPP version: " << ipp::ToString(version) << std::endl;
   // If no output files were specified, set the default settings.
-  if (FLAGS_binary.empty() && FLAGS_jsonc.empty() && FLAGS_jsonf.empty()) {
+  if (FLAGS_binary.empty() && FLAGS_jsonc.empty() && FLAGS_jsonf.empty() &&
+      FLAGS_simplified.empty()) {
     FLAGS_jsonf = "-";
   }
 
@@ -301,6 +305,17 @@ int main(int argc, char** argv) {
       return -4;
     }
     if (!WriteBufferToLocation(json.data(), json.size(), FLAGS_jsonf)) {
+      return -3;
+    }
+  }
+  if (!FLAGS_simplified.empty()) {
+    std::string json;
+    if (!ConvertToSimpleJson(response, log, FLAGS_filter, &json)) {
+      std::cerr << "Error when preparing a report in simple JSON (formatted)."
+                << std::endl;
+      return -4;
+    }
+    if (!WriteBufferToLocation(json.data(), json.size(), FLAGS_simplified)) {
       return -3;
     }
   }

@@ -23,4 +23,15 @@ bool ConvertToJson(const ipp::Frame& response,
                    bool compressed_json,
                    std::string* json);
 
+// This function builds a compact JSON representation intended for human
+// reading from `response` and `log`.  To make the output simpler, only the
+// printer-attributes group is returned and the types of values are omitted.  If
+// `filter` is non-empty, only attributes containing `filter` will be emitted.
+// If a full-fidelity representation of `response` is needed, use
+// `ConvertToJson` instead.
+bool ConvertToSimpleJson(const ipp::Frame& response,
+                         const ipp::SimpleParserLog& log,
+                         const std::string& filter,
+                         std::string* json);
+
 #endif  //  PRINT_TOOLS_IPP_IN_JSON_H_
