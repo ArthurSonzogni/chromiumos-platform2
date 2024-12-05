@@ -16,6 +16,7 @@
 #include <base/check_op.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <EGL/eglplatform.h>
@@ -88,7 +89,9 @@ EGLImageKHR CreateImage(PFNEGLCREATEIMAGEKHRPROC CreateImageKHR,
                         bool import_modifiers_exist,
                         int drm_fd,
                         EGLDisplay display,
-                        const drmModeFB2Ptr fb) {
+                        const drmModeFB2Ptr fb,
+                        ColorEncoding color_encoding,
+                        ColorRange color_range) {
   int num_planes = 0;
   // CreateImageKHR takes its own references to the dma-bufs, so closing the fds
   // at the end of the function is necessary and won't break the returned image.
@@ -135,6 +138,37 @@ EGLImageKHR CreateImage(PFNEGLCREATEIMAGEKHRPROC CreateImageKHR,
       attr_list.emplace_back(fb->modifier & 0xfffffffful);
       attr_list.emplace_back(EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT + plane * 2);
       attr_list.emplace_back(fb->modifier >> 32);
+    }
+  }
+
+  if (color_encoding != ColorEncoding::kUnknown) {
+    attr_list.emplace_back(EGL_YUV_COLOR_SPACE_HINT_EXT);
+    switch (color_encoding) {
+      case ColorEncoding::kYCbCrBT601:
+        attr_list.emplace_back(EGL_ITU_REC601_EXT);
+        break;
+      case ColorEncoding::kYCbCrBT709:
+        attr_list.emplace_back(EGL_ITU_REC709_EXT);
+        break;
+      case ColorEncoding::kYCbCrBT2020:
+        attr_list.emplace_back(EGL_ITU_REC2020_EXT);
+        break;
+      default:
+        NOTREACHED();
+    }
+  }
+
+  if (color_range != ColorRange::kUnknown) {
+    attr_list.emplace_back(EGL_SAMPLE_RANGE_HINT_EXT);
+    switch (color_range) {
+      case ColorRange::kYCbCrLimited:
+        attr_list.emplace_back(EGL_YUV_NARROW_RANGE_EXT);
+        break;
+      case ColorRange::kYCbCrFull:
+        attr_list.emplace_back(EGL_YUV_FULL_RANGE_EXT);
+        break;
+      default:
+        NOTREACHED();
     }
   }
 
@@ -297,7 +331,8 @@ DisplayBuffer::Result EglDisplayBuffer::Capture(bool rotate) {
     VLOG(3) << "Planes are empty, falling back to copying all";
     EGLImageKHR image =
         CreateImage(createImageKHR_, import_modifiers_exist_,
-                    crtc_.file().GetPlatformFile(), display_, crtc_.fb2());
+                    crtc_.file().GetPlatformFile(), display_, crtc_.fb2(),
+                    ColorEncoding::kUnknown, ColorRange::kUnknown);
 
     SetUVRect(/*crop_x=*/0, /*crop_y=*/0,
               /*crop_width=*/static_cast<float>(crtc_.fb2()->width),
@@ -316,9 +351,10 @@ DisplayBuffer::Result EglDisplayBuffer::Capture(bool rotate) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     for (auto& plane : connected_planes) {
-      EGLImageKHR image = CreateImage(createImageKHR_, import_modifiers_exist_,
-                                      crtc_.file().GetPlatformFile(), display_,
-                                      plane.first.get());
+      EGLImageKHR image = CreateImage(
+          createImageKHR_, import_modifiers_exist_,
+          crtc_.file().GetPlatformFile(), display_, plane.first.get(),
+          plane.second.color_encoding, plane.second.color_range);
 
       // Handle the plane's crop rectangle.
       SetUVRect(plane.second.crop_x, plane.second.crop_y, plane.second.crop_w,
