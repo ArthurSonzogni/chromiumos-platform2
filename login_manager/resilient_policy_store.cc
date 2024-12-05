@@ -20,6 +20,7 @@
 #include <policy/resilient_policy_util.h>
 
 #include "login_manager/login_metrics.h"
+#include "login_manager/system_utils.h"
 
 namespace login_manager {
 
@@ -47,11 +48,11 @@ base::FilePath GetCleanupDoneFilePath(const base::FilePath& policy_path) {
 
 // Checks if the cleanup_done temporary file associated with |policy_path|
 // exists. If not present, creates it and returns true. Otherwise returns false.
-bool CreateCleanupDoneFile(const base::FilePath& policy_path) {
+bool CreateCleanupDoneFile(SystemUtils& system_utils,
+                           const base::FilePath& policy_path) {
   const base::FilePath cleanup_done_path = GetCleanupDoneFilePath(policy_path);
-  if (!base::PathExists(cleanup_done_path)) {
-    base::File file(cleanup_done_path,
-                    base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  if (!system_utils.Exists(cleanup_done_path)) {
+    system_utils.WriteStringToFile(cleanup_done_path, "");
     return true;
   }
 
@@ -66,10 +67,12 @@ ResilientPolicyStore::ResilientPolicyStore(SystemUtils* system_utils,
     : PolicyStore(system_utils, policy_path, /*is_resilient=*/true),
       metrics_(metrics) {}
 
+ResilientPolicyStore::~ResilientPolicyStore() = default;
+
 bool ResilientPolicyStore::LoadOrCreate() {
   DCHECK(metrics_);
   if (!device_policy_) {
-    device_policy_ = std::make_unique<policy::DevicePolicyImpl>();
+    device_policy_ = system_utils().CreateDevicePolicy();
   }
   bool policy_loaded =
       device_policy_->LoadPolicy(/*delete_invalid_files=*/true);
@@ -93,7 +96,7 @@ bool ResilientPolicyStore::LoadOrCreate() {
     // If at least one policy file has been deleted, we need to delete the
     // |kCleanupDoneFileName| to make sure the next persist doesn't overwrite
     // the data in a good file saved in a previous session.
-    brillo::DeleteFile(GetCleanupDoneFilePath(policy_path_));
+    system_utils().RemoveFile(GetCleanupDoneFilePath(policy_path_));
   }
 
   return policy_loaded;
@@ -101,7 +104,7 @@ bool ResilientPolicyStore::LoadOrCreate() {
 
 bool ResilientPolicyStore::Persist() {
   std::map<int, base::FilePath> sorted_policy_file_paths =
-      policy::GetSortedResilientPolicyFilePaths(policy_path_);
+      system_utils().GetSortedResilientPolicyFilePaths(policy_path_);
   int new_index = sorted_policy_file_paths.empty()
                       ? 0
                       : sorted_policy_file_paths.rbegin()->first;
@@ -113,7 +116,7 @@ bool ResilientPolicyStore::Persist() {
   // higher index. We determine if it's the first persist after boot by the
   // absense of cleanup temporary file. The index is never reset as it is not
   // realistic to expect int overflow in non-devmode here.
-  if (CreateCleanupDoneFile(policy_path_)) {
+  if (CreateCleanupDoneFile(system_utils(), policy_path_)) {
     CleanupPolicyFiles(sorted_policy_file_paths);
     new_index++;
   }
@@ -135,7 +138,7 @@ void ResilientPolicyStore::CleanupPolicyFiles(
     }
 
     const base::FilePath& policy_path = map_pair.second;
-    brillo::DeleteFile(policy_path);
+    system_utils().RemoveFile(policy_path);
     LOG(INFO) << "Deleted old device policy file: " << policy_path.value();
     remaining_files--;
   }

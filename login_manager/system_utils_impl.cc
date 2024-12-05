@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -49,6 +50,8 @@
 // clang-format off
 #include <libminijail.h>
 // clang-format on
+#include <policy/device_policy_impl.h>
+#include <policy/resilient_policy_util.h>
 
 #include "login_manager/child_job.h"  // For ChildJobInterface exit codes.
 
@@ -417,6 +420,16 @@ policy::LoadPolicyResult SystemUtilsImpl::LoadPolicyFromPath(
     enterprise_management::PolicyFetchResponse* policy_out) {
   return policy::LoadPolicyFromPath(policy_path, policy_data_str_out,
                                     policy_out);
+}
+
+std::unique_ptr<policy::DevicePolicyImpl>
+SystemUtilsImpl::CreateDevicePolicy() {
+  return std::make_unique<policy::DevicePolicyImpl>();
+}
+
+std::map<int, base::FilePath>
+SystemUtilsImpl::GetSortedResilientPolicyFilePaths(const base::FilePath& path) {
+  return policy::GetSortedResilientPolicyFilePaths(path);
 }
 
 bool SystemUtilsImpl::ChangeBlockedSignals(int how,

@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include <map>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -14,6 +16,7 @@
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <policy/device_policy_impl.h>
 
 #include "login_manager/system_utils.h"
 
@@ -47,6 +50,10 @@ class FakeSystemUtils : public SystemUtils {
                                 std::string_view data);
   [[nodiscard]] bool EnsureFile(const base::FilePath& path,
                                 base::span<const uint8_t> data);
+
+  // Remove all contents under the directory at `path`. The directory will
+  // be kept.
+  [[nodiscard]] bool ClearDirectoryContents(const base::FilePath& path);
 
   // SystemUtils override:
   int kill(pid_t pid, uid_t owner, int signal) override;
@@ -94,6 +101,9 @@ class FakeSystemUtils : public SystemUtils {
       const base::FilePath& policy_path,
       std::string* policy_data_str_out,
       enterprise_management::PolicyFetchResponse* policy_out) override;
+  std::unique_ptr<policy::DevicePolicyImpl> CreateDevicePolicy() override;
+  std::map<int, base::FilePath> GetSortedResilientPolicyFilePaths(
+      const base::FilePath& path) override;
   bool ChangeBlockedSignals(int how, const std::vector<int>& signals) override;
   bool LaunchAndWait(const std::vector<std::string>& argv,
                      int* exit_code_out) override;

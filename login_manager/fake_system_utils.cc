@@ -6,13 +6,17 @@
 
 #include <sys/stat.h>
 
+#include <map>
+#include <memory>
 #include <optional>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>
+#include <policy/resilient_policy_util.h>
 
 namespace login_manager {
 
@@ -23,6 +27,7 @@ FakeSystemUtils::FakeSystemUtils() {
   CHECK(CreateDir(base::FilePath("/tmp")));
   CHECK(CreateDir(base::FilePath("/run/session_manager")));
   CHECK(CreateDir(base::FilePath("/mnt/stateful_partition")));
+  CHECK(CreateDir(base::FilePath("/var/lib/devicesettings")));
 }
 
 FakeSystemUtils::~FakeSystemUtils() = default;
@@ -40,6 +45,26 @@ bool FakeSystemUtils::EnsureFile(const base::FilePath& path,
     return false;
   }
   return base::WriteFile(rebased, data);
+}
+
+bool FakeSystemUtils::ClearDirectoryContents(const base::FilePath& path) {
+  const base::FilePath& rebased = RebasePath(path);
+  if (!base::DirectoryExists(rebased)) {
+    LOG(ERROR) << "Directory not found: " << rebased;
+    return false;
+  }
+
+  bool succeeded = true;
+  base::FileEnumerator(
+      rebased, /*recursive=*/false,
+      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES)
+      .ForEach([&succeeded](const base::FilePath& path) {
+        if (!brillo::DeletePathRecursively(path)) {
+          LOG(ERROR) << "Failed to delete: " << path;
+          succeeded = false;
+        }
+      });
+  return succeeded;
 }
 
 // TODO(hidehiko): Support NOTREACHED() functions when needed.
@@ -208,6 +233,28 @@ policy::LoadPolicyResult FakeSystemUtils::LoadPolicyFromPath(
     enterprise_management::PolicyFetchResponse* policy_out) {
   return policy::LoadPolicyFromPath(RebasePath(policy_path),
                                     policy_data_str_out, policy_out);
+}
+
+std::unique_ptr<policy::DevicePolicyImpl>
+FakeSystemUtils::CreateDevicePolicy() {
+  // TODO(b/380997377): the overall API design looks not so polished, because
+  // some of the code internally assumes fixed paths at random points,
+  // so the path injection does not work well.
+  auto result = std::make_unique<policy::DevicePolicyImpl>(
+      RebasePath(base::FilePath(policy::DevicePolicyImpl::kPolicyPath)),
+      RebasePath(base::FilePath(policy::DevicePolicyImpl::kPublicKeyPath)));
+  result->set_verify_policy_for_testing(false);
+  return result;
+}
+
+std::map<int, base::FilePath>
+FakeSystemUtils::GetSortedResilientPolicyFilePaths(const base::FilePath& path) {
+  std::map<int, base::FilePath> result =
+      policy::GetSortedResilientPolicyFilePaths(RebasePath(path));
+  for (auto& [key, value] : result) {
+    value = RestorePath(value);
+  }
+  return result;
 }
 
 bool FakeSystemUtils::ChangeBlockedSignals(int how,

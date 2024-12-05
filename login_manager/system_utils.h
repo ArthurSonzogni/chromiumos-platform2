@@ -10,6 +10,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -26,6 +28,10 @@
 namespace base {
 class FilePath;
 }
+
+namespace policy {
+class DevicePolicyImpl;
+}  // namespace policy
 
 struct DBusPendingCall;
 
@@ -175,6 +181,13 @@ class SystemUtils {
       const base::FilePath& path,
       std::string* policy_data_str_out,
       enterprise_management::PolicyFetchResponse* policy_out) = 0;
+
+  // Returns policy::DevicePolicy instance.
+  virtual std::unique_ptr<policy::DevicePolicyImpl> CreateDevicePolicy() = 0;
+
+  // Returns a map from policy file index to absolute path.
+  virtual std::map<int, base::FilePath> GetSortedResilientPolicyFilePaths(
+      const base::FilePath& path) = 0;
 
   // Changes blocked signals. |how| takes one of |SIG_BLOCK|, |SIG_UNBLOCK|, and
   // |SIG_SETMASK|. See man page of sigprocmask(2) for more details. |signals|

@@ -75,6 +75,8 @@ class PolicyStore {
   enum LoadResult { NOT_LOADED, LOAD_SUCCEEDED, LOAD_FAILED };
   LoadResult load_result_ = NOT_LOADED;
 
+  SystemUtils& system_utils() { return *system_utils_; }
+
  private:
   // Load the signed policy off of disk into |policy_| from |policy_path|.
   // Returns true unless there is a policy on disk and loading it fails.

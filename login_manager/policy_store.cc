@@ -67,7 +67,7 @@ bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
       return false;
     case policy::LoadPolicyResult::kInvalidPolicyData:
       LOG(WARNING) << "Invalid policy data: " << policy_path.value();
-      brillo::DeleteFile(policy_path);
+      system_utils_->RemoveFile(policy_path);
       policy_.Clear();
       return false;
   }

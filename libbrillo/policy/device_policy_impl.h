@@ -35,7 +35,13 @@ namespace policy {
 // are owned by root.
 class DevicePolicyImpl : public DevicePolicy {
  public:
+  inline static constexpr char kPolicyPath[] = "/var/lib/devicesettings/policy";
+  inline static constexpr char kPublicKeyPath[] =
+      "/var/lib/devicesettings/owner.key";
+
   DevicePolicyImpl();
+  DevicePolicyImpl(const base::FilePath& policy_path,
+                   const base::FilePath& keyfile_path);
   DevicePolicyImpl(const DevicePolicyImpl&) = delete;
   DevicePolicyImpl& operator=(const DevicePolicyImpl&) = delete;
 

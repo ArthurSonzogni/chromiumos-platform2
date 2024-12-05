@@ -8,10 +8,13 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+#include <policy/device_policy_impl.h>
 
 #include "login_manager/system_utils.h"
 
@@ -92,6 +95,14 @@ class MockSystemUtils : public SystemUtils {
               (const base::FilePath&,
                std::string*,
                enterprise_management::PolicyFetchResponse*),
+              (override));
+  MOCK_METHOD(std::unique_ptr<policy::DevicePolicyImpl>,
+              CreateDevicePolicy,
+              (),
+              (override));
+  MOCK_METHOD((std::map<int, base::FilePath>),
+              GetSortedResilientPolicyFilePaths,
+              (const base::FilePath&),
               (override));
 
   MOCK_METHOD(bool,

@@ -45,8 +45,6 @@ namespace policy {
 const int kMaxRollbackAllowedMilestones = 4;
 
 namespace {
-const char kPolicyPath[] = "/var/lib/devicesettings/policy";
-const char kPublicKeyPath[] = "/var/lib/devicesettings/owner.key";
 
 // Reads the public key used to sign the policy from |key_file| and stores it
 // in |public_key|. Returns true on success.
@@ -229,14 +227,19 @@ std::optional<base::Value> DecodeDictValueFromJSON(
 }  // namespace
 
 DevicePolicyImpl::DevicePolicyImpl()
-    : policy_path_(kPolicyPath),
-      keyfile_path_(kPublicKeyPath),
+    : DevicePolicyImpl(base::FilePath(kPolicyPath),
+                       base::FilePath(kPublicKeyPath)) {}
+
+DevicePolicyImpl::DevicePolicyImpl(const base::FilePath& policy_path,
+                                   const base::FilePath& keyfile_path)
+    : policy_path_(policy_path),
+      keyfile_path_(keyfile_path),
       policy_(std::make_unique<enterprise_management::PolicyFetchResponse>()),
       policy_data_(std::make_unique<enterprise_management::PolicyData>()),
       device_policy_(std::make_unique<
                      enterprise_management::ChromeDeviceSettingsProto>()) {}
 
-DevicePolicyImpl::~DevicePolicyImpl() {}
+DevicePolicyImpl::~DevicePolicyImpl() = default;
 
 bool DevicePolicyImpl::LoadPolicy(bool delete_invalid_files) {
   // First we need to check that the policy key exists and is readable.

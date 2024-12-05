@@ -10,9 +10,12 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <policy/device_policy_impl.h>
 
 #include "login_manager/policy_store.h"
+
+namespace policy {
+class DevicePolicyImpl;
+}  // namespace policy
 
 namespace login_manager {
 class LoginMetrics;
@@ -29,6 +32,7 @@ class ResilientPolicyStore : public PolicyStore {
                        LoginMetrics* metrics);
   ResilientPolicyStore(const ResilientPolicyStore&) = delete;
   ResilientPolicyStore& operator=(const ResilientPolicyStore&) = delete;
+  ~ResilientPolicyStore() override;
 
   // Persist |policy_| to disk. If it's the first call after boot, as
   // established by the absense of |kCleanupDoneFileName| temporary file, then
@@ -37,11 +41,6 @@ class ResilientPolicyStore : public PolicyStore {
   // invalid policy files identified.
   // Returns false if there's an error while writing data.
   bool Persist() override;
-
-  void set_device_policy_for_testing(
-      std::unique_ptr<policy::DevicePolicyImpl> device_policy) {
-    device_policy_ = std::move(device_policy);
-  }
 
  private:
   // Check the policy files from the most recent to the oldest until a valid

@@ -9,6 +9,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -80,6 +82,9 @@ class SystemUtilsImpl : public SystemUtils {
       const base::FilePath& path,
       std::string* policy_data_str_out,
       enterprise_management::PolicyFetchResponse* policy_out) override;
+  std::unique_ptr<policy::DevicePolicyImpl> CreateDevicePolicy() override;
+  std::map<int, base::FilePath> GetSortedResilientPolicyFilePaths(
+      const base::FilePath& path) override;
   bool ChangeBlockedSignals(int how, const std::vector<int>& signals) override;
   bool LaunchAndWait(const std::vector<std::string>& args,
                      int* exit_code_out) override;

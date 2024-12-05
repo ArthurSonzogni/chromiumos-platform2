@@ -16,8 +16,8 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "login_manager/fake_system_utils.h"
 #include "login_manager/mock_metrics.h"
-#include "login_manager/system_utils_impl.h"
 
 namespace em = enterprise_management;
 
@@ -25,22 +25,16 @@ namespace login_manager {
 
 class ResilientPolicyStoreTest : public ::testing::Test {
  public:
-  ResilientPolicyStoreTest() {}
+  ResilientPolicyStoreTest() = default;
   ResilientPolicyStoreTest(const ResilientPolicyStoreTest&) = delete;
   ResilientPolicyStoreTest& operator=(const ResilientPolicyStoreTest&) = delete;
 
-  virtual ~ResilientPolicyStoreTest() {}
+  ~ResilientPolicyStoreTest() override = default;
 
-  virtual void SetUp() {
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-
-    // Create a temporary filename that's guaranteed to not exist, but is
-    // inside our scoped directory so it'll get deleted later.
-    ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.GetPath(), &tmpfile_));
-    ASSERT_TRUE(brillo::DeleteFile(tmpfile_));
+  void SetUp() override {
+    ASSERT_TRUE(system_utils_.CreateDir(tmpfile_.DirName()));
+    EXPECT_FALSE(system_utils_.Exists(tmpfile_));
   }
-
-  virtual void TearDown() {}
 
   void CheckExpectedPolicy(PolicyStore* store,
                            const em::PolicyFetchResponse& policy) {
@@ -51,9 +45,8 @@ class ResilientPolicyStoreTest : public ::testing::Test {
     EXPECT_EQ(serialized, serialized_from);
   }
 
-  base::ScopedTempDir tmpdir_;
-  base::FilePath tmpfile_;
-  SystemUtilsImpl system_utils_;
+  const base::FilePath tmpfile_{policy::DevicePolicyImpl::kPolicyPath};
+  FakeSystemUtils system_utils_;
 };
 
 TEST_F(ResilientPolicyStoreTest, LoadResilientMissingPolicy) {
@@ -65,11 +58,6 @@ TEST_F(ResilientPolicyStoreTest, LoadResilientMissingPolicy) {
 TEST_F(ResilientPolicyStoreTest, CheckDeleteAtLoadResilient) {
   MockMetrics metrics;
   ResilientPolicyStore store(&system_utils_, tmpfile_, &metrics);
-  std::unique_ptr<policy::DevicePolicyImpl> device_policy =
-      std::make_unique<policy::DevicePolicyImpl>();
-  device_policy->set_policy_path_for_testing(tmpfile_);
-  device_policy->set_verify_policy_for_testing(false);
-  store.set_device_policy_for_testing(std::move(device_policy));
 
   enterprise_management::PolicyFetchResponse policy;
   enterprise_management::PolicyData policy_data;
@@ -89,13 +77,14 @@ TEST_F(ResilientPolicyStoreTest, CheckDeleteAtLoadResilient) {
   // Create the file with next index, containing some invalid data.
   base::FilePath policy_path2 = base::FilePath(tmpfile_.value() + ".2");
   system_utils_.AtomicFileWrite(policy_path2, "invalid_data");
+  ASSERT_TRUE(system_utils_.Exists(policy_path2));
 
   // Check that LoadResilient succeeds and ignores the last file.
   ASSERT_TRUE(store.EnsureLoadedOrCreated());
   CheckExpectedPolicy(&store, policy);
 
   // Check that the last file was deleted.
-  ASSERT_FALSE(base::PathExists(policy_path2));
+  ASSERT_FALSE(system_utils_.Exists(policy_path2));
 }
 
 TEST_F(ResilientPolicyStoreTest, CheckCleanupFromPersistResilient) {
@@ -112,29 +101,32 @@ TEST_F(ResilientPolicyStoreTest, CheckCleanupFromPersistResilient) {
 
   ASSERT_TRUE(store.Persist());
   CheckExpectedPolicy(&store, policy);
-  ASSERT_TRUE(base::PathExists(policy_path1));
+  ASSERT_TRUE(system_utils_.Exists(policy_path1));
 
-  // Change the policy data and store again, expecting to have a new file
-  // because cleanup temporary file fails to be created in testing environment.
+  // Emulate restart of the device by cleaning up /run/session_manager.
+  ASSERT_TRUE(system_utils_.ClearDirectoryContents(
+      base::FilePath("/run/session_manager")));
   policy.set_error_message("foo2");
   store.Set(policy);
   ASSERT_TRUE(store.Persist());
-  ASSERT_TRUE(base::PathExists(policy_path2));
+  ASSERT_TRUE(system_utils_.Exists(policy_path2));
 
   // Create the file with next index, containing some invalid data.
   system_utils_.AtomicFileWrite(policy_path3, "invalid_data");
 
   // Change the policy data and store again, having a new file.
+  ASSERT_TRUE(system_utils_.ClearDirectoryContents(
+      base::FilePath("/run/session_manager")));
   policy.set_error_message("foo");
   store.Set(policy);
   ASSERT_TRUE(store.Persist());
-  ASSERT_TRUE(base::PathExists(policy_path4));
+  ASSERT_TRUE(system_utils_.Exists(policy_path4));
 
   // The last Persist resilient should have done the cleanup and removed the
   // oldest file since the limit was reached.
-  ASSERT_FALSE(base::PathExists(policy_path1));
-  ASSERT_TRUE(base::PathExists(policy_path2));
-  ASSERT_TRUE(base::PathExists(policy_path3));
+  ASSERT_FALSE(system_utils_.Exists(policy_path1));
+  ASSERT_TRUE(system_utils_.Exists(policy_path2));
+  ASSERT_TRUE(system_utils_.Exists(policy_path3));
 }
 
 }  // namespace login_manager
