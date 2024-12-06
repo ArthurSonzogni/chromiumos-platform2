@@ -18,7 +18,7 @@
 namespace modemfwd {
 
 HeartbeatTask::HeartbeatTask(Delegate* delegate,
-                             Modem* modem,
+                             scoped_refptr<Modem> modem,
                              Metrics* metrics,
                              HeartbeatConfig config)
     : Task(delegate, "heartbeat-" + modem->GetDeviceId(), kTaskTypeHeartbeat),
@@ -29,7 +29,7 @@ HeartbeatTask::HeartbeatTask(Delegate* delegate,
 // static
 std::unique_ptr<HeartbeatTask> HeartbeatTask::Create(
     Delegate* delegate,
-    Modem* modem,
+    scoped_refptr<Modem> modem,
     ModemHelperDirectory* helper_directory,
     Metrics* metrics) {
   if (!modem->SupportsHealthCheck()) {

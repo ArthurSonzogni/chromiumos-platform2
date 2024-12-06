@@ -117,8 +117,8 @@ class FlashTaskTest : public ::testing::Test {
   }
 
  protected:
-  std::unique_ptr<MockModem> GetDefaultModem() {
-    auto modem = std::make_unique<MockModem>();
+  scoped_refptr<MockModem> GetDefaultModem() {
+    auto modem = scoped_refptr<MockModem>(new MockModem);
     ON_CALL(*modem, IsPresent()).WillByDefault(Return(true));
     ON_CALL(*modem, GetDeviceId()).WillByDefault(Return(kDeviceId1));
     ON_CALL(*modem, GetEquipmentId()).WillByDefault(Return(kEquipmentId1));
@@ -159,7 +159,7 @@ class FlashTaskTest : public ::testing::Test {
   }
 
   brillo::ErrorPtr RunTask(FlashTask* task,
-                           Modem* modem,
+                           scoped_refptr<Modem> modem,
                            const FlashTask::Options& options) {
     base::RunLoop run_loop;
     brillo::ErrorPtr error;
@@ -200,7 +200,7 @@ TEST_F(FlashTaskTest, ModemIsBlocked) {
       }));
   EXPECT_CALL(*delegate_, NotifyFlashStarting(_)).Times(0);
 
-  auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
+  auto error = RunTask(task.get(), modem, FlashTask::Options{});
   EXPECT_NE(error, nullptr);
 }
 
@@ -215,7 +215,7 @@ TEST_F(FlashTaskTest, NothingToFlash) {
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
   EXPECT_CALL(*delegate_, NotifyFlashStarting(_)).Times(0);
 
-  auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
+  auto error = RunTask(task.get(), modem, FlashTask::Options{});
   EXPECT_EQ(error, nullptr);
 }
 
@@ -283,7 +283,7 @@ TEST_F(FlashTaskTest, FlashSuccess) {
             FROM_HERE, std::move(reg_cb));
       }));
 
-  auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
+  auto error = RunTask(task.get(), modem, FlashTask::Options{});
   EXPECT_EQ(error, nullptr);
 }
 
@@ -312,7 +312,7 @@ TEST_F(FlashTaskTest, WritesToJournal) {
             FROM_HERE, std::move(reg_cb));
       }));
 
-  auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
+  auto error = RunTask(task.get(), modem, FlashTask::Options{});
   EXPECT_EQ(error, nullptr);
 }
 
@@ -337,7 +337,7 @@ TEST_F(FlashTaskTest, WritesCarrierToJournal) {
             FROM_HERE, std::move(reg_cb));
       }));
 
-  RunTask(task.get(), modem.get(), FlashTask::Options{});
+  RunTask(task.get(), modem, FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, WritesToJournalOnFailure) {
@@ -359,7 +359,7 @@ TEST_F(FlashTaskTest, WritesToJournalOnFailure) {
   // We should complete inline on failure. No callback should be registered.
   EXPECT_CALL(*delegate_, RegisterOnModemReappearanceCallback(_, _)).Times(0);
 
-  RunTask(task.get(), modem.get(), FlashTask::Options{});
+  RunTask(task.get(), modem, FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, InhibitDuringFlash) {
@@ -383,7 +383,7 @@ TEST_F(FlashTaskTest, InhibitDuringFlash) {
   EXPECT_CALL(*modem, SetInhibited(true)).Times(1);
   EXPECT_CALL(*modem, SetInhibited(false)).Times(1);
 
-  RunTask(task.get(), modem.get(), FlashTask::Options{});
+  RunTask(task.get(), modem, FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, IgnoreBlock) {
@@ -404,7 +404,7 @@ TEST_F(FlashTaskTest, IgnoreBlock) {
             FROM_HERE, std::move(reg_cb));
       }));
 
-  auto error = RunTask(task.get(), modem.get(),
+  auto error = RunTask(task.get(), modem,
                        FlashTask::Options{.should_always_flash = true});
   EXPECT_EQ(error, nullptr);
 }
@@ -431,7 +431,7 @@ TEST_F(FlashTaskTest, SyncCleanupForStubModem) {
   // We should expect this to run synchronously.
   EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
 
-  RunTask(task.get(), modem.get(), FlashTask::Options{});
+  RunTask(task.get(), modem, FlashTask::Options{});
 }
 
 }  // namespace modemfwd

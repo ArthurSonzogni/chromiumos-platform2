@@ -147,8 +147,8 @@ class ModemFlasherTest : public ::testing::Test {
     firmware_directory_->AddRecoveryDirectory(kDeviceId1, recovery_info);
   }
 
-  std::unique_ptr<MockModem> GetDefaultModem() {
-    auto modem = std::make_unique<MockModem>();
+  scoped_refptr<MockModem> GetDefaultModem() {
+    auto modem = scoped_refptr<MockModem>(new MockModem);
     ON_CALL(*modem, GetDeviceId()).WillByDefault(Return(kDeviceId1));
     ON_CALL(*modem, GetEquipmentId()).WillByDefault(Return(kEquipmentId1));
     ON_CALL(*modem, GetCarrierId()).WillByDefault(Return(kCarrier1));

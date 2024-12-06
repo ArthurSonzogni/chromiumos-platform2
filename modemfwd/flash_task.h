@@ -40,12 +40,12 @@ class FlashTask : public Task {
             scoped_refptr<AsyncModemFlasher> modem_flasher);
   virtual ~FlashTask() = default;
 
-  void Start(Modem* modem, const Options& options);
+  void Start(scoped_refptr<Modem> modem, const Options& options);
 
  private:
   class InhibitMode {
    public:
-    explicit InhibitMode(Modem* modem) : modem_(modem) {
+    explicit InhibitMode(scoped_refptr<Modem> modem) : modem_(modem) {
       if (!modem_->SetInhibited(true)) {
         ELOG(INFO) << "Inhibiting failed";
       }
@@ -58,18 +58,18 @@ class FlashTask : public Task {
     }
 
    private:
-    Modem* modem_;
+    scoped_refptr<Modem> modem_;
   };
 
-  void OnShouldFlashCompleted(Modem* modem,
+  void OnShouldFlashCompleted(scoped_refptr<Modem> modem,
                               const Options& options,
                               bool should_flash,
                               brillo::ErrorPtr err);
-  void OnBuildFlashConfigCompleted(Modem* modem,
+  void OnBuildFlashConfigCompleted(scoped_refptr<Modem> modem,
                                    std::unique_ptr<FlashConfig> flash_cfg,
                                    brillo::ErrorPtr err);
   void OnRunFlashCompleted(
-      Modem* modem,
+      scoped_refptr<Modem> modem,
       std::unique_ptr<InhibitMode> inhibiter,
       std::vector<std::unique_ptr<UpstartJobController>> upstart_jobs,
       std::optional<std::string> journal_entry_id,

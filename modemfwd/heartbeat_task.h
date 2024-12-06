@@ -23,7 +23,7 @@ class HeartbeatTask : public Task {
  public:
   static std::unique_ptr<HeartbeatTask> Create(
       Delegate* delegate,
-      Modem* modem,
+      scoped_refptr<Modem> modem,
       ModemHelperDirectory* helper_directory,
       Metrics* metrics);
   ~HeartbeatTask() override = default;
@@ -36,7 +36,7 @@ class HeartbeatTask : public Task {
 
  private:
   HeartbeatTask(Delegate* delegate,
-                Modem* modem,
+                scoped_refptr<Modem> modem,
                 Metrics* metrics,
                 HeartbeatConfig config);
 
@@ -46,7 +46,7 @@ class HeartbeatTask : public Task {
 
   void OnModemStateChanged();
 
-  Modem* modem_;
+  scoped_refptr<Modem> modem_;
   Metrics* metrics_;
   HeartbeatConfig config_;
 

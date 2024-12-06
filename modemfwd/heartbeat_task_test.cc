@@ -37,14 +37,15 @@ namespace modemfwd {
 class HeartbeatTaskTest : public ::testing::Test {
  public:
   HeartbeatTaskTest() {
-    ON_CALL(modem_, GetDeviceId()).WillByDefault(Return(kModemDeviceId));
+    modem_ = scoped_refptr<MockModem>(new MockModem);
+    ON_CALL(*modem_, GetDeviceId()).WillByDefault(Return(kModemDeviceId));
     helper_directory_.AddHelper(kModemDeviceId, &helper_);
   }
 
  protected:
   std::unique_ptr<HeartbeatTask> GetTask(HeartbeatConfig config) {
     ON_CALL(helper_, GetHeartbeatConfig()).WillByDefault(Return(config));
-    return HeartbeatTask::Create(&delegate_, &modem_, &helper_directory_,
+    return HeartbeatTask::Create(&delegate_, modem_, &helper_directory_,
                                  &metrics_);
   }
 
@@ -59,7 +60,7 @@ class HeartbeatTaskTest : public ::testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   MockDelegate delegate_;
-  MockModem modem_;
+  scoped_refptr<MockModem> modem_;
   MockMetrics metrics_;
 
   ModemHelperDirectoryStub helper_directory_;
@@ -70,8 +71,8 @@ TEST_F(HeartbeatTaskTest, HeartbeatSuccess) {
   constexpr base::TimeDelta kInterval = base::Seconds(10);
   constexpr int kChecks = 5;
 
-  EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
-  EXPECT_CALL(modem_, CheckHealth())
+  EXPECT_CALL(*modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, CheckHealth())
       .Times(kChecks)
       .WillRepeatedly(Return(true));
   EXPECT_CALL(delegate_, ResetModem(kModemDeviceId)).Times(0);
@@ -86,8 +87,8 @@ TEST_F(HeartbeatTaskTest, HeartbeatFailureResetSuccess) {
   constexpr base::TimeDelta kInterval = base::Seconds(10);
   constexpr int kNumFailures = 3;
 
-  EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
-  EXPECT_CALL(modem_, CheckHealth()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, CheckHealth()).WillRepeatedly(Return(false));
   EXPECT_CALL(delegate_, ResetModem(kModemDeviceId)).WillOnce(Return(true));
 
   auto task = GetTask(HeartbeatConfig{kNumFailures, kInterval});
@@ -101,8 +102,8 @@ TEST_F(HeartbeatTaskTest, HeartbeatFailureResetFailure) {
   constexpr base::TimeDelta kInterval = base::Seconds(10);
   constexpr int kNumFailures = 3;
 
-  EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
-  EXPECT_CALL(modem_, CheckHealth()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, CheckHealth()).WillRepeatedly(Return(false));
   EXPECT_CALL(delegate_, ResetModem(kModemDeviceId)).WillOnce(Return(false));
   EXPECT_CALL(metrics_,
               SendModemRecoveryState(
@@ -119,13 +120,13 @@ TEST_F(HeartbeatTaskTest, HeartbeatTemporaryFailureAndRecovery) {
   constexpr base::TimeDelta kInterval = base::Seconds(10);
   constexpr int kNumFailures = 3;
 
-  EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
   {
     InSequence seq;
 
     for (int i = 0; i < kNumFailures; i++) {
-      EXPECT_CALL(modem_, CheckHealth()).WillOnce(Return(false));
-      EXPECT_CALL(modem_, CheckHealth()).WillOnce(Return(true));
+      EXPECT_CALL(*modem_, CheckHealth()).WillOnce(Return(false));
+      EXPECT_CALL(*modem_, CheckHealth()).WillOnce(Return(true));
     }
   }
   EXPECT_CALL(delegate_, ResetModem(kModemDeviceId)).Times(0);
@@ -140,10 +141,10 @@ TEST_F(HeartbeatTaskTest, HeartbeatStopLowPowerState) {
   constexpr base::TimeDelta kInterval = base::Seconds(10);
   constexpr int kChecks = 3;
 
-  EXPECT_CALL(modem_, GetPowerState())
+  EXPECT_CALL(*modem_, GetPowerState())
       .WillRepeatedly(Return(Modem::PowerState::LOW));
-  EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
-  EXPECT_CALL(modem_, CheckHealth()).Times(0);
+  EXPECT_CALL(*modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, CheckHealth()).Times(0);
 
   auto task = GetTask(HeartbeatConfig{3, kInterval});
   task->Start();
@@ -156,12 +157,12 @@ TEST_F(HeartbeatTaskTest, HeartbeatSuccessModemIdle) {
   constexpr base::TimeDelta kIntervalModemIdle = base::Seconds(100);
   constexpr int kChecks = 5;
 
-  EXPECT_CALL(modem_, GetPowerState())
+  EXPECT_CALL(*modem_, GetPowerState())
       .WillRepeatedly(Return(Modem::PowerState::ON));
-  EXPECT_CALL(modem_, GetState())
+  EXPECT_CALL(*modem_, GetState())
       .WillRepeatedly(Return(Modem::State::REGISTERED));
-  EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
-  EXPECT_CALL(modem_, CheckHealth())
+  EXPECT_CALL(*modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, CheckHealth())
       .Times(kChecks)
       .WillRepeatedly(Return(true));
   EXPECT_CALL(delegate_, ResetModem(kModemDeviceId)).Times(0);
@@ -176,30 +177,30 @@ TEST_F(HeartbeatTaskTest, HeartbeatStopOnLowPowerStateUpdate) {
   constexpr base::TimeDelta kInterval = base::Seconds(10);
   constexpr int kChecks = 3;
 
-  EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
-  EXPECT_CALL(modem_, CheckHealth()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, CheckHealth()).WillRepeatedly(Return(true));
 
   base::RepeatingClosure power_state_cb;
   EXPECT_CALL(delegate_, RegisterOnModemPowerStateChangedCallback(_, _))
       .WillOnce(SaveArg<1>(&power_state_cb));
   EXPECT_CALL(delegate_, ResetModem(kModemDeviceId)).Times(0);
 
-  EXPECT_CALL(modem_, GetPowerState())
+  EXPECT_CALL(*modem_, GetPowerState())
       .WillRepeatedly(Return(Modem::PowerState::ON));
   auto task = GetTask(HeartbeatConfig{3, kInterval});
   task->Start();
   RunFor((kChecks + 0.5) * kInterval);
 
-  EXPECT_CALL(modem_, CheckHealth()).Times(0);
-  EXPECT_CALL(modem_, GetPowerState())
+  EXPECT_CALL(*modem_, CheckHealth()).Times(0);
+  EXPECT_CALL(*modem_, GetPowerState())
       .WillRepeatedly(Return(Modem::PowerState::LOW));
   power_state_cb.Run();
   RunFor((kChecks + 0.5) * kInterval);
 
-  EXPECT_CALL(modem_, CheckHealth())
+  EXPECT_CALL(*modem_, CheckHealth())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(modem_, GetPowerState())
+  EXPECT_CALL(*modem_, GetPowerState())
       .WillRepeatedly(Return(Modem::PowerState::ON));
   power_state_cb.Run();
   RunFor((kChecks + 0.5) * kInterval);
@@ -210,28 +211,28 @@ TEST_F(HeartbeatTaskTest, HeartbeatIdleStateUpdate) {
   constexpr base::TimeDelta kIntervalModemIdle = base::Seconds(100);
   constexpr int kChecks = 3;
 
-  EXPECT_CALL(modem_, GetPowerState())
+  EXPECT_CALL(*modem_, GetPowerState())
       .WillRepeatedly(Return(Modem::PowerState::ON));
-  EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
-  EXPECT_CALL(modem_, CheckHealth()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, CheckHealth()).WillRepeatedly(Return(true));
 
   base::RepeatingClosure state_cb;
   EXPECT_CALL(delegate_, RegisterOnModemStateChangedCallback(_, _))
       .WillOnce(SaveArg<1>(&state_cb));
   EXPECT_CALL(delegate_, ResetModem(kModemDeviceId)).Times(0);
 
-  EXPECT_CALL(modem_, GetState())
+  EXPECT_CALL(*modem_, GetState())
       .WillRepeatedly(Return(Modem::State::CONNECTED));
   auto task = GetTask(HeartbeatConfig{3, kInterval, kIntervalModemIdle});
   task->Start();
   RunFor((kChecks + 0.5) * kInterval);
 
-  EXPECT_CALL(modem_, GetState())
+  EXPECT_CALL(*modem_, GetState())
       .WillRepeatedly(Return(Modem::State::REGISTERED));
   state_cb.Run();
   RunFor((kChecks + 0.5) * kIntervalModemIdle);
 
-  EXPECT_CALL(modem_, GetState())
+  EXPECT_CALL(*modem_, GetState())
       .WillRepeatedly(Return(Modem::State::CONNECTED));
   state_cb.Run();
   RunFor((kChecks + 0.5) * kInterval);
@@ -240,7 +241,7 @@ TEST_F(HeartbeatTaskTest, HeartbeatIdleStateUpdate) {
 TEST_F(HeartbeatTaskTest, HeartbeatStopOnFlash) {
   constexpr base::TimeDelta kInterval = base::Seconds(10);
   constexpr int kChecks = 3;
-  EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
 
   base::OnceClosure start_flashing_cb;
   EXPECT_CALL(delegate_, RegisterOnStartFlashingCallback(_, _))
@@ -252,7 +253,7 @@ TEST_F(HeartbeatTaskTest, HeartbeatStopOnFlash) {
   // Simulate that we started flashing this modem
   std::move(start_flashing_cb).Run();
 
-  EXPECT_CALL(modem_, CheckHealth()).Times(0);
+  EXPECT_CALL(*modem_, CheckHealth()).Times(0);
   RunFor((kChecks + 0.5) * kInterval);
 }
 

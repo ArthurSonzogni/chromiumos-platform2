@@ -25,14 +25,14 @@ class AsyncModemFlasher : public base::RefCountedThreadSafe<AsyncModemFlasher> {
  public:
   explicit AsyncModemFlasher(std::unique_ptr<ModemFlasher> flasher);
 
-  void ShouldFlash(Modem* modem,
+  void ShouldFlash(scoped_refptr<Modem> modem,
                    base::OnceCallback<void(bool, brillo::ErrorPtr)> callback);
-  void BuildFlashConfig(Modem* modem,
+  void BuildFlashConfig(scoped_refptr<Modem> modem,
                         std::optional<std::string> carrier_override_uuid,
                         base::OnceCallback<void(std::unique_ptr<FlashConfig>,
                                                 brillo::ErrorPtr)> callback);
   void RunFlash(
-      Modem* modem,
+      scoped_refptr<Modem> modem,
       std::unique_ptr<FlashConfig> flash_cfg,
       base::OnceCallback<void(bool, base::TimeDelta, brillo::ErrorPtr)>
           callback);
@@ -42,13 +42,14 @@ class AsyncModemFlasher : public base::RefCountedThreadSafe<AsyncModemFlasher> {
   ~AsyncModemFlasher() = default;
 
   void ShouldFlashOnThread(
-      Modem* modem, std::shared_ptr<std::pair<bool, brillo::ErrorPtr>> result);
+      scoped_refptr<Modem> modem,
+      std::shared_ptr<std::pair<bool, brillo::ErrorPtr>> result);
   void OnShouldFlashResult(
       base::OnceCallback<void(bool, brillo::ErrorPtr)> callback,
       std::shared_ptr<std::pair<bool, brillo::ErrorPtr>> result);
 
   void BuildFlashConfigOnThread(
-      Modem* modem,
+      scoped_refptr<Modem> modem,
       std::optional<std::string> carrier_override_uuid,
       std::shared_ptr<std::pair<std::unique_ptr<FlashConfig>, brillo::ErrorPtr>>
           result);
@@ -59,7 +60,7 @@ class AsyncModemFlasher : public base::RefCountedThreadSafe<AsyncModemFlasher> {
           result);
 
   void RunFlashOnThread(
-      Modem* modem,
+      scoped_refptr<Modem> modem,
       std::unique_ptr<FlashConfig> flash_cfg,
       std::shared_ptr<std::tuple<bool, base::TimeDelta, brillo::ErrorPtr>>
           result);

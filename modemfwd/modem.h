@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
 
 #include "modemfwd/modem_helper.h"
@@ -18,10 +19,8 @@
 
 namespace modemfwd {
 
-class Modem {
+class Modem : public base::RefCountedThreadSafe<Modem> {
  public:
-  virtual ~Modem() = default;
-
   // Must be in sync with ModemManager's MMModemState enum.
   enum class State {
     FAILED = -1,
@@ -64,7 +63,7 @@ class Modem {
   virtual std::string GetOemFirmwareVersion() const = 0;
   virtual std::string GetCarrierFirmwareId() const = 0;
   virtual std::string GetCarrierFirmwareVersion() const = 0;
-  virtual std::string GetAssocFirmwareVersion(std::string) const = 0;
+  virtual std::string GetAssocFirmwareVersion(std::string fw_tag) const = 0;
 
   // Tell ModemManager not to deal with this modem for a little while.
   virtual bool SetInhibited(bool inhibited) = 0;
@@ -82,16 +81,20 @@ class Modem {
   // Handle modem state.
   virtual State GetState() const = 0;
   virtual bool UpdateState(State new_state) = 0;
+
+ protected:
+  friend class base::RefCountedThreadSafe<Modem>;
+  virtual ~Modem() = default;
 };
 
-std::unique_ptr<Modem> CreateModem(
+scoped_refptr<Modem> CreateModem(
     dbus::Bus* bus,
     std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> device,
     ModemHelperDirectory* helper_directory);
 
-std::unique_ptr<Modem> CreateStubModem(const std::string& device_id,
-                                       ModemHelperDirectory* helper_directory,
-                                       bool use_real_fw_info);
+scoped_refptr<Modem> CreateStubModem(const std::string& device_id,
+                                     ModemHelperDirectory* helper_directory,
+                                     bool use_real_fw_info);
 
 std::ostream& operator<<(std::ostream& os, const Modem::State& rhs);
 

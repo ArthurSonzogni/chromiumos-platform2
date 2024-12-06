@@ -76,7 +76,8 @@ FlashTask::FlashTask(Delegate* delegate,
       bus_(bus),
       modem_flasher_(modem_flasher) {}
 
-void FlashTask::Start(Modem* modem, const FlashTask::Options& options) {
+void FlashTask::Start(scoped_refptr<Modem> modem,
+                      const FlashTask::Options& options) {
   SetProp(kFlashTaskForceFlash, options.should_always_flash);
   SetProp(kFlashTaskDeviceId, modem->GetDeviceId());
   if (options.carrier_override_uuid.has_value()) {
@@ -92,7 +93,7 @@ void FlashTask::Start(Modem* modem, const FlashTask::Options& options) {
   }
 }
 
-void FlashTask::OnShouldFlashCompleted(Modem* modem,
+void FlashTask::OnShouldFlashCompleted(scoped_refptr<Modem> modem,
                                        const Options& options,
                                        bool should_flash,
                                        brillo::ErrorPtr err) {
@@ -109,7 +110,7 @@ void FlashTask::OnShouldFlashCompleted(Modem* modem,
 }
 
 void FlashTask::OnBuildFlashConfigCompleted(
-    Modem* modem,
+    scoped_refptr<Modem> modem,
     std::unique_ptr<FlashConfig> flash_cfg,
     brillo::ErrorPtr err) {
   if (!flash_cfg) {
@@ -183,7 +184,7 @@ void FlashTask::OnBuildFlashConfigCompleted(
 }
 
 void FlashTask::OnRunFlashCompleted(
-    Modem* modem,
+    scoped_refptr<Modem> modem,
     std::unique_ptr<InhibitMode> inhibiter,
     std::vector<std::unique_ptr<UpstartJobController>> upstart_jobs,
     std::optional<std::string> journal_entry_id,

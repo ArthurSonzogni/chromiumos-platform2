@@ -487,7 +487,7 @@ void Daemon::OnModemCarrierIdReady(
   power_state_change_callbacks_.erase(device_id);
 
   auto heartbeat_task = HeartbeatTask::Create(
-      this, modem.get(), helper_directory_.get(), metrics_.get());
+      this, modem, helper_directory_.get(), metrics_.get());
   if (heartbeat_task) {
     HeartbeatTask* weak_task = heartbeat_task.get();
     AddTask(std::move(heartbeat_task));
@@ -583,9 +583,10 @@ void Daemon::ForceFlashForTesting(
       flash_task_ptr,
       base::BindOnce(
           [](base::OnceCallback<void(const brillo::ErrorPtr&)> callback,
-             std::unique_ptr<Modem> modem, const brillo::ErrorPtr& error) {
+             scoped_refptr<Modem> modem, const brillo::ErrorPtr& error) {
             std::move(callback).Run(error);
-            // Don't clean up the modem until this task is fully finished.
+            // Keep a reference to the modem until the task is completed
+            // to prevent early cleanup.
             modem.reset();
           },
           std::move(callback), std::move(stub_modem)));

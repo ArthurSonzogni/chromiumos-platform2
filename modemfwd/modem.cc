@@ -15,8 +15,10 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/memory/ref_counted.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/synchronization/lock.h>
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -223,6 +225,99 @@ std::ostream& operator<<(std::ostream& os, const Modem::PowerState& rhs) {
   return os;
 }
 
+class SynchronizedModem : public Modem {
+ public:
+  explicit SynchronizedModem(scoped_refptr<Modem> inner_modem)
+      : inner_modem_(inner_modem) {}
+
+  ~SynchronizedModem() override = default;
+
+  bool IsPresent() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->IsPresent();
+  }
+
+  std::string GetDeviceId() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetDeviceId();
+  }
+  std::string GetEquipmentId() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetEquipmentId();
+  }
+  std::string GetCarrierId() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetCarrierId();
+  }
+
+  ModemHelper* GetHelper() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetHelper();
+  }
+
+  std::string GetMainFirmwareVersion() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetMainFirmwareVersion();
+  }
+  std::string GetOemFirmwareVersion() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetOemFirmwareVersion();
+  }
+  std::string GetCarrierFirmwareId() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetCarrierFirmwareId();
+  }
+  std::string GetCarrierFirmwareVersion() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetCarrierFirmwareVersion();
+  }
+  std::string GetAssocFirmwareVersion(std::string fw_tag) const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetAssocFirmwareVersion(fw_tag);
+  }
+
+  bool SetInhibited(bool inhibited) override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->SetInhibited(inhibited);
+  }
+
+  bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->FlashFirmwares(configs);
+  }
+
+  bool SupportsHealthCheck() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->SupportsHealthCheck();
+  }
+  bool CheckHealth() override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->CheckHealth();
+  }
+
+  PowerState GetPowerState() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetPowerState();
+  }
+  bool UpdatePowerState(PowerState new_power_state) override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->UpdatePowerState(new_power_state);
+  }
+
+  State GetState() const override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->GetState();
+  }
+  bool UpdateState(State new_state) override {
+    base::AutoLock _l(lock_);
+    return inner_modem_->UpdateState(new_state);
+  }
+
+ private:
+  mutable base::Lock lock_;
+  scoped_refptr<Modem> inner_modem_;
+};
+
 class ModemImpl : public Modem {
  public:
   ModemImpl(const std::string& device_id,
@@ -351,7 +446,7 @@ class ModemImpl : public Modem {
   ModemHelper* helper_;
 };
 
-std::unique_ptr<Modem> CreateModem(
+scoped_refptr<Modem> CreateModem(
     dbus::Bus* bus,
     std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> device,
     ModemHelperDirectory* helper_directory) {
@@ -435,9 +530,10 @@ std::unique_ptr<Modem> CreateModem(
     health_checker = GetHealthChecker(std::move(mm_object));
   }
 
-  return std::make_unique<ModemImpl>(
-      device_id, equipment_id, carrier_id, std::move(health_checker),
-      std::move(inhibitor), helper, installed_firmware);
+  return scoped_refptr<SynchronizedModem>(
+      new SynchronizedModem(scoped_refptr<ModemImpl>(new ModemImpl(
+          device_id, equipment_id, carrier_id, std::move(health_checker),
+          std::move(inhibitor), helper, installed_firmware))));
 }
 
 // StubModem acts like a modem with a particular device ID but does not
@@ -515,9 +611,9 @@ class StubModem : public Modem {
   FirmwareInfo installed_firmware_;
 };
 
-std::unique_ptr<Modem> CreateStubModem(const std::string& device_id,
-                                       ModemHelperDirectory* helper_directory,
-                                       bool use_real_fw_info) {
+scoped_refptr<Modem> CreateStubModem(const std::string& device_id,
+                                     ModemHelperDirectory* helper_directory,
+                                     bool use_real_fw_info) {
   // Use the device ID to grab a helper.
   ModemHelper* helper = helper_directory->GetHelperForDeviceId(device_id);
   if (!helper) {
@@ -530,8 +626,9 @@ std::unique_ptr<Modem> CreateStubModem(const std::string& device_id,
     LOG(ERROR) << "Could not fetch installed firmware information";
     return nullptr;
   }
-  return std::make_unique<StubModem>(device_id, helper,
-                                     std::move(installed_firmware));
+  return scoped_refptr<SynchronizedModem>(
+      new SynchronizedModem(scoped_refptr<StubModem>(
+          new StubModem(device_id, helper, std::move(installed_firmware)))));
 }
 
 }  // namespace modemfwd

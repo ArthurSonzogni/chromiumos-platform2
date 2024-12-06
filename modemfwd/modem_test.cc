@@ -36,7 +36,7 @@ class ModemTest : public ::testing::Test {
         .WillByDefault(ReturnRefOfCopy(dbus::ObjectPath("/fake/device")));
   }
 
-  std::unique_ptr<Modem> GetModem() {
+  scoped_refptr<Modem> GetModem() {
     return CreateModem(bus_.get(), std::move(device_), helper_directory_.get());
   }
 

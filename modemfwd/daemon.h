@@ -178,7 +178,7 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   // Tasks by name.
   std::map<std::string, TaskWithMetadata> tasks_;
 
-  std::map<std::string, std::unique_ptr<Modem>> modems_;
+  std::map<std::string, scoped_refptr<Modem>> modems_;
 
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
