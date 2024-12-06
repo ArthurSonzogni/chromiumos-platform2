@@ -396,6 +396,11 @@ bool SystemUtilsImpl::GetGidAndGroups(uid_t uid,
   return true;
 }
 
+std::optional<std::vector<uint8_t>> SystemUtilsImpl::ReadFileToBytes(
+    const base::FilePath& path) {
+  return base::ReadFileToBytes(path);
+}
+
 bool SystemUtilsImpl::ReadFileToString(const base::FilePath& path,
                                        std::string* str_out) {
   return base::ReadFileToString(path, str_out);

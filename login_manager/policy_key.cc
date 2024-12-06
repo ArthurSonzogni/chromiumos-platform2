@@ -47,7 +47,7 @@ bool PolicyKey::IsPopulated() const {
 
 bool PolicyKey::PopulateFromDiskIfPossible() {
   have_checked_disk_ = true;
-  if (!base::PathExists(key_file_)) {
+  if (!system_utils_->Exists(key_file_)) {
     LOG(INFO) << "No policy key on disk at " << key_file_;
     return true;
   }
@@ -58,7 +58,8 @@ bool PolicyKey::PopulateFromDiskIfPossible() {
     return false;
   }
 
-  std::optional<std::vector<uint8_t>> buffer = base::ReadFileToBytes(key_file_);
+  std::optional<std::vector<uint8_t>> buffer =
+      system_utils_->ReadFileToBytes(key_file_);
   if (!buffer || buffer->size() != *file_size) {
     PLOG(ERROR) << key_file_ << " could not be read in its entirety!";
     return false;
@@ -99,7 +100,7 @@ bool PolicyKey::PopulateFromKeypair(crypto::RSAPrivateKey* pair) {
 bool PolicyKey::Persist() {
   // It is a programming error to call this before checking for the key on disk.
   CHECK(HaveCheckedDisk()) << "Haven't checked disk for owner key yet!";
-  if (!have_replaced_ && base::PathExists(key_file_)) {
+  if (!have_replaced_ && system_utils_->Exists(key_file_)) {
     LOG(ERROR) << "Tried to overwrite owner key!";
     return false;
   }

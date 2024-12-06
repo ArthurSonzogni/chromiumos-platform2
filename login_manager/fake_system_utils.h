@@ -84,6 +84,8 @@ class FakeSystemUtils : public SystemUtils {
   bool GetGidAndGroups(uid_t uid,
                        gid_t* out_gid,
                        std::vector<gid_t>* out_groups) override;
+  std::optional<std::vector<uint8_t>> ReadFileToBytes(
+      const base::FilePath& path) override;
   bool ReadFileToString(const base::FilePath& path,
                         std::string* str_out) override;
   bool WriteStringToFile(const base::FilePath& path,

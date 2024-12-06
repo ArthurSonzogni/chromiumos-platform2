@@ -74,6 +74,10 @@ class MockSystemUtils : public SystemUtils {
               (uid_t, gid_t*, std::vector<gid_t>*),
               (override));
 
+  MOCK_METHOD(std::optional<std::vector<uint8_t>>,
+              ReadFileToBytes,
+              (const base::FilePath&),
+              (override));
   MOCK_METHOD(bool,
               ReadFileToString,
               (const base::FilePath&, std::string*),

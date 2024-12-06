@@ -108,7 +108,7 @@ pid_t FakeSystemUtils::Wait(pid_t child_spec,
 
 std::optional<int64_t> FakeSystemUtils::GetFileSize(
     const base::FilePath& path) {
-  NOTREACHED();
+  return base::GetFileSize(RebasePath(path));
 }
 
 bool FakeSystemUtils::Exists(const base::FilePath& file) {
@@ -185,6 +185,11 @@ bool FakeSystemUtils::GetGidAndGroups(uid_t uid,
                                       gid_t* out_gid,
                                       std::vector<gid_t>* out_groups) {
   NOTREACHED();
+}
+
+std::optional<std::vector<uint8_t>> FakeSystemUtils::ReadFileToBytes(
+    const base::FilePath& path) {
+  return base::ReadFileToBytes(RebasePath(path));
 }
 
 bool FakeSystemUtils::ReadFileToString(const base::FilePath& path,

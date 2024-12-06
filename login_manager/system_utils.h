@@ -157,6 +157,10 @@ class SystemUtils {
                                gid_t* out_gid,
                                std::vector<gid_t>* out_groups) = 0;
 
+  // Returns the file content read from the file at `path`.
+  virtual std::optional<std::vector<uint8_t>> ReadFileToBytes(
+      const base::FilePath& path) = 0;
+
   // Reads file content from file at |path| into string at |str_out|.
   virtual bool ReadFileToString(const base::FilePath& path,
                                 std::string* str_out) = 0;
