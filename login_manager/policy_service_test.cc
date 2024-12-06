@@ -25,11 +25,11 @@
 #include "bindings/device_management_backend.pb.h"
 #include "crypto/signature_verifier.h"
 #include "login_manager/blob_util.h"
+#include "login_manager/fake_system_utils.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
-#include "login_manager/system_utils_impl.h"
 
 namespace em = enterprise_management;
 
@@ -158,7 +158,7 @@ class PolicyServiceTest : public testing::Test {
   em::PolicyFetchResponse policy_proto_;
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
-  SystemUtilsImpl system_utils_;
+  FakeSystemUtils system_utils_;
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
@@ -485,18 +485,18 @@ class PolicyServiceNamespaceTest : public testing::Test {
   PolicyServiceNamespaceTest() = default;
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base::FilePath temp_dir("/tmp/policy_dir");
+    ASSERT_TRUE(system_utils_.CreateDir(temp_dir));
     fake_loop_.SetAsCurrent();
-    service_ = std::make_unique<PolicyService>(
-        &system_utils_, temp_dir_.GetPath(), &key_, nullptr, false);
+    service_ = std::make_unique<PolicyService>(&system_utils_, temp_dir, &key_,
+                                               nullptr, false);
 
     const std::string kExtensionId1 = "abcdefghijklmnopabcdefghijklmnop";
     ns1_ = PolicyNamespace(POLICY_DOMAIN_CHROME, "");
     ns2_ = PolicyNamespace(POLICY_DOMAIN_EXTENSIONS, kExtensionId1);
 
-    policy_path1_ =
-        temp_dir_.GetPath().Append(PolicyService::kChromePolicyFileName);
-    policy_path2_ = temp_dir_.GetPath().Append(
+    policy_path1_ = temp_dir.Append(PolicyService::kChromePolicyFileName);
+    policy_path2_ = temp_dir.Append(
         PolicyService::kExtensionsPolicyFileNamePrefix + kExtensionId1);
   }
 
@@ -540,24 +540,25 @@ class PolicyServiceNamespaceTest : public testing::Test {
   // Loads a policy value from disk and returns the policy value string. Returns
   // an empty string on error.
   std::string LoadPolicyFromFile(const base::FilePath& policy_path) {
-    std::string policy_blob;
-    if (!base::ReadFileToString(policy_path, &policy_blob)) {
+    std::optional<std::vector<uint8_t>> blob =
+        system_utils_.ReadFileToBytes(policy_path);
+    if (!blob.has_value()) {
       return std::string();
     }
-    return BlobToPolicyValue(StringToBlob(policy_blob));
+    return BlobToPolicyValue(*blob);
   }
 
   // Saves a policy value to disk embedded in a PolicyFetchResponse.
   void SavePolicyToFile(const base::FilePath& policy_path,
                         const std::string& policy_value) {
-    EXPECT_TRUE(base::WriteFile(policy_path, PolicyValueToBlob(policy_value)));
+    EXPECT_TRUE(
+        system_utils_.EnsureFile(policy_path, PolicyValueToBlob(policy_value)));
   }
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
-  SystemUtilsImpl system_utils_;
+  FakeSystemUtils system_utils_;
   std::unique_ptr<PolicyService> service_;
   StrictMock<MockPolicyKey> key_;
-  base::ScopedTempDir temp_dir_;
   PolicyNamespace ns1_;
   PolicyNamespace ns2_;
   base::FilePath policy_path1_;
@@ -565,25 +566,25 @@ class PolicyServiceNamespaceTest : public testing::Test {
 };
 
 TEST_F(PolicyServiceNamespaceTest, Store) {
-  EXPECT_FALSE(base::PathExists(policy_path1_));
+  EXPECT_FALSE(system_utils_.Exists(policy_path1_));
   StorePolicy(kPolicyValue1, ns1_);
   // The file is stored in a "background" task.
   fake_loop_.Run();
-  EXPECT_TRUE(base::PathExists(policy_path1_));
+  EXPECT_TRUE(system_utils_.Exists(policy_path1_));
   std::string actual_value = LoadPolicyFromFile(policy_path1_);
   EXPECT_EQ(kPolicyValue1, actual_value);
 }
 
 TEST_F(PolicyServiceNamespaceTest, StoreMultiple) {
-  EXPECT_FALSE(base::PathExists(policy_path1_));
+  EXPECT_FALSE(system_utils_.Exists(policy_path1_));
   StorePolicy(kPolicyValue1, ns1_);
   fake_loop_.Run();
-  EXPECT_TRUE(base::PathExists(policy_path1_));
+  EXPECT_TRUE(system_utils_.Exists(policy_path1_));
 
-  EXPECT_FALSE(base::PathExists(policy_path2_));
+  EXPECT_FALSE(system_utils_.Exists(policy_path2_));
   StorePolicy(kPolicyValue2, ns2_);
   fake_loop_.Run();
-  EXPECT_TRUE(base::PathExists(policy_path2_));
+  EXPECT_TRUE(system_utils_.Exists(policy_path2_));
 
   std::string actual_value1 = LoadPolicyFromFile(policy_path1_);
   std::string actual_value2 = LoadPolicyFromFile(policy_path2_);
@@ -593,8 +594,8 @@ TEST_F(PolicyServiceNamespaceTest, StoreMultiple) {
 }
 
 TEST_F(PolicyServiceNamespaceTest, StoreRetrieveMultiple) {
-  EXPECT_FALSE(base::PathExists(policy_path1_));
-  EXPECT_FALSE(base::PathExists(policy_path2_));
+  EXPECT_FALSE(system_utils_.Exists(policy_path1_));
+  EXPECT_FALSE(system_utils_.Exists(policy_path2_));
 
   StorePolicy(kPolicyValue1, ns1_);
   StorePolicy(kPolicyValue2, ns2_);
@@ -608,8 +609,8 @@ TEST_F(PolicyServiceNamespaceTest, StoreRetrieveMultiple) {
   // The files are stored in a "background" task.
   fake_loop_.Run();
 
-  EXPECT_TRUE(base::PathExists(policy_path1_));
-  EXPECT_TRUE(base::PathExists(policy_path2_));
+  EXPECT_TRUE(system_utils_.Exists(policy_path1_));
+  EXPECT_TRUE(system_utils_.Exists(policy_path2_));
 }
 
 TEST_F(PolicyServiceNamespaceTest, LoadPolicyFromDisk) {
