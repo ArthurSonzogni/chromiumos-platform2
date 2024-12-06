@@ -4,9 +4,10 @@
 
 #include "lorgnette/sane_option.h"
 
+#include <math.h>
+
 #include <algorithm>
 #include <optional>
-#include <math.h>
 
 #include <absl/strings/str_join.h>
 #include <base/logging.h>
@@ -181,7 +182,7 @@ void SaneOption::ReserveValueSize(const SANE_Option_Descriptor& opt) {
       break;
 
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 
   switch (type_) {
@@ -550,7 +551,7 @@ size_t SaneOption::GetSize() const {
     case SANE_TYPE_GROUP:
       return 0;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 

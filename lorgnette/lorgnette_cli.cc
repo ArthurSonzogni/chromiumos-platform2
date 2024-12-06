@@ -822,6 +822,5 @@ int main(int argc, char** argv) {
     }
   }
 
-  NOTREACHED_IN_MIGRATION();
-  return 1;
+  NOTREACHED();
 }

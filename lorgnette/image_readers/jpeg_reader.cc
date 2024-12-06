@@ -54,7 +54,7 @@ bool JpegReader::ReadRow(brillo::ErrorPtr* error, uint8_t* data) {
       row_pointer[0] = data;
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 
   jpeg_write_scanlines(&cinfo_, row_pointer, 1);

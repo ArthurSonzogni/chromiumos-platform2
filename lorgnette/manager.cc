@@ -5,6 +5,7 @@
 #include "lorgnette/manager.h"
 
 #include <inttypes.h>
+#include <libusb.h>
 #include <setjmp.h>
 
 #include <algorithm>
@@ -18,11 +19,10 @@
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <libusb.h>
 
 #include "lorgnette/constants.h"
 #include "lorgnette/daemon.h"
@@ -129,7 +129,6 @@ ScanJobFailureReason GetScanJobFailureReason(
     case ScanFailureMode_INT_MIN_SENTINEL_DO_NOT_USE_:
       [[fallthrough]];
     case ScanFailureMode_INT_MAX_SENTINEL_DO_NOT_USE_:
-      NOTREACHED_IN_MIGRATION();
       return ScanJobFailureReason::kUnknownScannerError;
   }
 }
