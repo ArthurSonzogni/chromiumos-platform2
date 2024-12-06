@@ -101,11 +101,13 @@ pub struct Args {
     pub frame_memory: FrameMemoryType,
 
     /// path to the GBM device to use if frame-memory=prime
+    #[allow(dead_code)]
     #[argh(option)]
     pub gbm_device: Option<PathBuf>,
 
     /// path to VA-API device. This option is ignored on V4L2 systems.
     #[argh(option)]
+    #[allow(dead_code)]
     pub libva_device: Option<PathBuf>,
 
     /// whether to decode frames synchronously

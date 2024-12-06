@@ -13,6 +13,11 @@ mod vaapi_decoder;
 #[cfg(feature = "vaapi")]
 use vaapi_decoder::do_decode;
 
+#[cfg(feature = "v4l2")]
+mod v4l2_stateless_decoder;
+#[cfg(feature = "v4l2")]
+use v4l2_stateless_decoder::do_decode;
+
 fn main() {
     env_logger::init();
 

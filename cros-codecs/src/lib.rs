@@ -23,24 +23,24 @@
 pub mod bitstream_utils;
 pub mod codec;
 
-#[cfg(any(feature = "vaapi", feature = "v4l2", feature = "v4l2-experimental"))]
+#[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod backend;
-#[cfg(any(feature = "vaapi", feature = "v4l2", feature = "v4l2-experimental"))]
+#[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod decoder;
-#[cfg(any(feature = "v4l2-experimental"))]
+#[cfg(feature = "v4l2")]
 pub mod device;
 #[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod encoder;
-#[cfg(any(feature = "vaapi", feature = "v4l2", feature = "v4l2-experimental"))]
+#[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod image_processing;
-#[cfg(any(feature = "vaapi", feature = "v4l2", feature = "v4l2-experimental"))]
+#[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod utils;
 
 use std::str::FromStr;
 
 #[cfg(feature = "vaapi")]
 pub use libva;
-#[cfg(any(feature = "v4l2", feature = "v4l2-experimental"))]
+#[cfg(feature = "v4l2")]
 pub use v4l2r;
 
 /// Rounding modes for `Resolution`

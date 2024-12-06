@@ -12,7 +12,6 @@ default = []
 backend = []
 vaapi = ["libva", "anyhow", "byteorder", "thiserror", "crc32fast", "nix", "backend"]
 v4l2 = ["v4l2r", "anyhow", "byteorder", "thiserror", "crc32fast", "nix", "backend"]
-v4l2-experimental = ["v4l2r", "anyhow", "byteorder", "thiserror", "crc32fast", "nix", "backend"]
 
 [dependencies]
 anyhow = { version = "1.0.75", optional = true }
@@ -38,11 +37,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
 
 [[example]]
 name = "ccdec"
-required-features = ["vaapi"]
-
-[[example]]
-name = "ccdec-v4l2-stateless"
-required-features = ["v4l2-experimental"]
+required-features = ["backend"]
 
 [[example]]
 name = "ccenc"

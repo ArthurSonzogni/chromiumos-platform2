@@ -6,10 +6,7 @@ use std::borrow::Cow;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
-use std::path::PathBuf;
-use std::str::FromStr;
 
-use argh::FromArgs;
 use cros_codecs::backend::v4l2::decoder::stateless::V4l2StatelessDecoderHandle;
 use cros_codecs::bitstream_utils::NalIterator;
 use cros_codecs::codec::h264::parser::Nalu as H264Nalu;
@@ -26,6 +23,10 @@ use cros_codecs::utils::DmabufFrame;
 use cros_codecs::utils::UserPtrFrame;
 use cros_codecs::DecodedFormat;
 
+use crate::util::Args;
+use crate::util::EncodedFormat;
+use crate::util::FrameMemoryType;
+
 multiple_desc_type! {
     enum BufferDescriptor {
         Managed(()),
@@ -34,93 +35,10 @@ multiple_desc_type! {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-enum EncodedFormat {
-    H264,
-    H265,
-    VP8,
-    VP9,
-    AV1,
-}
-
-impl FromStr for EncodedFormat {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "h264" | "H264" => Ok(EncodedFormat::H264),
-            "h265" | "H265" => Ok(EncodedFormat::H265),
-            "vp8" | "VP8" => Ok(EncodedFormat::VP8),
-            "vp9" | "VP9" => Ok(EncodedFormat::VP9),
-            "av1" | "AV1" => Ok(EncodedFormat::AV1),
-            _ => Err("unrecognized input format. Valid values: h264, h265, vp8, vp9, av1"),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-enum FrameMemoryType {
-    Managed,
-    Prime,
-    User,
-}
-
-impl FromStr for FrameMemoryType {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "managed" => Ok(FrameMemoryType::Managed),
-            "prime" => Ok(FrameMemoryType::Prime),
-            "user" => Ok(FrameMemoryType::User),
-            _ => Err("unrecognized memory type. Valid values: managed, prime, user"),
-        }
-    }
-}
-
-/// Simple player using cros-codecs
-#[derive(Debug, FromArgs)]
-struct Args {
-    /// input file
-    #[argh(positional)]
-    input: PathBuf,
-
-    /// output file to write the decoded frames to
-    #[argh(option)]
-    output: Option<PathBuf>,
-
-    /// input format to decode from.
-    #[argh(option)]
-    input_format: EncodedFormat,
-
-    //TODO    /// pixel format to decode into. Default: i420
-    //TODO    #[argh(option, default = "DecodedFormat::I420")]
-    //TODO    output_format: DecodedFormat,
-    /// origin of the memory for decoded buffers (managed, prime or user). Default: managed.
-    #[argh(option, default = "FrameMemoryType::Managed")]
-    frame_memory: FrameMemoryType,
-
-    //TODO    /// path to the GBM device to use if frame-memory=prime
-    //TODO    #[argh(option)]
-    //TODO    gbm_device: Option<PathBuf>,
-    /// whether to decode frames synchronously
-    #[argh(switch)]
-    synchronous: bool,
-    //TODO    /// whether to display the MD5 of the decoded stream, and at which granularity
-    //TODO    /// (stream or frame)
-    //TODO    #[argh(option)]
-    //TODO    compute_md5: Option<Md5Computation>,
-}
-
-fn main() {
-    env_logger::init();
-
-    let args: Args = argh::from_env();
-
+pub fn do_decode(mut input: File, args: Args) -> () {
     let input = {
         let mut buf = Vec::new();
-        File::open(args.input)
-            .expect("error opening input file")
+        input
             .read_to_end(&mut buf)
             .expect("error reading input file");
         buf
