@@ -126,6 +126,8 @@ class DevUpdateStatefulTest : public ::testing::Test {
     var_target = stateful.Append("var_overlay");
     developer_target = stateful.Append("dev_image");
     developer_new = stateful.Append("dev_image_new");
+    dev_image_target = stateful.Append("unencrypted/dev_image.block");
+    dev_image_new = stateful.Append("unencrypted/dev_image_new.block");
     preserve_dir = stateful.Append("unencrypted/preserve");
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         base_dir, stateful, platform_.get(), startup_dep_.get());
@@ -142,6 +144,8 @@ class DevUpdateStatefulTest : public ::testing::Test {
   base::FilePath var_target;
   base::FilePath developer_target;
   base::FilePath developer_new;
+  base::FilePath dev_image_new;
+  base::FilePath dev_image_target;
   base::FilePath preserve_dir;
 };
 
@@ -186,6 +190,30 @@ TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
   EXPECT_EQ(res, message);
 }
 
+TEST_F(DevUpdateStatefulTest, NewDevImageNoClobber) {
+  ASSERT_TRUE(platform_->CreateDirectory(stateful.Append("unencrypted")));
+  ASSERT_TRUE(platform_->TouchFileDurable(dev_image_new));
+
+  ASSERT_TRUE(platform_->WriteStringToFile(stateful_update_file, "1"));
+
+  LOG(INFO) << "dev_image_new test: " << dev_image_new.value();
+
+  ASSERT_TRUE(platform_->WriteStringToFile(dev_image_new, "123"));
+
+  EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition("", false));
+
+  EXPECT_FALSE(platform_->FileExists(dev_image_new));
+
+  EXPECT_FALSE(platform_->FileExists(stateful_update_file));
+  EXPECT_TRUE(platform_->FileExists(dev_image_target));
+
+  std::string message =
+      "Updating from " + developer_new.value() + " && " + var_new.value() + ".";
+  std::string res;
+  startup_dep_->GetClobberLog(&res);
+  EXPECT_EQ(res, message);
+}
+
 TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   ASSERT_TRUE(platform_->WriteStringToFile(stateful_update_file, "clobber"));
   base::FilePath labmachine = stateful.Append(".labmachine");
@@ -196,6 +224,8 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   base::FilePath preserve_test = preserve_dir.Append("test");
   base::FilePath empty = stateful.Append("empty");
 
+  ASSERT_TRUE(platform_->CreateDirectory(stateful.Append("unencrypted")));
+  ASSERT_TRUE(platform_->WriteStringToFile(dev_image_target, "1"));
   ASSERT_TRUE(platform_->CreateDirectory(empty));
   ASSERT_TRUE(platform_->CreateDirectory(test_dir));
   ASSERT_TRUE(platform_->WriteStringToFile(
@@ -217,6 +247,7 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   EXPECT_TRUE(platform_->FileExists(encrypted_block));
   EXPECT_FALSE(platform_->DirectoryExists(test_dir));
   EXPECT_TRUE(platform_->FileExists(preserve_test));
+  EXPECT_TRUE(platform_->FileExists(dev_image_target));
   EXPECT_FALSE(platform_->FileExists(empty));
 
   std::string message = "Stateful update did not find " +

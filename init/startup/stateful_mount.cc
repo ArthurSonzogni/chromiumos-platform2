@@ -36,6 +36,7 @@
 #include <metrics/bootstat.h>
 #include <rootdev/rootdev.h>
 
+#include "base/strings/stringprintf.h"
 #include "init/startup/constants.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
@@ -61,6 +62,10 @@ constexpr char kVarNew[] = "var_new";
 constexpr char kVarOverlay[] = "var_overlay";
 constexpr char kChronos[] = "chronos";
 constexpr char kUnencrypted[] = "unencrypted";
+
+constexpr char kDevImageBlockFile[] = "dev_image.block";
+constexpr char kNewDevImageBlockFile[] = "dev_image_new.block";
+constexpr char kDeveloperToolsMount[] = "developer_tools";
 
 constexpr char kVarLogAsan[] = "var/log/asan";
 constexpr char kStatefulDevImage[] = "dev_image";
@@ -370,7 +375,8 @@ void StatefulMount::DevPerformStatefulUpdate() {
       {stateful_.Append(kVarNew), stateful_.Append(kVarOverlay)},
       {stateful_.Append(kStatefulDevImageNew),
        stateful_.Append(kStatefulDevImage)},
-  };
+      {stateful_.Append(kUnencrypted).Append(kNewDevImageBlockFile),
+       stateful_.Append(kUnencrypted).Append(kDevImageBlockFile)}};
 
   for (auto& [src, dst] : update_targets) {
 
@@ -380,7 +386,7 @@ void StatefulMount::DevPerformStatefulUpdate() {
     }
 
     if (!platform_->Rename(src, dst, true)) {
-      LOG(WARNING) << "Failed to rename the source dir";
+      LOG(WARNING) << "Failed to rename " << src;
       continue;
     }
 
@@ -414,11 +420,14 @@ bool StatefulMount::DevUpdateStatefulPartition(
   base::FilePath developer_new = stateful_.Append(kStatefulDevImageNew);
   base::FilePath stateful_dev_image = stateful_.Append(kStatefulDevImage);
   base::FilePath var_target = stateful_.Append(kVarOverlay);
+  base::FilePath dev_image_block_new =
+      stateful_.Append(kUnencrypted).Append(kNewDevImageBlockFile);
 
   // Only replace the developer and var_overlay directories if new replacements
   // are available.
-  if (platform_->DirectoryExists(developer_new) &&
-      platform_->DirectoryExists(var_new)) {
+  if ((platform_->DirectoryExists(developer_new) &&
+       platform_->DirectoryExists(var_new)) ||
+      platform_->FileExists(dev_image_block_new)) {
     std::string update = "Updating from " + developer_new.value() + " && " +
                          var_new.value() + ".";
     startup_dep_->ClobberLog(update);
@@ -461,6 +470,8 @@ bool StatefulMount::DevUpdateStatefulPartition(
         stateful_.Append(kDevModeFile),
         stateful_.Append("encrypted.block"),
         stateful_.Append("encrypted.key"),
+        stateful_.Append(kUnencrypted).Append(kDevImageBlockFile),
+        stateful_.Append(kDeveloperToolsMount),
         stateful_dev_image,
         var_target,
         preserve_dir,
@@ -547,6 +558,79 @@ void StatefulMount::DevGatherLogs(const base::FilePath& base_dir) {
   }
 }
 
+void StatefulMount::SetUpDirectory(const base::FilePath& path) {
+  if (!platform_->DirectoryExists(path)) {
+    if (!platform_->CreateDirectory(path)) {
+      PLOG(ERROR) << "Failed to create " << path.value();
+      return;
+    }
+    if (!platform_->SetPermissions(path, 0755)) {
+      PLOG(ERROR) << "Failed to set permissions for " << path.value();
+    }
+  }
+}
+
+void StatefulMount::DevMountDevImage(MountHelper* mount_helper) {
+  base::FilePath dev_image_block(
+      stateful_.Append(kUnencrypted).Append(kDevImageBlockFile));
+
+  if (!base::PathExists(dev_image_block)) {
+    return;
+  }
+
+  auto file_size = base::GetFileSize(dev_image_block);
+  if (!file_size) {
+    LOG(ERROR) << "Failed to get dev_image.block size";
+    return;
+  }
+
+  libstorage::StorageContainerConfig container_config = {
+      .filesystem_config =
+          {.tune2fs_opts = {},
+           .backend_type = libstorage::StorageContainerType::kUnencrypted,
+           .recovery = libstorage::RecoveryType::kEnforceCleaning,
+           .metrics_prefix = "Platform.FileSystem.DeveloperTools"},
+
+      .unencrypted_config =
+          {.backing_device_config =
+               {.type = libstorage::BackingDeviceType::kLoopbackDevice,
+                .name = "developer_tools",
+                .size = *file_size,
+                .loopback = {.backing_file_path = dev_image_block}}},
+  };
+
+  std::unique_ptr<libstorage::StorageContainer> container =
+      mount_helper->GetStorageContainerFactory()->Generate(
+          container_config, libstorage::StorageContainerType::kExt4,
+          libstorage::FileSystemKeyReference());
+  if (!container) {
+    LOG(ERROR) << "Failed to create ext4 container for developer tools";
+    return;
+  }
+
+  if (!container->Setup(libstorage::FileSystemKey())) {
+    LOG(ERROR) << "Failed to set up developer tools container.";
+    return;
+  }
+
+  base::FilePath developer_tools_mount = stateful_.Append(kDeveloperToolsMount);
+  // Create developer_tools directory in base images in developer mode.
+  SetUpDirectory(developer_tools_mount);
+  if (!platform_->Mount(container->GetPath(), developer_tools_mount, "ext4",
+                        kCommonMountFlags, "commit=600,discard")) {
+    LOG(WARNING) << "Failed to mount developer tools filesystem";
+    return;
+  }
+
+  SetUpDirectory(developer_tools_mount.Append(kStatefulDevImage));
+  SetUpDirectory(developer_tools_mount.Append(kVarOverlay));
+
+  mount_helper->BindMountOrFail(developer_tools_mount.Append(kStatefulDevImage),
+                                stateful_.Append(kStatefulDevImage));
+  mount_helper->BindMountOrFail(developer_tools_mount.Append(kVarOverlay),
+                                stateful_.Append(kVarOverlay));
+}
+
 void StatefulMount::DevMountPackages(MountHelper* mount_helper,
                                      bool enable_stateful_security_hardening) {
   // Set up the logging dir that ASAN compiled programs will write to. We want
@@ -576,18 +660,13 @@ void StatefulMount::DevMountPackages(MountHelper* mount_helper,
 
   // Create dev_image directory in base images in developer mode.
   base::FilePath stateful_dev_image = stateful_.Append(kStatefulDevImage);
-  if (!platform_->DirectoryExists(stateful_dev_image)) {
-    if (!platform_->CreateDirectory(stateful_dev_image)) {
-      PLOG(ERROR) << "Failed to create " << stateful_dev_image.value();
-    }
-    if (!platform_->SetPermissions(stateful_dev_image, 0755)) {
-      PLOG(ERROR) << "Failed to set permissions for "
-                  << stateful_dev_image.value();
-    }
-  }
+  SetUpDirectory(stateful_dev_image);
 
   // Checks and updates stateful partition.
   DevUpdateStatefulPartition("", enable_stateful_security_hardening);
+
+  // Checks for dev_image.block and mounts it in place.
+  DevMountDevImage(mount_helper);
 
   // Mount and then remount to enable exec/suid.
   base::FilePath usrlocal = root_.Append(kUsrLocal);

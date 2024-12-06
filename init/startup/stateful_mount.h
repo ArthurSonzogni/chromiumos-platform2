@@ -50,6 +50,9 @@ class StatefulMount {
   bool DevUpdateStatefulPartition(const std::string& args,
                                   bool enable_stateful_security_hardening);
   void DevGatherLogs(const base::FilePath& base_dir);
+  void SetUpDirectory(const base::FilePath& path);
+  void DevMountDevImage(MountHelper* mount_helper);
+
   void DevMountPackages(MountHelper* mount_helper,
                         bool enable_stateful_security_hardening);
   void RemoveEmptyDirectory(std::vector<base::FilePath> preserved_paths,
