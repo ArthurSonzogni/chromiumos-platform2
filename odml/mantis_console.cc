@@ -53,6 +53,7 @@ constexpr const char kPrompt[] = "prompt";
 constexpr const char kImage[] = "image";
 constexpr const char kMask[] = "mask";
 constexpr const char kSeed[] = "seed";
+constexpr const char kEnableSafety[] = "enable_safety";
 constexpr const char kInapinting[] = "inpainting";
 constexpr const char kGenfill[] = "genfill";
 constexpr const char kOutpainting[] = "outpainting";
@@ -105,6 +106,10 @@ std::string GetOutputPath(base::CommandLine* cl) {
   return kDefaultOutputPath;
 }
 
+bool ShouldEnableSafety(base::CommandLine* cl) {
+  return cl ? cl->HasSwitch(kEnableSafety) : false;
+}
+
 bool DoInpainting(base::CommandLine* cl) {
   return cl ? cl->HasSwitch(kInapinting) : false;
 }
@@ -127,9 +132,21 @@ class MantisProcessorWithoutSafetyCheck : public mantis::MantisProcessor {
       const std::string& text,
       base::OnceCallback<void(mantis::mojom::SafetyClassifierVerdict)> callback)
       override {
+    if (enable_safety_) {
+      MantisProcessor::ClassifyImageSafetyInternal(image, text,
+                                                   std::move(callback));
+      return;
+    }
     LOG(INFO) << "Fake ClassifyImageSafetyInternal was called";
     std::move(callback).Run(mantis::mojom::SafetyClassifierVerdict::kPass);
   }
+
+  void EnableSafety() { enable_safety_ = true; }
+
+  void DisableSafety() { enable_safety_ = false; }
+
+ private:
+  bool enable_safety_ = false;
 };
 
 class MantisServiceWithoutSafetyCheck : public mantis::MantisService {
@@ -154,6 +171,8 @@ class MantisServiceWithoutSafetyCheck : public mantis::MantisService {
     mantis_processor = std::make_unique<MantisProcessorWithoutSafetyCheck>(
         component, api, std::move(receiver), service_manager,
         std::move(on_disconnected), std::move(callback));
+    // Disable safety by default
+    mantis_processor->DisableSafety();
   }
 };
 
@@ -192,6 +211,11 @@ class MantisConsole : public brillo::DBusDaemon {
       LOG(ERROR) << "CreateMantisService() failed";
       return exit_code;
     }
+    if (ShouldEnableSafety(cl_)) {
+      mantis_service_provider_impl_->service()
+          ->mantis_processor->EnableSafety();
+    }
+
     if (DoInpainting(cl_)) {
       Inpainting();
     }
@@ -294,7 +318,7 @@ class MantisConsole : public brillo::DBusDaemon {
 
   void Genfill() {
     auto service = mantis_service_provider_impl_->service();
-    LOG(INFO) << "Mantis outpainting call";
+    LOG(INFO) << "Mantis genfill call";
     base::RunLoop run_loop;
     service->mantis_processor->GenerativeFill(
         GetImage(cl_), GetMask(cl_), GetSeed(cl_), GetPrompt(cl_),
