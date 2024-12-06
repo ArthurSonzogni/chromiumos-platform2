@@ -23,10 +23,13 @@ use cros_codecs::utils::DmabufFrame;
 use cros_codecs::utils::UserPtrFrame;
 use cros_codecs::DecodedFormat;
 
+use crate::md5::md5_digest;
+use crate::md5::MD5Context;
 use crate::util::decide_output_file_name;
 use crate::util::Args;
 use crate::util::EncodedFormat;
 use crate::util::FrameMemoryType;
+use crate::util::Md5Computation;
 
 multiple_desc_type! {
     enum BufferDescriptor {
@@ -71,7 +74,12 @@ pub fn do_decode(mut input: File, args: Args) -> () {
         EncodedFormat::AV1 => todo!(),
     };
 
+    let mut md5_context = MD5Context::new();
     let mut output_filename_idx = 0;
+    let need_per_frame_md5 = match args.compute_md5 {
+        Some(Md5Computation::Frame) => true,
+        _ => args.golden.is_some(),
+    };
 
     let mut on_new_frame = |handle: DynDecodedHandle<()>| {
         let timestamp = handle.timestamp(); //handle.handle.borrow().timestamp;
@@ -108,6 +116,18 @@ pub fn do_decode(mut input: File, args: Args) -> () {
                 .write_all(&frame_data)
                 .expect("failed to write to output file");
         }
+
+        let frame_md5: String = if need_per_frame_md5 {
+            md5_digest(&frame_data)
+        } else {
+            "".to_string()
+        };
+
+        match args.compute_md5 {
+            None => (),
+            Some(Md5Computation::Frame) => println!("{}", frame_md5),
+            Some(Md5Computation::Stream) => md5_context.consume(&frame_data),
+        }
     };
 
     simple_playback_loop(
@@ -129,4 +149,8 @@ pub fn do_decode(mut input: File, args: Args) -> () {
         blocking_mode,
     )
     .expect("error during playback loop");
+
+    if let Some(Md5Computation::Stream) = args.compute_md5 {
+        println!("{}", md5_context.flush());
+    }
 }
