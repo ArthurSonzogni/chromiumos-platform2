@@ -23,6 +23,7 @@ use cros_codecs::utils::DmabufFrame;
 use cros_codecs::utils::UserPtrFrame;
 use cros_codecs::DecodedFormat;
 
+use crate::util::decide_output_file_name;
 use crate::util::Args;
 use crate::util::EncodedFormat;
 use crate::util::FrameMemoryType;
@@ -70,6 +71,8 @@ pub fn do_decode(mut input: File, args: Args) -> () {
         EncodedFormat::AV1 => todo!(),
     };
 
+    let mut output_filename_idx = 0;
+
     let mut on_new_frame = |handle: DynDecodedHandle<()>| {
         let timestamp = handle.timestamp(); //handle.handle.borrow().timestamp;
         log::debug!("{:<20} {:?}\n", "on_new_frame", timestamp);
@@ -86,10 +89,24 @@ pub fn do_decode(mut input: File, args: Args) -> () {
             timestamp,
             buffer_size
         );
-        if let Some(output) = &mut output {
+
+        if args.multiple_output_files {
+            let file_name = decide_output_file_name(
+                args.output
+                    .as_ref()
+                    .expect("multiple_output_files need output to be set"),
+                output_filename_idx,
+            );
+
+            let mut output = File::create(file_name).expect("error creating output file");
+            output_filename_idx += 1;
             output
                 .write_all(&frame_data)
-                .expect("Failed to write output file");
+                .expect("failed to write to output file");
+        } else if let Some(output) = &mut output {
+            output
+                .write_all(&frame_data)
+                .expect("failed to write to output file");
         }
     };
 
