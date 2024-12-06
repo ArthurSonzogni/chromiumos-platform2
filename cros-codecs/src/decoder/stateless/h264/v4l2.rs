@@ -116,7 +116,7 @@ impl StatelessH264DecoderBackend for V4l2StatelessDecoderBackend {
                     None => todo!(),
                 };
             }
-            println!(
+            log::debug!(
                 "{:<20} {:?} {:?}\n",
                 "start_picture",
                 picture.timestamp(),
@@ -144,7 +144,7 @@ impl StatelessH264DecoderBackend for V4l2StatelessDecoderBackend {
         let handle = Rc::new(RefCell::new(BackendHandle {
             picture: picture.clone(),
         }));
-        println!(
+        log::debug!(
             "{:<20} {:?}\n",
             "submit_picture",
             picture.borrow().timestamp()

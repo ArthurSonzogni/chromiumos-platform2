@@ -154,7 +154,7 @@ fn main() {
 
     let mut on_new_frame = |handle: DynDecodedHandle<()>| {
         let timestamp = handle.timestamp(); //handle.handle.borrow().timestamp;
-        println!("{:<20} {:?}\n", "on_new_frame", timestamp);
+        log::debug!("{:<20} {:?}\n", "on_new_frame", timestamp);
 
         let picture = handle.dyn_picture();
         let mut handle = picture.dyn_mappable_handle().unwrap();
@@ -162,9 +162,11 @@ fn main() {
         let mut frame_data = vec![0; buffer_size];
 
         handle.read(&mut frame_data).unwrap();
-        println!(
+        log::debug!(
             "{:<20} {:?}, {} bytes\n",
-            "on_new_frame", timestamp, buffer_size
+            "on_new_frame",
+            timestamp,
+            buffer_size
         );
         if let Some(output) = &mut output {
             output

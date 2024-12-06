@@ -115,7 +115,7 @@ pub struct V4l2OutputQueue {
 impl V4l2OutputQueue {
     pub fn new(device: Arc<Device>, num_buffers: u32) -> Self {
         let handle = Queue::get_output_mplane_queue(device).expect("Failed to get output queue");
-        println!("Output queue:\n\tstate: None -> Init\n");
+        log::debug!("Output queue:\n\tstate: None -> Init\n");
         let handle = Rc::new(RefCell::new(V4l2OutputQueueHandle::Init(handle)));
         Self {
             handle,
@@ -141,12 +141,12 @@ impl V4l2OutputQueue {
                     .expect("Failed to apply output format");
 
                 let format: Format = handle.get_format().expect("Failed to get output format");
-                println!("Output format:\n\t{:?}\n", format);
+                log::debug!("Output format:\n\t{:?}\n", format);
 
                 let handle = handle
                     .request_buffers_generic::<Vec<MmapHandle>>(MemoryType::Mmap, self.num_buffers)
                     .expect("Failed to request output buffers");
-                println!(
+                log::debug!(
                     "Output queue:\n\t
                     num_buffers: {}\n\t
                     num_queued_buffers: {}\n\t
@@ -159,7 +159,7 @@ impl V4l2OutputQueue {
                 // TODO: handle start/stop at runtime
                 handle.stream_on().expect("Failed to start output queue");
 
-                println!("Output queue:\n\tstate: Init -> Streaming\n");
+                log::debug!("Output queue:\n\tstate: Init -> Streaming\n");
                 V4l2OutputQueueHandle::Streaming(handle.into())
             }
             _ => {
@@ -271,7 +271,7 @@ pub struct V4l2CaptureQueue {
 impl V4l2CaptureQueue {
     pub fn new(device: Arc<Device>, num_buffers: u32) -> Self {
         let handle = Queue::get_capture_mplane_queue(device).expect("Failed to get capture queue");
-        println!("Capture queue:\n\tstate: None -> Init\n");
+        log::debug!("Capture queue:\n\tstate: None -> Init\n");
         let handle = RefCell::new(V4l2CaptureQueueHandle::Init(handle));
         Self {
             handle,
@@ -282,12 +282,12 @@ impl V4l2CaptureQueue {
         self.handle.replace(match self.handle.take() {
             V4l2CaptureQueueHandle::Init(handle) => {
                 let format: Format = handle.get_format().expect("Failed to get capture format");
-                println!("Capture format:\n\t{:?}\n", format);
+                log::debug!("Capture format:\n\t{:?}\n", format);
 
                 let handle = handle
                     .request_buffers_generic::<Vec<MmapHandle>>(MemoryType::Mmap, self.num_buffers)
                     .expect("Failed to request capture buffers");
-                println!(
+                log::debug!(
                     "Capture queue:\n\t
                     num_buffers: {}\n\t
                     num_queued_buffers: {}\n\t
@@ -300,7 +300,7 @@ impl V4l2CaptureQueue {
                 // TODO: handle start/stop at runtime
                 handle.stream_on().expect("Failed to start capture queue");
 
-                println!("Capture queue:\n\tstate: Init -> Streaming\n");
+                log::debug!("Capture queue:\n\tstate: Init -> Streaming\n");
                 V4l2CaptureQueueHandle::Streaming(handle)
             }
             _ => {
@@ -328,7 +328,7 @@ impl V4l2CaptureQueue {
                     let buffer = handle
                         .try_get_free_buffer()
                         .expect("Failed to alloc capture buffer");
-                    println!("capture >> index: {}\n", buffer.index());
+                    log::debug!("capture >> index: {}\n", buffer.index());
                     buffer.queue().expect("Failed to queue capture buffer");
                 }
             }
