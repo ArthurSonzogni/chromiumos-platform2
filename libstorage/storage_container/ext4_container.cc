@@ -123,12 +123,14 @@ bool Ext4Container::Exists() {
 }
 
 bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
-  // Check whether the kernel keyring provisioning is supported by the current
-  // kernel.
   bool created = false;
+  bool format_needed = false;
+
   if (!backing_container_->Exists()) {
+    // container Setup() call will create the backing device.
     LOG(INFO) << "Creating backing device for filesystem";
     created = true;
+    format_needed = true;
   }
   if (!backing_container_->Setup(encryption_key)) {
     LOG(ERROR) << "Failed to setup backing device";
@@ -151,25 +153,26 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
       SendBool("_FsckNeeded", true);
       SendBool("_RecoveryNeeded", true);
     }
-    if ((!rc) && (fsck_err & FSCK_ERRORS_LEFT_UNCORRECTED)) {
-      // Only go deeper if when we are sure we have more filesystem error to
-      // correct. Skip when we have fsck internal errors, we could slow down
-      // boot/mount unnecessarily.
+    if (!rc) {
       LOG(WARNING) << backing
                    << ": needs more filesystem cleanup: error returned: "
                    << fsck_err;
       switch (recovery_) {
         case RecoveryType::kEnforceCleaning:
+          // Worthwhile trying again, deeper checks.
           platform_->Fsck(backing, FsckOption::kFull, &fsck_err);
           break;
         case RecoveryType::kPurge:
-          LOG(WARNING) << backing << ": is beeing recreated";
-          Purge();
+          if (created) {
+            Purge();
+          } else {
+            Teardown();
+          }
           if (!backing_container_->Setup(encryption_key)) {
             LOG(ERROR) << "Failed to recreate backing device";
             return false;
           }
-          created = true;
+          format_needed = true;
           break;
         case RecoveryType::kDoNothing:
           break;
@@ -197,12 +200,12 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
     }
   };
 
-  if (created) {
+  if (format_needed) {
+    LOG(INFO) << backing << ": Formatting";
     if (!platform_->FormatExt4(backing, mkfs_opts_, 0)) {
-      LOG(ERROR) << "Failed to format ext4 filesystem";
+      LOG(ERROR) << backing << ": Failed to format ext4 filesystem";
       return false;
     }
-    fsck_err = FSCK_SUCCESS;
   }
 
   // Modify features depending on whether we already have the following enabled.
