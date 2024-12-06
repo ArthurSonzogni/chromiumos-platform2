@@ -10,7 +10,7 @@
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/system_utils_impl.h"
+#include "login_manager/fake_system_utils.h"
 
 namespace em = enterprise_management;
 
@@ -18,22 +18,14 @@ namespace login_manager {
 
 class PolicyStoreTest : public ::testing::Test {
  public:
-  PolicyStoreTest() {}
+  PolicyStoreTest() = default;
   PolicyStoreTest(const PolicyStoreTest&) = delete;
   PolicyStoreTest& operator=(const PolicyStoreTest&) = delete;
-
-  ~PolicyStoreTest() override {}
+  ~PolicyStoreTest() override = default;
 
   void SetUp() override {
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-
-    // Create a temporary filename that's guaranteed to not exist, but is
-    // inside our scoped directory so it'll get deleted later.
-    ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.GetPath(), &tmpfile_));
-    ASSERT_TRUE(brillo::DeleteFile(tmpfile_));
+    ASSERT_TRUE(system_utils_.CreateDir(tmpfile_.DirName()));
   }
-
-  void TearDown() override {}
 
   void CheckExpectedPolicy(PolicyStore* store,
                            const em::PolicyFetchResponse& policy) {
@@ -44,9 +36,8 @@ class PolicyStoreTest : public ::testing::Test {
     EXPECT_EQ(serialized, serialized_from);
   }
 
-  base::ScopedTempDir tmpdir_;
-  base::FilePath tmpfile_;
-  SystemUtilsImpl system_utils_;
+  base::FilePath tmpfile_{"/tmp/foo/bar"};
+  FakeSystemUtils system_utils_;
 };
 
 TEST_F(PolicyStoreTest, InitialEmptyStore) {
@@ -61,9 +52,9 @@ TEST_F(PolicyStoreTest, CreateEmptyStore) {
 }
 
 TEST_F(PolicyStoreTest, FailBrokenStore) {
-  base::FilePath bad_file;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.GetPath(), &bad_file));
-  PolicyStore store(&system_utils_, bad_file);
+  // Create a bad file.
+  ASSERT_TRUE(system_utils_.WriteStringToFile(tmpfile_, ""));
+  PolicyStore store(&system_utils_, tmpfile_);
   ASSERT_FALSE(store.EnsureLoadedOrCreated());
 }
 
