@@ -135,17 +135,6 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  // Ensure that the dm-crypt device or the underlying backing device are
-  // not left attached on the failure paths. If the backing device was created
-  // during setup, purge it as well.
-  absl::Cleanup device_cleanup_runner = [this, created]() {
-    if (created) {
-      Purge();
-    } else {
-      Teardown();
-    }
-  };
-
   int fsck_err;
   base::FilePath backing(GetBackingLocation());
   if (!created) {
@@ -195,6 +184,18 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
       SendEnum(".fsckResult", fsck_error);
     }
   }
+
+  // Ensure that the dm-crypt device or the underlying backing device are
+  // not left attached on the failure paths. If the backing device was created
+  // during setup, purge it as well.
+  // We can capture `created`, it will not change anymore.
+  absl::Cleanup device_cleanup_runner = [this, created]() {
+    if (created) {
+      Purge();
+    } else {
+      Teardown();
+    }
+  };
 
   if (created) {
     if (!platform_->FormatExt4(backing, mkfs_opts_, 0)) {
