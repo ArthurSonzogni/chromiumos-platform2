@@ -46,6 +46,7 @@ class StatefulMount {
                      MountHelper* mount_helper,
                      const base::Value& image_vars);
 
+  void DevPerformStatefulUpdate();
   bool DevUpdateStatefulPartition(const std::string& args,
                                   bool enable_stateful_security_hardening);
   void DevGatherLogs(const base::FilePath& base_dir);

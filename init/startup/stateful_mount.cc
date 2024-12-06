@@ -57,13 +57,14 @@ constexpr char kLabMachine[] = ".labmachine";
 constexpr char kDevModeFile[] = ".developer_mode";
 
 constexpr char kVar[] = "var";
+constexpr char kVarNew[] = "var_new";
+constexpr char kVarOverlay[] = "var_overlay";
 constexpr char kChronos[] = "chronos";
 constexpr char kUnencrypted[] = "unencrypted";
-constexpr char kNew[] = "_new";
-constexpr char kOverlay[] = "_overlay";
 
 constexpr char kVarLogAsan[] = "var/log/asan";
 constexpr char kStatefulDevImage[] = "dev_image";
+constexpr char kStatefulDevImageNew[] = "dev_image_new";
 constexpr char kUsrLocal[] = "usr/local";
 constexpr char kTmpPortage[] = "var/tmp/portage";
 constexpr char kProcMounts[] = "proc/mounts";
@@ -363,6 +364,32 @@ void StatefulMount::RemoveEmptyDirectory(
   }
 }
 
+void StatefulMount::DevPerformStatefulUpdate() {
+  // Perform update.
+  std::vector<std::pair<base::FilePath, base::FilePath>> update_targets = {
+      {stateful_.Append(kVarNew), stateful_.Append(kVarOverlay)},
+      {stateful_.Append(kStatefulDevImageNew),
+       stateful_.Append(kStatefulDevImage)},
+  };
+
+  for (auto& [src, dst] : update_targets) {
+
+    // Cleanup old target directories.
+    if (!platform_->DeletePathRecursively(dst)) {
+      PLOG(WARNING) << "Failed to delete " << dst;
+    }
+
+    if (!platform_->Rename(src, dst, true)) {
+      LOG(WARNING) << "Failed to rename the source dir";
+      continue;
+    }
+
+    if (!platform_->SetPermissions(dst, 0755)) {
+      PLOG(WARNING) << "chmod failed for " << dst.value();
+    }
+  }
+}
+
 // Updates stateful partition if pending
 // update is available.
 // Returns true if there is no need to update or successful update.
@@ -383,12 +410,10 @@ bool StatefulMount::DevUpdateStatefulPartition(
   // To remain compatible with the prior update_stateful tarballs, expect
   // the "var_new" unpack location, but move it into the new "var_overlay"
   // target location.
-  std::string var(kVar);
-  std::string dev_image(kStatefulDevImage);
-  base::FilePath var_new = stateful_.Append(var + kNew);
-  base::FilePath developer_new = stateful_.Append(dev_image + kNew);
+  base::FilePath var_new = stateful_.Append(kVarNew);
+  base::FilePath developer_new = stateful_.Append(kStatefulDevImageNew);
   base::FilePath stateful_dev_image = stateful_.Append(kStatefulDevImage);
-  base::FilePath var_target = stateful_.Append(var + kOverlay);
+  base::FilePath var_target = stateful_.Append(kVarOverlay);
 
   // Only replace the developer and var_overlay directories if new replacements
   // are available.
@@ -397,43 +422,7 @@ bool StatefulMount::DevUpdateStatefulPartition(
     std::string update = "Updating from " + developer_new.value() + " && " +
                          var_new.value() + ".";
     startup_dep_->ClobberLog(update);
-
-    for (const std::string& path : {kVar, kStatefulDevImage}) {
-      base::FilePath path_new = stateful_.Append(path + kNew);
-      base::FilePath path_target;
-      if (path == "var") {
-        path_target = stateful_.Append(path + kOverlay);
-      } else {
-        path_target = stateful_.Append(path);
-      }
-      if (!platform_->DeletePathRecursively(path_target)) {
-        PLOG(WARNING) << "Failed to delete " << path_target.value();
-      }
-
-      if (!platform_->CreateDirectory(path_target)) {
-        PLOG(WARNING) << "Failed to create " << path_target.value();
-      }
-
-      if (!platform_->SetPermissions(path_target, 0755)) {
-        PLOG(WARNING) << "chmod failed for " << path_target.value();
-      }
-
-      std::unique_ptr<libstorage::FileEnumerator> enumerator(
-          platform_->GetFileEnumerator(
-              path_new, false /* recursive */,
-              base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
-                  base::FileEnumerator::SHOW_SYM_LINKS));
-
-      for (base::FilePath fd = enumerator->Next(); !fd.empty();
-           fd = enumerator->Next()) {
-        // Filesystem crossing if new var comes in a logical volume.
-        if (!platform_->Rename(fd, path_target.Append(fd.BaseName()), true)) {
-          PLOG(WARNING) << "Failed to copy " << fd.value() << " to "
-                        << path_target.value();
-        }
-      }
-      platform_->DeletePathRecursively(path_new);
-    }
+    DevPerformStatefulUpdate();
   } else {
     std::string update = "Stateful update did not find " +
                          developer_new.value() + " & " + var_new.value() +
