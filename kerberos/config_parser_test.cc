@@ -99,10 +99,9 @@ std::ostream& operator<<(std::ostream& os, ConfigErrorCode code) {
       return os << "Too many nested groups";
     case CONFIG_ERROR_LINE_TOO_LONG:
       return os << "Config line too long";
-    default:
-      NOTREACHED_IN_MIGRATION();
+    case CONFIG_ERROR_COUNT:
+      NOTREACHED();
   }
-  return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const ConfigErrorInfo& error_info) {
