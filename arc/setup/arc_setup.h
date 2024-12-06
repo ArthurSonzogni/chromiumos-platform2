@@ -79,7 +79,6 @@ enum class Mode {
   MOUNT_SDCARD,
   UNMOUNT_SDCARD,
   UPDATE_RESTORECON_LAST,
-  UNKNOWN,
 };
 
 // A class that does the actual setup (and stop) operations.

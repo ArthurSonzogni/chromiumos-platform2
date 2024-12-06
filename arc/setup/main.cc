@@ -14,8 +14,8 @@
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
-#include <base/timer/elapsed_timer.h>
 #include <base/logging.h>
+#include <base/timer/elapsed_timer.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -43,8 +43,7 @@ arc::Mode GetMode(const std::string& mode) {
     }
   }
 
-  CHECK(false) << "Invalid mode '" << mode << "'";
-  return arc::Mode::UNKNOWN;
+  NOTREACHED() << "Invalid mode '" << mode << "'";
 }
 
 }  // namespace

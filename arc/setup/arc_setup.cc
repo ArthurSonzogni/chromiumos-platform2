@@ -526,7 +526,6 @@ bool IsChromeOSUserAvailable(Mode mode) {
     case Mode::PRE_CHROOT:
     case Mode::UNMOUNT_SDCARD:
     case Mode::UPDATE_RESTORECON_LAST:
-    case Mode::UNKNOWN:
       return false;
   }
 }
@@ -3011,9 +3010,6 @@ void ArcSetup::Run() {
       break;
     case Mode::UPDATE_RESTORECON_LAST:
       OnUpdateRestoreconLast();
-      break;
-    case Mode::UNKNOWN:
-      NOTREACHED_IN_MIGRATION();
       break;
   }
 }
