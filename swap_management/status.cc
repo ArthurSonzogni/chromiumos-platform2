@@ -4,6 +4,7 @@
 
 #include "swap_management/status.h"
 
+#include <absl/strings/str_cat.h>
 #include <base/posix/safe_strerror.h>
 
 namespace swap_management {

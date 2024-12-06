@@ -5,15 +5,17 @@
 #ifndef SWAP_MANAGEMENT_UTILS_H_
 #define SWAP_MANAGEMENT_UTILS_H_
 
+#include <sys/statfs.h>
+
 #include <string>
 #include <vector>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <absl/strings/numbers.h>
 #include <base/files/file_path.h>
-#include <base/scoped_generic.h>
 #include <base/process/process_metrics.h>
-#include <sys/statfs.h>
+#include <base/scoped_generic.h>
 
 namespace swap_management {
 constexpr char kZramDeviceFile[] = "/dev/zram0";

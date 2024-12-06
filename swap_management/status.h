@@ -6,6 +6,7 @@
 #define SWAP_MANAGEMENT_STATUS_H_
 
 #include <absl/status/status.h>
+#include <absl/strings/string_view.h>
 
 namespace swap_management {
 // Helper function to translate errno to absl::status
