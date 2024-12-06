@@ -160,7 +160,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
         break;
       }
       default:
-        NOTREACHED_IN_MIGRATION();
+        NOTREACHED();
     }
 
     // The mount point will be automatically removed when the upstart job stops

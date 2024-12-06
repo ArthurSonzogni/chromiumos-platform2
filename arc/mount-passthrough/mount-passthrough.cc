@@ -6,20 +6,9 @@
 
 #define FUSE_USE_VERSION 26
 
-#include <base/command_line.h>
-#include <base/files/file_path.h>
-#include <base/logging.h>
-#include <base/notreached.h>
-#include <base/strings/string_split.h>
-#include <base/strings/stringprintf.h>
-#include <brillo/flag_helper.h>
-#include <brillo/syslog_logging.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <fuse/fuse.h>
-#include <fuse/fuse_common.h>
-#include <fuse/fuse_lowlevel.h>
 #include <linux/fs.h>
 #include <linux/limits.h>
 #include <signal.h>
@@ -36,6 +25,18 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+
+#include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/logging.h>
+#include <base/notreached.h>
+#include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
+#include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
+#include <fuse/fuse.h>
+#include <fuse/fuse_common.h>
+#include <fuse/fuse_lowlevel.h>
 
 #include "arc/mount-passthrough/mount-passthrough-util.h"
 
@@ -86,8 +87,7 @@ std::string get_storage_source(const std::string& android_app_access_type) {
   } else if (android_app_access_type == "write") {
     return "/runtime/write";
   } else {
-    NOTREACHED_IN_MIGRATION();
-    return "notreached";
+    NOTREACHED();
   }
 }
 
