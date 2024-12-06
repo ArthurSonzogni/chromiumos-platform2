@@ -5,8 +5,12 @@
 #ifndef CRYPTOHOME_ERROR_UTILITIES_H_
 #define CRYPTOHOME_ERROR_UTILITIES_H_
 
+#include <optional>
+
+#include <libhwsec-foundation/status/status_chain.h>
+
 #include "cryptohome/error/action.h"
-#include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/converter.h"
 
 namespace cryptohome::error {
 
@@ -15,12 +19,22 @@ namespace cryptohome::error {
 template <typename ErrorType>
 bool PrimaryActionIs(
     const hwsec_foundation::status::StatusChain<ErrorType>& error,
-    const PrimaryAction action);
+    const PrimaryAction action) {
+  std::optional<PrimaryAction> primary;
+  PossibleActions possible;
+  ActionsFromStack(error, primary, possible);
+  return primary.has_value() && primary.value() == action;
+}
 
 template <typename ErrorType>
 bool PossibleActionsInclude(
     const hwsec_foundation::status::StatusChain<ErrorType>& error,
-    const PossibleAction action);
+    const PossibleAction action) {
+  std::optional<PrimaryAction> primary;
+  PossibleActions possible;
+  ActionsFromStack(error, primary, possible);
+  return possible[action];
+}
 
 }  // namespace cryptohome::error
 

@@ -96,8 +96,6 @@ std::string ErrorIDFromStack(
   return result;
 }
 
-}  // namespace
-
 // Retrieves the recommendation from cryptohome to the caller (Chromium).
 // PrimaryAction means that cryptohome is certain that an action will resolve
 // the issue, or there's a specific reason why it failed. PossibleAction means
@@ -106,7 +104,7 @@ std::string ErrorIDFromStack(
 // stack, the first one (upper-layer) is used. This behavior might be changed in
 // the future.
 template <typename ErrorType>
-void ActionsFromStack(
+void ActionsFromStackImpl(
     const hwsec_foundation::status::StatusChain<ErrorType>& stack,
     std::optional<PrimaryAction>& primary,
     PossibleActions& possible) {
@@ -156,15 +154,20 @@ void ActionsFromStack(
   return;
 }
 
-// Instantiate for common types.
-template void ActionsFromStack(
+}  // namespace
+
+void ActionsFromStack(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& stack,
     std::optional<PrimaryAction>& primary,
-    PossibleActions& possible);
-template void ActionsFromStack(
+    PossibleActions& possible) {
+  return ActionsFromStackImpl(stack, primary, possible);
+}
+void ActionsFromStack(
     const hwsec_foundation::status::StatusChain<CryptohomeCryptoError>& stack,
     std::optional<PrimaryAction>& primary,
-    PossibleActions& possible);
+    PossibleActions& possible) {
+  return ActionsFromStackImpl(stack, primary, possible);
+}
 
 user_data_auth::CryptohomeErrorCode LegacyErrorCodeFromStack(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& stack) {

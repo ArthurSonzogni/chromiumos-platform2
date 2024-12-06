@@ -587,7 +587,6 @@ static_library("libcryptohome") {
     "../error/cryptohome_tpm_error.cc",
     "../error/reap.cc",
     "../error/reporting.cc",
-    "../error/utilities.cc",
     "../features.cc",
     "../filesystem_layout.cc",
     "../fingerprint_manager.cc",

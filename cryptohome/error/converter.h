@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// This file hosts utilities that converts the CryptohomeError class into the
+// error format on the dbus.
+
 #ifndef CRYPTOHOME_ERROR_CONVERTER_H_
 #define CRYPTOHOME_ERROR_CONVERTER_H_
 
 #include <utility>
-#include <vector>
 
 #include <base/functional/callback.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -18,13 +20,13 @@
 
 namespace cryptohome::error {
 
-// This file hosts utilities that converts the CryptohomeError class into the
-// error format on the dbus.
-
 // Retrieves the final ErrorActions from the stack of errors.
-template <typename ErrorType>
 void ActionsFromStack(
-    const hwsec_foundation::status::StatusChain<ErrorType>& stack,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& stack,
+    std::optional<PrimaryAction>& primary,
+    PossibleActions& possible);
+void ActionsFromStack(
+    const hwsec_foundation::status::StatusChain<CryptohomeCryptoError>& stack,
     std::optional<PrimaryAction>& primary,
     PossibleActions& possible);
 
