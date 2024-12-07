@@ -43,9 +43,14 @@ bool AllowSymlink(libstorage::Platform* platform,
 bool AllowFifo(libstorage::Platform* platform,
                const base::FilePath& root,
                const std::string& path);
+bool AllowBlkCryptoPassthrough(libstorage::Platform* platform,
+                               const base::FilePath& root,
+                               const std::string& path);
 
 void SymlinkExceptions(libstorage::Platform* platform,
                        const base::FilePath& root);
+void BlkCryptoPassthroughExceptions(libstorage::Platform* platform,
+                                    const base::FilePath& root);
 void ExceptionsProjectSpecific(libstorage::Platform* platform,
                                const base::FilePath& root,
                                const base::FilePath& config_dir,

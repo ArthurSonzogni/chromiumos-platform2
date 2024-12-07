@@ -52,6 +52,11 @@ constexpr char kSymlinkExceptionsDir[] =
 constexpr char kFifoExceptionsDir[] = "usr/share/cros/startup/fifo_exceptions";
 constexpr char kVar[] = "var";
 
+constexpr std::array<const char*, 2> kBlkCryptoPassthroughExceptions = {
+    "mnt/stateful_partition/unencrypted",
+    "var/cache/dlc",
+};
+
 }  // namespace
 
 namespace startup {
@@ -239,6 +244,14 @@ bool AllowFifo(libstorage::Platform* platform,
   return platform->WriteStringToFile(fifo, path);
 }
 
+bool AllowBlkCryptoPassthrough(libstorage::Platform* platform,
+                               const base::FilePath& root,
+                               const std::string& path) {
+  base::FilePath blkcrypto_passthrough =
+      root.Append(kLsmInodePolicies).Append("allow_blk_crypto_passthrough");
+  return platform->WriteStringToFile(blkcrypto_passthrough, path);
+}
+
 void SymlinkExceptions(libstorage::Platform* platform,
                        const base::FilePath& root) {
   // Generic symlink exceptions.
@@ -251,6 +264,20 @@ void SymlinkExceptions(libstorage::Platform* platform,
       PLOG(WARNING) << "Failed to set permissions for " << d.value();
     }
     AllowSymlink(platform, root, d.value());
+  }
+}
+
+void BlkCryptoPassthroughExceptions(libstorage::Platform* platform,
+                                    const base::FilePath& root) {
+  for (auto dir : kBlkCryptoPassthroughExceptions) {
+    base::FilePath d = root.Append(dir);
+    if (!platform->CreateDirectory(d)) {
+      PLOG(WARNING) << "mkdir failed for " << d.value();
+    }
+    if (!platform->SetPermissions(d, 0755)) {
+      PLOG(WARNING) << "Failed to set permissions for " << d.value();
+    }
+    AllowBlkCryptoPassthrough(platform, root, d.value());
   }
 }
 
@@ -309,6 +336,11 @@ void ConfigureFilesystemExceptions(libstorage::Platform* platform,
   // in the few instances where they are used intentionally.
   BlockSymlinkAndFifo(platform, root, root.Append(kVar).value());
   SymlinkExceptions(platform, root);
+
+  // Set up blk-crypto passthrough directories for the unencrypted directory
+  // and for the DLC directory.
+  BlkCryptoPassthroughExceptions(platform, root);
+
   // Project-specific symlink exceptions. Projects may add exceptions by
   // adding a file under /usr/share/cros/startup/symlink_exceptions/ whose
   // contents contains a list of paths (one per line) for which an exception
