@@ -413,7 +413,7 @@ message StartArcVmRequest {
     BINARY_TRANSLATION_TYPE_NDK_TRANSLATION = 2;
   }
 
-  // Type of binary translation used in natvie bridge experiment
+  // Type of binary translation used in native bridge experiment
   BinaryTranslationType native_bridge_experiment = 39;
 
   enum UreadaheadMode {

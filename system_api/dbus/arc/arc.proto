@@ -43,6 +43,8 @@ message StartArcMiniInstanceRequest {
     MODE_DISABLED = 2;
   }
 
+  // Override with ndk_translation. Useful for ARC++ only, for ARCVM see
+  // native_bridge_experiment in StartArcVmRequest.
   optional bool native_bridge_experiment = 1 [default = false];
 
   // The density value passed to "ro.sf.lcd_density" property.
