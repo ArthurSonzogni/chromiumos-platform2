@@ -3,3 +3,4 @@
 // found in the LICENSE file.
 
 pub mod h264;
+pub mod vp8;
