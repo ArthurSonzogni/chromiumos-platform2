@@ -377,6 +377,8 @@ void Manager::Start() {
   }
   InitializePatchpanelClient();
 
+  modem_info_->CreateCellularDevice();
+
   // Start task for checking connection status.
   device_status_check_task_.Reset(base::BindOnce(
       &Manager::DeviceStatusCheckTask, weak_factory_.GetWeakPtr()));
