@@ -117,8 +117,14 @@ void ClientTracker::RemoveClient(uint32_t client_id) {
 
 void ClientTracker::AcceptProxyConnection(base::ScopedFD fd) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))),
+      MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
+#endif
   mojo::ScopedMessagePipeHandle child_pipe =
       invitation.ExtractMessagePipe(kMidisPipe);
   midis_host_ = std::make_unique<MidisHostImpl>(
