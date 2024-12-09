@@ -160,7 +160,7 @@ int BPF_PROG(handle_sched_process_exec,
     fill_ns_info(&process_start_copy->spawn_namespace, current);
     fill_image_info(&process_start_copy->image_info, bprm, current);
     bpf_map_update_elem(&shared_process_info, &pid, process_start_copy,
-                        BPF_NOEXIST);
+                        BPF_ANY);
   }
   // Submit the event to the ring buffer for userspace processing.
   bpf_ringbuf_submit(event, 0);

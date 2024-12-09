@@ -89,9 +89,9 @@ struct {
 // Shared Process Info Map (Populated by another eBPF program)
 struct {
   __uint(type, BPF_MAP_TYPE_HASH);
-  __uint(max_entries,
-         65536);  // up to 2^16 task info for processes can be stored.
-  __type(key, pid_t);
+  __uint(max_entries, 65536);  // up to 2^16 task info for processes can be
+  // stored.
+  __type(key, uint32_t);
   __type(value, struct cros_process_start);
   __uint(map_flags, BPF_F_NO_PREALLOC);
   __uint(pinning, LIBBPF_PIN_BY_NAME);  // map will be shared across bpf objs.
