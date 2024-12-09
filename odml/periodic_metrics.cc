@@ -73,8 +73,9 @@ void PeriodicMetrics::UpdateAndRecordMetricsNow() {
 
 void PeriodicMetrics::UpdateAndRecordMetrics(
     chromeos_metrics::CumulativeMetrics* const cumulative_metrics) {
-  size_t resident_set_size = process_metrics_->GetResidentSetSize();
-  size_t swap_size = process_metrics_->GetVmSwapBytes();
+  auto info = process_metrics_->GetMemoryInfo();
+  size_t resident_set_size = info.has_value() ? info->resident_set_bytes : 0;
+  size_t swap_size = info.has_value() ? info->vm_swap_bytes : 0;
   size_t malloc_size = process_metrics_->GetMallocUsage();
 
   // Update max memory stats.
@@ -105,8 +106,9 @@ void PeriodicMetrics::UploadMetrics(
       kMemoryUsageMinKb, kMemoryUsageMaxKb, kMemoryUsageBuckets);
 
   // Report the current memory usage.
-  size_t resident_set_size = process_metrics_->GetResidentSetSize();
-  size_t swap_size = process_metrics_->GetVmSwapBytes();
+  auto info = process_metrics_->GetMemoryInfo();
+  size_t resident_set_size = info.has_value() ? info->resident_set_bytes : 0;
+  size_t swap_size = info.has_value() ? info->vm_swap_bytes : 0;
   size_t malloc_size = process_metrics_->GetMallocUsage();
 
   metrics_->SendToUMA(kTotalRssMemoryMetricName, resident_set_size,
