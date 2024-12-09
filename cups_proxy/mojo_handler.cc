@@ -70,7 +70,8 @@ bool MojoHandler::CreateTaskRunner() {
 void MojoHandler::SetupMojoPipe(base::ScopedFD fd,
                                 base::OnceClosure error_handler) {
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
-      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))),
+      MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
 
   mojo_task_runner_->PostTask(
       FROM_HERE,
