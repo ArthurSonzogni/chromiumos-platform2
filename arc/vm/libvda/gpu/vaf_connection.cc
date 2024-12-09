@@ -5,6 +5,7 @@
 #include "arc/vm/libvda/gpu/vaf_connection.h"
 
 #include <fcntl.h>
+#include <sys/eventfd.h>
 
 #include <memory>
 #include <set>
@@ -31,7 +32,6 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/platform_handle.h>
-#include <sys/eventfd.h>
 
 #include "arc/vm/libvda/gpu/mojom/video_decode_accelerator.mojom.h"
 #include "arc/vm/libvda/gpu/mojom/video_decoder.mojom.h"
@@ -160,8 +160,14 @@ void VafConnection::InitializeOnIpcThread(bool* init_success) {
   }
 
   // Setup the mojo pipe.
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))),
+      MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
+#endif
   mojo::PendingRemote<arc::mojom::VideoAcceleratorFactory> pending_factory(
       invitation.ExtractMessagePipe(pipe_name),
       kRequiredVideoAcceleratorFactoryMojoVersion);
