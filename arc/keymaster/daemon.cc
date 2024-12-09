@@ -93,8 +93,14 @@ void Daemon::BootstrapMojoConnection(
 }
 
 void Daemon::AcceptProxyConnection(base::ScopedFD fd) {
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))),
+      MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
+#endif
 
   auto keymaster_server = std::make_unique<KeymasterServer>();
   auto cert_store_instance =
