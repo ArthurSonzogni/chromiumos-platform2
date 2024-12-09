@@ -26,6 +26,7 @@
 
 #if USE_DEBUG
 #include <vector>
+
 #include "federated/mojom/federated_service.mojom.h"
 #include "federated/mojom/tables.mojom.h"
 #endif  // USE_DEBUG
@@ -134,9 +135,16 @@ void Daemon::BootstrapMojoConnection(
   }
 
   // Connects to mojo in the requesting process.
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(
+          mojo::PlatformHandle(std::move(file_handle))),
+      MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
           mojo::PlatformHandle(std::move(file_handle))));
+#endif
 
   // Binds primordial message pipe to a FederatedService implementation.
   federated_service_ = std::make_unique<FederatedServiceImpl>(
