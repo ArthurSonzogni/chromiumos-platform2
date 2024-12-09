@@ -247,8 +247,7 @@ const char* GetPreferredPath(udev_device* dev) {
     // 60-persistent-v4l.rules, and supposed to be persistent for built-in
     // cameras so we can safely reuse it across suspend/resume cycles, without
     // updating |path_to_id_| for them.
-    if (!base::StartsWith(name, "/dev/v4l/by-path/",
-                          base::CompareCase::SENSITIVE)) {
+    if (!std::string_view(name).starts_with("/dev/v4l/by-path/")) {
       continue;
     }
 

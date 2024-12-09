@@ -4,6 +4,9 @@
  * found in the LICENSE file.
  */
 
+#include <libyuv.h>
+#include <linux/videodev2.h>
+
 #include <cstdlib>
 #include <set>
 #include <string_view>
@@ -12,20 +15,18 @@
 #include <base/check_op.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
-#include <base/process/launch.h>
 #include <base/posix/safe_strerror.h>
+#include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
-#include <base/time/time.h>
 #include <base/threading/thread.h>
+#include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
-#include <libyuv.h>
-#include <linux/videodev2.h>
 
 #include "common/libcamera_connector_test/i420_buffer.h"
 #include "common/libcamera_connector_test/util.h"
@@ -84,7 +85,7 @@ bool IsVividLoaded() {
       output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   return std::any_of(lines.begin(), lines.end(), [](const auto& line) {
-    return base::StartsWith(line, "vivid", base::CompareCase::SENSITIVE);
+    return line.starts_with("vivid");
   });
 }
 

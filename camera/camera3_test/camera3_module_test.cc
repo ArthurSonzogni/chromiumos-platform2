@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_test/camera3_module_fixture.h"
-
 #include <algorithm>
 #include <iterator>
 #include <optional>
@@ -25,6 +23,7 @@
 #include <system/camera_metadata_hidden.h>
 
 #include "camera3_test/camera3_device.h"
+#include "camera3_test/camera3_module_fixture.h"
 #include "camera3_test/camera3_perf_log.h"
 #include "camera3_test/camera3_test_data_forwarder.h"
 #include "common/utils/camera_hal_enumerator.h"
@@ -1467,7 +1466,7 @@ bool InitializeTest(int* argc,
   std::optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
   std::string model = config.has_value() ? config->GetModelName() : "";
   // remove kernelnext suffix
-  if (base::EndsWith(board, "-kernelnext")) {
+  if (board.ends_with("-kernelnext")) {
     board = board.substr(0, board.size() - 11);
   }
   if (base::Contains(kIgnoreSensorOrientationTestBoards, board) ||
