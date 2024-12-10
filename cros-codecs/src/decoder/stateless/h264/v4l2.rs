@@ -15,6 +15,7 @@ use crate::backend::v4l2::decoder::stateless::BackendHandle;
 use crate::backend::v4l2::decoder::stateless::V4l2Picture;
 use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderBackend;
 use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderHandle;
+use crate::backend::v4l2::decoder::V4l2StreamInfo;
 use crate::codec::h264::dpb::Dpb;
 use crate::codec::h264::dpb::DpbEntry;
 use crate::codec::h264::parser::Pps;
@@ -35,6 +36,22 @@ use crate::device::v4l2::stateless::controls::h264::V4l2CtrlH264DecodeParams;
 use crate::device::v4l2::stateless::controls::h264::V4l2CtrlH264DpbEntry;
 //TODO use crate::device::v4l2::stateless::controls::h264::V4l2CtrlH264ScalingMatrix;
 use crate::Resolution;
+
+impl V4l2StreamInfo for &Rc<Sps> {
+    fn min_num_frames(&self) -> usize {
+        self.max_dpb_frames() + 4
+    }
+
+    fn coded_size(&self) -> Resolution {
+        Resolution::from((self.width(), self.height()))
+    }
+
+    fn visible_rect(&self) -> ((u32, u32), (u32, u32)) {
+        let rect = self.visible_rectangle();
+
+        ((rect.min.x, rect.min.y), (rect.max.x, rect.max.y))
+    }
+}
 
 impl StatelessDecoderBackendPicture<H264> for V4l2StatelessDecoderBackend {
     type Picture = Rc<RefCell<V4l2Picture>>;

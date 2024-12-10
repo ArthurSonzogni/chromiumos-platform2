@@ -5,6 +5,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::backend::v4l2::decoder::V4l2StreamInfo;
 use crate::decoder::stateless::PoolLayer;
 use crate::decoder::stateless::StatelessCodec;
 use crate::decoder::stateless::StatelessDecoderBackend;
@@ -131,9 +132,9 @@ impl V4l2StatelessDecoderBackend {
             device: V4l2Device::new(),
             stream_info: StreamInfo {
                 format: DecodedFormat::I420,
-                min_num_frames: 4,
-                coded_resolution: Resolution::from((320, 200)),
-                display_resolution: Resolution::from((320, 200)),
+                min_num_frames: 0,
+                coded_resolution: Resolution::from((0, 0)),
+                display_resolution: Resolution::from((0, 0)),
             },
         }
     }
@@ -167,9 +168,31 @@ impl FramePool for V4l2StatelessDecoderBackend {
     }
 }
 
-impl<Codec: StatelessCodec> TryFormat<Codec> for V4l2StatelessDecoderBackend {
-    fn try_format(&mut self, _: &Codec::FormatInfo, _: DecodedFormat) -> anyhow::Result<()> {
+impl<Codec: StatelessCodec> TryFormat<Codec> for V4l2StatelessDecoderBackend
+where
+    for<'a> &'a Codec::FormatInfo: V4l2StreamInfo,
+{
+    fn try_format(
+        &mut self,
+        format_info: &Codec::FormatInfo,
+        format: DecodedFormat,
+    ) -> anyhow::Result<()> {
         // TODO
+        // VIDIOC_S/G_FMT has been called on both output and capture buffers.
+        // The VAAPI implementation looks to do actual format checking here.
+        // The values provided here are directly from the codec (modulo format).
+        // Hardware may handle this differently, i.e. buffer padding.
+        self.stream_info.format = format;
+        let visible_rect = format_info.visible_rect();
+
+        let display_resolution = Resolution {
+            width: visible_rect.1 .0 - visible_rect.0 .0,
+            height: visible_rect.1 .1 - visible_rect.0 .1,
+        };
+
+        self.stream_info.min_num_frames = format_info.min_num_frames();
+        self.stream_info.coded_resolution = format_info.coded_size();
+        self.stream_info.display_resolution = display_resolution;
         Ok(())
     }
 }

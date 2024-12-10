@@ -12,6 +12,7 @@ use crate::backend::v4l2::decoder::stateless::BackendHandle;
 use crate::backend::v4l2::decoder::stateless::V4l2Picture;
 use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderBackend;
 use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderHandle;
+use crate::backend::v4l2::decoder::V4l2StreamInfo;
 
 use crate::codec::vp8::parser::Header;
 use crate::codec::vp8::parser::MbLfAdjustments;
@@ -30,6 +31,23 @@ use crate::decoder::BlockingMode;
 use crate::device::v4l2::stateless::controls::vp8::V4l2CtrlVp8FrameParams;
 
 use crate::Resolution;
+
+/// The number of frames to allocate for this codec. Same as GStreamer's vavp8dec.
+const NUM_FRAMES: usize = 7;
+
+impl V4l2StreamInfo for &Header {
+    fn min_num_frames(&self) -> usize {
+        NUM_FRAMES
+    }
+
+    fn coded_size(&self) -> Resolution {
+        Resolution::from((self.width as u32, self.height as u32))
+    }
+
+    fn visible_rect(&self) -> ((u32, u32), (u32, u32)) {
+        ((0, 0), self.coded_size().into())
+    }
+}
 
 impl StatelessDecoderBackendPicture<Vp8> for V4l2StatelessDecoderBackend {
     type Picture = Rc<RefCell<V4l2Picture>>;
