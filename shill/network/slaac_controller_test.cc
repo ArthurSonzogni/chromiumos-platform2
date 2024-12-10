@@ -32,6 +32,7 @@ namespace {
 constexpr int kTestIfindex = 123;
 constexpr char kTestIfname[] = "eth_test";
 constexpr auto kTestTechnology = Technology::kUnknown;
+constexpr auto kTestLoggingTag = "eth_test fake_service sid=1";
 
 constexpr net_base::IPv4Address kTestIPAddress0(192, 168, 1, 1);
 const net_base::IPv6Address kTestIPAddress1 =
@@ -49,8 +50,11 @@ const net_base::IPv6Address kTestIPAddress7 =
 class SLAACControllerTest : public testing::Test {
  public:
   SLAACControllerTest()
-      : slaac_controller_(
-            kTestIfindex, &proc_fs_, &rtnl_handler_, &dispatcher_),
+      : slaac_controller_(kTestIfindex,
+                          &proc_fs_,
+                          &rtnl_handler_,
+                          &dispatcher_,
+                          kTestLoggingTag),
         proc_fs_(kTestIfname),
         network_(kTestIfindex, kTestIfname, kTestTechnology) {}
   ~SLAACControllerTest() override = default;

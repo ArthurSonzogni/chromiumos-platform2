@@ -313,7 +313,8 @@ void Network::Start(const Network::StartOptions& opts) {
 
 std::unique_ptr<SLAACController> Network::CreateSLAACController() {
   auto slaac_controller = std::make_unique<SLAACController>(
-      interface_index_, proc_fs_.get(), rtnl_handler_, dispatcher_);
+      interface_index_, proc_fs_.get(), rtnl_handler_, dispatcher_,
+      context_.logging_tag());
   return slaac_controller;
 }
 

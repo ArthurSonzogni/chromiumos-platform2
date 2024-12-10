@@ -6,6 +6,8 @@
 #define SHILL_NETWORK_SLAAC_CONTROLLER_H_
 
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -41,7 +43,8 @@ class SLAACController {
   SLAACController(int interface_index,
                   net_base::ProcFsStub* proc_fs,
                   net_base::RTNLHandler* rtnl_handler,
-                  EventDispatcher* dispatcher);
+                  EventDispatcher* dispatcher,
+                  std::string_view logging_tag);
   virtual ~SLAACController();
 
   mockable void RegisterCallback(UpdateCallback update_callback);
@@ -140,6 +143,8 @@ class SLAACController {
   std::unique_ptr<net_base::RTNLListener> nd_option_listener_;
 
   EventDispatcher* dispatcher_;
+
+  std::string logging_tag_;
 
   base::WeakPtrFactory<SLAACController> weak_factory_{this};
 };

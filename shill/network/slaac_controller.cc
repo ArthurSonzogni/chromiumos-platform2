@@ -34,11 +34,13 @@ constexpr base::TimeDelta kNoPrefixTimeOut = base::Seconds(2);
 SLAACController::SLAACController(int interface_index,
                                  net_base::ProcFsStub* proc_fs,
                                  net_base::RTNLHandler* rtnl_handler,
-                                 EventDispatcher* dispatcher)
+                                 EventDispatcher* dispatcher,
+                                 std::string_view logging_tag)
     : interface_index_(interface_index),
       proc_fs_(proc_fs),
       rtnl_handler_(rtnl_handler),
-      dispatcher_(dispatcher) {}
+      dispatcher_(dispatcher),
+      logging_tag_(logging_tag) {}
 
 SLAACController::~SLAACController() = default;
 
@@ -137,7 +139,8 @@ void SLAACController::AddressMsgHandler(const net_base::RTNLMessage& msg) {
 
   const std::optional<net_base::IPCIDR> cidr = msg.GetAddress();
   if (!cidr || cidr->GetFamily() != net_base::IPFamily::kIPv6) {
-    LOG(ERROR) << "RTNLMessage does not have a valid IPv6 address";
+    LOG(ERROR) << logging_tag_ << " " << __func__
+               << ": RTNLMessage does not have a valid IPv6 address";
     return;
   }
   const auto ipv6_cidr = cidr->ToIPv6CIDR().value();
@@ -153,8 +156,8 @@ void SLAACController::AddressMsgHandler(const net_base::RTNLMessage& msg) {
       [&](const AddressData& data) { return data.cidr == ipv6_cidr; });
   if (iter != slaac_addresses_.end()) {
     if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
-      LOG(INFO) << "RTNL cache: Delete address " << ipv6_cidr.ToString()
-                << " for interface " << interface_index_;
+      LOG(INFO) << logging_tag_ << " " << __func__
+                << ": RTNL cache: Delete address " << ipv6_cidr.ToString();
       slaac_addresses_.erase(iter);
     } else {
       iter->flags = status.flags;
@@ -162,15 +165,15 @@ void SLAACController::AddressMsgHandler(const net_base::RTNLMessage& msg) {
     }
   } else {
     if (msg.mode() == net_base::RTNLMessage::kModeAdd) {
-      LOG(INFO) << "RTNL cache: Add address " << ipv6_cidr.ToString()
-                << " for interface " << interface_index_;
+      LOG(INFO) << logging_tag_ << " " << __func__
+                << ": RTNL cache: Add address " << ipv6_cidr.ToString();
       slaac_addresses_.insert(
           slaac_addresses_.begin(),
           AddressData(ipv6_cidr, status.flags, status.scope));
     } else if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
-      LOG(WARNING) << "RTNL cache: Deleting non-cached address "
-                   << ipv6_cidr.ToString() << " for interface "
-                   << interface_index_;
+      LOG(WARNING) << logging_tag_ << " " << __func__
+                   << ": RTNL cache: Deleting non-cached address "
+                   << ipv6_cidr.ToString();
     }
   }
 
@@ -239,9 +242,8 @@ void SLAACController::RouteMsgHandler(const net_base::RTNLMessage& msg) {
   }
   const auto gateway = msg.GetRtaGateway();
   if (!gateway) {
-    LOG(WARNING) << __func__
-                 << ": IPv6 default route without a gateway on interface "
-                 << interface_index_;
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": IPv6 default route without a gateway";
     return;
   }
   const auto old_gateway = network_config_.ipv6_gateway;
@@ -289,8 +291,8 @@ void SLAACController::NDOptionMsgHandler(const net_base::RTNLMessage& msg) {
       // Valid but unsupported ND option type.
       break;
     default:
-      LOG(ERROR) << __func__ << ": Unexpected RTNLMessage type " << msg.type()
-                 << " on interface " << interface_index_;
+      LOG(ERROR) << logging_tag_ << " " << __func__
+                 << ": Unexpected RTNLMessage type " << msg.type();
   }
 }
 
@@ -345,7 +347,8 @@ void SLAACController::CaptivePortalMsgHandler(
     const net_base::RTNLMessage& msg) {
   const net_base::HttpUrl& uri = msg.captive_portal_uri();
   if (uri.protocol() != net_base::HttpUrl::Protocol::kHttps) {
-    LOG(WARNING) << __func__ << "Captive portal URI should be HTTPS";
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": Captive portal URI should be HTTPS";
     return;
   }
 
@@ -423,11 +426,11 @@ void SLAACController::ConfigureLinkLocalAddress() {
   const auto link_local_mask =
       *net_base::IPv6CIDR::CreateFromStringAndPrefix("fe80::", 10);
   if (!link_local_mask.InSameSubnetWith(*link_local_address_)) {
-    LOG(WARNING) << "interface " << interface_index_ << ": Address "
+    LOG(WARNING) << logging_tag_ << " " << __func__ << ": Address "
                  << *link_local_address_ << " is not a link local address";
     return;
   }
-  LOG(INFO) << "interface " << interface_index_
+  LOG(INFO) << logging_tag_ << " " << __func__
             << ": configuring link local address " << *link_local_address_;
   rtnl_handler_->AddInterfaceAddress(
       interface_index_,
@@ -447,7 +450,7 @@ void SLAACController::SendRouterSolicitation() {
   }
   if (bind(sockfd, reinterpret_cast<sockaddr*>(&src_addr), sizeof(src_addr)) <
       0) {
-    PLOG(WARNING) << "interface " << interface_index_
+    PLOG(WARNING) << logging_tag_ << " " << __func__
                   << ": Error binding address for sending RS";
   }
 
@@ -464,13 +467,13 @@ void SLAACController::SendRouterSolicitation() {
   constexpr int kIPv6MaxHopLimit = 255;
   if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &kIPv6MaxHopLimit,
                  sizeof(kIPv6MaxHopLimit)) < 0) {
-    PLOG(WARNING) << "interface " << interface_index_
+    PLOG(WARNING) << logging_tag_ << " " << __func__
                   << ": Error configuring hop limit in RS.";
   }
 
   if (sendto(sockfd, &packet, sizeof(packet), 0,
              reinterpret_cast<sockaddr*>(&dst_addr), sizeof(dst_addr)) < 0) {
-    PLOG(WARNING) << "interface " << interface_index_ << ": Error sending RS.";
+    PLOG(WARNING) << logging_tag_ << " " << __func__ << ": Error sending RS.";
   }
 }
 

@@ -9,7 +9,7 @@
 namespace shill {
 
 MockSLAACController::MockSLAACController()
-    : SLAACController(0, nullptr, nullptr, nullptr) {}
+    : SLAACController(0, nullptr, nullptr, nullptr, "mock_logging_tag") {}
 
 MockSLAACController::~MockSLAACController() = default;
 
