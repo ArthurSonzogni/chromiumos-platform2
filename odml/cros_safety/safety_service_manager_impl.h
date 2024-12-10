@@ -27,6 +27,9 @@ class SafetyServiceManagerImpl : public SafetyServiceManager {
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager);
 
+  void PrepareImageSafetyClassifier(
+      base::OnceCallback<void(bool)> callback) override;
+
   void ClassifyImageSafety(mojom::SafetyRuleset ruleset,
                            const std::optional<std::string>& text,
                            mojo_base::mojom::BigBufferPtr image,

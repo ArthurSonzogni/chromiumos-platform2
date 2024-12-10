@@ -15,6 +15,7 @@ mantis_console --image=/usr/local/tmp/image.jpg \
 
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -41,6 +42,9 @@ mantis_console --image=/usr/local/tmp/image.jpg \
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 #include "base/files/file_util.h"
+#include "odml/cros_safety/safety_service_manager.h"
+#include "odml/cros_safety/safety_service_manager_bypass.h"
+#include "odml/cros_safety/safety_service_manager_impl.h"
 #include "odml/mantis/service.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom-shared.h"
@@ -122,73 +126,18 @@ bool DoOutpainting(base::CommandLine* cl) {
   return cl ? cl->HasSwitch(kOutpainting) : false;
 }
 
-class MantisProcessorWithoutSafetyCheck : public mantis::MantisProcessor {
- public:
-  // Use the same constructor as the base class
-  using MantisProcessor::MantisProcessor;
-
-  void ClassifyImageSafetyInternal(
-      const std::vector<uint8_t>& image,
-      const std::string& text,
-      base::OnceCallback<void(mantis::mojom::SafetyClassifierVerdict)> callback)
-      override {
-    if (enable_safety_) {
-      MantisProcessor::ClassifyImageSafetyInternal(image, text,
-                                                   std::move(callback));
-      return;
-    }
-    LOG(INFO) << "Fake ClassifyImageSafetyInternal was called";
-    std::move(callback).Run(mantis::mojom::SafetyClassifierVerdict::kPass);
-  }
-
-  void EnableSafety() { enable_safety_ = true; }
-
-  void DisableSafety() { enable_safety_ = false; }
-
- private:
-  bool enable_safety_ = false;
-};
-
-class MantisServiceWithoutSafetyCheck : public mantis::MantisService {
- public:
-  // Use the same constructor as the base class
-  using MantisService::MantisService;
-  std::unique_ptr<MantisProcessorWithoutSafetyCheck> mantis_processor;
-
- private:
-  void CreateMantisProcessor(
-      mantis::MantisComponent component,
-      const mantis::MantisAPI* api,
-      mojo::PendingReceiver<mantis::mojom::MantisProcessor> receiver,
-      raw_ref<
-          mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
-          service_manager,
-      base::OnceCallback<void()> on_disconnected,
-      base::OnceCallback<void(mantis::mojom::InitializeResult)> callback)
-      override {
-    LOG(INFO)
-        << "MantisServiceWithoutSafetyCheck::CreateMantisProcessor called";
-    mantis_processor = std::make_unique<MantisProcessorWithoutSafetyCheck>(
-        component, api, std::move(receiver), service_manager,
-        std::move(on_disconnected), std::move(callback));
-    // Disable safety by default
-    mantis_processor->DisableSafety();
-  }
-};
-
 class MantisServiceProviderImpl {
  public:
   MantisServiceProviderImpl(
       raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
-          service_manager)
-      : service_impl_(shim_loader, raw_ref(service_manager)) {}
-  raw_ref<MantisServiceWithoutSafetyCheck> service() {
-    return raw_ref(service_impl_);
-  }
+          service_manager,
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
+      : service_impl_(shim_loader, safety_service_manager) {}
+  raw_ref<mantis::MantisService> service() { return raw_ref(service_impl_); }
 
  private:
-  MantisServiceWithoutSafetyCheck service_impl_;
+  mantis::MantisService service_impl_;
 };
 
 class MantisConsole : public brillo::DBusDaemon {
@@ -201,7 +150,7 @@ class MantisConsole : public brillo::DBusDaemon {
       return exit_code;
     }
 
-    exit_code = CreateMantisServiceProvider();
+    exit_code = CreateMantisServiceProvider(ShouldEnableSafety(cl_));
     if (exit_code != EX_OK) {
       LOG(ERROR) << "CreateMantisServiceProvider() failed";
       return exit_code;
@@ -210,10 +159,6 @@ class MantisConsole : public brillo::DBusDaemon {
     if (exit_code != EX_OK) {
       LOG(ERROR) << "CreateMantisService() failed";
       return exit_code;
-    }
-    if (ShouldEnableSafety(cl_)) {
-      mantis_service_provider_impl_->service()
-          ->mantis_processor->EnableSafety();
     }
 
     if (DoInpainting(cl_)) {
@@ -232,7 +177,7 @@ class MantisConsole : public brillo::DBusDaemon {
   }
 
  private:
-  int CreateMantisServiceProvider() {
+  int CreateMantisServiceProvider(bool enable_safety) {
     mojo::core::Init();
     mojo::core::ScopedIPCSupport ipc_support(
         base::SingleThreadTaskRunner::GetCurrentDefault(),
@@ -251,8 +196,17 @@ class MantisConsole : public brillo::DBusDaemon {
                     << error << ", message: " << message
                     << ". Shutdown and wait for respawn.";
         }));
+    if (enable_safety) {
+      safety_service_manager_ =
+          std::make_unique<cros_safety::SafetyServiceManagerImpl>(
+              service_manager_);
+    } else {
+      safety_service_manager_ =
+          std::make_unique<cros_safety::SafetyServiceManagerBypass>();
+    }
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
-        raw_ref(shim_loader_), service_manager_);
+        raw_ref(shim_loader_), service_manager_,
+        raw_ref(*safety_service_manager_.get()));
     return EX_OK;
   }
 
@@ -298,7 +252,7 @@ class MantisConsole : public brillo::DBusDaemon {
     auto service = mantis_service_provider_impl_->service();
     LOG(INFO) << "Mantis inpainting call";
     base::RunLoop run_loop;
-    service->mantis_processor->Inpainting(
+    service->processor()->Inpainting(
         GetImage(cl_), GetMask(cl_), GetSeed(cl_),
         base::BindOnce(&MantisConsole::OnOperationFinish,
                        base::Unretained(this), &run_loop));
@@ -309,7 +263,7 @@ class MantisConsole : public brillo::DBusDaemon {
     auto service = mantis_service_provider_impl_->service();
     LOG(INFO) << "Mantis outpainting call";
     base::RunLoop run_loop;
-    service->mantis_processor->Inpainting(
+    service->processor()->Inpainting(
         GetImage(cl_), GetMask(cl_), GetSeed(cl_),
         base::BindOnce(&MantisConsole::OnOperationFinish,
                        base::Unretained(this), &run_loop));
@@ -320,7 +274,7 @@ class MantisConsole : public brillo::DBusDaemon {
     auto service = mantis_service_provider_impl_->service();
     LOG(INFO) << "Mantis genfill call";
     base::RunLoop run_loop;
-    service->mantis_processor->GenerativeFill(
+    service->processor()->GenerativeFill(
         GetImage(cl_), GetMask(cl_), GetSeed(cl_), GetPrompt(cl_),
         base::BindOnce(&MantisConsole::OnOperationFinish,
                        base::Unretained(this), &run_loop));
@@ -331,6 +285,7 @@ class MantisConsole : public brillo::DBusDaemon {
   std::unique_ptr<MantisServiceProviderImpl> mantis_service_provider_impl_;
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
       service_manager_;
+  std::unique_ptr<cros_safety::SafetyServiceManager> safety_service_manager_;
   base::CommandLine* cl_;
 };
 

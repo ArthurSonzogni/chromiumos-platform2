@@ -24,6 +24,9 @@ class SafetyServiceManager {
   using ClassifySafetyCallback =
       base::OnceCallback<void(mojom::SafetyClassifierVerdict)>;
 
+  virtual void PrepareImageSafetyClassifier(
+      base::OnceCallback<void(bool)> callback) = 0;
+
   virtual void ClassifyImageSafety(mojom::SafetyRuleset ruleset,
                                    const std::optional<std::string>& text,
                                    mojo_base::mojom::BigBufferPtr image,

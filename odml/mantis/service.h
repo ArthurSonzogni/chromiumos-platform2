@@ -16,6 +16,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
+#include "odml/cros_safety/safety_service_manager.h"
 #include "odml/mantis/processor.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
@@ -27,9 +28,7 @@ class MantisService : public mojom::MantisService {
  public:
   explicit MantisService(
       raw_ref<odml::OdmlShimLoader> shim_loader,
-      raw_ref<
-          mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
-          service_manager);
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager);
   ~MantisService() = default;
 
   MantisService(const MantisService&) = delete;
@@ -39,6 +38,8 @@ class MantisService : public mojom::MantisService {
     receiver_set_.Add(this, std::move(receiver),
                       base::SequencedTaskRunner::GetCurrentDefault());
   }
+
+  raw_ref<MantisProcessor> processor() { return raw_ref(*processor_); }
 
   // mojom::MantisService:
   void Initialize(mojo::PendingRemote<mojom::PlatformModelProgressObserver>
@@ -55,9 +56,7 @@ class MantisService : public mojom::MantisService {
       MantisComponent component,
       const MantisAPI* api,
       mojo::PendingReceiver<mojom::MantisProcessor> receiver,
-      raw_ref<
-          mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
-          service_manager,
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
       base::OnceCallback<void()> on_disconnected,
       base::OnceCallback<void(mantis::mojom::InitializeResult)> callback);
 
@@ -87,9 +86,7 @@ class MantisService : public mojom::MantisService {
 
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
 
-  const raw_ref<
-      mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
-      service_manager_;
+  raw_ref<cros_safety::SafetyServiceManager> safety_service_manager_;
 
   std::unique_ptr<MantisProcessor> processor_;
 

@@ -27,9 +27,9 @@ constexpr double kFinishedProgress = 1;
 
 MantisService::MantisService(
     raw_ref<odml::OdmlShimLoader> shim_loader,
-    raw_ref<mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
-        service_manager)
-    : shim_loader_(shim_loader), service_manager_(service_manager) {}
+    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
+    : shim_loader_(shim_loader),
+      safety_service_manager_(safety_service_manager) {}
 
 template <typename FuncType,
           typename CallbackType,
@@ -143,7 +143,7 @@ void MantisService::OnInstallDlcComplete(
   MantisComponent component = api->Initialize(result->value());
 
   CreateMantisProcessor(
-      component, api, std::move(processor), service_manager_,
+      component, api, std::move(processor), safety_service_manager_,
       base::BindOnce(&MantisService::DeleteProcessor, base::Unretained(this)),
       std::move(callback));
 }
@@ -152,12 +152,11 @@ void MantisService::CreateMantisProcessor(
     MantisComponent component,
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
-    raw_ref<mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
-        service_manager,
+    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(mantis::mojom::InitializeResult)> callback) {
   processor_ = std::make_unique<MantisProcessor>(
-      component, api, std::move(processor), service_manager,
+      component, api, std::move(processor), safety_service_manager,
       std::move(on_disconnected), std::move(callback));
 }
 

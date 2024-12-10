@@ -17,6 +17,11 @@ class SafetyServiceManagerBypass : public SafetyServiceManager {
  public:
   SafetyServiceManagerBypass() = default;
 
+  void PrepareImageSafetyClassifier(
+      base::OnceCallback<void(bool)> callback) override {
+    std::move(callback).Run(true);
+  };
+
   void ClassifyImageSafety(mojom::SafetyRuleset ruleset,
                            const std::optional<std::string>& text,
                            mojo_base::mojom::BigBufferPtr image,

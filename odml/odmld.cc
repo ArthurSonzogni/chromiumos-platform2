@@ -28,6 +28,8 @@
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 #include "odml/coral/service.h"
+#include "odml/cros_safety/safety_service_manager.h"
+#include "odml/cros_safety/safety_service_manager_impl.h"
 #include "odml/embedding_model/embedding_model_service.h"
 #include "odml/embedding_model/model_factory.h"
 #include "odml/mantis/service.h"
@@ -159,10 +161,11 @@ class MantisServiceProviderImpl
       raw_ref<MetricsLibrary> metrics,
       raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
-          service_manager)
+          service_manager,
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
       : metrics_(metrics),
         receiver_(this),
-        service_impl_(shim_loader, raw_ref(service_manager)) {
+        service_impl_(shim_loader, safety_service_manager) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosMantisService,
         receiver_.BindNewPipeAndPassRemote());
@@ -228,6 +231,10 @@ class Daemon : public brillo::DBusDaemon {
                     << ". Shutdown and wait for respawn.";
         }));
 
+    safety_service_manager_impl_ =
+        std::make_unique<cros_safety::SafetyServiceManagerImpl>(
+            service_manager_);
+
     on_device_model_service_provider_impl_ =
         std::make_unique<OnDeviceModelServiceProviderImpl>(
             raw_ref(metrics_), raw_ref(shim_loader_), service_manager_);
@@ -241,7 +248,8 @@ class Daemon : public brillo::DBusDaemon {
         session_state_manager_.get());
 
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
-        raw_ref(metrics_), raw_ref(shim_loader_), service_manager_);
+        raw_ref(metrics_), raw_ref(shim_loader_), service_manager_,
+        raw_ref(*safety_service_manager_impl_.get()));
 
     session_state_manager_->RefreshPrimaryUser();
 
@@ -263,6 +271,9 @@ class Daemon : public brillo::DBusDaemon {
   MetricsLibrary metrics_;
 
   odml::PeriodicMetrics periodic_metrics_{raw_ref(metrics_)};
+
+  std::unique_ptr<cros_safety::SafetyServiceManagerImpl>
+      safety_service_manager_impl_;
 
   std::unique_ptr<OnDeviceModelServiceProviderImpl>
       on_device_model_service_provider_impl_;

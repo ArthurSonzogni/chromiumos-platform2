@@ -18,6 +18,11 @@ class SafetyServiceManagerMock : public SafetyServiceManager {
   SafetyServiceManagerMock() = default;
 
   MOCK_METHOD(void,
+              PrepareImageSafetyClassifier,
+              (base::OnceCallback<void(bool)> callback),
+              (override));
+
+  MOCK_METHOD(void,
               ClassifyImageSafety,
               (mojom::SafetyRuleset ruleset,
                const std::optional<std::string>& text,

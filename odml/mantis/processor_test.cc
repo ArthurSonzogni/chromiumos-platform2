@@ -4,8 +4,6 @@
 
 #include "odml/mantis/processor.h"
 
-#include <memory>
-
 #include <base/test/bind.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
@@ -13,15 +11,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo_service_manager/fake/simple_fake_service_manager.h>
-#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 #include <testing/gmock/include/gmock/gmock.h>
 #include <testing/gtest/include/gtest/gtest.h>
 
-#include "odml/mantis/fake/fake_cros_safety_service.h"
+#include "odml/cros_safety/safety_service_manager_mock.h"
 #include "odml/mantis/fake/fake_mantis_api.h"
 #include "odml/mantis/lib_api.h"
-#include "odml/mantis/mock_cloud_safety_session.h"
 
 namespace mantis {
 namespace {
@@ -33,20 +28,10 @@ using testing::IsEmpty;
 
 constexpr ProcessorPtr kFakeProcessorPtr = 0xDEADBEEF;
 constexpr SegmenterPtr kFakeSegmenterPtr = 0xCAFEBABE;
-constexpr uint32_t kMantisUid = 123;
 
 class MantisProcessorTest : public testing::Test {
  public:
-  MantisProcessorTest() {
-    mojo::core::Init();
-    mojo_service_manager_ = std::make_unique<
-        chromeos::mojo_service_manager::SimpleFakeMojoServiceManager>();
-    remote_service_manager_.Bind(
-        mojo_service_manager_->AddNewPipeAndPassRemote(kMantisUid));
-    safety_service_provider_impl_ =
-        std::make_unique<fake::FakeCrosSafetyServiceProviderImpl>(
-            remote_service_manager_, raw_ref(cloud_safety_session_));
-  }
+  MantisProcessorTest() { mojo::core::Init(); }
 
  protected:
   std::vector<uint8_t> GetFakeImage() {
@@ -59,20 +44,16 @@ class MantisProcessorTest : public testing::Test {
 
   MantisProcessor InitializeMantisProcessor(MantisComponent component,
                                             const MantisAPI* api) {
+    EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
+        .WillOnce(base::test::RunOnceCallback<0>(true));
     return MantisProcessor(
         component, api, processor_remote_.BindNewPipeAndPassReceiver(),
-        raw_ref(remote_service_manager_), base::DoNothing(), base::DoNothing());
+        raw_ref(safety_service_manager_), base::DoNothing(), base::DoNothing());
   }
 
   base::test::TaskEnvironment task_environment_;
-  mantis::MockCloudSafetySession cloud_safety_session_;
   mojo::Remote<mojom::MantisProcessor> processor_remote_;
-  std::unique_ptr<chromeos::mojo_service_manager::SimpleFakeMojoServiceManager>
-      mojo_service_manager_;
-  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
-      remote_service_manager_;
-  std::unique_ptr<fake::FakeCrosSafetyServiceProviderImpl>
-      safety_service_provider_impl_;
+  cros_safety::SafetyServiceManagerMock safety_service_manager_;
 };
 
 TEST_F(MantisProcessorTest, InpaintingMissingProcessor) {
@@ -99,7 +80,7 @@ TEST_F(MantisProcessorTest, InpaintingInputSafetyError) {
           .segmenter = 0,
       },
       fake::GetMantisApi());
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kFailedImage));
 
@@ -132,7 +113,7 @@ TEST_F(MantisProcessorTest, InpaintingProcessFailed) {
           .segmenter = 0,
       },
       &api);
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass));
 
@@ -154,7 +135,7 @@ TEST_F(MantisProcessorTest, InpaintingOutputSafetyError) {
           .segmenter = 0,
       },
       fake::GetMantisApi());
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass))
       .WillOnce(base::test::RunOnceCallback<3>(
@@ -177,7 +158,7 @@ TEST_F(MantisProcessorTest, InpaintingSucceeds) {
           .segmenter = 0,
       },
       fake::GetMantisApi());
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass));
 
@@ -216,7 +197,7 @@ TEST_F(MantisProcessorTest, GenerativeFillInputSafetyError) {
           .segmenter = 0,
       },
       fake::GetMantisApi());
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kFailedImage));
 
@@ -250,7 +231,7 @@ TEST_F(MantisProcessorTest, GenerativeFillProcessFailed) {
       },
       &api);
 
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass));
 
@@ -272,7 +253,7 @@ TEST_F(MantisProcessorTest, GenerativeFillOutputSafetyError) {
           .segmenter = 0,
       },
       fake::GetMantisApi());
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass))
       .WillOnce(base::test::RunOnceCallback<3>(
@@ -295,7 +276,7 @@ TEST_F(MantisProcessorTest, GenerativeFillPromptSafetyError) {
           .segmenter = 0,
       },
       fake::GetMantisApi());
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass))
       .WillOnce(base::test::RunOnceCallback<3>(
@@ -318,7 +299,7 @@ TEST_F(MantisProcessorTest, GenerativeFillSucceeds) {
           .segmenter = 0,
       },
       fake::GetMantisApi());
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass));
 
@@ -357,7 +338,7 @@ TEST_F(MantisProcessorTest, SegmentationInputSafetyError) {
           .segmenter = kFakeSegmenterPtr,
       },
       fake::GetMantisApi());
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kFailedImage));
 
@@ -389,7 +370,7 @@ TEST_F(MantisProcessorTest, SegmentationReturnError) {
           .segmenter = kFakeSegmenterPtr,
       },
       &api);
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass));
 
@@ -411,7 +392,7 @@ TEST_F(MantisProcessorTest, SegmentationSucceeds) {
           .segmenter = kFakeSegmenterPtr,
       },
       fake::GetMantisApi());
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass));
 
@@ -433,7 +414,7 @@ TEST_F(MantisProcessorTest, ClassifyImageSafetyReturnPass) {
       },
       fake::GetMantisApi());
 
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass));
 
@@ -453,7 +434,7 @@ TEST_F(MantisProcessorTest, ClassifyImageSafetyReturnFail) {
       },
       fake::GetMantisApi());
 
-  EXPECT_CALL(cloud_safety_session_, ClassifyImageSafety)
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kFailedImage));
 

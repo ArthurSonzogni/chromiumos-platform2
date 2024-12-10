@@ -15,9 +15,10 @@
 #include <testing/gmock/include/gmock/gmock.h>
 #include <testing/gtest/include/gtest/gtest.h>
 
-#include "odml/mantis/fake/fake_cros_safety_service.h"
+#include "base/test/gmock_callback_support.h"
+#include "gmock/gmock.h"
+#include "odml/cros_safety/safety_service_manager_mock.h"
 #include "odml/mantis/fake/fake_mantis_api.h"
-#include "odml/mantis/mock_cloud_safety_session.h"
 #include "odml/mojom/mantis_service.mojom.h"
 #include "odml/utils/odml_shim_loader_mock.h"
 
@@ -25,7 +26,6 @@ namespace mantis {
 namespace {
 
 constexpr char kDlcName[] = "ml-dlc-302a455f-5453-43fb-a6a1-d856e6fe6435";
-constexpr uint32_t kMantisUid = 123;
 
 using ::testing::Return;
 using MantisAPIGetter = const MantisAPI* (*)();
@@ -35,19 +35,10 @@ class MantisServiceTest : public testing::Test {
   MantisServiceTest() {
     mojo::core::Init();
 
-    mojo_service_manager_ = std::make_unique<
-        chromeos::mojo_service_manager::SimpleFakeMojoServiceManager>();
-    remote_service_manager_.Bind(
-        mojo_service_manager_->AddNewPipeAndPassRemote(kMantisUid));
-
     service_ = std::make_unique<MantisService>(
-        raw_ref(shim_loader_), raw_ref(remote_service_manager_));
+        raw_ref(shim_loader_), raw_ref(safety_service_manager_));
 
     service_->AddReceiver(service_remote_.BindNewPipeAndPassReceiver());
-
-    safety_service_provider_impl_ =
-        std::make_unique<fake::FakeCrosSafetyServiceProviderImpl>(
-            remote_service_manager_, raw_ref(cloud_safety_session_));
   }
 
   void SetupDlc() {
@@ -58,15 +49,9 @@ class MantisServiceTest : public testing::Test {
  protected:
   base::test::TaskEnvironment task_environment_;
   odml::OdmlShimLoaderMock shim_loader_;
-  mantis::MockCloudSafetySession cloud_safety_session_;
-  std::unique_ptr<chromeos::mojo_service_manager::SimpleFakeMojoServiceManager>
-      mojo_service_manager_;
-  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
-      remote_service_manager_;
   std::unique_ptr<MantisService> service_;
   mojo::Remote<mojom::MantisService> service_remote_;
-  std::unique_ptr<fake::FakeCrosSafetyServiceProviderImpl>
-      safety_service_provider_impl_;
+  cros_safety::SafetyServiceManagerMock safety_service_manager_;
 };
 
 TEST_F(MantisServiceTest, InitializeUnableToResolveGetMantisAPISymbol) {
@@ -109,6 +94,8 @@ TEST_F(MantisServiceTest, InitializeSucceeds) {
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(
           []() -> const MantisAPI* { return fake::GetMantisApi(); }))));
+  EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
+      .WillOnce(base::test::RunOnceCallback<0>(true));
   SetupDlc();
 
   base::RunLoop run_loop;
@@ -130,6 +117,8 @@ TEST_F(MantisServiceTest, MultipleClients) {
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(
           []() -> const MantisAPI* { return fake::GetMantisApi(); }))));
+  EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
+      .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<0>(true));
   SetupDlc();
 
   base::RunLoop run_loop_1;

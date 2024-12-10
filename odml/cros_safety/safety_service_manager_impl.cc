@@ -35,6 +35,25 @@ SafetyServiceManagerImpl::SafetyServiceManagerImpl(
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
+void SafetyServiceManagerImpl::PrepareImageSafetyClassifier(
+    base::OnceCallback<void(bool)> callback) {
+  if (cloud_safety_session_.is_bound()) {
+    return std::move(callback).Run(true);
+  }
+
+  safety_service_->CreateCloudSafetySession(
+      cloud_safety_session_.BindNewPipeAndPassReceiver(),
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+          base::BindOnce(
+              [](base::OnceCallback<void(bool)> callback,
+                 mojom::GetCloudSafetySessionResult result) {
+                std::move(callback).Run(
+                    result == mojom::GetCloudSafetySessionResult::kOk);
+              },
+              std::move(callback)),
+          mojom::GetCloudSafetySessionResult::kGenericError));
+}
+
 void SafetyServiceManagerImpl::ClassifyImageSafety(
     mojom::SafetyRuleset ruleset,
     const std::optional<std::string>& text,

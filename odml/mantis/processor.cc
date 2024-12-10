@@ -17,7 +17,6 @@
 #include "odml/mantis/lib_api.h"
 #include "odml/mojom/big_buffer.mojom.h"
 #include "odml/mojom/cros_safety.mojom.h"
-#include "odml/mojom/cros_safety_service.mojom.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
 
@@ -50,20 +49,18 @@ constexpr auto kMapSafetyResult =
         {cros_safety::mojom::SafetyClassifierVerdict::kFailedImage,
          SafetyClassifierVerdict::kFailedImage},
     });
-
-constexpr base::TimeDelta kRemoteRequestTimeout = base::Milliseconds(10 * 1000);
 }  // namespace
 
 MantisProcessor::MantisProcessor(
     MantisComponent component,
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> receiver,
-    raw_ref<mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
-        service_manager,
+    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(InitializeResult)> callback)
     : component_(component),
       api_(api),
+      safety_service_manager_(safety_service_manager),
       on_disconnected_(std::move(on_disconnected)) {
   CHECK(api_);
   if (!component_.processor) {
@@ -73,24 +70,13 @@ MantisProcessor::MantisProcessor(
   receiver_set_.set_disconnect_handler(base::BindRepeating(
       &MantisProcessor::OnDisconnected, base::Unretained(this)));
 
-  (*service_manager)
-      ->Request(
-          /*service_name=*/chromeos::mojo_services::kCrosSafetyService,
-          /*timeout=*/kRemoteRequestTimeout,
-          safety_service_.BindNewPipeAndPassReceiver().PassPipe());
-
-  if (!safety_service_ || !safety_service_.is_bound() ||
-      !safety_service_.is_connected()) {
-    LOG(ERROR) << "Cannot receive CrosSafetyService from mojo service manager";
-    std::move(callback).Run(
-        mojom::InitializeResult::kFailedToLoadSafetyService);
-    return;
-  }
-
-  safety_service_->CreateCloudSafetySession(
-      cloud_safety_session_.BindNewPipeAndPassReceiver(),
-      base::BindOnce(&MantisProcessor::OnCreateCloudSafetySessionComplete,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+  safety_service_manager_->PrepareImageSafetyClassifier(base::BindOnce(
+      [](base::OnceCallback<void(InitializeResult)> callback, bool is_enabled) {
+        std::move(callback).Run(
+            is_enabled ? mojom::InitializeResult::kSuccess
+                       : mojom::InitializeResult::kFailedToLoadSafetyService);
+      },
+      std::move(callback)));
 }
 
 MantisProcessor::~MantisProcessor() {
@@ -110,28 +96,6 @@ void MantisProcessor::OnDisconnected() {
   // Don't use any member function or variable after this line, because the
   // MantisProcessor may be destroyed inside the callback.
   std::move(closure).Run();
-}
-
-void MantisProcessor::OnCreateCloudSafetySessionComplete(
-    base::OnceCallback<void(InitializeResult)> callback,
-    cros_safety::mojom::GetCloudSafetySessionResult result) {
-  if (result != cros_safety::mojom::GetCloudSafetySessionResult::kOk) {
-    LOG(ERROR) << "Can't initialize CloudSafetySession " << result;
-    std::move(callback).Run(
-        mojom::InitializeResult::kFailedToLoadSafetyService);
-    return;
-  }
-
-  if (!cloud_safety_session_ || !cloud_safety_session_.is_bound() ||
-      !cloud_safety_session_.is_connected()) {
-    LOG(ERROR)
-        << "CreateCloudSafetySession returns ok but session isn't connected";
-    std::move(callback).Run(
-        mojom::InitializeResult::kFailedToLoadSafetyService);
-    return;
-  }
-
-  std::move(callback).Run(mojom::InitializeResult::kSuccess);
 }
 
 void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
@@ -254,15 +218,7 @@ void MantisProcessor::ClassifyImageSafetyInternal(
     const std::vector<uint8_t>& image,
     const std::string& text,
     base::OnceCallback<void(SafetyClassifierVerdict)> callback) {
-  if (!cloud_safety_session_ || !cloud_safety_session_.is_bound() ||
-      !cloud_safety_session_.is_connected()) {
-    LOG(ERROR) << "Cloud safety session is not connected when trying to "
-                  "classify image";
-    std::move(callback).Run(SafetyClassifierVerdict::kFail);
-    return;
-  }
-
-  cloud_safety_session_->ClassifyImageSafety(
+  safety_service_manager_->ClassifyImageSafety(
       cros_safety::mojom::SafetyRuleset::kMantis, text,
       mojo_base::mojom::BigBuffer::NewBytes(image),
       base::BindOnce(
