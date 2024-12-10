@@ -527,7 +527,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
         // stateful manually.
         clobber_log_msg = "Leave developer mode on a debug build";
         DevUpdateStatefulPartition("clobber");
-        platform_->DeleteFile(dev_mode_allowed_file_);
+        platform_->DeleteFile(dev_mode_allowed_file);
       }
     }
   } else if (IsDevToVerifiedModeTransition(1)) {
