@@ -10,7 +10,7 @@
 
 #include <gmock/gmock.h>
 
-#include "cryptohome/lockbox-cache-manager/platform.h"
+#include "cryptohome/lockbox_cache_manager/platform.h"
 
 namespace cryptohome {
 class MockPlatform : public Platform {

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/lockbox-cache-manager/lockbox-cache-manager.h"
+#include "cryptohome/lockbox_cache_manager/lockbox_cache_manager.h"
 
 #include <string>
 #include <vector>

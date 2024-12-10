@@ -4,7 +4,7 @@
 
 #include <brillo/syslog_logging.h>
 
-#include "cryptohome/lockbox-cache-manager/lockbox-cache-manager.h"
+#include "cryptohome/lockbox_cache_manager/lockbox_cache_manager.h"
 
 int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);

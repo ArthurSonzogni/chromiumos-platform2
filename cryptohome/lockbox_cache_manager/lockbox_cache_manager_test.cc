@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/lockbox-cache-manager/lockbox-cache-manager.h"
+#include "cryptohome/lockbox_cache_manager/lockbox_cache_manager.h"
 
 #include <memory>
 #include <string>
@@ -14,7 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/lockbox-cache-manager/mock_platform.h"
+#include "cryptohome/lockbox_cache_manager/mock_platform.h"
 
 using ::testing::_;
 using ::testing::Mock;

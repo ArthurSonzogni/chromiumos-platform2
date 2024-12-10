@@ -8,7 +8,7 @@
 #include <brillo/syslog_logging.h>
 #include <libstorage/platform/platform.h>
 
-#include "cryptohome/lockbox-cache.h"
+#include "cryptohome/lockbox_cache.h"
 
 namespace switches {
 static const char* kNvramPath = "nvram";

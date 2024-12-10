@@ -117,7 +117,7 @@ executable("cryptohome") {
 }
 
 executable("cryptohome-path") {
-  sources = [ "cryptohome-path.cc" ]
+  sources = [ "cryptohome_path.cc" ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -163,9 +163,9 @@ executable("cryptohome-namespace-mounter") {
 
 executable("lockbox-cache") {
   sources = [
-    "lockbox-cache-main.cc",
-    "lockbox-cache.cc",
     "lockbox.cc",
+    "lockbox_cache.cc",
+    "lockbox_cache_main.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [
@@ -196,10 +196,10 @@ pkg_config("lockbox-cache-manager_config") {
 
 executable("lockbox-cache-manager") {
   sources = [
-    "lockbox-cache-manager/lockbox-cache-manager-main.cc",
-    "lockbox-cache-manager/lockbox-cache-manager.cc",
-    "lockbox-cache-manager/metrics.cc",
-    "lockbox-cache-manager/platform.cc",
+    "lockbox_cache_manager/lockbox_cache_manager.cc",
+    "lockbox_cache_manager/lockbox_cache_manager_main.cc",
+    "lockbox_cache_manager/metrics.cc",
+    "lockbox_cache_manager/platform.cc",
   ]
   configs += [
     ":target_defaults",
@@ -319,11 +319,11 @@ if (use.test) {
   }
   executable("lockbox-cache-manager_testrunner") {
     sources = [
-      "lockbox-cache-manager/lockbox-cache-manager.cc",
-      "lockbox-cache-manager/lockbox-cache-manager_test.cc",
-      "lockbox-cache-manager/lockbox-cache-manager_testrunner.cc",
-      "lockbox-cache-manager/metrics.cc",
-      "lockbox-cache-manager/platform.cc",
+      "lockbox_cache_manager/lockbox_cache_manager.cc",
+      "lockbox_cache_manager/lockbox_cache_manager_test.cc",
+      "lockbox_cache_manager/lockbox_cache_manager_testrunner.cc",
+      "lockbox_cache_manager/metrics.cc",
+      "lockbox_cache_manager/platform.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -408,7 +408,7 @@ if (use.test) {
       "fp_migration/utility_test.cc",
       "key_objects_test.cc",
       "keyset_management_test.cc",
-      "lockbox-cache-unittest.cc",
+      "lockbox_cache_test.cc",
       "lockbox_test.cc",
       "namespace_mounter/mounter.cc",
       "namespace_mounter/mounter_test.cc",

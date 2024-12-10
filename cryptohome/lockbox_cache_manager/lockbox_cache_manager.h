@@ -11,8 +11,8 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 
-#include "cryptohome/lockbox-cache-manager/metrics.h"
-#include "cryptohome/lockbox-cache-manager/platform.h"
+#include "cryptohome/lockbox_cache_manager/metrics.h"
+#include "cryptohome/lockbox_cache_manager/platform.h"
 
 namespace cryptohome {
 
