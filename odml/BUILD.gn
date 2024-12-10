@@ -157,6 +157,7 @@ source_set("mantis") {
 
 source_set("odml") {
   sources = [
+    "cros_safety/safety_service_manager_impl.cc",
     "embedding_model/dlc_model_loader.cc",
     "embedding_model/embedding_model_service.cc",
     "embedding_model/model_factory.cc",
@@ -284,6 +285,7 @@ if (use.test) {
 
   executable("odml_testrunner") {
     sources = [
+      "cros_safety/safety_service_manager_impl_test.cc",
       "embedding_model/embedding_model_service_test.cc",
       "on_device_model/fake/fake_chrome_ml_api.cc",
       "on_device_model/fake/on_device_model_fake.cc",
