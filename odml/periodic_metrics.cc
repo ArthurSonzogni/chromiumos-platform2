@@ -39,6 +39,7 @@ constexpr int kCpuUsageBuckets = 25;
 constexpr int kMemoryUsageMinKb = 10;         // 10 KB
 constexpr int kMemoryUsageMaxKb = 100000000;  // 100 GB
 constexpr int kMemoryUsageBuckets = 100;
+constexpr int kMemoryKbScale = 1024;  // 1KB
 
 // chromeos_metrics::CumulativeMetrics constants:
 constexpr char kCumulativeMetricsBackingDir[] = "/var/lib/odml/metrics";
@@ -92,17 +93,20 @@ void PeriodicMetrics::UploadMetrics(
   // Report the peak memory usage in the past.
   metrics_->SendToUMA(
       kPeakTotalRssMemoryMetricName,
-      cumulative_metrics->GetAndClear(kPeakTotalRssCumulativeStatName),
+      cumulative_metrics->GetAndClear(kPeakTotalRssCumulativeStatName) /
+          kMemoryKbScale,
       kMemoryUsageMinKb, kMemoryUsageMaxKb, kMemoryUsageBuckets);
 
   metrics_->SendToUMA(
       kPeakTotalSwapMemoryMetricName,
-      cumulative_metrics->GetAndClear(kPeakTotalSwapCumulativeStatName),
+      cumulative_metrics->GetAndClear(kPeakTotalSwapCumulativeStatName) /
+          kMemoryKbScale,
       kMemoryUsageMinKb, kMemoryUsageMaxKb, kMemoryUsageBuckets);
 
   metrics_->SendToUMA(
       kPeakTotalMallocMemoryMetricName,
-      cumulative_metrics->GetAndClear(kPeakTotalMallocCumulativeStatName),
+      cumulative_metrics->GetAndClear(kPeakTotalMallocCumulativeStatName) /
+          kMemoryKbScale,
       kMemoryUsageMinKb, kMemoryUsageMaxKb, kMemoryUsageBuckets);
 
   // Report the current memory usage.
@@ -111,16 +115,17 @@ void PeriodicMetrics::UploadMetrics(
   size_t swap_size = info.has_value() ? info->vm_swap_bytes : 0;
   size_t malloc_size = process_metrics_->GetMallocUsage();
 
-  metrics_->SendToUMA(kTotalRssMemoryMetricName, resident_set_size,
-                      kMemoryUsageMinKb, kMemoryUsageMaxKb,
-                      kMemoryUsageBuckets);
-
-  metrics_->SendToUMA(kTotalSwapMemoryMetricName, swap_size, kMemoryUsageMinKb,
+  metrics_->SendToUMA(kTotalRssMemoryMetricName,
+                      resident_set_size / kMemoryKbScale, kMemoryUsageMinKb,
                       kMemoryUsageMaxKb, kMemoryUsageBuckets);
 
-  metrics_->SendToUMA(kTotalMallocMemoryMetricName, malloc_size,
+  metrics_->SendToUMA(kTotalSwapMemoryMetricName, swap_size / kMemoryKbScale,
                       kMemoryUsageMinKb, kMemoryUsageMaxKb,
                       kMemoryUsageBuckets);
+
+  metrics_->SendToUMA(kTotalMallocMemoryMetricName,
+                      malloc_size / kMemoryKbScale, kMemoryUsageMinKb,
+                      kMemoryUsageMaxKb, kMemoryUsageBuckets);
 
   // Record CPU usage (units = milli-percent i.e. 0.001%):
   // First get the CPU usage of the control process.
