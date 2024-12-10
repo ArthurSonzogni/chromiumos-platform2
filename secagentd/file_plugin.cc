@@ -862,9 +862,10 @@ absl::Status FilePlugin::PopulateProcessBlocklistMap() {
         GetFStat(binary_path);
     if (!file_stat_result.ok()) {
       // We always expect to find dlp/secagentd binary in stored location
-      NOTREACHED() << "FilePlugin::PopulateProcessBlocklistMap Failed to "
-                      "retrieve file stat for "
-                   << binary_path << ": " << file_stat_result.status();
+      NOTREACHED_IN_MIGRATION()
+          << "FilePlugin::PopulateProcessBlocklistMap "
+             "Failed to retrieve file stat for "
+          << binary_path << ": " << file_stat_result.status();
     }
     const base::stat_wrapper_t fileStat = file_stat_result.value();
 
