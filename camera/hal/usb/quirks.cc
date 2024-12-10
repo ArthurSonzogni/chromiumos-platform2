@@ -60,6 +60,8 @@ const QuirksMap& GetQuirksMap() {
       {{"18d1", "8006"}, kQuirkExpectHotplugWhileOpen},
       // TFC 1YHIZZZ0009 (YHIG) (b/374232012)
       {{"0408", "548f"}, kQuirkUserSpaceTimestamp},
+      // Shinetech ASUS FHD webcam (b/381010970)
+      {{"3277", "0094"}, kQuirkUserSpaceTimestamp},
   });
   return *kQuirksMap;
 }
