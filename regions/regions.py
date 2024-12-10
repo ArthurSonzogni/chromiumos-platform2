@@ -827,6 +827,14 @@ REGIONS_LIST = [
         KML.ANSI,
         "India with Indian keyboard",
     ),
+    Region(
+        "lv",
+        "xkb:us:intl:eng",
+        "Europe/Riga",
+        "en-US",
+        KML.ANSI,
+        "Latvia with US International keyboard layout",
+    ),
 ]
 
 """A list of :py:class:`regions.Region` objects for
@@ -947,7 +955,6 @@ UNCONFIRMED_REGIONS_LIST = [
     Region("ls", TBR, TBR, TBR, TBR, "Lesotho"),
     Region("lt", TBR, TBR, TBR, TBR, "Lithuania"),
     Region("lu", TBR, TBR, TBR, TBR, "Luxembourg"),
-    Region("lv", TBR, TBR, TBR, TBR, "Latvia"),
     Region("ly", TBR, TBR, TBR, TBR, "Libya"),
     Region("ma", TBR, TBR, TBR, TBR, "Morocco"),
     Region("mc", TBR, TBR, TBR, TBR, "Monaco"),
