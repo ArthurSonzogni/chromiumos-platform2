@@ -205,7 +205,8 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
                           kExt4ExtendedOptions},
             .tune2fs_opts = {},
             .backend_type = libstorage::StorageContainerType::kDmcrypt,
-            .recovery = libstorage::RecoveryType::kEnforceCleaning},
+            .recovery = libstorage::RecoveryType::kEnforceCleaning,
+            .metrics_prefix = "Platform.FileSystem.EncStateful"},
        .dmcrypt_config = {
            .backing_device_config = backing_device_config,
            .dmcrypt_device_name = dmcrypt_name,

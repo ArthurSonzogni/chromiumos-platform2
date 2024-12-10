@@ -96,28 +96,6 @@ bool ReadSuperBlock(Platform* platform,
   }
   return true;
 }
-
-std::string GetMetricsPrefix(const base::FilePath backing) {
-  // Order is important.
-  // Stateful backend device differs depending on wether LVM is used or not.
-  // User data is only available on LVM.
-  const std::map<std::string, std::string> tracked = {
-      {"encstateful", "Platform.FileSystem.EncStateful"},
-      {"stateful", "Platform.FileSystem.Stateful"},
-      {"unencrypted", "Platform.FileSystem.Stateful"},
-      {"-data", "Platform.FileSystem.UserData"}};
-
-  if (backing.empty()) {
-    return std::string();
-  }
-
-  for (auto tracked_entry : tracked) {
-    if (backing.value().find(tracked_entry.first) != std::string::npos) {
-      return tracked_entry.second;
-    }
-  }
-  return std::string();
-}
 }  // namespace
 
 Ext4Container::Ext4Container(
@@ -131,7 +109,7 @@ Ext4Container::Ext4Container(
       backing_container_(std::move(backing_container)),
       platform_(platform),
       metrics_(metrics),
-      metrics_prefix_(GetMetricsPrefix(GetBackingLocation())),
+      metrics_prefix_(config.metrics_prefix),
       blk_count_(0) {}
 
 bool Ext4Container::Exists() {

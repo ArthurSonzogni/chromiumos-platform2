@@ -374,7 +374,8 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
   config.filesystem_config = {
       .tune2fs_opts = GenerateExt4Features(),
       .backend_type = libstorage::StorageContainerType::kUnencrypted,
-      .recovery = libstorage::RecoveryType::kDoNothing};
+      .recovery = libstorage::RecoveryType::kDoNothing,
+      .metrics_prefix = "Platform.FileSystem.Stateful"};
 
   std::unique_ptr<libstorage::StorageContainer> container =
       mount_helper_->GetStorageContainerFactory()->Generate(

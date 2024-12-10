@@ -60,6 +60,7 @@ struct Ext4FileSystemConfig {
   std::vector<std::string> tune2fs_opts;
   StorageContainerType backend_type;
   RecoveryType recovery;
+  std::string metrics_prefix;
 };
 
 struct StorageContainerConfig {

@@ -140,7 +140,8 @@ CryptohomeVaultFactory::GenerateStorageContainer(
             .backend_type = type,
             .recovery = dm_options.is_cache_device
                             ? libstorage::RecoveryType::kPurge
-                            : libstorage::RecoveryType::kDoNothing};
+                            : libstorage::RecoveryType::kDoNothing,
+            .metrics_prefix = "Platform.FileSystem.UserData"};
         type = libstorage::StorageContainerType::kExt4;
       }
       break;
