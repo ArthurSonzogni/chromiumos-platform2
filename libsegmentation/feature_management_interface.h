@@ -40,7 +40,8 @@ class FeatureManagementInterface {
     FEATURE_LEVEL_VALID_OFFSET = 1,
     FEATURE_LEVEL_0 = 1,
     FEATURE_LEVEL_1 = 2,
-    kMaxValue = FEATURE_LEVEL_1,  // keep this in sync with the actual max
+    FEATURE_LEVEL_2 = 3,
+    kMaxValue = FEATURE_LEVEL_2,  // keep this in sync with the actual max
                                   // value. Used for UMA metrics.
   };
   virtual FeatureLevel GetFeatureLevel() = 0;

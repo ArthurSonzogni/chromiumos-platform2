@@ -7,6 +7,7 @@ message DeviceInfo {
     FEATURE_LEVEL_UNKNOWN = 0;
     FEATURE_LEVEL_0 = 1;
     FEATURE_LEVEL_1 = 2;
+    FEATURE_LEVEL_2 = 3;
   }
   FeatureLevel feature_level = 1;
 

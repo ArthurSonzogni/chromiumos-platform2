@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libsegmentation/feature_management_hwid.h"
+
 #include <optional>
 
 #include <base/logging.h>
 
 #include "libsegmentation/device_info.pb.h"
-#include "libsegmentation/feature_management_hwid.h"
 #include "libsegmentation/feature_management_interface.h"
 #include "libsegmentation/feature_management_util.h"
 
@@ -79,6 +80,9 @@ libsegmentation::DeviceInfo_FeatureLevel HwComplianceVersionToFeatureLevel(
     case 1:
       return libsegmentation::DeviceInfo_FeatureLevel::
           DeviceInfo_FeatureLevel_FEATURE_LEVEL_1;
+    case 2:
+      return libsegmentation::DeviceInfo_FeatureLevel::
+          DeviceInfo_FeatureLevel_FEATURE_LEVEL_2;
     default:
       return libsegmentation::DeviceInfo_FeatureLevel::
           DeviceInfo_FeatureLevel_FEATURE_LEVEL_UNKNOWN;

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libsegmentation/feature_management_util.h"
+
 #include <fcntl.h>
 #include <glob.h>
 #include <linux/fs.h>
@@ -25,7 +27,6 @@
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_interface.h"
-#include "libsegmentation/feature_management_util.h"
 
 namespace segmentation {
 
@@ -76,6 +77,9 @@ FeatureManagementUtil::ConvertProtoFeatureLevel(
     case libsegmentation::DeviceInfo_FeatureLevel::
         DeviceInfo_FeatureLevel_FEATURE_LEVEL_1:
       return FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_1;
+    case libsegmentation::DeviceInfo_FeatureLevel::
+        DeviceInfo_FeatureLevel_FEATURE_LEVEL_2:
+      return FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_2;
     default:
       return FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_UNKNOWN;
   }
