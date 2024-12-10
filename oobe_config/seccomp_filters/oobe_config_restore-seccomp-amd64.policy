@@ -97,6 +97,7 @@ fdatasync: 1
 execve: 1
 # Also need clone (and all the syscalls below) for the same reason.
 clone: 1
+clone3: 1
 dup: 1
 dup2: 1
 wait4: 1
