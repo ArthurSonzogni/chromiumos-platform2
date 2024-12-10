@@ -56,14 +56,16 @@ impl StatelessVp8DecoderBackend for V4l2StatelessDecoderBackend {
         _: &Option<Self::Handle>,
         _: &Option<Self::Handle>,
         _: &[u8],
-        _: &Segmentation,
+        segmentation: &Segmentation,
         mb_lf_adjust: &MbLfAdjustments,
     ) -> StatelessBackendResult<Self::Handle> {
         let mut vp8_frame_params = V4l2CtrlVp8FrameParams::new();
 
         vp8_frame_params
             .set_loop_filter_params(hdr, mb_lf_adjust)
-            .set_quantization_params(hdr);
+            .set_quantization_params(hdr)
+            .set_segmentation_params(segmentation)
+            .set_entropy_params(hdr);
 
         let handle = Rc::new(RefCell::new(BackendHandle {
             picture: picture.clone(),
