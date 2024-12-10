@@ -51,6 +51,9 @@ allow cros_spaced labeledfs:filesystem { quotaget };
 # Needed for passing fd from crosvm over D-Bus call.
 allow cros_spaced cros_vm_concierge:fd { use };
 
+# Needed for passing fd from crosvm over D-Bus call.
+allow cros_spaced cros_vhost_user_starter:fd { use };
+
 # Needed for calling SetProjectId and SetProjectInheritanceFlag for ARC files
 # and dirs.
 has_arc(`
