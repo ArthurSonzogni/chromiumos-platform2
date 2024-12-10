@@ -1877,7 +1877,7 @@ impl Parser {
                     Parser::parse_scaling_list(r, &mut scaling_lists8x8[i], &mut use_default)?;
 
                     if use_default {
-                        Parser::fill_default_scaling_list_4x4(&mut scaling_lists4x4[i], i);
+                        Parser::fill_default_scaling_list_8x8(&mut scaling_lists8x8[i], i);
                     }
                 } else if !sps.seq_scaling_matrix_present_flag {
                     // Table 7-2: Fallback rule A
