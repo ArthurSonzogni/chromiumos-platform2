@@ -4,6 +4,7 @@
 
 #include "odml/mantis/processor.h"
 
+#include <base/memory/raw_ref.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/bind.h>
 #include <base/test/gmock_callback_support.h>
@@ -21,6 +22,7 @@
 #include "odml/mantis/fake/fake_mantis_api.h"
 #include "odml/mantis/lib_api.h"
 #include "odml/mojom/cros_safety.mojom.h"
+#include "odml/periodic_metrics.h"
 
 namespace mantis {
 namespace {
@@ -52,14 +54,16 @@ class MantisProcessorTest : public testing::Test {
     EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
         .WillOnce(base::test::RunOnceCallback<0>(true));
     return MantisProcessor(
-        raw_ref(metrics_lib_), base::SequencedTaskRunner::GetCurrentDefault(),
-        component, api, processor_remote_.BindNewPipeAndPassReceiver(),
+        raw_ref(metrics_lib_), raw_ref(periodic_metrics_),
+        base::SequencedTaskRunner::GetCurrentDefault(), component, api,
+        processor_remote_.BindNewPipeAndPassReceiver(),
         raw_ref(safety_service_manager_), raw_ref(translator_),
         base::DoNothing(), base::DoNothing());
   }
 
   base::test::TaskEnvironment task_environment_;
   MetricsLibraryMock metrics_lib_;
+  odml::PeriodicMetrics periodic_metrics_{raw_ref(metrics_lib_)};
   mojo::Remote<mojom::MantisProcessor> processor_remote_;
   cros_safety::SafetyServiceManagerMock safety_service_manager_;
   i18n::MockTranslator translator_;

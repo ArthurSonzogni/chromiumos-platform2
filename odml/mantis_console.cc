@@ -186,6 +186,7 @@ class MantisServiceForInterception : public mantis::MantisService {
  private:
   void CreateMantisProcessor(
       raw_ref<MetricsLibraryInterface> metrics_lib,
+      raw_ref<odml::PeriodicMetrics> periodic_metrics,
       scoped_refptr<base::SequencedTaskRunner> mantis_api_runner,
       const mantis::MantisAPI* api,
       mojo::PendingReceiver<mantis::mojom::MantisProcessor> receiver,
@@ -197,9 +198,9 @@ class MantisServiceForInterception : public mantis::MantisService {
       mantis::MantisComponent component) override {
     LOG(INFO) << "MantisServiceForInterception::CreateMantisProcessor called";
     mantis_processor = std::make_unique<MantisProcessorForInterception>(
-        metrics_lib, mantis_api_runner, component, api, std::move(receiver),
-        safety_service_manager, translator, std::move(on_disconnected),
-        std::move(callback));
+        metrics_lib, periodic_metrics, mantis_api_runner, component, api,
+        std::move(receiver), safety_service_manager, translator,
+        std::move(on_disconnected), std::move(callback));
   }
 };
 
@@ -207,13 +208,17 @@ class MantisServiceProviderImpl {
  public:
   MantisServiceProviderImpl(
       raw_ref<MetricsLibrary> metrics,
+      raw_ref<odml::PeriodicMetrics> periodic_metrics,
       raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
       raw_ref<i18n::TranslatorImpl> translator)
-      : service_impl_(
-            metrics, shim_loader, safety_service_manager, translator) {}
+      : service_impl_(metrics,
+                      periodic_metrics,
+                      shim_loader,
+                      safety_service_manager,
+                      translator) {}
   raw_ref<MantisServiceForInterception> service() {
     return raw_ref(service_impl_);
   }
@@ -287,8 +292,9 @@ class MantisConsole : public brillo::DBusDaemon {
           std::make_unique<cros_safety::SafetyServiceManagerBypass>();
     }
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
-        raw_ref(metrics_), raw_ref(shim_loader_), service_manager_,
-        raw_ref(*safety_service_manager_.get()), raw_ref(translator_));
+        raw_ref(metrics_), raw_ref(periodic_metrics_), raw_ref(shim_loader_),
+        service_manager_, raw_ref(*safety_service_manager_.get()),
+        raw_ref(translator_));
     return EX_OK;
   }
 
@@ -372,6 +378,7 @@ class MantisConsole : public brillo::DBusDaemon {
   odml::OdmlShimLoaderImpl shim_loader_;
   // The metrics lib. Should be destructed after service providers.
   MetricsLibrary metrics_;
+  odml::PeriodicMetrics periodic_metrics_{raw_ref(metrics_)};
   std::unique_ptr<MantisServiceProviderImpl> mantis_service_provider_impl_;
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
       service_manager_;

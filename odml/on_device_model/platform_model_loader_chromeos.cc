@@ -170,8 +170,11 @@ ReceiverType* ChromeosPlatformModelLoader::PlatformModelRefTraits<
 
 ChromeosPlatformModelLoader::ChromeosPlatformModelLoader(
     raw_ref<MetricsLibraryInterface> metrics,
+    raw_ref<odml::PeriodicMetrics> periodic_metrics,
     raw_ref<OnDeviceModelService> service)
-    : metrics_(metrics), service_(service) {}
+    : metrics_(metrics),
+      periodic_metrics_(periodic_metrics),
+      service_(service) {}
 
 ChromeosPlatformModelLoader::~ChromeosPlatformModelLoader() = default;
 
@@ -566,6 +569,8 @@ void ChromeosPlatformModelLoader::FinishLoadModel(
     const std::string& version,
     scoped_refptr<PlatformModel<mojom::OnDeviceModel>> model,
     mojom::LoadModelResult result) {
+  periodic_metrics_->UpdateAndRecordMetricsNow();
+
   if (result != mojom::LoadModelResult::kSuccess) {
     metrics_->SendEnumToUMA(kLoadStatusHistogramName,
                             LoadStatus::kLoadModelFail);
@@ -587,6 +592,8 @@ void ChromeosPlatformModelLoader::FinishLoadTsModel(
     const std::string& version,
     scoped_refptr<PlatformModel<mojom::TextSafetyModel>> ts_model,
     mojom::LoadModelResult result) {
+  periodic_metrics_->UpdateAndRecordMetricsNow();
+
   if (result != mojom::LoadModelResult::kSuccess) {
     metrics_->SendEnumToUMA(kLoadStatusHistogramName,
                             LoadStatus::kLoadModelFail);

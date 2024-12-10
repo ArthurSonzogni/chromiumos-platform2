@@ -25,6 +25,7 @@
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/on_device_model/ml/chrome_ml_types.h"
 #include "odml/on_device_model/platform_model_loader.h"
+#include "odml/periodic_metrics.h"
 
 namespace on_device_model {
 
@@ -33,6 +34,7 @@ class OnDeviceModelService;
 class ChromeosPlatformModelLoader final : public PlatformModelLoader {
  public:
   ChromeosPlatformModelLoader(raw_ref<MetricsLibraryInterface> metrics,
+                              raw_ref<odml::PeriodicMetrics> periodic_metrics,
                               raw_ref<OnDeviceModelService> service);
   ~ChromeosPlatformModelLoader() override;
 
@@ -168,6 +170,7 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
       mojom::LoadModelResult result);
 
   const raw_ref<MetricsLibraryInterface> metrics_;
+  const raw_ref<odml::PeriodicMetrics> periodic_metrics_;
   raw_ref<OnDeviceModelService> service_;
   mojo::ReceiverSetBase<
       mojo::Receiver<mojom::OnDeviceModel,

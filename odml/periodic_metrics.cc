@@ -52,7 +52,7 @@ constexpr base::TimeDelta kCumulativeMetricsReportPeriod = base::Hours(1);
 
 }  // namespace
 
-PeriodicMetrics::PeriodicMetrics(raw_ref<MetricsLibrary> metrics)
+PeriodicMetrics::PeriodicMetrics(raw_ref<MetricsLibraryInterface> metrics)
     : metrics_(metrics),
       process_metrics_(base::ProcessMetrics::CreateCurrentProcessMetrics()) {
   cumulative_metrics_ = std::make_unique<chromeos_metrics::CumulativeMetrics>(

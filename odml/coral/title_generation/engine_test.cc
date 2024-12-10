@@ -30,6 +30,7 @@
 #include "odml/on_device_model/fake/on_device_model_fake.h"
 #include "odml/on_device_model/features.h"
 #include "odml/on_device_model/on_device_model_service.h"
+#include "odml/periodic_metrics.h"
 #include "odml/session_state_manager/session_state_manager.h"
 #include "odml/utils/odml_shim_loader_mock.h"
 
@@ -125,13 +126,13 @@ class FakeObserver : public mojom::TitleObserver {
 class TitleGenerationEngineTest : public testing::Test {
  public:
   TitleGenerationEngineTest()
-      : coral_metrics_(raw_ref(metrics_)),
-        model_service_(raw_ref(metrics_), raw_ref(shim_loader_)) {}
+      : task_environment_(TaskEnvironment::TimeSource::MOCK_TIME,
+                          TaskEnvironment::MainThreadType::DEFAULT),
+        coral_metrics_(raw_ref(metrics_)),
+        model_service_(raw_ref(metrics_),
+                       raw_ref(periodic_metrics_),
+                       raw_ref(shim_loader_)) {}
   void SetUp() override {
-    task_environment_ = std::make_unique<TaskEnvironment>(
-        TaskEnvironment::TimeSource::MOCK_TIME,
-        TaskEnvironment::MainThreadType::DEFAULT);
-
     fake_ml::SetupFakeChromeML(raw_ref(metrics_), raw_ref(shim_loader_));
     mojo::core::Init();
     // A catch-all so that we don't have to explicitly EXPECT every metrics
@@ -238,8 +239,9 @@ class TitleGenerationEngineTest : public testing::Test {
     }
   }
 
-  std::unique_ptr<base::test::TaskEnvironment> task_environment_;
+  base::test::TaskEnvironment task_environment_;
   NiceMock<MetricsLibraryMock> metrics_;
+  odml::PeriodicMetrics periodic_metrics_{raw_ref(metrics_)};
   CoralMetrics coral_metrics_;
   NiceMock<odml::OdmlShimLoaderMock> shim_loader_;
   on_device_model::OnDeviceModelService model_service_;
@@ -366,7 +368,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   engine_->OnUserLoggedIn(user);
 
   // Wait a while, make sure there are no cache flushes.
-  task_environment_->FastForwardBy(base::Days(100));
+  task_environment_.FastForwardBy(base::Days(100));
   TitleCacheStorage test_title_cache_storage =
       TitleCacheStorage(temp_dir_->GetPath(), raw_ref(coral_metrics_));
   base::HashingLRUCache<std::string, TitleCacheEntry> read_title_cache(4);
@@ -417,7 +419,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   std::string title1 = *response1.groups[0]->title;
 
   // Wait a while, make sure the cache has been flushed.
-  task_environment_->FastForwardBy(base::Hours(4));
+  task_environment_.FastForwardBy(base::Hours(4));
   EXPECT_TRUE(test_title_cache_storage.Load(user, read_title_cache));
   EXPECT_EQ(1, read_title_cache.size());
 
@@ -425,7 +427,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   // existing cache needlessly.
   read_title_cache.Clear();
   EXPECT_TRUE(test_title_cache_storage.Save(user, read_title_cache));
-  task_environment_->FastForwardBy(base::Hours(4));
+  task_environment_.FastForwardBy(base::Hours(4));
   EXPECT_TRUE(test_title_cache_storage.Load(user, read_title_cache));
   EXPECT_EQ(0, read_title_cache.size());
 
@@ -497,7 +499,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   EXPECT_EQ(cache_entry.value(), title1);
 
   // Wait a while to try again and see if the cache expired.
-  task_environment_->FastForwardBy(base::Days(50));
+  task_environment_.FastForwardBy(base::Days(50));
   cache_entry = engine_->GetNthTitleCacheKeyForTesting(0);
   ASSERT_FALSE(cache_entry.has_value());
 

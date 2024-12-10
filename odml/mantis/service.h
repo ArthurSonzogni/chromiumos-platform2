@@ -27,6 +27,7 @@
 #include "odml/mantis/processor.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
+#include "odml/periodic_metrics.h"
 #include "odml/utils/odml_shim_loader.h"
 #include "odml/utils/performance_timer.h"
 
@@ -36,6 +37,7 @@ class MantisService : public mojom::MantisService {
  public:
   explicit MantisService(
       raw_ref<MetricsLibraryInterface> metrics_lib,
+      raw_ref<odml::PeriodicMetrics> periodic_metrics,
       raw_ref<odml::OdmlShimLoader> shim_loader,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
       raw_ref<i18n::Translator> translator);
@@ -65,6 +67,7 @@ class MantisService : public mojom::MantisService {
  protected:
   virtual void CreateMantisProcessor(
       raw_ref<MetricsLibraryInterface> metrics_lib,
+      raw_ref<odml::PeriodicMetrics> periodic_metrics,
       scoped_refptr<base::SequencedTaskRunner> mantis_api_runner,
       const MantisAPI* api,
       mojo::PendingReceiver<mojom::MantisProcessor> receiver,
@@ -141,6 +144,8 @@ class MantisService : public mojom::MantisService {
       InitializeCallback callback);
 
   const raw_ref<MetricsLibraryInterface> metrics_lib_;
+
+  const raw_ref<odml::PeriodicMetrics> periodic_metrics_;
 
   const scoped_refptr<base::SequencedTaskRunner> mantis_api_runner_;
 

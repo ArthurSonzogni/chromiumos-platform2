@@ -28,6 +28,7 @@
 #include "odml/mantis/processor.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
+#include "odml/periodic_metrics.h"
 #include "odml/utils/dlc_client_helper.h"
 #include "odml/utils/odml_shim_loader.h"
 #include "odml/utils/performance_timer.h"
@@ -122,10 +123,12 @@ void InstallI18nDlcForIndex(
 
 MantisService::MantisService(
     raw_ref<MetricsLibraryInterface> metrics_lib,
+    raw_ref<odml::PeriodicMetrics> periodic_metrics,
     raw_ref<odml::OdmlShimLoader> shim_loader,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
     raw_ref<i18n::Translator> translator)
     : metrics_lib_(metrics_lib),
+      periodic_metrics_(periodic_metrics),
       mantis_api_runner_(
           base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()})),
       shim_loader_(shim_loader),
@@ -278,8 +281,8 @@ void MantisService::PrepareMantisProcessor(
           api, assets_file_dir),
       base::BindOnce(&MantisService::CreateMantisProcessor,
                      weak_ptr_factory_.GetWeakPtr(), metrics_lib_,
-                     mantis_api_runner_, api, std::move(processor),
-                     safety_service_manager_, translator_,
+                     periodic_metrics_, mantis_api_runner_, api,
+                     std::move(processor), safety_service_manager_, translator_,
                      base::BindOnce(&MantisService::DeleteProcessor,
                                     base::Unretained(this)),
                      std::move(callback), std::move(timer))
@@ -314,6 +317,7 @@ void MantisService::OnInstallVerifiedMantisDlcComplete(
 
 void MantisService::CreateMantisProcessor(
     raw_ref<MetricsLibraryInterface> metrics_lib,
+    raw_ref<odml::PeriodicMetrics> periodic_metrics,
     scoped_refptr<base::SequencedTaskRunner> mantis_api_runner,
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
@@ -324,10 +328,11 @@ void MantisService::CreateMantisProcessor(
     odml::PerformanceTimer::Ptr timer,
     MantisComponent component) {
   processor_ = std::make_unique<MantisProcessor>(
-      metrics_lib, std::move(mantis_api_runner), component, api,
-      std::move(processor), safety_service_manager, translator,
+      metrics_lib, periodic_metrics, std::move(mantis_api_runner), component,
+      api, std::move(processor), safety_service_manager, translator,
       std::move(on_disconnected), std::move(callback));
   SendTimeMetric(*metrics_lib_, TimeMetric::kLoadModelLatency, *timer);
+  periodic_metrics->UpdateAndRecordMetricsNow();
 }
 
 void MantisService::NotifyPendingProcessors() {

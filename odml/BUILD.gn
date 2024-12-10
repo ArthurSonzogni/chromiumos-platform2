@@ -209,6 +209,7 @@ source_set("odml") {
     "on_device_model/platform_model_loader_chromeos.cc",
     "on_device_model/public/cpp/model_assets.cc",
     "on_device_model/public/cpp/text_safety_assets.cc",
+    "periodic_metrics.cc",
     "session_state_manager/session_state_manager.cc",
     "utils/dlc_client_helper.cc",
     "utils/odml_shim_loader_impl.cc",
@@ -271,10 +272,7 @@ executable("translator_console") {
 
 executable("odmld") {
   install_path = "bin"
-  sources = [
-    "odmld.cc",
-    "periodic_metrics.cc",
-  ]
+  sources = [ "odmld.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
     ":coral",

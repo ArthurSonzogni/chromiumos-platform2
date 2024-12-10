@@ -32,6 +32,7 @@
 #include "odml/on_device_model/ml/chrome_ml_types.h"
 #include "odml/on_device_model/public/cpp/test_support/test_response_holder.h"
 #include "odml/on_device_model/public/cpp/text_safety_assets.h"
+#include "odml/periodic_metrics.h"
 #include "odml/utils/odml_shim_loader_mock.h"
 
 namespace on_device_model {
@@ -101,7 +102,9 @@ class FakeFile {
 class OnDeviceModelServiceTest : public testing::Test {
  public:
   OnDeviceModelServiceTest()
-      : service_impl_(raw_ref(metrics_), raw_ref(shim_loader_)) {
+      : service_impl_(raw_ref(metrics_),
+                      raw_ref(periodic_metrics_),
+                      raw_ref(shim_loader_)) {
     fake_ml::SetupFakeChromeML(raw_ref(metrics_), raw_ref(shim_loader_));
     mojo::core::Init();
     service_impl_.AddReceiver(service_.BindNewPipeAndPassReceiver());
@@ -192,6 +195,7 @@ class OnDeviceModelServiceTest : public testing::Test {
  protected:
   base::test::TaskEnvironment task_environment_;
   NiceMock<MetricsLibraryMock> metrics_;
+  odml::PeriodicMetrics periodic_metrics_{raw_ref(metrics_)};
   odml::OdmlShimLoaderMock shim_loader_;
   mojo::Remote<mojom::OnDeviceModelPlatformService> service_;
   OnDeviceModelService service_impl_;

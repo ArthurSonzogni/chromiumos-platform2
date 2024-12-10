@@ -29,6 +29,7 @@
 #include "odml/mojom/cros_safety.mojom.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
+#include "odml/periodic_metrics.h"
 #include "odml/utils/performance_timer.h"
 
 namespace mantis {
@@ -82,6 +83,7 @@ constexpr auto kMapImageTypeToRuleset =
 
 MantisProcessor::MantisProcessor(
     raw_ref<MetricsLibraryInterface> metrics_lib,
+    raw_ref<odml::PeriodicMetrics> periodic_metrics,
     scoped_refptr<base::SequencedTaskRunner> mantis_api_runner,
     MantisComponent component,
     const MantisAPI* api,
@@ -91,6 +93,7 @@ MantisProcessor::MantisProcessor(
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(InitializeResult)> callback)
     : metrics_lib_(metrics_lib),
+      periodic_metrics_(periodic_metrics),
       mantis_api_runner_(std::move(mantis_api_runner)),
       component_(component),
       api_(api),
@@ -301,6 +304,9 @@ void MantisProcessor::ProcessImage(std::unique_ptr<MantisProcess> process) {
 
 void MantisProcessor::OnProcessDone(std::unique_ptr<MantisProcess> process,
                                     const ProcessFuncResult& lib_result) {
+  // Record the usage after process.
+  periodic_metrics_->UpdateAndRecordMetricsNow();
+
   if (lib_result.error.has_value()) {
     std::move(process->callback)
         .Run(MantisResult::NewError(lib_result.error.value()));

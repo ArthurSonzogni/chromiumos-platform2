@@ -29,6 +29,7 @@
 #include "odml/on_device_model/ml/ts_model.h"
 #include "odml/on_device_model/platform_model_loader.h"
 #include "odml/on_device_model/platform_model_loader_chromeos.h"
+#include "odml/periodic_metrics.h"
 
 namespace on_device_model {
 namespace {
@@ -354,11 +355,13 @@ void SessionWrapper::CloneInternal(
 
 OnDeviceModelService::OnDeviceModelService(
     raw_ref<MetricsLibraryInterface> metrics,
+    raw_ref<odml::PeriodicMetrics> periodic_metrics,
     raw_ref<odml::OdmlShimLoader> shim_loader)
     : metrics_(metrics),
+      periodic_metrics_(periodic_metrics),
       shim_loader_(shim_loader),
       platform_model_loader_(std::make_unique<ChromeosPlatformModelLoader>(
-          metrics_, raw_ref(*this))) {}
+          metrics_, periodic_metrics_, raw_ref(*this))) {}
 
 OnDeviceModelService::~OnDeviceModelService() = default;
 

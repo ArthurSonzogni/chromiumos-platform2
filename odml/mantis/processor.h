@@ -29,6 +29,7 @@
 #include "odml/mantis/metrics.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
+#include "odml/periodic_metrics.h"
 #include "odml/utils/performance_timer.h"
 
 namespace mantis {
@@ -72,6 +73,7 @@ class MantisProcessor : public mojom::MantisProcessor {
  public:
   explicit MantisProcessor(
       raw_ref<MetricsLibraryInterface> metrics_lib,
+      raw_ref<odml::PeriodicMetrics> periodic_metrics,
       scoped_refptr<base::SequencedTaskRunner> mantis_api_runner,
       MantisComponent component,
       const MantisAPI* api,
@@ -138,6 +140,8 @@ class MantisProcessor : public mojom::MantisProcessor {
                      const ProcessFuncResult& lib_result);
 
   const raw_ref<MetricsLibraryInterface> metrics_lib_;
+
+  const raw_ref<odml::PeriodicMetrics> periodic_metrics_;
 
   const scoped_refptr<base::SequencedTaskRunner> mantis_api_runner_;
 

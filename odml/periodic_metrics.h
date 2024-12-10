@@ -18,7 +18,7 @@ namespace odml {
 // Threading: Create and use on a single sequence.
 class PeriodicMetrics {
  public:
-  explicit PeriodicMetrics(raw_ref<MetricsLibrary> metrics);
+  explicit PeriodicMetrics(raw_ref<MetricsLibraryInterface> metrics);
   PeriodicMetrics(const PeriodicMetrics&) = delete;
   PeriodicMetrics& operator=(const PeriodicMetrics&) = delete;
 
@@ -38,7 +38,7 @@ class PeriodicMetrics {
   // Uploads process metrics.
   void UploadMetrics(chromeos_metrics::CumulativeMetrics* cumulative_metrics);
 
-  raw_ref<MetricsLibrary> metrics_;
+  raw_ref<MetricsLibraryInterface> metrics_;
   std::unique_ptr<base::ProcessMetrics> process_metrics_;
   std::unique_ptr<chromeos_metrics::CumulativeMetrics> cumulative_metrics_;
   base::RepeatingTimer timer_;

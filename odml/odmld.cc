@@ -46,10 +46,11 @@ class OnDeviceModelServiceProviderImpl
  public:
   OnDeviceModelServiceProviderImpl(
       raw_ref<MetricsLibrary> metrics,
+      raw_ref<odml::PeriodicMetrics> periodic_metrics,
       raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : receiver_(this), service_impl_(metrics, shim_loader) {
+      : receiver_(this), service_impl_(metrics, periodic_metrics, shim_loader) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosOdmlService,
         receiver_.BindNewPipeAndPassRemote());
@@ -164,6 +165,7 @@ class MantisServiceProviderImpl
  public:
   MantisServiceProviderImpl(
       raw_ref<MetricsLibrary> metrics,
+      raw_ref<odml::PeriodicMetrics> periodic_metrics,
       raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager,
@@ -171,8 +173,11 @@ class MantisServiceProviderImpl
       raw_ref<i18n::TranslatorImpl> translator)
       : metrics_(metrics),
         receiver_(this),
-        service_impl_(
-            metrics, shim_loader, safety_service_manager, translator) {
+        service_impl_(metrics,
+                      periodic_metrics,
+                      shim_loader,
+                      safety_service_manager,
+                      translator) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosMantisService,
         receiver_.BindNewPipeAndPassRemote());
@@ -244,7 +249,8 @@ class Daemon : public brillo::DBusDaemon {
 
     on_device_model_service_provider_impl_ =
         std::make_unique<OnDeviceModelServiceProviderImpl>(
-            raw_ref(metrics_), raw_ref(shim_loader_), service_manager_);
+            raw_ref(metrics_), raw_ref(periodic_metrics_),
+            raw_ref(shim_loader_), service_manager_);
     embedding_model_service_provider_impl_ =
         std::make_unique<EmbeddingModelServiceProviderImpl>(
             raw_ref(metrics_), raw_ref(shim_loader_), service_manager_);
@@ -256,8 +262,9 @@ class Daemon : public brillo::DBusDaemon {
         raw_ref(*safety_service_manager_impl_.get()), raw_ref(translator_));
 
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
-        raw_ref(metrics_), raw_ref(shim_loader_), service_manager_,
-        raw_ref(*safety_service_manager_impl_.get()), raw_ref(translator_));
+        raw_ref(metrics_), raw_ref(periodic_metrics_), raw_ref(shim_loader_),
+        service_manager_, raw_ref(*safety_service_manager_impl_.get()),
+        raw_ref(translator_));
 
     session_state_manager_->RefreshPrimaryUser();
 
