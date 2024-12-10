@@ -24,8 +24,8 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   const std::string kBrokenClasslessRoutes0 =
       kDefaultDestination + " " + kRouter0 + " " + kDestination1;
   net_base::NetworkConfig network_config;
-  EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes0,
-                                                        &network_config));
+  EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(
+      kBrokenClasslessRoutes0, &network_config, "wlan0 mock_service sid=0"));
   EXPECT_TRUE(network_config.rfc3442_routes.empty());
   EXPECT_FALSE(network_config.ipv4_gateway.has_value());
 
@@ -34,8 +34,8 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   const std::string kBrokenRouter1 = "10.0.0";
   const std::string kBrokenClasslessRoutes1 =
       kBrokenClasslessRoutes0 + " " + kBrokenRouter1;
-  EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
-                                                        &network_config));
+  EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(
+      kBrokenClasslessRoutes1, &network_config, "wlan0 mock_service sid=0"));
   EXPECT_TRUE(network_config.rfc3442_routes.empty());
   EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter0),
             network_config.ipv4_gateway);
@@ -44,8 +44,8 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   const std::string kRouter2 = "10.0.0.252";
   const std::string kClasslessRoutes0 = kDefaultDestination + " " + kRouter2 +
                                         " " + kDestination1 + " " + kRouter1;
-  EXPECT_TRUE(DHCPv4Config::ParseClasslessStaticRoutes(kClasslessRoutes0,
-                                                       &network_config));
+  EXPECT_TRUE(DHCPv4Config::ParseClasslessStaticRoutes(
+      kClasslessRoutes0, &network_config, "wlan0 mock_service sid=0"));
   // The old default route is preserved.
   EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter0),
             network_config.ipv4_gateway);
@@ -64,8 +64,8 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter1), route1.second);
 
   // A malformed routing table should not affect the current table.
-  EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
-                                                        &network_config));
+  EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(
+      kBrokenClasslessRoutes1, &network_config, "wlan0 mock_service sid=0"));
   EXPECT_EQ(2, network_config.rfc3442_routes.size());
   EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter0),
             network_config.ipv4_gateway);
@@ -90,8 +90,8 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
 
   net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
-  ASSERT_TRUE(
-      DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
+  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(
+      conf, &network_config, &dhcp_data, "wlan0 mock_service sid=0"));
   EXPECT_EQ(*net_base::IPv4CIDR::CreateFromStringAndPrefix("4.3.2.1", 16),
             network_config.ipv4_address);
   EXPECT_EQ(*net_base::IPv4Address::CreateFromString("64.48.32.16"),
@@ -117,8 +117,8 @@ TEST(DHCPv4ConfigTest, ParseConfigurationRespectingMinimumMTU) {
     conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, mtu);
     net_base::NetworkConfig network_config;
     DHCPv4Config::Data dhcp_data;
-    ASSERT_TRUE(
-        DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
+    ASSERT_TRUE(DHCPv4Config::ParseConfiguration(
+        conf, &network_config, &dhcp_data, "wlan0 mock_service sid=0"));
     if (mtu <= net_base::NetworkConfig::kMinIPv4MTU) {
       EXPECT_FALSE(network_config.mtu.has_value());
     } else {
@@ -135,8 +135,8 @@ TEST(DHCPv4ConfigTest, ParseConfigurationCaptivePortalUri) {
 
   net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
-  EXPECT_TRUE(
-      DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
+  EXPECT_TRUE(DHCPv4Config::ParseConfiguration(
+      conf, &network_config, &dhcp_data, "wlan0 mock_service sid=0"));
   EXPECT_EQ(network_config.captive_portal_uri,
             net_base::HttpUrl::CreateFromString(kCaptivePortalUri).value());
 }
@@ -149,8 +149,8 @@ TEST(DHCPv4ConfigTest, ParseConfigurationCaptivePortalUriFailed) {
 
   net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
-  EXPECT_FALSE(
-      DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
+  EXPECT_FALSE(DHCPv4Config::ParseConfiguration(
+      conf, &network_config, &dhcp_data, "wlan0 mock_service sid=0"));
   EXPECT_EQ(network_config.captive_portal_uri, std::nullopt);
 }
 

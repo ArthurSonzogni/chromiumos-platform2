@@ -35,7 +35,8 @@ MockDHCPController::MockDHCPController(
                      technology,
                      options,
                      base::DoNothing(),
-                     base::DoNothing()),
+                     base::DoNothing(),
+                     "mock_device mock_service sid=mock"),
       update_callback_(std::move(update_callback)),
       drop_callback_(std::move(drop_callback)) {}
 

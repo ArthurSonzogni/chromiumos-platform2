@@ -22,7 +22,8 @@ class DHCPv4ConfigStaticRoutesFuzz {
   static void Run(const uint8_t* data, size_t size) {
     net_base::NetworkConfig network_config;
     const std::string fuzzed_str(reinterpret_cast<const char*>(data), size);
-    DHCPv4Config::ParseClasslessStaticRoutes(fuzzed_str, &network_config);
+    DHCPv4Config::ParseClasslessStaticRoutes(fuzzed_str, &network_config,
+                                             "logging_tag");
   }
 };
 

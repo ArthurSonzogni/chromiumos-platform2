@@ -137,7 +137,8 @@ pid_t RunDHCPCDInMinijail(net_base::ProcessManager* process_manager,
 }
 
 std::optional<DHCPClientProxy::EventReason> GetEventReason(
-    const std::map<std::string, std::string>& configuration) {
+    const std::map<std::string, std::string>& configuration,
+    std::string_view logging_tag) {
   // Constants used as event type got from dhcpcd.
   static constexpr auto kEventReasonTable =
       base::MakeFixedFlatMap<std::string_view, DHCPClientProxy::EventReason>({
@@ -159,13 +160,16 @@ std::optional<DHCPClientProxy::EventReason> GetEventReason(
   const auto conf_iter =
       configuration.find(DHCPv4Config::kConfigurationKeyReason);
   if (conf_iter == configuration.end()) {
-    LOG(WARNING) << __func__ << ": Reason is missing";
+    LOG(WARNING) << logging_tag << " " << __func__ << ": "
+                 << DHCPv4Config::kConfigurationKeyReason
+                 << " is missing from configuration";
     return std::nullopt;
   }
 
   const auto table_iter = kEventReasonTable.find(conf_iter->second);
   if (table_iter == kEventReasonTable.end()) {
-    LOG(INFO) << __func__ << ": Ignore the reason: " << conf_iter->second;
+    LOG(INFO) << logging_tag << " " << __func__
+              << ": Ignore the reason: " << conf_iter->second;
     return std::nullopt;
   }
   return table_iter->second;
@@ -176,10 +180,12 @@ std::optional<DHCPClientProxy::EventReason> GetEventReason(
 DHCPCDProxy::DHCPCDProxy(net_base::ProcessManager* process_manager,
                          std::string_view interface,
                          DHCPClientProxy::EventHandler* handler,
-                         base::ScopedClosureRunner destroy_cb)
+                         base::ScopedClosureRunner destroy_cb,
+                         std::string_view logging_tag)
     : DHCPClientProxy(interface, handler),
       process_manager_(process_manager),
-      destroy_cb_(std::move(destroy_cb)) {}
+      destroy_cb_(std::move(destroy_cb)),
+      logging_tag_(logging_tag) {}
 
 DHCPCDProxy::~DHCPCDProxy() = default;
 
@@ -201,7 +207,8 @@ bool DHCPCDProxy::RunDHCPCDWithArgs(const std::vector<std::string>& args) {
   const pid_t pid =
       RunDHCPCDInMinijail(process_manager_, args, /*need_cap=*/false);
   if (pid == net_base::ProcessManager::kInvalidPID) {
-    LOG(ERROR) << __func__ << ": Failed to run dhcpcd with args:"
+    LOG(ERROR) << logging_tag_ << " " << __func__
+               << ": Failed to run dhcpcd with args:"
                << base::JoinString(args, " ");
     return false;
   }
@@ -214,11 +221,13 @@ void DHCPCDProxy::OnDHCPEvent(
   const auto iter =
       configuration.find(DHCPv4Config::kConfigurationKeyInterface);
   if (iter == configuration.end() || iter->second != interface_) {
-    LOG(WARNING) << __func__ << ": iterface is mismatched";
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": Interface is mismatched";
     return;
   }
 
-  const std::optional<EventReason> reason = GetEventReason(configuration);
+  const std::optional<EventReason> reason =
+      GetEventReason(configuration, logging_tag_);
   if (!reason.has_value()) {
     return;
   }
@@ -240,8 +249,8 @@ void DHCPCDProxy::OnDHCPEvent(
   if (NeedConfiguration(*reason) &&
       !DHCPv4Config::ParseConfiguration(
           ConvertConfigurationToKeyValueStore(configuration), &network_config,
-          &dhcp_data)) {
-    LOG(WARNING) << __func__
+          &dhcp_data, logging_tag_)) {
+    LOG(WARNING) << logging_tag_ << " " << __func__
                  << ": Error parsing network configuration from DHCP client. "
                  << "The following configuration might be partial: "
                  << network_config;
@@ -351,6 +360,7 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
     Technology technology,
     const DHCPClientProxy::Options& options,
     DHCPClientProxy::EventHandler* handler,
+    std::string_view logging_tag,
     net_base::IPFamily family) {
   const std::vector<std::string> args = GetDhcpcdArgs(
       technology, options, interface, family, /*redact_args=*/false);
@@ -358,7 +368,8 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
   const pid_t pid =
       RunDHCPCDInMinijail(process_manager_, args, /*need_cap=*/true);
   if (pid == net_base::ProcessManager::kInvalidPID) {
-    LOG(ERROR) << __func__ << ": Failed to start the dhcpcd process";
+    LOG(ERROR) << logging_tag << " " << __func__
+               << ": Failed to start the dhcpcd process";
     return nullptr;
   }
   pids_need_to_stop_.insert(pid);
@@ -366,10 +377,11 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
       // base::Unretained(this) is safe because the closure won't be passed
       // outside this instance.
       &DHCPCDProxyFactory::CleanUpDhcpcd, base::Unretained(this),
-      std::string(interface), family, options, pid));
+      std::string(interface), family, options, pid, std::string(logging_tag)));
 
   // Log dhcpcd args but redact the args to exclude PII.
-  LOG(INFO) << "Created dhcpcd with pid " << pid << " and args: "
+  LOG(INFO) << logging_tag << " " << __func__ << ": Created dhcpcd with pid "
+            << pid << " and args: "
             << base::JoinString(
                    GetDhcpcdArgs(technology, options, interface, family,
                                  /*redact_args=*/true),
@@ -378,7 +390,8 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
   // Inject the exit callback with pid information.
   if (!process_manager_->UpdateExitCallback(
           pid, base::BindOnce(&DHCPCDProxyFactory::OnProcessExited,
-                              weak_ptr_factory_.GetWeakPtr(), pid))) {
+                              weak_ptr_factory_.GetWeakPtr(), pid,
+                              std::string(logging_tag)))) {
     return nullptr;
   }
 
@@ -387,7 +400,8 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
       std::make_unique<DHCPCDProxy>(process_manager_, interface, handler,
                                     base::ScopedClosureRunner(base::BindOnce(
                                         &DHCPCDProxyFactory::OnProxyDestroyed,
-                                        weak_ptr_factory_.GetWeakPtr(), pid)));
+                                        weak_ptr_factory_.GetWeakPtr(), pid)),
+                                    logging_tag);
   alive_proxies_.insert(std::make_pair(
       pid, AliveProxy{proxy->GetWeakPtr(), std::move(clean_up_closure)}));
   return proxy;
@@ -396,7 +410,8 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
 void DHCPCDProxyFactory::CleanUpDhcpcd(const std::string& interface,
                                        net_base::IPFamily family,
                                        DHCPClientProxy::Options options,
-                                       int pid) {
+                                       int pid,
+                                       const std::string& logging_tag) {
   const auto iter = pids_need_to_stop_.find(pid);
   if (iter != pids_need_to_stop_.end()) {
     // Terminate the dhcpcd process first with SIGALRM, then SIGTERM (with
@@ -414,7 +429,8 @@ void DHCPCDProxyFactory::CleanUpDhcpcd(const std::string& interface,
     // SIGKILL.
     bool killed = false;
     if (!process_manager_->KillProcess(pid, SIGALRM, &killed)) {
-      LOG(WARNING) << "Failed to send SIGALRM to pid: " << pid;
+      LOG(WARNING) << logging_tag << " " << __func__
+                   << ": Failed to send SIGALRM to pid: " << pid;
     }
     if (!killed) {
       process_manager_->StopProcessAndBlock(pid);
@@ -430,8 +446,11 @@ void DHCPCDProxyFactory::CleanUpDhcpcd(const std::string& interface,
                          family == net_base::IPFamily::kIPv6 ? 6 : 4)));
 }
 
-void DHCPCDProxyFactory::OnProcessExited(int pid, int exit_status) {
-  LOG(INFO) << __func__ << ": The dhcpcd process with pid " << pid
+void DHCPCDProxyFactory::OnProcessExited(int pid,
+                                         const std::string& logging_tag,
+                                         int exit_status) {
+  LOG(INFO) << logging_tag << " " << __func__
+            << ": The dhcpcd process with pid " << pid
             << " is exited with status: " << exit_status;
   pids_need_to_stop_.erase(pid);
 
@@ -447,14 +466,16 @@ void DHCPCDProxyFactory::OnProcessExited(int pid, int exit_status) {
 DHCPCDProxy* DHCPCDProxyFactory::GetAliveProxy(int pid) const {
   auto iter = alive_proxies_.find(pid);
   if (iter == alive_proxies_.end()) {
-    LOG(WARNING) << "Received signal from the untracked dhcpcd with pid: "
+    LOG(WARNING) << __func__
+                 << ": Received signal from the untracked dhcpcd with pid: "
                  << pid;
     return nullptr;
   }
 
   base::WeakPtr<DHCPCDProxy> proxy = iter->second.proxy;
   if (!proxy) {
-    LOG(INFO) << "The proxy with pid: " << pid << " is invalidated";
+    LOG(INFO) << __func__ << ": The proxy with pid: " << pid
+              << " is invalidated";
     return nullptr;
   }
 
@@ -469,7 +490,8 @@ void DHCPCDProxyFactory::OnDHCPEvent(
     const std::map<std::string, std::string>& configuration) {
   const auto iter = configuration.find(DHCPv4Config::kConfigurationKeyPid);
   if (iter == configuration.end()) {
-    LOG(WARNING) << __func__ << ": No pid found in the configuration";
+    LOG(WARNING) << __func__ << ": " << DHCPv4Config::kConfigurationKeyPid
+                 << " is missing from configuration";
     return;
   }
 

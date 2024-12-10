@@ -6,6 +6,7 @@
 #define SHILL_NETWORK_DHCPV4_CONFIG_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/time/time.h>
@@ -63,7 +64,8 @@ class DHCPv4Config {
   // |dhcp_data|. Returns true on success, and false otherwise.
   static bool ParseConfiguration(const KeyValueStore& configuration,
                                  net_base::NetworkConfig* network_config,
-                                 DHCPv4Config::Data* dhcp_data);
+                                 DHCPv4Config::Data* dhcp_data,
+                                 std::string_view logging_tag);
 
   // Parses |classless_routes| into |network_config|.  Sets the default gateway
   // if one is supplied and |network_config| does not already contain one. It
@@ -71,7 +73,8 @@ class DHCPv4Config {
   // the default gateway.  Returns true on success, and false otherwise.
   static bool ParseClasslessStaticRoutes(
       const std::string& classless_routes,
-      net_base::NetworkConfig* network_config);
+      net_base::NetworkConfig* network_config,
+      std::string_view logging_tag);
 };
 
 }  // namespace shill

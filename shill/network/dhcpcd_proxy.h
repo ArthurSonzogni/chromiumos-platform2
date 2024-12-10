@@ -30,7 +30,8 @@ class DHCPCDProxy : public DHCPClientProxy {
   DHCPCDProxy(net_base::ProcessManager* process_manager,
               std::string_view interface,
               DHCPClientProxy::EventHandler* handler,
-              base::ScopedClosureRunner destroy_cb);
+              base::ScopedClosureRunner destroy_cb,
+              std::string_view logging_tag);
   ~DHCPCDProxy() override;
 
   // Implements DHCPClientProxy.
@@ -61,6 +62,8 @@ class DHCPCDProxy : public DHCPClientProxy {
   // The callback that will be executed when the instance is destroyed.
   base::ScopedClosureRunner destroy_cb_;
 
+  std::string logging_tag_;
+
   base::WeakPtrFactory<DHCPCDProxy> weak_ptr_factory_{this};
 };
 
@@ -79,6 +82,7 @@ class DHCPCDProxyFactory : public DHCPClientProxyFactory {
       Technology technology,
       const DHCPClientProxy::Options& options,
       DHCPClientProxy::EventHandler* handler,
+      std::string_view logging_tag,
       net_base::IPFamily family = net_base::IPFamily::kIPv4) override;
 
   // delegates the DHCP event to the corresponding proxy.
@@ -98,10 +102,13 @@ class DHCPCDProxyFactory : public DHCPClientProxyFactory {
   void CleanUpDhcpcd(const std::string& interface,
                      net_base::IPFamily family,
                      DHCPClientProxy::Options options,
-                     int pid);
+                     int pid,
+                     const std::string& logging_tag);
 
   // The callback from ProcessManager, called when the dhcpcd process is exited.
-  void OnProcessExited(int pid, int exit_status);
+  void OnProcessExited(int pid,
+                       const std::string& logging_tag,
+                       int exit_status);
 
   // The callback from DHCPCDProxy, called when the proxy instance is destroyed.
   void OnProxyDestroyed(int pid);

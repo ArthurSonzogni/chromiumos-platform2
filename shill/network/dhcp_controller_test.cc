@@ -52,13 +52,13 @@ class DHCPControllerTest : public ::testing::Test {
 
   std::unique_ptr<DHCPController> CreateDHCPControllerAndRenewIP(
       const DHCPController::Options& options) {
-    EXPECT_CALL(
-        mock_dhcp_client_proxy_factory_,
-        Create(kDeviceName, kTechnology, options, _, net_base::IPFamily::kIPv4))
+    EXPECT_CALL(mock_dhcp_client_proxy_factory_,
+                Create(kDeviceName, kTechnology, options, _, _,
+                       net_base::IPFamily::kIPv4))
         .WillOnce([this](std::string_view interface, Technology technology,
                          const DHCPController::Options& options,
                          DHCPClientProxy::EventHandler* handler,
-                         net_base::IPFamily) {
+                         std::string_view, net_base::IPFamily) {
           auto dhcp_client_proxy = std::make_unique<MockDHCPClientProxy>(
               interface, handler,
               base::ScopedClosureRunner(base::BindOnce(
@@ -74,7 +74,8 @@ class DHCPControllerTest : public ::testing::Test {
         base::BindRepeating(&DHCPControllerTest::UpdateCallback,
                             base::Unretained(this)),
         base::BindRepeating(&DHCPControllerTest::DropCallback,
-                            base::Unretained(this)));
+                            base::Unretained(this)),
+        "mock_device mock_service sid=mock");
     EXPECT_TRUE(controller->RenewIP());
 
     testing::Mock::VerifyAndClearExpectations(&mock_dhcp_client_proxy_factory_);
@@ -92,7 +93,8 @@ class DHCPControllerTest : public ::testing::Test {
         base::BindRepeating(&DHCPControllerTest::UpdateCallback,
                             base::Unretained(this)),
         base::BindRepeating(&DHCPControllerTest::DropCallback,
-                            base::Unretained(this)));
+                            base::Unretained(this)),
+        "mock_device mock_service sid=mock");
     EXPECT_FALSE(controller->RenewIP());
 
     testing::Mock::VerifyAndClearExpectations(&mock_dhcp_client_proxy_factory_);
@@ -159,12 +161,13 @@ TEST_F(DHCPControllerTest, RenewIPWhenDHCPClientNotRunning) {
   dhcp_controller_ = CreateDHCPControllerAndRenewIPFailed();
 
   // Calling RenewIP() should create the DHCPClientProxy again.
-  EXPECT_CALL(
-      mock_dhcp_client_proxy_factory_,
-      Create(kDeviceName, kTechnology, kOptions, _, net_base::IPFamily::kIPv4))
+  EXPECT_CALL(mock_dhcp_client_proxy_factory_,
+              Create(kDeviceName, kTechnology, kOptions, _, _,
+                     net_base::IPFamily::kIPv4))
       .WillOnce([](std::string_view interface, Technology technology,
                    const DHCPController::Options& options,
-                   DHCPClientProxy::EventHandler* handler, net_base::IPFamily) {
+                   DHCPClientProxy::EventHandler* handler, std::string_view,
+                   net_base::IPFamily) {
         return std::make_unique<MockDHCPClientProxy>(interface, handler);
       });
   EXPECT_TRUE(dhcp_controller_->RenewIP());
@@ -329,9 +332,9 @@ TEST_F(DHCPControllerTest, LeaseExpiry) {
 
   // When the lease is expired, a new DHCPClientProxy instance will be created.
   // If the creation fails, it should notify the caller.
-  EXPECT_CALL(
-      mock_dhcp_client_proxy_factory_,
-      Create(kDeviceName, kTechnology, kOptions, _, net_base::IPFamily::kIPv4))
+  EXPECT_CALL(mock_dhcp_client_proxy_factory_,
+              Create(kDeviceName, kTechnology, kOptions, _, _,
+                     net_base::IPFamily::kIPv4))
       .WillOnce(Return(nullptr));
   EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/false));
 

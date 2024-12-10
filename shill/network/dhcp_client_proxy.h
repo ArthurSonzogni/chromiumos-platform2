@@ -122,6 +122,7 @@ class DHCPClientProxyFactory {
       Technology technology,
       const DHCPClientProxy::Options& options,
       DHCPClientProxy::EventHandler* handler,
+      std::string_view logging_tag,
       net_base::IPFamily family) = 0;
 };
 

@@ -46,6 +46,7 @@ DHCPController::DHCPController(
     const Options& options,
     UpdateCallback update_callback,
     DropCallback drop_callback,
+    std::string_view logging_tag,
     net_base::IPFamily family)
     : dispatcher_(dispatcher),
       metrics_(metrics),
@@ -63,18 +64,21 @@ DHCPController::DHCPController(
                               device_name,
                               technology,
                               options,
-                              this)) {}
+                              this,
+                              logging_tag)),
+      logging_tag_(logging_tag) {}
 
 DHCPController::~DHCPController() = default;
 
 bool DHCPController::RenewIP() {
-  SLOG(this, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << logging_tag_ << " " << __func__;
   if (!dhcp_client_proxy_) {
     return Start();
   }
 
   if (!dhcp_client_proxy_->IsReady()) {
-    LOG(ERROR) << "Unable to renew IP before acquiring destination.";
+    LOG(ERROR) << logging_tag_ << " " << __func__
+               << ": Unable to renew IP before acquiring destination.";
     return false;
   }
 
@@ -85,7 +89,7 @@ bool DHCPController::RenewIP() {
 }
 
 bool DHCPController::ReleaseIP(ReleaseReason reason) {
-  SLOG(this, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << logging_tag_ << " " << __func__;
   if (!dhcp_client_proxy_) {
     return true;
   }
@@ -113,7 +117,8 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
                                  const DHCPv4Config::Data& dhcp_data) {
   switch (reason) {
     case DHCPClientProxy::EventReason::kFail:
-      LOG(ERROR) << "Received failure event from DHCP client.";
+      LOG(ERROR) << logging_tag_ << " " << __func__
+                 << ": Received failure event from DHCP client.";
       NotifyDropCallback(false);
       return;
 
@@ -125,7 +130,8 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
       // If we got a NAK, this means the DHCP server is active, and any
       // Gateway ARP state we have is no longer sufficient.
       LOG_IF(ERROR, is_gateway_arp_active_)
-          << "Received NAK event for our gateway-ARP lease.";
+          << logging_tag_ << " " << __func__
+          << ": Received NAK event for our gateway-ARP lease.";
       is_gateway_arp_active_ = false;
       return;
 
@@ -154,7 +160,9 @@ void DHCPController::UpdateConfiguration(
   // GATEWAY-ARP event incoming with no DHCP lease information. This empty lease
   // should be ignored.
   if (is_gateway_arp && !network_config.ipv4_address) {
-    LOG(WARNING) << "Get GATEWAY-ARP reply before DHCP state change, ignored.";
+    LOG(WARNING)
+        << logging_tag_ << " " << __func__
+        << ": Get GATEWAY-ARP reply before DHCP state change, ignored.";
     return;
   }
 
@@ -181,13 +189,15 @@ void DHCPController::UpdateConfiguration(
 
 std::optional<base::TimeDelta> DHCPController::TimeToLeaseExpiry() {
   if (!current_lease_expiration_time_.has_value()) {
-    SLOG(this, 2) << __func__ << ": No current DHCP lease";
+    SLOG(this, 2) << logging_tag_ << " " << __func__
+                  << ": No current DHCP lease";
     return std::nullopt;
   }
   struct timeval now;
   time_->GetTimeBoottime(&now);
   if (now.tv_sec > current_lease_expiration_time_->tv_sec) {
-    SLOG(this, 2) << __func__ << ": Current DHCP lease has already expired";
+    SLOG(this, 2) << logging_tag_ << " " << __func__
+                  << ": Current DHCP lease has already expired";
     return std::nullopt;
   }
   return base::Seconds(current_lease_expiration_time_->tv_sec - now.tv_sec);
@@ -204,7 +214,8 @@ void DHCPController::OnIPConfigUpdated(
       StartExpirationTimeout(dhcp_data.lease_duration);
     } else {
       LOG(WARNING)
-          << "Lease duration is zero; not starting an expiration timer.";
+          << logging_tag_ << " " << __func__
+          << ": Lease duration is zero; not starting an expiration timer.";
       ResetLeaseExpirationTime();
       StopExpirationTimeout();
     }
@@ -221,7 +232,7 @@ void DHCPController::NotifyDropCallback(bool is_voluntary) {
 }
 
 bool DHCPController::Start() {
-  SLOG(this, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << logging_tag_ << " " << __func__;
 
   if (dhcp_client_proxy_ != nullptr) {
     return true;
@@ -240,7 +251,7 @@ bool DHCPController::Start() {
 }
 
 void DHCPController::Stop() {
-  SLOG(this, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << logging_tag_ << " " << __func__;
 
   StopAcquisitionTimeout();
   StopExpirationTimeout();
@@ -251,7 +262,7 @@ void DHCPController::Stop() {
 }
 
 void DHCPController::OnProcessExited(int pid, int exit_status) {
-  SLOG(this, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << logging_tag_ << " " << __func__;
   Stop();
 }
 
@@ -271,12 +282,14 @@ void DHCPController::StopAcquisitionTimeout() {
 }
 
 void DHCPController::ProcessAcquisitionTimeout() {
-  LOG(ERROR) << "Timed out waiting for DHCP lease on " << device_name() << " "
-             << "(after " << kAcquisitionTimeout.InSeconds() << " seconds).";
+  LOG(ERROR) << logging_tag_ << " " << __func__
+             << ": Timed out waiting for DHCP lease (after "
+             << kAcquisitionTimeout.InSeconds() << " seconds).";
 
   // Continue to use previous lease if gateway ARP is active.
   if (is_gateway_arp_active_) {
-    LOG(INFO) << "Continuing to use our previous lease, due to gateway-ARP.";
+    LOG(INFO) << logging_tag_ << " " << __func__
+              << ": Continuing to use our previous lease, due to gateway-ARP.";
   } else {
     NotifyDropCallback(false);
   }
@@ -284,9 +297,8 @@ void DHCPController::ProcessAcquisitionTimeout() {
 
 void DHCPController::StartExpirationTimeout(base::TimeDelta lease_duration) {
   CHECK(lease_acquisition_timeout_callback_.IsCancelled());
-  SLOG(this, 2) << __func__ << ": " << device_name() << ": "
-                << "Lease timeout is " << lease_duration.InSeconds()
-                << " seconds.";
+  SLOG(this, 2) << logging_tag_ << " " << __func__ << ": Lease timeout is "
+                << lease_duration.InSeconds() << " seconds.";
   lease_expiration_callback_.Reset(
       BindOnce(&DHCPController::ProcessExpirationTimeout,
                weak_ptr_factory_.GetWeakPtr(), lease_duration));
@@ -299,8 +311,8 @@ void DHCPController::StopExpirationTimeout() {
 }
 
 void DHCPController::ProcessExpirationTimeout(base::TimeDelta lease_duration) {
-  LOG(ERROR) << "DHCP lease expired on " << device_name()
-             << "; restarting DHCP client instance.";
+  LOG(ERROR) << logging_tag_ << " " << __func__
+             << ": DHCP lease expired, restarting DHCP client instance.";
 
   metrics_->SendToUMA(Metrics::kMetricExpiredLeaseLengthSeconds, technology_,
                       lease_duration.InSeconds());
@@ -362,11 +374,12 @@ std::unique_ptr<DHCPController> DHCPControllerFactory::Create(
     const DHCPController::Options& options,
     DHCPController::UpdateCallback update_callback,
     DHCPController::DropCallback drop_callback,
+    std::string_view logging_tag,
     net_base::IPFamily family) {
   return std::make_unique<DHCPController>(
       dispatcher_, metrics_, time_, dhcp_client_proxy_factory_, device_name,
       technology, options, std::move(update_callback), std::move(drop_callback),
-      family);
+      logging_tag, family);
 }
 
 }  // namespace shill

@@ -253,7 +253,8 @@ void Network::Start(const Network::StartOptions& opts) {
             ->Create(interface_name_, technology_, dhcp_opts,
                      base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP,
                                          AsWeakPtr()),
-                     base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()));
+                     base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()),
+                     context_.logging_tag());
     dhcp_started = dhcp_controller_->RenewIP();
     if (!dhcp_started) {
       LOG(ERROR) << *this << " " << __func__ << ": Failed to request DHCP IP";
@@ -324,7 +325,7 @@ void Network::StartDHCPPD() {
       base::BindRepeating(&Network::OnNetworkConfigUpdatedFromDHCPv6,
                           AsWeakPtr()),
       base::BindRepeating(&Network::OnDHCPv6Drop, AsWeakPtr()),
-      net_base::IPFamily::kIPv6);
+      context_.logging_tag(), net_base::IPFamily::kIPv6);
   if (!dhcp_pd_controller_) {
     LOG(ERROR) << *this << " " << __func__
                << ": Failed to create DHCPv6-PD controller";

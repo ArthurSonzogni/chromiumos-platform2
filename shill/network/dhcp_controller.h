@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
@@ -70,6 +71,7 @@ class DHCPController : public DHCPClientProxy::EventHandler {
                  const Options& options,
                  UpdateCallback update_callback,
                  DropCallback drop_callback,
+                 std::string_view logging_tag,
                  net_base::IPFamily family = net_base::IPFamily::kIPv4);
 
   virtual ~DHCPController();
@@ -167,6 +169,7 @@ class DHCPController : public DHCPClientProxy::EventHandler {
   const DropCallback drop_callback_;
   const bool use_arp_gateway_;
   const CreateDHCPClientProxyCB create_dhcp_client_proxy_cb_;
+  const std::string logging_tag_;
 
   std::unique_ptr<DHCPClientProxy> dhcp_client_proxy_;
 
@@ -207,6 +210,7 @@ class DHCPControllerFactory {
       const DHCPController::Options& options,
       DHCPController::UpdateCallback update_callback,
       DHCPController::DropCallback drop_callback,
+      std::string_view logging_tag,
       net_base::IPFamily family = net_base::IPFamily::kIPv4);
 
  private:

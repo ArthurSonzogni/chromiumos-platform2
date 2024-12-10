@@ -234,14 +234,15 @@ class NetworkTest : public ::testing::Test {
       const DHCPController::Options& options = kDHCPOptions) {
     EXPECT_CALL(options.use_legacy_dhcpcd ? *legacy_dhcp_controller_factory_
                                           : *dhcp_controller_factory_,
-                Create(kTestIfname, kTestTechnology, options, _, _,
+                Create(kTestIfname, kTestTechnology, options, _, _, _,
                        net_base::IPFamily::kIPv4))
         .WillOnce([request_ip_result, this](
                       std::string_view device_name, Technology technology,
                       const DHCPController::Options& options,
                       DHCPController::UpdateCallback update_callback,
                       DHCPController::DropCallback drop_callback,
-                      net_base::IPFamily family) {
+
+                      std::string_view logging_tag, net_base::IPFamily family) {
           auto dhcp_controller = std::make_unique<MockDHCPController>(
               nullptr, nullptr, nullptr, nullptr, device_name, technology,
               options, std::move(update_callback), std::move(drop_callback));
@@ -254,14 +255,14 @@ class NetworkTest : public ::testing::Test {
 
   void ExpectCreateDHCPPDController(bool request_ip_result) {
     EXPECT_CALL(*dhcp_controller_factory_,
-                Create(kTestIfname, kTestTechnology, _, _, _,
+                Create(kTestIfname, kTestTechnology, _, _, _, _,
                        net_base::IPFamily::kIPv6))
         .WillOnce([request_ip_result, this](
                       std::string_view device_name, Technology technology,
                       const DHCPController::Options& options,
                       DHCPController::UpdateCallback update_callback,
                       DHCPController::DropCallback drop_callback,
-                      net_base::IPFamily family) {
+                      std::string_view logging_tag, net_base::IPFamily family) {
           auto dhcp_controller = std::make_unique<MockDHCPController>(
               nullptr, nullptr, nullptr, nullptr, device_name, technology,
               options, std::move(update_callback), std::move(drop_callback));

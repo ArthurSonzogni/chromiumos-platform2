@@ -78,7 +78,8 @@ class DHCPCDProxyFactoryTest : public testing::Test {
             });
 
     std::unique_ptr<DHCPClientProxy> proxy =
-        proxy_factory_->Create(interface, Technology::kWiFi, options, &client_);
+        proxy_factory_->Create(interface, Technology::kWiFi, options, &client_,
+                               "wlan0 mock_service sid=0");
     EXPECT_NE(proxy, nullptr);
     EXPECT_TRUE(proxy->IsReady());
     return proxy;
@@ -168,7 +169,7 @@ TEST_F(DHCPCDProxyFactoryTest, DhcpcdArguments) {
             });
 
     proxy_factory_->Create("wlan0", Technology::kWiFi, options, &client_,
-                           family);
+                           "wlan0 mock_service sid=0", family);
   }
 }
 

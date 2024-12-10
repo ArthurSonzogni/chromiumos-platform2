@@ -93,8 +93,11 @@ std::vector<std::string> GetDhcpcdArgs(Technology technology,
 
 LegacyDHCPCDProxy::LegacyDHCPCDProxy(std::string_view interface,
                                      DHCPClientProxy::EventHandler* handler,
-                                     base::ScopedClosureRunner destroy_cb)
-    : DHCPClientProxy(interface, handler), destroy_cb_(std::move(destroy_cb)) {}
+                                     base::ScopedClosureRunner destroy_cb,
+                                     std::string_view logging_tag)
+    : DHCPClientProxy(interface, handler),
+      destroy_cb_(std::move(destroy_cb)),
+      logging_tag_(logging_tag) {}
 
 LegacyDHCPCDProxy::~LegacyDHCPCDProxy() = default;
 
@@ -104,7 +107,8 @@ bool LegacyDHCPCDProxy::IsReady() const {
 
 bool LegacyDHCPCDProxy::Rebind() {
   if (!dhcpcd_proxy_) {
-    LOG(ERROR) << __func__ << ": dhcpcd proxy is not ready";
+    LOG(ERROR) << logging_tag_ << " " << __func__
+               << ": dhcpcd proxy is not ready";
     return false;
   }
 
@@ -118,7 +122,8 @@ bool LegacyDHCPCDProxy::Rebind() {
 
 bool LegacyDHCPCDProxy::Release() {
   if (!dhcpcd_proxy_) {
-    LOG(ERROR) << __func__ << ": dhcpcd proxy is not ready";
+    LOG(ERROR) << logging_tag_ << " " << __func__
+               << ": dhcpcd proxy is not ready";
     return false;
   }
 
@@ -137,8 +142,8 @@ void LegacyDHCPCDProxy::OnDHCPEvent(EventReason reason,
 
   if (NeedConfiguration(reason) &&
       !DHCPv4Config::ParseConfiguration(configuration, &network_config,
-                                        &dhcp_data)) {
-    LOG(WARNING) << __func__
+                                        &dhcp_data, logging_tag_)) {
+    LOG(WARNING) << logging_tag_ << " " << __func__
                  << ": Error parsing network configuration from DHCP client. "
                  << "The following configuration might be partial: "
                  << network_config;
@@ -182,9 +187,11 @@ std::unique_ptr<DHCPClientProxy> LegacyDHCPCDProxyFactory::Create(
     Technology technology,
     const DHCPClientProxy::Options& options,
     DHCPClientProxy::EventHandler* handler,
+    std::string_view logging_tag,
     net_base::IPFamily family) {
   if (family != net_base::IPFamily::kIPv4) {
-    LOG(ERROR) << __func__ << ": " << family << " is not supported.";
+    LOG(ERROR) << logging_tag << " " << __func__ << ": " << family
+               << " is not supported.";
     return nullptr;
   }
   const std::vector<std::string> args =
@@ -202,7 +209,8 @@ std::unique_ptr<DHCPClientProxy> LegacyDHCPCDProxyFactory::Create(
       FROM_HERE, base::FilePath(kDHCPCDPath), args, {}, minijail_options,
       base::DoNothing());
   if (pid < 0) {
-    LOG(ERROR) << __func__ << ": Failed to start the dhcpcd process";
+    LOG(ERROR) << logging_tag << " " << __func__
+               << ": Failed to start the dhcpcd process";
     return nullptr;
   }
   pids_need_to_stop_.insert(pid);
@@ -213,7 +221,8 @@ std::unique_ptr<DHCPClientProxy> LegacyDHCPCDProxyFactory::Create(
       std::string(interface), options, pid));
 
   // Log dhcpcd args but redact the args to exclude PII.
-  LOG(INFO) << "Created dhcpcd with pid " << pid << " and args: "
+  LOG(INFO) << logging_tag << " " << __func__ << ": Created dhcpcd with pid "
+            << pid << " and args: "
             << base::JoinString(GetDhcpcdArgs(technology, options, interface,
                                               /*redact_args=*/true),
                                 " ");
@@ -230,7 +239,8 @@ std::unique_ptr<DHCPClientProxy> LegacyDHCPCDProxyFactory::Create(
       interface, handler,
       base::ScopedClosureRunner(
           base::BindOnce(&LegacyDHCPCDProxyFactory::OnProxyDestroyed,
-                         weak_ptr_factory_.GetWeakPtr(), pid)));
+                         weak_ptr_factory_.GetWeakPtr(), pid)),
+      logging_tag);
   alive_proxies_.insert(std::make_pair(
       pid, AliveProxy{proxy->GetWeakPtr(), std::move(clean_up_closure)}));
   return proxy;

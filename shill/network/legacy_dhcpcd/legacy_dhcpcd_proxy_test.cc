@@ -139,7 +139,8 @@ class LegacyDHCPCDProxyFactoryTest : public testing::Test {
             });
 
     std::unique_ptr<DHCPClientProxy> proxy =
-        proxy_factory_->Create(interface, Technology::kWiFi, options, &client_);
+        proxy_factory_->Create(interface, Technology::kWiFi, options, &client_,
+                               "wlan0 mock_service sid=0");
     EXPECT_NE(proxy, nullptr);
     EXPECT_FALSE(proxy->IsReady());
 
@@ -211,7 +212,8 @@ TEST_F(LegacyDHCPCDProxyFactoryTest, DhcpcdArguments) {
               return true;
             });
 
-    proxy_factory_->Create("wlan0", Technology::kWiFi, options, &client_);
+    proxy_factory_->Create("wlan0", Technology::kWiFi, options, &client_,
+                           "wlan0 mmock_serice sid=0");
   }
 }
 
@@ -320,7 +322,8 @@ TEST_F(LegacyDHCPCDProxyFactoryTest, EventSignal) {
   const KeyValueStore configuration = GenerateConfiguration();
   net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
-  DHCPv4Config::ParseConfiguration(configuration, &network_config, &dhcp_data);
+  DHCPv4Config::ParseConfiguration(configuration, &network_config, &dhcp_data,
+                                   "wlan0 mock_service sid=0");
 
   EXPECT_CALL(client_, OnDHCPEvent(DHCPClientProxy::EventReason::kRebind,
                                    network_config, dhcp_data));
@@ -372,7 +375,8 @@ TEST_F(LegacyDHCPCDProxyFactoryTest, CallMethodsWhenNotReady) {
       .WillOnce(Return(true));
 
   std::unique_ptr<DHCPClientProxy> controller =
-      proxy_factory_->Create("wlan0", Technology::kWiFi, options, &client_);
+      proxy_factory_->Create("wlan0", Technology::kWiFi, options, &client_,
+                             "wlan0 mmock_serice sid=0");
   EXPECT_NE(controller, nullptr);
   EXPECT_FALSE(controller->IsReady());
 

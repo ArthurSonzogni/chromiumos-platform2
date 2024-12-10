@@ -30,7 +30,8 @@ class LegacyDHCPCDProxy : public DHCPClientProxy {
  public:
   LegacyDHCPCDProxy(std::string_view interface,
                     DHCPClientProxy::EventHandler* handler,
-                    base::ScopedClosureRunner destroy_cb);
+                    base::ScopedClosureRunner destroy_cb,
+                    std::string_view logging_tag);
   ~LegacyDHCPCDProxy() override;
 
   // Implements DHCPClientProxy.
@@ -57,6 +58,8 @@ class LegacyDHCPCDProxy : public DHCPClientProxy {
 
   // The callback that will be executed when the instance is destroyed.
   base::ScopedClosureRunner destroy_cb_;
+
+  std::string logging_tag_;
 
   base::WeakPtrFactory<LegacyDHCPCDProxy> weak_ptr_factory_{this};
 };
@@ -86,6 +89,7 @@ class LegacyDHCPCDProxyFactory : public DHCPClientProxyFactory {
       Technology technology,
       const DHCPClientProxy::Options& options,
       DHCPClientProxy::EventHandler* handler,
+      std::string_view logging_tag,
       net_base::IPFamily family = net_base::IPFamily::kIPv4) override;
 
   void set_root_for_testing(const base::FilePath& root) { root_ = root; }
