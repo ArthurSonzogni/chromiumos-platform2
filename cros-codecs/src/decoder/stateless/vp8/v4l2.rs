@@ -5,6 +5,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use v4l2r::bindings::v4l2_ctrl_vp8_frame;
 use v4l2r::controls::SafeExtControl;
 
 use crate::backend::v4l2::decoder::stateless::BackendHandle;
@@ -25,6 +26,8 @@ use crate::decoder::stateless::StatelessBackendResult;
 use crate::decoder::stateless::StatelessDecoder;
 use crate::decoder::stateless::StatelessDecoderBackendPicture;
 use crate::decoder::BlockingMode;
+
+use crate::device::v4l2::stateless::controls::vp8::V4l2CtrlVp8FrameParams;
 
 use crate::Resolution;
 
@@ -48,14 +51,20 @@ impl StatelessVp8DecoderBackend for V4l2StatelessDecoderBackend {
     fn submit_picture(
         &mut self,
         picture: Self::Picture,
-        _: &Header,
+        hdr: &Header,
         _: &Option<Self::Handle>,
         _: &Option<Self::Handle>,
         _: &Option<Self::Handle>,
         _: &[u8],
         _: &Segmentation,
-        _: &MbLfAdjustments,
+        mb_lf_adjust: &MbLfAdjustments,
     ) -> StatelessBackendResult<Self::Handle> {
+        let mut vp8_frame_params = V4l2CtrlVp8FrameParams::new();
+
+        vp8_frame_params
+            .set_loop_filter_params(hdr, mb_lf_adjust)
+            .set_quantization_params(hdr);
+
         let handle = Rc::new(RefCell::new(BackendHandle {
             picture: picture.clone(),
         }));
