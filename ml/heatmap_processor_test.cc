@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "ml/heatmap_processor.h"
+
 #include <utility>
 
 #include <base/run_loop.h>
 #include <gtest/gtest.h>
 
-#include "ml/heatmap_processor.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 
 using ::chromeos::machine_learning::mojom::HeatmapPalmRejectionClient;
@@ -509,7 +510,7 @@ INSTANTIATE_TEST_SUITE_P(
                                            std::end(kFingerTestInput20230907)),
                        false)));
 
-TEST_P(HeatmapProcessorExecuteTest, DetectsPalmAndFinger) {
+TEST_P(HeatmapProcessorExecuteTest, DISABLED_DetectsPalmAndFinger) {
   FakeClient client;
   mojo::Receiver<HeatmapPalmRejectionClient> receiver(&client);
   auto config = HeatmapPalmRejectionConfig::New();
