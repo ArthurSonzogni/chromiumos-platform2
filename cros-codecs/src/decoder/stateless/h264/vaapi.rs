@@ -42,6 +42,7 @@ use crate::decoder::stateless::StatelessBackendResult;
 use crate::decoder::stateless::StatelessDecoder;
 use crate::decoder::stateless::StatelessDecoderBackendPicture;
 use crate::decoder::BlockingMode;
+use crate::Resolution;
 
 impl VaStreamInfo for &Rc<Sps> {
     fn va_profile(&self) -> anyhow::Result<i32> {
@@ -102,8 +103,8 @@ impl VaStreamInfo for &Rc<Sps> {
         self.max_dpb_frames() + 4
     }
 
-    fn coded_size(&self) -> (u32, u32) {
-        (self.width(), self.height())
+    fn coded_size(&self) -> Resolution {
+        Resolution::from((self.width(), self.height()))
     }
 
     fn visible_rect(&self) -> ((u32, u32), (u32, u32)) {

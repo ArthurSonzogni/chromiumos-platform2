@@ -130,8 +130,8 @@ impl VaStreamInfo for &Sps {
         self.max_dpb_size() + 4
     }
 
-    fn coded_size(&self) -> (u32, u32) {
-        (self.width().into(), self.height().into())
+    fn coded_size(&self) -> Resolution {
+        Resolution::from((self.width().into(), self.height().into()))
     }
 
     fn visible_rect(&self) -> ((u32, u32), (u32, u32)) {

@@ -50,12 +50,12 @@ impl VaStreamInfo for &Header {
         NUM_SURFACES
     }
 
-    fn coded_size(&self) -> (u32, u32) {
-        (self.width as u32, self.height as u32)
+    fn coded_size(&self) -> Resolution {
+        Resolution::from((self.width as u32, self.height as u32))
     }
 
     fn visible_rect(&self) -> ((u32, u32), (u32, u32)) {
-        ((0, 0), self.coded_size())
+        ((0, 0), self.coded_size().into())
     }
 }
 

@@ -34,6 +34,7 @@ use crate::decoder::stateless::StatelessBackendResult;
 use crate::decoder::stateless::StatelessDecoder;
 use crate::decoder::stateless::StatelessDecoderBackendPicture;
 use crate::decoder::BlockingMode;
+use crate::Resolution;
 
 /// The number of surfaces to allocate for this codec.
 const NUM_SURFACES: usize = 12;
@@ -126,12 +127,12 @@ impl VaStreamInfo for &Header {
         NUM_SURFACES
     }
 
-    fn coded_size(&self) -> (u32, u32) {
-        (self.width, self.height)
+    fn coded_size(&self) -> Resolution {
+        Resolution::from((self.width, self.height))
     }
 
     fn visible_rect(&self) -> ((u32, u32), (u32, u32)) {
-        ((0, 0), self.coded_size())
+        ((0, 0), self.coded_size().into())
     }
 }
 

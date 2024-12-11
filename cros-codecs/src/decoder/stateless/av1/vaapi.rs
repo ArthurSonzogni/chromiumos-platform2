@@ -93,15 +93,15 @@ impl VaStreamInfo for &Rc<SequenceHeaderObu> {
         NUM_SURFACES
     }
 
-    fn coded_size(&self) -> (u32, u32) {
-        (
+    fn coded_size(&self) -> Resolution {
+        Resolution::from((
             self.max_frame_width_minus_1 as u32 + 1,
             self.max_frame_height_minus_1 as u32 + 1,
-        )
+        ))
     }
 
     fn visible_rect(&self) -> ((u32, u32), (u32, u32)) {
-        ((0, 0), self.coded_size())
+        ((0, 0), self.coded_size().into())
     }
 }
 

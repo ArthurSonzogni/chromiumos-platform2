@@ -107,7 +107,7 @@ pub(crate) trait VaStreamInfo {
     /// Returns the minimum number of surfaces required to decode the stream.
     fn min_num_surfaces(&self) -> usize;
     /// Returns the coded size of the surfaces required to decode the stream.
-    fn coded_size(&self) -> (u32, u32);
+    fn coded_size(&self) -> Resolution;
     /// Returns the visible rectangle within the coded size for the stream.
     fn visible_rect(&self) -> ((u32, u32), (u32, u32));
 }
@@ -177,8 +177,7 @@ impl StreamMetadataState {
         let va_profile = hdr.va_profile()?;
         let rt_format = hdr.rt_format()?;
 
-        let coded_resolution =
-            Resolution::from(hdr.coded_size()).round(crate::ResolutionRoundMode::Even);
+        let coded_resolution = hdr.coded_size().round(crate::ResolutionRoundMode::Even);
 
         let format_map = if let Some(format_map) = format_map {
             format_map
