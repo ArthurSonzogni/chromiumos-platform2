@@ -99,10 +99,7 @@ TEST_F(VhostUserStarterClientTest, StartVhostUserFs) {
   int fds[2];
   socketpair(AF_UNIX, SOCK_STREAM, 0 /* protocol */, fds);
   base::ScopedFD _ = base::ScopedFD(fds[0]);
-  std::vector<base::ScopedFD> in_socket;
-  in_socket.emplace_back(base::ScopedFD(fds[1]));
-
-  client->StartVhostUserFs(in_socket, test_param);
+  client->StartVhostUserFs(base::ScopedFD(fds[1]), test_param);
 
   task_environment_.RunUntilIdle();
   EXPECT_EQ(client->GetStartedDeviceCount(), 1);

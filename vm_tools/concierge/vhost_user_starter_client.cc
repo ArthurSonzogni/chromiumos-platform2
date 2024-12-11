@@ -5,6 +5,7 @@
 #include "vm_tools/concierge/vhost_user_starter_client.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -19,6 +20,17 @@
 #include <vhost_user_starter/proto_bindings/vhost_user_starter.pb.h>
 
 namespace vm_tools::concierge {
+
+namespace {
+
+// Creates a std::vector containing the given base::ScopedFD.
+std::vector<base::ScopedFD> ScopedFDToVector(base::ScopedFD fd) {
+  std::vector<base::ScopedFD> fds;
+  fds.emplace_back(std::move(fd));
+  return fds;
+}
+
+}  // namespace
 
 VhostUserStarterClient::VhostUserStarterClient(scoped_refptr<dbus::Bus> bus)
     : vhost_user_starter_proxy_(org::chromium::VhostUserStarterProxy(bus)),
@@ -37,9 +49,8 @@ void VhostUserStarterClient::StartVhostUserFsErrorCallback(
   LOG(ERROR) << "StartVhostUserFsError: " << error;
 }
 
-void VhostUserStarterClient::StartVhostUserFs(
-    const std::vector<base::ScopedFD>& in_socket,
-    const SharedDataParam& param) {
+void VhostUserStarterClient::StartVhostUserFs(base::ScopedFD in_socket,
+                                              const SharedDataParam& param) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   vm_tools::vhost_user_starter::StartVhostUserFsRequest request =
       param.get_start_vhost_user_virtio_fs_request();
@@ -49,7 +60,7 @@ void VhostUserStarterClient::StartVhostUserFs(
   CHECK(vhost_user_starter_proxy_.GetObjectProxy() != nullptr);
 
   vhost_user_starter_proxy_.StartVhostUserFsAsync(
-      request, in_socket,
+      request, ScopedFDToVector(std::move(in_socket)),
       base::BindOnce(&VhostUserStarterClient::StartVhostUserFsSuccessCallback,
                      weak_factory_.GetWeakPtr()),
       base::BindOnce(&VhostUserStarterClient::StartVhostUserFsErrorCallback,
