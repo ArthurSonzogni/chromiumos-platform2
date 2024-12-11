@@ -4655,11 +4655,14 @@ def bt_sar_encode(bt_sar_config):
     Returns:
         Intel Bluetooth SAR content encoded as bytearray.
     """
-    if bt_sar_config.revision not in [1, 2]:
-        return bytearray(0)
-    if bt_sar_config.revision == 1:
+    revision = bt_sar_config.revision
+    if revision not in [1, 2]:
+        raise Exception(
+            f"ERROR: Invalid Bluetooth SAR table revision {revision}"
+        )
+    elif revision == 1:
         return (
-            hex_8bit(bt_sar_config.revision)
+            hex_8bit(revision)
             + hex_8bit(bt_sar_config.increased_power_mode_limitation)
             + hex_8bit(bt_sar_config.sar_lb_power_restriction)
             + hex_8bit(bt_sar_config.br_modulation)
@@ -4669,9 +4672,9 @@ def bt_sar_encode(bt_sar_config):
             + hex_8bit(bt_sar_config.le2_mhz_modulation)
             + hex_8bit(bt_sar_config.le_lr_modulation)
         )
-    if bt_sar_config.revision == 2:
+    else:
         return (
-            hex_8bit(bt_sar_config.revision)
+            hex_8bit(revision)
             + hex_8bit(bt_sar_config.increased_power_mode_limitation)
             + encode_bluetooth_sar_power_table(bt_sar_config.set_1_chain_a)
             + encode_bluetooth_sar_power_table(bt_sar_config.set_1_chain_b)
@@ -4696,9 +4699,11 @@ def wbem_encode(wbem_config):
             enablement += 2
         return enablement
 
-    if wbem_config.revision != 0:
-        return bytearray(0)
-    return hex_8bit(wbem_config.revision) + hex_32bit(
+    revision = wbem_config.revision
+    if revision != 0:
+        raise Exception(f"ERROR: Invalid WBEM table revision {revision}")
+
+    return hex_8bit(revision) + hex_32bit(
         wbem_country_enablement_value(wbem_config.enablement_wbem_countries)
     )
 
@@ -4728,14 +4733,13 @@ def bpag_encode(bpag_config):
                 enablement += 1 << 4
         return enablement
 
-    if bpag_config.revision == 0:
-        return bytearray(0)
-    if bpag_config.revision not in (1, 2):
-        revision = bpag_config.revision
+    revision = bpag_config.revision
+    if revision not in [1, 2]:
         raise Exception(
             f"ERROR: Invalid Bluetooth PPAG table revision {revision}"
         )
-    return hex_8bit(bpag_config.revision) + hex_32bit(
+
+    return hex_8bit(revision) + hex_32bit(
         bpag_country_enablement_value(
             bpag_config.revision, bpag_config.enablement_bpag_countries
         )
@@ -4752,11 +4756,13 @@ def bbfb_encode(bbfb_config):
         Bluetooth BiQuad Bypass filter configuration encoded as bytearray.
     """
 
-    if bbfb_config.revision != 1:
-        return bytearray(0)
-    return hex_8bit(bbfb_config.revision) + hex_8bit(
-        bbfb_config.enable_quad_filter_bypass
-    )
+    revision = bbfb_config.revision
+    if revision != 1:
+        raise Exception(
+            f"ERROR: Invalid Bluetooth BiQuad Bypass table revision {revision}"
+        )
+
+    return hex_8bit(revision) + hex_8bit(bbfb_config.enable_quad_filter_bypass)
 
 
 def bdcm_encode(bdcm_config):
@@ -4774,9 +4780,13 @@ def bdcm_encode(bdcm_config):
             return 3
         return 1
 
-    if bdcm_config.revision != 1:
-        return bytearray(0)
-    return hex_8bit(bdcm_config.revision) + hex_32bit(
+    revision = bdcm_config.revision
+    if revision != 1:
+        raise Exception(
+            f"ERROR: Invalid Bluetooth Dual Chain Mode revision {revision}"
+        )
+
+    return hex_8bit(revision) + hex_32bit(
         bdcm_dual_chain_mode_value(bdcm_config.bdcm_dual_chain_mode)
     )
 
@@ -4803,9 +4813,13 @@ def bbsm_encode(bbsm_config):
             data |= 1 << 3
         return data
 
-    if bbsm_config.revision != 1:
-        return bytearray(0)
-    return hex_8bit(bbsm_config.revision) + hex_32bit(
+    revision = bbsm_config.revision
+    if revision != 1:
+        raise Exception(
+            f"ERROR: Invalid Bluetooth bands selection revision {revision}"
+        )
+
+    return hex_8bit(revision) + hex_32bit(
         bbsm_bands_selection_value(bbsm_config.bands_selection)
     )
 
@@ -4862,9 +4876,13 @@ def bucs_encode(bucs_config):
             data |= 1 << 18
         return data
 
-    if bucs_config.revision != 1:
-        return bytearray(0)
-    return hex_8bit(bucs_config.revision) + hex_32bit(
+    revision = bucs_config.revision
+    if revision != 1:
+        raise Exception(
+            f"ERROR: Invalid Bluetooth Ultra-High Band revision {revision}"
+        )
+
+    return hex_8bit(revision) + hex_32bit(
         bucs_uhb_country_selection_value(bucs_config.uhb_country_selection)
     )
 
@@ -4879,11 +4897,13 @@ def bdmm_encode(bdmm_config):
         Bluetooth Dual Mac configuration encoded as bytearray.
     """
 
-    if bdmm_config.revision != 1:
-        return bytearray(0)
-    return hex_8bit(bdmm_config.revision) + hex_8bit(
-        bdmm_config.dual_mac_enable
-    )
+    revision = bdmm_config.revision
+    if revision != 1:
+        raise Exception(
+            f"ERROR: Invalid Bluetooth Dual Mac revision {revision}"
+        )
+
+    return hex_8bit(revision) + hex_8bit(bdmm_config.dual_mac_enable)
 
 
 def ebrd_encode(ebrd_config):
@@ -4896,10 +4916,14 @@ def ebrd_encode(ebrd_config):
         Extended Bluetooth Regulatory Descriptor encoded as bytearray.
     """
 
-    if ebrd_config.revision != 1:
-        return bytearray(0)
+    revision = ebrd_config.revision
+    if revision != 1:
+        raise Exception(
+            f"ERROR: Invalid Extended Bluetooth Regulatory revision {revision}"
+        )
+
     return (
-        hex_8bit(ebrd_config.revision)
+        hex_8bit(revision)
         + hex_32bit(ebrd_config.dynamic_sar_enable)
         + hex_32bit(ebrd_config.number_of_optional_sar)
         + encode_bluetooth_sar_power_table(ebrd_config.set_2_chain_a)
@@ -4921,10 +4945,14 @@ def wpfc_encode(wpfc_config):
         Wi-Fi PHY filter Configuration encoded as bytearray.
     """
 
-    if wpfc_config.revision != 0:
-        return bytearray(0)
+    revision = wpfc_config.revision
+    if revision != 0:
+        raise Exception(
+            f"ERROR: Invalid Wi-Fi PHY filter Configuration revision {revision}"
+        )
+
     return (
-        hex_8bit(wpfc_config.revision)
+        hex_8bit(revision)
         + hex_8bit(wpfc_config.filter_cfg_chain_a)
         + hex_8bit(wpfc_config.filter_cfg_chain_b)
         + hex_8bit(wpfc_config.filter_cfg_chain_c)
@@ -4954,11 +4982,13 @@ def dsbr_encode(dsbr_config):
             raise Exception("ERROR: Invalid BRI RSP resistor_ohm value")
         return data
 
-    if dsbr_config.revision != 0:
-        return bytearray(0)
-    return hex_8bit(dsbr_config.revision) + hex_32bit(
-        encode_bri_rsp(dsbr_config)
-    )
+    revision = dsbr_config.revision
+    if revision not in [0, 1]:
+        raise Exception(
+            f"ERROR: Invalid Drive Strength BRI revision {revision}"
+        )
+
+    return hex_8bit(revision) + hex_32bit(encode_bri_rsp(dsbr_config))
 
 
 def _create_intel_sar_file_content(intel_config):
