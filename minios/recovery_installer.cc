@@ -21,7 +21,7 @@ constexpr char kSettle[] = "settle";
 bool RecoveryInstaller::RepartitionDisk() {
   int return_code = 0;
   std::string stderr, stdout;
-  bool partiton_success = true;
+  bool partition_success = true;
 
   if (repartition_completed_) {
     LOG(INFO) << "Previously called repartition disk. Skipping.";
@@ -38,10 +38,10 @@ bool RecoveryInstaller::RepartitionDisk() {
   };
   if (!process_manager_->RunCommandWithOutput(cmd, &return_code, &stdout,
                                               &stderr)) {
-    partiton_success = false;
+    partition_success = false;
     PLOG(WARNING) << "Repartitioning the disk failed";
   } else if (return_code != 0) {
-    partiton_success = false;
+    partition_success = false;
     LOG(ERROR) << "Repartitioning the disk failed, return_code=" << return_code;
   } else {
     repartition_completed_ = true;
@@ -60,7 +60,7 @@ bool RecoveryInstaller::RepartitionDisk() {
     return false;
   }
 
-  return partiton_success;
+  return partition_success;
 }
 
 }  // namespace minios
