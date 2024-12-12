@@ -107,3 +107,45 @@ message VerifyComponentsReply {
   ErrorCode error = 1;
   HwVerificationReport hw_verification_report = 2;
 }
+
+// A range of bits for a category in HWID configs. The range is inclusive, i.e.
+// [start, end].
+message BitRange {
+  runtime_probe.ProbeRequest.SupportCategory category = 1;
+  int32 start = 2;
+  int32 end = 3;
+}
+
+// The first zero bit for a category in HWID configs.
+message FirstZeroBit {
+  runtime_probe.ProbeRequest.SupportCategory category = 1;
+  int32 zero_bit_position = 2;
+}
+
+// The bit definition for a list of image IDs. Corresponds to `pattern` in HWID
+// configs.
+message EncodingPattern {
+  repeated int32 image_ids = 1;
+  repeated BitRange bit_ranges = 2;
+  repeated FirstZeroBit first_zero_bits = 3;
+}
+
+// A mapping that maps an index to component names in HWID configs.
+message EncodedComponents {
+  int32 index = 1;
+  repeated string component_names = 2;
+}
+
+// The encoded components for a category. Corresponds to `encoded_fields` in
+// HWID configs.
+message EncodedFields {
+  runtime_probe.ProbeRequest.SupportCategory category = 1;
+  repeated EncodedComponents encoded_components = 2;
+}
+
+// A spec for encoding and decoding a HWID string.
+message EncodingSpec {
+  repeated EncodingPattern encoding_patterns = 1;
+  repeated EncodedFields encoded_fields = 2;
+  repeated runtime_probe.ProbeRequest.SupportCategory waived_categories = 3;
+}
