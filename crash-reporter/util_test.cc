@@ -574,7 +574,7 @@ TEST_F(CrashCommonUtilTest,
 
 TEST_F(CrashCommonUtilTest, IsOOBEPreconsentCrashesEnabledWithFeatureFlag) {
   ASSERT_TRUE(test_util::CreateFile(paths::Get(paths::kChromeDevConfigPath),
-                                    "--enable-features=OOBEPreConsentMetrics"));
+                                    "--enable-features=OobePreConsentMetrics"));
 
   EXPECT_TRUE(IsOOBEPreConsentCrashesEnabled());
 }
@@ -597,7 +597,7 @@ TEST_F(CrashCommonUtilTest,
        IsOOBEPreConsentCrashesEnabledShouldReturnFalseOnFlagRemoval) {
   ASSERT_TRUE(test_util::CreateFile(
       paths::Get(paths::kChromeDevConfigPath),
-      "--enable-features=OOBEPreConsentMetrics\n!--enable-features"));
+      "--enable-features=OobePreConsentMetrics\n!--enable-features"));
 
   EXPECT_FALSE(IsOOBEPreConsentCrashesEnabled());
 }
@@ -606,7 +606,7 @@ TEST_F(CrashCommonUtilTest,
        IsOOBEPreConsentCrashesEnabledWithMultipleFeatureFlags) {
   ASSERT_TRUE(test_util::CreateFile(
       paths::Get(paths::kChromeDevConfigPath),
-      "--enable-features=OOBEPreConsentMetrics,AFlag,Bflag"));
+      "--enable-features=OobePreConsentMetrics,AFlag,Bflag"));
 
   EXPECT_TRUE(IsOOBEPreConsentCrashesEnabled());
 }

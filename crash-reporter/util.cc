@@ -26,9 +26,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
-#include <base/logging.h>
-#include <base/memory/ref_counted.h>
-#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
@@ -43,10 +40,6 @@
 #include "crash-reporter/crossystem.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/vm_support.h"
-
-#if USE_DIRENCRYPTION
-#include <keyutils.h>
-#endif  // USE_DIRENCRYPTION
 
 namespace util {
 
@@ -69,7 +62,7 @@ constexpr base::TimeDelta kAgeForNoUploads = base::Days(180);
 
 // This value needs to be in-sync with the Chromium counterpart in
 // ash/constants/ash_features.cc.
-const char kPreConsentMetricFeatureFlag[] = "OOBEPreConsentMetrics";
+const char kPreConsentMetricFeatureFlag[] = "OobePreConsentMetrics";
 const char kEnableFeaturesFlag[] = "enable-features";
 
 #if USE_DIRENCRYPTION
