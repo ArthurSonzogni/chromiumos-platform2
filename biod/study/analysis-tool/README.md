@@ -1,3 +1,5 @@
+<!-- Format this doc with `mdformat --compatibility --w BPET.md`. -->
+
 # Fingerprint Performance Analysis Tool
 
 This tool is used to asses the performance of a fingerprint system.
@@ -18,8 +20,9 @@ statistically determine its FAR and FRR confidence range.
 
 *   Python 3 `venv` and `ensurepip` modules.
 
-    If you choose to use a virtual environment setup by [`python-venv-setup.sh`](../python-venv-setup.sh), you will need venv + ensurepip.
-    On Debian, you can do the following:
+    If you choose to use a virtual environment setup by
+    [`python-venv-setup.sh`](../python-venv-setup.sh), you will need venv +
+    ensurepip. On Debian, you can do the following:
 
     ```bash
     sudo apt install -y python3-venv
@@ -27,7 +30,8 @@ statistically determine its FAR and FRR confidence range.
 
 *   [Pandoc](https://pandoc.org/) command-line utility
 
-    The report generation component uses pandoc to generate static reports from markdown.
+    The report generation component uses pandoc to generate static reports from
+    markdown.
 
     On Debian, you can do the following:
 
@@ -56,15 +60,18 @@ statistically determine its FAR and FRR confidence range.
     ```bash
     deactivate
     ```
+
 ## Create a Simulation Study Output
 
-In order to generate a simulation study output with 4 fingers, 40 samples, and FRR probability of 6%, run the following:
+In order to generate a simulation study output with 4 fingers, 40 samples, and
+FRR probability of 6%, run the following:
 
 ```bash
 ./analysis-tool/simulate_fpstudy.py study_output --fingers 4 --samples 40 --frr_prob_percent 6
 ```
 
-The output files will be stored in the `study_output` direction and will have the following:
+The output files will be stored in the `study_output` direction and will have
+the following:
 
 *   FAR_decisions.csv: contains all matcher imposter (false-accept) attempts
 *   FRR_decisions.csv: contains all matcher true user (false-reject) attempts
@@ -92,11 +99,13 @@ python -m unittest discover -v -s . -p '*_test.py'
 
 ## Experiment Directory Files
 
-## Study Output Directory Files
+The [Biometric Performance Evaluation Tool (BPET)](../BPET.md) should output the
+following files for use by the analysis tool.
 
 1.  `FAR_decisions.csv`
 
-    The FAR_decisions.csv uses a CSV format, contains all matcher imposter (false-accept) attempts, and has the following format.
+    The FAR_decisions.csv uses a CSV format, contains all matcher imposter
+    (false-accept) attempts, and has the following format.
 
     Example **FAR_decisions.csv**:
 
@@ -108,9 +117,10 @@ python -m unittest discover -v -s . -p '*_test.py'
     ...
     ```
 
-1. `FRR_decisions.csv`:
+1.  `FRR_decisions.csv`:
 
-    The FRR_decisions.csv use a CSV format, contains all matcher true user (false-reject) attempts, and has the following format.
+    The FRR_decisions.csv use a CSV format, contains all matcher true user
+    (false-reject) attempts, and has the following format.
 
     Example **FRR_decisions.csv**
 
