@@ -18,7 +18,7 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
+#include <base/system/sys_info.h>
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
@@ -30,13 +30,7 @@
 #include "shill/metrics.h"
 
 namespace {
-constexpr char kLinuxUserAgent[] =
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/89.0.4389.114 Safari/537.36";
-const brillo::http::HeaderList kHeaders{
-    {brillo::http::request_header::kUserAgent, kLinuxUserAgent},
-};
-
+constexpr std::string_view kDefaultChromeMilestone = "126";
 bool IsRedirectResponse(int status_code) {
   return status_code == brillo::http::status_code::Redirect ||
          status_code == brillo::http::status_code::RedirectKeepVerb;
@@ -155,9 +149,11 @@ void PortalDetector::StartHttpProbe(
     http_url = PickProbeUrl(probing_configuration_.portal_http_url,
                             probing_configuration_.portal_fallback_http_urls);
   }
+  brillo::http::HeaderList userAgentHeader = {
+      {brillo::http::request_header::kUserAgent, GetUserAgentString()}};
   LOG(INFO) << LoggingTag() << ": Starting HTTP probe: " << http_url.host();
   http_request_->Start(
-      LoggingTag() + " HTTP probe", http_url, kHeaders,
+      LoggingTag() + " HTTP probe", http_url, userAgentHeader,
       base::BindOnce(&PortalDetector::ProcessHTTPProbeResult,
                      weak_ptr_factory_.GetWeakPtr(), http_url, start_time));
 }
@@ -173,9 +169,11 @@ void PortalDetector::StartHttpsProbe(
   bool allow_non_google_https = https_url.ToString() != kDefaultHttpsUrl;
   https_request_ =
       CreateHTTPRequest(ifname_, *ip_family_, dns_list, allow_non_google_https);
+  brillo::http::HeaderList userAgentHeader = {
+      {brillo::http::request_header::kUserAgent, GetUserAgentString()}};
   LOG(INFO) << LoggingTag() << ": Starting HTTPS probe: " << https_url.host();
   https_request_->Start(
-      LoggingTag() + " HTTPS probe", https_url, kHeaders,
+      LoggingTag() + " HTTPS probe", https_url, userAgentHeader,
       base::BindOnce(&PortalDetector::ProcessHTTPSProbeResult,
                      weak_ptr_factory_.GetWeakPtr(), start_time));
 }
@@ -426,6 +424,26 @@ std::unique_ptr<HttpRequest> PortalDetector::CreateHTTPRequest(
   patchpanel_client_->PrepareTagSocket(std::move(annotation), transport);
   return std::make_unique<HttpRequest>(dispatcher_, ifname, ip_family, dns_list,
                                        allow_non_google_https, transport);
+}
+
+// static
+std::string PortalDetector::GetUserAgentString() {
+  std::string chrome_milestone;
+  base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_CHROME_MILESTONE",
+                                    &chrome_milestone);
+  if (chrome_milestone.empty()) {
+    chrome_milestone = kDefaultChromeMilestone;
+  }
+  // With UA reduction, the <unifiedPlatform> tag should be "X11; CrOS x86_64
+  // 14541.0.0". However, historically there has been problems with legacy
+  // captive portals not recognizing the "CrOS" tag in the user agent string and
+  // the portal detector specifically uses the unified platform tag for Linux
+  // Chrome instead. See https://www.chromium.org/updates/ua-reduction/ for
+  // details.
+  return base::StrCat(
+      {"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+       "Chrome/",
+       chrome_milestone, ".0.0.0 Safari/537.36"});
 }
 
 bool PortalDetector::Result::IsHTTPProbeComplete() const {

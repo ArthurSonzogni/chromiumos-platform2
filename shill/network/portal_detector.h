@@ -291,6 +291,9 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, RestartAfterRedirect);
   FRIEND_TEST(PortalDetectorTest, RestartAfterSuspectedRedirect);
 
+  // Gets the reduced user-agent string for this current version of ChromeOS.
+  static std::string GetUserAgentString();
+
   // Picks the next probe URL based on |attempt_count_|. Rotates first through
   // |default_url| and |fallback_urls| to pick each URL in order at least once,
   // then return randomely any URL with equal probability.
