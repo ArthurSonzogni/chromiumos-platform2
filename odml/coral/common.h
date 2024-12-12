@@ -30,6 +30,13 @@ struct MoveOnly {
 
 using Embedding = std::vector<float>;
 
+struct EmbeddingEntry {
+  Embedding embedding;
+  // The safety verdict of the entry. True means pass, and false means fail.
+  std::optional<bool> safety_verdict;
+  bool operator==(const EmbeddingEntry&) const = default;
+};
+
 class PerformanceTimer {
  public:
   using Ptr = std::unique_ptr<PerformanceTimer>;

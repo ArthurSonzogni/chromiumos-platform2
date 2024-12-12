@@ -5,10 +5,10 @@
 #include "odml/coral/embedding/embedding_database.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -17,6 +17,7 @@
 #include <brillo/files/file_util.h>
 
 #include "coral/proto_bindings/embedding.pb.h"
+#include "odml/coral/common.h"
 
 namespace coral {
 
@@ -79,21 +80,21 @@ EmbeddingDatabase::~EmbeddingDatabase() {
   Sync();
 }
 
-void EmbeddingDatabase::Put(std::string key, Embedding embedding) {
+void EmbeddingDatabase::Put(std::string key, EmbeddingEntry entry) {
   auto now = base::Time::Now();
   auto it = embeddings_map_.find(key);
   if (it == embeddings_map_.end()) {
     updated_time_of_keys_.insert({now, key});
-    embeddings_map_[std::move(key)] = EmbeddingEntry{
-        .embedding = std::move(embedding),
+    embeddings_map_[std::move(key)] = EmbeddingEntryWithTimestamp{
+        .entry = std::move(entry),
         .updated_time_ms = now,
     };
     MaybePruneEntries();
   } else {
     updated_time_of_keys_.erase({it->second.updated_time_ms, key});
     updated_time_of_keys_.insert({now, key});
-    it->second = EmbeddingEntry{
-        .embedding = std::move(embedding),
+    it->second = EmbeddingEntryWithTimestamp{
+        .entry = std::move(entry),
         .updated_time_ms = now,
     };
   }
@@ -101,17 +102,17 @@ void EmbeddingDatabase::Put(std::string key, Embedding embedding) {
   dirty_ = true;
 }
 
-std::optional<Embedding> EmbeddingDatabase::Get(const std::string& key) {
+EmbeddingEntry EmbeddingDatabase::Get(const std::string& key) {
   auto now = base::Time::Now();
   auto it = embeddings_map_.find(key);
   if (it == embeddings_map_.end()) {
-    return std::nullopt;
+    return EmbeddingEntry();
   }
   updated_time_of_keys_.erase({it->second.updated_time_ms, key});
   updated_time_of_keys_.insert({now, key});
   it->second.updated_time_ms = now;
   dirty_ = true;
-  return it->second.embedding;
+  return it->second.entry;
 }
 
 bool EmbeddingDatabase::Sync() {
@@ -139,10 +140,13 @@ bool EmbeddingDatabase::Sync() {
   EmbeddingRecords records;
   for (const auto& [key, entry] : embeddings_map_) {
     EmbeddingRecord record;
-    record.mutable_values()->Assign(entry.embedding.begin(),
-                                    entry.embedding.end());
+    record.mutable_values()->Assign(entry.entry.embedding.begin(),
+                                    entry.entry.embedding.end());
     record.set_updated_time_ms(
         entry.updated_time_ms.InMillisecondsSinceUnixEpoch());
+    if (entry.entry.safety_verdict.has_value()) {
+      record.set_safety_verdict(entry.entry.safety_verdict.value());
+    }
     records.mutable_records()->insert({key, std::move(record)});
   }
 
@@ -158,8 +162,8 @@ bool EmbeddingDatabase::Sync() {
   return true;
 }
 
-bool EmbeddingDatabase::IsRecordExpired(const base::Time now,
-                                        const EmbeddingEntry& record) const {
+bool EmbeddingDatabase::IsRecordExpired(
+    const base::Time now, const EmbeddingEntryWithTimestamp& record) const {
   // 0 means no ttl.
   return !ttl_.is_zero() && now - record.updated_time_ms > ttl_;
 }
@@ -185,8 +189,15 @@ bool EmbeddingDatabase::LoadFromFile() {
   for (const auto& [key, record] : records.records()) {
     auto updated_time_ms =
         base::Time::FromMillisecondsSinceUnixEpoch(record.updated_time_ms());
-    embeddings_map_[key] = EmbeddingEntry{
-        .embedding = Embedding(record.values().begin(), record.values().end()),
+
+    std::optional<bool> violation;
+    if (record.has_safety_verdict()) {
+      violation = record.safety_verdict();
+    }
+    embeddings_map_[key] = EmbeddingEntryWithTimestamp{
+        .entry = EmbeddingEntry{.embedding = Embedding(record.values().begin(),
+                                                       record.values().end()),
+                                .safety_verdict = violation},
         .updated_time_ms = updated_time_ms};
     updated_time_of_keys_.insert({updated_time_ms, key});
   }

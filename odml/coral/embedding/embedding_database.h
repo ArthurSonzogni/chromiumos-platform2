@@ -36,12 +36,13 @@ class EmbeddingDatabaseInterface {
  public:
   virtual ~EmbeddingDatabaseInterface() = default;
 
-  // Writes (key, embedding) to the in-memory mapping. No sync yet.
-  virtual void Put(std::string key, Embedding embedding) = 0;
+  // Writes (key, embedding_entry) to the in-memory mapping. No sync yet.
+  virtual void Put(std::string key, EmbeddingEntry embedding) = 0;
 
-  // Reads embedding from the in-memory mapping if the key exists in database.
-  // Returns std::nullopt if the key doesn't exist.
-  virtual std::optional<Embedding> Get(const std::string& key) = 0;
+  // Reads embedding_entry from the in-memory mapping if the key exists in
+  // database. The returned entry will have empty `embedding` and empty
+  // `safety_verdict` if the key doesn't exist.
+  virtual EmbeddingEntry Get(const std::string& key) = 0;
 
   // Syncs the in-memory mapping to the file. Stale records are removed both in
   // memory and file.
@@ -61,13 +62,13 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
   EmbeddingDatabase& operator=(const EmbeddingDatabase&) = delete;
 
   // EmbeddingDatabaseInterface overrides.
-  void Put(std::string key, Embedding embedding) override;
-  std::optional<Embedding> Get(const std::string& key) override;
+  void Put(std::string key, EmbeddingEntry embedding) override;
+  EmbeddingEntry Get(const std::string& key) override;
   bool Sync() override;
 
  private:
-  struct EmbeddingEntry {
-    Embedding embedding;
+  struct EmbeddingEntryWithTimestamp {
+    EmbeddingEntry entry;
     base::Time updated_time_ms;
   };
 
@@ -79,7 +80,8 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
                     base::TimeDelta ttl);
 
   // Returns true if a record is stale.
-  bool IsRecordExpired(base::Time now, const EmbeddingEntry& record) const;
+  bool IsRecordExpired(base::Time now,
+                       const EmbeddingEntryWithTimestamp& record) const;
 
   // Loads the database from |file_path_|.
   bool LoadFromFile();
@@ -93,7 +95,7 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
   bool dirty_;
   const base::FilePath file_path_;
   const base::TimeDelta ttl_;
-  std::unordered_map<std::string, EmbeddingEntry> embeddings_map_;
+  std::unordered_map<std::string, EmbeddingEntryWithTimestamp> embeddings_map_;
   // Each entry (updated_time, key) corresponds to an entry in
   // `embeddings_map_`. The 2 containers should be updated together and always
   // stay consistent. This is sorted by updated_time so we can efficiently find

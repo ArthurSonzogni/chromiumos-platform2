@@ -13,6 +13,9 @@ message EmbeddingRecord {
   // The update timestamp of this embedding.
   // It is the milliseconds since the epoch time .
   int64 updated_time_ms = 2;
+
+  // The safety verdict of the entry. True means pass, and false means fail.
+  optional bool safety_verdict = 3;
 }
 
 message EmbeddingRecords {
@@ -20,4 +23,7 @@ message EmbeddingRecords {
   // which could possibly affect the result embedding. From the entity content
   // to the embedding prompt, also embedding model versions, etc.
   map<string, EmbeddingRecord> records = 1;
+
+  // The version of the safety model that made the (cached) safety verdicts.
+  optional int32 safety_servion = 2;
 }

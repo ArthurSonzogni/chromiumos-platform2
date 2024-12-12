@@ -134,6 +134,8 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
 
   // The version of the loaded embedding model.
   std::string model_version_;
+  // The version of the safety service.
+  int safety_service_version_ = 0;
 
   // The timer to sync database to disk periodically.
   base::RepeatingTimer sync_db_timer_;

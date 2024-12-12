@@ -120,8 +120,11 @@ class FakeEmbeddingDatabaseFactory : public EmbeddingDatabaseFactory {
 
 class FakeEmbeddingDatabase : public EmbeddingDatabaseInterface {
  public:
-  MOCK_METHOD(void, Put, (std::string key, Embedding embedding), (override));
-  MOCK_METHOD(std::optional<Embedding>, Get, (const std::string&), (override));
+  MOCK_METHOD(void,
+              Put,
+              (std::string key, EmbeddingEntry embedding),
+              (override));
+  MOCK_METHOD(EmbeddingEntry, Get, (const std::string&), (override));
   MOCK_METHOD(bool, Sync, (), (override));
 };
 
@@ -370,6 +373,10 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   auto request = GetFakeGroupRequest();
   std::vector<Embedding> fake_embeddings =
       GetFakeEmbeddingResponse().embeddings;
+  std::vector<EmbeddingEntry> fake_embedding_entries;
+  for (const auto& fake_embedding : fake_embeddings) {
+    fake_embedding_entries.push_back(EmbeddingEntry(fake_embedding));
+  }
   std::vector<std::string> cache_keys;
   for (const mojom::EntityPtr& entity : request->entities) {
     std::optional<std::string> cache_key = internal::EntityToCacheKey(
@@ -383,26 +390,34 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   FakeEmbeddingDatabase* database_1 = new FakeEmbeddingDatabase();
   EXPECT_CALL(*database_1, Get(_)).Times(AnyNumber());
   EXPECT_CALL(*database_1, Get(cache_keys[1]))
-      .WillOnce(Return(fake_embeddings[1]));
+      .WillOnce(Return(fake_embedding_entries[1]));
   EXPECT_CALL(*database_1, Get(cache_keys[4]))
-      .WillOnce(Return(fake_embeddings[4]));
-  EXPECT_CALL(*database_1, Put(cache_keys[0], fake_embeddings[0])).Times(1);
-  EXPECT_CALL(*database_1, Put(cache_keys[2], fake_embeddings[2])).Times(1);
-  EXPECT_CALL(*database_1, Put(cache_keys[3], fake_embeddings[3])).Times(1);
-  EXPECT_CALL(*database_1, Put(cache_keys[5], fake_embeddings[5])).Times(1);
+      .WillOnce(Return(fake_embedding_entries[4]));
+  EXPECT_CALL(*database_1, Put(cache_keys[0], fake_embedding_entries[0]))
+      .Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[2], fake_embedding_entries[2]))
+      .Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[3], fake_embedding_entries[3]))
+      .Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[5], fake_embedding_entries[5]))
+      .Times(1);
 
   // Fake database for fake user 2.
   // Ownership is transferred to |engine_| later.
   FakeEmbeddingDatabase* database_2 = new FakeEmbeddingDatabase();
   EXPECT_CALL(*database_2, Get(_)).Times(AnyNumber());
   EXPECT_CALL(*database_2, Get(cache_keys[0]))
-      .WillOnce(Return(fake_embeddings[0]));
+      .WillOnce(Return(fake_embedding_entries[0]));
   EXPECT_CALL(*database_2, Get(cache_keys[5]))
-      .WillOnce(Return(fake_embeddings[5]));
-  EXPECT_CALL(*database_2, Put(cache_keys[1], fake_embeddings[1])).Times(1);
-  EXPECT_CALL(*database_2, Put(cache_keys[2], fake_embeddings[2])).Times(1);
-  EXPECT_CALL(*database_2, Put(cache_keys[3], fake_embeddings[3])).Times(1);
-  EXPECT_CALL(*database_2, Put(cache_keys[4], fake_embeddings[4])).Times(1);
+      .WillOnce(Return(fake_embedding_entries[5]));
+  EXPECT_CALL(*database_2, Put(cache_keys[1], fake_embedding_entries[1]))
+      .Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[2], fake_embedding_entries[2]))
+      .Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[3], fake_embedding_entries[3]))
+      .Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[4], fake_embedding_entries[4]))
+      .Times(1);
 
   // Ownership of |database_1| and |database_2| are transferred.
   EXPECT_CALL(*embedding_database_factory_, Create(_, _, _))

@@ -261,12 +261,12 @@ void EmbeddingEngine::ProcessEachPrompt(mojom::GroupRequestPtr request,
     std::optional<std::string> cache_key = internal::EntityToCacheKey(
         *request->entities[index], prompt, model_version_);
     if (cache_key.has_value()) {
-      std::optional<Embedding> embedding = embedding_database_->Get(*cache_key);
-      if (embedding.has_value()) {
+      EmbeddingEntry embedding_entry = embedding_database_->Get(*cache_key);
+      if (!embedding_entry.embedding.empty()) {
         if (IsFullGroupRequest(request)) {
           metrics_->SendEmbeddingCacheHit(true);
         }
-        response.embeddings.push_back(*embedding);
+        response.embeddings.push_back(std::move(embedding_entry.embedding));
         ProcessEachPrompt(std::move(request), std::move(prompts),
                           std::move(response), std::move(callback));
         return;
@@ -310,16 +310,17 @@ void EmbeddingEngine::OnModelOutput(mojom::GroupRequestPtr request,
   metrics_->SendGenerateEmbeddingLatency(timer->GetDuration());
 
   // Cache the embedding.
+  EmbeddingEntry embedding_entry{embedding};
   if (embedding_database_) {
     size_t index = response.embeddings.size();
     std::optional<std::string> cache_key = internal::EntityToCacheKey(
         *request->entities[index], prompts[index], model_version_);
     if (cache_key.has_value()) {
-      embedding_database_->Put(*cache_key, embedding);
+      embedding_database_->Put(*cache_key, embedding_entry);
     }
   }
 
-  response.embeddings.push_back(embedding);
+  response.embeddings.push_back(embedding_entry.embedding);
   ProcessEachPrompt(std::move(request), std::move(prompts), std::move(response),
                     std::move(callback));
 }
