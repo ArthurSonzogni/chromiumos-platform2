@@ -167,7 +167,6 @@ bool PopulatePlaneConfiguration(int fd,
     return false;
   }
 
-  conf->color_encoding = ColorEncoding::kUnknown;
   if (interesting_props.count("COLOR_ENCODING")) {
     const auto color_encoding_prop_it =
         interesting_props.find("COLOR_ENCODING");
@@ -176,7 +175,6 @@ bool PopulatePlaneConfiguration(int fd,
         /*property_value=*/color_encoding_prop_it->second.second);
   }
 
-  conf->color_range = ColorRange::kUnknown;
   if (interesting_props.count("COLOR_RANGE")) {
     const auto color_range_prop_it = interesting_props.find("COLOR_RANGE");
     conf->color_range = DRMColorRangePropertyToEnum(

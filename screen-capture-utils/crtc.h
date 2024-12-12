@@ -19,16 +19,16 @@
 namespace screenshot {
 
 enum class ColorEncoding {
+  kUnknown,
   kYCbCrBT601,
   kYCbCrBT709,
   kYCbCrBT2020,
-  kUnknown,
 };
 
 enum class ColorRange {
+  kUnknown,
   kYCbCrLimited,
   kYCbCrFull,
-  kUnknown,
 };
 
 struct PlaneConfiguration {
