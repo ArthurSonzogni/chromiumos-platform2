@@ -200,28 +200,41 @@ configure_monitor ()
 {
   local device="${1}"
   local frequency="${2}"
+  # Frequency needs to be an int. Convert if it's a float.
+  frequency=${frequency%.*}
   local ht_location="${3}"
   local vht_width="${4}"
 
+  # Capture the result of `dev <devname> set freq` call to display in case of
+  # an error.
+  local result
   if [ "${vht_width}" = "80" ] || [ "${vht_width}" = "80MHz" ]; then
-    iw dev "${device}" set freq "${frequency}" 80MHz
+    result="$(iw dev "${device}" set freq "${frequency}" 80MHz 2>&1)"
   elif [ "${vht_width}" = "160" ]; then
-    local center_freq="$(get_center_freq "${frequency}")"
+    local center_freq="$(get_center_freq "${frequency}" 2>&1)"
     if [ -z "${center_freq}" ]; then
       error "frequency \"${frequency}\" not part of a valid 160 MHz channel"
       return 1
     fi
-    iw dev "${device}" set freq "${frequency}" 160 "${center_freq}"
+    result="$(iw dev "${device}" set freq "${frequency}" 160 "${center_freq}" 2>&1)"
   elif [ -z "${ht_location}" ]; then
-    iw dev "${device}" set freq "${frequency}"
+    result="$(iw dev "${device}" set freq "${frequency}" 2>&1)"
   elif [ "${ht_location}" = "above" ]; then
-    iw dev "${device}" set freq "${frequency}" HT40+
+    result="$(iw dev "${device}" set freq "${frequency}" HT40+ 2>&1)"
   elif [ "${ht_location}" = "below" ]; then
-    iw dev "${device}" set freq "${frequency}" HT40-
+    result="$(iw dev "${device}" set freq "${frequency}" HT40- 2>&1)"
   else
     error "ht_location should be \"above\" or \"below\", not \"${ht_location}\""
     return 1
   fi
+
+  # ${result} will contain error message if the command failed to execute.
+  if [ -n "${result}" ]; then
+    error "Failed to configure monitor: ${result}"
+    return 1
+  fi
+
+  return 0
 }
 
 

@@ -25,30 +25,42 @@ test_configure_monitor ()
     fi
   }
   $(configure_monitor int0 1000)
+  expect_eq "(configure_monitor int0 1000) result code" 0 "$?"
+  iw () {
+    if [[ "$#" != 5 || "${*}" != "dev int0 set freq 1000" ]] ; then
+      fatal_error "Unexpected arguments to iw: $*"
+    fi
+  }
+  $(configure_monitor int0 1000.0)
+  expect_eq "(configure_monitor int0 1000.0) result code" 0 "$?"
   iw () {
     if [[ "$#" != 6 || "${*}" != "dev int1 set freq 2000 HT40+" ]] ; then
       fatal_error "Unexpected arguments to iw: $*"
     fi
   }
   $(configure_monitor int1 2000 above)
+  expect_eq "(configure_monitor int1 2000 above) result code" 0 "$?"
   iw () {
     if [[ "$#" != 6 || "${*}" != "dev int2 set freq 3000 HT40-" ]] ; then
       fatal_error "Unexpected arguments to iw: $*"
     fi
   }
   $(configure_monitor int2 3000 below)
+  expect_eq "(configure_monitor int2 3000 below) result code" 0 "$?"
   iw () {
     if [[ "$#" != 6 || "${*}" != "dev int2 set freq 5000 80MHz" ]]; then
       fatal_error "Unexpected arguments to iw: $*"
     fi
   }
   $(configure_monitor int2 5000 "" 80)
+  expect_eq "(configure_monitor int2 5000 "" 80) result code" 0 "$?"
   iw () {
     if [[ "$#" != 7 || "${*}" != "dev int2 set freq 5252 160 5250" ]]; then
       fatal_error "Unexpected arguments to iw: $*"
     fi
   }
   $(configure_monitor int2 5252 "" 160)
+  expect_eq "(configure_monitor int2 5252 "" 160) result code" 0 "$?"
   iw () {
     fatal_error "Unexpected iw execution"
   }
