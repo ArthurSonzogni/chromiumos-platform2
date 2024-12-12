@@ -582,7 +582,7 @@ bool DiagActions::PollRoutineAndProcessResult() {
 
     std::string json;
     base::JSONWriter::WriteWithOptions(
-        output.value(), base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+        output.value(), base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
     std::cout << "Output: " << json << std::endl;
   }
 

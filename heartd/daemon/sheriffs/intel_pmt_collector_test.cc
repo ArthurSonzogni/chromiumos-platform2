@@ -47,7 +47,7 @@ class IntelPMTCollectorTest : public testing::Test {
   void CreateConfig(const base::Value::Dict& config) {
     std::string json;
     base::JSONWriter::WriteWithOptions(
-        config, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+        config, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
     EXPECT_TRUE(base::WriteFile(GetRoot().Append(kIntelPMTConfigPath), json));
   }
 

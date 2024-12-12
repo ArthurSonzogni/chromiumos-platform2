@@ -189,7 +189,7 @@ void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
 
   std::string json;
   base::JSONWriter::WriteWithOptions(
-      output, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+      output, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
 
   std::cout << json << std::endl;
 }
@@ -465,8 +465,7 @@ void OutputCrashEventInfo(const mojom::CrashEventInfoPtr& info) {
   }
   std::string json;
   base::JSONWriter::WriteWithOptions(
-      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
-      &json);
+      output, base::JSONWriter::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION, &json);
   std::cout << "Crash event received: " << json << std::endl;
 }
 
