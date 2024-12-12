@@ -140,6 +140,16 @@ python -m unittest discover -v -s . -p '*_test.py'
     ...
     ```
 
+1.  `test_case.toml`
+
+    This informational file specifies the `name` and `description` for the test
+    case captured in this directory.
+
+    ```toml
+    name = "TUDisabled"
+    description = "All template updating disabled."
+    ```
+
 ## Examples
 
 ```bash

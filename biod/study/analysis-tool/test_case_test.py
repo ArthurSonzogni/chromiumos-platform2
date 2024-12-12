@@ -17,7 +17,7 @@ class Test_TestCase(unittest.TestCase):
 
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.temp_toml = pathlib.Path(self.temp_dir.name) / "test.csv"
+        self.temp_toml = pathlib.Path(self.temp_dir.name) / "test_case.toml"
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
