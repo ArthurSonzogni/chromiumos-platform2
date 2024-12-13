@@ -70,12 +70,22 @@ get_stateful_used_space_blocks() {
 # Output denotes the following formats:
 #   0 - Raw partition
 #   1 - Logical volume (LVM)
+#   2 - Dm DefaultKey Volune
 get_stateful_format_enum() {
   local stateful_dev
   stateful_dev="$(rootdev '/mnt/stateful_partition')"
 
   case "${stateful_dev}" in
-    /dev/dm*) printf 1 ;;
+    /dev/dm*)
+      for f in $(udevadm info -q symlink "${stateful_dev=}"); do
+        case "${f}" in
+          *defaultkey_encrypted)
+            printf 2; return;;
+          *unencrypted)
+            printf 1; return;;
+        esac
+      done
+      ;;
     *)        printf 0 ;;
   esac
 }
