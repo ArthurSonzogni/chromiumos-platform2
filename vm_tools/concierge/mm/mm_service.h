@@ -113,7 +113,7 @@ class MmService {
   // TODO(b/254164308) Currently only ARCVM is supported by the
   // MmService
   static constexpr ManagedVmsSet kManagedVms =
-      base::MakeFixedFlatSet<apps::VmType, 1>({apps::VmType::ARCVM});
+      base::MakeFixedFlatSet<apps::VmType>({apps::VmType::ARCVM});
 
   // Ensure calls are made on the right thread.
   SEQUENCE_CHECKER(sequence_checker_);
