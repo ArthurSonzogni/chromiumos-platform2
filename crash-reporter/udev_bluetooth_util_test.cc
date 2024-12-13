@@ -17,12 +17,6 @@
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
-namespace {
-
-constexpr char kCoredumpFlagPath[] = "/run/bluetooth/coredump_disabled";
-
-}  // namespace
-
 class UdevBluetoothUtilTest : public ::testing::Test {
  protected:
   void CreateTestFile(const base::FilePath file_path,
@@ -66,31 +60,6 @@ TEST_F(UdevBluetoothUtilTest, TestInvalidPath) {
 TEST_F(UdevBluetoothUtilTest, TestNullSig) {
   EXPECT_FALSE(bluetooth_util::ProcessBluetoothCoredump(dump_path_,
                                                         target_path_, nullptr));
-}
-
-// Verify feature flag enabled/disabled. The flag name is coredump_disabled.
-// So, when disabled is 0, the feature is enabled.
-TEST_F(UdevBluetoothUtilTest, TestIsCoredumpEnabled) {
-  // Flag file not present, verify feature is disabled.
-  EXPECT_FALSE(bluetooth_util::IsCoredumpEnabled());
-
-  // Empty flag file, verify feature is disabled.
-  ASSERT_TRUE(test_util::CreateFile(paths::Get(kCoredumpFlagPath), ""));
-  EXPECT_FALSE(bluetooth_util::IsCoredumpEnabled());
-
-  // Verify flag disabled case.
-  std::vector<std::string> data = {
-      "1",
-  };
-  CreateTestFile(paths::Get(kCoredumpFlagPath), data);
-  EXPECT_FALSE(bluetooth_util::IsCoredumpEnabled());
-
-  // Verify flag enabled case.
-  data = {
-      "0",
-  };
-  CreateTestFile(paths::Get(kCoredumpFlagPath), data);
-  EXPECT_TRUE(bluetooth_util::IsCoredumpEnabled());
 }
 
 // Correct header is "Bluetooth devcoredump". Verify IsBluetoothCoredump()

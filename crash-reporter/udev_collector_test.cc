@@ -39,11 +39,6 @@ using base::FilePath;
 
 namespace {
 
-// Bluetooth devcoredump feature flag path
-// TODO(b/203034370): Remove this once the feature is fully launched and the
-// feature flag is removed.
-constexpr char kBluetoothDumpFlagPath[] = "/run/bluetooth/coredump_disabled";
-
 constexpr char kFbpreprocessordBaseDirectory[] =
     "/run/daemon-store/fbpreprocessord/user_hash/raw_dumps";
 
@@ -557,8 +552,6 @@ TEST_F(UdevCollectorTest,
   std::string data_str = brillo::string_utils::Join("\n", data);
   ASSERT_TRUE(base::WriteFile(data_path, data_str));
 
-  ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
-
   auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
   collector_.SetSessionManagerProxy(mock);
   CreateFbpreprocessordDirectoryForTest(&collector_);
@@ -896,8 +889,6 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestValidBluetoothDevCoredump) {
   std::string data_str = brillo::string_utils::Join("\n", data);
   ASSERT_TRUE(base::WriteFile(data_path, data_str));
 
-  ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
-
   EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
             CrashCollectionStatus::kSuccess);
   EXPECT_EQ(3, GetNumFiles(temp_dir_generator_.GetPath(),
@@ -926,8 +917,6 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestInvalidBluetoothDevCoredump) {
   };
   std::string data_str = brillo::string_utils::Join("\n", data);
   ASSERT_TRUE(base::WriteFile(data_path, data_str));
-
-  ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
 
   EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump"),
             CrashCollectionStatus::kFailedProcessBluetoothCoredump);

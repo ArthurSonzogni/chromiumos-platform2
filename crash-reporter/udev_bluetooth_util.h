@@ -14,12 +14,6 @@ namespace bluetooth_util {
 // Executable name for bluetooth devcoredump.
 extern const char kBluetoothDevCoredumpExecName[];
 
-// Check if the bluetooth devcoredump feature is enabled. This is populated by
-// Chrome-BlueZ whenever the chrome feature flag is updated, which is also used
-// by BlueZ-kernel to check whether the feature is enabled.
-// TODO(b/203034370): Remove this once the feature is fully launched and the
-// feature flag is removed.
-bool IsCoredumpEnabled();
 // Create a crash signature for bluetooth devcoredump.
 std::string CreateCrashSig(const std::string& driver_name,
                            const std::string& vendor_name,

@@ -24,7 +24,6 @@
 
 namespace {
 
-constexpr char kCoredumpFlagPath[] = "/run/bluetooth/coredump_disabled";
 constexpr char kCoredumpParserPath[] = "/usr/bin/bluetooth_devcd_parser";
 constexpr char kCoredumpMetaHeader[] = "Bluetooth devcoredump";
 
@@ -109,20 +108,6 @@ bool ReadCrashSig(const base::FilePath& target_path, std::string* crash_sig) {
 
   *crash_sig = CreateCrashSig(driver_name, vendor_name, controller_name, pc);
   return true;
-}
-
-bool IsCoredumpEnabled() {
-  std::string val;
-
-  if (!base::ReadFileToString(paths::Get(kCoredumpFlagPath), &val)) {
-    PLOG(ERROR) << "Failed to read " << paths::Get(kCoredumpFlagPath);
-    return false;
-  }
-  val.resize(1);
-
-  // The flag name is coredump_disabled. So, when disabled is 0, the feature is
-  // enabled.
-  return val == "0";
 }
 
 bool IsBluetoothCoredump(const base::FilePath& coredump_path) {

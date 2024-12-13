@@ -211,8 +211,7 @@ CrashCollectionStatus UdevCollector::HandleCrash(
       ConnectivityFwdumpAllowedForUserSession(
           fbpreprocessor::DebugDump::WIFI)) {
     LOG(INFO) << "Process Connectivity intel wifi fwdumps.";
-  } else if (bluetooth_util::IsCoredumpEnabled() &&
-             bluetooth_util::IsBluetoothCoredump(coredump_path)) {
+  } else if (bluetooth_util::IsBluetoothCoredump(coredump_path)) {
     LOG(INFO) << "Process bluetooth devcoredump.";
   } else if (UdevCollector::IsSafeDevCoredump(udev_event_map)) {
     LOG(INFO) << "Safe device coredumps are always processed";
@@ -363,8 +362,7 @@ CrashCollectionStatus UdevCollector::ProcessDevCoredump(
     return result;
   }
 
-  if (bluetooth_util::IsCoredumpEnabled() &&
-      bluetooth_util::IsBluetoothCoredump(coredump_path)) {
+  if (bluetooth_util::IsBluetoothCoredump(coredump_path)) {
     if (ConnectivityFwdumpAllowedForUserSession(
             fbpreprocessor::DebugDump::BLUETOOTH)) {
       ProcessConnectivityCoredump(coredump_path, instance_number);
