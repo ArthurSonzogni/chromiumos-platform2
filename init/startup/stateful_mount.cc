@@ -188,21 +188,23 @@ std::vector<std::string> StatefulMount::GenerateExt4Features(
 
 // Only called in MountStateful(), trigger a clobber.
 void StatefulMount::ClobberStateful(
+    const base::FilePath& stateful_device,
     const std::vector<std::string>& clobber_args,
     const std::string& clobber_message) {
   startup_dep_->BootAlert("self_repair");
-  startup_dep_->ClobberLogRepair(state_dev_, clobber_message);
+  startup_dep_->ClobberLogRepair(stateful_device, clobber_message);
   startup_dep_->AddClobberCrashReport(
       {"--mount_failure", "--mount_device=stateful"});
   startup_dep_->Clobber(clobber_args);
 }
 
-bool StatefulMount::AttemptStatefulMigration() {
+bool StatefulMount::AttemptStatefulMigration(
+    const base::FilePath& stateful_device) {
   std::unique_ptr<brillo::Process> thinpool_migrator =
       platform_->CreateProcessInstance();
   thinpool_migrator->AddArg("/usr/sbin/thinpool_migrator");
   thinpool_migrator->AddArg(
-      base::StringPrintf("--device=%s", state_dev_.value().c_str()));
+      base::StringPrintf("--device=%s", stateful_device.value().c_str()));
 
   if (thinpool_migrator->Run() != 0) {
     LOG(ERROR) << "Failed to run thinpool migrator";
@@ -276,7 +278,8 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
       image_vars_dict, "PARTITION_NUM_STATE");
   const std::string* fs_form_state =
       image_vars_dict.FindString("FS_FORMAT_STATE");
-  state_dev_ = brillo::AppendPartition(root_dev, part_num_state);
+  base::FilePath backing_device =
+      brillo::AppendPartition(root_dev, part_num_state);
   if (fs_form_state != nullptr && fs_form_state->compare("ext4") == 0) {
     int dirty_expire_centisecs = GetDirtyExpireCentisecs(platform_, root_);
     int commit_interval = dirty_expire_centisecs / 100;
@@ -297,18 +300,18 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
     // Attempt to get a valid volume group name.
     bootstat_.LogEvent("pre-lvm-activation");
     std::optional<brillo::PhysicalVolume> pv =
-        lvm->GetPhysicalVolume(state_dev_);
+        lvm->GetPhysicalVolume(backing_device);
 
     if (!pv && flags->lvm_migration) {
       // Attempt to migrate to thinpool if migration is enabled: if the
       // migration fails, then we expect the stateful partition to be back to
       // its original state.
 
-      if (!AttemptStatefulMigration()) {
+      if (!AttemptStatefulMigration(backing_device)) {
         LOG(ERROR) << "Failed to migrate stateful partition to a thinpool";
       } else {
         // Reset the physical volume on success from thinpool migration.
-        pv = lvm->GetPhysicalVolume(state_dev_);
+        pv = lvm->GetPhysicalVolume(backing_device);
       }
     }
 
@@ -321,7 +324,8 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
 
         if (!thinpool) {
           LOG(ERROR) << "Thinpool does not exist";
-          ClobberStateful({"fast", "keepimg"}, "Invalid thinpool");
+          ClobberStateful(backing_device, {"fast", "keepimg"},
+                          "Invalid thinpool");
           // Not reached, except during unit tests.
           return;
         }
@@ -330,7 +334,8 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
           LOG(WARNING) << "Failed to activate thinpool, attempting repair";
           if (!thinpool->Activate(/*check=*/true)) {
             LOG(ERROR) << "Failed to repair and activate thinpool";
-            ClobberStateful({"fast", "keepimg"}, "Corrupt thinpool");
+            ClobberStateful(backing_device, {"fast", "keepimg"},
+                            "Corrupt thinpool");
             // Not reached, except during unit tests.
             return;
           }
@@ -342,10 +347,6 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
   }
 
   if (should_mount_lvm) {
-    state_dev_ = root_.Append("dev")
-                     .Append(volume_group_->GetName())
-                     .Append(kUnencrypted);
-
     config.unencrypted_config = {
         .backing_device_config = {
             .type = libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
@@ -358,7 +359,7 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
     config.unencrypted_config = {
         .backing_device_config = {
             .type = libstorage::BackingDeviceType::kPartition,
-            .name = state_dev_.value()}};
+            .name = backing_device.value()}};
   }
   config.filesystem_config = {
       .tune2fs_opts = GenerateExt4Features(flags),
@@ -374,12 +375,13 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
   if (!container || !container->Setup(libstorage::FileSystemKey())) {
     LOG(ERROR) << "Failed to setup unencrypted stateful";
 
-    ClobberStateful({"fast", "keepimg", "preserve_lvs"},
+    ClobberStateful(backing_device, {"fast", "keepimg", "preserve_lvs"},
                     "Self-repair corrupted stateful partition");
     // Not reached, except during unit tests.
     return;
   }
 
+  state_dev_ = container->GetPath();
   // Mount stateful partition from state_dev.
   if (!platform_->Mount(state_dev_, stateful_, *fs_form_state,
                         stateful_mount_flags, stateful_mount_opts)) {
@@ -388,7 +390,7 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
     // this state through power loss during dev mode transition).
     platform_->ReportFilesystemDetails(state_dev_,
                                        root_.Append(kDumpe2fsStatefulLog));
-    ClobberStateful({"keepimg", "preserve_lvs"},
+    ClobberStateful(state_dev_, {"keepimg", "preserve_lvs"},
                     "Self-repair corrupted stateful partition");
     // Not reached, except during unit tests.
     return;

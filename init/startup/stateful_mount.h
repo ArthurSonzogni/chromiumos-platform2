@@ -39,10 +39,11 @@ class StatefulMount {
 
   base::FilePath GetStateDev();
 
-  void ClobberStateful(const std::vector<std::string>& clobber_args,
+  void ClobberStateful(const base::FilePath& stateful_device,
+                       const std::vector<std::string>& clobber_args,
                        const std::string& clobber_message);
 
-  bool AttemptStatefulMigration();
+  bool AttemptStatefulMigration(const base::FilePath& stateful_device);
   void MountStateful(const Flags* flags, MountHelper* mount_helper);
 
   // For testing purposes, allow injecting partition variables,
