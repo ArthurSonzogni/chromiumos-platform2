@@ -149,8 +149,7 @@ keymaster_error_t CrosKeyFactory::LoadKey(
                               this, std::move(key_data)));
       return KM_ERROR_OK;
     case KeyData::kArcKey:
-      NOTREACHED_IN_MIGRATION() << "CrosKeyFactory cannot load ARC keys.";
-      return KM_ERROR_UNIMPLEMENTED;
+      NOTREACHED() << "CrosKeyFactory cannot load ARC keys.";
     case KeyData::DATA_NOT_SET:
       LOG(ERROR) << "Tried to load CrOS key but KeyData is not set.";
       return KM_ERROR_UNKNOWN_ERROR;
@@ -163,8 +162,7 @@ keymaster_error_t CrosKeyFactory::LoadKey(
     ::keymaster::AuthorizationSet&& hw_enforced,
     ::keymaster::AuthorizationSet&& sw_enforced,
     ::keymaster::UniquePtr<::keymaster::Key>* key) const {
-  NOTREACHED_IN_MIGRATION() << __func__ << " should never be called";
-  return KM_ERROR_UNIMPLEMENTED;
+  NOTREACHED() << __func__ << " should never be called";
 }
 
 ::keymaster::OperationFactory* CrosKeyFactory::GetOperationFactory(
@@ -193,8 +191,7 @@ keymaster_error_t CrosKeyFactory::GenerateKey(
     ::keymaster::AuthorizationSet* hw_enforced,
     ::keymaster::AuthorizationSet* sw_enforced,
     ::keymaster::CertificateChain* cert_chain) const {
-  NOTREACHED_IN_MIGRATION() << __func__ << " should never be called";
-  return KM_ERROR_UNIMPLEMENTED;
+  NOTREACHED() << __func__ << " should never be called";
 }
 
 keymaster_error_t CrosKeyFactory::ImportKey(
@@ -207,22 +204,17 @@ keymaster_error_t CrosKeyFactory::ImportKey(
     ::keymaster::AuthorizationSet* hw_enforced,
     ::keymaster::AuthorizationSet* sw_enforced,
     ::keymaster::CertificateChain* cert_chain) const {
-  NOTREACHED_IN_MIGRATION() << __func__ << " should never be called";
-  return KM_ERROR_UNIMPLEMENTED;
+  NOTREACHED() << __func__ << " should never be called";
 }
 
 const keymaster_key_format_t* CrosKeyFactory::SupportedImportFormats(
     size_t* format_count) const {
-  NOTREACHED_IN_MIGRATION() << __func__ << " should never be called";
-  *format_count = 0;
-  return nullptr;
+  NOTREACHED() << __func__ << " should never be called";
 }
 
 const keymaster_key_format_t* CrosKeyFactory::SupportedExportFormats(
     size_t* format_count) const {
-  NOTREACHED_IN_MIGRATION() << __func__ << " should never be called";
-  *format_count = 0;
-  return nullptr;
+  NOTREACHED() << __func__ << " should never be called";
 }
 
 CrosKey::CrosKey(::keymaster::AuthorizationSet&& hw_enforced,
@@ -305,10 +297,7 @@ CrosOperationFactory::~CrosOperationFactory() = default;
   ChapsKey* chaps_key = dynamic_cast<ChapsKey*>(&key);
 
   if (!chaps_key) {
-    NOTREACHED_IN_MIGRATION()
-        << __func__ << " should not be called with non CrOS key.";
-    *error = KM_ERROR_UNKNOWN_ERROR;
-    return nullptr;
+    NOTREACHED() << __func__ << " should not be called with non CrOS key.";
   }
 
   ::keymaster::UniquePtr<::keymaster::Operation> operation(
