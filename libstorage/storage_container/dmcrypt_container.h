@@ -5,8 +5,6 @@
 #ifndef LIBSTORAGE_STORAGE_CONTAINER_DMCRYPT_CONTAINER_H_
 #define LIBSTORAGE_STORAGE_CONTAINER_DMCRYPT_CONTAINER_H_
 
-#include "libstorage/storage_container/storage_container.h"
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -20,6 +18,7 @@
 
 #include "libstorage/storage_container/backing_device.h"
 #include "libstorage/storage_container/filesystem_key.h"
+#include "libstorage/storage_container/storage_container.h"
 
 namespace libstorage {
 
@@ -52,8 +51,6 @@ class BRILLO_EXPORT DmcryptContainer : public StorageContainer {
   bool Reset() override;
 
   bool Setup(const FileSystemKey& encryption_key) override;
-
-  bool RestoreKey(const FileSystemKey& encryption_key) override;
 
   bool Teardown() override;
 

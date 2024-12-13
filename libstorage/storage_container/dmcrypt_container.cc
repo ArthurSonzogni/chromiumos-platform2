@@ -208,62 +208,6 @@ bool DmcryptContainer::EvictKey() {
   return true;
 }
 
-bool DmcryptContainer::RestoreKey(const FileSystemKey& encryption_key) {
-  if (!backing_device_->Exists()) {
-    return false;
-  }
-
-  if (IsDeviceKeyValid()) {
-    LOG(INFO) << "Dm-crypt device RestoreKey(" << dmcrypt_device_name_
-              << ") is already valid.";
-    return true;
-  }
-
-  if (!keyring_->AddKey(Keyring::KeyType::kDmcryptKey, encryption_key,
-                        &key_reference_)) {
-    LOG(ERROR) << "Failed to insert logon key to session keyring.";
-    return false;
-  }
-
-  // Ensure that once the key has been used by dmcrypt or failed,
-  // remove it from the keyring.
-  absl::Cleanup keyring_cleanup_runner = [this]() {
-    LOG(INFO) << "Removing provisioned dmcrypt key from kernel keyring.";
-    if (!keyring_->RemoveKey(Keyring::KeyType::kDmcryptKey, key_reference_)) {
-      LOG(ERROR) << "Failed to remove key from keyring";
-    }
-  };
-
-  // Ensure that once the key operation is finished, device is resumed.
-  absl::Cleanup resume_device_runner = [this]() {
-    LOG(INFO) << "Resuming dmcrypt device";
-    if (!device_mapper_->Resume(dmcrypt_device_name_)) {
-      LOG(ERROR) << "Failed to resume dmcrypt device " << dmcrypt_device_name_;
-    }
-  };
-
-  // Pause device file I/O before restoring the key reference for the device,
-  // regardless of whether the device is already suspended or the keys evicted.
-  if (!device_mapper_->Suspend(dmcrypt_device_name_)) {
-    LOG(ERROR) << "Dm-crypt device RestoreKey(" << dmcrypt_device_name_
-               << ") failed.";
-    return false;
-  }
-
-  // Once the key is inserted, generate the key descriptor and restore
-  // the key.
-  brillo::SecureBlob key_descriptor = dmcrypt::GenerateDmcryptKeyDescriptor(
-      key_reference_.fek_sig, encryption_key.fek.size());
-  std::string key_set_message = "key set " + key_descriptor.to_string();
-  if (!device_mapper_->Message(dmcrypt_device_name_, key_set_message)) {
-    LOG(ERROR) << "Failed to restore key on device " << dmcrypt_device_name_;
-    return false;
-  }
-
-  LOG(INFO) << "Dm-crypt device key is restored.";
-  return true;
-}
-
 bool DmcryptContainer::Reset() {
   // Discard the entire device.
   if (!platform_->DiscardDevice(GetPath())) {

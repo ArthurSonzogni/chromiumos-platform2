@@ -5,13 +5,12 @@
 #ifndef LIBSTORAGE_STORAGE_CONTAINER_FAKE_STORAGE_CONTAINER_H_
 #define LIBSTORAGE_STORAGE_CONTAINER_FAKE_STORAGE_CONTAINER_H_
 
-#include "libstorage/storage_container/backing_device.h"
-
 #include <memory>
 #include <optional>
 
 #include <gmock/gmock.h>
 
+#include "libstorage/storage_container/backing_device.h"
 #include "libstorage/storage_container/storage_container_factory.h"
 
 namespace libstorage {
@@ -46,9 +45,6 @@ class FakeStorageContainer : public StorageContainer {
   }
 
   bool EvictKey() override { return type_ != StorageContainerType::kDmcrypt; }
-  bool RestoreKey(const FileSystemKey& encryption_key) override {
-    return type_ != StorageContainerType::kDmcrypt;
-  }
 
   bool Exists() override { return exists_; }
   bool IsDeviceKeyValid() override {

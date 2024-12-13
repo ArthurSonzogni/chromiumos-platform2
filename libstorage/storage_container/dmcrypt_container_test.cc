@@ -8,13 +8,12 @@
 #include <string>
 #include <utility>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <brillo/blkdev_utils/device_mapper_fake.h>
 #include <brillo/secure_blob.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <libstorage/platform/keyring/fake_keyring.h>
 #include <libstorage/platform/keyring/utils.h>
 #include <libstorage/platform/mock_platform.h>
@@ -144,48 +143,6 @@ TEST_F(DmcryptContainerTest, EvictKeyCheck) {
   // the device to be force unmounted later on for shutdown purposes.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).GetType(),
             "error");
-}
-
-// Tests that RestoreKey resume the device with a key.
-TEST_F(DmcryptContainerTest, RestoreKeyCheck) {
-  EXPECT_CALL(platform_, GetBlkSize(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
-  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-
-  backing_device_->Create();
-  GenerateContainer();
-
-  EXPECT_TRUE(container_->Setup(key_));
-  EXPECT_TRUE(container_->EvictKey());
-  // Check that the key in memory has been zeroed from the table.
-  EXPECT_FALSE(container_->IsDeviceKeyValid());
-
-  EXPECT_TRUE(container_->RestoreKey(key_));
-
-  // Check that the key in memory has been restored from the table.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            key_descriptor_);
-}
-
-// Tests that RestoreKey works with a device that hasn't been evicted.
-TEST_F(DmcryptContainerTest, RestoreKeyCheckOnValidTable) {
-  EXPECT_CALL(platform_, GetBlkSize(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
-  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-
-  backing_device_->Create();
-  GenerateContainer();
-
-  EXPECT_TRUE(container_->Setup(key_));
-  // Check that the key in memory is valid.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            key_descriptor_);
-
-  EXPECT_TRUE(container_->RestoreKey(key_));
-
-  // Check that the key in memory is still valid.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            key_descriptor_);
 }
 
 // Tests that the dmcrypt container can be reset.
