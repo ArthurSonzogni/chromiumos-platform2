@@ -92,6 +92,16 @@ enum class FuzzResultStrategy {
   kMaxValue = kPretendFailure
 };
 
+// Maximum size to use when generating paths or path components. We don't want
+// to use unbounded random strings because sometimes those can be very large and
+// a lot of FilePath operations (e.g. GetComponents) can scale very poorly with
+// paths. This isn't useful to test in practice because real paths have
+// relatively modest upper bounds on their maximum size.
+//
+// Using double the max path size should make sure large paths get generated
+// while still enforcing a cap on the size that FilePath will need to handle.
+static constexpr size_t kMaxSizeForRandomPath = 2 * PATH_MAX;
+
 void AssertIsValidAbsolutePath(const base::FilePath& path) {
   CHECK(path.IsAbsolute()) << "path=" << path;
   // We make an assumption that code that uses `Platform` shouldn't pass paths
@@ -137,16 +147,10 @@ base::FilePath GenerateArbitraryDescendant(
     const base::FilePath& ancestor,
     bool recursive,
     FuzzedDataProvider& fuzzed_data_provider) {
-  // Maximum size of a path to append to ancestor. We don't use unbounded random
-  // strings because sometimes those can be very large and FilePath operations
-  // (e.g. GetComponents) can scale very poorly with paths. Using double the max
-  // path size should make sure actual large paths get generated while still
-  // enforcing a cap on the size that FilePath will need to handle.
-  static constexpr size_t kMaxSize = 2 * PATH_MAX;
   // Fallback path to use if for some reason the fuzzed path isn't usable.
   static constexpr char kFallbackPath[] = "foo";
   base::FilePath to_append(
-      fuzzed_data_provider.ConsumeRandomLengthString(kMaxSize));
+      fuzzed_data_provider.ConsumeRandomLengthString(kMaxSizeForRandomPath));
   if (to_append.value().empty() || to_append.IsAbsolute() ||
       to_append.ReferencesParent() ||
       to_append != CanonicalizePath(to_append) ||
@@ -1822,10 +1826,11 @@ bool FuzzedPlatform::GetLoopDeviceMountsImpl(
     return false;
   }
   for (;;) {
-    const base::FilePath key(key_prefix.value() +
-                             fuzzed_data_provider_.ConsumeRandomLengthString());
+    const base::FilePath key(
+        key_prefix.value() +
+        fuzzed_data_provider_.ConsumeRandomLengthString(kMaxSizeForRandomPath));
     const base::FilePath value(
-        fuzzed_data_provider_.ConsumeRandomLengthString());
+        fuzzed_data_provider_.ConsumeRandomLengthString(kMaxSizeForRandomPath));
     if (!key.IsAbsolute() || key.ReferencesParent() ||
         key != CanonicalizePath(key) || !value.IsAbsolute() ||
         value.ReferencesParent() || value != CanonicalizePath(value)) {
