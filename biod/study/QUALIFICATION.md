@@ -1,11 +1,11 @@
-<!-- Format this doc with `mdformat --compatibility --w ANALYSIS.md`. -->
+<!-- Format this doc with `mdformat --compatibility --w QUALIFICATION.md`. -->
 
-# Fingerprint System Performance Analysis and Qualification
+# Fingerprint System Performance Analysis for Qualification
 
-This document gives a high level overview of what is required to analyze the
-performance of a fingerprint system for Chrome OS. In this document, the
-*fingerprint system* is the combination of the fingerprint sensor, fingerprint
-MCU (FPMCU), and matching library that runs on the FPMCU.
+This document gives a high level overview of what is required to evaluate the
+performance of a fingerprint system for Chrome OS qualification. In this
+document, the *fingerprint system* is the combination of the fingerprint sensor,
+fingerprint MCU (FPMCU), and matching library that runs on the FPMCU.
 
 ## Requirements
 
