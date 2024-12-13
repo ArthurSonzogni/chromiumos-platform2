@@ -273,6 +273,10 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
           feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_0;
           break;
         case 1:
+          [[fallthrough]];
+        case 2:
+          // TODO(jeffulin): Map case 2 to RMAD_FEATURE_LEVEL_2 when it is
+          // introduced.
           feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_1;
           break;
         default:
@@ -597,8 +601,18 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
   if (device_info.original_feature_level() ==
       UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNKNOWN) {
     // Provision |is_chassis_branded| and |hw_compliance_version|.
+
+    // TODO(jeffulin): Remove the hot-fix that directly use brand code to decide
+    // the compliance version.
+    int compliance_version = device_info.hw_compliance_version();
+    if (std::string brand_code; compliance_version == 1 &&
+                                cros_config_utils_->GetBrandCode(&brand_code) &&
+                                brand_code == "IHOS") {
+      compliance_version = 2;
+    }
+
     segmentation_utils_->SetFeatureFlags(device_info.is_chassis_branded(),
-                                         device_info.hw_compliance_version());
+                                         compliance_version);
   }
 
   if (!vpd_utils_->FlushOutRoVpdCache()) {

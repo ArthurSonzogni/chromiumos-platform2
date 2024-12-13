@@ -112,6 +112,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     bool has_cbi = true;
     bool use_legacy_custom_label = false;
     std::optional<std::string> sku_filter_textproto = std::nullopt;
+    std::string brand_code = "";
   };
 
   scoped_refptr<UpdateDeviceInfoStateHandler> CreateStateHandler(
@@ -245,6 +246,12 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       EXPECT_TRUE(base::CreateDirectory(sku_filter_textproto_dir));
       EXPECT_TRUE(base::WriteFile(sku_filter_textproto_path,
                                   args.sku_filter_textproto.value()));
+    }
+
+    if (args.brand_code != "") {
+      ON_CALL(*cros_config_utils, GetBrandCode(_))
+          .WillByDefault(
+              DoAll(SetArgPointee<0>(args.brand_code), Return(true)));
     }
 
     // Fake |SegmentationUtils|.
@@ -610,6 +617,18 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   auto handler = CreateStateHandler({.is_feature_enabled = true,
                                      .is_feature_mutable = false,
                                      .feature_level = 1});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  EXPECT_EQ(state.update_device_info().original_feature_level(),
+            UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_1);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_FeatureLevel2_Success) {
+  auto handler = CreateStateHandler({.feature_level = 2, .brand_code = "IHOS"});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -1333,6 +1352,28 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
       ReadFakeFeaturesOutput(&is_chassis_branded, &hw_compliance_version));
   EXPECT_EQ(is_chassis_branded, kNewIsChassisBranded);
   EXPECT_EQ(hw_compliance_version, kNewHwComplianceVersion);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_FeatureMutableComplianceTwo_Success) {
+  auto handler =
+      CreateStateHandler({.is_feature_mutable = true, .brand_code = "IHOS"});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = CreateStateReply(handler, {});
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateRoFirmware);
+
+  // Feature bits are set.
+  bool is_chassis_branded;
+  int hw_compliance_version;
+  EXPECT_TRUE(
+      ReadFakeFeaturesOutput(&is_chassis_branded, &hw_compliance_version));
+  EXPECT_EQ(is_chassis_branded, kNewIsChassisBranded);
+  EXPECT_EQ(hw_compliance_version, 2);
 }
 
 // |TryGetNextStateCaseAtBoot| should always fail.
