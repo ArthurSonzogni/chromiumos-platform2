@@ -42,12 +42,16 @@ inline constexpr char kLoadTitleGenerationModelLatency[] =
     "Platform.CoralService.Latency.TitleGenerationEngine.LoadModel";
 inline constexpr char kGenerateTitleLatency[] =
     "Platform.CoralService.Latency.TitleGenerationEngine.GenerateTitle";
+inline constexpr char kGroupInputCount[] =
+    "Platform.CoralService.Group.InputCount";
 inline constexpr char kEmbeddingModelLoaded[] =
     "Platform.CoralService.EmbeddingEngine.ModelLoaded";
 inline constexpr char kEmbeddingCacheHit[] =
     "Platform.CoralService.EmbeddingEngine.CacheHit";
 inline constexpr char kEmbeddingDatabaseEntriesCount[] =
     "Platform.CoralService.EmbeddingEngine.DatabaseEntriesCount";
+inline constexpr char kEmbeddingFilteredCount[] =
+    "Platform.CoralService.EmbeddingEngine.FilteredCount";
 inline constexpr char kClusteringInputCount[] =
     "Platform.CoralService.ClusteringEngine.InputCount";
 inline constexpr char kClusteringGeneratedGroupCount[] =
@@ -121,6 +125,9 @@ class CoralMetrics {
   // Engine-specific metrics.
   // ==========================================================================
 
+  // Number of input entities in the Group request.
+  void SendGroupInputCount(int count);
+
   // --------------------------------------------------------------------------
   // Embedding engine metrics.
   // --------------------------------------------------------------------------
@@ -131,6 +138,9 @@ class CoralMetrics {
   // Send the number of entries in the embedding database every time a user
   // session starts.
   void SendEmbeddingDatabaseEntriesCount(int count);
+  // Number of entries filtered by the embedding engine. This might be because
+  // the entity doesn't pass safety check.
+  void SendEmbeddingFilteredCount(int count);
 
   // --------------------------------------------------------------------------
   // Clustering engine metrics.

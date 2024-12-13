@@ -61,6 +61,7 @@ void CoralService::PrepareResource() {
 void CoralService::Group(mojom::GroupRequestPtr request,
                          mojo::PendingRemote<mojom::TitleObserver> observer,
                          GroupCallback callback) {
+  metrics_.SendGroupInputCount(request->entities.size());
   auto timer = PerformanceTimer::Create();
   GroupCallback wrapped_callback = base::BindOnce(
       &CoralService::HandleGroupResult, weak_ptr_factory_.GetWeakPtr(),

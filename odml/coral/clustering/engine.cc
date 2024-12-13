@@ -14,6 +14,7 @@
 
 #include "odml/coral/clustering/agglomerative_clustering.h"
 #include "odml/coral/clustering/clustering_factory.h"
+#include "odml/coral/common.h"
 #include "odml/coral/embedding/engine.h"
 #include "odml/mojom/coral_service.mojom.h"
 
@@ -32,9 +33,7 @@ constexpr float kFloatErrorTolerance = 1e-6;
 
 namespace internal {
 
-// Returns std::nullopt if
-// 1. Length of embeddings |a| and |b| don't match.
-// 2. Embeddings have zero norm.
+// Returns std::nullopt if length of embeddings |a| and |b| don't match.
 std::optional<Distance> CosineDistance(const Embedding& a, const Embedding& b) {
   if (a.size() != b.size()) {
     LOG(ERROR) << "Embedding sizes don't match: (" << a.size() << ", "
@@ -51,8 +50,10 @@ std::optional<Distance> CosineDistance(const Embedding& a, const Embedding& b) {
     norm_b += b[i] * b[i];
   }
   if (norm_a == 0.0 || norm_b == 0.0) {
-    LOG(ERROR) << "Embedding(s) have zero norm";
-    return std::nullopt;
+    LOG(WARNING) << "Embedding(s) have zero norm";
+    // Return the maximum distance as it's not possible to calculate a valid
+    // consine distance when 1 of the vectors is zero.
+    return 2.0;
   }
 
   norm_a = sqrt(norm_a);
@@ -142,9 +143,22 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
   ClusteringCallback wrapped_callback = base::BindOnce(
       &ClusteringEngine::HandleProcessResult, weak_ptr_factory_.GetWeakPtr(),
       std::move(callback), std::move(timer));
-  metrics_->SendClusteringInputCount(request->entities.size());
+  // Some entries might not have successfully generated embeddings. They'll be
+  // marked as empty by the embedding engine.
+  std::vector<Embedding> valid_embeddings;
+  std::vector<size_t> original_indexes;
+  for (size_t i = 0; i < embedding_response.embeddings.size(); i++) {
+    if (embedding_response.embeddings[i].empty()) {
+      continue;
+    }
+    valid_embeddings.push_back(std::move(embedding_response.embeddings[i]));
+    original_indexes.push_back(i);
+  }
+  metrics_->SendEmbeddingFilteredCount(request->entities.size() -
+                                       valid_embeddings.size());
+  metrics_->SendClusteringInputCount(valid_embeddings.size());
   std::optional<clustering::Matrix> matrix =
-      internal::DistanceMatrix(embedding_response.embeddings);
+      internal::DistanceMatrix(valid_embeddings);
   if (!matrix.has_value()) {
     std::move(wrapped_callback)
         .Run(std::move(request),
@@ -173,11 +187,11 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
 
   // The distance of each embedding to the center of its belonging group.
   std::vector<float> distance_to_center;
-  distance_to_center.resize(embedding_response.embeddings.size());
+  distance_to_center.resize(valid_embeddings.size());
 
   for (auto& group : *groups) {
     std::optional<Embedding> center =
-        internal::CalculateVectorCenter(embedding_response.embeddings, group);
+        internal::CalculateVectorCenter(valid_embeddings, group);
     if (!center.has_value()) {
       std::move(wrapped_callback)
           .Run(std::move(request),
@@ -186,8 +200,8 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
     }
 
     for (int i = 0; i < group.size(); ++i) {
-      std::optional<float> distance = internal::CosineDistance(
-          *center, embedding_response.embeddings[group[i]]);
+      std::optional<float> distance =
+          internal::CosineDistance(*center, valid_embeddings[group[i]]);
       if (!distance.has_value()) {
         LOG(ERROR) << "Failed to calcualte cosine distance to the center";
         std::move(wrapped_callback)
@@ -257,7 +271,8 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
     for (int j = 0; j < num_items; ++j) {
       // Make a clone since the request are to be moved when running the
       // callback later.
-      cluster.entities.push_back(request->entities[group[j]]->Clone());
+      cluster.entities.push_back(
+          request->entities[original_indexes[group[j]]]->Clone());
     }
     response.clusters.push_back(std::move(cluster));
   }

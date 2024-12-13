@@ -99,6 +99,10 @@ void CoralMetrics::SendGenerateTitleLatency(base::TimeDelta duration) {
   SendLatency(metrics::kGenerateTitleLatency, duration, base::Seconds(10));
 }
 
+void CoralMetrics::SendGroupInputCount(int count) {
+  metrics_->SendToUMA(metrics::kGroupInputCount, count, 1, 101, 50);
+}
+
 void CoralMetrics::SendEmbeddingModelLoaded(bool is_loaded) {
   metrics_->SendBoolToUMA(metrics::kEmbeddingModelLoaded, is_loaded);
 }
@@ -112,9 +116,14 @@ void CoralMetrics::SendEmbeddingDatabaseEntriesCount(int count) {
                       50);
 }
 
+void CoralMetrics::SendEmbeddingFilteredCount(int count) {
+  metrics_->SendToUMA(metrics::kEmbeddingFilteredCount, count, 1, 101, 50);
+}
+
 void CoralMetrics::SendClusteringInputCount(int count) {
   metrics_->SendToUMA(metrics::kClusteringInputCount, count, 1, 101, 50);
 }
+
 void CoralMetrics::SendGeneratedGroupCount(int count) {
   metrics_->SendLinearToUMA(metrics::kClusteringGeneratedGroupCount, count,
                             101);

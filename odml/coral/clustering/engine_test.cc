@@ -183,9 +183,12 @@ class ClusteringEngineTest : public testing::Test {
         .Times(times);
   }
 
-  void ExpectSendInputCount(int count, int times = 1) {
+  void ExpectSendInputCount(int count, int times = 1, int filtered = 0) {
     EXPECT_CALL(metrics_,
                 SendToUMA(metrics::kClusteringInputCount, count, _, _, _))
+        .Times(times);
+    EXPECT_CALL(metrics_,
+                SendToUMA(metrics::kEmbeddingFilteredCount, filtered, _, _, _))
         .Times(times);
   }
 
@@ -226,6 +229,34 @@ TEST_F(ClusteringEngineTest, Success) {
                                                   {3, 4},
                                                   {5},
                                               })));
+}
+
+TEST_F(ClusteringEngineTest, SuccessWithMissingEmbeddings) {
+  ExpectSendStatus(true);
+  ExpectSendLatency(1);
+  ExpectSendInputCount(5, 1, 1);
+  ExpectSendGeneratedGroups(3, 3);
+  auto request = GetFakeGroupRequest();
+
+  clustering::Groups fake_grouping = {
+      {0, 2},
+      {1},
+      {3, 4},
+  };
+
+  auto fake_embeddings = GetFakeEmbeddingResponse();
+  // Simulate the scenario that 1 entity failed to generate embedding.
+  fake_embeddings.embeddings[1].clear();
+  CoralResult<ClusteringResponse> result =
+      RunTest(request->Clone(), std::move(fake_embeddings), fake_grouping);
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_THAT(*result, EqualsClusteringResponse(
+                           FakeClusteringResponse(request->entities, {
+                                                                         {0, 3},
+                                                                         {4, 5},
+                                                                         {2},
+                                                                     })));
 }
 
 TEST_F(ClusteringEngineTest, MaxClusters) {
@@ -443,7 +474,7 @@ TEST(MatrixCalculationTest, ZeroNormEmbeddings) {
   std::optional<clustering::Matrix> distances =
       internal::DistanceMatrix(embeddings);
 
-  ASSERT_FALSE(distances.has_value());
+  ASSERT_TRUE(distances.has_value());
 
   embeddings = {{0, 0, 1e-6}, {0, 1e-6, 0}, {1e-6, 0, 0}};
   distances = internal::DistanceMatrix(embeddings);
