@@ -44,7 +44,8 @@ constexpr char kUserKnownHostsFile[] = "known_hosts";
 
 // 64KiB is the maximum packet size allowed by sshfs
 // and vsock vhost driver (VIRTIO_VSOCK_MAX_PKT_BUF_SIZE)
-constexpr char kSshfsVsockPacketSize[] = "65536";
+// TODO(b/373764614): Restore the value to 64KiB after the issue is resolved.
+constexpr char kSshfsVsockPacketSize[] = "4096";
 
 OwnerUser ResolveSshfsUser(const Platform* platform) {
   OwnerUser user;
