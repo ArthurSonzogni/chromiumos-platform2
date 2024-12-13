@@ -293,6 +293,15 @@ struct SharedDataParam {
                                           bool ascii_casefold) const;
 };
 
+// Parameters for vhost-user-fs frontend.
+struct VhostUserFsFrontParam {
+  // Tag for the shared directory.
+  std::string tag;
+  // Socket kept alive in concierge long enough until crosvm forks off.
+  base::ScopedFD socket_fd;
+  std::string to_string() const;
+};
+
 // Creates the font-specific shared data parameter for crosvm.
 SharedDataParam CreateFontsSharedDataParam();
 

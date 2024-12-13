@@ -124,6 +124,7 @@ class VmBuilder {
   VmBuilder& AppendPmemDevice(PmemDevice device);
   VmBuilder& AppendSharedDir(SharedDataParam shared_data_param);
   VmBuilder& AppendCustomParam(std::string_view key, std::string_view value);
+  VmBuilder& AppendVhostUserFsFrontend(VhostUserFsFrontParam param);
 
   // Instructs this VM to use a wayland socket, if the empty string is provided
   // the default path to the socket will be used, otherwise |socket| will be the
@@ -262,6 +263,7 @@ class VmBuilder {
   std::vector<SharedDataParam> shared_dirs_;
   std::vector<std::vector<int32_t>> cpu_clusters_;
   std::vector<PmemDevice> pmem_devices_;
+  std::vector<VhostUserFsFrontParam> vhost_user_fs_fronts_;
 
   base::FilePath vmm_swap_dir_;
 
