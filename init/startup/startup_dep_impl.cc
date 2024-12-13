@@ -179,9 +179,8 @@ bool IsFactoryMode(libstorage::Platform* platform,
   // we assume factory test mode.
   base::FilePath factory_dir = stateful_dir.Append(kFactoryDir);
   base::FilePath factory_tag = factory_dir.Append("enabled");
-  std::optional<int> res = platform->GetCrosssystem()->VbGetSystemPropertyInt(
-      crossystem::Crossystem::kDebugBuild);
-  if (res == 1 && platform->FileExists(factory_tag)) {
+  if (IsDebugBuild(platform->GetCrosssystem()) &&
+      platform->FileExists(factory_tag)) {
     return true;
   }
 
