@@ -156,7 +156,6 @@ void SafetyServiceManagerImpl::ClassifyTextSafety(
 
 void SafetyServiceManagerImpl::EnsureOnDeviceSafetySessionCreated(
     base::OnceClosure callback) {
-  LOG(ERROR) << "EnsureOnDeviceSafetySessionCreated";
   if (on_device_safety_session_.is_bound()) {
     std::move(callback).Run();
     return;

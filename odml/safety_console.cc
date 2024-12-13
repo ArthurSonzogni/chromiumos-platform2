@@ -34,35 +34,19 @@
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
+#include "odml/cros_safety/safety_service_manager.h"
+#include "odml/cros_safety/safety_service_manager_impl.h"
 #include "odml/mojom/big_buffer.mojom.h"
 #include "odml/mojom/cros_safety.mojom.h"
-#include "odml/mojom/cros_safety_service.mojom.h"
 
 namespace {
 
 constexpr const char kText[] = "text";
 constexpr const char kImage[] = "image";
-constexpr const char kCloud[] = "cloud";
-
-constexpr base::TimeDelta kRemoteRequestTimeout = base::Seconds(3);
 
 class FilePath;
 
 }  // namespace
-
-void OnCreateCloudSafetySessionComplete(
-    base::RunLoop* run_loop,
-    cros_safety::mojom::GetCloudSafetySessionResult result) {
-  CHECK_EQ(result, cros_safety::mojom::GetCloudSafetySessionResult::kOk);
-  run_loop->Quit();
-}
-
-void OnCreateOnDeviceSafetySessionComplete(
-    base::RunLoop* run_loop,
-    cros_safety::mojom::GetOnDeviceSafetySessionResult result) {
-  CHECK_EQ(result, cros_safety::mojom::GetOnDeviceSafetySessionResult::kOk);
-  run_loop->Quit();
-}
 
 void OnClassifyComplete(base::RunLoop* run_loop,
                         cros_safety::mojom::SafetyClassifierVerdict result) {
@@ -70,49 +54,9 @@ void OnClassifyComplete(base::RunLoop* run_loop,
   run_loop->Quit();
 }
 
-mojo::Remote<cros_safety::mojom::CloudSafetySession> CreateCloudSafetySession(
-    mojo::Remote<cros_safety::mojom::CrosSafetyService> safety_service) {
-  LOG(INFO) << "Call CreateCloudSafetySession";
-  mojo::Remote<cros_safety::mojom::CloudSafetySession> cloud_safety_session;
-  base::RunLoop run_loop;
-
-  CHECK(safety_service && safety_service.is_bound() &&
-        safety_service.is_connected());
-  safety_service->CreateCloudSafetySession(
-      cloud_safety_session.BindNewPipeAndPassReceiver(),
-      base::BindOnce(&OnCreateCloudSafetySessionComplete, &run_loop));
-  run_loop.Run();
-
-  CHECK(cloud_safety_session && cloud_safety_session.is_bound() &&
-        cloud_safety_session.is_connected())
-      << "CreateCloudSafetySession returns ok but session isn't connected";
-  return cloud_safety_session;
-}
-
-mojo::Remote<cros_safety::mojom::OnDeviceSafetySession>
-CreateOnDeviceSafetySession(
-    mojo::Remote<cros_safety::mojom::CrosSafetyService> safety_service) {
-  LOG(INFO) << "Call CreateOnDeviceSafetySession";
-  mojo::Remote<cros_safety::mojom::OnDeviceSafetySession>
-      on_device_safety_session;
-  base::RunLoop run_loop;
-
-  CHECK(safety_service && safety_service.is_bound() &&
-        safety_service.is_connected());
-  safety_service->CreateOnDeviceSafetySession(
-      on_device_safety_session.BindNewPipeAndPassReceiver(),
-      base::BindOnce(&OnCreateOnDeviceSafetySessionComplete, &run_loop));
-  run_loop.Run();
-
-  CHECK(on_device_safety_session && on_device_safety_session.is_bound() &&
-        on_device_safety_session.is_connected())
-      << "CreateOnDeviceSafetySession returns ok but session isn't connected";
-  return on_device_safety_session;
-}
-
 void FilterImageWithCloudClassifier(
     base::CommandLine* cl,
-    mojo::Remote<cros_safety::mojom::CloudSafetySession> cloud_safety_session) {
+    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager) {
   std::optional<std::string> text;
   if (cl->HasSwitch(kText)) {
     text = cl->GetSwitchValueASCII(kText);
@@ -128,52 +72,23 @@ void FilterImageWithCloudClassifier(
   LOG(INFO) << "Run cloud session ClassifyImageSafety";
   base::RunLoop run_loop;
 
-  CHECK(cloud_safety_session && cloud_safety_session.is_bound() &&
-        cloud_safety_session.is_connected());
-  cloud_safety_session->ClassifyImageSafety(
+  safety_service_manager->ClassifyImageSafety(
       cros_safety::mojom::SafetyRuleset::kGeneric, text,
       mojo_base::mojom::BigBuffer::NewBytes(image_bytes.value()),
       base::BindOnce(&OnClassifyComplete, &run_loop));
   run_loop.Run();
 }
 
-void FilterTextWithCloudClassifier(
-    base::CommandLine* cl,
-    mojo::Remote<cros_safety::mojom::CloudSafetySession> cloud_safety_session) {
-  std::string text = cl->GetSwitchValueASCII(kText);
-  CHECK(!text.empty());
-
-  LOG(INFO) << "Run cloud session ClassifyTextSafety";
-  base::RunLoop run_loop;
-
-  CHECK(cloud_safety_session && cloud_safety_session.is_bound() &&
-        cloud_safety_session.is_connected());
-  cloud_safety_session->ClassifyTextSafety(
-      cros_safety::mojom::SafetyRuleset::kGeneric, text,
-      base::BindOnce(&OnClassifyComplete, &run_loop));
-  run_loop.Run();
-}
-
-void FilterImageWithOnDeviceClassifier(
-    base::CommandLine* cl,
-    mojo::Remote<cros_safety::mojom::OnDeviceSafetySession>
-        on_device_safety_session) {
-  LOG(FATAL) << "On-device image filtering not supported currently";
-}
-
 void FilterTextWithOnDeviceClassifier(
     base::CommandLine* cl,
-    mojo::Remote<cros_safety::mojom::OnDeviceSafetySession>
-        on_device_safety_session) {
+    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager) {
   std::string text = cl->GetSwitchValueASCII(kText);
   CHECK(!text.empty());
 
   LOG(INFO) << "Run on-device session ClassifyTextSafety";
   base::RunLoop run_loop;
 
-  CHECK(on_device_safety_session && on_device_safety_session.is_bound() &&
-        on_device_safety_session.is_connected());
-  on_device_safety_session->ClassifyTextSafety(
+  safety_service_manager->ClassifyTextSafety(
       cros_safety::mojom::SafetyRuleset::kGeneric, text,
       base::BindOnce(&OnClassifyComplete, &run_loop));
   run_loop.Run();
@@ -191,8 +106,6 @@ int main(int argc, char** argv) {
   mojo::core::ScopedIPCSupport ipc_support(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
-
-  mojo::Remote<cros_safety::mojom::CrosSafetyService> safety_service;
 
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
       service_manager;
@@ -214,40 +127,13 @@ int main(int argc, char** argv) {
                    << ". Shutdown and wait for respawn.";
       }));
 
-  service_manager->Request(
-      /*service_name=*/chromeos::mojo_services::kCrosSafetyService,
-      /*timeout=*/kRemoteRequestTimeout,
-      safety_service.BindNewPipeAndPassReceiver().PassPipe());
-  safety_service.set_disconnect_with_reason_handler(
-      base::BindOnce([](uint32_t error, const std::string& reason) {
-        LOG(FATAL) << "Safety service disconnected, error: " << error
-                   << ", reason: " << reason;
-      }));
-  CHECK(safety_service && safety_service.is_bound() &&
-        safety_service.is_connected())
-      << "Cannot receive CrosSafetyService from mojo service manager";
+  cros_safety::SafetyServiceManagerImpl safety_service_manager(service_manager);
 
-  if (cl->HasSwitch(kCloud)) {
-    mojo::Remote<cros_safety::mojom::CloudSafetySession> cloud_safety_session =
-        CreateCloudSafetySession(std::move(safety_service));
-    if (cl->HasSwitch(kImage)) {
-      // Filter image with cloud classifier
-      FilterImageWithCloudClassifier(cl, std::move(cloud_safety_session));
-    } else {
-      // Filter text using cloud classifier
-      FilterTextWithCloudClassifier(cl, std::move(cloud_safety_session));
-    }
+  if (cl->HasSwitch(kImage)) {
+    // Filter image with cloud classifier
+    FilterImageWithCloudClassifier(cl, raw_ref(safety_service_manager));
   } else {
-    mojo::Remote<cros_safety::mojom::OnDeviceSafetySession>
-        on_device_safety_session =
-            CreateOnDeviceSafetySession(std::move(safety_service));
-    if (cl->HasSwitch(kImage)) {
-      // Filter image using on-device classifier
-      FilterImageWithOnDeviceClassifier(cl,
-                                        std::move(on_device_safety_session));
-    } else {
-      // Filter text using on-device classifier
-      FilterTextWithOnDeviceClassifier(cl, std::move(on_device_safety_session));
-    }
+    // Filter text using on-device classifier
+    FilterTextWithOnDeviceClassifier(cl, raw_ref(safety_service_manager));
   }
 }
