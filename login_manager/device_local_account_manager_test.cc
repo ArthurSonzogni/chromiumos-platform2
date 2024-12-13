@@ -20,10 +20,10 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "login_manager/blob_util.h"
+#include "login_manager/fake_system_utils.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
-#include "login_manager/system_utils_impl.h"
 
 namespace em = enterprise_management;
 
@@ -90,7 +90,7 @@ class DeviceLocalAccountManagerTest : public ::testing::Test {
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
   base::ScopedTempDir temp_dir_;
-  SystemUtilsImpl system_utils_;
+  FakeSystemUtils system_utils_;
 
   MockPolicyKey key_;
 
@@ -115,7 +115,7 @@ TEST_F(DeviceLocalAccountManagerTest, GetPolicyServiceSucceeds) {
                  PolicyService::KEY_NONE,
                  MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
-  EXPECT_TRUE(base::PathExists(fake_account_policy_path_));
+  EXPECT_TRUE(system_utils_.Exists(fake_account_policy_path_));
 }
 
 TEST_F(DeviceLocalAccountManagerTest, PurgeStaleAccounts) {

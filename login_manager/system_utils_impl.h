@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -66,8 +67,6 @@ class SystemUtilsImpl : public SystemUtils {
   bool GetUniqueFilenameInWriteOnlyTempDir(
       base::FilePath* temp_file_path) override;
   bool RemoveFile(const base::FilePath& filename) override;
-  bool AtomicFileWrite(const base::FilePath& filename,
-                       const std::string& data) override;
   int64_t AmountOfFreeDiskSpace(const base::FilePath& path) override;
   bool GetGidAndGroups(uid_t uid,
                        gid_t* out_gid,
@@ -78,6 +77,10 @@ class SystemUtilsImpl : public SystemUtils {
                         std::string* str_out) override;
   bool WriteStringToFile(const base::FilePath& path,
                          const std::string& data) override;
+  bool WriteFileAtomically(const base::FilePath& path,
+                           base::span<const uint8_t> data,
+                           mode_t mode,
+                           brillo::WriteFileOptions options = {}) override;
   policy::LoadPolicyResult LoadPolicyFromPath(
       const base::FilePath& path,
       std::string* policy_data_str_out,

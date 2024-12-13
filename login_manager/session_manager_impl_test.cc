@@ -1983,7 +1983,7 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe) {
 TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
   ASSERT_FALSE(system_utils_.Exists(logged_in_path));
-  ASSERT_TRUE(system_utils_.AtomicFileWrite(logged_in_path, "1"));
+  ASSERT_TRUE(system_utils_.WriteStringToFile(logged_in_path, "1"));
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->StartDeviceWipe(&error));
   ASSERT_TRUE(error.get());
@@ -3143,7 +3143,7 @@ TEST_F(SessionManagerImplTest, EnableAdbSideload) {
 TEST_F(SessionManagerImplTest, EnableAdbSideloadAfterLoggedIn) {
   base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
   ASSERT_FALSE(system_utils_.Exists(logged_in_path));
-  ASSERT_TRUE(system_utils_.AtomicFileWrite(logged_in_path, "1"));
+  ASSERT_TRUE(system_utils_.WriteStringToFile(logged_in_path, "1"));
 
   EXPECT_CALL(*arc_sideload_status_, EnableAdbSideload(_)).Times(0);
 

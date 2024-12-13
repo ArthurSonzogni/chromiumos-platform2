@@ -294,13 +294,6 @@ bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
   return brillo::DeleteFile(filename_in_base_dir);
 }
 
-bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
-                                      const std::string& data) {
-  const base::FilePath filename_in_base_dir = PutInsideBaseDir(filename);
-  return brillo::WriteToFileAtomic(filename_in_base_dir, data.data(),
-                                   data.size(), (S_IRUSR | S_IWUSR | S_IROTH));
-}
-
 bool SystemUtilsImpl::DirectoryExists(const base::FilePath& dir) {
   return base::DirectoryExists(PutInsideBaseDir(dir));
 }
@@ -412,6 +405,13 @@ bool SystemUtilsImpl::ReadFileToString(const base::FilePath& path,
 bool SystemUtilsImpl::WriteStringToFile(const base::FilePath& path,
                                         const std::string& data) {
   return brillo::WriteStringToFile(path, data);
+}
+
+bool SystemUtilsImpl::WriteFileAtomically(const base::FilePath& path,
+                                          base::span<const uint8_t> data,
+                                          mode_t mode,
+                                          brillo::WriteFileOptions options) {
+  return brillo::WriteFileAtomically(path, data, mode, options);
 }
 
 policy::LoadPolicyResult SystemUtilsImpl::LoadPolicyFromPath(

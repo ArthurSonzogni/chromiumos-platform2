@@ -64,10 +64,6 @@ class MockSystemUtils : public SystemUtils {
               (base::FilePath*),
               (override));
   MOCK_METHOD(bool, RemoveFile, (const base::FilePath&), (override));
-  MOCK_METHOD(bool,
-              AtomicFileWrite,
-              (const base::FilePath&, const std::string&),
-              (override));
   MOCK_METHOD(int64_t,
               AmountOfFreeDiskSpace,
               (const base::FilePath&),
@@ -88,6 +84,13 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD(bool,
               WriteStringToFile,
               (const base::FilePath&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              WriteFileAtomically,
+              (const base::FilePath&,
+               base::span<const uint8_t>,
+               mode_t,
+               brillo::WriteFileOptions),
               (override));
 
   MOCK_METHOD(policy::LoadPolicyResult,

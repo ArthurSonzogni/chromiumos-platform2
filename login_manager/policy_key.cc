@@ -112,8 +112,9 @@ bool PolicyKey::Persist() {
     return removed;
   }
 
-  if (!system_utils_->AtomicFileWrite(key_file_,
-                                      std::string(key_.begin(), key_.end()))) {
+  // Key file is owned by root.
+  if (!system_utils_->WriteFileAtomically(
+          key_file_, key_, S_IRUSR | S_IWUSR | S_IROTH, {.uid = 0, .gid = 0})) {
     PLOG(ERROR) << "Could not write data to " << key_file_.value();
     return false;
   }

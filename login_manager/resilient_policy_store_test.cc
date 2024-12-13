@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
+#include <policy/device_policy_impl.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
@@ -76,7 +77,7 @@ TEST_F(ResilientPolicyStoreTest, CheckDeleteAtLoadResilient) {
 
   // Create the file with next index, containing some invalid data.
   base::FilePath policy_path2 = base::FilePath(tmpfile_.value() + ".2");
-  system_utils_.AtomicFileWrite(policy_path2, "invalid_data");
+  ASSERT_TRUE(system_utils_.WriteStringToFile(policy_path2, "invalid_data"));
   ASSERT_TRUE(system_utils_.Exists(policy_path2));
 
   // Check that LoadResilient succeeds and ignores the last file.
@@ -112,7 +113,7 @@ TEST_F(ResilientPolicyStoreTest, CheckCleanupFromPersistResilient) {
   ASSERT_TRUE(system_utils_.Exists(policy_path2));
 
   // Create the file with next index, containing some invalid data.
-  system_utils_.AtomicFileWrite(policy_path3, "invalid_data");
+  ASSERT_TRUE(system_utils_.WriteStringToFile(policy_path3, "invalid_data"));
 
   // Change the policy data and store again, having a new file.
   ASSERT_TRUE(system_utils_.ClearDirectoryContents(

@@ -19,6 +19,7 @@
 #include <base/posix/file_descriptor_shuffle.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/file_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <policy/policy_util.h>
 // clang-format off
@@ -148,12 +149,6 @@ class SystemUtils {
   // Removes a file.
   virtual bool RemoveFile(const base::FilePath& filename) = 0;
 
-  // Atomically writes the given buffer into the file, overwriting any
-  // data that was previously there.  Returns true upon success, false
-  // otherwise.
-  virtual bool AtomicFileWrite(const base::FilePath& filename,
-                               const std::string& data) = 0;
-
   // Returns the amount of free disk space in bytes for the filesystem
   // containing |path|.
   virtual int64_t AmountOfFreeDiskSpace(const base::FilePath& path) = 0;
@@ -174,6 +169,16 @@ class SystemUtils {
   // Writes string |data| to file at |path|.
   virtual bool WriteStringToFile(const base::FilePath& path,
                                  const std::string& data) = 0;
+
+  // Atomically writes the given data into the file, overwriting any
+  // data that was previously there.  Returns true upon success, false
+  // otherwise.
+  // Created file's permission will be `mode`, and if given, owner/group
+  // are also set.
+  virtual bool WriteFileAtomically(const base::FilePath& path,
+                                   base::span<const uint8_t> data,
+                                   mode_t mode,
+                                   brillo::WriteFileOptions options = {}) = 0;
 
   // Reads and parses the policy data from the file at `path`.
   // See policy::LoadPolicyFromPath in libbrillo for details.

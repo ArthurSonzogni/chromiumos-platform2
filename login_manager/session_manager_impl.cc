@@ -814,7 +814,9 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   DeleteArcBugReportBackup(actual_account_id);
 
   // Record that a login has successfully completed on this boot.
-  system_utils_->AtomicFileWrite(base::FilePath(kLoggedInFlag), "1");
+  system_utils_->WriteFileAtomically(base::FilePath(kLoggedInFlag),
+                                     base::byte_span_from_cstring("1"),
+                                     S_IRUSR | S_IWUSR | S_IROTH);
   return true;
 }
 
@@ -1217,8 +1219,10 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
   }
 
   // Put the update request into place.
-  if (!system_utils_->AtomicFileWrite(
-          base::FilePath(kTPMFirmwareUpdateRequestFlagFile), update_mode)) {
+  if (!system_utils_->WriteFileAtomically(
+          base::FilePath(kTPMFirmwareUpdateRequestFlagFile),
+          base::as_byte_span(update_mode), S_IRUSR | S_IWUSR | S_IROTH,
+          {.uid = 0, .gid = 0})) {
     *error = CREATE_ERROR_AND_LOG(dbus_error::kNotAvailable,
                                   "Failed to persist update request.");
     return false;
@@ -1229,8 +1233,10 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
     InitiateDeviceWipe("tpm_firmware_update_" + update_mode);
   } else if (update_mode == kTPMFirmwareUpdateModePreserveStateful) {
     // This flag file indicates that encrypted stateful should be preserved.
-    if (!system_utils_->AtomicFileWrite(
-            base::FilePath(kStatefulPreservationRequestFile), update_mode)) {
+    if (!system_utils_->WriteFileAtomically(
+            base::FilePath(kStatefulPreservationRequestFile),
+            base::as_byte_span(update_mode), S_IRUSR | S_IWUSR | S_IROTH,
+            {.uid = 0, .gid = 0})) {
       *error = CREATE_ERROR_AND_LOG(dbus_error::kNotAvailable,
                                     "Failed to request stateful preservation.");
       return false;
@@ -1745,7 +1751,9 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
   const base::FilePath reset_path(kResetFile);
   const std::string reset_file_content =
       "fast safe keepimg preserve_lvs reason=" + sanitized_reason;
-  system_utils_->AtomicFileWrite(reset_path, reset_file_content);
+  system_utils_->WriteFileAtomically(
+      reset_path, base::as_byte_span(reset_file_content),
+      S_IRUSR | S_IWUSR | S_IROTH, {.uid = 0, .gid = 0});
 
   RestartDevice(sanitized_reason);
 }

@@ -16,6 +16,7 @@
 #include <base/notreached.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>
+#include <policy/device_policy_impl.h>
 #include <policy/resilient_policy_util.h>
 
 namespace login_manager {
@@ -193,15 +194,6 @@ bool FakeSystemUtils::RemoveFile(const base::FilePath& filename) {
   return brillo::DeleteFile(rebased);
 }
 
-bool FakeSystemUtils::AtomicFileWrite(const base::FilePath& filename,
-                                      const std::string& data) {
-  if (!atomic_file_write_success_) {
-    return false;
-  }
-  return brillo::WriteToFileAtomic(RebasePath(filename), data.data(),
-                                   data.size(), (S_IRUSR | S_IWUSR | S_IROTH));
-}
-
 int64_t FakeSystemUtils::AmountOfFreeDiskSpace(const base::FilePath& path) {
   return free_disk_space_;
 }
@@ -225,6 +217,21 @@ bool FakeSystemUtils::ReadFileToString(const base::FilePath& path,
 bool FakeSystemUtils::WriteStringToFile(const base::FilePath& path,
                                         const std::string& data) {
   return base::WriteFile(RebasePath(path), base::as_byte_span(data));
+}
+
+bool FakeSystemUtils::WriteFileAtomically(const base::FilePath& path,
+                                          base::span<const uint8_t> data,
+                                          mode_t mode,
+                                          brillo::WriteFileOptions options) {
+  if (!atomic_file_write_success_) {
+    return false;
+  }
+
+  // On unittest environment, because test processes do not have capabilities,
+  // we ignore `options` to set owner/group of the file.
+  options.uid = std::nullopt;
+  options.gid = std::nullopt;
+  return brillo::WriteFileAtomically(RebasePath(path), data, mode, options);
 }
 
 policy::LoadPolicyResult FakeSystemUtils::LoadPolicyFromPath(

@@ -87,7 +87,10 @@ bool PolicyStore::PersistToPath(const base::FilePath& policy_path) {
     return false;
   }
 
-  if (!system_utils_->AtomicFileWrite(policy_path, policy_blob)) {
+  // Policy file is owned by root.
+  if (!system_utils_->WriteFileAtomically(
+          policy_path, base::as_byte_span(policy_blob),
+          S_IRUSR | S_IWUSR | S_IROTH, {.uid = 0, .gid = 0})) {
     return false;
   }
 

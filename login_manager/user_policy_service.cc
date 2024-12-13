@@ -46,11 +46,9 @@ void UserPolicyService::PersistKeyCopy() {
     mode_t mode = S_IRWXU | S_IXGRP | S_IXOTH;
     chmod(dir.value().c_str(), mode);
 
-    const std::vector<uint8_t>& key = scoped_policy_key_->public_key_der();
-    system_utils()->AtomicFileWrite(key_copy_path_,
-                                    std::string(key.begin(), key.end()));
-    mode = S_IRUSR | S_IRGRP | S_IROTH;
-    chmod(key_copy_path_.value().c_str(), mode);
+    system_utils()->WriteFileAtomically(key_copy_path_,
+                                        scoped_policy_key_->public_key_der(),
+                                        S_IRUSR | S_IRGRP | S_IROTH);
   } else {
     // Remove the key if it has been cleared.
     system_utils()->RemoveFile(key_copy_path_);
