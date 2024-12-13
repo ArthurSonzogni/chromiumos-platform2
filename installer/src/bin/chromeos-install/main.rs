@@ -8,6 +8,7 @@
 
 mod command_line;
 mod disk_util;
+mod install_env;
 mod install_source;
 mod logger;
 mod process_util;
@@ -47,6 +48,8 @@ fn main() -> Result<()> {
     install_cmd.envs(args.to_env());
     // The source supplies some env vars like SRC and ROOT.
     install_cmd.envs(source.to_env());
+    // Adjust the environment based on what tools are available.
+    install_cmd.envs(install_env::get_tool_env()?);
 
     log_and_run_command(install_cmd).map_err(Error::msg)
 }

@@ -36,6 +36,8 @@ fi
 # SRC: The block device we're installing from, e.g. '/dev/sda' or '/dev/loop1'
 # ROOT: Location of the root filesystem (i.e. ROOT-A). If installing the
 #       currently-running rootfs, this is set to an empty string.
+# BUSYBOX_DD_FOUND: Whether dd is provided by busybox ("true" or "false").
+# LOSETUP_PATH: Path of the losetup utility.
 
 # To keep changes minimal, temporarily define these boolean constants which were
 # previously supplied by shflags.
@@ -75,7 +77,7 @@ fast_dd() {
   local total_chunks="$3"
   shift 3
 
-  if ! "${BUSYBOX_DD_FOUND}"; then
+  if ! "${BUSYBOX_DD_FOUND:?}"; then
     # Provide some simple progress updates to the user.
     # This was made available from coreutils version 8.24.
     set -- "$@" status=progress
@@ -154,7 +156,7 @@ write_partition() {
   #   doing the transfer (presumably it makes write buffers less efficient).
   local dd_cache_arg=;
   # The iflag is unsupported in older versions of "dd".
-  if ! "${cache_input}" && ! "${BUSYBOX_DD_FOUND}"; then
+  if ! "${cache_input}" && ! "${BUSYBOX_DD_FOUND:?}"; then
     dd_cache_arg="iflag=nocache"
   fi
 
@@ -180,7 +182,7 @@ check_payload_image() {
   if [ -n "${FLAGS_payload_image}" ]; then
     # Set a loop device for the payload image and one for each of its
     # partitions.
-    SRC="$("${LOSETUP_PATH}" -f "${FLAGS_payload_image}" --show --partscan)"
+    SRC="$("${LOSETUP_PATH:?}" -f "${FLAGS_payload_image}" --show --partscan)"
     LOOPS="${SRC}${LOOPS:+ }${LOOPS:-}"
     ROOT="$(mktemp -d)"
 
@@ -306,7 +308,7 @@ cleanup() {
 
   local loop_dev
   for loop_dev in ${LOOPS:-}; do
-    "${LOSETUP_PATH}" -d "${loop_dev}" || /bin/true
+    "${LOSETUP_PATH:?}" -d "${loop_dev}" || /bin/true
   done
   LOOPS=""
 
@@ -788,20 +790,6 @@ main() {
   set -eu
   if [ "${FLAGS_debug:?}" = "${FLAGS_TRUE}" ]; then
     set -x
-  fi
-
-  # On some systems (e.g. MiniOS or Flexor), we use utils from busybox.
-  # Those utils might be at an older version and don't support some
-  # flags, so we don't use them. This can be checked by looking at `dd`
-  # and `losetup` and whether it is coming from BusyBox or not.
-  BUSYBOX_DD_FOUND=false
-  if dd --version 2>&1 | grep -q "BusyBox"; then
-    BUSYBOX_DD_FOUND=true
-  fi
-  if losetup --version 2>&1 | grep -q "BusyBox"; then
-    LOSETUP_PATH="/bin/losetup"
-  else
-    LOSETUP_PATH="losetup"
   fi
 
   check_payload_image
