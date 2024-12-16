@@ -283,7 +283,6 @@ Status StorageQueue::DoInit() {
                                 options_.directory().MaybeAsASCII(),
                                 "' does not exist, ", error_string}));
   }
-  CHECK_LE(generation_id_, 0);  // Not set yet - valid range [1, max_int64]
   std::unordered_set<base::FilePath> used_files_set;
   // Enumerate data files and scan the last one to determine what sequence
   // ids do we have (first and last).
@@ -492,6 +491,11 @@ StatusOr<int64_t> StorageQueue::AddDataFile(
 Status StorageQueue::EnumerateDataFiles(
     std::unordered_set<base::FilePath>* used_files_set) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+  // In case we are retrying files enumeration after a transient error, reset
+  // all fields that may have been set to avoid a partially initialized state.
+  generation_id_ = 0;
+  files_.clear();
+
   // We need to set first_sequencing_id_ to 0 if this is the initialization
   // of an empty StorageQueue, and to the lowest sequencing id among all
   // existing files, if it was already used.
@@ -531,12 +535,6 @@ Status StorageQueue::EnumerateDataFiles(
   }
   const auto enum_error = dir_enum.GetError();
   if (enum_error != base::File::Error::FILE_OK) {
-    // This is a transient error, return status for Storage to back off and
-    // retry. Reset any fields that may have been set to avoid a partially
-    // initialized state.
-    generation_id_ = 0;
-    files_.clear();
-
     analytics::Metrics::SendEnumToUMA(
         kUmaDataLossErrorReason,
         DataLossErrorReason::FAILED_TO_ENUMERATE_STORAGE_QUEUE_DIRECTORY,

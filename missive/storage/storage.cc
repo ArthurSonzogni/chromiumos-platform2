@@ -140,9 +140,9 @@ class CreateQueueContext : public TaskRunnerContext<Status> {
       storage_queue_->Init(
           /*init_retry_cb=*/base::BindRepeating(
               &StorageQueue::MaybeBackoffAndReInit),
-          /*initialized_cb=*/base::BindPostTaskToCurrentDefault(base::BindOnce(
-              &CreateQueueContext::Initialized, base::Unretained(this),
-              /*priority=*/priority)));
+          /*initialized_cb=*/base::BindPostTaskToCurrentDefault(
+              base::BindOnce(&CreateQueueContext::Initialized,
+                             base::Unretained(this), priority)));
       return;
     }
 
