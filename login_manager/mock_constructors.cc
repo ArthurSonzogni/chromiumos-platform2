@@ -56,7 +56,7 @@ MockInitDaemonController::~MockInitDaemonController() = default;
 MockLivenessChecker::MockLivenessChecker() = default;
 MockLivenessChecker::~MockLivenessChecker() = default;
 
-MockMetrics::MockMetrics() : LoginMetrics(base::FilePath()) {}
+MockMetrics::MockMetrics() : LoginMetrics(nullptr) {}
 MockMetrics::~MockMetrics() = default;
 
 MockPolicyKey::MockPolicyKey()

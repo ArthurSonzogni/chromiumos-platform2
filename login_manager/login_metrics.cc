@@ -39,7 +39,6 @@ const char kLoginDevicePolicyStateMetric[] = "Login.DevicePolicyState";
 const int kMaxDevicePolicyStateValue = 45;
 const char kInvalidDevicePolicyFilesStatus[] =
     "Enterprise.InvalidDevicePolicyFilesStatus";
-const char kLoginMetricsFlagFile[] = "per_boot_flag";
 const char kMetricsDir[] = "/var/lib/metrics";
 
 const char kArcCumulativeUseTimeMetric[] = "Arc.CumulativeUseTime";
@@ -55,13 +54,12 @@ const char kLivenessPingResultMetric[] = "ChromeOS.Liveness.PingResult";
 
 }  // namespace
 
-LoginMetrics::LoginMetrics(const base::FilePath& per_boot_flag_dir)
-    : per_boot_flag_file_(per_boot_flag_dir.Append(kLoginMetricsFlagFile)) {
+LoginMetrics::LoginMetrics(SystemUtils* system_utils) {
   if (metrics_lib_.AreMetricsEnabled()) {
-    arc_cumulative_use_time_.reset(new CumulativeUseTimeMetric(
-        kArcCumulativeUseTimeMetric, &metrics_lib_, base::FilePath(kMetricsDir),
-        std::make_unique<base::DefaultClock>(),
-        std::make_unique<base::DefaultTickClock>()));
+    arc_cumulative_use_time_ = std::make_unique<CumulativeUseTimeMetric>(
+        system_utils, kArcCumulativeUseTimeMetric, &metrics_lib_,
+        base::FilePath(kMetricsDir), std::make_unique<base::DefaultClock>(),
+        std::make_unique<base::DefaultTickClock>());
     std::string version;
     base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION", &version);
     arc_cumulative_use_time_->Init(version);

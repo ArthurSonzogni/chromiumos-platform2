@@ -5,6 +5,7 @@
 #ifndef LOGIN_MANAGER_SYSTEM_UTILS_H_
 #define LOGIN_MANAGER_SYSTEM_UTILS_H_
 
+#include <fcntl.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <time.h>

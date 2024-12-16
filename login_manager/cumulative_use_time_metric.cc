@@ -8,7 +8,6 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/hash/hash.h>
 #include <base/json/json_reader.h>
@@ -16,6 +15,8 @@
 #include <base/logging.h>
 #include <base/values.h>
 #include <metrics/metrics_library.h>
+
+#include "login_manager/system_utils.h"
 
 namespace login_manager {
 
@@ -38,10 +39,6 @@ const int kAccumulatedActiveTimeMin = 1;
 const int kAccumulatedActiveTimeMax =
     kSecondsInADay + kMetricsUpdateIntervalSeconds;
 
-// This should be enough for writing JSON file containing information about
-// usage time metric (can be increased if needed).
-const size_t kMetricFileSizeLimit = 1024;
-
 // File extension that should be used for the file backing cumulative use time
 // metric.
 const char kMetricFileExtension[] = "json";
@@ -55,7 +52,8 @@ const char kElapsedMillisecondsKey[] = "elapsed_milliseconds";
 
 class CumulativeUseTimeMetric::AccumulatedActiveTime {
  public:
-  explicit AccumulatedActiveTime(const base::FilePath& metrics_file);
+  AccumulatedActiveTime(SystemUtils* system_utils,
+                        const base::FilePath& metrics_file);
   AccumulatedActiveTime(const AccumulatedActiveTime&) = delete;
   AccumulatedActiveTime& operator=(const AccumulatedActiveTime&) = delete;
 
@@ -82,6 +80,8 @@ class CumulativeUseTimeMetric::AccumulatedActiveTime {
   bool ReadMetricsFile();
   bool WriteMetricsFile();
 
+  SystemUtils* const system_utils_;
+
   // File path of the file to which current metric info is saved in order to
   // persist metric value across reboots.
   const base::FilePath metrics_file_;
@@ -99,8 +99,8 @@ class CumulativeUseTimeMetric::AccumulatedActiveTime {
 };
 
 CumulativeUseTimeMetric::AccumulatedActiveTime::AccumulatedActiveTime(
-    const base::FilePath& metrics_file)
-    : metrics_file_(metrics_file) {}
+    SystemUtils* system_utils, const base::FilePath& metrics_file)
+    : system_utils_(system_utils), metrics_file_(metrics_file) {}
 
 void CumulativeUseTimeMetric::AccumulatedActiveTime::Init(int os_version_hash) {
   // Read persisted metric data and then compare read OS version hash to
@@ -138,8 +138,7 @@ void CumulativeUseTimeMetric::AccumulatedActiveTime::Reset(
 
 bool CumulativeUseTimeMetric::AccumulatedActiveTime::ReadMetricsFile() {
   std::string data_json;
-  if (!base::ReadFileToStringWithMaxSize(metrics_file_, &data_json,
-                                         kMetricFileSizeLimit)) {
+  if (!system_utils_->ReadFileToString(metrics_file_, &data_json)) {
     return false;
   }
 
@@ -200,7 +199,9 @@ bool CumulativeUseTimeMetric::AccumulatedActiveTime::WriteMetricsFile() {
     return false;
   }
 
-  if (!base::WriteFile(metrics_file_, data_json)) {
+  if (!system_utils_->WriteFileAtomically(
+          metrics_file_, base::as_byte_span(data_json),
+          S_IRUSR | S_IWUSR | S_IROTH, {.uid = 0, .gid = 0})) {
     LOG(ERROR) << "Failed to write metric data to " << metrics_file_.value();
     return false;
   }
@@ -209,6 +210,7 @@ bool CumulativeUseTimeMetric::AccumulatedActiveTime::WriteMetricsFile() {
 }
 
 CumulativeUseTimeMetric::CumulativeUseTimeMetric(
+    SystemUtils* system_utils,
     const std::string& metric_name,
     MetricsLibraryInterface* metrics_lib,
     const base::FilePath& metrics_files_dir,
@@ -216,9 +218,10 @@ CumulativeUseTimeMetric::CumulativeUseTimeMetric(
     std::unique_ptr<base::TickClock> time_tick_clock)
     : metrics_lib_(metrics_lib),
       metric_name_(metric_name),
-      accumulated_active_time_(
-          new AccumulatedActiveTime(metrics_files_dir.AppendASCII(metric_name_)
-                                        .AddExtension(kMetricFileExtension))),
+      accumulated_active_time_(std::make_unique<AccumulatedActiveTime>(
+          system_utils,
+          metrics_files_dir.AppendASCII(metric_name_)
+              .AddExtension(kMetricFileExtension))),
       time_clock_(std::move(time_clock)),
       time_tick_clock_(std::move(time_tick_clock)) {}
 

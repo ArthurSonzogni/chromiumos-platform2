@@ -68,6 +68,10 @@ bool FakeSystemUtils::ClearDirectoryContents(const base::FilePath& path) {
   return succeeded;
 }
 
+bool FakeSystemUtils::DeletePathRecursively(const base::FilePath& path) {
+  return brillo::DeletePathRecursively(RebasePath(path));
+}
+
 // TODO(hidehiko): Support NOTREACHED() functions when needed.
 
 int FakeSystemUtils::kill(pid_t pid, uid_t owner, int signal) {
@@ -142,7 +146,7 @@ bool FakeSystemUtils::Exists(const base::FilePath& file) {
 }
 
 bool FakeSystemUtils::DirectoryExists(const base::FilePath& dir) {
-  NOTREACHED();
+  return base::DirectoryExists(RebasePath(dir));
 }
 
 bool FakeSystemUtils::CreateDir(const base::FilePath& dir) {

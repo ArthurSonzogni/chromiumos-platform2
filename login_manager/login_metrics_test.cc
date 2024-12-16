@@ -7,8 +7,9 @@
 #include <memory>
 
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
+
+#include "login_manager/fake_system_utils.h"
 
 namespace login_manager {
 
@@ -69,23 +70,23 @@ INSTANTIATE_TEST_SUITE_P(Other,
 
 class LoginMetricsTest : public testing::Test {
  public:
-  LoginMetricsTest() {}
+  LoginMetricsTest() = default;
   LoginMetricsTest(const LoginMetricsTest&) = delete;
   LoginMetricsTest& operator=(const LoginMetricsTest&) = delete;
-
-  ~LoginMetricsTest() override {}
+  ~LoginMetricsTest() override = default;
 
   void SetUp() override {
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    metrics_.reset(new LoginMetrics(tmpdir_.GetPath()));
+    metrics_ = std::make_unique<LoginMetrics>(&system_utils_);
   }
+
+  void TearDown() override { metrics_.reset(); }
 
   int DevicePolicyStatusCode(LoginMetrics::DevicePolicyFilesStatus status) {
     return LoginMetrics::DevicePolicyStatusCode(status);
   }
 
  protected:
-  base::ScopedTempDir tmpdir_;
+  FakeSystemUtils system_utils_;
   std::unique_ptr<LoginMetrics> metrics_;
 };
 

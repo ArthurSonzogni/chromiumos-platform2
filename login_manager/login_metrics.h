@@ -15,6 +15,7 @@
 namespace login_manager {
 
 class CumulativeUseTimeMetric;
+class SystemUtils;
 
 class LoginMetrics {
  public:
@@ -119,7 +120,7 @@ class LoginMetrics {
     OwnershipState ownership_state;
   };
 
-  explicit LoginMetrics(const base::FilePath& per_boot_flag_dir);
+  explicit LoginMetrics(SystemUtils* system_utils);
   LoginMetrics(const LoginMetrics&) = delete;
   LoginMetrics& operator=(const LoginMetrics&) = delete;
 
@@ -191,7 +192,6 @@ class LoginMetrics {
   // (owner, guest or other) and the mode (normal or developer).
   static int LoginUserTypeCode(bool dev_mode, bool guest, bool owner);
 
-  const base::FilePath per_boot_flag_file_;
   MetricsLibrary metrics_lib_;
   std::unique_ptr<CumulativeUseTimeMetric> arc_cumulative_use_time_;
 };

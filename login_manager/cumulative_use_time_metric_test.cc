@@ -20,6 +20,8 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
 
+#include "login_manager/fake_system_utils.h"
+
 namespace login_manager {
 
 namespace {
@@ -336,6 +338,8 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
   int times_sent_{0};
 };
 
+constexpr char kTempDir[] = "/tmp/test";
+
 }  // namespace
 
 class CumulativeUseTimeMetricTest : public testing::Test {
@@ -349,7 +353,7 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   ~CumulativeUseTimeMetricTest() override = default;
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    ASSERT_TRUE(system_utils_.CreateDir(base::FilePath(kTempDir)));
 
     clock_.SetNow(GetReferenceTime());
     tick_clock_.SetNowTicks(GetReferenceTimeTicks());
@@ -375,10 +379,10 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   // Recreates |cumulative_use_time_metric_| properly setting its clocks, so
   // the time is in line with current test state.
   void ResetCumulativeUseTimeMetric() {
-    cumulative_use_time_metric_.reset(new CumulativeUseTimeMetric(
-        kTestMetricName, &metrics_library_, temp_dir_.GetPath(),
-        std::make_unique<TestClockCopy>(&clock_),
-        std::make_unique<TestTickClockCopy>(&tick_clock_)));
+    cumulative_use_time_metric_ = std::make_unique<CumulativeUseTimeMetric>(
+        &system_utils_, kTestMetricName, &metrics_library_,
+        base::FilePath(kTempDir), std::make_unique<TestClockCopy>(&clock_),
+        std::make_unique<TestTickClockCopy>(&tick_clock_));
   }
 
   // Advances time in UpdateCycle chunks, running message loop on each
@@ -398,11 +402,13 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   }
 
   // Used to simulate backing file corruption.
-  bool DeleteTestDir() { return temp_dir_.Delete(); }
+  bool DeleteTestDir() {
+    return system_utils_.DeletePathRecursively(base::FilePath(kTempDir));
+  }
 
   bool WriteGarbageToMetricsFile(const std::string& data) {
-    return base::WriteFile(cumulative_use_time_metric_->GetMetricsFileForTest(),
-                           data);
+    return system_utils_.WriteStringToFile(
+        cumulative_use_time_metric_->GetMetricsFileForTest(), data);
   }
 
  protected:
@@ -414,11 +420,11 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   base::SimpleTestClock clock_;
   base::SimpleTestTickClock tick_clock_;
 
+  FakeSystemUtils system_utils_;
+
   scoped_refptr<FakeSingleThreadTaskRunner> task_runner_;
   base::SingleThreadTaskRunner::CurrentDefaultHandle task_runner_handle_{
       task_runner_};
-
-  base::ScopedTempDir temp_dir_;
 };
 
 TEST_F(CumulativeUseTimeMetricTest, MetricsNotReportedBeforeStart) {

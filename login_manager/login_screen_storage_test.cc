@@ -17,15 +17,15 @@
 #include <gtest/gtest.h>
 
 #include "login_manager/fake_secret_util.h"
+#include "login_manager/fake_system_utils.h"
 #include "login_manager/login_screen_storage/login_screen_storage_index.pb.h"
 #include "login_manager/secret_util.h"
-#include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
 
 namespace {
 
-constexpr char kLoginScreenStoragePath[] = "login_screen_storage";
+constexpr char kLoginScreenStoragePath[] = "/var/lib/login_screen_storage";
 constexpr char kTestKey[] = "testkey";
 
 LoginScreenStorageMetadata MakeMetadata(bool clear_on_session_exit) {
@@ -61,8 +61,9 @@ std::vector<uint8_t> GenerateLongTestValue() {
 class LoginScreenStorageTestBase : public ::testing::Test {
  public:
   void SetUp() override {
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    storage_path_ = tmpdir_.GetPath().Append(kLoginScreenStoragePath);
+    ASSERT_TRUE(
+        system_utils_.CreateDir(base::FilePath(kLoginScreenStoragePath)));
+    storage_path_ = base::FilePath(kLoginScreenStoragePath);
     auto shared_memory_util =
         std::make_unique<secret_util::FakeSharedMemoryUtil>();
     shared_memory_util_ = shared_memory_util.get();
@@ -72,22 +73,20 @@ class LoginScreenStorageTestBase : public ::testing::Test {
 
  protected:
   base::FilePath GetKeyPath(const std::string& key) const {
-    return base::FilePath(storage_path_)
-        .Append(secret_util::StringToSafeFilename(key));
+    return storage_path_.Append(secret_util::StringToSafeFilename(key));
   }
 
   base::FilePath GetIndexPath() const {
-    return base::FilePath(storage_path_)
-        .Append(kLoginScreenStorageIndexFilename);
+    return storage_path_.Append(kLoginScreenStorageIndexFilename);
   }
 
-  LoginScreenStorageIndex LoadIndex() const {
+  LoginScreenStorageIndex LoadIndex() {
     const base::FilePath index_path = GetIndexPath();
-    EXPECT_TRUE(base::PathExists(index_path));
+    EXPECT_TRUE(system_utils_.Exists(index_path));
 
     std::string index_blob;
     LoginScreenStorageIndex index;
-    if (base::ReadFileToString(index_path, &index_blob)) {
+    if (system_utils_.ReadFileToString(index_path, &index_blob)) {
       index.ParseFromString(index_blob);
     }
     return index;
@@ -97,8 +96,7 @@ class LoginScreenStorageTestBase : public ::testing::Test {
     return shared_memory_util_->WriteDataToSharedMemory(value);
   }
 
-  SystemUtilsImpl system_utils_;
-  base::ScopedTempDir tmpdir_;
+  FakeSystemUtils system_utils_;
   base::FilePath storage_path_;
   secret_util::SharedMemoryUtil* shared_memory_util_;
   std::unique_ptr<LoginScreenStorage> storage_;
@@ -178,12 +176,10 @@ TEST_F(LoginScreenStorageTestBase, RetrieveInvalidData) {
   const base::FilePath path = GetKeyPath(kTestKey);
 
   // Make the storage subdirectory
-  EXPECT_TRUE(base::CreateDirectory(path.DirName()));
+  EXPECT_TRUE(system_utils_.CreateDir(path.DirName()));
 
   // Create an empty file
-  base::ScopedFILE file(base::OpenFile(GetKeyPath(kTestKey), "w"));
-  EXPECT_NE(file, nullptr);
-  file.reset();
+  ASSERT_TRUE(system_utils_.WriteStringToFile(GetKeyPath(kTestKey), ""));
 
   brillo::ErrorPtr error;
   base::ScopedFD out_value_fd;
@@ -204,7 +200,7 @@ TEST_F(LoginScreenStorageTestPersistent, StoreOverridesPersistentKey) {
   brillo::ErrorPtr error;
   {
     base::ScopedFD value_fd = MakeValueFD(test_value_);
-    EXPECT_TRUE(base::CreateDirectory(storage_path_));
+    EXPECT_TRUE(system_utils_.CreateDir(storage_path_));
     storage_->Store(&error, kTestKey,
                     MakeMetadata(/*clear_on_session_exit=*/false),
                     test_value_.size(), value_fd);
@@ -212,7 +208,7 @@ TEST_F(LoginScreenStorageTestPersistent, StoreOverridesPersistentKey) {
   }
 
   const base::FilePath key_path = GetKeyPath(kTestKey);
-  EXPECT_TRUE(base::PathExists(key_path));
+  EXPECT_TRUE(system_utils_.Exists(key_path));
 
   {
     base::ScopedFD value_fd = MakeValueFD(test_value_);
@@ -222,7 +218,7 @@ TEST_F(LoginScreenStorageTestPersistent, StoreOverridesPersistentKey) {
     EXPECT_FALSE(error.get());
   }
 
-  EXPECT_FALSE(base::PathExists(key_path));
+  EXPECT_FALSE(system_utils_.Exists(key_path));
 }
 
 TEST_F(LoginScreenStorageTestPersistent, StoreCreatesDirectoryIfNotExistant) {
@@ -235,8 +231,8 @@ TEST_F(LoginScreenStorageTestPersistent, StoreCreatesDirectoryIfNotExistant) {
                   test_value_.size(), value_fd);
   EXPECT_FALSE(error.get());
 
-  EXPECT_TRUE(base::DirectoryExists(storage_path_));
-  EXPECT_TRUE(base::PathExists(GetKeyPath(kTestKey)));
+  EXPECT_TRUE(system_utils_.DirectoryExists(storage_path_));
+  EXPECT_TRUE(system_utils_.Exists(GetKeyPath(kTestKey)));
 }
 
 TEST_F(LoginScreenStorageTestPersistent, OnlyStoredKeysAreListedInIndex) {

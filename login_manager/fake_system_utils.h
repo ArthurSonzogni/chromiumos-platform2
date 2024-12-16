@@ -51,9 +51,12 @@ class FakeSystemUtils : public SystemUtils {
   [[nodiscard]] bool EnsureFile(const base::FilePath& path,
                                 base::span<const uint8_t> data);
 
-  // Remove all contents under the directory at `path`. The directory will
+  // Removes all contents under the directory at `path`. The directory will
   // be kept.
   [[nodiscard]] bool ClearDirectoryContents(const base::FilePath& path);
+
+  // Removes the directory and its contents recursively.
+  [[nodiscard]] bool DeletePathRecursively(const base::FilePath& path);
 
   // SystemUtils override:
   int kill(pid_t pid, uid_t owner, int signal) override;

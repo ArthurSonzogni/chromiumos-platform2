@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
   if (!base::CreateDirectory(flag_file_dir)) {
     PLOG(FATAL) << "Cannot create flag file directory at " << kFlagFileDir;
   }
-  LoginMetrics metrics(flag_file_dir);
+  LoginMetrics metrics(&system_utils);
 
   // The session_manager supports pinging the browser periodically to check that
   // it is still alive. On developer systems, this would be a problem, as

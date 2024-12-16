@@ -21,6 +21,8 @@ class MetricsLibraryInterface;
 
 namespace login_manager {
 
+class SystemUtils;
+
 // Used to to track usage time metric. The tracked usage time is updated in
 // regular intervals (and backed to a local file, to persist the value across
 // reboots). The metric is sent to UMA at most once a day. It is ensured that
@@ -38,7 +40,8 @@ class CumulativeUseTimeMetric {
   // |time_tick_clock|: Clock used to track elapsed time ticks since last value
   //     update and calculate the amount by which the metric value should be
   //     increased.
-  CumulativeUseTimeMetric(const std::string& metric_name,
+  CumulativeUseTimeMetric(SystemUtils* system_utils,
+                          const std::string& metric_name,
                           MetricsLibraryInterface* metrics_lib,
                           const base::FilePath& metrics_files_dir,
                           std::unique_ptr<base::Clock> time_clock,
