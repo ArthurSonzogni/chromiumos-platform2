@@ -7,6 +7,8 @@
 // Some of this is copied / adapted from implementations in os_install_service.
 
 use log::{debug, info};
+use std::collections::BTreeMap;
+use std::ffi::OsString;
 use std::fmt::{self, Write};
 use std::io;
 use std::process::{Command, ExitStatus, Output};
@@ -48,11 +50,53 @@ impl fmt::Display for ProcessError {
 impl std::error::Error for ProcessError {}
 
 /// A type for passing to `Command::envs`.
-///
-/// Using `OsString` rather than `String` reduces the number of conversions between Path(Buf) and
-/// String we need to do, since `envs` takes things AsRef<OsStr>. All of our keys should be known
-/// at compile time, so we can just hold a reference to a static str for those.
-pub type Environment = std::collections::BTreeMap<&'static str, std::ffi::OsString>;
+#[derive(Debug)]
+pub struct Environment(
+    /// Use `OsString` rather than `String` to reduce the number of
+    /// conversions between Path(Buf) and String we need to do, since
+    /// `envs` takes things AsRef<OsStr>. All of our keys should be
+    /// known at compile time, so we can just hold a reference to a
+    /// static str for those.
+    BTreeMap<&'static str, OsString>,
+);
+
+impl Environment {
+    /// Create an empty environment.
+    pub fn new() -> Self {
+        Self(BTreeMap::new())
+    }
+
+    /// Add key/value pairs from an iterator.
+    pub fn extend<I: IntoIterator<Item = (&'static str, OsString)>>(&mut self, iter: I) {
+        self.0.extend(iter)
+    }
+
+    /// Add a single key/value pair.
+    pub fn insert(&mut self, key: &'static str, val: OsString) {
+        self.0.insert(key, val);
+    }
+
+    /// Get an iterator of the key/value pairs. Only used for tests.
+    #[cfg(test)]
+    pub fn iter(&self) -> impl Iterator<Item = (&&'static str, &OsString)> {
+        self.0.iter()
+    }
+
+    /// Convert to a `Vec` of key/value pairs. Only used for tests.
+    #[cfg(test)]
+    pub fn into_vec(self) -> Vec<(&'static str, OsString)> {
+        self.0.into_iter().collect()
+    }
+}
+
+impl IntoIterator for Environment {
+    type Item = (&'static str, OsString);
+    type IntoIter = std::collections::btree_map::IntoIter<&'static str, OsString>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
 
 /// Format the command as a string for logging and error messages.
 ///

@@ -88,12 +88,11 @@ mod tests {
             .return_once(|_| Ok(BUSYBOX_HELP.to_owned()));
 
         assert_eq!(
-            get_tool_env_impl(&run_command).unwrap(),
+            get_tool_env_impl(&run_command).unwrap().into_vec(),
             [
                 (BUSYBOX_DD_FOUND, "true".into()),
                 (LOSETUP_PATH, "/bin/losetup".into())
             ]
-            .into()
         );
     }
 
@@ -112,12 +111,11 @@ mod tests {
             .return_once(|_| Ok("losetup from util-linux 2.38.1".to_owned()));
 
         assert_eq!(
-            get_tool_env_impl(&run_command).unwrap(),
+            get_tool_env_impl(&run_command).unwrap().into_vec(),
             [
                 (BUSYBOX_DD_FOUND, "false".into()),
                 (LOSETUP_PATH, "losetup".into())
             ]
-            .into()
         );
     }
 
