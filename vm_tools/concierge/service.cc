@@ -1942,6 +1942,13 @@ StartVmResponse Service::StartVmInternal(
                             classification);
 
   if (request.start_termina()) {
+    if (classification != apps::VmType::TERMINA) {
+      // Should usually never be not TERMINA, but you can craft a request from
+      // vmc.
+      response.set_failure_reason("start_termina set on non-TERMINA");
+      return response;
+    }
+
     if (auto result = StartTermina(*vm, request.features());
         !result.has_value()) {
       response.set_failure_reason(std::move(result.error()));
