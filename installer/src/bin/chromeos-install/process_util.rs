@@ -54,10 +54,8 @@ impl std::error::Error for ProcessError {}
 pub struct Environment(
     /// Use `OsString` rather than `String` to reduce the number of
     /// conversions between Path(Buf) and String we need to do, since
-    /// `envs` takes things AsRef<OsStr>. All of our keys should be
-    /// known at compile time, so we can just hold a reference to a
-    /// static str for those.
-    BTreeMap<&'static str, OsString>,
+    /// `envs` takes things AsRef<OsStr>.
+    BTreeMap<String, OsString>,
 );
 
 impl Environment {
@@ -67,31 +65,35 @@ impl Environment {
     }
 
     /// Add key/value pairs from an iterator.
-    pub fn extend<I: IntoIterator<Item = (&'static str, OsString)>>(&mut self, iter: I) {
-        self.0.extend(iter)
+    pub fn extend<K, I>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = (K, OsString)>,
+        K: Into<String>,
+    {
+        self.0.extend(iter.into_iter().map(|(k, v)| (k.into(), v)))
     }
 
     /// Add a single key/value pair.
-    pub fn insert(&mut self, key: &'static str, val: OsString) {
-        self.0.insert(key, val);
+    pub fn insert<K: Into<String>>(&mut self, key: K, val: OsString) {
+        self.0.insert(key.into(), val);
     }
 
     /// Get an iterator of the key/value pairs. Only used for tests.
     #[cfg(test)]
-    pub fn iter(&self) -> impl Iterator<Item = (&&'static str, &OsString)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &OsString)> {
         self.0.iter()
     }
 
     /// Convert to a `Vec` of key/value pairs. Only used for tests.
     #[cfg(test)]
-    pub fn into_vec(self) -> Vec<(&'static str, OsString)> {
+    pub fn into_vec(self) -> Vec<(String, OsString)> {
         self.0.into_iter().collect()
     }
 }
 
 impl IntoIterator for Environment {
-    type Item = (&'static str, OsString);
-    type IntoIter = std::collections::btree_map::IntoIter<&'static str, OsString>;
+    type Item = (String, OsString);
+    type IntoIter = std::collections::btree_map::IntoIter<String, OsString>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()

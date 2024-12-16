@@ -90,8 +90,8 @@ mod tests {
         assert_eq!(
             get_tool_env_impl(&run_command).unwrap().into_vec(),
             [
-                (BUSYBOX_DD_FOUND, "true".into()),
-                (LOSETUP_PATH, "/bin/losetup".into())
+                (BUSYBOX_DD_FOUND.into(), "true".into()),
+                (LOSETUP_PATH.into(), "/bin/losetup".into())
             ]
         );
     }
@@ -113,8 +113,8 @@ mod tests {
         assert_eq!(
             get_tool_env_impl(&run_command).unwrap().into_vec(),
             [
-                (BUSYBOX_DD_FOUND, "false".into()),
-                (LOSETUP_PATH, "losetup".into())
+                (BUSYBOX_DD_FOUND.into(), "false".into()),
+                (LOSETUP_PATH.into(), "losetup".into())
             ]
         );
     }
