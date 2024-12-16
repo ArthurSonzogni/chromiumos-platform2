@@ -93,8 +93,7 @@ std::string CrosFpFirmware::StatusToString(Status status) {
       return "Firmware file is okay.";
   }
 
-  NOTREACHED_IN_MIGRATION();
-  return "";
+  NOTREACHED();
 }
 
 void CrosFpFirmware::DecodeVersionFromFile() {

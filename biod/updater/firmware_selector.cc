@@ -105,8 +105,7 @@ std::string FirmwareSelectorInterface::FindFirmwareFileStatusToString(
       return "More than one firmware file was found.";
   }
 
-  NOTREACHED_IN_MIGRATION();
-  return "Unknown find firmware file status encountered.";
+  NOTREACHED();
 }
 
 }  // namespace updater
