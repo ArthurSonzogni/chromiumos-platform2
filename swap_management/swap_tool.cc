@@ -47,7 +47,7 @@ constexpr VariationsFeature kSwapZramWritebackFeature{
 constexpr VariationsFeature kSwapZramRecompressionFeature{
     "CrOSLateBootSwapZramRecompression", FEATURE_ENABLED_BY_DEFAULT};
 constexpr VariationsFeature kSwapSuspendAwareZramWritebackFeature{
-    "CrOSLateBootSuspendAwareSwapZramWriteback", FEATURE_DISABLED_BY_DEFAULT};
+    "CrOSLateBootSuspendAwareSwapZramWriteback", FEATURE_ENABLED_BY_DEFAULT};
 
 // Reclaimable memory types.
 //
@@ -158,8 +158,9 @@ float SwapTool::GetMultiplier() {
   std::optional<std::string> feature_multiplier =
       GetFeatureParamValue(kSwapZramDisksizeFeature, "multiplier");
   if (feature_multiplier.has_value()) {
-    if (absl::SimpleAtof(*feature_multiplier, &multiplier))
+    if (absl::SimpleAtof(*feature_multiplier, &multiplier)) {
       return multiplier;
+    }
 
     LOG(WARNING) << absl::OutOfRangeError(
         "Failed to convert " + *feature_multiplier +
@@ -170,8 +171,9 @@ float SwapTool::GetMultiplier() {
   std::string config_multiplier;
   if (cros_config_->GetString(kSwapSizeConfigPath, kSwapSizeConfigProperty,
                               &config_multiplier)) {
-    if (absl::SimpleAtof(config_multiplier, &multiplier))
+    if (absl::SimpleAtof(config_multiplier, &multiplier)) {
       return multiplier;
+    }
 
     LOG(WARNING) << absl::OutOfRangeError(
         "Failed to convert " + config_multiplier +
