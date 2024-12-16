@@ -58,7 +58,7 @@ std::string FormattedIdentifier(PendingActivationStore::IdentifierType type,
       label = "MEID";
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
   return "[" + label + "=" + identifier + "]";
 }

@@ -254,9 +254,8 @@ std::string Cellular::GetStateString(State state) {
     case State::kLinked:
       return "Linked";
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
-  return base::StringPrintf("CellularStateUnknown-%d", static_cast<int>(state));
 }
 
 // static
@@ -289,9 +288,8 @@ std::string Cellular::GetModemStateString(ModemState modem_state) {
     case kModemStateConnected:
       return "ModemStateConnected";
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
-  return base::StringPrintf("ModemStateUnknown-%d", modem_state);
 }
 
 // static
@@ -2529,7 +2527,7 @@ void Cellular::AcquireTetheringNetwork(
     case TetheringOperationType::kDisconnectDunAsDefaultPdn:
     case TetheringOperationType::kDisconnectDunMultiplexed:
       // Not a valid return of GetTetheringOperationType().
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 
@@ -3320,7 +3318,7 @@ void Cellular::Notify(const std::string& reason,
   } else if (reason == kPPPReasonExit) {
     // Ignore; we get its exit status by the death callback for PPPDaemon.
   } else {
-    NOTREACHED_IN_MIGRATION();
+    NOTREACHED();
   }
 }
 
