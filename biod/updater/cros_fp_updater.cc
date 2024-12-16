@@ -152,7 +152,7 @@ bool CrosFpDeviceUpdate::Flash(const CrosFpFirmware& fw,
 
   LOG(INFO) << "Flashing " << image_str << " of FPMCU.";
 
-  // TODO: b/138782393 - Replace subprocessing with libec ASAP!
+  // TODO(b/138782393): Replace subprocessing with libec ASAP!
   base::CommandLine cmd{base::FilePath(kCrOSECLegacyDrvPath)};
   cmd.AppendSwitch("noverify-all");
   cmd.AppendSwitchASCII("programmer", "ec:type=fp");
