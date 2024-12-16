@@ -1948,7 +1948,8 @@ StartVmResponse Service::StartVmInternal(
       !StartTermina(vm.get(), request.features(), &failure_reason,
                     &mount_result, &free_bytes)) {
     response.set_failure_reason(std::move(failure_reason));
-    response.set_mount_result((StartVmResponse::MountResult)mount_result);
+    response.set_mount_result(
+        (StartVmResponse::MountResult)vm_tools::StartTerminaResponse::UNKNOWN);
     return response;
   }
   response.set_mount_result((StartVmResponse::MountResult)mount_result);
@@ -2441,6 +2442,8 @@ bool Service::StartTermina(TerminaVm* vm,
   LOG(INFO) << "Starting Termina-specific services";
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(result);
+  DCHECK(out_free_bytes);
+  DCHECK(vm);
 
   std::string error;
   vm_tools::StartTerminaResponse response;
