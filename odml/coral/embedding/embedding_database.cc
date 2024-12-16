@@ -129,13 +129,13 @@ bool EmbeddingDatabase::Sync() {
     return false;
   });
 
-  LOG(INFO) << "Sync embedding database with now: " << now << ", ttl: " << ttl_
-            << ", num_removed: " << num_removed
-            << ", size: " << embeddings_map_.size();
-
   if (!dirty_ && !num_removed) {
     return true;
   }
+
+  LOG(INFO) << "Sync embedding database with now: " << now
+            << ", num_removed: " << num_removed
+            << ", size: " << embeddings_map_.size();
 
   EmbeddingRecords records;
   for (const auto& [key, entry] : embeddings_map_) {
@@ -203,7 +203,7 @@ bool EmbeddingDatabase::LoadFromFile() {
   }
   MaybePruneEntries();
   LOG(INFO) << "Load from embedding database with now: " << now
-            << ", ttl: " << ttl_ << ", size: " << embeddings_map_.size();
+            << ", size: " << embeddings_map_.size();
   metrics_->SendEmbeddingDatabaseEntriesCount(embeddings_map_.size());
   return true;
 }
