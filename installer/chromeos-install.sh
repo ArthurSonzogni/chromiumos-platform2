@@ -38,6 +38,7 @@ fi
 #       currently-running rootfs, this is set to an empty string.
 # BUSYBOX_DD_FOUND: Whether dd is provided by busybox ("true" or "false").
 # LOSETUP_PATH: Path of the losetup utility.
+# All the variables under "load_base_vars" in /usr/sbin/partition_vars.json.
 
 # To keep changes minimal, temporarily define these boolean constants which were
 # previously supplied by shflags.
@@ -804,10 +805,9 @@ main() {
   prepare_disk
   locate_gpt
 
-  # Reload the GPT helper functions and the image settings from target root.
+  # Load the GPT helper functions.
   # shellcheck disable=SC1091
   . "${ROOT}/usr/sbin/write_gpt.sh"
-  load_base_vars
 
   ufs_init
 

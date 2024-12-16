@@ -3,12 +3,18 @@
 // found in the LICENSE file.
 
 use crate::process_util::{Environment, RunCommand, RunCommandImpl};
-use anyhow::Result;
+use anyhow::{Context, Result};
+use serde::Deserialize;
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::Path;
 use std::process::Command;
 
 // Env var names. Must match chromeos-install.sh.
 const BUSYBOX_DD_FOUND: &str = "BUSYBOX_DD_FOUND";
 const LOSETUP_PATH: &str = "LOSETUP_PATH";
+
+const PARTITION_VARS_PATH: &str = "/usr/sbin/partition_vars.json";
 
 /// Get environment variables related to what tools are available.
 ///
@@ -23,6 +29,12 @@ const LOSETUP_PATH: &str = "LOSETUP_PATH";
 ///   "losetup" otherwise.
 pub fn get_tool_env() -> Result<Environment> {
     get_tool_env_impl(&RunCommandImpl)
+}
+
+/// Load vars defining the GPT layout of the installed system from
+/// `PARTITION_VARS_PATH`.
+pub fn get_gpt_base_vars() -> Result<Environment> {
+    get_gpt_base_vars_from(Path::new(PARTITION_VARS_PATH))
 }
 
 /// Check if the `dd` command comes from busybox.
@@ -60,6 +72,29 @@ fn get_tool_env_impl(run_command: &dyn RunCommand) -> Result<Environment> {
             "losetup"
         })
         .into(),
+    );
+
+    Ok(env)
+}
+
+/// Read and parse `path` as a partition vars file.
+fn get_gpt_base_vars_from(path: &Path) -> Result<Environment> {
+    #[derive(Deserialize)]
+    struct PartitionVars {
+        load_base_vars: BTreeMap<String, String>,
+    }
+
+    let json =
+        fs::read_to_string(path).with_context(|| format!("failed to read {}", path.display()))?;
+    let partition_vars: PartitionVars = serde_json::from_str(&json)
+        .with_context(|| format!("failed to parse {}", path.display()))?;
+
+    let mut env = Environment::new();
+    env.extend(
+        partition_vars
+            .load_base_vars
+            .into_iter()
+            .map(|(k, v)| (k, v.into())),
     );
 
     Ok(env)
@@ -147,5 +182,53 @@ mod tests {
             .return_once(|_| Err(anyhow!("losetup not found")));
 
         assert!(get_tool_env_impl(&run_command).is_err());
+    }
+
+    /// Test that `get_gpt_base_vars_from` reads a valid
+    /// partition_vars.json file correctly.
+    #[test]
+    fn test_get_gpt_base_vars_from() {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let path = tmpdir.path().join("partition_vars.json");
+        fs::write(
+            &path,
+            // This test data is from a valid file, with most vars
+            // removed for brevity.
+            r#"
+{
+  "load_base_vars": {
+    "PARTITION_NUM_ROOT_A": "3",
+    "PARTITION_SIZE_3": "4294967296"
+  },
+  "load_partition_vars": {
+    "PARTITION_NUM_ROOT_A": "3",
+    "PARTITION_SIZE_3": "2516582400"
+  }
+}
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            get_gpt_base_vars_from(&path).unwrap().into_vec(),
+            [
+                ("PARTITION_NUM_ROOT_A".into(), "3".into()),
+                ("PARTITION_SIZE_3".into(), "4294967296".into()),
+            ]
+        );
+    }
+
+    /// Test that `get_gpt_base_vars_from` propagates if the file is not
+    /// found or contains invalid data.
+    #[test]
+    fn test_get_gpt_base_vars_from_errors() {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let path = tmpdir.path().join("partition_vars.json");
+
+        // Path does not exist.
+        assert!(get_gpt_base_vars_from(&path).is_err());
+
+        // File contains invalid data.
+        fs::write(&path, "invalid data").unwrap();
+        assert!(get_gpt_base_vars_from(&path).is_err());
     }
 }

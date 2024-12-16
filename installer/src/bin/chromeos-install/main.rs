@@ -50,6 +50,8 @@ fn main() -> Result<()> {
     install_cmd.envs(source.to_env());
     // Adjust the environment based on what tools are available.
     install_cmd.envs(install_env::get_tool_env()?);
+    // Add vars defining the GPT layout of the installed system.
+    install_cmd.envs(install_env::get_gpt_base_vars()?);
 
     log_and_run_command(install_cmd).map_err(Error::msg)
 }

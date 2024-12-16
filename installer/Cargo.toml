@@ -14,9 +14,12 @@ libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 nix = { version = "0.28.0", features = ["user"] }
 clap = { version = "4.5.4", features = ["derive"] }
 log = { version = "0.4", features = ["std"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
 [dev-dependencies]
 mockall = "0.12.1"
+tempfile = "3.10"
 
 [features]
 lvm_stateful_partition = []
