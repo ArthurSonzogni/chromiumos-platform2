@@ -5,6 +5,7 @@
 #include "pmt_tool/pmt_tool.h"
 
 #include <fcntl.h>
+#include <signal.h>
 
 #include <cstring>
 #include <string>
@@ -22,6 +23,41 @@ namespace pmt_tool {
 
 // Shortcut for frequently used symbols.
 using absl::SNPrintF, base::WriteFileDescriptor;
+
+// Signal handlers for graceful early finish.
+static volatile bool __pmt_should_stop;
+
+static void pmt_sig_handler(int sig) {
+  switch (sig) {
+    case SIGINT:
+    case SIGTERM:
+      LOG(INFO) << "Exit triggered by signal.";
+      __pmt_should_stop = true;
+      break;
+    default:
+      break;
+  }
+}
+
+int setup_sig_handlers() {
+  struct sigaction sa;
+
+  sa.sa_handler = pmt_sig_handler;
+  sa.sa_flags = 0;
+  sigemptyset(&sa.sa_mask);
+  if (sigaction(SIGINT, &sa, NULL) == -1) {
+    return -EINVAL;
+  }
+
+  sa.sa_handler = pmt_sig_handler;
+  sa.sa_flags = 0;
+  sigemptyset(&sa.sa_mask);
+  if (sigaction(SIGTERM, &sa, NULL) == -1) {
+    return -EINVAL;
+  }
+
+  return 0;
+}
 
 namespace {
 
@@ -325,7 +361,7 @@ int do_run(Options& opts, Source& source, Formatter& formatter) {
   // Collect and format data.
   int i = opts.sampling.duration_samples;
   std::optional<const pmt::Snapshot*> snapshot = nullptr;
-  while (true) {
+  while (!__pmt_should_stop) {
     snapshot = source.TakeSnapshot();
     // If there's no more data left, finish.
     if (!snapshot) {

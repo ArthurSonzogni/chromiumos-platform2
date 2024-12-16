@@ -100,6 +100,8 @@ class CsvFormatter : public Formatter {
   int fd_;
 };
 
+// Signal handlers.
+int setup_sig_handlers();
 // Main business logic of pmt_tool, exported for testing.
 int do_run(Options& opts, Source& source, Formatter& formatter);
 

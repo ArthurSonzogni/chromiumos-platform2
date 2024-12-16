@@ -16,6 +16,13 @@ int main(int argc, const char* argv[]) {
 
   bool file_input = !opts.sampling.input_file.empty();
 
+  // Set up signal handlers
+  int err = pmt_tool::setup_sig_handlers();
+  if (err) {
+    LOG(ERROR) << "Failed to set up signal handlers.";
+    return err;
+  }
+
   // Set up data source.
   std::unique_ptr<pmt_tool::Source> source;
   if (file_input) {
