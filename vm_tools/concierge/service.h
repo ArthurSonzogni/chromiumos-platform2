@@ -435,11 +435,12 @@ class Service final : public org::chromium::VmConciergeInterface,
   void OnDefaultNetworkServiceChanged();
 
   // Helper for starting termina VMs, e.g. starting lxd.
-  bool StartTermina(TerminaVm* vm,
-                    const google::protobuf::RepeatedField<int>& features,
-                    std::string* failure_reason,
-                    vm_tools::StartTerminaResponse::MountResult* result,
-                    int64_t* out_free_bytes);
+  base::expected<
+      std::pair<vm_tools::StartTerminaResponse::MountResult /*result*/,
+                std::optional<int64_t> /*free_bytes*/>,
+      std::string>
+  StartTermina(TerminaVm& vm,
+               const google::protobuf::RepeatedField<int>& features);
 
   // Helpers for notifying cicerone and sending signals of VM started/stopped
   // events, and generating container tokens.

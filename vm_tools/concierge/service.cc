@@ -1941,21 +1941,21 @@ StartVmResponse Service::StartVmInternal(
   NotifyCiceroneOfVmStarted(vm_id, vm->cid(), vm->pid(), vm_token,
                             classification);
 
-  vm_tools::StartTerminaResponse::MountResult mount_result =
-      vm_tools::StartTerminaResponse::UNKNOWN;
-  int64_t free_bytes = -1;
-  if (request.start_termina() &&
-      !StartTermina(vm.get(), request.features(), &failure_reason,
-                    &mount_result, &free_bytes)) {
-    response.set_failure_reason(std::move(failure_reason));
-    response.set_mount_result(
-        (StartVmResponse::MountResult)vm_tools::StartTerminaResponse::UNKNOWN);
-    return response;
-  }
-  response.set_mount_result((StartVmResponse::MountResult)mount_result);
-  if (free_bytes >= 0) {
-    response.set_free_bytes(free_bytes);
-    response.set_free_bytes_has_value(true);
+  if (request.start_termina()) {
+    if (auto result = StartTermina(*vm, request.features());
+        !result.has_value()) {
+      response.set_failure_reason(std::move(result.error()));
+      response.set_mount_result(StartVmResponse::UNKNOWN);
+      return response;
+    } else {
+      auto [mount_result, free_bytes] = result.value();
+      response.set_mount_result(
+          static_cast<StartVmResponse::MountResult>(mount_result));
+      if (free_bytes) {
+        response.set_free_bytes(free_bytes.value());
+        response.set_free_bytes_has_value(true);
+      }
+    }
   }
 
   if (!vm_token.empty() &&
@@ -2434,23 +2434,19 @@ void Service::SyncVmTimes(
   return;
 }
 
-bool Service::StartTermina(TerminaVm* vm,
-                           const google::protobuf::RepeatedField<int>& features,
-                           std::string* failure_reason,
-                           vm_tools::StartTerminaResponse::MountResult* result,
-                           int64_t* out_free_bytes) {
+base::expected<std::pair<vm_tools::StartTerminaResponse::MountResult /*result*/,
+                         std::optional<int64_t> /*free_bytes*/>,
+               std::string>
+Service::StartTermina(TerminaVm& vm,
+                      const google::protobuf::RepeatedField<int>& features) {
   LOG(INFO) << "Starting Termina-specific services";
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(result);
-  DCHECK(out_free_bytes);
-  DCHECK(vm);
 
-  std::string error;
   vm_tools::StartTerminaResponse response;
-  if (!vm->StartTermina(vm->ContainerCIDRAddress().ToString(), features, &error,
-                        &response)) {
-    failure_reason->assign(error);
-    return false;
+  std::optional<int64_t> free_bytes;
+  if (std::string error; !vm.StartTermina(vm.ContainerCIDRAddress().ToString(),
+                                          features, &error, &response)) {
+    return base::unexpected(error);
   }
 
   if (response.mount_result() ==
@@ -2458,12 +2454,11 @@ bool Service::StartTermina(TerminaVm* vm,
     LOG(ERROR) << "Possible data loss from filesystem corruption detected";
   }
 
-  *result = response.mount_result();
   if (response.free_bytes_has_value()) {
-    *out_free_bytes = response.free_bytes();
+    free_bytes = response.free_bytes();
   }
 
-  return true;
+  return std::make_pair(response.mount_result(), free_bytes);
 }
 
 // Executes a command on the specified disk path. Returns false when
