@@ -4,8 +4,11 @@ version = "1.0.0"
 authors = ["The ChromiumOS Authors"]
 edition = "2021"
 
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0"
+
+[dependencies]
+anyhow = { workspace = true }
 gpt_disk_io = { version = "0.16.0", features = ["std"] }
 gpt_disk_types = "0.16.0"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
