@@ -116,11 +116,8 @@ pub mod client;
 #[allow(unused_imports)]
 #[allow(clippy::all)]
 pub mod server;"#;
-    std::fs::write(
-        bindings_dir.join("include_modules.rs"),
-        include_contents,
-    )
-    .map_err(Error::Write)?;
+    std::fs::write(bindings_dir.join("include_modules.rs"), include_contents)
+        .map_err(Error::Write)?;
 
     let mut client_out = File::create(client_dir.join("mod.rs")).map_err(Error::Create)?;
     for (module, source, bindings_type) in sub_modules {
