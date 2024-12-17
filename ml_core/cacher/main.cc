@@ -102,13 +102,16 @@ int main(int argc, char* argv[]) {
   // Update OpenCL Cache.
   {
     LOG(INFO) << "Prepare OpenCL cache";
-    auto config = cros::EffectsConfig();
-    config.segmentation_delegate = cros::Delegate::kGpu;
-    config.relighting_delegate = cros::Delegate::kGpu;
-    config.segmentation_gpu_api = cros::GpuApi::kOpenCL;
-    config.relighting_gpu_api = cros::GpuApi::kOpenCL;
-    config.blur_enabled = true;
-    config.relight_enabled = true;
+    auto config = cros::EffectsConfig{
+        .relight_enabled = true,
+        .blur_enabled = true,
+        .face_retouch_enabled = true,
+        .segmentation_delegate = cros::Delegate::kGpu,
+        .relighting_delegate = cros::Delegate::kGpu,
+        .retouch_delegate = cros::Delegate::kGpu,
+        .segmentation_gpu_api = cros::GpuApi::kOpenCL,
+        .relighting_gpu_api = cros::GpuApi::kOpenCL,
+    };
 
     if (!UpdateCache(dlc_loader.GetDlcRootPath(), config,
                      base::FilePath(cros::kOpenCLCachingDir))) {
@@ -121,16 +124,19 @@ int main(int argc, char* argv[]) {
   // Update OpenVINO Cache.
   if (cros::NPUIsReady()) {
     LOG(INFO) << "Prepare OpenVINO cache";
-    auto config = cros::EffectsConfig();
-    config.segmentation_delegate = cros::Delegate::kStable;
-    config.relighting_delegate = cros::Delegate::kStable;
+    auto config = cros::EffectsConfig{
+        .relight_enabled = true,
+        .blur_enabled = true,
+        .face_retouch_enabled = true,
+        .segmentation_delegate = cros::Delegate::kStable,
+        .relighting_delegate = cros::Delegate::kStable,
+        .retouch_delegate = cros::Delegate::kStable,
+    };
     static_assert(sizeof(kStableDelegateSettingsFile) <=
                   sizeof(config.stable_delegate_settings_file));
     base::strlcpy(config.stable_delegate_settings_file,
                   kStableDelegateSettingsFile,
                   sizeof(config.stable_delegate_settings_file));
-    config.blur_enabled = true;
-    config.relight_enabled = true;
 
     if (!UpdateCache(dlc_loader.GetDlcRootPath(), config,
                      base::FilePath(cros::kOpenVinoCachingDir))) {
