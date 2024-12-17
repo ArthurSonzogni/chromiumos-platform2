@@ -74,11 +74,11 @@ class TitleGenerationEngine
   void OnUserLoggedOut() override;
 
  private:
+  void OnGetModelStateResult(on_device_model::mojom::PlatformModelState state);
   void EnsureModelLoaded(base::OnceClosure callback);
   void OnModelLoadResult(base::OnceClosure callback,
                          PerformanceTimer::Ptr timer,
                          on_device_model::mojom::LoadModelResult result);
-  void SetUnloadModelTimer();
   void UnloadModel();
 
   struct GroupData {

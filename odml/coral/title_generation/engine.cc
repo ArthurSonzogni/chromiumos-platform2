@@ -43,8 +43,6 @@ using on_device_model::mojom::Session;
 
 // Adaptation model for Coral.
 constexpr char kModelUuid[] = "fa9a157a-696d-48c5-9e46-efa048743587";
-// The duration to keep the model loaded (for upcoming feature triggers).
-constexpr base::TimeDelta kUnloadModelInterval = base::Minutes(1);
 
 // Ensures cache hits when user triggers feature in turn from 2 desktops both
 // having 2 coral groups.
@@ -142,18 +140,10 @@ TitleGenerationEngine::TitleGenerationEngine(
 }
 
 void TitleGenerationEngine::PrepareResource() {
-  if (is_processing_) {
-    pending_callbacks_.push(
-        base::BindOnce(&TitleGenerationEngine::PrepareResource,
-                       weak_ptr_factory_.GetWeakPtr()));
-    return;
-  }
-  is_processing_ = true;
-  // Ensure `is_processing_` will always be reset no matter callback is run or
-  // dropped.
-  EnsureModelLoaded(mojo::WrapCallbackWithDefaultInvokeIfNotRun(
-      base::BindOnce(&TitleGenerationEngine::OnProcessCompleted,
-                     weak_ptr_factory_.GetWeakPtr())));
+  on_device_model_service_->GetPlatformModelState(
+      base::Uuid::ParseLowercase(kModelUuid),
+      base::BindOnce(&TitleGenerationEngine::OnGetModelStateResult,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void TitleGenerationEngine::Process(
@@ -171,6 +161,7 @@ void TitleGenerationEngine::Process(
   is_processing_ = true;
   // Prepare the clusters along with their prompts.
   std::vector<GroupData> groups;
+  bool has_group_without_title = false;
   for (Cluster& cluster : clustering_response.clusters) {
     GroupData group_data{
         .id = base::Token::CreateRandom(),
@@ -183,6 +174,7 @@ void TitleGenerationEngine::Process(
     } else {
       // TODO(b/361429962): Validate safety result of the group.
       group_data.prompt = EntitiesToTitlePrompt(cluster.entities);
+      has_group_without_title = true;
     }
     group_data.entities = std::move(cluster.entities);
     groups.push_back(std::move(group_data));
@@ -209,6 +201,13 @@ void TitleGenerationEngine::Process(
                        weak_ptr_factory_.GetWeakPtr(), std::move(timer),
                        std::move(callback), std::move(on_process_completed));
   }
+  // Doesn't need to generate any title, so execute the complete callback
+  // directly.
+  if (!has_group_without_title) {
+    std::move(on_complete)
+        .Run(std::move(observer), std::move(groups), base::ok());
+    return;
+  }
   metrics_->SendTitleGenerationModelLoaded(model_.is_bound());
   EnsureModelLoaded(base::BindOnce(&TitleGenerationEngine::DoProcess,
                                    weak_ptr_factory_.GetWeakPtr(),
@@ -225,10 +224,20 @@ void TitleGenerationEngine::OnUserLoggedOut() {
   current_user_.reset();
 }
 
+void TitleGenerationEngine::OnGetModelStateResult(
+    on_device_model::mojom::PlatformModelState state) {
+  // Here, we don't explicitly return error. This is only used in
+  // PrepareResource, and if it fails, we'll still try loading the model when
+  // getting real requests.
+  if (state != on_device_model::mojom::PlatformModelState::kInstalledOnDisk) {
+    LOG(ERROR) << "Model state: " << static_cast<int>(state);
+    return;
+  }
+  // Else, the model should be installed on disk.
+}
+
 void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
   if (model_) {
-    // When the loaded model is used, reset the unload timer.
-    SetUnloadModelTimer();
     std::move(callback).Run();
     return;
   }
@@ -245,24 +254,15 @@ void TitleGenerationEngine::OnModelLoadResult(base::OnceClosure callback,
                                               PerformanceTimer::Ptr timer,
                                               LoadModelResult result) {
   if (result != LoadModelResult::kSuccess) {
-    // Unbind the model because when load model fails we shouldn't be using the
-    // model.
+    // Unbind the model because when load model fails we shouldn't be using
+    // the model.
     model_.reset();
     LOG(ERROR) << "Load model failed with result: " << static_cast<int>(result);
   } else {
     // Only report model load latency on success.
     metrics_->SendLoadTitleGenerationModelLatency(timer->GetDuration());
-    SetUnloadModelTimer();
   }
   std::move(callback).Run();
-}
-
-void TitleGenerationEngine::SetUnloadModelTimer() {
-  base::Time unload_time = base::Time::Now() + kUnloadModelInterval;
-  // This resets any existing scheduled `UnloadModel`.
-  unload_model_timer_.Start(FROM_HERE, unload_time,
-                            base::BindOnce(&TitleGenerationEngine::UnloadModel,
-                                           weak_ptr_factory_.GetWeakPtr()));
 }
 
 void TitleGenerationEngine::UnloadModel() {
@@ -276,6 +276,7 @@ void TitleGenerationEngine::ReplyGroupsWithoutTitles(
   for (const GroupData& group_data : groups) {
     auto group = mojom::Group::New();
     group->id = group_data.id;
+    // Title could still be present already due to cached results.
     group->title = group_data.title;
     group->entities = CloneEntities(group_data.entities);
     response.groups.push_back(std::move(group));
@@ -467,6 +468,7 @@ void TitleGenerationEngine::ReportTitleGenerationMetrics(
 void TitleGenerationEngine::OnProcessCompleted() {
   is_processing_ = false;
   if (pending_callbacks_.empty()) {
+    UnloadModel();
     return;
   }
   base::OnceClosure callback = std::move(pending_callbacks_.front());
