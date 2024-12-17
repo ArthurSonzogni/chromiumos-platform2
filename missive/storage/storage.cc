@@ -646,6 +646,10 @@ class FlushContext : public TaskRunnerContext<Status> {
                   base::Unretained(context), queue->generation_guid())));
             },
             base::Unretained(this)));
+    if (count_ == 0u) {
+      // No action has been initiated, respond right away.
+      Response(final_status_);
+    }
   }
 
   void RespondIfAllQueuesAreFlush(GenerationGuid generation_guid,
