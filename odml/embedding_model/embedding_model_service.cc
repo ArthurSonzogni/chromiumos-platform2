@@ -127,7 +127,8 @@ void EmbeddingModelService::OnBuildRunnerFromUuidFinish(
   itr->second.factory_create_in_progress = false;
   if (result) {
     // If successful, then we need to prepare the model holders.
-    itr->second.holder = std::make_unique<ModelHolder>(std::move(result));
+    itr->second.holder =
+        std::make_unique<ModelHolder>(std::move(result), metrics_);
 
     // Trigger the model load.
     TryLoadModel(uuid);

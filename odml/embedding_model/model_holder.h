@@ -12,9 +12,11 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <metrics/metrics_library.h>
 
 #include "odml/embedding_model/model_info.h"
 #include "odml/embedding_model/model_runner.h"
+#include "odml/utils/performance_timer.h"
 
 namespace embedding_model {
 
@@ -52,7 +54,8 @@ class ModelReference {
 // ModelHolder will deal with the thread creation and ownership.
 class ModelHolder {
  public:
-  explicit ModelHolder(std::unique_ptr<ModelRunner> model_runner);
+  explicit ModelHolder(std::unique_ptr<ModelRunner> model_runner,
+                       const raw_ref<MetricsLibraryInterface> metrics);
 
   // Call this to acquire a ModelReference, denoting that someone is using the
   // model.
@@ -97,7 +100,7 @@ class ModelHolder {
   void TriggerLoad();
 
   // Called by ModelRunner's Load().
-  void OnLoadFinish(bool success);
+  void OnLoadFinish(odml::PerformanceTimer::Ptr timer, bool success);
 
   // Try to unload the model, ie. transition from LOADED to UNLOADING.
   void TriggerUnload();
@@ -124,6 +127,9 @@ class ModelHolder {
   std::queue<WaitLoadResultCallback> wait_load_result_callbacks_;
 
   HolderState state_;
+
+  // For recording load time.
+  const raw_ref<MetricsLibraryInterface> metrics_;
 
   base::WeakPtrFactory<ModelHolder> weak_factory_{this};
 };

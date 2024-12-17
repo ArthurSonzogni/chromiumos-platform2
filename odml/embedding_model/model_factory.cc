@@ -10,8 +10,12 @@
 #include "odml/embedding_model/model_runner.h"
 #include "odml/embedding_model/odml_shim_tokenizer.h"
 #include "odml/embedding_model/tflite_model_runner.h"
+#include "odml/utils/performance_timer.h"
 
 namespace embedding_model {
+
+constexpr char kLoadDlcTimeHistogramName[] =
+    "OnDeviceModel.Embedding.LoadDlcTime";
 
 ModelFactoryImpl::ModelFactoryImpl(
     const raw_ref<odml::OdmlShimLoader> shim_loader,
@@ -36,19 +40,26 @@ void ModelFactoryImpl::BuildRunnerFromUuid(
     const base::Uuid& uuid, BuildRunnerFromUuidCallback callback) {
   // Note that base::Unretained(this) is safe because dlc_model_loader_ is owned
   // by the model factory.
+  auto timer = odml::PerformanceTimer::Create();
   dlc_model_loader_.LoadDlcWithUuid(
-      uuid, base::BindOnce(&ModelFactoryImpl::OnDlcLoadFinish,
-                           base::Unretained(this), std::move(callback)));
+      uuid,
+      base::BindOnce(&ModelFactoryImpl::OnDlcLoadFinish, base::Unretained(this),
+                     std::move(callback), std::move(timer)));
 }
 
 void ModelFactoryImpl::OnDlcLoadFinish(
     BuildRunnerFromUuidCallback callback,
+    odml::PerformanceTimer::Ptr timer,
     std::optional<struct ModelInfo> model_info) {
   if (!model_info.has_value()) {
     // Load failed, and DlcModelLoader should emit the relevant messages.
     std::move(callback).Run(nullptr);
     return;
   }
+
+  metrics_->SendTimeToUMA(
+      /*name=*/kLoadDlcTimeHistogramName, /*sample=*/timer->GetDuration(),
+      /*min=*/base::Milliseconds(1), /*max=*/base::Minutes(30), /*buckets=*/50);
 
   std::unique_ptr<ModelRunner> runner =
       BuildRunnerFromInfo(std::move(*model_info));

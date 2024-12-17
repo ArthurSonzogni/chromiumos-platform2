@@ -12,6 +12,9 @@
 
 namespace embedding_model {
 
+constexpr char kLoadModelTimeHistogramName[] =
+    "OnDeviceModel.Embedding.LoadModelTime";
+
 ModelReference::ModelReference(base::WeakPtr<ModelHolder> holder)
     : holder_(holder) {}
 
@@ -42,8 +45,11 @@ std::string ModelReference::GetModelVersion() {
   }
 }
 
-ModelHolder::ModelHolder(std::unique_ptr<ModelRunner> model_runner)
-    : model_runner_(std::move(model_runner)), state_(HolderState::NOT_LOADED) {}
+ModelHolder::ModelHolder(std::unique_ptr<ModelRunner> model_runner,
+                         const raw_ref<MetricsLibraryInterface> metrics)
+    : model_runner_(std::move(model_runner)),
+      state_(HolderState::NOT_LOADED),
+      metrics_(metrics) {}
 
 std::unique_ptr<ModelReference> ModelHolder::Acquire() {
   std::unique_ptr<ModelReference> result =
@@ -74,15 +80,21 @@ void ModelHolder::TriggerLoad() {
   }
 
   state_ = HolderState::LOADING;
-  model_runner_->Load(
-      base::PassKey<ModelHolder>(),
-      base::BindOnce(&ModelHolder::OnLoadFinish, base::Unretained(this)));
+  auto timer = odml::PerformanceTimer::Create();
+  model_runner_->Load(base::PassKey<ModelHolder>(),
+                      base::BindOnce(&ModelHolder::OnLoadFinish,
+                                     base::Unretained(this), std::move(timer)));
 }
 
-void ModelHolder::OnLoadFinish(bool success) {
+void ModelHolder::OnLoadFinish(odml::PerformanceTimer::Ptr timer,
+                               bool success) {
   CHECK_EQ(state_, HolderState::LOADING);
   if (success) {
     state_ = HolderState::LOADED;
+    metrics_->SendTimeToUMA(/*name=*/kLoadModelTimeHistogramName,
+                            /*sample=*/timer->GetDuration(),
+                            /*min=*/base::Milliseconds(1),
+                            /*max=*/base::Seconds(20), /*buckets=*/50);
   } else {
     state_ = HolderState::FAILED;
   }

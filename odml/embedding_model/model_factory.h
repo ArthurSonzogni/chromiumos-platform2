@@ -13,6 +13,7 @@
 #include "odml/embedding_model/dlc_model_loader.h"
 #include "odml/embedding_model/model_runner.h"
 #include "odml/utils/odml_shim_loader.h"
+#include "odml/utils/performance_timer.h"
 
 namespace embedding_model {
 
@@ -51,6 +52,7 @@ class ModelFactoryImpl : public ModelFactory {
 
  private:
   void OnDlcLoadFinish(BuildRunnerFromUuidCallback callback,
+                       odml::PerformanceTimer::Ptr timer,
                        std::optional<struct ModelInfo> model_info);
 
   DlcModelLoader dlc_model_loader_;
