@@ -7,7 +7,7 @@
 // Some of this is copied / adapted from implementations in os_install_service.
 
 use log::{debug, info};
-use std::fmt;
+use std::fmt::{self, Write};
 use std::io;
 use std::process::{Command, ExitStatus, Output};
 
@@ -54,15 +54,55 @@ impl std::error::Error for ProcessError {}
 /// at compile time, so we can just hold a reference to a static str for those.
 pub type Environment = std::collections::BTreeMap<&'static str, std::ffi::OsString>;
 
-/// Format the command as a string for logging.
+/// Format the command as a string for logging and error messages.
 ///
-/// There's no good built-in method for this, so use the debug format
-/// with quotes removed. The debug format puts quotes around the
-/// program and each argument, e.g. `"cmd" "arg1" "arg2"`. Removing
-/// all quotes isn't correct in all cases, but good enough for logging
-/// purposes.
+/// The output includes only the program and args.
+///
+/// Env vars are not included because because `chromeos-install.sh` is
+/// run with a very large number of env vars. Logging all of that on a
+/// single line may exceed the rsyslog line length limit, and also makes
+/// error messages unnecessarily verbose.
 fn command_to_string(cmd: &Command) -> String {
-    format!("{:?}", cmd).replace('"', "")
+    let mut output = cmd.get_program().to_string_lossy().into_owned();
+
+    for arg in cmd.get_args() {
+        // OK to unwrap: writing into a string cannot fail.
+        write!(output, " {}", arg.to_string_lossy()).unwrap();
+    }
+
+    output
+}
+
+/// Format a command's environment variables.
+///
+/// Each variable is formatted as `NAME="VALUE"`. If there are enough
+/// variables that the line length exceeds 80, the output is split into
+/// multiple lines. If an individual variable exceeds the length limit,
+/// it is placed on its own line.
+fn command_env_to_lines(cmd: &Command) -> Vec<String> {
+    let soft_line_limit = 80;
+
+    let mut lines: Vec<String> = Vec::new();
+    for (k, v) in cmd.get_envs() {
+        let s = format!(
+            "{}=\"{}\"",
+            k.to_string_lossy(),
+            v.map(|v| v.to_string_lossy()).unwrap_or_default()
+        );
+
+        if let Some(line) = lines.last_mut() {
+            if line.len() + s.len() < soft_line_limit {
+                // OK to unwrap: writing into a string cannot fail.
+                write!(line, " {s}").unwrap();
+            } else {
+                lines.push(s);
+            }
+        } else {
+            lines.push(s);
+        }
+    }
+
+    lines
 }
 
 /// Run a command with our standard logging.
@@ -71,6 +111,9 @@ fn command_to_string(cmd: &Command) -> String {
 pub fn log_and_run_command(mut command: Command) -> Result<(), ProcessError> {
     let cmd_str = command_to_string(&command);
     info!("running command: {}", cmd_str);
+    for line in command_env_to_lines(&command) {
+        info!("command env: {}", line);
+    }
 
     let status = match command.status() {
         Ok(status) => status,
@@ -98,6 +141,9 @@ pub fn log_and_run_command(mut command: Command) -> Result<(), ProcessError> {
 fn get_command_output(mut command: Command) -> Result<Vec<u8>, ProcessError> {
     let cmd_str = command_to_string(&command);
     debug!("running command: {}", cmd_str);
+    for line in command_env_to_lines(&command) {
+        debug!("command env: {}", line);
+    }
 
     let output = match command.output() {
         Ok(output) => output,
@@ -156,8 +202,33 @@ mod tests {
     #[test]
     fn test_command_to_string() {
         let mut cmd = Command::new("myCmd");
+        cmd.env("FOO", "BAR");
         cmd.args(["arg1", "arg2"]);
         assert_eq!(command_to_string(&cmd), "myCmd arg1 arg2");
+    }
+
+    #[test]
+    fn test_command_env_to_lines() {
+        let mut cmd = Command::new("myCmd");
+        assert!(command_env_to_lines(&cmd).is_empty());
+
+        cmd.env("VAR1", "val1");
+        assert_eq!(command_env_to_lines(&cmd), ["VAR1=\"val1\""]);
+
+        cmd.env("VAR2", "val2");
+        assert_eq!(command_env_to_lines(&cmd), ["VAR1=\"val1\" VAR2=\"val2\""]);
+
+        cmd.env(
+            "VAR3_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG",
+            "VALUE",
+        );
+        assert_eq!(
+            command_env_to_lines(&cmd),
+            [
+                "VAR1=\"val1\" VAR2=\"val2\"",
+                "VAR3_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG_LONG=\"VALUE\""
+            ]
+        );
     }
 
     // On ARM boards this test fails with an ExitNonZero instead of LaunchProcess.
