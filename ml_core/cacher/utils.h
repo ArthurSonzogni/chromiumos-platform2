@@ -15,6 +15,7 @@ BRILLO_EXPORT base::FilePath PrebuiltOpenCLCacheDir(
     const base::FilePath& dlc_root_path);
 BRILLO_EXPORT bool DirIsEmpty(const base::FilePath& source_dir);
 BRILLO_EXPORT bool NpuIsReady();
+BRILLO_EXPORT bool OpenCLIsSupported();
 
 // Only used in ml_core/cacher, no need to export.
 void ClearCacheDirectory(const base::FilePath& target_dir);

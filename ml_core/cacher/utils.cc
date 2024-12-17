@@ -5,9 +5,11 @@
 #include "ml_core/cacher/utils.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <string>
 #include <string_view>
 
+#include <base/containers/fixed_flat_set.h>
 #include <base/files/dir_reader_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -20,6 +22,10 @@ const char kPrebuiltOpenCLCacheDir[] = "cl_cache";
 constexpr size_t kProcModulesMaxFileSize = 65536;
 const base::FilePath kProcModulesPath("/proc/modules");
 constexpr std::string_view kNpuModuleNameList[] = {"intel_vpu", "mtk_apusys"};
+constexpr std::string_view kOpenCLLibPaths[] = {
+    "/usr/lib64/libOpenCL.so",
+    "/usr/lib/libOpenCL.so",
+};
 }  // namespace
 
 namespace cros {
@@ -64,6 +70,14 @@ bool NpuIsReady() {
         });
   }();
   return npu_is_ready;
+}
+
+bool OpenCLIsSupported() {
+  static const bool is_supported =
+      std::ranges::any_of(kOpenCLLibPaths, [](const std::string_view path) {
+        return std::filesystem::exists(path);
+      });
+  return is_supported;
 }
 
 // Deletes all the files in the cache in |target_dir|.

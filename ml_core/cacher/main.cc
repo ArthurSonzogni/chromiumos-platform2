@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
   bool update_failed = false;
 
   // Update OpenCL Cache.
-  {
+  if (cros::OpenCLIsSupported()) {
     LOG(INFO) << "Prepare OpenCL cache";
     auto config = cros::EffectsConfig{
         .relight_enabled = true,
