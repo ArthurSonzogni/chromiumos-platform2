@@ -12,7 +12,7 @@ group("all") {
     ":ml_core_cacher",
   ]
 
-  if (use.intel_openvino_delegate) {
+  if (use.intel_openvino_delegate || use.mtk_neuron_delegate) {
     deps += [ ":install_stable_delegate_settings" ]
   }
 
@@ -37,7 +37,10 @@ executable("ml_core_cacher") {
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]
-  defines = [ "USE_INTEL_OPENVINO_DELEGATE=${use.intel_openvino_delegate}" ]
+  defines = [
+    "USE_INTEL_OPENVINO_DELEGATE=${use.intel_openvino_delegate}",
+    "USE_MTK_NEURON_DELEGATE=${use.mtk_neuron_delegate}",
+  ]
   deps = [
     "//ml_core:libcros_ml_core",
     "//ml_core/dlc:dlc_client",
@@ -63,6 +66,12 @@ install_config("install_seccomp") {
 }
 
 install_config("install_stable_delegate_settings") {
-  sources = [ "cacher_stable_delegate_settings.json" ]
+  sources = []
+  if (use.mtk_neuron_delegate) {
+    sources += [ "cacher_mtk_neuron_delegate_settings.json" ]
+  } else if (use.intel_openvino_delegate) {
+    sources += [ "cacher_intel_openvino_delegate_settings.json" ]
+  }
+  outputs = [ "cacher_stable_delegate_settings.json" ]
   install_path = "/etc/ml_core"
 }

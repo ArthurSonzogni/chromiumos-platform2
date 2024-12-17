@@ -24,7 +24,7 @@ namespace {
 const char kForceEnableEffectsPath[] = "/run/camera/force_enable_effects";
 // TODO(imranziad): Evaluate the risks of having a fixed temp directory.
 const char kTempCacheDir[] = "/tmp/ml_core_cache";
-#if USE_INTEL_OPENVINO_DELEGATE
+#if USE_INTEL_OPENVINO_DELEGATE || USE_MTK_NEURON_DELEGATE
 // Only used as ml-core-cacher's internal delegate settings file.
 constexpr char kStableDelegateSettingsFile[] =
     "/etc/ml_core/cacher_stable_delegate_settings.json";
@@ -120,10 +120,10 @@ int main(int argc, char* argv[]) {
     }
   }
 
-#if USE_INTEL_OPENVINO_DELEGATE
-  // Update OpenVINO Cache.
+#if USE_INTEL_OPENVINO_DELEGATE || USE_MTK_NEURON_DELEGATE
+  // Update NPU Cache.
   if (cros::NpuIsReady()) {
-    LOG(INFO) << "Prepare OpenVINO cache";
+    LOG(INFO) << "Prepare NPU cache";
     auto config = cros::EffectsConfig{
         .relight_enabled = true,
         .blur_enabled = true,
@@ -140,11 +140,11 @@ int main(int argc, char* argv[]) {
 
     if (!UpdateCache(dlc_loader.GetDlcRootPath(), config,
                      base::FilePath(cros::kStableDelegateCachingDir))) {
-      LOG(ERROR) << "Failed to update OpenVINO Cache";
+      LOG(ERROR) << "Failed to update NPU cache";
       update_failed = true;
     }
   } else {
-    LOG(ERROR) << "NPU is not ready, skip OpenVINO caching";
+    LOG(ERROR) << "NPU is not ready, skip NPU caching";
   }
 #endif
 

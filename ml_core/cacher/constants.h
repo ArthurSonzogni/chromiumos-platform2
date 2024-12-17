@@ -7,7 +7,7 @@
 
 namespace cros {
 constexpr char kOpenCLCachingDir[] = "/var/lib/ml_core/opencl_cache";
-#if USE_INTEL_OPENVINO_DELEGATE
+#if USE_INTEL_OPENVINO_DELEGATE || USE_MTK_NEURON_DELEGATE
 constexpr char kStableDelegateCachingDir[] =
     "/var/lib/ml_core/stable_delegate_cache";
 #endif

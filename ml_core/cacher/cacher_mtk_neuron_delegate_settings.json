@@ -11,6 +11,6 @@
     "inference_deadline_ms": 33
   },
   "compilation_caching_settings": {
-    "cache_dir": "/var/lib/ml_core/stable_delegate_cache"
+    "cache_dir": "/tmp/ml_core_cache"
   }
 }
