@@ -50,7 +50,7 @@ bool DirIsEmpty(const base::FilePath& source_dir) {
   return is_empty;
 }
 
-bool NPUIsReady() {
+bool NpuIsReady() {
   // Cache the value.
   static const bool npu_is_ready = [] {
     std::string contents;

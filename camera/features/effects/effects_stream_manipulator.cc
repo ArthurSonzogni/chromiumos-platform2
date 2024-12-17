@@ -1036,7 +1036,7 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
   if ((default_segmentation_delegate_ == Delegate::kStable ||
        default_relighting_delegate_ == Delegate::kStable ||
        default_retouch_delegate_ == Delegate::kStable)) {
-    if (cros::NPUIsReady()) {
+    if (cros::NpuIsReady()) {
       metrics_.RecordNpuToGpuFallback(false);
     } else {
       LOGF(ERROR) << "NPU is not ready, setting GPU as default delegate!";

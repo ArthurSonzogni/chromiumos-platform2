@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
 
 #if USE_INTEL_OPENVINO_DELEGATE
   // Update OpenVINO Cache.
-  if (cros::NPUIsReady()) {
+  if (cros::NpuIsReady()) {
     LOG(INFO) << "Prepare OpenVINO cache";
     auto config = cros::EffectsConfig{
         .relight_enabled = true,
