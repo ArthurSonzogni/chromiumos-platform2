@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/files/scoped_temp_file.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
@@ -20,6 +21,7 @@
 
 #include "odml/coral/metrics.h"
 #include "odml/coral/test_util.h"
+#include "odml/cros_safety/safety_service_manager_mock.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/session_state_manager/fake_session_state_manager.h"
@@ -149,8 +151,13 @@ class EmbeddingEngineTest : public testing::Test {
     // ownership of |embedding_database_factory_| is transferred to |engine_|.
     engine_ = std::make_unique<EmbeddingEngine>(
         raw_ref(coral_metrics_), raw_ref(model_service_),
+        raw_ref(safety_service_manager_),
         base::WrapUnique(embedding_database_factory_),
         session_state_manager_.get());
+
+    EXPECT_CALL(safety_service_manager_, ClassifyTextSafety)
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<2>(
+            cros_safety::mojom::SafetyClassifierVerdict::kPass));
   }
 
  protected:
@@ -211,6 +218,7 @@ class EmbeddingEngineTest : public testing::Test {
   FakeEmbeddingDatabaseFactory* embedding_database_factory_;
 
   std::unique_ptr<odml::FakeSessionStateManager> session_state_manager_;
+  cros_safety::SafetyServiceManagerMock safety_service_manager_;
 
   std::unique_ptr<EmbeddingEngine> engine_;
 };
@@ -375,7 +383,8 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
       GetFakeEmbeddingResponse().embeddings;
   std::vector<EmbeddingEntry> fake_embedding_entries;
   for (const auto& fake_embedding : fake_embeddings) {
-    fake_embedding_entries.push_back(EmbeddingEntry(fake_embedding));
+    fake_embedding_entries.push_back(
+        EmbeddingEntry{.embedding = fake_embedding});
   }
   std::vector<std::string> cache_keys;
   for (const mojom::EntityPtr& entity : request->entities) {

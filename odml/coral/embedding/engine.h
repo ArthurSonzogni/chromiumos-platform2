@@ -16,6 +16,7 @@
 #include "odml/coral/common.h"
 #include "odml/coral/embedding/embedding_database.h"
 #include "odml/coral/metrics.h"
+#include "odml/cros_safety/safety_service_manager.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -67,6 +68,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
       raw_ref<CoralMetrics> metrics,
       raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
           embedding_service,
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
       std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory,
       odml::SessionStateManagerInterface* session_state_manager);
   ~EmbeddingEngine() = default;
@@ -82,6 +84,13 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
   void OnUserLoggedOut() override;
 
  private:
+  struct ProcessingParams : public MoveOnly {
+    mojom::GroupRequestPtr request;
+    std::vector<std::string> prompts;
+    EmbeddingResponse response;
+    EmbeddingCallback callback;
+  };
+
   void EnsureModelLoaded(base::OnceClosure callback);
   void OnModelLoadResult(base::OnceClosure callback,
                          PerformanceTimer::Ptr timer,
@@ -89,18 +98,25 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
   void OnModelVersionLoaded(base::OnceClosure callback,
                             const std::string& version);
   void DoProcess(mojom::GroupRequestPtr request, EmbeddingCallback callback);
-  void ProcessEachPrompt(mojom::GroupRequestPtr request,
-                         std::vector<std::string> prompts,
-                         EmbeddingResponse response,
-                         EmbeddingCallback callback);
+  void ProcessEachPrompt(ProcessingParams params);
+  void OnClassifyEntitySafetyDone(
+      ProcessingParams params,
+      EmbeddingEntry entry,
+      cros_safety::mojom::SafetyClassifierVerdict verdict);
+  void CheckEntrySafetyResult(ProcessingParams params, EmbeddingEntry entry);
+  void CheckEntryEmbedding(ProcessingParams params, EmbeddingEntry entry);
   void OnModelOutput(
-      mojom::GroupRequestPtr request,
-      std::vector<std::string> prompts,
-      EmbeddingResponse response,
-      EmbeddingCallback callback,
+      ProcessingParams params,
+      EmbeddingEntry entry,
       PerformanceTimer::Ptr timer,
       embedding_model::mojom::OnDeviceEmbeddingModelInferenceError error,
       const std::vector<float>& embedding);
+
+  EmbeddingEntry GetEmbeddingEntry(const mojom::Entity& entity,
+                                   const std::string& prompt);
+  void PutEmbeddingEntry(const mojom::Entity& entity,
+                         const std::string& prompt,
+                         EmbeddingEntry entry);
 
   void SyncDatabase();
 
@@ -116,6 +132,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
 
   const raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
       embedding_service_;
+  const raw_ref<cros_safety::SafetyServiceManager> safety_service_manager_;
   // `model_` should only be used after a successful LoadModelResult is received
   // because on device service only binds the model receiver when model loading
   // succeeds.

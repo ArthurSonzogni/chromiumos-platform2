@@ -21,6 +21,7 @@
 #include "odml/coral/embedding/engine.h"
 #include "odml/coral/metrics.h"
 #include "odml/coral/title_generation/engine.h"
+#include "odml/cros_safety/safety_service_manager.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
@@ -30,12 +31,14 @@ namespace coral {
 
 class CoralService : public mojom::CoralService {
  public:
-  CoralService(raw_ref<MetricsLibraryInterface> metrics,
-               raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
-                   on_device_model_service,
-               raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
-                   embedding_model_service,
-               odml::SessionStateManagerInterface* session_state_manager);
+  CoralService(
+      raw_ref<MetricsLibraryInterface> metrics,
+      raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
+          on_device_model_service,
+      raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
+          embedding_model_service,
+      odml::SessionStateManagerInterface* session_state_manager,
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager);
 
   // For test, where engine objects are passed in directly.
   CoralService(

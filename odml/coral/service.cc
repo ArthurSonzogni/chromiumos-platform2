@@ -30,11 +30,13 @@ CoralService::CoralService(
         on_device_model_service,
     raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
         embedding_model_service,
-    odml::SessionStateManagerInterface* session_state_manager)
+    odml::SessionStateManagerInterface* session_state_manager,
+    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
     : metrics_(metrics),
       embedding_engine_(std::make_unique<EmbeddingEngine>(
           raw_ref(metrics_),
           embedding_model_service,
+          safety_service_manager,
           std::make_unique<EmbeddingDatabaseFactory>(),
           session_state_manager)),
       clustering_engine_(std::make_unique<ClusteringEngine>(

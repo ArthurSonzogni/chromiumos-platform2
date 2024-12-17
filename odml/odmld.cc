@@ -128,12 +128,14 @@ class CoralServiceProviderImpl
           on_device_model_service,
       raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
           embedding_model_service,
-      odml::SessionStateManagerInterface* session_state_manager)
+      odml::SessionStateManagerInterface* session_state_manager,
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
       : receiver_(this),
         service_impl_(metrics,
                       on_device_model_service,
                       embedding_model_service,
-                      session_state_manager) {
+                      session_state_manager,
+                      safety_service_manager) {
     service_manager->Register(chromeos::mojo_services::kCrosCoralService,
                               receiver_.BindNewPipeAndPassRemote());
   }
@@ -245,7 +247,8 @@ class Daemon : public brillo::DBusDaemon {
         raw_ref(metrics_), service_manager_,
         on_device_model_service_provider_impl_->service(),
         embedding_model_service_provider_impl_->service(),
-        session_state_manager_.get());
+        session_state_manager_.get(),
+        raw_ref(*safety_service_manager_impl_.get()));
 
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
         raw_ref(metrics_), raw_ref(shim_loader_), service_manager_,

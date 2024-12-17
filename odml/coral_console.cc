@@ -193,6 +193,7 @@ int main(int argc, char** argv) {
   auto group_request = coral::mojom::GroupRequest::New();
 
   group_request->embedding_options = coral::mojom::EmbeddingOptions::New();
+  group_request->embedding_options->check_safety_filter = true;
   group_request->clustering_options = coral::mojom::ClusteringOptions::New();
   group_request->clustering_options->min_items_in_cluster = kMinItemsInGroup;
   group_request->clustering_options->max_items_in_cluster = kMaxItemsInGroup;

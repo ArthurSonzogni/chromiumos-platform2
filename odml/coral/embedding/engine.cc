@@ -5,9 +5,11 @@
 #include "odml/coral/embedding/engine.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
+#include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/hash/hash.h>
@@ -109,10 +111,12 @@ EmbeddingEngine::EmbeddingEngine(
     raw_ref<CoralMetrics> metrics,
     raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
         embedding_service,
+    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
     std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory,
     odml::SessionStateManagerInterface* session_state_manager)
     : metrics_(metrics),
       embedding_service_(embedding_service),
+      safety_service_manager_(safety_service_manager),
       embedding_database_factory_(std::move(embedding_database_factory)) {
   if (session_state_manager) {
     session_state_manager->AddObserver(this);
@@ -238,62 +242,127 @@ void EmbeddingEngine::DoProcess(mojom::GroupRequestPtr request,
     }
     prompts.push_back(std::move(prompt));
   }
-  ProcessEachPrompt(std::move(request), std::move(prompts), EmbeddingResponse(),
-                    std::move(callback));
+  ProcessEachPrompt(ProcessingParams{
+      .request = std::move(request),
+      .prompts = std::move(prompts),
+      .response = EmbeddingResponse(),
+      .callback = std::move(callback),
+  });
 }
 
-void EmbeddingEngine::ProcessEachPrompt(mojom::GroupRequestPtr request,
-                                        std::vector<std::string> prompts,
-                                        EmbeddingResponse response,
-                                        EmbeddingCallback callback) {
-  size_t index = response.embeddings.size();
+void EmbeddingEngine::ProcessEachPrompt(ProcessingParams params) {
+  size_t index = params.response.embeddings.size();
   // > covers the index out-of-range case although it shouldn't happen.
-  if (index >= prompts.size()) {
-    std::move(callback).Run(std::move(request), std::move(response));
+  LOG(ERROR) << "index: " << index;
+  if (index >= params.prompts.size()) {
+    std::move(params.callback)
+        .Run(std::move(params.request), std::move(params.response));
     return;
   }
-  // |prmopts| could be used in OnModelOutput() when computing the cache key.
-  // So do not consume it.
-  const std::string& prompt = prompts[index];
 
-  // Try getting the embedding from the cache database.
-  if (embedding_database_) {
-    std::optional<std::string> cache_key = internal::EntityToCacheKey(
-        *request->entities[index], prompt, model_version_);
-    if (cache_key.has_value()) {
-      EmbeddingEntry embedding_entry = embedding_database_->Get(*cache_key);
-      if (!embedding_entry.embedding.empty()) {
-        if (IsFullGroupRequest(request)) {
-          metrics_->SendEmbeddingCacheHit(true);
-        }
-        response.embeddings.push_back(std::move(embedding_entry.embedding));
-        ProcessEachPrompt(std::move(request), std::move(prompts),
-                          std::move(response), std::move(callback));
-        return;
-      }
-    }
+  EmbeddingEntry entry = GetEmbeddingEntry(*params.request->entities[index],
+                                           params.prompts[index]);
+
+  // If safety check is not required, directly check embedding.
+  if (!params.request->embedding_options->check_safety_filter.value_or(false)) {
+    CheckEntryEmbedding(std::move(params), std::move(entry));
+    return;
   }
-  if (IsFullGroupRequest(request)) {
+
+  if (entry.safety_verdict.has_value()) {
+    if (IsFullGroupRequest(params.request)) {
+      metrics_->SendSafetyVerdictCacheHit(true);
+    }
+    CheckEntrySafetyResult(std::move(params), std::move(entry));
+    return;
+  }
+
+  if (IsFullGroupRequest(params.request)) {
+    metrics_->SendSafetyVerdictCacheHit(false);
+  }
+  // TODO(b/)379964585) Figure out what is the best format for safety check.
+  std::string entity_string =
+      internal::EntityToEmbeddingPrompt(*params.request->entities[index]);
+
+  auto on_classify_entity_safety_done = base::BindOnce(
+      &EmbeddingEngine::OnClassifyEntitySafetyDone,
+      weak_ptr_factory_.GetWeakPtr(), std::move(params), std::move(entry));
+  safety_service_manager_->ClassifyTextSafety(
+      cros_safety::mojom::SafetyRuleset::kGeneric, entity_string,
+      std::move(on_classify_entity_safety_done));
+}
+
+void EmbeddingEngine::OnClassifyEntitySafetyDone(
+    ProcessingParams params,
+    EmbeddingEntry entry,
+    cros_safety::mojom::SafetyClassifierVerdict verdict) {
+  switch (verdict) {
+    case cros_safety::mojom::SafetyClassifierVerdict::kPass:
+      entry.safety_verdict = true;
+      break;
+    case cros_safety::mojom::SafetyClassifierVerdict::kFailedText:
+      // Only set it false when the entity is explicitly rejected from the
+      // filter.
+      entry.safety_verdict = false;
+      break;
+    default:
+      // If some other error encountered during safety filtering (e.g.
+      // SafetyService isn't ready), don't save the result to the database, so
+      // that it can be retried next time.
+      break;
+  }
+
+  // Valid safety result is fetched, update database.
+  if (entry.safety_verdict.has_value()) {
+    size_t index = params.response.embeddings.size();
+    PutEmbeddingEntry(*params.request->entities[index], params.prompts[index],
+                      entry);
+  }
+
+  CheckEntrySafetyResult(std::move(params), std::move(entry));
+}
+
+void EmbeddingEngine::CheckEntrySafetyResult(ProcessingParams params,
+                                             EmbeddingEntry entry) {
+  // Check doesn't pass. Don't need to get embeddings.
+  if (!entry.safety_verdict.value_or(false)) {
+    params.response.embeddings.push_back(Embedding());
+    ProcessEachPrompt(std::move(params));
+    return;
+  }
+  CheckEntryEmbedding(std::move(params), entry);
+}
+
+void EmbeddingEngine::CheckEntryEmbedding(ProcessingParams params,
+                                          EmbeddingEntry entry) {
+  if (!entry.embedding.empty()) {
+    if (IsFullGroupRequest(params.request)) {
+      metrics_->SendEmbeddingCacheHit(true);
+    }
+    params.response.embeddings.push_back(entry.embedding);
+    ProcessEachPrompt(std::move(params));
+    return;
+  }
+
+  if (IsFullGroupRequest(params.request)) {
     metrics_->SendEmbeddingCacheHit(false);
   }
 
+  size_t index = params.response.embeddings.size();
   auto timer = PerformanceTimer::Create();
-  auto on_model_output = base::BindOnce(
-      &EmbeddingEngine::OnModelOutput, weak_ptr_factory_.GetWeakPtr(),
-      std::move(request), std::move(prompts), std::move(response),
-      std::move(callback), std::move(timer));
   auto embed_request = embedding_model::mojom::GenerateEmbeddingRequest::New();
-  embed_request->content = prompt;
+  embed_request->content = params.prompts[index];
   embed_request->task_type = embedding_model::mojom::TaskType::kClustering;
   embed_request->truncate_input = true;
+  auto on_model_output = base::BindOnce(
+      &EmbeddingEngine::OnModelOutput, weak_ptr_factory_.GetWeakPtr(),
+      std::move(params), std::move(entry), std::move(timer));
   model_->GenerateEmbedding(std::move(embed_request),
                             std::move(on_model_output));
 }
 
-void EmbeddingEngine::OnModelOutput(mojom::GroupRequestPtr request,
-                                    std::vector<std::string> prompts,
-                                    EmbeddingResponse response,
-                                    EmbeddingCallback callback,
+void EmbeddingEngine::OnModelOutput(ProcessingParams params,
+                                    EmbeddingEntry entry,
                                     PerformanceTimer::Ptr timer,
                                     OnDeviceEmbeddingModelInferenceError error,
                                     const std::vector<float>& embedding) {
@@ -302,27 +371,46 @@ void EmbeddingEngine::OnModelOutput(mojom::GroupRequestPtr request,
   if (error != OnDeviceEmbeddingModelInferenceError::kSuccess) {
     LOG(ERROR) << "Model execution failed with result: "
                << static_cast<int>(error);
-    std::move(callback).Run(
-        std::move(request),
-        base::unexpected(CoralError::kModelExecutionFailed));
+    std::move(params.callback)
+        .Run(std::move(params.request),
+             base::unexpected(CoralError::kModelExecutionFailed));
     return;
   }
   metrics_->SendGenerateEmbeddingLatency(timer->GetDuration());
 
   // Cache the embedding.
-  EmbeddingEntry embedding_entry{embedding};
+  entry.embedding = embedding;
+  size_t index = params.response.embeddings.size();
+  PutEmbeddingEntry(*params.request->entities[index], params.prompts[index],
+                    entry);
+
+  params.response.embeddings.push_back(embedding);
+  ProcessEachPrompt(std::move(params));
+}
+
+EmbeddingEntry EmbeddingEngine::GetEmbeddingEntry(const mojom::Entity& entity,
+                                                  const std::string& prompt) {
   if (embedding_database_) {
-    size_t index = response.embeddings.size();
-    std::optional<std::string> cache_key = internal::EntityToCacheKey(
-        *request->entities[index], prompts[index], model_version_);
+    std::optional<std::string> cache_key =
+        internal::EntityToCacheKey(entity, prompt, model_version_);
     if (cache_key.has_value()) {
-      embedding_database_->Put(*cache_key, embedding_entry);
+      return embedding_database_->Get(*cache_key);
     }
   }
+  return EmbeddingEntry{.embedding = Embedding(),
+                        .safety_verdict = std::nullopt};
+}
 
-  response.embeddings.push_back(embedding_entry.embedding);
-  ProcessEachPrompt(std::move(request), std::move(prompts), std::move(response),
-                    std::move(callback));
+void EmbeddingEngine::PutEmbeddingEntry(const mojom::Entity& entity,
+                                        const std::string& prompt,
+                                        EmbeddingEntry entry) {
+  if (embedding_database_) {
+    std::optional<std::string> cache_key =
+        internal::EntityToCacheKey(entity, prompt, model_version_);
+    if (cache_key.has_value()) {
+      embedding_database_->Put(*cache_key, std::move(entry));
+    }
+  }
 }
 
 void EmbeddingEngine::SyncDatabase() {

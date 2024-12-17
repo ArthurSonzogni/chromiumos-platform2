@@ -14,6 +14,7 @@
 #include "odml/coral/embedding/engine.h"
 #include "odml/coral/test_util.h"
 #include "odml/coral/title_generation/engine.h"
+#include "odml/cros_safety/safety_service_manager_mock.h"
 #include "odml/embedding_model/embedding_model_service.h"
 #include "odml/embedding_model/model_factory_mock.h"
 #include "odml/mojom/coral_service.mojom.h"
@@ -192,10 +193,12 @@ TEST(CoralServiceConstructTest, Construct) {
   MetricsLibraryMock metrics;
   embedding_model::ModelFactoryMock embedding_model_factory;
   on_device_model::MockOnDeviceModelService model_service;
+  cros_safety::SafetyServiceManagerMock safety_service_manager;
   embedding_model::EmbeddingModelService embedding_service(
       (raw_ref(metrics)), raw_ref(embedding_model_factory));
   CoralService service((raw_ref(metrics)), (raw_ref(model_service)),
-                       (raw_ref(embedding_service)), nullptr);
+                       (raw_ref(embedding_service)), nullptr,
+                       raw_ref(safety_service_manager));
 }
 
 TEST_F(CoralServiceTest, GroupSuccess) {
