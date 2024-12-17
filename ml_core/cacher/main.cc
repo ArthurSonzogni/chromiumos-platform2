@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
                   sizeof(config.stable_delegate_settings_file));
 
     if (!UpdateCache(dlc_loader.GetDlcRootPath(), config,
-                     base::FilePath(cros::kOpenVinoCachingDir))) {
+                     base::FilePath(cros::kStableDelegateCachingDir))) {
       LOG(ERROR) << "Failed to update OpenVINO Cache";
       update_failed = true;
     }

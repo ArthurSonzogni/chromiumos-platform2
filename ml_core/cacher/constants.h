@@ -8,7 +8,8 @@
 namespace cros {
 constexpr char kOpenCLCachingDir[] = "/var/lib/ml_core/opencl_cache";
 #if USE_INTEL_OPENVINO_DELEGATE
-constexpr char kOpenVinoCachingDir[] = "/var/lib/ml_core/openvino_cache";
+constexpr char kStableDelegateCachingDir[] =
+    "/var/lib/ml_core/stable_delegate_cache";
 #endif
 }  // namespace cros
 
