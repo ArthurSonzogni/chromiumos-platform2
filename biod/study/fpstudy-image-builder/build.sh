@@ -43,7 +43,6 @@ cd "${ROOT}"
 
 REPO_OPTS=( )
 REPO_OPTS+=( -u https://chrome-internal.googlesource.com/chromeos/manifest-internal.git )
-#REPO_OPTS+=( --repo-url https://chromium.googlesource.com/external/repo.git )
 if [[ -n "${REF}" && -d "${REF}" ]]; then
 	REPO_OPTS+=( --reference "${REF}" )
 fi
