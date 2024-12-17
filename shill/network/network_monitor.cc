@@ -206,8 +206,9 @@ void NetworkMonitor::SetCapportURL(
   }
 
   if (!capport_proxy_) {
-    capport_proxy_ = capport_proxy_factory_->Create(
-        metrics_, patchpanel_client_, interface_, capport_url, dns_list);
+    capport_proxy_ =
+        capport_proxy_factory_->Create(metrics_, patchpanel_client_, interface_,
+                                       capport_url, dns_list, logging_tag_);
   }
 }
 
@@ -361,7 +362,7 @@ void NetworkMonitor::StartIPv4ConnectionDiagnostics(
   ipv4_connection_diagnostics_ = connection_diagnostics_factory_->Create(
       interface_, interface_index_, net_base::IPFamily::kIPv4,
       net_base::IPAddress(*network_config.ipv4_gateway),
-      network_config.dns_servers, dispatcher_);
+      network_config.dns_servers, logging_tag_, dispatcher_);
   if (!ipv4_connection_diagnostics_->Start(
           probing_configuration_.portal_http_url)) {
     ipv4_connection_diagnostics_.reset();
@@ -399,7 +400,7 @@ void NetworkMonitor::StartIPv6ConnectionDiagnostics(
   ipv6_connection_diagnostics_ = connection_diagnostics_factory_->Create(
       interface_, interface_index_, net_base::IPFamily::kIPv6,
       net_base::IPAddress(*network_config.ipv6_gateway),
-      network_config.dns_servers, dispatcher_);
+      network_config.dns_servers, logging_tag_, dispatcher_);
   if (!ipv6_connection_diagnostics_->Start(
           probing_configuration_.portal_http_url)) {
     ipv6_connection_diagnostics_.reset();

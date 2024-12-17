@@ -5,15 +5,15 @@
 #ifndef SHILL_NETWORK_MOCK_CAPPORT_PROXY_H_
 #define SHILL_NETWORK_MOCK_CAPPORT_PROXY_H_
 
-#include "shill/network/capport_proxy.h"
-
 #include <memory>
+#include <string_view>
 
 #include <base/containers/span.h>
 #include <chromeos/net-base/ip_address.h>
 #include <gmock/gmock.h>
 
 #include "shill/metrics.h"
+#include "shill/network/capport_proxy.h"
 
 namespace shill {
 
@@ -39,6 +39,7 @@ class MockCapportProxyFactory : public CapportProxyFactory {
                std::string_view,
                const net_base::HttpUrl&,
                base::span<const net_base::IPAddress>,
+               std::string_view,
                std::shared_ptr<brillo::http::Transport>,
                base::TimeDelta transport_timeout),
               (override));

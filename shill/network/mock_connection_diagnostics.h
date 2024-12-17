@@ -39,6 +39,7 @@ class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
                net_base::IPFamily ip_family,
                const net_base::IPAddress& gateway,
                const std::vector<net_base::IPAddress>& dns_list,
+               std::string_view logging_tag,
                EventDispatcher* dispatcher),
               (override));
 };

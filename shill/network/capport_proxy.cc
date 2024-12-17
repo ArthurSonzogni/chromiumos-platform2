@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -37,7 +38,7 @@ constexpr char kBytesRemainingKey[] = "bytes-remaining";
 }  // namespace
 
 std::optional<CapportStatus> CapportStatus::ParseFromJson(
-    std::string_view json_str) {
+    std::string_view json_str, std::string_view logging_tag) {
   const std::optional<base::Value::Dict> dict =
       base::JSONReader::ReadDict(json_str);
   if (!dict.has_value()) {
@@ -50,7 +51,8 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
       is_captive.has_value()) {
     status->is_captive = *is_captive;
   } else {
-    LOG(WARNING) << "The mandatory field `" << kIsCaptiveKey << "` is missing";
+    LOG(WARNING) << logging_tag << " " << __func__ << ": The mandatory field `"
+                 << kIsCaptiveKey << "` is missing";
     return std::nullopt;
   }
 
@@ -60,7 +62,8 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
     const auto url = net_base::HttpUrl::CreateFromString(*value);
     if (!url.has_value() ||
         url->protocol() != net_base::HttpUrl::Protocol::kHttps) {
-      LOG(WARNING) << "User portal URL is not valid: " << *value;
+      LOG(WARNING) << logging_tag << " " << __func__
+                   << ": User portal URL is not valid: " << *value;
       return std::nullopt;
     }
     status->user_portal_url = *url;
@@ -69,7 +72,8 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
       value != nullptr) {
     const auto url = net_base::HttpUrl::CreateFromString(*value);
     if (!url.has_value()) {
-      LOG(WARNING) << "Venue info URL is not valid: " << *value;
+      LOG(WARNING) << logging_tag << " " << __func__
+                   << ": Venue info URL is not valid: " << *value;
       return std::nullopt;
     }
     status->venue_info_url = *url;
@@ -88,33 +92,41 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
   }
 
   if (status->is_captive && !status->user_portal_url.has_value()) {
-    LOG(WARNING) << "user_portal_url field is empty when is_captive is true";
+    LOG(WARNING) << logging_tag << " " << __func__
+                 << ": user_portal_url field is empty when is_captive is true";
     return std::nullopt;
   }
 
   // Clear the fields for the open state when the portal is captive.
   if (status->is_captive && status->seconds_remaining.has_value()) {
-    LOG(WARNING) << "seconds_remaining should be empty when is_captive is true";
+    LOG(WARNING)
+        << logging_tag << " " << __func__
+        << ": seconds_remaining should be empty when is_captive is true";
     status->seconds_remaining = std::nullopt;
   }
   if (status->is_captive && status->bytes_remaining.has_value()) {
-    LOG(WARNING) << "bytes_remaining should be empty when is_captive is true";
+    LOG(WARNING) << logging_tag << " " << __func__
+                 << ": bytes_remaining should be empty when is_captive is true";
     status->bytes_remaining = std::nullopt;
   }
 
   return status;
 }
 
+// static
 std::unique_ptr<CapportProxy> CapportProxy::Create(
     Metrics* metrics,
     patchpanel::Client* patchpanel_client,
     std::string_view interface,
     const net_base::HttpUrl& api_url,
     base::span<const net_base::IPAddress> dns_list,
+    std::string_view logging_tag,
     std::shared_ptr<brillo::http::Transport> http_transport,
     base::TimeDelta transport_timeout) {
   if (api_url.protocol() != net_base::HttpUrl::Protocol::kHttps) {
-    LOG(ERROR) << "The URL of CAPPORT API is not valid: " << api_url.ToString();
+    LOG(ERROR) << logging_tag << " " << __func__
+               << ": The URL of CAPPORT API is not valid: "
+               << api_url.ToString();
     return nullptr;
   }
 
@@ -134,8 +146,7 @@ std::unique_ptr<CapportProxy> CapportProxy::Create(
   patchpanel_client->PrepareTagSocket(std::move(annotation), http_transport);
 
   return std::make_unique<CapportProxy>(metrics, api_url,
-                                        std::move(http_transport),
-                                        std::string(interface) + ": ");
+                                        std::move(http_transport), logging_tag);
 }
 
 CapportProxy::CapportProxy(
@@ -169,7 +180,8 @@ CapportProxy::~CapportProxy() {
 
 bool CapportProxy::SendRequest(StatusCallback callback) {
   if (IsRunning()) {
-    LOG(WARNING) << "The previous request is still running";
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": The previous request is still running";
     return false;
   }
 
@@ -196,8 +208,8 @@ void CapportProxy::OnRequestSuccess(
       << logging_tag_ << __func__ << ": callback is missing";
 
   if (!response->IsSuccessful()) {
-    LOG(ERROR) << logging_tag_
-               << "Failed to get a success response, status code="
+    LOG(ERROR) << logging_tag_ << " " << __func__
+               << ": Failed to get a success response, status code="
                << response->GetStatusCode();
     metrics_->SendEnumToUMA(Metrics::kMetricCapportQueryResult,
                             Metrics::kCapportResponseError);
@@ -206,9 +218,11 @@ void CapportProxy::OnRequestSuccess(
   }
 
   const std::string json_str = response->ExtractDataAsString();
-  std::optional<CapportStatus> status = CapportStatus::ParseFromJson(json_str);
+  std::optional<CapportStatus> status =
+      CapportStatus::ParseFromJson(json_str, logging_tag_);
   if (!status.has_value()) {
-    LOG(ERROR) << logging_tag_ << "The CAPPORT server found by RFC8910 ("
+    LOG(ERROR) << logging_tag_ << " " << __func__
+               << ": The CAPPORT server found by RFC8910 ("
                << api_url_.ToString()
                << ") was not compliant, failed to parse JSON: " << json_str;
     metrics_->SendEnumToUMA(Metrics::kMetricCapportQueryResult,
@@ -251,7 +265,8 @@ void CapportProxy::OnRequestError(brillo::http::RequestID request_id,
   LOG_IF(DFATAL, !callback_)
       << logging_tag_ << __func__ << ": callback is missing";
 
-  LOG(ERROR) << logging_tag_ << "Failed to get request from CAPPORT API: "
+  LOG(ERROR) << logging_tag_ << " " << __func__
+             << ": Failed to get request from CAPPORT API: "
              << error->GetMessage();
   metrics_->SendEnumToUMA(Metrics::kMetricCapportQueryResult,
                           Metrics::kCapportRequestError);
@@ -283,10 +298,11 @@ std::unique_ptr<CapportProxy> CapportProxyFactory::Create(
     std::string_view interface,
     const net_base::HttpUrl& api_url,
     base::span<const net_base::IPAddress> dns_list,
+    std::string_view logging_tag,
     std::shared_ptr<brillo::http::Transport> http_transport,
     base::TimeDelta transport_timeout) {
   return CapportProxy::Create(metrics, patchpanel_client, interface, api_url,
-                              dns_list, std::move(http_transport),
+                              dns_list, logging_tag, std::move(http_transport),
                               transport_timeout);
 }
 

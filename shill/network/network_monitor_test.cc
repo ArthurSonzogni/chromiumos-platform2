@@ -622,7 +622,7 @@ TEST_F(NetworkMonitorTest, SetCapportAPIWithDHCP) {
   EXPECT_CALL(*mock_validation_log_, SetCapportDHCPSupported);
   EXPECT_CALL(*mock_capport_proxy_factory_,
               Create(&metrics_, &patchpanel_client_, kInterface, kCapportAPI,
-                     ElementsAreArray(kIPv4DnsList), _, _))
+                     ElementsAreArray(kIPv4DnsList), _, _, _))
       .Times(1);
   network_monitor_->SetCapportURL(kCapportAPI, kIPv4DnsList,
                                   NetworkMonitor::CapportSource::kDHCP);
@@ -632,7 +632,7 @@ TEST_F(NetworkMonitorTest, SetCapportAPIWithRA) {
   EXPECT_CALL(*mock_validation_log_, SetCapportRASupported);
   EXPECT_CALL(*mock_capport_proxy_factory_,
               Create(&metrics_, &patchpanel_client_, kInterface, kCapportAPI,
-                     ElementsAreArray(kIPv4DnsList), _, _))
+                     ElementsAreArray(kIPv4DnsList), _, _, _))
       .Times(1);
   network_monitor_->SetCapportURL(kCapportAPI, kIPv4DnsList,
                                   NetworkMonitor::CapportSource::kRA);
@@ -711,7 +711,7 @@ TEST_F(NetworkMonitorTest, DualStackConnectionDiagnostics) {
   // ConnectionDiagnostics should be started for both IPv4 and IPv6.
   EXPECT_CALL(*mock_connection_diagnostics_factory_,
               Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv4,
-                     net_base::IPAddress(kIPv4GatewayAddress), dns, _))
+                     net_base::IPAddress(kIPv4GatewayAddress), dns, _, _))
       .WillRepeatedly([]() {
         auto mock_connection_diagnostics =
             std::make_unique<MockConnectionDiagnostics>();
@@ -720,7 +720,7 @@ TEST_F(NetworkMonitorTest, DualStackConnectionDiagnostics) {
       });
   EXPECT_CALL(*mock_connection_diagnostics_factory_,
               Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv6,
-                     net_base::IPAddress(kIPv6GatewayAddress), dns, _))
+                     net_base::IPAddress(kIPv6GatewayAddress), dns, _, _))
       .WillRepeatedly([]() {
         auto mock_connection_diagnostics =
             std::make_unique<MockConnectionDiagnostics>();

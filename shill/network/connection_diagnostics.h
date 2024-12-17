@@ -92,6 +92,7 @@ class ConnectionDiagnostics {
                         net_base::IPFamily ip_family,
                         const net_base::IPAddress& gateway,
                         const std::vector<net_base::IPAddress>& dns_list,
+                        std::string_view logging_tag,
                         EventDispatcher* dispatcher);
   ConnectionDiagnostics(const ConnectionDiagnostics&) = delete;
   ConnectionDiagnostics& operator=(const ConnectionDiagnostics&) = delete;
@@ -178,6 +179,8 @@ class ConnectionDiagnostics {
   // Number of record of all diagnostic events that occurred.
   int event_number_;
 
+  std::string logging_tag_;
+
   base::WeakPtrFactory<ConnectionDiagnostics> weak_ptr_factory_;
 };
 
@@ -195,6 +198,7 @@ class ConnectionDiagnosticsFactory {
       net_base::IPFamily ip_family,
       const net_base::IPAddress& gateway,
       const std::vector<net_base::IPAddress>& dns_list,
+      std::string_view logging_tag,
       EventDispatcher* dispatcher);
 };
 

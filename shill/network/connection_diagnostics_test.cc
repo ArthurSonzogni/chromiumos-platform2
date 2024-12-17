@@ -76,6 +76,7 @@ class ConnectionDiagnosticsTest : public Test {
                                 net_base::IPFamily::kIPv4,
                                 kIPv4GatewayAddress,
                                 {kIPv4DNSServer0, kIPv4DNSServer1},
+                                "int0 mock_service sid=0",
                                 &dispatcher_) {}
 
   ~ConnectionDiagnosticsTest() override = default;

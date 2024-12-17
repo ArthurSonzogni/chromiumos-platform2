@@ -27,7 +27,8 @@ namespace shill {
 
 // The returned status from CAPPORT API, defined at RFC8908.
 struct CapportStatus {
-  static std::optional<CapportStatus> ParseFromJson(std::string_view json_str);
+  static std::optional<CapportStatus> ParseFromJson(
+      std::string_view json_str, std::string_view logging_tag);
 
   bool operator==(const CapportStatus& rhs) const = default;
   bool operator!=(const CapportStatus& rhs) const = default;
@@ -59,6 +60,7 @@ class CapportProxy {
       std::string_view interface,
       const net_base::HttpUrl& api_url,
       base::span<const net_base::IPAddress> dns_list,
+      std::string_view logging_tag,
       std::shared_ptr<brillo::http::Transport> http_transport =
           brillo::http::Transport::CreateDefault(),
       base::TimeDelta transport_timeout = kDefaultTimeout);
@@ -145,6 +147,7 @@ class CapportProxyFactory {
       std::string_view interface,
       const net_base::HttpUrl& api_url,
       base::span<const net_base::IPAddress> dns_list,
+      std::string_view logging_tag,
       std::shared_ptr<brillo::http::Transport> http_transport =
           brillo::http::Transport::CreateDefault(),
       base::TimeDelta transport_timeout = CapportProxy::kDefaultTimeout);

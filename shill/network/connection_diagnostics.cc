@@ -71,6 +71,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     net_base::IPFamily ip_family,
     const net_base::IPAddress& gateway,
     const std::vector<net_base::IPAddress>& dns_list,
+    std::string_view logging_tag,
     EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
       iface_name_(iface_name),
@@ -81,6 +82,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       num_dns_attempts_(0),
       running_(false),
       event_number_(0),
+      logging_tag_(logging_tag),
       weak_ptr_factory_(this) {
   dns_client_ = std::make_unique<DnsClient>(
       ip_family_, iface_name, DnsClient::kDnsTimeout, dispatcher_,
@@ -103,13 +105,13 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
 
 bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
   if (IsRunning()) {
-    LOG(ERROR) << iface_name_ << ": " << ip_family_
+    LOG(ERROR) << logging_tag_ << " " << __func__ << ": " << ip_family_
                << " Diagnostics already started";
     return false;
   }
 
-  LOG(INFO) << iface_name_ << ": Starting " << ip_family_ << " diagnostics for "
-            << url.ToString();
+  LOG(INFO) << logging_tag_ << " " << __func__ << ": Starting " << ip_family_
+            << " diagnostics for " << url.ToString();
   target_url_ = url;
   running_ = true;
   // Ping DNS servers to make sure at least one is reachable before resolving
@@ -151,11 +153,13 @@ void ConnectionDiagnostics::LogEvent(Type type,
   event_number_++;
   Event ev(type, result, message);
   if (result == Result::kSuccess) {
-    LOG(INFO) << iface_name_ << ": " << ip_family_ << " Diagnostics event #"
-              << event_number_ << ": " << EventToString(ev);
+    LOG(INFO) << logging_tag_ << " " << __func__ << ": " << ip_family_
+              << " Diagnostics event #" << event_number_ << ": "
+              << EventToString(ev);
   } else {
-    LOG(WARNING) << iface_name_ << ": " << ip_family_ << " Diagnostics event #"
-                 << event_number_ << ": " << EventToString(ev);
+    LOG(WARNING) << logging_tag_ << " " << __func__ << ": " << ip_family_
+                 << " Diagnostics event #" << event_number_ << ": "
+                 << EventToString(ev);
   }
 }
 
@@ -171,8 +175,8 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
 
   LogEvent(Type::kResolveTargetServerIP, Result::kSuccess,
            base::StringPrintf("Attempt #%d", num_dns_attempts_));
-  SLOG(2) << __func__ << ": looking up " << target_url_->host() << " (attempt "
-          << num_dns_attempts_ << ")";
+  SLOG(2) << logging_tag_ << " " << __func__ << ": looking up "
+          << target_url_->host() << " (attempt " << num_dns_attempts_ << ")";
   ++num_dns_attempts_;
 }
 
@@ -206,7 +210,8 @@ void ConnectionDiagnostics::PingDNSServers() {
       continue;
     }
 
-    SLOG(2) << __func__ << ": pinging DNS server at " << dns_server_ip_addr;
+    SLOG(2) << logging_tag_ << " " << __func__ << ": pinging DNS server at "
+            << dns_server_ip_addr;
   }
 
   if (id_to_pending_dns_server_icmp_session_.empty()) {
@@ -220,7 +225,7 @@ void ConnectionDiagnostics::PingDNSServers() {
 }
 
 void ConnectionDiagnostics::PingHost(const net_base::IPAddress& address) {
-  SLOG(2) << __func__;
+  SLOG(2) << logging_tag_ << " " << __func__;
 
   const Type event_type =
       (address == gateway_) ? Type::kPingGateway : Type::kPingTargetServer;
@@ -240,7 +245,8 @@ void ConnectionDiagnostics::PingHost(const net_base::IPAddress& address) {
 
 void ConnectionDiagnostics::OnPingDNSServerComplete(
     int dns_server_index, const std::vector<base::TimeDelta>& result) {
-  SLOG(2) << __func__ << "(DNS server index " << dns_server_index << ")";
+  SLOG(2) << logging_tag_ << " " << __func__ << ": DNS server index "
+          << dns_server_index;
 
   if (!id_to_pending_dns_server_icmp_session_.erase(dns_server_index)) {
     // This should not happen, since we expect exactly one callback for each
@@ -259,7 +265,8 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
     pingable_dns_servers_.push_back(dns_list_[dns_server_index].ToString());
   }
   if (!id_to_pending_dns_server_icmp_session_.empty()) {
-    SLOG(2) << __func__ << ": not yet finished pinging all DNS servers";
+    SLOG(2) << logging_tag_ << " " << __func__
+            << ": not yet finished pinging all DNS servers";
     return;
   }
 
@@ -297,7 +304,7 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
 
 void ConnectionDiagnostics::OnDNSResolutionComplete(
     const base::expected<net_base::IPAddress, Error>& address) {
-  SLOG(2) << __func__;
+  SLOG(2) << logging_tag_ << " " << __func__;
 
   if (address.has_value()) {
     LogEvent(Type::kResolveTargetServerIP, Result::kSuccess,
@@ -322,7 +329,7 @@ void ConnectionDiagnostics::OnPingHostComplete(
     Type ping_event_type,
     const net_base::IPAddress& address_pinged,
     const std::vector<base::TimeDelta>& result) {
-  SLOG(2) << __func__;
+  SLOG(2) << logging_tag_ << " " << __func__;
 
   auto message = base::StringPrintf("Destination: %s,  Latencies: ",
                                     address_pinged.ToString().c_str());
@@ -356,9 +363,11 @@ std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
     net_base::IPFamily ip_family,
     const net_base::IPAddress& gateway,
     const std::vector<net_base::IPAddress>& dns_list,
+    std::string_view logging_tag,
     EventDispatcher* dispatcher) {
-  return std::make_unique<ConnectionDiagnostics>(
-      iface_name, iface_index, ip_family, gateway, dns_list, dispatcher);
+  return std::make_unique<ConnectionDiagnostics>(iface_name, iface_index,
+                                                 ip_family, gateway, dns_list,
+                                                 logging_tag, dispatcher);
 }
 
 }  // namespace shill

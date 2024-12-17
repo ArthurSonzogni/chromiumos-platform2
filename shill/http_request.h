@@ -101,10 +101,9 @@ class HttpRequest {
                     base::TimeDelta duration,
                     const net_base::DNSClient::Result& result);
   void StartRequest();
-  void SuccessCallback(brillo::http::RequestID request_id,
-                       std::unique_ptr<brillo::http::Response> response);
-  void ErrorCallback(brillo::http::RequestID request_id,
-                     const brillo::Error* error);
+  void OnSuccess(brillo::http::RequestID request_id,
+                 std::unique_ptr<brillo::http::Response> response);
+  void OnError(brillo::http::RequestID request_id, const brillo::Error* error);
   // Calls synchronously |request_error_callback_| with |error| and terminates
   // this request.
   void SendError(Error error);

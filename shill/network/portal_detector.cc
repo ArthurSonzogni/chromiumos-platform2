@@ -121,7 +121,8 @@ void PortalDetector::Start(bool http_only,
                            const std::vector<net_base::IPAddress>& dns_list,
                            ResultCallback callback) {
   if (IsRunning()) {
-    LOG(INFO) << LoggingTag() << ": Attempt is already running";
+    LOG(INFO) << LoggingTag() << " " << __func__
+              << ": Attempt is already running";
     return;
   }
   ip_family_ = ip_family;
@@ -151,7 +152,7 @@ void PortalDetector::StartHttpProbe(
   }
   brillo::http::HeaderList userAgentHeader = {
       {brillo::http::request_header::kUserAgent, GetUserAgentString()}};
-  LOG(INFO) << LoggingTag() << ": Starting HTTP probe: " << http_url.host();
+  LOG(INFO) << LoggingTag() << " " << __func__ << ": " << http_url.host();
   http_request_->Start(
       LoggingTag() + " HTTP probe", http_url, userAgentHeader,
       base::BindOnce(&PortalDetector::ProcessHTTPProbeResult,
@@ -171,7 +172,7 @@ void PortalDetector::StartHttpsProbe(
       CreateHTTPRequest(ifname_, *ip_family_, dns_list, allow_non_google_https);
   brillo::http::HeaderList userAgentHeader = {
       {brillo::http::request_header::kUserAgent, GetUserAgentString()}};
-  LOG(INFO) << LoggingTag() << ": Starting HTTPS probe: " << https_url.host();
+  LOG(INFO) << LoggingTag() << " " << __func__ << ": " << https_url.host();
   https_request_->Start(
       LoggingTag() + " HTTPS probe", https_url, userAgentHeader,
       base::BindOnce(&PortalDetector::ProcessHTTPSProbeResult,
@@ -179,7 +180,7 @@ void PortalDetector::StartHttpsProbe(
 }
 
 void PortalDetector::StopTrialIfComplete(Result result) {
-  LOG(INFO) << LoggingTag() << ": " << result;
+  LOG(INFO) << LoggingTag() << " " << __func__ << ": " << result;
   if (result_callback_.is_null() || !result.IsComplete()) {
     return;
   }
@@ -201,7 +202,7 @@ void PortalDetector::CleanupTrial() {
 }
 
 void PortalDetector::Reset() {
-  SLOG(this, 3) << "In " << __func__;
+  SLOG(this, 3) << LoggingTag() << " " << __func__;
   attempt_count_ = 0;
   portal_found_http_url_ = std::nullopt;
   result_callback_.Reset();
@@ -237,7 +238,8 @@ void PortalDetector::ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
         result_->probe_url = http_url;
         result_->http_result = ProbeResult::kPortalSuspected;
       } else {
-        LOG(WARNING) << LoggingTag() << ": Missing Content-Length";
+        LOG(WARNING) << LoggingTag() << " " << __func__
+                     << ": Missing Content-Length";
         result_->http_result = ProbeResult::kFailure;
       }
     } else if (IsRedirectResponse(status_code)) {
@@ -285,8 +287,8 @@ std::optional<size_t> PortalDetector::GetContentLength(
   }
   size_t content_length = 0;
   if (!base::StringToSizeT(content_length_string, &content_length)) {
-    LOG(WARNING) << LoggingTag() << ": Invalid Content-Length "
-                 << content_length_string;
+    LOG(WARNING) << LoggingTag() << " " << __func__
+                 << ": Invalid Content-Length " << content_length_string;
     return std::nullopt;
   }
   return content_length;

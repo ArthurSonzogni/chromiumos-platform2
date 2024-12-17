@@ -44,6 +44,7 @@ const net_base::IPAddress kDnsServers[] = {
     *net_base::IPAddress::CreateFromString("8.8.8.8"),
     *net_base::IPAddress::CreateFromString("8.8.4.4"),
 };
+constexpr char kLoggingTag[] = "wlan0 mock_service sid=0";
 
 // Used to verify the callback of CapportProxy.
 class MockCapportClient {
@@ -74,7 +75,7 @@ TEST(CapportStatusTest, ParseFromJsonSuccess) {
       .bytes_remaining = 65536,
   };
 
-  EXPECT_EQ(CapportStatus::ParseFromJson(json).value(), expected);
+  EXPECT_EQ(CapportStatus::ParseFromJson(json, kLoggingTag).value(), expected);
 }
 
 TEST(CapportStatusTest, ParseFromJsonMissingOptionalField) {
@@ -93,7 +94,7 @@ TEST(CapportStatusTest, ParseFromJsonMissingOptionalField) {
       .bytes_remaining = std::nullopt,
   };
 
-  EXPECT_EQ(CapportStatus::ParseFromJson(json).value(), expected);
+  EXPECT_EQ(CapportStatus::ParseFromJson(json, kLoggingTag).value(), expected);
 }
 
 TEST(CapportStatusTest, ParseFromJsonMissingRequiredField) {
@@ -106,7 +107,7 @@ TEST(CapportStatusTest, ParseFromJsonMissingRequiredField) {
    "can-extend-session": true
 })";
 
-  EXPECT_FALSE(CapportStatus::ParseFromJson(json).has_value());
+  EXPECT_FALSE(CapportStatus::ParseFromJson(json, kLoggingTag).has_value());
 }
 
 TEST(CapportStatusTest, ParseFromJsonInvalidUserPortalUrl) {
@@ -116,7 +117,7 @@ TEST(CapportStatusTest, ParseFromJsonInvalidUserPortalUrl) {
    "user-portal-url": "http://example.org/portal.html"
 })";
 
-  EXPECT_FALSE(CapportStatus::ParseFromJson(json).has_value());
+  EXPECT_FALSE(CapportStatus::ParseFromJson(json, kLoggingTag).has_value());
 }
 
 TEST(CapportStatusTest, ParseFromJsonMissingUserPortalUrl) {
@@ -125,7 +126,7 @@ TEST(CapportStatusTest, ParseFromJsonMissingUserPortalUrl) {
    "captive": true
 })";
 
-  EXPECT_FALSE(CapportStatus::ParseFromJson(json).has_value());
+  EXPECT_FALSE(CapportStatus::ParseFromJson(json, kLoggingTag).has_value());
 }
 
 TEST(CapportStatusTest, ParseFromJsonInvalidVenueInfoUrl) {
@@ -134,7 +135,7 @@ TEST(CapportStatusTest, ParseFromJsonInvalidVenueInfoUrl) {
    "venue-info-url": "invalid URL"
 })";
 
-  EXPECT_FALSE(CapportStatus::ParseFromJson(json).has_value());
+  EXPECT_FALSE(CapportStatus::ParseFromJson(json, kLoggingTag).has_value());
 }
 
 TEST(CapportStatusTest, ClearRemainingFieldWhenPortalClose) {
@@ -155,7 +156,8 @@ TEST(CapportStatusTest, ClearRemainingFieldWhenPortalClose) {
       .bytes_remaining = std::nullopt,
   };
 
-  EXPECT_EQ(CapportStatus::ParseFromJson(json_str).value(), expected);
+  EXPECT_EQ(CapportStatus::ParseFromJson(json_str, kLoggingTag).value(),
+            expected);
 }
 
 TEST(CapportStatusTest, InvalidMinusRemaining) {
@@ -171,7 +173,7 @@ TEST(CapportStatusTest, InvalidMinusRemaining) {
       .bytes_remaining = std::nullopt,
   };
 
-  EXPECT_EQ(CapportStatus::ParseFromJson(json).value(), expected);
+  EXPECT_EQ(CapportStatus::ParseFromJson(json, kLoggingTag).value(), expected);
 }
 
 class CapportProxyTest : public testing::Test {
@@ -183,6 +185,7 @@ class CapportProxyTest : public testing::Test {
                                     kInterfaceName,
                                     kApiUrl,
                                     kDnsServers,
+                                    kLoggingTag,
                                     fake_transport_)) {}
 
   void AddJSONReplyHandler(std::string_view json_str) {
@@ -504,6 +507,7 @@ class CapportProxyTestWithMockTransport : public testing::Test {
                                     kInterfaceName,
                                     kApiUrl,
                                     kDnsServers,
+                                    kLoggingTag,
                                     mock_transport_)) {}
 
   MockMetrics metrics_;
@@ -533,8 +537,9 @@ TEST_F(CapportProxyTestWithMockTransport, SendRequest) {
       CreateConnection(kApiUrl.ToString(), brillo::http::request_type::kGet,
                        kHeaders, _, _, _));
 
-  proxy_ = CapportProxy::Create(&metrics_, &patchpanel_client_, kInterfaceName,
-                                kApiUrl, kDnsServers, mock_transport_);
+  proxy_ =
+      CapportProxy::Create(&metrics_, &patchpanel_client_, kInterfaceName,
+                           kApiUrl, kDnsServers, kLoggingTag, mock_transport_);
   EXPECT_NE(proxy_, nullptr);
   proxy_->SendRequest(base::DoNothing());
 }

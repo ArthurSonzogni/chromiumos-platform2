@@ -4,8 +4,6 @@
 
 #include "shill/http_request.h"
 
-#include <curl/curl.h>
-
 #include <optional>
 #include <string>
 #include <string_view>
@@ -21,6 +19,7 @@
 #include <brillo/http/http_utils.h>
 #include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/http_url.h>
+#include <curl/curl.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -101,8 +100,9 @@ void HttpRequest::Start(std::string_view logging_tag,
     if (server_addr->GetFamily() == ip_family_) {
       StartRequest();
     } else {
-      LOG(ERROR) << logging_tag_ << ": Server hostname " << url_.host()
-                 << " doesn't match the IP family " << ip_family_;
+      LOG(ERROR) << logging_tag_ << " " << __func__ << ": Server hostname "
+                 << url_.host() << " doesn't match the IP family "
+                 << ip_family_;
       SendErrorAsync(Error::kDNSFailure);
     }
     return;
@@ -123,21 +123,19 @@ void HttpRequest::Start(std::string_view logging_tag,
 
 void HttpRequest::StartRequest() {
   std::string url_string = url_.ToString();
-  SLOG(this, 2) << logging_tag_ << ": Starting request to " << url_string;
-  request_id_ =
-      brillo::http::Get(url_string, headers_, transport_,
-                        base::BindOnce(&HttpRequest::SuccessCallback,
-                                       weak_ptr_factory_.GetWeakPtr()),
-                        base::BindOnce(&HttpRequest::ErrorCallback,
-                                       weak_ptr_factory_.GetWeakPtr()));
+  SLOG(this, 2) << logging_tag_ << " " << __func__ << ": Starting request to "
+                << url_string;
+  request_id_ = brillo::http::Get(
+      url_string, headers_, transport_,
+      base::BindOnce(&HttpRequest::OnSuccess, weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&HttpRequest::OnError, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void HttpRequest::SuccessCallback(
-    brillo::http::RequestID request_id,
-    std::unique_ptr<brillo::http::Response> response) {
+void HttpRequest::OnSuccess(brillo::http::RequestID request_id,
+                            std::unique_ptr<brillo::http::Response> response) {
   if (request_id != request_id_) {
-    LOG(ERROR) << logging_tag_ << ": Expected request ID " << request_id_
-               << " but got " << request_id;
+    LOG(ERROR) << logging_tag_ << " " << __func__ << ": Expected request ID "
+               << request_id_ << " but got " << request_id;
     SendError(Error::kInternalError);
     return;
   }
@@ -150,24 +148,25 @@ void HttpRequest::SuccessCallback(
   }
 }
 
-void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
-                                const brillo::Error* error) {
+void HttpRequest::OnError(brillo::http::RequestID request_id,
+                          const brillo::Error* error) {
   int error_code;
   if (error->GetDomain() != kCurlEasyError) {
-    LOG(ERROR) << logging_tag_ << ": Expected error domain " << kCurlEasyError
-               << " but got " << error->GetDomain();
+    LOG(ERROR) << logging_tag_ << " " << __func__ << ": Expected error domain "
+               << kCurlEasyError << " but got " << error->GetDomain();
     SendError(Error::kInternalError);
     return;
   }
   if (request_id != request_id_) {
-    LOG(ERROR) << logging_tag_ << ": Expected request ID " << request_id_
-               << " but got " << request_id;
+    LOG(ERROR) << logging_tag_ << " " << __func__ << ": Expected request ID "
+               << request_id_ << " but got " << request_id;
     SendError(Error::kInternalError);
     return;
   }
   if (!base::StringToInt(error->GetCode(), &error_code)) {
-    LOG(ERROR) << logging_tag_ << ": Unable to convert error code "
-               << error->GetCode() << " to Int";
+    LOG(ERROR) << logging_tag_ << " " << __func__
+               << ": Unable to convert error code " << error->GetCode()
+               << " to Int";
     SendError(Error::kInternalError);
     return;
   }
@@ -189,7 +188,8 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
       SendError(Error::kHTTPTimeout);
       break;
     default:
-      LOG(ERROR) << logging_tag_ << ": Unknown curl error code " << error_code;
+      LOG(ERROR) << logging_tag_ << " " << __func__
+                 << ": Unknown curl error code " << error_code;
       SendError(Error::kInternalError);
   }
 }
@@ -209,8 +209,8 @@ void HttpRequest::GetDNSResult(net_base::IPAddress dns,
                                base::TimeDelta duration,
                                const net_base::DNSClient::Result& result) {
   if (!result.has_value()) {
-    LOG(WARNING) << logging_tag_ << ": Could not resolve " << url_.host()
-                 << " with " << dns << ": " << result.error();
+    LOG(WARNING) << logging_tag_ << " " << __func__ << ": Could not resolve "
+                 << url_.host() << " with " << dns << ": " << result.error();
     auto error = Error::kDNSFailure;
     if (result.error() == net_base::DNSClient::Error::kTimedOut) {
       error = Error::kDNSTimeout;
@@ -237,8 +237,8 @@ void HttpRequest::GetDNSResult(net_base::IPAddress dns,
   // Add the host/port to IP mapping to the DNS cache to force curl to resolve
   // the URL to the given IP. Otherwise, curl will do its own DNS resolution.
   transport_->ResolveHostToIp(url_.host(), url_.port(), addresses);
-  LOG(INFO) << logging_tag_ << ": Resolved " << url_.host() << " to "
-            << addresses << " in " << duration;
+  LOG(INFO) << logging_tag_ << " " << __func__ << ": Resolved " << url_.host()
+            << " to " << addresses << " in " << duration;
   StartRequest();
 }
 
