@@ -7,3 +7,6 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 clap = { version = "4.5.4", features = ["derive"] }
+fatfs = { version = "0.3.6" }
+gpt_disk_types = { workspace = true, features = ["std"] }
+gptman = { version = "1.0.0", default-features = false }
