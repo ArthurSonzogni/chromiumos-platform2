@@ -97,7 +97,6 @@ class TitleGenerationEngine
       TitleGenerationEngine::TitleGenerationCallback callback,
       base::OnceClosure on_complete,
       mojo::Remote<mojom::TitleObserver> unused_observer,
-      SimpleSession::Ptr session,
       std::vector<GroupData> groups,
       CoralResult<void> result);
   // Used as the DoProcess callback in the case that observer is provided, so
@@ -106,7 +105,6 @@ class TitleGenerationEngine
   void OnAllTitleGenerationFinished(PerformanceTimer::Ptr timer,
                                     base::OnceClosure on_complete,
                                     mojo::Remote<mojom::TitleObserver> observer,
-                                    SimpleSession::Ptr session,
                                     std::vector<GroupData> groups,
                                     CoralResult<void> result);
 
@@ -117,9 +115,16 @@ class TitleGenerationEngine
 
   using ProcessCallback =
       base::OnceCallback<void(mojo::Remote<mojom::TitleObserver>,
-                              SimpleSession::Ptr,
                               std::vector<GroupData>,
                               CoralResult<void>)>;
+  struct ProcessParams : MoveOnly {
+    size_t index;
+    mojom::GroupRequestPtr request;
+    SimpleSession::Ptr session;
+    mojo::Remote<mojom::TitleObserver> observer;
+    std::vector<GroupData> groups;
+    ProcessCallback callback;
+  };
   void DoProcess(mojom::GroupRequestPtr request,
                  mojo::Remote<mojom::TitleObserver> observer,
                  std::vector<GroupData> groups,
@@ -127,18 +132,15 @@ class TitleGenerationEngine
   // One-by-one, send the next entry in `groups` to the on device model session
   // to generate the title (using `OnModelOutput` as callback), then form the
   // corresponding group and update `groups`.
-  void ProcessEachPrompt(size_t index,
-                         mojom::GroupRequestPtr request,
-                         SimpleSession::Ptr session,
-                         mojo::Remote<mojom::TitleObserver> observer,
-                         std::vector<GroupData> groups,
-                         ProcessCallback callback);
-  void OnModelOutput(size_t index,
-                     mojom::GroupRequestPtr request,
-                     SimpleSession::Ptr session,
-                     mojo::Remote<mojom::TitleObserver> observer,
-                     std::vector<GroupData> groups,
-                     ProcessCallback callback,
+  void ProcessEachPrompt(ProcessParams params);
+  void OnFormatInputResponse(ProcessParams params,
+                             PerformanceTimer::Ptr timer,
+                             const std::optional<std::string>& formatted);
+  void OnSizeInTokensResponse(ProcessParams params,
+                              PerformanceTimer::Ptr timer,
+                              std::string prompt,
+                              uint32_t size_in_tokens);
+  void OnModelOutput(ProcessParams params,
                      PerformanceTimer::Ptr timer,
                      std::string title);
 
@@ -154,11 +156,6 @@ class TitleGenerationEngine
                          SimpleSession::Ptr session,
                          std::vector<GroupData> groups,
                          base::OnceClosure on_complete);
-  void OnSizeInTokensResponse(size_t index,
-                              SimpleSession::Ptr session,
-                              std::vector<GroupData> groups,
-                              base::OnceClosure on_complete,
-                              uint32_t size_in_tokens);
 
   const raw_ref<CoralMetrics> metrics_;
 

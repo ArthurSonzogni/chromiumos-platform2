@@ -52,6 +52,12 @@ constexpr size_t kMaxCacheSize = 4;
 // The acceptable threshold is set to 1 diff per 4 items.
 constexpr double kMaxGroupDifferenceRatioToReuseTitle = 0.2501;
 
+// TODO(b/378632983): We want to reserve 50 tokens for output, while the max
+// input token length should be 1024, so this should actually be 1024-50. But
+// there is a bug in APU backend currently that makes the maximum supported
+// token size 128 less, so this is 1024-128-50 for now.
+constexpr size_t kMaxInputSizeInTokens = 846;
+
 std::string AppToPromptLine(const mojom::App& app) {
   return base::StringPrintf("title: %s\n", app.title.c_str());
 }
@@ -282,7 +288,6 @@ void TitleGenerationEngine::ReplyGroupsWithTitles(
     TitleGenerationEngine::TitleGenerationCallback callback,
     base::OnceClosure on_complete,
     mojo::Remote<mojom::TitleObserver> observer,
-    SimpleSession::Ptr session,
     std::vector<GroupData> groups,
     CoralResult<void> result) {
   ReportTitleGenerationMetrics(std::move(timer), result);
@@ -300,23 +305,18 @@ void TitleGenerationEngine::ReplyGroupsWithTitles(
   }
   std::move(callback).Run(std::move(response));
   CacheGroupTitles(groups);
-  ReportPromptSizes(0, std::move(session), std::move(groups),
-                    std::move(on_complete));
 }
 
 void TitleGenerationEngine::OnAllTitleGenerationFinished(
     PerformanceTimer::Ptr timer,
     base::OnceClosure on_complete,
     mojo::Remote<mojom::TitleObserver> observer,
-    SimpleSession::Ptr session,
     std::vector<GroupData> groups,
     CoralResult<void> result) {
   ReportTitleGenerationMetrics(std::move(timer), result);
   if (result.has_value()) {
     // All titles should have been updated to the observer.
     CacheGroupTitles(groups);
-    ReportPromptSizes(0, std::move(session), std::move(groups),
-                      std::move(on_complete));
     return;
   }
   LOG(ERROR) << "Failed to generate titles with code: "
@@ -336,7 +336,7 @@ void TitleGenerationEngine::DoProcess(
     std::vector<GroupData> groups,
     ProcessCallback callback) {
   if (!model_) {
-    std::move(callback).Run(std::move(observer), nullptr, std::move(groups),
+    std::move(callback).Run(std::move(observer), std::move(groups),
                             base::unexpected(CoralError::kLoadModelFailed));
     return;
   }
@@ -344,77 +344,89 @@ void TitleGenerationEngine::DoProcess(
   auto session = SimpleSession::New();
   model_->StartSession(session->BindReceiver());
   if (!session->is_bound()) {
-    std::move(callback).Run(std::move(observer), nullptr, std::move(groups),
+    std::move(callback).Run(std::move(observer), std::move(groups),
                             base::unexpected(CoralError::kLoadModelFailed));
     return;
   }
 
-  ProcessEachPrompt(0, std::move(request), std::move(session),
-                    std::move(observer), std::move(groups),
-                    std::move(callback));
+  ProcessEachPrompt(ProcessParams{.index = 0,
+                                  .request = std::move(request),
+                                  .session = std::move(session),
+                                  .observer = std::move(observer),
+                                  .groups = std::move(groups),
+                                  .callback = std::move(callback)});
 }
 
-void TitleGenerationEngine::ProcessEachPrompt(
-    size_t index,
-    mojom::GroupRequestPtr request,
-    SimpleSession::Ptr session,
-    mojo::Remote<mojom::TitleObserver> observer,
-    std::vector<GroupData> groups,
-    ProcessCallback callback) {
-  CHECK(session->is_bound());
+void TitleGenerationEngine::ProcessEachPrompt(ProcessParams params) {
+  CHECK(params.session->is_bound());
+  size_t index = params.index;
 
   // > covers the index out-of-range case although it shouldn't happen.
-  if (index >= groups.size()) {
-    std::move(callback).Run(std::move(observer), std::move(session),
-                            std::move(groups), base::ok());
+  if (index >= params.groups.size()) {
+    std::move(params.callback)
+        .Run(std::move(params.observer), std::move(params.groups), base::ok());
     return;
   }
   // Cached title is reused for this group, skip and process the next one.
-  if (groups[index].title.has_value()) {
-    ProcessEachPrompt(index + 1, std::move(request), std::move(session),
-                      std::move(observer), std::move(groups),
-                      std::move(callback));
+  if (params.groups[index].title.has_value()) {
+    params.index++;
+    ProcessEachPrompt(std::move(params));
     return;
   }
   base::flat_map<std::string, std::string> fields{
-      {"prompt", groups[index].prompt}};
-  SimpleSession* session_ptr = session.get();
+      {"prompt", params.groups[index].prompt}};
   auto timer = PerformanceTimer::Create();
-  auto on_model_output = base::BindOnce(
-      &TitleGenerationEngine::OnModelOutput, weak_ptr_factory_.GetWeakPtr(),
-      index, std::move(request), std::move(session), std::move(observer),
-      std::move(groups), std::move(callback), std::move(timer));
-  auto execute_session = base::BindOnce(
-      [](SimpleSession* session, base::OnceCallback<void(std::string)> callback,
-         const std::optional<std::string>& formatted) {
-        if (!formatted.has_value()) {
-          std::move(callback).Run("");
-          return;
-        }
-        auto input_options = on_device_model::mojom::InputOptions::New();
-        auto input = on_device_model::mojom::Input::New();
-        input->pieces.push_back(*formatted);
-        input_options->input = std::move(input);
-        session->Execute(std::move(input_options), std::move(callback));
-        return;
-      },
-      session_ptr, std::move(on_model_output));
   on_device_model_service_->FormatInput(
       base::Uuid::ParseLowercase(kModelUuid),
       on_device_model::mojom::FormatFeature::kPrompt, fields,
-      std::move(execute_session));
+      base::BindOnce(&TitleGenerationEngine::OnFormatInputResponse,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(params),
+                     std::move(timer)));
 }
 
-void TitleGenerationEngine::OnModelOutput(
-    size_t index,
-    mojom::GroupRequestPtr request,
-    SimpleSession::Ptr session,
-    mojo::Remote<mojom::TitleObserver> observer,
-    std::vector<GroupData> groups,
-    ProcessCallback callback,
+void TitleGenerationEngine::OnFormatInputResponse(
+    ProcessParams params,
     PerformanceTimer::Ptr timer,
-    std::string title) {
-  CHECK(index < groups.size());
+    const std::optional<std::string>& formatted) {
+  if (!formatted.has_value()) {
+    OnModelOutput(std::move(params), std::move(timer), "");
+    return;
+  }
+  SimpleSession* session_ptr = params.session.get();
+  session_ptr->SizeInTokens(
+      *formatted,
+      base::BindOnce(&TitleGenerationEngine::OnSizeInTokensResponse,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(params),
+                     std::move(timer), *formatted));
+  return;
+}
+
+void TitleGenerationEngine::OnSizeInTokensResponse(ProcessParams params,
+                                                   PerformanceTimer::Ptr timer,
+                                                   std::string prompt,
+                                                   uint32_t size_in_tokens) {
+  metrics_->SendTitleInputTokenSize(size_in_tokens);
+  if (size_in_tokens > kMaxInputSizeInTokens) {
+    LOG(WARNING) << "Input prompt is too long.";
+    OnModelOutput(std::move(params), std::move(timer), "");
+    return;
+  }
+  auto input_options = on_device_model::mojom::InputOptions::New();
+  auto input = on_device_model::mojom::Input::New();
+  input->pieces.push_back(std::move(prompt));
+  input_options->input = std::move(input);
+  SimpleSession* session_ptr = params.session.get();
+  session_ptr->Execute(std::move(input_options),
+                       base::BindOnce(&TitleGenerationEngine::OnModelOutput,
+                                      weak_ptr_factory_.GetWeakPtr(),
+                                      std::move(params), std::move(timer)));
+}
+
+void TitleGenerationEngine::OnModelOutput(ProcessParams params,
+                                          PerformanceTimer::Ptr timer,
+                                          std::string title) {
+  size_t index = params.index;
+  CHECK(index < params.groups.size());
   // The model outputs a leading blank space by default. In any case, trimming
   // blank space from both ends makes the title format on UI more consistent.
   title = base::TrimWhitespaceASCII(title, base::TRIM_ALL);
@@ -434,14 +446,14 @@ void TitleGenerationEngine::OnModelOutput(
   // TODO(b/361429962): Figure out whether truncating should happen in here or
   // in UI.
   // TODO(b/361429962): Validate safety result of the title.
-  CHECK(!groups[index].title.has_value());
-  groups[index].title = std::move(title);
-  if (observer) {
-    observer->TitleUpdated(groups[index].id, *groups[index].title);
+  CHECK(!params.groups[index].title.has_value());
+  params.groups[index].title = std::move(title);
+  if (params.observer) {
+    params.observer->TitleUpdated(params.groups[index].id,
+                                  *params.groups[index].title);
   }
-  ProcessEachPrompt(index + 1, std::move(request), std::move(session),
-                    std::move(observer), std::move(groups),
-                    std::move(callback));
+  params.index++;
+  ProcessEachPrompt(std::move(params));
 }
 
 void TitleGenerationEngine::ReportTitleGenerationMetrics(
@@ -504,47 +516,6 @@ std::optional<std::string> TitleGenerationEngine::MaybeGetCachedTitle(
   metrics_->SendTitleCacheDifferenceRatio(min_difference);
   metrics_->SendTitleCacheHit(ret.has_value());
   return ret;
-}
-
-// TODO(b/353900545): We can use the token sizes from ResponseSummary result
-// after we sync with Chrome and after APU backend supports calculating token
-// during Execute as well.
-void TitleGenerationEngine::ReportPromptSizes(size_t index,
-                                              SimpleSession::Ptr session,
-                                              std::vector<GroupData> groups,
-                                              base::OnceClosure on_complete) {
-  CHECK(session->is_bound());
-
-  // > covers the index out-of-range case although it shouldn't happen.
-  if (index >= groups.size()) {
-    std::move(on_complete).Run();
-    return;
-  }
-
-  // Cached title is reused for this group.
-  if (groups[index].prompt.empty()) {
-    ReportPromptSizes(index + 1, std::move(session), std::move(groups),
-                      std::move(on_complete));
-    return;
-  }
-
-  session->SizeInTokens(
-      groups[index].prompt,
-      base::BindOnce(&TitleGenerationEngine::OnSizeInTokensResponse,
-                     weak_ptr_factory_.GetWeakPtr(), index, std::move(session),
-                     std::move(groups), std::move(on_complete)));
-}
-
-void TitleGenerationEngine::OnSizeInTokensResponse(
-    size_t index,
-    SimpleSession::Ptr session,
-    std::vector<GroupData> groups,
-    base::OnceClosure on_complete,
-    uint32_t size_in_tokens) {
-  CHECK(index < groups.size());
-  metrics_->SendTitleInputTokenSize(size_in_tokens);
-  ReportPromptSizes(index + 1, std::move(session), std::move(groups),
-                    std::move(on_complete));
 }
 
 }  // namespace coral

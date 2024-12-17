@@ -33,7 +33,6 @@ namespace {
 using base::test::TestFuture;
 using ::testing::_;
 using ::testing::AnyNumber;
-using ::testing::Between;
 using ::testing::Gt;
 using ::testing::InSequence;
 using ::testing::IsEmpty;
@@ -161,12 +160,12 @@ class TitleGenerationEngineTest : public testing::Test {
         .Times(times);
     EXPECT_CALL(metrics_, SendLinearToUMA(metrics::kTitleLengthInWords, _, _))
         .Times(times);
-    // If the title is cached, the metrics won't be sent. Instead of specifying
-    // the exact number of times it'll be called, just set expectation that it's
-    // between 1 and times.
+  }
+
+  void ExpectSendInputTokenSize(int times) {
     EXPECT_CALL(metrics_,
                 SendToUMA(metrics::kTitleGenerationInputTokenSize, _, _, _, _))
-        .Times(Between(1, times));
+        .Times(times);
   }
 
   void ExpectSendModelLoaded(bool is_loaded, int times = 1) {
@@ -203,6 +202,7 @@ TEST_F(TitleGenerationEngineTest, Success) {
   ExpectSendLatency(2);
   ExpectSendLoadModelLatency(1);
   ExpectSendGenerateTitleMetrics(6);
+  ExpectSendInputTokenSize(6);
   {
     InSequence s;
     ExpectSendModelLoaded(false);
@@ -231,6 +231,39 @@ TEST_F(TitleGenerationEngineTest, Success) {
       EXPECT_EQ(response.groups[i]->entities,
                 fake_response.groups[i]->entities);
     }
+  }
+}
+
+TEST_F(TitleGenerationEngineTest, PromptTooLarge) {
+  ExpectSendStatus(true, 1);
+  ExpectSendLatency(1);
+  ExpectSendLoadModelLatency(1);
+  ExpectSendGenerateTitleMetrics(0);
+  ExpectSendInputTokenSize(3);
+  ExpectSendModelLoaded(false);
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("FormatInput"))
+      .WillRepeatedly(Return(reinterpret_cast<void*>(FormatInputSignature(
+          [](const std::string& uuid, Feature feature,
+             const std::unordered_map<std::string, std::string>& fields)
+              -> std::optional<std::string> {
+            auto it = fields.find("prompt");
+            if (it == fields.end()) {
+              return std::nullopt;
+            }
+            return std::string(1000, '*');
+          }))));
+
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future;
+  engine_->Process(GetFakeGroupRequest(), GetFakeClusteringResponse(),
+                   mojo::NullRemote(), title_future.GetCallback());
+  CoralResult<TitleGenerationResponse> result = title_future.Take();
+  ASSERT_TRUE(result.has_value());
+  TitleGenerationResponse response = std::move(*result);
+  auto fake_response = GetFakeTitleGenerationResponse();
+  ASSERT_EQ(response.groups.size(), fake_response.groups.size());
+  for (size_t i = 0; i < response.groups.size(); i++) {
+    EXPECT_THAT(response.groups[i]->title, Optional(IsEmpty()));
+    EXPECT_EQ(response.groups[i]->entities, fake_response.groups[i]->entities);
   }
 }
 
@@ -272,6 +305,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   ExpectSendLatency(3);
   // 1 request out of 3 hits the cache.
   ExpectSendGenerateTitleMetrics(2);
+  ExpectSendInputTokenSize(2);
   ExpectSendCacheHit(true, 1);
   ExpectSendCacheHit(false, 2);
   const odml::SessionStateManagerInterface::User user{"fake_user_1",
@@ -361,6 +395,7 @@ TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {
   ExpectSendStatus(true, 2);
   ExpectSendLatency(2);
   ExpectSendGenerateTitleMetrics(2);
+  ExpectSendInputTokenSize(2);
   ExpectSendCacheHit(false, 2);
   const odml::SessionStateManagerInterface::User user1{"fake_user_1",
                                                        "fake_user_hash_1"};
