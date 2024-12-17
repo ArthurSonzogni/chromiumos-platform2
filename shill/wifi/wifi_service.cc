@@ -1369,6 +1369,8 @@ void WiFiService::OnDisconnect(Error* error, const char* reason) {
     type = Metrics::kWiFiDisconnectTypeEthernet;
   } else if (disconnect_reason == Service::kDisconnectReasonStop) {
     type = Metrics::kWiFiDisconnectTypeDisable;
+  } else if (disconnect_reason == Service::kDisconnectReasonHandshakeTimeout) {
+    type = Metrics::kWiFiDisconnectTypeHandshakeTimeout;
   } else if (disconnect_reason == Service::kDisconnectReasonPendingTimeout) {
     type = Metrics::kWiFiDisconnectTypePendingTimeout;
   } else {
