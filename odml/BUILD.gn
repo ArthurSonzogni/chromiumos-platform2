@@ -133,7 +133,6 @@ source_set("coral") {
     "coral/clustering/agglomerative_clustering.cc",
     "coral/clustering/clustering_factory.cc",
     "coral/clustering/engine.cc",
-    "coral/common.cc",
     "coral/embedding/embedding_database.cc",
     "coral/embedding/engine.cc",
     "coral/metrics.cc",
@@ -142,7 +141,15 @@ source_set("coral") {
     "coral/title_generation/simple_session.cc",
   ]
   public_deps = [ ":mojo_bindings_lib" ]
-  deps = [ ":coral_proto" ]
+  deps = [
+    ":coral_proto",
+    ":utils",
+  ]
+  configs += [ ":target_defaults" ]
+}
+
+source_set("utils") {
+  sources = [ "utils/performance_timer.cc" ]
   configs += [ ":target_defaults" ]
 }
 

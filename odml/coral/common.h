@@ -37,22 +37,6 @@ struct EmbeddingEntry {
   bool operator==(const EmbeddingEntry&) const = default;
 };
 
-class PerformanceTimer {
- public:
-  using Ptr = std::unique_ptr<PerformanceTimer>;
-
-  PerformanceTimer();
-  PerformanceTimer(const PerformanceTimer&) = delete;
-
-  static Ptr Create();
-
-  // Get the duration that has passed since `start_time_`.
-  base::TimeDelta GetDuration() const;
-
- private:
-  base::TimeTicks start_time_;
-};
-
 }  // namespace coral
 
 #endif  // ODML_CORAL_COMMON_H_

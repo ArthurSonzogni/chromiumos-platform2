@@ -139,7 +139,7 @@ ClusteringEngine::ClusteringEngine(
 void ClusteringEngine::Process(mojom::GroupRequestPtr request,
                                EmbeddingResponse embedding_response,
                                ClusteringCallback callback) {
-  auto timer = PerformanceTimer::Create();
+  auto timer = odml::PerformanceTimer::Create();
   ClusteringCallback wrapped_callback = base::BindOnce(
       &ClusteringEngine::HandleProcessResult, weak_ptr_factory_.GetWeakPtr(),
       std::move(callback), std::move(timer));
@@ -281,7 +281,7 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
 
 void ClusteringEngine::HandleProcessResult(
     ClusteringCallback callback,
-    PerformanceTimer::Ptr timer,
+    odml::PerformanceTimer::Ptr timer,
     mojom::GroupRequestPtr request,
     CoralResult<ClusteringResponse> result) {
   metrics_->SendClusteringEngineStatus(result.transform([](auto&&) {}));

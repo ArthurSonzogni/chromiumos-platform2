@@ -64,7 +64,7 @@ void CoralService::Group(mojom::GroupRequestPtr request,
                          mojo::PendingRemote<mojom::TitleObserver> observer,
                          GroupCallback callback) {
   metrics_.SendGroupInputCount(request->entities.size());
-  auto timer = PerformanceTimer::Create();
+  auto timer = odml::PerformanceTimer::Create();
   GroupCallback wrapped_callback = base::BindOnce(
       &CoralService::HandleGroupResult, weak_ptr_factory_.GetWeakPtr(),
       std::move(timer), std::move(callback));
@@ -77,7 +77,7 @@ void CoralService::Group(mojom::GroupRequestPtr request,
 
 void CoralService::CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
                                    CacheEmbeddingsCallback callback) {
-  auto timer = PerformanceTimer::Create();
+  auto timer = odml::PerformanceTimer::Create();
   // Turn the request into a full group request to reuse the same helper
   // functions.
   auto group_request = mojom::GroupRequest::New(
@@ -131,7 +131,7 @@ void CoralService::OnTitleGenerationResult(
       GroupResult::NewResponse(GroupResponse::New(std::move(result->groups))));
 }
 
-void CoralService::HandleGroupResult(PerformanceTimer::Ptr timer,
+void CoralService::HandleGroupResult(odml::PerformanceTimer::Ptr timer,
                                      GroupCallback callback,
                                      mojom::GroupResultPtr result) {
   CoralStatus status;
@@ -146,7 +146,7 @@ void CoralService::HandleGroupResult(PerformanceTimer::Ptr timer,
 }
 
 void CoralService::HandleCacheEmbeddingsResult(
-    PerformanceTimer::Ptr timer,
+    odml::PerformanceTimer::Ptr timer,
     CacheEmbeddingsCallback callback,
     mojom::GroupRequestPtr request,
     CoralResult<EmbeddingResponse> embed_result) {

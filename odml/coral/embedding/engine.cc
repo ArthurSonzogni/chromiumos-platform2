@@ -146,7 +146,7 @@ void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
   }
   is_processing_ = true;
 
-  auto timer = PerformanceTimer::Create();
+  auto timer = odml::PerformanceTimer::Create();
   EmbeddingCallback wrapped_callback = base::BindOnce(
       &EmbeddingEngine::HandleProcessResult, weak_ptr_factory_.GetWeakPtr(),
       std::move(callback), std::move(timer));
@@ -191,7 +191,7 @@ void EmbeddingEngine::EnsureModelLoaded(base::OnceClosure callback) {
     std::move(callback).Run();
     return;
   }
-  auto timer = PerformanceTimer::Create();
+  auto timer = odml::PerformanceTimer::Create();
   embedding_service_->LoadEmbeddingModel(
       base::Uuid::ParseLowercase(kModelUuid),
       model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
@@ -201,7 +201,7 @@ void EmbeddingEngine::EnsureModelLoaded(base::OnceClosure callback) {
 }
 
 void EmbeddingEngine::OnModelLoadResult(base::OnceClosure callback,
-                                        PerformanceTimer::Ptr timer,
+                                        odml::PerformanceTimer::Ptr timer,
                                         LoadModelResult result) {
   if (result != LoadModelResult::kSuccess) {
     // Unbind the model because when load model fails we shouldn't be using the
@@ -349,7 +349,7 @@ void EmbeddingEngine::CheckEntryEmbedding(ProcessingParams params,
   }
 
   size_t index = params.response.embeddings.size();
-  auto timer = PerformanceTimer::Create();
+  auto timer = odml::PerformanceTimer::Create();
   auto embed_request = embedding_model::mojom::GenerateEmbeddingRequest::New();
   embed_request->content = params.prompts[index];
   embed_request->task_type = embedding_model::mojom::TaskType::kClustering;
@@ -363,7 +363,7 @@ void EmbeddingEngine::CheckEntryEmbedding(ProcessingParams params,
 
 void EmbeddingEngine::OnModelOutput(ProcessingParams params,
                                     EmbeddingEntry entry,
-                                    PerformanceTimer::Ptr timer,
+                                    odml::PerformanceTimer::Ptr timer,
                                     OnDeviceEmbeddingModelInferenceError error,
                                     const std::vector<float>& embedding) {
   // TODO(b/361429567): We can achieve better error tolerance by dropping
@@ -421,7 +421,7 @@ void EmbeddingEngine::SyncDatabase() {
 
 void EmbeddingEngine::HandleProcessResult(
     EmbeddingCallback callback,
-    PerformanceTimer::Ptr timer,
+    odml::PerformanceTimer::Ptr timer,
     mojom::GroupRequestPtr request,
     CoralResult<EmbeddingResponse> result) {
   if (IsFullGroupRequest(request)) {

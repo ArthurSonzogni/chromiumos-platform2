@@ -26,6 +26,7 @@
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
 #include "odml/session_state_manager/session_state_manager.h"
+#include "odml/utils/performance_timer.h"
 
 namespace coral {
 
@@ -79,10 +80,10 @@ class CoralService : public mojom::CoralService {
                                CoralResult<TitleGenerationResponse> result);
 
   // Send metrics and return result to callback.
-  void HandleGroupResult(PerformanceTimer::Ptr timer,
+  void HandleGroupResult(odml::PerformanceTimer::Ptr timer,
                          GroupCallback callback,
                          mojom::GroupResultPtr result);
-  void HandleCacheEmbeddingsResult(PerformanceTimer::Ptr timer,
+  void HandleCacheEmbeddingsResult(odml::PerformanceTimer::Ptr timer,
                                    CacheEmbeddingsCallback callback,
                                    mojom::GroupRequestPtr request,
                                    CoralResult<EmbeddingResponse> embed_result);

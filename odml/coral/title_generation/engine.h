@@ -24,6 +24,7 @@
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
 #include "odml/session_state_manager/session_state_manager.h"
+#include "odml/utils/performance_timer.h"
 
 namespace coral {
 
@@ -77,7 +78,7 @@ class TitleGenerationEngine
   void OnGetModelStateResult(on_device_model::mojom::PlatformModelState state);
   void EnsureModelLoaded(base::OnceClosure callback);
   void OnModelLoadResult(base::OnceClosure callback,
-                         PerformanceTimer::Ptr timer,
+                         odml::PerformanceTimer::Ptr timer,
                          on_device_model::mojom::LoadModelResult result);
   void UnloadModel();
 
@@ -93,7 +94,7 @@ class TitleGenerationEngine
   // Used as the DoProcess callback in the case that no observer provided, so
   // titles have to be returned in the TitleGenerationResponse.
   void ReplyGroupsWithTitles(
-      PerformanceTimer::Ptr timer,
+      odml::PerformanceTimer::Ptr timer,
       TitleGenerationEngine::TitleGenerationCallback callback,
       base::OnceClosure on_complete,
       mojo::Remote<mojom::TitleObserver> unused_observer,
@@ -102,13 +103,13 @@ class TitleGenerationEngine
   // Used as the DoProcess callback in the case that observer is provided, so
   // the title generation response is already returned and here we just have to
   // handle title generation failure.
-  void OnAllTitleGenerationFinished(PerformanceTimer::Ptr timer,
+  void OnAllTitleGenerationFinished(odml::PerformanceTimer::Ptr timer,
                                     base::OnceClosure on_complete,
                                     mojo::Remote<mojom::TitleObserver> observer,
                                     std::vector<GroupData> groups,
                                     CoralResult<void> result);
 
-  void ReportTitleGenerationMetrics(PerformanceTimer::Ptr timer,
+  void ReportTitleGenerationMetrics(odml::PerformanceTimer::Ptr timer,
                                     CoralStatus status);
 
   void OnProcessCompleted();
@@ -134,14 +135,14 @@ class TitleGenerationEngine
   // corresponding group and update `groups`.
   void ProcessEachPrompt(ProcessParams params);
   void OnFormatInputResponse(ProcessParams params,
-                             PerformanceTimer::Ptr timer,
+                             odml::PerformanceTimer::Ptr timer,
                              const std::optional<std::string>& formatted);
   void OnSizeInTokensResponse(ProcessParams params,
-                              PerformanceTimer::Ptr timer,
+                              odml::PerformanceTimer::Ptr timer,
                               std::string prompt,
                               uint32_t size_in_tokens);
   void OnModelOutput(ProcessParams params,
-                     PerformanceTimer::Ptr timer,
+                     odml::PerformanceTimer::Ptr timer,
                      std::string title);
 
   // Generated groups, along with their titles, are saved to an LRU cache. When

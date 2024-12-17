@@ -16,6 +16,7 @@
 #include "odml/coral/embedding/engine.h"
 #include "odml/coral/metrics.h"
 #include "odml/mojom/coral_service.mojom.h"
+#include "odml/utils/performance_timer.h"
 
 namespace coral {
 
@@ -74,7 +75,7 @@ class ClusteringEngine : public ClusteringEngineInterface {
  private:
   // Report metrics and return to callback.
   void HandleProcessResult(ClusteringCallback callback,
-                           PerformanceTimer::Ptr timer,
+                           odml::PerformanceTimer::Ptr timer,
                            mojom::GroupRequestPtr request,
                            CoralResult<ClusteringResponse> result);
 

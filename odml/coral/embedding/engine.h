@@ -21,6 +21,7 @@
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/session_state_manager/session_state_manager.h"
+#include "odml/utils/performance_timer.h"
 
 namespace coral {
 
@@ -93,7 +94,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
 
   void EnsureModelLoaded(base::OnceClosure callback);
   void OnModelLoadResult(base::OnceClosure callback,
-                         PerformanceTimer::Ptr timer,
+                         odml::PerformanceTimer::Ptr timer,
                          on_device_model::mojom::LoadModelResult result);
   void OnModelVersionLoaded(base::OnceClosure callback,
                             const std::string& version);
@@ -108,7 +109,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
   void OnModelOutput(
       ProcessingParams params,
       EmbeddingEntry entry,
-      PerformanceTimer::Ptr timer,
+      odml::PerformanceTimer::Ptr timer,
       embedding_model::mojom::OnDeviceEmbeddingModelInferenceError error,
       const std::vector<float>& embedding);
 
@@ -122,7 +123,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
 
   // Report metrics and return to callback.
   void HandleProcessResult(EmbeddingCallback callback,
-                           PerformanceTimer::Ptr timer,
+                           odml::PerformanceTimer::Ptr timer,
                            mojom::GroupRequestPtr request,
                            CoralResult<EmbeddingResponse> result);
 

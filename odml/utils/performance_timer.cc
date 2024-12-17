@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "odml/coral/common.h"
+#include "odml/utils/performance_timer.h"
 
 #include <memory>
 
 #include <base/time/time.h>
 
-namespace coral {
+namespace odml {
 
 PerformanceTimer::PerformanceTimer() : start_time_(base::TimeTicks::Now()) {}
 
@@ -20,4 +20,4 @@ base::TimeDelta PerformanceTimer::GetDuration() const {
   return base::TimeTicks::Now() - start_time_;
 }
 
-}  // namespace coral
+}  // namespace odml

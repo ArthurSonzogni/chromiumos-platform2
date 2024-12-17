@@ -186,7 +186,7 @@ void TitleGenerationEngine::Process(
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
           base::BindOnce(&TitleGenerationEngine::OnProcessCompleted,
                          weak_ptr_factory_.GetWeakPtr()));
-  auto timer = PerformanceTimer::Create();
+  auto timer = odml::PerformanceTimer::Create();
   ProcessCallback on_complete;
   if (observer) {
     ReplyGroupsWithoutTitles(groups, std::move(callback));
@@ -241,7 +241,7 @@ void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
     std::move(callback).Run();
     return;
   }
-  auto timer = PerformanceTimer::Create();
+  auto timer = odml::PerformanceTimer::Create();
   on_device_model_service_->LoadPlatformModel(
       base::Uuid::ParseLowercase(kModelUuid),
       model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
@@ -251,7 +251,7 @@ void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
 }
 
 void TitleGenerationEngine::OnModelLoadResult(base::OnceClosure callback,
-                                              PerformanceTimer::Ptr timer,
+                                              odml::PerformanceTimer::Ptr timer,
                                               LoadModelResult result) {
   if (result != LoadModelResult::kSuccess) {
     // Unbind the model because when load model fails we shouldn't be using
@@ -285,7 +285,7 @@ void TitleGenerationEngine::ReplyGroupsWithoutTitles(
 }
 
 void TitleGenerationEngine::ReplyGroupsWithTitles(
-    PerformanceTimer::Ptr timer,
+    odml::PerformanceTimer::Ptr timer,
     TitleGenerationEngine::TitleGenerationCallback callback,
     base::OnceClosure on_complete,
     mojo::Remote<mojom::TitleObserver> observer,
@@ -309,7 +309,7 @@ void TitleGenerationEngine::ReplyGroupsWithTitles(
 }
 
 void TitleGenerationEngine::OnAllTitleGenerationFinished(
-    PerformanceTimer::Ptr timer,
+    odml::PerformanceTimer::Ptr timer,
     base::OnceClosure on_complete,
     mojo::Remote<mojom::TitleObserver> observer,
     std::vector<GroupData> groups,
@@ -376,7 +376,7 @@ void TitleGenerationEngine::ProcessEachPrompt(ProcessParams params) {
   }
   base::flat_map<std::string, std::string> fields{
       {"prompt", params.groups[index].prompt}};
-  auto timer = PerformanceTimer::Create();
+  auto timer = odml::PerformanceTimer::Create();
   on_device_model_service_->FormatInput(
       base::Uuid::ParseLowercase(kModelUuid),
       on_device_model::mojom::FormatFeature::kPrompt, fields,
@@ -387,7 +387,7 @@ void TitleGenerationEngine::ProcessEachPrompt(ProcessParams params) {
 
 void TitleGenerationEngine::OnFormatInputResponse(
     ProcessParams params,
-    PerformanceTimer::Ptr timer,
+    odml::PerformanceTimer::Ptr timer,
     const std::optional<std::string>& formatted) {
   if (!formatted.has_value()) {
     OnModelOutput(std::move(params), std::move(timer), "");
@@ -402,10 +402,11 @@ void TitleGenerationEngine::OnFormatInputResponse(
   return;
 }
 
-void TitleGenerationEngine::OnSizeInTokensResponse(ProcessParams params,
-                                                   PerformanceTimer::Ptr timer,
-                                                   std::string prompt,
-                                                   uint32_t size_in_tokens) {
+void TitleGenerationEngine::OnSizeInTokensResponse(
+    ProcessParams params,
+    odml::PerformanceTimer::Ptr timer,
+    std::string prompt,
+    uint32_t size_in_tokens) {
   metrics_->SendTitleInputTokenSize(size_in_tokens);
   if (size_in_tokens > kMaxInputSizeInTokens) {
     LOG(WARNING) << "Input prompt is too long.";
@@ -424,7 +425,7 @@ void TitleGenerationEngine::OnSizeInTokensResponse(ProcessParams params,
 }
 
 void TitleGenerationEngine::OnModelOutput(ProcessParams params,
-                                          PerformanceTimer::Ptr timer,
+                                          odml::PerformanceTimer::Ptr timer,
                                           std::string title) {
   size_t index = params.index;
   CHECK(index < params.groups.size());
@@ -458,7 +459,7 @@ void TitleGenerationEngine::OnModelOutput(ProcessParams params,
 }
 
 void TitleGenerationEngine::ReportTitleGenerationMetrics(
-    PerformanceTimer::Ptr timer, CoralStatus status) {
+    odml::PerformanceTimer::Ptr timer, CoralStatus status) {
   metrics_->SendTitleGenerationEngineStatus(status);
   if (status.has_value()) {
     metrics_->SendTitleGenerationEngineLatency(timer->GetDuration());
