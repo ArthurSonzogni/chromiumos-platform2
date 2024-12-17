@@ -225,6 +225,7 @@ void ScreenController::GoToScreen(ScreenType type, bool save_previous) {
 }
 
 void ScreenController::OnError(ScreenType error_screen) {
+  current_screen_->Reset();
   switch (error_screen) {
     case ScreenType::kDownloadError:
     case ScreenType::kNetworkError:

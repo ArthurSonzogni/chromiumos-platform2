@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "minios/screen_controller.h"
+
 #include <linux/input.h>
 
 #include <memory>
@@ -20,7 +22,6 @@
 #include "minios/mock_screen.h"
 #include "minios/mock_state_reporter_interface.h"
 #include "minios/mock_update_engine_proxy.h"
-#include "minios/screen_controller.h"
 #include "minios/screen_types.h"
 #include "minios/utils.h"
 
@@ -407,6 +408,47 @@ TEST_P(DownloadGoToScreenTest, ChangeScreensNoOp) {
   EXPECT_EQ(starting_screen_, screen_controller_.GetCurrentScreen());
   screen_controller_.GoToScreen(next_screen_);
   EXPECT_EQ(starting_screen_, screen_controller_.GetCurrentScreen());
+}
+
+class MockScreenController : public ScreenController {
+ public:
+  MockScreenController(
+      std::shared_ptr<DrawInterface> draw_utils,
+      std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
+      std::shared_ptr<NetworkManagerInterface> network_manager,
+      std::shared_ptr<LogStoreManagerInterface> log_store_manager,
+      std::shared_ptr<ProcessManagerInterface> process_manager)
+      : ScreenController(draw_utils,
+                         update_engine_proxy,
+                         network_manager,
+                         log_store_manager,
+                         process_manager) {}
+  MOCK_METHOD(std::unique_ptr<ScreenInterface>,
+              CreateScreen,
+              (ScreenType screen_type),
+              (override));
+};
+
+class MockScreenControllerTest : public ::testing::Test {
+ protected:
+  MockScreenController screen_controller_{
+      std::make_shared<NiceMock<MockDraw>>(),
+      std::make_shared<NiceMock<MockUpdateEngineProxy>>(),
+      std::make_shared<NiceMock<MockNetworkManager>>(),
+      std::make_shared<MockLogStoreManager>(),
+      std::make_shared<NiceMock<MockProcessManager>>()};
+};
+
+TEST_F(MockScreenControllerTest, OnErrorResetsScreenTest) {
+  auto cur_screen = std::make_unique<testing::StrictMock<MockScreen>>();
+  auto new_screen = std::make_unique<testing::StrictMock<MockScreen>>();
+  EXPECT_CALL(*cur_screen, Reset());
+  EXPECT_CALL(*new_screen, Show());
+  EXPECT_CALL(screen_controller_, CreateScreen(ScreenType::kDownloadError))
+      .WillOnce(Return(std::move(new_screen)));
+  screen_controller_.SetCurrentScreenForTest(std::move(cur_screen));
+
+  screen_controller_.OnError(ScreenType::kDownloadError);
 }
 
 }  // namespace minios

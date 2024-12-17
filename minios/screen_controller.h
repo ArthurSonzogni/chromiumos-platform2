@@ -138,11 +138,12 @@ class ScreenController : public ScreenControllerInterface,
     current_screen_ = std::move(current_screen);
   }
 
+ protected:
+  // Create a Screen of specified type.
+  virtual std::unique_ptr<ScreenInterface> CreateScreen(ScreenType screen_type);
+
  private:
   FRIEND_TEST(GoToScreenTest, ChangeScreensSavePrevious);
-
-  // Creates each class ptr as needed.
-  std::unique_ptr<ScreenInterface> CreateScreen(ScreenType screen_type);
 
   // Take next action if Dbus recovery flow is in progress.
   void HandleStateChanged(State::States state_state);
