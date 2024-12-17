@@ -34,7 +34,7 @@ bool WriteProtobuf(int out_fd, const google::protobuf::MessageLite& message) {
   size_t size = message.ByteSizeLong();
   constexpr size_t kSpanSize = 1;
   if (!base::WriteFileDescriptor(
-          out_fd, base::as_bytes(base::make_span(&size, kSpanSize)))) {
+          out_fd, base::as_bytes(base::span(&size, kSpanSize)))) {
     return false;
   }
 

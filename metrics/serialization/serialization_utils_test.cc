@@ -390,7 +390,7 @@ TEST_F(SerializationUtilsTest, NegativeLengthTest) {
       0xff,
       0xff,
   };
-  CHECK(base::WriteFile(filepath_, base::make_span(kInput, sizeof(kInput))));
+  CHECK(base::WriteFile(filepath_, base::span(kInput, sizeof(kInput))));
 
   std::vector<MetricSample> samples;
   size_t bytes_read;

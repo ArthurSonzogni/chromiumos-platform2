@@ -37,7 +37,7 @@ LandlockPolicy::~LandlockPolicy() = default;
 
 base::span<const std::string_view>
 LandlockPolicy::GetPolicySnapshotForTesting() {
-  return base::make_span(kAllowedPaths);
+  return kAllowedPaths;
 }
 
 void LandlockPolicy::SetupPolicy(minijail* j) {

@@ -41,8 +41,7 @@ std::unique_ptr<Password> Password::CreateFromFileDescriptor(int fd,
     return nullptr;
   }
 
-  if (!base::ReadFromFD(fd,
-                        base::make_span(password->GetMutableRaw(), bytes))) {
+  if (!base::ReadFromFD(fd, base::span(password->GetMutableRaw(), bytes))) {
     PLOG(ERROR) << "Could not read password from file descriptor.";
     return nullptr;
   }

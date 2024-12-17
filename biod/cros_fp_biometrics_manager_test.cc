@@ -1020,7 +1020,7 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestCallDeleteRecord) {
       1, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   const BiodStorageInterface::Record mock_test_record{
       mock_test_recordmetadata,
-      base::Base64Encode(base::as_bytes(base::make_span(&Data, 1u)))};
+      base::Base64Encode(base::byte_span_from_ref(Data))};
   mock_->LoadRecord(mock_test_record);
 }
 
@@ -1035,7 +1035,7 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestSkipDeleteRecord) {
       1, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   const BiodStorageInterface::Record mock_test_record{
       mock_test_recordmetadata,
-      base::Base64Encode(base::as_bytes(base::make_span(&Data, 1u)))};
+      base::Base64Encode(base::byte_span_from_ref(Data))};
   mock_->LoadRecord(mock_test_record);
 }
 

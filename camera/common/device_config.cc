@@ -100,7 +100,7 @@ std::optional<EepromIdBlock> FindCameraEepromIdBlock(const std::string& mem) {
   for (size_t offset_from_end = alignment + mem.size() % alignment;
        offset_from_end <= mem.size(); offset_from_end += alignment) {
     base::span<const uint8_t> section =
-        base::make_span(data_end - offset_from_end, sizeof(EepromIdBlock));
+        base::span(data_end - offset_from_end, sizeof(EepromIdBlock));
     if (ValidateCameraModuleInfo(section)) {
       return *reinterpret_cast<const EepromIdBlock*>(section.data());
     }

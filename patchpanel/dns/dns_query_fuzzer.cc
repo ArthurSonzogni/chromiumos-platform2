@@ -21,7 +21,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   auto buf = base::MakeRefCounted<IOBufferWithSize>(size);
   size_t buf_size = static_cast<size_t>(buf->size());
   base::SpanWriter<uint8_t> writer(
-      base::as_writable_bytes(base::make_span(buf->data(), buf_size)));
+      base::as_writable_bytes(base::span(buf->data(), buf_size)));
   writer.Write(base::span(data, size));
   DnsQuery query(buf);
   query.Parse(buf_size);

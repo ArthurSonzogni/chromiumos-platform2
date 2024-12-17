@@ -40,7 +40,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   lib.SetConsentFileForTest(env.temp_file());
 
-  base::WriteFile(env.temp_file(), base::make_span(data, size));
+  base::WriteFile(env.temp_file(), base::span(data, size));
 
   std::string id;
   lib.ConsentId(&id);

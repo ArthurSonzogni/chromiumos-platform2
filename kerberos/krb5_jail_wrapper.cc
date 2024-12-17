@@ -4,9 +4,9 @@
 
 #include "kerberos/krb5_jail_wrapper.h"
 
-#include <vector>
-
 #include <sys/wait.h>
+
+#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -214,7 +214,7 @@ void MinijailForker::Child_Write(const void* data, size_t data_size) {
   DCHECK(IsChild());
   if (!base::WriteFileDescriptor(
           pipe_write_end_.get(),
-          base::make_span(static_cast<const uint8_t*>(data), data_size))) {
+          base::span(static_cast<const uint8_t*>(data), data_size))) {
     LOG(ERROR) << "Failed to write " << data_size << " bytes";
     error_ = true;
   }

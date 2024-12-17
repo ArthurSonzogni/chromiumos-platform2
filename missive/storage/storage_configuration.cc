@@ -120,7 +120,7 @@ base::span<const Priority> StorageOptions::GetPrioritiesOrder() {
   static constexpr std::array<Priority, 7> kPriorityOrder = {
       MANUAL_BATCH_LACROS, MANUAL_BATCH, BACKGROUND_BATCH, SLOW_BATCH,
       FAST_BATCH,          IMMEDIATE,    SECURITY};
-  return base::make_span(kPriorityOrder);
+  return kPriorityOrder;
 }
 
 QueueOptions::QueueOptions(const StorageOptions& storage_options)

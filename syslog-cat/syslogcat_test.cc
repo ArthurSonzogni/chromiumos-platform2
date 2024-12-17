@@ -4,11 +4,11 @@
 
 #include "syslog-cat/syslogcat.h"
 
-#include <memory>
-#include <optional>
-
 #include <sys/socket.h>
 #include <sys/un.h>
+
+#include <memory>
+#include <optional>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -55,8 +55,8 @@ std::optional<std::string> AcceptAndReadFromSocket(int fd, int size) {
   const size_t kBufSize = 1000;
   char buf[kBufSize];
   CHECK_GT(kBufSize, size);
-  EXPECT_TRUE(base::ReadFromFD(
-      fd_client.get(), base::make_span(buf, static_cast<size_t>(size))));
+  EXPECT_TRUE(base::ReadFromFD(fd_client.get(),
+                               base::span(buf, static_cast<size_t>(size))));
   return std::string(buf, size);
 }
 

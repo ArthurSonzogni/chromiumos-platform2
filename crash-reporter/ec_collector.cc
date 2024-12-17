@@ -86,8 +86,8 @@ bool ECCollector::Collect(bool use_saved_lsb) {
   }
 
   base::span<uint8_t> panicinfo_sdata =
-      base::make_span(reinterpret_cast<uint8_t*>(panicinfo_data),
-                      static_cast<size_t>(panicinfo_len));
+      base::span(reinterpret_cast<uint8_t*>(panicinfo_data),
+                 static_cast<size_t>(panicinfo_len));
   auto result = ec::ParsePanicInfo(panicinfo_sdata);
   std::string output;
 

@@ -28,7 +28,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   CHECK(temp_dir.CreateUniqueTempDir());
   base::FilePath metrics_file = temp_dir.GetPath().Append("metrics");
 
-  CHECK(base::WriteFile(metrics_file, base::make_span(data, size)));
+  CHECK(base::WriteFile(metrics_file, base::span(data, size)));
 
   std::vector<metrics::MetricSample> samples;
   size_t bytes_read;

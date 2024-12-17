@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <algorithm>
-#include <map>
-#include <utility>
-#include <vector>
+#include "u2fd/uhid_device.h"
 
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
+
+#include <algorithm>
+#include <map>
+#include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
@@ -20,8 +22,6 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-
-#include "u2fd/uhid_device.h"
 
 namespace u2f {
 
@@ -132,8 +132,8 @@ void UHidDevice::FdEvent() {
 }
 
 bool UHidDevice::WriteEvent(const struct uhid_event& ev) {
-  return base::WriteFileDescriptor(fd_.get(),
-                                   base::as_bytes(base::make_span(&ev, 1u)));
+  return base::WriteFileDescriptor(
+      fd_.get(), base::byte_span_from_ref(base::allow_nonunique_obj, ev));
 }
 
 bool UHidDevice::SendReport(const std::string& report) {

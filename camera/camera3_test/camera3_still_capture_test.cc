@@ -313,7 +313,7 @@ void Camera3DumpSimpleStillCaptureTest::ProcessStillCaptureResult(
     auto jpeg_size = jpeg_blob->jpeg_size;
     ASSERT_TRUE(base::WriteFile(
         dump_path_,
-        base::make_span(static_cast<const uint8_t*>(buf_addr), jpeg_size)));
+        base::span(static_cast<const uint8_t*>(buf_addr), jpeg_size)));
   }
 }
 

@@ -4,14 +4,13 @@
 
 #include "vm_tools/vsh/utils.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <unistd.h>
-
-#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <unistd.h>
 
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -27,8 +26,8 @@ bool SendAllBytes(int sockfd,
                   const uint8_t* buf,
                   uint32_t buf_size,
                   bool ignore_epipe) {
-  if (!base::WriteFileDescriptor(
-          sockfd, base::as_bytes(base::make_span(buf, buf_size)))) {
+  if (!base::WriteFileDescriptor(sockfd,
+                                 base::as_bytes(base::span(buf, buf_size)))) {
     if (errno == EPIPE && ignore_epipe) {
       return true;
     } else {
@@ -93,8 +92,7 @@ bool RecvMessage(int sockfd, MessageLite* message) {
   }
 
   if (!base::ReadFromFD(
-          sockfd,
-          base::make_span(reinterpret_cast<char*>(msg.payload), msg.size))) {
+          sockfd, base::span(reinterpret_cast<char*>(msg.payload), msg.size))) {
     LOG(ERROR) << "Failed to read message from socket";
     return false;
   }

@@ -712,7 +712,7 @@ TEST_F(FileStreamTest, OpenRead) {
   base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::vector<char> buffer(1024 * 1024);
   base::RandBytes(base::as_writable_byte_span(buffer));
-  ASSERT_TRUE(base::WriteFile(path, base::as_bytes(base::make_span(buffer))));
+  ASSERT_TRUE(base::WriteFile(path, base::as_byte_span(buffer)));
 
   StreamPtr stream =
       FileStream::Open(path, Stream::AccessMode::READ,
@@ -1073,8 +1073,7 @@ TEST_F(FileStreamTest, FromFileDescriptor_WriteAsync) {
   auto success_callback = [](bool* succeeded, const std::string& data,
                              int read_fd, size_t /* size */) {
     char buffer[100];
-    EXPECT_TRUE(
-        base::ReadFromFD(read_fd, base::make_span(buffer, data.size())));
+    EXPECT_TRUE(base::ReadFromFD(read_fd, base::span(buffer, data.size())));
     EXPECT_EQ(data, (std::string{buffer, buffer + data.size()}));
     *succeeded = true;
   };

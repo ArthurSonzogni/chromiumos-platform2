@@ -1264,7 +1264,7 @@ TEST_F(V4L2Test, FirstFrameAfterStreamOn) {
     if (res != 0) {
       base::WriteFile(
           base::FilePath("FirstFrame.jpg"),
-          base::make_span(static_cast<uint8_t*>(buffer.start), data_size));
+          base::span(static_cast<uint8_t*>(buffer.start), data_size));
       FAIL() << "First frame is not a valid mjpeg image.";
     }
 

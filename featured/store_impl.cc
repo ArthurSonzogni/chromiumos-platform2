@@ -4,6 +4,8 @@
 
 #include "featured/store_impl.h"
 
+#include <sys/stat.h>
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -13,12 +15,11 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <brillo/secure_blob.h>
 #include <brillo/files/file_util.h>
+#include <brillo/secure_blob.h>
 #include <brillo/secure_string.h>
 #include <featured/proto_bindings/featured.pb.h>
 #include <libhwsec-foundation/crypto/hmac.h>
-#include <sys/stat.h>
 
 namespace featured {
 
@@ -100,7 +101,7 @@ bool ValidatePathAndRead(const base::FilePath& file_path,
     // |ValidatePathAndOpen| and constructing |file|.
     base::File file(fd);
     std::vector<uint8_t> buffer(file.GetLength());
-    if (!file.ReadAndCheck(/*offset=*/0, base::make_span(buffer))) {
+    if (!file.ReadAndCheck(/*offset=*/0, buffer)) {
       LOG(ERROR) << "Failed to read file contents";
       return false;
     }
@@ -176,7 +177,7 @@ bool StoreImpl::WriteDisk() {
   // Write store to disk.
   base::File store_file(store_fd);
   if (!store_file.WriteAtCurrentPosAndCheck(
-          base::as_bytes(base::make_span(serialized_store)))) {
+          base::as_byte_span(serialized_store))) {
     PLOG(ERROR) << "Could not write new store to disk";
     return false;
   }

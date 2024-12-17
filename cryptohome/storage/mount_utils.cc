@@ -69,7 +69,7 @@ bool ReadProtobuf(int in_fd, google::protobuf::MessageLite* message) {
 bool WriteProtobuf(int out_fd, const google::protobuf::MessageLite& message) {
   size_t size = message.ByteSizeLong();
   if (!base::WriteFileDescriptor(
-          out_fd, base::as_bytes(base::make_span(&size, kSpanSize)))) {
+          out_fd, base::as_bytes(base::span(&size, kSpanSize)))) {
     PLOG(ERROR) << "Failed to write protobuf size";
     return false;
   }

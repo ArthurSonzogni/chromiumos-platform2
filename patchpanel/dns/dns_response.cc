@@ -4,7 +4,6 @@
 
 #include "patchpanel/dns/dns_response.h"
 
-#include <openssl/sha.h>
 #include <algorithm>
 #include <limits>
 #include <numeric>
@@ -12,21 +11,21 @@
 #include <string_view>
 #include <utility>
 
-#include "base/containers/span.h"
-#include "base/containers/span_reader.h"
-#include "base/logging.h"
-#include "base/numerics/byte_conversions.h"
-#include "base/numerics/safe_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/sys_byteorder.h"
+#include <base/check.h>
+#include <base/check_op.h>
+#include <base/containers/span.h>
+#include <base/containers/span_reader.h>
+#include <base/logging.h>
+#include <base/numerics/byte_conversions.h>
+#include <base/numerics/safe_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/sys_byteorder.h>
+#include <openssl/sha.h>
 
 #include "patchpanel/dns/dns_protocol.h"
 #include "patchpanel/dns/dns_query.h"
 #include "patchpanel/dns/dns_util.h"
 #include "patchpanel/dns/io_buffer.h"
-
-#include <base/check.h>
-#include <base/check_op.h>
 
 namespace patchpanel {
 
@@ -364,8 +363,8 @@ DnsResponse::DnsResponse(
 
   io_buffer_ = base::MakeRefCounted<IOBuffer>(response_size);
   io_buffer_size_ = response_size;
-  base::SpanWriter<uint8_t> writer(base::as_writable_bytes(
-      base::make_span(io_buffer_->data(), io_buffer_size_)));
+  base::SpanWriter<uint8_t> writer(
+      base::as_writable_bytes(base::span(io_buffer_->data(), io_buffer_size_)));
   success &= WriteHeader(&writer, header);
   DCHECK(success);
   if (has_query) {

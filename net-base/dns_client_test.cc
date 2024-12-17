@@ -14,8 +14,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/time/time.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -249,7 +249,7 @@ void FakeAres::TriggerReadReady() {
 
 void FakeAres::VerifyReadFD(int fd) {
   char buf[kFDContent.size() + 1];
-  CHECK(base::ReadFromFD(fd, base::make_span(buf, kFDContent.size())))
+  CHECK(base::ReadFromFD(fd, base::span(buf, kFDContent.size())))
       << "Failed to read from fd";
   CHECK_EQ(std::string_view(buf, kFDContent.size()), kFDContent);
 }

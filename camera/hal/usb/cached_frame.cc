@@ -283,7 +283,7 @@ void CachedFrame::DumpBuffer(FrameBuffer& frame, const std::string suffix) {
 
   VLOGF(2) << "DumpBuffer filepath " << file_path;
   bool success = base::WriteFile(
-      file_path, base::make_span(frame.GetData(), frame.GetBufferSize()));
+      file_path, base::span(frame.GetData(), frame.GetBufferSize()));
 
   if (!success) {
     LOGF(ERROR) << "Failed to write file " << filepath;

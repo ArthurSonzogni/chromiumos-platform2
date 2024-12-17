@@ -10,18 +10,16 @@
 #include <optional>
 #include <string_view>
 
-#include "base/big_endian.h"
-#include "base/time/time.h"
+#include <base/big_endian.h>
+#include <base/check.h>
+#include <base/time/time.h>
+#include <testing/gmock/include/gmock/gmock.h>
+#include <testing/gtest/include/gtest/gtest.h>
 
 #include "patchpanel/dns/dns_protocol.h"
 #include "patchpanel/dns/dns_query.h"
 #include "patchpanel/dns/dns_util.h"
 #include "patchpanel/dns/io_buffer.h"
-
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
-
-#include <base/check.h>
 
 namespace patchpanel {
 
@@ -685,7 +683,7 @@ TEST(DnsResponseWriteTest,
   auto buf = base::MakeRefCounted<IOBufferWithSize>(buf_size);
   memset(buf->data(), 0, buf_size);
   base::SpanWriter<uint8_t> writer(
-      base::as_writable_bytes(base::make_span(buf->data(), buf_size)));
+      base::as_writable_bytes(base::span(buf->data(), buf_size)));
   writer.WriteU16BigEndian(0x1234);                  // id
   writer.WriteU16BigEndian(0);                       // flags, is query
   writer.WriteU16BigEndian(1);                       // qdcount

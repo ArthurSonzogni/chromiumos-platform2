@@ -365,8 +365,8 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
   bool ret = ParseEventHeader(dump_file, &data_len, &line);
 
   // Always report the event header whenever available, even if parsing fails.
-  if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
-                           base::as_bytes(base::span(line)))) {
+  if (!line.empty() &&
+      !target_file.WriteAtCurrentPosAndCheck(base::as_byte_span(line))) {
     PLOG(ERROR) << "Error writing to target file " << target_path;
     return false;
   }
@@ -445,8 +445,8 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
       break;
     }
 
-    if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
-                             base::as_bytes(base::span(line)))) {
+    if (!line.empty() &&
+        !target_file.WriteAtCurrentPosAndCheck(base::as_byte_span(line))) {
       PLOG(ERROR) << "Error writing to target file " << target_path;
       return false;
     }
@@ -652,8 +652,8 @@ bool ParseRealtekDump(const base::FilePath& coredump_path,
   bool ret = ParseEventHeader(dump_file, data_len, line);
 
   // Always report the event header whenever available, even if parsing fails.
-  if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
-                           base::as_bytes(base::span(line)))) {
+  if (!line.empty() &&
+      !target_file.WriteAtCurrentPosAndCheck(base::as_byte_span(line))) {
     PLOG(ERROR) << "Error writing to target file " << target_path;
     return false;
   }
@@ -692,8 +692,8 @@ bool ParseRealtekDump(const base::FilePath& coredump_path,
     return true;
   }
 
-  if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
-                           base::as_bytes(base::span(line)))) {
+  if (!line.empty() &&
+      !target_file.WriteAtCurrentPosAndCheck(base::as_byte_span(line))) {
     PLOG(ERROR) << "Error writing to target file " << target_path;
     return false;
   }
@@ -878,9 +878,8 @@ bool ParseMediatekDump(const base::FilePath& coredump_path,
       break;
     }
 
-    if (!parsed_lines.empty() &&
-        !target_file.WriteAtCurrentPosAndCheck(
-            base::as_bytes(base::span(parsed_lines)))) {
+    if (!parsed_lines.empty() && !target_file.WriteAtCurrentPosAndCheck(
+                                     base::as_byte_span(parsed_lines))) {
       PLOG(ERROR) << "Error writing to target file " << target_path;
       return false;
     }
@@ -1015,8 +1014,8 @@ bool ParseQualcommDump(const base::FilePath& coredump_path,
       break;
     }
 
-    if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
-                             base::as_bytes(base::span(line)))) {
+    if (!line.empty() &&
+        !target_file.WriteAtCurrentPosAndCheck(base::as_byte_span(line))) {
       PLOG(ERROR) << "Error writing to target file " << target_path;
       return false;
     }
@@ -1058,7 +1057,7 @@ int64_t GetDumpPos(base::File& file) {
 bool ReportDefaultPC(base::File& file, std::string* pc) {
   *pc = kCoredumpDefaultPC;
   std::string line = CreateDumpEntry("PC", kCoredumpDefaultPC);
-  if (!file.WriteAtCurrentPosAndCheck(base::as_bytes(base::span(line)))) {
+  if (!file.WriteAtCurrentPosAndCheck(base::as_byte_span(line))) {
     return false;
   }
   return true;
@@ -1068,7 +1067,7 @@ bool ReportParseError(ParseErrorReason error_code, base::File& file) {
   std::string line =
       CreateDumpEntry("Parse Failure Reason",
                       base::StringPrintf("%d", static_cast<int>(error_code)));
-  return file.WriteAtCurrentPosAndCheck(base::as_bytes(base::span(line)));
+  return file.WriteAtCurrentPosAndCheck(base::as_byte_span(line));
 }
 
 // Cannot use base::file_util::CopyFile() here as it copies the entire file,

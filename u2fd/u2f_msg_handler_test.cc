@@ -15,9 +15,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec/frontend/u2fd/mock_vendor_frontend.h>
 #include <libhwsec/frontend/u2fd/vendor_frontend.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 #include <metrics/metrics_library_mock.h>
 
 #include "u2fd/mock_allowlisting_util.h"
@@ -131,11 +131,11 @@ class FakePublicKey : public hwsec::u2f::PublicKey {
   }
 
   base::span<const uint8_t> x() const override {
-    return base::make_span(data_.data() + 1, 32u);
+    return base::span(data_.data() + 1, 32u);
   }
 
   base::span<const uint8_t> y() const override {
-    return base::make_span(data_.data() + 33, 32u);
+    return base::span(data_.data() + 33, 32u);
   }
 
   const brillo::Blob& raw() const override { return data_; }

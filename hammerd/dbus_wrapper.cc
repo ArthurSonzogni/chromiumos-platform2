@@ -35,7 +35,7 @@ void DBusWrapper::SendSignalWithArg(const std::string& signal_name,
   dbus::Signal signal(kHammerdInterface, signal_name);
   if (length > 0) {
     dbus::MessageWriter writer(&signal);
-    writer.AppendArrayOfBytes(base::make_span(values, length));
+    writer.AppendArrayOfBytes(base::span(values, length));
   }
   exported_object_->SendSignal(&signal);
 }

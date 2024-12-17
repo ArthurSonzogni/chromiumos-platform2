@@ -6,12 +6,13 @@
 
 #include "common/still_capture_processor_impl.h"
 
+#include <linux/videodev2.h>
+
 #include <algorithm>
 #include <optional>
 #include <utility>
 
 #include <libyuv/scale.h>
-#include <linux/videodev2.h>
 #include <sync/sync.h>
 
 #include "common/common_tracing.h"
@@ -181,7 +182,7 @@ bool ExtractAppSections(buffer_handle_t blob_buffer,
                         std::map<uint16_t, base::span<uint8_t>>* out_index) {
   ScopedMapping mapping(blob_buffer);
   return ParseAppSections(
-      base::make_span(mapping.plane(0).addr, mapping.plane(0).size), out_buffer,
+      base::span(mapping.plane(0).addr, mapping.plane(0).size), out_buffer,
       out_index);
 }
 

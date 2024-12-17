@@ -42,8 +42,7 @@ std::optional<std::string> HwidUtilsImpl::CalculateChecksum(
       base::StringPrintf("%s %s", parts[0].c_str(), parts[1].c_str());
 
   uint32_t crc32 =
-      ~base::Crc32(0xFFFFFFFF, base::as_bytes(base::make_span(stripped))) &
-      kChecksumBitMask;
+      ~base::Crc32(0xFFFFFFFF, base::as_byte_span(stripped)) & kChecksumBitMask;
 
   std::string checksum =
       base::StringPrintf("%c%c", kBase8Alphabet[crc32 >> kBase32BitWidth],

@@ -48,13 +48,13 @@ class BluetoothDevcdParserUtilTest : public ::testing::Test {
 
     ASSERT_TRUE(file.IsValid());
 
-    ASSERT_TRUE(file.WriteAtCurrentPosAndCheck(
-        base::as_bytes(base::make_span(meta_data_str))));
+    ASSERT_TRUE(
+        file.WriteAtCurrentPosAndCheck(base::as_byte_span(meta_data_str)));
 
     if (!data.empty()) {
-      ASSERT_TRUE(file.WriteAtCurrentPosAndCheck(
-          base::as_bytes(base::make_span(data_header))));
-      ASSERT_TRUE(file.WriteAtCurrentPosAndCheck(base::make_span(data)));
+      ASSERT_TRUE(
+          file.WriteAtCurrentPosAndCheck(base::as_byte_span(data_header)));
+      ASSERT_TRUE(file.WriteAtCurrentPosAndCheck(base::span(data)));
     }
   }
 

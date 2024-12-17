@@ -42,7 +42,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // The filename has no impact on this function's execution.
   base::FilePath file_path(env.temp_dir_.GetPath().Append("mime_types"));
-  base::WriteFile(file_path, base::make_span(data, size));
+  base::WriteFile(file_path, base::span(data, size));
 
   vm_tools::garcon::MimeTypeMap map;
   vm_tools::garcon::ParseMimeTypes(file_path.value(), &map);

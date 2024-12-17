@@ -365,9 +365,9 @@ void JpegEncodeAcceleratorTest::EncodeTest(Frame* frame) {
       base::FilePath encoded_file = frame->yuv_file.ReplaceExtension(".jpg");
       LOG_ASSERT(buffer_manager_->Lock(frame->output_handle, 0, 0, 0, 0, 0,
                                        &addr) == 0);
-      base::WriteFile(encoded_file,
-                      base::make_span(static_cast<const uint8_t*>(addr),
-                                      frame->hw_out_size));
+      base::WriteFile(
+          encoded_file,
+          base::span(static_cast<const uint8_t*>(addr), frame->hw_out_size));
       LOG_ASSERT(buffer_manager_->Unlock(frame->output_handle) == 0);
     }
 

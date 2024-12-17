@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "smbprovider/temp_file_manager.h"
+
 #include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
-
-#include "smbprovider/temp_file_manager.h"
 
 namespace smbprovider {
 
@@ -88,8 +88,8 @@ TEST_F(TempFileManagerTest, WriteFileSucceeds) {
 
   // Read back the data written and ensure that it is the same.
   std::vector<uint8_t> actual(expected.size());
-  EXPECT_TRUE(base::ReadFromFD(
-      fd.get(), base::as_writable_chars(base::make_span(actual))));
+  EXPECT_TRUE(
+      base::ReadFromFD(fd.get(), base::as_writable_chars(base::span(actual))));
   EXPECT_EQ(expected, actual);
 }
 

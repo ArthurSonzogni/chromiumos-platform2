@@ -30,7 +30,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   std::vector<uint8_t> buffer;
   std::map<uint16_t, base::span<uint8_t>> index;
-  if (ParseAppSectionsForTesting(base::make_span(data_copy), &buffer, &index)) {
+  if (ParseAppSectionsForTesting(data_copy, &buffer, &index)) {
     // Validate the returned indices to point into the buffer.
     for (const auto& item : index) {
       CHECK_LE(buffer.data(), item.second.data());

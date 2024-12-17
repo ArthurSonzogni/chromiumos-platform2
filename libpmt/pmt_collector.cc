@@ -120,7 +120,7 @@ int PmtCollector::TakeSnapshot() {
     // Get a non-const pointer to a device sample.
     pmt::DeviceSample* dev = data_->mutable_devices(i);
     int telemetry_fd = ctx_[i].telemetry_fd;
-    auto buf = base::make_span(dev->mutable_data()->data(), dev->data().size());
+    auto buf = base::span(dev->mutable_data()->data(), dev->data().size());
     if (!base::ReadFromFD(telemetry_fd, buf)) {
       PLOG(ERROR) << "Incomplete telemetry data for 0x" << std::hex
                   << dev->guid();

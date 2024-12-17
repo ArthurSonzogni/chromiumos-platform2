@@ -56,7 +56,7 @@ void ArcVmSockToUsb::Run() {
   std::vector<char> buf(kUsbWriteBufSize);
   while (true) {
     char* data = buf.data();
-    EXIT_IF(!base::ReadFromFD(sock_fd_, base::make_span(data, kAmessageSize)),
+    EXIT_IF(!base::ReadFromFD(sock_fd_, base::span(data, kAmessageSize)),
             "failed to read adb message from socket");
 
     EXIT_IF(!base::WriteFileDescriptor(usb_fd_,
@@ -81,7 +81,7 @@ void ArcVmSockToUsb::Run() {
       _exit(EXIT_FAILURE);
     }
     if (payload_len > 0) {
-      EXIT_IF(!base::ReadFromFD(sock_fd_, base::make_span(data, payload_len)),
+      EXIT_IF(!base::ReadFromFD(sock_fd_, base::span(data, payload_len)),
               "failed to read adb payload from socket");
       EXIT_IF(!base::WriteFileDescriptor(usb_fd_,
                                          std::string_view(data, payload_len)),

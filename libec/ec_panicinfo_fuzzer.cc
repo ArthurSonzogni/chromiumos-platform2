@@ -7,6 +7,6 @@
 #include "libec/ec_panicinfo.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, unsigned int size) {
-  auto result = ec::ParsePanicInfo(base::make_span(data, size));
+  auto result = ec::ParsePanicInfo(base::span(data, size));
   return 0;
 }

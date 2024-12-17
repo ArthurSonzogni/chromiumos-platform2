@@ -168,7 +168,7 @@ pw::tokenizer::Detokenizer TimberSlide::OpenDatabase(
   LOG(INFO) << "Loading tokens: " << token_db;
   base::File tokens(token_db, base::File::FLAG_OPEN | base::File::FLAG_READ);
   std::vector<uint8_t> data(tokens.GetLength());
-  tokens.ReadAndCheck(0, base::make_span(data));
+  tokens.ReadAndCheck(0, data);
 
   pw::tokenizer::TokenDatabase database =
       pw::tokenizer::TokenDatabase::Create(data);
