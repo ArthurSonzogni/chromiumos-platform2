@@ -11,6 +11,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <set>
 #include <string>
 #include <string_view>
@@ -117,9 +118,6 @@ std::optional<std::string> GetJSONDictValue(std::string_view json,
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static std::string ObjectID(const Service* s) {
-  return s->log_name();
-}
 }  // namespace Logging
 
 // static
@@ -308,17 +306,15 @@ Service::Service(Manager* manager, Technology technology)
 
   SetStartTimeProperty(base::Time::Now());
 
-  SLOG(this, 1) << technology << " Service " << serial_number_
-                << " constructed.";
+  SLOG(1) << *this << ": Service constructed";
 }
 
 Service::~Service() {
   if (attached_network_) {
-    LOG(WARNING) << "Service " << log_name() << " still had a Network attached";
+    LOG(WARNING) << *this << ": Service still had a Network attached";
     attached_network_->UnregisterEventHandler(network_event_handler_.get());
   }
-  SLOG(this, 1) << technology() << " Service " << serial_number_
-                << " destroyed.";
+  SLOG(1) << *this << ": Service destroyed.";
 }
 
 void Service::AutoConnect() {
@@ -330,21 +326,21 @@ void Service::AutoConnect() {
   if (!IsAutoConnectable(&reason)) {
     if (reason == kAutoConnTechnologyNotAutoConnectable ||
         reason == kAutoConnConnected) {
-      SLOG(this, 2) << "Suppressed autoconnect to " << log_name()
-                    << " Reason: " << reason;
+      SLOG(2) << *this << " " << __func__
+              << ": Suppressed autoconnect:" << reason;
     } else if (reason == kAutoConnBusy ||
                reason == kAutoConnMediumUnavailable) {
-      SLOG(this, 1) << "Suppressed autoconnect to " << log_name()
-                    << " Reason: " << reason;
+      SLOG(1) << *this << " " << __func__ << ": Suppressed autoconnect"
+              << reason;
     } else {
-      SLOG(2) << "Suppressed autoconnect to " << log_name()
-              << " Reason: " << reason;
+      SLOG(2) << *this << " " << __func__
+              << ": Suppressed autoconnect: " << reason;
     }
     return;
   }
 
   Error error;
-  LOG(INFO) << "Auto-connecting to " << log_name();
+  LOG(INFO) << *this << " " << __func__ << ": Auto-connecting";
   ThrottleFutureAutoConnects();
   is_in_auto_connect_ = true;
   Connect(&error, __func__);
@@ -403,9 +399,8 @@ void Service::Connect(Error* error, const char* reason) {
   // used in determining whether or not this Service can be AutoConnected.
   ClearExplicitlyDisconnected();
 
-  // Note: this log is parsed by logprocessor.
-  LOG(INFO) << "Connecting to " << technology() << " Service " << log_name()
-            << ": " << reason;
+  // Note: this log is parsed by logprocessor based on |reason|.
+  LOG(INFO) << *this << " " << __func__ << ": " << reason;
 
   // Clear any failure state from a previous connect attempt.
   if (IsInFailState()) {
@@ -420,12 +415,12 @@ void Service::Connect(Error* error, const char* reason) {
 void Service::Disconnect(Error* error, const char* reason) {
   CHECK(reason);
   if (!IsDisconnectable(error)) {
-    LOG(WARNING) << "Disconnect attempted but " << log_name()
-                 << " is not Disconnectable: " << reason;
+    LOG(WARNING) << *this << " " << __func__
+                 << ": not disconnectable: " << reason;
     return;
   }
 
-  LOG(INFO) << "Disconnecting from " << log_name() << ": " << reason;
+  LOG(INFO) << *this << " " << __func__ << ": " << reason;
   SetState(kStateDisconnecting);
   // Perform connection logic defined by children. This logic will
   // drive the state to kStateIdle.
@@ -435,14 +430,15 @@ void Service::Disconnect(Error* error, const char* reason) {
 void Service::DisconnectWithFailure(ConnectFailure failure,
                                     Error* error,
                                     const char* reason) {
-  SLOG(this, 1) << __func__ << ": " << ConnectFailureToString(failure);
+  SLOG(1) << *this << " " << __func__ << ": "
+          << ConnectFailureToString(failure);
   CHECK(reason);
   Disconnect(error, reason);
   SetFailure(failure);
 }
 
 void Service::UserInitiatedConnect(const char* reason, Error* error) {
-  SLOG(this, 3) << __func__;
+  SLOG(3) << *this << " " << __func__;
   SetLastManualConnectAttemptProperty(base::Time::Now());
   // |is_in_user_connect_| should only be set when Service::Connect returns with
   // no error, i.e. the connection attempt is successfully initiated. However,
@@ -561,7 +557,7 @@ void Service::SetState(ConnectState state) {
   }
 
   // Note: this log is parsed by logprocessor.
-  LOG(INFO) << "Service " << log_name() << ": state "
+  LOG(INFO) << *this << " " << __func__ << ": state "
             << ConnectStateToString(state_) << " -> "
             << ConnectStateToString(state);
 
@@ -637,8 +633,8 @@ void Service::ReEnableAutoConnectTask() {
 
 void Service::ThrottleFutureAutoConnects() {
   if (!auto_connect_cooldown_.is_zero()) {
-    LOG(INFO) << "Throttling future autoconnects to " << log_name()
-              << ". Next autoconnect in " << auto_connect_cooldown_;
+    LOG(INFO) << *this << " " << __func__ << ": Next autoconnect in "
+              << auto_connect_cooldown_;
     reenable_auto_connect_task_.Reset(base::BindOnce(
         &Service::ReEnableAutoConnectTask, weak_ptr_factory_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE,
@@ -658,7 +654,8 @@ void Service::SaveFailure() {
 }
 
 void Service::SetFailure(ConnectFailure failure) {
-  SLOG(this, 1) << __func__ << ": " << ConnectFailureToString(failure);
+  SLOG(1) << *this << " " << __func__ << ": "
+          << ConnectFailureToString(failure);
   failure_ = failure;
   failed_time_ = base::Time::Now();
   SaveFailure();
@@ -667,7 +664,8 @@ void Service::SetFailure(ConnectFailure failure) {
 }
 
 void Service::SetFailureSilent(ConnectFailure failure) {
-  SLOG(this, 1) << __func__ << ": " << ConnectFailureToString(failure);
+  SLOG(1) << *this << " " << __func__ << ": "
+          << ConnectFailureToString(failure);
   NoteFailureEvent();
   // Note that order matters here, since SetState modifies |failure_| and
   // |failed_time_|.
@@ -720,7 +718,9 @@ Service::ONCSource Service::ParseONCSourceFromUIData() {
 bool Service::Load(const StoreInterface* storage) {
   const auto id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
-    LOG(WARNING) << "Service is not available in the persistent store: " << id;
+    LOG(WARNING) << *this << " " << __func__
+                 << ": Service is not available in the persistent store: "
+                 << id;
     return false;
   }
 
@@ -749,7 +749,8 @@ bool Service::Load(const StoreInterface* storage) {
   } else {
     source_ = static_cast<ONCSource>(source);
   }
-  SLOG(this, 2) << " Service source = " << static_cast<size_t>(source_);
+  SLOG(2) << *this << " " << __func__
+          << ": Service source = " << static_cast<size_t>(source_);
 
   if (!storage->GetBool(id, kStorageManagedCredentials,
                         &managed_credentials_)) {
@@ -979,10 +980,12 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
   for (const auto& it : args.properties()) {
     if (it.second.IsTypeCompatible<bool>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
-        SLOG(this, 5) << "Ignoring bool property: " << it.first;
+        SLOG(5) << *this << " " << __func__
+                << ": Ignoring bool property: " << it.first;
         continue;
       }
-      SLOG(this, 5) << "Configuring bool property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Configuring bool property: " << it.first;
       Error set_error;
       store_.SetBoolProperty(it.first, it.second.Get<bool>(), &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
@@ -990,10 +993,12 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       }
     } else if (it.second.IsTypeCompatible<int32_t>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
-        SLOG(this, 5) << "Ignoring int32_t property: " << it.first;
+        SLOG(5) << *this << " " << __func__
+                << ": Ignoring int32_t property: " << it.first;
         continue;
       }
-      SLOG(this, 5) << "Configuring int32_t property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Configuring int32_t property: " << it.first;
       Error set_error;
       store_.SetInt32Property(it.first, it.second.Get<int32_t>(), &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
@@ -1001,10 +1006,12 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       }
     } else if (it.second.IsTypeCompatible<KeyValueStore>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
-        SLOG(this, 5) << "Ignoring key value store property: " << it.first;
+        SLOG(5) << *this << " " << __func__
+                << ": Ignoring key value store property: " << it.first;
         continue;
       }
-      SLOG(this, 5) << "Configuring key value store property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Configuring key value store property: " << it.first;
       Error set_error;
       store_.SetKeyValueStoreProperty(it.first, it.second.Get<KeyValueStore>(),
                                       &set_error);
@@ -1013,10 +1020,12 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       }
     } else if (it.second.IsTypeCompatible<std::string>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
-        SLOG(this, 5) << "Ignoring string property: " << it.first;
+        SLOG(5) << *this << " " << __func__
+                << ": Ignoring string property: " << it.first;
         continue;
       }
-      SLOG(this, 5) << "Configuring string property: " << it.first;
+      SLOG(6) << *this << " " << __func__
+              << ": Configuring string property: " << it.first;
       Error set_error;
       store_.SetStringProperty(it.first, it.second.Get<std::string>(),
                                &set_error);
@@ -1025,10 +1034,12 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       }
     } else if (it.second.IsTypeCompatible<Strings>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
-        SLOG(this, 5) << "Ignoring strings property: " << it.first;
+        SLOG(5) << *this << " " << __func__
+                << ": Ignoring strings property: " << it.first;
         continue;
       }
-      SLOG(this, 5) << "Configuring strings property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Configuring strings property: " << it.first;
       Error set_error;
       store_.SetStringsProperty(it.first, it.second.Get<Strings>(), &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
@@ -1036,10 +1047,12 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       }
     } else if (it.second.IsTypeCompatible<Stringmap>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
-        SLOG(this, 5) << "Ignoring stringmap property: " << it.first;
+        SLOG(5) << *this << " " << __func__
+                << ": Ignoring stringmap property: " << it.first;
         continue;
       }
-      SLOG(this, 5) << "Configuring stringmap property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Configuring stringmap property: " << it.first;
       Error set_error;
       store_.SetStringmapProperty(it.first, it.second.Get<Stringmap>(),
                                   &set_error);
@@ -1048,10 +1061,12 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       }
     } else if (it.second.IsTypeCompatible<Stringmaps>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
-        SLOG(this, 5) << "Ignoring stringmaps property: " << it.first;
+        SLOG(5) << *this << " " << __func__
+                << ": Ignoring stringmaps property: " << it.first;
         continue;
       }
-      SLOG(this, 5) << "Configuring stringmaps property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Configuring stringmaps property: " << it.first;
       Error set_error;
       store_.SetStringmapsProperty(it.first, it.second.Get<Stringmaps>(),
                                    &set_error);
@@ -1065,7 +1080,8 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
 bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
   for (const auto& it : args.properties()) {
     if (it.second.IsTypeCompatible<bool>()) {
-      SLOG(this, 5) << "Checking bool property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Checking bool property: " << it.first;
       Error get_error;
       bool value;
       if (!store_.GetBoolProperty(it.first, &value, &get_error) ||
@@ -1073,7 +1089,8 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
         return false;
       }
     } else if (it.second.IsTypeCompatible<int32_t>()) {
-      SLOG(this, 5) << "Checking int32 property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Checking int32 property: " << it.first;
       Error get_error;
       int32_t value;
       if (!store_.GetInt32Property(it.first, &value, &get_error) ||
@@ -1081,7 +1098,8 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
         return false;
       }
     } else if (it.second.IsTypeCompatible<std::string>()) {
-      SLOG(this, 5) << "Checking string property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Checking string property: " << it.first;
       Error get_error;
       std::string value;
       if (!store_.GetStringProperty(it.first, &value, &get_error) ||
@@ -1089,7 +1107,8 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
         return false;
       }
     } else if (it.second.IsTypeCompatible<Strings>()) {
-      SLOG(this, 5) << "Checking strings property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Checking strings property: " << it.first;
       Error get_error;
       Strings value;
       if (!store_.GetStringsProperty(it.first, &value, &get_error) ||
@@ -1097,7 +1116,8 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
         return false;
       }
     } else if (it.second.IsTypeCompatible<Stringmap>()) {
-      SLOG(this, 5) << "Checking stringmap property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Checking stringmap property: " << it.first;
       Error get_error;
       Stringmap value;
       if (!store_.GetStringmapProperty(it.first, &value, &get_error) ||
@@ -1105,7 +1125,8 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
         return false;
       }
     } else if (it.second.IsTypeCompatible<KeyValueStore>()) {
-      SLOG(this, 5) << "Checking key value store property: " << it.first;
+      SLOG(5) << *this << " " << __func__
+              << ": Checking key value store property: " << it.first;
       Error get_error;
       KeyValueStore value;
       if (!store_.GetKeyValueStoreProperty(it.first, &value, &get_error) ||
@@ -1129,7 +1150,8 @@ bool Service::HasProxyConfig() const {
   // Check if proxy "mode" is equal to "direct".
   auto mode = GetJSONDictValue(proxy_config_, kServiceProxyConfigMode);
   if (!mode) {
-    LOG(ERROR) << "Failed to parse proxy config: " << proxy_config_;
+    LOG(ERROR) << *this << " " << __func__
+               << ": Failed to parse proxy config: " << proxy_config_;
     // Returns true here for backward compatibility. Previously, this method
     // only checks whether or not |proxy_config_| is empty.
     return true;
@@ -1150,11 +1172,11 @@ void Service::EnableAndRetainAutoConnect() {
 
 void Service::AttachNetwork(base::WeakPtr<Network> network) {
   if (attached_network_) {
-    LOG(ERROR) << log_name() << ": Network was already attached.";
+    LOG(ERROR) << *this << " " << __func__ << ": Network was already attached.";
     DetachNetwork();
   }
   if (!network) {
-    LOG(ERROR) << log_name() << ": cannot attach null Network";
+    LOG(ERROR) << *this << " " << __func__ << ": Cannot attach null Network";
     return;
   }
   attached_network_ = network;
@@ -1171,7 +1193,7 @@ void Service::AttachNetwork(base::WeakPtr<Network> network) {
 
 void Service::DetachNetwork() {
   if (!attached_network_) {
-    LOG(ERROR) << log_name() << ": no Network to detach";
+    LOG(ERROR) << *this << " " << __func__ << ": no Network to detach";
     return;
   }
   // Cancel traffic counter refresh recurring task and schedule immediately a
@@ -1286,9 +1308,9 @@ bool Service::Is8021xConnectable() const {
 
 bool Service::AddEAPCertification(const std::string& name, size_t depth) {
   if (depth >= kEAPMaxCertificationElements) {
-    LOG(WARNING) << "Ignoring certification " << name << " because depth "
-                 << depth << " exceeds our maximum of "
-                 << kEAPMaxCertificationElements;
+    LOG(WARNING) << *this << " " << __func__ << ": Ignoring certification "
+                 << name << " because depth " << depth
+                 << " exceeds our maximum of " << kEAPMaxCertificationElements;
     return false;
   }
 
@@ -1299,7 +1321,8 @@ bool Service::AddEAPCertification(const std::string& name, size_t depth) {
   }
 
   remote_certification_[depth] = name;
-  LOG(INFO) << "Received certification for " << name << " at depth " << depth;
+  LOG(INFO) << *this << " " << __func__ << ": Received certification for "
+            << name << " at depth " << depth;
   return true;
 }
 
@@ -1336,7 +1359,7 @@ void Service::RequestPortalDetection(Error* error) {
                           log_name() + " was not connected.");
     return;
   }
-  LOG(INFO) << log_name() << ": " << __func__;
+  LOG(INFO) << *this << " " << __func__;
   attached_network_->RequestNetworkValidation(
       NetworkMonitor::ValidationReason::kDBusRequest);
 }
@@ -1345,7 +1368,7 @@ void Service::SetAutoConnect(bool connect) {
   if (auto_connect() == connect) {
     return;
   }
-  LOG(INFO) << "Service " << log_name() << ": SetAutoConnect: " << connect;
+  LOG(INFO) << *this << " " << __func__ << ": " << connect;
   auto_connect_ = connect;
   adaptor_->EmitBoolChanged(kAutoConnectProperty, auto_connect());
 }
@@ -1580,13 +1603,14 @@ std::string Service::GetTechnologyName() const {
 bool Service::ShouldIgnoreFailure() const {
   // Ignore the event if it's user-initiated explicit disconnect.
   if (explicitly_disconnected_) {
-    SLOG(this, 2) << "Explicit disconnect ignored.";
+    SLOG(2) << *this << " " << __func__ << ": Explicit disconnect ignored.";
     return true;
   }
   // Ignore the event if manager is not running (e.g., service disconnects on
   // shutdown).
   if (!manager_->running()) {
-    SLOG(this, 2) << "Disconnect while manager stopped ignored.";
+    SLOG(2) << *this << " " << __func__
+            << ": Disconnect while manager stopped ignored.";
     return true;
   }
   // Ignore the event if the system is suspending.
@@ -1594,14 +1618,15 @@ bool Service::ShouldIgnoreFailure() const {
   // to come before PowerManager::OnSuspendDone().
   PowerManager* power_manager = manager_->power_manager();
   if (!power_manager || power_manager->suspending()) {
-    SLOG(this, 2) << "Disconnect in transitional power state ignored.";
+    SLOG(2) << *this << " " << __func__
+            << ": Disconnect in transitional power state ignored.";
     return true;
   }
   return false;
 }
 
 void Service::NoteFailureEvent() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << *this << " " << __func__;
   if (ShouldIgnoreFailure()) {
     return;
   }
@@ -1611,17 +1636,16 @@ void Service::NoteFailureEvent() {
   // take into account the last non-idle state.
   ConnectState state = state_ == kStateIdle ? previous_state_ : state_;
   if (IsConnectedState(state)) {
-    LOG(INFO) << "Noting an unexpected connection drop for " << log_name()
-              << ".";
+    LOG(INFO) << *this << " " << __func__ << ": Unexpected connection drop";
     period = kDisconnectsMonitorDuration.InSeconds();
     events = &disconnects_;
   } else if (IsConnectingState(state)) {
-    LOG(INFO) << "Noting an unexpected failure to connect for " << log_name()
-              << ".";
+    LOG(INFO) << *this << " " << __func__ << ": Unexpected failure to connect";
     period = kMisconnectsMonitorDuration.InSeconds();
     events = &misconnects_;
   } else {
-    SLOG(this, 2) << "Not connected or connecting, state transition ignored.";
+    SLOG(2) << *this << " " << __func__
+            << ": Not connected or connecting, state transition ignored.";
     return;
   }
   events->RecordEventAndExpireEventsBefore(period,
@@ -1744,13 +1768,13 @@ void Service::RequestTrafficCountersCallback(
 
 void Service::RequestTrafficCounters(
     ResultVariantDictionariesCallback callback) {
-  LOG(INFO) << __func__ << ": " << log_name();
+  LOG(INFO) << *this << " " << __func__;
 
   // When the Service has no attached Network, reply with the current traffic
   // counters.
   if (!attached_network_) {
-    LOG(INFO) << __func__
-              << ": no attached network, pass the current counters directly";
+    LOG(INFO) << *this << " " << __func__
+              << ": No attached network, pass the current counters directly";
     GetTrafficCounters(std::move(callback));
     return;
   }
@@ -1776,7 +1800,7 @@ void Service::ResetTrafficCounters(Error* /*error*/) {
 void Service::ResetTrafficCountersCallback(
     const Network::TrafficCounterMap& raw_counters,
     const Network::TrafficCounterMap& extra_raw_counters) {
-  LOG(INFO) << __func__ << ": " << log_name();
+  LOG(INFO) << *this << " " << __func__;
   current_total_traffic_counters_.clear();
   total_traffic_counter_snapshot_.clear();
   network_raw_traffic_counter_snapshot_ = raw_counters;
@@ -1788,8 +1812,8 @@ void Service::ResetTrafficCountersCallback(
 void Service::RefreshTrafficCountersTask(bool initialize) {
   if (!attached_network_) {
     LOG(WARNING)
-        << __func__
-        << ": no attached network, cancelling traffic counter refreshing task";
+        << *this << " " << __func__
+        << ": No attached network, cancelling traffic counter refreshing task";
     return;
   }
   if (initialize) {
@@ -1811,7 +1835,7 @@ void Service::RefreshTrafficCountersTask(bool initialize) {
 void Service::RequestRawTrafficCounters(
     RequestRawTrafficCountersCallback callback) {
   if (!attached_network_) {
-    LOG(WARNING) << __func__ << ": no attached network";
+    LOG(WARNING) << *this << " " << __func__ << ": No attached network";
     return;
   }
 
@@ -1949,9 +1973,9 @@ void Service::set_profile(const ProfileRefPtr& p) {
 }
 
 void Service::SetProfile(const ProfileRefPtr& p) {
-  SLOG(this, 2) << "SetProfile for " << log_name() << " from "
-                << (profile_ ? profile_->GetFriendlyName() : "(none)") << " to "
-                << (p ? p->GetFriendlyName() : "(none)") << ".";
+  SLOG(2) << *this << " " << __func__ << ": From "
+          << (profile_ ? profile_->GetFriendlyName() : "(none)") << " to "
+          << (p ? p->GetFriendlyName() : "(none)") << ".";
   if (profile_ == p) {
     return;
   }
@@ -1965,7 +1989,7 @@ void Service::SetProfile(const ProfileRefPtr& p) {
 }
 
 void Service::OnPropertyChanged(std::string_view property) {
-  SLOG(this, 1) << __func__ << " " << property;
+  SLOG(1) << *this << " " << __func__ << ": " << property;
   if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
     OnEapCredentialsChanged(kReasonPropertyUpdate);
   }
@@ -2315,7 +2339,7 @@ bool Service::GetAutoConnect(Error* /*error*/) {
 }
 
 bool Service::SetAutoConnectFull(const bool& connect, Error* /*error*/) {
-  LOG(INFO) << "Service " << log_name() << ": AutoConnect=" << auto_connect()
+  LOG(INFO) << *this << " " << __func__ << ": AutoConnect=" << auto_connect()
             << "->" << connect;
   if (!retain_auto_connect_) {
     RetainAutoConnect();
@@ -2362,7 +2386,7 @@ bool Service::SetCheckPortal(const std::string& check_portal_name,
   if (*check_portal == check_portal_) {
     return false;
   }
-  LOG(INFO) << log_name() << ": " << __func__ << ": "
+  LOG(INFO) << *this << " " << __func__ << ": "
             << CheckPortalStateToString(check_portal_) << " -> "
             << CheckPortalStateToString(*check_portal);
   check_portal_ = *check_portal;
@@ -2464,7 +2488,7 @@ bool Service::SetProxyConfig(const std::string& proxy_config, Error* error) {
   // Force network validation to restart if it was already running: the new
   // Proxy settings could change validation results.
   LOG(INFO)
-      << log_name()
+      << *this << " " << __func__
       << ": Restarting network validation after proxy configuration change";
   UpdateNetworkValidationMode();
   adaptor_->EmitStringChanged(kProxyConfigProperty, proxy_config_);
@@ -2585,7 +2609,8 @@ void Service::ClearMeteredProperty(Error* /*error*/) {
 
 std::string Service::GetONCSource(Error* error) {
   if (base::to_underlying(source_) >= kONCSourceMapping.size()) {
-    LOG(WARNING) << "Bad source value: " << base::to_underlying(source_);
+    LOG(WARNING) << *this << " " << __func__
+                 << ": Bad source value: " << base::to_underlying(source_);
     return kONCSourceUnknown;
   }
 
@@ -2666,7 +2691,7 @@ void Service::UpdateErrorProperty() {
   if (error == error_) {
     return;
   }
-  LOG(INFO) << __func__ << ": " << error;
+  LOG(INFO) << *this << " " << __func__ << ": " << error;
   error_ = error;
   adaptor_->EmitStringChanged(kErrorProperty, error);
 }
@@ -2724,18 +2749,18 @@ void Service::UpdateStateTransitionMetrics(Service::ConnectState new_state) {
 void Service::UpdateServiceStateTransitionMetrics(
     Service::ConnectState new_state) {
   const char* state_string = ConnectStateToString(new_state);
-  SLOG(5) << __func__ << " " << log_name() << ": new_state=" << state_string;
+  SLOG(5) << *this << " " << __func__ << ": new_state=" << state_string;
   TimerReportersList& start_timers =
       service_metrics_->start_on_state[new_state];
   for (auto* start_timer : start_timers) {
-    SLOG(5) << __func__ << " " << log_name() << " Starting timer for "
+    SLOG(5) << *this << " " << __func__ << ": Starting timer for "
             << start_timer->histogram_name() << " due to new state "
             << state_string << ".";
     start_timer->Start();
   }
   TimerReportersList& stop_timers = service_metrics_->stop_on_state[new_state];
   for (auto* stop_timer : stop_timers) {
-    SLOG(5) << __func__ << " " << log_name() << " Stopping timer for "
+    SLOG(5) << *this << " " << __func__ << ": Stopping timer for "
             << stop_timer->histogram_name() << " due to new state "
             << state_string << ".";
     if (stop_timer->Stop()) {
@@ -2764,7 +2789,7 @@ void Service::InitializeServiceStateTransitionMetrics() {
 void Service::AddServiceStateTransitionTimer(const std::string& histogram_name,
                                              Service::ConnectState start_state,
                                              Service::ConnectState stop_state) {
-  SLOG(5) << __func__ << " " << log_name() << ": adding " << histogram_name
+  SLOG(5) << *this << " " << __func__ << ": Adding " << histogram_name
           << " for " << ConnectStateToString(start_state) << " -> "
           << ConnectStateToString(stop_state);
   CHECK(start_state < stop_state);
@@ -2796,7 +2821,7 @@ void Service::UpdateNetworkValidationMode() {
   if (validation_mode == NetworkMonitor::ValidationMode::kDisabled) {
     // If network validation is disabled for this technology, immediately set
     // the service state to "Online".
-    LOG(INFO) << log_name() << ": " << __func__
+    LOG(INFO) << *this << " " << __func__
               << ": Network validation is disabled for this Service";
     SetState(Service::kStateOnline);
   }
@@ -2826,8 +2851,8 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
     int interface_index, const NetworkMonitor::Result& result) {
   if (!service_->IsConnected()) {
     // A race can happen if the Service is currently disconnecting.
-    LOG(WARNING) << service_->log_name() << ": "
-                 << "Portal detection completed but service is not connected";
+    LOG(WARNING) << *service_ << " " << __func__
+                 << ": Portal detection completed but service is not connected";
     return;
   }
 
@@ -2908,6 +2933,19 @@ void Service::UpdateEnableRFC8925() {
 void Service::GetExtraTrafficCounters(
     Network::GetTrafficCountersCallback callback) {
   std::move(callback).Run({});
+}
+
+std::string Service::LoggingTag() const {
+  if (attached_network_) {
+    return attached_network_->LoggingTag();
+  }
+  // If the Service has no Network attached, then there is no Device currently
+  // selecting this Service.
+  return base::StrCat({"unselected ", log_name(), " sid=none"});
+}
+
+std::ostream& operator<<(std::ostream& stream, const Service& service) {
+  return stream << service.LoggingTag();
 }
 
 }  // namespace shill

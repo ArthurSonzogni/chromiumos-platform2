@@ -1474,6 +1474,10 @@ Network::TrafficCounterMap Network::DiffTrafficCounters(
   return out;
 }
 
+const std::string& Network::LoggingTag() const {
+  return context_.logging_tag();
+}
+
 std::ostream& operator<<(std::ostream& stream, const Network& network) {
   return stream << network.context_.logging_tag();
 }

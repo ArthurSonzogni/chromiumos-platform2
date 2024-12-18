@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <set>
 #include <string>
 #include <string_view>
@@ -838,8 +839,12 @@ class Service : public base::RefCounted<Service> {
   // Gets a weak ptr to this object.
   base::WeakPtr<Service> AsWeakPtr() { return weak_ptr_factory_.GetWeakPtr(); }
 
+  std::string LoggingTag() const;
+
  protected:
   friend class base::RefCounted<Service>;
+  // For logging.
+  friend std::ostream& operator<<(std::ostream& stream, const Service& service);
 
   virtual ~Service();
 
@@ -1338,6 +1343,8 @@ class Service : public base::RefCounted<Service> {
   base::Time last_online_;
   base::Time start_time_;
 };
+
+std::ostream& operator<<(std::ostream& stream, const Service& service);
 
 }  // namespace shill
 

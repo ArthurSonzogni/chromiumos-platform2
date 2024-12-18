@@ -489,6 +489,8 @@ class Network : public NetworkMonitor::ClientNetwork {
   // sent even if the Network is connecting or disconnected.
   mockable void RequestTrafficCounters(GetTrafficCountersCallback callback);
 
+  const std::string& LoggingTag() const;
+
  protected:
   // Only NetworkManager could construct Network instances.
   friend class NetworkManager;
