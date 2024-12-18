@@ -4,11 +4,16 @@
 
 use crate::process_util::{Environment, RunCommand, RunCommandImpl};
 use anyhow::{Context, Result};
+use log::debug;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::Path;
 use std::process::Command;
+
+/// Temporary mount point path.
+const TMP_MNT_PATH: &str = "/tmp/install-mount-point";
 
 // Env var names. Must match chromeos-install.sh.
 const BUSYBOX_DD_FOUND: &str = "BUSYBOX_DD_FOUND";
@@ -35,6 +40,17 @@ pub fn get_tool_env() -> Result<Environment> {
 /// `PARTITION_VARS_PATH`.
 pub fn get_gpt_base_vars() -> Result<Environment> {
     get_gpt_base_vars_from(Path::new(PARTITION_VARS_PATH))
+}
+
+/// Get the `TMPMNT` var. The value is a temporary directory used as a
+/// mount point.
+///
+/// The directory is created if it does not exist.
+pub fn get_temporary_mount_var() -> Result<Environment> {
+    create_dir_if_needed(Path::new(TMP_MNT_PATH))?;
+    let mut env = Environment::new();
+    env.insert("TMPMNT", TMP_MNT_PATH.into());
+    Ok(env)
 }
 
 /// Check if the `dd` command comes from busybox.
@@ -98,6 +114,23 @@ fn get_gpt_base_vars_from(path: &Path) -> Result<Environment> {
     );
 
     Ok(env)
+}
+
+/// Create a directory at `path`.
+///
+/// Returns `Ok` if the directory was successfully created, or if it
+/// already exists.
+///
+/// Returns an error if the directory's parent does not exist, if any
+/// other error occurs when creating the directory.
+fn create_dir_if_needed(path: &Path) -> Result<()> {
+    debug!("creating {}", path.display());
+    if let Err(err) = fs::create_dir(path) {
+        if err.kind() != ErrorKind::AlreadyExists {
+            return Err(err).with_context(|| format!("failed to create {}", path.display()));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -230,5 +263,23 @@ mod tests {
         // File contains invalid data.
         fs::write(&path, "invalid data").unwrap();
         assert!(get_gpt_base_vars_from(&path).is_err());
+    }
+
+    /// Test `create_dir_if_needed`.
+    #[test]
+    fn test_create_dir_if_needed() {
+        let tmpdir = tempfile::tempdir().unwrap();
+
+        // Error: parent does not exist.
+        assert!(create_dir_if_needed(&tmpdir.path().join("parent/tmpmnt")).is_err());
+
+        // Successfully create tmpmnt.
+        let path = tmpdir.path().join("tmpmnt");
+        create_dir_if_needed(&path).unwrap();
+        assert!(path.exists());
+
+        // Calling it again succeeds; directory already exists.
+        create_dir_if_needed(&path).unwrap();
+        assert!(path.exists());
     }
 }

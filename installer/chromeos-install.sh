@@ -38,6 +38,7 @@ fi
 #       currently-running rootfs, this is set to an empty string.
 # BUSYBOX_DD_FOUND: Whether dd is provided by busybox ("true" or "false").
 # LOSETUP_PATH: Path of the losetup utility.
+# TMPMNT: Temporary mount point path.
 # All the variables under "load_base_vars" in /usr/sbin/partition_vars.json.
 
 # To keep changes minimal, temporarily define these boolean constants which were
@@ -62,7 +63,6 @@ RECOVERY_KEY_VERSION=
 
 # Helpful constants.
 HARDWARE_DIAGNOSTICS_PATH=/tmp/hardware_diagnostics.log
-TMPMNT=/tmp/install-mount-point
 
 die() {
   echo "$*" >&2
@@ -247,7 +247,7 @@ mount_on_loop_dev() {
   else
     mountopts="${mountopts},rw,noexec,nosymfollow"
   fi
-  tracked_mount -o "${mountopts}" "${LOOP_DEV}" "${TMPMNT}"
+  tracked_mount -o "${mountopts}" "${LOOP_DEV}" "${TMPMNT:?}"
 }
 
 # Unmount loop-mounted device.
@@ -794,7 +794,6 @@ main() {
   fi
 
   check_payload_image
-  mkdir -p "${TMPMNT}"
 
   # We untrap on success and run cleanup ourselves. Otherwise, on any failure,
   # run our custom trap method to gather any diagnostic data before cleaning up.
