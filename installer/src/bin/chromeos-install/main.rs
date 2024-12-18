@@ -62,6 +62,7 @@ fn main() -> Result<()> {
     // Clean up any mounts that might be present to avoid aliasing
     // access to block devices.
     install_env::stop_cros_disks(platform);
+    install_env::unmount_media(platform);
 
     log_and_run_command(install_cmd).map_err(Error::msg)
 }

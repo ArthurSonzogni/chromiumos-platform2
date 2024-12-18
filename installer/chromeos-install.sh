@@ -199,18 +199,6 @@ check_payload_image() {
   fi
 }
 
-# Clean any mounts that might be present to avoid
-# aliasing access to block devices.
-prepare_disk() {
-  # Often times, nothing is mounted, so swallow the warnings.
-  umount -f /media/*/* 2>&1 | \
-    grep -v -i -F \
-      -e 'no mount point specified' \
-      -e 'not mounted' \
-      -e 'No such file or directory' \
-      -e 'not found' || true
-}
-
 # Like mount but keeps track of the current mounts so that they can be cleaned
 # up automatically.
 tracked_mount() {
@@ -797,8 +785,6 @@ main() {
   # Also, cleanup mounts if install is interrupted.
   trap cleanup_on_failure INT TERM EXIT
 
-  # Clean media browser mounts if they've popped up.
-  prepare_disk
   locate_gpt
 
   # Load the GPT helper functions.

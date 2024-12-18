@@ -6,15 +6,21 @@ use crate::platform::{Platform, PlatformImpl};
 use crate::process_util::Environment;
 use anyhow::{Context, Result};
 use log::debug;
+use nix::mount::MntFlags;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::ErrorKind;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Temporary mount point path.
 const TMP_MNT_PATH: &str = "/tmp/install-mount-point";
+
+/// Flags for `umount2` to forcibly unmount a filesystem. Add
+/// `MNT_DETACH` to ensure that FUSE filesystems are correctly
+/// unmounted. This matches the flags used in cros-disks.
+const FORCE_UNMOUNT_FLAGS: MntFlags = MntFlags::MNT_FORCE.union(MntFlags::MNT_DETACH);
 
 // Env var names. Must match chromeos-install.sh.
 const BUSYBOX_DD_FOUND: &str = "BUSYBOX_DD_FOUND";
@@ -61,6 +67,57 @@ pub fn stop_cros_disks(platform: &dyn Platform) {
     // Capture all output to avoid unnecessary log spam.
     if let Err(err) = platform.run_command_and_get_output(cmd) {
         debug!("{err}");
+    }
+}
+
+/// Unmount anything mounted under `/media/*/*`. Errors are ignored.
+pub fn unmount_media(platform: &dyn Platform) {
+    let mount_points = get_media_mount_points(platform);
+
+    for path in mount_points {
+        if let Err(err) = platform.unmount(&path, FORCE_UNMOUNT_FLAGS) {
+            debug!("{err}");
+        }
+    }
+}
+
+/// Get all directories in `/media/*/*`.
+///
+/// Note that these directories are not necessarily in use as mount
+/// points.
+///
+/// Errors are ignored.
+fn get_media_mount_points(platform: &dyn Platform) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    for entry1 in get_directory_contents(&platform.root().join("media")) {
+        for entry2 in get_directory_contents(&entry1) {
+            if entry2.is_dir() {
+                paths.push(entry2);
+            }
+        }
+    }
+    paths
+}
+
+/// Get all direct children of `dir`.
+///
+/// This returns a list of file paths within `dir`. Each path is a
+/// direntry name joined to `dir`, so if `dir` is an absolute path then
+/// the output paths will also be absolute.
+///
+/// Note that this is not recursive; contents of directories in `dir`
+/// are not included in the output.
+///
+/// Errors are ignored.
+fn get_directory_contents(dir: &Path) -> Vec<PathBuf> {
+    match fs::read_dir(dir) {
+        Ok(dir) => dir
+            .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+            .collect(),
+        Err(err) => {
+            debug!("failed to read dir {}: {}", dir.display(), err);
+            Vec::new()
+        }
     }
 }
 
@@ -153,6 +210,88 @@ mod tests {
     use std::process::Output;
 
     const BUSYBOX_HELP: &str = "BusyBox v1.36.1 (2024-02-04 23:31:36 PST) multi-call binary.";
+
+    /// Test that `get_directory_contents` successfully gets all
+    /// children of a directory.
+    #[test]
+    fn test_get_directory_contents() {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let tmpdir = tmpdir.path();
+
+        let child_dir = tmpdir.join("dir");
+        let child_file = tmpdir.join("file");
+        fs::create_dir(&child_dir).unwrap();
+        fs::write(&child_file, "").unwrap();
+
+        let mut contents = get_directory_contents(tmpdir);
+        contents.sort();
+        assert_eq!(contents, [child_dir, child_file]);
+    }
+
+    /// Test that `get_media_mount_points` successfully gets potential
+    /// mount points, and correctly ignores errors.
+    #[test]
+    fn test_get_media_mount_points() {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let tmpdir = tmpdir.path();
+
+        let mut platform = MockPlatform::new();
+        let tmpdir_copy = tmpdir.to_owned();
+        platform
+            .expect_root()
+            .returning(move || tmpdir_copy.clone());
+
+        // Empty: media does not exist.
+        assert!(get_media_mount_points(&platform).is_empty());
+
+        // Create media/removable dir.
+        let media = tmpdir.join("media");
+        fs::create_dir(&media).unwrap();
+        let removable = media.join("removable");
+        fs::create_dir(&removable).unwrap();
+
+        // Empty: media/removable is empty.
+        assert!(get_media_mount_points(&platform).is_empty());
+
+        // Empty: media/removable/file is not a directory.
+        fs::write(removable.join("file"), "").unwrap();
+        assert!(get_media_mount_points(&platform).is_empty());
+
+        // Create potential mount point directories.
+        let mnt1 = removable.join("mnt1");
+        let mnt2 = removable.join("mnt2");
+        fs::create_dir(&mnt1).unwrap();
+        fs::create_dir(&mnt2).unwrap();
+
+        // Assert that the mount points are found.
+        let mut found = get_media_mount_points(&platform);
+        found.sort();
+        assert_eq!(found, [mnt1, mnt2]);
+    }
+
+    #[test]
+    fn test_unmount_media() {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let tmpdir = tmpdir.path();
+
+        let mnt1 = tmpdir.join("media/removable/sdc");
+        fs::create_dir_all(&mnt1).unwrap();
+
+        let mut platform = MockPlatform::new();
+
+        let tmpdir_copy = tmpdir.to_owned();
+        platform
+            .expect_root()
+            .returning(move || tmpdir_copy.clone());
+
+        platform
+            .expect_unmount()
+            .times(1)
+            .withf(move |path, flags| path == mnt1 && *flags == FORCE_UNMOUNT_FLAGS)
+            .returning(|_, _| Ok(()));
+
+        unmount_media(&platform);
+    }
 
     /// Test that `get_tool_env_impl` produces the expected vars for a
     /// busybox environment.
