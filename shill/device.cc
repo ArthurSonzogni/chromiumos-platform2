@@ -29,6 +29,7 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/notreached.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
@@ -54,9 +55,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
-static std::string ObjectID(const Device* d) {
-  return d->GetRpcIdentifier().value();
-}
 }  // namespace Logging
 
 const char Device::kStoragePowered[] = "Powered";
@@ -115,11 +113,11 @@ Device::Device(Manager* manager,
   // kScanIntervalProperty: Registered in WiFi, Cellular
   // kWakeOnWiFiFeaturesEnabledProperty: Registered in WiFi
 
-  SLOG(this, 1) << "Device(): " << LoggingTag();
+  LOG(INFO) << *this << " " << __func__;
 }
 
 Device::~Device() {
-  LOG(INFO) << "~Device(): " << LoggingTag();
+  LOG(INFO) << *this << " " << __func__;
   if (implicit_network_) {
     implicit_network_->UnregisterEventHandler(this);
   }
@@ -135,17 +133,17 @@ void Device::CreateImplicitNetwork(int interface_index,
 }
 
 void Device::Initialize() {
-  SLOG(this, 2) << "Initialized";
+  SLOG(2) << *this << " " << __func__;
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {
-  SLOG(this, 2) << "Device " << LoggingTag() << " flags 0x" << std::hex << flags
-                << " changed 0x" << std::hex << change;
+  SLOG(2) << *this << " " << __func__ << ": flags 0x" << std::hex << flags
+          << " changed 0x" << std::hex << change;
 }
 
 void Device::Scan(Error* error, const std::string& reason, bool is_dbus_call) {
-  SLOG(this, 2) << __func__ << ": " << LoggingTag() << " from " << reason
-                << (is_dbus_call ? " D-Bus call" : "");
+  SLOG(2) << *this << " " << __func__ << ": From " << reason
+          << (is_dbus_call ? " D-Bus call" : "");
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
                         GetTechnologyName() + " device doesn't implement Scan");
 }
@@ -283,7 +281,8 @@ int Device::interface_index() const {
 bool Device::Load(const StoreInterface* storage) {
   const auto id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
-    SLOG(this, 2) << "Device is not available in the persistent store: " << id;
+    SLOG(2) << *this << " " << __func__
+            << ": Device is not available in the persistent store: " << id;
     return false;
   }
   enabled_persistent_ = true;
@@ -316,7 +315,7 @@ void Device::DropConnection() {
   // always stops the implicit network associated to the device.
   // Subclasses not using the implicit network should provide their own
   // DropConnection() override as well.
-  SLOG(this, 2) << __func__;
+  SLOG(2) << *this << " " << __func__;
   CHECK(implicit_network_);
   implicit_network_->Stop();
   SelectService(nullptr);
@@ -333,13 +332,13 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
 }
 
 void Device::ForceIPConfigUpdate() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << *this << " " << __func__;
   if (!IsConnected()) {
     return;
   }
   // When already connected, a Network must exist.
   CHECK(GetPrimaryNetwork());
-  LOG(INFO) << LoggingTag() << ": forced IP config update";
+  LOG(INFO) << *this << " " << __func__;
   GetPrimaryNetwork()->RenewDHCPLease();
   GetPrimaryNetwork()->InvalidateIPv6Config();
 }
@@ -406,7 +405,7 @@ void Device::OnConnectionUpdated(int interface_index) {
   // the service state to "Online".
   if (selected_service_->GetNetworkValidationMode() ==
       NetworkMonitor::ValidationMode::kDisabled) {
-    LOG(INFO) << LoggingTag()
+    LOG(INFO) << *this << " " << __func__
               << ": Portal detection is disabled for this service";
     SetServiceState(Service::kStateOnline);
     return;
@@ -441,13 +440,13 @@ void Device::OnConnected() {}
 
 void Device::SelectService(const ServiceRefPtr& service,
                            bool reset_old_service_state) {
-  LOG(INFO) << __func__ << ": " << LoggingTag() << " service "
-            << (service ? service->log_name() : "*reset*");
+  LOG(INFO) << *this << " " << __func__ << "("
+            << (service ? service->log_name() : "*reset*") << ")";
 
   if (selected_service_.get() == service.get()) {
     // Network may have been previously invalidated, if so, reset.
     if (selected_service_ && !selected_service_->attached_network()) {
-      SLOG(this, 2) << __func__ << ": reattaching network to service";
+      SLOG(2) << *this << " " << __func__ << ": Reattaching network to service";
       ResetServiceAttachedNetwork();
     }
     // No change to |selected_service_|. Return early to avoid
@@ -553,9 +552,8 @@ bool Device::IsUnderlyingDeviceEnabled() const {
 // callback
 void Device::OnEnabledStateChanged(ResultCallback callback,
                                    const Error& error) {
-  LOG(INFO) << __func__ << ": " << LoggingTag()
-            << " (target: " << enabled_pending_ << ","
-            << " success: " << error.IsSuccess() << ")";
+  LOG(INFO) << *this << " " << __func__ << ": (target: " << enabled_pending_
+            << "," << " success: " << error.IsSuccess() << ")";
 
   if (error.IsSuccess()) {
     UpdateEnabledState();
@@ -571,8 +569,8 @@ void Device::OnEnabledStateChanged(ResultCallback callback,
 }
 
 void Device::UpdateEnabledState() {
-  SLOG(this, 1) << __func__ << ": " << LoggingTag() << " (current: " << enabled_
-                << ", target: " << enabled_pending_ << ")";
+  SLOG(1) << *this << " " << __func__ << ": (current: " << enabled_
+          << ", target: " << enabled_pending_ << ")";
   enabled_ = enabled_pending_;
   if (!enabled_ && ShouldBringNetworkInterfaceDownAfterDisabled()) {
     BringNetworkInterfaceDown();
@@ -582,26 +580,26 @@ void Device::UpdateEnabledState() {
 }
 
 void Device::SetEnabled(bool enable) {
-  LOG(INFO) << __func__ << "(" << enable << ")";
+  LOG(INFO) << *this << " " << __func__ << "(" << enable << ")";
   // TODO(b/172215298): replace DoNothing() with something that logs the error
   // and replace PopulateAndLog in many places with just Populate
   SetEnabledChecked(enable, false, base::DoNothing());
 }
 
 void Device::SetEnabledNonPersistent(bool enable, ResultCallback callback) {
-  SLOG(this, 1) << __func__ << "(" << enable << ")";
+  SLOG(1) << *this << " " << __func__ << "(" << enable << ")";
   SetEnabledChecked(enable, false, std::move(callback));
 }
 
 void Device::SetEnabledPersistent(bool enable, ResultCallback callback) {
-  SLOG(this, 1) << __func__ << "(" << enable << ")";
+  SLOG(1) << *this << " " << __func__ << "(" << enable << ")";
   SetEnabledChecked(enable, true, std::move(callback));
 }
 
 void Device::SetEnabledChecked(bool enable,
                                bool persist,
                                ResultCallback callback) {
-  LOG(INFO) << __func__ << ": " << LoggingTag()
+  LOG(INFO) << *this << " " << __func__ << ": "
             << (enable ? " starting" : " stopping");
   if (enable && manager_->IsTechnologyProhibited(technology())) {
     std::move(callback).Run(
@@ -622,7 +620,8 @@ void Device::SetEnabledChecked(bool enable,
       std::move(callback).Run(err);
       return;
     }
-    LOG(INFO) << "Already in desired enable state.";
+    LOG(INFO) << *this << " " << __func__
+              << ": Already in desired enable state";
     // We can already be in the right state, but it may not be persisted.
     // Check and flush that too.
     if (persist && enabled_persistent_ != enable) {
@@ -655,8 +654,8 @@ void Device::SetEnabledChecked(bool enable,
 
 void Device::SetEnabledUnchecked(bool enable,
                                  ResultCallback on_enable_complete) {
-  LOG(INFO) << LoggingTag() << " SetEnabledUnchecked(" << std::boolalpha
-            << enable << ")";
+  LOG(INFO) << *this << " " << __func__ << "(" << std::boolalpha << enable
+            << ")";
   enabled_pending_ = enable;
   EnabledStateChangedCallback chained_callback =
       base::BindOnce(&Device::OnEnabledStateChanged, AsWeakPtr(),
@@ -707,12 +706,36 @@ Metrics* Device::metrics() const {
 }
 
 std::string Device::LoggingTag() const {
-  return UniqueName() + " " +
-         (selected_service_ ? selected_service_->log_name() : "no_service");
+  // The Device link name and the Network interface name may be different (e.g
+  // multiplexed PDN connections). Always use the Device link name.
+  return base::StrCat(
+      {UniqueName(), " ", GetServiceLogName(), " sid=", GetNetworkSessionID()});
+}
+
+std::string Device::GetServiceLogName() const {
+  if (!selected_service_) {
+    return "no_service";
+  }
+  return selected_service_->log_name();
+}
+
+std::string Device::GetNetworkSessionID() const {
+  if (!GetPrimaryNetwork()) {
+    return "none";
+  }
+  std::optional<int> sid = GetPrimaryNetwork()->session_id();
+  if (!sid) {
+    return "none";
+  }
+  return std::to_string(*sid);
 }
 
 void Device::OnDeviceClaimed() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << *this << " " << __func__;
+}
+
+std::ostream& operator<<(std::ostream& stream, const Device& device) {
+  return stream << device.LoggingTag();
 }
 
 }  // namespace shill

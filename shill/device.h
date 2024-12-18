@@ -286,6 +286,8 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
   FRIEND_TEST(ManagerTest, TechnologyEnabledCheck);
   FRIEND_TEST(VirtualDeviceTest, ResetConnection);
+  // For logging.
+  friend std::ostream& operator<<(std::ostream& stream, const Device& device);
 
   ~Device() override;
 
@@ -420,6 +422,9 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Necessary getter signature for kInterfaceProperty. Cannot be const.
   std::string GetInterface(Error* error);
 
+  std::string GetServiceLogName() const;
+  std::string GetNetworkSessionID() const;
+
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
   // defaults to true. |enabled_| reflects the real-time state of
@@ -467,6 +472,8 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   base::WeakPtrFactory<Device> weak_ptr_factory_;
 };
+
+std::ostream& operator<<(std::ostream& stream, const Device& device);
 
 }  // namespace shill
 
