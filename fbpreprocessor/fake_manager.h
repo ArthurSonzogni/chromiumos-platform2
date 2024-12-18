@@ -84,6 +84,12 @@ class FakeManager : public Manager {
     task_env_.FastForwardBy(delta);
   }
 
+  // Make the simulated clock advance by |delta|. See
+  // base::test::TaskEnvironment::AdvanceClock() for more information.
+  void AdvanceClock(const base::TimeDelta& delta) {
+    task_env_.AdvanceClock(delta);
+  }
+
   // Let a test simulate what happens when a user logs in (for example
   // SessionManager will notify the observers).
   void SimulateUserLogin();

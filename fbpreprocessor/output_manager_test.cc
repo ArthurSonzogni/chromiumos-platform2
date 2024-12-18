@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "fbpreprocessor/output_manager.h"
+
 #include <memory>
 #include <set>
 #include <string>
@@ -20,7 +22,6 @@
 
 #include "fbpreprocessor/fake_manager.h"
 #include "fbpreprocessor/firmware_dump.h"
-#include "fbpreprocessor/output_manager.h"
 
 namespace fbpreprocessor {
 namespace {
@@ -331,6 +332,47 @@ TEST_F(OutputManagerTest, FirmwareDumpsExpire) {
   std::set<DebugDump::Type> type = {DebugDump::WIFI};
   GetDBusDebugDumpsList(type, &found);
   EXPECT_EQ(found, std::set<std::string>());
+}
+
+// If the clock has advanced by more than the expiration duration, test that the
+// firmware dump is deleted when we add a new firmware dump.
+TEST_F(OutputManagerTest, ExpiredFirmwareDumpsAreDeletedOnAddition) {
+  SimulateUserLogin();
+
+  // Add the firmware dump to OutputManager.
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
+  base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+  EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
+  AddFirmwareDumpToOutputManager(fw_dump);
+
+  // Advance the clock by more than the expiration duration so the firmware dump
+  // expires. We're not using FastForwardBy() here because it would execute all
+  // the tasks in order. Instead we want to simulate a real clock where the
+  // expiration task is executed after the expiration duration. See
+  // base::test::TaskEnvironment::AdvanceClock() for more information.
+  manager()->AdvanceClock(
+      base::Seconds(manager()->default_file_expiration_in_secs() + 30));
+
+  // Add a second firmware dump. Since we're past the expiration of the first
+  // dump, we expect that it will delete the first firmware dump.
+  FirmwareDump fw_dump2(GetOutputFirmwareDumpName("test2.dmp"),
+                        FirmwareDump::Type::kWiFi);
+  base::WriteFile(fw_dump2.DumpFile(), kTestFirmwareContent);
+  EXPECT_TRUE(base::PathExists(fw_dump2.DumpFile()));
+  AddFirmwareDumpToOutputManager(fw_dump2);
+
+  // After the first firmware dump has expired, we expect that:
+  // - the first file has been deleted
+  EXPECT_FALSE(base::PathExists(fw_dump.DumpFile()));
+  // - the second firmware dump is still present
+  EXPECT_TRUE(base::PathExists(fw_dump2.DumpFile()));
+  // - OutputManager::GetDebugDumps() returns the second firmware dump
+  std::set<std::string> expected_dumps{fw_dump2.DumpFile().value()};
+  std::set<std::string> found;
+  std::set<DebugDump::Type> type = {DebugDump::WIFI};
+  GetDBusDebugDumpsList(type, &found);
+  EXPECT_EQ(found, expected_dumps);
 }
 
 TEST_F(OutputManagerTest, DisallowingFeatureWithFinchDeletesFirmwareDumps) {
