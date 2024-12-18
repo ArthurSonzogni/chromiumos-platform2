@@ -281,7 +281,7 @@ struct SharedDataParam {
   // this message will be parsed by vhost_user_starter daemon and config
   // vhost-user-fs backend's --cfg option in crosvm.
   vhost_user_starter::StartVhostUserFsRequest
-  get_start_vhost_user_virtio_fs_request() const;
+  get_start_vhost_user_virtio_fs_request(std::string_view syslog_tag) const;
 
   base::FilePath data_dir;
   std::string tag;

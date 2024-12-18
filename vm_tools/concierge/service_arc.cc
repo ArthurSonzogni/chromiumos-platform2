@@ -283,6 +283,10 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     return response;
   }
 
+  // Allocate vsock cid for the VM.
+  uint32_t vsock_cid = vsock_cid_pool_.Allocate();
+  std::string syslog_tag = base::StringPrintf("ARCVM(%u)", vsock_cid);
+
   const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
 
   std::optional<VhostUserFrontParam> shared_stub_vhost_user_front_param =
@@ -296,7 +300,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                           .posix_acl = false,
                           .max_dynamic_perm = 2,
                           .max_dynamic_xattr = 2,
-                          .privileged_quota_uids = privileged_quota_uids});
+                          .privileged_quota_uids = privileged_quota_uids},
+          syslog_tag);
   if (!shared_stub_vhost_user_front_param.has_value()) {
     response.set_failure_reason(
         "Fail to create stub device vhost user parameters");
@@ -443,8 +448,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   }
 
   // Allocate resources for the VM.
-  uint32_t vsock_cid = vsock_cid_pool_.Allocate();
-
   std::unique_ptr<ArcNetwork> network = ArcNetwork::Create(bus_, vsock_cid);
   if (!network) {
     LOG(ERROR) << "Unable to open networking service";
@@ -594,7 +597,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
           std::move(shared_stub_vhost_user_front_param.value()))
       .EnableSmt(false /* enable */)
       .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling())
-      .SetWaylandSocket(request.vm().wayland_server());
+      .SetWaylandSocket(request.vm().wayland_server())
+      .SetSyslogTag(syslog_tag);
 
   base::FilePath kernel_path;
   if (request.use_gki()) {

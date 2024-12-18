@@ -339,7 +339,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .SetVsockCid(vsock_cid_)
       .SetSocketPath(GetVmSocketPath())
       .AddExtraWaylandSocket("/run/arcvm/mojo/mojo-proxy.sock,name=mojo")
-      .SetSyslogTag(base::StringPrintf("ARCVM(%u)", vsock_cid_))
       .EnableGpu(true /* enable */)
       .AppendAudioDevice(
           "capture=true,backend=cras,client_type=arcvm,"

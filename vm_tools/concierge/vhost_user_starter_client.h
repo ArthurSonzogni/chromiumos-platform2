@@ -5,9 +5,6 @@
 #ifndef VM_TOOLS_CONCIERGE_VHOST_USER_STARTER_CLIENT_H_
 #define VM_TOOLS_CONCIERGE_VHOST_USER_STARTER_CLIENT_H_
 
-#include <string>
-#include <vector>
-
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
@@ -33,7 +30,9 @@ class VhostUserStarterClient final {
   ~VhostUserStarterClient() = default;
 
   // Pass socket to vhost_user fs
-  void StartVhostUserFs(base::ScopedFD in_socket, const SharedDataParam& param);
+  void StartVhostUserFs(base::ScopedFD in_socket,
+                        const SharedDataParam& param,
+                        std::string_view syslog_tag);
   int GetStartedDeviceCount() const {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     return started_device_count;

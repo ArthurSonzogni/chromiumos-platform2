@@ -817,7 +817,8 @@ std::string SharedDataParam::to_string() const {
 }
 
 vhost_user_starter::StartVhostUserFsRequest
-SharedDataParam::get_start_vhost_user_virtio_fs_request() const {
+SharedDataParam::get_start_vhost_user_virtio_fs_request(
+    std::string_view syslog_tag) const {
   CHECK_NE(uid_map, "");
   CHECK_NE(gid_map, "");
   DCHECK_GE(max_dynamic_perm, 0);
@@ -861,6 +862,8 @@ SharedDataParam::get_start_vhost_user_virtio_fs_request() const {
   for (uid_t uid : privileged_quota_uids) {
     request.mutable_cfg()->add_privileged_quota_uids(uid);
   }
+
+  request.set_syslog_tag(syslog_tag);
 
   return request;
 }

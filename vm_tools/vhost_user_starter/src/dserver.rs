@@ -178,6 +178,21 @@ fn try_exit(children: &[Child], received_sigterm: bool) {
     }
 }
 
+// Valid syslog tag should only contains ascii alphabets, numbers and parentheses.
+fn validate_syslog_tag(s: &str) -> Result<(), dbus::MethodErr> {
+    if s.is_empty() {
+        error!("Syslog tag should not be empty");
+        return Err(dbus::MethodErr::failed("Syslog tag is empty"));
+    }
+    for c in s.chars() {
+        if !c.is_ascii_alphanumeric() && c != '(' && c != ')' {
+            error!("Invalid syslog tag: {}", s);
+            return Err(dbus::MethodErr::failed("Invalid syslog tag"));
+        }
+    }
+    Ok(())
+}
+
 // Parses a StartVhostUserFsRequest request and constructs arguments for starting vhost-user-fs.
 fn prepare_vhost_user_fs_args(
     request: Vec<u8>,
@@ -191,14 +206,18 @@ fn prepare_vhost_user_fs_args(
         gid,
         uid_map,
         gid_map,
+        syslog_tag,
         ..
     } = parse_dbus_request_from_bytes::<StartVhostUserFsRequest>(&request)?;
+
+    validate_syslog_tag(&syslog_tag)?;
 
     let uid_map = parse_ugid_map_to_string(uid_map)?;
     let gid_map = parse_ugid_map_to_string(gid_map)?;
     let fs_cfg = parse_vhost_user_fs_cfg_to_string(&cfg);
 
     let mut fs_args = vec![
+        format!("--syslog-tag={}", syslog_tag),
         "device".to_string(),
         "fs".to_string(),
         format!("--fd={}", fd.as_raw_fd()),
@@ -489,6 +508,20 @@ mod tests {
     }
 
     #[test]
+    fn valid_syslog_tag() {
+        assert!(validate_syslog_tag("ARCVM(32)").is_ok());
+    }
+
+    #[test]
+    fn invalid_syslog_tag() {
+        assert!(validate_syslog_tag("!ARCVM(32)").is_err());
+        assert!(validate_syslog_tag("ARCVM (32)").is_err());
+        assert!(validate_syslog_tag("").is_err());
+        assert!(validate_syslog_tag("ARCVM\n(32)").is_err());
+        assert!(validate_syslog_tag("ARCVM\0(32)").is_err());
+    }
+
+    #[test]
     fn test_prepare_vhost_user_fs_args() {
         // The request simulate the request from concierge except for socket fd
 
@@ -502,6 +535,7 @@ mod tests {
         request.shared_dir = "/run/arcvm/media".to_owned();
         request.uid = Some(0);
         request.gid = Some(0);
+        request.syslog_tag = "ARCVM(32)".to_owned();
 
         // Prepare --cfg={} field
         request.cfg = protobuf::MessageField::some(VhostUserVirtioFsConfig {
@@ -552,6 +586,7 @@ mod tests {
         assert_eq!(
             fs_args,
             vec![
+                "--syslog-tag=ARCVM(32)",
                 "device",
                 "fs",
                 format!("--fd={}", fd_raw).as_str(),

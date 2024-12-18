@@ -606,7 +606,8 @@ TEST(VMUtilTest, SharedDataParamSetVhostUserVirtioFsConfig) {
                         .max_dynamic_xattr = 5,
                         .privileged_quota_uids = {0}};
 
-  auto request = param.get_start_vhost_user_virtio_fs_request();
+  const std::string syslog_tag = "ARCVM(0)";
+  auto request = param.get_start_vhost_user_virtio_fs_request(syslog_tag);
 
   ASSERT_EQ(request.shared_dir(), "/var/run/arc/media");
   ASSERT_EQ(request.tag(), "stub");
@@ -643,6 +644,8 @@ TEST(VMUtilTest, SharedDataParamSetVhostUserVirtioFsConfig) {
   ASSERT_EQ(request.cfg().max_dynamic_xattr(), 5);
   ASSERT_EQ(request.cfg().privileged_quota_uids().size(), 1);
   ASSERT_EQ(request.cfg().privileged_quota_uids().Get(0), 0);
+
+  ASSERT_EQ(request.syslog_tag(), syslog_tag);
 }
 
 TEST(VMUtilTest, GetBalloonStats) {

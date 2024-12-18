@@ -99,7 +99,7 @@ TEST_F(VhostUserStarterClientTest, StartVhostUserFs) {
   int fds[2];
   socketpair(AF_UNIX, SOCK_STREAM, 0 /* protocol */, fds);
   base::ScopedFD _ = base::ScopedFD(fds[0]);
-  client->StartVhostUserFs(base::ScopedFD(fds[1]), test_param);
+  client->StartVhostUserFs(base::ScopedFD(fds[1]), test_param, "ARCVM(0)");
 
   task_environment_.RunUntilIdle();
   EXPECT_EQ(client->GetStartedDeviceCount(), 1);

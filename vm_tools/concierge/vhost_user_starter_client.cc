@@ -4,7 +4,6 @@
 
 #include "vm_tools/concierge/vhost_user_starter_client.h"
 
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -50,10 +49,11 @@ void VhostUserStarterClient::StartVhostUserFsErrorCallback(
 }
 
 void VhostUserStarterClient::StartVhostUserFs(base::ScopedFD in_socket,
-                                              const SharedDataParam& param) {
+                                              const SharedDataParam& param,
+                                              std::string_view syslog_tag) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   vm_tools::vhost_user_starter::StartVhostUserFsRequest request =
-      param.get_start_vhost_user_virtio_fs_request();
+      param.get_start_vhost_user_virtio_fs_request(syslog_tag);
 
   vm_tools::vhost_user_starter::StartVhostUserFsResponse response;
 
