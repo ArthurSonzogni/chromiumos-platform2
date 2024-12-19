@@ -236,10 +236,7 @@ mod tests {
         let tmpdir = tmpdir.path();
 
         let mut platform = MockPlatform::new();
-        let tmpdir_copy = tmpdir.to_owned();
-        platform
-            .expect_root()
-            .returning(move || tmpdir_copy.clone());
+        platform.expect_root_path(tmpdir);
 
         // Empty: media does not exist.
         assert!(get_media_mount_points(&platform).is_empty());
@@ -278,12 +275,7 @@ mod tests {
         fs::create_dir_all(&mnt1).unwrap();
 
         let mut platform = MockPlatform::new();
-
-        let tmpdir_copy = tmpdir.to_owned();
-        platform
-            .expect_root()
-            .returning(move || tmpdir_copy.clone());
-
+        platform.expect_root_path(tmpdir);
         platform
             .expect_unmount()
             .times(1)

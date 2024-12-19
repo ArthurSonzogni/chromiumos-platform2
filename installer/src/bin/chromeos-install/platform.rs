@@ -16,6 +16,16 @@ pub trait Platform {
     /// The non-test implementation returns `/`.
     fn root(&self) -> PathBuf;
 
+    /// Run a `Command`.
+    ///
+    /// The command is logged before running it.
+    ///
+    /// Stdout and stderr are not redirected.
+    ///
+    /// An error is returned if the process fails to launch or exits
+    /// non-zero.
+    fn run_command(&self, cmd: Command) -> Result<(), ProcessError>;
+
     /// Run a command and get both stdout and stderr.
     ///
     /// An error is returned if the process fails to launch or exits
@@ -46,6 +56,10 @@ impl Platform for PlatformImpl {
         PathBuf::from("/")
     }
 
+    fn run_command(&self, cmd: Command) -> Result<(), ProcessError> {
+        process_util::log_and_run_command(cmd)
+    }
+
     fn run_command_and_get_output(&self, cmd: Command) -> Result<Output, ProcessError> {
         process_util::get_command_output(cmd)
     }
@@ -57,5 +71,13 @@ impl Platform for PlatformImpl {
     fn unmount(&self, target: &Path, flags: MntFlags) -> Result<()> {
         umount2(target, flags)
             .with_context(|| format!("failed to unmount {} (flags={:?})", target.display(), flags))
+    }
+}
+
+#[cfg(test)]
+impl MockPlatform {
+    pub fn expect_root_path(&mut self, root: &Path) {
+        let root = root.to_owned();
+        self.expect_root().returning(move || root.clone());
     }
 }

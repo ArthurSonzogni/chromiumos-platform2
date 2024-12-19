@@ -64,5 +64,8 @@ fn main() -> Result<()> {
     install_env::stop_cros_disks(platform);
     install_env::unmount_media(platform);
 
+    // Provision UFS if necessary.
+    disk_util::init_ufs(platform)?;
+
     log_and_run_command(install_cmd).map_err(Error::msg)
 }

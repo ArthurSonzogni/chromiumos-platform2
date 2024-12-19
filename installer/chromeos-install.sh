@@ -764,13 +764,6 @@ do_post_install() {
   fi
 }
 
-ufs_init() {
-  local ufs_init_bin="/usr/sbin/factory_ufs"
-  if [ -x "${ufs_init_bin}" ]; then
-    ${ufs_init_bin} provision
-  fi
-}
-
 main() {
   # Be aggressive.
   set -eu
@@ -790,8 +783,6 @@ main() {
   # Load the GPT helper functions.
   # shellcheck disable=SC1091
   . "${ROOT}/usr/sbin/write_gpt.sh"
-
-  ufs_init
 
   DST=${FLAGS_dst:-$(get_fixed_dst_drive)}
   check_dst
