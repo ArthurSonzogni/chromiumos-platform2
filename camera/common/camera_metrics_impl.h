@@ -72,7 +72,6 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendEffectsAvgProcessedFrameInterval(CameraEffect effect,
                                             CameraEffectStreamType stream_type,
                                             base::TimeDelta interval) override;
-  void SendEffectsRequestedFrameRate(int fps) override;
   void SendEffectsMinStreamSize(CameraEffectStreamType stream_type,
                                 int size) override;
   void SendEffectsMaxStreamSize(CameraEffectStreamType stream_type,

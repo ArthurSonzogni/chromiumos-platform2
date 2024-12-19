@@ -729,11 +729,6 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureRequest(
                               !ctx->effects.HasEnabledEffects();
   helper_->HandleRequest(request, bypass_process, std::move(ctx));
 
-  base::span<const int32_t> fps_range =
-      request->GetMetadata<int32_t>(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
-  if (!fps_range.empty()) {
-    metrics_.RecordRequestedFrameRate(fps_range[1]);
-  }
   return true;
 }
 

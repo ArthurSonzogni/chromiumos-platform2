@@ -36,7 +36,6 @@ class EffectsMetricsData {
   void RecordFrameProcessingInterval(const EffectsConfig& config,
                                      CameraEffectStreamType stream_type,
                                      const base::TimeDelta& interval);
-  void RecordRequestedFrameRate(int fps);
   void RecordStreamSize(CameraEffectStreamType stream_type, size_t size);
   void RecordNumConcurrentStreams(size_t num_concurrent_streams);
   void RecordNumConcurrentProcessedStreams(
@@ -54,7 +53,6 @@ class EffectsMetricsData {
 
  private:
   friend class EffectsMetricsUploader;
-  int max_requested_fps_ = 0;
   size_t max_num_concurrent_streams_ = 0u;
   size_t max_num_concurrent_processed_streams_ = 0u;
   size_t num_still_shots_taken_ = 0;

@@ -57,10 +57,6 @@ void EffectsMetricsData::RecordFrameProcessingInterval(
   frame_intervals_[effect_idx][stream_idx].push_back(interval);
 }
 
-void EffectsMetricsData::RecordRequestedFrameRate(int fps) {
-  max_requested_fps_ = std::max(max_requested_fps_, fps);
-}
-
 void EffectsMetricsData::RecordStreamSize(CameraEffectStreamType stream_type,
                                           size_t size) {
   size_t idx = static_cast<size_t>(stream_type);
@@ -147,9 +143,6 @@ void EffectsMetricsUploader::UploadMetricsData(EffectsMetricsData metrics) {
 
 void EffectsMetricsUploader::UploadMetricsDataOnThread(
     EffectsMetricsData metrics) {
-  if (metrics.max_requested_fps_) {
-    metrics_helper_->SendEffectsRequestedFrameRate(metrics.max_requested_fps_);
-  }
   if (metrics.max_num_concurrent_streams_) {
     metrics_helper_->SendEffectsNumConcurrentStreams(
         metrics.max_num_concurrent_streams_);

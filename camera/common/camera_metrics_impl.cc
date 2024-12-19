@@ -171,11 +171,6 @@ constexpr char kCameraEffectStreamTypeBlob[] = "BLOB";
 
 constexpr char kCameraEffectSelected[] =
     "ChromeOS.Camera.Effects.SelectedEffect";
-constexpr char kCameraEffectsRequestedFrameRate[] =
-    "ChromeOS.Camera.Effects.RequestedFrameRate";
-constexpr int kMinEffectsFrameRate = 1;
-constexpr int kMaxEffectsFrameRate = 60;
-constexpr int kEffectsFrameRateBuckets = 60;
 
 constexpr char kCameraEffectsMinStreamSize[] =
     "ChromeOS.Camera.Effects.%s.MinStreamSize";
@@ -541,12 +536,6 @@ void CameraMetricsImpl::SendEffectsAvgProcessedFrameInterval(
   metrics_lib_->SendToUMA(
       metric_name, interval.InMicroseconds(), kMinEffectsFrameIntervalUs,
       kMaxEffectsFrameIntervalUs, kEffectsFrameIntervalBuckets);
-}
-
-void CameraMetricsImpl::SendEffectsRequestedFrameRate(int fps) {
-  metrics_lib_->SendToUMA(kCameraEffectsRequestedFrameRate, fps,
-                          kMinEffectsFrameRate, kMaxEffectsFrameRate,
-                          kEffectsFrameRateBuckets);
 }
 
 void CameraMetricsImpl::SendEffectsMinStreamSize(

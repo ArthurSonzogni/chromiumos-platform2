@@ -317,9 +317,6 @@ class CROS_CAMERA_EXPORT CameraMetrics {
       CameraEffectStreamType stream_type,
       base::TimeDelta interval) = 0;
 
-  // Records the requested frame rate for an EffectsStreamManipulator session.
-  virtual void SendEffectsRequestedFrameRate(int fps) = 0;
-
   // Records the minimum size (in width * height) of the
   // EffectsStreamManipulator stream configured for |stream_type| output.
   virtual void SendEffectsMinStreamSize(CameraEffectStreamType stream_type,
