@@ -5,12 +5,11 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_MAP_H_
 #define CRYPTOHOME_AUTH_FACTOR_MAP_H_
 
+#include <iterator>
 #include <map>
-#include <memory>
 #include <optional>
 #include <string>
 
-#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/storage_type.h"
 
@@ -64,6 +63,7 @@ class AuthFactorMap final {
     using pointer = value_type*;
     using reference = value_type&;
 
+    iterator() = default;
     iterator(const iterator& other) = default;
     iterator& operator=(const iterator& other) = default;
 
@@ -89,6 +89,8 @@ class AuthFactorMap final {
     Storage::const_iterator iter_;
   };
   using const_iterator = iterator;
+  static_assert(std::forward_iterator<iterator>);
+  static_assert(std::forward_iterator<const_iterator>);
 
   AuthFactorMap() = default;
 

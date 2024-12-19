@@ -43,6 +43,7 @@ class UserSessionMap final {
     using pointer = value_type*;
     using reference = value_type&;
 
+    iterator_base() = default;
     iterator_base(const iterator_base& other) = default;
     iterator_base& operator=(const iterator_base& other) = default;
 
@@ -73,6 +74,8 @@ class UserSessionMap final {
  public:
   using iterator = iterator_base<UserSession>;
   using const_iterator = iterator_base<const UserSession>;
+  static_assert(std::forward_iterator<iterator>);
+  static_assert(std::forward_iterator<const_iterator>);
 
   // Class used to forward the registration of credential verifier to a specific
   // user's session, or in the case where that user's session does not (yet)
