@@ -181,10 +181,10 @@ pub fn log_and_run_command(mut command: Command) -> Result<(), ProcessError> {
     Ok(())
 }
 
-/// Run a command and get its stdout as raw bytes.
+/// Run a command and get its output (both stdout and stderr).
 ///
 /// An error is returned if the process fails to launch, or if it exits non-zero.
-fn get_command_output(mut command: Command) -> Result<Vec<u8>, ProcessError> {
+fn get_command_output(mut command: Command) -> Result<Output, ProcessError> {
     let cmd_str = command_to_string(&command);
     debug!("running command: {}", cmd_str);
     for line in command_env_to_lines(&command) {
@@ -207,7 +207,7 @@ fn get_command_output(mut command: Command) -> Result<Vec<u8>, ProcessError> {
             kind: ErrorKind::ExitedNonZeroWithOutput(output),
         });
     }
-    Ok(output.stdout)
+    Ok(output)
 }
 
 /// Run a command and get its stdout as a `String`.
@@ -216,7 +216,7 @@ fn get_command_output(mut command: Command) -> Result<Vec<u8>, ProcessError> {
 /// valid utf8.
 pub fn get_output_as_string(command: Command) -> anyhow::Result<String> {
     let output = get_command_output(command)?;
-    let output = String::from_utf8(output)?;
+    let output = String::from_utf8(output.stdout)?;
     Ok(output)
 }
 
@@ -294,7 +294,14 @@ mod tests {
     fn test_get_command_output_success() {
         let mut command = Command::new("echo");
         command.arg("myOutput");
-        assert_eq!(get_command_output(command).unwrap(), b"myOutput\n");
+        assert_eq!(
+            get_command_output(command).unwrap(),
+            Output {
+                stdout: b"myOutput\n".to_vec(),
+                stderr: Vec::new(),
+                status: ExitStatus::default(),
+            }
+        );
     }
 
     #[test]
