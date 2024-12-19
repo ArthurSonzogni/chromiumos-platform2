@@ -2,13 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use crate::process_util;
+use crate::process_util::{self, ProcessError};
 use anyhow::Result;
-use std::process::Command;
+use std::process::{Command, Output};
 
 /// Platform abstraction layer.
 #[cfg_attr(test, mockall::automock)]
 pub trait Platform {
+    /// Run a command and get both stdout and stderr.
+    ///
+    /// An error is returned if the process fails to launch or exits
+    /// non-zero.
+    fn run_command_and_get_output(&self, cmd: Command) -> Result<Output, ProcessError>;
+
     /// Run a command and get its stdout as a `String`.
     ///
     /// Stderr is also captured, but not returned to the caller.
@@ -22,6 +28,10 @@ pub trait Platform {
 pub struct PlatformImpl;
 
 impl Platform for PlatformImpl {
+    fn run_command_and_get_output(&self, cmd: Command) -> Result<Output, ProcessError> {
+        process_util::get_command_output(cmd)
+    }
+
     fn run_command_and_get_stdout(&self, cmd: Command) -> Result<String> {
         process_util::get_output_as_string(cmd)
     }

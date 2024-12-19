@@ -202,9 +202,6 @@ check_payload_image() {
 # Clean any mounts that might be present to avoid
 # aliasing access to block devices.
 prepare_disk() {
-  if [ -e /etc/init/cros-disks.conf ]; then
-    initctl stop cros-disks || true
-  fi
   # Often times, nothing is mounted, so swallow the warnings.
   umount -f /media/*/* 2>&1 | \
     grep -v -i -F \

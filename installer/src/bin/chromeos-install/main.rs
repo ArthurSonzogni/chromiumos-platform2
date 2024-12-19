@@ -21,9 +21,12 @@ use std::process::Command;
 
 use command_line::Args;
 use install_source::InstallSource;
+use platform::PlatformImpl;
 use process_util::log_and_run_command;
 
 fn main() -> Result<()> {
+    let platform = &PlatformImpl;
+
     libchromeos::panic_handler::install_memfd_handler();
 
     let args = Args::parse();
@@ -55,6 +58,10 @@ fn main() -> Result<()> {
     install_cmd.envs(install_env::get_gpt_base_vars()?);
     // Add var for the temporary mount directory.
     install_cmd.envs(install_env::get_temporary_mount_var()?);
+
+    // Clean up any mounts that might be present to avoid aliasing
+    // access to block devices.
+    install_env::stop_cros_disks(platform);
 
     log_and_run_command(install_cmd).map_err(Error::msg)
 }

@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fmt::{self, Write};
 use std::io;
+use std::os::unix::process::ExitStatusExt;
 use std::process::{Command, ExitStatus, Output};
 
 #[derive(Debug)]
@@ -20,7 +21,13 @@ pub enum ErrorKind {
     ExitedNonZeroWithOutput(Output),
 }
 
-#[derive(Debug)]
+impl Default for ErrorKind {
+    fn default() -> Self {
+        Self::ExitedNonZero(ExitStatus::from_raw(1))
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct ProcessError {
     command: String,
     kind: ErrorKind,
@@ -184,7 +191,7 @@ pub fn log_and_run_command(mut command: Command) -> Result<(), ProcessError> {
 /// Run a command and get its output (both stdout and stderr).
 ///
 /// An error is returned if the process fails to launch, or if it exits non-zero.
-fn get_command_output(mut command: Command) -> Result<Output, ProcessError> {
+pub fn get_command_output(mut command: Command) -> Result<Output, ProcessError> {
     let cmd_str = command_to_string(&command);
     debug!("running command: {}", cmd_str);
     for line in command_env_to_lines(&command) {

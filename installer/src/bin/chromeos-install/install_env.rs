@@ -54,6 +54,16 @@ pub fn get_temporary_mount_var() -> Result<Environment> {
     Ok(env)
 }
 
+/// Stop the cros-disks service. Errors are ignored.
+pub fn stop_cros_disks(platform: &dyn Platform) {
+    let mut cmd = Command::new("initctl");
+    cmd.args(["stop", "cros-disks"]);
+    // Capture all output to avoid unnecessary log spam.
+    if let Err(err) = platform.run_command_and_get_output(cmd) {
+        debug!("{err}");
+    }
+}
+
 /// Check if the `dd` command comes from busybox.
 fn is_dd_busybox(platform: &dyn Platform) -> Result<bool> {
     let mut cmd = Command::new("dd");
@@ -138,7 +148,9 @@ fn create_dir_if_needed(path: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use crate::platform::MockPlatform;
+    use crate::process_util::ProcessError;
     use anyhow::anyhow;
+    use std::process::Output;
 
     const BUSYBOX_HELP: &str = "BusyBox v1.36.1 (2024-02-04 23:31:36 PST) multi-call binary.";
 
@@ -282,5 +294,33 @@ mod tests {
         // Calling it again succeeds; directory already exists.
         create_dir_if_needed(&path).unwrap();
         assert!(path.exists());
+    }
+
+    /// Test a successful call to `stop_cros_disks`.
+    #[test]
+    fn test_stop_cros_disks() {
+        let mut platform = MockPlatform::new();
+        platform
+            .expect_run_command_and_get_output()
+            .withf(|cmd| cmd.get_program() == "initctl")
+            .return_once(|_| {
+                Ok(Output {
+                    stdout: vec![],
+                    stderr: vec![],
+                    status: Default::default(),
+                })
+            });
+        stop_cros_disks(&platform);
+    }
+
+    /// Test that `stop_cros_disks` ignores errors.
+    #[test]
+    fn test_stop_cros_disks_err() {
+        let mut platform = MockPlatform::new();
+        platform
+            .expect_run_command_and_get_output()
+            .withf(|cmd| cmd.get_program() == "initctl")
+            .return_once(|_| Err(ProcessError::default()));
+        stop_cros_disks(&platform);
     }
 }
