@@ -221,26 +221,6 @@ pub fn get_output_as_string(command: Command) -> anyhow::Result<String> {
     Ok(output.trim().to_string())
 }
 
-/// Mockable trait for running a command.
-#[cfg_attr(test, mockall::automock)]
-pub trait RunCommand {
-    /// Run a command and get its stdout as a String. Whitespace is
-    /// trimmed from both ends.
-    ///
-    /// An error is returned if the process fails to launch or exits
-    /// non-zero, or if the output is not valid utf8.
-    fn get_output_as_string(&self, cmd: Command) -> anyhow::Result<String>;
-}
-
-/// Non-test implementor of `RunCommand`.
-pub struct RunCommandImpl;
-
-impl RunCommand for RunCommandImpl {
-    fn get_output_as_string(&self, cmd: Command) -> anyhow::Result<String> {
-        get_output_as_string(cmd)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

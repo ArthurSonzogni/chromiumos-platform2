@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use crate::process_util::{Environment, RunCommand, RunCommandImpl};
+use crate::platform::{Platform, PlatformImpl};
+use crate::process_util::Environment;
 use anyhow::{Context, Result};
 use log::debug;
 use serde::Deserialize;
@@ -33,7 +34,7 @@ const PARTITION_VARS_PATH: &str = "/usr/sbin/partition_vars.json";
 /// * LOSETUP_PATH: "/bin/losetup" if `losetup` is provided by busybox,
 ///   "losetup" otherwise.
 pub fn get_tool_env() -> Result<Environment> {
-    get_tool_env_impl(&RunCommandImpl)
+    get_tool_env_impl(&PlatformImpl)
 }
 
 /// Load vars defining the GPT layout of the installed system from
@@ -54,27 +55,27 @@ pub fn get_temporary_mount_var() -> Result<Environment> {
 }
 
 /// Check if the `dd` command comes from busybox.
-fn is_dd_busybox(run_command: &dyn RunCommand) -> Result<bool> {
+fn is_dd_busybox(platform: &dyn Platform) -> Result<bool> {
     let mut cmd = Command::new("dd");
     cmd.arg("--version");
-    let stdout = run_command.get_output_as_string(cmd)?;
+    let stdout = platform.run_command_and_get_stdout(cmd)?;
     Ok(stdout.contains("BusyBox"))
 }
 
 /// Check if the `losetup` command comes from busybox.
-fn is_losetup_busybox(run_command: &dyn RunCommand) -> Result<bool> {
+fn is_losetup_busybox(platform: &dyn Platform) -> Result<bool> {
     let mut cmd = Command::new("losetup");
     cmd.arg("--version");
-    let stdout = run_command.get_output_as_string(cmd)?;
+    let stdout = platform.run_command_and_get_stdout(cmd)?;
     Ok(stdout.contains("BusyBox"))
 }
 
 /// See `get_tool_env` for details.
-fn get_tool_env_impl(run_command: &dyn RunCommand) -> Result<Environment> {
+fn get_tool_env_impl(platform: &dyn Platform) -> Result<Environment> {
     let mut env = Environment::new();
 
-    let is_dd_busybox = is_dd_busybox(run_command)?;
-    let is_losetup_busybox = is_losetup_busybox(run_command)?;
+    let is_dd_busybox = is_dd_busybox(platform)?;
+    let is_losetup_busybox = is_losetup_busybox(platform)?;
 
     env.insert(
         BUSYBOX_DD_FOUND,
@@ -136,7 +137,7 @@ fn create_dir_if_needed(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process_util::MockRunCommand;
+    use crate::platform::MockPlatform;
     use anyhow::anyhow;
 
     const BUSYBOX_HELP: &str = "BusyBox v1.36.1 (2024-02-04 23:31:36 PST) multi-call binary.";
@@ -145,18 +146,18 @@ mod tests {
     /// busybox environment.
     #[test]
     fn test_busybox_env() {
-        let mut run_command = MockRunCommand::new();
-        run_command
-            .expect_get_output_as_string()
+        let mut platform = MockPlatform::new();
+        platform
+            .expect_run_command_and_get_stdout()
             .withf(|cmd| cmd.get_program() == "dd")
             .return_once(|_| Ok(BUSYBOX_HELP.to_owned()));
-        run_command
-            .expect_get_output_as_string()
+        platform
+            .expect_run_command_and_get_stdout()
             .withf(|cmd| cmd.get_program() == "losetup")
             .return_once(|_| Ok(BUSYBOX_HELP.to_owned()));
 
         assert_eq!(
-            get_tool_env_impl(&run_command).unwrap().into_vec(),
+            get_tool_env_impl(&platform).unwrap().into_vec(),
             [
                 (BUSYBOX_DD_FOUND.into(), "true".into()),
                 (LOSETUP_PATH.into(), "/bin/losetup".into())
@@ -168,18 +169,18 @@ mod tests {
     /// non-busybox environment.
     #[test]
     fn test_non_busybox_env() {
-        let mut run_command = MockRunCommand::new();
-        run_command
-            .expect_get_output_as_string()
+        let mut platform = MockPlatform::new();
+        platform
+            .expect_run_command_and_get_stdout()
             .withf(|cmd| cmd.get_program() == "dd")
             .return_once(|_| Ok("dd (coreutils) 8.32".to_owned()));
-        run_command
-            .expect_get_output_as_string()
+        platform
+            .expect_run_command_and_get_stdout()
             .withf(|cmd| cmd.get_program() == "losetup")
             .return_once(|_| Ok("losetup from util-linux 2.38.1".to_owned()));
 
         assert_eq!(
-            get_tool_env_impl(&run_command).unwrap().into_vec(),
+            get_tool_env_impl(&platform).unwrap().into_vec(),
             [
                 (BUSYBOX_DD_FOUND.into(), "false".into()),
                 (LOSETUP_PATH.into(), "losetup".into())
@@ -191,30 +192,30 @@ mod tests {
     /// run.
     #[test]
     fn test_bad_dd() {
-        let mut run_command = MockRunCommand::new();
-        run_command
-            .expect_get_output_as_string()
+        let mut platform = MockPlatform::new();
+        platform
+            .expect_run_command_and_get_stdout()
             .withf(|cmd| cmd.get_program() == "dd")
             .return_once(|_| Err(anyhow!("dd not found")));
 
-        assert!(get_tool_env_impl(&run_command).is_err());
+        assert!(get_tool_env_impl(&platform).is_err());
     }
 
     /// Test that `get_tool_env_impl` propagates errors if `losetup`
     /// can't be run.
     #[test]
     fn test_bad_losetup() {
-        let mut run_command = MockRunCommand::new();
-        run_command
-            .expect_get_output_as_string()
+        let mut platform = MockPlatform::new();
+        platform
+            .expect_run_command_and_get_stdout()
             .withf(|cmd| cmd.get_program() == "dd")
             .return_once(|_| Ok("dd (coreutils) 8.32".to_owned()));
-        run_command
-            .expect_get_output_as_string()
+        platform
+            .expect_run_command_and_get_stdout()
             .withf(|cmd| cmd.get_program() == "losetup")
             .return_once(|_| Err(anyhow!("losetup not found")));
 
-        assert!(get_tool_env_impl(&run_command).is_err());
+        assert!(get_tool_env_impl(&platform).is_err());
     }
 
     /// Test that `get_gpt_base_vars_from` reads a valid

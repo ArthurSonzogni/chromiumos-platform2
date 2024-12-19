@@ -11,6 +11,7 @@ mod disk_util;
 mod install_env;
 mod install_source;
 mod logger;
+mod platform;
 mod process_util;
 
 use anyhow::{bail, Error, Result};
