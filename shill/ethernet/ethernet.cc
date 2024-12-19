@@ -56,9 +56,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
-static std::string ObjectID(const Ethernet* e) {
-  return e->GetRpcIdentifier().value();
-}
 }  // namespace Logging
 
 namespace {
@@ -146,12 +143,11 @@ Ethernet::Ethernet(Manager* manager,
   if (perm_mac.has_value()) {
     permanent_mac_address_ = *perm_mac;
   } else {
-    LOG(WARNING) << "Ethernet device with missing perm MAC: " << link_name;
+    LOG(WARNING) << *this << ": Ethernet device with missing perm MAC";
   }
 
   eap_listener_->set_request_received_callback(base::BindRepeating(
       &Ethernet::OnEapDetected, weak_ptr_factory_.GetWeakPtr()));
-  SLOG(this, 2) << "Ethernet device " << link_name << " initialized.";
 
   if (bus_type_ == kDeviceBusTypeUsb) {
     // Force change MAC address to |permanent_mac_address_| if
@@ -166,8 +162,8 @@ Ethernet::~Ethernet() = default;
 void Ethernet::Start(EnabledStateChangedCallback callback) {
   if (IsExternalPciDev(link_name())) {
     if (!DisableOffloadFeatures()) {
-      LOG(ERROR) << link_name()
-                 << " Interface disabled due to security reasons "
+      LOG(ERROR) << *this << " " << __func__
+                 << ": Interface disabled due to security reasons "
                  << "(failed to disable Offload features)";
       std::move(callback).Run(Error(Error::kPermissionDenied));
       return;
@@ -175,7 +171,7 @@ void Ethernet::Start(EnabledStateChangedCallback callback) {
   }
 
   rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
-  LOG(INFO) << "Registering " << link_name() << " with manager.";
+  LOG(INFO) << *this << " " << __func__;
   if (!service_) {
     service_ = GetProvider()->CreateService(weak_ptr_factory_.GetWeakPtr());
   }
@@ -235,7 +231,8 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
 bool Ethernet::Load(const StoreInterface* storage) {
   const std::string id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
-    SLOG(this, 2) << "Device is not available in the persistent store: " << id;
+    SLOG(2) << *this << " " << __func__
+            << ": Device is not available in the persistent store: " << id;
     return false;
   }
   return Device::Load(storage);
@@ -394,7 +391,8 @@ bool Ethernet::StartSupplicant() {
     // Interface might've already been created, try to retrieve it.
     if (!supplicant_process_proxy()->GetInterface(link_name(),
                                                   &interface_path)) {
-      LOG(ERROR) << __func__ << ": Failed to create interface with supplicant.";
+      LOG(ERROR) << *this << " " << __func__
+                 << ": Failed to create interface with supplicant.";
       StopSupplicant();
       return false;
     }
@@ -422,19 +420,19 @@ bool Ethernet::StartEapAuthentication() {
 
   if (!supplicant_network_path_.value().empty()) {
     if (!supplicant_interface_proxy_->RemoveNetwork(supplicant_network_path_)) {
-      LOG(ERROR) << "Failed to remove network: "
+      LOG(ERROR) << *this << " " << __func__ << ": Failed to remove network: "
                  << supplicant_network_path_.value();
       return false;
     }
   }
   if (!supplicant_interface_proxy_->AddNetwork(params,
                                                &supplicant_network_path_)) {
-    LOG(ERROR) << "Failed to add network";
+    LOG(ERROR) << *this << " " << __func__ << ": Failed to add network";
     return false;
   }
   CHECK(!supplicant_network_path_.value().empty());
 
-  LOG(INFO) << LoggingTag() << ": Triggering EAP authentication";
+  LOG(INFO) << *this << " " << __func__ << ": Triggering EAP authentication";
   supplicant_interface_proxy_->SelectNetwork(supplicant_network_path_);
   supplicant_interface_proxy_->EAPLogon();
   return true;
@@ -448,7 +446,8 @@ void Ethernet::StopSupplicant() {
   if (!supplicant_interface_path_.value().empty()) {
     if (!supplicant_process_proxy()->RemoveInterface(
             supplicant_interface_path_)) {
-      LOG(ERROR) << __func__ << ": Failed to remove interface from supplicant.";
+      LOG(ERROR) << *this << " " << __func__
+                 << ": Failed to remove interface from supplicant.";
     }
   }
   supplicant_network_path_ = RpcIdentifier("");
@@ -480,29 +479,32 @@ void Ethernet::CertificationTask(const std::string& subject, uint32_t depth) {
 
 void Ethernet::EAPEventTask(const std::string& status,
                             const std::string& parameter) {
-  LOG(INFO) << "In " << __func__ << " with status " << status << ", parameter "
-            << parameter;
+  LOG(INFO) << *this << " " << __func__ << ": status: " << status
+            << ", parameter: " << parameter;
   Service::ConnectFailure failure = Service::kFailureNone;
   if (eap_state_handler_.ParseStatus(status, parameter, &failure)) {
-    LOG(INFO) << "EAP authentication succeeded!";
+    LOG(INFO) << *this << " " << __func__ << ": EAP authentication success";
     SetIsEapAuthenticated(true);
   } else if (failure != Service::Service::kFailureNone) {
-    LOG(INFO) << "EAP authentication failed!";
+    LOG(WARNING) << *this << " " << __func__ << ": EAP authentication failure: "
+                 << Service::ConnectFailureToString(failure);
     SetIsEapAuthenticated(false);
   }
 }
 
 void Ethernet::SupplicantStateChangedTask(const std::string& state) {
-  LOG(INFO) << "Supplicant state changed to " << state;
+  LOG(INFO) << *this << " " << __func__ << ": new state: " << state;
 }
 
 void Ethernet::TryEapAuthenticationTask() {
   if (!GetEapService()->Is8021xConnectable()) {
     if (is_eap_authenticated_) {
-      LOG(INFO) << "EAP Service lost 802.1X credentials; "
+      LOG(INFO) << *this << " " << __func__
+                << ": EAP Service lost 802.1X credentials; "
                 << "terminating EAP authentication.";
     } else {
-      LOG(INFO) << "EAP Service lacks 802.1X credentials; "
+      LOG(INFO) << *this << " " << __func__
+                << ": EAP Service lacks 802.1X credentials; "
                 << "not doing EAP authentication.";
     }
     StopSupplicant();
@@ -510,12 +512,13 @@ void Ethernet::TryEapAuthenticationTask() {
   }
 
   if (!is_eap_detected_) {
-    LOG(WARNING) << "EAP authenticator not detected; "
+    LOG(WARNING) << *this << " " << __func__
+                 << ": EAP authenticator not detected; "
                  << "not doing EAP authentication.";
     return;
   }
   if (!StartSupplicant()) {
-    LOG(ERROR) << "Failed to start supplicant.";
+    LOG(ERROR) << *this << " " << __func__ << ": Failed to start supplicant.";
     return;
   }
   StartEapAuthentication();
@@ -547,7 +550,7 @@ bool Ethernet::DisableOffloadFeatures() {
   struct ifreq interface_command;
   memset(&interface_command, 0, sizeof(interface_command));
 
-  LOG(INFO) << LoggingTag() << ": Disabling offloading features";
+  LOG(INFO) << *this << " " << __func__ << ": Disabling offloading features";
   // Prepare and send a ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) command to
   // get number of features.
   struct {
@@ -562,12 +565,12 @@ bool Ethernet::DisableOffloadFeatures() {
   interface_command.ifr_data = sset_info;
   bool res = RunEthtoolCmd(&interface_command);
   if (!res) {
-    PLOG(ERROR) << LoggingTag()
+    PLOG(ERROR) << *this << " " << __func__
                 << ": ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) failed.";
     return false;
   }
   if (!sset_info->sset_mask || !sset_info_buf.num_features) {
-    LOG(ERROR) << LoggingTag()
+    LOG(ERROR) << *this << " " << __func__
                << ": ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) failed.";
     return false;
   }
@@ -645,35 +648,44 @@ bool Ethernet::DisableOffloadFeatures() {
     uint32_t feature_mask = 1 << (i % 32);
 
     if (feature_mask & gfeatures->features[block_num].never_changed) {
-      LOG(ERROR) << "[Not Allowed] cannot disable [" << i << "] " << feature;
+      LOG(ERROR) << *this << " " << __func__
+                 << ": [Not Allowed] cannot disable [" << i << "] " << feature;
       ret = false;
       continue;
     }
     if (feature_mask & ~gfeatures->features[block_num].available) {
-      LOG(ERROR) << "[Not Available] cannot disable [" << i << "] " << feature;
+      LOG(ERROR) << *this << " " << __func__
+                 << ": [Not Available] cannot disable [" << i << "] "
+                 << feature;
       // OK to return success since device does not support the feature.
       continue;
     }
     if (!(feature_mask & gfeatures->features[block_num].active)) {
-      LOG(INFO) << "[Already Disabled] Not disabling [" << i << "] " << feature;
+      LOG(INFO) << *this << " " << __func__
+                << ": [Already Disabled] Not disabling [" << i << "] "
+                << feature;
       // OK to return success since device has it already disabled.
       continue;
     }
     sfeatures->features[block_num].valid |= feature_mask;
     sfeatures->features[block_num].requested &= ~feature_mask;
-    LOG(INFO) << LoggingTag() << ": Disabling [" << i << "] " << feature;
+    LOG(INFO) << *this << " " << __func__ << ": Disabling [" << i << "] "
+              << feature;
   }
 
   for (const auto& feature : features_to_disable) {
-    LOG(INFO) << "[No Such Feature] Skipped disabling: " << feature;
+    LOG(INFO) << *this << " " << __func__
+              << ": [No Such Feature] Skipped disabling: " << feature;
   }
 
   interface_command.ifr_data = sfeatures;
   if (!RunEthtoolCmd(&interface_command)) {
-    PLOG(ERROR) << "Failed to disable offloading features.";
+    PLOG(ERROR) << *this << " " << __func__
+                << ": Failed to disable offloading features.";
     return false;
   }
-  LOG(INFO) << LoggingTag() << ": Disabled offloading features successfully";
+  LOG(INFO) << *this << " " << __func__
+            << ": Disabled offloading features successfully";
 
   return ret;
 }
@@ -698,7 +710,7 @@ void Ethernet::DeregisterService(EthernetServiceRefPtr service) {
 
 void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
                                               ResultCallback callback) {
-  SLOG(this, 2) << __func__ << " " << source;
+  SLOG(2) << *this << " " << __func__ << "(" << source << ")";
 
   if (bus_type_ != kDeviceBusTypeUsb) {
     Error error;
@@ -735,7 +747,8 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
   }
 
   if (new_mac_address == mac_address()) {
-    SLOG(this, 4) << __func__ << " new MAC address is equal to the old one";
+    SLOG(4) << *this << " " << __func__
+            << ": New MAC address is equal to the old one";
     if (usb_ethernet_mac_address_source_ != source) {
       usb_ethernet_mac_address_source_ = source;
       adaptor()->EmitStringChanged(kUsbEthernetMacAddressSourceProperty,
@@ -745,11 +758,11 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
     return;
   }
 
-  SLOG(this, 2) << "Send netlink request to change MAC address for "
-                << link_name() << " device from "
-                << (mac_address().has_value() ? mac_address()->ToString()
-                                              : "(null)")
-                << " to " << new_mac_address->ToString();
+  SLOG(2) << *this << " " << __func__
+          << ": Send netlink request to change MAC address for " << link_name()
+          << " device from "
+          << (mac_address().has_value() ? mac_address()->ToString() : "(null)")
+          << " to " << new_mac_address->ToString();
 
   rtnl_handler()->SetInterfaceMac(
       interface_index(), *new_mac_address,
@@ -770,8 +783,9 @@ std::optional<net_base::MacAddress> Ethernet::ReadMacAddressFromFile(
   const std::optional<net_base::MacAddress> ret =
       net_base::MacAddress::CreateFromString(mac_address_str);
   if (!ret.has_value()) {
-    LOG(ERROR) << "Unable to parse MAC address from file: " << file_path.value()
-               << ", content: " << mac_address_str;
+    LOG(ERROR) << *this << " " << __func__
+               << ": Unable to parse MAC address from file: "
+               << file_path.value() << ", content: " << mac_address_str;
   }
   return ret;
 }
@@ -781,7 +795,7 @@ void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
                                          ResultCallback callback,
                                          int32_t error) {
   if (error) {
-    LOG(ERROR) << __func__ << " received response with error "
+    LOG(ERROR) << *this << " " << __func__ << ": Received response with error "
                << strerror(error);
     if (!callback.is_null()) {
       std::move(callback).Run(Error(Error::kOperationFailed));
@@ -789,7 +803,7 @@ void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
     return;
   }
 
-  SLOG(this, 2) << __func__ << " received successful response";
+  SLOG(2) << *this << " " << __func__ << ": Received successful response";
 
   usb_ethernet_mac_address_source_ = mac_address_source;
   adaptor()->EmitStringChanged(kUsbEthernetMacAddressSourceProperty,
@@ -802,7 +816,8 @@ void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
 }
 
 void Ethernet::set_mac_address(net_base::MacAddress new_mac_address) {
-  SLOG(this, 2) << __func__ << " " << new_mac_address.ToString();
+  SLOG(2) << *this << " " << __func__ << "(" << new_mac_address.ToString()
+          << ")";
 
   ProfileRefPtr profile;
   if (service_) {
@@ -897,7 +912,7 @@ void Ethernet::OnNeighborReachabilityEvent(
   CHECK(GetPrimaryNetwork());
   if (!GetPrimaryNetwork()->IsConnected()) {
     LOG(INFO)
-        << LoggingTag()
+        << *this << " " << __func__
         << ": Network was disconnected, ignoring neighbor reachability event";
     return;
   }
@@ -908,7 +923,7 @@ void Ethernet::OnNeighborReachabilityEvent(
   if (status == Status::kFailed &&
       GetPrimaryNetwork()->HasInternetConnectivity()) {
     LOG(INFO)
-        << LoggingTag()
+        << *this << " " << __func__
         << ": gateway reachability failure in 'Internet-connectivity' state.";
     // Network validation is expected to time out, do not force a restart in
     // case some other mechanism has already triggered a revalidation which
@@ -922,7 +937,7 @@ void Ethernet::OnNeighborReachabilityEvent(
   // if link connectivity has been recovered.
   if (status == Status::kReachable &&
       !GetPrimaryNetwork()->HasInternetConnectivity()) {
-    LOG(INFO) << LoggingTag()
+    LOG(INFO) << *this << " " << __func__
               << ": gateway reachability event in 'no-connectivity' state.";
     // Validation should be confirmed as soon as possible. If Internet is
     // validation is expected to be short so a restart is always forced.
@@ -1013,8 +1028,8 @@ void Ethernet::NotifyEthernetDriverName() {
   if (it == driverName2enum.end()) {
     metrics()->SendEnumToUMA(Metrics::kMetricEthernetDriver,
                              Metrics::kEthernetDriverUnknown);
-    LOG(WARNING) << LoggingTag() << ": Unknown ethernet driver name " << '"'
-                 << driver << '"';
+    LOG(WARNING) << *this << " " << __func__
+                 << ": Unknown ethernet driver name " << '"' << driver << '"';
     return;
   }
   metrics()->SendEnumToUMA(Metrics::kMetricEthernetDriver, it->second);
