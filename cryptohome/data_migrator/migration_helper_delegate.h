@@ -57,6 +57,10 @@ class BRILLO_EXPORT MigrationHelperDelegate {
   // migration to fail.
   virtual bool ShouldSkipFileOnIOErrors() { return false; }
 
+  // Returns true if MigrationHelper should skip migrating a fs-verity enabled
+  // file when encountering an error on opening the file.
+  virtual bool ShouldSkipVerityFileOnErrors() { return false; }
+
   // Returns names of xattr to temporarily store mtime/atime of the files during
   // the migration.
   virtual std::string GetMtimeXattrName() = 0;

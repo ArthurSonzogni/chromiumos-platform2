@@ -37,6 +37,7 @@ class ArcVmDataMigrationHelperDelegate
 
   // cryptohome::data_migrator::MigrationHelperDelegate overrides:
   bool ShouldCopyQuotaProjectId() override;
+  bool ShouldSkipVerityFileOnErrors() override;
   std::string GetMtimeXattrName() override;
   std::string GetAtimeXattrName() override;
   bool ConvertFileMetadata(base::stat_wrapper_t* stat) override;

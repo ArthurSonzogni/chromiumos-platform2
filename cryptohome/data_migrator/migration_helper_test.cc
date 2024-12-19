@@ -854,6 +854,30 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
   EXPECT_FALSE(platform_.FileExists(kFromSQLiteShm));
 }
 
+TEST_F(MigrationHelperTest, SkipVerityFiles) {
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
+  const char kVerityFilePath[] =
+      "fonts/files/~~ATfHTsv9OXRRFC12GR4H6g==/NotoColorEmoji.ttf";
+  const FilePath kFromVerityFile = from_dir_.Append(kVerityFilePath);
+  const FilePath kToVerityFile = to_dir_.Append(kVerityFilePath);
+  ASSERT_TRUE(platform_.CreateDirectory(kFromVerityFile.DirName()));
+  ASSERT_TRUE(platform_.TouchFileDurable(kFromVerityFile));
+  ASSERT_TRUE(platform_.SetExtFileAttributes(kFromVerityFile, FS_VERITY_FL, 0));
+  EXPECT_CALL(platform_, InitializeFile(_, _, _)).WillRepeatedly(DoDefault());
+  EXPECT_CALL(platform_, InitializeFile(_, kFromVerityFile, _))
+      .WillOnce(
+          Invoke([](base::File* file, const FilePath& path, uint32_t mode) {
+            *file = base::File(base::File::FILE_ERROR_ACCESS_DENIED);
+          }));
+
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
+  EXPECT_TRUE(platform_.DirectoryExists(kToVerityFile.DirName()));
+  EXPECT_FALSE(platform_.FileExists(kToVerityFile));
+  EXPECT_FALSE(platform_.FileExists(kFromVerityFile));
+}
+
 TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);

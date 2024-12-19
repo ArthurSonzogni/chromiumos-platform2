@@ -100,7 +100,7 @@ struct PathTypes {
 
 // Defines the mapping from file paths and FailureLocationType to
 // FailedPathType. List subdirectories first to get longest match.
-constexpr std::array<std::pair<const char*, PathTypes>, 7> kPathTypeMappings = {
+constexpr std::array<std::pair<const char*, PathTypes>, 8> kPathTypeMappings = {
     {
         {"app", PathTypes{FailedPathType::kAppSource, FailedPathType::kAppDest,
                           FailedPathType::kApp}},
@@ -122,6 +122,9 @@ constexpr std::array<std::pair<const char*, PathTypes>, 7> kPathTypeMappings = {
         {"user_de/0",
          PathTypes{FailedPathType::kUserDeSource, FailedPathType::kUserDeDest,
                    FailedPathType::kUserDe}},
+        {"fonts",
+         PathTypes{FailedPathType::kFontsSource, FailedPathType::kFontsDest,
+                   FailedPathType::kFonts}},
     }};
 
 }  // namespace
@@ -133,6 +136,12 @@ ArcVmDataMigrationHelperDelegate::ArcVmDataMigrationHelperDelegate(
 ArcVmDataMigrationHelperDelegate::~ArcVmDataMigrationHelperDelegate() = default;
 
 bool ArcVmDataMigrationHelperDelegate::ShouldCopyQuotaProjectId() {
+  return true;
+}
+
+bool ArcVmDataMigrationHelperDelegate::ShouldSkipVerityFileOnErrors() {
+  // Opening fs-verity files as writable fails on ext4 (b/384841851), so we
+  // should skip migrating them.
   return true;
 }
 

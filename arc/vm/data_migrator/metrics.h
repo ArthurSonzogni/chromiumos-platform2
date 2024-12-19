@@ -74,7 +74,11 @@ enum class FailedPathType {
   kUserDeSource = 22,
   kUserDeDest = 23,
   kUserDe = 24,
-  kMaxValue = kUserDe,
+  // Contents under /data/fonts.
+  kFontsSource = 25,
+  kFontsDest = 26,
+  kFonts = 27,
+  kMaxValue = kFonts,
 };
 
 // The possible causes of failures for which the error code is
