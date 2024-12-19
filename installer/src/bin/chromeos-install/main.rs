@@ -45,7 +45,7 @@ fn main() -> Result<()> {
         }
     }
 
-    let source = InstallSource::from_args(args.skip_rootfs, args.payload_image.clone())?;
+    let source = InstallSource::from_args(platform, args.skip_rootfs, args.payload_image.clone())?;
 
     let mut install_cmd = Command::new("/usr/sbin/chromeos-install.sh");
     // Convert most of our args into environment variables.

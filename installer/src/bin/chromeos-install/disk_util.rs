@@ -9,16 +9,16 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use crate::platform::Platform;
-use crate::process_util::{self, ProcessError};
+use crate::process_util::ProcessError;
 
 /// Find device path for the disk containing the root filesystem.
 ///
 /// The return value is a path in /dev, for example "/dev/sda".
 // TODO(378875141): Use the rootdev library instead.
-pub fn get_root_disk_device_path() -> Result<PathBuf> {
+pub fn get_root_disk_device_path(platform: &dyn Platform) -> Result<PathBuf> {
     let mut command = Command::new("rootdev");
     command.args(["-s", "-d"]);
-    let output = process_util::get_output_as_string(command)?;
+    let output = platform.run_command_and_get_stdout(command)?;
     let output = output.trim();
     Ok(PathBuf::from(output))
 }
@@ -41,6 +41,23 @@ mod tests {
     use super::*;
     use crate::platform::MockPlatform;
     use std::fs;
+
+    /// Test a successful call to `get_root_disk_device_path`.
+    #[test]
+    fn test_get_root_disk_device_path() {
+        let mut platform = MockPlatform::new();
+        platform
+            .expect_run_command_and_get_stdout()
+            .withf(|cmd| {
+                cmd.get_program() == "rootdev" && cmd.get_args().collect::<Vec<_>>() == ["-s", "-d"]
+            })
+            .return_once(|_| Ok("/dev/sdb\n".to_owned()));
+
+        assert_eq!(
+            get_root_disk_device_path(&platform).unwrap(),
+            PathBuf::from("/dev/sdb")
+        );
+    }
 
     /// Test that `init_ufs` succeeds if `factory_ufs` does not exist.
     #[test]

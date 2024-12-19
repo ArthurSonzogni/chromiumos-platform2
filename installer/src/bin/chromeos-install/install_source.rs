@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 use crate::disk_util;
+use crate::platform::Platform;
 use crate::process_util::Environment;
 use anyhow::Result;
 use std::path::PathBuf;
@@ -24,13 +25,17 @@ impl InstallSource {
     ///
     /// If a payload image is passed we'll use that as our source, otherwise
     /// we use the running OS.
-    pub fn from_args(skip_rootfs: bool, payload_image: Option<PathBuf>) -> Result<Self> {
+    pub fn from_args(
+        platform: &dyn Platform,
+        skip_rootfs: bool,
+        payload_image: Option<PathBuf>,
+    ) -> Result<Self> {
         if let Some(payload_image) = payload_image {
             Ok(InstallSource::PayloadImage(payload_image))
         } else if skip_rootfs {
             Ok(InstallSource::RunningOS { root_device: None })
         } else {
-            let block_dev = disk_util::get_root_disk_device_path()?;
+            let block_dev = disk_util::get_root_disk_device_path(platform)?;
             Ok(InstallSource::RunningOS {
                 root_device: Some(block_dev),
             })
