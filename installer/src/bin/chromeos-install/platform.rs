@@ -9,8 +9,7 @@ use std::process::Command;
 /// Platform abstraction layer.
 #[cfg_attr(test, mockall::automock)]
 pub trait Platform {
-    /// Run a command and get its stdout as a String. Whitespace is
-    /// trimmed from both ends.
+    /// Run a command and get its stdout as a `String`.
     ///
     /// Stderr is also captured, but not returned to the caller.
     ///

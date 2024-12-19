@@ -18,5 +18,6 @@ pub fn get_root_disk_device_path() -> Result<PathBuf> {
     let mut command = Command::new("rootdev");
     command.args(["-s", "-d"]);
     let output = process_util::get_output_as_string(command)?;
-    Ok(PathBuf::from(&output))
+    let output = output.trim();
+    Ok(PathBuf::from(output))
 }

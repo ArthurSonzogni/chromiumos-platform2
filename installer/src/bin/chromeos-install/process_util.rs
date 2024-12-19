@@ -210,15 +210,14 @@ fn get_command_output(mut command: Command) -> Result<Vec<u8>, ProcessError> {
     Ok(output.stdout)
 }
 
-/// Run a command and get its stdout as a String. Whitespace is trimmed
-/// from both ends.
+/// Run a command and get its stdout as a `String`.
 ///
 /// An error is returned if the process fails to launch or exits non-zero, or if the output is not
 /// valid utf8.
 pub fn get_output_as_string(command: Command) -> anyhow::Result<String> {
     let output = get_command_output(command)?;
     let output = String::from_utf8(output)?;
-    Ok(output.trim().to_string())
+    Ok(output)
 }
 
 #[cfg(test)]
@@ -307,9 +306,8 @@ mod tests {
 
     #[test]
     fn test_get_output_as_string() {
-        let expected = String::from("myOutput");
         let mut command = Command::new("echo");
-        command.arg(&expected);
-        assert_eq!(get_output_as_string(command).unwrap(), expected);
+        command.arg("myOutput");
+        assert_eq!(get_output_as_string(command).unwrap(), "myOutput\n");
     }
 }
