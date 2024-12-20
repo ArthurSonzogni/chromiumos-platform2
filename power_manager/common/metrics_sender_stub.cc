@@ -57,6 +57,10 @@ std::string MetricsSenderStub::GetMetric(size_t i) const {
   return metrics_.size() > i ? metrics_[i].ToString() : std::string();
 }
 
+bool MetricsSenderStub::ContainsMetric(Metric metric) const {
+  return std::find(metrics_.begin(), metrics_.end(), metric) != metrics_.end();
+}
+
 bool MetricsSenderStub::SendMetric(
     const std::string& name, int sample, int min, int max, int num_buckets) {
   metrics_.push_back(Metric::CreateExp(name, sample, min, max, num_buckets));

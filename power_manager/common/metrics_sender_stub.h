@@ -25,6 +25,8 @@ class MetricsSenderStub : public MetricsSenderInterface {
     Metric();
     ~Metric() = default;
 
+    bool operator==(const Metric& rhs) const = default;
+
     // Returns a new exponential metric initialized to the passed-in values.
     static Metric CreateExp(
         const std::string& name, int sample, int min, int max, int num_buckets);
@@ -57,6 +59,10 @@ class MetricsSenderStub : public MetricsSenderInterface {
   // Gets the Metric::ToString() form of the i-th metric from |metrics_|.
   // Returns an empty string if fewer than |i| metrics were sent.
   std::string GetMetric(size_t i) const;
+
+  // Returns true if |metrics_| contains a item with the same sample, min, max,
+  // and num buckets as |metric|
+  bool ContainsMetric(Metric metric) const;
 
   // MetricsSenderInterface implementation:
   bool SendMetric(const std::string& name,
