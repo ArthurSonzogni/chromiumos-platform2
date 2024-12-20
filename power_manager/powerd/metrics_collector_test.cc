@@ -1005,6 +1005,18 @@ TEST_F(MetricsCollectorTest, SuspendJourneyResult) {
   collector_.SendSuspendJourneyResult(SuspendJourneyResult::REBOOT);
 }
 
+TEST_F(MetricsCollectorTest, SuccessfulSuspendUmaReport) {
+  EXPECT_METRIC(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
+                kSuspendAttemptsMax, kSuspendAttemptsBuckets);
+  EXPECT_ENUM_METRIC(kSuspendJourneyResultName,
+                     static_cast<int>(SuspendJourneyResult::RESUME),
+                     static_cast<int>(SuspendJourneyResult::MAX));
+
+  collector_.PrepareForSuspend();
+  AdvanceTime(base::Seconds(10));
+  collector_.HandleResume(1);
+}
+
 class AdaptiveChargingMetricsTest : public TestEnvironment {
  public:
   AdaptiveChargingMetricsTest() : metrics_sender_(metrics_) {}
@@ -1447,6 +1459,7 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
     collector_.PrepareForSuspend();
     AdvanceTime(suspend_duration_);
     EXPECT_METRIC(kSuspendAttemptsBeforeSuccessName, _, _, _, _);
+    EXPECT_ENUM_METRIC(kSuspendJourneyResultName, _, _);
 
     for (const auto& residency : residencies_) {
       if (!residency.path_.empty()) {

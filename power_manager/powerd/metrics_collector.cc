@@ -497,6 +497,7 @@ void MetricsCollector::PrepareForSuspend() {
 void MetricsCollector::HandleResume(int num_suspend_attempts) {
   SendMetric(kSuspendAttemptsBeforeSuccessName, num_suspend_attempts,
              kSuspendAttemptsMin, kSuspendAttemptsMax, kSuspendAttemptsBuckets);
+  SendSuspendJourneyResult(SuspendJourneyResult::RESUME);
 
   // Report the discharge rate in response to the next
   // OnPowerStatusUpdate() call.
