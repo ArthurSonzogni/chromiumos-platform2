@@ -115,13 +115,9 @@ class Printer {
  public:
   explicit Printer(OutputFormat output_format)
       : output_format_(output_format) {}
-  ~Printer() = default;
 
-  // No copying. Share the printer by pointer or reference.
   Printer(Printer&) = delete;
   Printer& operator=(Printer&) = delete;
-  Printer(Printer&&) = delete;
-  Printer& operator=(Printer&&) = delete;
 
   // Print the reply protobuf from a command request.
   template <typename T>

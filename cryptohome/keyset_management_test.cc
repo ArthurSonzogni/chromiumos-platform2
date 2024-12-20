@@ -94,14 +94,6 @@ class KeysetManagementTest : public ::testing::Test {
     CHECK(temp_dir_.CreateUniqueTempDir());
   }
 
-  ~KeysetManagementTest() override = default;
-
-  // Not copyable or movable
-  KeysetManagementTest(const KeysetManagementTest&) = delete;
-  KeysetManagementTest& operator=(const KeysetManagementTest&) = delete;
-  KeysetManagementTest(KeysetManagementTest&&) = delete;
-  KeysetManagementTest& operator=(KeysetManagementTest&&) = delete;
-
   void SetUp() override {
     EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
     EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));

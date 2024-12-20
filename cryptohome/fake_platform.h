@@ -33,11 +33,8 @@ class FakePlatform final : public libstorage::FakePlatform {
   FakePlatform();
   ~FakePlatform() override;
 
-  // Prohibit copy/move/assignment.
   FakePlatform(const FakePlatform&) = delete;
-  FakePlatform(const FakePlatform&&) = delete;
   FakePlatform& operator=(const FakePlatform&) = delete;
-  FakePlatform& operator=(const FakePlatform&&) = delete;
 
   // Test API
 

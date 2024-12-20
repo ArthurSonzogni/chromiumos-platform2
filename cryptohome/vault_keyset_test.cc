@@ -1107,14 +1107,6 @@ class LeCredentialsManagerTest : public ::testing::Test {
     pin_vault_keyset_.Initialize(&platform_, &crypto_);
   }
 
-  ~LeCredentialsManagerTest() override = default;
-
-  // Not copyable or movable
-  LeCredentialsManagerTest(const LeCredentialsManagerTest&) = delete;
-  LeCredentialsManagerTest& operator=(const LeCredentialsManagerTest&) = delete;
-  LeCredentialsManagerTest(LeCredentialsManagerTest&&) = delete;
-  LeCredentialsManagerTest& operator=(LeCredentialsManagerTest&&) = delete;
-
  protected:
   libstorage::MockPlatform platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;

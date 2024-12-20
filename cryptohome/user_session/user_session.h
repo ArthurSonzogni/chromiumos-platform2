@@ -31,11 +31,8 @@ class UserSession {
   UserSession() = default;
   virtual ~UserSession() = default;
 
-  // Disallow Copy/Move/Assign
   UserSession(const UserSession&) = delete;
-  UserSession(const UserSession&&) = delete;
   void operator=(const UserSession&) = delete;
-  void operator=(const UserSession&&) = delete;
 
   // Returns whether the user session represents an active login session.
   virtual bool IsActive() const = 0;

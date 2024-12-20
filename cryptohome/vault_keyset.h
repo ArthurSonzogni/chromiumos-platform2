@@ -27,11 +27,12 @@ namespace cryptohome {
 // (FNEK) and their corresponding signatures.
 class VaultKeyset {
  public:
-  // Constructors and destructors.
   VaultKeyset() = default;
-  VaultKeyset(VaultKeyset&&) = default;
+
   VaultKeyset(const VaultKeyset&) = default;
   VaultKeyset& operator=(const VaultKeyset&) = default;
+  VaultKeyset(VaultKeyset&&) = default;
+  VaultKeyset& operator=(VaultKeyset&&) = default;
 
   // Does not take ownership of platform and crypto. The objects pointed to by
   // them must outlive this object.

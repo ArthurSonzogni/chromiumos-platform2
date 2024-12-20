@@ -88,13 +88,6 @@ class HomeDirsTest
   HomeDirsTest()
       : platform_(std::make_unique<FakePlatform>()),
         mock_device_policy_(new policy::MockDevicePolicy()) {}
-  ~HomeDirsTest() override {}
-
-  // Not copyable or movable
-  HomeDirsTest(const HomeDirsTest&) = delete;
-  HomeDirsTest& operator=(const HomeDirsTest&) = delete;
-  HomeDirsTest(HomeDirsTest&&) = delete;
-  HomeDirsTest& operator=(HomeDirsTest&&) = delete;
 
   void SetUp() override {
     PreparePolicy(true, kOwner, "");

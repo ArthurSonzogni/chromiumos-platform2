@@ -36,9 +36,10 @@ class StorageError : public hwsec_foundation::status::Error {
       ForkAndCrash(ToString());
     }
   }
+
   StorageError(const StorageError&) = default;
-  StorageError(StorageError&&) = default;
   StorageError& operator=(const StorageError&) = default;
+  StorageError(StorageError&&) = default;
   StorageError& operator=(StorageError&&) = default;
 
   MountError error() const { return error_; }

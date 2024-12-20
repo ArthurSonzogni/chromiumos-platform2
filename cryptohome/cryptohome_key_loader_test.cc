@@ -38,10 +38,6 @@ class CryptohomeKeyLoaderTest : public ::testing::Test {
                                &platform_,
                                kTestKeyAlgo,
                                base::FilePath(kDefaultCryptohomeKeyFile)) {}
-  CryptohomeKeyLoaderTest(const CryptohomeKeyLoaderTest&) = delete;
-  CryptohomeKeyLoaderTest& operator=(const CryptohomeKeyLoaderTest&) = delete;
-
-  virtual ~CryptohomeKeyLoaderTest() = default;
 
   // Default mock implementations for |tpm_| methods.
   // For TPM-related flags: enabled is always true, other flags are settable.

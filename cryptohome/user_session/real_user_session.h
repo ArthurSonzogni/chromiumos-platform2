@@ -35,8 +35,6 @@ class RealUserSession : public UserSession {
 
   RealUserSession(const RealUserSession&) = delete;
   RealUserSession& operator=(const RealUserSession&) = delete;
-  RealUserSession(RealUserSession&&) = delete;
-  RealUserSession& operator=(RealUserSession&&) = delete;
 
   bool IsActive() const override { return mount_->IsMounted(); }
 

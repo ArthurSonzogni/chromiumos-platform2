@@ -125,12 +125,6 @@ ShaTestVectors::ShaTestVectors(int type) {
 
 class CryptoTest : public ::testing::Test {
  public:
-  CryptoTest() {}
-  CryptoTest(const CryptoTest&) = delete;
-  CryptoTest& operator=(const CryptoTest&) = delete;
-
-  virtual ~CryptoTest() {}
-
   static bool FindBlobInBlob(const SecureBlob& haystack,
                              const SecureBlob& needle) {
     if (needle.size() > haystack.size()) {
