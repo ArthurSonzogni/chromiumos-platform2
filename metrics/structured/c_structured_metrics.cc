@@ -7,6 +7,7 @@
 //
 
 #include "metrics/structured/c_structured_metrics.h"
+
 #include "metrics/structured/structured_events.h"
 
 namespace audio_peripheral = metrics::structured::events::audio_peripheral;
@@ -87,6 +88,18 @@ extern "C" void BluetoothSuspendIdStateChanged(const char* boot_id,
       .SetBootId(boot_id)
       .SetSystemTime(system_time)
       .SetSuspendIdState(state)
+      .Record();
+}
+
+extern "C" void BluetoothLLPrivacyState(const char* boot_id,
+                                        int64_t system_time,
+                                        int llp_state,
+                                        int rpa_state) {
+  bluetooth::BluetoothLLPrivacyState()
+      .SetBootId(boot_id)
+      .SetSystemTime(system_time)
+      .SetLLPrivacyState(llp_state)
+      .SetAddressPrivacyState(rpa_state)
       .Record();
 }
 
