@@ -643,8 +643,7 @@ void WiFi::InterworkingSelectDone() {
     } else if (type_str == WPASupplicant::kCredentialsMatchTypeUnknown) {
       type = WiFiProvider::MatchPriority::kUnknown;
     } else {
-      NOTREACHED_IN_MIGRATION()
-          << __func__ << " unknown match type: " << type_str;
+      LOG(ERROR) << __func__ << " unknown match type: " << type_str;
     }
 
     matches.emplace_back(creds, endpoint, type);
@@ -4453,7 +4452,7 @@ void WiFi::OnNeighborReachabilityEvent(
       return;
     default:
       // Already filtered in Network::OnNeighborReachabilityEvent().
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 

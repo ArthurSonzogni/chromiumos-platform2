@@ -552,9 +552,7 @@ const char* TetheringManager::TetheringStateName(const TetheringState& state) {
     case TetheringState::kTetheringRestarting:
       return kTetheringStateRestarting;
     default:
-      NOTREACHED_IN_MIGRATION()
-          << "Unhandled tethering state " << static_cast<int>(state);
-      return "Invalid";
+      NOTREACHED() << "Unhandled tethering state " << static_cast<int>(state);
   }
 }
 
@@ -1464,9 +1462,7 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
     case StopReason::kResourceBusy:
       return kTetheringIdleReasonResourceBusy;
     default:
-      NOTREACHED_IN_MIGRATION()
-          << "Unhandled stop reason " << static_cast<int>(reason);
-      return "Invalid";
+      NOTREACHED() << "Unhandled stop reason " << static_cast<int>(reason);
   }
 }
 

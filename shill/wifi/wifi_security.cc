@@ -347,8 +347,7 @@ WiFiSecurity WiFiSecurity::Combine(WiFiSecurity::Mode mode) const {
       break;
     default:
       // It should be impossible for other modes to get here.
-      NOTREACHED_IN_MIGRATION()
-          << "Unhandled combination of " << *this << " and " << mode;
+      NOTREACHED() << "Unhandled combination of " << *this << " and " << mode;
   }
 
   return {};

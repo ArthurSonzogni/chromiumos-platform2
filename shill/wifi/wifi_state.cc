@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/wifi/wifi_state.h"
+
 #include <map>
 #include <string>
 
 #include <base/logging.h>
 #include <base/notreached.h>
-
-#include "shill/wifi/wifi_state.h"
 
 namespace {
 constexpr char kIdle[] = "Idle";
@@ -109,11 +109,8 @@ std::string WiFiState::LegacyStateString(WiFiState::PhyState state,
         case ScanMethod::kFull:
           return "FULL_START";
         default:
-          NOTREACHED_IN_MIGRATION();
+          NOTREACHED();
       }
-      // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED_IN_MIGRATION(), https://crbug.com/973960.
-      break;
     case PhyState::kBackgroundScanning:
       return "BACKGROUND_START";
     case PhyState::kTransitionToConnecting:
@@ -125,11 +122,8 @@ std::string WiFiState::LegacyStateString(WiFiState::PhyState state,
         case ScanMethod::kFull:
           return "FULL_CONNECTING";
         default:
-          NOTREACHED_IN_MIGRATION();
+          NOTREACHED();
       }
-      // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED_IN_MIGRATION(), https://crbug.com/973960.
-      break;
     case PhyState::kConnected:
       switch (method) {
         case ScanMethod::kNone:
@@ -137,11 +131,8 @@ std::string WiFiState::LegacyStateString(WiFiState::PhyState state,
         case ScanMethod::kFull:
           return "FULL_CONNECTED";
         default:
-          NOTREACHED_IN_MIGRATION();
+          NOTREACHED();
       }
-      // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED_IN_MIGRATION(), https://crbug.com/973960.
-      break;
     case PhyState::kFoundNothing:
       switch (method) {
         case ScanMethod::kNone:
@@ -149,15 +140,11 @@ std::string WiFiState::LegacyStateString(WiFiState::PhyState state,
         case ScanMethod::kFull:
           return "FULL_NOCONNECTION";
         default:
-          NOTREACHED_IN_MIGRATION();
+          NOTREACHED();
       }
-      // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED_IN_MIGRATION(), https://crbug.com/973960.
-      break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
-  return "";  // To shut up the compiler (that doesn't understand NOTREACHED).
 }
 
 }  // namespace shill
