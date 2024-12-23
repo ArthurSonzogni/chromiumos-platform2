@@ -117,10 +117,16 @@ CHROME_CPU_CGROUP_DIR=/sys/fs/cgroup/cpu/chrome_renderers
 if [ ! -d "${CHROME_CPU_CGROUP_DIR}" ]; then
   mkdir -p "${CHROME_CPU_CGROUP_DIR}/foreground"
   mkdir -p "${CHROME_CPU_CGROUP_DIR}/background"
+  # /sys/fs/cgroup/cpu/chrome_renderers_background is for FlattenCpuCgroups
+  # experiment.
+  # TODO(b/385656021): Remove /sys/fs/cgroup/cpu/chrome_renderers/background.
+  mkdir -p "${CHROME_CPU_CGROUP_DIR}_background"
   echo "10" > "${CHROME_CPU_CGROUP_DIR}/background/cpu.shares"
+  echo "10" > "${CHROME_CPU_CGROUP_DIR}_background/cpu.shares"
   # Allow featured to still modify these values
-  chmod -R g+w "${CHROME_CPU_CGROUP_DIR}"
-  chown -R chronos "${CHROME_CPU_CGROUP_DIR}"
+  chmod -R g+w "${CHROME_CPU_CGROUP_DIR}" "${CHROME_CPU_CGROUP_DIR}_background"
+  chown -R chronos "${CHROME_CPU_CGROUP_DIR}" \
+    "${CHROME_CPU_CGROUP_DIR}_background"
 
   # TODO(ikjn): This scheduler settings are a bit complex,
   # Let's move these out to an another executable (c++).
