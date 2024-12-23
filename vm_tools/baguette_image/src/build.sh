@@ -6,6 +6,8 @@
 BAGUETTE_ARCH=$(dpkg --print-architecture)
 SCRIPT_DIR=$(dirname "$0")
 
+set -eux
+
 mkdir target
 sudo cdebootstrap --arch "${BAGUETTE_ARCH}" --include=ca-certificates trixie target https://deb.debian.org/debian/
 sudo mount --bind /dev target/dev
@@ -16,7 +18,7 @@ sudo mount -t tmpfs tmpfs target/run
 cp -r "${SCRIPT_DIR}/data" "target/tmp/"
 
 cp "${SCRIPT_DIR}/setup_in_guest.sh" target/tmp/
-sudo sed -i 's/CROS_PACKAGES_URL/https:\/\/storage.googleapis.com\/cros-packages-staging\/130\//g' target/tmp/setup_in_guest.sh
+sudo sed -i 's/CROS_PACKAGES_URL/https:\/\/storage.googleapis.com\/cros-packages-staging\/132\//g' target/tmp/setup_in_guest.sh
 sudo sed -i 's/CROS_RELEASE/trixie/g' target/tmp/setup_in_guest.sh
 
 sudo chroot target /tmp/setup_in_guest.sh
@@ -28,8 +30,5 @@ sudo umount target/dev/pts
 sudo umount target/dev
 sudo umount -R target/sys
 sudo umount -R target/proc
-
-sudo virt-make-fs -t btrfs --size=+200M target "baguette_rootfs_${BAGUETTE_ARCH}.img"
-sudo chown "${USER}" "baguette_rootfs_${BAGUETTE_ARCH}.img"
-python3 "${SCRIPT_DIR}/btrfs_subvol_root.py" "baguette_rootfs_${BAGUETTE_ARCH}.img"
-zstd -10 -T0 "baguette_rootfs_${BAGUETTE_ARCH}.img"
+sudo tar -c -f rootfs.tar -C target .
+sudo chown "${USER}" rootfs.tar

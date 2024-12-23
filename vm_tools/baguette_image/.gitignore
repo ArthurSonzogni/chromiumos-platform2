@@ -2,4 +2,5 @@
 target/
 *.img
 *.img.zst
-*.tar.gz
+*.tar
+docker_export/

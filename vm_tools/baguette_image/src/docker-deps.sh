@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-set -eu
+set -e
 
-. "$(dirname "$0")/docker-deps.sh"
-sudo apt-get install -y libguestfs-tools zstd python3-guestfs
+sudo apt-get update
+sudo apt-get install -y cdebootstrap
