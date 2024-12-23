@@ -253,7 +253,6 @@ void EmbeddingEngine::DoProcess(mojom::GroupRequestPtr request,
 void EmbeddingEngine::ProcessEachPrompt(ProcessingParams params) {
   size_t index = params.response.embeddings.size();
   // > covers the index out-of-range case although it shouldn't happen.
-  LOG(ERROR) << "index: " << index;
   if (index >= params.prompts.size()) {
     std::move(params.callback)
         .Run(std::move(params.request), std::move(params.response));
