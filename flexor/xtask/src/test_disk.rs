@@ -86,10 +86,11 @@ pub fn update(
 ) -> Result<()> {
     if flexor_vmlinuz.is_none() && install_image.is_none() {
         // Nothing to do.
+        println!("No files passed, not updating disk...");
         return Ok(());
+    } else {
+        println!("Updating disk...");
     }
-
-    println!("Updating disk...");
 
     let mut disk_file = OpenOptions::new()
         .read(true)
