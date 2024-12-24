@@ -106,6 +106,11 @@ chown -R chronos "${SUPPORT_DIR}"
 # on what the user is doing at the time.
 if [ ! -d "${UI_CPU_CGROUP_DIR:-}" ]; then
   mkdir -p "${UI_CPU_CGROUP_DIR}"
+  # Allow chrome to modify these values.
+  # TODO(b/385656021): remove this after
+  # FlattenCpuCgroups:unified_cpu_cgroup/true experiment.
+  chmod -R g+w "${UI_CPU_CGROUP_DIR}"
+  chown -R chronos "${UI_CPU_CGROUP_DIR}"
 fi
 
 # Set up cgroups for chrome. We create two task groups, one for at most one
