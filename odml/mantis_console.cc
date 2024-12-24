@@ -7,7 +7,8 @@ sample usage:
 mantis_console --image=/usr/local/tmp/image.jpg \
       --mask=/usr/local/tmp/mask.jpg \
       --prompt="a red building" \
-      --output=/usr/local/tmp/output.jpg \
+      --image_output_path=/usr/local/tmp/output.jpg \
+      --generated_region_output_path=/usr/local/tmp/generated_region.jpg \
       --genfill --seed 123
 */
 
@@ -61,10 +62,14 @@ constexpr const char kEnableSafety[] = "enable_safety";
 constexpr const char kInapinting[] = "inpainting";
 constexpr const char kGenfill[] = "genfill";
 constexpr const char kOutpainting[] = "outpainting";
-constexpr const char kOutputPath[] = "output";
+constexpr const char kImageOutputPath[] = "image_output_path";
+constexpr const char kGeneratedRegionOutputPath[] =
+    "generated_region_output_path";
 
 constexpr const int kDefaultSeed = 0;
-constexpr const char kDefaultOutputPath[] = "/usr/local/tmp/output.jpg";
+constexpr const char kDefaultImageOutputPath[] = "/usr/local/tmp/output.jpg";
+constexpr const char kDefaultGeneratedRegionOutputPath[] =
+    "/usr/local/tmp/generated_region.jpg";
 
 }  // namespace
 
@@ -103,11 +108,18 @@ std::string GetPrompt(base::CommandLine* cl) {
   return cl->GetSwitchValueASCII(kPrompt);
 }
 
-std::string GetOutputPath(base::CommandLine* cl) {
-  if (cl && cl->HasSwitch(kOutputPath)) {
-    return cl->GetSwitchValueASCII(kOutputPath);
+std::string GetOutputImagePath(base::CommandLine* cl) {
+  if (cl && cl->HasSwitch(kImageOutputPath)) {
+    return cl->GetSwitchValueASCII(kImageOutputPath);
   }
-  return kDefaultOutputPath;
+  return kDefaultImageOutputPath;
+}
+
+std::string GetGeneratedRegionOutputPath(base::CommandLine* cl) {
+  if (cl && cl->HasSwitch(kGeneratedRegionOutputPath)) {
+    return cl->GetSwitchValueASCII(kGeneratedRegionOutputPath);
+  }
+  return kDefaultGeneratedRegionOutputPath;
 }
 
 bool ShouldEnableSafety(base::CommandLine* cl) {
@@ -126,6 +138,53 @@ bool DoOutpainting(base::CommandLine* cl) {
   return cl ? cl->HasSwitch(kOutpainting) : false;
 }
 
+class MantisProcessorForInterception : public mantis::MantisProcessor {
+ public:
+  // Use the same constructor as the base class
+  using MantisProcessor::MantisProcessor;
+
+  base::CommandLine* cl_;
+
+ private:
+  void OnClassifyImageOutputDone(
+      std::unique_ptr<mantis::MantisProcess> process,
+      std::vector<mantis::mojom::SafetyClassifierVerdict> results) override {
+    base::FilePath output_image_path = base::FilePath(GetOutputImagePath(cl_));
+    base::WriteFile(output_image_path, process->image_result);
+    LOG(INFO) << "Generated image: " << output_image_path;
+
+    base::FilePath generated_region_path =
+        base::FilePath(GetGeneratedRegionOutputPath(cl_));
+    base::WriteFile(generated_region_path, process->generated_region);
+    LOG(INFO) << "Generated region: " << generated_region_path;
+
+    MantisProcessor::MantisProcessor::OnClassifyImageOutputDone(
+        std::move(process), std::move(results));
+  }
+};
+
+class MantisServiceForInterception : public mantis::MantisService {
+ public:
+  // Use the same constructor as the base class
+  using MantisService::MantisService;
+  std::unique_ptr<MantisProcessorForInterception> mantis_processor;
+
+ private:
+  void CreateMantisProcessor(
+      mantis::MantisComponent component,
+      const mantis::MantisAPI* api,
+      mojo::PendingReceiver<mantis::mojom::MantisProcessor> receiver,
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      base::OnceCallback<void()> on_disconnected,
+      base::OnceCallback<void(mantis::mojom::InitializeResult)> callback)
+      override {
+    LOG(INFO) << "MantisServiceForInterception::CreateMantisProcessor called";
+    mantis_processor = std::make_unique<MantisProcessorForInterception>(
+        component, api, std::move(receiver), safety_service_manager,
+        std::move(on_disconnected), std::move(callback));
+  }
+};
+
 class MantisServiceProviderImpl {
  public:
   MantisServiceProviderImpl(
@@ -134,10 +193,12 @@ class MantisServiceProviderImpl {
           service_manager,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
       : service_impl_(shim_loader, safety_service_manager) {}
-  raw_ref<mantis::MantisService> service() { return raw_ref(service_impl_); }
+  raw_ref<MantisServiceForInterception> service() {
+    return raw_ref(service_impl_);
+  }
 
  private:
-  mantis::MantisService service_impl_;
+  MantisServiceForInterception service_impl_;
 };
 
 class MantisConsole : public brillo::DBusDaemon {
@@ -231,6 +292,7 @@ class MantisConsole : public brillo::DBusDaemon {
               &run_loop));
       run_loop.Run();
     }
+    service->mantis_processor->cl_ = cl_;
     return EX_OK;
   }
 
@@ -241,9 +303,7 @@ class MantisConsole : public brillo::DBusDaemon {
     if (result->is_error()) {
       LOG(INFO) << "Mantis error " << result->get_error();
     } else {
-      auto path = base::FilePath(GetOutputPath(cl_));
-      base::WriteFile(path, result->get_result_image());
-      LOG(INFO) << "Generated image: " << path;
+      LOG(INFO) << "Mantis process finished successfully.";
     }
     run_loop->Quit();
   }
@@ -252,7 +312,7 @@ class MantisConsole : public brillo::DBusDaemon {
     auto service = mantis_service_provider_impl_->service();
     LOG(INFO) << "Mantis inpainting call";
     base::RunLoop run_loop;
-    service->processor()->Inpainting(
+    service->mantis_processor->Inpainting(
         GetImage(cl_), GetMask(cl_), GetSeed(cl_),
         base::BindOnce(&MantisConsole::OnOperationFinish,
                        base::Unretained(this), &run_loop));
@@ -263,7 +323,7 @@ class MantisConsole : public brillo::DBusDaemon {
     auto service = mantis_service_provider_impl_->service();
     LOG(INFO) << "Mantis outpainting call";
     base::RunLoop run_loop;
-    service->processor()->Inpainting(
+    service->mantis_processor->Inpainting(
         GetImage(cl_), GetMask(cl_), GetSeed(cl_),
         base::BindOnce(&MantisConsole::OnOperationFinish,
                        base::Unretained(this), &run_loop));
@@ -274,7 +334,7 @@ class MantisConsole : public brillo::DBusDaemon {
     auto service = mantis_service_provider_impl_->service();
     LOG(INFO) << "Mantis genfill call";
     base::RunLoop run_loop;
-    service->processor()->GenerativeFill(
+    service->mantis_processor->GenerativeFill(
         GetImage(cl_), GetMask(cl_), GetSeed(cl_), GetPrompt(cl_),
         base::BindOnce(&MantisConsole::OnOperationFinish,
                        base::Unretained(this), &run_loop));

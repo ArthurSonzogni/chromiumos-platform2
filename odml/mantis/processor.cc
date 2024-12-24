@@ -14,6 +14,7 @@
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
+#include "base/barrier_callback.h"
 #include "odml/mantis/lib_api.h"
 #include "odml/mojom/big_buffer.mojom.h"
 #include "odml/mojom/cros_safety.mojom.h"
@@ -116,15 +117,19 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
           [](const MantisAPI* api, MantisComponent component,
              const std::vector<uint8_t>& image,
              const std::vector<uint8_t>& mask,
-             uint32_t seed) -> mojom::MantisResultPtr {
+             uint32_t seed) -> ProcessFuncResult {
             InpaintingResult lib_result =
                 api->Inpainting(component.processor, image, mask, seed);
             if (lib_result.status != MantisStatus::kOk) {
-              return MantisResult::NewError(
-                  kMapStatusToError.at(lib_result.status));
+              return ProcessFuncResult{
+                  .error = kMapStatusToError.at(lib_result.status),
+              };
             }
 
-            return MantisResult::NewResultImage(lib_result.image);
+            return ProcessFuncResult{
+                .image = lib_result.image,
+                .generated_region = lib_result.generated_region,
+            };
           },
           api_, component_, image, mask, seed),
   }));
@@ -145,15 +150,19 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
           [](const MantisAPI* api, MantisComponent component,
              const std::vector<uint8_t>& image,
              const std::vector<uint8_t>& mask, uint32_t seed,
-             const std::string& prompt) -> mojom::MantisResultPtr {
+             const std::string& prompt) -> ProcessFuncResult {
             GenerativeFillResult lib_result = api->GenerativeFill(
                 component.processor, image, mask, seed, prompt);
             if (lib_result.status != MantisStatus::kOk) {
-              return MantisResult::NewError(
-                  kMapStatusToError.at(lib_result.status));
+              return ProcessFuncResult{
+                  .error = kMapStatusToError.at(lib_result.status),
+              };
             }
 
-            return MantisResult::NewResultImage(lib_result.image);
+            return ProcessFuncResult{
+                .image = lib_result.image,
+                .generated_region = lib_result.generated_region,
+            };
           },
           api_, component_, image, mask, seed, prompt),
   }));
@@ -245,40 +254,45 @@ void MantisProcessor::OnClassifyImageInputDone(
     return;
   }
 
-  mojom::MantisResultPtr lib_result = std::move(process->process_func).Run();
-  if (lib_result->is_error()) {
+  ProcessFuncResult lib_result = std::move(process->process_func).Run();
+  if (lib_result.error.has_value()) {
     std::move(process->callback)
-        .Run(MantisResult::NewError(lib_result->get_error()));
+        .Run(MantisResult::NewError(lib_result.error.value()));
     return;
   }
-  std::vector<uint8_t> image_result = lib_result->get_result_image();
-
   std::string prompt =
       process->prompt.has_value() ? process->prompt.value() : "";
-  ClassifyImageSafetyInternal(
-      image_result, prompt,
-      base::BindOnce(&MantisProcessor::OnClassifyImageOutputDone,
-                     weak_ptr_factory_.GetWeakPtr(), image_result,
-                     std::move(process->callback)));
+  process->image_result = lib_result.image;
+  process->generated_region = lib_result.generated_region;
+
+  const auto barrier_callback = base::BarrierCallback<SafetyClassifierVerdict>(
+      2, base::BindOnce(&MantisProcessor::OnClassifyImageOutputDone,
+                        weak_ptr_factory_.GetWeakPtr(), std::move(process)));
+
+  ClassifyImageSafetyInternal(lib_result.image, prompt, barrier_callback);
+  ClassifyImageSafetyInternal(lib_result.generated_region, /*text=*/"",
+                              barrier_callback);
 }
 
 void MantisProcessor::OnClassifyImageOutputDone(
-    const std::vector<uint8_t>& image,
-    base::OnceCallback<void(mojom::MantisResultPtr)> callback,
-    SafetyClassifierVerdict result) {
-  if (result == SafetyClassifierVerdict::kFailedText) {
-    std::move(callback).Run(
-        MantisResult::NewError(MantisError::kPromptSafetyError));
-    return;
-  }
-  if (result == SafetyClassifierVerdict::kFailedImage ||
-      result == SafetyClassifierVerdict::kFail) {
-    std::move(callback).Run(
-        MantisResult::NewError(MantisError::kOutputSafetyError));
-    return;
+    std::unique_ptr<MantisProcess> process,
+    std::vector<SafetyClassifierVerdict> results) {
+  for (auto& result : results) {
+    if (result == SafetyClassifierVerdict::kFailedText) {
+      std::move(process->callback)
+          .Run(MantisResult::NewError(MantisError::kPromptSafetyError));
+      return;
+    }
+    if (result == SafetyClassifierVerdict::kFailedImage ||
+        result == SafetyClassifierVerdict::kFail) {
+      std::move(process->callback)
+          .Run(MantisResult::NewError(MantisError::kOutputSafetyError));
+      return;
+    }
   }
 
-  std::move(callback).Run(MantisResult::NewResultImage(image));
+  std::move(process->callback)
+      .Run(MantisResult::NewResultImage(process->image_result));
 }
 
 }  // namespace mantis

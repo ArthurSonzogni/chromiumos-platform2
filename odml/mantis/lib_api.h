@@ -31,11 +31,13 @@ enum class MantisStatus : int {
 struct InpaintingResult {
   MantisStatus status;
   std::vector<uint8_t> image;
+  std::vector<uint8_t> generated_region;
 };
 
 struct GenerativeFillResult {
   MantisStatus status;
   std::vector<uint8_t> image;
+  std::vector<uint8_t> generated_region;
 };
 
 struct SegmentationResult {

@@ -25,6 +25,11 @@
 
 namespace mantis {
 
+struct ProcessFuncResult {
+  std::optional<mojom::MantisError> error;
+  std::vector<uint8_t> image;
+  std::vector<uint8_t> generated_region;
+};
 // TODO(b/375929152): Use NoDefault for required args.
 struct MantisProcess {
   const std::vector<uint8_t> image;
@@ -32,9 +37,10 @@ struct MantisProcess {
   uint32_t seed;
   std::optional<std::string> prompt;
   base::OnceCallback<void(mojom::MantisResultPtr)> callback;
-  base::OnceCallback<mojom::MantisResultPtr()> process_func;
+  base::OnceCallback<ProcessFuncResult()> process_func;
   // Might not be populated
   std::vector<uint8_t> image_result;
+  std::vector<uint8_t> generated_region;
 };
 
 class MantisProcessor : public mojom::MantisProcessor {
@@ -81,16 +87,15 @@ class MantisProcessor : public mojom::MantisProcessor {
       const std::string& text,
       base::OnceCallback<void(mojom::SafetyClassifierVerdict)> callback);
 
+  virtual void OnClassifyImageOutputDone(
+      std::unique_ptr<MantisProcess> process,
+      std::vector<mojom::SafetyClassifierVerdict> results);
+
  private:
   void OnDisconnected();
 
   void OnClassifyImageInputDone(std::unique_ptr<MantisProcess> process,
                                 mojom::SafetyClassifierVerdict result);
-
-  void OnClassifyImageOutputDone(
-      const std::vector<uint8_t>& image,
-      base::OnceCallback<void(mojom::MantisResultPtr)> callback,
-      mojom::SafetyClassifierVerdict result);
 
   void ProcessImage(std::unique_ptr<MantisProcess> process);
 
