@@ -37,10 +37,11 @@ visible level" and one is "full brightness".
 
 ## Automatic brightness changes
 
-By default, powerd will automatically choose a backlight brightness based on the
-current power source (AC / battery), and the level of ambient light (direct
-sunlight / something dimmer than that). When the one of these changes, powerd
-will transition to a new brightness level.
+If the device has one or more ambient light sensors, and when the sensor-based
+automatic brightness is turned on, powerd will automatically choose a backlight
+brightness based on the current power source (AC / battery), and the level of
+ambient light (direct sunlight / something dimmer than that). When the one of
+these changes, powerd will transition to a new brightness level.
 
 The automatically-chosen non-linear brightness percentages are as follows:
 
@@ -88,32 +89,74 @@ logic. This logic is not hosted in powerd directly; rather, the [logic is in
 Ash][ml-backlight], which calculates a desired backlight level and
 communicates the result to powerd via a D-Bus API.
 
-## Manual brightness changes
+## Brightness and Ambient Light Sensor Behavior
 
-Before the user has touched a brightness key, the brightness will update
-automatically based on ambient light or when AC power is connected or
-disconnected. However, when the user presses the brightness-up or
-brightness-down keys, powerd animates to the requested level and stops making
-further ambient-light-triggered or power-source-triggered automated adjustments
-until the system is rebooted.
+As of M132, display brightness and Ambient Light Sensor (ALS) settings are now
+remembered in Chrome and restored after a reboot.
 
-A single user-configured brightness is tracked for both AC and battery power;
-once the user has adjusted the brightness via the brightness keys, the
-brightness remains at that level until the next time the system boots. (Prior to
-M36, separate user-configured levels were maintained for AC and battery power --
-see [issue 360042].) There are 16 user-selectable
-brightness steps, divided evenly between the full non-linear percentage-based
-range (i.e. each button press moves the brightness by 100 / 16 = 6.25%). The
-brightness popup that appears when a button is pressed actually contains a
-draggable slider that can be used to select a brightness percentage that doesn't
+### Boot time brightness selection
+
+At boot, the panel backlight's brightness is set to 40% (computed linearly) of
+its maximum level by the `boot-splash` Upstart job. This happens before the boot
+splash animation is displayed by frecon.
+
+### Out of Box Experience (OOBE)
+
+The first time that the device boots, it should have no remembered setting to
+restore from Chrome. Hence, after powerd starts, it chooses an initial backlight
+brightness based on the power source (either AC or battery) and the ambient
+light level, as described in the "Automatic brightness changes" section.
+
+### During reboot
+
+During reboot, the device restores previous brightness settings. The settings
+are saved per user profile and are restored when the profile is loaded.
+
+-   **Devices with ALS:**
+
+    -   *ALS last on*: Brightness adjusts automatically; the previous brightness
+        level is not restored.
+
+    -   *ALS last off*: The system restores the last user-set brightness level.
+
+-   **Devices without ALS:**
+
+    -   Brightness always restores to the last user-set brightness level after a
+        reboot.
+
+### Brightness Control After Boot
+
+#### Brightness control
+
+Users can manually change the screen brightness in three ways:
+
+*   **Brightness keys:** Use the brightness keys on keyboard, there are 16
+    user-selectable brightness steps, divided evenly between the full non-linear
+    percentage-based range (i.e. each button press moves the brightness by 100 /
+    16 = 6.25%).
+
+*   **Quick Settings:** Use the brightness slider in the Quick Settings panel.
+
+*   **Settings app:** Use the brightness slider in the Display settings.
+
+The draggable slider can be used to select a brightness percentage that doesn't
 match one of the pre-defined steps.
 
-In the past, the previous user-configured level was restored at boot, but this
-was deliberately removed. A given device is frequently used in many different
-environments: dark rooms, well-lit rooms with lots of ambient light, etc. We
-decided that always booting with a reasonable default brightness was preferable
-to sometimes restoring a blindingly-high brightness when booting in a dark room
-or restoring an extremely-dim brightness when booting in a bright room.
+#### Ambient light sensor control
+
+User can toggle on/off Ambient Light Sensor (ALS) in the Display settings.
+Meanwhile, manually adjusting the display brightness will temporarily disable
+ALS.
+
+#### Ambient light sensor re-enabled
+
+Adjusting the display backlight brightness by brightness keys or Quick settings
+temporarily disables the ALS. The ALS is automatically re-enabled after reboot
+to prevent accidental deactivation.
+
+The ALS state is saved if and only if the user explicitly disables the ALS in
+the Settings app or adjust brightness percentage using Display settings slider.
+Remembered settings are restored when the user profile loads after a reboot.
 
 ## Screen dimming and power off
 
@@ -127,16 +170,6 @@ Users may reduce the backlight brightness to 0% using the brightness-down (F6)
 key; this may be desirable to conserve battery power while streaming music. The
 backlight is automatically increased to a low-but-visible level when user input
 is observed after the brightness has been manually set to 0%.
-
-## Boot time brightness selection
-
-At boot, the panel backlight's brightness is set to 40% (computed linearly) of
-its maximum level by the `boot-splash` Upstart job. This happens before the boot
-splash animation is displayed by frecon.
-
-After powerd starts, it chooses an initial backlight brightness based on the
-power source (either AC or battery) and the ambient light level, as described in
-the "Automatic brightness changes" section.
 
 ## External monitor brightness
 
