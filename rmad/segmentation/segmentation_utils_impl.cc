@@ -5,6 +5,7 @@
 #include "rmad/segmentation/segmentation_utils_impl.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -31,9 +32,7 @@ constexpr char kEmptyBoardIdType[] = "ffffffff";
 namespace rmad {
 
 SegmentationUtilsImpl::SegmentationUtilsImpl()
-    : config_dir_path_(kDefaultConfigDirPath),
-      feature_enabled_devices_(),
-      feature_management_() {
+    : config_dir_path_(kDefaultConfigDirPath) {
   tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
@@ -48,7 +47,6 @@ SegmentationUtilsImpl::SegmentationUtilsImpl(
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<GscUtils> gsc_utils)
     : config_dir_path_(config_dir_path),
-      feature_enabled_devices_(),
       feature_management_(std::move(feature_management_interface)),
       tpm_manager_client_(std::move(tpm_manager_client)),
       cros_config_utils_(std::move(cros_config_utils)),
@@ -117,6 +115,20 @@ bool SegmentationUtilsImpl::IsFeatureMutable() const {
 
 int SegmentationUtilsImpl::GetFeatureLevel() const {
   return feature_management_.GetFeatureLevel();
+}
+
+std::optional<int> SegmentationUtilsImpl::LookUpFeatureLevel() const {
+  std::string brand_code;
+  if (!cros_config_utils_->GetBrandCode(&brand_code)) {
+    LOG(ERROR) << "Failed to get brand code from cros_config.";
+    return ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ;
+  }
+
+  if (feature_enabled_devices_.feature_levels().contains(brand_code)) {
+    return feature_enabled_devices_.feature_levels().at(brand_code);
+  }
+
+  return std::nullopt;
 }
 
 bool SegmentationUtilsImpl::GetFeatureFlags(bool* is_chassis_branded,

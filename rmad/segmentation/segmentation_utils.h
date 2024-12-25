@@ -5,6 +5,8 @@
 #ifndef RMAD_SEGMENTATION_SEGMENTATION_UTILS_H_
 #define RMAD_SEGMENTATION_SEGMENTATION_UTILS_H_
 
+#include <optional>
+
 namespace rmad {
 
 class SegmentationUtils {
@@ -20,6 +22,9 @@ class SegmentationUtils {
 
   // Returns the feature level according to the provisioned values.
   virtual int GetFeatureLevel() const = 0;
+
+  // Returns the feature level according to brand code.
+  virtual std::optional<int> LookUpFeatureLevel() const = 0;
 
   // Get feature flags from GSC.
   virtual bool GetFeatureFlags(bool* is_chassis_branded,

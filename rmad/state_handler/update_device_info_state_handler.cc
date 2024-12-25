@@ -601,14 +601,13 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
   if (device_info.original_feature_level() ==
       UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNKNOWN) {
     // Provision |is_chassis_branded| and |hw_compliance_version|.
-
-    // TODO(jeffulin): Remove the hot-fix that directly use brand code to decide
-    // the compliance version.
     int compliance_version = device_info.hw_compliance_version();
-    if (std::string brand_code; compliance_version == 1 &&
-                                cros_config_utils_->GetBrandCode(&brand_code) &&
-                                brand_code == "IHOS") {
-      compliance_version = 2;
+    // The |hw_compliance_version| field in the user input is expected to be
+    // either 0 or 1. A value of 1 indicates the need to update the device to
+    // the appropriate feature level.
+    if (const auto feature_level = segmentation_utils_->LookUpFeatureLevel();
+        compliance_version == 1 && feature_level.has_value()) {
+      compliance_version = feature_level.value();
     }
 
     segmentation_utils_->SetFeatureFlags(device_info.is_chassis_branded(),

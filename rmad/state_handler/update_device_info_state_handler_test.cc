@@ -103,6 +103,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     bool is_feature_enabled = true;
     bool is_feature_mutable = false;
     int feature_level = 0;
+    std::optional<int> looked_up_feature_level = std::nullopt;
     bool set_serial_number_success = true;
     bool set_region_success = true;
     bool set_sku_success = true;
@@ -112,7 +113,6 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     bool has_cbi = true;
     bool use_legacy_custom_label = false;
     std::optional<std::string> sku_filter_textproto = std::nullopt;
-    std::string brand_code = "";
   };
 
   scoped_refptr<UpdateDeviceInfoStateHandler> CreateStateHandler(
@@ -248,15 +248,9 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
                                   args.sku_filter_textproto.value()));
     }
 
-    if (args.brand_code != "") {
-      ON_CALL(*cros_config_utils, GetBrandCode(_))
-          .WillByDefault(
-              DoAll(SetArgPointee<0>(args.brand_code), Return(true)));
-    }
-
     // Fake |SegmentationUtils|.
     WriteFakeFeaturesInput(args.is_feature_enabled, args.is_feature_mutable,
-                           args.feature_level);
+                           args.feature_level, args.looked_up_feature_level);
     auto segmentation_utils =
         std::make_unique<FakeSegmentationUtils>(GetTempDirPath());
 
@@ -343,13 +337,18 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
 
   void WriteFakeFeaturesInput(bool is_feature_enabled,
                               bool is_feature_mutable,
-                              int feature_level) {
+                              int feature_level,
+                              std::optional<int> looked_up_feature_level) {
     auto input = base::MakeRefCounted<JsonStore>(
         GetTempDirPath().AppendASCII(kFakeFeaturesInputFilePath), false);
     input->Clear();
     input->SetValue("is_feature_enabled", is_feature_enabled);
     input->SetValue("is_feature_mutable", is_feature_mutable);
     input->SetValue("feature_level", feature_level);
+    if (looked_up_feature_level.has_value()) {
+      input->SetValue("looked_up_feature_level",
+                      looked_up_feature_level.value());
+    }
   }
 
   bool ReadFakeFeaturesOutput(bool* is_chassis_branded,
@@ -628,12 +627,13 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_FeatureLevel2_Success) {
-  auto handler = CreateStateHandler({.feature_level = 2, .brand_code = "IHOS"});
+  auto handler = CreateStateHandler({.feature_level = 2});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto state = handler->GetState();
+  // Shimless RMA backend can only recognize RMAD_FEATURE_LEVEL_1 at the moment.
   EXPECT_EQ(state.update_device_info().original_feature_level(),
             UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_1);
 }
@@ -1355,9 +1355,9 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       GetNextStateCase_FeatureMutableComplianceTwo_Success) {
-  auto handler =
-      CreateStateHandler({.is_feature_mutable = true, .brand_code = "IHOS"});
+       GetNextStateCase_FeatureMutable_SpecifiedVersion_Success) {
+  auto handler = CreateStateHandler(
+      {.is_feature_mutable = true, .looked_up_feature_level = 2});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 

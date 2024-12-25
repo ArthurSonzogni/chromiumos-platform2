@@ -39,6 +39,14 @@ constexpr char kEmptyDevicesTextProto[] = "";
 constexpr char kNonEmptyDevicesTextProto[] = R"(
 devices: "abcd"
 devices: "efgh"
+feature_levels {
+  key: "abcd"
+  value: 1
+}
+feature_levels {
+  key: "efgh"
+  value: 2
+}
 )";
 constexpr char kInvalidDevicesTextProto[] = "abcde";
 
@@ -57,6 +65,7 @@ class SegmentationUtilsTest : public testing::Test {
         segmentation::FeatureManagementInterface::FEATURE_LEVEL_0;
     std::optional<std::tuple<bool, int>> factory_config = std::nullopt;
     bool set_factory_config_succeeded = true;
+    std::string brand_code = "";
   };
 
   SegmentationUtilsTest() = default;
@@ -85,6 +94,9 @@ class SegmentationUtilsTest : public testing::Test {
         std::make_unique<NiceMock<MockCrosConfigUtils>>();
     ON_CALL(*mock_cros_config_utils, GetModelName(_))
         .WillByDefault(DoAll(SetArgPointee<0>(kTestModelName), Return(true)));
+    ON_CALL(*mock_cros_config_utils, GetBrandCode(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(options.brand_code), Return(true)));
 
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     if (options.board_id_type.has_value()) {
@@ -203,6 +215,28 @@ TEST_F(SegmentationUtilsTest, GetFeatureLevel_1) {
       {.feature_level =
            segmentation::FeatureManagementInterface::FEATURE_LEVEL_1});
   EXPECT_EQ(1, segmentation_utils->GetFeatureLevel());
+}
+
+TEST_F(SegmentationUtilsTest, LookUpFeatureLevel_NonEmptyDeviceList) {
+  auto segmentation_utils = CreateSegmentationUtils(
+      {.devices_textproto = kNonEmptyDevicesTextProto, .brand_code = "efgh"});
+  auto level = segmentation_utils->LookUpFeatureLevel();
+  EXPECT_TRUE(level.has_value());
+  EXPECT_EQ(2, level.value());
+}
+
+TEST_F(SegmentationUtilsTest, LookUpFeatureLevel_NonEmptyDeviceList_Absent) {
+  auto segmentation_utils = CreateSegmentationUtils(
+      {.devices_textproto = kNonEmptyDevicesTextProto, .brand_code = "ijkl"});
+  auto level = segmentation_utils->LookUpFeatureLevel();
+  EXPECT_FALSE(level.has_value());
+}
+
+TEST_F(SegmentationUtilsTest, LookUpFeatureLevel_EmptyDeviceList) {
+  auto segmentation_utils = CreateSegmentationUtils(
+      {.devices_textproto = kEmptyDevicesTextProto, .brand_code = "efgh"});
+  auto level = segmentation_utils->LookUpFeatureLevel();
+  EXPECT_FALSE(level.has_value());
 }
 
 TEST_F(SegmentationUtilsTest, GetFeatureFlags_Succeeded) {

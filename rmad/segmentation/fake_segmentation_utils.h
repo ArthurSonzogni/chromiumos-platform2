@@ -5,6 +5,8 @@
 #ifndef RMAD_SEGMENTATION_FAKE_SEGMENTATION_UTILS_H_
 #define RMAD_SEGMENTATION_FAKE_SEGMENTATION_UTILS_H_
 
+#include <optional>
+
 #include <base/files/file_path.h>
 
 #include "rmad/segmentation/segmentation_utils.h"
@@ -19,6 +21,9 @@ class FakeSegmentationUtils : public SegmentationUtils {
   bool IsFeatureEnabled() const override { return is_feature_enabled_; }
   bool IsFeatureMutable() const override { return is_feature_mutable_; }
   int GetFeatureLevel() const override { return feature_level_; }
+  std::optional<int> LookUpFeatureLevel() const override {
+    return looked_up_feature_level_;
+  }
   bool GetFeatureFlags(bool* is_chassis_branded,
                        int* hw_compliance_version) const override;
   bool SetFeatureFlags(bool is_chassis_branded,
@@ -29,6 +34,7 @@ class FakeSegmentationUtils : public SegmentationUtils {
   bool is_feature_enabled_;
   bool is_feature_mutable_;
   int feature_level_;
+  std::optional<int> looked_up_feature_level_;
 };
 
 }  // namespace rmad

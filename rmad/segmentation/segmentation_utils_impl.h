@@ -6,6 +6,7 @@
 #define RMAD_SEGMENTATION_SEGMENTATION_UTILS_IMPL_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -36,6 +37,7 @@ class SegmentationUtilsImpl : public SegmentationUtils {
   bool IsFeatureEnabled() const override;
   bool IsFeatureMutable() const override;
   int GetFeatureLevel() const override;
+  std::optional<int> LookUpFeatureLevel() const override;
   bool GetFeatureFlags(bool* is_chassis_branded,
                        int* hw_compliance_version) const override;
   bool SetFeatureFlags(bool is_chassis_branded,
