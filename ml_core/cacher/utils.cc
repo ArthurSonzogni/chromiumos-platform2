@@ -127,6 +127,15 @@ void CopyCacheFiles(const base::FilePath& source_dir,
     if (!base::CopyFile(source, target)) {
       LOG(ERROR) << "Error copying " << source << " to " << target;
     }
+    // By default, base::CopyFile will set the file permission to 0644.
+    // However, the MTK delegate requires write access to the cache file.
+    // To accommodate this, we set the file permission to 0660,
+    // granting write permission to users in the same group.
+    // This also removes the unnecessary read permission for non-authorized
+    // users.
+    if (!base::SetPosixFilePermissions(target, 0660)) {
+      LOG(ERROR) << "Error setting the permission of " << target;
+    }
   }
 }
 

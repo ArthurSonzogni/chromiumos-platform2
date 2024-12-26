@@ -16,6 +16,7 @@ eventfd2: 1
 exit: 1
 exit_group: 1
 faccessat: 1
+fchmodat: 1
 fcntl: 1
 flock: 1
 fstatfs: 1
@@ -41,8 +42,8 @@ munmap: 1
 newfstatat: 1
 openat: 1
 ppoll: 1
-# prctl is used to spawn threads.
-prctl: arg0 == PR_SET_NAME
+# prctl is used to spawn threads and show thread-specific logs.
+prctl: arg0 == PR_SET_NAME || arg0 == PR_GET_NAME
 prlimit64: 1
 read: 1
 readlinkat: 1
