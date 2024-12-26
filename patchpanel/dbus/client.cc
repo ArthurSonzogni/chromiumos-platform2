@@ -1786,7 +1786,7 @@ bool OnSocketAnnotation(base::WeakPtr<ClientImpl> client,
   // has been destroyed. Ensure the client is still valid before doing anything
   // else (see b/345769752).
   if (!client) {
-    LOG(ERROR) << __func__ << ": client is not valid anymore";
+    LOG(WARNING) << __func__ << ": client is not valid anymore";
     return false;
   }
 
