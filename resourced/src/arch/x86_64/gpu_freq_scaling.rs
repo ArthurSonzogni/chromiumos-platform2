@@ -7,6 +7,7 @@ pub mod intel_device {
     use std::fs::{self};
     use std::io::BufRead;
     use std::io::BufReader;
+    use std::path::Path;
     use std::path::PathBuf;
     use std::sync::Mutex;
     use std::thread;
@@ -36,6 +37,9 @@ pub mod intel_device {
 
     // Guard range when reclocking.  max > min + guard.
     const GPU_FREQUENCY_GUARD_BUFFER_MHZ: u64 = 200;
+
+    // Relative path of Request-based Power Saving boost frequency.
+    const RPS_BOOST_FREQ_PATH: &str = "gt/gt0/rps_boost_freq_mhz";
 
     pub struct IntelGpuDeviceConfig {
         root: PathBuf,
@@ -85,6 +89,15 @@ pub mod intel_device {
             }
         }
         false
+    }
+
+    /// Checks if kernel offers RPS (Request-based Power Savings).
+    ///
+    /// # Returns
+    ///
+    /// True if kernel offers RPS, false otherwise.
+    fn has_rps(root: &Path) -> bool {
+        fs::metadata(root.join(GPU0_DEVICE_PATH).join(RPS_BOOST_FREQ_PATH)).is_ok()
     }
 
     /// Creates a thread that periodically checks for changes in power_limit and adjusts
@@ -159,7 +172,13 @@ pub mod intel_device {
                 root: root.to_owned(),
                 min_freq_path: root.join(GPU0_DEVICE_PATH).join("gt_min_freq_mhz"),
                 max_freq_path: root.join(GPU0_DEVICE_PATH).join("gt_max_freq_mhz"),
-                turbo_freq_path: root.join(GPU0_DEVICE_PATH).join("gt_boost_freq_mhz"),
+                turbo_freq_path: if has_rps(&root) {
+                    info!("using RPS boost sysfs entry");
+                    root.join(GPU0_DEVICE_PATH).join(RPS_BOOST_FREQ_PATH)
+                } else {
+                    info!("using legacy boost sysfs entry");
+                    root.join(GPU0_DEVICE_PATH).join("gt_boost_freq_mhz")
+                },
                 power_limit_thr: vec![
                     (15000000, EXPECTED_GPU_MAX_FREQ),
                     (14500000, 900),

@@ -5,6 +5,10 @@
 DRIVERS=="i915", ACTION=="add", ATTR{gt_boost_freq_mhz}!="", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/gt_boost_freq_mhz"
 
+DRIVERS=="i915", ACTION=="add", \
+  TEST=="$sys$devpath/gt/gt0/rps_boost_freq_mhz", \
+  RUN+="/bin/chown resourced:resourced $sys$devpath/gt/gt0/rps_boost_freq_mhz"
+
 DRIVERS=="i915", ACTION=="add", ATTR{gt_max_freq_mhz}!="", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/gt_max_freq_mhz"
 
