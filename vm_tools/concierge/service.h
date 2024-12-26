@@ -579,13 +579,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   void RejectRequestDuringShutdown(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponseBase> response);
 
-  // Initialize socket fds and parameters used by vhost user fs frontend and
-  // backend device. And starts a vhost_user_fs backend device by sending the
-  // StartVhostUserFsRequest to vhost_user_starter daemon.
-  // Return a corresponding frontend parameter.
-  std::optional<VhostUserFsFrontParam> InvokeVhostUserFsBackend(
-      SharedDataParam param);
-
   // Destructor will need to run last after all metrics logging to allow
   // flushing of all metrics in AsynchronousMetricsWriter destructor.
   std::unique_ptr<MetricsLibraryInterface> metrics_

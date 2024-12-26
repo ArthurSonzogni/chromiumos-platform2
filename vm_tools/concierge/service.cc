@@ -4837,39 +4837,4 @@ void Service::ModifyFakePowerConfig(
   response_cb->Return(response);
 }
 
-std::optional<VhostUserFsFrontParam> Service::InvokeVhostUserFsBackend(
-    SharedDataParam param) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // Vhost-user-fs frontend device should share same tag with backend device.
-  std::string shared_tag = param.tag;
-
-  // Set up vhost-user-virtio-fs device, stub_device_socket_fds is a socket pair
-  // used for connecting vhost_user frontend and backend.
-  std::optional<VhostUserSocketPair> stub_device_socket_fds =
-      internal::SetupVhostUserSocketPair();
-  if (!stub_device_socket_fds.has_value()) {
-    LOG(ERROR) << "Fail to create stub device vhost user socket pair.";
-    return std::nullopt;
-  }
-
-  // Remove the CLOEXEC flag from the vhost-user frontend socket fd. This is
-  // important to allow the fd to be inherited by the crosvm process.
-  if (std::string failure_reason =
-          internal::RemoveCloseOnExec(stub_device_socket_fds->front_end_fd);
-      !failure_reason.empty()) {
-    LOG(ERROR) << "Could not clear CLOEXEC for vhost_user fs frontend fd: "
-               << failure_reason;
-    return std::nullopt;
-  }
-
-  // Send dbus request to vhost_user_starter daemon to delegate starting backend
-  // device.
-  vhost_user_starter_client_->StartVhostUserFs(
-      std::move(stub_device_socket_fds->back_end_fd), std::move(param));
-
-  return VhostUserFsFrontParam{
-      .tag = shared_tag,
-      .socket_fd = std::move(stub_device_socket_fds->front_end_fd)};
-}
-
 }  // namespace vm_tools::concierge
