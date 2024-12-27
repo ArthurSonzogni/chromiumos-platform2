@@ -10,15 +10,17 @@ default installed on all test image at `/usr/lib64/camera_hal/fake.so`.
 
 Config file for fake HAL are located at:
 
-* `/etc/camera/fake_hal.json`: Rootfs protected and persist between reboot.
-  This file is only read once on HAL starts, so user need to `restart
-  cros-camera` for changes to take effect.
+*   `/etc/camera/fake_hal.json`: Rootfs protected and persist between reboot.
+    This file is only read once on HAL starts, so user need to `restart
+    cros-camera` for changes to take effect.
 
-* `/run/camera/fake_hal.json`: Takes priority over `/etc/camera/fake_hal.json`.
-  Doesn't persist between reboot. Fake HAL watches content change of this file
-  and immediately applies the change without needing to restart camera service.
+*   `/run/camera/fake_hal.json`: Takes priority over
+    `/etc/camera/fake_hal.json`. Doesn't persist between reboot. Fake HAL
+    watches content change of this file and immediately applies the change
+    without needing to restart camera service.
 
-  The config is applied by emitting unplug / plug event of the emulated camera.
+    The config is applied by emitting unplug / plug event of the emulated
+    camera.
 
 Tests should use `/run/camera/fake_hal.json`.
 
@@ -27,81 +29,75 @@ Tests should use `/run/camera/fake_hal.json`.
 The config file should be a JSON file with dictionary as top level value,
 containing one required key:
 
-* `cameras` (list of `CameraSpec`, required): A list of fake cameras.
+*   `cameras` (list of `CameraSpec`, required): A list of fake cameras.
 
 Each `CameraSpec` is a dictionary, containing the following keys:
 
-* `id` (integer, required):
-  Device ID. Should be unique across all fake cameras. This is used to track
-  config changes across reload.
+*   `id` (integer, required): Device ID. Should be unique across all fake
+    cameras. This is used to track config changes across reload.
 
-* `connected` (boolean, default false):
-  Whether the camera is connected. Useful for testing plug/unplug event of
-  external camera.
+*   `connected` (boolean, default false): Whether the camera is connected.
+    Useful for testing plug/unplug event of external camera.
 
-* `supported_formats` (dictionary, optional):
-  List of supported resolution / frame rates of the emulated camera. Defaults
-  to a minimal required list (see `hal_spec.cc` for the list). Each entry
-  contains the following keys:
+*   `supported_formats` (dictionary, optional): List of supported resolution /
+    frame rates of the emulated camera. Defaults to a minimal required list (see
+    `hal_spec.cc` for the list). Each entry contains the following keys:
 
-  * `width`, `height` (integer, required):
-    Width and height of the resolution, should be positive and even. Currently
-    the maximum supported size is `8192x8192`.
+    *   `width`, `height` (integer, required): Width and height of the
+        resolution, should be positive and even. Currently the maximum supported
+        size is `8192x8192`.
 
-  * `frame_rates` (list, default `[[15, 60], [60, 60]]`):
-    List of supported frame rate ranges. Each entry should be an integer
-    indicating a constant frame rate, or a list of two integers indicating a
-    range of frame rates.
+    *   `frame_rates` (list, default `[[15, 60], [60, 60]]`): List of supported
+        frame rate ranges. Each entry should be an integer indicating a constant
+        frame rate, or a list of two integers indicating a range of frame rates.
 
-  Note that the `supported_formats` is used for reporting the supported
-  resolutions and frame rates of the fake camera in static metadata, and
-  there's a minimal requirement from camera3 API.
+    Note that the `supported_formats` is used for reporting the supported
+    resolutions and frame rates of the fake camera in static metadata, and
+    there's a minimal requirement from camera3 API.
 
-* `frames` (dictionary, optional):
-  If not specified, the fake camera will show a test pattern. Otherwise, the
-  value should contain the following keys:
+*   `frames` (dictionary, optional): If not specified, the fake camera will show
+    a test pattern. Otherwise, the value should contain the following keys:
 
-  * `path` (string, required):
-    Path to the frame content. Can be either `.jpg` (for still photo) or `.y4m`
-    (for video). The video will loop indefinitely.
+    *   `path` (string, required): Path to the frame content. Can be either
+        `.jpg` (for still photo) or `.y4m` (for video). The video will loop
+        indefinitely.
 
-    The frame rate in `.y4m` file is ignored, and the playback will be using
-    the requested frame rate specified in `supported_formats`.
+    The frame rate in `.y4m` file is ignored, and the playback will be using the
+    requested frame rate specified in `supported_formats`.
 
     Also since camera service is inside minijail sandbox, it can't access most
-    of the file system path. A recommended path to put the image / video file
-    at is `/var/cache/camera`, which is accessible to the camera service.
+    of the file system path. A recommended path to put the image / video file at
+    is `/var/cache/camera`, which is accessible to the camera service.
 
-  * `scale_mode` (string, default to `stretch`):
-    How the image / video is resized to the requested resolution, can be either:
+    *   `scale_mode` (string, default to `stretch`): How the image / video is
+        resized to the requested resolution, can be either:
 
-    * `stretch`: Stretch to the target resolution, ignoring aspect ratio.
+    *   `stretch`: Stretch to the target resolution, ignoring aspect ratio.
 
-    * `contain`: Resize the image to the largest size that will fit in the
-      target resolution while maintaining the aspect ratio. The result image
-      will be center aligned and outside area filled by black.
+    *   `contain`: Resize the image to the largest size that will fit in the
+        target resolution while maintaining the aspect ratio. The result image
+        will be center aligned and outside area filled by black.
 
-    * `cover`: Resize the image to the smallest size that will cover the target
-      resolution while maintaining the aspect ratio. The result image will be
-      center aligned and the excessive area cropped.
+    *   `cover`: Resize the image to the smallest size that will cover the
+        target resolution while maintaining the aspect ratio. The result image
+        will be center aligned and the excessive area cropped.
 
-  * `loop_mode` (string, default to `loop`):
-    How the video is looped. This has no effect if `path` is an image. Can be
-    either:
+    *   `loop_mode` (string, default to `loop`): How the video is looped. This
+        has no effect if `path` is an image. Can be either:
 
-    * `loop`: Loop indefinitely normally. The video playback will starts again
-      from the first frame after the last frame is played.
+    *   `loop`: Loop indefinitely normally. The video playback will starts again
+        from the first frame after the last frame is played.
 
-    * `ping_pong`: Loop indefinitely, but play the video back and forth.
-      If the video frames are labeled with 1 to N, then the played frames
-      will be 1,2,...,N-1,N,N-1,...,2,1,2,...
+    *   `ping_pong`: Loop indefinitely, but play the video back and forth. If
+        the video frames are labeled with 1 to N, then the played frames will be
+        1,2,...,N-1,N,N-1,...,2,1,2,...
 
-* `solid_color_blob` (boolean, default false):
-  Whether to use a solid color (black) for still captures (BLOB or YUV with
-  usage bit `GRALLOC_USAGE_PRIVATE_1` set). When set, BLOB streams will ignore
-  `frames`.
+*   `solid_color_blob` (boolean, default false): Whether to use a solid color
+    (black) for still captures (BLOB or YUV with usage bit
+    `GRALLOC_USAGE_PRIVATE_1` set). When set, BLOB streams will ignore `frames`.
 
 A sample config file is as follows:
+
 ```json
 {
   "cameras": [
@@ -130,6 +126,7 @@ A sample config file is as follows:
   ]
 }
 ```
+
 Note that the sample `supported_formats` doesn't meet the requirements of the
 camera3 API and might cause issue in CCA. For manual testing, please use `cca
 fake-hal` (explained in the next section), which can generate a list of

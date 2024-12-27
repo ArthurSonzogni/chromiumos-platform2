@@ -11,8 +11,8 @@ camera.
 **Step 1**:
 
 You can use the [trace tool](../tracing/bin/trace.py) to automate trace
-recording on a remote DUT and sync the trace output to the host. For example,
-to record a 20 seconds trace on a remote DUT:
+recording on a remote DUT and sync the trace output to the host. For example, to
+record a 20 seconds trace on a remote DUT:
 
 ```shell
 (host) $ tracing/bin/trace.py record -r <DUT> -t 20 -o /tmp/perfetto-trace
@@ -116,9 +116,8 @@ EOF
 **Step 2**:
 
 While perfetto command is recording, open up a camera application and exercise
-the camera function you are interested in. (e.g. Taking a picture or recording
-a video). Wait until perfetto flushes all the trace events when the tracing
-ends.
+the camera function you are interested in. (e.g. Taking a picture or recording a
+video). Wait until perfetto flushes all the trace events when the tracing ends.
 
 **Step 3**:
 

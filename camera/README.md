@@ -23,8 +23,8 @@ divided into two part:
 -   **Camera HAL v3 adapter** that provides Mojo IPC interface for all the
     clients on Chrome OS to access the platform-specific camera HAL.
 
-Currently we have two major camera clients on Chrome OS: _Chrome browser_ and
-_Android_. All the clients connect to the camera HAL adapter through the
+Currently we have two major camera clients on Chrome OS: *Chrome browser* and
+*Android*. All the clients connect to the camera HAL adapter through the
 [**Camera Module Mojo IPC interface**](mojo/camera_common.mojom) and the
 [**Camera Device Mojo IPC interface**](mojo/camera3.mojom) to access camera
 functions. The Mojo IPC interface is very similar to the Android camera HAL v3
@@ -59,11 +59,11 @@ and dependencies required by them:
 
 -   `camera_hal.so` that provides the
     [**camera HAL interface**](android/header_files/include/hardware/libhardware/include/hardware/camera_common.h).
-    This is very similar to a regular Android camera HAL. _(Required)_
+    This is very similar to a regular Android camera HAL. *(Required)*
 -   `libcam_algo.so` that provides the
     [**camera algorithm interface**](include/cros-camera/camera_algorithm.h) for
-    the isolated camera 3A library. _(Required if the camera HAL requires 3A
-    library to work)_.
+    the isolated camera 3A library. *(Required if the camera HAL requires 3A
+    library to work)*.
 
 We provide the following packages that are required to build the camera HAL:
 
