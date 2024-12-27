@@ -1,6 +1,6 @@
-# Chrome OS Camera Fake HAL
+# ChromeOS Camera Fake HAL
 
-This folder contains the HAL for emulating fake external camera(s) on Chrome OS
+This folder contains the HAL for emulating fake external camera(s) on ChromeOS
 for testing.
 
 ## Usage

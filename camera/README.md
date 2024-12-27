@@ -1,6 +1,6 @@
-# Chrome OS Platform Camera
+# ChromeOS Platform Camera
 
-The repository hosts the core Chrome OS platform camera components, including:
+The repository hosts the core ChromeOS platform camera components, including:
 
 -   1P Camera Hardware Abstraction Layers (HALs) of different platforms
 -   Common dependencies and libraries needed by the camera HALs
@@ -12,18 +12,18 @@ The repository hosts the core Chrome OS platform camera components, including:
 
 ## System Overview
 
-![Chrome OS camera stack](docs/images/cros_camera_stack.png)
+![ChromeOS camera stack](docs/images/cros_camera_stack.png)
 
-The camera service provider on Chrome OS is a standalone process that can be
+The camera service provider on ChromeOS is a standalone process that can be
 divided into two part:
 
 -   **Platform-specific camera HAL** that interfaces with the kernel drivers and
     provide all the camera functions through the
     [**Android camera HAL v3 APIs**](android/header_files/include/hardware/libhardware/include/hardware/camera3.h).
 -   **Camera HAL v3 adapter** that provides Mojo IPC interface for all the
-    clients on Chrome OS to access the platform-specific camera HAL.
+    clients on ChromeOS to access the platform-specific camera HAL.
 
-Currently we have two major camera clients on Chrome OS: *Chrome browser* and
+Currently we have two major camera clients on ChromeOS: *Chrome browser* and
 *Android*. All the clients connect to the camera HAL adapter through the
 [**Camera Module Mojo IPC interface**](mojo/camera_common.mojom) and the
 [**Camera Device Mojo IPC interface**](mojo/camera3.mojom) to access camera
@@ -43,7 +43,7 @@ library through the
 ### Encoding / Decoding JPEG images
 
 The camera HAL needs to generate JPEG images when processing still shot
-requests. On Chrome OS the JPEG codec service, if supported on the platform, is
+requests. On ChromeOS the JPEG codec service, if supported on the platform, is
 provided by the GPU process in Chrome browser. We provide libraries to handle
 JPEG encoding and decoding: On platform that supports hardware-accelerated JPEG
 encoder/decoder, the JPEG libraries connect to the Chrome GPU process through
@@ -52,10 +52,10 @@ encoding/decoding is done through software.
 
 ## Adding a New Camera HAL
 
-### Creating a Camera HAL for Chrome OS
+### Creating a Camera HAL for ChromeOS
 
-The Chrome OS camera HAL are essentially the following shared libraries, plus
-and dependencies required by them:
+The ChromeOS camera HAL are essentially the following shared libraries, plus and
+dependencies required by them:
 
 -   `camera_hal.so` that provides the
     [**camera HAL interface**](android/header_files/include/hardware/libhardware/include/hardware/camera_common.h).
@@ -109,7 +109,7 @@ Examples:
 
 After the camera HAL source code is uploaded, one needs to add corresponding
 packages to build and install the camera HAL and the required libraries. On
-Chrome OS, packages are managed by ebuild files. The following ebuild files are
+ChromeOS, packages are managed by ebuild files. The following ebuild files are
 required for a new camera HAL:
 
 -   A ebuild file for the newly added camera HAL. The ebuild file is used to

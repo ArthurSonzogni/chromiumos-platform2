@@ -203,7 +203,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   const int cam_id_;
 
-  // This thread is needed because of the Chrome OS camera HAL adapter
+  // This thread is needed because of the ChromeOS camera HAL adapter
   // assumption that all the camera3_device_ops functions, except dump, should
   // be called on the same thread. Each device is accessed through a different
   // thread.

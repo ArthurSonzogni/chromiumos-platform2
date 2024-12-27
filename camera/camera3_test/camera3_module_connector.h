@@ -17,8 +17,8 @@
 #include <hardware/camera3.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/associated_receiver.h>
-#include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
@@ -73,7 +73,7 @@ class HalModuleConnector : public ModuleConnector {
 
   const camera_module_t* cam_module_;
 
-  // This thread is needed because of the Chrome OS camera HAL adapter
+  // This thread is needed because of the ChromeOS camera HAL adapter
   // assumption that all the camera_module functions should be called on the
   // same Chromium thread. It is expected to start this thread before gtest
   // initialization in main() because test case instantiation needs it running

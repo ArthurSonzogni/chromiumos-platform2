@@ -23,7 +23,7 @@ struct DmaBufPlane {
 };
 
 // This structure defines a simplified version of media::VideoFrame backed by
-// DMA-bufs (see media/base/video_frame.h) for Chrome OS usage. The video frame
+// DMA-bufs (see media/base/video_frame.h) for ChromeOS usage. The video frame
 // has pixel format |format| and coded size |coded_width|x|coded_height|.
 // Per-plane DMA-buf FDs and layouts are defined in |planes|. The |modifier| of
 // buffer is valid only if |has_modifier| is true.

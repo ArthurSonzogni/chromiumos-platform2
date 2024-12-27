@@ -1760,7 +1760,7 @@ typedef struct camera3_stream {
      * CAMERA3_STREAM_ROTATION_180.
      * When setting to CAMERA3_STREAM_ROTATION_90 or CAMERA3_STREAM_ROTATION_270, HAL would crop,
      * rotate the frame by the specified degrees clockwise and scale it up to original size.
-     * In Chrome OS, it's possible to have a portrait activity run in a landscape screen with
+     * In ChromeOS, it's possible to have a portrait activity run in a landscape screen with
      * landscape-mounted camera. The activity would show stretched or rotated preview because it
      * does not expect to receive landscape preview frames. To solve this problem, we ask HAL to
      * crop, rotate and scale the frames and modify CameraCharacteristics.SENSOR_ORIENTATION

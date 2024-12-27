@@ -98,7 +98,7 @@ const std::array<cros_cam_format_info_t, 2> GetTestFormats() {
     return {{{V4L2_PIX_FMT_NV12, 640, 480, 25},
              {V4L2_PIX_FMT_MJPEG, 640, 480, 25}}};
   } else {
-    // All camera modules on Chrome OS are required to support this.
+    // All camera modules on ChromeOS are required to support this.
     return {{{V4L2_PIX_FMT_NV12, 640, 480, 30},
              {V4L2_PIX_FMT_MJPEG, 640, 480, 30}}};
   }

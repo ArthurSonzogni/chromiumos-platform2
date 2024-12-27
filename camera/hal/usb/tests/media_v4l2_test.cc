@@ -1274,7 +1274,7 @@ TEST_F(V4L2Test, FirstFrameAfterStreamOn) {
   }
 }
 
-// Chrome OS requires that the world-facing camera supports auto-focus. The
+// ChromeOS requires that the world-facing camera supports auto-focus. The
 // software uses V4L2_CID_FOCUS_AUTO control to toggle auto-focus on/off, which
 // maps to the Android AUTO/OFF AF mode.
 TEST_F(V4L2Test, AutoFocusSupported) {
