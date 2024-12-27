@@ -372,6 +372,10 @@ enum SensitiveFileType {
   // In ChromeOS system users are typically associated with system services
   // and not individual human users.
   SYSTEM_PASSWORDS = 13;
+  // Chrome File Extensions (/home/user/<hash>/Extensions). A good indicator
+  // that a chrome extension is being installed. Activity under
+  // /home/user/<hash>/Extension/Temp is ignored to reduce event spam.
+  CHROME_EXTENSIONS = 14;
 }
 
 message FileProvenance {
