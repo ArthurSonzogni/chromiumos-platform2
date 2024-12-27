@@ -16,7 +16,8 @@ namespace rmad {
 
 // Mode flags to control Shimless RMA's behaviors
 enum {
-  kShimlessModeFlagsTriggerable = 1 << 0,  // 0x1
+  kShimlessModeFlagsTriggerable = 1 << 0,               // 0x1
+  kShimlessModeFlagsBoardIdCheckResultBypass = 1 << 1,  // 0x2
 };
 
 // Pipe name for internal mojo connection between D-Bus daemon and executor.

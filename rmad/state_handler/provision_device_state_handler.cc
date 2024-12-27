@@ -40,6 +40,7 @@
 #include "rmad/utils/hwid_utils_impl.h"
 #include "rmad/utils/iio_sensor_probe_utils_impl.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/vpd_utils.h"
 #include "rmad/utils/vpd_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
@@ -551,7 +552,11 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
     // TODO(chenghan): Test board ID is not allowed in RMA. Record a metrics for
     //                 it.
     LOG(ERROR) << "GSC board ID type cannot be ZZCR in RMA";
-    if (base::PathExists(working_dir_path_.Append(kTestDirPath))) {
+    if (uint64_t shimless_mode;
+        (vpd_utils_->GetShimlessMode(&shimless_mode) &&
+         shimless_mode & kShimlessModeFlagsBoardIdCheckResultBypass) ||
+        base::PathExists(working_dir_path_.Append(kTestDirPath))) {
+      // TODO(jeffulin): Remove test file usages.
       DLOG(INFO) << "GSC board ID check bypassed";
     } else {
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,

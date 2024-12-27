@@ -39,6 +39,7 @@
 #include "rmad/utils/mock_iio_sensor_probe_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
+#include "rmad/utils/vpd_utils.h"
 
 using testing::_;
 using testing::Assign;
@@ -134,6 +135,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     std::optional<HwidElements> hwid_elements = kHwidElements;
     std::optional<std::string> checksum = kHwidElements.checksum.value();
     std::set<rmad::RmadComponent> probed_components = {};
+    int shimless_mode_flags = 0x0;
   };
 
   scoped_refptr<ProvisionDeviceStateHandler> CreateInitializedStateHandler(
@@ -272,6 +274,9 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         .WillByDefault(Return(args.set_stable_device_secret_success));
     ON_CALL(*mock_vpd_utils, FlushOutRoVpdCache())
         .WillByDefault(Return(args.flush_vpd));
+    ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.shimless_mode_flags), Return(true)));
 
     // Mock |HwidUtils|.
     auto mock_hwid_utils = std::make_unique<NiceMock<MockHwidUtils>>();
@@ -1094,6 +1099,30 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   StateHandlerArgs args = {.board_id_type = kInvalidBoardIdType};
   // Bypass board ID check.
   EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kTestDirPath)));
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_InvalidBoardIdTypeBlocking_BypassWithFlags) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  // Invalid board ID.
+  StateHandlerArgs args = {
+      .board_id_type = kInvalidBoardIdType,
+      .shimless_mode_flags = kShimlessModeFlagsBoardIdCheckResultBypass};
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();

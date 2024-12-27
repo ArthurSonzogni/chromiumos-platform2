@@ -22,7 +22,9 @@
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_gsc_utils.h"
+#include "rmad/utils/mock_vpd_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
+#include "rmad/utils/vpd_utils.h"
 
 using testing::_;
 using testing::DoAll;
@@ -69,6 +71,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     std::string board_id_flags = kValidBoardIdFlags;
     std::optional<std::string> fingerprint_sensor_location = std::nullopt;
     bool reset_fps_success = true;
+    uint64_t shimless_mode_flags = 0;
   };
 
   scoped_refptr<FinalizeStateHandler> CreateInitializedStateHandler(
@@ -102,6 +105,12 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     EXPECT_CALL(*mock_write_protect_utils, EnableSoftwareWriteProtection())
         .WillRepeatedly(Return(args.enable_swwp_success));
 
+    // Mock |VpdUtils|.
+    auto mock_vpd_utils = std::make_unique<MockVpdUtils>();
+    ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.shimless_mode_flags), Return(true)));
+
     // Register signal callback.
     daemon_callback_->SetFinalizeSignalCallback(
         base::BindRepeating(&SignalSender::SendFinalizeProgressSignal,
@@ -114,7 +123,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     auto handler = base::MakeRefCounted<FinalizeStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_cros_config_utils), std::move(mock_gsc_utils),
-        std::move(mock_write_protect_utils));
+        std::move(mock_write_protect_utils), std::move(mock_vpd_utils));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
     return handler;
@@ -235,6 +244,17 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId_Bypass) {
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
+TEST_F(FinalizeStateHandlerTest,
+       InitializeState_InvalidBoardId_BypassWithFlags) {
+  StateHandlerArgs args = {
+      .board_id_type = kInvalidBoardIdType,
+      .shimless_mode_flags = kShimlessModeFlagsBoardIdCheckResultBypass};
+  auto handler = CreateInitializedStateHandler(args);
+
+  handler->RunState();
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
+}
+
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags) {
   StateHandlerArgs args = {.board_id_flags = kInvalidBoardIdFlags};
   auto handler = CreateInitializedStateHandler(args);
@@ -242,6 +262,28 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags) {
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.95,
                FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
+}
+
+TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
+  StateHandlerArgs args = {.board_id_flags = kInvalidBoardIdFlags};
+  auto handler = CreateInitializedStateHandler(args);
+
+  // Bypass board ID check.
+  EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
+
+  handler->RunState();
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
+}
+
+TEST_F(FinalizeStateHandlerTest,
+       InitializeState_InvalidBoardIdFlags_BypassWithFlags) {
+  StateHandlerArgs args = {
+      .board_id_type = kInvalidBoardIdFlags,
+      .shimless_mode_flags = kShimlessModeFlagsBoardIdCheckResultBypass};
+  auto handler = CreateInitializedStateHandler(args);
+
+  handler->RunState();
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HasFps_Success) {
@@ -270,17 +312,6 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_ResetFpsFailedBlocking) {
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
                FinalizeStatus::RMAD_FINALIZE_ERROR_INTERNAL);
-}
-
-TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
-  StateHandlerArgs args = {.board_id_flags = kInvalidBoardIdFlags};
-  auto handler = CreateInitializedStateHandler(args);
-
-  // Bypass board ID check.
-  EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
-
-  handler->RunState();
-  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Succeeded) {
