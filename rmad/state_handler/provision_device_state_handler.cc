@@ -504,7 +504,11 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
                kProgressFlushOutVpdCache);
 
   // Reset GBB flags.
-  if (base::PathExists(working_dir_path_.Append(kTestDirPath))) {
+  if (uint64_t shimless_mode;
+      (vpd_utils_->GetShimlessMode(&shimless_mode) &&
+       shimless_mode & kShimlessModeFlagsPreserveGbbFlags) ||
+      base::PathExists(working_dir_path_.Append(kTestDirPath))) {
+    // TODO(jeffulin): Remove test file usages.
     DLOG(INFO) << "GBB flags preserved for testing.";
   } else if (std::string output;
              !cmd_utils_->GetOutput(kResetGbbFlagsArgv, &output)) {

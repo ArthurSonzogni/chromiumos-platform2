@@ -1057,6 +1057,24 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_ResetGbbBypassed) {
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ResetGbbBypassedWithFlags) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  // Failed to reset GBB.
+  StateHandlerArgs args = {
+      .reset_gbb_success = false,
+      .shimless_mode_flags = kShimlessModeFlagsPreserveGbbFlags};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_CannotReadBoardIdBlocking) {
   // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
