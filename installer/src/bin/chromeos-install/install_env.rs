@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use crate::platform::{Platform, PlatformImpl};
+use crate::platform::Platform;
 use crate::process_util::Environment;
 use anyhow::{Context, Result};
 use log::debug;
@@ -22,26 +22,7 @@ const TMP_MNT_PATH: &str = "/tmp/install-mount-point";
 /// unmounted. This matches the flags used in cros-disks.
 const FORCE_UNMOUNT_FLAGS: MntFlags = MntFlags::MNT_FORCE.union(MntFlags::MNT_DETACH);
 
-// Env var names. Must match chromeos-install.sh.
-const BUSYBOX_DD_FOUND: &str = "BUSYBOX_DD_FOUND";
-const LOSETUP_PATH: &str = "LOSETUP_PATH";
-
 const PARTITION_VARS_PATH: &str = "/usr/sbin/partition_vars.json";
-
-/// Get environment variables related to what tools are available.
-///
-/// In some environments (MiniOS and Flexor), we use tools from busybox,
-/// which differ slightly from the tools installed in a normal ChromeOS
-/// environment.
-///
-/// On success, returns an `Environment` with these vars:
-/// * BUSYBOX_DD_FOUND: "true" if `dd` is provided by busybox, "false"
-///   otherwise.
-/// * LOSETUP_PATH: "/bin/losetup" if `losetup` is provided by busybox,
-///   "losetup" otherwise.
-pub fn get_tool_env() -> Result<Environment> {
-    get_tool_env_impl(&PlatformImpl)
-}
 
 /// Load vars defining the GPT layout of the installed system from
 /// `PARTITION_VARS_PATH`.
@@ -121,46 +102,6 @@ fn get_directory_contents(dir: &Path) -> Vec<PathBuf> {
     }
 }
 
-/// Check if the `dd` command comes from busybox.
-fn is_dd_busybox(platform: &dyn Platform) -> Result<bool> {
-    let mut cmd = Command::new("dd");
-    cmd.arg("--version");
-    let stdout = platform.run_command_and_get_stdout(cmd)?;
-    Ok(stdout.contains("BusyBox"))
-}
-
-/// Check if the `losetup` command comes from busybox.
-fn is_losetup_busybox(platform: &dyn Platform) -> Result<bool> {
-    let mut cmd = Command::new("losetup");
-    cmd.arg("--version");
-    let stdout = platform.run_command_and_get_stdout(cmd)?;
-    Ok(stdout.contains("BusyBox"))
-}
-
-/// See `get_tool_env` for details.
-fn get_tool_env_impl(platform: &dyn Platform) -> Result<Environment> {
-    let mut env = Environment::new();
-
-    let is_dd_busybox = is_dd_busybox(platform)?;
-    let is_losetup_busybox = is_losetup_busybox(platform)?;
-
-    env.insert(
-        BUSYBOX_DD_FOUND,
-        (if is_dd_busybox { "true" } else { "false" }).into(),
-    );
-    env.insert(
-        LOSETUP_PATH,
-        (if is_losetup_busybox {
-            "/bin/losetup"
-        } else {
-            "losetup"
-        })
-        .into(),
-    );
-
-    Ok(env)
-}
-
 /// Read and parse `path` as a partition vars file.
 fn get_gpt_base_vars_from(path: &Path) -> Result<Environment> {
     #[derive(Deserialize)]
@@ -208,8 +149,6 @@ mod tests {
     use crate::process_util::ProcessError;
     use anyhow::anyhow;
     use std::process::Output;
-
-    const BUSYBOX_HELP: &str = "BusyBox v1.36.1 (2024-02-04 23:31:36 PST) multi-call binary.";
 
     /// Test that `get_directory_contents` successfully gets all
     /// children of a directory.
@@ -283,82 +222,6 @@ mod tests {
             .returning(|_, _| Ok(()));
 
         unmount_media(&platform);
-    }
-
-    /// Test that `get_tool_env_impl` produces the expected vars for a
-    /// busybox environment.
-    #[test]
-    fn test_busybox_env() {
-        let mut platform = MockPlatform::new();
-        platform
-            .expect_run_command_and_get_stdout()
-            .withf(|cmd| cmd.get_program() == "dd")
-            .return_once(|_| Ok(BUSYBOX_HELP.to_owned()));
-        platform
-            .expect_run_command_and_get_stdout()
-            .withf(|cmd| cmd.get_program() == "losetup")
-            .return_once(|_| Ok(BUSYBOX_HELP.to_owned()));
-
-        assert_eq!(
-            get_tool_env_impl(&platform).unwrap().into_vec(),
-            [
-                (BUSYBOX_DD_FOUND.into(), "true".into()),
-                (LOSETUP_PATH.into(), "/bin/losetup".into())
-            ]
-        );
-    }
-
-    /// Test that `get_tool_env_impl` produces the expected vars for a
-    /// non-busybox environment.
-    #[test]
-    fn test_non_busybox_env() {
-        let mut platform = MockPlatform::new();
-        platform
-            .expect_run_command_and_get_stdout()
-            .withf(|cmd| cmd.get_program() == "dd")
-            .return_once(|_| Ok("dd (coreutils) 8.32".to_owned()));
-        platform
-            .expect_run_command_and_get_stdout()
-            .withf(|cmd| cmd.get_program() == "losetup")
-            .return_once(|_| Ok("losetup from util-linux 2.38.1".to_owned()));
-
-        assert_eq!(
-            get_tool_env_impl(&platform).unwrap().into_vec(),
-            [
-                (BUSYBOX_DD_FOUND.into(), "false".into()),
-                (LOSETUP_PATH.into(), "losetup".into())
-            ]
-        );
-    }
-
-    /// Test that `get_tool_env_impl` propagates errors if `dd` can't be
-    /// run.
-    #[test]
-    fn test_bad_dd() {
-        let mut platform = MockPlatform::new();
-        platform
-            .expect_run_command_and_get_stdout()
-            .withf(|cmd| cmd.get_program() == "dd")
-            .return_once(|_| Err(anyhow!("dd not found")));
-
-        assert!(get_tool_env_impl(&platform).is_err());
-    }
-
-    /// Test that `get_tool_env_impl` propagates errors if `losetup`
-    /// can't be run.
-    #[test]
-    fn test_bad_losetup() {
-        let mut platform = MockPlatform::new();
-        platform
-            .expect_run_command_and_get_stdout()
-            .withf(|cmd| cmd.get_program() == "dd")
-            .return_once(|_| Ok("dd (coreutils) 8.32".to_owned()));
-        platform
-            .expect_run_command_and_get_stdout()
-            .withf(|cmd| cmd.get_program() == "losetup")
-            .return_once(|_| Err(anyhow!("losetup not found")));
-
-        assert!(get_tool_env_impl(&platform).is_err());
     }
 
     /// Test that `get_gpt_base_vars_from` reads a valid

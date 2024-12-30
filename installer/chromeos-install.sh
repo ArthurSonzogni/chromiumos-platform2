@@ -36,8 +36,6 @@ fi
 # SRC: The block device we're installing from, e.g. '/dev/sda' or '/dev/loop1'
 # ROOT: Location of the root filesystem (i.e. ROOT-A). If installing the
 #       currently-running rootfs, this is set to an empty string.
-# BUSYBOX_DD_FOUND: Whether dd is provided by busybox ("true" or "false").
-# LOSETUP_PATH: Path of the losetup utility.
 # TMPMNT: Temporary mount point path.
 # All the variables under "load_base_vars" in /usr/sbin/partition_vars.json.
 
@@ -769,6 +767,20 @@ main() {
   set -eu
   if [ "${FLAGS_debug:?}" = "${FLAGS_TRUE}" ]; then
     set -x
+  fi
+
+  # On some systems (e.g. MiniOS or Flexor), we use utils from busybox.
+  # Those utils might be at an older version and don't support some
+  # flags, so we don't use them. This can be checked by looking at `dd`
+  # and `losetup` and whether it is coming from BusyBox or not.
+  BUSYBOX_DD_FOUND=false
+  if dd --version 2>&1 | grep -q "BusyBox"; then
+    BUSYBOX_DD_FOUND=true
+  fi
+  if losetup --version 2>&1 | grep -q "BusyBox"; then
+    LOSETUP_PATH="/bin/losetup"
+  else
+    LOSETUP_PATH="losetup"
   fi
 
   check_payload_image

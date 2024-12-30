@@ -52,8 +52,6 @@ fn main() -> Result<()> {
     install_cmd.envs(args.to_env());
     // The source supplies some env vars like SRC and ROOT.
     install_cmd.envs(source.to_env());
-    // Adjust the environment based on what tools are available.
-    install_cmd.envs(install_env::get_tool_env()?);
     // Add vars defining the GPT layout of the installed system.
     install_cmd.envs(install_env::get_gpt_base_vars()?);
     // Add var for the temporary mount directory.
