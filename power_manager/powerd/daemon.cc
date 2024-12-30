@@ -391,7 +391,7 @@ void Daemon::Init() {
   // Check if this is the first run of powerd after boot.
   first_run_after_boot_ = !base::PathExists(already_ran_path_);
   if (first_run_after_boot_) {
-    if (!base::WriteFile(already_ran_path_, "")) {
+    if (!brillo::TouchFile(already_ran_path_)) {
       PLOG(ERROR) << "Couldn't create " << already_ran_path_.value();
     }
   }
@@ -880,7 +880,7 @@ bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
 
 void Daemon::SetSuspendAnnounced(bool announced) {
   if (announced) {
-    if (!base::WriteFile(suspend_announced_path_, std::string_view())) {
+    if (!brillo::TouchFile(suspend_announced_path_)) {
       PLOG(ERROR) << "Couldn't create " << suspend_announced_path_.value();
     }
   } else {
@@ -943,7 +943,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
   created_suspended_state_file_ = false;
   if (!base::PathExists(suspended_state_path)) {
-    if (base::WriteFile(suspended_state_path, std::string_view())) {
+    if (brillo::TouchFile(suspended_state_path)) {
       created_suspended_state_file_ = true;
     } else {
       PLOG(ERROR) << "Unable to create " << suspended_state_path.value();
@@ -1952,7 +1952,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   }
 
   if (!base::PathExists(shutdown_announced_path_)) {
-    if (!base::WriteFile(shutdown_announced_path_, std::string_view())) {
+    if (!brillo::TouchFile(shutdown_announced_path_)) {
       PLOG(ERROR) << "Couldn't create " << shutdown_announced_path_.value();
     }
   }
