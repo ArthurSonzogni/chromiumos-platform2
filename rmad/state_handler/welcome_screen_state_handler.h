@@ -12,6 +12,7 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 #include "rmad/system/hardware_verifier_client.h"
+#include "rmad/utils/vpd_utils.h"
 
 namespace rmad {
 
@@ -20,13 +21,14 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   explicit WelcomeScreenStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject |working_dir_path| and |hardware_verifier_client_| for
-  // testing.
+  // Used to inject |working_dir_path|, |hardware_verifier_client_| and
+  // |vpd_utils_| for testing.
   explicit WelcomeScreenStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
-      std::unique_ptr<HardwareVerifierClient> hardware_verifier_client);
+      std::unique_ptr<HardwareVerifierClient> hardware_verifier_client,
+      std::unique_ptr<VpdUtils> vpd_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWelcome);
   SET_REPEATABLE;
@@ -45,6 +47,7 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   base::FilePath working_dir_path_;
   // Helper utilities.
   std::unique_ptr<HardwareVerifierClient> hardware_verifier_client_;
+  std::unique_ptr<VpdUtils> vpd_utils_;
 };
 
 }  // namespace rmad

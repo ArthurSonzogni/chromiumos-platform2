@@ -18,6 +18,7 @@
 #include "rmad/constants.h"
 #include "rmad/logs/logs_utils.h"
 #include "rmad/system/hardware_verifier_client_impl.h"
+#include "rmad/utils/vpd_utils_impl.h"
 
 namespace {
 
@@ -33,17 +34,19 @@ WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath),
-      hardware_verifier_client_(
-          std::make_unique<HardwareVerifierClientImpl>()) {}
+      hardware_verifier_client_(std::make_unique<HardwareVerifierClientImpl>()),
+      vpd_utils_(std::make_unique<VpdUtilsImpl>()) {}
 
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
-    std::unique_ptr<HardwareVerifierClient> hardware_verifier_client)
+    std::unique_ptr<HardwareVerifierClient> hardware_verifier_client,
+    std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
-      hardware_verifier_client_(std::move(hardware_verifier_client)) {}
+      hardware_verifier_client_(std::move(hardware_verifier_client)),
+      vpd_utils_(std::move(vpd_utils)) {}
 
 RmadErrorCode WelcomeScreenStateHandler::InitializeState() {
   if (!state_.has_welcome()) {
@@ -84,14 +87,8 @@ void WelcomeScreenStateHandler::RunHardwareVerifier() const {
   bool is_compliant;
   std::vector<std::string> error_strings;
 
-  if (IsRaccDisabled(working_dir_path_)) {
-    HardwareVerificationResult result;
-    result.set_is_compliant(true);
-    result.set_error_str("");
-    LOG(INFO) << "Component compliance check bypassed.";
-    daemon_callback_->GetHardwareVerificationSignalCallback().Run(result);
-  } else if (hardware_verifier_client_->GetHardwareVerificationResult(
-                 &is_compliant, &error_strings)) {
+  if (hardware_verifier_client_->GetHardwareVerificationResult(
+          &is_compliant, &error_strings)) {
     // Use multi-line error string for UX.
     HardwareVerificationResult result;
     result.set_is_compliant(is_compliant);
@@ -101,6 +98,15 @@ void WelcomeScreenStateHandler::RunHardwareVerifier() const {
     RecordUnqualifiedComponentsToLogs(
         json_store_, is_compliant,
         base::JoinString(error_strings, kCommaSeparator));
+  } else if (uint64_t shimless_mode;
+             (vpd_utils_->GetShimlessMode(&shimless_mode) &&
+              (shimless_mode & kShimlessModeFlagsRaccResultBypass)) ||
+             IsRaccResultBypassed(working_dir_path_)) {
+    HardwareVerificationResult result;
+    result.set_is_compliant(true);
+    result.set_error_str("");
+    LOG(INFO) << "Component compliance check bypassed.";
+    daemon_callback_->GetHardwareVerificationSignalCallback().Run(result);
   } else {
     LOG(ERROR) << "Failed to get hardware verification result";
   }

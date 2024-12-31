@@ -19,6 +19,7 @@ enum {
   kShimlessModeFlagsTriggerable = 1 << 0,               // 0x1
   kShimlessModeFlagsBoardIdCheckResultBypass = 1 << 1,  // 0x2
   kShimlessModeFlagsPreserveGbbFlags = 1 << 2,          // 0x4
+  kShimlessModeFlagsRaccResultBypass = 1 << 3,          // 0x8
 };
 
 // Pipe name for internal mojo connection between D-Bus daemon and executor.

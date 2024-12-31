@@ -22,6 +22,7 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_device_management_client.h"
 #include "rmad/system/mock_runtime_probe_client.h"
+#include "rmad/utils/mock_vpd_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using ComponentRepairStatus =
@@ -43,8 +44,8 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
     ComponentsWithIdentifier probed_components = {};
     bool ccd_blocked = false;
     bool hwwp_enabled = true;
-    bool racc_bypassed = false;
     bool chassis_open = false;
+    uint64_t shimless_mode_flags = 0;
   };
 
   scoped_refptr<ComponentsRepairStateHandler> CreateStateHandler(
@@ -54,27 +55,31 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
         std::make_unique<NiceMock<MockDeviceManagementClient>>();
     ON_CALL(*mock_device_management_client, IsCcdBlocked())
         .WillByDefault(Return(args.ccd_blocked));
+
     // Mock |RuntimeProbeClient|.
     auto mock_runtime_probe_client =
         std::make_unique<NiceMock<MockRuntimeProbeClient>>();
     ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _, _))
         .WillByDefault(DoAll(SetArgPointee<2>(args.probed_components),
                              Return(args.runtime_probe_client_retval)));
-    if (args.racc_bypassed) {
-      EXPECT_CALL(*mock_runtime_probe_client, ProbeCategories(_, _, _))
-          .Times(0);
-    }
+
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<NiceMock<MockWriteProtectUtils>>();
     ON_CALL(*mock_write_protect_utils, ReadyForFactoryMode())
         .WillByDefault(Return(!args.hwwp_enabled || args.chassis_open));
 
+    // Mock |VpdUtils|.
+    auto mock_vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
+    ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.shimless_mode_flags), Return(true)));
+
     return base::MakeRefCounted<ComponentsRepairStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_device_management_client),
         std::move(mock_runtime_probe_client),
-        std::move(mock_write_protect_utils));
+        std::move(mock_write_protect_utils), std::move(mock_vpd_utils));
   }
 
   RmadState CreateDefaultComponentsRepairState() {
@@ -106,7 +111,15 @@ TEST_F(ComponentsRepairStateHandlerTest, InitializeState_BypassRacc_Success) {
   // Bypass hardware verification check.
   ASSERT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kDisableRaccFilePath)));
 
-  auto handler = CreateStateHandler({.racc_bypassed = true});
+  auto handler = CreateStateHandler({.runtime_probe_client_retval = false});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+}
+
+TEST_F(ComponentsRepairStateHandlerTest,
+       InitializeState_BypassRaccWithFlags_Success) {
+  auto handler = CreateStateHandler(
+      {.runtime_probe_client_retval = false,
+       .shimless_mode_flags = kShimlessModeFlagsRaccResultBypass});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 

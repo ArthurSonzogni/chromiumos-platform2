@@ -97,7 +97,7 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   bool IsCalibrationDisabled(const base::FilePath& working_dir_path) const;
 
   // RACC related functions.
-  bool IsRaccDisabled(const base::FilePath& working_dir_path) const;
+  bool IsRaccResultBypassed(const base::FilePath& working_dir_path) const;
 
  protected:
   friend class base::RefCounted<BaseStateHandler>;

@@ -4,6 +4,7 @@
 
 #include "rmad/state_handler/welcome_screen_state_handler.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -22,11 +23,15 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_hardware_verifier_client.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/mock_vpd_utils.h"
+#include "rmad/utils/vpd_utils.h"
 
 using testing::_;
+using testing::DoAll;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
+using testing::SetArgPointee;
 using testing::StrictMock;
 
 namespace {
@@ -57,7 +62,7 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
   struct StateHandlerArgs {
     bool hw_verification_request_success = true;
     bool hw_verification_result = true;
-    bool hw_verification_bypassed = false;
+    uint64_t shimless_mode_flags = 0;
   };
 
   scoped_refptr<WelcomeScreenStateHandler> CreateStateHandler(
@@ -78,21 +83,21 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
           return args.hw_verification_request_success;
         });
 
-    if (args.hw_verification_bypassed) {
-      EXPECT_CALL(*mock_hardware_verifier_client,
-                  GetHardwareVerificationResult(_, _))
-          .Times(0);
-    }
-
     // Register signal callback.
     daemon_callback_->SetHardwareVerificationSignalCallback(
         base::BindRepeating(&SignalSender::SendHardwareVerificationSignal,
                             base::Unretained(&signal_sender_)));
 
+    // Mock |VpdUtils|.
+    auto mock_vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
+    ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.shimless_mode_flags), Return(true)));
+
     // Initialization should always succeed.
     auto handler = base::MakeRefCounted<WelcomeScreenStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_hardware_verifier_client));
+        std::move(mock_hardware_verifier_client), std::move(mock_vpd_utils));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
     return handler;
@@ -141,7 +146,19 @@ TEST_F(WelcomeScreenStateHandlerTest,
   // Bypass hardware verification check.
   ASSERT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kDisableRaccFilePath)));
 
-  auto handler = CreateStateHandler({.hw_verification_bypassed = true});
+  auto handler = CreateStateHandler({.hw_verification_request_success = false});
+  RmadState state = handler->GetState(true);
+  ExpectSignal(true, "");
+}
+
+TEST_F(WelcomeScreenStateHandlerTest,
+       InitializeState_Succeeded_VerificationBypassWithFlags_DoGetStateTask) {
+  // Bypass hardware verification check.
+  ASSERT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kDisableRaccFilePath)));
+
+  auto handler = CreateStateHandler(
+      {.hw_verification_request_success = false,
+       .shimless_mode_flags = kShimlessModeFlagsRaccResultBypass});
   RmadState state = handler->GetState(true);
   ExpectSignal(true, "");
 }
