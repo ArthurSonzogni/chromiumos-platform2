@@ -30,8 +30,8 @@ namespace {
 
 constexpr char kLibraryName[] = "libupsampler.so";
 constexpr char kGeraltModelName[] = "GERALT";
-constexpr char kApuStableDelegateConfigFile[] =
-    "/etc/camera/apu_stable_delegate_settings.json";
+constexpr char kNpuStableDelegateConfigFile[] =
+    "/etc/camera/npu_stable_delegate_settings.json";
 constexpr uint32_t kRGBNumOfChannels = 3;
 constexpr int kSyncWaitTimeoutMs = 300;
 
@@ -110,13 +110,13 @@ bool SingleFrameUpsampler::Initialize(const base::FilePath& dlc_root_path) {
   lancet_runner_ = g_create_fn();
   lancet_alpha_runner_ = g_create_fn();
 
-  // Use stable delegate for APU accelerator. Default to OpenCL for others.
+  // Use stable delegate for NPU accelerator. Default to OpenCL for others.
   InferenceMode inference_mode = cros::InferenceMode::kOpenCL;
   std::string delegate_settings_file = "";
 
   if (base::SysInfo::HardwareModelName() == kGeraltModelName) {
     inference_mode = cros::InferenceMode::kStableDelegate;
-    delegate_settings_file = kApuStableDelegateConfigFile;
+    delegate_settings_file = kNpuStableDelegateConfigFile;
     if (!base::PathExists(base::FilePath(delegate_settings_file))) {
       LOGF(ERROR) << "File not exist: " << delegate_settings_file;
       lancet_runner_ = nullptr;
