@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/check_op.h>
+#include <base/containers/fixed_flat_set.h>
 #include <base/files/file_util.h>
 #include <base/native_library.h>
 #include <base/system/sys_info.h>
@@ -29,7 +30,6 @@ namespace cros {
 namespace {
 
 constexpr char kLibraryName[] = "libupsampler.so";
-constexpr char kGeraltModelName[] = "GERALT";
 constexpr char kNpuStableDelegateConfigFile[] =
     "/etc/camera/npu_stable_delegate_settings.json";
 constexpr uint32_t kRGBNumOfChannels = 3;
@@ -40,6 +40,14 @@ cros_camera_CreateUpsampleWrapperFn g_create_fn = nullptr;
 cros_camera_DeleteUpsampleWrapperFn g_delete_fn = nullptr;
 cros_camera_InitUpsamplerFn g_init_upsampler_fn = nullptr;
 cros_camera_UpsampleFn g_upsample_fn = nullptr;
+
+bool IsNpuInferenceSupported() {
+  static constexpr auto kSupportedBoards =
+      base::MakeFixedFlatSet<std::string_view>({"GERALT", "RAURU"});
+  static bool supported =
+      kSupportedBoards.contains(base::SysInfo::HardwareModelName());
+  return supported;
+}
 
 bool LoadUpsamplerLibrary(const base::FilePath& dlc_root_path) {
   if (g_library) {
@@ -114,7 +122,7 @@ bool SingleFrameUpsampler::Initialize(const base::FilePath& dlc_root_path) {
   InferenceMode inference_mode = cros::InferenceMode::kOpenCL;
   std::string delegate_settings_file = "";
 
-  if (base::SysInfo::HardwareModelName() == kGeraltModelName) {
+  if (IsNpuInferenceSupported()) {
     inference_mode = cros::InferenceMode::kStableDelegate;
     delegate_settings_file = kNpuStableDelegateConfigFile;
     if (!base::PathExists(base::FilePath(delegate_settings_file))) {
