@@ -117,7 +117,6 @@ def CheckSubdirs():
         "libcontainer",
         "modem-utilities",
         "mtpd",  # TODO(b/262376388)
-        "timberslide",
         "tpm_manager",  # TODO(b/262375897)
         "trim",
     )
