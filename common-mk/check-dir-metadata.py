@@ -87,7 +87,6 @@ LEGACYLIST = {
     "policy_utils",
     "power_manager",
     "regions",
-    "resourced",
     "run_oci",
     "runtime_probe",  # TODO(b/262377381)
     "screen-capture-utils",
