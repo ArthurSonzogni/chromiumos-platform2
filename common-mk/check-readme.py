@@ -114,7 +114,6 @@ def CheckSubdirs():
         "avtest_label_detect",
         "cros-disks",  # TODO(b/262376624)
         "image-burner",
-        "init",
         "libcontainer",
         "modem-utilities",
         "mtpd",  # TODO(b/262376388)
