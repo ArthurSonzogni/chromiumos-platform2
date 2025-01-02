@@ -11,6 +11,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -37,16 +38,42 @@
 #include "odml/cros_safety/safety_service_manager.h"
 #include "odml/cros_safety/safety_service_manager_impl.h"
 #include "odml/mojom/big_buffer.mojom.h"
+#include "odml/mojom/cros_safety.mojom-shared.h"
 #include "odml/mojom/cros_safety.mojom.h"
 
 namespace {
 
 constexpr const char kText[] = "text";
 constexpr const char kImage[] = "image";
+constexpr const char kRuleset[] = "ruleset";
 
 class FilePath;
 
 }  // namespace
+
+std::optional<cros_safety::mojom::SafetyRuleset> GetRulesetFromCommandLine(
+    base::CommandLine* cl) {
+  if (!cl->HasSwitch(kRuleset)) {
+    LOG(INFO) << "Ruleset arg not provided, using default ruleset.";
+    return std::nullopt;
+  }
+  std::string ruleset = cl->GetSwitchValueASCII(kRuleset);
+  std::transform(ruleset.begin(), ruleset.end(), ruleset.begin(), ::tolower);
+  LOG(INFO) << "using safety ruleset: " << ruleset;
+  if (ruleset == "coral") {
+    return cros_safety::mojom::SafetyRuleset::kCoral;
+  } else if (ruleset == "mantis") {
+    return cros_safety::mojom::SafetyRuleset::kMantis;
+  } else if (ruleset == "mantis-input-image") {
+    return cros_safety::mojom::SafetyRuleset::kMantisInputImage;
+  } else if (ruleset == "mantis-output-image") {
+    return cros_safety::mojom::SafetyRuleset::kMantisOutputImage;
+  } else if (ruleset == "mantis-generated-region") {
+    return cros_safety::mojom::SafetyRuleset::kMantisGeneratedRegion;
+  }
+  LOG(ERROR) << "Unrecognized safety ruleset: " << ruleset;
+  return std::nullopt;
+}
 
 void OnClassifyComplete(base::RunLoop* run_loop,
                         cros_safety::mojom::SafetyClassifierVerdict result) {
@@ -72,9 +99,11 @@ void FilterImageWithCloudClassifier(
   LOG(INFO) << "Run cloud session ClassifyImageSafety";
   base::RunLoop run_loop;
 
+  // Call ClassifyImageSafety with default ruleset kMantis.
   safety_service_manager->ClassifyImageSafety(
-      cros_safety::mojom::SafetyRuleset::kGeneric, text,
-      mojo_base::mojom::BigBuffer::NewBytes(image_bytes.value()),
+      GetRulesetFromCommandLine(cl).value_or(
+          cros_safety::mojom::SafetyRuleset::kMantis),
+      text, mojo_base::mojom::BigBuffer::NewBytes(image_bytes.value()),
       base::BindOnce(&OnClassifyComplete, &run_loop));
   run_loop.Run();
 }
@@ -88,9 +117,11 @@ void FilterTextWithOnDeviceClassifier(
   LOG(INFO) << "Run on-device session ClassifyTextSafety";
   base::RunLoop run_loop;
 
+  // Call ClassifyTextSafety with ruleset kCoral.
   safety_service_manager->ClassifyTextSafety(
-      cros_safety::mojom::SafetyRuleset::kGeneric, text,
-      base::BindOnce(&OnClassifyComplete, &run_loop));
+      GetRulesetFromCommandLine(cl).value_or(
+          cros_safety::mojom::SafetyRuleset::kCoral),
+      text, base::BindOnce(&OnClassifyComplete, &run_loop));
   run_loop.Run();
 }
 

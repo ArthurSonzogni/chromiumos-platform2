@@ -287,7 +287,7 @@ void EmbeddingEngine::ProcessEachPrompt(ProcessingParams params) {
       &EmbeddingEngine::OnClassifyEntitySafetyDone,
       weak_ptr_factory_.GetWeakPtr(), std::move(params), std::move(entry));
   safety_service_manager_->ClassifyTextSafety(
-      cros_safety::mojom::SafetyRuleset::kGeneric, entity_string,
+      cros_safety::mojom::SafetyRuleset::kCoral, entity_string,
       std::move(on_classify_entity_safety_done));
 }
 

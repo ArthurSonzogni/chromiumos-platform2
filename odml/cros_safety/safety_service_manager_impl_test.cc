@@ -271,7 +271,7 @@ TEST_F(SafetyServiceManagerImplTest, ClassifyImageSafetyCallbackNotRun) {
         base::BindLambdaForTesting([&](SafetyClassifierVerdict verdict) {
           // This is the default return value passed into
           // WrapCallbackWithDefaultInvokeIfNotRun.
-          EXPECT_EQ(verdict, SafetyClassifierVerdict::kGenericError);
+          EXPECT_EQ(verdict, SafetyClassifierVerdict::kServiceNotAvailable);
         }));
     run_loop.Run();
     fake_safety_service_->cloud_safety_session().ClearReceivers();
@@ -312,7 +312,7 @@ TEST_F(SafetyServiceManagerImplTest, ClassifyTextSafetyCallbackNotRun) {
         base::BindLambdaForTesting([&](SafetyClassifierVerdict verdict) {
           // This is the default return value passed into
           // WrapCallbackWithDefaultInvokeIfNotRun.
-          EXPECT_EQ(verdict, SafetyClassifierVerdict::kGenericError);
+          EXPECT_EQ(verdict, SafetyClassifierVerdict::kServiceNotAvailable);
         }));
     run_loop.Run();
     fake_safety_service_->on_device_safety_session().ClearReceivers();

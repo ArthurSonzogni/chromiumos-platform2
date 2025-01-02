@@ -142,7 +142,7 @@ void SafetyServiceManagerImpl::ClassifyImageSafetyInternal(
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
           base::BindOnce(&SafetyServiceManagerImpl::OnClassifySafetyDone,
                          weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
-          mojom::SafetyClassifierVerdict::kGenericError));
+          mojom::SafetyClassifierVerdict::kServiceNotAvailable));
 }
 
 void SafetyServiceManagerImpl::ClassifyTextSafety(
@@ -197,7 +197,7 @@ void SafetyServiceManagerImpl::ClassifyTextSafetyInternal(
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
           base::BindOnce(&SafetyServiceManagerImpl::OnClassifySafetyDone,
                          weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
-          mojom::SafetyClassifierVerdict::kGenericError));
+          mojom::SafetyClassifierVerdict::kServiceNotAvailable));
 }
 
 }  // namespace cros_safety

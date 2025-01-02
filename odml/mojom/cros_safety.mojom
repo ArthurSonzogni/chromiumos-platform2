@@ -8,7 +8,7 @@
 //   2. On chromium, we must use the version under mojo folder so we do not need
 //      to and must not sync this file to chromium.
 
-// Next MinVersion: 1
+// Next MinVersion: 2
 module cros_safety.mojom;
 
 import "odml/mojom/big_buffer.mojom";
@@ -17,10 +17,25 @@ import "odml/mojom/big_buffer.mojom";
 // classification methods. We may want to extend this to be more fine-grained.
 [Stable, Extensible]
 enum SafetyClassifierVerdict {
-  kPass,  // Meaning that the content passed the classification.
+  // Meaning that the content passed the classification.
+  kPass,
+
   [Default] kGenericError,
-  kFailedText,  // Meaning that the text failed the classification.
-  kFailedImage,  // Meaning that the image failed the classification.
+
+  // Meaning that the text failed the classification.
+  kFailedText,
+
+  // Meaning that the image failed the classification.
+  kFailedImage,
+
+  // Meaning that the input cannot be recognized by the classifier.
+  [MinVersion=1] kInvalidInput,
+
+  // Meaning that the classifier encountered some internal error.
+  [MinVersion=1] kBackendFailure,
+
+  // Meaning that actually the classification isn' triggered at all.
+  [MinVersion=1] kServiceNotAvailable,
 };
 
 // These enum entries identify which feature is requesting a verdict. This
@@ -32,6 +47,10 @@ enum SafetyClassifierVerdict {
 enum SafetyRuleset {
   [Default] kGeneric,
   kMantis,
+  [MinVersion=1] kMantisInputImage,
+  [MinVersion=1] kMantisOutputImage,
+  [MinVersion=1] kMantisGeneratedRegion,
+  [MinVersion=1] kCoral,
 };
 
 // CloudSafetySession is implemented within CrosSafetyService which connects
