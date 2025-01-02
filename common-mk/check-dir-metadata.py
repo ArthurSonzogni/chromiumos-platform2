@@ -82,7 +82,6 @@ LEGACYLIST = {
     "p2p",
     "pciguard",
     "perfetto_simple_producer",
-    "permission_broker",
     "policy_proto",
     "policy_utils",
     "power_manager",
@@ -90,15 +89,12 @@ LEGACYLIST = {
     "run_oci",
     "runtime_probe",  # TODO(b/262377381)
     "screen-capture-utils",
-    "secanomalyd",
-    "sepolicy",
     "st_flash",
     "syslog-cat",
     "system-proxy",
     "timberslide",
     "touch_firmware_calibration",
     "ureadahead-diff",
-    "usb_bouncer",
     "verity",
     "virtual_file_provider",
 }
