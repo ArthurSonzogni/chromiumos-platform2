@@ -9,7 +9,6 @@ use log::debug;
 use nix::mount::MntFlags;
 use serde::Deserialize;
 use std::collections::BTreeMap;
-use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -91,12 +90,12 @@ fn get_media_mount_points(platform: &dyn Platform) -> Vec<PathBuf> {
 ///
 /// Errors are ignored.
 fn get_directory_contents(dir: &Path) -> Vec<PathBuf> {
-    match fs::read_dir(dir) {
+    match fs_err::read_dir(dir) {
         Ok(dir) => dir
             .filter_map(|entry| entry.ok().map(|entry| entry.path()))
             .collect(),
         Err(err) => {
-            debug!("failed to read dir {}: {}", dir.display(), err);
+            debug!("{err}");
             Vec::new()
         }
     }
@@ -109,8 +108,7 @@ fn get_gpt_base_vars_from(path: &Path) -> Result<Environment> {
         load_base_vars: BTreeMap<String, String>,
     }
 
-    let json =
-        fs::read_to_string(path).with_context(|| format!("failed to read {}", path.display()))?;
+    let json = fs_err::read_to_string(path)?;
     let partition_vars: PartitionVars = serde_json::from_str(&json)
         .with_context(|| format!("failed to parse {}", path.display()))?;
 
@@ -134,9 +132,9 @@ fn get_gpt_base_vars_from(path: &Path) -> Result<Environment> {
 /// other error occurs when creating the directory.
 fn create_dir_if_needed(path: &Path) -> Result<()> {
     debug!("creating {}", path.display());
-    if let Err(err) = fs::create_dir(path) {
+    if let Err(err) = fs_err::create_dir(path) {
         if err.kind() != ErrorKind::AlreadyExists {
-            return Err(err).with_context(|| format!("failed to create {}", path.display()));
+            return Err(err.into());
         }
     }
     Ok(())
@@ -148,6 +146,7 @@ mod tests {
     use crate::platform::MockPlatform;
     use crate::process_util::ProcessError;
     use anyhow::anyhow;
+    use fs_err as fs;
     use std::process::Output;
 
     /// Test that `get_directory_contents` successfully gets all

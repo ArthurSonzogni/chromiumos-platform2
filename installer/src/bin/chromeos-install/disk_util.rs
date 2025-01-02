@@ -40,7 +40,7 @@ pub fn init_ufs(platform: &dyn Platform) -> Result<(), ProcessError> {
 mod tests {
     use super::*;
     use crate::platform::MockPlatform;
-    use std::fs;
+    use fs_err as fs;
 
     /// Test a successful call to `get_root_disk_device_path`.
     #[test]
