@@ -6,6 +6,7 @@
 #define IMAGELOADER_MANIFEST_H_
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -91,6 +92,7 @@ class BRILLO_EXPORT Manifest {
   const std::string& sanitized_image_sha256() const {
     return sanitized_image_sha256_;
   }
+  const std::set<std::string>& attributes() const { return attributes_; }
 
  private:
   // Required manifest fields:
@@ -123,6 +125,7 @@ class BRILLO_EXPORT Manifest {
       .valid = false,
   };
   bool force_ota_ = false;
+  std::set<std::string> attributes_;
 
   // Sanitized fields:
   std::string sanitized_id_;

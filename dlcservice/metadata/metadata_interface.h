@@ -34,7 +34,8 @@ class MetadataInterface {
     kNone,
     kFactoryInstall,
     kPowerwashSafe,
-    kPreloadAllowed
+    kPreloadAllowed,
+    kAttributes
   };
 
   // Initialize the metadata.

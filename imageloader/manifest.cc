@@ -55,6 +55,7 @@ constexpr char kUserTied[] = "user-tied";
 constexpr char kArtifactsMeta[] = "artifacts-meta";
 constexpr char kArtifactsMetaUriKey[] = "uri";
 constexpr char kForceOTA[] = "force-ota";
+constexpr char kAttributes[] = "attributes";
 
 bool GetSHA256FromString(const std::string& hash_str,
                          std::vector<uint8_t>* bytes) {
@@ -143,7 +144,8 @@ bool Manifest::operator==(const Manifest& rhs) const {
       powerwash_safe() == rhs.powerwash_safe() &&
       artifacts_meta() == rhs.artifacts_meta() &&
       force_ota() == rhs.force_ota() &&
-      user_tied() == rhs.user_tied();
+      user_tied() == rhs.user_tied() &&
+      attributes() == rhs.attributes();
 }
 // clang-format on
 
@@ -324,6 +326,13 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
     if (!ParseArtifactsMeta(*artifacts_meta, &artifacts_meta_)) {
       LOG(ERROR) << "Failed to parse artifacts meta.";
       return false;
+    }
+  }
+
+  auto* attributes = manifest_dict.FindDict(kAttributes);
+  if (attributes) {
+    for (const auto& [attr, val] : *attributes) {
+      attributes_.insert(attr);
     }
   }
 

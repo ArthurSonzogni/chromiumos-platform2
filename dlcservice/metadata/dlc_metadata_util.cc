@@ -58,6 +58,7 @@ class DlcMetadataUtil {
   std::string id_;
   base::FilePath file_path_;
   Metadata::FilterKey filter_key_;
+  base::Value filter_val_;
   base::FilePath metadata_dir_;
 
   std::unique_ptr<Metadata> metadata_;
@@ -96,6 +97,7 @@ bool DlcMetadataUtil::ParseFlags() {
   DEFINE_bool(factory_install, false, "Filter factory installed DLCs");
   DEFINE_bool(powerwash_safe, false, "Filter powerwash safe DLCs");
   DEFINE_bool(preload_allowed, false, "Filter preload allowed DLCs");
+  DEFINE_string(attribute, "", "Filter DLCs by a given attribute");
 
   brillo::FlagHelper::Init(argc_, argv_, "dlc_metadata_util");
 
@@ -123,16 +125,22 @@ bool DlcMetadataUtil::ParseFlags() {
   }
 
   if (CountExclusiveFlags({FLAGS_factory_install, FLAGS_powerwash_safe,
-                           FLAGS_preload_allowed}) > 1) {
+                           FLAGS_preload_allowed, !FLAGS_attribute.empty()}) >
+      1) {
     LOG(ERROR) << "At most one filter is supported.";
     return false;
   }
+
+  filter_val_ = base::Value(true);
   if (FLAGS_factory_install) {
     filter_key_ = Metadata::FilterKey::kFactoryInstall;
   } else if (FLAGS_powerwash_safe) {
     filter_key_ = Metadata::FilterKey::kPowerwashSafe;
   } else if (FLAGS_preload_allowed) {
     filter_key_ = Metadata::FilterKey::kPreloadAllowed;
+  } else if (FLAGS_attribute.size()) {
+    filter_key_ = Metadata::FilterKey::kAttributes;
+    filter_val_ = base::Value(FLAGS_attribute);
   } else {
     filter_key_ = Metadata::FilterKey::kNone;
   }
@@ -186,7 +194,7 @@ int DlcMetadataUtil::SetMetadata() {
 }
 
 int DlcMetadataUtil::ListDlcIds() {
-  const auto& ids = metadata_->ListDlcIds(filter_key_, base::Value(true));
+  const auto& ids = metadata_->ListDlcIds(filter_key_, filter_val_);
   auto id_list = base::Value::List::with_capacity(ids.size());
   for (const auto& id : ids) {
     id_list.Append(id);

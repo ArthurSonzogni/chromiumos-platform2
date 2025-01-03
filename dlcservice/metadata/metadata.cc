@@ -17,9 +17,9 @@
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <brillo/compression/compressor_interface.h>
 #include <brillo/compression/zlib_compressor.h>
@@ -38,6 +38,7 @@ constexpr char kTable[] = "table";
 constexpr char kKeyStringFactoryInstall[] = "factory-install";
 constexpr char kKeyStringPowerwashSafe[] = "powerwash-safe";
 constexpr char kKeyStringPreloadAllowed[] = "preload-allowed";
+constexpr char kKeyStringAttributes[] = "attributes";
 }  // namespace
 
 const size_t kMaxMetadataFileSize = 4096;
@@ -316,7 +317,17 @@ DlcIdList Metadata::ListDlcIds(const FilterKey& filter_key,
           continue;
         }
         const auto* manifest_val = manifest_dict->Find(*key_str);
-        if (!manifest_val || *manifest_val != filter_val) {
+        if (!manifest_val) {
+          continue;
+        }
+
+        if (filter_key == MetadataInterface::FilterKey::kAttributes) {
+          const auto* vals = manifest_val->GetIfDict();
+          const auto* val_str = filter_val.GetIfString();
+          if (!vals || !val_str || !vals->contains(*val_str)) {
+            continue;
+          }
+        } else if (*manifest_val != filter_val) {
           continue;
         }
       }
@@ -357,6 +368,8 @@ std::optional<std::string> Metadata::FilterKeyToString(
       return kKeyStringPowerwashSafe;
     case FilterKey::kPreloadAllowed:
       return kKeyStringPreloadAllowed;
+    case FilterKey::kAttributes:
+      return kKeyStringAttributes;
     default:
       LOG(ERROR) << "Unsupported filter key.";
       return std::nullopt;
