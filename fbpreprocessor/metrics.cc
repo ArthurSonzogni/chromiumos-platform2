@@ -9,7 +9,9 @@
 #include <utility>
 
 #include <base/containers/fixed_flat_map.h>
+#include <base/notreached.h>
 #include <base/strings/strcat.h>
+#include <base/types/cxx23_to_underlying.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <metrics/metrics_library.h>
 
@@ -41,17 +43,17 @@ std::string_view ToString(FirmwareDump::Type type) {
   if (kDumpTypeName.contains(type)) {
     return kDumpTypeName.at(type);
   }
-  return "UnknownType";
+  NOTREACHED() << "Invalid firmware type " << base::to_underlying(type);
 }
 
-UMAFirmwareType ConvertToUMAType(fbpreprocessor::FirmwareDump::Type type) {
+UMAFirmwareType ConvertToUMAType(FirmwareDump::Type type) {
   switch (type) {
     case FirmwareDump::Type::kWiFi:
       return UMAFirmwareType::kWiFi;
     case FirmwareDump::Type::kBluetooth:
       return UMAFirmwareType::kBluetooth;
   }
-  return UMAFirmwareType::kUnknown;
+  NOTREACHED();
 }
 }  // namespace
 
