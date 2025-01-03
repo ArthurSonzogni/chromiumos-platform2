@@ -75,6 +75,9 @@ void SafetyServiceManagerImpl::OnSafetyServiceDisconnected(
       /*service_name=*/chromeos::mojo_services::kCrosSafetyService,
       /*timeout=*/std::nullopt,
       safety_service_.BindNewPipeAndPassReceiver().PassPipe());
+  safety_service_.set_disconnect_with_reason_handler(
+      base::BindOnce(&SafetyServiceManagerImpl::OnSafetyServiceDisconnected,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void SafetyServiceManagerImpl::OnCloudSafetySessionDisconnected(

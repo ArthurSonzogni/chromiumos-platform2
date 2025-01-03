@@ -159,7 +159,8 @@ TEST_F(SafetyServiceManagerImplTest, ClassifyImageSafetyPass) {
 TEST_F(SafetyServiceManagerImplTest, SafetyServiceDisconnect) {
   EXPECT_CALL(fake_safety_service_->cloud_safety_session(), ClassifyImageSafety)
       .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kPass))
-      .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kFailedImage));
+      .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kFailedImage))
+      .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kPass));
 
   {
     base::RunLoop run_loop;
@@ -179,6 +180,18 @@ TEST_F(SafetyServiceManagerImplTest, SafetyServiceDisconnect) {
         SafetyRuleset::kGeneric, "test", BigBuffer::NewInvalidBuffer(false),
         base::BindLambdaForTesting([&](SafetyClassifierVerdict verdict) {
           EXPECT_EQ(verdict, SafetyClassifierVerdict::kFailedImage);
+          run_loop.Quit();
+        }));
+    run_loop.Run();
+  }
+
+  fake_safety_service_->ClearReceivers();
+  {
+    base::RunLoop run_loop;
+    safety_service_manager_->ClassifyImageSafety(
+        SafetyRuleset::kGeneric, "test", BigBuffer::NewInvalidBuffer(false),
+        base::BindLambdaForTesting([&](SafetyClassifierVerdict verdict) {
+          EXPECT_EQ(verdict, SafetyClassifierVerdict::kPass);
           run_loop.Quit();
         }));
     run_loop.Run();
