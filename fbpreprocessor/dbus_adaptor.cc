@@ -7,10 +7,9 @@
 #include <base/check.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <dbus/bus.h>
-#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <fbpreprocessor-client/fbpreprocessor/dbus-constants.h>
-
 #include <fbpreprocessor/dbus_adaptors/org.chromium.FbPreprocessor.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 
 #include "fbpreprocessor/output_manager.h"
 

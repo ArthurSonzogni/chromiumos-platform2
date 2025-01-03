@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "fbpreprocessor/firmware_dump.h"
+
 #include <sstream>
 #include <string>
 
@@ -11,8 +13,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <gtest/gtest.h>
-
-#include "fbpreprocessor/firmware_dump.h"
 
 namespace fbpreprocessor {
 namespace {

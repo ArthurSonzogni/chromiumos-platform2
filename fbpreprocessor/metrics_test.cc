@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "fbpreprocessor/metrics.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -12,7 +14,6 @@
 #include <metrics/fake_metrics_library.h>
 
 #include "fbpreprocessor/firmware_dump.h"
-#include "fbpreprocessor/metrics.h"
 
 namespace fbpreprocessor {
 namespace {

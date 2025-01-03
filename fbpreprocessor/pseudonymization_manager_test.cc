@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "fbpreprocessor/pseudonymization_manager.h"
+
 #include <memory>
 #include <string>
 #include <string_view>
@@ -15,7 +17,6 @@
 
 #include "fbpreprocessor/fake_manager.h"
 #include "fbpreprocessor/firmware_dump.h"
-#include "fbpreprocessor/pseudonymization_manager.h"
 
 namespace fbpreprocessor {
 namespace {

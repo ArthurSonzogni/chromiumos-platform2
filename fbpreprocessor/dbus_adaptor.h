@@ -11,9 +11,8 @@
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
-#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
-
 #include <fbpreprocessor/dbus_adaptors/org.chromium.FbPreprocessor.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 
 #include "fbpreprocessor/manager.h"
 
