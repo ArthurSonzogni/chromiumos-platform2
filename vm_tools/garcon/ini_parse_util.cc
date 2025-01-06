@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/garcon/ini_parse_util.h"
+
 #include <base/check.h>
 #include <base/strings/string_util.h>
-
-#include "vm_tools/garcon/ini_parse_util.h"
 
 namespace vm_tools {
 namespace garcon {
@@ -23,6 +23,9 @@ bool ParseBool(const std::string& s) {
 }
 
 std::string ExtractKeyLocale(const std::string& key) {
+  if (key.empty()) {
+    return "";
+  }
   if (key.back() != ']') {
     return "";
   }
