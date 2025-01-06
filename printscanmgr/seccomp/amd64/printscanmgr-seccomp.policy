@@ -22,6 +22,7 @@ lseek: 1
 sendto: 1
 poll: 1
 pread64: 1
+getsockopt: 1
 setsockopt: 1
 dup2: 1
 access: 1

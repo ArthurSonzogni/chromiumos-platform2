@@ -20,6 +20,7 @@ fcntl64: 1
 brk: 1
 _llseek: 1
 epoll_wait: 1
+getsockopt: 1
 setsockopt: 1
 recv: 1
 poll: 1

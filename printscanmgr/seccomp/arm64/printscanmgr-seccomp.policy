@@ -19,6 +19,7 @@ fcntl: 1
 lseek: 1
 gettid: 1
 epoll_pwait: 1
+getsockopt: 1
 setsockopt: 1
 ppoll: 1
 rt_sigprocmask: 1
