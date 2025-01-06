@@ -36,6 +36,19 @@ inline std::vector<mojom::EntityPtr> GetFakeEntities() {
   return ret;
 }
 
+inline std::vector<mojom::EntityPtr> GetFakeSuppressionContext() {
+  std::vector<mojom::EntityPtr> ret;
+  // The following 2 entities are similar, they exists in the group of 3 above
+  // in GetFakeEntities().
+  ret.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("ABC 1", url::mojom::Url::New("abc1.com"))));
+  ret.push_back(mojom::Entity::NewApp(mojom::App::New("ABC app 1", "abc1")));
+  // The following 1 entities are similar, they exists in the group of 2 above
+  // in GetFakeEntities().
+  ret.push_back(mojom::Entity::NewApp(mojom::App::New("DEF app", "def")));
+  return ret;
+}
+
 inline EmbeddingResponse GetFakeEmbeddingResponse() {
   return EmbeddingResponse{.embeddings = {
                                // 3 similar items.
@@ -47,6 +60,17 @@ inline EmbeddingResponse GetFakeEmbeddingResponse() {
                                {-0.11, -0.21, -0.31},
                                // 1 different item from above.
                                {3, -1, 0},
+                           }};
+}
+
+inline EmbeddingResponse GetFakeSuppressionContextEmbeddingResponse() {
+  return EmbeddingResponse{.embeddings = {
+                               // 2 items from the group of 3 above.
+                               {0.1, 0.2, 0.3},
+                               {0.11, 0.21, 0.31},
+                               // 1 items from the group of 2 above.
+                               {-0.11, -0.21, -0.31},
+
                            }};
 }
 

@@ -86,6 +86,13 @@ class CoralService : public mojom::CoralService, public mojom::CoralProcessor {
                          mojo::PendingRemote<mojom::TitleObserver> observer,
                          mojom::GroupRequestPtr request,
                          CoralResult<EmbeddingResponse> result);
+  void OnExistingEmbeddingResult(
+      GroupCallback callback,
+      mojo::PendingRemote<mojom::TitleObserver> observer,
+      CoralResult<EmbeddingResponse> main_result,
+      mojom::GroupRequestPtr original_request,
+      mojom::GroupRequestPtr suppression_context_request,
+      CoralResult<EmbeddingResponse> suppression_context_result);
   void OnClusteringResult(GroupCallback callback,
                           mojo::PendingRemote<mojom::TitleObserver> observer,
                           mojom::GroupRequestPtr request,

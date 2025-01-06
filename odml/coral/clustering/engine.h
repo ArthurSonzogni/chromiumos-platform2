@@ -58,6 +58,7 @@ class ClusteringEngineInterface {
       mojom::GroupRequestPtr, CoralResult<ClusteringResponse>)>;
   virtual void Process(mojom::GroupRequestPtr request,
                        EmbeddingResponse embedding_response,
+                       EmbeddingResponse suppression_context_embedding_response,
                        ClusteringCallback callback) = 0;
 };
 
@@ -74,6 +75,7 @@ class ClusteringEngine : public ClusteringEngineInterface {
   // according to the clustering_options in request.
   void Process(mojom::GroupRequestPtr request,
                EmbeddingResponse embedding_response,
+               EmbeddingResponse suppression_context_embedding_response,
                ClusteringCallback callback) override;
 
  private:
@@ -85,13 +87,16 @@ class ClusteringEngine : public ClusteringEngineInterface {
   // I.e. the indice in valid_embeddings.
   CoralResult<std::vector<IndexGroup>> ProcessContiguous(
       const std::vector<Embedding>& valid_embeddings,
-      const mojom::ClusteringOptions& clustering_options);
+      const mojom::ClusteringOptions& clustering_options,
+      size_t suppression_context_start);
 
   // The main logic block of Process() and is called by Process(). The
   // returned std::vector<IndexGroup> contains indices in the request's
   // entities.
   CoralResult<std::vector<IndexGroup>> ProcessInternal(
-      const mojom::GroupRequest& request, EmbeddingResponse embedding_response);
+      const mojom::GroupRequest& request,
+      EmbeddingResponse embedding_response,
+      EmbeddingResponse suppression_context_embedding_response);
 
   const raw_ref<CoralMetrics> metrics_;
   std::unique_ptr<clustering::ClusteringFactoryInterface> clustering_factory_;

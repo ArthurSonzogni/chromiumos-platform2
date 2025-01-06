@@ -143,6 +143,7 @@ class ClusteringEngineTest : public testing::Test {
   CoralResult<ClusteringResponse> RunTest(
       mojom::GroupRequestPtr request,
       EmbeddingResponse embedding_response,
+      EmbeddingResponse suppression_context_response,
       const std::optional<clustering::Groups> fake_grouping) {
     auto mock_clustering_factory =
         std::make_unique<clustering::MockClusteringFactory>();
@@ -162,6 +163,7 @@ class ClusteringEngineTest : public testing::Test {
     TestFuture<mojom::GroupRequestPtr, CoralResult<ClusteringResponse>>
         grouping_future;
     engine->Process(std::move(request), std::move(embedding_response),
+                    std::move(suppression_context_response),
                     grouping_future.GetCallback());
     auto [_, result] = grouping_future.Take();
     return std::move(result);
@@ -220,7 +222,8 @@ TEST_F(ClusteringEngineTest, Success) {
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), EmbeddingResponse(),
+              fake_grouping);
 
   ASSERT_TRUE(result.has_value());
   EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
@@ -248,7 +251,8 @@ TEST_F(ClusteringEngineTest, SuccessWithMissingEmbeddings) {
   // Simulate the scenario that 1 entity failed to generate embedding.
   fake_embeddings.embeddings[1].clear();
   CoralResult<ClusteringResponse> result =
-      RunTest(request->Clone(), std::move(fake_embeddings), fake_grouping);
+      RunTest(request->Clone(), std::move(fake_embeddings), EmbeddingResponse(),
+              fake_grouping);
 
   ASSERT_TRUE(result.has_value());
   EXPECT_THAT(*result, EqualsClusteringResponse(
@@ -274,7 +278,8 @@ TEST_F(ClusteringEngineTest, MaxClusters) {
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), EmbeddingResponse(),
+              fake_grouping);
 
   ASSERT_TRUE(result.has_value());
   EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
@@ -299,7 +304,8 @@ TEST_F(ClusteringEngineTest, MaxClustersExceedGroupSize) {
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), EmbeddingResponse(),
+              fake_grouping);
 
   ASSERT_TRUE(result.has_value());
   EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
@@ -325,12 +331,40 @@ TEST_F(ClusteringEngineTest, MaxItemsInCluster) {
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), EmbeddingResponse(),
+              fake_grouping);
 
   ASSERT_TRUE(result.has_value());
   EXPECT_THAT(*result, EqualsClusteringResponse(
                            FakeClusteringResponse(request->entities, {
                                                                          {1, 2},
+                                                                         {3, 4},
+                                                                         {5},
+                                                                     })));
+}
+
+TEST_F(ClusteringEngineTest, SuppressionContextTest) {
+  ExpectSendStatus(true);
+  ExpectSendLatency(1);
+  ExpectSendInputCount(9);
+  ExpectSendGeneratedGroups(2, 2);
+  auto request = GetFakeGroupRequest();
+  request->clustering_options->max_clusters = 2;
+  request->suppression_context = GetFakeSuppressionContext();
+
+  clustering::Groups fake_grouping = {
+      {0, 2, 1, 6, 7},
+      {5},
+      {3, 4, 8},
+  };
+
+  CoralResult<ClusteringResponse> result =
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(),
+              GetFakeSuppressionContextEmbeddingResponse(), fake_grouping);
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_THAT(*result, EqualsClusteringResponse(
+                           FakeClusteringResponse(request->entities, {
                                                                          {3, 4},
                                                                          {5},
                                                                      })));
@@ -351,7 +385,8 @@ TEST_F(ClusteringEngineTest, MaxItemsInClusterExceedsSize) {
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), EmbeddingResponse(),
+              fake_grouping);
 
   ASSERT_TRUE(result.has_value());
   EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
@@ -377,7 +412,8 @@ TEST_F(ClusteringEngineTest, MinItemsInCluster) {
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), EmbeddingResponse(),
+              fake_grouping);
 
   ASSERT_TRUE(result.has_value());
   EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
@@ -393,7 +429,8 @@ TEST_F(ClusteringEngineTest, GroupingError) {
   auto request = GetFakeGroupRequest();
 
   CoralResult<ClusteringResponse> result =
-      RunTest(std::move(request), GetFakeEmbeddingResponse(), std::nullopt);
+      RunTest(std::move(request), GetFakeEmbeddingResponse(),
+              EmbeddingResponse(), std::nullopt);
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(mojom::CoralError::kClusteringError, result.error());
@@ -414,7 +451,7 @@ TEST(ClusteringEngineRealImplementationTest, Success) {
   TestFuture<mojom::GroupRequestPtr, CoralResult<ClusteringResponse>>
       grouping_future;
   engine->Process(request->Clone(), std::move(embedding_response),
-                  grouping_future.GetCallback());
+                  EmbeddingResponse(), grouping_future.GetCallback());
   auto [_, result] = grouping_future.Take();
 
   ASSERT_TRUE(result.has_value());

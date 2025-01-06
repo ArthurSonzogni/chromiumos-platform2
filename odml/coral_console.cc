@@ -49,6 +49,7 @@
 namespace {
 
 constexpr const char kInput[] = "input";
+constexpr const char kSuppressionContext[] = "suppression_context";
 constexpr const char kOutputFile[] = "output_file";
 constexpr const char kSkipSafetyCheck[] = "skip_safety_check";
 constexpr int kMinItemsInGroup = 4;
@@ -221,6 +222,10 @@ int main(int argc, char** argv) {
   CHECK(cl->HasSwitch(kInput));
   group_request->entities =
       ParseEntitiesFromInput(cl->GetSwitchValueNative(kInput));
+  if (cl->HasSwitch(kSuppressionContext)) {
+    group_request->suppression_context =
+        ParseEntitiesFromInput(cl->GetSwitchValueNative(kSuppressionContext));
+  }
 
   mojo::PendingRemote<coral::mojom::TitleObserver> observer;
 

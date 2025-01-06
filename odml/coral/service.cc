@@ -4,6 +4,8 @@
 
 #include "odml/coral/service.h"
 
+#include <vector>
+
 #include <metrics/metrics_library.h>
 
 #include "odml/coral/clustering/engine.h"
@@ -124,7 +126,7 @@ void CoralService::CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
   // functions.
   auto group_request = mojom::GroupRequest::New(
       std::move(request->entities), std::move(request->embedding_options),
-      nullptr, nullptr);
+      nullptr, nullptr, std::vector<mojom::EntityPtr>());
   embedding_engine_->Process(
       std::move(group_request),
       base::BindOnce(&CoralService::HandleCacheEmbeddingsResult,
@@ -141,8 +143,42 @@ void CoralService::OnEmbeddingResult(
     std::move(callback).Run(GroupResult::NewError(result.error()));
     return;
   }
+
+  std::vector<mojom::EntityPtr> suppression_context;
+  if (request->suppression_context.has_value()) {
+    for (auto& entity : *request->suppression_context) {
+      suppression_context.push_back(entity->Clone());
+    }
+  }
+  auto suppression_context_group_request = mojom::GroupRequest::New(
+      /*entities=*/std::move(suppression_context),
+      request->embedding_options->Clone(),
+      /*clustering_options=*/nullptr, /*title_generation_options=*/nullptr,
+      /*suppression_context=*/std::vector<mojom::EntityPtr>());
+  embedding_engine_->Process(
+      std::move(suppression_context_group_request),
+      base::BindOnce(&CoralService::OnExistingEmbeddingResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                     std::move(observer), std::move(result),
+                     std::move(request)));
+}
+
+void CoralService::OnExistingEmbeddingResult(
+    GroupCallback callback,
+    mojo::PendingRemote<mojom::TitleObserver> observer,
+    CoralResult<EmbeddingResponse> original_result,
+    mojom::GroupRequestPtr original_request,
+    mojom::GroupRequestPtr suppression_context_request,
+    CoralResult<EmbeddingResponse> suppression_context_result) {
+  if (!suppression_context_result.has_value()) {
+    std::move(callback).Run(
+        GroupResult::NewError(suppression_context_result.error()));
+    return;
+  }
+
   clustering_engine_->Process(
-      std::move(request), std::move(*result),
+      std::move(original_request), std::move(*original_result),
+      std::move(*suppression_context_result),
       base::BindOnce(&CoralService::OnClusteringResult,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback),
                      std::move(observer)));

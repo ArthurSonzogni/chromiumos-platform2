@@ -4,6 +4,8 @@
 
 #include "odml/coral/service.h"
 
+#include <vector>
+
 #include <base/test/test_future.h>
 #include <base/types/expected.h>
 #include <gmock/gmock.h>
@@ -44,22 +46,37 @@ void MoveAssignExpected(base::expected<T, E>& dest,
 
 class MockEmbeddingEngine : public EmbeddingEngineInterface {
  public:
-  MockEmbeddingEngine() = default;
+  MockEmbeddingEngine() {
+    ON_CALL(*this, Process)
+        .WillByDefault([this](auto&& request, auto&& callback) {
+          for (int i = 0; i < requests_.size(); i++) {
+            if (request->entities == requests_[i]) {
+              CoralResult response = std::move(responses_[i]);
+              responses_.erase(responses_.begin() + i);
+              requests_.erase(requests_.begin() + i);
+              std::move(callback).Run(std::move(request), std::move(response));
+              return;
+            }
+          }
+          NOTREACHED();
+        });
+  }
+
   MOCK_METHOD(void,
               Process,
               (mojom::GroupRequestPtr, EmbeddingCallback),
               (override));
-  void Expect(CoralResult<EmbeddingResponse> response) {
-    MoveAssignExpected(response_, std::move(response));
-    EXPECT_CALL(*this, Process(_, _))
-        .WillOnce([this](auto&& request, auto&& callback) {
-          std::move(callback).Run(std::move(request), std::move(response_));
-        });
+
+  void Expect(std::vector<mojom::EntityPtr> request,
+              CoralResult<EmbeddingResponse> response) {
+    requests_.push_back(std::move(request));
+    responses_.push_back(std::move(response));
   }
 
  private:
-  CoralResult<EmbeddingResponse> response_ =
-      base::unexpected(mojom::CoralError::kUnknownError);
+  // We're using vector and not hash maps because N=1 or 2 in most cases.
+  std::vector<std::vector<mojom::EntityPtr>> requests_;
+  std::vector<CoralResult<EmbeddingResponse>> responses_;
 };
 
 class MockClusteringEngine : public ClusteringEngineInterface {
@@ -67,14 +84,17 @@ class MockClusteringEngine : public ClusteringEngineInterface {
   MockClusteringEngine() = default;
   MOCK_METHOD(void,
               Process,
-              (mojom::GroupRequestPtr, EmbeddingResponse, ClusteringCallback),
+              (mojom::GroupRequestPtr,
+               EmbeddingResponse,
+               EmbeddingResponse,
+               ClusteringCallback),
               (override));
   void Expect(EmbeddingResponse embedding_response,
               CoralResult<ClusteringResponse> response) {
     embedding_response_ = std::move(embedding_response);
     MoveAssignExpected(response_, std::move(response));
-    EXPECT_CALL(*this, Process(_, Eq(std::ref(embedding_response_)), _))
-        .WillOnce([this](auto&& request, auto&&, auto&& callback) {
+    EXPECT_CALL(*this, Process(_, Eq(std::ref(embedding_response_)), _, _))
+        .WillOnce([this](auto&& request, auto&&, auto&&, auto&& callback) {
           std::move(callback).Run(std::move(request), std::move(response_));
         });
   }
@@ -205,7 +225,9 @@ TEST_F(CoralServiceTest, GroupSuccess) {
   ExpectSendGroupStatus(true);
   ExpectSendGroupLatency(1);
   auto request = GetFakeGroupRequest();
-  embedding_engine_->Expect(GetFakeEmbeddingResponse());
+  embedding_engine_->Expect(GetFakeEntities(), GetFakeEmbeddingResponse());
+  embedding_engine_->Expect(std::vector<mojom::EntityPtr>(),
+                            EmbeddingResponse{});
   clustering_engine_->Expect(GetFakeEmbeddingResponse(),
                              GetFakeClusteringResponse());
   title_generation_engine_->Expect(GetFakeClusteringResponse(),
@@ -217,7 +239,8 @@ TEST_F(CoralServiceTest, EmbeddingFailed) {
   ExpectSendGroupStatus(false);
   ExpectSendGroupLatency(0);
   auto request = GetFakeGroupRequest();
-  embedding_engine_->Expect(base::unexpected(mojom::CoralError::kUnknownError));
+  embedding_engine_->Expect(GetFakeEntities(),
+                            base::unexpected(mojom::CoralError::kUnknownError));
   ExpectGroupResult(std::move(request), mojom::GroupResult::NewError(
                                             mojom::CoralError::kUnknownError));
 }
@@ -226,7 +249,9 @@ TEST_F(CoralServiceTest, ClusteringFailed) {
   ExpectSendGroupStatus(false);
   ExpectSendGroupLatency(0);
   auto request = GetFakeGroupRequest();
-  embedding_engine_->Expect(GetFakeEmbeddingResponse());
+  embedding_engine_->Expect(GetFakeEntities(), GetFakeEmbeddingResponse());
+  embedding_engine_->Expect(std::vector<mojom::EntityPtr>(),
+                            EmbeddingResponse{});
   clustering_engine_->Expect(
       GetFakeEmbeddingResponse(),
       base::unexpected(mojom::CoralError::kUnknownError));
@@ -238,7 +263,9 @@ TEST_F(CoralServiceTest, TitleGenerationFailed) {
   ExpectSendGroupStatus(false);
   ExpectSendGroupLatency(0);
   auto request = GetFakeGroupRequest();
-  embedding_engine_->Expect(GetFakeEmbeddingResponse());
+  embedding_engine_->Expect(GetFakeEntities(), GetFakeEmbeddingResponse());
+  embedding_engine_->Expect(std::vector<mojom::EntityPtr>(),
+                            EmbeddingResponse{});
   clustering_engine_->Expect(GetFakeEmbeddingResponse(),
                              GetFakeClusteringResponse());
   title_generation_engine_->Expect(
@@ -253,7 +280,7 @@ TEST_F(CoralServiceTest, CacheEmbeddingsSuccess) {
   ExpectSendCacheEmbeddingsLatency(1);
   auto request = mojom::CacheEmbeddingsRequest::New(
       GetFakeEntities(), mojom::EmbeddingOptions::New());
-  embedding_engine_->Expect(GetFakeEmbeddingResponse());
+  embedding_engine_->Expect(GetFakeEntities(), GetFakeEmbeddingResponse());
   ExpectCacheEmbeddingsOk(std::move(request));
 }
 
@@ -262,7 +289,8 @@ TEST_F(CoralServiceTest, CacheEmbeddingsFailed) {
   ExpectSendCacheEmbeddingsLatency(0);
   auto request = mojom::CacheEmbeddingsRequest::New(
       GetFakeEntities(), mojom::EmbeddingOptions::New());
-  embedding_engine_->Expect(base::unexpected(mojom::CoralError::kUnknownError));
+  embedding_engine_->Expect(GetFakeEntities(),
+                            base::unexpected(mojom::CoralError::kUnknownError));
   ExpectCacheEmbeddingsError(std::move(request),
                              mojom::CoralError::kUnknownError);
 }

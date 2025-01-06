@@ -30,6 +30,13 @@ const Distance kDefaultAgglomerativeClusteringThreshold = 0.24;
 
 constexpr float kFloatErrorTolerance = 1e-6;
 
+// If the proportion of entities in suppression_context that can be found in a
+// group equals or exceeds kSuppressionContextThreshold, then that group should
+// be skipped.
+// 0.499 is used instead of 0.5 because at precisely half the elements present,
+// we want to suppress the group.
+constexpr double kSuppressionContextThreshold = 0.499;
+
 // Returns std::nullopt if length of embeddings |a| and |b| don't match.
 std::optional<Distance> CosineDistance(const Embedding& a, const Embedding& b) {
   if (a.size() != b.size()) {
@@ -57,6 +64,76 @@ std::optional<Distance> CosineDistance(const Embedding& a, const Embedding& b) {
   norm_b = sqrt(norm_b);
 
   return 1 - dot / norm_a / norm_b;
+}
+
+// FilterEmptyEmbeddings filters out empty embeddings from the input vector. It
+// populates out_embeddings with non-empty embeddings and, if original_indexes
+// is provided, stores the original indexes plus index_offset) of the non-empty
+// embeddings.
+void FilterEmptyEmbeddings(std::vector<Embedding> embeddings,
+                           size_t index_offset,
+                           std::vector<Embedding>& out_embeddings,
+                           std::vector<size_t>* original_indexes) {
+  for (size_t i = 0; i < embeddings.size(); ++i) {
+    if (embeddings[i].empty()) {
+      continue;
+    }
+    out_embeddings.push_back(std::move(embeddings[i]));
+    if (original_indexes) {
+      original_indexes->push_back(i + index_offset);
+    }
+  }
+}
+
+// IsGroupSuppressed determines if a group should be suppressed,
+// and returns true if it should be. It does so by taking a group, assuming any
+// index on and after suppression_context_start is part of the
+// suppression_context, then calculate the proportion of suppression context
+// that can be found in this group, it it exceeds the
+// kSuppressionContextThreshold, then it'll be suppressed.
+bool IsGroupSuppressed(const std::vector<int>& group,
+                       size_t suppression_context_start,
+                       size_t suppression_context_size) {
+  if (suppression_context_size == 0) {
+    // If no existing entities are supplied, then this group is not part of the
+    // existing.
+    return false;
+  }
+
+  int suppression_context_count = 0;
+  for (int idx : group) {
+    if (idx >= suppression_context_start) {
+      suppression_context_count++;
+    }
+  }
+
+  return static_cast<double>(suppression_context_count) /
+             static_cast<double>(suppression_context_size) >=
+         kSuppressionContextThreshold;
+}
+
+// FilterSuppressionContextFromGroups filters the supplied groups and removes
+// all groups that should be suppressed according to suppression context.
+void FilterSuppressionContextFromGroups(clustering::Groups& groups,
+                                        size_t suppression_context_start,
+                                        size_t suppression_context_size) {
+  std::erase_if(groups, [suppression_context_start,
+                         suppression_context_size](const std::vector<int>& g) {
+    return IsGroupSuppressed(g, suppression_context_start,
+                             suppression_context_size);
+  });
+}
+
+// RemoveSuppressionItemsFromGroups removes any entry from the groups that is
+// from the suppression context. After this call, all index in groups is
+// guaranteed to be from the original entities.
+void RemoveSuppressionItemsFromGroups(clustering::Groups& groups,
+                                      size_t suppression_context_start) {
+  for (auto& g : groups) {
+    std::erase_if(g, [suppression_context_start](int x) {
+      return x >= suppression_context_start;
+    });
+  }
 }
 
 // Filters the groups and produces the final resulting group that matches the
@@ -242,7 +319,12 @@ ClusteringEngine::ClusteringEngine(
 CoralResult<std::vector<ClusteringEngine::IndexGroup>>
 ClusteringEngine::ProcessContiguous(
     const std::vector<Embedding>& valid_embeddings,
-    const mojom::ClusteringOptions& clustering_options) {
+    const mojom::ClusteringOptions& clustering_options,
+    size_t suppression_context_start) {
+  CHECK(valid_embeddings.size() >= suppression_context_start);
+  size_t suppression_context_size =
+      valid_embeddings.size() - suppression_context_start;
+
   std::optional<clustering::Matrix> matrix =
       internal::DistanceMatrix(valid_embeddings);
   if (!matrix.has_value()) {
@@ -260,6 +342,11 @@ ClusteringEngine::ProcessContiguous(
   if (!groups.has_value()) {
     return base::unexpected(CoralError::kClusteringError);
   }
+
+  FilterSuppressionContextFromGroups(groups.value(), suppression_context_start,
+                                     suppression_context_size);
+
+  RemoveSuppressionItemsFromGroups(groups.value(), suppression_context_start);
 
   RETURN_IF_ERROR(SortWithinClusterGroup(groups.value(), valid_embeddings));
 
@@ -282,26 +369,36 @@ ClusteringEngine::ProcessContiguous(
 }
 
 CoralResult<std::vector<ClusteringEngine::IndexGroup>>
-ClusteringEngine::ProcessInternal(const mojom::GroupRequest& request,
-                                  EmbeddingResponse embedding_response) {
+ClusteringEngine::ProcessInternal(
+    const mojom::GroupRequest& request,
+    EmbeddingResponse embedding_response,
+    EmbeddingResponse suppression_context_embedding_response) {
   // Some entries might not have successfully generated embeddings. They'll be
   // marked as empty by the embedding engine.
   std::vector<Embedding> valid_embeddings;
   std::vector<size_t> original_indexes;
-  for (size_t i = 0; i < embedding_response.embeddings.size(); i++) {
-    if (embedding_response.embeddings[i].empty()) {
-      continue;
-    }
-    valid_embeddings.push_back(std::move(embedding_response.embeddings[i]));
-    original_indexes.push_back(i);
-  }
+  // We need this here because embeddings is consumed by
+  // FilterEmptyEmbeddings().
+  const size_t suppression_context_original_start =
+      embedding_response.embeddings.size();
+  FilterEmptyEmbeddings(std::move(embedding_response.embeddings),
+                        /*index_offset=*/0,
+                        /*out_embeddings=*/valid_embeddings, &original_indexes);
   metrics_->SendEmbeddingFilteredCount(request.entities.size() -
                                        valid_embeddings.size());
+  const size_t suppression_context_start = valid_embeddings.size();
+  FilterEmptyEmbeddings(
+      std::move(suppression_context_embedding_response.embeddings),
+      /*index_offset=*/suppression_context_original_start,
+      /*out_embeddings=*/valid_embeddings,
+      /*original_indexes=*/nullptr);
+
   metrics_->SendClusteringInputCount(valid_embeddings.size());
 
   std::vector<IndexGroup> result;
   ASSIGN_OR_RETURN(
-      result, ProcessContiguous(valid_embeddings, *request.clustering_options));
+      result, ProcessContiguous(valid_embeddings, *request.clustering_options,
+                                suppression_context_start));
   for (int i = 0; i < result.size(); i++) {
     for (int j = 0; j < result[i].size(); j++) {
       result[i][j] = original_indexes[result[i][j]];
@@ -310,14 +407,17 @@ ClusteringEngine::ProcessInternal(const mojom::GroupRequest& request,
   return base::ok(result);
 }
 
-void ClusteringEngine::Process(mojom::GroupRequestPtr request,
-                               EmbeddingResponse embedding_response,
-                               ClusteringCallback callback) {
+void ClusteringEngine::Process(
+    mojom::GroupRequestPtr request,
+    EmbeddingResponse embedding_response,
+    EmbeddingResponse suppression_context_embedding_response,
+    ClusteringCallback callback) {
   auto timer = odml::PerformanceTimer::Create();
 
   CoralResult<std::vector<IndexGroup>> result =
-      ClusteringEngine::ProcessInternal(*request,
-                                        std::move(embedding_response));
+      ClusteringEngine::ProcessInternal(
+          *request, std::move(embedding_response),
+          std::move(suppression_context_embedding_response));
 
   if (result.has_value()) {
     metrics_->SendClusteringEngineLatency(timer->GetDuration());
