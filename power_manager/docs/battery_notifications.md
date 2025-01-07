@@ -23,9 +23,8 @@ levels; see [ash::TrayPower].
 
 ### With no external power source connected:
 
--   15 minutes remaining until automatic shutdown: low-power notification
--   5 minutes remaining until automatic shutdown: critically-low-power
-    notification
+-   20% battery remaining: low-power notification
+-   5% battery remaining: critically-low-power notification
 
 ### With a low-power USB charger connected (for systems that can charge over USB):
 
