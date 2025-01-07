@@ -7,6 +7,5 @@ syntax = "proto3";
 package rmad;
 
 message FeatureEnabledDevices {
-  repeated string devices = 1;
-  map<string, uint32> feature_levels = 2;
+  map<string, uint32> feature_levels = 1;
 }
