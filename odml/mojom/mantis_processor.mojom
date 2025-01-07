@@ -32,6 +32,8 @@ enum SafetyClassifierVerdict {
   [Default] kFail,
   [MinVersion=3] kFailedText,
   [MinVersion=3] kFailedImage,
+  [MinVersion=4] kBackendFailure,
+  [MinVersion=4] kServiceNotAvailable,
 };
 
 // Interface for processing images. The processor should already be initialized

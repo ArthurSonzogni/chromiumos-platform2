@@ -48,6 +48,10 @@ constexpr auto kMapSafetyResult =
          SafetyClassifierVerdict::kFailedText},
         {cros_safety::mojom::SafetyClassifierVerdict::kFailedImage,
          SafetyClassifierVerdict::kFailedImage},
+        {cros_safety::mojom::SafetyClassifierVerdict::kServiceNotAvailable,
+         SafetyClassifierVerdict::kServiceNotAvailable},
+        {cros_safety::mojom::SafetyClassifierVerdict::kBackendFailure,
+         SafetyClassifierVerdict::kBackendFailure},
     });
 }  // namespace
 
@@ -224,7 +228,11 @@ void MantisProcessor::ClassifyImageSafetyInternal(
       base::BindOnce(
           [](ClassifyImageSafetyCallback callback,
              cros_safety::mojom::SafetyClassifierVerdict result) {
-            std::move(callback).Run(kMapSafetyResult.at(result));
+            if (kMapSafetyResult.contains(result)) {
+              std::move(callback).Run(kMapSafetyResult.at(result));
+            } else {
+              std::move(callback).Run(SafetyClassifierVerdict::kFail);
+            }
           },
           std::move(callback)));
 }
