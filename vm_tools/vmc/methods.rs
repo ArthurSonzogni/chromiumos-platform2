@@ -59,7 +59,7 @@ const EXPORT_DISK_TIMEOUT: Duration = Duration::from_millis(15 * 60 * 1000);
 
 const DLCSERVICE_NO_IMAGE_FOUND_ERROR: &str = "org.chromium.DlcServiceInterface.NO_IMAGE_FOUND";
 
-enum ChromeOSError {
+pub enum ChromeOSError {
     BadChromeFeatureStatus,
     BadDiskImageStatus(EnumOrUnknown<DiskImageStatus>, String),
     BadVmStatus(EnumOrUnknown<VmStatus>, String),
@@ -291,7 +291,7 @@ pub struct VmFeatures {
     pub timeout: u32,
     pub oem_strings: Vec<String>,
     pub bios_dlc_id: Option<String>,
-    pub vm_type: Option<String>,
+    pub vm_type: Option<VmType>,
 }
 
 pub enum ContainerSource {
@@ -1360,17 +1360,8 @@ impl Methods {
         }
 
         if let Some(vm_type) = features.vm_type {
-            request.vm_type = match vm_type.to_uppercase().as_ref() {
-                "TERMINA" => VmType::TERMINA,
-                "PLUGIN_VM" => VmType::PLUGIN_VM,
-                "BOREALIS" => VmType::BOREALIS,
-                "BRUSCHETTA" => VmType::BRUSCHETTA,
-                "BAGUETTE" => VmType::BAGUETTE,
-                _ => return Err(NoSuchVmType.into()),
-            }
-            .into();
-        }
-
+            request.vm_type = vm_type.into();
+        };
         request.start_termina = start_termina;
         request.owner_id = user_id_hash.to_owned();
         request.vm_username = username.to_owned();

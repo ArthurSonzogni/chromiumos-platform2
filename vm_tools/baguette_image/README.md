@@ -2,7 +2,7 @@
 
 Note: This instruction is subject to change. v4 image is tested on Lazor/Trogdor, but it should also work on x86 devices. Starting with v4 images, btrfs is used for rootfs.
 
-Prerequisites: A DUT running at least R130 with crostini installed (for the DLC).
+Prerequisites: A DUT running at least R134 with crostini installed (for the DLC).
 
 On DUT:
 `vmc create --size 15G baguette` minimum size is 2G, the files in the image currently takes almost 1GB, and I added a few hundred MBs of empty space when making the image.
@@ -17,10 +17,9 @@ On DUT As root:
 
 On DUT:
 ```
-vmc start --tools-dlc termina-dlc --no-start-lxd --vm-type baguette \
+vmc start --vm-type baguette \
           --kernel /home/chronos/user/MyFiles/Downloads/vm_kernel \
           --kernel-param "root=/dev/vdb rw net.ifnames=0 systemd.log_color=0" \
-          --user chronos --user-groups cdrom,dialout,floppy,netdev,sudo,tss,video \
           baguette
 ```
 

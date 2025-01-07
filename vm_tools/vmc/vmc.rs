@@ -17,9 +17,17 @@ use std::io::{stdin, stdout, BufRead, Write};
 use getopts::Options;
 
 use crate::disk::{DiskOpType, VmState};
-use crate::methods::{ContainerSource, Methods, UserDisks, UserInfo, VmFeatures};
+use crate::methods::{
+    ChromeOSError,
+    ContainerSource,
+    Methods,
+    UserDisks,
+    UserInfo,
+    VmFeatures,
+};
 use system_api::cicerone_service::start_lxd_container_request::PrivilegeLevel;
 use system_api::cicerone_service::VmDeviceAction;
+use system_api::concierge_service::vm_info::VmType;
 
 /// A string to string mapping of environment variables to values.
 pub type EnvMap<'a> = BTreeMap<&'a str, &'a str>;
@@ -315,6 +323,26 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             .transpose()?
             .unwrap_or(0);
 
+        let vm_type = match matches.opt_str("vm-type") {
+            None => None,
+            Some(vm_type) => Some(match vm_type.to_uppercase().as_ref() {
+                "TERMINA" => VmType::TERMINA,
+                "PLUGIN_VM" => VmType::PLUGIN_VM,
+                "BOREALIS" => VmType::BOREALIS,
+                "BRUSCHETTA" => VmType::BRUSCHETTA,
+                "BAGUETTE" => VmType::BAGUETTE,
+                _ => return Err(ChromeOSError::NoSuchVmType.into()),
+            })
+        };
+        let start_lxd = match vm_type {
+            Some(VmType::BAGUETTE) => false,
+            _ => !matches.opt_present("no-start-lxd"),
+        };
+        let tools_dlc_id = match (vm_type, matches.opt_str("tools-dlc")) {
+            (Some(VmType::BAGUETTE), None) => Some("termina-dlc".into()),
+            (_, opt_tools_dlc) => opt_tools_dlc
+        };
+
         let features = VmFeatures {
             gpu,
             dgpu_passthrough,
@@ -324,11 +352,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             audio_capture: matches.opt_present("enable-audio-capture"),
             dlc: matches.opt_str("dlc-id"),
             kernel_params: matches.opt_strs("kernel-param"),
-            tools_dlc_id: matches.opt_str("tools-dlc"),
+            tools_dlc_id,
             timeout,
             oem_strings: matches.opt_strs("oem-string"),
             bios_dlc_id: matches.opt_str("bios-dlc"),
-            vm_type: matches.opt_str("vm-type"),
+            vm_type,
         };
 
         let user_disks = UserDisks {
@@ -341,19 +369,28 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             pflash: matches.opt_str("pflash"),
         };
 
-        let group_names = match matches.opt_str("user-groups") {
+        let group_names = match (vm_type, matches.opt_str("user-groups")) {
+            (Some(VmType::BAGUETTE), None) => Some("cdrom,dialout,floppy,netdev,sudo,tss,video".into()),
+            (_, group_names) => group_names
+        };
+        let group_names = match group_names {
             Some(groups) => groups.split(',')
                                   .map(|v| v.to_string())
                                   .collect(),
             None => vec![]
         };
-        let user_info = match matches.opt_str("user") {
+
+        let user_name = match (vm_type, matches.opt_str("user")) {
+            (Some(VmType::BAGUETTE), None) => Some("chronos".into()),
+            (_, user_name) => user_name
+        };
+        let user_info = match user_name {
             Some(username) => Some(UserInfo {
                 uid: matches.opt_str("user-uid").map(|x| x.parse()).transpose()?,
                 username,
                 group_names,
             }),
-            None => None,
+            _ => None,
         };
 
         self.metrics_send_sample("Vm.VmcStart");
@@ -363,7 +400,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             &username,
             features,
             user_disks,
-            !matches.opt_present("no-start-lxd"),
+            start_lxd,
             user_info,
         ));
         self.metrics_send_sample("Vm.VmcStartSuccess");
