@@ -1255,8 +1255,9 @@ void CameraClient::RequestHandler::SkipFramesAfterStreamOn(int num_frames) {
   for (size_t i = 0; i < num_frames; i++) {
     uint32_t buffer_id, data_size;
     uint64_t v4l2_ts, user_ts;
+    bool is_error_frame = false;
     int ret = device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts,
-                                          &user_ts, -1);
+                                          &user_ts, -1, &is_error_frame);
     if (!ret) {
       current_buffer_timestamp_in_v4l2_ = v4l2_ts;
       current_buffer_timestamp_in_user_ = user_ts;
@@ -1370,6 +1371,7 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode,
   uint32_t buffer_id = 0, data_size = 0;
   uint64_t v4l2_ts, user_ts;
   uint64_t delta_user_ts = 0, delta_v4l2_ts = 0;
+  bool is_error_frame = false;
   // If frame duration between user space and v4l2 buffer shifts 20%,
   // we should return next frame.
   const uint64_t allowed_shift_frame_duration_ns =
@@ -1400,7 +1402,7 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode,
     // If device_->GetNextFrameBuffer returns error, the buffer is still in
     // driver side. Therefore we don't need to enqueue the buffer.
     ret = device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts,
-                                      &user_ts, frame_number);
+                                      &user_ts, frame_number, &is_error_frame);
     if (ret) {
       /*
        * LOG used by FRA. Please make sure it is always in sync with:
@@ -1439,9 +1441,10 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode,
   // so we need to return the buffer back if any error happens.
   current_v4l2_buffer_id_ = buffer_id;
 
-  if (data_size == 0) {
+  // The buffer content is empty or corrupted, drop the frame.
+  if (data_size == 0 || is_error_frame) {
     LOGFID(ERROR, device_id_)
-        << "No content for input buffer id: " << buffer_id;
+        << "Bad content for input buffer id: " << buffer_id;
     EnqueueV4L2Buffer();
     return -EAGAIN;
   }

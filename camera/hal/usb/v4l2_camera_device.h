@@ -7,6 +7,7 @@
 #ifndef CAMERA_HAL_USB_V4L2_CAMERA_DEVICE_H_
 #define CAMERA_HAL_USB_V4L2_CAMERA_DEVICE_H_
 
+#include <linux/videodev2.h>
 #include <time.h>
 
 #include <map>
@@ -18,7 +19,6 @@
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
-#include <linux/videodev2.h>
 
 #include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/timezone.h"
@@ -128,7 +128,8 @@ class V4L2CameraDevice {
   // Get next frame buffer from device. Device returns the corresponding buffer
   // with |buffer_id|, |data_size| bytes and its v4l2 timestamp |v4l2_ts| and
   // userspace timestamp |user_ts| in nanoseconds.
-  // |data_size| is how many bytes used in the buffer for this frame. Return 0
+  // |data_size| is how many bytes used in the buffer for this frame.
+  // |is_error_frame| is whether it has the v4L2_BUF_FLAG_ERROR flag. Return 0
   // if device gets the buffer successfully. Otherwise, return -|errno|. Return
   // -EAGAIN immediately if next frame buffer is not ready. This function should
   // be called after StreamOn().
@@ -136,7 +137,8 @@ class V4L2CameraDevice {
                          uint32_t* data_size,
                          uint64_t* v4l2_ts,
                          uint64_t* user_ts,
-                         std::optional<int> frame_number);
+                         std::optional<int> frame_number,
+                         bool* is_error_frame);
 
   // Return |buffer_id| buffer to device. Return 0 if the buffer is returned
   // successfully. Otherwise, return -|errno|. This function should be called

@@ -10,7 +10,6 @@
 #include <linux/usb/video.h>
 #include <linux/uvcvideo.h>
 #include <linux/videodev2.h>
-
 #include <poll.h>
 #include <sys/ioctl.h>
 
@@ -668,7 +667,8 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
                                          uint32_t* data_size,
                                          uint64_t* v4l2_ts,
                                          uint64_t* user_ts,
-                                         std::optional<int> frame_number) {
+                                         std::optional<int> frame_number,
+                                         bool* is_error_frame) {
   base::AutoLock l(lock_);
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
@@ -735,6 +735,7 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
 
   *buffer_id = buffer.index;
   *data_size = buffer.bytesused;
+  *is_error_frame = buffer.flags & V4L2_BUF_FLAG_ERROR;
 
   struct timeval tv = buffer.timestamp;
   *v4l2_ts = tv.tv_sec * 1'000'000'000LL + tv.tv_usec * 1000;
