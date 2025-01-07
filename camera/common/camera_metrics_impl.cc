@@ -22,6 +22,7 @@
 #include <system/graphics.h>
 
 #include "camera/mojo/cros_camera_service.mojom.h"
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/common.h"
 
 namespace cros {
@@ -72,6 +73,9 @@ constexpr char kCameraFaceAeFunction[] =
 constexpr char kCameraFaceAeMaxDetectedFaces[] =
     "ChromeOS.Camera.FaceAutoExposure.MaxNumDetectedFaces";
 constexpr int kMaxNumFaces = 10;
+
+constexpr char kCameraPipelineFrameDropRate[] =
+    "ChromeOS.Camera.FrameDropRate.%s";
 
 // *** HDRnet metrics ***
 
@@ -392,6 +396,31 @@ void CameraMetricsImpl::SendFaceAeMaxDetectedFaces(int number) {
   }
   metrics_lib_->SendEnumToUMA(kCameraFaceAeMaxDetectedFaces, number,
                               kMaxNumFaces + 1);
+}
+
+void CameraMetricsImpl::SendPipelineFrameDropRate(CameraFeature feature,
+                                                  int percentage) {
+  std::string feature_str;
+  switch (feature) {
+    case CameraFeature::kOverall:
+      feature_str = "Overall";
+      break;
+    case CameraFeature::kAutoFraming:
+      feature_str = "AutoFraming";
+      break;
+    case CameraFeature::kEffects:
+      feature_str = "Effects";
+      break;
+    case CameraFeature::kHdrnet:
+      feature_str = "HDRNet";
+      break;
+    case CameraFeature::kNone:
+      feature_str = "NoEffects";
+      break;
+  }
+  std::string name =
+      base::StringPrintf(kCameraPipelineFrameDropRate, feature_str.c_str());
+  metrics_lib_->SendPercentageToUMA(name, percentage);
 }
 
 void CameraMetricsImpl::SendHdrnetStreamConfiguration(

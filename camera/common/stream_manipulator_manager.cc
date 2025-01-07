@@ -26,6 +26,7 @@
 #include "cros-camera/device_config.h"
 #include "cros-camera/jpeg_compressor.h"
 #include "features/feature_profile.h"
+#include "features/frame_drop_monitor/frame_drop_monitor_stream_manipulator.h"
 #include "features/rotate_and_crop/rotate_and_crop_stream_manipulator.h"
 #include "features/zsl/zsl_stream_manipulator.h"
 #include "gpu/gpu_resources.h"
@@ -198,6 +199,14 @@ StreamManipulatorManager::StreamManipulatorManager(
   // feature config (e.g. /etc/camera/feature_profile.json).
   FeatureProfile feature_profile(/*feature_config=*/std::nullopt,
                                  /*device_matadata=*/std::move(dev_mdata));
+
+  stream_manipulators_.emplace_back(
+      std::make_unique<FrameDropMonitorStreamManipulator>(
+          runtime_options,
+          feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming),
+          feature_profile.IsEnabled(FeatureProfile::FeatureType::kEffects),
+          feature_profile.IsEnabled(FeatureProfile::FeatureType::kHdrnet)));
+  LOGF(INFO) << "FrameDropMonitorStreamManipulator enabled";
 
 #if USE_CAMERA_FEATURE_FRAME_ANNOTATOR
   stream_manipulators_.emplace_back(

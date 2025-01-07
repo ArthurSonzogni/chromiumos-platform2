@@ -322,6 +322,7 @@ source_set("stream_manipulator") {
 
   deps = [
     ":jpeg",
+    "//camera/features/frame_drop_monitor",
     "//camera/gpu:gpu_resources",
   ]
   if (use.camera_feature_auto_framing) {

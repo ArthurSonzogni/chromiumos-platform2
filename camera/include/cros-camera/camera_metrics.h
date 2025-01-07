@@ -183,6 +183,17 @@ enum class SuperResError {
   kMaxValue = kUpsampleRequestError,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class CameraFeature {
+  kOverall = 0,
+  kAutoFraming = 1,
+  kEffects = 2,
+  kHdrnet = 3,
+  kNone = 4,
+  kMaxValue = kNone,
+};
+
 class CROS_CAMERA_EXPORT CameraMetrics {
  public:
   static std::unique_ptr<CameraMetrics> New();
@@ -232,6 +243,10 @@ class CROS_CAMERA_EXPORT CameraMetrics {
 
   // Records the max number of detected faces in a camera session
   virtual void SendFaceAeMaxDetectedFaces(int number) = 0;
+
+  // Records the camera pipeline frame drop rate per session.
+  virtual void SendPipelineFrameDropRate(CameraFeature feature,
+                                         int percentage) = 0;
 
   // *** HDRnet metrics ***
 

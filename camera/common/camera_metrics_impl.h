@@ -44,6 +44,8 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendSessionDuration(base::TimeDelta duration) override;
   void SendFaceAeFunction(FaceAeFunction function) override;
   void SendFaceAeMaxDetectedFaces(int number) override;
+  void SendPipelineFrameDropRate(CameraFeature feature,
+                                 int percentage) override;
 
   void SendHdrnetStreamConfiguration(HdrnetStreamConfiguration config) override;
   void SendHdrnetMaxStreamSize(HdrnetStreamType stream_type, int size) override;
