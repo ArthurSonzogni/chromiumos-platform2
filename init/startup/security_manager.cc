@@ -242,9 +242,8 @@ bool AllowFifo(libstorage::Platform* platform,
 void SymlinkExceptions(libstorage::Platform* platform,
                        const base::FilePath& root) {
   // Generic symlink exceptions.
-  for (auto d_it = kSymlinkExceptions.begin(); d_it != kSymlinkExceptions.end();
-       d_it++) {
-    base::FilePath d = root.Append(*d_it);
+  for (auto d_it : kSymlinkExceptions) {
+    base::FilePath d = root.Append(d_it);
     if (!platform->CreateDirectory(d)) {
       PLOG(WARNING) << "mkdir failed for " << d.value();
     }
