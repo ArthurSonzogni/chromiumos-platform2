@@ -37,8 +37,6 @@ constexpr char kTestBoardIdType[] = "5a5a4352";
 
 constexpr char kEmptyDevicesTextProto[] = "";
 constexpr char kNonEmptyDevicesTextProto[] = R"(
-devices: "abcd"
-devices: "efgh"
 feature_levels {
   key: "abcd"
   value: 1

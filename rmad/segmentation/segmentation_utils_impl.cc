@@ -89,7 +89,7 @@ bool SegmentationUtilsImpl::ReadFeatureEnabledDevicesTextProto(
 
 bool SegmentationUtilsImpl::IsFeatureEnabled() const {
   // Feature is enabled if any of the RLZ supports the feature.
-  return !feature_enabled_devices_.devices().empty();
+  return !feature_enabled_devices_.feature_levels().empty();
 }
 
 bool SegmentationUtilsImpl::IsFeatureMutable() const {
