@@ -1,3 +1,3 @@
 # Flexor
 
-Experimental ChromeOS Flex installer
+ChromeOS Flex installer for the remote deploy feature.
