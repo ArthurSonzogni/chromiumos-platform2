@@ -45,7 +45,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(defer_external_display_timeout, false,
               "Prints the external display timeout deferral time (in seconds) "
               "to stdout");
-
+  DEFINE_bool(dark_resume_enabled, false,
+              "Exit with success if dark resume is enabled");
   brillo::FlagHelper::Init(argc, argv,
                            "Check the device's power-related configuration");
 
@@ -57,7 +58,8 @@ int main(int argc, char* argv[]) {
           FLAGS_hover_detection + FLAGS_internal_backlight_ambient_light_steps +
           FLAGS_keyboard_backlight + FLAGS_low_battery_shutdown_percent +
           FLAGS_low_battery_shutdown_time + FLAGS_set_wifi_transmit_power +
-          FLAGS_suspend_to_idle + FLAGS_defer_external_display_timeout !=
+          FLAGS_suspend_to_idle + FLAGS_defer_external_display_timeout +
+          FLAGS_dark_resume_enabled !=
       1) {
     fprintf(stderr, "Exactly one flag must be set\n");
     exit(1);
@@ -132,6 +134,12 @@ int main(int argc, char* argv[]) {
                    &defer_external_display_timeout);
     printf("%" PRId64 "\n", defer_external_display_timeout);
     exit(0);
+  } else if (FLAGS_dark_resume_enabled) {
+    // Enabled if dark_resume_disabled is set to 0.
+    int64_t dark_resume_disabled = 0;
+    prefs.GetInt64(power_manager::kDisableDarkResumePref,
+                   &dark_resume_disabled);
+    exit(dark_resume_disabled);
   } else {
     NOTREACHED_IN_MIGRATION();
     exit(1);
