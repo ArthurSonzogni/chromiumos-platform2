@@ -86,7 +86,7 @@ void FilterImageWithCloudClassifier(
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager) {
   std::optional<std::string> text;
   if (cl->HasSwitch(kText)) {
-    text = cl->GetSwitchValueASCII(kText);
+    text = cl->GetSwitchValueNative(kText);
   }
 
   base::FilePath image_path = cl->GetSwitchValuePath(kImage);
@@ -111,7 +111,7 @@ void FilterImageWithCloudClassifier(
 void FilterTextWithOnDeviceClassifier(
     base::CommandLine* cl,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager) {
-  std::string text = cl->GetSwitchValueASCII(kText);
+  std::string text = cl->GetSwitchValueNative(kText);
   CHECK(!text.empty());
 
   LOG(INFO) << "Run on-device session ClassifyTextSafety";
