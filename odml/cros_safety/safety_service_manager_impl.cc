@@ -78,6 +78,11 @@ void SafetyServiceManagerImpl::OnSafetyServiceDisconnected(
   safety_service_.set_disconnect_with_reason_handler(
       base::BindOnce(&SafetyServiceManagerImpl::OnSafetyServiceDisconnected,
                      weak_ptr_factory_.GetWeakPtr()));
+
+  // The safety sessions must be disconnected as well when safety service is
+  // dead, so reset them anyway.
+  cloud_safety_session_.reset();
+  on_device_safety_session_.reset();
 }
 
 void SafetyServiceManagerImpl::OnCloudSafetySessionDisconnected(

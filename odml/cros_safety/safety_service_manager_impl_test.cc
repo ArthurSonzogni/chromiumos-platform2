@@ -174,6 +174,7 @@ TEST_F(SafetyServiceManagerImplTest, SafetyServiceDisconnect) {
   }
 
   fake_safety_service_->ClearReceivers();
+  task_environment_.RunUntilIdle();
   {
     base::RunLoop run_loop;
     safety_service_manager_->ClassifyImageSafety(
@@ -186,6 +187,7 @@ TEST_F(SafetyServiceManagerImplTest, SafetyServiceDisconnect) {
   }
 
   fake_safety_service_->ClearReceivers();
+  task_environment_.RunUntilIdle();
   {
     base::RunLoop run_loop;
     safety_service_manager_->ClassifyImageSafety(
