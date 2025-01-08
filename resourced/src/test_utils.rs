@@ -60,12 +60,6 @@ pub fn test_create_parent_dir(path: &Path) {
     fs::create_dir_all(path.parent().unwrap()).unwrap();
 }
 
-pub fn test_write_ui_use_flags(root: &Path, use_flags: &str) {
-    let use_flags_path = root.join("etc/ui_use_flags.txt");
-    test_create_parent_dir(&use_flags_path);
-    fs::write(use_flags_path, use_flags).unwrap();
-}
-
 pub fn test_write_online_cpu(root: &Path, cpu: u32, value: &str) {
     let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{}/online", cpu));
     test_create_parent_dir(&root_online_cpu);

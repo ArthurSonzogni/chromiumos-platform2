@@ -659,7 +659,6 @@ mod tests {
         const OFFLINE: &str = "0";
         struct Test<'a> {
             cpus: &'a str,
-            big_little: bool,
             cluster1_freq: [u32; 2],
             cluster2_freq: [u32; 2],
             hotplug: &'a HotplugCpuAction,
@@ -673,7 +672,6 @@ mod tests {
             // Test offline small cores
             Test {
                 cpus: "0-3",
-                big_little: true,
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [1800000; 2],
                 hotplug: &HotplugCpuAction::OfflineSmallCore {
@@ -688,7 +686,6 @@ mod tests {
             // No CPU offline when big cores less than min-active-theads
             Test {
                 cpus: "0-3",
-                big_little: true,
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [1800000; 2],
                 hotplug: &HotplugCpuAction::OfflineSmallCore {
@@ -703,7 +700,6 @@ mod tests {
             // Offline half when min-active-theads equals half cores
             Test {
                 cpus: "0-3",
-                big_little: false,
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
                 hotplug: &HotplugCpuAction::OfflineHalf {
@@ -719,7 +715,6 @@ mod tests {
             // min-active-theads greater than half cores
             Test {
                 cpus: "0-3",
-                big_little: false,
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
                 hotplug: &HotplugCpuAction::OfflineHalf {
@@ -735,7 +730,6 @@ mod tests {
             // No CPU offline when min-active-theads less than all cores
             Test {
                 cpus: "0-3",
-                big_little: false,
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
                 hotplug: &HotplugCpuAction::OfflineHalf {
@@ -750,7 +744,6 @@ mod tests {
             // Test offline SMT
             Test {
                 cpus: "0-3",
-                big_little: false,
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
                 hotplug: &HotplugCpuAction::OfflineSMT {
@@ -765,7 +758,6 @@ mod tests {
             // No CPU offline when physical cores less than min-active-theads
             Test {
                 cpus: "0-3",
-                big_little: false,
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
                 hotplug: &HotplugCpuAction::OfflineSMT {
@@ -783,9 +775,6 @@ mod tests {
             let root = TempDir::new().unwrap();
             test_write_cpuset_root_cpus(root.path(), test.cpus);
             test_write_smt_control(root.path(), test.smt);
-            if test.big_little {
-                test_write_ui_use_flags(root.path(), "big_little");
-            }
             for (i, freq) in test.cluster1_freq.iter().enumerate() {
                 test_write_online_cpu(root.path(), i.try_into().unwrap(), "1");
                 test_write_cpu_max_freq(root.path(), i.try_into().unwrap(), *freq);

@@ -358,7 +358,6 @@ mod tests {
         let root = TempDir::new().unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-7");
         test_write_cpusets(root.path(), "0-1"); // Init cpus.
-        test_write_ui_use_flags(root.path(), "");
 
         // Call function to test.
         write_default_cpusets(root.path()).unwrap();
@@ -379,7 +378,6 @@ mod tests {
         let root = TempDir::new().unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-7");
         test_write_cpusets(root.path(), "0-1"); // Init cpus.
-        test_write_ui_use_flags(root.path(), "big_little");
         for i in 0..6 {
             test_write_cpu_capacity(root.path(), i, 512);
         }
@@ -408,7 +406,6 @@ mod tests {
         let root = TempDir::new().unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-11");
         test_write_cpusets(root.path(), "0-1"); // Init cpus.
-        test_write_ui_use_flags(root.path(), "big_little");
         for i in 0..8 {
             test_write_cpu_max_freq(root.path(), i, 1800000);
         }

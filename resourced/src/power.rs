@@ -905,7 +905,6 @@ mod tests {
     fn test_apply_hotplug_cpus() {
         struct Test<'a> {
             cpus: &'a str,
-            big_little: bool,
             cluster1_state: [&'a str; 2],
             cluster2_state: [&'a str; 2],
             cluster1_freq: [u32; 2],
@@ -922,7 +921,6 @@ mod tests {
             // Test offline small core
             Test {
                 cpus: "0-3",
-                big_little: true,
                 cluster1_state: ["1"; 2],
                 cluster2_state: ["1"; 2],
                 cluster1_freq: [2400000; 2],
@@ -944,7 +942,6 @@ mod tests {
             // Test offline SMT
             Test {
                 cpus: "0-3",
-                big_little: false,
                 cluster1_state: ["1"; 2],
                 cluster2_state: ["1"; 2],
                 cluster1_freq: [2400000; 2],
@@ -966,7 +963,6 @@ mod tests {
             // Test offline half
             Test {
                 cpus: "0-3",
-                big_little: false,
                 cluster1_state: ["1"; 2],
                 cluster2_state: ["1"; 2],
                 cluster1_freq: [2400000; 2],
@@ -988,7 +984,6 @@ mod tests {
             // Test online all
             Test {
                 cpus: "0-3",
-                big_little: false,
                 cluster1_state: ["1"; 2],
                 cluster2_state: ["0"; 2],
                 cluster1_freq: [2400000; 2],
@@ -1027,10 +1022,6 @@ mod tests {
             test_write_core_cpus_list(root, 1, "1,3");
             test_write_core_cpus_list(root, 2, "0,2");
             test_write_core_cpus_list(root, 3, "1,3");
-
-            if test.big_little {
-                test_write_ui_use_flags(root, "big_little");
-            }
 
             for (i, freq) in test.cluster1_freq.iter().enumerate() {
                 test_write_online_cpu(root, i.try_into().unwrap(), test.cluster1_state[i]);
