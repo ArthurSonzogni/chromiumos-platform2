@@ -89,6 +89,16 @@ std::string EntityToEmbeddingPrompt(const mojom::Entity& entity) {
   return "";
 }
 
+// TODO(b/379964585): Switch to the final prompt for the feature.
+std::string EntityToTitle(const mojom::Entity& entity) {
+  if (entity.is_app()) {
+    return entity.get_app()->title;
+  } else if (entity.is_tab()) {
+    return entity.get_tab()->title;
+  }
+  return "";
+}
+
 // <entity representation>:<fingerprint of prompt and model version>
 // Example:
 //   tab<tab_title, tab_url>:2089388806
@@ -286,9 +296,9 @@ void EmbeddingEngine::ProcessEachPrompt(ProcessingParams params) {
   if (IsFullGroupRequest(params.request)) {
     metrics_->SendSafetyVerdictCacheHit(false);
   }
-  // TODO(b/)379964585) Figure out what is the best format for safety check.
+  // TODO(b/379964585) Figure out what is the best format for safety check.
   std::string entity_string =
-      internal::EntityToEmbeddingPrompt(*params.request->entities[index]);
+      internal::EntityToTitle(*params.request->entities[index]);
 
   auto on_classify_entity_safety_done = base::BindOnce(
       &EmbeddingEngine::OnClassifyEntitySafetyDone,
