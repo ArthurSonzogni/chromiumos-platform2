@@ -17,6 +17,7 @@
 #include "odml/cros_safety/safety_service_manager_mock.h"
 #include "odml/mantis/fake/fake_mantis_api.h"
 #include "odml/mantis/lib_api.h"
+#include "odml/mojom/cros_safety.mojom.h"
 
 namespace mantis {
 namespace {
@@ -470,7 +471,11 @@ TEST_F(MantisProcessorTest, ClassifyImageSafetyReturnPass) {
       },
       fake::GetMantisApi());
 
-  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
+  EXPECT_CALL(
+      safety_service_manager_,
+      ClassifyImageSafety(
+          testing::Eq(cros_safety::mojom::SafetyRuleset::kMantisInputImage),
+          testing::Eq(""), testing::_, testing::_))
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass));
 

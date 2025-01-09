@@ -25,6 +25,11 @@
 
 namespace mantis {
 
+enum class ImageType {
+  kInputImage,
+  kOutputImage,
+  kGeneratedRegion,
+};
 struct ProcessFuncResult {
   std::optional<mojom::MantisError> error;
   std::vector<uint8_t> image;
@@ -82,16 +87,17 @@ class MantisProcessor : public mojom::MantisProcessor {
                            ClassifyImageSafetyCallback callback) override;
 
  protected:
-  virtual void ClassifyImageSafetyInternal(
-      const std::vector<uint8_t>& image,
-      const std::string& text,
-      base::OnceCallback<void(mojom::SafetyClassifierVerdict)> callback);
-
   virtual void OnClassifyImageOutputDone(
       std::unique_ptr<MantisProcess> process,
       std::vector<mojom::SafetyClassifierVerdict> results);
 
  private:
+  void ClassifyImageSafetyInternal(
+      const std::vector<uint8_t>& image,
+      const std::string& text,
+      ImageType image_type,
+      base::OnceCallback<void(mojom::SafetyClassifierVerdict)> callback);
+
   void OnDisconnected();
 
   void OnClassifyImageInputDone(std::unique_ptr<MantisProcess> process,

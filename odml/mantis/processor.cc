@@ -54,6 +54,16 @@ constexpr auto kMapSafetyResult =
         {cros_safety::mojom::SafetyClassifierVerdict::kBackendFailure,
          SafetyClassifierVerdict::kBackendFailure},
     });
+
+constexpr auto kMapImageTypeToRuleset =
+    base::MakeFixedFlatMap<ImageType, cros_safety::mojom::SafetyRuleset>({
+        {ImageType::kInputImage,
+         cros_safety::mojom::SafetyRuleset::kMantisInputImage},
+        {ImageType::kOutputImage,
+         cros_safety::mojom::SafetyRuleset::kMantisOutputImage},
+        {ImageType::kGeneratedRegion,
+         cros_safety::mojom::SafetyRuleset::kMantisGeneratedRegion},
+    });
 }  // namespace
 
 MantisProcessor::MantisProcessor(
@@ -179,7 +189,7 @@ void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
 
   ClassifyImageSafetyInternal(
       // Input image checking doesn't require a prompt
-      image, /*text=*/"",
+      image, /*text=*/"", ImageType::kInputImage,
       base::BindOnce(
           [](SegmentationCallback callback, const MantisAPI* api,
              MantisComponent component, const std::vector<uint8_t>& image,
@@ -214,14 +224,15 @@ void MantisProcessor::ProcessImage(std::unique_ptr<MantisProcess> process) {
   }
   ClassifyImageSafetyInternal(
       // Input image checking doesn't require a prompt
-      process->image, /*text=*/"",
+      process->image, /*text=*/"", ImageType::kInputImage,
       base::BindOnce(&MantisProcessor::OnClassifyImageInputDone,
                      weak_ptr_factory_.GetWeakPtr(), std::move(process)));
 }
 
 void MantisProcessor::ClassifyImageSafety(
     const std::vector<uint8_t>& image, ClassifyImageSafetyCallback callback) {
-  ClassifyImageSafetyInternal(image, "", std::move(callback));
+  ClassifyImageSafetyInternal(image, "", ImageType::kInputImage,
+                              std::move(callback));
 }
 
 // Verifies that the input image complies with Google's T&S policy. The text
@@ -230,10 +241,14 @@ void MantisProcessor::ClassifyImageSafety(
 void MantisProcessor::ClassifyImageSafetyInternal(
     const std::vector<uint8_t>& image,
     const std::string& text,
+    ImageType image_type,
     base::OnceCallback<void(SafetyClassifierVerdict)> callback) {
+  auto ruleset = cros_safety::mojom::SafetyRuleset::kMantis;
+  if (kMapImageTypeToRuleset.contains(image_type)) {
+    ruleset = kMapImageTypeToRuleset.at(image_type);
+  }
   safety_service_manager_->ClassifyImageSafety(
-      cros_safety::mojom::SafetyRuleset::kMantis, text,
-      mojo_base::mojom::BigBuffer::NewBytes(image),
+      ruleset, text, mojo_base::mojom::BigBuffer::NewBytes(image),
       base::BindOnce(
           [](ClassifyImageSafetyCallback callback,
              cros_safety::mojom::SafetyClassifierVerdict result) {
@@ -269,9 +284,10 @@ void MantisProcessor::OnClassifyImageInputDone(
       2, base::BindOnce(&MantisProcessor::OnClassifyImageOutputDone,
                         weak_ptr_factory_.GetWeakPtr(), std::move(process)));
 
-  ClassifyImageSafetyInternal(lib_result.image, prompt, barrier_callback);
-  ClassifyImageSafetyInternal(lib_result.generated_region, /*text=*/"",
+  ClassifyImageSafetyInternal(lib_result.image, prompt, ImageType::kOutputImage,
                               barrier_callback);
+  ClassifyImageSafetyInternal(lib_result.generated_region, /*text=*/"",
+                              ImageType::kGeneratedRegion, barrier_callback);
 }
 
 void MantisProcessor::OnClassifyImageOutputDone(
