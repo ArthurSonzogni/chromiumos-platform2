@@ -61,7 +61,8 @@ def UpdateLocales():
     """
     cpp_code = GetChromiumSource("ui/base/l10n/l10n_util.cc")
     match = re.search(
-        r"static[^\n]+kAcceptLanguageList\[\] = \{(.+?)^\}",
+        r"constexpr[^\n]+kAcceptLanguageList = "
+        r"base::MakeFixedFlatSet<std::string_view>\(\{(.+?)^\}\)",
         cpp_code,
         re.DOTALL | re.MULTILINE,
     )
