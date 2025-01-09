@@ -17,16 +17,18 @@ We're in the process of migrating to buganizer:
 
 ## Data Consent
 
-No crashes get collected without explicit consent from the device owner AND
-the currently logged in user.  This is normally part of the OOBE setup flow (but
-can also be controlled via OS Settings).
+No crashes get collected if the device owner OR the currently logged in user
+opts out of the "crash reports and diagnostic" (UMA) control. This is normally
+part of the OOBE setup flow, but can also be controlled via OS Settings. Before
+the UMA checkbox is shown on the OOBE Terms of Service (ToS) page, crash
+collection and reporting are enabled by default to capture crashes during the
+pre-ToS phase of OOBE. Once consent is granted by the owner or user, their
+decision takes precedence and will be honored.
 
 Consent is first set up by the device owner and covers all users of that device.
-If no consent has been granted, then `crash_reporter`  will generally exit
-rather than doing any further processing (e.g. running collectors). If the
-device owner consents, users will be able to opt in or out as well, post M-103.
-`metrics_library` determines whether the currently logged-in-user consents to
-crash collection, with one exception: boot crash collection.
+If the device owner consents, users will be able to opt in or out as well, post
+M-103. `metrics_library` determines whether the currently logged-in-user
+consents to crash collection, with one exception: boot crash collection.
 
 When the device kernel panics or otherwise forcibly reboots, we use the
 `/home/chronos/boot-collect-consent` file to determine whether the user that was
