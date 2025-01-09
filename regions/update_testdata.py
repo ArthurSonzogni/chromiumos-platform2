@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-
 # Copyright 2015 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 
 """Updates testdata/ based on data pulled from Chromium sources."""
 
@@ -31,7 +29,7 @@ def GetChromiumSource(file_path):
     """Gets Chromium source code by given path.
 
     Args:
-      file_path: The relative path to retrieve.
+        file_path: The relative path to retrieve.
     """
     return base64.b64decode(
         subprocess.check_output(
@@ -46,7 +44,7 @@ def WriteTestData(name, value):
 
     path = os.path.join(TESTDATA_PATH, name + ".yaml")
     logging.info("%s: writing %r", path, value)
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(
             "# Automatically generated from ToT Chromium sources\n"
             "# by update_testdata.py. Do not edit manually.\n"
