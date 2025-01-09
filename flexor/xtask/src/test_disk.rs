@@ -121,14 +121,13 @@ pub fn update(
 
 /// Runs a flexor test disk image.
 pub fn run(flexor_disk: &Path) -> Result<()> {
-    // Command copied from go/cros-frd/flexor.
     let mut cmd = Command::new("qemu-system-x86_64");
-    cmd.args(["-enable-kvm", "-mem-prealloc", "-nographic"]);
-    cmd.args(["-m", "16G"]);
+    cmd.args(["-enable-kvm"]);
+    cmd.args(["-m", "8G"]);
     cmd.args(["-device", "qemu-xhci"]);
     cmd.args(["-device", "usb-tablet"]);
     cmd.args(["-rtc", "clock=host,base=localtime"]);
-    cmd.args(["-display", "none"]);
+    cmd.args(["-display", "sdl"]);
     cmd.args(["-vga", "virtio"]);
     cmd.args(["-net", "user,hostfwd=tcp::10022-:22"]);
     cmd.args(["-net", "nic"]);
