@@ -28,6 +28,7 @@
 #include "shill/default_service_observer.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/eap_credentials.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
@@ -498,6 +499,11 @@ class Manager {
   // Clears the IP address of the dns-proxy service.
   void ClearDNSProxyAddresses();
 
+  // Returns highest active phase of experiments for the server certificate
+  // verification using a single CA cert or 0 if experiment is not active.
+  // This is for policy-defined 802.1x networks.
+  virtual EapCredentials::CaCertExperimentPhase GetCACertExperimentPhase();
+
   // Assigns the DNS-over-HTTPS service providers for use by the dns-proxy
   // service.
   bool SetDNSProxyDOHProviders(const KeyValueStore& providers, Error* error);
@@ -602,6 +608,7 @@ class Manager {
   FRIEND_TEST(ManagerTest, DisconnectWiFiOnEthernet);
   FRIEND_TEST(ManagerTest, DisconnectWiFiOnMultiEthernet);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
+  FRIEND_TEST(ManagerTest, GetCACertExperimentPhase);
   FRIEND_TEST(ManagerTest, GetPortalDetectorProbingConfiguration);
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
   FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
@@ -680,6 +687,10 @@ class Manager {
   bool GetDisableWiFiVHT(Error* error);
 
   bool SetFTEnabled(const bool& ft_enabled, Error* error);
+  bool SetCACertExperimentPhase1(const bool& is_active, Error* error);
+  bool GetCACertExperimentPhase1(Error* error);
+  bool SetCACertExperimentPhase2(const bool& is_active, Error* error);
+  bool GetCACertExperimentPhase2(Error* error);
   bool SetProhibitedTechnologies(const std::string& prohibited_technologies,
                                  Error* error);
   std::string GetProhibitedTechnologies(Error* error);

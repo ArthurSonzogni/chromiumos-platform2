@@ -7,9 +7,9 @@
 
 #include <string>
 
-#include "shill/eap_credentials.h"
-
 #include <gmock/gmock.h>
+
+#include "shill/eap_credentials.h"
 
 namespace shill {
 
@@ -32,7 +32,7 @@ class MockEapCredentials : public EapCredentials {
               (const, override));
   MOCK_METHOD(void,
               PopulateSupplicantProperties,
-              (CertificateFile*, KeyValueStore*),
+              (CertificateFile*, KeyValueStore*, CaCertExperimentPhase),
               (const, override));
   MOCK_METHOD(void,
               Save,

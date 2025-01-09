@@ -4825,4 +4825,36 @@ TEST_F(ManagerTest, TetheringLoadAndUnloadConfiguration) {
   Mock::VerifyAndClearExpectations(tethering);
 }
 
+TEST_F(ManagerTest, GetCACertExperimentPhase) {
+  Error err;
+
+  {
+    // Phase2 has priority over phase1 when both are active.
+    manager()->SetCACertExperimentPhase1(true, &err);
+    manager()->SetCACertExperimentPhase2(true, &err);
+    EXPECT_EQ(EapCredentials::CaCertExperimentPhase::kPhase2,
+              manager()->GetCACertExperimentPhase());
+  }
+  {
+    // Only phase2 is active.
+    manager()->SetCACertExperimentPhase1(false, &err);
+    manager()->SetCACertExperimentPhase2(true, &err);
+    EXPECT_EQ(EapCredentials::CaCertExperimentPhase::kPhase2,
+              manager()->GetCACertExperimentPhase());
+  }
+  {
+    // Only phase1 is active.
+    manager()->SetCACertExperimentPhase1(true, &err);
+    manager()->SetCACertExperimentPhase2(false, &err);
+    EXPECT_EQ(EapCredentials::CaCertExperimentPhase::kPhase1,
+              manager()->GetCACertExperimentPhase());
+  }
+  {
+    // Both phases are not active.
+    manager()->SetCACertExperimentPhase1(false, &err);
+    manager()->SetCACertExperimentPhase2(false, &err);
+    EXPECT_EQ(EapCredentials::CaCertExperimentPhase::kDisabled,
+              manager()->GetCACertExperimentPhase());
+  }
+}
 }  // namespace shill

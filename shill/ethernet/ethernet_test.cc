@@ -501,7 +501,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   MockEapCredentials mock_eap_credentials;
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
-  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
+  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _, _));
   EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
   EXPECT_CALL(*interface_proxy, AddNetwork(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*interface_proxy, SelectNetwork(_)).Times(0);
@@ -516,7 +516,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
-  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
+  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _, _));
   const RpcIdentifier kFirstNetworkPath("/network/first-path");
   EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kFirstNetworkPath), Return(true)));
@@ -534,7 +534,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
-  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
+  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _, _));
   const RpcIdentifier kSecondNetworkPath("/network/second-path");
   EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kSecondNetworkPath), Return(true)));
@@ -542,6 +542,59 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(*interface_proxy, EAPLogon());
   EXPECT_TRUE(InvokeStartEapAuthentication());
   EXPECT_EQ(kSecondNetworkPath, GetSupplicantNetworkPath());
+}
+
+TEST_F(EthernetTest, StartEapAuthenticationWithCaCertExperiment) {
+  MockSupplicantInterfaceProxy* interface_proxy =
+      supplicant_interface_proxy_.get();
+  MockEapCredentials mock_eap_credentials;
+
+  StartSupplicant();
+  SetService(mock_service_);
+
+  // Return value for the manager_.GetCACertExperimentPhase() is not defined,
+  // a default value EapCredentials::CaCertExperimentPhase::kDisabled should be
+  // used in PopulateSupplicantProperties().
+  EXPECT_CALL(*mock_service_, ClearEAPCertification());
+  EXPECT_CALL(*mock_eap_service_, eap())
+      .WillOnce(Return(&mock_eap_credentials));
+  EXPECT_CALL(mock_eap_credentials,
+              PopulateSupplicantProperties(
+                  _, _, EapCredentials::CaCertExperimentPhase::kDisabled));
+  EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
+  EXPECT_CALL(*interface_proxy, AddNetwork(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*interface_proxy, SelectNetwork(_)).Times(0);
+  EXPECT_CALL(*interface_proxy, EAPLogon()).Times(0);
+
+  EXPECT_FALSE(InvokeStartEapAuthentication());
+  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_eap_service_.get());
+  Mock::VerifyAndClearExpectations(interface_proxy);
+  EXPECT_EQ(RpcIdentifier(""), GetSupplicantNetworkPath());
+
+  // Return value for the manager_.GetCACertExperimentPhase() is defined,
+  // PopulateSupplicantProperties() should be called with it.
+  EXPECT_CALL(*mock_service_, ClearEAPCertification());
+  EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
+  EXPECT_CALL(*mock_eap_service_, eap())
+      .WillOnce(Return(&mock_eap_credentials));
+  EXPECT_CALL(manager_, GetCACertExperimentPhase())
+      .WillOnce(Return(EapCredentials::CaCertExperimentPhase::kPhase2));
+  EXPECT_CALL(mock_eap_credentials,
+              PopulateSupplicantProperties(
+                  _, _, EapCredentials::CaCertExperimentPhase::kPhase2));
+  const RpcIdentifier kFirstNetworkPath("/network/first-path");
+  EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFirstNetworkPath), Return(true)));
+  EXPECT_CALL(*interface_proxy, SelectNetwork(Eq(kFirstNetworkPath)));
+  EXPECT_CALL(*interface_proxy, EAPLogon());
+
+  EXPECT_TRUE(InvokeStartEapAuthentication());
+  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_eap_service_.get());
+  Mock::VerifyAndClearExpectations(&mock_eap_credentials);
+  Mock::VerifyAndClearExpectations(interface_proxy);
+  EXPECT_EQ(kFirstNetworkPath, GetSupplicantNetworkPath());
 }
 
 TEST_F(EthernetTest, StopSupplicant) {

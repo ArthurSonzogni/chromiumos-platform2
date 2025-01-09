@@ -20,7 +20,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
-
 #include <chromeos/dbus/service_constants.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
@@ -128,7 +127,9 @@ EapCredentials::~EapCredentials() = default;
 
 // static
 void EapCredentials::PopulateSupplicantProperties(
-    CertificateFile* certificate_file, KeyValueStore* params) const {
+    CertificateFile* certificate_file,
+    KeyValueStore* params,
+    CaCertExperimentPhase ca_cert_experiment_phase) const {
   if (eap_ == kEapMethodMSCHAPV2) {
     // Plain MSCHAPv2 should only be used by IKEv2 VPN, and this path will not
     // be called in that case.
@@ -180,8 +181,14 @@ void EapCredentials::PopulateSupplicantProperties(
                domain_suffix_match.value().c_str()));
   }
   if (use_system_cas_) {
-    propertyvals.push_back(
-        KeyVal(WPASupplicant::kNetworkPropertyCaPath, WPASupplicant::kCaPath));
+    if (IsCACertExperimentConditionMet() &&
+        ca_cert_experiment_phase == CaCertExperimentPhase::kPhase2) {
+      SLOG(2) << "Server certificate verification experiment in active phase "
+              << "2 , system CA certs will be ignored.";
+    } else {
+      propertyvals.push_back(KeyVal(WPASupplicant::kNetworkPropertyCaPath,
+                                    WPASupplicant::kCaPath));
+    }
   } else if (ca_cert.empty()) {
     LOG(WARNING) << __func__ << ": No certificate authorities are configured."
                  << " Server certificates will be accepted"
@@ -204,6 +211,14 @@ void EapCredentials::PopulateSupplicantProperties(
     // is a uint32_t, not a string.
     params->Set<uint32_t>(WPASupplicant::kNetworkPropertyEngine,
                           WPASupplicant::kDefaultEngine);
+  }
+
+  if (IsCACertExperimentConditionMet() &&
+      ca_cert_experiment_phase == CaCertExperimentPhase::kPhase1) {
+    SLOG(2) << "Sending server certificate verification parameter to "
+               "wpa_supplicant";
+    params->Set<uint32_t>(WPASupplicant::kNetworkPropertyEapUseCaCertExperiment,
+                          WPASupplicant::kEapCaCertExperimentEnabled);
   }
 
   if (use_proactive_key_caching_) {
@@ -723,4 +738,7 @@ std::string EapCredentials::GetEapPassword(Error* error) const {
   return password_;
 }
 
+bool EapCredentials::IsCACertExperimentConditionMet() const {
+  return use_system_cas_ && !ca_cert_pem_.empty();
+}
 }  // namespace shill

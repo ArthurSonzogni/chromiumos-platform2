@@ -577,7 +577,28 @@ TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
   service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
   service->Connect(nullptr, "in test");
 
-  EXPECT_CALL(*eap, PopulateSupplicantProperties(_, _));
+  // EapCredentials::CaCertExperimentPhase::kDisabled is default value in
+  // PopulateSupplicantProperties().
+  EXPECT_CALL(*eap,
+              PopulateSupplicantProperties(
+                  _, _, EapCredentials::CaCertExperimentPhase::kDisabled));
+  // The mocked function does not actually set EAP parameters so we cannot
+  // expect them to be set.
+  service->GetSupplicantConfigurationParameters();
+}
+
+TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEapWithCACertExperiment) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClass8021x);
+  MockEapCredentials* eap = SetMockEap(service);
+  EXPECT_CALL(*eap, IsConnectable()).WillOnce(Return(true));
+  EXPECT_CALL(*wifi(), ConnectTo(service.get(), _));
+  EXPECT_CALL(*manager(), GetCACertExperimentPhase())
+      .WillOnce(Return(EapCredentials::CaCertExperimentPhase::kPhase2));
+  service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
+  service->Connect(nullptr, "in test");
+
+  EXPECT_CALL(*eap, PopulateSupplicantProperties(
+                        _, _, EapCredentials::CaCertExperimentPhase::kPhase2));
   // The mocked function does not actually set EAP parameters so we cannot
   // expect them to be set.
   service->GetSupplicantConfigurationParameters();

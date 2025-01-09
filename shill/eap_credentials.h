@@ -35,6 +35,13 @@ class EapCredentials {
 
   virtual ~EapCredentials();
 
+  // Enum specifying the experiment phase for b/381389464
+  enum class CaCertExperimentPhase : uint8_t {
+    kDisabled = 0,
+    kPhase1,
+    kPhase2,
+  };
+
   // Add property accessors to the EAP credential parameters in |this| to
   // |store|.
   void InitPropertyStore(PropertyStore* store);
@@ -71,8 +78,11 @@ class EapCredentials {
   // Populate the wpa_supplicant DBus parameter map |params| with the
   // credentials in |this|.  To do so, this function may use |certificate_file|
   // to export CA certificates to be passed to wpa_supplicant.
-  virtual void PopulateSupplicantProperties(CertificateFile* certificate_file,
-                                            KeyValueStore* params) const;
+  virtual void PopulateSupplicantProperties(
+      CertificateFile* certificate_file,
+      KeyValueStore* param,
+      CaCertExperimentPhase ca_cert_experiment_phase =
+          CaCertExperimentPhase::kDisabled) const;
 
   // Save EAP properties to |storage| in group |id|.  If |save_credentials|
   // is true, passwords and identities that are a part of the credentials are
@@ -118,6 +128,13 @@ class EapCredentials {
       const std::vector<std::string>& subject_alternative_name_match_list);
 
   std::string GetEapPassword(Error* error) const;
+
+  // The function returns true only if both of these conditions
+  // are active at the same time: 1. A specific CA certificate (`ca_cert_pem_`)
+  // was selected for servers certificate verification. 2. All available root
+  // CA certificates (`use_system_cas_`) can be used for the servers certificate
+  // verification.
+  virtual bool IsCACertExperimentConditionMet() const;
 
   // Getters and setters.
   virtual const std::string& cert_id() const { return cert_id_; }

@@ -75,6 +75,7 @@
 #include "shill/service.h"
 #include "shill/store/property_accessor.h"
 #include "shill/supplicant/supplicant_manager.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
@@ -230,10 +231,12 @@ Manager::Manager(ControlInterface* control_interface,
   store_.RegisterBool(kArpGatewayProperty, &props_.arp_gateway);
   store_.RegisterBool(kEnableDHCPQoSProperty, &props_.enable_dhcp_qos);
   store_.RegisterBool(kEnableRFC8925Property, &props_.enable_rfc_8925);
-  store_.RegisterBool(kEnableSingleCACertVerificationPhase1Property,
-                      &props_.enable_single_ca_cert_verification_phase1);
-  store_.RegisterBool(kEnableSingleCACertVerificationPhase2Property,
-                      &props_.enable_single_ca_cert_verification_phase2);
+  HelpRegisterDerivedBool(kEnableSingleCACertVerificationPhase1Property,
+                          &Manager::GetCACertExperimentPhase1,
+                          &Manager::SetCACertExperimentPhase1);
+  HelpRegisterDerivedBool(kEnableSingleCACertVerificationPhase2Property,
+                          &Manager::GetCACertExperimentPhase2,
+                          &Manager::SetCACertExperimentPhase2);
   store_.RegisterBool(kUseLegacyDHCPCDProperty, &props_.use_legacy_dhcpcd);
   HelpRegisterConstDerivedStrings(kAvailableTechnologiesProperty,
                                   &Manager::AvailableTechnologies);
@@ -2969,6 +2972,18 @@ std::string Manager::GetAlwaysOnVpnPackage(Error* /*error*/) {
   return props_.always_on_vpn_package;
 }
 
+EapCredentials::CaCertExperimentPhase Manager::GetCACertExperimentPhase() {
+  if (props_.enable_single_ca_cert_verification_phase2) {
+    // Experiment in phase2, only selected CA cert is used, no retry.
+    return EapCredentials::CaCertExperimentPhase::kPhase2;
+  } else if (props_.enable_single_ca_cert_verification_phase1) {
+    // Experiment in phase1, selected CA cert is used with retry.
+    return EapCredentials::CaCertExperimentPhase::kPhase1;
+  }
+  // Experiment is not active, old behaviour.
+  return EapCredentials::CaCertExperimentPhase::kDisabled;
+}
+
 bool Manager::SetAlwaysOnVpnPackage(const std::string& package_name,
                                     Error* error) {
   LOG(INFO) << "Setting ARC always-on VPN package: \"" << package_name << "\"";
@@ -3038,6 +3053,30 @@ bool Manager::SetDNSProxyAddresses(const std::vector<std::string>& addrs,
   if (last_default_physical_service_online_) {
     UseDNSProxy(props_.dns_proxy_addresses);
   }
+  return true;
+}
+
+bool Manager::GetCACertExperimentPhase1(Error* /*error*/) {
+  return props_.enable_single_ca_cert_verification_phase1;
+}
+
+bool Manager::SetCACertExperimentPhase1(const bool& is_active, Error* error) {
+  if (is_active == props_.enable_single_ca_cert_verification_phase1) {
+    return false;
+  }
+  props_.enable_single_ca_cert_verification_phase1 = is_active;
+  return true;
+}
+
+bool Manager::GetCACertExperimentPhase2(Error* /*error*/) {
+  return props_.enable_single_ca_cert_verification_phase2;
+}
+
+bool Manager::SetCACertExperimentPhase2(const bool& is_active, Error* error) {
+  if (is_active == props_.enable_single_ca_cert_verification_phase2) {
+    return false;
+  }
+  props_.enable_single_ca_cert_verification_phase2 = is_active;
   return true;
 }
 

@@ -139,6 +139,10 @@ class MockManager : public Manager {
               GetCellularOperatorCountryCode,
               (),
               ());
+  MOCK_METHOD(EapCredentials::CaCertExperimentPhase,
+              GetCACertExperimentPhase,
+              (),
+              (override));
 
   int64_t GetSuspendDurationUsecs() const override { return 1000000; }
 

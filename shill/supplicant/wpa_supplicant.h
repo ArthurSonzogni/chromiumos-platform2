@@ -146,6 +146,8 @@ class WPASupplicant {
   static constexpr char kNetworkPropertyEapProactiveKeyCaching[] =
       "proactive_key_caching";
   static constexpr char kNetworkPropertyEapCaCert[] = "ca_cert";
+  static constexpr char kNetworkPropertyEapUseCaCertExperiment[] =
+      "use_ca_cert_experiment";
   static constexpr char kNetworkPropertyEapCaPassword[] = "password";
   static constexpr char kNetworkPropertyEapCertId[] = "cert_id";
   static constexpr char kNetworkPropertyEapKeyId[] = "key_id";
@@ -306,6 +308,7 @@ class WPASupplicant {
 
   static constexpr uint32_t kProactiveKeyCachingDisabled = 0;
   static constexpr uint32_t kProactiveKeyCachingEnabled = 1;
+  static constexpr uint32_t kEapCaCertExperimentEnabled = 1;
 
   static constexpr char kSupplicantConfPath[] = SHIMDIR "/wpa_supplicant.conf";
 

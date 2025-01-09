@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
-#include <optional>
-
 #include "shill/eap_credentials.h"
 
+#include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -41,6 +40,9 @@ using testing::WithArg;
 
 namespace shill {
 
+const std::vector<std::string> kPemCert{"-pem-certificate-here-"};
+const char kPEMCertfile[] = "/tmp/pem-cert";
+
 class EapCredentialsTest : public testing::Test {
  public:
   EapCredentialsTest() = default;
@@ -49,6 +51,12 @@ class EapCredentialsTest : public testing::Test {
  protected:
   void PopulateSupplicantProperties() {
     eap_.PopulateSupplicantProperties(&certificate_file_, &params_);
+  }
+
+  void PopulateSupplicantPropertiesWithExperimentPhase(
+      EapCredentials::CaCertExperimentPhase experiment_phase) {
+    eap_.PopulateSupplicantProperties(&certificate_file_, &params_,
+                                      experiment_phase);
   }
 
   void SetAnonymousIdentity(const std::string& anonymous_identity) {
@@ -86,6 +94,11 @@ class EapCredentialsTest : public testing::Test {
   void SetUseSystemCAs(bool use_system_cas) {
     eap_.use_system_cas_ = use_system_cas;
   }
+  void SetCACertExperimentConditionsTrue(
+      const std::vector<std::string>& ca_cert_pem) {
+    SetUseSystemCAs(true);
+    SetCACertPEM(ca_cert_pem);
+  }
   void SetUseLoginPassword(bool use_login_password) {
     eap_.use_login_password_ = use_login_password;
   }
@@ -117,6 +130,30 @@ class EapCredentialsTest : public testing::Test {
 
     eap_.password_provider_->SavePassword(*password);
   }
+
+  bool isParamsContainStr(std::string param) {
+    return params_.Contains<std::string>(param);
+  }
+
+  bool isCACertExperimentDataPopulated() {
+    return params_.Contains<uint32_t>(
+        WPASupplicant::kNetworkPropertyEapUseCaCertExperiment);
+  }
+
+  bool isRootCAPathPopulated() {
+    return params_.Contains<std::string>(WPASupplicant::kNetworkPropertyCaPath);
+  }
+
+  bool isCACertPEMPopulated() {
+    return params_.Contains<std::string>(
+        WPASupplicant::kNetworkPropertyEapCaCert);
+  }
+
+  std::string GetPopulatedCACertPEM() {
+    return params_.Get<std::string>(WPASupplicant::kNetworkPropertyEapCaCert);
+  }
+
+  void ClearParams() { params_.Clear(); }
 
   EapCredentials eap_;
   MockCertificateFile certificate_file_;
@@ -649,9 +686,7 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesUsingHardwareAuth) {
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesPEM) {
-  const std::vector<std::string> kPemCert{"-pem-certificate-here-"};
   SetCACertPEM(kPemCert);
-  const std::string kPEMCertfile("/tmp/pem-cert");
   base::FilePath pem_cert(kPEMCertfile);
   EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert))
       .WillOnce(Return(pem_cert));
@@ -839,4 +874,236 @@ TEST_F(EapCredentialsTest, TestEapInnerAuthMschapv2NoRetryFlag) {
   }
 }
 
+TEST_F(EapCredentialsTest,
+       PopulateSupplicantPropertiesCertExperimentConditionsAreMet) {
+  SetCACertExperimentConditionsTrue(kPemCert);
+  base::FilePath pem_cert(kPEMCertfile);
+
+  // PopulateSupplicantProperties called without parameter, experiment is
+  // disabled.
+  {
+    ClearParams();
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert))
+        .WillOnce(Return(pem_cert));
+
+    PopulateSupplicantProperties();
+
+    EXPECT_TRUE(isRootCAPathPopulated());
+    EXPECT_TRUE(isCACertPEMPopulated());
+    EXPECT_EQ(kPEMCertfile, GetPopulatedCACertPEM());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+  }
+  // PopulateSupplicantProperties called with parameter.
+  {
+    ClearParams();
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert))
+        .WillOnce(Return(pem_cert));
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kDisabled);
+
+    EXPECT_TRUE(isRootCAPathPopulated());
+    EXPECT_TRUE(isCACertPEMPopulated());
+    EXPECT_EQ(kPEMCertfile, GetPopulatedCACertPEM());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+  }
+  // Experiment in Phase 1. CA cert, root CA path and experiment are populated.
+  {
+    ClearParams();
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert))
+        .WillOnce(Return(pem_cert));
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kPhase1);
+
+    EXPECT_TRUE(isRootCAPathPopulated());
+    EXPECT_TRUE(isCACertPEMPopulated());
+    EXPECT_EQ(kPEMCertfile, GetPopulatedCACertPEM());
+    ASSERT_TRUE(isCACertExperimentDataPopulated());
+    EXPECT_EQ(WPASupplicant::kEapCaCertExperimentEnabled,
+              params_.Get<uint32_t>(
+                  WPASupplicant::kNetworkPropertyEapUseCaCertExperiment));
+  }
+  // Experiment in Phase 2, only PEM CA cert is populated.
+  {
+    ClearParams();
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert))
+        .WillOnce(Return(pem_cert));
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kPhase2);
+
+    EXPECT_FALSE(isRootCAPathPopulated());
+    EXPECT_TRUE(isCACertPEMPopulated());
+    EXPECT_EQ(kPEMCertfile, GetPopulatedCACertPEM());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+  }
+}
+
+TEST_F(EapCredentialsTest,
+       PopulateSupplicantPropertiesCertExperimentNoSystemCA) {
+  SetCACertExperimentConditionsTrue(kPemCert);
+  base::FilePath pem_cert(kPEMCertfile);
+  SetUseSystemCAs(false);
+  // Experiment in not active.
+  {
+    ClearParams();
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert))
+        .WillOnce(Return(pem_cert));
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kDisabled);
+
+    EXPECT_FALSE(isRootCAPathPopulated());
+    EXPECT_TRUE(isCACertPEMPopulated());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+  }
+
+  // Experiment in Phase 1.
+  {
+    ClearParams();
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert))
+        .WillOnce(Return(pem_cert));
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kPhase1);
+
+    EXPECT_FALSE(isRootCAPathPopulated());
+    EXPECT_TRUE(isCACertPEMPopulated());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+  }
+  // Experiment in Phase 2.
+  {
+    ClearParams();
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert))
+        .WillOnce(Return(pem_cert));
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kPhase2);
+
+    EXPECT_FALSE(isRootCAPathPopulated());
+    EXPECT_TRUE(isCACertPEMPopulated());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+  }
+}
+
+TEST_F(EapCredentialsTest,
+       PopulateSupplicantPropertiesCertExperimentNoCACertPEM) {
+  SetUseSystemCAs(true);
+  // Experiment in not active.
+  {
+    ClearParams();
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert)).Times(0);
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kDisabled);
+
+    EXPECT_TRUE(isRootCAPathPopulated());
+    ASSERT_FALSE(isCACertPEMPopulated());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+  }
+  // Experiment in Phase 1.
+  {
+    ClearParams();
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert)).Times(0);
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kPhase1);
+
+    EXPECT_TRUE(isRootCAPathPopulated());
+    ASSERT_FALSE(isCACertPEMPopulated());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+  }
+  // Experiment in Phase 2.
+  {
+    ClearParams();
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert)).Times(0);
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kPhase2);
+
+    EXPECT_TRUE(isRootCAPathPopulated());
+    ASSERT_FALSE(isCACertPEMPopulated());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+  }
+}
+TEST_F(EapCredentialsTest,
+       PopulateSupplicantPropertiesCertExperimentNoCACertPEMNoSystemCA) {
+  SetUseSystemCAs(false);
+
+  // Experiment in not active.
+  {
+    ClearParams();
+    ASSERT_TRUE(params_.IsEmpty());
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert)).Times(0);
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kDisabled);
+
+    ASSERT_FALSE(isRootCAPathPopulated());
+    ASSERT_FALSE(isCACertPEMPopulated());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+    ASSERT_FALSE(params_.IsEmpty());
+  }
+  // Experiment in Phase 1.
+  {
+    ClearParams();
+    ASSERT_TRUE(params_.IsEmpty());
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert)).Times(0);
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kPhase1);
+
+    ASSERT_FALSE(isRootCAPathPopulated());
+    ASSERT_FALSE(isCACertPEMPopulated());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+    ASSERT_FALSE(params_.IsEmpty());
+  }
+  // Experiment in Phase 2.
+  {
+    ClearParams();
+    ASSERT_TRUE(params_.IsEmpty());
+    EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert)).Times(0);
+
+    PopulateSupplicantPropertiesWithExperimentPhase(
+        EapCredentials::CaCertExperimentPhase::kPhase2);
+
+    ASSERT_FALSE(isRootCAPathPopulated());
+    ASSERT_FALSE(isCACertPEMPopulated());
+    ASSERT_FALSE(isCACertExperimentDataPopulated());
+    ASSERT_FALSE(params_.IsEmpty());
+  }
+}
+
+TEST_F(EapCredentialsTest, IsCACertExperimentConditionMet) {
+  const std::vector<std::string> kEmptyString;
+  // Conditions are met.
+  {
+    SetUseSystemCAs(true);
+    SetCACertPEM(kPemCert);
+
+    EXPECT_TRUE(eap_.IsCACertExperimentConditionMet());
+  }
+  // Conditions are not met.
+  {
+    SetUseSystemCAs(false);
+    SetCACertPEM(kPemCert);
+
+    EXPECT_FALSE(eap_.IsCACertExperimentConditionMet());
+  }
+  // Conditions are not met.
+  {
+    SetUseSystemCAs(true);
+    SetCACertPEM(kEmptyString);
+
+    EXPECT_FALSE(eap_.IsCACertExperimentConditionMet());
+  }
+  // Conditions are not met.
+  {
+    SetUseSystemCAs(false);
+    SetCACertPEM(kEmptyString);
+
+    EXPECT_FALSE(eap_.IsCACertExperimentConditionMet());
+  }
+}
 }  // namespace shill
