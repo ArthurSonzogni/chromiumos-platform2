@@ -1251,6 +1251,7 @@ TEST_P(ProcessCacheTestFixtureWithParam, TestProcessImageCacheEntry) {
   auto result = cache->InclusiveGetImage(image_key, test_case.force_full_sha256,
                                          234, file_path);
 
+  EXPECT_TRUE(result.ok());
   EXPECT_EQ(result.value().sha256_is_partial,
             test_case.expected_is_partial_sha);
   EXPECT_EQ(result.value().sha256, test_case.expected_sha256.value());

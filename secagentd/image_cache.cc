@@ -120,7 +120,12 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
     return absl::InternalError(kErrorSslSha);
   }
 
-  size_t file_size = std::max(file.GetLength(), static_cast<int64_t>(0));
+  int64_t file_size = file.GetLength();
+  if (file_size < 0) {
+    return absl::AbortedError(base::StrCat(
+        {"Could not get file length:", image_path_in_current_ns.value()}));
+  }
+
   bool is_partial =
       !force_full_sha && (file_size > (max_file_size_for_full_sha_));
 
@@ -145,15 +150,12 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
   size_t offset = 0;
 
   while (offset < file_size) {
-    // Determine bytes to read for this iteration.
-    size_t bytes_to_read = std::min(sha_chunk_size_, file_size - offset);
     // Read bytes from the file.
-    int bytes_read = file.Read(offset, buf.char_data(), bytes_to_read);
-    if (bytes_read < bytes_to_read) {
+    int bytes_read = file.Read(offset, buf.char_data(), sha_chunk_size_);
+    if (bytes_read < 0) {
       return absl::AbortedError(
           base::StrCat({kErrorBytesRead, image_path_in_current_ns.value()}));
     }
-
     // Update SHA256 context with the read data.
     if (!SHA256_Update(&ctx, buf.data(), bytes_read)) {
       return absl::InternalError(kErrorSslSha);
@@ -172,7 +174,7 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
   return ImageCacheInterface::HashValue{
       .sha256 = base::HexEncode(final_hash.data(), SHA256_DIGEST_LENGTH),
       .sha256_is_partial = is_partial,
-      .file_size = file_size,
+      .file_size = static_cast<size_t>(file_size),
       .compute_time = base::TimeTicks::Now() - start};
 }
 
