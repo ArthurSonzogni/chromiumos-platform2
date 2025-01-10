@@ -99,7 +99,7 @@ class SamplesHandlerTestBase : public cros::mojom::SensorDeviceSamplesObserver {
  protected:
   void SetUpAccelBase(bool with_hrtimer, bool with_matrix = false) {
     device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
-        nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
+        context_.get(), fakes::kAccelDeviceName, fakes::kAccelDeviceId);
 
     if (with_matrix) {
       EXPECT_TRUE(device_->WriteStringAttribute(kAccelMatrixAttribute,
@@ -116,7 +116,7 @@ class SamplesHandlerTestBase : public cros::mojom::SensorDeviceSamplesObserver {
 
   void SetUpLightBase(bool with_hrtimer) {
     device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
-        nullptr, kFakeLightName, kFakeLightId);
+        context_.get(), kFakeLightName, kFakeLightId);
 
     auto light_channel = std::make_unique<libmems::fakes::FakeIioChannel>(
         cros::mojom::kLightChannel, true);

@@ -368,6 +368,10 @@ class LIBMEMS_EXPORT FakeIioContext : public IioContext {
   IioDevice* GetTriggerById(int id) override;
   std::vector<IioDevice*> GetAllTriggers() override;
 
+  void SetMaxSensorOdr(double max_sensor_odr) {
+    max_sensor_odr_ = max_sensor_odr;
+  }
+
  private:
   IioDevice* GetFakeById(
       int id, const std::map<int, std::unique_ptr<FakeIioDevice>>& devices_map);

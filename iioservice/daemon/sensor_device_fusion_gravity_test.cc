@@ -49,7 +49,7 @@ class SensorDeviceFusionGravityTest : public ::testing::Test {
     context_ = std::make_unique<libmems::fakes::FakeIioContext>();
 
     auto device = std::make_unique<libmems::fakes::FakeIioDevice>(
-        nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
+        context_.get(), fakes::kAccelDeviceName, fakes::kAccelDeviceId);
 
     EXPECT_TRUE(
         device->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,

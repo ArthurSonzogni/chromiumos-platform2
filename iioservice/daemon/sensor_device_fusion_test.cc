@@ -174,7 +174,7 @@ class IioDeviceHandlerTest : public ::testing::Test,
  protected:
   void SetUp() override {
     auto device = std::make_unique<libmems::fakes::FakeIioDevice>(
-        nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
+        &context_, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
 
     EXPECT_TRUE(
         device->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,

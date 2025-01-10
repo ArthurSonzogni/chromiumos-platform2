@@ -192,7 +192,7 @@ bool IioDevice::GetMinMaxFrequency(double* min_freq, double* max_freq) {
       }
 
       *max_freq = *min_freq;
-      return true;
+      break;
 
     default:
       if (!base::StringToDouble(sampling_frequencies.back(), max_freq) ||
@@ -217,9 +217,13 @@ bool IioDevice::GetMinMaxFrequency(double* min_freq, double* max_freq) {
           return false;
         }
       }
-
-      return true;
   }
+  std::optional<int> max_sensor_odr = GetContext()->GetMaxSensorOdr();
+  if (max_sensor_odr && *max_sensor_odr < *max_freq) {
+    *max_freq = *max_sensor_odr;
+  }
+
+  return true;
 }
 
 }  // namespace libmems

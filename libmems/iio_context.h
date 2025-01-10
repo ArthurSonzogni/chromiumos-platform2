@@ -90,10 +90,18 @@ class LIBMEMS_EXPORT IioContext {
   // object is valid.
   virtual std::vector<IioDevice*> GetAllTriggers() = 0;
 
+  // If present, return the maximal ODR the sensors managed by the EC can used
+  // at. It allows reducing the maximal ODR without releasing a new firmware. On
+  // device when the ODR is not limited by cros_config or devices without EC,
+  // the property is not present.
+  std::optional<double> GetMaxSensorOdr() { return max_sensor_odr_; }
+
  protected:
   IioContext() = default;
   IioContext(const IioContext&) = delete;
   IioContext& operator=(const IioContext&) = delete;
+
+  std::optional<double> max_sensor_odr_;  // in Hz.
 };
 
 }  // namespace libmems

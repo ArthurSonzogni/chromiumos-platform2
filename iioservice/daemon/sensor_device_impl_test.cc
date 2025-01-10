@@ -67,7 +67,7 @@ class SensorDeviceImplTest : public ::testing::Test {
     EXPECT_FALSE(remote_.is_bound());
 
     auto device = std::make_unique<libmems::fakes::FakeIioDevice>(
-        nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
+        context_.get(), fakes::kAccelDeviceName, fakes::kAccelDeviceId);
     EXPECT_TRUE(
         device->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,
                                      fakes::kFakeSamplingFrequencyAvailable));

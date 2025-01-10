@@ -12,7 +12,10 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 
 #include "libmems/common_types.h"
 #include "libmems/iio_channel_impl.h"
@@ -23,6 +26,15 @@ namespace libmems {
 
 IioContextImpl::IioContextImpl() {
   Reload();
+
+  brillo::CrosConfig cros_config;
+  std::string max_sensor_odr_override;
+  cros_config.GetString("/hardware-properties", "ec-max-sensor-odr",
+                        &max_sensor_odr_override);
+  int max_sensor_odr_value;
+  if (base::StringToInt(max_sensor_odr_override, &max_sensor_odr_value)) {
+    *max_sensor_odr_ = max_sensor_odr_value / 1000.0;
+  }
 }
 
 void IioContextImpl::Reload() {
