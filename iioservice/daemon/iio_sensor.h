@@ -10,6 +10,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
+#include <libmems/iio_context_factory.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
@@ -46,6 +47,12 @@ class IioSensor
       mojo::PendingReceiver<
           chromeos::mojo_service_manager::mojom::ServiceProvider> receiver);
 
+  IioSensor(
+      scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
+      mojo::PendingReceiver<
+          chromeos::mojo_service_manager::mojom::ServiceProvider> receiver,
+      std::unique_ptr<libmems::IioContextFactory> iio_context_factory);
+
   virtual void SetSensorService();
 
   scoped_refptr<base::SequencedTaskRunner> ipc_task_runner_;
@@ -56,6 +63,8 @@ class IioSensor
       nullptr, SensorServiceImpl::SensorServiceImplDeleter};
 
   base::WeakPtrFactory<IioSensor> weak_factory_{this};
+
+  std::unique_ptr<libmems::IioContextFactory> iio_context_factory_;
 };
 
 }  // namespace iioservice

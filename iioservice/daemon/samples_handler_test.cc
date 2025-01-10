@@ -176,6 +176,9 @@ class SamplesHandlerTestBase : public cros::mojom::SensorDeviceSamplesObserver {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME,
       base::test::TaskEnvironment::MainThreadType::IO};
 
+  std::unique_ptr<libmems::IioContext> context_ = {
+      libmems::fakes::FakeIioContextFactory().Generate()};
+
   std::unique_ptr<libmems::fakes::FakeIioDevice> device_;
   std::unique_ptr<libmems::fakes::FakeIioDevice> hrtimer_;
 

@@ -9,9 +9,9 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
-#include <libmems/iio_channel_impl.h>
-#include <libmems/iio_context_impl.h>
-#include <libmems/iio_device_impl.h>
+#include <libmems/iio_channel.h>
+#include <libmems/iio_context.h>
+#include <libmems/iio_device.h>
 
 #include "iioservice/include/common.h"
 
@@ -80,8 +80,18 @@ IioSensor::IioSensor(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     mojo::PendingReceiver<
         chromeos::mojo_service_manager::mojom::ServiceProvider> receiver)
+    : IioSensor(std::move(ipc_task_runner),
+                std::move(receiver),
+                std::make_unique<libmems::IioContextFactory>()) {}
+
+IioSensor::IioSensor(
+    scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
+    mojo::PendingReceiver<
+        chromeos::mojo_service_manager::mojom::ServiceProvider> receiver,
+    std::unique_ptr<libmems::IioContextFactory> iio_context_factory)
     : ipc_task_runner_(std::move(ipc_task_runner)),
-      receiver_(this, std::move(receiver)) {
+      receiver_(this, std::move(receiver)),
+      iio_context_factory_(std::move(iio_context_factory)) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   // Ignore |receiver_|'s disconnect handler, as ServiceManager mojo pipe should
@@ -91,8 +101,8 @@ IioSensor::IioSensor(
 void IioSensor::SetSensorService() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  sensor_service_ = SensorServiceImpl::Create(
-      ipc_task_runner_, std::make_unique<libmems::IioContextImpl>());
+  sensor_service_ = SensorServiceImpl::Create(ipc_task_runner_,
+                                              iio_context_factory_->Generate());
 }
 
 }  // namespace iioservice

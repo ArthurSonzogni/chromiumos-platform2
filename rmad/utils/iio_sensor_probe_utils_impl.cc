@@ -12,7 +12,9 @@
 #include <vector>
 
 #include <libmems/iio_channel.h>
-#include <libmems/iio_context_impl.h>
+#include <libmems/iio_context.h>
+#include <libmems/iio_context_factory.h>
+#include <libmems/iio_device.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
 
@@ -35,9 +37,8 @@ const std::map<std::string, rmad::RmadComponent>
 
 namespace rmad {
 
-IioSensorProbeUtilsImpl::IioSensorProbeUtilsImpl() {
-  iio_context_ = std::make_unique<libmems::IioContextImpl>();
-}
+IioSensorProbeUtilsImpl::IioSensorProbeUtilsImpl()
+    : IioSensorProbeUtilsImpl(libmems::IioContextFactory().Generate()) {}
 
 IioSensorProbeUtilsImpl::IioSensorProbeUtilsImpl(
     std::unique_ptr<libmems::IioContext> iio_context)

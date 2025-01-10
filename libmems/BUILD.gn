@@ -29,6 +29,7 @@ shared_library("libmems") {
   sources = [
     "common_types.cc",
     "iio_channel_impl.cc",
+    "iio_context_factory.cc",
     "iio_context_impl.cc",
     "iio_device.cc",
     "iio_device_impl.cc",
@@ -45,12 +46,10 @@ install_config("install_headers") {
     "common_types.h",
     "export.h",
     "iio_channel.h",
-    "iio_channel_impl.h",
     "iio_context.h",
-    "iio_context_impl.h",
+    "iio_context_factory.h",
     "iio_device.h",
-    "iio_device_impl.h",
-    "iio_device_trigger_impl.h",
+    "iio_event.h",
     "test_fakes.h",
   ]
   install_path = "/usr/include/chromeos/libmems"

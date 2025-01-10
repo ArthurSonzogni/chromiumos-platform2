@@ -58,9 +58,9 @@ class IioEcSensorUtilsImplTest : public testing::Test {
   };
 
   std::unique_ptr<libmems::fakes::FakeIioDevice> CreateFakeIioDevice(
-      const FakeDeviceArgs& args) {
+      libmems::fakes::FakeIioContext* iio_context, const FakeDeviceArgs& args) {
     auto device = std::make_unique<libmems::fakes::FakeIioDevice>(
-        nullptr, args.name, args.id);
+        iio_context, args.name, args.id);
 
     EXPECT_TRUE(
         device->WriteStringAttribute(kDeviceLocationName, args.location));
@@ -81,7 +81,7 @@ class IioEcSensorUtilsImplTest : public testing::Test {
     auto iio_context = std::make_unique<libmems::fakes::FakeIioContext>();
 
     for (const auto& device_args : fake_devices) {
-      auto device = CreateFakeIioDevice(device_args);
+      auto device = CreateFakeIioDevice(iio_context.get(), device_args);
       iio_context->AddDevice(std::move(device));
     }
 

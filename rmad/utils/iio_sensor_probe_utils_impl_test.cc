@@ -41,7 +41,7 @@ class IioSensorProbeUtilsImplTest : public testing::Test {
 
     for (auto location : kDeviceLocationValue) {
       auto device_accel = std::make_unique<libmems::fakes::FakeIioDevice>(
-          nullptr, kAccelDeviceName, id++);
+          iio_context.get(), kAccelDeviceName, id++);
       for (auto chn : kFakeAccelChannels) {
         auto channel =
             std::make_unique<libmems::fakes::FakeIioChannel>(chn, true);

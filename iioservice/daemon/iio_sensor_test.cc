@@ -73,8 +73,7 @@ class FakeIioSensor final : public IioSensor {
     std::unique_ptr<FakeSensorServiceImpl,
                     decltype(&SensorServiceImpl::SensorServiceImplDeleter)>
         sensor_service(new FakeSensorServiceImpl(
-                           ipc_task_runner_,
-                           std::make_unique<libmems::fakes::FakeIioContext>()),
+                           ipc_task_runner_, iio_context_factory_->Generate()),
                        SensorServiceImpl::SensorServiceImplDeleter);
     sensor_service_ = std::move(sensor_service);
   }
@@ -84,7 +83,9 @@ class FakeIioSensor final : public IioSensor {
                 mojo::PendingReceiver<
                     chromeos::mojo_service_manager::mojom::ServiceProvider>
                     server_receiver)
-      : IioSensor(std::move(ipc_task_runner), std::move(server_receiver)) {}
+      : IioSensor(std::move(ipc_task_runner),
+                  std::move(server_receiver),
+                  std::make_unique<libmems::fakes::FakeIioContextFactory>()) {}
 };
 
 class IioSensorTest : public ::testing::Test {

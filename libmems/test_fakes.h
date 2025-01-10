@@ -21,6 +21,7 @@
 #include "libmems/export.h"
 #include "libmems/iio_channel.h"
 #include "libmems/iio_context.h"
+#include "libmems/iio_context_factory.h"
 #include "libmems/iio_device.h"
 #include "libmems/iio_event.h"
 
@@ -380,6 +381,15 @@ class LIBMEMS_EXPORT FakeIioContext : public IioContext {
   std::map<int, std::unique_ptr<FakeIioDevice>> triggers_;
 
   uint32_t timeout_;
+};
+
+class FakeIioContextFactory : public IioContextFactory {
+ public:
+  ~FakeIioContextFactory() = default;
+
+  std::unique_ptr<IioContext> Generate() {
+    return std::make_unique<FakeIioContext>();
+  }
 };
 
 }  // namespace fakes

@@ -14,7 +14,9 @@
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <libmems/iio_context_impl.h>
+#include <libmems/iio_context.h>
+#include <libmems/iio_context_factory.h>
+#include <libmems/iio_device.h>
 
 namespace {
 
@@ -33,13 +35,11 @@ IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(
     scoped_refptr<MojoServiceUtils> mojo_service,
     const std::string& location,
     const std::string& name)
-    : IioEcSensorUtils(location, name),
-      sysfs_prefix_(kIioDevicePathPrefix),
-      initialized_(false),
-      mojo_service_(mojo_service),
-      iio_context_(std::make_unique<libmems::IioContextImpl>()) {
-  Initialize();
-}
+    : IioEcSensorUtilsImpl(mojo_service,
+                           location,
+                           name,
+                           kIioDevicePathPrefix,
+                           libmems::IioContextFactory().Generate()) {}
 
 IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(
     scoped_refptr<MojoServiceUtils> mojo_service,

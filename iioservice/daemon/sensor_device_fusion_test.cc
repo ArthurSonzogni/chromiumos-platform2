@@ -118,16 +118,14 @@ class IioDeviceHandlerBase {
         task_environment_.GetMainThreadTaskRunner(),
         mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
-    context_ = std::make_unique<libmems::fakes::FakeIioContext>();
-
     EXPECT_TRUE(
         device->WriteStringAttribute(kDeviceAttrName, kDeviceAttrValue));
 
     device_ = device.get();
-    context_->AddDevice(std::move(device));
+    context_.AddDevice(std::move(device));
 
     sensor_device_ = SensorDeviceImpl::Create(
-        task_environment_.GetMainThreadTaskRunner(), context_.get());
+        task_environment_.GetMainThreadTaskRunner(), &context_);
     sensor_device_->OnDeviceAdded(device_, std::set<cros::mojom::DeviceType>{
                                                cros::mojom::DeviceType::ACCEL});
 
@@ -154,7 +152,7 @@ class IioDeviceHandlerBase {
   virtual void OnReadFailed() = 0;
   virtual void Invalidate() = 0;
 
-  std::unique_ptr<libmems::fakes::FakeIioContext> context_;
+  libmems::fakes::FakeIioContext context_ = {};
   libmems::fakes::FakeIioDevice* device_;
 
   base::test::SingleThreadTaskEnvironment task_environment_{

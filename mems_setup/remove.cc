@@ -10,7 +10,8 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <iioservice/include/dbus-constants.h>
-#include <libmems/iio_context_impl.h>
+#include <libmems/iio_context.h>
+#include <libmems/iio_context_factory.h>
 
 int main(int argc, char** argv) {
   DEFINE_int32(device_id, -1,
@@ -31,7 +32,8 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Starting mems_remove [id=" << FLAGS_device_id << "]";
 
-  std::unique_ptr<libmems::IioContext> context(new libmems::IioContextImpl());
+  std::unique_ptr<libmems::IioContext> context(
+      libmems::IioContextFactory().Generate());
   if (context->IsValid() && context->GetDeviceById(FLAGS_device_id)) {
     LOG(ERROR) << "Device with id: " << FLAGS_device_id << " still exists";
     return 1;

@@ -16,7 +16,8 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <iioservice/include/dbus-constants.h>
-#include <libmems/iio_context_impl.h>
+#include <libmems/iio_context.h>
+#include <libmems/iio_context_factory.h>
 #include <libmems/iio_device.h>
 
 #include "mems_setup/configuration.h"
@@ -64,7 +65,8 @@ int main(int argc, char** argv) {
     }
   }
 
-  std::unique_ptr<libmems::IioContext> context(new libmems::IioContextImpl());
+  std::unique_ptr<libmems::IioContext> context(
+      libmems::IioContextFactory().Generate());
   if (!context->IsValid()) {
     exit(1);
   }
