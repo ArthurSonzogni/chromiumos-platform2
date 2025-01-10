@@ -53,7 +53,7 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     }
 
     MOCK_METHOD(bool, Run, (int), (override));
-    MOCK_METHOD(uint32_t, Data, (), (const override));
+    MOCK_METHOD(base::span<const uint8_t>, RespData, (), (const override));
     MOCK_METHOD(uint32_t, Result, (), (const override));
     MOCK_METHOD(uint8_t, I2cStatus, (), (const override));
   };
@@ -106,26 +106,29 @@ class EcComponentFunctionTest : public BaseFunctionTest {
   void ExpectI2cReadSuccess(MockEcComponentFunction* probe_function,
                             uint8_t port,
                             uint8_t addr8) const {
+    constexpr uint8_t kRturnValue[] = {0x00};
     auto cmd = MockI2cReadCommand::Create<NiceMock<MockI2cReadCommand>>();
     ON_CALL(*cmd, Run).WillByDefault(Return(true));
     ON_CALL(*cmd, Result).WillByDefault(Return(kEcResultSuccess));
     ON_CALL(*cmd, I2cStatus).WillByDefault(Return(kEcI2cStatusSuccess));
-    ON_CALL(*cmd, Data).WillByDefault(Return(0x00));
+    ON_CALL(*cmd, RespData)
+        .WillByDefault(Return(base::span<const uint8_t>{kRturnValue}));
     EXPECT_CALL(*probe_function, GetI2cReadCommand(port, addr8, _, _))
         .WillOnce(Return(ByMove(std::move(cmd))));
   }
 
-  void ExpectI2cReadSuccessWithResult(MockEcComponentFunction* probe_function,
-                                      uint8_t port,
-                                      uint8_t addr8,
-                                      uint8_t offset,
-                                      uint8_t len,
-                                      uint32_t return_value) const {
+  void ExpectI2cReadSuccessWithResult(
+      MockEcComponentFunction* probe_function,
+      uint8_t port,
+      uint8_t addr8,
+      uint8_t offset,
+      uint8_t len,
+      base::span<const uint8_t> return_value) const {
     auto cmd = MockI2cReadCommand::Create<NiceMock<MockI2cReadCommand>>();
     ON_CALL(*cmd, Run).WillByDefault(Return(true));
     ON_CALL(*cmd, Result).WillByDefault(Return(kEcResultSuccess));
     ON_CALL(*cmd, I2cStatus).WillByDefault(Return(kEcI2cStatusSuccess));
-    ON_CALL(*cmd, Data).WillByDefault(Return(return_value));
+    ON_CALL(*cmd, RespData).WillByDefault(Return(return_value));
     EXPECT_CALL(*probe_function, GetI2cReadCommand(port, addr8, offset, len))
         .WillOnce(Return(ByMove(std::move(cmd))));
   }
@@ -133,11 +136,13 @@ class EcComponentFunctionTest : public BaseFunctionTest {
   void ExpectI2cReadFailed(MockEcComponentFunction* probe_function,
                            uint8_t port,
                            uint8_t addr8) const {
+    constexpr uint8_t kRturnValue[] = {0x00};
     auto cmd = MockI2cReadCommand::Create<NiceMock<MockI2cReadCommand>>();
     ON_CALL(*cmd, Run).WillByDefault(Return(false));
     ON_CALL(*cmd, Result).WillByDefault(Return(kEcResultTimeout));
     ON_CALL(*cmd, I2cStatus).WillByDefault(Return(kEcI2cStatusSuccess));
-    ON_CALL(*cmd, Data).WillByDefault(Return(0x00));
+    ON_CALL(*cmd, RespData)
+        .WillByDefault(Return(base::span<const uint8_t>{kRturnValue}));
     EXPECT_CALL(*probe_function, GetI2cReadCommand(port, addr8, _, _))
         .WillOnce(Return(ByMove(std::move(cmd))));
   }
@@ -252,8 +257,8 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeI2cFailed) {
 }
 
 TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatch) {
-  constexpr auto kMatchValue = 0x01;
-  constexpr auto kMismatchValue = 0xff;
+  constexpr uint8_t kMatchValue[] = {0x01};
+  constexpr uint8_t kMismatchValue[] = {0xff};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",
@@ -280,7 +285,7 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatch) {
 }
 
 TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
-  constexpr auto kMismatchValue = 0xff;
+  constexpr uint8_t kMismatchValue[] = {0xff};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",
@@ -299,7 +304,7 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
 }
 
 TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOptionalValue) {
-  constexpr auto kMismatchValue = 0xff;
+  constexpr uint8_t kMismatchValue[] = {0xff};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",

@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 
 #include "runtime_probe/system/context.h"
@@ -37,6 +38,24 @@ bool SetHexValue(const std::string* value, T& val) {
   }
   uint32_t val_;
   if (!base::HexStringToUInt(*value, &val_)) {
+    return false;
+  }
+  val = val_;
+  return true;
+}
+
+template <typename T>
+bool SetBytes(const std::string* value, T& val) {
+  if (!value ||
+      !base::StartsWith(*value, "0x", base::CompareCase::INSENSITIVE_ASCII)) {
+    return false;
+  }
+
+  // Remove "0x".
+  std::string hex_val = value->substr(2);
+
+  std::vector<uint8_t> val_;
+  if (!base::HexStringToBytes(hex_val, &val_)) {
     return false;
   }
   val = val_;
@@ -100,7 +119,7 @@ EcComponentManifest::Component::I2c::Expect::Create(
     return std::nullopt;
   }
   auto value = dv.FindString("value");
-  if (value && !SetHexValue(value, ret.value)) {
+  if (value && !SetBytes(value, ret.value)) {
     LOG(ERROR) << "Invalid field: value";
     return std::nullopt;
   }

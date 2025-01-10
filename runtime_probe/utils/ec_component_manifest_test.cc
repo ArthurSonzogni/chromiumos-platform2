@@ -83,9 +83,9 @@ TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
     EXPECT_EQ(comp.i2c.addr, 0x1);
     EXPECT_EQ(comp.i2c.expect.size(), 2);
     EXPECT_EQ(comp.i2c.expect[0].reg, 0);
-    EXPECT_EQ(comp.i2c.expect[0].value, 0);
+    EXPECT_EQ(comp.i2c.expect[0].value, std::vector<uint8_t>{0x00});
     EXPECT_EQ(comp.i2c.expect[1].reg, 1);
-    EXPECT_EQ(comp.i2c.expect[1].value, 1);
+    EXPECT_EQ(comp.i2c.expect[1].value, std::vector<uint8_t>{0x01});
   }
   {
     const EcComponentManifest::Component& comp = manifest->component_list[1];
