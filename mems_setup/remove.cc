@@ -3,11 +3,9 @@
 // found in the LICENSE file.
 
 #include <base/logging.h>
-
+#include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-
-#include <base/task/single_thread_task_executor.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>

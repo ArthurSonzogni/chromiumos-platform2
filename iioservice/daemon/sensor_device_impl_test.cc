@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "iioservice/daemon/sensor_device_impl.h"
 
 #include <iterator>
 #include <optional>
@@ -14,11 +14,11 @@
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <gtest/gtest.h>
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
-#include "iioservice/daemon/sensor_device_impl.h"
 #include "iioservice/daemon/sensor_metrics_mock.h"
 #include "iioservice/daemon/test_fakes.h"
 #include "iioservice/include/common.h"

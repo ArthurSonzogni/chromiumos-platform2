@@ -1,6 +1,8 @@
 // Copyright 2019 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#include "libmems/iio_device_trigger_impl.h"
+
 #include <optional>
 #include <string>
 
@@ -12,7 +14,6 @@
 #include "libmems/common_types.h"
 #include "libmems/iio_channel.h"
 #include "libmems/iio_context_impl.h"
-#include "libmems/iio_device_trigger_impl.h"
 
 namespace {
 

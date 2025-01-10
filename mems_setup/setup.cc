@@ -18,6 +18,7 @@
 #include <iioservice/include/dbus-constants.h>
 #include <libmems/iio_context_impl.h>
 #include <libmems/iio_device.h>
+
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate_impl.h"
 #include "mems_setup/sensor_kind.h"

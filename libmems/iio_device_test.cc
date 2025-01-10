@@ -4,10 +4,9 @@
 
 #include <optional>
 
-#include <gtest/gtest.h>
-
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <gtest/gtest.h>
 
 #include "libmems/common_types.h"
 #include "libmems/test_fakes.h"

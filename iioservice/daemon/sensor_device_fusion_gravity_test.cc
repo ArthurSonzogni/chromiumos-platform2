@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "iioservice/daemon/sensor_device_fusion_gravity.h"
 
 #include <memory>
 #include <optional>
@@ -10,13 +10,13 @@
 #include <vector>
 
 #include <base/functional/bind.h>
-#include <base/test/task_environment.h>
 #include <base/test/repeating_test_future.h>
+#include <base/test/task_environment.h>
+#include <gtest/gtest.h>
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
-#include "iioservice/daemon/sensor_device_fusion_gravity.h"
 #include "iioservice/daemon/sensor_device_impl.h"
 #include "iioservice/daemon/sensor_metrics_mock.h"
 #include "iioservice/daemon/test_fakes.h"

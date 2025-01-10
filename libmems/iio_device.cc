@@ -15,6 +15,7 @@
 
 #include "libmems/common_types.h"
 #include "libmems/iio_channel.h"
+#include "libmems/iio_context.h"
 #include "libmems/iio_event.h"
 
 namespace libmems {

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "iioservice/daemon/iio_sensor.h"
 
 #include <memory>
 #include <utility>
@@ -11,11 +11,10 @@
 #include <base/check.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
+#include <gtest/gtest.h>
 #include <libmems/test_fakes.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/receiver.h>
-
-#include "iioservice/daemon/iio_sensor.h"
 
 namespace iioservice {
 
