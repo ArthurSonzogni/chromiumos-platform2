@@ -36,8 +36,6 @@ class LIBMEMS_EXPORT IioDeviceTriggerImpl : public IioDevice {
 
   ~IioDeviceTriggerImpl() override = default;
 
-  IioContext* GetContext() const override;
-
   const char* GetName() const override;
   // Return -1 for iio_sysfs_trigger
   int GetId() const override;
@@ -81,7 +79,6 @@ class LIBMEMS_EXPORT IioDeviceTriggerImpl : public IioDevice {
   std::optional<iio_event_data> ReadEvent() override { return std::nullopt; }
 
  private:
-  IioContextImpl* context_;    // non-owned
   iio_device* const trigger_;  // non-owned
 
   std::string log_prefix_;

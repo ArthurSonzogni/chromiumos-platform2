@@ -5,7 +5,7 @@
 #include "mems_setup/test_helper.h"
 
 #include <libmems/common_types.h>
-#include <libmems/iio_device_impl.h>
+#include <libmems/iio_device.h>
 
 using libmems::fakes::FakeIioChannel;
 using libmems::fakes::FakeIioContext;
@@ -47,7 +47,7 @@ SensorTestBase::SensorTestBase(const char* name, int id)
   mock_context_->AddTrigger(std::move(mock_sysfs_trigger));
 
   std::string dev_name =
-      libmems::IioDeviceImpl::GetStringFromId(mock_device_->GetId());
+      libmems::IioDevice::GetStringFromId(mock_device_->GetId());
   // /dev/iio:deviceX
   base::FilePath dev_path =
       base::FilePath(libmems::kDevString).Append(dev_name.c_str());

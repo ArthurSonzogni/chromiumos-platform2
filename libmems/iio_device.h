@@ -36,7 +36,7 @@ class LIBMEMS_EXPORT IioDevice {
   virtual ~IioDevice();
 
   // Returns the IIO context that contains this device.
-  virtual IioContext* GetContext() const = 0;
+  IioContext* GetContext() const;
 
   // Returns the value of the 'name' attribute of this device.
   // It is allowed to return an empty string.
@@ -185,6 +185,11 @@ class LIBMEMS_EXPORT IioDevice {
   // Returns std::nullopt on failure.
   virtual std::optional<iio_event_data> ReadEvent() = 0;
 
+  // Static
+  static std::optional<int> GetIdFromString(const char* id_str);
+  static std::string GetStringFromId(int id);
+  static base::FilePath GetPathById(int id);
+
   bool GetMinMaxFrequency(double* min_freq, double* max_freq);
 
  protected:
@@ -196,10 +201,11 @@ class LIBMEMS_EXPORT IioDevice {
   static std::optional<int> GetIdAfterPrefix(const char* id_str,
                                              const char* prefix);
 
-  IioDevice() = default;
+  explicit IioDevice(IioContext* ctx);
   IioDevice(const IioDevice&) = delete;
   IioDevice& operator=(const IioDevice&) = delete;
 
+  IioContext* context_ = nullptr;  // non-owned
   std::vector<ChannelData> channels_;
   std::vector<std::unique_ptr<IioEvent>> events_;
 };

@@ -25,7 +25,6 @@
 #include <libmems/iio_channel.h>
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
-#include <libmems/iio_device_impl.h>
 #include <libsar/sar_config_reader.h>
 #include <re2/re2.h>
 
@@ -315,8 +314,7 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
 }
 
 bool Configuration::AddSysfsTrigger(int sysfs_trigger_id) {
-  std::string dev_name =
-      libmems::IioDeviceImpl::GetStringFromId(sensor_->GetId());
+  std::string dev_name = libmems::IioDevice::GetStringFromId(sensor_->GetId());
   // /sys/bus/iio/devices/iio:deviceX
   base::FilePath sys_dev_path = sensor_->GetPath();
 
@@ -756,8 +754,7 @@ bool Configuration::SetupPermissions() {
   std::vector<base::FilePath> files_to_set_read_own;
   std::vector<base::FilePath> files_to_set_write_own;
 
-  std::string dev_name =
-      libmems::IioDeviceImpl::GetStringFromId(sensor_->GetId());
+  std::string dev_name = libmems::IioDevice::GetStringFromId(sensor_->GetId());
   // /dev/iio:deviceX
   base::FilePath dev_path =
       base::FilePath(libmems::kDevString).Append(dev_name.c_str());

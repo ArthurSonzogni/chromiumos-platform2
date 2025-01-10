@@ -39,27 +39,9 @@ constexpr char kHWFifoWatermarkMaxAttr[] = "hwfifo_watermark_max";
 
 };  // namespace
 
-// static
-std::optional<int> IioDeviceImpl::GetIdFromString(const char* id_str) {
-  return IioDevice::GetIdAfterPrefix(id_str, kDeviceIdPrefix);
-}
-
-// static
-std::string IioDeviceImpl::GetStringFromId(int id) {
-  return base::StringPrintf("%s%d", kDeviceIdPrefix, id);
-}
-
-// static
-base::FilePath IioDeviceImpl::GetPathById(int id) {
-  return base::FilePath(kSysDevString).Append(GetStringFromId(id));
-}
-
 IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
-    : IioDevice(),
-      context_(ctx),
-      device_(dev),
-      buffer_(nullptr, IioBufferDeleter) {
-  CHECK(context_);
+    : IioDevice(ctx), device_(dev), buffer_(nullptr, IioBufferDeleter) {
+  CHECK(ctx);
   CHECK(device_);
 
   log_prefix_ = base::StringPrintf("Device with id: %d and name: %s. ", GetId(),
@@ -97,10 +79,6 @@ IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
       events_.push_back(std::move(iio_event));
     }
   }
-}
-
-IioContext* IioDeviceImpl::GetContext() const {
-  return context_;
 }
 
 const char* IioDeviceImpl::GetName() const {

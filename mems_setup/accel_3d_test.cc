@@ -3,14 +3,12 @@
 // found in the LICENSE file.
 
 #include <base/files/file_util.h>
-
 #include <gtest/gtest.h>
-
 #include <libmems/common_types.h>
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
-#include <libmems/iio_device_impl.h>
 #include <libmems/test_fakes.h>
+
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate.h"
 #include "mems_setup/sensor_location.h"
@@ -66,7 +64,7 @@ TEST_F(HidAccelerometerTest, CheckPermissionsAndOwnership) {
 
   EXPECT_TRUE(GetConfiguration()->Configure());
 
-  std::string dev_name = libmems::IioDeviceImpl::GetStringFromId(kDeviceId);
+  std::string dev_name = libmems::IioDevice::GetStringFromId(kDeviceId);
 
   CheckPermissionsAndOwnershipForFile(
       sys_dev_path.Append(kAccelSamplingFrequency),

@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 
 #include "libmems/common_types.h"
 #include "libmems/iio_channel.h"
@@ -19,6 +20,8 @@
 #include "libmems/iio_event.h"
 
 namespace libmems {
+
+IioDevice::IioDevice(IioContext* ctx) : context_(ctx) {}
 
 IioDevice::~IioDevice() = default;
 
@@ -135,6 +138,25 @@ IioEvent* IioDevice::GetEvent(int32_t index) {
   }
 
   return events_[index].get();
+}
+
+IioContext* IioDevice::GetContext() const {
+  return context_;
+}
+
+// static
+std::optional<int> IioDevice::GetIdFromString(const char* id_str) {
+  return IioDevice::GetIdAfterPrefix(id_str, kDeviceIdPrefix);
+}
+
+// static
+std::string IioDevice::GetStringFromId(int id) {
+  return base::StringPrintf("%s%d", kDeviceIdPrefix, id);
+}
+
+// static
+base::FilePath IioDevice::GetPathById(int id) {
+  return base::FilePath(kSysDevString).Append(GetStringFromId(id));
 }
 
 bool IioDevice::GetMinMaxFrequency(double* min_freq, double* max_freq) {

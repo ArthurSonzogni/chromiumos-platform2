@@ -7,7 +7,6 @@
 #include <libmems/common_types.h>
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
-#include <libmems/iio_device_impl.h>
 #include <libmems/test_fakes.h>
 
 #include "mems_setup/configuration.h"
@@ -40,7 +39,7 @@ class AccelerometerTest : public SensorTestBase, public ::testing::Test {
     mock_delegate_->AddGroup(GetConfiguration()->GetGroupNameForSysfs(),
                              kIioserviceGroupId);
 
-    std::string dev_name = libmems::IioDeviceImpl::GetStringFromId(kDeviceId);
+    std::string dev_name = libmems::IioDevice::GetStringFromId(kDeviceId);
     // /sys/bus/iio/devices/iio:device1
     base::FilePath sys_dev_path = mock_device_->GetPath();
 
@@ -69,7 +68,7 @@ TEST_F(AccelerometerTest, CheckPermissionsAndOwnership) {
 
   EXPECT_TRUE(GetConfiguration()->Configure());
 
-  std::string dev_name = libmems::IioDeviceImpl::GetStringFromId(kDeviceId);
+  std::string dev_name = libmems::IioDevice::GetStringFromId(kDeviceId);
 
   // /sys/bus/iio/devices/iio:device1
   base::FilePath sys_dev_path = mock_device_->GetPath();

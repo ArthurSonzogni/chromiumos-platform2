@@ -208,11 +208,7 @@ class FakeIioContext;
 
 class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
  public:
-  FakeIioDevice(FakeIioContext* ctx, const std::string& name, int id);
-
-  IioContext* GetContext() const override {
-    return reinterpret_cast<IioContext*>(context_);
-  }
+  FakeIioDevice(IioContext* ctx, const std::string& name, int id);
 
   void SetPath(const base::FilePath& path) { path_ = path; }
   base::FilePath GetPath() const override;
@@ -322,7 +318,6 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
     FakeIioChannel* chn = nullptr;
   };
 
-  FakeIioContext* context_ = nullptr;
   std::string name_;
   int id_;
   base::FilePath path_;

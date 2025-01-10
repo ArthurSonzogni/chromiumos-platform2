@@ -24,18 +24,12 @@ class IioContextImpl;
 
 class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
  public:
-  static std::optional<int> GetIdFromString(const char* id_str);
-  static std::string GetStringFromId(int id);
-  static base::FilePath GetPathById(int id);
-
   // iio_device objects are kept alive by the IioContextImpl.
   IioDeviceImpl(IioContextImpl* ctx, iio_device* dev);
   IioDeviceImpl(const IioDeviceImpl&) = delete;
   IioDeviceImpl& operator=(const IioDeviceImpl&) = delete;
 
   ~IioDeviceImpl() override = default;
-
-  IioContext* GetContext() const override;
 
   const char* GetName() const override;
   int GetId() const override;
@@ -81,7 +75,6 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
 
   IioSample DeserializeSample(const uint8_t* src);
 
-  IioContextImpl* context_;   // non-owned
   iio_device* const device_;  // non-owned
 
   IioDevice* hrtimer_ = nullptr;

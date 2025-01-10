@@ -45,16 +45,12 @@ base::FilePath IioDeviceTriggerImpl::GetPathById(int id) {
 }
 
 IioDeviceTriggerImpl::IioDeviceTriggerImpl(IioContextImpl* ctx, iio_device* dev)
-    : IioDevice(), context_(ctx), trigger_(dev) {
-  CHECK(context_);
+    : IioDevice(ctx), trigger_(dev) {
+  CHECK(ctx);
   CHECK(trigger_);
 
   log_prefix_ = base::StringPrintf("Trigger with id: %d and name: %s. ",
                                    GetId(), (GetName() ? GetName() : "null"));
-}
-
-IioContext* IioDeviceTriggerImpl::GetContext() const {
-  return context_;
 }
 
 const char* IioDeviceTriggerImpl::GetName() const {

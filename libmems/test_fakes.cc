@@ -132,10 +132,8 @@ std::optional<uint64_t> FakeIioEvent::GetData(int index) {
   return IioEventCode(chan_type_, event_type_, dir, channel_);
 }
 
-FakeIioDevice::FakeIioDevice(FakeIioContext* ctx,
-                             const std::string& name,
-                             int id)
-    : IioDevice(), context_(ctx), name_(name), id_(id) {}
+FakeIioDevice::FakeIioDevice(IioContext* ctx, const std::string& name, int id)
+    : IioDevice(ctx), name_(name), id_(id) {}
 
 base::FilePath FakeIioDevice::GetPath() const {
   if (!path_.empty()) {
