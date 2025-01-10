@@ -203,12 +203,13 @@ impl From<&Header> for Vp9V4l2Control {
 
 impl AsV4l2ControlSlice for &mut Vp9V4l2Control {
     fn as_v4l2_control_slice(&mut self) -> &mut [v4l2_ext_control] {
-        unsafe { std::slice::from_raw_parts_mut(&mut self.0, 1) }
+        std::slice::from_mut(&mut self.0)
     }
 }
 
 impl Drop for Vp9V4l2Control {
     fn drop(&mut self) {
+        // Invariant: p_vp9_frame contains a pointer to a non-NULL v4l2_ctrl_vp9_frame object.
         unsafe {
             let _ = Box::from_raw(self.0.__bindgen_anon_1.p_vp9_frame);
         }
