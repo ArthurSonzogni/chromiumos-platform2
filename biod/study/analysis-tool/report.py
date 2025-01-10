@@ -310,12 +310,6 @@ class Report:
 
         # Check that the necessary templates exist.
         self._template_dir_path = template_dir_path
-        self._path_report_template_pdf = (
-            template_dir_path / "report-pdf.md.jinja2"
-        )
-        self._path_report_template_md = (
-            template_dir_path / "report-md.md.jinja2"
-        )
         self._path_report_template_html = (
             template_dir_path / "index.html.jinja2"
         )
@@ -324,14 +318,6 @@ class Report:
         if not self._template_dir_path.is_dir():
             raise Exception(
                 f"Report templates {self._template_dir_path} dir does not exist."
-            )
-        if not self._path_report_template_pdf.exists():
-            raise Exception(
-                f"Report template {self._path_report_template_pdf} does not exist."
-            )
-        if not self._path_report_template_md.exists():
-            raise Exception(
-                f"Report template {self._path_report_template_md} does not exist."
             )
         if not self._path_report_template_html.exists():
             raise Exception(
@@ -391,9 +377,8 @@ class Report:
 
         return d
 
-    def generate(
-        self, output_types: Iterable[Literal["pdf", "md", "html"]] = {"pdf"}
-    ):
+    def generate(self):
+        """Generate an HTML report with all findings."""
         jinja_env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(self._template_dir_path),
             undefined=jinja2.StrictUndefined,
@@ -404,75 +389,18 @@ class Report:
 
         ctx = self._generate_render_context()
 
-        # pandoc_log_file = self._path_out_dir / "pandoc.log"
-        # pandoc_log_file.touch()
-
-        pandoc_base_cmd = ["pandoc"]
-        pandoc_base_cmd.append("--standalone")
-        # pandoc_base_cmd.append('-s')
-        pandoc_base_cmd.append("--table-of-contents")
-        # pandoc_base_cmd.append('--toc')
-        # pandoc_base_cmd.append('--listings')
-        pandoc_base_cmd.append("--verbose")
-        # pandoc_base_cmd.append(f'--log=pandoc.log')
-
-        if "pdf" in output_types:
-            report_template_pdf = jinja_env.get_template("report-pdf.md.jinja2")
-            report_pdf_str = report_template_pdf.render(ctx)
-            (self._path_out_dir / "output-pdf.md").write_text(
-                report_pdf_str, "utf-8"
-            )
-
-            with open(self._path_out_dir / "pandoc-pdf.log", "w+") as log_file:
-                subprocess.run(
-                    # '--pdf-engine=context',
-                    [
-                        *pandoc_base_cmd,
-                        "--to=pdf",
-                        "-o",
-                        "output.pdf",
-                        "output-pdf.md",
-                    ],
-                    cwd=self._path_out_dir,
-                    stdout=log_file,
-                    stderr=log_file,
-                )
-
-        if "md" in output_types:
-            report_template_md = jinja_env.get_template("report-md.md.jinja2")
-            report_md_str = report_template_md.render(ctx)
-            (self._path_out_dir / "output-md.md").write_text(
-                report_md_str, "utf-8"
-            )
-
-            with open(self._path_out_dir / "pandoc-gfm.log", "w+") as log_file:
-                # Github Markdown
-                subprocess.run(
-                    [
-                        *pandoc_base_cmd,
-                        "--to=gfm",
-                        "-o",
-                        "output_github.md",
-                        "output-md.md",
-                    ],
-                    cwd=self._path_out_dir,
-                    stdout=log_file,
-                    stderr=log_file,
-                )
-
-        if "html" in output_types:
-            report_template_html = jinja_env.get_template("index.html.jinja2")
-            report_html_str = report_template_html.render(ctx)
-            path_asset_out = self._path_out_dir / self._path_assets.name
-            path_asset_out.mkdir(parents=True, exist_ok=True)
-            self.write_plotlyjs(path_asset_out)
-            self.download_asset(
-                "https://raw.githubusercontent.com/andybrewer/mvp/v1.15/mvp.css",
-                path_asset_out / "mvp.css",
-            )
-            shutil.copytree(
-                self._path_assets, path_asset_out, dirs_exist_ok=True
-            )
-            (self._path_out_dir / "index.html").write_text(
-                report_html_str, "utf-8"
-            )
+        report_template_html = jinja_env.get_template("index.html.jinja2")
+        report_html_str = report_template_html.render(ctx)
+        path_asset_out = self._path_out_dir / self._path_assets.name
+        path_asset_out.mkdir(parents=True, exist_ok=True)
+        self.write_plotlyjs(path_asset_out)
+        self.download_asset(
+            "https://raw.githubusercontent.com/andybrewer/mvp/v1.15/mvp.css",
+            path_asset_out / "mvp.css",
+        )
+        shutil.copytree(
+            self._path_assets, path_asset_out, dirs_exist_ok=True
+        )
+        (self._path_out_dir / "index.html").write_text(
+            report_html_str, "utf-8"
+        )

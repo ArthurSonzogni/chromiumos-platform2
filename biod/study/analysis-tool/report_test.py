@@ -139,7 +139,7 @@ def test_report(dir: Path):
             "FRR_Bootstrap", "FRR Bootstrap Distribution", go.Figure(fig)
         )
 
-    rpt.generate(["html"])
+    rpt.generate()
 
 
 if __name__ == "__main__":

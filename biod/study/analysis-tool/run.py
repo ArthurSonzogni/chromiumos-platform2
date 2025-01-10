@@ -976,13 +976,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     print("# Generate final report")
 
-    rpt.generate(
-        {
-            # 'pdf',
-            # 'md',
-            "html",
-        }
-    )
+    rpt.generate()
 
     print(f"View {(analysis_dir / 'index.html').absolute}")
 
