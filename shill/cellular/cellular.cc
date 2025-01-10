@@ -1725,13 +1725,23 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
-  if (!connect_pending_iccid_.empty() &&
-      connect_pending_iccid_ == service->iccid()) {
-    Error error_temp = Error(Error::kWrongState, "Connect already pending.");
-    LOG(WARNING) << LoggingTag() << ": " << error_temp.message();
-    NotifyCellularConnectionResult(error_temp, service->iccid(),
-                                   service->is_in_user_connect(), apn_type);
-    return;
+  if (!connect_pending_iccid_.empty()) {
+    if (connect_pending_iccid_ == service->iccid()) {
+      // The error is not propagated to the caller, the connection request is
+      // just silently ignored.
+      Error error_temp = Error(Error::kWrongState, "Connect already pending.");
+      LOG(WARNING) << LoggingTag() << ": " << error_temp.message();
+      NotifyCellularConnectionResult(error_temp, service->iccid(),
+                                     service->is_in_user_connect(), apn_type);
+      return;
+    }
+
+    // If the user tries to activate a service manually quickly after a SIM slot
+    // change, service->iccid() may be a valid ICCID but connect_pending_iccid_
+    // may be kUnknownIccid.
+    LOG(INFO) << LoggingTag()
+              << ": Removing existing pending connect due to ICCID mismatch";
+    ConnectToPendingClear();
   }
 
   bool auto_connect_disabled =
@@ -3572,6 +3582,10 @@ void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
                                    is_user_triggered,
                                    ApnList::ApnType::kDefault);
   }
+  ConnectToPendingClear();
+}
+
+void Cellular::ConnectToPendingClear() {
   connect_cancel_callback_.Cancel();
   connect_pending_callback_.Cancel();
   connect_pending_iccid_.clear();

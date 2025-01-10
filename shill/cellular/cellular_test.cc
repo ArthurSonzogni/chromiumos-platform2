@@ -1033,10 +1033,23 @@ TEST_F(CellularTest, PendingConnect) {
   EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
   EXPECT_NE(device_->state(), Cellular::State::kConnected);
-  EXPECT_EQ(device_->connect_pending_iccid(), service->iccid());
+  EXPECT_EQ(device_->connect_pending_iccid(), kIccid);
 
-  // Setting scanning to false should connect to the pending iccid.
+  // An additional connection attempt with the same iccid should be just
+  // ignored.
+  error.Reset();
+  service->Connect(&error, "test");
+  EXPECT_TRUE(error.IsSuccess());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_NE(device_->state(), Cellular::State::kConnected);
+  EXPECT_EQ(device_->connect_pending_iccid(), kIccid);
+
+  // Setting scanning to false should trigger the logic to launch the pending
+  // connect, but given that it's really delayed 2s, the pending connect ICCID
+  // is still set.
   SetScanning(false);
+  EXPECT_EQ(device_->connect_pending_iccid(), kIccid);
+
   // Fast forward the task environment by the pending connect delay plus
   // time to complete the connect.
   constexpr base::TimeDelta kTestTimeout =
@@ -1044,6 +1057,47 @@ TEST_F(CellularTest, PendingConnect) {
   dispatcher_.task_environment().FastForwardBy(kTestTimeout);
   EXPECT_EQ(device_->state(), Cellular::State::kConnected);
   EXPECT_TRUE(device_->connect_pending_iccid().empty());
+}
+
+TEST_F(CellularTest, PendingConnectCleared) {
+  CellularService* service = SetRegisteredWithService();
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
+      .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
+  SetCapability3gppModemSimpleProxy();
+
+  // Connect while scanning should set a pending connect.
+  SetScanning(true);
+  Error error;
+  service->Connect(&error, "test");
+  EXPECT_TRUE(error.IsSuccess());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_NE(device_->state(), Cellular::State::kConnected);
+  EXPECT_EQ(device_->connect_pending_iccid(), kIccid);
+
+  // Setup a different service, with a different ICCID
+  constexpr char kIccid2[] = "000000001234";
+  ASSERT_NE(service->iccid(), kIccid2);
+  CellularService* service2 =
+      new CellularService(&manager_, "test-imsi", kIccid2, "test-eid");
+  service2->SetConnectable(true);
+  device_->service_ = service2;
+  device_->set_iccid_for_testing(kIccid2);
+  device_->service_->SetDevice(device_.get());
+
+  // Setting scanning to false should trigger the logic to launch the pending
+  // connect, but given that it's really delayed 2s, the pending connect ICCID
+  // is still set.
+  SetScanning(false);
+  EXPECT_EQ(device_->connect_pending_iccid(), kIccid);
+
+  // An additional connection attempt with a different ICCID should silently
+  // cancel the pending connect.
+  error.Reset();
+  service2->Connect(&error, "test2");
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(device_->connect_pending_iccid().empty());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(device_->state(), Cellular::State::kConnected);
 }
 
 TEST_F(CellularTest, PendingDisconnect) {

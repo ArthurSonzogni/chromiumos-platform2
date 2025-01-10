@@ -612,6 +612,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, OnAfterResumeDisabledWantEnabled);
   FRIEND_TEST(CellularTest, OnPPPDied);
   FRIEND_TEST(CellularTest, PendingConnect);
+  FRIEND_TEST(CellularTest, PendingConnectCleared);
   FRIEND_TEST(CellularTest, PendingDisconnect);
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedBeforeAuth);
@@ -806,6 +807,7 @@ class Cellular : public Device,
   void ConnectToPending();
   void ConnectToPendingAfterDelay();
   void ConnectToPendingFailed(Service::ConnectFailure failure);
+  void ConnectToPendingClear();
   void ConnectToPendingCancel();
 
   void UpdateScanning();
