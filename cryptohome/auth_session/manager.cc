@@ -109,11 +109,11 @@ bool AuthSessionManager::RemoveAuthSession(
   ResetExpirationTimer();
   // Find entries for the token in the token and user
   // maps. If any of the lookups fail we report an error.
-  auto token_iter = token_to_user_.find(token);
-  if (token_iter == token_to_user_.end()) {
+  auto token_iter = token_to_info_.find(token);
+  if (token_iter == token_to_info_.end()) {
     return false;
   }
-  auto user_iter = user_auth_sessions_.find(token_iter->second);
+  auto user_iter = user_auth_sessions_.find(token_iter->second.username);
   if (user_iter == user_auth_sessions_.end()) {
     return false;
   }
@@ -132,7 +132,7 @@ bool AuthSessionManager::RemoveAuthSession(
       user_iter->second.auth_sessions.empty()) {
     user_auth_sessions_.erase(user_iter);
   }
-  token_to_user_.erase(token_iter);
+  token_to_info_.erase(token_iter);
   return true;
 }
 
@@ -150,10 +150,10 @@ bool AuthSessionManager::RemoveAuthSession(
 void AuthSessionManager::RemoveUserAuthSessions(
     const ObfuscatedUsername& username) {
   std::set<base::UnguessableToken> tokens_being_removed;
-  for (auto iter = token_to_user_.begin(); iter != token_to_user_.end();) {
-    if (iter->second == username) {
+  for (auto iter = token_to_info_.begin(); iter != token_to_info_.end();) {
+    if (iter->second.username == username) {
       tokens_being_removed.insert(iter->first);
-      iter = token_to_user_.erase(iter);
+      iter = token_to_info_.erase(iter);
     } else {
       ++iter;
     }
@@ -179,7 +179,7 @@ void AuthSessionManager::RemoveUserAuthSessions(
 }
 
 void AuthSessionManager::RemoveAllAuthSessions() {
-  token_to_user_.clear();
+  token_to_info_.clear();
   user_auth_sessions_.clear();
   expiration_map_.clear();
   auth_session_expiring_soon_map_.clear();
@@ -194,11 +194,11 @@ void AuthSessionManager::RunWhenAvailable(
 
   // Look up the user sessions instance for the given token. If it doesn't exist
   // just execute the callback immediately with an invalid InUse object.
-  auto token_iter = token_to_user_.find(token);
-  if (token_iter == token_to_user_.end()) {
+  auto token_iter = token_to_info_.find(token);
+  if (token_iter == token_to_info_.end()) {
     return;
   }
-  auto user_iter = user_auth_sessions_.find(token_iter->second);
+  auto user_iter = user_auth_sessions_.find(token_iter->second.username);
   if (user_iter == user_auth_sessions_.end()) {
     return;
   }
@@ -244,8 +244,9 @@ base::UnguessableToken AuthSessionManager::AddAuthSession(
   // be able to get a token collision.
   const auto token = auth_session->token();
   const ObfuscatedUsername username = auth_session->obfuscated_username();
-  auto token_iter = token_to_user_.lower_bound(token);
-  CHECK(token_iter == token_to_user_.end() || token_iter->first != token)
+  const base::UnguessableToken public_token = auth_session->public_token();
+  auto token_iter = token_to_info_.lower_bound(token);
+  CHECK(token_iter == token_to_info_.end() || token_iter->first != token)
       << "AuthSession token collision";
 
   // Find the insertion location in the user->session map. This may create a new
@@ -258,7 +259,9 @@ base::UnguessableToken AuthSessionManager::AddAuthSession(
       << "AuthSession token collision";
 
   // Add entries to both maps.
-  token_to_user_.emplace_hint(token_iter, token, username);
+  token_to_info_.emplace_hint(
+      token_iter, token,
+      SessionInfo{.username = username, .public_token = public_token});
   session_iter = user_entry.auth_sessions.emplace_hint(session_iter, token,
                                                        std::move(auth_session));
   AuthSession& added_session = *session_iter->second;
@@ -287,24 +290,21 @@ void AuthSessionManager::MoveAuthSessionsToExpiringSoon() {
   bool need_moving = false;
   while (iter != expiration_map_.end() &&
          (iter->first - clock_->Now()) <= kAuthTimeoutWarning) {
-    auto token_iter = token_to_user_.find(iter->second);
-    if (token_iter == token_to_user_.end()) {
+    auto token_iter = token_to_info_.find(iter->second);
+    if (token_iter == token_to_info_.end()) {
       continue;
     }
-    // If the sending the signal fails or is not sent because of authsession not
-    // found, that's fine for now since this is informational.
-    if (user_auth_sessions_.find(token_to_user_[iter->second]) !=
-            user_auth_sessions_.end() &&
-        backing_apis_.signalling) {
+
+    // If the sending the signal fails for some reason that's okay to ignore
+    // since this is best effort and informational.
+    if (backing_apis_.signalling) {
       user_data_auth::AuthSessionExpiring expiring_proto;
-      auto broadcast_id =
-          user_auth_sessions_.find(token_to_user_[iter->second])
-              ->second.auth_sessions[iter->second]
-              ->serialized_public_token();
-      expiring_proto.set_broadcast_id(broadcast_id);
+      expiring_proto.set_broadcast_id(AuthSession::GetSerializedStringFromToken(
+          token_iter->second.public_token));
       expiring_proto.set_time_left((iter->first - clock_->Now()).InSeconds());
       backing_apis_.signalling->SendAuthSessionExpiring(expiring_proto);
     }
+
     ++iter;
     need_moving = true;
   }
@@ -399,12 +399,12 @@ void AuthSessionManager::ExpireAuthSessions() {
   int expired_sessions = 0;
   while (iter != auth_session_expiring_soon_map_.end() &&
          (expired_sessions == 0 || iter->first <= now)) {
-    auto token_iter = token_to_user_.find(iter->second);
-    if (token_iter == token_to_user_.end()) {
+    auto token_iter = token_to_info_.find(iter->second);
+    if (token_iter == token_to_info_.end()) {
       LOG(FATAL) << "token_iter: AuthSessionManager expired a session it is "
                     "not managing";
     }
-    auto user_iter = user_auth_sessions_.find(token_iter->second);
+    auto user_iter = user_auth_sessions_.find(token_iter->second.username);
     if (user_iter == user_auth_sessions_.end()) {
       LOG(FATAL) << "user_iter:AuthSessionManager expired a session it "
                     "is not managing";
@@ -418,7 +418,7 @@ void AuthSessionManager::ExpireAuthSessions() {
       user_iter->second.zombie_session = iter->second;
     }
     user_iter->second.auth_sessions.erase(session_iter);
-    token_to_user_.erase(token_iter);
+    token_to_info_.erase(token_iter);
     if (!user_iter->second.zombie_session.has_value() &&
         user_iter->second.auth_sessions.empty()) {
       user_auth_sessions_.erase(user_iter);

@@ -164,8 +164,16 @@ class AuthSessionManager {
   // The task runner for running any async work.
   base::SequencedTaskRunner* task_runner_;
 
-  // Map of session tokens to the session user.
-  std::map<base::UnguessableToken, ObfuscatedUsername> token_to_user_;
+  // Map of session tokens to the basic metadata about the session. This
+  // information is also available from the AuthSession object itself, but that
+  // object isn't always easily accessible, e.g. if the session is in use.
+  struct SessionInfo {
+    // The user that the session is associated with.
+    ObfuscatedUsername username;
+    // The public token for the session.
+    base::UnguessableToken public_token;
+  };
+  std::map<base::UnguessableToken, SessionInfo> token_to_info_;
 
   // For each user, stores all of their sessions as well as a work queue.
   struct UserAuthSessions {

@@ -58,6 +58,7 @@ using ::testing::IsEmpty;
 using ::testing::IsNull;
 using ::testing::IsTrue;
 using ::testing::Le;
+using ::testing::Lt;
 using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Return;
@@ -376,6 +377,98 @@ TEST_F(AuthSessionManagerTest, CreateExpireAfterPowerSuspend) {
   {
     InUseAuthSession auth_session = TakeAuthSession(token);
     ASSERT_THAT(auth_session.AuthSessionStatus(), NotOk());
+  }
+}
+
+TEST_F(AuthSessionManagerTest, ExpireWhileNotInUse) {
+  base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+
+  // Authenticate the session. It should now have a finite timeout.
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session->authorized_intents(),
+        UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  }
+
+  // Verify the remaining time.
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session.GetRemainingTime(),
+        AllOf(Gt(base::TimeDelta()), Le(AuthSessionManager::kAuthTimeout)));
+  }
+
+  // Advance the clock to past the expiration warning threshold, but before an
+  // actual timeout. This should send a session expiring signal.
+  EXPECT_CALL(signalling_, SendAuthSessionExpiring(_));
+  task_environment_.FastForwardBy(
+      AuthSessionManager::kAuthTimeout -
+      (AuthSessionManager::kAuthTimeoutWarning / 2));
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()),
+                      Lt(AuthSessionManager::kAuthTimeoutWarning)));
+  }
+
+  // Advance the clock past the timeout threshold. The session should be gone.
+  task_environment_.FastForwardBy(AuthSessionManager::kAuthTimeoutWarning);
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
+  }
+}
+
+TEST_F(AuthSessionManagerTest, ExpireWhileInUse) {
+  base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+
+  // Authenticate the session. It should now have a finite timeout.
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session->authorized_intents(),
+        UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  }
+
+  // Hold onto the session. Expiration should still work even when the session
+  // being expired is still in use, the destruction just gets delayed until
+  // after the session use ends.
+  {
+    // Verify the remaining time.
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session.GetRemainingTime(),
+        AllOf(Gt(base::TimeDelta()), Le(AuthSessionManager::kAuthTimeout)));
+
+    // Advance the clock to past the expiration warning threshold, but before an
+    // actual timeout. This should send a session expiring signal.
+    EXPECT_CALL(signalling_, SendAuthSessionExpiring(_));
+    task_environment_.FastForwardBy(
+        AuthSessionManager::kAuthTimeout -
+        (AuthSessionManager::kAuthTimeoutWarning / 2));
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()),
+                      Lt(AuthSessionManager::kAuthTimeoutWarning)));
+
+    // Advance the clock past the timeout threshold.
+    task_environment_.FastForwardBy(AuthSessionManager::kAuthTimeoutWarning);
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(), Eq(base::TimeDelta()));
+  }
+
+  // After we release the in use session it should be gone.
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
   }
 }
 
