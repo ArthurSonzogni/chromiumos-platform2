@@ -16,30 +16,11 @@
           },
           {
             "reg": "0x01",
-            "mask": "0x0f",
+            "mask": "0xffff",
             "value": "0x01"
-          },
-          {
-            "reg": "0x02",
-            "value": "0x02"
-          }
-        ]
-      }
-    },
-    {
-      "component_type": "base_sensor",
-      "component_name": "base_sensor_2",
-      "i2c": {
-        "port": 3,
-        "addr": "0x01",
-        "expect": [
-          {
-            "reg": "0x02"
           }
         ]
       }
     }
   ]
 }
-
-

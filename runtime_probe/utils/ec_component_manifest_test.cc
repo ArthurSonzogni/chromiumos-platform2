@@ -62,8 +62,15 @@ TEST_F(EcComponentManifestTest,
 }
 
 TEST_F(EcComponentManifestTest,
-       EcComponentManifestReader_ReadInvalidManifestFailed) {
+       EcComponentManifestReader_ManifestWithMissingField_ReadFailed) {
   SetUpEcComponentManifest("image1", "invalid-1");
+  const auto manifest = EcComponentManifestReader::Read();
+  EXPECT_FALSE(manifest.has_value());
+}
+
+TEST_F(EcComponentManifestTest,
+       EcComponentManifestReader_ManifestWithInvalidField_ReadFailed) {
+  SetUpEcComponentManifest("image1", "invalid-2");
   const auto manifest = EcComponentManifestReader::Read();
   EXPECT_FALSE(manifest.has_value());
 }
@@ -84,8 +91,10 @@ TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
     EXPECT_EQ(comp.i2c.expect.size(), 2);
     EXPECT_EQ(comp.i2c.expect[0].reg, 0);
     EXPECT_EQ(comp.i2c.expect[0].value, std::vector<uint8_t>{0x00});
+    EXPECT_EQ(comp.i2c.expect[0].mask, std::vector<uint8_t>{0xff});
     EXPECT_EQ(comp.i2c.expect[1].reg, 1);
     EXPECT_EQ(comp.i2c.expect[1].value, std::vector<uint8_t>{0x01});
+    EXPECT_EQ(comp.i2c.expect[1].mask, std::vector<uint8_t>{0xff});
   }
   {
     const EcComponentManifest::Component& comp = manifest->component_list[1];

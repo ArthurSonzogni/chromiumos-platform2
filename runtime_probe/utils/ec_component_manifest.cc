@@ -123,6 +123,16 @@ EcComponentManifest::Component::I2c::Expect::Create(
     LOG(ERROR) << "Invalid field: value";
     return std::nullopt;
   }
+  auto mask = dv.FindString("mask");
+  if (mask && !SetBytes(mask, ret.mask)) {
+    LOG(ERROR) << "Invalid field: mask";
+    return std::nullopt;
+  }
+  if (ret.value.has_value() && ret.mask.has_value() &&
+      ret.mask->size() != ret.value->size()) {
+    LOG(ERROR) << "Invalid field: the lengths of value and mask are different";
+    return std::nullopt;
+  }
   return ret;
 }
 

@@ -23,6 +23,23 @@ namespace runtime_probe {
 
 namespace {
 constexpr int kEcCmdNumAttempts = 10;
+
+bool IsMatchExpect(EcComponentManifest::Component::I2c::Expect expect,
+                   base::span<const uint8_t> resp_data) {
+  if (expect.value->size() != resp_data.size()) {
+    return false;
+  }
+  if (!expect.mask.has_value()) {
+    return expect.value == resp_data;
+  }
+
+  for (int i = 0; i < resp_data.size(); i++) {
+    if ((resp_data[i] & (*expect.mask)[i]) != (*expect.value)[i]) {
+      return false;
+    }
+  }
+  return true;
+}
 }  // namespace
 
 base::ScopedFD EcComponentFunction::GetEcDevice() const {
@@ -81,7 +98,7 @@ bool EcComponentFunction::IsValidComponent(
     if (cmd &&
         cmd->RunWithMultipleAttempts(ec_dev_fd.get(), kEcCmdNumAttempts) &&
         !cmd->I2cStatus()) {
-      if (!expect.value || expect.value == cmd->RespData()) {
+      if (!expect.value.has_value() || IsMatchExpect(expect, cmd->RespData())) {
         return true;
       }
     }
