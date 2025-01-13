@@ -3,40 +3,78 @@
 // found in the LICENSE file.
 
 use anyhow::{bail, Context, Result};
-use log::{error, info};
+use log::info;
 use std::{
     fs::File,
-    io::BufReader,
+    io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
+    thread,
 };
 use tar::Archive;
 use xz2::bufread::XzDecoder;
 
-/// Executes a command and logs its result. Returns an error in case something
-/// goes wrong.
-pub fn execute_command(mut command: Command) -> Result<()> {
+/// Run a command and log its output (both stdout and stderr) at the
+/// info level. An error is returned if the process fails to launch,
+/// or if it exits non-zero.
+pub fn execute_command(command: Command) -> Result<()> {
     info!("Executing command: {:?}", command);
 
-    match command.output() {
-        Ok(output) => {
-            if output.status.success() {
-                return Ok(());
-            }
+    execute_command_impl(command, |msg| info!("{}", msg))
+}
 
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let code = output.status.code().unwrap_or(1);
-            error!(
-                "Command {command:?} failed with code {code}\nStdout:\n{stdout}\nStderr:\n{stderr}"
-            );
-            bail!("Unable to execute command: Got non-zero status code");
-        }
-        Err(err) => {
-            error!("Unable to execute command: {err}");
-            bail!(err);
-        }
+/// Implementation for `execute_command`.
+///
+/// When a log is produced, the message is passed to the `log` function.
+/// This allows tests to check the logs produced by the command.
+fn execute_command_impl<L>(mut command: Command, log: L) -> Result<()>
+where
+    L: Fn(String) + Clone + Send + 'static,
+{
+    // Spawn the child with its output piped so that it can be logged.
+    let mut child = command
+        // The `Command` API doesn't have a convenient way to create a
+        // shared pipe for stdout/stderr, so create two pipes.
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .context("Failed to spawn command")?;
+    // OK to unwrap: stderr and stdout are set to capture above.
+    let mut stderr = child.stderr.take().unwrap();
+    let mut stdout = child.stdout.take().unwrap();
+
+    // Spawn two background threads, one to log stdout and one to log
+    // stderr. The threads will terminate when the output pipe is
+    // broken, which happen until when the child exits.
+    let log_clone = log.clone();
+    let stderr_thread = thread::spawn(move || log_lines_from_reader(&mut stderr, log_clone));
+    let stdout_thread = thread::spawn(move || log_lines_from_reader(&mut stdout, log));
+    stderr_thread.join().unwrap();
+    stdout_thread.join().unwrap();
+
+    // Wait for the child process to exit completely.
+    let status = child.wait().context("Failed to wait on process")?;
+
+    // Check the status to return an error if needed.
+    if !status.success() {
+        bail!("Process exited non-zero: {status:?}");
     }
+
+    Ok(())
+}
+
+/// Read all lines from `reader` and log them with a ">>> " prefix.
+///
+/// This is used for logging output from a child process.
+fn log_lines_from_reader<L>(reader: &mut dyn Read, log: L)
+where
+    L: Fn(String),
+{
+    let reader = BufReader::new(reader);
+    reader
+        .lines()
+        .map_while(Result::ok)
+        .for_each(|line| log(format!(">>> {}", line)));
 }
 
 /// Uncompresses a tar from `src` to `dst`. In this case `src` needs to point to
@@ -72,6 +110,7 @@ pub fn uncompress_tar_xz(src: &Path, dst: &Path) -> Result<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Arc, Mutex};
 
     const FILE_CONTENTS: &[u8] = b"Hello World!";
     const FILE_NAME: &str = "foo.txt";
@@ -133,5 +172,24 @@ mod tests {
         // This succeeds.
         let result = execute_command(Command::new("ls"));
         assert!(result.is_ok());
+    }
+
+    /// Test that `execute_command_impl` logs the command's stdout and
+    /// stderr.
+    #[test]
+    fn test_execute_log() {
+        let output = Arc::new(Mutex::new(Vec::new()));
+        let output_clone = output.clone();
+
+        // Create a command that writes to both stdout and stderr.
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c");
+        cmd.arg("echo write-to-stdout && >&2 echo write-to-stderr");
+        execute_command_impl(cmd, move |msg| output_clone.lock().unwrap().push(msg)).unwrap();
+
+        assert_eq!(
+            *output.lock().unwrap(),
+            [">>> write-to-stdout", ">>> write-to-stderr"]
+        );
     }
 }
