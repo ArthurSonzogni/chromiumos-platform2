@@ -4,11 +4,13 @@
 
 #include "cros-disks/archive_manager.h"
 
+#include <string_view>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
@@ -36,6 +38,8 @@ bool ArchiveManager::Initialize() {
     return false;
   }
 
+  using std::literals::operator""sv;
+
   {
     SandboxedExecutable executable = {
         base::FilePath("/usr/bin/mount-zip"),
@@ -48,13 +52,9 @@ bool ArchiveManager::Initialize() {
         36,   // ZIP_ER_BASE + ZIP_ER_NOPASSWD
         37};  // ZIP_ER_BASE + ZIP_ER_WRONGPASSWD
 
-    std::vector<std::string> opts = {"-o", "nosymlinks,nospecials"};
-
-    if (LOG_IS_ON(INFO)) {
-      opts.push_back("--verbose");
-    } else {
-      opts.push_back("--redact");
-    }
+    std::vector<std::string> opts = {
+        "-o", base::StrCat({"nospecials,nosymlinks,",
+                            LOG_IS_ON(INFO) ? "verbose"sv : "redact"sv})};
 
     mounters_.push_back(std::make_unique<ArchiveMounter>(
         platform(), process_reaper(), "zip", "zip", metrics(),
@@ -130,13 +130,9 @@ bool ArchiveManager::Initialize() {
 
     // Don't use fuse-archive in cached mode, since we're not sure to have
     // enough disk space in /tmp.
-    std::vector<std::string> opts = {"-o", "nocache,nospecials,nosymlinks"};
-
-    if (LOG_IS_ON(INFO)) {
-      opts.push_back("--verbose");
-    } else {
-      opts.push_back("--redact");
-    }
+    std::vector<std::string> opts = {
+        "-o", base::StrCat({"nocache,nospecials,nosymlinks,",
+                            LOG_IS_ON(INFO) ? "verbose"sv : "redact"sv})};
 
     mounters_.push_back(std::make_unique<ArchiveMounter>(
         platform(), process_reaper(), "archive", ext, metrics(),
