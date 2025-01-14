@@ -135,6 +135,7 @@ sched_getscheduler: 1
 
 # For mojo & D-Bus
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 
 # For DBusDaemon
 signalfd4: 1

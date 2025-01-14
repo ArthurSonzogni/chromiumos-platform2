@@ -127,6 +127,7 @@ sched_setaffinity: 1
 
 # For mojo & D-Bus
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 
 # For opencl runner
 mkdir: 1
