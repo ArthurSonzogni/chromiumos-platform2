@@ -183,8 +183,13 @@ bool SmbFsDaemon::InitMojo() {
     return false;
   }
 
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      channel.TakeLocalEndpoint(), MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(channel.TakeLocalEndpoint());
+#endif
   mojo_session_ = std::make_unique<MojoSession>(
       bus_, temp_dir_.GetPath(), chan_,
       mojo::PendingReceiver<mojom::SmbFsBootstrap>(
