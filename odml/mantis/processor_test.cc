@@ -26,7 +26,8 @@ using base::test::TestFuture;
 using mojom::MantisError;
 using mojom::MantisResult;
 using mojom::SafetyClassifierVerdict;
-using testing::IsEmpty;
+using ::testing::_;
+using ::testing::IsEmpty;
 
 constexpr ProcessorPtr kFakeProcessorPtr = 0xDEADBEEF;
 constexpr SegmenterPtr kFakeSegmenterPtr = 0xCAFEBABE;
@@ -162,8 +163,17 @@ TEST_F(MantisProcessorTest, InpaintingSucceeds) {
       },
       fake::GetMantisApi());
   EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
+      .Times(2)
       .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass));
+  EXPECT_CALL(
+      metrics_lib_,
+      SendTimeToUMA("Platform.MantisService.Latency.ClassifyImageSafety", _, _,
+                    _, _))
+      .Times(2);
+  EXPECT_CALL(
+      metrics_lib_,
+      SendTimeToUMA("Platform.MantisService.Latency.Inpainting", _, _, _, _));
 
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
@@ -301,8 +311,17 @@ TEST_F(MantisProcessorTest, GenerativeFillSucceeds) {
       },
       fake::GetMantisApi());
   EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
+      .Times(2)
       .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass));
+  EXPECT_CALL(
+      metrics_lib_,
+      SendTimeToUMA("Platform.MantisService.Latency.ClassifyImageSafety", _, _,
+                    _, _))
+      .Times(2);
+  EXPECT_CALL(metrics_lib_,
+              SendTimeToUMA("Platform.MantisService.Latency.GenerativeFill", _,
+                            _, _, _));
 
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "a cute cat",
@@ -369,6 +388,9 @@ TEST_F(MantisProcessorTest, SegmentationSucceeds) {
           .segmenter = kFakeSegmenterPtr,
       },
       fake::GetMantisApi());
+  EXPECT_CALL(
+      metrics_lib_,
+      SendTimeToUMA("Platform.MantisService.Latency.Segmentation", _, _, _, _));
 
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.Segmentation(GetFakeImage(), GetFakeMask(),

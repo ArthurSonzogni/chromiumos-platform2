@@ -172,10 +172,12 @@ source_set("utils") {
 
 source_set("mantis") {
   sources = [
+    "mantis/metrics.cc",
     "mantis/processor.cc",
     "mantis/service.cc",
   ]
   public_deps = [ ":mojo_bindings_lib" ]
+  deps = [ ":utils" ]
   configs += [ ":target_defaults" ]
 }
 
