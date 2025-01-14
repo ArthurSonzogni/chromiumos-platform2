@@ -91,3 +91,4 @@ setresgid: 1
 setresuid: 1
 setresgid32: 1
 setresuid32: 1
+bind: 1

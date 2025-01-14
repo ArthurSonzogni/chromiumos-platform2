@@ -82,3 +82,4 @@ sysinfo: 1
 clock_nanosleep: 1
 setresgid: 1
 setresuid: 1
+bind: 1
