@@ -41,6 +41,7 @@ define(`HDIO_GETGEO', `0x301')
 # src/third_party/kernel/v*/include/uapi/linux/fs.h
 define(`BLKRRPART', `0x125F')
 define(`BLKSSZGET', `0x1268')
+define(`BLKBSZGET', `0x1270')
 define(`BLKGETSIZE64', `0x1272')
 
 # tty ioctls are defined in
