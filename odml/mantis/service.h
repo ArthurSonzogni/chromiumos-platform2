@@ -9,10 +9,12 @@
 #include <string>
 #include <utility>
 
+#include <base/memory/raw_ref.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
 #include <base/types/expected.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
@@ -27,6 +29,7 @@ namespace mantis {
 class MantisService : public mojom::MantisService {
  public:
   explicit MantisService(
+      raw_ref<MetricsLibraryInterface> metrics_lib,
       raw_ref<odml::OdmlShimLoader> shim_loader,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager);
   ~MantisService() = default;
@@ -53,6 +56,7 @@ class MantisService : public mojom::MantisService {
 
  protected:
   virtual void CreateMantisProcessor(
+      raw_ref<MetricsLibraryInterface> metrics_lib,
       MantisComponent component,
       const MantisAPI* api,
       mojo::PendingReceiver<mojom::MantisProcessor> receiver,
@@ -83,6 +87,8 @@ class MantisService : public mojom::MantisService {
       std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
           progress_observer,
       double progress);
+
+  const raw_ref<MetricsLibraryInterface> metrics_lib_;
 
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
 

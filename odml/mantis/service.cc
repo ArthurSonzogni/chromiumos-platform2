@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include <base/memory/raw_ref.h>
+#include <metrics/metrics_library.h>
 #include <ml_core/dlc/dlc_client.h>
 
 #include "odml/mantis/processor.h"
@@ -26,9 +28,11 @@ constexpr double kFinishedProgress = 1;
 }  // namespace
 
 MantisService::MantisService(
+    raw_ref<MetricsLibraryInterface> metrics_lib,
     raw_ref<odml::OdmlShimLoader> shim_loader,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
-    : shim_loader_(shim_loader),
+    : metrics_lib_(metrics_lib),
+      shim_loader_(shim_loader),
       safety_service_manager_(safety_service_manager) {}
 
 template <typename FuncType,
@@ -143,12 +147,14 @@ void MantisService::OnInstallDlcComplete(
   MantisComponent component = api->Initialize(result->value());
 
   CreateMantisProcessor(
-      component, api, std::move(processor), safety_service_manager_,
+      metrics_lib_, component, api, std::move(processor),
+      safety_service_manager_,
       base::BindOnce(&MantisService::DeleteProcessor, base::Unretained(this)),
       std::move(callback));
 }
 
 void MantisService::CreateMantisProcessor(
+    raw_ref<MetricsLibraryInterface> metrics_lib,
     MantisComponent component,
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
@@ -156,7 +162,7 @@ void MantisService::CreateMantisProcessor(
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(mantis::mojom::InitializeResult)> callback) {
   processor_ = std::make_unique<MantisProcessor>(
-      component, api, std::move(processor), safety_service_manager,
+      metrics_lib, component, api, std::move(processor), safety_service_manager,
       std::move(on_disconnected), std::move(callback));
 }
 

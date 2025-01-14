@@ -11,10 +11,12 @@
 #include <utility>
 #include <vector>
 
+#include <base/memory/raw_ref.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
 #include <chromeos/mojo/service_constants.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
@@ -51,6 +53,7 @@ struct MantisProcess {
 class MantisProcessor : public mojom::MantisProcessor {
  public:
   explicit MantisProcessor(
+      raw_ref<MetricsLibraryInterface> metrics_lib,
       MantisComponent component,
       const MantisAPI* api,
       mojo::PendingReceiver<mojom::MantisProcessor> receiver,
@@ -101,6 +104,8 @@ class MantisProcessor : public mojom::MantisProcessor {
   void OnDisconnected();
 
   void ProcessImage(std::unique_ptr<MantisProcess> process);
+
+  const raw_ref<MetricsLibraryInterface> metrics_lib_;
 
   MantisComponent component_;
 

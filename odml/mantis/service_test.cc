@@ -17,6 +17,7 @@
 
 #include "base/test/gmock_callback_support.h"
 #include "gmock/gmock.h"
+#include "metrics/metrics_library_mock.h"
 #include "odml/cros_safety/safety_service_manager_mock.h"
 #include "odml/mantis/fake/fake_mantis_api.h"
 #include "odml/mojom/mantis_service.mojom.h"
@@ -36,7 +37,8 @@ class MantisServiceTest : public testing::Test {
     mojo::core::Init();
 
     service_ = std::make_unique<MantisService>(
-        raw_ref(shim_loader_), raw_ref(safety_service_manager_));
+        raw_ref(metrics_lib_), raw_ref(shim_loader_),
+        raw_ref(safety_service_manager_));
 
     service_->AddReceiver(service_remote_.BindNewPipeAndPassReceiver());
   }
@@ -48,6 +50,7 @@ class MantisServiceTest : public testing::Test {
 
  protected:
   base::test::TaskEnvironment task_environment_;
+  MetricsLibraryMock metrics_lib_;
   odml::OdmlShimLoaderMock shim_loader_;
   std::unique_ptr<MantisService> service_;
   mojo::Remote<mojom::MantisService> service_remote_;

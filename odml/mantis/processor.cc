@@ -10,7 +10,9 @@
 #include <base/check.h>
 #include <base/containers/fixed_flat_map.h>
 #include <base/logging.h>
+#include <base/memory/raw_ref.h>
 #include <base/run_loop.h>
+#include <metrics/metrics_library.h>
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
@@ -67,13 +69,15 @@ constexpr auto kMapImageTypeToRuleset =
 }  // namespace
 
 MantisProcessor::MantisProcessor(
+    raw_ref<MetricsLibraryInterface> metrics_lib,
     MantisComponent component,
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> receiver,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(InitializeResult)> callback)
-    : component_(component),
+    : metrics_lib_(metrics_lib),
+      component_(component),
       api_(api),
       safety_service_manager_(safety_service_manager),
       on_disconnected_(std::move(on_disconnected)) {

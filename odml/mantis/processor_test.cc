@@ -14,6 +14,7 @@
 #include <testing/gmock/include/gmock/gmock.h>
 #include <testing/gtest/include/gtest/gtest.h>
 
+#include "metrics/metrics_library_mock.h"
 #include "odml/cros_safety/safety_service_manager_mock.h"
 #include "odml/mantis/fake/fake_mantis_api.h"
 #include "odml/mantis/lib_api.h"
@@ -47,12 +48,14 @@ class MantisProcessorTest : public testing::Test {
                                             const MantisAPI* api) {
     EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
         .WillOnce(base::test::RunOnceCallback<0>(true));
-    return MantisProcessor(
-        component, api, processor_remote_.BindNewPipeAndPassReceiver(),
-        raw_ref(safety_service_manager_), base::DoNothing(), base::DoNothing());
+    return MantisProcessor(raw_ref(metrics_lib_), component, api,
+                           processor_remote_.BindNewPipeAndPassReceiver(),
+                           raw_ref(safety_service_manager_), base::DoNothing(),
+                           base::DoNothing());
   }
 
   base::test::TaskEnvironment task_environment_;
+  MetricsLibraryMock metrics_lib_;
   mojo::Remote<mojom::MantisProcessor> processor_remote_;
   cros_safety::SafetyServiceManagerMock safety_service_manager_;
 };

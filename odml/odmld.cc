@@ -167,7 +167,7 @@ class MantisServiceProviderImpl
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
       : metrics_(metrics),
         receiver_(this),
-        service_impl_(shim_loader, safety_service_manager) {
+        service_impl_(metrics, shim_loader, safety_service_manager) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosMantisService,
         receiver_.BindNewPipeAndPassRemote());
