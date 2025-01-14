@@ -163,6 +163,9 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   // Name of the stateful device (e.g. /dev/vdb) as determined by StartTermina.
   std::string stateful_device_;
 
+  // Enable logind linger for a user.
+  grpc::Status SetUserLinger(const uid_t uid);
+
   // Set timezone according to different implementations.
   grpc::Status SetTimezoneSymlink(const base::FilePath& zoneinfo_file);
   grpc::Status SetTimezoneBindMount(const std::string& zoneinfo_file);

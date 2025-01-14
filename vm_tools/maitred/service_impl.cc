@@ -91,8 +91,6 @@ constexpr char kLogindServiceName[] = "org.freedesktop.login1";
 // https://manpages.debian.org/testing/adduser/adduser.conf.5.en.html#NAME_REGEX
 constexpr LazyRE2 kUsernameRegexp = {R"([a-z][-a-z0-9_]*\$?)"};
 
-constexpr char kSystemdLingerDirPath[] = "/var/lib/systemd/linger";
-
 // Convert a 32-bit int in network byte order into a printable string.
 string AddressToString(uint32_t address) {
   struct in_addr in = {
@@ -1131,6 +1129,45 @@ grpc::Status ServiceImpl::UpdateStorageBalloon(
   return grpc::Status::OK;
 }
 
+grpc::Status ServiceImpl::SetUserLinger(const uid_t uid) {
+  dbus::Bus::Options opts;
+  opts.bus_type = dbus::Bus::SYSTEM;
+
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(opts));
+  if (!bus->Connect()) {
+    LOG(ERROR) << "Failed to connect to system bus";
+    return grpc::Status(grpc::INTERNAL, "Failed to connect to system bus");
+  }
+
+  dbus::ObjectProxy* logind_service_proxy = bus->GetObjectProxy(
+      kLogindServiceName, dbus::ObjectPath(kLogindServicePath));
+  if (!logind_service_proxy) {
+    LOG(ERROR) << "Failed to get D-Bus proxy for " << kLogindServiceName;
+    return grpc::Status(
+        grpc::INTERNAL,
+        base::StrCat({"Failed to get D-Bus proxy for ", kLogindServiceName}));
+  }
+
+  dbus::MethodCall method_call(kLogindManagerInterface, "SetUserLinger");
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendUint32(uid);  // uid
+  writer.AppendBool(true);   // enable
+  writer.AppendBool(false);  // interactive
+
+  auto dbus_response = logind_service_proxy->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    LOG(ERROR) << "Failed to send SetUserLinger request to logind.";
+    return grpc::Status(
+        grpc::INTERNAL,
+        base::StrCat({"Failed to send SetUserLinger request to logind: ",
+                      dbus_response.error().name(), ", ",
+                      dbus_response.error().message()}));
+  }
+
+  return grpc::Status::OK;
+}
+
 grpc::Status ServiceImpl::SetUpUser(grpc::ServerContext* ctx,
                                     const vm_tools::SetUpUserRequest* request,
                                     vm_tools::SetUpUserResponse* response) {
@@ -1225,20 +1262,11 @@ grpc::Status ServiceImpl::SetUpUser(grpc::ServerContext* ctx,
     }
   }
 
-  // Create a linger file to keep systemd user services running even after the
-  // user's session has terminated.
-  auto linger_dir = base::FilePath(kSystemdLingerDirPath);
-  if (!base::DirectoryExists(linger_dir)) {
-    if (!base::CreateDirectory(linger_dir)) {
-      response->set_failure_reason("Could not create " + linger_dir.value());
-      LOG(ERROR) << response->failure_reason();
-      return grpc::Status::OK;
-    }
-  }
-  if (!base::WriteFile(linger_dir.Append(request->username()), std::string())) {
-    response->set_failure_reason("Could not create linger file");
-    LOG(ERROR) << response->failure_reason();
-    return grpc::Status::OK;
+  // Enable linger to keep systemd user services running even after the user's
+  // session has terminated.
+  auto status = SetUserLinger(uid);
+  if (!status.ok()) {
+    return status;
   }
 
   response->set_success(true);
