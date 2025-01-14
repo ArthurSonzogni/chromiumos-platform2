@@ -510,7 +510,7 @@ INSTANTIATE_TEST_SUITE_P(
                                            std::end(kFingerTestInput20230907)),
                        false)));
 
-TEST_P(HeatmapProcessorExecuteTest, DISABLED_DetectsPalmAndFinger) {
+TEST_P(HeatmapProcessorExecuteTest, DetectsPalmAndFinger) {
   FakeClient client;
   mojo::Receiver<HeatmapPalmRejectionClient> receiver(&client);
   auto config = HeatmapPalmRejectionConfig::New();
