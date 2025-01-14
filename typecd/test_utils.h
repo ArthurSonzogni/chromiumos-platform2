@@ -36,6 +36,7 @@ void AddAppleTBT3ProCable(Port& port);
 void AddCalDigitTBT4Cable(Port& port);
 void AddCableMattersTBT4LRDCable(Port& port);
 void AddStartech40GbpsCable(Port& port);
+void AddKensingtonTBT5Cable(Port& port);
 
 // Helper functions for USB-C partners.
 void AddCableMattersDock(Port& port);
@@ -47,6 +48,7 @@ void AddIntelUSB4GatkexCreekDock(Port& port);
 void AddOWCTBT4Dock(Port& port);
 void AddWimaxitDisplay(Port& port);
 void AddHPG4Dock(Port& port);
+void AddKensingtonTBT5Dock(Port& port);
 
 }  // namespace typecd
 

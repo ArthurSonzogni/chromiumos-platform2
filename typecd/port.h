@@ -252,6 +252,7 @@ class Port {
   FRIEND_TEST(PortTest, TBTCableLimitingSpeedTBT3DockFalse);
   FRIEND_TEST(PortTest, TBTCableLimitingSpeedTBT3DockTrue);
   FRIEND_TEST(PortTest, TBTCableLimitingSpeedTBT3DockFalseTBT3Cable);
+  FRIEND_TEST(PortTest, TBT5CableLimitingSpeedTBT5DockFalse);
   FRIEND_TEST(PortTest, CaptiveCableFalse);
   FRIEND_TEST(PortTest, CaptiveCableTrueCableVDO);
   FRIEND_TEST(PortTest, CaptiveCableTrueIdHeaderVDO);
@@ -273,6 +274,7 @@ class Port {
   friend void AddStartech40GbpsCable(Port& port);
   friend void AddTargusUSB3p2Gen2Cable(Port& port);
   friend void AddTargusUSB3p1Gen1Cable(Port& port);
+  friend void AddKensingtonTBT5Cable(Port& port);
   friend void AddCableMattersDock(Port& port);
   friend void AddDellWD19TBDock(Port& port);
   friend void AddStartechDock(Port& port);
@@ -284,6 +286,7 @@ class Port {
   friend void AddTargusDV4KDock(Port& port);
   friend void AddTargus180Dock(Port& port);
   friend void AddHPG4Dock(Port& port);
+  friend void AddKensingtonTBT5Dock(Port& port);
 
   bool IsPartnerAltModePresent(uint16_t altmode_sid);
 

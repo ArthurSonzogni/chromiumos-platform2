@@ -702,6 +702,19 @@ TEST_F(PortTest, TBTCableLimitingSpeedTBT3DockFalseTBT3Cable) {
   EXPECT_FALSE(port->CableLimitingUSBSpeed(true));
 }
 
+// Check that CableLimitingUSBSpeed() returns false after entering USB4
+// with TBT5 dock and TBT5 passive cable.
+// Case: Kensington TBT5 dock with included cable.
+TEST_F(PortTest, TBT5CableLimitingSpeedTBT5DockFalse) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddKensingtonTBT5Dock(*port);
+  AddKensingtonTBT5Cable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed(false));
+}
+
 // Check the physical location functions GetPanel(), GetHorizontalLocation() and
 // GetVerticalLocation() for a valid physical_location.
 TEST_F(PortTest, GetPhysicalLocationValid) {

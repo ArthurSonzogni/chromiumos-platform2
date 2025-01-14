@@ -651,12 +651,14 @@ bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
         kTBT3CableDiscModeVDORoundedSupportMask;
 
     if (cable_tbt_mode == kTBT3CableDiscModeVDOModeTBT &&
-        cable_tbt_speed == kTBT3CableDiscModeVDOSpeed10G20G &&
-        (cable_type == kIDHeaderVDOProductTypeCablePassive ||
-         (cable_type == kIDHeaderVDOProductTypeCableActive &&
-          cable_tbt_rounded_support ==
-              kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded))) {
-      cable_speed = kUSB40SuperSpeedGen3;
+        cable_tbt_speed == kTBT3CableDiscModeVDOSpeed10G20G) {
+      if (cable_type == kIDHeaderVDOProductTypeCablePassive) {
+        cable_speed = kUSB40SuperSpeedGen4;
+      } else if (cable_type == kIDHeaderVDOProductTypeCableActive &&
+                 cable_tbt_rounded_support ==
+                     kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded) {
+        cable_speed = kUSB40SuperSpeedGen3;
+      }
     }
 
     break;
