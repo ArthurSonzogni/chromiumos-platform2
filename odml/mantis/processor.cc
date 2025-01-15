@@ -187,32 +187,15 @@ void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
     return;
   }
 
-  ClassifyImageSafetyInternal(
-      // Input image checking doesn't require a prompt
-      image, /*text=*/"", ImageType::kInputImage,
-      base::BindOnce(
-          [](SegmentationCallback callback, const MantisAPI* api,
-             MantisComponent component, const std::vector<uint8_t>& image,
-             const std::vector<uint8_t>& prior,
-             SafetyClassifierVerdict result) {
-            if (result != SafetyClassifierVerdict::kPass) {
-              std::move(callback).Run(
-                  MantisResult::NewError(MantisError::kInputSafetyError));
-              return;
-            }
+  SegmentationResult lib_result =
+      api_->Segmentation(component_.segmenter, image, prior);
+  if (lib_result.status != MantisStatus::kOk) {
+    std::move(callback).Run(
+        MantisResult::NewError(kMapStatusToError.at(lib_result.status)));
+    return;
+  }
 
-            SegmentationResult lib_result =
-                api->Segmentation(component.segmenter, image, prior);
-            if (lib_result.status != MantisStatus::kOk) {
-              std::move(callback).Run(MantisResult::NewError(
-                  kMapStatusToError.at(lib_result.status)));
-              return;
-            }
-
-            std::move(callback).Run(
-                MantisResult::NewResultImage(lib_result.image));
-          },
-          std::move(callback), api_, component_, image, prior));
+  std::move(callback).Run(MantisResult::NewResultImage(lib_result.image));
 }
 
 void MantisProcessor::ProcessImage(std::unique_ptr<MantisProcess> process) {
@@ -222,11 +205,26 @@ void MantisProcessor::ProcessImage(std::unique_ptr<MantisProcess> process) {
         .Run(MantisResult::NewError(MantisError::kProcessorNotInitialized));
     return;
   }
-  ClassifyImageSafetyInternal(
-      // Input image checking doesn't require a prompt
-      process->image, /*text=*/"", ImageType::kInputImage,
-      base::BindOnce(&MantisProcessor::OnClassifyImageInputDone,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(process)));
+
+  ProcessFuncResult lib_result = std::move(process->process_func).Run();
+  if (lib_result.error.has_value()) {
+    std::move(process->callback)
+        .Run(MantisResult::NewError(lib_result.error.value()));
+    return;
+  }
+  std::string prompt =
+      process->prompt.has_value() ? process->prompt.value() : "";
+  process->image_result = lib_result.image;
+  process->generated_region = lib_result.generated_region;
+
+  const auto barrier_callback = base::BarrierCallback<SafetyClassifierVerdict>(
+      2, base::BindOnce(&MantisProcessor::OnClassifyImageOutputDone,
+                        weak_ptr_factory_.GetWeakPtr(), std::move(process)));
+
+  ClassifyImageSafetyInternal(lib_result.image, prompt, ImageType::kOutputImage,
+                              barrier_callback);
+  ClassifyImageSafetyInternal(lib_result.generated_region, /*text=*/"",
+                              ImageType::kGeneratedRegion, barrier_callback);
 }
 
 void MantisProcessor::ClassifyImageSafety(
@@ -259,35 +257,6 @@ void MantisProcessor::ClassifyImageSafetyInternal(
             }
           },
           std::move(callback)));
-}
-
-void MantisProcessor::OnClassifyImageInputDone(
-    std::unique_ptr<MantisProcess> process, SafetyClassifierVerdict result) {
-  if (result != SafetyClassifierVerdict::kPass) {
-    std::move(process->callback)
-        .Run(MantisResult::NewError(MantisError::kInputSafetyError));
-    return;
-  }
-
-  ProcessFuncResult lib_result = std::move(process->process_func).Run();
-  if (lib_result.error.has_value()) {
-    std::move(process->callback)
-        .Run(MantisResult::NewError(lib_result.error.value()));
-    return;
-  }
-  std::string prompt =
-      process->prompt.has_value() ? process->prompt.value() : "";
-  process->image_result = lib_result.image;
-  process->generated_region = lib_result.generated_region;
-
-  const auto barrier_callback = base::BarrierCallback<SafetyClassifierVerdict>(
-      2, base::BindOnce(&MantisProcessor::OnClassifyImageOutputDone,
-                        weak_ptr_factory_.GetWeakPtr(), std::move(process)));
-
-  ClassifyImageSafetyInternal(lib_result.image, prompt, ImageType::kOutputImage,
-                              barrier_callback);
-  ClassifyImageSafetyInternal(lib_result.generated_region, /*text=*/"",
-                              ImageType::kGeneratedRegion, barrier_callback);
 }
 
 void MantisProcessor::OnClassifyImageOutputDone(

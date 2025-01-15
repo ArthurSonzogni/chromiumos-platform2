@@ -100,9 +100,6 @@ class MantisProcessor : public mojom::MantisProcessor {
 
   void OnDisconnected();
 
-  void OnClassifyImageInputDone(std::unique_ptr<MantisProcess> process,
-                                mojom::SafetyClassifierVerdict result);
-
   void ProcessImage(std::unique_ptr<MantisProcess> process);
 
   MantisComponent component_;

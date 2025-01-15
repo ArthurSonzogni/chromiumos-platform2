@@ -74,27 +74,6 @@ TEST_F(MantisProcessorTest, InpaintingMissingProcessor) {
   EXPECT_EQ(result->get_error(), MantisError::kProcessorNotInitialized);
 }
 
-TEST_F(MantisProcessorTest, InpaintingInputSafetyError) {
-  MantisProcessor processor = InitializeMantisProcessor(
-      {
-          .processor = kFakeProcessorPtr,
-          .segmenter = 0,
-      },
-      fake::GetMantisApi());
-  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kFailedImage));
-
-  std::vector<uint8_t> image;
-  TestFuture<mojom::MantisResultPtr> result_future;
-  processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
-                       result_future.GetCallback());
-
-  auto result = result_future.Take();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error(), MantisError::kInputSafetyError);
-}
-
 TEST_F(MantisProcessorTest, InpaintingProcessFailed) {
   auto inpainting = [](ProcessorPtr processor_ptr,
                        const std::vector<uint8_t>& image,
@@ -114,9 +93,6 @@ TEST_F(MantisProcessorTest, InpaintingProcessFailed) {
           .segmenter = 0,
       },
       &api);
-  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass));
 
   std::vector<uint8_t> image;
   TestFuture<mojom::MantisResultPtr> result_future;
@@ -137,8 +113,6 @@ TEST_F(MantisProcessorTest, InpaintingOutputSafetyError) {
       },
       fake::GetMantisApi());
   EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass))
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kFailedImage))
       .WillOnce(base::test::RunOnceCallback<3>(
@@ -162,8 +136,6 @@ TEST_F(MantisProcessorTest, InpaintingGeneratedRegionFails) {
       },
       fake::GetMantisApi());
   EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass))
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass))
       .WillOnce(base::test::RunOnceCallback<3>(
@@ -217,27 +189,6 @@ TEST_F(MantisProcessorTest, GenerativeFillMissingProcessor) {
   EXPECT_EQ(result->get_error(), MantisError::kProcessorNotInitialized);
 }
 
-TEST_F(MantisProcessorTest, GenerativeFillInputSafetyError) {
-  mojo::Remote<mojom::MantisProcessor> processor_remote;
-  MantisProcessor processor = InitializeMantisProcessor(
-      {
-          .processor = kFakeProcessorPtr,
-          .segmenter = 0,
-      },
-      fake::GetMantisApi());
-  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kFailedImage));
-
-  TestFuture<mojom::MantisResultPtr> result_future;
-  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "a cute cat",
-                           result_future.GetCallback());
-
-  auto result = result_future.Take();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error(), MantisError::kInputSafetyError);
-}
-
 TEST_F(MantisProcessorTest, GenerativeFillProcessFailed) {
   auto generative_fill = [](ProcessorPtr processor_ptr,
                             const std::vector<uint8_t>& image,
@@ -259,10 +210,6 @@ TEST_F(MantisProcessorTest, GenerativeFillProcessFailed) {
       },
       &api);
 
-  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass));
-
   std::vector<uint8_t> image;
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "a cute cat",
@@ -282,8 +229,6 @@ TEST_F(MantisProcessorTest, GenerativeFillOutputSafetyError) {
       },
       fake::GetMantisApi());
   EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass))
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kFailedImage))
       .WillOnce(base::test::RunOnceCallback<3>(
@@ -310,8 +255,6 @@ TEST_F(MantisProcessorTest, GenerativeFillGeneratedRegionFails) {
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kPass))
       .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass))
-      .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kFailedImage));
 
   TestFuture<mojom::MantisResultPtr> result_future;
@@ -332,8 +275,6 @@ TEST_F(MantisProcessorTest, GenerativeFillPromptSafetyError) {
       },
       fake::GetMantisApi());
   EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass))
       .WillOnce(base::test::RunOnceCallback<3>(
           cros_safety::mojom::SafetyClassifierVerdict::kFailedText))
       .WillOnce(base::test::RunOnceCallback<3>(
@@ -387,27 +328,6 @@ TEST_F(MantisProcessorTest, SegmentationMissingSegmenter) {
   EXPECT_EQ(result->get_error(), MantisError::kMissingSegmenter);
 }
 
-TEST_F(MantisProcessorTest, SegmentationInputSafetyError) {
-  mojo::Remote<mojom::MantisProcessor> processor_remote;
-  MantisProcessor processor = InitializeMantisProcessor(
-      {
-          .processor = 0,
-          .segmenter = kFakeSegmenterPtr,
-      },
-      fake::GetMantisApi());
-  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kFailedImage));
-
-  TestFuture<mojom::MantisResultPtr> result_future;
-  processor.Segmentation(GetFakeImage(), GetFakeMask(),
-                         result_future.GetCallback());
-
-  auto result = result_future.Take();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error(), MantisError::kInputSafetyError);
-}
-
 TEST_F(MantisProcessorTest, SegmentationReturnError) {
   auto segmentation = [](ProcessorPtr processor_ptr,
                          const std::vector<uint8_t>& image,
@@ -427,9 +347,6 @@ TEST_F(MantisProcessorTest, SegmentationReturnError) {
           .segmenter = kFakeSegmenterPtr,
       },
       &api);
-  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass));
 
   std::vector<uint8_t> image;
   TestFuture<mojom::MantisResultPtr> result_future;
@@ -449,9 +366,6 @@ TEST_F(MantisProcessorTest, SegmentationSucceeds) {
           .segmenter = kFakeSegmenterPtr,
       },
       fake::GetMantisApi());
-  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass));
 
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.Segmentation(GetFakeImage(), GetFakeMask(),
