@@ -31,6 +31,7 @@ struct EcComponentManifest {
         std::optional<std::vector<uint8_t>> mask;
         std::optional<std::vector<uint8_t>> value;
         static std::optional<Expect> Create(const base::Value::Dict&);
+        int bytes;
       };
       uint8_t port;
       uint8_t addr;  // 7-bit I2C address.

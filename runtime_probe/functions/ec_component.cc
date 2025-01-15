@@ -27,6 +27,8 @@ constexpr int kEcCmdNumAttempts = 10;
 bool IsMatchExpect(EcComponentManifest::Component::I2c::Expect expect,
                    base::span<const uint8_t> resp_data) {
   if (expect.value->size() != resp_data.size()) {
+    LOG(WARNING) << "The response data length is different from the expect "
+                    "value length.";
     return false;
   }
   if (!expect.mask.has_value()) {
@@ -94,7 +96,8 @@ bool EcComponentFunction::IsValidComponent(
     }
   }
   for (const auto& expect : comp.i2c.expect) {
-    auto cmd = GetI2cReadCommand(comp.i2c.port, addr8, expect.reg, 1u);
+    auto cmd =
+        GetI2cReadCommand(comp.i2c.port, addr8, expect.reg, expect.bytes);
     if (cmd &&
         cmd->RunWithMultipleAttempts(ec_dev_fd.get(), kEcCmdNumAttempts) &&
         !cmd->I2cStatus()) {

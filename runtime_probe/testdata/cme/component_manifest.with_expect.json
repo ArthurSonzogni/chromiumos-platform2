@@ -38,6 +38,27 @@
           }
         ]
       }
+    },
+    {
+      "component_type": "base_sensor",
+      "component_name": "base_sensor_3",
+      "i2c": {
+        "port": 3,
+        "addr": "0x01",
+        "expect": [
+          {
+            "reg": "0x03",
+            "multi_byte_value": "0x01020304",
+            "bytes": 4
+          },
+          {
+            "reg": "0x04",
+            "multi_byte_mask": "0x00ff00ff",
+            "multi_byte_value": "0x00110022",
+            "bytes": 4
+          }
+        ]
+      }
     }
   ]
 }

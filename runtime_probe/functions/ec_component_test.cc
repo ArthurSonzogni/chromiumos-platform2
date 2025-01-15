@@ -282,23 +282,21 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatch) {
 
 TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatchWithMask) {
   constexpr uint8_t kMismatchValue[] = {0xff};
+  constexpr uint8_t kMatchValues[][1] = {{0x01}, {0x11}, {0xa1}, {0xf1}};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",
       "name": "base_sensor_1"
     }
   )JSON");
-  // use uint16_t to avoid overflow
-  for (uint16_t match_value = 0x0001; match_value <= 0x00f1;
-       match_value += 0x0010) {
-    uint8_t return_value[] = {static_cast<uint8_t>(match_value)};
+  for (const auto& match_value : kMatchValues) {
     auto probe_function =
         CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
     // base_sensor_1 with 0x0f mask
     ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x02, 0x00, 1,
                                    kMismatchValue);
     ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x02, 0x01, 1,
-                                   return_value);
+                                   match_value);
 
     ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                              CreateProbeResultFromJson(R"JSON(
@@ -312,7 +310,7 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatchWithMask) {
   }
 }
 
-TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatchWithoudMask) {
+TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatchWithoutMask) {
   constexpr uint8_t kMatchValue[] = {0x02};
   constexpr uint8_t kMismatchValue[] = {0xff};
   auto arguments = base::JSONReader::Read(R"JSON(
@@ -336,6 +334,65 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatchWithoudMask) {
       {
         "component_type": "base_sensor",
         "component_name": "base_sensor_1"
+      }
+    ]
+  )JSON"));
+}
+
+TEST_F(EcComponentFunctionTestWithExpect,
+       ProbeI2cMultiBytesValueMatchWithMask) {
+  constexpr uint8_t kMisMatchValue[] = {0x00, 0x00, 0x00, 0x00};
+  constexpr uint8_t kMatchValues[][4] = {{0x00, 0x11, 0x00, 0x22},
+                                         {0x01, 0x11, 0x10, 0x22},
+                                         {0x20, 0x11, 0x02, 0x22},
+                                         {0xaa, 0x11, 0xbb, 0x22}};
+  auto arguments = base::JSONReader::Read(R"JSON(
+    {
+      "type": "base_sensor",
+      "name": "base_sensor_3"
+    }
+  )JSON");
+
+  for (const auto& match_value : kMatchValues) {
+    auto probe_function =
+        CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
+    // base_sensor_3 with mask 0x00ff00ff.
+    ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x02, 0x03, 4,
+                                   kMisMatchValue);
+    ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x02, 0x04, 4,
+                                   match_value);
+    ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
+                             CreateProbeResultFromJson(R"JSON(
+      [
+        {
+          "component_type": "base_sensor",
+          "component_name": "base_sensor_3"
+        }
+      ]
+    )JSON"));
+  }
+}
+
+TEST_F(EcComponentFunctionTestWithExpect,
+       ProbeI2cMultiBytesValueMatchWithoutMask) {
+  constexpr uint8_t kMatchValue[] = {0x01, 0x02, 0x03, 0x04};
+  auto arguments = base::JSONReader::Read(R"JSON(
+    {
+      "type": "base_sensor",
+      "name": "base_sensor_3"
+    }
+  )JSON");
+  auto probe_function =
+      CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
+  // base_sensor_3 without a mask.
+  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x02, 0x03, 4,
+                                 kMatchValue);
+  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
+                           CreateProbeResultFromJson(R"JSON(
+    [
+      {
+        "component_type": "base_sensor",
+        "component_name": "base_sensor_3"
       }
     ]
   )JSON"));

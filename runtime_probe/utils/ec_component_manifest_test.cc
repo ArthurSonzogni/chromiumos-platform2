@@ -63,14 +63,35 @@ TEST_F(EcComponentManifestTest,
 
 TEST_F(EcComponentManifestTest,
        EcComponentManifestReader_ManifestWithMissingField_ReadFailed) {
-  SetUpEcComponentManifest("image1", "invalid-1");
+  SetUpEcComponentManifest("image1", "invalid.missing-field");
   const auto manifest = EcComponentManifestReader::Read();
   EXPECT_FALSE(manifest.has_value());
 }
 
 TEST_F(EcComponentManifestTest,
-       EcComponentManifestReader_ManifestWithInvalidField_ReadFailed) {
-  SetUpEcComponentManifest("image1", "invalid-2");
+       EcComponentManifestReader_ManifestWithMaskLengthMismatch_ReadFailed) {
+  SetUpEcComponentManifest("image1", "invalid.mask-length-mismatch");
+  const auto manifest = EcComponentManifestReader::Read();
+  EXPECT_FALSE(manifest.has_value());
+}
+
+TEST_F(EcComponentManifestTest,
+       EcComponentManifestReader_ManifestWithByteLengthMismatch_ReadFailed) {
+  SetUpEcComponentManifest("image1", "invalid.byte-length-mismatch");
+  const auto manifest = EcComponentManifestReader::Read();
+  EXPECT_FALSE(manifest.has_value());
+}
+
+TEST_F(EcComponentManifestTest,
+       EcComponentManifestReader_ManifestWithConflictValue_ReadFailed) {
+  SetUpEcComponentManifest("image1", "invalid.conflict-value");
+  const auto manifest = EcComponentManifestReader::Read();
+  EXPECT_FALSE(manifest.has_value());
+}
+
+TEST_F(EcComponentManifestTest,
+       EcComponentManifestReader_ManifestWithConflictMask_ReadFailed) {
+  SetUpEcComponentManifest("image1", "invalid.conflict-mask");
   const auto manifest = EcComponentManifestReader::Read();
   EXPECT_FALSE(manifest.has_value());
 }
@@ -88,13 +109,21 @@ TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
     EXPECT_EQ(comp.component_name, "base_sensor_1");
     EXPECT_EQ(comp.i2c.port, 3);
     EXPECT_EQ(comp.i2c.addr, 0x1);
-    EXPECT_EQ(comp.i2c.expect.size(), 2);
+    EXPECT_EQ(comp.i2c.expect.size(), 3);
     EXPECT_EQ(comp.i2c.expect[0].reg, 0);
     EXPECT_EQ(comp.i2c.expect[0].value, std::vector<uint8_t>{0x00});
     EXPECT_EQ(comp.i2c.expect[0].mask, std::vector<uint8_t>{0xff});
+    EXPECT_EQ(comp.i2c.expect[0].bytes, 1);
     EXPECT_EQ(comp.i2c.expect[1].reg, 1);
     EXPECT_EQ(comp.i2c.expect[1].value, std::vector<uint8_t>{0x01});
     EXPECT_EQ(comp.i2c.expect[1].mask, std::vector<uint8_t>{0xff});
+    EXPECT_EQ(comp.i2c.expect[1].bytes, 1);
+    EXPECT_EQ(comp.i2c.expect[2].reg, 2);
+    EXPECT_EQ(comp.i2c.expect[2].value,
+              (std::vector<uint8_t>{0x00, 0x00, 0x42, 0x00}));
+    EXPECT_EQ(comp.i2c.expect[2].mask,
+              (std::vector<uint8_t>{0x00, 0x00, 0xff, 0x00}));
+    EXPECT_EQ(comp.i2c.expect[2].bytes, 4);
   }
   {
     const EcComponentManifest::Component& comp = manifest->component_list[1];

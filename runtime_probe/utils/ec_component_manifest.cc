@@ -22,6 +22,8 @@ namespace runtime_probe {
 
 namespace {
 
+constexpr int kDefaultBytes = 1;
+
 template <typename T, typename U>
 bool SetValue(const U& value, T& val) {
   if (!value) {
@@ -118,19 +120,51 @@ EcComponentManifest::Component::I2c::Expect::Create(
     LOG(ERROR) << "Invalid or missing field: reg";
     return std::nullopt;
   }
+
   auto value = dv.FindString("value");
+  auto multi_byte_value = dv.FindString("multi_byte_value");
+  if (value && multi_byte_value) {
+    LOG(ERROR) << "Conflict field: value and multi_byte_value";
+    return std::nullopt;
+  }
   if (value && !SetBytes(value, ret.value)) {
     LOG(ERROR) << "Invalid field: value";
     return std::nullopt;
   }
+  if (multi_byte_value && !SetBytes(multi_byte_value, ret.value)) {
+    LOG(ERROR) << "Invalid field: multi_byte_value";
+    return std::nullopt;
+  }
+
   auto mask = dv.FindString("mask");
+  auto multi_byte_mask = dv.FindString("multi_byte_mask");
+  if (mask && multi_byte_mask) {
+    LOG(ERROR) << "Conflict field: mask and multi_byte_mask";
+    return std::nullopt;
+  }
   if (mask && !SetBytes(mask, ret.mask)) {
     LOG(ERROR) << "Invalid field: mask";
     return std::nullopt;
   }
-  if (ret.value.has_value() && ret.mask.has_value() &&
-      ret.mask->size() != ret.value->size()) {
-    LOG(ERROR) << "Invalid field: the lengths of value and mask are different";
+  if (multi_byte_mask && !SetBytes(multi_byte_mask, ret.mask)) {
+    LOG(ERROR) << "Invalid field: multi_byte_mask";
+    return std::nullopt;
+  }
+
+  auto bytes = dv.FindInt("bytes");
+  if (!bytes.has_value()) {
+    SetValue(&kDefaultBytes, ret.bytes);
+  } else if (!SetValue(bytes, ret.bytes)) {
+    LOG(ERROR) << "Invalid field: bytes";
+    return std::nullopt;
+  }
+
+  if (ret.value.has_value() && ret.value->size() != ret.bytes) {
+    LOG(ERROR) << "Invalid field: the length of value is different from bytes";
+    return std::nullopt;
+  }
+  if (ret.mask.has_value() && ret.mask->size() != ret.bytes) {
+    LOG(ERROR) << "Invalid field: the length of mask is different from bytes";
     return std::nullopt;
   }
   return ret;
