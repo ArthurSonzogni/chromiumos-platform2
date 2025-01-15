@@ -17,6 +17,7 @@
 #include "odml/coral/embedding/embedding_database.h"
 #include "odml/coral/metrics.h"
 #include "odml/cros_safety/safety_service_manager.h"
+#include "odml/i18n/language_detector.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -71,7 +72,8 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
           embedding_service,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
       std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory,
-      odml::SessionStateManagerInterface* session_state_manager);
+      odml::SessionStateManagerInterface* session_state_manager,
+      raw_ref<on_device_model::LanguageDetector> language_detector);
   ~EmbeddingEngine() = default;
 
   // EmbeddingEngineInterface overrides.
@@ -149,6 +151,8 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
 
   // The embedding database.
   std::unique_ptr<EmbeddingDatabaseInterface> embedding_database_;
+
+  const raw_ref<on_device_model::LanguageDetector> language_detector_;
 
   // The version of the loaded embedding model.
   std::string model_version_;

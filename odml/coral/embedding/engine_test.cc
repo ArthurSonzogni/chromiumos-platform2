@@ -22,6 +22,7 @@
 #include "odml/coral/metrics.h"
 #include "odml/coral/test_util.h"
 #include "odml/cros_safety/safety_service_manager_mock.h"
+#include "odml/i18n/mock_language_detector.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/session_state_manager/fake_session_state_manager.h"
@@ -153,7 +154,7 @@ class EmbeddingEngineTest : public testing::Test {
         raw_ref(coral_metrics_), raw_ref(model_service_),
         raw_ref(safety_service_manager_),
         base::WrapUnique(embedding_database_factory_),
-        session_state_manager_.get());
+        session_state_manager_.get(), raw_ref(language_detector_));
 
     EXPECT_CALL(safety_service_manager_, ClassifyTextSafety)
         .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<2>(
@@ -219,6 +220,8 @@ class EmbeddingEngineTest : public testing::Test {
 
   std::unique_ptr<odml::FakeSessionStateManager> session_state_manager_;
   cros_safety::SafetyServiceManagerMock safety_service_manager_;
+
+  on_device_model::MockLanguageDetector language_detector_;
 
   std::unique_ptr<EmbeddingEngine> engine_;
 };

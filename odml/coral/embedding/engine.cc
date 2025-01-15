@@ -113,11 +113,13 @@ EmbeddingEngine::EmbeddingEngine(
         embedding_service,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
     std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory,
-    odml::SessionStateManagerInterface* session_state_manager)
+    odml::SessionStateManagerInterface* session_state_manager,
+    raw_ref<on_device_model::LanguageDetector> language_detector)
     : metrics_(metrics),
       embedding_service_(embedding_service),
       safety_service_manager_(safety_service_manager),
-      embedding_database_factory_(std::move(embedding_database_factory)) {
+      embedding_database_factory_(std::move(embedding_database_factory)),
+      language_detector_(language_detector) {
   if (session_state_manager) {
     session_state_manager->AddObserver(this);
   }
@@ -138,6 +140,11 @@ void EmbeddingEngine::PrepareResource() {
 
 void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
                               EmbeddingCallback callback) {
+  if (!language_detector_->IsAvailable()) {
+    LOG(WARNING)
+        << "Language detector isn't available when running Process. This will "
+           "turn into an error and fail the whole Process soon.";
+  }
   if (is_processing_) {
     pending_callbacks_.push(base::BindOnce(
         &EmbeddingEngine::Process, weak_ptr_factory_.GetWeakPtr(),

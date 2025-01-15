@@ -23,6 +23,7 @@
 #include "odml/coral/metrics.h"
 #include "odml/coral/title_generation/engine.h"
 #include "odml/cros_safety/safety_service_manager.h"
+#include "odml/i18n/ml_service_language_detector.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
@@ -105,6 +106,8 @@ class CoralService : public mojom::CoralService, public mojom::CoralProcessor {
 
   mojo::Remote<chromeos::machine_learning::mojom::MachineLearningService>
       ml_service_;
+  std::unique_ptr<on_device_model::MlServiceLanguageDetector>
+      language_detector_;
 
   std::unique_ptr<EmbeddingEngineInterface> embedding_engine_;
   std::unique_ptr<ClusteringEngineInterface> clustering_engine_;

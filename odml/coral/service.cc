@@ -11,6 +11,7 @@
 #include "odml/coral/embedding/embedding_database.h"
 #include "odml/coral/embedding/engine.h"
 #include "odml/coral/title_generation/engine.h"
+#include "odml/i18n/ml_service_language_detector.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
 #include "odml/session_state_manager/session_state_manager.h"
@@ -33,12 +34,15 @@ CoralService::CoralService(
     odml::SessionStateManagerInterface* session_state_manager,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
     : metrics_(metrics),
+      language_detector_(
+          std::make_unique<on_device_model::MlServiceLanguageDetector>()),
       embedding_engine_(std::make_unique<EmbeddingEngine>(
           raw_ref(metrics_),
           embedding_model_service,
           safety_service_manager,
           std::make_unique<EmbeddingDatabaseFactory>(),
-          session_state_manager)),
+          session_state_manager,
+          raw_ref(*language_detector_.get()))),
       clustering_engine_(std::make_unique<ClusteringEngine>(
           raw_ref(metrics_),
           std::make_unique<clustering::ClusteringFactory>())),
@@ -51,6 +55,8 @@ CoralService::CoralService(
     std::unique_ptr<ClusteringEngineInterface> clustering_engine,
     std::unique_ptr<TitleGenerationEngineInterface> title_generation_engine)
     : metrics_(metrics),
+      language_detector_(
+          std::make_unique<on_device_model::MlServiceLanguageDetector>()),
       embedding_engine_(std::move(embedding_engine)),
       clustering_engine_(std::move(clustering_engine)),
       title_generation_engine_(std::move(title_generation_engine)) {}
@@ -70,6 +76,7 @@ void CoralService::Initialize(
                       "This will become an error for initialization soon.";
     }
     ml_service_.Bind(std::move(ml_service));
+    language_detector_->Initialize(*ml_service_);
     ml_service_.reset_on_disconnect();
   }
   embedding_engine_->PrepareResource();
