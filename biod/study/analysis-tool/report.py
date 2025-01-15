@@ -398,9 +398,5 @@ class Report:
             "https://raw.githubusercontent.com/andybrewer/mvp/v1.15/mvp.css",
             path_asset_out / "mvp.css",
         )
-        shutil.copytree(
-            self._path_assets, path_asset_out, dirs_exist_ok=True
-        )
-        (self._path_out_dir / "index.html").write_text(
-            report_html_str, "utf-8"
-        )
+        shutil.copytree(self._path_assets, path_asset_out, dirs_exist_ok=True)
+        (self._path_out_dir / "index.html").write_text(report_html_str, "utf-8")
