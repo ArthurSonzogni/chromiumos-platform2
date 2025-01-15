@@ -17,7 +17,7 @@
 
 namespace ec {
 class GetVersionCommand;
-class I2cReadCommand;
+class I2cPassthruCommand;
 };  // namespace ec
 
 namespace runtime_probe {
@@ -35,7 +35,7 @@ class EcComponentFunction : public PrivilegedProbeFunction {
 
   // Virtuals for testing.
   virtual base::ScopedFD GetEcDevice() const;
-  virtual std::unique_ptr<ec::I2cReadCommand> GetI2cReadCommand(
+  virtual std::unique_ptr<ec::I2cPassthruCommand> GetI2cReadCommand(
       uint8_t port, uint8_t addr8, uint8_t offset, uint8_t read_len) const;
   virtual std::unique_ptr<ec::GetVersionCommand> GetGetVersionCommand() const;
 

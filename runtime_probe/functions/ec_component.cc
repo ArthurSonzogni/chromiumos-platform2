@@ -14,7 +14,7 @@
 #include <base/files/scoped_file.h>
 #include <base/values.h>
 #include <libec/get_version_command.h>
-#include <libec/i2c_read_command.h>
+#include <libec/i2c_passthru_command.h>
 
 #include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/ec_component_manifest.h"
@@ -48,9 +48,9 @@ base::ScopedFD EcComponentFunction::GetEcDevice() const {
   return base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
 }
 
-std::unique_ptr<ec::I2cReadCommand> EcComponentFunction::GetI2cReadCommand(
-    uint8_t port, uint8_t addr8, uint8_t offset, uint8_t read_len) const {
-  return ec::I2cReadCommand::Create(port, addr8, offset, read_len);
+std::unique_ptr<ec::I2cPassthruCommand> EcComponentFunction::GetI2cReadCommand(
+    uint8_t port, uint8_t addr7, uint8_t offset, uint8_t read_len) const {
+  return ec::I2cPassthruCommand::Create(port, addr7, {offset}, read_len);
 }
 
 std::unique_ptr<ec::GetVersionCommand>
@@ -82,13 +82,9 @@ std::optional<std::string> EcComponentFunction::GetCurrentECVersion(
 bool EcComponentFunction::IsValidComponent(
     const EcComponentManifest::Component& comp,
     const base::ScopedFD& ec_dev_fd) const {
-  // |addr| in component manifest is a 7-bit address, where
-  // ec::I2cReadCommand::Create() takes 8-bit address, so we convert addresses
-  // accordingly.
-  const int addr8 = comp.i2c.addr << 1;
   if (comp.i2c.expect.size() == 0) {
     // No expect value. Just verify the accessibility of the component.
-    auto cmd = GetI2cReadCommand(comp.i2c.port, addr8, 0u, 1u);
+    auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, 0u, 1u);
     if (cmd &&
         cmd->RunWithMultipleAttempts(ec_dev_fd.get(), kEcCmdNumAttempts) &&
         !cmd->I2cStatus()) {
@@ -96,8 +92,8 @@ bool EcComponentFunction::IsValidComponent(
     }
   }
   for (const auto& expect : comp.i2c.expect) {
-    auto cmd =
-        GetI2cReadCommand(comp.i2c.port, addr8, expect.reg, expect.bytes);
+    auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, expect.reg,
+                                 expect.bytes);
     if (cmd &&
         cmd->RunWithMultipleAttempts(ec_dev_fd.get(), kEcCmdNumAttempts) &&
         !cmd->I2cStatus()) {
