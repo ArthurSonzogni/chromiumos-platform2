@@ -22,3 +22,5 @@ allow cros_lsblk sysfs_loop:dir { open read search };
 allow cros_lsblk sysfs_loop:file { getattr open read };
 allow cros_lsblk sysfs_zram:dir { open read search };
 allow cros_lsblk sysfs_zram:file { getattr open read };
+
+allowxperm cros_lsblk cros_os_install_service:fifo_file ioctl TIOCGWINSZ;

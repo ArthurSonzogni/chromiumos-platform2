@@ -30,5 +30,3 @@ allow cros_rsyslogd self:capability { setuid setgid };
 # TODO: until all log creators are confined and has logs in separate log file type
 # This will be necessary to allow "unknown" new logs to be written.
 allow cros_rsyslogd cros_var_log:file rw_file_perms;
-
-allowxperm cros_chromeos_install device:blk_file ioctl BLKGETSIZE64;

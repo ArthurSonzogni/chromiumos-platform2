@@ -109,4 +109,14 @@ is_arc_vm(`
   ', (`cros_chromeos_install'))
 ')
 
-allowxperm cros_chromeos_install device:blk_file ioctl { BLKBSZGET BLKIOMIN BLKIOOPT BLKSSZGET };
+allowxperm cros_chromeos_install cros_os_install_service:fifo_file ioctl TIOCGWINSZ;
+allowxperm cros_chromeos_install device:blk_file ioctl {
+  BLKBSZGET
+  BLKGETSIZE64
+  BLKIOMIN
+  BLKIOOPT
+  BLKRRPART
+  BLKSSZGET
+  FDGETFDCSTAT
+  HDIO_GETGEO
+};
