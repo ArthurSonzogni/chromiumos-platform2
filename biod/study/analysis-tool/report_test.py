@@ -82,6 +82,24 @@ def test_report(dir: Path):
             "Bootstrap Samples",
         )
 
+        info = score.add_data("Info")
+
+        info.set("FAR_Confidence", 0.95)
+        info.set("FAR_CI_Lower", 1 / 150000)
+        info.set("FAR_CI_Upper", 1 / 50000)
+        info.set("FAR_Mean", 1 / 100000)
+        info.set("FAR_Std", 1 / 1000000)
+        info.set("FAR_Threshold", f"1/{1 / (100*1000)}k")
+        info.set("FAR_Pass", False)
+
+        info.set("FRR_Confidence", 0.95)
+        info.set("FRR_CI_Lower", 1 / 100)
+        info.set("FRR_CI_Upper", 5 / 100)
+        info.set("FRR_Mean", 2 / 100)
+        info.set("FRR_Std", 0.5 / 100)
+        info.set("FRR_Threshold", f"{0.05 * 100}%")
+        info.set("FRR_Pass", True)
+
         # FA Histogram Plots
         for name, title in fa_titles.items():
             histograms.add_figure(

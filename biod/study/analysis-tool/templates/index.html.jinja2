@@ -169,6 +169,17 @@ For help using the MVP CSS/HTML checkout the following resources:
                 high false acceptable rate.
             </p>
 
+            {#- Utility macros/functions. -#}
+            {%- macro missing_figure(name, width='800', height='450') %}
+            <img src="https://placehold.co/{{ width }}x{{ height }}?text=Missing+figure+for+{{ name | urlencode }}."
+                alt="{{ name }}" height="{{ height }}px" width="{{ width }}px">
+            </img>
+            {%- endmacro -%}
+
+            {%- macro missing_description(name) -%}
+            Missing description for {{ name }}.
+            {%- endmacro -%}
+
             {#- Plot all individual histograms. -#}
             {%- macro section_plots(header_name, find_str, html_id=None, width='600px') %}
             {%- if html_id %}
@@ -183,7 +194,7 @@ For help using the MVP CSS/HTML checkout the following resources:
                 {%- set fig = tc.find(find_str) %}
                 <aside style="width:{{width}}">
                     <figure>
-                        {{ fig.html() }}
+                        {{ fig.html() if fig else missing_figure(find_str) }}
                         <figcaption><i>{{ tc.name() }}</i></figcaption>
                     </figure>
                 </aside>
@@ -204,8 +215,12 @@ For help using the MVP CSS/HTML checkout the following resources:
                 {%- with fig = overall.find(find_str) %}
                 <aside style="width:{{width}}">
                     <figure>
-                        {{ fig.html() }}
-                        <figcaption><i>{{ fig.description() }}</i></figcaption>
+                        {{ fig.html() if fig else missing_figure(find_str) }}
+                        <figcaption>
+                            <i>
+                                {{- fig.description() if fig else missing_description(find_str) -}}
+                            </i>
+                        </figcaption>
                     </figure>
                 </aside>
                 {%- endwith %}
