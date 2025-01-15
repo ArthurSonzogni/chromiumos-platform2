@@ -26,6 +26,7 @@ Then run `src/generate_disk_image.py rootfs.tar baguette_rootfs.img.zstd` will g
 
 Docker build automatically builds for both x86_64 and arm64 architectures.
 Run `src/docker-build.sh`, it will generate `docker_export/baguette_rootfs_amd64.img.zstd` and `docker_export/baguette_rootfs_arm64.img.zstd`. This script can only be ran in `baguette_image` directory.
+If `docker_export` directory already exists, it will be deleted before building.
 
 #### CQ Build
 

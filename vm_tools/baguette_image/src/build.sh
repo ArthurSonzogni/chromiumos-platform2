@@ -31,4 +31,4 @@ sudo umount target/dev
 sudo umount -R target/sys
 sudo umount -R target/proc
 sudo tar -c -f rootfs.tar -C target .
-sudo chown "${USER}" rootfs.tar
+sudo chown "$(whoami)" rootfs.tar

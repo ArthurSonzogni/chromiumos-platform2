@@ -7,8 +7,7 @@
 # This Docker file can only be ran with host arch, it will convert rootfs tarball of any arch into btrfs disk images
 
 FROM marketplace.gcr.io/google/debian12 AS build-stage
-RUN apt-get update
-RUN apt-get install -y git sudo
+RUN apt-get update && apt-get install -y git sudo linux-image-amd64
 WORKDIR /workspace
 COPY src src
 RUN chmod +x src/deps.sh src/generate_disk_image.py

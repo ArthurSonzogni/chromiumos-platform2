@@ -6,6 +6,7 @@
 import argparse
 import os
 import subprocess
+import sys
 import tempfile
 
 import guestfs
@@ -117,6 +118,8 @@ if __name__ == "__main__":
             temp_image_path,
         ],
         check=True,
+        stdout=sys.stdout,
+        stderr=sys.stdout,
     )
 
     print(

@@ -7,8 +7,7 @@
 # This Dockerfile is multi-arch compatible, it generates rootfs.tar for each arch
 
 FROM marketplace.gcr.io/google/debian12 AS build-stage
-RUN apt-get update
-RUN apt-get install -y git sudo
+RUN apt-get update && apt-get install -y git sudo
 WORKDIR /workspace
 COPY src src
 RUN chmod +x src/build.sh src/docker-deps.sh
