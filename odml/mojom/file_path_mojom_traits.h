@@ -10,7 +10,7 @@
 #include <base/files/file_path.h>
 #include <mojo/public/cpp/bindings/struct_traits.h>
 
-#include "odml/mojom/file_path.mojom.h"
+#include "ml/mojom/file_path.mojom.h"
 
 namespace mojo {
 

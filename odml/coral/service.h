@@ -16,6 +16,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
+#include "ml/mojom/machine_learning_service.mojom.h"
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/common.h"
 #include "odml/coral/embedding/engine.h"
@@ -30,7 +31,7 @@
 
 namespace coral {
 
-class CoralService : public mojom::CoralService {
+class CoralService : public mojom::CoralService, public mojom::CoralProcessor {
  public:
   CoralService(
       raw_ref<MetricsLibraryInterface> metrics,
@@ -53,17 +54,29 @@ class CoralService : public mojom::CoralService {
   CoralService& operator=(const CoralService&) = delete;
 
   void AddReceiver(mojo::PendingReceiver<mojom::CoralService> receiver) {
-    receiver_set_.Add(this, std::move(receiver),
-                      base::SequencedTaskRunner::GetCurrentDefault());
+    service_receiver_set_.Add(this, std::move(receiver),
+                              base::SequencedTaskRunner::GetCurrentDefault());
   }
 
-  // mojom::CoralService:
+  // mojom::CoralProcessor:
   void Group(mojom::GroupRequestPtr request,
              mojo::PendingRemote<mojom::TitleObserver> observer,
              GroupCallback callback) override;
   void CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
                        CacheEmbeddingsCallback callback) override;
+
+  // mojom::CoralService:
+  void GroupDeprecated(mojom::GroupRequestPtr request,
+                       mojo::PendingRemote<mojom::TitleObserver> observer,
+                       GroupDeprecatedCallback callback) override;
+  void CacheEmbeddingsDeprecated(
+      mojom::CacheEmbeddingsRequestPtr request,
+      CacheEmbeddingsDeprecatedCallback callback) override;
   void PrepareResource() override;
+  void Initialize(
+      mojo::PendingRemote<
+          chromeos::machine_learning::mojom::MachineLearningService> ml_service,
+      mojo::PendingReceiver<mojom::CoralProcessor> receiver) override;
 
  private:
   // These callbacks are used for asynchronous Engine::Process calls, performs
@@ -90,11 +103,15 @@ class CoralService : public mojom::CoralService {
 
   CoralMetrics metrics_;
 
+  mojo::Remote<chromeos::machine_learning::mojom::MachineLearningService>
+      ml_service_;
+
   std::unique_ptr<EmbeddingEngineInterface> embedding_engine_;
   std::unique_ptr<ClusteringEngineInterface> clustering_engine_;
   std::unique_ptr<TitleGenerationEngineInterface> title_generation_engine_;
 
-  mojo::ReceiverSet<mojom::CoralService> receiver_set_;
+  mojo::ReceiverSet<mojom::CoralService> service_receiver_set_;
+  mojo::ReceiverSet<mojom::CoralProcessor> processor_receiver_set_;
 
   base::WeakPtrFactory<CoralService> weak_ptr_factory_{this};
 };

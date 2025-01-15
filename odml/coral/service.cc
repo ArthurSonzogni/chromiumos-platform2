@@ -56,8 +56,41 @@ CoralService::CoralService(
       title_generation_engine_(std::move(title_generation_engine)) {}
 
 void CoralService::PrepareResource() {
+  // Deprecated.
+}
+
+void CoralService::Initialize(
+    mojo::PendingRemote<
+        chromeos::machine_learning::mojom::MachineLearningService> ml_service,
+    mojo::PendingReceiver<mojom::CoralProcessor> receiver) {
+  if (!ml_service_) {
+    if (!ml_service.is_valid()) {
+      LOG(WARNING) << "Initializing CoralService failed due to invalid "
+                      "ml_service remote. "
+                      "This will become an error for initialization soon.";
+    }
+    ml_service_.Bind(std::move(ml_service));
+    ml_service_.reset_on_disconnect();
+  }
   embedding_engine_->PrepareResource();
   title_generation_engine_->PrepareResource();
+  processor_receiver_set_.Add(this, std::move(receiver),
+                              base::SequencedTaskRunner::GetCurrentDefault());
+}
+
+void CoralService::GroupDeprecated(
+    mojom::GroupRequestPtr request,
+    mojo::PendingRemote<mojom::TitleObserver> observer,
+    GroupDeprecatedCallback callback) {
+  // TODO(b/390555211): This will soon be deprecated and remove.
+  Group(std::move(request), std::move(observer), std::move(callback));
+}
+
+void CoralService::CacheEmbeddingsDeprecated(
+    mojom::CacheEmbeddingsRequestPtr request,
+    CacheEmbeddingsDeprecatedCallback callback) {
+  // TODO(b/390555211): This will soon be deprecated and remove.
+  CacheEmbeddings(std::move(request), std::move(callback));
 }
 
 void CoralService::Group(mojom::GroupRequestPtr request,

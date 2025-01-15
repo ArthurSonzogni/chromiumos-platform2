@@ -9,8 +9,8 @@
 //      to and must not sync this file to chromium.
 module on_device_model.mojom;
 
+import "ml/mojom/file_path.mojom";
 import "odml/mojom/file.mojom";
-import "odml/mojom/file_path.mojom";
 import "odml/mojom/on_device_model.mojom";
 import "odml/mojom/uuid.mojom";
 

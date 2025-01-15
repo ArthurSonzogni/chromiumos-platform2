@@ -157,6 +157,7 @@ int main(int argc, char** argv) {
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
   mojo::Remote<coral::mojom::CoralService> coral_service;
+  mojo::Remote<coral::mojom::CoralProcessor> coral_processor;
 
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
       service_manager;
@@ -191,6 +192,20 @@ int main(int argc, char** argv) {
         coral_service.is_connected())
       << "Cannot receive CoralService from mojo service manager";
 
+  // Currently it is not possible to obtain ML Service outside Chrome. This
+  // means the coral_console can only be run after Chrome initializes the
+  // CoralProcessor for us.
+  coral_service->Initialize(mojo::NullRemote(),
+                            coral_processor.BindNewPipeAndPassReceiver());
+  coral_processor.set_disconnect_with_reason_handler(
+      base::BindOnce([](uint32_t error, const std::string& reason) {
+        LOG(FATAL) << "Coral service disconnected, error: " << error
+                   << ", reason: " << reason;
+      }));
+  CHECK(coral_processor && coral_processor.is_bound() &&
+        coral_processor.is_connected())
+      << "Cannot initialize CoralProcessor";
+
   auto group_request = coral::mojom::GroupRequest::New();
 
   group_request->embedding_options = coral::mojom::EmbeddingOptions::New();
@@ -214,8 +229,8 @@ int main(int argc, char** argv) {
     output_path = cl->GetSwitchValuePath(kOutputFile);
   }
   base::RunLoop run_loop;
-  coral_service->Group(std::move(group_request), std::move(observer),
-                       base::BindOnce(&HandleGroupResult, &run_loop,
-                                      output_path, base::TimeTicks::Now()));
+  coral_processor->Group(std::move(group_request), std::move(observer),
+                         base::BindOnce(&HandleGroupResult, &run_loop,
+                                        output_path, base::TimeTicks::Now()));
   run_loop.Run();
 }
