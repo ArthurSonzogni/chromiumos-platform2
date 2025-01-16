@@ -4,6 +4,7 @@
 
 #include "odml/mantis/processor.h"
 
+#include <base/task/sequenced_task_runner.h>
 #include <base/test/bind.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
@@ -49,10 +50,10 @@ class MantisProcessorTest : public testing::Test {
                                             const MantisAPI* api) {
     EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
         .WillOnce(base::test::RunOnceCallback<0>(true));
-    return MantisProcessor(raw_ref(metrics_lib_), component, api,
-                           processor_remote_.BindNewPipeAndPassReceiver(),
-                           raw_ref(safety_service_manager_), base::DoNothing(),
-                           base::DoNothing());
+    return MantisProcessor(
+        raw_ref(metrics_lib_), base::SequencedTaskRunner::GetCurrentDefault(),
+        component, api, processor_remote_.BindNewPipeAndPassReceiver(),
+        raw_ref(safety_service_manager_), base::DoNothing(), base::DoNothing());
   }
 
   base::test::TaskEnvironment task_environment_;

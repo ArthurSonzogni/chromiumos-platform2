@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/memory/raw_ref.h>
 #include <base/memory/weak_ptr.h>
@@ -15,6 +16,7 @@
 #include <base/task/task_runner.h>
 #include <base/types/expected.h>
 #include <metrics/metrics_library.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
@@ -57,14 +59,22 @@ class MantisService : public mojom::MantisService {
  protected:
   virtual void CreateMantisProcessor(
       raw_ref<MetricsLibraryInterface> metrics_lib,
-      MantisComponent component,
+      scoped_refptr<base::SequencedTaskRunner> mantis_api_runner,
       const MantisAPI* api,
       mojo::PendingReceiver<mojom::MantisProcessor> receiver,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
       base::OnceCallback<void()> on_disconnected,
-      base::OnceCallback<void(mantis::mojom::InitializeResult)> callback);
+      base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
+      MantisComponent component);
 
  private:
+  // Stores request data to initialize processor while we already have an
+  // ongoing one. We will use the data to send the response after we're done.
+  struct PendingProcessor {
+    mojo::PendingReceiver<mojom::MantisProcessor> processor;
+    InitializeCallback callback;
+  };
+
   // Duplicate from on_device_model_service.h
   // TODO(b/368261193): Move this function to a common place and reuse it here.
   template <typename FuncType,
@@ -88,12 +98,18 @@ class MantisService : public mojom::MantisService {
           progress_observer,
       double progress);
 
+  void NotifyPendingProcessors();
+
   const raw_ref<MetricsLibraryInterface> metrics_lib_;
+
+  const scoped_refptr<base::SequencedTaskRunner> mantis_api_runner_;
 
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
 
   raw_ref<cros_safety::SafetyServiceManager> safety_service_manager_;
 
+  bool is_initializing_processor_ = false;
+  std::vector<PendingProcessor> pending_processors_;
   std::unique_ptr<MantisProcessor> processor_;
 
   mojo::ReceiverSet<mojom::MantisService> receiver_set_;

@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/memory/raw_ref.h>
 #include <base/run_loop.h>
+#include <base/task/sequenced_task_runner.h>
 #include <metrics/metrics_library.h>
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
@@ -77,6 +78,7 @@ constexpr auto kMapImageTypeToRuleset =
 
 MantisProcessor::MantisProcessor(
     raw_ref<MetricsLibraryInterface> metrics_lib,
+    scoped_refptr<base::SequencedTaskRunner> mantis_api_runner,
     MantisComponent component,
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> receiver,
@@ -84,6 +86,7 @@ MantisProcessor::MantisProcessor(
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(InitializeResult)> callback)
     : metrics_lib_(metrics_lib),
+      mantis_api_runner_(std::move(mantis_api_runner)),
       component_(component),
       api_(api),
       safety_service_manager_(safety_service_manager),
@@ -106,7 +109,13 @@ MantisProcessor::MantisProcessor(
 }
 
 MantisProcessor::~MantisProcessor() {
-  api_->DestroyMantisComponent(component_);
+  mantis_api_runner_->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](const MantisAPI* api, MantisComponent component) {
+                       // Safe to perform even after `this` is destroyed.
+                       api->DestroyMantisComponent(component);
+                     },
+                     api_, component_));
 }
 
 void MantisProcessor::OnDisconnected() {
@@ -135,11 +144,10 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
       .prompt = "",
       .callback = std::move(callback),
       .process_func = base::BindOnce(
-          [](raw_ref<MetricsLibraryInterface> metrics_lib, const MantisAPI* api,
-             MantisComponent component, const std::vector<uint8_t>& image,
+          [](const MantisAPI* api, MantisComponent component,
+             const std::vector<uint8_t>& image,
              const std::vector<uint8_t>& mask,
              uint32_t seed) -> ProcessFuncResult {
-            auto timer = odml::PerformanceTimer::Create();
             InpaintingResult lib_result =
                 api->Inpainting(component.processor, image, mask, seed);
             if (lib_result.status != MantisStatus::kOk) {
@@ -147,15 +155,15 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
                   .error = kMapStatusToError.at(lib_result.status),
               };
             }
-            SendTimeMetric(*metrics_lib, TimeMetric::kInpaintingLatency,
-                           *timer);
 
             return ProcessFuncResult{
                 .image = lib_result.image,
                 .generated_region = lib_result.generated_region,
             };
           },
-          metrics_lib_, api_, component_, image, mask, seed),
+          api_, component_, image, mask, seed),
+      .time_metric = TimeMetric::kInpaintingLatency,
+      .timer = odml::PerformanceTimer::Create(),
   }));
 }
 
@@ -171,11 +179,10 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
       .prompt = prompt,
       .callback = std::move(callback),
       .process_func = base::BindOnce(
-          [](raw_ref<MetricsLibraryInterface> metrics_lib, const MantisAPI* api,
-             MantisComponent component, const std::vector<uint8_t>& image,
+          [](const MantisAPI* api, MantisComponent component,
+             const std::vector<uint8_t>& image,
              const std::vector<uint8_t>& mask, uint32_t seed,
              const std::string& prompt) -> ProcessFuncResult {
-            auto timer = odml::PerformanceTimer::Create();
             GenerativeFillResult lib_result = api->GenerativeFill(
                 component.processor, image, mask, seed, prompt);
             if (lib_result.status != MantisStatus::kOk) {
@@ -183,15 +190,15 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
                   .error = kMapStatusToError.at(lib_result.status),
               };
             }
-            SendTimeMetric(*metrics_lib, TimeMetric::kGenerativeFillLatency,
-                           *timer);
 
             return ProcessFuncResult{
                 .image = lib_result.image,
                 .generated_region = lib_result.generated_region,
             };
           },
-          metrics_lib_, api_, component_, image, mask, seed, prompt),
+          api_, component_, image, mask, seed, prompt),
+      .time_metric = TimeMetric::kGenerativeFillLatency,
+      .timer = odml::PerformanceTimer::Create(),
   }));
 }
 
@@ -204,9 +211,23 @@ void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
     return;
   }
 
-  auto timer = odml::PerformanceTimer::Create();
-  SegmentationResult lib_result =
-      api_->Segmentation(component_.segmenter, image, prior);
+  mantis_api_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(
+          [](const MantisAPI* api, MantisComponent component,
+             const std::vector<uint8_t>& image,
+             const std::vector<uint8_t>& prior) {
+            return api->Segmentation(component.segmenter, image, prior);
+          },
+          api_, component_, image, prior),
+      base::BindOnce(&MantisProcessor::OnSegmentationDone,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                     odml::PerformanceTimer::Create()));
+}
+
+void MantisProcessor::OnSegmentationDone(SegmentationCallback callback,
+                                         odml::PerformanceTimer::Ptr timer,
+                                         const SegmentationResult& lib_result) {
   if (lib_result.status != MantisStatus::kOk) {
     std::move(callback).Run(
         MantisResult::NewError(kMapStatusToError.at(lib_result.status)));
@@ -225,12 +246,20 @@ void MantisProcessor::ProcessImage(std::unique_ptr<MantisProcess> process) {
     return;
   }
 
-  ProcessFuncResult lib_result = std::move(process->process_func).Run();
+  mantis_api_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE, std::move(process->process_func),
+      base::BindOnce(&MantisProcessor::OnProcessDone,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(process)));
+}
+
+void MantisProcessor::OnProcessDone(std::unique_ptr<MantisProcess> process,
+                                    const ProcessFuncResult& lib_result) {
   if (lib_result.error.has_value()) {
     std::move(process->callback)
         .Run(MantisResult::NewError(lib_result.error.value()));
     return;
   }
+  SendTimeMetric(*metrics_lib_, process->time_metric, *process->timer);
   std::string prompt =
       process->prompt.has_value() ? process->prompt.value() : "";
   process->image_result = lib_result.image;

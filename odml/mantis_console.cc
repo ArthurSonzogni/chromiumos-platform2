@@ -174,16 +174,16 @@ class MantisServiceForInterception : public mantis::MantisService {
  private:
   void CreateMantisProcessor(
       raw_ref<MetricsLibraryInterface> metrics_lib,
-      mantis::MantisComponent component,
+      scoped_refptr<base::SequencedTaskRunner> mantis_api_runner,
       const mantis::MantisAPI* api,
       mojo::PendingReceiver<mantis::mojom::MantisProcessor> receiver,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
       base::OnceCallback<void()> on_disconnected,
-      base::OnceCallback<void(mantis::mojom::InitializeResult)> callback)
-      override {
+      base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
+      mantis::MantisComponent component) override {
     LOG(INFO) << "MantisServiceForInterception::CreateMantisProcessor called";
     mantis_processor = std::make_unique<MantisProcessorForInterception>(
-        metrics_lib, component, api, std::move(receiver),
+        metrics_lib, mantis_api_runner, component, api, std::move(receiver),
         safety_service_manager, std::move(on_disconnected),
         std::move(callback));
   }

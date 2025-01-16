@@ -6,10 +6,16 @@
 
 #include <memory>
 
+#include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/raw_ref.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/task/task_traits.h>
+#include <base/task/thread_pool.h>
 #include <metrics/metrics_library.h>
 #include <ml_core/dlc/dlc_client.h>
 
+#include "odml/mantis/lib_api.h"
 #include "odml/mantis/processor.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
@@ -32,6 +38,8 @@ MantisService::MantisService(
     raw_ref<odml::OdmlShimLoader> shim_loader,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
     : metrics_lib_(metrics_lib),
+      mantis_api_runner_(
+          base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()})),
       shim_loader_(shim_loader),
       safety_service_manager_(safety_service_manager) {}
 
@@ -127,6 +135,13 @@ void MantisService::OnInstallDlcComplete(
     std::move(callback).Run(mojom::InitializeResult::kSuccess);
     return;
   }
+  if (is_initializing_processor_) {
+    pending_processors_.push_back(PendingProcessor{
+        .processor = std::move(processor),
+        .callback = std::move(callback),
+    });
+    return;
+  }
 
   auto get_api = shim_loader_->Get<MantisAPIGetter>("GetMantisAPI");
   if (!get_api) {
@@ -142,28 +157,49 @@ void MantisService::OnInstallDlcComplete(
     return;
   }
 
-  // TODO(b/365638444): Run on another thread to prevent blocking the main
-  // thread.
-  MantisComponent component = api->Initialize(result->value());
-
-  CreateMantisProcessor(
-      metrics_lib_, component, api, std::move(processor),
-      safety_service_manager_,
-      base::BindOnce(&MantisService::DeleteProcessor, base::Unretained(this)),
-      std::move(callback));
+  // Run in Mantis API runner, and the client should wait for the `callback` to
+  // run.
+  is_initializing_processor_ = true;
+  mantis_api_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(
+          [](const MantisAPI* api, base::FilePath assets_file_dir) {
+            return api->Initialize(assets_file_dir.value());
+          },
+          api, *std::move(result)),
+      base::BindOnce(&MantisService::CreateMantisProcessor,
+                     weak_ptr_factory_.GetWeakPtr(), metrics_lib_,
+                     mantis_api_runner_, api, std::move(processor),
+                     safety_service_manager_,
+                     base::BindOnce(&MantisService::DeleteProcessor,
+                                    base::Unretained(this)),
+                     std::move(callback))
+          .Then(base::BindOnce(&MantisService::NotifyPendingProcessors,
+                               weak_ptr_factory_.GetWeakPtr())));
 }
 
 void MantisService::CreateMantisProcessor(
     raw_ref<MetricsLibraryInterface> metrics_lib,
-    MantisComponent component,
+    scoped_refptr<base::SequencedTaskRunner> mantis_api_runner,
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
     base::OnceCallback<void()> on_disconnected,
-    base::OnceCallback<void(mantis::mojom::InitializeResult)> callback) {
+    base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
+    MantisComponent component) {
   processor_ = std::make_unique<MantisProcessor>(
-      metrics_lib, component, api, std::move(processor), safety_service_manager,
-      std::move(on_disconnected), std::move(callback));
+      metrics_lib, std::move(mantis_api_runner), component, api,
+      std::move(processor), safety_service_manager, std::move(on_disconnected),
+      std::move(callback));
+}
+
+void MantisService::NotifyPendingProcessors() {
+  is_initializing_processor_ = false;
+  for (PendingProcessor& pending : pending_processors_) {
+    processor_->AddReceiver(std::move(pending.processor));
+    std::move(pending.callback).Run(mojom::InitializeResult::kSuccess);
+  }
+  pending_processors_.clear();
 }
 
 void MantisService::OnDlcProgress(

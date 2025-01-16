@@ -12,9 +12,12 @@
 #include <vector>
 
 #include <base/memory/raw_ref.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
+#include <base/task/task_traits.h>
+#include <base/task/thread_pool.h>
 #include <chromeos/mojo/service_constants.h>
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -22,8 +25,10 @@
 
 #include "odml/cros_safety/safety_service_manager.h"
 #include "odml/mantis/lib_api.h"
+#include "odml/mantis/metrics.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
+#include "odml/utils/performance_timer.h"
 
 namespace mantis {
 
@@ -45,6 +50,9 @@ struct MantisProcess {
   std::optional<std::string> prompt;
   base::OnceCallback<void(mojom::MantisResultPtr)> callback;
   base::OnceCallback<ProcessFuncResult()> process_func;
+  // Metric info to be used on main thread.
+  mantis::TimeMetric time_metric;
+  odml::PerformanceTimer::Ptr timer;
   // Might not be populated
   std::vector<uint8_t> image_result;
   std::vector<uint8_t> generated_region;
@@ -54,6 +62,7 @@ class MantisProcessor : public mojom::MantisProcessor {
  public:
   explicit MantisProcessor(
       raw_ref<MetricsLibraryInterface> metrics_lib,
+      scoped_refptr<base::SequencedTaskRunner> mantis_api_runner,
       MantisComponent component,
       const MantisAPI* api,
       mojo::PendingReceiver<mojom::MantisProcessor> receiver,
@@ -103,9 +112,18 @@ class MantisProcessor : public mojom::MantisProcessor {
 
   void OnDisconnected();
 
+  void OnSegmentationDone(SegmentationCallback callback,
+                          odml::PerformanceTimer::Ptr timer,
+                          const SegmentationResult& lib_result);
+
   void ProcessImage(std::unique_ptr<MantisProcess> process);
 
+  void OnProcessDone(std::unique_ptr<MantisProcess> process,
+                     const ProcessFuncResult& lib_result);
+
   const raw_ref<MetricsLibraryInterface> metrics_lib_;
+
+  const scoped_refptr<base::SequencedTaskRunner> mantis_api_runner_;
 
   MantisComponent component_;
 
