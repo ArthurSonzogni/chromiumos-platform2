@@ -15,19 +15,6 @@
 
 namespace cryptohome {
 
-// Control switch value for creating new PIN with the timebase backoff for
-// passwordless login.
-inline constexpr struct VariationsFeature kCrOSLateBootEnableModernPin = {
-    .name = "CrOSLateBootEnableModernPin",
-    .default_state = FEATURE_ENABLED_BY_DEFAULT,
-};
-
-// Control switch value for migrating existing users to modern pin.
-inline constexpr struct VariationsFeature kCrOSLateBootMigrateToModernPin = {
-    .name = "CrOSLateBootMigrateToModernPin",
-    .default_state = FEATURE_ENABLED_BY_DEFAULT,
-};
-
 // Control switch value for generating recoverable key stores.
 inline constexpr struct VariationsFeature
     kCrOSLateBootGenerateRecoverableKeyStore = {
@@ -54,8 +41,6 @@ class Features {
   // ActiveFeature is an enum that defines active features that are being rolled
   // out via finch in cryptohome.
   enum ActiveFeature {
-    kModernPin,
-    kMigratePin,
     kGenerateRecoverableKeyStore,
     kMigrateLegacyFingerprint,
     kPinweaverForPassword,

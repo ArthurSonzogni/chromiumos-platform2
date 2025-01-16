@@ -243,41 +243,6 @@ TEST(AuthFactorPropertiesFromProtoTest, AuthFactorMetaDataCheckPin) {
   common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
   common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
   common_metadata_proto.set_lockout_policy(
-      user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
-  auth_factor_proto.mutable_pin_metadata();
-  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
-  auth_factor_proto.set_label(kLabel);
-
-  // Test
-  AuthFactorType auth_factor_type;
-  std::string auth_factor_label;
-  AuthFactorMetadata auth_factor_metadata;
-  FakeFeaturesForTesting features;
-  features.SetDefaultForFeature(Features::kModernPin, false);
-  EXPECT_THAT(AuthFactorPropertiesFromProto(auth_factor_proto, features.async,
-                                            auth_factor_type, auth_factor_label,
-                                            auth_factor_metadata),
-              IsTrue());
-
-  // Verify
-  EXPECT_THAT(auth_factor_metadata.common.chromeos_version_last_updated,
-              Eq(kChromeosVersion));
-  EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
-              Eq(kChromeVersion));
-  EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Optional(SerializedLockoutPolicy::ATTEMPT_LIMITED));
-  EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PinMetadata>(_));
-  EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPin));
-  EXPECT_THAT(auth_factor_label, Eq(kLabel));
-}
-
-TEST(AuthFactorPropertiesFromProtoTest, AuthFactorMetaDataCheckPinTimeLimit) {
-  // Setup
-  user_data_auth::AuthFactor auth_factor_proto;
-  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
-  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
-  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
-  common_metadata_proto.set_lockout_policy(
       user_data_auth::LOCKOUT_POLICY_TIME_LIMITED);
   auth_factor_proto.mutable_pin_metadata();
   auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
@@ -358,7 +323,6 @@ TEST(AuthFactorPropertiesFromProtoTest,
   std::string auth_factor_label;
   AuthFactorMetadata auth_factor_metadata;
   FakeFeaturesForTesting features;
-  features.SetDefaultForFeature(Features::kModernPin, /*enabled=*/true);
   EXPECT_THAT(AuthFactorPropertiesFromProto(auth_factor_proto, features.async,
                                             auth_factor_type, auth_factor_label,
                                             auth_factor_metadata),
@@ -394,7 +358,6 @@ TEST(AuthFactorPropertiesFromProtoTest,
   std::string auth_factor_label;
   AuthFactorMetadata auth_factor_metadata;
   FakeFeaturesForTesting features;
-  features.SetDefaultForFeature(Features::kModernPin, /*enabled=*/true);
   EXPECT_THAT(AuthFactorPropertiesFromProto(auth_factor_proto, features.async,
                                             auth_factor_type, auth_factor_label,
                                             auth_factor_metadata),

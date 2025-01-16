@@ -38,11 +38,10 @@ class PinWeaverAuthBlock : public AuthBlock {
   using StateType = PinWeaverAuthBlockState;
   static CryptoStatus IsSupported(const hwsec::CryptohomeFrontend& hwsec);
   static std::unique_ptr<AuthBlock> New(
-      AsyncInitFeatures& features,
       const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager);
 
-  PinWeaverAuthBlock(AsyncInitFeatures& features,
-                     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager);
+  explicit PinWeaverAuthBlock(
+      const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager);
 
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
@@ -65,8 +64,6 @@ class PinWeaverAuthBlock : public AuthBlock {
   uint32_t GetLockoutDelay(uint64_t label);
 
  private:
-  // Feature lookup interface.
-  AsyncInitFeatures* features_;
   const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
 };
 

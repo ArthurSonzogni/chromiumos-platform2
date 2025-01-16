@@ -81,15 +81,13 @@ using DeriveTestFuture = TestFuture<CryptohomeStatus,
 class PinWeaverAuthBlockTest : public ::testing::Test {
  public:
   void SetUp() override {
-    auth_block_ = std::make_unique<PinWeaverAuthBlock>(features_.async,
-                                                       &hwsec_pw_manager_);
+    auth_block_ = std::make_unique<PinWeaverAuthBlock>(&hwsec_pw_manager_);
   }
 
  protected:
   base::test::TaskEnvironment task_environment_;
 
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
-  FakeFeaturesForTesting features_;
   std::unique_ptr<PinWeaverAuthBlock> auth_block_;
 };
 
@@ -112,8 +110,6 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestPin) {
                           ObfuscatedUsername(kObfuscatedUsername),
                           reset_secret};
   KeyBlobs vkk_data;
-
-  features_.SetDefaultForFeature(Features::kModernPin, true);
 
   CreateTestFuture result;
   auth_block_->Create(user_input, {.metadata = PinMetadata()},
@@ -210,46 +206,6 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestKiosk) {
   EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret_result}));
   EXPECT_EQ(le_secret, le_secret_result);
   EXPECT_EQ(delay_sched, PasswordDelaySchedule());
-}
-
-TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
-  // Set up inputs to the test.
-  brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob reset_secret(32, 'S');
-
-  // Set up the mock expectations.
-  brillo::SecureBlob le_secret;
-  DelaySchedule delay_sched;
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
-                      ReturnValue(0)));
-
-  // Call the Create() method.
-  AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt, Username(),
-                          ObfuscatedUsername(kObfuscatedUsername),
-                          reset_secret};
-  features_.SetDefaultForFeature(Features::kMigratePin, false);
-  features_.SetDefaultForFeature(Features::kModernPin, false);
-  CreateTestFuture result;
-  auth_block_->Create(user_input, {.metadata = PinMetadata()},
-                      result.GetCallback());
-  ASSERT_TRUE(result.IsReady());
-  auto [status, key_blobs, auth_state] = result.Take();
-
-  ASSERT_THAT(status, IsOk());
-  EXPECT_TRUE(
-      std::holds_alternative<PinWeaverAuthBlockState>(auth_state->state));
-
-  auto& pin_state = std::get<PinWeaverAuthBlockState>(auth_state->state);
-
-  EXPECT_TRUE(pin_state.salt.has_value());
-  const brillo::Blob& salt = pin_state.salt.value();
-  brillo::SecureBlob le_secret_result(kDefaultAesKeySize);
-  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret_result}));
-  EXPECT_EQ(le_secret, le_secret_result);
-  EXPECT_EQ(delay_sched, LockoutDelaySchedule());
 }
 
 TEST_F(PinWeaverAuthBlockTest, CreateFailurePinWeaverManager) {
@@ -449,7 +405,6 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTest) {
       .Times(Exactly(1));
   EXPECT_CALL(hwsec_pw_manager_, GetDelaySchedule(_))
       .WillOnce(Return(PinDelaySchedule()));
-  features_.SetDefaultForFeature(Features::kMigratePin, true);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -499,7 +454,6 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithPassword) {
           ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{}));
   EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
       .Times(Exactly(1));
-  features_.SetDefaultForFeature(Features::kMigratePin, true);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -551,7 +505,6 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithLockoutPin) {
       .Times(Exactly(1));
   EXPECT_CALL(hwsec_pw_manager_, GetDelaySchedule(_))
       .WillOnce(Return(LockoutDelaySchedule()));
-  features_.SetDefaultForFeature(Features::kMigratePin, true);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -581,57 +534,8 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithLockoutPin) {
   // PinWeaver should always use unique IVs.
   EXPECT_NE(key_blobs->chaps_iv.value(), key_blobs->vkk_iv.value());
 
-  // No suggested_action with the credential.
+  // Recreate will be suggested to migrate the PIN.
   EXPECT_EQ(suggested_action, AuthBlock::SuggestedAction::kRecreate);
-}
-
-TEST_F(PinWeaverAuthBlockTest, DeriveTestWithoutMigratePin) {
-  brillo::SecureBlob vault_key(20, 'C');
-  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
-  brillo::Blob chaps_iv(kAesBlockSize, 'F');
-  brillo::Blob fek_iv(kAesBlockSize, 'X');
-
-  brillo::SecureBlob le_secret(kDefaultAesKeySize);
-  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
-
-  ON_CALL(hwsec_pw_manager_, CheckCredential(_, _))
-      .WillByDefault(
-          ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{}));
-  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
-      .Times(Exactly(1));
-  features_.SetDefaultForFeature(Features::kMigratePin, false);
-
-  // Construct the vault keyset.
-  SerializedVaultKeyset serialized;
-  serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
-  serialized.set_salt(salt.data(), salt.size());
-  serialized.set_le_chaps_iv(chaps_iv.data(), chaps_iv.size());
-  serialized.set_le_label(0);
-  serialized.set_le_fek_iv(fek_iv.data(), fek_iv.size());
-
-  VaultKeyset vk;
-  vk.InitializeFromSerialized(serialized);
-  AuthBlockState auth_state;
-  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
-
-  AuthInput auth_input = {vault_key};
-  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
-  DeriveTestFuture result;
-  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
-  ASSERT_TRUE(result.IsReady());
-  auto [status, key_blobs, suggested_action] = result.Take();
-  ASSERT_THAT(status, IsOk());
-
-  // Set expectations of the key blobs.
-  EXPECT_NE(key_blobs->reset_secret, std::nullopt);
-  EXPECT_NE(key_blobs->chaps_iv, std::nullopt);
-  EXPECT_NE(key_blobs->vkk_iv, std::nullopt);
-
-  // PinWeaver should always use unique IVs.
-  EXPECT_NE(key_blobs->chaps_iv.value(), key_blobs->vkk_iv.value());
-
-  // No suggested_action with the credential.
-  EXPECT_EQ(suggested_action, std::nullopt);
 }
 
 // Test that derive function works as intended when fek_iv and le_chaps_iv is

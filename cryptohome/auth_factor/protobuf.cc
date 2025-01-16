@@ -248,11 +248,9 @@ bool AuthFactorPropertiesFromProto(
       }
       GetPinMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kPin;
-      if (features.IsFeatureEnabled(Features::kModernPin)) {
-        // Since the feature is enabled, we will set new pin as modern pin.
-        out_auth_factor_metadata.common.lockout_policy =
-            SerializedLockoutPolicy::TIME_LIMITED;
-      }
+      // All new PINs use modern time-limited lockouts.
+      out_auth_factor_metadata.common.lockout_policy =
+          SerializedLockoutPolicy::TIME_LIMITED;
       break;
     case user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY:
       if (!auth_factor.has_cryptohome_recovery_metadata()) {

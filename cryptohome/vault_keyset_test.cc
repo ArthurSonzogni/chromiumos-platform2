@@ -39,11 +39,9 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
-#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -1131,9 +1129,7 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
       FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
-  FakeFeaturesForTesting features;
-  auto auth_block =
-      std::make_unique<PinWeaverAuthBlock>(features.async, &hwsec_pw_manager_);
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(&hwsec_pw_manager_);
 
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)),
                           false,
@@ -1172,9 +1168,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
 
   brillo::SecureBlob reset_seed = CreateSecureRandomBlob(kAesBlockSize);
 
-  FakeFeaturesForTesting features;
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, crypto_.GetPinWeaverManager());
+  auto auth_block =
+      std::make_unique<PinWeaverAuthBlock>(crypto_.GetPinWeaverManager());
 
   AuthInput auth_input = {brillo::SecureBlob(44, 'A'),
                           false,
@@ -1199,9 +1194,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
       FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
-  FakeFeaturesForTesting features;
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, crypto_.GetPinWeaverManager());
+  auto auth_block =
+      std::make_unique<PinWeaverAuthBlock>(crypto_.GetPinWeaverManager());
 
   AuthInput auth_input = {
       brillo::SecureBlob(44, 'A'),   false, Username("unused"),
@@ -1233,9 +1227,8 @@ TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
 
   vk.InitializeFromSerialized(serialized);
 
-  FakeFeaturesForTesting features;
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, crypto_.GetPinWeaverManager());
+  auto auth_block =
+      std::make_unique<PinWeaverAuthBlock>(crypto_.GetPinWeaverManager());
   EXPECT_CALL(hwsec_pw_manager_, GetDelaySchedule(_))
       .WillOnce(Return(PinDelaySchedule()));
 

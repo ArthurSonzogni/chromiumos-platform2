@@ -330,9 +330,8 @@ AuthFactorMetadata CreateAuthFactorMetadataForMigration(
     const AsyncInitFeatures* features) {
   AuthFactorMetadata migration_auth_factor_metadata = auth_factor_metadata;
 
-  if (features->IsFeatureEnabled(Features::kModernPin) &&
-      auth_factor_type == AuthFactorType::kPin) {
-    // Since the feature is enabled, we will set new pin as modern pin.
+  if (auth_factor_type == AuthFactorType::kPin) {
+    // All new PINs should have time-limited lockouts.
     migration_auth_factor_metadata.common.lockout_policy =
         SerializedLockoutPolicy::TIME_LIMITED;
   }

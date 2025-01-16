@@ -80,15 +80,10 @@ enum class DelayScheduleType {
 };
 
 // Select the delay schedule to use for newly created factors.
-const DelaySchedule& SelectDelayScheduleForNewFactor(
-    AsyncInitFeatures& features, DelayScheduleType type) {
+const DelaySchedule& SelectDelayScheduleForNewFactor(DelayScheduleType type) {
   switch (type) {
     case DelayScheduleType::kPin:
-      // For PIN, select delay or lockout based depending on the feature flags.
-      if (features.IsFeatureEnabled(Features::kModernPin)) {
-        return PinDelaySchedule();
-      }
-      return LockoutDelaySchedule();
+      return PinDelaySchedule();
     case DelayScheduleType::kPassword:
       // For password, always use a delay schedule.
       return PasswordDelaySchedule();
@@ -183,18 +178,13 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(
 }
 
 std::unique_ptr<AuthBlock> PinWeaverAuthBlock::New(
-    AsyncInitFeatures& features,
     const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager) {
-  return std::make_unique<PinWeaverAuthBlock>(features, &hwsec_pw_manager);
+  return std::make_unique<PinWeaverAuthBlock>(&hwsec_pw_manager);
 }
 
 PinWeaverAuthBlock::PinWeaverAuthBlock(
-    AsyncInitFeatures& features,
     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager)
-    : AuthBlock(kLowEntropyCredential),
-      features_(&features),
-      hwsec_pw_manager_(hwsec_pw_manager) {
-  CHECK(features_);
+    : AuthBlock(kLowEntropyCredential), hwsec_pw_manager_(hwsec_pw_manager) {
   CHECK(hwsec_pw_manager_);
 }
 
@@ -312,8 +302,7 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   // LECredentialManager.
 
   // Select the appropriate delay schedule to use.
-  const auto& delay_sched =
-      SelectDelayScheduleForNewFactor(*features_, *schedule_type);
+  const auto& delay_sched = SelectDelayScheduleForNewFactor(*schedule_type);
 
   std::vector<hwsec::OperationPolicySetting> policies = {
       hwsec::OperationPolicySetting{
@@ -502,12 +491,10 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
   key_blobs->reset_secret = result->reset_secret;
   std::optional<AuthBlock::SuggestedAction> suggested_action;
 
-  // If this factor is a PIN factor and PIN migration is enabled, check if the
-  // credential is currently configured to use the modern delay policy. If it is
-  // not, attempt to migrate it. If any of that fails we don't fail the
-  // already-successful derivation.
-  if (*schedule_type == DelayScheduleType::kPin &&
-      features_->IsFeatureEnabled(Features::kMigratePin)) {
+  // If this factor is a PIN factor check if the credential is currently
+  // configured to use the modern delay policy. If it is not, attempt to migrate
+  // it. If any of that fails we don't fail the already-successful derivation.
+  if (*schedule_type == DelayScheduleType::kPin) {
     auto delay_sched =
         hwsec_pw_manager_->GetDelaySchedule(*auth_state->le_label);
     if (delay_sched.ok()) {

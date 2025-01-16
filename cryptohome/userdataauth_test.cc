@@ -3656,8 +3656,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
 
-  features_.SetDefaultForFeature(Features::kModernPin, true);
-
   EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
       .WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
@@ -3998,8 +3996,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
   // Setup.
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-
-  features_.SetDefaultForFeature(Features::kModernPin, true);
 
   EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
       .WillRepeatedly(ReturnValue(true));

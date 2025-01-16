@@ -700,7 +700,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 TEST_F(AuthSessionTestWithKeysetManagement,
        RemoveBackupKeysetFromMigratedKeyset) {
   // SETUP
-  constexpr int kMaxWrongAttempts = 6;
+  constexpr int kMaxWrongAttempts = 5;
 
   // Setup pinweaver manager.
   hwsec::Tpm2SimulatorFactoryForTest factory;
@@ -730,7 +730,6 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   key_data.set_label(kPasswordLabel);
   KeysetSetupWithAuthInput(
       /*is_migrated=*/false, /*is_backup=*/false, auth_input, key_data, "0");
-  features_.SetDefaultForFeature(Features::kModernPin, false);
 
   // Test authenticate migrates to UserSecretStash.
 

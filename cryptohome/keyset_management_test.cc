@@ -31,7 +31,6 @@
 
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/fake_features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
@@ -582,9 +581,8 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   ASSERT_THAT(vk_status, IsOk());
 
   // Setup pin credentials.
-  FakeFeaturesForTesting features;
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, crypto_.GetPinWeaverManager());
+  auto auth_block =
+      std::make_unique<PinWeaverAuthBlock>(crypto_.GetPinWeaverManager());
 
   AuthInput auth_input = {brillo::SecureBlob(kNewPasskey),
                           false,
