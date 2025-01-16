@@ -28,9 +28,13 @@ ResourceCollector::ResourceCollector(base::TimeDelta interval) {
                                    weak_ptr_factory_.GetWeakPtr()));
 }
 
-void ResourceCollector::CollectWrapper() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  Collect();
+// static
+void ResourceCollector::CollectWrapper(base::WeakPtr<ResourceCollector> self) {
+  if (!self) {
+    return;
+  }
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+  self->Collect();
 }
 
 void ResourceCollector::StopTimer() {

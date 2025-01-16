@@ -102,15 +102,19 @@ KeyDelivery::KeyDelivery(
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
-void KeyDelivery::RequestKeyIfNeeded() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (encryption_module_->has_encryption_key() &&
-      !encryption_module_->need_encryption_key()) {
-    ScheduleNextKeyUpdate();
+// static
+void KeyDelivery::RequestKeyIfNeeded(base::WeakPtr<KeyDelivery> self) {
+  if (!self) {
+    return;
+  }
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+  if (self->encryption_module_->has_encryption_key() &&
+      !self->encryption_module_->need_encryption_key()) {
+    self->ScheduleNextKeyUpdate();
     return;
   }
   // Request the key, do not expect any callback.
-  Request(base::NullCallback());
+  self->Request(base::NullCallback());
 }
 
 void KeyDelivery::EnqueueRequestAndPossiblyStart(RequestCallback callback) {

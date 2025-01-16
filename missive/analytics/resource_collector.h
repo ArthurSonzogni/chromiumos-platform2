@@ -41,8 +41,8 @@ class ResourceCollector {
   // |interval| param in the constructor.
   virtual void Collect() = 0;
 
-  // Calls |Collect|. Checks for sequence.
-  void CollectWrapper();
+  // Calls |Collect| after checking the weak pointer. Checks for sequence.
+  static void CollectWrapper(base::WeakPtr<ResourceCollector> self);
 
   // Timer for executing the resource usage collection task.
   base::RepeatingTimer timer_ GUARDED_BY_CONTEXT(sequence_checker_);

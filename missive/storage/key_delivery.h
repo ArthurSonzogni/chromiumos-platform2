@@ -60,7 +60,7 @@ class KeyDelivery {
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
-  void RequestKeyIfNeeded();
+  static void RequestKeyIfNeeded(base::WeakPtr<KeyDelivery> self);
 
   void EnqueueRequestAndPossiblyStart(RequestCallback callback);
 

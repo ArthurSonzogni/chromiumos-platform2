@@ -495,10 +495,12 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
   // Helper method to retry upload if prior one failed or if some events below
   // |next_sequencing_id| were not uploaded.
-  void CheckBackUpload(Status status, int64_t next_sequencing_id);
+  static void CheckBackUpload(base::WeakPtr<StorageQueue> self,
+                              Status status,
+                              int64_t next_sequencing_id);
 
   // Helper method called by periodic time to upload data.
-  void PeriodicUpload();
+  static void PeriodicUpload(base::WeakPtr<StorageQueue> self);
 
   // Sequentially removes the files comprising the queue from oldest to newest
   // to recover disk space so higher priority files can be stored. This function
@@ -544,7 +546,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
   // Timer callback detects inactive thread and initiates its self-destruct
   // (even if it is not empty yet).
-  void InactivityCheck();
+  static void InactivityCheck(base::WeakPtr<StorageQueue> self);
 
   // Sequential task runner for all activities in this StorageQueue
   // (must be first member in class).

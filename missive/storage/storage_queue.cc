@@ -349,7 +349,7 @@ Status StorageQueue::DoInit() {
   // others either.
   if (first_sequencing_id_ < next_sequencing_id_) {
     Start<ReadContext>(UploaderInterface::UploadReason::INIT_RESUME,
-                       base::DoNothing(), this);
+                       base::DoNothing(), base::WrapRefCounted(this));
   }
   // Initiate inactivity check and for multi-gen queue self-destruct timer.
   CHECK_GT(options_.inactive_queue_self_destruct_delay(), base::TimeDelta());
@@ -1023,15 +1023,20 @@ void StorageQueue::MaybeSelfDestructInactiveQueue(Status status) {
           base::WrapRefCounted(this)));
 }
 
-void StorageQueue::InactivityCheck() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
-  CHECK(!generation_guid_.empty()) << "Inactivity check on legacy directory";
+// static
+void StorageQueue::InactivityCheck(base::WeakPtr<StorageQueue> self) {
+  if (!self) {
+    return;
+  }
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->storage_queue_sequence_checker_);
+  CHECK(!self->generation_guid_.empty())
+      << "Inactivity check on legacy directory";
 
   // Queue has been inactive for a long time.
   // Disable it in `QueueContainer` for `Writes`, and eventually we will `Flush`
   // it, remove from `QueueContainer` completely and erase its directory.
-  disable_queue_cb_.Run(
-      generation_guid_,
+  self->disable_queue_cb_.Run(
+      self->generation_guid_,
       base::BindPostTaskToCurrentDefault(base::BindOnce(
           [](scoped_refptr<StorageQueue> self) {
             // Note: by this moment the queue object may already be disabled,
@@ -1046,7 +1051,7 @@ void StorageQueue::InactivityCheck() {
             self->Flush(base::BindPostTaskToCurrentDefault(base::BindOnce(
                 &StorageQueue::MaybeSelfDestructInactiveQueue, self)));
           },
-          base::WrapRefCounted(this))));
+          base::WrapRefCounted(self.get()))));
 }
 
 void StorageQueue::DeleteUnusedFiles(
@@ -2617,34 +2622,44 @@ Status StorageQueue::RemoveConfirmedData(int64_t sequencing_id,
   return Status::StatusOK();
 }
 
-void StorageQueue::CheckBackUpload(Status status, int64_t next_sequencing_id) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+// static
+void StorageQueue::CheckBackUpload(base::WeakPtr<StorageQueue> self,
+                                   Status status,
+                                   int64_t next_sequencing_id) {
+  if (!self) {
+    return;
+  }
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->storage_queue_sequence_checker_);
   if (!status.ok()) {
     // Previous upload failed, retry.
     Start<ReadContext>(UploaderInterface::UploadReason::FAILURE_RETRY,
-                       base::DoNothing(), this);
+                       base::DoNothing(), base::WrapRefCounted(self.get()));
     return;
   }
 
-  if (!first_unconfirmed_sequencing_id_.has_value() ||
-      first_unconfirmed_sequencing_id_.value() < next_sequencing_id) {
+  if (!self->first_unconfirmed_sequencing_id_.has_value() ||
+      self->first_unconfirmed_sequencing_id_.value() < next_sequencing_id) {
     // Not all uploaded events were confirmed after upload, retry.
     Start<ReadContext>(UploaderInterface::UploadReason::INCOMPLETE_RETRY,
-                       base::DoNothing(), this);
+                       base::DoNothing(), base::WrapRefCounted(self.get()));
     return;
   }
 
   // No need to retry.
 }
 
-void StorageQueue::PeriodicUpload() {
+// static
+void StorageQueue::PeriodicUpload(base::WeakPtr<StorageQueue> self) {
+  if (!self) {
+    return;
+  }
   Start<ReadContext>(UploaderInterface::UploadReason::PERIODIC,
-                     base::DoNothing(), this);
+                     base::DoNothing(), base::WrapRefCounted(self.get()));
 }
 
 void StorageQueue::Flush(base::OnceCallback<void(Status)> completion_cb) {
   Start<ReadContext>(UploaderInterface::UploadReason::MANUAL,
-                     std::move(completion_cb), this);
+                     std::move(completion_cb), base::WrapRefCounted(this));
 }
 
 void StorageQueue::InformAboutCachedUploads(
