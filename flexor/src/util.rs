@@ -187,9 +187,11 @@ mod tests {
         cmd.arg("echo write-to-stdout && >&2 echo write-to-stderr");
         execute_command_impl(cmd, move |msg| output_clone.lock().unwrap().push(msg)).unwrap();
 
-        assert_eq!(
-            *output.lock().unwrap(),
-            [">>> write-to-stdout", ">>> write-to-stderr"]
-        );
+        // Sort the lines to avoid depending on a specific output order.
+        // The stdout/stderr streams are not synchronized together.
+        let mut output: Vec<String> = output.lock().unwrap().clone();
+        output.sort();
+
+        assert_eq!(output, [">>> write-to-stderr", ">>> write-to-stdout"])
     }
 }
