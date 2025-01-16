@@ -48,6 +48,7 @@ copies.
 | [crash-reporter](./crash-reporter/) | The system crash handler & reporter |
 | [cros-codecs](./cros-codecs/) | Hardware accelerated video middleware |
 | [cros-disks](./cros-disks/) | Daemon for mounting removable media (e.g. USB sticks and SD cards) |
+| [cros-toolchain](./cros-toolchain/) | ChromeOS toolchain projects (generally tests that run in CQ) |
 | [crosdns](./crosdns/) | Hostname resolution service for ChromeOS |
 | [crosh](./crosh/) | The ChromiumOS shell |
 | [crosier-chrome](./crosier-chrome/) | Crosier testing framework |
