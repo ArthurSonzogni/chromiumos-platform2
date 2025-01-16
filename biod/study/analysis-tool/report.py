@@ -51,7 +51,8 @@ class Element:
         #  path: Optional[Path] = None,
         parent: Optional[Element] = None,
     ) -> None:
-        """
+        """Construct an `Element`.
+
         Args:
             `id` is a component of a hierarchical identifier/file-path that
             will be used to compose file names and paths in conjunction with
@@ -68,7 +69,7 @@ class Element:
         self._id = id
         self._parent = parent
         # Starting in Python 3.7, dicts maintain insert order.
-        self._children: dict[str, Element] = dict()
+        self._children: dict[str, Element] = {}
         # self._path = path
 
     def name(self) -> str:
@@ -156,7 +157,7 @@ class Data(Element):
 
     def __init__(self, name: str, parent: Optional[Element] = None) -> None:
         super().__init__(name, parent)
-        self._data: dict[str, Any] = dict()
+        self._data: dict[str, Any] = {}
 
     def set(self, key: str, value: Any) -> None:
         self._data[key] = value
@@ -317,11 +318,13 @@ class Report:
 
         if not self._template_dir_path.is_dir():
             raise Exception(
-                f"Report templates {self._template_dir_path} dir does not exist."
+                f"Report templates {self._template_dir_path} "
+                "dir does not exist."
             )
         if not self._path_report_template_html.exists():
             raise Exception(
-                f"Report template {self._path_report_template_html} does not exist."
+                f"Report template {self._path_report_template_html} "
+                "does not exist."
             )
         if not self._path_assets.is_dir():
             raise Exception(
