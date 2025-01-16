@@ -1,0 +1,72 @@
+# Copyright 2025 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [ ":fortify_tests" ]
+}
+
+executable("fortify_tests") {
+  sources = [ "fortify-tests/clang-fortify-driver.cpp" ]
+  configs += [ ":fortify_tests_config" ]
+  deps = [
+    ":fortify_tests_1",
+    ":fortify_tests_2",
+  ]
+}
+
+source_set("fortify_tests_1") {
+  sources = [ "fortify-tests/clang-fortify-tests.cpp" ]
+  configs += [ ":fortify_tests_config" ]
+
+  # These can't appear out-of-order, and `defines` makes the `-D_FORTIFY_SOURCE`
+  # appear before the corresponding `-U_FORTIFY_SOURCE`.
+  # gnlint: disable=GnLintDefineFlags
+  cflags_cc = [
+    "-U_FORTIFY_SOURCE",
+    "-D_FORTIFY_SOURCE=1",
+  ]
+}
+
+source_set("fortify_tests_2") {
+  sources = [ "fortify-tests/clang-fortify-tests.cpp" ]
+  configs += [ ":fortify_tests_config" ]
+
+  # These can't appear out-of-order, and `defines` makes the `-D_FORTIFY_SOURCE`
+  # appear before the corresponding `-U_FORTIFY_SOURCE`.
+  # gnlint: disable=GnLintDefineFlags
+  cflags_cc = [
+    "-U_FORTIFY_SOURCE",
+    "-D_FORTIFY_SOURCE=2",
+  ]
+}
+
+config("fortify_tests_config") {
+  # NOTE: These flags get applied _after_ the flags from the `source_set` that
+  # includes this, so `-U_FORTIFY_SOURCE` _must_ reside in source_sets'
+  # `cflags_cc` vars.
+
+  # NOTE: Some flags here need to override the platform defaults, many of which
+  # are placed in `cflags_cc`. `gn` appends `cflags_cc` after appending all
+  # `cflags`, so `cflags_cc` is a 'neat' way of overriding in a codebase with
+  # only C++ code.
+  cflags_cc = [
+    # These tests check for some functionality that was removed in later
+    # versions of C++.
+    "-std=c++11",
+
+    # This is just building runtime tests; it's totally expected that many of
+    # these errors will be flagged at compile-time.
+    "-Wno-format-zero-length",
+    "-Wno-fortify-source",
+    "-Wno-memset-transposed-args",
+    "-Wno-strncat-size",
+    "-Wno-unused-result",
+    "-Wno-user-defined-warnings",
+  ]
+
+  defines = [
+    # These tests run code on GNU extensions.
+    "GNU_SOURCE",
+  ]
+}
