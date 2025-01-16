@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,11 +31,9 @@
 // expected-note@* 0+{{candidate function}}
 // expected-note@* 0+{{has been explicitly marked unavailable}}
 
-// Must come before stdlib.h
-#include <limits.h>
-
 #include <err.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <mqueue.h>
 #include <poll.h>
 #include <stdio.h>
@@ -45,10 +43,11 @@
 #include <sys/wait.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <vector>
 #include <wchar.h>
 
-#include "clang-fortify-common.h"
+#include <vector>
+
+#include "cros-toolchain/fortify-tests/clang-fortify-common.h"
 
 // We're going to use deprecated APIs here (e.g. getwd). That's OK.
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -63,17 +62,20 @@
 // easy enough to hand-roll in a simple environment.
 
 // Failures get stored here.
-static std::vector<Failure> *failures;
+static std::vector<Failure>* failures;
 
 template <typename Fn>
-static void ForkAndExpect(int line, const char *message, Fn &&F,
+static void ForkAndExpect(int line,
+                          const char* message,
+                          Fn&& F,
                           bool expect_death) {
   fprintf(stderr, "Running %s... (expected to %s)\n", message,
           expect_death ? "die" : "not die");
 
   int pid = fork();
-  if (pid == -1)
+  if (pid == -1) {
     err(1, "Failed to fork() a subproc");
+  }
 
   if (pid == 0) {
     F();
@@ -81,8 +83,9 @@ static void ForkAndExpect(int line, const char *message, Fn &&F,
   }
 
   int status;
-  if (waitpid(pid, &status, 0) == -1)
+  if (waitpid(pid, &status, 0) == -1) {
     err(1, "Failed to wait on child (pid %d)", pid);
+  }
 
   bool died = WIFSIGNALED(status) || WEXITSTATUS(status) != 0;
   if (died != expect_death) {
@@ -259,7 +262,7 @@ static void testMqueue() {
 
 static void testFormatStrings() {
   const unsigned long long unsigned_value{};
-  const char *unknown_string{};
+  const char* unknown_string{};
   va_list va{};
 
   {
@@ -273,7 +276,7 @@ static void testFormatStrings() {
   }
 
   {
-    char *retval{};
+    char* retval{};
     // expected-warning@+2{{ignoring return value}}
     // expected-warning@+1{{format specifies type 'int'}}
     asprintf(&retval, "%d", unsigned_value);
@@ -286,7 +289,7 @@ static void testFormatStrings() {
   }
 
   {
-    obstack *obs{};
+    obstack* obs{};
     // expected-warning@+1{{format specifies type 'int'}}
     obstack_printf(obs, "%d", unsigned_value);
     // expected-warning@+1{{format string is not a string literal}}
@@ -303,7 +306,7 @@ static void testFormatStrings() {
   vsyslog(0, unknown_string, va);
 
   {
-    FILE *file{};
+    FILE* file{};
     // expected-warning@+1{{format specifies type 'int'}}
     fprintf(file, "%d", unsigned_value);
     // expected-warning@+1{{format string is not a string literal}}
@@ -339,7 +342,7 @@ static void testFormatStrings() {
   // Note that glibc doesn't try to specify __format__ attrs for wchar printf
   // functions, so we don't check for that.
 }
-} // namespace compilation_tests
+}  // namespace compilation_tests
 #endif
 
 static void TestPoll() {
@@ -410,7 +413,7 @@ static void TestStdio() {
   // expected-warning@+1{{ignoring return value}}
   EXPECT_NO_DEATH(gets(small_buffer));
 
-  char *volatile unknown_size_buffer = small_buffer;
+  char* volatile unknown_size_buffer = small_buffer;
   // Since stdin is /dev/null, gets on a tiny buffer is safe here.
   // expected-warning@+2{{ignoring return value}}
   // expected-warning@+1{{please use fgets or getline}}
@@ -449,7 +452,7 @@ static void TestUnistd() {
     // expected-warning@+1{{ignoring return value of function}}
     EXPECT_NO_DEATH(getwd(large_buffer));
 
-    char *volatile unknown_size_buffer = large_buffer;
+    char* volatile unknown_size_buffer = large_buffer;
     // expected-warning@+2{{ignoring return value of function}}
     // expected-warning@+1{{please use getcwd instead}}
     EXPECT_NO_DEATH(getwd(unknown_size_buffer));
@@ -528,7 +531,7 @@ static void TestUnistd() {
 #endif
   EXPECT_DEATH_STRUCT(getdomainname(split.tiny_buffer, sizeof(split)));
 
-#pragma clang diagnostic pop // -Wunused-value
+#pragma clang diagnostic pop  // -Wunused-value
 }
 
 static void TestWchar() {
@@ -577,7 +580,7 @@ static void TestWchar() {
   mbstate_t mbs;
   bzero(&mbs, sizeof(mbs));
   {
-    const char *src[small_buffer_size * sizeof(wchar_t)];
+    const char* src[small_buffer_size * sizeof(wchar_t)];
     // expected-warning@+1{{called with dst buffer smaller than}}
     EXPECT_DEATH(mbsrtowcs(small_buffer, src, sizeof(small_buffer) + 1, &mbs));
   }
@@ -585,9 +588,9 @@ static void TestWchar() {
   {
     const int array_len = 8;
     char chars[array_len];
-    const char *chars_ptr = chars;
+    const char* chars_ptr = chars;
     wchar_t wchars[array_len];
-    const wchar_t *wchars_ptr = wchars;
+    const wchar_t* wchars_ptr = wchars;
     // expected-warning@+1{{called with dst buffer smaller than}}
     EXPECT_DEATH(wcsrtombs(chars, &wchars_ptr, array_len + 1, &mbs));
     // expected-warning@+1{{called with dst buffer smaller than}}
@@ -595,7 +598,6 @@ static void TestWchar() {
     // expected-warning@+1{{called with dst buffer smaller than}}
     EXPECT_DEATH(wcsnrtombs(chars, &wchars_ptr, 0, array_len + 1, &mbs));
   }
-
 
   struct {
     wchar_t buf[small_buffer_size - 1];
@@ -650,7 +652,7 @@ static void TestWchar() {
 
   {
     // NOREVIEW: STRUCT
-    const char *src[sizeof(small_buffer)] = {};
+    const char* src[sizeof(small_buffer)] = {};
     // FIXME(gbiv): _FORTIFY_SOURCE=1 should diagnose this more aggressively
 #if _FORTIFY_SOURCE > 1
     // expected-warning@+2{{called with dst buffer smaller than}}
@@ -665,12 +667,12 @@ static void TestWchar() {
       char buf[array_len - 1];
       char extra;
     } split_chars;
-    const char *chars_ptr = split_chars.buf;
+    const char* chars_ptr = split_chars.buf;
     struct {
       wchar_t buf[array_len - 1];
       wchar_t extra;
     } split_wchars;
-    const wchar_t *wchars_ptr = split_wchars.buf;
+    const wchar_t* wchars_ptr = split_wchars.buf;
 #if _FORTIFY_SOURCE > 1
     // expected-warning@+2{{called with dst buffer smaller than}}
 #endif
@@ -755,7 +757,7 @@ static void TestStdlib() {
 
 /////////////////// Test infrastructure; nothing to see here ///////////////////
 
-#define CONCAT2(x, y) x ## y
+#define CONCAT2(x, y) x##y
 #define CONCAT(x, y) CONCAT2(x, y)
 
 // Exported to the driver so we can run these tests.

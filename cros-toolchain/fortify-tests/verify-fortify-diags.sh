@@ -17,6 +17,8 @@ verify_cmd=(
   ${CXX:?}
   ${CPPFLAGS:-}
   ${CXXFLAGS:-}
+  # Put platform2's base on the include path.
+  -I"${my_dir}/../.."
   # This tests GNU extensions
   -D_GNU_SOURCE
   # FORTIFY checks require optimizations to be enabled above -O0.
