@@ -39,7 +39,6 @@ _IUSE = [
     "amd64",
     "android_container_pi",
     "android_container_rvc",
-    "android_vm_rvc",
     "android_vm_tm",
     "android_vm_vic",
     "android_vm_master",
