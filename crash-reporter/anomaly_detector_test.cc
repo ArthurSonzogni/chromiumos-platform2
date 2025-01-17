@@ -580,18 +580,34 @@ TEST(AnomalyDetectorTest, KernelWarningSuspend_EC) {
   ParserTest("TEST_WARNING", {suspend_warning}, &parser);
 }
 
-TEST(AnomalyDetectorTest, CrashReporterCrash) {
+TEST(AnomalyDetectorTest, CrashReporterCrash_LessThanOrEqual_v6_6) {
   ParserRun crash_reporter_crash = {
       .expected_flags = {{"--crash_reporter_crashed"}}};
   KernelParser parser(true);
-  ParserTest("TEST_CR_CRASH", {crash_reporter_crash}, &parser);
+  ParserTest("TEST_CR_CRASH_LTOE_6_6", {crash_reporter_crash}, &parser);
 }
 
-TEST(AnomalyDetectorTest, CrashReporterCrashRateLimit) {
+TEST(AnomalyDetectorTest, CrashReporterCrash_GreatThanOrEqual_v6_12) {
   ParserRun crash_reporter_crash = {
       .expected_flags = {{"--crash_reporter_crashed"}}};
   KernelParser parser(true);
-  ParserTest("TEST_CR_CRASH", {crash_reporter_crash, empty, empty}, &parser);
+  ParserTest("TEST_CR_CRASH_GTOE_6_12", {crash_reporter_crash}, &parser);
+}
+
+TEST(AnomalyDetectorTest, CrashReporterCrashRateLimit_LessThanOrEqual_v6_6) {
+  ParserRun crash_reporter_crash = {
+      .expected_flags = {{"--crash_reporter_crashed"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_CR_CRASH_LTOE_6_6", {crash_reporter_crash, empty, empty},
+             &parser);
+}
+
+TEST(AnomalyDetectorTest, CrashReporterCrashRateLimit_GreatThanOrEqual_v6_12) {
+  ParserRun crash_reporter_crash = {
+      .expected_flags = {{"--crash_reporter_crashed"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_CR_CRASH_GTOE_6_12", {crash_reporter_crash, empty, empty},
+             &parser);
 }
 
 TEST(AnomalyDetectorTest, ServiceFailure) {

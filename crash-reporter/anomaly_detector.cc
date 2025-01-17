@@ -273,8 +273,10 @@ constexpr LazyRE2 end_iwlwifi_dump_lmac = {R"((.+)flow_handler)"};
 
 constexpr char cut_here[] = "------------[ cut here";
 constexpr char end_trace[] = "---[ end trace";
-constexpr char crash_report_rlimit[] =
-    "(crash_reporter) has RLIMIT_CORE set to";
+constexpr const char* const crash_report_rlimit[] = {
+    "(crash_reporter) has RLIMIT_CORE set to",  // for kernel prior to 6.6
+    "(crash_reporter): RLIMIT_CORE is set to",  // for kernel 6.12 and later
+};
 
 // The CPU and PID information got added in the 3.11 kernel development cycle
 // per commit dcb6b45254e2281b6f99ea7f2d51343954aa3ba8. That part is marked
@@ -517,14 +519,16 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
                        {std::move("--kernel_smmu_fault")});
   }
 
-  if (line.find(crash_report_rlimit) != std::string::npos) {
-    LOG(INFO) << "crash_reporter crashed!";
-    // Rate limit reporting crash_reporter failures to prevent crash loops.
-    if (crash_reporter_last_crashed_.is_null() ||
-        (base::TimeTicks::Now() - crash_reporter_last_crashed_) >
-            base::Hours(1)) {
-      crash_reporter_last_crashed_ = base::TimeTicks::Now();
-      return CrashReport("", {std::move("--crash_reporter_crashed")});
+  for (const auto& crash_report_rlimit_str : crash_report_rlimit) {
+    if (line.find(crash_report_rlimit_str) != std::string::npos) {
+      LOG(INFO) << "crash_reporter crashed!";
+      // Rate limit reporting crash_reporter failures to prevent crash loops.
+      if (crash_reporter_last_crashed_.is_null() ||
+          (base::TimeTicks::Now() - crash_reporter_last_crashed_) >
+              base::Hours(1)) {
+        crash_reporter_last_crashed_ = base::TimeTicks::Now();
+        return CrashReport("", {std::move("--crash_reporter_crashed")});
+      }
     }
   }
 
