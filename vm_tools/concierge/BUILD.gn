@@ -137,8 +137,12 @@ static_library("libconcierge") {
   defines = [
     # TODO(b/365027228): Cleanup this define once pvclock is confirmed stable.
     "ALLOW_VIRTIO_PVCLOCK=1",
-  ]
 
+    # Limit the number of pmu events used with the armv8pmu.
+    # TODO(b/369260921): For long term, we'd need kernel support like:
+    # https://lore.kernel.org/lkml/20231009230858.3444834-1-rananta@google.com/T/
+    "USE_CROSVM_LIMIT_ARMV8PMU_COUNTERS=${use.crosvm_limit_armv8pmu_counters}",
+  ]
   cflags_cc = [
     "-Werror=deprecated-declarations",
     "-Wthread-safety",

@@ -631,6 +631,10 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
+  if (USE_CROSVM_LIMIT_ARMV8PMU_COUNTERS) {
+    params.emplace_back("armv8pmu_max_events=20");
+  }
+
   const int64_t memory_mib =
       request.memory_mib() > 0 ? request.memory_mib() : GetVmMemoryMiB();
   vm_builder.SetMemory(std::to_string(memory_mib));
