@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import pathlib
+import random
 import sys
 import time
 from typing import Optional
@@ -17,6 +18,7 @@ from experiment import Experiment
 import numpy as np
 import pandas as pd
 import table
+import test_case
 
 
 def GenerateUserGroup(
@@ -372,6 +374,24 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
         " (default: 2)",
     )
     parser.add_argument(
+        "--name",
+        default=f"Simulation{random.randint(100, 999)}",
+        type=str,
+        help="the simplified mnemonic name used in the test case metadata "
+        "(default: Simulation###)",
+    )
+    DEFAULT_TEST_CASE_DESCRIPTION = (
+        "Simulated evaluation tool decision output "
+        "targeting a specific FAR and FRR."
+    )
+    parser.add_argument(
+        "--description",
+        default=DEFAULT_TEST_CASE_DESCRIPTION,
+        type=str,
+        help="the description of the simulation conditions used in the "
+        f"test case metadata (default: {DEFAULT_TEST_CASE_DESCRIPTION})",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -399,6 +419,7 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
     csv_far_path = output_dir / "FAR_decisions.csv"
     csv_frr_path = output_dir / "FRR_decisions.csv"
     csv_groups_path = output_dir / "user_groups.csv"
+    test_case_path = output_dir / "test_case.toml"
     if csv_far_path.is_dir():
         parser.error(f'The FAR CSV file "{csv_far_path}" is a directory.')
     if csv_frr_path.is_dir():
@@ -407,6 +428,8 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
         parser.error(
             f'The User/Groups CSV file "{csv_groups_path}" is a directory.'
         )
+    if test_case_path.is_dir():
+        parser.error(f'The Test Case file "{test_case_path}" is a directory.')
 
     groups_list: Optional[list[str]] = None
     if args.groups > 0:
@@ -460,6 +483,9 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
     if groups_list:
         print(f"Writing output csv {csv_groups_path}.")
         exp.user_groups_table_to_csv(csv_groups_path)
+    print(f"Writing output toml {test_case_path}.")
+    tc = test_case.TestCase(args.name, args.description)
+    tc.to_toml(test_case_path)
     return 0
 
 
