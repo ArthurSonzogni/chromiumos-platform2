@@ -88,6 +88,7 @@ for src in "${sources[@]}"; do
       if ! error=$(
           lorgnette_cli scan \
               --scanner="${scanner}" \
+              --bottom_right_x=215.9 \
               --bottom_right_y=279.4 \
               --scan_resolution="${res}" \
               --color_mode="${mode}" \
