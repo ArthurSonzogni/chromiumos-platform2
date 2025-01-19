@@ -168,7 +168,7 @@ def GenerateFARResults(
     # One way to do this might be to choose a few user and redraw the
     # decisions from a new more frequent distribution (like 1/20k).
 
-    return df
+    return df.reset_index(drop=True)
 
 
 # TODO: Add a function for generating fake collection directories to test
@@ -259,7 +259,7 @@ def GenerateFRRResults(
     if verbose:
         print(f"Generation took {time_end-time_start:.5}s.")
 
-    return df
+    return df.reset_index(drop=True)
 
 
 class SimulateEvalResults:
