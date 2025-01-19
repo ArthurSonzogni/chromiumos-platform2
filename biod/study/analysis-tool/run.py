@@ -14,6 +14,7 @@ import sys
 from typing import Literal, Optional
 
 import bootstrap
+import experiment
 from experiment import Experiment
 from fpc_bet_results import FPCBETResults
 import fpsutils
@@ -390,52 +391,46 @@ def bootstrap_figure(
 def cmd_analyze(opts: argparse.Namespace) -> int:
     """Analyze the FAR and FRR of one test case.
 
-    This directory is expected to contain FAR_decisions.csv and
+    This directory is expected to contain one or both of FAR_decisions.csv and
     FRR_decisions.csv files.
     """
     decisions_dir: pathlib.Path = opts.decisions_dir
-
-    far_decisions_file = decisions_dir / "FAR_decisions.csv"
-    frr_decisions_file = decisions_dir / "FRR_decisions.csv"
-
-    exp = Experiment()
-    exp.add_far_decisions_from_csv(far_decisions_file)
-    exp.add_frr_decisions_from_csv(frr_decisions_file)
+    exp = experiment.experiment_from_decisions_dir(decisions_dir)
     exp.check()
 
-    far_boot = bootstrap.BootstrapFullFARHierarchy(exp, verbose=True)
-    far_boot_results = far_boot.run(
-        num_samples=BOOTSTRAP_SAMPLES,
-        num_proc=0,
-        progress=lambda it, total: tqdm(it, total=total),
-    )
-    frr_boot = bootstrap.BootstrapFullFRRHierarchy(exp, verbose=True)
-    frr_boot_results = frr_boot.run(
-        num_samples=BOOTSTRAP_SAMPLES,
-        num_proc=0,
-        progress=lambda it, total: tqdm(it, total=total),
-    )
-
-    far_stats = BootstrapFARFRRStats(
-        far_boot_results,
-        exp.fa_trials_count(),
-        CONFIDENCE_PERCENT,
-    )
-    frr_stats = BootstrapFARFRRStats(
-        frr_boot_results,
-        exp.fr_trials_count(),
-        CONFIDENCE_PERCENT,
-    )
-
     print("-----------------------------------------")
-    print(far_stats.describe("FAR", "k"))
-    print(frr_stats.describe("FRR"))
 
-    far_fig = bootstrap_figure(exp, far_boot_results, "FAR")
-    frr_fig = bootstrap_figure(exp, frr_boot_results, "FRR")
+    if exp.has_far_decisions():
+        far_boot = bootstrap.BootstrapFullFARHierarchy(exp, verbose=True)
+        far_boot_results = far_boot.run(
+            num_samples=BOOTSTRAP_SAMPLES,
+            num_proc=0,
+            progress=lambda it, total: tqdm(it, total=total),
+        )
+        far_stats = BootstrapFARFRRStats(
+            far_boot_results,
+            exp.fa_trials_count(),
+            CONFIDENCE_PERCENT,
+        )
+        print(far_stats.describe("FAR", "k"))
+        far_fig = bootstrap_figure(exp, far_boot_results, "FAR")
+        far_fig.show()
 
-    far_fig.show()
-    frr_fig.show()
+    if exp.has_frr_decisions():
+        frr_boot = bootstrap.BootstrapFullFRRHierarchy(exp, verbose=True)
+        frr_boot_results = frr_boot.run(
+            num_samples=BOOTSTRAP_SAMPLES,
+            num_proc=0,
+            progress=lambda it, total: tqdm(it, total=total),
+        )
+        frr_stats = BootstrapFARFRRStats(
+            frr_boot_results,
+            exp.fr_trials_count(),
+            CONFIDENCE_PERCENT,
+        )
+        print(frr_stats.describe("FRR"))
+        frr_fig = bootstrap_figure(exp, frr_boot_results, "FRR")
+        frr_fig.show()
 
     return 0
 

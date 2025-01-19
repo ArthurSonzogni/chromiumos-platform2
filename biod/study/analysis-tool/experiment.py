@@ -568,3 +568,27 @@ def _write_decision_file(
     # Setting index to False avoids the "index" / primary-key of the
     # dataframe from being written out.
     tbl.to_csv(csv_file_path, index=False)
+
+
+def experiment_from_decisions_dir(
+    decisions_dir: pathlib.Path,
+    user_group_csv_file: Optional[pathlib.Path] = None,
+) -> Experiment:
+    exp = Experiment()
+
+    far_decisions_file = decisions_dir / "FAR_decisions.csv"
+    frr_decisions_file = decisions_dir / "FRR_decisions.csv"
+
+    if not far_decisions_file.is_file() and not frr_decisions_file.is_file():
+        raise FileNotFoundError(f"No decisions files found in {decisions_dir}")
+
+    if far_decisions_file.is_file():
+        exp.add_far_decisions_from_csv(far_decisions_file)
+
+    if frr_decisions_file.is_file():
+        exp.add_frr_decisions_from_csv(frr_decisions_file)
+
+    if user_group_csv_file and user_group_csv_file.is_file():
+        exp.add_groups_from_csv(user_group_csv_file)
+
+    return exp
