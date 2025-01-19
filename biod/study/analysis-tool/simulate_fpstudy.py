@@ -18,6 +18,7 @@ from experiment import Experiment
 import numpy as np
 import pandas as pd
 import table
+import test_case
 import test_case_descriptor
 
 
@@ -338,6 +339,9 @@ class SimulateEvalResults:
         return test_case_descriptor.TestCaseDescriptor(
             self.name, self.description
         )
+
+    def TestCase(self) -> test_case.TestCase:
+        return test_case.TestCase(self.TestCaseDescriptor(), self.Experiment())
 
     def Experiment(self) -> Experiment:
         return self._exp
