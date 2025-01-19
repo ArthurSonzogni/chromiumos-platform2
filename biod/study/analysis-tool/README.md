@@ -175,3 +175,14 @@ following files for use by the analysis tool.
 # run this in an interactive session.
 ./analysis-tool/run.py analyze simulation
 ```
+
+## Terminology
+
+*   A *decisions directory* contains one or both of `FAR_decisions.csv` and
+    `FAR_decisions.csv` files.
+*   These decision files compose an *Experiment*. An *Experiment* may have user
+    to group associations, thus a `users_group.csv` can be provided when
+    composing an *Experiment*.
+*   If the decisions directory contains a `test_case.toml`, it is considered a
+    *TestCase*. A *TestCase* has a mnemonic name, description, and the
+    *Experiment* data.
