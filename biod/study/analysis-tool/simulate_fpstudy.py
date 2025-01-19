@@ -21,6 +21,10 @@ import table
 import test_case_descriptor
 
 
+_DEFAULT_TEST_CASE_NAME_PREFIX = "Simulation"
+_DEFAULT_TEST_CASE_DESCRIPTION = "Simulated evaluation tool decision output targeting a specific FAR and FRR."
+
+
 def GenerateUserGroup(
     num_users: int = 72,
     user_groups: list[str] = ["A", "B", "C", "D", "E", "F"],
@@ -266,11 +270,28 @@ class SimulateEvalResults:
         num_users: int = 72,
         num_fingers: int = 6,
         num_verify_samples: int = 80,
+        name: str | None = None,
+        description: str = _DEFAULT_TEST_CASE_DESCRIPTION,
     ) -> None:
+        """Initialize a new simulation.
+
+        Args:
+            num_users: Number of users to include in the simulation
+            num_fingers: Number of fingers to include in the simulation
+            num_verify_samples: Number of verification samples to include in the simulation
+            name: The test case name to use. If None, a default one is provided.
+            description: The test case description to use.
+        """
         self._num_users = num_users
         self._num_fingers = num_fingers
         self._num_verify_samples = num_verify_samples
         self._exp = Experiment()
+        self.name = (
+            name
+            if name
+            else f"{_DEFAULT_TEST_CASE_NAME_PREFIX}{random.randint(100, 999)}"
+        )
+        self.description = description
 
     def GenerateUserGroup(
         self,
@@ -311,6 +332,11 @@ class SimulateEvalResults:
                 prob=prob,
                 verbose=verbose,
             )
+        )
+
+    def TestCaseDescriptor(self):
+        return test_case_descriptor.TestCaseDescriptor(
+            self.name, self.description
         )
 
     def Experiment(self) -> Experiment:
@@ -375,21 +401,17 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
     )
     parser.add_argument(
         "--name",
-        default=f"Simulation{random.randint(100, 999)}",
+        default=f"{_DEFAULT_TEST_CASE_NAME_PREFIX}{random.randint(100, 999)}",
         type=str,
         help="the simplified mnemonic name used in the test case metadata "
-        "(default: Simulation###)",
-    )
-    DEFAULT_TEST_CASE_DESCRIPTION = (
-        "Simulated evaluation tool decision output "
-        "targeting a specific FAR and FRR."
+        f"(default: {_DEFAULT_TEST_CASE_NAME_PREFIX}###)",
     )
     parser.add_argument(
         "--description",
-        default=DEFAULT_TEST_CASE_DESCRIPTION,
+        default=_DEFAULT_TEST_CASE_DESCRIPTION,
         type=str,
         help="the description of the simulation conditions used in the "
-        f"test case metadata (default: {DEFAULT_TEST_CASE_DESCRIPTION})",
+        f"test case metadata (default: {_DEFAULT_TEST_CASE_DESCRIPTION})",
     )
     parser.add_argument(
         "-v",
@@ -454,6 +476,8 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
         num_users=args.users,
         num_fingers=args.fingers,
         num_verify_samples=args.samples,
+        name=args.name,
+        description=args.description,
     )
 
     s.GenerateFARResults(
@@ -484,8 +508,7 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
         print(f"Writing output csv {csv_groups_path}.")
         exp.user_groups_table_to_csv(csv_groups_path)
     print(f"Writing output toml {test_case_path}.")
-    tcd = test_case_descriptor.TestCaseDescriptor(args.name, args.description)
-    tcd.to_toml(test_case_path)
+    s.TestCaseDescriptor().to_toml(test_case_path)
     return 0
 
 
