@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from test_case import TestCase
+from test_case_descriptor import TestCaseDescriptor
 
 
 class TestCaseEnum(Enum):
@@ -46,6 +46,6 @@ class TestCaseEnum(Enum):
         assert type(self.value[0]) == str
         return self.value[1:]
 
-    def test_case(self) -> TestCase:
+    def test_case_descriptor(self) -> TestCaseDescriptor:
         """Return the general TestCase for this TestCaseEnum."""
-        return TestCase(self.name, self.description())
+        return TestCaseDescriptor(self.name, self.description())

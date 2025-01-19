@@ -24,7 +24,7 @@ else:
 
 
 @dataclasses.dataclass(frozen=True)
-class TestCase:
+class TestCaseDescriptor:
     """Describes the name and description for a TestCase."""
 
     name: str
@@ -48,7 +48,9 @@ class TestCase:
         file_path.write_text(toml)
 
 
-def test_case_from_toml(file_path: pathlib.Path) -> TestCase:
+def test_case_descriptor_from_toml(
+    file_path: pathlib.Path,
+) -> TestCaseDescriptor:
     """Parse a TestCaseDescriptor from a TOML file.
 
     Args:
@@ -76,4 +78,4 @@ def test_case_from_toml(file_path: pathlib.Path) -> TestCase:
             )
         return value
 
-    return TestCase(parsed_str("name"), parsed_str("description"))
+    return TestCaseDescriptor(parsed_str("name"), parsed_str("description"))

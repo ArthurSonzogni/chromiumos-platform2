@@ -18,7 +18,7 @@ from experiment import Experiment
 import numpy as np
 import pandas as pd
 import table
-import test_case
+import test_case_descriptor
 
 
 def GenerateUserGroup(
@@ -484,8 +484,8 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
         print(f"Writing output csv {csv_groups_path}.")
         exp.user_groups_table_to_csv(csv_groups_path)
     print(f"Writing output toml {test_case_path}.")
-    tc = test_case.TestCase(args.name, args.description)
-    tc.to_toml(test_case_path)
+    tcd = test_case_descriptor.TestCaseDescriptor(args.name, args.description)
+    tcd.to_toml(test_case_path)
     return 0
 
 
