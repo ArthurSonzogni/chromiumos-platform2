@@ -9,36 +9,24 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/check_op.h>
 #include <base/command_line.h>
-#include <base/containers/fixed_flat_map.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
-#include <base/uuid.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/mojo/service_constants.h>
-#include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
-#include <mojo/public/cpp/bindings/pending_receiver.h>
-#include <mojo/public/cpp/bindings/pending_remote.h>
-#include <mojo/public/cpp/bindings/receiver.h>
-#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/connect.h>
-#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 #include "odml/cros_safety/safety_service_manager.h"
 #include "odml/cros_safety/safety_service_manager_impl.h"
 #include "odml/mojom/big_buffer.mojom.h"
-#include "odml/mojom/cros_safety.mojom-shared.h"
 #include "odml/mojom/cros_safety.mojom.h"
 
 namespace {
@@ -60,7 +48,9 @@ std::optional<cros_safety::mojom::SafetyRuleset> GetRulesetFromCommandLine(
   std::string ruleset = cl->GetSwitchValueASCII(kRuleset);
   std::transform(ruleset.begin(), ruleset.end(), ruleset.begin(), ::tolower);
   LOG(INFO) << "using safety ruleset: " << ruleset;
-  if (ruleset == "coral") {
+  if (ruleset == "generic") {
+    return cros_safety::mojom::SafetyRuleset::kGeneric;
+  } else if (ruleset == "coral") {
     return cros_safety::mojom::SafetyRuleset::kCoral;
   } else if (ruleset == "mantis") {
     return cros_safety::mojom::SafetyRuleset::kMantis;
@@ -77,7 +67,7 @@ std::optional<cros_safety::mojom::SafetyRuleset> GetRulesetFromCommandLine(
 
 void OnClassifyComplete(base::RunLoop* run_loop,
                         cros_safety::mojom::SafetyClassifierVerdict result) {
-  LOG(INFO) << result;
+  std::cout << result << std::endl;
   run_loop->Quit();
 }
 
