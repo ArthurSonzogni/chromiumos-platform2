@@ -30,12 +30,19 @@ class TestCase:
         self._descriptor = descriptor
         self._exp = exp
 
+    @property
     def name(self) -> str:
         return self._descriptor.name
 
+    @property
     def description(self) -> str:
         return self._descriptor.description
 
+    @property
+    def descriptor(self) -> test_case_descriptor.TestCaseDescriptor:
+        return self._descriptor
+
+    @property
     def experiment(self) -> experiment.Experiment:
         return self._exp
 

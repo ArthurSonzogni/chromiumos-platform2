@@ -42,18 +42,18 @@ class Test_TestCase(unittest.TestCase):
         )
 
         tc = test_case.test_case_from_dir(self.temp_dir)
-        self.assertEqual(tc.name(), self.simulation.TestCaseDescriptor().name)
+        self.assertEqual(tc.name, self.simulation.TestCaseDescriptor().name)
         self.assertEqual(
-            tc.description(), self.simulation.TestCaseDescriptor().description
+            tc.description, self.simulation.TestCaseDescriptor().description
         )
 
         self.assertTrue(
-            tc.experiment()
+            tc.experiment
             .far_decisions()
             .equals(self.simulation.Experiment().far_decisions())
         )
         self.assertTrue(
-            tc.experiment()
+            tc.experiment
             .frr_decisions()
             .equals(self.simulation.Experiment().frr_decisions())
         )
