@@ -71,9 +71,9 @@ void CoralService::Initialize(
     mojo::PendingReceiver<mojom::CoralProcessor> receiver) {
   if (!ml_service_) {
     if (!ml_service.is_valid()) {
-      LOG(WARNING) << "Initializing CoralService failed due to invalid "
-                      "ml_service remote. "
-                      "This will become an error for initialization soon.";
+      LOG(ERROR) << "Initializing CoralService failed due to invalid "
+                    "ml_service remote.";
+      return;
     } else {
       ml_service_.Bind(std::move(ml_service));
       language_detector_->Initialize(*ml_service_.get());

@@ -50,6 +50,12 @@ inline constexpr char kEmbeddingCacheHit[] =
     "Platform.CoralService.EmbeddingEngine.CacheHit";
 inline constexpr char kSafetyVerdictCacheHit[] =
     "Platform.CoralService.EmbeddingEngine.SafetyVerdictCacheHit";
+inline constexpr char kSafetyVerdict[] =
+    "Platform.CoralService.EmbeddingEngine.SafetyVerdict";
+inline constexpr char kLanguageDetectionCacheHit[] =
+    "Platform.CoralService.EmbeddingEngine.LanguageDetectionCacheHit";
+inline constexpr char kLanguageIsSupported[] =
+    "Platform.CoralService.EmbeddingEngine.LanguageSupported";
 inline constexpr char kEmbeddingDatabaseEntriesCount[] =
     "Platform.CoralService.EmbeddingEngine.DatabaseEntriesCount";
 inline constexpr char kEmbeddingFilteredCount[] =
@@ -81,6 +87,14 @@ enum class TitleGenerationResult {
   kSuccess = 0,
   kEmptyModelOutput = 1,
   kMaxValue = kEmptyModelOutput,
+};
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class SafetyVerdict {
+  kPass = 0,
+  kFail = 1,
+  kMaxValue = kFail,
 };
 
 }  // namespace metrics
@@ -139,6 +153,12 @@ class CoralMetrics {
   void SendEmbeddingCacheHit(bool is_cache_hit);
   // Whether a request entity already has its safety verdict cached.
   void SendSafetyVerdictCacheHit(bool is_cache_hit);
+  // The request entity's safety verdict.
+  void SendSafetyVerdict(metrics::SafetyVerdict verdict);
+  // Whether a request entity already has its language detection result cached.
+  void SendLanguageDetectionCacheHit(bool is_cache_hit);
+  // Whether the request entity's language is supported.
+  void SendLanguageIsSupported(bool is_supported);
   // Send the number of entries in the embedding database every time a user
   // session starts.
   void SendEmbeddingDatabaseEntriesCount(int count);

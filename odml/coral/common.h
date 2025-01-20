@@ -5,12 +5,12 @@
 #ifndef ODML_CORAL_COMMON_H_
 #define ODML_CORAL_COMMON_H_
 
-#include <memory>
 #include <vector>
 
 #include <base/time/time.h>
 #include <base/types/expected.h>
 
+#include "odml/i18n/language_detector.h"
 #include "odml/mojom/coral_service.mojom.h"
 
 namespace coral {
@@ -29,11 +29,15 @@ struct MoveOnly {
 };
 
 using Embedding = std::vector<float>;
+using LanguageDetectionResult =
+    std::vector<on_device_model::LanguageDetector::TextLanguage>;
 
 struct EmbeddingEntry {
   Embedding embedding;
   // The safety verdict of the entry. True means pass, and false means fail.
   std::optional<bool> safety_verdict;
+  // List of classified languages for the entry.
+  std::optional<LanguageDetectionResult> languages;
   bool operator==(const EmbeddingEntry&) const = default;
 };
 

@@ -20,11 +20,13 @@
 #include <metrics/metrics_library_mock.h>
 
 #include "odml/coral/common.h"
+#include "odml/i18n/language_detector.h"
 
 namespace coral {
 
 namespace {
 
+using TextLanguage = ::on_device_model::LanguageDetector::TextLanguage;
 using ::testing::ElementsAre;
 using ::testing::NiceMock;
 using ::testing::Optional;
@@ -32,8 +34,13 @@ using ::testing::Optional;
 MATCHER_P(HasEmbedding, matcher, "") {
   return ExplainMatchResult(matcher, arg.embedding, result_listener);
 }
+
 MATCHER_P(HasSafetyVerdict, matcher, "") {
   return ExplainMatchResult(matcher, arg.safety_verdict, result_listener);
+}
+
+MATCHER_P(HasLanguageDetectionResult, matcher, "") {
+  return ExplainMatchResult(matcher, arg.languages, result_listener);
 }
 
 }  // namespace
@@ -83,12 +90,16 @@ TEST_F(EmbeddingDatabaseTest, InMemoryWriteRead) {
   EXPECT_THAT(database->Get("key1"), HasSafetyVerdict(Optional(true)));
   EXPECT_THAT(database->Get("key3"), HasEmbedding(ElementsAre(7, 8, 9)));
   EXPECT_THAT(database->Get("key3"), HasSafetyVerdict(std::nullopt));
+  EXPECT_THAT(database->Get("key3"), HasLanguageDetectionResult(std::nullopt));
   EXPECT_THAT(database->Get("key4"), EmbeddingEntry());
 
   // key1 and key 3 are overwritten.
   database->Put("key1", EmbeddingEntry{{10, 20, 30}});
   database->Put(
-      "key3", EmbeddingEntry{.embedding{70, 80, 90}, .safety_verdict = false});
+      "key3", EmbeddingEntry{.embedding{70, 80, 90},
+                             .safety_verdict = false,
+                             .languages = LanguageDetectionResult{TextLanguage{
+                                 .locale = "en", .confidence = 0.8}}});
   // key4 is inserted.
   database->Put(
       "key4", EmbeddingEntry{.embedding{10, 11, 12}, .safety_verdict = false});
@@ -97,6 +108,9 @@ TEST_F(EmbeddingDatabaseTest, InMemoryWriteRead) {
   EXPECT_THAT(database->Get("key1"), HasSafetyVerdict(std::nullopt));
   EXPECT_THAT(database->Get("key3"), HasEmbedding(ElementsAre(70, 80, 90)));
   EXPECT_THAT(database->Get("key3"), HasSafetyVerdict(Optional(false)));
+  EXPECT_THAT(database->Get("key3"),
+              HasLanguageDetectionResult(LanguageDetectionResult{
+                  TextLanguage{.locale = "en", .confidence = 0.8}}));
   EXPECT_THAT(database->Get("key4"), HasEmbedding(ElementsAre(10, 11, 12)));
   EXPECT_THAT(database->Get("key4"), HasSafetyVerdict(Optional(false)));
 }
@@ -107,7 +121,10 @@ TEST_F(EmbeddingDatabaseTest, WriteThenRead) {
   database->Put("key1",
                 EmbeddingEntry{.embedding{1, 2, 3}, .safety_verdict = true});
   database->Put("key2", EmbeddingEntry{{4, 5, 6}});
-  database->Put("key3", EmbeddingEntry{{7, 8, 9}});
+  database->Put(
+      "key3", EmbeddingEntry{.embedding = {7, 8, 9},
+                             .languages = LanguageDetectionResult{TextLanguage{
+                                 .locale = "en", .confidence = 0.8}}});
   // Synced to file in destructor.
   database.reset();
 
@@ -116,7 +133,11 @@ TEST_F(EmbeddingDatabaseTest, WriteThenRead) {
       factory_.Create(raw_ref(coral_metrics_), file_path_, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), HasEmbedding(ElementsAre(1, 2, 3)));
   EXPECT_THAT(database->Get("key1"), HasSafetyVerdict(Optional(true)));
+  EXPECT_THAT(database->Get("key1"), HasLanguageDetectionResult(std::nullopt));
   EXPECT_THAT(database->Get("key3"), HasEmbedding(ElementsAre(7, 8, 9)));
+  EXPECT_THAT(database->Get("key3"),
+              HasLanguageDetectionResult(LanguageDetectionResult{
+                  TextLanguage{.locale = "en", .confidence = 0.8}}));
   EXPECT_THAT(database->Get("key4"), HasSafetyVerdict(std::nullopt));
 }
 

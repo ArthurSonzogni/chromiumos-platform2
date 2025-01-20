@@ -6,6 +6,13 @@ syntax = "proto3";
 
 package coral;
 
+message Language {
+  // BCP-47 language code like "en", "fr", "zh" etc.
+  string locale = 1;
+  // The confidence score of the language detected (range: 0~1).
+  float confidence = 2;
+}
+
 message EmbeddingRecord {
   // The vector of embedding.
   repeated float values = 1;
@@ -16,6 +23,14 @@ message EmbeddingRecord {
 
   // The safety verdict of the entry. True means pass, and false means fail.
   optional bool safety_verdict = 3;
+
+  // List of classified language codes, in decreasing confidence level.
+
+  // Another boolean field is needed because we want to distinguish between the
+  // two cases where the classification has never been done for this entry yet,
+  // and that the classification resulted in an empty languages array.
+  bool has_language_array = 4;
+  repeated Language languages = 5;
 }
 
 message EmbeddingRecords {

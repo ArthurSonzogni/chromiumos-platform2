@@ -147,6 +147,16 @@ bool EmbeddingDatabase::Sync() {
     if (entry.entry.safety_verdict.has_value()) {
       record.set_safety_verdict(entry.entry.safety_verdict.value());
     }
+    if (entry.entry.languages.has_value()) {
+      record.set_has_language_array(true);
+      for (const on_device_model::LanguageDetector::TextLanguage& language :
+           *entry.entry.languages) {
+        Language language_proto;
+        language_proto.set_locale(language.locale);
+        language_proto.set_confidence(language.confidence);
+        *record.add_languages() = std::move(language_proto);
+      }
+    }
     records.mutable_records()->insert({key, std::move(record)});
   }
 
@@ -194,10 +204,21 @@ bool EmbeddingDatabase::LoadFromFile() {
     if (record.has_safety_verdict()) {
       violation = record.safety_verdict();
     }
+    std::optional<LanguageDetectionResult> languages;
+    if (record.has_language_array()) {
+      languages = LanguageDetectionResult();
+      for (const Language& language : record.languages()) {
+        languages->push_back(on_device_model::LanguageDetector::TextLanguage{
+            .locale = language.locale(),
+            .confidence = language.confidence(),
+        });
+      }
+    }
     embeddings_map_[key] = EmbeddingEntryWithTimestamp{
         .entry = EmbeddingEntry{.embedding = Embedding(record.values().begin(),
                                                        record.values().end()),
-                                .safety_verdict = violation},
+                                .safety_verdict = violation,
+                                .languages = std::move(languages)},
         .updated_time_ms = updated_time_ms};
     updated_time_of_keys_.insert({updated_time_ms, key});
   }

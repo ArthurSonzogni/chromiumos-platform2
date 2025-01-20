@@ -115,6 +115,18 @@ void CoralMetrics::SendSafetyVerdictCacheHit(bool is_cache_hit) {
   metrics_->SendBoolToUMA(metrics::kSafetyVerdictCacheHit, is_cache_hit);
 }
 
+void CoralMetrics::SendSafetyVerdict(metrics::SafetyVerdict verdict) {
+  metrics_->SendEnumToUMA(metrics::kSafetyVerdict, verdict);
+}
+
+void CoralMetrics::SendLanguageDetectionCacheHit(bool is_cache_hit) {
+  metrics_->SendBoolToUMA(metrics::kLanguageDetectionCacheHit, is_cache_hit);
+}
+
+void CoralMetrics::SendLanguageIsSupported(bool is_supported) {
+  metrics_->SendBoolToUMA(metrics::kLanguageIsSupported, is_supported);
+}
+
 void CoralMetrics::SendEmbeddingDatabaseEntriesCount(int count) {
   metrics_->SendToUMA(metrics::kEmbeddingDatabaseEntriesCount, count, 1, 1001,
                       50);

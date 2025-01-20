@@ -29,6 +29,7 @@
 
 namespace coral {
 namespace {
+using TextLanguage = ::on_device_model::LanguageDetector::TextLanguage;
 using base::test::TestFuture;
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -159,6 +160,13 @@ class EmbeddingEngineTest : public testing::Test {
     EXPECT_CALL(safety_service_manager_, ClassifyTextSafety)
         .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<2>(
             cros_safety::mojom::SafetyClassifierVerdict::kPass));
+    ON_CALL(language_detector_, IsAvailable).WillByDefault(Return(true));
+    ON_CALL(language_detector_, Classify)
+        .WillByDefault([](auto&&, auto&& callback) {
+          std::move(callback).Run(LanguageDetectionResult{
+              TextLanguage{.locale = "en", .confidence = 1.0}});
+        });
+    EXPECT_CALL(language_detector_, Classify).Times(AnyNumber());
   }
 
  protected:
@@ -269,6 +277,42 @@ TEST_F(EmbeddingEngineTest, Success) {
     auto fake_response = GetFakeEmbeddingResponse();
     EXPECT_EQ(response, fake_response);
   }
+}
+
+TEST_F(EmbeddingEngineTest, TextLanguage) {
+  std::unique_ptr<FakeEmbeddingModel> fake_model;
+  bool should_error = false;
+  EmbeddingResponse fake_response = GetFakeEmbeddingResponse();
+  std::vector<Embedding> embeddings_to_return;
+  for (int i = 1; i < fake_response.embeddings.size(); i++) {
+    embeddings_to_return.push_back(fake_response.embeddings[i]);
+  }
+  EXPECT_CALL(model_service_, LoadEmbeddingModel)
+      .WillOnce([&fake_model, &should_error, &embeddings_to_return](
+                    auto&&, auto&& model, auto&&, auto&& callback) {
+        fake_model = std::make_unique<FakeEmbeddingModel>(
+            raw_ref(should_error), std::move(embeddings_to_return),
+            std::move(model));
+        std::move(callback).Run(
+            on_device_model::mojom::LoadModelResult::kSuccess);
+      });
+  // Simulate that one of the entries got classified as an unsupported language.
+  EXPECT_CALL(language_detector_, Classify("ABC 1", _))
+      .WillOnce([](auto&&, auto&& callback) {
+        std::move(callback).Run(LanguageDetectionResult{
+            TextLanguage{.locale = "zh", .confidence = 1.0}});
+      });
+
+  TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
+      embedding_future;
+  engine_->Process(GetFakeGroupRequest(), embedding_future.GetCallback());
+  auto [_, result] = embedding_future.Take();
+  ASSERT_TRUE(result.has_value());
+  EmbeddingResponse response = std::move(*result);
+  fake_response = GetFakeEmbeddingResponse();
+  // The first entry has unsupported language.
+  fake_response.embeddings[0].clear();
+  EXPECT_EQ(response, fake_response);
 }
 
 TEST_F(EmbeddingEngineTest, CacheEmbeddingsOnlySuccess) {
@@ -385,9 +429,17 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   std::vector<Embedding> fake_embeddings =
       GetFakeEmbeddingResponse().embeddings;
   std::vector<EmbeddingEntry> fake_embedding_entries;
+  // When language results are out, the engine will write to database first. At
+  // this moment embeddings are not generated yet.
+  std::vector<EmbeddingEntry> language_only_entries;
   for (const auto& fake_embedding : fake_embeddings) {
     fake_embedding_entries.push_back(
-        EmbeddingEntry{.embedding = fake_embedding});
+        EmbeddingEntry{.embedding = fake_embedding,
+                       .languages = LanguageDetectionResult{
+                           TextLanguage{.locale = "en", .confidence = 1.0}}});
+    language_only_entries.push_back(
+        EmbeddingEntry{.languages = LanguageDetectionResult{
+                           TextLanguage{.locale = "en", .confidence = 1.0}}});
   }
   std::vector<std::string> cache_keys;
   for (const mojom::EntityPtr& entity : request->entities) {
@@ -405,6 +457,14 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
       .WillOnce(Return(fake_embedding_entries[1]));
   EXPECT_CALL(*database_1, Get(cache_keys[4]))
       .WillOnce(Return(fake_embedding_entries[4]));
+  EXPECT_CALL(*database_1, Put(cache_keys[0], language_only_entries[0]))
+      .Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[2], language_only_entries[2]))
+      .Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[3], language_only_entries[3]))
+      .Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[5], language_only_entries[5]))
+      .Times(1);
   EXPECT_CALL(*database_1, Put(cache_keys[0], fake_embedding_entries[0]))
       .Times(1);
   EXPECT_CALL(*database_1, Put(cache_keys[2], fake_embedding_entries[2]))
@@ -422,6 +482,14 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
       .WillOnce(Return(fake_embedding_entries[0]));
   EXPECT_CALL(*database_2, Get(cache_keys[5]))
       .WillOnce(Return(fake_embedding_entries[5]));
+  EXPECT_CALL(*database_2, Put(cache_keys[1], language_only_entries[1]))
+      .Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[2], language_only_entries[2]))
+      .Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[3], language_only_entries[3]))
+      .Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[4], language_only_entries[4]))
+      .Times(1);
   EXPECT_CALL(*database_2, Put(cache_keys[1], fake_embedding_entries[1]))
       .Times(1);
   EXPECT_CALL(*database_2, Put(cache_keys[2], fake_embedding_entries[2]))

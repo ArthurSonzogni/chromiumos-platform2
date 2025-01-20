@@ -102,6 +102,15 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
                             const std::string& version);
   void DoProcess(mojom::GroupRequestPtr request, EmbeddingCallback callback);
   void ProcessEachPrompt(ProcessingParams params);
+  void CheckLanguage(ProcessingParams params, EmbeddingEntry entry);
+  void OnLanguageDetectionResult(
+      ProcessingParams params,
+      EmbeddingEntry entry,
+      std::optional<
+          std::vector<on_device_model::LanguageDetector::TextLanguage>>
+          text_languages);
+  void CheckLanguageResult(ProcessingParams params, EmbeddingEntry entry);
+  void CheckEntrySafety(ProcessingParams params, EmbeddingEntry entry);
   void OnClassifyEntitySafetyDone(
       ProcessingParams params,
       EmbeddingEntry entry,

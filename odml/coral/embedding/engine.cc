@@ -4,11 +4,14 @@
 
 #include "odml/coral/embedding/engine.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 
+#include <base/containers/contains.h>
+#include <base/containers/fixed_flat_set.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
@@ -18,6 +21,7 @@
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 
 #include "odml/coral/common.h"
+#include "odml/coral/metrics.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -59,6 +63,15 @@ std::optional<std::string> EntityToString(const mojom::Entity& entity) {
   return std::nullopt;
 }
 
+std::string GetTitleFromEntity(const mojom::Entity& entity) {
+  if (entity.is_app()) {
+    return entity.get_app()->title;
+  } else if (entity.is_tab()) {
+    return entity.get_tab()->title;
+  }
+  return "";
+}
+
 // We don't want to send some metrics for Process requests triggered by
 // CacheEmbedding. This is because for we want to analyze most of this
 // engine's metrics (like cache hits) only for Group requests. CacheEmbedding
@@ -70,6 +83,25 @@ bool IsFullGroupRequest(const mojom::GroupRequestPtr& request) {
   // CacheEmbeddings request for now is to check whether the clustering_options
   // (or title_generation_options) is null.
   return !request->clustering_options.is_null();
+}
+
+bool CheckIfLanguageSupported(
+    const LanguageDetectionResult& language_detection_result) {
+  // Current logic is to accept the result if any language code in the TOP3
+  // classification result is supported.
+  constexpr size_t kTopLanguageResultEntriesToCheck = 3;
+  static constexpr auto kSupportedLanguages =
+      base::MakeFixedFlatSet<std::string_view>({"en"});
+  for (int i = 0; i < std::min(language_detection_result.size(),
+                               kTopLanguageResultEntriesToCheck);
+       i++) {
+    const on_device_model::LanguageDetector::TextLanguage& language =
+        language_detection_result[i];
+    if (base::Contains(kSupportedLanguages, language.locale)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -151,9 +183,9 @@ void EmbeddingEngine::PrepareResource() {
 void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
                               EmbeddingCallback callback) {
   if (!language_detector_->IsAvailable()) {
-    LOG(WARNING)
-        << "Language detector isn't available when running Process. This will "
-           "turn into an error and fail the whole Process soon.";
+    std::move(callback).Run(std::move(request),
+                            base::unexpected(CoralError::kLoadModelFailed));
+    return;
   }
   if (is_processing_) {
     pending_callbacks_.push(base::BindOnce(
@@ -278,7 +310,73 @@ void EmbeddingEngine::ProcessEachPrompt(ProcessingParams params) {
 
   EmbeddingEntry entry = GetEmbeddingEntry(*params.request->entities[index],
                                            params.prompts[index]);
+  CheckLanguage(std::move(params), std::move(entry));
+}
 
+void EmbeddingEngine::CheckLanguage(ProcessingParams params,
+                                    EmbeddingEntry entry) {
+  size_t index = params.response.embeddings.size();
+  if (entry.languages.has_value()) {
+    if (IsFullGroupRequest(params.request)) {
+      metrics_->SendLanguageDetectionCacheHit(true);
+    }
+    CheckLanguageResult(std::move(params), std::move(entry));
+    return;
+  }
+
+  if (IsFullGroupRequest(params.request)) {
+    metrics_->SendLanguageDetectionCacheHit(false);
+  }
+
+  if (!language_detector_->IsAvailable()) {
+    CheckLanguageResult(std::move(params), std::move(entry));
+    return;
+  }
+  language_detector_->Classify(
+      GetTitleFromEntity(*params.request->entities[index]),
+      base::BindOnce(&EmbeddingEngine::OnLanguageDetectionResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(params),
+                     std::move(entry)));
+}
+
+void EmbeddingEngine::OnLanguageDetectionResult(
+    ProcessingParams params,
+    EmbeddingEntry entry,
+    std::optional<std::vector<on_device_model::LanguageDetector::TextLanguage>>
+        text_languages) {
+  size_t index = params.response.embeddings.size();
+  if (text_languages.has_value()) {
+    entry.languages = std::move(*text_languages);
+    PutEmbeddingEntry(*params.request->entities[index], params.prompts[index],
+                      entry);
+  }
+  CheckLanguageResult(std::move(params), std::move(entry));
+}
+
+void EmbeddingEngine::CheckLanguageResult(ProcessingParams params,
+                                          EmbeddingEntry entry) {
+  // Doesn't have language result.
+  if (!entry.languages.has_value()) {
+    params.response.embeddings.push_back(Embedding());
+    ProcessEachPrompt(std::move(params));
+    return;
+  }
+
+  bool is_supported = CheckIfLanguageSupported(*entry.languages);
+  if (IsFullGroupRequest(params.request)) {
+    metrics_->SendLanguageIsSupported(is_supported);
+  }
+  if (!is_supported) {
+    params.response.embeddings.push_back(Embedding());
+    ProcessEachPrompt(std::move(params));
+    return;
+  }
+  CheckEntrySafety(std::move(params), entry);
+}
+
+void EmbeddingEngine::CheckEntrySafety(ProcessingParams params,
+                                       EmbeddingEntry entry) {
+  size_t index = params.response.embeddings.size();
   // If safety check is not required, directly check embedding.
   if (!params.request->embedding_options->check_safety_filter.value_or(false)) {
     CheckEntryEmbedding(std::move(params), std::move(entry));
@@ -340,8 +438,18 @@ void EmbeddingEngine::OnClassifyEntitySafetyDone(
 
 void EmbeddingEngine::CheckEntrySafetyResult(ProcessingParams params,
                                              EmbeddingEntry entry) {
-  // Check doesn't pass. Don't need to get embeddings.
-  if (!entry.safety_verdict.value_or(false)) {
+  // Doesn't have verdict.
+  if (!entry.safety_verdict.has_value()) {
+    params.response.embeddings.push_back(Embedding());
+    ProcessEachPrompt(std::move(params));
+    return;
+  }
+  bool passed = *entry.safety_verdict;
+  if (IsFullGroupRequest(params.request)) {
+    metrics_->SendSafetyVerdict(passed ? metrics::SafetyVerdict::kPass
+                                       : metrics::SafetyVerdict::kFail);
+  }
+  if (!passed) {
     params.response.embeddings.push_back(Embedding());
     ProcessEachPrompt(std::move(params));
     return;
