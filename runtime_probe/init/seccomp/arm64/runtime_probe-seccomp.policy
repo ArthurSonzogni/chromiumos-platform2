@@ -63,5 +63,6 @@ gettimeofday: 1
 
 # The following are syscalls used by syslog.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 lseek: 1
 connect: 1

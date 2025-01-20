@@ -66,6 +66,7 @@ gettimeofday: 1
 # Document those syscalls here because runtime_probe daemon doesn't use -L by
 # default.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 lseek: 1
 connect: 1
 

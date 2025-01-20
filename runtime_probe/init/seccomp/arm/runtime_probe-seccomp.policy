@@ -75,6 +75,7 @@ mseal: 1
 mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
 # For syslog
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 pselect6: 1
 getrandom: arg2 in ~GRND_RANDOM
 eventfd2: 1
