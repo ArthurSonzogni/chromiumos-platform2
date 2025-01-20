@@ -460,6 +460,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
     """Conduct a full analysis of all test cases and generate a final report."""
     user_groups_csv: Optional[pathlib.Path] = opts.user_groups_csv
     name: str = opts.name
+    fpc_parser_mode: bool = True if opts.fpc else False
     testcases_decisions_dir: pathlib.Path = opts.testcases_decisions_dir
     analysis_dir: pathlib.Path = opts.analysis_dir
 
@@ -474,43 +475,58 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     print("# Read in data")
 
-    bet = FPCBETResults(testcases_decisions_dir)
+    test_cases: list[test_case.TestCase] = []
 
-    # FIXME: Only enable one test case for speed of testing.
-    # test_case_enums = [FPCBETResults.TestCase.TUDisabled]
-    test_case_enums = FPCBETResults.TestCase.all()
+    if fpc_parser_mode:
+        print("# Using the FPC BET results parser")
+        bet = FPCBETResults(testcases_decisions_dir)
 
-    far_decisions = bet.read_files(
-        list(
-            zip(
-                test_case_enums,
-                [FPCBETResults.TableType.FAR_Decision] * len(test_case_enums),
+        # FIXME: Only enable one test case for speed of testing.
+        # test_case_enums = [FPCBETResults.TestCase.TUDisabled]
+        test_case_enums = FPCBETResults.TestCase.all()
+
+        far_decisions = bet.read_files(
+            list(
+                zip(
+                    test_case_enums,
+                    [FPCBETResults.TableType.FAR_Decision]
+                    * len(test_case_enums),
+                )
             )
         )
-    )
 
-    frr_decisions = bet.read_files(
-        list(
-            zip(
-                test_case_enums,
-                [FPCBETResults.TableType.FRR_Decision] * len(test_case_enums),
+        frr_decisions = bet.read_files(
+            list(
+                zip(
+                    test_case_enums,
+                    [FPCBETResults.TableType.FRR_Decision]
+                    * len(test_case_enums),
+                )
             )
         )
-    )
 
-    exps = {
-        test_case_enums[i]: Experiment(far_decisions=far, frr_decisions=frr)
-        for i, (far, frr) in enumerate(zip(far_decisions, frr_decisions))
-    }
+        exps = {
+            test_case_enums[i]: Experiment(far_decisions=far, frr_decisions=frr)
+            for i, (far, frr) in enumerate(zip(far_decisions, frr_decisions))
+        }
 
-    for tce in exps:
-        exps[tce].add_groups_from_csv(user_groups_csv)
-        exps[tce].check()
+        for tce in exps:
+            exps[tce].add_groups_from_csv(user_groups_csv)
+            exps[tce].check()
 
-    test_cases = [
-        test_case.TestCase(tce.test_case_descriptor(), exps[tce])
-        for tce in test_case_enums
-    ]
+        test_cases = [
+            test_case.TestCase(tce.test_case_descriptor(), exps[tce])
+            for tce in test_case_enums
+        ]
+    else:
+        print("# Using the generic decision directory parser")
+        for test_case_file in testcases_decisions_dir.rglob("test_case.toml"):
+            print(f"Found test case file: {test_case_file}.")
+            test_case_dir = pathlib.Path(test_case_file).parent
+            tc = test_case.test_case_from_dir(test_case_dir)
+            tc.experiment.add_groups_from_csv(user_groups_csv)
+            tc.experiment.check()
+            test_cases.append(tc)
 
     ################# Generate Report Test cases #################
 
@@ -1049,6 +1065,11 @@ def main(argv: list[str]) -> int:
         default="Unnamed Evaluation",
         help="The name of the evaluation target, like 'FPC1025'. "
         "(default: Unnamed Evaluation).",
+    )
+    parser_report.add_argument(
+        "--fpc",
+        action="store_true",
+        help="Enable to use the FPC BET specific decisions output parser",
     )
     parser_report.add_argument(
         "testcases_decisions_dir",
