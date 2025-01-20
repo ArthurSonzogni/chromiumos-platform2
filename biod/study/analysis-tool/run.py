@@ -745,7 +745,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
     fig.update_layout(
         # title_text='False Rejects by User ID of Enroll and Verify',
         title="False Accepts by Sample",
-        xaxis_title="Group",
+        xaxis_title="Sample ID",
         yaxis_title_text="Count",
         legend_title="Test Case",
         barmode="group",
