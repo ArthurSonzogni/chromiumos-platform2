@@ -48,14 +48,14 @@ class Test_TestCase(unittest.TestCase):
         )
 
         self.assertTrue(
-            tc.experiment
-            .far_decisions()
-            .equals(self.simulation.Experiment().far_decisions())
+            tc.experiment.far_decisions().equals(
+                self.simulation.Experiment().far_decisions()
+            )
         )
         self.assertTrue(
-            tc.experiment
-            .frr_decisions()
-            .equals(self.simulation.Experiment().frr_decisions())
+            tc.experiment.frr_decisions().equals(
+                self.simulation.Experiment().frr_decisions()
+            )
         )
 
 
