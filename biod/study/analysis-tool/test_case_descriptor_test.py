@@ -20,6 +20,23 @@ class Test_TestCaseDescriptor(unittest.TestCase):
         self.addCleanup(self.temp_dir.cleanup)
         self.temp_toml = pathlib.Path(self.temp_dir.name) / "test_case.toml"
 
+    def test_descriptor_reliable_hash(self):
+        """Ensure that a TestCaseDescriptor can be reliably hashed for keys."""
+        tcd1 = test_case_descriptor.TestCaseDescriptor("TC1", "TC1 desc")
+        tcd1_prime = test_case_descriptor.TestCaseDescriptor("TC1", "TC1 desc")
+        self.assertEqual(tcd1, tcd1_prime)
+        self.assertEqual(hash(tcd1), hash(tcd1_prime))
+        self.assertNotEqual(id(tcd1), id(tcd1_prime))
+
+    def test_descriptor_reliable_dict_key(self):
+        """Ensure that a TestCaseDescriptor can be used as a stable dict key."""
+        tcd1 = test_case_descriptor.TestCaseDescriptor("TC1", "TC1 desc")
+
+        d = {tcd1: 1}
+        d[tcd1] += 1
+        d[test_case_descriptor.TestCaseDescriptor("TC1", "TC1 desc")] += 1
+        self.assertEqual(d[tcd1], 3)
+
     def test_load_toml(self):
         self.temp_toml.write_text(
             'name = "TUDisabled"\n'

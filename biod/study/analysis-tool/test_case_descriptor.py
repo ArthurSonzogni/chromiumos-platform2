@@ -25,7 +25,11 @@ else:
 
 @dataclasses.dataclass(frozen=True)
 class TestCaseDescriptor:
-    """Describes the name and description for a TestCase."""
+    """Describes the name and description for a TestCase.
+
+    It is preferred to be a frozen dataclass to allow for being used as a key
+    in a dictionary.
+    """
 
     name: str
     description: str
