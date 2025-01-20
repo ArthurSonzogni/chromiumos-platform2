@@ -79,12 +79,14 @@ Chain INPUT (policy ACCEPT 4421 packets, 2461233 bytes)
     pkts      bytes target     prot opt in     out     source               destination
   312491 1767147156 rx_eth0  all  --  eth0   *     0.0.0.0/0             0.0.0.0/0
        0        0 rx_wlan0  all  --  wlan0  *     0.0.0.0/0             0.0.0.0/0
+       234 8776543 rx_mbimmux0.1  all  --  mbimmux0.1  *     0.0.0.0/0             0.0.0.0/0
     8870   805689 rx_mdns    udp  --  *      *     0.0.0.0/0            224.0.0.251          udp dpt:5353
 
 Chain FORWARD (policy ACCEPT 18194 packets, 133612816 bytes)
     pkts      bytes target     prot opt in     out     source               destination
     6511 68041668 tx_eth0  all  --  *    eth0    0.0.0.0/0             0.0.0.0/0
    11683 65571148 rx_eth0  all  --  eth0   *     0.0.0.0/0             0.0.0.0/0
+   1234 9876543 rx_mbimmux0.1  all  --  mbimmux0.1   *     0.0.0.0/0             0.0.0.0/0
 
 Chain OUTPUT (policy ACCEPT 4574 packets, 2900995 bytes)
     pkts      bytes target     prot opt in     out     source               destination
@@ -133,6 +135,24 @@ Chain tx_wlan0 (1 references)
        0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2400/0x3f00
        0        0            all  --  *    *     0.0.0.0/0             0.0.0.0/0
 
+Chain tx_mbimmux0.1 (1 references)
+    pkts      bytes target     prot opt in     out     source               destination
+    3221   997243 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x100/0x3f00
+     116    12471 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x200/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x300/0x3f00
+     239    30507 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x400/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x500/0x3f00
+     138    16239 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2000/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2600/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2500/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2100/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2200/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2300/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2700/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2800/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2400/0x3f00
+       0        0            all  --  *      *       0.0.0.0/0            0.0.0.0/0
+
 Chain rx_eth0 (2 references)
  pkts bytes target     prot opt in     out     source               destination
    73 11938 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x100/0x3f00
@@ -160,6 +180,24 @@ Chain rx_wlan0 (2 references)
        0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2300/0x3f00
        0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2400/0x3f00
        0        0            all  --  *    *     0.0.0.0/0             0.0.0.0/0
+
+Chain rx_mbimmux0.1 (2 references)
+    pkts      bytes target     prot opt in     out     source               destination
+    3607  1847697 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x100/0x3f00
+     180    31066 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x200/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x300/0x3f00
+      69    25577 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x400/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x500/0x3f00
+     152    61218 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2000/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2600/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2500/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2100/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2200/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2300/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2700/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2800/0x3f00
+       0        0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x2400/0x3f00
+       3      120            all  --  *      *       0.0.0.0/0            0.0.0.0/0
 )";
 
 const char kIp6tablesOutput[] = R"(
@@ -216,6 +254,24 @@ Chain tx_wlan0 (1 references)
        0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2400/0x3f00
        0        0            all  --  *    *     ::/0             ::/0
 
+Chain tx_mbimmux0.1 (1 references)
+    pkts      bytes target     prot opt in     out     source               destination
+    3862  1178768 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x100/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x200/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x300/0x3f00
+      37    12855 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x400/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x500/0x3f00
+      69    11435 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2000/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2600/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2500/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2100/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2200/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2300/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2700/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2800/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2400/0x3f00
+       0        0            all      *      *       ::/0                 ::/0
+
 Chain rx_eth0 (2 references)
  pkts bytes target     prot opt in     out     source               destination
    73 11938 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x100/0x3f00
@@ -243,6 +299,24 @@ Chain rx_wlan0 (2 references)
        0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2300/0x3f00
        0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2400/0x3f00
        0        0            all  --  *    *     ::/0             ::/0
+
+Chain rx_mbimmux0.1 (2 references)
+    pkts      bytes target     prot opt in     out     source               destination
+    9247  9763672 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x100/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x200/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x300/0x3f00
+       1       72 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x400/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x500/0x3f00
+      70    29640 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2000/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2600/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2500/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2100/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2200/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2300/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2700/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2800/0x3f00
+       0        0 RETURN     all      *      *       ::/0                 ::/0                 mark match 0x2400/0x3f00
+      10      960            all      *      *       ::/0                 ::/0
 )";
 
 bool CompareCounters(std::map<CounterKey, Counter> expected,
@@ -449,6 +523,159 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
   }
 
   counters_svc_.OnPhysicalDeviceRemoved("eth0");
+}
+
+TEST_F(CountersServiceTest, OnMultiplexedCellularDeviceAdded) {
+  // The following commands are expected when mbimmux0.1 comes up.
+  EXPECT_CALL(datapath_, CheckChain(IpFamily::kDual, Iptables::Table::kMangle,
+                                    "rx_mbimmux0.1"))
+      .WillOnce(Return(false));
+  EXPECT_CALL(datapath_, CheckChain(IpFamily::kDual, Iptables::Table::kMangle,
+                                    "tx_mbimmux0.1"))
+      .WillOnce(Return(false));
+  EXPECT_CALL(datapath_, AddChain(IpFamily::kDual, Iptables::Table::kMangle,
+                                  "rx_mbimmux0.1"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(datapath_, AddChain(IpFamily::kDual, Iptables::Table::kMangle,
+                                  "tx_mbimmux0.1"))
+      .WillOnce(Return(true));
+  const struct {
+    Iptables::Command command;
+    std::string_view chain;
+    std::vector<std::string> argv;
+  } expected_calls[] = {
+      {Iptables::Command::kA,
+       "INPUT",
+       {"-i", "mbimmux0.1", "-j", "rx_mbimmux0.1", "-w"}},
+      {Iptables::Command::kA,
+       "FORWARD",
+       {"-i", "mbimmux0.1", "-j", "rx_mbimmux0.1", "-w"}},
+      {Iptables::Command::kA,
+       "POSTROUTING",
+       {"-o", "mbimmux0.1", "-j", "tx_mbimmux0.1", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00000100/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00000200/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00000300/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00000400/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00000500/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002000/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002100/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002200/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002300/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002400/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002500/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002600/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002700/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "tx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002800/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00000100/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00000200/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00000300/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00000400/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00000500/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002000/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002100/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002200/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002300/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002400/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002500/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002600/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002700/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       "rx_mbimmux0.1",
+       {"-m", "mark", "--mark", "0x00002800/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA, "tx_mbimmux0.1", {"-w"}},
+      {Iptables::Command::kA, "rx_mbimmux0.1", {"-w"}},
+  };
+
+  for (const auto& rule : expected_calls) {
+    EXPECT_CALL(
+        datapath_,
+        ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
+                       StrEq(rule.chain), ElementsAreArray(rule.argv), _));
+  }
+
+  counters_svc_.OnPhysicalDeviceAdded("mbimmux0.1");
+}
+
+TEST_F(CountersServiceTest, OnMultiplexedCellularPhysicalDeviceRemoved) {
+  const struct {
+    Iptables::Command command;
+    std::string_view chain;
+    std::vector<std::string> argv;
+  } expected_calls[] = {
+      {Iptables::Command::kD,
+       "INPUT",
+       {"-i", "mbimmux0.1", "-j", "rx_mbimmux0.1", "-w"}},
+      {Iptables::Command::kD,
+       "FORWARD",
+       {"-i", "mbimmux0.1", "-j", "rx_mbimmux0.1", "-w"}},
+      {Iptables::Command::kD,
+       "POSTROUTING",
+       {"-o", "mbimmux0.1", "-j", "tx_mbimmux0.1", "-w"}},
+  };
+
+  for (const auto& rule : expected_calls) {
+    EXPECT_CALL(
+        datapath_,
+        ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
+                       StrEq(rule.chain), ElementsAreArray(rule.argv), _));
+  }
+
+  counters_svc_.OnPhysicalDeviceRemoved("mbimmux0.1");
 }
 
 TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
@@ -707,6 +934,32 @@ TEST_F(CountersServiceTest, QueryTrafficCounters) {
       {{"wlan0", TrafficCounter::SYSTEM, TrafficCounter::IPV6},
        {840 /*rx_bytes*/, 6 /*rx_packets*/, 2801 /*tx_bytes*/,
         24 /*tx_packets*/}},
+
+      {{"mbimmux0.1", TrafficCounter::CHROME, TrafficCounter::IPV6},
+       {9763672 /*rx_bytes*/, 9247 /*rx_packets*/, 1178768 /*tx_bytes*/,
+        3862 /*tx_packets*/}},
+      {{"mbimmux0.1", TrafficCounter::SYSTEM, TrafficCounter::IPV6},
+       {72 /*rx_bytes*/, 1 /*rx_packets*/, 12855 /*tx_bytes*/,
+        37 /*tx_packets*/}},
+      {{"mbimmux0.1", TrafficCounter::ARC, TrafficCounter::IPV6},
+       {29640 /*rx_bytes*/, 70 /*rx_packets*/, 11435 /*tx_bytes*/,
+        69 /*tx_packets*/}},
+      {{"mbimmux0.1", TrafficCounter::UNKNOWN, TrafficCounter::IPV6},
+       {960 /*rx_bytes*/, 10 /*rx_packets*/, 0 /*tx_bytes*/, 0 /*tx_packets*/}},
+      {{"mbimmux0.1", TrafficCounter::CHROME, TrafficCounter::IPV4},
+       {1847697 /*rx_bytes*/, 3607 /*rx_packets*/, 997243 /*tx_bytes*/,
+        3221 /*tx_packets*/}},
+      {{"mbimmux0.1", TrafficCounter::USER, TrafficCounter::IPV4},
+       {31066 /*rx_bytes*/, 180 /*rx_packets*/, 12471 /*tx_bytes*/,
+        116 /*tx_packets*/}},
+      {{"mbimmux0.1", TrafficCounter::SYSTEM, TrafficCounter::IPV4},
+       {25577 /*rx_bytes*/, 69 /*rx_packets*/, 30507 /*tx_bytes*/,
+        239 /*tx_packets*/}},
+      {{"mbimmux0.1", TrafficCounter::ARC, TrafficCounter::IPV4},
+       {61218 /*rx_bytes*/, 152 /*rx_packets*/, 16239 /*tx_bytes*/,
+        138 /*tx_packets*/}},
+      {{"mbimmux0.1", TrafficCounter::UNKNOWN, TrafficCounter::IPV4},
+       {120 /*rx_bytes*/, 3 /*rx_packets*/, 0 /*tx_bytes*/, 0 /*tx_packets*/}},
   };
 
   EXPECT_TRUE(CompareCounters(expected, actual));

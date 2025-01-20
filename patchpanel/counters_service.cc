@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <re2/re2.h>
 
 #include "patchpanel/datapath.h"
@@ -40,7 +41,9 @@ constexpr char kTxTag[] = "tx_";
 // The chain line looks like:
 //   "Chain tx_eth0 (2 references)".
 // This regex extracts "tx" (direction), "eth0" (ifname) from this example.
-constexpr LazyRE2 kChainLine = {R"(Chain (rx|tx)_(\w+).*)"};
+// b/335299463: the capture group for the interface name must be able to match
+// on '.' to support cellular multiplexed interfaces like mbimmux0.1.
+constexpr LazyRE2 kChainLine = {R"(Chain (rx|tx)_([\w.]+).*)"};
 
 // The counter line for a defined source looks like (some spaces are deleted to
 // make it fit in one line):
@@ -121,16 +124,16 @@ bool ParseOutput(const std::string& output,
 
     // Skips the chain name line and the header line.
     if (lines.cend() - it <= 2) {
-      LOG(ERROR) << "Invalid iptables output for " << direction << "_"
-                 << ifname;
+      LOG(ERROR) << __func__ << ": Invalid iptables output for " << direction
+                 << "_" << ifname;
       return false;
     }
     it += 2;
 
     // Checks that there are some counter rules defined.
     if (it == lines.cend() || it->empty()) {
-      LOG(ERROR) << "No counter rule defined for " << direction << "_"
-                 << ifname;
+      LOG(ERROR) << __func__ << ": No counter rule defined for " << direction
+                 << "_" << ifname;
       return false;
     }
 
@@ -139,8 +142,8 @@ bool ParseOutput(const std::string& output,
       uint64_t pkts, bytes;
       TrafficSource source;
       if (!MatchCounterLine(*it, &pkts, &bytes, &source)) {
-        LOG(ERROR) << "Cannot parse counter line \"" << *it << "\" for "
-                   << direction << "_" << ifname;
+        LOG(ERROR) << __func__ << ": Cannot parse counter line \"" << *it
+                   << "\" for " << direction << "_" << ifname;
         return false;
       }
 
@@ -187,23 +190,23 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
   std::string iptables_result =
       datapath_->DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle);
   if (iptables_result.empty()) {
-    LOG(ERROR) << "Failed to query IPv4 counters";
+    LOG(ERROR) << __func__ << ": Failed to query IPv4 counters";
     return {};
   }
   if (!ParseOutput(iptables_result, devices, TrafficCounter::IPV4, &counters)) {
-    LOG(ERROR) << "Failed to parse IPv4 counters";
+    LOG(ERROR) << __func__ << ": Failed to parse IPv4 counters";
     return {};
   }
 
   std::string ip6tables_result =
       datapath_->DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle);
   if (ip6tables_result.empty()) {
-    LOG(ERROR) << "Failed to query IPv6 counters";
+    LOG(ERROR) << __func__ << ": Failed to query IPv6 counters";
     return {};
   }
   if (!ParseOutput(ip6tables_result, devices, TrafficCounter::IPV6,
                    &counters)) {
-    LOG(ERROR) << "Failed to parse IPv6 counters";
+    LOG(ERROR) << __func__ << ": Failed to parse IPv6 counters";
     return {};
   }
 
@@ -214,7 +217,7 @@ void CountersService::HandleARCVPNSocketConnectionEvent(
     const SocketConnectionEvent& msg) {
   const auto conn = GetConntrack5Tuple(msg);
   if (!conn) {
-    LOG(ERROR) << __func__ << ": failed to get conntrack 5 tuple";
+    LOG(ERROR) << __func__ << ": Failed to get conntrack 5 tuple";
     return;
   }
   connmark_updater_->UpdateConnmark(
