@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import enum
-from typing import Optional
 
 import fpsutils
 import pandas as pd
@@ -151,7 +150,7 @@ class Decisions(Table):
     def check(
         self,
         duplicates: bool = False,
-        expected_match_type: Optional[MatchType] = None,
+        expected_match_type: MatchType | None = None,
     ):
         """Check for consistency within a single decisions table.
 

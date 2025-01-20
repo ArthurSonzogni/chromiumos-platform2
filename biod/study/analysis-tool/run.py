@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import pathlib
 import sys
-from typing import Literal, Optional
+from typing import Literal
 
 import bootstrap
 import experiment
@@ -458,7 +458,7 @@ def cmd_verify(opts: argparse.Namespace) -> int:
 
 def cmd_report(opts: argparse.Namespace) -> int:
     """Conduct a full analysis of all test cases and generate a final report."""
-    user_groups_csv: Optional[pathlib.Path] = opts.user_groups_csv
+    user_groups_csv: pathlib.Path | None = opts.user_groups_csv
     name: str = opts.name
     fpc_parser_mode: bool = True if opts.fpc else False
     testcases_decisions_dir: pathlib.Path = opts.testcases_decisions_dir

@@ -9,7 +9,7 @@ from __future__ import annotations
 import collections
 import enum
 import timeit
-from typing import Any, Iterable, Literal, Optional, Union
+from typing import Any, Iterable, Literal
 
 from IPython.display import display
 from IPython.display import Markdown
@@ -31,7 +31,7 @@ class DataFrameSetAccess:
     methods are very fast.
     """
 
-    def __init__(self, tbl: pd.DataFrame, cols: Optional[list[str]] = None):
+    def __init__(self, tbl: pd.DataFrame, cols: list[str] | None = None):
         """This performs the expensive caching operation, that must occur once.
 
         Args:
@@ -75,7 +75,7 @@ class DataFrameCountTrieAccess:
     tens of nanoseconds slower.
     """
 
-    def __init__(self, tbl: pd.DataFrame, cols: Optional[list[str]] = None):
+    def __init__(self, tbl: pd.DataFrame, cols: list[str] | None = None):
         """This performs the expensive caching operation, that must occur once.
 
         Args:
@@ -125,7 +125,7 @@ def boot_sample(
     # This is the fastest input to rng.choice, other than a scalar.
     a: npt.NDArray[Any],
     *,
-    n: Optional[int] = None,
+    n: int | None = None,
     rng: np.random.Generator = np.random.default_rng(),
 ) -> npt.NDArray:
     """Sample with replacement the same number of elements given.
@@ -149,7 +149,7 @@ def boot_sample(
 def boot_sample_range(
     # Scalar input is the fastest invocation to rng.choice.
     range_max: int,
-    n: Optional[int] = None,
+    n: int | None = None,
     rng: np.random.Generator = np.random.default_rng(),
 ) -> npt.NDArray[np.int64]:
     """Sample with replacement `range_max` elements from `0` to `range_max`.
@@ -163,7 +163,7 @@ def boot_sample_range(
 
 
 def plot_pd_column_hist_discrete(
-    tbl: pd.DataFrame, column: str, title_prefix: Optional[str] = None
+    tbl: pd.DataFrame, column: str, title_prefix: str | None = None
 ):
     """Plot the histogram of a single column of a DataFrame"""
 
@@ -178,8 +178,8 @@ def plot_pd_column_hist_discrete(
 
 def plot_pd_hist_discrete(
     tbl: pd.DataFrame,
-    title_prefix: Optional[str] = None,
-    figsize: Optional[tuple] = None,
+    title_prefix: str | None = None,
+    figsize: tuple | None = None,
 ):
     """Plot the histograms of each column in a DataFrame.
 
@@ -210,9 +210,7 @@ def discrete_hist(data) -> tuple[npt.NDArray, npt.NDArray]:
     return np.unique(data, return_counts=True)
 
 
-def has_columns(
-    df: pd.DataFrame, cols: Iterable[Union[enum.Enum, str]]
-) -> bool:
+def has_columns(df: pd.DataFrame, cols: Iterable[enum.Enum | str]) -> bool:
     """Check if the DataFrame `df` contains all `cols`.
 
     This allows for specifying a list of Enums, whose `value` is the column

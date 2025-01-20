@@ -12,7 +12,6 @@ import pathlib
 import random
 import sys
 import time
-from typing import Optional
 
 from experiment import Experiment
 import numpy as np
@@ -58,7 +57,7 @@ def GenerateFARResults(
     num_users: int = 72,
     num_fingers: int = 6,
     num_verify_samples: int = 80,
-    user_groups: Optional[list[str]] = ["A", "B", "C", "D", "E", "F"],
+    user_groups: list[str] | None = ["A", "B", "C", "D", "E", "F"],
     prob: float = 1 / 100000.0,
     verbose: bool = False,
 ) -> pd.DataFrame:
@@ -180,7 +179,7 @@ def GenerateFRRResults(
     num_users: int = 72,
     num_fingers: int = 6,
     num_verify_samples: int = 80,
-    user_groups: Optional[list[str]] = ["A", "B", "C", "D", "E", "F"],
+    user_groups: list[str] | None = ["A", "B", "C", "D", "E", "F"],
     prob: float = 2 / 100.0,
     verbose: bool = False,
 ) -> pd.DataFrame:
@@ -347,7 +346,7 @@ class SimulateEvalResults:
         return self._exp
 
 
-def main(argv: Optional[list[str]] = None) -> Optional[int]:
+def main(argv: list[str] | None = None) -> int | None:
     """Generate simulated performance evaluation results.
 
     This will output three CSV files inside the output_testcase_dir.
@@ -457,7 +456,7 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
     if test_case_path.is_dir():
         parser.error(f'The Test Case file "{test_case_path}" is a directory.')
 
-    groups_list: Optional[list[str]] = None
+    groups_list: list[str] | None = None
     if args.groups > 0:
         groups_list = [chr(a) for a in range(ord("A"), ord("A") + args.groups)]
         if verbose:

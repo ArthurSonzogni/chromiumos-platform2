@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import time
-from typing import Any, Callable, ClassVar, Iterable, Optional
+from typing import Any, Callable, ClassVar, Iterable
 
 from experiment import Experiment
 import fpsutils
@@ -171,7 +171,7 @@ class Bootstrap:
     def __run_multi_process(
         self,
         num_samples: int,
-        num_proc: Optional[int],
+        num_proc: int | None,
         progress: Callable[[Iterable[Any], int], Iterable[Any]],
     ) -> list[int]:
         # All processes must have their own unique seed for their pseudo random
@@ -268,7 +268,7 @@ class Bootstrap:
     def run(
         self,
         num_samples: int = 5000,
-        num_proc: Optional[int] = 0,
+        num_proc: int | None = 0,
         progress: Callable[
             [Iterable[Any], int], Iterable[Any]
         ] = lambda it, total: iter(it),

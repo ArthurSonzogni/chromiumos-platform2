@@ -9,16 +9,7 @@ from datetime import datetime
 from pathlib import Path
 import shutil
 import subprocess
-from typing import (
-    Any,
-    Callable,
-    cast,
-    Final,
-    Iterable,
-    Literal,
-    Optional,
-    TypeVar,
-)
+from typing import Any, Callable, cast, Final, Iterable, Literal, TypeVar
 
 import fpsutils
 import jinja2
@@ -41,15 +32,15 @@ class Element:
     ID_SEPARATOR: Final[str] = "/"
 
     _id: str
-    _path: Optional[Path]
-    _parent: Optional[Element]
+    _path: Path | None
+    _parent: Element | None
     _children: dict[str, Element]
 
     def __init__(
         self,
         id: str,
-        #  path: Optional[Path] = None,
-        parent: Optional[Element] = None,
+        #  path: Path | None = None,
+        parent: Element | None = None,
     ) -> None:
         """Construct an `Element`.
 
@@ -98,9 +89,7 @@ class Element:
     # Compose path pieces of parent nodes, but skip None `path`s of nodes.
     # ...
 
-    def _child_find(
-        self, id: str, sep: str = ID_SEPARATOR
-    ) -> Optional[Element]:
+    def _child_find(self, id: str, sep: str = ID_SEPARATOR) -> Element | None:
         parts = id.split(sep, 1)
         if len(parts) == 0:
             return None
@@ -132,7 +121,7 @@ class Element:
 class Text(Element):
     """Represents an embedded text blob with a description."""
 
-    def __init__(self, name: str, parent: Optional[Element] = None) -> None:
+    def __init__(self, name: str, parent: Element | None = None) -> None:
         super().__init__(name, parent)
         self._text_blob = ""
 
@@ -155,7 +144,7 @@ class Data(Element):
 
     UNSET_VALUE: Final[str] = ""
 
-    def __init__(self, name: str, parent: Optional[Element] = None) -> None:
+    def __init__(self, name: str, parent: Element | None = None) -> None:
         super().__init__(name, parent)
         self._data: dict[str, Any] = {}
 
@@ -182,7 +171,7 @@ class Figure(Element):
         name: str,
         description: str,
         figure: go.Figure,
-        parent: Optional[Element] = None,
+        parent: Element | None = None,
     ) -> None:
         """Represents an embedded figure with a description.
 
@@ -240,25 +229,25 @@ class Section(Element):
     def __init__(
         self,
         name: str,
-        title: Optional[str] = None,
-        description: Optional[str] = None,
-        parent: Optional[Section] = None,
+        title: str | None = None,
+        description: str | None = None,
+        parent: Section | None = None,
     ) -> None:
         super().__init__(name, parent)
         self._title = title
         self._description = description
 
-    def title(self) -> Optional[str]:
+    def title(self) -> str | None:
         return self._title
 
-    def description(self) -> Optional[str]:
+    def description(self) -> str | None:
         return self._description
 
     def add_subsection(
         self,
         name: str,
-        title: Optional[str] = None,
-        description: Optional[str] = None,
+        title: str | None = None,
+        description: str | None = None,
     ) -> Section:
         return self._child_add(Section(name, title, description))
 
@@ -276,7 +265,7 @@ class Section(Element):
     def children(self) -> Iterable[Element]:
         return self._child_list()
 
-    def find(self, id: str) -> Optional[Element]:
+    def find(self, id: str) -> Element | None:
         return self._child_find(id)
 
     # def dir(self) -> Path:

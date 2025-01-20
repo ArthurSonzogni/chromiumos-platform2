@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import glob
 import pathlib
-from typing import Union
 
 
 class CollectionDir:
     """Interface for the collection directory produced by the fpstudy tool."""
 
-    def __init__(self, collection_dir: Union[pathlib.Path, str]):
+    def __init__(self, collection_dir: pathlib.Path | str):
         path = pathlib.Path(collection_dir)
         assert path.exists()
         self._collection_dir = path

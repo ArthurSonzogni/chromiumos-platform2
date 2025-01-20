@@ -13,7 +13,7 @@ import mmap
 import pathlib
 import pickle
 import subprocess
-from typing import Any, Optional, Union
+from typing import Any
 
 import pandas as pd
 
@@ -56,7 +56,7 @@ class CachedDataFile:
         return [pathlib.Path(p) for p in cache_files]
 
     def __init__(
-        self, data_file_path: Union[pathlib.Path, str], verbose: bool = False
+        self, data_file_path: pathlib.Path | str, verbose: bool = False
     ) -> None:
         self._ver = ""
         self._orig_file_path = pathlib.Path(data_file_path)
@@ -86,8 +86,8 @@ class CachedDataFile:
     def _delete_file(
         self,
         file: pathlib.Path,
-        rm_cmd: Optional[str] = None,
-        rm_cmd_opts: Optional[list[str]] = None,
+        rm_cmd: str | None = None,
+        rm_cmd_opts: list[str] | None = None,
     ):
         """Delete a cache file.
 
@@ -123,8 +123,8 @@ class CachedDataFile:
 
     def prune(
         self,
-        rm_cmd: Optional[str] = None,
-        rm_cmd_opts: Optional[list[str]] = None,
+        rm_cmd: str | None = None,
+        rm_cmd_opts: list[str] | None = None,
     ):
         """Remove obsolete cache files."""
         ver = self.version()
@@ -136,8 +136,8 @@ class CachedDataFile:
 
     def remove(
         self,
-        rm_cmd: Optional[str] = None,
-        rm_cmd_opts: Optional[list[str]] = None,
+        rm_cmd: str | None = None,
+        rm_cmd_opts: list[str] | None = None,
     ):
         """Remove all cache files."""
         for cache_file in self._find_cache_files():
@@ -191,7 +191,7 @@ class CachedCSVFile(CachedDataFile):
 
     def __init__(
         self,
-        data_file_path: Union[pathlib.Path, str],
+        data_file_path: pathlib.Path | str,
         verbose: bool = False,
         **read_csv_args: Any,
     ) -> None:

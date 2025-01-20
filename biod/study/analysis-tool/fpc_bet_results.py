@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import enum
 import pathlib
-from typing import Iterable, Optional, Union
+from typing import Iterable
 
 import cached_data_file
 import pandas as pd
@@ -106,7 +106,7 @@ class FPCBETResults:
         def column_total(self) -> str:
             return self.name + "_" + FPCBETResults.Column.Total.value
 
-    def __init__(self, report_directory: Union[pathlib.Path, str]):
+    def __init__(self, report_directory: pathlib.Path | str):
         self._dir = pathlib.Path(report_directory)
 
     def _file_name(
@@ -205,7 +205,7 @@ class FPCBETResults:
         test_case: TestCaseEnum,
         table_type: TableType,
         sec_levels: list[SecLevel] = SecLevel.all(),
-    ) -> Optional[pd.DataFrame]:
+    ) -> pd.DataFrame | None:
         """Read `TableType.FAR` and `TableType.FRR` stats file.
 
         These are the FAR_stats_4level.txt / FRR_stats_4level.txt files.
@@ -269,7 +269,7 @@ class FPCBETResults:
 
     def read_file(
         self, test_case: TestCaseEnum, table_type: TableType
-    ) -> Optional[pd.DataFrame]:
+    ) -> pd.DataFrame | None:
         """Read specified BET generated table for the specified `test_case`.
 
         This is an interface that calls on the correct read file function for
@@ -294,13 +294,13 @@ class FPCBETResults:
 
     def read_files(
         self, case_table_pairs: Iterable[tuple[TestCaseEnum, TableType]]
-    ) -> list[Optional[pd.DataFrame]]:
+    ) -> list[pd.DataFrame | None]:
         """Read all test-case/table-type pairs as fast as possible.
 
         This may be parallelized in the future.
         """
 
-        dfs: list[Optional[pd.DataFrame]] = []
+        dfs: list[pd.DataFrame | None] = []
         for c in case_table_pairs:
             dfs.append(self.read_file(*c))
         return dfs
