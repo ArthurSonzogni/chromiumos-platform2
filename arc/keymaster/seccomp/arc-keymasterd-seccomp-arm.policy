@@ -32,6 +32,7 @@ fstat64: 1
 fstatat64: 1
 statx: 1
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 getsockname: 1
 connect: 1
 fcntl64: 1

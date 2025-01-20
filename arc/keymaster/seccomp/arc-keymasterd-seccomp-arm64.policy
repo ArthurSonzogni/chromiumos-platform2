@@ -29,6 +29,7 @@ rt_sigprocmask: 1
 signalfd4: 1
 fstat: 1
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 getsockname: 1
 connect: 1
 fcntl: 1
