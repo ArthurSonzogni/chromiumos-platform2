@@ -66,6 +66,7 @@ process_vm_readv: 1
 
 # For IPC and syslog.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 
 # To set libhwsec thread name.
 prctl: arg0 == PR_SET_NAME
