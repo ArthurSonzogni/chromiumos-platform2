@@ -29,6 +29,7 @@ close: 1
 getsockopt: 1
 rt_sigprocmask: 1
 socket: arg0 == AF_INET6 || arg0 == AF_UNIX || arg0 == AF_INET || arg0 == AF_NETLINK || arg0 == AF_VSOCK
+socketpair: arg0 == AF_UNIX
 eventfd2: 1
 geteuid: 1
 epoll_create1: 1
