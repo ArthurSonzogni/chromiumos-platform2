@@ -25,6 +25,8 @@ import plotly.graph_objs as go
 from report import Report
 import scipy.stats as st
 import table
+import test_case
+from test_case_descriptor import TestCaseDescriptor
 from test_case_enum import TestCaseEnum
 from tqdm.autonotebook import tqdm  # Auto detect notebook or console.
 
@@ -475,14 +477,14 @@ def cmd_report(opts: argparse.Namespace) -> int:
     bet = FPCBETResults(testcases_decisions_dir)
 
     # FIXME: Only enable one test case for speed of testing.
-    # test_cases = [FPCBETResults.TestCase.TUDisabled]
-    test_cases = FPCBETResults.TestCase.all()
+    # test_case_enums = [FPCBETResults.TestCase.TUDisabled]
+    test_case_enums = FPCBETResults.TestCase.all()
 
     far_decisions = bet.read_files(
         list(
             zip(
-                test_cases,
-                [FPCBETResults.TableType.FAR_Decision] * len(test_cases),
+                test_case_enums,
+                [FPCBETResults.TableType.FAR_Decision] * len(test_case_enums),
             )
         )
     )
@@ -490,27 +492,33 @@ def cmd_report(opts: argparse.Namespace) -> int:
     frr_decisions = bet.read_files(
         list(
             zip(
-                test_cases,
-                [FPCBETResults.TableType.FRR_Decision] * len(test_cases),
+                test_case_enums,
+                [FPCBETResults.TableType.FRR_Decision] * len(test_case_enums),
             )
         )
     )
 
     exps = {
-        test_cases[i]: Experiment(far_decisions=far, frr_decisions=frr)
+        test_case_enums[i]: Experiment(far_decisions=far, frr_decisions=frr)
         for i, (far, frr) in enumerate(zip(far_decisions, frr_decisions))
     }
 
-    for tc in exps:
-        exps[tc].add_groups_from_csv(user_groups_csv)
-        exps[tc].check()
+    for tce in exps:
+        exps[tce].add_groups_from_csv(user_groups_csv)
+        exps[tce].check()
+
+    test_cases = [
+        test_case.TestCase(tce.test_case_descriptor(), exps[tce])
+        for tce in test_case_enums
+    ]
 
     ################# Generate Report Test cases #################
 
     print("# Setup report test cases")
 
     rpt_tc = {
-        tc: rpt.test_case_add(str(tc), tc.description()) for tc in test_cases
+        tc.descriptor: rpt.test_case_add(tc.name, tc.description)
+        for tc in test_cases
     }
 
     # Ultimately, we want to do a histogram over the entire FAR/FRR Decision
@@ -531,8 +539,8 @@ def cmd_report(opts: argparse.Namespace) -> int:
     print("# Add main histograms to report")
 
     for tc in test_cases:
-        exp = exps[tc]
-        section = rpt_tc[tc].add_subsection("hist")
+        exp = tc.experiment
+        section = rpt_tc[tc.descriptor].add_subsection("hist")
 
         # A high FA count for an EnrollUser would indicate some template(s) for a given
         # user allows more false accepts from other users.
@@ -636,11 +644,13 @@ def cmd_report(opts: argparse.Namespace) -> int:
     ### FA_by_User
 
     s1 = {
-        "EnrollUser_" + tc.name: exps[tc].fa_counts_by(table.Col.Enroll_User)
+        "EnrollUser_"
+        + tc.name: tc.experiment.fa_counts_by(table.Col.Enroll_User)
         for tc in test_cases
     }
     s2 = {
-        "VerifyUser_" + tc.name: exps[tc].fa_counts_by(table.Col.Verify_User)
+        "VerifyUser_"
+        + tc.name: tc.experiment.fa_counts_by(table.Col.Verify_User)
         for tc in test_cases
     }
     df = pd.DataFrame(s1 | s2)
@@ -680,7 +690,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     df = pd.DataFrame(
         {
-            tc.name: exps[tc].fr_counts_by(table.Col.Verify_User)
+            tc.name: tc.experiment.fr_counts_by(table.Col.Verify_User)
             for tc in test_cases
         }
     )
@@ -723,7 +733,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     df = pd.DataFrame(
         {
-            tc.name: exps[tc].fa_counts_by(table.Col.Verify_Sample)
+            tc.name: tc.experiment.fa_counts_by(table.Col.Verify_Sample)
             for tc in test_cases
         }
     )
@@ -789,12 +799,12 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     s1 = {
         "EnrollFinger_"
-        + tc.name: exps[tc].fa_counts_by(table.Col.Enroll_Finger)
+        + tc.name: tc.experiment.fa_counts_by(table.Col.Enroll_Finger)
         for tc in test_cases
     }
     s2 = {
         "VerifyFinger_"
-        + tc.name: exps[tc].fa_counts_by(table.Col.Verify_Finger)
+        + tc.name: tc.experiment.fa_counts_by(table.Col.Verify_Finger)
         for tc in test_cases
     }
     df = pd.DataFrame(s1 | s2)
@@ -816,7 +826,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     df = pd.DataFrame(
         {
-            tc.name: exps[tc].fr_counts_by(table.Col.Verify_Finger)
+            tc.name: tc.experiment.fr_counts_by(table.Col.Verify_Finger)
             for tc in test_cases
         }
     )
@@ -837,11 +847,13 @@ def cmd_report(opts: argparse.Namespace) -> int:
     ### FA_by_Group
 
     s1 = {
-        "EnrollGroup_" + tc.name: exps[tc].fa_counts_by(table.Col.Enroll_Group)
+        "EnrollGroup_"
+        + tc.name: tc.experiment.fa_counts_by(table.Col.Enroll_Group)
         for tc in test_cases
     }
     s2 = {
-        "VerifyGroup_" + tc.name: exps[tc].fa_counts_by(table.Col.Verify_Group)
+        "VerifyGroup_"
+        + tc.name: tc.experiment.fa_counts_by(table.Col.Verify_Group)
         for tc in test_cases
     }
     df = pd.DataFrame(s1 | s2)
@@ -863,7 +875,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     df = pd.DataFrame(
         {
-            tc.name: exps[tc].fr_counts_by(table.Col.Verify_Group)
+            tc.name: tc.experiment.fr_counts_by(table.Col.Verify_Group)
             for tc in test_cases
         }
     )
@@ -886,14 +898,14 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     print("# Run bootstrap samples")
 
-    far_boot_results: dict[TestCaseEnum, bootstrap.BootstrapResults] = dict()
-    frr_boot_results: dict[TestCaseEnum, bootstrap.BootstrapResults] = dict()
-    far_figures: dict[TestCaseEnum, go.Figure] = dict()
-    frr_figures: dict[TestCaseEnum, go.Figure] = dict()
+    far_boot_results: dict[TestCaseDescriptor, bootstrap.BootstrapResults] = {}
+    frr_boot_results: dict[TestCaseDescriptor, bootstrap.BootstrapResults] = {}
+    far_figures: dict[TestCaseDescriptor, go.Figure] = {}
+    frr_figures: dict[TestCaseDescriptor, go.Figure] = {}
     for tc in test_cases:
-        print(f"Running Test Case {tc}.")
-        exp = exps[tc]
-        section = rpt_tc[tc].add_subsection("score")
+        print(f"Running Test Case {tc.name}.")
+        exp = tc.experiment
+        section = rpt_tc[tc.descriptor].add_subsection("score")
         info = section.add_data("Info")
 
         #### FAR ####
@@ -906,9 +918,9 @@ def cmd_report(opts: argparse.Namespace) -> int:
             num_proc=0,
             progress=lambda it, total: tqdm(it, total=total),
         )
-        far_boot_results[tc] = boot_results
+        far_boot_results[tc.descriptor] = boot_results
         fig = bootstrap_figure(exp, boot_results, "FAR")
-        far_figures[tc] = fig
+        far_figures[tc.descriptor] = fig
         section.add_figure(
             "FAR_Bootstrap",
             "The hierarchical FAR bootstrap sampling histogram.",
@@ -941,9 +953,9 @@ def cmd_report(opts: argparse.Namespace) -> int:
             num_proc=0,
             progress=lambda it, total: tqdm(it, total=total),
         )
-        frr_boot_results[tc] = boot_results
+        frr_boot_results[tc.descriptor] = boot_results
         fig = bootstrap_figure(exp, boot_results, "FRR")
-        frr_figures[tc] = fig
+        frr_figures[tc.descriptor] = fig
 
         section.add_figure(
             "FRR_Bootstrap",
