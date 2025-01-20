@@ -1001,7 +1001,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     rpt.generate()
 
-    print(f"View {(analysis_dir / 'index.html').absolute}")
+    print(f"View {(analysis_dir / 'index.html').absolute()}")
 
     return 0
 
