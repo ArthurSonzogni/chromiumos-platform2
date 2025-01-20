@@ -1810,12 +1810,6 @@ void Service::ResetTrafficCountersCallback(
 }
 
 void Service::RefreshTrafficCountersTask(bool initialize) {
-  if (!attached_network_) {
-    LOG(WARNING)
-        << *this << " " << __func__
-        << ": No attached network, cancelling traffic counter refreshing task";
-    return;
-  }
   if (initialize) {
     RequestRawTrafficCounters(
         base::BindOnce(&Service::InitializeTrafficCounterSnapshots,

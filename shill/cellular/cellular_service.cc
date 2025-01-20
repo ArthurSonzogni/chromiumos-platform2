@@ -1113,6 +1113,7 @@ void CellularService::GetExtraTrafficCounters(
     Network::GetTrafficCountersCallback callback) {
   if (!cellular_) {
     std::move(callback).Run({});
+    return;
   }
   cellular_->GetTetheringTrafficCounters(std::move(callback));
 }
