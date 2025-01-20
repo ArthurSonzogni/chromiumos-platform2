@@ -173,12 +173,12 @@ class Test_Experiment_CSV(unittest.TestCase):
     )
 
     def setUp(self) -> None:
+        # The point of opening the temp dir here is to limit boilerplate code
+        # in each of the following tests, thus we can't use "with" to scope.
+        # pylint: disable=consider-using-with
         self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
         self.temp_csv = pathlib.Path(self.temp_dir.name) / "test.csv"
-
-    def tearDown(self) -> None:
-        self.temp_dir.cleanup()
-        return super().tearDown()
 
     def test_read_far(self):
         exp = Experiment()
@@ -235,12 +235,12 @@ class Test_Experiment_User_Groups(unittest.TestCase):
     """Test the User Group capabilities of `Experiment`."""
 
     def setUp(self) -> None:
+        # The point of opening the temp dir here is to limit boilerplate code
+        # in each of the following tests, thus we can't use "with" to scope.
+        # pylint: disable=consider-using-with
         self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
         self.temp_csv = pathlib.Path(self.temp_dir.name) / "test.csv"
-
-    def tearDown(self) -> None:
-        self.temp_dir.cleanup()
-        return super().tearDown()
 
     FRR_DATAFRAME_GROUPS = pd.DataFrame(
         {

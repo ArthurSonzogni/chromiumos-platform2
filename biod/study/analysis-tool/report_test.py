@@ -21,14 +21,14 @@ from report import Report
 
 class Test_Report(unittest.TestCase):
     def setUp(self) -> None:
+        # The point of opening the temp dir here is to limit boilerplate code
+        # in each of the following tests, thus we can't use "with" to scope.
+        # pylint: disable=consider-using-with
         self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
         self.temp_dir_path = Path(self.temp_dir.name)
         print(f"Temp output dir is {self.temp_dir_path}.")
         return super().setUp()
-
-    def tearDown(self) -> None:
-        self.temp_dir.cleanup()
-        return super().tearDown()
 
     def test_blank_template(self):
         """Test rendering and writing an empty report."""

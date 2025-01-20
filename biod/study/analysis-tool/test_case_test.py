@@ -17,6 +17,9 @@ class Test_TestCase(unittest.TestCase):
     """Test TestCase."""
 
     def setUp(self) -> None:
+        # The point of opening the temp dir here is to limit boilerplate code
+        # in each of the following tests, thus we can't use "with" to scope.
+        # pylint: disable=consider-using-with
         self.temp_dir_context = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir_context.cleanup)
         self.temp_dir = pathlib.Path(self.temp_dir_context.name)

@@ -74,15 +74,14 @@ class Test_simulate_fpstudy_main(unittest.TestCase):
     def setUp(self) -> None:
         """Run before each test."""
         self.verbose = ("-v" in sys.argv) or ("--verbose" in sys.argv)
+        # The point of opening the temp dir here is to limit boilerplate code
+        # in each of the following tests, thus we can't use "with" to scope.
+        # pylint: disable=consider-using-with
         self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
         self.temp_dir_path = pathlib.Path(self.temp_dir.name)
         # Optionally set the verbose flag.
         self.v: list[str] = ["--verbose"] if self.verbose else []
-
-    def tearDown(self) -> None:
-        """Run after each test."""
-        self.temp_dir.cleanup()
-        return super().tearDown()
 
     def test_with_groups(self):
         """Run the utility with groups enabled."""

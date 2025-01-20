@@ -20,16 +20,16 @@ class Test_CachedCSVFile(unittest.TestCase):
     """Test the `CachedCSVFile` class."""
 
     def setUp(self) -> None:
+        # The point of opening the temp dir here is to limit boilerplate code
+        # in each of the following tests, thus we can't use "with" to scope.
+        # pylint: disable=consider-using-with
         self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
         self.temp_csv = pathlib.Path(self.temp_dir.name) / "test.csv"
         print(f"Temp CSV file is {self.temp_csv}.")
         self._generate_decisions_file()
 
         return super().setUp()
-
-    def tearDown(self) -> None:
-        self.temp_dir.cleanup()
-        return super().tearDown()
 
     def _generate_decisions_file(self):
         # VerifyUser VerifyFinger VerifySample EnrollUser EnrollFinger Decision
