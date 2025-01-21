@@ -544,7 +544,7 @@ int main(int argc, char** argv) {
                << ". It must be either full, read, or write.";
     return 1;
   }
-  if (!USE_ARC_CONTAINER_P && !FLAGS_use_default_selinux_context) {
+  if (!FLAGS_use_default_selinux_context) {
     // MediaProvider UID needs to be specified in R+ to calculate the
     // non-default SELinux context.
     if (FLAGS_media_provider_uid < kAndroidAppUidStart ||
@@ -611,25 +611,18 @@ int main(int argc, char** argv) {
   if (!FLAGS_use_default_selinux_context) {
     // NOTE: Commas are escaped by "\\" to avoid being processed by lifuse's
     // option parsing code.
-    std::string security_context;
-    if (USE_ARC_CONTAINER_P) {
-      // In Android P, the security context of directories under /data/media/0
-      // is "u:object_r:media_rw_data_file:s0:c512,c768".
-      security_context = std::string(kMediaRwDataFileContext) + ":c512\\,c768";
-    } else {
-      // In Android R, the security context of directories under /data/media/0
-      // looks like "u:object_r:media_rw_data_file:s0:c64,c256,c512,c768".
-      //
-      // Calculate the categories in the same way as set_range_from_level() in
-      // Android's external/selinux/libselinux/src/android/android_platform.c.
-      const uid_t media_provider_app_id =
-          FLAGS_media_provider_uid - kAndroidAppUidStart;
-      security_context =
-          std::string(kMediaRwDataFileContext) +
-          base::StringPrintf(":c%d\\,c%d\\,c512\\,c768",
-                             media_provider_app_id & 0xff,
-                             256 + ((media_provider_app_id >> 8) & 0xff));
-    }
+    // In Android R, the security context of directories under /data/media/0
+    // looks like "u:object_r:media_rw_data_file:s0:c64,c256,c512,c768".
+    //
+    // Calculate the categories in the same way as set_range_from_level() in
+    // Android's external/selinux/libselinux/src/android/android_platform.c.
+    const uid_t media_provider_app_id =
+        FLAGS_media_provider_uid - kAndroidAppUidStart;
+    const std::string security_context =
+        std::string(kMediaRwDataFileContext) +
+        base::StringPrintf(":c%d\\,c%d\\,c512\\,c768",
+                           media_provider_app_id & 0xff,
+                           256 + ((media_provider_app_id >> 8) & 0xff));
 
     // The context string is quoted using "\"" so that the kernel won't split
     // the mount option string at commas.

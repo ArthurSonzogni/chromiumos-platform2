@@ -35,10 +35,7 @@ executable("mount-passthrough") {
     "mount-passthrough-util.cc",
     "mount-passthrough.cc",
   ]
-  defines = [
-    "USE_ARC_CONTAINER_P=${use.android_container_pi}",
-    "USE_ARCPP=${use.arcpp}",
-  ]
+  defines = [ "USE_ARCPP=${use.arcpp}" ]
   configs += [ ":mount-passthrough_config" ]
   install_path = "bin"
 }
