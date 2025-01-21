@@ -9,6 +9,9 @@
 #include <string>
 #include <utility>
 
+#include <absl/container/flat_hash_map.h>
+#include <base/memory/weak_ptr.h>
+
 #include "odml/i18n/translate_api.h"
 #include "odml/i18n/translator.h"
 #include "odml/utils/dlc_client_helper.h"
@@ -19,7 +22,7 @@ namespace i18n {
 class TranslatorImpl : public Translator {
  public:
   explicit TranslatorImpl(raw_ref<odml::OdmlShimLoader> shim_loader);
-  ~TranslatorImpl() = default;
+  ~TranslatorImpl() override = default;
 
   TranslatorImpl(const TranslatorImpl&) = delete;
   TranslatorImpl& operator=(const TranslatorImpl&) = delete;
@@ -33,6 +36,22 @@ class TranslatorImpl : public Translator {
   bool IsDlcDownloaded(const LangPair& lang_pair) override;
   std::optional<std::string> Translate(const LangPair& lang_pair,
                                        const std::string& input_text) override;
+
+ private:
+  void OnInstallDlcComplete(const LangPair& lang_pair,
+                            base::OnceCallback<void(bool)> callback,
+                            base::expected<base::FilePath, std::string> result);
+  std::optional<DictionaryManagerPtr> GetDictionary(const LangPair& lang_pair);
+
+  const raw_ref<odml::OdmlShimLoader> shim_loader_;
+
+  absl::flat_hash_map<LangPair, DictionaryManagerPtr> dictionaries_;
+
+  absl::flat_hash_map<LangPair, std::string> dlc_paths_;
+
+  const TranslateAPI* api_ = nullptr;
+
+  base::WeakPtrFactory<TranslatorImpl> weak_ptr_factory_{this};
 };
 
 }  // namespace i18n

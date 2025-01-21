@@ -315,6 +315,8 @@ if (use.test) {
     sources = [
       "cros_safety/safety_service_manager_impl_test.cc",
       "embedding_model/embedding_model_service_test.cc",
+      "i18n/fake/fake_translate_api.cc",
+      "i18n/translator_impl_test.cc",
       "on_device_model/fake/fake_chrome_ml_api.cc",
       "on_device_model/fake/on_device_model_fake.cc",
       "on_device_model/on_device_model_service_test.cc",

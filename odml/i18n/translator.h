@@ -34,7 +34,7 @@ struct LangPair {
 class Translator {
  public:
   Translator() = default;
-  ~Translator() = default;
+  virtual ~Translator() = default;
 
   Translator(const Translator&) = delete;
   Translator& operator=(const Translator&) = delete;
