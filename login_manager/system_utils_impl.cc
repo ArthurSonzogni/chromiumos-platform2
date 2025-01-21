@@ -53,8 +53,6 @@
 #include <policy/device_policy_impl.h>
 #include <policy/resilient_policy_util.h>
 
-#include "login_manager/child_job.h"  // For ChildJobInterface exit codes.
-
 using std::string;
 using std::vector;
 

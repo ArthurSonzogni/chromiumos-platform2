@@ -20,7 +20,6 @@
 #include <brillo/namespaces/mount_namespace.h>
 #include <gtest/gtest_prod.h>
 
-#include "login_manager/child_job.h"
 #include "login_manager/chrome_setup.h"
 
 namespace login_manager {
@@ -30,16 +29,30 @@ class LoginMetrics;
 class SubprocessInterface;
 class SystemUtils;
 
-class BrowserJobInterface : public ChildJobInterface {
+class BrowserJobInterface {
  public:
-  ~BrowserJobInterface() override {}
+  virtual ~BrowserJobInterface() = default;
 
-  // Overridden from ChildJobInterface
-  bool RunInBackground() override = 0;
-  void KillEverything(int signal, const std::string& message) override = 0;
-  void Kill(int signal, const std::string& message) override = 0;
-  const std::string GetName() const override = 0;
-  pid_t CurrentPid() const override = 0;
+  // Creates a background process and starts the job running in it. Does any
+  // necessary bookkeeping.
+  // Returns true if the process was created, false otherwise.
+  virtual bool RunInBackground() = 0;
+
+  // Attempt to kill the current instance of this job by sending
+  // signal to the _entire process group_, sending message (if set) to
+  // the instance to tell it why it must die.
+  virtual void KillEverything(int signal, const std::string& message) = 0;
+
+  // Attempt to kill the current instance of this job by sending
+  // signal, sending message (if set) to the instance to tell it
+  // why it must die.
+  virtual void Kill(int signal, const std::string& message) = 0;
+
+  // Returns the name of the job.
+  virtual const std::string GetName() const = 0;
+
+  // Returns the pid of the current instance of this job. May be -1.
+  virtual pid_t CurrentPid() const = 0;
 
   virtual bool IsGuestSession() = 0;
 

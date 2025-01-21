@@ -19,7 +19,6 @@ class RSAPrivateKey;
 }  // namespace crypto
 
 namespace login_manager {
-class ChildJobInterface;
 class NssUtil;
 class SessionManagerService;
 class SystemUtils;

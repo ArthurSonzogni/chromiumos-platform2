@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sysexits.h>  // For exit code defines (EX__MAX, etc).
 
 #include <algorithm>
 
@@ -16,7 +17,6 @@
 #include <brillo/asynchronous_signal_handler.h>
 
 #include "login_manager/child_exit_handler.h"
-#include "login_manager/child_job.h"
 
 namespace login_manager {
 
@@ -71,9 +71,13 @@ bool ChildExitDispatcher::OnSigChld(const struct signalfd_siginfo& sig_info) {
 
 void ChildExitDispatcher::Dispatch(const siginfo_t& info) {
   if (info.si_code == CLD_EXITED) {
-    CHECK_NE(info.si_status, ChildJobInterface::kCantSetUid) << info.si_pid;
-    CHECK_NE(info.si_status, ChildJobInterface::kCantSetEnv) << info.si_pid;
-    CHECK_NE(info.si_status, ChildJobInterface::kCantExec) << info.si_pid;
+    constexpr int kCantSetUid = EX__MAX + 1;
+    constexpr int kCantSetEnv = EX__MAX + 4;
+    constexpr int kCantExec = EX_OSERR;
+
+    CHECK_NE(info.si_status, kCantSetUid) << info.si_pid;
+    CHECK_NE(info.si_status, kCantSetEnv) << info.si_pid;
+    CHECK_NE(info.si_status, kCantExec) << info.si_pid;
   }
 
   for (auto* handler : handlers_) {

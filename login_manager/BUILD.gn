@@ -87,7 +87,6 @@ static_library("libsession_manager") {
     "browser_job.cc",
     "child_exit_dispatcher.cc",
     "child_exit_handler.cc",
-    "child_job.cc",
     "chrome_features_service_client.cc",
     "chrome_setup.cc",
     "chromium_command_builder.cc",

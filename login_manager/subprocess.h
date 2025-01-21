@@ -43,7 +43,6 @@ class SubprocessInterface {
 };
 
 // A class that provides functionality for creating/destroying a subprocess.
-// Intended to be embedded in an implementation of ChildJobInterface.
 class Subprocess : public SubprocessInterface {
  public:
   Subprocess(uid_t uid, SystemUtils* system_utils);
