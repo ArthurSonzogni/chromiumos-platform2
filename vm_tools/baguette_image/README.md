@@ -1,8 +1,8 @@
 ## How to use the image?
 
-Note: This instruction is subject to change. v4 image is tested on Lazor/Trogdor, but it should also work on x86 devices. Starting with v4 images, btrfs is used for rootfs.
+Note: This instruction is subject to change. arm64 images are testesd on trogdor, amd64 images are tested on brya.
 
-Prerequisites: A DUT running at least R134 with crostini installed (for the DLC).
+Prerequisites: A DUT running at least R134 with crostini installed (for the DLC and updated vmc tools).
 
 On DUT:
 `vmc create --size 15G baguette` minimum size is 2G, the files in the image currently takes almost 1GB, and I added a few hundred MBs of empty space when making the image.
@@ -26,11 +26,10 @@ vmc start --vm-type baguette \
 What to look for:
 
 - You will be welcomed by a shell logged in to the `chronos` user.
-- (Ignore the manual env settings underneath if you are running a v2+ image)
-- If you install `mesa-utils` and run `DISPLAY=:0 glxgears` (or `vkgears` if you like that better), the gears should show up on your display.
+- If you install `mesa-utils` and run `DISPLAY=:0 glxgears`, the gears should show up on your display.
 - If you run `df -h`, you should see your entire VM disk space has been occupied by the rootfs.
 - If you install `featherpad`, you should see the app icon on your chrome app selector (but clicking it will lead to a window asking you to install borealis).
-- If you install `qtwayland5` too, `export XDG_RUNTIME_DIR=/run/user/$(id -u)/` and `QT_QPA_PLATFORM=wayland featherpad` will show you featherpad running on wayland.
+- If you install `qtwayland5` too, `QT_QPA_PLATFORM=wayland featherpad` will show you featherpad running on wayland.
 
 Known issue:
 
