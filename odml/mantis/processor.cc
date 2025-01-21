@@ -55,6 +55,8 @@ constexpr auto kMapSafetyResult =
          SafetyClassifierVerdict::kServiceNotAvailable},
         {cros_safety::mojom::SafetyClassifierVerdict::kBackendFailure,
          SafetyClassifierVerdict::kBackendFailure},
+        {cros_safety::mojom::SafetyClassifierVerdict::kNoInternetConnection,
+         SafetyClassifierVerdict::kNoInternetConnection},
     });
 
 constexpr auto kMapImageTypeToRuleset =

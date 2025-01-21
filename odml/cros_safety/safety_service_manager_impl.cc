@@ -100,9 +100,12 @@ void SafetyServiceManagerImpl::OnOnDeviceSafetySessionDisconnected(
 }
 
 void SafetyServiceManagerImpl::OnClassifySafetyDone(
-    ClassifySafetyCallback callback, mojom::SafetyClassifierVerdict verdict) {
+    ClassifySafetyCallback callback,
+    mojom::SafetyRuleset ruleset,
+    mojom::SafetyClassifierVerdict verdict) {
   if (verdict != mojom::SafetyClassifierVerdict::kPass) {
-    LOG(INFO) << "Classify safety failed with result: " << verdict;
+    LOG(INFO) << "Classify safety failed for ruleset: " << ruleset
+              << " with result: " << verdict;
   }
   std::move(callback).Run(verdict);
 }
@@ -149,7 +152,8 @@ void SafetyServiceManagerImpl::ClassifyImageSafetyInternal(
       ruleset, text, std::move(image),
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
           base::BindOnce(&SafetyServiceManagerImpl::OnClassifySafetyDone,
-                         weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
+                         weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                         ruleset),
           mojom::SafetyClassifierVerdict::kServiceNotAvailable));
 }
 
@@ -204,7 +208,8 @@ void SafetyServiceManagerImpl::ClassifyTextSafetyInternal(
       ruleset, text,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
           base::BindOnce(&SafetyServiceManagerImpl::OnClassifySafetyDone,
-                         weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
+                         weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                         ruleset),
           mojom::SafetyClassifierVerdict::kServiceNotAvailable));
 }
 

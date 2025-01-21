@@ -51,6 +51,7 @@ class SafetyServiceManagerImpl : public SafetyServiceManager {
                                            const std::string& message);
 
   void OnClassifySafetyDone(ClassifySafetyCallback callback,
+                            mojom::SafetyRuleset ruleset,
                             mojom::SafetyClassifierVerdict verdict);
   void EnsureCloudSafetySessionCreated(base::OnceClosure callback);
   void GetCloudSafetySessionDone(base::OnceClosure callback,
