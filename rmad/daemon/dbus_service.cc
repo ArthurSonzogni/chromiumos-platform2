@@ -83,6 +83,9 @@ DBusService::DBusService(mojo::PlatformChannelEndpoint endpoint,
   mojo::OutgoingInvitation invitation;
   mojo::ScopedMessagePipeHandle pipe =
       invitation.AttachMessagePipe(kRmadInternalMojoPipeName);
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  invitation.set_extra_flags(MOJO_SEND_INVITATION_FLAG_SHARE_BROKER);
+#endif
   mojo::OutgoingInvitation::Send(std::move(invitation),
                                  base::kNullProcessHandle, std::move(endpoint));
   executor_.Bind(mojo::PendingRemote<chromeos::rmad::mojom::Executor>(
