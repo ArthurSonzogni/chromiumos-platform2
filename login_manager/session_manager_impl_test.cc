@@ -353,7 +353,7 @@ class SessionManagerImplTest : public ::testing::Test,
         std::nullopt, &system_utils_, &crossystem_, &vpd_process_, &owner_key_,
         &android_container_, &install_attributes_reader_, powerd_proxy_.get(),
         system_clock_proxy_.get(), debugd_proxy_.get(), fwmp_proxy_.get(),
-        arc_sideload_status_);
+        std::unique_ptr<ArcSideloadStatusInterface>(arc_sideload_status_));
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
     impl_->SetUiLogSymlinkPathForTesting(log_symlink_);
 

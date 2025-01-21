@@ -59,6 +59,7 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "dbus/login_manager/dbus-constants.h"
+#include "login_manager/arc_manager.h"
 #include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/browser_job.h"
@@ -464,7 +465,7 @@ SessionManagerImpl::SessionManagerImpl(
     dbus::ObjectProxy* system_clock_proxy,
     dbus::ObjectProxy* debugd_proxy,
     dbus::ObjectProxy* fwmp_proxy,
-    ArcSideloadStatusInterface* arc_sideload_status)
+    std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status)
     : init_controller_(std::move(init_controller)),
       system_clock_last_sync_info_retry_delay_(
           kSystemClockLastSyncInfoRetryDelay),
@@ -487,7 +488,8 @@ SessionManagerImpl::SessionManagerImpl(
       system_clock_proxy_(system_clock_proxy),
       debugd_proxy_(debugd_proxy),
       fwmp_proxy_(fwmp_proxy),
-      arc_sideload_status_(arc_sideload_status),
+      arc_manager_(std::make_unique<ArcManager>(
+          *system_utils_, std::move(arc_sideload_status))),
       ui_log_symlink_path_(kDefaultUiLogSymlinkPath),
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()),
@@ -651,7 +653,7 @@ bool SessionManagerImpl::Initialize() {
     device_policy_->set_delegate(this);
   }
 
-  arc_sideload_status_->Initialize();
+  arc_manager_->Initialize();
 
   return true;
 }
@@ -668,7 +670,7 @@ void SessionManagerImpl::Finalize() {
       ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN);
   android_container_->EnsureJobExit(kContainerTimeout);
 
-  arc_sideload_status_.reset();
+  arc_manager_->Finalize();
 }
 
 bool SessionManagerImpl::StartDBusService() {
@@ -1672,57 +1674,14 @@ bool SessionManagerImpl::GetArcStartTimeTicks(brillo::ErrorPtr* error,
 #endif  // !USE_CHEETS
 }
 
-void SessionManagerImpl::EnableAdbSideloadCallbackAdaptor(
-    brillo::dbus_utils::DBusMethodResponse<bool>* response,
-    ArcSideloadStatusInterface::Status status,
-    const char* error) {
-  if (error != nullptr) {
-    brillo::ErrorPtr dbus_error = CreateError(DBUS_ERROR_FAILED, error);
-    response->ReplyWithError(dbus_error.get());
-    return;
-  }
-
-  if (status == ArcSideloadStatusInterface::Status::NEED_POWERWASH) {
-    brillo::ErrorPtr dbus_error = CreateError(DBUS_ERROR_NOT_SUPPORTED, error);
-    response->ReplyWithError(dbus_error.get());
-    return;
-  }
-
-  response->Return(status == ArcSideloadStatusInterface::Status::ENABLED);
-}
-
 void SessionManagerImpl::EnableAdbSideload(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  if (system_utils_->Exists(base::FilePath(kLoggedInFlag))) {
-    auto error = CREATE_ERROR_AND_LOG(dbus_error::kSessionExists,
-                                      "EnableAdbSideload is not allowed "
-                                      "once a user logged in this boot.");
-    response->ReplyWithError(error.get());
-    return;
-  }
-
-  arc_sideload_status_->EnableAdbSideload(base::BindOnce(
-      &SessionManagerImpl::EnableAdbSideloadCallbackAdaptor,
-      weak_ptr_factory_.GetWeakPtr(), base::Owned(response.release())));
-}
-
-void SessionManagerImpl::QueryAdbSideloadCallbackAdaptor(
-    brillo::dbus_utils::DBusMethodResponse<bool>* response,
-    ArcSideloadStatusInterface::Status status) {
-  if (status == ArcSideloadStatusInterface::Status::NEED_POWERWASH) {
-    brillo::ErrorPtr dbus_error =
-        CreateError(DBUS_ERROR_NOT_SUPPORTED, "Need powerwash");
-    response->ReplyWithError(dbus_error.get());
-    return;
-  }
-  response->Return(status == ArcSideloadStatusInterface::Status::ENABLED);
+  arc_manager_->EnableAdbSideload(std::move(response));
 }
 
 void SessionManagerImpl::QueryAdbSideload(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  arc_sideload_status_->QueryAdbSideload(base::BindOnce(
-      &SessionManagerImpl::QueryAdbSideloadCallbackAdaptor,
-      weak_ptr_factory_.GetWeakPtr(), base::Owned(response.release())));
+  arc_manager_->QueryAdbSideload(std::move(response));
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
@@ -1974,7 +1933,7 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
       base::StringPrintf("MANAGEMENT_TRANSITION=%d",
                          request.management_transition()),
       base::StringPrintf("ENABLE_ADB_SIDELOAD=%d",
-                         arc_sideload_status_->IsAdbSideloadAllowed() &&
+                         arc_manager_->IsAdbSideloadAllowed() &&
                              is_adb_sideloading_allowed_for_request),
       base::StringPrintf("ENABLE_ARC_NEARBY_SHARE=%d",
                          request.enable_arc_nearby_share())};

@@ -82,6 +82,7 @@ generate_dbus_adaptors("session_manager-adaptors") {
 static_library("libsession_manager") {
   sources = [
     "android_oci_wrapper.cc",
+    "arc_manager.cc",
     "blob_util.cc",
     "browser_job.cc",
     "child_exit_dispatcher.cc",

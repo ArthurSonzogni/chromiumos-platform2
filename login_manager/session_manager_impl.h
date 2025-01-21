@@ -51,6 +51,7 @@ class Response;
 }  // namespace dbus
 
 namespace login_manager {
+class ArcManager;
 class DeviceLocalAccountManager;
 class InitDaemonController;
 class LoginMetrics;
@@ -172,25 +173,26 @@ class SessionManagerImpl
   };
 
   // Ownership of raw pointer arguments remains with the caller.
-  SessionManagerImpl(Delegate* delegate,
-                     std::unique_ptr<InitDaemonController> init_controller,
-                     const scoped_refptr<dbus::Bus>& bus,
-                     DeviceIdentifierGenerator* device_identifier_generator,
-                     ProcessManagerServiceInterface* manager,
-                     LoginMetrics* metrics,
-                     NssUtil* nss,
-                     std::optional<base::FilePath> ns_path,
-                     SystemUtils* system_utils,
-                     crossystem::Crossystem* crossystem,
-                     VpdProcess* vpd_process,
-                     PolicyKey* owner_key,
-                     ContainerManagerInterface* android_container,
-                     InstallAttributesReader* install_attributes_reader,
-                     dbus::ObjectProxy* powerd_proxy,
-                     dbus::ObjectProxy* system_clock_proxy,
-                     dbus::ObjectProxy* debugd_proxy,
-                     dbus::ObjectProxy* fwmp_proxy,
-                     ArcSideloadStatusInterface* arc_sideload_status);
+  SessionManagerImpl(
+      Delegate* delegate,
+      std::unique_ptr<InitDaemonController> init_controller,
+      const scoped_refptr<dbus::Bus>& bus,
+      DeviceIdentifierGenerator* device_identifier_generator,
+      ProcessManagerServiceInterface* manager,
+      LoginMetrics* metrics,
+      NssUtil* nss,
+      std::optional<base::FilePath> ns_path,
+      SystemUtils* system_utils,
+      crossystem::Crossystem* crossystem,
+      VpdProcess* vpd_process,
+      PolicyKey* owner_key,
+      ContainerManagerInterface* android_container,
+      InstallAttributesReader* install_attributes_reader,
+      dbus::ObjectProxy* powerd_proxy,
+      dbus::ObjectProxy* system_clock_proxy,
+      dbus::ObjectProxy* debugd_proxy,
+      dbus::ObjectProxy* fwmp_proxy,
+      std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status);
   SessionManagerImpl(const SessionManagerImpl&) = delete;
   SessionManagerImpl& operator=(const SessionManagerImpl&) = delete;
 
@@ -409,14 +411,6 @@ class SessionManagerImpl
   // as the source of the request.
   void RestartDevice(const std::string& reason);
 
-  void EnableAdbSideloadCallbackAdaptor(
-      brillo::dbus_utils::DBusMethodResponse<bool>* response,
-      ArcSideloadStatusInterface::Status status,
-      const char* error);
-  void QueryAdbSideloadCallbackAdaptor(
-      brillo::dbus_utils::DBusMethodResponse<bool>* response,
-      ArcSideloadStatusInterface::Status status);
-
   void BackupArcBugReport(const std::string& account_id);
   void DeleteArcBugReportBackup(const std::string& account_id);
 
@@ -495,7 +489,9 @@ class SessionManagerImpl
   std::unique_ptr<UserPolicyServiceFactory> user_policy_factory_;
   std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager_;
 
-  std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status_;
+  // TODO(crbug.com/390297821): Move this out from SessionManager as an
+  // independent D-Bus service.
+  std::unique_ptr<ArcManager> arc_manager_;
 
   // Callbacks passed to RequestServerBackedStateKeys() while
   // |system_clock_synchronized_| was false. They will be run by

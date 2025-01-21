@@ -232,10 +232,10 @@ bool SessionManagerService::Initialize() {
       bootlockbox::kBootLockboxServiceName,
       dbus::ObjectPath(bootlockbox::kBootLockboxServicePath));
 
-  ArcSideloadStatusInterface* arc_sideload_status =
-      new ArcSideloadStatus(boot_lockbox_dbus_proxy_);
+  auto arc_sideload_status =
+      std::make_unique<ArcSideloadStatus>(boot_lockbox_dbus_proxy_);
 #else
-  ArcSideloadStatusInterface* arc_sideload_status = new ArcSideloadStatusStub();
+  auto arc_sideload_status = std::make_unique<ArcSideloadStatusStub>();
 #endif
 
   fwmp_dbus_proxy_ = bus_->GetObjectProxy(
@@ -255,7 +255,7 @@ bool SessionManagerService::Initialize() {
       nss_.get(), chrome_mount_ns_path_, system_utils_, &crossystem_,
       &vpd_process_, &owner_key_, android_container_.get(),
       &install_attributes_reader_, powerd_dbus_proxy_, system_clock_proxy,
-      debugd_dbus_proxy_, fwmp_dbus_proxy_, arc_sideload_status);
+      debugd_dbus_proxy_, fwmp_dbus_proxy_, std::move(arc_sideload_status));
   if (!InitializeImpl()) {
     return false;
   }
