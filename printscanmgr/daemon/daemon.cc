@@ -20,6 +20,9 @@ Daemon::Daemon(mojo::PlatformChannelEndpoint endpoint)
   mojo::OutgoingInvitation invitation;
   // Always use 0 as the default pipe name.
   mojo::ScopedMessagePipeHandle pipe = invitation.AttachMessagePipe(0);
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  invitation.set_extra_flags(MOJO_SEND_INVITATION_FLAG_SHARE_BROKER);
+#endif
   mojo::OutgoingInvitation::Send(std::move(invitation),
                                  base::kNullProcessHandle, std::move(endpoint));
   dbus_adaptor_ = std::make_unique<DbusAdaptor>(

@@ -23,8 +23,13 @@ Executor::Executor(mojo::PlatformChannelEndpoint endpoint)
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       mojo_task_runner_, mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      std::move(endpoint), MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(std::move(endpoint));
+#endif
   // Always use 0 as the default pipe name.
   mojo::ScopedMessagePipeHandle pipe = invitation.ExtractMessagePipe(0);
 
