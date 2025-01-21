@@ -68,7 +68,8 @@ class FakeBrowserJob : public BrowserJobInterface {
               (const std::vector<std::string>&),
               (override));
 
-  bool RunInBackground() override;
+  bool RunInBackground(
+      base::OnceCallback<void(const siginfo_t&)> callback) override;
   const std::string GetName() const override;
   pid_t CurrentPid() const override;
   void ClearPid() override;

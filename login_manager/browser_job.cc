@@ -29,6 +29,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <brillo/process/process_reaper.h>
 #include <chromeos/switches/chrome_switches.h>
 
 #include "login_manager/login_metrics.h"
@@ -188,12 +189,14 @@ std::string GetUnprefixedFlagName(const std::string& flag) {
 
 BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
                        const std::vector<std::string>& environment_variables,
+                       brillo::ProcessReaper& process_reaper,
                        LoginMetrics* metrics,
                        SystemUtils* system_utils,
                        const BrowserJob::Config& cfg,
                        std::unique_ptr<SubprocessInterface> subprocess)
     : arguments_(arguments),
       environment_variables_(environment_variables),
+      process_reaper_(process_reaper),
       login_metrics_(metrics),
       system_utils_(system_utils),
       start_times_(std::deque<time_t>(kRestartTries, 0)),
@@ -227,7 +230,8 @@ void BrowserJob::RecordTime() {
   DCHECK_EQ(kRestartTries, start_times_.size());
 }
 
-bool BrowserJob::RunInBackground() {
+bool BrowserJob::RunInBackground(
+    base::OnceCallback<void(const siginfo_t&)> termination_callback) {
   CHECK(login_metrics_);
   bool first_boot = !login_metrics_->HasRecordedChromeExec();
   login_metrics_->RecordStats("chrome-exec");
@@ -283,7 +287,15 @@ bool BrowserJob::RunInBackground() {
     subprocess_->EnterExistingMountNamespace(ns_path);
   }
 
-  return subprocess_->ForkAndExec(argv, env_vars);
+  if (!subprocess_->ForkAndExec(argv, env_vars)) {
+    return false;
+  }
+
+  process_reaper_->WatchForChild(
+      FROM_HERE, subprocess_->GetPid(),
+      base::BindOnce(&BrowserJob::OnTerminated, weak_factory_.GetWeakPtr(),
+                     std::move(termination_callback)));
+  return true;
 }
 
 void BrowserJob::KillEverything(int signal, const std::string& message) {
@@ -447,6 +459,10 @@ void BrowserJob::SetAdditionalEnvironmentVariables(
 }
 
 void BrowserJob::ClearPid() {
+  pid_t pid = subprocess_->GetPid();
+  if (pid >= 0) {
+    process_reaper_->ForgetChild(pid);
+  }
   subprocess_->ClearPid();
 }
 
@@ -536,6 +552,14 @@ bool BrowserJob::ShouldDropExtraArguments() const {
   return (start_time_with_extra_args != 0 &&
           system_utils_->time(nullptr) - start_time_with_extra_args <
               kRestartWindowSeconds);
+}
+
+void BrowserJob::OnTerminated(
+    base::OnceCallback<void(const siginfo_t&)> callback,
+    const siginfo_t& siginfo) {
+  if (callback) {
+    std::move(callback).Run(siginfo);
+  }
 }
 
 }  // namespace login_manager

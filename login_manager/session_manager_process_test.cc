@@ -126,7 +126,8 @@ class SessionManagerProcessTest : public ::testing::Test {
         aborted_browser_pid_path_);
   }
 
-  std::unique_ptr<BrowserJobInterface> CreateFakeBrowserJob() {
+  std::unique_ptr<BrowserJobInterface> CreateFakeBrowserJob(
+      brillo::ProcessReaper& process_reaper) {
     CHECK(!fake_browser_job_);
     auto job = std::make_unique<FakeBrowserJob>("FakeBrowserJob");
     fake_browser_job_ = job.get();
@@ -281,7 +282,7 @@ TEST_F(SessionManagerProcessTest, CleanupBrowser) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(false);
   EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
   EXPECT_CALL(*job, AbortAndKillAll(_)).Times(1);
-  job->RunInBackground();
+  job->RunInBackground(base::DoNothing());
   manager_->test_api().CleanupChildrenBeforeExit();
 }
 
@@ -421,7 +422,7 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
 TEST_F(SessionManagerProcessTest, TestAbortedBrowserPidWritten) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(false);
   EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
-  ASSERT_TRUE(job->RunInBackground());
+  ASSERT_TRUE(job->RunInBackground(base::DoNothing()));
 
   manager_->AbortBrowserForHang();
   ASSERT_TRUE(base::PathExists(aborted_browser_pid_path_));

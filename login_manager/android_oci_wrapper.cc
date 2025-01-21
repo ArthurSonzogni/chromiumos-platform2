@@ -17,7 +17,9 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <brillo/process/process_reaper.h>
 
+#include "login_manager/siginfo_description.h"
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
@@ -35,25 +37,31 @@ constexpr char AndroidOciWrapper::kRunOciConfigPath[];
 constexpr char AndroidOciWrapper::kProcFdPath[];
 
 AndroidOciWrapper::AndroidOciWrapper(SystemUtils* system_utils,
+                                     brillo::ProcessReaper& process_reaper,
                                      const base::FilePath& containers_directory)
-    : system_utils_(system_utils), containers_directory_(containers_directory) {
+    : system_utils_(system_utils),
+      process_reaper_(process_reaper),
+      containers_directory_(containers_directory) {
   DCHECK(system_utils_);
   DCHECK(!containers_directory_.empty());
 }
 
-AndroidOciWrapper::~AndroidOciWrapper() = default;
-
-bool AndroidOciWrapper::HandleExit(const siginfo_t& status) {
-  if (!container_pid_ || status.si_pid != container_pid_) {
-    return false;
+AndroidOciWrapper::~AndroidOciWrapper() {
+  // Release dangling callback if it has.
+  if (container_pid_) {
+    process_reaper_->ForgetChild(container_pid_);
   }
+}
+
+void AndroidOciWrapper::HandleExit(const siginfo_t& status) {
+  CHECK(container_pid_);
+  CHECK_EQ(status.si_pid, container_pid_);
 
   LOG(INFO) << "Android container " << status.si_pid << " exited with "
             << GetExitDescription(status);
 
   stateful_mode_ = StatefulMode::STATELESS;
   CleanUpContainer();
-  return true;
 }
 
 void AndroidOciWrapper::RequestJobExit(ArcContainerStopReason reason) {
@@ -185,6 +193,9 @@ bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
   }
 
   LOG(INFO) << "Container PID: " << container_pid_;
+  process_reaper_->WatchForChild(FROM_HERE, container_pid_,
+                                 base::BindOnce(&AndroidOciWrapper::HandleExit,
+                                                weak_factory_.GetWeakPtr()));
 
   exit_callback_ = std::move(exit_callback);
   // Set CRASH initially. So if ARC is stopped without RequestJobExit() call,
@@ -301,6 +312,7 @@ void AndroidOciWrapper::CleanUpContainer() {
   }
 
   // Save temporary values until everything is cleaned up.
+  process_reaper_->ForgetChild(pid);
   ExitCallback old_callback;
   std::swap(old_callback, exit_callback_);
   container_pid_ = 0;

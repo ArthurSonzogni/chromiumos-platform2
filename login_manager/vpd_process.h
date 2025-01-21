@@ -15,6 +15,8 @@ namespace login_manager {
 
 class VpdProcess {
  public:
+  virtual ~VpdProcess() = default;
+
   using KeyValuePairs = std::vector<std::pair<std::string, std::string>>;
   using CompletionCallback = base::OnceCallback<void(bool)>;
 

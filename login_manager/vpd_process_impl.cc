@@ -10,6 +10,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <brillo/process/process_reaper.h>
 #include <metrics/metrics_library.h>
 
 namespace {
@@ -20,9 +21,20 @@ constexpr char kVpdUpdateMetric[] = "Enterprise.VpdUpdateStatus";
 
 namespace login_manager {
 
-VpdProcessImpl::VpdProcessImpl(SystemUtils* system_utils)
-    : system_utils_(system_utils) {
+VpdProcessImpl::VpdProcessImpl(SystemUtils* system_utils,
+                               brillo::ProcessReaper& process_reaper)
+    : system_utils_(system_utils), process_reaper_(process_reaper) {
   DCHECK(system_utils_);
+}
+
+VpdProcessImpl::~VpdProcessImpl() {
+  // Release dangling callback if it has.
+  if (subprocess_) {
+    pid_t pid = subprocess_->GetPid();
+    if (pid >= 0) {
+      process_reaper_->ForgetChild(pid);
+    }
+  }
 }
 
 void VpdProcessImpl::RequestJobExit(const std::string& reason) {
@@ -63,21 +75,18 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
   }
 
   // |completion_| will be run when the job exits.
-  completion_ = std::move(completion);
+  process_reaper_->WatchForChild(
+      FROM_HERE, subprocess_->GetPid(),
+      base::BindOnce(&VpdProcessImpl::HandleExit, weak_factory_.GetWeakPtr(),
+                     std::move(completion)));
   return true;
 }
 
-bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
-  if (!subprocess_) {
-    return false;
-  }
-  if (subprocess_->GetPid() <= 0) {
-    subprocess_.reset();
-    return false;
-  }
-  if (subprocess_->GetPid() != info.si_pid) {
-    return false;
-  }
+void VpdProcessImpl::HandleExit(CompletionCallback callback,
+                                const siginfo_t& info) {
+  CHECK(subprocess_);
+  CHECK_GE(subprocess_->GetPid(), 0);
+  CHECK_EQ(subprocess_->GetPid(), info.si_pid);
 
   subprocess_.reset();
   MetricsLibrary metrics;
@@ -87,10 +96,9 @@ bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
   LOG_IF(ERROR, !success) << "Failed to update VPD, code = " << info.si_status;
 
   // Reset the completion to ensure we won't call it again.
-  if (!completion_.is_null()) {
-    std::move(completion_).Run(success);
+  if (callback) {
+    std::move(callback).Run(success);
   }
-  return true;
 }
 
 }  // namespace login_manager

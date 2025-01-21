@@ -270,12 +270,14 @@ int main(int argc, char* argv[]) {
           [](const std::vector<std::string>& command,
              const std::vector<std::string>& environment, LoginMetrics* metrics,
              login_manager::SystemUtils* system_utils,
-             const BrowserJob::Config& config,
-             uid_t uid) -> std::unique_ptr<BrowserJobInterface> {
+             const BrowserJob::Config& config, uid_t uid,
+             brillo::ProcessReaper& process_reaper)
+              -> std::unique_ptr<BrowserJobInterface> {
             // This job encapsulates the command specified on the command line,
             // and the runtime options for it.
             return std::make_unique<BrowserJob>(
-                command, environment, metrics, system_utils, config,
+                command, environment, process_reaper, metrics, system_utils,
+                config,
                 std::make_unique<login_manager::Subprocess>(uid, system_utils));
           },
           command, chrome_setup->env, &metrics, &system_utils, config,

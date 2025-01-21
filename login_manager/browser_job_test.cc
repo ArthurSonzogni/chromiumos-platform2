@@ -18,8 +18,10 @@
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <brillo/process/process_reaper.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -85,6 +87,7 @@ class BrowserJobTest : public ::testing::Test {
   std::vector<std::string> env_;
   MockMetrics metrics_;
   MockSystemUtils system_utils_;
+  brillo::ProcessReaper process_reaper_;
   std::unique_ptr<BrowserJob> job_;
 };
 
@@ -101,7 +104,7 @@ const char BrowserJobTest::kChromeMountNamespacePath[] = "mnt_chrome";
 void BrowserJobTest::SetUp() {
   argv_.assign(std::begin(kArgv), std::end(kArgv));
   job_.reset(new BrowserJob(
-      argv_, env_, &metrics_, &system_utils_,
+      argv_, env_, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(getuid(), &system_utils_)));
 }
@@ -132,7 +135,7 @@ TEST_F(BrowserJobTest, AbortAndKillAll) {
   EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(false));
   EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
 
-  ASSERT_TRUE(job_->RunInBackground());
+  ASSERT_TRUE(job_->RunInBackground(base::DoNothing()));
   job_->AbortAndKillAll(base::Seconds(3));
 }
 
@@ -152,7 +155,7 @@ TEST_F(BrowserJobTest, AbortAndKillAll_AlreadyGone) {
   EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(false));
   EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
 
-  ASSERT_TRUE(job_->RunInBackground());
+  ASSERT_TRUE(job_->RunInBackground(base::DoNothing()));
   job_->AbortAndKillAll(base::Seconds(3));
 }
 
@@ -174,7 +177,7 @@ TEST_F(BrowserJobTest, AbortAndKillAll_BrowserGoneChildrenLive) {
   EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(false));
   EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
 
-  ASSERT_TRUE(job_->RunInBackground());
+  ASSERT_TRUE(job_->RunInBackground(base::DoNothing()));
   job_->AbortAndKillAll(base::Seconds(3));
 }
 
@@ -194,12 +197,12 @@ TEST_F(BrowserJobTest, UnshareMountNamespaceForGuest) {
                                 BrowserJobInterface::kGuestSessionFlag};
 
   BrowserJob job(
-      argv, env_, &metrics_, &system_utils_,
+      argv, env_, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{false /*isolate_guest_session*/,
                          false /*isolate_regular_session*/, std::nullopt},
       std::move(p_subp));
 
-  ASSERT_TRUE(job.RunInBackground());
+  ASSERT_TRUE(job.RunInBackground(base::DoNothing()));
 }
 
 TEST_F(BrowserJobTest, EnterMountNamespaceForGuest) {
@@ -219,14 +222,14 @@ TEST_F(BrowserJobTest, EnterMountNamespaceForGuest) {
                                 BrowserJobInterface::kGuestSessionFlag};
 
   BrowserJob job(
-      argv, env_, &metrics_, &system_utils_,
+      argv, env_, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{true /*isolate_guest_session*/,
                          false /*isolate_regular_session*/,
                          std::optional<base::FilePath>(
                              BrowserJobTest::kChromeMountNamespacePath)},
       std::move(p_subp));
 
-  ASSERT_TRUE(job.RunInBackground());
+  ASSERT_TRUE(job.RunInBackground(base::DoNothing()));
 }
 
 TEST_F(BrowserJobTest, EnterMountNamespaceForRegularUser) {
@@ -243,14 +246,14 @@ TEST_F(BrowserJobTest, EnterMountNamespaceForRegularUser) {
   std::unique_ptr<SubprocessInterface> p_subp(mock_subp);
 
   BrowserJob job(
-      argv_, env_, &metrics_, &system_utils_,
+      argv_, env_, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{true /*isolate_guest_session*/,
                          true /*isolate_regular_session*/,
                          std::optional<base::FilePath>(
                              BrowserJobTest::kChromeMountNamespacePath)},
       std::move(p_subp));
 
-  ASSERT_TRUE(job.RunInBackground());
+  ASSERT_TRUE(job.RunInBackground(base::DoNothing()));
 }
 
 TEST_F(BrowserJobTest, ShouldStopTest) {
@@ -302,7 +305,7 @@ TEST_F(BrowserJobTest, ShouldAddCrashLoopArgBeforeStopping) {
       .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds + 1));
   for (int i = 0; i < BrowserJob::kRestartTries - 1; ++i) {
     EXPECT_FALSE(job_->ShouldStop());
-    EXPECT_TRUE(job_->RunInBackground());
+    EXPECT_TRUE(job_->RunInBackground(base::DoNothing()));
     EXPECT_THAT(
         job_->ExportArgv(),
         Not(Contains(HasSubstr(BrowserJobInterface::kCrashLoopBeforeFlag))));
@@ -310,7 +313,7 @@ TEST_F(BrowserJobTest, ShouldAddCrashLoopArgBeforeStopping) {
   }
 
   EXPECT_FALSE(job_->ShouldStop());
-  EXPECT_TRUE(job_->RunInBackground());
+  EXPECT_TRUE(job_->RunInBackground(base::DoNothing()));
   // 201 = 101 (the time system_utils_.time(nullptr) is returning) + 100
   // (kRestartWindowSeconds).
   ASSERT_EQ(BrowserJob::kRestartWindowSeconds, 100)
@@ -337,11 +340,11 @@ TEST_F(BrowserJobTest, OneTimeBootFlags) {
       .WillOnce(Return(true));
   EXPECT_CALL(metrics_, RecordStats(StrEq(("chrome-exec")))).Times(2);
 
-  ASSERT_TRUE(job_->RunInBackground());
+  ASSERT_TRUE(job_->RunInBackground(base::DoNothing()));
   ExpectArgsToContainFlag(job_->ExportArgv(),
                           BrowserJob::kFirstExecAfterBootFlag, "");
 
-  ASSERT_TRUE(job_->RunInBackground());
+  ASSERT_TRUE(job_->RunInBackground(base::DoNothing()));
   ExpectArgsNotToContainFlag(job_->ExportArgv(),
                              BrowserJob::kFirstExecAfterBootFlag, "");
 }
@@ -361,7 +364,7 @@ TEST_F(BrowserJobTest, RunBrowserTermMessage) {
   EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
 
   std::string term_message("killdya");
-  ASSERT_TRUE(job_->RunInBackground());
+  ASSERT_TRUE(job_->RunInBackground(base::DoNothing()));
   job_->Kill(signal, term_message);
 }
 
@@ -383,7 +386,7 @@ TEST_F(BrowserJobTest, StartStopSessionTest) {
 
 TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
   BrowserJob job(
-      argv_, env_, &metrics_, &system_utils_,
+      argv_, env_, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
   job.StartSession(kUser, kHash);
@@ -412,7 +415,7 @@ TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
 TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
   std::vector<std::string> argv = {"zero", "one", "two", "--login-manager"};
   BrowserJob job(
-      argv, env_, &metrics_, &system_utils_,
+      argv, env_, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -525,7 +528,7 @@ TEST_F(BrowserJobTest, FeatureFlags) {
 TEST_F(BrowserJobTest, ExportArgv) {
   std::vector<std::string> argv(std::begin(kArgv), std::end(kArgv));
   BrowserJob job(
-      argv, env_, &metrics_, &system_utils_,
+      argv, env_, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -538,7 +541,7 @@ TEST_F(BrowserJobTest, ExportArgv) {
 TEST_F(BrowserJobTest, SetAdditionalEnvironmentVariables) {
   std::vector<std::string> argv(std::begin(kArgv), std::end(kArgv));
   BrowserJob job(
-      argv, {"A=a"}, &metrics_, &system_utils_,
+      argv, {"A=a"}, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
   job.SetAdditionalEnvironmentVariables({"B=b", "C="});
@@ -561,7 +564,7 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
     std::vector<std::string> argv = {kArg1,     kVmodule1, kArg2, kArg3,
                                      kVmodule2, kVmodule3, kArg4};
     BrowserJob job(
-        argv, env_, &metrics_, &system_utils_,
+        argv, env_, process_reaper_, &metrics_, &system_utils_,
         BrowserJob::Config{false, false, std::nullopt},
         std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -578,7 +581,7 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
 
     std::vector<std::string> argv = {kArg1, kVmodule, kArg2, kArg3, kArg4};
     BrowserJob job(
-        argv, env_, &metrics_, &system_utils_,
+        argv, env_, process_reaper_, &metrics_, &system_utils_,
         BrowserJob::Config{false, false, std::nullopt},
         std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -591,7 +594,7 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
     std::vector<std::string> argv = {kArg1, kArg2, kArg3, kArg4};
 
     BrowserJob job(
-        argv, env_, &metrics_, &system_utils_,
+        argv, env_, process_reaper_, &metrics_, &system_utils_,
         BrowserJob::Config{false, false, std::nullopt},
         std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -633,7 +636,7 @@ TEST_F(BrowserJobTest, CombineFeatureArgs) {
       kEnable3, kDisable3, kBlinkEnable3, kBlinkDisable3,
   };
   BrowserJob job(
-      kArgv, env_, &metrics_, &system_utils_,
+      kArgv, env_, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -682,7 +685,7 @@ TEST_F(BrowserJobTest, CombineFeatureArgs_ResolveToEmpty) {
       kEnable, kDisable, kArg1, kBlinkEnable, kBlinkDisable, kArg2,
   };
   BrowserJob job(
-      kArgv, env_, &metrics_, &system_utils_,
+      kArgv, env_, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -726,7 +729,7 @@ TEST_F(BrowserJobTest, CombineFeatureArgs_Empty) {
       kArg2,
   };
   BrowserJob job(
-      kArgv, env_, &metrics_, &system_utils_,
+      kArgv, env_, process_reaper_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 

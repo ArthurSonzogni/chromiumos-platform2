@@ -5,12 +5,19 @@
 #ifndef LOGIN_MANAGER_ANDROID_OCI_WRAPPER_H_
 #define LOGIN_MANAGER_ANDROID_OCI_WRAPPER_H_
 
+#include <signal.h>
+
 #include <string>
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <base/memory/raw_ref.h>
 
 #include "login_manager/container_manager_interface.h"
+
+namespace brillo {
+class ProcessReaper;
+}  // namespace brillo
 
 namespace login_manager {
 
@@ -24,14 +31,12 @@ class AndroidOciWrapper : public ContainerManagerInterface {
  public:
   // Ownership of |system_utils| remains with the caller.
   AndroidOciWrapper(SystemUtils* system_utils,
+                    brillo::ProcessReaper& process_reaper,
                     const base::FilePath& containers_directory);
   AndroidOciWrapper(const AndroidOciWrapper&) = delete;
   AndroidOciWrapper& operator=(const AndroidOciWrapper&) = delete;
 
   ~AndroidOciWrapper() override;
-
-  // ChildExitHandler:
-  bool HandleExit(const siginfo_t& status) override;
 
   // ContainerManagerInterface:
   bool StartContainer(const std::vector<std::string>& env,
@@ -41,6 +46,10 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   bool GetContainerPID(pid_t* pid_out) const override;
   StatefulMode GetStatefulMode() const override;
   void SetStatefulMode(StatefulMode mode) override;
+
+  // Called on child process termination.
+  // TODO(crbug.com/1053782): Hide under private section.
+  void HandleExit(const siginfo_t& status);
 
   // Relative path to container from |containers_directory_|.
   constexpr static char kContainerPath[] = "android";
@@ -98,6 +107,9 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   // This is owned by the caller.
   SystemUtils* const system_utils_;
 
+  // Watches child process.
+  raw_ref<brillo::ProcessReaper> process_reaper_;
+
   // Directory that holds the container config files.
   const base::FilePath containers_directory_;
 
@@ -110,6 +122,8 @@ class AndroidOciWrapper : public ContainerManagerInterface {
 
   // Whether container is stateful or stateless.
   StatefulMode stateful_mode_ = StatefulMode::STATELESS;
+
+  base::WeakPtrFactory<AndroidOciWrapper> weak_factory_{this};
 };
 
 }  // namespace login_manager

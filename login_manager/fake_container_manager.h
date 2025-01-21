@@ -25,7 +25,6 @@ class FakeContainerManager : public ContainerManagerInterface {
 
   bool running() const { return running_; }
 
-  bool HandleExit(const siginfo_t& status) override;
   void RequestJobExit(ArcContainerStopReason reason) override;
   void EnsureJobExit(base::TimeDelta timeout) override;
 

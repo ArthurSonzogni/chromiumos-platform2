@@ -45,12 +45,12 @@
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "login_manager/browser_job.h"
-#include "login_manager/child_exit_dispatcher.h"
 #include "login_manager/chrome_features_service_client.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/session_manager_impl.h"
+#include "login_manager/siginfo_description.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/systemd_unit_starter.h"
 #include "login_manager/upstart_signal_emitter.h"
@@ -140,14 +140,14 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
     info.si_status = WTERMSIG(status);
   }
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::BindOnce(base::IgnoreResult(&SessionManagerService::HandleExit),
-                     session_manager_service_, info));
+      FROM_HERE, base::BindOnce(base::IgnoreResult(
+                                    &SessionManagerService::HandleBrowserExit),
+                                session_manager_service_, info));
 }
 
 SessionManagerService::SessionManagerService(
-    base::OnceCallback<std::unique_ptr<BrowserJobInterface>()>
-        browser_job_factory,
+    base::OnceCallback<std::unique_ptr<BrowserJobInterface>(
+        brillo::ProcessReaper&)> browser_job_factory,
     const base::FilePath& magic_chrome_file,
     std::optional<base::FilePath> ns_path,
     base::TimeDelta kill_timeout,
@@ -156,8 +156,7 @@ SessionManagerService::SessionManagerService(
     int hang_detection_retries,
     LoginMetrics* metrics,
     SystemUtils* system_utils)
-    : browser_(std::move(browser_job_factory).Run()),
-      chrome_mount_ns_path_(ns_path),
+    : chrome_mount_ns_path_(ns_path),
       kill_timeout_(kill_timeout),
       file_checker_(magic_chrome_file),
       match_rule_(base::StringPrintf("type='method_call', interface='%s'",
@@ -167,14 +166,17 @@ SessionManagerService::SessionManagerService(
       nss_(NssUtil::Create()),
       owner_key_(system_utils, nss_->GetOwnerKeyFilePath(), nss_.get()),
       device_identifier_generator_(system_utils, metrics),
-      vpd_process_(system_utils),
-      android_container_(std::make_unique<AndroidOciWrapper>(
-          system_utils, base::FilePath(kContainerInstallDirectory))),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
       liveness_checking_retries_(hang_detection_retries),
       aborted_browser_pid_path_(kAbortedBrowserPidPath),
-      shutdown_browser_pid_path_(kShutdownBrowserPidPath) {
+      shutdown_browser_pid_path_(kShutdownBrowserPidPath),
+      browser_(std::move(browser_job_factory).Run(process_reaper_)),
+      android_container_(std::make_unique<AndroidOciWrapper>(
+          system_utils,
+          process_reaper_,
+          base::FilePath(kContainerInstallDirectory))),
+      vpd_process_(system_utils, process_reaper_) {
   DCHECK(browser_);
   SetUpHandlers();
 }
@@ -312,7 +314,8 @@ void SessionManagerService::ScheduleShutdown() {
 
 void SessionManagerService::RunBrowser() {
   DCHECK(!abort_timer_.IsRunning());
-  browser_->RunInBackground();
+  browser_->RunInBackground(base::BindOnce(
+      &SessionManagerService::HandleBrowserExit, base::Unretained(this)));
 
   DLOG(INFO) << "Browser is " << browser_->CurrentPid();
   liveness_checker_->Start();
@@ -331,7 +334,7 @@ void SessionManagerService::RunBrowser() {
   }
 
   // Note that |child_exit_handler_| will catch browser process termination and
-  // call HandleExit().
+  // call HandleBrowserExit().
 }
 
 void SessionManagerService::AbortBrowserForHang() {
@@ -344,9 +347,9 @@ void SessionManagerService::AbortBrowserForHang() {
   WriteBrowserPidFile(aborted_browser_pid_path_);
   browser_->Kill(SIGABRT, "Browser aborted");
   // Set a timer to trigger SIGKILL on timeout.
-  // In common case, we expect HandleExit will run the post-process of the
-  // termination of SIGABRT above before this timer, and it will be cancelled
-  // in HandleExit.
+  // In common case, we expect HandleBrowserExit will run the post-process of
+  // the termination of SIGABRT above before this timer, and it will be
+  // cancelled in HandleBrowserExit.
   abort_timer_.Start(FROM_HERE, GetKillTimeout(),
                      base::BindOnce(&SessionManagerService::OnAbortTimedOut,
                                     base::Unretained(this)));
@@ -391,7 +394,7 @@ void SessionManagerService::RestartBrowser() {
   if (browser_->CurrentPid() > 0) {
     browser_->KillEverything(SIGKILL, "Restarting browser on-demand.");
   }
-  // The browser will be restarted in HandleExit().
+  // The browser will be restarted in HandleBrowserExit().
 }
 
 void SessionManagerService::SetBrowserSessionForUser(
@@ -432,10 +435,8 @@ base::TimeTicks SessionManagerService::GetLastBrowserRestartTime() {
   return last_browser_restart_time_;
 }
 
-bool SessionManagerService::HandleExit(const siginfo_t& status) {
-  if (!IsBrowser(status.si_pid)) {
-    return false;
-  }
+void SessionManagerService::HandleBrowserExit(const siginfo_t& status) {
+  CHECK(IsBrowser(status.si_pid));
 
   // The browser process is terminated. Stop the aborting process.
   abort_timer_.Stop();
@@ -461,7 +462,7 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
 
   // Do nothing if already shutting down.
   if (shutting_down_) {
-    return true;
+    return;
   }
 
   liveness_checker_->Stop();
@@ -471,7 +472,7 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
     LOG(ERROR) << "Ending session rather than restarting browser: "
                << end_reason << ".";
     SetExitAndScheduleShutdown(CRASH_WHILE_RESTART_DISABLED);
-    return true;
+    return;
   }
 
   if (browser_->ShouldStop()) {
@@ -485,8 +486,6 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
     LOG(INFO) << "Should NOT run " << browser_->GetName() << " again.";
     AllowGracefulExitOrRunForever();
   }
-
-  return true;
 }
 
 DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
@@ -548,10 +547,7 @@ void SessionManagerService::SetUpHandlers() {
   CHECK_EQ(sigaction(SIGALRM, &action, nullptr), 0);
 
   signal_handler_.Init();
-  DCHECK(!child_exit_dispatcher_.get());
-  child_exit_dispatcher_ = std::make_unique<ChildExitDispatcher>(
-      &signal_handler_, std::vector<ChildExitHandler*>{
-                            this, &vpd_process_, android_container_.get()});
+  process_reaper_.Register(&signal_handler_);
   for (int i = 0; i < kNumSignals; ++i) {
     signal_handler_.RegisterHandler(
         kSignals[i],
@@ -648,7 +644,7 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
   exit_code_ = code;
   impl_->AnnounceSessionStoppingIfNeeded();
 
-  child_exit_dispatcher_.reset();
+  process_reaper_.Unregister();
   liveness_checker_->Stop();
   CleanupChildrenBeforeExit(code);
   impl_->AnnounceSessionStopped();

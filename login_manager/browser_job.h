@@ -5,6 +5,7 @@
 #ifndef LOGIN_MANAGER_BROWSER_JOB_H_
 #define LOGIN_MANAGER_BROWSER_JOB_H_
 
+#include <signal.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -16,11 +17,16 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/namespaces/mount_namespace.h>
 #include <gtest/gtest_prod.h>
 
 #include "login_manager/chrome_setup.h"
+
+namespace brillo {
+class ProcessReaper;
+}  // namespace brillo
 
 namespace login_manager {
 
@@ -35,7 +41,8 @@ class BrowserJobInterface {
   // Creates a background process and starts the job running in it. Does any
   // necessary bookkeeping.
   // Returns true if the process was created, false otherwise.
-  virtual bool RunInBackground() = 0;
+  virtual bool RunInBackground(
+      base::OnceCallback<void(const siginfo_t&)> termination_callback) = 0;
 
   // Attempt to kill the current instance of this job by sending
   // signal to the _entire process group_, sending message (if set) to
@@ -135,6 +142,7 @@ class BrowserJob : public BrowserJobInterface {
 
   BrowserJob(const std::vector<std::string>& arguments,
              const std::vector<std::string>& environment_variables,
+             brillo::ProcessReaper& process_reaper,
              LoginMetrics* metrics,
              SystemUtils* system_utils,
              const BrowserJob::Config& cfg,
@@ -145,7 +153,8 @@ class BrowserJob : public BrowserJobInterface {
   ~BrowserJob() override;
 
   // Overridden from BrowserJobInterface
-  bool RunInBackground() override;
+  bool RunInBackground(
+      base::OnceCallback<void(const siginfo_t&)> termination_callback) override;
   void KillEverything(int signal, const std::string& message) override;
   void Kill(int signal, const std::string& message) override;
   bool WaitForExit(base::TimeDelta timeout) override;
@@ -192,6 +201,13 @@ class BrowserJob : public BrowserJobInterface {
   static const time_t kRestartWindowSeconds;
 
  private:
+  FRIEND_TEST(BrowserJobTest, InitializationTest);
+  FRIEND_TEST(BrowserJobTest, ShouldStopTest);
+  FRIEND_TEST(BrowserJobTest, ShouldNotStopTest);
+
+  void OnTerminated(base::OnceCallback<void(const siginfo_t&)> callback,
+                    const siginfo_t& siginfo);
+
   // Arguments to pass to exec.
   std::vector<std::string> arguments_;
 
@@ -218,6 +234,9 @@ class BrowserJob : public BrowserJobInterface {
   // Values are of the form "NAME=VALUE".
   std::vector<std::string> additional_environment_variables_;
 
+  // Watches the created child process.
+  raw_ref<brillo::ProcessReaper> process_reaper_;
+
   // Wrapper for reading/writing metrics. Externally owned.
   LoginMetrics* login_metrics_;
 
@@ -242,9 +261,7 @@ class BrowserJob : public BrowserJobInterface {
   // The subprocess tracked by this job.
   std::unique_ptr<SubprocessInterface> subprocess_;
 
-  FRIEND_TEST(BrowserJobTest, InitializationTest);
-  FRIEND_TEST(BrowserJobTest, ShouldStopTest);
-  FRIEND_TEST(BrowserJobTest, ShouldNotStopTest);
+  base::WeakPtrFactory<BrowserJob> weak_factory_{this};
 };
 
 }  // namespace login_manager

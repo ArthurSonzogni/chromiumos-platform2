@@ -13,6 +13,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/process/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -44,7 +45,7 @@ class AndroidOciWrapperTest : public ::testing::Test {
     ASSERT_TRUE(containers_directory_->CreateUniqueTempDir());
 
     impl_ = std::make_unique<AndroidOciWrapper>(
-        &system_utils_, containers_directory_->GetPath());
+        &system_utils_, process_reaper_, containers_directory_->GetPath());
   }
 
  protected:
@@ -106,6 +107,7 @@ class AndroidOciWrapperTest : public ::testing::Test {
   }
 
   MockSystemUtils system_utils_;
+  brillo::ProcessReaper process_reaper_;
   std::unique_ptr<base::ScopedTempDir> containers_directory_;
 
   std::unique_ptr<AndroidOciWrapper> impl_;
@@ -150,7 +152,7 @@ TEST_F(AndroidOciWrapperTest, CleanUpOnExit) {
 
   siginfo_t status;
   status.si_pid = container_pid_;
-  EXPECT_TRUE(impl_->HandleExit(status));
+  impl_->HandleExit(status);
 
   EXPECT_TRUE(callback_called_);
   EXPECT_EQ(ArcContainerStopReason::CRASH, exit_reason_);

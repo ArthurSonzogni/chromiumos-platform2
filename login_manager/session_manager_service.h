@@ -17,6 +17,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <brillo/asynchronous_signal_handler.h>
+#include <brillo/process/process_reaper.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -24,7 +25,6 @@
 #include <libcrossystem/crossystem.h>
 
 #include "login_manager/android_oci_wrapper.h"
-#include "login_manager/child_exit_handler.h"
 #include "login_manager/device_identifier_generator.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/liveness_checker.h"
@@ -41,7 +41,6 @@ class MessageLoop;
 namespace login_manager {
 
 class BrowserJobInterface;
-class ChildExitDispatcher;
 class ChromeFeaturesServiceClient;
 class LoginMetrics;
 class NssUtil;
@@ -57,7 +56,6 @@ class SystemUtils;
 class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
       public SessionManagerImpl::Delegate,
-      public ChildExitHandler,
       public ProcessManagerServiceInterface {
  public:
   enum ExitCode {
@@ -129,17 +127,16 @@ class SessionManagerService
     SessionManagerService* session_manager_service_;
   };
 
-  SessionManagerService(
-      base::OnceCallback<std::unique_ptr<BrowserJobInterface>()>
-          browser_job_factory,
-      const base::FilePath& magic_chrome_file,
-      std::optional<base::FilePath> ns_path,
-      base::TimeDelta kill_timeout,
-      bool enable_browser_abort_on_hang,
-      base::TimeDelta hang_detection_interval,
-      int hang_detection_retries,
-      LoginMetrics* metrics,
-      SystemUtils* system_utils);
+  SessionManagerService(base::OnceCallback<std::unique_ptr<BrowserJobInterface>(
+                            brillo::ProcessReaper&)> browser_job_factory,
+                        const base::FilePath& magic_chrome_file,
+                        std::optional<base::FilePath> ns_path,
+                        base::TimeDelta kill_timeout,
+                        bool enable_browser_abort_on_hang,
+                        base::TimeDelta hang_detection_interval,
+                        int hang_detection_retries,
+                        LoginMetrics* metrics,
+                        SystemUtils* system_utils);
   SessionManagerService(const SessionManagerService&) = delete;
   SessionManagerService& operator=(const SessionManagerService&) = delete;
 
@@ -180,15 +177,6 @@ class SessionManagerService
   bool IsBrowser(pid_t pid) override;
   std::optional<pid_t> GetBrowserPid() const override;
   base::TimeTicks GetLastBrowserRestartTime() override;
-
-  // ChildExitHandler overrides:
-  // Handles only browser exit (i.e. IsBrowser(pid) returns true).
-  // Re-runs the browser, unless one of the following is true:
-  //  The screen is supposed to be locked,
-  //  UI shutdown is in progress,
-  //  The child indicates that it should not run anymore, or
-  //  ShouldRunBrowser() indicates the browser should not run anymore.
-  bool HandleExit(const siginfo_t& info) override;
 
   // Set all changed signal handlers back to the default behavior.
   static void RevertHandlers();
@@ -254,6 +242,14 @@ class SessionManagerService
   // Stops ARCVM if the vm_concierge D-Bus service is available.
   void MaybeStopArcVm();
 
+  // Handles only browser exit (i.e. IsBrowser(pid) returns true).
+  // Re-runs the browser, unless one of the following is true:
+  //  The screen is supposed to be locked,
+  //  UI shutdown is in progress,
+  //  The child indicates that it should not run anymore, or
+  //  ShouldRunBrowser() indicates the browser should not run anymore.
+  void HandleBrowserExit(const siginfo_t& info);
+
   // Writes the PID of the browser to a file for the crash reporter to read in
   // preparation for the killing the browser.
   void WriteBrowserPidFile(base::FilePath path);
@@ -271,7 +267,6 @@ class SessionManagerService
   // Called on timeout for the SIGKILL by AbortBrowserForHang().
   void OnSigkillTimedOut();
 
-  std::unique_ptr<BrowserJobInterface> browser_;
   std::optional<base::FilePath> chrome_mount_ns_path_;
   base::TimeTicks last_browser_restart_time_;
   bool exit_on_child_done_ = false;
@@ -301,8 +296,6 @@ class SessionManagerService
   PolicyKey owner_key_;
   DeviceIdentifierGenerator device_identifier_generator_;
   crossystem::Crossystem crossystem_;
-  VpdProcessImpl vpd_process_;
-  std::unique_ptr<ContainerManagerInterface> android_container_;
   InstallAttributesReader install_attributes_reader_;
   std::unique_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
@@ -316,19 +309,20 @@ class SessionManagerService
 
   // Aborting flow triggered by AbortBrowserForHang is as follows:
   // First, send SIGABRT to the browser process.
-  //   - If the browser is terminated expectedly, HandleExit is called.
+  //   - If the browser is terminated expectedly, HandleBrowserExit is called.
   //     The aborting is completed here.
   // If the browser is not terminated on timeout, send SIGKILL to all chrome
   // processes.
-  //   - If the browser is terminated expectedly, HandleExit is called.
+  //   - If the browser is terminated expectedly, HandleBrowserExit is called.
   //     The aborting is completed here.
   // If it still timed out, unfortunately, there's nothing we can do. Leaving
   // the log message.
-  // This |abort_timer_| is to handle the time out for HandleExit waiting.
+  // This |abort_timer_| is to handle the time out for HandleBrowserExit
+  // waiting.
   base::OneShotTimer abort_timer_;
 
   brillo::AsynchronousSignalHandler signal_handler_;
-  std::unique_ptr<ChildExitDispatcher> child_exit_dispatcher_;
+  brillo::ProcessReaper process_reaper_;
   bool shutting_down_ = false;
   ExitCode exit_code_ = SUCCESS;
 
@@ -338,7 +332,13 @@ class SessionManagerService
   // chrome starts and check the 'SessionManagerLongKillTimeout' feature enabled
   // state via ChromeFeaturesService.
   bool use_long_kill_timeout_ = false;
+
+  std::unique_ptr<BrowserJobInterface> browser_;
+
+  std::unique_ptr<ContainerManagerInterface> android_container_;
+  VpdProcessImpl vpd_process_;
 };
+
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_

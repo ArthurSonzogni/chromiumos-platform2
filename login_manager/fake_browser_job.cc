@@ -18,7 +18,8 @@ bool FakeBrowserJob::IsGuestSession() {
   return false;
 }
 
-bool FakeBrowserJob::RunInBackground() {
+bool FakeBrowserJob::RunInBackground(
+    base::OnceCallback<void(const siginfo_t&)> callback) {
   if (schedule_exit_) {
     DCHECK(fake_process_.get());
     fake_process_->ScheduleExit();
