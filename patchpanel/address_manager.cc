@@ -25,11 +25,12 @@ namespace {
 // +---------------+------------+----------------------------------------------+
 // |   IP Range    |    Guest   |                                              |
 // +---------------+------------+----------------------------------------------+
-// | 0       (/30) | ARC/ARCVM  | Used for ARC management interface arc0       |
-// | 4-20    (/30) | ARC/ARCVM  | Used to expose multiple host networks to ARC |
-// | 24-124  (/30) | Termina VM | Used by Crostini, Bruschetta and Borealis    |
-// | 128-188 (/30) | Host netns | Used for netns hosting minijailed services   |
-// | 192-252 (/28) | Containers | Used by Crostini LXD user containers         |
+// | 0-3     (/30) | ARC        | Used for ARC management interface arc0       |
+// | 4-23    (/30) | ARC        | Used to expose multiple host networks to ARC |
+// | 24-63   (/30) | Termina VM | Used by Crostini, Bruschetta and Borealis    |
+// | 64-127  (/28) | Containers | 2nd range used by Crostini LXD containers    |
+// | 128-191 (/30) | Host netns | Used for netns hosting minijailed services   |
+// | 192-255 (/28) | Containers | 1st range Used by Crostini LXD containers    |
 // +---------------+------------+----------------------------------------------+
 //
 // The 100.115.93.0/24 subnet is reserved for Parallels VMs.
@@ -56,7 +57,7 @@ AddressManager::AddressManager() {
   pools_.emplace(
       GuestType::kTerminaVM,
       SubnetPool::New(
-          *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.24/30"), 26));
+          *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.24/30"), 10));
   pools_.emplace(
       GuestType::kNetns,
       SubnetPool::New(
@@ -67,6 +68,8 @@ AddressManager::AddressManager() {
           *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.192/28"), 4));
   parallels_pool_ = SubnetPool::New(
       *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29"), 32);
+  lxd_fallback_pool_ = SubnetPool::New(
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.64/28"), 4);
   allocated_ipv6_subnets_.insert(kDnsProxySubnet);
 }
 
@@ -84,8 +87,19 @@ std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
     LOG(ERROR) << ": Subnet indexing is not supported for guest " << guest;
     return nullptr;
   }
-  const auto it = pools_.find(guest);
-  return (it != pools_.end()) ? it->second->Allocate() : nullptr;
+  auto it = pools_.find(guest);
+  if (it == pools_.end()) {
+    LOG(ERROR) << "Unsupported guest type " << guest;
+    return nullptr;
+  }
+  auto subnet = it->second->Allocate();
+  // b/385834987: If there is no more available subnets for the Crostini LXD
+  // container, try to allocate a subnet from the fallback pool instead.
+  if (subnet == nullptr && guest == GuestType::kLXDContainer) {
+    LOG(INFO) << "Allocating LXD container subnet from fallback subnet pool";
+    subnet = lxd_fallback_pool_->Allocate();
+  }
+  return subnet;
 }
 
 net_base::IPv6CIDR AddressManager::AllocateIPv6Subnet() {

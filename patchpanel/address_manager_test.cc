@@ -51,9 +51,12 @@ TEST(AddressManager, AddressesPerSubnet) {
 
 TEST(AddressManager, SubnetsPerPool) {
   std::map<GuestType, size_t> addrs = {
-      {GuestType::kArc0, 1},         {GuestType::kArcNet, 5},
-      {GuestType::kTerminaVM, 26},   {GuestType::kParallelsVM, 32},
-      {GuestType::kLXDContainer, 4}, {GuestType::kNetns, 16},
+      {GuestType::kArc0, 1},
+      {GuestType::kArcNet, 5},
+      {GuestType::kTerminaVM, 10},
+      {GuestType::kParallelsVM, 32},
+      {GuestType::kLXDContainer, 4 + 4},
+      {GuestType::kNetns, 16},
   };
   AddressManager mgr;
   for (const auto a : addrs) {
@@ -66,6 +69,34 @@ TEST(AddressManager, SubnetsPerPool) {
     auto subnet = mgr.AllocateIPv4Subnet(a.first);
     EXPECT_TRUE(subnet == nullptr);
   }
+}
+
+TEST(AddressManager, LXDContainerPoolFallback) {
+  AddressManager mgr;
+  std::vector<std::unique_ptr<Subnet>> termina_subnets;
+  std::vector<std::unique_ptr<Subnet>> lxd_subnets;
+  for (int i = 0; i < 8; i++) {
+    auto termina_subnet = mgr.AllocateIPv4Subnet(GuestType::kTerminaVM, 0);
+    auto lxd_subnet = mgr.AllocateIPv4Subnet(GuestType::kLXDContainer, 0);
+    EXPECT_NE(nullptr, termina_subnet);
+    EXPECT_NE(nullptr, lxd_subnet);
+    EXPECT_EQ(30, termina_subnet->base_cidr().prefix_length());
+    EXPECT_EQ(28, lxd_subnet->base_cidr().prefix_length());
+    termina_subnets.push_back(std::move(termina_subnet));
+    lxd_subnets.push_back(std::move(lxd_subnet));
+  }
+
+  // Expect that the next LXD allocations will fail
+  EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kLXDContainer, 0));
+
+  // Expect that there are two more termina subnets to allocate.
+  for (int i = 0; i < 2; i++) {
+    auto termina_subnet = mgr.AllocateIPv4Subnet(GuestType::kTerminaVM, 0);
+    EXPECT_NE(nullptr, termina_subnet);
+    EXPECT_EQ(30, termina_subnet->base_cidr().prefix_length());
+    termina_subnets.push_back(std::move(termina_subnet));
+  }
+  EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kTerminaVM, 0));
 }
 
 TEST(AddressManager, SubnetIndexing) {

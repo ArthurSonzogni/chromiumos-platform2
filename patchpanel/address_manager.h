@@ -102,6 +102,9 @@ class BRILLO_EXPORT AddressManager {
   // Separate subnet pool for Parallel VMs which require allocating subnets at
   // specific offsets.
   std::unique_ptr<SubnetPool> parallels_pool_;
+  // Separate subnet pool used for LXD containers as a fallback when the first
+  // pool is exhausted.
+  std::unique_ptr<SubnetPool> lxd_fallback_pool_;
   base::flat_set<net_base::IPv6CIDR> allocated_ipv6_subnets_;
 
   base::WeakPtrFactory<AddressManager> weak_ptr_factory_{this};

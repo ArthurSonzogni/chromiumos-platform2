@@ -175,7 +175,10 @@ const CrostiniService::CrostiniDevice* CrostiniService::Start(
   }
 
   LOG(INFO) << __func__ << " " << vm_info << ": VM network service started on "
-            << dev->tap_device_ifname();
+            << dev->tap_device_ifname()
+            << " with VM subnet: " << dev->vm_ipv4_subnet() << ", LXD subnet: "
+            << (dev->lxd_ipv4_subnet() ? dev->lxd_ipv4_subnet()->ToString()
+                                       : "none");
   auto signal_device = std::make_unique<NetworkDevice>();
   dev->ConvertToProto(signal_device.get());
   dbus_client_notifier_->OnNetworkDeviceChanged(

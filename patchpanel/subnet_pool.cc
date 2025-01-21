@@ -61,8 +61,8 @@ std::unique_ptr<Subnet> SubnetPool::Allocate(uint32_t index) {
   }
 
   if (index > num_subnets_) {
-    LOG(ERROR) << "Desired index (" << index << ") execeeds number of"
-               << " available subnets (" << num_subnets_ << ")";
+    LOG(WARNING) << "Desired index (" << index << ") exceeds number of"
+                 << " available subnets (" << num_subnets_ << ")";
     return nullptr;
   }
   if (subnets_.test(index)) {
