@@ -33,7 +33,7 @@ const char* ConvertVdaFormatToString(vda_pixel_format_t format) {
     case NV12:
       return "NV12";
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 
@@ -119,12 +119,10 @@ void DecodeEventThread::OnEventPipeReadable() {
     case NOTIFY_ERROR:
       LOG(ERROR) << "Received NOTIFY_ERROR event with result "
                  << event.event_data.result;
-      NOTREACHED_IN_MIGRATION();
-      break;
+      NOTREACHED();
     default:
       LOG(ERROR) << "Received unknown event type " << event.event_type;
-      NOTREACHED_IN_MIGRATION();
-      break;
+      NOTREACHED();
   }
 }
 

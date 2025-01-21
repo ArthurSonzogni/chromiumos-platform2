@@ -49,8 +49,7 @@ std::string EncodedDataHelper::GetBytesForNextData() {
     case VP9PROFILE_PROFILE3:
       return GetBytesForNextFrame();
     default:
-      NOTREACHED_IN_MIGRATION();
-      return std::string();
+      NOTREACHED();
   }
 }
 

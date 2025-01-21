@@ -4,8 +4,9 @@
 
 #include "arc/vm/libvda/gbm_util.h"
 
-#include <cstdio>
 #include <fcntl.h>
+
+#include <cstdio>
 #include <utility>
 
 #include <base/logging.h>
@@ -121,7 +122,7 @@ std::vector<video_pixel_format_t> GetSupportedRawFormats(
       usage_flags |= GBM_BO_USE_HW_VIDEO_DECODER;
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 
   std::vector<video_pixel_format_t> formats;
