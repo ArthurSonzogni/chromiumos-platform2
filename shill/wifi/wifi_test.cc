@@ -5076,7 +5076,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   ScopedMockLog log;
   EXPECT_CALL(log,
               Log(logging::LOGGING_ERROR, _, EndsWith("no current service.")));
-  EXPECT_CALL(*eap_state_handler_, ParseStatus(_, _, _)).Times(0);
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(_, _, _, _)).Times(0);
   const std::string kEAPStatus("eap-status");
   const std::string kEAPParameter("eap-parameter");
   ReportEAPEvent(kEAPStatus, kEAPParameter);
@@ -5086,13 +5086,14 @@ TEST_F(WiFiMainTest, EAPEvent) {
   MockWiFiServiceRefPtr service =
       MakeMockService(WiFiSecurity::kWpa2Enterprise);
   EXPECT_CALL(*service, SetFailure(_)).Times(0);
-  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _));
+  EXPECT_CALL(*eap_state_handler_,
+              ParseStatus(kEAPStatus, kEAPParameter, _, _));
   SetCurrentService(service);
   ReportEAPEvent(kEAPStatus, kEAPParameter);
   Mock::VerifyAndClearExpectations(service.get());
   Mock::VerifyAndClearExpectations(eap_state_handler_);
 
-  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _, _))
       .WillOnce(
           DoAll(SetArgPointee<2>(Service::kFailureOutOfRange), Return(false)));
   ReportEAPEvent(kEAPStatus, kEAPParameter);
@@ -5101,7 +5102,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   service->eap_.reset(eap);  // Passes ownership.
   const RpcIdentifier kNetworkRpcId("/service/network/rpcid");
   SetServiceNetworkRpcId(service, kNetworkRpcId);
-  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _, _))
       .WillOnce(
           DoAll(SetArgPointee<2>(Service::kFailurePinMissing), Return(false)));
   // We need a real string object since it will be returned by reference below.
@@ -5109,7 +5110,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   EXPECT_CALL(*eap, pin()).WillOnce(ReturnRef(kEmptyPin));
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 
-  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _, _))
       .WillOnce(
           DoAll(SetArgPointee<2>(Service::kFailurePinMissing), Return(false)));
   // We need a real string object since it will be returned by reference below.

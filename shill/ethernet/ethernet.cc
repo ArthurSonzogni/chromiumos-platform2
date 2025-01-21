@@ -482,7 +482,9 @@ void Ethernet::EAPEventTask(const std::string& status,
   LOG(INFO) << *this << " " << __func__ << ": status: " << status
             << ", parameter: " << parameter;
   Service::ConnectFailure failure = Service::kFailureNone;
-  if (eap_state_handler_.ParseStatus(status, parameter, &failure)) {
+  Metrics::EapEvent metrics_eap_event = Metrics::kEapEventNoRecords;
+  if (eap_state_handler_.ParseStatus(status, parameter, &failure,
+                                     &metrics_eap_event)) {
     LOG(INFO) << *this << " " << __func__ << ": EAP authentication success";
     SetIsEapAuthenticated(true);
   } else if (failure != Service::Service::kFailureNone) {
@@ -490,6 +492,8 @@ void Ethernet::EAPEventTask(const std::string& status,
                  << Service::ConnectFailureToString(failure);
     SetIsEapAuthenticated(false);
   }
+  GetEapService()->eap()->ReportEapEventMetric(
+      metrics(), manager()->GetCACertExperimentPhase(), metrics_eap_event);
 }
 
 void Ethernet::SupplicantStateChangedTask(const std::string& state) {

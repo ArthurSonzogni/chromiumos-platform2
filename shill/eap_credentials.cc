@@ -379,7 +379,6 @@ void EapCredentials::Load(const StoreInterface* storage,
   storage->GetBool(id, kStorageEapUseProactiveKeyCaching,
                    &use_proactive_key_caching_);
   storage->GetBool(id, kStorageEapUseSystemCAs, &use_system_cas_);
-
   // Fix possible slot ID instability. If the slot type is unknown, no need to
   // replace the slot ID.
   pkcs11::Slot slot;
@@ -465,6 +464,34 @@ void EapCredentials::ReplacePkcs11SlotIds(CK_SLOT_ID slot_id) {
 
 void EapCredentials::SetEapSlotGetter(Pkcs11SlotGetter* slot_getter) {
   slot_getter_ = slot_getter;
+}
+
+void EapCredentials::ReportEapEventMetric(
+    Metrics* metrics,
+    CaCertExperimentPhase cert_experiment_phase,
+    Metrics::EapEvent event) const {
+  if (event == Metrics::EapEvent::kEapEventNoRecords) {
+    // Not all EAP events have dedicated UMA metrics, ignoring those.
+    return;
+  }
+
+  metrics->SendEnumToUMA(Metrics::kMetricEapEvent, event);
+  if (!IsCACertExperimentConditionMet()) {
+    return;
+  }
+
+  switch (cert_experiment_phase) {
+    case EapCredentials::CaCertExperimentPhase::kPhase2:
+      metrics->SendEnumToUMA(Metrics::kEapEventCaCertExperiment2, event);
+      break;
+    case EapCredentials::CaCertExperimentPhase::kPhase1:
+      metrics->SendEnumToUMA(Metrics::kEapEventCaCertExperiment1, event);
+      break;
+    case EapCredentials::CaCertExperimentPhase::kDisabled:
+      metrics->SendEnumToUMA(Metrics::kEapEventCaCertExperimentValidCondition,
+                             event);
+      break;
+  }
 }
 
 void EapCredentials::OutputConnectionMetrics(Metrics* metrics,

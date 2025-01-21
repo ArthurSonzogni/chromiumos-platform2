@@ -102,6 +102,17 @@ class EapCredentialsTest : public testing::Test {
   void SetUseLoginPassword(bool use_login_password) {
     eap_.use_login_password_ = use_login_password;
   }
+
+  void SetExperimentConditionsToMet() {
+    eap_.set_use_system_cas(true);
+    SetCACertPEM(kPemCert);
+  }
+
+  void SetExperimentConditionsToNotMet() {
+    eap_.set_use_system_cas(false);
+    SetCACertPEM(kPemCert);
+  }
+
   bool IsReset() {
     return eap_.anonymous_identity_.empty() && eap_.cert_id_.empty() &&
            eap_.identity_.empty() && eap_.key_id_.empty() &&
@@ -1106,4 +1117,116 @@ TEST_F(EapCredentialsTest, IsCACertExperimentConditionMet) {
     EXPECT_FALSE(eap_.IsCACertExperimentConditionMet());
   }
 }
+TEST_F(EapCredentialsTest, ReportEapEventMetricWithDisabledExperiments) {
+  EapCredentials::CaCertExperimentPhase experiment_disabled =
+      EapCredentials::CaCertExperimentPhase::kDisabled;
+  MockMetrics metrics;
+
+  // Conditions are no met, only default metrics are reported.
+  SetExperimentConditionsToNotMet();
+
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricEapEvent, 1));
+  EXPECT_CALL(metrics, SendEnumToUMA(
+                           Metrics::kEapEventCaCertExperimentValidCondition, _))
+      .Times(0);
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment1, _))
+      .Times(0);
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment2, _))
+      .Times(0);
+
+  eap_.ReportEapEventMetric(&metrics, experiment_disabled,
+                            Metrics::EapEvent::kEapEventAuthCompletedSuccess);
+  Mock::VerifyAndClearExpectations(&metrics);
+
+  // Conditions are met, default and valid conditions metrics are reported.
+  SetExperimentConditionsToMet();
+
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricEapEvent, 1));
+  EXPECT_CALL(
+      metrics,
+      SendEnumToUMA(Metrics::kEapEventCaCertExperimentValidCondition, 1));
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment1, _))
+      .Times(0);
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment2, _))
+      .Times(0);
+
+  eap_.ReportEapEventMetric(&metrics, experiment_disabled,
+                            Metrics::EapEvent::kEapEventAuthCompletedSuccess);
+  Mock::VerifyAndClearExpectations(&metrics);
+}
+
+TEST_F(EapCredentialsTest, ReportEapEventMetricWithExperimentPhase1) {
+  EapCredentials::CaCertExperimentPhase experiment_phase_1 =
+      EapCredentials::CaCertExperimentPhase::kPhase1;
+  MockMetrics metrics;
+
+  // Conditions are no met, only default metrics are reported.
+  SetExperimentConditionsToNotMet();
+
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricEapEvent, 1));
+  EXPECT_CALL(metrics, SendEnumToUMA(
+                           Metrics::kEapEventCaCertExperimentValidCondition, _))
+      .Times(0);
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment1, _))
+      .Times(0);
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment2, _))
+      .Times(0);
+
+  eap_.ReportEapEventMetric(&metrics, experiment_phase_1,
+                            Metrics::EapEvent::kEapEventAuthCompletedSuccess);
+  Mock::VerifyAndClearExpectations(&metrics);
+
+  // Conditions are met, default metrics and experiment 1 metrics are reported.
+  SetExperimentConditionsToMet();
+
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricEapEvent, 1));
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment1, 1));
+  EXPECT_CALL(metrics, SendEnumToUMA(
+                           Metrics::kEapEventCaCertExperimentValidCondition, _))
+      .Times(0);
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment2, _))
+      .Times(0);
+
+  eap_.ReportEapEventMetric(&metrics, experiment_phase_1,
+                            Metrics::EapEvent::kEapEventAuthCompletedSuccess);
+  Mock::VerifyAndClearExpectations(&metrics);
+}
+
+TEST_F(EapCredentialsTest, ReportEapEventMetricWithExperimentPhase2) {
+  EapCredentials::CaCertExperimentPhase experiment_phase_2 =
+      EapCredentials::CaCertExperimentPhase::kPhase2;
+  MockMetrics metrics;
+
+  // Conditions are no met, only default metrics are reported.
+  SetExperimentConditionsToNotMet();
+
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricEapEvent, 1));
+  EXPECT_CALL(metrics, SendEnumToUMA(
+                           Metrics::kEapEventCaCertExperimentValidCondition, _))
+      .Times(0);
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment1, _))
+      .Times(0);
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment2, _))
+      .Times(0);
+
+  eap_.ReportEapEventMetric(&metrics, experiment_phase_2,
+                            Metrics::EapEvent::kEapEventAuthCompletedSuccess);
+  Mock::VerifyAndClearExpectations(&metrics);
+
+  // Conditions are met, default metrics and experiment 2 metrics are reported.
+  SetExperimentConditionsToMet();
+
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricEapEvent, 1));
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment2, 1));
+  EXPECT_CALL(metrics, SendEnumToUMA(
+                           Metrics::kEapEventCaCertExperimentValidCondition, _))
+      .Times(0);
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kEapEventCaCertExperiment1, _))
+      .Times(0);
+
+  eap_.ReportEapEventMetric(&metrics, experiment_phase_2,
+                            Metrics::EapEvent::kEapEventAuthCompletedSuccess);
+  Mock::VerifyAndClearExpectations(&metrics);
+}
+
 }  // namespace shill

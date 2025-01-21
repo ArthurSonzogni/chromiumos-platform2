@@ -532,6 +532,32 @@ TEST_F(MetricsTest, NotifyCellularConnectionResult_Default_Unknown) {
       Metrics::DetailedCellularConnectionResult::APNType::kDefault);
 }
 
+TEST_F(MetricsTest, ReportEapEventMetricValues) {
+  // Integer values are interpreted by the server-side pipeline, ensure that
+  // they are not changed over time.
+  EXPECT_EQ(Metrics::EapEvent::kEapEventNoRecords, 0);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventAuthCompletedSuccess, 1);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventAuthLocalTlsFailure, 2);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventAuthRemoteTlsFailure, 3);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventAuthFailure, 4);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventUnexpectedFailure, 5);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventTlsStatusAlert, 6);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventCertVerificationSuccess, 7);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventFirstCertVerificationFailure, 8);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventCertVerificationRetryAttempt, 9);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventCertVerificationFailureBeforeRetry, 10);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventCertVerificationFailureAfterRetry, 11);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventCertVerificationLoadFailure, 12);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventCertVerificationUnexpectedParameter,
+            13);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventCertVerificationIssuerCertAbsent, 14);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventPinMissing, 15);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventAuthFailurePinMissing, 16);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventAuthAttempt, 17);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventProposedMethodAccepted, 18);
+  EXPECT_EQ(Metrics::EapEvent::kEapEventMetricsMax, 19);
+}
+
 TEST_F(MetricsTest, NotifyCellularConnectionResult_Dun_Valid) {
   Error::Type error = Error::Type::kOperationFailed;
   EXPECT_CALL(

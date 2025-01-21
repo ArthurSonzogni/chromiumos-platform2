@@ -26,7 +26,8 @@ class MockSupplicantEAPStateHandler : public SupplicantEAPStateHandler {
               ParseStatus,
               (const std::string&,
                const std::string&,
-               Service::ConnectFailure*),
+               Service::ConnectFailure*,
+               Metrics::EapEvent*),
               (override));
   MOCK_METHOD(void, Reset, (), (override));
   MOCK_METHOD(bool, is_eap_in_progress, (), (const, override));

@@ -56,6 +56,18 @@ class WPASupplicant {
       "remote certificate verification";
   static constexpr char kEAPStatusRemoteTLSAlert[] = "remote TLS alert";
   static constexpr char kEAPStatusStarted[] = "started";
+  static constexpr char kEAPCertFirstVerificationFailed[] =
+      "first verify failed";
+  static constexpr char kEAPCertRetryVerificationAttempt[] =
+      "retry verify attempt";
+  static constexpr char kEAPCertRetryVerificationFailed[] =
+      "retry verify failed";
+  static constexpr char kEAPCertAfterRetryVerificationFailed[] =
+      "after retry failed";
+  static constexpr char kEAPCertLoadForVerificationFailed[] =
+      "load rootCA failed";
+  static constexpr char kEAPCertVerificationIssuerCertAbsent[] =
+      "unable to get local issuer certificate";
   static constexpr char kEnginePKCS11[] = "pkcs11";
   static constexpr char kErrorNetworkUnknown[] =
       "fi.w1.wpa_supplicant1.NetworkUnknown";

@@ -2479,6 +2479,51 @@ class Metrics {
     kBTProfileConnectionStateInvalid = 0x7FFFFFFE,
   };
 
+  enum EapEvent {
+    kEapEventNoRecords = 0,
+    kEapEventAuthCompletedSuccess = 1,
+    kEapEventAuthLocalTlsFailure = 2,
+    kEapEventAuthRemoteTlsFailure = 3,
+    kEapEventAuthFailure = 4,
+    kEapEventUnexpectedFailure = 5,
+    kEapEventTlsStatusAlert = 6,
+    kEapEventCertVerificationSuccess = 7,
+    kEapEventFirstCertVerificationFailure = 8,
+    kEapEventCertVerificationRetryAttempt = 9,
+    kEapEventCertVerificationFailureBeforeRetry = 10,
+    kEapEventCertVerificationFailureAfterRetry = 11,
+    kEapEventCertVerificationLoadFailure = 12,
+    kEapEventCertVerificationUnexpectedParameter = 13,
+    kEapEventCertVerificationIssuerCertAbsent = 14,
+    kEapEventPinMissing = 15,
+    kEapEventAuthFailurePinMissing = 16,
+    kEapEventAuthAttempt = 17,
+    kEapEventProposedMethodAccepted = 18,
+
+    kEapEventMetricsMax
+  };
+
+  static constexpr EnumMetric<FixedName> kMetricEapEvent = {
+      .n = FixedName{"Network.Shill.Eap.Event"},
+      .max = kEapEventMetricsMax,
+  };
+
+  static constexpr EnumMetric<FixedName>
+      kEapEventCaCertExperimentValidCondition = {
+          .n = FixedName{"Network.Shill.Eap.EventCaCertExpValidCondition"},
+          .max = kEapEventMetricsMax,
+  };
+
+  static constexpr EnumMetric<FixedName> kEapEventCaCertExperiment1 = {
+      .n = FixedName{"Network.Shill.Eap.EventCaCertExperiment1"},
+      .max = kEapEventMetricsMax,
+  };
+
+  static constexpr EnumMetric<FixedName> kEapEventCaCertExperiment2 = {
+      .n = FixedName{"Network.Shill.Eap.EventCaCertExperiment2"},
+      .max = kEapEventMetricsMax,
+  };
+
   struct WiFiLinkQualityReport {
     int64_t tx_retries = kWiFiStructuredMetricsErrorValue;
     int64_t tx_failures = kWiFiStructuredMetricsErrorValue;

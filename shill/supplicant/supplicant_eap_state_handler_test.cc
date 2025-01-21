@@ -20,15 +20,16 @@ namespace shill {
 
 class SupplicantEAPStateHandlerTest : public testing::Test {
  public:
-  SupplicantEAPStateHandlerTest() : failure_(Service::kFailureNone) {}
+  SupplicantEAPStateHandlerTest()
+      : failure_(Service::kFailureNone), metric_(Metrics::kEapEventNoRecords) {}
   ~SupplicantEAPStateHandlerTest() override = default;
 
  protected:
   void StartEAP() {
     EXPECT_CALL(log_, Log(logging::LOGGING_INFO, _,
                           EndsWith("Authentication starting.")));
-    EXPECT_FALSE(
-        handler_.ParseStatus(WPASupplicant::kEAPStatusStarted, "", &failure_));
+    EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusStarted, "",
+                                      &failure_, &metric_));
     Mock::VerifyAndClearExpectations(&log_);
   }
 
@@ -36,6 +37,7 @@ class SupplicantEAPStateHandlerTest : public testing::Test {
 
   SupplicantEAPStateHandler handler_;
   Service::ConnectFailure failure_;
+  Metrics::EapEvent metric_;
   ScopedMockLog log_;
 };
 
@@ -56,8 +58,9 @@ TEST_F(SupplicantEAPStateHandlerTest, AcceptedMethod) {
   const std::string kEAPMethod("EAP-ROCHAMBEAU");
   EXPECT_CALL(log_, Log(logging::LOGGING_INFO, _,
                         EndsWith("accepted method " + kEAPMethod)));
-  EXPECT_FALSE(handler_.ParseStatus(
-      WPASupplicant::kEAPStatusAcceptProposedMethod, kEAPMethod, &failure_));
+  EXPECT_FALSE(
+      handler_.ParseStatus(WPASupplicant::kEAPStatusAcceptProposedMethod,
+                           kEAPMethod, &failure_, &metric_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailureNone, failure_);
@@ -69,7 +72,7 @@ TEST_F(SupplicantEAPStateHandlerTest, SuccessfulCompletion) {
               Log(_, _, EndsWith("Completed authentication successfully.")));
   EXPECT_TRUE(handler_.ParseStatus(WPASupplicant::kEAPStatusCompletion,
                                    WPASupplicant::kEAPParameterSuccess,
-                                   &failure_));
+                                   &failure_, &metric_));
   EXPECT_FALSE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailureNone, failure_);
@@ -80,7 +83,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureGeneric) {
   // An EAP failure without a previous TLS indication yields a generic failure.
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusCompletion,
                                     WPASupplicant::kEAPParameterFailure,
-                                    &failure_));
+                                    &failure_, &metric_));
 
   // Since it hasn't completed successfully, we must assume even in failure
   // that wpa_supplicant is continuing the EAP authentication process.
@@ -93,7 +96,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureLocalTLSIndication) {
   StartEAP();
   // A TLS indication should be stored but a failure should not be returned.
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusLocalTLSAlert, "",
-                                    &failure_));
+                                    &failure_, &metric_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ(WPASupplicant::kEAPStatusLocalTLSAlert, GetTLSError());
   EXPECT_EQ(Service::kFailureNone, failure_);
@@ -101,7 +104,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureLocalTLSIndication) {
   // An EAP failure with a previous TLS indication yields a specific failure.
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusCompletion,
                                     WPASupplicant::kEAPParameterFailure,
-                                    &failure_));
+                                    &failure_, &metric_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ(Service::kFailureEAPLocalTLS, failure_);
 }
@@ -110,7 +113,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureRemoteTLSIndication) {
   StartEAP();
   // A TLS indication should be stored but a failure should not be returned.
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusRemoteTLSAlert, "",
-                                    &failure_));
+                                    &failure_, &metric_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ(WPASupplicant::kEAPStatusRemoteTLSAlert, GetTLSError());
   EXPECT_EQ(Service::kFailureNone, failure_);
@@ -118,7 +121,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureRemoteTLSIndication) {
   // An EAP failure with a previous TLS indication yields a specific failure.
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusCompletion,
                                     WPASupplicant::kEAPParameterFailure,
-                                    &failure_));
+                                    &failure_, &metric_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ(Service::kFailureEAPRemoteTLS, failure_);
 }
@@ -134,7 +137,7 @@ TEST_F(SupplicantEAPStateHandlerTest, BadRemoteCertificateVerification) {
                    " parameter: " + kStrangeParameter)));
   EXPECT_FALSE(handler_.ParseStatus(
       WPASupplicant::kEAPStatusRemoteCertificateVerification, kStrangeParameter,
-      &failure_));
+      &failure_, &metric_));
   // Although we reported an error, this shouldn't mean failure.
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
@@ -151,7 +154,8 @@ TEST_F(SupplicantEAPStateHandlerTest, ParameterNeeded) {
               std::string("aborted due to missing authentication parameter: ") +
               kAuthenticationParameter)));
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusParameterNeeded,
-                                    kAuthenticationParameter, &failure_));
+                                    kAuthenticationParameter, &failure_,
+                                    &metric_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailureEAPAuthentication, failure_);
@@ -161,7 +165,7 @@ TEST_F(SupplicantEAPStateHandlerTest, ParameterNeededPin) {
   StartEAP();
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusParameterNeeded,
                                     WPASupplicant::kEAPRequestedParameterPin,
-                                    &failure_));
+                                    &failure_, &metric_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailurePinMissing, failure_);

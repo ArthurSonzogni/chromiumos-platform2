@@ -26,10 +26,13 @@ class SupplicantEAPStateHandler {
   // process has succeeded.  If instead the EAP authentication has failed,
   // |failure| will be set to reflect the type of failure that occurred,
   // false will be returned.  If this EAP event has no direct outcome,
-  // this function returns false without changing |failure|.
+  // this function returns false without changing |failure|. Additionally
+  // corresponding |metrics_eap_event| will be set for some of events, it will
+  // stay unchanged for events which have no dedicated metrics.
   virtual bool ParseStatus(const std::string& status,
                            const std::string& parameter,
-                           Service::ConnectFailure* failure);
+                           Service::ConnectFailure* failure,
+                           Metrics::EapEvent* metrics_eap_event);
 
   // Resets the internal state of the handler.
   virtual void Reset();
