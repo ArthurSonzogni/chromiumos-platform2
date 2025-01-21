@@ -80,5 +80,15 @@ int main(int argc, char* argv[]) {
   ClobberState clobber(args, std::make_unique<crossystem::Crossystem>(),
                        std::move(ui), std::move(wipe), std::move(clobber_lvm));
 
+  if (args.dry_run) {
+    LOG(INFO) << "This is a dry run, only listing files to preserve";
+    std::vector<base::FilePath> preserved_files =
+        clobber.GetPreservedFilesList();
+    for (const base::FilePath& fp : preserved_files) {
+      LOG(INFO) << "Preserving file: " << fp.value();
+    }
+    return 0;
+  }
+
   return clobber.Run();
 }

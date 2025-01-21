@@ -284,6 +284,8 @@ ClobberState::Arguments ClobberState::ParseArgv(
       args.keepimg = true;
       args.safe_wipe = true;
       args.disable_lvm_install = true;
+    } else if (arg == "dry_run") {
+      args.dry_run = true;
     }
   }
 
@@ -296,6 +298,19 @@ ClobberState::Arguments ClobberState::ParseArgv(
   if (args.disable_lvm_install) {
     args.preserve_lvs = false;
   }
+
+  LOG(INFO) << "Factory wipe: " << args.factory_wipe;
+  LOG(INFO) << "Fast wipe: " << args.fast_wipe;
+  LOG(INFO) << "Keepimg: " << args.keepimg;
+  LOG(INFO) << "Safe wipe: " << args.safe_wipe;
+  LOG(INFO) << "Rollback wipe: " << args.rollback_wipe;
+  LOG(INFO) << "Reason: " << args.reason;
+  LOG(INFO) << "RMA wipe: " << args.rma_wipe;
+  LOG(INFO) << "AD migration wipe: " << args.ad_migration_wipe;
+  LOG(INFO) << "Disable LVM install: " << args.disable_lvm_install;
+  LOG(INFO) << "Default key migration wipe: "
+            << args.default_key_migration_wipe;
+  LOG(INFO) << "Dry run: " << args.dry_run;
 
   return args;
 }
@@ -619,14 +634,6 @@ int ClobberState::Run() {
   bool should_force_delay = !args_.fast_wipe && !args_.factory_wipe;
 
   LOG(INFO) << "Beginning clobber-state run";
-  LOG(INFO) << "Factory wipe: " << args_.factory_wipe;
-  LOG(INFO) << "Fast wipe: " << args_.fast_wipe;
-  LOG(INFO) << "Keepimg: " << args_.keepimg;
-  LOG(INFO) << "Safe wipe: " << args_.safe_wipe;
-  LOG(INFO) << "Rollback wipe: " << args_.rollback_wipe;
-  LOG(INFO) << "Reason: " << args_.reason;
-  LOG(INFO) << "RMA wipe: " << args_.rma_wipe;
-  LOG(INFO) << "AD migration wipe: " << args_.ad_migration_wipe;
 
   // As we move factory wiping from release image to factory test image,
   // clobber-state will be invoked directly under a tmpfs. GetRootDevice cannot

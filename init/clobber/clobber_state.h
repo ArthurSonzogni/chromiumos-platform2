@@ -57,6 +57,9 @@ class ClobberState {
     bool disable_lvm_install = false;
     // Default-key-stateful migration wipe.
     bool default_key_migration_wipe = false;
+    // Dry-run does not change the state of the system. It is only used for
+    // getting the list of files persisting through powerwash.
+    bool dry_run = false;
   };
 
   struct DeviceWipeInfo {
