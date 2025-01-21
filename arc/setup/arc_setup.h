@@ -170,16 +170,6 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // Sets up /mnt filesystem for arc-obb-mounter.
   void SetUpFilesystemForObbMounter();
 
-  // Generates boot*.art files on host side and stores them in
-  // |host_dalvik_cache_directory|. Returns true on success.
-  bool GenerateHostSideCodeInternal(
-      const base::FilePath& host_dalvik_cache_directory,
-      ArcCodeRelocationResult* result);
-
-  // Calls GenerateHostSideCodeInternal(). If the internal function returns
-  // false, deletes all files in |host_dalvik_cache_directory|.
-  bool GenerateHostSideCode(const base::FilePath& host_dalvik_cache_directory);
-
   // Calls InstallHostSideCodeInternal() for each isa the device supports.
   void InstallLinksToHostSideCode();
 

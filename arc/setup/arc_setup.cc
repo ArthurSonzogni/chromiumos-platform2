@@ -231,6 +231,22 @@ constexpr char kFingerprintProp[] = "ro.build.fingerprint";
 // System salt and arc salt file size.
 constexpr size_t kSaltFileSize = 16;
 
+// Stores relative path, mode_t for sdcard mounts.
+// mode is an octal mask for file permissions here.
+struct EsdfsMount {
+  const char* relative_path;
+  mode_t mode;
+  gid_t gid;
+};
+
+// For R container only.
+constexpr std::array<EsdfsMount, 4> kEsdfsMounts{{
+    {"default/emulated", 0006, kSdcardRwGid},
+    {"read/emulated", 0027, kEverybodyGid},
+    {"write/emulated", 0007, kEverybodyGid},
+    {"full/emulated", 0007, kEverybodyGid},
+}};
+
 bool RegisterAllBinFmtMiscEntries(ArcMounter* mounter,
                                   const base::FilePath& entry_directory,
                                   const base::FilePath& binfmt_misc_directory) {
@@ -300,15 +316,6 @@ ArcSdkVersionUpgradeType GetUpgradeType(AndroidSdkVersion system_sdk_version,
   if (data_sdk_version == AndroidSdkVersion::UNKNOWN ||  // First boot
       data_sdk_version == system_sdk_version) {
     return ArcSdkVersionUpgradeType::NO_UPGRADE;
-  }
-  if (data_sdk_version == AndroidSdkVersion::ANDROID_M) {
-    if (system_sdk_version == AndroidSdkVersion::ANDROID_P) {
-      return ArcSdkVersionUpgradeType::M_TO_P;
-    }
-  }
-  if (data_sdk_version == AndroidSdkVersion::ANDROID_N_MR1 &&
-      system_sdk_version == AndroidSdkVersion::ANDROID_P) {
-    return ArcSdkVersionUpgradeType::N_TO_P;
   }
   if (data_sdk_version == AndroidSdkVersion::ANDROID_N_MR1 &&
       system_sdk_version == AndroidSdkVersion::ANDROID_R) {
@@ -398,31 +405,6 @@ bool CreateArtContainerDataDirectory(
   return true;
 }
 
-// Stores relative path, mode_t for sdcard mounts.
-// mode is an octal mask for file persmissions here.
-struct EsdfsMount {
-  const char* relative_path;
-  mode_t mode;
-  gid_t gid;
-};
-
-const std::vector<EsdfsMount> GetEsdfsMounts(AndroidSdkVersion version) {
-  static constexpr std::array<EsdfsMount, 3> kEsdfsMounts{{
-      {"default/emulated", 0006, kSdcardRwGid},
-      {"read/emulated", 0027, kEverybodyGid},
-      {"write/emulated", 0007, kEverybodyGid},
-  }};
-  std::vector<EsdfsMount> mounts;
-  for (const auto& mount : kEsdfsMounts) {
-    mounts.push_back(mount);
-  }
-  if (version > AndroidSdkVersion::ANDROID_P) {
-    // For container R.
-    mounts.push_back({"full/emulated", 0007, kEverybodyGid});
-  }
-  return mounts;
-}
-
 // Esdfs mount options:
 // --------------------
 // fsuid, fsgid  : Lower filesystem's uid/gid.
@@ -462,19 +444,14 @@ std::string CreateEsdfsMountOpts(uid_t fsuid,
   return opts;
 }
 
-// Wait upto kInstalldTimeout for the sdcard source directory to be setup.
-// On failure, exit.
-bool WaitForSdcardSource(const base::FilePath& android_root,
-                         AndroidSdkVersion sdk_version) {
+// Wait up to kInstalldTimeout for the sdcard source directory to be setup.
+// On failure, exit. For R container only.
+bool WaitForSdcardSource(const base::FilePath& android_root) {
   bool ret;
   base::TimeDelta elapsed;
   // <android_root>/data path to synchronize with installd
   const base::FilePath fs_version =
-      sdk_version > AndroidSdkVersion::ANDROID_P
-          ?
-          // For container R.
-          android_root.Append("data/misc/installd/layout_version")
-          : android_root.Append("data/.layout_version");
+      android_root.Append("data/misc/installd/layout_version");
 
   LOG(INFO) << "Waiting upto " << kInstalldTimeout
             << " for installd to complete setting up /data.";
@@ -988,11 +965,12 @@ void ArcSetup::SetUpAndroidData(const base::FilePath& bind_target) {
                                    bind_target));
 }
 
+// For R container only.
 void ArcSetup::UnmountSdcard() {
   // We unmount here in both the ESDFS and the FUSE cases in order to
   // clean up after Android's /system/bin/sdcard. However, the paths
   // must be the same in both cases.
-  for (const auto& mount : GetEsdfsMounts(GetSdkVersion())) {
+  for (const auto& mount : kEsdfsMounts) {
     base::FilePath kDestDirectory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
     IGNORE_ERRORS(arc_mounter_->UmountIfExists(kDestDirectory));
@@ -1115,6 +1093,7 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
       {board_hardware_features.value(), platform_xml_file.value()}));
 }
 
+// For R container only.
 void ArcSetup::SetUpSdcard() {
   constexpr unsigned int mount_flags =
       MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_NOATIME;
@@ -1129,16 +1108,14 @@ void ArcSetup::SetUpSdcard() {
       open(base::StringPrintf("/proc/%d/ns/user", container_pid).c_str(),
            O_RDONLY)));
 
-  const AndroidSdkVersion sdk_version = GetSdkVersion();
   // Installd setups up the user data directory skeleton on first-time boot.
   // Wait for setup
-  EXIT_IF(
-      !WaitForSdcardSource(arc_paths_->android_mutable_source, sdk_version));
+  EXIT_IF(!WaitForSdcardSource(arc_paths_->android_mutable_source));
 
   // Ensure the Downloads directory exists.
   EXIT_IF(!base::DirectoryExists(host_downloads_directory));
 
-  for (const auto& mount : GetEsdfsMounts(sdk_version)) {
+  for (const auto& mount : kEsdfsMounts) {
     base::FilePath dest_directory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
 
@@ -1158,6 +1135,7 @@ void ArcSetup::SetUpSdcard() {
   LOG(INFO) << "Esdfs setup complete.";
 }
 
+// For R container only.
 void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
   EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->sdcard_mount_directory));
   EXIT_IF(!base::DirectoryExists(arc_paths_->sdcard_mount_directory));
@@ -1173,13 +1151,8 @@ void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
   EXIT_IF(
       !InstallDirectory(0755, kRootUid, kRootGid,
                         arc_paths_->sdcard_mount_directory.Append("write")));
-
-  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
-    // For container R.
-    EXIT_IF(
-        !InstallDirectory(0755, kRootUid, kRootGid,
-                          arc_paths_->sdcard_mount_directory.Append("full")));
-  }
+  EXIT_IF(!InstallDirectory(0755, kRootUid, kRootGid,
+                            arc_paths_->sdcard_mount_directory.Append("full")));
 
   // Create the mount directories. In original Android, these are created in
   // EmulatedVolume.cpp just before /system/bin/sdcard is fork()/exec()'ed.
@@ -1196,13 +1169,9 @@ void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
   EXIT_IF(!InstallDirectory(
       0755, kRootUid, kRootGid,
       arc_paths_->sdcard_mount_directory.Append("write/emulated")));
-
-  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
-    // For container R.
-    EXIT_IF(!InstallDirectory(
-        0755, kRootUid, kRootGid,
-        arc_paths_->sdcard_mount_directory.Append("full/emulated")));
-  }
+  EXIT_IF(!InstallDirectory(
+      0755, kRootUid, kRootGid,
+      arc_paths_->sdcard_mount_directory.Append("full/emulated")));
 }
 
 void ArcSetup::SetUpFilesystemForObbMounter() {
@@ -1213,49 +1182,6 @@ void ArcSetup::SetUpFilesystemForObbMounter() {
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
                                "mode=0755"));
   EXIT_IF(!arc_mounter_->SharedMount(arc_paths_->obb_mount_directory));
-}
-
-bool ArcSetup::GenerateHostSideCodeInternal(
-    const base::FilePath& host_dalvik_cache_directory,
-    ArcCodeRelocationResult* result) {
-  *result = ArcCodeRelocationResult::ERROR_UNABLE_TO_RELOCATE;
-  std::unique_ptr<ArtContainer> art_container =
-      ArtContainer::CreateContainer(arc_mounter_.get(), GetSdkVersion());
-  if (!art_container) {
-    LOG(ERROR) << "Failed to create art container";
-    return false;
-  }
-  const std::string salt = GetOrCreateArcSalt();
-  if (salt.empty()) {
-    *result = ArcCodeRelocationResult::SALT_EMPTY;
-    return false;
-  }
-
-  const uint64_t offset_seed = GetArtCompilationOffsetSeed(
-      GetSystemBuildPropertyOrDie(kFingerprintProp), salt);
-  if (!art_container->PatchImage(offset_seed)) {
-    LOG(ERROR) << "Failed to relocate boot images";
-    return false;
-  }
-  *result = ArcCodeRelocationResult::SUCCESS;
-  return true;
-}
-
-bool ArcSetup::GenerateHostSideCode(
-    const base::FilePath& host_dalvik_cache_directory) {
-  ArcCodeRelocationResult result;
-  base::ElapsedTimer timer;
-  if (!GenerateHostSideCodeInternal(host_dalvik_cache_directory, &result)) {
-    // If anything fails, delete code in cache.
-    LOG(INFO) << "Failed to generate host-side code. Deleting existing code in "
-              << host_dalvik_cache_directory.value();
-    DeleteFilesInDir(host_dalvik_cache_directory);
-  }
-  base::TimeDelta time_delta = timer.Elapsed();
-  LOG(INFO) << "GenerateHostSideCode took "
-            << time_delta.InMillisecondsRoundedUp() << "ms";
-
-  return result == ArcCodeRelocationResult::SUCCESS;
 }
 
 bool ArcSetup::InstallLinksToHostSideCodeInternal(
@@ -1357,12 +1283,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   // will see these files, but other than that, the /data and /cache
   // directories are empty and read-only which is the best for security.
 
-  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P) {
-    // Unconditionally generate host-side code here for P.
-    EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
-  } else {
-    LOG(INFO) << "Skip generation of host-side code for versions higher than P";
-  }
   EXIT_IF(!Chown(kRootUid, kRootGid, arc_paths_->art_dalvik_cache_directory));
   // Remove the file zygote may have created.
   IGNORE_ERRORS(brillo::DeleteFile(
@@ -1472,7 +1392,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   // * It assumes that ADB is connected through the qemu pipe, which is not
   //   true in Chrome OS' case.
   // * It controls whether the emulated GLES implementation should be used
-  //   (but can be overriden by setting ro.kernel.qemu.gles to -1).
+  //   (but can be overridden by setting ro.kernel.qemu.gles to -1).
   // * It disables a bunch of pixel formats and uses only RGB565.
   // * It disables Bluetooth (which we might do regardless).
   const std::string content = base::StringPrintf(
@@ -1602,18 +1522,12 @@ void ArcSetup::SetUpMountPointsForMedia() {
                                media_mount_options.c_str()));
   EXIT_IF(!arc_mounter_->SharedMount(arc_paths_->media_mount_directory));
   for (auto* directory :
-       {"removable", "removable-default", "removable-read", "removable-write",
-        "MyFiles", "MyFiles-default", "MyFiles-read", "MyFiles-write"}) {
+       {"removable", "removable-default", "removable-full", "removable-read",
+        "removable-write", "MyFiles", "MyFiles-default", "MyFiles-full",
+        "MyFiles-read", "MyFiles-write"}) {
     EXIT_IF(
         !InstallDirectory(0755, kMediaUid, kMediaGid,
                           arc_paths_->media_mount_directory.Append(directory)));
-  }
-  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
-    for (auto* directory : {"removable-full", "MyFiles-full"}) {
-      EXIT_IF(!InstallDirectory(
-          0755, kMediaUid, kMediaGid,
-          arc_paths_->media_mount_directory.Append(directory)));
-    }
   }
 }
 
@@ -1663,12 +1577,10 @@ void ArcSetup::CleanUpStaleMountPoints() {
       arc_paths_->media_removable_read_directory));
   EXIT_IF(!arc_mounter_->UmountIfExists(
       arc_paths_->media_removable_write_directory));
-  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
-    EXIT_IF(!arc_mounter_->UmountIfExists(
-        arc_paths_->media_myfiles_full_directory));
-    EXIT_IF(!arc_mounter_->UmountIfExists(
-        arc_paths_->media_removable_full_directory));
-  }
+  EXIT_IF(
+      !arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_full_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(
+      arc_paths_->media_removable_full_directory));
 
   // If the android_mutable_source path cannot be unmounted below continue
   // anyway. This allows the mini-container to start and allows tests to
@@ -1914,6 +1826,9 @@ AndroidSdkVersion ArcSetup::GetSdkVersion() {
   if (version == AndroidSdkVersion::UNKNOWN) {
     LOG(FATAL) << "Unknown SDK version: " << version_str;
   }
+  if (version < AndroidSdkVersion::ANDROID_R) {
+    LOG(FATAL) << "Unsupported SDK version: " << version_str;
+  }
   return version;
 }
 
@@ -1943,12 +1858,10 @@ void ArcSetup::UnmountOnStop() {
       arc_mounter_->UmountIfExists(arc_paths_->media_removable_read_directory));
   IGNORE_ERRORS(arc_mounter_->UmountIfExists(
       arc_paths_->media_removable_write_directory));
-  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
-    IGNORE_ERRORS(
-        arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_full_directory));
-    IGNORE_ERRORS(arc_mounter_->UmountIfExists(
-        arc_paths_->media_removable_full_directory));
-  }
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_full_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_removable_full_directory));
   IGNORE_ERRORS(
       arc_mounter_->UmountIfExists(arc_paths_->media_mount_directory));
   IGNORE_ERRORS(arc_mounter_->Umount(arc_paths_->sdcard_mount_directory));
@@ -2478,9 +2391,6 @@ void ArcSetup::DeleteAndroidDataOnUpgrade(AndroidSdkVersion data_sdk_version) {
 
 void ArcSetup::DeleteAndroidMediaProviderDataOnUpgrade(
     AndroidSdkVersion data_sdk_version) {
-  if (GetSdkVersion() < AndroidSdkVersion::ANDROID_R) {
-    return;
-  }
   if (data_sdk_version != AndroidSdkVersion::ANDROID_P) {
     return;
   }
@@ -2509,18 +2419,15 @@ void ArcSetup::OnSetup() {
   CleanUpStaleMountPoints();
   RestoreContext();
   SetUpGraphicsSysfsContext();
-  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
-    // For container R.
-    SetUpTestharness(is_dev_mode);
+  SetUpTestharness(is_dev_mode);
 
-    if (!USE_ARCVM) {
-      // In case the udev rules for creating and populating this directory fail,
-      // create the directory so that the bind mount succeeds and allows ARC to
-      // boot, as this is a non-essential feature.
-      // This is intended for CTS compliance on R container: b/277541769
-      EXIT_IF(!brillo::MkdirRecursively(base::FilePath("/dev/arc_input"), 0755)
-                   .is_valid());
-    }
+  if (!USE_ARCVM) {
+    // In case the udev rules for creating and populating this directory fail,
+    // create the directory so that the bind mount succeeds and allows ARC to
+    // boot, as this is a non-essential feature.
+    // This is intended for CTS compliance on R container: b/277541769
+    EXIT_IF(!brillo::MkdirRecursively(base::FilePath("/dev/arc_input"), 0755)
+                 .is_valid());
   }
   SetUpPowerSysfsContext();
   MakeMountPointsReadOnly();
@@ -2528,6 +2435,7 @@ void ArcSetup::OnSetup() {
   SetUpSharedApkDirectory();
 }
 
+// For R container only.
 void ArcSetup::OnBootContinue() {
   const bool is_dev_mode = config_.GetBoolOrDie("CHROMEOS_DEV_MODE");
   const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
@@ -2560,18 +2468,15 @@ void ArcSetup::OnBootContinue() {
   // don't exist, this has to be done before calling ShareAndroidData().
   SetUpAndroidData(arc_paths_->android_mutable_source);
 
-  const AndroidSdkVersion system_sdk_version = GetSdkVersion();
-  if (system_sdk_version == AndroidSdkVersion::ANDROID_R) {
-    // Legacy MediaProvider databases should not be used in ARC R+.
-    DeleteLegacyMediaProviderDatabases(arc_paths_->android_data_directory,
-                                       arc_paths_->android_data_old_directory);
-    // Clear possibly broken MediaProvider databases (b/319460942).
-    // Since the function creates a file inside |android_data_directory|, call
-    // it after SetUpAndroidData() to ensure the existence of the directory.
-    DeletePossiblyBrokenMediaProviderDatabases(
-        arc_paths_->android_data_directory,
-        arc_paths_->android_data_old_directory);
-  }
+  // Legacy MediaProvider databases should not be used in ARC R+.
+  DeleteLegacyMediaProviderDatabases(arc_paths_->android_data_directory,
+                                     arc_paths_->android_data_old_directory);
+  // Clear possibly broken MediaProvider databases (b/319460942).
+  // Since the function creates a file inside |android_data_directory|, call
+  // it after SetUpAndroidData() to ensure the existence of the directory.
+  DeletePossiblyBrokenMediaProviderDatabases(
+      arc_paths_->android_data_directory,
+      arc_paths_->android_data_old_directory);
 
   InstallLinksToHostSideCode();
 
@@ -2594,12 +2499,6 @@ void ArcSetup::OnBootContinue() {
       "CONTAINER_PID=%d", config_.GetIntOrDie("CONTAINER_PID"));
   EXIT_IF(!LaunchAndWait({"/sbin/initctl", "start", "--no-wait", "arc-sdcard",
                           env_chromeos_user, env_container_pid}));
-
-  if (system_sdk_version == AndroidSdkVersion::ANDROID_P) {
-    EXIT_IF(!LaunchAndWait({"/sbin/initctl", "start", "--no-wait",
-                            "arcpp-media-sharing-services",
-                            "IS_ANDROID_CONTAINER_RVC=false"}));
-  }
 }
 
 void ArcSetup::OnStop() {
@@ -2983,7 +2882,7 @@ std::string ArcSetup::GetSystemBuildPropertyOrDie(const std::string& name) {
     // First time read of system properties file.
     // We don't know if we are in a container or on VM yet, so try the
     // build.prop location on container first and fall back to the
-    // conbined.prop location on VM if empty.
+    // combined.prop location on VM if empty.
     const base::FilePath build_prop =
         arc_paths_->android_generated_properties_directory.Append("build.prop");
     GetPropertiesFromFile(build_prop, &system_properties_);

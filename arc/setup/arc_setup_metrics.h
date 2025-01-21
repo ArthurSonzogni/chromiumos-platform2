@@ -16,17 +16,6 @@ namespace arc {
 
 // Enum is append only and need to match the definition in
 // Chromium's src/tools/metrics/histograms/enums.xml.
-enum class ArcCodeRelocationResult {
-  SUCCESS = 0,
-  ERROR_BOOTLOCKBOXD_NOT_READY = 1,
-  ERROR_UNABLE_TO_RELOCATE = 2,
-  ERROR_UNABLE_TO_SIGN = 3,
-  SALT_EMPTY = 4,
-  COUNT
-};
-
-// Enum is append only and need to match the definition in
-// Chromium's src/tools/metrics/histograms/enums.xml.
 // Note we only care important upgrade types listed below, rather than
 // all possible permutations.
 enum class ArcSdkVersionUpgradeType {
@@ -34,8 +23,8 @@ enum class ArcSdkVersionUpgradeType {
   UNKNOWN_UPGRADE = 1,
   UNKNOWN_DOWNGRADE = 2,
   // M_TO_N is deprecated
-  M_TO_P = 4,
-  N_TO_P = 5,
+  // M_TO_P is deprecated
+  // N_TO_P is deprecated
   // P_TO_Q is deprecated
   N_TO_R = 7,
   P_TO_R = 8,

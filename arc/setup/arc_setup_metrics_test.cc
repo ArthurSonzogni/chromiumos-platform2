@@ -35,10 +35,10 @@ class ArcSetupMetricsTest : public testing::Test {
 TEST_F(ArcSetupMetricsTest, SendSdkVersionUpgradeType) {
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
-      SendEnumToUMA(_, static_cast<int>(ArcSdkVersionUpgradeType::N_TO_P), _))
+      SendEnumToUMA(_, static_cast<int>(ArcSdkVersionUpgradeType::R_TO_T), _))
       .Times(1);
   arc_setup_metrics_.SendSdkVersionUpgradeType(
-      ArcSdkVersionUpgradeType::N_TO_P);
+      ArcSdkVersionUpgradeType::R_TO_T);
 }
 
 }  // namespace
