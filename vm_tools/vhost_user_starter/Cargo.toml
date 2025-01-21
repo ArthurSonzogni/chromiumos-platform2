@@ -13,7 +13,7 @@ dbus-crossroads = "0.5.0"
 libc = "0.2.153"
 libchromeos = { path = "../../libchromeos-rs/" } # provided by ebuild
 log = "0.4"
-nix = {version = "0.28", features= ["fs"]}
+nix = {version = "0.28", features= ["fs", "signal"]}
 protobuf = "3.2.0"
 system_api = { path = "../../system_api" } # provided by ebuild
 tempfile = "3"

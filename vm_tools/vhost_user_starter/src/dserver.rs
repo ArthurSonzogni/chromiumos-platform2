@@ -2,15 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::collections::HashMap;
 use std::error::Error;
 use std::os::fd::AsFd;
 use std::os::fd::AsRawFd;
+use std::os::unix::process::ExitStatusExt;
+use std::process::Child;
 use std::process::Command;
-use std::process::ExitStatus;
+use std::sync::mpsc::channel;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::thread::JoinHandle;
 use std::vec::Vec;
 
 use dbus::arg;
@@ -19,7 +21,10 @@ use dbus::channel::MatchingReceiver;
 use dbus_crossroads::Crossroads;
 use log::error;
 use log::info;
+use log::warn;
 use nix::fcntl;
+use nix::sys::signal;
+use nix::sys::signalfd;
 use protobuf::Message;
 use system_api::server::register_org_chromium_vhost_user_starter;
 use system_api::server::OrgChromiumVhostUserStarter;
@@ -111,36 +116,69 @@ fn clear_cloexec(fd: i32) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-#[derive(Default)]
+/// Receives child processes from the provided channel and adds them to the `children` vector.
+///
+/// This allows the process spawning devices sends `Child` to  the main process. The main
+/// process takes charge of management of these child processes.
+fn try_receive_children(child_receiver: &Receiver<Child>, children: &mut Vec<Child>) {
+    loop {
+        match child_receiver.try_recv() {
+            Ok(child) => {
+                children.push(child);
+            }
+            // no more child is on the channel
+            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                break;
+            }
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                panic!("child channel is disconnected");
+            }
+        }
+    }
+}
+
+/// Checks the exit status of child processes and removes completed ones.
+///
+/// This function will be called after reading SIGCHLD from signal fd. There's a
+/// possibility that not all devices have been exited at the time. So, it uses
+/// non-blocking wait to reap the child.
+fn try_reap_children(children: &mut Vec<Child>) {
+    children.retain_mut(|child| {
+        let mut retain_child = true;
+        let pid = child.id();
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => {
+                info!("Child({}) exits successfully", pid);
+                retain_child = false
+            }
+            Ok(Some(status)) => {
+                // on failure
+                if let Some(code) = status.code() {
+                    // vhost_user backend device exit with error code
+                    panic!("Child({}) exit with error: {}", pid, code);
+                } else {
+                    // The spawned child process of vhost_user
+                    // backend device is killed by signal.
+                    panic!("Child({}) killed by {:?}", pid, status.signal());
+                }
+            }
+            Ok(None) => {}
+            Err(e) => {
+                warn!("error attempting to wait: {}", e);
+            }
+        }
+        retain_child
+    });
+}
+
 pub struct StarterService {
-    /// keep_fds helps vhost-user device enter Linux jails without closing
-    /// needed file descriptors. Vhost_user_starter will generate Uuid for
-    /// each device to serve as the key. The value is socket fd used to communicate
-    /// with vhost_user_frontend device. Item should be dropped when the backend
-    /// device exits.
-    keep_fds: Arc<Mutex<HashMap<u32, arg::OwnedFd>>>,
-    child_join_handles: Arc<Mutex<Vec<JoinHandle<ExitStatus>>>>,
-    device_counter: u32,
+    /// child_sender is used to add new child processes to the monitoring loop.
+    child_sender: Sender<Child>,
 }
 
 impl StarterService {
-    fn new(
-        keep_fds: Arc<Mutex<HashMap<u32, arg::OwnedFd>>>,
-        child_join_handles: Arc<Mutex<Vec<JoinHandle<ExitStatus>>>>,
-    ) -> Self {
-        StarterService {
-            keep_fds,
-            child_join_handles,
-            device_counter: 0,
-        }
-    }
-
-    fn next_device_id(&mut self) -> u32 {
-        self.device_counter = self
-            .device_counter
-            .checked_add(1)
-            .expect("Failed to increment device counter");
-        self.device_counter
+    fn new(child_sender: Sender<Child>) -> Self {
+        StarterService { child_sender }
     }
 }
 
@@ -148,7 +186,7 @@ impl OrgChromiumVhostUserStarter for StarterService {
     fn start_vhost_user_fs(
         &mut self,
         request: Vec<u8>,
-        mut socket: Vec<arg::OwnedFd>,
+        socket: Vec<arg::OwnedFd>,
     ) -> Result<Vec<u8>, dbus::MethodErr> {
         info!("vhost_user_starter received start vhost user fs request");
         let response = StartVhostUserFsResponse::new();
@@ -196,37 +234,14 @@ impl OrgChromiumVhostUserStarter for StarterService {
 
         clear_cloexec(fd).expect("Fail to clear FD_CLOEXEC");
 
-        let device_id = self.next_device_id();
-        let owned_socket_fd = socket.pop().expect("Checked socket len is 1");
-
-        let keep_fds = Arc::clone(&self.keep_fds);
-        keep_fds
-            .lock()
-            .expect("Fail to lock keep_fds")
-            .insert(device_id, owned_socket_fd);
-
-        let mut cmd = Command::new("crosvm")
+        let child = Command::new("crosvm")
             .args(fs_args)
             .spawn()
             .expect("Failed to execute command");
 
-        let handler = std::thread::spawn(move || {
-            let exit_status = cmd.wait().expect("Failed to wait on child");
-            info!("Child process exited with: {}", exit_status);
-
-            // After vhost_user_device exits, the backend socket fd should be closed.
-            keep_fds
-                .lock()
-                .expect("Fail to lock keep_fds")
-                .remove(&device_id)
-                .expect("Owned_socket_fd not found");
-            exit_status
-        });
-
-        self.child_join_handles
-            .lock()
-            .expect("Fail to lock child_join_handles")
-            .push(handler);
+        self.child_sender
+            .send(child)
+            .expect("Failed to send Child to main process");
 
         write_dbus_response_to_bytes::<StartVhostUserFsResponse>(&response)
     }
@@ -238,8 +253,8 @@ impl OrgChromiumVhostUserStarter for StarterService {
 /// dbus::blocking::Connection. The parameter `cr` is wrapped by Arc<Mutex<_>> for making it Sync.
 fn serve_sync_connection(
     cr: Arc<Mutex<Crossroads>>,
-    connection: &dbus::blocking::SyncConnection,
-    child_join_handles: Arc<Mutex<Vec<JoinHandle<ExitStatus>>>>,
+    connection: dbus::blocking::SyncConnection,
+    child_receiver: Receiver<Child>,
 ) -> Result<(), dbus::Error> {
     connection.start_receive(
         dbus::message::MatchRule::new_method_call(),
@@ -247,38 +262,43 @@ fn serve_sync_connection(
             cr.lock()
                 .expect("Fail to lock crossroads")
                 .handle_message(msg, conn)
-                .unwrap();
+                .expect("Failed to handle message");
             true
         }),
     );
+
+    let mut mask = signalfd::SigSet::empty();
+    mask.add(signal::SIGCHLD);
+    mask.thread_block().expect("Failed to block signal");
+    let mut sfd = signalfd::SignalFd::with_flags(&mask, signalfd::SfdFlags::empty())
+        .expect("Failed to create signal fd");
+
+    // No need to join, since it will live as long as main thread
+    let _handler = std::thread::spawn(move || loop {
+        let one_day_seconds = 60 * 60 * 24;
+        connection
+            .process(std::time::Duration::from_secs(one_day_seconds))
+            .expect("Failed to process dbus request");
+    });
+
+    let mut children = Vec::<Child>::new();
+
     // Serve clients forever.
     loop {
-        connection.process(std::time::Duration::from_millis(1000))?;
-        let mut handlers = child_join_handles
-            .lock()
-            .expect("Fail to get child_join_handler's lock");
-        for i in 0..handlers.len() {
-            if handlers[i].is_finished() {
-                let handler = handlers.remove(i);
-                match handler.join() {
-                    // OK
-                    Ok(status) => {
-                        if !status.success() {
-                            if let Some(code) = status.code() {
-                                // vhost_user backend device exit with error code
-                                panic!("vhost_user backend device exit with error code: {code}");
-                            } else {
-                                // The spawned child process of vhost_user backend device is
-                                // killed by signal
-                                panic!("vhost_user backend device killed by signal");
-                            }
-                        }
-                    }
-                    // When crash reporter failed to detect reaper thread panic
-                    Err(e) => {
-                        panic!("Child process failed to exit normally: {:?}", e);
-                    }
+        match sfd.read_signal() {
+            Ok(Some(signal)) => {
+                if signal.ssi_signo == libc::SIGCHLD as u32 {
+                    try_receive_children(&child_receiver, &mut children);
+                    try_reap_children(&mut children);
+                } else {
+                    unreachable!("Only signals in mask should be read from sfd");
                 }
+            }
+            Ok(None) => {
+                unreachable!("The signalfd is set to blocking, this line won't be reached");
+            }
+            Err(err) => {
+                panic!("Failed to read signalfd: {}", err)
             }
         }
     }
@@ -286,10 +306,10 @@ fn serve_sync_connection(
 
 pub fn service_main() -> Result<(), Box<dyn Error>> {
     // Connect to D-Bus.
-    let dbus_connection = Arc::new(SyncConnection::new_system().map_err(|e| {
+    let dbus_connection = SyncConnection::new_system().map_err(|e| {
         error!("Failed to connect to D-Bus: {}", e);
         e
-    })?);
+    })?;
     dbus_connection
         .request_name(DBUS_SERVICE_NAME, false, true, false)
         .map_err(|e| {
@@ -304,26 +324,21 @@ pub fn service_main() -> Result<(), Box<dyn Error>> {
     let mut crossroad = Crossroads::new();
     let iface_token = register_org_chromium_vhost_user_starter(&mut crossroad);
 
-    let child_join_handlers = Arc::new(Mutex::new(vec![]));
-    let keep_fds = Arc::new(Mutex::new(HashMap::new()));
-
+    let (sender, receiver) = channel();
     crossroad.insert(
         DBUS_OBJECT_PATH,
         &[iface_token],
-        StarterService::new(keep_fds.clone(), child_join_handlers.clone()),
+        StarterService::new(sender),
     );
 
     // Run the D-Bus service forever.
     info!("Starting the vhost_user_starter D-Bus daemon");
-    serve_sync_connection(
-        Arc::new(Mutex::new(crossroad)),
-        &dbus_connection,
-        child_join_handlers.clone(),
-    )
-    .map_err(|e| {
-        error!("Failed to serve the daemon: {}", e);
-        e
-    })?;
+    serve_sync_connection(Arc::new(Mutex::new(crossroad)), dbus_connection, receiver).map_err(
+        |e| {
+            error!("Failed to serve the daemon: {}", e);
+            e
+        },
+    )?;
     unreachable!()
 }
 
