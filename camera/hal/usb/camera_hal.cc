@@ -392,11 +392,7 @@ int CameraHal::GetCameraInfo(int id,
       return -EINVAL;
   }
   info->orientation = device_infos_[id].sensor_orientation;
-  // Set CAMERA_DEVICE_API_VERSION_3_5 to device version for Android P
-  // (API level: 28).
-  info->device_version = DeviceConfig::GetArcApiLevel() >= 30
-                             ? CAMERA_DEVICE_API_VERSION_3_6
-                             : CAMERA_DEVICE_API_VERSION_3_5;
+  info->device_version = CAMERA_DEVICE_API_VERSION_3_6;
   if (client_type == ClientType::kAndroid) {
     info->static_camera_characteristics = static_metadata_android_[id].get();
   } else {
