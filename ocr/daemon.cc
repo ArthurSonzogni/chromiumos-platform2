@@ -4,9 +4,10 @@
 
 #include "ocr/daemon.h"
 
+#include <sysexits.h>
+
 #include <memory>
 #include <string>
-#include <sysexits.h>
 #include <utility>
 
 #include <base/check.h>
@@ -16,11 +17,11 @@
 #include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/unguessable_token.h>
-#include <dbus/object_path.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/object_path.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 #include <mojo/public/cpp/system/invitation.h>
-#include <mojo/core/embedder/embedder.h>
 
 #include "ocr/ocr_service_impl.h"
 
@@ -113,9 +114,16 @@ std::string OcrDaemon::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
     }
 
     // Connect to Mojo in the requesting process.
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+    mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+        mojo::PlatformChannelEndpoint(
+            mojo::PlatformHandle(std::move(mojo_fd_copy))),
+        MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
     mojo::IncomingInvitation invitation =
         mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
             mojo::PlatformHandle(std::move(mojo_fd_copy))));
+#endif
     mojo_message_pipe =
         invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken);
     mojo_service_bind_attempted_ = true;
@@ -125,6 +133,9 @@ std::string OcrDaemon::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
     mojo::OutgoingInvitation invitation;
     token = base::UnguessableToken::Create().ToString();
     mojo_message_pipe = invitation.AttachMessagePipe(token);
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+    invitation.set_extra_flags(MOJO_SEND_INVITATION_FLAG_SHARE_BROKER);
+#endif
     mojo::OutgoingInvitation::Send(
         std::move(invitation), base::kNullProcessHandle,
         mojo::PlatformChannelEndpoint(
