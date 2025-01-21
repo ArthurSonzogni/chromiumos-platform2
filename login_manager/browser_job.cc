@@ -31,7 +31,6 @@
 #include <base/values.h>
 #include <chromeos/switches/chrome_switches.h>
 
-#include "login_manager/file_checker.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/subprocess.h"
 #include "login_manager/system_utils.h"
@@ -189,14 +188,12 @@ std::string GetUnprefixedFlagName(const std::string& flag) {
 
 BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
                        const std::vector<std::string>& environment_variables,
-                       FileChecker* checker,
                        LoginMetrics* metrics,
                        SystemUtils* system_utils,
                        const BrowserJob::Config& cfg,
                        std::unique_ptr<SubprocessInterface> subprocess)
     : arguments_(arguments),
       environment_variables_(environment_variables),
-      file_checker_(checker),
       login_metrics_(metrics),
       system_utils_(system_utils),
       start_times_(std::deque<time_t>(kRestartTries, 0)),
@@ -217,10 +214,6 @@ pid_t BrowserJob::CurrentPid() const {
 
 bool BrowserJob::IsGuestSession() {
   return base::ranges::count(arguments_, kGuestSessionFlag) > 0;
-}
-
-bool BrowserJob::ShouldRunBrowser() {
-  return !file_checker_ || !file_checker_->exists();
 }
 
 bool BrowserJob::ShouldStop() const {

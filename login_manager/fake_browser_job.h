@@ -24,7 +24,6 @@ class FakeChildProcess;
 class FakeBrowserJob : public BrowserJobInterface {
  public:
   explicit FakeBrowserJob(const std::string& name);
-  FakeBrowserJob(const std::string& name, bool schedule_exit);
   FakeBrowserJob(const FakeBrowserJob&) = delete;
   FakeBrowserJob& operator=(const FakeBrowserJob&) = delete;
 
@@ -33,11 +32,10 @@ class FakeBrowserJob : public BrowserJobInterface {
   void set_fake_child_process(std::unique_ptr<FakeChildProcess> fake) {
     fake_process_ = std::move(fake);
   }
-  void set_should_run(bool should) { should_run_ = should; }
+  void set_schedule_exit(bool value) { schedule_exit_ = value; }
 
   // Overridden from BrowserJobInterface
   bool IsGuestSession() override;
-  bool ShouldRunBrowser() override;
   MOCK_METHOD(bool, ShouldStop, (), (const, override));
   MOCK_METHOD(void, KillEverything, (int, const std::string&), (override));
   MOCK_METHOD(void, Kill, (int, const std::string&), (override));
@@ -79,8 +77,7 @@ class FakeBrowserJob : public BrowserJobInterface {
   std::unique_ptr<FakeChildProcess> fake_process_;
   const std::string name_;
   bool running_ = false;
-  const bool schedule_exit_;
-  bool should_run_ = true;
+  bool schedule_exit_ = true;
 };
 }  // namespace login_manager
 

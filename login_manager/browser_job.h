@@ -24,7 +24,6 @@
 
 namespace login_manager {
 
-class FileChecker;
 class LoginMetrics;
 class SubprocessInterface;
 class SystemUtils;
@@ -55,9 +54,6 @@ class BrowserJobInterface {
   virtual pid_t CurrentPid() const = 0;
 
   virtual bool IsGuestSession() = 0;
-
-  // Return true if the browser should be run, false if not.
-  virtual bool ShouldRunBrowser() = 0;
 
   // If ShouldStop() returns true, this means that the parent should tear
   // everything down.
@@ -139,7 +135,6 @@ class BrowserJob : public BrowserJobInterface {
 
   BrowserJob(const std::vector<std::string>& arguments,
              const std::vector<std::string>& environment_variables,
-             FileChecker* checker,
              LoginMetrics* metrics,
              SystemUtils* system_utils,
              const BrowserJob::Config& cfg,
@@ -157,7 +152,6 @@ class BrowserJob : public BrowserJobInterface {
   void AbortAndKillAll(base::TimeDelta timeout) override;
   pid_t CurrentPid() const override;
   bool IsGuestSession() override;
-  bool ShouldRunBrowser() override;
   bool ShouldStop() const override;
   void StartSession(const std::string& account_id,
                     const std::string& userhash) override;
@@ -223,10 +217,6 @@ class BrowserJob : public BrowserJobInterface {
   // Additional environment variables to set when running the browser.
   // Values are of the form "NAME=VALUE".
   std::vector<std::string> additional_environment_variables_;
-
-  // Wrapper for checking the flag file used to tell us to stop managing
-  // the browser job. Externally owned.
-  FileChecker* file_checker_;
 
   // Wrapper for reading/writing metrics. Externally owned.
   LoginMetrics* login_metrics_;

@@ -24,7 +24,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_subprocess.h"
 #include "login_manager/mock_system_utils.h"
@@ -84,7 +83,6 @@ class BrowserJobTest : public ::testing::Test {
 
   std::vector<std::string> argv_;
   std::vector<std::string> env_;
-  MockFileChecker checker_;
   MockMetrics metrics_;
   MockSystemUtils system_utils_;
   std::unique_ptr<BrowserJob> job_;
@@ -103,7 +101,7 @@ const char BrowserJobTest::kChromeMountNamespacePath[] = "mnt_chrome";
 void BrowserJobTest::SetUp() {
   argv_.assign(std::begin(kArgv), std::end(kArgv));
   job_.reset(new BrowserJob(
-      argv_, env_, &checker_, &metrics_, &system_utils_,
+      argv_, env_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(getuid(), &system_utils_)));
 }
@@ -196,7 +194,7 @@ TEST_F(BrowserJobTest, UnshareMountNamespaceForGuest) {
                                 BrowserJobInterface::kGuestSessionFlag};
 
   BrowserJob job(
-      argv, env_, &checker_, &metrics_, &system_utils_,
+      argv, env_, &metrics_, &system_utils_,
       BrowserJob::Config{false /*isolate_guest_session*/,
                          false /*isolate_regular_session*/, std::nullopt},
       std::move(p_subp));
@@ -221,7 +219,7 @@ TEST_F(BrowserJobTest, EnterMountNamespaceForGuest) {
                                 BrowserJobInterface::kGuestSessionFlag};
 
   BrowserJob job(
-      argv, env_, &checker_, &metrics_, &system_utils_,
+      argv, env_, &metrics_, &system_utils_,
       BrowserJob::Config{true /*isolate_guest_session*/,
                          false /*isolate_regular_session*/,
                          std::optional<base::FilePath>(
@@ -245,7 +243,7 @@ TEST_F(BrowserJobTest, EnterMountNamespaceForRegularUser) {
   std::unique_ptr<SubprocessInterface> p_subp(mock_subp);
 
   BrowserJob job(
-      argv_, env_, &checker_, &metrics_, &system_utils_,
+      argv_, env_, &metrics_, &system_utils_,
       BrowserJob::Config{true /*isolate_guest_session*/,
                          true /*isolate_regular_session*/,
                          std::optional<base::FilePath>(
@@ -323,24 +321,6 @@ TEST_F(BrowserJobTest, ShouldAddCrashLoopArgBeforeStopping) {
   EXPECT_TRUE(job_->ShouldStop());
 }
 
-TEST_F(BrowserJobTest, ShouldNotRunTest) {
-  EXPECT_CALL(checker_, exists()).WillRepeatedly(Return(true));
-  EXPECT_FALSE(job_->ShouldRunBrowser());
-}
-
-TEST_F(BrowserJobTest, ShouldRunTest) {
-  EXPECT_CALL(checker_, exists()).WillRepeatedly(Return(false));
-  EXPECT_TRUE(job_->ShouldRunBrowser());
-}
-
-TEST_F(BrowserJobTest, NullFileCheckerTest) {
-  BrowserJob job(
-      argv_, env_, nullptr, &metrics_, &system_utils_,
-      BrowserJob::Config{false, false, std::nullopt},
-      std::make_unique<login_manager::Subprocess>(1, &system_utils_));
-  EXPECT_TRUE(job.ShouldRunBrowser());
-}
-
 // On the job's first run, it should have a one-time-flag.  That
 // should get cleared and not used again.
 TEST_F(BrowserJobTest, OneTimeBootFlags) {
@@ -403,7 +383,7 @@ TEST_F(BrowserJobTest, StartStopSessionTest) {
 
 TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
   BrowserJob job(
-      argv_, env_, &checker_, &metrics_, &system_utils_,
+      argv_, env_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
   job.StartSession(kUser, kHash);
@@ -432,7 +412,7 @@ TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
 TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
   std::vector<std::string> argv = {"zero", "one", "two", "--login-manager"};
   BrowserJob job(
-      argv, env_, &checker_, &metrics_, &system_utils_,
+      argv, env_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -545,7 +525,7 @@ TEST_F(BrowserJobTest, FeatureFlags) {
 TEST_F(BrowserJobTest, ExportArgv) {
   std::vector<std::string> argv(std::begin(kArgv), std::end(kArgv));
   BrowserJob job(
-      argv, env_, &checker_, &metrics_, &system_utils_,
+      argv, env_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -558,7 +538,7 @@ TEST_F(BrowserJobTest, ExportArgv) {
 TEST_F(BrowserJobTest, SetAdditionalEnvironmentVariables) {
   std::vector<std::string> argv(std::begin(kArgv), std::end(kArgv));
   BrowserJob job(
-      argv, {"A=a"}, &checker_, &metrics_, &system_utils_,
+      argv, {"A=a"}, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
   job.SetAdditionalEnvironmentVariables({"B=b", "C="});
@@ -581,7 +561,7 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
     std::vector<std::string> argv = {kArg1,     kVmodule1, kArg2, kArg3,
                                      kVmodule2, kVmodule3, kArg4};
     BrowserJob job(
-        argv, env_, &checker_, &metrics_, &system_utils_,
+        argv, env_, &metrics_, &system_utils_,
         BrowserJob::Config{false, false, std::nullopt},
         std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -598,7 +578,7 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
 
     std::vector<std::string> argv = {kArg1, kVmodule, kArg2, kArg3, kArg4};
     BrowserJob job(
-        argv, env_, &checker_, &metrics_, &system_utils_,
+        argv, env_, &metrics_, &system_utils_,
         BrowserJob::Config{false, false, std::nullopt},
         std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -611,7 +591,7 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
     std::vector<std::string> argv = {kArg1, kArg2, kArg3, kArg4};
 
     BrowserJob job(
-        argv, env_, &checker_, &metrics_, &system_utils_,
+        argv, env_, &metrics_, &system_utils_,
         BrowserJob::Config{false, false, std::nullopt},
         std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -653,7 +633,7 @@ TEST_F(BrowserJobTest, CombineFeatureArgs) {
       kEnable3, kDisable3, kBlinkEnable3, kBlinkDisable3,
   };
   BrowserJob job(
-      kArgv, env_, &checker_, &metrics_, &system_utils_,
+      kArgv, env_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -702,7 +682,7 @@ TEST_F(BrowserJobTest, CombineFeatureArgs_ResolveToEmpty) {
       kEnable, kDisable, kArg1, kBlinkEnable, kBlinkDisable, kArg2,
   };
   BrowserJob job(
-      kArgv, env_, &checker_, &metrics_, &system_utils_,
+      kArgv, env_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 
@@ -746,7 +726,7 @@ TEST_F(BrowserJobTest, CombineFeatureArgs_Empty) {
       kArg2,
   };
   BrowserJob job(
-      kArgv, env_, &checker_, &metrics_, &system_utils_,
+      kArgv, env_, &metrics_, &system_utils_,
       BrowserJob::Config{false, false, std::nullopt},
       std::make_unique<login_manager::Subprocess>(1, &system_utils_));
 

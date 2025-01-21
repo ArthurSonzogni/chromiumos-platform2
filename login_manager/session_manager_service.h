@@ -26,6 +26,7 @@
 #include "login_manager/android_oci_wrapper.h"
 #include "login_manager/child_exit_handler.h"
 #include "login_manager/device_identifier_generator.h"
+#include "login_manager/file_checker.h"
 #include "login_manager/liveness_checker.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/process_manager_service_interface.h"
@@ -117,6 +118,10 @@ class SessionManagerService
       return session_manager_service_->InitializeBrowser();
     }
 
+    bool ShouldRunBrowser() {
+      return session_manager_service_->ShouldRunBrowser();
+    }
+
    private:
     friend class SessionManagerService;
     explicit TestApi(SessionManagerService* session_manager_service)
@@ -124,15 +129,17 @@ class SessionManagerService
     SessionManagerService* session_manager_service_;
   };
 
-  SessionManagerService(std::unique_ptr<BrowserJobInterface> child_job,
-                        uid_t uid,
-                        std::optional<base::FilePath> ns_path,
-                        base::TimeDelta kill_timeout,
-                        bool enable_browser_abort_on_hang,
-                        base::TimeDelta hang_detection_interval,
-                        int hang_detection_retries,
-                        LoginMetrics* metrics,
-                        SystemUtils* system_utils);
+  SessionManagerService(
+      base::OnceCallback<std::unique_ptr<BrowserJobInterface>()>
+          browser_job_factory,
+      const base::FilePath& magic_chrome_file,
+      std::optional<base::FilePath> ns_path,
+      base::TimeDelta kill_timeout,
+      bool enable_browser_abort_on_hang,
+      base::TimeDelta hang_detection_interval,
+      int hang_detection_retries,
+      LoginMetrics* metrics,
+      SystemUtils* system_utils);
   SessionManagerService(const SessionManagerService&) = delete;
   SessionManagerService& operator=(const SessionManagerService&) = delete;
 
@@ -197,6 +204,9 @@ class SessionManagerService
 
   // Returns appropriate child-killing timeout, depending on flag file state.
   base::TimeDelta GetKillTimeout();
+
+  // Return true if the browser should be run, false if not.
+  bool ShouldRunBrowser();
 
   // Initializes policy subsystems which, among other things, finds and
   // validates the stored policy signing key if one is present.
@@ -266,6 +276,8 @@ class SessionManagerService
   base::TimeTicks last_browser_restart_time_;
   bool exit_on_child_done_ = false;
   const base::TimeDelta kill_timeout_;
+
+  FileChecker file_checker_;
 
   scoped_refptr<dbus::Bus> bus_;
   const std::string match_rule_;

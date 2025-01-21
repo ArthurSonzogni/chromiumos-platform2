@@ -146,8 +146,9 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
 }
 
 SessionManagerService::SessionManagerService(
-    std::unique_ptr<BrowserJobInterface> child_job,
-    uid_t uid,
+    base::OnceCallback<std::unique_ptr<BrowserJobInterface>()>
+        browser_job_factory,
+    const base::FilePath& magic_chrome_file,
     std::optional<base::FilePath> ns_path,
     base::TimeDelta kill_timeout,
     bool enable_browser_abort_on_hang,
@@ -155,9 +156,10 @@ SessionManagerService::SessionManagerService(
     int hang_detection_retries,
     LoginMetrics* metrics,
     SystemUtils* system_utils)
-    : browser_(std::move(child_job)),
+    : browser_(std::move(browser_job_factory).Run()),
       chrome_mount_ns_path_(ns_path),
       kill_timeout_(kill_timeout),
+      file_checker_(magic_chrome_file),
       match_rule_(base::StringPrintf("type='method_call', interface='%s'",
                                      kSessionManagerInterface)),
       login_metrics_(metrics),
@@ -271,6 +273,14 @@ void SessionManagerService::InitializeBrowser() {
   // Set any flags that were specified system-wide.
   browser_->SetFeatureFlags(impl_->GetFeatureFlags(), {});
   browser_->SetExtraArguments(impl_->GetExtraCommandLineArguments());
+
+  if (!ShouldRunBrowser()) {
+    // Allows devs to start/stop browser manually.
+    return;
+  }
+  brillo::MessageLoop::current()->PostTask(
+      FROM_HERE, base::BindOnce(&SessionManagerService::RunBrowser,
+                                base::Unretained(this)));
 }
 
 void SessionManagerService::Finalize() {
@@ -467,7 +477,7 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
   if (browser_->ShouldStop()) {
     LOG(WARNING) << "Child stopped, shutting down";
     SetExitAndScheduleShutdown(CHILD_EXITING_TOO_FAST);
-  } else if (browser_->ShouldRunBrowser()) {
+  } else if (ShouldRunBrowser()) {
     // TODO(cmasone): deal with fork failing in RunBrowser()
     RunBrowser();
     last_browser_restart_time_ = base::TimeTicks::Now();
@@ -569,6 +579,10 @@ base::TimeDelta SessionManagerService::GetKillTimeout() {
   }
 
   return kill_timeout_;
+}
+
+bool SessionManagerService::ShouldRunBrowser() {
+  return !file_checker_.exists();
 }
 
 bool SessionManagerService::InitializeImpl() {

@@ -10,20 +10,12 @@
 
 namespace login_manager {
 
-FakeBrowserJob::FakeBrowserJob(const std::string& name)
-    : name_(name), schedule_exit_(true) {}
+FakeBrowserJob::FakeBrowserJob(const std::string& name) : name_(name) {}
 
-FakeBrowserJob::FakeBrowserJob(const std::string& name, bool schedule_exit)
-    : name_(name), schedule_exit_(schedule_exit) {}
-
-FakeBrowserJob::~FakeBrowserJob() {}
+FakeBrowserJob::~FakeBrowserJob() = default;
 
 bool FakeBrowserJob::IsGuestSession() {
   return false;
-}
-
-bool FakeBrowserJob::ShouldRunBrowser() {
-  return should_run_;
 }
 
 bool FakeBrowserJob::RunInBackground() {

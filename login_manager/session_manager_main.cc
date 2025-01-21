@@ -44,7 +44,6 @@
 
 #include "login_manager/browser_job.h"
 #include "login_manager/chrome_setup.h"
-#include "login_manager/file_checker.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/scheduler_util.h"
 #include "login_manager/session_manager_impl.h"
@@ -93,7 +92,6 @@ static const char kHelpMessage[] =
 using login_manager::BrowserJob;
 using login_manager::BrowserJobInterface;
 using login_manager::ConfigureNonUrgentCpuset;
-using login_manager::FileChecker;
 using login_manager::LoginMetrics;
 using login_manager::PerformChromeSetup;
 using login_manager::SessionManagerService;
@@ -172,7 +170,6 @@ int main(int argc, char* argv[]) {
   if (magic_chrome_file.empty()) {
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
   }
-  FileChecker checker((base::FilePath(magic_chrome_file)));  // So vexing!
 
   // Used to report various metrics around user type (guest vs non), dev-mode,
   // and policy/key file status.
@@ -264,30 +261,30 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // This job encapsulates the command specified on the command line, and the
-  // runtime options for it.
-  auto browser_job = std::make_unique<BrowserJob>(
-      command, chrome_setup->env, &checker, &metrics, &system_utils, config,
-      std::make_unique<login_manager::Subprocess>(chrome_setup->uid,
-                                                  &system_utils));
-  bool should_run_browser = browser_job->ShouldRunBrowser();
-
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   brillo::BaseMessageLoop brillo_loop(task_executor.task_runner());
   brillo_loop.SetAsCurrent();
 
   scoped_refptr<SessionManagerService> manager = new SessionManagerService(
-      std::move(browser_job), chrome_setup->uid, ns_path, kKillTimeout,
+      base::BindOnce(
+          [](const std::vector<std::string>& command,
+             const std::vector<std::string>& environment, LoginMetrics* metrics,
+             login_manager::SystemUtils* system_utils,
+             const BrowserJob::Config& config,
+             uid_t uid) -> std::unique_ptr<BrowserJobInterface> {
+            // This job encapsulates the command specified on the command line,
+            // and the runtime options for it.
+            return std::make_unique<BrowserJob>(
+                command, environment, metrics, system_utils, config,
+                std::make_unique<login_manager::Subprocess>(uid, system_utils));
+          },
+          command, chrome_setup->env, &metrics, &system_utils, config,
+          chrome_setup->uid),
+      base::FilePath(magic_chrome_file), ns_path, kKillTimeout,
       enable_hang_detection, hang_detection_interval, hang_detection_retires,
       &metrics, &system_utils);
 
   if (manager->Initialize()) {
-    // Allows devs to start/stop browser manually.
-    if (should_run_browser) {
-      brillo_loop.PostTask(
-          FROM_HERE,
-          base::BindOnce(&SessionManagerService::RunBrowser, manager));
-    }
     // Returns when brillo_loop.BreakLoop() is called.
     brillo_loop.Run();
   }

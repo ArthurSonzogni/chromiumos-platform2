@@ -114,14 +114,23 @@ class SessionManagerProcessTest : public ::testing::Test {
         kFakePid, exit_status, manager_->test_api()));
   }
 
-  void InitManager(std::unique_ptr<BrowserJobInterface> job) {
+  void InitManager() {
     manager_ = new SessionManagerService(
-        std::move(job), getuid(), std::nullopt, base::Seconds(3), false,
+        base::BindOnce(&SessionManagerProcessTest::CreateFakeBrowserJob,
+                       base::Unretained(this)),
+        GetChromeMagicFilePath(), std::nullopt, base::Seconds(3), false,
         base::TimeDelta(), 0, &metrics_, &system_utils_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
     manager_->test_api().set_aborted_browser_pid_path(
         aborted_browser_pid_path_);
+  }
+
+  std::unique_ptr<BrowserJobInterface> CreateFakeBrowserJob() {
+    CHECK(!fake_browser_job_);
+    auto job = std::make_unique<FakeBrowserJob>("FakeBrowserJob");
+    fake_browser_job_ = job.get();
+    return job;
   }
 
   void SimpleRunManager() {
@@ -133,17 +142,21 @@ class SessionManagerProcessTest : public ::testing::Test {
   void ForceRunLoop() { brillo_loop_.Run(); }
 
   FakeBrowserJob* CreateMockJobAndInitManager(bool schedule_exit) {
-    FakeBrowserJob* job = new FakeBrowserJob("FakeBrowserJob", schedule_exit);
-    InitManager(base::WrapUnique(job));
-
-    job->set_fake_child_process(
+    InitManager();
+    CHECK(fake_browser_job_);
+    fake_browser_job_->set_schedule_exit(schedule_exit);
+    fake_browser_job_->set_fake_child_process(
         std::make_unique<FakeChildProcess>(kFakePid, 0, manager_->test_api()));
 
-    return job;
+    return fake_browser_job_;
   }
 
   int PackStatus(int status) { return __W_EXITCODE(status, 0); }
   int PackSignal(int signal) { return __W_EXITCODE(0, signal); }
+
+  base::FilePath GetChromeMagicFilePath() {
+    return tmpdir_.GetPath().Append("chrome_magic_file_path");
+  }
 
   scoped_refptr<SessionManagerService> manager_;
   MockMetrics metrics_;
@@ -160,6 +173,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   bool must_destroy_mocks_;
   base::ScopedTempDir tmpdir_;
   brillo::BaseMessageLoop brillo_loop_;
+  FakeBrowserJob* fake_browser_job_ = nullptr;
 };
 
 // static
@@ -307,7 +321,7 @@ TEST_F(SessionManagerProcessTest, ChildExitFlagFileStop) {
       .Times(1);
   // Browser shutdown time is track when browser request to stop.
   EXPECT_CALL(metrics_, SendBrowserShutdownTime(_)).Times(1);
-  job->set_should_run(false);
+  ASSERT_TRUE(base::WriteFile(GetChromeMagicFilePath(), ""));
 
   EXPECT_CALL(*session_manager_impl_, ShouldEndSession(_))
       .WillOnce(Return(false));
@@ -536,6 +550,14 @@ TEST_F(SessionManagerProcessTest,
   EXPECT_THAT(actual_arguments,
               UnorderedElementsAre("the-first-extra-argument",
                                    "the-second-extra-argument"));
+}
+
+TEST_F(SessionManagerProcessTest, ShouldRunBrowser) {
+  InitManager();
+  EXPECT_TRUE(manager_->test_api().ShouldRunBrowser());
+  // Create a file at a specific path then browser restart will be prevented.
+  ASSERT_TRUE(base::WriteFile(GetChromeMagicFilePath(), ""));
+  EXPECT_FALSE(manager_->test_api().ShouldRunBrowser());
 }
 
 }  // namespace login_manager
