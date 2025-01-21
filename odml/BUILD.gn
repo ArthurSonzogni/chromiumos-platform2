@@ -191,6 +191,7 @@ source_set("odml") {
     "embedding_model/odml_shim_tokenizer.cc",
     "embedding_model/tflite_model_runner.cc",
     "i18n/ml_service_language_detector.cc",
+    "i18n/translator_impl.cc",
     "on_device_model/ml/chrome_ml.cc",
     "on_device_model/ml/gpu_blocklist.cc",
     "on_device_model/ml/on_device_model_executor.cc",
