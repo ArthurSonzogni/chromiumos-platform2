@@ -171,6 +171,14 @@ fn try_reap_children(children: &mut Vec<Child>) {
     });
 }
 
+// If there's no child process and already received the SIGTERM, exit with status 0
+fn try_exit(children: &[Child], received_sigterm: bool) {
+    if children.is_empty() && received_sigterm {
+        info!("exited successfully by SIGTERM");
+        std::process::exit(0);
+    }
+}
+
 pub struct StarterService {
     /// child_sender is used to add new child processes to the monitoring loop.
     child_sender: Sender<Child>,
@@ -269,6 +277,7 @@ fn serve_sync_connection(
 
     let mut mask = signalfd::SigSet::empty();
     mask.add(signal::SIGCHLD);
+    mask.add(signal::SIGTERM);
     mask.thread_block().expect("Failed to block signal");
     let mut sfd = signalfd::SignalFd::with_flags(&mask, signalfd::SfdFlags::empty())
         .expect("Failed to create signal fd");
@@ -282,6 +291,7 @@ fn serve_sync_connection(
     });
 
     let mut children = Vec::<Child>::new();
+    let mut received_sigterm = false;
 
     // Serve clients forever.
     loop {
@@ -290,6 +300,11 @@ fn serve_sync_connection(
                 if signal.ssi_signo == libc::SIGCHLD as u32 {
                     try_receive_children(&child_receiver, &mut children);
                     try_reap_children(&mut children);
+                    try_exit(&children, received_sigterm);
+                } else if signal.ssi_signo == libc::SIGTERM as u32 {
+                    received_sigterm = true;
+                    try_receive_children(&child_receiver, &mut children);
+                    try_exit(&children, received_sigterm);
                 } else {
                     unreachable!("Only signals in mask should be read from sfd");
                 }
