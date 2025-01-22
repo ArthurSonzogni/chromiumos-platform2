@@ -70,12 +70,12 @@ TEST(AddressManager, SubnetsPerPool) {
 
 TEST(AddressManager, SubnetIndexing) {
   AddressManager mgr;
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kArc0, 1));
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kArcNet, 1));
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kTerminaVM, 1));
-  EXPECT_TRUE(mgr.AllocateIPv4Subnet(GuestType::kParallelsVM, 1));
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kLXDContainer, 1));
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kNetns, 1));
+  EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kArc0, 1));
+  EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kArcNet, 1));
+  EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kTerminaVM, 1));
+  EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kLXDContainer, 1));
+  EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kNetns, 1));
+  EXPECT_NE(nullptr, mgr.AllocateIPv4Subnet(GuestType::kParallelsVM, 1));
 }
 
 TEST(AddressManager, StableMacAddresses) {

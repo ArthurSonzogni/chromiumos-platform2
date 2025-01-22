@@ -65,10 +65,8 @@ AddressManager::AddressManager() {
       GuestType::kLXDContainer,
       SubnetPool::New(
           *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.192/28"), 4));
-  pools_.emplace(
-      GuestType::kParallelsVM,
-      SubnetPool::New(
-          *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29"), 32));
+  parallels_pool_ = SubnetPool::New(
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29"), 32);
   allocated_ipv6_subnets_.insert(kDnsProxySubnet);
 }
 
@@ -79,12 +77,15 @@ net_base::MacAddress AddressManager::GenerateMacAddress(uint32_t index) {
 
 std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
                                                            uint32_t index) {
-  if (index > 0 && guest != GuestType::kParallelsVM) {
-    LOG(ERROR) << "Subnet indexing not supported for guest";
+  if (guest == GuestType::kParallelsVM) {
+    return parallels_pool_->Allocate(index);
+  }
+  if (index > 0) {
+    LOG(ERROR) << ": Subnet indexing is not supported for guest " << guest;
     return nullptr;
   }
   const auto it = pools_.find(guest);
-  return (it != pools_.end()) ? it->second->Allocate(index) : nullptr;
+  return (it != pools_.end()) ? it->second->Allocate() : nullptr;
 }
 
 net_base::IPv6CIDR AddressManager::AllocateIPv6Subnet() {

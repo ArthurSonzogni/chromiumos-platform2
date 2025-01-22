@@ -96,7 +96,12 @@ class BRILLO_EXPORT AddressManager {
 
  private:
   MacAddressGenerator mac_addrs_;
+  // All subnet pools used for guest that do not require any specific subnet.
+  // Allocation is automatic.
   std::map<GuestType, std::unique_ptr<SubnetPool>> pools_;
+  // Separate subnet pool for Parallel VMs which require allocating subnets at
+  // specific offsets.
+  std::unique_ptr<SubnetPool> parallels_pool_;
   base::flat_set<net_base::IPv6CIDR> allocated_ipv6_subnets_;
 
   base::WeakPtrFactory<AddressManager> weak_ptr_factory_{this};
