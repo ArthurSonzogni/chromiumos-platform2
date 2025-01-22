@@ -169,6 +169,7 @@ bool EmbeddingDatabase::Sync() {
     LOG(ERROR) << "Failed to write embeddings to database.";
     return false;
   }
+  dirty_ = false;
   return true;
 }
 
