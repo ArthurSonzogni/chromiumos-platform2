@@ -58,12 +58,19 @@ class NetworkConfigMergeTest : public ::testing::Test {
     dhcppd_config_.ipv6_delegated_prefixes = {
         *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:dd::/64")};
     dhcppd_config_.mtu = 1403;
+
+    google_dns_static_config_.dns_servers = {
+        *net_base::IPAddress::CreateFromString("8.8.8.8"),
+        *net_base::IPAddress::CreateFromString("8.8.4.4"),
+        *net_base::IPAddress::CreateFromString("0.0.0.0"),
+        *net_base::IPAddress::CreateFromString("0.0.0.0")};
   }
 
  protected:
   net_base::NetworkConfig dhcp_config_;
   net_base::NetworkConfig slaac_config_;
   net_base::NetworkConfig dhcppd_config_;
+  net_base::NetworkConfig google_dns_static_config_;
 };
 
 TEST_F(NetworkConfigMergeTest, DHCPOnly) {
@@ -316,6 +323,18 @@ TEST_F(NetworkConfigMergeTest, DHCPAndDHCPPD) {
   // SLAAC config is set prior than DHCP, so use the value from SLAAC.
   // (Although in practice these two value should be the same).
   EXPECT_EQ(slaac_config_.captive_portal_uri, cnc.Get().captive_portal_uri);
+}
+
+TEST_F(NetworkConfigMergeTest, GoogleDnsListOnIPv6OnlyNetwork) {
+  CompoundNetworkConfig cnc("test_if");
+  EXPECT_TRUE(cnc.SetFromSLAAC(
+      std::make_unique<net_base::NetworkConfig>(slaac_config_)));
+  EXPECT_TRUE(cnc.SetFromStatic(google_dns_static_config_));
+
+  EXPECT_EQ((std::vector<net_base::IPAddress>{
+                *net_base::IPAddress::CreateFromString("2001:4860:4860::6464"),
+                *net_base::IPAddress::CreateFromString("2001:4860:4860::64")}),
+            cnc.Get().dns_servers);
 }
 
 }  // namespace

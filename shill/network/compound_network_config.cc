@@ -11,8 +11,40 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
 
 namespace shill {
+namespace {
+constexpr net_base::IPAddress kGoogleIPv4DNS1(
+    net_base::IPv4Address(8, 8, 8, 8));
+constexpr net_base::IPAddress kGoogleIPv4DNS2(
+    net_base::IPv4Address(8, 8, 4, 4));
+constexpr net_base::IPAddress kGoogleDNS64DNS1(net_base::IPv6Address(
+    0x20, 0x01, 0x48, 0x60, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0x64, 0x64));
+constexpr net_base::IPAddress kGoogleDNS64DNS2(net_base::IPv6Address(
+    0x20, 0x01, 0x48, 0x60, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x64));
+
+// Returns true if the given list of DNS IP addresses is the fixed list of
+// Google IPv4 DNS addresses 8.8.8.8 and 8.8.4.4, in any order. Ignores any
+// 0.0.0.0 entry.
+bool IsFixedGoogleIPv4DNSList(
+    const std::vector<net_base::IPAddress>& dns_servers) {
+  bool google_ipv4_dns1_found = false;
+  bool google_ipv4_dns2_found = false;
+  for (const auto& dns : dns_servers) {
+    if (dns == kGoogleIPv4DNS1) {
+      google_ipv4_dns1_found = true;
+    } else if (dns == kGoogleIPv4DNS2) {
+      google_ipv4_dns2_found = true;
+    } else if (!dns.IsZero()) {
+      return false;
+    }
+  }
+  return google_ipv4_dns1_found && google_ipv4_dns2_found;
+}
+}  // namespace
 
 CompoundNetworkConfig::CompoundNetworkConfig(std::string_view logging_tag)
     : logging_tag_(logging_tag) {
@@ -232,6 +264,20 @@ bool CompoundNetworkConfig::Recalculate() {
           domain_search_dedup.insert(item);
         }
       }
+    }
+  }
+  // b/388127815: If the network is IPv6-only and DNS was set statically by the
+  // UI to "Google name servers", replace the IPv4 Google DNS addresses
+  // hardcoded by Chrome by the IPv6 addresses of the Google DNS64 servers.
+  if (!combined_network_config_->ipv4_address &&
+      !combined_network_config_->ipv6_addresses.empty()) {
+    if (IsFixedGoogleIPv4DNSList(static_network_config_.dns_servers)) {
+      LOG(INFO) << *this << " " << __func__
+                << ": Replacing static list of IPv4 Google DNS servers with "
+                   "Google DNS64 servers";
+      combined_network_config_->dns_servers.clear();
+      combined_network_config_->dns_servers.push_back(kGoogleDNS64DNS1);
+      combined_network_config_->dns_servers.push_back(kGoogleDNS64DNS2);
     }
   }
 
