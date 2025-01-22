@@ -20,10 +20,6 @@
 int main(int arg, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  // Init the Mojo Embedder API here, since both the executor and printscanmgr
-  // use it.
-  mojo::core::Init();
-
   // The parent and child processes will each keep one end of this message pipe
   // and use it to bootstrap a Mojo connection to each other.
   mojo::PlatformChannel channel;
@@ -43,6 +39,7 @@ int main(int arg, char** argv) {
 
     LOG(INFO) << "Starting executor daemon.";
 
+    mojo::core::Init();
     printscanmgr::EnterExecutorMinijail();
 
     printscanmgr_endpoint.reset();
@@ -51,6 +48,9 @@ int main(int arg, char** argv) {
 
   LOG(INFO) << "Starting printscanmgr daemon.";
 
+  // Initialize the printscanmgr daemon as the broker in the daemon/executor
+  // Mojo network.
+  mojo::core::Init(mojo::core::Configuration{.is_broker_process = true});
   printscanmgr::EnterDaemonMinijail();
 
   executor_endpoint.reset();

@@ -92,3 +92,5 @@ setresuid: 1
 setresgid32: 1
 setresuid32: 1
 bind: 1
+fallocate: 1
+ftruncate64: 1

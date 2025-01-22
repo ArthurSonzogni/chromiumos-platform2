@@ -38,9 +38,13 @@ void EnterDaemonMinijail() {
                                    "/mnt/empty"));  // Set /mnt/empty as rootfs.
 
   CHECK_EQ(0, minijail_bind(jail.get(), "/", "/", 0));
+  // Allows creation of shared memory files by ipcz-backed Mojo brokers.
+  CHECK_EQ(0, minijail_bind(jail.get(), "/dev", "/dev", 0));
+  CHECK_EQ(0, minijail_bind(jail.get(), "/dev/shm", "/dev/shm", 1));
 
   CHECK_EQ(1, minijail_add_fs_restriction_ro(jail.get(), "/"));
   CHECK_EQ(1, minijail_add_fs_restriction_rx(jail.get(), "/bin"));
+  CHECK_EQ(1, minijail_add_fs_restriction_rw(jail.get(), "/dev/shm"));
   CHECK_EQ(1, minijail_add_fs_restriction_rx(jail.get(), "/etc"));
   CHECK_EQ(1, minijail_add_fs_restriction_rx(jail.get(), "/lib"));
   CHECK_EQ(1, minijail_add_fs_restriction_rx(jail.get(), "/lib64"));

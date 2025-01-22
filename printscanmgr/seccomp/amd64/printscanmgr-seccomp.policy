@@ -88,3 +88,5 @@ clock_nanosleep: 1
 setresgid: 1
 setresuid: 1
 bind: 1
+fallocate: 1
+ftruncate: 1
