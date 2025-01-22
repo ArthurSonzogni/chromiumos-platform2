@@ -188,7 +188,7 @@ shared_library("libkeymint") {
     ":libcppbor_external",
     ":liblog",
   ]
-  if (use.keymint) {
+  if (use.keymint || use.fuzzer) {
     install_path = "lib"
   }
 }
