@@ -44,6 +44,10 @@ define(`BLKSSZGET', `0x1268')
 define(`BLKBSZGET', `0x1270')
 define(`BLKGETSIZE64', `0x1272')
 
+# zoned block device ioctls are defined in
+# src/third_party/kernel/v*/include/uapi/linux/blkzoned.h
+define(`BLKGETZONESZ', `0x1284')
+
 # tty ioctls are defined in
 # src/third_party/kernel/v*/include/uapi/asm-generic/ioctls.h
 define(`TIOCGWINSZ', `0x5413')

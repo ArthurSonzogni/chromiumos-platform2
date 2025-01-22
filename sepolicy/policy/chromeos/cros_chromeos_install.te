@@ -132,3 +132,12 @@ allowxperm cros_chromeos_install {
   cros_python_exec
   unlabeled
 }:file ioctl { FS_IOC_FIEMAP };
+
+# Used by mkfs.ext4
+allowxperm cros_chromeos_install device:blk_file ioctl {
+  BLKGETZONESZ
+  BLKDISCARDZEROES
+  BLKPBSZGET
+  BLKDISCARD
+  BLKROGET
+};
