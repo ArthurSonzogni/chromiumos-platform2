@@ -114,7 +114,7 @@ bool VmBaseImpl::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
       cpu_shares = 64;
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
   return UpdateCpuShares(base::FilePath(cpu_cgroup), cpu_shares);
 }

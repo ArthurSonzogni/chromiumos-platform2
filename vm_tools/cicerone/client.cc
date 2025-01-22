@@ -947,8 +947,7 @@ int ApplyAnsiblePlaybook(dbus::ObjectProxy* proxy,
                  << response.failure_reason();
       return -1;
     default:
-      NOTREACHED_IN_MIGRATION();
-      return -1;
+      NOTREACHED();
   }
 }
 

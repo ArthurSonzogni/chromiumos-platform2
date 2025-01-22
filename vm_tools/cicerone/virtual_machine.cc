@@ -17,12 +17,12 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/uuid.h>
+#include <chromeos/constants/vm_tools.h>
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
-#include <chromeos/constants/vm_tools.h>
 
 #include "vm_tools/cicerone/grpc_util.h"
 
@@ -589,8 +589,7 @@ VirtualMachine::SetUpLxdContainerUser(const std::string& container_name,
       LOG(ERROR) << "Failed to set up user: " << response.failure_reason();
       return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
     default:
-      NOTREACHED_IN_MIGRATION();
-      return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
+      NOTREACHED();
   }
 }
 

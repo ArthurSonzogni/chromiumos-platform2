@@ -532,7 +532,7 @@ bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
     case CPU_RESTRICTION_BACKGROUND_WITH_CFS_QUOTA_ENFORCED:
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 
   // Apply quotas.

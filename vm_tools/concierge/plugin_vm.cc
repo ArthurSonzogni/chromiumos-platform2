@@ -407,7 +407,7 @@ void PluginVm::HandleUsbControlResponse() {
         }
       } break;
       default:
-        NOTREACHED_IN_MIGRATION();
+        NOTREACHED();
     }
 
     usb_req_waiting_response_.erase(req_iter);

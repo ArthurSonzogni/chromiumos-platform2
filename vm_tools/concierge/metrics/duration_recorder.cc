@@ -44,11 +44,8 @@ std::string GetVirtualizationMetricsName(apps::VmType vm_type,
       event_name = kVmStopMetricsTag;
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
       LOG(ERROR) << "Unknown vm event for MetricsInstrumenter: " << event_name;
-      // Unknown key for UMA are just ignored.
-      event_name = "UnknownEvent";
-      break;
+      NOTREACHED();
   }
 
   // This will create names such as "Virtualization.TERMINA.StopDuration". The

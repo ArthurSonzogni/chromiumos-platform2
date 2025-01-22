@@ -490,6 +490,5 @@ int main(int argc, char** argv) {
     }
   }
 
-  NOTREACHED_IN_MIGRATION();
-  return EXIT_FAILURE;
+  NOTREACHED();
 }
