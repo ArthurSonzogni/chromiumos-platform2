@@ -5,7 +5,10 @@
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [ ":hardware_verifier-goprotos" ]
+  deps = [
+    ":hardware_verifier-goprotos",
+    ":install_protos",
+  ]
 }
 
 config("target_defaults") {
@@ -30,4 +33,9 @@ goproto_library("hardware_verifier-goprotos") {
   proto_out_dir = "go/src/"
   proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/dbus/runtime_probe" ]
   sources = [ "${proto_in_dir}/hardware_verifier.proto" ]
+}
+
+install_config("install_protos") {
+  sources = [ "hardware_verifier.proto" ]
+  install_path = "/usr/include/chromeos/hardware_verifier"
 }
