@@ -120,3 +120,15 @@ allowxperm cros_chromeos_install device:blk_file ioctl {
   FDGETFDCSTAT
   HDIO_GETGEO
 };
+
+# b/387519228 noted slow install times under certain conditions. FS_IOC_FIEMAP
+# is used by coreutils (where we get our `cp`) until version 9 to improve speed
+# of copying.
+# `cp` is used on many different files, so we need to specify several tcontexts.
+# Remove this when we upgrade to coreutils >=9.
+allowxperm cros_chromeos_install {
+  cros_dev_image_exec
+  cros_dev_tast_test
+  cros_python_exec
+  unlabeled
+}:file ioctl { FS_IOC_FIEMAP };
