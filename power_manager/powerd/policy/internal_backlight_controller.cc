@@ -434,7 +434,7 @@ void InternalBacklightController::HandleBatterySaverModeChange(
     }
     HandleSetBrightnessRequest(
         new_percent, Transition::FAST,
-        SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+        SetBacklightBrightnessRequest_Cause_BATTERY_SAVER_STATE_CHANGED);
     // NB: HandleSetBrightnessRequest clears pre_battery_saver_percent_ to
     // preserve any brightness changes the user has made after battery saver is
     // enabled. So set it after the call.
@@ -443,7 +443,7 @@ void InternalBacklightController::HandleBatterySaverModeChange(
     // Deactivate and there is a brightness to restore.
     HandleSetBrightnessRequest(
         pre_battery_saver_percent_.value(), Transition::FAST,
-        SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+        SetBacklightBrightnessRequest_Cause_BATTERY_SAVER_STATE_CHANGED);
   }
 }
 
@@ -719,6 +719,11 @@ void InternalBacklightController::HandleSetBrightnessRequest(
       cause_str = "restored-from-user-preference";
       change_cause =
           BacklightBrightnessChange_Cause_RESTORED_FROM_USER_PREFERENCE;
+      break;
+    case SetBacklightBrightnessRequest_Cause_BATTERY_SAVER_STATE_CHANGED:
+      cause_str = "battery-saver-state-change-triggered";
+      change_cause =
+          BacklightBrightnessChange_Cause_BATTERY_SAVER_STATE_CHANGED;
       break;
   }
 

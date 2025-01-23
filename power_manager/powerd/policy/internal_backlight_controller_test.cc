@@ -1211,6 +1211,24 @@ TEST_F(InternalBacklightControllerTest, SetBrightnessCause) {
       dbus_wrapper_.get(), /*index=*/0, kScreenBrightnessChangedSignal,
       kBrightnessPercentUserPreference,
       BacklightBrightnessChange_Cause_RESTORED_FROM_USER_PREFERENCE);
+
+  // Set the brightness with BATTERY_SAVER_STATE_CHANGED cause.
+  const double kBrightnessPercentUserBatterySaverChange = 55.0;
+  dbus_wrapper_->ClearSentSignals();
+  test::CallSetScreenBrightness(
+      dbus_wrapper_.get(), kBrightnessPercentUserBatterySaverChange,
+      SetBacklightBrightnessRequest_Transition_FAST,
+      SetBacklightBrightnessRequest_Cause_BATTERY_SAVER_STATE_CHANGED);
+  percent = 0.0;
+  ASSERT_TRUE(controller_->GetBrightnessPercent(&percent));
+  ASSERT_DOUBLE_EQ(round(kBrightnessPercentUserBatterySaverChange),
+                   round(percent));
+
+  // A signal should've been emitted with the appropriate cause.
+  test::CheckBrightnessChangedSignal(
+      dbus_wrapper_.get(), /*index=*/0, kScreenBrightnessChangedSignal,
+      kBrightnessPercentUserBatterySaverChange,
+      BacklightBrightnessChange_Cause_BATTERY_SAVER_STATE_CHANGED);
 }
 
 TEST_F(InternalBacklightControllerTest, GetAmbientLightSensorEnabled) {
