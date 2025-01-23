@@ -158,7 +158,7 @@ fn update_mglru_split_settings(
 }
 
 pub fn register_features(swappiness: SwappinessConfig) {
-    feature::register_feature(VMMMS_RECLAIM_ENTIRE_TARGET_FEATURE_NAME, false, None);
+    feature::register_feature(VMMMS_RECLAIM_ENTIRE_TARGET_FEATURE_NAME, true, None);
 
     feature::register_feature(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME, true, None);
 
@@ -933,8 +933,8 @@ pub async fn get_memory_pressure_status(
     let is_high_ram = meminfo.total > DISCARD_STALE_AT_MODERATE_HIGH_RAM_CUTOFF_KB;
 
     // Never enable moderate pressure discards on devices with high ram.
-    let discard_stale_at_moderate = !is_high_ram &&
-        feature::is_feature_enabled(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME)?;
+    let discard_stale_at_moderate = !is_high_ram
+        && feature::is_feature_enabled(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME)?;
 
     let do_thrashing_discount = should_do_thrashing_discount();
     let available = get_background_available_memory_kb(&meminfo, game_mode, do_thrashing_discount);
