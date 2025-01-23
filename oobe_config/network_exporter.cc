@@ -22,8 +22,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
-#include <dbus/object_proxy.h>
 #include <dbus/object_path.h>
+#include <dbus/object_proxy.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -96,9 +96,16 @@ mojo::Remote<RollbackNetworkConfig> BootstrapMojoConnection(dbus::Bus* bus) {
     return mojo::Remote<RollbackNetworkConfig>();
   }
 
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(
+          mojo::PlatformHandle(std::move(file_handle))),
+      MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
           mojo::PlatformHandle(std::move(file_handle))));
+#endif
 
   return mojo::Remote<RollbackNetworkConfig>(
       mojo::PendingRemote<RollbackNetworkConfig>(
