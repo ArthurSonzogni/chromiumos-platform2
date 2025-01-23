@@ -19,6 +19,7 @@ StartLimitBurst=3
 # The following paths are created by systemd-tmpfiles.
 Environment=LOG_DIR=/var/log/power_manager
 Environment=POWER_RUN_DIR=/run/power_manager/power
+Environment=POWER_VARLIB_DIR=/var/lib/power_manager/power
 Environment=PREFS_DIR=/var/lib/power_manager
 Environment=ROOT_RUN_DIR=/run/power_manager/root
 Environment=ROOT_SPOOL_DIR=/var/spool/power_manager/root
@@ -34,5 +35,6 @@ ExecStart=/sbin/minijail0 -u power -g power -G -i  \
   /usr/bin/powerd                                  \
     --log_dir="${LOG_DIR}"                         \
     --run_dir="${POWER_RUN_DIR}"                   \
+    --varlib_dir=${POWER_VARLIB_DIR}               \
     --vmodule="${VMODULE_ARG}"                     \
     >/var/log/powerd.out 2>&1

@@ -173,6 +173,8 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
 
     CHECK(temp_dir_.CreateUniqueTempDir());
     CHECK(temp_dir_.IsValid());
+    CHECK(varlib_dir_.CreateUniqueTempDir());
+    CHECK(varlib_dir_.IsValid());
     wakeup_count_path_ = temp_dir_.GetPath().Append("wakeup_count");
     oobe_completed_path_ = temp_dir_.GetPath().Append("oobe_completed");
     cros_ec_path_ = temp_dir_.GetPath().Append("cros_ec");
@@ -181,7 +183,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     battery_tool_lock_path_ = temp_dir_.GetPath().Append("battery_tool_lock");
     sync_on_suspend_path_ = temp_dir_.GetPath().Append("sync_on_suspend_");
     proc_path_ = temp_dir_.GetPath().Append("proc");
-    suspend_reboot_path_ = temp_dir_.GetPath().Append("suspend_reboot");
+    suspend_reboot_path_ = varlib_dir_.GetPath().Append("suspend_reboot");
     dbus_wrapper_->SetMethodCallback(base::BindRepeating(
         &DaemonTest::HandleDBusMethodCall, base::Unretained(this)));
   }
@@ -214,7 +216,8 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     resourced_call_count_ = 0;
     resourced_fail_ = 0;
 
-    daemon_ = std::make_unique<Daemon>(this, run_dir_.GetPath());
+    daemon_ = std::make_unique<Daemon>(this, run_dir_.GetPath(),
+                                       varlib_dir_.GetPath());
     daemon_->set_wakeup_count_path_for_testing(wakeup_count_path_);
     daemon_->set_oobe_completed_path_for_testing(oobe_completed_path_);
     daemon_->set_cros_ec_path_for_testing(cros_ec_path_);
@@ -629,6 +632,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
 
   // Temp files passed to |daemon_|.
   base::ScopedTempDir temp_dir_;
+  base::ScopedTempDir varlib_dir_;
   base::FilePath wakeup_count_path_;
   base::FilePath oobe_completed_path_;
   base::FilePath cros_ec_path_;

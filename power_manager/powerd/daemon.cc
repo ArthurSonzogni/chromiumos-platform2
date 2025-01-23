@@ -108,7 +108,7 @@ const char kShutdownAnnouncedFile[] = "shutdown_announced";
 // |suspend_announced_path_|.
 const char kSuspendAnnouncedFile[] = "suspend_announced";
 
-// Basename appended to |run_dir| (see Daemon's c'tor) to produce
+// Basename appended to |varlib_dir| (see Daemon's c'tor) to produce
 // |suspend_reboot_path_|.
 const char kSuspendRebootFile[] = "suspend_reboot";
 
@@ -332,7 +332,9 @@ class Daemon::StateControllerDelegate
   Daemon* daemon_;  // weak
 };
 
-Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
+Daemon::Daemon(DaemonDelegate* delegate,
+               const base::FilePath& run_dir,
+               const base::FilePath& varlib_dir)
     : delegate_(delegate),
       state_controller_delegate_(new StateControllerDelegate(this)),
       state_controller_(new policy::StateController),
@@ -353,7 +355,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       suspended_state_path_(kDefaultSuspendedStatePath),
       shutdown_announced_path_(run_dir.Append(kShutdownAnnouncedFile)),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
-      suspend_reboot_path_(run_dir.Append(kSuspendRebootFile)),
+      suspend_reboot_path_(varlib_dir.Append(kSuspendRebootFile)),
       already_ran_path_(run_dir.Append(Daemon::kAlreadyRanFileName)),
       video_activity_logger_(new PeriodicActivityLogger(
           "Video activity",
@@ -991,7 +993,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
   // Create a file that will be persisted if the device crashes on suspend or
   // resume. Delete it when this function returns.
-  // Note that this file seems oddly similar to suspended_state, however that
+  // Note that this file seems oddly similar to powerd_suspended, however that
   // file is used by the unclean shutdown detector, so we can't delete it
   // when this function returns.
   if (!brillo::TouchFile(suspend_reboot_path_)) {

@@ -119,7 +119,12 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // after boot.
   static constexpr char kAlreadyRanFileName[] = "already_ran";
 
-  Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir);
+  // |run_dir| is a directory to hold temporary runtime data that gets cleared
+  //    out at system boot time.
+  // |varlib_dir| is a directory for the same but persists across reboots.
+  Daemon(DaemonDelegate* delegate,
+         const base::FilePath& run_dir,
+         const base::FilePath& varlib_dir);
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 

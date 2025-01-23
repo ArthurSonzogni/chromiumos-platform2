@@ -7,6 +7,7 @@
 : "${UPSTART_RUN:=}"
 : "${LOG_DIR:=}"
 : "${POWER_RUN_DIR:=}"
+: "${POWER_VARLIB_DIR:=}"
 : "${PREFS_DIR:=}"
 : "${ROOT_RUN_DIR:=}"
 : "${ROOT_SPOOL_DIR:=}"
@@ -22,9 +23,10 @@
 # We use the "UPSTART_RUN" variable, that is only defined by the Upstart conf
 # to distinguish between these situations.
 if [ -n "${UPSTART_RUN}" ]; then
-  mkdir -p "${LOG_DIR}" "${POWER_RUN_DIR}" "${PREFS_DIR}"
-  chown -R power:power "${LOG_DIR}" "${POWER_RUN_DIR}" "${PREFS_DIR}"
-  chmod 755 "${LOG_DIR}" "${POWER_RUN_DIR}" "${PREFS_DIR}"
+  mkdir -p "${LOG_DIR}" "${POWER_RUN_DIR}" "${POWER_VARLIB_DIR}" "${PREFS_DIR}"
+  chown -R power:power "${LOG_DIR}" "${POWER_RUN_DIR}" "${POWER_VARLIB_DIR}" \
+    "${PREFS_DIR}"
+  chmod 755 "${LOG_DIR}" "${POWER_RUN_DIR}" "${POWER_VARLIB_DIR}" "${PREFS_DIR}"
 
   mkdir -p "${ROOT_RUN_DIR}" "${ROOT_SPOOL_DIR}"
 fi

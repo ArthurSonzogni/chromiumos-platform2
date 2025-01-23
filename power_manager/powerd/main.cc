@@ -413,6 +413,9 @@ class DaemonDelegateImpl : public DaemonDelegate {
 int main(int argc, char* argv[]) {
   DEFINE_string(log_dir, "", "Directory where logs are written.");
   DEFINE_string(run_dir, "", "Directory where stateful data is written.");
+  DEFINE_string(
+      varlib_dir, "",
+      "Directory where stateful data (persisted across reboots) is written.");
   // This flag is handled by libbase/libchrome's logging library instead of
   // directly by powerd, but it is defined here so FlagHelper won't abort after
   // seeing an unexpected flag.
@@ -425,6 +428,7 @@ int main(int argc, char* argv[]) {
 
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
   CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";
+  CHECK(!FLAGS_varlib_dir.empty()) << "--varlib_dir is required";
 
   const base::FilePath log_file =
       base::FilePath(FLAGS_log_dir)
@@ -467,7 +471,8 @@ int main(int argc, char* argv[]) {
 
   power_manager::DaemonDelegateImpl delegate;
   // Extra parens to avoid http://en.wikipedia.org/wiki/Most_vexing_parse.
-  power_manager::Daemon daemon(&delegate, (base::FilePath(FLAGS_run_dir)));
+  power_manager::Daemon daemon(&delegate, (base::FilePath(FLAGS_run_dir)),
+                               (base::FilePath(FLAGS_varlib_dir)));
   daemon.Init();
 
   base::RunLoop().Run();
