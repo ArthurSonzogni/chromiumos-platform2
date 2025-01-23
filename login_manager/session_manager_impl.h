@@ -127,26 +127,9 @@ class SessionManagerImpl
   // user session.
   static const char kLoadShillProfileImpulse[];
 
-  // Android container messages.
-  static const char kStartArcInstanceImpulse[];
-  static const char kStopArcInstanceImpulse[];
-  static const char kContinueArcBootImpulse[];
-
-  // ARCVM messages.
-  static const char kStopArcVmInstanceImpulse[];
-
-  // TODO(b/205032502): Because upgrading the container from mini to full often
-  // takes more than 25 seconds, increasing it to accommodate P99.9.
-  // Considering its cyclic nature setting it to 40 sec should cover majority
-  // of P99.9 cases.
-  static constexpr base::TimeDelta kArcBootContinueTimeout = base::Seconds(40);
-
   // Lock screen state messages.
   static const char kScreenLockedImpulse[];
   static const char kScreenUnlockedImpulse[];
-
-  // How much time we must wait before killing the containers.
-  static const base::TimeDelta kContainerTimeout;
 
   // How much time to wait for the key generator job to stop before killing it.
   static const base::TimeDelta kKeyGenTimeout;
@@ -345,6 +328,8 @@ class SessionManagerImpl
 
   // Returns whether there's a user session started.
   bool HasSession(const std::string& account_id);
+  // Sends arc-instance-stopped signal.
+  void SendArcInstanceStoppedSignal(uint32_t value);
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
@@ -417,32 +402,6 @@ class SessionManagerImpl
   // Returns true if at least one session is started.
   bool IsSessionStarted();
 
-#if USE_CHEETS
-  // Starts the Android container for ARC. If an error occurs, brillo::Error
-  // instance is set to |error_out|.  After this succeeds, in case of ARC stop,
-  // OnAndroidContainerStopped() is called.
-  bool StartArcContainer(const std::vector<std::string>& env_vars,
-                         brillo::ErrorPtr* error_out);
-
-  // Creates environment variables passed to upstart for container upgrade.
-  std::vector<std::string> CreateUpgradeArcEnvVars(
-      const arc::UpgradeArcContainerRequest& request,
-      const std::string& account_id,
-      pid_t pid);
-
-  // Called when the container fails to continue booting.
-  void OnContinueArcBootFailed();
-
-  // Stops the ARC container with the given |reason|.
-  bool StopArcInstanceInternal(ArcContainerStopReason reason);
-
-  // Called when the Android container is stopped.
-  void OnAndroidContainerStopped(pid_t pid, ArcContainerStopReason reason);
-
-  LoginMetrics::ArcContinueBootImpulseStatus GetArcContinueBootImpulseStatus(
-      dbus::Error* dbus_error);
-#endif
-
   bool session_started_ = false;
   bool session_stopping_ = false;
   bool screen_locked_ = false;
@@ -479,7 +438,6 @@ class SessionManagerImpl
   crossystem::Crossystem* crossystem_;
   VpdProcess* vpd_process_;
   PolicyKey* owner_key_;
-  ContainerManagerInterface* android_container_;
   InstallAttributesReader* install_attributes_reader_;
   dbus::ObjectProxy* powerd_proxy_;
   dbus::ObjectProxy* system_clock_proxy_;

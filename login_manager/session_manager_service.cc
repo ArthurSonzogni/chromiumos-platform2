@@ -44,6 +44,7 @@
 #include <dbus/object_proxy.h>
 #include <vm_concierge/concierge_service.pb.h>
 
+#include "login_manager/arc_manager.h"
 #include "login_manager/browser_job.h"
 #include "login_manager/chrome_features_service_client.h"
 #include "login_manager/liveness_checker_impl.h"
@@ -456,7 +457,7 @@ void SessionManagerService::HandleBrowserExit(const siginfo_t& status) {
 
   // Ensure ARC containers are gone.
   android_container_->RequestJobExit(ArcContainerStopReason::BROWSER_SHUTDOWN);
-  android_container_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
+  android_container_->EnsureJobExit(ArcManager::kContainerTimeout);
   // Ensure ARCVM and related Upstart jobs are stopped (b/290194650).
   MaybeStopArcVm();
   impl_->EmitStopArcVmInstanceImpulse();
@@ -690,7 +691,7 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
   }
 
   android_container_->EnsureJobExit(std::max(
-      base::TimeDelta(), SessionManagerImpl::kContainerTimeout -
+      base::TimeDelta(), ArcManager::kContainerTimeout -
                              (base::TimeTicks::Now() - timeout_start)));
 }
 
