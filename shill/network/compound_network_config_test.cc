@@ -52,6 +52,8 @@ class NetworkConfigMergeTest : public ::testing::Test {
             .value();
     slaac_config_.dns_search_domains = {"host1.domain", "host3.domain"};
     slaac_config_.mtu = 1402;
+    slaac_config_.pref64 =
+        *net_base::IPv6CIDR::CreateFromCIDRString("64:ff9b::/96");
 
     dhcppd_config_.ipv6_addresses = {
         *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:dd::2/128")};
@@ -157,6 +159,7 @@ TEST_F(NetworkConfigMergeTest, SLAACWithStatic) {
   EXPECT_EQ(static_config.dns_search_domains, cnc.Get().dns_search_domains);
   EXPECT_EQ(slaac_config_.mtu, cnc.Get().mtu);
   EXPECT_EQ(slaac_config_.captive_portal_uri, cnc.Get().captive_portal_uri);
+  EXPECT_EQ("64:ff9b::/96", cnc.Get().pref64->ToString());
 }
 
 TEST_F(NetworkConfigMergeTest, DHCPAndSLAAC) {
@@ -185,6 +188,7 @@ TEST_F(NetworkConfigMergeTest, DHCPAndSLAAC) {
                                       "host2.domain"}),
             cnc.Get().dns_search_domains);
   EXPECT_EQ(1401, cnc.Get().mtu);  // Smaller value
+  EXPECT_EQ("64:ff9b::/96", cnc.Get().pref64->ToString());
 
   // SLAAC config is set prior than DHCP, so use the value from SLAAC.
   // (Although in practice these two value should be the same).
@@ -287,6 +291,7 @@ TEST_F(NetworkConfigMergeTest, CellWithDynamicIPv6) {
             cnc.Get().dns_servers);
   EXPECT_EQ(slaac_config_.dns_search_domains, cnc.Get().dns_search_domains);
   EXPECT_EQ(1402, cnc.Get().mtu);  // Smaller value
+  EXPECT_EQ("64:ff9b::/96", cnc.Get().pref64->ToString());
 }
 
 TEST_F(NetworkConfigMergeTest, DHCPAndDHCPPD) {
@@ -319,6 +324,7 @@ TEST_F(NetworkConfigMergeTest, DHCPAndDHCPPD) {
   EXPECT_EQ(dhcppd_config_.ipv6_delegated_prefixes,
             cnc.Get().ipv6_delegated_prefixes);
   EXPECT_EQ(1401, cnc.Get().mtu);  // Smaller value
+  EXPECT_EQ("64:ff9b::/96", cnc.Get().pref64->ToString());
 
   // SLAAC config is set prior than DHCP, so use the value from SLAAC.
   // (Although in practice these two value should be the same).

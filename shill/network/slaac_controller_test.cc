@@ -80,6 +80,8 @@ class SLAACControllerTest : public testing::Test {
       unsigned char scope);
   std::unique_ptr<net_base::RTNLMessage> BuildCaptivePortalMessage(
       const net_base::HttpUrl& captive_portal_uri);
+  std::unique_ptr<net_base::RTNLMessage> BuildPref64Message(
+      net_base::RTNLMessage::Mode mode, const net_base::IPv6CIDR& prefix);
 
   MOCK_METHOD(void, UpdateCallback, (SLAACController::UpdateType));
 
@@ -152,6 +154,15 @@ SLAACControllerTest::BuildCaptivePortalMessage(
       net_base::RTNLMessage::kTypeCaptivePortal,
       net_base::RTNLMessage::kModeAdd, 0, 0, 0, kTestIfindex, AF_INET6);
   message->set_captive_portal_uri(captive_portal_uri);
+  return message;
+}
+
+std::unique_ptr<net_base::RTNLMessage> SLAACControllerTest::BuildPref64Message(
+    net_base::RTNLMessage::Mode mode, const net_base::IPv6CIDR& prefix) {
+  auto message = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypePref64, mode, 0, 0, 0, kTestIfindex,
+      AF_INET6);
+  message->set_pref64(prefix);
   return message;
 }
 
@@ -428,6 +439,22 @@ TEST_F(SLAACControllerTest, StartIPv6FlagsWithLinkLocal) {
       .WillOnce(Return(true));
 
   slaac_controller_.Start(net_base::IPv6Address::CreateFromString("fe80::5"));
+}
+
+TEST_F(SLAACControllerTest, Pref64) {
+  auto network_config_out = slaac_controller_.GetNetworkConfig();
+  EXPECT_FALSE(network_config_out.pref64.has_value());
+
+  auto message = BuildPref64Message(
+      net_base::RTNLMessage::kModeAdd,
+      *net_base::IPv6CIDR::CreateFromCIDRString("64:ff9b::/96"));
+
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kPref64))
+      .Times(1);
+  SendRTNLMessage(*message);
+  network_config_out = slaac_controller_.GetNetworkConfig();
+  EXPECT_EQ(*net_base::IPv6CIDR::CreateFromCIDRString("64:ff9b::/96"),
+            network_config_out.pref64);
 }
 
 }  // namespace shill

@@ -1293,6 +1293,8 @@ KeyValueStore Service::GetNetworkConfigDict(Error* /*error*/) {
                                     config.included_route_prefixes, kvs);
   KeyValueStoreSetStringsFromVector(kNetworkConfigExcludedRoutesProperty,
                                     config.excluded_route_prefixes, kvs);
+  KeyValueStoreSetStringFromOptional(kNetworkConfigPref64Property,
+                                     config.pref64, kvs);
   kvs.Set<int>(kNetworkConfigMTUProperty, config.mtu.value_or(0));
 
   return kvs;

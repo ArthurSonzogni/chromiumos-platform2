@@ -279,7 +279,7 @@ void SLAACController::NDOptionMsgHandler(const net_base::RTNLMessage& msg) {
       CaptivePortalMsgHandler(msg);
       break;
     case net_base::RTNLMessage::kTypePref64:
-      // TODO(b/308893691): propagate msg.pref64() to NetworkConfig.
+      Pref64MsgHandler(msg);
       break;
     case net_base::RTNLMessage::kTypePrefix:
       if (msg.prefix_status().prefix_flags & 0x10) {
@@ -356,6 +356,23 @@ void SLAACController::CaptivePortalMsgHandler(
   network_config_.captive_portal_uri = uri;
   if (update_callback_ && is_updated) {
     update_callback_.Run(UpdateType::kCaptivePortal);
+  }
+}
+
+void SLAACController::Pref64MsgHandler(const net_base::RTNLMessage& msg) {
+  // TODO(b/308893691): do not ignore lifetime of the pref64 option.
+  if (msg.pref64().IsDefault()) {
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": Ignoring invalid Pref64 info";
+    return;
+  }
+  if (network_config_.pref64 == msg.pref64()) {
+    return;
+  }
+  LOG(INFO) << logging_tag_ << " " << __func__ << ": " << msg.pref64();
+  network_config_.pref64 = msg.pref64();
+  if (update_callback_) {
+    update_callback_.Run(UpdateType::kPref64);
   }
 }
 
@@ -497,6 +514,28 @@ SLAACController::GetAndResetLastProvisionDuration() {
 
   last_provision_timer_.reset();
   return ret;
+}
+
+BRILLO_EXPORT std::ostream& operator<<(
+    std::ostream& stream, SLAACController::UpdateType update_type) {
+  switch (update_type) {
+    case SLAACController::UpdateType::kAddress:
+      return stream << "Address";
+    case SLAACController::UpdateType::kRDNSS:
+      return stream << "RDNSS";
+    case SLAACController::UpdateType::kDefaultRoute:
+      return stream << "DefaultRoute";
+    case SLAACController::UpdateType::kDNSSL:
+      return stream << "DNSSL";
+    case SLAACController::UpdateType::kCaptivePortal:
+      return stream << "CAPPORT";
+    case SLAACController::UpdateType::kPFlag:
+      return stream << "PFLAG";
+    case SLAACController::UpdateType::kNoPrefix:
+      return stream << "NoPrefix";
+    case SLAACController::UpdateType::kPref64:
+      return stream << "Pref64";
+  }
 }
 
 }  // namespace shill

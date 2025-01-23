@@ -1053,6 +1053,7 @@ Properties	boolean AutoConnect [readwrite]
 				array{string} SearchDomains
 				array{string} ExcludedRoutes
 				array{string} IncludedRoutes
+				string Pref64
 				int32 MTU
 
 			SessionID is the identifier of the network session which
@@ -1063,13 +1064,25 @@ Properties	boolean AutoConnect [readwrite]
 			implementation of it, e.g., comparing if the values are
 			the same.
 
-			IPv4Address and IPv6Addresses are the addresses on the
-			current network, in CIDR form (e.g., "192.168.0.2/24").
+			IPv4Address and IPv6Addresses are the CIDR addresses on
+			the current network, in CIDR form (e.g.,
+			"192.168.0.2/24").
+
+			IPv4Gateway and IPv6Gateway are the IPv4 and IPv6
+			addresses of the gateway on the current network. e.g.,
+			"192.168.0.1".
+
+			NameServers are the IPv4 and/or IPv6 addresses of the
+			DNS servers. e.g., ["8.8.8.8", "8.8.4.4"].
 
 			ExcludedRoutes and IncludedRoutes are the prefixes (in
 			CIDR form) for the destinations which should not or
 			should be routed via this network. These two properties
 			are only meaningful for a VPN service.
+
+			Pref64 is the IPv6 CIDR prefix of the NAT64 gateway
+			advertised in Router Advertisement packets with
+			RFC8781. e.g., "64:ff9b::/96".
 
 		string ObjectPathSuffix [writeonly]
 

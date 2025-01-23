@@ -739,7 +739,8 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   }
 
   const auto slaac_network_config = slaac_controller_->GetNetworkConfig();
-  LOG(INFO) << *this << " " << __func__ << ": " << slaac_network_config;
+  LOG(INFO) << *this << " " << __func__ << "(" << update_type
+            << "): " << slaac_network_config;
 
   if (slaac_network_config.captive_portal_uri.has_value()) {
     network_monitor_->SetCapportURL(*slaac_network_config.captive_portal_uri,
@@ -800,6 +801,11 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   } else if (update_type == SLAACController::UpdateType::kDefaultRoute) {
     // Nothing to do except updating IPConfig.
     return;
+  } else if (update_type == SLAACController::UpdateType::kPref64) {
+    if (old_network_config.pref64 == new_network_config.pref64) {
+      SLOG(2) << *this << " " << __func__ << ": Pref64 unchanged.";
+      return;
+    }
   }
 
   OnIPv6ConfigUpdated();

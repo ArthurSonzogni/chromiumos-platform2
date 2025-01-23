@@ -455,6 +455,10 @@ class Network : public NetworkMonitor::ClientNetwork {
       std::unique_ptr<net_base::NetworkConfig> network_config) {
     config_.SetFromLinkProtocol(std::move(network_config));
   }
+  void set_slaac_network_config_for_testing(
+      std::unique_ptr<net_base::NetworkConfig> network_config) {
+    config_.SetFromSLAAC(std::move(network_config));
+  }
   // Take ownership of an external created net_base::ProcFsStub and return the
   // point to internal proc_fs_ after move.
   net_base::ProcFsStub* set_proc_fs_for_testing(

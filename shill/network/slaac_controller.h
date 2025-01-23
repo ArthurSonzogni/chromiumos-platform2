@@ -6,6 +6,7 @@
 #define SHILL_NETWORK_SLAAC_CONTROLLER_H_
 
 #include <memory>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -37,6 +38,7 @@ class SLAACController {
     kCaptivePortal = 5,
     kPFlag = 6,     // Notify Network upon receiving a PIO with P-flag.
     kNoPrefix = 7,  // Notify Network upon receiving RA without PIO.
+    kPref64 = 8,
   };
   using UpdateCallback = base::RepeatingCallback<void(UpdateType)>;
 
@@ -92,6 +94,7 @@ class SLAACController {
   void RDNSSMsgHandler(const net_base::RTNLMessage& msg);
   void DNSSLMsgHandler(const net_base::RTNLMessage& msg);
   void CaptivePortalMsgHandler(const net_base::RTNLMessage& msg);
+  void Pref64MsgHandler(const net_base::RTNLMessage& msg);
 
   // Timer function for monitoring RDNSS's lifetime.
   void StartRDNSSTimer(base::TimeDelta lifetime);
@@ -148,6 +151,9 @@ class SLAACController {
 
   base::WeakPtrFactory<SLAACController> weak_factory_{this};
 };
+
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
+                                       SLAACController::UpdateType update_type);
 
 }  // namespace shill
 

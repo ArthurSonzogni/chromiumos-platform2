@@ -208,6 +208,11 @@ bool CompoundNetworkConfig::Recalculate() {
         dhcp_network_config_->rfc3442_routes;
   }
 
+  // NAT64 prefix from the RA Pref64 option.
+  if (slaac_network_config_ && slaac_network_config_->pref64) {
+    combined_network_config_->pref64 = slaac_network_config_->pref64;
+  }
+
   // |captive_portal_uri| can be from DHCP or SLAAC. Use the value coming first.
   if (!(dhcp_network_config_ &&
         dhcp_network_config_->captive_portal_uri.has_value()) &&

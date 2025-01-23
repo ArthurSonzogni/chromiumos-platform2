@@ -3601,6 +3601,7 @@ class ServiceNetworkConfigTest : public ServiceTest {
   static constexpr char kIncludedRoute2[] = "fd01::/64";
   static constexpr char kExcludedRoute1[] = "fd02::/128";
   static constexpr char kExcludedRoute2[] = "10.20.30.0/24";
+  static constexpr char kPref64[] = "64:ff9b::/96";
   static constexpr int kMTU = 1400;
 
   ServiceNetworkConfigTest()
@@ -3613,10 +3614,20 @@ class ServiceNetworkConfigTest : public ServiceTest {
                                            nullptr,
                                            nullptr)) {}
 
-  void SetNetworkConfigOnNetwork(const NetworkConfig& config) {
-    // In this test we only need to update the merged NetworkConfig on the
-    // network object. It doesn't matter which NetworkConfig we're setting here.
+  // Sets a fake NetworkConfig as if it was given to the network through
+  // the StartOptions. The final compound NetworkConfig will be derived
+  // from |config| according to the normal CompoundNetworkConfig::Recalculate
+  // logic.
+  void SetLinkProtocolNetworkConfigOnNetwork(const NetworkConfig& config) {
     network_->set_link_protocol_network_config_for_testing(
+        std::make_unique<NetworkConfig>(config));
+  }
+
+  // Sets a fake NetworkConfig as if it was received through SLAAC. The final
+  // compound NetworkConfig will be derived from |config| according to the
+  // normal CompoundNetworkConfig::Recalculate logic.
+  void SetSLAACNetworkConfigOnNetwork(const NetworkConfig& config) {
+    network_->set_slaac_network_config_for_testing(
         std::make_unique<NetworkConfig>(config));
   }
 
@@ -3636,11 +3647,6 @@ TEST_F(ServiceNetworkConfigTest, NonEmptyValues) {
   NetworkConfig config;
   config.ipv4_address = *IPv4CIDR::CreateFromCIDRString(kIPv4Addr);
   config.ipv4_gateway = *IPv4Address::CreateFromString(kIPv4Gateway);
-  config.ipv6_addresses = {
-      *IPv6CIDR::CreateFromCIDRString(kIPv6Addr1),
-      *IPv6CIDR::CreateFromCIDRString(kIPv6Addr2),
-  };
-  config.ipv6_gateway = *IPv6Address::CreateFromString(kIPv6Gateway);
   config.dns_servers = {
       *IPAddress::CreateFromString(kDNS1),
       *IPAddress::CreateFromString(kDNS2),
@@ -3656,8 +3662,16 @@ TEST_F(ServiceNetworkConfigTest, NonEmptyValues) {
       *IPCIDR::CreateFromCIDRString(kExcludedRoute2),
   };
   config.mtu = kMTU;
+  SetLinkProtocolNetworkConfigOnNetwork(config);
 
-  SetNetworkConfigOnNetwork(config);
+  NetworkConfig slaac_config;
+  slaac_config.ipv6_addresses = {
+      *IPv6CIDR::CreateFromCIDRString(kIPv6Addr1),
+      *IPv6CIDR::CreateFromCIDRString(kIPv6Addr2),
+  };
+  slaac_config.ipv6_gateway = *IPv6Address::CreateFromString(kIPv6Gateway);
+  slaac_config.pref64 = net_base::IPv6CIDR::CreateFromCIDRString(kPref64);
+  SetSLAACNetworkConfigOnNetwork(slaac_config);
 
   brillo::VariantDictionary actual = GetNetworkConfigOnService();
 
@@ -3681,6 +3695,7 @@ TEST_F(ServiceNetworkConfigTest, NonEmptyValues) {
   EXPECT_EQ(actual[kNetworkConfigExcludedRoutesProperty],
             std::vector<std::string>({kExcludedRoute1, kExcludedRoute2}));
   EXPECT_EQ(actual[kNetworkConfigMTUProperty], kMTU);
+  EXPECT_EQ(actual[kNetworkConfigPref64Property].Get<std::string>(), kPref64);
 }
 
 TEST_F(ServiceNetworkConfigTest, DefaultValues) {
@@ -3770,7 +3785,7 @@ TEST_F(ServiceNetworkConfigTest, ChangeEnableRFC8925Flag) {
       [this](const std::vector<net_base::IPAddress>& dns_list) {
         NetworkConfig config;
         config.dns_servers = dns_list;
-        SetNetworkConfigOnNetwork(config);
+        SetLinkProtocolNetworkConfigOnNetwork(config);
         service_->network_event_handler()->OnIPConfigsPropertyUpdated(
             /*interface_index=*/1);
       };
@@ -3815,7 +3830,7 @@ TEST_F(ServiceNetworkConfigTest, SaveLoadEnableRFC8925Flag) {
     } else {
       config.dns_servers = {kIPv6LinkLocalAddr};
     }
-    SetNetworkConfigOnNetwork(config);
+    SetLinkProtocolNetworkConfigOnNetwork(config);
     service_->network_event_handler()->OnIPConfigsPropertyUpdated(
         /*interface_index=*/1);
   };

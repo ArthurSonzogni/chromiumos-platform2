@@ -1473,6 +1473,14 @@ class NetworkStartTest : public NetworkTest {
     dispatcher_.task_environment().RunUntilIdle();
   }
 
+  void TriggerSLAACPref64Update(const net_base::IPv6CIDR& pref64) {
+    slaac_config_.pref64 = pref64;
+    EXPECT_CALL(*slaac_controller_, GetNetworkConfig())
+        .WillRepeatedly(Return(slaac_config_));
+    slaac_controller_->TriggerCallback(SLAACController::UpdateType::kPref64);
+    dispatcher_.task_environment().RunUntilIdle();
+  }
+
   void ExpectConnectionUpdateFromIPConfig(IPConfigType ipconfig_type) {
     const std::optional<net_base::IPFamily> family =
         GetIPFamilyFromType(ipconfig_type);
@@ -1895,6 +1903,53 @@ TEST_F(NetworkStartTest, IPv6OnlySLAAC) {
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6SLAAC);
   VerifyIPTypeReportScheduled(Metrics::kIPTypeIPv6Only);
+}
+
+TEST_F(NetworkStartTest, IPv6OnlyPref64Update) {
+  const TestOptions test_opts = {.accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
+
+  InvokeStart(test_opts);
+  EXPECT_EQ(network_->state(), Network::State::kConfiguring);
+
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
+  EXPECT_CALL(event_handler_, OnGetSLAACAddress(network_->interface_index()));
+  EXPECT_CALL(event_handler_,
+              OnIPv6ConfiguredWithSLAACAddress(network_->interface_index()));
+  EXPECT_CALL(event_handler2_, OnGetSLAACAddress(network_->interface_index()));
+  EXPECT_CALL(event_handler2_,
+              OnIPv6ConfiguredWithSLAACAddress(network_->interface_index()));
+  TriggerSLAACUpdate();
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+  VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6SLAAC);
+  VerifyIPTypeReportScheduled(Metrics::kIPTypeIPv6Only);
+  EXPECT_EQ(std::nullopt, network_->GetNetworkConfig().pref64);
+  Mock::VerifyAndClearExpectations(network_.get());
+  Mock::VerifyAndClearExpectations(network_monitor_);
+  Mock::VerifyAndClearExpectations(&metrics_);
+  Mock::VerifyAndClearExpectations(&event_handler_);
+  Mock::VerifyAndClearExpectations(&event_handler2_);
+
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
+  const auto pref64 = *net_base::IPv6CIDR::CreateFromCIDRString("64:ff9b::/96");
+  ExpectNetworkMonitorStartAndReturn(true);
+  TriggerSLAACPref64Update(pref64);
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+  EXPECT_EQ(network_->get_ipconfig_for_testing(), nullptr);
+  ASSERT_NE(network_->get_ip6config_for_testing(), nullptr);
+  EXPECT_EQ(pref64, network_->GetNetworkConfig().pref64);
 }
 
 TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
