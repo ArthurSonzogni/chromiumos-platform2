@@ -300,7 +300,7 @@ void Metrics::QueryTimer::StopReceive(bool success) {
 }
 
 void Metrics::QueryTimer::StartResolve(bool is_doh) {
-  resolv_t_ r;
+  resolv_t_ r = {};
   r.type = is_doh ? Metrics::QueryType::kDnsOverHttps
                   : Metrics::QueryType::kPlainText;
   timer_.GetElapsedTime(&r.elapsed);
