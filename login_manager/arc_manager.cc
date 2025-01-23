@@ -4,9 +4,12 @@
 
 #include "login_manager/arc_manager.h"
 
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
@@ -14,19 +17,31 @@
 
 #include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/dbus_util.h"
+#include "login_manager/init_daemon_controller.h"
 #include "login_manager/system_utils.h"
+#include "login_manager/validator_utils.h"
 
 namespace login_manager {
 namespace {
 
 constexpr char kLoggedInFlag[] = "/run/session_manager/logged_in";
 
+#if USE_CHEETS
+// To set the CPU limits of the Android container.
+constexpr char kCpuSharesFile[] =
+    "/sys/fs/cgroup/cpu/session_manager_containers/cpu.shares";
+constexpr unsigned int kCpuSharesForeground = 1024;
+constexpr unsigned int kCpuSharesBackground = 64;
+#endif
+
 }  // namespace
 
 ArcManager::ArcManager(
     SystemUtils& system_utils,
+    std::unique_ptr<InitDaemonController> init_controller,
     std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status)
     : system_utils_(system_utils),
+      init_controller_(std::move(init_controller)),
       arc_sideload_status_(std::move(arc_sideload_status)) {}
 
 ArcManager::~ArcManager() = default;
@@ -41,6 +56,84 @@ void ArcManager::Finalize() {
 
 bool ArcManager::IsAdbSideloadAllowed() const {
   return arc_sideload_status_->IsAdbSideloadAllowed();
+}
+
+void ArcManager::OnUpgradeArcContainer() {
+  // |arc_start_time_| is initialized when the container is upgraded (rather
+  // than when the mini-container starts) since we are interested in measuring
+  // time from when the user logs in until the system is ready to be interacted
+  // with.
+  arc_start_time_ = base::TimeTicks::Now();
+}
+
+bool ArcManager::SetArcCpuRestriction(brillo::ErrorPtr* error,
+                                      uint32_t in_restriction_state) {
+#if USE_CHEETS
+  std::string shares_out;
+  switch (static_cast<ContainerCpuRestrictionState>(in_restriction_state)) {
+    case CONTAINER_CPU_RESTRICTION_FOREGROUND:
+      shares_out = std::to_string(kCpuSharesForeground);
+      break;
+    case CONTAINER_CPU_RESTRICTION_BACKGROUND:
+      shares_out = std::to_string(kCpuSharesBackground);
+      break;
+    default:
+      *error = CREATE_ERROR_AND_LOG(dbus_error::kArcCpuCgroupFail,
+                                    "Invalid CPU restriction state specified.");
+      return false;
+  }
+  if (!base::WriteFile(base::FilePath(kCpuSharesFile), shares_out)) {
+    *error =
+        CREATE_ERROR_AND_LOG(dbus_error::kArcCpuCgroupFail,
+                             "Error updating Android container's cgroups.");
+    return false;
+  }
+  return true;
+#else
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
+#endif
+}
+
+bool ArcManager::EmitArcBooted(brillo::ErrorPtr* error,
+                               const std::string& in_account_id) {
+#if USE_CHEETS
+  std::vector<std::string> env_vars;
+  if (!in_account_id.empty()) {
+    std::string actual_account_id;
+    if (!ValidateAccountId(in_account_id, &actual_account_id)) {
+      // TODO(alemate): adjust this error message after ChromeOS will stop using
+      // email as cryptohome identifier.
+      *error = CREATE_ERROR_AND_LOG(
+          dbus_error::kInvalidAccount,
+          "Provided email address is not valid.  ASCII only.");
+      return false;
+    }
+    env_vars.emplace_back("CHROMEOS_USER=" + actual_account_id);
+  }
+
+  init_controller_->TriggerImpulse(kArcBootedImpulse, env_vars,
+                                   InitDaemonController::TriggerMode::ASYNC);
+  return true;
+#else
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
+#endif
+}
+
+bool ArcManager::GetArcStartTimeTicks(brillo::ErrorPtr* error,
+                                      int64_t* out_start_time) {
+#if USE_CHEETS
+  if (arc_start_time_.is_null()) {
+    *error = CreateError(dbus_error::kNotStarted, "ARC is not started yet.");
+    return false;
+  }
+  *out_start_time = arc_start_time_.ToInternalValue();
+  return true;
+#else
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
+#endif  // !USE_CHEETS
 }
 
 void ArcManager::EnableAdbSideload(

@@ -253,6 +253,7 @@ bool SessionManagerService::Initialize() {
 
   impl_ = std::make_unique<SessionManagerImpl>(
       this /* delegate */,
+      std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy),
       std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy), bus_,
       &device_identifier_generator_,
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,

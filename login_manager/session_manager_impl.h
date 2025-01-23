@@ -131,7 +131,6 @@ class SessionManagerImpl
   static const char kStartArcInstanceImpulse[];
   static const char kStopArcInstanceImpulse[];
   static const char kContinueArcBootImpulse[];
-  static const char kArcBootedImpulse[];
 
   // ARCVM messages.
   static const char kStopArcVmInstanceImpulse[];
@@ -176,6 +175,7 @@ class SessionManagerImpl
   SessionManagerImpl(
       Delegate* delegate,
       std::unique_ptr<InitDaemonController> init_controller,
+      std::unique_ptr<InitDaemonController> arc_init_controller,
       const scoped_refptr<dbus::Bus>& bus,
       DeviceIdentifierGenerator* device_identifier_generator,
       ProcessManagerServiceInterface* manager,

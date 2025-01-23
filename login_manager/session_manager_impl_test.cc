@@ -61,6 +61,7 @@
 #include "bindings/device_management_backend.pb.h"
 #include "dbus/login_manager/dbus-constants.h"
 #include "libpasswordprovider/fake_password_provider.h"
+#include "login_manager/arc_manager.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/dbus_test_util.h"
 #include "login_manager/dbus_util.h"
@@ -346,9 +347,11 @@ class SessionManagerImplTest : public ::testing::Test,
     log_symlink_ = log_dir_.GetPath().Append("ui.LATEST");
 
     init_controller_ = new MockInitDaemonController();
+    arc_init_controller_ = new MockInitDaemonController();
     arc_sideload_status_ = new MockArcSideloadStatus();
     impl_ = std::make_unique<SessionManagerImpl>(
-        this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
+        this /* delegate */, base::WrapUnique(init_controller_),
+        base::WrapUnique(arc_init_controller_), bus_.get(),
         &device_identifier_generator_, &manager_, &metrics_, &nss_,
         std::nullopt, &system_utils_, &crossystem_, &vpd_process_, &owner_key_,
         &android_container_, &install_attributes_reader_, powerd_proxy_.get(),
@@ -435,6 +438,7 @@ class SessionManagerImplTest : public ::testing::Test,
 
   void TearDown() override {
     device_policy_service_ = nullptr;
+    arc_init_controller_ = nullptr;
     init_controller_ = nullptr;
     EXPECT_CALL(*exported_object(), Unregister()).Times(1);
     impl_.reset();
@@ -878,6 +882,7 @@ class SessionManagerImplTest : public ::testing::Test,
       Mock::VerifyAndClearExpectations(entry.second);
     }
     Mock::VerifyAndClearExpectations(init_controller_);
+    Mock::VerifyAndClearExpectations(arc_init_controller_);
     Mock::VerifyAndClearExpectations(&manager_);
     Mock::VerifyAndClearExpectations(&metrics_);
     Mock::VerifyAndClearExpectations(&nss_);
@@ -910,6 +915,7 @@ class SessionManagerImplTest : public ::testing::Test,
   // on them after we hand them off.
   // Owned by SessionManagerImpl.
   MockInitDaemonController* init_controller_ = nullptr;
+  MockInitDaemonController* arc_init_controller_ = nullptr;
   MockPolicyStore* device_policy_store_ = nullptr;
   MockDevicePolicyService* device_policy_service_ = nullptr;
   MockUserPolicyServiceFactory* user_policy_service_factory_ = nullptr;
@@ -3105,26 +3111,27 @@ TEST_F(SessionManagerImplTest, SetArcCpuRestrictionFails) {
 
 TEST_F(SessionManagerImplTest, EmitArcBooted) {
 #if USE_CHEETS
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kArcBootedImpulse,
-                             ElementsAre(StartsWith("CHROMEOS_USER=")),
-                             InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(ByMove(nullptr)));
   {
+    EXPECT_CALL(*arc_init_controller_,
+                TriggerImpulse(ArcManager::kArcBootedImpulse,
+                               ElementsAre(StartsWith("CHROMEOS_USER=")),
+                               InitDaemonController::TriggerMode::ASYNC))
+        .WillOnce(Return(ByMove(nullptr)));
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->EmitArcBooted(&error, kSaneEmail));
     EXPECT_FALSE(error.get());
+    Mock::VerifyAndClearExpectations(arc_init_controller_);
   }
 
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(SessionManagerImpl::kArcBootedImpulse, ElementsAre(),
-                     InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(ByMove(nullptr)));
   {
+    EXPECT_CALL(*arc_init_controller_,
+                TriggerImpulse(ArcManager::kArcBootedImpulse, ElementsAre(),
+                               InitDaemonController::TriggerMode::ASYNC))
+        .WillOnce(Return(ByMove(nullptr)));
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->EmitArcBooted(&error, std::string()));
     EXPECT_FALSE(error.get());
+    Mock::VerifyAndClearExpectations(arc_init_controller_);
   }
 #else
   brillo::ErrorPtr error;

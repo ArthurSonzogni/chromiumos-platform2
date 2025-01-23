@@ -121,7 +121,6 @@ constexpr char SessionManagerImpl::kStopArcInstanceImpulse[] =
     "stop-arc-instance";
 constexpr char SessionManagerImpl::kContinueArcBootImpulse[] =
     "continue-arc-boot";
-constexpr char SessionManagerImpl::kArcBootedImpulse[] = "arc-booted";
 constexpr char SessionManagerImpl::kStopArcVmInstanceImpulse[] =
     "stop-arcvm-instance";
 
@@ -154,12 +153,6 @@ const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 // Path and the amount for the check.
 constexpr char kArcDiskCheckPath[] = "/home";
 constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
-
-// To set the CPU limits of the Android container.
-const char kCpuSharesFile[] =
-    "/sys/fs/cgroup/cpu/session_manager_containers/cpu.shares";
-const unsigned int kCpuSharesForeground = 1024;
-const unsigned int kCpuSharesBackground = 64;
 
 // Workaround for a presubmit check about long lines.
 constexpr auto
@@ -449,6 +442,7 @@ struct SessionManagerImpl::UserSession {
 SessionManagerImpl::SessionManagerImpl(
     Delegate* delegate,
     std::unique_ptr<InitDaemonController> init_controller,
+    std::unique_ptr<InitDaemonController> arc_init_controller,
     const scoped_refptr<dbus::Bus>& bus,
     DeviceIdentifierGenerator* device_identifier_generator,
     ProcessManagerServiceInterface* manager,
@@ -488,8 +482,10 @@ SessionManagerImpl::SessionManagerImpl(
       system_clock_proxy_(system_clock_proxy),
       debugd_proxy_(debugd_proxy),
       fwmp_proxy_(fwmp_proxy),
-      arc_manager_(std::make_unique<ArcManager>(
-          *system_utils_, std::move(arc_sideload_status))),
+      arc_manager_(
+          std::make_unique<ArcManager>(*system_utils_,
+                                       std::move(arc_init_controller),
+                                       std::move(arc_sideload_status))),
       ui_log_symlink_path_(kDefaultUiLogSymlinkPath),
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()),
@@ -1516,11 +1512,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
   }
   LOG(INFO) << "Android container is running with PID " << pid;
 
-  // |arc_start_time_| is initialized when the container is upgraded (rather
-  // than when the mini-container starts) since we are interested in measuring
-  // time from when the user logs in until the system is ready to be interacted
-  // with.
-  arc_start_time_ = tick_clock_->NowTicks();
+  arc_manager_->OnUpgradeArcContainer();
 
   // To upgrade the ARC mini-container, a certain amount of disk space is
   // needed under /home. We first check it.
@@ -1610,68 +1602,17 @@ bool SessionManagerImpl::StopArcInstance(brillo::ErrorPtr* error,
 
 bool SessionManagerImpl::SetArcCpuRestriction(brillo::ErrorPtr* error,
                                               uint32_t in_restriction_state) {
-#if USE_CHEETS
-  std::string shares_out;
-  switch (static_cast<ContainerCpuRestrictionState>(in_restriction_state)) {
-    case CONTAINER_CPU_RESTRICTION_FOREGROUND:
-      shares_out = std::to_string(kCpuSharesForeground);
-      break;
-    case CONTAINER_CPU_RESTRICTION_BACKGROUND:
-      shares_out = std::to_string(kCpuSharesBackground);
-      break;
-    default:
-      *error = CREATE_ERROR_AND_LOG(dbus_error::kArcCpuCgroupFail,
-                                    "Invalid CPU restriction state specified.");
-      return false;
-  }
-  if (!base::WriteFile(base::FilePath(kCpuSharesFile), shares_out)) {
-    *error =
-        CREATE_ERROR_AND_LOG(dbus_error::kArcCpuCgroupFail,
-                             "Error updating Android container's cgroups.");
-    return false;
-  }
-  return true;
-#else
-  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
-  return false;
-#endif
+  return arc_manager_->SetArcCpuRestriction(error, in_restriction_state);
 }
 
 bool SessionManagerImpl::EmitArcBooted(brillo::ErrorPtr* error,
                                        const std::string& in_account_id) {
-#if USE_CHEETS
-  std::vector<std::string> env_vars;
-  if (!in_account_id.empty()) {
-    std::string actual_account_id;
-    if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
-      DCHECK(*error);
-      return false;
-    }
-    env_vars.emplace_back("CHROMEOS_USER=" + actual_account_id);
-  }
-
-  init_controller_->TriggerImpulse(kArcBootedImpulse, env_vars,
-                                   InitDaemonController::TriggerMode::ASYNC);
-  return true;
-#else
-  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
-  return false;
-#endif
+  return arc_manager_->EmitArcBooted(error, in_account_id);
 }
 
 bool SessionManagerImpl::GetArcStartTimeTicks(brillo::ErrorPtr* error,
                                               int64_t* out_start_time) {
-#if USE_CHEETS
-  if (arc_start_time_.is_null()) {
-    *error = CreateError(dbus_error::kNotStarted, "ARC is not started yet.");
-    return false;
-  }
-  *out_start_time = arc_start_time_.ToInternalValue();
-  return true;
-#else
-  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
-  return false;
-#endif  // !USE_CHEETS
+  return arc_manager_->GetArcStartTimeTicks(error, out_start_time);
 }
 
 void SessionManagerImpl::EnableAdbSideload(
