@@ -61,40 +61,59 @@
 // GTest doesn't seem to have an EXPECT_NO_DEATH equivalent, and this all seems
 // easy enough to hand-roll in a simple environment.
 
-// Failures get stored here.
-static std::vector<Failure>* failures;
-
-template <typename Fn>
-static void ForkAndExpect(int line,
-                          const char* message,
-                          Fn&& F,
-                          bool expect_death) {
-  fprintf(stderr, "Running %s... (expected to %s)\n", message,
-          expect_death ? "die" : "not die");
-
-  int pid = fork();
-  if (pid == -1) {
-    err(1, "Failed to fork() a subproc");
+namespace {
+class Tests {
+ public:
+  template <typename Fn>
+  static std::vector<Failure> RunTests(Fn&& f) {
+    Tests t;
+    std::move(f)(t);
+    return std::move(t.failures_);
   }
 
-  if (pid == 0) {
-    F();
-    exit(0);
-  }
+  void TestPoll();
+  void TestSocket();
+  void TestStdio();
+  void TestStdlib();
+  void TestString();
+  void TestUnistd();
+  void TestWchar();
 
-  int status;
-  if (waitpid(pid, &status, 0) == -1) {
-    err(1, "Failed to wait on child (pid %d)", pid);
-  }
+ private:
+  std::vector<Failure> failures_;
 
-  bool died = WIFSIGNALED(status) || WEXITSTATUS(status) != 0;
-  if (died != expect_death) {
-    fprintf(stderr, "Check `%s` (at line %d) %s\n", message, line,
-            expect_death ? "failed to die" : "died");
-    failures->push_back({line, message, expect_death});
-  }
-}
+  Tests() = default;
+  Tests(const Tests&) = delete;
+  Tests(Tests&&) = delete;
 
+  template <typename Fn>
+  void ForkAndExpect(int line, const char* message, Fn&& F, bool expect_death) {
+    fprintf(stderr, "Running %s... (expected to %s)\n", message,
+            expect_death ? "die" : "not die");
+
+    int pid = fork();
+    if (pid == -1) {
+      err(1, "Failed to fork() a subproc");
+    }
+
+    if (pid == 0) {
+      F();
+      exit(0);
+    }
+
+    int status;
+    if (waitpid(pid, &status, 0) == -1) {
+      err(1, "Failed to wait on child (pid %d)", pid);
+    }
+
+    bool died = WIFSIGNALED(status) || WEXITSTATUS(status) != 0;
+    if (died != expect_death) {
+      fprintf(stderr, "Check `%s` (at line %d) %s\n", message, line,
+              expect_death ? "failed to die" : "died");
+      failures_.push_back({line, message, expect_death});
+    }
+  }
+};
 #define FORK_AND_EXPECT(x, die) ForkAndExpect(__LINE__, #x, [&] { (x); }, die)
 
 // EXPECT_NO_DEATH forks so that the test remains alive on a bug, and so that
@@ -117,7 +136,7 @@ static void ForkAndExpect(int line,
 
 const static int kBogusFD = -1;
 
-static void TestString() {
+void Tests::TestString() {
   char small_buffer[8] = {};
 
   {
@@ -212,7 +231,7 @@ static void TestString() {
 // Since these emit hard errors, it's sort of hard to run them...
 #ifdef COMPILATION_TESTS
 namespace compilation_tests {
-static void testFcntl() {
+void testFcntl() {
   // FIXME(gbiv): Need to fix these; they got dropped.
 #if 0
   // expected-error@+1{{either with 2 or 3 arguments, not more}}
@@ -248,7 +267,7 @@ static void testFcntl() {
   // about, apparently.
 }
 
-static void testMqueue() {
+void testMqueue() {
   // FIXME(gbiv): remove mq_open's FORTIFY'ed body from glibc...
 
   // expected-error@+1{{with 2 or 4 arguments}}
@@ -260,7 +279,7 @@ static void testMqueue() {
   mq_open("/", O_CREAT);
 }
 
-static void testFormatStrings() {
+void testFormatStrings() {
   const unsigned long long unsigned_value{};
   const char* unknown_string{};
   va_list va{};
@@ -345,7 +364,7 @@ static void testFormatStrings() {
 }  // namespace compilation_tests
 #endif
 
-static void TestPoll() {
+void Tests::TestPoll() {
   struct pollfd invalid_poll_fd = {kBogusFD, 0, 0};
   {
     struct pollfd few_fds[] = {invalid_poll_fd, invalid_poll_fd};
@@ -375,7 +394,7 @@ static void TestPoll() {
   }
 }
 
-static void TestSocket() {
+void Tests::TestSocket() {
   {
     char small_buffer[8];
     // expected-warning@+1{{bigger length than size of destination buffer}}
@@ -397,7 +416,7 @@ static void TestSocket() {
   }
 }
 
-static void TestStdio() {
+void Tests::TestStdio() {
   char small_buffer[8] = {};
   {
     // expected-warning@+1{{may overflow the destination buffer}}
@@ -420,7 +439,7 @@ static void TestStdio() {
   EXPECT_NO_DEATH(gets(unknown_size_buffer));
 }
 
-static void TestUnistd() {
+void Tests::TestUnistd() {
   char small_buffer[8];
 
   // Return value warnings are (sort of) a part of FORTIFY, so we don't ignore
@@ -534,7 +553,7 @@ static void TestUnistd() {
 #pragma clang diagnostic pop  // -Wunused-value
 }
 
-static void TestWchar() {
+void Tests::TestWchar() {
   // Sizes here are all expressed in terms of sizeof(wchar_t).
   const int small_buffer_size = 8;
   wchar_t small_buffer[small_buffer_size] = {};
@@ -691,7 +710,7 @@ static void TestWchar() {
   }
 }
 
-static void TestStdlib() {
+void Tests::TestStdlib() {
   {
     char path_buffer[PATH_MAX - 1];
     // expected-warning@+2{{ignoring return value of function}}
@@ -754,6 +773,7 @@ static void TestStdlib() {
         wcstombs(split.tiny_buffer, wsplit.tiny_buffer, sizeof(split)));
   }
 }
+}  // namespace
 
 /////////////////// Test infrastructure; nothing to see here ///////////////////
 
@@ -762,17 +782,13 @@ static void TestStdlib() {
 
 // Exported to the driver so we can run these tests.
 std::vector<Failure> CONCAT(test_fortify_, _FORTIFY_SOURCE)() {
-  std::vector<Failure> result;
-  failures = &result;
-
-  TestPoll();
-  TestSocket();
-  TestStdio();
-  TestStdlib();
-  TestString();
-  TestUnistd();
-  TestWchar();
-
-  failures = nullptr;
-  return result;
+  return Tests::RunTests([](Tests& tests) {
+    tests.TestPoll();
+    tests.TestSocket();
+    tests.TestStdio();
+    tests.TestStdlib();
+    tests.TestString();
+    tests.TestUnistd();
+    tests.TestWchar();
+  });
 }
