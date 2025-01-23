@@ -343,6 +343,9 @@ class SessionManagerImpl
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
       override;
 
+  // Returns whether there's a user session started.
+  bool HasSession(const std::string& account_id);
+
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
   void OnKeyPersisted(bool success) override;
@@ -410,9 +413,6 @@ class SessionManagerImpl
   // Requests a reboot. Formats the actual reason string to name session_manager
   // as the source of the request.
   void RestartDevice(const std::string& reason);
-
-  void BackupArcBugReport(const std::string& account_id);
-  void DeleteArcBugReportBackup(const std::string& account_id);
 
   // Returns true if at least one session is started.
   bool IsSessionStarted();
@@ -483,7 +483,6 @@ class SessionManagerImpl
   InstallAttributesReader* install_attributes_reader_;
   dbus::ObjectProxy* powerd_proxy_;
   dbus::ObjectProxy* system_clock_proxy_;
-  dbus::ObjectProxy* debugd_proxy_;
   dbus::ObjectProxy* fwmp_proxy_;
   std::unique_ptr<DevicePolicyService> device_policy_;
   std::unique_ptr<UserPolicyServiceFactory> user_policy_factory_;

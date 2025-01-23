@@ -142,9 +142,6 @@ constexpr base::TimeDelta SessionManagerImpl::kCrashAfterSuspendInterval =
 
 namespace {
 
-// Because the cheets logs are huge, we set the D-Bus timeout to 1 minute.
-const base::TimeDelta kBackupArcBugReportTimeout = base::Minutes(1);
-
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 
@@ -318,6 +315,22 @@ bool IsGuestSession(const std::vector<std::string>& argv) {
   return base::Contains(argv, BrowserJobInterface::kGuestSessionFlag);
 }
 
+class ArcManagerDelegateImpl : public ArcManager::Delegate {
+ public:
+  explicit ArcManagerDelegateImpl(SessionManagerImpl& session_manager_impl)
+      : session_manager_impl_(session_manager_impl) {}
+  ArcManagerDelegateImpl(const ArcManagerDelegateImpl&) = delete;
+  ArcManagerDelegateImpl& operator=(const ArcManagerDelegateImpl&) = delete;
+
+  bool HasSession(const std::string& account_id) override {
+    // TODO(b/390297821): Replace by D-Bus call on splitting D-Bus service.
+    return session_manager_impl_.HasSession(account_id);
+  }
+
+ private:
+  SessionManagerImpl& session_manager_impl_;
+};
+
 }  // namespace
 
 // Tracks D-Bus service running.
@@ -480,12 +493,13 @@ SessionManagerImpl::SessionManagerImpl(
       install_attributes_reader_(install_attributes_reader),
       powerd_proxy_(powerd_proxy),
       system_clock_proxy_(system_clock_proxy),
-      debugd_proxy_(debugd_proxy),
       fwmp_proxy_(fwmp_proxy),
-      arc_manager_(
-          std::make_unique<ArcManager>(*system_utils_,
-                                       std::move(arc_init_controller),
-                                       std::move(arc_sideload_status))),
+      arc_manager_(std::make_unique<ArcManager>(
+          std::make_unique<ArcManagerDelegateImpl>(*this),
+          *system_utils_,
+          std::move(arc_init_controller),
+          std::move(arc_sideload_status),
+          debugd_proxy)),
       ui_log_symlink_path_(kDefaultUiLogSymlinkPath),
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()),
@@ -809,7 +823,7 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged: " << kStarted;
   adaptor_.SendSessionStateChangedSignal(kStarted);
 
-  DeleteArcBugReportBackup(actual_account_id);
+  arc_manager_->DeleteArcBugReportBackup(actual_account_id);
 
   // Record that a login has successfully completed on this boot.
   system_utils_->WriteFileAtomically(base::FilePath(kLoggedInFlag),
@@ -1557,14 +1571,14 @@ bool SessionManagerImpl::UpgradeArcContainer(
     *error = CREATE_ERROR_AND_LOG(dbus_error::kEmitFailed,
                                   "Emitting continue-arc-boot impulse failed.");
 
-    BackupArcBugReport(account_id);
+    arc_manager_->BackupArcBugReport(account_id);
     return false;
   }
 
   login_metrics_->StartTrackingArcUseTime();
 
   scoped_runner.ReplaceClosure(base::DoNothing());
-  DeleteArcBugReportBackup(account_id);
+  arc_manager_->DeleteArcBugReportBackup(account_id);
 
   return true;
 #else
@@ -1584,7 +1598,7 @@ bool SessionManagerImpl::StopArcInstance(brillo::ErrorPtr* error,
       return false;
     }
 
-    BackupArcBugReport(actual_account_id);
+    arc_manager_->BackupArcBugReport(actual_account_id);
   }
 
   if (!StopArcInstanceInternal(ArcContainerStopReason::USER_REQUEST)) {
@@ -1781,46 +1795,12 @@ void SessionManagerImpl::RestartDevice(const std::string& reason) {
   delegate_->RestartDevice("session_manager (" + reason + ")");
 }
 
-void SessionManagerImpl::BackupArcBugReport(const std::string& account_id) {
-  if (user_sessions_.count(account_id) == 0) {
-    LOG(ERROR) << "Cannot back up ARC bug report for inactive user.";
-    return;
-  }
-
-  dbus::MethodCall method_call(debugd::kDebugdInterface,
-                               debugd::kBackupArcBugReport);
-  dbus::MessageWriter writer(&method_call);
-
-  writer.AppendString(account_id);
-
-  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
-      debugd_proxy_->CallMethodAndBlock(
-          &method_call, kBackupArcBugReportTimeout.InMilliseconds()));
-
-  if (!response.has_value() || !response.value()) {
-    LOG(ERROR) << "Error contacting debugd to back up ARC bug report.";
-  }
-}
-
-void SessionManagerImpl::DeleteArcBugReportBackup(
-    const std::string& account_id) {
-  dbus::MethodCall method_call(debugd::kDebugdInterface,
-                               debugd::kDeleteArcBugReportBackup);
-  dbus::MessageWriter writer(&method_call);
-
-  writer.AppendString(account_id);
-
-  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
-      debugd_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-
-  if (!response.has_value() || !response.value()) {
-    LOG(ERROR) << "Error contacting debugd to delete ARC bug report backup.";
-  }
-}
-
 bool SessionManagerImpl::IsSessionStarted() {
   return !user_sessions_.empty();
+}
+
+bool SessionManagerImpl::HasSession(const std::string& account_id) {
+  return user_sessions_.find(account_id) != user_sessions_.end();
 }
 
 #if USE_CHEETS

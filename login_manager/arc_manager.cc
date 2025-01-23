@@ -11,9 +11,15 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
+#include <base/logging.h>
+#include <base/types/expected.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
+#include <dbus/debugd/dbus-constants.h>
+#include <dbus/error.h>
 #include <dbus/login_manager/dbus-constants.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
 
 #include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/dbus_util.h"
@@ -26,6 +32,9 @@ namespace {
 
 constexpr char kLoggedInFlag[] = "/run/session_manager/logged_in";
 
+// Because the cheets logs are huge, we set the D-Bus timeout to 1 minute.
+const base::TimeDelta kBackupArcBugReportTimeout = base::Minutes(1);
+
 #if USE_CHEETS
 // To set the CPU limits of the Android container.
 constexpr char kCpuSharesFile[] =
@@ -37,12 +46,16 @@ constexpr unsigned int kCpuSharesBackground = 64;
 }  // namespace
 
 ArcManager::ArcManager(
+    std::unique_ptr<Delegate> delegate,
     SystemUtils& system_utils,
     std::unique_ptr<InitDaemonController> init_controller,
-    std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status)
-    : system_utils_(system_utils),
+    std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status,
+    dbus::ObjectProxy* debugd_proxy)
+    : delegate_(std::move(delegate)),
+      system_utils_(system_utils),
       init_controller_(std::move(init_controller)),
-      arc_sideload_status_(std::move(arc_sideload_status)) {}
+      arc_sideload_status_(std::move(arc_sideload_status)),
+      debugd_proxy_(debugd_proxy) {}
 
 ArcManager::~ArcManager() = default;
 
@@ -188,6 +201,43 @@ void ArcManager::QueryAdbSideloadCallbackAdaptor(
   }
 
   response->Return(status == ArcSideloadStatusInterface::Status::ENABLED);
+}
+
+void ArcManager::BackupArcBugReport(const std::string& account_id) {
+  if (!delegate_->HasSession(account_id)) {
+    LOG(ERROR) << "Cannot back up ARC bug report for inactive user.";
+    return;
+  }
+
+  dbus::MethodCall method_call(debugd::kDebugdInterface,
+                               debugd::kBackupArcBugReport);
+  dbus::MessageWriter writer(&method_call);
+
+  writer.AppendString(account_id);
+
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      debugd_proxy_->CallMethodAndBlock(
+          &method_call, kBackupArcBugReportTimeout.InMilliseconds()));
+
+  if (!response.has_value() || !response.value()) {
+    LOG(ERROR) << "Error contacting debugd to back up ARC bug report.";
+  }
+}
+
+void ArcManager::DeleteArcBugReportBackup(const std::string& account_id) {
+  dbus::MethodCall method_call(debugd::kDebugdInterface,
+                               debugd::kDeleteArcBugReportBackup);
+  dbus::MessageWriter writer(&method_call);
+
+  writer.AppendString(account_id);
+
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      debugd_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+
+  if (!response.has_value() || !response.value()) {
+    LOG(ERROR) << "Error contacting debugd to delete ARC bug report backup.";
+  }
 }
 
 }  // namespace login_manager
