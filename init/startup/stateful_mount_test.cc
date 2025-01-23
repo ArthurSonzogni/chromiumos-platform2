@@ -401,7 +401,7 @@ TEST_F(RunMountStatefulLVM, NoStatefulPartition) {
   EXPECT_CALL(*platform_, Fsck(_, _, _)).Times(0);
   EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
   stateful_mount_->MountStateful(rootdev, &flags_, mount_helper_.get(),
-                                 *partition_info_);
+                                 *partition_info_, std::nullopt);
 
   std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -420,7 +420,7 @@ TEST_F(RunMountStatefulLVM, StatefulPartitionEmpty) {
   EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
 
   stateful_mount_->MountStateful(rootdev, &flags_, mount_helper_.get(),
-                                 *partition_info_);
+                                 *partition_info_, std::nullopt);
 
   std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -471,7 +471,7 @@ TEST_F(RunMountStateful, NoStatefulPartition) {
   EXPECT_CALL(*platform_, Fsck(_, _, _)).Times(0);
   EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
   stateful_mount_->MountStateful(rootdev, &flags_, mount_helper_.get(),
-                                 *partition_info_);
+                                 *partition_info_, std::nullopt);
 
   std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -490,7 +490,7 @@ TEST_F(RunMountStateful, StatefulPartitionEmpty) {
   EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
 
   stateful_mount_->MountStateful(rootdev, &flags_, mount_helper_.get(),
-                                 *partition_info_);
+                                 *partition_info_, std::nullopt);
 
   std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);

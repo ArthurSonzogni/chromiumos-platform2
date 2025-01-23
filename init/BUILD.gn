@@ -55,6 +55,7 @@ pkg_config("target_defaults") {
   defines = [
     "USE_DEVICE_MAPPER=${use.device_mapper}",
     "USE_DIRENCRYPTION=${use.direncryption}",
+    "USE_DEFAULT_KEY_STATEFUL=${use.default_key_stateful}",
     "USE_ENCRYPTED_REBOOT_VAULT=${use.encrypted_reboot_vault}",
     "USE_ENCRYPTED_STATEFUL=${use.encrypted_stateful}",
     "USE_ENCSTATEFUL_ONDISK_FINALIZATION=${use.encstateful_ondisk_finalization}",

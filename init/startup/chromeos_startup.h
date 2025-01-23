@@ -179,6 +179,10 @@ class ChromeosStartup {
   raw_ptr<StartupDep> startup_dep_;
   std::unique_ptr<MountHelper> mount_helper_;
   std::unique_ptr<MountHelperFactory> mount_helper_factory_;
+  // storage_container_factory_ has short lifespan, from constructor to
+  // start only, where is it passed to the mount_helper_ object.
+  std::unique_ptr<libstorage::StorageContainerFactory>
+      storage_container_factory_;
   bool enable_stateful_security_hardening_;
   std::unique_ptr<StatefulMount> stateful_mount_;
   bool dev_mode_;

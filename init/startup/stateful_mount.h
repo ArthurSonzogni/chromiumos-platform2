@@ -44,7 +44,8 @@ class StatefulMount {
   void MountStateful(const base::FilePath& root_dev,
                      const Flags* flags,
                      MountHelper* mount_helper,
-                     const base::Value& image_vars);
+                     const base::Value& image_vars,
+                     std::optional<encryption::EncryptionKey> key);
 
   void DevPerformStatefulUpdate();
   bool DevUpdateStatefulPartition(const std::string& args,

@@ -125,6 +125,9 @@ constexpr char kDaemonStore[] = "daemon-store";
 constexpr char kDaemonStoreCache[] = "daemon-store-cache";
 constexpr char kEtc[] = "etc";
 
+constexpr char kMntChromeosMetadataPartition[] =
+    "mnt/chromeos_metadata_partition";
+
 constexpr char kDisableStatefulSecurityHard[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
 constexpr char kDebugfsAccessGrp[] = "debugfs-access";
@@ -145,6 +148,8 @@ const std::array<const char*, 4> kPreserveDirs = {
     "usr/local/etc/wifi_creds",
 };
 
+constexpr char kMetaDataFSType[] = "ext4";
+
 }  // namespace
 
 namespace startup {
@@ -155,6 +160,7 @@ void ChromeosStartup::ParseFlags(Flags* flags) {
   flags->fsverity = USE_FSVERITY;
   flags->prjquota = USE_PRJQUOTA;
   flags->encstateful = USE_ENCRYPTED_STATEFUL;
+  flags->dm_default_key_stateful = USE_DEFAULT_KEY_STATEFUL;
   if (flags->encstateful) {
     flags->sys_key_util = USE_TPM2;
   }
@@ -376,12 +382,11 @@ ChromeosStartup::ChromeosStartup(
       stateful_(stateful),
       startup_dep_(startup_dep),
       mount_helper_factory_(std::move(mount_helper_factory)),
+      storage_container_factory_(std::move(storage_container_factory)),
       tlcl_(std::move(tlcl)),
       metrics_(metrics) {
   stateful_mount_ = std::make_unique<StatefulMount>(root_, stateful_, platform_,
                                                     startup_dep_);
-  mount_helper_ = mount_helper_factory_->Generate(
-      std::move(storage_container_factory), flags_.get());
 }
 
 void ChromeosStartup::EarlySetup() {
@@ -950,6 +955,7 @@ int ChromeosStartup::Run() {
 
   EarlySetup();
 
+  std::optional<encryption::EncryptionKey> key;
   root_dev_ = utils::GetRootDevice(true);
   // Check if we are booted on physical media. rootdev will fail if we are in
   // an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
@@ -958,15 +964,82 @@ int ChromeosStartup::Run() {
   // /dev/ram.
   if (root_dev_.empty() || root_dev_ == base::FilePath("/dev/ram")) {
     PLOG(INFO) << "rootdev does not have stateful partition.";
+    mount_helper_ = mount_helper_factory_->Generate(
+        std::move(storage_container_factory_), flags_.get());
   } else {
     std::optional<base::Value> image_vars = GetImageVars(root_, root_dev_);
     if (!image_vars) {
       PLOG(INFO) << "No partition data information available";
       // Request recovery.
     }
+    // Check the device is allowed for use.
+    if (flags_->dm_default_key_stateful) {
+      const int part_num_metadata = utils::GetPartitionNumFromImageVars(
+          image_vars->GetDict(), "PARTITION_NUM_POWERWASH_DATA");
+      const base::FilePath metadata_dev =
+          brillo::AppendPartition(root_dev_, part_num_metadata);
+
+      // Need to prepare the TPM first.
+      //
+      // Mount "cros_metadata". If mount fails, assume dm-default key is not
+      // set. If that was not the case, we will powerwash.
+      libstorage::StorageContainerConfig config = {
+          .filesystem_config =
+              {.backend_type = libstorage::StorageContainerType::kUnencrypted,
+               // If the partition does not exists, assume legacy layout:
+               // The device should have been installed with the partition
+               // initialized.
+               .recovery = libstorage::RecoveryType::kDoNothing},
+          .unencrypted_config = {
+              .backing_device_config = {
+                  .type = libstorage::BackingDeviceType::kPartition,
+                  .name = metadata_dev.value()}}};
+
+      std::unique_ptr<libstorage::StorageContainer> container =
+          storage_container_factory_->Generate(
+              config, libstorage::StorageContainerType::kExt4,
+              libstorage::FileSystemKeyReference());
+
+      if (!container || !container->Setup(libstorage::FileSystemKey())) {
+        LOG(ERROR) << "Failed to setup chromeos metadata";
+        flags_->dm_default_key_stateful = false;
+      } else {
+        // Mount cros_metadata
+        // Mount stateful partition from state_dev.
+        base::FilePath chromeos_metadata =
+            root_.Append(kMntChromeosMetadataPartition);
+        if (!platform_->Mount(metadata_dev, chromeos_metadata, kMetaDataFSType,
+                              MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
+                              "discard")) {
+          // The device has an image which support default-key, but has been
+          // installed without the meta data partition.
+          LOG(INFO) << "Failed to mount chromeos metadata";
+          flags_->dm_default_key_stateful = false;
+        } else {
+          // We can not fully control the factory mode here since stateful is
+          // not mounted and one test is to look for  "factory/enabled". The
+          // device must have been install without dm-default-key stateful.
+          if (!IsFactoryMode(platform_, root_, root_) && flags_->encstateful) {
+            CleanupTpm(chromeos_metadata);
+            // TODO(gwendal): Allow saving key material for tests. Will be a new
+            // location.
+            key = LoadTpmKey(chromeos_metadata, base::FilePath());
+          }
+          // encstateful will not be encrypted by itself.
+          flags_->encstateful = false;
+          // LVM will not be used.
+          flags_->lvm_stateful = false;
+        }
+      }
+    }
+
+    // Initialize mount_helper_ based on the updated flags.
+    // storage_container_factory_ is now owned by mount_helper_
+    mount_helper_ = mount_helper_factory_->Generate(
+        std::move(storage_container_factory_), flags_.get());
 
     stateful_mount_->MountStateful(root_dev_, flags_.get(), mount_helper_.get(),
-                                   *image_vars);
+                                   *image_vars, key);
     state_dev_ = stateful_mount_->GetStateDev();
   }
 
@@ -990,9 +1063,15 @@ int ChromeosStartup::Run() {
 
   MountHome();
 
-  StartTpm2Simulator();
+  if (!flags_->dm_default_key_stateful) {
+    // Load the TPM similator if present.
+    // TODO(b:397705385): The simulator stores its data in
+    // /mnt/stateful_partition/unencrypted/tpm2-simulator which needs to be
+    // unencrypted. Add support for tpm simulator for dm-default-key layout will
+    // come later.
+    StartTpm2Simulator();
+  }
 
-  std::optional<encryption::EncryptionKey> key;
   if (flags_->encstateful) {
     CleanupTpm(stateful_);
     key = LoadTpmKey(stateful_, mount_helper_->GetKeyBackupFile());

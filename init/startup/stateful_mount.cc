@@ -30,6 +30,7 @@
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/hkdf.h>
 #include <libstorage/platform/platform.h>
 #include <libstorage/storage_container/filesystem_key.h>
 #include <libstorage/storage_container/storage_container.h>
@@ -66,6 +67,7 @@ constexpr char kUnencrypted[] = "unencrypted";
 constexpr char kDevImageBlockFile[] = "dev_image.block";
 constexpr char kNewDevImageBlockFile[] = "dev_image_new.block";
 constexpr char kDeveloperToolsMount[] = "developer_tools";
+constexpr char kEncrypted[] = "defaultkey_encrypted";
 
 constexpr char kVarLogAsan[] = "var/log/asan";
 constexpr char kStatefulDevImage[] = "dev_image";
@@ -99,6 +101,9 @@ uint64_t GetDirtyExpireCentisecs(libstorage::Platform* platform,
 }  // namespace
 
 namespace startup {
+
+using ::hwsec_foundation::Hkdf;
+using ::hwsec_foundation::HkdfHash;
 
 StatefulMount::StatefulMount(const base::FilePath& root,
                              const base::FilePath& stateful,
@@ -185,10 +190,12 @@ bool StatefulMount::AttemptStatefulMigration(
   return true;
 }
 
-void StatefulMount::MountStateful(const base::FilePath& root_dev,
-                                  const Flags* flags,
-                                  MountHelper* mount_helper,
-                                  const base::Value& image_vars) {
+void StatefulMount::MountStateful(
+    const base::FilePath& root_dev,
+    const Flags* flags,
+    MountHelper* mount_helper,
+    const base::Value& image_vars,
+    std::optional<encryption::EncryptionKey> key) {
   const auto& image_vars_dict = image_vars.GetDict();
   bool status;
   int32_t stateful_mount_flags;
@@ -269,34 +276,80 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
     bootstat_.LogEvent("lvm-activation-complete");
   }
 
-  if (should_mount_lvm) {
-    config.unencrypted_config = {
-        .backing_device_config = {
-            .type = libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
-            .name = kUnencrypted,
-            .logical_volume = {
-                .vg = std::make_shared<brillo::VolumeGroup>(*volume_group_),
-                .thinpool = std::make_shared<brillo::Thinpool>(*thinpool)}}};
-
+  libstorage::StorageContainerType backend_type;
+  libstorage::FileSystemKeyReference key_reference;
+  libstorage::FileSystemKey encryption_key;
+  if (key) {
+    config.dmsetup_config = {
+        .backing_device_config = {.type =
+                                      libstorage::BackingDeviceType::kPartition,
+                                  .name = backing_device.value()},
+        .dmsetup_device_name = kEncrypted,
+        .dmsetup_cipher = std::string("aes-xts-plain64")};
+    backend_type = libstorage::StorageContainerType::kDmDefaultKey;
+    // Not really needed, default_key does not use the keyring.
+    key_reference.fek_sig = brillo::SecureBlob(kEncrypted);
+    Hkdf(HkdfHash::kSha512, key->encryption_key(),
+         /*info=*/brillo::BlobFromString(kEncrypted),
+         /*salt=*/brillo::Blob(),
+         /*result_len=*/0, &encryption_key.fek);
+    stateful_mount_opts.append(",inlinecrypt");
   } else {
-    config.unencrypted_config = {
-        .backing_device_config = {
-            .type = libstorage::BackingDeviceType::kPartition,
-            .name = backing_device.value()}};
+    backend_type = libstorage::StorageContainerType::kUnencrypted;
+    key_reference = libstorage::FileSystemKeyReference();
+    encryption_key = libstorage::FileSystemKey();
+    if (should_mount_lvm) {
+      config.unencrypted_config = {
+          .backing_device_config = {
+              .type =
+                  libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
+              .name = kUnencrypted,
+              .logical_volume = {
+                  .vg = std::make_shared<brillo::VolumeGroup>(*volume_group_),
+                  .thinpool = std::make_shared<brillo::Thinpool>(*thinpool)}}};
+    } else {
+      config.unencrypted_config = {
+          .backing_device_config = {
+              .type = libstorage::BackingDeviceType::kPartition,
+              .name = backing_device.value()}};
+    }
   }
-  config.filesystem_config = {
-      .tune2fs_opts = GenerateExt4Features(flags),
-      .backend_type = libstorage::StorageContainerType::kUnencrypted,
-      .recovery = libstorage::RecoveryType::kDoNothing,
-      .metrics_prefix = "Platform.FileSystem.Stateful"};
+  config.filesystem_config = {.tune2fs_opts = GenerateExt4Features(flags),
+                              .backend_type = backend_type,
+                              .recovery = libstorage::RecoveryType::kDoNothing,
+                              .metrics_prefix = "Platform.FileSystem.Stateful"};
+
+  if (key && key->is_fresh()) {
+    // Need to reformat the container first. But since the partition already
+    // exists, the Ext4 storage container will try to use the current
+    // filesystem, since the dmsetup storage container also base its existence
+    // logic to the presence of the backup device. Force a purge on fsck failure
+    // which will happen.
+    config.filesystem_config.recovery = libstorage::RecoveryType::kPurge;
+    // Do not discard to preserve the pass-through files.
+    config.filesystem_config.mkfs_opts = {
+        "-E",
+        "nodiscard",
+        "-O",
+        "stable_inodes,encrypt",
+    };
+  }
 
   std::unique_ptr<libstorage::StorageContainer> container =
       mount_helper->GetStorageContainerFactory()->Generate(
-          config, libstorage::StorageContainerType::kExt4,
-          libstorage::FileSystemKeyReference());
+          config, libstorage::StorageContainerType::kExt4, key_reference);
 
-  if (!container || !container->Setup(libstorage::FileSystemKey())) {
-    LOG(ERROR) << "Failed to setup unencrypted stateful";
+  if (!container) {
+    LOG(ERROR) << "Failed to create stateful container";
+
+    ClobberStateful(backing_device, {"fast", "keepimg", "preserve_lvs"},
+                    "Self-repair corrupted stateful partition");
+    // Not reached, except during unit tests.
+    return;
+  }
+
+  if (!container->Setup(encryption_key)) {
+    LOG(ERROR) << "Failed to setup stateful";
 
     ClobberStateful(backing_device, {"fast", "keepimg", "preserve_lvs"},
                     "Self-repair corrupted stateful partition");
@@ -381,7 +434,6 @@ void StatefulMount::DevPerformStatefulUpdate() {
        stateful_.Append(kUnencrypted).Append(kDevImageBlockFile)}};
 
   for (auto& [src, dst] : update_targets) {
-
     // Cleanup old target directories.
     if (!platform_->DeletePathRecursively(dst)) {
       PLOG(WARNING) << "Failed to delete " << dst;

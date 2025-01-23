@@ -36,6 +36,9 @@ struct Flags {
   // Increases the level of log verbosity from the default (warning) to info
   // or verbose.
   int verbosity;
+  // Indicates if dm-default-key is used for the stateful partition.
+  // It implies |encstateful| is off as well as |lvm_stateful|.
+  bool dm_default_key_stateful;
 };
 
 }  // namespace startup
