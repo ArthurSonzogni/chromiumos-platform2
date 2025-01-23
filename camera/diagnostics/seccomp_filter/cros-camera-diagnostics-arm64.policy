@@ -17,10 +17,12 @@ eventfd2: 1
 exit: 1
 exit_group: 1
 faccessat: 1
+fallocate: 1
 fcntl: 1
 flock: 1
 fstat: 1
 fstatfs: 1
+ftruncate: 1
 futex: 1
 getegid: 1
 geteuid: 1
@@ -71,5 +73,7 @@ signalfd4: 1
 socket: arg0 == AF_UNIX
 socketpair: arg0 == AF_UNIX
 statfs: 1
+tgkill: 1
 uname: 1
+unlinkat: 1
 write: 1
