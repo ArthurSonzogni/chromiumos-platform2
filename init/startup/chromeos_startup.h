@@ -67,6 +67,9 @@ class ChromeosStartup {
   // Restores the paths to preserve from protected path.
   void RestorePreservedPaths();
 
+  std::optional<base::Value> GetImageVars(const base::FilePath& root,
+                                          const base::FilePath& root_dev);
+
   // Returns if the TPM is owned or couldn't be determined.
   bool IsTPMOwned();
   // Returns if device needs to clobber even though there's no devmode file

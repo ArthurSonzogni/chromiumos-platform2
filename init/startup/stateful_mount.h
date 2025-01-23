@@ -34,9 +34,6 @@ class StatefulMount {
 
   virtual ~StatefulMount() = default;
 
-  std::optional<base::Value> GetImageVars(base::FilePath json_file,
-                                          std::string key);
-
   base::FilePath GetStateDev();
 
   void ClobberStateful(const base::FilePath& stateful_device,
@@ -44,10 +41,6 @@ class StatefulMount {
                        const std::string& clobber_message);
 
   bool AttemptStatefulMigration(const base::FilePath& stateful_device);
-  void MountStateful(const Flags* flags, MountHelper* mount_helper);
-
-  // For testing purposes, allow injecting partition variables,
-  // instead of gathering them from the local .json file.
   void MountStateful(const base::FilePath& root_dev,
                      const Flags* flags,
                      MountHelper* mount_helper,

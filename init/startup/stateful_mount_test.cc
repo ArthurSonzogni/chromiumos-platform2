@@ -39,70 +39,9 @@ using testing::StrictMock;
 
 namespace {
 
-const char kImageVarsContent[] = R"""(
-{
-  "load_base_vars": {
-   "FORMAT_STATE": "base",
-   "PLATFORM_FORMAT_STATE": "ext4",
-   "PLATFORM_OPTIONS_STATE": "",
-   "PARTITION_NUM_STATE": 1
-  },
-  "load_partition_vars": {
-    "FORMAT_STATE": "partition",
-    "PLATFORM_FORMAT_STATE": "ext4",
-    "PLATFORM_OPTIONS_STATE": "",
-    "PARTITION_NUM_STATE": 1
-  }
-})""";
-
 constexpr char kStatefulPartition[] = "mnt/stateful_partition";
 
 }  // namespace
-
-class GetImageVarsTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    platform_ = std::make_unique<libstorage::FakePlatform>();
-    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
-    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), &flags_, base_dir, base_dir,
-        std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-        std::unique_ptr<libstorage::StorageContainerFactory>());
-    json_file_ = base_dir.Append("vars.json");
-    ASSERT_TRUE(platform_->WriteStringToFile(json_file_, kImageVarsContent));
-    stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        base_dir, base_dir, platform_.get(), startup_dep_.get());
-  }
-
-  base::FilePath json_file_;
-  startup::Flags flags_{};
-  std::unique_ptr<startup::StatefulMount> stateful_mount_;
-  base::FilePath base_dir{"/"};
-  std::unique_ptr<libstorage::FakePlatform> platform_;
-  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
-};
-
-TEST_F(GetImageVarsTest, BaseVars) {
-  std::optional<base::Value> vars =
-      stateful_mount_->GetImageVars(json_file_, "load_base_vars");
-  ASSERT_TRUE(vars);
-  EXPECT_TRUE(vars->is_dict());
-  const std::string* format = vars->GetDict().FindString("FORMAT_STATE");
-  EXPECT_NE(format, nullptr);
-  EXPECT_EQ(*format, "base");
-}
-
-TEST_F(GetImageVarsTest, PartitionVars) {
-  std::optional<base::Value> vars =
-      stateful_mount_->GetImageVars(json_file_, "load_partition_vars");
-  ASSERT_TRUE(vars);
-  EXPECT_TRUE(vars->is_dict());
-  const std::string* format = vars->GetDict().FindString("FORMAT_STATE");
-  LOG(INFO) << "FORMAT_STATE is: " << *format;
-  EXPECT_NE(format, nullptr);
-  EXPECT_EQ(*format, "partition");
-}
 
 class Ext4FeaturesTest : public ::testing::Test {
  protected:

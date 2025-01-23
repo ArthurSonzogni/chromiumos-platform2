@@ -379,6 +379,80 @@ TEST_F(TPMTest, PcrExtended) {
   EXPECT_TRUE(startup_->ExtendPCRForVersionAttestation());
 }
 
+const char kImageVarsContent[] = R"""(
+{
+  "load_base_vars": {
+   "FORMAT_STATE": "base",
+   "PLATFORM_FORMAT_STATE": "ext4",
+   "PLATFORM_OPTIONS_STATE": "",
+   "PARTITION_NUM_STATE": 1
+  },
+  "load_partition_vars": {
+    "FORMAT_STATE": "partition",
+    "PLATFORM_FORMAT_STATE": "ext4",
+    "PLATFORM_OPTIONS_STATE": "",
+    "PARTITION_NUM_STATE": 1
+  }
+})""";
+
+class GetImageVarsTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    platform_ = std::make_unique<libstorage::MockPlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
+    std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
+        std::make_unique<hwsec_foundation::MockTlclWrapper>();
+    tlcl_ = tlcl.get();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::make_unique<vpd::Vpd>(), std::make_unique<Flags>(), base_dir_,
+        stateful_dir_, base_dir_, platform_.get(), startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr);
+    base::FilePath base_root_dev("abc");
+    removable_ =
+        base_dir_.Append("sys/block").Append(base_root_dev).Append("removable");
+    root_dev_ = base_dir_.Append("dev").Append(base_root_dev);
+
+    base::FilePath json_file = base_dir_.Append("usr/sbin/partition_vars.json");
+    ASSERT_TRUE(platform_->WriteStringToFile(json_file, kImageVarsContent));
+  }
+
+  base::FilePath base_dir_{"/"};
+  base::FilePath root_dev_;
+  base::FilePath removable_;
+  base::FilePath stateful_dir_{"/stateful"};
+  std::unique_ptr<libstorage::MockPlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
+  hwsec_foundation::MockTlclWrapper* tlcl_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+};
+
+TEST_F(GetImageVarsTest, BaseVars) {
+  ASSERT_TRUE(platform_->WriteStringToFile(removable_, "0\n"));
+  std::optional<base::Value> vars =
+      startup_->GetImageVars(base_dir_, root_dev_);
+  EXPECT_TRUE(vars);
+  EXPECT_TRUE(vars->is_dict());
+  const std::string* format = vars->GetDict().FindString("FORMAT_STATE");
+  EXPECT_NE(format, nullptr);
+  EXPECT_EQ(*format, "base");
+}
+
+TEST_F(GetImageVarsTest, PartitionVars) {
+  ASSERT_TRUE(platform_->WriteStringToFile(removable_, "1\n"));
+  std::optional<base::Value> vars =
+      startup_->GetImageVars(base_dir_, root_dev_);
+  EXPECT_TRUE(vars);
+  EXPECT_TRUE(vars->is_dict());
+  const std::string* format = vars->GetDict().FindString("FORMAT_STATE");
+  LOG(INFO) << "FORMAT_STATE is: " << *format;
+  EXPECT_NE(format, nullptr);
+  EXPECT_EQ(*format, "partition");
+}
+
 class StatefulWipeTest : public ::testing::Test {
  protected:
   void SetUp() override {

@@ -20,9 +20,11 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_split.h>
+#include <brillo/blkdev_utils/storage_utils.h>
 #include <brillo/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/process/process.h>
@@ -79,6 +81,8 @@ constexpr char kKernelDebug[] = "kernel/debug";
 constexpr char kKernelSecurity[] = "kernel/security";
 constexpr char kKernelTracing[] = "kernel/tracing";
 constexpr char kSysfsCpu[] = "devices/system/cpu";
+
+constexpr char kPartitionsVars[] = "usr/sbin/partition_vars.json";
 
 constexpr char kTpmSimulator[] = "etc/init/tpm2-simulator.conf";
 
@@ -760,6 +764,74 @@ void ChromeosStartup::CheckVarLog() {
   }
 }
 
+// TODO(asavery): update the check for removable devices to be
+// more advanced, b/209476959
+std::optional<bool> RemovableRootdev(libstorage::Platform* platform,
+                                     const base::FilePath& root,
+                                     const base::FilePath& root_dev) {
+  std::string removable_content;
+  if (!platform->ReadFileToString(root.Append("sys/block")
+                                      .Append(root_dev.BaseName())
+                                      .Append("removable"),
+                                  &removable_content)) {
+    return std::nullopt;
+  }
+  base::TrimWhitespaceASCII(removable_content, base::TRIM_ALL,
+                            &removable_content);
+  int ret;
+  if (!base::StringToInt(removable_content, &ret)) {
+    return std::nullopt;
+  }
+  return ret == 1;
+}
+
+// Retrieve partition layout
+std::optional<base::Value> ChromeosStartup::GetImageVars(
+    const base::FilePath& root, const base::FilePath& root_dev) {
+  // Prepare to mount stateful partition.
+  std::optional<bool> removable = RemovableRootdev(platform_, root, root_dev);
+  if (!removable) {
+    // Request recovery, the root image is invalid.
+    return std::nullopt;
+  }
+
+  std::string load_vars;
+  if (*removable) {
+    load_vars = "load_partition_vars";
+  } else {
+    load_vars = "load_base_vars";
+  }
+
+  base::FilePath json_file = root.Append(kPartitionsVars);
+  std::string json_string;
+  if (!platform_->ReadFileToString(json_file, &json_string)) {
+    PLOG(ERROR) << "Unable to read json file: " << json_file;
+    return std::nullopt;
+  }
+  std::optional<base::Value> part_vars = base::JSONReader::Read(
+      json_string, base::JSON_PARSE_RFC, 10 /* max_depth */);
+  if (!part_vars) {
+    PLOG(ERROR) << "Failed to parse image variables.";
+    return std::nullopt;
+  }
+  if (!part_vars->is_dict()) {
+    LOG(ERROR) << "Failed to read json file as a dictionary";
+    return std::nullopt;
+  }
+
+  base::Value::Dict* image_vars = part_vars->GetDict().FindDict(load_vars);
+  if (image_vars == nullptr) {
+    LOG(ERROR) << "Failed to get image variables from " << json_file;
+    return std::nullopt;
+  }
+  if (!image_vars) {
+    PLOG(ERROR) << "Failed to read dictionary from " << json_file;
+    // Request recovery, the root image is invalid.
+    return std::nullopt;
+  }
+  return base::Value(std::move(*image_vars));
+}
+
 // Restore file contexts for /var.
 void ChromeosStartup::RestoreContextsForVar(
     void (*restorecon_func)(libstorage::Platform* platform_,
@@ -840,7 +912,20 @@ int ChromeosStartup::Run() {
 
   EarlySetup();
 
-  stateful_mount_->MountStateful(flags_.get(), mount_helper_.get());
+  root_dev_ = utils::GetRootDevice(true);
+  if (root_dev_.empty()) {
+    PLOG(INFO) << "rootdev could not find root device.";
+    // Request recovery.
+  }
+
+  std::optional<base::Value> image_vars = GetImageVars(root_, root_dev_);
+  if (!image_vars) {
+    PLOG(INFO) << "No partition data information available";
+    // Request recovery.
+  }
+
+  stateful_mount_->MountStateful(root_dev_, flags_.get(), mount_helper_.get(),
+                                 *image_vars);
   state_dev_ = stateful_mount_->GetStateDev();
 
   if (enable_stateful_security_hardening_) {

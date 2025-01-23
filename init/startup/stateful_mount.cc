@@ -19,7 +19,6 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -69,19 +68,9 @@ constexpr char kUsrLocal[] = "usr/local";
 constexpr char kTmpPortage[] = "var/tmp/portage";
 constexpr char kProcMounts[] = "proc/mounts";
 constexpr char kMountOptionsLog[] = "var/log/mount_options.log";
-constexpr char kPartitionsVars[] = "usr/sbin/partition_vars.json";
 constexpr char kPreserve[] = "preserve";
 const std::vector<const char*> kMountDirs = {"db/pkg", "lib/portage",
                                              "cache/dlc-images"};
-
-// TODO(asavery): update the check for removable devices to be
-// more advanced, b/209476959
-bool RemovableRootdev(const base::FilePath& path, int* ret) {
-  base::FilePath removable("/sys/block");
-  removable = removable.Append(path.BaseName());
-  removable = removable.Append("removable");
-  return utils::ReadFileToInt(removable, ret);
-}
 
 uint64_t GetDirtyExpireCentisecs(libstorage::Platform* platform,
                                  const base::FilePath& root) {
@@ -111,32 +100,6 @@ StatefulMount::StatefulMount(const base::FilePath& root,
       stateful_(stateful),
       platform_(platform),
       startup_dep_(startup_dep) {}
-
-std::optional<base::Value> StatefulMount::GetImageVars(base::FilePath json_file,
-                                                       std::string key) {
-  std::string json_string;
-  if (!platform_->ReadFileToString(json_file, &json_string)) {
-    PLOG(ERROR) << "Unable to read json file: " << json_file;
-    return std::nullopt;
-  }
-  std::optional<base::Value> part_vars = base::JSONReader::Read(
-      json_string, base::JSON_PARSE_RFC, 10 /* max_depth */);
-  if (!part_vars) {
-    PLOG(ERROR) << "Failed to parse image variables.";
-    return std::nullopt;
-  }
-  if (!part_vars->is_dict()) {
-    LOG(ERROR) << "Failed to read json file as a dictionary";
-    return std::nullopt;
-  }
-
-  base::Value::Dict* image_vars = part_vars->GetDict().FindDict(key);
-  if (image_vars == nullptr) {
-    LOG(ERROR) << "Failed to get image variables from " << json_file;
-    return std::nullopt;
-  }
-  return base::Value(std::move(*image_vars));
-}
 
 void StatefulMount::AppendQuotaFeaturesAndOptions(
     const Flags* flags,
@@ -212,45 +175,6 @@ bool StatefulMount::AttemptStatefulMigration(
   }
 
   return true;
-}
-
-void StatefulMount::MountStateful(const Flags* flags,
-                                  MountHelper* mount_helper) {
-  // Prepare to mount stateful partition.
-  root_device_ = utils::GetRootDevice(true);
-
-  int removable = 0;
-  if (root_device_.empty()) {
-    PLOG(INFO) << "rootdev could not find root device.";
-  } else if (!RemovableRootdev(root_device_, &removable)) {
-    PLOG(WARNING)
-        << "Unable to read if rootdev is removable; assuming it's not";
-  }
-  std::string load_vars;
-  if (removable == 1) {
-    load_vars = "load_partition_vars";
-  } else {
-    load_vars = "load_base_vars";
-  }
-
-  base::FilePath json_file = root_.Append(kPartitionsVars);
-  std::optional<base::Value> image_vars = GetImageVars(json_file, load_vars);
-  if (!image_vars) {
-    PLOG(ERROR) << "Failed to read dictionary from " << json_file;
-    // We can not further, since /usr/sbin/partition_vars.json is missing
-    // or corrupted.
-    // Powerwash won't help, the image is invalid.
-    // Reboot until we rollback to the previous image.
-    utils::Reboot();
-    return;
-  }
-  if (!image_vars->is_dict()) {
-    PLOG(ERROR) << "Failed to parse dictionary from " << json_file;
-    // Reboot until we rollback to the previous image.
-    utils::Reboot();
-    return;
-  }
-  return MountStateful(root_device_, flags, mount_helper, *image_vars);
 }
 
 void StatefulMount::MountStateful(const base::FilePath& root_dev,
