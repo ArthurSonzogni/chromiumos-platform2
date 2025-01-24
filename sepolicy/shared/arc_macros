@@ -1,7 +1,6 @@
 
 define(`has_arc', ifelse(arc_version, `none', $2, $1))
 define(`no_arc', has_arc(, $1))
-define(`is_arc_p', ifelse(arc_version, `p', $1, $2))
 define(`is_arc_vm', ifelse(arc_type, `vm', $1, $2))
 define(`dev_only', ifelse(use_selinux_develop, `y', $1))
 
@@ -16,13 +15,6 @@ divert
 define(`arc_cts_fails_release', `
 ifelse(use_selinux_develop, `y', $1,
   ifelse(arc_type, `container', `_put_permissive$2', $1))
-')
-
-
-define(`n_to_p_migration', `
-is_arc_p(`
-ifelse(use_arc_first_release_n, `y', `$1')
-')
 ')
 
 define(`arc_files', `{ file_type -cros_file_type }')
