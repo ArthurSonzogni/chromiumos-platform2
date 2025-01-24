@@ -493,6 +493,7 @@ TEST_F(ClientTest, SerializeNetworkConfigEmpty) {
   EXPECT_EQ(output.excluded_route_prefixes_size(), 0);
   EXPECT_EQ(output.included_route_prefixes_size(), 0);
   EXPECT_EQ(output.rfc3442_routes_size(), 0);
+  EXPECT_FALSE(output.has_pref64());
   EXPECT_EQ(output.dns_servers_size(), 0);
   EXPECT_EQ(output.dns_search_domains_size(), 0);
   EXPECT_FALSE(output.has_mtu());
@@ -514,6 +515,7 @@ TEST_F(ClientTest, SerializeNetworkConfig) {
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:300:1::/96"));
   input.ipv6_delegated_prefixes.push_back(
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:300:2::/120"));
+  input.pref64 = *net_base::IPv6CIDR::CreateFromCIDRString("64:ff9b::/96");
 
   input.ipv6_blackhole_route = true;
   input.excluded_route_prefixes.push_back(
@@ -590,6 +592,11 @@ TEST_F(ClientTest, SerializeNetworkConfig) {
             std::string({2, 0, 0, 0}));
   EXPECT_EQ(output.rfc3442_routes(0).prefix().prefix_len(), 8);
   EXPECT_EQ(output.rfc3442_routes(0).gateway(), std::string({10, 0, 1, 3}));
+  EXPECT_EQ(
+      output.pref64().addr(),
+      std::string({0, 0x64, static_cast<char>(0xff), static_cast<char>(0x9b), 0,
+                   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}));
+  EXPECT_EQ(output.pref64().prefix_len(), 96);
 
   EXPECT_EQ(output.dns_servers_size(), 2);
   EXPECT_EQ(output.dns_servers(0), std::string({8, 8, 8, 8}));

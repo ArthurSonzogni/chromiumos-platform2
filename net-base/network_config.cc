@@ -174,6 +174,9 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
     stream << ", included routes: ["
            << base::JoinString(included_route_str, ",") << "]";
   }
+  if (config.pref64) {
+    stream << ", pref64: " << *config.pref64;
+  }
   stream << ", DNS: [";
   std::vector<std::string> dns_str;
   std::transform(config.dns_servers.begin(), config.dns_servers.end(),

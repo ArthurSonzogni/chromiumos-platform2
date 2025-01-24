@@ -1861,7 +1861,11 @@ void SerializeNetworkConfig(const net_base::NetworkConfig& in,
     out_prefix->set_prefix_len(route.first.prefix_length());
     out_route->set_gateway(route.second.ToByteString());
   }
-
+  if (in.pref64) {
+    auto* out_pref64 = out->mutable_pref64();
+    out_pref64->set_addr(in.pref64->address().ToByteString());
+    out_pref64->set_prefix_len(in.pref64->prefix_length());
+  }
   for (const auto& dns : in.dns_servers) {
     out->add_dns_servers(dns.ToByteString());
   }

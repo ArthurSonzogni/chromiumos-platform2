@@ -63,6 +63,7 @@ struct BRILLO_EXPORT NetworkConfig {
   std::vector<IPCIDR> excluded_route_prefixes;
   std::vector<IPCIDR> included_route_prefixes;
   std::vector<std::pair<IPv4CIDR, IPv4Address>> rfc3442_routes;
+  std::optional<net_base::IPv6CIDR> pref64;
 
   // DNS and MTU configurations.
   std::vector<IPAddress> dns_servers;
