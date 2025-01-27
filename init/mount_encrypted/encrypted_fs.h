@@ -76,9 +76,6 @@ class BRILLO_EXPORT EncryptedFs {
   //   encryption_key - dmcrypt encryption key.
   //   rebuild - cleanup and recreate the encrypted mount.
   bool Setup(const libstorage::FileSystemKey& encryption_key, bool rebuild);
-  // Purge - obliterate the sparse file. This should be called only
-  // when the encrypted fs is not mounted.
-  bool Purge();
   // Teardown - stepwise unmounts the | ext4 | dmcrypt | loopback | tower
   // on top of the sparse file.
   bool Teardown();

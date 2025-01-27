@@ -225,11 +225,6 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
                                        platform);
 }
 
-bool EncryptedFs::Purge() {
-  LOG(INFO) << "Purging block device";
-  return container_->Purge();
-}
-
 // Do all the work needed to actually set up the encrypted partition.
 bool EncryptedFs::Setup(const libstorage::FileSystemKey& encryption_key,
                         bool rebuild) {
@@ -243,7 +238,7 @@ bool EncryptedFs::Setup(const libstorage::FileSystemKey& encryption_key,
 
   if (rebuild) {
     // Wipe out the old files, and ignore errors.
-    Purge();
+    container_->Purge();
 
     // Create new sparse file.
     LOG(INFO) << "Creating sparse backing file with size " << fs_size_;
