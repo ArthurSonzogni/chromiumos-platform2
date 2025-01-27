@@ -75,7 +75,9 @@ ShillTechnologyToPatchpanelClientTechnology(Technology technology) {
       return patchpanel::Client::NetworkTechnology::kEthernet;
     default:
       LOG(ERROR)
-          << "Patchpanel-unaware shill Technology, treating as Ethernet.";
+          << __func__
+          << ": Patchpanel-unaware shill Technology, treating as Ethernet: "
+          << technology;
       return patchpanel::Client::NetworkTechnology::kEthernet;
   }
 }
@@ -339,8 +341,7 @@ void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
             << ", is_slaac: " << is_slaac;
 
   if (state_ == State::kIdle) {
-    LOG(ERROR) << *this << ": Unexpected " << __func__
-               << " call when state is idle";
+    LOG(ERROR) << *this << " " << __func__ << ": Unexpected call while idle";
     return;
   }
 
@@ -487,12 +488,12 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
 }
 
 void Network::InvalidateIPv6Config() {
-  SLOG(2) << *this << ": " << __func__;
+  SLOG(2) << *this << " " << __func__;
   if (config_.Get().ipv6_addresses.empty()) {
     return;
   }
 
-  SLOG(2) << *this << "Waiting for new IPv6 configuration";
+  SLOG(2) << *this << " " << __func__ << ": Waiting for new IPv6 configuration";
   if (slaac_controller_) {
     slaac_controller_->Stop();
     config_.SetFromSLAAC(nullptr);
@@ -527,7 +528,7 @@ void Network::OnStaticIPConfigChanged(const net_base::NetworkConfig& config) {
     return;
   }
 
-  LOG(INFO) << *this << ": static IPv4 config update " << config;
+  LOG(INFO) << *this << " " << __func__ << ": " << config;
   UpdateIPConfigDBusObject();
   if (config_.Get().ipv4_address) {
     dispatcher_->PostTask(
@@ -566,7 +567,7 @@ void Network::OnIPConfigUpdatedFromDHCP(
     bool new_lease_acquired) {
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
-  LOG(INFO) << *this << ": DHCP lease "
+  LOG(INFO) << *this << " " << __func__ << ": DHCP lease "
             << (new_lease_acquired ? "acquired " : "update ") << network_config;
   if (new_lease_acquired) {
     for (auto& ev : event_handlers_) {
@@ -606,7 +607,7 @@ void Network::OnIPConfigUpdatedFromDHCP(
 }
 
 void Network::OnDHCPDrop(bool is_voluntary) {
-  LOG(INFO) << *this << ": " << __func__ << ": is_voluntary: " << is_voluntary;
+  LOG(INFO) << *this << " " << __func__ << ": is_voluntary: " << is_voluntary;
   if (!is_voluntary) {
     for (auto& ev : event_handlers_) {
       ev.OnGetDHCPFailure(interface_index_);
@@ -633,7 +634,8 @@ void Network::OnDHCPDrop(bool is_voluntary) {
   const auto combined_network_config = config_.Get();
   if (!combined_network_config.ipv6_addresses.empty() &&
       !combined_network_config.dns_servers.empty()) {
-    LOG(INFO) << *this << ": operating in IPv6-only because of "
+    LOG(INFO) << *this << " " << __func__
+              << ": operating in IPv6-only because of "
               << (is_voluntary ? "receiving DHCP option 108" : "DHCP failure");
     if (primary_family_ == net_base::IPFamily::kIPv4) {
       SetupConnection(net_base::IPFamily::kIPv6, config_.HasSLAAC());
@@ -645,7 +647,7 @@ void Network::OnDHCPDrop(bool is_voluntary) {
     // DHCPv4 reports to prefer v6 only. Continue to wait for SLAAC. Note that
     // if SLAAC is not available (usually a network configuration error) the
     // Network could stay in Connecting state forever.
-    LOG(WARNING) << *this
+    LOG(WARNING) << *this << " " << __func__
                  << ": DHCP option 108 received but no valid IPv6 network is "
                     "usable yet. Continue to wait for SLAAC.";
   } else {
@@ -690,7 +692,7 @@ void Network::OnNetworkConfigUpdatedFromDHCPv6(
 }
 
 void Network::OnDHCPv6Drop(bool /*is_voluntary*/) {
-  LOG(INFO) << *this << ": " << __func__;
+  LOG(INFO) << *this << " " << __func__;
 
   if (!config_.SetFromDHCPv6(nullptr)) {
     // If config does not change it means we never got any lease from DHCPv6.
@@ -710,7 +712,7 @@ bool Network::RenewDHCPLease() {
   if (!dhcp_controller_) {
     return false;
   }
-  SLOG(2) << *this << ": renewing DHCP lease";
+  SLOG(2) << *this << " " << __func__;
   // If RenewIP() fails, LegacyDHCPController will output a ERROR log.
   return dhcp_controller_->RenewIP();
 }
@@ -726,7 +728,7 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   if (update_type == SLAACController::UpdateType::kPFlag ||
       update_type == SLAACController::UpdateType::kNoPrefix) {
     if (!dhcp_pd_controller_) {
-      LOG(INFO) << *this << ": "
+      LOG(INFO) << *this << " " << __func__ << ": "
                 << (update_type == SLAACController::UpdateType::kPFlag
                         ? "P-flag detected. "
                         : "Received RA without PIO. ")
@@ -737,7 +739,7 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   }
 
   const auto slaac_network_config = slaac_controller_->GetNetworkConfig();
-  LOG(INFO) << *this << ": Updating SLAAC config to " << slaac_network_config;
+  LOG(INFO) << *this << " " << __func__ << ": " << slaac_network_config;
 
   if (slaac_network_config.captive_portal_uri.has_value()) {
     network_monitor_->SetCapportURL(*slaac_network_config.captive_portal_uri,
@@ -760,7 +762,7 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
       prefixes.insert(address.GetPrefixCIDR());
     }
     if (prefixes.size() > 1) {
-      LOG(WARNING) << *this
+      LOG(WARNING) << *this << " " << __func__
                    << ": SLAAC addresses from different prefixes are "
                       "configured, # prefixes = "
                    << prefixes.size();
@@ -779,20 +781,20 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
         old_network_config.ipv6_addresses[0] ==
             new_network_config.ipv6_addresses[0] &&
         old_network_config.ipv6_gateway == new_network_config.ipv6_gateway) {
-      SLOG(2) << *this << ": " << __func__ << ": primary address for "
+      SLOG(2) << *this << " " << __func__ << ": primary address for "
               << interface_name_ << " is unchanged";
       return;
     }
   } else if (update_type == SLAACController::UpdateType::kRDNSS) {
     if (old_network_config.dns_servers == new_network_config.dns_servers) {
-      SLOG(2) << *this << ": " << __func__ << " DNS server list is unchanged.";
+      SLOG(2) << *this << " " << __func__ << ": DNS server list is unchanged.";
       return;
     }
   } else if (update_type == SLAACController::UpdateType::kDNSSL) {
     if (old_network_config.dns_search_domains ==
         new_network_config.dns_search_domains) {
-      SLOG(2) << *this << ": " << __func__
-              << " DNS search domain list is unchanged.";
+      SLOG(2) << *this << " " << __func__
+              << ": DNS search domain list is unchanged.";
       return;
     }
   } else if (update_type == SLAACController::UpdateType::kDefaultRoute) {
@@ -879,7 +881,7 @@ void Network::DestroySockets(std::optional<uid_t> uid) {
   // Logging since this is a blocking call, we may care about its execution
   // time. Also this affects connectivity perceived by the user directly. Make
   // it clearer in the log.
-  LOG(INFO) << *this << ": " << __func__ << " start, uid="
+  LOG(INFO) << *this << " " << __func__ << ": Start, uid="
             << (uid.has_value() ? std::to_string(*uid) : "empty");
 
   // Notes:
@@ -891,22 +893,24 @@ void Network::DestroySockets(std::optional<uid_t> uid) {
   for (const auto& address : GetAddresses()) {
     if (!net_base::NetlinkSockDiag::Create()->DestroySockets(
             IPPROTO_TCP, address.address(), uid)) {
-      LOG(ERROR) << *this << ": failed to destroy tcp sockets for " << address;
+      LOG(ERROR) << *this << " " << __func__
+                 << ": failed to destroy tcp sockets for " << address;
     }
     if (!net_base::NetlinkSockDiag::Create()->DestroySockets(
             IPPROTO_UDP, address.address(), uid)) {
-      LOG(ERROR) << *this << ": failed to destroy udp sockets for " << address;
+      LOG(ERROR) << *this << " " << __func__
+                 << ": failed to destroy udp sockets for " << address;
     }
   }
 
-  LOG(INFO) << *this << ": " << __func__ << " done";
+  LOG(INFO) << *this << " " << __func__ << ": Done, uid="
+            << (uid.has_value() ? std::to_string(*uid) : "empty");
 }
 
 // TODO(jiejiang): Add unit test for this function.
 void Network::SetPriority(net_base::NetworkPriority priority) {
   if (!primary_family_) {
-    LOG(WARNING) << *this << ": " << __func__
-                 << " called but no connection exists";
+    LOG(WARNING) << *this << " " << __func__ << ": No connection exists";
     return;
   }
   if (priority_ == priority) {
@@ -1147,7 +1151,7 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
             << " -> " << result.validation_state;
 
   if (!IsConnected()) {
-    LOG(INFO) << *this
+    LOG(INFO) << *this << " " << __func__
               << ": Portal detection completed but Network is not connected";
     return;
   }
@@ -1272,11 +1276,11 @@ void Network::CallPatchpanelConfigureNetwork(
     bool is_service_ready) {
   if (!is_service_ready) {
     LOG(ERROR)
-        << *this
+        << *this << " " << __func__
         << ": missing patchpanel service. Network setup might be partial.";
     return;
   }
-  VLOG(2) << __func__ << ": " << *this;
+  VLOG(2) << *this << " " << __func__;
   CHECK(patchpanel_client_);
   patchpanel_client_->ConfigureNetwork(
       interface_index, interface_name, static_cast<uint32_t>(area),
