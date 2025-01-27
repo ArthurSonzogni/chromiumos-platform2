@@ -2,20 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
-
 #include "metrics/uploader/metrics_log_base.h"
 
+#include <memory>
+
+#include "base/check.h"
+#include "base/check_op.h"
+#include "base/logging.h"
 #include "base/metrics/histogram_base.h"
 #include "base/metrics/histogram_samples.h"
 #include "metrics/uploader/metrics_hashes.h"
 #include "metrics/uploader/proto/histogram_event.pb.h"
 #include "metrics/uploader/proto/system_profile.pb.h"
 #include "metrics/uploader/proto/user_action_event.pb.h"
-
-#include <base/check.h>
-#include <base/check_op.h>
-#include <base/logging.h>
 
 using base::Histogram;
 using base::HistogramBase;
@@ -122,13 +121,13 @@ void MetricsLogBase::RecordHistogramDelta(const std::string& histogram_name,
 
   for (std::unique_ptr<SampleCountIterator> it = snapshot.Iterator();
        !it->Done(); it->Next()) {
-    HistogramBase::Sample min;
+    HistogramBase::Sample32 min;
     int64_t max;
-    HistogramBase::Count count;
+    HistogramBase::Count32 count;
     it->Get(&min, &max, &count);
     HistogramEventProto::Bucket* bucket = histogram_proto->add_bucket();
     bucket->set_min(min);
-    bucket->set_max(static_cast<HistogramBase::Sample>(max));
+    bucket->set_max(static_cast<HistogramBase::Sample32>(max));
     bucket->set_count(count);
   }
 
