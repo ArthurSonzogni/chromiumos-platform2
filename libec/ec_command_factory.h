@@ -168,6 +168,12 @@ class EcCommandFactoryInterface {
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
+  virtual std::unique_ptr<ec::GetFpModeCommand> GetFpModeCommand() = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::GetFpModeCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
   virtual std::unique_ptr<ec::FpModeCommand> FpModeCommand(FpMode mode) = 0;
   static_assert(std::is_base_of<EcCommandInterface, ec::FpModeCommand>::value,
                 "All commands created by this class should derive from "
@@ -346,6 +352,8 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
       const brillo::Blob& encrypted_priv) override;
 
   std::unique_ptr<ec::FpModeCommand> FpModeCommand(FpMode mode) override;
+
+  std::unique_ptr<ec::GetFpModeCommand> GetFpModeCommand() override;
 
   std::unique_ptr<ec::I2cReadCommand> I2cReadCommand(uint8_t port,
                                                      uint8_t addr8,

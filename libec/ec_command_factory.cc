@@ -115,6 +115,10 @@ std::unique_ptr<ec::FpModeCommand> EcCommandFactory::FpModeCommand(
   return std::make_unique<ec::FpModeCommand>(mode);
 }
 
+std::unique_ptr<ec::GetFpModeCommand> EcCommandFactory::GetFpModeCommand() {
+  return std::make_unique<ec::GetFpModeCommand>();
+}
+
 std::unique_ptr<ec::LedControlQueryCommand>
 EcCommandFactory::LedControlQueryCommand(enum ec_led_id led_id) {
   return std::make_unique<ec::LedControlQueryCommand>(led_id);

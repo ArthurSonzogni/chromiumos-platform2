@@ -100,6 +100,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               FpModeCommand,
               (FpMode mode),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::GetFpModeCommand>,
+              GetFpModeCommand,
+              (),
+              (override));
   MOCK_METHOD(std::unique_ptr<ec::LedControlQueryCommand>,
               LedControlQueryCommand,
               (enum ec_led_id led_id),
