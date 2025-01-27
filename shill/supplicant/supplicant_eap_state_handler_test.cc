@@ -51,6 +51,7 @@ TEST_F(SupplicantEAPStateHandlerTest, AuthenticationStarting) {
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventAuthAttempt, metric_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, AcceptedMethod) {
@@ -64,6 +65,7 @@ TEST_F(SupplicantEAPStateHandlerTest, AcceptedMethod) {
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventProposedMethodAccepted, metric_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, SuccessfulCompletion) {
@@ -76,6 +78,7 @@ TEST_F(SupplicantEAPStateHandlerTest, SuccessfulCompletion) {
   EXPECT_FALSE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventAuthCompletedSuccess, metric_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, EAPFailureGeneric) {
@@ -90,6 +93,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureGeneric) {
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailureEAPAuthentication, failure_);
+  EXPECT_EQ(Metrics::kEapEventAuthFailure, metric_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, EAPFailureLocalTLSIndication) {
@@ -100,6 +104,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureLocalTLSIndication) {
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ(WPASupplicant::kEAPStatusLocalTLSAlert, GetTLSError());
   EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventTlsStatusAlert, metric_);
 
   // An EAP failure with a previous TLS indication yields a specific failure.
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusCompletion,
@@ -107,6 +112,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureLocalTLSIndication) {
                                     &failure_, &metric_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ(Service::kFailureEAPLocalTLS, failure_);
+  EXPECT_EQ(Metrics::kEapEventAuthLocalTlsFailure, metric_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, EAPFailureRemoteTLSIndication) {
@@ -117,6 +123,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureRemoteTLSIndication) {
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ(WPASupplicant::kEAPStatusRemoteTLSAlert, GetTLSError());
   EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventTlsStatusAlert, metric_);
 
   // An EAP failure with a previous TLS indication yields a specific failure.
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusCompletion,
@@ -124,6 +131,142 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureRemoteTLSIndication) {
                                     &failure_, &metric_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ(Service::kFailureEAPRemoteTLS, failure_);
+  EXPECT_EQ(Metrics::kEapEventAuthRemoteTlsFailure, metric_);
+}
+
+TEST_F(SupplicantEAPStateHandlerTest, EAPFailureUnknownParameter) {
+  StartEAP();
+  const std::string kStrangeParameter("ennui");
+  EXPECT_CALL(log_, Log(logging::LOGGING_ERROR, _,
+                        EndsWith(std::string("Unexpected ") +
+                                 WPASupplicant::kEAPStatusCompletion +
+                                 " parameter: " + kStrangeParameter)));
+  EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusCompletion,
+                                    kStrangeParameter, &failure_, &metric_));
+
+  // No errors reported, only log error and set metrics.
+  EXPECT_TRUE(handler_.is_eap_in_progress());
+  EXPECT_EQ("", GetTLSError());
+  EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventUnexpectedFailure, metric_);
+}
+
+TEST_F(SupplicantEAPStateHandlerTest, RemoteCertVerificationCompleted) {
+  StartEAP();
+  EXPECT_CALL(log_,
+              Log(logging::LOGGING_INFO, _,
+                  EndsWith("Completed remote certificate verification.")));
+
+  EXPECT_FALSE(handler_.ParseStatus(
+      WPASupplicant::kEAPStatusRemoteCertificateVerification,
+      WPASupplicant::kEAPParameterSuccess, &failure_, &metric_));
+
+  // Although we reported an error, this shouldn't mean failure.
+  EXPECT_TRUE(handler_.is_eap_in_progress());
+  EXPECT_EQ("", GetTLSError());
+  EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventCertVerificationSuccess, metric_);
+}
+
+TEST_F(SupplicantEAPStateHandlerTest, RemoteCertFirstVerificationFailed) {
+  StartEAP();
+  EXPECT_CALL(log_, Log(logging::LOGGING_ERROR, _,
+                        EndsWith("First cert verification failed.")));
+
+  EXPECT_FALSE(handler_.ParseStatus(
+      WPASupplicant::kEAPStatusRemoteCertificateVerification,
+      WPASupplicant::kEAPCertFirstVerificationFailed, &failure_, &metric_));
+
+  // Although we reported an error, this shouldn't mean failure.
+  EXPECT_TRUE(handler_.is_eap_in_progress());
+  EXPECT_EQ("", GetTLSError());
+  EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventFirstCertVerificationFailure, metric_);
+}
+
+TEST_F(SupplicantEAPStateHandlerTest, RemoteCertVerificationRetryAttempt) {
+  StartEAP();
+  EXPECT_CALL(
+      log_,
+      Log(logging::LOGGING_INFO, _,
+          EndsWith("retry cert verification with loaded root CA certs.")));
+
+  EXPECT_FALSE(handler_.ParseStatus(
+      WPASupplicant::kEAPStatusRemoteCertificateVerification,
+      WPASupplicant::kEAPCertRetryVerificationAttempt, &failure_, &metric_));
+
+  EXPECT_TRUE(handler_.is_eap_in_progress());
+  EXPECT_EQ("", GetTLSError());
+  EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventCertVerificationRetryAttempt, metric_);
+}
+
+TEST_F(SupplicantEAPStateHandlerTest, RemoteCertRetryVerificationFailed) {
+  StartEAP();
+  EXPECT_CALL(log_, Log(logging::LOGGING_ERROR, _,
+                        EndsWith("failed with loaded root CA certs.")));
+
+  EXPECT_FALSE(handler_.ParseStatus(
+      WPASupplicant::kEAPStatusRemoteCertificateVerification,
+      WPASupplicant::kEAPCertRetryVerificationFailed, &failure_, &metric_));
+
+  // Although we reported an error, this shouldn't mean failure.
+  EXPECT_TRUE(handler_.is_eap_in_progress());
+  EXPECT_EQ("", GetTLSError());
+  EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventCertVerificationFailureBeforeRetry, metric_);
+}
+
+TEST_F(SupplicantEAPStateHandlerTest, RemoteCertAfterRetryVerificationFailed) {
+  StartEAP();
+  EXPECT_CALL(log_, Log(logging::LOGGING_ERROR, _,
+                        EndsWith("verification failed after the retry.")));
+
+  EXPECT_FALSE(handler_.ParseStatus(
+      WPASupplicant::kEAPStatusRemoteCertificateVerification,
+      WPASupplicant::kEAPCertAfterRetryVerificationFailed, &failure_,
+      &metric_));
+
+  // Although we reported an error, this shouldn't mean failure.
+  EXPECT_TRUE(handler_.is_eap_in_progress());
+  EXPECT_EQ("", GetTLSError());
+  EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventCertVerificationFailureAfterRetry, metric_);
+}
+
+TEST_F(SupplicantEAPStateHandlerTest, RemoteCertVerificationFailureAfterRetry) {
+  StartEAP();
+  EXPECT_CALL(
+      log_,
+      Log(logging::LOGGING_ERROR, _,
+          EndsWith("Failed to load CA certs for cert verification retry.")));
+
+  EXPECT_FALSE(handler_.ParseStatus(
+      WPASupplicant::kEAPStatusRemoteCertificateVerification,
+      WPASupplicant::kEAPCertLoadForVerificationFailed, &failure_, &metric_));
+
+  // Although we reported an error, this shouldn't mean failure.
+  EXPECT_TRUE(handler_.is_eap_in_progress());
+  EXPECT_EQ("", GetTLSError());
+  EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventCertVerificationLoadFailure, metric_);
+}
+
+TEST_F(SupplicantEAPStateHandlerTest, RemoteCertVerificationIssuerCertAbsent) {
+  StartEAP();
+  EXPECT_CALL(log_, Log(logging::LOGGING_ERROR, _,
+                        EndsWith("Unable to get local issuer certificate.")));
+
+  EXPECT_FALSE(handler_.ParseStatus(
+      WPASupplicant::kEAPStatusRemoteCertificateVerification,
+      WPASupplicant::kEAPCertVerificationIssuerCertAbsent, &failure_,
+      &metric_));
+
+  // Although we reported an error, this shouldn't mean failure.
+  EXPECT_TRUE(handler_.is_eap_in_progress());
+  EXPECT_EQ("", GetTLSError());
+  EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventCertVerificationIssuerCertAbsent, metric_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, BadRemoteCertificateVerification) {
@@ -142,6 +285,7 @@ TEST_F(SupplicantEAPStateHandlerTest, BadRemoteCertificateVerification) {
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailureNone, failure_);
+  EXPECT_EQ(Metrics::kEapEventCertVerificationUnexpectedParameter, metric_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, ParameterNeeded) {
@@ -159,6 +303,7 @@ TEST_F(SupplicantEAPStateHandlerTest, ParameterNeeded) {
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailureEAPAuthentication, failure_);
+  EXPECT_EQ(Metrics::kEapEventAuthFailurePinMissing, metric_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, ParameterNeededPin) {
@@ -169,6 +314,7 @@ TEST_F(SupplicantEAPStateHandlerTest, ParameterNeededPin) {
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailurePinMissing, failure_);
+  EXPECT_EQ(Metrics::kEapEventPinMissing, metric_);
 }
 
 }  // namespace shill

@@ -1122,7 +1122,7 @@ TEST_F(EapCredentialsTest, ReportEapEventMetricWithDisabledExperiments) {
       EapCredentials::CaCertExperimentPhase::kDisabled;
   MockMetrics metrics;
 
-  // Conditions are no met, only default metrics are reported.
+  // Conditions are not met, only default metrics are reported.
   SetExperimentConditionsToNotMet();
 
   EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricEapEvent, 1));
@@ -1160,7 +1160,7 @@ TEST_F(EapCredentialsTest, ReportEapEventMetricWithExperimentPhase1) {
       EapCredentials::CaCertExperimentPhase::kPhase1;
   MockMetrics metrics;
 
-  // Conditions are no met, only default metrics are reported.
+  // Conditions are not met, only default metrics are reported.
   SetExperimentConditionsToNotMet();
 
   EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricEapEvent, 1));
@@ -1197,7 +1197,7 @@ TEST_F(EapCredentialsTest, ReportEapEventMetricWithExperimentPhase2) {
       EapCredentials::CaCertExperimentPhase::kPhase2;
   MockMetrics metrics;
 
-  // Conditions are no met, only default metrics are reported.
+  // Conditions are not met, only default metrics are reported.
   SetExperimentConditionsToNotMet();
 
   EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricEapEvent, 1));

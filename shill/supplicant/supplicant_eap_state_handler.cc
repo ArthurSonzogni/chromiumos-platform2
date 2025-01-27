@@ -57,24 +57,25 @@ bool SupplicantEAPStateHandler::ParseStatus(
       LOG(INFO) << "EAP: Completed remote certificate verification.";
       *metrics_eap_event = Metrics::kEapEventCertVerificationSuccess;
     } else if (parameter == WPASupplicant::kEAPCertFirstVerificationFailed) {
-      LOG(ERROR) << "EAP: First cert verification failed";
+      LOG(ERROR) << "EAP: First cert verification failed.";
       *metrics_eap_event = Metrics::kEapEventFirstCertVerificationFailure;
     } else if (parameter == WPASupplicant::kEAPCertRetryVerificationAttempt) {
-      LOG(INFO) << "Attempt to retry cert verification";
+      LOG(INFO)
+          << "Attempt to retry cert verification with loaded root CA certs.";
       *metrics_eap_event = Metrics::kEapEventCertVerificationRetryAttempt;
     } else if (parameter == WPASupplicant::kEAPCertRetryVerificationFailed) {
-      LOG(ERROR) << "EAP: Cert verification failed with loaded root CA certs";
+      LOG(ERROR) << "EAP: Cert verification failed with loaded root CA certs.";
       *metrics_eap_event = Metrics::kEapEventCertVerificationFailureBeforeRetry;
     } else if (parameter ==
                WPASupplicant::kEAPCertAfterRetryVerificationFailed) {
-      LOG(ERROR) << "EAP: Cert verification failed after the retry";
+      LOG(ERROR) << "EAP: Cert verification failed after the retry.";
       *metrics_eap_event = Metrics::kEapEventCertVerificationFailureAfterRetry;
     } else if (parameter == WPASupplicant::kEAPCertLoadForVerificationFailed) {
-      LOG(ERROR) << "EAP: Failed to load CA certs for cert verification retry";
+      LOG(ERROR) << "EAP: Failed to load CA certs for cert verification retry.";
       *metrics_eap_event = Metrics::kEapEventCertVerificationLoadFailure;
     } else if (parameter ==
                WPASupplicant::kEAPCertVerificationIssuerCertAbsent) {
-      LOG(ERROR) << "EAP: Unable to get local issuer certificate";
+      LOG(ERROR) << "EAP: Unable to get local issuer certificate.";
       *metrics_eap_event = Metrics::kEapEventCertVerificationIssuerCertAbsent;
     } else {
       // wpa_supplicant doesn't currently have a verification failure
