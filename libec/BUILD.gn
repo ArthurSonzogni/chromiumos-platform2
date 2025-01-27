@@ -120,6 +120,7 @@ install_config("install_libec_headers") {
     "ec_command.h",
     "ec_command_async.h",
     "ec_command_factory.h",
+    "ec_command_version_supported.h",
     "ec_firmware.h",
     "ec_panicinfo.h",
     "ec_usb_endpoint.h",

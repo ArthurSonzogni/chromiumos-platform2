@@ -16,6 +16,7 @@
 #include <chromeos/ec/ec_commands.h>
 
 #include "libec/ec_command.h"
+#include "libec/ec_command_version_supported.h"
 #include "libec/fingerprint/fp_mode.h"
 #include "libec/fingerprint/fp_sensor_errors.h"
 
@@ -28,7 +29,7 @@ using VendorTemplate = std::vector<uint8_t>;
 
 namespace ec {
 
-class CrosFpDeviceInterface {
+class CrosFpDeviceInterface : public EcCommandVersionSupportedInterface {
  public:
   using MkbpCallback = base::RepeatingCallback<void(const uint32_t event)>;
   CrosFpDeviceInterface() = default;
@@ -129,9 +130,6 @@ class CrosFpDeviceInterface {
   virtual int MaxTemplateCount() = 0;
   virtual int TemplateVersion() = 0;
   virtual int DeadPixelCount() = 0;
-
-  virtual ec::EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
-                                                              uint32_t ver) = 0;
 
   virtual ec::FpSensorErrors GetHwErrors() = 0;
 };
