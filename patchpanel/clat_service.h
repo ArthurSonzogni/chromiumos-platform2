@@ -66,11 +66,20 @@ class ClatService {
   void ResetClatRunningDeviceForTest();
 
  private:
-  bool IsClatRunningDevice(const ShillClient::Device& shill_device);
+  // Checks if |shill_device| is a different Device than |clat_running_device_|.
+  bool HasClatRunningDeviceChanged(const ShillClient::Device& shill_device);
+  // Checks if the NAT64 prefix that should be used with |shill_device| has
+  // changed compared to |clat_running_device_| are the same. Note that if a
+  // shill Device does not specify a NAT64 prefix, 64:ff9b::/96 is used by
+  // default.
+  bool HasNAT64PrefixChanged(const ShillClient::Device& shill_device);
+  // Returns true if CLAT is currently running.
+  bool IsClatRunning() const;
 
   // Creates a config file /run/tayga/tayga.conf. An old config file will be
   // overwritten by a new one.
-  bool CreateConfigFile(const net_base::IPv6Address& clat_ipv6_addr);
+  bool CreateConfigFile(const net_base::IPv6CIDR& nat64_prefix,
+                        const net_base::IPv6Address& clat_ipv6_addr);
   bool StartTayga();
   void StopTayga();
 

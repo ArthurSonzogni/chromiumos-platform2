@@ -67,7 +67,7 @@ bool RemoveConfigFileIfExists(const base::FilePath& conf_file_path) {
     return true;
   }
   if (!brillo::DeletePathRecursively(conf_file_path)) {
-    PLOG(ERROR) << "Failed to delete file " << conf_file_path;
+    PLOG(ERROR) << __func__ << ": Failed to delete file " << conf_file_path;
     return false;
   }
   return true;
@@ -77,6 +77,10 @@ bool NeedsClat(const ShillClient::Device& device) {
   return device.IsIPv6Only() &&
          device.technology != net_base::Technology::kVPN &&
          device.technology != net_base::Technology::kWiFiDirect;
+}
+
+net_base::IPv6CIDR GetNAT64Prefix(const ShillClient::Device& shill_device) {
+  return shill_device.network_config.pref64.value_or(kWellKnownNAT64Prefix);
 }
 
 }  // namespace
@@ -121,23 +125,22 @@ void ClatService::Disable() {
 void ClatService::OnShillDefaultLogicalDeviceChanged(
     const ShillClient::Device* new_device,
     const ShillClient::Device* prev_device) {
-  bool need_stop =
-      clat_running_device_ && !(new_device && IsClatRunningDevice(*new_device));
-
-  if (need_stop) {
+  bool was_running = IsClatRunning();
+  // CLAT should run if the new default logical device is IPv6-only.
+  bool should_run = new_device && NeedsClat(*new_device);
+  // CLAT should restart if the configuration has changed: the logical default
+  // shill Device has changed or the NAT64 prefix has changed.
+  bool has_config_changed =
+      new_device && (HasClatRunningDeviceChanged(*new_device) ||
+                     HasNAT64PrefixChanged(*new_device));
+  if (!was_running && should_run) {
+    StartClat(*new_device);
+  } else if (was_running && !should_run) {
     StopClat();
-  }
-
-  // CLAT should be started when CLAT is not running and the new default logical
-  // device is IPv6-only.
-  bool need_start =
-      new_device && !clat_running_device_ && NeedsClat(*new_device);
-
-  if (need_start) {
+  } else if (was_running && should_run && has_config_changed) {
+    StopClat();
     StartClat(*new_device);
   }
-
-  return;
 }
 
 // TODO(b/278970851): Add delay between the occurrence of this event and the
@@ -145,7 +148,7 @@ void ClatService::OnShillDefaultLogicalDeviceChanged(
 // https://chromium-review.googlesource.com/c/chromiumos/platform2/+/4803285/comment/ff1aa754_26e63d28/
 void ClatService::OnDefaultLogicalDeviceIPConfigChanged(
     const ShillClient::Device& default_logical_device) {
-  if (!clat_running_device_) {
+  if (!IsClatRunning()) {
     if (NeedsClat(default_logical_device)) {
       StartClat(default_logical_device);
     }
@@ -154,8 +157,9 @@ void ClatService::OnDefaultLogicalDeviceIPConfigChanged(
 
   // It is unexpected that CLAT is running on the device other than the default
   // logical device.
-  if (!IsClatRunningDevice(default_logical_device)) {
-    LOG(ERROR) << "CLAT is running on the device " << clat_running_device_
+  if (HasClatRunningDeviceChanged(default_logical_device)) {
+    LOG(ERROR) << __func__ << ": CLAT is running on the device "
+               << clat_running_device_
                << " although the default logical device is "
                << default_logical_device.ifname;
     StopClat();
@@ -173,7 +177,8 @@ void ClatService::OnDefaultLogicalDeviceIPConfigChanged(
   }
 
   if (clat_running_device_->network_config.ipv6_addresses[0] !=
-      default_logical_device.network_config.ipv6_addresses[0]) {
+          default_logical_device.network_config.ipv6_addresses[0] ||
+      HasNAT64PrefixChanged(default_logical_device)) {
     // TODO(b/278970851): Optimize the restart process of CLAT. Resources
     // such as the tun device can be reused.
     StopClat();
@@ -193,7 +198,7 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
   }
 
   if (shill_device.network_config.ipv6_addresses.empty()) {
-    LOG(ERROR) << shill_device << " doesn't have an IPv6 address";
+    LOG(ERROR) << __func__ << ": No IPv6 address on " << shill_device;
     return;
   }
 
@@ -204,13 +209,15 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
   auto clat_ipv6_cidr =
       AddressManager::GetRandomizedIPv6Address(current_subnet);
   if (!clat_ipv6_cidr) {
-    LOG(ERROR) << "Failed to get randomized IPv6 address from " << shill_device;
+    LOG(ERROR) << __func__ << ": Failed to get randomized IPv6 address from "
+               << shill_device;
     return;
   }
   clat_ipv6_addr_ = clat_ipv6_cidr->address();
 
-  if (!CreateConfigFile(clat_ipv6_addr_.value())) {
-    LOG(ERROR) << "Failed to create " << kTaygaConfigFilePath;
+  if (!CreateConfigFile(GetNAT64Prefix(shill_device),
+                        clat_ipv6_addr_.value())) {
+    LOG(ERROR) << __func__ << ": Failed to create " << kTaygaConfigFilePath;
     StopClat();
     return;
   }
@@ -218,20 +225,20 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
   if (datapath_->AddTunTap(kTunnelDeviceIfName, std::nullopt,
                            kTunnelDeviceIPv4CIDR, "",
                            DeviceMode::kTun) != kTunnelDeviceIfName) {
-    LOG(ERROR) << "Failed to create a tun device for CLAT";
+    LOG(ERROR) << __func__ << ": Failed to create a tun device for CLAT";
     StopClat();
     return;
   }
 
   if (!StartTayga()) {
-    LOG(ERROR) << "Failed to start TAYGA on " << shill_device;
+    LOG(ERROR) << __func__ << ": Failed to start TAYGA on " << shill_device;
     StopClat();
     return;
   }
 
   if (!datapath_->ModifyClatAcceptRules(Iptables::Command::kA,
                                         kTunnelDeviceIfName)) {
-    LOG(ERROR) << "Failed to add rules for CLAT in ip6tables";
+    LOG(ERROR) << __func__ << ": Failed to add rules for CLAT in ip6tables";
     StopClat();
     return;
   }
@@ -240,14 +247,15 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
   if (!datapath_->AddIPv6HostRoute(
           kTunnelDeviceIfName, *net_base::IPv6CIDR::CreateFromAddressAndPrefix(
                                    clat_ipv6_addr_.value(), 128))) {
-    LOG(ERROR) << "Failed to add a route to " << kTunnelDeviceIfName;
+    LOG(ERROR) << __func__ << ": Failed to add a route to "
+               << kTunnelDeviceIfName;
     StopClat();
     return;
   }
 
   if (!datapath_->AddIPv6NeighborProxy(clat_running_device_->ifname,
                                        clat_ipv6_addr_.value())) {
-    LOG(ERROR) << "Failed to add a ND proxy with interface "
+    LOG(ERROR) << __func__ << ": Failed to add a ND proxy with interface "
                << kTunnelDeviceIfName << " and IPv6 address "
                << clat_ipv6_addr_.value();
     StopClat();
@@ -256,14 +264,15 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
 
   if (!datapath_->AddIPv4RouteToTable(kTunnelDeviceIfName, net_base::IPv4CIDR(),
                                       kClatRoutingTableId)) {
-    LOG(ERROR) << "Failed to add a default route to table "
+    LOG(ERROR) << __func__ << ": Failed to add a default route to table "
                << kClatRoutingTableId;
     StopClat();
     return;
   }
 
-  LOG(INFO) << "CLAT has started on the device " << clat_running_device_.value()
-            << " and with the IPv6 address " << clat_ipv6_addr_->ToString();
+  LOG(INFO) << __func__ << ": address: " << *clat_ipv6_addr_
+            << ", prefix: " << GetNAT64Prefix(*clat_running_device_)
+            << ", device: " << clat_running_device_.value();
 }
 
 void ClatService::StopClat(bool clear_running_device) {
@@ -276,7 +285,7 @@ void ClatService::StopClat(bool clear_running_device) {
   }
 
   if (!(clat_running_device_ && clat_ipv6_addr_)) {
-    LOG(INFO) << "No need to clean up CLAT configurations";
+    LOG(INFO) << __func__ << ": No need to clean up CLAT configurations";
     return;
   }
 
@@ -300,8 +309,9 @@ void ClatService::StopClat(bool clear_running_device) {
 
   RemoveConfigFileIfExists(base::FilePath(kTaygaConfigFilePath));
 
-  LOG(INFO) << "CLAT has stopped on the device " << clat_running_device_.value()
-            << " and with the IPv6 address " << clat_ipv6_addr_->ToString();
+  LOG(INFO) << __func__ << ": address: " << *clat_ipv6_addr_
+            << ", prefix: " << GetNAT64Prefix(*clat_running_device_)
+            << ", device: " << clat_running_device_.value();
 
   if (clear_running_device) {
     clat_running_device_.reset();
@@ -318,22 +328,37 @@ void ClatService::ResetClatRunningDeviceForTest() {
   clat_running_device_.reset();
 }
 
-bool ClatService::IsClatRunningDevice(const ShillClient::Device& shill_device) {
+bool ClatService::HasClatRunningDeviceChanged(
+    const ShillClient::Device& shill_device) {
   if (!clat_running_device_) {
-    return false;
+    return true;
   }
 
-  return shill_device.ifname == clat_running_device_->ifname;
+  return shill_device.ifname != clat_running_device_->ifname;
+}
+
+bool ClatService::HasNAT64PrefixChanged(
+    const ShillClient::Device& shill_device) {
+  if (!clat_running_device_) {
+    return true;
+  }
+
+  return GetNAT64Prefix(shill_device) != GetNAT64Prefix(*clat_running_device_);
+}
+
+bool ClatService::IsClatRunning() const {
+  return clat_running_device_.has_value();
 }
 
 bool ClatService::CreateConfigFile(
+    const net_base::IPv6CIDR& nat64_prefix,
     const net_base::IPv6Address& clat_ipv6_addr) {
   const std::string contents = base::ReplaceStringPlaceholders(
       kTaygaConfigTemplate,
       {
           /*$1=*/std::string(kTunnelDeviceIfName),
           /*$2=*/kTaygaIPv4CIDR.address().ToString(),
-          /*$3=*/kWellKnownNAT64Prefix.ToString(),
+          /*$3=*/nat64_prefix.ToString(),
           /*$4=*/kTunnelDeviceIPv4CIDR.address().ToString(),
           /*$5=*/clat_ipv6_addr.ToString(),
       },
@@ -371,7 +396,7 @@ void ClatService::StopTayga() {
   }
 
   if (!brillo::Process::ProcessExists(tayga_pid_)) {
-    LOG(WARNING) << "TAYGA[" << tayga_pid_ << "] already stopped";
+    LOG(WARNING) << __func__ << ": TAYGA[" << tayga_pid_ << "] already stopped";
     tayga_pid_ = -1;
     return;
   }

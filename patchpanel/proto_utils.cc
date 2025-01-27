@@ -171,6 +171,10 @@ net_base::NetworkConfig DeserializeNetworkConfig(
       out.rfc3442_routes.emplace_back(*prefix, *gateway);
     }
   }
+  if (in.has_pref64()) {
+    out.pref64 = net_base::IPv6CIDR::CreateFromBytesAndPrefix(
+        in.pref64().addr(), in.pref64().prefix_len());
+  }
 
   for (const auto& dns : in.dns_servers()) {
     auto dns_out = net_base::IPAddress::CreateFromBytes(dns);

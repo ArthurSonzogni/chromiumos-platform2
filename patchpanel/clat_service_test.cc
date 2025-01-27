@@ -30,6 +30,7 @@ using testing::Eq;
 using testing::Exactly;
 using testing::Invoke;
 using testing::IsEmpty;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::StrEq;
@@ -101,11 +102,12 @@ ShillClient::Device MakeFakeIPv4OnlyShillDevice(
 ShillClient::Device MakeFakeIPv6OnlyShillDevice(
     const std::string& ifname,
     int ifindex = 1,
-    const char ipv6_cidr[] = kIPv6CIDR) {
+    const char ipv6_cidr[] = kIPv6CIDR,
+    std::optional<net_base::IPv6CIDR> pref64 = std::nullopt) {
   ShillClient::Device dev = MakeFakeShillDevice(ifname, ifindex);
   dev.network_config.ipv6_addresses = {
       *net_base::IPv6CIDR::CreateFromCIDRString(ipv6_cidr)};
-
+  dev.network_config.pref64 = pref64;
   return dev;
 }
 
@@ -271,11 +273,90 @@ TEST_F(ClatServiceTest, NewDefaultDeviceIsTheSameWithClatDevice) {
   const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 1);
   const auto dual_dev = MakeFakeDualStackShillDevice("dual", 2);
 
+  EXPECT_CALL(target_, StartClat);
   target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  Mock::VerifyAndClearExpectations(&target_);
 
-  EXPECT_CALL(target_, StopClat(_)).Times(Exactly(0));
-  EXPECT_CALL(target_, StartClat(_)).Times(Exactly(0));
+  EXPECT_CALL(target_, StopClat).Times(Exactly(0));
+  EXPECT_CALL(target_, StartClat).Times(Exactly(0));
   target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, &dual_dev);
+}
+
+TEST_F(ClatServiceTest, DefaultDeviceChangeToDefaultNAT64Prefix) {
+  const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 1);
+  auto v6only_dev2 = MakeFakeIPv6OnlyShillDevice(
+      "v6only", 1, kIPv6CIDR,
+      net_base::IPv6CIDR::CreateFromCIDRString("64:ff9b::/96"));
+
+  EXPECT_CALL(target_, StartClat);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  Mock::VerifyAndClearExpectations(&target_);
+
+  EXPECT_CALL(target_, StopClat).Times(0);
+  EXPECT_CALL(target_, StartClat).Times(0);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev2, &v6only_dev);
+}
+
+TEST_F(ClatServiceTest, DefaultDeviceLosesDefaultNAT64Prefix) {
+  auto v6only_dev = MakeFakeIPv6OnlyShillDevice(
+      "v6only", 1, kIPv6CIDR,
+      net_base::IPv6CIDR::CreateFromCIDRString("64:ff9b::/96"));
+  const auto v6only_dev2 = MakeFakeIPv6OnlyShillDevice("v6only", 1);
+
+  EXPECT_CALL(target_, StartClat);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  Mock::VerifyAndClearExpectations(&target_);
+
+  EXPECT_CALL(target_, StopClat).Times(0);
+  EXPECT_CALL(target_, StartClat).Times(0);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev2, &v6only_dev);
+}
+
+TEST_F(ClatServiceTest, DefaultDeviceChangeToNonDefaultNAT64Prefix) {
+  const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 1);
+  auto v6only_dev2 = MakeFakeIPv6OnlyShillDevice(
+      "v6only", 1, kIPv6CIDR,
+      net_base::IPv6CIDR::CreateFromCIDRString("2001:db8::/32"));
+
+  EXPECT_CALL(target_, StartClat);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  Mock::VerifyAndClearExpectations(&target_);
+
+  EXPECT_CALL(target_, StopClat);
+  EXPECT_CALL(target_, StartClat);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev2, &v6only_dev);
+}
+
+TEST_F(ClatServiceTest, DefaultDeviceLosesNonDefaultNAT64Prefix) {
+  auto v6only_dev = MakeFakeIPv6OnlyShillDevice(
+      "v6only", 1, kIPv6CIDR,
+      net_base::IPv6CIDR::CreateFromCIDRString("2001:db8::/32"));
+  const auto v6only_dev2 = MakeFakeIPv6OnlyShillDevice("v6only", 1);
+
+  EXPECT_CALL(target_, StartClat);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  Mock::VerifyAndClearExpectations(&target_);
+
+  EXPECT_CALL(target_, StopClat);
+  EXPECT_CALL(target_, StartClat);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev2, &v6only_dev);
+}
+
+TEST_F(ClatServiceTest, DefaultDeviceNAT64PrefixChange) {
+  auto v6only_dev = MakeFakeIPv6OnlyShillDevice(
+      "v6only", 1, kIPv6CIDR,
+      net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1::/48"));
+  auto v6only_dev2 = MakeFakeIPv6OnlyShillDevice(
+      "v6only", 1, kIPv6CIDR,
+      net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:2::/48"));
+
+  EXPECT_CALL(target_, StartClat);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  Mock::VerifyAndClearExpectations(&target_);
+
+  EXPECT_CALL(target_, StopClat);
+  EXPECT_CALL(target_, StartClat);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev2, &v6only_dev);
 }
 
 TEST_F(ClatServiceTest,

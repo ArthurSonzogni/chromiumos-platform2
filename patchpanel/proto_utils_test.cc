@@ -226,6 +226,11 @@ TEST_F(ProtoUtilsTest, DeserializeNetworkConfig) {
   rfc3442_prefix->set_addr({2, 0, 0, 0});
   rfc3442_prefix->set_prefix_len(8);
   rfc3442_route->set_gateway({10, 0, 1, 3});
+  auto* pref64 = input.mutable_pref64();
+  pref64->set_addr({0x00, 0x64, static_cast<char>(0xff),
+                    static_cast<char>(0x9b), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0});
+  pref64->set_prefix_len(96);
   input.add_dns_servers({8, 8, 8, 8});
   input.add_dns_servers({0x20, 0x01, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                          static_cast<char>(0x88), static_cast<char>(0x88)});
@@ -263,6 +268,8 @@ TEST_F(ProtoUtilsTest, DeserializeNetworkConfig) {
   expected_output.rfc3442_routes.emplace_back(
       *net_base::IPv4CIDR::CreateFromCIDRString("2.0.0.0/8"),
       *net_base::IPv4Address::CreateFromString("10.0.1.3"));
+  expected_output.pref64 =
+      *net_base::IPv6CIDR::CreateFromCIDRString("64:ff9b::/96");
   expected_output.dns_servers.push_back(
       *net_base::IPAddress::CreateFromString("8.8.8.8"));
   expected_output.dns_servers.push_back(
