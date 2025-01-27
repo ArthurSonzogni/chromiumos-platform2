@@ -445,6 +445,11 @@ install_stateful() {
   #   the dlcservice daemon will move the factory installed images into the DLC
   #   cache directory.
   #
+  # unencrypted/dev_image.block
+  #   For devices that support dm-default-key stateful, dev_image and
+  #   var_overlay is set up as separate filesystem to faciliatate ease of
+  #   preseeding during install flows.
+  #
   # Every exception added makes the dev image different from
   # the release image, which could mask bugs.  Make sure every
   # item you add here is well justified.
@@ -502,30 +507,38 @@ install_stateful() {
     unencrypted/import_extensions
     unencrypted/dlc-factory-images
     unencrypted/flex_config"
+  local filelist=""
 
   if crossystem 'cros_debug?1'; then
-    dirlist="${dirlist}
-      var_overlay/db/pkg
-      var_overlay/lib/portage
-      dev_image"
+    # Install dev_image.block.
+    if [ "${FLAGS_default_key_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
+      filelist="${filelist}
+        unencrypted/dev_image.block"
+    else
+      dirlist="${dirlist}
+        var_overlay/db/pkg
+        var_overlay/lib/portage
+        dev_image"
 
-    local metadata_cmd="dlc_metadata_util --metadata_dir=${ROOT}/opt/google/dlc"
-    local dlc_list
-    if dlc_list=$(${metadata_cmd} --list --preload_allowed); then
-      for dlc_id in $(jq -nr --argjson list "${dlc_list}" '$list[]'); do
-        local metadata
-        if metadata=$(${metadata_cmd} --get --id="${dlc_id}"); then
-          local dlc_pkg
-          dlc_pkg="$(jq -nr --argjson metadata "${metadata}" \
-            '$metadata."manifest"."package"')"
-          if [ -z "${dlc_pkg}" ] || [ "${dlc_pkg}" = "null" ]; then
-            dlc_pkg="package"
+      local metadata_dir="${ROOT}/opt/google/dlc"
+      local metadata_cmd="dlc_metadata_util --metadata_dir=${metadata_dir}"
+      local dlc_list
+      if dlc_list=$(${metadata_cmd} --list --preload_allowed); then
+        for dlc_id in $(jq -nr --argjson list "${dlc_list}" '$list[]'); do
+          local metadata
+          if metadata=$(${metadata_cmd} --get --id="${dlc_id}"); then
+            local dlc_pkg
+            dlc_pkg="$(jq -nr --argjson metadata "${metadata}" \
+              '$metadata."manifest"."package"')"
+            if [ -z "${dlc_pkg}" ] || [ "${dlc_pkg}" = "null" ]; then
+              dlc_pkg="package"
+            fi
+            printf 'Preloading DLC=%s\n' "${dlc_id}"
+            dirlist="${dirlist}
+            var_overlay/cache/dlc-images/${dlc_id}/${dlc_pkg}"
           fi
-          printf 'Preloading DLC=%s\n' "${dlc_id}"
-          dirlist="${dirlist}
-          var_overlay/cache/dlc-images/${dlc_id}/${dlc_pkg}"
-        fi
-      done
+        done
+      fi
     fi
   fi
 
@@ -561,6 +574,16 @@ install_stateful() {
     # The target directory may already exist (eg. dev_image mounted from a
     # separate volume), use the parent directory as destination for cp.
     cp -au "${ROOT}/mnt/stateful_partition/${dir}" "${TMPMNT}/${parent}"
+  done
+
+  local file
+  for file in ${filelist}; do
+    if [ ! -f "${ROOT}/mnt/stateful_partition/${file}" ]; then
+      continue
+    fi
+    local parent
+    parent=$(dirname "${file}")
+    cp -au "${ROOT}/mnt/stateful_partition/${file}" "${TMPMNT}/${parent}"
   done
 
   umount_from_loop_dev
