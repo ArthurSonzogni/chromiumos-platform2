@@ -7,8 +7,9 @@
 namespace ec {
 
 std::unique_ptr<EcCommandInterface> FpContextCommandFactory::Create(
-    CrosFpDeviceInterface* cros_fp, const std::string& user_id) {
-  if (cros_fp->EcCmdVersionSupported(EC_CMD_FP_CONTEXT, 1) ==
+    EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
+    const std::string& user_id) {
+  if (ec_cmd_ver_supported->EcCmdVersionSupported(EC_CMD_FP_CONTEXT, 1) ==
       EcCmdVersionSupportStatus::SUPPORTED) {
     return FpContextCommand_v1::Create(user_id);
   }

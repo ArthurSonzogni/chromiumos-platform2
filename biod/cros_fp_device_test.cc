@@ -16,6 +16,7 @@
 
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_cros_fp_device.h"
+#include "libec/ec_command_version_supported.h"
 #include "libec/fingerprint/fp_sensor_errors.h"
 
 using ec::EcCommandFactoryInterface;
@@ -66,7 +67,7 @@ class CrosFpDevice_ResetContext : public testing::Test {
   class MockFpContextFactory : public ec::MockEcCommandFactory {
    public:
     std::unique_ptr<EcCommandInterface> FpContextCommand(
-        ec::CrosFpDeviceInterface* cros_fp,
+        ec::EcCommandVersionSupportedInterface* ec_cmd_ver_suported,
         const std::string& user_id) override {
       auto cmd = std::make_unique<MockEcCommandInterface>();
       EXPECT_CALL(*cmd, Run(An<int>())).WillOnce(testing::Return(true));
@@ -127,7 +128,7 @@ class CrosFpDevice_SetContext : public testing::Test {
   class MockFpContextFactory : public ec::MockEcCommandFactory {
    public:
     std::unique_ptr<EcCommandInterface> FpContextCommand(
-        ec::CrosFpDeviceInterface* cros_fp,
+        ec::EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
         const std::string& user_id) override {
       auto cmd = std::make_unique<MockEcCommandInterface>();
       EXPECT_CALL(*cmd, Run(An<int>())).WillOnce(testing::Return(true));

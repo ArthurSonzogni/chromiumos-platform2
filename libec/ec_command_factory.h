@@ -13,7 +13,7 @@
 #include "libec/charge_control_set_command.h"
 #include "libec/charge_current_limit_set_command.h"
 #include "libec/display_soc_command.h"
-#include "libec/fingerprint/cros_fp_device_interface.h"
+#include "libec/ec_command_version_supported.h"
 #include "libec/fingerprint/fp_context_command_factory.h"
 #include "libec/fingerprint/fp_frame_command.h"
 #include "libec/fingerprint/fp_get_nonce_command.h"
@@ -50,10 +50,11 @@ class EcCommandFactoryInterface {
   virtual ~EcCommandFactoryInterface() = default;
 
   virtual std::unique_ptr<EcCommandInterface> FpContextCommand(
-      CrosFpDeviceInterface* cros_fp, const std::string& user_id) = 0;
+      EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
+      const std::string& user_id) = 0;
 
   virtual std::unique_ptr<FlashProtectCommand> FlashProtectCommand(
-      CrosFpDeviceInterface* cros_fp,
+      EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
       flash_protect::Flags flags,
       flash_protect::Flags mask) = 0;
   static_assert(
@@ -295,10 +296,11 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
   EcCommandFactory& operator=(const EcCommandFactory&) = delete;
 
   std::unique_ptr<EcCommandInterface> FpContextCommand(
-      CrosFpDeviceInterface* cros_fp, const std::string& user_id) override;
+      EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
+      const std::string& user_id) override;
 
   std::unique_ptr<ec::FlashProtectCommand> FlashProtectCommand(
-      CrosFpDeviceInterface* cros_fp,
+      EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
       flash_protect::Flags flags,
       flash_protect::Flags mask) override;
 

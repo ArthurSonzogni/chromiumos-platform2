@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "libec/fingerprint/cros_fp_device_interface.h"
+#include "libec/ec_command_version_supported.h"
 #include "libec/fingerprint/fp_context_command.h"
 
 namespace ec {
@@ -16,7 +16,8 @@ namespace ec {
 class BRILLO_EXPORT FpContextCommandFactory {
  public:
   static std::unique_ptr<EcCommandInterface> Create(
-      CrosFpDeviceInterface* cros_fp, const std::string& user_id);
+      EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
+      const std::string& user_id);
 };
 
 }  // namespace ec

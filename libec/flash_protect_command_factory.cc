@@ -7,11 +7,11 @@
 namespace ec {
 
 std::unique_ptr<FlashProtectCommand> FlashProtectCommandFactory::Create(
-    CrosFpDeviceInterface* cros_fp,
+    EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
     flash_protect::Flags flags,
     flash_protect::Flags mask) {
   uint32_t version = 1;
-  if (cros_fp->EcCmdVersionSupported(EC_CMD_FLASH_PROTECT, 2) ==
+  if (ec_cmd_ver_supported->EcCmdVersionSupported(EC_CMD_FLASH_PROTECT, 2) ==
       EcCmdVersionSupportStatus::SUPPORTED) {
     version = 2;
   }

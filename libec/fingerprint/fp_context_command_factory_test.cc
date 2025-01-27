@@ -7,7 +7,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "biod/mock_cros_fp_device.h"
+#include "libec/mock_ec_command_version_supported.h"
 
 using testing::Return;
 
@@ -15,34 +15,37 @@ namespace ec {
 namespace {
 
 TEST(FpContextCommandFactory, Create_v1) {
-  biod::MockCrosFpDevice mock_cros_fp_device;
-  EXPECT_CALL(mock_cros_fp_device, EcCmdVersionSupported)
+  ec::MockEcCommandVersionSupported mock_ec_cmd_ver_supported;
+  EXPECT_CALL(mock_ec_cmd_ver_supported, EcCmdVersionSupported)
       .Times(1)
       .WillOnce(Return(EcCmdVersionSupportStatus::SUPPORTED));
 
-  auto cmd = FpContextCommandFactory::Create(&mock_cros_fp_device, "DEADBEEF");
+  auto cmd =
+      FpContextCommandFactory::Create(&mock_ec_cmd_ver_supported, "DEADBEEF");
   EXPECT_TRUE(cmd);
   EXPECT_EQ(cmd->Version(), 1);
 }
 
 TEST(FpContextCommandFactory, Create_v0) {
-  biod::MockCrosFpDevice mock_cros_fp_device;
-  EXPECT_CALL(mock_cros_fp_device, EcCmdVersionSupported)
+  ec::MockEcCommandVersionSupported mock_ec_cmd_ver_supported;
+  EXPECT_CALL(mock_ec_cmd_ver_supported, EcCmdVersionSupported)
       .Times(1)
       .WillOnce(Return(EcCmdVersionSupportStatus::UNSUPPORTED));
 
-  auto cmd = FpContextCommandFactory::Create(&mock_cros_fp_device, "DEADBEEF");
+  auto cmd =
+      FpContextCommandFactory::Create(&mock_ec_cmd_ver_supported, "DEADBEEF");
   EXPECT_TRUE(cmd);
   EXPECT_EQ(cmd->Version(), 0);
 }
 
 TEST(FpContextCommandFactory, Create_Version_Supported_Unknown) {
-  biod::MockCrosFpDevice mock_cros_fp_device;
-  EXPECT_CALL(mock_cros_fp_device, EcCmdVersionSupported)
+  ec::MockEcCommandVersionSupported mock_ec_cmd_ver_supported;
+  EXPECT_CALL(mock_ec_cmd_ver_supported, EcCmdVersionSupported)
       .Times(1)
       .WillOnce(Return(EcCmdVersionSupportStatus::UNKNOWN));
 
-  auto cmd = FpContextCommandFactory::Create(&mock_cros_fp_device, "DEADBEEF");
+  auto cmd =
+      FpContextCommandFactory::Create(&mock_ec_cmd_ver_supported, "DEADBEEF");
   EXPECT_TRUE(cmd);
   EXPECT_EQ(cmd->Version(), 0);
 }

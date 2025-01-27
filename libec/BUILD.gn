@@ -148,6 +148,7 @@ install_config("install_libec_headers") {
     "libusb_wrapper.h",
     "mkbp_event.h",
     "mock_ec_command_factory.h",
+    "mock_ec_command_version_supported.h",
     "motion_sense_command.h",
     "motion_sense_command_lid_angle.h",
     "pd_chip_info_command.h",

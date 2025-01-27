@@ -22,11 +22,12 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
 
   MOCK_METHOD(std::unique_ptr<ec::EcCommandInterface>,
               FpContextCommand,
-              (CrosFpDeviceInterface * cros_fp, const std::string& user_id),
+              (EcCommandVersionSupportedInterface * ec_cmd_ver_supported,
+               const std::string& user_id),
               (override));
   MOCK_METHOD(std::unique_ptr<ec::FlashProtectCommand>,
               FlashProtectCommand,
-              (CrosFpDeviceInterface * cros_fp,
+              (EcCommandVersionSupportedInterface * ec_cmd_ver_supported,
                flash_protect::Flags flags,
                flash_protect::Flags mask),
               (override));

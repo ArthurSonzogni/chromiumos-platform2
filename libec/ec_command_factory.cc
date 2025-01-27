@@ -16,15 +16,16 @@
 namespace ec {
 
 std::unique_ptr<EcCommandInterface> EcCommandFactory::FpContextCommand(
-    CrosFpDeviceInterface* cros_fp, const std::string& user_id) {
-  return FpContextCommandFactory::Create(cros_fp, user_id);
+    EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
+    const std::string& user_id) {
+  return FpContextCommandFactory::Create(ec_cmd_ver_supported, user_id);
 }
 
 std::unique_ptr<FlashProtectCommand> EcCommandFactory::FlashProtectCommand(
-    CrosFpDeviceInterface* cros_fp,
+    EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
     flash_protect::Flags flags,
     flash_protect::Flags mask) {
-  return FlashProtectCommandFactory::Create(cros_fp, flags, mask);
+  return FlashProtectCommandFactory::Create(ec_cmd_ver_supported, flags, mask);
 }
 
 std::unique_ptr<FpInfoCommand> EcCommandFactory::FpInfoCommand() {

@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "libec/fingerprint/cros_fp_device_interface.h"
+#include "libec/ec_command_version_supported.h"
 #include "libec/flash_protect_command.h"
 
 namespace ec {
@@ -16,7 +16,7 @@ namespace ec {
 class BRILLO_EXPORT FlashProtectCommandFactory {
  public:
   static std::unique_ptr<FlashProtectCommand> Create(
-      CrosFpDeviceInterface* cros_fp,
+      EcCommandVersionSupportedInterface* ec_cmd_ver_supported,
       flash_protect::Flags flags,
       flash_protect::Flags mask);
 };
