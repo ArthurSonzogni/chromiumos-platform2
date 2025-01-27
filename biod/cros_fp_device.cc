@@ -158,9 +158,9 @@ void CrosFpDevice::OnEventReadable() {
 }
 
 bool CrosFpDevice::SetFpMode(const FpMode& mode) {
-  FpModeCommand cmd(mode);
+  auto fp_mode_cmd = ec_command_factory_->FpModeCommand(mode);
 
-  bool ret = cmd.Run(cros_fd_.get());
+  bool ret = fp_mode_cmd->Run(cros_fd_.get());
   if (ret) {
     return true;
   }
@@ -186,14 +186,14 @@ bool CrosFpDevice::SetFpMode(const FpMode& mode) {
 }
 
 FpMode CrosFpDevice::GetFpMode() {
-  GetFpModeCommand cmd;
+  auto get_fp_mode_cmd = ec_command_factory_->GetFpModeCommand();
 
-  if (!cmd.Run(cros_fd_.get())) {
+  if (!get_fp_mode_cmd->Run(cros_fd_.get())) {
     LOG(ERROR) << "Failed to get FP mode from MCU.";
     return FpMode(FpMode::Mode::kModeInvalid);
   }
 
-  return FpMode(cmd.Resp()->mode);
+  return get_fp_mode_cmd->Mode();
 }
 
 EcCmdVersionSupportStatus CrosFpDevice::EcCmdVersionSupported(uint16_t cmd_code,
