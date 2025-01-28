@@ -85,3 +85,8 @@ setresuid: 1
 bind: 1
 fallocate: 1
 ftruncate: 1
+statx: 1
+clock_getres: 1
+faccessat2: 1
+getrlimit: 1
+nanosleep: 1
