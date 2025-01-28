@@ -5,8 +5,6 @@
 #include "cryptohome/error/cryptohome_error.h"
 
 #include <optional>
-#include <set>
-#include <utility>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gtest/gtest.h>

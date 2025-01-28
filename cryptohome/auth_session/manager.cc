@@ -5,15 +5,14 @@
 #include "cryptohome/auth_session/manager.h"
 
 #include <algorithm>
-#include <climits>
 #include <cstddef>
 #include <iterator>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <utility>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/location.h>
@@ -149,7 +148,8 @@ bool AuthSessionManager::RemoveAuthSession(
 
 void AuthSessionManager::RemoveUserAuthSessions(
     const ObfuscatedUsername& username) {
-  std::set<base::UnguessableToken> tokens_being_removed;
+  absl::flat_hash_set<base::UnguessableToken, base::UnguessableTokenHash>
+      tokens_being_removed;
   for (auto iter = token_to_info_.begin(); iter != token_to_info_.end();) {
     if (iter->second.username == username) {
       tokens_being_removed.insert(iter->first);

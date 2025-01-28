@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_ERROR_ACTION_H_
 #define CRYPTOHOME_ERROR_ACTION_H_
 
-#include <set>
-
 #include <base/logging.h>
 
 namespace cryptohome::error {

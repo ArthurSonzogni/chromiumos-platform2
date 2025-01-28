@@ -9,12 +9,12 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -439,7 +439,7 @@ AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
 
   // Load labels for auth factors in the USS. If the USS cannot be loaded then
   // tere are no factors listed in the USS.
-  std::set<std::string_view> uss_labels;
+  absl::flat_hash_set<std::string_view> uss_labels;
   auto encrypted_uss = uss_manager_->LoadEncrypted(obfuscated_username);
   if (encrypted_uss.ok()) {
     uss_labels = (*encrypted_uss)->WrappedMainKeyIds();

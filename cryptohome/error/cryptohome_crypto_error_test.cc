@@ -5,9 +5,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 
 #include <optional>
-#include <set>
 #include <string>
-#include <utility>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>

@@ -8,7 +8,6 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -2704,7 +2703,7 @@ void AuthSession::AuthForDecrypt::UpdateUssAndStartFpMigration(
   // factor label. Remove the ids mapping to deleted auth factors.
   DecryptedUss& decrypted_uss =
       session_->uss_manager_->GetDecrypted(*session_->decrypt_token_);
-  std::set<std::string_view> uss_labels =
+  absl::flat_hash_set<std::string_view> uss_labels =
       decrypted_uss.encrypted().WrappedMainKeyIds();
   const auto& auth_factor_map = session_->GetAuthFactorMap();
   auto transaction = decrypted_uss.StartTransaction();

@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/containers/contains.h>
 #include <brillo/cryptohome.h>
 
 namespace cryptohome {
@@ -32,13 +31,12 @@ bool EphemeralPolicyUtil::ShouldRemoveBasedOnPolicy(
   // If global ephemeral users policy is enabled, every username that is
   // not specifically non-ephemeral should be removed.
   if (global_ephemeral_users_enabled_) {
-    return !base::Contains(specific_nonephemeral_obfuscated_usernames_,
-                           username);
+    return !specific_nonephemeral_obfuscated_usernames_.contains(username);
   }
 
   // If global ephemeral users policy is not enabled, every username that is
   // specifically ephemeral should be removed.
-  return base::Contains(specific_ephemeral_obfuscated_usernames_, username);
+  return specific_ephemeral_obfuscated_usernames_.contains(username);
 }
 
 }  // namespace cryptohome

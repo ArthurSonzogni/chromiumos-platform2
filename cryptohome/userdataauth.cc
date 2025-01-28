@@ -8,13 +8,12 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <absl/cleanup/cleanup.h>
+#include <absl/container/flat_hash_set.h>
 #include <absl/strings/numbers.h>
 #include <attestation/proto_bindings/pca_agent.pb.h>
 #include <base/check.h>
@@ -1326,7 +1325,7 @@ bool UserDataAuth::FilterActiveMounts(
   AssertOnMountThread();
 
   bool skipped = false;
-  std::set<FilePath> children_to_preserve;
+  absl::flat_hash_set<FilePath> children_to_preserve;
 
   for (auto match = mounts->begin(); match != mounts->end();) {
     // curr->first is the source device of the group that we are processing in
@@ -1361,8 +1360,7 @@ bool UserDataAuth::FilterActiveMounts(
 
       // Ignore mounts pointing to children of used mounts.
       if (!include_busy_mount) {
-        if (children_to_preserve.find(match->second) !=
-            children_to_preserve.end()) {
+        if (children_to_preserve.contains(match->second)) {
           keep = true;
           skipped = true;
           LOG(WARNING) << "Stale mount " << match->second.value() << " from "
@@ -2544,7 +2542,7 @@ void UserDataAuth::StartAuthSessionWithSession(
   }
 
   // Discover any available auth factors from the AuthSession.
-  std::set<std::string> listed_auth_factor_labels;
+  absl::flat_hash_set<std::string> listed_auth_factor_labels;
   for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
     AuthFactorDriver& factor_driver =
@@ -3864,7 +3862,7 @@ void UserDataAuth::ListAuthFactors(
 
     // Turn the list of configured types into a set that we can use for
     // computing the list of supported factors.
-    std::set<AuthFactorType> configured_types;
+    absl::flat_hash_set<AuthFactorType> configured_types;
     for (const auto& configured_factor_status :
          reply.configured_auth_factors_with_status()) {
       if (auto type = AuthFactorTypeFromProto(
@@ -3875,7 +3873,7 @@ void UserDataAuth::ListAuthFactors(
 
     // Determine what auth factors are supported by going through the entire set
     // of auth factor types and checking each one.
-    std::set<AuthFactorStorageType> configured_storages;
+    absl::flat_hash_set<AuthFactorStorageType> configured_storages;
     configured_storages.insert(AuthFactorStorageType::kUserSecretStash);
 
     if (auth_factor_map.HasFactorWithStorage(
@@ -4012,7 +4010,7 @@ void UserDataAuth::ModifyAuthFactorIntentsWithSession(
     return;
   }
   SerializedUserAuthFactorTypePolicy new_auth_factor_policy;
-  std::set<AuthIntent> intents_for_auth_factor;
+  absl::flat_hash_set<AuthIntent> intents_for_auth_factor;
   for (int i = 0; i < request.intents_size(); i++) {
     auto auth_intent_from_proto = AuthIntentFromProto(request.intents(i));
     if (!auth_intent_from_proto.has_value()) {
@@ -4057,8 +4055,7 @@ void UserDataAuth::ModifyAuthFactorIntentsWithSession(
     for (AuthIntent intent : kAllAuthIntents) {
       // If the policy has not enabled a configurable intent explicitly, it
       // should be listed as disabled.
-      if (intents_for_auth_factor.find(intent) ==
-              intents_for_auth_factor.end() &&
+      if (!intents_for_auth_factor.contains(intent) &&
           driver.GetIntentConfigurability(intent) !=
               AuthFactorDriver::IntentConfigurability::kNotConfigurable) {
         new_auth_factor_policy.disabled_intents.push_back(

@@ -5,7 +5,6 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
 
 #include <algorithm>
-#include <set>
 #include <utility>
 #include <vector>
 

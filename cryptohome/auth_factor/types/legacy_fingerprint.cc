@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <absl/container/flat_hash_set.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/fp_service.h"
@@ -32,8 +33,9 @@ bool LegacyFingerprintAuthFactorDriver::IsSupportedByHardware() const {
 }
 
 bool LegacyFingerprintAuthFactorDriver::IsSupportedByStorage(
-    const std::set<AuthFactorStorageType>& /*configured_storage_types*/,
-    const std::set<AuthFactorType>& /*configured_factors*/) const {
+    const absl::flat_hash_set<
+        AuthFactorStorageType>& /*configured_storage_types*/,
+    const absl::flat_hash_set<AuthFactorType>& /*configured_factors*/) const {
   return false;
 }
 

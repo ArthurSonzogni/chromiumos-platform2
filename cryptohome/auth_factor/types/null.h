@@ -6,8 +6,9 @@
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_NULL_H_
 
 #include <optional>
-#include <set>
 #include <string>
+
+#include <absl/container/flat_hash_set.h>
 
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/metadata.h"
@@ -39,8 +40,10 @@ class NullAuthFactorDriver final
  private:
   bool IsSupportedByHardware() const override { return false; }
   bool IsSupportedByStorage(
-      const std::set<AuthFactorStorageType>& /*configured_storage_types*/,
-      const std::set<AuthFactorType>& /*configured_factors*/) const override {
+      const absl::flat_hash_set<
+          AuthFactorStorageType>& /*configured_storage_types*/,
+      const absl::flat_hash_set<AuthFactorType>& /*configured_factors*/)
+      const override {
     return false;
   }
   bool NeedsResetSecret() const override { return false; }

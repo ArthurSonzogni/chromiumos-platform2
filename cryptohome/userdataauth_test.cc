@@ -9,8 +9,8 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <set>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -178,13 +178,17 @@ MATCHER_P(HasPossibleAction, action, "") {
   return false;
 }
 
+// Local alias for hash sets of possible actions. Makes the very long name a
+// little more consise to use when defining values in tests.
+using PossibleActionSet = absl::flat_hash_set<user_data_auth::PossibleAction>;
+
 // Same as multiple invocation of HasPossibleAction. This matcher checks that
 // the CryptohomeErrorInfo contains a correct PrimaryAction and the list of
 // recommended PossibleAction(s) contains the specified actions. |actions|
 // should be set<user_data_auth::PossibleAction>.
 MATCHER_P(HasPossibleActions, actions, "") {
   // We need to copy the actions to strip off the constness.
-  std::set<user_data_auth::PossibleAction> to_match = actions;
+  PossibleActionSet to_match = actions;
   if (arg.primary_action() != user_data_auth::PrimaryAction::PRIMARY_NONE) {
     *result_listener
         << "Invalid PrimaryAction when checking for PossibleAction: "
@@ -514,7 +518,7 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
 
  protected:
   // Holder for tokens to preserve life time.
-  std::set<std::unique_ptr<FakePkcs11Token>> tokens_;
+  absl::flat_hash_set<std::unique_ptr<FakePkcs11Token>> tokens_;
 
   // MockTimeTaskRunner for origin and mount thread.
   scoped_refptr<base::TestMockTimeTaskRunner> origin_task_runner_{
@@ -626,9 +630,9 @@ TEST_F(UserDataAuthTest, GetVaultProperties) {
     user_data_auth::GetVaultPropertiesReply reply =
         userdataauth_->GetVaultProperties(req);
     EXPECT_THAT(reply.error_info(),
-                HasPossibleActions(
-                    std::set({user_data_auth::PossibleAction::
-                                  POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+                HasPossibleActions(PossibleActionSet(
+                    {user_data_auth::PossibleAction::
+                         POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
   }
 
   // Add a mount associated with foo@gmail.com and that will be used in
@@ -642,9 +646,9 @@ TEST_F(UserDataAuthTest, GetVaultProperties) {
     user_data_auth::GetVaultPropertiesReply reply =
         userdataauth_->GetVaultProperties(req);
     EXPECT_THAT(reply.error_info(),
-                HasPossibleActions(
-                    std::set({user_data_auth::PossibleAction::
-                                  POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+                HasPossibleActions(PossibleActionSet(
+                    {user_data_auth::PossibleAction::
+                         POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
   }
 
   // Subsequent tests will be on active sessions.
@@ -657,9 +661,9 @@ TEST_F(UserDataAuthTest, GetVaultProperties) {
     user_data_auth::GetVaultPropertiesReply reply =
         userdataauth_->GetVaultProperties(req);
     EXPECT_THAT(reply.error_info(),
-                HasPossibleActions(
-                    std::set({user_data_auth::PossibleAction::
-                                  POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+                HasPossibleActions(PossibleActionSet(
+                    {user_data_auth::PossibleAction::
+                         POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
   }
 
   // Test to see when there is no mount, the case is handled correctly.
@@ -669,9 +673,9 @@ TEST_F(UserDataAuthTest, GetVaultProperties) {
     user_data_auth::GetVaultPropertiesReply reply =
         userdataauth_->GetVaultProperties(req);
     EXPECT_THAT(reply.error_info(),
-                HasPossibleActions(
-                    std::set({user_data_auth::PossibleAction::
-                                  POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+                HasPossibleActions(PossibleActionSet(
+                    {user_data_auth::PossibleAction::
+                         POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
   }
 
   // Test to see various mount cases are handled correctly.
@@ -5135,9 +5139,9 @@ TEST_F(UserDataAuthApiTest, LockRecoveryFails) {
       req,
       reply.GetCallback<const user_data_auth::LockFactorUntilRebootReply&>());
   EXPECT_THAT(reply.Get().error_info(),
-              HasPossibleActions(
-                  std::set({user_data_auth::PossibleAction::POSSIBLY_RETRY,
-                            user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+              HasPossibleActions(PossibleActionSet(
+                  {user_data_auth::PossibleAction::POSSIBLY_RETRY,
+                   user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
 }
 
 TEST_F(UserDataAuthApiTest, LockWrongTypeFails) {
@@ -5148,10 +5152,10 @@ TEST_F(UserDataAuthApiTest, LockWrongTypeFails) {
   userdataauth_->LockFactorUntilReboot(
       req,
       reply.GetCallback<const user_data_auth::LockFactorUntilRebootReply&>());
-  EXPECT_THAT(
-      reply.Get().error_info(),
-      HasPossibleActions(std::set({user_data_auth::PossibleAction::
-                                       POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+  EXPECT_THAT(reply.Get().error_info(),
+              HasPossibleActions(PossibleActionSet(
+                  {user_data_auth::PossibleAction::
+                       POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
 }
 
 TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
@@ -5174,7 +5178,7 @@ TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
   // Failure to Remove() due to still mounted vault should result in Reboot and
   // Powerwash recommendation.
   EXPECT_THAT(remove_reply_future.Get().error_info(),
-              HasPossibleActions(std::set(
+              HasPossibleActions(PossibleActionSet(
                   {user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
 }
@@ -5276,7 +5280,7 @@ TEST_F(UserDataAuthApiTest, MountFailed) {
 
   ASSERT_TRUE(prepare_reply.has_value());
   EXPECT_THAT(prepare_reply->error_info(),
-              HasPossibleActions(std::set(
+              HasPossibleActions(PossibleActionSet(
                   {user_data_auth::PossibleAction::POSSIBLY_RETRY,
                    user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT,
@@ -5324,7 +5328,7 @@ TEST_F(UserDataAuthApiTest, MountKioskFailsIfExistingUserSession) {
   ASSERT_TRUE(prepare_reply.has_value());
   EXPECT_THAT(
       prepare_reply->error_info(),
-      HasPossibleActions(std::set(
+      HasPossibleActions(PossibleActionSet(
           {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
            user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
 }
@@ -5369,7 +5373,7 @@ TEST_F(UserDataAuthApiTest, MountFailsIfExistingKioskSession) {
   ASSERT_TRUE(prepare_reply.has_value());
   EXPECT_THAT(
       prepare_reply->error_info(),
-      HasPossibleActions(std::set(
+      HasPossibleActions(PossibleActionSet(
           {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
            user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
 }
@@ -5388,7 +5392,7 @@ TEST_F(UserDataAuthApiTest, GuestMountFailed) {
       PrepareGuestVaultSync(prepare_req);
   ASSERT_TRUE(prepare_reply.has_value());
   EXPECT_THAT(prepare_reply->error_info(),
-              HasPossibleActions(std::set(
+              HasPossibleActions(PossibleActionSet(
                   {user_data_auth::PossibleAction::POSSIBLY_RETRY,
                    user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
@@ -5418,7 +5422,7 @@ TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
 
   ASSERT_TRUE(prepare_reply.has_value());
   EXPECT_THAT(prepare_reply->error_info(),
-              HasPossibleActions(std::set(
+              HasPossibleActions(PossibleActionSet(
                   {user_data_auth::PossibleAction::POSSIBLY_RETRY,
                    user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
@@ -5490,7 +5494,7 @@ TEST_F(UserDataAuthApiTest, CreatePeristentUserAlreadyExist) {
   ASSERT_TRUE(create_reply.has_value());
   EXPECT_THAT(
       create_reply->error_info(),
-      HasPossibleActions(std::set(
+      HasPossibleActions(PossibleActionSet(
           {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
            user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT})));
   EXPECT_THAT(create_reply->auth_properties().authorized_for(), IsEmpty());
@@ -5566,7 +5570,7 @@ TEST_F(UserDataAuthApiTest, PreparePersistentVaultWithoutUser) {
   ASSERT_TRUE(prepare_reply.has_value());
   EXPECT_THAT(
       prepare_reply->error_info(),
-      HasPossibleActions(std::set(
+      HasPossibleActions(PossibleActionSet(
           {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
            user_data_auth::PossibleAction::POSSIBLY_REBOOT,
            user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT,
@@ -5592,7 +5596,7 @@ TEST_F(UserDataAuthApiTest, EphemeralMountWithRegularSession) {
   ASSERT_TRUE(prepare_reply.has_value());
   EXPECT_THAT(
       prepare_reply->error_info(),
-      HasPossibleActions(std::set(
+      HasPossibleActions(PossibleActionSet(
           {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
            user_data_auth::PossibleAction::POSSIBLY_REBOOT,
            user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
@@ -5632,8 +5636,8 @@ TEST_F(UserDataAuthApiTest, MountGuestWithOtherMounts) {
       PrepareGuestVaultSync(guest_req);
   ASSERT_TRUE(guest_reply.has_value());
   EXPECT_THAT(guest_reply->error_info(),
-              HasPossibleActions(
-                  std::set({user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+              HasPossibleActions(PossibleActionSet(
+                  {user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
 }
 
 TEST_F(UserDataAuthApiTest, MigrateLegacyFingerprintsEmptyListSucceeds) {

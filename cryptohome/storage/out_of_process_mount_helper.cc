@@ -146,7 +146,7 @@ bool OutOfProcessMountHelper::MountPerformed() const {
 }
 
 bool OutOfProcessMountHelper::IsPathMounted(const base::FilePath& path) const {
-  return mounted_paths_.count(path.value()) > 0;
+  return mounted_paths_.contains(path.value());
 }
 
 void OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary() {

@@ -11,9 +11,9 @@
 #include <sys/types.h>
 
 #include <memory>
-#include <set>
 #include <string>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/files/file_path.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
@@ -98,7 +98,7 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   int write_to_helper_ = -1;
 
   // Set of mounts returned by the helper.
-  std::set<std::string> mounted_paths_;
+  absl::flat_hash_set<std::string> mounted_paths_;
 };
 
 }  // namespace cryptohome

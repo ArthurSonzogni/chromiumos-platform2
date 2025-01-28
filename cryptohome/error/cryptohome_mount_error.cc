@@ -4,9 +4,6 @@
 
 #include "cryptohome/error/cryptohome_mount_error.h"
 
-#include <memory>
-#include <set>
-#include <string>
 #include <utility>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>

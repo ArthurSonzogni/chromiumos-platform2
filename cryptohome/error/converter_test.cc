@@ -4,41 +4,25 @@
 
 #include "cryptohome/error/converter.h"
 
-#include <set>
 #include <string>
 #include <utility>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/error.h>
 
 #include "cryptohome/error/cryptohome_error.h"
 
 namespace cryptohome {
-
 namespace error {
-
 namespace {
 
-using hwsec_foundation::status::MakeStatus;
-using hwsec_foundation::status::StatusChain;
-
-// Note that the RepeatedField field in protobuf for PossibleAction uses int,
-// thus the need to for 2 template types.
-template <typename T, typename S>
-std::set<T> ToStdSet(const ::google::protobuf::RepeatedField<S>& input) {
-  std::vector<T> list;
-  for (int i = 0; i < input.size(); i++) {
-    list.push_back(static_cast<T>(input[i]));
-  }
-  return std::set<T>(list.begin(), list.end());
-}
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::StatusChain;
+using ::testing::UnorderedElementsAre;
 
 class ErrorConverterTest : public ::testing::Test {
- public:
-  ErrorConverterTest() {}
-  ~ErrorConverterTest() override = default;
-
  protected:
   const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
       CryptohomeError::ErrorLocationPair(
@@ -108,10 +92,10 @@ TEST_F(ErrorConverterTest, WrappedPossibleAction) {
             std::to_string(kErrorLocationForTesting1.location()) + "-" +
                 std::to_string(kErrorLocationForTesting2.location()));
   EXPECT_EQ(info.primary_action(), user_data_auth::PrimaryAction::PRIMARY_NONE);
-  EXPECT_EQ(ToStdSet<user_data_auth::PossibleAction>(info.possible_actions()),
-            std::set<user_data_auth::PossibleAction>(
-                {user_data_auth::PossibleAction::POSSIBLY_POWERWASH,
-                 user_data_auth::PossibleAction::POSSIBLY_REBOOT}));
+  EXPECT_THAT(
+      info.possible_actions(),
+      UnorderedElementsAre(user_data_auth::PossibleAction::POSSIBLY_POWERWASH,
+                           user_data_auth::PossibleAction::POSSIBLY_REBOOT));
 }
 
 TEST_F(ErrorConverterTest, WrappedPrimaryAction) {

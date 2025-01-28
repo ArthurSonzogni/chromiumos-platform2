@@ -5,8 +5,7 @@
 #ifndef CRYPTOHOME_STORAGE_EPHEMERAL_POLICY_UTIL_H_
 #define CRYPTOHOME_STORAGE_EPHEMERAL_POLICY_UTIL_H_
 
-#include <set>
-
+#include <absl/container/flat_hash_set.h>
 #include <policy/device_policy.h>
 
 #include "cryptohome/username.h"
@@ -35,11 +34,13 @@ class EphemeralPolicyUtil {
 
   // The set contains usernames that are always ephemeral, regardless of the
   // global ephemeral users policy.
-  std::set<ObfuscatedUsername> specific_ephemeral_obfuscated_usernames_;
+  absl::flat_hash_set<ObfuscatedUsername>
+      specific_ephemeral_obfuscated_usernames_;
 
   // The set contains usernames that are not ephemeral and override the global
   // ephemeral users policy.
-  std::set<ObfuscatedUsername> specific_nonephemeral_obfuscated_usernames_;
+  absl::flat_hash_set<ObfuscatedUsername>
+      specific_nonephemeral_obfuscated_usernames_;
 };
 }  // namespace cryptohome
 

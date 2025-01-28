@@ -6,10 +6,7 @@
 #define CRYPTOHOME_ERROR_CRYPTOHOME_ERROR_H_
 
 #include <optional>
-#include <set>
-#include <sstream>
 #include <string>
-#include <utility>
 
 #include <base/functional/callback.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>

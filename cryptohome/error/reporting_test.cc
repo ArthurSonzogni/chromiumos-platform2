@@ -4,8 +4,6 @@
 
 #include "cryptohome/error/reporting.h"
 
-#include <optional>
-#include <set>
 #include <string>
 #include <utility>
 

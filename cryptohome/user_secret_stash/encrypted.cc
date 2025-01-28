@@ -5,12 +5,12 @@
 #include "cryptohome/user_secret_stash/encrypted.h"
 
 #include <map>
-#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_set.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -236,8 +236,8 @@ CryptohomeStatusOr<brillo::SecureBlob> EncryptedUss::DecryptPayload(
   return serialized_payload;
 }
 
-std::set<std::string_view> EncryptedUss::WrappedMainKeyIds() const {
-  std::set<std::string_view> ids;
+absl::flat_hash_set<std::string_view> EncryptedUss::WrappedMainKeyIds() const {
+  absl::flat_hash_set<std::string_view> ids;
   for (const auto& [wrapping_id, unused] : container_.wrapped_key_blocks) {
     ids.insert(wrapping_id);
   }

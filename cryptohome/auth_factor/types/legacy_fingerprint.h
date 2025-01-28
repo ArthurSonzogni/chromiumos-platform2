@@ -7,8 +7,9 @@
 
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
+
+#include <absl/container/flat_hash_set.h>
 
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
@@ -42,9 +43,10 @@ class LegacyFingerprintAuthFactorDriver final
 
  private:
   bool IsSupportedByHardware() const override;
-  bool IsSupportedByStorage(
-      const std::set<AuthFactorStorageType>& configured_storage_types,
-      const std::set<AuthFactorType>& configured_factors) const override;
+  bool IsSupportedByStorage(const absl::flat_hash_set<AuthFactorStorageType>&
+                                configured_storage_types,
+                            const absl::flat_hash_set<AuthFactorType>&
+                                configured_factors) const override;
   PrepareRequirement GetPrepareRequirement(
       AuthFactorPreparePurpose purpose) const override;
   void PrepareForAdd(const PrepareInput& prepare_input,

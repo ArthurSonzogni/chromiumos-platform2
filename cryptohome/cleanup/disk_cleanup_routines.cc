@@ -5,10 +5,10 @@
 #include "cryptohome/cleanup/disk_cleanup_routines.h"
 
 #include <memory>
-#include <set>
 #include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <libstorage/platform/platform.h>
@@ -132,7 +132,7 @@ bool DiskCleanupRoutines::DeleteUserAndroidCache(
   // A set of parent directory/inode combinations.  We need the parent directory
   // as the inodes may have been re-used elsewhere if the cache directory was
   // deleted.
-  std::set<std::pair<const FilePath, ino_t>> cache_inodes;
+  absl::flat_hash_set<std::pair<const FilePath, ino_t>> cache_inodes;
   std::unique_ptr<libstorage::FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(root, true,
                                    base::FileEnumerator::DIRECTORIES));
@@ -141,13 +141,14 @@ bool DiskCleanupRoutines::DeleteUserAndroidCache(
     ino_t inode = file_enumerator->GetInfo().stat().st_ino;
     std::pair<const FilePath, ino_t> parent_inode_pair =
         std::make_pair(next_path.DirName(), inode);
-    if (cache_inodes.find(parent_inode_pair) != cache_inodes.end()) {
+    auto cache_inode = cache_inodes.find(parent_inode_pair);
+    if (cache_inode != cache_inodes.end()) {
       VLOG(1) << "Deleting Android Cache " << next_path.value();
       if (!DeleteDirectoryContents(next_path)) {
         LOG(ERROR) << "Failed to remove android cache " << next_path.value();
         ret = false;
       }
-      cache_inodes.erase(parent_inode_pair);
+      cache_inodes.erase(cache_inode);
     }
     for (const char* attribute :
          {kAndroidCacheInodeAttribute, kAndroidCodeCacheInodeAttribute}) {

@@ -7,9 +7,9 @@
 
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/containers/span.h>
 #include <base/time/time.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
@@ -61,8 +61,9 @@ class AuthFactorDriver {
   // This depends on both what type of storage is in use, and what other factors
   // already exist.
   virtual bool IsSupportedByStorage(
-      const std::set<AuthFactorStorageType>& configured_storage_types,
-      const std::set<AuthFactorType>& configured_factors) const = 0;
+      const absl::flat_hash_set<AuthFactorStorageType>&
+          configured_storage_types,
+      const absl::flat_hash_set<AuthFactorType>& configured_factors) const = 0;
 
   // Indicates if the factor requires the use of a Prepare operation before it
   // can be added or authenticated.

@@ -5,10 +5,10 @@
 #include "cryptohome/storage/homedirs.h"
 
 #include <optional>
-#include <set>
 #include <string>
 #include <vector>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/time/time.h>
@@ -515,7 +515,7 @@ TEST_P(HomeDirsTest, GetUnmountedAndroidDataCount) {
 
 TEST_P(HomeDirsTest, GetHomedirsAllMounted) {
   std::vector<bool> all_mounted(users_.size(), true);
-  std::set<ObfuscatedUsername> hashes, got_hashes;
+  absl::flat_hash_set<ObfuscatedUsername> hashes, got_hashes;
 
   for (int i = 0; i < users_.size(); i++) {
     hashes.insert(users_[i].obfuscated);
@@ -534,7 +534,7 @@ TEST_P(HomeDirsTest, GetHomedirsAllMounted) {
 
 TEST_P(HomeDirsTest, GetHomedirsSomeMounted) {
   std::vector<bool> some_mounted(users_.size());
-  std::set<ObfuscatedUsername> hashes, got_hashes;
+  absl::flat_hash_set<ObfuscatedUsername> hashes, got_hashes;
 
   for (int i = 0; i < users_.size(); i++) {
     hashes.insert(users_[i].obfuscated);
@@ -555,7 +555,7 @@ TEST_P(HomeDirsTest, GetHomedirsSomeMounted) {
 // enumeration.
 TEST_P(HomeDirsTest, GetHomedirsSomeMountedUserPathDeleted) {
   std::vector<bool> some_mounted(users_.size());
-  std::set<ObfuscatedUsername> hashes, got_hashes;
+  absl::flat_hash_set<ObfuscatedUsername> hashes, got_hashes;
 
   for (int i = 0; i < users_.size(); i++) {
     hashes.insert(users_[i].obfuscated);

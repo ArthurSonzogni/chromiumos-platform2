@@ -5,11 +5,6 @@
 #ifndef CRYPTOHOME_ERROR_CRYPTOHOME_MOUNT_ERROR_H_
 #define CRYPTOHOME_ERROR_CRYPTOHOME_MOUNT_ERROR_H_
 
-#include <memory>
-#include <set>
-#include <string>
-#include <utility>
-
 #include <chromeos/dbus/service_constants.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 
