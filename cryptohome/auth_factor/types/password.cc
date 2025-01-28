@@ -24,7 +24,7 @@ base::span<const AuthBlockType> AfDriverWithPasswordBlockTypes::block_types()
     const {
   base::span<const AuthBlockType> types = kBlockTypes;
   if (!features_->IsFeatureEnabled(Features::kPinweaverForPassword)) {
-    return types.subspan(1);
+    return types.subspan<1>();
   }
   return types;
 }
