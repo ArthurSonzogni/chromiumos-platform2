@@ -496,10 +496,15 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpHPEngageOneProAIOSystem(builder);
 
   std::string model_name;
-  if (cros_config->GetString("/", kModelNameProperty, &model_name) &&
-      model_name == "xol") {
+  if (cros_config->GetString("/", kModelNameProperty, &model_name)) {
     // TODO(b/358470481): Revisit this flag after finding a better approach.
-    builder->AddFeatureEnableOverride("OledScaleFactorEnabled");
+    if (model_name == "xol" || model_name == "navi") {
+      builder->AddFeatureEnableOverride("OledScaleFactorEnabled");
+    }
+    // TODO(b/370829136): Remove after enabling via config.
+    if (model_name == "bujia") {
+      builder->AddFeatureEnableOverride("OpsDisplayScaleFactor");
+    }
   }
 }
 
