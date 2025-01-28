@@ -11,12 +11,13 @@
 #include <string>
 
 #include <gmock/gmock.h>
-#include <libec/fingerprint/cros_fp_device_interface.h>
 #include <libec/fingerprint/fp_mode.h>
+
+#include "biod/cros_fp_device_interface.h"
 
 namespace biod {
 
-class MockCrosFpDevice : public ec::CrosFpDeviceInterface {
+class MockCrosFpDevice : public CrosFpDeviceInterface {
  public:
   MockCrosFpDevice() = default;
   ~MockCrosFpDevice() override = default;

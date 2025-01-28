@@ -26,10 +26,10 @@
 #include "biod/biod_crypto.h"
 #include "biod/biod_metrics.h"
 #include "biod/biometrics_manager_record.h"
+#include "biod/cros_fp_device_interface.h"
 #include "biod/maintenance_scheduler.h"
 #include "biod/power_button_filter.h"
 #include "biod/utils.h"
-#include "libec/fingerprint/cros_fp_device_interface.h"
 #include "libec/fingerprint/fp_mode.h"
 #include "libec/fingerprint/fp_sensor_errors.h"
 
@@ -252,7 +252,7 @@ void CrosFpBiometricsManager::KillMcuSession() {
 
 CrosFpBiometricsManager::CrosFpBiometricsManager(
     std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
-    std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
+    std::unique_ptr<CrosFpDeviceInterface> cros_fp_device,
     BiodMetricsInterface* biod_metrics,
     std::unique_ptr<CrosFpRecordManagerInterface> record_manager)
     : session_weak_factory_(this),
@@ -654,8 +654,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   // Send back the result directly (as we are running on the main thread).
   OnAuthScanDone(std::move(result), std::move(matches));
 
-  std::optional<ec::CrosFpDeviceInterface::FpStats> stats =
-      cros_dev_->GetFpStats();
+  std::optional<CrosFpDeviceInterface::FpStats> stats = cros_dev_->GetFpStats();
   if (stats) {
     biod_metrics_->SendFpLatencyStats(matched_record_meta.has_value(), *stats);
   }

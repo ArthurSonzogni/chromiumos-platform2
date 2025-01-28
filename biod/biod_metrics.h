@@ -9,10 +9,10 @@
 #include <string>
 #include <utility>
 
-#include <libec/fingerprint/cros_fp_device_interface.h>
 #include <libec/fingerprint/fp_mode.h>
 #include <metrics/metrics_library.h>
 
+#include "biod/cros_fp_device_interface.h"
 #include "biod/proto_bindings/messages.pb.h"
 #include "biod/updater/update_reason.h"
 
@@ -190,7 +190,7 @@ class BiodMetricsInterface {
   virtual bool SendEnrollResult(EnrollSessionResult result) = 0;
   virtual bool SendFpUnlockEnabled(bool enabled) = 0;
   virtual bool SendFpLatencyStats(
-      bool matched, const ec::CrosFpDeviceInterface::FpStats& stats) = 0;
+      bool matched, const CrosFpDeviceInterface::FpStats& stats) = 0;
   virtual bool SendFwUpdaterStatus(FwUpdaterStatus status,
                                    updater::UpdateReason reason,
                                    int overall_ms) = 0;
@@ -248,8 +248,8 @@ class BiodMetrics : public BiodMetricsInterface {
   bool SendFpUnlockEnabled(bool enabled) override;
 
   // Send matching/capture latency metrics.
-  bool SendFpLatencyStats(
-      bool matched, const ec::CrosFpDeviceInterface::FpStats& stats) override;
+  bool SendFpLatencyStats(bool matched,
+                          const CrosFpDeviceInterface::FpStats& stats) override;
 
   bool SendFwUpdaterStatus(FwUpdaterStatus status,
                            updater::UpdateReason reason,

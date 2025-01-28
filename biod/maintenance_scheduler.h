@@ -17,7 +17,7 @@ namespace biod {
 
 class MaintenanceScheduler {
  public:
-  MaintenanceScheduler(ec::CrosFpDeviceInterface* cros_fp_device,
+  MaintenanceScheduler(CrosFpDeviceInterface* cros_fp_device,
                        BiodMetricsInterface* biod_metrics);
   MaintenanceScheduler(const MaintenanceScheduler&) = delete;
   MaintenanceScheduler& operator=(const MaintenanceScheduler&) = delete;
@@ -31,7 +31,7 @@ class MaintenanceScheduler {
   void OnMaintenanceTimerFired();
 
   std::unique_ptr<base::OneShotTimer> timer_;
-  ec::CrosFpDeviceInterface* cros_dev_;
+  CrosFpDeviceInterface* cros_dev_;
   BiodMetricsInterface* metrics_;
 };
 }  // namespace biod

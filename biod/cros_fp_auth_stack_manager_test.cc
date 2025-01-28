@@ -28,8 +28,8 @@ namespace biod {
 using EnrollStatus = AuthStackManager::EnrollStatus;
 using Mode = ec::FpMode::Mode;
 using State = CrosFpAuthStackManager::State;
-using GetSecretReply = ec::CrosFpDeviceInterface::GetSecretReply;
-using KeygenReply = ec::CrosFpDeviceInterface::PairingKeyKeygenReply;
+using GetSecretReply = CrosFpDeviceInterface::GetSecretReply;
+using KeygenReply = CrosFpDeviceInterface::PairingKeyKeygenReply;
 
 using StartEnrollSessionStatus = BiodMetricsInterface::StartEnrollSessionStatus;
 using StartAuthSessionStatus = BiodMetricsInterface::StartAuthSessionStatus;
@@ -1363,7 +1363,7 @@ TEST_P(CrosFpAuthStackManagerAuthScanResultTest, ScanResult) {
   const brillo::Blob kEncryptedSecret(32, 5), kSecretIv(16, 5);
   const brillo::Blob kPubOutX(32, 6), kPubOutY(32, 7);
   const RecordMetadata kMetadata{.record_id = "record1"};
-  const ec::CrosFpDeviceInterface::FpStats kStats{
+  const CrosFpDeviceInterface::FpStats kStats{
       .capture_ms = 10,
       .matcher_ms = 20,
       .overall_ms = 30,

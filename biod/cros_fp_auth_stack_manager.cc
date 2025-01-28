@@ -44,7 +44,7 @@ using EnrollLegacyTemplateStatus =
 
 CrosFpAuthStackManager::CrosFpAuthStackManager(
     std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
-    std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
+    std::unique_ptr<CrosFpDeviceInterface> cros_fp_device,
     BiodMetricsInterface* biod_metrics,
     std::unique_ptr<CrosFpSessionManager> session_manager,
     std::unique_ptr<PairingKeyStorage> pk_storage,
@@ -99,7 +99,7 @@ bool CrosFpAuthStackManager::EstablishPairingKey() {
   }
 
   // Step 1: Keygen in FPMCU.
-  std::optional<ec::CrosFpDeviceInterface::PairingKeyKeygenReply> reply =
+  std::optional<CrosFpDeviceInterface::PairingKeyKeygenReply> reply =
       cros_dev_->PairingKeyKeygen();
   if (!reply.has_value()) {
     return false;
@@ -237,7 +237,7 @@ CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
     return reply;
   }
 
-  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> secret_reply =
+  std::optional<CrosFpDeviceInterface::GetSecretReply> secret_reply =
       cros_dev_->GetPositiveMatchSecretWithPubkey(
           CrosFpDevice::kLastTemplate,
           brillo::BlobFromString(request.pub().x()),
@@ -421,7 +421,7 @@ void CrosFpAuthStackManager::AuthenticateCredential(
     return;
   }
 
-  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> secret_reply =
+  std::optional<CrosFpDeviceInterface::GetSecretReply> secret_reply =
       cros_dev_->GetPositiveMatchSecretWithPubkey(
           match_idx, brillo::BlobFromString(request.pub().x()),
           brillo::BlobFromString(request.pub().y()));
@@ -802,8 +802,7 @@ void CrosFpAuthStackManager::OnFingerUpEvent(uint32_t event) {
 }
 
 void CrosFpAuthStackManager::ReportMatchLatency(bool matched) {
-  std::optional<ec::CrosFpDeviceInterface::FpStats> stats =
-      cros_dev_->GetFpStats();
+  std::optional<CrosFpDeviceInterface::FpStats> stats = cros_dev_->GetFpStats();
   if (stats.has_value()) {
     biod_metrics_->SendFpLatencyStats(matched, *stats);
   }

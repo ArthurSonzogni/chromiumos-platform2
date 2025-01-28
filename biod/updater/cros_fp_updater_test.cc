@@ -24,6 +24,7 @@
 #include "base/process/launch.h"
 #include "base/time/time.h"
 #include "biod/biod_config.h"
+#include "biod/cros_fp_device_interface.h"
 #include "biod/cros_fp_firmware.h"
 #include "biod/mock_biod_system.h"
 #include "biod/updater/update_reason.h"
@@ -53,7 +54,7 @@ const std::vector<enum ec_image> kEcCurrentImageEnums = {
 
 class MockCrosFpDeviceUpdate : public biod::CrosFpDeviceUpdate {
  public:
-  MOCK_METHOD(std::optional<ec::CrosFpDeviceInterface::EcVersion>,
+  MOCK_METHOD(std::optional<biod::CrosFpDeviceInterface::EcVersion>,
               GetVersion,
               (),
               (const, override));
@@ -116,7 +117,7 @@ class CrosFpUpdaterTest : public ::testing::Test {
     fw_.SetMockFwVersion(img_ver);
 
     EXPECT_CALL(dev_update_, GetVersion())
-        .WillOnce(Return(ec::CrosFpDeviceInterface::EcVersion{
+        .WillOnce(Return(biod::CrosFpDeviceInterface::EcVersion{
             .ro_version = kTestImageROVersion,
             .rw_version = kTestImageRWVersion,
             .current_image = ec_image,
@@ -188,7 +189,7 @@ TEST_F(CrosFpUpdaterTest, GetFlashProtectFails) {
   // Given a device which reports its version, but fails to
   // report its flash protect status,
   EXPECT_CALL(dev_update_, GetVersion())
-      .WillOnce(Return(ec::CrosFpDeviceInterface::EcVersion()));
+      .WillOnce(Return(biod::CrosFpDeviceInterface::EcVersion()));
   EXPECT_CALL(dev_update_, IsFlashProtectEnabled(NotNull()))
       .WillOnce(Return(false));
 

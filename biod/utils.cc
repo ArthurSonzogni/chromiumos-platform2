@@ -70,7 +70,7 @@ std::string MatchResultToString(int result) {
   }
 }
 
-std::vector<int> GetDirtyList(ec::CrosFpDeviceInterface* device) {
+std::vector<int> GetDirtyList(CrosFpDeviceInterface* device) {
   std::vector<int> dirty_list;
 
   // Retrieve which templates have been updated.

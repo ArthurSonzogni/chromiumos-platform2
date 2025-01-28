@@ -825,7 +825,7 @@ TEST_F(CrosFpDevice_GetPositiveMatchSecretWithPubkey, Success) {
         return cmd;
       });
 
-  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> reply =
+  std::optional<CrosFpDeviceInterface::GetSecretReply> reply =
       mock_cros_fp_device_->GetPositiveMatchSecretWithPubkey(kIndex, kPkInX,
                                                              kPkInY);
   ASSERT_TRUE(reply.has_value());
@@ -851,7 +851,7 @@ TEST_F(CrosFpDevice_GetPositiveMatchSecretWithPubkey, InvalidParams) {
         return cmd;
       });
 
-  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> reply =
+  std::optional<CrosFpDeviceInterface::GetSecretReply> reply =
       mock_cros_fp_device_->GetPositiveMatchSecretWithPubkey(kIndex, kPkInX,
                                                              kPkInY);
   EXPECT_FALSE(reply.has_value());
@@ -874,7 +874,7 @@ TEST_F(CrosFpDevice_GetPositiveMatchSecretWithPubkey, RunFailure) {
         return cmd;
       });
 
-  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> reply =
+  std::optional<CrosFpDeviceInterface::GetSecretReply> reply =
       mock_cros_fp_device_->GetPositiveMatchSecretWithPubkey(kIndex, kPkInX,
                                                              kPkInY);
   EXPECT_FALSE(reply.has_value());
@@ -928,7 +928,7 @@ TEST_F(CrosFpDevice_PairingKeyKeygen, Success) {
         return cmd;
       });
 
-  std::optional<ec::CrosFpDeviceInterface::PairingKeyKeygenReply> reply =
+  std::optional<CrosFpDeviceInterface::PairingKeyKeygenReply> reply =
       mock_cros_fp_device_->PairingKeyKeygen();
   ASSERT_TRUE(reply.has_value());
   EXPECT_EQ(reply->pub_x, kPubX);
@@ -944,7 +944,7 @@ TEST_F(CrosFpDevice_PairingKeyKeygen, RunFailure) {
         return cmd;
       });
 
-  std::optional<ec::CrosFpDeviceInterface::PairingKeyKeygenReply> reply =
+  std::optional<CrosFpDeviceInterface::PairingKeyKeygenReply> reply =
       mock_cros_fp_device_->PairingKeyKeygen();
   EXPECT_FALSE(reply.has_value());
 }

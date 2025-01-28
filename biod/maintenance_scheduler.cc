@@ -24,8 +24,7 @@ const base::TimeDelta kMaintenanceRetryInterval = base::Minutes(10);
 }  // namespace
 
 MaintenanceScheduler::MaintenanceScheduler(
-    ec::CrosFpDeviceInterface* cros_fp_device,
-    BiodMetricsInterface* biod_metrics)
+    CrosFpDeviceInterface* cros_fp_device, BiodMetricsInterface* biod_metrics)
     : timer_(std::make_unique<base::OneShotTimer>()),
       cros_dev_(cros_fp_device),
       metrics_(biod_metrics) {

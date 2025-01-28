@@ -29,7 +29,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
  public:
   CrosFpBiometricsManager(
       std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
-      std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
+      std::unique_ptr<CrosFpDeviceInterface> cros_fp_device,
       BiodMetricsInterface* biod_metrics,
       std::unique_ptr<CrosFpRecordManagerInterface> record_manager);
   CrosFpBiometricsManager(const CrosFpBiometricsManager&) = delete;
@@ -132,7 +132,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void OnTaskComplete();
 
   BiodMetricsInterface* biod_metrics_ = nullptr;  // Not owned.
-  std::unique_ptr<ec::CrosFpDeviceInterface> cros_dev_;
+  std::unique_ptr<CrosFpDeviceInterface> cros_dev_;
 
   SessionAction next_session_action_;
 

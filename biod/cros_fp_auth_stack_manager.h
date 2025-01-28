@@ -58,7 +58,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
 
   CrosFpAuthStackManager(
       std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
-      std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
+      std::unique_ptr<CrosFpDeviceInterface> cros_fp_device,
       BiodMetricsInterface* biod_metrics,
       std::unique_ptr<CrosFpSessionManager> session_manager,
       std::unique_ptr<PairingKeyStorage> pk_storage,
@@ -185,7 +185,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
   bool CanAuthenticateCredential();
 
   BiodMetricsInterface* biod_metrics_ = nullptr;
-  std::unique_ptr<ec::CrosFpDeviceInterface> cros_dev_;
+  std::unique_ptr<CrosFpDeviceInterface> cros_dev_;
 
   SessionAction next_session_action_;
 

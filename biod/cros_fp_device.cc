@@ -241,7 +241,7 @@ std::optional<brillo::SecureVector> CrosFpDevice::FpReadMatchSecret(
   return secret;
 }
 
-std::optional<ec::CrosFpDeviceInterface::GetSecretReply>
+std::optional<CrosFpDeviceInterface::GetSecretReply>
 CrosFpDevice::FpReadMatchSecretWithPubkey(int index,
                                           const brillo::Blob& pk_in_x,
                                           const brillo::Blob& pk_in_y) {
@@ -258,7 +258,7 @@ CrosFpDevice::FpReadMatchSecretWithPubkey(int index,
     return std::nullopt;
   }
 
-  return ec::CrosFpDeviceInterface::GetSecretReply{
+  return CrosFpDeviceInterface::GetSecretReply{
       .encrypted_secret = read_secret_cmd->EncryptedSecret(),
       .iv = read_secret_cmd->Iv(),
       .pk_out_x = read_secret_cmd->PkOutX(),
@@ -277,7 +277,7 @@ bool CrosFpDevice::UpdateFpInfo() {
   return true;
 }
 
-std::optional<ec::CrosFpDeviceInterface::FpStats> CrosFpDevice::GetFpStats() {
+std::optional<CrosFpDeviceInterface::FpStats> CrosFpDevice::GetFpStats() {
   FpStatsCommand cmd;
   if (!cmd.Run(cros_fd_.get())) {
     return std::nullopt;
@@ -326,7 +326,7 @@ bool CrosFpDevice::WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
 }
 
 // static
-std::optional<ec::CrosFpDeviceInterface::EcVersion> CrosFpDevice::GetVersion(
+std::optional<CrosFpDeviceInterface::EcVersion> CrosFpDevice::GetVersion(
     const base::ScopedFD& cros_fp_fd) {
   GetVersionCommand cmd;
 
@@ -555,7 +555,7 @@ std::optional<brillo::SecureVector> CrosFpDevice::GetPositiveMatchSecret(
   return FpReadMatchSecret(static_cast<uint16_t>(*opt_index));
 }
 
-std::optional<ec::CrosFpDeviceInterface::GetSecretReply>
+std::optional<CrosFpDeviceInterface::GetSecretReply>
 CrosFpDevice::GetPositiveMatchSecretWithPubkey(int index,
                                                const brillo::Blob& pk_in_x,
                                                const brillo::Blob& pk_in_y) {
@@ -805,7 +805,7 @@ bool CrosFpDevice::UpdateEntropy(bool reset) {
   return true;
 }
 
-std::optional<ec::CrosFpDeviceInterface::PairingKeyKeygenReply>
+std::optional<CrosFpDeviceInterface::PairingKeyKeygenReply>
 CrosFpDevice::PairingKeyKeygen() {
   auto keygen_cmd = ec_command_factory_->FpPairingKeyKeygenCommand();
   if (!keygen_cmd) {
@@ -816,7 +816,7 @@ CrosFpDevice::PairingKeyKeygen() {
     LOG(ERROR) << "Failed to generate Pk: " << keygen_cmd->Result();
     return std::nullopt;
   }
-  return ec::CrosFpDeviceInterface::PairingKeyKeygenReply{
+  return CrosFpDeviceInterface::PairingKeyKeygenReply{
       .pub_x = keygen_cmd->PubX(),
       .pub_y = keygen_cmd->PubY(),
       .encrypted_private_key = keygen_cmd->EncryptedKey(),

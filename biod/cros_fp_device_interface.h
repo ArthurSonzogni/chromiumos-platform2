@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBEC_FINGERPRINT_CROS_FP_DEVICE_INTERFACE_H_
-#define LIBEC_FINGERPRINT_CROS_FP_DEVICE_INTERFACE_H_
+#ifndef BIOD_CROS_FP_DEVICE_INTERFACE_H_
+#define BIOD_CROS_FP_DEVICE_INTERFACE_H_
 
 #include <bitset>
 #include <memory>
@@ -27,9 +27,9 @@
  */
 using VendorTemplate = std::vector<uint8_t>;
 
-namespace ec {
+namespace biod {
 
-class CrosFpDeviceInterface : public EcCommandVersionSupportedInterface {
+class CrosFpDeviceInterface : public ec::EcCommandVersionSupportedInterface {
  public:
   using MkbpCallback = base::RepeatingCallback<void(const uint32_t event)>;
   CrosFpDeviceInterface() = default;
@@ -134,6 +134,6 @@ class CrosFpDeviceInterface : public EcCommandVersionSupportedInterface {
   virtual ec::FpSensorErrors GetHwErrors() = 0;
 };
 
-}  // namespace ec
+}  // namespace biod
 
-#endif  // LIBEC_FINGERPRINT_CROS_FP_DEVICE_INTERFACE_H_
+#endif  // BIOD_CROS_FP_DEVICE_INTERFACE_H_

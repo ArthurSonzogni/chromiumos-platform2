@@ -26,7 +26,7 @@ class MockBiodMetrics : public BiodMetricsInterface {
   MOCK_METHOD(bool, SendFpUnlockEnabled, (bool enabled), (override));
   MOCK_METHOD(bool,
               SendFpLatencyStats,
-              (bool matched, const ec::CrosFpDeviceInterface::FpStats& stats),
+              (bool matched, const biod::CrosFpDeviceInterface::FpStats& stats),
               (override));
   MOCK_METHOD(bool,
               SendFwUpdaterStatus,
