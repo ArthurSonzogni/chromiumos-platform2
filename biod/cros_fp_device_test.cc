@@ -16,6 +16,7 @@
 
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_cros_fp_device.h"
+#include "ec/ec_commands.h"
 #include "libec/ec_command_version_supported.h"
 #include "libec/fingerprint/fp_sensor_errors.h"
 
@@ -34,6 +35,7 @@ using ec::FpSensorErrors;
 using ec::FpSetNonceContextCommand;
 using ec::FpTemplateCommand;
 using ec::FpUnlockTemplateCommand;
+using ec::GetFpModeCommand;
 using testing::An;
 using testing::NiceMock;
 using testing::Return;
@@ -143,6 +145,65 @@ TEST_F(CrosFpDevice_SetFpMode, FailureCurrentModeDifferentFromInputMode) {
       });
 
   EXPECT_FALSE(mock_cros_fp_device_->SetFpMode(mode1));
+}
+
+class CrosFpDevice_GetFpMode : public testing::Test {
+ public:
+  CrosFpDevice_GetFpMode() {
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
+    mock_ec_command_factory_ = mock_command_factory.get();
+    mock_cros_fp_device_ = std::make_unique<MockCrosFpDevice>(
+        &mock_biod_metrics_, std::move(mock_command_factory));
+  }
+
+ protected:
+  class MockCrosFpDevice : public CrosFpDevice {
+   public:
+    MockCrosFpDevice(
+        BiodMetricsInterface* biod_metrics,
+        std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+        : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
+  };
+
+  class MockGetFpModeCommand : public GetFpModeCommand {
+   public:
+    MockGetFpModeCommand() { ON_CALL(*this, Run).WillByDefault(Return(true)); }
+    MOCK_METHOD(bool, Run, (int fd), (override));
+    MOCK_METHOD(const struct ec_response_fp_mode*, Resp, (), (const, override));
+  };
+
+  metrics::MockBiodMetrics mock_biod_metrics_;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  std::unique_ptr<MockCrosFpDevice> mock_cros_fp_device_;
+};
+
+TEST_F(CrosFpDevice_GetFpMode, Success) {
+  struct ec_response_fp_mode resp = {.mode = FP_MODE_DEEPSLEEP};
+  EXPECT_CALL(*mock_ec_command_factory_, GetFpModeCommand())
+      .WillOnce([&resp]() {
+        auto mock_get_fp_mode_command =
+            std::make_unique<NiceMock<MockGetFpModeCommand>>();
+        EXPECT_CALL(*mock_get_fp_mode_command, Run)
+            .WillRepeatedly(Return(true));
+        EXPECT_CALL(*mock_get_fp_mode_command, Resp)
+            .WillRepeatedly(Return(&resp));
+        return mock_get_fp_mode_command;
+      });
+
+  EXPECT_EQ(mock_cros_fp_device_->GetFpMode(),
+            FpMode(FpMode::Mode::kDeepsleep));
+}
+
+TEST_F(CrosFpDevice_GetFpMode, FailureReturnsInvalidMode) {
+  EXPECT_CALL(*mock_ec_command_factory_, GetFpModeCommand()).WillOnce([]() {
+    auto mock_get_fp_mode_command =
+        std::make_unique<NiceMock<MockGetFpModeCommand>>();
+    EXPECT_CALL(*mock_get_fp_mode_command, Run).WillRepeatedly(Return(false));
+    return mock_get_fp_mode_command;
+  });
+
+  EXPECT_EQ(mock_cros_fp_device_->GetFpMode(),
+            FpMode(FpMode::Mode::kModeInvalid));
 }
 
 class CrosFpDevice_ResetContext : public testing::Test {
