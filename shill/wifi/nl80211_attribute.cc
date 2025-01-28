@@ -270,7 +270,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
   }
 
   base::span<const uint8_t> remain_data = data;
-  const int kHeaderBytes = 2;
+  const size_t kHeaderBytes = 2;
   while (remain_data.size() > kHeaderBytes) {
     const uint8_t type = remain_data[0];
     const uint8_t payload_bytes = remain_data[1];
@@ -280,7 +280,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
       LOG(ERROR) << "Found malformed IE data.";
       return false;
     }
-    const auto payload = remain_data.subspan(0, payload_bytes);
+    const auto payload = remain_data.first(payload_bytes);
     remain_data = remain_data.subspan(payload_bytes);
 
     // See http://dox.ipxe.org/ieee80211_8h_source.html for more info on types

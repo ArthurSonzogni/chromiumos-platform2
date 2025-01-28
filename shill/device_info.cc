@@ -1305,7 +1305,7 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
 
   const auto stats = *net_base::byte_utils::FromBytes<struct rtnl_link_stats64>(
       base::span<const uint8_t>(stats_bytes)
-          .subspan(0, sizeof(struct rtnl_link_stats64)));
+          .first<sizeof(struct rtnl_link_stats64)>());
 
   SLOG(2) << "Link statistics for interface index " << interface_index << ": "
           << "receive: " << stats.rx_bytes << "; "

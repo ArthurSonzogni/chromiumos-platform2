@@ -702,7 +702,7 @@ void WireGuardDriver::OnReadLinkStatusDone(int exit_status,
   auto lines = base::SplitStringPiece(output, "\n", base::TRIM_WHITESPACE,
                                       base::SPLIT_WANT_NONEMPTY);
   base::span<std::string_view> lines_span = lines;
-  for (std::string_view line : lines_span.subspan(1)) {
+  for (std::string_view line : lines_span.subspan<1>()) {
     auto tokens = base::SplitStringPiece(line, "\t", base::TRIM_WHITESPACE,
                                          base::SPLIT_WANT_NONEMPTY);
     if (tokens.size() != 8) {

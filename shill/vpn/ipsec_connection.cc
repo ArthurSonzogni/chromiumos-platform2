@@ -355,7 +355,7 @@ std::vector<net_base::IPCIDR> ParseRemoteTrafficSelectors(
 
   std::vector<net_base::IPCIDR> ret;
   base::span<std::string_view> tokens_span = tokens;
-  for (std::string_view t : tokens_span.subspan(1)) {
+  for (std::string_view t : tokens_span.subspan<1>()) {
     if (auto cidr = net_base::IPCIDR::CreateFromCIDRString(t)) {
       ret.push_back(*cidr);
     } else {
