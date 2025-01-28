@@ -428,11 +428,16 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         opts.parsing_style(getopts::ParsingStyle::StopAtFirstFree);
         opts.optflag("p", "pluginvm", "create a pluginvm vm");
         opts.optopt("", "size", "size of the created vm's disk", "SIZE");
+        opts.optopt("", "source", "location of baguette source image", "PATH");
 
         let matches = opts.parse(self.args)?;
         let plugin_vm = matches.opt_present("p");
         let size = match matches.opt_str("size") {
             Some(s) => Some(parse_disk_size(&s)?),
+            None => None,
+        };
+        let source = match matches.opt_str("source") {
+            Some(path) => Some(path),
             None => None,
         };
 
@@ -463,6 +468,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             file_name,
             removable_media,
             params,
+            source.as_deref(),
         )) {
             println!("VM creation in progress: {}", uuid);
             self.wait_disk_op_completion(&uuid, DiskOpType::Create, "VM creation")?;

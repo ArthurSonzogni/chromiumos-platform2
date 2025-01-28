@@ -964,6 +964,7 @@ impl Methods {
         source_name: Option<&str>,
         removable_media: Option<&str>,
         params: &[T],
+        source: Option<&str>,
     ) -> Result<Option<String>, Box<dyn Error>> {
         let mut request = CreateDiskImageRequest::new();
         request.vm_name = vm_name.to_owned();
@@ -979,7 +980,7 @@ impl Methods {
             request.disk_size = s;
         }
 
-        let source_fd = match source_name {
+        let mut source_fd = match source_name {
             Some(source) => {
                 let source_file = self.open_input_file(
                     user_id_hash,
@@ -992,6 +993,17 @@ impl Methods {
             }
             None => None,
         };
+        if let Some(source) = source {
+            let source_file = self.open_input_file(
+                user_id_hash,
+                source,
+                removable_media,
+                OpenSafelyOptions::new().read(true),
+            )?;
+            request.source_size = source_file.size;
+            source_fd = Some(source_file.fd);
+            request.copy_baguette_image = true;
+        }
 
         for param in params {
             request.params.push(param.as_ref().to_string());
@@ -2250,6 +2262,7 @@ impl Methods {
         source_name: Option<&str>,
         removable_media: Option<&str>,
         params: &[T],
+        source: Option<&str>,
     ) -> Result<Option<String>, Box<dyn Error>> {
         if plugin_vm {
             self.ensure_plugin_vm_available(user_id_hash)?;
@@ -2264,6 +2277,7 @@ impl Methods {
             source_name,
             removable_media,
             params,
+            source,
         )
     }
 

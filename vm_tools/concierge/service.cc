@@ -24,7 +24,10 @@
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 // clang-format on
 
+#include <zstd.h>
+
 #include <algorithm>
+#include <cstdio>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -702,6 +705,13 @@ vm_tools::concierge::VmInstallStateSignal StateToSignal(VmInstallState state) {
   }
   return signal;
 }
+
+// Scoped ZSTD DCtx pointer to ensure proper deletion.
+struct ZSTD_DCtxDeleter {
+  void operator()(ZSTD_DCtx* dctx) const { ZSTD_freeDCtx(dctx); }
+};
+
+typedef std::unique_ptr<ZSTD_DCtx, ZSTD_DCtxDeleter> ScopedZSTD_DCtxPtr;
 
 }  // namespace
 
@@ -2487,6 +2497,55 @@ base::FilePath GenerateTempFilePathWithNoEqualSign(const base::FilePath& path) {
   return path.DirName().Append(temp_name + ".tmp");
 }
 
+bool WriteSourceImageToDisk(const base::ScopedFD& source_fd,
+                            const base::ScopedFD& disk_fd) {
+  size_t in_size = ZSTD_DStreamInSize();
+  size_t out_size = ZSTD_DStreamOutSize();
+  std::vector<char> in_buffer(in_size);
+  std::vector<char> out_buffer(out_size);
+
+  ScopedZSTD_DCtxPtr dctx(ZSTD_createDCtx());
+  CHECK(dctx != nullptr);
+
+  ssize_t bytes_read;
+  size_t bytes_written = 0;
+
+  while ((bytes_read =
+              HANDLE_EINTR(read(source_fd.get(), in_buffer.data(), in_size)))) {
+    if (bytes_read < 0) {
+      LOG(ERROR) << "Error reading from source image: " << bytes_read;
+      return false;
+    }
+
+    ZSTD_inBuffer input = {in_buffer.data(), static_cast<size_t>(bytes_read),
+                           0};
+    while (input.pos < input.size) {
+      ZSTD_outBuffer output = {out_buffer.data(), out_size, 0};
+      size_t const ret = ZSTD_decompressStream(dctx.get(), &output, &input);
+
+      if (ZSTD_isError(ret)) {
+        LOG(ERROR) << "Unable to decompress: " << ZSTD_getErrorName(ret);
+        return false;
+      }
+
+      ssize_t written =
+          HANDLE_EINTR(write(disk_fd.get(), out_buffer.data(), output.pos));
+      if (written < 0) {
+        LOG(ERROR) << "Error writing to output file: " << written;
+        return false;
+      }
+      bytes_written += written;
+    }
+  }
+
+  if (bytes_written == 0) {
+    LOG(ERROR) << "Provided source file was empty";
+    return false;
+  }
+
+  return true;
+}
+
 // Creates a filesystem at the specified file/path.
 bool CreateFilesystem(const base::FilePath& disk_location,
                       enum FilesystemType filesystem_type,
@@ -2586,6 +2645,17 @@ void Service::CreateDiskImage(
     if (file_handles.size() == 0) {
       LOG(ERROR) << "CreateDiskImage: no fd found";
       response.set_failure_reason("no source fd found");
+
+      response_cb->Return(response);
+      return;
+    }
+    in_fd.reset(dup(file_handles[0].get()));
+  }
+
+  if (request.copy_baguette_image()) {
+    if (file_handles.size() == 0) {
+      LOG(ERROR) << "CreateDiskImage: no baguette source fd found";
+      response.set_failure_reason("no baguette source fd found");
 
       response_cb->Return(response);
       return;
@@ -2736,6 +2806,24 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
       response.set_failure_reason("Failed to create raw disk file");
 
       return response;
+    }
+
+    if (request.copy_baguette_image()) {
+      if (!in_fd.is_valid()) {
+        LOG(ERROR) << "CreateDiskImage: fd is not valid";
+        response.set_status(DISK_STATUS_FAILED);
+        response.set_failure_reason("fd is not valid");
+        return response;
+      }
+
+      if (!WriteSourceImageToDisk(in_fd, fd)) {
+        response.set_status(DISK_STATUS_FAILED);
+        LOG(ERROR) << "Failed to create disk from provided disk image";
+        return response;
+      }
+      LOG(INFO) << "Disk image created from compressed image";
+      response.set_status(DISK_STATUS_CREATED);
+      response.set_disk_path(disk_path.value());
     }
 
     if (!is_sparse) {

@@ -127,6 +127,7 @@ static_library("libconcierge") {
     "libspaced",
     "libstructuredmetrics",
     "libudev",
+    "libzstd",
     "perfetto",
     "protobuf",
     "re2",

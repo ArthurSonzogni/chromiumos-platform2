@@ -877,6 +877,11 @@ message CreateDiskImageRequest {
   // |disk_size| is unspecified or 0. DISK_ALLOCATION_TYPE_PREALLOCATE must be
   // combined with a non-zero |disk_size|.
   DiskImageAllocationType allocation_type = 12;
+
+  // Switch indicating that a zstd-compressed image has been passed as an FD,
+  // which will be decompressed and written as the disk image contents.
+  // Currently this is only used for baguette vm's.
+  bool copy_baguette_image = 13;
 }
 
 // Response to a CreateDiskImageRequest.
