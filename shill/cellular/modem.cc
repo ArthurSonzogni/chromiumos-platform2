@@ -119,9 +119,7 @@ bool Modem::GetLinkName(const KeyValueStore& modem_props,
   return true;
 }
 
-void Modem::CreateCellularDevice(DeviceInfo* device_info) {
-  CellularRefPtr cellular;
-
+bool ShouldCreateCellularDevice(DeviceInfo* device_info) {
   std::unique_ptr<brillo::CrosConfigInterface> cros_config =
       std::make_unique<brillo::CrosConfig>();
 
@@ -129,17 +127,27 @@ void Modem::CreateCellularDevice(DeviceInfo* device_info) {
   if (!cros_config->GetString("/modem", "firmware-variant", &variant)) {
     LOG(INFO) << __func__
               << "Not creating cellular device for non-cellular variant.";
-    return;
+    return false;
   }
 
   if (!device_info->manager()->ContainsIdentifier("device_cellular_store")) {
     LOG(INFO) << "Skipping device creation at startup to allow storage id "
                  "migration for variant: "
               << variant;
-    return;
+    return false;
   }
 
-  LOG(INFO) << "creating cellular device for variant" << variant;
+  LOG(INFO) << "Cellular device needed for variant: " << variant;
+
+  return true;
+}
+
+void Modem::CreateCellularDevice(DeviceInfo* device_info) {
+  CellularRefPtr cellular;
+
+  if (!ShouldCreateCellularDevice(device_info)) {
+    return;
+  }
 
   cellular = new Cellular(device_info->manager(), kCellularDeviceName,
                           kCellularDefaultInterfaceName, kFakeDevAddress,
@@ -233,6 +241,11 @@ CellularRefPtr Modem::GetOrCreateCellularDevice(
   // which was created during manager startup based on variant lookup.
   // We should reach here only if this is first boot with new storage id
   // or for cellular devices where variant is not configured correctly.
+  if (ShouldCreateCellularDevice(device_info_)) {
+    LOG(WARNING) << "Creating missing cellular device with name: " << link_name_
+                 << " Interface Index: " << interface_index;
+  }
+
   cellular =
       new Cellular(device_info_->manager(), kCellularDeviceName, link_name_,
                    mac_address, interface_index, service_, path_);
