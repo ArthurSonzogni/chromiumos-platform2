@@ -14,7 +14,7 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_WITH_DRIVER_H_
 #define CRYPTOHOME_AUTH_FACTOR_WITH_DRIVER_H_
 
-#include <base/containers/flat_set.h>
+#include <absl/container/flat_hash_set.h>
 
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_session/intent.h"
@@ -38,7 +38,7 @@ bool IsIntentEnabledBasedOnPolicy(
 // the moment (for example if it is locked out). As availability only matters
 // for full auth, this function can be used to determine available intents for
 // light auth intents as well.
-base::flat_set<AuthIntent> GetSupportedIntents(
+absl::flat_hash_set<AuthIntent> GetSupportedIntents(
     const ObfuscatedUsername& username,
     const AuthFactorType& auth_factor_type,
     AuthFactorDriverManager& driver_manager,

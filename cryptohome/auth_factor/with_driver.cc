@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include <base/containers/flat_set.h>
+#include <absl/container/flat_hash_set.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/flatbuffer.h"
@@ -47,7 +47,7 @@ bool IsIntentEnabledBasedOnPolicy(
   }
 }
 
-base::flat_set<AuthIntent> GetSupportedIntents(
+absl::flat_hash_set<AuthIntent> GetSupportedIntents(
     const ObfuscatedUsername& username,
     const AuthFactorType& auth_factor_type,
     AuthFactorDriverManager& driver_manager,
@@ -66,7 +66,7 @@ base::flat_set<AuthIntent> GetSupportedIntents(
 
   // Check all of the intents against lightweight auth. Technically we could
   // probably just look at verify-only but we leave this up to the driver.
-  base::flat_set<AuthIntent> supported_intents;
+  absl::flat_hash_set<AuthIntent> supported_intents;
   for (AuthIntent intent : kAllAuthIntents) {
     if (driver.IsLightAuthSupported(intent) ||
         (!only_light_auth && driver.IsFullAuthSupported(intent))) {

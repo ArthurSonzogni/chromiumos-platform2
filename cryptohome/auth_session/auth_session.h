@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/flat_set.h>
+#include <absl/container/flat_hash_set.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
@@ -178,7 +178,7 @@ class AuthSession final {
   }
 
   // Returns the intents that the AuthSession has been authorized for.
-  base::flat_set<AuthIntent> authorized_intents() const;
+  absl::flat_hash_set<AuthIntent> authorized_intents() const;
 
   // Returns the file system keyset used to access the filesystem. This is set
   // when the session gets into an authenticated state and so the caller must
@@ -512,7 +512,7 @@ class AuthSession final {
   // Switches the state to authorize the specified intents. Starts or restarts
   // the timer when applicable.
   void SetAuthorizedForIntents(
-      base::flat_set<AuthIntent> new_authorized_intents);
+      absl::flat_hash_set<AuthIntent> new_authorized_intents);
 
   // Sets the auth session as fully authenticated by the given factor type. What
   // specific intents the session is authorized for depends on the factor type.

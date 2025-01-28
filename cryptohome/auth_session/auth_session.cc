@@ -17,10 +17,10 @@
 #include <vector>
 
 #include <absl/cleanup/cleanup.h>
+#include <absl/container/flat_hash_set.h>
 #include <base/barrier_closure.h>
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/flat_set.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
@@ -148,7 +148,8 @@ constexpr std::string_view IntentToDebugString(AuthIntent intent) {
   }
 }
 
-std::string IntentSetToDebugString(const base::flat_set<AuthIntent>& intents) {
+std::string IntentSetToDebugString(
+    const absl::flat_hash_set<AuthIntent>& intents) {
   std::vector<std::string_view> strings;
   strings.reserve(intents.size());
   for (auto intent : intents) {
@@ -458,8 +459,8 @@ AuthSession::~AuthSession() {
                       authenticated_time_, append_string);
 }
 
-base::flat_set<AuthIntent> AuthSession::authorized_intents() const {
-  base::flat_set<AuthIntent> intents;
+absl::flat_hash_set<AuthIntent> AuthSession::authorized_intents() const {
+  absl::flat_hash_set<AuthIntent> intents;
   // Generic helper that checks an auth_for_* field and adds the intent to
   // intents if it is authorized.
   auto check_auth_for = [&intents](const auto& field) {
@@ -506,7 +507,7 @@ void AuthSession::RecordAuthSessionStart(
 }
 
 void AuthSession::SetAuthorizedForIntents(
-    base::flat_set<AuthIntent> new_authorized_intents) {
+    absl::flat_hash_set<AuthIntent> new_authorized_intents) {
   if (new_authorized_intents.empty()) {
     LOG(ERROR) << "Empty intent set cannot be authorized";
     return;
@@ -545,12 +546,12 @@ void AuthSession::SetAuthorizedForFullAuthIntents(
   // Determine what intents are allowed for this factor type under full auth.
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
-  std::vector<AuthIntent> authorized_for;
+  absl::flat_hash_set<AuthIntent> authorized_for;
   for (AuthIntent intent : {AuthIntent::kDecrypt, AuthIntent::kVerifyOnly}) {
     if (factor_driver.IsFullAuthSupported(intent) &&
         IsIntentEnabledBasedOnPolicy(factor_driver, intent,
                                      auth_factor_type_user_policy)) {
-      authorized_for.push_back(intent);
+      authorized_for.insert(intent);
     }
   }
 
@@ -594,7 +595,7 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
     status_update.set_broadcast_id(serialized_public_token_);
     *factor_with_status.mutable_auth_factor() = std::move(*auth_factor_proto);
 
-    base::flat_set<AuthIntent> supported_intents = GetSupportedIntents(
+    absl::flat_hash_set<AuthIntent> supported_intents = GetSupportedIntents(
         obfuscated_username_, auth_factor.type(), *auth_factor_driver_manager_,
         GetAuthFactorPolicyFromUserPolicy(user_policy, auth_factor.type()),
         /*only_light_auth=*/false);

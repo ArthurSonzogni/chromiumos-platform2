@@ -14,7 +14,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/flat_set.h>
+#include <absl/container/flat_hash_map.h>
+#include <absl/container/flat_hash_set.h>
 
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/user_session/user_session.h"
@@ -162,7 +163,8 @@ class UserSessionMap final {
 
   // Track any live verifier forwarders. The forwarders will add themselves to
   // this map on construction and remove themselves upon destruction.
-  std::map<Username, base::flat_set<VerifierForwarder*>> verifier_forwarders_;
+  absl::flat_hash_map<Username, absl::flat_hash_set<VerifierForwarder*>>
+      verifier_forwarders_;
 };
 
 }  // namespace cryptohome
