@@ -25,6 +25,7 @@ using ec::FpGetNonceCommand;
 using ec::FpInfoCommand;
 using ec::FpMigrateTemplateToNonceContextCommand;
 using ec::FpMode;
+using ec::FpModeCommand;
 using ec::FpPairingKeyKeygenCommand;
 using ec::FpPairingKeyLoadCommand;
 using ec::FpPairingKeyWrapCommand;
@@ -51,6 +52,98 @@ class MockEcCommandInterface : public EcCommandInterface {
   MOCK_METHOD(uint32_t, Version, (), (const, override));
   MOCK_METHOD(uint32_t, Command, (), (const, override));
 };
+
+class CrosFpDevice_SetFpMode : public testing::Test {
+ public:
+  CrosFpDevice_SetFpMode() {
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
+    mock_ec_command_factory_ = mock_command_factory.get();
+    mock_cros_fp_device_ = std::make_unique<MockCrosFpDevice>(
+        &mock_biod_metrics_, std::move(mock_command_factory));
+  }
+
+ protected:
+  class MockCrosFpDevice : public CrosFpDevice {
+   public:
+    MockCrosFpDevice(
+        BiodMetricsInterface* biod_metrics,
+        std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+        : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
+    MOCK_METHOD(FpMode, GetFpMode, (), (override));
+  };
+
+  class MockFpModeCommand : public FpModeCommand {
+   public:
+    explicit MockFpModeCommand(const FpMode& mode) : FpModeCommand(mode) {
+      ON_CALL(*this, Run).WillByDefault(Return(true));
+    }
+    MOCK_METHOD(bool, Run, (int fd), (override));
+    MOCK_METHOD(ec_response_fp_mode*, Resp, (), (override));
+  };
+
+  metrics::MockBiodMetrics mock_biod_metrics_;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  std::unique_ptr<MockCrosFpDevice> mock_cros_fp_device_;
+};
+
+TEST_F(CrosFpDevice_SetFpMode, Success) {
+  const FpMode mode = FpMode(FpMode::Mode::kMatch);
+  EXPECT_CALL(*mock_ec_command_factory_, FpModeCommand(mode))
+      .WillOnce([&mode]() {
+        auto mock_fp_mode_command =
+            std::make_unique<NiceMock<MockFpModeCommand>>(mode);
+        EXPECT_CALL(*mock_fp_mode_command, Run).WillRepeatedly(Return(true));
+        return mock_fp_mode_command;
+      });
+
+  EXPECT_TRUE(mock_cros_fp_device_->SetFpMode(mode));
+}
+
+TEST_F(CrosFpDevice_SetFpMode, FailureCurrentModeInvalid) {
+  const FpMode mode = FpMode(FpMode::Mode::kMatch);
+  EXPECT_CALL(*mock_ec_command_factory_, FpModeCommand(mode))
+      .WillOnce([&mode, this]() {
+        auto mock_fp_mode_command =
+            std::make_unique<NiceMock<MockFpModeCommand>>(mode);
+        EXPECT_CALL(*mock_fp_mode_command, Run).WillRepeatedly(Return(false));
+        EXPECT_CALL(*mock_cros_fp_device_, GetFpMode)
+            .WillRepeatedly(Return(FpMode(FpMode::Mode::kModeInvalid)));
+        return mock_fp_mode_command;
+      });
+
+  EXPECT_FALSE(mock_cros_fp_device_->SetFpMode(mode));
+}
+
+TEST_F(CrosFpDevice_SetFpMode, RunFailsButCurrentModeMatchesRequestedMode) {
+  const FpMode mode = FpMode(FpMode::Mode::kMatch);
+  EXPECT_CALL(*mock_ec_command_factory_, FpModeCommand(mode))
+      .WillOnce([&mode, this]() {
+        auto mock_fp_mode_command =
+            std::make_unique<NiceMock<MockFpModeCommand>>(mode);
+        EXPECT_CALL(*mock_fp_mode_command, Run).WillRepeatedly(Return(false));
+        EXPECT_CALL(*mock_cros_fp_device_, GetFpMode)
+            .WillRepeatedly(Return(mode));
+        return mock_fp_mode_command;
+      });
+
+  EXPECT_TRUE(mock_cros_fp_device_->SetFpMode(mode));
+}
+
+TEST_F(CrosFpDevice_SetFpMode, FailureCurrentModeDifferentFromInputMode) {
+  const FpMode mode1 = FpMode(FpMode::Mode::kMatch);
+  const FpMode mode2 = FpMode(FpMode::Mode::kCapture);
+  EXPECT_CALL(*mock_ec_command_factory_, FpModeCommand(mode1))
+      .WillOnce([&mode1, this, mode2]() {
+        auto mock_fp_mode_command =
+            std::make_unique<NiceMock<MockFpModeCommand>>(mode1);
+        EXPECT_CALL(*mock_fp_mode_command, Run).WillRepeatedly(Return(false));
+        EXPECT_CALL(*mock_cros_fp_device_, GetFpMode)
+            .WillRepeatedly(Return(mode2));
+        return mock_fp_mode_command;
+      });
+
+  EXPECT_FALSE(mock_cros_fp_device_->SetFpMode(mode1));
+}
 
 class CrosFpDevice_ResetContext : public testing::Test {
  public:
