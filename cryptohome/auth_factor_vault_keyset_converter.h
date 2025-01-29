@@ -5,11 +5,11 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_VAULT_KEYSET_CONVERTER_H_
 #define CRYPTOHOME_AUTH_FACTOR_VAULT_KEYSET_CONVERTER_H_
 
-#include <map>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include <absl/container/flat_hash_map.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -48,8 +48,9 @@ class AuthFactorVaultKeysetConverter {
   user_data_auth::CryptohomeErrorCode VaultKeysetsToAuthFactorsAndKeyLabelData(
       const ObfuscatedUsername& obfuscated_username,
       std::vector<std::string>& migrated_labels,
-      std::map<std::string, AuthFactor>& out_label_to_auth_factor,
-      std::map<std::string, AuthFactor>& out_label_to_auth_factor_backup_vks);
+      absl::flat_hash_map<std::string, AuthFactor>& out_label_to_auth_factor,
+      absl::flat_hash_map<std::string, AuthFactor>&
+          out_label_to_auth_factor_backup_vks);
 
   // Takes a label, which was sent from an AuthFactor API, find the VaultKeyset
   // identified with that label and returns its KeyData.

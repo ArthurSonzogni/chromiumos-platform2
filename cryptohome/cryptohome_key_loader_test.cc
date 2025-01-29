@@ -4,7 +4,6 @@
 
 #include "cryptohome/cryptohome_key_loader.h"
 
-#include <map>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -85,7 +84,6 @@ class CryptohomeKeyLoaderTest : public ::testing::Test {
   }
 
   bool is_hwsec_ready_ = false;
-  std::map<base::FilePath, brillo::Blob> files_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<libstorage::MockPlatform> platform_;
 

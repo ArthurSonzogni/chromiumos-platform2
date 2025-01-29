@@ -8,7 +8,6 @@
 #include <stddef.h>
 
 #include <iterator>
-#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -29,7 +28,7 @@ class UserSessionMap final {
  private:
   // Declared here in the beginning to allow us to reference the underlying
   // storage type when defining the iterator.
-  using Storage = std::map<Username, std::unique_ptr<UserSession>>;
+  using Storage = absl::flat_hash_map<Username, std::unique_ptr<UserSession>>;
 
   // Iterator template that can act as both a regular and const iterator. This
   // wraps the underlying map iterator but exposes the underlying UserSession as
@@ -87,8 +86,10 @@ class UserSessionMap final {
     // Verifiers are stored by both label and type, with the latter being used
     // for label-less verifiers.
     struct VerifierStorage {
-      std::map<std::string, std::unique_ptr<CredentialVerifier>> by_label;
-      std::map<AuthFactorType, std::unique_ptr<CredentialVerifier>> by_type;
+      absl::flat_hash_map<std::string, std::unique_ptr<CredentialVerifier>>
+          by_label;
+      absl::flat_hash_map<AuthFactorType, std::unique_ptr<CredentialVerifier>>
+          by_type;
     };
 
     VerifierForwarder(Username account_id, UserSessionMap* user_session_map);

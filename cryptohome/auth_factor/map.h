@@ -6,9 +6,10 @@
 #define CRYPTOHOME_AUTH_FACTOR_MAP_H_
 
 #include <iterator>
-#include <map>
 #include <optional>
 #include <string>
+
+#include <absl/container/flat_hash_map.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/storage_type.h"
@@ -27,7 +28,7 @@ class AuthFactorMap final {
   };
   // Declared here in the beginning to allow us to reference the underlying
   // storage type when defining the iterator.
-  using Storage = std::map<std::string, StoredAuthFactor>;
+  using Storage = absl::flat_hash_map<std::string, StoredAuthFactor>;
 
  public:
   // Class that exports a view of the underlying StoredAuthFactor.

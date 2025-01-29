@@ -5,12 +5,12 @@
 #ifndef CRYPTOHOME_USER_SECRET_STASH_DECRYPTED_H_
 #define CRYPTOHOME_USER_SECRET_STASH_DECRYPTED_H_
 
-#include <map>
 #include <optional>
 #include <string>
 #include <utility>
 #include <variant>
 
+#include <absl/container/flat_hash_map.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_factor/type.h"
@@ -127,11 +127,12 @@ class DecryptedUss {
     // The DecryptedUss class needs to be able to construct Transaction objects.
     friend class DecryptedUss;
 
-    Transaction(DecryptedUss& uss,
-                EncryptedUss::Container container,
-                std::map<std::string, brillo::SecureBlob> reset_secrets,
-                std::map<AuthFactorType, brillo::SecureBlob>
-                    rate_limiter_reset_secrets);
+    Transaction(
+        DecryptedUss& uss,
+        EncryptedUss::Container container,
+        absl::flat_hash_map<std::string, brillo::SecureBlob> reset_secrets,
+        absl::flat_hash_map<AuthFactorType, brillo::SecureBlob>
+            rate_limiter_reset_secrets);
 
     DecryptedUss& uss_;
 
@@ -141,8 +142,9 @@ class DecryptedUss {
     EncryptedUss::Container container_;
     // Copies of the original decrypted secrets with the modifications from the
     // transaction. Will be written over the originals by a successful Commit.
-    std::map<std::string, brillo::SecureBlob> reset_secrets_;
-    std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets_;
+    absl::flat_hash_map<std::string, brillo::SecureBlob> reset_secrets_;
+    absl::flat_hash_map<AuthFactorType, brillo::SecureBlob>
+        rate_limiter_reset_secrets_;
   };
 
   // Define an error type that combines a CryptohomeStatus with an EncryptedUss.
@@ -255,8 +257,9 @@ class DecryptedUss {
       EncryptedUss encrypted,
       brillo::SecureBlob main_key,
       FileSystemKeyset file_system_keyset,
-      std::map<std::string, brillo::SecureBlob> reset_secrets,
-      std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets,
+      absl::flat_hash_map<std::string, brillo::SecureBlob> reset_secrets,
+      absl::flat_hash_map<AuthFactorType, brillo::SecureBlob>
+          rate_limiter_reset_secrets,
       brillo::SecureBlob key_derivation_seed);
 
   // The underlying storage of the decrypted USS instance.
@@ -269,9 +272,10 @@ class DecryptedUss {
   // with corresponding salts and signatures.
   FileSystemKeyset file_system_keyset_;
   // The reset secrets corresponding to each auth factor, by label.
-  std::map<std::string, brillo::SecureBlob> reset_secrets_;
+  absl::flat_hash_map<std::string, brillo::SecureBlob> reset_secrets_;
   // The reset secrets corresponding to each auth factor type's rate limiter.
-  std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets_;
+  absl::flat_hash_map<AuthFactorType, brillo::SecureBlob>
+      rate_limiter_reset_secrets_;
   // The seed to derive other key materials.
   brillo::SecureBlob key_derivation_seed_;
   // Cache the security domain keys after they're first calculated to prevent

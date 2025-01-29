@@ -5,7 +5,6 @@
 #include "cryptohome/auth_blocks/revocation.h"
 
 #include <cstdint>
-#include <map>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -56,7 +55,7 @@ const char kKdfSkeyInfo[] = "kdf_skey_info";
 // The delay is not needed for revocation, so we set
 // number_of_incorrect_attempts to UINT32_MAX.
 hwsec::PinWeaverManagerFrontend::DelaySchedule GetDelaySchedule() {
-  return std::map<uint32_t, uint32_t>{{UINT32_MAX, 1}};
+  return {{UINT32_MAX, 1}};
 }
 
 CryptoError RevokeTPMRetryActionToCryptoError(

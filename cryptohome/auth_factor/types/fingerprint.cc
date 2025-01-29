@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <limits>
-#include <map>
 #include <utility>
 #include <vector>
 
@@ -251,7 +250,7 @@ CryptohomeStatus FingerprintAuthFactorDriver::TryCreateRateLimiter(
   std::vector<hwsec::OperationPolicySetting> policies =
       GetValidPoliciesOfUser(username);
 
-  std::map<uint32_t, uint32_t> delay_sched;
+  hwsec::PinWeaverManagerFrontend::DelaySchedule delay_sched;
   for (const auto& entry : kDefaultDelaySchedule) {
     delay_sched[entry.attempts] = entry.delay;
   }

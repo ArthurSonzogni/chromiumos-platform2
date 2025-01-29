@@ -5,7 +5,6 @@
 #ifndef CRYPTOHOME_KEYSET_MANAGEMENT_H_
 #define CRYPTOHOME_KEYSET_MANAGEMENT_H_
 
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>

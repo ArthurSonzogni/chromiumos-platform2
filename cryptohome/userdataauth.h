@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <absl/container/node_hash_map.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/location.h>
@@ -941,7 +942,7 @@ class UserDataAuth {
 
   // Each user has a user policy file. If the file could not be found, it will
   // be created with default settings. The user policy file is loaded lazily.
-  std::map<ObfuscatedUsername, UserPolicyFile> user_policy_files_;
+  absl::node_hash_map<ObfuscatedUsername, UserPolicyFile> user_policy_files_;
 
   // The actual Fingerprint Manager object that is used by this class, but
   // can be overridden for testing.

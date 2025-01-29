@@ -6,8 +6,8 @@
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_MANAGER_H_
 
 #include <memory>
-#include <unordered_map>
 
+#include <absl/container/flat_hash_map.h>
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
@@ -54,7 +54,7 @@ class AuthFactorDriverManager {
   const std::unique_ptr<AuthFactorDriver> null_driver_;
 
   // Store all of the real drivers.
-  const std::unordered_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
+  const absl::flat_hash_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
       driver_map_;
 };
 

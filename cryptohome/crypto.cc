@@ -10,9 +10,7 @@
 #include <unistd.h>
 
 #include <cstdint>
-#include <limits>
-#include <map>
-#include <utility>
+#include <string>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -33,12 +31,7 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
-#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_keys_manager.h"
-#include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/filesystem_layout.h"
-#include "cryptohome/key_objects.h"
-#include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
 using brillo::SecureBlob;

@@ -7,10 +7,10 @@
 
 #include <sys/stat.h>
 
-#include <map>
 #include <memory>
 #include <string>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
@@ -210,8 +210,9 @@ class BRILLO_EXPORT MigrationHelper final {
   size_t max_job_list_size_;
   std::unique_ptr<WorkerPool> worker_pool_;
 
-  std::map<base::FilePath, int> child_counts_;  // Child count for directories.
-  base::Lock child_counts_lock_;                // Lock for child_counts_.
+  absl::flat_hash_map<base::FilePath, int>
+      child_counts_;              // Child count for directories.
+  base::Lock child_counts_lock_;  // Lock for child_counts_.
 
   base::AtomicFlag is_cancelled_;
 };

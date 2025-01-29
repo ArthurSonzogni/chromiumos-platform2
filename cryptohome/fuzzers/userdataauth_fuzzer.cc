@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
@@ -199,7 +200,7 @@ struct MockDbusWithProxies {
   // The mock dbus object.
   scoped_refptr<BusType> refptr;
   // A map of any mock object proxies, by service name + object path.
-  std::map<KeyType, scoped_refptr<ProxyType>> proxies;
+  absl::flat_hash_map<KeyType, scoped_refptr<ProxyType>> proxies;
 };
 
 std::string GenerateFuzzedDBusMethodName(

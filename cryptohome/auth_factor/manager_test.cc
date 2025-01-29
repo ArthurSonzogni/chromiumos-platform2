@@ -211,7 +211,7 @@ TEST_F(AuthFactorManagerTest, SaveBadMalformedLabel) {
 // Test that `ListAuthFactors()` returns an empty map when there's no auth
 // factor added.
 TEST_F(AuthFactorManagerTest, ListEmpty) {
-  AuthFactorManager::LabelToTypeMap factor_map =
+  absl::flat_hash_map<std::string, AuthFactorType> factor_map =
       auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
   EXPECT_THAT(factor_map, IsEmpty());
 }
@@ -225,7 +225,7 @@ TEST_F(AuthFactorManagerTest, ListSingle) {
           .ok());
 
   // Verify the factor is listed.
-  AuthFactorManager::LabelToTypeMap factor_map =
+  absl::flat_hash_map<std::string, AuthFactorType> factor_map =
       auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
   EXPECT_THAT(factor_map,
               ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
@@ -243,7 +243,7 @@ TEST_F(AuthFactorManagerTest, ListBadNoExtension) {
       AuthFactorsDirPath(kObfuscatedUsername).Append("password"), /*blob=*/{});
 
   // Verify the malformed file is ignored, and the good one is still listed.
-  AuthFactorManager::LabelToTypeMap factor_map =
+  absl::flat_hash_map<std::string, AuthFactorType> factor_map =
       auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
   EXPECT_THAT(factor_map,
               ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
@@ -261,7 +261,7 @@ TEST_F(AuthFactorManagerTest, ListBadEmptyExtension) {
       AuthFactorsDirPath(kObfuscatedUsername).Append("password."), /*blob=*/{});
 
   // Verify the malformed file is ignored, and the good one is still listed.
-  AuthFactorManager::LabelToTypeMap factor_map =
+  absl::flat_hash_map<std::string, AuthFactorType> factor_map =
       auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
   EXPECT_THAT(factor_map,
               ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
@@ -283,7 +283,7 @@ TEST_F(AuthFactorManagerTest, ListBadMultipleExtensions) {
       /*blob=*/{});
 
   // Verify the malformed files are ignored, and the good one is still listed.
-  AuthFactorManager::LabelToTypeMap factor_map =
+  absl::flat_hash_map<std::string, AuthFactorType> factor_map =
       auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
   EXPECT_THAT(factor_map,
               ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
@@ -301,7 +301,7 @@ TEST_F(AuthFactorManagerTest, ListBadEmptyType) {
                       /*blob=*/{});
 
   // Verify the malformed file is ignored, and the good one is still listed.
-  AuthFactorManager::LabelToTypeMap factor_map =
+  absl::flat_hash_map<std::string, AuthFactorType> factor_map =
       auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
   EXPECT_THAT(factor_map,
               ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
@@ -320,7 +320,7 @@ TEST_F(AuthFactorManagerTest, ListBadUnknownType) {
       /*blob=*/{});
 
   // Verify the malformed file is ignored, and the good one is still listed.
-  AuthFactorManager::LabelToTypeMap factor_map =
+  absl::flat_hash_map<std::string, AuthFactorType> factor_map =
       auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
   EXPECT_THAT(factor_map,
               ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
@@ -365,7 +365,7 @@ TEST_F(AuthFactorManagerTest, SaveMultipleFactorsWithSameLabel) {
 
   // Verify that listing the factors reports the label, although we don't know
   // if it will be the password or pin listed.
-  AuthFactorManager::LabelToTypeMap factor_map =
+  absl::flat_hash_map<std::string, AuthFactorType> factor_map =
       auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
   EXPECT_THAT(factor_map,
               ElementsAre(Pair(kSomeIdpLabel, AnyOf(AuthFactorType::kPassword,
@@ -724,8 +724,8 @@ class GetAuthFactorMapTest : public AuthFactorManagerTest {
   // Install mocks to set up vault keysets for testing. Expects a map of VK
   // labels to factory functions that will construct a VaultKeyset object.
   void InstallVaultKeysets(
-      std::map<std::string,
-               std::unique_ptr<VaultKeyset> (*)(const std::string&)>
+      absl::flat_hash_map<std::string,
+                          std::unique_ptr<VaultKeyset> (*)(const std::string&)>
           vk_factory_map) {
     std::vector<int> key_indicies;
     for (const auto& [label, factory] : vk_factory_map) {

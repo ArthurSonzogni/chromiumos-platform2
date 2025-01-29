@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/check_op.h>
 #include <libstorage/platform/platform.h>
 
@@ -63,7 +64,7 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
 }
 
 // Construct a map of drivers for all types.
-std::unordered_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
+absl::flat_hash_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
 CreateDriverMap(
     libstorage::Platform* platform,
     Crypto* crypto,
@@ -74,7 +75,7 @@ CreateDriverMap(
     FingerprintAuthBlockService* fp_service,
     AsyncInitPtr<BiometricsAuthBlockService> bio_service,
     AsyncInitFeatures* features) {
-  std::unordered_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
+  absl::flat_hash_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
       driver_map;
   for (AuthFactorType auth_factor_type : {
            AuthFactorType::kPassword,

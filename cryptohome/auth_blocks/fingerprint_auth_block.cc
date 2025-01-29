@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <limits>
-#include <map>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -335,7 +334,8 @@ void FingerprintAuthBlock::ContinueCreate(
   // fingerprint credential is guarded by the rate-limiter and not the
   // credential leaf itself. So when properly following the protocol, the
   // credential authentication should never fail.
-  std::map<uint32_t, uint32_t> delay_sched{{1, kInfiniteDelay}};
+  hwsec::PinWeaverManagerFrontend::DelaySchedule delay_sched{
+      {1, kInfiniteDelay}};
 
   hwsec::StatusOr<uint64_t> result = hwsec_pw_manager_->InsertCredential(
       policies, /*le_secret=*/output->auth_pin, /*he_secret=*/he_secret,

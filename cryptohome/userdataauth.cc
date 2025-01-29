@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -3953,6 +3954,13 @@ void UserDataAuth::ListAuthFactors(
                                       reply.add_auth_intents_for_types());
     }
   }
+
+  // Sort the auth factors by label, to produce a more consistent response.
+  std::sort(reply.mutable_configured_auth_factors_with_status()->begin(),
+            reply.mutable_configured_auth_factors_with_status()->end(),
+            [](const auto& lhs, const auto& rhs) {
+              return lhs.auth_factor().label() < rhs.auth_factor().label();
+            });
 
   // This field is technically unnecessary since it is just a subset of
   // configured_auth_factors_with_status but since both fields are in use by

@@ -5,9 +5,7 @@
 #ifndef CRYPTOHOME_CLEANUP_USER_OLDEST_ACTIVITY_TIMESTAMP_MANAGER_H_
 #define CRYPTOHOME_CLEANUP_USER_OLDEST_ACTIVITY_TIMESTAMP_MANAGER_H_
 
-#include <map>
-#include <string>
-
+#include <absl/container/flat_hash_map.h>
 #include <base/time/time.h>
 #include <libstorage/platform/platform.h>
 
@@ -52,7 +50,7 @@ class UserOldestActivityTimestampManager {
                       base::Time timestamp);
 
   libstorage::Platform* platform_;
-  std::map<ObfuscatedUsername, base::Time> users_timestamp_lookup_;
+  absl::flat_hash_map<ObfuscatedUsername, base::Time> users_timestamp_lookup_;
 };
 
 }  // namespace cryptohome

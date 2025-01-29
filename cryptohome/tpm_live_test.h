@@ -8,9 +8,9 @@
 #ifndef CRYPTOHOME_TPM_LIVE_TEST_H_
 #define CRYPTOHOME_TPM_LIVE_TEST_H_
 
-#include <map>
 #include <memory>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/factory/factory.h>
@@ -55,8 +55,9 @@ class TpmLiveTest {
 
  private:
   // Helper method to try to encrypt and decrypt some data.
-  bool EncryptAndDecryptData(const brillo::SecureBlob& pcr_bound_key,
-                             const std::map<uint32_t, brillo::Blob>& pcr_map);
+  bool EncryptAndDecryptData(
+      const brillo::SecureBlob& pcr_bound_key,
+      const absl::flat_hash_map<uint32_t, brillo::Blob>& pcr_map);
 
   TestScryptThread scrypt_thread_;
   libstorage::FakePlatform platform_;

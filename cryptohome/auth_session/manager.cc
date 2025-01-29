@@ -150,15 +150,18 @@ void AuthSessionManager::RemoveUserAuthSessions(
     const ObfuscatedUsername& username) {
   absl::flat_hash_set<base::UnguessableToken, base::UnguessableTokenHash>
       tokens_being_removed;
-  for (auto iter = token_to_info_.begin(); iter != token_to_info_.end();) {
-    if (iter->second.username == username) {
-      tokens_being_removed.insert(iter->first);
-      iter = token_to_info_.erase(iter);
-    } else {
-      ++iter;
+  // Find all the tokens associated with the given user.
+  for (const auto& [token, info] : token_to_info_) {
+    if (info.username == username) {
+      tokens_being_removed.insert(token);
     }
   }
+  // Erase the tokens and sessions for the user.
+  for (const base::UnguessableToken& token : tokens_being_removed) {
+    token_to_info_.erase(token);
+  }
   user_auth_sessions_.erase(username);
+  // Remove all the entries from the expirations maps that reference the tokens.
   for (auto iter = expiration_map_.begin(); iter != expiration_map_.end();) {
     if (tokens_being_removed.contains(iter->second)) {
       iter = expiration_map_.erase(iter);
@@ -166,7 +169,6 @@ void AuthSessionManager::RemoveUserAuthSessions(
       ++iter;
     }
   }
-
   for (auto iter = auth_session_expiring_soon_map_.begin();
        iter != auth_session_expiring_soon_map_.end();) {
     if (tokens_being_removed.contains(iter->second)) {
@@ -245,25 +247,20 @@ base::UnguessableToken AuthSessionManager::AddAuthSession(
   const auto token = auth_session->token();
   const ObfuscatedUsername username = auth_session->obfuscated_username();
   const base::UnguessableToken public_token = auth_session->public_token();
-  auto token_iter = token_to_info_.lower_bound(token);
-  CHECK(token_iter == token_to_info_.end() || token_iter->first != token)
-      << "AuthSession token collision";
+  CHECK(!token_to_info_.contains(token)) << "AuthSession token collision";
 
   // Find the insertion location in the user->session map. This may create a new
   // map implicitly if this is the first session for this user. Again, we should
   // never, ever be able to get a token collision.
   auto& user_entry = user_auth_sessions_[username];
-  auto session_iter = user_entry.auth_sessions.lower_bound(token);
-  CHECK(session_iter == user_entry.auth_sessions.end() ||
-        session_iter->first != token)
+  CHECK(!user_entry.auth_sessions.contains(token))
       << "AuthSession token collision";
 
   // Add entries to both maps.
-  token_to_info_.emplace_hint(
-      token_iter, token,
-      SessionInfo{.username = username, .public_token = public_token});
-  session_iter = user_entry.auth_sessions.emplace_hint(session_iter, token,
-                                                       std::move(auth_session));
+  token_to_info_.emplace(
+      token, SessionInfo{.username = username, .public_token = public_token});
+  auto [session_iter, unused] =
+      user_entry.auth_sessions.emplace(token, std::move(auth_session));
   AuthSession& added_session = *session_iter->second;
 
   // Add an expiration entry for the session set to the end of time.

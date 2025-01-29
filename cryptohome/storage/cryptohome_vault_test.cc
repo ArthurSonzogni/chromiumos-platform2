@@ -5,9 +5,9 @@
 #include "cryptohome/storage/cryptohome_vault.h"
 
 #include <memory>
-#include <unordered_map>
 #include <utility>
 
+#include <absl/container/flat_hash_map.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -254,8 +254,8 @@ class CryptohomeVaultTest
       CreateExistingContainer(CacheContainerType());
     }
 
-    std::unordered_map<std::string,
-                       std::unique_ptr<libstorage::StorageContainer>>
+    absl::flat_hash_map<std::string,
+                        std::unique_ptr<libstorage::StorageContainer>>
         application_containers;
 
     if (ContainerType() == libstorage::StorageContainerType::kDmcrypt) {

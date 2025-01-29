@@ -4,11 +4,11 @@
 
 #include "cryptohome/user_secret_stash/decrypted.h"
 
-#include <map>
 #include <string>
 #include <utility>
 #include <variant>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/functional/overloaded.h>
 #include <base/system/sys_info.h>
 #include <brillo/secure_blob.h>
@@ -139,8 +139,8 @@ std::string GetCurrentOsVersion() {
 CryptohomeStatus EncryptIntoContainer(
     const brillo::SecureBlob& main_key,
     const FileSystemKeyset& file_system_keyset,
-    const std::map<std::string, brillo::SecureBlob>& reset_secrets,
-    const std::map<AuthFactorType, brillo::SecureBlob>&
+    const absl::flat_hash_map<std::string, brillo::SecureBlob>& reset_secrets,
+    const absl::flat_hash_map<AuthFactorType, brillo::SecureBlob>&
         rate_limiter_reset_secrets,
     const brillo::SecureBlob& key_derivation_seed,
     EncryptedUss::Container& container) {
@@ -409,8 +409,9 @@ CryptohomeStatus DecryptedUss::Transaction::Commit() && {
 DecryptedUss::Transaction::Transaction(
     DecryptedUss& uss,
     EncryptedUss::Container container,
-    std::map<std::string, brillo::SecureBlob> reset_secrets,
-    std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets)
+    absl::flat_hash_map<std::string, brillo::SecureBlob> reset_secrets,
+    absl::flat_hash_map<AuthFactorType, brillo::SecureBlob>
+        rate_limiter_reset_secrets)
     : uss_(uss),
       container_(std::move(container)),
       reset_secrets_(std::move(reset_secrets)),
@@ -523,7 +524,7 @@ DecryptedUss::FailedDecryptOrDecryptedUss DecryptedUss::FromEncryptedUss(
   }
 
   // Extract the reset secrets from the payload.
-  std::map<std::string, brillo::SecureBlob> reset_secrets;
+  absl::flat_hash_map<std::string, brillo::SecureBlob> reset_secrets;
   for (const ResetSecretMapping& item : payload->reset_secrets) {
     auto [iter, was_inserted] = reset_secrets.emplace(
         std::move(item.auth_factor_label), std::move(item.reset_secret));
@@ -535,7 +536,8 @@ DecryptedUss::FailedDecryptOrDecryptedUss DecryptedUss::FromEncryptedUss(
   }
 
   // Extract the rate limiter secrets from the payload.
-  std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets;
+  absl::flat_hash_map<AuthFactorType, brillo::SecureBlob>
+      rate_limiter_reset_secrets;
   for (const TypeToResetSecretMapping& item :
        payload->rate_limiter_reset_secrets) {
     if (!item.auth_factor_type) {
@@ -658,8 +660,9 @@ DecryptedUss::DecryptedUss(
     EncryptedUss encrypted,
     brillo::SecureBlob main_key,
     FileSystemKeyset file_system_keyset,
-    std::map<std::string, brillo::SecureBlob> reset_secrets,
-    std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets,
+    absl::flat_hash_map<std::string, brillo::SecureBlob> reset_secrets,
+    absl::flat_hash_map<AuthFactorType, brillo::SecureBlob>
+        rate_limiter_reset_secrets,
     brillo::SecureBlob key_derivation_seed)
     : storage_(std::move(storage)),
       encrypted_(std::move(encrypted)),

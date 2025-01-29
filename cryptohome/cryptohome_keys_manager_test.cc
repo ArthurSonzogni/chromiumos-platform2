@@ -4,8 +4,6 @@
 
 #include "cryptohome/cryptohome_keys_manager.h"
 
-#include <map>
-#include <string>
 #include <utility>
 #include <vector>
 

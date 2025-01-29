@@ -12,9 +12,9 @@
 #include <ostream>
 #include <string_view>
 #include <tuple>
-#include <unordered_set>
 #include <vector>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -604,7 +604,7 @@ bool Mounter::IsFirstMountComplete(
   const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
 
   // Generate the set of the top level nodes that a mount creates.
-  std::unordered_set<FilePath> initial_nodes;
+  absl::flat_hash_set<FilePath> initial_nodes;
   for (const auto& dir :
        GetCommonSubdirectories(mount_point, bind_mount_downloads_)) {
     initial_nodes.insert(dir.path);

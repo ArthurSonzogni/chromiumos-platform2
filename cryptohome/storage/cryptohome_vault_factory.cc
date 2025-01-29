@@ -7,10 +7,10 @@
 #include <limits>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/files/file_path.h>
 #include <libstorage/platform/platform.h>
 #include <libstorage/storage_container/filesystem_key.h>
@@ -251,7 +251,8 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   }
 
   std::unique_ptr<libstorage::StorageContainer> cache_container;
-  std::unordered_map<std::string, std::unique_ptr<libstorage::StorageContainer>>
+  absl::flat_hash_map<std::string,
+                      std::unique_ptr<libstorage::StorageContainer>>
       application_containers;
   if (container_type == libstorage::StorageContainerType::kDmcrypt ||
       migrating_container_type == libstorage::StorageContainerType::kDmcrypt) {

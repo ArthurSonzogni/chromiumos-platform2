@@ -4,7 +4,6 @@
 
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 
-#include <map>
 #include <optional>
 #include <utility>
 #include <vector>

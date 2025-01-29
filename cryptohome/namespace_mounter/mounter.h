@@ -11,9 +11,9 @@
 #include <sys/types.h>
 
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/files/file_path.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
@@ -177,7 +177,7 @@ class Mounter {
   //   dest - Mount point to unmount
   void ForceUnmount(const base::FilePath& src, const base::FilePath& dest);
 
-  using ProbeCounts = std::unordered_map<std::string, int>;
+  using ProbeCounts = absl::flat_hash_map<std::string, int>;
 
   // Moves the `from` item (file or directory) to the `to_dir` directory. The
   // `to_dir` destination directory must already exist and be writable. In case

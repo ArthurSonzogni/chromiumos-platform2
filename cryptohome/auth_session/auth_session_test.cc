@@ -7,13 +7,13 @@
 #include "cryptohome/auth_session/auth_session.h"
 
 #include <cstdint>
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/functional/callback_helpers.h>
 #include <base/run_loop.h>
 #include <base/task/sequenced_task_runner.h>
@@ -102,7 +102,6 @@ using ::testing::AtLeast;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::DoDefault;
-using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::Field;
 using ::testing::InSequence;
@@ -1415,10 +1414,10 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaUss) {
               UnorderedElementsAre(
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 
-  std::map<std::string, AuthFactorType> stored_factors =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
-  EXPECT_THAT(stored_factors,
-              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
+  EXPECT_THAT(stored_factors, UnorderedElementsAre(
+                                  Pair(kFakeLabel, AuthFactorType::kPassword)));
   EXPECT_THAT(
       auth_factor_manager_.GetAuthFactorMap(auth_session.obfuscated_username())
           .Find(kFakeLabel),
@@ -1515,10 +1514,10 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaAsyncUss) {
               UnorderedElementsAre(
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 
-  std::map<std::string, AuthFactorType> stored_factors =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
-  EXPECT_THAT(stored_factors,
-              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
+  EXPECT_THAT(stored_factors, UnorderedElementsAre(
+                                  Pair(kFakeLabel, AuthFactorType::kPassword)));
   EXPECT_THAT(
       auth_factor_manager_.GetAuthFactorMap(auth_session.obfuscated_username())
           .Find(kFakeLabel),
@@ -1581,7 +1580,7 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaAsyncUssFails) {
   EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
   ASSERT_EQ(add_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
-  std::map<std::string, AuthFactorType> stored_factors =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors, IsEmpty());
 }
@@ -1746,11 +1745,11 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAndPinAuthFactorViaUss) {
 
   // Verify.
   ASSERT_THAT(add_pin_future.Get(), IsOk());
-  std::map<std::string, AuthFactorType> stored_factors =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
-              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
-                          Pair(kFakePinLabel, AuthFactorType::kPin)));
+              UnorderedElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
+                                   Pair(kFakePinLabel, AuthFactorType::kPin)));
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(),
               UnorderedElementsAre(
@@ -2507,11 +2506,11 @@ TEST_F(AuthSessionWithUssTest, AddCryptohomeRecoveryAuthFactor) {
 
   // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
-  std::map<std::string, AuthFactorType> stored_factors =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
-  EXPECT_THAT(
-      stored_factors,
-      ElementsAre(Pair(kFakeLabel, AuthFactorType::kCryptohomeRecovery)));
+  EXPECT_THAT(stored_factors,
+              UnorderedElementsAre(
+                  Pair(kFakeLabel, AuthFactorType::kCryptohomeRecovery)));
   // There should be no verifier for the recovery factor.
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
@@ -3212,11 +3211,11 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactor) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Both password and pin are available.
-  std::map<std::string, AuthFactorType> stored_factors =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
-              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
-                          Pair(kFakePinLabel, AuthFactorType::kPin)));
+              UnorderedElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
+                                   Pair(kFakePinLabel, AuthFactorType::kPin)));
   {
     const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
         auth_session.obfuscated_username());
@@ -3238,10 +3237,10 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactor) {
   EXPECT_THAT(remove_future.Get(), IsOk());
 
   // Only password is available.
-  std::map<std::string, AuthFactorType> stored_factors_1 =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors_1 =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
-  EXPECT_THAT(stored_factors_1,
-              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
+  EXPECT_THAT(stored_factors_1, UnorderedElementsAre(Pair(
+                                    kFakeLabel, AuthFactorType::kPassword)));
   {
     const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
         auth_session.obfuscated_username());
@@ -3299,11 +3298,11 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorPartialRemoveIsStillOk) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Both password and pin are available.
-  std::map<std::string, AuthFactorType> stored_factors =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
-              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
-                          Pair(kFakePinLabel, AuthFactorType::kPin)));
+              UnorderedElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
+                                   Pair(kFakePinLabel, AuthFactorType::kPin)));
   {
     const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
         auth_session.obfuscated_username());
@@ -3335,10 +3334,10 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorPartialRemoveIsStillOk) {
   EXPECT_THAT(remove_future.Get(), IsOk());
 
   // Only password is available.
-  std::map<std::string, AuthFactorType> stored_factors_1 =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors_1 =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
-  EXPECT_THAT(stored_factors_1,
-              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
+  EXPECT_THAT(stored_factors_1, UnorderedElementsAre(Pair(
+                                    kFakeLabel, AuthFactorType::kPassword)));
   {
     const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
         auth_session.obfuscated_username());
@@ -3396,11 +3395,12 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorRemovesCredentialVerifier) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Both passwords are available, the first one should supply a verifier.
-  std::map<std::string, AuthFactorType> stored_factors =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
-  EXPECT_THAT(stored_factors,
-              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
-                          Pair(kFakeOtherLabel, AuthFactorType::kPassword)));
+  EXPECT_THAT(
+      stored_factors,
+      UnorderedElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
+                           Pair(kFakeOtherLabel, AuthFactorType::kPassword)));
   {
     const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
         auth_session.obfuscated_username());
@@ -3428,10 +3428,10 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorRemovesCredentialVerifier) {
   EXPECT_THAT(remove_future.Get(), IsOk());
 
   // Only the first password is available.
-  std::map<std::string, AuthFactorType> stored_factors_1 =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors_1 =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
-  EXPECT_THAT(stored_factors_1,
-              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
+  EXPECT_THAT(stored_factors_1, UnorderedElementsAre(Pair(
+                                    kFakeLabel, AuthFactorType::kPassword)));
   {
     const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
         auth_session.obfuscated_username());
@@ -3668,7 +3668,7 @@ TEST_F(AuthSessionWithUssTest, AddPinAfterRecoveryAuth) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Verify PIN factor is added.
-  std::map<std::string, AuthFactorType> stored_factors =
+  absl::flat_hash_map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
               UnorderedElementsAre(

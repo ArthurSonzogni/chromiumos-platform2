@@ -5,9 +5,9 @@
 #ifndef CRYPTOHOME_USER_SECRET_STASH_MANAGER_H_
 #define CRYPTOHOME_USER_SECRET_STASH_MANAGER_H_
 
-#include <map>
 #include <string>
 
+#include <absl/container/flat_hash_map.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/error/cryptohome_error.h"
@@ -119,7 +119,7 @@ class UssManager {
   UssStorage* const storage_;
 
   // A copy of all of the loaded encrypted USS instances.
-  std::map<ObfuscatedUsername, EncryptedUss> map_of_encrypted_;
+  absl::flat_hash_map<ObfuscatedUsername, EncryptedUss> map_of_encrypted_;
 
   // A copy of all of the loaded decrypted USS instances along with a token
   // count. The token count basically acts as a reference count; when the number
@@ -135,7 +135,7 @@ class UssManager {
     DecryptedUss uss;
     int token_count;
   };
-  std::map<ObfuscatedUsername, DecryptedWithCount> map_of_decrypted_;
+  absl::flat_hash_map<ObfuscatedUsername, DecryptedWithCount> map_of_decrypted_;
 };
 
 }  // namespace cryptohome

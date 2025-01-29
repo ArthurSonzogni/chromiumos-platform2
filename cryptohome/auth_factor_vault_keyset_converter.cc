@@ -6,11 +6,11 @@
 
 #include <stdint.h>
 
-#include <map>
 #include <memory>
 #include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/check.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
@@ -167,8 +167,9 @@ user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
     const ObfuscatedUsername& obfuscated_username,
     std::vector<std::string>& migrated_labels,
-    std::map<std::string, AuthFactor>& out_label_to_auth_factor,
-    std::map<std::string, AuthFactor>& out_label_to_auth_factor_backup_vks) {
+    absl::flat_hash_map<std::string, AuthFactor>& out_label_to_auth_factor,
+    absl::flat_hash_map<std::string, AuthFactor>&
+        out_label_to_auth_factor_backup_vks) {
   out_label_to_auth_factor.clear();
   out_label_to_auth_factor_backup_vks.clear();
   migrated_labels.clear();
@@ -206,7 +207,7 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
     }
 
     // Select map to write the auth factor into.
-    std::map<std::string, AuthFactor>& out_map =
+    absl::flat_hash_map<std::string, AuthFactor>& out_map =
         vk->IsForBackup() ? out_label_to_auth_factor_backup_vks
                           : out_label_to_auth_factor;
 

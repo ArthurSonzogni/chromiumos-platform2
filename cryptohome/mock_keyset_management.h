@@ -5,7 +5,6 @@
 #ifndef CRYPTOHOME_MOCK_KEYSET_MANAGEMENT_H_
 #define CRYPTOHOME_MOCK_KEYSET_MANAGEMENT_H_
 
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -25,8 +24,6 @@
 namespace cryptohome {
 class VaultKeyset;
 class HomeDirs;
-
-typedef std::map<std::string, KeyData> KeyLabelMap;
 
 class MockKeysetManagement : public KeysetManagement {
  public:

@@ -5,13 +5,13 @@
 #ifndef CRYPTOHOME_AUTH_SESSION_AUTH_SESSION_H_
 #define CRYPTOHOME_AUTH_SESSION_AUTH_SESSION_H_
 
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_forward.h>
@@ -955,7 +955,7 @@ class AuthSession final {
   // Whether the user existed at the time this object was constructed.
   bool user_exists_;
   // Tokens from active auth factors, keyed off of the token's auth factor type.
-  std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
+  absl::flat_hash_map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
       active_auth_factor_tokens_;
 
   // Weak factory for creating weak pointers to |this| for timed tasks.

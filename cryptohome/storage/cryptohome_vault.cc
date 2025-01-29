@@ -5,9 +5,9 @@
 #include <memory>
 #include <string>
 #include <tuple>
-#include <unordered_map>
 #include <utility>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <cryptohome/storage/cryptohome_vault.h>
@@ -28,8 +28,8 @@ CryptohomeVault::CryptohomeVault(
     std::unique_ptr<libstorage::StorageContainer> container,
     std::unique_ptr<libstorage::StorageContainer> migrating_container,
     std::unique_ptr<libstorage::StorageContainer> cache_container,
-    std::unordered_map<std::string,
-                       std::unique_ptr<libstorage::StorageContainer>>
+    absl::flat_hash_map<std::string,
+                        std::unique_ptr<libstorage::StorageContainer>>
         application_containers,
     libstorage::Platform* platform)
     : obfuscated_username_(obfuscated_username),

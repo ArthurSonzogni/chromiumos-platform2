@@ -13,12 +13,12 @@
 #include <sysexits.h>
 
 #include <csignal>
-#include <map>
 #include <memory>
 #include <vector>
 
 #include <absl/cleanup/cleanup.h>
 #include <base/at_exit.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/callback.h>
@@ -46,8 +46,9 @@ namespace {
 using base::FilePath;
 using brillo::cryptohome::home::GetGuestUsername;
 
-std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
-    kProtobufMountType = {
+constexpr auto kProtobufMountType =
+    base::MakeFixedFlatMap<cryptohome::MountType,
+                           cryptohome::OutOfProcessMountRequest::MountType>({
         // Not mounted.
         {cryptohome::MountType::NONE,
          cryptohome::OutOfProcessMountRequest_MountType_NONE},
@@ -70,10 +71,13 @@ std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
          cryptohome::OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DMCRYPT},
         {cryptohome::MountType::DIR_CRYPTO_TO_DMCRYPT,
          cryptohome::OutOfProcessMountRequest_MountType_DIR_CRYPTO_TO_DMCRYPT},
-};
+    });
 
-const std::vector<FilePath> kDaemonDirPaths = {
-    FilePath("session_manager"), FilePath("shill"), FilePath("shill_logs")};
+const std::vector<FilePath>& DaemonDirPaths() {
+  static const auto& kDaemonDirPaths = *new std::vector<FilePath>(
+      {FilePath("session_manager"), FilePath("shill"), FilePath("shill_logs")});
+  return kDaemonDirPaths;
+}
 
 void CleanUpGuestDaemonDirectories(libstorage::Platform* platform) {
   FilePath root_home_dir =
@@ -83,7 +87,7 @@ void CleanUpGuestDaemonDirectories(libstorage::Platform* platform) {
     return;
   }
 
-  for (const FilePath& daemon_path : kDaemonDirPaths) {
+  for (const FilePath& daemon_path : DaemonDirPaths()) {
     FilePath to_delete = root_home_dir.Append(daemon_path);
     if (platform->DirectoryExists(to_delete)) {
       LOG(INFO) << "Attempting to delete " << to_delete.value();
@@ -163,8 +167,10 @@ int main(int argc, char** argv) {
   }
 
   cryptohome::OutOfProcessMountResponse response;
-  bool is_ephemeral =
-      request.type() == kProtobufMountType[cryptohome::MountType::EPHEMERAL];
+  auto mount_type_iter =
+      kProtobufMountType.find(cryptohome::MountType::EPHEMERAL);
+  bool is_ephemeral = mount_type_iter != kProtobufMountType.end() &&
+                      request.type() == mount_type_iter->second;
 
   absl::Cleanup unmount_on_exit = [&mounter]() { mounter.UnmountAll(); };
 

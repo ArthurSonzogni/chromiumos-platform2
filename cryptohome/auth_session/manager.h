@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/location.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
@@ -173,14 +174,19 @@ class AuthSessionManager {
     // The public token for the session.
     base::UnguessableToken public_token;
   };
-  std::map<base::UnguessableToken, SessionInfo> token_to_info_;
+  absl::flat_hash_map<base::UnguessableToken,
+                      SessionInfo,
+                      base::UnguessableTokenHash>
+      token_to_info_;
 
   // For each user, stores all of their sessions as well as a work queue.
   struct UserAuthSessions {
     // All of the auth sessions for this user. If one of the sessions is in
     // active use then it will still have an entry in this map but the value
     // will be nullptr with the ownership being held by an InUseAuthSession.
-    std::map<base::UnguessableToken, std::unique_ptr<AuthSession>>
+    absl::flat_hash_map<base::UnguessableToken,
+                        std::unique_ptr<AuthSession>,
+                        base::UnguessableTokenHash>
         auth_sessions;
     // A queue of pending work for the session.
     std::queue<PendingWork> work_queue;
@@ -188,7 +194,7 @@ class AuthSessionManager {
     // is removed while it is in use.
     std::optional<base::UnguessableToken> zombie_session;
   };
-  std::map<ObfuscatedUsername, UserAuthSessions> user_auth_sessions_;
+  absl::flat_hash_map<ObfuscatedUsername, UserAuthSessions> user_auth_sessions_;
 
   // Timer infrastructure used to track sessions for expiration. This is done by
   // using a map of expiration time -> token to keep track of when sessions

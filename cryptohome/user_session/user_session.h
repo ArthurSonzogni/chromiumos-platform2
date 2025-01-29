@@ -5,12 +5,11 @@
 #ifndef CRYPTOHOME_USER_SESSION_USER_SESSION_H_
 #define CRYPTOHOME_USER_SESSION_USER_SESSION_H_
 
-#include <map>
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 
@@ -143,9 +142,9 @@ class UserSession {
 
  private:
   // Storage for CredentialVerifiers associated with the session.
-  std::map<std::string, std::unique_ptr<CredentialVerifier>>
+  absl::flat_hash_map<std::string, std::unique_ptr<CredentialVerifier>>
       label_to_credential_verifier_;
-  std::map<AuthFactorType, std::unique_ptr<CredentialVerifier>>
+  absl::flat_hash_map<AuthFactorType, std::unique_ptr<CredentialVerifier>>
       type_to_credential_verifier_;
 };
 

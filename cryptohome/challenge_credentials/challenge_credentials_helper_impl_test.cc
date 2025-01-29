@@ -6,8 +6,6 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 
-#include <cstdint>
-#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -348,11 +346,6 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Then it's verified to be passed into the
   // hwsec::CryptohomeFrontend::SealWithSignatureAndCurrentUser method.
   const ObfuscatedUsername kObfuscatedUsername{"obfuscated_username"};
-  // Fake PCR restrictions.
-  const std::map<uint32_t, brillo::Blob> kDefaultPcrMap{{0, {9, 9, 9}},
-                                                        {10, {11, 11, 11}}};
-  const std::map<uint32_t, brillo::Blob> kExtendedPcrMap{{0, {9, 9, 9}},
-                                                         {10, {12, 12, 12}}};
 
   // Constants which are injected as fake data into intermediate steps of the
   // ChallengeCredentialsHelperImpl operations:

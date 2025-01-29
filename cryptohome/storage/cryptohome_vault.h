@@ -7,8 +7,8 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 
+#include <absl/container/flat_hash_map.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <libstorage/platform/platform.h>
 #include <libstorage/storage_container/filesystem_key.h>
@@ -42,8 +42,8 @@ class CryptohomeVault {
       std::unique_ptr<libstorage::StorageContainer> container,
       std::unique_ptr<libstorage::StorageContainer> migrating_container,
       std::unique_ptr<libstorage::StorageContainer> cache_container,
-      std::unordered_map<std::string,
-                         std::unique_ptr<libstorage::StorageContainer>>
+      absl::flat_hash_map<std::string,
+                          std::unique_ptr<libstorage::StorageContainer>>
           application_containers,
       libstorage::Platform* platform);
   ~CryptohomeVault();
@@ -100,7 +100,8 @@ class CryptohomeVault {
   // serves as the backing store for temporary data.
   std::unique_ptr<libstorage::StorageContainer> cache_container_;
   // Containers that store application info.
-  std::unordered_map<std::string, std::unique_ptr<libstorage::StorageContainer>>
+  absl::flat_hash_map<std::string,
+                      std::unique_ptr<libstorage::StorageContainer>>
       application_containers_;
 
   libstorage::Platform* platform_;

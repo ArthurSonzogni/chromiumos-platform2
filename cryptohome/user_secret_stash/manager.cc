@@ -97,16 +97,15 @@ CryptohomeStatusOr<const EncryptedUss*> UssManager::LoadEncrypted(
 
   // There isn't a decrypted USS, but there could be an encrypted USS already
   // loaded. Look for that.
-  auto encrypt_iter = map_of_encrypted_.lower_bound(username);
-  if (encrypt_iter == map_of_encrypted_.end() ||
-      encrypt_iter->first != username) {
+  auto encrypt_iter = map_of_encrypted_.find(username);
+  if (encrypt_iter == map_of_encrypted_.end()) {
     // There's no loaded USS, try to load it.
     UserUssStorage user_storage(*storage_, username);
     ASSIGN_OR_RETURN(auto encrypted_uss,
                      EncryptedUss::FromStorage(user_storage));
     // On a successful load we can move the USS into the map.
-    encrypt_iter = map_of_encrypted_.emplace_hint(encrypt_iter, username,
-                                                  std::move(encrypted_uss));
+    std::tie(encrypt_iter, std::ignore) =
+        map_of_encrypted_.emplace(username, std::move(encrypted_uss));
   }
 
   // At this point encrypt_iter is either the existing entry or a newly added
@@ -156,9 +155,8 @@ CryptohomeStatusOr<UssManager::DecryptToken> UssManager::AddDecrypted(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   // If there's already a decrypted USS loaded for this user, fail.
-  auto decrypt_iter = map_of_decrypted_.lower_bound(username);
-  if (decrypt_iter != map_of_decrypted_.end() &&
-      decrypt_iter->first == username) {
+  auto decrypt_iter = map_of_decrypted_.find(username);
+  if (decrypt_iter != map_of_decrypted_.end()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUssManagerAddDecryptedWhenDecryptedExists),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -166,8 +164,8 @@ CryptohomeStatusOr<UssManager::DecryptToken> UssManager::AddDecrypted(
   }
   // If we get here then we can safely insert the new DecryptedUss without
   // collisions. Do that and return a token for accessing it.
-  map_of_decrypted_.emplace_hint(
-      decrypt_iter, username,
+  map_of_decrypted_.emplace(
+      username,
       DecryptedWithCount{.uss = std::move(decrypted_uss), .token_count = 0});
   return DecryptToken(this, username);
 }
@@ -176,17 +174,15 @@ CryptohomeStatusOr<UssManager::DecryptToken> UssManager::LoadDecrypted(
     const ObfuscatedUsername& username,
     const std::string& wrapping_id,
     const brillo::SecureBlob& wrapping_key) {
-  auto decrypt_iter = map_of_decrypted_.lower_bound(username);
-  if (decrypt_iter == map_of_decrypted_.end() ||
-      decrypt_iter->first != username) {
+  auto decrypt_iter = map_of_decrypted_.find(username);
+  if (decrypt_iter == map_of_decrypted_.end()) {
     UserUssStorage user_storage(*storage_, username);
 
     // There's no already-decrypted USS, so try to decrypt it. First step is to
     // try and get an encrypted USS.
-    auto encrypt_iter = map_of_encrypted_.lower_bound(username);
+    auto encrypt_iter = map_of_encrypted_.find(username);
     auto encrypted = [&]() -> CryptohomeStatusOr<EncryptedUss> {
-      if (encrypt_iter != map_of_encrypted_.end() &&
-          encrypt_iter->first == username) {
+      if (encrypt_iter != map_of_encrypted_.end()) {
         return std::move(encrypt_iter->second);
       } else {
         return EncryptedUss::FromStorage(user_storage);
@@ -205,10 +201,8 @@ CryptohomeStatusOr<UssManager::DecryptToken> UssManager::LoadDecrypted(
       // we already had it in the encrypted map, in which case we should put it
       // back, or we didn't have it in which case we should add it. Then we can
       // return the error from the decrypt.
-      if (encrypt_iter == map_of_encrypted_.end() ||
-          encrypt_iter->first != username) {
-        map_of_encrypted_.emplace_hint(encrypt_iter, username,
-                                       std::move(failed->encrypted));
+      if (encrypt_iter == map_of_encrypted_.end()) {
+        map_of_encrypted_.emplace(username, std::move(failed->encrypted));
       } else {
         encrypt_iter->second = std::move(failed->encrypted);
       }
@@ -218,12 +212,11 @@ CryptohomeStatusOr<UssManager::DecryptToken> UssManager::LoadDecrypted(
     // If we get here, we have successfully decrypted the USS. We should insert
     // it into the map of decrypted, and we should remove the entry from the map
     // of encrypted if there was one.
-    if (encrypt_iter != map_of_encrypted_.end() &&
-        encrypt_iter->first == username) {
+    if (encrypt_iter != map_of_encrypted_.end()) {
       map_of_encrypted_.erase(encrypt_iter);
     }
-    decrypt_iter = map_of_decrypted_.emplace_hint(
-        decrypt_iter, username,
+    std::tie(decrypt_iter, std::ignore) = map_of_decrypted_.emplace(
+        username,
         DecryptedWithCount{
             .uss = std::move(std::get<DecryptedUss>(decrypted_or_failure)),
             .token_count = 0});

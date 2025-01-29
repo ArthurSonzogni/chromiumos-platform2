@@ -7,11 +7,11 @@
 
 #include <sys/stat.h>
 
-#include <map>
 #include <optional>
 #include <string>
-#include <unordered_set>
 
+#include <absl/container/flat_hash_map.h>
+#include <absl/container/flat_hash_set.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <libstorage/platform/platform.h>
@@ -61,9 +61,9 @@ class FakeMigrationHelperDelegate : public MigrationHelperDelegate {
   int64_t FreeSpaceForMigrator() override;
 
  private:
-  std::unordered_set<base::FilePath> denylisted_paths_;
-  std::map<std::string, std::string> xattr_mappings_;
-  std::map<uid_t, std::optional<uid_t>> uid_mappings_;
+  absl::flat_hash_set<base::FilePath> denylisted_paths_;
+  absl::flat_hash_map<std::string, std::string> xattr_mappings_;
+  absl::flat_hash_map<uid_t, std::optional<uid_t>> uid_mappings_;
   std::optional<int64_t> free_disk_space_for_migrator_;
   const libstorage::Platform* platform_;
   const base::FilePath to_dir_;

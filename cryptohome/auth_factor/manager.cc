@@ -6,7 +6,6 @@
 
 #include <sys/stat.h>
 
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -103,10 +102,12 @@ AuthFactorManager::AuthFactorManager(libstorage::Platform* platform,
 
 AuthFactorMap& AuthFactorManager::GetAuthFactorMap(
     const ObfuscatedUsername& username) {
-  auto iter = map_of_af_maps_.lower_bound(username);
-  if (iter == map_of_af_maps_.end() || iter->first != username) {
-    iter = map_of_af_maps_.emplace_hint(iter, username,
-                                        LoadAllAuthFactors(username));
+  // We can't just use try_emplace to insert the element if it doesn't exist
+  // because that will still call LoadAllAuthFactors on every attempt.
+  auto iter = map_of_af_maps_.find(username);
+  if (iter == map_of_af_maps_.end()) {
+    std::tie(iter, std::ignore) =
+        map_of_af_maps_.emplace(username, LoadAllAuthFactors(username));
   }
   return iter->second;
 }
@@ -270,9 +271,10 @@ CryptohomeStatusOr<AuthFactor> AuthFactorManager::LoadAuthFactor(
       serialized_factor.value().auth_block_state);
 }
 
-AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
+absl::flat_hash_map<std::string, AuthFactorType>
+AuthFactorManager::ListAuthFactors(
     const ObfuscatedUsername& obfuscated_username) {
-  LabelToTypeMap label_to_type_map;
+  absl::flat_hash_map<std::string, AuthFactorType> label_to_type_map;
 
   std::unique_ptr<libstorage::FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(AuthFactorsDirPath(obfuscated_username),
@@ -465,8 +467,8 @@ AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
   // Load all the VaultKeysets and backup VaultKeysets in disk and convert
   // them to AuthFactor format.
   std::vector<std::string> migrated_labels;
-  std::map<std::string, AuthFactor> vk_factor_map;
-  std::map<std::string, AuthFactor> backup_factor_map;
+  absl::flat_hash_map<std::string, AuthFactor> vk_factor_map;
+  absl::flat_hash_map<std::string, AuthFactor> backup_factor_map;
   converter_.VaultKeysetsToAuthFactorsAndKeyLabelData(
       obfuscated_username, migrated_labels, vk_factor_map, backup_factor_map);
 

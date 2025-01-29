@@ -9,13 +9,11 @@
 #include <sys/stat.h>
 #include <sysexits.h>
 
-#include <algorithm>
-#include <map>
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include <absl/cleanup/cleanup.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -94,25 +92,26 @@ bool WaitForHelper(int read_from_helper, const base::TimeDelta& timeout) {
   return (poll_fd.revents & POLLIN) == POLLIN;
 }
 
-std::map<MountType, OutOfProcessMountRequest_MountType> kProtobufMountType = {
-    // Not mounted.
-    {MountType::NONE, OutOfProcessMountRequest_MountType_NONE},
-    // Encrypted with ecryptfs.
-    {MountType::ECRYPTFS, OutOfProcessMountRequest_MountType_ECRYPTFS},
-    // Encrypted with dircrypto.
-    {MountType::DIR_CRYPTO, OutOfProcessMountRequest_MountType_DIR_CRYPTO},
-    // Encrypted with dmcrpyt.
-    {MountType::DMCRYPT, OutOfProcessMountRequest_MountType_DMCRYPT},
-    // Ephemeral mount.
-    {MountType::EPHEMERAL, OutOfProcessMountRequest_MountType_EPHEMERAL},
-    // Vault Migration.
-    {MountType::ECRYPTFS_TO_DIR_CRYPTO,
-     OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DIR_CRYPTO},
-    {MountType::ECRYPTFS_TO_DMCRYPT,
-     OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DMCRYPT},
-    {MountType::DIR_CRYPTO_TO_DMCRYPT,
-     OutOfProcessMountRequest_MountType_DIR_CRYPTO_TO_DMCRYPT},
-};
+constexpr auto kProtobufMountType =
+    base::MakeFixedFlatMap<MountType, OutOfProcessMountRequest::MountType>({
+        // Not mounted.
+        {MountType::NONE, OutOfProcessMountRequest_MountType_NONE},
+        // Encrypted with ecryptfs.
+        {MountType::ECRYPTFS, OutOfProcessMountRequest_MountType_ECRYPTFS},
+        // Encrypted with dircrypto.
+        {MountType::DIR_CRYPTO, OutOfProcessMountRequest_MountType_DIR_CRYPTO},
+        // Encrypted with dmcrpyt.
+        {MountType::DMCRYPT, OutOfProcessMountRequest_MountType_DMCRYPT},
+        // Ephemeral mount.
+        {MountType::EPHEMERAL, OutOfProcessMountRequest_MountType_EPHEMERAL},
+        // Vault Migration.
+        {MountType::ECRYPTFS_TO_DIR_CRYPTO,
+         OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DIR_CRYPTO},
+        {MountType::ECRYPTFS_TO_DMCRYPT,
+         OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DMCRYPT},
+        {MountType::DIR_CRYPTO_TO_DMCRYPT,
+         OutOfProcessMountRequest_MountType_DIR_CRYPTO_TO_DMCRYPT},
+    });
 
 StorageStatus OopErrorCodeToStatus(MountError error) {
   if (error == MOUNT_ERROR_NONE) {
@@ -293,7 +292,10 @@ StorageStatus OutOfProcessMountHelper::PerformMount(
   request.set_legacy_home(legacy_home_);
   request.set_mount_namespace_path(
       IsolateUserSession() ? kUserSessionMountNamespacePath : "");
-  request.set_type(kProtobufMountType[mount_type]);
+  auto mount_type_iter = kProtobufMountType.find(mount_type);
+  if (mount_type_iter != kProtobufMountType.end()) {
+    request.set_type(mount_type_iter->second);
+  }
   request.set_fek_signature(fek_signature);
   request.set_fnek_signature(fnek_signature);
 

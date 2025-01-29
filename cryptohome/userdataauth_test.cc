@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <deque>
 #include <limits>
+#include <map>
 #include <memory>
 #include <optional>
 
@@ -752,11 +753,16 @@ TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
   EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername2,
                                                    std::move(owned_session2)));
 
-  InSequence sequence;
-  EXPECT_CALL(*session2, IsActive()).WillOnce(Return(true));
-  EXPECT_CALL(*session2, Unmount()).WillOnce(Return(false));
-  EXPECT_CALL(*session1, IsActive()).WillOnce(Return(true));
-  EXPECT_CALL(*session1, Unmount()).WillOnce(Return(true));
+  {
+    InSequence sequence;
+    EXPECT_CALL(*session2, IsActive()).WillOnce(Return(true));
+    EXPECT_CALL(*session2, Unmount()).WillOnce(Return(false));
+  }
+  {
+    InSequence sequence;
+    EXPECT_CALL(*session1, IsActive()).WillOnce(Return(true));
+    EXPECT_CALL(*session1, Unmount()).WillOnce(Return(true));
+  }
   EXPECT_FALSE(userdataauth_->RemoveAllMounts());
 }
 
@@ -2749,7 +2755,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
   KeyData key_data;
   key_data.set_label(kFakeLabel);
   key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
-  KeyLabelMap keyLabelData = {{kFakeLabel, key_data}};
 
   EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));

@@ -5,13 +5,11 @@
 
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 
-#include <stdint.h>
-
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/check.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
@@ -107,8 +105,8 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
   FileSystemKeyset file_system_keyset_;
   std::unique_ptr<KeysetManagement> keyset_management_;
   std::unique_ptr<AuthFactorVaultKeysetConverter> converter_;
-  std::map<std::string, AuthFactor> label_to_auth_factor_;
-  std::map<std::string, AuthFactor> label_to_auth_factor_backup_;
+  absl::flat_hash_map<std::string, AuthFactor> label_to_auth_factor_;
+  absl::flat_hash_map<std::string, AuthFactor> label_to_auth_factor_backup_;
   std::vector<std::string> migrated_labels_;
   KeyBlobs key_blobs_;
   AuthBlockState auth_state_;

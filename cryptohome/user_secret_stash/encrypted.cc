@@ -4,7 +4,6 @@
 
 #include "cryptohome/user_secret_stash/encrypted.h"
 
-#include <map>
 #include <string>
 #include <string_view>
 #include <utility>

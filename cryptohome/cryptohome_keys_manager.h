@@ -5,11 +5,11 @@
 #ifndef CRYPTOHOME_CRYPTOHOME_KEYS_MANAGER_H_
 #define CRYPTOHOME_CRYPTOHOME_KEYS_MANAGER_H_
 
-#include <map>
 #include <memory>
 #include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_map.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 
@@ -60,7 +60,7 @@ class CryptohomeKeysManager {
 
  private:
   const hwsec::CryptohomeFrontend* const hwsec_;
-  std::map<CryptohomeKeyType, std::unique_ptr<CryptohomeKeyLoader>>
+  absl::flat_hash_map<CryptohomeKeyType, std::unique_ptr<CryptohomeKeyLoader>>
       key_loaders_;
 };
 

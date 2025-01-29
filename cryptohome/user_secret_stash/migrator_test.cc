@@ -4,11 +4,11 @@
 
 #include "cryptohome/user_secret_stash/migrator.h"
 
-#include <map>
 #include <memory>
 #include <string>
 #include <utility>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
@@ -107,7 +107,7 @@ class UssMigratorTest : public ::testing::Test {
   UssStorage uss_storage_{&platform_};
   UssManager uss_manager_{uss_storage_};
   UserUssStorage user_uss_storage_{uss_storage_, username_};
-  std::map<std::string, std::unique_ptr<VaultKeyset>> vk_map_;
+  absl::flat_hash_map<std::string, std::unique_ptr<VaultKeyset>> vk_map_;
   std::unique_ptr<VaultKeyset> pin_vault_keyset_;
   UssMigrator migrator_;
 

@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
@@ -1022,7 +1023,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
               Contains(kDefaultLabel));
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
-  std::map<std::string, AuthFactorType> factor_map =
+  absl::flat_hash_map<std::string, AuthFactorType> factor_map =
       system_apis_.auth_factor_manager.ListAuthFactors(users_[0].obfuscated);
   ASSERT_NE(factor_map.find(kDefaultLabel), factor_map.end());
   ASSERT_EQ(GetAuthFactorMap().Find(kDefaultLabel)->storage_type(),
@@ -1193,7 +1194,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
               Contains(kPasswordLabel2));
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
-  std::map<std::string, AuthFactorType> factor_map =
+  absl::flat_hash_map<std::string, AuthFactorType> factor_map =
       system_apis_.auth_factor_manager.ListAuthFactors(users_[0].obfuscated);
   ASSERT_NE(factor_map.find(kPasswordLabel), factor_map.end());
   ASSERT_NE(factor_map.find(kPasswordLabel2), factor_map.end());

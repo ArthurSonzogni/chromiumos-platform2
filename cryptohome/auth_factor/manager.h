@@ -5,9 +5,9 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_MANAGER_H_
 #define CRYPTOHOME_AUTH_FACTOR_MANAGER_H_
 
-#include <map>
 #include <string>
 
+#include <absl/container/flat_hash_map.h>
 #include <base/memory/weak_ptr.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 #include <libstorage/platform/platform.h>
@@ -30,9 +30,6 @@ namespace cryptohome {
 // factors configured for a given user).
 class AuthFactorManager final {
  public:
-  // Mapping between auth factor label and type.
-  using LabelToTypeMap = std::map<std::string, AuthFactorType>;
-
   AuthFactorManager(libstorage::Platform* platform,
                     KeysetManagement* keyset_management,
                     UssManager* uss_manager);
@@ -78,7 +75,8 @@ class AuthFactorManager final {
       const std::string& auth_factor_label);
 
   // Loads the list of configured auth factors from the user's data vault.
-  LabelToTypeMap ListAuthFactors(const ObfuscatedUsername& obfuscated_username);
+  absl::flat_hash_map<std::string, AuthFactorType> ListAuthFactors(
+      const ObfuscatedUsername& obfuscated_username);
 
   // Removes the auth factor:
   // 1. Calls PrepareForRemoval() on the AuthBlock. A failure in
@@ -152,7 +150,7 @@ class AuthFactorManager final {
   AuthFactorVaultKeysetConverter converter_;
 
   // All loaded auth factor maps, per-user.
-  std::map<ObfuscatedUsername, AuthFactorMap> map_of_af_maps_;
+  absl::flat_hash_map<ObfuscatedUsername, AuthFactorMap> map_of_af_maps_;
 
   // The last member, to invalidate weak references first on destruction.
   base::WeakPtrFactory<AuthFactorManager> weak_factory_{this};

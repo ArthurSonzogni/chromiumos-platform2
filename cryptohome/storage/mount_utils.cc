@@ -12,7 +12,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <unordered_map>
 #include <vector>
 
 #include <base/files/file_util.h>
