@@ -51,7 +51,7 @@ constexpr char kSmallCpuIdsFromHighestPerf[] = "0,1,6,7";
 using SchedulerUtilTest = ::testing::Test;
 
 void run_with_attr(const char* attrFile,
-                   const base::span<const std::string_view> attributes,
+                   base::span<const std::string_view> attributes,
                    const char* expectedCpuIds) {
   base::ScopedTempDir tmpdir;
   ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
@@ -77,26 +77,26 @@ void run_with_attr(const char* attrFile,
 }
 
 TEST_F(SchedulerUtilTest, TestSmallCoreCpuIdsFromCapacity) {
-  const std::vector<const std::string_view> attributes(std::begin(kCapacities),
-                                                       std::end(kCapacities));
+  const std::vector<std::string_view> attributes(std::begin(kCapacities),
+                                                 std::end(kCapacities));
   run_with_attr(kCpuCapFile, attributes, kSmallCpuIdsFromCap);
 }
 
 TEST_F(SchedulerUtilTest, TestSmallCoreCpuIdsFromFreqForHybrid) {
-  const std::vector<const std::string_view> attributes(
-      std::begin(kHybridMaxFreqs), std::end(kHybridMaxFreqs));
+  const std::vector<std::string_view> attributes(std::begin(kHybridMaxFreqs),
+                                                 std::end(kHybridMaxFreqs));
   run_with_attr(kCpuMaxFreqFile, attributes, kSmallCpuIdsFromHybridFreq);
 }
 
 TEST_F(SchedulerUtilTest, TestSmallCoreCpuIdsFromCppcForHybrid) {
-  const std::vector<const std::string_view> attributes(
+  const std::vector<std::string_view> attributes(
       std::begin(kHybridHighestPerfs), std::end(kHybridHighestPerfs));
   run_with_attr(kCpuHighestPerfFile, attributes, kSmallCpuIdsFromHighestPerf);
 }
 
 TEST_F(SchedulerUtilTest, TestSmallCoreCpuIdsFromFreqForNonHybrid) {
-  const std::vector<const std::string_view> attributes(
-      std::begin(kNonHybridMaxFreqs), std::end(kNonHybridMaxFreqs));
+  const std::vector<std::string_view> attributes(std::begin(kNonHybridMaxFreqs),
+                                                 std::end(kNonHybridMaxFreqs));
   run_with_attr(kCpuMaxFreqFile, attributes, kSmallCpuIdsNonHybridFreq);
 }
 
