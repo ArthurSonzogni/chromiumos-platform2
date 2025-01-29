@@ -3,7 +3,13 @@
 # found in the LICENSE file.
 
 group("all") {
-  deps = [ ":fortify_tests" ]
+  deps = []
+
+  # FORTIFY is forcibly disabled for these; ignore FORTIFY tests if they're
+  # enabled. Technically also applies to tsan, but that's unused by CrOS currently.
+  if (!(use.asan || use.msan || use.ubsan)) {
+    deps += [ ":fortify_tests" ]
+  }
 }
 
 executable("fortify_tests") {
