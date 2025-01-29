@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/logging.h>
-#include <fuzzer/FuzzedDataProvider.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+
+#include <base/logging.h>
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include "hammerd/fmap_utils.h"
 #include "hammerd/fuzzed_ec_image.h"
@@ -67,16 +68,10 @@ class FuzzedUsbEndpoint : public UsbEndpointInterface {
               unsigned int timeout_ms) override {
     constexpr int kError = -1;
     size_t remaining_bytes = fuzz_provider_->remaining_bytes();
-    if (remaining_bytes < inlen) {
-      if (!allow_less) {
-        return kError;
-      }
-      inbuf = fuzz_provider_->ConsumeRemainingBytes<uint8_t>().data();
-      return remaining_bytes;
+    if (remaining_bytes < inlen && !allow_less) {
+      return kError;
     }
-
-    inbuf = fuzz_provider_->ConsumeBytes<uint8_t>(inlen).data();
-    return inlen;
+    return fuzz_provider_->ConsumeData(inbuf, inlen);
   }
 
  private:
