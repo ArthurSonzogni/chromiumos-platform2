@@ -4,7 +4,7 @@
 
 use crate::file_view::FileView;
 use crate::TestDiskArgs;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use fatfs::{FileSystem, FsOptions, ReadWriteSeek};
 use fs_err::{File, OpenOptions};
 use gpt_disk_types::{BlockSize, GptPartitionType, Lba, LbaRangeInclusive};
@@ -18,6 +18,35 @@ const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEXOR_VMLINUZ_FILENAME: &str = "flexor_vmlinuz";
 
 const SECTOR_SIZE: BlockSize = BlockSize::BS_512;
+
+/// Convert a `Command` to a `String` for display.
+///
+/// This is not a precise conversion, but sufficient for logging.
+fn cmd_to_string(cmd: &Command) -> String {
+    format!("{cmd:?}").replace('"', "")
+}
+
+/// Run a command.
+///
+/// This prints the command before running it.
+///
+/// # Errors
+///
+/// An error is returned if the command fails to launch or exits non-zero.
+fn run_cmd(cmd: &mut Command) -> Result<()> {
+    let cmd_str = cmd_to_string(cmd);
+
+    println!("{cmd_str}");
+
+    let status = cmd
+        .status()
+        .with_context(|| format!("failed to launch command: \"{cmd_str}\""))?;
+    if !status.success() {
+        bail!("command \"{cmd_str}\" exited non-zero: {status}");
+    }
+
+    Ok(())
+}
 
 // Copied from crdyboot
 struct PartitionDataRange(LbaRangeInclusive);
@@ -125,13 +154,30 @@ pub fn run(flexor_disk: &Path) -> Result<()> {
         &format!("format=raw,file={}", flexor_disk.display()),
     ]);
 
-    println!("{cmd:?}");
+    run_cmd(&mut cmd)
+}
 
-    let status = cmd.status()?;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    if !status.success() {
-        bail!("Qemu exited incorrectly.");
+    #[test]
+    fn test_cmd_to_string() {
+        assert_eq!(
+            cmd_to_string(Command::new("prog").args(["--arg1", "arg2"])),
+            "prog --arg1 arg2"
+        );
     }
 
-    Ok(())
+    #[test]
+    fn test_run_cmd() {
+        // Error: fails to launch.
+        assert!(run_cmd(&mut Command::new("this-command-does-not-exist")).is_err());
+
+        // Error: exits non-zero.
+        assert!(run_cmd(&mut Command::new("false")).is_err());
+
+        // Success.
+        assert!(run_cmd(&mut Command::new("true")).is_ok());
+    }
 }
