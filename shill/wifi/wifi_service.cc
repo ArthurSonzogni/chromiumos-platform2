@@ -1455,7 +1455,7 @@ bool WiFiService::HasOnlyWPA3Endpoints() const {
   }
   if (security_ == WiFiSecurity::kWpaAll ||
       security_ == WiFiSecurity::kWpa2Wpa3) {
-    return base::ranges::all_of(endpoints_, [](auto ep) {
+    return std::ranges::all_of(endpoints_, [](auto ep) {
       return ep->security_mode() == WiFiSecurity::kWpa3;
     });
   }

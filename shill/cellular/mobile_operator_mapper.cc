@@ -22,7 +22,6 @@
 #include <re2/re2.h>
 
 #include "base/notreached.h"
-#include "base/ranges/algorithm.h"
 #include "shill/cellular/carrier_entitlement.h"
 #include "shill/cellular/mobile_operator_storage.h"
 #include "shill/ipconfig.h"
