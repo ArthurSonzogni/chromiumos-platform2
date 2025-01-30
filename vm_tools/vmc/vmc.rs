@@ -17,14 +17,7 @@ use std::io::{stdin, stdout, BufRead, Write};
 use getopts::Options;
 
 use crate::disk::{DiskOpType, VmState};
-use crate::methods::{
-    ChromeOSError,
-    ContainerSource,
-    Methods,
-    UserDisks,
-    UserInfo,
-    VmFeatures,
-};
+use crate::methods::{ChromeOSError, ContainerSource, Methods, UserDisks, UserInfo, VmFeatures};
 use system_api::cicerone_service::start_lxd_container_request::PrivilegeLevel;
 use system_api::cicerone_service::VmDeviceAction;
 use system_api::concierge_service::vm_info::VmType;
@@ -279,23 +272,18 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         );
         opts.optopt("", "timeout", "seconds to wait until timeout.", "PARAM");
         opts.optflag("", "no-shell", "Don't start a shell in the started VM.");
-        opts.optopt(
-            "",
-            "user",
-            "Sets up a non-root user in the VM.",
-            "NAME"
-        );
+        opts.optopt("", "user", "Sets up a non-root user in the VM.", "NAME");
         opts.optopt(
             "",
             "user-uid",
             "UID for the non-root user to be set up.",
-            "PARAM"
+            "PARAM",
         );
         opts.optopt(
             "",
             "user-groups",
             "Comma-separated additional groups for the non-root user to be set up.",
-            "NAME,NAME,..."
+            "NAME,NAME,...",
         );
         opts.optflag("", "help-start", "print this help menu");
 
@@ -332,7 +320,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
                 "BRUSCHETTA" => VmType::BRUSCHETTA,
                 "BAGUETTE" => VmType::BAGUETTE,
                 _ => return Err(ChromeOSError::NoSuchVmType.into()),
-            })
+            }),
         };
         let start_lxd = match vm_type {
             Some(VmType::BAGUETTE) => false,
@@ -340,7 +328,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         };
         let tools_dlc_id = match (vm_type, matches.opt_str("tools-dlc")) {
             (Some(VmType::BAGUETTE), None) => Some("termina-dlc".into()),
-            (_, opt_tools_dlc) => opt_tools_dlc
+            (_, opt_tools_dlc) => opt_tools_dlc,
         };
 
         let features = VmFeatures {
@@ -370,19 +358,19 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         };
 
         let group_names = match (vm_type, matches.opt_str("user-groups")) {
-            (Some(VmType::BAGUETTE), None) => Some("cdrom,dialout,floppy,netdev,sudo,tss,video".into()),
-            (_, group_names) => group_names
+            (Some(VmType::BAGUETTE), None) => {
+                Some("cdrom,dialout,floppy,netdev,sudo,tss,video".into())
+            }
+            (_, group_names) => group_names,
         };
         let group_names = match group_names {
-            Some(groups) => groups.split(',')
-                                  .map(|v| v.to_string())
-                                  .collect(),
-            None => vec![]
+            Some(groups) => groups.split(',').map(|v| v.to_string()).collect(),
+            None => vec![],
         };
 
         let user_name = match (vm_type, matches.opt_str("user")) {
             (Some(VmType::BAGUETTE), None) => Some("chronos".into()),
-            (_, user_name) => user_name
+            (_, user_name) => user_name,
         };
         let user_info = match user_name {
             Some(username) => Some(UserInfo {
