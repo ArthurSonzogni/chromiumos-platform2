@@ -4,17 +4,16 @@
 
 #include "vm_tools/cicerone/guest_metrics.h"
 
+#include <algorithm>
 #include <unordered_map>
 
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/ranges/algorithm.h>
-#include "base/strings/string_util.h"
+#include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
-
 #include <dbus/exported_object.h>
 #include <dbus/object_proxy.h>
 #include <dbus/vm_concierge/dbus-constants.h>
@@ -227,8 +226,8 @@ void GuestMetrics::HandleListVmDisksDbusResponse(
     LOG(ERROR) << "Unable to parse ListVmDisksResponse from message";
     return;
   }
-  auto image = base::ranges::find(response.images(), vm_name,
-                                  &vm_tools::concierge::VmDiskInfo::name);
+  auto image = std::ranges::find(response.images(), vm_name,
+                                 &vm_tools::concierge::VmDiskInfo::name);
   if (image == response.images().end()) {
     LOG(ERROR) << "no VM found with name " << vm_name;
     return;
