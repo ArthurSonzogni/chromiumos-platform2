@@ -32,6 +32,8 @@ MockManager::MockManager(ControlInterface* control_interface,
   ON_CALL(*this, device_info()).WillByDefault(Return(mock_device_info_.get()));
   ON_CALL(*this, cellular_service_provider())
       .WillByDefault(Return(mock_cellular_service_provider_.get()));
+  ON_CALL(*this, GetCACertExperimentPhase())
+      .WillByDefault(Return(EapCredentials::CaCertExperimentPhase::kDisabled));
 }
 
 MockManager::MockManager(ControlInterface* control_interface,

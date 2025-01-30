@@ -1222,7 +1222,7 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
 
   if (Is8021x()) {
     eap()->PopulateSupplicantProperties(certificate_file_.get(), &params,
-                                        manager()->GetCACertExperimentPhase());
+                                        GetCACertExperimentPhase());
   } else if (security_class() == kSecurityClassPsk) {
     // NB: WPA3-SAE uses RSN protocol.
     std::string psk_proto;

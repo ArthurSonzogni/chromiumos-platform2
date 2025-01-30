@@ -188,7 +188,9 @@ Service::Service(Manager* manager, Technology technology)
       managed_credentials_(false),
       unreliable_(false),
       source_(ONCSource::kONCSourceUnknown),
-      time_resume_to_ready_timer_(new chromeos_metrics::Timer) {
+      time_resume_to_ready_timer_(new chromeos_metrics::Timer),
+      ca_cert_experiment_phase_(
+          EapCredentials::CaCertExperimentPhase::kDisabled) {
   // Provide a default name.
   friendly_name_ = "service_" + base::NumberToString(serial_number_);
   log_name_ = friendly_name_;
@@ -732,6 +734,7 @@ bool Service::Load(const StoreInterface* storage) {
   storage->GetString(id, kStorageCheckPortal, &check_portal_name);
   check_portal_ = CheckPortalStateFromString(check_portal_name)
                       .value_or(CheckPortalState::kAutomatic);
+  SetCACertExperimentPhase(manager_->GetCACertExperimentPhase());
 
   LoadString(storage, id, kStorageGUID, "", &guid_);
   if (!storage->GetInt(id, kStoragePriority, &priority_)) {

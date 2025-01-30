@@ -552,9 +552,9 @@ TEST_F(EthernetTest, StartEapAuthenticationWithCaCertExperiment) {
   StartSupplicant();
   SetService(mock_service_);
 
-  // Return value for the manager_.GetCACertExperimentPhase() is not defined,
-  // a default value EapCredentials::CaCertExperimentPhase::kDisabled should be
-  // used in PopulateSupplicantProperties().
+  // Return value for the GetEapService()->GetCACertExperimentPhase() is not
+  // defined, a default value EapCredentials::CaCertExperimentPhase::kDisabled
+  // should be used in PopulateSupplicantProperties().
   EXPECT_CALL(*mock_service_, ClearEAPCertification());
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
@@ -572,13 +572,13 @@ TEST_F(EthernetTest, StartEapAuthenticationWithCaCertExperiment) {
   Mock::VerifyAndClearExpectations(interface_proxy);
   EXPECT_EQ(RpcIdentifier(""), GetSupplicantNetworkPath());
 
-  // Return value for the manager_.GetCACertExperimentPhase() is defined,
-  // PopulateSupplicantProperties() should be called with it.
+  // Return value for the GetEapService()->GetCACertExperimentPhase() is
+  // defined, PopulateSupplicantProperties() should be called with it.
   EXPECT_CALL(*mock_service_, ClearEAPCertification());
   EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
-  EXPECT_CALL(manager_, GetCACertExperimentPhase())
+  EXPECT_CALL(*mock_eap_service_, GetCACertExperimentPhase())
       .WillOnce(Return(EapCredentials::CaCertExperimentPhase::kPhase2));
   EXPECT_CALL(mock_eap_credentials,
               PopulateSupplicantProperties(

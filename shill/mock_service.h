@@ -84,6 +84,10 @@ class MockService : public Service {
               GetNetworkValidationMode,
               (),
               (override));
+  MOCK_METHOD(EapCredentials::CaCertExperimentPhase,
+              GetCACertExperimentPhase,
+              (),
+              (const override));
 
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.

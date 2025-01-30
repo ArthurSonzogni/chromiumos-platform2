@@ -407,7 +407,7 @@ bool Ethernet::StartSupplicant() {
 bool Ethernet::StartEapAuthentication() {
   KeyValueStore params;
   GetEapService()->eap()->PopulateSupplicantProperties(
-      &certificate_file_, &params, manager()->GetCACertExperimentPhase());
+      &certificate_file_, &params, GetEapService()->GetCACertExperimentPhase());
   params.Set<std::string>(WPASupplicant::kNetworkPropertyEapKeyManagement,
                           WPASupplicant::kKeyManagementIeee8021X);
   params.Set<uint32_t>(WPASupplicant::kNetworkPropertyEapolFlags, 0);

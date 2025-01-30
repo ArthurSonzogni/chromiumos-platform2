@@ -28,6 +28,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
 #include "shill/data_types.h"
+#include "shill/eap_credentials.h"
 #include "shill/event_history.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
@@ -841,6 +842,13 @@ class Service : public base::RefCounted<Service> {
 
   std::string LoggingTag() const;
 
+  // Returns stored phase of experiments (b/381389464) for the server
+  // certificate verification using a single CA cert.
+  virtual EapCredentials::CaCertExperimentPhase GetCACertExperimentPhase()
+      const {
+    return ca_cert_experiment_phase_;
+  }
+
  protected:
   friend class base::RefCounted<Service>;
   // For logging.
@@ -1069,6 +1077,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseResetHasEverConnected);
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
+  FRIEND_TEST(WiFiServiceTest, ConnectTask8021xWithMockEapWithCACertExperiment);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
 
   static constexpr size_t kEAPMaxCertificationElements = 10;
@@ -1203,6 +1212,13 @@ class Service : public base::RefCounted<Service> {
 
   void InitializeServiceStateTransitionMetrics();
   void UpdateServiceStateTransitionMetrics(Service::ConnectState new_state);
+
+  // Stores phase of experiments for the server certificate verification
+  // using a single CA cert. Should be used only when service Load() is called,
+  // so it stays in sync with wpa_supplicant.
+  void SetCACertExperimentPhase(EapCredentials::CaCertExperimentPhase phase) {
+    ca_cert_experiment_phase_ = phase;
+  }
 
   // WeakPtrFactory comes first, so that other fields can use it.
   base::WeakPtrFactory<Service> weak_ptr_factory_;
@@ -1342,6 +1358,14 @@ class Service : public base::RefCounted<Service> {
   base::Time last_connected_;
   base::Time last_online_;
   base::Time start_time_;
+
+  // Stores phase of server certificate verification experiment (b/381389464) at
+  // service Load() time. Experiment can be active only for 8021x networks
+  // (WiFi or Ethernet) when specific conditions are satisfied.
+  // Value is set during service Load() and should stays the same until the next
+  // service Load() is called even the experiment's status in Manager can be
+  // updated any time.
+  EapCredentials::CaCertExperimentPhase ca_cert_experiment_phase_;
 };
 
 std::ostream& operator<<(std::ostream& stream, const Service& service);

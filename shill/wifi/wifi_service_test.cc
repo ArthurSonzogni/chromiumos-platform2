@@ -592,8 +592,8 @@ TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEapWithCACertExperiment) {
   MockEapCredentials* eap = SetMockEap(service);
   EXPECT_CALL(*eap, IsConnectable()).WillOnce(Return(true));
   EXPECT_CALL(*wifi(), ConnectTo(service.get(), _));
-  EXPECT_CALL(*manager(), GetCACertExperimentPhase())
-      .WillOnce(Return(EapCredentials::CaCertExperimentPhase::kPhase2));
+  service->SetCACertExperimentPhase(
+      EapCredentials::CaCertExperimentPhase::kPhase2);
   service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
   service->Connect(nullptr, "in test");
 
