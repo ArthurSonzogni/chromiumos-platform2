@@ -5,7 +5,7 @@
 use crate::file_view::FileView;
 use crate::{CreateTestDisk, TestDiskArgs};
 use anyhow::{anyhow, bail, Context, Result};
-use fatfs::{FileSystem, FsOptions, ReadWriteSeek};
+use fatfs::{FileSystem, FormatVolumeOptions, FsOptions, ReadWriteSeek};
 use fs_err::{File, OpenOptions};
 use gpt_disk_types::{BlockSize, GptPartitionType, Lba, LbaRangeInclusive};
 use gptman::{GPTPartitionEntry, GPT};
@@ -97,8 +97,95 @@ fn write_to_fatfs<T: ReadWriteSeek>(
     output_file.write_all(&data)
 }
 
-pub fn create(_args: &CreateTestDisk) -> Result<()> {
-    todo!()
+/// Create the ESP filesystem in a flexor test disk.
+///
+/// Bootloader executables and signature are copied to the filesystem.
+fn create_esp(args: &CreateTestDisk, disk_file: &mut File) -> Result<()> {
+    // Create empty filesystem.
+    let partition_range = find_partition_range(disk_file, GptPartitionType::EFI_SYSTEM)
+        .context("failed to get esp partition range")?;
+    let mut view = FileView::new(disk_file, partition_range.to_byte_range())?;
+    fatfs::format_volume(&mut view, FormatVolumeOptions::new())?;
+
+    // Add files to the filesystem.
+    let files_to_copy = ["bootx64.efi", "crdybootx64.efi", "crdybootx64.sig"];
+    let fs = FileSystem::new(view, FsOptions::new())?;
+    let root = fs.root_dir();
+    let boot = root.create_dir("EFI")?.create_dir("BOOT")?;
+    for file_name in files_to_copy {
+        write_to_fatfs(
+            &boot,
+            file_name,
+            &args.frd_bundle.join("install").join(file_name),
+        )?;
+    }
+
+    Ok(())
+}
+
+/// Create the data partition in a flexor test disk.
+///
+/// The flexor kernel and installation image are copied to the filesystem.
+fn create_flexor_data_partition(args: &CreateTestDisk, disk_file: &mut File) -> Result<()> {
+    // Create the flexor data partition
+    let partition_range = find_partition_range(disk_file, GptPartitionType::BASIC_DATA)
+        .context("failed to get flexor data partition range")?;
+    let mut view = FileView::new(disk_file, partition_range.to_byte_range())?;
+    fatfs::format_volume(&mut view, FormatVolumeOptions::new())?;
+
+    // Add files to the filesystem.
+    let files_to_copy = ["flex_image.tar.xz", "flexor_vmlinuz"];
+    let fs = FileSystem::new(view, FsOptions::new())?;
+    let root = fs.root_dir();
+    for file_name in files_to_copy {
+        write_to_fatfs(
+            &root,
+            file_name,
+            &args.frd_bundle.join("install").join(file_name),
+        )?;
+    }
+
+    Ok(())
+}
+
+/// Create a flexor test disk from scratch.
+pub fn create(args: &CreateTestDisk) -> Result<()> {
+    // Delete the output file if it already exists.
+    let _ = fs_err::remove_file(&args.output);
+
+    // Create empty file to hold the disk.
+    run_cmd(
+        Command::new("truncate")
+            .arg("--size=32GiB")
+            .arg(&args.output),
+    )?;
+
+    run_cmd(
+        Command::new("sgdisk")
+            // Create ESP partition.
+            .args([
+                "--new=1::+90MB",
+                &format!("--typecode=1:{}", GptPartitionType::EFI_SYSTEM),
+            ])
+            // Create flexor data partition.
+            .args([
+                "--new=2",
+                &format!("--typecode=2:{}", GptPartitionType::BASIC_DATA),
+            ])
+            .arg(&args.output),
+    )?;
+
+    let mut disk_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .truncate(false)
+        .open(&args.output)?;
+
+    create_esp(args, &mut disk_file).context("failed to create esp")?;
+    create_flexor_data_partition(args, &mut disk_file)
+        .context("failed to create flexor data partition")?;
+
+    Ok(())
 }
 
 /// Updates a flexor test disk image, inserting a new flexor_vmlinuz and/or install_image
