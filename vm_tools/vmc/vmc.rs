@@ -1080,7 +1080,7 @@ const USAGE: &str = " [
            [--timeout PARAM] [--no-shell] [--user NAME] [--user-uid PARAM] \
            [--user-group PARAM]... [--help-start] <vm name>
   |  stop <vm name>
-  |  launch <vm name>
+  |  launch <main descriptor> [<descriptor>...]
   |  create [-p] [--size SIZE] <vm name> [<source media> [<removable storage name>]] \
             [-- additional parameters]
   |  create-extra-disk --size SIZE <file name> [<removable storage name>]

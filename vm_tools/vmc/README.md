@@ -12,6 +12,20 @@ with the following command:
 $ cros deploy $DUT crostini_client
 ```
 
+## Commands
+
+vmc commands generally send a DBUS message to concierge. Refer to concierge DBUS
+API documentation.
+
+### Launch
+
+`vmc launch` command sends a dbus request to Chrome, to simulate user
+interaction in chrome browser UI. As it has become more difficult to simulate
+launching more complex VMs with a `vmc start` combination, without telling
+Chrome about it.
+
+vmc launch takes a list of descriptors. See how [EnsureVmLaunched](https://source.chromium.org/chromium/chromium/src/+/main:chrome/browser/ash/guest_os/guest_os_launcher.cc;l=143;drc=aaeff707bc4de78c1c72a6c04ed737e49648236f) handles the descriptors.
+
 ## Making changes
 
 `vmc` depends on changes made to the `system_api` package to build protobuf and
