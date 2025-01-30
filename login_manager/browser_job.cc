@@ -23,7 +23,6 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
-#include <base/ranges/algorithm.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -216,7 +215,7 @@ pid_t BrowserJob::CurrentPid() const {
 }
 
 bool BrowserJob::IsGuestSession() {
-  return base::ranges::count(arguments_, kGuestSessionFlag) > 0;
+  return std::ranges::count(arguments_, kGuestSessionFlag) > 0;
 }
 
 bool BrowserJob::ShouldStop() const {
