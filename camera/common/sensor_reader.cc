@@ -6,12 +6,12 @@
 
 #include "common/sensor_reader.h"
 
+#include <algorithm>
 #include <iterator>
 #include <optional>
 #include <utility>
 
 #include <base/notreached.h>
-#include <base/ranges/algorithm.h>
 #include <base/strings/stringprintf.h>
 
 #include "cros-camera/common.h"
@@ -178,7 +178,7 @@ void SensorReader::GetAllChannelIdsCallback(
     std::string channel =
         base::StringPrintf(kChannelFormat, prefix.c_str(), kAxes[i]);
 
-    auto it = base::ranges::find(iio_channel_ids, channel);
+    auto it = std::ranges::find(iio_channel_ids, channel);
     if (it == iio_channel_ids.end()) {
       LOGF(ERROR) << "Missing channel: " << channel;
       samples_observer_->OnErrorOccurred(
@@ -190,7 +190,7 @@ void SensorReader::GetAllChannelIdsCallback(
     channel_indices_[i] = std::distance(iio_channel_ids.begin(), it);
   }
 
-  auto it = base::ranges::find(iio_channel_ids, mojom::kTimestampChannel);
+  auto it = std::ranges::find(iio_channel_ids, mojom::kTimestampChannel);
   if (it == iio_channel_ids.end()) {
     LOGF(ERROR) << "Missing channel: " << mojom::kTimestampChannel;
     samples_observer_->OnErrorOccurred(
