@@ -16,6 +16,7 @@
 #include <sys/wait.h>     // For waitpid.
 #include <unistd.h>       // For execv and fork.
 
+#include <algorithm>
 #include <cstdint>
 #include <ctime>
 #include <optional>
@@ -36,7 +37,6 @@
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/rand_util.h>
-#include <base/ranges/algorithm.h>
 #include <base/run_loop.h>
 #include <base/scoped_clear_last_error.h>
 #include <base/strings/strcat.h>
@@ -884,9 +884,9 @@ bool CrashCollector::RemoveNewFile(const base::FilePath& file_name) {
       return base::DeleteFile(file_name);
     }
     case CrashSendingMode::kCrashLoop: {
-      auto it = base::ranges::find(
-          in_memory_files_, file_name.BaseName().value(),
-          [](const auto& elem) { return std::get<0>(elem); });
+      auto it =
+          std::ranges::find(in_memory_files_, file_name.BaseName().value(),
+                            [](const auto& elem) { return std::get<0>(elem); });
       if (it == in_memory_files_.end()) {
         return false;
       }
