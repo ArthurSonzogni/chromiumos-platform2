@@ -50,7 +50,7 @@ def _generate(output, params):
             following members: name, description, version, requires,
             requies_private, libs, libs_private and cflags.
     """
-    with open(output, "w") as f:
+    with open(output, "w", encoding="utf-8") as f:
         f.write(
             _TEMPLATE.lstrip("\n")
             % {
