@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 use crate::file_view::FileView;
+use crate::TestDiskArgs;
 use anyhow::{anyhow, bail, Result};
 use fatfs::{FileSystem, FsOptions, ReadWriteSeek};
 use fs_err::{File, OpenOptions};
@@ -10,7 +11,7 @@ use gpt_disk_types::{BlockSize, GptPartitionType, Lba, LbaRangeInclusive};
 use gptman::{GPTPartitionEntry, GPT};
 use std::io::Write;
 use std::ops::RangeInclusive;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
@@ -63,12 +64,8 @@ fn write_to_fatfs<T: ReadWriteSeek>(
 
 /// Updates a flexor test disk image, inserting a new flexor_vmlinuz and/or install_image
 /// if either is passed.
-pub fn update(
-    flexor_disk: &Path,
-    flexor_vmlinuz: &Option<PathBuf>,
-    install_image: &Option<PathBuf>,
-) -> Result<()> {
-    if flexor_vmlinuz.is_none() && install_image.is_none() {
+pub fn update(args: &TestDiskArgs) -> Result<()> {
+    if args.flexor_vmlinuz.is_none() && args.install_image.is_none() {
         // Nothing to do.
         println!("No files passed, not updating disk...");
         return Ok(());
@@ -80,7 +77,7 @@ pub fn update(
         .read(true)
         .write(true)
         .truncate(false)
-        .open(flexor_disk)?;
+        .open(&args.flexor_disk)?;
 
     let data_partition_range = get_data_partition_range(&mut disk_file)?;
     let view = FileView::new(&mut disk_file, data_partition_range.to_byte_range())?;
@@ -89,11 +86,11 @@ pub fn update(
     let data_fs = FileSystem::new(view, FsOptions::new())?;
     let root_dir = data_fs.root_dir();
 
-    if let Some(vmlinuz_path) = flexor_vmlinuz {
+    if let Some(vmlinuz_path) = &args.flexor_vmlinuz {
         write_to_fatfs(&root_dir, FLEXOR_VMLINUZ_FILENAME, vmlinuz_path)?;
     }
 
-    if let Some(image_path) = install_image {
+    if let Some(image_path) = &args.install_image {
         write_to_fatfs(&root_dir, FLEX_IMAGE_FILENAME, image_path)?;
     }
 

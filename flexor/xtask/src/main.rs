@@ -48,11 +48,9 @@ fn main() -> Result<()> {
 
     match &opt.action {
         Action::RunTestDisk(args) => {
-            test_disk::update(&args.flexor_disk, &args.flexor_vmlinuz, &args.install_image)?;
+            test_disk::update(args)?;
             test_disk::run(&args.flexor_disk)
         }
-        Action::UpdateTestDisk(args) => {
-            test_disk::update(&args.flexor_disk, &args.flexor_vmlinuz, &args.install_image)
-        }
+        Action::UpdateTestDisk(args) => test_disk::update(args),
     }
 }
