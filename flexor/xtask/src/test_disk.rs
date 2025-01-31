@@ -63,15 +63,21 @@ impl PartitionDataRange {
     }
 }
 
-// Find the data partition on disk (assume there's only one) and return its location & size.
-fn get_data_partition_range(disk_file: &mut File) -> Result<PartitionDataRange> {
+/// Find a partition in `disk_file` by partition type.
+///
+/// Partitions are search in order and the first matching partition is
+/// returned. An error is returned if there is no matching partition.
+fn find_partition_range(
+    disk_file: &mut File,
+    partition_type: GptPartitionType,
+) -> Result<PartitionDataRange> {
     let gpt = GPT::read_from(disk_file, SECTOR_SIZE.to_u64())?;
 
-    let data_guid = GptPartitionType::BASIC_DATA.0.to_bytes();
+    let guid = partition_type.0.to_bytes();
     let data_partition = gpt
         .iter()
-        .find(|(_, part)| part.partition_type_guid == data_guid)
-        .ok_or(anyhow!("Couldn't find a data partition."))?
+        .find(|(_, part)| part.partition_type_guid == guid)
+        .ok_or(anyhow!("no partition of type {partition_type}"))?
         .1;
 
     Ok(PartitionDataRange::new(data_partition))
@@ -108,7 +114,8 @@ pub fn update(args: &TestDiskArgs) -> Result<()> {
         .truncate(false)
         .open(&args.flexor_disk)?;
 
-    let data_partition_range = get_data_partition_range(&mut disk_file)?;
+    let data_partition_range = find_partition_range(&mut disk_file, GptPartitionType::BASIC_DATA)?;
+
     let view = FileView::new(&mut disk_file, data_partition_range.to_byte_range())?;
 
     // Load the data as a FAT filesystem, and grab the root dir.
