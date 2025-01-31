@@ -183,7 +183,6 @@ copies.
 | [smbprovider](./smbprovider/) | Daemon for connecting Samba / Windows networking shares to the Files.app |
 | [soul](./soul/) | Daemon and utilities for system logs |
 | [spaced](./spaced/) | Disk space information daemon |
-| [st_flash](./st_flash/) ||
 | [storage_info](./storage_info/) | Helper shell functions for retrieving disk information) |
 | [swap_management](./swap_management/) | Swap management service |
 | [syslog-cat](./syslog-cat/) | Helper command to forward stdout/stderr from process to syslog |

@@ -89,7 +89,6 @@ LEGACYLIST = {
     "run_oci",
     "runtime_probe",  # TODO(b/262377381)
     "screen-capture-utils",
-    "st_flash",
     "syslog-cat",
     "system-proxy",
     "timberslide",
