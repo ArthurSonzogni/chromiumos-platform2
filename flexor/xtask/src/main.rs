@@ -16,14 +16,32 @@ struct Opt {
 }
 
 #[derive(Subcommand)]
+#[expect(clippy::enum_variant_names)]
 enum Action {
-    /// Takes a flexor image (like what the create_flexor_disk script produces) and runs it in a VM
+    /// Create a flexor test image.
+    CreateTestDisk(CreateTestDisk),
+
+    /// Takes a flexor image (like what the create-test-disk action produces) and runs it in a VM
     /// to test installation, optionally updating some of the contained files before running.
     /// Ctrl+C to exit.
     RunTestDisk(TestDiskArgs),
-    /// Takes a flexor image (like what the create_flexor_disk script produces) and updates some of
+
+    /// Takes a flexor image (like what the create-test-disk action produces) and updates some of
     /// the contained files.
     UpdateTestDisk(TestDiskArgs),
+}
+
+#[derive(Args)]
+struct CreateTestDisk {
+    /// Path of the disk image to create.
+    ///
+    /// This will overwrite the file if it already exists.
+    #[arg(long, default_value = "flexor_disk.img")]
+    output: PathBuf,
+
+    /// Path of an unpacked FRD bundle from go/cros-frd-releases.
+    #[arg(long)]
+    frd_bundle: PathBuf,
 }
 
 #[derive(Args)]
@@ -47,6 +65,7 @@ fn main() -> Result<()> {
     let opt = Opt::parse();
 
     match &opt.action {
+        Action::CreateTestDisk(args) => test_disk::create(args),
         Action::RunTestDisk(args) => {
             test_disk::update(args)?;
             test_disk::run(&args.flexor_disk)

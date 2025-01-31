@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 use crate::file_view::FileView;
-use crate::TestDiskArgs;
+use crate::{CreateTestDisk, TestDiskArgs};
 use anyhow::{anyhow, bail, Context, Result};
 use fatfs::{FileSystem, FsOptions, ReadWriteSeek};
 use fs_err::{File, OpenOptions};
@@ -95,6 +95,10 @@ fn write_to_fatfs<T: ReadWriteSeek>(
     // Write out the new version.
     let mut output_file = root_dir.create_file(path)?;
     output_file.write_all(&data)
+}
+
+pub fn create(_args: &CreateTestDisk) -> Result<()> {
+    todo!()
 }
 
 /// Updates a flexor test disk image, inserting a new flexor_vmlinuz and/or install_image
