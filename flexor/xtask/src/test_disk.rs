@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use crate::file_view::FileView;
 use anyhow::{anyhow, bail, Result};
 use fatfs::{FileSystem, FsOptions, ReadWriteSeek};
 use fs_err::{File, OpenOptions};
 use gpt_disk_types::{BlockSize, GptPartitionType, Lba, LbaRangeInclusive};
 use gptman::{GPTPartitionEntry, GPT};
-use std::io::{Cursor, Read, Seek, SeekFrom, Write};
+use std::io::Write;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -29,23 +30,6 @@ impl PartitionDataRange {
 
     fn to_byte_range(&self) -> RangeInclusive<u64> {
         self.0.to_byte_range(SECTOR_SIZE).unwrap()
-    }
-
-    fn num_bytes(&self) -> usize {
-        self.0.num_bytes(SECTOR_SIZE).unwrap().try_into().unwrap()
-    }
-
-    fn read_bytes_from_file(&self, f: &mut File) -> Result<Vec<u8>> {
-        let mut v = vec![0; self.num_bytes()];
-        f.seek(SeekFrom::Start(*self.to_byte_range().start()))?;
-        f.read_exact(&mut v)?;
-        Ok(v)
-    }
-
-    fn write_bytes_to_file(&self, f: &mut File, data: &[u8]) -> Result<()> {
-        assert!(data.len() <= self.num_bytes());
-        f.seek(SeekFrom::Start(*self.to_byte_range().start()))?;
-        Ok(f.write_all(data)?)
     }
 }
 
@@ -99,24 +83,21 @@ pub fn update(
         .open(flexor_disk)?;
 
     let data_partition_range = get_data_partition_range(&mut disk_file)?;
-    let mut data_partition_data = data_partition_range.read_bytes_from_file(&mut disk_file)?;
+    let view = FileView::new(&mut disk_file, data_partition_range.to_byte_range())?;
 
-    {
-        // Load the data as a FAT filesystem, and grab the root dir.
-        let cursor = Cursor::new(&mut data_partition_data);
-        let data_fs = FileSystem::new(cursor, FsOptions::new())?;
-        let root_dir = data_fs.root_dir();
+    // Load the data as a FAT filesystem, and grab the root dir.
+    let data_fs = FileSystem::new(view, FsOptions::new())?;
+    let root_dir = data_fs.root_dir();
 
-        if let Some(vmlinuz_path) = flexor_vmlinuz {
-            write_to_fatfs(&root_dir, FLEXOR_VMLINUZ_FILENAME, vmlinuz_path)?;
-        }
-
-        if let Some(image_path) = install_image {
-            write_to_fatfs(&root_dir, FLEX_IMAGE_FILENAME, image_path)?;
-        }
+    if let Some(vmlinuz_path) = flexor_vmlinuz {
+        write_to_fatfs(&root_dir, FLEXOR_VMLINUZ_FILENAME, vmlinuz_path)?;
     }
 
-    data_partition_range.write_bytes_to_file(&mut disk_file, &data_partition_data)
+    if let Some(image_path) = install_image {
+        write_to_fatfs(&root_dir, FLEX_IMAGE_FILENAME, image_path)?;
+    }
+
+    Ok(())
 }
 
 /// Runs a flexor test disk image.

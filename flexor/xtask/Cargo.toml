@@ -11,3 +11,6 @@ fatfs = { version = "0.3.6" }
 fs-err = "3.0.0"
 gpt_disk_types = { workspace = true, features = ["std"] }
 gptman = { version = "1.0.0", default-features = false }
+
+[dev-dependencies]
+tempfile = "3.16.0"
