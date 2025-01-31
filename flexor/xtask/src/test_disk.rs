@@ -4,9 +4,9 @@
 
 use anyhow::{anyhow, bail, Result};
 use fatfs::{FileSystem, FsOptions, ReadWriteSeek};
+use fs_err::{File, OpenOptions};
 use gpt_disk_types::{BlockSize, GptPartitionType, Lba, LbaRangeInclusive};
 use gptman::{GPTPartitionEntry, GPT};
-use std::fs::{self, File, OpenOptions};
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
@@ -68,7 +68,7 @@ fn write_to_fatfs<T: ReadWriteSeek>(
     path: &str,
     input: &Path,
 ) -> std::io::Result<()> {
-    let data = fs::read(input)?;
+    let data = fs_err::read(input)?;
 
     // Remove if it already exists.
     let _ = root_dir.remove(path);
