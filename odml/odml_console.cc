@@ -219,6 +219,10 @@ void BatchProcess(const ProcessingParams& params,
 
   std::string input;
   while (std::getline(in_file, input, params.delimiter.value_or('\n'))) {
+    input = base::TrimWhitespaceASCII(input, base::TRIM_ALL);
+    if (input.empty()) {
+      continue;
+    }
     std::string output = Infer(params, input);
     out_file << output << params.delimiter.value_or('\n');
   }
