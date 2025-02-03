@@ -4,7 +4,7 @@
 
 use std::io::{self, Read, Write};
 
-use log::{debug, error};
+use log::{debug, error, trace};
 
 /// A Read adapter that ensures that the wrapped reader is always read until EOF.  This is useful
 /// for ensuring that we always read complete HTTP messages from the IPP over USB device we're
@@ -86,7 +86,7 @@ where
         let result = self.reader.read(buf);
         match result {
             Ok(0) | Err(_) => (),
-            Ok(read) => debug!("* Read {} bytes from {}", read, self.name),
+            Ok(read) => trace!("* Read {} bytes from {}", read, self.name),
         }
         result
     }
@@ -260,6 +260,21 @@ mod tests {
         drop(w);
         let expected = "4\r\ntest\r\n15\r\nslightly longer chunk\r\n0\r\n\r\n";
         assert_eq!(buf.as_slice(), expected.as_bytes());
+    }
+
+    #[test]
+    fn logging_reader() {
+        testing_logger::setup();
+
+        let buf = Cursor::new(vec![0x20; 8]);
+        let mut r = LoggingReader::new(buf, "tester");
+        let mut s = String::new();
+        r.read_to_string(&mut s).expect("failed to read to string");
+        assert_eq!(s, "        ");
+        testing_logger::validate(|logs| {
+            assert!(logs.len() > 0);
+            assert!(logs[0].body.contains("tester"));
+        });
     }
 
     #[test]

@@ -1,23 +1,22 @@
 [package]
 name = "ippusb_bridge"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["The ChromiumOS Authors"]
 edition = "2021"
 
 [dependencies]
-ascii = "1.0.0"
 chunked_transfer = "1"
 dbus = "0.9"
 getopts = "0.2.18"
 httparse = "1.3.4"
+hyper = { version = "0.14", features = ["http1", "server", "runtime", "tcp", "backports", "deprecated"]}
 libc = "0.2.44"
 libchromeos = { path = "../libchromeos-rs/" } # provided by ebuild
 log = "0.4"
 nix = { version = "0.26", features = ["signal"] }
 rusb = "0.9.4"
 syslog = "6.0"
-tiny_http = "0.8.0"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "net", "io-util"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "net", "sync", "io-util", "macros"] }
 
 [dev-dependencies]
 testing_logger = "0.1"
@@ -27,8 +26,3 @@ lto = true
 panic = 'abort'
 overflow-checks = true
 opt-level = 's'
-
-[patch.crates-io] # ignored by ebuild
-# tiny_http has ChromeOS specific patches.
-# Run "sudo emerge dev-rust/tiny_http" in the chroot for this path to exist.
-tiny_http = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/tiny_http-0.8.2/" } # ignored by ebuild

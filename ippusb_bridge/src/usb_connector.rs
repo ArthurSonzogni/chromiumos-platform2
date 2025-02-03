@@ -618,7 +618,7 @@ impl Write for &UsbConnection {
     }
 }
 
-impl Read for &UsbConnection {
+impl Read for UsbConnection {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         // Unwrap because interface only becomes None at drop.
         let interface = self.interface.as_ref().unwrap();

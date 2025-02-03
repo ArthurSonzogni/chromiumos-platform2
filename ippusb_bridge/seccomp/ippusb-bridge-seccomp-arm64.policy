@@ -61,6 +61,7 @@ listen: 1
 lseek: 1
 madvise: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mremap: 1
 mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
@@ -80,6 +81,7 @@ rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
 sched_getaffinity: 1
+sched_yield: 1
 sendmsg: 1
 sendto: 1
 setgroups: 1
@@ -100,3 +102,4 @@ umask: 1
 uname: 1
 unlinkat: 1
 write: 1
+writev: 1

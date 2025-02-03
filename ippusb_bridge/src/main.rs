@@ -11,30 +11,36 @@ mod listeners;
 mod usb_connector;
 mod util;
 
+use std::convert::Infallible;
 use std::fmt;
 use std::io;
 use std::net::SocketAddr;
 use std::net::TcpListener as StdTcpListener;
+use std::net::TcpStream as StdTcpStream;
 use std::os::raw::c_int;
 use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::time::Duration;
 
 use dbus::blocking::Connection;
+use hyper::http::StatusCode;
+use hyper::server::conn::http1;
+use hyper::service::service_fn;
+use hyper::{Body, Request, Response};
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::signal::register_signal_handler;
 use log::{debug, error, info};
 use nix::sys::signal::Signal;
-use tiny_http::{ClientConnection, Stream};
 use tokio::net::{TcpStream, UnixListener, UnixStream};
 use tokio::runtime::Builder;
+use tokio::runtime::Handle as AsyncHandle;
 
 use crate::arguments::Args;
 use crate::error::Error::ReadConfigDescriptor;
 use crate::hotplug::UnplugDetector;
 use crate::http::handle_request;
 use crate::listeners::ScopedUnixListener;
-use crate::usb_connector::UsbConnector;
+use crate::usb_connector::{UsbConnection, UsbConnector};
 
 #[derive(Debug)]
 pub enum Error {
@@ -116,6 +122,7 @@ struct Daemon {
     shutdown: EventFd,
     listener: StdTcpListener,
     usb: UsbConnector,
+    handle: AsyncHandle,
 }
 
 // Trivially allows a `RawFd` to be passed as a `&AsRawFd`.  Needed because
@@ -134,6 +141,7 @@ impl Daemon {
         shutdown: EventFd,
         listener: StdTcpListener,
         usb: UsbConnector,
+        handle: AsyncHandle,
     ) -> Result<Self> {
         Ok(Self {
             verbose_log,
@@ -141,6 +149,7 @@ impl Daemon {
             shutdown,
             listener,
             usb,
+            handle,
         })
     }
 
@@ -167,7 +176,7 @@ impl Daemon {
                     Token::ClientConnection => match self.listener.accept() {
                         Ok((stream, addr)) => {
                             info!("Connection opened from {}", addr);
-                            self.handle_connection(stream.into())
+                            self.handle_connection(stream);
                         }
                         Err(err) => error!("Failed to accept connection: {}", err),
                     },
@@ -177,37 +186,69 @@ impl Daemon {
         Ok(())
     }
 
-    fn handle_connection(&mut self, stream: Stream) {
-        let connection = ClientConnection::new(stream);
+    async fn service_request(
+        verbose: bool,
+        usb: Option<UsbConnection>,
+        request: Request<Body>,
+        handle: AsyncHandle,
+    ) -> std::result::Result<Response<Body>, Infallible> {
+        if usb.is_none() {
+            return Ok(Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .unwrap());
+        }
+        let usb = usb.unwrap();
+
+        handle_request(verbose, usb, request, handle)
+            .await
+            .or_else(|err| {
+                error!("Request failed: {}", err);
+                Ok(Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Body::empty())
+                    .unwrap())
+            })
+    }
+
+    fn handle_connection(&mut self, stream: StdTcpStream) {
         let mut thread_usb = self.usb.clone();
         let verbose = self.verbose_log;
         self.num_clients += 1;
         let client_num = self.num_clients;
-        std::thread::spawn(move || {
+        let async_handle = self.handle.clone();
+
+        self.handle.spawn(async move {
             if verbose {
                 debug!("Connection {} opened", client_num);
             }
-            let mut num_requests = 0;
-            for request in connection {
-                num_requests += 1;
-                let usb_conn = match thread_usb.get_connection() {
-                    Ok(c) => c,
-                    Err(e) => {
-                        error!("Getting USB connection failed: {}", e);
-                        continue;
-                    }
-                };
+            let async_stream = TcpStream::try_from(stream).map_err(Error::Forwarder)?;
 
-                if let Err(e) = handle_request(verbose, usb_conn, request) {
-                    error!("Handling request failed: {}", e);
-                }
+            if let Err(http_err) = http1::Builder::new()
+                .title_case_headers(true)
+                .preserve_header_case(true)
+                .serve_connection(
+                    async_stream,
+                    service_fn(move |req| {
+                        // We would normally want to extract usb_conn and return early if it's an
+                        // error, but that doesn't work here because we can't match the return type
+                        // of Daemon::service_request.  Instead, convert to an Option and handle a
+                        // missing value in service_request.
+                        let usb_conn = thread_usb
+                            .get_connection()
+                            .inspect_err(|err| {
+                                error!("Getting USB connection failed: {}", err);
+                            })
+                            .ok();
+
+                        Daemon::service_request(verbose, usb_conn, req, async_handle.clone())
+                    }),
+                )
+                .await
+            {
+                error!("Error serving HTTP connection: {}", http_err);
             }
-            if verbose {
-                debug!(
-                    "Connection {} handled {} requests",
-                    client_num, num_requests
-                );
-            }
+            Ok::<(), Error>(())
         });
     }
 }
@@ -231,13 +272,18 @@ async fn forward_connection(
 }
 
 fn run() -> Result<()> {
-    syslog::init_unix(syslog::Facility::LOG_USER, log::LevelFilter::Debug)
-        .map_err(Error::Syslog)?;
     let argv: Vec<String> = std::env::args().collect();
     let args = match Args::parse(&argv).map_err(Error::ParseArgs)? {
         None => return Ok(()),
         Some(args) => args,
     };
+    if args.verbose_log {
+        syslog::init_unix(syslog::Facility::LOG_USER, log::LevelFilter::Trace)
+            .map_err(Error::Syslog)?;
+    } else {
+        syslog::init_unix(syslog::Facility::LOG_USER, log::LevelFilter::Debug)
+            .map_err(Error::Syslog)?;
+    }
 
     let shutdown_fd = EventFd::new().map_err(|e| Error::EventFd(e.into()))?;
     let sigint_shutdown_fd = shutdown_fd.try_clone().map_err(Error::EventFd)?;
@@ -337,7 +383,13 @@ fn run() -> Result<()> {
         });
     }
 
-    let mut daemon = Daemon::new(args.verbose_log, shutdown_fd, listener, usb)?;
+    let mut daemon = Daemon::new(
+        args.verbose_log,
+        shutdown_fd,
+        listener,
+        usb,
+        runtime.handle().clone(),
+    )?;
     daemon.run()?;
 
     info!("Shutting down.");

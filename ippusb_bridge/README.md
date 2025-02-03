@@ -116,17 +116,9 @@ sniff the raw USB packets:
     may need to enable some additional USB protocols under _Analyze -> Enabled
     Protocols_
 
-## Miscellanea
-
-*   `ippusb_bridge` depends on [the `tiny_http` crate][tiny_http]. `tiny_http`
-    was patched
-    *   to build without SSL features and
-    *   to support operating over Unix sockets.
-
 [IPP-over-USB]: https://www.usb.org/document-library/ipp-protocol-10
 [ippusbxd]: https://www.github.com/OpenPrinting/ippusbxd
 [ipp-usb]: https://github.com/OpenPrinting/ipp-usb
-[tiny_http]: https://source.chromium.org/search?q=lang:ebuild+file:tiny_http&ss=chromiumos
 [udev-rules]: https://source.chromium.org/chromiumos/chromiumos/codesearch/+/HEAD:src/platform2/ippusb_bridge/udev/99-ippusb.rules
 [upstart-bridge-start]: https://source.chromium.org/chromiumos/chromiumos/codesearch/+/HEAD:src/platform2/ippusb_bridge/init/ippusb-bridge.conf
 [seccomp-filters]: https://source.chromium.org/chromiumos/chromiumos/codesearch/+/HEAD:src/platform2/ippusb_bridge/seccomp/
