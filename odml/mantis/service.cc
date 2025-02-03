@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
 #include <base/memory/raw_ref.h>
@@ -30,6 +32,8 @@ using MantisAPIGetter = const MantisAPI* (*)();
 
 constexpr char kDlcName[] = "ml-dlc-302a455f-5453-43fb-a6a1-d856e6fe6435";
 constexpr double kFinishedProgress = 1;
+constexpr char kReclaimFile[] = "/proc/self/reclaim";
+constexpr char kAll[] = "all";
 
 }  // namespace
 
@@ -77,6 +81,9 @@ bool MantisService::RetryIfShimIsNotReady(FuncType func,
 
 void MantisService::DeleteProcessor() {
   processor_.reset();
+  if (!base::WriteFile(base::FilePath(kReclaimFile), kAll)) {
+    LOG(WARNING) << "Failed to reclaim memory.";
+  }
 }
 
 void MantisService::Initialize(
