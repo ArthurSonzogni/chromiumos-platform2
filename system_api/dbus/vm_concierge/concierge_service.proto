@@ -1561,3 +1561,9 @@ message MuteVmAudioRequest {
   // Set to true to mute, and false to unmute.
   bool muted = 3;
 }
+
+// Response containing the URL of the Baguette image to download. This is a
+// constant baked into the concierge binary.
+message GetBaguetteImageUrlResponse {
+  string url = 1;
+}

@@ -430,6 +430,12 @@ class Service final : public org::chromium::VmConciergeInterface,
           SuccessFailureResponse>> response_cb,
       const vm_tools::concierge::MuteVmAudioRequest& request) override;
 
+  // handles request to return the URL specified in baguette_version.h
+  void GetBaguetteImageUrl(
+      std::unique_ptr<
+          brillo::dbus_utils::DBusMethodResponse<GetBaguetteImageUrlResponse>>
+          response_cb) override;
+
   // Creates DnsSettings from current configuration.
   DnsSettings ComposeDnsResponse();
 

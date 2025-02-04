@@ -266,6 +266,17 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="GetBaguetteImageUrl">
+      <tp:docstring>
+        Returns the URL of the Baguette image to download. This is a constant baked
+        into the concierge binary.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetBaguetteImageUrlResponse"/>
+      </arg>
+    </method>
     <method name="GetDnsSettings">
       <tp:docstring>
         Gets DNS info.

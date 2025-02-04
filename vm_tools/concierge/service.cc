@@ -102,6 +102,7 @@
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
+#include "vm_tools/concierge/baguette_version.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/dbus_adaptor.h"
 #include "vm_tools/concierge/dbus_proxy_util.h"
@@ -4958,6 +4959,34 @@ void Service::MuteVmAudio(
   }
 
   response.set_success(true);
+  response_cb->Return(response);
+}
+
+void Service::GetBaguetteImageUrl(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<GetBaguetteImageUrlResponse>>
+        response_cb) {
+  ASYNC_SERVICE_METHOD();
+
+  // The URL follows the following format:
+  // https://storage.googleapis.com/cros-containers/baguette/images/
+  //    baguette_rootfs_$ARCH_$VERSION.img.zstd
+  constexpr char prefix[] =
+      "https://storage.googleapis.com/cros-containers/baguette/images/"
+      "baguette_rootfs";
+  constexpr char suffix[] = "img.zstd";
+
+#if defined(__x86_64__)
+  constexpr char arch[] = "amd64";
+#elif defined(__aarch64__) || defined(__arm__)
+  constexpr char arch[] = "arm64";
+#else
+#error "Unsupported architecture for baguette"
+#endif
+
+  GetBaguetteImageUrlResponse response;
+  response.set_url(base::StringPrintf("%s_%s_%s.%s", prefix, arch,
+                                      kBaguetteVersion, suffix));
   response_cb->Return(response);
 }
 
