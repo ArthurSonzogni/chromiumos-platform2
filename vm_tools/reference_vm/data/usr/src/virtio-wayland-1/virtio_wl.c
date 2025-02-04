@@ -822,15 +822,15 @@ static int virtwl_vfd_send(struct file *filp, const char __user *buffer,
 				break;
 
 			vfd_file = fdget(vfd_fds[i]);
-			if (!vfd_file.file) {
+			if (!fd_file(vfd_file)) {
 				ret = -EBADFD;
 				goto put_files;
 			}
 
-			if (vfd_file.file->f_op == &virtwl_vfd_fops) {
+			if (fd_file(vfd_file)->f_op == &virtwl_vfd_fops) {
 				vfd_files[i] = vfd_file;
 
-				vfds[i] = vfd_file.file->private_data;
+				vfds[i] = fd_file(vfd_file)->private_data;
 				if (vfds[i] && vfds[i]->id) {
 					vfd_count++;
 					continue;
@@ -942,7 +942,7 @@ free_ctrl_send:
 	kfree(ctrl_send);
 put_files:
 	for (i = 0; i < VIRTWL_SEND_MAX_ALLOCS; i++) {
-		if (vfd_files[i].file)
+		if (fd_file(vfd_files[i]))
 			fdput(vfd_files[i]);
 #ifdef SEND_VIRTGPU_RESOURCES
 		if (virtgpu_dma_bufs[i])
