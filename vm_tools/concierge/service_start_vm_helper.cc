@@ -133,6 +133,10 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
                  .Append(base::NumberToString(fd.get()));
   } else if (vmDlcPath.has_value()) {
     kernel = vmDlcPath.value().Append(kVmKernelName);
+  } else if (toolsDlcPath.has_value() && !bios_fd.has_value() &&
+             !(biosDlcPath.has_value() && !biosDlcPath->empty())) {
+    // If no bios is given, try to grab kernel from tools DLC.
+    kernel = toolsDlcPath.value().Append(kVmKernelName);
   }
 
   if (rootfs_fd.has_value()) {

@@ -4,21 +4,15 @@ Note: This instruction is subject to change. arm64 images are testesd on trogdor
 
 Prerequisites: A DUT running at least R134 with crostini installed (for the DLC and updated vmc tools).
 
-On DUT:
-`vmc create --size 15G baguette` minimum size is 2G, the files in the image currently takes almost 1GB, and I added a few hundred MBs of empty space when making the image.
-
 On workstation:
-`scp /path/to/baguette_rootfs.image.zst root@<DUT IP>:/home/chronos/`
+`scp /path/to/baguette_rootfs.image.zst root@<DUT IP>:/home/chronos/user/MyFiles/Downloads`
 
-On DUT As root:
-`zstd -d -c /home/chronos/baguette_rootfs.img.zst | dd of=/run/daemon-store/crosvm/<USER HOME ID>/YmFndWV0dGU=.img conv=notrunc status=progress`
-
-`cp /run/imageloader/termina-dlc/package/root/vm_kernel /home/chronos/user/MyFiles/Downloads/vm_kernel`
+On DUT:
+`vmc create --size 15G --source /home/chronos/user/MyFiles/Downloads/baguette_rootfs.image.zst`
 
 On DUT:
 ```
 vmc start --vm-type baguette \
-          --kernel /home/chronos/user/MyFiles/Downloads/vm_kernel \
           --kernel-param "root=/dev/vdb rw net.ifnames=0 systemd.log_color=0" \
           baguette
 ```

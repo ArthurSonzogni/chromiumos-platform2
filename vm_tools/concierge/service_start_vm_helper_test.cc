@@ -146,6 +146,27 @@ TEST(StartVMHelperTest, TestGetImageSpec) {
   EXPECT_EQ(image_spec.bios, base::FilePath("bios/opt/CROSVM_CODE.fd"));
   EXPECT_EQ(image_spec.tools_disk, base::FilePath("tools/vm_tools.img"));
 
+  // Create a fake pre-defined vm spec with bios fd
+  image_spec = internal::GetImageSpec({}, {}, {}, bios_fd, {}, {}, {},
+                                      toolsDlcPath, failure_reason);
+
+  EXPECT_EQ(image_spec.kernel, base::FilePath());
+  EXPECT_EQ(image_spec.rootfs, base::FilePath());
+  EXPECT_EQ(image_spec.initrd, base::FilePath());
+  EXPECT_EQ(image_spec.bios, base::FilePath(base::StringPrintf(
+                                 "/proc/self/fd/%d", bios_fd->get())));
+  EXPECT_EQ(image_spec.tools_disk, base::FilePath("tools/vm_tools.img"));
+
+  // Create a fake pre-defined vm spec without bios
+  image_spec = internal::GetImageSpec({}, {}, {}, {}, {}, {}, {}, toolsDlcPath,
+                                      failure_reason);
+
+  EXPECT_EQ(image_spec.kernel, base::FilePath("tools/vm_kernel"));
+  EXPECT_EQ(image_spec.rootfs, base::FilePath());
+  EXPECT_EQ(image_spec.initrd, base::FilePath());
+  EXPECT_EQ(image_spec.bios, base::FilePath(""));
+  EXPECT_EQ(image_spec.tools_disk, base::FilePath("tools/vm_tools.img"));
+
   // Create a fake pre-defined vm spec but using container
   image_spec = internal::GetImageSpec({}, {}, {}, {}, {}, biosDlcPath,
                                       vmDlcPath, {}, failure_reason);
