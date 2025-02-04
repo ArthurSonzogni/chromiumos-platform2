@@ -4,6 +4,7 @@
 
 #include "odml/coral/title_generation/engine.h"
 
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -130,10 +131,12 @@ TitleGenerationEngine::TitleGenerationEngine(
     raw_ref<CoralMetrics> metrics,
     raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
         on_device_model_service,
-    odml::SessionStateManagerInterface* session_state_manager)
+    odml::SessionStateManagerInterface* session_state_manager,
+    std::unique_ptr<TitleCacheStorageInterface> title_cache_storage)
     : metrics_(metrics),
       on_device_model_service_(on_device_model_service),
-      title_cache_(kMaxCacheSize) {
+      title_cache_(kMaxCacheSize),
+      title_cache_storage_(std::move(title_cache_storage)) {
   if (session_state_manager) {
     session_state_manager->AddObserver(this);
   }
@@ -231,10 +234,15 @@ void TitleGenerationEngine::Process(
 void TitleGenerationEngine::OnUserLoggedIn(
     const odml::SessionStateManagerInterface::User& user) {
   current_user_ = user;
+  title_cache_storage_->Load(user, title_cache_);
 }
 
 void TitleGenerationEngine::OnUserLoggedOut() {
+  if (current_user_.has_value()) {
+    title_cache_storage_->Save(current_user_.value(), title_cache_);
+  }
   current_user_.reset();
+  title_cache_.Clear();
 }
 
 void TitleGenerationEngine::OnGetModelStateResult(
@@ -507,11 +515,9 @@ void TitleGenerationEngine::CacheGroupTitles(
     for (const mojom::EntityPtr& entity : group_data.entities) {
       entity_titles.insert(GetTitle(entity));
     }
-    title_cache_.Put(*group_data.title,
-                     TitleCacheEntry{
-                         .entity_titles = std::move(entity_titles),
-                         .user = *current_user_,
-                     });
+    title_cache_.Put(
+        *group_data.title,
+        TitleCacheEntry{.entity_titles = std::move(entity_titles)});
   }
 }
 
@@ -520,9 +526,6 @@ std::optional<std::string> TitleGenerationEngine::MaybeGetCachedTitle(
   std::optional<std::string> ret;
   float min_difference = 1.0;
   for (const auto& [title, title_cache_entry] : title_cache_) {
-    if (current_user_ != title_cache_entry.user) {
-      continue;
-    }
     float difference =
         GetDifferenceRatio(entities, title_cache_entry.entity_titles);
     if (difference < min_difference) {

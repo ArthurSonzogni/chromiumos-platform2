@@ -155,6 +155,7 @@ source_set("coral") {
     "coral/embedding/engine.cc",
     "coral/metrics.cc",
     "coral/service.cc",
+    "coral/title_generation/cache_storage.cc",
     "coral/title_generation/engine.cc",
     "coral/title_generation/simple_session.cc",
   ]
@@ -311,7 +312,10 @@ install_config("install_dbus_config") {
 proto_library("coral_proto") {
   proto_in_dir = "coral/proto"
   proto_out_dir = "include/coral/proto_bindings"
-  sources = [ "${proto_in_dir}/embedding.proto" ]
+  sources = [
+    "${proto_in_dir}/embedding.proto",
+    "${proto_in_dir}/title_cache.proto",
+  ]
   standalone = true
 }
 
@@ -355,6 +359,7 @@ if (use.test) {
       "coral/embedding/embedding_database_test.cc",
       "coral/embedding/engine_test.cc",
       "coral/service_test.cc",
+      "coral/title_generation/cache_storage_test.cc",
       "coral/title_generation/engine_test.cc",
       "on_device_model/fake/fake_chrome_ml_api.cc",
       "on_device_model/fake/on_device_model_fake.cc",

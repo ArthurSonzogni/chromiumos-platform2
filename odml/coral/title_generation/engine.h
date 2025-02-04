@@ -5,6 +5,7 @@
 #ifndef ODML_CORAL_TITLE_GENERATION_ENGINE_H_
 #define ODML_CORAL_TITLE_GENERATION_ENGINE_H_
 
+#include <memory>
 #include <queue>
 #include <string>
 #include <unordered_set>
@@ -19,6 +20,7 @@
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/common.h"
 #include "odml/coral/metrics.h"
+#include "odml/coral/title_generation/cache_storage.h"
 #include "odml/coral/title_generation/simple_session.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -59,7 +61,8 @@ class TitleGenerationEngine
       raw_ref<CoralMetrics> metrics,
       raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
           on_device_model_service,
-      odml::SessionStateManagerInterface* session_state_manager);
+      odml::SessionStateManagerInterface* session_state_manager,
+      std::unique_ptr<TitleCacheStorageInterface> title_cache_storage);
   ~TitleGenerationEngine() override = default;
 
   // TitleGenerationEngineInterface overrides.
@@ -193,14 +196,13 @@ class TitleGenerationEngine
   // title generation only takes entity titles as input. Multiset is used
   // because the number of each titles and the group size are needed to
   // calculate the similarity ratio.
-  struct TitleCacheEntry {
-    std::unordered_multiset<std::string> entity_titles;
-    odml::SessionStateManagerInterface::User user;
-  };
   base::HashingLRUCache<std::string, TitleCacheEntry> title_cache_;
   // Record and the current user to compare whether the user is same when
   // attempting to reuse title cache. We shouldn't reuse cache from other users.
   std::optional<odml::SessionStateManagerInterface::User> current_user_;
+
+  // For loading and saving the title cache.
+  std::unique_ptr<TitleCacheStorageInterface> title_cache_storage_;
 
   base::WeakPtrFactory<TitleGenerationEngine> weak_ptr_factory_{this};
 };

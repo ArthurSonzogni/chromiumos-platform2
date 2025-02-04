@@ -179,7 +179,7 @@ bool EmbeddingDatabase::Sync() {
 
   std::string buf;
   if (!records.SerializeToString(&buf)) {
-    LOG(ERROR) << "Failed to seralize the to embeddings.";
+    LOG(ERROR) << "Failed to serialize the embedding records.";
     return false;
   }
   daily_metrics_->Add(kEmbeddingDatabaseWritesStatName, buf.size());

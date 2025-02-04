@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
@@ -53,6 +54,22 @@ std::vector<mojom::EntityPtr> CloneEntities(
 }
 
 }  // namespace
+
+class MockTitleCacheStorage : public TitleCacheStorageInterface {
+ public:
+  MockTitleCacheStorage() = default;
+
+  MOCK_METHOD(bool,
+              Load,
+              (const odml::SessionStateManagerInterface::User&,
+               (base::HashingLRUCache<std::string, TitleCacheEntry>&)),
+              (override));
+  MOCK_METHOD(bool,
+              Save,
+              (const odml::SessionStateManagerInterface::User&,
+               (const base::HashingLRUCache<std::string, TitleCacheEntry>&)),
+              (override));
+};
 
 class FakeObserver : public mojom::TitleObserver {
  public:
@@ -120,9 +137,15 @@ class TitleGenerationEngineTest : public testing::Test {
               // Do nothing to the input string.
               return it->second;
             }))));
+    temp_dir_ = std::make_unique<base::ScopedTempDir>();
+    ASSERT_TRUE(temp_dir_->CreateUniqueTempDir());
+    std::unique_ptr<TitleCacheStorage> title_cache_storage =
+        std::make_unique<TitleCacheStorage>(temp_dir_->GetPath());
+    title_cache_storage_ = title_cache_storage.get();
+
     engine_ = std::make_unique<TitleGenerationEngine>(
         raw_ref(coral_metrics_), raw_ref(model_service_),
-        /*session_state_manager=*/nullptr);
+        /*session_state_manager=*/nullptr, std::move(title_cache_storage));
   }
 
  protected:
@@ -193,6 +216,8 @@ class TitleGenerationEngineTest : public testing::Test {
   CoralMetrics coral_metrics_;
   NiceMock<odml::OdmlShimLoaderMock> shim_loader_;
   on_device_model::OnDeviceModelService model_service_;
+  std::unique_ptr<base::ScopedTempDir> temp_dir_;
+  TitleCacheStorage* title_cache_storage_;
 
   std::unique_ptr<TitleGenerationEngine> engine_;
 };
@@ -465,6 +490,7 @@ TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {
   ASSERT_EQ(response1.groups.size(), 1);
   ASSERT_TRUE(response1.groups[0]->title.has_value());
   std::string title1 = *response1.groups[0]->title;
+  engine_->OnUserLoggedOut();
 
   const odml::SessionStateManagerInterface::User user2{"fake_user_2",
                                                        "fake_user_hash_2"};

@@ -1,0 +1,21 @@
+// Copyright 2025 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+package coral;
+
+message TitleCacheRecord {
+  // The generated title.
+  string cached_title = 1;
+
+  // The entity titles used to generate the cached_title.
+  repeated string entity_titles = 2;
+}
+
+message TitleCacheRecords {
+  // An ordered array of records, the first entry corresponds to the first entry
+  // in the LRU Cache.
+  repeated TitleCacheRecord records = 1;
+}

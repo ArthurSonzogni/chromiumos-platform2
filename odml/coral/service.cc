@@ -12,6 +12,7 @@
 #include "odml/coral/common.h"
 #include "odml/coral/embedding/embedding_database.h"
 #include "odml/coral/embedding/engine.h"
+#include "odml/coral/title_generation/cache_storage.h"
 #include "odml/coral/title_generation/engine.h"
 #include "odml/i18n/ml_service_language_detector.h"
 #include "odml/mojom/coral_service.mojom.h"
@@ -50,7 +51,10 @@ CoralService::CoralService(
           raw_ref(metrics_),
           std::make_unique<clustering::ClusteringFactory>())),
       title_generation_engine_(std::make_unique<TitleGenerationEngine>(
-          raw_ref(metrics_), on_device_model_service, session_state_manager)) {}
+          raw_ref(metrics_),
+          on_device_model_service,
+          session_state_manager,
+          std::make_unique<TitleCacheStorage>(std::nullopt))) {}
 
 CoralService::CoralService(
     raw_ref<MetricsLibraryInterface> metrics,
