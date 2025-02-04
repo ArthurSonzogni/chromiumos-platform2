@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Copyright 2025 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Netdata plugin for Intel PMT data
+
+# Define the path to the CSV file
+csv_file="/tmp/pmt.csv"
+seconds=2
+records=30
+# max number of samples to display
+MAX_SAMPLES=100
+
+# Keep alive
+while true; do
+  # Start sampling if csv file doesn't exist
+  if [ ! -f "${csv_file}" ]; then
+    echo "PMT INFO: CSV file not found." >&2
+    echo "PMT INFO: call pmt_tool" >&2
+    sudo /usr/local/bin/pmt_tool "-i=${seconds}" "-n=${records}" "-f=csv" > "${csv_file}"
+  fi
+
+  if [ ! -f "${csv_file}" ]; then
+    echo "PMT ERROR: pmt_tool failed to create CSV file." >&2
+    exit 1
+  fi
+
+  # Get the delta_t time steps between records based on timestamps
+  timestamp1=$(awk -F, 'NR==6{print $1; exit}' "${csv_file}")
+  timestamp2=$(awk -F, 'NR==7{print $1; exit}' "${csv_file}")
+  # Convert timestamps to epoch seconds
+  epoch1=$(date -d "${timestamp1}" +%s)
+  epoch2=$(date -d "${timestamp2}" +%s)
+  delta_t=$((epoch2 - epoch1))
+
+  # Create the Netdata chart
+  # Read header row (5th row) to get sample names
+  samples_row=$(awk -F, -v row=5 'NR == row {print; exit}' "${csv_file}")
+
+  # Split samples row into an array
+  IFS=',' read -r -a samples_array <<< "${samples_row}"
+  num_cols=${#samples_array[@]}
+  max_col=$(( num_cols < MAX_SAMPLES ? num_cols : MAX_SAMPLES ))
+  echo "PMT INFO: creating dimensions for ${max_col} samples" >&2
+
+  # Dynamically create Dimensions based on header row,
+  # starting from the second column (index 1)
+  for ((i = 1; i <= max_col; i++)); do
+    sample_name="${samples_array[${i}]}"
+
+    cat << EOF
+CHART intel_pmt.chart '' 'Intel PMT Data' unit 'chart1' intel_pmt line 1000000 ${delta_t} '' ''
+DIMENSION col_${i} '${sample_name}' absolute 1 1
+EOF
+  done
+
+  echo "PMT INFO: chart created" >&2
+
+  # Get total number of rows
+  num_rows=$(awk -F, 'END{print NR}' "${csv_file}")
+  echo "PMT INFO: total number of rows: ${num_rows}" >&2
+  # First value row is 6th, (5 header rows)
+  row_num=6
+
+  # Continuously update the chart with data from the CSV file
+  while (( row_num <= num_rows )); do
+    # Extract data from the current row
+    data=$(awk -F, -v row="${row_num}" 'NR == row {OFS=","; print; exit}' "${csv_file}")
+    echo "PMT INFO: current row: ${row_num}" >&2
+
+    # Split the data into an array
+    IFS=',' read -r -a data_array <<< "${data}"
+
+    # Output the data for each dimension using SET command and a loop
+    echo "BEGIN intel_pmt.chart"
+    # Skip timestamp column
+    for ((i = 1; i <= max_col; i++)); do
+      # Check if the index is valid
+      if (( i < ${#data_array[@]} )); then
+          echo "SET col_${i} = ${data_array[${i}]}"
+      fi
+    done
+    echo "END"
+
+    # Move to the next row
+    row_num=$((row_num + 1))
+    if ((row_num > num_rows)); then
+      echo "PMT INFO: CSV file processed, last row: $((${row_num} - 1))" >&2
+    fi
+
+    sleep "${delta_t}"
+  done
+
+  # Archive last processed CSV file
+  cp "${csv_file}" /tmp/netdata_pmt.csv.old
+  echo "PMT INFO: deleting processed CSV file: ${csv_file}" >&2
+  rm -rf "${csv_file}"
+
+  sleep 10
+done
