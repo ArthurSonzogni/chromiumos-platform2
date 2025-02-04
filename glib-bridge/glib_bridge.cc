@@ -140,6 +140,7 @@ void GlibBridge::OnEvent(int fd, int flag) {
 
   // Avoid posting the dispatch task if it's already posted
   if (state_ == State::kReadyForDispatch) {
+    DVLOG(2) << "Dispatch was already scheduled";
     return;
   }
 
@@ -150,11 +151,18 @@ void GlibBridge::OnEvent(int fd, int flag) {
 }
 
 void GlibBridge::Timeout() {
-  CHECK_EQ(state_, State::kWaitingForEvents);
-  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
-  state_ = State::kReadyForDispatch;
+  if (state_ == State::kWaitingForEvents) {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
+    state_ = State::kReadyForDispatch;
+  } else if (state_ == State::kReadyForDispatch) {
+    DVLOG(2) << "Dispatch was already scheduled, ignoring timeout";
+  } else {
+    LOG(FATAL) << "Unexpected state "
+               << static_cast<std::underlying_type_t<State>>(state_)
+               << " in timeout handler";
+  }
 }
 
 void GlibBridge::Dispatch() {
