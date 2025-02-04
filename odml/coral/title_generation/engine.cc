@@ -516,9 +516,27 @@ std::optional<std::string> TitleGenerationEngine::MaybeGetCachedTitle(
       }
     }
   }
+  // If there's a cache hit, the entry is moved to the front later on through
+  // CacheGroupTitles(), which is called regardless of whether there's a cache
+  // hit.
   metrics_->SendTitleCacheDifferenceRatio(min_difference);
   metrics_->SendTitleCacheHit(ret.has_value());
   return ret;
+}
+
+std::optional<std::string> TitleGenerationEngine::GetNthTitleCacheKeyForTesting(
+    int n) {
+  auto itr = title_cache_.begin();
+  if (n >= title_cache_.size()) {
+    return std::nullopt;
+  }
+  // HashingLRUCache has bidirectional iterator not random access iterator, so
+  // we'll need to advance it to nth position like that.
+  for (int i = 0; i < n; i++) {
+    CHECK(itr != title_cache_.end());
+    itr++;
+  }
+  return itr->first;
 }
 
 }  // namespace coral

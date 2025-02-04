@@ -301,12 +301,12 @@ TEST_F(TitleGenerationEngineTest, FailThenSuccess) {
 }
 
 TEST_F(TitleGenerationEngineTest, TitleCaching) {
-  ExpectSendStatus(true, 3);
-  ExpectSendLatency(3);
+  ExpectSendStatus(true, 4);
+  ExpectSendLatency(4);
   // 1 request out of 3 hits the cache.
   ExpectSendGenerateTitleMetrics(2);
   ExpectSendInputTokenSize(2);
-  ExpectSendCacheHit(true, 1);
+  ExpectSendCacheHit(true, 2);
   ExpectSendCacheHit(false, 2);
   const odml::SessionStateManagerInterface::User user{"fake_user_1",
                                                       "fake_user_hash_1"};
@@ -389,6 +389,29 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   ASSERT_TRUE(response3.groups[0]->title.has_value());
   std::string title3 = *response3.groups[0]->title;
   EXPECT_NE(title2, title3);
+
+  // Restore it back to the previous state and trigger a cache hit.
+  entities.pop_back();
+  entities.pop_back();
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("YYY", url::mojom::Url::New("yyy.com"))));
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("AAA", url::mojom::Url::New("aaa.com"))));
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future4;
+  engine_->Process(get_request(), get_clustering_response(), mojo::NullRemote(),
+                   title_future4.GetCallback());
+  CoralResult<TitleGenerationResponse> result4 = title_future4.Take();
+  ASSERT_TRUE(result4.has_value());
+  TitleGenerationResponse response4 = std::move(*result4);
+  ASSERT_EQ(response4.groups.size(), 1);
+  ASSERT_TRUE(response4.groups[0]->title.has_value());
+  std::string title4 = *response4.groups[0]->title;
+  ASSERT_EQ(title1, title4);
+  // Check that the title is at the front of the LRU cache.
+  std::optional<std::string> cache_entry =
+      engine_->GetNthTitleCacheKeyForTesting(0);
+  ASSERT_TRUE(cache_entry.has_value());
+  EXPECT_EQ(cache_entry.value(), title1);
 }
 
 TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {

@@ -74,6 +74,8 @@ class TitleGenerationEngine
       const odml::SessionStateManagerInterface::User& user) override;
   void OnUserLoggedOut() override;
 
+  std::optional<std::string> GetNthTitleCacheKeyForTesting(int n);
+
  private:
   void OnGetModelStateResult(on_device_model::mojom::PlatformModelState state);
   void EnsureModelLoaded(base::OnceClosure callback);
