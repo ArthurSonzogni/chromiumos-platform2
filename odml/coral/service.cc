@@ -74,10 +74,11 @@ void CoralService::Initialize(
       LOG(WARNING) << "Initializing CoralService failed due to invalid "
                       "ml_service remote. "
                       "This will become an error for initialization soon.";
+    } else {
+      ml_service_.Bind(std::move(ml_service));
+      language_detector_->Initialize(*ml_service_.get());
+      ml_service_.reset_on_disconnect();
     }
-    ml_service_.Bind(std::move(ml_service));
-    language_detector_->Initialize(*ml_service_);
-    ml_service_.reset_on_disconnect();
   }
   embedding_engine_->PrepareResource();
   title_generation_engine_->PrepareResource();
