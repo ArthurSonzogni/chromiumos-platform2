@@ -2339,7 +2339,8 @@ void WiFi::EAPEventTask(const std::string& status,
                                   &metrics_eap_event);
 
   current_service_->eap()->ReportEapEventMetric(
-      metrics(), manager()->GetCACertExperimentPhase(), metrics_eap_event);
+      metrics(), current_service_->GetCACertExperimentPhase(),
+      metrics_eap_event);
   if (failure == Service::kFailurePinMissing) {
     // wpa_supplicant can sometimes forget the PIN on disconnect from the AP.
     const std::string& pin = current_service_->eap()->pin();

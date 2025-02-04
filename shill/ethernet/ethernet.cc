@@ -493,7 +493,8 @@ void Ethernet::EAPEventTask(const std::string& status,
     SetIsEapAuthenticated(false);
   }
   GetEapService()->eap()->ReportEapEventMetric(
-      metrics(), manager()->GetCACertExperimentPhase(), metrics_eap_event);
+      metrics(), GetEapService()->GetCACertExperimentPhase(),
+      metrics_eap_event);
 }
 
 void Ethernet::SupplicantStateChangedTask(const std::string& state) {
