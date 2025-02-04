@@ -132,6 +132,7 @@ sched_setaffinity: 1
 sched_getparam: 1
 sched_setscheduler: 1
 sched_getscheduler: 1
+getcpu: 1
 
 # For mojo & D-Bus
 socket: arg0 == AF_UNIX
