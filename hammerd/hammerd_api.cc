@@ -128,7 +128,9 @@ BRILLO_EXPORT const char* FirmwareUpdater_GetSectionVersion(
   // To avoid the string being freed from memory after exiting the function, we
   // store as a static variable here.  However, the return string should be
   // copied before calling the function again (Python ctypes does this).
-  static std::string version = updater->GetSectionVersion(section_name);
+  static std::string version;
+
+  version = updater->GetSectionVersion(section_name);
   return version.c_str();
 }
 
