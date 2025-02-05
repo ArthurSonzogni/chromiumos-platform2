@@ -951,20 +951,24 @@ int ChromeosStartup::Run() {
   EarlySetup();
 
   root_dev_ = utils::GetRootDevice(true);
-  if (root_dev_.empty()) {
-    PLOG(INFO) << "rootdev could not find root device.";
-    // Request recovery.
-  }
+  // Check if we are booted on physical media. rootdev will fail if we are in
+  // an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
+  // image also uses initramfs but it never reaches here). When using
+  // initrd+tftpboot (some old netboot factory installer), ROOTDEV_TYPE will be
+  // /dev/ram.
+  if (root_dev_.empty() || root_dev_ == base::FilePath("/dev/ram")) {
+    PLOG(INFO) << "rootdev does not have stateful partition.";
+  } else {
+    std::optional<base::Value> image_vars = GetImageVars(root_, root_dev_);
+    if (!image_vars) {
+      PLOG(INFO) << "No partition data information available";
+      // Request recovery.
+    }
 
-  std::optional<base::Value> image_vars = GetImageVars(root_, root_dev_);
-  if (!image_vars) {
-    PLOG(INFO) << "No partition data information available";
-    // Request recovery.
+    stateful_mount_->MountStateful(root_dev_, flags_.get(), mount_helper_.get(),
+                                   *image_vars);
+    state_dev_ = stateful_mount_->GetStateDev();
   }
-
-  stateful_mount_->MountStateful(root_dev_, flags_.get(), mount_helper_.get(),
-                                 *image_vars);
-  state_dev_ = stateful_mount_->GetStateDev();
 
   if (enable_stateful_security_hardening_) {
     // Block symlink traversal and opening of FIFOs on stateful. Note that we
