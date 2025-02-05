@@ -45,12 +45,15 @@ class ClientTest : public ::testing::Test {
     mojo::core::Init();
   }
 
+// No extra shutdown required for MojoIpcz.
+#if !defined(ENABLE_IPCZ_ON_CHROMEOS)
   void TearDown() override {
     auto core = mojo::core::Core::Get();
     std::vector<MojoHandle> leaks;
     core->GetActiveHandlesForTest(&leaks);
     EXPECT_TRUE(leaks.empty());
   }
+#endif  // !defined(ENABLE_IPCZ_ON_CHROMEOS)
 
  private:
   brillo::BaseMessageLoop message_loop_;
