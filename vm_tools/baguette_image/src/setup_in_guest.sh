@@ -40,8 +40,8 @@ DATA_ROOT="/tmp/data"
 main() {
   export DEBIAN_FRONTEND=noninteractive
 
-  echo baguette > /etc/hostname
-  echo '127.0.0.1 baguette' >> /etc/hosts
+  echo penguin > /etc/hostname
+  echo '127.0.0.1 penguin' >> /etc/hosts
 
   echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 
