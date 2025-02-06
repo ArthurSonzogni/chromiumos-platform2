@@ -116,14 +116,14 @@ void TranslatorImpl::DownloadDlc(const LangPair& lang_pair,
   std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
       dlc_name,
       base::BindOnce(&TranslatorImpl::OnInstallDlcComplete,
-                     weak_ptr_factory_.GetWeakPtr(), lang_pair,
+                     weak_ptr_factory_.GetWeakPtr(), dlc_name,
                      std::move(callback)),
       std::move(progress));
   (*dlc_client)->InstallDlc();
 }
 
 bool TranslatorImpl::IsDlcDownloaded(const LangPair& lang_pair) {
-  return dlc_paths_.count(lang_pair);
+  return dlc_paths_.count(GetDlcName(lang_pair));
 }
 
 std::optional<std::string> TranslatorImpl::Translate(
@@ -148,7 +148,7 @@ std::optional<std::string> TranslatorImpl::Translate(
 }
 
 void TranslatorImpl::OnInstallDlcComplete(
-    const LangPair& lang_pair,
+    const std::string& dlc_name,
     base::OnceCallback<void(bool)> callback,
     base::expected<base::FilePath, std::string> result) {
   if (!result.has_value()) {
@@ -156,7 +156,7 @@ void TranslatorImpl::OnInstallDlcComplete(
     std::move(callback).Run(false);
     return;
   }
-  dlc_paths_[lang_pair] = result.value().value();
+  dlc_paths_[dlc_name] = result.value().value();
   std::move(callback).Run(true);
 }
 
@@ -170,10 +170,10 @@ std::optional<DictionaryManagerPtr> TranslatorImpl::GetDictionary(
   if (dict != dictionaries_.end()) {
     return dict->second;
   }
-  auto dlc_path = dlc_paths_.find(lang_pair);
+  std::string dlc_name = GetDlcName(lang_pair);
+  auto dlc_path = dlc_paths_.find(dlc_name);
   if (dlc_path == dlc_paths_.end()) {
-    LOG(ERROR) << base::StringPrintf("DLC %s doesn't exist",
-                                     GetDlcName(lang_pair).c_str());
+    LOG(ERROR) << base::StringPrintf("DLC %s doesn't exist", dlc_name.c_str());
     return std::nullopt;
   }
 

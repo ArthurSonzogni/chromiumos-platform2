@@ -38,7 +38,7 @@ class TranslatorImpl : public Translator {
                                        const std::string& input_text) override;
 
  private:
-  void OnInstallDlcComplete(const LangPair& lang_pair,
+  void OnInstallDlcComplete(const std::string& dlc_name,
                             base::OnceCallback<void(bool)> callback,
                             base::expected<base::FilePath, std::string> result);
   std::optional<DictionaryManagerPtr> GetDictionary(const LangPair& lang_pair);
@@ -47,7 +47,7 @@ class TranslatorImpl : public Translator {
 
   absl::flat_hash_map<LangPair, DictionaryManagerPtr> dictionaries_;
 
-  absl::flat_hash_map<LangPair, std::string> dlc_paths_;
+  absl::flat_hash_map<std::string, std::string> dlc_paths_;
 
   const TranslateAPI* api_ = nullptr;
 

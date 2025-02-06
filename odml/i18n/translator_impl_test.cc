@@ -46,6 +46,7 @@ class TranslatorTestImpl : public testing::Test {
 
 TEST_F(TranslatorTestImpl, TranslateSuccess) {
   const LangPair kFakeLangPair{"en", "ja"};
+  const LangPair kFakeReverseLangPair{"ja", "en"};
   constexpr char kFakeInputText[] = "to be translated";
   // Initializing Translator.
   EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
@@ -69,6 +70,10 @@ TEST_F(TranslatorTestImpl, TranslateSuccess) {
   run_loop_dlc.Run();
   // Translating.
   auto translation = translator_.Translate(kFakeLangPair, kFakeInputText);
+  ASSERT_TRUE(translation.has_value());
+  EXPECT_TRUE(translation.value() == FakeTranslate(kFakeInputText));
+  // Translating reversely.
+  translation = translator_.Translate(kFakeReverseLangPair, kFakeInputText);
   ASSERT_TRUE(translation.has_value());
   EXPECT_TRUE(translation.value() == FakeTranslate(kFakeInputText));
 }
