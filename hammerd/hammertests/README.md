@@ -32,6 +32,9 @@ A list of current devices with detachable base mappings is as follows:
 |Wormdingler           |Eel
 |Quackingstick         |Duck
 |Starmie               |Jewel
+|Ciri                  |Kelpie
+|Wugtrio               |Spikyrock
+|Wyrdeer               |Whitebeard
 
 ## On Host
 

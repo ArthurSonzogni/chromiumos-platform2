@@ -43,6 +43,7 @@ BASE_TABLE = {
     "starmie": "jewel",
     "ciri": "kelpie",
     "wugtrio": "spikyrock",
+    "wyrdeer": "whitebeard",
 }
 
 BOARD_NAME = cros_config("/", "name")
