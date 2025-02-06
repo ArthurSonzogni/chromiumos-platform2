@@ -67,6 +67,7 @@ inline constexpr char kCalibrationInstruction[] = "calibration_instruction";
 inline constexpr char kProvisionFinishedStatus[] = "provision_finished_status";
 inline constexpr char kPowerwashCount[] = "powerwash_count";
 inline constexpr char kRoFirmwareVerified[] = "ro_firmware_verified";
+inline constexpr char kFinalizeRebooted[] = "finalize_rebooted";
 
 // Component traits.
 inline constexpr auto kComponentsNeedManualCalibration =

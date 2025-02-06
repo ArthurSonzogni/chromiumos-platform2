@@ -14,6 +14,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/state_handler/base_state_handler.h"
+#include "rmad/system/power_manager_client.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/vpd_utils.h"
@@ -26,10 +27,14 @@ class FinalizeStateHandler : public BaseStateHandler {
   // Report status every second.
   static constexpr base::TimeDelta kReportStatusInterval = base::Seconds(1);
 
+  // Wait for 3 seconds before rebooting.
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(3);
+
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store,
                                 scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject |working_dir_path_|,  |cros_config_utils_|, |gsc_utils_|,
-  // |write_protect_utils_|, and |vpd_utils_| for testing.
+  // |write_protect_utils_|, |vpd_utils_|, and |power_manager_client_| for
+  // testing.
   explicit FinalizeStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
@@ -37,7 +42,8 @@ class FinalizeStateHandler : public BaseStateHandler {
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
       std::unique_ptr<GscUtils> gsc_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils,
-      std::unique_ptr<VpdUtils> vpd_utils);
+      std::unique_ptr<VpdUtils> vpd_utils,
+      std::unique_ptr<PowerManagerClient> power_manager_client_);
 
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
   SET_UNREPEATABLE;
@@ -46,6 +52,7 @@ class FinalizeStateHandler : public BaseStateHandler {
   void RunState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+  GetNextStateCaseReply TryGetNextStateCaseAtBoot() override;
 
  protected:
   ~FinalizeStateHandler() override = default;
@@ -56,12 +63,15 @@ class FinalizeStateHandler : public BaseStateHandler {
   void StopStatusTimer();
 
   void StartFinalize();
-  void FinalizeTask();
+  void FinalizeTaskPreReboot();
+  void FinalizeTaskPostReboot();
   void ResetFpmcuEntropyCallback(bool success);
   void OnResetFpmcuEntropySucceed();
+  void Reboot();
 
   bool IsFingerprintSupported() const;
   bool IsBoardIdCheckBypassed() const;
+  bool HasRebooted() const;
 
   base::FilePath working_dir_path_;
   FinalizeStatus status_;
@@ -70,7 +80,10 @@ class FinalizeStateHandler : public BaseStateHandler {
   std::unique_ptr<GscUtils> gsc_utils_;
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
   std::unique_ptr<VpdUtils> vpd_utils_;
+  std::unique_ptr<PowerManagerClient> power_manager_client_;
+
   base::RepeatingTimer status_timer_;
+  base::OneShotTimer timer_;
 
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
 };

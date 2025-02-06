@@ -19,14 +19,15 @@
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
+#include "rmad/system/mock_power_manager_client.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_gsc_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
-#include "rmad/utils/vpd_utils.h"
 
 using testing::_;
+using testing::Assign;
 using testing::DoAll;
 using testing::ElementsAre;
 using testing::Eq;
@@ -64,7 +65,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     // First WP check to know if factory mode is enabled.
     // Second WP check after disabling factory mode. WP is expected to be
     // enabled.
-    std::vector<bool> hwwp_status_list = {false, true};
+    bool hwwp_enabled = true;
     bool enable_swwp_success = true;
     bool disable_factory_mode_success = true;
     std::string board_id_type = kValidBoardIdType;
@@ -94,14 +95,8 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<StrictMock<MockWriteProtectUtils>>();
-    {
-      InSequence seq;
-      for (bool enabled : args.hwwp_status_list) {
-        EXPECT_CALL(*mock_write_protect_utils,
-                    GetHardwareWriteProtectionStatus())
-            .WillOnce(Return(enabled));
-      }
-    }
+    EXPECT_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus())
+        .WillRepeatedly(Return(args.hwwp_enabled));
     EXPECT_CALL(*mock_write_protect_utils, EnableSoftwareWriteProtection())
         .WillRepeatedly(Return(args.enable_swwp_success));
 
@@ -110,6 +105,13 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(args.shimless_mode_flags), Return(true)));
+
+    // Mock |PowerManagerClient|.
+    reboot_called_ = false;
+    auto mock_power_manager_client =
+        std::make_unique<NiceMock<MockPowerManagerClient>>();
+    ON_CALL(*mock_power_manager_client, Restart())
+        .WillByDefault(DoAll(Assign(&reboot_called_, true), Return(true)));
 
     // Register signal callback.
     daemon_callback_->SetFinalizeSignalCallback(
@@ -123,7 +125,8 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     auto handler = base::MakeRefCounted<FinalizeStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_cros_config_utils), std::move(mock_gsc_utils),
-        std::move(mock_write_protect_utils), std::move(mock_vpd_utils));
+        std::move(mock_write_protect_utils), std::move(mock_vpd_utils),
+        std::move(mock_power_manager_client));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
     return handler;
@@ -157,8 +160,8 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
                     FinalizeStatus_Error expected_error =
                         FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN) {
     EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
-        .WillOnce(Invoke([expected_status, expected_progress,
-                          expected_error](const FinalizeStatus& status) {
+        .WillRepeatedly(Invoke([expected_status, expected_progress,
+                                expected_error](const FinalizeStatus& status) {
           EXPECT_EQ(status.status(), expected_status);
           EXPECT_DOUBLE_EQ(status.progress(), expected_progress);
           EXPECT_EQ(status.error(), expected_error);
@@ -174,6 +177,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
 
  protected:
   StrictMock<SignalSender> signal_sender_;
+  bool reboot_called_;
 
   // Variables for TaskRunner.
   base::test::TaskEnvironment task_environment_{
@@ -181,23 +185,18 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled_Succeeded) {
-  auto handler = CreateInitializedStateHandler({});
+  auto handler = CreateInitializedStateHandler({.hwwp_enabled = false});
 
   handler->RunState();
-  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
-}
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS, 0.6);
 
-TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpEnabled_Succeeded) {
-  StateHandlerArgs args = {.hwwp_status_list = {true, true}};
-  auto handler = CreateInitializedStateHandler(args);
-
-  handler->RunState();
-  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
+  EXPECT_FALSE(reboot_called_);
+  task_environment_.FastForwardBy(FinalizeStateHandler::kRebootDelay);
+  EXPECT_TRUE(reboot_called_);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_EnableSwwpFailed) {
-  StateHandlerArgs args = {.hwwp_status_list = {false},
-                           .enable_swwp_success = false};
+  StateHandlerArgs args = {.hwwp_enabled = false, .enable_swwp_success = false};
   auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
@@ -206,7 +205,7 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_EnableSwwpFailed) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
-  StateHandlerArgs args = {.hwwp_status_list = {false},
+  StateHandlerArgs args = {.hwwp_enabled = false,
                            .disable_factory_mode_success = false};
   auto handler = CreateInitializedStateHandler(args);
 
@@ -215,99 +214,153 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
                FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
 }
 
-TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled) {
-  StateHandlerArgs args = {.hwwp_status_list = {false, false}};
+TEST_F(FinalizeStateHandlerTest, TryGetNextStateCaseAtBoot_HwwpDisabled) {
+  StateHandlerArgs args = {.hwwp_enabled = false};
+  json_store_->SetValue(kFinalizeRebooted, true);
   auto handler = CreateInitializedStateHandler(args);
+
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.8,
                FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
 }
 
-TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId) {
+TEST_F(FinalizeStateHandlerTest, TryGetNextStateCaseAtBoot_InvalidBoardId) {
   StateHandlerArgs args = {.board_id_type = kInvalidBoardIdType};
+  json_store_->SetValue(kFinalizeRebooted, true);
   auto handler = CreateInitializedStateHandler(args);
+
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.95,
                FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
 }
 
-TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId_Bypass) {
+TEST_F(FinalizeStateHandlerTest,
+       TryGetNextStateCaseAtBoot_InvalidBoardId_Bypass) {
   StateHandlerArgs args = {.board_id_type = kInvalidBoardIdType};
+  json_store_->SetValue(kFinalizeRebooted, true);
   auto handler = CreateInitializedStateHandler(args);
 
   // Bypass board ID check.
   EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
+
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
 TEST_F(FinalizeStateHandlerTest,
-       InitializeState_InvalidBoardId_BypassWithFlags) {
+       TryGetNextStateCaseAtBoot_InvalidBoardId_BypassWithFlags) {
   StateHandlerArgs args = {
       .board_id_type = kInvalidBoardIdType,
       .shimless_mode_flags = kShimlessModeFlagsBoardIdCheckResultBypass};
+  json_store_->SetValue(kFinalizeRebooted, true);
   auto handler = CreateInitializedStateHandler(args);
 
-  handler->RunState();
-  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
-}
-
-TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags) {
-  StateHandlerArgs args = {.board_id_flags = kInvalidBoardIdFlags};
-  auto handler = CreateInitializedStateHandler(args);
-
-  handler->RunState();
-  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.95,
-               FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
-}
-
-TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
-  StateHandlerArgs args = {.board_id_flags = kInvalidBoardIdFlags};
-  auto handler = CreateInitializedStateHandler(args);
-
-  // Bypass board ID check.
-  EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
 TEST_F(FinalizeStateHandlerTest,
-       InitializeState_InvalidBoardIdFlags_BypassWithFlags) {
+       TryGetNextStateCaseAtBoot_InvalidBoardIdFlags) {
+  StateHandlerArgs args = {.board_id_flags = kInvalidBoardIdFlags};
+  json_store_->SetValue(kFinalizeRebooted, true);
+  auto handler = CreateInitializedStateHandler(args);
+
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
+
+  handler->RunState();
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.95,
+               FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
+}
+
+TEST_F(FinalizeStateHandlerTest,
+       TryGetNextStateCaseAtBoot_InvalidBoardIdFlags_Bypass) {
+  StateHandlerArgs args = {.board_id_flags = kInvalidBoardIdFlags};
+  json_store_->SetValue(kFinalizeRebooted, true);
+  auto handler = CreateInitializedStateHandler(args);
+
+  // Bypass board ID check.
+  EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
+
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
+
+  handler->RunState();
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
+}
+
+TEST_F(FinalizeStateHandlerTest,
+       TryGetNextStateCaseAtBoot_InvalidBoardIdFlags_BypassWithFlags) {
   StateHandlerArgs args = {
       .board_id_type = kInvalidBoardIdFlags,
       .shimless_mode_flags = kShimlessModeFlagsBoardIdCheckResultBypass};
+  json_store_->SetValue(kFinalizeRebooted, true);
   auto handler = CreateInitializedStateHandler(args);
+
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
-TEST_F(FinalizeStateHandlerTest, InitializeState_HasFps_Success) {
+TEST_F(FinalizeStateHandlerTest, TryGetNextStateCaseAtBoot_HasFps_Success) {
   StateHandlerArgs args = {.fingerprint_sensor_location =
                                kFingerprintSensorLocation};
+  json_store_->SetValue(kFinalizeRebooted, true);
   auto handler = CreateInitializedStateHandler(args);
+
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
-TEST_F(FinalizeStateHandlerTest, InitializeState_FpsNone_Success) {
+TEST_F(FinalizeStateHandlerTest, TryGetNextStateCaseAtBoot_FpsNone_Success) {
   StateHandlerArgs args = {.fingerprint_sensor_location = "none"};
+  json_store_->SetValue(kFinalizeRebooted, true);
   auto handler = CreateInitializedStateHandler(args);
+
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
-TEST_F(FinalizeStateHandlerTest, InitializeState_ResetFpsFailedBlocking) {
+TEST_F(FinalizeStateHandlerTest,
+       TryGetNextStateCaseAtBoot_ResetFpsFailedBlocking) {
   StateHandlerArgs args = {
       .fingerprint_sensor_location = kFingerprintSensorLocation,
       .reset_fps_success = false};
+  json_store_->SetValue(kFinalizeRebooted, true);
   auto handler = CreateInitializedStateHandler(args);
+
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
@@ -316,7 +369,14 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_ResetFpsFailedBlocking) {
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Succeeded) {
   auto handler = CreateInitializedStateHandler({});
+  json_store_->SetValue(kFinalizeRebooted, true);
+
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state, RmadState::StateCase::kFinalize);
+
   handler->RunState();
+
   task_environment_.RunUntilIdle();
 
   ExpectTransitionSucceeded(
@@ -327,7 +387,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Succeeded) {
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
   // RunState() is not called yet, so there's no call to get HWWP status either.
-  auto handler = CreateInitializedStateHandler({.hwwp_status_list = {}});
+  auto handler = CreateInitializedStateHandler({});
 
   ExpectTransitionFailedWithError(
       handler,
@@ -356,8 +416,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_BlockingFailure_Retry) {
-  StateHandlerArgs args = {.hwwp_status_list = {false, false},
-                           .disable_factory_mode_success = false};
+  StateHandlerArgs args = {.disable_factory_mode_success = false};
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
   task_environment_.RunUntilIdle();
