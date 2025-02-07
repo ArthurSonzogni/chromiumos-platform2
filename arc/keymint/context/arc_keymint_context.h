@@ -25,6 +25,7 @@
 
 #include "arc/keymint/context/arc_attestation_context.h"
 #include "arc/keymint/context/arc_enforcement_policy.h"
+#include "arc/keymint/context/arc_keymint_metrics.h"
 #include "arc/keymint/context/arc_remote_provisioning_context.h"
 #include "arc/keymint/context/context_adaptor.h"
 #include "arc/keymint/context/cros_key.h"
@@ -197,6 +198,8 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   void set_vbmeta_digest_file_dir_for_tests(
       base::FilePath& vbmeta_digest_file_dir);
   void set_dbus_for_tests(scoped_refptr<dbus::Bus> bus);
+  void set_arc_keymint_metrics_for_tests(
+      std::unique_ptr<ArcKeyMintMetrics> arc_keymint_metrics);
 
   // Since the initialization of |rsa_key_factory_| uses
   // |context_adaptor_|, hence |context_adaptor_| must
@@ -214,6 +217,7 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   std::optional<uint32_t> boot_patchlevel_;
   std::unique_ptr<ArcAttestationContext> arc_attestation_context_;
   std::unique_ptr<ArcEnforcementPolicy> arc_enforcement_policy_;
+  std::unique_ptr<ArcKeyMintMetrics> arc_keymint_metrics_;
 
   friend class ContextTestPeer;
 };

@@ -29,8 +29,10 @@
 #include <keymaster/keymaster_tags.h>
 #include <keymaster/UniquePtr.h>
 #include <libcrossystem/crossystem_fake.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "absl/strings/escaping.h"
+#include "arc/keymint/context/arc_keymint_metrics.h"
 #include "arc/keymint/context/context_adaptor.h"
 #include "arc/keymint/context/openssl_utils.h"
 #include "arc/keymint/key_data.pb.h"
@@ -68,6 +70,13 @@ constexpr char kDebugdTestMessage[] =
     "bios::GBB::root_key::version::1\n"
     "bios::GBB::root_key::sha1_sum::eae4c36d842cfee8588924955da295feae79becc\n"
     "bios::GBB::recovery_key::valid\n";
+
+constexpr char kVerifiedBootKeyStatusHistogram[] =
+    "Arc.KeyMint.VerifiedBootKey.Result";
+constexpr char kVerifiedBootHashStatusHistogram[] =
+    "Arc.KeyMint.VerifiedBootHash.Result";
+constexpr char kVerifiedBootStateStatusHistogram[] =
+    "Arc.KeyMint.VerifiedBootState.Result";
 
 // Arbitrary CK_SLOT_ID for user slot.
 constexpr uint64_t kUserSlotId = 11;
@@ -320,6 +329,11 @@ class ContextTestPeer {
     return context->boot_key_;
   }
 
+  static std::unique_ptr<ArcKeyMintMetrics> arc_keymint_metrics(
+      ArcKeyMintContext* context) {
+    return std::move(context->arc_keymint_metrics_);
+  }
+
   static void set_cros_system_for_tests(
       ArcKeyMintContext* context,
       std::unique_ptr<crossystem::Crossystem> cros_system) {
@@ -334,6 +348,12 @@ class ContextTestPeer {
   static void set_vbmeta_digest_file_dir_for_tests(ArcKeyMintContext* context,
                                                    base::FilePath file_path) {
     context->set_vbmeta_digest_file_dir_for_tests(file_path);
+  }
+
+  static void set_arc_keymint_metrics_for_tests(
+      ArcKeyMintContext* context,
+      std::unique_ptr<ArcKeyMintMetrics> arc_keymint_metrics) {
+    context->set_arc_keymint_metrics_for_tests(std::move(arc_keymint_metrics));
   }
 
   static const bool IsDevMode(ArcKeyMintContext* context) {
@@ -396,6 +416,17 @@ class ArcKeyMintContextTest : public ::testing::Test {
     ContextTestPeer::set_cros_system_for_tests(context_,
                                                std::move(cros_system));
 
+    auto arc_keymint_metrics_ptr = std::make_unique<ArcKeyMintMetrics>();
+    std::unique_ptr<MetricsLibraryInterface> metrics_library_ptr =
+        std::make_unique<MetricsLibraryMock>();
+    metrics_library_mock_ =
+        static_cast<MetricsLibraryMock*>(metrics_library_ptr.get());
+
+    arc_keymint_metrics_ptr->SetMetricsLibraryForTesting(
+        std::move(metrics_library_ptr));
+    ContextTestPeer::set_arc_keymint_metrics_for_tests(
+        context_, std::move(arc_keymint_metrics_ptr));
+
     debugd_log_name_ = "verified boot";
   }
 
@@ -437,6 +468,7 @@ class ArcKeyMintContextTest : public ::testing::Test {
   scoped_refptr<dbus::MockObjectProxy> mock_debug_proxy_;
   scoped_refptr<dbus::MockBus> bus_;
   std::string debugd_log_name_;
+  MetricsLibraryMock* metrics_library_mock_;
 
  private:
   base::expected<std::unique_ptr<dbus::Response>, dbus::Error> MockResponse(
@@ -870,6 +902,12 @@ TEST_F(ArcKeyMintContextTest, DeserializeKeyDataBlob_InvalidKeyDataError) {
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NonDebugMode) {
   // Prepare.
   fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 0);
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendEnumToUMA(kVerifiedBootStateStatusHistogram,
+                    static_cast<uint64_t>(ArcVerifiedBootStateResult::kSuccess),
+                    _))
+      .Times(1);
 
   // Execute.
   const bool is_dev_mode = ContextTestPeer::IsDevMode(context_);
@@ -886,6 +924,12 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NonDebugMode) {
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_DebugMode) {
   // Prepare.
   fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 1);
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendEnumToUMA(kVerifiedBootStateStatusHistogram,
+                    static_cast<uint64_t>(ArcVerifiedBootStateResult::kSuccess),
+                    _))
+      .Times(1);
 
   // Execute.
   const bool is_dev_mode = ContextTestPeer::IsDevMode(context_);
@@ -902,6 +946,12 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_DebugMode) {
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_UnexpectedCrosDebug) {
   // Prepare.
   fake_cros_system_->VbSetSystemPropertyInt("cros_debug", -1);
+  EXPECT_CALL(*metrics_library_mock_,
+              SendEnumToUMA(kVerifiedBootStateStatusHistogram,
+                            static_cast<uint64_t>(
+                                ArcVerifiedBootStateResult::kInvalidCrosDebug),
+                            _))
+      .Times(1);
 
   // Execute.
   const bool is_dev_mode = ContextTestPeer::IsDevMode(context_);
@@ -916,6 +966,14 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_UnexpectedCrosDebug) {
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NoCrosDebug) {
+  // Prepare.
+  EXPECT_CALL(*metrics_library_mock_,
+              SendEnumToUMA(kVerifiedBootStateStatusHistogram,
+                            static_cast<uint64_t>(
+                                ArcVerifiedBootStateResult::kInvalidCrosDebug),
+                            _))
+      .Times(1);
+
   // Execute.
   const bool is_dev_mode = ContextTestPeer::IsDevMode(context_);
   std::string boot_state =
@@ -932,6 +990,12 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NullCrosSystem) {
   // Prepare.
   ContextTestPeer::set_cros_system_for_tests(context_,
                                              /* cros_system */ nullptr);
+  EXPECT_CALL(*metrics_library_mock_,
+              SendEnumToUMA(kVerifiedBootStateStatusHistogram,
+                            static_cast<uint64_t>(
+                                ArcVerifiedBootStateResult::kNullCrosSystem),
+                            _))
+      .Times(1);
 
   // Execute.
   const bool is_dev_mode = ContextTestPeer::IsDevMode(context_);
@@ -973,6 +1037,12 @@ TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_Success) {
                               file_data));
   ContextTestPeer::set_vbmeta_digest_file_dir_for_tests(context_,
                                                         temp_dir.GetPath());
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendEnumToUMA(kVerifiedBootHashStatusHistogram,
+                    static_cast<uint64_t>(ArcVerifiedBootHashResult::kSuccess),
+                    _))
+      .Times(1);
 
   // Execute.
   std::optional<std::vector<uint8_t>> result =
@@ -985,12 +1055,42 @@ TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_Success) {
   EXPECT_EQ(actual_hex, kSampleVbMetaDigest);
 }
 
-TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_Failure) {
+TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_FileFailure) {
   // Prepare.
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   ContextTestPeer::set_vbmeta_digest_file_dir_for_tests(context_,
                                                         temp_dir.GetPath());
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendEnumToUMA(
+          kVerifiedBootHashStatusHistogram,
+          static_cast<uint64_t>(ArcVerifiedBootHashResult::kFileError), _))
+      .Times(1);
+
+  // Execute.
+  std::optional<std::vector<uint8_t>> result =
+      ContextTestPeer::GetVbMetaDigestFromFileForTest(context_);
+
+  // Test.
+  ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_InvalidHash) {
+  // Prepare.
+  std::string file_data("invalid");
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::WriteFile(temp_dir.GetPath().Append(kVbMetaDigestFileName),
+                              file_data));
+  ContextTestPeer::set_vbmeta_digest_file_dir_for_tests(context_,
+                                                        temp_dir.GetPath());
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendEnumToUMA(
+          kVerifiedBootHashStatusHistogram,
+          static_cast<uint64_t>(ArcVerifiedBootHashResult::kInvalidHash), _))
+      .Times(1);
 
   // Execute.
   std::optional<std::vector<uint8_t>> result =
@@ -1005,6 +1105,12 @@ TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_Success) {
   SetUpDBus();
   ContextTestPeer::set_dbus_for_tests(context_, bus_);
   const bool is_dev_mode = false;
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendEnumToUMA(
+          kVerifiedBootKeyStatusHistogram,
+          static_cast<uint64_t>(ArcVerifiedBootKeyResult::kSuccessProdKey), _))
+      .Times(1);
 
   // Execute.
   ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_, is_dev_mode);
@@ -1023,6 +1129,12 @@ TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_EmptySuccess) {
   // Prepare.
   const bool is_dev_mode = true;
   const std::string empty_boot_key(32, '\0');
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendEnumToUMA(
+          kVerifiedBootKeyStatusHistogram,
+          static_cast<uint64_t>(ArcVerifiedBootKeyResult::kSuccessDevKey), _))
+      .Times(1);
 
   // Execute.
   ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_, is_dev_mode);
@@ -1040,6 +1152,12 @@ TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_Failure) {
   SetUpDBus();
   ContextTestPeer::set_dbus_for_tests(context_, bus_);
   const bool is_dev_mode = false;
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendEnumToUMA(
+          kVerifiedBootKeyStatusHistogram,
+          static_cast<uint64_t>(ArcVerifiedBootKeyResult::kVbLogError), _))
+      .Times(1);
 
   // Execute.
   ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_, is_dev_mode);
@@ -1049,6 +1167,23 @@ TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_Failure) {
 
   // Cleanup.
   TearDownDBus();
+}
+
+TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_DbusFailure) {
+  // Prepare.
+  const bool is_dev_mode = false;
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendEnumToUMA(
+          kVerifiedBootKeyStatusHistogram,
+          static_cast<uint64_t>(ArcVerifiedBootKeyResult::kDebugdError), _))
+      .Times(1);
+
+  // Execute.
+  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_, is_dev_mode);
+
+  // Test.
+  ASSERT_FALSE(ContextTestPeer::boot_key(context_).has_value());
 }
 
 TEST_F(ArcKeyMintContextTest, SetVerifiedBootParams_Success) {

@@ -224,6 +224,7 @@ shared_library("libarckeymint_context") {
     "context/arc_attestation_context.cc",
     "context/arc_enforcement_policy.cc",
     "context/arc_keymint_context.cc",
+    "context/arc_keymint_metrics.cc",
     "context/arc_remote_provisioning_context.cc",
     "context/chaps_client.cc",
     "context/chaps_crypto_operation.cc",

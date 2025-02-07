@@ -23,6 +23,7 @@
 #include <keymaster/key_blob_utils/integrity_assured_key_blob.h>
 #include <keymaster/key_blob_utils/software_keyblobs.h>
 #include <libarc-attestation/lib/interface.h>
+#include <metrics/metrics_library.h>
 #include <mojo/cert_store.mojom.h>
 #include <openssl/evp.h>
 #include <re2/re2.h>
@@ -274,6 +275,7 @@ ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
       vbmeta_digest_file_dir_(kVbMetaDigestFileDir) {
   CHECK(version >= ::keymaster::KmVersion::KEYMINT_1);
 
+  arc_keymint_metrics_ = std::make_unique<ArcKeyMintMetrics>();
   cros_system_ = std::make_unique<crossystem::Crossystem>();
   const bool is_dev_mode = IsDevMode();
   const std::string bootloader_state = DeriveBootloaderState(is_dev_mode);
@@ -823,6 +825,11 @@ void ArcKeyMintContext::set_dbus_for_tests(scoped_refptr<dbus::Bus> bus) {
   bus_ = bus;
 }
 
+void ArcKeyMintContext::set_arc_keymint_metrics_for_tests(
+    std::unique_ptr<ArcKeyMintMetrics> arc_keymint_metrics) {
+  arc_keymint_metrics_ = std::move(arc_keymint_metrics);
+}
+
 std::optional<std::vector<uint8_t>> ArcKeyMintContext::GetVbMetaDigestFromFile()
     const {
   base::FilePath vbmeta_digest_file_path =
@@ -834,6 +841,10 @@ std::optional<std::vector<uint8_t>> ArcKeyMintContext::GetVbMetaDigestFromFile()
     // In case of failure to read vb meta digest into string, return nullopt.
     LOG(ERROR) << "Failed to read vb meta digest file from path "
                << vbmeta_digest_file_path;
+    if (arc_keymint_metrics_ != nullptr) {
+      arc_keymint_metrics_->SendVerifiedBootHashResult(
+          ArcVerifiedBootHashResult::kFileError);
+    }
     return std::nullopt;
   }
   std::string bytes_string = absl::HexStringToBytes(vbmeta_digest.c_str());
@@ -843,9 +854,17 @@ std::optional<std::vector<uint8_t>> ArcKeyMintContext::GetVbMetaDigestFromFile()
     LOG(ERROR) << "vbmeta digest is not a valid hash. "
                << "Expected size: " << kExpectedVbMetaDigestSize
                << ". Actual size: " << vbmeta_digest_result.size();
+    if (arc_keymint_metrics_ != nullptr) {
+      arc_keymint_metrics_->SendVerifiedBootHashResult(
+          ArcVerifiedBootHashResult::kInvalidHash);
+    }
     return std::nullopt;
   }
 
+  if (arc_keymint_metrics_ != nullptr) {
+    arc_keymint_metrics_->SendVerifiedBootHashResult(
+        ArcVerifiedBootHashResult::kSuccess);
+  }
   return vbmeta_digest_result;
 }
 
@@ -854,6 +873,10 @@ void ArcKeyMintContext::GetAndSetBootKeyFromLogs(const bool is_dev_mode) {
   if (is_dev_mode) {
     boot_key_ = brillo::BlobFromString(empty_boot_key);
     LOG(INFO) << "Returning Empty Boot key in Dev Mode";
+    if (arc_keymint_metrics_ != nullptr) {
+      arc_keymint_metrics_->SendVerifiedBootKeyResult(
+          ArcVerifiedBootKeyResult::kSuccessDevKey);
+    }
     return;
   }
 
@@ -864,6 +887,10 @@ void ArcKeyMintContext::GetAndSetBootKeyFromLogs(const bool is_dev_mode) {
   }
   if (!bus_->Connect()) {
     LOG(ERROR) << "Unable to connect to DBUS. Cannot get verified boot key.";
+    if (arc_keymint_metrics_ != nullptr) {
+      arc_keymint_metrics_->SendVerifiedBootKeyResult(
+          ArcVerifiedBootKeyResult::kDebugdError);
+    }
     return;
   }
 
@@ -874,32 +901,55 @@ void ArcKeyMintContext::GetAndSetBootKeyFromLogs(const bool is_dev_mode) {
 
   if (debugd_proxy == nullptr) {
     LOG(ERROR) << "debugd_proxy is null. Cannot get verified boot key.";
+    if (arc_keymint_metrics_ != nullptr) {
+      arc_keymint_metrics_->SendVerifiedBootKeyResult(
+          ArcVerifiedBootKeyResult::kDebugdError);
+    }
     return;
   }
 
   debugd_proxy->GetLog(kVerifiedBootLogName, &verified_boot_log, &error);
   if (error != nullptr) {
+    if (arc_keymint_metrics_ != nullptr) {
+      arc_keymint_metrics_->SendVerifiedBootKeyResult(
+          ArcVerifiedBootKeyResult::kDebugdError);
+    }
     LOG(ERROR) << "debugd GetLog call failed with: " << error->GetMessage();
     return;
   }
 
   if (verified_boot_log.empty()) {
     LOG(ERROR) << "Empty verified boot log was retrieved from debugd";
+    if (arc_keymint_metrics_ != nullptr) {
+      arc_keymint_metrics_->SendVerifiedBootKeyResult(
+          ArcVerifiedBootKeyResult::kVbLogError);
+    }
     return;
   }
 
   std::string boot_key;
   if (!RE2::PartialMatch(verified_boot_log, kBootKeyRegex, &boot_key)) {
     LOG(ERROR) << "Did not find boot key info in verified boot log";
+    if (arc_keymint_metrics_ != nullptr) {
+      arc_keymint_metrics_->SendVerifiedBootKeyResult(
+          ArcVerifiedBootKeyResult::kVbLogError);
+    }
     return;
   }
-
+  if (arc_keymint_metrics_ != nullptr) {
+    arc_keymint_metrics_->SendVerifiedBootKeyResult(
+        ArcVerifiedBootKeyResult::kSuccessProdKey);
+  }
   boot_key_ = brillo::BlobFromString(boot_key);
 }
 
 const bool ArcKeyMintContext::IsDevMode() const {
   if (!cros_system_) {
     LOG(ERROR) << "cros_system_ is null. Hence, assuming device is in dev mode";
+    if (arc_keymint_metrics_ != nullptr) {
+      arc_keymint_metrics_->SendVerifiedBootStateResult(
+          ArcVerifiedBootStateResult::kNullCrosSystem);
+    }
     return true;
   }
 
@@ -910,7 +960,16 @@ const bool ArcKeyMintContext::IsDevMode() const {
   // If cros_debug cannot be read, assume the device is in dev mode.
   if (!cros_debug.has_value() || cros_debug < 0) {
     LOG(ERROR) << "Error while trying to read cros_debug. Assuming dev mode";
+    if (arc_keymint_metrics_ != nullptr) {
+      arc_keymint_metrics_->SendVerifiedBootStateResult(
+          ArcVerifiedBootStateResult::kInvalidCrosDebug);
+    }
     return true;
+  }
+
+  if (arc_keymint_metrics_ != nullptr) {
+    arc_keymint_metrics_->SendVerifiedBootStateResult(
+        ArcVerifiedBootStateResult::kSuccess);
   }
   // Device is in dev mode as flag is explicitly set.
   if (cros_debug == 1) {
