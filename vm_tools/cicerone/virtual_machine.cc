@@ -15,6 +15,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <base/uuid.h>
 #include <chromeos/constants/vm_tools.h>
