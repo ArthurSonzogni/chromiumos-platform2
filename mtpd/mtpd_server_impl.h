@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/compiler_specific.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
@@ -66,6 +67,12 @@ class MtpdServer : public org::chromium::MtpdInterface,
                          const base::ScopedFD& file_descriptor,
                          uint32_t parent_id,
                          const std::string& file_name) override;
+  bool RequestCopyFileFromLocal(brillo::ErrorPtr* error,
+                                const std::string& handle,
+                                const base::ScopedFD& file_descriptor,
+                                uint32_t parent_id,
+                                const std::string& file_name,
+                                int32_t* out_request_id) override;
   bool DeleteObject(brillo::ErrorPtr* error,
                     const std::string& handle,
                     uint32_t object_id) override;
@@ -111,8 +118,13 @@ class MtpdServer : public org::chromium::MtpdInterface,
   // Exported D-Bus object.
   brillo::dbus_utils::DBusObject dbus_object_;
 
-  // Device manager needs to be last, so it is the first to be destroyed.
+  int32_t copy_file_from_local_request_id_ = 0;
+
+  // Device manager needs to be after all other members, so it is the first to
+  // be destroyed.
   DeviceManager device_manager_;
+
+  base::WeakPtrFactory<MtpdServer> weak_ptr_factory_{this};
 };
 
 }  // namespace mtpd

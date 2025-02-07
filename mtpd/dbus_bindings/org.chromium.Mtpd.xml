@@ -153,6 +153,37 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
 
+    <method name="RequestCopyFileFromLocal">
+      <arg name="handle" type="s" direction="in">
+        <tp:docstring>
+          Handle to the storage from OpenStorage.
+        </tp:docstring>
+      </arg>
+      <arg name="file_descriptor" type="h" direction="in">
+        <tp:docstring>
+          File descriptor of original file.
+        </tp:docstring>
+      </arg>
+      <arg name="parent_id" type="u" direction="in">
+        <tp:docstring>
+          Object id of destination folder.
+        </tp:docstring>
+      </arg>
+      <arg name="file_name" type="s" direction="in">
+        <tp:docstring>
+          Destination file name.
+        </tp:docstring>
+      </arg>
+      <arg name="request_id" type="i" direction="out">
+        <tp:docstring>
+          An id representing the file copying request. It will used with
+          RequestCopyFileFromLocalCompleted signal to notify caller about
+          copying result.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+
     <method name="DeleteObject">
       <arg name="handle" type="s" direction="in">
         <tp:docstring>
@@ -229,6 +260,18 @@
       <tp:docstring>
         Storage name is in the same format as EnumerateStorages.
       </tp:docstring>
+      </arg>
+    </signal>
+    <signal name="CopyFileFromLocalCompleted">
+      <arg name="request_id" type="i" direction="out">
+      <tp:docstring>
+        The id of the completed copy file from local request.
+      </tp:docstring>
+      </arg>
+      <arg name="result" type="b" direction="out">
+        <tp:docstring>
+          Boolean indicating whether the copy request is completed successfully.
+        </tp:docstring>
       </arg>
     </signal>
   </interface>

@@ -4,13 +4,17 @@
 
 #include "mtpd/mtpd_server_impl.h"
 
+#include <unistd.h>
+
 #include <utility>
 
 #include <base/containers/contains.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace mtpd {
@@ -190,6 +194,41 @@ bool MtpdServer::CopyFileFromLocal(brillo::ErrorPtr* error,
     AddError(error, FROM_HERE, "CopyFileFromLocal failed");
     return false;
   }
+
+  return true;
+}
+
+bool MtpdServer::RequestCopyFileFromLocal(brillo::ErrorPtr* error,
+                                          const std::string& handle,
+                                          const base::ScopedFD& file_descriptor,
+                                          uint32_t parent_id,
+                                          const std::string& file_name,
+                                          int32_t* out_request_id) {
+  base::ScopedFD fd_copy(HANDLE_EINTR(dup(file_descriptor.get())));
+  if (!fd_copy.is_valid()) {
+    AddError(error, FROM_HERE, "RequestCopyFileFromLocal failed");
+    return false;
+  }
+
+  *out_request_id = ++copy_file_from_local_request_id_;
+
+  brillo::MessageLoop::current()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](base::WeakPtr<MtpdServer> weak_this, const std::string& handle,
+             base::ScopedFD file_descriptor, uint32_t parent_id,
+             const std::string& file_name, int32_t request_id) {
+            if (!weak_this) {
+              return;
+            }
+
+            weak_this->SendCopyFileFromLocalCompletedSignal(
+                request_id,
+                weak_this->CopyFileFromLocal(nullptr, handle, file_descriptor,
+                                             parent_id, file_name));
+          },
+          weak_ptr_factory_.GetWeakPtr(), handle, std::move(fd_copy), parent_id,
+          file_name, *out_request_id));
 
   return true;
 }
