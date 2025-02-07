@@ -1205,6 +1205,9 @@ bool Service::Init(MmServiceFactory mm_service_factory) {
       base::BindRepeating(&Service::HandleSuspendDone,
                           weak_ptr_factory_.GetWeakPtr()));
 
+  // Set up the D-Bus client for vhost_user_starter daemon.
+  vhost_user_starter_client_ = std::make_unique<VhostUserStarterClient>(bus_);
+
   // Setup D-Bus proxy for spaced.
   disk_usage_proxy_ = std::make_unique<spaced::DiskUsageProxy>(
       std::make_unique<org::chromium::SpacedProxy>(bus_));

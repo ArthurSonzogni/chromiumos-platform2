@@ -8,10 +8,12 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/cpu.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <chromeos/constants/vm_tools.h>
@@ -281,6 +283,51 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     return response;
   }
 
+  const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
+  // Set up vhost-user-virtio-fs device, stub_device_socket_fds is a socket pair
+  // used for connecting vhost_user frontend and backend.
+  std::optional<VhostUserSocketPair> stub_device_socket_fds =
+      internal::SetupVhostUserSocketPair();
+  if (!stub_device_socket_fds.has_value()) {
+    response.set_failure_reason(
+        "Fail to create stub device vhost user socket pair.");
+    return response;
+  }
+
+  {
+    SharedDataParam shared_stub_backend_param{
+        .data_dir = base::FilePath(kStubVolumeSharedDir),
+        .tag = "stub",
+        .uid_map = kAndroidUidMap,
+        .gid_map = kAndroidGidMap,
+        .enable_caches = SharedDataParam::Cache::kAuto,
+        .ascii_casefold = true,
+        .posix_acl = false,
+        .privileged_quota_uids = privileged_quota_uids};
+
+    // Send dbus request to vhost_user_starter daemon to delegate starting stub
+    // device
+    vhost_user_starter_client_->StartVhostUserFs(
+        std::move(stub_device_socket_fds->back_end_fd),
+        shared_stub_backend_param);
+  }
+
+  // Remove the CLOEXEC flag from the vhost-user frontend socket fd. This is
+  // important to allow the fd to be inherited by the crosvm process.
+  if (std::string failure_reason =
+          internal::RemoveCloseOnExec(stub_device_socket_fds->front_end_fd);
+      !failure_reason.empty()) {
+    LOG(ERROR) << "Could not clear CLOEXEC for vhost_user fs frontend fd: "
+               << failure_reason;
+    response.set_failure_reason(
+        "Failed to clear CLOEXEC for vhost_user fs frontend fd");
+    return response;
+  }
+
+  VhostUserFsFrontParam shared_stub_frontend_param{
+      .tag = "stub",
+      .socket_fd = std::move(stub_device_socket_fds->front_end_fd)};
+
   base::FilePath data_dir = base::FilePath(kAndroidDataDir);
   if (!base::PathExists(data_dir)) {
     LOG(WARNING) << "Android data directory does not exist";
@@ -289,7 +336,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     return response;
   }
 
-  const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
   SharedDataParam shared_data{.data_dir = data_dir,
                               .tag = "_data",
                               .uid_map = kAndroidUidMap,
@@ -307,16 +353,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .ascii_casefold = true,
       .posix_acl = true,
       .privileged_quota_uids = privileged_quota_uids};
-
-  const base::FilePath stub_dir(kStubVolumeSharedDir);
-  SharedDataParam shared_stub{.data_dir = stub_dir,
-                              .tag = "stub",
-                              .uid_map = kAndroidUidMap,
-                              .gid_map = kAndroidGidMap,
-                              .enable_caches = SharedDataParam::Cache::kAuto,
-                              .ascii_casefold = true,
-                              .posix_acl = false,
-                              .privileged_quota_uids = privileged_quota_uids};
 
   // Create the /metadata disk if it is requested but does not yet exist.
   // (go/arcvm-metadata)
@@ -579,7 +615,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                              pstore_path.value().c_str(), kArcVmRamoopsSize))
       .AppendSharedDir(shared_data)
       .AppendSharedDir(shared_data_media)
-      .AppendSharedDir(shared_stub)
+      .AppendVhostUserFsFrontend(std::move(shared_stub_frontend_param))
       .EnableSmt(false /* enable */)
       .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling())
       .SetWaylandSocket(request.vm().wayland_server());
