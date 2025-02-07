@@ -55,6 +55,7 @@ write: 1
 lseek: 1
 sysinfo: 1
 clock_nanosleep: 1
+flock: 1
 
 socket: arg0 == AF_UNIX
 socketpair: arg0 == AF_UNIX
