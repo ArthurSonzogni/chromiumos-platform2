@@ -111,7 +111,7 @@ bool IsCaptureDevice(const base::FilePath& path) {
 }
 
 bool IsUsbCamera(const base::FilePath& path) {
-  return IsCaptureDevice(path) && !GetUsbInfo(path).vid_pid.empty();
+  return IsCaptureDevice(path) && !GetUsbInfo(path).bcd_device.empty();
 }
 
 bool IsBuiltinUsbCamera(const base::FilePath& path) {
