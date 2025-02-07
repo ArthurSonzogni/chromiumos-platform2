@@ -28,7 +28,8 @@ std::vector<base::FilePath> GetCameraHalPaths() {
     for (base::FilePath dll = dlls.Next(); !dll.empty(); dll = dlls.Next()) {
       auto filename = dll.BaseName().value();
       if (filename != "usb.so" && filename != "fake.so" &&
-          filename != "ip.so" && !DeviceConfig::Create()->HasMipiCamera()) {
+          filename != "ip.so" && filename != "cavern.so" &&
+          !DeviceConfig::Create()->HasMipiCamera()) {
         LOGF(INFO) << "No MIPI camera so skip camera hal " << dll.value();
         continue;
       }
