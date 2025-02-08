@@ -386,7 +386,8 @@ void WiFiService::UpdateKeyManagement() {
           std::string(WPASupplicant::kKeyManagementWPAEAPSHA256));
     }
   } else {
-    LOG(ERROR) << "Unsupported security class " << security_class_;
+    LOG(ERROR) << *this << " " << __func__ << ": Unsupported security class "
+               << security_class_;
   }
 }
 
@@ -403,7 +404,8 @@ void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr& endpoint) {
   auto i = endpoints_.find(endpoint);
   DCHECK(i != endpoints_.end());
   if (i == endpoints_.end()) {
-    LOG(WARNING) << "In " << __func__ << "(): ignoring non-existent endpoint "
+    LOG(WARNING) << *this << " " << __func__
+                 << ": Ignoring non-existent endpoint "
                  << endpoint->bssid().ToString();
     return;
   }
@@ -442,8 +444,7 @@ bool WiFiService::SetPassphrase(const std::string& passphrase, Error* error) {
   }
 
   if (!error->IsSuccess()) {
-    LOG(ERROR) << "Passphrase could not be set on service: " << log_name()
-               << " error: " << error->message();
+    LOG(ERROR) << *this << " " << __func__ << ": " << error->message();
     return false;
   }
 
@@ -548,13 +549,14 @@ std::string WiFiService::GetLoadableStorageIdentifier(
   std::set<std::string> groups =
       storage.GetGroupsWithProperties(GetStorageProperties());
   if (groups.empty()) {
-    LOG(WARNING) << "Configuration for service " << log_name()
-                 << " is not available in the persistent store";
+    LOG(WARNING) << *this << " " << __func__
+                 << ": Configuration is not available in the persistent store";
     return "";
   }
   if (groups.size() > 1) {
-    LOG(WARNING) << "More than one configuration for service " << log_name()
-                 << " is available; choosing the first.";
+    LOG(WARNING) << *this << " " << __func__
+                 << ": More than one configuration for is available; choosing "
+                    "the first.";
   }
   return *groups.begin();
 }
@@ -628,7 +630,8 @@ bool WiFiService::Load(const StoreInterface* storage) {
   if (storage->GetString(id, kStorageSecurity, &security_str)) {
     WiFiSecurity security(security_str);
     if (!security.IsValid()) {
-      LOG(ERROR) << "Read invalid Security from storage";
+      LOG(ERROR) << *this << " " << __func__
+                 << ": Read invalid Security from storage";
     } else {
       // This should be guaranteed by the WiFiProvider and the rules by which
       // endpoints are added to the service.
@@ -651,7 +654,8 @@ bool WiFiService::Load(const StoreInterface* storage) {
     PasspointCredentialsRefPtr creds =
         provider_->FindCredentials(credentials_id);
     if (!creds) {
-      LOG(ERROR) << "Failed to load Passpoint credentials " << credentials_id;
+      LOG(ERROR) << *this << " " << __func__
+                 << ": Failed to load Passpoint credentials " << credentials_id;
       return false;
     }
     parent_credentials_ = creds;
@@ -665,7 +669,8 @@ bool WiFiService::Load(const StoreInterface* storage) {
   SetBSSIDAllowlist(bssid_allowlist, &bssid_allowlist_error);
 
   if (!bssid_allowlist_error.IsSuccess()) {
-    LOG(ERROR) << "Failed to load BSSID allowlist: ["
+    LOG(ERROR) << *this << " " << __func__
+               << ": Failed to load BSSID allowlist: ["
                << base::JoinString(bssid_allowlist, ", ") << "]";
     return false;
   }
@@ -775,7 +780,8 @@ void WiFiService::SetState(ConnectState state) {
       if (lease_time.has_value()) {
         dhcp4_lease_expiry_ = clock_->Now() + lease_time.value();
       } else {
-        LOG(WARNING) << "Failed to get lease time";
+        LOG(WARNING) << *this << " " << __func__
+                     << ": Failed to get lease time";
       }
     }
   }
@@ -848,7 +854,7 @@ void WiFiService::InitializeCustomMetrics() {
 
 void WiFiService::SendPostReadyStateMetrics(
     base::TimeDelta time_resume_to_ready) const {
-  LOG(INFO) << __func__ << " " << log_name()
+  LOG(INFO) << *this << " " << __func__
             << ": time_resume_to_ready=" << time_resume_to_ready;
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkChannelSuffix,
@@ -858,7 +864,8 @@ void WiFiService::SendPostReadyStateMetrics(
 
   uint16_t ap_phy = ap_physical_mode_;
   if (ap_phy >= Metrics::kWiFiNetworkPhyModeMax) {
-    LOG(WARNING) << "Invalid AP PHY mode " << ap_phy;
+    LOG(WARNING) << *this << " " << __func__ << ": Invalid AP PHY mode "
+                 << ap_phy;
     ap_phy = Metrics::kWiFiNetworkPhyModeUndef;
   }
   metrics()->SendEnumToUMA(
@@ -871,11 +878,13 @@ void WiFiService::SendPostReadyStateMetrics(
   if (security_.IsValid()) {
     security_uma = WiFiSecurity::ToMetricEnum(security_);
   } else {
-    LOG(WARNING) << "Invalid Security property in ready state.";
+    LOG(WARNING) << *this << " " << __func__
+                 << ": Invalid Security property in ready state.";
     security_uma = WiFiSecurity::ToMetricEnum(security_class_);
   }
   if (security_uma == Metrics::kWirelessSecurityUnknown) {
-    LOG(WARNING) << "Unknown Security property in ready state.";
+    LOG(WARNING) << *this << " " << __func__
+                 << ": Unknown Security property in ready state.";
   }
   // Special case for Dynamic WEP, let's report it separately for the initial
   // phase of FGSec deployment. TODO(b/226138492): Remove this afterwards.
@@ -924,7 +933,8 @@ void WiFiService::SendPostReadyStateMetrics(
       } else if (range == Metrics::kWiFiFrequencyRange6) {
         metric_name = Metrics::kMetricsWiFiTimeResumeToReadyUHBMilliseconds;
       } else {
-        LOG(WARNING) << "Invalid frequency: " << frequency_;
+        LOG(WARNING) << *this << " " << __func__
+                     << ": Invalid frequency: " << frequency_;
       }
       if (!metric_name.empty()) {
         metrics()->SendToUMA(metric_name, time_resume_to_ready.InMilliseconds(),
@@ -1003,8 +1013,7 @@ void WiFiService::OnConnect(Error* error) {
     // found.
     wifi = ChooseDevice();
     if (!wifi) {
-      LOG(ERROR) << "Can't connect to: " << log_name()
-                 << ": Cannot find a WiFi device.";
+      LOG(ERROR) << *this << " " << __func__ << ": Cannot find a WiFi device.";
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             Error::GetDefaultMessage(Error::kOperationFailed));
       return;
@@ -1012,7 +1021,7 @@ void WiFiService::OnConnect(Error* error) {
   }
 
   if (wifi->IsCurrentService(this)) {
-    LOG(WARNING) << "Can't connect to: " << log_name()
+    LOG(WARNING) << *this << " " << __func__
                  << ": IsCurrentService, but not connected. State: "
                  << GetStateString();
     Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
@@ -1026,7 +1035,8 @@ void WiFiService::OnConnect(Error* error) {
   if (Is8021x()) {
     if (GetEAPKeyManagement().empty()) {
       // TODO(b:335021933) Remove if this log is not reported.
-      LOG(ERROR) << "KeyMgmt not set - using default";
+      LOG(ERROR) << *this << " " << __func__
+                 << ": KeyMgmt not set - using default";
       SetEAPKeyManagement(
           std::string(WPASupplicant::kKeyManagementWPAEAP) + " " +
           std::string(WPASupplicant::kKeyManagementWPAEAPSHA256));
@@ -1045,7 +1055,7 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   if (!bssid_.has_value()) {
     // Log an error but still emit the event (with OUI=0xFFFFFFFF) since the
     // rest of the data is still useful.
-    LOG(ERROR) << "Invalid AP BSSID";
+    LOG(ERROR) << *this << " " << __func__ << ": Invalid AP BSSID";
   } else {
     ap_oui = (bssid_->data()[0] << 16) | (bssid_->data()[1] << 8) |
              (bssid_->data()[2]);
@@ -1144,11 +1154,10 @@ void WiFiService::EmitDisconnectionEvent(
     Metrics::WiFiDisconnectReasonCode disconnect_reason) {
   ValidateTagState(kSessionTagExpectedValid,
                    Metrics::kWiFiSessionTagDisconnectionSuffix);
-  LOG(INFO) << __func__
+  LOG(INFO) << *this << " " << __func__
             << (expecting_disconnect() ? ": expected" : ": unexpected")
-            << " disconnection for WiFi service " << log_name()
-            << " disconnect type " << type << " reason code "
-            << static_cast<int>(disconnect_reason);
+            << " disconnection, type: " << type
+            << ", reason code: " << static_cast<int>(disconnect_reason);
   metrics()->NotifyWiFiDisconnection(type, disconnect_reason, session_tag_);
   // No more events in the session now that we've disconnected, reset the tag.
   session_tag_ = kSessionTagInvalid;
@@ -1247,7 +1256,7 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
     Error error;
     ParseWPAPassphrase(passphrase_, &passphrase_bytes, &error);
     if (!error.IsSuccess()) {
-      LOG(ERROR) << "Invalid passphrase";
+      LOG(ERROR) << *this << " " << __func__ << ": Invalid passphrase";
     } else if (!passphrase_bytes.empty()) {
       params.Set<std::vector<uint8_t>>(WPASupplicant::kPropertyPreSharedKey,
                                        passphrase_bytes);
@@ -1307,7 +1316,8 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
         ft_mgmt = WPASupplicant::kKeyManagementFTSAEEXTKEY;
       } else if (mgmt != WPASupplicant::kKeyManagementNone &&
                  mgmt != WPASupplicant::kKeyManagementOWE) {
-        LOG(ERROR) << "Unrecognized key management protocol " << mgmt;
+        LOG(ERROR) << *this << " " << __func__
+                   << ": Unrecognized key management protocol " << mgmt;
         continue;
       }
       key_mgmt += base::StringPrintf(" %s", ft_mgmt.c_str());
@@ -1375,7 +1385,8 @@ void WiFiService::OnDisconnect(Error* error, const char* reason) {
   } else if (disconnect_reason == Service::kDisconnectReasonPendingTimeout) {
     type = Metrics::kWiFiDisconnectTypePendingTimeout;
   } else {
-    LOG(ERROR) << __func__ << ": no match for disconnect reason: " << reason;
+    LOG(ERROR) << *this << " " << __func__
+               << ": No match for disconnect reason: " << reason;
   }
   wifi_->DisconnectFrom(this, type);
 }
@@ -1505,14 +1516,14 @@ void WiFiService::UpdateFromEndpoints() {
           frequency_ != representative_endpoint->frequency())) ||
         abs(representative_endpoint->signal_strength() - raw_signal_strength_) >
             10) {
-      LOG(INFO) << "Rep endpoint updated for " << log_name() << ". "
-                << "sig: " << representative_endpoint->signal_strength() << ", "
-                << "sec: " << representative_endpoint->security_mode() << ", "
-                << "freq: " << representative_endpoint->frequency();
+      LOG(INFO) << *this << " " << __func__
+                << ": sig: " << representative_endpoint->signal_strength()
+                << ", sec: " << representative_endpoint->security_mode()
+                << ", freq: " << representative_endpoint->frequency();
     }
   } else if (IsConnected() || IsConnecting()) {
-    LOG(WARNING) << "Service " << log_name()
-                 << " will disconnect due to no remaining endpoints.";
+    LOG(WARNING) << *this << " " << __func__
+                 << ": Will disconnect due to no remaining endpoints.";
   }
 
   SetWiFi(wifi);
@@ -1828,14 +1839,16 @@ void WiFiService::ParseWPAPassphrase(const std::string& passphrase,
   }
 
   if (length != IEEE_80211::kWPAHexLen) {
-    LOG(ERROR) << "InvalidPassphrase: Incorrect WPA hex Passphrase length: "
+    LOG(ERROR) << __func__
+               << ": InvalidPassphrase: Incorrect WPA hex Passphrase length: "
                << length;
     error->Populate(Error::kInvalidPassphrase);
     return;
   }
 
   if (!base::HexStringToBytes(passphrase, &temp_bytes)) {
-    LOG(ERROR) << "InvalidPassphrase: Failed to parse WPA hex passphrase";
+    LOG(ERROR) << __func__
+               << ": InvalidPassphrase: Failed to parse WPA hex passphrase";
     error->Populate(Error::kInvalidPassphrase);
     return;
   }
@@ -1850,7 +1863,7 @@ bool WiFiService::CheckWEPIsHex(const std::string& passphrase, Error* error) {
   std::vector<uint8_t> passphrase_bytes;
   if (!base::HexStringToBytes(passphrase, &passphrase_bytes)) {
     error->Populate(Error::kInvalidPassphrase);
-    LOG(ERROR) << "InvalidPassphrase: WEP Key is not Hex";
+    LOG(ERROR) << __func__ << ": InvalidPassphrase: WEP Key is not Hex";
     return false;
   }
   return true;
@@ -1863,7 +1876,8 @@ bool WiFiService::CheckWEPKeyIndex(const std::string& passphrase,
   if ((wepPrefix != "0:" && wepPrefix != "1:" && wepPrefix != "2:" &&
        wepPrefix != "3:")) {
     error->Populate(Error::kInvalidPassphrase);
-    LOG(ERROR) << "InvalidPassphrase: Invalid WEP Key Index: " << wepPrefix;
+    LOG(ERROR) << __func__
+               << ": InvalidPassphrase: Invalid WEP Key Index: " << wepPrefix;
     return false;
   }
   return true;
@@ -1874,7 +1888,7 @@ bool WiFiService::CheckWEPPrefix(const std::string& passphrase, Error* error) {
   if (!base::StartsWith(passphrase, "0x",
                         base::CompareCase::INSENSITIVE_ASCII)) {
     error->Populate(Error::kInvalidPassphrase);
-    LOG(ERROR) << "InvalidPassphrase: Incorrect WEP Prefix: "
+    LOG(ERROR) << __func__ << ": InvalidPassphrase: Incorrect WEP Prefix: "
                << passphrase.substr(0, 2);
     return false;
   }
@@ -1912,7 +1926,7 @@ uint8_t WiFiService::SignalToStrength(int16_t signal_dbm) {
   int16_t strength;
   if (signal_dbm > 0) {
     if (!logged_signal_warning) {
-      LOG(WARNING) << "Signal strength is suspiciously high. "
+      LOG(WARNING) << __func__ << ": Signal strength is suspiciously high. "
                    << "Assuming value " << signal_dbm << " is not in dBm.";
       logged_signal_warning = true;
     }
