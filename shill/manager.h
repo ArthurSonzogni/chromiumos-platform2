@@ -795,6 +795,9 @@ class Manager {
   // or connected).
   bool IsWifiIdle();
 
+  // Emits a log if the connection state of |service| has changed.
+  void LogServiceStateUpdate(const ServiceRefPtr& service);
+
   // For unit testing.
   void set_metrics(Metrics* metrics) { metrics_ = metrics; }
   void UpdateProviderMapping();

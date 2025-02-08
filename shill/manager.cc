@@ -350,7 +350,7 @@ void Manager::RegisterAsync(
 }
 
 void Manager::Start() {
-  LOG(INFO) << "Manager started.";
+  LOG(INFO) << __func__;
   supplicant_manager_->Start();
   tethering_manager_->Start();
   power_manager_ = std::make_unique<PowerManager>(control_interface_);
@@ -365,7 +365,7 @@ void Manager::Start() {
   debugd_proxy_ = control_interface_->CreateDebugdProxy();
 #if !defined(DISABLE_FLOSS)
   if (!bluetooth_manager_->Start()) {
-    LOG(ERROR) << "Failed to start BT manager interface.";
+    LOG(ERROR) << __func__ << ": Failed to start BT manager interface.";
   }
 #endif  // DISABLE_FLOSS
 
@@ -554,7 +554,7 @@ void Manager::PushProfileInternal(const Profile::Identifier& ident,
     scoped_refptr<DefaultProfile> default_profile(
         new DefaultProfile(this, storage_path_, ident.identifier, props_));
     if (!default_profile->InitStorage(Profile::kOpenExisting, nullptr)) {
-      LOG(ERROR) << "Failed to open default profile.";
+      LOG(ERROR) << __func__ << ": Failed to open default profile.";
       // Try to continue anyway, so that we can be useful in cases
       // where the disk is full.
       default_profile->InitStubStorage();
@@ -562,14 +562,14 @@ void Manager::PushProfileInternal(const Profile::Identifier& ident,
 
     LoadProperties(default_profile);
     profile = default_profile;
-    LOG(INFO) << "Push default profile.";
+    LOG(INFO) << __func__ << ": default profile.";
   } else {
     profile = new Profile(this, ident, user_storage_path_, true);
     if (!profile->InitStorage(Profile::kOpenExisting, error)) {
       // |error| will have been populated by InitStorage().
       return;
     }
-    LOG(INFO) << "Push user profile: " << ident.user;
+    LOG(INFO) << __func__ << ": user profile: " << ident.user;
   }
 
   profiles_.push_back(profile);
@@ -586,8 +586,8 @@ void Manager::PushProfileInternal(const Profile::Identifier& ident,
 
     // Offer each registered Service the opportunity to join this new Profile.
     if (profile->ConfigureService(service)) {
-      LOG(INFO) << "(Re-)configured service " << service->log_name()
-                << " from new profile.";
+      LOG(INFO) << __func__ << ": (Re-)configured service "
+                << service->log_name() << " from new profile.";
     }
   }
 
@@ -609,7 +609,7 @@ void Manager::PushProfileInternal(const Profile::Identifier& ident,
   *path = profile->GetRpcIdentifier().value();
   SortServices();
   OnProfilesChanged();
-  LOG(INFO) << __func__ << " finished; " << profiles_.size()
+  LOG(INFO) << __func__ << ": finished; " << profiles_.size()
             << " profile(s) now present.";
 }
 
@@ -840,7 +840,7 @@ void Manager::ReleaseDevice(const std::string& device_name, Error* error) {
 }
 
 void Manager::RemoveService(const ServiceRefPtr& service) {
-  LOG(INFO) << __func__ << " for service " << service->log_name();
+  LOG(INFO) << __func__ << ": " << service->log_name();
   if (!IsServiceEphemeral(service)) {
     service->profile()->AbandonService(service);
     providers_[service->technology()]->AbandonService(service);
@@ -1272,7 +1272,7 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
 void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
   for (auto it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_forget.get() == it->get()) {
-      LOG(INFO) << "Deregistering device: " << to_forget->link_name();
+      LOG(INFO) << __func__ << ": " << to_forget->link_name();
       UpdateDevice(to_forget);
       to_forget->SetEnabledUnchecked(false, base::DoNothing());
       device_geolocation_info_.erase(to_forget);
@@ -1286,7 +1286,7 @@ void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
       return;
     }
   }
-  LOG(WARNING) << __func__ << " unknown device: " << to_forget->link_name();
+  LOG(WARNING) << __func__ << ": Unknown device: " << to_forget->link_name();
 }
 
 std::vector<std::string> Manager::ClaimedDevices(Error* error) {
@@ -1496,34 +1496,26 @@ bool Manager::UnloadService(
   return true;
 }
 
-void Manager::UpdateService(const ServiceRefPtr& to_update) {
-  CHECK(to_update);
-  bool is_interesting_state_change = false;
-  const auto& state_it =
-      watched_service_states_.find(to_update->serial_number());
-  if (state_it != watched_service_states_.end()) {
-    is_interesting_state_change = (to_update->state() != state_it->second);
-  } else {
-    is_interesting_state_change = to_update->IsActive(nullptr);
+void Manager::LogServiceStateUpdate(const ServiceRefPtr& service) {
+  const auto& it = watched_service_states_.find(service->serial_number());
+  if (it != watched_service_states_.end() && it->second == service->state()) {
+    return;
   }
+  watched_service_states_[service->serial_number()] = service->state();
 
   std::string failure_message = "";
-  if (to_update->failure() != Service::kFailureNone) {
+  if (service->failure() != Service::kFailureNone) {
     failure_message = base::StringPrintf(
-        " failure: %s", Service::ConnectFailureToString(to_update->failure()));
+        " failure: %s", Service::ConnectFailureToString(service->failure()));
   }
   // Note: this log is parsed by logprocessor.
-  const auto log_message = base::StringPrintf(
-      "Service %s updated; state: %s%s", to_update->log_name().c_str(),
-      Service::ConnectStateToString(to_update->state()),
-      failure_message.c_str());
-  if (is_interesting_state_change) {
-    LOG(INFO) << log_message;
-  } else {
-    SLOG(2) << log_message;
-  }
-  SLOG(2) << "IsConnected(): " << to_update->IsConnected();
-  SLOG(2) << "IsConnecting(): " << to_update->IsConnecting();
+  LOG(INFO) << "Service " << service->log_name()
+            << " updated; state: " << service->state() << failure_message;
+}
+
+void Manager::UpdateService(const ServiceRefPtr& to_update) {
+  CHECK(to_update);
+  LogServiceStateUpdate(to_update);
   if (to_update->IsConnected()) {
     to_update->EnableAndRetainAutoConnect();
     // Ensure that a connected Service is not ephemeral (i.e., we actually
@@ -1563,8 +1555,7 @@ void Manager::NotifyServiceStateChanged(const ServiceRefPtr& to_update) {
     disable_wifi_autoconnect_ = HasEthernetMatchingDisconnectWiFiCriteria();
 
     if (!disable_wifi_autoconnect_previous && disable_wifi_autoconnect_) {
-      LOG(INFO) << "Ethernet becomes "
-                << Service::ConnectStateToString(to_update->state())
+      LOG(INFO) << "Ethernet becomes " << to_update->state()
                 << ", disconnecting any connected WiFi service.";
       Error e;
       for (const auto& service : services_) {
@@ -1667,33 +1658,26 @@ void Manager::UpdateDefaultPhysicalService(
     const ServiceRefPtr& physical_service) {
   bool physical_service_online =
       physical_service && physical_service->IsOnline();
-  bool physical_service_changed =
-      (physical_service != last_default_physical_service_ ||
-       physical_service_online != last_default_physical_service_online_);
-
-  if (physical_service_changed) {
-    // The dns-proxy must be not be used unless the default service is online.
-    if (!physical_service_online) {
-      UseDNSProxy({});
-    } else if (!props_.dns_proxy_addresses.empty()) {
-      UseDNSProxy(props_.dns_proxy_addresses);
-    }
-
-    last_default_physical_service_ = physical_service;
-    last_default_physical_service_online_ = physical_service_online;
-
-    if (physical_service) {
-      LOG(INFO) << "Default physical service: " << physical_service->log_name()
-                << " (" << (physical_service_online ? "" : "not ") << "online)";
-    } else {
-      LOG(INFO) << "Default physical service: NONE";
-    }
+  if (physical_service == last_default_physical_service_ &&
+      physical_service_online == last_default_physical_service_online_) {
+    return;
   }
 
-  if (physical_service_changed) {
-    for (auto& observer : default_service_observers_) {
-      observer.OnDefaultPhysicalServiceChanged(physical_service);
-    }
+  // The dns-proxy must be not be used unless the default service is online.
+  if (!physical_service_online) {
+    UseDNSProxy({});
+  } else if (!props_.dns_proxy_addresses.empty()) {
+    UseDNSProxy(props_.dns_proxy_addresses);
+  }
+
+  LOG(INFO) << __func__ << ": " << last_default_physical_service_ << " -> "
+            << physical_service;
+
+  last_default_physical_service_ = physical_service;
+  last_default_physical_service_online_ = physical_service_online;
+
+  for (auto& observer : default_service_observers_) {
+    observer.OnDefaultPhysicalServiceChanged(physical_service);
   }
 }
 
@@ -1761,18 +1745,20 @@ void Manager::OnDarkSuspendImminent() {
 }
 
 void Manager::OnSuspendActionsComplete(const Error& error) {
-  LOG(INFO) << "Finished suspend actions. Result: " << error;
+  LOG(INFO) << __func__ << ": " << error;
   power_manager_->ReportSuspendReadiness(base::BindOnce([](bool success) {
-    LOG(INFO) << (success ? "Successfully reported" : "Failed to report")
-              << " suspend readiness to powerd";
+    if (!success) {
+      LOG(WARNING) << "Failed to report suspend readiness to powerd";
+    }
   }));
 }
 
 void Manager::OnDarkResumeActionsComplete(const Error& error) {
-  LOG(INFO) << "Finished dark resume actions. Result: " << error;
+  LOG(INFO) << __func__ << ": " << error;
   power_manager_->ReportDarkSuspendReadiness(base::BindOnce([](bool success) {
-    LOG(INFO) << (success ? "Successfully reported" : "Failed to report")
-              << " dark suspend readiness to powerd";
+    if (!success) {
+      LOG(WARNING) << "Failed to report dark suspend readiness to powerd";
+    }
   }));
 }
 
@@ -2025,13 +2011,16 @@ void Manager::UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile) {
 
 void Manager::SetAlwaysOnVpn(const std::string& mode,
                              VPNServiceRefPtr service) {
-  LOG(INFO) << "Setting always-on VPN to mode=" << mode
-            << " service=" << (service ? service->log_name() : "nullptr");
-
   const std::string previous_mode = always_on_vpn_mode_;
   always_on_vpn_mode_ = mode;
   const VPNServiceRefPtr previous_service = always_on_vpn_service_;
   always_on_vpn_service_ = service;
+
+  if (previous_mode == mode && previous_service == service) {
+    return;
+  }
+
+  LOG(INFO) << __func__ << ": mode=" << mode << ", service=" << service;
 
   if (previous_service != always_on_vpn_service_) {
     // As the service changed, the backoff mechanism has to be reset to avoid to
@@ -2327,14 +2316,15 @@ void Manager::GenerateFirmwareDumpForTechnology(Technology technology) {
 }
 
 void Manager::CreateConnectivityReport(Error* /*error*/) {
-  LOG(INFO) << "Creating Connectivity Report";
+  LOG(INFO) << __func__;
 
   for (const auto& device : devices_) {
     auto network = device->GetPrimaryNetwork();
     if (network) {
       if (!network->IsConnected()) {
-        LOG(INFO) << device->LoggingTag()
-                  << ": Skipping connectivity test: no Network connection";
+        LOG(INFO) << __func__
+                  << ": Skipping connectivity test: no Network connection on "
+                  << device->LoggingTag();
         continue;
       }
       network->StartConnectivityTest();
@@ -3355,12 +3345,12 @@ Manager::GetPortalDetectorProbingConfiguration() const {
   auto http_url = net_base::HttpUrl::CreateFromString(props_.portal_http_url);
   auto https_url = net_base::HttpUrl::CreateFromString(props_.portal_https_url);
   if (!http_url) {
-    LOG(WARNING) << __func__ << ": could not parse default HTTP URL "
+    LOG(WARNING) << __func__ << ": Could not parse default HTTP URL "
                  << props_.portal_http_url;
     return PortalDetector::DefaultProbingConfiguration();
   }
   if (!https_url) {
-    LOG(WARNING) << __func__ << ": could not parse default HTTPS URL "
+    LOG(WARNING) << __func__ << ": Could not parse default HTTPS URL "
                  << props_.portal_http_url;
     return PortalDetector::DefaultProbingConfiguration();
   }
@@ -3369,7 +3359,7 @@ Manager::GetPortalDetectorProbingConfiguration() const {
   for (const auto& url_string : props_.portal_fallback_http_urls) {
     auto url = net_base::HttpUrl::CreateFromString(url_string);
     if (!url) {
-      LOG(WARNING) << __func__ << ": could not parse fallback HTTP URL "
+      LOG(WARNING) << __func__ << ": Could not parse fallback HTTP URL "
                    << url_string;
       return PortalDetector::DefaultProbingConfiguration();
     }
@@ -3378,7 +3368,7 @@ Manager::GetPortalDetectorProbingConfiguration() const {
   for (const auto& url_string : props_.portal_fallback_https_urls) {
     auto url = net_base::HttpUrl::CreateFromString(url_string);
     if (!url) {
-      LOG(WARNING) << __func__ << ": could not parse fallback HTTPS URL "
+      LOG(WARNING) << __func__ << ": Could not parse fallback HTTPS URL "
                    << url_string;
       return PortalDetector::DefaultProbingConfiguration();
     }
