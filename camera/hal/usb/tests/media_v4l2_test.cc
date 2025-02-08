@@ -119,9 +119,12 @@ bool IsBuiltinUsbCamera(const base::FilePath& path) {
     return false;
   }
   std::string vid_pid = GetUsbInfo(path).vid_pid;
+  if (vid_pid.length() < 9) {
+    return false;
+  }
   CameraCharacteristics characteristics;
   const DeviceInfo* device_info =
-      characteristics.Find(vid_pid.substr(0, 4), vid_pid.substr(5, 9));
+      characteristics.Find(vid_pid.substr(0, 4), vid_pid.substr(5, 4));
   return device_info != nullptr;
 }
 
