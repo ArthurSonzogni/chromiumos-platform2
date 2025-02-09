@@ -589,8 +589,9 @@ void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
                                                p->second->request_id,
                                                base::Owned(error.release())));
   } else {
-    if (connection->GetResponseStatusCode() != status_code::Ok) {
-      LOG(INFO) << "Response: " << connection->GetResponseStatusCode() << " ("
+    int status_code = connection->GetResponseStatusCode();
+    if (status_code >= status_code::BadRequest) {
+      LOG(INFO) << "Response: " << status_code << " ("
                 << connection->GetResponseStatusText() << ")";
     }
     brillo::ErrorPtr error;
