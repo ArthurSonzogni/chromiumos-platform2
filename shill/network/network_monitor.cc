@@ -149,14 +149,14 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
     return false;
   }
 
+  LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason << ")";
+
   result_from_portal_detector_.reset();
   bool http_only = validation_mode_ == ValidationMode::kHTTPOnly;
   portal_detector_->Start(
       http_only, *ip_family, dns_list,
       base::BindOnce(&NetworkMonitor::OnPortalDetectorResult,
                      base::Unretained(this)));
-  LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
-            << "): Portal detection started.";
 
   if (capport_proxy_) {
     if (!capport_enabled_) {
