@@ -78,6 +78,8 @@ constexpr char kPreserve[] = "preserve";
 const std::vector<const char*> kMountDirs = {"db/pkg", "lib/portage",
                                              "cache/dlc-images"};
 
+constexpr float kSizePercent = 0.9;
+
 uint64_t GetDirtyExpireCentisecs(libstorage::Platform* platform,
                                  const base::FilePath& root) {
   std::string dirty_expire;
@@ -584,6 +586,31 @@ void StatefulMount::DevMountDevImage(MountHelper* mount_helper) {
     return;
   }
 
+  // Check if we need to expand the dev_image.block file.
+  struct statvfs stateful_statbuf;
+  if (!platform_->StatVFS(stateful_, &stateful_statbuf)) {
+    PLOG(ERROR) << "stat() failed on: " << stateful_;
+    return;
+  }
+
+  int64_t expected_file_size = static_cast<int64_t>(stateful_statbuf.f_blocks);
+  expected_file_size *= kSizePercent;
+  expected_file_size *= stateful_statbuf.f_frsize;
+
+  if (expected_file_size > file_size) {
+    base::File file;
+    platform_->InitializeFile(&file, dev_image_block,
+                              base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+
+    if (!file.IsValid()) {
+      LOG(ERROR) << "Unable to open backing device";
+      return;
+    }
+
+    LOG(INFO) << "Expanding underlying sparse file to " << expected_file_size;
+    file.SetLength(expected_file_size);
+  }
+
   libstorage::StorageContainerConfig container_config = {
       .filesystem_config =
           {.tune2fs_opts = {},
@@ -611,6 +638,10 @@ void StatefulMount::DevMountDevImage(MountHelper* mount_helper) {
   if (!container->Setup(libstorage::FileSystemKey())) {
     LOG(ERROR) << "Failed to set up developer tools container.";
     return;
+  }
+
+  if (expected_file_size > file_size && !container->Resize(0)) {
+    LOG(ERROR) << "Failed to resize the developer tools container";
   }
 
   base::FilePath developer_tools_mount = stateful_.Append(kDeveloperToolsMount);
