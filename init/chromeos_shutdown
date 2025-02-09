@@ -73,6 +73,7 @@ crossystem "cros_debug?1"
 CROS_DEBUG="$((! $?))"
 
 dev_unmount_packages() { true; }
+dev_unmount_image() { true; }
 dev_push_paths_to_preserve() { true; }
 
 collect_shutdown_umount_failure_logs() {
@@ -239,6 +240,9 @@ set -x
 # Unmount stateful partition for dev packages. Will be a NOP unless we're in
 # dev mode.
 dev_unmount_packages
+
+# Unmount bind mounts if developer tools use a sparse filesystem.
+dev_unmount_image
 
 # Unmount /var/run and /var/lock, which were bind mounted to /run and /run/lock
 # respectively to enable backwards compatibility for accessing /run (tmpfs for

@@ -46,11 +46,22 @@ dev_unmount_packages() {
 
   # unmount /usr/local to match dev_mount_package.
   umount -n /usr/local
+}
 
-  # If the dev image is mounted using a logical volume, unmount it.
-  if mountpoint -q /mnt/stateful_partition/dev_image; then
-    umount /mnt/stateful_partition/dev_image
-  fi
+DEV_MOUNTS="
+  var_overlay
+  dev_image
+  developer_tools
+"
+
+# Unmount bind mounts if developer tools use a sparse filesystem.
+dev_unmount_image() {
+  echo "${DEV_MOUNTS}" | while read -r dir ; do
+    local path="${STATEFUL_PARTITION}/${dir}"
+    if mountpoint -q "${path}"; then
+      umount -n "${path}"
+    fi
+  done
 }
 
 # Copy contents in src path to dst path if it exists.
