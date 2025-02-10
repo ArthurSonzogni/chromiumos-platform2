@@ -23,3 +23,26 @@ message Extent {
 message ExtentArray {
   repeated Extent extent = 1;
 }
+
+// Files can be of two types:
+// a. Inline files: files smaller than 44 bytes are stored inline in metadata.
+// b. Extent files: larger files are broken up into extents.
+message FileContents {
+  oneof Contents {
+    ExtentArray extents = 1;
+    string data = 2;
+  }
+}
+
+// Represents a preseeded file, with path (relative to root), size and
+// contents.
+message PreseededFile {
+  string path = 1;
+  uint64 size = 2;
+  FileContents contents = 3;
+}
+
+// List of all preseeded file structs.
+message PreseededFileArray {
+  repeated PreseededFile file_list = 1;
+}

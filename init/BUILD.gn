@@ -140,6 +140,7 @@ static_library("libpreservation") {
   sources = [
     "libpreservation/ext2fs.cc",
     "libpreservation/fake_ext2fs.cc",
+    "libpreservation/file_preseeder.cc",
     "libpreservation/filesystem_manager.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -538,7 +539,10 @@ if (use.test) {
   }
 
   executable("libpreservation_test") {
-    sources = [ "libpreservation/filesystem_manager_test.cc" ]
+    sources = [
+      "libpreservation/file_preseeder_test.cc",
+      "libpreservation/filesystem_manager_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
