@@ -63,21 +63,35 @@ class ClusteringEngineInterface {
 
 class ClusteringEngine : public ClusteringEngineInterface {
  public:
+  using IndexGroup = std::vector<int>;
+
   ClusteringEngine(raw_ref<CoralMetrics> metrics,
                    std::unique_ptr<clustering::ClusteringFactoryInterface>
                        clustering_factory);
   ~ClusteringEngine() = default;
 
+  // Process() clusters the embeddings in EmbeddingResponse into groups
+  // according to the clustering_options in request.
   void Process(mojom::GroupRequestPtr request,
                EmbeddingResponse embedding_response,
                ClusteringCallback callback) override;
 
  private:
-  // Report metrics and return to callback.
-  void HandleProcessResult(ClusteringCallback callback,
-                           odml::PerformanceTimer::Ptr timer,
-                           mojom::GroupRequestPtr request,
-                           CoralResult<ClusteringResponse> result);
+  // Main clustering logic that operates on valid_embeddings, this method
+  // expects that the incoming embeddings are contiguous, that is, there are no
+  // invalid or empty entries in the array of embedding. This is called by
+  // ProcessContiguous() which filters out any invalid or empty entries. The
+  // returned std::vector<IndexGroup> contains indices as they're passed in.
+  // I.e. the indice in valid_embeddings.
+  CoralResult<std::vector<IndexGroup>> ProcessContiguous(
+      const std::vector<Embedding>& valid_embeddings,
+      const mojom::ClusteringOptions& clustering_options);
+
+  // The main logic block of Process() and is called by Process(). The
+  // returned std::vector<IndexGroup> contains indices in the request's
+  // entities.
+  CoralResult<std::vector<IndexGroup>> ProcessInternal(
+      const mojom::GroupRequest& request, EmbeddingResponse embedding_response);
 
   const raw_ref<CoralMetrics> metrics_;
   std::unique_ptr<clustering::ClusteringFactoryInterface> clustering_factory_;
