@@ -1023,6 +1023,13 @@ Properties	boolean AutoConnect [readwrite]
 
 			This property is present only for WiFi services.
 
+		string LogName [readonly]
+
+			An anonymous name that uniquely identifies the Service
+			until reboot and does not contain PIIs. The LogName is
+			safe to log and contains useful Service metadata such
+			as the technology and security. e.g. "wifi_psk_14".
+
 		string Name [readonly]
 
 			The service name (for example "Wireless" etc.)
@@ -1035,6 +1042,8 @@ Properties	boolean AutoConnect [readwrite]
 			visible WiFi networks, this may contain the SSID.
 
 			See also the WiFi.HexSSID property.
+
+			This property can contain PIIs and should not be logged.
 
 		dict NetworkConfig [readonly]
 

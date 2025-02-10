@@ -237,6 +237,7 @@ Service::Service(Manager* manager, Technology technology)
 
   HelpRegisterDerivedString(kNameProperty, &Service::GetNameProperty,
                             &Service::SetNameProperty);
+  store_.RegisterConstString(kLogNameProperty, &log_name_);
   // kPassphraseProperty: Registered in WiFiService
   // kPassphraseRequiredProperty: Registered in WiFiService
   store_.RegisterConstString(kPreviousErrorProperty, &previous_error_);
