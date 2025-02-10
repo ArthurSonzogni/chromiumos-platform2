@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -13,9 +14,11 @@ group("all") {
     ":file_attrs_cleaner_tool",
     ":install_lvm_config",
     ":install_setuid_restriction",
+    ":libpreservation",
     ":libtpm_encryption",
     ":net_poll_tool",
     ":periodic_scheduler",
+    ":preseeded_files_proto",
     ":process_killer",
     ":sbin_init_scripts",
     ":static_node_tool",
@@ -39,6 +42,7 @@ group("all") {
       ":chromeos_startup_test",
       ":clobber_state_test",
       ":file_attrs_cleaner_test",
+      ":libpreservation_test",
       ":periodic_scheduler_test",
       ":process_killer_test",
       ":tpm_encryption_tests",
@@ -82,6 +86,7 @@ pkg_config("target_defaults") {
     "libselinux",
     "libstorage_platform",
     "libstorage_storage_container",
+    "protobuf-lite",
     "re2",
   ]
   libs = [
@@ -129,6 +134,25 @@ static_library("libcrosstartup") {
   if (use.encrypted_stateful) {
     deps += [ ":libmount_encrypted" ]
   }
+}
+
+static_library("libpreservation") {
+  sources = [
+    "libpreservation/ext2fs.cc",
+    "libpreservation/fake_ext2fs.cc",
+    "libpreservation/filesystem_manager.cc",
+  ]
+  configs += [ ":target_defaults" ]
+
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "protobuf-lite",
+  ]
+
+  deps = [ ":preseeded_files_proto" ]
+
+  all_dependent_pkg_deps = [ "ext2fs" ]
 }
 
 static_library("libclobber") {
@@ -331,6 +355,14 @@ if (use.syslog) {
   }
 }
 
+proto_library("preseeded_files_proto") {
+  proto_in_dir = "./libpreservation/proto/"
+  proto_out_dir = "include/init/libpreservation"
+  sources = [ "${proto_in_dir}/preseeded_files.proto" ]
+  standalone = true
+  use_pic = true
+}
+
 if (use.test) {
   pkg_config("test_config") {
     pkg_deps = [
@@ -501,6 +533,20 @@ if (use.test) {
     run_test = true
     deps = [
       ":libinit_utils",
+      "//common-mk/testrunner",
+    ]
+  }
+
+  executable("libpreservation_test") {
+    sources = [ "libpreservation/filesystem_manager_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    run_test = true
+    deps = [
+      ":libpreservation",
       "//common-mk/testrunner",
     ]
   }

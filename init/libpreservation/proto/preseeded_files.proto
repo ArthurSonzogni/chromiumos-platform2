@@ -1,0 +1,25 @@
+// Copyright 2025 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+option optimize_for = LITE_RUNTIME;
+
+package libpreservation;
+
+// Represent one logical-to-physical mapping of a file extent.
+//
+// Extent represents a contiguous range of logical addresses:
+// (start, start + length) which are stored on disk at the physical address:
+// (goal, goal + length).
+message Extent {
+  uint64 start = 1;
+  uint64 length = 2;
+  uint64 goal = 3;
+}
+
+// Represents a list of extents of the file as seen via FIEMAP.
+message ExtentArray {
+  repeated Extent extent = 1;
+}
