@@ -25,6 +25,7 @@ bool SupplicantEAPStateHandler::ParseStatus(
   CHECK(metrics_eap_event);
   if (status == WPASupplicant::kEAPStatusAcceptProposedMethod) {
     LOG(INFO) << "EAP: accepted method " << parameter;
+    // Added for CA cert verification experiment b:381389348.
     *metrics_eap_event = Metrics::kEapEventProposedMethodAccepted;
   } else if (status == WPASupplicant::kEAPStatusCompletion) {
     if (parameter == WPASupplicant::kEAPParameterSuccess) {
@@ -55,16 +56,20 @@ bool SupplicantEAPStateHandler::ParseStatus(
   } else if (status == WPASupplicant::kEAPStatusRemoteCertificateVerification) {
     if (parameter == WPASupplicant::kEAPParameterSuccess) {
       LOG(INFO) << "EAP: Completed remote certificate verification.";
+      // Added for CA cert verification experiment b:381389348.
       *metrics_eap_event = Metrics::kEapEventCertVerificationSuccess;
     } else if (parameter == WPASupplicant::kEAPCertFirstVerificationFailed) {
       LOG(ERROR) << "EAP: First cert verification failed.";
+      // Added for CA cert verification experiment b:381389348.
       *metrics_eap_event = Metrics::kEapEventFirstCertVerificationFailure;
     } else if (parameter == WPASupplicant::kEAPCertRetryVerificationAttempt) {
       LOG(INFO)
           << "Attempt to retry cert verification with loaded root CA certs.";
+      // Added for CA cert verification experiment b:381389348.
       *metrics_eap_event = Metrics::kEapEventCertVerificationRetryAttempt;
     } else if (parameter == WPASupplicant::kEAPCertRetryVerificationFailed) {
       LOG(ERROR) << "EAP: Cert verification failed with loaded root CA certs.";
+      // Added for CA cert verification experiment b:381389348.
       *metrics_eap_event = Metrics::kEapEventCertVerificationFailureBeforeRetry;
     } else if (parameter ==
                WPASupplicant::kEAPCertAfterRetryVerificationFailed) {
@@ -72,6 +77,7 @@ bool SupplicantEAPStateHandler::ParseStatus(
       *metrics_eap_event = Metrics::kEapEventCertVerificationFailureAfterRetry;
     } else if (parameter == WPASupplicant::kEAPCertLoadForVerificationFailed) {
       LOG(ERROR) << "EAP: Failed to load CA certs for cert verification retry.";
+      // Added for CA cert verification experiment b:381389348.
       *metrics_eap_event = Metrics::kEapEventCertVerificationLoadFailure;
     } else if (parameter ==
                WPASupplicant::kEAPCertVerificationIssuerCertAbsent) {

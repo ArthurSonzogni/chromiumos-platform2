@@ -45,6 +45,7 @@
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
+#include "shill/supplicant/mock_supplicant_eap_state_handler.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/supplicant_manager.h"
@@ -623,6 +624,125 @@ TEST_F(EthernetTest, Certification) {
   EXPECT_CALL(*mock_service_, AddEAPCertification(kSubjectName, kDepth));
   SetService(mock_service_);
   TriggerCertification(kSubjectName, kDepth);
+  StopEthernet();
+}
+
+TEST_F(EthernetTest, ReportEapEventAuthStillNotDoneNoFailure) {
+  NiceScopedMockLog log;
+  StartEthernet();
+  SetSupplicantNetworkPath(RpcIdentifier("/network/1"));
+  SetService(mock_service_);
+  MockEapCredentials mock_eap_credentials;
+  EXPECT_CALL(*mock_eap_service_, GetCACertExperimentPhase())
+      .WillOnce(Return(EapCredentials::CaCertExperimentPhase::kDisabled));
+  EXPECT_CALL(*mock_eap_service_, eap())
+      .WillOnce(Return(&mock_eap_credentials));
+
+  // It is difficult to mock or replace eap_state_handler_, so real
+  // eap_state_handler_.ParseStatus() will be called.
+  // This combination of status and parameter should set
+  // is_eap_authenticated_ == false, failure == kFailureNone, and should set
+  // metric to Metrics::kEapEventCertVerificationSuccess.
+  const std::string kEAPStatus("remote certificate verification");
+  const std::string kEAPParameter("success");
+  EXPECT_CALL(
+      mock_eap_credentials,
+      ReportEapEventMetric(_, EapCredentials::CaCertExperimentPhase::kDisabled,
+                           Metrics::kEapEventCertVerificationSuccess))
+      .Times(1);
+  EXPECT_CALL(log, Log(logging::LOGGING_WARNING, _,
+                       testing::HasSubstr("EAP authentication failure")))
+      .Times(0);
+  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
+                       testing::HasSubstr("EAP authentication success")))
+      .Times(0);
+  ethernet_->EAPEventTask(kEAPStatus, kEAPParameter);
+
+  EXPECT_FALSE(ethernet_->is_eap_authenticated_);
+  StopEthernet();
+}
+
+TEST_F(EthernetTest, ReportEapEventAuthFailure) {
+  StartEthernet();
+  SetSupplicantNetworkPath(RpcIdentifier("/network/1"));
+  SetService(mock_service_);
+  MockEapCredentials mock_eap_credentials;
+  EXPECT_CALL(*mock_eap_service_, GetCACertExperimentPhase())
+      .WillOnce(Return(EapCredentials::CaCertExperimentPhase::kDisabled));
+  EXPECT_CALL(*mock_eap_service_, eap())
+      .WillOnce(Return(&mock_eap_credentials));
+
+  // It is difficult to mock or replace eap_state_handler_, so real
+  // eap_state_handler_.ParseStatus() will be called.
+  // This combination of status and parameter should set
+  // is_eap_authenticated_ == false, failure == kFailurePinMissing, and should
+  // set metric to Metrics::kEapEventPinMissing.
+  ethernet_->SetIsEapAuthenticated(true);
+  const std::string kEAPStatus("eap parameter needed");
+  const std::string kEAPParameter("PIN");
+  EXPECT_CALL(
+      mock_eap_credentials,
+      ReportEapEventMetric(_, EapCredentials::CaCertExperimentPhase::kDisabled,
+                           Metrics::kEapEventPinMissing))
+      .Times(1);
+
+  ethernet_->EAPEventTask(kEAPStatus, kEAPParameter);
+
+  EXPECT_FALSE(ethernet_->is_eap_authenticated_);
+  StopEthernet();
+}
+
+TEST_F(EthernetTest, ReportEapEventAuthSuccessful) {
+  StartEthernet();
+  SetService(mock_service_);
+  SetSupplicantNetworkPath(RpcIdentifier("/network/1"));
+  MockEapCredentials mock_eap_credentials;
+
+  EXPECT_CALL(*mock_eap_service_, GetCACertExperimentPhase())
+      .WillOnce(Return(EapCredentials::CaCertExperimentPhase::kDisabled));
+  EXPECT_CALL(*mock_eap_service_, eap())
+      .WillOnce(Return(&mock_eap_credentials));
+
+  // It is difficult to mock or replace eap_state_handler_, so real
+  // eap_state_handler_.ParseStatus() will be called.
+  // This combination of status and parameter should set
+  // is_eap_authenticated_ == true and should set metric
+  // to Metrics::kEapEventAuthCompletedSuccess.
+  ethernet_->SetIsEapAuthenticated(false);
+  const std::string kEAPStatus("completion");
+  const std::string kEAPParameter("success");
+  EXPECT_CALL(
+      mock_eap_credentials,
+      ReportEapEventMetric(_, EapCredentials::CaCertExperimentPhase::kDisabled,
+                           Metrics::kEapEventAuthCompletedSuccess))
+      .Times(1);
+
+  ethernet_->EAPEventTask(kEAPStatus, kEAPParameter);
+
+  EXPECT_TRUE(ethernet_->is_eap_authenticated_);
+  StopEthernet();
+}
+
+TEST_F(EthernetTest, ReportEapEventWithActiveCaExperiment) {
+  StartEthernet();
+  SetService(mock_service_);
+  SetSupplicantNetworkPath(RpcIdentifier("/network/1"));
+  MockEapCredentials mock_eap_credentials;
+
+  EXPECT_CALL(*mock_eap_service_, GetCACertExperimentPhase())
+      .WillOnce(Return(EapCredentials::CaCertExperimentPhase::kPhase1));
+  EXPECT_CALL(*mock_eap_service_, eap())
+      .WillOnce(Return(&mock_eap_credentials));
+
+  const std::string kEAPStatus("random");
+  const std::string kEAPParameter("random");
+  EXPECT_CALL(mock_eap_credentials,
+              ReportEapEventMetric(
+                  _, EapCredentials::CaCertExperimentPhase::kPhase1, _))
+      .Times(1);
+
+  ethernet_->EAPEventTask(kEAPStatus, kEAPParameter);
+
   StopEthernet();
 }
 

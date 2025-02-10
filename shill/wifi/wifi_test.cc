@@ -118,6 +118,9 @@ constexpr uint32_t kPhyIndex = 5678;
 constexpr net_base::MacAddress kPermDeviceAddress{0x01, 0x23, 0x45,
                                                   0x67, 0x89, 0xab};
 
+const char kEAPStatus[] = "eap-status";
+const char kEAPParameter[] = "eap-parameter";
+
 // Bytes representing a NL80211_CMD_NEW_WIPHY message reporting the WiFi
 // capabilities of a NIC with wiphy index |kNewWiphyNlMsg_PhyIndex| which
 // supports operating bands with the frequencies specified in
@@ -5121,6 +5124,80 @@ TEST_F(WiFiMainTest, EAPEvent) {
       *GetSupplicantInterfaceProxy(),
       NetworkReply(kNetworkRpcId,
                    StrEq(WPASupplicant::kEAPRequestedParameterPin), Ref(kPin)));
+  ReportEAPEvent(kEAPStatus, kEAPParameter);
+}
+
+TEST_F(WiFiMainTest, EAPEventWithCaExperimentDisabledNoFailureEvent) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      MakeMockService(WiFiSecurity::kWpa2Enterprise);
+  SetCurrentService(service);
+  MockEapCredentials* eap = new MockEapCredentials();
+  service->eap_.reset(eap);  // Passes ownership.
+  const RpcIdentifier kNetworkRpcId("/service/network/rpcid");
+  SetServiceNetworkRpcId(service, kNetworkRpcId);
+
+  service->SetCACertExperimentPhase(
+      EapCredentials::CaCertExperimentPhase::kDisabled);
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(Service::kFailureNone),
+                      SetArgPointee<3>(Metrics::kEapEventAuthCompletedSuccess),
+                      Return(true)));
+
+  EXPECT_CALL(*eap, ReportEapEventMetric(
+                        _, EapCredentials::CaCertExperimentPhase::kDisabled,
+                        Metrics::kEapEventAuthCompletedSuccess))
+      .Times(1);
+
+  ReportEAPEvent(kEAPStatus, kEAPParameter);
+}
+
+TEST_F(WiFiMainTest, EAPEventWithCaExperimentPhase1NoFailureEvent) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      MakeMockService(WiFiSecurity::kWpa2Enterprise);
+  SetCurrentService(service);
+  MockEapCredentials* eap = new MockEapCredentials();
+  service->eap_.reset(eap);  // Passes ownership.
+  const RpcIdentifier kNetworkRpcId("/service/network/rpcid");
+  SetServiceNetworkRpcId(service, kNetworkRpcId);
+
+  service->SetCACertExperimentPhase(
+      EapCredentials::CaCertExperimentPhase::kPhase1);
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(Service::kFailureNone),
+                      SetArgPointee<3>(Metrics::kEapEventAuthCompletedSuccess),
+                      Return(true)));
+
+  EXPECT_CALL(*eap, ReportEapEventMetric(
+                        _, EapCredentials::CaCertExperimentPhase::kPhase1,
+                        Metrics::kEapEventAuthCompletedSuccess))
+      .Times(1);
+
+  ReportEAPEvent(kEAPStatus, kEAPParameter);
+}
+
+TEST_F(WiFiMainTest, EAPEventWithCaExperimentPhase2FailureEvent) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      MakeMockService(WiFiSecurity::kWpa2Enterprise);
+  SetCurrentService(service);
+  MockEapCredentials* eap = new MockEapCredentials();
+  service->eap_.reset(eap);  // Passes ownership.
+  const RpcIdentifier kNetworkRpcId("/service/network/rpcid");
+  SetServiceNetworkRpcId(service, kNetworkRpcId);
+  service->SetCACertExperimentPhase(
+      EapCredentials::CaCertExperimentPhase::kPhase2);
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(Service::kFailureEAPLocalTLS),
+                      SetArgPointee<3>(Metrics::kEapEventAuthLocalTlsFailure),
+                      Return(false)));
+
+  EXPECT_CALL(*eap, ReportEapEventMetric(
+                        _, EapCredentials::CaCertExperimentPhase::kPhase2,
+                        Metrics::kEapEventAuthLocalTlsFailure))
+      .Times(1);
+
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 }
 

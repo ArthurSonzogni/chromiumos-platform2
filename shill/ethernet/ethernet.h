@@ -5,12 +5,12 @@
 #ifndef SHILL_ETHERNET_ETHERNET_H_
 #define SHILL_ETHERNET_ETHERNET_H_
 
+#include <linux/if.h>
+
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
-
-#include <linux/if.h>
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
@@ -109,6 +109,10 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(EthernetProviderTest, MultipleServices);
   FRIEND_TEST(EthernetTest, RunEthtoolCmdSuccess);
   FRIEND_TEST(EthernetTest, RunEthtoolCmdFail);
+  FRIEND_TEST(EthernetTest, ReportEapEventAuthStillNotDoneNoFailure);
+  FRIEND_TEST(EthernetTest, ReportEapEventAuthFailure);
+  FRIEND_TEST(EthernetTest, ReportEapEventAuthSuccessful);
+  FRIEND_TEST(EthernetTest, ReportEapEventWithActiveCaExperiment);
 
   // Note that the returned string contains PII in the form of the MAC address
   // in raw hex format.

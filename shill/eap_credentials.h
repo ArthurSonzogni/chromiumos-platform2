@@ -164,9 +164,9 @@ class EapCredentials {
   }
 
   // Reports Eap event to UMA for b/381389348.
-  void ReportEapEventMetric(Metrics* metrics,
-                            CaCertExperimentPhase cert_experiment_phase,
-                            Metrics::EapEvent event) const;
+  virtual void ReportEapEventMetric(Metrics* metrics,
+                                    CaCertExperimentPhase cert_experiment_phase,
+                                    Metrics::EapEvent event) const;
 
  private:
   friend class EapCredentialsTest;

@@ -1072,6 +1072,9 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, UpdateNetworkValidationModeWhenSetToHTTPOnly);
   FRIEND_TEST(ServiceTest, UserInitiatedConnectionResult);
   FRIEND_TEST(WiFiMainTest, EAPEvent);  // For eap_.
+  FRIEND_TEST(WiFiMainTest, EAPEventWithCaExperimentDisabledNoFailureEvent);
+  FRIEND_TEST(WiFiMainTest, EAPEventWithCaExperimentPhase1NoFailureEvent);
+  FRIEND_TEST(WiFiMainTest, EAPEventWithCaExperimentPhase2FailureEvent);
   FRIEND_TEST(WiFiProviderTest, GetHiddenSSIDList);
   FRIEND_TEST(WiFiServiceTest, LoadPassphraseClearCredentials);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);

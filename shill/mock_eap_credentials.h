@@ -42,6 +42,10 @@ class MockEapCredentials : public EapCredentials {
   MOCK_METHOD(bool, SetKeyManagement, (const std::string&, Error*), (override));
   MOCK_METHOD(const std::string&, key_management, (), (const, override));
   MOCK_METHOD(const std::string&, pin, (), (const, override));
+  MOCK_METHOD(void,
+              ReportEapEventMetric,
+              (Metrics*, CaCertExperimentPhase, Metrics::EapEvent),
+              (const, override));
 
  private:
   std::string kDefaultKeyManagement;
