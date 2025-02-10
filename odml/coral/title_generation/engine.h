@@ -77,7 +77,8 @@ class TitleGenerationEngine
   std::optional<std::string> GetNthTitleCacheKeyForTesting(int n);
 
  private:
-  void OnGetModelStateResult(on_device_model::mojom::PlatformModelState state);
+  void OnGetModelStateResult(base::OnceClosure callback,
+                             on_device_model::mojom::PlatformModelState state);
   void EnsureModelLoaded(base::OnceClosure callback);
   void OnModelLoadResult(base::OnceClosure callback,
                          odml::PerformanceTimer::Ptr timer,

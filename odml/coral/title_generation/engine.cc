@@ -140,10 +140,23 @@ TitleGenerationEngine::TitleGenerationEngine(
 }
 
 void TitleGenerationEngine::PrepareResource() {
+  if (is_processing_) {
+    pending_callbacks_.push(
+        base::BindOnce(&TitleGenerationEngine::PrepareResource,
+                       weak_ptr_factory_.GetWeakPtr()));
+    return;
+  }
+  is_processing_ = true;
+  // Ensure `is_processing_` will always be reset no matter callback is run or
+  // dropped.
+  auto on_process_complete = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+      base::BindOnce(&TitleGenerationEngine::OnProcessCompleted,
+                     weak_ptr_factory_.GetWeakPtr()));
   on_device_model_service_->GetPlatformModelState(
       base::Uuid::ParseLowercase(kModelUuid),
       base::BindOnce(&TitleGenerationEngine::OnGetModelStateResult,
-                     weak_ptr_factory_.GetWeakPtr()));
+                     weak_ptr_factory_.GetWeakPtr(),
+                     std::move(on_process_complete)));
 }
 
 void TitleGenerationEngine::Process(
@@ -225,15 +238,18 @@ void TitleGenerationEngine::OnUserLoggedOut() {
 }
 
 void TitleGenerationEngine::OnGetModelStateResult(
+    base::OnceClosure callback,
     on_device_model::mojom::PlatformModelState state) {
-  // Here, we don't explicitly return error. This is only used in
-  // PrepareResource, and if it fails, we'll still try loading the model when
-  // getting real requests.
+  // If it's not already installed on disk, we load the model to ensure it's
+  // installed. This is a workaround due to that currently there's no API to
+  // only install the model.
   if (state != on_device_model::mojom::PlatformModelState::kInstalledOnDisk) {
     LOG(ERROR) << "Model state: " << static_cast<int>(state);
+    EnsureModelLoaded(std::move(callback));
     return;
   }
   // Else, the model should be installed on disk.
+  std::move(callback).Run();
 }
 
 void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
