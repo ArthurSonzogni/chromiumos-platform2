@@ -51,6 +51,8 @@ constexpr char kDumpParentPath[] = "/sys/fs";
 constexpr char kDumpPath[] = "/sys/fs/pstore";
 constexpr char kDumpRecordDmesgName[] = "dmesg";
 constexpr char kDumpRecordConsoleName[] = "console";
+constexpr char kECDumpName[] = "ec_log";
+constexpr char kECExecName[] = "embedded-controller";
 // The files take the form <record type>-<driver name>-<record id>.
 // e.g. console-ramoops-0 or dmesg-ramoops-0.
 constexpr char kDumpNameFormat[] = "%s-%s-%zu";
@@ -730,6 +732,8 @@ CrashCollectionStatus KernelCollector::HandleCrash(
       StringPrintf("%s.%s", dump_basename.c_str(), kBiosDumpName));
   FilePath log_path = root_crash_directory.Append(
       StringPrintf("%s.log", dump_basename.c_str()));
+  FilePath ec_log_path = root_crash_directory.Append(
+      StringPrintf("%s.%s", dump_basename.c_str(), kECDumpName));
 
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
@@ -748,6 +752,12 @@ CrashCollectionStatus KernelCollector::HandleCrash(
   if (IsSuccessCode(GetLogContents(log_config_path_,
                                    kernel_util::kKernelExecName, log_path))) {
     AddCrashMetaUploadFile("log", log_path.BaseName().value());
+  }
+
+  // Attach EC logs into uploaded log files.
+  if (IsSuccessCode(
+          GetLogContents(log_config_path_, kECExecName, ec_log_path))) {
+    AddCrashMetaUploadFile("ec_log", ec_log_path.BaseName().value());
   }
 
   const char* exec_name = kernel_util::IsHypervisorCrash(kernel_dump)

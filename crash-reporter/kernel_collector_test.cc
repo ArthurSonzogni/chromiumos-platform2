@@ -793,6 +793,10 @@ TEST_F(KernelCollectorTest, CollectOK) {
       contents.find("upload_file_bios_log=" +
                     path.ReplaceExtension("bios_log").BaseName().value()) !=
       std::string::npos);
+  EXPECT_THAT(contents,
+              testing::HasSubstr(
+                  "upload_file_ec_log=" +
+                  path.ReplaceExtension("ec_log").BaseName().value() + "\n"));
 }
 
 TEST_F(KernelCollectorTest, LastRebootWasNoCError) {
