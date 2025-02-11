@@ -220,24 +220,6 @@ tracked_umount() {
   umount "$1"
 }
 
-# Mount the existing loop device at the mountpoint in $TMPMNT.
-# Args: optional 'rw'. If present, mount read-write, otherwise read-only.
-mount_on_loop_dev() {
-  local rw_flag="${1:-}"
-  local mountopts="nosuid,nodev"
-  if [ "${rw_flag}" != "rw" ]; then
-    mountopts="${mountopts},ro,exec"
-  else
-    mountopts="${mountopts},rw,noexec,nosymfollow"
-  fi
-  tracked_mount -o "${mountopts}" "${LOOP_DEV}" "${TMPMNT:?}"
-}
-
-# Unmount loop-mounted device.
-umount_from_loop_dev() {
-  mount | grep -q " on ${TMPMNT} " && tracked_umount "${TMPMNT}"
-}
-
 # Undo all mounts and loops and runs hw diagnostics on failure.
 cleanup_on_failure() {
   set +e
@@ -454,6 +436,7 @@ install_stateful() {
   # the release image, which could mask bugs.  Make sure every
   # item you add here is well justified.
   local dst_stateful_partition
+  local loop_dev
   local vg_name
 
   echo "Installing the stateful partition..."
@@ -462,11 +445,11 @@ install_stateful() {
       "${PARTITION_NUM_STATE:?}")"
     vg_name="$(get_volume_group "${dst_stateful_partition}")"
     vgchange -ay "${vg_name}"
-    LOOP_DEV="/dev/${vg_name}/unencrypted"
+    loop_dev="/dev/${vg_name}/unencrypted"
   else
-    LOOP_DEV="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")"
+    loop_dev="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")"
   fi
-  mount_on_loop_dev rw
+  tracked_mount -o "nosuid,nodev,rw,noexec,nosymfollow" "${loop_dev}" "${TMPMNT:?}"
 
   # Move log files listed in FLAGS_lab_preserve_logs from stateful_partition to
   # a dedicated location. This flag is used to enable Autotest to collect log
@@ -586,7 +569,7 @@ install_stateful() {
     cp -au "${ROOT}/mnt/stateful_partition/${file}" "${TMPMNT}/${parent}"
   done
 
-  umount_from_loop_dev
+  tracked_umount "${TMPMNT}"
   sync
   if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
     deactivate_volume_group "${vg_name}"
