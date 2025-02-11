@@ -755,6 +755,15 @@
                 },
                 "type": "object"
               },
+              "disk-layout": {
+                "properties": {
+                  "default-key-stateful": {
+                    "description": "Use dm-default-key to encrypt all the data in stateful\nthat is not encrypted by user keys.\n",
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
               "displays": {
                 "items": {
                   "additionalProperties": false,

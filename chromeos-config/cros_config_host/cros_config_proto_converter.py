@@ -1705,6 +1705,24 @@ def _build_health_routines(health_config, hw_features):
     return result
 
 
+def _build_disk_layout(config: Config):
+    """Builds the disk layout configuration.
+
+    Args:
+        config: Config namedtuple
+
+    Returns:
+        health configuration.
+    """
+    if not config.sw_config.HasField("disk_layout"):
+        return None
+
+    disk_layout = config.sw_config.disk_layout
+    result = {}
+    _upsert(disk_layout.default_key_stateful, result, "default-key-stateful")
+    return result
+
+
 def _build_health(config: Config):
     """Builds the health configuration.
 
@@ -3230,6 +3248,7 @@ def _transform_build_config(config, config_files, custom_label):
     _upsert(config.brand_config.regulatory_label, result, "regulatory-label")
     _upsert(config.device_brand.brand_code, result, "brand-code")
     _upsert(_build_camera(hw_features), result, "camera")
+    _upsert(_build_disk_layout(config), result, "disk-layout")
     _upsert(_build_firmware(config), result, "firmware")
     _upsert(_build_fw_signing(config, custom_label), result, "firmware-signing")
     _upsert(_build_fingerprint(hw_features), result, "fingerprint")

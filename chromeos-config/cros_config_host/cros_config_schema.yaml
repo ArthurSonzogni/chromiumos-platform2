@@ -825,6 +825,14 @@ properties:
                   description: type of dGPU.
                   type: string
               additionalProperties: false
+            disk-layout:
+              type: object
+              properties:
+                default-key-stateful:
+                  description: |
+                    Use dm-default-key to encrypt all the data in stateful
+                    that is not encrypted by user keys.
+                  type: boolean
             hwid-override:
               type: string
               description: |

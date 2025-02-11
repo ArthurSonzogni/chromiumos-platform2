@@ -1668,6 +1668,9 @@
           "product-id": 1000,
           "vendor-id": 6353
         },
+        "disk-layout": {
+          "default-key-stateful": true
+        },
         "firmware": {
           "bcs-overlay": "overlay-fake_program-private",
           "build-targets": {

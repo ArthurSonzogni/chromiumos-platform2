@@ -480,6 +480,7 @@ In the tables below,
 | demo-mode | [demo-mode](#demo_mode) |  | False |  | False | Properties related to the ChromeOS Demo Mode, defining the user experience when the device is used in retail. |
 | detachable-base | [detachable-base](#detachable_base) |  | False |  | False | Contains the configuration for the hammerd which is used to update the detachable base firmware. |
 | dgpu | [dgpu](#dgpu) |  | False |  | False | Contains details about the model's dgpu implementation. |
+| disk-layout | [disk-layout](#disk_layout) |  | False |  | False |  |
 | displays | array - [displays](#displays) |  | False |  | False | Additional display properties beyond what is available thru standards such as EDID.  The display matches based on the libdrm connector type. |
 | efi | [efi](#efi) |  | False |  | False | Contains settings related to EFI firmware. |
 | fingerprint | [fingerprint](#fingerprint) |  | False |  | False | Contains details about the model's fingerprint implementation. |
@@ -760,6 +761,11 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | dgpu-type | string |  | False |  | False | type of dGPU. |
 | has-dgpu | boolean |  | False |  | False | Whether the model has discrete GPU. |
+
+### disk-layout
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| default-key-stateful | boolean |  | False |  | False | Use dm-default-key to encrypt all the data in stateful that is not encrypted by user keys.  |
 
 ### displays
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
