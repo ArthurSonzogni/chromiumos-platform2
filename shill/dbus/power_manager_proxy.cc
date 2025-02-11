@@ -15,8 +15,13 @@
 #include "power_manager/proto_bindings/suspend.pb.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/scope_logger.h"
 
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kPower;
+}  // namespace Logging
 
 namespace {
 
@@ -148,7 +153,7 @@ void PowerManagerProxy::ReportDarkSuspendReadiness(
 
 bool PowerManagerProxy::RecordDarkResumeWakeReason(
     const std::string& wake_reason) {
-  LOG(INFO) << __func__;
+  SLOG(2) << __func__;
 
   if (!service_available_) {
     LOG(ERROR) << "PowerManager service not available";
@@ -195,8 +200,8 @@ void PowerManagerProxy::RegisterSuspendDelayInternal(
     const std::string& description,
     base::OnceCallback<void(std::optional<int>)> callback) {
   const std::string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
-  LOG(INFO) << __func__ << "(" << timeout.InMilliseconds() << ", "
-            << is_dark_arg << ")";
+  SLOG(2) << __func__ << "(" << timeout.InMilliseconds() << ", " << is_dark_arg
+          << ")";
 
   power_manager::RegisterSuspendDelayRequest request_proto;
   request_proto.set_timeout(timeout.ToInternalValue());
@@ -315,14 +320,14 @@ void PowerManagerProxy::OnReportSuspendReadinessResponse(
 
 void PowerManagerProxy::OnReportSuspendReadinessError(
     base::OnceCallback<void(bool)> callback, brillo::Error* error) {
-  LOG(INFO) << "Got error reporting suspend readiness: " << error->GetCode()
-            << " " << error->GetMessage();
+  LOG(WARNING) << "Got error reporting suspend readiness: " << error->GetCode()
+               << " " << error->GetMessage();
   std::move(callback).Run(false);
 }
 
 void PowerManagerProxy::SuspendImminent(
     const std::vector<uint8_t>& serialized_proto) {
-  LOG(INFO) << __func__;
+  SLOG(2) << __func__;
   power_manager::SuspendImminent proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
     LOG(ERROR) << "Failed to parse SuspendImminent signal.";
@@ -333,21 +338,21 @@ void PowerManagerProxy::SuspendImminent(
 
 void PowerManagerProxy::SuspendDone(
     const std::vector<uint8_t>& serialized_proto) {
-  LOG(INFO) << __func__;
+  SLOG(2) << __func__;
   power_manager::SuspendDone proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
     LOG(ERROR) << "Failed to parse SuspendDone signal.";
     return;
   }
   CHECK_GE(proto.suspend_duration(), 0);
-  LOG(INFO) << "Suspend: ID " << proto.suspend_id() << " duration "
-            << proto.suspend_duration();
+  SLOG(2) << "Suspend: ID " << proto.suspend_id() << " duration "
+          << proto.suspend_duration();
   delegate_->OnSuspendDone(proto.suspend_id(), proto.suspend_duration());
 }
 
 void PowerManagerProxy::DarkSuspendImminent(
     const std::vector<uint8_t>& serialized_proto) {
-  LOG(INFO) << __func__;
+  SLOG(2) << __func__;
   power_manager::SuspendImminent proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
     LOG(ERROR) << "Failed to parse DarkSuspendImminent signal.";

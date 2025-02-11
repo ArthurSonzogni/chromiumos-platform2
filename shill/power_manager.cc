@@ -4,6 +4,8 @@
 
 #include "shill/power_manager.h"
 
+#include <linux/nl80211.h>
+
 #include <string>
 #include <utility>
 
@@ -11,7 +13,6 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <linux/nl80211.h>
 
 #include "shill/control_interface.h"
 #include "shill/logging.h"
@@ -100,7 +101,8 @@ void PowerManager::ReportSuspendReadiness(
   }
 
   if (!suspend_delay_id_.has_value()) {
-    LOG(INFO) << "No suspend delay is registered. Ignoring signal.";
+    LOG(INFO) << __func__
+              << ": No suspend delay is registered. Ignoring signal.";
     std::move(callback).Run(false);
     return;
   }
@@ -111,7 +113,8 @@ void PowerManager::ReportSuspendReadiness(
 void PowerManager::ReportDarkSuspendReadiness(
     base::OnceCallback<void(bool)> callback) {
   if (!dark_suspend_delay_id_.has_value()) {
-    LOG(INFO) << "No dark suspend delay is registered. Ignoring signal.";
+    LOG(INFO) << __func__
+              << ": No dark suspend delay is registered. Ignoring signal.";
     std::move(callback).Run(false);
     return;
   }
@@ -178,17 +181,18 @@ void PowerManager::OnSuspendImminent(int suspend_id) {
 
 void PowerManager::OnSuspendDone(int suspend_id, int64_t suspend_duration_us) {
   // NB: |suspend_id| could be -1. See OnPowerManagerVanished.
-  LOG(INFO) << __func__ << "(" << suspend_id << ")";
+  LOG(INFO) << __func__ << "(" << suspend_id << ", "
+            << base::Microseconds(suspend_duration_us_) << ")";
   if (!suspending_) {
-    LOG(WARNING) << "Received unexpected SuspendDone (" << suspend_id
-                 << "). Ignoring.";
+    LOG(WARNING) << __func__ << ": Ignoring unexpected SuspendDone suspend_id: "
+                 << suspend_id;
     return;
   }
 
   suspend_duration_us_ = suspend_duration_us;
 
   if (!suspend_ready_) {
-    LOG(INFO) << "Received SuspendDone (" << suspend_id
+    LOG(INFO) << __func__ << ": Received SuspendDone (" << suspend_id
               << ") before SuspendReadiness is reported. "
               << "Defer SuspendDone notification.";
     suspend_done_deferred_ = true;
@@ -209,7 +213,8 @@ void PowerManager::NotifySuspendDone() {
 void PowerManager::OnDarkSuspendImminent(int suspend_id) {
   LOG(INFO) << __func__ << "(" << suspend_id << ")";
   if (!dark_suspend_delay_id_.has_value()) {
-    LOG(WARNING) << "Ignoring DarkSuspendImminent signal from powerd. shill "
+    LOG(WARNING) << __func__
+                 << ": Ignoring DarkSuspendImminent signal from powerd. shill "
                  << "does not have a dark suspend delay registered. This "
                  << "means that shill is not guaranteed any time before a "
                  << "resuspend.";
