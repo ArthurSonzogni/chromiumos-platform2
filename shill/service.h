@@ -1369,6 +1369,9 @@ class Service : public base::RefCounted<Service> {
 };
 
 std::ostream& operator<<(std::ostream& stream, const Service& service);
+std::ostream& operator<<(std::ostream& stream, const ServiceRefPtr& service);
+std::ostream& operator<<(std::ostream& stream,
+                         Service::ConnectState connect_state);
 
 }  // namespace shill
 

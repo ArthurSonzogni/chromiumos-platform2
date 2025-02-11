@@ -560,9 +560,8 @@ void Service::SetState(ConnectState state) {
   }
 
   // Note: this log is parsed by logprocessor.
-  LOG(INFO) << *this << " " << __func__ << ": state "
-            << ConnectStateToString(state_) << " -> "
-            << ConnectStateToString(state);
+  LOG(INFO) << *this << " " << __func__ << ": state " << state_ << " -> "
+            << state;
 
   if (!pending_connect_task_.IsCancelled() &&
       (state == kStateFailure || state == kStateIdle)) {
@@ -2790,8 +2789,7 @@ void Service::AddServiceStateTransitionTimer(const std::string& histogram_name,
                                              Service::ConnectState start_state,
                                              Service::ConnectState stop_state) {
   SLOG(5) << *this << " " << __func__ << ": Adding " << histogram_name
-          << " for " << ConnectStateToString(start_state) << " -> "
-          << ConnectStateToString(stop_state);
+          << " for " << start_state << " -> " << stop_state;
   CHECK(start_state < stop_state);
   int num_buckets = Metrics::kTimerHistogramNumBuckets;
   int max_ms = Metrics::kTimerHistogramMillisecondsMax;
@@ -2946,6 +2944,18 @@ std::string Service::LoggingTag() const {
 
 std::ostream& operator<<(std::ostream& stream, const Service& service) {
   return stream << service.LoggingTag();
+}
+
+std::ostream& operator<<(std::ostream& stream, const ServiceRefPtr& service) {
+  if (!service) {
+    return stream << "None";
+  }
+  return stream << service->LoggingTag();
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         Service::ConnectState connect_state) {
+  return stream << Service::ConnectStateToString(connect_state);
 }
 
 }  // namespace shill
