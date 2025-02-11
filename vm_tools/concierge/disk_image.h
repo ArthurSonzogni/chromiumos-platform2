@@ -314,6 +314,9 @@ class TerminaVmImportOperation : public DiskImageOperation {
 
   // "Archive" representing output uncompressed directory.
   ArchiveWriter out_;
+
+  // If the imported VM is zstd type
+  bool zstd_ = false;
 };
 
 class VmResizeOperation : public DiskImageOperation {

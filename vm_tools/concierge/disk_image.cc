@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -32,6 +33,7 @@ namespace {
 
 constexpr gid_t kCrosvmUGid = 299;
 constexpr gid_t kPluginVmGid = 20128;
+constexpr uint32_t kZstdMagic = 0xFD2FB528;
 
 }  // namespace
 
@@ -803,22 +805,62 @@ TerminaVmImportOperation::~TerminaVmImportOperation() {
 }
 
 bool TerminaVmImportOperation::PrepareInput() {
+  // Test if input file has a valid zstd header
+  // only standard frame will pass the test, normally skippable frame is not
+  // used as first frame.
+  size_t file_size = lseek(in_fd_.get(), 0, SEEK_END);
+  if (file_size < 4) {
+    set_failure_reason("input file too small to be valid");
+    return false;
+  }
+  lseek(in_fd_.get(), 0, SEEK_SET);
+
+  // read 4 bytes as a number
+  uint32_t header_magic;
+  if (HANDLE_EINTR(read(in_fd_.get(), &header_magic, 4)) != 4) {
+    set_failure_reason("failed to read header");
+    return false;
+  }
+  lseek(in_fd_.get(), 0, SEEK_SET);
+
+  // compare header to ZSTD magic
+  if (header_magic == kZstdMagic) {
+    zstd_ = true;
+  } else {
+    zstd_ = false;
+  }
   in_ = ArchiveReader(archive_read_new());
   if (!in_.get()) {
     set_failure_reason("libarchive: failed to create reader");
     return false;
   }
 
-  int ret = archive_read_support_format_zip(in_.get());
-  if (ret != ARCHIVE_OK) {
-    set_failure_reason("libarchive: failed to initialize zip format");
-    return false;
-  }
+  int ret;
 
-  ret = archive_read_support_filter_all(in_.get());
-  if (ret != ARCHIVE_OK) {
-    set_failure_reason("libarchive: failed to initialize filter");
-    return false;
+  if (zstd_) {
+    ret = archive_read_support_format_raw(in_.get());
+    if (ret != ARCHIVE_OK) {
+      set_failure_reason("libarchive: failed to initialize raw format");
+      return false;
+    }
+
+    ret = archive_read_support_filter_zstd(in_.get());
+    if (ret != ARCHIVE_OK) {
+      set_failure_reason("libarchive: failed to initialize zstd filter");
+      return false;
+    }
+  } else {
+    ret = archive_read_support_format_zip(in_.get());
+    if (ret != ARCHIVE_OK) {
+      set_failure_reason("libarchive: failed to initialize zip format");
+      return false;
+    }
+
+    ret = archive_read_support_filter_all(in_.get());
+    if (ret != ARCHIVE_OK) {
+      set_failure_reason("libarchive: failed to initialize filter");
+      return false;
+    }
   }
 
   ret = archive_read_open_fd(in_.get(), in_fd_.get(), 102400);
@@ -918,10 +960,14 @@ bool TerminaVmImportOperation::ExecuteIo(uint64_t io_limit) {
 
       mode_t mode = archive_entry_filetype(entry);
 
+      // For zip archive:
       // The archive should contain a single file named the same as the
       // destination file ("dGVybWluYQ==.img" for termina).
+
+      // For zstd compressed file:
+      // The file is treated as a single entry archive with a generic entry name
       base::FilePath dest_filename = dest_image_path_.BaseName();
-      if (path != dest_filename || mode != AE_IFREG) {
+      if ((!zstd_ && path != dest_filename) || mode != AE_IFREG) {
         LOG(ERROR) << "Expected TerminaVm image named " << dest_filename
                    << ", got " << path << " mode " << mode;
         MarkFailed("archive entry does not match expected file", nullptr);
@@ -949,7 +995,13 @@ bool TerminaVmImportOperation::ExecuteIo(uint64_t io_limit) {
         break;
       }
 
-      copying_data_ = archive_entry_size(entry) > 0;
+      // zstd filter in libarchive does not have `read_header`
+      // and its entry size is thus unset
+      if (zstd_ && !archive_entry_size_is_set(entry)) {
+        copying_data_ = true;
+      } else {
+        copying_data_ = archive_entry_size(entry) > 0;
+      }
     }
 
     if (copying_data_) {
@@ -1002,7 +1054,6 @@ uint64_t TerminaVmImportOperation::CopyEntry(uint64_t io_limit) {
       break;
     }
   } while (bytes_read < io_limit);
-
   return bytes_read;
 }
 
