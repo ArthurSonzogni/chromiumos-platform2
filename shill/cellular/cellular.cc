@@ -154,14 +154,6 @@ std::string GetFriendlyModelId(const std::string& model_id) {
   return model_id;
 }
 
-// Returns if specified modem manager error can be classified as
-// subscription related error. This API should be enhanced if
-// better signals become available to detect subscription error.
-bool IsSubscriptionError(std::string mm_error) {
-  return mm_error == MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX
-         ".ServiceOptionNotSubscribed";
-}
-
 void PrintApnListForDebugging(std::deque<Stringmap> apn_try_list,
                               ApnList::ApnType apn_type) {
   // Print list for debugging
@@ -256,6 +248,19 @@ std::string Cellular::GetStateString(State state) {
     default:
       NOTREACHED();
   }
+}
+
+// Returns if specified modem manager error can be classified as
+// subscription related error or corresponding registration error
+// was already reported by modem.
+bool Cellular::IsSubscriptionError(std::string mm_error) {
+  if (capability_ && (capability_->SuspectSubscription(service_->iccid()) ||
+                      capability_->SuspectInactiveSim(service_->iccid()))) {
+    return true;
+  }
+
+  return mm_error == MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX
+         ".ServiceOptionNotSubscribed";
 }
 
 // static

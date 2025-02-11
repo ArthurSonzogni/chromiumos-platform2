@@ -2641,6 +2641,7 @@ void CellularCapability3gpp::OnFacilityLocksChanged(uint32_t locks) {
   }
 }
 
+// Returns if network errors are related to inactive SIM.
 bool CellularCapability3gpp::SuspectInactiveSim(std::string iccid) {
   if (iccid.empty()) {
     return false;
@@ -2651,6 +2652,7 @@ bool CellularCapability3gpp::SuspectInactiveSim(std::string iccid) {
   return nw_rejection_map_[iccid].suspect_inactive_sim;
 }
 
+// Returns if network errors are related to user subscription plan.
 bool CellularCapability3gpp::SuspectSubscription(std::string iccid) {
   if (iccid.empty()) {
     return false;
@@ -2661,6 +2663,7 @@ bool CellularCapability3gpp::SuspectSubscription(std::string iccid) {
   return nw_rejection_map_[iccid].suspect_subscription;
 }
 
+// Returns if network errors are related to disallowed modem.
 bool CellularCapability3gpp::SuspectModemDisallowed(std::string iccid) {
   if (iccid.empty()) {
     return false;

@@ -117,6 +117,7 @@ class Cellular : public Device,
   // Static helper for logging.
   static std::string GetStateString(State state);
   static std::string GetModemStateString(ModemState modem_state);
+  bool IsSubscriptionError(std::string mm_error);
 
   // Helper to build a fallback empty APN
   static Stringmap BuildFallbackEmptyApn(ApnList::ApnType apn_type);
