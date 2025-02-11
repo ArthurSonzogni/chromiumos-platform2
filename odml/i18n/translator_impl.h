@@ -22,7 +22,7 @@ namespace i18n {
 class TranslatorImpl : public Translator {
  public:
   explicit TranslatorImpl(raw_ref<odml::OdmlShimLoader> shim_loader);
-  ~TranslatorImpl() override = default;
+  ~TranslatorImpl() override;
 
   TranslatorImpl(const TranslatorImpl&) = delete;
   TranslatorImpl& operator=(const TranslatorImpl&) = delete;

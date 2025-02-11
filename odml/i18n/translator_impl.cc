@@ -79,6 +79,12 @@ std::string GetDlcName(const LangPair& lang_pair) {
 TranslatorImpl::TranslatorImpl(raw_ref<odml::OdmlShimLoader> shim_loader)
     : shim_loader_(shim_loader) {}
 
+TranslatorImpl::~TranslatorImpl() {
+  for (const auto& [lang_pair, dict_ptr] : dictionaries_) {
+    api_->Destroy(dict_ptr);
+  }
+}
+
 void TranslatorImpl::Initialize(base::OnceCallback<void(bool)> callback) {
   if (api_) {
     std::move(callback).Run(true);
