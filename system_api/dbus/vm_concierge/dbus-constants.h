@@ -12,6 +12,7 @@ const char kVmConciergeInterface[] = "org.chromium.VmConcierge";
 const char kVmConciergeServicePath[] = "/org/chromium/VmConcierge";
 const char kVmConciergeServiceName[] = "org.chromium.VmConcierge";
 
+// keep-sorted start
 const char kAddGroupPermissionMesaMethod[] = "AddGroupPermissionMesa";
 const char kAdjustVmMethod[] = "AdjustVm";
 const char kAggressiveBalloonMethod[] = "AggressiveBalloon";
@@ -46,6 +47,7 @@ const char kReclaimVmMemoryMethod[] = "ReclaimVmMemory";
 const char kResizeDiskImageMethod[] = "ResizeDiskImage";
 const char kResumeVmMethod[] = "ResumeVm";
 const char kSetBalloonTimerMethod[] = "SetBalloonTimer";
+const char kSetUpVmUserMethod[] = "SetUpVmUser";
 const char kSetVmCpuRestrictionMethod[] = "SetVmCpuRestriction";
 const char kStartArcVmMethod[] = "StartArcVm";
 const char kStartPluginVmMethod[] = "StartPluginVm";
@@ -56,8 +58,9 @@ const char kStopVmWithoutOwnerIdMethod[] = "StopVmWithoutOwnerId";
 const char kSuspendVmMethod[] = "SuspendVm";
 const char kSwapVmMethod[] = "SwapVm";
 const char kSyncVmTimesMethod[] = "SyncVmTimes";
-const char kSetUpVmUserMethod[] = "SetUpVmUser";
+// keep-sorted end
 
+// keep-sorted start
 const char kDiskImageProgressSignal[] = "DiskImageProgress";
 const char kDnsSettingsChangedSignal[] = "DnsSettingsChanged";
 const char kVmGuestUserlandReadySignal[] = "VmGuestUserlandReadySignal";
@@ -66,6 +69,7 @@ const char kVmStartingUpSignal[] = "VmStartingUpSignal";
 const char kVmStoppedSignal[] = "VmStoppedSignal";
 const char kVmStoppingSignal[] = "VmStoppingSignal";
 const char kVmSwappingSignal[] = "VmSwappingSignal";
+// keep-sorted end
 
 const char kArcVmName[] = "arcvm";
 
