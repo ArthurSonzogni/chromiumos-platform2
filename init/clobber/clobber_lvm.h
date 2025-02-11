@@ -89,9 +89,10 @@ class ClobberLvm {
       dlcservice::PartitionSlot active_slot,
       std::unique_ptr<dlcservice::UtilsInterface> utils);
 
-  virtual bool CreateUnencryptedStatefulLV(const brillo::VolumeGroup& vg,
-                                           const brillo::Thinpool& thinpool,
-                                           uint64_t lv_size);
+  virtual std::optional<base::FilePath> CreateUnencryptedStatefulLV(
+      const brillo::VolumeGroup& vg,
+      const brillo::Thinpool& thinpool,
+      uint64_t lv_size);
 
   // Returns the argument list for preserved wipe of LVM.
   virtual PreserveLogicalVolumesWipeInfos PreserveLogicalVolumesWipeArgs(

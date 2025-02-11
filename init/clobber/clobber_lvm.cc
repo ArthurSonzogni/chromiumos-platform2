@@ -5,9 +5,8 @@
 #include "init/clobber/clobber_lvm.h"
 
 #include <fcntl.h>
-#include <sys/ioctl.h>
-
 #include <linux/fs.h>
+#include <sys/ioctl.h>
 
 #include <memory>
 #include <optional>
@@ -212,9 +211,10 @@ bool ClobberLvm::PreserveLogicalVolumesWipe(
   return true;
 }
 
-bool ClobberLvm::CreateUnencryptedStatefulLV(const brillo::VolumeGroup& vg,
-                                             const brillo::Thinpool& thinpool,
-                                             uint64_t lv_size) {
+std::optional<base::FilePath> ClobberLvm::CreateUnencryptedStatefulLV(
+    const brillo::VolumeGroup& vg,
+    const brillo::Thinpool& thinpool,
+    uint64_t lv_size) {
   base::Value::Dict lv_config;
   lv_config.Set("name", kUnencrypted);
   lv_config.Set("size", base::NumberToString(lv_size));
@@ -223,15 +223,15 @@ bool ClobberLvm::CreateUnencryptedStatefulLV(const brillo::VolumeGroup& vg,
       lvm_->CreateLogicalVolume(vg, thinpool, lv_config);
   if (!lv || !lv->IsValid()) {
     LOG(ERROR) << "Failed to create " << kUnencrypted << " logical volume.";
-    return false;
+    return std::nullopt;
   }
 
   if (!lv->Activate()) {
     LOG(ERROR) << "Failed to activate thinpool.";
-    return false;
+    return std::nullopt;
   }
 
-  return true;
+  return base::FilePath("/dev").Append(vg.GetName()).Append(kUnencrypted);
 }
 
 uint64_t ClobberLvm::GetBlkSize(const base::FilePath& device) {
@@ -290,11 +290,7 @@ std::optional<base::FilePath> ClobberLvm::CreateLogicalVolumeStackForPreserved(
 
   int64_t thinpool_size = partition_size.value() * kThinpoolSizePercent / 100;
   uint64_t lv_size = thinpool_size * kLogicalVolumeSizePercent / 100;
-  if (!CreateUnencryptedStatefulLV(*vg, *thinpool, lv_size)) {
-    return std::nullopt;
-  }
-  return base::FilePath(
-      base::StringPrintf("/dev/%s/unencrypted", vg->GetName().c_str()));
+  return CreateUnencryptedStatefulLV(*vg, *thinpool, lv_size);
 }
 
 std::optional<base::FilePath> ClobberLvm::CreateLogicalVolumeStack(
@@ -342,12 +338,7 @@ std::optional<base::FilePath> ClobberLvm::CreateLogicalVolumeStack(
   }
 
   uint64_t lv_size = thinpool_size * kLogicalVolumeSizePercent / 100;
-  if (!CreateUnencryptedStatefulLV(*vg, *thinpool, lv_size)) {
-    LOG(ERROR) << "Failed to activate thinpool.";
-    return std::nullopt;
-  }
-  return base::FilePath(
-      base::StringPrintf("/dev/%s/unencrypted", vg_name.c_str()));
+  return CreateUnencryptedStatefulLV(*vg, *thinpool, lv_size);
 }
 
 ClobberLvm::PreserveLogicalVolumesWipeInfos
