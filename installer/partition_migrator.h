@@ -53,7 +53,7 @@ class BRILLO_EXPORT PartitionMigrator {
   PartitionMigrator(const PartitionMigrator&) = delete;
   PartitionMigrator& operator=(const PartitionMigrator&) = delete;
 
-  ~PartitionMigrator();
+  ~PartitionMigrator() = default;
 
   bool RunMigration();
   void RevertMigration();

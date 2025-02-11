@@ -20,9 +20,8 @@
 // These are the possible error codes that can be returned by the CgptManager.
 enum class [[nodiscard]] CgptErrorCode {
   kSuccess = 0,
-  kNotInitialized = 1,
-  kUnknownError = 2,
-  kInvalidArgument = 3,
+  kUnknownError = 1,
+  kInvalidArgument = 2,
 };
 
 BRILLO_EXPORT std::ostream& operator<<(std::ostream& os,
@@ -44,22 +43,9 @@ struct SectorRange {
 // for unit tests is provided in `mock_cgpt_manager.h`.
 class CgptManagerInterface {
  public:
-  // Destructor. Automatically closes any opened device.
-  virtual ~CgptManagerInterface() {}
+  CgptManagerInterface() = default;
 
-  // Opens the given device_name (e.g. "/dev/sdc") and initializes
-  // with the Guid Partition Table of that device. This is the first method
-  // that should be called on this class.  Otherwise those methods will
-  // return kNotInitialized.
-  // Returns kSuccess or an appropriate error code.
-  // This device is automatically closed when this object is destructed.
-  virtual CgptErrorCode Initialize(const base::FilePath& device_name) = 0;
-
-  // Performs any necessary write-backs so that the GPT structs are written to
-  // the device. This method is called in the destructor but its error code is
-  // not checked. Therefore, it is best to call Finalize yourself and check the
-  // returned code.
-  virtual CgptErrorCode Finalize() = 0;
+  virtual ~CgptManagerInterface() = default;
 
   // Sets the "successful" attribute of the given kernelPartition to 0 or 1
   // based on the value of is_successful being true (1) or false(0)
@@ -125,20 +111,17 @@ class CgptManagerInterface {
   // Returns kSuccess or an appropriate error code.
   virtual CgptErrorCode RepairPartitionTable() = 0;
 
-  // Get the device path (e.g. "/dev/sda") that was passed in to |Initialize|.
+  // Get the device path (e.g. "/dev/sda") that was passed in to the
+  // constructor.
   virtual const base::FilePath& DeviceName() const = 0;
 };
 
 class BRILLO_EXPORT CgptManager : public CgptManagerInterface {
  public:
-  // Default constructor. The Initialize method must be called before
-  // any other method can be called on this class.
-  CgptManager();
+  explicit CgptManager(const base::FilePath& device_name);
+  CgptManager(CgptManager const&) = delete;
+  CgptManager& operator=(CgptManager const&) = delete;
 
-  ~CgptManager() override;
-
-  CgptErrorCode Initialize(const base::FilePath& device_name) override;
-  CgptErrorCode Finalize() override;
   CgptErrorCode SetSuccessful(PartitionNum partition_number,
                               bool is_successful) override;
   CgptErrorCode SetNumTriesLeft(PartitionNum partition_number,
@@ -168,15 +151,8 @@ class BRILLO_EXPORT CgptManager : public CgptManagerInterface {
   const base::FilePath& DeviceName() const override;
 
  private:
-  // The device name that is passed to Initialize.
+  // The device name that is passed to the constructor.
   base::FilePath device_name_;
-  // The size of that device in case we store GPT structs off site (such as on
-  // NOR flash). Zero if we store GPT structs on the same device.
-  uint64_t device_size_;
-  bool is_initialized_;
-
-  CgptManager(const CgptManager&);
-  void operator=(const CgptManager&);
 };
 
 #endif  // INSTALLER_CGPT_MANAGER_H_

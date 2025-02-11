@@ -597,14 +597,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   sync();
   LoggingTimerFinish();
 
-  CgptManager cgpt_manager;
-
-  CgptErrorCode result =
-      cgpt_manager.Initialize(install_config.root.base_device());
-  if (result != CgptErrorCode::kSuccess) {
-    LOG(ERROR) << "Unable to initialize CgptManager().";
-    return false;
-  }
+  CgptManager cgpt_manager(install_config.root.base_device());
 
   switch (install_config.defer_update_action) {
     case DeferUpdateAction::kApply:
@@ -632,10 +625,6 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       // For other BiosTypes, while we might boot to the new partition the files
       // on the EFI System Partition aren't yet set up to boot successfully.
       //
-      // Note: for devices using MTD storage the partition won't be marked
-      // bootable until `cgpt_manager.Finalize` is called or cgpt_manager is
-      // destructed. b/260606556
-
       if (!ESPPostInstall(install_config)) {
         LOG(ERROR) << "ESPPostInstall failed.";
         // ESPPostInstall has failed. We don't know which changes have been made
@@ -774,11 +763,6 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       LOG(WARNING) << "ignored: gsc_update failure: " << result;
     }
     LOG(INFO) << "GSC setup complete.";
-  }
-
-  if (cgpt_manager.Finalize() != CgptErrorCode::kSuccess) {
-    LOG(ERROR) << "Failed to write GPT changes back.";
-    return false;
   }
 
   printf("ChromeosChrootPostinst complete\n");

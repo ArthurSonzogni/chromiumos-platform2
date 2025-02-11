@@ -65,13 +65,6 @@ else
   kern_num=$(($(get_partition_number "${root_dev}") - 1))
 fi
 
-# kern_dev would be /dev/mtd2 or /dev/mtd4 on NAND, base_dev will be /dev/mtd.
-# But that's wrong, it should be /dev/mtd0 because there is no /dev/mtd device.
-# ChromeOS only supports one NAND device, we use /dev/mtd0 for that.
-if [ "${base_dev}" = "/dev/mtd" ]; then
-  base_dev="/dev/mtd0"
-fi
-
 # Mark the kernel as successfully booted (success=1, tries=0).
 cgpt add "${base_dev}" -i "${kern_num}" -S1 -T0
 # Mark the kernel as highest priority

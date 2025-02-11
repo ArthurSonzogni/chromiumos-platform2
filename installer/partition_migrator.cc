@@ -27,10 +27,6 @@ PartitionMigrator::PartitionMigrator(
       relabeled_partitions_(std::move(relabeled_partitions)),
       cgpt_manager_(std::move(cgpt_manager)) {}
 
-PartitionMigrator::~PartitionMigrator() {
-  std::ignore = cgpt_manager_->Finalize();
-}
-
 bool PartitionMigrator::RunMigration() {
   InitializePartitionMetadata();
 

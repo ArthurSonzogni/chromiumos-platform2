@@ -734,7 +734,6 @@ get_pmbr_code() {
 # device nodes like /dev/sda1 can be accessed).
 reload_partitions() {
   # Reload the partition table on block devices only.
-  # On MTD, the ChromeOS kernel loads the partition table at boot time.
   #
   # In some cases, we may be racing with udev for access to the
   # device leading to EBUSY when we reread the partition table.  We

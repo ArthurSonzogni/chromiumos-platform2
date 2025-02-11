@@ -6,9 +6,9 @@
 
 #include <stdio.h>
 
-#include "installer/cgpt_manager.h"
-
 #include <base/logging.h>
+
+#include "installer/cgpt_manager.h"
 
 using std::string;
 
@@ -64,13 +64,7 @@ void GuidToStr(const Guid* guid, char* str, unsigned int buflen) {
 }
 
 string Partition::uuid() const {
-  CgptManager cgpt;
-
-  if (cgpt.Initialize(base_device()) != CgptErrorCode::kSuccess) {
-    LOG(ERROR) << "CgptManager failed to initialize for " << base_device();
-    return "";
-  }
-
+  CgptManager cgpt(base_device());
   Guid guid;
 
   if (cgpt.GetPartitionUniqueId(number(), &guid) != CgptErrorCode::kSuccess) {

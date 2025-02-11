@@ -670,14 +670,10 @@ bool MigratePartition(const base::FilePath& device,
     }
   }
 
-  std::unique_ptr<CgptManager> cgpt_manager = std::make_unique<CgptManager>();
+  std::unique_ptr<CgptManager> cgpt_manager =
+      std::make_unique<CgptManager>(base::FilePath(device));
 
   SectorRange reclaimed_range;
-  if (cgpt_manager->Initialize(base::FilePath(device)) !=
-      CgptErrorCode::kSuccess) {
-    return false;
-  }
-
   if (cgpt_manager->GetSectorRange(PartitionNum(reclaimed_partition.number),
                                    reclaimed_range) !=
       CgptErrorCode::kSuccess) {

@@ -103,18 +103,16 @@ bool LsbReleaseValue(const base::FilePath& file,
                      std::string* result);
 
 // Given root partition dev node (such as /dev/sda3, /dev/mmcblk0p3),
-// return the block dev (/dev/sda, /dev/mmcblk0, /dev/mtd0).
+// return the block dev (/dev/sda, /dev/mmcblk0).
 base::FilePath GetBlockDevFromPartitionDev(const base::FilePath& partition_dev);
 
 // Given root partition dev node (such as /dev/sda3, /dev/mmcblk0p3),
 // return the partition number (3).
 PartitionNum GetPartitionFromPartitionDev(const base::FilePath& partition_dev);
 
-// Given block dev node (/dev/sda, /dev/mmcblk0, /dev/mtd0) and a partition
+// Given block dev node (/dev/sda, /dev/mmcblk0) and a partition
 // number (such as 3), return a new dev node pointing to the partition
-// (/dev/sda3, /dev/mmcblk0p3). On NAND media, the partitions
-// can change widely, though they have the same block /dev/mtd0:
-//   * Kernel partitions mtdX
+// (/dev/sda3, /dev/mmcblk0p3).
 base::FilePath MakePartitionDev(const base::FilePath& partition_dev,
                                 PartitionNum partition);
 

@@ -14,11 +14,6 @@
 class MockCgptManager : public CgptManagerInterface {
  public:
   MOCK_METHOD(CgptErrorCode,
-              Initialize,
-              (const base::FilePath& device_name),
-              (override));
-  MOCK_METHOD(CgptErrorCode, Finalize, (), (override));
-  MOCK_METHOD(CgptErrorCode,
               SetSuccessful,
               (PartitionNum partition_number, bool is_successful),
               (override));

@@ -60,9 +60,6 @@ group("all") {
   if (!use.cros_host) {
     deps += [ ":evwaitkey" ]
   }
-  if (use.mtd) {
-    deps += [ ":nand_partition" ]
-  }
   if (use.test) {
     deps += [ ":cros_installer_test" ]
   }
@@ -187,24 +184,6 @@ executable("partition_migrator") {
   configs += [ ":target_defaults" ]
   deps = [ ":libcros_installer_utils" ]
   install_path = "/usr/local/bin"
-}
-
-if (use.mtd) {
-  pkg_config("nand_partition_config") {
-    pkg_deps = [ "libchrome" ]
-  }
-  executable("nand_partition") {
-    sources = [
-      "nand_partition.cc",
-      "nand_partition_main.cc",
-    ]
-    configs += [
-      ":nand_partition_config",
-      ":target_defaults",
-    ]
-    deps = [ ":libcros_installer" ]
-    install_path = "bin"
-  }
 }
 
 if (!use.cros_host && use.test) {
