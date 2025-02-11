@@ -12,6 +12,7 @@
 <node name="/org/chromium/VmConcierge"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.VmConcierge">
+    <!-- keep-sorted start group_prefixes=</method> -->
     <method name="AddGroupPermissionMesa">
       <tp:docstring>
         Adds group permission to directories created by mesa for a specified VM.
@@ -470,6 +471,23 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="ModifyFakePowerConfig">
+      <tp:docstring>
+        Modify fake battery configuration for VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::ModifyFakePowerConfigRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="ReclaimVmMemory">
       <tp:docstring>
         Requests to reclaim memory of a given VM.
@@ -539,18 +557,18 @@
         </tp:docstring>
       </arg>
     </method>
-    <method name="ModifyFakePowerConfig">
+    <method name="SetUpVmUser">
       <tp:docstring>
-        Modify fake battery configuration for VM.
+        Sets up a new user within a VM, creating it if it doesn't exist.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::ModifyFakePowerConfigRequest"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SetUpVmUserRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SetUpVmUserResponse"/>
         <tp:docstring>
           Returns success==true when successful, failure_reason is set on failure.
         </tp:docstring>
@@ -661,12 +679,12 @@
         </tp:docstring>
       </arg>
     </method>
-    <!-- TODO(b/305120263): Remove owner_id from StopVmRequest and merge this
-         method into StopVm. -->
     <method name="StopVmWithoutOwnerId">
       <tp:docstring>
         Similar to StopVm but works without passing owner_id and stops the given
         VM for all owners.
+        TODO(b/305120263): Remove owner_id from StopVmRequest and merge this
+        method into StopVm.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
@@ -728,24 +746,9 @@
         </tp:docstring>
       </arg>
     </method>
-    <method name="SetUpVmUser">
-      <tp:docstring>
-        Sets up a new user within a VM, creating it if it doesn't exist.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
-      <arg type="ay" name="request" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SetUpVmUserRequest"/>
-      </arg>
-      <arg type="ay" name="response" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SetUpVmUserResponse"/>
-        <tp:docstring>
-          Returns success==true when successful, failure_reason is set on failure.
-        </tp:docstring>
-      </arg>
-    </method>
+    <!-- keep-sorted end -->
 
+    <!-- keep-sorted start group_prefixes=</signal> -->
     <signal name="DiskImageProgress">
       <tp:docstring>
         Signaled by Concierge after an ImportDiskImage
@@ -755,6 +758,15 @@
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::DiskImageStatusResponse"/>
+      </arg>
+    </signal>
+    <signal name="DnsSettingsChanged">
+      <tp:docstring>
+        Signal to let Parallels dispatcher aware of DNS settings change.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::DnsSettings"/>
       </arg>
     </signal>
     <signal name="VmGuestUserlandReadySignal">
@@ -769,15 +781,6 @@
         <tp:docstring>
           Specifies the context of what level of guest userland is up and running.
         </tp:docstring>
-      </arg>
-    </signal>
-    <signal name="DnsSettingsChanged">
-      <tp:docstring>
-        Signal to let Parallels dispatcher aware of DNS settings change.
-      </tp:docstring>
-      <arg name="signal" type="ay">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::DnsSettings"/>
       </arg>
     </signal>
     <signal name="VmInstallStateSignal">
@@ -841,5 +844,6 @@
                     value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::VmSwappingSignal"/>
       </arg>
     </signal>
+    <!-- keep-sorted end -->
   </interface>
 </node>
