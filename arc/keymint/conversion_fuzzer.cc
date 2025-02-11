@@ -16,7 +16,7 @@
 #include "arc/keymint/conversion.h"
 #include "arc/keymint/keymint_logger.h"
 
-constexpr uint32_t kSharedSecretParamVectorSize = 32;
+constexpr uint32_t kDataSize = 32;
 
 class Environment {
  public:
@@ -96,16 +96,23 @@ arc::mojom::keymint::TimeStampTokenPtr consumeTimeStampToken(
       fdp->ConsumeBytes<uint8_t>(fdp->ConsumeIntegral<uint8_t>()));
 }
 
-arc::mojom::keymint::SharedSecretParametersPtr consumeSharedSecretParameters(
+arc::mojom::keymint::KeyMintBlobPtr consumeKeyMintBlob(
     FuzzedDataProvider* fdp) {
-  std::vector<uint8_t> seed =
-      fdp->ConsumeBytes<uint8_t>(kSharedSecretParamVectorSize);
-  std::vector<uint8_t> nonce =
-      fdp->ConsumeBytes<uint8_t>(kSharedSecretParamVectorSize);
+  std::vector<uint8_t> data = fdp->ConsumeBytes<uint8_t>(kDataSize);
 
   // Resize in case there weren't enough bytes.
-  seed.resize(kSharedSecretParamVectorSize);
-  nonce.resize(kSharedSecretParamVectorSize);
+  data.resize(kDataSize);
+  return arc::mojom::keymint::KeyMintBlob::New(data);
+}
+
+arc::mojom::keymint::SharedSecretParametersPtr consumeSharedSecretParameters(
+    FuzzedDataProvider* fdp) {
+  std::vector<uint8_t> seed = fdp->ConsumeBytes<uint8_t>(kDataSize);
+  std::vector<uint8_t> nonce = fdp->ConsumeBytes<uint8_t>(kDataSize);
+
+  // Resize in case there weren't enough bytes.
+  seed.resize(kDataSize);
+  nonce.resize(kDataSize);
 
   return arc::mojom::keymint::SharedSecretParameters::New(seed, nonce);
 }
@@ -218,14 +225,11 @@ void fuzzMakeComputeSharedSecret(FuzzedDataProvider* fdp) {
 
 void fuzzMakeGenerateCsr(FuzzedDataProvider* fdp) {
   std::vector<arc::mojom::keymint::KeyMintBlobPtr> blobs;
-  blobs.push_back(arc::mojom::keymint::KeyMintBlob::New(
-      fdp->ConsumeBytes<uint8_t>(fdp->ConsumeIntegral<uint8_t>())));
+  blobs.push_back(consumeKeyMintBlob(fdp));
+
   auto input = arc::mojom::keymint::CertificateRequest::New(
-      fdp->ConsumeBool(), std::move(blobs),
-      arc::mojom::keymint::KeyMintBlob::New(
-          fdp->ConsumeBytes<uint8_t>(fdp->ConsumeIntegral<uint8_t>())),
-      arc::mojom::keymint::KeyMintBlob::New(
-          fdp->ConsumeBytes<uint8_t>(fdp->ConsumeIntegral<uint8_t>())));
+      fdp->ConsumeBool(), std::move(blobs), consumeKeyMintBlob(fdp),
+      consumeKeyMintBlob(fdp));
 
   arc::keymint::MakeGenerateCsrRequest(input, fdp->ConsumeIntegral<uint8_t>());
 }
