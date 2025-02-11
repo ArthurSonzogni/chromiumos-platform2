@@ -4,7 +4,6 @@
     "delegate_path": "/usr/lib64/libtensorflowlite_mtk_neuron_delegate.so"
   },
   "mtk_neuron_settings": {
-    "execution_preference": PREFERENCE_SUSTAINED_SPEED,
     "optimization_hints": [OPTIMIZATION_LOW_LATENCY],
     "allow_fp16_precision_for_fp32": true,
     "operation_check_mode": NO_OPERATION_CHECK,
