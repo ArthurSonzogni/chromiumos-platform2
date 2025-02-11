@@ -191,7 +191,9 @@ void Error::LogMessage(const base::Location& from_here,
   // kNotSupported when those features are requested are expected and should be
   // logged as a WARNING. Prefer using the more specific kNotImplemented error
   // for missing functionality that should be implemented.
-  if (type == Error::kNotSupported) {
+  if (type == Error::kSuccess) {
+    LOG(INFO) << GetLocationAsString(from_here) << message;
+  } else if (type == Error::kNotSupported) {
     LOG(WARNING) << GetLocationAsString(from_here) << message;
   } else {
     LOG(ERROR) << GetLocationAsString(from_here) << message;
@@ -221,6 +223,9 @@ std::string Error::GetLocationAsString(const base::Location& location) {
 }
 
 std::ostream& operator<<(std::ostream& stream, const Error& error) {
+  if (error.IsSuccess()) {
+    return stream << "Success";
+  }
   stream << error.GetDBusResult(error.type()) << ": " << error.message();
   return stream;
 }
