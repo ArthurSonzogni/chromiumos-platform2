@@ -18,11 +18,13 @@
 #include <ml_core/dlc/dlc_client.h>
 
 #include "odml/mantis/lib_api.h"
+#include "odml/mantis/metrics.h"
 #include "odml/mantis/processor.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
 #include "odml/utils/dlc_client_helper.h"
 #include "odml/utils/odml_shim_loader.h"
+#include "odml/utils/performance_timer.h"
 
 namespace mantis {
 
@@ -96,6 +98,11 @@ void MantisService::Initialize(
     return;
   }
 
+  // Determine if the model is already loaded here. The model might be ready
+  // later, e.g. after DLC is installed. However, we consider that case
+  // unloaded since we already do some processing.
+  SendBoolMetric(*metrics_lib_, BoolMetric::kModelLoaded,
+                 processor_ != nullptr);
   if (processor_) {
     processor_->AddReceiver(std::move(processor));
     mojo::Remote<mojom::PlatformModelProgressObserver> remote(
@@ -114,7 +121,7 @@ void MantisService::Initialize(
       kDlcName,
       base::BindOnce(&MantisService::OnInstallDlcComplete,
                      weak_ptr_factory_.GetWeakPtr(), std::move(processor),
-                     std::move(callback)),
+                     std::move(callback), odml::PerformanceTimer::Create()),
       base::BindRepeating(&MantisService::OnDlcProgress,
                           weak_ptr_factory_.GetWeakPtr(), remote));
   (*dlc_client)->InstallDlc();
@@ -130,6 +137,7 @@ void MantisService::GetMantisFeatureStatus(
 void MantisService::OnInstallDlcComplete(
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
     InitializeCallback callback,
+    odml::PerformanceTimer::Ptr timer,
     base::expected<base::FilePath, std::string> result) {
   if (!result.has_value()) {
     LOG(ERROR) << "Failed to install ML DLC: " << result.error();
@@ -180,7 +188,7 @@ void MantisService::OnInstallDlcComplete(
                      safety_service_manager_,
                      base::BindOnce(&MantisService::DeleteProcessor,
                                     base::Unretained(this)),
-                     std::move(callback))
+                     std::move(callback), std::move(timer))
           .Then(base::BindOnce(&MantisService::NotifyPendingProcessors,
                                weak_ptr_factory_.GetWeakPtr())));
 }
@@ -193,11 +201,13 @@ void MantisService::CreateMantisProcessor(
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
+    odml::PerformanceTimer::Ptr timer,
     MantisComponent component) {
   processor_ = std::make_unique<MantisProcessor>(
       metrics_lib, std::move(mantis_api_runner), component, api,
       std::move(processor), safety_service_manager, std::move(on_disconnected),
       std::move(callback));
+  SendTimeMetric(*metrics_lib_, TimeMetric::kLoadModelLatency, *timer);
 }
 
 void MantisService::NotifyPendingProcessors() {

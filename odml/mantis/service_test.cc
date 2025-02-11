@@ -28,6 +28,10 @@ namespace {
 
 constexpr char kDlcName[] = "ml-dlc-302a455f-5453-43fb-a6a1-d856e6fe6435";
 
+using ::testing::_;
+using ::testing::Gt;
+using ::testing::InSequence;
+using ::testing::NiceMock;
 using ::testing::Return;
 using MantisAPIGetter = const MantisAPI* (*)();
 
@@ -50,7 +54,7 @@ class MantisServiceTest : public testing::Test {
 
  protected:
   base::test::TaskEnvironment task_environment_;
-  MetricsLibraryMock metrics_lib_;
+  NiceMock<MetricsLibraryMock> metrics_lib_;
   odml::OdmlShimLoaderMock shim_loader_;
   std::unique_ptr<MantisService> service_;
   mojo::Remote<mojom::MantisService> service_remote_;
@@ -62,6 +66,13 @@ TEST_F(MantisServiceTest, InitializeUnableToResolveGetMantisAPISymbol) {
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(nullptr));
   SetupDlc();
+
+  EXPECT_CALL(metrics_lib_,
+              SendBoolToUMA("Platform.MantisService.ModelLoaded", false));
+  EXPECT_CALL(
+      metrics_lib_,
+      SendTimeToUMA("Platform.MantisService.Latency.LoadModel", _, _, _, _))
+      .Times(0);
 
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
@@ -80,6 +91,13 @@ TEST_F(MantisServiceTest, InitializeUnableToGetMantisAPI) {
       .WillOnce(Return(reinterpret_cast<void*>(
           MantisAPIGetter([]() -> const MantisAPI* { return 0; }))));
   SetupDlc();
+
+  EXPECT_CALL(metrics_lib_,
+              SendBoolToUMA("Platform.MantisService.ModelLoaded", false));
+  EXPECT_CALL(
+      metrics_lib_,
+      SendTimeToUMA("Platform.MantisService.Latency.LoadModel", _, _, _, _))
+      .Times(0);
 
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
@@ -100,6 +118,12 @@ TEST_F(MantisServiceTest, InitializeSucceeds) {
   EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
       .WillOnce(base::test::RunOnceCallback<0>(true));
   SetupDlc();
+
+  EXPECT_CALL(metrics_lib_,
+              SendBoolToUMA("Platform.MantisService.ModelLoaded", false));
+  EXPECT_CALL(metrics_lib_,
+              SendTimeToUMA("Platform.MantisService.Latency.LoadModel",
+                            Gt(base::Seconds(0)), _, _, _));
 
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
@@ -123,6 +147,17 @@ TEST_F(MantisServiceTest, MultipleClients) {
   EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
       .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<0>(true));
   SetupDlc();
+
+  {
+    InSequence s;
+    EXPECT_CALL(metrics_lib_,
+                SendBoolToUMA("Platform.MantisService.ModelLoaded", false));
+    EXPECT_CALL(metrics_lib_,
+                SendTimeToUMA("Platform.MantisService.Latency.LoadModel",
+                              Gt(base::Seconds(0)), _, _, _));
+    EXPECT_CALL(metrics_lib_,
+                SendBoolToUMA("Platform.MantisService.ModelLoaded", true));
+  }
 
   base::RunLoop run_loop_1;
   mojo::Remote<mojom::MantisProcessor> processor1;

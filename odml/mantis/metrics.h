@@ -22,10 +22,20 @@ enum class TimeMetric {
   kClassifyImageSafetyLatency,
 };
 
+// Enum representing different bool-based metrics to be tracked.
+enum class BoolMetric {
+  kModelLoaded,
+};
+
 // Sends a time metric with the elapsed duration from the provided timer.
 void SendTimeMetric(MetricsLibraryInterface& metrics_lib,
                     TimeMetric metric,
                     const odml::PerformanceTimer& timer);
+
+// Sends a bool metric with the given `value`.
+void SendBoolMetric(MetricsLibraryInterface& metrics_lib,
+                    BoolMetric metric,
+                    bool value);
 
 }  // namespace mantis
 

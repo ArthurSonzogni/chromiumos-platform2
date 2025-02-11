@@ -55,6 +55,13 @@ TimeMetricInfo GetMetricInfo(TimeMetric metric) {
   }
 }
 
+std::string GetMetricName(BoolMetric metric) {
+  switch (metric) {
+    case BoolMetric::kModelLoaded:
+      return "Platform.MantisService.ModelLoaded";
+  }
+}
+
 }  // namespace
 
 void SendTimeMetric(MetricsLibraryInterface& metrics_lib,
@@ -63,6 +70,12 @@ void SendTimeMetric(MetricsLibraryInterface& metrics_lib,
   TimeMetricInfo info = GetMetricInfo(metric);
   metrics_lib.SendTimeToUMA(info.string_name, timer.GetDuration(), info.min,
                             info.max, info.num_buckets);
+}
+
+void SendBoolMetric(MetricsLibraryInterface& metrics_lib,
+                    BoolMetric metric,
+                    bool value) {
+  metrics_lib.SendBoolToUMA(GetMetricName(metric), value);
 }
 
 }  // namespace mantis

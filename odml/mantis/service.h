@@ -25,6 +25,7 @@
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
 #include "odml/utils/odml_shim_loader.h"
+#include "odml/utils/performance_timer.h"
 
 namespace mantis {
 
@@ -65,6 +66,7 @@ class MantisService : public mojom::MantisService {
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
       base::OnceCallback<void()> on_disconnected,
       base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
+      odml::PerformanceTimer::Ptr timer,
       MantisComponent component);
 
  private:
@@ -91,6 +93,7 @@ class MantisService : public mojom::MantisService {
   void OnInstallDlcComplete(
       mojo::PendingReceiver<mojom::MantisProcessor> processor,
       InitializeCallback callback,
+      odml::PerformanceTimer::Ptr timer,
       base::expected<base::FilePath, std::string> result);
 
   void OnDlcProgress(

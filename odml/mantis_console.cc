@@ -53,6 +53,7 @@ mantis_console --image=/usr/local/tmp/image.jpg \
 #include "odml/mojom/mantis_service.mojom-shared.h"
 #include "odml/mojom/mantis_service.mojom.h"
 #include "odml/utils/odml_shim_loader_impl.h"
+#include "odml/utils/performance_timer.h"
 
 namespace {
 
@@ -180,6 +181,7 @@ class MantisServiceForInterception : public mantis::MantisService {
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
       base::OnceCallback<void()> on_disconnected,
       base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
+      odml::PerformanceTimer::Ptr timer,
       mantis::MantisComponent component) override {
     LOG(INFO) << "MantisServiceForInterception::CreateMantisProcessor called";
     mantis_processor = std::make_unique<MantisProcessorForInterception>(
