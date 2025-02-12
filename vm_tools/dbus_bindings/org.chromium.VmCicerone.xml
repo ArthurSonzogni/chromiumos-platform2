@@ -12,6 +12,7 @@
 <node name="/org/chromium/VmCicerone"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.VmCicerone">
+    <!-- keep-sorted start group_prefixes=</method> -->
     <method name="AddFileWatch">
       <tp:docstring>
         Handles a request to add a file watch.
@@ -293,20 +294,6 @@
                     value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::GetVshSessionResponse"/>
       </arg>
     </method>
-    <method name="InstallLinuxPackage">
-      <tp:docstring>
-        Handles a request to install a Linux package file in a container.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg type="ay" name="request" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::InstallLinuxPackageRequest"/>
-      </arg>
-      <arg type="ay" name="response" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::InstallLinuxPackageResponse"/>
-      </arg>
-    </method>
     <method name="ImportLxdContainer">
       <tp:docstring>
         Handles a request to import an LXD container.
@@ -319,6 +306,20 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ImportLxdContainerResponse"/>
+      </arg>
+    </method>
+    <method name="InstallLinuxPackage">
+      <tp:docstring>
+        Handles a request to install a Linux package file in a container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::InstallLinuxPackageRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::InstallLinuxPackageResponse"/>
       </arg>
     </method>
     <method name="LaunchContainerApplication">
@@ -405,20 +406,6 @@
                     value="vm_protos/proto_bindings/common.pb.h;vm_tools::EmptyMessage"/>
       </arg>
     </method>
-    <method name="RemoveFileWatch">
-      <tp:docstring>
-        Handles a request to remove a file watch.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg type="ay" name="request" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::RemoveFileWatchRequest"/>
-      </arg>
-      <arg type="ay" name="response" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::RemoveFileWatchResponse"/>
-      </arg>
-    </method>
     <method name="RegisterVshSession">
       <tp:docstring>
         Add a mapping between vsh and the session data such as the container
@@ -432,6 +419,20 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::RegisterVshSessionResponse"/>
+      </arg>
+    </method>
+    <method name="RemoveFileWatch">
+      <tp:docstring>
+        Handles a request to remove a file watch.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::RemoveFileWatchRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::RemoveFileWatchResponse"/>
       </arg>
     </method>
     <method name="SetTimezone">
@@ -547,7 +548,9 @@
                     value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpgradeContainerResponse"/>
       </arg>
     </method>
+    <!-- keep-sorted end -->
 
+    <!-- keep-sorted start group_prefixes=</signal> -->
     <signal name="ApplyAnsiblePlaybookProgress">
       <tp:docstring>
         Inform listeners on update for the progress or completion of
@@ -574,16 +577,6 @@
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ContainerStartedSignal"/>
-      </arg>
-    </signal>
-    <signal name="LxdContainerCreated">
-      <tp:docstring>
-        signaled from Cicerone when the long running creation of an Lxd
-        container is complete.
-      </tp:docstring>
-      <arg name="signal" type="ay">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LxdContainerCreatedSignal"/>
       </arg>
     </signal>
     <signal name="ExportLxdContainerProgress">
@@ -641,6 +634,16 @@
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LowDiskSpaceTriggeredSignal"/>
+      </arg>
+    </signal>
+    <signal name="LxdContainerCreated">
+      <tp:docstring>
+        signaled from Cicerone when the long running creation of an Lxd
+        container is complete.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LxdContainerCreatedSignal"/>
       </arg>
     </signal>
     <signal name="LxdContainerDeleted">
@@ -741,5 +744,6 @@
                     value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpgradeContainerProgressSignal"/>
       </arg>
     </signal>
+    <!-- keep-sorted end -->
   </interface>
 </node>
