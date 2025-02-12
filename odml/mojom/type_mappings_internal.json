@@ -45,7 +45,7 @@
       "move_only": false,
       "non_copyable_non_movable": false,
       "non_const_ref": false,
-      "nullable_is_same_type": true,
+      "nullable_is_same_type": false,
       "public_headers": [
         "base/uuid.h"
       ],

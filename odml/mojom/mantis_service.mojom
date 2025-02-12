@@ -6,6 +6,7 @@
 module mantis.mojom;
 
 import "odml/mojom/mantis_processor.mojom";
+import "odml/mojom/uuid.mojom";
 
 // The feature status used to restrict Mantis functionality if applicable.
 [Stable, Extensible]
@@ -45,6 +46,7 @@ interface MantisService {
   // queries. The model loading progress can be observed by `progress_observer`.
   Initialize@0(
       pending_remote<PlatformModelProgressObserver>? progress_observer,
-      pending_receiver<MantisProcessor> processor)
+      pending_receiver<MantisProcessor> processor,
+      [MinVersion=3] mojo_base.mojom.Uuid? dlc_uuid)
       => (InitializeResult result);
 };

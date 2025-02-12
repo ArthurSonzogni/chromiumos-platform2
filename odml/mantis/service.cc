@@ -5,6 +5,7 @@
 #include "odml/mantis/service.h"
 
 #include <memory>
+#include <optional>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -14,6 +15,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
+#include <base/uuid.h>
 #include <metrics/metrics_library.h>
 #include <ml_core/dlc/dlc_client.h>
 
@@ -32,7 +34,8 @@ namespace {
 
 using MantisAPIGetter = const MantisAPI* (*)();
 
-constexpr char kDlcName[] = "ml-dlc-302a455f-5453-43fb-a6a1-d856e6fe6435";
+constexpr char kDlcPrefix[] = "ml-dlc-";
+constexpr char kDefaultDlcUUID[] = "302a455f-5453-43fb-a6a1-d856e6fe6435";
 constexpr double kFinishedProgress = 1;
 constexpr char kReclaimFile[] = "/proc/self/reclaim";
 constexpr char kAll[] = "all";
@@ -91,10 +94,11 @@ void MantisService::DeleteProcessor() {
 void MantisService::Initialize(
     mojo::PendingRemote<mojom::PlatformModelProgressObserver> progress_observer,
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
+    const std::optional<base::Uuid>& dlc_uuid,
     InitializeCallback callback) {
   if (RetryIfShimIsNotReady(&MantisService::Initialize, callback,
                             mojom::InitializeResult::kFailedToLoadLibrary,
-                            progress_observer, processor)) {
+                            progress_observer, processor, dlc_uuid)) {
     return;
   }
 
@@ -113,12 +117,16 @@ void MantisService::Initialize(
     std::move(callback).Run(mojom::InitializeResult::kSuccess);
     return;
   }
+  std::string target_dlc_uuid = kDefaultDlcUUID;
+  if (dlc_uuid.has_value() && dlc_uuid.value().is_valid()) {
+    target_dlc_uuid = dlc_uuid.value().AsLowercaseString();
+  }
 
   auto remote =
       std::make_shared<mojo::Remote<mojom::PlatformModelProgressObserver>>(
           std::move(progress_observer));
   std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
-      kDlcName,
+      kDlcPrefix + target_dlc_uuid,
       base::BindOnce(&MantisService::OnInstallDlcComplete,
                      weak_ptr_factory_.GetWeakPtr(), std::move(processor),
                      std::move(callback), odml::PerformanceTimer::Create()),

@@ -17,6 +17,7 @@ mantis_console --image=/usr/local/tmp/image.jpg \
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -68,6 +69,7 @@ constexpr const char kOutpainting[] = "outpainting";
 constexpr const char kImageOutputPath[] = "image_output_path";
 constexpr const char kGeneratedRegionOutputPath[] =
     "generated_region_output_path";
+constexpr const char kDlcUUID[] = "dlc_uuid";
 
 constexpr const int kDefaultSeed = 0;
 constexpr const char kDefaultImageOutputPath[] = "/usr/local/tmp/output.jpg";
@@ -123,6 +125,13 @@ std::string GetGeneratedRegionOutputPath(base::CommandLine* cl) {
     return cl->GetSwitchValueASCII(kGeneratedRegionOutputPath);
   }
   return kDefaultGeneratedRegionOutputPath;
+}
+
+std::optional<std::string> GetDlcUUID(base::CommandLine* cl) {
+  if (cl && cl->HasSwitch(kDlcUUID)) {
+    return cl->GetSwitchValueASCII(kDlcUUID);
+  }
+  return std::nullopt;
 }
 
 bool ShouldEnableSafety(base::CommandLine* cl) {
@@ -283,8 +292,15 @@ class MantisConsole : public brillo::DBusDaemon {
     mojo::Remote<mantis::mojom::MantisProcessor> processor_remote;
     {
       base::RunLoop run_loop;
+      std::optional<std::string> dlc_uuid_string = GetDlcUUID(cl_);
+      std::optional<base::Uuid> dlc_uuid = std::nullopt;
+      if (dlc_uuid_string.has_value()) {
+        dlc_uuid = base::Uuid::ParseLowercase(dlc_uuid_string.value());
+      }
+
       service->Initialize(
           mojo::NullRemote(), processor_remote.BindNewPipeAndPassReceiver(),
+          dlc_uuid,
           base::BindOnce(
               [](base::RunLoop* run_loop,
                  mantis::mojom::InitializeResult result) {

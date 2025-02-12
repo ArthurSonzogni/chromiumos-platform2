@@ -6,6 +6,7 @@
 #define ODML_MANTIS_SERVICE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,6 +16,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
 #include <base/types/expected.h>
+#include <base/uuid.h>
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -51,6 +53,7 @@ class MantisService : public mojom::MantisService {
   void Initialize(mojo::PendingRemote<mojom::PlatformModelProgressObserver>
                       progress_observer,
                   mojo::PendingReceiver<mojom::MantisProcessor> processor,
+                  const std::optional<base::Uuid>& dlc_uuid,
                   InitializeCallback callback) override;
 
   void GetMantisFeatureStatus(GetMantisFeatureStatusCallback callback) override;

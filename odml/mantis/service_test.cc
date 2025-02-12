@@ -4,10 +4,14 @@
 
 #include "odml/mantis/service.h"
 
+#include <optional>
+#include <string>
+
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <base/uuid.h>
 #include <ml_core/dlc/dlc_client.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/remote.h>
@@ -26,7 +30,8 @@
 namespace mantis {
 namespace {
 
-constexpr char kDlcName[] = "ml-dlc-302a455f-5453-43fb-a6a1-d856e6fe6435";
+constexpr char kDlcPrefix[] = "ml-dlc-";
+constexpr char kDefaultDlcUUID[] = "302a455f-5453-43fb-a6a1-d856e6fe6435";
 
 using ::testing::_;
 using ::testing::Gt;
@@ -48,7 +53,8 @@ class MantisServiceTest : public testing::Test {
   }
 
   void SetupDlc() {
-    auto dlc_path = base::FilePath("testdata").Append(kDlcName);
+    auto dlc_name = std::string(kDlcPrefix) + std::string(kDefaultDlcUUID);
+    auto dlc_path = base::FilePath("testdata").Append(dlc_name);
     cros::DlcClient::SetDlcPathForTest(&dlc_path);
   }
 
@@ -78,6 +84,7 @@ TEST_F(MantisServiceTest, InitializeUnableToResolveGetMantisAPISymbol) {
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
       mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
+      base::Uuid::ParseLowercase(kDefaultDlcUUID),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kFailedToLoadLibrary);
         run_loop.Quit();
@@ -103,6 +110,7 @@ TEST_F(MantisServiceTest, InitializeUnableToGetMantisAPI) {
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
       mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
+      base::Uuid::ParseLowercase(kDefaultDlcUUID),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kFailedToLoadLibrary);
         run_loop.Quit();
@@ -129,6 +137,27 @@ TEST_F(MantisServiceTest, InitializeSucceeds) {
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
       mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
+      base::Uuid::ParseLowercase(kDefaultDlcUUID),
+      base::BindLambdaForTesting([&](mojom::InitializeResult result) {
+        EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+TEST_F(MantisServiceTest, InitializeSucceedsWithEmptyDLC) {
+  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
+      .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(
+          []() -> const MantisAPI* { return fake::GetMantisApi(); }))));
+  EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
+      .WillOnce(base::test::RunOnceCallback<0>(true));
+  SetupDlc();
+
+  base::RunLoop run_loop;
+  mojo::Remote<mojom::MantisProcessor> processor;
+  service_remote_->Initialize(
+      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(), std::nullopt,
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop.Quit();
@@ -163,6 +192,7 @@ TEST_F(MantisServiceTest, MultipleClients) {
   mojo::Remote<mojom::MantisProcessor> processor1;
   service_remote_->Initialize(
       mojo::NullRemote(), processor1.BindNewPipeAndPassReceiver(),
+      base::Uuid::ParseLowercase(kDefaultDlcUUID),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop_1.Quit();
@@ -173,6 +203,7 @@ TEST_F(MantisServiceTest, MultipleClients) {
   mojo::Remote<mojom::MantisProcessor> processor2;
   service_remote_->Initialize(
       mojo::NullRemote(), processor2.BindNewPipeAndPassReceiver(),
+      base::Uuid::ParseLowercase(kDefaultDlcUUID),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop_2.Quit();
