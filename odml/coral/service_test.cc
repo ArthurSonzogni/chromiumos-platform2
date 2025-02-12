@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/types/expected.h>
 #include <gmock/gmock.h>
@@ -210,6 +211,8 @@ class CoralServiceTest : public testing::Test {
 
 // Test that we can construct CoralService with the real constructor.
 TEST(CoralServiceConstructTest, Construct) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   MetricsLibraryMock metrics;
   embedding_model::ModelFactoryMock embedding_model_factory;
   on_device_model::MockOnDeviceModelService model_service;

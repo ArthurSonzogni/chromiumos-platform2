@@ -151,6 +151,7 @@ source_set("coral") {
     "coral/clustering/agglomerative_clustering.cc",
     "coral/clustering/clustering_factory.cc",
     "coral/clustering/engine.cc",
+    "coral/delayed_repeating_timer.cc",
     "coral/embedding/embedding_database.cc",
     "coral/embedding/engine.cc",
     "coral/metrics.cc",
@@ -356,6 +357,7 @@ if (use.test) {
     sources = [
       "coral/clustering/agglomerative_clustering_test.cc",
       "coral/clustering/engine_test.cc",
+      "coral/delayed_repeating_timer_test.cc",
       "coral/embedding/embedding_database_test.cc",
       "coral/embedding/engine_test.cc",
       "coral/service_test.cc",

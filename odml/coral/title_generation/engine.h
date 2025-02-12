@@ -19,6 +19,7 @@
 
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/common.h"
+#include "odml/coral/delayed_repeating_timer.h"
 #include "odml/coral/metrics.h"
 #include "odml/coral/title_generation/cache_storage.h"
 #include "odml/coral/title_generation/simple_session.h"
@@ -164,6 +165,9 @@ class TitleGenerationEngine
                          std::vector<GroupData> groups,
                          base::OnceClosure on_complete);
 
+  // Called by cache_flush_timer_ to flush the title cache to disk.
+  void OnFlushCacheTimer();
+
   const raw_ref<CoralMetrics> metrics_;
 
   const raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
@@ -200,6 +204,8 @@ class TitleGenerationEngine
   // Record and the current user to compare whether the user is same when
   // attempting to reuse title cache. We shouldn't reuse cache from other users.
   std::optional<odml::SessionStateManagerInterface::User> current_user_;
+  // This is used to trigger the periodic cache flush to disk.
+  std::unique_ptr<DelayedRepeatingTimer> cache_flush_timer_;
 
   // For loading and saving the title cache.
   std::unique_ptr<TitleCacheStorageInterface> title_cache_storage_;

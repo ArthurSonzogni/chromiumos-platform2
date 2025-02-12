@@ -57,6 +57,9 @@ constexpr double kMaxGroupDifferenceRatioToReuseTitle = 0.2501;
 // token size 128 less, so this is 1024-128-50 for now.
 constexpr size_t kMaxInputSizeInTokens = 846;
 
+constexpr base::TimeDelta kTitleCacheFlushStartingDelay = base::Minutes(10);
+constexpr base::TimeDelta kTitleCacheFlushRepeatingDelay = base::Hours(1);
+
 std::string AppToPromptLine(const mojom::App& app) {
   return base::StringPrintf("title: %s\n", app.title.c_str());
 }
@@ -137,6 +140,12 @@ TitleGenerationEngine::TitleGenerationEngine(
       on_device_model_service_(on_device_model_service),
       title_cache_(kMaxCacheSize),
       title_cache_storage_(std::move(title_cache_storage)) {
+  // cache_flush_timer_ is initialized here because it needs the
+  // weak_ptr_factory_.
+  cache_flush_timer_ = std::make_unique<DelayedRepeatingTimer>(
+      kTitleCacheFlushStartingDelay, kTitleCacheFlushRepeatingDelay,
+      base::BindRepeating(&TitleGenerationEngine::OnFlushCacheTimer,
+                          weak_ptr_factory_.GetWeakPtr()));
   if (session_state_manager) {
     session_state_manager->AddObserver(this);
   }
@@ -235,9 +244,11 @@ void TitleGenerationEngine::OnUserLoggedIn(
     const odml::SessionStateManagerInterface::User& user) {
   current_user_ = user;
   title_cache_storage_->Load(user, title_cache_);
+  cache_flush_timer_->Start();
 }
 
 void TitleGenerationEngine::OnUserLoggedOut() {
+  cache_flush_timer_->Stop();
   if (current_user_.has_value()) {
     title_cache_storage_->Save(current_user_.value(), title_cache_);
   }
@@ -556,6 +567,12 @@ std::optional<std::string> TitleGenerationEngine::GetNthTitleCacheKeyForTesting(
     itr++;
   }
   return itr->first;
+}
+
+void TitleGenerationEngine::OnFlushCacheTimer() {
+  if (current_user_.has_value()) {
+    title_cache_storage_->Save(current_user_.value(), title_cache_);
+  }
 }
 
 }  // namespace coral
