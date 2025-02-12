@@ -23,8 +23,7 @@
 #include "cros-camera/constants.h"
 #include "cros-camera/utils/camera_config.h"
 
-constexpr char kDestinationDir[] =
-    "/mnt/stateful_partition/encrypted/var/cache/camera";
+constexpr char kDestinationDir[] = "/var/cache/camera";
 constexpr char kMediaProfileFileName[] = "media_profiles.xml";
 constexpr char kMediaProfileDir[] = "/etc/camera";
 

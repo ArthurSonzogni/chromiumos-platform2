@@ -112,8 +112,7 @@ constexpr char kBinFmtMiscDirectory[] = "/proc/sys/fs/binfmt_misc";
 constexpr char kBootIdFile[] = "/proc/sys/kernel/random/boot_id";
 constexpr char kBuildPropFile[] = "/usr/share/arc/properties/build.prop";
 constexpr char kBuildPropFileVm[] = "/usr/share/arcvm/properties/build.prop";
-constexpr char kCameraProfileDir[] =
-    "/mnt/stateful_partition/encrypted/var/cache/camera";
+constexpr char kCameraProfileDir[] = "/var/cache/camera";
 constexpr char kCameraTestConfig[] = "/var/cache/camera/test_config.json";
 constexpr char kCrasSocketDirectory[] = "/run/cras";
 constexpr char kCombinedPropFileVm[] =
