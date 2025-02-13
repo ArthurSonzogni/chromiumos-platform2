@@ -179,6 +179,42 @@
       "public_headers": [
         "base/time/time.h"
       ]
+    },
+    "on_device_model.mojom.ModelBackendType": {
+      "copyable_pass_by_value": true,
+      "default_constructible": true,
+      "force_serialize": false,
+      "forward_declaration": null,
+      "hashable": true,
+      "move_only": false,
+      "non_copyable_non_movable": false,
+      "non_const_ref": false,
+      "nullable_is_same_type": false,
+      "public_headers": [
+        "odml/on_device_model/ml/chrome_ml_types.h"
+      ],
+      "traits_headers": [
+        "odml/on_device_model/ml/chrome_ml_types_traits.h"
+      ],
+      "typename": "::ml::ModelBackendType"
+    },
+    "on_device_model.mojom.ModelPerformanceHint": {
+      "copyable_pass_by_value": true,
+      "default_constructible": true,
+      "force_serialize": false,
+      "forward_declaration": null,
+      "hashable": true,
+      "move_only": false,
+      "non_copyable_non_movable": false,
+      "non_const_ref": false,
+      "nullable_is_same_type": false,
+      "public_headers": [
+        "odml/on_device_model/ml/chrome_ml_types.h"
+      ],
+      "traits_headers": [
+        "odml/on_device_model/ml/chrome_ml_types_traits.h"
+      ],
+      "typename": "::ml::ModelPerformanceHint"
     }
   }
 }

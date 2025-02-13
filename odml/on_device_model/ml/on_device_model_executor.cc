@@ -104,18 +104,6 @@ uint32_t GetTopK(std::optional<uint32_t> top_k) {
                   std::max(1u, top_k.value_or(1)));
 }
 
-std::optional<ModelBackendType> ModelBackendTypeFromMojom(
-    on_device_model::mojom::ModelBackendType backend) {
-  switch (backend) {
-    case on_device_model::mojom::ModelBackendType::kGpu:
-      return ModelBackendType::kGpuBackend;
-    case on_device_model::mojom::ModelBackendType::kApu:
-      return ModelBackendType::kApuBackend;
-    default:
-      return std::nullopt;
-  }
-}
-
 }  // namespace
 
 // Handles sending and canceling responses.
@@ -326,23 +314,21 @@ SessionImpl::SessionImpl(raw_ref<MetricsLibraryInterface> metrics,
 SessionImpl::~SessionImpl() = default;
 
 DISABLE_CFI_DLSYM
-void SessionImpl::AddContext(
-    on_device_model::mojom::InputOptionsPtr input,
+void SessionImpl::Append(
+    on_device_model::mojom::AppendOptionsPtr options,
     mojo::PendingRemote<on_device_model::mojom::ContextClient> client,
     base::OnceClosure on_complete) {
   auto context_holder = std::make_unique<ContextHolder>(
       metrics_, std::move(client),
       base::BindOnce(&SessionImpl::RemoveContext, base::Unretained(this)),
       std::move(on_complete));
-  if (input->max_tokens == 0 || input->max_tokens > max_tokens_) {
-    input->max_tokens = max_tokens_;
+  if (options->max_tokens == 0 || options->max_tokens > max_tokens_) {
+    options->max_tokens = max_tokens_;
   }
-  input->top_k = GetTopK(input->top_k);
-  input->temperature = GetTemperature(input->temperature);
   ChromeMLContextSavedFn context_saved_fn =
       context_holder->CreateContextSavedFn();
   *context_holder->GetCancelFn() =
-      session_->Execute(std::move(input), nullptr, context_saved_fn);
+      session_->Append(std::move(options), context_saved_fn);
   context_holders_.insert(std::move(context_holder));
 }
 
@@ -365,6 +351,22 @@ void SessionImpl::Execute(
   ChromeMLContextSavedFn context_saved_fn = responder_->CreateContextSavedFn();
   *responder_->GetCancelFn() =
       cloned_raw->Execute(std::move(input), output_fn, context_saved_fn);
+}
+
+DISABLE_CFI_DLSYM
+void SessionImpl::Generate(
+    on_device_model::mojom::GenerateOptionsPtr options,
+    mojo::PendingRemote<on_device_model::mojom::StreamingResponder> response,
+    base::OnceClosure on_complete) {
+  auto cloned = session_->Clone();
+  auto cloned_raw = cloned.get();  // For Generate after std::move
+  responder_ = std::make_unique<Responder>(
+      metrics_, std::move(response), std::move(on_complete), std::move(cloned));
+  ChromeMLExecutionOutputFn output_fn = responder_->CreateOutputFn();
+  options->top_k = GetTopK(options->top_k);
+  options->temperature = GetTemperature(options->temperature);
+  *responder_->GetCancelFn() =
+      cloned_raw->Generate(std::move(options), output_fn);
 }
 
 DISABLE_CFI_DLSYM
@@ -475,24 +477,17 @@ LoadModelResult OnDeviceModelExecutor::Init(
 
   max_tokens_ = std::max(params->max_tokens, kReserveTokensForSafety);
 
-  std::optional<ModelBackendType> backend_type =
-      ModelBackendTypeFromMojom(params->backend_type);
-  if (!backend_type.has_value()) {
-    LOG(ERROR) << "Failed to parse model backend type";
-    return LoadModelResult::kFailedToLoadLibrary;
-  }
-
   ChromeMLModelData data;
   std::string weights_path_str = assets.weights_path.AsUTF8Unsafe();
   std::string sp_model_path_str = assets.sp_model_path.AsUTF8Unsafe();
-  if (*backend_type == ModelBackendType::kGpuBackend) {
+  if (params->backend_type == ml::ModelBackendType::kGpuBackend) {
     data.weights_file = assets.weights.TakePlatformFile();
   } else {
     data.model_path = weights_path_str.data();
     data.sentencepiece_model_path = sp_model_path_str.data();
   }
   ChromeMLModelDescriptor descriptor = {
-      .backend_type = *backend_type,
+      .backend_type = params->backend_type,
       .model_data = &data,
       .max_tokens = max_tokens_,
       .temperature = 0.0f,
@@ -503,6 +498,7 @@ LoadModelResult OnDeviceModelExecutor::Init(
       .enable_host_mapped_pointer = kEnableHostMappedPointer.Get(),
       .use_low_power = kUseLowPower.Get(),
       .allow_fp16 = kAllowFp16.Get(),
+      .performance_hint = params->performance_hint,
   };
   model_ = chrome_ml_->api().SessionCreateModel(
       &descriptor, reinterpret_cast<uintptr_t>(this),

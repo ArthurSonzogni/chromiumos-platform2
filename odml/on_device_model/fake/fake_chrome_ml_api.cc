@@ -58,7 +58,8 @@ bool QueryGPUAdapter(void (*adapter_callback_fn)(WGPUAdapter adapter,
 }
 
 struct FakeModelInstance {
-  ModelBackendType backend_type_;
+  ml::ModelBackendType backend_type_;
+  ml::ModelPerformanceHint performance_hint;
   std::string model_data_;
 };
 
@@ -66,6 +67,8 @@ struct FakeSessionInstance {
   std::string adaptation_data_;
   std::vector<std::string> context_;
   bool cloned;
+  bool enable_image_input;
+  bool enable_audio_input;
 };
 
 struct FakeTsModelInstance {
@@ -89,8 +92,10 @@ std::string ReadFile(PlatformFile api_file) {
 ChromeMLModel SessionCreateModel(const ChromeMLModelDescriptor* descriptor,
                                  uintptr_t context,
                                  ChromeMLScheduleFn schedule) {
-  return reinterpret_cast<ChromeMLModel>(
-      new FakeModelInstance{.backend_type_ = descriptor->backend_type});
+  return reinterpret_cast<ChromeMLModel>(new FakeModelInstance{
+      .backend_type_ = descriptor->backend_type,
+      .performance_hint = descriptor->performance_hint,
+  });
 }
 
 void DestroyModel(ChromeMLModel model) {
@@ -111,13 +116,18 @@ ChromeMLSession CreateSession(ChromeMLModel model,
   auto* model_instance = reinterpret_cast<FakeModelInstance*>(model);
   auto* instance = new FakeSessionInstance{};
   if (descriptor) {
-    if (model_instance->backend_type_ == ModelBackendType::kGpuBackend) {
-      instance->adaptation_data_ =
-          ReadFile(descriptor->model_data->weights_file);
-    } else if (model_instance->backend_type_ == ModelBackendType::kApuBackend) {
-      base::ReadFileToString(
-          base::FilePath::FromUTF8Unsafe(descriptor->model_data->model_path),
-          &instance->adaptation_data_);
+    instance->enable_image_input = descriptor->enable_image_input;
+    instance->enable_audio_input = descriptor->enable_audio_input;
+    if (descriptor->model_data) {
+      if (model_instance->backend_type_ == ml::ModelBackendType::kGpuBackend) {
+        instance->adaptation_data_ =
+            ReadFile(descriptor->model_data->weights_file);
+      } else if (model_instance->backend_type_ ==
+                 ml::ModelBackendType::kApuBackend) {
+        base::ReadFileToString(
+            base::FilePath(descriptor->model_data->model_path),
+            &instance->adaptation_data_);
+      }
     }
   }
   return reinterpret_cast<ChromeMLSession>(instance);
@@ -129,6 +139,8 @@ ChromeMLSession CloneSession(ChromeMLSession session) {
       .adaptation_data_ = instance->adaptation_data_,
       .context_ = instance->context_,
       .cloned = true,
+      .enable_image_input = instance->enable_image_input,
+      .enable_audio_input = instance->enable_audio_input,
   });
 }
 
@@ -180,16 +192,17 @@ bool SessionExecuteModel(ChromeMLSession session,
         output_fn(&output);
       };
 
+  if (reinterpret_cast<FakeModelInstance*>(model)->performance_hint ==
+      ml::ModelPerformanceHint::kFastestInference) {
+    OutputChunk("Fastest inference\n");
+  }
   if (!instance->adaptation_data_.empty()) {
     OutputChunk("Adaptation: " + instance->adaptation_data_ + "\n");
   }
   if (!instance->context_.empty()) {
-    const std::string last = instance->context_.back();
-    instance->context_.pop_back();
     for (const std::string& context : instance->context_) {
       OutputChunk("Context: " + context + "\n");
     }
-    OutputChunk("Input: " + last + "\n");
   }
   OutputChunk("");
   return true;

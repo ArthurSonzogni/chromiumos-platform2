@@ -29,6 +29,7 @@
 
 #include "odml/mojom/on_device_model.mojom-shared.h"
 #include "odml/mojom/on_device_model.mojom.h"
+#include "odml/on_device_model/ml/chrome_ml_types.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/on_device_model/public/cpp/text_safety_assets.h"
 #include "odml/utils/dlc_client_helper.h"
@@ -137,13 +138,13 @@ class BaseModelProgressObserver
   base::RepeatingCallback<void(double progress)> callback_;
 };
 
-std::optional<on_device_model::mojom::ModelBackendType> BackendTypeFromString(
+std::optional<ml::ModelBackendType> BackendTypeFromString(
     const std::string& backend) {
   if (backend == "gpu") {
-    return on_device_model::mojom::ModelBackendType::kGpu;
+    return ml::ModelBackendType::kGpuBackend;
   }
   if (backend == "apu") {
-    return on_device_model::mojom::ModelBackendType::kApu;
+    return ml::ModelBackendType::kApuBackend;
   }
   return std::nullopt;
 }
@@ -627,10 +628,10 @@ void ChromeosPlatformModelLoader::LoadAdaptationPlatformModel(
 
   // GPU backend sends the opened weight file to ML APIs directly. Other
   // backends send the weight file path.
-  mojom::ModelBackendType backend_type =
+  ml::ModelBackendType backend_type =
       base_record.platform_model->backend_type();
   auto params = on_device_model::mojom::LoadAdaptationParams::New();
-  if (backend_type == mojom::ModelBackendType::kGpu) {
+  if (backend_type == ml::ModelBackendType::kGpuBackend) {
     on_device_model::AdaptationAssetPaths adaptation_paths;
     adaptation_paths.weights = dlc_root.Append(weight_path);
     params->assets = on_device_model::LoadAdaptationAssets(adaptation_paths);
@@ -668,12 +669,11 @@ void ChromeosPlatformModelLoader::LoadBasePlatformModel(
   }
 
   // Default to GPU as that was the only existing backend.
-  on_device_model::mojom::ModelBackendType backend_type =
-      on_device_model::mojom::ModelBackendType::kGpu;
+  ml::ModelBackendType backend_type = ml::ModelBackendType::kGpuBackend;
   const std::string* backend_type_str = model_dict->FindString(kBackendTypeKey);
   if (backend_type_str) {
-    std::optional<on_device_model::mojom::ModelBackendType>
-        parsed_backend_type = BackendTypeFromString(*backend_type_str);
+    std::optional<ml::ModelBackendType> parsed_backend_type =
+        BackendTypeFromString(*backend_type_str);
     if (!parsed_backend_type.has_value()) {
       LOG(ERROR) << "Failed to recognize model backend type: "
                  << *backend_type_str;
@@ -702,12 +702,12 @@ void ChromeosPlatformModelLoader::LoadBasePlatformModel(
   // GPU backend sends the opened weight file to ML APIs directly. Other
   // backends send the weight file path, optionally with the sentence piece
   // model path.
-  if (backend_type == on_device_model::mojom::ModelBackendType::kGpu) {
+  if (backend_type == ml::ModelBackendType::kGpuBackend) {
     model_paths.weights = dlc_root.Append(weight_path);
   }
   on_device_model::ModelAssets model_assets =
       on_device_model::LoadModelAssets(model_paths);
-  if (backend_type != on_device_model::mojom::ModelBackendType::kGpu) {
+  if (backend_type != ml::ModelBackendType::kGpuBackend) {
     model_assets.weights_path = dlc_root.Append(weight_path);
     if (sp_model_path) {
       model_assets.sp_model_path = dlc_root.Append(*sp_model_path);

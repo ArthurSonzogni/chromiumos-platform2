@@ -16,6 +16,8 @@
 
 extern "C" {
 
+typedef struct TfLiteDelegate TfLiteDelegate;
+
 // A function used to handle fatal errors.
 using ChromeMLFatalErrorFn = void (*)(const char* msg);
 
@@ -41,15 +43,6 @@ using ChromeMLCancel = uintptr_t;
 using ChromeMLTSModel = uintptr_t;
 // Opaque handle to a video-frame-specific ML inference engine.
 using ChromeMLInferenceEngine = uintptr_t;
-
-// Type of the backend to run the model.
-enum ModelBackendType {
-  // The default WebGPU backend.
-  kGpuBackend = 0,
-  // The APU accelerator backend. Only available on devices with APU, and need
-  // special APU model files.
-  kApuBackend = 1,
-};
 
 // A contiguous byte span.
 struct ChromeMLByteSpan {
@@ -78,7 +71,7 @@ struct ChromeMLModelData {
 // Describes a model to use with ChromeML.
 struct ChromeMLModelDescriptor {
   // The backend to run this model.
-  ModelBackendType backend_type;
+  ml::ModelBackendType backend_type;
 
   // The model data to use.
   const ChromeMLModelData* model_data;
@@ -104,6 +97,8 @@ struct ChromeMLModelDescriptor {
   bool enable_host_mapped_pointer;
   bool use_low_power;
   bool allow_fp16;
+
+  ml::ModelPerformanceHint performance_hint;
 };
 
 // Describes an adaptation for a model.
@@ -115,6 +110,12 @@ struct ChromeMLAdaptationDescriptor {
   // The default value 0 will be treated not set, and in that case the original
   // `max_tokens` set by the base model will be used.
   uint32_t max_tokens;
+
+  // Whether this model will handle InputPieces containing images.
+  bool enable_image_input;
+
+  // Whether this model will handle InputPieces containing audio.
+  bool enable_audio_input;
 };
 
 // A status value included with each output chunk.
@@ -373,6 +374,12 @@ struct ChromeMLAPI {
   // `CreateInferenceEngine()` call. It is invalid to use `engine` for inference
   // after this call.
   void (*DestroyInferenceEngine)(ChromeMLInferenceEngine engine);
+
+  // Creates a new TFLite delegate using the GPU inference engine.
+  TfLiteDelegate* (*CreateGpuDelegate)();
+
+  // Destroys the TFLite delegate created by `CreateDelegate()` call.
+  void (*DestroyGpuDelegate)(TfLiteDelegate* delegate);
 
   ChromeMLTSAPI ts_api;
 };

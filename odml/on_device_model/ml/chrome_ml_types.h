@@ -7,6 +7,9 @@
 
 #include <string>
 #include <variant>
+#include <vector>
+
+#include "odml/on_device_model/ml/chrome_ml_audio_buffer.h"
 
 namespace ml {
 
@@ -22,9 +25,27 @@ enum class Token {
 };
 
 // TODO(b/353900545): Fix the skia code, and sync skia definition with g3.
-struct SkBitmap {};
+struct SkBitmap {
+  char x[56];
+};
 
-using InputPiece = std::variant<Token, std::string, SkBitmap, bool>;
+using InputPiece =
+    std::variant<Token, std::string, SkBitmap, AudioBuffer, bool>;
+
+// Options for specifying the performance characteristics of the model to load.
+enum class ModelPerformanceHint {
+  kHighestQuality,
+  kFastestInference,
+};
+
+// Type of the backend to run the model.
+enum ModelBackendType {
+  // The default WebGPU backend.
+  kGpuBackend = 0,
+  // The APU accelerator backend. Only available on devices with APU, and need
+  // special APU model files.
+  kApuBackend = 1,
+};
 
 }  // namespace ml
 

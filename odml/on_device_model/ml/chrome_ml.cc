@@ -38,9 +38,10 @@ using DawnNativeProcsGetter = const DawnProcTable* (*)();
 enum class GpuErrorReason {
   kOther = 0,
   kDxgiErrorDeviceHung = 1,
-  kDxgiErrorDeviceRemoved = 2,
+  kDeviceRemoved = 2,
   kDeviceCreationFailed = 3,
-  kMaxValue = kDeviceCreationFailed,
+  kOutOfMemory = 4,
+  kMaxValue = kOutOfMemory,
 };
 
 // The fatal error & histogram recording functions may run on different threads,
@@ -55,10 +56,14 @@ void FatalGpuErrorFn(const char* msg) {
   GpuErrorReason error_reason = GpuErrorReason::kOther;
   if (msg_str.find("DXGI_ERROR_DEVICE_HUNG") != std::string::npos) {
     error_reason = GpuErrorReason::kDxgiErrorDeviceHung;
-  } else if (msg_str.find("DXGI_ERROR_DEVICE_REMOVED") != std::string::npos) {
-    error_reason = GpuErrorReason::kDxgiErrorDeviceRemoved;
-  } else if (msg_str.find("Failed to create device.") != std::string::npos) {
+  } else if (msg_str.find("DXGI_ERROR_DEVICE_REMOVED") != std::string::npos ||
+             msg_str.find("VK_ERROR_DEVICE_LOST") != std::string::npos) {
+    error_reason = GpuErrorReason::kDeviceRemoved;
+  } else if (msg_str.find("Failed to create device") != std::string::npos) {
     error_reason = GpuErrorReason::kDeviceCreationFailed;
+  } else if (msg_str.find("VK_ERROR_OUT_OF_DEVICE_MEMORY") !=
+             std::string::npos) {
+    error_reason = GpuErrorReason::kOutOfMemory;
   }
   {
     base::AutoLock lock(*g_metrics_lock);
