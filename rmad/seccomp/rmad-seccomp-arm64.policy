@@ -70,6 +70,7 @@ set_tid_address: 1
 sched_getaffinity: 1
 flock: 1
 clone: 1
+clone3: 1
 exit_group: 1
 wait4: 1
 unlinkat: 1

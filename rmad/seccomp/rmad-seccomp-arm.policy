@@ -71,6 +71,7 @@ execve: 1
 ARM_set_tls: 1
 set_tid_address: 1
 clone: 1
+clone3: 1
 uname: 1
 geteuid32: 1
 geteuid: 1
