@@ -228,6 +228,9 @@ class VmBaseImpl {
   // Cancels fake power configuration for battery device
   virtual bool CancelFakePowerConfig(const std::string& battery_type);
 
+  // Mute/unmute vm audio
+  virtual bool MuteVmAudio(const bool muted);
+
  protected:
   // Adjusts the amount of CPU the VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,

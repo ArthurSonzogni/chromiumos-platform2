@@ -207,4 +207,8 @@ bool VmBaseImpl::CancelFakePowerConfig(const std::string& battery_type) {
                                                      battery_type);
 }
 
+bool VmBaseImpl::MuteVmAudio(const bool muted) {
+  return CrosvmControl::Get()->MuteVmAudio(GetVmSocketPath(), muted);
+}
+
 }  // namespace vm_tools::concierge

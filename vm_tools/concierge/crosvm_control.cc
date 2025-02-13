@@ -187,4 +187,9 @@ bool CrosvmControl::CancelFakePowerConfig(const std::string& socket_path,
                                          battery_type.c_str());
 }
 
+bool CrosvmControl::MuteVmAudio(const std::string& socket_path,
+                                const bool muted) {
+  return crosvm_client_snd_mute_all(socket_path.c_str(), muted);
+}
+
 }  // namespace vm_tools::concierge

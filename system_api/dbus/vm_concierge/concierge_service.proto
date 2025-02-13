@@ -1549,3 +1549,15 @@ message ModifyFakePowerConfigRequest {
   // should only be set when the action is SET.
   uint32 capacity_limit = 4;
 }
+
+// Request to mute/unmute vm audio
+message MuteVmAudioRequest {
+  // The name of the VM to be muted/unmuted.
+  string name = 1;
+
+  // The owner of the vm.
+  string owner_id = 2;
+
+  // Set to true to mute, and false to unmute.
+  bool muted = 3;
+}

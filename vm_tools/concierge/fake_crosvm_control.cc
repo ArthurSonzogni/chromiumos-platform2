@@ -169,4 +169,10 @@ bool FakeCrosvmControl::VmmSwapStatus(const std::string& socket_path,
   return result_vmm_swap_status_;
 }
 
+bool FakeCrosvmControl::MuteVmAudio(const std::string& socket_path,
+                                    bool muted) {
+  target_socket_path_ = socket_path;
+  return true;
+}
+
 }  // namespace vm_tools::concierge

@@ -256,6 +256,15 @@ class CrosvmControl {
   // The function returns true on success or false if an error occurred.
   virtual bool CancelFakePowerConfig(const std::string& socket_path,
                                      const std::string& battery_type);
+  // Mutes or unmutes the audio output of the crosvm instance whose control
+  // socket is listening on `socket_path`.
+  //
+  // Arguments
+  // `socket_path` - Path to the crosvm control socket
+  // `muted` - True to mute the audio output, false to unmute.
+  //
+  // The function returns true on success or false if an error occurred.
+  virtual bool MuteVmAudio(const std::string& socket_path, const bool muted);
 
   virtual ~CrosvmControl() = default;
 

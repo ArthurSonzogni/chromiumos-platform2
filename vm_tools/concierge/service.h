@@ -30,6 +30,7 @@
 #include <base/thread_annotations.h>
 #include <base/threading/thread.h>
 #include <base/timer/timer.h>
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/resource_manager/dbus-constants.h>
 #include <dbus/bus.h>
@@ -423,6 +424,11 @@ class Service final : public org::chromium::VmConciergeInterface,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           SuccessFailureResponse>> response_cb,
       const ModifyFakePowerConfigRequest& request) override;
+
+  void MuteVmAudio(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          SuccessFailureResponse>> response_cb,
+      const vm_tools::concierge::MuteVmAudioRequest& request) override;
 
   // Creates DnsSettings from current configuration.
   DnsSettings ComposeDnsResponse();

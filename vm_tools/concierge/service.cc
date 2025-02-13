@@ -4925,4 +4925,40 @@ void Service::ModifyFakePowerConfig(
   response_cb->Return(response);
 }
 
+void Service::MuteVmAudio(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        SuccessFailureResponse>> response_cb,
+    const MuteVmAudioRequest& request) {
+  ASYNC_SERVICE_METHOD();
+  SuccessFailureResponse response;
+  response.set_success(false);
+
+  VmId vm_id(request.owner_id(), request.name());
+  if (!CheckVmNameAndOwner(request, response)) {
+    response_cb->Return(response);
+    return;
+  }
+
+  auto iter = FindVm(vm_id);
+  if (iter == vms_.end()) {
+    response.set_failure_reason("Requested VM " + vm_id.name() +
+                                " does not exist");
+    LOG(ERROR) << response.failure_reason();
+    response_cb->Return(response);
+    return;
+  }
+
+  if (!iter->second->MuteVmAudio(request.muted())) {
+    response.set_failure_reason(
+        base::StringPrintf("Failed to set muted to %s from crosvm",
+                           (request.muted() ? "true" : "false")));
+    LOG(ERROR) << response.failure_reason();
+    response_cb->Return(response);
+    return;
+  }
+
+  response.set_success(true);
+  response_cb->Return(response);
+}
+
 }  // namespace vm_tools::concierge

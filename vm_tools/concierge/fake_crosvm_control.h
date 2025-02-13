@@ -89,6 +89,8 @@ class FakeCrosvmControl : public CrosvmControl {
   bool VmmSwapStatus(const std::string& socket_path,
                      struct SwapStatus* status) override;
 
+  bool MuteVmAudio(const std::string& socket_path, bool muted) override;
+
   std::string target_socket_path_ = "";
 
   int count_balloon_stats_ = 0;

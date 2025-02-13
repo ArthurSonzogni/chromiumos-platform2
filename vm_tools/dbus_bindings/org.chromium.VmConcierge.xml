@@ -488,6 +488,23 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="MuteVmAudio">
+      <tp:docstring>
+        Mute/unmute VM Audio
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::MuteVmAudioRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SuccessFailureResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="ReclaimVmMemory">
       <tp:docstring>
         Requests to reclaim memory of a given VM.
