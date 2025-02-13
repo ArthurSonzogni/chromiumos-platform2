@@ -280,11 +280,6 @@ class ArcManagerDelegateImpl : public ArcManager::Delegate {
   ArcManagerDelegateImpl(const ArcManagerDelegateImpl&) = delete;
   ArcManagerDelegateImpl& operator=(const ArcManagerDelegateImpl&) = delete;
 
-  bool HasSession(const std::string& account_id) override {
-    // TODO(b/390297821): Replace by D-Bus call on splitting D-Bus service.
-    return session_manager_impl_.HasSession(account_id);
-  }
-
   void SendArcInstanceStoppedSignal(uint32_t value) override {
     return session_manager_impl_.SendArcInstanceStoppedSignal(value);
   }
@@ -769,14 +764,13 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   manager_->SetBrowserSessionForUser(actual_account_id, user_session->userhash);
   session_started_ = true;
   user_sessions_[actual_account_id] = std::move(user_session);
+  arc_manager_->OnUserSessionStarted(actual_account_id);
   if (is_first_real_user) {
     DCHECK(primary_user_account_id_.empty());
     primary_user_account_id_ = actual_account_id;
   }
   DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged: " << kStarted;
   adaptor_.SendSessionStateChangedSignal(kStarted);
-
-  arc_manager_->DeleteArcBugReportBackup(actual_account_id);
 
   // Record that a login has successfully completed on this boot.
   system_utils_->WriteFileAtomically(base::FilePath(kLoggedInFlag),
@@ -1556,10 +1550,6 @@ void SessionManagerImpl::RestartDevice(const std::string& reason) {
 
 bool SessionManagerImpl::IsSessionStarted() {
   return !user_sessions_.empty();
-}
-
-bool SessionManagerImpl::HasSession(const std::string& account_id) {
-  return user_sessions_.find(account_id) != user_sessions_.end();
 }
 
 void SessionManagerImpl::SendArcInstanceStoppedSignal(uint32_t value) {

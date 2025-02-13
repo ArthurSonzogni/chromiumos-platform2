@@ -326,8 +326,6 @@ class SessionManagerImpl
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
       override;
 
-  // Returns whether there's a user session started.
-  bool HasSession(const std::string& account_id);
   // Sends arc-instance-stopped signal.
   void SendArcInstanceStoppedSignal(uint32_t value);
 

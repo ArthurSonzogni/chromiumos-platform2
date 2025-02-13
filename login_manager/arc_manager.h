@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -50,9 +51,6 @@ class ArcManager : public org::chromium::ArcManagerInterface {
    public:
     virtual ~Delegate() = default;
 
-    // Returns whether there is a user session started.
-    virtual bool HasSession(const std::string& account_id) = 0;
-
     // Sends D-Bus signal about ARC instance stop.
     // TODO(crbug.com/390297821): Move the signal to ARC D-Bus
     // service and remove this.
@@ -93,15 +91,12 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   void Initialize();
   void Finalize();
 
-  // TODO(crbug.com/390297821): expose some internal states or adding hooks
-  // to be called for transition period. Remove them.
-  bool IsAdbSideloadAllowed() const;
-  void OnUpgradeArcContainer();
-  void BackupArcBugReport(const std::string& account_id);
-  void DeleteArcBugReportBackup(const std::string& account_id);
+  // TODO(crbug.com/390297821): called from SessionManagerService.
+  // Expose this as D-Bus method.
   void EmitStopArcVmInstanceImpulse();
 
   // D-Bus method implementation.
+  void OnUserSessionStarted(const std::string& in_account_id) override;
   bool StartArcMiniContainer(brillo::ErrorPtr* error,
                              const std::vector<uint8_t>& in_request) override;
   bool UpgradeArcContainer(brillo::ErrorPtr* error,
@@ -157,6 +152,11 @@ class ArcManager : public org::chromium::ArcManagerInterface {
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
       ArcSideloadStatusInterface::Status status);
 
+  bool IsAdbSideloadAllowed() const;
+  void OnUpgradeArcContainer();
+  void BackupArcBugReport(const std::string& account_id);
+  void DeleteArcBugReportBackup(const std::string& account_id);
+
   const std::unique_ptr<Delegate> delegate_;
   ContainerManagerInterface* const android_container_;
   const raw_ref<SystemUtils> system_utils_;
@@ -164,6 +164,9 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status_;
   dbus::ObjectProxy* const debugd_proxy_;
   LoginMetrics* const login_metrics_;
+
+  // Set of started user sessions represented by ID.
+  std::set<std::string> user_sessions_;
 
   // Timestamp when ARC container is upgraded.
   base::TimeTicks arc_start_time_;

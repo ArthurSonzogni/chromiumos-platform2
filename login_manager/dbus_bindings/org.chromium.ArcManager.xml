@@ -20,6 +20,19 @@
   <interface name="org.chromium.ArcManager">
 
     <!--
+        OnUserSessionStarted:
+        @account_id: AccountId for the newly started user session.
+
+        Called by SessionManager when a new user session is started.
+        Note: the shutdown of the user session is handled only by
+        service shutdown.
+    -->
+    <method name="OnUserSessionStarted">
+      <arg type="s" name="account_id" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
+
+    <!--
         StartArcMiniContainer:
         @request: Serialized StartArcMiniContainerRequest proto message
                   containing ARC startup options.

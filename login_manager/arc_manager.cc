@@ -124,6 +124,11 @@ void ArcManager::EmitStopArcVmInstanceImpulse() {
   }
 }
 
+void ArcManager::OnUserSessionStarted(const std::string& in_account_id) {
+  user_sessions_.insert(in_account_id);
+  DeleteArcBugReportBackup(in_account_id);
+}
+
 bool ArcManager::StartArcMiniContainer(brillo::ErrorPtr* error,
                                        const std::vector<uint8_t>& in_request) {
 #if USE_CHEETS
@@ -268,7 +273,7 @@ bool ArcManager::UpgradeArcContainer(brillo::ErrorPtr* error,
         "Provided email address is not valid.  ASCII only.");
     return false;
   }
-  if (!delegate_->HasSession(account_id)) {
+  if (user_sessions_.find(account_id) == user_sessions_.end()) {
     // This path can be taken if a forged D-Bus message for starting a full
     // (stateful) container is sent to session_manager before the actual
     // user's session has started. Do not remove the |account_id| check to
@@ -621,7 +626,7 @@ void ArcManager::QueryAdbSideloadCallbackAdaptor(
 }
 
 void ArcManager::BackupArcBugReport(const std::string& account_id) {
-  if (!delegate_->HasSession(account_id)) {
+  if (user_sessions_.find(account_id) == user_sessions_.end()) {
     LOG(ERROR) << "Cannot back up ARC bug report for inactive user.";
     return;
   }
