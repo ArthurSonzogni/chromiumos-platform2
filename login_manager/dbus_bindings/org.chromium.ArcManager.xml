@@ -1,0 +1,151 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/org/chromium/SessionManager"
+      xmlns:doc="http://www.freedesktop.org/dbus/1.0/doc.dtd">
+<!--
+  Copyright 2025 The ChromiumOS Authors
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+
+  <!-- ********************************************************************* -->
+
+  <!--
+      org.chromium.ArcManager:
+      @short_description: Support ARC operations.
+
+      Most of the methods are to support ARC++ (a.k.a. container),
+      but there are a few methods that is to support ARCVM features.
+  -->
+  <interface name="org.chromium.ArcManager">
+
+    <!--
+        StartArcMiniContainer:
+        @request: Serialized StartArcMiniContainerRequest proto message
+                  containing ARC startup options.
+
+        Starts an ARC mini-container that contains no user information. This
+        mainly exists so that we can do some of the container initialization
+        work at the login screen, improving perceived responsiveness. This
+        method is only available if the board supports ARC.  This method gets
+        invoked by Chrome.
+    -->
+    <method name="StartArcMiniContainer">
+      <arg type="ay" name="request" direction="in" />
+    </method>
+
+    <!--
+        UpgradeArcContainer:
+        @request: Serialized UpgradeArcContainerRequest proto message
+                  containing ARC upgrade options.
+
+        Upgrades an existing ARC mini-container to a fully featured container.
+        This method is only available if the board supports ARC.  This method
+        gets invoked by Chrome.
+
+        This reports an error if Upgrade is somehow failed. If ARC mini
+        container is already running, the ArcInstanceStopped signal will be
+        delivered with error info.
+    -->
+    <method name="UpgradeArcContainer">
+      <arg type="ay" name="request" direction="in" />
+    </method>
+
+    <!--
+        StopArcInstance:
+        @account_id: Account ID of the user to stop ARC for.
+        @should_backup_log: Flag to back up arc-bugreport before shutdown.
+
+        Stops the currently running ARC instance. Used to manually stop the ARC
+        instance. If the instance is not running, this will result in a no-op.
+        If this method is not called, session_manager will still stop the
+        instance when the user's session ends. This method is only available if
+        the board supports ARC. This method gets invoked by Chrome.
+    -->
+    <method name="StopArcInstance">
+      <arg name="account_id" type="s" direction="in" />
+      <arg name="should_backup_log" type="b" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+
+    <!--
+        ArcInstanceStopped:
+        @reason: The value of ArcContainerStopReason.
+
+        Sent when ARC instance is stopped. Maybe clean shutdown, upgrade
+        failure, or crash.
+    -->
+    <signal name="ArcInstanceStopped">
+      <arg type="u" name="reason" />
+    </signal>
+
+    <!--
+        SetArcCpuRestriction:
+        @restriction_state: State used to set the level of CPU allowed specified
+        as foreground or background with the
+        |login_manager::ContainerCpuRestrictionState| enum.
+
+        Adjusts the amount of CPU the ARC instance is allowed to use by setting
+        the cpu.shares value of ARC's cpu cgroup.  When restriction_state is
+        CONTAINER_CPU_RESTRICTION_FOREGROUND the limit is adjusted so ARC can
+        use all the system's CPU if needed.  When restriction_state is
+        CONTAINER_CPU_RESTRICTION_BACKGROUND, cpu.shares is set back to a
+        tightly restricted level.  The ARC container is started in a state that
+        is more restricted than CONTAINER_CPU_RESTRICTION_BACKGROUND.  This
+        startup state is to allow Chrome to restore during login and can't be
+        re-entered after startup is complete.
+        Calling the method while the instance is not running *is* okay as long
+        as the cgroups exist.
+    -->
+    <method name="SetArcCpuRestriction">
+      <arg type="u" name="restriction_state" direction="in" />
+    </method>
+
+    <!--
+        EmitArcBooted:
+
+        Emits the "arc-booted" upstart signal on the browser's behalf.
+    -->
+    <method name="EmitArcBooted">
+      <arg type="s" name="account_id" direction="in" />
+    </method>
+
+    <!--
+        GetArcStartTimeTicks:
+
+        Returns the value of start time (base::TimeTicks::ToInternalValue()) of
+        the ARC instance if exists, otherwise an error will be returned
+        accordingly i.e. ARC is not available on the platform or ARC is not
+        started.
+    -->
+    <method name="GetArcStartTimeTicks">
+      <arg type="x" name="start_time" direction="out" />
+    </method>
+
+    <!--
+        EnableAdbSideload:
+
+        Attempts to enable adb sideloading capability in ARC. This requires the
+        device to have no user logged in since the last reboot. Note that there
+        is no method to disable this capability because it will require a
+        powerwash.
+    -->
+    <method name="EnableAdbSideload">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="b" name="reply" direction="out" />
+    </method>
+
+    <!--
+        QueryAdbSideload:
+
+        Returns true if adb sideloading capability has been enabled in ARC,
+        otherwise returns false.
+    -->
+    <method name="QueryAdbSideload">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="b" name="reply" direction="out" />
+    </method>
+
+  </interface>
+  <!-- ********************************************************************* -->
+</node>

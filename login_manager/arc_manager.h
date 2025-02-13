@@ -19,6 +19,7 @@
 #include <dbus/login_manager/dbus-constants.h>
 
 #include "login_manager/arc_sideload_status_interface.h"
+#include "login_manager/dbus_adaptors/org.chromium.ArcManager.h"
 #include "login_manager/login_metrics.h"
 
 namespace arc {
@@ -43,7 +44,7 @@ class InitDaemonController;
 class SystemUtils;
 
 // Manages ARC operations.
-class ArcManager {
+class ArcManager : public org::chromium::ArcManagerInterface {
  public:
   class Delegate {
    public:
@@ -98,24 +99,28 @@ class ArcManager {
   void OnUpgradeArcContainer();
   void BackupArcBugReport(const std::string& account_id);
   void DeleteArcBugReportBackup(const std::string& account_id);
+  void EmitStopArcVmInstanceImpulse();
 
   // D-Bus method implementation.
-  void EmitStopArcVmInstanceImpulse();
   bool StartArcMiniContainer(brillo::ErrorPtr* error,
-                             const std::vector<uint8_t>& in_request);
+                             const std::vector<uint8_t>& in_request) override;
   bool UpgradeArcContainer(brillo::ErrorPtr* error,
-                           const std::vector<uint8_t>& in_request);
+                           const std::vector<uint8_t>& in_request) override;
   bool StopArcInstance(brillo::ErrorPtr* error,
                        const std::string& account_id,
-                       bool should_backup_log);
+                       bool should_backup_log) override;
   bool SetArcCpuRestriction(brillo::ErrorPtr* error,
-                            uint32_t in_restriction_state);
-  bool EmitArcBooted(brillo::ErrorPtr* error, const std::string& in_account_id);
-  bool GetArcStartTimeTicks(brillo::ErrorPtr* error, int64_t* out_start_time);
+                            uint32_t in_restriction_state) override;
+  bool EmitArcBooted(brillo::ErrorPtr* error,
+                     const std::string& in_account_id) override;
+  bool GetArcStartTimeTicks(brillo::ErrorPtr* error,
+                            int64_t* out_start_time) override;
   void EnableAdbSideload(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response);
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
+      override;
   void QueryAdbSideload(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response);
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
+      override;
 
  private:
 #if USE_CHEETS
