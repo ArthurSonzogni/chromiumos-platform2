@@ -19,8 +19,8 @@
 #include <chromeos/cbor/values.h>
 #include <chromeos/cbor/writer.h>
 #include <chromeos/dbus/service_constants.h>
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <openssl/rand.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
@@ -34,6 +34,9 @@ namespace {
 
 // User a big timeout for cryptohome. See b/172945202.
 constexpr base::TimeDelta kCryptohomeTimeout = base::Minutes(2);
+
+// Auth dialog timeout. 1 hour should be long enough.
+constexpr base::TimeDelta kAuthDialogTimeout = base::Hours(1);
 
 constexpr int kCancelUVFlowTimeoutMs = 5000;
 
@@ -287,7 +290,7 @@ void WebAuthnHandler::MakeCredential(
 
     pending_uv_make_credential_session_ = std::move(session);
     auth_dialog_dbus_proxy_->CallMethod(
-        &call, dbus::ObjectProxy::TIMEOUT_INFINITE,
+        &call, kAuthDialogTimeout.InMilliseconds(),
         base::BindOnce(&WebAuthnHandler::HandleUVFlowResultMakeCredential,
                        base::Unretained(this)));
     return;
@@ -829,7 +832,7 @@ void WebAuthnHandler::GetAssertion(
 
     pending_uv_get_assertion_session_ = std::move(session);
     auth_dialog_dbus_proxy_->CallMethod(
-        &call, dbus::ObjectProxy::TIMEOUT_INFINITE,
+        &call, kAuthDialogTimeout.InMilliseconds(),
         base::BindOnce(&WebAuthnHandler::HandleUVFlowResultGetAssertion,
                        base::Unretained(this)));
     return;
