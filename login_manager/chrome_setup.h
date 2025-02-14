@@ -299,6 +299,9 @@ void AddMantisFlags(chromeos::ui::ChromiumCommandBuilder* builder);
 // Adds flags for features using the XS model.
 void AddXSFlags(chromeos::ui::ChromiumCommandBuilder* builder);
 
+// Adds flags related to the Coral project.
+void AddCoralFlags(chromeos::ui::ChromiumCommandBuilder* builder);
+
 // Allows Chrome to access GPU memory information despite /sys/kernel/debug
 // being owned by debugd. This limits the security attack surface versus
 // leaving the whole debug directory world-readable. See crbug.com/175828

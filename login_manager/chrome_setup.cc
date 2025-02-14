@@ -546,6 +546,7 @@ std::optional<ChromeSetup::Result> ChromeSetup::Run() {
   AddDeviceSpecificFlags(&builder);
   AddMantisFlags(&builder);
   AddXSFlags(&builder);
+  AddCoralFlags(&builder);
 
   // Apply any modifications requested by the developer.
   if (builder.is_developer_end_user()) {
@@ -1273,6 +1274,12 @@ void AddMantisFlags(ChromiumCommandBuilder* builder) {
 void AddXSFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("odml_xs_base_model")) {
     builder->AddFeatureEnableOverride("ConchLargeModel");
+  }
+}
+
+void AddCoralFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
+  if (builder->UseFlagIsSet("coral")) {
+    builder->AddFeatureEnableOverride("CoralFeature");
   }
 }
 
