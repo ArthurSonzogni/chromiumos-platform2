@@ -114,10 +114,24 @@ TEST(CapportStatusTest, ParseFromJsonInvalidUserPortalUrl) {
   // The user portal URL must be HTTPS, HTTP is considered invalid.
   const std::string json = R"({
    "captive": true,
-   "user-portal-url": "http://example.org/portal.html"
+   "user-portal-url": "not a url"
 })";
 
   EXPECT_FALSE(CapportStatus::ParseFromJson(json, kLoggingTag).has_value());
+}
+
+TEST(CapportStatusTest, ParseFromJsonHttpUserPortalUrl) {
+  // The user portal URL must be HTTPS, HTTP is considered invalid.
+  const std::string json = R"({
+   "captive": true,
+   "user-portal-url": "http://example.org/portal.html"
+})";
+
+  const auto capport_status = CapportStatus::ParseFromJson(json, kLoggingTag);
+  EXPECT_TRUE(capport_status.has_value());
+  EXPECT_EQ(
+      net_base::HttpUrl::CreateFromString("https://example.org/portal.html"),
+      capport_status->user_portal_url);
 }
 
 TEST(CapportStatusTest, ParseFromJsonMissingUserPortalUrl) {

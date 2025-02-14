@@ -59,13 +59,23 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
   // Parse the optional fields.
   if (const std::string* value = dict->FindString(kUserPortalUrlKey);
       value != nullptr) {
-    const auto url = net_base::HttpUrl::CreateFromString(*value);
-    if (!url.has_value() ||
-        url->protocol() != net_base::HttpUrl::Protocol::kHttps) {
+    auto url = net_base::HttpUrl::CreateFromString(*value);
+    // b/396556880: Android allows HTTP URLs, but RFC8908 specifies that the
+    // connection to the portal sign-in page MUST be over TLS. If an HTTP URL is
+    // found, upgrade it to HTTPS.
+    if (url.has_value() &&
+        url->protocol() == net_base::HttpUrl::Protocol::kHttp) {
+      LOG(WARNING) << logging_tag << " " << __func__
+                   << ": Changing Scheme of user portal URL from http to https";
+      url = net_base::HttpUrl::CreateFromString(
+          "https" + value->substr(std::string("http").size()));
+    }
+    if (!url.has_value()) {
       LOG(WARNING) << logging_tag << " " << __func__
                    << ": User portal URL is not valid: " << *value;
       return std::nullopt;
     }
+    status->user_portal_url = *url;
     status->user_portal_url = *url;
   }
   if (const std::string* value = dict->FindString(kVenueInfoUrlKey);
