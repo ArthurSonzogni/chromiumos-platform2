@@ -57,8 +57,7 @@ class ArcManager : public org::chromium::ArcManagerInterface {
     virtual void SendArcInstanceStoppedSignal(uint32_t value) = 0;
   };
 
-  ArcManager(std::unique_ptr<Delegate> delegate,
-             ContainerManagerInterface* android_container,
+  ArcManager(ContainerManagerInterface* android_container,
              SystemUtils& system_utils,
              std::unique_ptr<InitDaemonController> init_controller,
              std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status,
@@ -90,6 +89,8 @@ class ArcManager : public org::chromium::ArcManagerInterface {
 
   void Initialize();
   void Finalize();
+
+  void SetDelegate(std::unique_ptr<Delegate> delegate);
 
   // TODO(crbug.com/390297821): called from SessionManagerService.
   // Expose this as D-Bus method.
@@ -157,7 +158,7 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   void BackupArcBugReport(const std::string& account_id);
   void DeleteArcBugReportBackup(const std::string& account_id);
 
-  const std::unique_ptr<Delegate> delegate_;
+  std::unique_ptr<Delegate> delegate_;
   ContainerManagerInterface* const android_container_;
   const raw_ref<SystemUtils> system_utils_;
   std::unique_ptr<InitDaemonController> init_controller_;

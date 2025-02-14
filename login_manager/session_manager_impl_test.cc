@@ -349,14 +349,19 @@ class SessionManagerImplTest : public ::testing::Test,
     init_controller_ = new MockInitDaemonController();
     arc_init_controller_ = new MockInitDaemonController();
     arc_sideload_status_ = new MockArcSideloadStatus();
+    arc_manager_ = std::make_unique<ArcManager>(
+        &android_container_, system_utils_,
+        base::WrapUnique(arc_init_controller_),
+        std::unique_ptr<ArcSideloadStatusInterface>(arc_sideload_status_),
+        debugd_proxy_.get(), &metrics_);
     impl_ = std::make_unique<SessionManagerImpl>(
-        this /* delegate */, base::WrapUnique(init_controller_),
-        base::WrapUnique(arc_init_controller_), bus_.get(),
+        this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
         &device_identifier_generator_, &manager_, &metrics_, &nss_,
         std::nullopt, &system_utils_, &crossystem_, &vpd_process_, &owner_key_,
-        &android_container_, &install_attributes_reader_, powerd_proxy_.get(),
-        system_clock_proxy_.get(), debugd_proxy_.get(), fwmp_proxy_.get(),
-        std::unique_ptr<ArcSideloadStatusInterface>(arc_sideload_status_));
+        arc_manager_.get(), &install_attributes_reader_, powerd_proxy_.get(),
+        system_clock_proxy_.get(), fwmp_proxy_.get());
+    arc_manager_->SetDelegate(std::make_unique<ArcManagerDelegateImpl>(*impl_));
+
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
     impl_->SetUiLogSymlinkPathForTesting(log_symlink_);
 
@@ -417,6 +422,7 @@ class SessionManagerImplTest : public ::testing::Test,
 
     EXPECT_CALL(*arc_sideload_status_, Initialize());
     impl_->Initialize();
+    arc_manager_->Initialize();
 
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(powerd_proxy_.get()));
     ASSERT_FALSE(suspend_imminent_callback_.is_null());
@@ -442,6 +448,7 @@ class SessionManagerImplTest : public ::testing::Test,
     init_controller_ = nullptr;
     EXPECT_CALL(*exported_object(), Unregister()).Times(1);
     impl_.reset();
+    arc_manager_.reset();
     Mock::VerifyAndClearExpectations(exported_object());
 
     SetSystemSalt(nullptr);
@@ -951,6 +958,7 @@ class SessionManagerImplTest : public ::testing::Test,
   base::ScopedTempDir log_dir_;  // simulates /var/log/ui
   base::FilePath log_symlink_;   // simulates ui.LATEST; not created by default
 
+  std::unique_ptr<ArcManager> arc_manager_;
   std::unique_ptr<SessionManagerImpl> impl_;
   secret_util::SharedMemoryUtil* shared_memory_util_;
 
@@ -3081,7 +3089,7 @@ TEST_F(SessionManagerImplTest, EmitStopArcVmInstanceImpulse) {
       TriggerImpulse(ArcManager::kStopArcVmInstanceImpulse, ElementsAre(),
                      InitDaemonController::TriggerMode::SYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
-  impl_->EmitStopArcVmInstanceImpulse();
+  arc_manager_->EmitStopArcVmInstanceImpulse();
 }
 #endif
 

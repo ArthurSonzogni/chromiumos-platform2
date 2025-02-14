@@ -336,6 +336,8 @@ class SessionManagerService
   std::unique_ptr<BrowserJobInterface> browser_;
 
   std::unique_ptr<ContainerManagerInterface> android_container_;
+  std::unique_ptr<ArcManager> arc_manager_;
+
   VpdProcessImpl vpd_process_;
 };
 

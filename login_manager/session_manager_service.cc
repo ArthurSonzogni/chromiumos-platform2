@@ -252,19 +252,26 @@ bool SessionManagerService::Initialize() {
           chromeos::kChromeFeaturesServiceName,
           dbus::ObjectPath(chromeos::kChromeFeaturesServicePath)));
 
+  arc_manager_ = std::make_unique<ArcManager>(
+      android_container_.get(), *system_utils_,
+      std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy),
+      std::move(arc_sideload_status), debugd_dbus_proxy_, login_metrics_);
+
   impl_ = std::make_unique<SessionManagerImpl>(
       this /* delegate */,
-      std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy),
       std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy), bus_,
       &device_identifier_generator_,
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
       nss_.get(), chrome_mount_ns_path_, system_utils_, &crossystem_,
-      &vpd_process_, &owner_key_, android_container_.get(),
+      &vpd_process_, &owner_key_, arc_manager_.get(),
       &install_attributes_reader_, powerd_dbus_proxy_, system_clock_proxy,
-      debugd_dbus_proxy_, fwmp_dbus_proxy_, std::move(arc_sideload_status));
+      fwmp_dbus_proxy_);
   if (!InitializeImpl()) {
     return false;
   }
+
+  arc_manager_->SetDelegate(std::make_unique<ArcManagerDelegateImpl>(*impl_));
+  arc_manager_->Initialize();
 
   InitializeBrowser();
 
@@ -289,6 +296,7 @@ void SessionManagerService::InitializeBrowser() {
 
 void SessionManagerService::Finalize() {
   LOG(INFO) << "SessionManagerService exiting";
+  arc_manager_->Finalize();
   impl_->Finalize();
   ShutDownDBus();
 }
@@ -460,7 +468,11 @@ void SessionManagerService::HandleBrowserExit(const siginfo_t& status) {
   android_container_->EnsureJobExit(ArcManager::kContainerTimeout);
   // Ensure ARCVM and related Upstart jobs are stopped (b/290194650).
   MaybeStopArcVm();
-  impl_->EmitStopArcVmInstanceImpulse();
+
+  // Note: in tests, arc_manager_ is not set up.
+  if (arc_manager_) {
+    arc_manager_->EmitStopArcVmInstanceImpulse();
+  }
 
   // Do nothing if already shutting down.
   if (shutting_down_) {

@@ -73,15 +73,13 @@ bool IsInsideVm(SystemUtils& system_utils) {
 }  // namespace
 
 ArcManager::ArcManager(
-    std::unique_ptr<Delegate> delegate,
     ContainerManagerInterface* android_container,
     SystemUtils& system_utils,
     std::unique_ptr<InitDaemonController> init_controller,
     std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status,
     dbus::ObjectProxy* debugd_proxy,
     LoginMetrics* login_metrics)
-    : delegate_(std::move(delegate)),
-      android_container_(android_container),
+    : android_container_(android_container),
       system_utils_(system_utils),
       init_controller_(std::move(init_controller)),
       arc_sideload_status_(std::move(arc_sideload_status)),
@@ -89,6 +87,11 @@ ArcManager::ArcManager(
       login_metrics_(login_metrics) {}
 
 ArcManager::~ArcManager() = default;
+
+void ArcManager::SetDelegate(std::unique_ptr<Delegate> delegate) {
+  CHECK(!delegate_);
+  delegate_ = std::move(delegate);
+}
 
 void ArcManager::Initialize() {
   arc_sideload_status_->Initialize();

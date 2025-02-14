@@ -273,22 +273,16 @@ bool IsGuestSession(const std::vector<std::string>& argv) {
   return base::Contains(argv, BrowserJobInterface::kGuestSessionFlag);
 }
 
-class ArcManagerDelegateImpl : public ArcManager::Delegate {
- public:
-  explicit ArcManagerDelegateImpl(SessionManagerImpl& session_manager_impl)
-      : session_manager_impl_(session_manager_impl) {}
-  ArcManagerDelegateImpl(const ArcManagerDelegateImpl&) = delete;
-  ArcManagerDelegateImpl& operator=(const ArcManagerDelegateImpl&) = delete;
-
-  void SendArcInstanceStoppedSignal(uint32_t value) override {
-    return session_manager_impl_.SendArcInstanceStoppedSignal(value);
-  }
-
- private:
-  SessionManagerImpl& session_manager_impl_;
-};
-
 }  // namespace
+
+ArcManagerDelegateImpl::ArcManagerDelegateImpl(
+    SessionManagerInterface& session_manager)
+    : session_manager_(session_manager) {}
+ArcManagerDelegateImpl::~ArcManagerDelegateImpl() = default;
+
+void ArcManagerDelegateImpl::SendArcInstanceStoppedSignal(uint32_t value) {
+  return session_manager_.SendArcInstanceStoppedSignal(value);
+}
 
 // Tracks D-Bus service running.
 // Create*Callback functions return a callback adaptor from given
@@ -412,7 +406,6 @@ struct SessionManagerImpl::UserSession {
 SessionManagerImpl::SessionManagerImpl(
     Delegate* delegate,
     std::unique_ptr<InitDaemonController> init_controller,
-    std::unique_ptr<InitDaemonController> arc_init_controller,
     const scoped_refptr<dbus::Bus>& bus,
     DeviceIdentifierGenerator* device_identifier_generator,
     ProcessManagerServiceInterface* manager,
@@ -423,13 +416,11 @@ SessionManagerImpl::SessionManagerImpl(
     crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     PolicyKey* owner_key,
-    ContainerManagerInterface* android_container,
+    org::chromium::ArcManagerInterface* arc_manager,
     InstallAttributesReader* install_attributes_reader,
     dbus::ObjectProxy* powerd_proxy,
     dbus::ObjectProxy* system_clock_proxy,
-    dbus::ObjectProxy* debugd_proxy,
-    dbus::ObjectProxy* fwmp_proxy,
-    std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status)
+    dbus::ObjectProxy* fwmp_proxy)
     : init_controller_(std::move(init_controller)),
       system_clock_last_sync_info_retry_delay_(
           kSystemClockLastSyncInfoRetryDelay),
@@ -450,14 +441,7 @@ SessionManagerImpl::SessionManagerImpl(
       powerd_proxy_(powerd_proxy),
       system_clock_proxy_(system_clock_proxy),
       fwmp_proxy_(fwmp_proxy),
-      arc_manager_(std::make_unique<ArcManager>(
-          std::make_unique<ArcManagerDelegateImpl>(*this),
-          android_container,
-          *system_utils_,
-          std::move(arc_init_controller),
-          std::move(arc_sideload_status),
-          debugd_proxy,
-          metrics)),
+      arc_manager_(arc_manager),
       ui_log_symlink_path_(kDefaultUiLogSymlinkPath),
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()),
@@ -545,10 +529,6 @@ std::vector<std::string> SessionManagerImpl::GetExtraCommandLineArguments() {
   return device_policy_->GetExtraCommandLineArguments();
 }
 
-void SessionManagerImpl::EmitStopArcVmInstanceImpulse() {
-  arc_manager_->EmitStopArcVmInstanceImpulse();
-}
-
 bool SessionManagerImpl::Initialize() {
   powerd_proxy_->ConnectToSignal(
       power_manager::kPowerManagerInterface,
@@ -617,8 +597,6 @@ bool SessionManagerImpl::Initialize() {
     device_policy_->set_delegate(this);
   }
 
-  arc_manager_->Initialize();
-
   return true;
 }
 
@@ -627,8 +605,6 @@ void SessionManagerImpl::Finalize() {
   // any outstanding DBusMethodCompletion objects to be abandoned without
   // having been run (http://crbug.com/638774, http://crbug.com/725734).
   dbus_service_.reset();
-
-  arc_manager_->Finalize();
 }
 
 bool SessionManagerImpl::StartDBusService() {
