@@ -12,6 +12,7 @@
 #include <string>
 
 #include <gtest/gtest.h>
+
 #include "chromeos-config/libcros_config/cros_config.h"
 
 class CrosConfigTest : public testing::Test {};

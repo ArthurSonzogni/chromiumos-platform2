@@ -5,6 +5,7 @@
 // Command-line utility to access to the Chrome OS model configuration.
 
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
 
