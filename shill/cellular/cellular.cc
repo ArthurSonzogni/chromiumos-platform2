@@ -3909,9 +3909,17 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   // customs APNs are used. Return early.
   // - For the old UI, the Attach APN round robin is skipped if there is a
   // custom attach APN.
-  if ((custom_apn_list && custom_apn_list->size() > 0) ||
-      (!custom_apn_list && custom_apn_info &&
-       apn_type == ApnList::ApnType::kAttach)) {
+  bool custom_apn_list_not_empty =
+      custom_apn_list && custom_apn_list->size() > 0;
+  if (custom_apn_list_not_empty || (!custom_apn_list && custom_apn_info &&
+                                    apn_type == ApnList::ApnType::kAttach)) {
+    // For the Revamp UI, we should always have at least the fallback attach
+    // APN, because some modems require a force attach to trigger registration
+    // after modem boot.
+    if (custom_apn_list_not_empty && apn_type == ApnList::ApnType::kAttach &&
+        apn_try_list.size() == 0) {
+      apn_try_list.push_back(BuildFallbackEmptyApn(apn_type));
+    }
     PrintApnListForDebugging(apn_try_list, apn_type);
     ValidateApnTryList(apn_try_list);
     return apn_try_list;

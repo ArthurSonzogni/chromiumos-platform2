@@ -2580,10 +2580,21 @@ TEST_F(CellularTest, BuildApnTryListSetCustomApnList) {
 
   // Set CustomApnList
   Stringmap apnP({{kApnProperty, "apnP"},
-                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
-                  {kApnSourceProperty, kApnSourceUi}});
-  Stringmap apnQ({{kApnProperty, "apnQ"},
                   {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeDefault})},
+                  {kApnSourceProperty, kApnSourceUi}});
+
+  // Set only a default APN, and verify that a fallback attach APN is added
+  Stringmaps custom_list = {apnP};
+  service->set_custom_apn_list_for_testing(custom_list);
+  default_apn_try_list = device_->BuildDefaultApnTryList();
+  attach_apn_try_list = device_->BuildAttachApnTryList();
+  ASSERT_EQ(default_apn_try_list.size(), 1);
+  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  EXPECT_EQ(attach_apn_try_list[0], attach_empty_apn);
+  EXPECT_EQ(default_apn_try_list[0], apnP);
+
+  Stringmap apnQ({{kApnProperty, "apnQ"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
                   {kApnSourceProperty, kApnSourceUi}});
   Stringmap apnR({{kApnProperty, "apnR"},
                   {kApnTypesProperty,
@@ -2592,16 +2603,16 @@ TEST_F(CellularTest, BuildApnTryListSetCustomApnList) {
   Stringmap apnS({{kApnProperty, "apnS"},
                   {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeDefault})},
                   {kApnSourceProperty, kApnSourceAdmin}});
-  Stringmaps custom_list = {apnP, apnQ, apnR, apnS};
+  custom_list = {apnP, apnQ, apnR, apnS};
   service->set_custom_apn_list_for_testing(custom_list);
   default_apn_try_list = device_->BuildDefaultApnTryList();
   attach_apn_try_list = device_->BuildAttachApnTryList();
   ASSERT_EQ(default_apn_try_list.size(), 3);
   ASSERT_EQ(attach_apn_try_list.size(), 3);
-  EXPECT_EQ(attach_apn_try_list[0], apnP);
+  EXPECT_EQ(attach_apn_try_list[0], apnQ);
   EXPECT_EQ(attach_apn_try_list[1], apnR);
-  EXPECT_EQ(attach_apn_try_list[2], apnP);
-  EXPECT_EQ(default_apn_try_list[0], apnQ);
+  EXPECT_EQ(attach_apn_try_list[2], apnQ);
+  EXPECT_EQ(default_apn_try_list[0], apnP);
   EXPECT_EQ(default_apn_try_list[1], apnR);
   EXPECT_EQ(default_apn_try_list[2], apnS);
 
@@ -2624,7 +2635,7 @@ TEST_F(CellularTest, BuildApnTryListSetCustomApnList) {
   EXPECT_EQ(attach_apn_try_list[3], apn_modem);
   // CustomApnList has exclusive priority if no required APNs exist.
   ASSERT_EQ(default_apn_try_list.size(), 3);
-  EXPECT_EQ(default_apn_try_list[0], apnQ);
+  EXPECT_EQ(default_apn_try_list[0], apnP);
   EXPECT_EQ(default_apn_try_list[1], apnR);
   EXPECT_EQ(default_apn_try_list[2], apnS);
 }
