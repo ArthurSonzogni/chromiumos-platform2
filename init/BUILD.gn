@@ -142,6 +142,7 @@ static_library("libpreservation") {
     "libpreservation/fake_ext2fs.cc",
     "libpreservation/file_preseeder.cc",
     "libpreservation/filesystem_manager.cc",
+    "libpreservation/preservation.cc",
   ]
   configs += [ ":target_defaults" ]
 
@@ -168,7 +169,10 @@ static_library("libclobber") {
   }
   configs += [ ":target_defaults" ]
   public_deps = [ ":libinit_utils" ]
-  deps = [ ":libencrypted-reboot-vault" ]
+  deps = [
+    ":libencrypted-reboot-vault",
+    ":libpreservation",
+  ]
 }
 
 executable("chromeos_startup") {
@@ -183,7 +187,10 @@ executable("chromeos_startup") {
 executable("clobber-state") {
   sources = [ "clobber/clobber_state_main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libclobber" ]
+  deps = [
+    ":libclobber",
+    ":libpreservation",
+  ]
   install_path = "/sbin"
 }
 

@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -55,6 +56,7 @@
 
 #include "init/clobber/clobber_state_log.h"
 #include "init/encrypted_reboot_vault/encrypted_reboot_vault.h"
+#include "init/libpreservation/preservation.h"
 #include "init/utils.h"
 
 namespace {
@@ -63,7 +65,6 @@ constexpr char kStatefulPath[] = "/mnt/stateful_partition";
 constexpr char kPowerWashCountPath[] = "unencrypted/preserve/powerwash_count";
 constexpr char kLastPowerWashTimePath[] =
     "unencrypted/preserve/last_powerwash_time";
-constexpr char kRmaStateFilePath[] = "unencrypted/rma-data/state";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
 constexpr char kStatefulClobberLogPath[] = "unencrypted/clobber.log";
@@ -77,8 +78,6 @@ const char* kUpdateEnginePrefsFiles[] = {"last-active-ping-day",
 constexpr char kUpdateEnginePrefsPath[] = "var/lib/update_engine/prefs/";
 constexpr char kUpdateEnginePreservePath[] =
     "unencrypted/preserve/update_engine/prefs/";
-constexpr char kChromadMigrationSkipOobePreservePath[] =
-    "unencrypted/preserve/chromad_migration_skip_oobe";
 // CrOS Private Computing (go/chromeos-data-pc) will save the device last
 // active dates in different use cases into a file.
 constexpr char kPsmDeviceActiveLocalPrefPath[] =
@@ -423,117 +422,23 @@ ClobberState::ClobberState(const Arguments& args,
       weak_ptr_factory_(this) {}
 
 std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
-  std::vector<std::string> stateful_paths;
-  // Preserve these files in safe mode. (Please request a privacy review before
-  // adding files.)
-  //
-  // - unencrypted/preserve/update_engine/prefs/rollback-happened: Contains a
-  //   boolean value indicating whether a rollback has happened since the last
-  //   update check where device policy was available. Needed to avoid forced
-  //   updates after rollbacks (device policy is not yet loaded at this time).
-  if (args_.safe_wipe) {
-    stateful_paths.push_back(kPowerWashCountPath);
-    stateful_paths.push_back(
-        "unencrypted/preserve/tpm_firmware_update_request");
-    stateful_paths.push_back(std::string(kUpdateEnginePreservePath) +
-                             "rollback-happened");
-    stateful_paths.push_back(std::string(kUpdateEnginePreservePath) +
-                             "rollback-version");
-
-    for (const auto* ue_prefs_filename : kUpdateEnginePrefsFiles) {
-      stateful_paths.push_back(std::string(kUpdateEnginePreservePath) +
-                               std::string(ue_prefs_filename));
-    }
-    // Preserve the device last active dates to Private Set Computing (psm).
-    stateful_paths.push_back(kPsmDeviceActivePreservePath);
-
-    // For the Chromad to cloud migration, we store a flag file to indicate that
-    // some OOBE screens should be skipped after the device is powerwashed.
-    if (args_.ad_migration_wipe) {
-      stateful_paths.push_back(kChromadMigrationSkipOobePreservePath);
-    }
-
-    // Preserve pre-installed demo mode resources for offline Demo Mode.
-    std::string demo_mode_resources_dir =
-        "unencrypted/cros-components/offline-demo-mode-resources/";
-    stateful_paths.push_back(demo_mode_resources_dir + "image.squash");
-    stateful_paths.push_back(demo_mode_resources_dir + "imageloader.json");
-    stateful_paths.push_back(demo_mode_resources_dir + "imageloader.sig.1");
-    stateful_paths.push_back(demo_mode_resources_dir + "imageloader.sig.2");
-    stateful_paths.push_back(demo_mode_resources_dir + "manifest.fingerprint");
-    stateful_paths.push_back(demo_mode_resources_dir + "manifest.json");
-    stateful_paths.push_back(demo_mode_resources_dir + "table");
-
-    // For rollback wipes, we preserve the rollback metrics file and additional
-    // data as defined in oobe_config/rollback_data.proto.
-    if (args_.rollback_wipe) {
-      stateful_paths.push_back(
-          "unencrypted/preserve/enterprise-rollback-metrics-data");
-      // Devices produced >= 2023 use the new rollback data
-      // ("rollback_data_tpm") encryption.
-      stateful_paths.push_back("unencrypted/preserve/rollback_data_tpm");
-      // TODO(b/263065223) Preservation of the old format ("rollback_data") can
-      // be removed when all devices produced before 2023 are EOL.
-      stateful_paths.push_back("unencrypted/preserve/rollback_data");
-    }
-
-    // Preserve the latest GSC crash ID to prevent uploading previously seen GSC
-    // crashes on every boot.
-    stateful_paths.push_back("unencrypted/preserve/gsc_prev_crash_log_id");
-
-    // Preserve the files used to identify ChromeOS Flex devices.
-    for (const auto* flex_filename : kFlexFiles) {
-      stateful_paths.push_back(std::string(kFlexPreservePath) +
-                               std::string(flex_filename));
-    }
-  }
-
-  // Preserve RMA state file in RMA mode.
-  if (args_.rma_wipe) {
-    stateful_paths.push_back(kRmaStateFilePath);
-  }
-
-  // Test images in the lab enable certain extra behaviors if the
-  // .labmachine flag file is present.  Those behaviors include some
-  // important recovery behaviors (cf. the recover_duts upstart job).
-  // We need those behaviors to survive across power wash, otherwise,
-  // the current boot could wind up as a black hole.
   std::optional<int> debug_build =
       cros_system_->VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
-  if (debug_build == 1) {
-    stateful_paths.push_back(".labmachine");
+  std::set<std::string> stateful_paths =
+      libpreservation::GetPreservationFileList(
+          args_.safe_wipe, args_.ad_migration_wipe, args_.rollback_wipe,
+          args_.rma_wipe, debug_build == 1, false);
+
+  if (args_.factory_wipe) {
+    for (auto& path :
+         libpreservation::GetFactoryPreservationPathList(stateful_)) {
+      stateful_paths.insert(path);
+    }
   }
 
   std::vector<base::FilePath> preserved_files;
   for (const std::string& path : stateful_paths) {
     preserved_files.push_back(base::FilePath(path));
-  }
-
-  if (args_.factory_wipe) {
-    base::FileEnumerator crx_enumerator(
-        stateful_.Append("unencrypted/import_extensions/extensions"), false,
-        base::FileEnumerator::FileType::FILES, "*.crx");
-    for (base::FilePath name = crx_enumerator.Next(); !name.empty();
-         name = crx_enumerator.Next()) {
-      preserved_files.push_back(
-          base::FilePath("unencrypted/import_extensions/extensions")
-              .Append(name.BaseName()));
-    }
-
-    base::FileEnumerator dlc_enumerator(
-        stateful_.Append("unencrypted/dlc-factory-images"), false,
-        base::FileEnumerator::DIRECTORIES);
-    for (base::FilePath dir = dlc_enumerator.Next(); !dir.empty();
-         dir = dlc_enumerator.Next()) {
-      base::FilePath dlc_image_path =
-          base::FilePath("unencrypted/dlc-factory-images")
-              .Append(dir.BaseName())
-              .Append("package")
-              .Append("dlc.img");
-      if (base::PathExists(stateful_.Append(dlc_image_path))) {
-        preserved_files.push_back(dlc_image_path);
-      }
-    }
   }
 
   return preserved_files;
