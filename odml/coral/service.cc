@@ -15,6 +15,7 @@
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
 #include "odml/session_state_manager/session_state_manager.h"
+#include "odml/utils/performance_timer.h"
 
 namespace coral {
 

@@ -9,21 +9,34 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/service_constants.h>
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
-#include "odml/cros_safety/safety_service_manager.h"
+#include "base/containers/fixed_flat_set.h"
 #include "odml/mojom/cros_safety.mojom-shared.h"
-
+#include "odml/utils/performance_timer.h"
 namespace cros_safety {
+
+namespace {
+
+// These are the verdicts that actually returned by the the safety model.
+constexpr auto kTrueSafetyVerdicts =
+    base::MakeFixedFlatSet<mojom::SafetyClassifierVerdict>(
+        {mojom::SafetyClassifierVerdict::kPass,
+         mojom::SafetyClassifierVerdict::kFailedText,
+         mojom::SafetyClassifierVerdict::kFailedImage});
+
+}  // namespace
 
 SafetyServiceManagerImpl::SafetyServiceManagerImpl(
     mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
-        service_manager)
-    : service_manager_(service_manager) {
+        service_manager,
+    raw_ref<MetricsLibraryInterface> metrics)
+    : service_manager_(service_manager), metrics_(metrics) {
   CHECK(service_manager_);
   service_manager_->Request(
       /*service_name=*/chromeos::mojo_services::kCrosSafetyService,
@@ -102,10 +115,15 @@ void SafetyServiceManagerImpl::OnOnDeviceSafetySessionDisconnected(
 void SafetyServiceManagerImpl::OnClassifySafetyDone(
     ClassifySafetyCallback callback,
     mojom::SafetyRuleset ruleset,
+    odml::PerformanceTimer::Ptr timer,
     mojom::SafetyClassifierVerdict verdict) {
-  if (verdict != mojom::SafetyClassifierVerdict::kPass) {
-    LOG(INFO) << "Classify safety failed for ruleset: " << ruleset
-              << " with result: " << verdict;
+  metrics_.SendClassifySafetyResult(ruleset, verdict);
+  if (!kTrueSafetyVerdicts.contains(verdict)) {
+    LOG(WARNING) << "Internal error(" << verdict
+                 << ") encountered while classifying safety with ruleset '"
+                 << ruleset << ".";
+  } else {
+    metrics_.SendClassifySafetyLatency(ruleset, timer->GetDuration());
   }
   std::move(callback).Run(verdict);
 }
@@ -127,6 +145,7 @@ void SafetyServiceManagerImpl::EnsureCloudSafetySessionCreated(
 
 void SafetyServiceManagerImpl::GetCloudSafetySessionDone(
     base::OnceClosure callback, mojom::GetCloudSafetySessionResult result) {
+  metrics_.SendGetCloudSafetySessionResult(result);
   if (result != mojom::GetCloudSafetySessionResult::kOk) {
     cloud_safety_session_.reset();
     LOG(ERROR) << "GetCloudSafetySession failed with result: " << result;
@@ -153,7 +172,7 @@ void SafetyServiceManagerImpl::ClassifyImageSafetyInternal(
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
           base::BindOnce(&SafetyServiceManagerImpl::OnClassifySafetyDone,
                          weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                         ruleset),
+                         ruleset, odml::PerformanceTimer::Create()),
           mojom::SafetyClassifierVerdict::kServiceNotAvailable));
 }
 
@@ -184,6 +203,7 @@ void SafetyServiceManagerImpl::EnsureOnDeviceSafetySessionCreated(
 
 void SafetyServiceManagerImpl::GetOnDeviceSafetySessionDone(
     base::OnceClosure callback, mojom::GetOnDeviceSafetySessionResult result) {
+  metrics_.SendGetOnDeviceSafetySessionResult(result);
   if (result != mojom::GetOnDeviceSafetySessionResult::kOk) {
     on_device_safety_session_.reset();
     LOG(ERROR) << "GetOnDeviceSafetySession failed with result: " << result;
@@ -209,7 +229,7 @@ void SafetyServiceManagerImpl::ClassifyTextSafetyInternal(
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
           base::BindOnce(&SafetyServiceManagerImpl::OnClassifySafetyDone,
                          weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                         ruleset),
+                         ruleset, odml::PerformanceTimer::Create()),
           mojom::SafetyClassifierVerdict::kServiceNotAvailable));
 }
 

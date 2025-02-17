@@ -235,7 +235,7 @@ class Daemon : public brillo::DBusDaemon {
 
     safety_service_manager_impl_ =
         std::make_unique<cros_safety::SafetyServiceManagerImpl>(
-            service_manager_);
+            service_manager_, raw_ref(metrics_));
 
     on_device_model_service_provider_impl_ =
         std::make_unique<OnDeviceModelServiceProviderImpl>(

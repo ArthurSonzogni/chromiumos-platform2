@@ -184,6 +184,7 @@ source_set("mantis") {
 
 source_set("odml") {
   sources = [
+    "cros_safety/metrics.cc",
     "cros_safety/safety_service_manager_impl.cc",
     "embedding_model/dlc_model_loader.cc",
     "embedding_model/embedding_model_service.cc",
@@ -212,6 +213,7 @@ source_set("odml") {
     ":mojo_bindings_lib",
     "//ml_core/dlc:dlc_client",
   ]
+  deps = [ ":utils" ]
   configs += [ ":target_defaults" ]
 }
 

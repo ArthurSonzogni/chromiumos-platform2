@@ -8,12 +8,15 @@
 #include <string>
 
 #include <base/gtest_prod_util.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
+#include "odml/cros_safety/metrics.h"
 #include "odml/cros_safety/safety_service_manager.h"
 #include "odml/mojom/cros_safety.mojom-shared.h"
 #include "odml/mojom/cros_safety_service.mojom.h"
+#include "odml/utils/performance_timer.h"
 
 namespace cros_safety {
 
@@ -25,7 +28,8 @@ class SafetyServiceManagerImpl : public SafetyServiceManager {
  public:
   explicit SafetyServiceManagerImpl(
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
-          service_manager);
+          service_manager,
+      raw_ref<MetricsLibraryInterface> metrics);
 
   void PrepareImageSafetyClassifier(
       base::OnceCallback<void(bool)> callback) override;
@@ -52,6 +56,7 @@ class SafetyServiceManagerImpl : public SafetyServiceManager {
 
   void OnClassifySafetyDone(ClassifySafetyCallback callback,
                             mojom::SafetyRuleset ruleset,
+                            odml::PerformanceTimer::Ptr timer,
                             mojom::SafetyClassifierVerdict verdict);
   void EnsureCloudSafetySessionCreated(base::OnceClosure callback);
   void GetCloudSafetySessionDone(base::OnceClosure callback,
@@ -69,7 +74,7 @@ class SafetyServiceManagerImpl : public SafetyServiceManager {
 
   const mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
       service_manager_;
-
+  SafetyMetrics metrics_;
   mojo::Remote<cros_safety::mojom::CrosSafetyService> safety_service_;
 
   mojo::Remote<cros_safety::mojom::CloudSafetySession> cloud_safety_session_;

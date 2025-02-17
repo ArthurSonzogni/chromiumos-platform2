@@ -24,6 +24,7 @@ mantis_console --image=/usr/local/tmp/image.jpg \
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/memory/raw_ref.h>
 #include <base/run_loop.h>
@@ -45,7 +46,6 @@ mantis_console --image=/usr/local/tmp/image.jpg \
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
-#include "base/files/file_util.h"
 #include "odml/cros_safety/safety_service_manager.h"
 #include "odml/cros_safety/safety_service_manager_bypass.h"
 #include "odml/cros_safety/safety_service_manager_impl.h"
@@ -276,7 +276,7 @@ class MantisConsole : public brillo::DBusDaemon {
     if (enable_safety) {
       safety_service_manager_ =
           std::make_unique<cros_safety::SafetyServiceManagerImpl>(
-              service_manager_);
+              service_manager_, raw_ref(metrics_));
     } else {
       safety_service_manager_ =
           std::make_unique<cros_safety::SafetyServiceManagerBypass>();

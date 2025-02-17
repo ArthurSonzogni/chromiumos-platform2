@@ -16,25 +16,34 @@
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/service_constants.h>
 #include <mojo_service_manager/fake/simple_fake_service_manager.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
+#include "odml/cros_safety/metrics.h"
 #include "odml/cros_safety/mock_cloud_safety_session.h"
 #include "odml/cros_safety/mock_on_device_safety_session.h"
 #include "odml/cros_safety/safety_service_manager.h"
 #include "odml/mojom/big_buffer.mojom.h"
+#include "odml/mojom/cros_safety.mojom-shared.h"
 #include "odml/mojom/cros_safety.mojom.h"
+#include "odml/mojom/cros_safety_service.mojom-shared.h"
 
 namespace cros_safety {
 
 namespace {
 
+using testing::_;
+using testing::NiceMock;
+
 using ClassifySafetyCallback = SafetyServiceManager::ClassifySafetyCallback;
 using base::test::RunOnceCallback;
 using mojo_base::mojom::BigBuffer;
 using mojo_base::mojom::BigBufferPtr;
+using mojom::GetCloudSafetySessionResult;
+using mojom::GetOnDeviceSafetySessionResult;
 using mojom::SafetyClassifierVerdict;
 using mojom::SafetyRuleset;
 
@@ -52,13 +61,11 @@ class FakeCrosSafetyService
         provider_receiver_.BindNewPipeAndPassRemote());
   }
 
-  testing::NiceMock<cros_safety::MockCloudSafetySession>&
-  cloud_safety_session() {
+  NiceMock<cros_safety::MockCloudSafetySession>& cloud_safety_session() {
     return cloud_safety_session_;
   }
 
-  testing::NiceMock<cros_safety::MockOnDeviceSafetySession>&
-  on_device_safety_session() {
+  NiceMock<cros_safety::MockOnDeviceSafetySession>& on_device_safety_session() {
     return on_device_safety_session_;
   }
 
@@ -95,9 +102,8 @@ class FakeCrosSafetyService
   mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
       provider_receiver_{this};
   mojo::ReceiverSet<mojom::CrosSafetyService> receiver_set_;
-  testing::NiceMock<cros_safety::MockCloudSafetySession> cloud_safety_session_;
-  testing::NiceMock<cros_safety::MockOnDeviceSafetySession>
-      on_device_safety_session_;
+  NiceMock<cros_safety::MockCloudSafetySession> cloud_safety_session_;
+  NiceMock<cros_safety::MockOnDeviceSafetySession> on_device_safety_session_;
 };
 
 class SafetyServiceManagerImplTest : public testing::Test {
@@ -112,11 +118,40 @@ class SafetyServiceManagerImplTest : public testing::Test {
     fake_safety_service_ =
         std::make_unique<FakeCrosSafetyService>(remote_service_manager_);
 
-    safety_service_manager_ =
-        std::make_unique<SafetyServiceManagerImpl>(remote_service_manager_);
+    safety_service_manager_ = std::make_unique<SafetyServiceManagerImpl>(
+        remote_service_manager_, raw_ref(metrics_));
   }
 
  protected:
+  void ExpectSendGetCloudSafetySessionOk(int times) {
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(metrics::kGetCloudSafetySession,
+                      static_cast<int>(GetCloudSafetySessionResult::kOk), _))
+        .Times(times);
+  }
+  void ExpectSendGetOnDeviceSafetySessionOk(int times) {
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(metrics::kGetOnDeviceSafetySession,
+                      static_cast<int>(GetOnDeviceSafetySessionResult::kOk), _))
+        .Times(times);
+  }
+  void ExpectSendGroupLatency(int times) {
+    EXPECT_CALL(metrics_, SendTimeToUMA(metrics::kClassifySafetyLatencyPrefix +
+                                            metrics::kMapRulesetToString.at(
+                                                SafetyRuleset::kGeneric),
+                                        _, _, _, _))
+        .Times(times);
+  }
+
+  void ExpectSendGroupVerdict(SafetyClassifierVerdict verdict) {
+    EXPECT_CALL(metrics_, SendEnumToUMA(metrics::kClassifySafetyResultPrefix +
+                                            metrics::kMapRulesetToString.at(
+                                                SafetyRuleset::kGeneric),
+                                        static_cast<int>(verdict), _));
+  }
+
   base::test::TaskEnvironment task_environment_;
   std::unique_ptr<chromeos::mojo_service_manager::SimpleFakeMojoServiceManager>
       mojo_service_manager_;
@@ -126,9 +161,15 @@ class SafetyServiceManagerImplTest : public testing::Test {
   std::unique_ptr<FakeCrosSafetyService> fake_safety_service_;
   std::unique_ptr<cros_safety::SafetyServiceManagerImpl>
       safety_service_manager_;
+
+ private:
+  NiceMock<MetricsLibraryMock> metrics_;
 };
 
 TEST_F(SafetyServiceManagerImplTest, ClassifyTextSafetyPass) {
+  ExpectSendGetOnDeviceSafetySessionOk(1);
+  ExpectSendGroupLatency(1);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kPass);
   EXPECT_CALL(fake_safety_service_->on_device_safety_session(),
               ClassifyTextSafety)
       .WillOnce(RunOnceCallback<2>(SafetyClassifierVerdict::kPass));
@@ -143,6 +184,9 @@ TEST_F(SafetyServiceManagerImplTest, ClassifyTextSafetyPass) {
 }
 
 TEST_F(SafetyServiceManagerImplTest, ClassifyImageSafetyPass) {
+  ExpectSendGetCloudSafetySessionOk(1);
+  ExpectSendGroupLatency(1);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kPass);
   EXPECT_CALL(fake_safety_service_->cloud_safety_session(), ClassifyImageSafety)
       .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kPass));
   base::RunLoop run_loop;
@@ -157,10 +201,16 @@ TEST_F(SafetyServiceManagerImplTest, ClassifyImageSafetyPass) {
 }
 
 TEST_F(SafetyServiceManagerImplTest, SafetyServiceDisconnect) {
+  ExpectSendGetCloudSafetySessionOk(3);
+  ExpectSendGroupLatency(2);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kPass);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kFailedImage);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kServiceNotAvailable);
   EXPECT_CALL(fake_safety_service_->cloud_safety_session(), ClassifyImageSafety)
       .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kPass))
       .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kFailedImage))
-      .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kPass));
+      .WillOnce(
+          RunOnceCallback<3>(SafetyClassifierVerdict::kServiceNotAvailable));
 
   {
     base::RunLoop run_loop;
@@ -193,7 +243,7 @@ TEST_F(SafetyServiceManagerImplTest, SafetyServiceDisconnect) {
     safety_service_manager_->ClassifyImageSafety(
         SafetyRuleset::kGeneric, "test", BigBuffer::NewInvalidBuffer(false),
         base::BindLambdaForTesting([&](SafetyClassifierVerdict verdict) {
-          EXPECT_EQ(verdict, SafetyClassifierVerdict::kPass);
+          EXPECT_EQ(verdict, SafetyClassifierVerdict::kServiceNotAvailable);
           run_loop.Quit();
         }));
     run_loop.Run();
@@ -201,6 +251,10 @@ TEST_F(SafetyServiceManagerImplTest, SafetyServiceDisconnect) {
 }
 
 TEST_F(SafetyServiceManagerImplTest, CloudSafetySessionDisconnected) {
+  ExpectSendGetCloudSafetySessionOk(2);
+  ExpectSendGroupLatency(2);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kPass);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kFailedImage);
   EXPECT_CALL(fake_safety_service_->cloud_safety_session(), ClassifyImageSafety)
       .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kPass))
       .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kFailedImage));
@@ -234,6 +288,10 @@ TEST_F(SafetyServiceManagerImplTest, CloudSafetySessionDisconnected) {
 }
 
 TEST_F(SafetyServiceManagerImplTest, OnDeviceSafetySessionDisconnected) {
+  ExpectSendGetOnDeviceSafetySessionOk(2);
+  ExpectSendGroupLatency(2);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kPass);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kFailedText);
   EXPECT_CALL(fake_safety_service_->on_device_safety_session(),
               ClassifyTextSafety)
       .WillOnce(RunOnceCallback<2>(SafetyClassifierVerdict::kPass))
@@ -268,6 +326,10 @@ TEST_F(SafetyServiceManagerImplTest, OnDeviceSafetySessionDisconnected) {
 }
 
 TEST_F(SafetyServiceManagerImplTest, ClassifyImageSafetyCallbackNotRun) {
+  ExpectSendGetCloudSafetySessionOk(2);
+  ExpectSendGroupLatency(1);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kServiceNotAvailable);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kFailedImage);
   // Drop the callback and don't run it.
   {
     SafetyServiceManager::ClassifySafetyCallback callback;
@@ -297,12 +359,12 @@ TEST_F(SafetyServiceManagerImplTest, ClassifyImageSafetyCallbackNotRun) {
   {
     EXPECT_CALL(fake_safety_service_->cloud_safety_session(),
                 ClassifyImageSafety)
-        .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kFailedText));
+        .WillOnce(RunOnceCallback<3>(SafetyClassifierVerdict::kFailedImage));
     base::RunLoop run_loop;
     safety_service_manager_->ClassifyImageSafety(
         SafetyRuleset::kGeneric, "test", BigBuffer::NewInvalidBuffer(false),
         base::BindLambdaForTesting([&](SafetyClassifierVerdict verdict) {
-          EXPECT_EQ(verdict, SafetyClassifierVerdict::kFailedText);
+          EXPECT_EQ(verdict, SafetyClassifierVerdict::kFailedImage);
           run_loop.Quit();
         }));
 
@@ -311,6 +373,10 @@ TEST_F(SafetyServiceManagerImplTest, ClassifyImageSafetyCallbackNotRun) {
 }
 
 TEST_F(SafetyServiceManagerImplTest, ClassifyTextSafetyCallbackNotRun) {
+  ExpectSendGetOnDeviceSafetySessionOk(2);
+  ExpectSendGroupLatency(1);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kServiceNotAvailable);
+  ExpectSendGroupVerdict(SafetyClassifierVerdict::kFailedText);
   // Drop the callback and don't run it.
   {
     SafetyServiceManager::ClassifySafetyCallback callback;

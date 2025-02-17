@@ -20,6 +20,7 @@
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/mojo/service_constants.h>
+#include <metrics/metrics_library.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo_service_manager/lib/connect.h>
@@ -148,7 +149,9 @@ int main(int argc, char** argv) {
                    << ". Shutdown and wait for respawn.";
       }));
 
-  cros_safety::SafetyServiceManagerImpl safety_service_manager(service_manager);
+  MetricsLibrary metrics;
+  cros_safety::SafetyServiceManagerImpl safety_service_manager(
+      service_manager, raw_ref(metrics));
 
   if (cl->HasSwitch(kImage)) {
     // Filter image with cloud classifier
