@@ -15,6 +15,12 @@
 
 namespace coral {
 
+namespace {
+
+constexpr int kKbScale = 1024;
+
+}
+
 CoralMetrics::CoralMetrics(raw_ref<MetricsLibraryInterface> metrics)
     : metrics_(metrics) {}
 
@@ -130,6 +136,12 @@ void CoralMetrics::SendLanguageIsSupported(bool is_supported) {
 void CoralMetrics::SendEmbeddingDatabaseEntriesCount(int count) {
   metrics_->SendToUMA(metrics::kEmbeddingDatabaseEntriesCount, count, 1, 1001,
                       50);
+}
+
+void CoralMetrics::SendEmbeddingDatabaseDailyWrittenSize(int size_in_bytes) {
+  metrics_->SendToUMA(metrics::kEmbeddingDatabaseDailyWrittenSize,
+                      size_in_bytes / kKbScale, 10 /*10KB*/, 1000000 /*1GB*/,
+                      100);
 }
 
 void CoralMetrics::SendEmbeddingFilteredCount(int count) {

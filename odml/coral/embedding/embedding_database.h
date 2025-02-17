@@ -13,6 +13,7 @@
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
+#include <metrics/cumulative_metrics.h>
 
 #include "odml/coral/common.h"
 #include "odml/coral/metrics.h"
@@ -90,6 +91,9 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
   // according to last updated time.
   void MaybePruneEntries();
 
+  void ReportDailyMetrics(
+      chromeos_metrics::CumulativeMetrics* const cumulative_metrics);
+
   const raw_ref<CoralMetrics> metrics_;
 
   bool dirty_;
@@ -103,6 +107,10 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
   // The default behavior of pair comparison is lexicographical, so it will be
   // first sorted by updated_time, then by the key string.
   std::set<std::pair<base::Time, std::string>> updated_time_of_keys_;
+
+  std::unique_ptr<chromeos_metrics::CumulativeMetrics> daily_metrics_;
+
+  base::WeakPtrFactory<EmbeddingDatabase> weak_factory_{this};
 };
 
 }  // namespace coral

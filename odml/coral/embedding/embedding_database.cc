@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -29,6 +30,12 @@ constexpr size_t kMaxEntries = 1000;
 // Prune around 10% of entries when it exceeds kMaxEntries, so we don't have to
 // trigger prune operations that often when the map is nearly full.
 constexpr size_t kEntriesToPrune = 100;
+
+constexpr char kCumulativeMetricsBackingDir[] = "/var/lib/odml/metrics";
+constexpr char kEmbeddingDatabaseWritesStatName[] =
+    "coral_embedding_db_write_bytes";
+constexpr base::TimeDelta kCumulativeMetricsUpdatePeriod = base::Minutes(5);
+constexpr base::TimeDelta kCumulativeMetricsReportPeriod = base::Days(1);
 
 }  // namespace
 
@@ -73,7 +80,17 @@ std::unique_ptr<EmbeddingDatabase> EmbeddingDatabase::Create(
 EmbeddingDatabase::EmbeddingDatabase(raw_ref<CoralMetrics> metrics,
                                      const base::FilePath& file_path,
                                      const base::TimeDelta ttl)
-    : metrics_(metrics), dirty_(false), file_path_(file_path), ttl_(ttl) {}
+    : metrics_(metrics), dirty_(false), file_path_(file_path), ttl_(ttl) {
+  daily_metrics_ = std::make_unique<chromeos_metrics::CumulativeMetrics>(
+      base::FilePath(kCumulativeMetricsBackingDir),
+      std::vector<std::string>({kEmbeddingDatabaseWritesStatName}),
+      kCumulativeMetricsUpdatePeriod,
+      // The daily write metrics are updated during Sync(), instead of
+      // periodically.
+      base::DoNothing(), kCumulativeMetricsReportPeriod,
+      base::BindRepeating(&EmbeddingDatabase::ReportDailyMetrics,
+                          weak_factory_.GetWeakPtr()));
+}
 
 EmbeddingDatabase::~EmbeddingDatabase() {
   // Ignore errors.
@@ -165,6 +182,7 @@ bool EmbeddingDatabase::Sync() {
     LOG(ERROR) << "Failed to seralize the to embeddings.";
     return false;
   }
+  daily_metrics_->Add(kEmbeddingDatabaseWritesStatName, buf.size());
   if (!base::WriteFile(file_path_, buf)) {
     LOG(ERROR) << "Failed to write embeddings to database.";
     return false;
@@ -246,6 +264,12 @@ void EmbeddingDatabase::MaybePruneEntries() {
     embeddings_map_.erase(updated_time_of_keys_.begin()->second);
     updated_time_of_keys_.erase(updated_time_of_keys_.begin());
   }
+}
+
+void EmbeddingDatabase::ReportDailyMetrics(
+    chromeos_metrics::CumulativeMetrics* const cumulative_metrics) {
+  metrics_->SendEmbeddingDatabaseDailyWrittenSize(
+      cumulative_metrics->GetAndClear(kEmbeddingDatabaseWritesStatName));
 }
 
 }  // namespace coral

@@ -58,6 +58,8 @@ inline constexpr char kLanguageIsSupported[] =
     "Platform.CoralService.EmbeddingEngine.LanguageSupported";
 inline constexpr char kEmbeddingDatabaseEntriesCount[] =
     "Platform.CoralService.EmbeddingEngine.DatabaseEntriesCount";
+inline constexpr char kEmbeddingDatabaseDailyWrittenSize[] =
+    "Platform.CoralService.EmbeddingEngine.DatabaseDailyWrittenSize";
 inline constexpr char kEmbeddingFilteredCount[] =
     "Platform.CoralService.EmbeddingEngine.FilteredCount";
 inline constexpr char kClusteringInputCount[] =
@@ -162,6 +164,9 @@ class CoralMetrics {
   // Send the number of entries in the embedding database every time a user
   // session starts.
   void SendEmbeddingDatabaseEntriesCount(int count);
+  // Send the total size (in KiB) written to the disk in the past day,
+  // recorded daily.
+  void SendEmbeddingDatabaseDailyWrittenSize(int size_in_bytes);
   // Number of entries filtered by the embedding engine. This might be because
   // the entity doesn't pass safety check.
   void SendEmbeddingFilteredCount(int count);
