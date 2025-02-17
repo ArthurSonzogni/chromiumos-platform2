@@ -185,6 +185,8 @@ mojom::MemoryEncryptionInfoPtr ExtractTmeInfoFromMsr(uint64_t tme_capability,
     info->active_algorithm = mojom::CryptoAlgorithm::kAesXts256;
     info->key_length = 256;
   } else {
+    LOG(WARNING) << "Get unknown crypto algorithm, tme_capability: "
+                 << tme_capability << ", tme_activate: " << tme_activate;
     info->active_algorithm = mojom::CryptoAlgorithm::kUnknown;
     info->key_length = 0;
   }
