@@ -740,7 +740,10 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   manager_->SetBrowserSessionForUser(actual_account_id, user_session->userhash);
   session_started_ = true;
   user_sessions_[actual_account_id] = std::move(user_session);
-  arc_manager_->OnUserSessionStarted(actual_account_id);
+  if (arc_manager_) {
+    // In tests, arc_manager_ is nullptr.
+    arc_manager_->OnUserSessionStarted(actual_account_id);
+  }
   if (is_first_real_user) {
     DCHECK(primary_user_account_id_.empty());
     primary_user_account_id_ = actual_account_id;
