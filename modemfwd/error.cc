@@ -26,8 +26,6 @@ const char kDlcServiceInstallErrorNeedReboot[] =
 const char kDlcServiceInstallErrorNoImage[] = "dlcServiceInstallErrorNoImage";
 const char kDlcServiceReturnedErrorOnGetDlcState[] =
     "dlcServiceReturnedErrorOnFailedToGetDlcState";
-const char kDlcServiceReturnedErrorOnGetExistingDlcs[] =
-    "dlcServiceReturnedErrorOnFailedToGetExistingDlcs";
 const char kDlcServiceReturnedErrorOnInstall[] =
     "dlcServiceReturnedErrorOnInstall";
 const char kDlcServiceReturnedErrorOnPurge[] = "dlcServiceReturnedErrorOnPurge";

@@ -14,9 +14,10 @@
 #include <base/test/task_environment.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dbus/mock_object_proxy.h>
-#include "dlcservice/dbus-proxy-mocks.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "dlcservice/dbus-proxy-mocks.h"
 #include "modemfwd/error.h"
 #include "modemfwd/mock_metrics.h"
 
@@ -154,32 +155,6 @@ class DlcManagerTest : public ::testing::Test {
     std::move(get_dlc_state_error_cb_).Run(err.get());
   }
 
-  // GetExistingDlcs
-  void StoreGetExistingDlcsAsync(
-      base::OnceCallback<void(const dlcservice::DlcsWithContent&)>
-          success_callback,
-      base::OnceCallback<void(brillo::Error*)> error_callback,
-      int timeout_ms) {
-    ASSERT_TRUE(get_existing_dlcs_success_cb_.is_null() ||
-                get_existing_dlcs_error_cb_.is_null());
-    get_existing_dlcs_success_cb_ = std::move(success_callback);
-    get_existing_dlcs_error_cb_ = std::move(error_callback);
-  }
-
-  void InvokeGetExistingDlcsFromStored(std::list<std::string> dlc_ids) {
-    dlcservice::DlcsWithContent dlc_list;
-    for (const auto& id : dlc_ids) {
-      auto* dlc_info = dlc_list.add_dlc_infos();
-      dlc_info->set_id(id);
-    }
-    std::move(get_existing_dlcs_success_cb_).Run(dlc_list);
-  }
-
-  void InvokeGetExistingDlcsFailureFromStored(std::string error_code) {
-    auto err = brillo::Error::Create(FROM_HERE, "domain", error_code, "msg");
-    std::move(get_existing_dlcs_error_cb_).Run(err.get());
-  }
-
   // Purge
   void StorePurgeAsync(const std::string& in_id,
                        base::OnceCallback<void()> success_callback,
@@ -226,10 +201,6 @@ class DlcManagerTest : public ::testing::Test {
   base::OnceCallback<void(const dlcservice::DlcState&)>
       get_dlc_state_success_cb_;
   base::OnceCallback<void(brillo::Error*)> get_dlc_state_error_cb_;
-  // GetExistingDlcs
-  base::OnceCallback<void(const dlcservice::DlcsWithContent&)>
-      get_existing_dlcs_success_cb_;
-  base::OnceCallback<void(brillo::Error*)> get_existing_dlcs_error_cb_;
   // PurgeAsync
   base::OnceCallback<void()> purge_async_success_cb_;
   base::OnceCallback<void(brillo::Error*)> purge_async_error_cb_;
@@ -608,11 +579,8 @@ TEST_F(DlcManagerTest, InstallModemDlcRetryInstallOnFailure) {
   InvokeGetDlcStateSuccessFromStored(dlcservice::DlcState::INSTALLED);
 }
 
-TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsFullSuccess) {
+TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcs) {
   SetUpDefaultDlcManagerHelper();
-  EXPECT_CALL(*mock_dlcservice_proxy_ptr_, GetExistingDlcsAsync(_, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreGetExistingDlcsAsync));
-
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_, PurgeAsync(kOtherDlc1, _, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StorePurgeAsync));
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_, PurgeAsync(kOtherDlc2, _, _, _))
@@ -623,34 +591,8 @@ TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsFullSuccess) {
       .Times(2);
 
   dlc_manager_->RemoveUnecessaryModemDlcs();
-  InvokeGetExistingDlcsFromStored({kOtherDlc1, kOtherDlc2});
   InvokePurgeSuccessFromStored();
   InvokePurgeSuccessFromStored();
-}
-
-TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsPartialSuccess) {
-  SetUpDefaultDlcManagerHelper();
-  EXPECT_CALL(*mock_dlcservice_proxy_ptr_, GetExistingDlcsAsync(_, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreGetExistingDlcsAsync));
-
-  EXPECT_CALL(*mock_dlcservice_proxy_ptr_, PurgeAsync(kOtherDlc2, _, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StorePurgeAsync));
-
-  EXPECT_CALL(*mock_metrics_,
-              SendDlcUninstallResult(DlcUninstallResult::kSuccess));
-
-  dlc_manager_->RemoveUnecessaryModemDlcs();
-  InvokeGetExistingDlcsFromStored({kOtherDlc2});
-  InvokePurgeSuccessFromStored();
-}
-
-TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsNoneSuccess) {
-  SetUpDefaultDlcManagerHelper();
-  EXPECT_CALL(*mock_dlcservice_proxy_ptr_, GetExistingDlcsAsync(_, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreGetExistingDlcsAsync));
-
-  dlc_manager_->RemoveUnecessaryModemDlcs();
-  InvokeGetExistingDlcsFromStored({});
 }
 
 TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsNoDeviceVariant) {
@@ -675,27 +617,9 @@ TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsNoDeviceVariant) {
   dlc_manager_->RemoveUnecessaryModemDlcs();
 }
 
-TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsGetExistingDlcsError) {
-  SetUpDefaultDlcManagerHelper();
-  EXPECT_CALL(*mock_dlcservice_proxy_ptr_, GetExistingDlcsAsync(_, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreGetExistingDlcsAsync));
-
-  EXPECT_CALL(
-      *mock_metrics_,
-      SendDlcUninstallResult(
-          DlcUninstallResult::kDlcServiceReturnedErrorOnGetExistingDlcs));
-
-  dlc_manager_->RemoveUnecessaryModemDlcs();
-  // Use unknown dbus error to check kDlcServiceReturnedErrorOnGetExistingDlcs
-  InvokeGetExistingDlcsFailureFromStored("unknown_error_code");
-}
-
 TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsFirstPurgeError) {
   SetUpDefaultDlcManagerHelper();
   InSequence s;
-  EXPECT_CALL(*mock_dlcservice_proxy_ptr_, GetExistingDlcsAsync(_, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreGetExistingDlcsAsync));
-
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_, PurgeAsync(kOtherDlc1, _, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StorePurgeAsync));
   EXPECT_CALL(*mock_metrics_,
@@ -708,7 +632,6 @@ TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsFirstPurgeError) {
               SendDlcUninstallResult(DlcUninstallResult::kSuccess));
 
   dlc_manager_->RemoveUnecessaryModemDlcs();
-  InvokeGetExistingDlcsFromStored({kOtherDlc1, kOtherDlc2});
   InvokePurgeFailureFromStored(dlcservice::kErrorAllocation);
   InvokePurgeSuccessFromStored();
 }

@@ -13,9 +13,9 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/errors/error.h>
 #include <dbus/dlcservice/dbus-constants.h>
+
 #include "dlcservice/dbus-proxies.h"
 #include "dlcservice/proto_bindings/dlcservice.pb.h"
-
 #include "modemfwd/error.h"
 
 namespace modemfwd {
@@ -91,32 +91,8 @@ void DlcManager::RemoveUnecessaryModemDlcs() {
     metrics_->SendDlcUninstallResultFailure(err.get());
     return;
   }
-  dlc_service_proxy_->GetExistingDlcsAsync(
-      base::BindOnce(&DlcManager::OnGetExistingDlcsSuccess,
-                     weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&DlcManager::OnGetExistingDlcsError,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
 
-void DlcManager::OnGetExistingDlcsSuccess(
-    const dlcservice::DlcsWithContent& dlc_list) {
-  std::set<std::string> dlcs_to_remove_join;
-  for (const auto& dlc_info : dlc_list.dlc_infos()) {
-    if (dlcs_to_remove_.count(dlc_info.id())) {
-      dlcs_to_remove_join.emplace(dlc_info.id());
-    }
-  }
-  dlcs_to_remove_ = std::move(dlcs_to_remove_join);
   RemoveNextDlc();
-}
-
-void DlcManager::OnGetExistingDlcsError(brillo::Error* dbus_error) {
-  brillo::ErrorPtr err = Error::CreateFromDbusError(dbus_error);
-  modemfwd::Error::AddTo(&err, FROM_HERE,
-                         error::kDlcServiceReturnedErrorOnGetExistingDlcs,
-                         "Failed to get existing DLCs.");
-  metrics_->SendDlcUninstallResultFailure(err.get());
-  // Nothing else to do without the list of existing DLCs.
 }
 
 void DlcManager::RemoveNextDlc() {

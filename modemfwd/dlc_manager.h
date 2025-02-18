@@ -14,10 +14,10 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
-#include "brillo/errors/error.h"
-#include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <dlcservice/dbus-proxies.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
 
+#include "brillo/errors/error.h"
 #include "modemfwd/metrics.h"
 #include "modemfwd/proto_bindings/firmware_manifest_v2.pb.h"
 
@@ -86,8 +86,6 @@ class DlcManager {
 
   void RemoveNextDlc();
 
-  void OnGetExistingDlcsSuccess(const dlcservice::DlcsWithContent& dlc_list);
-  void OnGetExistingDlcsError(brillo::Error* dbus_error);
   void OnPurgeSuccess();
   void OnPurgeError(brillo::Error* dbus_error);
   void OnInstallSuccess();

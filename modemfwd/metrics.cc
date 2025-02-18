@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "modemfwd/metrics.h"
+
 #include <base/check.h>
 #include <base/logging.h>
 #include <dbus/dlcservice/dbus-constants.h>
@@ -9,7 +11,6 @@
 
 #include "modemfwd/error.h"
 #include "modemfwd/logging.h"
-#include "modemfwd/metrics.h"
 
 using modemfwd::metrics::CheckForWedgedModemResult;
 using modemfwd::metrics::DlcInstallResult;
@@ -112,8 +113,6 @@ Metrics::DlcUninstallResultMap Metrics::uninstall_result_ = {
      DlcUninstallResult::kDlcServiceReturnedNeedReboot},  // dbus error
     {dlcservice::kErrorBusy,
      DlcUninstallResult::kDlcServiceReturnedBusy},  // dbus error
-    {error::kDlcServiceReturnedErrorOnGetExistingDlcs,
-     DlcUninstallResult::kDlcServiceReturnedErrorOnGetExistingDlcs},
     {error::kDlcServiceReturnedErrorOnPurge,
      DlcUninstallResult::kDlcServiceReturnedErrorOnPurge},
     {error::kUnexpectedEmptyVariant,

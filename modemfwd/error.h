@@ -24,7 +24,6 @@ extern const char kDlcServiceInstallErrorInternal[];
 extern const char kDlcServiceInstallErrorNeedReboot[];
 extern const char kDlcServiceInstallErrorNoImage[];
 extern const char kDlcServiceReturnedErrorOnGetDlcState[];
-extern const char kDlcServiceReturnedErrorOnGetExistingDlcs[];
 extern const char kDlcServiceReturnedErrorOnInstall[];
 extern const char kDlcServiceReturnedErrorOnPurge[];
 extern const char kUnexpectedDlcState[];

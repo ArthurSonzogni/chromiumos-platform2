@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "modemfwd/metrics.h"
+
 #include <brillo/errors/error.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dbus/modemfwd/dbus-constants.h>
@@ -10,7 +12,6 @@
 #include <metrics/metrics_library_mock.h>
 
 #include "modemfwd/error.h"
-#include "modemfwd/metrics.h"
 
 using modemfwd::metrics::CheckForWedgedModemResult;
 using modemfwd::metrics::DlcInstallResult;
@@ -357,16 +358,6 @@ TEST_F(MetricsTest, SendDlcUninstallResult_Failures) {
 
   EXPECT_CALL(*metrics_library_,
               SendEnumToUMA(metrics::kMetricDlcUninstallResult,
-                            7 /*kDlcServiceReturnedErrorOnGetExistingDlcs*/,
-                            num_consts));
-  err = brillo::Error::Create(FROM_HERE, "dbus",
-                              error::kDlcServiceReturnedErrorOnGetExistingDlcs,
-                              "msg");
-  metrics_->SendDlcUninstallResultFailure(err.get());
-  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
-
-  EXPECT_CALL(*metrics_library_,
-              SendEnumToUMA(metrics::kMetricDlcUninstallResult,
                             8 /*kDlcServiceReturnedErrorOnPurge*/, num_consts));
   err = brillo::Error::Create(FROM_HERE, "dbus",
                               error::kDlcServiceReturnedErrorOnPurge, "msg");
@@ -398,8 +389,8 @@ TEST_F(MetricsTest, SendDlcUninstallResult_VerifyErrorIteration) {
   auto err = brillo::Error::Create(FROM_HERE, "dbus",
                                    error::kUnexpectedEmptyVariant, "msg");
   // known linked error
-  modemfwd::Error::AddTo(
-      &err, FROM_HERE, error::kDlcServiceReturnedErrorOnGetExistingDlcs, "msg");
+  modemfwd::Error::AddTo(&err, FROM_HERE, error::kDlcServiceInstallErrorBusy,
+                         "msg");
   metrics_->SendDlcUninstallResultFailure(err.get());
 
   // unknown root error

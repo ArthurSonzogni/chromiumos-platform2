@@ -60,7 +60,7 @@ enum class DlcUninstallResult {
   kDlcServiceReturnedNoImageFound = 4,
   kDlcServiceReturnedNeedReboot = 5,
   kDlcServiceReturnedBusy = 6,
-  kDlcServiceReturnedErrorOnGetExistingDlcs = 7,
+  // kDlcServiceReturnedErrorOnGetExistingDlcs = 7, OBSOLETE
   kDlcServiceReturnedErrorOnPurge = 8,
   kUnexpectedEmptyVariant = 9,
   kNumConstants
