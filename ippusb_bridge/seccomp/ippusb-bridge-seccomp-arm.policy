@@ -43,6 +43,7 @@ getrandom: arg2 in ~GRND_RANDOM
 getresgid32: 1
 getresuid32: 1
 getsockname: 1
+getsockopt: 1
 gettid: 1
 gettimeofday: 1
 # The following ioctls are:

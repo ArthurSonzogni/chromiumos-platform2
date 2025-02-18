@@ -38,6 +38,7 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, PartialEq)]
 pub struct Args {
     pub bus_device: Option<(u8, u8)>,
+    pub tcp_port: Option<u16>,
     pub unix_socket: Option<PathBuf>,
     pub upstart_mode: bool,
     pub verbose_log: bool,
@@ -49,6 +50,7 @@ impl Args {
 
         let mut opts = getopts::Options::new();
         opts.optopt("d", "bus-device", "Identifier of device", "BUS:DEVICE")
+            .optopt("p", "port", "Port number to listen on", "PORT")
             .optopt(
                 "s",
                 "unix-socket",
@@ -98,12 +100,21 @@ impl Args {
             })
             .transpose()?;
 
+        let tcp_port = if let Some(port) = matches.opt_str("port") {
+            Some(
+                u16::from_str(&port)
+                    .map_err(|e| Error::ParseArgument("port".to_string(), port, e))?,
+            )
+        } else {
+            None
+        };
         let unix_socket = matches.opt_str("unix-socket").map(PathBuf::from);
         let verbose_log = matches.opt_present("v");
         let upstart_mode = matches.opt_present("upstart");
 
         Ok(Some(Args {
             bus_device,
+            tcp_port,
             unix_socket,
             upstart_mode,
             verbose_log,
@@ -144,6 +155,23 @@ mod tests {
         assert!(Args::parse(&["ippusb-bridge", "--bus-device", "a:14"]).is_err());
         assert!(Args::parse(&["ippusb-bridge", "--bus-device", "256:7"]).is_err());
         assert!(Args::parse(&["ippusb-bridge", "--bus-device", "91:256"]).is_err());
+    }
+
+    #[test]
+    fn tcp_port() {
+        let args = Args::parse(&["ippusb-bridge", "--port=60000"])
+            .expect("Valid port format should be properly parsed.")
+            .expect("Options struct should be returned");
+        assert_eq!(args.tcp_port, Some(60000));
+
+        let args = Args::parse(&["ippusb-bridge", "--port", "60001"])
+            .expect("Valid port format should be properly parsed.")
+            .expect("Options struct should be returned");
+        assert_eq!(args.tcp_port, Some(60001));
+
+        assert!(Args::parse(&["ippusb-bridge", "--port"]).is_err());
+        assert!(Args::parse(&["ippusb-bridge", "--port=70000"]).is_err());
+        assert!(Args::parse(&["ippusb-bridge", "--port=-1"]).is_err());
     }
 
     #[test]

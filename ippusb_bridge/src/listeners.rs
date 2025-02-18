@@ -4,30 +4,12 @@
 
 use std::fs;
 use std::io;
-use std::net::TcpListener;
 use std::ops::Deref;
 use std::os::unix::io::{AsRawFd, RawFd};
-use std::os::unix::net::UnixListener;
 
-use tiny_http::Stream;
+use tokio::net::UnixListener;
 
 use log::error;
-
-pub trait Accept: AsRawFd {
-    fn accept(&self) -> io::Result<Stream>;
-}
-
-impl Accept for TcpListener {
-    fn accept(&self) -> io::Result<Stream> {
-        self.accept().map(|(stream, _)| stream.into())
-    }
-}
-
-impl Accept for UnixListener {
-    fn accept(&self) -> io::Result<Stream> {
-        self.accept().map(|(stream, _)| stream.into())
-    }
-}
 
 /// Scopes a UnixListener such that on Drop, the local socket path, if any, is deleted.
 pub struct ScopedUnixListener(pub UnixListener);
@@ -35,12 +17,6 @@ pub struct ScopedUnixListener(pub UnixListener);
 impl AsRawFd for ScopedUnixListener {
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
-    }
-}
-
-impl Accept for ScopedUnixListener {
-    fn accept(&self) -> io::Result<Stream> {
-        self.0.accept().map(|(stream, _)| stream.into())
     }
 }
 

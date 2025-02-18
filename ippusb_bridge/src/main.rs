@@ -13,10 +13,10 @@ mod util;
 
 use std::fmt;
 use std::io;
-use std::net::TcpListener;
+use std::net::SocketAddr;
+use std::net::TcpListener as StdTcpListener;
 use std::os::raw::c_int;
 use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
-use std::os::unix::net::UnixListener;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::time::Duration;
 
@@ -27,12 +27,14 @@ use libchromeos::syslog;
 use log::{debug, error, info};
 use nix::sys::signal::Signal;
 use tiny_http::{ClientConnection, Stream};
+use tokio::net::{TcpStream, UnixListener, UnixStream};
+use tokio::runtime::Builder;
 
 use crate::arguments::Args;
 use crate::error::Error::ReadConfigDescriptor;
 use crate::hotplug::UnplugDetector;
 use crate::http::handle_request;
-use crate::listeners::{Accept, ScopedUnixListener};
+use crate::listeners::ScopedUnixListener;
 use crate::usb_connector::UsbConnector;
 
 #[derive(Debug)]
@@ -46,6 +48,8 @@ pub enum Error {
     RegisterHandler(nix::Error),
     Syslog(syslog::Error),
     SysUtil(nix::Error),
+    TokioRuntime(io::Error),
+    Forwarder(io::Error),
 }
 
 impl std::error::Error for Error {}
@@ -63,6 +67,8 @@ impl fmt::Display for Error {
             RegisterHandler(err) => write!(f, "Registering SIGINT handler failed: {}", err),
             Syslog(err) => write!(f, "Failed to initalize syslog: {}", err),
             SysUtil(err) => write!(f, "Sysutil error: {}", err),
+            TokioRuntime(err) => write!(f, "Error setting up tokio runtime: {}", err),
+            Forwarder(err) => write!(f, "Error during internal forwarding: {}", err),
         }
     }
 }
@@ -109,7 +115,7 @@ struct Daemon {
     num_clients: usize,
 
     shutdown: EventFd,
-    listener: Box<dyn Accept>,
+    listener: StdTcpListener,
     usb: UsbConnector,
 }
 
@@ -127,7 +133,7 @@ impl Daemon {
     fn new(
         verbose_log: bool,
         shutdown: EventFd,
-        listener: Box<dyn Accept>,
+        listener: StdTcpListener,
         usb: UsbConnector,
     ) -> Result<Self> {
         Ok(Self {
@@ -160,7 +166,10 @@ impl Daemon {
                 match event.token() {
                     Token::Shutdown => break 'poll,
                     Token::ClientConnection => match self.listener.accept() {
-                        Ok(stream) => self.handle_connection(stream),
+                        Ok((stream, addr)) => {
+                            info!("Connection opened from {}", addr);
+                            self.handle_connection(stream.into())
+                        }
                         Err(err) => error!("Failed to accept connection: {}", err),
                     },
                 }
@@ -204,6 +213,24 @@ impl Daemon {
     }
 }
 
+async fn forward_connection(
+    conn_count: usize,
+    mut incoming: UnixStream,
+    local_addr: SocketAddr,
+) -> Result<()> {
+    let mut outbound = TcpStream::connect(local_addr)
+        .await
+        .map_err(Error::Forwarder)?;
+    let (in_size, out_size) = tokio::io::copy_bidirectional(&mut incoming, &mut outbound)
+        .await
+        .map_err(Error::Forwarder)?;
+    info!(
+        "Forwarder on connection {} closed with {} byes sent, {} bytes returned",
+        conn_count, in_size, out_size
+    );
+    Ok(())
+}
+
 fn run() -> Result<()> {
     syslog::init("ippusb_bridge".to_string(), true).map_err(Error::Syslog)?;
     let argv: Vec<String> = std::env::args().collect();
@@ -219,16 +246,10 @@ fn run() -> Result<()> {
     // Safe because the syscall doesn't touch any memory and always succeeds.
     unsafe { libc::umask(0o117) };
 
-    let listener: Box<dyn Accept> = if let Some(unix_socket_path) = args.unix_socket {
-        info!("Listening on {}", unix_socket_path.display());
-        Box::new(ScopedUnixListener(
-            UnixListener::bind(unix_socket_path).map_err(Error::CreateSocket)?,
-        ))
-    } else {
-        let host = "127.0.0.1:60000";
-        info!("Listening on {}", host);
-        Box::new(TcpListener::bind(host).map_err(Error::CreateSocket)?)
-    };
+    let host = format!("127.0.0.1:{}", args.tcp_port.unwrap_or(0));
+    let listener = StdTcpListener::bind(host).map_err(Error::CreateSocket)?;
+    let local_addr = listener.local_addr().map_err(Error::CreateSocket)?;
+    info!("Listening on {}", local_addr);
 
     // Start up a connection to the system bus.
     // We need to listen to a signal sent when access to USB is restored. It
@@ -277,10 +298,50 @@ fn run() -> Result<()> {
         None
     };
 
+    // If a socket path was passed, also start a forwarder that will connect to the main TCP
+    // listener.
+    let runtime = Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .map_err(Error::TokioRuntime)?;
+    if let Some(ref unix_socket_path) = args.unix_socket {
+        info!("Forwarder listening on {}", unix_socket_path.display());
+        let _guard = runtime.enter();
+        let forwarder =
+            ScopedUnixListener(UnixListener::bind(unix_socket_path).map_err(Error::CreateSocket)?);
+
+        let handle = runtime.handle().clone();
+        runtime.spawn(async move {
+            let mut conn_count: usize = 1;
+            loop {
+                match forwarder.accept().await {
+                    Ok((incoming, _)) => {
+                        info!("New connection {} forwarding to {}", conn_count, local_addr);
+                        handle.spawn(async move {
+                            if let Err(err) =
+                                forward_connection(conn_count, incoming, local_addr).await
+                            {
+                                error!("Forwarding error on connection {}: {}", conn_count, err);
+                            }
+                        });
+                    }
+                    Err(err) => {
+                        error!(
+                            "Forwarder failed to accept connection {}: {}",
+                            conn_count, err
+                        );
+                    }
+                }
+                conn_count += 1;
+            }
+        });
+    }
+
     let mut daemon = Daemon::new(args.verbose_log, shutdown_fd, listener, usb)?;
     daemon.run()?;
 
     info!("Shutting down.");
+    runtime.shutdown_timeout(Duration::from_millis(500));
     Ok(())
 }
 
