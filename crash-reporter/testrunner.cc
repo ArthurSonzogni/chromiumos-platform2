@@ -9,6 +9,8 @@ int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToStderr);
   brillo::LogToString(true);
 
+  ::testing::GMOCK_FLAG(default_mock_behavior) = 0;
+
   auto runner = platform2::TestRunner(argc, argv);
   return runner.Run();
 }
