@@ -206,6 +206,8 @@ class TitleGenerationEngine
   std::optional<odml::SessionStateManagerInterface::User> current_user_;
   // This is used to trigger the periodic cache flush to disk.
   std::unique_ptr<DelayedRepeatingTimer> cache_flush_timer_;
+  // If title_cache_ is dirty and needs flushing.
+  bool title_cache_dirty_ = false;
 
   // For loading and saving the title cache.
   std::unique_ptr<TitleCacheStorageInterface> title_cache_storage_;

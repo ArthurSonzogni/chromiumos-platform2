@@ -245,15 +245,17 @@ void TitleGenerationEngine::OnUserLoggedIn(
   current_user_ = user;
   title_cache_storage_->Load(user, title_cache_);
   cache_flush_timer_->Start();
+  title_cache_dirty_ = false;
 }
 
 void TitleGenerationEngine::OnUserLoggedOut() {
   cache_flush_timer_->Stop();
-  if (current_user_.has_value()) {
+  if (current_user_.has_value() && title_cache_dirty_) {
     title_cache_storage_->Save(current_user_.value(), title_cache_);
   }
   current_user_.reset();
   title_cache_.Clear();
+  title_cache_dirty_ = false;
 }
 
 void TitleGenerationEngine::OnGetModelStateResult(
@@ -529,6 +531,7 @@ void TitleGenerationEngine::CacheGroupTitles(
     title_cache_.Put(
         *group_data.title,
         TitleCacheEntry{.entity_titles = std::move(entity_titles)});
+    title_cache_dirty_ = true;
   }
 }
 
@@ -570,8 +573,9 @@ std::optional<std::string> TitleGenerationEngine::GetNthTitleCacheKeyForTesting(
 }
 
 void TitleGenerationEngine::OnFlushCacheTimer() {
-  if (current_user_.has_value()) {
+  if (current_user_.has_value() && title_cache_dirty_) {
     title_cache_storage_->Save(current_user_.value(), title_cache_);
+    title_cache_dirty_ = false;
   }
 }
 

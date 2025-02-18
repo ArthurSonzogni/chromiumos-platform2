@@ -31,6 +31,7 @@
 
 namespace coral {
 namespace {
+using base::test::TaskEnvironment;
 using base::test::TestFuture;
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -112,6 +113,10 @@ class TitleGenerationEngineTest : public testing::Test {
       : coral_metrics_(raw_ref(metrics_)),
         model_service_(raw_ref(metrics_), raw_ref(shim_loader_)) {}
   void SetUp() override {
+    task_environment_ = std::make_unique<TaskEnvironment>(
+        TaskEnvironment::TimeSource::MOCK_TIME,
+        TaskEnvironment::MainThreadType::DEFAULT);
+
     fake_ml::SetupFakeChromeML(raw_ref(metrics_), raw_ref(shim_loader_));
     mojo::core::Init();
     // A catch-all so that we don't have to explicitly EXPECT every metrics
@@ -211,7 +216,7 @@ class TitleGenerationEngineTest : public testing::Test {
     }
   }
 
-  base::test::TaskEnvironment task_environment_;
+  std::unique_ptr<base::test::TaskEnvironment> task_environment_;
   NiceMock<MetricsLibraryMock> metrics_;
   CoralMetrics coral_metrics_;
   NiceMock<odml::OdmlShimLoaderMock> shim_loader_;
@@ -336,6 +341,15 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   const odml::SessionStateManagerInterface::User user{"fake_user_1",
                                                       "fake_user_hash_1"};
   engine_->OnUserLoggedIn(user);
+
+  // Wait a while, make sure there are no cache flushes.
+  task_environment_->FastForwardBy(base::Days(100));
+  TitleCacheStorage test_title_cache_storage =
+      TitleCacheStorage(temp_dir_->GetPath());
+  base::HashingLRUCache<std::string, TitleCacheEntry> read_title_cache(4);
+  EXPECT_TRUE(test_title_cache_storage.Load(user, read_title_cache));
+  EXPECT_EQ(0, read_title_cache.size());
+
   // Set up request with 8 items in 1 cluster.
   std::vector<mojom::EntityPtr> entities;
   entities.push_back(mojom::Entity::NewTab(
@@ -379,6 +393,19 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   ASSERT_TRUE(response1.groups[0]->title.has_value());
   std::string title1 = *response1.groups[0]->title;
 
+  // Wait a while, make sure the cache has been flushed.
+  task_environment_->FastForwardBy(base::Days(100));
+  EXPECT_TRUE(test_title_cache_storage.Load(user, read_title_cache));
+  EXPECT_EQ(1, read_title_cache.size());
+
+  // Clear out the on-disk cache, then wait and make sure we don't flush the
+  // existing cache needlessly.
+  read_title_cache.Clear();
+  EXPECT_TRUE(test_title_cache_storage.Save(user, read_title_cache));
+  task_environment_->FastForwardBy(base::Days(100));
+  EXPECT_TRUE(test_title_cache_storage.Load(user, read_title_cache));
+  EXPECT_EQ(0, read_title_cache.size());
+
   // Remove 1 item and add 1 item to the cluster. This makes the similarity
   // ratio 0.25, which is lower than the acceptable threshold, so the title
   // should be reused.
@@ -395,6 +422,14 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   ASSERT_TRUE(response2.groups[0]->title.has_value());
   std::string title2 = *response2.groups[0]->title;
   ASSERT_EQ(title1, title2);
+
+  // Logout and log back in, should not affect the result.
+  engine_->OnUserLoggedOut();
+  engine_->OnUserLoggedIn(user);
+
+  // On disk cache should be overwritten with the correct values.
+  EXPECT_TRUE(test_title_cache_storage.Load(user, read_title_cache));
+  EXPECT_EQ(1, read_title_cache.size());
 
   // Remove 2 items and add 2 more items to the cluster. This makes the
   // similarity threshold 50%, so the title won't be reused.
