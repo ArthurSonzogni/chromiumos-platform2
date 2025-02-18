@@ -101,9 +101,7 @@ COMMIT
 :POSTROUTING ACCEPT [0:0]
 :redirect_default_dns - [0:0]
 :redirect_user_dns - [0:0]
-{% if ipv6 -%}
-:snat_user_dns - [0:0]
-{% elif ipv4 -%}
+{% if ipv4 -%}
 :ingress_port_forwarding - [0:0]
 :apply_auto_dnat_to_arc - [0:0]
 :apply_auto_dnat_to_crostini - [0:0]
@@ -126,9 +124,6 @@ COMMIT
   {#- is used (without SLAAC). See AddDownstreamInterfaceRules for the method   #}
   {#- that sets up the SNAT mark.                                               #}
 -A POSTROUTING -m mark --mark 0x1/0x1 -j MASQUERADE
-{% if ipv6 -%}
--A POSTROUTING -m mark --mark 0x8000/0xc000 -j snat_user_dns
-{% endif -%}
 COMMIT
 
 *filter

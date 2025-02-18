@@ -136,8 +136,6 @@ constexpr char kApplyAutoDNATToParallelsChain[] =
 constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
 // nat OUTPUT chain for egress traffic from processes running on the host.
 constexpr char kRedirectUserDnsChain[] = "redirect_user_dns";
-// nat POSTROUTING chain for egress traffic from processes running on the host.
-constexpr char kSNATUserDnsChain[] = "snat_user_dns";
 
 // Chains for QoS.
 // mangle OUTPUT and PREROUTING chains for applying fwmarks on both ingress and
@@ -807,20 +805,6 @@ bool Datapath::ModifyDnsProxyDNAT(IpFamily family,
   return success;
 }
 
-bool Datapath::ModifyDnsProxyMasquerade(IpFamily family,
-                                        Iptables::Command op,
-                                        std::string_view chain) {
-  bool success = true;
-  for (const auto& protocol : {"udp", "tcp"}) {
-    std::vector<std::string_view> args = {
-        "-p", protocol, "--dport", kDefaultDnsPort, "-j", "MASQUERADE", "-w"};
-    if (!ModifyIptables(family, Iptables::Table::kNat, op, chain, args)) {
-      success = false;
-    }
-  }
-  return success;
-}
-
 bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
   auto batch_mode = process_runner_->AcquireIptablesBatchMode();
 
@@ -861,14 +845,6 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       if (!ModifyDnsProxyDNAT(family, rule, Iptables::Command::kA,
                               /*ifname=*/"", kRedirectUserDnsChain)) {
         LOG(ERROR) << "Failed to add user DNS DNAT rule";
-        return false;
-      }
-
-      // Add MASQUERADE rule for user (including Chrome) traffic.
-      if (family == IpFamily::kIPv6 &&
-          !ModifyDnsProxyMasquerade(family, Iptables::Command::kA,
-                                    kSNATUserDnsChain)) {
-        LOG(ERROR) << "Failed to add user DNS MASQUERADE rule";
         return false;
       }
 
@@ -949,10 +925,6 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
     case patchpanel::SetDnsRedirectionRuleRequest::USER: {
       ModifyDnsProxyDNAT(family, rule, Iptables::Command::kD, /*ifname=*/"",
                          kRedirectUserDnsChain);
-      if (family == IpFamily::kIPv6) {
-        ModifyDnsProxyMasquerade(family, Iptables::Command::kD,
-                                 kSNATUserDnsChain);
-      }
       ModifyDnsProxyAcceptRule(family, rule, Iptables::Command::kD);
       break;
     }

@@ -1366,12 +1366,6 @@ TEST_F(DatapathTest, StartDnsRedirection_User) {
       IpFamily::kIPv4,
       "filter -A accept_egress_to_dns_proxy -d 100.115.92.130 -j "
       "ACCEPT -w");
-  runner_.ExpectCallIptables(IpFamily::kIPv6,
-                             "nat -A snat_user_dns -p udp --dport 53 -j "
-                             "MASQUERADE -w");
-  runner_.ExpectCallIptables(IpFamily::kIPv6,
-                             "nat -A snat_user_dns -p tcp --dport 53 -j "
-                             "MASQUERADE -w");
   runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "nat -A redirect_user_dns -p udp --dport 53 -j DNAT "
@@ -1542,12 +1536,6 @@ TEST_F(DatapathTest, StopDnsRedirection_User) {
       "filter -D accept_egress_to_dns_proxy -d 100.115.92.130 -j "
       "ACCEPT -w");
 
-  runner_.ExpectCallIptables(IpFamily::kIPv6,
-                             "nat -D snat_user_dns -p udp --dport 53 -j "
-                             "MASQUERADE -w");
-  runner_.ExpectCallIptables(IpFamily::kIPv6,
-                             "nat -D snat_user_dns -p tcp --dport 53 -j "
-                             "MASQUERADE -w");
   runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "nat -D redirect_user_dns -p udp --dport 53 -j DNAT "

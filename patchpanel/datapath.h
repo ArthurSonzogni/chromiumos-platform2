@@ -497,9 +497,6 @@ class Datapath {
   bool ModifyConnectNamespaceSkipVpnRule(Iptables::Command command,
                                          std::string_view ifname);
 
-  bool ModifyDnsProxyMasquerade(IpFamily family,
-                                Iptables::Command command,
-                                std::string_view chain);
   bool ModifyRedirectDnsJumpRule(IpFamily family,
                                  Iptables::Command command,
                                  std::string_view chain,
