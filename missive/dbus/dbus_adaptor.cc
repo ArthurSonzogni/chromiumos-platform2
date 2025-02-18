@@ -25,6 +25,9 @@
 namespace reporting {
 
 namespace {
+// UMA names
+static constexpr char kStartStatusUmaName[] = "Platform.Missive.StartStatus";
+
 template <typename ResponseType>
 ResponseType RespondDaemonNotReady() {
   ResponseType response_body;
@@ -63,6 +66,10 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
 void DBusAdaptor::StartupFinished(base::OnceCallback<void(Status)> failure_cb,
                                   Status status) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  const auto res = analytics::Metrics::SendEnumToUMA(
+      /*name=*/kStartStatusUmaName, status.code(), error::Code::MAX_VALUE);
+  LOG_IF(ERROR, !res) << "SendEnumToUMA failure, " << kStartStatusUmaName << " "
+                      << static_cast<int>(status.code());
   if (!status.ok()) {
     if (failure_cb) {
       std::move(failure_cb).Run(status);
