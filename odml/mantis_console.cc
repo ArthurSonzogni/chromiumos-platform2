@@ -346,7 +346,7 @@ class MantisConsole : public brillo::DBusDaemon {
     auto service = mantis_service_provider_impl_->service();
     LOG(INFO) << "Mantis outpainting call";
     base::RunLoop run_loop;
-    service->mantis_processor->Inpainting(
+    service->mantis_processor->Outpainting(
         GetImage(cl_), GetMask(cl_), GetSeed(cl_),
         base::BindOnce(&MantisConsole::OnOperationFinish,
                        base::Unretained(this), &run_loop));

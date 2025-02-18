@@ -185,6 +185,37 @@ TEST_F(MantisProcessorTest, InpaintingSucceeds) {
   EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
 }
 
+TEST_F(MantisProcessorTest, OutpaintingSucceeds) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
+      .Times(2)
+      .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kPass));
+  EXPECT_CALL(
+      metrics_lib_,
+      SendTimeToUMA("Platform.MantisService.Latency.ClassifyImageSafety", _, _,
+                    _, _))
+      .Times(2);
+  EXPECT_CALL(
+      metrics_lib_,
+      // TOOD(b/383666174): add outpainting metric
+      SendTimeToUMA("Platform.MantisService.Latency.Inpainting", _, _, _, _));
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.Outpainting(GetFakeImage(), GetFakeMask(), 0,
+                        result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
 TEST_F(MantisProcessorTest, GenerativeFillMissingProcessor) {
   mojo::Remote<mojom::MantisProcessor> processor_remote;
   MantisProcessor processor = InitializeMantisProcessor(

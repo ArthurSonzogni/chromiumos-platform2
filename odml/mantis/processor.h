@@ -85,6 +85,11 @@ class MantisProcessor : public mojom::MantisProcessor {
                   uint32_t seed,
                   InpaintingCallback callback) override;
 
+  void Outpainting(const std::vector<uint8_t>& image,
+                   const std::vector<uint8_t>& mask,
+                   uint32_t seed,
+                   OutpaintingCallback callback) override;
+
   void GenerativeFill(const std::vector<uint8_t>& image,
                       const std::vector<uint8_t>& mask,
                       uint32_t seed,
