@@ -948,10 +948,6 @@ TEST_F(DatapathTest, StartStopVpnRouting_ArcVpn) {
   runner_.ExpectCallIptables(
       IpFamily::kDual,
       "mangle -A apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
-      "redirect_dns -w");
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "filter -A vpn_accept -m mark "
                              "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
@@ -971,10 +967,6 @@ TEST_F(DatapathTest, StartStopVpnRouting_ArcVpn) {
                              "--restore-mark --mask 0x00003f00 -w");
   runner_.ExpectCallIptables(IpFamily::kIPv4,
                              "nat -D POSTROUTING -o arcbr0 -j MASQUERADE -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
-      "redirect_dns -w");
   // Teardown
   datapath_->StopVpnRouting(vpn_device);
 }
@@ -1035,10 +1027,6 @@ TEST_F(DatapathTest, StartStopVpnRouting_HostVpn) {
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "mangle -A PREROUTING_arcbr0 -m mark ! --mark "
                              "0x00000000/0x00003f00 -j RETURN -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
-      "redirect_dns -w");
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "filter -A vpn_accept -m mark "
                              "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
@@ -1055,10 +1043,6 @@ TEST_F(DatapathTest, StartStopVpnRouting_HostVpn) {
                              "--restore-mark --mask 0x00003f00 -w");
   runner_.ExpectCallIptables(IpFamily::kIPv4,
                              "nat -D POSTROUTING -o tun0 -j MASQUERADE -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
-      "redirect_dns -w");
   runner_.ExpectCallIptables(IpFamily::kDual, "filter -F vpn_accept -w");
   // Stop arcbr0 routing
   runner_.ExpectCallIptables(IpFamily::kDual,
@@ -1252,70 +1236,6 @@ TEST_F(DatapathTest, AddIPv4Route) {
   }
   EXPECT_EQ(route1, captured_routes[0]);
   EXPECT_EQ(route1, captured_routes[1]);
-}
-
-TEST_F(DatapathTest, RedirectDnsRules) {
-  ShillClient::Device eth_device;
-  eth_device.ifname = "eth0";
-  ShillClient::Device wlan_device;
-  wlan_device.ifname = "wlan0";
-
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -I redirect_dns -p tcp --dport 53 -o eth0 -j DNAT "
-      "--to-destination 192.168.1.1 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -I redirect_dns -p udp --dport 53 -o eth0 -j DNAT "
-      "--to-destination 192.168.1.1 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -I redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
-      "--to-destination 1.1.1.1 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -I redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
-      "--to-destination 1.1.1.1 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
-      "--to-destination 1.1.1.1 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
-      "--to-destination 1.1.1.1 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -I redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
-      "--to-destination 8.8.8.8 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -I redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
-      "--to-destination 8.8.8.8 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D redirect_dns -p tcp --dport 53 -o eth0 -j DNAT "
-      "--to-destination 192.168.1.1 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D redirect_dns -p udp --dport 53 -o eth0 -j DNAT "
-      "--to-destination 192.168.1.1 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
-      "--to-destination 8.8.8.8 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
-      "--to-destination 8.8.8.8 -w");
-
-  datapath_->RemoveRedirectDnsRule(wlan_device);
-  datapath_->RemoveRedirectDnsRule(ShillClient::Device());
-  datapath_->AddRedirectDnsRule(eth_device, "192.168.1.1");
-  datapath_->AddRedirectDnsRule(wlan_device, "1.1.1.1");
-  datapath_->AddRedirectDnsRule(wlan_device, "8.8.8.8");
-  datapath_->RemoveRedirectDnsRule(eth_device);
-  datapath_->RemoveRedirectDnsRule(wlan_device);
 }
 
 // This test needs a mock process runner so it doesn't use Datapath object in

@@ -395,16 +395,6 @@ class Datapath {
                                      const ShillClient::Device& shill_device,
                                      const net_base::IPv4Address& ipv4_addr);
 
-  // Create (or delete) DNAT rules for redirecting DNS queries from system
-  // services to the nameservers of a particular physical networks. These
-  // DNAT rules are only applied if a VPN is connected and allows system
-  // services to resolve hostnames even if a VPN application configures DNS
-  // addresses only routable through the VPN (b/178331695).
-  // TODO(b/171157837) Replaces these rules with the system DNS proxy.
-  bool AddRedirectDnsRule(const ShillClient::Device& shill_device,
-                          std::string_view dns_ipv4_addr);
-  bool RemoveRedirectDnsRule(const ShillClient::Device& shill_device);
-
   // Enable (or disable) QoS detection (i.e., setting QoS-related bits in
   // fwmark) by modifying the jump rules to the qos_detect chain. These two
   // functions are called by QoSService.
@@ -507,10 +497,6 @@ class Datapath {
   bool ModifyConnectNamespaceSkipVpnRule(Iptables::Command command,
                                          std::string_view ifname);
 
-  bool ModifyRedirectDnsDNATRule(Iptables::Command command,
-                                 std::string_view protocol,
-                                 std::string_view ifname,
-                                 std::string_view dns_ipv4_addr);
   bool ModifyDnsProxyMasquerade(IpFamily family,
                                 Iptables::Command command,
                                 std::string_view chain);

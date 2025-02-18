@@ -79,10 +79,6 @@ constexpr char kAcceptEgressToDnsProxyChain[] = "accept_egress_to_dns_proxy";
 // incorrectly bound to a static IPv4 address used for ARC or Crostini.
 constexpr char kDropGuestIpv4PrefixChain[] = "drop_guest_ipv4_prefix";
 
-// Egress nat chain for redirecting DNS queries from system services.
-// TODO(b/162788331) Remove once dns-proxy has become fully operational.
-constexpr char kRedirectDnsChain[] = "redirect_dns";
-
 // OUTPUT filter chain to enforce source IP on egress IPv6 packets.
 constexpr char kEnforceSourcePrefixChain[] = "enforce_ipv6_src_prefix";
 
@@ -1294,47 +1290,6 @@ void Datapath::RemoveInboundIPv4DNAT(AutoDNATTarget auto_dnat_target,
                              "--nowildcard", "-j", "ACCEPT", "-w"});
 }
 
-bool Datapath::AddRedirectDnsRule(const ShillClient::Device& shill_device,
-                                  std::string_view dns_ipv4_addr) {
-  const std::string& ifname = shill_device.ifname;
-  bool success = true;
-  success &= RemoveRedirectDnsRule(shill_device);
-  // Use Insert operation to ensure that the new DNS address is used first.
-  success &= ModifyRedirectDnsDNATRule(Iptables::Command::kI, "tcp", ifname,
-                                       dns_ipv4_addr);
-  success &= ModifyRedirectDnsDNATRule(Iptables::Command::kI, "udp", ifname,
-                                       dns_ipv4_addr);
-  physical_dns_addresses_[ifname] = dns_ipv4_addr;
-  return success;
-}
-
-bool Datapath::RemoveRedirectDnsRule(const ShillClient::Device& shill_device) {
-  const std::string& ifname = shill_device.ifname;
-  const auto it = physical_dns_addresses_.find(ifname);
-  if (it == physical_dns_addresses_.end()) {
-    return true;
-  }
-
-  bool success = true;
-  success &= ModifyRedirectDnsDNATRule(Iptables::Command::kD, "tcp", ifname,
-                                       it->second);
-  success &= ModifyRedirectDnsDNATRule(Iptables::Command::kD, "udp", ifname,
-                                       it->second);
-  physical_dns_addresses_.erase(it);
-  return success;
-}
-
-bool Datapath::ModifyRedirectDnsDNATRule(Iptables::Command op,
-                                         std::string_view protocol,
-                                         std::string_view ifname,
-                                         std::string_view dns_ipv4_addr) {
-  std::vector<std::string_view> args = {
-      "-p", protocol, "--dport",          "53",          "-o", ifname,
-      "-j", "DNAT",   "--to-destination", dns_ipv4_addr, "-w"};
-  return ModifyIptables(IpFamily::kIPv4, Iptables::Table::kNat, op,
-                        kRedirectDnsChain, args);
-}
-
 bool Datapath::ModifyRedirectDnsJumpRule(IpFamily family,
                                          Iptables::Command op,
                                          std::string_view chain,
@@ -1616,12 +1571,6 @@ void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
   if (vpn_ifname != kArcbr0Ifname) {
     StartRoutingDevice(vpn_device, kArcbr0Ifname, TrafficSource::kArc);
   }
-  if (!ModifyRedirectDnsJumpRule(
-          IpFamily::kIPv4, Iptables::Command::kA, "OUTPUT",
-          /*ifname=*/"", kRedirectDnsChain, kFwmarkRouteOnVpn, kFwmarkVpnMask,
-          /*redirect_on_mark=*/false)) {
-    LOG(ERROR) << "Failed to set jump rule to " << kRedirectDnsChain;
-  }
 
   // All traffic with the VPN routing tag are explicitly accepted in the filter
   // table. This prevents the VPN lockdown chain to reject that traffic when VPN
@@ -1652,12 +1601,6 @@ void Datapath::StopVpnRouting(const ShillClient::Device& vpn_device) {
   ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
                  "POSTROUTING", "MASQUERADE",
                  /*iif=*/"", vpn_ifname);
-  if (!ModifyRedirectDnsJumpRule(
-          IpFamily::kIPv4, Iptables::Command::kD, "OUTPUT",
-          /*ifname=*/"", kRedirectDnsChain, kFwmarkRouteOnVpn, kFwmarkVpnMask,
-          /*redirect_on_mark=*/false)) {
-    LOG(ERROR) << "Failed to remove jump rule to " << kRedirectDnsChain;
-  }
 }
 
 void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {

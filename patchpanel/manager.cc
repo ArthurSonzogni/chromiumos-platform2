@@ -339,7 +339,6 @@ void Manager::OnShillDevicesChanged(
     StopMulticastForwarding(device, /*ifname_virtual=*/"");
     StopBroadcastForwarding(device, /*ifname_virtual=*/"");
     datapath_.StopConnectionPinning(device);
-    datapath_.RemoveRedirectDnsRule(device);
     arc_svc_.RemoveDevice(device);
     multicast_metrics_.OnPhysicalDeviceRemoved(device);
     counters_svc_.OnPhysicalDeviceRemoved(device.ifname);
@@ -370,14 +369,6 @@ void Manager::OnShillDevicesChanged(
     }
     datapath_.StartConnectionPinning(device);
 
-    // AddRedirectDnsRule to the first IPv4 DNS.
-    for (const auto& dns : device.network_config.dns_servers) {
-      if (dns.GetFamily() == net_base::IPFamily::kIPv4) {
-        datapath_.AddRedirectDnsRule(device, dns.ToString());
-        break;
-      }
-    }
-
     arc_svc_.AddDevice(device);
 
     datapath_.StartSourceIPv6PrefixEnforcement(device);
@@ -391,20 +382,6 @@ void Manager::OnShillDevicesChanged(
 }
 
 void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
-  // AddRedirectDnsRule to the first IPv4 DNS, or RemoveRedirectDnsRule if
-  // there's no IPv4 DNS.
-  bool has_ipv4_dns = false;
-  for (const auto& dns : shill_device.network_config.dns_servers) {
-    if (dns.GetFamily() == net_base::IPFamily::kIPv4) {
-      datapath_.AddRedirectDnsRule(shill_device, dns.ToString());
-      has_ipv4_dns = true;
-      break;
-    }
-  }
-  if (!has_ipv4_dns) {
-    datapath_.RemoveRedirectDnsRule(shill_device);
-  }
-
   multicast_metrics_.OnIPConfigsChanged(shill_device);
   ipv6_svc_.UpdateUplinkIPv6DNS(shill_device);
 
