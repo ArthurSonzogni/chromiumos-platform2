@@ -784,14 +784,15 @@ TEST_F(CpuFetcherTest, ModelNameFromQualcommSoCIDWithBogus) {
   ASSERT_EQ(model_name.value(), "Qualcomm Snapdragon SC7180");
 }
 
-// Test that we have soc_id for MediaTek devices.
-TEST_F(CpuFetcherTest, ModelNameFromMediaTekSoCID) {
+// Test that we have SoC information in legacy theme for MediaTek devices.
+TEST_F(CpuFetcherTest, ModelNameFromMediaTekSoCIDLegacy) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(GetRootDir()),
                                            kNoModelNameCpuinfoContents));
 
-  // For Arm devices we _should_ just be looking at the "family" and
-  // "machine" files, but throw others in there (based on a real device)
-  // to make sure it doesn't confuse the parser.
+  // For MediaTek devices with older socinfo driver, "soc_id" is empty in soc0/.
+  // In this case, we just check the "family" and "machine" files, but throw
+  // others in there (based on a real device) to make sure it doesn't confuse
+  // the parser.
   SetFile({kRelativeSoCDevicesDir, "soc0", "family"}, "MediaTek\n");
   SetFile({kRelativeSoCDevicesDir, "soc0", "machine"},
           "Kompanio 520 (MT8186)\n");
@@ -806,6 +807,33 @@ TEST_F(CpuFetcherTest, ModelNameFromMediaTekSoCID) {
   auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
   EXPECT_TRUE(model_name.has_value());
   ASSERT_EQ(model_name.value(), "MediaTek Kompanio 520 (MT8186)");
+}
+
+// Test that we have SoC information in new theme for MediaTek devices.
+TEST_F(CpuFetcherTest, ModelNameFromMediaTekSoCIDNew) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(GetRootDir()),
+                                           kNoModelNameCpuinfoContents));
+
+  // For MediaTek devices with newer socinfo driver, it's "soc_id" that exposes
+  // SoC name.
+  // In this case, we check the "family" and "soc_id" files to compose the SoC
+  // ID.
+  SetFile({kRelativeSoCDevicesDir, "soc0", "family"},
+          "MediaTek Kompanio 838\n");
+  SetFile({kRelativeSoCDevicesDir, "soc0", "machine"},
+          "Google Ciri sku2 board\n");
+  SetFile({kRelativeSoCDevicesDir, "soc0", "soc_id"}, "MT8188\n");
+  SetFile({kRelativeSoCDevicesDir, "soc1", "family"}, "jep106:0426\n");
+  SetFile({kRelativeSoCDevicesDir, "soc1", "soc_id"}, "jep106:0426:8188\n");
+
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
+
+  auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
+  EXPECT_TRUE(model_name.has_value());
+  ASSERT_EQ(model_name.value(), "MediaTek Kompanio 838 (MT8188)");
 }
 
 // Test that we have device tree compatible string for Arm devices.

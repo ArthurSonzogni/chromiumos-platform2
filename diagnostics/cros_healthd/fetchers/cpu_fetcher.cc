@@ -289,7 +289,7 @@ bool ParseProcessor(const std::string& processor,
 void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
   // Currently, only Mediatek and Qualcomm with newer kernel support this
   // feature.
-  std::string family, machine;
+  std::string family, machine, soc_id;
   std::string content;
   base::FileEnumerator file_enum(
       root_dir.Append(kRelativeSoCDevicesDir), false,
@@ -300,19 +300,46 @@ void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
     // Newer kernels have a specific SoC driver that will report a "family"
     // like "Snapdragon" or "Mediatek" and then provide the marketing name of
     // the SoC. If we find this then we return right away.
-    if (ReadAndTrimString(path.Append("family"), &family) &&
-        ReadAndTrimString(path.Append("machine"), &machine)) {
+    if (ReadAndTrimString(path.Append("family"), &family)) {
       if (family == kQualcommFamilyName) {
         // "Snapdragon" doesn't include the brand name so add a "Qualcomm"
         // prefix for better marketing display name.
-        family = "Qualcomm " + family;
-      } else if (family != kMediatekFamilyName) {
-        // For any not specifically recognized family we don't want the early
-        // return and we'll use the generic jep106 logic below.
-        continue;
+        if (ReadAndTrimString(path.Append("machine"), &machine)) {
+          *model_name = "Qualcomm " + family + " " + machine;
+          return;
+        }
+      } else if (family.starts_with(kMediatekFamilyName)) {
+        // The way MediaTek driver presents SoC information has changed.
+        // The legacy theme:
+        //   family:  "MediaTek"
+        //   machine: "<marketing_name> (<soc_name>)"
+        //       e.g. "Kompanio 1380 (MT8195)"
+        //   soc_id:  <null>
+        // And the new theme (working on with Linux upstream):
+        //   family:  "MediaTek" or "MediaTek <marketing_name>", depends on
+        //            whether the marketing name is presented.
+        //       e.g. "MediaTek Kompanio 1380"
+        //   machine: "<devicetree_model_name>"
+        //       e.g. "Acer Tomato"
+        //   soc_id:  "<soc_name>"
+        //       e.g. "MT8195"
+        //
+        // We check "soc_id" to distinguish which theme is in use.
+        // If that's readable, the info is presented in new theme, and we
+        // use the "<family> (<soc_id>)" pattern.
+        // Otherwise, we use the legacy "<family> <machine>" pattern.
+        if (ReadAndTrimString(path.Append("soc_id"), &soc_id)) {
+          *model_name = family + " (" + soc_id + ")";
+          return;
+        } else if (ReadAndTrimString(path.Append("machine"), &machine)) {
+          *model_name = family + " " + machine;
+          return;
+        }
       }
-      *model_name = family + " " + machine;
-      return;
+
+      // For any not specifically recognized family/machine/soc_id combinations,
+      // we'll continue and use the generic jep106 logic below.
+      continue;
     }
 
     if (!base::ReadFileToString(path.Append("soc_id"), &content)) {
