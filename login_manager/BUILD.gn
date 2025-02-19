@@ -228,6 +228,7 @@ if (use.test) {
   executable("session_manager_test") {
     sources = [
       "android_oci_wrapper_test.cc",
+      "arc_manager_test.cc",
       "browser_job_test.cc",
       "chrome_setup_test.cc",
       "chromium_command_builder_test.cc",
