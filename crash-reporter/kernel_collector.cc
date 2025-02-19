@@ -448,13 +448,13 @@ bool KernelCollector::DumpDirMounted() {
   }
 
   struct stat st_dump;
-  if (stat(kDumpPath, &st_dump)) {
-    PLOG(WARNING) << "Could not stat " << kDumpPath;
+  if (stat(dump_path_.value().c_str(), &st_dump)) {
+    PLOG(WARNING) << "Could not stat " << dump_path_;
     return false;
   }
 
   if (st_parent.st_dev == st_dump.st_dev) {
-    LOG(WARNING) << "Dump dir " << kDumpPath << " not mounted";
+    LOG(WARNING) << "Dump dir " << dump_path_ << " not mounted";
     return false;
   }
 
