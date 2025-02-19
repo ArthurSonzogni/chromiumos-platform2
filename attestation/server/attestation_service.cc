@@ -31,12 +31,12 @@
 #include <brillo/data_encoding.h>
 #include <crypto/sha2.h>
 #include <libcrossystem/crossystem.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/frontend/attestation/frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec/structures/key.h>
-#include <libhwsec-foundation/status/status_chain_macros.h>
-#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/objects.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
@@ -254,6 +254,10 @@ const CertificateAuthoritySubjectPublicKeyInfo
          "3059301306072a8648ce3d020106082a8648ce3d03010703420004a011d8302f"
          "e79d51c4a8d30f45411c8b3afe5218e25f0f1efa97e568a6d98b847f3df336bc"
          "3948bb9d584f6c2dd80442b62c9bddece8472d0044b7d5c1083d73"},
+        {"CROS OT V1",
+         "3059301306072a8648ce3d020106082a8648ce3d03010703420004d075e9eeb1"
+         "a6e52e5a1b177ad0e0240416bb3a472639dc868dfe2626421f90335103e0d0ed"
+         "f111ad119f2d22a05cca427870489f92bec31d514432edc674bcf8"},
 };
 
 const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
