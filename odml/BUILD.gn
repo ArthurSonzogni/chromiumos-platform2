@@ -175,6 +175,7 @@ source_set("mantis") {
   sources = [
     "mantis/metrics.cc",
     "mantis/processor.cc",
+    "mantis/prompt_rewriter.cc",
     "mantis/service.cc",
   ]
   public_deps = [ ":mojo_bindings_lib" ]
@@ -375,6 +376,7 @@ if (use.test) {
     sources = [
       "mantis/fake/fake_mantis_api.cc",
       "mantis/processor_test.cc",
+      "mantis/prompt_rewriter_test.cc",
       "mantis/service_test.cc",
     ]
     configs += [

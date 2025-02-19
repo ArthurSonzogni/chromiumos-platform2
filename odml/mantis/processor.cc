@@ -23,6 +23,7 @@
 
 #include "odml/mantis/lib_api.h"
 #include "odml/mantis/metrics.h"
+#include "odml/mantis/prompt_rewriter.h"
 #include "odml/mojom/big_buffer.mojom.h"
 #include "odml/mojom/cros_safety.mojom.h"
 #include "odml/mojom/mantis_processor.mojom.h"
@@ -211,7 +212,7 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
       .image = image,
       .mask = mask,
       .seed = seed,
-      .prompt = prompt,
+      .prompt = RewritePromptForGenerativeFill(prompt),
       .callback = std::move(callback),
       .process_func = base::BindOnce(
           [](const MantisAPI* api, MantisComponent component,

@@ -477,5 +477,42 @@ TEST_F(MantisProcessorTest, ClassifyImageSafetyReturnFail) {
   EXPECT_EQ(verdict, SafetyClassifierVerdict::kFailedImage);
 }
 
+TEST_F(MantisProcessorTest, RewriteUserPrompt) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+
+  EXPECT_CALL(
+      safety_service_manager_,
+      ClassifyImageSafety(
+          testing::Eq(cros_safety::mojom::SafetyRuleset::kMantisOutputImage),
+          testing::Eq("the cute cat"), testing::_, testing::_))
+      .WillOnce(base::test::RunOnceCallback<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kPass));
+
+  EXPECT_CALL(
+      safety_service_manager_,
+      ClassifyImageSafety(
+          testing::Eq(
+              cros_safety::mojom::SafetyRuleset::kMantisGeneratedRegion),
+          testing::Eq(""), testing::_, testing::_))
+      .WillOnce(base::test::RunOnceCallback<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kPass));
+
+  // Test one of the cases to confirm rewrite is active.
+  // All other cases are tested in the unit test of the utility function.
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "Add the Cute Cat",
+                           result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
 }  // namespace
 }  // namespace mantis
