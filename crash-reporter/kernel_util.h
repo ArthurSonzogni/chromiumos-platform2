@@ -26,6 +26,8 @@ enum ArchKind {
 extern const char kKernelExecName[];
 extern const char kHypervisorExecName[];
 
+constexpr char kKernelDumpName[] = "kcrash";
+
 // Check if this is a hypervisor kernel crash.
 bool IsHypervisorCrash(const std::string& kernel_dump);
 

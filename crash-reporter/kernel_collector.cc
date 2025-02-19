@@ -29,6 +29,7 @@
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/kernel_util.h"
 #include "crash-reporter/paths.h"
 
 using base::FilePath;
@@ -723,8 +724,8 @@ CrashCollectionStatus KernelCollector::HandleCrash(
 
   std::string dump_basename = FormatDumpBasename(kernel_util::kKernelExecName,
                                                  time(nullptr), kKernelPid);
-  FilePath kernel_crash_path = root_crash_directory.Append(
-      StringPrintf("%s.kcrash", dump_basename.c_str()));
+  FilePath kernel_crash_path = root_crash_directory.Append(StringPrintf(
+      "%s.%s", dump_basename.c_str(), kernel_util::kKernelDumpName));
   FilePath bios_dump_path = root_crash_directory.Append(
       StringPrintf("%s.%s", dump_basename.c_str(), kBiosDumpName));
   FilePath log_path = root_crash_directory.Append(
