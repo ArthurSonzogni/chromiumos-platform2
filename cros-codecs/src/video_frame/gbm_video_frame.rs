@@ -403,6 +403,7 @@ impl VideoFrame for GbmVideoFrame {
             resolution: self.resolution(),
             pitches: self.get_plane_pitch(),
             offsets: self.get_plane_offset(),
+            // SAFETY: gbm_bo_get_fd() gives us a fresh, owned fd on every call.
             export_file: unsafe { File::from_raw_fd(gbm_bo_get_fd(self.bo[0])) },
         }];
 
