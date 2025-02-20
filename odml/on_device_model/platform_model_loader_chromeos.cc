@@ -22,6 +22,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/types/expected.h>
+#include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <metrics/metrics_library.h>
 #include <ml_core/dlc/dlc_client.h>
@@ -383,7 +384,12 @@ void ChromeosPlatformModelLoader::OnInstallDlcComplete(
     LOG(ERROR) << "Failed to install ML DLC: " << result.error();
     metrics_->SendEnumToUMA(kLoadStatusHistogramName,
                             LoadStatus::kInstallDlcFail);
-    ReplyError(uuid, mojom::LoadModelResult::kFailedToLoadLibrary);
+    mojom::LoadModelResult error = mojom::LoadModelResult::kFailedToLoadLibrary;
+    if (result.error().find(dlcservice::kErrorNeedReboot) !=
+        std::string::npos) {
+      error = mojom::LoadModelResult::kCrosNeedReboot;
+    }
+    ReplyError(uuid, error);
     return;
   }
   LoadModelFromDlcPath(uuid, result.value());

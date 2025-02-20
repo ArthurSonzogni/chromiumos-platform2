@@ -330,6 +330,7 @@ enum LoadModelResult {
   kSuccess,
   kGpuBlocked,
   [Default] kFailedToLoadLibrary,
+  [MinVersion=1] kCrosNeedReboot,
 };
 
 [Stable]
