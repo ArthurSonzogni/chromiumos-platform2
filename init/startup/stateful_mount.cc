@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -38,6 +39,10 @@
 #include <rootdev/rootdev.h>
 
 #include "base/strings/stringprintf.h"
+#include "init/libpreservation/ext2fs.h"
+#include "init/libpreservation/file_preseeder.h"
+#include "init/libpreservation/filesystem_manager.h"
+#include "init/libpreservation/preservation.h"
 #include "init/startup/constants.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
@@ -68,6 +73,8 @@ constexpr char kDevImageBlockFile[] = "dev_image.block";
 constexpr char kNewDevImageBlockFile[] = "dev_image_new.block";
 constexpr char kDeveloperToolsMount[] = "developer_tools";
 constexpr char kEncrypted[] = "defaultkey_encrypted";
+constexpr char kPreseedingStatus[] =
+    "mnt/chromeos_metadata_partition/preseeder.proto";
 
 constexpr char kVarLogAsan[] = "var/log/asan";
 constexpr char kStatefulDevImage[] = "dev_image";
@@ -348,6 +355,36 @@ void StatefulMount::MountStateful(
     return;
   }
 
+  base::FilePath metadata_path = root_.Append(kPreseedingStatus);
+  libpreservation::FilePreseeder preseeder({base::FilePath("unencrypted")},
+                                           root_, stateful_, metadata_path);
+
+  if (key && key->is_fresh()) {
+    // Mount the partition to get extent data.
+    if (platform_->Mount(backing_device, stateful_, *fs_form_state,
+                         stateful_mount_flags | MS_RDONLY,
+                         stateful_mount_opts)) {
+      // Generate file preservation list.
+      std::set<base::FilePath> file_allowlist;
+      for (auto path : libpreservation::GetPreservationFileList()) {
+        file_allowlist.insert(base::FilePath(path));
+      }
+      for (auto path :
+           libpreservation::GetFactoryPreservationPathList(stateful_)) {
+        file_allowlist.insert(base::FilePath(path));
+      }
+      for (auto path : libpreservation::GetStartupPreseedingPaths()) {
+        file_allowlist.insert(base::FilePath(path));
+      }
+
+      if (!preseeder.SaveFileState(file_allowlist)) {
+        LOG(ERROR) << "Failed to save file state";
+      }
+
+      platform_->Unmount(stateful_, false, nullptr);
+    }
+  }
+
   if (!container->Setup(encryption_key)) {
     LOG(ERROR) << "Failed to setup stateful";
 
@@ -358,6 +395,22 @@ void StatefulMount::MountStateful(
   }
 
   state_dev_ = container->GetPath();
+
+  if (base::PathExists(metadata_path)) {
+    if (preseeder.LoadMetadata()) {
+      auto ext2fs = libpreservation::Ext2fsImpl::Generate(state_dev_);
+      if (ext2fs) {
+        libpreservation::FilesystemManager fs_manager(std::move(ext2fs));
+
+        if (!preseeder.RestoreExtentFiles(&fs_manager)) {
+          LOG(ERROR) << "Failed to restore extent files";
+        }
+      }
+    } else {
+      LOG(ERROR) << "Failed to load preseeding metadata";
+    }
+  }
+
   // Mount stateful partition from state_dev.
   if (!platform_->Mount(state_dev_, stateful_, *fs_form_state,
                         stateful_mount_flags, stateful_mount_opts)) {
@@ -370,6 +423,14 @@ void StatefulMount::MountStateful(
                     "Self-repair corrupted stateful partition");
     // Not reached, except during unit tests.
     return;
+  }
+
+  // Restore inline files.
+  if (base::PathExists(metadata_path)) {
+    if (preseeder.LoadMetadata() && !preseeder.RestoreInlineFiles()) {
+      LOG(ERROR) << "Failed to restore inline files";
+    }
+    platform_->DeleteFile(metadata_path);
   }
 
   // Mount the OEM partition.

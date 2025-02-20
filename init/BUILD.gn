@@ -107,6 +107,7 @@ shared_library("libinit_utils") {
 
 static_library("libcrosstartup") {
   sources = [
+    "libpreservation/preservation.cc",
     "startup/chromeos_startup.cc",
     "startup/factory_mode_mount_helper.cc",
     "startup/flags.h",
@@ -129,6 +130,7 @@ static_library("libcrosstartup") {
     ":libencrypted-reboot-vault",
     ":libfile_attrs_cleaner",
     ":libinit_utils",
+    ":libpreservation",
     ":libtpm_encryption",
   ]
   if (use.encrypted_stateful) {
@@ -163,6 +165,7 @@ static_library("libclobber") {
     "clobber/clobber_state_log.cc",
     "clobber/clobber_ui.cc",
     "clobber/clobber_wipe.cc",
+    "libpreservation/preservation.cc",
   ]
   if (use.device_mapper) {
     sources += [ "clobber/clobber_lvm.cc" ]
@@ -178,7 +181,10 @@ static_library("libclobber") {
 executable("chromeos_startup") {
   sources = [ "startup/main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libcrosstartup" ]
+  deps = [
+    ":libcrosstartup",
+    ":libpreservation",
+  ]
 
   # gnlint: disable=GnLintInstallPathAlias
   install_path = "/sbin"
@@ -396,6 +402,7 @@ if (use.test) {
     libs = [ "hwsec-foundation-mock" ]
     deps = [
       ":libcrosstartup",
+      ":libpreservation",
       "//common-mk/testrunner",
     ]
     pkg_deps = [
@@ -421,6 +428,7 @@ if (use.test) {
     run_test = true
     deps = [
       ":libclobber",
+      ":libpreservation",
       "//common-mk/testrunner",
     ]
     pkg_deps = [ "libcrossystem-test" ]

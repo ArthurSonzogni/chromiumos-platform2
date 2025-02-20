@@ -18,15 +18,20 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <brillo/file_utils.h>
 #include <gtest/gtest.h>
 #include <libstorage/platform/fake_platform.h>
 #include <libstorage/platform/mock_platform.h>
 
+#include "init/libpreservation/fake_ext2fs.h"
+#include "init/libpreservation/file_preseeder.h"
+#include "init/libpreservation/filesystem_manager.h"
 #include "init/startup/fake_startup_dep_impl.h"
 #include "init/startup/standard_mount_helper.h"
 #include "init/startup/startup_dep_impl.h"
@@ -494,4 +499,23 @@ TEST_F(RunMountStateful, StatefulPartitionEmpty) {
 
   std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
+}
+
+TEST(MountStateful, PreserveBootFiles) {
+  // Create tempdir
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  base::FilePath metadata_path = temp_dir.GetPath().Append("preseeder.proto");
+
+  auto fs = libpreservation::FakeExt2fs::Create(base::FilePath("/dev/null"));
+  libpreservation::FilesystemManager fs_manager(std::move(fs));
+  libpreservation::FilePreseeder preseeder({base::FilePath("unencrypted")},
+                                           base::FilePath("/"),
+                                           temp_dir.GetPath(), metadata_path);
+
+  EXPECT_TRUE(preseeder.CheckAllowlist(base::FilePath("unencrypted/rma/data")));
+  EXPECT_TRUE(preseeder.CheckAllowlist(
+      base::FilePath("unencrypted/preserve/clobber.log")));
+  EXPECT_FALSE(preseeder.CheckAllowlist(base::FilePath("encryption.key")));
 }
