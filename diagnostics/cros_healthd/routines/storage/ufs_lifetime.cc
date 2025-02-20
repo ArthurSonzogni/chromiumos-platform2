@@ -29,25 +29,39 @@ namespace mojom = ::ash::cros_healthd::mojom;
 // "01h" means normal device life time, which is defined in UFS spec.
 inline constexpr uint8_t kUfsHealthDescPreEolInfoNormal = 0x01;
 inline constexpr char kBsgNodePathPattern[] = "sys/devices/*/*/host*/ufs-bsg*";
+inline constexpr char kBsgNodePathPatternArm[] =
+    "sys/devices/platform/soc/*/host*/ufs-bsg*";
 inline constexpr char kBsgNodeToHealthDesc[] = "../../health_descriptor/";
 
-const std::optional<base::FilePath> GetBsgNodePath(Context* context) {
+const std::optional<base::FilePath> Glob(const base::FilePath& pattern) {
   std::optional<base::FilePath> path;
   glob_t glob_result;
-  const base::FilePath& pattern(GetRootDir().AppendASCII(kBsgNodePathPattern));
   int return_code = glob(pattern.value().c_str(), GLOB_ONLYDIR,
                          /*errfunc=*/nullptr, &glob_result);
   if (return_code == EXIT_SUCCESS && glob_result.gl_pathc == 1) {
     path = base::FilePath(glob_result.gl_pathv[0]);
   } else if (glob_result.gl_pathc != 1) {
     // This also handles the case where `return_code == GLOB_NOMATCH`.
-    LOG(ERROR) << "Number of path matched by glob should be exactly 1, got: "
-               << glob_result.gl_pathc;
+    LOG(WARNING) << "Number of path matched by glob pattern: "
+                 << pattern.value()
+                 << " should be exactly 1, got: " << glob_result.gl_pathc;
   } else {
-    LOG(ERROR) << "Unexpected error from glob: " << return_code;
+    LOG(ERROR) << "Unexpected error from glob pattern: " << pattern.value()
+               << "; return code: " << return_code;
   }
   globfree(&glob_result);
   return path;
+}
+
+const std::optional<base::FilePath> GetBsgNodePath() {
+  std::optional<base::FilePath> node_path =
+      Glob(base::FilePath(GetRootDir().AppendASCII(kBsgNodePathPattern)));
+  if (!node_path.has_value()) {
+    // Fallback for ARM devices.
+    node_path =
+        Glob(base::FilePath(GetRootDir().AppendASCII(kBsgNodePathPatternArm)));
+  }
+  return node_path;
 }
 
 }  // namespace
@@ -63,14 +77,14 @@ UfsLifetimeRoutine::~UfsLifetimeRoutine() = default;
 void UfsLifetimeRoutine::OnStart() {
   SetRunningState();
 
-  std::optional<base::FilePath> bsg_node_path = GetBsgNodePath(context_);
+  std::optional<base::FilePath> bsg_node_path = GetBsgNodePath();
   if (!bsg_node_path.has_value()) {
     RaiseException("Unable to determine a bsg node path");
     return;
   }
 
-  // The bsg node path looks like "/sys/devices/xxx/xxx/hostx/ufs-bsgx".
-  // Navigate to "/sys/devices/xxx/xxx/health_descriptor", where the health
+  // The bsg node path looks like "/sys/devices/.../hostx/ufs-bsgx".
+  // Navigate to "/sys/devices/.../health_descriptor", where the health
   // descriptor is.
   const base::FilePath health_desc_path = base::MakeAbsoluteFilePath(
       bsg_node_path.value().Append(kBsgNodeToHealthDesc));

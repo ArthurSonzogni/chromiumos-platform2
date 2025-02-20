@@ -34,6 +34,10 @@ inline constexpr char kFakeBsgNodePath2[] =
     "sys/devices/pci0000:00/0000:00:1f.0/host0/ufs-bsg0";
 inline constexpr char kFakeUfsHealthDescPath[] =
     "sys/devices/pci0000:00/0000:00:12.7/health_descriptor";
+inline constexpr char kFakeBsgNodePathArm[] =
+    "sys/devices/platform/soc/16800000.ufshci/host0/ufs-bsg0";
+inline constexpr char kFakeUfsHealthDescPathArm[] =
+    "sys/devices/platform/soc/16800000.ufshci/health_descriptor";
 
 class UfsLifetimeRoutineTest : public BaseFileTest {
  public:
@@ -98,6 +102,22 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
 TEST_F(UfsLifetimeRoutineTest, RoutineSuccess) {
   CreateDirUnderRoot(kFakeBsgNodePath);
   SetHealthDescInfo(kFakeUfsHealthDescPath, "0x01", "0x0A", "0x0B");
+
+  mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
+  EXPECT_EQ(result->percentage, 100);
+  EXPECT_TRUE(result->state_union->is_finished());
+  EXPECT_TRUE(result->state_union->get_finished()->has_passed);
+  const auto& detail =
+      result->state_union->get_finished()->detail->get_ufs_lifetime();
+  EXPECT_EQ(detail->pre_eol_info, 0x01);
+  EXPECT_EQ(detail->device_life_time_est_a, 0x0A);
+  EXPECT_EQ(detail->device_life_time_est_b, 0x0B);
+}
+
+// Test that the UFS lifetime routine can run successfully on ARM devices.
+TEST_F(UfsLifetimeRoutineTest, RoutineSuccessOnArm) {
+  CreateDirUnderRoot(kFakeBsgNodePathArm);
+  SetHealthDescInfo(kFakeUfsHealthDescPathArm, "0x01", "0x0A", "0x0B");
 
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
   EXPECT_EQ(result->percentage, 100);
