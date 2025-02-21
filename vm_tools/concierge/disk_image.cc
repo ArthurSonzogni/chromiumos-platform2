@@ -8,11 +8,17 @@
 #include <archive_entry.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <zstd.h>
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file.h>
@@ -23,6 +29,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/uuid.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
@@ -34,6 +41,26 @@ namespace {
 constexpr gid_t kCrosvmUGid = 299;
 constexpr gid_t kPluginVmGid = 20128;
 constexpr uint32_t kZstdMagic = 0xFD2FB528;
+constexpr uint32_t kZstdSeekSkippableFrameMagic = 0x184D2A5E;
+constexpr uint32_t kZstdSeekFooterMagic = 0x8F92EAB1;
+
+struct __attribute__((packed)) SeekTableFooter {
+  uint32_t num_of_frames;
+  uint8_t seek_table_descriptor;
+  uint32_t magic;
+};
+
+static_assert(sizeof(SeekTableFooter) == 9);
+
+int OutputFileOpenCallback(archive* a, void* data) {
+  // We expect that we are writing into a regular file, so no padding is needed.
+  archive_write_set_bytes_in_last_block(a, 1);
+  return ARCHIVE_OK;
+}
+
+int OutputFileCloseCallback(archive* a, void* data) {
+  return ARCHIVE_OK;
+}
 
 }  // namespace
 
@@ -193,14 +220,14 @@ void PluginVmCreateOperation::Finalize() {
   set_status(DISK_STATUS_CREATED);
 }
 
-std::unique_ptr<VmExportOperation> VmExportOperation::Create(
+std::unique_ptr<PluginVmExportOperation> PluginVmExportOperation::Create(
     const VmId vm_id,
     const base::FilePath disk_path,
     base::ScopedFD fd,
     base::ScopedFD digest_fd) {
   auto op = base::WrapUnique(
-      new VmExportOperation(std::move(vm_id), std::move(disk_path),
-                            std::move(fd), std::move(digest_fd)));
+      new PluginVmExportOperation(std::move(vm_id), std::move(disk_path),
+                                  std::move(fd), std::move(digest_fd)));
 
   if (op->PrepareInput() && op->PrepareOutput()) {
     op->set_status(DISK_STATUS_IN_PROGRESS);
@@ -209,10 +236,10 @@ std::unique_ptr<VmExportOperation> VmExportOperation::Create(
   return op;
 }
 
-VmExportOperation::VmExportOperation(const VmId vm_id,
-                                     const base::FilePath disk_path,
-                                     base::ScopedFD out_fd,
-                                     base::ScopedFD out_digest_fd)
+PluginVmExportOperation::PluginVmExportOperation(const VmId vm_id,
+                                                 const base::FilePath disk_path,
+                                                 base::ScopedFD out_fd,
+                                                 base::ScopedFD out_digest_fd)
     : DiskImageOperation(std::move(vm_id)),
       src_image_path_(std::move(disk_path)),
       out_fd_(std::move(out_fd)),
@@ -228,14 +255,14 @@ VmExportOperation::VmExportOperation(const VmId vm_id,
   }
 }
 
-VmExportOperation::~VmExportOperation() {
+PluginVmExportOperation::~PluginVmExportOperation() {
   // Ensure that the archive reader and writers are destroyed first, as these
   // can invoke callbacks that rely on data in this object.
   in_.reset();
   out_.reset();
 }
 
-bool VmExportOperation::PrepareInput() {
+bool PluginVmExportOperation::PrepareInput() {
   in_ = ArchiveReader(archive_read_disk_new());
   if (!in_) {
     set_failure_reason("libarchive: failed to create reader");
@@ -258,7 +285,7 @@ bool VmExportOperation::PrepareInput() {
   return true;
 }
 
-bool VmExportOperation::PrepareOutput() {
+bool PluginVmExportOperation::PrepareOutput() {
   out_ = ArchiveWriter(archive_write_new());
   if (!out_) {
     set_failure_reason("libarchive: failed to create writer");
@@ -293,18 +320,12 @@ bool VmExportOperation::PrepareOutput() {
 }
 
 // static
-int VmExportOperation::OutputFileOpenCallback(archive* a, void* data) {
-  // We expect that we are writing into a regular file, so no padding is needed.
-  archive_write_set_bytes_in_last_block(a, 1);
-  return ARCHIVE_OK;
-}
-
-// static
-ssize_t VmExportOperation::OutputFileWriteCallback(archive* a,
-                                                   void* data,
-                                                   const void* buf,
-                                                   size_t length) {
-  VmExportOperation* op = reinterpret_cast<VmExportOperation*>(data);
+ssize_t PluginVmExportOperation::OutputFileWriteCallback(archive* a,
+                                                         void* data,
+                                                         const void* buf,
+                                                         size_t length) {
+  PluginVmExportOperation* op =
+      reinterpret_cast<PluginVmExportOperation*>(data);
 
   ssize_t bytes_written = HANDLE_EINTR(write(op->out_fd_.get(), buf, length));
   if (bytes_written <= 0) {
@@ -316,12 +337,7 @@ ssize_t VmExportOperation::OutputFileWriteCallback(archive* a,
   return bytes_written;
 }
 
-// static
-int VmExportOperation::OutputFileCloseCallback(archive* a, void* data) {
-  return ARCHIVE_OK;
-}
-
-void VmExportOperation::MarkFailed(const char* msg, struct archive* a) {
+void PluginVmExportOperation::MarkFailed(const char* msg, struct archive* a) {
   if (a) {
     set_status(archive_errno(a) == ENOSPC ? DISK_STATUS_NOT_ENOUGH_SPACE
                                           : DISK_STATUS_FAILED);
@@ -342,7 +358,7 @@ void VmExportOperation::MarkFailed(const char* msg, struct archive* a) {
   in_.reset();
 }
 
-bool VmExportOperation::ExecuteIo(uint64_t io_limit) {
+bool PluginVmExportOperation::ExecuteIo(uint64_t io_limit) {
   do {
     if (!copying_data_) {
       struct archive_entry* entry;
@@ -415,7 +431,7 @@ bool VmExportOperation::ExecuteIo(uint64_t io_limit) {
   return false;
 }
 
-uint64_t VmExportOperation::CopyEntry(uint64_t io_limit) {
+uint64_t PluginVmExportOperation::CopyEntry(uint64_t io_limit) {
   uint64_t bytes_read = 0;
 
   do {
@@ -444,7 +460,7 @@ uint64_t VmExportOperation::CopyEntry(uint64_t io_limit) {
   return bytes_read;
 }
 
-void VmExportOperation::Finalize() {
+void PluginVmExportOperation::Finalize() {
   archive_read_close(in_.get());
   // Free the input archive.
   in_.reset();
@@ -456,6 +472,394 @@ void VmExportOperation::Finalize() {
   }
   // Free the output archive structures.
   out_.reset();
+  // Close the file descriptor.
+  out_fd_.reset();
+
+  // Calculate and store the image hash.
+  if (out_digest_fd_.is_valid()) {
+    std::vector<uint8_t> digest(sha256_->GetHashLength());
+    sha256_->Finish(std::data(digest), digest.size());
+    std::string str = base::StringPrintf(
+        "%s\n", base::HexEncode(std::data(digest), digest.size()).c_str());
+    bool written = base::WriteFileDescriptor(out_digest_fd_.get(), str);
+    out_digest_fd_.reset();
+    if (!written) {
+      LOG(ERROR) << "Failed to write SHA256 digest of the exported image";
+      set_status(DISK_STATUS_FAILED);
+      return;
+    }
+  }
+
+  set_status(DISK_STATUS_CREATED);
+}
+
+std::unique_ptr<TerminaVmExportOperation> TerminaVmExportOperation::Create(
+    const VmId vm_id,
+    const base::FilePath disk_path,
+    base::ScopedFD fd,
+    base::ScopedFD digest_fd) {
+  auto op = base::WrapUnique(
+      new TerminaVmExportOperation(std::move(vm_id), std::move(disk_path),
+                                   std::move(fd), std::move(digest_fd)));
+
+  if (op->PrepareInput() && op->PrepareOutput()) {
+    op->set_status(DISK_STATUS_IN_PROGRESS);
+  }
+
+  return op;
+}
+
+TerminaVmExportOperation::TerminaVmExportOperation(
+    const VmId vm_id,
+    const base::FilePath disk_path,
+    base::ScopedFD out_fd,
+    base::ScopedFD out_digest_fd)
+    : DiskImageOperation(std::move(vm_id)),
+      src_image_path_(std::move(disk_path)),
+      out_fd_(std::move(out_fd)),
+      out_digest_fd_(std::move(out_digest_fd)),
+      sha256_(crypto::SecureHash::Create(crypto::SecureHash::SHA256)) {}
+
+TerminaVmExportOperation::~TerminaVmExportOperation() {
+  // Ensure that the archive reader and writers are destroyed first, as these
+  // can invoke callbacks that rely on data in this object.
+  in_.reset();
+  out_.reset();
+}
+
+bool TerminaVmExportOperation::PrepareInput() {
+  base::File::Info info;
+  bool file_info_status = GetFileInfo(src_image_path_, &info);
+  if (!file_info_status) {
+    set_failure_reason("Failed to get file info");
+    return false;
+  }
+  if (info.is_directory) {
+    set_failure_reason("TerminaVmExport doesn't support directory input");
+    return false;
+  }
+
+  set_source_size(info.size * 2);
+
+  in_ = ArchiveReader(archive_read_disk_new());
+  if (!in_) {
+    set_failure_reason("libarchive: failed to create reader");
+    return false;
+  }
+
+  // Do not cross mount points and do not archive chattr and xattr attributes.
+  archive_read_disk_set_behavior(
+      in_.get(), ARCHIVE_READDISK_NO_TRAVERSE_MOUNTS |
+                     ARCHIVE_READDISK_NO_FFLAGS | ARCHIVE_READDISK_NO_XATTR);
+  // Do not traverse symlinks.
+  archive_read_disk_set_symlink_physical(in_.get());
+
+  int ret = archive_read_disk_open(in_.get(), src_image_path_.value().c_str());
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason("failed to open source directory as an archive");
+    return false;
+  }
+
+  return true;
+}
+
+bool TerminaVmExportOperation::PrepareOutput() {
+  out_ = ArchiveWriter(archive_write_new());
+  if (!out_) {
+    set_failure_reason("libarchive: failed to create writer");
+    return false;
+  }
+
+  int ret;
+
+  ret = archive_write_add_filter_zstd(out_.get());
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason(base::StringPrintf(
+        "libarchive: failed to initialize zstd ouptut filter: %s, %s",
+        archive_error_string(out_.get()), strerror(archive_errno(out_.get()))));
+    return false;
+  }
+
+  ret = archive_write_set_format_raw(out_.get());
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason(base::StringPrintf(
+        "libarchive: failed to initialize raw format: %s, %s",
+        archive_error_string(out_.get()), strerror(archive_errno(out_.get()))));
+    return false;
+  }
+
+  ret = archive_write_set_filter_option(out_.get(), "zstd", "compression-level",
+                                        "4");
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason(base::StringPrintf(
+        "libarchive: failed to set compression level: %s, %s",
+        archive_error_string(out_.get()), strerror(archive_errno(out_.get()))));
+    return false;
+  }
+
+  // 128 KiB = 131072 bytes
+  ret = archive_write_set_filter_option(out_.get(), "zstd", "max-frame-in",
+                                        "131072");
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason(base::StringPrintf(
+        "libarchive: failed to set max frame size: %s, %s",
+        archive_error_string(out_.get()), strerror(archive_errno(out_.get()))));
+    return false;
+  }
+
+  ret = archive_write_open(out_.get(), reinterpret_cast<void*>(this),
+                           OutputFileOpenCallback, OutputFileWriteCallback,
+                           OutputFileCloseCallback);
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason("failed to open output archive");
+    return false;
+  }
+
+  return true;
+}
+
+// static
+ssize_t TerminaVmExportOperation::OutputFileWriteCallback(archive* a,
+                                                          void* data,
+                                                          const void* buf,
+                                                          size_t length) {
+  TerminaVmExportOperation* op =
+      reinterpret_cast<TerminaVmExportOperation*>(data);
+
+  ssize_t bytes_written = HANDLE_EINTR(write(op->out_fd_.get(), buf, length));
+  if (bytes_written <= 0) {
+    archive_set_error(a, errno, "Write error");
+    return -1;
+  }
+
+  op->sha256_->Update(buf, bytes_written);
+  return bytes_written;
+}
+
+void TerminaVmExportOperation::MarkFailed(const char* msg, struct archive* a) {
+  if (a) {
+    set_status(archive_errno(a) == ENOSPC ? DISK_STATUS_NOT_ENOUGH_SPACE
+                                          : DISK_STATUS_FAILED);
+    set_failure_reason(base::StringPrintf("%s: %s, %s", msg,
+                                          archive_error_string(a),
+                                          strerror(archive_errno(a))));
+  } else {
+    set_status(DISK_STATUS_FAILED);
+    set_failure_reason(msg);
+  }
+
+  LOG(ERROR) << "Vm export failed: " << failure_reason();
+
+  // Release resources.
+  out_.reset();
+  out_fd_.reset();
+  out_digest_fd_.reset();
+  in_.reset();
+}
+
+bool TerminaVmExportOperation::ExecuteIo(uint64_t io_limit) {
+  int ret;
+  switch (state_) {
+    case kBeforeOnlyEntry:
+      struct archive_entry* entry;
+      ret = archive_read_next_header(in_.get(), &entry);
+      if (ret == ARCHIVE_EOF) {
+        // No entry available
+        MarkFailed("no entry available to read from", in_.get());
+        break;
+      }
+
+      if (ret < ARCHIVE_OK) {
+        MarkFailed("failed to read header", in_.get());
+        break;
+      }
+
+      ret = archive_write_header(out_.get(), entry);
+      if (ret != ARCHIVE_OK) {
+        MarkFailed("failed to write header", out_.get());
+        break;
+      }
+
+      if (archive_entry_size(entry) <= 0) {
+        MarkFailed("entry size is not greater than 0", in_.get());
+        break;
+      }
+      state_ = kCopying;
+      [[fallthrough]];
+    case kCopying:
+      AccumulateProcessedSize(CopyEntry(io_limit));
+      break;
+    case kFinishedCopy:
+      ret = archive_write_finish_entry(out_.get());
+      if (ret != ARCHIVE_OK) {
+        MarkFailed("failed to finish entry", out_.get());
+        break;
+      }
+
+      archive_read_close(in_.get());
+      // Free the input archive.
+      in_.reset();
+      ret = archive_write_close(out_.get());
+      if (ret != ARCHIVE_OK) {
+        MarkFailed("libarchive: failed to close writer", out_.get());
+        break;
+      }
+      // Free the output archive structures.
+      out_.reset();
+
+      // TODO(b/345311779): Add custom metadata skippable frame, should at
+      // least contain VM name
+      {
+        struct stat st;
+        if (fstat(out_fd_.get(), &st) < 0) {
+          MarkFailed("Failed to stat output file", nullptr);
+          break;
+        }
+        zstd_total_frame_size_ = st.st_size;
+      }
+
+      state_ = kCalculatingSeekTable;
+      break;
+    case kCalculatingSeekTable:
+      do {
+        // We guarantee seek_table_build_offset_ points to start of a frame
+        // Read up to 128KiB into compressed buffer
+        ssize_t bytes_read = HANDLE_EINTR(
+            pread(out_fd_.get(), compressed_fb_.data(), compressed_fb_.size(),
+                  seek_table_build_offset_));
+        if (bytes_read < 0) {
+          MarkFailed("Failed to read from output file", nullptr);
+          break;
+        } else if (bytes_read < 8) {
+          // each zstd frame is at least 8 bytes
+          MarkFailed("Read less than 8 bytes from output file", nullptr);
+          break;
+        }
+        io_limit -= std::min(static_cast<uint64_t>(bytes_read), io_limit);
+        // this supports both normal and skippable frame
+        size_t frame_compressed_size =
+            ZSTD_findFrameCompressedSize(compressed_fb_.data(), bytes_read);
+        if (ZSTD_isError(frame_compressed_size)) {
+          LOG(ERROR) << "failed find compressed frame size at: "
+                     << seek_table_build_offset_;
+          MarkFailed("Failed to find frame compressed size", nullptr);
+          break;
+        }
+        if (frame_compressed_size > bytes_read) {
+          MarkFailed("Compressed frame size exceeds available data", nullptr);
+          break;
+        }
+        // libarchive uses streaming compression mode, we can assume content
+        // size info is absent from frame header. Head straight for
+        // decompression
+        size_t decompressed_size =
+            ZSTD_decompress(decompressed_fb_.data(), decompressed_fb_.size(),
+                            compressed_fb_.data(), frame_compressed_size);
+        if (ZSTD_isError(decompressed_size)) {
+          MarkFailed("Failed to decompress frame", nullptr);
+          break;
+        }
+        seek_table_entries_.push_back(
+            {static_cast<uint32_t>(frame_compressed_size),
+             static_cast<uint32_t>(decompressed_size)});
+
+        seek_table_build_offset_ += frame_compressed_size;
+        AccumulateProcessedSize(decompressed_size);
+      } while (io_limit > 0 &&
+               seek_table_build_offset_ < zstd_total_frame_size_);
+
+      if (seek_table_build_offset_ >= zstd_total_frame_size_) {
+        state_ = kWriteSeekTable;
+        // Seek to end of file
+        if (lseek(out_fd_.get(), 0, SEEK_END) < 0) {
+          MarkFailed("Failed to seek to start of output file", nullptr);
+          break;
+        }
+
+        ssize_t bytes_written;
+        bytes_written = HANDLE_EINTR(
+            write(out_fd_.get(), &kZstdSeekSkippableFrameMagic, 4));
+        if (bytes_written != 4) {
+          MarkFailed("failed to write seek table skippable magic", in_.get());
+          break;
+        }
+        sha256_->Update(&kZstdSeekSkippableFrameMagic, 4);
+
+        uint32_t frame_size = 8 * seek_table_entries_.size() + 9;
+        bytes_written = HANDLE_EINTR(write(out_fd_.get(), &frame_size, 4));
+        if (bytes_written != 4) {
+          MarkFailed("failed to write seek table frame size", in_.get());
+          break;
+        }
+        sha256_->Update(&frame_size, 4);
+      }
+      break;
+    case kWriteSeekTable:
+      while (io_limit > 0 &&
+             seektable_entry_written < seek_table_entries_.size()) {
+        ssize_t bytes_written = HANDLE_EINTR(write(
+            out_fd_.get(), &seek_table_entries_[seektable_entry_written], 8));
+        if (bytes_written != 8) {
+          MarkFailed("failed to write seek table entry", nullptr);
+          break;
+        }
+        sha256_->Update(&seek_table_entries_[seektable_entry_written], 8);
+        io_limit -= std::min(io_limit, 8ul);
+        seektable_entry_written++;
+      }
+      if (seektable_entry_written >= seek_table_entries_.size()) {
+        // Finished writing all seek table entries
+        SeekTableFooter footer{
+            .num_of_frames = static_cast<uint32_t>(seek_table_entries_.size()),
+            .seek_table_descriptor = 0,
+            .magic = kZstdSeekFooterMagic};
+        ssize_t bytes_written = HANDLE_EINTR(write(out_fd_.get(), &footer, 9));
+        if (bytes_written != 9) {
+          MarkFailed("failed to write seek table footer", nullptr);
+          break;
+        }
+        sha256_->Update(&footer, 9);
+        return true;
+      }
+      break;
+    default:
+      MarkFailed("invalid state", nullptr);
+  }
+
+  // More copying is to be done (or there was a failure).
+  return false;
+}
+
+uint64_t TerminaVmExportOperation::CopyEntry(uint64_t io_limit) {
+  uint64_t bytes_read = 0;
+
+  do {
+    uint8_t buf[16384];
+    int count = archive_read_data(in_.get(), buf, sizeof(buf));
+    if (count == 0) {
+      // No more data
+      state_ = kFinishedCopy;
+      break;
+    }
+
+    if (count < 0) {
+      MarkFailed("failed to read data block", in_.get());
+      break;
+    }
+
+    bytes_read += count;
+
+    int ret = archive_write_data(out_.get(), buf, count);
+    if (ret < ARCHIVE_OK) {
+      MarkFailed("failed to write data block", out_.get());
+      break;
+    }
+  } while (bytes_read < io_limit);
+
+  return bytes_read;
+}
+
+void TerminaVmExportOperation::Finalize() {
   // Close the file descriptor.
   out_fd_.reset();
 
@@ -965,7 +1369,8 @@ bool TerminaVmImportOperation::ExecuteIo(uint64_t io_limit) {
       // destination file ("dGVybWluYQ==.img" for termina).
 
       // For zstd compressed file:
-      // The file is treated as a single entry archive with a generic entry name
+      // The file is treated as a single entry archive with a generic entry
+      // name
       base::FilePath dest_filename = dest_image_path_.BaseName();
       if ((!zstd_ && path != dest_filename) || mode != AE_IFREG) {
         LOG(ERROR) << "Expected TerminaVm image named " << dest_filename

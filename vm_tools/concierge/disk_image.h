@@ -6,7 +6,9 @@
 #define VM_TOOLS_CONCIERGE_DISK_IMAGE_H_
 
 #include <archive.h>
+#include <zstd.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -136,34 +138,32 @@ struct ArchiveWriteDeleter {
 };
 using ArchiveWriter = std::unique_ptr<struct archive, ArchiveWriteDeleter>;
 
-class VmExportOperation : public DiskImageOperation {
+class PluginVmExportOperation : public DiskImageOperation {
  public:
-  static std::unique_ptr<VmExportOperation> Create(
+  static std::unique_ptr<PluginVmExportOperation> Create(
       const VmId vm_id,
       const base::FilePath disk_path,
       base::ScopedFD out_fd,
       base::ScopedFD out_digest_fd);
 
-  ~VmExportOperation() override;
+  PluginVmExportOperation(const PluginVmExportOperation&) = delete;
+  PluginVmExportOperation& operator=(const PluginVmExportOperation&) = delete;
+  ~PluginVmExportOperation() override;
 
  protected:
   bool ExecuteIo(uint64_t io_limit) override;
   void Finalize() override;
 
  private:
-  static int OutputFileOpenCallback(archive* a, void* data);
   static ssize_t OutputFileWriteCallback(archive* a,
                                          void* data,
                                          const void* buf,
                                          size_t length);
-  static int OutputFileCloseCallback(archive* a, void* data);
 
-  VmExportOperation(const VmId vm_id,
-                    const base::FilePath disk_path,
-                    base::ScopedFD out_fd,
-                    base::ScopedFD out_digest_fd);
-  VmExportOperation(const VmExportOperation&) = delete;
-  VmExportOperation& operator=(const VmExportOperation&) = delete;
+  PluginVmExportOperation(const VmId vm_id,
+                          const base::FilePath disk_path,
+                          base::ScopedFD out_fd,
+                          base::ScopedFD out_digest_fd);
 
   bool PrepareInput();
   bool PrepareOutput();
@@ -200,6 +200,101 @@ class VmExportOperation : public DiskImageOperation {
 
   // Hasher to generate digest of the produced image.
   std::unique_ptr<crypto::SecureHash> sha256_;
+};
+
+class TerminaVmExportOperation : public DiskImageOperation {
+ public:
+  static std::unique_ptr<TerminaVmExportOperation> Create(
+      const VmId vm_id,
+      const base::FilePath disk_path,
+      base::ScopedFD out_fd,
+      base::ScopedFD out_digest_fd);
+
+  TerminaVmExportOperation(const TerminaVmExportOperation&) = delete;
+  TerminaVmExportOperation& operator=(const TerminaVmExportOperation&) = delete;
+  ~TerminaVmExportOperation() override;
+
+  enum State {
+    kBeforeOnlyEntry,
+    kCopying,
+    kFinishedCopy,
+    kCalculatingSeekTable,
+    kWriteSeekTable
+  };
+
+  struct SeekTableEntry {
+    uint32_t compressed_size;
+    uint32_t decompressed_size;
+  };
+  static_assert(sizeof(SeekTableEntry) == 8);
+
+ protected:
+  bool ExecuteIo(uint64_t io_limit) override;
+  void Finalize() override;
+
+ private:
+  static ssize_t OutputFileWriteCallback(archive* a,
+                                         void* data,
+                                         const void* buf,
+                                         size_t length);
+
+  TerminaVmExportOperation(const VmId vm_id,
+                           const base::FilePath disk_path,
+                           base::ScopedFD out_fd,
+                           base::ScopedFD out_digest_fd);
+
+  bool PrepareInput();
+  bool PrepareOutput();
+
+  void MarkFailed(const char* msg, struct archive* a);
+
+  // Copies up to |io_limit| bytes of one file of the image.
+  // Returns number of bytes read.
+  uint64_t CopyEntry(uint64_t io_limit);
+
+  // Path to the source image file.
+  const base::FilePath src_image_path_;
+
+  // File descriptor to write the compressed image to.
+  base::ScopedFD out_fd_;
+
+  // File descriptor to write the SHA256 digest of the compressed image to.
+  base::ScopedFD out_digest_fd_;
+
+  // Current state of operation
+  State state_ = kBeforeOnlyEntry;
+
+  // Source directory "archive".
+  ArchiveReader in_;
+
+  // Output archive backed by the file descriptor.
+  ArchiveWriter out_;
+
+  // Hasher to generate digest of the produced image.
+  std::unique_ptr<crypto::SecureHash> sha256_;
+
+  // Seek table entries collected from zstd archive
+  std::vector<SeekTableEntry> seek_table_entries_;
+
+  // Treacking read offset of finished zstd frames
+  uint64_t seek_table_build_offset_ = 0;
+
+  // Total size of all zstd frames created
+  uint64_t zstd_total_frame_size_ = 0;
+
+  // Count of written seek table entries
+  size_t seektable_entry_written = 0;
+
+  // We previously determined 128KiB frame size is a good middle ground for a
+  // seekable frame. This size allows it to not consume too much memory when
+  // content is cached by frame, and still offers similar compression ratio
+  // compared to much larger frames. See crrev.com/c/6036328
+
+  // Buffer to store a single compressed zstd frame
+  std::array<uint8_t, ZSTD_COMPRESSBOUND(128 << 10)> compressed_fb_;
+
+  // Buffer to store a single uncompressed zstd frame
+  std::array<uint8_t, 128 << 10> decompressed_fb_;
 };
 
 class PluginVmImportOperation : public DiskImageOperation {

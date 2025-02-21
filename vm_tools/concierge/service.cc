@@ -106,6 +106,7 @@
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/dbus_adaptor.h"
 #include "vm_tools/concierge/dbus_proxy_util.h"
+#include "vm_tools/concierge/disk_image.h"
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/feature_util.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
@@ -3251,8 +3252,17 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
     }
   }
 
-  auto op = VmExportOperation::Create(vm_id, disk_path, std::move(storage_fd),
-                                      std::move(digest_fd));
+  // Non-plugin VMs will only be exported in zstd compression
+  // Non-plugin VMs previously exported to zip can still be imported
+  std::unique_ptr<DiskImageOperation> op;
+
+  if (location == STORAGE_CRYPTOHOME_PLUGINVM) {
+    op = PluginVmExportOperation::Create(
+        vm_id, disk_path, std::move(storage_fd), std::move(digest_fd));
+  } else {
+    op = TerminaVmExportOperation::Create(
+        vm_id, disk_path, std::move(storage_fd), std::move(digest_fd));
+  }
 
   response.set_status(op->status());
   response.set_command_uuid(op->uuid());
