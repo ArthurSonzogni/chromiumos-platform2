@@ -669,7 +669,7 @@ class CrosConfigBaseImpl:
         """
         return self._GetFiles("GetCameraFiles")
 
-    def _GetFirmwareGroupingName(self, config):
+    def GetFirmwareGroupingName(self, config):
         """Gets the name of group of firmware build targets
 
         Historically this maps to the name of the coreboot build target.
@@ -720,7 +720,7 @@ class CrosConfigBaseImpl:
             if not device_targets:
                 continue
 
-            key = self._GetFirmwareGroupingName(device)
+            key = self.GetFirmwareGroupingName(device)
 
             if firmware_filter and key not in firmware_filter:
                 continue
@@ -760,7 +760,7 @@ class CrosConfigBaseImpl:
                 continue
             targets = [device_targets.get(c) for c in components]
 
-            key = self._GetFirmwareGroupingName(device)
+            key = self.GetFirmwareGroupingName(device)
 
             if firmware_filter and key not in firmware_filter:
                 continue

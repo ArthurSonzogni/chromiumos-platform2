@@ -43,6 +43,7 @@ SOME_FIRMWARE_FILES = [
     "Some_EC_RW.1111.11.1.tbz2",
     "Some.1111.11.1.tbz2",
     "Some_RW.1111.11.1.tbz2",
+    "Some_ISH.1111.11.1.tbz2",
 ]
 ANOTHER_FIRMWARE_FILES = [
     "Another_EC.1111.11.1.tbz2",

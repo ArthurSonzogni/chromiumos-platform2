@@ -15,6 +15,7 @@ from __future__ import print_function
 import argparse
 import json
 import os
+import re
 import sys
 
 
@@ -247,6 +248,34 @@ def GetFirmwareBuildTargets(config, target_type):
     """
     for target in config.GetFirmwareBuildTargets(target_type):
         print(target)
+
+
+def GetFirmwareVersion(config, project_name, image_type):
+    """Lists the firmware version for a given build target.
+
+    Args:
+        config: A CrosConfig instance to load data from
+        project_name: The name of the project to query
+        image_type: The name of the image type to query
+    """
+    bcs_uris = set()
+    for device in config.GetDeviceConfigs():
+        if config.GetFirmwareGroupingName(device) != project_name:
+            continue
+        bcs_uris.add(device.GetProperty("/firmware", f"{image_type}-image"))
+    assert len(bcs_uris) == 1
+    match = re.match(
+        (
+            r"^bcs://(?P<name>\w+)\.(?P<major>\d+)\."
+            r"(?P<minor>\d+)\.(?P<patch>\d+)\.tbz2$"
+        ),
+        next(iter(bcs_uris)),
+    )
+    assert match is not None
+    print(
+        f"{match.group('name')}.{match.group('major')}"
+        f".{match.group('minor')}.{match.group('patch')}"
+    )
 
 
 def GetFingerprintFirmwareROVersion(config, fpmcu):
@@ -570,6 +599,19 @@ def GetParser(description):
         "type",
         help="The build-targets type to get (ex. coreboot, ec, depthcharge)",
     )
+    # Parser: get-firmware-version
+    build_version_parser = subparsers.add_parser(
+        "get-firmware-version",
+        help="Lists firmware version for a given build combination",
+    )
+    build_version_parser.add_argument(
+        "project",
+        help="The project name to query",
+    )
+    build_version_parser.add_argument(
+        "type",
+        help="The image type to get (ex. ec-ro, main-ro, ish, etc).",
+    )
     # Parser: get-fpmcu-firmware-ro-version
     fpmcu_firmware_ro_parser = subparsers.add_parser(
         "get-fpmcu-firmware-ro-version",
@@ -760,6 +802,8 @@ def main(argv=None):
         GetCameraFiles(config)
     elif opts.subcommand == "get-firmware-build-targets":
         GetFirmwareBuildTargets(config, opts.type)
+    elif opts.subcommand == "get-firmware-version":
+        GetFirmwareVersion(config, opts.project, opts.type)
     elif opts.subcommand == "get-fpmcu-firmware-ro-version":
         return GetFingerprintFirmwareROVersion(config, opts.fpmcu)
     elif opts.subcommand == "get-thermal-files":

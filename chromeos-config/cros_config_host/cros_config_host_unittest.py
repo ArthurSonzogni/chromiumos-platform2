@@ -160,6 +160,14 @@ class CrosConfigHostTest(unittest.TestCase):
             output, "another_zephyr_base\nanother_zephyr_base-touch.fw\n"
         )
 
+    def testGetFirmwareVersion(self):
+        output = self._check_output(
+            "get-firmware-version",
+            "some",
+            "ish",
+        )
+        self.assertEqual(output, "Some_ISH.1111.11.1\n")
+
 
 if __name__ == "__main__":
     unittest.main()

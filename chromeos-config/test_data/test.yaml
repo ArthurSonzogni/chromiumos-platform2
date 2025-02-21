@@ -80,6 +80,7 @@ some_base_config: &some_base_config
     has-ec-component-manifest: True
     main-ro-image: "bcs://Some.1111.11.1.tbz2"
     main-rw-image: "bcs://Some_RW.1111.11.1.tbz2"
+    ish-image: "bcs://Some_ISH.1111.11.1.tbz2"
   fingerprint:
     board: "bloonchipper"
     ro-version: "VERSION1"
