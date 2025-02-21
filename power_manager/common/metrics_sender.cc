@@ -85,13 +85,22 @@ bool MetricsSender::SendEnumMetric(const std::string& name,
 bool SendMetric(
     const std::string& name, int sample, int min, int max, int num_buckets) {
   MetricsSenderInterface* sender = MetricsSenderInterface::GetInstance();
-  return sender ? sender->SendMetric(name, sample, min, max, num_buckets)
-                : true;
+  if (!sender) {
+    LOG(WARNING) << "SendMetric '" << name
+                 << "' called before MetricsSender initialization.";
+    return true;
+  }
+  return sender->SendMetric(name, sample, min, max, num_buckets);
 }
 
 bool SendEnumMetric(const std::string& name, int sample, int max) {
   MetricsSenderInterface* sender = MetricsSenderInterface::GetInstance();
-  return sender ? sender->SendEnumMetric(name, sample, max) : true;
+  if (!sender) {
+    LOG(WARNING) << "SendEnumMetric '" << name
+                 << "' called before MetricsSender initialization.";
+    return true;
+  }
+  return sender->SendEnumMetric(name, sample, max);
 }
 
 }  // namespace power_manager
