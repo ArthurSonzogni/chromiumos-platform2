@@ -2297,6 +2297,7 @@ def _build_firmware(config):
         main_rw_a_digest_algorithm = None
     ec_ro = fw_payload_config.ec_ro_payload
     ec_rw = fw_payload_config.ec_rw_payload
+    ish = fw_payload_config.ish_payload
     pd_ro = fw_payload_config.pd_ro_payload
     has_ec_component_manifest = fw_payload_config.has_ec_component_manifest
 
@@ -2369,6 +2370,7 @@ def _build_firmware(config):
         _upsert(main_rw_a_digest_algorithm, result, "main-rw-a-hash-algorithm")
     _upsert(_fw_bcs_path(ec_ro), result, "ec-ro-image")
     _upsert(_fw_bcs_path(ec_rw), result, "ec-rw-image")
+    _upsert(_fw_bcs_path(ish), result, "ish-image")
     _upsert(_fw_bcs_path(pd_ro), result, "pd-ro-image")
     if has_ec_component_manifest:
         _upsert(has_ec_component_manifest, result, "has-ec-component-manifest")

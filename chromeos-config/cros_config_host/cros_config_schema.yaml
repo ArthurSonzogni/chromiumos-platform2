@@ -941,6 +941,7 @@ properties:
                   build-only-element: true
                 ec-ro-image: *bcs_file_name
                 ec-rw-image: *bcs_file_name
+                ish-image: *bcs_file_name
                 has-ec-component-manifest:
                   description: Enables EC component manifest to support EC component probing (go/ec-comp-probe).
                   type: boolean

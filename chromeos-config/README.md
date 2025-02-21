@@ -807,6 +807,7 @@ In the tables below,
 | has-ec-component-manifest | boolean |  | False |  | True | Enables EC component manifest to support EC component probing (go/ec-comp-probe). |
 | has-splash-screen | boolean |  | False |  | False | Indicates if firmware is setting up the initial splash screen. |
 | image-name | string |  | False |  | False | The name of the firmware image used by the firmware updater. Typically the device name, but can differ when a device may have two or more different firmware images. |
+| ish-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | key-id | string |  | False |  | True | Key ID from the signer key set that is used to sign the given firmware image. |
 | main-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | main-rw-a-hash | string |  | False |  | True | Hash digest associated with the payload (FW_MAIN_A) for optional verification. |
