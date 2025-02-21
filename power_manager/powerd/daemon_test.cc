@@ -1258,12 +1258,11 @@ TEST_F(DaemonTest, ReportCrashDuringSuspend) {
 
   // If the file exists, a suspend journey reboot result should be reported to
   // UMA.
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kSuspendJourneyResultName,
-                static_cast<int>(SuspendJourneyResult::REBOOT),
-                static_cast<int>(SuspendJourneyResult::MAX))
-                .ToString(),
-            metrics_sender_->GetMetric(0));
+  EXPECT_TRUE(
+      metrics_sender_->ContainsMetric(MetricsSenderStub::Metric::CreateEnum(
+          metrics::kSuspendJourneyResultName,
+          static_cast<int>(SuspendJourneyResult::REBOOT),
+          static_cast<int>(SuspendJourneyResult::MAX))));
 
   // The file should also have been deleted after daemon initialisation.
   EXPECT_FALSE(base::PathExists(suspend_reboot_path_));

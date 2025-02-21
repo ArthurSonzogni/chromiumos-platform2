@@ -398,16 +398,6 @@ void Daemon::Init() {
     }
   }
 
-  // If the suspend_reboot file exists at startup, it means that powerd must
-  // have been restarted before the file could be unlinked shortly after
-  // resume. This probably means there was a crash sometime between when
-  // suspend started and resume finished.
-  if (base::PathExists(suspend_reboot_path_)) {
-    LOG(INFO) << "Detected suspend_reboot file";
-    brillo::DeleteFile(suspend_reboot_path_);
-    metrics_collector_->SendSuspendJourneyResult(SuspendJourneyResult::REBOOT);
-  }
-
   prefs_ = delegate_->CreatePrefs();
   InitTracing();
   InitDBus();
@@ -542,6 +532,16 @@ void Daemon::Init() {
   metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
                            keyboard_backlight_controller_.get(), power_status,
                            first_run_after_boot_);
+
+  // If the suspend_reboot file exists at startup, it means that powerd must
+  // have been restarted before the file could be unlinked shortly after
+  // resume. This probably means there was a crash sometime between when
+  // suspend started and resume finished.
+  if (base::PathExists(suspend_reboot_path_)) {
+    LOG(INFO) << "Detected suspend_reboot file";
+    brillo::DeleteFile(suspend_reboot_path_);
+    metrics_collector_->SendSuspendJourneyResult(SuspendJourneyResult::REBOOT);
+  }
 
   // Only create the Adaptive Charging Controller for battery powered systems.
   std::string psu_type;
