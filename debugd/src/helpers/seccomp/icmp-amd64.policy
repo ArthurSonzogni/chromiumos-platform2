@@ -35,6 +35,8 @@ getuid: 1
 exit_group: 1
 pipe2: 1
 clone: 1
+# clone3 is conditionally used by glibc's `popen` as of 2.38.
+clone3: 1
 dup2: 1
 fcntl: 1
 getppid: 1
