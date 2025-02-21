@@ -29,7 +29,6 @@ fi
 # FLAGS_skip_postinstall
 # FLAGS_lab_preserve_logs
 # FLAGS_storage_diags
-# FLAGS_default_key_stateful
 # FLAGS_lvm_stateful
 # FLAGS_minimal_copy
 # FLAGS_skip_gpt_creation
@@ -338,7 +337,7 @@ wipe_stateful() {
   # state options are stored in $@.
   set --
 
-  DEV="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")"
+  DEV=$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")
 
   # Zero out the first block of the stateful partition to ensure that
   # mkfs/pvcreate don't get confused by existing state.
@@ -872,15 +871,6 @@ main() {
 
   # 12
   copy_partition "${PARTITION_NUM_EFI_SYSTEM:?}" "${SRC}" "${DST}" 1 1 false
-
-  # 11
-  if [ "${FLAGS_default_key_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
-    local metadata_partition_size
-    local dev
-    metadata_partition_size="$(partsize "${DST}" "${PARTITION_NUM_POWERWASH_DATA:?}")"
-    dev="$(make_partition_dev "${DST}" "${PARTITION_NUM_POWERWASH_DATA:?}")"
-    mkfs "${metadata_partition_size}" "${dev}" "H-CHROMEOS-METADATA"
-  fi
 
   # Version 3 layout doesn't have RWFW partition anymore.
   if [ "${PARTITION_NUM_RWFW+set}" = "set" ]; then
