@@ -56,12 +56,6 @@
 #include "login_manager/systemd_unit_starter.h"
 #include "login_manager/upstart_signal_emitter.h"
 
-#if USE_ARC_ADB_SIDELOADING
-#include "login_manager/arc_sideload_status.h"
-#else
-#include "login_manager/arc_sideload_status_stub.h"
-#endif
-
 namespace em = enterprise_management;
 namespace login_manager {
 
@@ -69,10 +63,6 @@ namespace {
 
 const int kSignals[] = {SIGTERM, SIGINT, SIGHUP};
 const int kNumSignals = sizeof(kSignals) / sizeof(int);
-
-// The only path where containers are allowed to be installed.  They must be
-// part of the read-only, signed root image.
-const char kContainerInstallDirectory[] = "/opt/google/containers";
 
 // The path where the pid of an aborted browser process is written. This is done
 // so that crash reporting tools can detect an abort that originated from
@@ -173,10 +163,6 @@ SessionManagerService::SessionManagerService(
       aborted_browser_pid_path_(kAbortedBrowserPidPath),
       shutdown_browser_pid_path_(kShutdownBrowserPidPath),
       browser_(std::move(browser_job_factory).Run(process_reaper_)),
-      android_container_(std::make_unique<AndroidOciWrapper>(
-          system_utils,
-          process_reaper_,
-          base::FilePath(kContainerInstallDirectory))),
       vpd_process_(system_utils, process_reaper_) {
   DCHECK(browser_);
   SetUpHandlers();
@@ -211,9 +197,6 @@ bool SessionManagerService::Initialize() {
       system_clock::kSystemClockServiceName,
       dbus::ObjectPath(system_clock::kSystemClockServicePath));
 
-  debugd_dbus_proxy_ = bus_->GetObjectProxy(
-      debugd::kDebugdServiceName, dbus::ObjectPath(debugd::kDebugdServicePath));
-
 #if USE_SYSTEMD
   using InitDaemonControllerImpl = SystemdUnitStarter;
 #else
@@ -232,17 +215,6 @@ bool SessionManagerService::Initialize() {
       this, liveness_proxy, dbus_daemon_proxy, enable_browser_abort_on_hang_,
       liveness_checking_interval_, liveness_checking_retries_, login_metrics_));
 
-#if USE_ARC_ADB_SIDELOADING
-  boot_lockbox_dbus_proxy_ = bus_->GetObjectProxy(
-      bootlockbox::kBootLockboxServiceName,
-      dbus::ObjectPath(bootlockbox::kBootLockboxServicePath));
-
-  auto arc_sideload_status =
-      std::make_unique<ArcSideloadStatus>(boot_lockbox_dbus_proxy_);
-#else
-  auto arc_sideload_status = std::make_unique<ArcSideloadStatusStub>();
-#endif
-
   fwmp_dbus_proxy_ = bus_->GetObjectProxy(
       device_management::kDeviceManagementServiceName,
       dbus::ObjectPath(device_management::kDeviceManagementServicePath));
@@ -252,10 +224,8 @@ bool SessionManagerService::Initialize() {
           chromeos::kChromeFeaturesServiceName,
           dbus::ObjectPath(chromeos::kChromeFeaturesServicePath)));
 
-  arc_manager_ = std::make_unique<ArcManager>(
-      android_container_.get(), *system_utils_,
-      std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy),
-      std::move(arc_sideload_status), debugd_dbus_proxy_, login_metrics_);
+  arc_manager_ = std::make_unique<ArcManager>(*system_utils_, *login_metrics_,
+                                              process_reaper_, *bus_);
 
   impl_ = std::make_unique<SessionManagerImpl>(
       this /* delegate */,
@@ -464,9 +434,13 @@ void SessionManagerService::HandleBrowserExit(const siginfo_t& status) {
   browser_->ClearPid();
 
   // Ensure ARC containers are gone.
-  android_container_->RequestJobExit(ArcContainerStopReason::BROWSER_SHUTDOWN);
-  android_container_->EnsureJobExit(ArcManager::kContainerTimeout);
-  // Ensure ARCVM and related Upstart jobs are stopped (b/290194650).
+  if (arc_manager_) {
+    // Note: in tests, arc_manager_ is not set up.
+    arc_manager_->RequestJobExit(
+        static_cast<int32_t>(ArcContainerStopReason::BROWSER_SHUTDOWN));
+    arc_manager_->EnsureJobExit(ArcManager::kContainerTimeout.InMilliseconds());
+    // Ensure ARCVM and related Upstart jobs are stopped (b/290194650).
+  }
   MaybeStopArcVm();
 
   // Note: in tests, arc_manager_ is not set up.
@@ -675,11 +649,13 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
 
   const base::TimeTicks browser_exit_start_time = base::TimeTicks::Now();
   browser_->Kill(SIGTERM, reason);
-  android_container_->RequestJobExit(
-      code == ExitCode::SUCCESS
-          ? ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN
-          : ArcContainerStopReason::BROWSER_SHUTDOWN);
-
+  if (arc_manager_) {
+    // In test, arc_manager_ is nullptr.
+    arc_manager_->RequestJobExit(static_cast<int32_t>(
+        code == ExitCode::SUCCESS
+            ? ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN
+            : ArcContainerStopReason::BROWSER_SHUTDOWN));
+  }
   const base::TimeDelta browser_timeout = GetKillTimeout();
   DLOG(INFO) << "Waiting up to " << browser_timeout.InSeconds()
              << " seconds for browser process group to exit";
@@ -702,9 +678,13 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
                                             browser_exit_start_time);
   }
 
-  android_container_->EnsureJobExit(std::max(
-      base::TimeDelta(), ArcManager::kContainerTimeout -
-                             (base::TimeTicks::Now() - timeout_start)));
+  if (arc_manager_) {
+    // In test, arc_manager_ is nullptr.
+    arc_manager_->EnsureJobExit(
+        std::max(int64_t{0}, (ArcManager::kContainerTimeout -
+                              (base::TimeTicks::Now() - timeout_start))
+                                 .InMilliseconds()));
+  }
 }
 
 bool SessionManagerService::OnTerminationSignal(
@@ -737,6 +717,7 @@ void SessionManagerService::MaybeStopAllVms() {
                                        base::DoNothing());
 }
 
+// TODO(crbug.com/390297821): Move to ArcManager.
 void SessionManagerService::MaybeStopArcVm() {
   if (!vm_concierge_available_) {
     return;

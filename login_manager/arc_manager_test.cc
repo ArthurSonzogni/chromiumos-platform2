@@ -397,12 +397,11 @@ class ArcManagerTest : public testing::Test {
   void SetUp() override {
     arc_init_controller_ = new MockInitDaemonController();
     arc_sideload_status_ = new MockArcSideloadStatus();
-
-    arc_manager_ = std::make_unique<ArcManager>(
-        &android_container_, system_utils_,
-        base::WrapUnique(arc_init_controller_),
-        std::unique_ptr<ArcSideloadStatusInterface>(arc_sideload_status_),
-        debugd_proxy_.get(), &metrics_);
+    android_container_ = new FakeContainerManager(kAndroidPid);
+    arc_manager_ = ArcManager::CreateForTesting(
+        system_utils_, metrics_, base::WrapUnique(arc_init_controller_),
+        debugd_proxy_.get(), base::WrapUnique(android_container_),
+        std::unique_ptr<ArcSideloadStatusInterface>(arc_sideload_status_));
     auto delegate = std::make_unique<FakeArcManagerDelegate>();
     delegate_ = delegate.get();
     arc_manager_->SetDelegate(std::move(delegate));
@@ -410,6 +409,7 @@ class ArcManagerTest : public testing::Test {
 
   void TearDown() override {
     delegate_ = nullptr;
+    android_container_ = nullptr;
     arc_init_controller_ = nullptr;
     arc_sideload_status_ = nullptr;
     arc_manager_.reset();
@@ -433,7 +433,7 @@ class ArcManagerTest : public testing::Test {
  protected:
   FakeSystemUtils system_utils_;
   MockMetrics metrics_;
-  FakeContainerManager android_container_{kAndroidPid};
+  FakeContainerManager* android_container_ = nullptr;
   MockInitDaemonController* arc_init_controller_ = nullptr;
   MockArcSideloadStatus* arc_sideload_status_ = nullptr;
   scoped_refptr<dbus::MockObjectProxy> debugd_proxy_ =
@@ -559,7 +559,7 @@ TEST_F(ArcManagerTest, StartArcMiniContainer) {
   EXPECT_TRUE(arc_manager_->StartArcMiniContainer(
       &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 
   // StartArcInstance() does not update start time for login screen.
   {
@@ -586,7 +586,7 @@ TEST_F(ArcManagerTest, StartArcMiniContainer) {
   ASSERT_EQ(delegate_->values().size(), 1u);
   EXPECT_EQ(delegate_->values()[0],
             static_cast<uint32_t>(ArcContainerStopReason::USER_REQUEST));
-  EXPECT_FALSE(android_container_.running());
+  EXPECT_FALSE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest, UpgradeArcContainer) {
@@ -628,7 +628,7 @@ TEST_F(ArcManagerTest, UpgradeArcContainer) {
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
   {
     brillo::ErrorPtr error;
     int64_t start_time = 0;
@@ -648,7 +648,7 @@ TEST_F(ArcManagerTest, UpgradeArcContainer) {
   ASSERT_EQ(delegate_->values().size(), 1u);
   EXPECT_EQ(delegate_->values()[0],
             static_cast<uint32_t>(ArcContainerStopReason::USER_REQUEST));
-  EXPECT_FALSE(android_container_.running());
+  EXPECT_FALSE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest, UpgradeArcContainer_BackupsArcBugReportOnFailure) {
@@ -696,7 +696,7 @@ TEST_F(ArcManagerTest, UpgradeArcContainer_BackupsArcBugReportOnFailure) {
   ASSERT_EQ(delegate_->values().size(), 1u);
   EXPECT_EQ(delegate_->values()[0],
             static_cast<uint32_t>(ArcContainerStopReason::UPGRADE_FAILURE));
-  EXPECT_FALSE(android_container_.running());
+  EXPECT_FALSE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest, UpgradeArcContainerWithManagementTransition) {
@@ -723,7 +723,7 @@ TEST_F(ArcManagerTest, UpgradeArcContainerWithManagementTransition) {
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest, DisableMediaStoreMaintenance) {
@@ -923,11 +923,11 @@ TEST_P(ArcManagerPackagesCacheTest, PackagesCache) {
   upgrade_request.set_skip_tts_cache(std::get<2>(GetParam()));
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 
   EXPECT_TRUE(arc_manager_->StopArcInstance(
       &error, std::string() /*account_id*/, false /*should_backup_log*/));
-  EXPECT_FALSE(android_container_.running());
+  EXPECT_FALSE(android_container_->running());
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1074,11 +1074,11 @@ TEST_F(ArcManagerTest, UpgradeArcContainerForDemoSession) {
       "/run/imageloader/0.1/demo_apps/img.squash");
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 
   EXPECT_TRUE(arc_manager_->StopArcInstance(
       &error, std::string() /*account_id*/, false /*should_backup_log*/));
-  EXPECT_FALSE(android_container_.running());
+  EXPECT_FALSE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest, UpgradeArcContainerForDemoSessionWithoutDemoApps) {
@@ -1121,11 +1121,11 @@ TEST_F(ArcManagerTest, UpgradeArcContainerForDemoSessionWithoutDemoApps) {
   upgrade_request.set_is_demo_session(true);
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 
   EXPECT_TRUE(arc_manager_->StopArcInstance(
       &error, std::string() /*account_id*/, false /*should_backup_log*/));
-  EXPECT_FALSE(android_container_.running());
+  EXPECT_FALSE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest, UpgradeArcContainer_AdbSideloadingEnabled) {
@@ -1152,7 +1152,7 @@ TEST_F(ArcManagerTest, UpgradeArcContainer_AdbSideloadingEnabled) {
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest,
@@ -1182,7 +1182,7 @@ TEST_F(ArcManagerTest,
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest,
@@ -1212,7 +1212,7 @@ TEST_F(ArcManagerTest,
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest, ArcNativeBridgeExperiment) {
@@ -1358,12 +1358,12 @@ TEST_F(ArcManagerTest, ArcUpgradeCrash) {
         arc_manager_->UpgradeArcContainer(&error, SerializeAsBlob(request)));
     EXPECT_FALSE(error.get());
   }
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 
   EXPECT_TRUE(delegate_->values().empty());
 
-  android_container_.SimulateCrash();
-  EXPECT_FALSE(android_container_.running());
+  android_container_->SimulateCrash();
+  EXPECT_FALSE(android_container_->running());
 
   ASSERT_EQ(delegate_->values().size(), 1u);
   EXPECT_EQ(delegate_->values()[0],
@@ -1419,7 +1419,7 @@ TEST_F(ArcManagerTest, LocaleAndPreferredLanguages) {
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest, UpgradeArcContainer_ArcNearbyShareEnabled) {
@@ -1444,7 +1444,7 @@ TEST_F(ArcManagerTest, UpgradeArcContainer_ArcNearbyShareEnabled) {
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 }
 
 TEST_F(ArcManagerTest, UpgradeArcContainer_ArcNearbyShareDisabled) {
@@ -1469,7 +1469,7 @@ TEST_F(ArcManagerTest, UpgradeArcContainer_ArcNearbyShareDisabled) {
   EXPECT_TRUE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(android_container_->running());
 }
 #else  // !USE_CHEETS
 

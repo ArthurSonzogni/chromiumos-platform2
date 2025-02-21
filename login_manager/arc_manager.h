@@ -27,10 +27,15 @@ namespace arc {
 class UpgradeArcContainerRequest;
 }  // namespace arc
 
-namespace brillo::dbus_utils {
+namespace brillo {
+
+class ProcessReaper;
+
+namespace dbus_utils {
 template <typename... Ts>
 class DBusMethodResponse;
-}  // namespace brillo::dbus_utils
+}  // namespace dbus_utils
+}  // namespace brillo
 
 namespace dbus {
 class Error;
@@ -57,15 +62,23 @@ class ArcManager : public org::chromium::ArcManagerInterface {
     virtual void SendArcInstanceStoppedSignal(uint32_t value) = 0;
   };
 
-  ArcManager(ContainerManagerInterface* android_container,
-             SystemUtils& system_utils,
-             std::unique_ptr<InitDaemonController> init_controller,
-             std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status,
-             dbus::ObjectProxy* debugd_proxy,
-             LoginMetrics* login_metrics);
+  // Creates an instance under surrounding context taken as arguments.
+  // Referred arguments must be outlive the ArcManager instance.
+  ArcManager(SystemUtils& system_utils,
+             LoginMetrics& login_metrics,
+             brillo::ProcessReaper& process_reaper,
+             dbus::Bus& bus);
   ArcManager(const ArcManager&) = delete;
   ArcManager& operator=(const ArcManager&) = delete;
   ~ArcManager();
+
+  static std::unique_ptr<ArcManager> CreateForTesting(
+      SystemUtils& system_utils,
+      LoginMetrics& login_metrics,
+      std::unique_ptr<InitDaemonController> init_controller,
+      dbus::ObjectProxy* debugd_proxy,
+      std::unique_ptr<ContainerManagerInterface> android_container,
+      std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status);
 
   // Upstart signal triggered on ARC is booted.
   static constexpr char kStartArcInstanceImpulse[] = "start-arc-instance";
@@ -95,6 +108,8 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   // TODO(crbug.com/390297821): called from SessionManagerService.
   // Expose this as D-Bus method.
   void EmitStopArcVmInstanceImpulse();
+  void RequestJobExit(int32_t reason);
+  void EnsureJobExit(int64_t timeout_ms);
 
   // D-Bus method implementation.
   void OnUserSessionStarted(const std::string& in_account_id) override;
@@ -119,6 +134,14 @@ class ArcManager : public org::chromium::ArcManagerInterface {
       override;
 
  private:
+  // Shared constructor with CreateForTesting.
+  ArcManager(SystemUtils& system_utils,
+             LoginMetrics& login_metrics,
+             std::unique_ptr<InitDaemonController> init_controller,
+             dbus::ObjectProxy* debugd_proxy,
+             std::unique_ptr<ContainerManagerInterface> android_container,
+             std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status);
+
 #if USE_CHEETS
   // Starts the Android container for ARC. If an error occurs, brillo::Error
   // instance is set to |error_out|.  After this succeeds, in case of ARC stop,
@@ -159,12 +182,17 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   void DeleteArcBugReportBackup(const std::string& account_id);
 
   std::unique_ptr<Delegate> delegate_;
-  ContainerManagerInterface* const android_container_;
+
   const raw_ref<SystemUtils> system_utils_;
-  std::unique_ptr<InitDaemonController> init_controller_;
-  std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status_;
+  const raw_ref<LoginMetrics> login_metrics_;
+
+  // Interfaces to communicate with D-Bus system.
+  const std::unique_ptr<InitDaemonController> init_controller_;
   dbus::ObjectProxy* const debugd_proxy_;
-  LoginMetrics* const login_metrics_;
+
+  // ARC structures.
+  const std::unique_ptr<ContainerManagerInterface> android_container_;
+  std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status_;
 
   // Set of started user sessions represented by ID.
   std::set<std::string> user_sessions_;

@@ -8,32 +8,48 @@
 #include <utility>
 #include <vector>
 
+#include <arc/arc.pb.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/types/expected.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
+#include <dbus/bootlockbox/dbus-constants.h>
+#include <dbus/bus.h>
 #include <dbus/debugd/dbus-constants.h>
 #include <dbus/error.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
-#include "arc/arc.pb.h"
+#include "login_manager/android_oci_wrapper.h"
 #include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/init_daemon_controller.h"
 #include "login_manager/system_utils.h"
+#include "login_manager/systemd_unit_starter.h"
+#include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/validator_utils.h"
+
+#if USE_ARC_ADB_SIDELOADING
+#include "login_manager/arc_sideload_status.h"
+#else
+#include "login_manager/arc_sideload_status_stub.h"
+#endif
 
 namespace login_manager {
 namespace {
 
 constexpr char kLoggedInFlag[] = "/run/session_manager/logged_in";
+
+// The only path where containers are allowed to be installed.  They must be
+// part of the read-only, signed root image.
+constexpr char kContainerInstallDirectory[] = "/opt/google/containers";
 
 // Because the cheets logs are huge, we set the D-Bus timeout to 1 minute.
 constexpr base::TimeDelta kBackupArcBugReportTimeout = base::Minutes(1);
@@ -70,23 +86,72 @@ bool IsInsideVm(SystemUtils& system_utils) {
 
 #endif
 
+#if USE_SYSTEMD
+using InitDaemonControllerImpl = SystemdUnitStarter;
+#else
+using InitDaemonControllerImpl = UpstartSignalEmitter;
+#endif
+
+std::unique_ptr<ArcSideloadStatusInterface> CreateArcSideloadStatus(
+    dbus::Bus& bus) {
+#if USE_ARC_ADB_SIDELOADING
+  auto* boot_lockbox_dbus_proxy = bus.GetObjectProxy(
+      bootlockbox::kBootLockboxServiceName,
+      dbus::ObjectPath(bootlockbox::kBootLockboxServicePath));
+  return std::make_unique<ArcSideloadStatus>(boot_lockbox_dbus_proxy);
+#else
+  return std::make_unique<ArcSideloadStatusStub>();
+#endif
+}
+
 }  // namespace
 
+ArcManager::ArcManager(SystemUtils& system_utils,
+                       LoginMetrics& login_metrics,
+                       brillo::ProcessReaper& process_reaper,
+                       dbus::Bus& bus)
+    : ArcManager(
+          system_utils,
+          login_metrics,
+          std::make_unique<InitDaemonControllerImpl>(bus.GetObjectProxy(
+              InitDaemonControllerImpl::kServiceName,
+              dbus::ObjectPath(InitDaemonControllerImpl::kPath))),
+          bus.GetObjectProxy(debugd::kDebugdServiceName,
+                             dbus::ObjectPath(debugd::kDebugdServicePath)),
+          std::make_unique<AndroidOciWrapper>(
+              &system_utils,
+              process_reaper,
+              base::FilePath(kContainerInstallDirectory)),
+          CreateArcSideloadStatus(bus)) {}
+
 ArcManager::ArcManager(
-    ContainerManagerInterface* android_container,
     SystemUtils& system_utils,
+    LoginMetrics& login_metrics,
     std::unique_ptr<InitDaemonController> init_controller,
-    std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status,
     dbus::ObjectProxy* debugd_proxy,
-    LoginMetrics* login_metrics)
-    : android_container_(android_container),
-      system_utils_(system_utils),
+    std::unique_ptr<ContainerManagerInterface> android_container,
+    std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status)
+    : system_utils_(system_utils),
+      login_metrics_(login_metrics),
       init_controller_(std::move(init_controller)),
-      arc_sideload_status_(std::move(arc_sideload_status)),
       debugd_proxy_(debugd_proxy),
-      login_metrics_(login_metrics) {}
+      android_container_(std::move(android_container)),
+      arc_sideload_status_(std::move(arc_sideload_status)) {}
 
 ArcManager::~ArcManager() = default;
+
+std::unique_ptr<ArcManager> ArcManager::CreateForTesting(
+    SystemUtils& system_utils,
+    LoginMetrics& login_metrics,
+    std::unique_ptr<InitDaemonController> init_controller,
+    dbus::ObjectProxy* debugd_proxy,
+    std::unique_ptr<ContainerManagerInterface> android_container,
+    std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status) {
+  // std::make_unique won't work because the target ctor is private.
+  return base::WrapUnique(new ArcManager(
+      system_utils, login_metrics, std::move(init_controller), debugd_proxy,
+      std::move(android_container), std::move(arc_sideload_status)));
+}
 
 void ArcManager::SetDelegate(std::unique_ptr<Delegate> delegate) {
   CHECK(!delegate_);
@@ -104,6 +169,8 @@ void ArcManager::Finalize() {
       ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN);
   android_container_->EnsureJobExit(kContainerTimeout);
 
+  // TODO(hidehiko): consider to make this lifetime tied to Initialize/Finalize
+  // as a pair of the methods. Or, move the destruction to the dtor.
   arc_sideload_status_.reset();
 }
 
@@ -125,6 +192,15 @@ void ArcManager::EmitStopArcVmInstanceImpulse() {
           InitDaemonController::TriggerMode::SYNC)) {
     LOG(ERROR) << "Emitting stop-arcvm-instance impulse failed.";
   }
+}
+
+void ArcManager::RequestJobExit(int32_t reason) {
+  android_container_->RequestJobExit(
+      static_cast<ArcContainerStopReason>(reason));
+}
+
+void ArcManager::EnsureJobExit(int64_t timeout_ms) {
+  android_container_->EnsureJobExit(base::Milliseconds(timeout_ms));
 }
 
 void ArcManager::OnUserSessionStarted(const std::string& in_account_id) {

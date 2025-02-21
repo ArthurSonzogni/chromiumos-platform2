@@ -24,7 +24,6 @@
 #include <install_attributes/libinstallattributes.h>
 #include <libcrossystem/crossystem.h>
 
-#include "login_manager/android_oci_wrapper.h"
 #include "login_manager/device_identifier_generator.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/liveness_checker.h"
@@ -280,10 +279,6 @@ class SessionManagerService
   dbus::ObjectProxy* screen_lock_dbus_proxy_ = nullptr;
   dbus::ObjectProxy* powerd_dbus_proxy_ = nullptr;
   dbus::ObjectProxy* vm_concierge_dbus_proxy_ = nullptr;
-  dbus::ObjectProxy* debugd_dbus_proxy_ = nullptr;
-#if USE_ARC_ADB_SIDELOADING
-  dbus::ObjectProxy* boot_lockbox_dbus_proxy_ = nullptr;
-#endif
   dbus::ObjectProxy* fwmp_dbus_proxy_ = nullptr;
 
   // True when the vm_concierge service is available.
@@ -335,7 +330,6 @@ class SessionManagerService
 
   std::unique_ptr<BrowserJobInterface> browser_;
 
-  std::unique_ptr<ContainerManagerInterface> android_container_;
   std::unique_ptr<ArcManager> arc_manager_;
 
   VpdProcessImpl vpd_process_;
