@@ -222,6 +222,12 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
       args.preserve_lvs = USE_LVM_STATEFUL_PARTITION;
     } else if (arg == "disable_lvm_install" || USE_DISABLE_LVM_INSTALL) {
       args.disable_lvm_install = true;
+    } else if (arg == "default_key_migration_wipe") {
+      args.default_key_migration_wipe = true;
+      args.fast_wipe = true;
+      args.keepimg = true;
+      args.safe_wipe = true;
+      args.disable_lvm_install = true;
     }
   }
 
@@ -380,6 +386,11 @@ bool ClobberState::GetDevicesToWipe(
         base::FilePath(base_device + std::to_string(partitions.kernel_b));
   }
 
+  if (USE_DEFAULT_KEY_STATEFUL && partitions.cros_metadata != -1) {
+    wipe_info.cros_metadata_device =
+        base::FilePath(base_device + std::to_string(partitions.cros_metadata));
+  }
+
   *wipe_info_out = wipe_info;
   return true;
 }
@@ -429,7 +440,7 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
           args_.safe_wipe, args_.ad_migration_wipe, args_.rollback_wipe,
           args_.rma_wipe, debug_build == 1, false);
 
-  if (args_.factory_wipe) {
+  if (args_.factory_wipe || args_.default_key_migration_wipe) {
     for (auto& path :
          libpreservation::GetFactoryPreservationPathList(stateful_)) {
       stateful_paths.insert(path);
@@ -556,6 +567,50 @@ int ClobberState::Run() {
   LOG(INFO) << "RMA wipe: " << args_.rma_wipe;
   LOG(INFO) << "AD migration wipe: " << args_.ad_migration_wipe;
 
+  // As we move factory wiping from release image to factory test image,
+  // clobber-state will be invoked directly under a tmpfs. GetRootDevice cannot
+  // report correct output under such a situation. Therefore, the output is
+  // preserved then assigned to environment variables ROOT_DEV/ROOT_DISK for
+  // clobber-state. For other cases, the environment variables will be empty and
+  // it falls back to using GetRootDevice.
+  const char* root_disk_cstr = getenv("ROOT_DISK");
+  if (root_disk_cstr != nullptr) {
+    root_disk_ = base::FilePath(root_disk_cstr);
+  } else {
+    root_disk_ = utils::GetRootDevice(/*strip_partition=*/true);
+  }
+
+  base::FilePath root_device;
+  const char* root_device_cstr = getenv("ROOT_DEV");
+  if (root_device_cstr != nullptr) {
+    root_device = base::FilePath(root_device_cstr);
+  } else {
+    root_device = utils::GetRootDevice(/*strip_partition=*/false);
+  }
+
+  LOG(INFO) << "Root disk: " << root_disk_.value();
+  LOG(INFO) << "Root device: " << root_device.value();
+
+  partitions_.stateful = utils::GetPartitionNumber(root_disk_, "STATE");
+  partitions_.root_a = utils::GetPartitionNumber(root_disk_, "ROOT-A");
+  partitions_.root_b = utils::GetPartitionNumber(root_disk_, "ROOT-B");
+  partitions_.kernel_a = utils::GetPartitionNumber(root_disk_, "KERN-A");
+  partitions_.kernel_b = utils::GetPartitionNumber(root_disk_, "KERN-B");
+  partitions_.cros_metadata =
+      utils::GetPartitionNumber(root_disk_, "POWERWASH-DATA");
+
+  if (!GetDevicesToWipe(root_disk_, root_device, partitions_, &wipe_info_)) {
+    LOG(ERROR) << "Getting devices to wipe failed, aborting run";
+    return 1;
+  }
+
+  LOG(INFO) << "Stateful device: "
+            << wipe_info_.stateful_partition_device.value();
+  LOG(INFO) << "Inactive root device: "
+            << wipe_info_.inactive_root_device.value();
+  LOG(INFO) << "Inactive kernel device: "
+            << wipe_info_.inactive_kernel_device.value();
+
   // Most effective means of destroying user data is run at the start: Throwing
   // away the key to encrypted stateful by requesting the TPM to be cleared at
   // next boot.
@@ -597,6 +652,16 @@ int ClobberState::Run() {
     brillo::DeleteFile(stateful_.Append(kStatefulClobberLogPath));
   }
 
+  // Attempt to preserve installed powerwash-safe DLCs if switching to
+  // default_key_stateful from LVM.
+  if (args_.default_key_migration_wipe) {
+    clobber_lvm_->MigratePowerwashSafeDlcs(
+        wipe_info_.stateful_partition_device,
+        wipe_info_.active_kernel_partition == partitions_.kernel_a
+            ? dlcservice::PartitionSlot::A
+            : dlcservice::PartitionSlot::B);
+  }
+
   std::vector<base::FilePath> preserved_files = GetPreservedFilesList();
   for (const base::FilePath& fp : preserved_files) {
     LOG(INFO) << "Preserving file: " << fp.value();
@@ -616,48 +681,6 @@ int ClobberState::Run() {
     }
     UnmountEncryptedStateful();
   }
-
-  // As we move factory wiping from release image to factory test image,
-  // clobber-state will be invoked directly under a tmpfs. GetRootDevice cannot
-  // report correct output under such a situation. Therefore, the output is
-  // preserved then assigned to environment variables ROOT_DEV/ROOT_DISK for
-  // clobber-state. For other cases, the environment variables will be empty and
-  // it falls back to using GetRootDevice.
-  const char* root_disk_cstr = getenv("ROOT_DISK");
-  if (root_disk_cstr != nullptr) {
-    root_disk_ = base::FilePath(root_disk_cstr);
-  } else {
-    root_disk_ = utils::GetRootDevice(/*strip_partition=*/true);
-  }
-
-  base::FilePath root_device;
-  const char* root_device_cstr = getenv("ROOT_DEV");
-  if (root_device_cstr != nullptr) {
-    root_device = base::FilePath(root_device_cstr);
-  } else {
-    root_device = utils::GetRootDevice(/*strip_partition=*/false);
-  }
-
-  LOG(INFO) << "Root disk: " << root_disk_.value();
-  LOG(INFO) << "Root device: " << root_device.value();
-
-  partitions_.stateful = utils::GetPartitionNumber(root_disk_, "STATE");
-  partitions_.root_a = utils::GetPartitionNumber(root_disk_, "ROOT-A");
-  partitions_.root_b = utils::GetPartitionNumber(root_disk_, "ROOT-B");
-  partitions_.kernel_a = utils::GetPartitionNumber(root_disk_, "KERN-A");
-  partitions_.kernel_b = utils::GetPartitionNumber(root_disk_, "KERN-B");
-
-  if (!GetDevicesToWipe(root_disk_, root_device, partitions_, &wipe_info_)) {
-    LOG(ERROR) << "Getting devices to wipe failed, aborting run";
-    return 1;
-  }
-
-  LOG(INFO) << "Stateful device: "
-            << wipe_info_.stateful_partition_device.value();
-  LOG(INFO) << "Inactive root device: "
-            << wipe_info_.inactive_root_device.value();
-  LOG(INFO) << "Inactive kernel device: "
-            << wipe_info_.inactive_kernel_device.value();
 
   brillo::ProcessImpl log_preserve;
   log_preserve.AddArg("/sbin/clobber-log");
@@ -691,6 +714,9 @@ int ClobberState::Run() {
   if (args_.disable_lvm_install) {
     log_preserve.AddArg("disable_lvm_install");
   }
+  if (args_.default_key_migration_wipe) {
+    log_preserve.AddArg("default_key_migration_wipe");
+  }
 
   log_preserve.RedirectOutputToMemory(true);
   log_preserve.Run();
@@ -705,6 +731,12 @@ int ClobberState::Run() {
   // Ready for wiping.
   clobber_wipe_->SetPartitionInfo(partitions_);
   clobber_wipe_->SetFastWipe(args_.fast_wipe);
+
+  // Reset metadata partition.
+  if (!clobber_wipe_->WipeDevice(wipe_info_.cros_metadata_device)) {
+    LOG(ERROR) << "Unable to wipe device "
+               << wipe_info_.cros_metadata_device.value();
+  }
 
   base::ScopedClosureRunner reset_stateful(base::BindOnce(
       &ClobberState::ResetStatefulPartition, weak_ptr_factory_.GetWeakPtr()));
@@ -753,6 +785,14 @@ int ClobberState::Run() {
   ret = CreateStatefulFileSystem(wipe_info_.stateful_filesystem_device.value());
   if (ret) {
     LOG(ERROR) << "Unable to create stateful file system. Error code: " << ret;
+  }
+
+  if (USE_DEFAULT_KEY_STATEFUL && args_.default_key_migration_wipe) {
+    ret = CreateStatefulFileSystem(wipe_info_.cros_metadata_device.value());
+    if (ret) {
+      LOG(ERROR) << "Unable to create stateful file system. Error code: "
+                 << ret;
+    }
   }
 
   // Mount the fresh image for last minute additions.

@@ -43,6 +43,7 @@ class ClobberLvm {
   // be batched. This will come in handy for DLCs/logical volumes that want to
   // be atomically operated on.
   struct PreserveLogicalVolumesWipeInfo {
+    std::string dlc_id;
     std::string lv_name;
     bool preserve = false;
     bool zero = false;
@@ -100,6 +101,9 @@ class ClobberLvm {
 
   virtual std::optional<uint64_t> GetPartitionSize(
       const base::FilePath& base_device);
+
+  virtual bool MigratePowerwashSafeDlcs(
+      const base::FilePath& stateful_partition, dlcservice::PartitionSlot slot);
 
  protected:
   // These functions are marked protected so they can be overridden for tests.

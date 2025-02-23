@@ -256,6 +256,12 @@ mode_stateful_thinpool_migration() {
   show_assets_message "update_firmware_slow_extra_warning"
 }
 
+# Show a generic update message indicating that we're migrating to
+# dm-default-key, which can take upto a few minutes.
+mode_default_key_stateful_migration() {
+  show_assets_message "update_firmware_slow_extra_warning"
+}
+
 # Main initialization and dispatcher
 main() {
   # process args

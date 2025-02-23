@@ -20,6 +20,7 @@ class ClobberWipe {
     int root_b = -1;
     int kernel_a = -1;
     int kernel_b = -1;
+    int cros_metadata = -1;
   };
 
   explicit ClobberWipe(ClobberUi* ui);

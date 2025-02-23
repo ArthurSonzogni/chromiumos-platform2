@@ -22,6 +22,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/process/process.h>
 #include <chromeos/constants/imageloader.h>
 #include <libdlcservice/utils.h>
 
@@ -39,6 +40,9 @@ constexpr size_t kThinpoolSizePercent = 98;
 constexpr size_t kThinpoolMetadataSizePercent = 1;
 // Create thin logical volumes at 95% of the thinpool's size.
 constexpr size_t kLogicalVolumeSizePercent = 95;
+// Factory install dlc path.
+constexpr char kFactoryInstallDlcPath[] =
+    "/mnt/stateful_partition/unencrypted/dlc-factory-images";
 
 }  // namespace
 
@@ -377,6 +381,7 @@ ClobberLvm::DlcPreserveLogicalVolumesWipeArgs(
     // We add the active DLC logical volume.
     const auto& dlc_active_lv_name = utils->LogicalVolumeName(dlc, active_slot);
     verified_dlcs.emplace(PreserveLogicalVolumesWipeInfo{
+        .dlc_id = dlc,
         .lv_name = dlc_active_lv_name,
         .preserve = true,
         .zero = false,
@@ -424,4 +429,79 @@ ClobberLvm::PreserveLogicalVolumesWipeArgs(
       std::make_unique<dlcservice::Utils>());
   infos.insert(std::cbegin(dlcs), std::cend(dlcs));
   return infos;
+}
+
+bool ClobberLvm::MigratePowerwashSafeDlcs(
+    const base::FilePath& stateful_partition, dlcservice::PartitionSlot slot) {
+  ClobberLvm::PreserveLogicalVolumesWipeInfos infos =
+      PreserveLogicalVolumesWipeArgs(slot);
+
+  auto pv = lvm_->GetPhysicalVolume(stateful_partition);
+  if (!pv || !pv->IsValid()) {
+    LOG(WARNING) << "Failed to get physical volume.";
+    return false;
+  }
+  auto vg = lvm_->GetVolumeGroup(*pv);
+  if (!vg || !vg->IsValid()) {
+    LOG(WARNING) << "Failed to get volume group.";
+    return false;
+  }
+
+  if (!base::CreateDirectory(base::FilePath(kFactoryInstallDlcPath))) {
+    LOG(ERROR) << "Failed to create directory: " << kFactoryInstallDlcPath;
+    return false;
+  }
+
+  // Factory install path for preserving DLC
+  for (auto& info : infos) {
+    base::FilePath dlc_package_path = base::FilePath(kFactoryInstallDlcPath)
+                                          .Append(info.dlc_id)
+                                          .Append("package")
+                                          .Append("dlc.img");
+
+    // Check for logical volume existence and if this LV should be preserved.
+    if (info.preserve && !info.zero) {
+      auto lv = lvm_->GetLogicalVolume(*vg, info.lv_name);
+      if (!lv || !lv->IsValid()) {
+        continue;
+      }
+      if (!lv->Activate()) {
+        LOG(ERROR) << "Failed to active logical volume: " << info.lv_name;
+        continue;
+      }
+
+      if (!base::PathExists(dlc_package_path.DirName())) {
+        base::CreateDirectory(dlc_package_path.DirName());
+      }
+
+      LOG(INFO) << "Preserving DLC: " << lv->GetPath() << " to "
+                << dlc_package_path.value();
+
+      brillo::ProcessImpl dd;
+      dd.AddArg("/bin/dd");
+      dd.AddArg("if=" + lv->GetPath().value());
+      dd.AddArg("of=" + dlc_package_path.value());
+      dd.AddArg("bs=1");
+      dd.AddArg("count=" + std::to_string(info.digest_info->bytes));
+      dd.AddArg("conv=fsync");
+      dd.RedirectOutputToMemory(true);
+      if (dd.Run() != 0) {
+        LOG(ERROR) << "Failed to migrate logical volume: " << info.lv_name;
+        LOG(ERROR) << dd.GetOutputString(STDOUT_FILENO);
+        continue;
+      }
+
+      lv->Deactivate();
+
+      base::File dlc(dlc_package_path,
+                     base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+
+      if (!dlc.IsValid()) {
+        PLOG(ERROR) << "Failed to open file: " << dlc_package_path.value();
+        continue;
+      }
+      dlc.SetLength(info.digest_info->bytes);
+    }
+  }
+  return true;
 }

@@ -55,6 +55,8 @@ class ClobberState {
     bool preserve_lvs = false;
     // Force disable LVM stateful, even if the device supports it.
     bool disable_lvm_install = false;
+    // Default-key-stateful migration wipe.
+    bool default_key_migration_wipe = false;
   };
 
   struct DeviceWipeInfo {
@@ -65,6 +67,8 @@ class ClobberState {
     base::FilePath stateful_filesystem_device;
     base::FilePath inactive_root_device;
     base::FilePath inactive_kernel_device;
+    // Used only on default_key_stateful layouts.
+    base::FilePath cros_metadata_device;
 
     // The partition number for the currently booted kernel partition.
     int active_kernel_partition = -1;
@@ -156,6 +160,9 @@ class ClobberState {
 
   // Helper to wrap calls removing logical volumes and device level wipes.
   void ResetStatefulPartition();
+
+  // Helper to reset metadata partition.
+  void ResetMetadataPartition();
 
   Arguments args_;
   std::unique_ptr<crossystem::Crossystem> cros_system_;

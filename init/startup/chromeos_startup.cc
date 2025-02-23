@@ -136,6 +136,8 @@ constexpr char kTpmFirmwareUpdateCleanup[] =
     "usr/sbin/tpm-firmware-update-cleanup";
 constexpr char kTpmFirmwareUpdateRequestFlagFile[] =
     "unencrypted/preserve/tpm_firmware_update_request";
+constexpr char kDefaultKeyStatefulMigrationTrigger[] =
+    "mnt/stateful_partition/unencrypted/.default_key_stateful_migration";
 
 constexpr char kLibWhitelist[] = "lib/whitelist";
 constexpr char kLibDevicesettings[] = "lib/devicesettings";
@@ -147,6 +149,8 @@ const std::array<const char*, 4> kPreserveDirs = {
     "var/lib/device_health_profile",
     "usr/local/etc/wifi_creds",
 };
+
+constexpr char kOobeCompletedFile[] = "/home/chronos/.oobe_completed";
 
 constexpr char kMetaDataFSType[] = "ext4";
 
@@ -1053,6 +1057,22 @@ int ChromeosStartup::Run() {
   DevCheckBlockDevMode(stateful_.Append(kDevModeFile));
 
   CheckForStatefulWipe();
+
+  // Check for default_key_stateful_migration pref from update_engine.
+  // If the device hasn't yet gone through the OOBE flow, trigger a transition
+  // to default_key_stateful partition.
+  if (USE_DEFAULT_KEY_STATEFUL && flags_->lvm_stateful &&
+      base::PathExists(root_.Append(kDefaultKeyStatefulMigrationTrigger)) &&
+      !base::PathExists(base::FilePath(kOobeCompletedFile))) {
+    brillo::DeleteFile(root_.Append(kDefaultKeyStatefulMigrationTrigger));
+    std::vector<base::FilePath> mnts;
+    mount_helper_->CleanupMountsStack(&mnts);
+
+    startup_dep_->Clobber("default_key_stateful_migration",
+                          {"default_key_migration_wipe"},
+                          "Transition to default-key-stateful");
+    return 0;
+  }
 
   // Cleanup the file attributes in the unencrypted stateful directory.
   base::FilePath unencrypted = stateful_.Append(kUnencrypted);
