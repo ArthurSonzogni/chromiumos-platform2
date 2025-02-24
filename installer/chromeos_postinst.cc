@@ -23,6 +23,7 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
+#include <cros_config/cros_config.h>
 
 #include "installer/cgpt_manager.h"
 #include "installer/chromeos_install_config.h"
@@ -291,6 +292,54 @@ void FixUnencryptedPermission() {
       LOG(INFO) << "Permission changed successfully.";
     }
   }
+}
+
+// Format the metadata partition if needed.
+// When we use dm-default key for the statful partition, we need to format
+// the metadata partition (aka partition 11).
+bool FormatMetaDataPartitionNeeded() {
+  std::unique_ptr<brillo::CrosConfigInterface> config =
+      std::make_unique<brillo::CrosConfig>();
+
+  string dm_default_key_enabled;
+  if (!config->GetString("/disk-layout", "default-key-stateful",
+                         &dm_default_key_enabled) ||
+      dm_default_key_enabled != "true") {
+    // No variable present.
+    return false;
+  }
+  return true;
+}
+
+bool FormatMetaDataPartition(const InstallConfig& install_config) {
+  base::FilePath metadata_partition_dev = MakePartitionDev(
+      install_config.root.base_device(), PartitionNum::POWERWASH_DATA);
+  // Device needs metadata partition, will fail if we can not format.
+  int result = RunCommand({"/sbin/mkfs.ext4", "-F", "-L", "H-CROS-METADATA",
+                           metadata_partition_dev.value()});
+  if (result) {
+    LOG(ERROR) << "formatting metadata failed, result: " << result;
+  }
+
+  return result == 0;
+}
+
+bool ThinpoolMigration(const InstallConfig& install_config) {
+  base::FilePath stateful_device = MakePartitionDev(
+      install_config.root.base_device(), PartitionNum::STATEFUL);
+  // Device needs metadata partition, will fail if we can not format.
+  const std::vector<string> cmdline = {"/usr/sbin/thinpool_migrator",
+                                       "--silent", "--nouse_vpd",
+                                       "--device=" + stateful_device.value()};
+
+  int result;
+  result = RunCommand(cmdline);
+  if (result) {
+    LOG(ERROR) << "LVM migration failed in " << cmdline.front() << "..."
+               << cmdline.back() << ", result: " << result;
+  }
+
+  return result == 0;
 }
 
 // Do board specific post install stuff, if available.
@@ -644,6 +693,22 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
           LOG(ERROR) << "RollbackPartitionTable failed.";
         }
         return false;
+      }
+
+      if (!is_update && !is_factory_install) {
+        if (USE_DEFAULT_KEY_STATEFUL && FormatMetaDataPartitionNeeded()) {
+          // Format the metadata partition if needed.
+          if (!FormatMetaDataPartition(install_config)) {
+            LOG(ERROR) << "FormatMetaDataPartition failed.";
+            return false;
+          }
+        } else if (USE_LVM_STATEFUL_PARTITION && !USE_DISABLE_LVM_INSTALL) {
+          // Install migrate encrypted stateful to LVM.
+          if (!ThinpoolMigration(install_config)) {
+            LOG(ERROR) << "Unable to setup LVM";
+            return false;
+          }
+        }
       }
 
       FixUnencryptedPermission();

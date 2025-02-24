@@ -131,12 +131,14 @@ std::optional<installer::Partition> ParsePartition(const base::Value& part_info,
 
 }  // namespace
 
+const PartitionNum PartitionNum::STATEFUL = PartitionNum(1);
 const PartitionNum PartitionNum::KERN_A = PartitionNum(2);
 const PartitionNum PartitionNum::ROOT_A = PartitionNum(3);
 const PartitionNum PartitionNum::KERN_B = PartitionNum(4);
 const PartitionNum PartitionNum::ROOT_B = PartitionNum(5);
 const PartitionNum PartitionNum::KERN_C = PartitionNum(6);
 const PartitionNum PartitionNum::ROOT_C = PartitionNum(7);
+const PartitionNum PartitionNum::POWERWASH_DATA = PartitionNum(11);
 const PartitionNum PartitionNum::EFI_SYSTEM = PartitionNum(12);
 
 bool PartitionNum::IsKernel() const {

@@ -24,12 +24,14 @@ extern const char kEnvIsRecoveryInstall[];
 // necessarily correspond to the order of the partition's actual data.
 class PartitionNum {
  public:
+  static const PartitionNum STATEFUL;
   static const PartitionNum KERN_A;
   static const PartitionNum ROOT_A;
   static const PartitionNum KERN_B;
   static const PartitionNum ROOT_B;
   static const PartitionNum KERN_C;
   static const PartitionNum ROOT_C;
+  static const PartitionNum POWERWASH_DATA;
   static const PartitionNum EFI_SYSTEM;
 
   explicit PartitionNum(uint32_t num) : num_(num) {}
