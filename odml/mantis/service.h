@@ -99,6 +99,15 @@ class MantisService : public mojom::MantisService {
       odml::PerformanceTimer::Ptr timer,
       base::expected<base::FilePath, std::string> result);
 
+  void OnInstallVerifiedDlcComplete(
+      mojo::PendingReceiver<mojom::MantisProcessor> processor,
+      InitializeCallback callback,
+      odml::PerformanceTimer::Ptr timer,
+      const std::string& target_dlc_uuid,
+      std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+          progress_observer,
+      base::expected<base::FilePath, std::string> result);
+
   void OnDlcProgress(
       std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
           progress_observer,

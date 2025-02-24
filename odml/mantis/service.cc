@@ -127,12 +127,12 @@ void MantisService::Initialize(
           std::move(progress_observer));
   std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
       kDlcPrefix + target_dlc_uuid,
-      base::BindOnce(&MantisService::OnInstallDlcComplete,
+      base::BindOnce(&MantisService::OnInstallVerifiedDlcComplete,
                      weak_ptr_factory_.GetWeakPtr(), std::move(processor),
-                     std::move(callback), odml::PerformanceTimer::Create()),
-      base::BindRepeating(&MantisService::OnDlcProgress,
-                          weak_ptr_factory_.GetWeakPtr(), remote));
-  (*dlc_client)->InstallDlc();
+                     std::move(callback), odml::PerformanceTimer::Create(),
+                     target_dlc_uuid, remote),
+      base::DoNothing());
+  (*dlc_client)->InstallVerifiedDlcOnly();
 }
 
 void MantisService::GetMantisFeatureStatus(
@@ -199,6 +199,31 @@ void MantisService::OnInstallDlcComplete(
                      std::move(callback), std::move(timer))
           .Then(base::BindOnce(&MantisService::NotifyPendingProcessors,
                                weak_ptr_factory_.GetWeakPtr())));
+}
+
+// TODO(crbug.com/396779215): Send notification to the UI.
+void MantisService::OnInstallVerifiedDlcComplete(
+    mojo::PendingReceiver<mojom::MantisProcessor> processor,
+    InitializeCallback callback,
+    odml::PerformanceTimer::Ptr timer,
+    const std::string& target_dlc_uuid,
+    std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+        progress_observer,
+    base::expected<base::FilePath, std::string> result) {
+  if (result.has_value()) {
+    this->OnInstallDlcComplete(std::move(processor), std::move(callback),
+                               std::move(timer), result);
+    return;
+  }
+
+  std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
+      kDlcPrefix + target_dlc_uuid,
+      base::BindOnce(&MantisService::OnInstallDlcComplete,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(processor),
+                     std::move(callback), std::move(timer)),
+      base::BindRepeating(&MantisService::OnDlcProgress,
+                          weak_ptr_factory_.GetWeakPtr(), progress_observer));
+  (*dlc_client)->InstallDlc();
 }
 
 void MantisService::CreateMantisProcessor(
