@@ -165,12 +165,10 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
         case RecoveryType::kPurge:
           if (created) {
             Purge();
-          } else {
-            Teardown();
-          }
-          if (!backing_container_->Setup(encryption_key)) {
-            LOG(ERROR) << "Failed to recreate backing device";
-            return false;
+            if (!backing_container_->Setup(encryption_key)) {
+              LOG(ERROR) << "Failed to recreate backing device";
+              return false;
+            }
           }
           format_needed = true;
           break;
