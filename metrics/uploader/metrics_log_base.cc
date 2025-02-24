@@ -56,7 +56,7 @@ MetricsLogBase::MetricsLogBase(const std::string& client_id,
 MetricsLogBase::~MetricsLogBase() {}
 
 // static
-uint64_t MetricsLogBase::Hash(const std::string& value) {
+uint64_t MetricsLogBase::Hash(std::string_view value) {
   uint64_t hash = metrics::HashMetricName(value);
 
   // The following log is VERY helpful when folks add some named histogram into
@@ -108,7 +108,7 @@ void MetricsLogBase::RecordUserAction(const std::string& key) {
   ++num_events_;
 }
 
-void MetricsLogBase::RecordHistogramDelta(const std::string& histogram_name,
+void MetricsLogBase::RecordHistogramDelta(std::string_view histogram_name,
                                           const HistogramSamples& snapshot) {
   DCHECK(!locked_);
   DCHECK_NE(0, snapshot.TotalCount());

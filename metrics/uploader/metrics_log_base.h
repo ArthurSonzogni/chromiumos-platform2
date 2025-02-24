@@ -44,7 +44,7 @@ class MetricsLogBase {
 
   // Computes the MD5 hash of the given string, and returns the first 8 bytes of
   // the hash.
-  static uint64_t Hash(const std::string& value);
+  static uint64_t Hash(std::string_view value);
 
   // Get the GMT buildtime for the current binary, expressed in seconds since
   // January 1, 1970 GMT.
@@ -61,7 +61,7 @@ class MetricsLogBase {
   void RecordUserAction(const std::string& key);
 
   // Record any changes in a given histogram for transmission.
-  void RecordHistogramDelta(const std::string& histogram_name,
+  void RecordHistogramDelta(std::string_view histogram_name,
                             const base::HistogramSamples& snapshot);
 
   // Stop writing to this record and generate the encoded representation.

@@ -11,7 +11,7 @@ namespace metrics {
 
 // Computes a uint64 hash of a given string based on its MD5 hash. Suitable for
 // metric names.
-uint64_t HashMetricName(const std::string& name);
+uint64_t HashMetricName(std::string_view name);
 
 }  // namespace metrics
 

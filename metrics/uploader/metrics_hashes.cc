@@ -23,7 +23,7 @@ inline uint64_t HashToUInt64(const std::string& hash) {
 
 }  // namespace
 
-uint64_t HashMetricName(const std::string& name) {
+uint64_t HashMetricName(std::string_view name) {
   // Create an MD5 hash of the given |name|, represented as a byte buffer
   // encoded as an std::string.
   base::MD5Context context;
