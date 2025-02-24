@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -46,6 +47,7 @@ class CacheStorageTest : public testing::Test {
     temp_dir_ = std::make_unique<base::ScopedTempDir>();
     ASSERT_TRUE(temp_dir_->CreateUniqueTempDir());
     cache_storage_ = std::make_unique<TitleCacheStorage>(temp_dir_->GetPath());
+    now_ = base::Time::Now();
   };
 
   void TearDown() override {
@@ -61,15 +63,21 @@ class CacheStorageTest : public testing::Test {
     std::unordered_multiset<std::string> entities1;
     entities1.insert(kSet1Group1Entity1);
     entities1.insert(kSet1Group1Entity2);
-    result.Put(kSet1Group1Title,
-               TitleCacheEntry{.entity_titles = std::move(entities1)});
+    result.Put(
+        kSet1Group1Title,
+        TitleCacheEntry{
+            .entity_titles = std::move(entities1),
+            .last_updated = now_.InMillisecondsFSinceUnixEpochIgnoringNull()});
 
     std::unordered_multiset<std::string> entities2;
     entities2.insert(kSet1Group2Entity1);
     entities2.insert(kSet1Group2Entity2);
     entities2.insert(kSet1Group2Entity3);
-    result.Put(kSet1Group2Title,
-               TitleCacheEntry{.entity_titles = std::move(entities2)});
+    result.Put(
+        kSet1Group2Title,
+        TitleCacheEntry{
+            .entity_titles = std::move(entities2),
+            .last_updated = now_.InMillisecondsFSinceUnixEpochIgnoringNull()});
     return result;
   }
 
@@ -80,12 +88,16 @@ class CacheStorageTest : public testing::Test {
     ASSERT_EQ(itr->first, kSet1Group1Title);
     ASSERT_THAT(itr->second.entity_titles,
                 UnorderedElementsAre(kSet1Group1Entity1, kSet1Group1Entity2));
+    ASSERT_EQ(itr->second.last_updated,
+              now_.InMillisecondsFSinceUnixEpochIgnoringNull());
 
     itr++;
     ASSERT_EQ(itr->first, kSet1Group2Title);
     ASSERT_THAT(itr->second.entity_titles,
                 UnorderedElementsAre(kSet1Group2Entity1, kSet1Group2Entity2,
                                      kSet1Group2Entity3));
+    ASSERT_EQ(itr->second.last_updated,
+              now_.InMillisecondsFSinceUnixEpochIgnoringNull());
   }
 
   base::HashingLRUCache<std::string, TitleCacheEntry> GetContentSet2() {
@@ -95,14 +107,20 @@ class CacheStorageTest : public testing::Test {
     std::unordered_multiset<std::string> entities1;
     entities1.insert(kSet2Group1Entity1);
     entities1.insert(kSet2Group1Entity2);
-    result.Put(kSet2Group1Title,
-               TitleCacheEntry{.entity_titles = std::move(entities1)});
+    result.Put(
+        kSet2Group1Title,
+        TitleCacheEntry{
+            .entity_titles = std::move(entities1),
+            .last_updated = now_.InMillisecondsFSinceUnixEpochIgnoringNull()});
 
     std::unordered_multiset<std::string> entities2;
     entities2.insert(kSet2Group2Entity1);
     entities2.insert(kSet2Group2Entity2);
-    result.Put(kSet2Group2Title,
-               TitleCacheEntry{.entity_titles = std::move(entities2)});
+    result.Put(
+        kSet2Group2Title,
+        TitleCacheEntry{
+            .entity_titles = std::move(entities2),
+            .last_updated = now_.InMillisecondsFSinceUnixEpochIgnoringNull()});
     return result;
   }
 
@@ -113,11 +131,15 @@ class CacheStorageTest : public testing::Test {
     ASSERT_EQ(itr->first, kSet2Group1Title);
     ASSERT_THAT(itr->second.entity_titles,
                 UnorderedElementsAre(kSet2Group1Entity1, kSet2Group1Entity2));
+    ASSERT_EQ(itr->second.last_updated,
+              now_.InMillisecondsFSinceUnixEpochIgnoringNull());
 
     itr++;
     ASSERT_EQ(itr->first, kSet2Group2Title);
     ASSERT_THAT(itr->second.entity_titles,
                 UnorderedElementsAre(kSet2Group2Entity1, kSet2Group2Entity2));
+    ASSERT_EQ(itr->second.last_updated,
+              now_.InMillisecondsFSinceUnixEpochIgnoringNull());
   }
 
   base::FilePath GetPath(odml::SessionStateManagerInterface::User user) {
@@ -125,10 +147,79 @@ class CacheStorageTest : public testing::Test {
         "title_cache");
   }
 
+  base::HashingLRUCache<std::string, TitleCacheEntry> GetContent1WithTimestamps(
+      bool expired1, bool expired2, bool expired3) {
+    base::HashingLRUCache<std::string, TitleCacheEntry> result =
+        base::HashingLRUCache<std::string, TitleCacheEntry>(kCacheMaxSize);
+    base::TimeDelta expiration_time = base::Days(2);
+
+    std::unordered_multiset<std::string> entities3;
+    entities3.insert(kSet2Group1Entity1);
+    result.Put(
+        kSet2Group1Title,
+        TitleCacheEntry{
+            .entity_titles = std::move(entities3),
+            .last_updated = (now_ - (expired3 ? expiration_time + base::Days(3)
+                                              : base::TimeDelta()))
+                                .InMillisecondsFSinceUnixEpochIgnoringNull()});
+
+    std::unordered_multiset<std::string> entities2;
+    entities2.insert(kSet1Group2Entity1);
+    result.Put(
+        kSet1Group2Title,
+        TitleCacheEntry{
+            .entity_titles = std::move(entities2),
+            .last_updated = (now_ - (expired2 ? expiration_time + base::Days(3)
+                                              : base::TimeDelta()))
+                                .InMillisecondsFSinceUnixEpochIgnoringNull()});
+
+    std::unordered_multiset<std::string> entities1;
+    entities1.insert(kSet1Group1Entity1);
+    result.Put(
+        kSet1Group1Title,
+        TitleCacheEntry{
+            .entity_titles = std::move(entities1),
+            .last_updated = (now_ - (expired1 ? expiration_time + base::Days(3)
+                                              : base::TimeDelta()))
+                                .InMillisecondsFSinceUnixEpochIgnoringNull()});
+
+    return result;
+  }
+
+  void AssertContent1WithTimestamps(
+      const base::HashingLRUCache<std::string, TitleCacheEntry>& cache,
+      bool entry1_exists,
+      bool entry2_exists,
+      bool entry3_exists) {
+    int expected_size = (entry1_exists ? 1 : 0) + (entry2_exists ? 1 : 0) +
+                        (entry3_exists ? 1 : 0);
+    ASSERT_EQ(cache.size(), expected_size);
+    auto itr = cache.begin();
+    if (entry1_exists) {
+      ASSERT_EQ(itr->first, kSet1Group1Title);
+      ASSERT_THAT(itr->second.entity_titles,
+                  UnorderedElementsAre(kSet1Group1Entity1));
+      itr++;
+    }
+    if (entry2_exists) {
+      ASSERT_EQ(itr->first, kSet1Group2Title);
+      ASSERT_THAT(itr->second.entity_titles,
+                  UnorderedElementsAre(kSet1Group2Entity1));
+      itr++;
+    }
+    if (entry3_exists) {
+      ASSERT_EQ(itr->first, kSet2Group1Title);
+      ASSERT_THAT(itr->second.entity_titles,
+                  UnorderedElementsAre(kSet2Group1Entity1));
+      itr++;
+    }
+  }
+
   odml::SessionStateManagerInterface::User user1_ = {
       .name = "test", .hash = "0123456789abcde0123456789abcde"};
   odml::SessionStateManagerInterface::User user2_ = {
       .name = "example", .hash = "aaaaaaaabbbbbbbb0000000011111111"};
+  base::Time now_;
   std::unique_ptr<base::ScopedTempDir> temp_dir_;
   std::unique_ptr<TitleCacheStorage> cache_storage_;
 };
@@ -195,6 +286,35 @@ TEST_F(CacheStorageTest, CorruptFile) {
   ASSERT_TRUE(cache_storage_->Save(user1_, content1));
   ASSERT_TRUE(cache_storage_->Load(user1_, loaded_content1));
   AssertContentSet1(loaded_content1);
+}
+
+TEST_F(CacheStorageTest, FilterForExpirationNoExpirationNeeded) {
+  base::HashingLRUCache<std::string, TitleCacheEntry> content =
+      base::HashingLRUCache<std::string, TitleCacheEntry>(kCacheMaxSize);
+  EXPECT_FALSE(cache_storage_->FilterForExpiration(content));
+  EXPECT_EQ(content.size(), 0);
+}
+
+TEST_F(CacheStorageTest, FilterForExpirationNoExpiredEntry) {
+  base::HashingLRUCache<std::string, TitleCacheEntry> content =
+      GetContent1WithTimestamps(false, false, false);
+  EXPECT_FALSE(cache_storage_->FilterForExpiration(content));
+  AssertContent1WithTimestamps(content, true, true, true);
+}
+
+TEST_F(CacheStorageTest, FilterForExpirationSomeEntriesExpired) {
+  base::HashingLRUCache<std::string, TitleCacheEntry> content =
+      GetContent1WithTimestamps(true, false, true);
+  EXPECT_TRUE(cache_storage_->FilterForExpiration(content));
+  AssertContent1WithTimestamps(content, false, true, false);
+}
+
+TEST_F(CacheStorageTest, FilterForExpirationAllEntriesExpired) {
+  base::HashingLRUCache<std::string, TitleCacheEntry> content =
+      GetContent1WithTimestamps(true, true, true);
+  EXPECT_TRUE(cache_storage_->FilterForExpiration(content));
+  EXPECT_EQ(content.size(), 0);
+  AssertContent1WithTimestamps(content, false, false, false);
 }
 
 }  // namespace coral

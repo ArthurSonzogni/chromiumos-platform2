@@ -19,6 +19,9 @@ namespace coral {
 
 struct TitleCacheEntry {
   std::unordered_multiset<std::string> entity_titles;
+  // The last update time that is used for expiration. It is the number of ms
+  // since unix epoch.
+  double last_updated;
 };
 
 class TitleCacheStorageInterface {
@@ -35,6 +38,10 @@ class TitleCacheStorageInterface {
   virtual bool Save(const odml::SessionStateManagerInterface::User& user,
                     const base::HashingLRUCache<std::string, TitleCacheEntry>&
                         title_cache) = 0;
+
+  // Filter the cache for expired entries. Return true if modified.
+  virtual bool FilterForExpiration(
+      base::HashingLRUCache<std::string, TitleCacheEntry>& title_cache) = 0;
 };
 
 class TitleCacheStorage : public TitleCacheStorageInterface {
@@ -50,6 +57,9 @@ class TitleCacheStorage : public TitleCacheStorageInterface {
   bool Save(const odml::SessionStateManagerInterface::User& user,
             const base::HashingLRUCache<std::string, TitleCacheEntry>&
                 title_cache) override;
+
+  bool FilterForExpiration(base::HashingLRUCache<std::string, TitleCacheEntry>&
+                               title_cache) override;
 
  private:
   // The base path to use when locating the storage file. Usually set to

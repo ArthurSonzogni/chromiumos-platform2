@@ -12,6 +12,10 @@ message TitleCacheRecord {
 
   // The entity titles used to generate the cached_title.
   repeated string entity_titles = 2;
+
+  // The last update time that is used for expiration. It is the number of ms
+  // since unix epoch.
+  double last_updated = 3;
 }
 
 message TitleCacheRecords {

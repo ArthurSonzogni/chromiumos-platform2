@@ -250,7 +250,12 @@ void TitleGenerationEngine::OnUserLoggedIn(
 
 void TitleGenerationEngine::OnUserLoggedOut() {
   cache_flush_timer_->Stop();
+  if (current_user_.has_value()) {
+    title_cache_dirty_ |=
+        title_cache_storage_->FilterForExpiration(title_cache_);
+  }
   if (current_user_.has_value() && title_cache_dirty_) {
+    title_cache_storage_->FilterForExpiration(title_cache_);
     title_cache_storage_->Save(current_user_.value(), title_cache_);
   }
   current_user_.reset();
@@ -530,7 +535,10 @@ void TitleGenerationEngine::CacheGroupTitles(
     }
     title_cache_.Put(
         *group_data.title,
-        TitleCacheEntry{.entity_titles = std::move(entity_titles)});
+        TitleCacheEntry{
+            .entity_titles = std::move(entity_titles),
+            .last_updated =
+                base::Time::Now().InMillisecondsFSinceUnixEpochIgnoringNull()});
     title_cache_dirty_ = true;
   }
 }
@@ -573,6 +581,11 @@ std::optional<std::string> TitleGenerationEngine::GetNthTitleCacheKeyForTesting(
 }
 
 void TitleGenerationEngine::OnFlushCacheTimer() {
+  if (current_user_.has_value()) {
+    title_cache_dirty_ |=
+        title_cache_storage_->FilterForExpiration(title_cache_);
+  }
+
   if (current_user_.has_value() && title_cache_dirty_) {
     title_cache_storage_->Save(current_user_.value(), title_cache_);
     title_cache_dirty_ = false;

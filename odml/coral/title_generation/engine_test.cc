@@ -331,13 +331,13 @@ TEST_F(TitleGenerationEngineTest, FailThenSuccess) {
 }
 
 TEST_F(TitleGenerationEngineTest, TitleCaching) {
-  ExpectSendStatus(true, 4);
-  ExpectSendLatency(4);
-  // 1 request out of 3 hits the cache.
-  ExpectSendGenerateTitleMetrics(2);
-  ExpectSendInputTokenSize(2);
+  ExpectSendStatus(true, 5);
+  ExpectSendLatency(5);
+  // 2 request out of 5 hits the cache.
+  ExpectSendGenerateTitleMetrics(3);
+  ExpectSendInputTokenSize(3);
   ExpectSendCacheHit(true, 2);
-  ExpectSendCacheHit(false, 2);
+  ExpectSendCacheHit(false, 3);
   const odml::SessionStateManagerInterface::User user{"fake_user_1",
                                                       "fake_user_hash_1"};
   engine_->OnUserLoggedIn(user);
@@ -394,7 +394,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   std::string title1 = *response1.groups[0]->title;
 
   // Wait a while, make sure the cache has been flushed.
-  task_environment_->FastForwardBy(base::Days(100));
+  task_environment_->FastForwardBy(base::Hours(4));
   EXPECT_TRUE(test_title_cache_storage.Load(user, read_title_cache));
   EXPECT_EQ(1, read_title_cache.size());
 
@@ -402,7 +402,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   // existing cache needlessly.
   read_title_cache.Clear();
   EXPECT_TRUE(test_title_cache_storage.Save(user, read_title_cache));
-  task_environment_->FastForwardBy(base::Days(100));
+  task_environment_->FastForwardBy(base::Hours(4));
   EXPECT_TRUE(test_title_cache_storage.Load(user, read_title_cache));
   EXPECT_EQ(0, read_title_cache.size());
 
@@ -472,6 +472,21 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
       engine_->GetNthTitleCacheKeyForTesting(0);
   ASSERT_TRUE(cache_entry.has_value());
   EXPECT_EQ(cache_entry.value(), title1);
+
+  // Wait a while to try again and see if the cache expired.
+  task_environment_->FastForwardBy(base::Days(50));
+  cache_entry = engine_->GetNthTitleCacheKeyForTesting(0);
+  ASSERT_FALSE(cache_entry.has_value());
+
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future5;
+  engine_->Process(get_request(), get_clustering_response(), mojo::NullRemote(),
+                   title_future5.GetCallback());
+  CoralResult<TitleGenerationResponse> result5 = title_future5.Take();
+  ASSERT_TRUE(result5.has_value());
+  TitleGenerationResponse response5 = std::move(*result5);
+  ASSERT_EQ(response5.groups.size(), 1);
+  ASSERT_TRUE(response5.groups[0]->title.has_value());
+  std::string title5 = *response5.groups[0]->title;
 }
 
 TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {

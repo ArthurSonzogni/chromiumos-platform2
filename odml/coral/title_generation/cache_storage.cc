@@ -29,6 +29,9 @@ constexpr char kTitleCacheStorageSubDir[] = "coral";
 
 constexpr char kTitleCacheStorageFileName[] = "title_cache";
 
+// Cache entries older than this are pruned/expired.
+constexpr base::TimeDelta kCacheExpirationTime = base::Days(2);
+
 base::FilePath GetTitleCacheRecordsPath(
     const std::optional<base::FilePath> base_path,
     const odml::SessionStateManagerInterface::User& user) {
@@ -50,7 +53,8 @@ void RecordsToCache(
       entity_titles.insert(entity_title);
     }
     title_cache.Put(record.cached_title(),
-                    TitleCacheEntry{.entity_titles = std::move(entity_titles)});
+                    TitleCacheEntry{.entity_titles = std::move(entity_titles),
+                                    .last_updated = record.last_updated()});
   }
 }
 
@@ -63,7 +67,24 @@ void CacheToRecords(
     for (const auto& entity : title_cache_entry.entity_titles) {
       record->add_entity_titles(entity);
     }
+    record->set_last_updated(title_cache_entry.last_updated);
   }
+}
+
+bool ExpireCache(
+    base::HashingLRUCache<std::string, TitleCacheEntry>& title_cache,
+    const base::Time& expiration) {
+  bool ret = false;
+  for (auto itr = title_cache.begin(); itr != title_cache.end();) {
+    if (base::Time::FromMillisecondsSinceUnixEpoch(itr->second.last_updated) <
+        expiration) {
+      itr = title_cache.Erase(itr);
+      ret = true;
+    } else {
+      itr++;
+    }
+  }
+  return ret;
 }
 
 }  // namespace
@@ -99,6 +120,11 @@ bool TitleCacheStorage::Load(
 
   RecordsToCache(records, title_cache);
   return true;
+}
+
+bool TitleCacheStorage::FilterForExpiration(
+    base::HashingLRUCache<std::string, TitleCacheEntry>& title_cache) {
+  return ExpireCache(title_cache, base::Time::Now() - kCacheExpirationTime);
 }
 
 bool TitleCacheStorage::Save(
