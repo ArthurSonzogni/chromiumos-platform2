@@ -13,17 +13,19 @@ use thiserror::Error;
 
 /// A filesystem type for passing to mount calls.
 pub enum FsType {
+    Efivarfs,
     Ext4,
-    Vfat,
     Tmpfs,
+    Vfat,
 }
 
 impl fmt::Display for FsType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Efivarfs => f.write_str("efivarfs"),
             Self::Ext4 => f.write_str("ext4"),
-            Self::Vfat => f.write_str("vfat"),
             Self::Tmpfs => f.write_str("tmpfs"),
+            Self::Vfat => f.write_str("vfat"),
         }
     }
 }
