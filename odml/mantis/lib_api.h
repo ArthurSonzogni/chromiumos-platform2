@@ -34,6 +34,12 @@ struct InpaintingResult {
   std::vector<uint8_t> generated_region;
 };
 
+struct OutpaintingResult {
+  MantisStatus status;
+  std::vector<uint8_t> image;
+  std::vector<uint8_t> generated_region;
+};
+
 struct GenerativeFillResult {
   MantisStatus status;
   std::vector<uint8_t> image;
@@ -55,6 +61,12 @@ struct MantisAPI {
                                  const std::vector<uint8_t>& image,
                                  const std::vector<uint8_t>& mask,
                                  int seed);
+
+  // Runs outpainting on the given image and mask.
+  OutpaintingResult (*Outpainting)(ProcessorPtr processor_ptr,
+                                   const std::vector<uint8_t>& image,
+                                   const std::vector<uint8_t>& mask,
+                                   int seed);
 
   // Runs generative fill on the given image and mask.
   GenerativeFillResult (*GenerativeFill)(ProcessorPtr processor_ptr,

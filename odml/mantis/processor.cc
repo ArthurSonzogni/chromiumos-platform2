@@ -187,9 +187,8 @@ void MantisProcessor::Outpainting(const std::vector<uint8_t>& image,
              const std::vector<uint8_t>& image,
              const std::vector<uint8_t>& mask,
              uint32_t seed) -> ProcessFuncResult {
-            // TODO(b:396780367): Add and switch to Outpainting API
-            InpaintingResult lib_result =
-                api->Inpainting(component.processor, image, mask, seed);
+            OutpaintingResult lib_result =
+                api->Outpainting(component.processor, image, mask, seed);
             if (lib_result.status != MantisStatus::kOk) {
               return ProcessFuncResult{
                   .error = kMapStatusToError.at(lib_result.status),

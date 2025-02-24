@@ -29,6 +29,16 @@ InpaintingResult Inpainting(ProcessorPtr processor_ptr,
   };
 }
 
+OutpaintingResult Outpainting(ProcessorPtr processor_ptr,
+                              const std::vector<uint8_t>& image,
+                              const std::vector<uint8_t>& mask,
+                              int seed) {
+  return {
+      .status = MantisStatus::kOk,
+      .image = GetFakeImageData(),
+  };
+}
+
 GenerativeFillResult GenerativeFill(ProcessorPtr processor_ptr,
                                     const std::vector<uint8_t>& image,
                                     const std::vector<uint8_t>& mask,
@@ -54,6 +64,7 @@ void DestroyMantisComponent(MantisComponent component) {}
 const MantisAPI api = {
     .Initialize = &Initialize,
     .Inpainting = &Inpainting,
+    .Outpainting = &Outpainting,
     .GenerativeFill = &GenerativeFill,
     .Segmentation = &Segmentation,
     .DestroyMantisComponent = &DestroyMantisComponent,
