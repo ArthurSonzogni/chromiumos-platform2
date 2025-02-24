@@ -138,18 +138,20 @@ class SafetyServiceManagerImplTest : public testing::Test {
         .Times(times);
   }
   void ExpectSendGroupLatency(int times) {
-    EXPECT_CALL(metrics_, SendTimeToUMA(metrics::kClassifySafetyLatencyPrefix +
-                                            metrics::kMapRulesetToString.at(
-                                                SafetyRuleset::kGeneric),
-                                        _, _, _, _))
+    EXPECT_CALL(metrics_,
+                SendTimeToUMA(metrics::kClassifySafetyLatencyPrefix +
+                                  std::string(metrics::kMapRulesetToString.at(
+                                      SafetyRuleset::kGeneric)),
+                              _, _, _, _))
         .Times(times);
   }
 
   void ExpectSendGroupVerdict(SafetyClassifierVerdict verdict) {
-    EXPECT_CALL(metrics_, SendEnumToUMA(metrics::kClassifySafetyResultPrefix +
-                                            metrics::kMapRulesetToString.at(
-                                                SafetyRuleset::kGeneric),
-                                        static_cast<int>(verdict), _));
+    EXPECT_CALL(metrics_,
+                SendEnumToUMA(metrics::kClassifySafetyResultPrefix +
+                                  std::string(metrics::kMapRulesetToString.at(
+                                      SafetyRuleset::kGeneric)),
+                              static_cast<int>(verdict), _));
   }
 
   base::test::TaskEnvironment task_environment_;

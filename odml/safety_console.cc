@@ -10,6 +10,7 @@
 
 #include <base/check.h>
 #include <base/command_line.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -36,6 +37,20 @@ constexpr const char kText[] = "text";
 constexpr const char kImage[] = "image";
 constexpr const char kRuleset[] = "ruleset";
 
+using cros_safety::mojom::SafetyRuleset;
+
+constexpr auto kMapSwitchToSafetyRuleset =
+    base::MakeFixedFlatMap<std::string_view, SafetyRuleset>({
+        {"generic", SafetyRuleset::kGeneric},
+        {"mantis", SafetyRuleset::kMantis},
+        {"mantis-input-image", SafetyRuleset::kMantisInputImage},
+        {"mantis-output-image", SafetyRuleset::kMantisOutputImage},
+        {"mantis-generated-region", SafetyRuleset::kMantisGeneratedRegion},
+        {"coral", SafetyRuleset::kCoral},
+        {"mantis-generated-region-outpainting",
+         SafetyRuleset::kMantisGeneratedRegionOutpainting},
+    });
+
 class FilePath;
 
 }  // namespace
@@ -49,18 +64,8 @@ std::optional<cros_safety::mojom::SafetyRuleset> GetRulesetFromCommandLine(
   std::string ruleset = cl->GetSwitchValueASCII(kRuleset);
   std::transform(ruleset.begin(), ruleset.end(), ruleset.begin(), ::tolower);
   LOG(INFO) << "using safety ruleset: " << ruleset;
-  if (ruleset == "generic") {
-    return cros_safety::mojom::SafetyRuleset::kGeneric;
-  } else if (ruleset == "coral") {
-    return cros_safety::mojom::SafetyRuleset::kCoral;
-  } else if (ruleset == "mantis") {
-    return cros_safety::mojom::SafetyRuleset::kMantis;
-  } else if (ruleset == "mantis-input-image") {
-    return cros_safety::mojom::SafetyRuleset::kMantisInputImage;
-  } else if (ruleset == "mantis-output-image") {
-    return cros_safety::mojom::SafetyRuleset::kMantisOutputImage;
-  } else if (ruleset == "mantis-generated-region") {
-    return cros_safety::mojom::SafetyRuleset::kMantisGeneratedRegion;
+  if (kMapSwitchToSafetyRuleset.contains(ruleset)) {
+    return kMapSwitchToSafetyRuleset.at(ruleset);
   }
   LOG(ERROR) << "Unrecognized safety ruleset: " << ruleset;
   return std::nullopt;

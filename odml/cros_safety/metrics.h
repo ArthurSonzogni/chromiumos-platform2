@@ -5,7 +5,7 @@
 #ifndef ODML_CROS_SAFETY_METRICS_H_
 #define ODML_CROS_SAFETY_METRICS_H_
 
-#include <string>
+#include <string_view>
 
 #include <base/containers/fixed_flat_map.h>
 #include <metrics/metrics_library.h>
@@ -27,13 +27,15 @@ inline constexpr char kClassifySafetyLatencyPrefix[] =
     "Platform.SafetyService.ClassifySafetyLatency.";
 
 constexpr auto kMapRulesetToString =
-    base::MakeFixedFlatMap<mojom::SafetyRuleset, std::string>({
+    base::MakeFixedFlatMap<mojom::SafetyRuleset, std::string_view>({
         {mojom::SafetyRuleset::kGeneric, "Generic"},
         {mojom::SafetyRuleset::kMantis, "Mantis"},
         {mojom::SafetyRuleset::kMantisInputImage, "MantisInputImage"},
         {mojom::SafetyRuleset::kMantisOutputImage, "MantisOutputImage"},
         {mojom::SafetyRuleset::kMantisGeneratedRegion, "MantisGeneratedRegion"},
         {mojom::SafetyRuleset::kCoral, "Coral"},
+        {mojom::SafetyRuleset::kMantisGeneratedRegionOutpainting,
+         "MantisGeneratedRegionOutpainting"},
     });
 
 }  // namespace metrics

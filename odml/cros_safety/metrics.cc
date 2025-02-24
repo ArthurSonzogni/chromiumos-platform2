@@ -39,9 +39,10 @@ void SafetyMetrics::SendClassifySafetyResult(SafetyRuleset ruleset,
     LOG(WARNING) << "Cannot report histogram for unknown ruleset.";
     return;
   }
-  metrics_->SendEnumToUMA(metrics::kClassifySafetyResultPrefix +
-                              metrics::kMapRulesetToString.at(ruleset),
-                          verdict);
+  metrics_->SendEnumToUMA(
+      metrics::kClassifySafetyResultPrefix +
+          std::string(metrics::kMapRulesetToString.at(ruleset)),
+      verdict);
 }
 
 void SafetyMetrics::SendClassifySafetyLatency(SafetyRuleset ruleset,
@@ -50,10 +51,10 @@ void SafetyMetrics::SendClassifySafetyLatency(SafetyRuleset ruleset,
     LOG(WARNING) << "Cannot report histogram for unknown ruleset.";
     return;
   }
-  metrics_->SendTimeToUMA(metrics::kClassifySafetyLatencyPrefix +
-                              metrics::kMapRulesetToString.at(ruleset),
-                          duration, base::Milliseconds(1), base::Seconds(30),
-                          50);
+  metrics_->SendTimeToUMA(
+      metrics::kClassifySafetyLatencyPrefix +
+          std::string(metrics::kMapRulesetToString.at(ruleset)),
+      duration, base::Milliseconds(1), base::Seconds(30), 50);
 }
 
 }  // namespace cros_safety

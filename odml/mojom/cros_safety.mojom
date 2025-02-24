@@ -8,7 +8,7 @@
 //   2. On chromium, we must use the version under mojo folder so we do not need
 //      to and must not sync this file to chromium.
 
-// Next MinVersion: 2
+// Next MinVersion: 4
 module cros_safety.mojom;
 
 import "odml/mojom/big_buffer.mojom";
@@ -54,6 +54,7 @@ enum SafetyRuleset {
   [MinVersion=1] kMantisOutputImage,
   [MinVersion=1] kMantisGeneratedRegion,
   [MinVersion=1] kCoral,
+  [MinVersion=3] kMantisGeneratedRegionOutpainting,
 };
 
 // CloudSafetySession is implemented within CrosSafetyService which connects
