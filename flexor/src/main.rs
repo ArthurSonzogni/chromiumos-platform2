@@ -124,6 +124,9 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
         .first()
         .context("Got malformed ChromeOS Flex image")?;
 
+    // Needed for managing boot entries in postinst.
+    let _efivarfs = chromeos_install::mount_efivarfs().context("Unable to mount efivarfs")?;
+
     // Finally install the image on disk.
     chromeos_install::install_image_to_disk(
         &config.target_device,

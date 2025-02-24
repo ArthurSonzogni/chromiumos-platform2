@@ -6,6 +6,9 @@ use std::{path::Path, process::Command};
 
 use crate::util::execute_command;
 use anyhow::Result;
+use libchromeos::mount::{self, FsType, Mount};
+
+const EFIVARFS_PATH: &str = "/sys/firmware/efi/efivars";
 
 /// Writes the GPT partition table to disk and writes the stateful partition.
 pub fn write_partition_table_and_stateful(disk_path: &Path) -> Result<()> {
@@ -16,6 +19,18 @@ pub fn write_partition_table_and_stateful(disk_path: &Path) -> Result<()> {
     cmd.arg("--pmbr_code").arg("/usr/share/syslinux/gptmbr.bin");
 
     execute_command(cmd)
+}
+
+/// Mount efivarfs.
+///
+/// efivarfs is used in postinst to set the boot order so that Flex is the first choice for booting.
+/// Some devices also don't follow the UEFI spec, and don't look in the default location for
+/// bootloaders. This allows postinst to set up a boot entry so that even those devices can boot.
+pub fn mount_efivarfs() -> Result<Mount> {
+    // See https://docs.kernel.org/filesystems/efivarfs.html
+    Ok(mount::Builder::new(Path::new("none"))
+        .fs_type(FsType::Efivarfs)
+        .mount(Path::new(EFIVARFS_PATH))?)
 }
 
 /// Installs an image onto a disk using the chromeos_install script.
