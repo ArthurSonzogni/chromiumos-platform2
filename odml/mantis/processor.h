@@ -36,6 +36,13 @@ enum class ImageType {
   kInputImage,
   kOutputImage,
   kGeneratedRegion,
+  kGeneratedRegionOutpaintng,
+};
+
+enum class OperationType {
+  kGenfill,
+  kInpainting,
+  kOutpainting,
 };
 struct ProcessFuncResult {
   std::optional<mojom::MantisError> error;
@@ -48,6 +55,7 @@ struct MantisProcess {
   const std::vector<uint8_t> mask;
   uint32_t seed;
   std::optional<std::string> prompt;
+  const OperationType operation_type;
   base::OnceCallback<void(mojom::MantisResultPtr)> callback;
   base::OnceCallback<ProcessFuncResult()> process_func;
   // Metric info to be used on main thread.

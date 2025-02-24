@@ -74,6 +74,8 @@ constexpr auto kMapImageTypeToRuleset =
          cros_safety::mojom::SafetyRuleset::kMantisOutputImage},
         {ImageType::kGeneratedRegion,
          cros_safety::mojom::SafetyRuleset::kMantisGeneratedRegion},
+        {ImageType::kGeneratedRegionOutpaintng,
+         cros_safety::mojom::SafetyRuleset::kMantisGeneratedRegionOutpainting},
     });
 }  // namespace
 
@@ -143,6 +145,7 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
       .mask = mask,
       .seed = seed,
       .prompt = "",
+      .operation_type = OperationType::kInpainting,
       .callback = std::move(callback),
       .process_func = base::BindOnce(
           [](const MantisAPI* api, MantisComponent component,
@@ -177,6 +180,7 @@ void MantisProcessor::Outpainting(const std::vector<uint8_t>& image,
       .mask = mask,
       .seed = seed,
       .prompt = "",
+      .operation_type = OperationType::kOutpainting,
       .callback = std::move(callback),
       .process_func = base::BindOnce(
           [](const MantisAPI* api, MantisComponent component,
@@ -213,6 +217,7 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
       .mask = mask,
       .seed = seed,
       .prompt = RewritePromptForGenerativeFill(prompt),
+      .operation_type = OperationType::kGenfill,
       .callback = std::move(callback),
       .process_func = base::BindOnce(
           [](const MantisAPI* api, MantisComponent component,
@@ -300,6 +305,10 @@ void MantisProcessor::OnProcessDone(std::unique_ptr<MantisProcess> process,
       process->prompt.has_value() ? process->prompt.value() : "";
   process->image_result = lib_result.image;
   process->generated_region = lib_result.generated_region;
+  const auto generated_region_image_type =
+      process->operation_type == OperationType::kOutpainting
+          ? ImageType::kGeneratedRegionOutpaintng
+          : ImageType::kGeneratedRegion;
 
   const auto barrier_callback = base::BarrierCallback<SafetyClassifierVerdict>(
       2, base::BindOnce(&MantisProcessor::OnClassifyImageOutputDone,
@@ -308,7 +317,7 @@ void MantisProcessor::OnProcessDone(std::unique_ptr<MantisProcess> process,
   ClassifyImageSafetyInternal(lib_result.image, prompt, ImageType::kOutputImage,
                               barrier_callback);
   ClassifyImageSafetyInternal(lib_result.generated_region, /*text=*/"",
-                              ImageType::kGeneratedRegion, barrier_callback);
+                              generated_region_image_type, barrier_callback);
 }
 
 void MantisProcessor::ClassifyImageSafety(
