@@ -25,7 +25,6 @@ tempfile = "3.10"
 
 [features]
 lvm_stateful_partition = []
-default_key_stateful = []
 
 [workspace]
 members = ["xtask"]
