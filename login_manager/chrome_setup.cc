@@ -35,6 +35,7 @@
 #include <brillo/userdb_utils.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <libsegmentation/feature_management.h>
+#include <libstorage/platform/platform.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
@@ -1114,7 +1115,15 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("ArcEnableVirtioBlkMultipleWorkers");
   }
   if (builder->UseFlagIsSet("lvm_application_containers")) {
-    builder->AddFeatureEnableOverride("ArcLvmApplicationContainers");
+    libstorage::Platform platform;
+    // Devices with default-key-stateful layout may have restricted LVM support.
+    // TODO(b/398080309): Move this check to ArcVmClientAdapter in Chrome.
+    if (platform.IsStatefulLogicalVolumeSupported()) {
+      builder->AddFeatureEnableOverride("ArcLvmApplicationContainers");
+    } else {
+      LOG(INFO) << "ArcLvmApplicationContainers flag was omitted due to lack of"
+                << " LVM support.";
+    }
   }
   // Devices of tablet form factor will have special app behaviour.
   if (builder->UseFlagIsSet("tablet_form_factor")) {
