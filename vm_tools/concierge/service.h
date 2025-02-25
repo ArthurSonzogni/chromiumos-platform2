@@ -595,7 +595,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   // backend device. And starts a vhost_user_fs backend device by sending the
   // StartVhostUserFsRequest to vhost_user_starter daemon.
   // Return a corresponding frontend parameter.
-  std::optional<VhostUserFsFrontParam> InvokeVhostUserFsBackend(
+  std::optional<VhostUserFrontParam> InvokeVhostUserFsBackend(
       SharedDataParam param);
 
   // Destructor will need to run last after all metrics logging to allow

@@ -875,12 +875,12 @@ SharedDataParam CreateFontsSharedDataParam() {
                          .posix_acl = true};
 }
 
-std::string VhostUserFsFrontParam::to_string() const {
-  CHECK(!tag.empty());
+std::string VhostUserFrontParam::to_string() const {
+  CHECK_NE(type, "");
   CHECK_GE(socket_fd.get(), 0);
 
   std::string result = base::StrCat(
-      {"socket-fd=", std::to_string(socket_fd.get()), ",tag=", tag});
+      {type, ",socket=/proc/self/fd/", std::to_string(socket_fd.get())});
 
   return result;
 }

@@ -285,7 +285,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
 
-  std::optional<VhostUserFsFrontParam> shared_stub_vhost_user_front_param =
+  std::optional<VhostUserFrontParam> shared_stub_vhost_user_front_param =
       InvokeVhostUserFsBackend(
           SharedDataParam{.data_dir = base::FilePath(kStubVolumeSharedDir),
                           .tag = "stub",
@@ -588,7 +588,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                              pstore_path.value().c_str(), kArcVmRamoopsSize))
       .AppendSharedDir(shared_data)
       .AppendSharedDir(shared_data_media)
-      .AppendVhostUserFsFrontend(
+      .AppendVhostUserFrontend(
           std::move(shared_stub_vhost_user_front_param.value()))
       .EnableSmt(false /* enable */)
       .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling())

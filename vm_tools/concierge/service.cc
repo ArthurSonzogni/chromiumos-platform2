@@ -4995,7 +4995,7 @@ void Service::GetBaguetteImageUrl(
   response_cb->Return(response);
 }
 
-std::optional<VhostUserFsFrontParam> Service::InvokeVhostUserFsBackend(
+std::optional<VhostUserFrontParam> Service::InvokeVhostUserFsBackend(
     SharedDataParam param) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Vhost-user-fs frontend device should share same tag with backend device.
@@ -5025,8 +5025,8 @@ std::optional<VhostUserFsFrontParam> Service::InvokeVhostUserFsBackend(
   vhost_user_starter_client_->StartVhostUserFs(
       std::move(stub_device_socket_fds->back_end_fd), std::move(param));
 
-  return VhostUserFsFrontParam{
-      .tag = shared_tag,
+  return VhostUserFrontParam{
+      .type = "fs",
       .socket_fd = std::move(stub_device_socket_fds->front_end_fd)};
 }
 
