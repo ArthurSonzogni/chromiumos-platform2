@@ -10,18 +10,10 @@ use clap::Parser;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-// To allow the default use of lvm to be controlled by USE flag, toggle this
-// bool based on the feature `lvm_default`.
-#[cfg(feature = "lvm_stateful_partition")]
-const LVM_FLAG_DEFAULT: bool = true;
-
-#[cfg(not(feature = "lvm_stateful_partition"))]
-const LVM_FLAG_DEFAULT: bool = false;
-
 /// Arg parser with the set of args from the shell script.
 ///
-/// This drops the '--no<flag>' variant of each boolean arg (except for
-/// lvm_stateful), because they didn't seem to be used and would have been
+/// This drops the '--no<flag>' variant of each boolean arg,
+/// because they didn't seem to be used and would have been
 /// complex to add.
 #[derive(Parser, Debug)]
 #[command(version, about, rename_all = "snake_case")]
@@ -77,14 +69,6 @@ pub struct Args {
     #[arg(long)]
     pub skip_gpt_creation: bool,
 
-    /// Create LVM-based stateful partition
-    #[arg(long)]
-    pub lvm_stateful: bool,
-
-    /// Don't create LVM-based stateful partition
-    #[arg(long, conflicts_with("lvm_stateful"))]
-    pub nolvm_stateful: bool,
-
     /// Path to a file containing logs to be preserved
     #[arg(long)]
     pub lab_preserve_logs: Option<PathBuf>,
@@ -100,24 +84,6 @@ pub struct Args {
 }
 
 impl Args {
-    /// The default for the lvm_stateful flag has historically been controlled via
-    /// USE flag. In the case where the default was set to "true" it could be turned
-    /// off with the `--nolvm_stateful` flag. We keep that functionality, and figure
-    /// out the correct value to pass to the script by assuming that flags are only
-    /// specified when trying to change the default.
-    /// We can probably do this with clever Clap settings, but this seems simpler.
-    fn lvm_stateful_arg(&self, default: bool) -> bool {
-        // A `true` value for a flag indicates that it was passed, a `false` means
-        // it wasn't. When the default is to do lvm, we can ignore the 'positive'
-        // lvm flag and when the default is to not we can ignore the negative.
-        // If a user passes both positive and negative, Clap should abort.
-        if default {
-            !self.nolvm_stateful
-        } else {
-            self.lvm_stateful
-        }
-    }
-
     /// Convert parsed args into "environment variables" (pairs of Strings) to be
     /// passed to the shell script.
     pub fn to_env(&self) -> Environment {
@@ -134,9 +100,6 @@ impl Args {
             value.clone().unwrap_or_default().into()
         }
 
-        // Special handling for flag with USE-flag controlled default.
-        let lvm_stateful = self.lvm_stateful_arg(LVM_FLAG_DEFAULT);
-
         output.extend([
             ("FLAGS_skip_dst_removable", sh_bool(self.skip_dst_removable)),
             ("FLAGS_skip_rootfs", sh_bool(self.skip_rootfs)),
@@ -145,7 +108,6 @@ impl Args {
             ("FLAGS_debug", sh_bool(self.debug)),
             ("FLAGS_skip_postinstall", sh_bool(self.skip_postinstall)),
             ("FLAGS_storage_diags", sh_bool(self.storage_diags)),
-            ("FLAGS_lvm_stateful", sh_bool(lvm_stateful)),
             ("FLAGS_minimal_copy", sh_bool(self.minimal_copy)),
             ("FLAGS_skip_gpt_creation", sh_bool(self.skip_gpt_creation)),
         ]);
@@ -172,30 +134,6 @@ mod tests {
     use super::*;
 
     use std::ffi::OsString;
-
-    #[test]
-    fn test_lvm_stateful_arg() {
-        let no_args = ["arg0"];
-        let lvm = ["arg0", "--lvm_stateful"];
-        let nolvm = ["arg0", "--nolvm_stateful"];
-        // Test all possibilities, just to be thorough:
-        // If default is true and no flags: lvm_stateful = true
-        // If default is true and --lvm_stateful: lvm_stateful = true
-        // If default is true and --nolvm_stateful: lvm_stateful = false
-        // If default is false and no flags: lvm_stateful = false
-        // If default is false and --lvm_stateful: lvm_stateful = true
-        // If default is false and --nolvm_stateful: lvm_stateful = false
-        assert_eq!(Args::parse_from(&no_args).lvm_stateful_arg(true), true);
-        assert_eq!(Args::parse_from(&lvm).lvm_stateful_arg(true), true);
-        assert_eq!(Args::parse_from(&nolvm).lvm_stateful_arg(true), false);
-        assert_eq!(Args::parse_from(&no_args).lvm_stateful_arg(false), false);
-        assert_eq!(Args::parse_from(&lvm).lvm_stateful_arg(false), true);
-        assert_eq!(Args::parse_from(&nolvm).lvm_stateful_arg(false), false);
-
-        // Can't specify both LVM flags at once
-        let args = Args::try_parse_from(["arg0", "--lvm_stateful", "--nolvm_stateful"]);
-        assert!(args.is_err());
-    }
 
     #[test]
     fn test_args_to_env() {

@@ -23,8 +23,5 @@ serde_json = "1.0"
 mockall = "0.12.1"
 tempfile = "3.10"
 
-[features]
-lvm_stateful_partition = []
-
 [workspace]
 members = ["xtask"]
