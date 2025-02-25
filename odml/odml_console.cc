@@ -31,9 +31,10 @@
 
 namespace {
 
+using ::on_device_model::mojom::AppendOptions;
+using ::on_device_model::mojom::AppendOptionsPtr;
 using ::on_device_model::mojom::FormatFeature;
-using ::on_device_model::mojom::InputOptions;
-using ::on_device_model::mojom::InputOptionsPtr;
+using ::on_device_model::mojom::GenerateOptions;
 using ::on_device_model::mojom::LoadModelResult;
 using ::on_device_model::mojom::OnDeviceModel;
 using ::on_device_model::mojom::OnDeviceModelPlatformService;
@@ -59,12 +60,11 @@ base::FilePath GetModelTestDataDir() {
   return base::FilePath("/tmp");
 }
 
-InputOptionsPtr MakeInput(const std::string& text) {
-  auto options = InputOptions::New();
+AppendOptionsPtr MakeInput(const std::string& text) {
+  auto options = AppendOptions::New();
   auto input = on_device_model::mojom::Input::New();
   input->pieces.push_back(text);
   options->input = std::move(input);
-  options->ignore_context = false;
   return options;
 }
 
@@ -186,7 +186,10 @@ std::string Infer(const struct ProcessingParams& params, std::string input) {
         FormatInput(*params.service, base::Uuid::ParseLowercase(params.uuid),
                     *params.format_feature, params.format_field, input);
   }
-  params.session->Execute(MakeInput(input), response.BindRemote());
+  mojo::Remote<Session> cloned_session;
+  params.session->Clone(cloned_session.BindNewPipeAndPassReceiver());
+  cloned_session->Append(MakeInput(input), mojo::NullRemote());
+  cloned_session->Generate(GenerateOptions::New(), response.BindRemote());
   std::string output = response.WaitForCompletion();
   if (params.response_safety.has_value() &&
       !ValidateSafetyResult(*params.service, *params.model,

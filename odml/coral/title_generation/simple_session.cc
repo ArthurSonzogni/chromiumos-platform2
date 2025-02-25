@@ -25,7 +25,7 @@ SimpleSession::BindReceiver() {
   return session_.BindNewPipeAndPassReceiver();
 }
 
-void SimpleSession::Execute(on_device_model::mojom::InputOptionsPtr options,
+void SimpleSession::Execute(on_device_model::mojom::AppendOptionsPtr options,
                             base::OnceCallback<void(std::string)> callback) {
   // We only support 1 executing session at the time. Print a warning and
   // execute the incoming callback with empty string.
@@ -37,7 +37,11 @@ void SimpleSession::Execute(on_device_model::mojom::InputOptionsPtr options,
   }
   callback_ = std::move(callback);
   response_.clear();
-  session_->Execute(std::move(options), receiver_.BindNewPipeAndPassRemote());
+  cloned_session_.reset();
+  session_->Clone(cloned_session_.BindNewPipeAndPassReceiver());
+  cloned_session_->Append(std::move(options), mojo::NullRemote());
+  cloned_session_->Generate(on_device_model::mojom::GenerateOptions::New(),
+                            receiver_.BindNewPipeAndPassRemote());
 }
 
 void SimpleSession::SizeInTokens(const std::string& text,

@@ -455,7 +455,7 @@ void TitleGenerationEngine::OnSizeInTokensResponse(
     OnModelOutput(std::move(params), std::move(timer), "");
     return;
   }
-  auto input_options = on_device_model::mojom::InputOptions::New();
+  auto input_options = on_device_model::mojom::AppendOptions::New();
   auto input = on_device_model::mojom::Input::New();
   input->pieces.push_back(std::move(prompt));
   input_options->input = std::move(input);

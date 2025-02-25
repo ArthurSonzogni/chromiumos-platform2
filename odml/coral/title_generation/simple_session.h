@@ -34,7 +34,7 @@ class SimpleSession : public on_device_model::mojom::StreamingResponder {
   // wait until the last Execute completes before sending another Execute.
   // Otherwise, the operation will do nothing and the `callback` argument will
   // be run with an empty string.
-  void Execute(on_device_model::mojom::InputOptionsPtr options,
+  void Execute(on_device_model::mojom::AppendOptionsPtr options,
                base::OnceCallback<void(std::string)> callback);
 
   void SizeInTokens(const std::string& text,
@@ -53,6 +53,7 @@ class SimpleSession : public on_device_model::mojom::StreamingResponder {
   std::string response_;
 
   mojo::Remote<on_device_model::mojom::Session> session_;
+  mojo::Remote<on_device_model::mojom::Session> cloned_session_;
 };
 
 }  // namespace coral
