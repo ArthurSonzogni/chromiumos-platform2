@@ -60,7 +60,7 @@ class TranslatorConsole : public brillo::DBusDaemon {
     i18n::LangPair lang_pair{source, target};
     std::string input =
         cl->HasSwitch(kInput)
-            ? cl->GetSwitchValueASCII(kInput)
+            ? cl->GetSwitchValueNative(kInput)
             : std::string{std::istreambuf_iterator<char>(std::cin),
                           std::istreambuf_iterator<char>()};
 
