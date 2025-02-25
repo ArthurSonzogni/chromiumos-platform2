@@ -4,8 +4,6 @@
 
 #include "thinpool_migrator/thinpool_migrator.h"
 
-#include <ext2fs/ext2fs.h>
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -19,11 +17,11 @@
 #include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
-#include <vpd/vpd.h>
-
+#include <ext2fs/ext2fs.h>
 #include <thinpool_migrator/migration_metrics.h>
 #include <thinpool_migrator/migration_status.pb.h>
 #include <thinpool_migrator/stateful_metadata.h>
+#include <vpd/vpd.h>
 
 namespace thinpool_migrator {
 namespace {
@@ -240,7 +238,7 @@ bool ThinpoolMigrator::RestorePartitionHeader() {
 bool ThinpoolMigrator::ConvertThinpoolMetadataToBinary(
     const base::FilePath& path) {
   brillo::ProcessImpl thin_restore;
-  thin_restore.AddArg("/sbin/thin_restore");
+  thin_restore.AddArg("/usr/sbin/thin_restore");
   thin_restore.AddArg("-i");
   thin_restore.AddArg(kThinpoolSuperblockMetadataPath);
   thin_restore.AddArg("-o");
