@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "flex_id/flex_id.h"
-#include "flex_id/flex_state_key.h"
-
 #include <iostream>
 #include <string>
 
@@ -13,8 +10,12 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
+#include "flex_id/flex_id.h"
+#include "flex_id/flex_state_key.h"
+
 int main(int argc, char* argv[]) {
-  brillo::InitLog(brillo::kLogToSyslog);
+  // Log to syslog (/var/log/messages), and stderr if stdin is a tty.
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   DEFINE_string(type, "", "Select type from {id, state_key}");
   brillo::FlagHelper::Init(argc, argv, "ChromeOS Flex ID Tool");
 
