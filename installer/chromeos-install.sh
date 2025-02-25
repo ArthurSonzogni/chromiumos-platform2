@@ -29,7 +29,6 @@ fi
 # FLAGS_skip_postinstall
 # FLAGS_lab_preserve_logs
 # FLAGS_storage_diags
-# FLAGS_lvm_stateful
 # FLAGS_minimal_copy
 # FLAGS_skip_gpt_creation
 # SRC: The block device we're installing from, e.g. '/dev/sda' or '/dev/loop1'
@@ -332,7 +331,6 @@ mkfs() {
 # Wipes and expands the stateful partition.
 wipe_stateful() {
   echo "Clearing the stateful partition..."
-  local vg_name
   local stateful_size
   # state options are stored in $@.
   set --
@@ -342,51 +340,11 @@ wipe_stateful() {
   # Zero out the first block of the stateful partition to ensure that
   # mkfs/pvcreate don't get confused by existing state.
   dd if=/dev/zero of="${DEV}" bs="${DST_BLKSIZE}" count=1 >/dev/null 2>&1
-
-  if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
-    # Now we recreate the logical volume set up.
-    # Create physical volume on the partition.
-    echo "Creating physical volumes"
-    pvcreate -ff --yes "${DEV}"
-
-    vg_name="$(generate_random_vg_name)"
-    if [ -z "${vg_name}" ]; then
-      die "Failed to generate valid volume group name"
-    fi
-
-    echo "Creating volume group"
-    vgcreate -p 1 "${vg_name}" "${DEV}"
-
-    vgchange -ay "${vg_name}"
-
-    echo "Creating thinpool"
-    local thinpool_size
-    thinpool_size="$(get_thinpool_size "${DEV}")"
-    local thinpool_metadata_size
-    thinpool_metadata_size="$(get_thinpool_metadata_size \
-      "${thinpool_size}")"
-
-    lvcreate --zero n --size "${thinpool_size}M" --poolmetadatasize \
-      "${thinpool_metadata_size}M" --thinpool "thinpool" "${vg_name}/thinpool"
-
-    echo "Creating unencrypted volume"
-    local lv_size
-    lv_size="$(get_logical_volume_size "${DEV}")"
-    lvcreate --thin -V "${lv_size}M" -n "unencrypted" "${vg_name}/thinpool"
-
-    stateful_size=$(( lv_size * 1024 * 1024 / DST_BLKSIZE ))
-    DEV="/dev/${vg_name}/unencrypted"
-  else
-    stateful_size="$(partsize "${DST}" "${PARTITION_NUM_STATE:?}")"
-  fi
-
+  stateful_size="$(partsize "${DST}" "${PARTITION_NUM_STATE:?}")"
   mkfs "${stateful_size}" "${DEV}" "H-STATE"
 
   # Need to synchronize before releasing device.
   sync
-  if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
-    deactivate_volume_group "${vg_name}"
-  fi
 
   # When the stateful partition is wiped the TPM ownership must be reset.
   # This command will not work on Flex devices which do not support it.
@@ -434,20 +392,10 @@ install_stateful() {
   # Every exception added makes the dev image different from
   # the release image, which could mask bugs.  Make sure every
   # item you add here is well justified.
-  local dst_stateful_partition
   local loop_dev
-  local vg_name
 
   echo "Installing the stateful partition..."
-  if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
-    dst_stateful_partition="$(make_partition_dev "${DST}" \
-      "${PARTITION_NUM_STATE:?}")"
-    vg_name="$(get_volume_group "${dst_stateful_partition}")"
-    vgchange -ay "${vg_name}"
-    loop_dev="/dev/${vg_name}/unencrypted"
-  else
-    loop_dev="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")"
-  fi
+  loop_dev="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")"
   tracked_mount -o "nosuid,nodev,rw,noexec,nosymfollow" "${loop_dev}" "${TMPMNT:?}"
 
   # Move log files listed in FLAGS_lab_preserve_logs from stateful_partition to
@@ -570,9 +518,6 @@ install_stateful() {
 
   tracked_umount "${TMPMNT}"
   sync
-  if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
-    deactivate_volume_group "${vg_name}"
-  fi
 }
 
 # Get the recovery key version.
@@ -767,6 +712,9 @@ do_post_install() {
 }
 
 main() {
+  local dst_stateful
+  local vg_name
+
   # Be aggressive.
   set -eu
   if [ "${FLAGS_debug:?}" = "${FLAGS_TRUE}" ]; then
@@ -823,14 +771,10 @@ main() {
 
   # For LVM partitions, the logical volumes/volume groups on the stateful
   # partition may be active. Deactivate the partitions.
-  if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
-    local dst_stateful
-    dst_stateful="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")"
-    local vg_name
-    vg_name="$(get_volume_group "${dst_stateful}")"
-    if [ -n "${vg_name}" ]; then
-      vgchange -an --force "${vg_name}" || true
-    fi
+  dst_stateful="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")"
+  vg_name="$(get_volume_group "${dst_stateful}")"
+  if [ -n "${vg_name}" ]; then
+    vgchange -an --force "${vg_name}" || true
   fi
 
   # Write the GPT using the board specific script.
