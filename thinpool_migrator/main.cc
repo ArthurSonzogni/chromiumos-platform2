@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "thinpool_migrator/thinpool_migrator.h"
-
 #include <fcntl.h>
 #include <linux/fs.h>
 #include <sys/ioctl.h>
@@ -16,6 +14,8 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <thinpool_migrator/migration_metrics.h>
+
+#include "thinpool_migrator/thinpool_migrator.h"
 
 std::optional<uint64_t> GetBlkSize(const base::FilePath& device) {
   DCHECK(device.IsAbsolute()) << "device=" << device;
@@ -40,6 +40,7 @@ int main(int argc, char** argv) {
   DEFINE_string(device, "", "Path of the device to run the migration tool on");
   DEFINE_bool(dry_run, false, "Perform dry-run for migration");
   DEFINE_bool(enable, false, "Enable migration");
+  DEFINE_bool(silent, false, "Remove boot alert");
   DEFINE_bool(cleanup, false, "Cleanup migration state");
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Thinpool Migrator");
@@ -77,5 +78,6 @@ int main(int argc, char** argv) {
   thinpool_migrator::ThinpoolMigrator migrator(
       base::FilePath(FLAGS_device), *size,
       std::make_unique<brillo::DeviceMapper>(), std::make_unique<vpd::Vpd>());
-  return migrator.Migrate(FLAGS_dry_run) ? EXIT_SUCCESS : EXIT_FAILURE;
+  return migrator.Migrate(FLAGS_dry_run, FLAGS_silent) ? EXIT_SUCCESS
+                                                       : EXIT_FAILURE;
 }

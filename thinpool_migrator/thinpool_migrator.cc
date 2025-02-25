@@ -81,7 +81,7 @@ void ThinpoolMigrator::SetState(MigrationStatus::State state) {
   }
 }
 
-bool ThinpoolMigrator::Migrate(bool dry_run) {
+bool ThinpoolMigrator::Migrate(bool dry_run, bool silent) {
   // For a dry run, dump the generated metadata.
   if (dry_run) {
     LOG(INFO) << "Volume group configuration:";
@@ -128,8 +128,10 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
                        base::Unretained(this)));
   }
 
-  // Switch to the migration UI.
-  BootAlert();
+  if (!silent) {
+    // Switch to the migration UI.
+    BootAlert();
+  }
 
   switch (status_.state()) {
     case MigrationStatus::NOT_STARTED:

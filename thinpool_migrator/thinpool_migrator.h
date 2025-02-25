@@ -5,15 +5,16 @@
 #ifndef THINPOOL_MIGRATOR_THINPOOL_MIGRATOR_H_
 #define THINPOOL_MIGRATOR_THINPOOL_MIGRATOR_H_
 
+#include <sys/wait.h>
+
 #include <memory>
 #include <string>
-#include <sys/wait.h>
 
 #include <base/files/file_path.h>
 #include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/brillo_export.h>
-#include <thinpool_migrator/migration_status.pb.h>
 #include <thinpool_migrator/migration_metrics.h>
+#include <thinpool_migrator/migration_status.pb.h>
 #include <thinpool_migrator/stateful_metadata.h>
 #include <vpd/vpd.h>
 
@@ -56,7 +57,7 @@ class BRILLO_EXPORT ThinpoolMigrator {
 
   // Starts migration from |state|. In case of failure, the
   // migration is reverted.
-  bool Migrate(bool dry_run);
+  bool Migrate(bool dry_run, bool silent);
 
   // Shrinks filesystem to make space for the thinpool metadata.
   bool ShrinkStatefulFilesystem();

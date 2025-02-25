@@ -58,7 +58,7 @@ TEST(ThinpoolMigratorTest, NoVpd) {
   MockThinpoolMigrator m;
   EXPECT_CALL(m, IsVpdSupported()).WillRepeatedly(Return(false));
 
-  EXPECT_FALSE(m.Migrate(false));
+  EXPECT_FALSE(m.Migrate(false, false));
 }
 
 TEST(ThinpoolMigratorTest, BasicSanity) {
@@ -81,7 +81,7 @@ TEST(ThinpoolMigratorTest, BasicSanity) {
   EXPECT_CALL(m, InitializePhysicalVolume(_)).WillOnce(Return(true));
   EXPECT_CALL(m, RestoreVolumeGroupConfiguration(_)).WillOnce(Return(true));
 
-  EXPECT_TRUE(m.Migrate(false));
+  EXPECT_TRUE(m.Migrate(false, false));
   EXPECT_EQ(m.GetState(), MigrationStatus::COMPLETED);
   EXPECT_EQ(m.GetTries(), 0);
 }
@@ -100,7 +100,7 @@ TEST(ThinpoolMigratorTest, FailedResize) {
   EXPECT_CALL(m, ReplayExt4Journal()).WillOnce(Return(true));
   EXPECT_CALL(m, ResizeStatefulFilesystem(_)).WillOnce(Return(false));
 
-  EXPECT_FALSE(m.Migrate(false));
+  EXPECT_FALSE(m.Migrate(false, false));
   EXPECT_EQ(m.GetState(), MigrationStatus::NOT_STARTED);
   EXPECT_EQ(m.GetTries(), 0);
 }
@@ -123,7 +123,7 @@ TEST(ThinpoolMigratorTest, FailedHeaderCopy) {
   // Revert path
   EXPECT_CALL(m, ResizeStatefulFilesystem(0)).WillOnce(Return(false));
 
-  EXPECT_FALSE(m.Migrate(false));
+  EXPECT_FALSE(m.Migrate(false, false));
   EXPECT_EQ(m.GetState(), MigrationStatus::FILESYSTEM_RESIZED);
   EXPECT_EQ(m.GetTries(), 0);
 }
@@ -147,7 +147,7 @@ TEST(ThinpoolMigratorTest, FailedThinpoolMetadataPersist) {
   // Revert path
   EXPECT_CALL(m, ResizeStatefulFilesystem(0)).WillOnce(Return(false));
 
-  EXPECT_FALSE(m.Migrate(false));
+  EXPECT_FALSE(m.Migrate(false, false));
   EXPECT_EQ(m.GetState(), MigrationStatus::PARTITION_HEADER_COPIED);
   EXPECT_EQ(m.GetTries(), 0);
 }
@@ -172,7 +172,7 @@ TEST(ThinpoolMigratorTest, FailedPhysicalVolumeInitialization) {
   // Revert path
   EXPECT_CALL(m, DuplicateHeader(_, 0, _)).WillOnce(Return(false));
 
-  EXPECT_FALSE(m.Migrate(false));
+  EXPECT_FALSE(m.Migrate(false, false));
   EXPECT_EQ(m.GetState(), MigrationStatus::THINPOOL_METADATA_PERSISTED);
   EXPECT_EQ(m.GetTries(), 0);
 }
@@ -198,7 +198,7 @@ TEST(ThinpoolMigratorTest, FailedVolumeGroupInitialization) {
   // Revert path
   EXPECT_CALL(m, DuplicateHeader(_, 0, _)).WillOnce(Return(false));
 
-  EXPECT_FALSE(m.Migrate(false));
+  EXPECT_FALSE(m.Migrate(false, false));
   EXPECT_EQ(m.GetState(), MigrationStatus::THINPOOL_METADATA_PERSISTED);
   EXPECT_EQ(m.GetTries(), 0);
 }
@@ -211,7 +211,7 @@ TEST(ThinpoolMigratorTest, ZeroTries) {
   s.set_tries(0);
   CHECK(m.PersistStatus(s));
 
-  EXPECT_FALSE(m.Migrate(false));
+  EXPECT_FALSE(m.Migrate(false, false));
   EXPECT_EQ(m.GetState(), MigrationStatus::NOT_STARTED);
   EXPECT_EQ(m.GetTries(), 0);
 }
@@ -229,7 +229,7 @@ TEST(ThinpoolMigratorTest, ZeroTries_RevertMigration) {
   EXPECT_CALL(m, DuplicateHeader(_, 0, _)).WillOnce(Return(true));
   EXPECT_CALL(m, ResizeStatefulFilesystem(0)).WillOnce(Return(true));
 
-  EXPECT_FALSE(m.Migrate(false));
+  EXPECT_FALSE(m.Migrate(false, false));
   EXPECT_EQ(m.GetState(), MigrationStatus::NOT_STARTED);
   EXPECT_EQ(m.GetTries(), 0);
 }
@@ -250,7 +250,7 @@ TEST(ThinpoolMigratorTest, LastTry_RevertMigration) {
   EXPECT_CALL(m, DuplicateHeader(_, 0, _)).WillOnce(Return(true));
   EXPECT_CALL(m, ResizeStatefulFilesystem(0)).WillOnce(Return(true));
 
-  EXPECT_FALSE(m.Migrate(false));
+  EXPECT_FALSE(m.Migrate(false, false));
   EXPECT_EQ(m.GetState(), MigrationStatus::NOT_STARTED);
   EXPECT_EQ(m.GetTries(), 0);
 }
@@ -270,7 +270,7 @@ TEST(ThinpoolMigratorTest, ResumeInterruptedMigration) {
   EXPECT_CALL(m, InitializePhysicalVolume(_)).WillOnce(Return(true));
   EXPECT_CALL(m, RestoreVolumeGroupConfiguration(_)).WillOnce(Return(true));
 
-  EXPECT_TRUE(m.Migrate(false));
+  EXPECT_TRUE(m.Migrate(false, false));
   EXPECT_EQ(m.GetState(), MigrationStatus::COMPLETED);
   EXPECT_EQ(m.GetTries(), 1);
 }
