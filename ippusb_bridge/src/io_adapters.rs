@@ -92,6 +92,59 @@ where
     }
 }
 
+pub struct LoggingWriter<W: Write> {
+    inner: W,
+    log: bool,
+}
+
+impl<W> LoggingWriter<W>
+where
+    W: Write,
+{
+    pub fn new(writer: W, log: bool) -> Self {
+        Self { inner: writer, log }
+    }
+}
+
+impl<W> Write for LoggingWriter<W>
+where
+    W: Write,
+{
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let written = self.inner.write(buf)?;
+
+        if self.log {
+            let mut output = String::new();
+            for byte in buf[..written].iter() {
+                let c = *byte as char;
+                if c == '\n' {
+                    output.push(c);
+                } else {
+                    for v in c.escape_default() {
+                        output.push(v);
+                    }
+                }
+            }
+            debug!(">\n{}", output);
+        }
+
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+}
+
+impl<W> Drop for LoggingWriter<W>
+where
+    W: Write,
+{
+    fn drop(&mut self) {
+        let _ = self.flush();
+    }
+}
+
 /// A Writer adapter that splits written data into HTTP chunked encoding.
 /// The format of each chunk is "[data-length in hex]\r\n[data]\r\n",
 /// and there is a terminating "0\r\n\r\n" chunk appended to the stream.
@@ -207,5 +260,77 @@ mod tests {
         drop(w);
         let expected = "4\r\ntest\r\n15\r\nslightly longer chunk\r\n0\r\n\r\n";
         assert_eq!(buf.as_slice(), expected.as_bytes());
+    }
+
+    #[test]
+    fn logging_writer_empty() {
+        testing_logger::setup();
+
+        let mut buf = Vec::new();
+        let w = LoggingWriter::new(&mut buf, false);
+        drop(w);
+        assert_eq!(buf.as_slice(), b"");
+        testing_logger::validate(|logs| {
+            assert_eq!(logs.len(), 0);
+        });
+
+        let w = LoggingWriter::new(&mut buf, true);
+        drop(w);
+        assert_eq!(buf.as_slice(), b"");
+        testing_logger::validate(|logs| {
+            assert_eq!(logs.len(), 0);
+        });
+    }
+
+    #[test]
+    fn logging_writer_single() {
+        testing_logger::setup();
+
+        let mut buf = Vec::new();
+        let mut w = LoggingWriter::new(&mut buf, false);
+        let written = w.write(b"test").expect("failed to write");
+        drop(w);
+        assert_eq!(written, 4);
+        assert_eq!(buf.as_slice(), b"test");
+        testing_logger::validate(|logs| {
+            assert_eq!(logs.len(), 0);
+        });
+
+        let mut buf = Vec::new();
+        let mut w = LoggingWriter::new(&mut buf, true);
+        let written = w.write(b"test").expect("failed to write");
+        drop(w);
+        assert_eq!(written, 4);
+        assert_eq!(buf.as_slice(), b"test");
+        testing_logger::validate(|logs| {
+            assert_eq!(logs.len(), 1);
+        });
+    }
+
+    #[test]
+    fn logging_writer_multiple() {
+        testing_logger::setup();
+
+        let mut buf = Vec::new();
+        let mut w = LoggingWriter::new(&mut buf, false);
+        let mut written = w.write(b"test").expect("failed to write");
+        written += w.write(b"test").expect("failed to write");
+        drop(w);
+        assert_eq!(written, 8);
+        assert_eq!(buf.as_slice(), b"testtest");
+        testing_logger::validate(|logs| {
+            assert_eq!(logs.len(), 0);
+        });
+
+        let mut buf = Vec::new();
+        let mut w = LoggingWriter::new(&mut buf, true);
+        let mut written = w.write(b"test").expect("failed to write");
+        written += w.write(b"test").expect("failed to write");
+        drop(w);
+        assert_eq!(written, 8);
+        assert_eq!(buf.as_slice(), b"testtest");
+        testing_logger::validate(|logs| {
+            assert_eq!(logs.len(), 2);
+        });
     }
 }

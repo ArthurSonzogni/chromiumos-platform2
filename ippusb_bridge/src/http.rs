@@ -8,10 +8,10 @@ use std::io::{self, BufRead, BufReader, BufWriter, Cursor, Read, Write};
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use log::{debug, error};
+use log::{debug, error, info};
 use tiny_http::{Header, Method};
 
-use crate::io_adapters::{ChunkedWriter, CompleteReader, LoggingReader};
+use crate::io_adapters::{ChunkedWriter, CompleteReader, LoggingReader, LoggingWriter};
 use crate::usb_connector::UsbConnection;
 use crate::util::read_until_delimiter;
 
@@ -103,17 +103,27 @@ where
                 let version = response
                     .version
                     .ok_or_else(|| Error::EmptyField("version".to_owned()))?;
-                debug!(
-                    "> HTTP/1.{} {} {}",
+                info!(
+                    "Response: HTTP/1.{} {} {}",
                     version,
                     code,
                     status.default_reason_phrase()
                 );
+                if self.verbose_log {
+                    // This is redundant with the line above, but it gets us a consistent set of
+                    // returned lines in verbose mode.
+                    debug!(
+                        "< HTTP/1.{} {} {}",
+                        version,
+                        code,
+                        status.default_reason_phrase()
+                    );
+                }
                 let mut parsed_headers = Vec::new();
                 for header in headers.iter().take_while(|&&h| h != httparse::EMPTY_HEADER) {
                     if let Ok(h) = Header::from_bytes(header.name, header.value) {
                         if self.verbose_log {
-                            debug!("  {}: {}", h.field, h.value);
+                            debug!("<  {}: {}", h.field, h.value);
                         }
                         parsed_headers.push(h);
                     } else {
@@ -328,6 +338,17 @@ fn rewrite_request(request: &tiny_http::Request) -> Request {
     }
 }
 
+fn content_type(request: &tiny_http::Request) -> Option<&str> {
+    Some(
+        request
+            .headers()
+            .iter()
+            .find(|h| h.field.equiv("Content-Type"))?
+            .value
+            .as_str(),
+    )
+}
+
 fn serialize_request_header(
     verbose_log: bool,
     request: &Request,
@@ -335,20 +356,20 @@ fn serialize_request_header(
 ) -> io::Result<()> {
     write!(writer, "{} {} HTTP/1.1\r\n", request.method, request.url)?;
     if verbose_log {
-        debug!("{} {} HTTP/1.1\\r\n", request.method, request.url);
+        debug!("> {} {} HTTP/1.1\\r\n", request.method, request.url);
     }
     for (field, values) in request.headers.values.iter() {
         for value in values.iter() {
             write!(writer, "{}: {}\r\n", field, value)?;
             if verbose_log {
-                debug!("  {}: {}\\r", field, value);
+                debug!(">  {}: {}\\r", field, value);
             }
         }
     }
 
     write!(writer, "\r\n")?;
     if verbose_log {
-        debug!("\\r");
+        debug!("> \\r");
     }
     writer.flush()
 }
@@ -358,8 +379,8 @@ pub fn handle_request(
     usb: UsbConnection,
     mut request: tiny_http::Request,
 ) -> Result<()> {
-    debug!(
-        "< {} {} HTTP/1.{}",
+    info!(
+        "Request: {} {} HTTP/1.{:?}",
         request.method(),
         request.url(),
         request.http_version().1
@@ -368,6 +389,7 @@ pub fn handle_request(
     // Filter out headers that should not be forwarded, and update Content-Length and
     // Transfer-Encoding headers based on how the body (if any) will be transferred.
     let new_request = rewrite_request(&request);
+    let log_body = verbose_log && content_type(&request).unwrap_or("").starts_with("text/");
 
     let mut logging_reader = LoggingReader::new(request.as_reader(), "client");
     let mut request_body: Box<dyn Read> = match new_request.forwarded_body_length {
@@ -382,7 +404,7 @@ pub fn handle_request(
         _ => Box::new(logging_reader),
     };
 
-    let mut usb_writer = BufWriter::new(&usb);
+    let mut usb_writer = BufWriter::new(LoggingWriter::new(&usb, log_body));
     // Write the modified request header to the printer.
     serialize_request_header(verbose_log, &new_request, &mut usb_writer)
         .map_err(Error::WriteRequestHeader)?;
@@ -455,5 +477,17 @@ mod tests {
         // Special case since Expect is normally end-to-end.
         let header = Header::from_bytes(&b"Expect"[..], &b"100-continue"[..]).unwrap();
         assert!(!is_end_to_end(&header));
+    }
+
+    #[test]
+    fn extract_content_type() {
+        use tiny_http::TestRequest;
+
+        let request = tiny_http::Request::from(TestRequest::new());
+        assert!(content_type(&request).is_none());
+
+        let header = Header::from_bytes(&b"content-TYPE"[..], &b"application/ipp"[..]).unwrap();
+        let request = tiny_http::Request::from(TestRequest::new().with_header(header));
+        assert!(content_type(&request).is_some());
     }
 }

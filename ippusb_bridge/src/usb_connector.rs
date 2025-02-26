@@ -607,18 +607,7 @@ impl Write for &UsbConnection {
             .map_err(to_io_error)?;
 
         if self.verbose_log {
-            let mut output = String::new();
-            for byte in buf[..written].iter() {
-                let c = *byte as char;
-                if c == '\n' {
-                    output.push(c);
-                } else {
-                    for v in c.escape_default() {
-                        output.push(v);
-                    }
-                }
-            }
-            debug!("USB write:\n{}", output);
+            debug!("USB write: {} bytes", written);
         }
 
         Ok(written)
@@ -657,6 +646,11 @@ impl Read for &UsbConnection {
                 .handle
                 .read_bulk(endpoint, buf, USB_TRANSFER_TIMEOUT)
                 .map_err(to_io_error);
+        }
+        if self.verbose_log {
+            if let Ok(num) = result {
+                debug!("USB read: {} bytes", num);
+            }
         }
 
         if zero_reads > 0 {

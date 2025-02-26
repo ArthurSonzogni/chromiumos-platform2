@@ -19,6 +19,9 @@ syslog = "6.0"
 tiny_http = "0.8.0"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "net", "io-util"] }
 
+[dev-dependencies]
+testing_logger = "0.1"
+
 [profile.release]
 lto = true
 panic = 'abort'
