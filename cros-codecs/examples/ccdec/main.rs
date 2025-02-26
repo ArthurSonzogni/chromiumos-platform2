@@ -132,7 +132,7 @@ fn main() {
     };
     let alloc_cb = move || (*framepool.lock().unwrap()).alloc();
 
-    let mut frames_needed = Arc::new(AtomicU64::new((*golden_iter.lock().unwrap()).len() as u64));
+    let frames_needed = Arc::new(AtomicU64::new((*golden_iter.lock().unwrap()).len() as u64));
 
     let _frames_needed = frames_needed.clone();
     let on_new_frame = move |job: C2DecodeJob<PooledVideoFrame<GenericDmaVideoFrame>>| {
