@@ -23,7 +23,6 @@ use std::time::Duration;
 use dbus::blocking::Connection;
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::signal::register_signal_handler;
-use libchromeos::syslog;
 use log::{debug, error, info};
 use nix::sys::signal::Signal;
 use tiny_http::{ClientConnection, Stream};
@@ -232,7 +231,8 @@ async fn forward_connection(
 }
 
 fn run() -> Result<()> {
-    syslog::init("ippusb_bridge".to_string(), true).map_err(Error::Syslog)?;
+    syslog::init_unix(syslog::Facility::LOG_USER, log::LevelFilter::Debug)
+        .map_err(Error::Syslog)?;
     let argv: Vec<String> = std::env::args().collect();
     let args = match Args::parse(&argv).map_err(Error::ParseArgs)? {
         None => return Ok(()),
