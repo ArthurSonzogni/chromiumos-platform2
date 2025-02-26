@@ -39,6 +39,7 @@ constexpr char kLogFile[] = "/run/thinpool_migrator/migrator.log";
 int main(int argc, char** argv) {
   DEFINE_string(device, "", "Path of the device to run the migration tool on");
   DEFINE_bool(dry_run, false, "Perform dry-run for migration");
+  DEFINE_bool(use_vpd, true, "Store migration status in VPD");
   DEFINE_bool(enable, false, "Enable migration");
   DEFINE_bool(silent, false, "Remove boot alert");
   DEFINE_bool(cleanup, false, "Cleanup migration state");
@@ -75,9 +76,11 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+  std::unique_ptr vpd = FLAGS_use_vpd ? std::make_unique<vpd::Vpd>() : nullptr;
+
   thinpool_migrator::ThinpoolMigrator migrator(
       base::FilePath(FLAGS_device), *size,
-      std::make_unique<brillo::DeviceMapper>(), std::make_unique<vpd::Vpd>());
+      std::make_unique<brillo::DeviceMapper>(), std::move(vpd));
   return migrator.Migrate(FLAGS_dry_run, FLAGS_silent) ? EXIT_SUCCESS
                                                        : EXIT_FAILURE;
 }

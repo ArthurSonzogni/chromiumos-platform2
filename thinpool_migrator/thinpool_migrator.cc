@@ -465,6 +465,8 @@ bool ThinpoolMigrator::PersistStatus(MigrationStatus status) {
 
 bool ThinpoolMigrator::RetrieveMigrationStatus() {
   if (!IsVpdSupported()) {
+    status_.set_tries(1);
+    status_.set_state(MigrationStatus::NOT_STARTED);
     return true;
   }
 
@@ -557,6 +559,10 @@ bool ThinpoolMigrator::CheckFilesystemState() {
 
 bool ThinpoolMigrator::IsVpdSupported() {
   static bool is_vpd_supported = true;
+  if (!vpd_) {
+    is_vpd_supported = false;
+  }
+
   if (is_vpd_supported && !base::PathExists(base::FilePath(kVpdSysfsPath))) {
     LOG(WARNING) << "VPD not supported; falling back to initial state";
     is_vpd_supported = false;
