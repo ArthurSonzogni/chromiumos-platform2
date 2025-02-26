@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use crate::c2_wrapper::c2_decoder::C2DecoderBackend;
 use crate::decoder::stateless::av1::Av1;
 use crate::decoder::stateless::h264::H264;
+use crate::decoder::stateless::h265::H265;
 use crate::decoder::stateless::vp8::Vp8;
 use crate::decoder::stateless::vp9::Vp9;
 use crate::decoder::stateless::DynStatelessVideoDecoder;
@@ -48,13 +49,15 @@ impl C2DecoderBackend for C2V4L2Decoder {
             EncodedFormat::H264 => StatelessDecoder::<H264, _>::new_v4l2(BlockingMode::NonBlocking)
                 .map_err(|_| "Failed to instantiate H264 decoder")?
                 .into_trait_object(),
+            EncodedFormat::H265 => StatelessDecoder::<H265, _>::new_v4l2(BlockingMode::NonBlocking)
+                .map_err(|_| "Failed to instantiate H265 decoder")?
+                .into_trait_object(),
             EncodedFormat::VP8 => StatelessDecoder::<Vp8, _>::new_v4l2(BlockingMode::NonBlocking)
                 .map_err(|_| "Failed to instantiate VP8 decoder")?
                 .into_trait_object(),
             EncodedFormat::VP9 => StatelessDecoder::<Vp9, _>::new_v4l2(BlockingMode::NonBlocking)
                 .map_err(|_| "Failed to instantiate VP9 decoder")?
                 .into_trait_object(),
-            _ => return Err(format!("Unsupported format {format:?}")),
         })
     }
 }
