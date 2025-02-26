@@ -493,10 +493,10 @@ install_stateful() {
   local filelist=""
 
   if crossystem 'cros_debug?1'; then
-    # Install dev_image.block.
-    if [ "${FLAGS_default_key_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
-      filelist="${filelist}
-        unencrypted/dev_image.block"
+    # Install dev_image.block if present, files by files otherwise.
+    local dev_image_block="unencrypted/dev_image.block"
+    if [ -f "${ROOT}/mnt/stateful_partition/${dev_image_block}" ]; then
+      filelist="${filelist} ${dev_image_block}"
     else
       dirlist="${dirlist}
         var_overlay/db/pkg
