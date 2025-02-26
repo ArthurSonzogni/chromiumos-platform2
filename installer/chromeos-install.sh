@@ -343,9 +343,6 @@ wipe_stateful() {
   stateful_size="$(partsize "${DST}" "${PARTITION_NUM_STATE:?}")"
   mkfs "${stateful_size}" "${DEV}" "H-STATE"
 
-  # Need to synchronize before releasing device.
-  sync
-
   # When the stateful partition is wiped the TPM ownership must be reset.
   # This command will not work on Flex devices which do not support it.
   # In that case the result will be ignored.
@@ -787,7 +784,6 @@ main() {
     echo "Clearing and reinstalling the stateful partition."
     wipe_stateful
     install_stateful
-    sync
     cleanup
     echo "Done installing partitions."
     exit 0
