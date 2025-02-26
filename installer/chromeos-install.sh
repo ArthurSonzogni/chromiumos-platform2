@@ -328,20 +328,32 @@ mkfs() {
 
 }
 
+wipe_partition() {
+  local partition="$1"
+  local device="$2"
+  local part_dev
+
+  part_dev=$(make_partition_dev "${device}" "${partition}")
+  dd if=/dev/zero of="${part_dev}" bs=1M count=1 > /dev/null 2>&1
+}
+
+
 # Wipes and expands the stateful partition.
 wipe_stateful() {
+  local device
+
   echo "Clearing the stateful partition..."
   local stateful_size
   # state options are stored in $@.
   set --
 
-  DEV=$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")
-
   # Zero out the first block of the stateful partition to ensure that
   # mkfs/pvcreate don't get confused by existing state.
-  dd if=/dev/zero of="${DEV}" bs="${DST_BLKSIZE}" count=1 >/dev/null 2>&1
+  wipe_partition "${PARTITION_NUM_STATE:?}" "${DST}"
+
+  device=$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")
   stateful_size="$(partsize "${DST}" "${PARTITION_NUM_STATE:?}")"
-  mkfs "${stateful_size}" "${DEV}" "H-STATE"
+  mkfs "${stateful_size}" "${device}" "H-STATE"
 
   # When the stateful partition is wiped the TPM ownership must be reset.
   # This command will not work on Flex devices which do not support it.
@@ -812,7 +824,11 @@ main() {
   # 12
   copy_partition "${PARTITION_NUM_EFI_SYSTEM:?}" "${SRC}" "${DST}" 1 1 false
 
-  # Version 3 layout doesn't have RWFW partition anymore.
+  # Version 3 layout doesn't have RWFW partition anymore - it may be used for
+  # metadata.
+  if [ "${PARTITION_NUM_POWERWASH_DATA+set}" = "set" ]; then               # 11
+    wipe_partition "${PARTITION_NUM_POWERWASH_DATA}" "${DST}"
+  fi
   if [ "${PARTITION_NUM_RWFW+set}" = "set" ]; then
     copy_partition "${PARTITION_NUM_RWFW}" "${SRC}" "${DST}" 1 1 false     # 11
   fi
