@@ -371,27 +371,25 @@ ClusteringEngine::ProcessContiguous(
 CoralResult<std::vector<ClusteringEngine::IndexGroup>>
 ClusteringEngine::ProcessInternal(
     const mojom::GroupRequest& request,
-    EmbeddingResponse embedding_response,
-    EmbeddingResponse suppression_context_embedding_response) {
+    std::vector<Embedding> embeddings,
+    std::vector<Embedding> suppression_context_embeddings) {
   // Some entries might not have successfully generated embeddings. They'll be
   // marked as empty by the embedding engine.
   std::vector<Embedding> valid_embeddings;
   std::vector<size_t> original_indexes;
   // We need this here because embeddings is consumed by
   // FilterEmptyEmbeddings().
-  const size_t suppression_context_original_start =
-      embedding_response.embeddings.size();
-  FilterEmptyEmbeddings(std::move(embedding_response.embeddings),
+  const size_t suppression_context_original_start = embeddings.size();
+  FilterEmptyEmbeddings(std::move(embeddings),
                         /*index_offset=*/0,
                         /*out_embeddings=*/valid_embeddings, &original_indexes);
   metrics_->SendEmbeddingFilteredCount(request.entities.size() -
                                        valid_embeddings.size());
   const size_t suppression_context_start = valid_embeddings.size();
-  FilterEmptyEmbeddings(
-      std::move(suppression_context_embedding_response.embeddings),
-      /*index_offset=*/suppression_context_original_start,
-      /*out_embeddings=*/valid_embeddings,
-      /*original_indexes=*/nullptr);
+  FilterEmptyEmbeddings(std::move(suppression_context_embeddings),
+                        /*index_offset=*/suppression_context_original_start,
+                        /*out_embeddings=*/valid_embeddings,
+                        /*original_indexes=*/nullptr);
 
   metrics_->SendClusteringInputCount(valid_embeddings.size());
 
@@ -414,10 +412,20 @@ void ClusteringEngine::Process(
     ClusteringCallback callback) {
   auto timer = odml::PerformanceTimer::Create();
 
+  std::vector<Embedding> embeddings;
+  for (EmbeddingWithMetadata& embedding : embedding_response.embeddings) {
+    embeddings.push_back(std::move(embedding.embedding));
+  }
+  std::vector<Embedding> suppression_context_embedding;
+  for (EmbeddingWithMetadata& embedding :
+       suppression_context_embedding_response.embeddings) {
+    suppression_context_embedding.push_back(std::move(embedding.embedding));
+  }
+
   CoralResult<std::vector<IndexGroup>> result =
       ClusteringEngine::ProcessInternal(
-          *request, std::move(embedding_response),
-          std::move(suppression_context_embedding_response));
+          *request, std::move(embeddings),
+          std::move(suppression_context_embedding));
 
   if (result.has_value()) {
     metrics_->SendClusteringEngineLatency(timer->GetDuration());
@@ -427,7 +435,10 @@ void ClusteringEngine::Process(
     for (const auto& group : result.value()) {
       Cluster cluster;
       for (int index : group) {
-        cluster.entities.push_back(request->entities[index]->Clone());
+        cluster.entities.push_back(
+            {.entity = request->entities[index]->Clone(),
+             .language_result = std::move(
+                 embedding_response.embeddings[index].language_result)});
       }
       response.clusters.push_back(std::move(cluster));
     }

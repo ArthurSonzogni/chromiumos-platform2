@@ -87,9 +87,13 @@ class FakeEmbeddingModelService : public OnDeviceEmbeddingModelService {
       : should_error_(should_error) {
     ON_CALL(*this, LoadEmbeddingModel)
         .WillByDefault([this](auto&&, auto&& model, auto&&, auto&& callback) {
+          std::vector<Embedding> embeddings_to_return;
+          for (const EmbeddingWithMetadata& embedding :
+               GetFakeEmbeddingResponse().embeddings) {
+            embeddings_to_return.push_back(embedding.embedding);
+          }
           model_ = std::make_unique<FakeEmbeddingModel>(
-              should_error_, GetFakeEmbeddingResponse().embeddings,
-              std::move(model));
+              should_error_, embeddings_to_return, std::move(model));
           std::move(callback).Run(
               on_device_model::mojom::LoadModelResult::kSuccess);
         });
@@ -250,8 +254,8 @@ TEST_F(EmbeddingEngineTest, Success) {
   EmbeddingResponse fake_response = GetFakeEmbeddingResponse();
   std::vector<Embedding> embeddings_to_return;
   for (int i = 0; i < 2; i++) {
-    for (const Embedding& embedding : fake_response.embeddings) {
-      embeddings_to_return.push_back(embedding);
+    for (const EmbeddingWithMetadata& embedding : fake_response.embeddings) {
+      embeddings_to_return.push_back(embedding.embedding);
     }
   }
   EXPECT_CALL(model_service_, LoadEmbeddingModel)
@@ -285,7 +289,7 @@ TEST_F(EmbeddingEngineTest, TextLanguage) {
   EmbeddingResponse fake_response = GetFakeEmbeddingResponse();
   std::vector<Embedding> embeddings_to_return;
   for (int i = 1; i < fake_response.embeddings.size(); i++) {
-    embeddings_to_return.push_back(fake_response.embeddings[i]);
+    embeddings_to_return.push_back(fake_response.embeddings[i].embedding);
   }
   EXPECT_CALL(model_service_, LoadEmbeddingModel)
       .WillOnce([&fake_model, &should_error, &embeddings_to_return](
@@ -311,7 +315,8 @@ TEST_F(EmbeddingEngineTest, TextLanguage) {
   EmbeddingResponse response = std::move(*result);
   fake_response = GetFakeEmbeddingResponse();
   // The first entry has unsupported language.
-  fake_response.embeddings[0].clear();
+  fake_response.embeddings[0].embedding.clear();
+  fake_response.embeddings[0].language_result.clear();
   EXPECT_EQ(response, fake_response);
 }
 
@@ -337,8 +342,8 @@ TEST_F(EmbeddingEngineTest, CacheEmbeddingsOnlySuccess) {
   EmbeddingResponse fake_response = GetFakeEmbeddingResponse();
   std::vector<Embedding> embeddings_to_return;
   for (int i = 0; i < 2; i++) {
-    for (const Embedding& embedding : fake_response.embeddings) {
-      embeddings_to_return.push_back(embedding);
+    for (const EmbeddingWithMetadata& embedding : fake_response.embeddings) {
+      embeddings_to_return.push_back(embedding.embedding);
     }
   }
   EXPECT_CALL(model_service_, LoadEmbeddingModel)
@@ -426,7 +431,7 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   ExpectSendCacheHit(true, 4);
   ExpectSendCacheHit(false, 14);
   auto request = GetFakeGroupRequest();
-  std::vector<Embedding> fake_embeddings =
+  std::vector<EmbeddingWithMetadata> fake_embeddings =
       GetFakeEmbeddingResponse().embeddings;
   std::vector<EmbeddingEntry> fake_embedding_entries;
   // When language results are out, the engine will write to database first. At
@@ -434,9 +439,8 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   std::vector<EmbeddingEntry> language_only_entries;
   for (const auto& fake_embedding : fake_embeddings) {
     fake_embedding_entries.push_back(
-        EmbeddingEntry{.embedding = fake_embedding,
-                       .languages = LanguageDetectionResult{
-                           TextLanguage{.locale = "en", .confidence = 1.0}}});
+        EmbeddingEntry{.embedding = fake_embedding.embedding,
+                       .languages = fake_embedding.language_result});
     language_only_entries.push_back(
         EmbeddingEntry{.languages = LanguageDetectionResult{
                            TextLanguage{.locale = "en", .confidence = 1.0}}});
@@ -508,14 +512,15 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   bool should_error = false;
   std::vector<Embedding> embeddings_to_return = {
       // Called by the first Process() for fake user 1.
-      fake_embeddings[0], fake_embeddings[2], fake_embeddings[3],
-      fake_embeddings[5],
+      fake_embeddings[0].embedding, fake_embeddings[2].embedding,
+      fake_embeddings[3].embedding, fake_embeddings[5].embedding,
       // Called by the second Process() with no user logged in.
-      fake_embeddings[0], fake_embeddings[1], fake_embeddings[2],
-      fake_embeddings[3], fake_embeddings[4], fake_embeddings[5],
+      fake_embeddings[0].embedding, fake_embeddings[1].embedding,
+      fake_embeddings[2].embedding, fake_embeddings[3].embedding,
+      fake_embeddings[4].embedding, fake_embeddings[5].embedding,
       // Called by the first Process() for fake user 2.
-      fake_embeddings[1], fake_embeddings[2], fake_embeddings[3],
-      fake_embeddings[4]};
+      fake_embeddings[1].embedding, fake_embeddings[2].embedding,
+      fake_embeddings[3].embedding, fake_embeddings[4].embedding};
   EXPECT_CALL(model_service_, LoadEmbeddingModel)
       .WillOnce([&fake_model, &should_error, &embeddings_to_return](
                     auto&&, auto&& model, auto&&, auto&& callback) {

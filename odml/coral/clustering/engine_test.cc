@@ -43,7 +43,9 @@ ClusteringResponse FakeClusteringResponse(
   for (int i = 0; i < groups.size(); ++i) {
     Cluster cluster;
     for (int j = 0; j < groups[i].size(); ++j) {
-      cluster.entities.push_back(entities[groups[i][j]]->Clone());
+      cluster.entities.push_back(
+          {.entity = entities[groups[i][j]]->Clone(),
+           .language_result = GetEnOnlyLanguageResult()});
     }
     response.clusters.push_back(std::move(cluster));
   }
@@ -91,11 +93,12 @@ class EqualsClusteringResponseMatcher {
       bool matches = true;
       for (int j = 0; j < expected_cluster.entities.size(); ++j) {
         const Cluster& expected_cluster = expected_response_.clusters[i];
-        if (!expected_cluster.entities[j]->Equals(*cluster.entities[j])) {
+        if (expected_cluster.entities[j] != cluster.entities[j]) {
           *listener << "\nItem " << j << " in group " << i
                     << " differs:\nExpected: "
-                    << EntityToString(*expected_cluster.entities[j])
-                    << "\n  Actual: " << EntityToString(*cluster.entities[j]);
+                    << EntityToString(*expected_cluster.entities[j].entity)
+                    << "\n  Actual: "
+                    << EntityToString(*cluster.entities[j].entity);
           matches = false;
         }
       }
@@ -249,7 +252,8 @@ TEST_F(ClusteringEngineTest, SuccessWithMissingEmbeddings) {
 
   auto fake_embeddings = GetFakeEmbeddingResponse();
   // Simulate the scenario that 1 entity failed to generate embedding.
-  fake_embeddings.embeddings[1].clear();
+  fake_embeddings.embeddings[1].embedding.clear();
+  fake_embeddings.embeddings[1].language_result.clear();
   CoralResult<ClusteringResponse> result =
       RunTest(request->Clone(), std::move(fake_embeddings), EmbeddingResponse(),
               fake_grouping);

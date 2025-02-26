@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 
 #include "odml/coral/clustering/engine.h"
+#include "odml/coral/common.h"
 #include "odml/coral/embedding/engine.h"
 #include "odml/coral/title_generation/engine.h"
 #include "odml/mojom/coral_service.mojom.h"
@@ -18,6 +19,11 @@
 // Common helper functions for coral unittests. This header should only be
 // included in tests.
 namespace coral {
+
+inline LanguageDetectionResult GetEnOnlyLanguageResult() {
+  return {on_device_model::LanguageDetector::TextLanguage{.locale = "en",
+                                                          .confidence = 1.0}};
+}
 
 inline std::vector<mojom::EntityPtr> GetFakeEntities() {
   std::vector<mojom::EntityPtr> ret;
@@ -50,40 +56,48 @@ inline std::vector<mojom::EntityPtr> GetFakeSuppressionContext() {
 }
 
 inline EmbeddingResponse GetFakeEmbeddingResponse() {
-  return EmbeddingResponse{.embeddings = {
-                               // 3 similar items.
-                               {0.1, 0.2, 0.3},
-                               {0.11, 0.21, 0.31},
-                               {0.12, 0.22, 0.32},
-                               // 2 similar items.
-                               {-0.1, -0.2, -0.3},
-                               {-0.11, -0.21, -0.31},
-                               // 1 different item from above.
-                               {3, -1, 0},
-                           }};
+  // Use empty language results for now.
+  return EmbeddingResponse{
+      .embeddings = {
+          // 3 similar items.
+          {{0.1, 0.2, 0.3}, GetEnOnlyLanguageResult()},
+          {{0.11, 0.21, 0.31}, GetEnOnlyLanguageResult()},
+          {{0.12, 0.22, 0.32}, GetEnOnlyLanguageResult()},
+          // 2 similar items.
+          {{-0.1, -0.2, -0.3}, GetEnOnlyLanguageResult()},
+          {{-0.11, -0.21, -0.31}, GetEnOnlyLanguageResult()},
+          // 1 different item from above.
+          {{3, -1, 0}, GetEnOnlyLanguageResult()},
+      }};
 }
 
 inline EmbeddingResponse GetFakeSuppressionContextEmbeddingResponse() {
-  return EmbeddingResponse{.embeddings = {
-                               // 2 items from the group of 3 above.
-                               {0.1, 0.2, 0.3},
-                               {0.11, 0.21, 0.31},
-                               // 1 items from the group of 2 above.
-                               {-0.11, -0.21, -0.31},
-
-                           }};
+  return EmbeddingResponse{
+      .embeddings = {
+          // 2 items from the group of 3 above.
+          {{0.1, 0.2, 0.3}, GetEnOnlyLanguageResult()},
+          {{0.11, 0.21, 0.31}, GetEnOnlyLanguageResult()},
+          // 1 items from the group of 2 above.
+          {{-0.11, -0.21, -0.31}, GetEnOnlyLanguageResult()},
+      }};
 }
 
 inline ClusteringResponse GetFakeClusteringResponse() {
   std::vector<mojom::EntityPtr> entities = GetFakeEntities();
   Cluster cluster1, cluster2, cluster3;
   // In each group, the entities are sorted by the distance to its center.
-  cluster1.entities.push_back(std::move(entities[1]));
-  cluster1.entities.push_back(std::move(entities[2]));
-  cluster1.entities.push_back(std::move(entities[0]));
-  cluster2.entities.push_back(std::move(entities[4]));
-  cluster2.entities.push_back(std::move(entities[3]));
-  cluster3.entities.push_back(std::move(entities[5]));
+  cluster1.entities.push_back(EntityWithMetadata{
+      .entity = std::move(entities[1]), GetEnOnlyLanguageResult()});
+  cluster1.entities.push_back(
+      {.entity = std::move(entities[2]), GetEnOnlyLanguageResult()});
+  cluster1.entities.push_back(
+      {.entity = std::move(entities[0]), GetEnOnlyLanguageResult()});
+  cluster2.entities.push_back(
+      {.entity = std::move(entities[4]), GetEnOnlyLanguageResult()});
+  cluster2.entities.push_back(
+      {.entity = std::move(entities[3]), GetEnOnlyLanguageResult()});
+  cluster3.entities.push_back(
+      {.entity = std::move(entities[5]), GetEnOnlyLanguageResult()});
   ClusteringResponse response;
   response.clusters.push_back(std::move(cluster1));
   response.clusters.push_back(std::move(cluster2));

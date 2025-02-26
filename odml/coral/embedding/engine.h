@@ -42,10 +42,17 @@ std::optional<std::string> EntityToCacheKey(const mojom::Entity& entity,
 
 }  // namespace internal
 
+struct EmbeddingWithMetadata {
+  bool operator==(const EmbeddingWithMetadata&) const = default;
+
+  Embedding embedding;
+  LanguageDetectionResult language_result;
+};
+
 struct EmbeddingResponse : public MoveOnly {
   bool operator==(const EmbeddingResponse&) const = default;
 
-  std::vector<Embedding> embeddings;
+  std::vector<EmbeddingWithMetadata> embeddings;
 };
 
 class EmbeddingEngineInterface {

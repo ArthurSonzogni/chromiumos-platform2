@@ -158,7 +158,7 @@ class TitleGenerationEngine
   // so, we can reuse the title without using the model to generate one.
   void CacheGroupTitles(const std::vector<GroupData>& groups);
   std::optional<std::string> MaybeGetCachedTitle(
-      const std::vector<mojom::EntityPtr>& entities);
+      const std::vector<EntityWithMetadata>& entities);
 
   void ReportPromptSizes(size_t index,
                          SimpleSession::Ptr session,

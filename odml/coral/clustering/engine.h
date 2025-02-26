@@ -16,7 +16,6 @@
 #include "odml/coral/embedding/engine.h"
 #include "odml/coral/metrics.h"
 #include "odml/mojom/coral_service.mojom.h"
-#include "odml/utils/performance_timer.h"
 
 namespace coral {
 
@@ -38,9 +37,16 @@ std::optional<Embedding> CalculateVectorCenter(
 
 }  // namespace internal
 
+struct EntityWithMetadata : public MoveOnly {
+  bool operator==(const EntityWithMetadata&) const = default;
+
+  mojom::EntityPtr entity;
+  LanguageDetectionResult language_result;
+};
+
 struct Cluster : public MoveOnly {
   bool operator==(const Cluster&) const = default;
-  std::vector<mojom::EntityPtr> entities;
+  std::vector<EntityWithMetadata> entities;
 };
 
 struct ClusteringResponse : public MoveOnly {
@@ -95,8 +101,8 @@ class ClusteringEngine : public ClusteringEngineInterface {
   // entities.
   CoralResult<std::vector<IndexGroup>> ProcessInternal(
       const mojom::GroupRequest& request,
-      EmbeddingResponse embedding_response,
-      EmbeddingResponse suppression_context_embedding_response);
+      std::vector<Embedding> embeddings,
+      std::vector<Embedding> suppression_context_embeddings);
 
   const raw_ref<CoralMetrics> metrics_;
   std::unique_ptr<clustering::ClusteringFactoryInterface> clustering_factory_;

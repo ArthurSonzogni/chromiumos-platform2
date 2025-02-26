@@ -19,6 +19,7 @@
 #include <ml_core/dlc/dlc_client.h>
 #include <mojo/core/embedder/embedder.h>
 
+#include "odml/coral/clustering/engine.h"
 #include "odml/coral/metrics.h"
 #include "odml/coral/test_util.h"
 #include "odml/mojom/coral_service.mojom-shared.h"
@@ -50,6 +51,15 @@ std::vector<mojom::EntityPtr> CloneEntities(
   std::vector<mojom::EntityPtr> ret;
   for (const mojom::EntityPtr& entity : entities) {
     ret.push_back(entity.Clone());
+  }
+  return ret;
+}
+
+std::vector<EntityWithMetadata> GetEntitiesWithEnLanguageResult(
+    const std::vector<mojom::EntityPtr>& entities) {
+  std::vector<EntityWithMetadata> ret;
+  for (const mojom::EntityPtr& entity : entities) {
+    ret.push_back({.entity = entity.Clone(), GetEnOnlyLanguageResult()});
   }
   return ret;
 }
@@ -379,7 +389,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   auto get_clustering_response = [&entities]() {
     ClusteringResponse clustering_response;
     clustering_response.clusters.push_back(
-        Cluster{.entities = CloneEntities(entities)});
+        Cluster{.entities = GetEntitiesWithEnLanguageResult(entities)});
     return clustering_response;
   };
 
@@ -527,7 +537,7 @@ TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {
   auto get_clustering_response = [&entities]() {
     ClusteringResponse clustering_response;
     clustering_response.clusters.push_back(
-        Cluster{.entities = CloneEntities(entities)});
+        Cluster{.entities = GetEntitiesWithEnLanguageResult(entities)});
     return clustering_response;
   };
 

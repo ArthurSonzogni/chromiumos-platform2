@@ -69,15 +69,15 @@ std::string TabToPromptLine(const mojom::Tab& tab) {
 }
 
 std::string EntitiesToTitlePrompt(
-    const std::vector<mojom::EntityPtr>& entities) {
+    const std::vector<EntityWithMetadata>& entities) {
   std::string prompt = "Generate a title for this group:\n\n";
   // TODO(b/361429962): Add mechanism to ensure prompt isn't too large
   // (truncation, omitting some entries, etc.).
-  for (const mojom::EntityPtr& entity : entities) {
-    if (entity->is_app()) {
-      prompt += AppToPromptLine(*entity->get_app());
-    } else if (entity->is_tab()) {
-      prompt += TabToPromptLine(*entity->get_tab());
+  for (const EntityWithMetadata& entity : entities) {
+    if (entity.entity->is_app()) {
+      prompt += AppToPromptLine(*entity.entity->get_app());
+    } else if (entity.entity->is_tab()) {
+      prompt += TabToPromptLine(*entity.entity->get_tab());
     }
   }
   prompt += "\n";
@@ -93,6 +93,15 @@ std::vector<mojom::EntityPtr> CloneEntities(
   return ret;
 }
 
+std::vector<mojom::EntityPtr> ExtractEntities(
+    std::vector<EntityWithMetadata> entities) {
+  std::vector<mojom::EntityPtr> ret;
+  for (EntityWithMetadata& entity : entities) {
+    ret.push_back(std::move(entity.entity));
+  }
+  return ret;
+}
+
 std::string GetTitle(const mojom::EntityPtr& entity) {
   if (entity->is_tab()) {
     return entity->get_tab()->title;
@@ -104,7 +113,7 @@ std::string GetTitle(const mojom::EntityPtr& entity) {
 }
 
 double GetDifferenceRatio(
-    const std::vector<mojom::EntityPtr>& new_group,
+    const std::vector<EntityWithMetadata>& new_group,
     const std::unordered_multiset<std::string>& old_group) {
   // Shouldn't happen, but fail gracefully by return a value higher than
   // threshold.
@@ -116,8 +125,8 @@ double GetDifferenceRatio(
   // difference of two groups. Copy the group because we need to modify it.
   std::unordered_multiset<std::string> old_group_copy(old_group);
   int mismatches = 0;
-  for (const mojom::EntityPtr& entity : new_group) {
-    auto it = old_group_copy.find(GetTitle(entity));
+  for (const EntityWithMetadata& entity : new_group) {
+    auto it = old_group_copy.find(GetTitle(entity.entity));
     if (it == old_group_copy.end()) {
       mismatches++;
       continue;
@@ -201,7 +210,7 @@ void TitleGenerationEngine::Process(
       group_data.prompt = EntitiesToTitlePrompt(cluster.entities);
       has_group_without_title = true;
     }
-    group_data.entities = std::move(cluster.entities);
+    group_data.entities = ExtractEntities(std::move(cluster.entities));
     groups.push_back(std::move(group_data));
   }
   mojo::Remote<mojom::TitleObserver> observer(std::move(pending_observer));
@@ -544,7 +553,7 @@ void TitleGenerationEngine::CacheGroupTitles(
 }
 
 std::optional<std::string> TitleGenerationEngine::MaybeGetCachedTitle(
-    const std::vector<mojom::EntityPtr>& entities) {
+    const std::vector<EntityWithMetadata>& entities) {
   std::optional<std::string> ret;
   float min_difference = 1.0;
   for (const auto& [title, title_cache_entry] : title_cache_) {

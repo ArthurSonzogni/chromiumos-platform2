@@ -357,7 +357,7 @@ void EmbeddingEngine::CheckLanguageResult(ProcessingParams params,
                                           EmbeddingEntry entry) {
   // Doesn't have language result.
   if (!entry.languages.has_value()) {
-    params.response.embeddings.push_back(Embedding());
+    params.response.embeddings.push_back(EmbeddingWithMetadata());
     ProcessEachPrompt(std::move(params));
     return;
   }
@@ -367,7 +367,7 @@ void EmbeddingEngine::CheckLanguageResult(ProcessingParams params,
     metrics_->SendLanguageIsSupported(is_supported);
   }
   if (!is_supported) {
-    params.response.embeddings.push_back(Embedding());
+    params.response.embeddings.push_back(EmbeddingWithMetadata());
     ProcessEachPrompt(std::move(params));
     return;
   }
@@ -440,7 +440,7 @@ void EmbeddingEngine::CheckEntrySafetyResult(ProcessingParams params,
                                              EmbeddingEntry entry) {
   // Doesn't have verdict.
   if (!entry.safety_verdict.has_value()) {
-    params.response.embeddings.push_back(Embedding());
+    params.response.embeddings.push_back(EmbeddingWithMetadata());
     ProcessEachPrompt(std::move(params));
     return;
   }
@@ -450,7 +450,7 @@ void EmbeddingEngine::CheckEntrySafetyResult(ProcessingParams params,
                                        : metrics::SafetyVerdict::kFail);
   }
   if (!passed) {
-    params.response.embeddings.push_back(Embedding());
+    params.response.embeddings.push_back(EmbeddingWithMetadata());
     ProcessEachPrompt(std::move(params));
     return;
   }
@@ -463,7 +463,9 @@ void EmbeddingEngine::CheckEntryEmbedding(ProcessingParams params,
     if (IsFullGroupRequest(params.request)) {
       metrics_->SendEmbeddingCacheHit(true);
     }
-    params.response.embeddings.push_back(entry.embedding);
+    params.response.embeddings.push_back(
+        EmbeddingWithMetadata{.embedding = std::move(entry.embedding),
+                              .language_result = std::move(*entry.languages)});
     ProcessEachPrompt(std::move(params));
     return;
   }
@@ -508,7 +510,8 @@ void EmbeddingEngine::OnModelOutput(ProcessingParams params,
   PutEmbeddingEntry(*params.request->entities[index], params.prompts[index],
                     entry);
 
-  params.response.embeddings.push_back(embedding);
+  params.response.embeddings.push_back(EmbeddingWithMetadata{
+      .embedding = embedding, .language_result = std::move(*entry.languages)});
   ProcessEachPrompt(std::move(params));
 }
 
