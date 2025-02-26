@@ -9,15 +9,20 @@
 #include <vector>
 
 #include <arc/arc.pb.h>
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/memory/raw_ref.h>
 #include <base/types/expected.h>
 #include <brillo/dbus/dbus_method_response.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/utils.h>
 #include <brillo/errors/error.h>
+#include <dbus/arc_manager/dbus-constants.h>
 #include <dbus/bootlockbox/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/debugd/dbus-constants.h>
@@ -106,33 +111,61 @@ std::unique_ptr<ArcSideloadStatusInterface> CreateArcSideloadStatus(
 
 }  // namespace
 
+class ArcManager::DBusService {
+ public:
+  explicit DBusService(org::chromium::ArcManagerAdaptor& adaptor)
+      : adaptor_(adaptor) {}
+
+  bool Start(const scoped_refptr<dbus::Bus>& bus) {
+    CHECK(!dbus_object_);
+
+    dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
+        /*object_manager=*/nullptr, bus,
+        org::chromium::ArcManagerAdaptor::GetObjectPath(),
+        /*property_handler_setup_callback=*/base::DoNothing());
+    adaptor_->RegisterWithDBusObject(dbus_object_.get());
+    dbus_object_->RegisterAndBlock();
+
+    // Note: this needs to happen *after* all methods are exported.
+    return bus->RequestOwnershipAndBlock(arc_manager::kArcManagerServiceName,
+                                         dbus::Bus::REQUIRE_PRIMARY);
+  }
+
+ private:
+  const raw_ref<org::chromium::ArcManagerAdaptor> adaptor_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+};
+
 ArcManager::ArcManager(SystemUtils& system_utils,
                        LoginMetrics& login_metrics,
                        brillo::ProcessReaper& process_reaper,
-                       dbus::Bus& bus)
+                       scoped_refptr<dbus::Bus> bus)
     : ArcManager(
           system_utils,
           login_metrics,
-          std::make_unique<InitDaemonControllerImpl>(bus.GetObjectProxy(
+          bus,
+          std::make_unique<InitDaemonControllerImpl>(bus->GetObjectProxy(
               InitDaemonControllerImpl::kServiceName,
               dbus::ObjectPath(InitDaemonControllerImpl::kPath))),
-          bus.GetObjectProxy(debugd::kDebugdServiceName,
-                             dbus::ObjectPath(debugd::kDebugdServicePath)),
+          bus->GetObjectProxy(debugd::kDebugdServiceName,
+                              dbus::ObjectPath(debugd::kDebugdServicePath)),
           std::make_unique<AndroidOciWrapper>(
               &system_utils,
               process_reaper,
               base::FilePath(kContainerInstallDirectory)),
-          CreateArcSideloadStatus(bus)) {}
+          CreateArcSideloadStatus(*bus)) {}
 
 ArcManager::ArcManager(
     SystemUtils& system_utils,
     LoginMetrics& login_metrics,
+    scoped_refptr<dbus::Bus> bus,
     std::unique_ptr<InitDaemonController> init_controller,
     dbus::ObjectProxy* debugd_proxy,
     std::unique_ptr<ContainerManagerInterface> android_container,
     std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status)
     : system_utils_(system_utils),
       login_metrics_(login_metrics),
+      bus_(bus),
       init_controller_(std::move(init_controller)),
       debugd_proxy_(debugd_proxy),
       android_container_(std::move(android_container)),
@@ -143,14 +176,16 @@ ArcManager::~ArcManager() = default;
 std::unique_ptr<ArcManager> ArcManager::CreateForTesting(
     SystemUtils& system_utils,
     LoginMetrics& login_metrics,
+    scoped_refptr<dbus::Bus> bus,
     std::unique_ptr<InitDaemonController> init_controller,
     dbus::ObjectProxy* debugd_proxy,
     std::unique_ptr<ContainerManagerInterface> android_container,
     std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status) {
   // std::make_unique won't work because the target ctor is private.
   return base::WrapUnique(new ArcManager(
-      system_utils, login_metrics, std::move(init_controller), debugd_proxy,
-      std::move(android_container), std::move(arc_sideload_status)));
+      system_utils, login_metrics, bus, std::move(init_controller),
+      debugd_proxy, std::move(android_container),
+      std::move(arc_sideload_status)));
 }
 
 void ArcManager::SetDelegate(std::unique_ptr<Delegate> delegate) {
@@ -163,6 +198,8 @@ void ArcManager::Initialize() {
 }
 
 void ArcManager::Finalize() {
+  dbus_service_.reset();
+
   // We want to stop all running containers and VMs.  Containers and VMs are
   // per-session and cannot persist across sessions.
   android_container_->RequestJobExit(
@@ -172,6 +209,17 @@ void ArcManager::Finalize() {
   // TODO(hidehiko): consider to make this lifetime tied to Initialize/Finalize
   // as a pair of the methods. Or, move the destruction to the dtor.
   arc_sideload_status_.reset();
+}
+
+bool ArcManager::StartDBusService() {
+  CHECK(!dbus_service_);
+  auto dbus_service = std::make_unique<DBusService>(adaptor_);
+  if (!dbus_service->Start(bus_)) {
+    return false;
+  }
+
+  dbus_service_ = std::move(dbus_service);
+  return true;
 }
 
 bool ArcManager::IsAdbSideloadAllowed() const {
@@ -652,6 +700,7 @@ void ArcManager::OnAndroidContainerStopped(pid_t pid,
   }
 
   delegate_->SendArcInstanceStoppedSignal(static_cast<uint32_t>(reason));
+  adaptor_.SendArcInstanceStoppedSignal(static_cast<uint32_t>(reason));
 }
 
 LoginMetrics::ArcContinueBootImpulseStatus

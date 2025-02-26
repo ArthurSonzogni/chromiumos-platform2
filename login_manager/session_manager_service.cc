@@ -36,6 +36,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/vm_concierge/dbus-constants.h>
 #include <chromeos/switches/chrome_switches.h>
+#include <dbus/arc_manager/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/dbus.h>  // C dbus library header. Used in FilterMessage().
 #include <dbus/error.h>
@@ -225,7 +226,7 @@ bool SessionManagerService::Initialize() {
           dbus::ObjectPath(chromeos::kChromeFeaturesServicePath)));
 
   arc_manager_ = std::make_unique<ArcManager>(*system_utils_, *login_metrics_,
-                                              process_reaper_, *bus_);
+                                              process_reaper_, bus_);
 
   impl_ = std::make_unique<SessionManagerImpl>(
       this /* delegate */,
@@ -245,6 +246,9 @@ bool SessionManagerService::Initialize() {
 
   InitializeBrowser();
 
+  CHECK(arc_manager_->StartDBusService())
+      << "Unable to start " << arc_manager::kArcManagerServiceName
+      << " D-Bus service.";
   CHECK(impl_->StartDBusService())
       << "Unable to start " << kSessionManagerServiceName << " D-Bus service.";
   return true;

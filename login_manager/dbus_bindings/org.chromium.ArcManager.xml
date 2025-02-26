@@ -1,6 +1,6 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
-<node name="/org/chromium/SessionManager"
+<node name="/org/chromium/ArcManager"
       xmlns:doc="http://www.freedesktop.org/dbus/1.0/doc.dtd">
 <!--
   Copyright 2025 The ChromiumOS Authors

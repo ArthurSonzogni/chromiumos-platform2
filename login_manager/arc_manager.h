@@ -67,7 +67,7 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   ArcManager(SystemUtils& system_utils,
              LoginMetrics& login_metrics,
              brillo::ProcessReaper& process_reaper,
-             dbus::Bus& bus);
+             scoped_refptr<dbus::Bus> bus);
   ArcManager(const ArcManager&) = delete;
   ArcManager& operator=(const ArcManager&) = delete;
   ~ArcManager();
@@ -75,6 +75,7 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   static std::unique_ptr<ArcManager> CreateForTesting(
       SystemUtils& system_utils,
       LoginMetrics& login_metrics,
+      scoped_refptr<dbus::Bus> bus,
       std::unique_ptr<InitDaemonController> init_controller,
       dbus::ObjectProxy* debugd_proxy,
       std::unique_ptr<ContainerManagerInterface> android_container,
@@ -102,6 +103,9 @@ class ArcManager : public org::chromium::ArcManagerInterface {
 
   void Initialize();
   void Finalize();
+
+  // Starts ArcManager D-Bus service.
+  bool StartDBusService();
 
   void SetDelegate(std::unique_ptr<Delegate> delegate);
 
@@ -134,9 +138,12 @@ class ArcManager : public org::chromium::ArcManagerInterface {
       override;
 
  private:
+  class DBusService;
+
   // Shared constructor with CreateForTesting.
   ArcManager(SystemUtils& system_utils,
              LoginMetrics& login_metrics,
+             scoped_refptr<dbus::Bus> bus,
              std::unique_ptr<InitDaemonController> init_controller,
              dbus::ObjectProxy* debugd_proxy,
              std::unique_ptr<ContainerManagerInterface> android_container,
@@ -187,8 +194,10 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   const raw_ref<LoginMetrics> login_metrics_;
 
   // Interfaces to communicate with D-Bus system.
+  scoped_refptr<dbus::Bus> bus_;
   const std::unique_ptr<InitDaemonController> init_controller_;
   dbus::ObjectProxy* const debugd_proxy_;
+  org::chromium::ArcManagerAdaptor adaptor_{this};
 
   // ARC structures.
   const std::unique_ptr<ContainerManagerInterface> android_container_;
@@ -199,6 +208,8 @@ class ArcManager : public org::chromium::ArcManagerInterface {
 
   // Timestamp when ARC container is upgraded.
   base::TimeTicks arc_start_time_;
+
+  std::unique_ptr<DBusService> dbus_service_;
 
   base::WeakPtrFactory<ArcManager> weak_factory_{this};
 };

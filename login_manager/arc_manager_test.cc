@@ -399,8 +399,9 @@ class ArcManagerTest : public testing::Test {
     arc_sideload_status_ = new MockArcSideloadStatus();
     android_container_ = new FakeContainerManager(kAndroidPid);
     arc_manager_ = ArcManager::CreateForTesting(
-        system_utils_, metrics_, base::WrapUnique(arc_init_controller_),
-        debugd_proxy_.get(), base::WrapUnique(android_container_),
+        system_utils_, metrics_, /*bus=*/nullptr,
+        base::WrapUnique(arc_init_controller_), debugd_proxy_.get(),
+        base::WrapUnique(android_container_),
         std::unique_ptr<ArcSideloadStatusInterface>(arc_sideload_status_));
     auto delegate = std::make_unique<FakeArcManagerDelegate>();
     delegate_ = delegate.get();

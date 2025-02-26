@@ -164,12 +164,18 @@ executable("session_manager") {
 }
 
 install_config("install_dbus_config") {
-  sources = [ "SessionManager.conf" ]
+  sources = [
+    "ArcManager.conf",
+    "SessionManager.conf",
+  ]
   install_path = "dbus_system_d"
 }
 
 install_config("install_dbus_interface") {
-  sources = [ "dbus_bindings/org.chromium.SessionManagerInterface.xml" ]
+  sources = [
+    "dbus_bindings/org.chromium.ArcManager.xml",
+    "dbus_bindings/org.chromium.SessionManagerInterface.xml",
+  ]
   install_path = "/usr/share/dbus-1/interfaces"
 }
 
