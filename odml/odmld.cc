@@ -32,6 +32,7 @@
 #include "odml/cros_safety/safety_service_manager_impl.h"
 #include "odml/embedding_model/embedding_model_service.h"
 #include "odml/embedding_model/model_factory.h"
+#include "odml/i18n/translator_impl.h"
 #include "odml/mantis/service.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/periodic_metrics.h"
@@ -129,13 +130,15 @@ class CoralServiceProviderImpl
       raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
           embedding_model_service,
       odml::SessionStateManagerInterface* session_state_manager,
-      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      raw_ref<i18n::TranslatorImpl> translator)
       : receiver_(this),
         service_impl_(metrics,
                       on_device_model_service,
                       embedding_model_service,
                       session_state_manager,
-                      safety_service_manager) {
+                      safety_service_manager,
+                      translator) {
     service_manager->Register(chromeos::mojo_services::kCrosCoralService,
                               receiver_.BindNewPipeAndPassRemote());
   }
@@ -248,7 +251,7 @@ class Daemon : public brillo::DBusDaemon {
         on_device_model_service_provider_impl_->service(),
         embedding_model_service_provider_impl_->service(),
         session_state_manager_.get(),
-        raw_ref(*safety_service_manager_impl_.get()));
+        raw_ref(*safety_service_manager_impl_.get()), raw_ref(translator_));
 
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
         raw_ref(metrics_), raw_ref(shim_loader_), service_manager_,
@@ -274,6 +277,8 @@ class Daemon : public brillo::DBusDaemon {
   MetricsLibrary metrics_;
 
   odml::PeriodicMetrics periodic_metrics_{raw_ref(metrics_)};
+
+  i18n::TranslatorImpl translator_{raw_ref(shim_loader_)};
 
   std::unique_ptr<cros_safety::SafetyServiceManagerImpl>
       safety_service_manager_impl_;

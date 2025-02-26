@@ -36,7 +36,8 @@ CoralService::CoralService(
     raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
         embedding_model_service,
     odml::SessionStateManagerInterface* session_state_manager,
-    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
+    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+    raw_ref<i18n::Translator> translator)
     : metrics_(metrics),
       language_detector_(
           std::make_unique<on_device_model::MlServiceLanguageDetector>()),
@@ -54,6 +55,7 @@ CoralService::CoralService(
           raw_ref(metrics_),
           on_device_model_service,
           session_state_manager,
+          translator,
           std::make_unique<TitleCacheStorage>(std::nullopt))) {}
 
 CoralService::CoralService(

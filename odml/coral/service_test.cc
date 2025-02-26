@@ -20,6 +20,7 @@
 #include "odml/cros_safety/safety_service_manager_mock.h"
 #include "odml/embedding_model/embedding_model_service.h"
 #include "odml/embedding_model/model_factory_mock.h"
+#include "odml/i18n/mock_translator.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/on_device_model/mock_on_device_model_service.h"
 
@@ -219,9 +220,10 @@ TEST(CoralServiceConstructTest, Construct) {
   cros_safety::SafetyServiceManagerMock safety_service_manager;
   embedding_model::EmbeddingModelService embedding_service(
       (raw_ref(metrics)), raw_ref(embedding_model_factory));
+  i18n::MockTranslator translator;
   CoralService service((raw_ref(metrics)), (raw_ref(model_service)),
                        (raw_ref(embedding_service)), nullptr,
-                       raw_ref(safety_service_manager));
+                       raw_ref(safety_service_manager), raw_ref(translator));
 }
 
 TEST_F(CoralServiceTest, GroupSuccess) {

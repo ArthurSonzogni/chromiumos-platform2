@@ -8,7 +8,6 @@
 #include <memory>
 #include <queue>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 #include <base/containers/lru_cache.h>
@@ -23,6 +22,7 @@
 #include "odml/coral/metrics.h"
 #include "odml/coral/title_generation/cache_storage.h"
 #include "odml/coral/title_generation/simple_session.h"
+#include "odml/i18n/translator.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
@@ -63,6 +63,7 @@ class TitleGenerationEngine
       raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
           on_device_model_service,
       odml::SessionStateManagerInterface* session_state_manager,
+      raw_ref<i18n::Translator> translator,
       std::unique_ptr<TitleCacheStorageInterface> title_cache_storage);
   ~TitleGenerationEngine() override = default;
 
@@ -81,6 +82,8 @@ class TitleGenerationEngine
   std::optional<std::string> GetNthTitleCacheKeyForTesting(int n);
 
  private:
+  void EnsureTranslatorInitialized(base::OnceClosure callback);
+  void GetModelState(base::OnceClosure callback);
   void OnGetModelStateResult(base::OnceClosure callback,
                              on_device_model::mojom::PlatformModelState state);
   void EnsureModelLoaded(base::OnceClosure callback);
@@ -92,8 +95,7 @@ class TitleGenerationEngine
   struct GroupData {
     base::Token id;
     std::optional<std::string> title;
-    std::string prompt;
-    std::vector<mojom::EntityPtr> entities;
+    std::vector<EntityWithMetadata> entities;
   };
   void ReplyGroupsWithoutTitles(
       const std::vector<GroupData>& groups,
@@ -172,6 +174,8 @@ class TitleGenerationEngine
 
   const raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
       on_device_model_service_;
+
+  const raw_ref<i18n::Translator> translator_;
 
   // `model_` should only be used after a successful LoadModelResult is received
   // because on device service only binds the model receiver when model loading

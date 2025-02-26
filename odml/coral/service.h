@@ -24,6 +24,7 @@
 #include "odml/coral/title_generation/engine.h"
 #include "odml/cros_safety/safety_service_manager.h"
 #include "odml/i18n/ml_service_language_detector.h"
+#include "odml/i18n/translator.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
@@ -41,7 +42,8 @@ class CoralService : public mojom::CoralService, public mojom::CoralProcessor {
       raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
           embedding_model_service,
       odml::SessionStateManagerInterface* session_state_manager,
-      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager);
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      raw_ref<i18n::Translator> translator);
 
   // For test, where engine objects are passed in directly.
   CoralService(

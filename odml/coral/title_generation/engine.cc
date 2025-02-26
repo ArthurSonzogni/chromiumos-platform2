@@ -85,19 +85,10 @@ std::string EntitiesToTitlePrompt(
 }
 
 std::vector<mojom::EntityPtr> CloneEntities(
-    const std::vector<mojom::EntityPtr>& entities) {
+    const std::vector<EntityWithMetadata>& entities) {
   std::vector<mojom::EntityPtr> ret;
-  for (const mojom::EntityPtr& entity : entities) {
-    ret.push_back(entity.Clone());
-  }
-  return ret;
-}
-
-std::vector<mojom::EntityPtr> ExtractEntities(
-    std::vector<EntityWithMetadata> entities) {
-  std::vector<mojom::EntityPtr> ret;
-  for (EntityWithMetadata& entity : entities) {
-    ret.push_back(std::move(entity.entity));
+  for (const EntityWithMetadata& entity : entities) {
+    ret.push_back(entity.entity.Clone());
   }
   return ret;
 }
@@ -144,9 +135,11 @@ TitleGenerationEngine::TitleGenerationEngine(
     raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
         on_device_model_service,
     odml::SessionStateManagerInterface* session_state_manager,
+    raw_ref<i18n::Translator> translator,
     std::unique_ptr<TitleCacheStorageInterface> title_cache_storage)
     : metrics_(metrics),
       on_device_model_service_(on_device_model_service),
+      translator_(translator),
       title_cache_(kMaxCacheSize),
       title_cache_storage_(std::move(title_cache_storage)) {
   // cache_flush_timer_ is initialized here because it needs the
@@ -173,11 +166,9 @@ void TitleGenerationEngine::PrepareResource() {
   auto on_process_complete = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
       base::BindOnce(&TitleGenerationEngine::OnProcessCompleted,
                      weak_ptr_factory_.GetWeakPtr()));
-  on_device_model_service_->GetPlatformModelState(
-      base::Uuid::ParseLowercase(kModelUuid),
-      base::BindOnce(&TitleGenerationEngine::OnGetModelStateResult,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     std::move(on_process_complete)));
+  EnsureTranslatorInitialized(base::BindOnce(
+      &TitleGenerationEngine::GetModelState, weak_ptr_factory_.GetWeakPtr(),
+      std::move(on_process_complete)));
 }
 
 void TitleGenerationEngine::Process(
@@ -206,11 +197,9 @@ void TitleGenerationEngine::Process(
     if (title.has_value()) {
       group_data.title = std::move(title);
     } else {
-      // TODO(b/361429962): Validate safety result of the group.
-      group_data.prompt = EntitiesToTitlePrompt(cluster.entities);
       has_group_without_title = true;
     }
-    group_data.entities = ExtractEntities(std::move(cluster.entities));
+    group_data.entities = std::move(cluster.entities);
     groups.push_back(std::move(group_data));
   }
   mojo::Remote<mojom::TitleObserver> observer(std::move(pending_observer));
@@ -243,10 +232,13 @@ void TitleGenerationEngine::Process(
     return;
   }
   metrics_->SendTitleGenerationModelLoaded(model_.is_bound());
-  EnsureModelLoaded(base::BindOnce(&TitleGenerationEngine::DoProcess,
-                                   weak_ptr_factory_.GetWeakPtr(),
-                                   std::move(request), std::move(observer),
-                                   std::move(groups), std::move(on_complete)));
+  base::OnceClosure do_process = base::BindOnce(
+      &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
+      std::move(request), std::move(observer), std::move(groups),
+      std::move(on_complete));
+  EnsureTranslatorInitialized(
+      base::BindOnce(&TitleGenerationEngine::EnsureModelLoaded,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(do_process)));
 }
 
 void TitleGenerationEngine::OnUserLoggedIn(
@@ -285,6 +277,26 @@ void TitleGenerationEngine::OnGetModelStateResult(
   }
   // Else, the model should be installed on disk.
   std::move(callback).Run();
+}
+
+void TitleGenerationEngine::EnsureTranslatorInitialized(
+    base::OnceClosure callback) {
+  if (translator_->IsAvailable()) {
+    std::move(callback).Run();
+    return;
+  }
+  translator_->Initialize(base::BindOnce([](bool success) {
+                            if (!success) {
+                              LOG(ERROR) << "Load translator failed";
+                            }
+                          }).Then(std::move(callback)));
+}
+
+void TitleGenerationEngine::GetModelState(base::OnceClosure callback) {
+  on_device_model_service_->GetPlatformModelState(
+      base::Uuid::ParseLowercase(kModelUuid),
+      base::BindOnce(&TitleGenerationEngine::OnGetModelStateResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
@@ -426,7 +438,7 @@ void TitleGenerationEngine::ProcessEachPrompt(ProcessParams params) {
     return;
   }
   base::flat_map<std::string, std::string> fields{
-      {"prompt", params.groups[index].prompt}};
+      {"prompt", EntitiesToTitlePrompt(params.groups[index].entities)}};
   auto timer = odml::PerformanceTimer::Create();
   on_device_model_service_->FormatInput(
       base::Uuid::ParseLowercase(kModelUuid),
@@ -539,8 +551,8 @@ void TitleGenerationEngine::CacheGroupTitles(
       continue;
     }
     std::unordered_multiset<std::string> entity_titles;
-    for (const mojom::EntityPtr& entity : group_data.entities) {
-      entity_titles.insert(GetTitle(entity));
+    for (const EntityWithMetadata& entity : group_data.entities) {
+      entity_titles.insert(GetTitle(entity.entity));
     }
     title_cache_.Put(
         *group_data.title,

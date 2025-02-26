@@ -22,6 +22,7 @@
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/metrics.h"
 #include "odml/coral/test_util.h"
+#include "odml/i18n/mock_translator.h"
 #include "odml/mojom/coral_service.mojom-shared.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/on_device_model/fake/on_device_model_fake.h"
@@ -157,10 +158,16 @@ class TitleGenerationEngineTest : public testing::Test {
     std::unique_ptr<TitleCacheStorage> title_cache_storage =
         std::make_unique<TitleCacheStorage>(temp_dir_->GetPath());
     title_cache_storage_ = title_cache_storage.get();
+    ON_CALL(translator_, Initialize)
+        .WillByDefault([](base::OnceCallback<void(bool)>&& callback) {
+          std::move(callback).Run(true);
+        });
+    ON_CALL(translator_, IsAvailable).WillByDefault(Return(true));
 
     engine_ = std::make_unique<TitleGenerationEngine>(
         raw_ref(coral_metrics_), raw_ref(model_service_),
-        /*session_state_manager=*/nullptr, std::move(title_cache_storage));
+        /*session_state_manager=*/nullptr, raw_ref(translator_),
+        std::move(title_cache_storage));
   }
 
  protected:
@@ -233,6 +240,7 @@ class TitleGenerationEngineTest : public testing::Test {
   on_device_model::OnDeviceModelService model_service_;
   std::unique_ptr<base::ScopedTempDir> temp_dir_;
   TitleCacheStorage* title_cache_storage_;
+  NiceMock<i18n::MockTranslator> translator_;
 
   std::unique_ptr<TitleGenerationEngine> engine_;
 };
