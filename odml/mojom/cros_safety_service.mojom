@@ -8,7 +8,7 @@
 //   2. On chromium, we must use the version under mojo folder so we do not need
 //      to and must not sync this file to chromium.
 
-// Next MinVersion: 3
+// Next MinVersion: 4
 module cros_safety.mojom;
 
 import "odml/mojom/cros_safety.mojom";
@@ -34,6 +34,10 @@ enum GetOnDeviceSafetySessionResult {
 
   // Temporary issue (loading, downloading, etc).
   [MinVersion=2] kHadesNotReady = 5,
+  [MinVersion=3] kOnDeviceSafetyNotConnected = 6,  // Internal failure
+  [MinVersion=3] kArcGetInstanceForMethodFailed = 7,  // Internal failure
+  [MinVersion=3] kArcSafetyServiceNotAvailable = 8,  // Internal failure
+  [MinVersion=3] kCrosSafetyServiceNotAvailable = 9,  // Internal failure
 };
 
 // CrosSafetyService runs in Chrome which is the entry point of both creating

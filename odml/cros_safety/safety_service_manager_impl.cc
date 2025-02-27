@@ -198,7 +198,8 @@ void SafetyServiceManagerImpl::EnsureOnDeviceSafetySessionCreated(
           base::BindOnce(
               &SafetyServiceManagerImpl::GetOnDeviceSafetySessionDone,
               weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
-          mojom::GetOnDeviceSafetySessionResult::kGenericError));
+          mojom::GetOnDeviceSafetySessionResult::
+              kCrosSafetyServiceNotAvailable));
 }
 
 void SafetyServiceManagerImpl::GetOnDeviceSafetySessionDone(
