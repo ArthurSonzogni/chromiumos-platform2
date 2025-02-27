@@ -53,6 +53,38 @@ TEST_F(TranslatorTestImpl, TranslateSuccess) {
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetTranslateAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(TranslateAPIGetter(
           []() -> const TranslateAPI* { return fake::GetTranslateApi(); }))));
+  SetupDlc(kDlcFake);
+  // Translating.
+  base::RunLoop run_loop_translate;
+  translator_.Translate(
+      kFakeLangPair, kFakeInputText,
+      base::BindLambdaForTesting([&](std::optional<std::string_view> result) {
+        ASSERT_TRUE(result.has_value());
+        EXPECT_TRUE(result.value() == FakeTranslate(kFakeInputText));
+        run_loop_translate.Quit();
+      }));
+  run_loop_translate.Run();
+  // Translating reversely.
+  base::RunLoop run_loop_reverse_translate;
+  translator_.Translate(
+      kFakeReverseLangPair, kFakeInputText,
+      base::BindLambdaForTesting([&](std::optional<std::string_view> result) {
+        ASSERT_TRUE(result.has_value());
+        EXPECT_TRUE(result.value() == FakeTranslate(kFakeInputText));
+        run_loop_reverse_translate.Quit();
+      }));
+  run_loop_reverse_translate.Run();
+}
+
+TEST_F(TranslatorTestImpl, TranslateSyncSuccess) {
+  const LangPair kFakeLangPair{"en", "ja"};
+  const LangPair kFakeReverseLangPair{"ja", "en"};
+  constexpr char kFakeInputText[] = "to be translated";
+  // Initializing Translator.
+  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("GetTranslateAPI"))
+      .WillOnce(Return(reinterpret_cast<void*>(TranslateAPIGetter(
+          []() -> const TranslateAPI* { return fake::GetTranslateApi(); }))));
   base::RunLoop run_loop_init;
   translator_.Initialize(base::BindLambdaForTesting([&](bool result) {
     EXPECT_EQ(result, true);
@@ -69,11 +101,11 @@ TEST_F(TranslatorTestImpl, TranslateSuccess) {
                           }));
   run_loop_dlc.Run();
   // Translating.
-  auto translation = translator_.Translate(kFakeLangPair, kFakeInputText);
+  auto translation = translator_.TranslateSync(kFakeLangPair, kFakeInputText);
   ASSERT_TRUE(translation.has_value());
   EXPECT_TRUE(translation.value() == FakeTranslate(kFakeInputText));
   // Translating reversely.
-  translation = translator_.Translate(kFakeReverseLangPair, kFakeInputText);
+  translation = translator_.TranslateSync(kFakeReverseLangPair, kFakeInputText);
   ASSERT_TRUE(translation.has_value());
   EXPECT_TRUE(translation.value() == FakeTranslate(kFakeInputText));
 }
@@ -86,23 +118,16 @@ TEST_F(TranslatorTestImpl, TranslateLoadDictionaryCorrupted) {
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetTranslateAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(TranslateAPIGetter(
           []() -> const TranslateAPI* { return fake::GetTranslateApi(); }))));
-  base::RunLoop run_loop_init;
-  translator_.Initialize(base::BindLambdaForTesting([&](bool result) {
-    EXPECT_EQ(result, true);
-    run_loop_init.Quit();
-  }));
-  run_loop_init.Run();
   SetupDlc(kDlcCorruptedDictionary);
-  base::RunLoop run_loop_dlc;
-  translator_.DownloadDlc(kFakeLangPair,
-                          base::BindLambdaForTesting([&](bool result) {
-                            EXPECT_EQ(result, true);
-                            run_loop_dlc.Quit();
-                          }));
-  run_loop_dlc.Run();
   // Corrupted dictionary makes translator fail to translate.
-  auto translation = translator_.Translate(kFakeLangPair, kFakeInputText);
-  EXPECT_FALSE(translation.has_value());
+  base::RunLoop run_loop;
+  translator_.Translate(
+      kFakeLangPair, kFakeInputText,
+      base::BindLambdaForTesting([&](std::optional<std::string_view> result) {
+        EXPECT_FALSE(result.has_value());
+        run_loop.Quit();
+      }));
+  run_loop.Run();
 }
 
 TEST_F(TranslatorTestImpl, TranslateLoadDictionaryFailure) {
@@ -113,26 +138,36 @@ TEST_F(TranslatorTestImpl, TranslateLoadDictionaryFailure) {
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetTranslateAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(TranslateAPIGetter(
           []() -> const TranslateAPI* { return fake::GetTranslateApi(); }))));
-  base::RunLoop run_loop_init;
-  translator_.Initialize(base::BindLambdaForTesting([&](bool result) {
-    EXPECT_EQ(result, true);
-    run_loop_init.Quit();
-  }));
-  run_loop_init.Run();
-  // Invalid DLC makes translator fail to load dictionary.
   SetupDlc(kDlcInvalid);
-  base::RunLoop run_loop_dlc;
-  translator_.DownloadDlc(kFakeLangPair,
-                          base::BindLambdaForTesting([&](bool result) {
-                            EXPECT_EQ(result, true);
-                            run_loop_dlc.Quit();
-                          }));
-  run_loop_dlc.Run();
-  auto translation = translator_.Translate(kFakeLangPair, kFakeInputText);
-  EXPECT_FALSE(translation.has_value());
+  // Invalid DLC makes translator fail to load dictionary.
+  base::RunLoop run_loop;
+  translator_.Translate(
+      kFakeLangPair, kFakeInputText,
+      base::BindLambdaForTesting([&](std::optional<std::string_view> result) {
+        EXPECT_FALSE(result.has_value());
+        run_loop.Quit();
+      }));
+  run_loop.Run();
 }
 
-TEST_F(TranslatorTestImpl, TranslateDlcUnavailable) {
+TEST_F(TranslatorTestImpl, TranslateInitializationFailure) {
+  // Translating shall fail when initialization fails.
+  const LangPair kFakeLangPair{"en", "ja"};
+  constexpr char kFakeInputText[] = "to be translated";
+  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("GetTranslateAPI"))
+      .WillOnce(Return(nullptr));
+  base::RunLoop run_loop;
+  translator_.Translate(
+      kFakeLangPair, kFakeInputText,
+      base::BindLambdaForTesting([&](std::optional<std::string_view> result) {
+        EXPECT_FALSE(result.has_value());
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+TEST_F(TranslatorTestImpl, TranslateSyncDlcUnavailable) {
   // Translating shall fail without DLC downloaded.
   const LangPair kFakeLangPair{"en", "ja"};
   constexpr char kFakeInputText[] = "to be translated";
@@ -146,15 +181,15 @@ TEST_F(TranslatorTestImpl, TranslateDlcUnavailable) {
     run_loop_init.Quit();
   }));
   run_loop_init.Run();
-  auto translation = translator_.Translate(kFakeLangPair, kFakeInputText);
+  auto translation = translator_.TranslateSync(kFakeLangPair, kFakeInputText);
   EXPECT_FALSE(translation.has_value());
 }
 
-TEST_F(TranslatorTestImpl, TranslateNotInitialized) {
+TEST_F(TranslatorTestImpl, TranslateSyncNotInitialized) {
   // Translating shall fail with uninitialized translator.
   const LangPair kFakeLangPair{"en", "ja"};
   constexpr char kFakeInputText[] = "to be translated";
-  auto translation = translator_.Translate(kFakeLangPair, kFakeInputText);
+  auto translation = translator_.TranslateSync(kFakeLangPair, kFakeInputText);
   EXPECT_FALSE(translation.has_value());
 }
 

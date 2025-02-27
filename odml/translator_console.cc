@@ -26,19 +26,13 @@ constexpr const char kSource[] = "source";
 constexpr const char kTarget[] = "target";
 constexpr const char kInput[] = "input";
 
-void OnInitialize(base::RunLoop* run_loop, bool success) {
-  if (!success) {
-    LOG(ERROR) << "Translator failed to initilize";
+void OnTranslate(base::RunLoop* run_loop,
+                 std::optional<std::string_view> result) {
+  if (!result) {
+    LOG(ERROR) << "Translator failed to translate";
     exit(1);
   }
-  run_loop->Quit();
-}
-
-void OnDownloadDlc(base::RunLoop* run_loop, bool success) {
-  if (!success) {
-    LOG(ERROR) << "Translator failed to download DLC";
-    exit(1);
-  }
+  std::cout << result.value() << std::endl;
   run_loop->Quit();
 }
 
@@ -68,20 +62,10 @@ class TranslatorConsole : public brillo::DBusDaemon {
     raw_ref<odml::OdmlShimLoaderImpl> shim_loader(shim_loader_impl);
     i18n::TranslatorImpl translator(shim_loader);
 
-    base::RunLoop init_loop;
-    translator.Initialize(base::BindOnce(&OnInitialize, &init_loop));
-    init_loop.Run();
-
-    base::RunLoop dlc_loop;
-    translator.DownloadDlc(lang_pair,
-                           base::BindOnce(&OnDownloadDlc, &dlc_loop));
-    dlc_loop.Run();
-
-    auto result = translator.Translate(lang_pair, input);
-    if (!result) {
-      return 1;
-    }
-    std::cout << result.value() << std::endl;
+    base::RunLoop run_loop;
+    translator.Translate(lang_pair, input,
+                         base::BindOnce(&OnTranslate, &run_loop));
+    run_loop.Run();
 
     // Exit daemon,
     // https://crsrc.org/o/src/platform2/libbrillo/brillo/daemons/daemon.h;l=69

@@ -34,10 +34,23 @@ class TranslatorImpl : public Translator {
       base::OnceCallback<void(bool)> callback,
       odml::DlcProgressCallback progress = base::NullCallback()) override;
   bool IsDlcDownloaded(const LangPair& lang_pair) override;
-  std::optional<std::string> Translate(const LangPair& lang_pair,
-                                       const std::string& input_text) override;
+  void Translate(const LangPair& lang_pair,
+                 const std::string& input_text,
+                 base::OnceCallback<void(std::optional<std::string_view>)>
+                     callback) override;
+  std::optional<std::string> TranslateSync(
+      const LangPair& lang_pair, const std::string& input_text) override;
 
  private:
+  void DownloadDlcInternal(const LangPair& lang_pair,
+                           base::OnceCallback<void(bool)> callback,
+                           odml::DlcProgressCallback progress,
+                           bool result);
+  void TranslateInternal(
+      const LangPair& lang_pair,
+      const std::string& input_text,
+      base::OnceCallback<void(std::optional<std::string_view>)> callback,
+      bool result);
   void OnInstallDlcComplete(const std::string& dlc_name,
                             base::OnceCallback<void(bool)> callback,
                             base::expected<base::FilePath, std::string> result);

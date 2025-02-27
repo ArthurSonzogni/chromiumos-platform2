@@ -118,21 +118,26 @@ bool TranslatorImpl::IsAvailable() const {
 void TranslatorImpl::DownloadDlc(const LangPair& lang_pair,
                                  base::OnceCallback<void(bool)> callback,
                                  odml::DlcProgressCallback progress) {
-  std::string dlc_name = GetDlcName(lang_pair);
-  std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
-      dlc_name,
-      base::BindOnce(&TranslatorImpl::OnInstallDlcComplete,
-                     weak_ptr_factory_.GetWeakPtr(), dlc_name,
-                     std::move(callback)),
-      std::move(progress));
-  (*dlc_client)->InstallDlc();
+  Initialize(base::BindOnce(&TranslatorImpl::DownloadDlcInternal,
+                            weak_ptr_factory_.GetWeakPtr(), lang_pair,
+                            std::move(callback), std::move(progress)));
 }
 
 bool TranslatorImpl::IsDlcDownloaded(const LangPair& lang_pair) {
   return dlc_paths_.count(GetDlcName(lang_pair));
 }
 
-std::optional<std::string> TranslatorImpl::Translate(
+void TranslatorImpl::Translate(
+    const LangPair& lang_pair,
+    const std::string& input_text,
+    base::OnceCallback<void(std::optional<std::string_view>)> callback) {
+  DownloadDlc(lang_pair,
+              base::BindOnce(&TranslatorImpl::TranslateInternal,
+                             weak_ptr_factory_.GetWeakPtr(), lang_pair,
+                             input_text, std::move(callback)));
+}
+
+std::optional<std::string> TranslatorImpl::TranslateSync(
     const LangPair& lang_pair, const std::string& input_text) {
   if (!IsAvailable()) {
     LOG(ERROR) << "Translator is not available";
@@ -151,6 +156,41 @@ std::optional<std::string> TranslatorImpl::Translate(
     return std::nullopt;
   }
   return result.translation;
+}
+
+void TranslatorImpl::DownloadDlcInternal(
+    const LangPair& lang_pair,
+    base::OnceCallback<void(bool)> callback,
+    odml::DlcProgressCallback progress,
+    bool result) {
+  if (!result) {
+    std::move(callback).Run(false);
+    return;
+  }
+  if (IsDlcDownloaded(lang_pair)) {
+    std::move(callback).Run(true);
+    return;
+  }
+  std::string dlc_name = GetDlcName(lang_pair);
+  std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
+      dlc_name,
+      base::BindOnce(&TranslatorImpl::OnInstallDlcComplete,
+                     weak_ptr_factory_.GetWeakPtr(), dlc_name,
+                     std::move(callback)),
+      std::move(progress));
+  (*dlc_client)->InstallDlc();
+}
+
+void TranslatorImpl::TranslateInternal(
+    const LangPair& lang_pair,
+    const std::string& input_text,
+    base::OnceCallback<void(std::optional<std::string_view>)> callback,
+    bool result) {
+  if (!result) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  std::move(callback).Run(TranslateSync(lang_pair, input_text));
 }
 
 void TranslatorImpl::OnInstallDlcComplete(

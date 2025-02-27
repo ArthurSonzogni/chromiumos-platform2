@@ -46,7 +46,7 @@ class Translator {
   virtual bool IsAvailable() const = 0;
 
   // Download the DLC of |lang_pair| (order doesn't matter) if not yet
-  // downloaded.
+  // downloaded. This automatically calls Initialize() if necessary.
   virtual void DownloadDlc(
       const LangPair& lang_pair,
       base::OnceCallback<void(bool)> callback,
@@ -55,9 +55,17 @@ class Translator {
   // Returns if the DLC of |lang_pair| has been downloaded.
   virtual bool IsDlcDownloaded(const LangPair& lang_pair) = 0;
 
+  // Translate the |input_text| and return the translated text to the callback.
+  // This automatically calls Initialize() and DownloadDlc() if necessary.
+  virtual void Translate(
+      const LangPair& lang_pair,
+      const std::string& input_text,
+      base::OnceCallback<void(std::optional<std::string_view>)> callback) = 0;
+
   // Translate the |input_text| from |lang_pair|.source to |lang_pair|.target.
   // Returns std::nullopt on failure, otherwise, returns the translation.
-  virtual std::optional<std::string> Translate(
+  // Note that this fails if translator is not initialized or DLC is not ready.
+  virtual std::optional<std::string> TranslateSync(
       const LangPair& lang_pair, const std::string& input_text) = 0;
 };
 
