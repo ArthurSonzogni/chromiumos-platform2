@@ -20,7 +20,7 @@ namespace metrics {
 inline constexpr char kGetOnDeviceSafetySession[] =
     "Platform.SafetyService.Error.GetOnDeviceSafetySession";
 inline constexpr char kGetCloudSafetySession[] =
-    "Platform.SafetyService.Error.GetOnDeviceSafetySession";
+    "Platform.SafetyService.Error.GetCloudSafetySession";
 inline constexpr char kClassifySafetyResultPrefix[] =
     "Platform.SafetyService.ClassifySafetyResult.";
 inline constexpr char kClassifySafetyLatencyPrefix[] =
