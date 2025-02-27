@@ -171,9 +171,12 @@ void SLAACController::AddressMsgHandler(const net_base::RTNLMessage& msg) {
           slaac_addresses_.begin(),
           AddressData(ipv6_cidr, status.flags, status.scope));
     } else if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
-      LOG(WARNING) << logging_tag_ << " " << __func__
-                   << ": RTNL cache: Deleting non-cached address "
-                   << ipv6_cidr.ToString();
+      // This can happen if a fresh SLAACController instance receives
+      // RTM_DELADDR msgs pertaining to a Network session which has terminated
+      // shortly before.
+      LOG(INFO) << logging_tag_ << " " << __func__
+                << ": RTNL cache: Deleting non-cached address "
+                << ipv6_cidr.ToString();
     }
   }
 

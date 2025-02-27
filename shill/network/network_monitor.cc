@@ -393,9 +393,8 @@ void NetworkMonitor::StartIPv6ConnectionDiagnostics(
   // address.
   if (!network_config.ipv6_gateway) {
     // TODO(b/229309479): Support optional gateway argument.
-    LOG(WARNING)
-        << logging_tag_ << " " << __func__
-        << ": IPv6 Gateway unavailable, aborting connection diagnostics";
+    LOG(INFO) << logging_tag_ << " " << __func__
+              << ": IPv6 Gateway unavailable, aborting connection diagnostics";
     return;
   }
 
