@@ -18,8 +18,10 @@
 #include <libstorage/platform/keyring/utils.h>
 #include <libstorage/platform/mock_platform.h>
 
+#include "libstorage/storage_container/ext4_container.h"
 #include "libstorage/storage_container/fake_backing_device.h"
 #include "libstorage/storage_container/filesystem_key.h"
+#include "libstorage/storage_container/partition_device.h"
 #include "libstorage/storage_container/storage_container.h"
 
 using ::testing::_;
@@ -162,6 +164,92 @@ TEST_F(DmsetupContainerTest, ResetRawDeviceContainerTest) {
   // Attempt a reset of the device.
   EXPECT_TRUE(container_->Reset());
   EXPECT_TRUE(container_->Teardown());
+}
+
+class Ext4ContainerDmTest : public ::testing::Test {
+ public:
+  Ext4ContainerDmTest() {}
+
+  void SetUp() {
+    ASSERT_TRUE(platform_.WriteStringToFile(partition_file_, ""));
+    base::stat_wrapper_t st;
+    st.st_mode = S_IFBLK;
+    EXPECT_CALL(platform_, Stat(partition_file_, _))
+        .WillRepeatedly(DoAll(SetArgPointee<1>(st), Return(true)));
+
+    std::unique_ptr<PartitionDevice> backing_device;
+    backing_device = std::make_unique<PartitionDevice>(
+        config_.dmsetup_config.backing_device_config, &platform_);
+    FileSystemKeyReference key_reference(
+        {.fek_sig = brillo::SecureBlob("random reference")});
+    std::unique_ptr<DmsetupContainer> backing_container =
+        std::make_unique<DmsetupContainer>(
+            StorageContainerType::kDmDefaultKey, config_.dmsetup_config,
+            std::move(backing_device), key_reference, &platform_, nullptr,
+            std::make_unique<brillo::DeviceMapper>(
+                base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
+    ext4_container_ = std::make_unique<Ext4Container>(
+        config_.filesystem_config, std::move(backing_container), &platform_,
+        nullptr);
+  }
+
+ protected:
+  base::FilePath partition_file_{"/dev/mmcp10"};
+  std::string dmsetup_device_name_{"encrypted"};
+  base::FilePath encrypted_device_ =
+      base::FilePath("/dev/mapper").Append(dmsetup_device_name_);
+  libstorage::StorageContainerConfig config_{
+      .filesystem_config = {.tune2fs_opts = {"-Q", "project"},
+                            .backend_type = StorageContainerType::kUnencrypted,
+                            .recovery = RecoveryType::kDoNothing},
+      .dmsetup_config = {.backing_device_config =
+                             {.type = libstorage::BackingDeviceType::kPartition,
+                              .name = partition_file_.value()},
+                         .dmsetup_device_name = dmsetup_device_name_,
+                         .dmsetup_cipher = std::string("aes-xts-plain64")}};
+  MockPlatform platform_;
+  std::unique_ptr<Ext4Container> ext4_container_;
+};
+
+// Tests the normal path.
+TEST_F(Ext4ContainerDmTest, GetBackingLocation) {
+  EXPECT_EQ(ext4_container_->GetBackingLocation(), encrypted_device_);
+}
+
+TEST_F(Ext4ContainerDmTest, SetupCreateCheck) {
+  EXPECT_CALL(platform_, GetBlkSize(partition_file_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
+  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
+
+  EXPECT_CALL(platform_, FormatExt4(encrypted_device_, _, _)).Times(0);
+  int fsck_err = 0;
+  EXPECT_CALL(platform_, Fsck(encrypted_device_, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(fsck_err), Return(false)));
+  EXPECT_CALL(platform_, Tune2Fs(encrypted_device_, _)).WillOnce(Return(true));
+
+  // Make sure we can read the superblock.
+  ASSERT_TRUE(
+      platform_.WriteStringToFile(encrypted_device_, std::string(2048, 0)));
+
+  FileSystemKey key;
+  EXPECT_TRUE(ext4_container_->Setup(key));
+}
+
+TEST_F(Ext4ContainerDmTest, SetupNoSuperblock) {
+  EXPECT_CALL(platform_, GetBlkSize(partition_file_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
+  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
+
+  EXPECT_CALL(platform_, FormatExt4(encrypted_device_, _, _)).Times(0);
+  int fsck_err = 0;
+  EXPECT_CALL(platform_, Fsck(encrypted_device_, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(fsck_err), Return(false)));
+  EXPECT_CALL(platform_, Tune2Fs(encrypted_device_, _)).WillOnce(Return(true));
+
+  FileSystemKey key;
+
+  // superblock is too small, will fail.
+  EXPECT_FALSE(ext4_container_->Setup(key));
 }
 
 }  // namespace libstorage
