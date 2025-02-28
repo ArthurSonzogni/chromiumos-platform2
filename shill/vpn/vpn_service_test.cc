@@ -632,11 +632,17 @@ TEST_F(VPNServiceTest, DestroySockets) {
   scoped_refptr<MockService> underlying_service = new MockService(&manager_);
   underlying_service->set_attached_network_for_testing(
       physical_network.AsWeakPtr());
-  service_->OnDefaultPhysicalServiceChanged(underlying_service);
 
-  // Trigger service_->OnDriverConnected() with the given included routes.
-  const auto on_driver_connected_with_included_routes =
-      [&](const std::vector<std::string_view>& included_routes) {
+  const auto on_driver_connected =
+      [&](VPNType type, const std::vector<std::string_view>& included_routes) {
+        // Reset driver with the given type.
+        driver_ = new MockVPNDriver(&manager_, type);
+        service_ = new VPNServiceInTest(&manager_, driver_);
+
+        // Make sure the service is aware of the physical network.
+        service_->OnDefaultPhysicalServiceChanged(underlying_service);
+
+        // Trigger service_->OnDriverConnected() with the given included_routes.
         net_base::NetworkConfig config;
         for (std::string_view route : included_routes) {
           config.included_route_prefixes.push_back(
@@ -646,19 +652,27 @@ TEST_F(VPNServiceTest, DestroySockets) {
           return std::make_unique<net_base::NetworkConfig>(config);
         });
         service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
+
+        // This is just for cleanup (to break the reference cycle between Device
+        // and Service).
+        service_->DestroyDevice();
       };
 
   // No included routes means default routes.
   EXPECT_CALL(physical_network, DestroySockets(Optional(kChronosUid)));
-  on_driver_connected_with_included_routes({});
+  on_driver_connected(VPNType::kARC, {});
 
   // Default gateway indicated by multiple included routes.
   EXPECT_CALL(physical_network, DestroySockets(Optional(kChronosUid)));
-  on_driver_connected_with_included_routes({"0.0.0.0/1", "128.0.0.0/1"});
+  on_driver_connected(VPNType::kARC, {"0.0.0.0/1", "128.0.0.0/1"});
 
   // DestroySockets should not be called in the split-routing case.
   EXPECT_CALL(physical_network, DestroySockets).Times(0);
-  on_driver_connected_with_included_routes({"10.0.0.0/8"});
+  on_driver_connected(VPNType::kARC, {"10.0.0.0/8"});
+
+  // DestroySockets should not be called for a third party VPN.
+  EXPECT_CALL(physical_network, DestroySockets).Times(0);
+  on_driver_connected(VPNType::kThirdParty, {});
 }
 
 }  // namespace shill

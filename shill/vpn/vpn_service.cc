@@ -124,8 +124,16 @@ bool IsUsedAsDefaultGateway(const net_base::NetworkConfig& config) {
 
 // b/328814622: Destroy all Chrome sockets which are bound to the physical
 // network to avoid traffic leak.
-void DestroyChromeSocketsOnPhysical(Service* physical_service,
+void DestroyChromeSocketsOnPhysical(VPNDriver* driver,
+                                    Service* physical_service,
                                     bool used_as_default_gateway) {
+  // Skip if the VPN is a Chrome third-party app, since the socket for the VPN
+  // connection itself will also get destroyed in this case.
+  if (driver->vpn_type() == VPNType::kThirdParty) {
+    LOG(INFO) << __func__ << ": Skip since VPN is a Chrome third-party app";
+    return;
+  }
+
   if (!physical_service || !physical_service->attached_network()) {
     LOG(ERROR) << __func__ << ": Skip since default network is empty";
     return;
@@ -219,7 +227,7 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
 
   ConfigureDevice(std::move(network_config));
 
-  DestroyChromeSocketsOnPhysical(default_physical_service_.get(),
+  DestroyChromeSocketsOnPhysical(driver(), default_physical_service_.get(),
                                  used_as_default_gateway);
 
   // Report the final NetworkConfig from the Network object attached to this
