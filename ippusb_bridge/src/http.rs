@@ -58,7 +58,7 @@ impl fmt::Display for Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum BodyLength {
     Chunked,
     Exactly(usize),
@@ -458,6 +458,188 @@ mod tests {
         assert!(supports_request_body(&Method::NonStandard(
             AsciiString::from_ascii("TEST".to_string()).unwrap()
         )));
+    }
+
+    #[test]
+    fn response_reader_invalid_status_line() {
+        let payload = b"HTTP/1.1 OK\r\n\r\n";
+        let mut reader = ResponseReader::new(false, BufReader::new(&payload[..]));
+        assert!(reader.read_header().is_err());
+    }
+
+    #[test]
+    fn response_reader_invalid_http_version() {
+        let payload = b"HTTP/0.9 200 OK\r\n\r\n";
+        let mut reader = ResponseReader::new(false, BufReader::new(&payload[..]));
+        assert!(reader.read_header().is_err());
+    }
+
+    #[test]
+    fn response_reader_missing_header_end() {
+        let payload = b"HTTP/1.1 200 OK\r\n";
+        let mut reader = ResponseReader::new(false, BufReader::new(&payload[..]));
+        assert!(reader.read_header().is_err());
+    }
+
+    #[test]
+    fn response_reader_empty_response() {
+        let payload = b"HTTP/1.1 200 OK\r\n\r\n";
+        let mut reader = ResponseReader::new(false, BufReader::new(&payload[..]));
+        let (status, headers) = reader.read_header().expect("failed to read header");
+        assert_eq!(status, 200);
+        assert_eq!(headers.len(), 0);
+    }
+
+    #[test]
+    fn response_reader_invalid_length() {
+        let payload = b"HTTP/1.1 200 OK\r\nContent-Length: abc\r\n\r\n";
+        let mut reader = ResponseReader::new(false, BufReader::new(&payload[..]));
+        assert!(reader.read_header().is_err());
+    }
+
+    #[test]
+    fn response_reader_static_response() {
+        let payload = b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n";
+        let mut reader = ResponseReader::new(false, BufReader::new(&payload[..]));
+        let (status, headers) = reader.read_header().expect("failed to read header");
+        assert_eq!(status, 200);
+        assert_eq!(headers.len(), 1);
+    }
+
+    #[test]
+    fn response_reader_chunked_response() {
+        let payload = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n";
+        let mut reader = ResponseReader::new(false, BufReader::new(&payload[..]));
+        let (status, headers) = reader.read_header().expect("failed to read header");
+        assert_eq!(status, 200);
+        assert_eq!(headers.len(), 1);
+    }
+
+    #[test]
+    fn copy_request_header() {
+        let mut headers = Headers::new();
+        headers.add_header("Content-Type", "text/plain");
+        let request = Request {
+            method: "GET".to_string(),
+            url: "/eSCL/ScannerCapabilities".to_string(),
+            headers,
+            body_length: BodyLength::Exactly(0),
+            forwarded_body_length: BodyLength::Exactly(0),
+        };
+
+        let mut buf = Vec::new();
+        let mut writer = BufWriter::new(&mut buf);
+
+        assert!(serialize_request_header(false, &request, &mut writer).is_ok());
+        drop(writer);
+        assert_eq!(
+            buf,
+            b"GET /eSCL/ScannerCapabilities HTTP/1.1\r
+Content-Type: text/plain\r
+\r
+"
+        );
+    }
+
+    #[test]
+    fn rewrite_request_no_body() {
+        use tiny_http::{HTTPVersion, TestRequest};
+
+        let header = Header::from_bytes(&b"content-TYPE"[..], &b"application/ipp"[..]).unwrap();
+        let request_in = tiny_http::Request::from(
+            TestRequest::new()
+                .with_method(Method::Get)
+                .with_http_version(HTTPVersion(1, 1))
+                .with_path("/eSCL/ScannerCapabilities")
+                .with_header(header),
+        );
+
+        let request_out = rewrite_request(&request_in);
+        assert_eq!(request_out.method, "GET");
+        assert_eq!(request_out.url, "/eSCL/ScannerCapabilities");
+        assert_eq!(request_out.headers.values.len(), 3);
+        assert!(request_out.headers.has_header("User-Agent"));
+        assert!(request_out.headers.has_header("Content-Length"));
+        assert!(request_out.headers.has_header("Content-Type"));
+        assert_eq!(request_out.body_length, BodyLength::Exactly(0));
+        assert_eq!(request_out.forwarded_body_length, BodyLength::Exactly(0));
+    }
+
+    #[test]
+    fn rewrite_request_small_body() {
+        use tiny_http::{HTTPVersion, TestRequest};
+
+        let header = Header::from_bytes(&b"Content-Length"[..], &b"4"[..]).unwrap();
+        let request_in = tiny_http::Request::from(
+            TestRequest::new()
+                .with_method(Method::Post)
+                .with_http_version(HTTPVersion(1, 1))
+                .with_path("/eSCL/ScannerCapabilities")
+                .with_header(header)
+                .with_body("test"),
+        );
+
+        let request_out = rewrite_request(&request_in);
+        assert_eq!(request_out.method, "POST");
+        assert_eq!(request_out.url, "/eSCL/ScannerCapabilities");
+        assert_eq!(request_out.headers.values.len(), 2);
+        assert!(request_out.headers.has_header("User-Agent"));
+        assert!(request_out.headers.has_header("Content-Length"));
+        assert!(!request_out.headers.has_header("Transfer-Encoding"));
+        assert_eq!(request_out.body_length, BodyLength::Exactly(4));
+        assert_eq!(request_out.forwarded_body_length, BodyLength::Exactly(4));
+    }
+
+    #[test]
+    fn rewrite_request_large_body() {
+        use std::str;
+        use tiny_http::{HTTPVersion, TestRequest};
+
+        let header = Header::from_bytes(&b"Content-Length"[..], &b"35000"[..]).unwrap();
+        static BUF: [u8; 35000] = [32u8; 35000]; // with_body requires a &'static str.
+        let request_in = tiny_http::Request::from(
+            TestRequest::new()
+                .with_method(Method::Post)
+                .with_http_version(HTTPVersion(1, 1))
+                .with_path("/eSCL/ScannerCapabilities")
+                .with_header(header)
+                .with_body(str::from_utf8(&BUF).unwrap()),
+        );
+
+        let request_out = rewrite_request(&request_in);
+        assert_eq!(request_out.method, "POST");
+        assert_eq!(request_out.url, "/eSCL/ScannerCapabilities");
+        assert_eq!(request_out.headers.values.len(), 2);
+        assert!(request_out.headers.has_header("User-Agent"));
+        assert!(!request_out.headers.has_header("Content-Length"));
+        assert!(request_out.headers.has_header("Transfer-Encoding"));
+        assert_eq!(request_out.body_length, BodyLength::Exactly(35000));
+        assert_eq!(request_out.forwarded_body_length, BodyLength::Chunked);
+    }
+
+    #[test]
+    fn rewrite_request_chunked_body() {
+        use tiny_http::{HTTPVersion, TestRequest};
+
+        let header = Header::from_bytes(&b"Transfer-Encoding"[..], &b"chunked"[..]).unwrap();
+        let request_in = tiny_http::Request::from(
+            TestRequest::new()
+                .with_method(Method::Post)
+                .with_http_version(HTTPVersion(1, 1))
+                .with_path("/eSCL/ScannerCapabilities")
+                .with_header(header)
+                .with_body("small"),
+        );
+
+        let request_out = rewrite_request(&request_in);
+        assert_eq!(request_out.method, "POST");
+        assert_eq!(request_out.url, "/eSCL/ScannerCapabilities");
+        assert_eq!(request_out.headers.values.len(), 2);
+        assert!(request_out.headers.has_header("User-Agent"));
+        assert!(!request_out.headers.has_header("Content-Length"));
+        assert!(request_out.headers.has_header("Transfer-Encoding"));
+        assert_eq!(request_out.body_length, BodyLength::Chunked);
+        assert_eq!(request_out.forwarded_body_length, BodyLength::Chunked);
     }
 
     #[test]
