@@ -24,7 +24,7 @@ enum lockmon_event_type {
 
 struct lockmon_event {
   int32_t pid;
-  int32_t tid;
+  int32_t tgid;
   int8_t comm[LOCKMON_TASK_COMM_SZ];
   uintptr_t lock;
   uintptr_t ustack_ents[LOCKMON_MAX_USTACK_ENTS];

@@ -39,7 +39,7 @@ struct {
 } rb SEC(".maps");
 
 static u64 generate_call_id(enum fdmon_event_type type) {
-  return (u64)((s32)type << 31) | (s32)bpf_get_current_pid_tgid();
+  return (u64)((u32)type << 32) | (s32)bpf_get_current_pid_tgid();
 }
 
 static int save_ustack(struct pt_regs* ctx, struct fdmon_event* event) {
@@ -80,8 +80,8 @@ static int fdmon_event(struct pt_regs* ctx,
   }
 
   id = bpf_get_current_pid_tgid();
-  event->pid = id >> 32;
-  event->tid = (u32)id;
+  event->pid = (s32)id;
+  event->tgid = id >> 32;
   bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
   if (type == FDMON_EVENT_OPEN || type == FDMON_EVENT_DUP) {

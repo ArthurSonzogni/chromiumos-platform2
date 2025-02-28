@@ -47,7 +47,7 @@ const volatile bool ustack_dealloc_probes = false;
 const volatile pid_t kprobe_mon_pid = 0;
 
 static u64 generate_call_id(enum memmon_event_type type) {
-  return (u64)((s32)type << 31) | (s32)bpf_get_current_pid_tgid();
+  return (u64)((u32)type << 32) | (s32)bpf_get_current_pid_tgid();
 }
 
 static int save_ustack(struct pt_regs* ctx, struct memmon_event* event) {
@@ -89,8 +89,8 @@ static int memmon_event(struct pt_regs* ctx,
   }
 
   id = bpf_get_current_pid_tgid();
-  event->pid = id >> 32;
-  event->tid = (u32)id;
+  event->pid = (s32)id;
+  event->tgid = id >> 32;
   bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
   switch (type) {
@@ -224,7 +224,7 @@ SEC("kprobe/handle_mm_fault")
 int BPF_KPROBE(call_handle_mm_fault,
                struct vm_area_struct* vma,
                unsigned long ptr) {
-  s32 pid = bpf_get_current_pid_tgid() >> 32;
+  s32 pid = (s32)bpf_get_current_pid_tgid();
 
   if (pid != kprobe_mon_pid) {
     return 0;

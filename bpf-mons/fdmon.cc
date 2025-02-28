@@ -56,7 +56,8 @@ static int attach_probes(struct fdmon_bpf* mon, pid_t pid) {
 static int stdout_fdmon_event(void* ctx, void* data, size_t data_sz) {
   struct fdmon_event* event = (struct fdmon_event*)data;
 
-  printf("comm: %s pid:%d event: ", event->comm, event->pid);
+  printf("comm: %s tgid: %d pid: %d event: ", event->comm, event->tgid,
+         event->pid);
   switch (event->type) {
     case FDMON_EVENT_OPEN:
       printf("open() fd=%d\n", event->nfd);
@@ -73,7 +74,7 @@ static int stdout_fdmon_event(void* ctx, void* data, size_t data_sz) {
       return -EINVAL;
   }
 
-  libmon::show_ustack(event->pid, event->ustack_ents, event->num_ustack_ents);
+  libmon::show_ustack(event->tgid, event->ustack_ents, event->num_ustack_ents);
   return 0;
 }
 
@@ -123,7 +124,7 @@ static void show_leakcheck(void) {
       struct fdmon_event* ev = e.second;
 
       printf("still available file-descriptor %d\n", e.first);
-      libmon::show_ustack(ev->pid, ev->ustack_ents, ev->num_ustack_ents);
+      libmon::show_ustack(ev->tgid, ev->ustack_ents, ev->num_ustack_ents);
     }
   }
 }

@@ -56,8 +56,8 @@ static std::unordered_map<uint64_t, std::list<struct lockmon_event*>> ctx;
 static uint64_t generate_ctxid(struct lockmon_event* event) {
   uint64_t id;
 
-  id = (uint64_t)event->pid << 32;
-  id |= event->tid;
+  id = (uint64_t)event->tgid << 32;
+  id |= event->pid;
   return id;
 }
 
@@ -82,12 +82,14 @@ static void recursive_locking(uint64_t id, struct lockmon_event* event) {
       continue;
     }
 
-    printf("comm: %s pid: %d attempts to acquire lock %p:\n", event->comm,
-           event->pid, reinterpret_cast<void*>(event->lock));
-    libmon::show_ustack(event->pid, event->ustack_ents, event->num_ustack_ents);
+    printf("comm: %s tgid: %d pid: %d attempts to acquire lock %p:\n",
+           event->comm, event->tgid, event->pid,
+           reinterpret_cast<void*>(event->lock));
+    libmon::show_ustack(event->tgid, event->ustack_ents,
+                        event->num_ustack_ents);
 
     printf("which it already holds:\n");
-    libmon::show_ustack(st->pid, st->ustack_ents, st->num_ustack_ents);
+    libmon::show_ustack(st->tgid, st->ustack_ents, st->num_ustack_ents);
 
     tainted = true;
     return;
@@ -114,15 +116,15 @@ static bool is_reachable(uintptr_t from, struct lockmon_event* event) {
       struct dep* d = dep.second;
 
       if (d->t.lock == event->lock) {
-        printf("comm: %s pid %d violates existing dependency chain\n",
-               event->comm, event->pid);
+        printf("comm: %s tgid: %d pid %d violates existing dependency chain\n",
+               event->comm, event->tgid, event->pid);
 
         printf("#0 lock %p acquired at:\n", reinterpret_cast<void*>(from));
-        libmon::show_ustack(d->s.pid, d->s.ustack_ents, d->s.num_ustack_ents);
+        libmon::show_ustack(d->s.tgid, d->s.ustack_ents, d->s.num_ustack_ents);
 
         printf("#1 lock %p acquired at:\n",
                reinterpret_cast<void*>(event->lock));
-        libmon::show_ustack(d->t.pid, d->t.ustack_ents, d->t.num_ustack_ents);
+        libmon::show_ustack(d->t.tgid, d->t.ustack_ents, d->t.num_ustack_ents);
 
         tainted = true;
         return true;
@@ -151,10 +153,11 @@ static void locking_chains(uint64_t id, struct lockmon_event* event) {
     printf("reverse dependency chain\n");
 
     printf("#0 lock %p acquired at:\n", reinterpret_cast<void*>(cur->lock));
-    libmon::show_ustack(cur->pid, cur->ustack_ents, cur->num_ustack_ents);
+    libmon::show_ustack(cur->tgid, cur->ustack_ents, cur->num_ustack_ents);
 
     printf("#1 lock %p acquired at:\n", reinterpret_cast<void*>(event->lock));
-    libmon::show_ustack(event->pid, event->ustack_ents, event->num_ustack_ents);
+    libmon::show_ustack(event->tgid, event->ustack_ents,
+                        event->num_ustack_ents);
     break;
   }
 }

@@ -25,7 +25,7 @@ enum memmon_event_type {
 
 struct memmon_event {
   int32_t pid;
-  int32_t tid;
+  int32_t tgid;
   int8_t comm[MEMMON_TASK_COMM_SZ];
   uint64_t size;
   uintptr_t ptr;

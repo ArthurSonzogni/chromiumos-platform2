@@ -72,7 +72,7 @@ static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
     std::vector<std::string> bt;
     std::string frames;
 
-    libmon::decode_ustack(event->pid, event->ustack_ents,
+    libmon::decode_ustack(event->tgid, event->ustack_ents,
                           event->num_ustack_ents, bt);
     for (auto& frame : bt) {
       frames += frame + "\n";
@@ -104,7 +104,8 @@ static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
 static int stdout_memmon_event(void* ctx, void* data, size_t data_sz) {
   struct memmon_event* event = (struct memmon_event*)data;
 
-  printf("comm: %s pid:%d event: ", event->comm, event->pid);
+  printf("comm: %s tgid: %d pid: %d event: ", event->comm, event->tgid,
+         event->pid);
   switch (event->type) {
     case MEMMON_EVENT_MALLOC:
       printf("malloc() sz=%lu ptr=%p-%p\n", event->size,
@@ -141,7 +142,7 @@ static int stdout_memmon_event(void* ctx, void* data, size_t data_sz) {
       return -EINVAL;
   }
 
-  libmon::show_ustack(event->pid, event->ustack_ents, event->num_ustack_ents);
+  libmon::show_ustack(event->tgid, event->ustack_ents, event->num_ustack_ents);
   return 0;
 }
 
@@ -182,7 +183,7 @@ static int leakcheck_memmon_event(void* ctx, void* data, size_t data_sz) {
       } else {
         printf("Potential double-free ptr=%p\n",
                reinterpret_cast<void*>(event->ptr));
-        libmon::show_ustack(event->pid, event->ustack_ents,
+        libmon::show_ustack(event->tgid, event->ustack_ents,
                             event->num_ustack_ents);
       }
       break;
@@ -205,7 +206,7 @@ static void show_leakcheck(void) {
       struct memmon_event* ev = e.second;
 
       printf("still available memory %p\n", reinterpret_cast<void*>(e.first));
-      libmon::show_ustack(ev->pid, ev->ustack_ents, ev->num_ustack_ents);
+      libmon::show_ustack(ev->tgid, ev->ustack_ents, ev->num_ustack_ents);
     }
   }
 }
