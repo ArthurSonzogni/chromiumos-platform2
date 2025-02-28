@@ -4,6 +4,8 @@
 
 #include "init/periodic_scheduler.h"
 
+#include <unistd.h>
+
 #include <memory>
 
 #include <base/check.h>
@@ -116,7 +118,7 @@ TEST_F(PeriodicSchedulerTest, EarlyKillTest) {
   base::TouchFile(test_process_file_, now, now);
 
   RunPeriodicScheduler();
-  sleep(2);
+  usleep(100000 /*ms*/);
   StopPeriodicScheduler();
 
   // Check the existence of the new file.
