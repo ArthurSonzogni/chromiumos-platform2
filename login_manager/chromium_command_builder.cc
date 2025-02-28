@@ -587,6 +587,10 @@ void ChromiumCommandBuilder::AddUiFlags() {
     AddFeatureEnableOverride("VulkanFromANGLE");
   }
 
+  if (UseFlagIsSet("avoid_duplicate_begin_frames")) {
+    AddFeatureEnableOverride("AvoidDuplicateDelayBeginFrame");
+  }
+
   brillo::CrosConfig cros_config;
 
   // Disable LLPrivacy if the cros config was specified.
