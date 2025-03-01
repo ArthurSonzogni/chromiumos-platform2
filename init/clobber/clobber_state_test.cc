@@ -16,8 +16,8 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem.h>
@@ -26,7 +26,6 @@
 #include <libdlcservice/utils.h>
 
 #include "gmock/gmock.h"
-
 #include "init/clobber/clobber_wipe_mock.h"
 
 using ::testing::_;
@@ -97,21 +96,24 @@ TEST(ParseArgv, PreserveLogicalVolumesWipe) {
     ClobberState::Arguments args =
         ClobberState::ParseArgv(argv.size(), &argv[0]);
     EXPECT_FALSE(args.safe_wipe);
-    EXPECT_EQ(args.preserve_lvs, USE_LVM_STATEFUL_PARTITION);
+    EXPECT_EQ(args.preserve_lvs,
+              USE_LVM_STATEFUL_PARTITION && !USE_DEFAULT_KEY_STATEFUL);
   }
   {
     std::vector<const char*> argv{"clobber-state", "safe preserve_lvs"};
     ClobberState::Arguments args =
         ClobberState::ParseArgv(argv.size(), &argv[0]);
     EXPECT_TRUE(args.safe_wipe);
-    EXPECT_EQ(args.preserve_lvs, USE_LVM_STATEFUL_PARTITION);
+    EXPECT_EQ(args.preserve_lvs,
+              USE_LVM_STATEFUL_PARTITION && !USE_DEFAULT_KEY_STATEFUL);
   }
   {
     std::vector<const char*> argv{"clobber-state", "safe", "preserve_lvs"};
     ClobberState::Arguments args =
         ClobberState::ParseArgv(argv.size(), &argv[0]);
     EXPECT_TRUE(args.safe_wipe);
-    EXPECT_EQ(args.preserve_lvs, USE_LVM_STATEFUL_PARTITION);
+    EXPECT_EQ(args.preserve_lvs,
+              USE_LVM_STATEFUL_PARTITION && !USE_DEFAULT_KEY_STATEFUL);
   }
 }
 

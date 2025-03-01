@@ -231,6 +231,14 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
     }
   }
 
+  // Use default key wipe if enabled for the board.
+  // TODO(sarthakkukreti@): Remove once per-model support for default key
+  // stateful has been added.
+  if (USE_DEFAULT_KEY_STATEFUL) {
+    args.default_key_migration_wipe = true;
+    args.disable_lvm_install = true;
+  }
+
   if (args.disable_lvm_install) {
     args.preserve_lvs = false;
   }
