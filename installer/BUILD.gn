@@ -79,6 +79,7 @@ pkg_config("target_defaults") {
 
 config("libcros_installer_config") {
   defines = [
+    "USE_DEFAULT_KEY_STATEFUL=${use.default_key_stateful}",
     "USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY=${use.postinstall_config_efi_and_legacy}",
     "USE_POSTINSTALL_CGPT_REPAIR=${use.postinstall_cgpt_repair}",
   ]

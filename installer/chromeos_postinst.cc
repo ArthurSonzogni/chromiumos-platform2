@@ -49,6 +49,8 @@ const char kUMANonChromebookBiosSuccessUBoot[] =
 const char kUMANonChromebookBiosSuccessUnknown[] =
     "Installer.Postinstall.NonChromebookBiosSuccess.Unknown";
 const char kUMAESPMountRetries[] = "Installer.Postinstall.ESPMountRetries";
+const char kDefaultKeyStatefulMigrationTrigger[] =
+    "/mnt/stateful_partition/unencrypted/.default_key_stateful_migration";
 
 bool GetKernelCommandLine(string* kernel_cmd_line) {
   if (!base::ReadFileToString(base::FilePath("/proc/cmdline"),
@@ -542,6 +544,14 @@ bool ESPPostInstall(const InstallConfig& install_config) {
   return success;
 }
 
+// On update, install file to check for default-key-stateful migraiton for
+// supported boards.
+void CheckForDefaultKeyStatefulMigration() {
+  if (USE_DEFAULT_KEY_STATEFUL) {
+    base::WriteFile(base::FilePath(kDefaultKeyStatefulMigrationTrigger), "");
+  }
+}
+
 // Do post install stuff.
 //
 // Install kernel, set up the proper bootable partition in
@@ -637,6 +647,9 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       }
 
       FixUnencryptedPermission();
+      if (is_update) {
+        CheckForDefaultKeyStatefulMigration();
+      }
 
       // We have a new image, making the ureadahead pack files
       // out-of-date.  Delete the files so that ureadahead will
