@@ -63,11 +63,14 @@ int main(int argc, char** argv) {
   thinpool_migrator::InitializeMetrics();
 
   if (FLAGS_enable) {
-    return thinpool_migrator::ThinpoolMigrator().EnableMigration();
+    return thinpool_migrator::ThinpoolMigrator().EnableMigration()
+               ? EXIT_SUCCESS
+               : EXIT_FAILURE;
   }
 
   if (FLAGS_cleanup) {
-    return thinpool_migrator::ThinpoolMigrator().CleanupState();
+    return thinpool_migrator::ThinpoolMigrator().CleanupState() ? EXIT_SUCCESS
+                                                                : EXIT_FAILURE;
   }
 
   std::optional<uint64_t> size = GetBlkSize(base::FilePath(FLAGS_device));
