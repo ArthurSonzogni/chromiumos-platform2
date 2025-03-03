@@ -10,8 +10,6 @@
 #include <string>
 #include <utility>
 
-#include <base/containers/contains.h>
-#include <base/containers/fixed_flat_set.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
@@ -90,14 +88,12 @@ bool CheckIfLanguageSupported(
   // Current logic is to accept the result if any language code in the TOP3
   // classification result is supported.
   constexpr size_t kTopLanguageResultEntriesToCheck = 3;
-  static constexpr auto kSupportedLanguages =
-      base::MakeFixedFlatSet<std::string_view>({"en"});
   for (int i = 0; i < std::min(language_detection_result.size(),
                                kTopLanguageResultEntriesToCheck);
        i++) {
     const on_device_model::LanguageDetector::TextLanguage& language =
         language_detection_result[i];
-    if (base::Contains(kSupportedLanguages, language.locale)) {
+    if (IsLanguageSupported(language.locale)) {
       return true;
     }
   }

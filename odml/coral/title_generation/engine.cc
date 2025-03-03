@@ -4,6 +4,7 @@
 
 #include "odml/coral/title_generation/engine.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -29,6 +30,7 @@
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/common.h"
 #include "odml/coral/title_generation/simple_session.h"
+#include "odml/i18n/translator.h"
 #include "odml/mojom/coral_service.mojom-forward.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -62,25 +64,10 @@ constexpr size_t kMaxInputSizeInTokens = 846;
 constexpr base::TimeDelta kTitleCacheFlushStartingDelay = base::Minutes(10);
 constexpr base::TimeDelta kTitleCacheFlushRepeatingDelay = base::Hours(1);
 
-std::string AppToPromptLine(const mojom::App& app) {
-  return base::StringPrintf("title: %s\n", app.title.c_str());
-}
-
-std::string TabToPromptLine(const mojom::Tab& tab) {
-  return base::StringPrintf("title: %s\n", tab.title.c_str());
-}
-
-std::string EntitiesToTitlePrompt(
-    const std::vector<EntityWithMetadata>& entities) {
+std::string TitlesToPrompt(const std::vector<std::string>& titles) {
   std::string prompt = "Generate a title for this group:\n\n";
-  // TODO(b/361429962): Add mechanism to ensure prompt isn't too large
-  // (truncation, omitting some entries, etc.).
-  for (const EntityWithMetadata& entity : entities) {
-    if (entity.entity->is_app()) {
-      prompt += AppToPromptLine(*entity.entity->get_app());
-    } else if (entity.entity->is_tab()) {
-      prompt += TabToPromptLine(*entity.entity->get_tab());
-    }
+  for (const std::string& title : titles) {
+    prompt += base::StringPrintf("title: %s\n", title.c_str());
   }
   prompt += "\n";
   return prompt;
@@ -128,6 +115,38 @@ double GetDifferenceRatio(
   }
   mismatches += old_group_copy.size();
   return static_cast<double>(mismatches) / new_group.size();
+}
+
+// nullopt for doesn't need translation.
+std::optional<std::string> GetTranslationSource(
+    const LanguageDetectionResult& language_detection_result,
+    const std::string& target_locale) {
+  constexpr size_t kTopLanguageResultEntriesToCheck = 3;
+  // Doesn't need translation if it's English or the target locale already.
+  for (int i = 0; i < std::min(language_detection_result.size(),
+                               kTopLanguageResultEntriesToCheck);
+       i++) {
+    const on_device_model::LanguageDetector::TextLanguage& language =
+        language_detection_result[i];
+    if (language.locale == "en" || language.locale == target_locale) {
+      return std::nullopt;
+    }
+  }
+
+  for (int i = 0; i < std::min(language_detection_result.size(),
+                               kTopLanguageResultEntriesToCheck);
+       i++) {
+    const on_device_model::LanguageDetector::TextLanguage& language =
+        language_detection_result[i];
+    if (IsLanguageSupported(language.locale)) {
+      return language.locale;
+    }
+  }
+
+  // It shouldn't really reach here because we already verified that a supported
+  // language can be found within the language detection result in the embedding
+  // engine. Leave it untranslated in this edge case.
+  return std::nullopt;
 }
 
 }  // namespace
@@ -424,7 +443,6 @@ void TitleGenerationEngine::DoProcess(
 }
 
 void TitleGenerationEngine::ProcessEachPrompt(ProcessParams params) {
-  CHECK(params.session->is_bound());
   size_t index = params.index;
 
   // > covers the index out-of-range case although it shouldn't happen.
@@ -439,21 +457,72 @@ void TitleGenerationEngine::ProcessEachPrompt(ProcessParams params) {
     ProcessEachPrompt(std::move(params));
     return;
   }
-  base::flat_map<std::string, std::string> fields{
-      {"prompt", EntitiesToTitlePrompt(params.groups[index].entities)}};
-  auto timer = odml::PerformanceTimer::Create();
-  on_device_model_service_->FormatInput(
-      base::Uuid::ParseLowercase(kModelUuid),
-      on_device_model::mojom::FormatFeature::kPrompt, fields,
-      base::BindOnce(&TitleGenerationEngine::OnFormatInputResponse,
+  EntitiesToMaybeTranslatedTitles(std::move(params),
+                                  odml::PerformanceTimer::Create(), {});
+}
+
+void TitleGenerationEngine::EntitiesToMaybeTranslatedTitles(
+    ProcessParams params,
+    odml::PerformanceTimer::Ptr timer,
+    std::vector<std::string> titles) {
+  size_t index = params.index;
+  CHECK(index < params.groups.size());
+  size_t entity_index = titles.size();
+
+  if (entity_index >= params.groups[index].entities.size()) {
+    base::flat_map<std::string, std::string> fields{
+        {"prompt", TitlesToPrompt(titles)}};
+    on_device_model_service_->FormatInput(
+        base::Uuid::ParseLowercase(kModelUuid),
+        on_device_model::mojom::FormatFeature::kPrompt, fields,
+        base::BindOnce(&TitleGenerationEngine::OnFormatInputResponse,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(params),
+                       std::move(timer)));
+    return;
+  }
+
+  const EntityWithMetadata& entity =
+      params.groups[index].entities[entity_index];
+  // TODO(b/399282851): Support other locales.
+  std::string target_locale("en");
+
+  std::optional<std::string> translation_source =
+      GetTranslationSource(entity.language_result, target_locale);
+  if (!translation_source.has_value()) {
+    titles.push_back(GetTitle(entity.entity));
+    EntitiesToMaybeTranslatedTitles(std::move(params), std::move(timer),
+                                    std::move(titles));
+    return;
+  }
+  i18n::LangPair lang_pair{*translation_source, "en"};
+  translator_->Translate(
+      lang_pair, GetTitle(entity.entity),
+      base::BindOnce(&TitleGenerationEngine::OnTranslateResult,
                      weak_ptr_factory_.GetWeakPtr(), std::move(params),
-                     std::move(timer)));
+                     std::move(timer), std::move(titles)));
+}
+
+void TitleGenerationEngine::OnTranslateResult(
+    ProcessParams params,
+    odml::PerformanceTimer::Ptr timer,
+    std::vector<std::string> titles,
+    std::optional<std::string> translated) {
+  // Can't form the prompt if any title is missing. Output empty title for this
+  // group.
+  if (!translated.has_value()) {
+    OnModelOutput(std::move(params), std::move(timer), "");
+    return;
+  }
+  titles.push_back(std::move(*translated));
+  EntitiesToMaybeTranslatedTitles(std::move(params), std::move(timer),
+                                  std::move(titles));
 }
 
 void TitleGenerationEngine::OnFormatInputResponse(
     ProcessParams params,
     odml::PerformanceTimer::Ptr timer,
     const std::optional<std::string>& formatted) {
+  CHECK(params.session->is_bound());
   if (!formatted.has_value()) {
     OnModelOutput(std::move(params), std::move(timer), "");
     return;
@@ -472,6 +541,7 @@ void TitleGenerationEngine::OnSizeInTokensResponse(
     odml::PerformanceTimer::Ptr timer,
     std::string prompt,
     uint32_t size_in_tokens) {
+  CHECK(params.session->is_bound());
   metrics_->SendTitleInputTokenSize(size_in_tokens);
   if (size_in_tokens > kMaxInputSizeInTokens) {
     LOG(WARNING) << "Input prompt is too long.";

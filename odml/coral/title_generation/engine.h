@@ -144,6 +144,13 @@ class TitleGenerationEngine
   // to generate the title (using `OnModelOutput` as callback), then form the
   // corresponding group and update `groups`.
   void ProcessEachPrompt(ProcessParams params);
+  void EntitiesToMaybeTranslatedTitles(ProcessParams params,
+                                       odml::PerformanceTimer::Ptr timer,
+                                       std::vector<std::string> titles);
+  void OnTranslateResult(ProcessParams params,
+                         odml::PerformanceTimer::Ptr timer,
+                         std::vector<std::string> titles,
+                         std::optional<std::string> translated);
   void OnFormatInputResponse(ProcessParams params,
                              odml::PerformanceTimer::Ptr timer,
                              const std::optional<std::string>& formatted);

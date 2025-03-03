@@ -5,6 +5,7 @@
 #ifndef ODML_CORAL_COMMON_H_
 #define ODML_CORAL_COMMON_H_
 
+#include <string>
 #include <vector>
 
 #include <base/time/time.h>
@@ -40,6 +41,9 @@ struct EmbeddingEntry {
   std::optional<LanguageDetectionResult> languages;
   bool operator==(const EmbeddingEntry&) const = default;
 };
+
+// Returns if the locale is a supported language by the coral service.
+bool IsLanguageSupported(const std::string& locale);
 
 }  // namespace coral
 
