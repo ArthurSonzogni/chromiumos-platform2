@@ -32,9 +32,15 @@ brk: 1
 # CDROM_GET_CAPABILITY = 0x5331
 # CDROM_LAST_WRITTEN = 0x5395
 # CROS_EC_DEV_IOCXCMD_V2 = 0xc014ec00
+# BLKGETSIZE64 = 0x80081272
+# BLKGETZONESZ = 0x80041284
+# BLKIOOPT = 0x1279
+# BLKIOMIN = 0x1278
+# FDGETFDCSTAT = 0x80280215
 ioctl: arg1 == BLKGETSIZE64 || arg1 == TCGETS || arg1 == BLKSSZGET || \
-       arg1 == FDGETFDCSTAT ||  arg1 == 0x5331 || arg1 == 0x5395 || \
-       arg1 == 0xc014ec00
+       arg1 == FDGETFDCSTAT || arg1 == 0x5331 || arg1 == 0x5395 || \
+       arg1 == 0xc014ec00   || arg1 == 0x80081272 || arg1 == 0x1279 || \
+       arg1 == 0x80280215   || arg1 == 0x80041284 || arg1 == 0x1278
 iopl: 1
 ioperm: 1
 getdents64: 1

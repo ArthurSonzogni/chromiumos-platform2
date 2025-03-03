@@ -19,6 +19,7 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 gettid: 1
 fstatfs: 1
 brk: 1
+
 # CDROM_LAST_WRITTEN            = 0x5395
 # MIXER_WRITE(2) or MEMERASE    = 0x40084d02
 # MIXER_READ(23) or MEMISLOCKED = 0x80084d17
@@ -29,11 +30,16 @@ brk: 1
 # BLKGETSIZE64                  = 0x80081272
 # TCGETS                        = 0x5401
 # CROS_EC_DEV_IOCXCMD           = 0xc014ec00
+# BLKIOMIN                      = 0x1278
+# BLKIOOPT                      = 0x1279
+# BLKGETZONESZ                  = 0x80041284
 ioctl: arg1 == 0x5395 || arg1 == 0x40084d02 || \
        arg1 == 0x1268 || arg1 == 0x80280215 || \
        arg1 == 0x5331 || arg1 == 0x80081272 || \
        arg1 == 0x5401 || arg1 == 0xc014ec00 || \
-       arg1 == 0x80084d17 || arg1 == 0x40084d06
+       arg1 == 0x80084d17 || arg1 == 0x40084d06 || \
+       arg1 == 0x1278 || arg1 == 0x1279 || \
+       arg1 == 0x80041284
 epoll_pwait: 1
 process_vm_readv: 1
 unlinkat: 1
