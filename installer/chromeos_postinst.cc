@@ -328,18 +328,21 @@ bool ThinpoolMigration(const InstallConfig& install_config) {
   base::FilePath stateful_device = MakePartitionDev(
       install_config.root.base_device(), PartitionNum::STATEFUL);
   // Device needs metadata partition, will fail if we can not format.
-  const std::vector<string> cmdline = {"/usr/sbin/thinpool_migrator",
-                                       "--silent", "--nouse_vpd",
-                                       "--device=" + stateful_device.value()};
+  const std::vector<string> base_cmdline = {
+      "/usr/sbin/thinpool_migrator", "--silent",
+      "--device=" + stateful_device.value()};
 
-  int result;
-  result = RunCommand(cmdline);
-  if (result) {
-    LOG(ERROR) << "LVM migration failed in " << cmdline.front() << "..."
-               << cmdline.back() << ", result: " << result;
+  std::array<std::vector<string>, 2> cmds = {base_cmdline, base_cmdline};
+  cmds[0].push_back("--enable");
+  for (auto cmd : cmds) {
+    int result = RunCommand(cmd);
+    if (result) {
+      LOG(ERROR) << "LVM migration failed in " << cmd.front() << "..."
+                 << cmd.back() << ", result: " << result;
+      return false;
+    }
   }
-
-  return result == 0;
+  return true;
 }
 
 // Do board specific post install stuff, if available.
