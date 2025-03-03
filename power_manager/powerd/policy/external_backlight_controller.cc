@@ -15,7 +15,11 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/logging.h>
+#include <base/notreached.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
 
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
@@ -25,11 +29,6 @@
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/display/external_display.h"
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_interface.h"
-
-#include <base/check.h>
-#include <base/logging.h>
-#include <base/notreached.h>
-#include <dbus/message.h>
 
 namespace power_manager::policy {
 
@@ -483,6 +482,7 @@ void ExternalBacklightController::HandleSetExternalDisplayALSBrightnessRequest(
   if (!reader.PopBool(&enabled)) {
     LOG(ERROR) << "Unable to read " << kSetExternalDisplayALSBrightnessMethod
                << " args";
+    std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
     return;
   }
 

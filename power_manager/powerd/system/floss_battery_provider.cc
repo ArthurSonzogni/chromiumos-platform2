@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/floss_battery_provider.h"
+
+#include <utility>
+
 #include <brillo/dbus/data_serialization.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
-
-#include "power_manager/powerd/system/floss_battery_provider.h"
 
 namespace power_manager::system {
 
@@ -211,12 +213,14 @@ void FlossBatteryProvider::OnHciEnabledChanged(
   if (!enabled) {
     LOG(INFO) << __func__ << ": Bluetooth was disabled.";
     is_registered_with_provider_manager_ = false;
+    std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
     return;
   }
 
   LOG(INFO) << __func__
             << ": Bluetooth was enabled. Re-registering FlossBatteryProvider.";
   Reset();
+  std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
 }
 
 void FlossBatteryProvider::RegisterAsBatteryProvider(
@@ -281,6 +285,8 @@ void FlossBatteryProvider::OnUnregisteredAsBatteryProvider(
 // No-op
 void FlossBatteryProvider::RefreshBatteryInfo(
     dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {}
+    dbus::ExportedObject::ResponseSender response_sender) {
+  std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
+}
 
 }  // namespace power_manager::system

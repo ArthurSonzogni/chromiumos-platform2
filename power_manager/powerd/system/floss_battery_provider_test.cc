@@ -11,9 +11,9 @@
 #include <dbus/mock_object_manager.h>
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
-#include "power_manager/powerd/testing/test_environment.h"
 
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 using ::testing::_;
 using ::testing::Return;
@@ -223,6 +223,11 @@ class FlossBatteryProviderTest : public TestEnvironment {
     auto method_call = std::make_unique<dbus::MethodCall>(
         kPowerManagerInterface,
         bluetooth_manager::kBluetoothManagerOnHciEnabledChanged);
+
+    // A fake serial used to create the response message in
+    // `OnHciEnabledChanged`.
+    method_call->SetSerial(123);
+
     dbus::MessageWriter writer(method_call.get());
     writer.AppendInt32(hci_interface_);
     writer.AppendBool(enabled);
