@@ -394,6 +394,14 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
     return false;
   }
 
+  // Wait for partitions to be re-read before returning.
+  int settle_result = RunCommand({"udevadm", "settle", "--timeout=10"});
+  if (settle_result < 0) {
+    LOG(ERROR) << "Failed to run udevadm settle --timeout=10. "
+               << "Returned value is " << settle_result << ".";
+    return false;
+  }
+
   LOG(INFO) << "Updated kernel " << install_config.kernel.number()
             << " with Successful: " << new_kern_successful
             << " and NumTriesLeft: " << numTries;
