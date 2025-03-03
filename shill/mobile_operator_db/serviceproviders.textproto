@@ -12412,6 +12412,22 @@ mno {
 
 mno {
   data {
+    uuid: "262fe58b-7314-418c-bc4b-90fca471cb4a"
+    country: "th"
+    localized_name {
+      name: "AIS Internet"
+    }
+    mccmnc: "52003"
+    mobile_apn {
+      apn: "internet"
+      ip_type: IPV4V6
+      type: DEFAULT
+    }
+  }
+}
+
+mno {
+  data {
     uuid: "eb21ee37-4e9a-4776-a413-ae3ff56a64b4"
     country: "th"
     localized_name {
