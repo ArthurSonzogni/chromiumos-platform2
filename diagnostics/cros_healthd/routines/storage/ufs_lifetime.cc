@@ -18,7 +18,6 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "diagnostics/base/file_utils.h"
-#include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
 
@@ -67,10 +66,7 @@ const std::optional<base::FilePath> GetBsgNodePath() {
 }  // namespace
 
 UfsLifetimeRoutine::UfsLifetimeRoutine(
-    Context* context, const mojom::UfsLifetimeRoutineArgumentPtr& arg)
-    : context_(context) {
-  CHECK(context_);
-}
+    const mojom::UfsLifetimeRoutineArgumentPtr& arg) {}
 
 UfsLifetimeRoutine::~UfsLifetimeRoutine() = default;
 

@@ -20,7 +20,6 @@
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
-#include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -49,7 +48,7 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
 
   void SetUp() override {
     routine_ = std::make_unique<UfsLifetimeRoutine>(
-        &mock_context_, mojom::UfsLifetimeRoutineArgument::New());
+        mojom::UfsLifetimeRoutineArgument::New());
   }
 
   void SetHealthDescInfo(const std::string& health_desc_path,
@@ -94,7 +93,6 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
 
  private:
   base::test::TaskEnvironment task_environment_;
-  MockContext mock_context_;
   std::unique_ptr<UfsLifetimeRoutine> routine_;
 };
 

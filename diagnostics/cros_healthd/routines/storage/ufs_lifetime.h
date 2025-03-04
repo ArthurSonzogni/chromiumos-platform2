@@ -21,7 +21,6 @@ inline constexpr char kUfsHealthDescDeviceLifeTimeEstB[] =
 class UfsLifetimeRoutine final : public NoninteractiveRoutineControl {
  public:
   explicit UfsLifetimeRoutine(
-      Context* context,
       const ash::cros_healthd::mojom::UfsLifetimeRoutineArgumentPtr& arg);
   UfsLifetimeRoutine(const UfsLifetimeRoutine&) = delete;
   UfsLifetimeRoutine& operator=(const UfsLifetimeRoutine&) = delete;
@@ -29,10 +28,6 @@ class UfsLifetimeRoutine final : public NoninteractiveRoutineControl {
 
   // BaseRoutineControl overrides:
   void OnStart() override;
-
- private:
-  // Unowned. Should outlive this instance.
-  Context* const context_ = nullptr;
 };
 
 }  // namespace diagnostics

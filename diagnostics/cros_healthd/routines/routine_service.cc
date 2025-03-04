@@ -74,7 +74,7 @@ CreateRoutineResult ReturnIfSupported(
 CreateRoutineResult CreateRoutineHelperSync(
     Context* context, mojom::UfsLifetimeRoutineArgumentPtr arg) {
   return MakeRoutineIfSupported<UfsLifetimeRoutine>(
-      context->ground_truth()->PrepareRoutineUfsLifetime(), context, arg);
+      context->ground_truth()->PrepareRoutineUfsLifetime(), arg);
 }
 
 CreateRoutineResult CreateRoutineHelperSync(Context* context,
