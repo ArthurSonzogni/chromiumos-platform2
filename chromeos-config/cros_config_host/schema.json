@@ -1054,6 +1054,12 @@
                     ],
                     "type": "string"
                   },
+                  "ec-max-calibration-accel": {
+                    "description": "The maximal allowed calibration offset for accelerometer (in mg)",
+                    "maximum": 250,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "ec-max-sensor-odr": {
                     "description": "The maximal data rate for sensor, in mHz.",
                     "maximum": 400000,

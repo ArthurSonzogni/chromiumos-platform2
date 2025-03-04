@@ -1518,6 +1518,11 @@ properties:
                   type: integer
                   minimum: 0
                   maximum: 400000
+                ec-max-calibration-accel:
+                  description: The maximal allowed calibration offset for accelerometer (in mg)
+                  type: integer
+                  minimum: 0
+                  maximum: 250
                 display-type: *display-type
                 stylus-category: *stylus-category
                 psu-type: *psu-type
