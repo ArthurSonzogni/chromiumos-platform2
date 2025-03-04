@@ -30,6 +30,11 @@ constexpr char kCrosFirmwarePath[] = "firmware";
 // cros_config property /firmware/firmware-config.
 constexpr char kCrosFirmwareFirmwareConfigKey[] = "firmware-config";
 
+// cros_config path /branding.
+constexpr char kCrosBrandingPath[] = "branding";
+// cros_config property /branding/oem-name.
+constexpr char kCrosBrandingOemNameKey[] = "oem-name";
+
 // cros_config path /hardware-properties.
 constexpr char kCrosHardwarePropertiesPath[] = "hardware-properties";
 // cros_config property /hardware-properties/has-touchscreen.

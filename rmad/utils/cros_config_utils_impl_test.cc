@@ -49,6 +49,8 @@ constexpr uint32_t kFirmwareConfig = 55688;
 constexpr char kSpiFlashTranformFrom[] = "TestFlashNameFrom";
 constexpr char kSpiFlashTranformTo[] = "TestFlashNameTo";
 
+constexpr char kOemName[] = "OEM A";
+
 constexpr char kUndefinedComponentType[] = "undefined_component_type";
 constexpr uint32_t kSsfcMask = 0x8;
 constexpr char kSsfcComponentType[] = "TestComponentType";
@@ -108,6 +110,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
     bool enable_rmad = true;
     bool set_optional_rmad_cros_configs = true;
     std::optional<std::string> fingerprint_sensor_location = std::nullopt;
+    std::optional<std::string> oem_name = std::nullopt;
   };
 
   std::unique_ptr<CrosConfigUtils> CreateCrosConfigUtils(
@@ -121,6 +124,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
     const base::FilePath spi_flash_transform_path =
         root_path.Append(kCrosSpiFlashTransformPath);
     const base::FilePath rmad_path = root_path.Append(kCrosRmadPath);
+    const base::FilePath branding_path = root_path.Append(kCrosBrandingPath);
     const base::FilePath ssfc_path = rmad_path.Append(kCrosSsfcPath);
     const base::FilePath component_type_configs_path =
         ssfc_path.Append(kCrosComponentTypeConfigsPath);
@@ -154,6 +158,11 @@ class CrosConfigUtilsImplTest : public testing::Test {
       fake_cros_config->SetString(identity_path.value(),
                                   kCrosIdentityCustomLabelTagKey,
                                   args.custom_label_tag.value());
+    }
+    if (args.oem_name.has_value()) {
+      fake_cros_config->SetString(branding_path.value(),
+                                  kCrosBrandingOemNameKey,
+                                  args.oem_name.value());
     }
 
     // Create cros_config database.
@@ -411,6 +420,21 @@ TEST_F(CrosConfigUtilsImplTest, HasCustomLabel_False) {
   auto cros_config_utils = CreateCrosConfigUtils({.model_name = kModelName2});
 
   EXPECT_FALSE(cros_config_utils->HasCustomLabel());
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetOemName_Success) {
+  auto cros_config_utils = CreateCrosConfigUtils({.oem_name = kOemName});
+
+  auto oem_name = cros_config_utils->GetOemName();
+  EXPECT_TRUE(oem_name.has_value());
+  EXPECT_EQ(kOemName, oem_name.value());
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetOemName_Unset) {
+  auto cros_config_utils = CreateCrosConfigUtils({});
+
+  auto oem_name = cros_config_utils->GetOemName();
+  EXPECT_FALSE(oem_name.has_value());
 }
 
 }  // namespace rmad

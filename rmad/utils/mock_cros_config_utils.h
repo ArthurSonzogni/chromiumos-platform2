@@ -33,6 +33,7 @@ class MockCrosConfigUtils : public CrosConfigUtils {
               GetFingerprintSensorLocation,
               (),
               (const, override));
+  MOCK_METHOD(std::optional<std::string>, GetOemName, (), (const, override));
   MOCK_METHOD(bool,
               GetDesignConfigList,
               (std::vector<DesignConfig>*),

@@ -167,6 +167,19 @@ std::optional<std::string> CrosConfigUtilsImpl::GetFingerprintSensorLocation()
   return result;
 }
 
+std::optional<std::string> CrosConfigUtilsImpl::GetOemName() const {
+  std::string result;
+  const base::FilePath path =
+      base::FilePath(kCrosRootPath).Append(kCrosBrandingPath);
+
+  if (!cros_config_->GetString(path.value(), kCrosBrandingOemNameKey,
+                               &result)) {
+    return std::nullopt;
+  }
+
+  return result;
+}
+
 bool CrosConfigUtilsImpl::GetDesignConfigList(
     std::vector<DesignConfig>* design_config_list) const {
   DCHECK(design_config_list);
