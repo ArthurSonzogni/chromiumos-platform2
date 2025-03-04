@@ -127,6 +127,8 @@ const int16_t kDefaultDisconnectDbm = 0;
 const int16_t kDefaultDisconnectThresholdDbm = -85;
 const int kInvalidMaxSSIDs = -1;
 const int kRSSIDropThresholdDbm = 10;
+const int kMaxGetPhyInfoRetries = 3;
+const base::TimeDelta kRetryGetPhyInfoInterval = base::Milliseconds(100);
 
 // Maximum time between two link monitor failures to declare this link (network)
 // as unreliable.
@@ -3885,9 +3887,23 @@ void WiFi::OnGetPhyInfoAuxMessage(
     const net_base::NetlinkMessage* raw_message) {
   if (type != net_base::NetlinkManager::kDone) {
     net_base::NetlinkManager::OnNetlinkMessageError(type, raw_message);
+    if (get_phy_info_retry_count_++ < kMaxGetPhyInfoRetries) {
+      LOG(ERROR) << __func__ << ": Get phy info failed, retrying "
+                 << get_phy_info_retry_count_ << "/" << kMaxGetPhyInfoRetries;
+      dispatcher()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&WiFi::GetPhyInfo, weak_ptr_factory_.GetWeakPtr()),
+          kRetryGetPhyInfoInterval);
+    } else {
+      LOG(ERROR)
+          << __func__
+          << ": Get phy info failed and reached the maximum retry limit of "
+          << kMaxGetPhyInfoRetries;
+    }
     return;
   }
   provider_->PhyDumpComplete(phy_index_);
+  get_phy_info_retry_count_ = 0;
 }
 
 void WiFi::GetRegulatory() {

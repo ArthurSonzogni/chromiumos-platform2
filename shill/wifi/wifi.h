@@ -1048,6 +1048,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::set<uint32_t> supported_cipher_suites_;
 
   uint16_t request_scan_count_ = 0;
+
+  int get_phy_info_retry_count_ = 0;
 };
 
 }  // namespace shill
