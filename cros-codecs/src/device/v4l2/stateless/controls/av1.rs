@@ -91,8 +91,10 @@ use v4l2r::bindings::V4L2_CID_STATELESS_AV1_SEQUENCE;
 use v4l2r::bindings::V4L2_CID_STATELESS_AV1_TILE_GROUP_ENTRY;
 use v4l2r::controls::AsV4l2ControlSlice;
 
+use crate::codec::av1::parser::BitDepth;
 use crate::codec::av1::parser::CdefParams;
 use crate::codec::av1::parser::FrameHeaderObu;
+use crate::codec::av1::parser::FrameRestorationType;
 use crate::codec::av1::parser::GlobalMotionParams;
 use crate::codec::av1::parser::LoopFilterParams;
 use crate::codec::av1::parser::LoopRestorationParams;
@@ -100,6 +102,7 @@ use crate::codec::av1::parser::QuantizationParams;
 use crate::codec::av1::parser::SegmentationParams;
 use crate::codec::av1::parser::SequenceHeaderObu;
 use crate::codec::av1::parser::Tile;
+use crate::codec::av1::parser::WarpModelType;
 
 // v4l2r does not have V4L2_AV1_SEG_LVL_MAX
 //use v4l2r::bindings::V4L2_AV1_SEG_LVL_MAX;
@@ -318,7 +321,7 @@ impl V4l2CtrlAv1FrameParams {
     }
 
     pub fn set_cdef_params(&mut self, cdef: &CdefParams) -> &mut Self {
-        self.handle.cdef.damping_minus_3 = cdef.cdef_damping as u8;
+        self.handle.cdef.damping_minus_3 = (cdef.cdef_damping - 3) as u8;
         self.handle.cdef.bits = cdef.cdef_bits as u8;
         for i in 0..V4L2_AV1_CDEF_MAX as usize {
             self.handle.cdef.y_pri_strength[i] = cdef.cdef_y_pri_strength[i] as u8;
@@ -343,8 +346,15 @@ impl V4l2CtrlAv1FrameParams {
         self.handle.loop_restoration.lr_unit_shift = loop_restoration.lr_unit_shift;
         self.handle.loop_restoration.lr_uv_shift = loop_restoration.lr_uv_shift;
         for i in 0..V4L2_AV1_NUM_PLANES_MAX as usize {
-            self.handle.loop_restoration.frame_restoration_type[i] = 1;
-            self.handle.loop_restoration.loop_restoration_size[i] = 1;
+            self.handle.loop_restoration.frame_restoration_type[i] =
+                match loop_restoration.frame_restoration_type[i] {
+                    FrameRestorationType::None => 0,
+                    FrameRestorationType::Wiener => 1,
+                    FrameRestorationType::Sgrproj => 2,
+                    FrameRestorationType::Switchable => 3,
+                };
+            self.handle.loop_restoration.loop_restoration_size[i] =
+                loop_restoration.loop_restoration_size[i] as u32;
         }
         self
     }
@@ -361,9 +371,16 @@ impl V4l2CtrlAv1FrameParams {
                 self.handle.global_motion.flags[i] |=
                     V4L2_AV1_GLOBAL_MOTION_FLAG_IS_TRANSLATION as u8;
             }
-            self.handle.global_motion.type_[i] = global_motion.gm_type[i] as u32;
+            self.handle.global_motion.type_[i] = match global_motion.gm_type[i] {
+                WarpModelType::Identity => 0,
+                WarpModelType::Translation => 1,
+                WarpModelType::RotZoom => 2,
+                WarpModelType::Affine => 3,
+            };
             self.handle.global_motion.params[i].copy_from_slice(&global_motion.gm_params[i][0..6]);
-            self.handle.global_motion.invalid |= (global_motion.warp_valid[i] as u8) << i;
+            if !global_motion.warp_valid[i] {
+                self.handle.global_motion.invalid |= 1 << i;
+            }
         }
         self
     }
@@ -419,7 +436,7 @@ impl V4l2CtrlAv1FrameParams {
         if hdr.reduced_tx_set {
             self.handle.flags |= V4L2_AV1_FRAME_FLAG_REDUCED_TX_SET;
         }
-        if hdr.skip_mode_present {
+        if hdr.skip_mode_frame[0] > 0 {
             self.handle.flags |= V4L2_AV1_FRAME_FLAG_SKIP_MODE_ALLOWED;
         }
         if hdr.skip_mode_present {
@@ -531,7 +548,11 @@ impl V4l2CtrlAv1SequenceParams {
         }
         self.handle.seq_profile = hdr.seq_profile as u8;
         self.handle.order_hint_bits = hdr.order_hint_bits as u8;
-        self.handle.bit_depth = hdr.bit_depth as u8;
+        self.handle.bit_depth = match hdr.bit_depth {
+            BitDepth::Depth8 => 8,
+            BitDepth::Depth10 => 10,
+            BitDepth::Depth12 => 12,
+        };
         self.handle.max_frame_width_minus_1 = hdr.max_frame_width_minus_1;
         self.handle.max_frame_height_minus_1 = hdr.max_frame_height_minus_1;
         self
