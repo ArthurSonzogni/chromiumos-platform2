@@ -5,7 +5,9 @@
 #include "odml/mantis/processor.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
+#include <numbers>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -43,6 +45,7 @@ using mojom::InitializeResult;
 using mojom::MantisError;
 using mojom::MantisResult;
 using mojom::SafetyClassifierVerdict;
+using mojom::SegmentationMode;
 using ::on_device_model::LanguageDetector;
 
 constexpr auto kMapStatusToError =
@@ -115,6 +118,26 @@ std::optional<std::string> SelectLanguage(
   return std::nullopt;
 }
 
+constexpr float kMaxFirstLastTotalRatio = 1.2;
+constexpr float kMaxPerimeterRatio = 1.2;
+constexpr float kMinPerimeterRatio = 1.0;
+constexpr float kMaxAreaRatio = 1.4;
+constexpr float kMinAreaRatio = 1.0;
+
+float CalculateEuclideanDistance(float p1_x,
+                                 float p1_y,
+                                 float p2_x,
+                                 float p2_y) {
+  float dx = p2_x - p1_x;
+  float dy = p2_y - p1_y;
+  return std::hypot(dx, dy);
+}
+
+float CalculateTriangleArea(
+    float p0_x, float p0_y, float p1_x, float p1_y, float p2_x, float p2_y) {
+  return 0.5 * std::fabs(p0_x * (p1_y - p2_y) + p1_x * (p2_y - p0_y) +
+                         p2_x * (p0_y - p1_y));
+}
 }  // namespace
 
 MantisProcessor::MantisProcessor(
@@ -471,6 +494,119 @@ void MantisProcessor::OnClassifyImageOutputDone(
 
   std::move(process->callback)
       .Run(MantisResult::NewResultImage(process->image_result));
+}
+
+void MantisProcessor::InferSegmentationMode(
+    std::vector<mojom::TouchPointPtr> gesture,
+    InferSegmentationModeCallback callback) {
+  if (MantisProcessor::IsCircleToSelectGesture(gesture)) {
+    std::move(callback).Run(SegmentationMode::kLasso);
+  } else {
+    std::move(callback).Run(SegmentationMode::kScribble);
+  }
+}
+
+// This function analyzes a sequence of touch points to determine if they form a
+// circle gesture, indicating a user's intent to select an item or region.
+//
+// The algorithm considers various geometric properties of the touch points:
+//
+// 1. Closure: It calculates the distance between the first and last touch
+// points. A small distance suggests a closed shape, which is characteristic
+// of a circle.
+//
+// 2. Shape Similarity: It computes the total distance covered by the
+// gesture and compares it to the perimeter of an ellipse fitted to the touch
+// points. A similar ratio indicates a circular or elliptical shape. Note that
+// the calculation of ellipse's perimeter is not trivial, here it leverage
+// the first Ramanujan's approximations.
+//
+// 3. Area Approximation: Calculate the sum of the areas of triangles formed
+// by the gesture segments and the center point.
+//     a. Iterate through each segment in the `gesture_segments` list.
+//     b. For each segment, use the segment's start and end points along with
+//        the `center_point` to form a triangle.
+//     c. Calculate the area of each triangle using the formula:
+//         Area = 0.5 * abs((x1 * (y2 - cy) + x2 * (cy - y1) + cx * (y1 - y2)))
+//         where (x1, y1) and (x2, y2) are the segment endpoints, and (cx, cy)
+//         is the center point.
+//     d. Sum up the areas of all the triangles.
+//     e. Compare the resulting area with the area of the bounding ellipse of
+//         the gesture.
+// The calculated area does not represent the gesture's enclosed area. Instead,
+// it sums the areas of all triangles formed by the gesture segments, even when
+// they overlap. This method yields larger values for concave gestures and
+// smaller values for linear gestures. These values are then compared against
+// a predefined threshold. Only gestures resembling a circular shape will result
+// in an area value close to the bounding ellipse's area, and thus, be retained.
+//
+// By evaluating these geometric properties, the function can effectively
+// distinguish circular gestures from other types of touch input, enabling
+// accurate selection behavior.
+bool MantisProcessor::IsCircleToSelectGesture(
+    const std::vector<mojom::TouchPointPtr>& gesture) {
+  int n = gesture.size();
+  if (n <= 1) {
+    return false;
+  }
+
+  // Closure check
+  float first_last_point_distance = CalculateEuclideanDistance(
+      gesture[0]->x, gesture[0]->y, gesture[n - 1]->x, gesture[n - 1]->y);
+
+  float min_x = gesture[0]->x;
+  float max_x = gesture[0]->x;
+  float min_y = gesture[0]->y;
+  float max_y = gesture[0]->y;
+
+  float gesture_distance = 0.0;
+  for (int i = 0; i < n; ++i) {
+    gesture_distance += CalculateEuclideanDistance(
+        gesture[(i + n - 1) % n]->x, gesture[(i + n - 1) % n]->y, gesture[i]->x,
+        gesture[i]->y);
+    min_x = std::min(min_x, gesture[i]->x);
+    max_x = std::max(max_x, gesture[i]->x);
+    min_y = std::min(min_y, gesture[i]->y);
+    max_y = std::max(max_y, gesture[i]->y);
+  }
+  if (gesture_distance == 0.0) {
+    return false;
+  }
+  if (first_last_point_distance / gesture_distance >= kMaxFirstLastTotalRatio) {
+    return false;
+  }
+
+  // Shape Similarity check
+  float a = (max_x - min_x) / 2;
+  float b = (max_y - min_y) / 2;
+  float approax_ellipse_perimeter =
+      std::numbers::pi_v<float> *
+      (3 * (a + b) - std::sqrt((3 * a + b) * (a + 3 * b)));
+  float perimeter_ratio = approax_ellipse_perimeter / gesture_distance;
+  if (perimeter_ratio >= kMaxPerimeterRatio ||
+      perimeter_ratio <= kMinPerimeterRatio) {
+    return false;
+  }
+
+  float center_x = (min_x + max_x) / 2;
+  float center_y = (min_y + max_y) / 2;
+  float gesture_area = 0.0;
+  for (int i = 0; i < n; ++i) {
+    gesture_area += CalculateTriangleArea(
+        center_x, center_y, gesture[(i + n - 1) % n]->x,
+        gesture[(i + n - 1) % n]->y, gesture[i]->x, gesture[i]->y);
+  }
+  if (gesture_area == 0.0) {
+    return false;
+  }
+
+  float ellipse_area = a * b * std::numbers::pi_v<float>;
+  float area_ratio = ellipse_area / gesture_area;
+  if (area_ratio >= kMaxAreaRatio || area_ratio <= kMinAreaRatio) {
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace mantis

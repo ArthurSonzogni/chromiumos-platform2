@@ -32,6 +32,8 @@ using base::test::TestFuture;
 using mojom::MantisError;
 using mojom::MantisResult;
 using mojom::SafetyClassifierVerdict;
+using mojom::TouchPoint;
+using mojom::TouchPointPtr;
 using ::testing::_;
 using ::testing::IsEmpty;
 using LanguageDetectonResult =
@@ -684,6 +686,135 @@ TEST_F(MantisProcessorTest, ClassifyImageSafetyReturnFail) {
 
   auto verdict = verdict_future.Take();
   EXPECT_EQ(verdict, SafetyClassifierVerdict::kFailedImage);
+}
+
+TEST_F(MantisProcessorTest, RewriteUserPrompt) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+
+  EXPECT_CALL(
+      safety_service_manager_,
+      ClassifyImageSafety(
+          testing::Eq(cros_safety::mojom::SafetyRuleset::kMantisOutputImage),
+          testing::Eq("the cute cat"), testing::_, testing::_))
+      .WillOnce(base::test::RunOnceCallback<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kPass));
+
+  EXPECT_CALL(
+      safety_service_manager_,
+      ClassifyImageSafety(
+          testing::Eq(
+              cros_safety::mojom::SafetyRuleset::kMantisGeneratedRegion),
+          testing::Eq(""), testing::_, testing::_))
+      .WillOnce(base::test::RunOnceCallback<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kPass));
+
+  // Test one of the cases to confirm rewrite is active.
+  // All other cases are tested in the unit test of the utility function.
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "Add the Cute Cat",
+                           result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
+TEST_F(MantisProcessorTest, InferSegmentationModeSinglePoint) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+
+  std::vector<mojom::TouchPointPtr> gesture;
+  gesture.emplace_back(TouchPoint::New(0.1, 0.2));
+
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+
+  TestFuture<mojom::SegmentationMode> mode_future;
+  processor.InferSegmentationMode(std::move(gesture),
+                                  mode_future.GetCallback());
+
+  EXPECT_EQ(mode_future.Take(), mojom::SegmentationMode::kScribble);
+}
+
+TEST_F(MantisProcessorTest, InferSegmentationModeStraightLine) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+
+  std::vector<mojom::TouchPointPtr> gesture;
+  gesture.emplace_back(TouchPoint::New(0.1, 0.2));
+  gesture.emplace_back(TouchPoint::New(0.3, 0.3));
+  gesture.emplace_back(TouchPoint::New(0.5, 0.4));
+  gesture.emplace_back(TouchPoint::New(0.7, 0.5));
+  gesture.emplace_back(TouchPoint::New(0.9, 0.6));
+  gesture.emplace_back(TouchPoint::New(1.1, 0.7));
+  gesture.emplace_back(TouchPoint::New(1.3, 0.8));
+  gesture.emplace_back(TouchPoint::New(1.5, 0.9));
+
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+
+  TestFuture<mojom::SegmentationMode> mode_future;
+  processor.InferSegmentationMode(std::move(gesture),
+                                  mode_future.GetCallback());
+
+  EXPECT_EQ(mode_future.Take(), mojom::SegmentationMode::kScribble);
+}
+
+TEST_F(MantisProcessorTest, InferSegmentationModeCircle) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+
+  // Use the regular hexdecagon gesture to approximate a circle
+  std::vector<mojom::TouchPointPtr> gesture;
+  gesture.emplace_back(TouchPoint::New(1.0, 0.0));
+  gesture.emplace_back(TouchPoint::New(0.9238795325112867, 0.3826834323650898));
+  gesture.emplace_back(TouchPoint::New(0.7071067811865476, 0.7071067811865475));
+  gesture.emplace_back(
+      TouchPoint::New(0.38268343236508984, 0.9238795325112867));
+  gesture.emplace_back(TouchPoint::New(6.123233995736766e-17, 1.0));
+  gesture.emplace_back(
+      TouchPoint::New(-0.3826834323650897, 0.9238795325112867));
+  gesture.emplace_back(
+      TouchPoint::New(-0.7071067811865475, 0.7071067811865476));
+  gesture.emplace_back(
+      TouchPoint::New(-0.9238795325112867, 0.3826834323650899));
+  gesture.emplace_back(TouchPoint::New(-1.0, 1.2246467991473532e-16));
+  gesture.emplace_back(
+      TouchPoint::New(-0.9238795325112868, -0.38268343236508967));
+  gesture.emplace_back(
+      TouchPoint::New(-0.7071067811865477, -0.7071067811865475));
+  gesture.emplace_back(
+      TouchPoint::New(-0.38268343236509034, -0.9238795325112865));
+  gesture.emplace_back(TouchPoint::New(-1.8369701987210297e-16, -1.0));
+  gesture.emplace_back(TouchPoint::New(0.38268343236509, -0.9238795325112866));
+  gesture.emplace_back(
+      TouchPoint::New(0.7071067811865474, -0.7071067811865477));
+  gesture.emplace_back(
+      TouchPoint::New(0.9238795325112865, -0.3826834323650904));
+
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+
+  TestFuture<mojom::SegmentationMode> mode_future;
+  processor.InferSegmentationMode(std::move(gesture),
+                                  mode_future.GetCallback());
+
+  EXPECT_EQ(mode_future.Take(), mojom::SegmentationMode::kLasso);
 }
 
 }  // namespace

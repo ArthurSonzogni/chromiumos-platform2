@@ -118,6 +118,9 @@ class MantisProcessor : public mojom::MantisProcessor {
   void ClassifyImageSafety(const std::vector<uint8_t>& image,
                            ClassifyImageSafetyCallback callback) override;
 
+  void InferSegmentationMode(std::vector<mojom::TouchPointPtr> gesture,
+                             InferSegmentationModeCallback callback) override;
+
  protected:
   virtual void OnClassifyImageOutputDone(
       std::unique_ptr<MantisProcess> process,
@@ -149,6 +152,9 @@ class MantisProcessor : public mojom::MantisProcessor {
 
   void OnProcessDone(std::unique_ptr<MantisProcess> process,
                      const ProcessFuncResult& lib_result);
+
+  static bool IsCircleToSelectGesture(
+      const std::vector<mojom::TouchPointPtr>& gesture);
 
   const raw_ref<MetricsLibraryInterface> metrics_lib_;
 
