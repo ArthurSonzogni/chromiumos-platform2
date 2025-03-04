@@ -1752,6 +1752,11 @@ StartVmResponse Service::StartVmInternal(
       std::make_move_iterator(request.mutable_kernel_params()->end()));
   features.kernel_params = std::move(params);
 
+  if (classification == apps::BAGUETTE) {
+    features.kernel_params.push_back(
+        "root=/dev/vdb rw net.ifnames=0 systemd.log_color=0");
+  }
+
   std::vector<std::string> oem_strings(
       std::make_move_iterator(request.mutable_oem_strings()->begin()),
       std::make_move_iterator(request.mutable_oem_strings()->end()));

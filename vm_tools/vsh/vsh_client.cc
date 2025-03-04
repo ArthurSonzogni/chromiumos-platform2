@@ -103,7 +103,7 @@ bool VshClient::Init(const std::string& user,
   //    HostMessage and GuestMessage protobufs, with GuestMessages flowing
   //    from client(host) to server(guest), and vice versa for HostMessages.
   // 4) If the client or server receives a message with a new ConnectionStatus
-  //    that does not indicate READY, the recepient must exit.
+  //    that does not indicate READY, the recipient must exit.
   SetupConnectionRequest connection_request;
   if (container.empty()) {
     connection_request.set_target(vm_tools::vsh::kVmShell);
