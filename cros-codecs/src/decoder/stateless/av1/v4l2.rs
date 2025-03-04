@@ -160,14 +160,16 @@ impl<V: VideoFrame> StatelessAV1DecoderBackend for V4l2StatelessDecoderBackend<V
 
         let mut picture = picture.borrow_mut();
         let request = picture.request();
-        let request = request.as_ref().borrow_mut();
+        let mut request = request.as_ref().borrow_mut();
 
         let mut tile_group_params_ctrl = Av1V4l2TileGroupEntryCtrl::from(&tile_group_params);
         let which = request.which();
         ioctl::s_ext_ctrls(&self.device, which, &mut tile_group_params_ctrl)
             .map_err(|e| StatelessBackendError::Other(anyhow::anyhow!(e)))?;
 
-        todo!()
+        request.write(tile_group.obu.as_ref());
+
+        Ok(())
     }
 
     fn submit_picture(&mut self, _picture: Self::Picture) -> StatelessBackendResult<Self::Handle> {
