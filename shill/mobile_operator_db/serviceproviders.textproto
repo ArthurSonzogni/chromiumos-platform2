@@ -12433,6 +12433,7 @@ mno {
     localized_name {
       name: "DTAC"
     }
+    mccmnc: "52005"
     mccmnc: "52018"
     mobile_apn {
       apn: "www.dtac.co.th"
