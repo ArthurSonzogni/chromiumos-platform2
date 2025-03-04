@@ -497,7 +497,20 @@ bool Configuration::ConfigGyro() {
 }
 
 bool Configuration::ConfigAccelerometer() {
-  CopyImuCalibationFromVpd(kAccelMaxVpdCalibration);
+  auto* cros_config = delegate_->GetCrosConfig();
+  std::string max_calibration_str;
+  int max_calibration_value = 0;
+
+  if (cros_config->GetString("/hardware-properties", "ec-max-calibration-accel",
+                             &max_calibration_str)) {
+    base::StringToInt(max_calibration_str, &max_calibration_value);
+  }
+
+  if (max_calibration_value > kAccelMaxVpdCalibration ||
+      max_calibration_value == 0) {
+    max_calibration_value = kAccelMaxVpdCalibration;
+  }
+  CopyImuCalibationFromVpd(max_calibration_value);
 
   if (!AddSysfsTrigger(kAccelSysfsTriggerId)) {
     return false;

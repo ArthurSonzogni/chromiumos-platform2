@@ -171,6 +171,28 @@ TEST_F(AccelerometerTest, VpdOutOfRange) {
                    .has_value());
 }
 
+TEST_F(AccelerometerTest, VpdOutOfRangeOverride) {
+  brillo::FakeCrosConfig* fake_config = mock_delegate_->GetFakeCrosConfig();
+  fake_config->SetString("/hardware-properties", "ec-max-calibration-accel",
+                         "150");
+  SetSingleSensor(kBaseSensorLocation);
+  ConfigureVpd({{"in_accel_x_base_calibbias", "200"},  // Above .150g
+                {"in_accel_y_base_calibbias", "104"},
+                {"in_accel_z_base_calibbias", "85"}});
+
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  EXPECT_FALSE(mock_device_->GetChannel("accel_x")
+                   ->ReadNumberAttribute("calibbias")
+                   .has_value());
+  EXPECT_FALSE(mock_device_->GetChannel("accel_y")
+                   ->ReadNumberAttribute("calibbias")
+                   .has_value());
+  EXPECT_FALSE(mock_device_->GetChannel("accel_z")
+                   ->ReadNumberAttribute("calibbias")
+                   .has_value());
+}
+
 TEST_F(AccelerometerTest, CalibscaleData) {
   SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_accel_x_base_calibscale", "5"},
