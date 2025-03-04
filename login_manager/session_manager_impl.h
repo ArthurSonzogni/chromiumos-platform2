@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
+#include <base/memory/raw_ptr.h>
 #include <base/memory/ref_counted.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
@@ -26,7 +27,7 @@
 #include <libcrossystem/crossystem.h>
 #include <libpasswordprovider/password_provider.h>
 
-#include "login_manager/arc_manager.h"
+#include "login_manager/arc_manager_proxy.h"
 #include "login_manager/dbus_adaptors/org.chromium.SessionManagerInterface.h"
 #include "login_manager/device_identifier_generator.h"
 #include "login_manager/device_local_account_manager.h"
@@ -35,10 +36,6 @@
 #include "login_manager/login_screen_storage.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/session_manager_interface.h"
-
-namespace org::chromium {
-class ArcManagerInterface;
-}  // namespace org::chromium
 
 class InstallAttributesReader;
 
@@ -72,22 +69,6 @@ constexpr bool __attribute__((unused)) IsolateUserSession() {
   return USE_USER_SESSION_ISOLATION;
 }
 
-// Implementation of ArcManager::Delegate.
-// TODO(crbug.com/390297821): Remove the implementation once Chrome starts
-// to observe the D-Bus signal from ArcManager D-Bus service.
-class ArcManagerDelegateImpl : public ArcManager::Delegate {
- public:
-  explicit ArcManagerDelegateImpl(SessionManagerInterface& session_manager);
-  ArcManagerDelegateImpl(const ArcManagerDelegateImpl&) = delete;
-  ArcManagerDelegateImpl& operator=(const ArcManagerDelegateImpl&) = delete;
-  ~ArcManagerDelegateImpl() override;
-
-  void SendArcInstanceStoppedSignal(uint32_t value) override;
-
- private:
-  SessionManagerInterface& session_manager_;
-};
-
 // Implements the DBus SessionManagerInterface.
 //
 // All signatures used in the methods of the ownership API are
@@ -95,7 +76,8 @@ class ArcManagerDelegateImpl : public ArcManager::Delegate {
 class SessionManagerImpl
     : public SessionManagerInterface,
       public PolicyService::Delegate,
-      public org::chromium::SessionManagerInterfaceInterface {
+      public org::chromium::SessionManagerInterfaceInterface,
+      public ArcManagerProxy::Observer {
  public:
   enum class RestartJobMode : uint32_t {
     kGuest = 0,
@@ -185,7 +167,7 @@ class SessionManagerImpl
                      crossystem::Crossystem* crossystem,
                      VpdProcess* vpd_process,
                      PolicyKey* owner_key,
-                     org::chromium::ArcManagerInterface* arc_manager,
+                     ArcManagerProxy* arc_manager,
                      InstallAttributesReader* install_attributes_reader,
                      dbus::ObjectProxy* powerd_proxy,
                      dbus::ObjectProxy* system_clock_proxy,
@@ -340,7 +322,7 @@ class SessionManagerImpl
       override;
 
   // Sends arc-instance-stopped signal.
-  void SendArcInstanceStoppedSignal(uint32_t value) override;
+  void OnArcInstanceStopped(uint32_t value) override;
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
@@ -457,8 +439,10 @@ class SessionManagerImpl
   std::unique_ptr<UserPolicyServiceFactory> user_policy_factory_;
   std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager_;
 
-  // Owned by SessionManagerService.
-  raw_ptr<org::chromium::ArcManagerInterface> arc_manager_;
+  // Owned by SessionManagerService. Maybe nullptr in tests.
+  const raw_ptr<ArcManagerProxy> arc_manager_;
+  base::ScopedObservation<ArcManagerProxy, ArcManagerProxy::Observer>
+      arc_observation_{this};
 
   // Callbacks passed to RequestServerBackedStateKeys() while
   // |system_clock_synchronized_| was false. They will be run by

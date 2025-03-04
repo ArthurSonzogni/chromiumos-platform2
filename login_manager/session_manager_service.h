@@ -39,6 +39,8 @@ class MessageLoop;
 
 namespace login_manager {
 
+class ArcManager;
+class ArcManagerProxy;
 class BrowserJobInterface;
 class ChromeFeaturesServiceClient;
 class LoginMetrics;
@@ -331,6 +333,7 @@ class SessionManagerService
   std::unique_ptr<BrowserJobInterface> browser_;
 
   std::unique_ptr<ArcManager> arc_manager_;
+  std::unique_ptr<ArcManagerProxy> arc_manager_proxy_;
 
   VpdProcessImpl vpd_process_;
 };

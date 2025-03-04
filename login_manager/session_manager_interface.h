@@ -46,9 +46,6 @@ class SessionManagerInterface {
   // to annotate the cause of the powerwash.  |reason| must not exceed 50 bytes
   // in length and may only contain alphanumeric characters and underscores.
   virtual void InitiateDeviceWipe(const std::string& reason) = 0;
-
-  // Sends arc-instance-stopped signal.
-  virtual void SendArcInstanceStoppedSignal(uint32_t value) = 0;
 };
 
 }  // namespace login_manager

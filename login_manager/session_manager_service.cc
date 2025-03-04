@@ -46,6 +46,7 @@
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "login_manager/arc_manager.h"
+#include "login_manager/arc_manager_proxy.h"
 #include "login_manager/browser_job.h"
 #include "login_manager/chrome_features_service_client.h"
 #include "login_manager/liveness_checker_impl.h"
@@ -227,6 +228,8 @@ bool SessionManagerService::Initialize() {
 
   arc_manager_ = std::make_unique<ArcManager>(*system_utils_, *login_metrics_,
                                               process_reaper_, bus_);
+  arc_manager_proxy_ =
+      std::make_unique<ArcManagerProxyInProcess>(*arc_manager_);
 
   impl_ = std::make_unique<SessionManagerImpl>(
       this /* delegate */,
@@ -234,14 +237,13 @@ bool SessionManagerService::Initialize() {
       &device_identifier_generator_,
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
       nss_.get(), chrome_mount_ns_path_, system_utils_, &crossystem_,
-      &vpd_process_, &owner_key_, arc_manager_.get(),
+      &vpd_process_, &owner_key_, arc_manager_proxy_.get(),
       &install_attributes_reader_, powerd_dbus_proxy_, system_clock_proxy,
       fwmp_dbus_proxy_);
   if (!InitializeImpl()) {
     return false;
   }
 
-  arc_manager_->SetDelegate(std::make_unique<ArcManagerDelegateImpl>(*impl_));
   arc_manager_->Initialize();
 
   InitializeBrowser();

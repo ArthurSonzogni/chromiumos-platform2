@@ -55,12 +55,9 @@
 #include <libpasswordprovider/password_provider.h>
 #include <vpd/vpd.h>
 
-#include "arc/arc.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "dbus/login_manager/dbus-constants.h"
-#include "login_manager/arc_manager.h"
-#include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/browser_job.h"
 #include "login_manager/dbus_util.h"
@@ -275,15 +272,6 @@ bool IsGuestSession(const std::vector<std::string>& argv) {
 
 }  // namespace
 
-ArcManagerDelegateImpl::ArcManagerDelegateImpl(
-    SessionManagerInterface& session_manager)
-    : session_manager_(session_manager) {}
-ArcManagerDelegateImpl::~ArcManagerDelegateImpl() = default;
-
-void ArcManagerDelegateImpl::SendArcInstanceStoppedSignal(uint32_t value) {
-  return session_manager_.SendArcInstanceStoppedSignal(value);
-}
-
 // Tracks D-Bus service running.
 // Create*Callback functions return a callback adaptor from given
 // DBusMethodResponse. These cancel in-progress operations when the instance is
@@ -416,7 +404,7 @@ SessionManagerImpl::SessionManagerImpl(
     crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     PolicyKey* owner_key,
-    org::chromium::ArcManagerInterface* arc_manager,
+    ArcManagerProxy* arc_manager,
     InstallAttributesReader* install_attributes_reader,
     dbus::ObjectProxy* powerd_proxy,
     dbus::ObjectProxy* system_clock_proxy,
@@ -451,6 +439,9 @@ SessionManagerImpl::SessionManagerImpl(
           std::make_unique<secret_util::SharedMemoryUtil>())),
       weak_ptr_factory_(this) {
   DCHECK(delegate_);
+  if (arc_manager_) {
+    arc_observation_.Observe(arc_manager_.get());
+  }
 }
 
 SessionManagerImpl::~SessionManagerImpl() {
@@ -1531,7 +1522,7 @@ bool SessionManagerImpl::IsSessionStarted() {
   return !user_sessions_.empty();
 }
 
-void SessionManagerImpl::SendArcInstanceStoppedSignal(uint32_t value) {
+void SessionManagerImpl::OnArcInstanceStopped(uint32_t value) {
   adaptor_.SendArcInstanceStoppedSignal(value);
 }
 

@@ -90,6 +90,7 @@ static_library("libsession_manager") {
   sources = [
     "android_oci_wrapper.cc",
     "arc_manager.cc",
+    "arc_manager_proxy.cc",
     "blob_util.cc",
     "browser_job.cc",
     "chrome_features_service_client.cc",

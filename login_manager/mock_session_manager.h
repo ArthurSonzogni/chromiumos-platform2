@@ -31,8 +31,8 @@ class MockSessionManager : public SessionManagerInterface {
   MOCK_METHOD(void, AnnounceSessionStopped, (), (override));
   MOCK_METHOD(bool, ShouldEndSession, (std::string*), (override));
   MOCK_METHOD(void, InitiateDeviceWipe, (const std::string&), (override));
-  MOCK_METHOD(void, SendArcInstanceStoppedSignal, (uint32_t), (override));
 };
+
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_MOCK_SESSION_MANAGER_H_

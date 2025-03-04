@@ -188,9 +188,12 @@ std::unique_ptr<ArcManager> ArcManager::CreateForTesting(
       std::move(arc_sideload_status)));
 }
 
-void ArcManager::SetDelegate(std::unique_ptr<Delegate> delegate) {
-  CHECK(!delegate_);
-  delegate_ = std::move(delegate);
+void ArcManager::AddObserver(Observer* observer) {
+  observers_.AddObserver(observer);
+}
+
+void ArcManager::RemoveObserver(Observer* observer) {
+  observers_.RemoveObserver(observer);
 }
 
 void ArcManager::Initialize() {
@@ -699,8 +702,10 @@ void ArcManager::OnAndroidContainerStopped(pid_t pid,
     LOG(ERROR) << "Emitting stop-arc-instance impulse failed.";
   }
 
-  delegate_->SendArcInstanceStoppedSignal(static_cast<uint32_t>(reason));
   adaptor_.SendArcInstanceStoppedSignal(static_cast<uint32_t>(reason));
+  for (auto& observer : observers_) {
+    observer.OnArcInstanceStopped(static_cast<uint32_t>(reason));
+  }
 }
 
 LoginMetrics::ArcContinueBootImpulseStatus

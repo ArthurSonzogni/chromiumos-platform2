@@ -15,6 +15,7 @@
 
 #include <base/memory/raw_ref.h>
 #include <base/memory/weak_ptr.h>
+#include <base/observer_list.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <dbus/login_manager/dbus-constants.h>
@@ -52,14 +53,12 @@ class SystemUtils;
 // Manages ARC operations.
 class ArcManager : public org::chromium::ArcManagerInterface {
  public:
-  class Delegate {
+  class Observer : public base::CheckedObserver {
    public:
-    virtual ~Delegate() = default;
+    ~Observer() override = default;
 
-    // Sends D-Bus signal about ARC instance stop.
-    // TODO(crbug.com/390297821): Move the signal to ARC D-Bus
-    // service and remove this.
-    virtual void SendArcInstanceStoppedSignal(uint32_t value) = 0;
+    // Invoked when ARC instance is stopped.
+    virtual void OnArcInstanceStopped(uint32_t value) {}
   };
 
   // Creates an instance under surrounding context taken as arguments.
@@ -107,7 +106,8 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   // Starts ArcManager D-Bus service.
   bool StartDBusService();
 
-  void SetDelegate(std::unique_ptr<Delegate> delegate);
+  void AddObserver(Observer* observer);
+  void RemoveObserver(Observer* observer);
 
   // TODO(crbug.com/390297821): called from SessionManagerService.
   // Expose this as D-Bus method.
@@ -188,7 +188,7 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   void BackupArcBugReport(const std::string& account_id);
   void DeleteArcBugReportBackup(const std::string& account_id);
 
-  std::unique_ptr<Delegate> delegate_;
+  base::ObserverList<Observer> observers_;
 
   const raw_ref<SystemUtils> system_utils_;
   const raw_ref<LoginMetrics> login_metrics_;

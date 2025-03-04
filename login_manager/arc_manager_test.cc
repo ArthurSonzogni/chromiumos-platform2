@@ -373,15 +373,15 @@ class UpgradeContainerExpectationsBuilder {
 };
 #endif  // USE_CHEETS
 
-// TODO(crbug.com/390297821): Move out into independent file.
-class FakeArcManagerDelegate : public ArcManager::Delegate {
+class TestArcManagerObserver : public ArcManager::Observer {
  public:
-  FakeArcManagerDelegate() = default;
-  FakeArcManagerDelegate(const FakeArcManagerDelegate&) = delete;
-  FakeArcManagerDelegate& operator=(const FakeArcManagerDelegate&) = delete;
-  ~FakeArcManagerDelegate() override = default;
+  TestArcManagerObserver() = default;
+  TestArcManagerObserver(const TestArcManagerObserver&) = delete;
+  TestArcManagerObserver& operator=(const TestArcManagerObserver&) = delete;
+  ~TestArcManagerObserver() override = default;
 
-  void SendArcInstanceStoppedSignal(uint32_t value) override {
+  // ArcManager::Observer:
+  void OnArcInstanceStopped(uint32_t value) override {
     values_.push_back(value);
   }
 
@@ -403,13 +403,13 @@ class ArcManagerTest : public testing::Test {
         base::WrapUnique(arc_init_controller_), debugd_proxy_.get(),
         base::WrapUnique(android_container_),
         std::unique_ptr<ArcSideloadStatusInterface>(arc_sideload_status_));
-    auto delegate = std::make_unique<FakeArcManagerDelegate>();
-    delegate_ = delegate.get();
-    arc_manager_->SetDelegate(std::move(delegate));
+
+    observation_.Observe(arc_manager_.get());
   }
 
   void TearDown() override {
-    delegate_ = nullptr;
+    observation_.Reset();
+
     android_container_ = nullptr;
     arc_init_controller_ = nullptr;
     arc_sideload_status_ = nullptr;
@@ -440,7 +440,9 @@ class ArcManagerTest : public testing::Test {
   scoped_refptr<dbus::MockObjectProxy> debugd_proxy_ =
       new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("/fake/debugd"));
   std::unique_ptr<ArcManager> arc_manager_;
-  raw_ptr<FakeArcManagerDelegate> delegate_;
+  TestArcManagerObserver observer_;
+  base::ScopedObservation<ArcManager, ArcManager::Observer> observation_{
+      &observer_};
 };
 
 class ArcManagerPackagesCacheTest
@@ -506,13 +508,13 @@ TEST_F(ArcManagerTest, StopArcInstance) {
       &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
   EXPECT_FALSE(error.get());
 
-  EXPECT_TRUE(delegate_->values().empty());
+  EXPECT_TRUE(observer_.values().empty());
   EXPECT_TRUE(arc_manager_->StopArcInstance(
       &error, std::string() /*account_id*/, false /*should_backup_log*/));
   EXPECT_FALSE(error.get());
 
-  ASSERT_EQ(delegate_->values().size(), 1u);
-  EXPECT_EQ(delegate_->values()[0],
+  ASSERT_EQ(observer_.values().size(), 1u);
+  EXPECT_EQ(observer_.values()[0],
             static_cast<uint32_t>(ArcContainerStopReason::USER_REQUEST));
 }
 
@@ -531,13 +533,13 @@ TEST_F(ArcManagerTest, StopArcInstance_BackupsArcBugReport) {
       &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
   EXPECT_FALSE(error.get());
 
-  EXPECT_TRUE(delegate_->values().empty());
+  EXPECT_TRUE(observer_.values().empty());
   EXPECT_TRUE(arc_manager_->StopArcInstance(&error, kSaneEmail,
                                             true /*should_backup_log*/));
   EXPECT_FALSE(error.get());
 
-  ASSERT_EQ(delegate_->values().size(), 1u);
-  EXPECT_EQ(delegate_->values()[0],
+  ASSERT_EQ(observer_.values().size(), 1u);
+  EXPECT_EQ(observer_.values()[0],
             static_cast<uint32_t>(ArcContainerStopReason::USER_REQUEST));
 }
 
@@ -576,7 +578,7 @@ TEST_F(ArcManagerTest, StartArcMiniContainer) {
                              InitDaemonController::TriggerMode::SYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
-  EXPECT_TRUE(delegate_->values().empty());
+  EXPECT_TRUE(observer_.values().empty());
   {
     brillo::ErrorPtr error;
     EXPECT_TRUE(arc_manager_->StopArcInstance(
@@ -584,8 +586,8 @@ TEST_F(ArcManagerTest, StartArcMiniContainer) {
     EXPECT_FALSE(error.get());
   }
 
-  ASSERT_EQ(delegate_->values().size(), 1u);
-  EXPECT_EQ(delegate_->values()[0],
+  ASSERT_EQ(observer_.values().size(), 1u);
+  EXPECT_EQ(observer_.values()[0],
             static_cast<uint32_t>(ArcContainerStopReason::USER_REQUEST));
   EXPECT_FALSE(android_container_->running());
 }
@@ -639,15 +641,15 @@ TEST_F(ArcManagerTest, UpgradeArcContainer) {
   }
   // The ID for the container for login screen is passed to the dbus call.
 
-  EXPECT_TRUE(delegate_->values().empty());
+  EXPECT_TRUE(observer_.values().empty());
   {
     brillo::ErrorPtr error;
     EXPECT_TRUE(arc_manager_->StopArcInstance(
         &error, std::string() /*account_id*/, false /*should_backup_log*/));
     EXPECT_FALSE(error.get());
   }
-  ASSERT_EQ(delegate_->values().size(), 1u);
-  EXPECT_EQ(delegate_->values()[0],
+  ASSERT_EQ(observer_.values().size(), 1u);
+  EXPECT_EQ(observer_.values()[0],
             static_cast<uint32_t>(ArcContainerStopReason::USER_REQUEST));
   EXPECT_FALSE(android_container_->running());
 }
@@ -688,14 +690,14 @@ TEST_F(ArcManagerTest, UpgradeArcContainer_BackupsArcBugReportOnFailure) {
         return base::ok(dbus::Response::CreateEmpty());
       })));
 
-  EXPECT_TRUE(delegate_->values().empty());
+  EXPECT_TRUE(observer_.values().empty());
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   EXPECT_FALSE(arc_manager_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request)));
   EXPECT_TRUE(error.get());
 
-  ASSERT_EQ(delegate_->values().size(), 1u);
-  EXPECT_EQ(delegate_->values()[0],
+  ASSERT_EQ(observer_.values().size(), 1u);
+  EXPECT_EQ(observer_.values()[0],
             static_cast<uint32_t>(ArcContainerStopReason::UPGRADE_FAILURE));
   EXPECT_FALSE(android_container_->running());
 }
@@ -1308,14 +1310,14 @@ TEST_F(ArcManagerTest, ArcLowDisk) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_TRUE(delegate_->values().empty());
+  EXPECT_TRUE(observer_.values().empty());
   arc::UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
   EXPECT_FALSE(
       arc_manager_->UpgradeArcContainer(&error, SerializeAsBlob(request)));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kLowFreeDisk, error->GetCode());
-  ASSERT_EQ(delegate_->values().size(), 1u);
-  EXPECT_EQ(delegate_->values()[0],
+  ASSERT_EQ(observer_.values().size(), 1u);
+  EXPECT_EQ(observer_.values()[0],
             static_cast<uint32_t>(ArcContainerStopReason::LOW_DISK_SPACE));
 }
 
@@ -1361,13 +1363,13 @@ TEST_F(ArcManagerTest, ArcUpgradeCrash) {
   }
   EXPECT_TRUE(android_container_->running());
 
-  EXPECT_TRUE(delegate_->values().empty());
+  EXPECT_TRUE(observer_.values().empty());
 
   android_container_->SimulateCrash();
   EXPECT_FALSE(android_container_->running());
 
-  ASSERT_EQ(delegate_->values().size(), 1u);
-  EXPECT_EQ(delegate_->values()[0],
+  ASSERT_EQ(observer_.values().size(), 1u);
+  EXPECT_EQ(observer_.values()[0],
             static_cast<uint32_t>(ArcContainerStopReason::CRASH));
   // This should now fail since the container was cleaned up already.
   {
