@@ -57,6 +57,7 @@ use v4l2r::bindings::V4L2_AV1_NUM_PLANES_MAX;
 use v4l2r::bindings::V4L2_AV1_QUANTIZATION_FLAG_DELTA_Q_PRESENT;
 use v4l2r::bindings::V4L2_AV1_QUANTIZATION_FLAG_DIFF_UV_DELTA;
 use v4l2r::bindings::V4L2_AV1_QUANTIZATION_FLAG_USING_QMATRIX;
+use v4l2r::bindings::V4L2_AV1_REFS_PER_FRAME;
 use v4l2r::bindings::V4L2_AV1_SEGMENTATION_FLAG_ENABLED;
 use v4l2r::bindings::V4L2_AV1_SEGMENTATION_FLAG_SEG_ID_PRE_SKIP;
 use v4l2r::bindings::V4L2_AV1_SEGMENTATION_FLAG_TEMPORAL_UPDATE;
@@ -196,6 +197,16 @@ pub struct V4l2CtrlAv1FrameParams {
 impl V4l2CtrlAv1FrameParams {
     pub fn new() -> Self {
         Default::default()
+    }
+
+    pub fn set_reference_frame_ts(
+        &mut self,
+        reference_ts: [u64; V4L2_AV1_TOTAL_REFS_PER_FRAME as usize],
+    ) -> &mut Self {
+        for i in 0..V4L2_AV1_TOTAL_REFS_PER_FRAME as usize {
+            self.handle.reference_frame_ts[i] = reference_ts[i] * 1000;
+        }
+        self
     }
 
     pub fn set_tile_info_params(&mut self, hdr: &FrameHeaderObu) -> &mut Self {
@@ -439,6 +450,10 @@ impl V4l2CtrlAv1FrameParams {
         self.handle
             .order_hints
             .copy_from_slice(&hdr.order_hints[0..V4L2_AV1_TOTAL_REFS_PER_FRAME as usize]);
+        for i in 0..V4L2_AV1_REFS_PER_FRAME as usize {
+            self.handle.ref_frame_idx[i] = hdr.ref_frame_idx[i] as i8;
+        }
+        self.handle.refresh_frame_flags = hdr.refresh_frame_flags as u8;
         self
     }
 }

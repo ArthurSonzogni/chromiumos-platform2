@@ -25,6 +25,7 @@ use crate::decoder::stateless::StatelessBackendResult;
 use crate::decoder::stateless::StatelessDecoder;
 use crate::decoder::stateless::StatelessDecoderBackendPicture;
 use crate::decoder::BlockingMode;
+use crate::decoder::DecodedHandle;
 use crate::device::v4l2::stateless::controls::av1::Av1V4l2FilmGrainCtrl;
 use crate::device::v4l2::stateless::controls::av1::Av1V4l2FrameCtrl;
 use crate::device::v4l2::stateless::controls::av1::Av1V4l2SequenceCtrl;
@@ -91,9 +92,20 @@ impl<V: VideoFrame> StatelessAV1DecoderBackend for V4l2StatelessDecoderBackend<V
         picture: &mut Self::Picture,
         stream_info: &StreamInfo,
         hdr: &FrameHeaderObu,
-        _reference_frames: &[Option<Self::Handle>; NUM_REF_FRAMES],
+        reference_frames: &[Option<Self::Handle>; NUM_REF_FRAMES],
     ) -> StatelessBackendResult<()> {
         let mut picture = picture.borrow_mut();
+        let mut reference_pictures = Vec::<Rc<RefCell<V4l2Picture<V>>>>::new();
+        let mut reference_ts = [0; NUM_REF_FRAMES];
+
+        for (i, frame) in reference_frames.iter().enumerate() {
+            if let Some(handle) = frame {
+                reference_ts[i] = handle.timestamp();
+                reference_pictures.push(frame.as_ref().unwrap().picture.clone());
+            }
+        }
+        picture.set_ref_pictures(reference_pictures);
+
         let request = picture.request();
         let request = request.as_ref().borrow_mut();
 
@@ -107,6 +119,14 @@ impl<V: VideoFrame> StatelessAV1DecoderBackend for V4l2StatelessDecoderBackend<V
                 .map_err(|e| StatelessBackendError::Other(anyhow::anyhow!(e)))?;
         }
 
+        let mut sequence_params = V4l2CtrlAv1SequenceParams::new();
+        sequence_params.set_ctrl_sequence(&stream_info.seq_header);
+
+        let mut sequence_params_ctrl = Av1V4l2SequenceCtrl::from(&sequence_params);
+        let which = request.which();
+        ioctl::s_ext_ctrls(&self.device, which, &mut sequence_params_ctrl)
+            .map_err(|e| StatelessBackendError::Other(anyhow::anyhow!(e)))?;
+
         let mut frame_params = V4l2CtrlAv1FrameParams::new();
         frame_params
             .set_frame_params(&hdr)
@@ -116,22 +136,15 @@ impl<V: VideoFrame> StatelessAV1DecoderBackend for V4l2StatelessDecoderBackend<V
             .set_loop_filter_params(&hdr.loop_filter_params)
             .set_segmentation_params(&hdr.segmentation_params)
             .set_quantization_params(&hdr.quantization_params)
-            .set_tile_info_params(&hdr);
+            .set_tile_info_params(&hdr)
+            .set_reference_frame_ts(reference_ts);
 
         let mut frame_params_ctrl = Av1V4l2FrameCtrl::from(&frame_params);
         let which = request.which();
         ioctl::s_ext_ctrls(&self.device, which, &mut frame_params_ctrl)
             .map_err(|e| StatelessBackendError::Other(anyhow::anyhow!(e)))?;
 
-        let mut sequence_params = V4l2CtrlAv1SequenceParams::new();
-        sequence_params.set_ctrl_sequence(&stream_info.seq_header);
-
-        let mut sequence_params_ctrl = Av1V4l2SequenceCtrl::from(&sequence_params);
-        let which = request.which();
-        ioctl::s_ext_ctrls(&self.device, which, &mut sequence_params_ctrl)
-            .map_err(|e| StatelessBackendError::Other(anyhow::anyhow!(e)))?;
-
-        todo!()
+        Ok(())
     }
 
     fn decode_tile_group(
