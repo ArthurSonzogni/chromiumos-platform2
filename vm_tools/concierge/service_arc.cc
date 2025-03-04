@@ -284,49 +284,22 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   }
 
   const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
-  // Set up vhost-user-virtio-fs device, stub_device_socket_fds is a socket pair
-  // used for connecting vhost_user frontend and backend.
-  std::optional<VhostUserSocketPair> stub_device_socket_fds =
-      internal::SetupVhostUserSocketPair();
-  if (!stub_device_socket_fds.has_value()) {
+
+  std::optional<VhostUserFsFrontParam> shared_stub_vhost_user_front_param =
+      InvokeVhostUserFsBackend(
+          SharedDataParam{.data_dir = base::FilePath(kStubVolumeSharedDir),
+                          .tag = "stub",
+                          .uid_map = kAndroidUidMap,
+                          .gid_map = kAndroidGidMap,
+                          .enable_caches = SharedDataParam::Cache::kAuto,
+                          .ascii_casefold = true,
+                          .posix_acl = false,
+                          .privileged_quota_uids = privileged_quota_uids});
+  if (!shared_stub_vhost_user_front_param.has_value()) {
     response.set_failure_reason(
-        "Fail to create stub device vhost user socket pair.");
+        "Fail to create stub device vhost user parameters");
     return response;
   }
-
-  {
-    SharedDataParam shared_stub_backend_param{
-        .data_dir = base::FilePath(kStubVolumeSharedDir),
-        .tag = "stub",
-        .uid_map = kAndroidUidMap,
-        .gid_map = kAndroidGidMap,
-        .enable_caches = SharedDataParam::Cache::kAuto,
-        .ascii_casefold = true,
-        .posix_acl = false,
-        .privileged_quota_uids = privileged_quota_uids};
-
-    // Send dbus request to vhost_user_starter daemon to delegate starting stub
-    // device
-    vhost_user_starter_client_->StartVhostUserFs(
-        std::move(stub_device_socket_fds->back_end_fd),
-        shared_stub_backend_param);
-  }
-
-  // Remove the CLOEXEC flag from the vhost-user frontend socket fd. This is
-  // important to allow the fd to be inherited by the crosvm process.
-  if (std::string failure_reason =
-          internal::RemoveCloseOnExec(stub_device_socket_fds->front_end_fd);
-      !failure_reason.empty()) {
-    LOG(ERROR) << "Could not clear CLOEXEC for vhost_user fs frontend fd: "
-               << failure_reason;
-    response.set_failure_reason(
-        "Failed to clear CLOEXEC for vhost_user fs frontend fd");
-    return response;
-  }
-
-  VhostUserFsFrontParam shared_stub_frontend_param{
-      .tag = "stub",
-      .socket_fd = std::move(stub_device_socket_fds->front_end_fd)};
 
   base::FilePath data_dir = base::FilePath(kAndroidDataDir);
   if (!base::PathExists(data_dir)) {
@@ -615,7 +588,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                              pstore_path.value().c_str(), kArcVmRamoopsSize))
       .AppendSharedDir(shared_data)
       .AppendSharedDir(shared_data_media)
-      .AppendVhostUserFsFrontend(std::move(shared_stub_frontend_param))
+      .AppendVhostUserFsFrontend(
+          std::move(shared_stub_vhost_user_front_param.value()))
       .EnableSmt(false /* enable */)
       .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling())
       .SetWaylandSocket(request.vm().wayland_server());
