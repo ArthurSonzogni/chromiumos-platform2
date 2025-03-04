@@ -9,6 +9,7 @@ use v4l2r::ioctl;
 
 use crate::backend::v4l2::decoder::stateless::V4l2Picture;
 use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderBackend;
+use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderHandle;
 use crate::backend::v4l2::decoder::V4l2StreamInfo;
 use crate::backend::v4l2::decoder::ADDITIONAL_REFERENCE_FRAME_BUFFER;
 use crate::codec::av1::parser::FrameHeaderObu;
@@ -172,8 +173,14 @@ impl<V: VideoFrame> StatelessAV1DecoderBackend for V4l2StatelessDecoderBackend<V
         Ok(())
     }
 
-    fn submit_picture(&mut self, _picture: Self::Picture) -> StatelessBackendResult<Self::Handle> {
-        todo!()
+    fn submit_picture(&mut self, picture: Self::Picture) -> StatelessBackendResult<Self::Handle> {
+        let request = picture.borrow_mut().request();
+        let mut request = request.as_ref().borrow_mut();
+        request.submit()?;
+        Ok(V4l2StatelessDecoderHandle {
+            picture: picture.clone(),
+            stream_info: self.stream_info.clone(),
+        })
     }
 }
 
