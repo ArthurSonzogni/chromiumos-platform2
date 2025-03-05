@@ -69,6 +69,9 @@ const net_base::NetworkConfig* CompoundNetworkConfig::GetLegacySavedIPConfig()
 }
 
 bool CompoundNetworkConfig::HasSLAAC() {
+  if (slaac_network_config_ == nullptr) {
+    return false;
+  }
   return combined_network_config_->ipv6_addresses ==
          slaac_network_config_->ipv6_addresses;
 }
