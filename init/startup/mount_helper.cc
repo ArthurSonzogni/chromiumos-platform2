@@ -26,6 +26,10 @@
 #include "init/startup/startup_dep_impl.h"
 #include "init/tpm_encryption/tpm.h"
 
+namespace {
+constexpr char kVarAndHomeMountedTag[] = "varhomemountedtag";
+}  // namespace
+
 namespace startup {
 
 MountHelper::MountHelper(libstorage::Platform* platform,
@@ -53,11 +57,11 @@ void MountHelper::RememberMount(const base::FilePath& mount) {
 
 void MountHelper::CleanupMountsStack(std::vector<base::FilePath>* mnts) {
   // On failure unmount all saved mount points and repair stateful.
-  base::FilePath encrypted = stateful_.Append("encrypted");
+  base::FilePath var_home_state_mnt = stateful_.Append(kVarAndHomeMountedTag);
   while (!mount_stack_.empty()) {
     base::FilePath mnt = mount_stack_.top();
     mnts->push_back(mnt);
-    if (mnt == encrypted) {
+    if (mnt == var_home_state_mnt) {
       DoUmountVarAndHomeChronos();
     } else {
       platform_->Unmount(mnt, false, nullptr);
@@ -124,7 +128,14 @@ void MountHelper::BindMountOrFail(const base::FilePath& source,
 
 bool MountHelper::MountVarAndHomeChronos(
     std::optional<encryption::EncryptionKey> key) {
-  return impl_->Mount(key);
+  bool result = impl_->Mount(key);
+
+  if (result) {
+    // Add a marker in the mount list to not forget to unmount var and home.
+    base::FilePath var_home_state_mnt = stateful_.Append(kVarAndHomeMountedTag);
+    RememberMount(var_home_state_mnt);
+  }
+  return result;
 }
 
 bool MountHelper::DoUmountVarAndHomeChronos() {

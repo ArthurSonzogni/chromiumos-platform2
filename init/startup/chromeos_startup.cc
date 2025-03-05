@@ -115,9 +115,6 @@ constexpr char kMountEncryptedFailedFile[] = "mount_encrypted_failed";
 // Currently this is for UMA/diagnostics, but in the future failure will
 // result in reboot/self-repair.
 constexpr char kVersionPCRExtendFailedFile[] = "version_pcr_extend_failed";
-// kEncryptedStatefulMnt stores the path to the initial mount point for
-// the encrypted stateful partition
-constexpr char kEncryptedStatefulMnt[] = "encrypted";
 // This value is threshold for determining that /var is full.
 const int kVarFullThreshold = 10485760;
 
@@ -1116,9 +1113,6 @@ int ChromeosStartup::Run() {
   } else if (platform_->FileExists(pcr_extend_failed)) {
     platform_->DeleteFile(pcr_extend_failed);
   }
-
-  base::FilePath encrypted_state_mnt = stateful_.Append(kEncryptedStatefulMnt);
-  mount_helper_->RememberMount(encrypted_state_mnt);
 
   // Setup the encrypted reboot vault once the encrypted stateful partition
   // is available. If unlocking the encrypted reboot vault failed (due to
