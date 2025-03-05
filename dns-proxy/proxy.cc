@@ -850,11 +850,17 @@ void Proxy::OnDoHProvidersChanged(const brillo::Any& value) {
 
 void Proxy::OnDoHExcludedDomainsChanged(const brillo::Any& value) {
   doh_excluded_domains_ = value.Get<std::vector<std::string>>();
+  if (!resolver_) {
+    return;
+  }
   resolver_->SetDomainDoHConfigs(doh_included_domains_, doh_excluded_domains_);
 }
 
 void Proxy::OnDoHIncludedDomainsChanged(const brillo::Any& value) {
   doh_included_domains_ = value.Get<std::vector<std::string>>();
+  if (!resolver_) {
+    return;
+  }
   resolver_->SetDomainDoHConfigs(doh_included_domains_, doh_excluded_domains_);
 }
 

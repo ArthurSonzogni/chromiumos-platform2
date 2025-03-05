@@ -1711,4 +1711,21 @@ TEST_P(ProxyTest, UpdateNameServers) {
   EXPECT_THAT(proxy_->doh_config_.ipv6_nameservers(),
               expected_ipv6_dns_addresses);
 }
+
+TEST_P(ProxyTest, DomainDoHConfigsUpdate) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
+
+  std::vector<std::string> props = {"domain1.com", "domain2.net"};
+  proxy_->OnDoHIncludedDomainsChanged(props);
+  proxy_->OnDoHExcludedDomainsChanged(props);
+}
+
+TEST_P(ProxyTest, DomainDoHConfigsUpdate_ProxyStopped) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
+  proxy_->Stop();
+
+  std::vector<std::string> props = {"domain1.com", "domain2.net"};
+  proxy_->OnDoHIncludedDomainsChanged(props);
+  proxy_->OnDoHExcludedDomainsChanged(props);
+}
 }  // namespace dns_proxy
