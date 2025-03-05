@@ -86,46 +86,35 @@ impl<V: VideoFrame> StatelessVp8DecoderBackend for V4l2StatelessDecoderBackend<V
         segmentation: &Segmentation,
         mb_lf_adjust: &MbLfAdjustments,
     ) -> StatelessBackendResult<Self::Handle> {
-        let mut vp8_frame_params = V4l2CtrlVp8FrameParams::new();
-
-        let request = picture.borrow_mut().request();
-        let mut request = request.as_ref().borrow_mut();
-        request.write(bitstream);
-
         let mut ref_pictures = Vec::<Rc<RefCell<V4l2Picture<V>>>>::new();
 
-        let mut last_frame_ts: u64 = 0;
-        let mut golden_frame_ts: u64 = 0;
-        let mut alt_frame_ts: u64 = 0;
-
-        match &last_ref {
+        let last_frame_ts = match &last_ref {
             Some(handle) => {
                 ref_pictures.push(handle.picture.clone());
-                last_frame_ts = handle.timestamp();
+                handle.timestamp()
             }
-            None => (),
+            None => 0,
         };
 
-        match &golden_ref {
+        let golden_frame_ts = match &golden_ref {
             Some(handle) => {
                 ref_pictures.push(handle.picture.clone());
-                golden_frame_ts = handle.timestamp();
+                handle.timestamp()
             }
-            None => (),
+            None => 0,
         };
 
-        match &alt_ref {
+        let alt_frame_ts = match &alt_ref {
             Some(handle) => {
                 ref_pictures.push(handle.picture.clone());
-                alt_frame_ts = handle.timestamp();
+                handle.timestamp()
             }
-            None => (),
+            None => 0,
         };
 
         picture.borrow_mut().set_ref_pictures(ref_pictures);
 
-        // last_ref, golden_ref, alt_ref are all None on key frame
-        // and Some on other frames
+        let mut vp8_frame_params = V4l2CtrlVp8FrameParams::new();
         vp8_frame_params
             .set_loop_filter_params(hdr, mb_lf_adjust)
             .set_quantization_params(hdr)
@@ -134,9 +123,12 @@ impl<V: VideoFrame> StatelessVp8DecoderBackend for V4l2StatelessDecoderBackend<V
             .set_bool_ctx(hdr)
             .set_frame_params(hdr, last_frame_ts, golden_frame_ts, alt_frame_ts);
 
+        let request = picture.borrow_mut().request();
+        let mut request = request.as_ref().borrow_mut();
+        request.write(bitstream);
         request.ioctl(&vp8_frame_params)?;
-
         request.submit()?;
+
         Ok(V4l2StatelessDecoderHandle {
             picture: picture.clone(),
             stream_info: self.stream_info.clone(),
