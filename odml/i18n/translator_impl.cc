@@ -130,7 +130,7 @@ bool TranslatorImpl::IsDlcDownloaded(const LangPair& lang_pair) {
 void TranslatorImpl::Translate(
     const LangPair& lang_pair,
     const std::string& input_text,
-    base::OnceCallback<void(std::optional<std::string_view>)> callback) {
+    base::OnceCallback<void(std::optional<std::string>)> callback) {
   DownloadDlc(lang_pair,
               base::BindOnce(&TranslatorImpl::TranslateInternal,
                              weak_ptr_factory_.GetWeakPtr(), lang_pair,
@@ -184,7 +184,7 @@ void TranslatorImpl::DownloadDlcInternal(
 void TranslatorImpl::TranslateInternal(
     const LangPair& lang_pair,
     const std::string& input_text,
-    base::OnceCallback<void(std::optional<std::string_view>)> callback,
+    base::OnceCallback<void(std::optional<std::string>)> callback,
     bool result) {
   if (!result) {
     std::move(callback).Run(std::nullopt);

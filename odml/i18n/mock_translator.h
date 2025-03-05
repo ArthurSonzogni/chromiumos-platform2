@@ -25,13 +25,12 @@ class MockTranslator : public Translator {
                odml::DlcProgressCallback progress),
               (override));
   MOCK_METHOD(bool, IsDlcDownloaded, (const LangPair& lang_pair), (override));
-  MOCK_METHOD(
-      void,
-      Translate,
-      (const LangPair& lang_pair,
-       const std::string& input_text,
-       base::OnceCallback<void(std::optional<std::string_view>)> callback),
-      (override));
+  MOCK_METHOD(void,
+              Translate,
+              (const LangPair& lang_pair,
+               const std::string& input_text,
+               base::OnceCallback<void(std::optional<std::string>)> callback),
+              (override));
   MOCK_METHOD(std::optional<std::string>,
               TranslateSync,
               (const LangPair& lang_pair, const std::string& input_text),

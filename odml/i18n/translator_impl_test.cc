@@ -58,7 +58,7 @@ TEST_F(TranslatorTestImpl, TranslateSuccess) {
   base::RunLoop run_loop_translate;
   translator_.Translate(
       kFakeLangPair, kFakeInputText,
-      base::BindLambdaForTesting([&](std::optional<std::string_view> result) {
+      base::BindLambdaForTesting([&](std::optional<std::string> result) {
         ASSERT_TRUE(result.has_value());
         EXPECT_TRUE(result.value() == FakeTranslate(kFakeInputText));
         run_loop_translate.Quit();
@@ -68,7 +68,7 @@ TEST_F(TranslatorTestImpl, TranslateSuccess) {
   base::RunLoop run_loop_reverse_translate;
   translator_.Translate(
       kFakeReverseLangPair, kFakeInputText,
-      base::BindLambdaForTesting([&](std::optional<std::string_view> result) {
+      base::BindLambdaForTesting([&](std::optional<std::string> result) {
         ASSERT_TRUE(result.has_value());
         EXPECT_TRUE(result.value() == FakeTranslate(kFakeInputText));
         run_loop_reverse_translate.Quit();
@@ -123,7 +123,7 @@ TEST_F(TranslatorTestImpl, TranslateLoadDictionaryCorrupted) {
   base::RunLoop run_loop;
   translator_.Translate(
       kFakeLangPair, kFakeInputText,
-      base::BindLambdaForTesting([&](std::optional<std::string_view> result) {
+      base::BindLambdaForTesting([&](std::optional<std::string> result) {
         EXPECT_FALSE(result.has_value());
         run_loop.Quit();
       }));
@@ -143,7 +143,7 @@ TEST_F(TranslatorTestImpl, TranslateLoadDictionaryFailure) {
   base::RunLoop run_loop;
   translator_.Translate(
       kFakeLangPair, kFakeInputText,
-      base::BindLambdaForTesting([&](std::optional<std::string_view> result) {
+      base::BindLambdaForTesting([&](std::optional<std::string> result) {
         EXPECT_FALSE(result.has_value());
         run_loop.Quit();
       }));
@@ -160,7 +160,7 @@ TEST_F(TranslatorTestImpl, TranslateInitializationFailure) {
   base::RunLoop run_loop;
   translator_.Translate(
       kFakeLangPair, kFakeInputText,
-      base::BindLambdaForTesting([&](std::optional<std::string_view> result) {
+      base::BindLambdaForTesting([&](std::optional<std::string> result) {
         EXPECT_FALSE(result.has_value());
         run_loop.Quit();
       }));

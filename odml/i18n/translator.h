@@ -60,7 +60,7 @@ class Translator {
   virtual void Translate(
       const LangPair& lang_pair,
       const std::string& input_text,
-      base::OnceCallback<void(std::optional<std::string_view>)> callback) = 0;
+      base::OnceCallback<void(std::optional<std::string>)> callback) = 0;
 
   // Translate the |input_text| from |lang_pair|.source to |lang_pair|.target.
   // Returns std::nullopt on failure, otherwise, returns the translation.

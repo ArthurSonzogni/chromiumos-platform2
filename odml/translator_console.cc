@@ -26,8 +26,7 @@ constexpr const char kSource[] = "source";
 constexpr const char kTarget[] = "target";
 constexpr const char kInput[] = "input";
 
-void OnTranslate(base::RunLoop* run_loop,
-                 std::optional<std::string_view> result) {
+void OnTranslate(base::RunLoop* run_loop, std::optional<std::string> result) {
   if (!result) {
     LOG(ERROR) << "Translator failed to translate";
     exit(1);
