@@ -173,7 +173,11 @@ std::vector<std::string> StatefulMount::GenerateExt4Features(
 void StatefulMount::ClobberStateful(
     const base::FilePath& stateful_device,
     const std::vector<std::string>& clobber_args,
-    const std::string& clobber_message) {
+    const std::string& clobber_message,
+    MountHelper* mount_helper) {
+  std::vector<base::FilePath> mounts;
+  mount_helper->CleanupMountsStack(&mounts);
+
   startup_dep_->BootAlert("self_repair");
   startup_dep_->ClobberLogRepair(stateful_device, clobber_message);
   startup_dep_->AddClobberCrashReport(
@@ -262,7 +266,7 @@ void StatefulMount::MountStateful(
         if (!thinpool) {
           LOG(ERROR) << "Thinpool does not exist";
           ClobberStateful(backing_device, {"fast", "keepimg"},
-                          "Invalid thinpool");
+                          "Invalid thinpool", mount_helper);
           // Not reached, except during unit tests.
           return;
         }
@@ -271,8 +275,10 @@ void StatefulMount::MountStateful(
           LOG(WARNING) << "Failed to activate thinpool, attempting repair";
           if (!thinpool->Activate(/*check=*/true)) {
             LOG(ERROR) << "Failed to repair and activate thinpool";
+            std::vector<base::FilePath> mounts;
+            mount_helper->CleanupMountsStack(&mounts);
             ClobberStateful(backing_device, {"fast", "keepimg"},
-                            "Corrupt thinpool");
+                            "Corrupt thinpool", mount_helper);
             // Not reached, except during unit tests.
             return;
           }
@@ -348,9 +354,8 @@ void StatefulMount::MountStateful(
 
   if (!container) {
     LOG(ERROR) << "Failed to create stateful container";
-
     ClobberStateful(backing_device, {"fast", "keepimg", "preserve_lvs"},
-                    "Self-repair corrupted stateful partition");
+                    "Self-repair corrupted stateful partition", mount_helper);
     // Not reached, except during unit tests.
     return;
   }
@@ -387,9 +392,8 @@ void StatefulMount::MountStateful(
 
   if (!container->Setup(encryption_key)) {
     LOG(ERROR) << "Failed to setup stateful";
-
     ClobberStateful(backing_device, {"fast", "keepimg", "preserve_lvs"},
-                    "Self-repair corrupted stateful partition");
+                    "Self-repair corrupted stateful partition", mount_helper);
     // Not reached, except during unit tests.
     return;
   }
@@ -420,9 +424,16 @@ void StatefulMount::MountStateful(
     platform_->ReportFilesystemDetails(state_dev_,
                                        root_.Append(kDumpe2fsStatefulLog));
     ClobberStateful(state_dev_, {"keepimg", "preserve_lvs"},
-                    "Self-repair corrupted stateful partition");
+                    "Self-repair corrupted stateful partition", mount_helper);
     // Not reached, except during unit tests.
     return;
+  }
+
+  // For shutdown and clobber-state flows, let the device mapper target get
+  // cleaned up automatically.
+  if (container->IsLazyTeardownSupported() &&
+      !container->SetLazyTeardownWhenUnused()) {
+    LOG(ERROR) << "Failed to set lazy teardown";
   }
 
   // Restore inline files.

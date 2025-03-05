@@ -123,6 +123,9 @@ class ChromeosStartup {
   // Set stateful_mount_ for tests.
   void SetStatefulMount(std::unique_ptr<StatefulMount> stateful_mount);
 
+  // Set mount_helper_ for tests.
+  void SetMountHelper(std::unique_ptr<MountHelper> mount_helper);
+
  private:
   friend class DevCheckBlockTest;
   friend class StatefulWipeTest;

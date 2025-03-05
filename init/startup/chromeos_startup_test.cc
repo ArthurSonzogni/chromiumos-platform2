@@ -463,19 +463,25 @@ class StatefulWipeTest : public ::testing::Test {
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
+    auto mount_helper_factory = std::make_unique<startup::MountHelperFactory>(
+        platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+        base_dir_);
+    auto mount_helper = mount_helper_factory->Generate(
+        std::unique_ptr<libstorage::StorageContainerFactory>(), &flags_);
+
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
         base_dir_, stateful_dir_, base_dir_, platform_.get(),
-        startup_dep_.get(),
-        std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
-            base_dir_),
+        startup_dep_.get(), std::move(mount_helper_factory),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
+
+    startup_->SetMountHelper(std::move(mount_helper));
     ASSERT_TRUE(platform_->CreateDirectory(stateful_dir_));
   }
 
   crossystem::Crossystem* crossystem_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_dir_{"/stateful"};
   std::unique_ptr<libstorage::FakePlatform> platform_;

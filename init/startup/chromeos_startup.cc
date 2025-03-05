@@ -304,6 +304,8 @@ void ChromeosStartup::ForceCleanFileAttrs(const base::FilePath& path) {
 
   if (!status) {
     std::vector<std::string> args = {"keepimg", "preserve_lvs"};
+    std::vector<base::FilePath> mounts;
+    mount_helper_->CleanupMountsStack(&mounts);
     startup_dep_->Clobber(
         "self-repair", args,
         std::string("Bad file attrs under ").append(path.value()));
@@ -613,6 +615,8 @@ void ChromeosStartup::CheckForStatefulWipe() {
       startup_dep_->ClobberLog(clobber_log_msg);
     }
   } else {
+    std::vector<base::FilePath> mounts;
+    mount_helper_->CleanupMountsStack(&mounts);
     startup_dep_->Clobber(boot_alert_msg, clobber_args, clobber_log_msg);
   }
 }
@@ -958,6 +962,9 @@ int ChromeosStartup::Run() {
 
   std::optional<encryption::EncryptionKey> key;
   root_dev_ = utils::GetRootDevice(true);
+
+  base::FilePath chromeos_metadata =
+      root_.Append(kMntChromeosMetadataPartition);
   // Check if we are booted on physical media. rootdev will fail if we are in
   // an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
   // image also uses initramfs but it never reaches here). When using
@@ -965,8 +972,8 @@ int ChromeosStartup::Run() {
   // /dev/ram.
   if (root_dev_.empty() || root_dev_ == base::FilePath("/dev/ram")) {
     PLOG(INFO) << "rootdev does not have stateful partition.";
-    mount_helper_ = mount_helper_factory_->Generate(
-        std::move(storage_container_factory_), flags_.get());
+    SetMountHelper(mount_helper_factory_->Generate(
+        std::move(storage_container_factory_), flags_.get()));
   } else {
     std::optional<base::Value> image_vars = GetImageVars(root_, root_dev_);
     if (!image_vars) {
@@ -1007,8 +1014,6 @@ int ChromeosStartup::Run() {
       } else {
         // Mount cros_metadata
         // Mount stateful partition from state_dev.
-        base::FilePath chromeos_metadata =
-            root_.Append(kMntChromeosMetadataPartition);
         if (!platform_->Mount(metadata_dev, chromeos_metadata, kMetaDataFSType,
                               MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
                               "discard")) {
@@ -1036,8 +1041,16 @@ int ChromeosStartup::Run() {
 
     // Initialize mount_helper_ based on the updated flags.
     // storage_container_factory_ is now owned by mount_helper_
-    mount_helper_ = mount_helper_factory_->Generate(
-        std::move(storage_container_factory_), flags_.get());
+    SetMountHelper(mount_helper_factory_->Generate(
+        std::move(storage_container_factory_), flags_.get()));
+
+    // Remember the metadata filesystem mount for cleanup in case of clobber.
+    // Everything by 'stateful' is unmounted before going to clobber, including
+    // the 'metadata' partition. It is fine to unmount since we don't need
+    // 'metadata' once 'stateful' has been mounted.
+    if (flags_->dm_default_key_stateful) {
+      mount_helper_->RememberMount(chromeos_metadata);
+    }
 
     stateful_mount_->MountStateful(root_dev_, flags_.get(), mount_helper_.get(),
                                    *image_vars, key);
@@ -1274,6 +1287,12 @@ void ChromeosStartup::SetDevMode(bool dev_mode) {
 // Set state_dev_ for tests.
 void ChromeosStartup::SetStateDev(const base::FilePath& state_dev) {
   state_dev_ = state_dev;
+}
+
+// Set mount_helper_ for tests.
+void ChromeosStartup::SetMountHelper(
+    std::unique_ptr<MountHelper> mount_helper) {
+  mount_helper_ = std::move(mount_helper);
 }
 
 bool ChromeosStartup::DevIsDebugBuild() const {

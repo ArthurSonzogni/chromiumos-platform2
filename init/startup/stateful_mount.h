@@ -38,7 +38,8 @@ class StatefulMount {
 
   void ClobberStateful(const base::FilePath& stateful_device,
                        const std::vector<std::string>& clobber_args,
-                       const std::string& clobber_message);
+                       const std::string& clobber_message,
+                       MountHelper* mount_helper);
 
   bool AttemptStatefulMigration(const base::FilePath& stateful_device);
   void MountStateful(const base::FilePath& root_dev,
