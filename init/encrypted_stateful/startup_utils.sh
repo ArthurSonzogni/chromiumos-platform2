@@ -8,6 +8,11 @@
 umount_var_and_home_chronos() {
   # Check if the encrypted stateful partition is mounted.
   if ! mountpoint -q "/mnt/stateful_partition/encrypted"; then
+    # For default-key-stateful layouts, /var and /home/chronos might
+    # still be mounted.
+    if mountpoint -q "/var"; then
+      umount -n /var /home/chronos
+    fi
     return 0
   fi
 
