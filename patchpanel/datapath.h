@@ -616,7 +616,7 @@ class Datapath {
   // A map used for tracking the primary IPv4 dns address associated to a given
   // Shill Device known by its interface name. This is used for redirecting
   // DNS queries of system services when a VPN is connected.
-  std::map<std::string_view, std::string> physical_dns_addresses_;
+  std::map<std::string, std::string> physical_dns_addresses_;
 };
 
 std::ostream& operator<<(std::ostream& stream,

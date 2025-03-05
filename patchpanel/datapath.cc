@@ -1276,7 +1276,7 @@ void Datapath::RemoveInboundIPv4DNAT(AutoDNATTarget auto_dnat_target,
 
 bool Datapath::AddRedirectDnsRule(const ShillClient::Device& shill_device,
                                   std::string_view dns_ipv4_addr) {
-  std::string_view ifname = shill_device.ifname;
+  const std::string& ifname = shill_device.ifname;
   bool success = true;
   success &= RemoveRedirectDnsRule(shill_device);
   // Use Insert operation to ensure that the new DNS address is used first.
@@ -1289,7 +1289,7 @@ bool Datapath::AddRedirectDnsRule(const ShillClient::Device& shill_device,
 }
 
 bool Datapath::RemoveRedirectDnsRule(const ShillClient::Device& shill_device) {
-  std::string_view ifname = shill_device.ifname;
+  const std::string& ifname = shill_device.ifname;
   const auto it = physical_dns_addresses_.find(ifname);
   if (it == physical_dns_addresses_.end()) {
     return true;
