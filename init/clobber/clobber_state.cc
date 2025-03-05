@@ -114,7 +114,53 @@ void CollectClobberCrashReports() {
   return;
 }
 
+bool BindMountVarAndHome() {
+  std::vector<std::pair<base::FilePath, base::FilePath>> bind_mounts = {
+      {base::FilePath("/mnt/stateful_partition/var"), base::FilePath("/var")},
+      {base::FilePath("/mnt/stateful_partition/home"),
+       base::FilePath("/home")}};
+
+  for (auto& [source, target] : bind_mounts) {
+    if (!base::PathExists(source)) {
+      LOG(WARNING) << "Source path " << source.value()
+                   << " does not exist, skipping bind mount.";
+      continue;
+    }
+    if (mount(source.value().c_str(), target.value().c_str(), nullptr, MS_BIND,
+              nullptr) != 0) {
+      PLOG(ERROR) << "Failed to bind mount " << source.value() << " to "
+                  << target.value();
+      return false;
+    }
+    LOG(INFO) << "Bind mounted " << source.value() << " to " << target.value();
+  }
+
+  return true;
+}
+
+bool UnmountVarAndHome() {
+  std::vector<base::FilePath> targets = {base::FilePath("/var"),
+                                         base::FilePath("/home")};
+  for (const auto& target : targets) {
+    if (umount(target.value().c_str()) != 0) {
+      PLOG(ERROR) << "Failed to unmount " << target.value();
+      continue;
+    }
+    LOG(INFO) << "Unmounted " << target.value();
+  }
+  return true;
+}
+
 bool MountEncryptedStateful() {
+  libstorage::Platform platform;
+  // For default-key-stateful layout, encrypted stateful is simply bind mounts
+  // from the /mnt/stateful_partition.
+  // Note: this assumes that DEFAULT_KEY_STATEFUL is enabled only on devices
+  // with LVM_STATEFUL_PARTITION enabled.
+  if (USE_DEFAULT_KEY_STATEFUL &&
+      !platform.IsStatefulLogicalVolumeSupported()) {
+    return BindMountVarAndHome();
+  }
   brillo::ProcessImpl mount_encstateful;
   mount_encstateful.AddArg(kMountEncryptedPath);
   if (mount_encstateful.Run() != 0) {
@@ -125,6 +171,16 @@ bool MountEncryptedStateful() {
 }
 
 void UnmountEncryptedStateful() {
+  libstorage::Platform platform;
+  // For default-key-stateful layout, encrypted stateful is simply bind mounts
+  // from the /mnt/stateful_partition.
+  // Note: this assumes that DEFAULT_KEY_STATEFUL is enabled only on devices
+  // with LVM_STATEFUL_PARTITION enabled.
+  if (USE_DEFAULT_KEY_STATEFUL &&
+      !platform.IsStatefulLogicalVolumeSupported()) {
+    UnmountVarAndHome();
+    return;
+  }
   for (int attempts = 0; attempts < 10; ++attempts) {
     brillo::ProcessImpl umount_encstateful;
     umount_encstateful.AddArg(kMountEncryptedPath);
