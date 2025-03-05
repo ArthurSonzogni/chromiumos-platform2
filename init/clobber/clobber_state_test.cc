@@ -35,7 +35,8 @@ using ::testing::StrictMock;
 
 TEST(ParseArgv, EmptyArgs) {
   std::vector<const char*> argv{"clobber-state"};
-  ClobberState::Arguments args = ClobberState::ParseArgv(argv.size(), &argv[0]);
+  ClobberState::Arguments args =
+      ClobberState::ParseArgv(argv.size(), &argv[0], false);
   EXPECT_FALSE(args.factory_wipe);
   EXPECT_FALSE(args.fast_wipe);
   EXPECT_FALSE(args.keepimg);
@@ -47,7 +48,8 @@ TEST(ParseArgv, EmptyArgs) {
 TEST(ParseArgv, AllArgsIndividual) {
   std::vector<const char*> argv{"clobber-state", "fast",     "factory",
                                 "keepimg",       "rollback", "safe"};
-  ClobberState::Arguments args = ClobberState::ParseArgv(argv.size(), &argv[0]);
+  ClobberState::Arguments args =
+      ClobberState::ParseArgv(argv.size(), &argv[0], false);
   EXPECT_TRUE(args.factory_wipe);
   EXPECT_TRUE(args.fast_wipe);
   EXPECT_TRUE(args.keepimg);
@@ -59,7 +61,8 @@ TEST(ParseArgv, AllArgsIndividual) {
 TEST(ParseArgv, AllArgsSquished) {
   std::vector<const char*> argv{"clobber-state",
                                 "fast factory keepimg rollback safe"};
-  ClobberState::Arguments args = ClobberState::ParseArgv(argv.size(), &argv[0]);
+  ClobberState::Arguments args =
+      ClobberState::ParseArgv(argv.size(), &argv[0], false);
   EXPECT_TRUE(args.factory_wipe);
   EXPECT_TRUE(args.fast_wipe);
   EXPECT_TRUE(args.keepimg);
@@ -70,7 +73,8 @@ TEST(ParseArgv, AllArgsSquished) {
 
 TEST(ParseArgv, SomeArgsIndividual) {
   std::vector<const char*> argv{"clobber-state", "rollback", "fast", "keepimg"};
-  ClobberState::Arguments args = ClobberState::ParseArgv(argv.size(), &argv[0]);
+  ClobberState::Arguments args =
+      ClobberState::ParseArgv(argv.size(), &argv[0], false);
   EXPECT_FALSE(args.factory_wipe);
   EXPECT_TRUE(args.fast_wipe);
   EXPECT_TRUE(args.keepimg);
@@ -81,7 +85,8 @@ TEST(ParseArgv, SomeArgsIndividual) {
 
 TEST(ParseArgv, SomeArgsSquished) {
   std::vector<const char*> argv{"clobber-state", "rollback safe fast"};
-  ClobberState::Arguments args = ClobberState::ParseArgv(argv.size(), &argv[0]);
+  ClobberState::Arguments args =
+      ClobberState::ParseArgv(argv.size(), &argv[0], false);
   EXPECT_FALSE(args.factory_wipe);
   EXPECT_TRUE(args.fast_wipe);
   EXPECT_FALSE(args.keepimg);
@@ -94,7 +99,31 @@ TEST(ParseArgv, PreserveLogicalVolumesWipe) {
   {
     std::vector<const char*> argv{"clobber-state", "preserve_lvs"};
     ClobberState::Arguments args =
-        ClobberState::ParseArgv(argv.size(), &argv[0]);
+        ClobberState::ParseArgv(argv.size(), &argv[0], false);
+    EXPECT_FALSE(args.safe_wipe);
+    EXPECT_EQ(args.preserve_lvs, USE_LVM_STATEFUL_PARTITION);
+  }
+  {
+    std::vector<const char*> argv{"clobber-state", "safe preserve_lvs"};
+    ClobberState::Arguments args =
+        ClobberState::ParseArgv(argv.size(), &argv[0], false);
+    EXPECT_TRUE(args.safe_wipe);
+    EXPECT_EQ(args.preserve_lvs, USE_LVM_STATEFUL_PARTITION);
+  }
+  {
+    std::vector<const char*> argv{"clobber-state", "safe", "preserve_lvs"};
+    ClobberState::Arguments args =
+        ClobberState::ParseArgv(argv.size(), &argv[0], false);
+    EXPECT_TRUE(args.safe_wipe);
+    EXPECT_EQ(args.preserve_lvs, USE_LVM_STATEFUL_PARTITION);
+  }
+}
+
+TEST(ParseArgv, MetaDataPartitionNeeded) {
+  {
+    std::vector<const char*> argv{"clobber-state", "preserve_lvs"};
+    ClobberState::Arguments args =
+        ClobberState::ParseArgv(argv.size(), &argv[0], true);
     EXPECT_FALSE(args.safe_wipe);
     EXPECT_EQ(args.preserve_lvs,
               USE_LVM_STATEFUL_PARTITION && !USE_DEFAULT_KEY_STATEFUL);
@@ -102,7 +131,7 @@ TEST(ParseArgv, PreserveLogicalVolumesWipe) {
   {
     std::vector<const char*> argv{"clobber-state", "safe preserve_lvs"};
     ClobberState::Arguments args =
-        ClobberState::ParseArgv(argv.size(), &argv[0]);
+        ClobberState::ParseArgv(argv.size(), &argv[0], true);
     EXPECT_TRUE(args.safe_wipe);
     EXPECT_EQ(args.preserve_lvs,
               USE_LVM_STATEFUL_PARTITION && !USE_DEFAULT_KEY_STATEFUL);
@@ -110,7 +139,7 @@ TEST(ParseArgv, PreserveLogicalVolumesWipe) {
   {
     std::vector<const char*> argv{"clobber-state", "safe", "preserve_lvs"};
     ClobberState::Arguments args =
-        ClobberState::ParseArgv(argv.size(), &argv[0]);
+        ClobberState::ParseArgv(argv.size(), &argv[0], true);
     EXPECT_TRUE(args.safe_wipe);
     EXPECT_EQ(args.preserve_lvs,
               USE_LVM_STATEFUL_PARTITION && !USE_DEFAULT_KEY_STATEFUL);

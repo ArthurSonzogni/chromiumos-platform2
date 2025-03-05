@@ -75,7 +75,9 @@ class ClobberState {
   };
 
   // Extracts ClobberState's arguments from argv.
-  static Arguments ParseArgv(int argc, char const* const argv[]);
+  static Arguments ParseArgv(int argc,
+                             char const* const argv[],
+                             bool metadata_partition_needed);
 
   // Attempts to increment the contents of `path` by 1. If the contents cannot
   // be read, or if the contents are not an integer, writes '1' to the file.

@@ -239,8 +239,8 @@ void MoveRollbackFileToPstore() {
 }  // namespace
 
 // static
-ClobberState::Arguments ClobberState::ParseArgv(int argc,
-                                                char const* const argv[]) {
+ClobberState::Arguments ClobberState::ParseArgv(
+    int argc, char const* const argv[], bool metadata_partition_needed) {
   Arguments args;
   if (argc <= 1) {
     return args;
@@ -288,9 +288,7 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
   }
 
   // Use default key wipe if enabled for the board.
-  // TODO(sarthakkukreti@): Remove once per-model support for default key
-  // stateful has been added.
-  if (USE_DEFAULT_KEY_STATEFUL) {
+  if (USE_DEFAULT_KEY_STATEFUL && metadata_partition_needed) {
     args.default_key_migration_wipe = true;
     args.disable_lvm_install = true;
   }

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "init/clobber/clobber_state.h"
-
 #include <unistd.h>
 
 #include <memory>
@@ -12,7 +10,10 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <cros_config/cros_config.h>
 #include <libcrossystem/crossystem.h>
+
+#include "init/clobber/clobber_state.h"
 
 namespace {
 
@@ -36,6 +37,16 @@ base::File OpenTerminal() {
   return terminal;
 }
 
+bool MetaDataPartitionNeeded(brillo::CrosConfigInterface* config) {
+  std::string dm_default_key_enabled;
+  if (!config->GetString("/disk-layout", "default-key-stateful",
+                         &dm_default_key_enabled) ||
+      dm_default_key_enabled != "true") {
+    // No variable present.
+    return false;
+  }
+  return true;
+}
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -53,7 +64,10 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  ClobberState::Arguments args = ClobberState::ParseArgv(argc, argv);
+  std::unique_ptr<brillo::CrosConfigInterface> config =
+      std::make_unique<brillo::CrosConfig>();
+  ClobberState::Arguments args = ClobberState::ParseArgv(
+      argc, argv, MetaDataPartitionNeeded(config.get()));
 
   std::unique_ptr<ClobberUi> ui = std::make_unique<ClobberUi>(OpenTerminal());
   std::unique_ptr<ClobberWipe> wipe = std::make_unique<ClobberWipe>(ui.get());
