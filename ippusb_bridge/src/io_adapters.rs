@@ -272,7 +272,7 @@ mod tests {
         r.read_to_string(&mut s).expect("failed to read to string");
         assert_eq!(s, "        ");
         testing_logger::validate(|logs| {
-            assert!(logs.len() > 0);
+            assert!(!logs.is_empty());
             assert!(logs[0].body.contains("tester"));
         });
     }

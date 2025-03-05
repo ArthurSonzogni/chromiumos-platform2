@@ -818,6 +818,7 @@ Content-Type: text/plain\r
         assert_eq!(headers.len(), 0);
 
         let (mut sender, body) = Body::channel();
+        #[allow(deprecated)]
         let bytes_task = tokio::spawn(async move { hyper::body::to_bytes(body).await });
 
         let len = tokio::task::spawn_blocking(move || copy_response_body(reader, &mut sender))
@@ -852,6 +853,7 @@ Content-Type: text/plain\r
         );
 
         let (mut sender, body) = Body::channel();
+        #[allow(deprecated)]
         let bytes_task = tokio::spawn(async move { hyper::body::to_bytes(body).await });
 
         let len = tokio::task::spawn_blocking(move || copy_response_body(reader, &mut sender))
@@ -895,6 +897,7 @@ body\r
         );
 
         let (mut sender, body) = Body::channel();
+        #[allow(deprecated)]
         let bytes_task = tokio::spawn(async move { hyper::body::to_bytes(body).await });
 
         let len = tokio::task::spawn_blocking(move || copy_response_body(reader, &mut sender))
