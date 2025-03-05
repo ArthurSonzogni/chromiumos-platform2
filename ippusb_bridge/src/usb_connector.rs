@@ -14,20 +14,15 @@ use std::time::{Duration, Instant};
 use std::vec::Vec;
 
 use log::{debug, error, info};
-use rusb::{Context, Direction, TransferType, UsbContext};
+use rusb::{Context, UsbContext};
 use std::sync::{Condvar, Mutex};
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::ippusb_device::{is_ippusb_interface, IppusbDescriptor, IppusbDeviceInfo};
 
 const USB_TRANSFER_TIMEOUT: Duration = Duration::from_secs(60);
 const USB_CLEANUP_TIMEOUT: Duration = Duration::from_secs(2);
-
-fn is_ippusb_interface(descriptor: &rusb::InterfaceDescriptor) -> bool {
-    descriptor.class_code() == 0x07
-        && descriptor.sub_class_code() == 0x01
-        && descriptor.protocol_code() == 0x04
-}
 
 fn interface_contains_ippusb(interface: &rusb::Interface) -> bool {
     for descriptor in interface.descriptors() {
@@ -38,7 +33,7 @@ fn interface_contains_ippusb(interface: &rusb::Interface) -> bool {
     false
 }
 
-fn set_device_config(handle: &rusb::DeviceHandle<Context>, new_config: u8) -> Result<()> {
+fn set_device_config<T: UsbContext>(handle: &rusb::DeviceHandle<T>, new_config: u8) -> Result<()> {
     let cur_config = handle
         .device()
         .active_config_descriptor()
@@ -88,106 +83,6 @@ fn set_device_config(handle: &rusb::DeviceHandle<Context>, new_config: u8) -> Re
     }
 
     Ok(())
-}
-
-/// The information for an interface descriptor that supports IPPUSB.
-/// Bulk transfers can be read/written to the in/out endpoints, respectively.
-#[derive(Copy, Clone)]
-struct IppusbDescriptor {
-    interface_number: u8,
-    alternate_setting: u8,
-    in_endpoint: u8,
-    out_endpoint: u8,
-}
-
-/// The configuration and descriptors that support IPPUSB for a USB device.
-///  A valid IppusbDevice will have at least two interfaces.
-struct IppusbDevice {
-    config: u8,
-    interfaces: Vec<IppusbDescriptor>,
-}
-
-/// Given a libusb Device, searches through the device's configurations to see if there is a
-/// particular configuration that supports IPP over USB.  If such a configuration is found, returns
-/// an IppusbDevice struct, which specifies the configuration as well as the IPPUSB interfaces
-/// within that configuration.
-///
-/// If the given device does not support IPP over USB, returns None.
-///
-/// A device is considered to support IPP over USB if it has a configuration with at least two
-/// IPPUSB interfaces.
-///
-/// An interface is considered an IPPUSB interface if it has the proper class, sub-class, and
-/// protocol, and if it has a bulk-in and bulk-out endpoint.
-fn read_ippusb_device_info<T: UsbContext>(
-    device: &rusb::Device<T>,
-) -> Result<Option<IppusbDevice>> {
-    let desc = device
-        .device_descriptor()
-        .map_err(Error::ReadDeviceDescriptor)?;
-    for i in 0..desc.num_configurations() {
-        let config = device
-            .config_descriptor(i)
-            .map_err(Error::ReadConfigDescriptor)?;
-
-        let mut interfaces = Vec::new();
-        for interface in config.interfaces() {
-            'alternates: for alternate in interface.descriptors() {
-                if !is_ippusb_interface(&alternate) {
-                    continue;
-                }
-                info!(
-                    "Device {}:{} - Found IPPUSB interface. config {}, interface {}, alternate {}",
-                    device.bus_number(),
-                    device.address(),
-                    config.number(),
-                    interface.number(),
-                    alternate.setting_number()
-                );
-
-                // Find the bulk in and out endpoints for this interface.
-                let mut in_endpoint: Option<u8> = None;
-                let mut out_endpoint: Option<u8> = None;
-                for endpoint in alternate.endpoint_descriptors() {
-                    match (endpoint.direction(), endpoint.transfer_type()) {
-                        (Direction::In, TransferType::Bulk) => {
-                            in_endpoint.get_or_insert(endpoint.address());
-                        }
-                        (Direction::Out, TransferType::Bulk) => {
-                            out_endpoint.get_or_insert(endpoint.address());
-                        }
-                        _ => {}
-                    };
-
-                    if in_endpoint.is_some() && out_endpoint.is_some() {
-                        break;
-                    }
-                }
-
-                if let (Some(in_endpoint), Some(out_endpoint)) = (in_endpoint, out_endpoint) {
-                    interfaces.push(IppusbDescriptor {
-                        interface_number: interface.number(),
-                        alternate_setting: alternate.setting_number(),
-                        in_endpoint,
-                        out_endpoint,
-                    });
-                    // We must consider at most one alternate setting when detecting IPPUSB
-                    // interfaces.
-                    break 'alternates;
-                }
-            }
-        }
-
-        // A device must have at least two IPPUSB interfaces in order to be considered an IPPUSB device.
-        if interfaces.len() >= 2 {
-            return Ok(Some(IppusbDevice {
-                config: config.number(),
-                interfaces,
-            }));
-        }
-    }
-
-    Ok(None)
 }
 
 struct ClaimedInterface {
@@ -439,7 +334,7 @@ impl InterfaceManager {
     }
 }
 
-/// A UsbConnector represents an active connection to an IPPUSB device.
+/// A UsbConnector represents an active connection to an IPP-USB device.
 /// Users can temporarily request a UsbConnection from the UsbConnector using
 /// get_connection(), and use that UsbConnection to perform I/O to the device.
 #[derive(Clone)]
@@ -450,74 +345,17 @@ pub struct UsbConnector {
 }
 
 impl UsbConnector {
-    pub fn new(verbose_log: bool, bus_device: Option<(u8, u8)>) -> Result<UsbConnector> {
-        let context = Context::new().map_err(Error::CreateContext)?;
-        let device_list = rusb::DeviceList::new_with_context(context).map_err(Error::DeviceList)?;
-
-        let (device, info) = match bus_device {
-            Some((bus, address)) => {
-                let device = device_list
-                    .iter()
-                    .find(|d| d.bus_number() == bus && d.address() == address)
-                    .ok_or(Error::NoDevice)?;
-
-                let info = read_ippusb_device_info(&device)?.ok_or(Error::NotIppUsb)?;
-                (device, info)
-            }
-            None => {
-                let mut selected_device: Option<(rusb::Device<Context>, IppusbDevice)> = None;
-                for device in device_list.iter() {
-                    if let Some(info) = read_ippusb_device_info(&device)? {
-                        selected_device = Some((device, info));
-                        break;
-                    }
-                }
-                selected_device.ok_or(Error::NoDevice)?
-            }
-        };
-
-        info!(
-            "Selected device {}:{}",
-            device.bus_number(),
-            device.address()
-        );
-
-        let handle = device.open().map_err(Error::OpenDevice)?;
-        Self::from_rusb(verbose_log, handle, info)
-    }
-
-    #[cfg(target_os = "android")]
-    pub fn from_raw_fd(verbose_log: bool, fd: RawFd) -> Result<UsbConnector> {
-        let context = rusb::Context::new().map_err(Error::OpenDevice)?;
-        // SAFETY: The fd comes from Android, which has already opened the
-        // device.  We have no way to do additional checking here.
-        let handle = unsafe { context.open_device_with_fd(fd).map_err(Error::OpenDevice)? };
-
-        let device = handle.device();
-        info!(
-            "Opening device {}:{}",
-            device.bus_number(),
-            device.address()
-        );
-
-        let info = read_ippusb_device_info(&device)?.ok_or(Error::NotIppUsb)?;
-
-        Self::from_rusb(verbose_log, handle, info)
-    }
-
-    fn from_rusb(
-        verbose_log: bool,
-        handle: rusb::DeviceHandle<Context>,
-        info: IppusbDevice,
-    ) -> Result<UsbConnector> {
+    pub fn new(verbose_log: bool, handle: rusb::DeviceHandle<Context>) -> Result<UsbConnector> {
         let handle = Arc::new(handle);
         handle
             .set_auto_detach_kernel_driver(true)
             .map_err(|e| Error::DetachDrivers(u8::MAX, e))?; // Use MAX to mean "no interface".
 
+        let info = IppusbDeviceInfo::new(&handle.device())?;
+
         set_device_config(handle.as_ref(), info.config)?;
 
-        // Open the IPPUSB interfaces.
+        // Open the IPP-USB interfaces.
         let mut connections = Vec::new();
         for descriptor in info.interfaces {
             handle
@@ -556,8 +394,8 @@ impl UsbConnector {
     }
 }
 
-/// A struct representing a claimed IPPUSB interface. The owner of this struct
-/// can communicate with the IPPUSB device via the Read and Write.
+/// A struct representing a claimed IPP-USB interface. The owner of this struct
+/// can communicate with the IPP-USB device via the Read and Write.
 pub struct UsbConnection {
     verbose_log: bool,
     manager: InterfaceManager,

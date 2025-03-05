@@ -7,6 +7,7 @@ mod error;
 mod hotplug;
 mod http;
 mod io_adapters;
+mod ippusb_device;
 mod listeners;
 mod usb_connector;
 mod util;
@@ -31,14 +32,16 @@ use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::signal::register_signal_handler;
 use log::{debug, error, info};
 use nix::sys::signal::Signal;
+use rusb::UsbContext;
 use tokio::net::{TcpStream, UnixListener, UnixStream};
 use tokio::runtime::Builder;
 use tokio::runtime::Handle as AsyncHandle;
 
 use crate::arguments::Args;
-use crate::error::Error::ReadConfigDescriptor;
+use crate::error::Error as IppUsbError;
 use crate::hotplug::UnplugDetector;
 use crate::http::handle_request;
+use crate::ippusb_device::IppusbDeviceInfo;
 use crate::listeners::ScopedUnixListener;
 use crate::usb_connector::{UsbConnection, UsbConnector};
 
@@ -55,6 +58,10 @@ pub enum Error {
     SysUtil(nix::Error),
     TokioRuntime(io::Error),
     Forwarder(io::Error),
+    CreateContext(rusb::Error),
+    DeviceList(rusb::Error),
+    NoDevice,
+    OpenDevice(rusb::Error),
 }
 
 impl std::error::Error for Error {}
@@ -74,6 +81,10 @@ impl fmt::Display for Error {
             SysUtil(err) => write!(f, "Sysutil error: {}", err),
             TokioRuntime(err) => write!(f, "Error setting up tokio runtime: {}", err),
             Forwarder(err) => write!(f, "Error during internal forwarding: {}", err),
+            CreateContext(err) => write!(f, "Failed to create UsbContext: {}", err),
+            DeviceList(err) => write!(f, "Failed to read device list: {}", err),
+            NoDevice => write!(f, "No valid IPP USB device found."),
+            OpenDevice(err) => write!(f, "Failed to open device: {}", err),
         }
     }
 }
@@ -271,6 +282,31 @@ async fn forward_connection(
     Ok(())
 }
 
+fn open_device<T: UsbContext>(
+    context: T,
+    bus_device: Option<(u8, u8)>,
+) -> Result<rusb::DeviceHandle<T>> {
+    let device_list = rusb::DeviceList::new_with_context(context).map_err(Error::DeviceList)?;
+
+    let device = match bus_device {
+        Some((bus, address)) => device_list
+            .iter()
+            .find(|d| d.bus_number() == bus && d.address() == address),
+        None => device_list
+            .iter()
+            .find(|d| IppusbDeviceInfo::new(d).is_ok()),
+    }
+    .ok_or(Error::NoDevice)?;
+
+    info!(
+        "Selected device {}:{}",
+        device.bus_number(),
+        device.address()
+    );
+
+    device.open().map_err(Error::OpenDevice)
+}
+
 fn run() -> Result<()> {
     let argv: Vec<String> = std::env::args().collect();
     let args = match Args::parse(&argv).map_err(Error::ParseArgs)? {
@@ -318,14 +354,24 @@ fn run() -> Result<()> {
     // an unexpected error occurs. ReadConfigDescriptor error means that access
     // to USB is blocked by usbguard (e.g.: the screen is locked).
     let usb: UsbConnector;
+    let context = rusb::Context::new().map_err(Error::CreateContext)?;
     loop {
-        match UsbConnector::new(args.verbose_log, args.bus_device) {
-            Ok(obj) => {
-                usb = obj;
-                break;
+        let device = open_device(context.clone(), args.bus_device);
+        match device {
+            Ok(handle) => {
+                match UsbConnector::new(args.verbose_log, handle) {
+                    Ok(obj) => {
+                        usb = obj;
+                        break;
+                    }
+                    Err(IppUsbError::ReadConfigDescriptor(..)) => {}
+                    Err(err) => return Err(Error::CreateUsbConnector(err)),
+                };
             }
-            Err(ReadConfigDescriptor(..)) => {}
-            Err(err) => return Err(Error::CreateUsbConnector(err)),
+            Err(err) => {
+                error!("Failed to open device: {}", err);
+                return Err(err);
+            }
         };
         info!("Failed to create USB connector. Waiting for the signal from DBus.");
         dbus_conn.process(Duration::MAX).map_err(Error::DBus)?;
