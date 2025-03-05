@@ -777,6 +777,13 @@ void StatefulMount::DevMountDevImage(MountHelper* mount_helper) {
     return;
   }
 
+  // Set up lazy teardown for the dev-image loopback device.
+  // It will be automatically cleaned up during shutdown.
+  if (container->IsLazyTeardownSupported() &&
+      !container->SetLazyTeardownWhenUnused()) {
+    LOG(ERROR) << "Failed to set lazy teardown for dev-image filesystem";
+  }
+
   SetUpDirectory(developer_tools_mount.Append(kStatefulDevImage));
   SetUpDirectory(developer_tools_mount.Append(kVarOverlay));
 

@@ -44,6 +44,10 @@ class BRILLO_EXPORT UnencryptedContainer : public StorageContainer {
 
   base::FilePath GetBackingLocation() const override;
 
+  bool IsLazyTeardownSupported() const override;
+
+  bool SetLazyTeardownWhenUnused() override;
+
  protected:
   const std::unique_ptr<BackingDevice> backing_device_;
 };

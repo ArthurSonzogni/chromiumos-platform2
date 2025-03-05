@@ -89,4 +89,12 @@ base::FilePath UnencryptedContainer::GetBackingLocation() const {
   return base::FilePath();
 }
 
+bool UnencryptedContainer::IsLazyTeardownSupported() const {
+  return backing_device_->GetType() == BackingDeviceType::kLoopbackDevice;
+}
+
+bool UnencryptedContainer::SetLazyTeardownWhenUnused() {
+  return IsLazyTeardownSupported() && backing_device_->Teardown();
+}
+
 }  // namespace libstorage
