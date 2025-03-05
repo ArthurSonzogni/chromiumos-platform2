@@ -153,8 +153,8 @@ class ClobberState {
  private:
   bool ClearBiometricSensorEntropy();
 
-  // Makes a new filesystem on `stateful_filesystem_device`.
-  int CreateStatefulFileSystem(const std::string& stateful_filesystem_device);
+  // Makes a new filesystem on `filesystem_device`.
+  int CreateFileSystem(const std::string& filesystem_device);
 
   void Reboot();
 

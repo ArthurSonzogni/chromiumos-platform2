@@ -519,20 +519,19 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
   return preserved_files;
 }
 
-int ClobberState::CreateStatefulFileSystem(
-    const std::string& stateful_filesystem_device) {
+int ClobberState::CreateFileSystem(const std::string& filesystem_device) {
   brillo::ProcessImpl mkfs;
   mkfs.AddArg("/sbin/mkfs.ext4");
   // Check if encryption is supported. If yes, enable the flag during mkfs.
   if (base::PathExists(base::FilePath(kExt4DircryptoSupportedPath))) {
     mkfs.AddStringOption("-O", "encrypt");
   }
-  mkfs.AddArg(stateful_filesystem_device);
+  mkfs.AddArg(filesystem_device);
   // TODO(wad) tune2fs.
   mkfs.RedirectOutputToMemory(true);
-  LOG(INFO) << "Creating stateful file system";
+  LOG(INFO) << "Creating file system";
   int ret = mkfs.Run();
-  init::AppendToLog("mkfs.ext4", mkfs.GetOutputString(STDOUT_FILENO));
+  init::AppendToLog("mkfs.ext4 ", mkfs.GetOutputString(STDOUT_FILENO));
   return ret;
 }
 
@@ -852,7 +851,7 @@ int ClobberState::Run() {
   // already be wiped at this point so the next boot will be able to reset both
   // filesystems.
   if (USE_DEFAULT_KEY_STATEFUL && args_.default_key_migration_wipe) {
-    ret = CreateStatefulFileSystem(wipe_info_.cros_metadata_device.value());
+    ret = CreateFileSystem(wipe_info_.cros_metadata_device.value());
     if (ret) {
       LOG(ERROR) << "Unable to create stateful file system. Error code: "
                  << ret;
@@ -861,7 +860,7 @@ int ClobberState::Run() {
     }
   }
 
-  ret = CreateStatefulFileSystem(wipe_info_.stateful_filesystem_device.value());
+  ret = CreateFileSystem(wipe_info_.stateful_filesystem_device.value());
   if (ret) {
     LOG(ERROR) << "Unable to create stateful file system. Error code: " << ret;
   }
