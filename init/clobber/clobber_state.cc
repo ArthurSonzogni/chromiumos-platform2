@@ -846,17 +846,24 @@ int ClobberState::Run() {
     wipe_info_.stateful_filesystem_device = base::FilePath("");
   }
 
-  ret = CreateStatefulFileSystem(wipe_info_.stateful_filesystem_device.value());
-  if (ret) {
-    LOG(ERROR) << "Unable to create stateful file system. Error code: " << ret;
-  }
-
+  // If the chromeos metadata partition cannot be formatted (eg. due to open
+  // files), reboot and let the next boot repair the device. This prevents the
+  // device from falling back to the legacy layout. The stateful partition will
+  // already be wiped at this point so the next boot will be able to reset both
+  // filesystems.
   if (USE_DEFAULT_KEY_STATEFUL && args_.default_key_migration_wipe) {
     ret = CreateStatefulFileSystem(wipe_info_.cros_metadata_device.value());
     if (ret) {
       LOG(ERROR) << "Unable to create stateful file system. Error code: "
                  << ret;
+      Reboot();
+      return ret;
     }
+  }
+
+  ret = CreateStatefulFileSystem(wipe_info_.stateful_filesystem_device.value());
+  if (ret) {
+    LOG(ERROR) << "Unable to create stateful file system. Error code: " << ret;
   }
 
   // Mount the fresh image for last minute additions.
