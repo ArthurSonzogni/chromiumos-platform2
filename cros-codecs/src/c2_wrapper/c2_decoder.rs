@@ -90,7 +90,6 @@ where
     framepool_hint_cb: Arc<Mutex<dyn FnMut(StreamInfo) + Send + 'static>>,
     alloc_cb: Arc<Mutex<dyn FnMut() -> Option<V> + Send + 'static>>,
     work_queue: Arc<Mutex<VecDeque<C2DecodeJob<V>>>>,
-    frame_num: u64,
     state: Arc<Mutex<C2State>>,
     _phantom: PhantomData<B>,
 }
@@ -245,7 +244,6 @@ where
             framepool_hint_cb: framepool_hint_cb,
             alloc_cb: alloc_cb,
             work_queue: work_queue,
-            frame_num: 0,
             state: state,
             _phantom: Default::default(),
         })
@@ -288,12 +286,12 @@ where
                 let decode_result = if !job.input.is_empty() {
                     match &mut self.decoder {
                         C2Decoder::ImportingDecoder(decoder) => decoder.decode(
-                            self.frame_num,
+                            job.timestamp,
                             bitstream,
                             &mut *self.alloc_cb.lock().unwrap(),
                         ),
                         C2Decoder::ConvertingDecoder(decoder) => {
-                            decoder.decode(self.frame_num, bitstream, &mut || {
+                            decoder.decode(job.timestamp, bitstream, &mut || {
                                 self.auxiliary_frame_pool.as_mut().unwrap().alloc()
                             })
                         }
@@ -306,7 +304,6 @@ where
                 };
                 match decode_result {
                     Ok(num_bytes) => {
-                        self.frame_num += 1;
                         if num_bytes != job.input.len() {
                             job.input = (&job.input[num_bytes..]).to_vec();
                             (*self.work_queue.lock().unwrap()).push_front(job);
