@@ -27,7 +27,6 @@ class StandardMountHelper : public MountHelper {
                       StartupDep* startup_dep,
                       const Flags* flags,
                       const base::FilePath& root,
-                      const base::FilePath& stateful,
                       std::unique_ptr<MountVarAndHomeChronosInterface> impl,
                       std::unique_ptr<libstorage::StorageContainerFactory>
                           storage_container_factory);

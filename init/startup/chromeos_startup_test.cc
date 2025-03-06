@@ -915,7 +915,7 @@ class MountStackTest : public ::testing::Test {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir_,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::unique_ptr<libstorage::StorageContainerFactory>());
   }
@@ -955,7 +955,7 @@ class MountVarAndHomeChronosEncryptedTest : public ::testing::Test {
     mock_mount_impl_ = std::make_unique<startup::MockMountVarAndHomeChronos>();
     mock_mount_impl_ptr_ = mock_mount_impl_.get();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir_,
         std::move(mock_mount_impl_),
         std::unique_ptr<libstorage::StorageContainerFactory>());
     encryption_key_ = std::make_unique<encryption::EncryptionKey>(
@@ -1009,7 +1009,7 @@ TEST_F(DoMountTest, StandardMountHelper) {
   std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
       std::make_unique<startup::StandardMountHelper>(
           platform_.get(), startup_dep_.get(), &flags_, base_dir_,
-          stateful_dir_, std::move(mock_mount_impl_),
+          std::move(mock_mount_impl_),
           std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(true));
   EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(*encryption_key_));
@@ -1517,7 +1517,7 @@ class DevMountPackagesTest : public ::testing::Test {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), &flags_, base_dir_, stateful_dir_,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir_,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::unique_ptr<libstorage::StorageContainerFactory>()),
     stateful_mount_ = std::make_unique<startup::StatefulMount>(

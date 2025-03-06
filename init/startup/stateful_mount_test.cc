@@ -369,7 +369,7 @@ class RunMountStatefulLVM : public ::testing::Test {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), &flags_, base_dir, base_dir,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::make_unique<libstorage::StorageContainerFactory>(platform_.get(),
                                                               nullptr));
@@ -440,7 +440,7 @@ class RunMountStateful : public ::testing::Test {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), &flags_, base_dir, base_dir,
+        platform_.get(), startup_dep_.get(), &flags_, base_dir,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::make_unique<libstorage::StorageContainerFactory>(platform_.get(),
                                                               nullptr));

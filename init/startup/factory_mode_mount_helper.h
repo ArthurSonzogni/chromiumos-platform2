@@ -35,6 +35,9 @@ class FactoryModeMountHelper : public MountHelper {
 
   bool DoMountVarAndHomeChronos(
       std::optional<encryption::EncryptionKey> key) override;
+
+ private:
+  const base::FilePath stateful_;
 };
 
 }  // namespace startup

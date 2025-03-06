@@ -48,9 +48,9 @@ FactoryModeMountHelper::FactoryModeMountHelper(
                   startup_dep,
                   flags,
                   root,
-                  stateful,
                   std::move(impl),
-                  std::move(storage_container_factory)) {}
+                  std::move(storage_container_factory)),
+      stateful_(stateful) {}
 
 bool FactoryModeMountHelper::DoMountVarAndHomeChronos(
     std::optional<encryption::EncryptionKey> _) {

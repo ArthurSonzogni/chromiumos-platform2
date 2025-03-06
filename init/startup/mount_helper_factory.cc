@@ -79,14 +79,14 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
 
   if (USE_ENCRYPTED_STATEFUL && flags->encstateful) {
     return std::make_unique<StandardMountHelper>(
-        platform_, startup_dep_, flags, root_, stateful_,
+        platform_, startup_dep_, flags, root_,
         std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
             platform_, startup_dep_, storage_container_factory.get(), root_,
             stateful_),
         std::move(storage_container_factory));
   }
   return std::make_unique<StandardMountHelper>(
-      platform_, startup_dep_, flags, root_, stateful_,
+      platform_, startup_dep_, flags, root_,
       std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
           platform_, startup_dep_, root_, stateful_),
       std::move(storage_container_factory));

@@ -51,9 +51,9 @@ TestModeMountHelper::TestModeMountHelper(
                   startup_dep,
                   flags,
                   root,
-                  stateful,
                   std::move(impl),
-                  std::move(storage_container_factory)) {}
+                  std::move(storage_container_factory)),
+      stateful_(stateful) {}
 
 base::FilePath TestModeMountHelper::GetKeyBackupFile() const {
   // If this a TPM 2.0 device that supports encrypted stateful, creates and

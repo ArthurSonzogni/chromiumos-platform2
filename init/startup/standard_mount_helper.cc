@@ -27,7 +27,6 @@ StandardMountHelper::StandardMountHelper(
     StartupDep* startup_dep,
     const Flags* flags,
     const base::FilePath& root,
-    const base::FilePath& stateful,
     std::unique_ptr<MountVarAndHomeChronosInterface> impl,
     std::unique_ptr<libstorage::StorageContainerFactory>
         storage_container_factory)
@@ -35,7 +34,6 @@ StandardMountHelper::StandardMountHelper(
                   startup_dep,
                   flags,
                   root,
-                  stateful,
                   std::move(impl),
                   std::move(storage_container_factory)) {}
 

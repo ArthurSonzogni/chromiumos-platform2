@@ -35,7 +35,6 @@ class MountHelper {
               StartupDep* startup_dep,
               const Flags* flags,
               const base::FilePath& root,
-              const base::FilePath& stateful,
               std::unique_ptr<MountVarAndHomeChronosInterface> impl,
               std::unique_ptr<libstorage::StorageContainerFactory>
                   storage_container_factory);
@@ -78,7 +77,6 @@ class MountHelper {
   raw_ptr<StartupDep> startup_dep_;
   const Flags* flags_;
   const base::FilePath root_;
-  const base::FilePath stateful_;
 
  private:
   std::stack<base::FilePath> mount_stack_;
