@@ -33,32 +33,15 @@ class IcmpSessionFactory;
 // Given a connected Network and a URL, ConnectionDiagnostics performs the
 // following actions to diagnose a connectivity problem on the current
 // Connection:
-// (A) Starts by pinging all DNS servers.
-//     (B) If none of the DNS servers reply to pings, then we might have a
-//         problem reaching DNS servers. Check if the gateway can be pinged
-//         (step I).
-//     (C) If at least one DNS server replies to pings but we are out of DNS
-//         retries, the DNS servers are at fault. END.
-//     (D) If at least one DNS server replies to pings, and we have DNS
-//         retries left, resolve the IP of the target web server via DNS.
-//         (E) If DNS resolution fails because of a timeout, ping all DNS
+// (A) Start by pinging the IP address of the gateway.
+// (B) Also starts by pinging all DNS servers in parallel
+//     (C) Whether none or some of the DNS servers reply to ping,
+//         try next resolve the IP of the target web server via DNS.
+//         (D) If DNS resolution fails because of a timeout, ping all DNS
 //             servers again and find a new reachable DNS server (step A).
-//         (F) If DNS resolution fails for any other reason, we have found a
+//         (E) If DNS resolution fails for any other reason, we have found a
 //             DNS server issue. END.
-//         (G) Otherwise, ping the IP address of the target web server.
-//             (H) If ping is successful, we can reach the target web server. We
-//                 might have a HTTP issue or a broken portal. END.
-//             (I) If ping is unsuccessful, ping the IP address of the gateway.
-//                 (J) If the local gateway respond to pings, then we have
-//                     found an upstream connectivity problem or gateway
-//                     problem. END.
-//                 (K) If there is no response, then the local gateway may not
-//                     be responding to pings, or it may not exist on the local
-//                     network or be unreachable if there are link layer issues.
-//                     END.
-//
-// TODO(samueltan): Step F: if retry succeeds, remove the unresponsive DNS
-// servers so Chrome does not try to use them.
+//         (F) Otherwise, ping the IP address of the target web server. END.
 class ConnectionDiagnostics {
  public:
   // Describes the type of a diagnostic test.
@@ -115,14 +98,15 @@ class ConnectionDiagnostics {
 
   // Attempts to resolve the IP address of the hostname of |target_url_| using
   // |dns_list|.
-  void ResolveTargetServerIPAddress(const std::vector<std::string>& dns_list);
+  void ResolveTargetServerIPAddress(
+      const std::vector<net_base::IPAddress>& dns_list);
 
   // Pings all the DNS servers of |dns_list_|.
   void PingDNSServers();
 
   // Starts an IcmpSession with |address|. Called when we want to ping the
   // target web server or local gateway.
-  void PingHost(const net_base::IPAddress& address);
+  void PingHost(Type event_type, const net_base::IPAddress& address);
 
   // Called after each IcmpSession started in
   // ConnectionDiagnostics::PingDNSServers finishes or times out. The DNS server
@@ -173,9 +157,6 @@ class ConnectionDiagnostics {
   // Used to ping multiple DNS servers in parallel.
   std::map<int, std::unique_ptr<IcmpSession>>
       id_to_pending_dns_server_icmp_session_;
-  // TODO(b/307880493): Migrate to net_base::DNSClient and avoid
-  // converting the pingable net_base::IPAddress values to std::string.
-  std::vector<std::string> pingable_dns_servers_;
 
   int num_dns_attempts_;
   bool running_;

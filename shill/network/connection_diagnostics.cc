@@ -115,6 +115,13 @@ bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
             << " diagnostics for " << url.ToString();
   target_url_ = url;
   running_ = true;
+
+  // Always ping the gateway.
+  dispatcher_->PostTask(FROM_HERE,
+                        base::BindOnce(&ConnectionDiagnostics::PingHost,
+                                       weak_ptr_factory_.GetWeakPtr(),
+                                       Type::kPingGateway, gateway_));
+
   // Ping DNS servers to make sure at least one is reachable before resolving
   // the hostname of |target_url_|;
   dispatcher_->PostTask(FROM_HERE,
@@ -163,9 +170,13 @@ void ConnectionDiagnostics::LogEvent(Type type,
 }
 
 void ConnectionDiagnostics::ResolveTargetServerIPAddress(
-    const std::vector<std::string>& dns_list) {
+    const std::vector<net_base::IPAddress>& dns_list) {
+  std::vector<std::string> dns;
+  for (const auto& addr : dns_list) {
+    dns.push_back(addr.ToString());
+  }
   Error e;
-  if (!dns_client_->Start(dns_list, target_url_->host(), &e)) {
+  if (!dns_client_->Start(dns, target_url_->host(), &e)) {
     LogEvent(Type::kResolveTargetServerIP, Result::kFailure,
              "Could not start DNS: " + e.message());
     Stop();
@@ -187,7 +198,6 @@ void ConnectionDiagnostics::PingDNSServers() {
     return;
   }
 
-  pingable_dns_servers_.clear();
   for (size_t i = 0; i < dns_list_.size(); ++i) {
     // If we encounter any errors starting ping for any DNS server, carry on
     // attempting to ping the other DNS servers rather than failing. We only
@@ -221,11 +231,9 @@ void ConnectionDiagnostics::PingDNSServers() {
   }
 }
 
-void ConnectionDiagnostics::PingHost(const net_base::IPAddress& address) {
+void ConnectionDiagnostics::PingHost(Type event_type,
+                                     const net_base::IPAddress& address) {
   SLOG(2) << logging_tag_ << " " << __func__;
-
-  const Type event_type =
-      (address == gateway_) ? Type::kPingGateway : Type::kPingTargetServer;
   if (!icmp_session_->Start(
           address, iface_index_, iface_name_,
           base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
@@ -261,23 +269,9 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
 
   OnPingResult(Type::kPingDNSServers, dns_list_[dns_server_index], result);
 
-  if (IcmpSession::AnyRepliesReceived(result)) {
-    pingable_dns_servers_.push_back(dns_list_[dns_server_index].ToString());
-  }
   if (!id_to_pending_dns_server_icmp_session_.empty()) {
     SLOG(2) << logging_tag_ << " " << __func__
             << ": not yet finished pinging all DNS servers";
-    return;
-  }
-
-  if (pingable_dns_servers_.empty()) {
-    LogEvent(Type::kPingDNSServers, Result::kFailure,
-             "No DNS servers responded to pings. Pinging the gateway at " +
-                 gateway_.ToString());
-    // If no DNS servers can be pinged, try to ping the gateway.
-    dispatcher_->PostTask(
-        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
-                                  weak_ptr_factory_.GetWeakPtr(), gateway_));
     return;
   }
 
@@ -291,7 +285,7 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
   dispatcher_->PostTask(
       FROM_HERE,
       base::BindOnce(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
-                     weak_ptr_factory_.GetWeakPtr(), pingable_dns_servers_));
+                     weak_ptr_factory_.GetWeakPtr(), dns_list_));
 }
 
 void ConnectionDiagnostics::OnDNSResolutionComplete(
@@ -301,9 +295,10 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(
   if (address.has_value()) {
     LogEvent(Type::kResolveTargetServerIP, Result::kSuccess,
              "Target address is " + address->ToString());
-    dispatcher_->PostTask(
-        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
-                                  weak_ptr_factory_.GetWeakPtr(), *address));
+    dispatcher_->PostTask(FROM_HERE,
+                          base::BindOnce(&ConnectionDiagnostics::PingHost,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         Type::kPingTargetServer, *address));
   } else if (address.error().type() == Error::kOperationTimeout) {
     LogEvent(Type::kResolveTargetServerIP, Result::kTimeout,
              address.error().message());
@@ -325,14 +320,8 @@ void ConnectionDiagnostics::OnPingHostComplete(
 
   OnPingResult(event_type, address_pinged, result);
 
-  if (!IcmpSession::AnyRepliesReceived(result) &&
-      event_type == Type::kPingTargetServer) {
-    // If pinging the target web server fails, try pinging the gateway.
-    dispatcher_->PostTask(
-        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
-                                  weak_ptr_factory_.GetWeakPtr(), gateway_));
-  } else {
-    // Otherwise stop
+  // Pinging the target server is the last operation.
+  if (event_type == Type::kPingTargetServer) {
     Stop();
   }
 }

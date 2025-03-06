@@ -171,7 +171,7 @@ class ConnectionDiagnosticsTest : public Test {
                 Start(pingable_dns_servers,
                       connection_diagnostics_.target_url_->host(), _))
         .WillOnce(Return(true));
-    connection_diagnostics_.ResolveTargetServerIPAddress(pingable_dns_servers);
+    connection_diagnostics_.ResolveTargetServerIPAddress(dns_list_);
   }
 
   void ExpectResolveTargetServerIPAddressEndSuccess(
@@ -197,7 +197,8 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_CALL(*icmp_session_,
                 Start(address, kInterfaceIndex, kInterfaceName, _))
         .WillOnce(Return(true));
-    connection_diagnostics_.PingHost(address);
+    connection_diagnostics_.PingHost(
+        ConnectionDiagnostics::Type::kPingTargetServer, address);
   }
 
   void ExpectPingHostStartFailure(ConnectionDiagnostics::Type ping_event_type,
@@ -205,7 +206,8 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_CALL(*icmp_session_,
                 Start(address, kInterfaceIndex, kInterfaceName, _))
         .WillOnce(Return(false));
-    connection_diagnostics_.PingHost(address);
+    connection_diagnostics_.PingHost(
+        ConnectionDiagnostics::Type::kPingTargetServer, address);
   }
 
   void ExpectPingHostEndSuccess(ConnectionDiagnostics::Type ping_event_type,
@@ -216,11 +218,6 @@ class ConnectionDiagnosticsTest : public Test {
 
   void ExpectPingHostEndFailure(ConnectionDiagnostics::Type ping_event_type,
                                 const net_base::IPAddress& address) {
-    // If the ping destination was not the gateway, the next action is to try
-    // to ping the gateway.
-    if (ping_event_type == ConnectionDiagnostics::Type::kPingTargetServer) {
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
-    }
     connection_diagnostics_.OnPingHostComplete(ping_event_type, address,
                                                kEmptyResult);
   }
@@ -409,10 +406,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_3) {
   VerifyStopped();
 }
 
-TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, and we
-  // successfully get route for the IP address. This address is remote, so ping
-  // the local gateway and succeed, so we end diagnostics.
+TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetFailure_1_IPv4) {
+  // DNS resolution succeeds, pinging the resolved IP address fails, the
+  // diagostics ends.
   ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
@@ -420,14 +416,10 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
                              kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingGateway,
-                             gateway());
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingGateway,
-                           gateway());
   VerifyStopped();
 }
 
-TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
+TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetFailure_1_IPv6) {
   // Same as above, but this time the resolved IP address of the target URL is
   // IPv6.
   UseIPv6();
@@ -439,18 +431,12 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
                              kIPv6ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv6ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingGateway,
-                             gateway());
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingGateway,
-                           gateway());
   VerifyStopped();
 }
 
-TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_2) {
+TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetFailure_2) {
   // Pinging DNS servers succeeds, DNS resolution succeeds, pinging the resolved
-  // IP address fails, and we successfully get route for the IP address. This
-  // address is remote, so ping the local gateway and succeed, so we end
-  // diagnostics.
+  // IP address fails, the diagnostics ends.
   ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
@@ -458,18 +444,12 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_2) {
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingGateway,
-                             gateway());
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingGateway,
-                           gateway());
   VerifyStopped();
 }
 
-TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_3) {
+TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetFailure_3) {
   // DNS resolution times out, pinging DNS servers succeeds, DNS resolution
-  // succeeds, pinging the resolved IP address fails, and we successfully get
-  // route for the IP address. This address is remote, so ping the local
-  // gateway. The ping succeeds, so we end diagnostics.
+  // succeeds, pinging the resolved IP address fails, the diagnostics ends.
   ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndTimeout();
@@ -481,16 +461,12 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_3) {
                              kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingGateway,
-                             gateway());
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingGateway,
-                           gateway());
   VerifyStopped();
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewayFailure) {
-  // DNS resolution succeeds, pinging the resolved IP address fails. Pinging
-  // the gateway also fails, so we end diagnostics.
+  // DNS resolution succeeds, pinging the resolved IP address fails, the
+  // diagnostics ends.
   ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
@@ -498,10 +474,6 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewayFailure) {
                              kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingGateway,
-                             gateway());
-  ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingGateway,
-                           gateway());
   VerifyStopped();
 }
 
