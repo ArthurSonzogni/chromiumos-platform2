@@ -1566,4 +1566,5 @@ message MuteVmAudioRequest {
 // constant baked into the concierge binary.
 message GetBaguetteImageUrlResponse {
   string url = 1;
+  string sha256 = 2;
 }

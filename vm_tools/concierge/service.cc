@@ -5002,6 +5002,7 @@ void Service::GetBaguetteImageUrl(
   GetBaguetteImageUrlResponse response;
   response.set_url(base::StringPrintf("%s_%s_%s.%s", prefix, arch,
                                       kBaguetteVersion, suffix));
+  response.set_sha256(kBaguetteSHA256);
   response_cb->Return(response);
 }
 
