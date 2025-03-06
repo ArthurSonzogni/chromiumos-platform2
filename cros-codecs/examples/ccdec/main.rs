@@ -139,6 +139,13 @@ fn main() {
         if args.output.is_none() && args.compute_md5.is_none() && args.golden.is_none() {
             return;
         }
+
+        if job.output.is_none() {
+            // Indicates an empty "drain" signal.
+            assert_eq!(job.drain, DrainMode::EOSDrain);
+            return;
+        }
+
         let width = job.output.as_ref().unwrap().resolution().width as usize;
         let height = job.output.as_ref().unwrap().resolution().height as usize;
         let luma_size = job.output.as_ref().unwrap().resolution().get_area();

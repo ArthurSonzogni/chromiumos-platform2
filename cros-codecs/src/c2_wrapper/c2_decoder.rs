@@ -111,9 +111,11 @@ where
                 C2Decoder::ImportingDecoder(decoder) => match decoder.next_event() {
                     Some(DecoderEvent::FrameReady(frame)) => {
                         frame.sync().unwrap();
-                        let mut job: C2DecodeJob<V> = Default::default();
-                        job.output = Some(frame.video_frame());
-                        (*self.work_done_cb.lock().unwrap())(job);
+                        (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
+                            output: Some(frame.video_frame()),
+                            timestamp: frame.timestamp(),
+                            ..Default::default()
+                        });
                     }
                     Some(DecoderEvent::FormatChanged) => match stream_info {
                         Some(stream_info) => {
@@ -130,7 +132,6 @@ where
                 C2Decoder::ConvertingDecoder(decoder) => match decoder.next_event() {
                     Some(DecoderEvent::FrameReady(frame)) => {
                         frame.sync().unwrap();
-                        let mut job: C2DecodeJob<V> = Default::default();
                         let mut dst_frame =
                             (*self.alloc_cb.lock().unwrap())().expect("Allocation failed!");
                         let src_frame = &*frame.video_frame();
@@ -139,8 +140,11 @@ where
                             *self.state.lock().unwrap() = C2State::C2Error;
                             (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         }
-                        job.output = Some(Arc::new(dst_frame));
-                        (*self.work_done_cb.lock().unwrap())(job);
+                        (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
+                            output: Some(Arc::new(dst_frame)),
+                            timestamp: frame.timestamp(),
+                            ..Default::default()
+                        });
                     }
                     Some(DecoderEvent::FormatChanged) => match stream_info {
                         Some(stream_info) => {
@@ -280,25 +284,9 @@ where
             // available.
             let mut possible_job = (*self.work_queue.lock().unwrap()).pop_front();
             while let Some(mut job) = possible_job {
-                if job.get_drain() != DrainMode::NoDrain {
-                    let flush_result = match &mut self.decoder {
-                        C2Decoder::ImportingDecoder(decoder) => decoder.flush(),
-                        C2Decoder::ConvertingDecoder(decoder) => decoder.flush(),
-                    };
-                    if let Err(_) = flush_result {
-                        log::debug!("Error handling drain request!");
-                        *self.state.lock().unwrap() = C2State::C2Error;
-                        (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
-                    } else {
-                        if job.get_drain() == DrainMode::EOSDrain {
-                            *self.state.lock().unwrap() = C2State::C2Stopped;
-                        }
-                        self.check_events();
-                    }
-                    break;
-                } else {
-                    let bitstream = job.input.as_slice();
-                    let decode_result = match &mut self.decoder {
+                let bitstream = job.input.as_slice();
+                let decode_result = if !job.input.is_empty() {
+                    match &mut self.decoder {
                         C2Decoder::ImportingDecoder(decoder) => decoder.decode(
                             self.frame_num,
                             bitstream,
@@ -309,25 +297,51 @@ where
                                 self.auxiliary_frame_pool.as_mut().unwrap().alloc()
                             })
                         }
-                    };
-                    match decode_result {
-                        Ok(num_bytes) => {
-                            self.frame_num += 1;
-                            if num_bytes != job.input.len() {
-                                job.input = (&job.input[num_bytes..]).to_vec();
-                                (*self.work_queue.lock().unwrap()).push_front(job);
-                            }
-                        }
-                        Err(DecodeError::NotEnoughOutputBuffers(_) | DecodeError::CheckEvents) => {
+                    }
+                } else {
+                    // This generally indicates a drain signal. Drain signals can be associated
+                    // with specific C2Work objects, or they can be a standalone call to the
+                    // drain() function of the C2Component, so we have to accommodate both.
+                    Ok(0)
+                };
+                match decode_result {
+                    Ok(num_bytes) => {
+                        self.frame_num += 1;
+                        if num_bytes != job.input.len() {
+                            job.input = (&job.input[num_bytes..]).to_vec();
                             (*self.work_queue.lock().unwrap()).push_front(job);
+                        } else if job.get_drain() != DrainMode::NoDrain {
+                            let flush_result = match &mut self.decoder {
+                                C2Decoder::ImportingDecoder(decoder) => decoder.flush(),
+                                C2Decoder::ConvertingDecoder(decoder) => decoder.flush(),
+                            };
+                            if let Err(_) = flush_result {
+                                log::debug!("Error handling drain request!");
+                                *self.state.lock().unwrap() = C2State::C2Error;
+                                (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                            } else {
+                                self.check_events();
+                                if job.get_drain() == DrainMode::EOSDrain {
+                                    *self.state.lock().unwrap() = C2State::C2Stopped;
+                                    (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
+                                        timestamp: job.timestamp,
+                                        drain: DrainMode::EOSDrain,
+                                        ..Default::default()
+                                    });
+                                }
+                            }
                             break;
                         }
-                        Err(e) => {
-                            log::debug!("Unhandled error message from decoder {e:?}");
-                            *self.state.lock().unwrap() = C2State::C2Error;
-                            (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
-                            break;
-                        }
+                    }
+                    Err(DecodeError::NotEnoughOutputBuffers(_) | DecodeError::CheckEvents) => {
+                        (*self.work_queue.lock().unwrap()).push_front(job);
+                        break;
+                    }
+                    Err(e) => {
+                        log::debug!("Unhandled error message from decoder {e:?}");
+                        *self.state.lock().unwrap() = C2State::C2Error;
+                        (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                        break;
                     }
                 }
                 possible_job = (*self.work_queue.lock().unwrap()).pop_front();

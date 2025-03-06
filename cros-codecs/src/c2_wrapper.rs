@@ -51,6 +51,7 @@ pub struct C2DecodeJob<V: VideoFrame> {
     // Decompressed output frame. Note that this needs to be reference counted because we may still
     // use this frame as a reference frame even while we're displaying it.
     pub output: Option<Arc<V>>,
+    pub timestamp: u64,
     pub drain: DrainMode,
     // TODO: Add output delay and color aspect support as needed.
 }
@@ -72,7 +73,7 @@ where
 
 impl<V: VideoFrame> Default for C2DecodeJob<V> {
     fn default() -> Self {
-        Self { input: vec![], output: None, drain: DrainMode::NoDrain }
+        Self { input: vec![], output: None, timestamp: 0, drain: DrainMode::NoDrain }
     }
 }
 
