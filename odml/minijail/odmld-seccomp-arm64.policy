@@ -127,7 +127,9 @@ clone: arg0 & CLONE_THREAD
 
 # For mediapipe threads
 # 0x33 == PR_SVE_GET_VL
-prctl: arg0 == PR_GET_NAME || arg0 == PR_SET_NAME || arg0 == 0x33
+# 0x53564d41 == PR_SET_VMA
+prctl: arg0 == PR_GET_NAME || arg0 == PR_SET_NAME || arg0 == 0x33 || \
+       arg0 == 0x53564d41
 sched_setaffinity: 1
 sched_getparam: 1
 sched_setscheduler: 1

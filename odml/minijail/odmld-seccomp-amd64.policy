@@ -122,7 +122,8 @@ pwrite64: 1
 clone: arg0 & CLONE_THREAD
 
 # For mediapipe threads
-prctl: arg0 == PR_GET_NAME || arg0 == PR_SET_NAME
+# 0x53564d41 == PR_SET_VMA
+prctl: arg0 == PR_GET_NAME || arg0 == PR_SET_NAME || arg0 == 0x53564d41
 sched_setaffinity: 1
 
 # For mojo & D-Bus
