@@ -167,6 +167,7 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
           },
           api_, component_, image, mask, seed),
       .time_metric = TimeMetric::kInpaintingLatency,
+      .generated_image_type_metric = ImageGenerationType::kInpainting,
       .timer = odml::PerformanceTimer::Create(),
   }));
 }
@@ -200,8 +201,8 @@ void MantisProcessor::Outpainting(const std::vector<uint8_t>& image,
             };
           },
           api_, component_, image, mask, seed),
-      // TOOD(b/383666174): add outpainting metric
-      .time_metric = TimeMetric::kInpaintingLatency,
+      .time_metric = TimeMetric::kOutpaintingLatency,
+      .generated_image_type_metric = ImageGenerationType::KOutpainting,
       .timer = odml::PerformanceTimer::Create(),
   }));
 }
@@ -238,6 +239,7 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
           },
           api_, component_, image, mask, seed, prompt),
       .time_metric = TimeMetric::kGenerativeFillLatency,
+      .generated_image_type_metric = ImageGenerationType::kGenerativeFill,
       .timer = odml::PerformanceTimer::Create(),
   }));
 }
@@ -300,6 +302,8 @@ void MantisProcessor::OnProcessDone(std::unique_ptr<MantisProcess> process,
     return;
   }
   SendTimeMetric(*metrics_lib_, process->time_metric, *process->timer);
+  SendImageGenerationTypeMetric(*metrics_lib_,
+                                process->generated_image_type_metric);
   std::string prompt =
       process->prompt.has_value() ? process->prompt.value() : "";
   process->image_result = lib_result.image;

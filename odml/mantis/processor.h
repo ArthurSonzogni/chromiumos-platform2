@@ -60,6 +60,7 @@ struct MantisProcess {
   base::OnceCallback<ProcessFuncResult()> process_func;
   // Metric info to be used on main thread.
   mantis::TimeMetric time_metric;
+  mantis::ImageGenerationType generated_image_type_metric;
   odml::PerformanceTimer::Ptr timer;
   // Might not be populated
   std::vector<uint8_t> image_result;

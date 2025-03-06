@@ -176,6 +176,10 @@ TEST_F(MantisProcessorTest, InpaintingSucceeds) {
       metrics_lib_,
       SendTimeToUMA("Platform.MantisService.Latency.Inpainting", _, _, _, _));
 
+  EXPECT_CALL(
+      metrics_lib_,
+      SendEnumToUMA("Platform.MantisService.ImageGenerationType", _, _));
+
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
                        result_future.GetCallback());
@@ -204,9 +208,11 @@ TEST_F(MantisProcessorTest, OutpaintingSucceeds) {
       .Times(2);
   EXPECT_CALL(
       metrics_lib_,
-      // TOOD(b/383666174): add outpainting metric
-      SendTimeToUMA("Platform.MantisService.Latency.Inpainting", _, _, _, _));
+      SendTimeToUMA("Platform.MantisService.Latency.Outpainting", _, _, _, _));
 
+  EXPECT_CALL(
+      metrics_lib_,
+      SendEnumToUMA("Platform.MantisService.ImageGenerationType", _, _));
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.Outpainting(GetFakeImage(), GetFakeMask(), 0,
                         result_future.GetCallback());
@@ -354,6 +360,9 @@ TEST_F(MantisProcessorTest, GenerativeFillSucceeds) {
   EXPECT_CALL(metrics_lib_,
               SendTimeToUMA("Platform.MantisService.Latency.GenerativeFill", _,
                             _, _, _));
+  EXPECT_CALL(
+      metrics_lib_,
+      SendEnumToUMA("Platform.MantisService.ImageGenerationType", _, _));
 
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "a cute cat",

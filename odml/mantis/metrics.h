@@ -18,6 +18,7 @@ enum class TimeMetric {
   kLoadModelLatency,
   kInpaintingLatency,
   kGenerativeFillLatency,
+  kOutpaintingLatency,
   kSegmentationLatency,
   kClassifyImageSafetyLatency,
 };
@@ -25,6 +26,21 @@ enum class TimeMetric {
 // Enum representing different bool-based metrics to be tracked.
 enum class BoolMetric {
   kModelLoaded,
+};
+
+// Enum representing different enum-based metrics to be tracked.
+enum class EnumMetric {
+  kImageGenerationType,
+};
+
+// Enum representing types of image generation operation in Mantis.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class ImageGenerationType {
+  kInpainting = 0,
+  kGenerativeFill = 1,
+  KOutpainting = 2,
+  kMaxValue = KOutpainting,
 };
 
 // Sends a time metric with the elapsed duration from the provided timer.
@@ -36,6 +52,10 @@ void SendTimeMetric(MetricsLibraryInterface& metrics_lib,
 void SendBoolMetric(MetricsLibraryInterface& metrics_lib,
                     BoolMetric metric,
                     bool value);
+
+// Sends the generated image type.
+void SendImageGenerationTypeMetric(MetricsLibraryInterface& metrics_lib,
+                                   ImageGenerationType type);
 
 }  // namespace mantis
 

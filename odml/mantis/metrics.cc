@@ -37,6 +37,11 @@ TimeMetricInfo GetMetricInfo(TimeMetric metric) {
           .string_name = "Platform.MantisService.Latency.Inpainting",
           .max = base::Seconds(30),
       };
+    case TimeMetric::kOutpaintingLatency:
+      return {
+          .string_name = "Platform.MantisService.Latency.Outpainting",
+          .max = base::Seconds(30),
+      };
     case TimeMetric::kGenerativeFillLatency:
       return {
           .string_name = "Platform.MantisService.Latency.GenerativeFill",
@@ -62,6 +67,13 @@ std::string GetMetricName(BoolMetric metric) {
   }
 }
 
+std::string GetMetricName(EnumMetric metric) {
+  switch (metric) {
+    case mantis::EnumMetric::kImageGenerationType:
+      return "Platform.MantisService.ImageGenerationType";
+  }
+}
+
 }  // namespace
 
 void SendTimeMetric(MetricsLibraryInterface& metrics_lib,
@@ -76,6 +88,12 @@ void SendBoolMetric(MetricsLibraryInterface& metrics_lib,
                     BoolMetric metric,
                     bool value) {
   metrics_lib.SendBoolToUMA(GetMetricName(metric), value);
+}
+
+void SendImageGenerationTypeMetric(MetricsLibraryInterface& metrics_lib,
+                                   ImageGenerationType type) {
+  metrics_lib.SendEnumToUMA(GetMetricName(EnumMetric::kImageGenerationType),
+                            type);
 }
 
 }  // namespace mantis
