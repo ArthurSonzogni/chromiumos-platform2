@@ -7,13 +7,12 @@
 #ifndef CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_IMPL_H_
 #define CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_IMPL_H_
 
-#include "features/hdrnet/hdrnet_processor.h"
-
 #include <map>
 #include <memory>
 #include <vector>
 
 #include "cros-camera/hdrnet_linear_rgb_pipeline_cros.h"
+#include "features/hdrnet/hdrnet_processor.h"
 #include "features/hdrnet/hdrnet_processor_device_adapter.h"
 
 namespace cros {
@@ -60,7 +59,6 @@ class HdrNetProcessorImpl : public HdrNetProcessor {
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
   GpuResources* gpu_resources_;
-  std::unique_ptr<HdrNetLinearRgbPipelineCrOS> hdrnet_pipeline_;
   std::unique_ptr<HdrNetProcessorDeviceAdapter> processor_device_adapter_;
 
   // Metadata logger for tests and debugging.
