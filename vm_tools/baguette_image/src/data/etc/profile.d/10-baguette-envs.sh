@@ -24,4 +24,18 @@ if [[ -z "${USER}" ]]; then
   export USER="${IDUN_RESULT}"
 fi
 
-# We also want to wait w/ timeout here for sommelier to start before next script is ran
+# Wait until sommelier starts before give the shell to user, max 4 seconds
+SECONDS=0
+while ! pgrep -f "sommelier" > /dev/null; do
+  sleep 1
+  SECONDS=$((SECONDS+1))
+  if [[ ${SECONDS} -ge 4 ]]; then
+    break
+  fi
+done
+
+sleep 0.2
+
+unset IDU_RESULT
+unset IDUN_RESULT
+unset SECONDS

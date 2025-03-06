@@ -4,3 +4,7 @@
 # found in the LICENSE file.
 
 btrfs filesystem resize max /
+sync
+rm -v /etc/ssh/ssh_host_*
+dpkg-reconfigure openssh-server
+sync
