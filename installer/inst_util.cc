@@ -335,41 +335,6 @@ base::FilePath MakePartitionDev(const base::FilePath& block_dev_path,
   return base::FilePath(block_dev + partition.ToString());
 }
 
-// rm *pack from /dirname
-bool RemovePackFiles(const base::FilePath& dirname) {
-  DIR* dp;
-  struct dirent* ep;
-
-  dp = opendir(dirname.value().c_str());
-
-  if (dp == NULL) {
-    return false;
-  }
-
-  while ((ep = readdir(dp))) {
-    string filename = ep->d_name;
-
-    // Skip . files
-    if (filename.compare(0, 1, ".") == 0) {
-      continue;
-    }
-
-    if ((filename.size() < 4) ||
-        (filename.compare(filename.size() - 4, 4, "pack") != 0)) {
-      continue;
-    }
-
-    base::FilePath full_filename = dirname.Append(filename);
-
-    LOG(INFO) << "Unlinked file: " << full_filename;
-    unlink(full_filename.value().c_str());
-  }
-
-  closedir(dp);
-
-  return true;
-}
-
 bool Touch(const base::FilePath& filename) {
   int fd = open(filename.value().c_str(), O_WRONLY | O_CREAT,
                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);

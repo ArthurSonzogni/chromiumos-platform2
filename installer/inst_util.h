@@ -118,9 +118,6 @@ PartitionNum GetPartitionFromPartitionDev(const base::FilePath& partition_dev);
 base::FilePath MakePartitionDev(const base::FilePath& partition_dev,
                                 PartitionNum partition);
 
-// rm *pack from /dirname
-bool RemovePackFiles(const base::FilePath& dirname);
-
 // Create an empty file
 bool Touch(const base::FilePath& filename);
 

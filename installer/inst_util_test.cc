@@ -120,33 +120,6 @@ TEST(UtilTest, MakePartitionDevTest) {
             base::FilePath("/dev/nvme0n1p12"));
 }
 
-TEST(UtilTest, RemovePackFileTest) {
-  // Setup
-  EXPECT_EQ(RunCommand({"rm", "-rf", "/tmp/PackFileTest"}), 0);
-  EXPECT_EQ(RunCommand({"mkdir", "/tmp/PackFileTest"}), 0);
-  EXPECT_EQ(Touch(base::FilePath("/tmp/PackFileTest/foo")), true);
-  EXPECT_EQ(Touch(base::FilePath("/tmp/PackFileTest/foo.pack")), true);
-  EXPECT_EQ(Touch(base::FilePath("/tmp/PackFileTest/foopack")), true);
-  EXPECT_EQ(Touch(base::FilePath("/tmp/PackFileTest/.foo.pack")), true);
-
-  // Test
-  EXPECT_EQ(RemovePackFiles(base::FilePath("/tmp/PackFileTest")), true);
-
-  // Test to see which files were removed
-  struct stat stats;
-
-  EXPECT_EQ(stat("/tmp/PackFileTest/foo", &stats), 0);
-  EXPECT_EQ(stat("/tmp/PackFileTest/foo.pack", &stats), -1);
-  EXPECT_EQ(stat("/tmp/PackFileTest/foopack", &stats), -1);
-  EXPECT_EQ(stat("/tmp/PackFileTest/.foo.pack", &stats), 0);
-
-  // Bad dir name
-  EXPECT_EQ(RemovePackFiles(base::FilePath("/fuzzy")), false);
-
-  // Cleanup
-  EXPECT_EQ(RunCommand({"rm", "-rf", "/tmp/PackFileTest"}), 0);
-}
-
 TEST(UtilTest, TouchTest) {
   unlink("/tmp/fuzzy");
 

@@ -727,19 +727,11 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
         CheckForDefaultKeyStatefulMigration();
       }
 
-      // We have a new image, making the ureadahead pack files
-      // out-of-date.  Delete the files so that ureadahead will
-      // regenerate them on the next reboot.
+      // Create a file indicating that the install is completed. The file
+      // will be used in /sbin/chromeos_startup to run tasks on the next boot.
       // WARNING: This doesn't work with upgrade from USB, rather than full
       // install/recovery. We don't have support for it as it'll increase the
       // complexity here, and only developers do upgrade from USB.
-      if (!RemovePackFiles(base::FilePath("/var/lib/ureadahead"))) {
-        LOG(ERROR) << "RemovePackFiles Failed.";
-      }
-
-      // Create a file indicating that the install is completed. The file
-      // will be used in /sbin/chromeos_startup to run tasks on the next boot.
-      // See comments above about removing ureadahead files.
       base::FilePath install_completed =
           base::FilePath(kStatefulMount).Append(".install_completed");
       if (!Touch(install_completed)) {
