@@ -245,7 +245,7 @@ void ArcManager::EmitStopArcVmInstanceImpulse() {
   }
 }
 
-void ArcManager::RequestJobExit(int32_t reason) {
+void ArcManager::RequestJobExit(uint32_t reason) {
   android_container_->RequestJobExit(
       static_cast<ArcContainerStopReason>(reason));
 }

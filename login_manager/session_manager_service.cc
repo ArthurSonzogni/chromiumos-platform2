@@ -228,6 +228,11 @@ bool SessionManagerService::Initialize() {
 
   arc_manager_ = std::make_unique<ArcManager>(*system_utils_, *login_metrics_,
                                               process_reaper_, bus_);
+  arc_manager_->Initialize();
+  CHECK(arc_manager_->StartDBusService())
+      << "Unable to start " << arc_manager::kArcManagerServiceName
+      << " D-Bus service.";
+
   arc_manager_proxy_ =
       std::make_unique<ArcManagerProxyInProcess>(*arc_manager_);
 
@@ -244,13 +249,8 @@ bool SessionManagerService::Initialize() {
     return false;
   }
 
-  arc_manager_->Initialize();
-
   InitializeBrowser();
 
-  CHECK(arc_manager_->StartDBusService())
-      << "Unable to start " << arc_manager::kArcManagerServiceName
-      << " D-Bus service.";
   CHECK(impl_->StartDBusService())
       << "Unable to start " << kSessionManagerServiceName << " D-Bus service.";
   return true;
@@ -440,18 +440,19 @@ void SessionManagerService::HandleBrowserExit(const siginfo_t& status) {
   browser_->ClearPid();
 
   // Ensure ARC containers are gone.
-  if (arc_manager_) {
-    // Note: in tests, arc_manager_ is not set up.
-    arc_manager_->RequestJobExit(
-        static_cast<int32_t>(ArcContainerStopReason::BROWSER_SHUTDOWN));
-    arc_manager_->EnsureJobExit(ArcManager::kContainerTimeout.InMilliseconds());
+  if (arc_manager_proxy_) {
+    // Note: in tests, arc_manager_proxy_ is not set up.
+    arc_manager_proxy_->RequestJobExit(
+        static_cast<uint32_t>(ArcContainerStopReason::BROWSER_SHUTDOWN));
+    arc_manager_proxy_->EnsureJobExit(
+        ArcManager::kContainerTimeout.InMilliseconds());
     // Ensure ARCVM and related Upstart jobs are stopped (b/290194650).
   }
   MaybeStopArcVm();
 
-  // Note: in tests, arc_manager_ is not set up.
-  if (arc_manager_) {
-    arc_manager_->EmitStopArcVmInstanceImpulse();
+  // Note: in tests, arc_manager_proxy_ is not set up.
+  if (arc_manager_proxy_) {
+    arc_manager_proxy_->EmitStopArcVmInstanceImpulse();
   }
 
   // Do nothing if already shutting down.
@@ -655,9 +656,9 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
 
   const base::TimeTicks browser_exit_start_time = base::TimeTicks::Now();
   browser_->Kill(SIGTERM, reason);
-  if (arc_manager_) {
+  if (arc_manager_proxy_) {
     // In test, arc_manager_ is nullptr.
-    arc_manager_->RequestJobExit(static_cast<int32_t>(
+    arc_manager_proxy_->RequestJobExit(static_cast<uint32_t>(
         code == ExitCode::SUCCESS
             ? ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN
             : ArcContainerStopReason::BROWSER_SHUTDOWN));
@@ -684,9 +685,9 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
                                             browser_exit_start_time);
   }
 
-  if (arc_manager_) {
-    // In test, arc_manager_ is nullptr.
-    arc_manager_->EnsureJobExit(
+  if (arc_manager_proxy_) {
+    // In test, arc_manager_proxy_ is nullptr.
+    arc_manager_proxy_->EnsureJobExit(
         std::max(int64_t{0}, (ArcManager::kContainerTimeout -
                               (base::TimeTicks::Now() - timeout_start))
                                  .InMilliseconds()));

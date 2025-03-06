@@ -33,6 +33,37 @@
     </method>
 
     <!--
+        EmitStopArcVmInstance:
+
+        Emits a signal that ARCVM instance is stopped.
+    -->
+    <method name="EmitStopArcVmInstanceImpulse">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
+
+    <!--
+        RequestJobExit:
+        @reason: The value of ArcContainerStopReason.
+
+        Requests to stop ARC container instance.
+    -->
+    <method name="RequestJobExit">
+      <arg type="u" name="reason" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
+
+    <!--
+        EnsureJobExit:
+        @timeout_ms: timeout in milliseconds.
+
+        Waits for the ARC container to stop.
+    -->
+    <method name="EnsureJobExit">
+      <arg type="x" name="timeout_ms" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
+
+    <!--
         StartArcMiniContainer:
         @request: Serialized StartArcMiniContainerRequest proto message
                   containing ARC startup options.

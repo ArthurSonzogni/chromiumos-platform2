@@ -109,14 +109,11 @@ class ArcManager : public org::chromium::ArcManagerInterface {
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
 
-  // TODO(crbug.com/390297821): called from SessionManagerService.
-  // Expose this as D-Bus method.
-  void EmitStopArcVmInstanceImpulse();
-  void RequestJobExit(int32_t reason);
-  void EnsureJobExit(int64_t timeout_ms);
-
   // D-Bus method implementation.
   void OnUserSessionStarted(const std::string& in_account_id) override;
+  void EmitStopArcVmInstanceImpulse() override;
+  void RequestJobExit(uint32_t reason) override;
+  void EnsureJobExit(int64_t timeout_ms) override;
   bool StartArcMiniContainer(brillo::ErrorPtr* error,
                              const std::vector<uint8_t>& in_request) override;
   bool UpgradeArcContainer(brillo::ErrorPtr* error,

@@ -37,6 +37,9 @@ class ArcManagerProxyBase : public ArcManagerProxy {
  public:
   // org::chromium::ArcManagerInterface:
   void OnUserSessionStarted(const std::string& in_account_id) override;
+  void EmitStopArcVmInstanceImpulse() override;
+  void RequestJobExit(uint32_t reason) override;
+  void EnsureJobExit(int64_t timeout_ms) override;
   bool StartArcMiniContainer(brillo::ErrorPtr* error,
                              const std::vector<uint8_t>& in_request) override;
   bool UpgradeArcContainer(brillo::ErrorPtr* error,

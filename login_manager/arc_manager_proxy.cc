@@ -16,6 +16,18 @@ void ArcManagerProxyBase::OnUserSessionStarted(
   arc_manager_->OnUserSessionStarted(in_account_id);
 }
 
+void ArcManagerProxyBase::EmitStopArcVmInstanceImpulse() {
+  arc_manager_->EmitStopArcVmInstanceImpulse();
+}
+
+void ArcManagerProxyBase::RequestJobExit(uint32_t reason) {
+  arc_manager_->RequestJobExit(reason);
+}
+
+void ArcManagerProxyBase::EnsureJobExit(int64_t timeout_ms) {
+  arc_manager_->EnsureJobExit(timeout_ms);
+}
+
 bool ArcManagerProxyBase::StartArcMiniContainer(
     brillo::ErrorPtr* error, const std::vector<uint8_t>& in_request) {
   return arc_manager_->StartArcMiniContainer(error, in_request);
