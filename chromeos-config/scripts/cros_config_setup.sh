@@ -9,9 +9,8 @@
 
 set -e
 
-: "${BASE_ROOT:=/}"
-: "${SQUASHFS_IMAGE:=${BASE_ROOT}usr/share/chromeos-config/configfs.img}"
-: "${MOUNTPOINT:=${BASE_ROOT}run/chromeos-config/}"
+: "${SQUASHFS_IMAGE:=/usr/share/chromeos-config/configfs.img}"
+: "${MOUNTPOINT:=/run/chromeos-config}"
 
 CONFIG_INDEX="$(crosid -f CONFIG_INDEX)"
 if [ "${CONFIG_INDEX}" = "unknown" ]; then
@@ -20,8 +19,8 @@ if [ "${CONFIG_INDEX}" = "unknown" ]; then
     exit 1
 fi
 
-mkdir -p "${MOUNTPOINT}private" "${MOUNTPOINT}v1"
-mount -n -oro,nodev,noexec,nosuid "${SQUASHFS_IMAGE}" "${MOUNTPOINT}private"
+mkdir -p "${MOUNTPOINT}/private" "${MOUNTPOINT}/v1"
+mount -n -oro,nodev,noexec,nosuid "${SQUASHFS_IMAGE}" "${MOUNTPOINT}/private"
 mount -n -obind,ro,nodev,noexec,nosuid \
-    "${MOUNTPOINT}private/v1/chromeos/configs/${CONFIG_INDEX}" \
-    "${MOUNTPOINT}v1"
+    "${MOUNTPOINT}/private/v1/chromeos/configs/${CONFIG_INDEX}" \
+    "${MOUNTPOINT}/v1"
