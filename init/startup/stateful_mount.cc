@@ -69,6 +69,8 @@ constexpr char kVarOverlay[] = "var_overlay";
 constexpr char kChronos[] = "chronos";
 constexpr char kUnencrypted[] = "unencrypted";
 
+constexpr char kClobberLogFile[] = "clobber.log";
+constexpr char kClobberStateLogFile[] = "clobber-state.log";
 constexpr char kDevImageBlockFile[] = "dev_image.block";
 constexpr char kNewDevImageBlockFile[] = "dev_image_new.block";
 constexpr char kDeveloperToolsMount[] = "developer_tools";
@@ -596,6 +598,8 @@ bool StatefulMount::DevUpdateStatefulPartition(
         stateful_.Append(kDevModeFile),
         stateful_.Append("encrypted.block"),
         stateful_.Append("encrypted.key"),
+        stateful_.Append(kUnencrypted).Append(kClobberLogFile),
+        stateful_.Append(kUnencrypted).Append(kClobberStateLogFile),
         stateful_.Append(kUnencrypted).Append(kDevImageBlockFile),
         stateful_.Append(kDeveloperToolsMount),
         stateful_dev_image,

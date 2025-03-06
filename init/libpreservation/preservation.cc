@@ -181,8 +181,8 @@ std::set<std::string> GetPreservationFileList() {
 }
 
 std::set<std::string> GetStartupPreseedingPaths() {
-  return std::set<std::string>({"unencrypted/preserve/clobber.log",
-                                "unencrypted/preserve/clobber-state.log"});
+  return std::set<std::string>(
+      {"unencrypted/clobber.log", "unencrypted/clobber-state.log"});
 }
 
 }  // namespace libpreservation
