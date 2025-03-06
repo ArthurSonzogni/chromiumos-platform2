@@ -36,8 +36,7 @@ class MountHelper {
               const Flags* flags,
               const base::FilePath& root,
               std::unique_ptr<MountVarAndHomeChronosInterface> impl,
-              std::unique_ptr<libstorage::StorageContainerFactory>
-                  storage_container_factory);
+              libstorage::StorageContainerFactory* storage_container_factory);
 
   virtual ~MountHelper();
 
@@ -59,7 +58,7 @@ class MountHelper {
   // Return the storage container factory, used to create filestsytem
   // stack.
   libstorage::StorageContainerFactory* GetStorageContainerFactory() {
-    return storage_container_factory_.get();
+    return storage_container_factory_;
   }
 
   // Bind mount the /var and /home/chronos mounts. The implementation
@@ -81,8 +80,7 @@ class MountHelper {
  private:
   std::stack<base::FilePath> mount_stack_;
   std::unique_ptr<MountVarAndHomeChronosInterface> impl_;
-  std::unique_ptr<libstorage::StorageContainerFactory>
-      storage_container_factory_;
+  libstorage::StorageContainerFactory* storage_container_factory_;
 };
 
 }  // namespace startup

@@ -23,13 +23,13 @@ namespace startup {
 // image or in factory mode.
 class StandardMountHelper : public MountHelper {
  public:
-  StandardMountHelper(libstorage::Platform* platform,
-                      StartupDep* startup_dep,
-                      const Flags* flags,
-                      const base::FilePath& root,
-                      std::unique_ptr<MountVarAndHomeChronosInterface> impl,
-                      std::unique_ptr<libstorage::StorageContainerFactory>
-                          storage_container_factory);
+  StandardMountHelper(
+      libstorage::Platform* platform,
+      StartupDep* startup_dep,
+      const Flags* flags,
+      const base::FilePath& root,
+      std::unique_ptr<MountVarAndHomeChronosInterface> impl,
+      libstorage::StorageContainerFactory* storage_container_factory);
 
   bool DoMountVarAndHomeChronos(
       std::optional<encryption::EncryptionKey> key) override;

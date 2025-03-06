@@ -28,14 +28,13 @@ StandardMountHelper::StandardMountHelper(
     const Flags* flags,
     const base::FilePath& root,
     std::unique_ptr<MountVarAndHomeChronosInterface> impl,
-    std::unique_ptr<libstorage::StorageContainerFactory>
-        storage_container_factory)
+    libstorage::StorageContainerFactory* storage_container_factory)
     : MountHelper(platform,
                   startup_dep,
                   flags,
                   root,
                   std::move(impl),
-                  std::move(storage_container_factory)) {}
+                  storage_container_factory) {}
 
 bool StandardMountHelper::DoMountVarAndHomeChronos(
     std::optional<encryption::EncryptionKey> key) {

@@ -38,8 +38,7 @@ class MountHelperFactory {
   // possible device configurations need different implementations of the
   // functions DoMountVarAndHomeChronos and DoUmountVarAndHomeChronos.
   virtual std::unique_ptr<MountHelper> Generate(
-      std::unique_ptr<libstorage::StorageContainerFactory>
-          storage_container_factory,
+      libstorage::StorageContainerFactory* storage_container_factory,
       const Flags* flags);
 
  private:

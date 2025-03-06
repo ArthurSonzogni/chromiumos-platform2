@@ -390,6 +390,8 @@ ChromeosStartup::ChromeosStartup(
       metrics_(metrics) {
   stateful_mount_ = std::make_unique<StatefulMount>(root_, stateful_, platform_,
                                                     startup_dep_);
+  SetMountHelper(mount_helper_factory_->Generate(
+      storage_container_factory_.get(), flags_.get()));
 }
 
 void ChromeosStartup::EarlySetup() {
@@ -972,8 +974,6 @@ int ChromeosStartup::Run() {
   // /dev/ram.
   if (root_dev_.empty() || root_dev_ == base::FilePath("/dev/ram")) {
     PLOG(INFO) << "rootdev does not have stateful partition.";
-    SetMountHelper(mount_helper_factory_->Generate(
-        std::move(storage_container_factory_), flags_.get()));
   } else {
     std::optional<base::Value> image_vars = GetImageVars(root_, root_dev_);
     if (!image_vars) {
@@ -1040,9 +1040,8 @@ int ChromeosStartup::Run() {
     }
 
     // Initialize mount_helper_ based on the updated flags.
-    // storage_container_factory_ is now owned by mount_helper_
     SetMountHelper(mount_helper_factory_->Generate(
-        std::move(storage_container_factory_), flags_.get()));
+        storage_container_factory_.get(), flags_.get()));
 
     // Remember the metadata filesystem mount for cleanup in case of clobber.
     // Everything by 'stateful' is unmounted before going to clobber, including

@@ -45,14 +45,13 @@ TestModeMountHelper::TestModeMountHelper(
     const base::FilePath& root,
     const base::FilePath& stateful,
     std::unique_ptr<MountVarAndHomeChronosInterface> impl,
-    std::unique_ptr<libstorage::StorageContainerFactory>
-        storage_container_factory)
+    libstorage::StorageContainerFactory* storage_container_factory)
     : MountHelper(platform,
                   startup_dep,
                   flags,
                   root,
                   std::move(impl),
-                  std::move(storage_container_factory)),
+                  storage_container_factory),
       stateful_(stateful) {}
 
 base::FilePath TestModeMountHelper::GetKeyBackupFile() const {

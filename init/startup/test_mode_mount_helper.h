@@ -23,14 +23,14 @@ namespace startup {
 // is running a test image.
 class TestModeMountHelper : public MountHelper {
  public:
-  TestModeMountHelper(libstorage::Platform* platform,
-                      StartupDep* startup_dep,
-                      const Flags* flags,
-                      const base::FilePath& root,
-                      const base::FilePath& stateful,
-                      std::unique_ptr<MountVarAndHomeChronosInterface> impl,
-                      std::unique_ptr<libstorage::StorageContainerFactory>
-                          storage_container_factory);
+  TestModeMountHelper(
+      libstorage::Platform* platform,
+      StartupDep* startup_dep,
+      const Flags* flags,
+      const base::FilePath& root,
+      const base::FilePath& stateful,
+      std::unique_ptr<MountVarAndHomeChronosInterface> impl,
+      libstorage::StorageContainerFactory* storage_container_factory);
 
   bool DoMountVarAndHomeChronos(
       std::optional<encryption::EncryptionKey> key) override;

@@ -368,11 +368,12 @@ class RunMountStatefulLVM : public ::testing::Test {
   void SetUp() override {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
+    storage_factory_ = std::make_unique<libstorage::StorageContainerFactory>(
+        platform_.get(), nullptr);
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
         platform_.get(), startup_dep_.get(), &flags_, base_dir,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-        std::make_unique<libstorage::StorageContainerFactory>(platform_.get(),
-                                                              nullptr));
+        storage_factory_.get());
     flags_.lvm_stateful = true;
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         base_dir, stateful_dir, platform_.get(), startup_dep_.get());
@@ -396,6 +397,7 @@ class RunMountStatefulLVM : public ::testing::Test {
   base::FilePath stateful_dir{"/state"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
+  std::unique_ptr<libstorage::StorageContainerFactory> storage_factory_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   base::JSONReader::Result partition_info_;
 };
@@ -439,11 +441,12 @@ class RunMountStateful : public ::testing::Test {
   void SetUp() override {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
+    storage_factory_ = std::make_unique<libstorage::StorageContainerFactory>(
+        platform_.get(), nullptr);
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
         platform_.get(), startup_dep_.get(), &flags_, base_dir,
         std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
-        std::make_unique<libstorage::StorageContainerFactory>(platform_.get(),
-                                                              nullptr));
+        storage_factory_.get());
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         base_dir, stateful_dir, platform_.get(), startup_dep_.get());
 
@@ -466,6 +469,7 @@ class RunMountStateful : public ::testing::Test {
   base::FilePath stateful_dir{"/state"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
+  std::unique_ptr<libstorage::StorageContainerFactory> storage_factory_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   base::JSONReader::Result partition_info_;
 };

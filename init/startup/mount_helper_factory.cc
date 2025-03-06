@@ -44,8 +44,7 @@ MountHelperFactory::MountHelperFactory(libstorage::Platform* platform,
 // implementations came from loading dev_utils.sh, test_utils.sh,
 // factory_utils.sh and factory_utils.sh.
 std::unique_ptr<MountHelper> MountHelperFactory::Generate(
-    std::unique_ptr<libstorage::StorageContainerFactory>
-        storage_container_factory,
+    libstorage::StorageContainerFactory* storage_container_factory,
     const Flags* flags) {
   bool dev_mode = InDevMode(platform_->GetCrosssystem());
   bool is_test_image = IsTestImage(platform_, lsb_file_);
@@ -57,7 +56,7 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
         platform_, startup_dep_, flags, root_, stateful_,
         std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
             platform_, startup_dep_, root_, stateful_),
-        std::move(storage_container_factory));
+        storage_container_factory);
   }
 
   if (dev_mode && is_test_image) {
@@ -65,15 +64,15 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
       return std::make_unique<TestModeMountHelper>(
           platform_, startup_dep_, flags, root_, stateful_,
           std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
-              platform_, startup_dep_, storage_container_factory.get(), root_,
+              platform_, startup_dep_, storage_container_factory, root_,
               stateful_),
-          std::move(storage_container_factory));
+          storage_container_factory);
     } else {
       return std::make_unique<TestModeMountHelper>(
           platform_, startup_dep_, flags, root_, stateful_,
           std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
               platform_, startup_dep_, root_, stateful_),
-          std::move(storage_container_factory));
+          storage_container_factory);
     }
   }
 
@@ -81,15 +80,15 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
     return std::make_unique<StandardMountHelper>(
         platform_, startup_dep_, flags, root_,
         std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
-            platform_, startup_dep_, storage_container_factory.get(), root_,
+            platform_, startup_dep_, storage_container_factory, root_,
             stateful_),
-        std::move(storage_container_factory));
+        storage_container_factory);
   }
   return std::make_unique<StandardMountHelper>(
       platform_, startup_dep_, flags, root_,
       std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
           platform_, startup_dep_, root_, stateful_),
-      std::move(storage_container_factory));
+      storage_container_factory);
 }
 
 }  // namespace startup

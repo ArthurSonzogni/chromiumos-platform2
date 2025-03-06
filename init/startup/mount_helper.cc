@@ -32,19 +32,19 @@ constexpr char kVarAndHomeMountedTag[] = "/varhomemountedtag";
 
 namespace startup {
 
-MountHelper::MountHelper(libstorage::Platform* platform,
-                         StartupDep* startup_dep,
-                         const Flags* flags,
-                         const base::FilePath& root,
-                         std::unique_ptr<MountVarAndHomeChronosInterface> impl,
-                         std::unique_ptr<libstorage::StorageContainerFactory>
-                             storage_container_factory)
+MountHelper::MountHelper(
+    libstorage::Platform* platform,
+    StartupDep* startup_dep,
+    const Flags* flags,
+    const base::FilePath& root,
+    std::unique_ptr<MountVarAndHomeChronosInterface> impl,
+    libstorage::StorageContainerFactory* storage_container_factory)
     : platform_(platform),
       startup_dep_(startup_dep),
       flags_(flags),
       root_(root),
       impl_(std::move(impl)),
-      storage_container_factory_(std::move(storage_container_factory)) {}
+      storage_container_factory_(storage_container_factory) {}
 
 MountHelper::~MountHelper() = default;
 
