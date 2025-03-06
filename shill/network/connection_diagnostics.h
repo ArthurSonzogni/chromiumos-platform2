@@ -146,6 +146,10 @@ class ConnectionDiagnostics {
                           const net_base::IPAddress& address_pinged,
                           const std::vector<base::TimeDelta>& result);
 
+  void OnPingResult(Type ping_event_type,
+                    const net_base::IPAddress& address_pinged,
+                    const std::vector<base::TimeDelta>& result);
+
   EventDispatcher* dispatcher_;
 
   // The name of the network interface associated with the connection.

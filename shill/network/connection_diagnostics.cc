@@ -12,6 +12,7 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/net-base/http_url.h>
 
@@ -123,6 +124,7 @@ bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
 }
 
 void ConnectionDiagnostics::Stop() {
+  LOG(INFO) << logging_tag_ << " " << __func__;
   running_ = false;
   num_dns_attempts_ = 0;
   event_number_ = 0;
@@ -138,11 +140,10 @@ bool ConnectionDiagnostics::IsRunning() const {
 
 // static
 std::string ConnectionDiagnostics::EventToString(const Event& event) {
-  auto message = base::StringPrintf("Event: %-26sResult: %-10s",
-                                    TypeName(event.type).c_str(),
-                                    ResultName(event.result).c_str());
+  auto message =
+      base::StrCat({TypeName(event.type), ": ", ResultName(event.result)});
   if (!event.message.empty()) {
-    message.append("Msg: " + event.message);
+    base::StrAppend(&message, {", ", event.message});
   }
   return message;
 }
@@ -153,12 +154,10 @@ void ConnectionDiagnostics::LogEvent(Type type,
   event_number_++;
   Event ev(type, result, message);
   if (result == Result::kSuccess) {
-    LOG(INFO) << logging_tag_ << " " << __func__ << ": " << ip_family_
-              << " Diagnostics event #" << event_number_ << ": "
+    LOG(INFO) << logging_tag_ << " " << __func__ << ": " << ip_family_ << " "
               << EventToString(ev);
   } else {
-    LOG(WARNING) << logging_tag_ << " " << __func__ << ": " << ip_family_
-                 << " Diagnostics event #" << event_number_ << ": "
+    LOG(WARNING) << logging_tag_ << " " << __func__ << ": " << ip_family_ << " "
                  << EventToString(ev);
   }
 }
@@ -174,7 +173,7 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
   }
 
   LogEvent(Type::kResolveTargetServerIP, Result::kSuccess,
-           base::StringPrintf("Attempt #%d", num_dns_attempts_));
+           "Started resolving " + target_url_->host());
   SLOG(2) << logging_tag_ << " " << __func__ << ": looking up "
           << target_url_->host() << " (attempt " << num_dns_attempts_ << ")";
   ++num_dns_attempts_;
@@ -220,8 +219,6 @@ void ConnectionDiagnostics::PingDNSServers() {
     Stop();
     return;
   }
-
-  LogEvent(Type::kPingDNSServers, Result::kSuccess);
 }
 
 void ConnectionDiagnostics::PingHost(const net_base::IPAddress& address) {
@@ -240,7 +237,8 @@ void ConnectionDiagnostics::PingHost(const net_base::IPAddress& address) {
     return;
   }
 
-  LogEvent(event_type, Result::kSuccess, "Pinging " + address.ToString());
+  LogEvent(event_type, Result::kSuccess,
+           "Started pinging " + address.ToString());
 }
 
 void ConnectionDiagnostics::OnPingDNSServerComplete(
@@ -261,6 +259,8 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
     return;
   }
 
+  OnPingResult(Type::kPingDNSServers, dns_list_[dns_server_index], result);
+
   if (IcmpSession::AnyRepliesReceived(result)) {
     pingable_dns_servers_.push_back(dns_list_[dns_server_index].ToString());
   }
@@ -279,14 +279,6 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
         FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
                                   weak_ptr_factory_.GetWeakPtr(), gateway_));
     return;
-  }
-
-  if (pingable_dns_servers_.size() != dns_list_.size()) {
-    LogEvent(Type::kPingDNSServers, Result::kSuccess,
-             "Pinged some, but not all, DNS servers successfully");
-  } else {
-    LogEvent(Type::kPingDNSServers, Result::kSuccess,
-             "Pinged all DNS servers successfully");
   }
 
   if (num_dns_attempts_ == kMaxDNSRetries) {
@@ -314,39 +306,27 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(
                                   weak_ptr_factory_.GetWeakPtr(), *address));
   } else if (address.error().type() == Error::kOperationTimeout) {
     LogEvent(Type::kResolveTargetServerIP, Result::kTimeout,
-             "DNS resolution timed out: " + address.error().message());
+             address.error().message());
     dispatcher_->PostTask(FROM_HERE,
                           base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
                                          weak_ptr_factory_.GetWeakPtr()));
   } else {
     LogEvent(Type::kResolveTargetServerIP, Result::kFailure,
-             "DNS resolution failed: " + address.error().message());
+             address.error().message());
     Stop();
   }
 }
 
 void ConnectionDiagnostics::OnPingHostComplete(
-    Type ping_event_type,
+    Type event_type,
     const net_base::IPAddress& address_pinged,
     const std::vector<base::TimeDelta>& result) {
   SLOG(2) << logging_tag_ << " " << __func__;
 
-  auto message = base::StringPrintf("Destination: %s,  Latencies: ",
-                                    address_pinged.ToString().c_str());
-  for (const auto& latency : result) {
-    if (latency.is_zero()) {
-      message.append("NA ");
-    } else {
-      message.append(base::StringPrintf("%4.2fms ", latency.InMillisecondsF()));
-    }
-  }
+  OnPingResult(event_type, address_pinged, result);
 
-  Result result_type = IcmpSession::AnyRepliesReceived(result)
-                           ? Result::kSuccess
-                           : Result::kFailure;
-  LogEvent(ping_event_type, result_type, message);
-  if (result_type == Result::kFailure &&
-      ping_event_type == Type::kPingTargetServer) {
+  if (!IcmpSession::AnyRepliesReceived(result) &&
+      event_type == Type::kPingTargetServer) {
     // If pinging the target web server fails, try pinging the gateway.
     dispatcher_->PostTask(
         FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
@@ -355,6 +335,28 @@ void ConnectionDiagnostics::OnPingHostComplete(
     // Otherwise stop
     Stop();
   }
+}
+
+void ConnectionDiagnostics::OnPingResult(
+    Type event_type,
+    const net_base::IPAddress& address_pinged,
+    const std::vector<base::TimeDelta>& result) {
+  std::string message = base::StrCat({"Pinged ", address_pinged.ToString()});
+  std::string sep = ": ";
+  for (const auto& latency : result) {
+    message.append(sep);
+    if (!latency.is_zero()) {
+      message.append(base::StringPrintf("%4.2fms", latency.InMillisecondsF()));
+    } else {
+      message.append("NA");
+    }
+    sep = ", ";
+  }
+
+  Result result_type = IcmpSession::AnyRepliesReceived(result)
+                           ? Result::kSuccess
+                           : Result::kFailure;
+  LogEvent(event_type, result_type, message);
 }
 
 std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
