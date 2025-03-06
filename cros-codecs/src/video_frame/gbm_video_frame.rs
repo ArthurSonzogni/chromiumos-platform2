@@ -252,6 +252,7 @@ impl GbmVideoFrame {
                 size: self.resolution(),
                 planes: planes,
             },
+            vec![],
         )
     }
 }

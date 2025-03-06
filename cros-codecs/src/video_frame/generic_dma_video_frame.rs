@@ -7,8 +7,11 @@ use core::arch::x86_64::_mm_clflush;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::_mm_mfence;
 use std::cell::RefCell;
+use std::fmt;
+use std::fmt::Debug;
 use std::fs::File;
 use std::iter::zip;
+use std::mem::replace;
 use std::num::NonZeroUsize;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd};
 use std::ptr::NonNull;
@@ -331,12 +334,18 @@ impl<'a> Drop for DmaMapping<'a> {
     }
 }
 
-#[derive(Debug)]
 pub struct GenericDmaVideoFrame {
     dma_handles: Vec<File>,
     layout: FrameLayout,
+    drop_cbs: Vec<Box<dyn FnOnce(&mut Self) -> () + Send + Sync + 'static>>,
 }
 
+// The Clone trait is implemented for GenericDmaVideoFrame (and importantly no other VideoFrame!)
+// just so we can export the frame as a VA-API surface. While this looks risky because we don't
+// transfer the drop callbacks to the clone (because we can't), this is in practice OK because we
+// tie the lifetimes of VideoFrames with the Surfaces they are exported to through the VaapiPicture
+// struct. So we can be confidence that all VASurfaces will be destroyed before the drop callbacks
+// are run.
 impl Clone for GenericDmaVideoFrame {
     fn clone(&self) -> Self {
         Self {
@@ -350,7 +359,26 @@ impl Clone for GenericDmaVideoFrame {
                 })
                 .collect(),
             layout: self.layout.clone(),
+            // We can't clone the drop callbacks since they're FnOnce()
+            drop_cbs: vec![],
         }
+    }
+}
+
+impl Drop for GenericDmaVideoFrame {
+    fn drop(&mut self) {
+        let drop_cbs = replace(&mut self.drop_cbs, vec![]);
+        drop_cbs.into_iter().map(|drop_cb| drop_cb(self));
+    }
+}
+
+impl Debug for GenericDmaVideoFrame {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GenericDmaVideoFrame")
+            .field("dma_handles", &self.dma_handles)
+            .field("layout", &self.layout)
+            .field("num_drop_cbs", &self.drop_cbs.len())
+            .finish()
     }
 }
 
@@ -358,8 +386,10 @@ impl GenericDmaVideoFrame {
     pub fn new(
         dma_handles: Vec<File>,
         layout: FrameLayout,
+        drop_cbs: Vec<Box<dyn FnOnce(&mut Self) -> () + Send + Sync + 'static>>,
     ) -> Result<GenericDmaVideoFrame, String> {
-        let ret = GenericDmaVideoFrame { dma_handles: dma_handles, layout: layout };
+        let ret =
+            GenericDmaVideoFrame { dma_handles: dma_handles, layout: layout, drop_cbs: drop_cbs };
         ret.validate_frame()?;
         Ok(ret)
     }
