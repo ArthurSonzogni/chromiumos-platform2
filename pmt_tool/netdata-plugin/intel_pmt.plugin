@@ -8,8 +8,8 @@
 csv_file="/tmp/pmt.csv"
 seconds=2
 records=30
-# max number of samples to display
-MAX_SAMPLES=100
+# Max number of samples to display
+MAX_SAMPLES=1000
 
 # Keep alive
 while true; do
@@ -33,28 +33,61 @@ while true; do
   epoch2=$(date -d "${timestamp2}" +%s)
   delta_t=$((epoch2 - epoch1))
 
-  # Create the Netdata chart
-  # Read header row (5th row) to get sample names
-  samples_row=$(awk -F, -v row=5 'NR == row {print; exit}' "${csv_file}")
+  # Read header row (1st row) to get GUIDs
+  guid_row=$(awk -F, -v row=1 'NR == row {print; exit}' "${csv_file}")
+  # Split GUIDs row into an array
+  IFS=',' read -r -a guid_array <<< "${guid_row}"
 
-  # Split samples row into an array
+  # Read header row (2nd row) to get sample groups
+  sample_group_row=$(awk -F, -v row=2 'NR == row {print; exit}' "${csv_file}")
+  # Split sample groups row into an array
+  IFS=',' read -r -a sample_groups <<< "${sample_group_row}"
+
+  # Read 4th header row to get unit names
+  units_row=$(awk -F, -v row=4 'NR == row {print; exit}' "${csv_file}")
+  IFS=',' read -r -a units_array <<< "${units_row}"
+
+  # Read 5th header row to get sample names
+  samples_row=$(awk -F, -v row=5 'NR == row {print; exit}' "${csv_file}")
   IFS=',' read -r -a samples_array <<< "${samples_row}"
   num_cols=${#samples_array[@]}
-  max_col=$(( num_cols < MAX_SAMPLES ? num_cols : MAX_SAMPLES ))
+  max_col=$(( num_cols < MAX_SAMPLES + 1 ? num_cols : MAX_SAMPLES + 1))
   echo "PMT INFO: creating dimensions for ${max_col} samples" >&2
 
-  # Dynamically create Dimensions based on header row,
+  declare -a chart_ids
+  # Create the Netdata chart
+  # Dynamically create Dimensions based on sample header row,
   # starting from the second column (index 1)
-  for ((i = 1; i <= max_col; i++)); do
+  for ((i = 1; i < max_col; i++)); do
     sample_name="${samples_array[${i}]}"
+    unit_name="${units_array[${i}]}"
+    # Remove csv guarding quotes from strings
+    sample_name="${sample_name//\"/}"
+    unit_name="${unit_name//\"/}"
+    # Strip whitespace so it can be used as ID suffix
+    unit_name="${unit_name%% *}"
+
+    if [[ -n "${sample_groups[${i}]}" ]]; then
+        sample_group="${sample_groups[${i}]}"
+        sample_group="${sample_group//\"/}"
+    fi
+
+    # Each GUID-unit combination will have its own chart
+    if [[ -n "${guid_array[${i}]}" ]]; then
+        guid="${guid_array[${i}]}"
+    fi
+    # Combine guid and unit_name into a chart_id
+    chart_id="intel_pmt.dev_${guid}_${unit_name}"
+    # Map chart_ids to sample indices
+    chart_ids[i]="${chart_id}"
 
     cat << EOF
-CHART intel_pmt.chart '' 'Intel PMT Data' unit 'chart1' intel_pmt line 1000000 ${delta_t} '' ''
-DIMENSION col_${i} '${sample_name}' absolute 1 1
+CHART ${chart_id} '' 'Intel PMT Data from Device ${guid}' ${units_array[${i}]} device_${guid} Intel_PMT.${guid}_${unit_name} line 10000 ${delta_t}
+DIMENSION col_${i} '${sample_group}_${sample_name}' absolute 1 1
 EOF
   done
 
-  echo "PMT INFO: chart created" >&2
+  echo "PMT INFO: charts created" >&2
 
   # Get total number of rows
   num_rows=$(awk -F, 'END{print NR}' "${csv_file}")
@@ -66,15 +99,21 @@ EOF
   while (( row_num <= num_rows )); do
     # Extract data from the current row
     data=$(awk -F, -v row="${row_num}" 'NR == row {OFS=","; print; exit}' "${csv_file}")
-    echo "PMT INFO: current row: ${row_num}" >&2
 
     # Split the data into an array
     IFS=',' read -r -a data_array <<< "${data}"
 
     # Output the data for each dimension using SET command and a loop
-    echo "BEGIN intel_pmt.chart"
+    chart_id="${chart_ids[1]}"
+    echo "BEGIN ${chart_id}"
     # Skip timestamp column
-    for ((i = 1; i <= max_col; i++)); do
+    for ((i = 1; i < max_col; i++)); do
+      # Switch chart if new chart_id encountered
+      if [[ "${chart_ids[${i}]}" != "${chart_id}" ]]; then
+        echo "END"
+        chart_id="${chart_ids[${i}]}"
+        echo "BEGIN ${chart_id}"
+      fi
       # Check if the index is valid
       if (( i < ${#data_array[@]} )); then
           echo "SET col_${i} = ${data_array[${i}]}"
