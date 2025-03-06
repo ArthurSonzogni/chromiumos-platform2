@@ -4,10 +4,15 @@
 
 #include "libec/fingerprint/fp_frame_command.h"
 
+#include <stdint.h>
+
 #include <algorithm>
+#include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/threading/platform_thread.h>
 
 namespace ec {
@@ -54,6 +59,42 @@ bool FpFrameCommand::EcCommandRun(int fd) {
 
 void FpFrameCommand::Sleep(base::TimeDelta duration) {
   base::PlatformThread::Sleep(duration);
+}
+
+std::optional<std::string> FpFrameCommand::FrameToPgm(
+    base::span<const uint8_t> frame, const FrameToPgmOptions& options) {
+  if (frame.empty()) {
+    return std::nullopt;
+  }
+
+  uint8_t bytes_per_pixel = std::ceil(options.bpp / 8.0f);
+  if (bytes_per_pixel != 1 && bytes_per_pixel != 2) {
+    return std::nullopt;
+  }
+
+  if (frame.size() < options.width * options.height * bytes_per_pixel) {
+    return std::nullopt;
+  }
+
+  const uint8_t* ptr = frame.data();
+
+  // Generate 8-bit or 16-bit PGM ASCII output.
+  std::stringstream stream;
+  stream << "P2\n"
+         << options.width << " " << options.height << "\n"
+         << ((bytes_per_pixel == 2) ? 65535 : 255) << "\n";
+
+  for (int y = 0; y < options.height; y++) {
+    for (int x = 0; x < options.width; x++, ptr += bytes_per_pixel) {
+      stream << ((bytes_per_pixel == 2)
+                     ? *reinterpret_cast<const uint16_t*>(ptr)
+                     : *ptr)
+             << " ";
+    }
+    stream << "\n";
+  }
+  stream << "# END OF FILE\n";
+  return stream.str();
 }
 
 }  // namespace ec

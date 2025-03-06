@@ -7,8 +7,11 @@
 
 #include <array>
 #include <memory>
+#include <optional>
+#include <string>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/memory/ptr_util.h>
 #include <base/time/time.h>
 #include <brillo/brillo_export.h>
@@ -19,6 +22,12 @@
 namespace ec {
 
 using FpFramePacket = std::array<uint8_t, kMaxPacketSize>;
+
+struct FrameToPgmOptions {
+  uint16_t bpp = 8;
+  uint16_t width = 80;
+  uint16_t height = 80;
+};
 
 class BRILLO_EXPORT FpFrameCommand
     : public EcCommand<struct ec_params_fp_frame, FpFramePacket> {
@@ -47,6 +56,10 @@ class BRILLO_EXPORT FpFrameCommand
   // This transfers ownership of |frame_data_|. FpFrameCommand no longer has a
   // copy of the frame after calling this.
   std::unique_ptr<std::vector<uint8_t>> frame();
+
+  // Generate 8-bit or 16-bit PGM ASCII output.
+  static std::optional<std::string> FrameToPgm(
+      base::span<const uint8_t> frame, const FrameToPgmOptions& options);
 
  protected:
   FpFrameCommand(int index, uint32_t frame_size, uint16_t max_read_size)

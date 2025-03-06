@@ -6,6 +6,8 @@
 
 #include <limits>
 #include <memory>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <base/test/task_environment.h>
@@ -214,6 +216,72 @@ TEST_F(FpFrameCommandTest, StopsBusyRetriesAfterMaxAttempts) {
       .Times(51)
       .WillRepeatedly(Return(EC_RES_BUSY));
   EXPECT_FALSE(mock_fp_frame_command->Run(-1));
+}
+
+TEST(FpFrameCommand, FrameToPgmInvalidBPP) {
+  const std::vector<uint8_t> frame(6400);
+  EXPECT_FALSE(
+      FpFrameCommand::FrameToPgm(frame, {.bpp = 0, .width = 80, .height = 80})
+          .has_value());
+  EXPECT_FALSE(
+      FpFrameCommand::FrameToPgm(frame, {.bpp = 17, .width = 80, .height = 80})
+          .has_value());
+  EXPECT_FALSE(
+      FpFrameCommand::FrameToPgm(frame, {.bpp = 23, .width = 80, .height = 80})
+          .has_value());
+}
+
+TEST(FpFrameCommand, FrameToPgmFrameEmpty) {
+  const std::vector<uint8_t> frame;
+  EXPECT_FALSE(
+      FpFrameCommand::FrameToPgm(frame, {.bpp = 8, .width = 80, .height = 80})
+          .has_value());
+}
+
+TEST(FpFrameCommand, FrameToPgmWrongFrameSize_8bpp) {
+  const std::vector<uint8_t> frame(399);
+
+  EXPECT_FALSE(
+      FpFrameCommand::FrameToPgm(frame, {.bpp = 8, .width = 20, .height = 20})
+          .has_value());
+}
+
+TEST(FpFrameCommand, FrameToPgmWrongFrameSize_16bpp) {
+  const std::vector<uint8_t> frame(799);
+
+  EXPECT_FALSE(
+      FpFrameCommand::FrameToPgm(frame, {.bpp = 16, .width = 20, .height = 20})
+          .has_value());
+}
+
+TEST(FpFrameCommand, FrameToPgmSuccess_2bpp) {
+  const std::vector<uint8_t> frame = {0, 100, 200, 255};
+
+  EXPECT_EQ(
+      FpFrameCommand::FrameToPgm(frame, {.bpp = 2, .width = 2, .height = 2})
+          .value(),
+      "P2\n2 2\n255\n0 100 \n200 255 \n# END OF FILE\n");
+}
+
+TEST(FpFrameCommand, FrameToPgmSuccess_8bpp) {
+  const std::vector<uint8_t> frame = {10, 50, 150, 220};
+
+  EXPECT_EQ(
+      FpFrameCommand::FrameToPgm(frame, {.bpp = 8, .width = 2, .height = 2})
+          .value(),
+      "P2\n2 2\n255\n10 50 \n150 220 \n# END OF FILE\n");
+}
+
+TEST(FpFrameCommand, FrameToPgmSuccess_16bpp) {
+  const std::vector<uint16_t> frame = {1,    100,  300,  600,  1000,
+                                       2000, 4000, 8000, 16000};
+
+  EXPECT_EQ(
+      FpFrameCommand::FrameToPgm(base::as_bytes(base::make_span(frame)),
+                                 {.bpp = 16, .width = 3, .height = 3})
+          .value(),
+      "P2\n3 3\n65535\n1 100 300 \n600 1000 2000 \n4000 8000 16000 \n# END OF "
+      "FILE\n");
 }
 
 }  // namespace
