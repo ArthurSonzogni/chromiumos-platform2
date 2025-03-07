@@ -1061,6 +1061,8 @@ int ChromeosStartup::Run() {
     // Block symlink traversal and opening of FIFOs on stateful. Note that we
     // set up exceptions for developer mode later on.
     BlockSymlinkAndFifo(platform_, root_, stateful_.value());
+    // Setup blk-crypto passthrough to allow clobber files to be read correctly.
+    BlkCryptoPassthroughExceptions(platform_, root_);
   }
 
   // Checks if developer mode is blocked.
