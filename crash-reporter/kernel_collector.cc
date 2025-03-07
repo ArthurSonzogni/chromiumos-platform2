@@ -39,6 +39,9 @@ namespace {
 
 // Name for extra BIOS dump attached to report. Also used as metadata key.
 constexpr char kBiosDumpName[] = "bios_log";
+// Name for extra corrupted dump attached to report. Also used as the metadata
+// key.
+constexpr char kCorruptedDumpName[] = "kcrash.corrupted";
 const FilePath kBiosLogPath("/sys/firmware/log");
 // Names of the four BIOS stages in which the BIOS log can start.
 const char* const kBiosStageNames[] = {
@@ -712,6 +715,7 @@ void KernelCollector::AddLogFile(const char* log_name,
 CrashCollectionStatus KernelCollector::HandleCrash(
     const std::string& kernel_dump,
     const std::string& bios_dump,
+    const std::string& corrupted_dump,
     const std::string& signature) {
   FilePath root_crash_directory;
 
@@ -730,6 +734,8 @@ CrashCollectionStatus KernelCollector::HandleCrash(
       "%s.%s", dump_basename.c_str(), kernel_util::kKernelDumpName));
   FilePath bios_dump_path = root_crash_directory.Append(
       StringPrintf("%s.%s", dump_basename.c_str(), kBiosDumpName));
+  FilePath corrupted_dump_path = root_crash_directory.Append(
+      StringPrintf("%s.%s", dump_basename.c_str(), kCorruptedDumpName));
   FilePath log_path = root_crash_directory.Append(
       StringPrintf("%s.log", dump_basename.c_str()));
   FilePath ec_log_path = root_crash_directory.Append(
@@ -740,8 +746,7 @@ CrashCollectionStatus KernelCollector::HandleCrash(
   // might have created.
   if (WriteNewFile(kernel_crash_path, kernel_dump) !=
       static_cast<int>(kernel_dump.length())) {
-    LOG(INFO) << "Failed to write kernel dump to "
-              << kernel_crash_path.value().c_str();
+    LOG(ERROR) << "Failed to write kernel dump to " << kernel_crash_path;
     return CrashCollectionStatus::kFailedKernelDumpWrite;
   }
   AddLogFile(kBiosDumpName, bios_dump, bios_dump_path);
@@ -758,6 +763,19 @@ CrashCollectionStatus KernelCollector::HandleCrash(
   if (IsSuccessCode(
           GetLogContents(log_config_path_, kECExecName, ec_log_path))) {
     AddCrashMetaUploadFile("ec_log", ec_log_path.BaseName().value());
+  }
+
+  if (!corrupted_dump.empty()) {
+    // We must use WriteNewFile instead of base::WriteFile as we do not want to
+    // write with root access to a symlink that an attacker might have created.
+    if (WriteNewFile(corrupted_dump_path, corrupted_dump) !=
+        static_cast<int>(corrupted_dump.length())) {
+      LOG(WARNING) << "Failed to write corrupted dump to "
+                   << corrupted_dump_path;
+    } else {
+      AddCrashMetaUploadFile(kCorruptedDumpName,
+                             corrupted_dump_path.BaseName().value());
+    }
   }
 
   const char* exec_name = kernel_util::IsHypervisorCrash(kernel_dump)
@@ -800,7 +818,8 @@ std::vector<CrashCollectionStatus> KernelCollector::CollectEfiCrashes(
         single_result = CrashCollectionStatus::kPstoreCrashEmpty;
       } else {
         single_result =
-            HandleCrash(crash, std::string(),
+            HandleCrash(crash, /*bios_dump=*/std::string(),
+                        /*corrupted_dump=*/std::string(),
                         kernel_util::ComputeKernelStackSignature(crash, arch_));
         if (!IsSuccessCode(single_result)) {
           LOG(ERROR) << "Failed to handle kernel crash id: "
@@ -858,7 +877,17 @@ std::vector<CrashCollectionStatus> KernelCollector::CollectRamoopsCrashes(
       if (crash.empty()) {
         single_result = CrashCollectionStatus::kPstoreCrashEmpty;
       } else {
-        single_result = HandleCrash(crash, bios_dump, signature);
+        // If the crash record is corrupted, use console-ramoops as the crash
+        // content instead. Since console-ramoops is not compressed, even if
+        // it's also corrupted, it will contain more information compared with
+        // the compressed dmesg-ramoops.
+        std::string corrupted_dump;
+        if (signature == kernel_util::kCorruptDumpSignature) {
+          corrupted_dump = std::move(crash);
+          crash = console_dump;
+        }
+        single_result =
+            HandleCrash(crash, bios_dump, corrupted_dump, signature);
         if (!IsSuccessCode(single_result)) {
           LOG(ERROR) << "Failed to handle kernel crash id: "
                      << ramoops_crash->GetId();
@@ -897,7 +926,7 @@ CrashCollectionStatus KernelCollector::CollectConsoleRamoopsCrash(
   if (console_dump.empty() && bios_dump.empty()) {
     return CrashCollectionStatus::kRamoopsDumpEmpty;
   }
-  return HandleCrash(console_dump, bios_dump, signature);
+  return HandleCrash(console_dump, bios_dump, /*corrupted_dump=*/"", signature);
 }
 
 bool KernelCollector::WasKernelCrash(

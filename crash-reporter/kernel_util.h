@@ -28,6 +28,8 @@ extern const char kHypervisorExecName[];
 
 constexpr char kKernelDumpName[] = "kcrash";
 
+constexpr char kCorruptDumpSignature[] = "kernel-CorruptDump";
+
 // Check if this is a hypervisor kernel crash.
 bool IsHypervisorCrash(const std::string& kernel_dump);
 

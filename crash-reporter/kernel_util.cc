@@ -366,7 +366,7 @@ std::string ComputeKernelStackSignature(const std::string& kernel_dump,
   std::string human_string;
 
   if (kernel_dump.starts_with(constants::kCorruptPstore)) {
-    return "kernel-CorruptDump";
+    return kCorruptDumpSignature;
   }
 
   if (!ProcessStackTrace(kernel_dump, arch, &stack_hash, &human_string,
