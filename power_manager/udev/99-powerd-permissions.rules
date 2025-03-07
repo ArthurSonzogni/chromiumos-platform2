@@ -8,6 +8,13 @@
 ACTION=="add|bind|change", TEST=="power/wakeup", \
   RUN+="/bin/chown power:power \"$sys$devpath/power/wakeup\""
 
+# Platforms using UCSI will register ports with the power_supply class ~2-3
+# seconds after boot. Update ownership of charge_control_limit_max when added
+# or changed.
+ACTION=="add|change", SUBSYSTEM=="power_supply", \
+  DRIVERS=="cros_ec_ucsi", TEST=="charge_control_limit_max", \
+  RUN+="/bin/chown power:power \"$sys$devpath/charge_control_limit_max\""
+
 # For all the following permission changes, the corresponding attribute is
 # available when the device is added.
 ACTION!="add", GOTO="powerd_permissions_end"
@@ -37,10 +44,5 @@ SUBSYSTEM=="leds", DEVPATH=="*:kbd_backlight", \
 # that is part of the cros_ec-access group is "healthd_ec").
 SUBSYSTEM=="chromeos|misc", KERNEL=="cros_ec" OWNER="root", \
   GROUP="cros_ec-access" MODE="0660"
-
-# Platforms using UCSI will register ports with the power_supply class ~2-3
-# seconds after boot. Change ownership of charge_control_limit_max when added.
-SUBSYSTEM=="power_supply", KERNEL=="ucsi*" TEST=="charge_control_limit_max", \
-  RUN+="/bin/chown power:power \"$sys$devpath/charge_control_limit_max\""
 
 LABEL="powerd_permissions_end"
