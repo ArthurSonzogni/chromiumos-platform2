@@ -233,6 +233,7 @@ ServiceImpl::ServiceImpl(std::unique_ptr<vm_tools::maitred::Init> init,
       init_(std::move(init)),
       lxd_env_({{"LXD_DIR", "/mnt/stateful/lxd"},
                 {"LXD_CONF", "/mnt/stateful/lxd_conf"}}),
+      stateful_mount_(base::FilePath("/mnt/stateful")),
       localtime_file_path_(kLocaltimePath),
       zoneinfo_file_path_(kZoneInfoPath) {}
 
@@ -671,14 +672,14 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   // mkfs.btrfs will fail if the disk is already formatted as btrfs.
   // Optimistically continue on - if the mount fails, then return an error.
 
-  int ret = mount(stateful_device_.c_str(), "/mnt/stateful", "btrfs", 0,
-                  "user_subvol_rm_allowed,discard");
+  int ret = mount(stateful_device_.c_str(), stateful_mount_.value().c_str(),
+                  "btrfs", 0, "user_subvol_rm_allowed,discard");
   if (ret != 0) {
     int saved_errno = errno;
     PLOG(ERROR) << "Failed to mount stateful disk";
 
-    ret = mount(stateful_device_.c_str(), "/mnt/stateful", "btrfs", 0,
-                "user_subvol_rm_allowed,discard,usebackuproot");
+    ret = mount(stateful_device_.c_str(), stateful_mount_.value().c_str(),
+                "btrfs", 0, "user_subvol_rm_allowed,discard,usebackuproot");
 
     if (ret != 0) {
       int saved_errno_retry = errno;
@@ -706,9 +707,10 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
 
   // Resize the stateful filesystem to fill the block device in case
   // the size was increased while the VM wasn't booted.
-  if (!init_->Spawn({"btrfs", "filesystem", "resize", "max", "/mnt/stateful"},
-                    lxd_env_, false /*respawn*/, false /*use_console*/,
-                    true /*wait_for_exit*/, &launch_info)) {
+  if (!init_->Spawn(
+          {"btrfs", "filesystem", "resize", "max", stateful_mount_.value()},
+          lxd_env_, false /*respawn*/, false /*use_console*/,
+          true /*wait_for_exit*/, &launch_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to spawn btrfs resize");
   }
   // btrfs resize operation should not fail, but if it does, attempt to
@@ -719,8 +721,7 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
     PLOG(ERROR) << "btrfs resize returned non-zero";
   }
 
-  int64_t free_bytes =
-      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/mnt/stateful"));
+  int64_t free_bytes = base::SysInfo::AmountOfFreeDiskSpace(stateful_mount_);
   if (free_bytes >= 0) {
     response->set_free_bytes(free_bytes);
     response->set_free_bytes_has_value(true);
@@ -839,7 +840,7 @@ grpc::Status ServiceImpl::ResizeFilesystem(
 
   Init::ProcessLaunchInfo launch_info;
   if (!init_->Spawn({"btrfs", "filesystem", "resize",
-                     std::to_string(request->size()), "/mnt/stateful"},
+                     std::to_string(request->size()), stateful_mount_.value()},
                     lxd_env_, false /*respawn*/, true /*use_console*/,
                     false /*wait_for_exit*/, &launch_info,
                     base::BindOnce(&ServiceImpl::ResizeCommandExitCallback,
@@ -874,10 +875,10 @@ grpc::Status ServiceImpl::GetResizeBounds(
     const EmptyMessage* request,
     vm_tools::GetResizeBoundsResponse* response) {
   Init::ProcessLaunchInfo launch_info;
-  if (!init_->Spawn(
-          {"btrfs", "inspect-internal", "min-dev-size", "/mnt/stateful"},
-          lxd_env_, false /*respawn*/, false /*use_console*/,
-          true /*wait_for_exit*/, &launch_info)) {
+  if (!init_->Spawn({"btrfs", "inspect-internal", "min-dev-size",
+                     stateful_mount_.value()},
+                    lxd_env_, false /*respawn*/, false /*use_console*/,
+                    true /*wait_for_exit*/, &launch_info)) {
     LOG(ERROR) << "btrfs inspect-internal min-dev-size failed: "
                << launch_info.output;
     return grpc::Status(grpc::INTERNAL,
@@ -912,7 +913,7 @@ grpc::Status ServiceImpl::GetAvailableSpace(
     const EmptyMessage* request,
     vm_tools::GetAvailableSpaceResponse* response) {
   response->set_available_space(
-      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/mnt/stateful")));
+      base::SysInfo::AmountOfFreeDiskSpace(stateful_mount_));
   return grpc::Status::OK;
 }
 
@@ -1114,8 +1115,7 @@ grpc::Status ServiceImpl::UpdateStorageBalloon(
   base::AutoLock auto_lock(balloon_update_lock_);
   response->set_result(vm_tools::UpdateStorageBalloonResult::SUCCESS);
   if (!balloon_) {
-    balloon_ = brillo::StorageBalloon::GenerateStorageBalloon(
-        base::FilePath("/mnt/stateful/"));
+    balloon_ = brillo::StorageBalloon::GenerateStorageBalloon(stateful_mount_);
   }
   if (!balloon_ ||
       !balloon_->Adjust(std::max(

@@ -163,6 +163,9 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   // Name of the stateful device (e.g. /dev/vdb) as determined by StartTermina.
   std::string stateful_device_;
 
+  // Stateful device mount point (typically /mnt/stateful).
+  base::FilePath stateful_mount_;
+
   // Enable logind linger for a user.
   grpc::Status SetUserLinger(const uid_t uid);
 
