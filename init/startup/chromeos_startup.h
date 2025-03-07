@@ -43,7 +43,6 @@ class ChromeosStartup {
                   std::unique_ptr<Flags> flags,
                   const base::FilePath& root,
                   const base::FilePath& stateful,
-                  const base::FilePath& lsb_file,
                   libstorage::Platform* platform,
                   StartupDep* startup_dep,
                   std::unique_ptr<MountHelperFactory> mount_helper_factory,
@@ -174,7 +173,6 @@ class ChromeosStartup {
   raw_ptr<libstorage::Platform> platform_;
   std::unique_ptr<vpd::Vpd> vpd_;
   std::unique_ptr<Flags> flags_;
-  const base::FilePath lsb_file_;
   const base::FilePath root_;
   base::FilePath root_dev_;
   const base::FilePath stateful_;

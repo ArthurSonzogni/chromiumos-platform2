@@ -99,10 +99,9 @@ int main(int argc, const char* argv[]) {
   std::unique_ptr<startup::ChromeosStartup> startup =
       std::make_unique<startup::ChromeosStartup>(
           std::make_unique<vpd::Vpd>(), std::move(flags), base::FilePath("/"),
-          base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease),
-          platform.get(), startup_dep.get(), std::move(mount_helper_factory),
-          std::move(storage_container_factory), std::move(tlcl),
-          init_metrics::InitMetrics::Get());
+          base::FilePath(kStatefulPartition), platform.get(), startup_dep.get(),
+          std::move(mount_helper_factory), std::move(storage_container_factory),
+          std::move(tlcl), init_metrics::InitMetrics::Get());
 
   return startup->Run();
 }
