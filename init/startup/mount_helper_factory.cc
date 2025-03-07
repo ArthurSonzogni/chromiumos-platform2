@@ -29,11 +29,13 @@ MountHelperFactory::MountHelperFactory(libstorage::Platform* platform,
                                        StartupDep* startup_dep,
                                        const base::FilePath& root,
                                        const base::FilePath& stateful,
+                                       const base::FilePath& metadata,
                                        const base::FilePath& lsb_file)
     : platform_(platform),
       startup_dep_(startup_dep),
       root_(root),
       stateful_(stateful),
+      metadata_(metadata),
       lsb_file_(lsb_file) {}
 
 // Generate the mount helper class to use by determining whether a device
@@ -69,7 +71,8 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
           storage_container_factory);
     } else {
       return std::make_unique<TestModeMountHelper>(
-          platform_, startup_dep_, flags, root_, stateful_,
+          platform_, startup_dep_, flags, root_,
+          flags->dm_default_key_stateful ? metadata_ : stateful_,
           std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
               platform_, startup_dep_, root_, stateful_),
           storage_container_factory);

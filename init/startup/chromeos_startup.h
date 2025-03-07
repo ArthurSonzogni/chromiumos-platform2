@@ -43,6 +43,7 @@ class ChromeosStartup {
                   std::unique_ptr<Flags> flags,
                   const base::FilePath& root,
                   const base::FilePath& stateful,
+                  const base::FilePath& metadata,
                   libstorage::Platform* platform,
                   StartupDep* startup_dep,
                   std::unique_ptr<MountHelperFactory> mount_helper_factory,
@@ -176,6 +177,7 @@ class ChromeosStartup {
   const base::FilePath root_;
   base::FilePath root_dev_;
   const base::FilePath stateful_;
+  const base::FilePath metadata_;
   bootstat::BootStat bootstat_;
   raw_ptr<StartupDep> startup_dep_;
   std::unique_ptr<MountHelper> mount_helper_;

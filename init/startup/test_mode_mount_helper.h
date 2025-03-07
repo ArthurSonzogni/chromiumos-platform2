@@ -28,7 +28,7 @@ class TestModeMountHelper : public MountHelper {
       StartupDep* startup_dep,
       const Flags* flags,
       const base::FilePath& root,
-      const base::FilePath& stateful,
+      const base::FilePath& backup,
       std::unique_ptr<MountVarAndHomeChronosInterface> impl,
       libstorage::StorageContainerFactory* storage_container_factory);
 
@@ -37,7 +37,7 @@ class TestModeMountHelper : public MountHelper {
   base::FilePath GetKeyBackupFile() const override;
 
  private:
-  const base::FilePath stateful_;
+  const base::FilePath backup_;
 };
 
 }  // namespace startup

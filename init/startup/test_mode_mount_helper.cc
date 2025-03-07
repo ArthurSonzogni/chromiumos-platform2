@@ -43,7 +43,7 @@ TestModeMountHelper::TestModeMountHelper(
     StartupDep* startup_dep,
     const Flags* flags,
     const base::FilePath& root,
-    const base::FilePath& stateful,
+    const base::FilePath& backup,
     std::unique_ptr<MountVarAndHomeChronosInterface> impl,
     libstorage::StorageContainerFactory* storage_container_factory)
     : MountHelper(platform,
@@ -52,7 +52,7 @@ TestModeMountHelper::TestModeMountHelper(
                   root,
                   std::move(impl),
                   storage_container_factory),
-      stateful_(stateful) {}
+      backup_(backup) {}
 
 base::FilePath TestModeMountHelper::GetKeyBackupFile() const {
   // If this a TPM 2.0 device that supports encrypted stateful, creates and
@@ -60,10 +60,10 @@ base::FilePath TestModeMountHelper::GetKeyBackupFile() const {
   // If the call create_system_key is successful, mount_var_and_home_chronos
   // will skip the normal system key generation procedure; otherwise, it will
   // generate and persist a key via its normal workflow.
-  base::FilePath no_early = stateful_.Append(kNoEarlyKeyFile);
+  base::FilePath no_early = backup_.Append(kNoEarlyKeyFile);
   if (flags_->sys_key_util && !platform_->FileExists(no_early)) {
     LOG(INFO) << "Creating System Key";
-    return stateful_.Append(kSysKeyBackupFile);
+    return backup_.Append(kSysKeyBackupFile);
   }
   return base::FilePath();
 }
@@ -81,7 +81,7 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos(
     std::vector<std::string> crash_args{"--mount_failure",
                                         "--mount_device='encstateful'"};
     startup_dep_->AddClobberCrashReport(crash_args);
-    base::FilePath backup = stateful_.Append("corrupted_encryption");
+    base::FilePath backup = backup_.Append("corrupted_encryption");
     brillo::DeletePathRecursively(backup);
     platform_->CreateDirectory(backup);
     if (!platform_->SetPermissions(backup, 0755)) {
@@ -89,7 +89,7 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos(
     }
 
     std::unique_ptr<libstorage::FileEnumerator> enumerator(
-        platform_->GetFileEnumerator(stateful_, false /* recursive */,
+        platform_->GetFileEnumerator(backup_, false /* recursive */,
                                      base::FileEnumerator::FILES,
                                      "encrypted.*"));
     for (base::FilePath path = enumerator->Next(); !path.empty();

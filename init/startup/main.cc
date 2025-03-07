@@ -34,6 +34,8 @@ constexpr char kLogFile[] = "/dev/kmsg";
 constexpr char kLsbRelease[] = "/etc/lsb-release";
 constexpr char kPrintkDevkmsg[] = "/proc/sys/kernel/printk_devkmsg";
 constexpr char kStatefulPartition[] = "/mnt/stateful_partition";
+constexpr char kMetadataPartition[] = "/mnt/chromeos_metadata_partition";
+
 constexpr char kChromeosStartupMetricsPath[] =
     "/run/chromeos_startup/metrics.chromeos_startup";
 
@@ -93,15 +95,16 @@ int main(int argc, const char* argv[]) {
   std::unique_ptr<startup::MountHelperFactory> mount_helper_factory =
       std::make_unique<startup::MountHelperFactory>(
           platform.get(), startup_dep.get(), base::FilePath("/"),
-          base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease));
+          base::FilePath(kStatefulPartition), base::FilePath(kMetadataPartition), base::FilePath(kLsbRelease));
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl =
       std::make_unique<hwsec_foundation::TlclWrapperImpl>();
   std::unique_ptr<startup::ChromeosStartup> startup =
       std::make_unique<startup::ChromeosStartup>(
           std::make_unique<vpd::Vpd>(), std::move(flags), base::FilePath("/"),
-          base::FilePath(kStatefulPartition), platform.get(), startup_dep.get(),
-          std::move(mount_helper_factory), std::move(storage_container_factory),
-          std::move(tlcl), init_metrics::InitMetrics::Get());
+          base::FilePath(kStatefulPartition), base::FilePath(kMetadataPartition),
+          platform.get(), startup_dep.get(), std::move(mount_helper_factory),
+          std::move(storage_container_factory), std::move(tlcl),
+          init_metrics::InitMetrics::Get());
 
   return startup->Run();
 }

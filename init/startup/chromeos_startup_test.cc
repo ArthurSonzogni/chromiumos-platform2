@@ -98,10 +98,10 @@ class EarlySetupTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::unique_ptr<vpd::Vpd>(), std::make_unique<Flags>(), base_dir_,
-        stateful_dir_, platform_.get(), startup_dep_.get(),
+        stateful_dir_, base::FilePath(), platform_.get(), startup_dep_.get(),
         std::make_unique<MountHelperFactory>(platform_.get(),
                                              startup_dep_.get(), base_dir_,
-                                             stateful_dir_, base_dir_),
+                                             stateful_dir_, base::FilePath(), base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
   }
@@ -164,10 +164,10 @@ class DevCheckBlockTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(std::move(vpd_fake)),
-        std::make_unique<Flags>(), base_dir_, stateful_dir_, platform_.get(),
-        startup_dep_.get(),
+        std::make_unique<Flags>(), base_dir_, stateful_dir_, base::FilePath(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -229,9 +229,9 @@ class TPMTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<Flags>(), base_dir_,
-        stateful_dir_, platform_.get(), startup_dep_.get(),
+        stateful_dir_, base::FilePath(), platform_.get(), startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -405,9 +405,9 @@ class GetImageVarsTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<Flags>(), base_dir_,
-        stateful_dir_, platform_.get(), startup_dep_.get(),
+        stateful_dir_, base::FilePath(), platform_.get(), startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -464,14 +464,14 @@ class StatefulWipeTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     auto mount_helper_factory = std::make_unique<startup::MountHelperFactory>(
-        platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+        platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
         base_dir_);
     auto mount_helper = mount_helper_factory->Generate(nullptr, &flags_);
 
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
-        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
-        std::move(mount_helper_factory),
+        base_dir_, stateful_dir_, base::FilePath(), platform_.get(),
+        startup_dep_.get(), std::move(mount_helper_factory),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
 
@@ -585,9 +585,10 @@ class StatefulWipeTestDevMode : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
-        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
+        base_dir_, stateful_dir_, base::FilePath(), platform_.get(),
+        startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -662,9 +663,10 @@ class TpmCleanupTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
-        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
+        base_dir_, stateful_dir_, base::FilePath(), platform_.get(),
+        startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -784,7 +786,7 @@ class ConfigTest : public ::testing::Test {
     startup::Flags flags;
     startup::ChromeosStartup::ParseFlags(&flags);
     startup::MountHelperFactory factory(platform_.get(), startup_dep_.get(),
-                                        base_dir_, stateful_dir_, lsb_file_);
+                                        base_dir_, stateful_dir_, base::FilePath(), lsb_file_);
     return factory.Generate(nullptr, &flags);
   }
 
@@ -1186,9 +1188,9 @@ class IsVarFullTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<Flags>(), base_dir_,
-        stateful_dir_, platform_.get(), startup_dep_.get(),
+        stateful_dir_, base::FilePath(), platform_.get(), startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -1253,9 +1255,10 @@ class DeviceSettingsTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
-        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
+        base_dir_, stateful_dir_, base::FilePath(), platform_.get(),
+        startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -1321,9 +1324,10 @@ class DaemonStoreTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
-        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
+        base_dir_, stateful_dir_, base::FilePath(), platform_.get(),
+        startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -1383,9 +1387,10 @@ class RemoveVarEmptyTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
-        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
+        base_dir_, stateful_dir_, base::FilePath(), platform_.get(),
+        startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -1422,9 +1427,10 @@ class CheckVarLogTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
-        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
+        base_dir_, stateful_dir_, base::FilePath(), platform_.get(),
+        startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -1618,9 +1624,10 @@ class RestoreContextsForVarTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
-        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
+        base_dir_, stateful_dir_, base::FilePath(), platform_.get(),
+        startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);
@@ -1663,9 +1670,10 @@ class RestorePreservedPathsTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
-        base_dir_, stateful_dir_, platform_.get(), startup_dep_.get(),
+        base_dir_, stateful_dir_, base::FilePath(), platform_.get(),
+        startup_dep_.get(),
         std::make_unique<startup::MountHelperFactory>(
-            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_, base::FilePath(),
             base_dir_),
         std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
         nullptr);

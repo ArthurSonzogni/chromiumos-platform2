@@ -30,6 +30,7 @@ class MountHelperFactory {
                      StartupDep* startup_dep,
                      const base::FilePath& root,
                      const base::FilePath& stateful,
+                     const base::FilePath& metadata,
                      const base::FilePath& lsb_file);
   virtual ~MountHelperFactory() = default;
 
@@ -46,6 +47,7 @@ class MountHelperFactory {
   raw_ptr<StartupDep> startup_dep_;
   const base::FilePath root_;
   const base::FilePath stateful_;
+  const base::FilePath metadata_;
   const base::FilePath lsb_file_;
 };
 

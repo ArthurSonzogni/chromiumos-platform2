@@ -122,9 +122,6 @@ constexpr char kDaemonStore[] = "daemon-store";
 constexpr char kDaemonStoreCache[] = "daemon-store-cache";
 constexpr char kEtc[] = "etc";
 
-constexpr char kMntChromeosMetadataPartition[] =
-    "mnt/chromeos_metadata_partition";
-
 constexpr char kDisableStatefulSecurityHard[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
 constexpr char kDebugfsAccessGrp[] = "debugfs-access";
@@ -369,6 +366,7 @@ ChromeosStartup::ChromeosStartup(
     std::unique_ptr<Flags> flags,
     const base::FilePath& root,
     const base::FilePath& stateful,
+    const base::FilePath& metadata,
     libstorage::Platform* platform,
     StartupDep* startup_dep,
     std::unique_ptr<MountHelperFactory> mount_helper_factory,
@@ -381,6 +379,7 @@ ChromeosStartup::ChromeosStartup(
       flags_(std::move(flags)),
       root_(root),
       stateful_(stateful),
+      metadata_(metadata),
       startup_dep_(startup_dep),
       mount_helper_factory_(std::move(mount_helper_factory)),
       storage_container_factory_(std::move(storage_container_factory)),
@@ -963,8 +962,6 @@ int ChromeosStartup::Run() {
   std::optional<encryption::EncryptionKey> key;
   root_dev_ = utils::GetRootDevice(true);
 
-  base::FilePath chromeos_metadata =
-      root_.Append(kMntChromeosMetadataPartition);
   // Check if we are booted on physical media. rootdev will fail if we are in
   // an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
   // image also uses initramfs but it never reaches here). When using
@@ -1012,7 +1009,7 @@ int ChromeosStartup::Run() {
       } else {
         // Mount cros_metadata
         // Mount stateful partition from state_dev.
-        if (!platform_->Mount(metadata_dev, chromeos_metadata, kMetaDataFSType,
+        if (!platform_->Mount(metadata_dev, metadata_, kMetaDataFSType,
                               MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
                               "discard")) {
           // The device has an image which support default-key, but has been
@@ -1046,7 +1043,7 @@ int ChromeosStartup::Run() {
     // the 'metadata' partition. It is fine to unmount since we don't need
     // 'metadata' once 'stateful' has been mounted.
     if (flags_->dm_default_key_stateful) {
-      mount_helper_->RememberMount(chromeos_metadata);
+      mount_helper_->RememberMount(metadata_);
     }
 
     stateful_mount_->MountStateful(root_dev_, flags_.get(), mount_helper_.get(),
