@@ -5,6 +5,7 @@
 rseq: 1
 
 brk: 1
+clock_gettime: 1
 # clone is used to spawn threads.
 clone: 1
 close: 1
