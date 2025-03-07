@@ -13,10 +13,9 @@ hyper = { version = "0.14", features = ["http1", "server", "runtime", "tcp", "ba
 libc = "0.2.44"
 libchromeos = { path = "../libchromeos-rs/" } # provided by ebuild
 log = "0.4"
-nix = { version = "0.26", features = ["signal"] }
 rusb = "0.9.4"
 syslog = "6.0"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "net", "sync", "io-util", "macros"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "net", "sync", "io-util", "macros", "signal"] }
 
 [dev-dependencies]
 testing_logger = "0.1"

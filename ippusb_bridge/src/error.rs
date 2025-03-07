@@ -19,7 +19,6 @@ pub enum Error {
     SetAlternateSetting(u8, rusb::Error),
     NoFreeInterface,
     NotIppUsb,
-    Poll(nix::Error),
 }
 
 impl std::error::Error for Error {}
@@ -52,7 +51,6 @@ impl fmt::Display for Error {
             ),
             NoFreeInterface => write!(f, "There is no free IPP USB interface to claim."),
             NotIppUsb => write!(f, "The specified device is not an IPP USB device."),
-            Poll(err) => write!(f, "Error polling shutdown fd: {}", err),
         }
     }
 }

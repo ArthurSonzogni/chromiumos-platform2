@@ -17,10 +17,7 @@ use std::fmt;
 use std::io;
 use std::net::SocketAddr;
 use std::net::TcpListener as StdTcpListener;
-use std::net::TcpStream as StdTcpStream;
-use std::os::raw::c_int;
-use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
-use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use dbus::blocking::Connection;
@@ -28,14 +25,14 @@ use hyper::http::StatusCode;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Body, Request, Response};
-use libchromeos::deprecated::{EventFd, PollContext, PollToken};
-use libchromeos::signal::register_signal_handler;
 use log::{debug, error, info};
-use nix::sys::signal::Signal;
 use rusb::UsbContext;
-use tokio::net::{TcpStream, UnixListener, UnixStream};
+use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
 use tokio::runtime::Builder;
 use tokio::runtime::Handle as AsyncHandle;
+use tokio::signal;
+use tokio::signal::unix::{self, SignalKind};
+use tokio::sync::mpsc;
 
 use crate::arguments::Args;
 use crate::error::Error as IppUsbError;
@@ -50,12 +47,8 @@ pub enum Error {
     CreateSocket(io::Error),
     CreateUsbConnector(error::Error),
     DBus(dbus::Error),
-    EventFd(io::Error),
     ParseArgs(arguments::Error),
-    PollEvents(nix::Error),
-    RegisterHandler(nix::Error),
     Syslog(syslog::Error),
-    SysUtil(nix::Error),
     TokioRuntime(io::Error),
     Forwarder(io::Error),
     CreateContext(rusb::Error),
@@ -73,12 +66,8 @@ impl fmt::Display for Error {
             CreateSocket(err) => write!(f, "Failed to create socket: {}", err),
             CreateUsbConnector(err) => write!(f, "Failed to create USB connector: {}", err),
             DBus(err) => write!(f, "DBus error: {}", err),
-            EventFd(err) => write!(f, "Failed to create/duplicate EventFd: {}", err),
             ParseArgs(err) => write!(f, "Failed to parse arguments: {}", err),
-            PollEvents(err) => write!(f, "Failed to poll for events: {}", err),
-            RegisterHandler(err) => write!(f, "Registering SIGINT handler failed: {}", err),
             Syslog(err) => write!(f, "Failed to initalize syslog: {}", err),
-            SysUtil(err) => write!(f, "Sysutil error: {}", err),
             TokioRuntime(err) => write!(f, "Error setting up tokio runtime: {}", err),
             Forwarder(err) => write!(f, "Error during internal forwarding: {}", err),
             CreateContext(err) => write!(f, "Failed to create UsbContext: {}", err),
@@ -94,63 +83,28 @@ type Result<T> = std::result::Result<T, Error>;
 // Set to true if the program should terminate.
 static SHUTDOWN: AtomicBool = AtomicBool::new(false);
 
-// Holds a raw EventFD with 'static lifetime that can be used to wake up any
-// polling threads.
-static SHUTDOWN_FD: AtomicI32 = AtomicI32::new(-1);
-
-extern "C" fn sigint_handler(_: c_int) {
-    // Check if we've already received one SIGINT. If we have, the program may be misbehaving and
-    // not terminating, so to be safe we'll forcefully exit.
-    if SHUTDOWN.load(Ordering::Relaxed) {
-        std::process::exit(1);
-    }
-    SHUTDOWN.store(true, Ordering::Relaxed);
-    let fd = SHUTDOWN_FD.load(Ordering::Relaxed);
-    if fd >= 0 {
-        let buf = &1u64 as *const u64 as *const libc::c_void;
-        let size = std::mem::size_of::<u64>();
-        unsafe { libc::write(fd, buf, size) };
-    }
-}
-
-/// Registers a SIGINT handler that, when triggered, will write to `shutdown_fd`
-/// to notify any listeners of a pending shutdown.
-fn add_sigint_handler(shutdown_fd: EventFd) -> nix::Result<()> {
-    // Leak our copy of the fd to ensure SHUTDOWN_FD remains valid until ippusb_bridge closes, so
-    // that we aren't inadvertently writing to an invalid FD in the SIGINT handler. The FD will be
-    // reclaimed by the OS once our process has stopped.
-    SHUTDOWN_FD.store(shutdown_fd.into_raw_fd(), Ordering::Relaxed);
-
-    // Safe because sigint_handler is an extern "C" function that only performs
-    // async signal-safe operations.
-    unsafe { register_signal_handler(Signal::SIGINT, sigint_handler) }
+#[derive(Debug)]
+pub(crate) enum ShutdownReason {
+    Error,
+    Signal,
+    Unplugged,
 }
 
 struct Daemon {
     verbose_log: bool,
     num_clients: usize,
 
-    shutdown: EventFd,
-    listener: StdTcpListener,
+    shutdown: mpsc::Receiver<ShutdownReason>,
+    listener: TcpListener,
     usb: UsbConnector,
     handle: AsyncHandle,
-}
-
-// Trivially allows a `RawFd` to be passed as a `&AsRawFd`.  Needed because
-// `Daemon` contains an `Accept` but needs to pass it to `PollContext` as a
-// `&AsRawFd`.
-struct WrapFd(RawFd);
-impl AsRawFd for WrapFd {
-    fn as_raw_fd(&self) -> RawFd {
-        self.0
-    }
 }
 
 impl Daemon {
     fn new(
         verbose_log: bool,
-        shutdown: EventFd,
-        listener: StdTcpListener,
+        shutdown: mpsc::Receiver<ShutdownReason>,
+        listener: TcpListener,
         usb: UsbConnector,
         handle: AsyncHandle,
     ) -> Result<Self> {
@@ -164,33 +118,24 @@ impl Daemon {
         })
     }
 
-    fn run(&mut self) -> Result<()> {
-        #[derive(PollToken)]
-        enum Token {
-            Shutdown,
-            ClientConnection,
-        }
-
-        let listener_fd = WrapFd(self.listener.as_raw_fd());
-        let poll_ctx: PollContext<Token> = PollContext::build_with(&[
-            (&self.shutdown, Token::Shutdown),
-            (&listener_fd, Token::ClientConnection),
-        ])
-        .map_err(Error::SysUtil)?;
-
+    async fn run(&mut self) -> Result<()> {
         'poll: loop {
-            let timeout = Duration::new(i64::MAX as u64, 0);
-            let events = poll_ctx.wait_timeout(timeout).map_err(Error::PollEvents)?;
-            for event in &events {
-                match event.token() {
-                    Token::Shutdown => break 'poll,
-                    Token::ClientConnection => match self.listener.accept() {
+            tokio::select! {
+                shutdown_type = self.shutdown.recv() => {
+                    info!(
+                        "Shutdown event received: {:?}",
+                        shutdown_type.unwrap_or(ShutdownReason::Error));
+                    break 'poll;
+                }
+
+                c = self.listener.accept() => {
+                    match c {
                         Ok((stream, addr)) => {
                             info!("Connection opened from {}", addr);
                             self.handle_connection(stream);
                         }
                         Err(err) => error!("Failed to accept connection: {}", err),
-                    },
+                    }
                 }
             }
         }
@@ -222,7 +167,7 @@ impl Daemon {
             })
     }
 
-    fn handle_connection(&mut self, stream: StdTcpStream) {
+    fn handle_connection(&mut self, stream: TcpStream) {
         let mut thread_usb = self.usb.clone();
         let verbose = self.verbose_log;
         self.num_clients += 1;
@@ -233,13 +178,11 @@ impl Daemon {
             if verbose {
                 debug!("Connection {} opened", client_num);
             }
-            let async_stream = TcpStream::try_from(stream).map_err(Error::Forwarder)?;
-
             if let Err(http_err) = http1::Builder::new()
                 .title_case_headers(true)
                 .preserve_header_case(true)
                 .serve_connection(
-                    async_stream,
+                    stream,
                     service_fn(move |req| {
                         // We would normally want to extract usb_conn and return early if it's an
                         // error, but that doesn't work here because we can't match the return type
@@ -321,10 +264,6 @@ fn run() -> Result<()> {
             .map_err(Error::Syslog)?;
     }
 
-    let shutdown_fd = EventFd::new().map_err(|e| Error::EventFd(e.into()))?;
-    let sigint_shutdown_fd = shutdown_fd.try_clone().map_err(Error::EventFd)?;
-    add_sigint_handler(sigint_shutdown_fd).map_err(Error::RegisterHandler)?;
-
     // Safe because the syscall doesn't touch any memory and always succeeds.
     unsafe { libc::umask(0o117) };
 
@@ -378,11 +317,11 @@ fn run() -> Result<()> {
     }
     info!("USB connector created successfully.");
 
+    let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let _unplug = if rusb::has_hotplug() {
-        let unplug_shutdown_fd = shutdown_fd.try_clone().map_err(Error::EventFd)?;
         Some(UnplugDetector::new(
             usb.device(),
-            unplug_shutdown_fd,
+            shutdown_tx.clone(),
             &SHUTDOWN,
             args.upstart_mode,
         ))
@@ -390,12 +329,32 @@ fn run() -> Result<()> {
         None
     };
 
-    // If a socket path was passed, also start a forwarder that will connect to the main TCP
-    // listener.
+    // Respond to both SIGINT and SIGTERM by doing a clean shutdown.  Deliberately
+    // use unwrap in these functions because if something goes wrong with signal handling
+    // then we need the process to exit anyway.
     let runtime = Builder::new_multi_thread()
         .enable_all()
         .build()
         .map_err(Error::TokioRuntime)?;
+    let signal_tx = shutdown_tx.clone();
+    runtime.spawn(async move {
+        signal::ctrl_c().await.unwrap();
+        SHUTDOWN.store(true, Ordering::Relaxed);
+        signal_tx.send(ShutdownReason::Signal).await.unwrap();
+    });
+    let signal_tx = shutdown_tx.clone();
+    runtime.spawn(async move {
+        unix::signal(SignalKind::terminate())
+            .unwrap()
+            .recv()
+            .await
+            .unwrap();
+        SHUTDOWN.store(true, Ordering::Relaxed);
+        signal_tx.send(ShutdownReason::Signal).await.unwrap();
+    });
+
+    // If a socket path was passed, also start a forwarder that will connect to the main TCP
+    // listener.
     if let Some(ref unix_socket_path) = args.unix_socket {
         info!("Forwarder listening on {}", unix_socket_path.display());
         let _guard = runtime.enter();
@@ -429,14 +388,17 @@ fn run() -> Result<()> {
         });
     }
 
-    let mut daemon = Daemon::new(
-        args.verbose_log,
-        shutdown_fd,
-        listener,
-        usb,
-        runtime.handle().clone(),
-    )?;
-    daemon.run()?;
+    let handle = runtime.handle().clone();
+    if let Err(err) = runtime.block_on(async move {
+        listener
+            .set_nonblocking(true)
+            .map_err(Error::CreateSocket)?;
+        let async_listener = TcpListener::from_std(listener).map_err(Error::CreateSocket)?;
+        let mut daemon = Daemon::new(args.verbose_log, shutdown_rx, async_listener, usb, handle)?;
+        daemon.run().await
+    }) {
+        error!("Daemon failed to run: {}", err);
+    }
 
     info!("Shutting down.");
     runtime.shutdown_timeout(Duration::from_millis(500));

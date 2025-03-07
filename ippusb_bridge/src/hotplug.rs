@@ -4,14 +4,16 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
 
-use libchromeos::deprecated::{EventFd, PollContext};
 use log::{error, info};
 use rusb::{Context, Registration, UsbContext};
+use tokio::sync::mpsc;
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::ShutdownReason;
 
 pub struct UnplugDetector {
     event_thread_run: Arc<AtomicBool>,
@@ -24,12 +26,12 @@ pub struct UnplugDetector {
 impl UnplugDetector {
     pub fn new(
         device: rusb::Device<Context>,
-        shutdown_fd: EventFd,
+        shutdown_event: mpsc::Sender<ShutdownReason>,
         shutdown: &'static AtomicBool,
         delay_shutdown: bool,
     ) -> Result<Self> {
         let context = device.context().clone();
-        let handler = CallbackHandler::new(device, shutdown_fd, shutdown, delay_shutdown);
+        let handler = CallbackHandler::new(device, shutdown_event, shutdown, delay_shutdown);
         let registration = rusb::HotplugBuilder::new()
             .enumerate(false)
             .register(&context, Box::new(handler))
@@ -81,7 +83,7 @@ impl Drop for UnplugDetector {
 
 struct CallbackHandler {
     device: rusb::Device<Context>,
-    shutdown_fd: EventFd,
+    shutdown_event: mpsc::Sender<ShutdownReason>,
     shutdown_requested: &'static AtomicBool,
     delay_shutdown: bool,
 }
@@ -89,13 +91,13 @@ struct CallbackHandler {
 impl CallbackHandler {
     fn new(
         device: rusb::Device<Context>,
-        shutdown_fd: EventFd,
+        shutdown_event: mpsc::Sender<ShutdownReason>,
         shutdown_requested: &'static AtomicBool,
         delay_shutdown: bool,
     ) -> Self {
         Self {
             device,
-            shutdown_fd,
+            shutdown_event,
             shutdown_requested,
             delay_shutdown,
         }
@@ -103,22 +105,25 @@ impl CallbackHandler {
 
     // If delayed shutdown is requested, wait for another shutdown event for up to 2s.
     // This gives upstart time to send the process a signal after a USB devices is unplugged.
-    fn wait_for_shutdown(&mut self) -> Result<()> {
+    fn wait_for_shutdown(&mut self) {
         if !self.delay_shutdown {
-            return Ok(());
+            return;
         }
 
         if self.shutdown_requested.load(Ordering::Relaxed) {
             // No need to wait if shutdown has already been requested from another source.
-            return Ok(());
+            return;
         }
 
         info!("Waiting for shutdown signal");
         let timeout = Duration::from_secs(2);
-        let ctx: PollContext<u32> = PollContext::new().map_err(Error::Poll)?;
-        ctx.add(&self.shutdown_fd, 1).map_err(Error::Poll)?;
-        ctx.wait_timeout(timeout).map_err(Error::Poll)?;
-        Ok(())
+        let poll_start = Instant::now();
+        while !self.shutdown_requested.load(Ordering::Relaxed) && poll_start.elapsed() < timeout {
+            thread::sleep(Duration::from_millis(100));
+        }
+        if poll_start.elapsed() >= timeout {
+            info!("Timed out waiting for shutdown signal");
+        }
     }
 }
 
@@ -130,13 +135,10 @@ impl rusb::Hotplug<Context> for CallbackHandler {
     fn device_left(&mut self, device: rusb::Device<Context>) {
         if device == self.device {
             info!("Device was unplugged, shutting down");
-
-            if let Err(e) = self.wait_for_shutdown() {
-                error!("Failed to wait for signal: {}", e);
-            }
+            self.wait_for_shutdown();
 
             self.shutdown_requested.store(true, Ordering::Relaxed);
-            if let Err(e) = self.shutdown_fd.write(1) {
+            if let Err(e) = self.shutdown_event.blocking_send(ShutdownReason::Unplugged) {
                 error!("Failed to trigger shutdown: {}", e);
             }
         }
