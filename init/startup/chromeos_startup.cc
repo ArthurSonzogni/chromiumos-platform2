@@ -334,6 +334,18 @@ std::optional<encryption::EncryptionKey> ChromeosStartup::LoadTpmKey(
   base::FilePath encrypted_failed =
       tpm_data_dir.Append(kMountEncryptedFailedFile);
   crossystem::Crossystem* crossystem = platform_->GetCrosssystem();
+
+  if (flags_->dm_default_key_stateful && !backup_file.empty() &&
+      platform_->FileExists(backup_file)) {
+    // To ensure we are not losing encrypted partition, if available,
+    // feed the TPM with the previous key,
+    // to not lose stateful when we go in/out of development mode.
+    if (!tpm_system_key.Set(backup_file)) {
+      // The backup file seems invalid, remove it.
+      platform_->DeleteFile(backup_file);
+    }
+  }
+
   std::optional<encryption::EncryptionKey> key =
       tpm_system_key.Load(true /* safe */, backup_file);
   if (!key) {
@@ -1018,18 +1030,22 @@ int ChromeosStartup::Run() {
           flags_->dm_default_key_stateful = false;
         } else {
           // We can not fully control the factory mode here since stateful is
-          // not mounted and one test is to look for  "factory/enabled". The
-          // device must have been install without dm-default-key stateful.
-          if (!IsFactoryMode(platform_, root_, root_) && flags_->encstateful) {
-            CleanupTpm(chromeos_metadata);
-            // TODO(gwendal): Allow saving key material for tests. Will be a new
-            // location.
-            key = LoadTpmKey(chromeos_metadata, base::FilePath());
-          }
-          // encstateful will not be encrypted by itself.
-          flags_->encstateful = false;
+          // not mounted yet and one test is to look for  "factory/enabled". The
+          // device must have been installed without dm-default-key stateful.
           // LVM will not be used.
           flags_->lvm_stateful = false;
+          if (!IsFactoryMode(platform_, root_, root_) && flags_->encstateful) {
+            // encstateful will not be encrypted by itself.
+            flags_->encstateful = false;
+            SetMountHelper(mount_helper_factory_->Generate(
+                storage_container_factory_.get(), flags_.get()));
+            CleanupTpm(metadata_);
+            key = LoadTpmKey(metadata_, mount_helper_->GetKeyBackupFile());
+          } else {
+            // We are either in factory and/or encrypted stateful is not used.
+            // Set the flag for a simple configuration.
+            flags_->encstateful = false;
+          }
         }
       }
     }
