@@ -1754,6 +1754,7 @@ StartVmResponse Service::StartVmInternal(
   features.kernel_params = std::move(params);
 
   if (classification == apps::BAGUETTE) {
+    stateful_device = "/dev/vdb";
     features.kernel_params.push_back(
         "root=/dev/vdb rw net.ifnames=0 systemd.log_color=0");
   }

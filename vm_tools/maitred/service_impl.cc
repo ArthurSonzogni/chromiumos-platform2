@@ -806,7 +806,9 @@ grpc::Status ServiceImpl::ResizeFilesystem(
   stateful_device_ = "/dev/vda";
 #else
   if (stateful_device_.empty()) {
-    return grpc::Status(grpc::INTERNAL, "unknown stateful device");
+    // Fall back to /dev/vdb mounted at / if StartTermina did not run (Baguette).
+    stateful_device_ = "/dev/vdb";
+    stateful_mount_ = base::FilePath("/");
   }
 #endif
 
