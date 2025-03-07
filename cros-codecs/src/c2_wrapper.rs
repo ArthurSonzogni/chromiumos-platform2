@@ -340,8 +340,17 @@ where
             return C2Status::C2BadState;
         }
 
-        let mut tmp = self.work_queue.lock().unwrap().drain(..).collect::<Vec<J>>();
-        flushed_work.append(&mut tmp);
+        {
+            let mut work_queue = self.work_queue.lock().unwrap();
+            let mut tmp = work_queue.drain(..).collect::<Vec<J>>();
+            flushed_work.append(&mut tmp);
+
+            // Note that we don't just call drain() because we want to guarantee atomicity with respect
+            // to the work_queue eviction.
+            let mut drain_job: J = Default::default();
+            drain_job.set_drain(DrainMode::NoEOSDrain);
+            work_queue.push_back(drain_job);
+        }
 
         C2Status::C2Ok
     }
