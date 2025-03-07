@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 mod arguments;
+mod bridge;
 mod error;
 mod hotplug;
 mod http;
@@ -12,7 +13,6 @@ mod listeners;
 mod usb_connector;
 mod util;
 
-use std::convert::Infallible;
 use std::fmt;
 use std::io;
 use std::net::SocketAddr;
@@ -21,26 +21,21 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use dbus::blocking::Connection;
-use hyper::http::StatusCode;
-use hyper::server::conn::http1;
-use hyper::service::service_fn;
-use hyper::{Body, Request, Response};
-use log::{debug, error, info};
+use log::{error, info};
 use rusb::UsbContext;
 use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
 use tokio::runtime::Builder;
-use tokio::runtime::Handle as AsyncHandle;
 use tokio::signal;
 use tokio::signal::unix::{self, SignalKind};
 use tokio::sync::mpsc;
 
 use crate::arguments::Args;
+use crate::bridge::{Bridge, ShutdownReason};
 use crate::error::Error as IppUsbError;
 use crate::hotplug::UnplugDetector;
-use crate::http::handle_request;
 use crate::ippusb_device::IppusbDeviceInfo;
 use crate::listeners::ScopedUnixListener;
-use crate::usb_connector::{UsbConnection, UsbConnector};
+use crate::usb_connector::UsbConnector;
 
 #[derive(Debug)]
 pub enum Error {
@@ -82,130 +77,6 @@ type Result<T> = std::result::Result<T, Error>;
 
 // Set to true if the program should terminate.
 static SHUTDOWN: AtomicBool = AtomicBool::new(false);
-
-#[derive(Debug)]
-pub(crate) enum ShutdownReason {
-    Error,
-    Signal,
-    Unplugged,
-}
-
-struct Daemon {
-    verbose_log: bool,
-    num_clients: usize,
-
-    shutdown: mpsc::Receiver<ShutdownReason>,
-    listener: TcpListener,
-    usb: UsbConnector,
-    handle: AsyncHandle,
-}
-
-impl Daemon {
-    fn new(
-        verbose_log: bool,
-        shutdown: mpsc::Receiver<ShutdownReason>,
-        listener: TcpListener,
-        usb: UsbConnector,
-        handle: AsyncHandle,
-    ) -> Result<Self> {
-        Ok(Self {
-            verbose_log,
-            num_clients: 0,
-            shutdown,
-            listener,
-            usb,
-            handle,
-        })
-    }
-
-    async fn run(&mut self) -> Result<()> {
-        'poll: loop {
-            tokio::select! {
-                shutdown_type = self.shutdown.recv() => {
-                    info!(
-                        "Shutdown event received: {:?}",
-                        shutdown_type.unwrap_or(ShutdownReason::Error));
-                    break 'poll;
-                }
-
-                c = self.listener.accept() => {
-                    match c {
-                        Ok((stream, addr)) => {
-                            info!("Connection opened from {}", addr);
-                            self.handle_connection(stream);
-                        }
-                        Err(err) => error!("Failed to accept connection: {}", err),
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-
-    async fn service_request(
-        verbose: bool,
-        usb: Option<UsbConnection>,
-        request: Request<Body>,
-        handle: AsyncHandle,
-    ) -> std::result::Result<Response<Body>, Infallible> {
-        if usb.is_none() {
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::empty())
-                .unwrap());
-        }
-        let usb = usb.unwrap();
-
-        handle_request(verbose, usb, request, handle)
-            .await
-            .or_else(|err| {
-                error!("Request failed: {}", err);
-                Ok(Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(Body::empty())
-                    .unwrap())
-            })
-    }
-
-    fn handle_connection(&mut self, stream: TcpStream) {
-        let mut thread_usb = self.usb.clone();
-        let verbose = self.verbose_log;
-        self.num_clients += 1;
-        let client_num = self.num_clients;
-        let async_handle = self.handle.clone();
-
-        self.handle.spawn(async move {
-            if verbose {
-                debug!("Connection {} opened", client_num);
-            }
-            if let Err(http_err) = http1::Builder::new()
-                .title_case_headers(true)
-                .preserve_header_case(true)
-                .serve_connection(
-                    stream,
-                    service_fn(move |req| {
-                        // We would normally want to extract usb_conn and return early if it's an
-                        // error, but that doesn't work here because we can't match the return type
-                        // of Daemon::service_request.  Instead, convert to an Option and handle a
-                        // missing value in service_request.
-                        let usb_conn = thread_usb
-                            .get_connection()
-                            .inspect_err(|err| {
-                                error!("Getting USB connection failed: {}", err);
-                            })
-                            .ok();
-
-                        Daemon::service_request(verbose, usb_conn, req, async_handle.clone())
-                    }),
-                )
-                .await
-            {
-                error!("Error serving HTTP connection: {}", http_err);
-            }
-            Ok::<(), Error>(())
-        });
-    }
-}
 
 async fn forward_connection(
     conn_count: usize,
@@ -394,8 +265,9 @@ fn run() -> Result<()> {
             .set_nonblocking(true)
             .map_err(Error::CreateSocket)?;
         let async_listener = TcpListener::from_std(listener).map_err(Error::CreateSocket)?;
-        let mut daemon = Daemon::new(args.verbose_log, shutdown_rx, async_listener, usb, handle)?;
-        daemon.run().await
+        let mut daemon = Bridge::new(args.verbose_log, shutdown_rx, async_listener, usb, handle);
+        daemon.run().await;
+        Ok::<(), Error>(())
     }) {
         error!("Daemon failed to run: {}", err);
     }
