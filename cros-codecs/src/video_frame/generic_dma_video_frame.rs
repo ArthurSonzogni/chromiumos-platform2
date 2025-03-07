@@ -334,21 +334,21 @@ impl<'a> Drop for DmaMapping<'a> {
     }
 }
 
-pub struct GenericDmaVideoFrame {
+#[derive(Debug)]
+pub struct GenericDmaVideoFrame<T: Clone + Send + Sync + Sized + Debug + 'static> {
+    pub token: T,
     dma_handles: Vec<File>,
     layout: FrameLayout,
-    drop_cbs: Vec<Box<dyn FnOnce(&mut Self) -> () + Send + Sync + 'static>>,
 }
 
 // The Clone trait is implemented for GenericDmaVideoFrame (and importantly no other VideoFrame!)
-// just so we can export the frame as a VA-API surface. While this looks risky because we don't
-// transfer the drop callbacks to the clone (because we can't), this is in practice OK because we
-// tie the lifetimes of VideoFrames with the Surfaces they are exported to through the VaapiPicture
-// struct. So we can be confidence that all VASurfaces will be destroyed before the drop callbacks
-// are run.
-impl Clone for GenericDmaVideoFrame {
+// just so we can export the frame as a VA-API surface. While this looks risky, in practice we tie
+// the lifetimes of the VideoFrames with the Surfaces they are exported to through the VaapiPicture
+// struct.
+impl<T: Clone + Send + Sync + Sized + Debug + 'static> Clone for GenericDmaVideoFrame<T> {
     fn clone(&self) -> Self {
         Self {
+            token: self.token.clone(),
             // SAFETY: This is safe because we are dup'ing the fd, giving the clone'd
             // GenericDmaVideoFrame ownership of the new fd.
             dma_handles: self
@@ -359,39 +359,17 @@ impl Clone for GenericDmaVideoFrame {
                 })
                 .collect(),
             layout: self.layout.clone(),
-            // We can't clone the drop callbacks since they're FnOnce()
-            drop_cbs: vec![],
         }
     }
 }
 
-impl Drop for GenericDmaVideoFrame {
-    fn drop(&mut self) {
-        let drop_cbs = replace(&mut self.drop_cbs, vec![]);
-        // Iterators are lazy, so we need to use collect() to actually run our destructor
-        // callbacks.
-        let _ = drop_cbs.into_iter().map(|drop_cb| drop_cb(self)).collect::<Vec<_>>();
-    }
-}
-
-impl Debug for GenericDmaVideoFrame {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GenericDmaVideoFrame")
-            .field("dma_handles", &self.dma_handles)
-            .field("layout", &self.layout)
-            .field("num_drop_cbs", &self.drop_cbs.len())
-            .finish()
-    }
-}
-
-impl GenericDmaVideoFrame {
+impl<T: Clone + Send + Sync + Sized + Debug + 'static> GenericDmaVideoFrame<T> {
     pub fn new(
+        token: T,
         dma_handles: Vec<File>,
         layout: FrameLayout,
-        drop_cbs: Vec<Box<dyn FnOnce(&mut Self) -> () + Send + Sync + 'static>>,
-    ) -> Result<GenericDmaVideoFrame, String> {
-        let ret =
-            GenericDmaVideoFrame { dma_handles: dma_handles, layout: layout, drop_cbs: drop_cbs };
+    ) -> Result<GenericDmaVideoFrame<T>, String> {
+        let ret = GenericDmaVideoFrame { token: token, dma_handles: dma_handles, layout: layout };
         ret.validate_frame()?;
         Ok(ret)
     }
@@ -433,7 +411,9 @@ impl GenericDmaVideoFrame {
 }
 
 #[cfg(feature = "vaapi")]
-impl ExternalBufferDescriptor for GenericDmaVideoFrame {
+impl<T: Clone + Send + Sync + Sized + Debug + 'static> ExternalBufferDescriptor
+    for GenericDmaVideoFrame<T>
+{
     const MEMORY_TYPE: MemoryType = MemoryType::DrmPrime2;
     type DescriptorAttribute = VADRMPRIMESurfaceDescriptor;
 
@@ -494,14 +474,14 @@ impl ExternalBufferDescriptor for GenericDmaVideoFrame {
     }
 }
 
-impl VideoFrame for GenericDmaVideoFrame {
+impl<T: Clone + Send + Sync + Sized + Debug + 'static> VideoFrame for GenericDmaVideoFrame<T> {
     #[cfg(feature = "v4l2")]
     type NativeHandle = DmaBufHandle<File>;
 
     #[cfg(feature = "vaapi")]
-    type MemDescriptor = GenericDmaVideoFrame;
+    type MemDescriptor = GenericDmaVideoFrame<T>;
     #[cfg(feature = "vaapi")]
-    type NativeHandle = Surface<GenericDmaVideoFrame>;
+    type NativeHandle = Surface<GenericDmaVideoFrame<T>>;
 
     fn fourcc(&self) -> Fourcc {
         self.layout.format.0.clone()

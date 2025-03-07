@@ -135,7 +135,7 @@ fn main() {
     let frames_needed = Arc::new(AtomicU64::new((*golden_iter.lock().unwrap()).len() as u64));
 
     let _frames_needed = frames_needed.clone();
-    let on_new_frame = move |job: C2DecodeJob<PooledVideoFrame<GenericDmaVideoFrame>>| {
+    let on_new_frame = move |job: C2DecodeJob<PooledVideoFrame<GenericDmaVideoFrame<()>>>| {
         if args.output.is_none() && args.compute_md5.is_none() && args.golden.is_none() {
             return;
         }

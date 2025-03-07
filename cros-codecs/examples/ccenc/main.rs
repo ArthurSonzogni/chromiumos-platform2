@@ -76,9 +76,9 @@ fn codec_to_ivf_magic(codec: &Codec) -> [u8; 4] {
 
 #[allow(clippy::too_many_arguments)]
 fn enqueue_work<W>(
-    encoder: &mut C2Wrapper<C2EncodeJob<PooledVideoFrame<GenericDmaVideoFrame>>, W>,
+    encoder: &mut C2Wrapper<C2EncodeJob<PooledVideoFrame<GenericDmaVideoFrame<()>>>, W>,
     file: &mut File,
-    framepool: Arc<Mutex<FramePool<GenericDmaVideoFrame>>>,
+    framepool: Arc<Mutex<FramePool<GenericDmaVideoFrame<()>>>>,
     input_format: DecodedFormat,
     input_coded_resolution: Resolution,
     num_frames: u64,
@@ -87,7 +87,7 @@ fn enqueue_work<W>(
     timestamp: &mut u64,
 ) -> bool
 where
-    W: C2Worker<C2EncodeJob<PooledVideoFrame<GenericDmaVideoFrame>>>,
+    W: C2Worker<C2EncodeJob<PooledVideoFrame<GenericDmaVideoFrame<()>>>>,
 {
     assert!(input_coded_resolution.width % 2 == 0);
     assert!(input_coded_resolution.height % 2 == 0);
@@ -243,7 +243,7 @@ fn main() {
         hdr.writo_into(&mut *output_file.lock().unwrap()).expect("Error writing IVF file header!");
     }
     let codec_ = codec;
-    let work_done_cb = move |job: C2EncodeJob<PooledVideoFrame<GenericDmaVideoFrame>>| {
+    let work_done_cb = move |job: C2EncodeJob<PooledVideoFrame<GenericDmaVideoFrame<()>>>| {
         if codec_ != Codec::H264 {
             let hdr =
                 IvfFrameHeader { timestamp: job.timestamp, frame_size: job.output.len() as u32 };

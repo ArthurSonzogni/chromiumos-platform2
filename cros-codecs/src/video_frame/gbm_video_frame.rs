@@ -236,7 +236,7 @@ impl GbmVideoFrame {
         Ok(ret)
     }
 
-    pub fn to_generic_dma_video_frame(self) -> Result<GenericDmaVideoFrame, String> {
+    pub fn to_generic_dma_video_frame(self) -> Result<GenericDmaVideoFrame<()>, String> {
         let planes: Vec<PlaneLayout> = zip(self.get_plane_offset(), self.get_plane_pitch())
             .enumerate()
             .map(|x| PlaneLayout { buffer_index: x.0, offset: x.1 .0, stride: x.1 .1 })
@@ -246,13 +246,13 @@ impl GbmVideoFrame {
         let dma_handles: Vec<File> =
             self.bo.iter().map(|bo| unsafe { File::from_raw_fd(gbm_bo_get_fd(*bo)) }).collect();
         GenericDmaVideoFrame::new(
+            (),
             dma_handles,
             FrameLayout {
                 format: (self.fourcc, self.get_modifier()),
                 size: self.resolution(),
                 planes: planes,
             },
-            vec![],
         )
     }
 }
