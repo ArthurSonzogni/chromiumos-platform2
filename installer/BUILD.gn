@@ -46,6 +46,12 @@ install_config("init_confs") {
   glob = true
 }
 
+install_config("tmpfiled_ondemand") {
+  sources = [ "tmpfiles.d/on-demand/*.conf" ]
+  install_path = "tmpfiled_ondemand"
+  glob = true
+}
+
 group("all") {
   deps = [
     ":cros_installer",
@@ -64,7 +70,10 @@ group("all") {
     deps += [ ":cros_installer_test" ]
   }
   if (!use.systemd) {
-    deps += [ ":init_confs" ]
+    deps += [
+      ":init_confs",
+      ":tmpfiled_ondemand",
+    ]
   }
 }
 
