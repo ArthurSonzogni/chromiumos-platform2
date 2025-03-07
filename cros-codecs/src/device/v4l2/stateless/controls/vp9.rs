@@ -204,7 +204,7 @@ impl AsV4l2ControlSlice for &mut Vp9V4l2Control {
 
 impl Drop for Vp9V4l2Control {
     fn drop(&mut self) {
-        // Invariant: p_vp9_frame contains a pointer to a non-NULL v4l2_ctrl_vp9_frame object.
+        // SAFETY: p_vp9_frame contains a pointer to a non-NULL v4l2_ctrl_vp9_frame object.
         unsafe {
             let _ = Box::from_raw(self.0.__bindgen_anon_1.p_vp9_frame);
         }

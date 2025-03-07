@@ -610,7 +610,7 @@ impl AsV4l2ControlSlice for &mut Av1V4l2FilmGrainCtrl {
 
 impl Drop for Av1V4l2FilmGrainCtrl {
     fn drop(&mut self) {
-        // Invariant: p_av1_film_grain contains a pointer to a non-NULL
+        // SAFETY: p_av1_film_grain contains a pointer to a non-NULL
         // v4l2_ctrl_av1_film_grain object.
         unsafe {
             let _ = Box::from_raw(self.0.__bindgen_anon_1.p_av1_film_grain);
@@ -646,7 +646,7 @@ impl AsV4l2ControlSlice for &mut Av1V4l2FrameCtrl {
 
 impl Drop for Av1V4l2FrameCtrl {
     fn drop(&mut self) {
-        // Invariant: p_av1_frame contains a pointer to a non-NULL v4l2_ctrl_av1_frame object.
+        // SAFETY: p_av1_frame contains a pointer to a non-NULL v4l2_ctrl_av1_frame object.
         unsafe {
             let _ = Box::from_raw(self.0.__bindgen_anon_1.p_av1_frame);
         }
@@ -681,7 +681,7 @@ impl AsV4l2ControlSlice for &mut Av1V4l2SequenceCtrl {
 
 impl Drop for Av1V4l2SequenceCtrl {
     fn drop(&mut self) {
-        // Invariant: p_av1_sequence contains a pointer to a non-NULL v4l2_ctrl_av1_sequence object.
+        // SAFETY: p_av1_sequence contains a pointer to a non-NULL v4l2_ctrl_av1_sequence object.
         unsafe {
             let _ = Box::from_raw(self.0.__bindgen_anon_1.p_av1_sequence);
         }
@@ -716,7 +716,7 @@ impl AsV4l2ControlSlice for &mut Av1V4l2TileGroupEntryCtrl {
 
 impl Drop for Av1V4l2TileGroupEntryCtrl {
     fn drop(&mut self) {
-        // Invariant: p_av1_tile_group_entry contains a pointer to a non-NULL
+        // SAFETY: p_av1_tile_group_entry contains a pointer to a non-NULL
         // v4l2_ctrl_tile_group_entry object.
         unsafe {
             let _ = Box::from_raw(self.0.__bindgen_anon_1.p_av1_tile_group_entry);
