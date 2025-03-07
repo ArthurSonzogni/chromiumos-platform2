@@ -368,7 +368,9 @@ impl Clone for GenericDmaVideoFrame {
 impl Drop for GenericDmaVideoFrame {
     fn drop(&mut self) {
         let drop_cbs = replace(&mut self.drop_cbs, vec![]);
-        drop_cbs.into_iter().map(|drop_cb| drop_cb(self));
+        // Iterators are lazy, so we need to use collect() to actually run our destructor
+        // callbacks.
+        let _ = drop_cbs.into_iter().map(|drop_cb| drop_cb(self)).collect::<Vec<_>>();
     }
 }
 
