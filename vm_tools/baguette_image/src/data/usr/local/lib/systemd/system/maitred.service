@@ -4,7 +4,7 @@ Requires=opt-google-cros\x2dcontainers.mount
 After=opt-google-cros\x2dcontainers.mount
 
 [Service]
-Environment="PATH=/opt/google/cros-containers/bin:${PATH}"
+Environment="PATH=/opt/google/cros-containers/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ExecStart=/opt/google/cros-containers/bin/maitred
 
 [Install]
