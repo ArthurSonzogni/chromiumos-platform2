@@ -230,6 +230,9 @@ extern const char kHasKeyboardBacklightPref[];
 // If true, the device doesn't have an internal display.
 extern const char kExternalDisplayOnlyPref[];
 
+// If true, the device does not want power manager to use external display.
+extern const char kExcludeFromExternalDisplayOnlyListPref[];
+
 // If true, the device has a legacy ACPI power button that doesn't report button
 // releases properly.
 extern const char kLegacyPowerButtonPref[];

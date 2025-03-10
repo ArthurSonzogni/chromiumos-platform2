@@ -131,8 +131,20 @@ bool MachineQuirks::IsExternalDisplayOnly() {
   CHECK(prefs_) << "MachineQuirks::Init() wasn't called";
 
   std::string chassis_type_str;
+  std::string exclude_external_display_only_ids_pref;
   std::string external_display_only_ids_pref;
   int chassis_type;
+
+  if (prefs_->GetString(kExcludeFromExternalDisplayOnlyListPref,
+                        &exclude_external_display_only_ids_pref)) {
+    // Check if device is manually set to screen-off
+    if (ContainsDMIMatch(exclude_external_display_only_ids_pref)) {
+      LOG(INFO) << "Device won't use external display for power management.";
+      // Explicitly turn off external display
+      prefs_->SetInt64(kExternalDisplayOnlyPref, 0);
+      return false;
+    }
+  }
 
   // Read external_display_only ids pref.
   if (prefs_->GetString(kExternalDisplayOnlyListPref,
