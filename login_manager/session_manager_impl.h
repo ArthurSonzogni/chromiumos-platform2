@@ -279,6 +279,9 @@ class SessionManagerImpl
       brillo::ErrorPtr* error,
       const std::vector<uint8_t>& signed_command) override;
 
+  void ClearBlockDevmodeVpd(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
+      override;
   void ClearForcedReEnrollmentVpd(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
       override;

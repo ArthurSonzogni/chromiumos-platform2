@@ -1074,11 +1074,16 @@ bool SessionManagerImpl::StartRemoteDeviceWipe(
   return true;
 }
 
-void SessionManagerImpl::ClearForcedReEnrollmentVpd(
+void SessionManagerImpl::ClearBlockDevmodeVpd(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
   device_policy_->ClearBlockDevmode(
       dbus_service_->CreatePolicyServiceCompletionCallback(
           std::move(response)));
+}
+
+void SessionManagerImpl::ClearForcedReEnrollmentVpd(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  ClearBlockDevmodeVpd(std::move(response));
 }
 
 bool SessionManagerImpl::StartTPMFirmwareUpdate(
