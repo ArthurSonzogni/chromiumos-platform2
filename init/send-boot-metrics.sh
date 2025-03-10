@@ -98,6 +98,33 @@ metrics_client -t BootTime.Kernel "${PRE_STARTUP_TIME}" 1 10000 50
 metrics_client -t BootTime.System "${SYSTEM_TIME}" 1 10000 50
 metrics_client -t BootTime.Chrome "${CHROME_TIME}" 1 10000 50
 
+# Send detailed metrics in addition to general metrics.
+if [ -f "/run/update_engine/.first-boot-after-update" ]; then
+  # We are booting up for the first time after update.
+  # refer to above comments about CrOS firmware.
+  if [ -n "${FIRMWARE_TIME}" ]; then
+    metrics_client -t BootTime.Total2.FirstBoot \
+      "${TOTAL_TIME}" 1 20000 100
+    metrics_client -t BootTime.Firmware.FirstBoot \
+      "${FIRMWARE_TIME}" 1 10000 50
+  fi
+  metrics_client -t BootTime.Kernel.FirstBoot "${PRE_STARTUP_TIME}" 1 10000 50
+  metrics_client -t BootTime.System.FirstBoot "${SYSTEM_TIME}" 1 10000 50
+  metrics_client -t BootTime.Chrome.FirstBoot "${CHROME_TIME}" 1 10000 50
+else
+  # Subsequent boot after first boot.
+  # refer to above comments about CrOS firmware.
+  if [ -n "${FIRMWARE_TIME}" ]; then
+    metrics_client -t BootTime.Total2.RegularBoot \
+      "${TOTAL_TIME}" 1 20000 100
+    metrics_client -t BootTime.Firmware.RegularBoot \
+      "${FIRMWARE_TIME}" 1 10000 50
+  fi
+  metrics_client -t BootTime.Kernel.RegularBoot "${PRE_STARTUP_TIME}" 1 10000 50
+  metrics_client -t BootTime.System.RegularBoot "${SYSTEM_TIME}" 1 10000 50
+  metrics_client -t BootTime.Chrome.RegularBoot "${CHROME_TIME}" 1 10000 50
+fi
+
 # Send boot metrics from the thinpool migration if the file exists.
 metrics_client -R "${THINPOOL_MIGRATION_METRICS_FILE}"
 
