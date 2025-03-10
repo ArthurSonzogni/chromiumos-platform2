@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <optional>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -36,7 +37,6 @@ using MantisAPIGetter = const MantisAPI* (*)();
 
 constexpr char kDlcPrefix[] = "ml-dlc-";
 constexpr char kDefaultDlcUUID[] = "302a455f-5453-43fb-a6a1-d856e6fe6435";
-constexpr double kFinishedProgress = 1;
 constexpr char kReclaimFile[] = "/proc/self/reclaim";
 constexpr char kAll[] = "all";
 
@@ -52,38 +52,6 @@ MantisService::MantisService(
       shim_loader_(shim_loader),
       safety_service_manager_(safety_service_manager) {}
 
-template <typename FuncType,
-          typename CallbackType,
-          typename FailureType,
-          typename... Args>
-bool MantisService::RetryIfShimIsNotReady(FuncType func,
-                                          CallbackType& callback,
-                                          FailureType failure_result,
-                                          Args&... args) {
-  if (shim_loader_->IsShimReady()) {
-    return false;
-  }
-
-  auto split = base::SplitOnceCallback(std::move(callback));
-  base::OnceClosure retry_cb =
-      base::BindOnce(func, weak_ptr_factory_.GetWeakPtr(), std::move(args)...,
-                     std::move(split.first));
-
-  shim_loader_->EnsureShimReady(base::BindOnce(
-      [](CallbackType callback, base::OnceClosure retry_cb,
-         FailureType failure_result, bool result) {
-        if (!result) {
-          LOG(ERROR) << "Failed to ensure the shim is ready.";
-          std::move(callback).Run(std::move(failure_result));
-          return;
-        }
-        std::move(retry_cb).Run();
-      },
-      std::move(split.second), std::move(retry_cb), std::move(failure_result)));
-
-  return true;
-}
-
 void MantisService::DeleteProcessor() {
   processor_.reset();
   if (!base::WriteFile(base::FilePath(kReclaimFile), kAll)) {
@@ -96,43 +64,20 @@ void MantisService::Initialize(
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
     const std::optional<base::Uuid>& dlc_uuid,
     InitializeCallback callback) {
-  if (RetryIfShimIsNotReady(&MantisService::Initialize, callback,
-                            mojom::InitializeResult::kFailedToLoadLibrary,
-                            progress_observer, processor, dlc_uuid)) {
-    return;
-  }
-
-  // Determine if the model is already loaded here. The model might be ready
-  // later, e.g. after DLC is installed. However, we consider that case
-  // unloaded since we already do some processing.
-  SendBoolMetric(*metrics_lib_, BoolMetric::kModelLoaded,
-                 processor_ != nullptr);
-  if (processor_) {
-    processor_->AddReceiver(std::move(processor));
-    mojo::Remote<mojom::PlatformModelProgressObserver> remote(
-        std::move(progress_observer));
-    if (remote) {
-      remote->Progress(kFinishedProgress);
-    }
-    std::move(callback).Run(mojom::InitializeResult::kSuccess);
-    return;
-  }
-  std::string target_dlc_uuid = kDefaultDlcUUID;
-  if (dlc_uuid.has_value() && dlc_uuid.value().is_valid()) {
-    target_dlc_uuid = dlc_uuid.value().AsLowercaseString();
-  }
-
-  auto remote =
+  std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>> remote =
       std::make_shared<mojo::Remote<mojom::PlatformModelProgressObserver>>(
           std::move(progress_observer));
-  std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
-      kDlcPrefix + target_dlc_uuid,
-      base::BindOnce(&MantisService::OnInstallVerifiedDlcComplete,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(processor),
-                     std::move(callback), odml::PerformanceTimer::Create(),
-                     target_dlc_uuid, remote),
-      base::DoNothing());
-  (*dlc_client)->InstallVerifiedDlcOnly();
+
+  if (shim_loader_->IsShimReady()) {
+    InitializeInternal(remote, std::move(processor), dlc_uuid,
+                       std::move(callback));
+    return;
+  }
+
+  shim_loader_->InstallVerifiedShim(
+      base::BindOnce(&MantisService::OnInstallVerifiedShimComplete,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                     remote, std::move(processor), dlc_uuid));
 }
 
 void MantisService::GetMantisFeatureStatus(
@@ -140,6 +85,47 @@ void MantisService::GetMantisFeatureStatus(
   std::move(callback).Run(
       USE_MANTIS ? mojom::MantisFeatureStatus::kAvailable
                  : mojom::MantisFeatureStatus::kDeviceNotSupported);
+}
+
+void MantisService::OnInstallVerifiedShimComplete(
+    InitializeCallback callback,
+    std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+        progress_observer,
+    mojo::PendingReceiver<mojom::MantisProcessor> processor,
+    const std::optional<base::Uuid>& dlc_uuid,
+    bool result) {
+  if (!result) {
+    // Because the shim has not been downloaded, a 0% progress update will be
+    // sent to signal the UI to display a download message.
+    if (progress_observer && *progress_observer) {
+      (*progress_observer)->Progress(0);
+    }
+    shim_loader_->EnsureShimReady(
+        base::BindOnce(&MantisService::OnInstallShimComplete,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                       progress_observer, std::move(processor), dlc_uuid));
+    return;
+  }
+
+  InitializeInternal(progress_observer, std::move(processor), dlc_uuid,
+                     std::move(callback));
+}
+
+void MantisService::OnInstallShimComplete(
+    InitializeCallback callback,
+    std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+        progress_observer,
+    mojo::PendingReceiver<mojom::MantisProcessor> processor,
+    const std::optional<base::Uuid>& dlc_uuid,
+    bool result) {
+  if (!result) {
+    LOG(ERROR) << "Failed to ensure the shim is ready.";
+    std::move(callback).Run(mojom::InitializeResult::kFailedToLoadLibrary);
+    return;
+  }
+
+  InitializeInternal(progress_observer, std::move(processor), dlc_uuid,
+                     std::move(callback));
 }
 
 void MantisService::OnInstallDlcComplete(
@@ -211,8 +197,8 @@ void MantisService::OnInstallVerifiedDlcComplete(
         progress_observer,
     base::expected<base::FilePath, std::string> result) {
   if (result.has_value()) {
-    this->OnInstallDlcComplete(std::move(processor), std::move(callback),
-                               std::move(timer), result);
+    OnInstallDlcComplete(std::move(processor), std::move(callback),
+                         std::move(timer), result);
     return;
   }
 
@@ -261,4 +247,34 @@ void MantisService::OnDlcProgress(
   }
 }
 
+void MantisService::InitializeInternal(
+    std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+        progress_observer,
+    mojo::PendingReceiver<mojom::MantisProcessor> processor,
+    const std::optional<base::Uuid>& dlc_uuid,
+    InitializeCallback callback) {
+  // Determine if the model is already loaded here. The model might be ready
+  // later, e.g. after DLC is installed. However, we consider that case
+  // unloaded since we already do some processing.
+  SendBoolMetric(*metrics_lib_, BoolMetric::kModelLoaded,
+                 processor_ != nullptr);
+  if (processor_) {
+    processor_->AddReceiver(std::move(processor));
+    std::move(callback).Run(mojom::InitializeResult::kSuccess);
+    return;
+  }
+  std::string target_dlc_uuid = kDefaultDlcUUID;
+  if (dlc_uuid.has_value() && dlc_uuid.value().is_valid()) {
+    target_dlc_uuid = dlc_uuid.value().AsLowercaseString();
+  }
+
+  std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
+      kDlcPrefix + target_dlc_uuid,
+      base::BindOnce(&MantisService::OnInstallVerifiedDlcComplete,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(processor),
+                     std::move(callback), odml::PerformanceTimer::Create(),
+                     target_dlc_uuid, progress_observer),
+      base::DoNothing());
+  (*dlc_client)->InstallVerifiedDlcOnly();
+}
 }  // namespace mantis

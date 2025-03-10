@@ -5,12 +5,12 @@
 #ifndef ODML_UTILS_ODML_SHIM_LOADER_MOCK_H_
 #define ODML_UTILS_ODML_SHIM_LOADER_MOCK_H_
 
-#include "odml/utils/odml_shim_loader.h"
-
 #include <string>
-#include <gmock/gmock.h>
 
 #include <base/functional/callback.h>
+#include <gmock/gmock.h>
+
+#include "odml/utils/odml_shim_loader.h"
 
 namespace odml {
 
@@ -25,6 +25,10 @@ class OdmlShimLoaderMock : public OdmlShimLoader {
               (base::OnceCallback<void(bool)> callback),
               (override));
   MOCK_METHOD(void*, GetFunctionPointer, (const std::string& name), (override));
+  MOCK_METHOD(void,
+              InstallVerifiedShim,
+              (base::OnceCallback<void(bool)> callback),
+              (override));
 };
 
 }  // namespace odml

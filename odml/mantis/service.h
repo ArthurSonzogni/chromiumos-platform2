@@ -80,18 +80,23 @@ class MantisService : public mojom::MantisService {
     InitializeCallback callback;
   };
 
-  // Duplicate from on_device_model_service.h
-  // TODO(b/368261193): Move this function to a common place and reuse it here.
-  template <typename FuncType,
-            typename CallbackType,
-            typename FailureType,
-            typename... Args>
-  bool RetryIfShimIsNotReady(FuncType func,
-                             CallbackType& callback,
-                             FailureType failure_result,
-                             Args&... args);
-
   void DeleteProcessor();
+
+  void OnInstallVerifiedShimComplete(
+      InitializeCallback callback,
+      std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+          progress_observer,
+      mojo::PendingReceiver<mojom::MantisProcessor> processor,
+      const std::optional<base::Uuid>& dlc_uuid,
+      bool result);
+
+  void OnInstallShimComplete(
+      InitializeCallback callback,
+      std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+          progress_observer,
+      mojo::PendingReceiver<mojom::MantisProcessor> processor,
+      const std::optional<base::Uuid>& dlc_uuid,
+      bool result);
 
   void OnInstallDlcComplete(
       mojo::PendingReceiver<mojom::MantisProcessor> processor,
@@ -114,6 +119,13 @@ class MantisService : public mojom::MantisService {
       double progress);
 
   void NotifyPendingProcessors();
+
+  void InitializeInternal(
+      std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+          progress_observer,
+      mojo::PendingReceiver<mojom::MantisProcessor> processor,
+      const std::optional<base::Uuid>& dlc_uuid,
+      InitializeCallback callback);
 
   const raw_ref<MetricsLibraryInterface> metrics_lib_;
 

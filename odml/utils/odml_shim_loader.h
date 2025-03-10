@@ -24,6 +24,10 @@ class OdmlShimLoader {
   // the function pointer.
   virtual void EnsureShimReady(base::OnceCallback<void(bool)> callback) = 0;
 
+  // Attempt to install the shim without downloading the DLC. The
+  // function will return false if the DLC has not been downloaded.
+  virtual void InstallVerifiedShim(base::OnceCallback<void(bool)> callback) = 0;
+
   // Get the function pointer with the function name.
   template <typename T>
   T Get(const std::string& name) {

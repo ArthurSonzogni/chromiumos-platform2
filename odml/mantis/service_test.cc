@@ -68,7 +68,7 @@ class MantisServiceTest : public testing::Test {
 };
 
 TEST_F(MantisServiceTest, InitializeUnableToResolveGetMantisAPISymbol) {
-  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, IsShimReady).WillOnce(Return(true));
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(nullptr));
   SetupDlc();
@@ -93,7 +93,7 @@ TEST_F(MantisServiceTest, InitializeUnableToResolveGetMantisAPISymbol) {
 }
 
 TEST_F(MantisServiceTest, InitializeUnableToGetMantisAPI) {
-  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, IsShimReady).WillOnce(Return(true));
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(
           MantisAPIGetter([]() -> const MantisAPI* { return 0; }))));
@@ -118,8 +118,26 @@ TEST_F(MantisServiceTest, InitializeUnableToGetMantisAPI) {
   run_loop.Run();
 }
 
+TEST_F(MantisServiceTest, InitializeFailedToDownloadShim) {
+  EXPECT_CALL(shim_loader_, IsShimReady).WillOnce(Return(false));
+  EXPECT_CALL(shim_loader_, InstallVerifiedShim)
+      .WillOnce(base::test::RunOnceCallback<0>(false));
+  EXPECT_CALL(shim_loader_, EnsureShimReady)
+      .WillOnce(base::test::RunOnceCallback<0>(false));
+
+  base::RunLoop run_loop;
+  mojo::Remote<mojom::MantisProcessor> processor;
+  service_remote_->Initialize(
+      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      base::BindLambdaForTesting([&](mojom::InitializeResult result) {
+        EXPECT_EQ(result, mojom::InitializeResult::kFailedToLoadLibrary);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
 TEST_F(MantisServiceTest, InitializeSucceeds) {
-  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, IsShimReady).WillOnce(Return(true));
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(
           []() -> const MantisAPI* { return fake::GetMantisApi(); }))));
@@ -146,7 +164,53 @@ TEST_F(MantisServiceTest, InitializeSucceeds) {
 }
 
 TEST_F(MantisServiceTest, InitializeSucceedsWithEmptyDLC) {
-  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, IsShimReady).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
+      .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(
+          []() -> const MantisAPI* { return fake::GetMantisApi(); }))));
+  EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
+      .WillOnce(base::test::RunOnceCallback<0>(true));
+  SetupDlc();
+
+  base::RunLoop run_loop;
+  mojo::Remote<mojom::MantisProcessor> processor;
+  service_remote_->Initialize(
+      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      base::BindLambdaForTesting([&](mojom::InitializeResult result) {
+        EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+TEST_F(MantisServiceTest, InitializeSucceedsWithShimInstallation) {
+  EXPECT_CALL(shim_loader_, IsShimReady).WillOnce(Return(false));
+  EXPECT_CALL(shim_loader_, InstallVerifiedShim)
+      .WillOnce(base::test::RunOnceCallback<0>(true));
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
+      .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(
+          []() -> const MantisAPI* { return fake::GetMantisApi(); }))));
+  EXPECT_CALL(safety_service_manager_, PrepareImageSafetyClassifier)
+      .WillOnce(base::test::RunOnceCallback<0>(true));
+  SetupDlc();
+
+  base::RunLoop run_loop;
+  mojo::Remote<mojom::MantisProcessor> processor;
+  service_remote_->Initialize(
+      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      base::BindLambdaForTesting([&](mojom::InitializeResult result) {
+        EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+TEST_F(MantisServiceTest, InitializeSucceedsWithShimDownload) {
+  EXPECT_CALL(shim_loader_, IsShimReady).WillOnce(Return(false));
+  EXPECT_CALL(shim_loader_, InstallVerifiedShim)
+      .WillOnce(base::test::RunOnceCallback<0>(false));
+  EXPECT_CALL(shim_loader_, EnsureShimReady)
+      .WillOnce(base::test::RunOnceCallback<0>(true));
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(
           []() -> const MantisAPI* { return fake::GetMantisApi(); }))));
@@ -166,9 +230,7 @@ TEST_F(MantisServiceTest, InitializeSucceedsWithEmptyDLC) {
 }
 
 TEST_F(MantisServiceTest, MultipleClients) {
-  EXPECT_CALL(shim_loader_, IsShimReady())
-      .Times(2)
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(shim_loader_, IsShimReady).Times(2).WillRepeatedly(Return(true));
   // GetMantisAPI should only be called once
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(

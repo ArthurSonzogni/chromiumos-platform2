@@ -78,4 +78,13 @@ void* OdmlShimLoaderImpl::GetFunctionPointer(const std::string& name) {
   return library_.GetFunctionPointer(name.c_str());
 }
 
+void OdmlShimLoaderImpl::InstallVerifiedShim(
+    base::OnceCallback<void(bool)> callback) {
+  std::shared_ptr<DlcClientPtr> dlc_client = CreateDlcClient(
+      kOdmlShimDlc,
+      base::BindOnce(&OdmlShimLoaderImpl::OnInstallDlcComplete,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+  (*dlc_client)->InstallVerifiedDlcOnly();
+}
+
 }  // namespace odml

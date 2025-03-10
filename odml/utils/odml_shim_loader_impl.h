@@ -5,9 +5,6 @@
 #ifndef ODML_UTILS_ODML_SHIM_LOADER_IMPL_H_
 #define ODML_UTILS_ODML_SHIM_LOADER_IMPL_H_
 
-#include "odml/utils/odml_shim_loader.h"
-
-#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -19,6 +16,8 @@
 #include <base/scoped_native_library.h>
 #include <base/types/expected.h>
 
+#include "odml/utils/odml_shim_loader.h"
+
 namespace odml {
 
 class OdmlShimLoaderImpl : public OdmlShimLoader {
@@ -29,6 +28,7 @@ class OdmlShimLoaderImpl : public OdmlShimLoader {
   bool IsShimReady() override;
   void EnsureShimReady(base::OnceCallback<void(bool)> callback) override;
   void* GetFunctionPointer(const std::string& name) override;
+  void InstallVerifiedShim(base::OnceCallback<void(bool)> callback) override;
 
  private:
   void OnInstallDlcComplete(base::OnceCallback<void(bool)> callback,
