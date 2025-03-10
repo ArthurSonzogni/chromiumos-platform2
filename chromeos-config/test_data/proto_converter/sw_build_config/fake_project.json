@@ -1268,7 +1268,7 @@
           "signature-id": "project_a"
         },
         "hardware-properties": {
-          "ec-max-calibration_accel": 100,
+          "ec-max-calibration-accel": 100,
           "ec-max-sensor-odr": 50000,
           "form-factor": "CONVERTIBLE",
           "has-audio-jack": true,

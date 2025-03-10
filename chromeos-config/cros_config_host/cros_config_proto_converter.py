@@ -2174,7 +2174,7 @@ def _build_hardware_properties(hw_features):
             "max_accelerometer_calibration"
         ):
             result[
-                "ec-max-calibration_accel"
+                "ec-max-calibration-accel"
             ] = (
                 hw_features.embedded_controller.max_accelerometer_calibration.value
             )
