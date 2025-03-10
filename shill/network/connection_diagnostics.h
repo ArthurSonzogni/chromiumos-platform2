@@ -21,14 +21,13 @@
 #include <chromeos/net-base/ip_address.h>
 
 #include "shill/mockable.h"
+#include "shill/network/icmp_session.h"
 
 namespace shill {
 
 class DnsClient;
 class Error;
 class EventDispatcher;
-class IcmpSession;
-class IcmpSessionFactory;
 
 // Given a connected Network and a URL, ConnectionDiagnostics performs the
 // following actions to diagnose a connectivity problem on the current
@@ -37,11 +36,9 @@ class IcmpSessionFactory;
 // (B) Also starts by pinging all DNS servers in parallel
 //     (C) Whether none or some of the DNS servers reply to ping,
 //         try next resolve the IP of the target web server via DNS.
-//         (D) If DNS resolution fails because of a timeout, ping all DNS
-//             servers again and find a new reachable DNS server (step A).
-//         (E) If DNS resolution fails for any other reason, we have found a
-//             DNS server issue. END.
-//         (F) Otherwise, ping the IP address of the target web server. END.
+//         (D) IF DNS resolution succeeds, ping the IP address of the target
+//             web server. END.
+//         (E) Otherwise If DNS resolution fails for any other reason, END.
 class ConnectionDiagnostics {
  public:
   // Describes the type of a diagnostic test.
@@ -88,10 +85,23 @@ class ConnectionDiagnostics {
   mockable bool IsRunning() const;
   int event_number() const { return event_number_; }
 
+  const std::string& interface_name() const { return iface_name_; }
+  int interface_index() const { return iface_index_; }
+  net_base::IPFamily ip_family() const { return ip_family_; }
+
+ protected:
+  EventDispatcher* get_dispatcher_for_testing() { return dispatcher_; }
+
+  // Starts an ICMP session on |interface_index| to target |destination| and
+  // returns the tracking IcmpSession object. Returns nullptr in case of error.
+  mockable std::unique_ptr<IcmpSession> StartIcmpSession(
+      const net_base::IPAddress& destination,
+      int interface_index,
+      std::string_view interface_name,
+      IcmpSession::IcmpSessionResultCallback result_callback);
+
  private:
   friend class ConnectionDiagnosticsTest;
-
-  static const int kMaxDNSRetries;
 
   // Logs a diagnostic events with |type|, |result|, and an optional message.
   void LogEvent(Type type, Result result, const std::string& message = "");
@@ -111,9 +121,6 @@ class ConnectionDiagnostics {
   // Called after each IcmpSession started in
   // ConnectionDiagnostics::PingDNSServers finishes or times out. The DNS server
   // that was pinged can be uniquely identified with |dns_server_index|.
-  // Attempts to resolve the IP address of the hostname of |target_url_| again
-  // if at least one DNS server was pinged successfully, and if
-  // |num_dns_attempts_| has not yet reached |kMaxDNSRetries|.
   void OnPingDNSServerComplete(int dns_server_index,
                                const std::vector<base::TimeDelta>& result);
 
@@ -158,7 +165,6 @@ class ConnectionDiagnostics {
   std::map<int, std::unique_ptr<IcmpSession>>
       id_to_pending_dns_server_icmp_session_;
 
-  int num_dns_attempts_;
   bool running_;
 
   // Number of record of all diagnostic events that occurred.

@@ -4,6 +4,7 @@
 
 #include "shill/network/connection_diagnostics.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -64,6 +65,51 @@ const auto kIPv6GatewayAddress =
     *net_base::IPAddress::CreateFromString("fee2::11b2:53f:13be:125e");
 const std::vector<base::TimeDelta> kEmptyResult;
 const std::vector<base::TimeDelta> kNonEmptyResult{base::Milliseconds(10)};
+
+class ConnectionDiagnosticsUnderTest : public ConnectionDiagnostics {
+ public:
+  ConnectionDiagnosticsUnderTest(
+      std::string_view iface_name,
+      int iface_index,
+      net_base::IPFamily ip_family,
+      const net_base::IPAddress& gateway,
+      const std::vector<net_base::IPAddress>& dns_list,
+      std::string_view logging_tag,
+      EventDispatcher* dispatcher)
+      : ConnectionDiagnostics
+
+        (iface_name,
+         iface_index,
+         ip_family,
+         gateway,
+         dns_list,
+         logging_tag,
+         dispatcher) {}
+
+  ConnectionDiagnosticsUnderTest(const ConnectionDiagnosticsUnderTest&) =
+      delete;
+  ConnectionDiagnosticsUnderTest& operator=(
+      const ConnectionDiagnosticsUnderTest&) = delete;
+
+  std::unique_ptr<IcmpSession> StartIcmpSession(
+      const net_base::IPAddress& destination,
+      int interface_index,
+      std::string_view interface_name,
+      IcmpSession::IcmpSessionResultCallback result_callback) override {
+    auto it = icmp_sessions_.find(destination);
+    return (it != icmp_sessions_.end()) ? std::move(it->second) : nullptr;
+  }
+
+  void SetIcmpSession(const net_base::IPAddress& destination) {
+    auto icmp_session = std::make_unique<NiceMock<MockIcmpSession>>(
+        get_dispatcher_for_testing());
+    icmp_sessions_[destination] = std::move(icmp_session);
+  }
+
+  std::map<net_base::IPAddress, std::unique_ptr<MockIcmpSession>>
+      icmp_sessions_;
+};
+
 }  // namespace
 
 class ConnectionDiagnosticsTest : public Test {
@@ -118,7 +164,6 @@ class ConnectionDiagnosticsTest : public Test {
 
   void VerifyStopped() {
     EXPECT_FALSE(connection_diagnostics_.IsRunning());
-    EXPECT_EQ(0, connection_diagnostics_.num_dns_attempts_);
     EXPECT_EQ(0, connection_diagnostics_.event_number());
     EXPECT_EQ(nullptr, connection_diagnostics_.dns_client_);
     EXPECT_FALSE(connection_diagnostics_.icmp_session_->IsStarted());
@@ -144,14 +189,6 @@ class ConnectionDiagnosticsTest : public Test {
   void ExpectPingDNSSeversStartFailureAllIcmpSessionsFailed(
       const std::vector<net_base::IPAddress>& dns = kIPv4DNSList) {
     ExpectPingDNSSeversStart(dns, /*is_success=*/false);
-  }
-
-  void ExpectPingDNSServersEndSuccessRetriesLeft() {
-    ExpectPingDNSServersEndSuccess(true);
-  }
-
-  void ExpectPingDNSServersEndSuccessNoRetriesLeft() {
-    ExpectPingDNSServersEndSuccess(false);
   }
 
   void ExpectPingDNSServersEndFailure() {
@@ -222,19 +259,18 @@ class ConnectionDiagnosticsTest : public Test {
                                                kEmptyResult);
   }
 
+  void ExpectPingDNSServersEndSuccess() {
+    // Post retry task or report done only after all (i.e. 2) pings are done.
+    connection_diagnostics_.OnPingDNSServerComplete(0, kNonEmptyResult);
+    connection_diagnostics_.OnPingDNSServerComplete(1, kNonEmptyResult);
+  }
+
  private:
   void ExpectPingDNSSeversStart(
       const std::vector<net_base::IPAddress>& expected_dns, bool is_success) {
     if (is_success) {
-      connection_diagnostics_.id_to_pending_dns_server_icmp_session_.clear();
       for (size_t i = 0; i < expected_dns.size(); i++) {
-        auto dns_server_icmp_session =
-            std::make_unique<NiceMock<MockIcmpSession>>(&dispatcher_);
-        EXPECT_CALL(*dns_server_icmp_session,
-                    Start(expected_dns[i], kInterfaceIndex, kInterfaceName, _))
-            .WillOnce(Return(is_success));
-        connection_diagnostics_.id_to_pending_dns_server_icmp_session_[i] =
-            std::move(dns_server_icmp_session);
+        connection_diagnostics_.SetIcmpSession(expected_dns[i]);
       }
     }
 
@@ -258,7 +294,6 @@ class ConnectionDiagnosticsTest : public Test {
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     } else if (result == ConnectionDiagnostics::Result::kTimeout) {
       error.Populate(Error::kOperationTimeout);
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     } else {
       error.Populate(Error::kOperationFailed);
     }
@@ -269,28 +304,9 @@ class ConnectionDiagnosticsTest : public Test {
     }
   }
 
-  void ExpectPingDNSServersEndSuccess(bool retries_left) {
-    if (retries_left) {
-      EXPECT_LT(connection_diagnostics_.num_dns_attempts_,
-                ConnectionDiagnostics::kMaxDNSRetries);
-    } else {
-      EXPECT_GE(connection_diagnostics_.num_dns_attempts_,
-                ConnectionDiagnostics::kMaxDNSRetries);
-    }
-    // Post retry task or report done only after all (i.e. 2) pings are done.
-    connection_diagnostics_.OnPingDNSServerComplete(0, kNonEmptyResult);
-    if (retries_left) {
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
-    } else {
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
-          .Times(0);
-    }
-    connection_diagnostics_.OnPingDNSServerComplete(1, kNonEmptyResult);
-  }
-
   net_base::IPAddress gateway_;
   std::vector<net_base::IPAddress> dns_list_;
-  ConnectionDiagnostics connection_diagnostics_;
+  ConnectionDiagnosticsUnderTest connection_diagnostics_;
   NiceMock<MockEventDispatcher> dispatcher_;
 
   // Used only for EXPECT_CALL(). Objects are owned by
@@ -327,36 +343,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerStartFailure_1) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerEndSuccess_NoRetries_1) {
-  // Pinging DNS servers succeeds, DNS resolution times out, pinging DNS servers
-  // succeeds again, and DNS resolution times out again. End diagnostics because
-  // we have no more DNS retries left.
+  // Pinging DNS servers succeeds, DNS resolution times out, the diagnostics
+  // ends.
   ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessRetriesLeft();
+  ExpectPingDNSServersEndSuccess();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndTimeout();
-  ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess();
-  ExpectResolveTargetServerIPAddressEndTimeout();
-  ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessNoRetriesLeft();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerEndSuccess_NoRetries_2) {
-  // DNS resolution times out, pinging DNS servers succeeds, DNS resolution
-  // times out again, pinging DNS servers succeeds. End diagnostics because we
-  // have no more DNS retries left.
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess();
-  ExpectResolveTargetServerIPAddressEndTimeout();
-  ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess();
-  ExpectResolveTargetServerIPAddressEndTimeout();
-  ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessNoRetriesLeft();
   VerifyStopped();
 }
 
@@ -378,7 +371,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_2) {
   // resolved IP address succeeds, so we end diagnostics.
   ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessRetriesLeft();
+  ExpectPingDNSServersEndSuccess();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
@@ -393,10 +386,8 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_3) {
   // succeeds, and pinging the resolved IP address succeeds, so we end
   // diagnostics.
   ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess();
-  ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessRetriesLeft();
+  ExpectPingDNSServersEndSuccess();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
@@ -439,26 +430,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetFailure_2) {
   // IP address fails, the diagnostics ends.
   ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessRetriesLeft();
+  ExpectPingDNSServersEndSuccess();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
-                           kIPv4ServerAddress);
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetFailure_3) {
-  // DNS resolution times out, pinging DNS servers succeeds, DNS resolution
-  // succeeds, pinging the resolved IP address fails, the diagnostics ends.
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess();
-  ExpectResolveTargetServerIPAddressEndTimeout();
-  ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess();
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
-                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
   VerifyStopped();

@@ -38,8 +38,6 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 }  // namespace Logging
 
-const int ConnectionDiagnostics::kMaxDNSRetries = 2;
-
 // static
 std::string ConnectionDiagnostics::TypeName(Type type) {
   switch (type) {
@@ -80,7 +78,6 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       ip_family_(ip_family),
       gateway_(gateway),
       icmp_session_(new IcmpSession(dispatcher_)),
-      num_dns_attempts_(0),
       running_(false),
       event_number_(0),
       logging_tag_(logging_tag),
@@ -93,10 +90,6 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     if (dns.GetFamily() == ip_family) {
       dns_list_.push_back(dns);
     }
-  }
-  for (size_t i = 0; i < dns_list_.size(); i++) {
-    id_to_pending_dns_server_icmp_session_[i] =
-        std::make_unique<IcmpSession>(dispatcher_);
   }
 }
 
@@ -133,7 +126,6 @@ bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
 void ConnectionDiagnostics::Stop() {
   LOG(INFO) << logging_tag_ << " " << __func__;
   running_ = false;
-  num_dns_attempts_ = 0;
   event_number_ = 0;
   dns_client_.reset();
   icmp_session_->Stop();
@@ -186,8 +178,7 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
   LogEvent(Type::kResolveTargetServerIP, Result::kSuccess,
            "Started resolving " + target_url_->host());
   SLOG(2) << logging_tag_ << " " << __func__ << ": looking up "
-          << target_url_->host() << " (attempt " << num_dns_attempts_ << ")";
-  ++num_dns_attempts_;
+          << target_url_->host();
 }
 
 void ConnectionDiagnostics::PingDNSServers() {
@@ -199,26 +190,21 @@ void ConnectionDiagnostics::PingDNSServers() {
   }
 
   for (size_t i = 0; i < dns_list_.size(); ++i) {
-    // If we encounter any errors starting ping for any DNS server, carry on
-    // attempting to ping the other DNS servers rather than failing. We only
-    // need to successfully ping a single DNS server to decide whether or not
-    // DNS servers can be reached.
     const auto& dns_server_ip_addr = dns_list_[i];
-    auto session_iter = id_to_pending_dns_server_icmp_session_.find(i);
-    if (session_iter == id_to_pending_dns_server_icmp_session_.end()) {
-      continue;
-    }
-    if (!session_iter->second->Start(
-            dns_server_ip_addr, iface_index_, iface_name_,
-            base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
-                           weak_ptr_factory_.GetWeakPtr(), i))) {
+    auto icmp_session = StartIcmpSession(
+        dns_server_ip_addr, iface_index_, iface_name_,
+        base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
+                       weak_ptr_factory_.GetWeakPtr(), i));
+    if (!icmp_session) {
+      // If we encounter any errors starting ping for any DNS server, carry on
+      // attempting to ping the other DNS servers rather than failing.
       LogEvent(Type::kPingDNSServers, Result::kFailure,
                "Failed to initiate ping to DNS server " +
                    dns_server_ip_addr.ToString());
-      id_to_pending_dns_server_icmp_session_.erase(i);
       continue;
     }
 
+    id_to_pending_dns_server_icmp_session_[i] = std::move(icmp_session);
     SLOG(2) << logging_tag_ << " " << __func__ << ": pinging DNS server at "
             << dns_server_ip_addr;
   }
@@ -275,13 +261,6 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
     return;
   }
 
-  if (num_dns_attempts_ == kMaxDNSRetries) {
-    LogEvent(Type::kPingDNSServers, Result::kFailure,
-             "No DNS result after max DNS resolution attempts reached");
-    Stop();
-    return;
-  }
-
   dispatcher_->PostTask(
       FROM_HERE,
       base::BindOnce(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
@@ -291,7 +270,6 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
 void ConnectionDiagnostics::OnDNSResolutionComplete(
     const base::expected<net_base::IPAddress, Error>& address) {
   SLOG(2) << logging_tag_ << " " << __func__;
-
   if (address.has_value()) {
     LogEvent(Type::kResolveTargetServerIP, Result::kSuccess,
              "Target address is " + address->ToString());
@@ -299,12 +277,6 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(
                           base::BindOnce(&ConnectionDiagnostics::PingHost,
                                          weak_ptr_factory_.GetWeakPtr(),
                                          Type::kPingTargetServer, *address));
-  } else if (address.error().type() == Error::kOperationTimeout) {
-    LogEvent(Type::kResolveTargetServerIP, Result::kTimeout,
-             address.error().message());
-    dispatcher_->PostTask(FROM_HERE,
-                          base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
-                                         weak_ptr_factory_.GetWeakPtr()));
   } else {
     LogEvent(Type::kResolveTargetServerIP, Result::kFailure,
              address.error().message());
@@ -359,6 +331,19 @@ std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
   return std::make_unique<ConnectionDiagnostics>(iface_name, iface_index,
                                                  ip_family, gateway, dns_list,
                                                  logging_tag, dispatcher);
+}
+
+std::unique_ptr<IcmpSession> ConnectionDiagnostics::StartIcmpSession(
+    const net_base::IPAddress& destination,
+    int interface_index,
+    std::string_view interface_name,
+    IcmpSession::IcmpSessionResultCallback result_callback) {
+  auto icmp_session = std::make_unique<IcmpSession>(dispatcher_);
+  if (!icmp_session->Start(destination, interface_index, interface_name,
+                           std::move(result_callback))) {
+    return nullptr;
+  }
+  return icmp_session;
 }
 
 }  // namespace shill
