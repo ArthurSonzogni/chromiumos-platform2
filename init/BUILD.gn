@@ -19,6 +19,7 @@ group("all") {
     ":net_poll_tool",
     ":periodic_scheduler",
     ":preseeded_files_proto",
+    ":preserve_dev_image",
     ":process_killer",
     ":sbin_init_scripts",
     ":static_node_tool",
@@ -376,6 +377,13 @@ proto_library("preseeded_files_proto") {
   sources = [ "${proto_in_dir}/preseeded_files.proto" ]
   standalone = true
   use_pic = true
+}
+
+executable("preserve_dev_image") {
+  sources = [ "libpreservation/preserve_dev_image.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libpreservation" ]
+  install_path = "/usr/local/bin"
 }
 
 if (use.test) {

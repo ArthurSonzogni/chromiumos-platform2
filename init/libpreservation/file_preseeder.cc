@@ -166,15 +166,17 @@ bool FilePreseeder::RestoreExtentFiles(FilesystemManager* fs_manager) {
     }
 
     base::FilePath pfile = fs_root_.Append(file.path());
-
-    if (!fs_manager->FileExists(pfile.DirName()) &&
-        !CreateDirectoryRecursively(fs_manager, base::FilePath(file.path()))) {
-      LOG(ERROR) << "Failed to create directory: " << pfile.DirName();
-      return false;
+    if (fs_manager->FileExists(pfile)) {
+      continue;
     }
 
-    if (fs_manager->FileExists(pfile)) {
-      fs_manager->UnlinkFile(pfile);
+    base::FilePath parent_dir = base::FilePath(file.path()).DirName();
+
+    if (!fs_manager->FileExists(fs_root_.Append(parent_dir)) &&
+        !CreateDirectoryRecursively(fs_manager, parent_dir)) {
+      LOG(ERROR) << "Failed to create directory: "
+                 << fs_root_.Append(parent_dir);
+      return false;
     }
 
     if (!fs_manager->CreateFileAndFixedGoalFallocate(

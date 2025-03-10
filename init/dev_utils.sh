@@ -44,6 +44,9 @@ dev_unmount_packages() {
     done
   fi
 
+  # Preserve dev image for cases where the TPM might reset.
+  /usr/local/bin/preserve_dev_image
+
   # unmount /usr/local to match dev_mount_package.
   umount -n /usr/local
 }
