@@ -20,7 +20,11 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/local/[^/]+                u:object_r:cros_dev_image_files:s0
 /sbin/init                      u:object_r:chromeos_init_exec:s0
 
+# Note: currently arc_manager and session_manager shares the same
+# label, because arc_manager is being split from session_manager.
+# We probably would like to annotate different label.
 # SBIN_START_HERE
+/sbin/arc_manager               u:object_r:cros_session_manager_exec:s0
 /sbin/agetty                    u:object_r:cros_agetty_exec:s0
 /sbin/audispd                   u:object_r:cros_audispd_exec:s0
 /sbin/auditd                    u:object_r:cros_auditd_exec:s0

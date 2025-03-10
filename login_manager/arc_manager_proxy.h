@@ -14,12 +14,12 @@
 #include <base/scoped_observation.h>
 
 #include "login_manager/arc_manager.h"
-#include "login_manager/dbus_adaptors/org.chromium.ArcManager.h"
+#include "login_manager/dbus_proxies/org.chromium.ArcManager.h"
 
 namespace login_manager {
 
 // Helps splitting ArcManager D-Bus daemon from session_manager process.
-class ArcManagerProxy : public org::chromium::ArcManagerInterface {
+class ArcManagerProxy {
  public:
   class Observer : public base::CheckedObserver {
    public:
@@ -27,19 +27,51 @@ class ArcManagerProxy : public org::chromium::ArcManagerInterface {
     virtual void OnArcInstanceStopped(uint32_t value) {}
   };
 
+  virtual ~ArcManagerProxy() = default;
+
   virtual void AddObserver(Observer* observer) = 0;
   virtual void RemoveObserver(Observer* observer) = 0;
+
+  virtual bool OnUserSessionStarted(const std::string& in_account_id) = 0;
+  virtual bool EmitStopArcVmInstanceImpulse() = 0;
+  virtual bool RequestJobExit(uint32_t reason) = 0;
+  virtual bool EnsureJobExit(int64_t timeout_ms) = 0;
+  virtual bool StartArcMiniContainer(
+      brillo::ErrorPtr* error, const std::vector<uint8_t>& in_request) = 0;
+  virtual bool UpgradeArcContainer(brillo::ErrorPtr* error,
+                                   const std::vector<uint8_t>& in_request) = 0;
+  virtual bool StopArcInstance(brillo::ErrorPtr* error,
+                               const std::string& in_account_id,
+                               bool in_should_backup_log) = 0;
+  virtual bool SetArcCpuRestriction(brillo::ErrorPtr* error,
+                                    uint32_t in_restriction_state) = 0;
+  virtual bool EmitArcBooted(brillo::ErrorPtr* error,
+                             const std::string& in_account_id) = 0;
+  virtual bool GetArcStartTimeTicks(brillo::ErrorPtr* error,
+                                    int64_t* out_start_time) = 0;
+  virtual void EnableAdbSideload(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>>
+          response) = 0;
+  virtual void QueryAdbSideload(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>>
+          response) = 0;
 };
 
-// Skeleton implementation of ArcManagerProxy using
-// org::chromium::ArcManagerInterface.
-class ArcManagerProxyBase : public ArcManagerProxy {
+// ArcManagerProxy implementation for in-process ArcManager calls.
+class ArcManagerProxyInProcess : public ArcManagerProxy,
+                                 public ArcManager::Observer {
  public:
-  // org::chromium::ArcManagerInterface:
-  void OnUserSessionStarted(const std::string& in_account_id) override;
-  void EmitStopArcVmInstanceImpulse() override;
-  void RequestJobExit(uint32_t reason) override;
-  void EnsureJobExit(int64_t timeout_ms) override;
+  explicit ArcManagerProxyInProcess(ArcManager& arc_manager);
+  ~ArcManagerProxyInProcess() override;
+
+  // ArcManagerProxy:
+  void AddObserver(ArcManagerProxy::Observer* observer) override;
+  void RemoveObserver(ArcManagerProxy::Observer* observer) override;
+
+  bool OnUserSessionStarted(const std::string& in_account_id) override;
+  bool EmitStopArcVmInstanceImpulse() override;
+  bool RequestJobExit(uint32_t reason) override;
+  bool EnsureJobExit(int64_t timeout_ms) override;
   bool StartArcMiniContainer(brillo::ErrorPtr* error,
                              const std::vector<uint8_t>& in_request) override;
   bool UpgradeArcContainer(brillo::ErrorPtr* error,
@@ -60,35 +92,58 @@ class ArcManagerProxyBase : public ArcManagerProxy {
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
       override;
 
-  // ArcManagerProxy:
-  void AddObserver(Observer* observer) override;
-  void RemoveObserver(Observer* observer) override;
-
- protected:
-  explicit ArcManagerProxyBase(org::chromium::ArcManagerInterface& arc_manager);
-  ~ArcManagerProxyBase() override;
-
-  const raw_ref<org::chromium::ArcManagerInterface> arc_manager_;
-
-  // Invocation of `observers_` is the responsibility of subclasses.
-  base::ObserverList<Observer> observers_;
-};
-
-// Uses in-process ArcManager object to support ARC operations.
-class ArcManagerProxyInProcess : public ArcManagerProxyBase,
-                                 public ArcManager::Observer {
- public:
-  explicit ArcManagerProxyInProcess(ArcManager& arc_manager);
-  ~ArcManagerProxyInProcess() override;
-
   // ArcManager::Observer:
   void OnArcInstanceStopped(uint32_t value) override;
 
  private:
+  const raw_ref<ArcManager> arc_manager_;
   base::ScopedObservation<ArcManager, ArcManager::Observer> observation_{this};
+
+  // Invocation of `observers_` is the responsibility of subclasses.
+  base::ObserverList<ArcManagerProxy::Observer> observers_;
 };
 
-// TODO(crbug.com/390297821): Implement D-Bus based ArcManagerProxy.
+// ArcManagerProxy implementation for D-Bus ArcManager calls.
+class ArcManagerProxyDBus : public ArcManagerProxy {
+ public:
+  explicit ArcManagerProxyDBus(scoped_refptr<dbus::Bus> bus);
+  ~ArcManagerProxyDBus() override;
+
+  void AddObserver(Observer* observer) override;
+  void RemoveObserver(Observer* observer) override;
+
+  bool OnUserSessionStarted(const std::string& in_account_id) override;
+  bool EmitStopArcVmInstanceImpulse() override;
+  bool RequestJobExit(uint32_t reason) override;
+  bool EnsureJobExit(int64_t timeout_ms) override;
+  bool StartArcMiniContainer(brillo::ErrorPtr* error,
+                             const std::vector<uint8_t>& in_request) override;
+  bool UpgradeArcContainer(brillo::ErrorPtr* error,
+                           const std::vector<uint8_t>& in_request) override;
+  bool StopArcInstance(brillo::ErrorPtr* error,
+                       const std::string& in_account_id,
+                       bool in_should_backup_log) override;
+  bool SetArcCpuRestriction(brillo::ErrorPtr* error,
+                            uint32_t in_restriction_state) override;
+  bool EmitArcBooted(brillo::ErrorPtr* error,
+                     const std::string& in_account_id) override;
+  bool GetArcStartTimeTicks(brillo::ErrorPtr* error,
+                            int64_t* out_start_time) override;
+  void EnableAdbSideload(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
+      override;
+  void QueryAdbSideload(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
+      override;
+
+ private:
+  void OnArcInstanceStopped(uint32_t value);
+
+  org::chromium::ArcManagerProxy arc_manager_;
+
+  // Invocation of `observers_` is the responsibility of subclasses.
+  base::ObserverList<Observer> observers_;
+};
 
 }  // namespace login_manager
 

@@ -3,11 +3,13 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":arc_manager",
     ":install_dbus_config",
     ":install_dbus_interface",
     ":install_dev_conf",
@@ -86,6 +88,13 @@ generate_dbus_adaptors("arc_manager-adaptors") {
   sources = [ "dbus_bindings/org.chromium.ArcManager.xml" ]
 }
 
+generate_dbus_proxies("arc_manager-proxies") {
+  dbus_service_config = "dbus_bindings/arc-dbus-service-config.json"
+  proxy_output_file =
+      "include/login_manager/dbus_proxies/org.chromium.ArcManager.h"
+  sources = [ "dbus_bindings/org.chromium.ArcManager.xml" ]
+}
+
 static_library("libsession_manager") {
   sources = [
     "android_oci_wrapper.cc",
@@ -143,6 +152,7 @@ static_library("libsession_manager") {
   ]
   deps = [
     ":arc_manager-adaptors",
+    ":arc_manager-proxies",
     ":login_manager-login_screen_storage-protos",
     ":session_manager-adaptors",
     "//common-mk/external_dependencies:install_attributes-proto",
@@ -157,6 +167,17 @@ executable("session_manager") {
     "rootdev",
     "container",
   ]
+  deps = [ ":libsession_manager" ]
+
+  # See the comment at "keygen".
+  # gnlint: disable=GnLintInstallPathAlias
+  install_path = "/sbin"
+}
+
+executable("arc_manager") {
+  sources = [ "arc_manager_main.cc" ]
+  configs += [ ":target_defaults" ]
+  libs = [ "container" ]
   deps = [ ":libsession_manager" ]
 
   # See the comment at "keygen".
@@ -211,6 +232,7 @@ install_config("install_powerd_prefs") {
 
 install_config("install_upstart_scripts") {
   sources = [
+    "init/upstart/arc-manager.conf",
     "init/upstart/login.conf",
     "init/upstart/logout.conf",
     "init/upstart/machine-info.conf",

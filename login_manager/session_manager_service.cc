@@ -58,6 +58,9 @@
 #include "login_manager/systemd_unit_starter.h"
 #include "login_manager/upstart_signal_emitter.h"
 
+// TODO(crbug.com/6331860): Use arc-manager service to handle ARC operations.
+#define USE_DBUS_ARC_MANAGER 0
+
 namespace em = enterprise_management;
 namespace login_manager {
 
@@ -226,6 +229,9 @@ bool SessionManagerService::Initialize() {
           chromeos::kChromeFeaturesServiceName,
           dbus::ObjectPath(chromeos::kChromeFeaturesServicePath)));
 
+#if USE_DBUS_ARC_MANAGER
+  arc_manager_proxy_ = std::make_unique<ArcManagerProxyDBus>(bus_);
+#else
   arc_manager_ = std::make_unique<ArcManager>(*system_utils_, *login_metrics_,
                                               process_reaper_, bus_);
   arc_manager_->Initialize();
@@ -235,6 +241,7 @@ bool SessionManagerService::Initialize() {
 
   arc_manager_proxy_ =
       std::make_unique<ArcManagerProxyInProcess>(*arc_manager_);
+#endif
 
   impl_ = std::make_unique<SessionManagerImpl>(
       this /* delegate */,
@@ -272,7 +279,9 @@ void SessionManagerService::InitializeBrowser() {
 
 void SessionManagerService::Finalize() {
   LOG(INFO) << "SessionManagerService exiting";
-  arc_manager_->Finalize();
+  if (arc_manager_) {
+    arc_manager_->Finalize();
+  }
   impl_->Finalize();
   ShutDownDBus();
 }
