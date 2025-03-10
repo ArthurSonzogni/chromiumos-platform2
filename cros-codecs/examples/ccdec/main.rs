@@ -230,9 +230,10 @@ fn main() {
     );
     let _ = decoder.start();
 
-    for input_frame in frame_iter {
+    for (timestamp, input_frame) in frame_iter.enumerate() {
         decoder.queue(vec![C2DecodeJob {
             input: input_frame.as_ref().to_vec(),
+            timestamp: timestamp as u64,
             ..Default::default()
         }]);
     }
