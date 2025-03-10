@@ -804,7 +804,7 @@ bool TerminaVmExportOperation::ExecuteIo(uint64_t io_limit) {
           break;
         }
         sha256_->Update(&seek_table_entries_[seektable_entry_written], 8);
-        io_limit -= std::min(io_limit, 8ul);
+        io_limit -= std::min(io_limit, static_cast<uint64_t>(bytes_written));
         seektable_entry_written++;
       }
       if (seektable_entry_written >= seek_table_entries_.size()) {
