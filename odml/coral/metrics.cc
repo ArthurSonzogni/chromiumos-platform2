@@ -191,4 +191,9 @@ void CoralMetrics::SendTitleInputTokenSize(int count) {
                       50);
 }
 
+void CoralMetrics::SendTitleDatabaseDailyWrittenSize(int size_in_bytes) {
+  metrics_->SendToUMA(metrics::kTitleDatabaseDailyWrittenSize, size_in_bytes,
+                      1 /*1 byte*/, 20480 /*10KiB*/, 100);
+}
+
 }  // namespace coral

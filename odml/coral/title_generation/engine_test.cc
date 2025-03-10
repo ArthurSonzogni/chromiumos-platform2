@@ -156,7 +156,8 @@ class TitleGenerationEngineTest : public testing::Test {
     temp_dir_ = std::make_unique<base::ScopedTempDir>();
     ASSERT_TRUE(temp_dir_->CreateUniqueTempDir());
     std::unique_ptr<TitleCacheStorage> title_cache_storage =
-        std::make_unique<TitleCacheStorage>(temp_dir_->GetPath());
+        std::make_unique<TitleCacheStorage>(temp_dir_->GetPath(),
+                                            raw_ref(coral_metrics_));
     title_cache_storage_ = title_cache_storage.get();
     ON_CALL(translator_, Initialize)
         .WillByDefault([](base::OnceCallback<void(bool)>&& callback) {
@@ -363,7 +364,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   // Wait a while, make sure there are no cache flushes.
   task_environment_->FastForwardBy(base::Days(100));
   TitleCacheStorage test_title_cache_storage =
-      TitleCacheStorage(temp_dir_->GetPath());
+      TitleCacheStorage(temp_dir_->GetPath(), raw_ref(coral_metrics_));
   base::HashingLRUCache<std::string, TitleCacheEntry> read_title_cache(4);
   EXPECT_TRUE(test_title_cache_storage.Load(user, read_title_cache));
   EXPECT_EQ(0, read_title_cache.size());

@@ -12,6 +12,7 @@
 
 #include <base/containers/lru_cache.h>
 #include <base/functional/callback.h>
+#include <base/memory/raw_ref.h>
 #include <base/timer/wall_clock_timer.h>
 #include <base/token.h>
 #include <mojo/public/cpp/bindings/remote.h>

@@ -47,6 +47,8 @@ constexpr char kModelUuid[] = "fa9a157a-696d-48c5-9e46-efa048743587";
 
 // Ensures cache hits when user triggers feature in turn from 2 desktops both
 // having 2 coral groups.
+// If this is adjusted, remember to adjust the kTitleDatabaseDailyWrittenSize
+// metrics to prevent overflow.
 constexpr size_t kMaxCacheSize = 4;
 // The acceptable threshold is set to 1 diff per 4 items.
 constexpr double kMaxGroupDifferenceRatioToReuseTitle = 0.2501;

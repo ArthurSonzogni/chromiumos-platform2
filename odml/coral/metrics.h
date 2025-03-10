@@ -82,6 +82,8 @@ inline constexpr char kTitleLengthInWords[] =
     "Platform.CoralService.TitleGenerationEngine.LengthInWords";
 inline constexpr char kTitleGenerationInputTokenSize[] =
     "Platform.CoralService.TitleGenerationEngine.InputTokenSize";
+inline constexpr char kTitleDatabaseDailyWrittenSize[] =
+    "Platform.CoralService.TitleGenerationEngine.DatabaseDailyWrittenSize";
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -210,6 +212,9 @@ class CoralMetrics {
   void SendTitleLengthInWords(int count);
   // The token size of the title generation prompt.
   void SendTitleInputTokenSize(int count);
+  // Send the total size (in bytes) written to the disk in the past day,
+  // recorded daily.
+  void SendTitleDatabaseDailyWrittenSize(int size_in_bytes);
 
  private:
   // Helper function for Send*Status methods.

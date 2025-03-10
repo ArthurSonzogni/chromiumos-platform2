@@ -4,8 +4,10 @@
 
 #include "odml/coral/title_generation/cache_storage.h"
 
+#include <memory>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -28,6 +30,13 @@ constexpr char kTitleCacheStorageRootDir[] = "/run/daemon-store-cache/odmld";
 constexpr char kTitleCacheStorageSubDir[] = "coral";
 
 constexpr char kTitleCacheStorageFileName[] = "title_cache";
+
+// Constants related to reporting cumulative disk write.
+constexpr char kCumulativeMetricsBackingDir[] = "/var/lib/odml/metrics";
+constexpr char kTitleCacheDatabaseWritesStatName[] =
+    "coral_title_cache_db_write_bytes";
+constexpr base::TimeDelta kCumulativeMetricsUpdatePeriod = base::Minutes(5);
+constexpr base::TimeDelta kCumulativeMetricsReportPeriod = base::Days(1);
 
 // Cache entries older than this are pruned/expired.
 constexpr base::TimeDelta kCacheExpirationTime = base::Days(2);
@@ -89,8 +98,17 @@ bool ExpireCache(
 
 }  // namespace
 
-TitleCacheStorage::TitleCacheStorage(std::optional<base::FilePath> base_path)
-    : base_path_(base_path) {}
+TitleCacheStorage::TitleCacheStorage(std::optional<base::FilePath> base_path,
+                                     raw_ref<CoralMetrics> metrics)
+    : metrics_(metrics), base_path_(base_path) {
+  daily_metrics_ = std::make_unique<chromeos_metrics::CumulativeMetrics>(
+      base::FilePath(kCumulativeMetricsBackingDir),
+      std::vector<std::string>({kTitleCacheDatabaseWritesStatName}),
+      kCumulativeMetricsUpdatePeriod, base::DoNothing(),
+      kCumulativeMetricsReportPeriod,
+      base::BindRepeating(&TitleCacheStorage::ReportDailyMetrics,
+                          weak_factory_.GetWeakPtr()));
+}
 
 bool TitleCacheStorage::Load(
     const odml::SessionStateManagerInterface::User& user,
@@ -150,12 +168,19 @@ bool TitleCacheStorage::Save(
     LOG(ERROR) << "Failed to serialize the title cache.";
     return false;
   }
+  daily_metrics_->Add(kTitleCacheDatabaseWritesStatName, buf.size());
   if (!base::WriteFile(file_path, buf)) {
     LOG(ERROR) << "Failed to write the title cache to disk.";
     return false;
   }
 
   return true;
+}
+
+void TitleCacheStorage::ReportDailyMetrics(
+    chromeos_metrics::CumulativeMetrics* const cumulative_metrics) {
+  metrics_->SendTitleDatabaseDailyWrittenSize(
+      cumulative_metrics->GetAndClear(kTitleCacheDatabaseWritesStatName));
 }
 
 }  // namespace coral

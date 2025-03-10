@@ -56,7 +56,8 @@ CoralService::CoralService(
           on_device_model_service,
           session_state_manager,
           translator,
-          std::make_unique<TitleCacheStorage>(std::nullopt))) {}
+          std::make_unique<TitleCacheStorage>(std::nullopt,
+                                              raw_ref(metrics_)))) {}
 
 CoralService::CoralService(
     raw_ref<MetricsLibraryInterface> metrics,

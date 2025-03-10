@@ -5,6 +5,7 @@
 #ifndef ODML_CORAL_TITLE_GENERATION_CACHE_STORAGE_H_
 #define ODML_CORAL_TITLE_GENERATION_CACHE_STORAGE_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_set>
@@ -12,7 +13,10 @@
 
 #include <base/containers/lru_cache.h>
 #include <base/files/file_path.h>
+#include <base/memory/raw_ref.h>
+#include <metrics/cumulative_metrics.h>
 
+#include "odml/coral/metrics.h"
 #include "odml/session_state_manager/session_state_manager.h"
 
 namespace coral {
@@ -48,7 +52,8 @@ class TitleCacheStorage : public TitleCacheStorageInterface {
  public:
   // Specify an override for the base_path during testing. Use std::nullopt in
   // production.
-  explicit TitleCacheStorage(std::optional<base::FilePath> base_path);
+  TitleCacheStorage(std::optional<base::FilePath> base_path,
+                    raw_ref<CoralMetrics> metrics);
 
   bool Load(const odml::SessionStateManagerInterface::User& user,
             base::HashingLRUCache<std::string, TitleCacheEntry>& title_cache)
@@ -62,9 +67,19 @@ class TitleCacheStorage : public TitleCacheStorageInterface {
                                title_cache) override;
 
  private:
+  // Used by daily_metrics_ for reporting the total disk writes daily.
+  void ReportDailyMetrics(
+      chromeos_metrics::CumulativeMetrics* const cumulative_metrics);
+
+  // For reporting the total disk writes.
+  std::unique_ptr<chromeos_metrics::CumulativeMetrics> daily_metrics_;
+  raw_ref<CoralMetrics> metrics_;
+
   // The base path to use when locating the storage file. Usually set to
   // std::nullopt for the default, but can be override for testing.
   std::optional<base::FilePath> base_path_;
+
+  base::WeakPtrFactory<TitleCacheStorage> weak_factory_{this};
 };
 
 }  // namespace coral

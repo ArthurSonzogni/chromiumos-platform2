@@ -11,14 +11,19 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
+
+#include "odml/coral/metrics.h"
 
 namespace coral {
 
 namespace {
 
+using testing::NiceMock;
 using testing::UnorderedElementsAre;
 
 constexpr size_t kCacheMaxSize = 4;
@@ -43,10 +48,13 @@ constexpr char kSet2Group2Entity2[] = "Sourdough Bread Starter";
 
 class CacheStorageTest : public testing::Test {
  public:
+  CacheStorageTest() : coral_metrics_(raw_ref(metrics_)) {}
+
   void SetUp() override {
     temp_dir_ = std::make_unique<base::ScopedTempDir>();
     ASSERT_TRUE(temp_dir_->CreateUniqueTempDir());
-    cache_storage_ = std::make_unique<TitleCacheStorage>(temp_dir_->GetPath());
+    cache_storage_ = std::make_unique<TitleCacheStorage>(
+        temp_dir_->GetPath(), raw_ref(coral_metrics_));
     now_ = base::Time::Now();
   };
 
@@ -215,11 +223,16 @@ class CacheStorageTest : public testing::Test {
     }
   }
 
+  // Needed by CumulativeMetrics.
+  base::test::SingleThreadTaskEnvironment task_environment_;
+
   odml::SessionStateManagerInterface::User user1_ = {
       .name = "test", .hash = "0123456789abcde0123456789abcde"};
   odml::SessionStateManagerInterface::User user2_ = {
       .name = "example", .hash = "aaaaaaaabbbbbbbb0000000011111111"};
   base::Time now_;
+  NiceMock<MetricsLibraryMock> metrics_;
+  CoralMetrics coral_metrics_;
   std::unique_ptr<base::ScopedTempDir> temp_dir_;
   std::unique_ptr<TitleCacheStorage> cache_storage_;
 };
