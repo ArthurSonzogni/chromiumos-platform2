@@ -193,6 +193,7 @@ enum RmadComponent {
 message HardwareVerificationResult {
   bool is_compliant = 1;
   string error_str = 2;
+  bool is_skipped = 3;
 }
 
 // Defined update RO firmware status.
