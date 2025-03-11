@@ -1081,11 +1081,6 @@ void SessionManagerImpl::ClearBlockDevmodeVpd(
           std::move(response)));
 }
 
-void SessionManagerImpl::ClearForcedReEnrollmentVpd(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
-  ClearBlockDevmodeVpd(std::move(response));
-}
-
 bool SessionManagerImpl::StartTPMFirmwareUpdate(
     brillo::ErrorPtr* error, const std::string& update_mode) {
   // Make sure |update_mode| is supported.

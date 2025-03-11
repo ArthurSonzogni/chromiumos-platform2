@@ -282,9 +282,6 @@ class SessionManagerImpl
   void ClearBlockDevmodeVpd(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
       override;
-  void ClearForcedReEnrollmentVpd(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
-      override;
   bool StartTPMFirmwareUpdate(brillo::ErrorPtr* error,
                               const std::string& update_mode) override;
   void SetFlagsForUser(const std::string& in_account_id,

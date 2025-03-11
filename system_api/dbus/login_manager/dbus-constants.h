@@ -36,8 +36,6 @@ const char kSessionManagerRetrievePrimarySession[] = "RetrievePrimarySession";
 const char kSessionManagerStartTPMFirmwareUpdate[] = "StartTPMFirmwareUpdate";
 const char kSessionManagerStartDeviceWipe[] = "StartDeviceWipe";
 const char kSessionManagerStartRemoteDeviceWipe[] = "StartRemoteDeviceWipe";
-const char kSessionManagerClearForcedReEnrollmentVpd[] =
-    "ClearForcedReEnrollmentVpd";
 const char kSessionManagerClearBlockDevmodeVpd[] = "ClearBlockDevmodeVpd";
 const char kSessionManagerLockScreen[] = "LockScreen";
 const char kSessionManagerHandleLockScreenShown[] = "HandleLockScreenShown";
