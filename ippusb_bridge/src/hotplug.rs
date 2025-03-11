@@ -11,8 +11,8 @@ use log::{error, info};
 use rusb::{Context, Registration, UsbContext};
 use tokio::sync::mpsc;
 
-use crate::error::Error;
-use crate::error::Result;
+use crate::Error;
+use crate::Result;
 use crate::ShutdownReason;
 
 pub struct UnplugDetector {

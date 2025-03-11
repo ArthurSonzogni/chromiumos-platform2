@@ -14,7 +14,6 @@ pub enum Error {
     CleanupThread(io::Error),
     ReadConfigDescriptor(rusb::Error),
     ReadDeviceDescriptor(rusb::Error),
-    RegisterCallback(rusb::Error),
     SetActiveConfig(rusb::Error),
     SetAlternateSetting(u8, rusb::Error),
     NoFreeInterface,
@@ -42,7 +41,6 @@ impl fmt::Display for Error {
             CleanupThread(err) => write!(f, "Failed to start cleanup thread: {}", err),
             ReadConfigDescriptor(err) => write!(f, "Failed to read config descriptor: {}", err),
             ReadDeviceDescriptor(err) => write!(f, "Failed to read device descriptor: {}", err),
-            RegisterCallback(err) => write!(f, "Failed to register for hotplug callback: {}", err),
             SetActiveConfig(err) => write!(f, "Failed to set active config: {}", err),
             SetAlternateSetting(i, err) => write!(
                 f,

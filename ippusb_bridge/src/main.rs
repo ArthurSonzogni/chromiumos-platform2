@@ -3,15 +3,8 @@
 // found in the LICENSE file.
 
 mod arguments;
-mod bridge;
-mod error;
 mod hotplug;
-mod http;
-mod io_adapters;
-mod ippusb_device;
 mod listeners;
-mod usb_connector;
-mod util;
 
 use std::fmt;
 use std::io;
@@ -21,6 +14,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use dbus::blocking::Connection;
+use ippusb::{Bridge, IppusbDeviceInfo, ShutdownReason, UsbConnector};
 use log::{error, info};
 use rusb::UsbContext;
 use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
@@ -30,17 +24,13 @@ use tokio::signal::unix::{self, SignalKind};
 use tokio::sync::mpsc;
 
 use crate::arguments::Args;
-use crate::bridge::{Bridge, ShutdownReason};
-use crate::error::Error as IppUsbError;
 use crate::hotplug::UnplugDetector;
-use crate::ippusb_device::IppusbDeviceInfo;
 use crate::listeners::ScopedUnixListener;
-use crate::usb_connector::UsbConnector;
 
 #[derive(Debug)]
 pub enum Error {
     CreateSocket(io::Error),
-    CreateUsbConnector(error::Error),
+    CreateUsbConnector(ippusb::Error),
     DBus(dbus::Error),
     ParseArgs(arguments::Error),
     Syslog(syslog::Error),
@@ -50,6 +40,7 @@ pub enum Error {
     DeviceList(rusb::Error),
     NoDevice,
     OpenDevice(rusb::Error),
+    RegisterCallback(rusb::Error),
 }
 
 impl std::error::Error for Error {}
@@ -69,6 +60,7 @@ impl fmt::Display for Error {
             DeviceList(err) => write!(f, "Failed to read device list: {}", err),
             NoDevice => write!(f, "No valid IPP USB device found."),
             OpenDevice(err) => write!(f, "Failed to open device: {}", err),
+            RegisterCallback(err) => write!(f, "Failed to register for hotplug callback: {}", err),
         }
     }
 }
@@ -174,7 +166,7 @@ fn run() -> Result<()> {
                         usb = obj;
                         break;
                     }
-                    Err(IppUsbError::ReadConfigDescriptor(..)) => {}
+                    Err(ippusb::Error::ReadConfigDescriptor(..)) => {}
                     Err(err) => return Err(Error::CreateUsbConnector(err)),
                 };
             }
