@@ -13,8 +13,11 @@ COPY src src
 RUN chmod +x src/deps.sh src/generate_disk_image.py
 RUN src/deps.sh
 COPY docker_export docker_export
-RUN src/generate_disk_image.py docker_export/linux_amd64/rootfs.tar baguette_rootfs_amd64.img.zstd
-RUN src/generate_disk_image.py docker_export/linux_arm64/rootfs.tar baguette_rootfs_arm64.img.zstd
+
+# zstd compression level (1-22) for image files
+ARG COMPRESSION_LEVEL="10"
+RUN src/generate_disk_image.py --compression-level ${COMPRESSION_LEVEL} docker_export/linux_amd64/rootfs.tar baguette_rootfs_amd64.img.zstd
+RUN src/generate_disk_image.py --compression-level ${COMPRESSION_LEVEL} docker_export/linux_arm64/rootfs.tar baguette_rootfs_arm64.img.zstd
 
 FROM scratch
 COPY --from=build-stage /workspace/baguette_rootfs_amd64.img.zstd .

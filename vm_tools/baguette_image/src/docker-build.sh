@@ -10,4 +10,4 @@ docker buildx create --use --name insecure-builder --buildkitd-flags '--allow-in
 rm -rf docker_export
 mkdir -p docker_export
 docker buildx build -f src/build.Dockerfile --platform linux/amd64,linux/arm64 --allow security.insecure --output type=local,dest=docker_export .
-docker buildx build -f src/convert.Dockerfile --output type=local,dest=docker_export .
+docker buildx build -f src/convert.Dockerfile --build-arg COMPRESSION_LEVEL=19 --output type=local,dest=docker_export .
