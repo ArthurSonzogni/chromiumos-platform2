@@ -116,6 +116,7 @@ if (use.test) {
       "input_manager_test.cc",
       "metrics_test.cc",
       "output_manager_test.cc",
+      "platform_features_client_test.cc",
       "pseudonymization_manager_test.cc",
     ]
     configs += [
@@ -129,6 +130,9 @@ if (use.test) {
       "//common-mk/testrunner",
       "//metrics:metrics_test_support",
     ]
-    pkg_deps = [ "dbus-1" ]
+    pkg_deps = [
+      "dbus-1",
+      "libfake_platform_features",
+    ]
   }
 }

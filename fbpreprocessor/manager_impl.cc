@@ -17,6 +17,7 @@
 #include "fbpreprocessor/platform_features_client.h"
 #include "fbpreprocessor/pseudonymization_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
+#include "featured/feature_library.h"
 
 namespace fbpreprocessor {
 
@@ -44,7 +45,9 @@ void ManagerImpl::Start(dbus::Bus* bus) {
   crash_reporter_dbus_adaptor_ =
       std::make_unique<CrashReporterDBusAdaptor>(this, bus);
 
-  platform_features_->Start(bus);
+  CHECK(feature::PlatformFeatures::Initialize(bus))
+      << "Failed to initialize PlatformFeatures library.";
+  platform_features_->Start(feature::PlatformFeatures::Get());
   // Now that the daemon is fully initialized, notify everyone if a user was
   // logged in when the daemon started.
   session_state_manager_->RefreshPrimaryUser();

@@ -31,12 +31,16 @@ class PlatformFeaturesClient : public PlatformFeaturesClientInterface {
  public:
   PlatformFeaturesClient();
 
-  void Start(dbus::Bus* bus);
+  void Start(feature::PlatformFeaturesInterface* feature_lib);
 
   void AddObserver(Observer* observer) override;
   void RemoveObserver(Observer* observer) override;
 
   bool FirmwareDumpsAllowedByFinch() const { return allowed_; }
+
+  void set_base_dir_for_test(const base::FilePath& base_dir) {
+    base_dir_ = base_dir;
+  }
 
  private:
   void Refetch();
@@ -45,9 +49,15 @@ class PlatformFeaturesClient : public PlatformFeaturesClientInterface {
 
   void OnFetched(bool allowed);
 
+  // Base directory where the file containing the value of the Finch flag is
+  // stored, typically /run/fbpreprocessord/. Unit tests can replace this
+  // directory with local temporary directories by calling
+  // |set_base_dir_for_test()|.
+  base::FilePath base_dir_;
+
   bool allowed_;
 
-  feature::PlatformFeatures* feature_lib_;
+  feature::PlatformFeaturesInterface* feature_lib_;
 
   // List of PlatformFeaturesClient observers
   base::ObserverList<Observer>::Unchecked observers_;

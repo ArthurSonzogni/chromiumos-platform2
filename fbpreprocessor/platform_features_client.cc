@@ -20,19 +20,20 @@ constexpr char kAllowFirmwareDumpsFeatureName[] =
 const VariationsFeature kAllowFirmwareDumpsFeature{
     kAllowFirmwareDumpsFeatureName, FEATURE_ENABLED_BY_DEFAULT};
 
-constexpr char kAllowFirmwareDumpsFlagPath[] =
-    "/run/fbpreprocessord/allow_firmware_dumps";
+constexpr char kAllowFirmwareDumpsFlagDir[] = "/run/fbpreprocessord/";
+
+constexpr char kAllowFirmwareDumpsFlagPath[] = "allow_firmware_dumps";
 }  // namespace
 
 namespace fbpreprocessor {
 
-PlatformFeaturesClient::PlatformFeaturesClient() : allowed_(false) {}
+PlatformFeaturesClient::PlatformFeaturesClient()
+    : base_dir_(kAllowFirmwareDumpsFlagDir), allowed_(false) {}
 
-void PlatformFeaturesClient::Start(dbus::Bus* bus) {
+void PlatformFeaturesClient::Start(
+    feature::PlatformFeaturesInterface* feature_lib) {
   LOG(INFO) << "Initializing.";
-  CHECK(feature::PlatformFeatures::Initialize(bus))
-      << "Failed to initialize PlatformFeatures library.";
-  feature_lib_ = feature::PlatformFeatures::Get();
+  feature_lib_ = feature_lib;
   feature_lib_->ListenForRefetchNeeded(
       base::BindRepeating(&PlatformFeaturesClient::Refetch,
                           weak_factory_.GetWeakPtr()),
@@ -63,8 +64,9 @@ void PlatformFeaturesClient::OnFetched(bool allowed) {
   // flag, the other processes involved in the feature (crash-report, debugd)
   // will simply read the content of the file. That makes implementation less
   // invasive in those platform-critical processes.
-  if (!base::WriteFile(base::FilePath(kAllowFirmwareDumpsFlagPath),
-                       allowed_ ? "1" : "0")) {
+  if (!base::WriteFile(
+          base_dir_.Append(base::FilePath(kAllowFirmwareDumpsFlagPath)),
+          allowed_ ? "1" : "0")) {
     LOG(ERROR) << "Failed to write feature flag to disk.";
   }
 }
