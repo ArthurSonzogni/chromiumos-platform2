@@ -301,9 +301,6 @@ class SessionManagerService
   base::FilePath aborted_browser_pid_path_;
   base::FilePath shutdown_browser_pid_path_;
 
-  // Holds pointers to nss_, this. Shares system_, login_metrics_.
-  std::unique_ptr<SessionManagerInterface> impl_;
-
   // Aborting flow triggered by AbortBrowserForHang is as follows:
   // First, send SIGABRT to the browser process.
   //   - If the browser is terminated expectedly, HandleBrowserExit is called.
@@ -336,6 +333,10 @@ class SessionManagerService
   std::unique_ptr<ArcManagerProxy> arc_manager_proxy_;
 
   VpdProcessImpl vpd_process_;
+
+  // Holds pointers to `nss_`, `this`, `browser_`, `arc_manager_proxy_`,
+  // `vpd_process_`.. Shares `system_`, `login_metrics_`, Release it first.
+  std::unique_ptr<SessionManagerInterface> impl_;
 };
 
 }  // namespace login_manager
