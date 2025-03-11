@@ -4,6 +4,18 @@
 
 The role of Machine Quirks is to read DMI info from the kernel at runtime, and then activate the relevant prefs to that machine. This is necessary for the use case of the reven board, that supports a wide range of devices from different manufacturers. Further background can be found at [go/machine-quirks-design](go/machine-quirks-design).
 
+## List of Machine Quirk Prefs
+
+The following prefs are set in the overlay, and are used enable the various runtime checks that Machine Quirks performs.
+
+| Machine Quirk Pref                        | Description |
+|-------------------------------------------|-------------|
+| suspend-to-idle-models                    | List of models for which suspend-to-idle should be enabled. |
+| suspend-prevention-models                 | List of models for which disable-idle-suspend should be enabled. |
+| external-display-only-models              | List of models for which external-display-only should be enabled. |
+| exclude-from-external-display-only-models | List of models for which external-display-only should be disabled |
+| has-machine-quirks                        | Pref that enables runtime pref selection capabilities of Machine Quirks. |
+
 ## Design & Implementation Details
 
 On the machine, when powerd initializes, first it checks if the `kHasMachineQuirksPref` is activated by the board to see if it should move on.
