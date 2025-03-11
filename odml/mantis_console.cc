@@ -49,6 +49,8 @@ mantis_console --image=/usr/local/tmp/image.jpg \
 #include "odml/cros_safety/safety_service_manager.h"
 #include "odml/cros_safety/safety_service_manager_bypass.h"
 #include "odml/cros_safety/safety_service_manager_impl.h"
+#include "odml/i18n/translator.h"
+#include "odml/i18n/translator_impl.h"
 #include "odml/mantis/service.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom-shared.h"
@@ -188,6 +190,7 @@ class MantisServiceForInterception : public mantis::MantisService {
       const mantis::MantisAPI* api,
       mojo::PendingReceiver<mantis::mojom::MantisProcessor> receiver,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      raw_ref<i18n::Translator> translator,
       base::OnceCallback<void()> on_disconnected,
       base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
       odml::PerformanceTimer::Ptr timer,
@@ -195,7 +198,7 @@ class MantisServiceForInterception : public mantis::MantisService {
     LOG(INFO) << "MantisServiceForInterception::CreateMantisProcessor called";
     mantis_processor = std::make_unique<MantisProcessorForInterception>(
         metrics_lib, mantis_api_runner, component, api, std::move(receiver),
-        safety_service_manager, std::move(on_disconnected),
+        safety_service_manager, translator, std::move(on_disconnected),
         std::move(callback));
   }
 };
@@ -207,8 +210,10 @@ class MantisServiceProviderImpl {
       raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager,
-      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
-      : service_impl_(metrics, shim_loader, safety_service_manager) {}
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      raw_ref<i18n::TranslatorImpl> translator)
+      : service_impl_(
+            metrics, shim_loader, safety_service_manager, translator) {}
   raw_ref<MantisServiceForInterception> service() {
     return raw_ref(service_impl_);
   }
@@ -283,7 +288,7 @@ class MantisConsole : public brillo::DBusDaemon {
     }
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
         raw_ref(metrics_), raw_ref(shim_loader_), service_manager_,
-        raw_ref(*safety_service_manager_.get()));
+        raw_ref(*safety_service_manager_.get()), raw_ref(translator_));
     return EX_OK;
   }
 
@@ -371,6 +376,7 @@ class MantisConsole : public brillo::DBusDaemon {
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
       service_manager_;
   std::unique_ptr<cros_safety::SafetyServiceManager> safety_service_manager_;
+  i18n::TranslatorImpl translator_{raw_ref(shim_loader_)};
   base::CommandLine* cl_;
 };
 

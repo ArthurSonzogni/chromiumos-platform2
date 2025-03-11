@@ -21,6 +21,7 @@
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
+#include "odml/i18n/translator.h"
 #include "odml/mantis/lib_api.h"
 #include "odml/mantis/metrics.h"
 #include "odml/mantis/prompt_rewriter.h"
@@ -86,6 +87,7 @@ MantisProcessor::MantisProcessor(
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> receiver,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+    raw_ref<i18n::Translator> translator,
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(InitializeResult)> callback)
     : metrics_lib_(metrics_lib),
@@ -93,6 +95,7 @@ MantisProcessor::MantisProcessor(
       component_(component),
       api_(api),
       safety_service_manager_(safety_service_manager),
+      translator_(translator),
       on_disconnected_(std::move(on_disconnected)) {
   CHECK(api_);
   if (!component_.processor) {

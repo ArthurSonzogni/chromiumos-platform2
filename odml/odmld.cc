@@ -167,10 +167,12 @@ class MantisServiceProviderImpl
       raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager,
-      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      raw_ref<i18n::TranslatorImpl> translator)
       : metrics_(metrics),
         receiver_(this),
-        service_impl_(metrics, shim_loader, safety_service_manager) {
+        service_impl_(
+            metrics, shim_loader, safety_service_manager, translator) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosMantisService,
         receiver_.BindNewPipeAndPassRemote());
@@ -255,7 +257,7 @@ class Daemon : public brillo::DBusDaemon {
 
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
         raw_ref(metrics_), raw_ref(shim_loader_), service_manager_,
-        raw_ref(*safety_service_manager_impl_.get()));
+        raw_ref(*safety_service_manager_impl_.get()), raw_ref(translator_));
 
     session_state_manager_->RefreshPrimaryUser();
 

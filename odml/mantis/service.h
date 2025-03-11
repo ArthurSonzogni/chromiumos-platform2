@@ -23,6 +23,7 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "odml/cros_safety/safety_service_manager.h"
+#include "odml/i18n/translator.h"
 #include "odml/mantis/processor.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
@@ -36,7 +37,8 @@ class MantisService : public mojom::MantisService {
   explicit MantisService(
       raw_ref<MetricsLibraryInterface> metrics_lib,
       raw_ref<odml::OdmlShimLoader> shim_loader,
-      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager);
+      raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      raw_ref<i18n::Translator> translator);
   ~MantisService() = default;
 
   MantisService(const MantisService&) = delete;
@@ -67,6 +69,7 @@ class MantisService : public mojom::MantisService {
       const MantisAPI* api,
       mojo::PendingReceiver<mojom::MantisProcessor> receiver,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      raw_ref<i18n::Translator> translator,
       base::OnceCallback<void()> on_disconnected,
       base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
       odml::PerformanceTimer::Ptr timer,
@@ -104,7 +107,15 @@ class MantisService : public mojom::MantisService {
       odml::PerformanceTimer::Ptr timer,
       base::expected<base::FilePath, std::string> result);
 
-  void OnInstallVerifiedDlcComplete(
+  void OnInstallMantisDlcComplete(
+      mojo::PendingReceiver<mojom::MantisProcessor> processor,
+      InitializeCallback callback,
+      odml::PerformanceTimer::Ptr timer,
+      std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+          progress_observer,
+      base::expected<base::FilePath, std::string> result);
+
+  void OnInstallVerifiedMantisDlcComplete(
       mojo::PendingReceiver<mojom::MantisProcessor> processor,
       InitializeCallback callback,
       odml::PerformanceTimer::Ptr timer,
@@ -113,10 +124,12 @@ class MantisService : public mojom::MantisService {
           progress_observer,
       base::expected<base::FilePath, std::string> result);
 
-  void OnDlcProgress(
-      std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
-          progress_observer,
-      double progress);
+  void PrepareMantisProcessor(
+      mojo::PendingReceiver<mojom::MantisProcessor> processor,
+      InitializeCallback callback,
+      odml::PerformanceTimer::Ptr timer,
+      base::FilePath assets_file_dir,
+      bool i18n_success);
 
   void NotifyPendingProcessors();
 
@@ -134,6 +147,8 @@ class MantisService : public mojom::MantisService {
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
 
   raw_ref<cros_safety::SafetyServiceManager> safety_service_manager_;
+
+  const raw_ref<i18n::Translator> translator_;
 
   bool is_initializing_processor_ = false;
   std::vector<PendingProcessor> pending_processors_;

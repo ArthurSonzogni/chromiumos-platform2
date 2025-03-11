@@ -4,6 +4,7 @@
 
 #include "odml/mantis/service.h"
 
+#include <cmath>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -12,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/raw_ref.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
@@ -20,6 +22,7 @@
 #include <metrics/metrics_library.h>
 #include <ml_core/dlc/dlc_client.h>
 
+#include "odml/i18n/translator.h"
 #include "odml/mantis/lib_api.h"
 #include "odml/mantis/metrics.h"
 #include "odml/mantis/processor.h"
@@ -37,20 +40,102 @@ using MantisAPIGetter = const MantisAPI* (*)();
 
 constexpr char kDlcPrefix[] = "ml-dlc-";
 constexpr char kDefaultDlcUUID[] = "9807ba80-5bee-4b94-a901-e6972d136051";
+constexpr double kFinishedProgress = 1;
+constexpr std::array<const char*, 3> kI18nLanguage = {"fr", "de", "ja"};
+// We split the overall progress into 1 Mantis model DLC and n i18n language
+// translate models. For example, the Mantis model DLC can take 92.5% of the
+// progress, continued with 2.5% each for 3 translation models.
+constexpr double kI18nDlcProgressAllocation = 0.025;
+constexpr double kMantisDlcProgressAllocation =
+    kFinishedProgress - kI18nLanguage.size() * kI18nDlcProgressAllocation;
 constexpr char kReclaimFile[] = "/proc/self/reclaim";
 constexpr char kAll[] = "all";
+
+// Rounds `value` to ensure we don't have precision problem. This is to prevent
+// bugs in the UI side.
+double RoundToNearest0_0001(double value) {
+  return std::round(10000.0 * value) / 10000.0;
+}
+
+// Reports overall progress based on the start, allocation, and individual
+// progress of each part.
+void OnDlcProgress(
+    std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+        progress_observer,
+    double start,
+    double allocation,
+    double progress) {
+  if (progress_observer && *progress_observer) {
+    (*progress_observer)
+        ->Progress(RoundToNearest0_0001(start + allocation * progress));
+  }
+}
+
+// A helper function to call `Translator::DownloadDlc` sequentially for each
+// items in `kI18nLanguage`. This is achieved by providing the index for the
+// recursive function to allow it being passed as a callback for `DownloadDlc`.
+// In the end, it will call `callback` with `true` if successful, or `false`
+// otherwise.
+void InstallI18nDlcForIndex(
+    raw_ref<i18n::Translator> translator,
+    std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+        progress_observer,
+    int index,
+    base::OnceCallback<void(bool)> callback) {
+  if (index == kI18nLanguage.size()) {
+    std::move(callback).Run(true);
+    return;
+  }
+  i18n::LangPair lang_pair = {.source = kI18nLanguage[index], .target = "en"};
+  if (translator->IsDlcDownloaded(lang_pair)) {
+    if (progress_observer && *progress_observer) {
+      OnDlcProgress(progress_observer,
+                    /*start=*/kMantisDlcProgressAllocation +
+                        index * kI18nDlcProgressAllocation,
+                    kI18nDlcProgressAllocation, /*progress=*/1.0);
+    }
+    InstallI18nDlcForIndex(translator, progress_observer, index + 1,
+                           std::move(callback));
+    return;
+  }
+  translator->DownloadDlc(
+      lang_pair,
+      base::BindOnce(
+          [](raw_ref<i18n::Translator> translator,
+             std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+                 progress_observer,
+             int index, base::OnceCallback<void(bool)> callback, bool success) {
+            LOG_IF(WARNING, !success)
+                << "Failed to install translate for language "
+                << kI18nLanguage[index];
+            if (success) {
+              InstallI18nDlcForIndex(translator, progress_observer, index + 1,
+                                     std::move(callback));
+            } else {
+              std::move(callback).Run(false);
+            }
+          },
+          translator, progress_observer, index, std::move(callback)),
+      /*progress=*/
+      base::BindRepeating(&OnDlcProgress, progress_observer,
+                          /*start=*/kMantisDlcProgressAllocation +
+                              index * kI18nDlcProgressAllocation,
+                          kI18nDlcProgressAllocation));
+}
 
 }  // namespace
 
 MantisService::MantisService(
     raw_ref<MetricsLibraryInterface> metrics_lib,
     raw_ref<odml::OdmlShimLoader> shim_loader,
-    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager)
+    raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+    raw_ref<i18n::Translator> translator)
     : metrics_lib_(metrics_lib),
       mantis_api_runner_(
           base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()})),
       shim_loader_(shim_loader),
-      safety_service_manager_(safety_service_manager) {}
+      safety_service_manager_(safety_service_manager),
+      translator_(translator) {}
 
 void MantisService::DeleteProcessor() {
   processor_.reset();
@@ -128,10 +213,12 @@ void MantisService::OnInstallShimComplete(
                      std::move(callback));
 }
 
-void MantisService::OnInstallDlcComplete(
+void MantisService::OnInstallMantisDlcComplete(
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
     InitializeCallback callback,
     odml::PerformanceTimer::Ptr timer,
+    std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
+        progress_observer,
     base::expected<base::FilePath, std::string> result) {
   if (!result.has_value()) {
     LOG(ERROR) << "Failed to install ML DLC: " << result.error();
@@ -139,6 +226,24 @@ void MantisService::OnInstallDlcComplete(
     return;
   }
 
+  InstallI18nDlcForIndex(
+      translator_, progress_observer, 0,
+      base::BindOnce(&MantisService::PrepareMantisProcessor,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(processor),
+                     std::move(callback), std::move(timer),
+                     *std ::move(result)));
+}
+
+void MantisService::PrepareMantisProcessor(
+    mojo::PendingReceiver<mojom::MantisProcessor> processor,
+    InitializeCallback callback,
+    odml::PerformanceTimer::Ptr timer,
+    base::FilePath assets_file_dir,
+    bool i18n_success) {
+  if (!i18n_success) {
+    std::move(callback).Run(mojom::InitializeResult::kFailedToLoadLibrary);
+    return;
+  }
   if (processor_) {
     processor_->AddReceiver(std::move(processor));
     std::move(callback).Run(mojom::InitializeResult::kSuccess);
@@ -175,11 +280,11 @@ void MantisService::OnInstallDlcComplete(
           [](const MantisAPI* api, base::FilePath assets_file_dir) {
             return api->Initialize(assets_file_dir.value());
           },
-          api, *std::move(result)),
+          api, assets_file_dir),
       base::BindOnce(&MantisService::CreateMantisProcessor,
                      weak_ptr_factory_.GetWeakPtr(), metrics_lib_,
                      mantis_api_runner_, api, std::move(processor),
-                     safety_service_manager_,
+                     safety_service_manager_, translator_,
                      base::BindOnce(&MantisService::DeleteProcessor,
                                     base::Unretained(this)),
                      std::move(callback), std::move(timer))
@@ -188,7 +293,7 @@ void MantisService::OnInstallDlcComplete(
 }
 
 // TODO(crbug.com/396779215): Send notification to the UI.
-void MantisService::OnInstallVerifiedDlcComplete(
+void MantisService::OnInstallVerifiedMantisDlcComplete(
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
     InitializeCallback callback,
     odml::PerformanceTimer::Ptr timer,
@@ -197,18 +302,18 @@ void MantisService::OnInstallVerifiedDlcComplete(
         progress_observer,
     base::expected<base::FilePath, std::string> result) {
   if (result.has_value()) {
-    OnInstallDlcComplete(std::move(processor), std::move(callback),
-                         std::move(timer), result);
+    OnInstallMantisDlcComplete(std::move(processor), std::move(callback),
+                               std::move(timer), progress_observer, result);
     return;
   }
 
   std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
       kDlcPrefix + target_dlc_uuid,
-      base::BindOnce(&MantisService::OnInstallDlcComplete,
+      base::BindOnce(&MantisService::OnInstallMantisDlcComplete,
                      weak_ptr_factory_.GetWeakPtr(), std::move(processor),
-                     std::move(callback), std::move(timer)),
-      base::BindRepeating(&MantisService::OnDlcProgress,
-                          weak_ptr_factory_.GetWeakPtr(), progress_observer));
+                     std::move(callback), std::move(timer), progress_observer),
+      base::BindRepeating(&OnDlcProgress, progress_observer, /*start=*/0.0,
+                          kMantisDlcProgressAllocation));
   (*dlc_client)->InstallDlc();
 }
 
@@ -218,14 +323,15 @@ void MantisService::CreateMantisProcessor(
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+    const raw_ref<i18n::Translator> translator,
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
     odml::PerformanceTimer::Ptr timer,
     MantisComponent component) {
   processor_ = std::make_unique<MantisProcessor>(
       metrics_lib, std::move(mantis_api_runner), component, api,
-      std::move(processor), safety_service_manager, std::move(on_disconnected),
-      std::move(callback));
+      std::move(processor), safety_service_manager, translator,
+      std::move(on_disconnected), std::move(callback));
   SendTimeMetric(*metrics_lib_, TimeMetric::kLoadModelLatency, *timer);
 }
 
@@ -236,15 +342,6 @@ void MantisService::NotifyPendingProcessors() {
     std::move(pending.callback).Run(mojom::InitializeResult::kSuccess);
   }
   pending_processors_.clear();
-}
-
-void MantisService::OnDlcProgress(
-    std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
-        progress_observer,
-    double progress) {
-  if (progress_observer && *progress_observer) {
-    (*progress_observer)->Progress(progress);
-  }
 }
 
 void MantisService::InitializeInternal(
@@ -270,7 +367,7 @@ void MantisService::InitializeInternal(
 
   std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
       kDlcPrefix + target_dlc_uuid,
-      base::BindOnce(&MantisService::OnInstallVerifiedDlcComplete,
+      base::BindOnce(&MantisService::OnInstallVerifiedMantisDlcComplete,
                      weak_ptr_factory_.GetWeakPtr(), std::move(processor),
                      std::move(callback), odml::PerformanceTimer::Create(),
                      target_dlc_uuid, progress_observer),
