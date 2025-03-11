@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "flex_id/flex_id.h"
-#include "flex_id/utils.h"
 
 #include <iostream>
 #include <map>
@@ -16,6 +15,8 @@
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
 #include <brillo/process/process.h>
+
+#include "flex_id/utils.h"
 
 namespace flex_id {
 
@@ -60,7 +61,7 @@ constexpr char kInterfaceModAliasFile[] = "device/modalias";
 constexpr char kInterfaceUsbPrefix[] = "usb:";
 const char* kPriorityInterfaces[] = {"eth0", "wlan0"};
 const char* kBadInterfacePrefixes[] = {"arc", "docker"};
-const char* kBadMacs[] = {"00:00:00:00:00:00"};
+const char* kBadMacs[] = {"00:00:00:00:00:00", "88:88:88:88:87:88"};
 
 bool InterfaceIsInteresting(const std::string& name,
                             const std::string& address) {
