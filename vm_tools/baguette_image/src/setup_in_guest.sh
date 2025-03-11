@@ -83,6 +83,8 @@ main() {
   touch /opt/google/cros-containers/bin/sommelier
   # Required for boot with R/O rootfs
   mkdir -p /mnt/shared
+  # Add /mnt/chromeos alias pointing to /mnt/shared for consistency with Crostini
+  ln -s shared /mnt/chromeos
 
   apt-get update
   apt-get -y install "${CROS_PACKAGES[@]}"
