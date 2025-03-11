@@ -4994,8 +4994,10 @@ void Service::GetBaguetteImageUrl(
 
 #if defined(__x86_64__)
   constexpr char arch[] = "amd64";
+  const char* sha = kBaguetteSHA256X86;
 #elif defined(__aarch64__) || defined(__arm__)
   constexpr char arch[] = "arm64";
+  const char* sha = kBaguetteSHA256Arm;
 #else
 #error "Unsupported architecture for baguette"
 #endif
@@ -5003,7 +5005,7 @@ void Service::GetBaguetteImageUrl(
   GetBaguetteImageUrlResponse response;
   response.set_url(base::StringPrintf("%s_%s_%s.%s", prefix, arch,
                                       kBaguetteVersion, suffix));
-  response.set_sha256(kBaguetteSHA256);
+  response.set_sha256(sha);
   response_cb->Return(response);
 }
 
