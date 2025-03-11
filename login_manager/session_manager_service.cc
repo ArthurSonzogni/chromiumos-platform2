@@ -58,8 +58,9 @@
 #include "login_manager/systemd_unit_starter.h"
 #include "login_manager/upstart_signal_emitter.h"
 
-// TODO(crbug.com/6331860): Use arc-manager service to handle ARC operations.
-#define USE_DBUS_ARC_MANAGER 0
+// TODO(crbug.com/6331860): Clean up the code once we make sure
+// arc-manager D-Bus process works well.
+#define USE_DBUS_ARC_MANAGER 1
 
 namespace em = enterprise_management;
 namespace login_manager {
