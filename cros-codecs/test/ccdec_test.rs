@@ -13,10 +13,10 @@ mod tests {
 
     fn cros_codecs_decode(codec_path: &str, input_format: &str) {
         let (test_binary_path, test_file_path) = get_test_paths(codec_path);
-        assert!(Path::new(codec_path).is_dir(), "{} is not a valid path", codec_path);
+        assert!(Path::new(&test_file_path).is_dir(), "{:?} is not a valid path", test_file_path);
 
         let mut all_execute_success = true;
-        for entry in fs::read_dir(codec_path).unwrap().flatten() {
+        for entry in fs::read_dir(test_file_path.clone()).unwrap().flatten() {
             let path = entry.path();
             // Only run the test on bitstreams with available json file containing its md5 checksum.
             let test_file_name = path.file_name().unwrap().to_str().unwrap();
