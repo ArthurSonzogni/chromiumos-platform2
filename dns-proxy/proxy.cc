@@ -212,12 +212,6 @@ void Proxy::OnShutdown(int* code) {
 }
 
 void Proxy::Setup() {
-  if (!session_) {
-    session_ = std::make_unique<SessionMonitor>(bus_);
-  }
-  session_->RegisterSessionStateHandler(base::BindRepeating(
-      &Proxy::OnSessionStateChanged, weak_factory_.GetWeakPtr()));
-
   if (!patchpanel_) {
     patchpanel_ = patchpanel::Client::New(bus_);
   }
@@ -449,25 +443,15 @@ void Proxy::OnShillReset(bool reset) {
   InitShill();
 }
 
-void Proxy::OnSessionStateChanged(bool login) {
-  if (login) {
-    LOG(INFO) << *this << " Service enabled by user login";
-    Enable();
-    return;
-  }
-
-  LOG(INFO) << *this << " Service disabled by user logout";
-  Disable();
-}
-
-void Proxy::Enable() {
+void Proxy::ApplyDeviceUpdate() {
   if (!initialized_ || !device_) {
     return;
   }
 
+  MaybeCreateResolver();
+  UpdateNameServers();
+
   if (opts_.type == Type::kSystem) {
-    SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
-    SendIPAddressesToController(ipv4_address_, ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
     if (ipv4_address_) {
@@ -498,15 +482,6 @@ void Proxy::Enable() {
     StartGuestDnsRedirection(d, AF_INET);
     StartGuestDnsRedirection(d, AF_INET6);
   }
-}
-
-void Proxy::Disable() {
-  if (opts_.type == Type::kSystem && initialized_) {
-    ClearShillDNSProxyAddresses();
-    ClearIPAddressesInController();
-  }
-  // Teardown DNS redirection rules.
-  lifeline_fds_.clear();
 }
 
 void Proxy::Stop() {
@@ -595,40 +570,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   }
 
   *device_.get() = new_default_device;
-  MaybeCreateResolver();
-  UpdateNameServers();
-
-  // For the default proxy, we have to update DNS redirection rule. This allows
-  // DNS traffic to be redirected to the proxy.
-  if (opts_.type == Type::kDefault) {
-    // Start DNS redirection rule for user traffic (cups, chronos, update
-    // engine, etc).
-    if (ipv4_address_) {
-      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv4_address_),
-                          ToStringVec(doh_config_.ipv4_nameservers()));
-    }
-    if (ipv6_address_) {
-      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_),
-                          ToStringVec(doh_config_.ipv6_nameservers()));
-    }
-    // Process the current set of patchpanel devices and add necessary
-    // redirection rules.
-    for (const auto& d : patchpanel_->GetDevices()) {
-      StartGuestDnsRedirection(d, AF_INET);
-      StartGuestDnsRedirection(d, AF_INET6);
-    }
-  }
-
-  if (opts_.type == Type::kSystem) {
-    // Start DNS redirection rule to exclude traffic with destination not equal
-    // to the underlying name server.
-    if (ipv4_address_) {
-      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv4_address_));
-    }
-    if (ipv6_address_) {
-      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_));
-    }
-  }
+  ApplyDeviceUpdate();
 }
 
 shill::Client::ManagerPropertyAccessor* Proxy::shill_props() {
@@ -692,15 +634,7 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
       }
 
       *device_.get() = *device;
-      MaybeCreateResolver();
-      UpdateNameServers();
-
-      // Process the current set of patchpanel devices and add necessary
-      // redirection rules.
-      for (const auto& d : patchpanel_->GetDevices()) {
-        StartGuestDnsRedirection(d, AF_INET);
-        StartGuestDnsRedirection(d, AF_INET6);
-      }
+      ApplyDeviceUpdate();
       break;
 
     default:

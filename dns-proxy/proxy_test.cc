@@ -676,6 +676,7 @@ TEST_P(ProxyTest, DefaultProxy_UsesVPN) {
 TEST_P(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent) {
   SetUpProxy(GetParam(),
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"});
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // Set name servers on device change event.
   auto wifi = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
@@ -1093,7 +1094,7 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
                           _, _, ElementsAre("2001:4860:4860::8888"), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  proxy_->Enable();
+  proxy_->ApplyDeviceUpdate();
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 2);
 }
 
@@ -1103,7 +1104,7 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
 
   // Empty active device.
   EXPECT_CALL(*patchpanel_client_, RedirectDns(_, _, _, _, _)).Times(0);
-  proxy_->Enable();
+  proxy_->ApplyDeviceUpdate();
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 
   // Default device changed.
@@ -1450,7 +1451,7 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
                           "arc_eth0", addr6.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  proxy_->Enable();
+  proxy_->ApplyDeviceUpdate();
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 2);
 }
 

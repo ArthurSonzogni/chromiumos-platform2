@@ -31,7 +31,6 @@
 #include "dns-proxy/ipc.pb.h"
 #include "dns-proxy/metrics.h"
 #include "dns-proxy/resolver.h"
-#include "dns-proxy/session_monitor.h"
 
 namespace dns_proxy {
 
@@ -143,11 +142,7 @@ class Proxy : public brillo::DBusDaemon {
   void OnShillReady(bool success);
   void OnShillReset(bool reset);
 
-  // Triggered by the session monitor whenever the user logs in or out.
-  void OnSessionStateChanged(bool login);
-
-  void Enable();
-  void Disable();
+  void ApplyDeviceUpdate();
 
   // Stops DNS proxy from proxying DNS queries. This is run whenever the device
   // is not yet online.
@@ -349,7 +344,6 @@ class Proxy : public brillo::DBusDaemon {
   std::unique_ptr<patchpanel::Client> patchpanel_;
   std::unique_ptr<shill::Client> shill_;
   std::unique_ptr<shill::Client::ManagerPropertyAccessor> shill_props_;
-  std::unique_ptr<SessionMonitor> session_;
 
   base::ScopedFD ns_fd_;
   patchpanel::Client::ConnectedNamespace ns_;
