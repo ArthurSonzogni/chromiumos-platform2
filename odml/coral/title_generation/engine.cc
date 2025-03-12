@@ -55,11 +55,9 @@ constexpr size_t kMaxCacheSize = 4;
 // The acceptable threshold is set to 1 diff per 4 items.
 constexpr double kMaxGroupDifferenceRatioToReuseTitle = 0.2501;
 
-// TODO(b/378632983): We want to reserve 50 tokens for output, while the max
-// input token length should be 1024, so this should actually be 1024-50. But
-// there is a bug in APU backend currently that makes the maximum supported
-// token size 128 less, so this is 1024-128-50 for now.
-constexpr size_t kMaxInputSizeInTokens = 846;
+// We want to reserve 50 tokens for output, while the max input token length is
+// 1024.
+constexpr size_t kMaxInputSizeInTokens = 974;
 
 constexpr base::TimeDelta kTitleCacheFlushStartingDelay = base::Minutes(10);
 constexpr base::TimeDelta kTitleCacheFlushRepeatingDelay = base::Hours(1);
@@ -465,11 +463,16 @@ void TitleGenerationEngine::EntitiesToMaybeTranslatedTitles(
     ProcessParams params,
     odml::PerformanceTimer::Ptr timer,
     std::vector<std::string> titles) {
+  // Cap max entities we put in the prompt to 10, as the model only supports up
+  // to 10. This allows us to have more than 10 entities in a group, but still
+  // generate title with only the first 10 entities.
+  constexpr size_t kMaxEntitiesInPrompt = 10;
   size_t index = params.index;
   CHECK(index < params.groups.size());
   size_t entity_index = titles.size();
 
-  if (entity_index >= params.groups[index].entities.size()) {
+  if (entity_index >=
+      std::min(params.groups[index].entities.size(), kMaxEntitiesInPrompt)) {
     base::flat_map<std::string, std::string> fields{
         {"prompt", TitlesToPrompt(titles)}};
     on_device_model_service_->FormatInput(

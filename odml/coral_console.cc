@@ -53,7 +53,7 @@ constexpr const char kSuppressionContext[] = "suppression_context";
 constexpr const char kOutputFile[] = "output_file";
 constexpr const char kSkipSafetyCheck[] = "skip_safety_check";
 constexpr int kMinItemsInGroup = 4;
-constexpr int kMaxItemsInGroup = 10;
+constexpr int kMaxItemsInGroup = 25;
 constexpr int kMaxGroupsToGenerate = 2;
 
 constexpr base::TimeDelta kRemoteRequestTimeout = base::Seconds(10);
