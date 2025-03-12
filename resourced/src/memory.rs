@@ -94,7 +94,7 @@ const PSI_ADJUST_AVAILABLE_FEATURE_NAME: &str = "CrOSLateBootPsiAdjustAvailable"
 
 const PSI_ADJUST_AVAILABLE_TOP_THRESHOLD_PARAM: &str = "PsiTopThreshold";
 
-const PSI_ADJUST_AVAILABLE_TOP_THRESHOLD_DEFAULT: f32 = 40.0;
+const PSI_ADJUST_AVAILABLE_TOP_THRESHOLD_DEFAULT: f32 = 60.0;
 
 const PSI_ADJUST_AVAILABLE_USE_FULL_PARAM: &str = "PsiUseFull";
 
@@ -162,7 +162,7 @@ pub fn register_features(swappiness: SwappinessConfig) {
 
     feature::register_feature(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME, true, None);
 
-    feature::register_feature(PSI_ADJUST_AVAILABLE_FEATURE_NAME, false, None);
+    feature::register_feature(PSI_ADJUST_AVAILABLE_FEATURE_NAME, true, None);
 
     let kernel_version = sys_info::os_release().unwrap_or("".to_string());
     if kernel_version.starts_with("5.15") || kernel_version.starts_with("6.6") {
