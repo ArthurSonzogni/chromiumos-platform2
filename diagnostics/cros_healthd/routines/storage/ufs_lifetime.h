@@ -9,7 +9,6 @@
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
-class Context;
 
 inline constexpr char kUfsHealthDescPreEolInfo[] = "eol_info";
 inline constexpr char kUfsHealthDescDeviceLifeTimeEstA[] =
