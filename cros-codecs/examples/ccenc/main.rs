@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+//! ccenc, a simple encoder program using cros-codecs.
+
 use std::fs::File;
 use std::io::ErrorKind;
 use std::io::Read;
@@ -72,6 +74,7 @@ fn codec_to_ivf_magic(codec: &Codec) -> [u8; 4] {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn enqueue_work<W>(
     encoder: &mut C2Wrapper<C2EncodeJob<PooledVideoFrame<GenericDmaVideoFrame>>, W>,
     file: &mut File,
@@ -172,7 +175,7 @@ where
         input: Some(new_frame),
         output: vec![],
         timestamp: *timestamp,
-        bitrate: bitrate,
+        bitrate,
         framerate: Arc::new(AtomicU32::new(framerate)),
         drain: DrainMode::NoDrain,
     };
@@ -239,7 +242,7 @@ fn main() {
         );
         hdr.writo_into(&mut *output_file.lock().unwrap()).expect("Error writing IVF file header!");
     }
-    let codec_ = codec.clone();
+    let codec_ = codec;
     let work_done_cb = move |job: C2EncodeJob<PooledVideoFrame<GenericDmaVideoFrame>>| {
         if codec_ != Codec::H264 {
             let hdr =
@@ -262,20 +265,20 @@ fn main() {
     #[cfg(feature = "v4l2")]
     let mut encoder: C2Wrapper<_, C2EncoderWorker<_, C2V4L2Encoder>> = C2Wrapper::new(
         input_fourcc,
-        output_fourcc.clone(),
+        output_fourcc,
         error_cb,
         work_done_cb,
         framepool_hint_cb,
         alloc_cb,
         C2V4L2EncoderOptions {
-            output_fourcc: output_fourcc,
+            output_fourcc,
             visible_resolution: Resolution { width: args.width, height: args.height },
         },
     );
     #[cfg(feature = "vaapi")]
     let mut encoder: C2Wrapper<_, C2EncoderWorker<_, C2VaapiEncoder>> = C2Wrapper::new(
         input_fourcc,
-        output_fourcc.clone(),
+        output_fourcc,
         error_cb,
         work_done_cb,
         framepool_hint_cb,
@@ -299,7 +302,7 @@ fn main() {
             &mut input,
             framepool.clone(),
             args.fourcc,
-            input_coded_resolution.clone(),
+            input_coded_resolution,
             args.count as u64,
             args.bitrate,
             args.framerate,

@@ -82,6 +82,7 @@ pub struct Args {
     pub output: Option<PathBuf>,
 
     /// set to true if low power version of the API shall be used
+    #[allow(dead_code)]
     #[argh(switch)]
     pub low_power: bool,
 }
