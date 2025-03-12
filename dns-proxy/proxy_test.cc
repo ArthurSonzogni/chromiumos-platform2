@@ -351,13 +351,6 @@ INSTANTIATE_TEST_SUITE_P(ProxyTestInstance,
                          ProxyTest,
                          ::testing::Values(false, true));
 
-TEST_P(ProxyTest, SystemProxy_OnShutdownClearsAddressPropertyOnShill) {
-  EXPECT_CALL(mock_manager_, ClearDNSProxyAddresses(_, _));
-  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  int unused;
-  proxy_->OnShutdown(&unused);
-}
-
 TEST_P(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill) {
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _)).Times(0);
   EXPECT_CALL(mock_manager_, ClearDNSProxyAddresses(_, _)).Times(0);
@@ -365,52 +358,6 @@ TEST_P(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill) {
              ShillDevice());
   int unused;
   proxy_->OnShutdown(&unused);
-}
-
-TEST_P(ProxyTest, SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse) {
-  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  EXPECT_CALL(mock_manager_, SetProperty(_, _, _, _)).Times(0);
-  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  proxy_->SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_,
-                                    /*die_on_failure=*/false,
-                                    /*num_retries=*/0);
-}
-
-TEST_P(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
-  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
-             ShillDevice());
-  SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
-  EXPECT_CALL(mock_manager_,
-              SetDNSProxyAddresses(ElementsAre(ipv4_address_.ToString(),
-                                               ipv6_address_.ToString()),
-                                   _, _))
-      .WillOnce(Return(true));
-  proxy_->SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
-}
-
-TEST_P(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
-  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
-             ShillDevice());
-
-  // Only IPv4 nameserver.
-  SetNameServers({"8.8.8.8"}, /*ipv6_nameservers=*/{});
-  EXPECT_CALL(mock_manager_,
-              SetDNSProxyAddresses(ElementsAre(ipv4_address_.ToString()), _, _))
-      .WillOnce(Return(true));
-  proxy_->SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
-
-  // Only IPv6 nameserver.
-  SetNameServers(/*ipv4_nameservers=*/{}, {"2001:4860:4860::8888"});
-  EXPECT_CALL(mock_manager_,
-              SetDNSProxyAddresses(ElementsAre(ipv6_address_.ToString()), _, _))
-      .WillOnce(Return(true));
-  proxy_->SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
-}
-
-TEST_P(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses) {
-  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  EXPECT_CALL(mock_manager_, ClearDNSProxyAddresses(_, _));
-  proxy_->ClearShillDNSProxyAddresses();
 }
 
 TEST_P(ProxyTest, SystemProxy_SendIPAddressesToController) {
@@ -526,20 +473,6 @@ TEST_P(ProxyTest, ArcProxy_ConnectedNamedspace) {
   proxy_->OnPatchpanelReady(true);
 }
 
-TEST_P(ProxyTest, ShillResetRestoresAddressProperty) {
-  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
-             ShillDevice());
-  SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
-  SetListenAddresses(ipv4_address_, ipv6_address_);
-
-  EXPECT_CALL(mock_manager_,
-              SetDNSProxyAddresses(ElementsAre(ipv4_address_.ToString(),
-                                               ipv6_address_.ToString()),
-                                   _, _))
-      .WillOnce(Return(true));
-  proxy_->OnShillReset(true);
-}
-
 TEST_P(ProxyTest, StateClearedIfDefaultServiceDrops) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice());
@@ -611,16 +544,6 @@ TEST_P(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
               SetNameServers(ElementsAre(StrEq("8.8.8.8"), StrEq("8.8.4.4"),
                                          StrEq("2001:4860:4860::8888"),
                                          StrEq("2001:4860:4860::8844"))));
-  proxy_->OnDefaultDeviceChanged(dev.get());
-}
-
-TEST_P(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
-  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  SetListenAddresses(ipv4_address_, ipv6_address_);
-
-  auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline);
-  EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
-      .WillOnce(Return(true));
   proxy_->OnDefaultDeviceChanged(dev.get());
 }
 

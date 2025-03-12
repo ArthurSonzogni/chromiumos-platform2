@@ -211,17 +211,6 @@ class Proxy : public brillo::DBusDaemon {
   // |ifname| is empty.
   bool Listen(struct sockaddr* addr, std::string_view ifname = "");
 
-  // Helper func for setting the dns-proxy IPv4 and IPv6 address in shill.
-  // Only valid for the system proxy.
-  // Will retry on failure up to |num_retries| before possibly crashing the
-  // proxy.
-  void SetShillDNSProxyAddresses(
-      const std::optional<net_base::IPv4Address>& ipv4_addr,
-      const std::optional<net_base::IPv6Address>& ipv6_addr,
-      bool die_on_failure = false,
-      uint8_t num_retries = kMaxShillPropertyRetries);
-  void ClearShillDNSProxyAddresses();
-
   // Helper func to send the proxy IP addresses to the controller.
   // Only valid for the system proxy.
   void SendIPAddressesToController(
@@ -266,15 +255,7 @@ class Proxy : public brillo::DBusDaemon {
   virtual int IfNameToIndex(const char* ifname);
 
   friend class ProxyTest;
-  FRIEND_TEST(ProxyTest, SystemProxy_OnShutdownClearsAddressPropertyOnShill);
   FRIEND_TEST(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill);
-  FRIEND_TEST(ProxyTest,
-              SystemProxy_SetShillDNSProxyAddressesWithNoRetriesCrashes);
-  FRIEND_TEST(ProxyTest,
-              SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse);
-  FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddresses);
-  FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver);
-  FRIEND_TEST(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses);
   FRIEND_TEST(ProxyTest, SystemProxy_SendIPAddressesToController);
   FRIEND_TEST(ProxyTest,
               SystemProxy_SendIPAddressesToControllerEmptyNameserver);
@@ -283,14 +264,11 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, SystemProxy_ConnectedNamedspace);
   FRIEND_TEST(ProxyTest, DefaultProxy_ConnectedNamedspace);
   FRIEND_TEST(ProxyTest, ArcProxy_ConnectedNamedspace);
-  FRIEND_TEST(ProxyTest, ShillResetRestoresAddressProperty);
   FRIEND_TEST(ProxyTest, StateClearedIfDefaultServiceDrops);
   FRIEND_TEST(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops);
   FRIEND_TEST(ProxyTest, StateClearedIfDefaultServiceIsNotOnline);
   FRIEND_TEST(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline);
   FRIEND_TEST(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline);
-  FRIEND_TEST(ProxyTest,
-              SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline);
   FRIEND_TEST(ProxyTest, SystemProxy_IgnoresVPN);
   FRIEND_TEST(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN);
   FRIEND_TEST(ProxyTest, DefaultProxy_UsesVPN);

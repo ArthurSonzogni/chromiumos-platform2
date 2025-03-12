@@ -73,7 +73,6 @@ std::vector<std::string> ToStringVec(const std::vector<T>& addrs) {
 
 }  // namespace
 
-constexpr base::TimeDelta kShillPropertyAttemptDelay = base::Milliseconds(200);
 constexpr base::TimeDelta kRequestTimeout = base::Seconds(5);
 constexpr base::TimeDelta kRequestRetryDelay = base::Milliseconds(200);
 
@@ -204,7 +203,6 @@ void Proxy::OnShutdown(int* code) {
   LOG(INFO) << *this << " Stopping DNS proxy (" << *code << ")";
   addr_listener_.reset();
   if (opts_.type == Type::kSystem) {
-    ClearShillDNSProxyAddresses();
     if (msg_dispatcher_) {
       ClearIPAddressesInController();
     }
@@ -420,7 +418,6 @@ void Proxy::OnShillReset(bool reset) {
 
     // If applicable, restore the address of the system proxy.
     if (opts_.type == Type::kSystem && initialized_) {
-      SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
       // Start DNS redirection rule to exclude traffic with destination not
       // equal to the underlying name server.
       if (ipv4_address_) {
@@ -490,7 +487,6 @@ void Proxy::Stop() {
   device_.reset();
   lifeline_fds_.clear();
   if (opts_.type == Type::kSystem) {
-    ClearShillDNSProxyAddresses();
     ClearIPAddressesInController();
   }
 }
@@ -771,7 +767,6 @@ void Proxy::UpdateNameServers() {
                              doh_config_.ipv6_nameservers().size());
 
   if (opts_.type == Type::kSystem) {
-    SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
     SendIPAddressesToController(ipv4_address_, ipv6_address_);
   }
 
@@ -796,80 +791,6 @@ void Proxy::OnDoHIncludedDomainsChanged(const brillo::Any& value) {
     return;
   }
   resolver_->SetDomainDoHConfigs(doh_included_domains_, doh_excluded_domains_);
-}
-
-void Proxy::SetShillDNSProxyAddresses(
-    const std::optional<net_base::IPv4Address>& ipv4_addr,
-    const std::optional<net_base::IPv6Address>& ipv6_addr,
-    bool die_on_failure,
-    uint8_t num_retries) {
-  if (opts_.type != Type::kSystem) {
-    LOG(DFATAL) << *this << " " << __func__
-                << " must be called from system proxy only";
-    return;
-  }
-
-  if (num_retries == 0) {
-    metrics_.RecordProcessEvent(
-        metrics_proc_type_,
-        Metrics::ProcessEvent::kShillSetProxyAddressRetryExceeded);
-    LOG(ERROR) << *this << " Maximum number of retries exceeding attempt to"
-               << " set dns-proxy address property on shill";
-
-    if (die_on_failure) {
-      QuitWithExitCode(EX_UNAVAILABLE);
-    }
-
-    return;
-  }
-
-  // If doesn't ever come back, there is no point in retrying here; and
-  // if it does, then initialization process will eventually come back
-  // into this function and succeed.
-  if (!shill_ready_) {
-    LOG(WARNING) << *this
-                 << " No connection to shill - cannot set dns-proxy address "
-                    "property IPv4 ["
-                 << (ipv4_addr ? ipv4_addr->ToString() : "") << "], IPv6 ["
-                 << (ipv6_addr ? ipv6_addr->ToString() : "") << "]";
-    return;
-  }
-
-  std::vector<std::string> addrs;
-  if (ipv4_addr && !doh_config_.ipv4_nameservers().empty()) {
-    addrs.push_back(ipv4_addr->ToString());
-  }
-  if (ipv6_addr && !doh_config_.ipv6_nameservers().empty()) {
-    addrs.push_back(ipv6_addr->ToString());
-  }
-  if (addrs.empty()) {
-    shill_->GetManagerProxy()->ClearDNSProxyAddresses(/*error=*/nullptr);
-    LOG(INFO) << *this << " Successfully cleared dns-proxy address property";
-    return;
-  }
-
-  brillo::ErrorPtr error;
-  if (shill_->GetManagerProxy()->SetDNSProxyAddresses(addrs, &error)) {
-    LOG(INFO) << *this << " Successfully set dns-proxy address property ["
-              << base::JoinString(addrs, ",") << "]";
-    return;
-  }
-
-  LOG(ERROR) << *this << " Failed to set dns-proxy address property ["
-             << base::JoinString(addrs, ",")
-             << "] on shill: " << error->GetMessage() << ". Retrying...";
-
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&Proxy::SetShillDNSProxyAddresses,
-                     weak_factory_.GetWeakPtr(), ipv4_addr, ipv6_addr,
-                     die_on_failure, num_retries - 1),
-      kShillPropertyAttemptDelay);
-}
-
-void Proxy::ClearShillDNSProxyAddresses() {
-  SetShillDNSProxyAddresses(/*ipv4_address=*/std::nullopt,
-                            /*ipv6_address=*/std::nullopt);
 }
 
 void Proxy::SendIPAddressesToController(
@@ -1111,7 +1032,6 @@ void Proxy::NetNSRTNLMessageHandler(const net_base::RTNLMessage& msg) {
         StartGuestDnsRedirection(d, AF_INET6);
       }
       if (opts_.type == Type::kSystem && device_) {
-        SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
         SendIPAddressesToController(ipv4_address_, ipv6_address_);
         StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_));
       }
@@ -1127,8 +1047,6 @@ void Proxy::NetNSRTNLMessageHandler(const net_base::RTNLMessage& msg) {
         StopGuestDnsRedirection(d, AF_INET6);
       }
       if (opts_.type == Type::kSystem && device_) {
-        SetShillDNSProxyAddresses(/*ipv4_addr=*/ipv4_address_,
-                                  /*ipv6_addr=*/std::nullopt);
         SendIPAddressesToController(/*ipv4_addr=*/ipv4_address_,
                                     /*ipv6_addr=*/std::nullopt);
         StopDnsRedirection(/*ifname=*/"", AF_INET6);
