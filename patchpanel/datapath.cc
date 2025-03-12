@@ -886,6 +886,22 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION: {
+      // This request means that the system proxy of DNS proxy is ready. The
+      // request adds the jump rule to the chain for the default proxy of DNS
+      // proxy to enable its DNAT rule, such that user DNS queries are
+      // redirected to the default proxy. Without the DNAT rule, the default
+      // proxy is essentially non-operational. This means that all DNS queries
+      // will respect the name servers configured in /etc/resolv.conf. This
+      // jump rule is added dynamically to avoid the undefined behavior where
+      // the default proxy is running without system proxy (e.g. this can happen
+      // on VPNs, see b/401457445).
+      if (!ModifyRedirectDnsJumpRule(
+              family, Iptables::Command::kI, /*chain=*/"OUTPUT", /*ifname=*/"",
+              kRedirectUserDnsChain, kFwmarkRouteOnVpn, kFwmarkVpnMask,
+              /*redirect_on_mark=*/true)) {
+        LOG(ERROR) << "Failed to add redirect user DNS jump rule";
+        return false;
+      }
       if (!ModifyDnsExcludeDestinationRule(family, rule, Iptables::Command::kI,
                                            kRedirectUserDnsChain)) {
         LOG(ERROR) << "Failed to add user DNS exclude rule";
@@ -945,6 +961,10 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION: {
+      ModifyRedirectDnsJumpRule(
+          family, Iptables::Command::kD, /*chain=*/"OUTPUT", /*ifname=*/"",
+          kRedirectUserDnsChain, kFwmarkRouteOnVpn, kFwmarkVpnMask,
+          /*redirect_on_mark=*/true);
       ModifyDnsExcludeDestinationRule(family, rule, Iptables::Command::kD,
                                       kRedirectUserDnsChain);
       ModifyDnsProxyAcceptRule(family, rule, Iptables::Command::kD);

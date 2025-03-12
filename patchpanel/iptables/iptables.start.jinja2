@@ -121,7 +121,6 @@ COMMIT
 -A PREROUTING -j apply_auto_dnat_to_crostini
 -A PREROUTING -j apply_auto_dnat_to_parallels
 {% endif -%}
--A OUTPUT -m mark --mark 0x8000/0xc000 -j redirect_user_dns
   {#- Set static SNAT rules for any traffic originated from a guest (ARC,       #}
   {#- Crostini, ...) or a connected namespace.                                  #}
   {#- For IPv6, the SNAT rule is expected to only be triggered when static IPv6 #}

@@ -1508,6 +1508,10 @@ TEST_F(DatapathTest, StartDnsRedirection_ExcludeDestination) {
       IpFamily::kIPv6,
       "filter -A accept_egress_to_dns_proxy -d ::1 -j ACCEPT -w");
 
+  runner_.ExpectCallIptables(IpFamily::kDual,
+                             "nat -I OUTPUT -m mark --mark "
+                             "0x00008000/0x0000c000 -j redirect_user_dns -w");
+
   DnsRedirectionRule rule4 = {
       .type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
       .input_ifname = "",
@@ -1679,6 +1683,10 @@ TEST_F(DatapathTest, StopDnsRedirection_ExcludeDestination) {
   runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "filter -D accept_egress_to_dns_proxy -d ::1 -j ACCEPT -w");
+
+  runner_.ExpectCallIptables(IpFamily::kDual,
+                             "nat -D OUTPUT -m mark --mark "
+                             "0x00008000/0x0000c000 -j redirect_user_dns -w");
 
   DnsRedirectionRule rule4 = {
       .type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
