@@ -36,7 +36,7 @@ namespace {
 using MantisAPIGetter = const MantisAPI* (*)();
 
 constexpr char kDlcPrefix[] = "ml-dlc-";
-constexpr char kDefaultDlcUUID[] = "302a455f-5453-43fb-a6a1-d856e6fe6435";
+constexpr char kDefaultDlcUUID[] = "9807ba80-5bee-4b94-a901-e6972d136051";
 constexpr char kReclaimFile[] = "/proc/self/reclaim";
 constexpr char kAll[] = "all";
 
