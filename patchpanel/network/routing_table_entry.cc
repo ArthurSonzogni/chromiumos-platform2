@@ -40,7 +40,7 @@ std::ostream& operator<<(std::ostream& os, const RoutingTableEntry& entry) {
       os << "broadcast " << dest_address;
       break;
     case RTN_BLACKHOLE:
-      os << "blackhole";  // Don't print the address.
+      os << "blackhole " << dest_address;
       break;
     case RTN_UNREACHABLE:
       os << "unreachable";  // Don't print the address.

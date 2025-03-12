@@ -22,7 +22,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include "patchpanel/network/routing_table_entry.h"
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -37,6 +36,8 @@
 #include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/rtnl_handler.h>
 #include <chromeos/net-base/rtnl_listener.h>
+
+#include "patchpanel/network/routing_table_entry.h"
 
 namespace patchpanel {
 
@@ -244,9 +245,7 @@ bool RoutingTable::ApplyRoute(int interface_index,
                         net_base::byte_utils::ToBytes<uint32_t>(entry.table));
   message->SetAttribute(RTA_PRIORITY,
                         net_base::byte_utils::ToBytes<uint32_t>(entry.metric));
-  if (entry.type != RTN_BLACKHOLE) {
-    message->SetAttribute(RTA_DST, entry.dst.address().ToBytes());
-  }
+  message->SetAttribute(RTA_DST, entry.dst.address().ToBytes());
   if (!entry.gateway.IsZero()) {
     message->SetAttribute(RTA_GATEWAY, entry.gateway.ToBytes());
   }

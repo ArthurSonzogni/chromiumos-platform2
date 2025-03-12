@@ -122,7 +122,7 @@ const int RoutingTableTest::kTestRouteTag = 789;
 
 namespace {
 
-MATCHER_P3(IsBlackholeRoutingPacket, family, metric, table, "") {
+MATCHER_P4(IsBlackholeRoutingPacket, family, dst, metric, table, "") {
   const net_base::RTNLMessage::RouteStatus& status = arg->route_status();
 
   const auto priority = net_base::byte_utils::FromBytes<uint32_t>(
@@ -133,8 +133,9 @@ MATCHER_P3(IsBlackholeRoutingPacket, family, metric, table, "") {
          arg->flags() == (NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL) &&
          status.table == table && status.protocol == RTPROT_BOOT &&
          status.scope == RT_SCOPE_UNIVERSE && status.type == RTN_BLACKHOLE &&
-         !arg->HasAttribute(RTA_DST) && !arg->HasAttribute(RTA_SRC) &&
-         !arg->HasAttribute(RTA_GATEWAY) && priority && *priority == metric;
+         arg->GetRtaDst() == std::make_optional(dst) &&
+         !arg->HasAttribute(RTA_SRC) && !arg->HasAttribute(RTA_GATEWAY) &&
+         priority && *priority == metric;
 }
 
 MATCHER_P2(IsUnreachableRoutingPacket, family, table, "") {
@@ -207,12 +208,34 @@ MATCHER_P2(IsRoutingQuery, destination, index, "") {
   return false;
 }
 
+TEST_F(RoutingTableTest, AddBlackholeRoute) {
+  constexpr uint32_t kMetric = 2;
+  constexpr uint32_t kTestTable = 20;
+  const auto kDst = net_base::IPCIDR::CreateFromCIDRString("2000::/3").value();
+
+  EXPECT_CALL(rtnl_handler_,
+              DoSendMessage(IsBlackholeRoutingPacket(net_base::IPFamily::kIPv6,
+                                                     kDst, kMetric, kTestTable),
+                            _))
+      .Times(1);
+
+  RoutingTableEntry entry(net_base::IPFamily::kIPv6);
+  entry.dst = kDst;
+  entry.table = kTestTable;
+  entry.metric = kMetric;
+  entry.type = RTN_BLACKHOLE;
+
+  EXPECT_TRUE(routing_table_->AddRoute(kTestDeviceIndex0, entry));
+}
+
 TEST_F(RoutingTableTest, CreateBlackholeRoute) {
   const uint32_t kMetric = 2;
   const uint32_t kTestTable = 20;
   EXPECT_CALL(rtnl_handler_,
-              DoSendMessage(IsBlackholeRoutingPacket(net_base::IPFamily::kIPv6,
-                                                     kMetric, kTestTable),
+              DoSendMessage(IsBlackholeRoutingPacket(
+                                net_base::IPFamily::kIPv6,
+                                net_base::IPCIDR(net_base::IPFamily::kIPv6),
+                                kMetric, kTestTable),
                             _))
       .Times(1);
   EXPECT_TRUE(routing_table_->CreateBlackholeRoute(
