@@ -86,8 +86,8 @@ get_ec_resume_result() {
 
 # Return the latest wakeup IRQ name.
 get_last_wakeup_irq_name() {
-  awk '$1 != "Abort:" && $1 >= 0 {print $2}' \
-      /sys/kernel/wakeup_reasons/last_resume_reason
+  irq=$(cat /sys/power/pm_wakeup_irq)
+  [ -n "${irq}" ] && cut -d, -f1 "/sys/kernel/irq/${irq}/actions"
 }
 
 # Return the current event count for the wakeup source.
