@@ -10,5 +10,11 @@
 # kernel_max_rollforward.
 crossystem kernel_max_rollforward=0
 
+# Make sure we can write VPD variables.
+mkdir /run/vpd
+
+# Setup cros-config inside the chroot.
+/usr/sbin/cros_config_setup
+
 export IS_RECOVERY_INSTALL=1
 exec chromeos-install --storage_diags --yes "$@"
