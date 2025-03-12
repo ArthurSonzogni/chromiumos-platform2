@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use std::error::Error;
-use std::os::fd::AsFd;
 use std::os::fd::AsRawFd;
 use std::os::unix::process::ExitStatusExt;
 use std::process::Child;
@@ -179,6 +178,47 @@ fn try_exit(children: &[Child], received_sigterm: bool) {
     }
 }
 
+// Parses a StartVhostUserFsRequest request and constructs arguments for starting vhost-user-fs.
+fn prepare_vhost_user_fs_args(
+    request: Vec<u8>,
+    fd: &arg::OwnedFd,
+) -> Result<Vec<String>, dbus::MethodErr> {
+    let StartVhostUserFsRequest {
+        shared_dir,
+        cfg,
+        tag,
+        uid,
+        gid,
+        uid_map,
+        gid_map,
+        ..
+    } = parse_dbus_request_from_bytes::<StartVhostUserFsRequest>(&request)?;
+
+    let uid_map = parse_ugid_map_to_string(uid_map)?;
+    let gid_map = parse_ugid_map_to_string(gid_map)?;
+    let fs_cfg = parse_vhost_user_fs_cfg_to_string(&cfg);
+
+    let mut fs_args = vec![
+        "device".to_string(),
+        "fs".to_string(),
+        format!("--fd={}", fd.as_raw_fd()),
+        format!("--tag={}", tag),
+        format!("--shared-dir={}", shared_dir),
+        format!("--uid-map={}", uid_map),
+        format!("--gid-map={}", gid_map),
+        format!("--cfg={}", fs_cfg),
+    ];
+
+    if let Some(uid) = uid {
+        fs_args.push(format!("--uid={}", uid));
+    }
+    if let Some(gid) = gid {
+        fs_args.push(format!("--gid={}", gid));
+    }
+
+    Ok(fs_args)
+}
+
 pub struct StarterService {
     /// child_sender is used to add new child processes to the monitoring loop.
     child_sender: Sender<Child>,
@@ -205,42 +245,10 @@ impl OrgChromiumVhostUserStarter for StarterService {
             return Err(dbus::MethodErr::failed("Too many socket fd"));
         }
 
-        let StartVhostUserFsRequest {
-            shared_dir,
-            cfg,
-            tag,
-            uid,
-            gid,
-            uid_map,
-            gid_map,
-            ..
-        } = parse_dbus_request_from_bytes::<StartVhostUserFsRequest>(&request)?;
-        let fd = socket[0].as_fd().as_raw_fd();
+        let fd_ref = &socket[0];
+        clear_cloexec(fd_ref.as_raw_fd()).expect("Fail to clear FD_CLOEXEC");
 
-        let uid_map = parse_ugid_map_to_string(uid_map)?;
-        let gid_map = parse_ugid_map_to_string(gid_map)?;
-        let fs_cfg = parse_vhost_user_fs_cfg_to_string(&cfg);
-
-        let mut fs_args = vec![
-            "device".to_string(),
-            "fs".to_string(),
-            format!("--fd={}", fd),
-            format!("--tag={}", tag),
-            format!("--shared-dir={}", shared_dir),
-            format!("--uid-map={}", uid_map),
-            format!("--gid-map={}", gid_map),
-            format!("--cfg={}", fs_cfg),
-        ];
-
-        // uid/gid field is optional, if no set the default value is 0
-        if let Some(uid) = uid {
-            fs_args.push(format!("--uid={}", uid));
-        }
-        if let Some(gid) = gid {
-            fs_args.push(format!("--gid={}", gid));
-        }
-
-        clear_cloexec(fd).expect("Fail to clear FD_CLOEXEC");
+        let fs_args = prepare_vhost_user_fs_args(request, fd_ref)?;
 
         let child = Command::new("crosvm")
             .args(fs_args)
@@ -360,6 +368,8 @@ pub fn service_main() -> Result<(), Box<dyn Error>> {
 #[cfg(test)]
 mod tests {
 
+    use std::os::fd::OwnedFd;
+
     use super::*;
     use tempfile::tempfile;
 
@@ -476,5 +486,85 @@ mod tests {
         // Check that the close-on-exec flag is cleared
         let flags = fcntl::fcntl(fd, fcntl::F_GETFD).unwrap();
         assert_eq!(flags & libc::FD_CLOEXEC, 0);
+    }
+
+    #[test]
+    fn test_prepare_vhost_user_fs_args() {
+        // The request simulate the request from concierge except for socket fd
+
+        // Create a temporary file
+        let file = tempfile().unwrap();
+        let fd: OwnedFd = file.into();
+        let fd_raw = fd.as_raw_fd();
+
+        let mut request = StartVhostUserFsRequest::new();
+        request.tag = "stub".to_owned();
+        request.shared_dir = "/run/arcvm/media".to_owned();
+        request.uid = Some(0);
+        request.gid = Some(0);
+
+        // Prepare --cfg={} field
+        request.cfg = protobuf::MessageField::some(VhostUserVirtioFsConfig {
+            cache: String::from("auto"),
+            timeout: 1,
+            rewrite_security_xattrs: true,
+            ascii_casefold: false,
+            writeback: false,
+            posix_acl: true,
+            negative_timeout: 1,
+            privileged_quota_uids: vec![0],
+            max_dynamic_perm: 2,
+            max_dynamic_xattr: 2,
+            ..Default::default()
+        });
+
+        // Prepare ugid_map field
+        request.uid_map = vec![IdMapItem {
+            in_id: 0,
+            out_id: 1000,
+            range: 1,
+            special_fields: protobuf::SpecialFields::new(),
+        }];
+        request.gid_map = vec![
+            IdMapItem {
+                in_id: 0,
+                out_id: 1001,
+                range: 1,
+                special_fields: protobuf::SpecialFields::new(),
+            },
+            IdMapItem {
+                in_id: 1000,
+                out_id: 656360,
+                range: 1,
+                special_fields: protobuf::SpecialFields::new(),
+            },
+        ];
+
+        // Convert DBus request to raw data
+        let mut request_vec = Vec::<u8>::new();
+        request
+            .write_to_vec(&mut request_vec)
+            .expect("failed to write request to vec");
+
+        let fs_args =
+            prepare_vhost_user_fs_args(request_vec, &fd).expect("failed to prepare fs args");
+
+        assert_eq!(
+            fs_args,
+            vec![
+                "device",
+                "fs",
+                format!("--fd={}", fd_raw).as_str(),
+                "--tag=stub",
+                "--shared-dir=/run/arcvm/media",
+                "--uid-map=0 1000 1",
+                "--gid-map=0 1001 1,1000 656360 1",
+                "--cfg=cache=auto,timeout=1,rewrite-security-xattrs=true,writeback=false,\
+                negative_timeout=1,ascii_casefold=false,posix_acl=true,max_dynamic_perm=2,\
+                max_dynamic_xattr=2,privileged_quota_uids=0",
+                "--uid=0",
+                "--gid=0",
+            ]
+        );
     }
 }
