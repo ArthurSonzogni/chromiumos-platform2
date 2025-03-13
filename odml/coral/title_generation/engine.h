@@ -69,6 +69,9 @@ class TitleGenerationEngine
   ~TitleGenerationEngine() override = default;
 
   // TitleGenerationEngineInterface overrides.
+  // TitleGenerationEngine only processes 1 PrepareResource/Process request,
+  // until it finishes. This is to simplify state management of the loaded
+  // models.
   void PrepareResource() override;
   void Process(mojom::GroupRequestPtr request,
                ClusteringResponse clustering_response,
@@ -84,13 +87,16 @@ class TitleGenerationEngine
 
  private:
   void EnsureTranslatorInitialized(base::OnceClosure callback);
-  void GetModelState(base::OnceClosure callback);
-  void OnGetModelStateResult(base::OnceClosure callback,
+  void GetModelState(const std::string& locale, base::OnceClosure callback);
+  void OnGetModelStateResult(const std::string& locale,
+                             base::OnceClosure callback,
                              on_device_model::mojom::PlatformModelState state);
-  void EnsureModelLoaded(base::OnceClosure callback);
-  void OnModelLoadResult(base::OnceClosure callback,
-                         odml::PerformanceTimer::Ptr timer,
-                         on_device_model::mojom::LoadModelResult result);
+  void EnsureModelLoaded(const std::string& locale, base::OnceClosure callback);
+  void OnModelLoadResult(
+      base::OnceClosure callback,
+      odml::PerformanceTimer::Ptr timer,
+      mojo::Remote<on_device_model::mojom::OnDeviceModel> original_model,
+      on_device_model::mojom::LoadModelResult result);
   void UnloadModel();
 
   struct GroupData {
@@ -189,13 +195,14 @@ class TitleGenerationEngine
   // because on device service only binds the model receiver when model loading
   // succeeds.
   mojo::Remote<on_device_model::mojom::OnDeviceModel> model_;
+  // The locale of the model we load. This is updated when model_ is
+  // bind/unbinded.
+  std::optional<std::string> model_locale_;
 
   // Callbacks that are queued and waiting for the previous request to
   // complete, and flag to indicate that a request is being processed.
   std::queue<base::OnceClosure> pending_callbacks_;
   bool is_processing_ = false;
-
-  base::WallClockTimer unload_model_timer_;
 
   // The `title_cache_` is designed to be a HashingLRUCache with `std::string
   // title` as key, and `std::vector<EntityPtr> entities` as value. We use the

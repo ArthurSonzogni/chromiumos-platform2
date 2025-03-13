@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/fixed_flat_map.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
@@ -44,8 +45,15 @@ using mojom::CoralError;
 using on_device_model::mojom::LoadModelResult;
 using on_device_model::mojom::Session;
 
-// Adaptation model for Coral.
-constexpr char kModelUuid[] = "fa9a157a-696d-48c5-9e46-efa048743587";
+// The English locale.
+constexpr char kEnglish[] = "en";
+
+constexpr auto kModelUuids =
+    base::MakeFixedFlatMap<std::string_view, std::string_view>(
+        {{kEnglish, "fa9a157a-696d-48c5-9e46-efa048743587"},
+         {"ja", "820d5cba-c79d-4d28-acb3-8e27c79551b6"},
+         {"fr", "aa5c96bc-7ec0-4494-a549-d3783658cd33"},
+         {"de", "29d50ca4-e1a4-4879-81dd-87e2ffd5de12"}});
 
 // Ensures cache hits when user triggers feature in turn from 2 desktops both
 // having 2 coral groups.
@@ -126,7 +134,7 @@ std::optional<std::string> GetTranslationSource(
        i++) {
     const on_device_model::LanguageDetector::TextLanguage& language =
         language_detection_result[i];
-    if (language.locale == "en" || language.locale == target_locale) {
+    if (language.locale == kEnglish || language.locale == target_locale) {
       return std::nullopt;
     }
   }
@@ -185,9 +193,12 @@ void TitleGenerationEngine::PrepareResource() {
   auto on_process_complete = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
       base::BindOnce(&TitleGenerationEngine::OnProcessCompleted,
                      weak_ptr_factory_.GetWeakPtr()));
+  // TODO(b/399282851): Get target locale of the model for PrepareResource from
+  // mojom.
+  std::string target_locale(kEnglish);
   EnsureTranslatorInitialized(base::BindOnce(
       &TitleGenerationEngine::GetModelState, weak_ptr_factory_.GetWeakPtr(),
-      std::move(on_process_complete)));
+      target_locale, std::move(on_process_complete)));
 }
 
 void TitleGenerationEngine::Process(
@@ -251,13 +262,21 @@ void TitleGenerationEngine::Process(
     return;
   }
   metrics_->SendTitleGenerationModelLoaded(model_.is_bound());
+  // Use English as a fallback if the specified language isn't supported. This
+  // shouldn't really happen though because client side should be using a same
+  // language allowlist as us.
+  std::string target_locale(kEnglish);
+  if (request->title_generation_options->language_code.has_value() &&
+      kModelUuids.contains(*request->title_generation_options->language_code)) {
+    target_locale = *request->title_generation_options->language_code;
+  }
   base::OnceClosure do_process = base::BindOnce(
       &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
       std::move(request), std::move(observer), std::move(groups),
       std::move(on_complete));
-  EnsureTranslatorInitialized(
-      base::BindOnce(&TitleGenerationEngine::EnsureModelLoaded,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(do_process)));
+  EnsureTranslatorInitialized(base::BindOnce(
+      &TitleGenerationEngine::EnsureModelLoaded, weak_ptr_factory_.GetWeakPtr(),
+      target_locale, std::move(do_process)));
 }
 
 void TitleGenerationEngine::OnUserLoggedIn(
@@ -284,6 +303,7 @@ void TitleGenerationEngine::OnUserLoggedOut() {
 }
 
 void TitleGenerationEngine::OnGetModelStateResult(
+    const std::string& locale,
     base::OnceClosure callback,
     on_device_model::mojom::PlatformModelState state) {
   // If it's not already installed on disk, we load the model to ensure it's
@@ -291,7 +311,7 @@ void TitleGenerationEngine::OnGetModelStateResult(
   // only install the model.
   if (state != on_device_model::mojom::PlatformModelState::kInstalledOnDisk) {
     LOG(ERROR) << "Model state: " << static_cast<int>(state);
-    EnsureModelLoaded(std::move(callback));
+    EnsureModelLoaded(locale, std::move(callback));
     return;
   }
   // Else, the model should be installed on disk.
@@ -311,34 +331,49 @@ void TitleGenerationEngine::EnsureTranslatorInitialized(
                           }).Then(std::move(callback)));
 }
 
-void TitleGenerationEngine::GetModelState(base::OnceClosure callback) {
+void TitleGenerationEngine::GetModelState(const std::string& locale,
+                                          base::OnceClosure callback) {
+  std::string_view model_uuid = kModelUuids.at(locale);
   on_device_model_service_->GetPlatformModelState(
-      base::Uuid::ParseLowercase(kModelUuid),
+      base::Uuid::ParseLowercase(model_uuid),
       base::BindOnce(&TitleGenerationEngine::OnGetModelStateResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+                     weak_ptr_factory_.GetWeakPtr(), locale,
+                     std::move(callback)));
 }
 
-void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
-  if (model_) {
+void TitleGenerationEngine::EnsureModelLoaded(const std::string& locale,
+                                              base::OnceClosure callback) {
+  if (model_ && model_locale_ == locale) {
     std::move(callback).Run();
     return;
   }
+
+  // We want to keep original_model alive until the new model is loaded. This is
+  // to prevent reloading the base model.
+  mojo::Remote<on_device_model::mojom::OnDeviceModel> original_model =
+      std::move(model_);
+  model_locale_ = locale;
+  std::string_view model_uuid = kModelUuids.at(locale);
   auto timer = odml::PerformanceTimer::Create();
   on_device_model_service_->LoadPlatformModel(
-      base::Uuid::ParseLowercase(kModelUuid),
+      base::Uuid::ParseLowercase(model_uuid),
       model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
       base::BindOnce(&TitleGenerationEngine::OnModelLoadResult,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     std::move(timer)));
+                     std::move(timer), std::move(original_model)));
 }
 
-void TitleGenerationEngine::OnModelLoadResult(base::OnceClosure callback,
-                                              odml::PerformanceTimer::Ptr timer,
-                                              LoadModelResult result) {
+void TitleGenerationEngine::OnModelLoadResult(
+    base::OnceClosure callback,
+    odml::PerformanceTimer::Ptr timer,
+    mojo::Remote<on_device_model::mojom::OnDeviceModel> original_model,
+    LoadModelResult result) {
+  original_model.reset();
   if (result != LoadModelResult::kSuccess) {
     // Unbind the model because when load model fails we shouldn't be using
     // the model.
     model_.reset();
+    model_locale_.reset();
     LOG(ERROR) << "Load model failed with result: " << static_cast<int>(result);
   } else {
     // Only report model load latency on success.
@@ -349,6 +384,7 @@ void TitleGenerationEngine::OnModelLoadResult(base::OnceClosure callback,
 
 void TitleGenerationEngine::UnloadModel() {
   model_.reset();
+  model_locale_.reset();
 }
 
 void TitleGenerationEngine::ReplyGroupsWithoutTitles(
@@ -463,6 +499,7 @@ void TitleGenerationEngine::EntitiesToMaybeTranslatedTitles(
     ProcessParams params,
     odml::PerformanceTimer::Ptr timer,
     std::vector<std::string> titles) {
+  CHECK(model_locale_.has_value());
   // Cap max entities we put in the prompt to 10, as the model only supports up
   // to 10. This allows us to have more than 10 entities in a group, but still
   // generate title with only the first 10 entities.
@@ -475,8 +512,9 @@ void TitleGenerationEngine::EntitiesToMaybeTranslatedTitles(
       std::min(params.groups[index].entities.size(), kMaxEntitiesInPrompt)) {
     base::flat_map<std::string, std::string> fields{
         {"prompt", TitlesToPrompt(titles)}};
+    std::string_view model_uuid = kModelUuids.at(*model_locale_);
     on_device_model_service_->FormatInput(
-        base::Uuid::ParseLowercase(kModelUuid),
+        base::Uuid::ParseLowercase(model_uuid),
         on_device_model::mojom::FormatFeature::kPrompt, fields,
         base::BindOnce(&TitleGenerationEngine::OnFormatInputResponse,
                        weak_ptr_factory_.GetWeakPtr(), std::move(params),
@@ -486,18 +524,16 @@ void TitleGenerationEngine::EntitiesToMaybeTranslatedTitles(
 
   const EntityWithMetadata& entity =
       params.groups[index].entities[entity_index];
-  // TODO(b/399282851): Support other locales.
-  std::string target_locale("en");
 
   std::optional<std::string> translation_source =
-      GetTranslationSource(entity.language_result, target_locale);
+      GetTranslationSource(entity.language_result, *model_locale_);
   if (!translation_source.has_value()) {
     titles.push_back(GetTitle(entity.entity));
     EntitiesToMaybeTranslatedTitles(std::move(params), std::move(timer),
                                     std::move(titles));
     return;
   }
-  i18n::LangPair lang_pair{*translation_source, "en"};
+  i18n::LangPair lang_pair{*translation_source, kEnglish};
   translator_->Translate(
       lang_pair, GetTitle(entity.entity),
       base::BindOnce(&TitleGenerationEngine::OnTranslateResult,

@@ -52,6 +52,7 @@ constexpr const char kInput[] = "input";
 constexpr const char kSuppressionContext[] = "suppression_context";
 constexpr const char kOutputFile[] = "output_file";
 constexpr const char kSkipSafetyCheck[] = "skip_safety_check";
+constexpr const char kLocale[] = "locale";
 constexpr int kMinItemsInGroup = 4;
 constexpr int kMaxItemsInGroup = 25;
 constexpr int kMaxGroupsToGenerate = 2;
@@ -218,6 +219,10 @@ int main(int argc, char** argv) {
   group_request->clustering_options->max_clusters = kMaxGroupsToGenerate;
   group_request->title_generation_options =
       coral::mojom::TitleGenerationOptions::New();
+  if (cl->HasSwitch(kLocale)) {
+    group_request->title_generation_options->language_code =
+        cl->GetSwitchValueASCII(kLocale);
+  }
 
   CHECK(cl->HasSwitch(kInput));
   group_request->entities =

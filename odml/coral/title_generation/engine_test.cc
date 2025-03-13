@@ -717,7 +717,68 @@ TEST_F(TitleGenerationEngineTest, Translation) {
   CoralResult<TitleGenerationResponse> result = title_future.Take();
   ASSERT_TRUE(result.has_value());
   TitleGenerationResponse response = std::move(*result);
-  auto fake_response = GetFakeTitleGenerationResponse();
+  ASSERT_EQ(response.groups.size(), 1);
+  EXPECT_FALSE(response.groups[0]->title->empty());
+}
+
+TEST_F(TitleGenerationEngineTest, NonEnglishModel) {
+  constexpr char kEnglishTitle[] = "English";
+  constexpr char kJapaneseTitle[] = "Japanese";
+  constexpr char kGermanTitle[] = "GERMAN_TITLE";
+  constexpr char kTranslatedGermanTitle[] = "Translated German";
+
+  ExpectSendStatus(true);
+  ExpectSendLatency(1);
+  base::RunLoop run_loop;
+  auto request = GetFakeGroupRequest();
+  request->title_generation_options->language_code = "ja";
+  ClusteringResponse clustering_response;
+  Cluster cluster;
+  cluster.entities.push_back(EntityWithMetadata{
+      .entity = mojom::Entity::NewTab(
+          mojom::Tab::New(kJapaneseTitle, url::mojom::Url::New("abc1.com"))),
+      {on_device_model::LanguageDetector::TextLanguage{.locale = "ja",
+                                                       .confidence = 1.0}}});
+  cluster.entities.push_back(EntityWithMetadata{
+      .entity = mojom::Entity::NewTab(
+          mojom::Tab::New(kEnglishTitle, url::mojom::Url::New("abc2.com"))),
+      {on_device_model::LanguageDetector::TextLanguage{.locale = "en",
+                                                       .confidence = 1.0}}});
+  cluster.entities.push_back(EntityWithMetadata{
+      .entity = mojom::Entity::NewTab(
+          mojom::Tab::New(kGermanTitle, url::mojom::Url::New("abc3.com"))),
+      {on_device_model::LanguageDetector::TextLanguage{.locale = "de",
+                                                       .confidence = 1.0}}});
+  clustering_response.clusters.push_back(std::move(cluster));
+
+  EXPECT_CALL(translator_,
+              Translate(i18n::LangPair{"de", "en"}, kGermanTitle, _))
+      .WillOnce([kTranslatedGermanTitle](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(kTranslatedGermanTitle);
+      });
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("FormatInput"))
+      .WillOnce(Return(reinterpret_cast<void*>(FormatInputSignature(
+          [](const std::string& uuid, Feature feature,
+             const std::unordered_map<std::string, std::string>& fields)
+              -> std::optional<std::string> {
+            auto it = fields.find("prompt");
+            if (it == fields.end()) {
+              return std::nullopt;
+            }
+            EXPECT_THAT(it->second, HasSubstr("English"));
+            EXPECT_THAT(it->second, HasSubstr("Japanese"));
+            EXPECT_THAT(it->second, HasSubstr("Translated German"));
+            EXPECT_THAT(it->second, Not(HasSubstr("GERMAN_TITLE")));
+            // Do nothing to the input string.
+            return it->second;
+          }))));
+
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future;
+  engine_->Process(std::move(request), std::move(clustering_response),
+                   mojo::NullRemote(), title_future.GetCallback());
+  CoralResult<TitleGenerationResponse> result = title_future.Take();
+  ASSERT_TRUE(result.has_value());
+  TitleGenerationResponse response = std::move(*result);
   ASSERT_EQ(response.groups.size(), 1);
   EXPECT_FALSE(response.groups[0]->title->empty());
 }
