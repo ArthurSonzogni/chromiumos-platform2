@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -49,12 +50,13 @@ const int kMagicDevSize = -1;
 
 template <typename Arg>
 base::FilePath JoinPaths(Arg&& path) {
-  return base::FilePath(path);
+  return base::FilePath(std::forward<Arg>(path));
 }
 
 template <typename Arg, typename... Args>
 base::FilePath JoinPaths(Arg&& path, Args&&... paths) {
-  return base::FilePath(path).Append(JoinPaths(paths...));
+  return base::FilePath(std::forward<Arg>(path))
+      .Append(JoinPaths(std::forward<Args>(paths)...));
 }
 
 // Splits the partition device name into the block device name and partition
