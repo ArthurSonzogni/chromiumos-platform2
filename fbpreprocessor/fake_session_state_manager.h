@@ -8,6 +8,7 @@
 #include <base/observer_list.h>
 
 #include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/platform_features_client.h"
 #include "fbpreprocessor/session_state_manager.h"
 
 namespace fbpreprocessor {
@@ -15,13 +16,17 @@ namespace fbpreprocessor {
 // This class simulates the behavior of the daemon |SessionStateManager| object
 // without system dependencies like D-Bus. That makes it easier to write unit
 // tests.
-class FakeSessionStateManager : public SessionStateManagerInterface {
+class FakeSessionStateManager
+    : public SessionStateManagerInterface,
+      public PlatformFeaturesClientInterface::Observer {
  public:
   explicit FakeSessionStateManager(Manager* manager);
   ~FakeSessionStateManager() override = default;
 
-  void AddObserver(Observer* observer) override;
-  void RemoveObserver(Observer* observer) override;
+  void AddObserver(SessionStateManagerInterface::Observer* observer) override;
+  void RemoveObserver(
+      SessionStateManagerInterface::Observer* observer) override;
+  void OnFeatureChanged(bool allowed) override{};
 
   // The "real" daemon receives D-Bus signals when the user logs in. Since we
   // don't have D-Bus in unit tests, call this function instead to simulate what
@@ -38,7 +43,8 @@ class FakeSessionStateManager : public SessionStateManagerInterface {
   Manager* manager_;
 
   // List of SessionStateManager observers
-  base::ObserverList<Observer>::Unchecked observers_;
+  base::ObserverList<SessionStateManagerInterface::Observer>::Unchecked
+      observers_;
 };
 
 }  // namespace fbpreprocessor

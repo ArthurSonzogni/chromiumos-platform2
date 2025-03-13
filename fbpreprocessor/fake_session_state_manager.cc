@@ -12,10 +12,12 @@ namespace fbpreprocessor {
 FakeSessionStateManager::FakeSessionStateManager(Manager* manager)
     : manager_(manager) {}
 
-void FakeSessionStateManager::AddObserver(Observer* observer) {
+void FakeSessionStateManager::AddObserver(
+    SessionStateManagerInterface::Observer* observer) {
   observers_.AddObserver(observer);
 }
-void FakeSessionStateManager::RemoveObserver(Observer* observer) {
+void FakeSessionStateManager::RemoveObserver(
+    SessionStateManagerInterface::Observer* observer) {
   observers_.RemoveObserver(observer);
 }
 

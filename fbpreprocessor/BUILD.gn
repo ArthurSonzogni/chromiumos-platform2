@@ -106,7 +106,11 @@ install_config("install_dbus_config") {
 
 if (use.test) {
   pkg_config("libchrome_test_config") {
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libchrome-test",
+      "libdebugd-client-test",
+      "libsession_manager-client-test",
+    ]
   }
   executable("fbpreprocessord_test_runner") {
     sources = [
@@ -119,6 +123,7 @@ if (use.test) {
       "output_manager_test.cc",
       "platform_features_client_test.cc",
       "pseudonymization_manager_test.cc",
+      "session_state_manager_test.cc",
     ]
     configs += [
       "//common-mk:test",
