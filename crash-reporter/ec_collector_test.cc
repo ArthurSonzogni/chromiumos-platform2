@@ -5,6 +5,7 @@
 #include "crash-reporter/ec_collector.h"
 
 #include <memory>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -40,6 +41,10 @@ class ECCollectorMock : public ECCollector {
                 base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
                 std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
+  MOCK_METHOD(int,
+              RunEctoolCmd,
+              (const std::vector<std::string>&, std::string*),
+              (override));
 };
 
 class ECCollectorTest : public ::testing::Test {
@@ -142,6 +147,151 @@ TEST_F(ECCollectorTest, ComputeSeverity) {
             CrashCollector::CrashSeverity::kFatal);
   EXPECT_EQ(computed_severity.product_group,
             CrashCollector::Product::kPlatform);
+}
+
+TEST_F(ECCollectorTest, PanicLogValid) {
+  std::string panic_log_dump = __func__;
+  std::string pnaic_log_info_output = std::format(
+      "valid: 1\n"
+      "frozen: 1\n"
+      "length: {}\n",
+      panic_log_dump.length());
+
+  EXPECT_CALL(
+      collector_,
+      RunEctoolCmd(std::vector<std::string>{"paniclog", "info"}, testing::_))
+      .WillOnce(testing::DoAll(testing::SetArgPointee<1>(pnaic_log_info_output),
+                               testing::Return(0)));
+
+  EXPECT_CALL(
+      collector_,
+      RunEctoolCmd(std::vector<std::string>{"paniclog", "dump"}, testing::_))
+      .WillOnce(testing::DoAll(testing::SetArgPointee<1>(panic_log_dump),
+                               testing::Return(0)));
+
+  EXPECT_CALL(
+      collector_,
+      RunEctoolCmd(std::vector<std::string>{"paniclog", "reset"}, testing::_))
+      .WillOnce(testing::Return(0));
+
+  EXPECT_CALL(collector_,
+              RunEctoolCmd(std::vector<std::string>{"paniclog", "unfreeze"},
+                           testing::_))
+      .WillOnce(testing::Return(0));
+
+  PreparePanicInfo(true, false);
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      temp_dir_generator_.GetPath(), "embedded_controller.*.meta",
+      "upload_file_panic_log="));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      temp_dir_generator_.GetPath(), "embedded_controller.*.panic.log",
+      panic_log_dump));
+}
+
+TEST_F(ECCollectorTest, PanicLogInvalid) {
+  std::string panic_log_dump = __func__;
+  std::string pnaic_log_info_output = std::format(
+      "valid: 0\n"
+      "frozen: 1\n"
+      "length: {}\n",
+      panic_log_dump.length());
+
+  EXPECT_CALL(
+      collector_,
+      RunEctoolCmd(std::vector<std::string>{"paniclog", "info"}, testing::_))
+      .WillOnce(testing::DoAll(testing::SetArgPointee<1>(pnaic_log_info_output),
+                               testing::Return(0)));
+
+  EXPECT_CALL(
+      collector_,
+      RunEctoolCmd(std::vector<std::string>{"paniclog", "reset"}, testing::_))
+      .WillOnce(testing::Return(0));
+
+  EXPECT_CALL(collector_,
+              RunEctoolCmd(std::vector<std::string>{"paniclog", "unfreeze"},
+                           testing::_))
+      .WillOnce(testing::Return(0));
+
+  PreparePanicInfo(true, false);
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
+  ASSERT_TRUE(FindLog("not valid"));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      temp_dir_generator_.GetPath(), "embedded_controller.*.panic.log",
+      nullptr));
+}
+
+TEST_F(ECCollectorTest, PanicLogNotSupported) {
+  EXPECT_CALL(collector_, RunEctoolCmd(testing::_, testing::_))
+      .WillOnce(testing::Return(1));
+
+  EXPECT_CALL(
+      collector_,
+      RunEctoolCmd(std::vector<std::string>{"paniclog", "reset"}, testing::_))
+      .Times(testing::Exactly(0));
+
+  EXPECT_CALL(collector_,
+              RunEctoolCmd(std::vector<std::string>{"paniclog", "unfreeze"},
+                           testing::_))
+      .Times(testing::Exactly(0));
+
+  PreparePanicInfo(true, false);
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
+  ASSERT_TRUE(FindLog("not supported"));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      temp_dir_generator_.GetPath(), "embedded_controller.*.panic.log",
+      nullptr));
+}
+
+TEST_F(ECCollectorTest, PanicLogEmpty) {
+  std::string panic_log_dump = __func__;
+  std::string pnaic_log_info_output = std::format(
+      "valid: 0\n"
+      "frozen: 1\n"
+      "length: {}\n",
+      panic_log_dump.length());
+
+  EXPECT_CALL(
+      collector_,
+      RunEctoolCmd(std::vector<std::string>{"paniclog", "info"}, testing::_))
+      .WillOnce(testing::DoAll(testing::Return(0)));
+
+  PreparePanicInfo(true, false);
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
+  ASSERT_TRUE(FindLog("empty"));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      temp_dir_generator_.GetPath(), "embedded_controller.*.panic.log",
+      nullptr));
+}
+
+TEST_F(ECCollectorTest, PanicLogNotAvailable) {
+  std::string pnaic_log_info_output = std::format(
+      "valid: 1\n"
+      "frozen: 0\n"
+      "length: 0\n");
+
+  EXPECT_CALL(
+      collector_,
+      RunEctoolCmd(std::vector<std::string>{"paniclog", "info"}, testing::_))
+      .WillOnce(testing::DoAll(testing::SetArgPointee<1>(pnaic_log_info_output),
+                               testing::Return(0)));
+
+  EXPECT_CALL(
+      collector_,
+      RunEctoolCmd(std::vector<std::string>{"paniclog", "reset"}, testing::_))
+      .Times(testing::Exactly(0));
+
+  EXPECT_CALL(collector_,
+              RunEctoolCmd(std::vector<std::string>{"paniclog", "unfreeze"},
+                           testing::_))
+      .Times(testing::Exactly(0));
+
+  PreparePanicInfo(true, false);
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
+  ASSERT_TRUE(FindLog("not available"));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      temp_dir_generator_.GetPath(), "embedded_controller.*.panic.log",
+      nullptr));
 }
 
 class ECCollectorSavedLsbTest : public ECCollectorTest,

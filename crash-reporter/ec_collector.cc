@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/base64.h>
 #include <base/files/file_util.h>
@@ -17,6 +18,7 @@
 #include <libec/ec_command.h>
 #include <libec/ec_panicinfo.h>
 #include <metrics/metrics_library.h>
+#include <re2/re2.h>
 
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
@@ -103,6 +105,8 @@ bool ECCollector::Collect(bool use_saved_lsb) {
       StringPrintf("%s.log", dump_basename.c_str()));
   FilePath coredump_gz_path = root_crash_directory.Append(
       StringPrintf("%s.coredump.gz", dump_basename.c_str()));
+  FilePath panic_log_path = root_crash_directory.Append(
+      StringPrintf("%s.panic.log", dump_basename.c_str()));
 
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
@@ -146,6 +150,18 @@ bool ECCollector::Collect(bool use_saved_lsb) {
     }
   }
 
+  // Fetch EC panic log and append to report if it exists
+  std::string panic_log_dump;
+  if (FetchEcPanicLog(panic_log_dump)) {
+    if (WriteNewFile(panic_log_path, panic_log_dump)) {
+      LOG(INFO) << "EC panic log written to " << panic_log_path.value();
+      AddCrashMetaUploadFile("panic_log", panic_log_path.BaseName().value());
+    } else {
+      LOG(ERROR) << "Failed to write EC panic log to "
+                 << panic_log_path.value().c_str();
+    }
+  }
+
   std::string signature = StringPrintf(
       "%s-%08X", kECExecName,
       util::HashString(std::string_view(panicinfo_data, panicinfo_len)));
@@ -170,4 +186,77 @@ CrashCollector::ComputedCrashSeverity ECCollector::ComputeSeverity(
       .crash_severity = CrashSeverity::kFatal,
       .product_group = Product::kPlatform,
   };
+}
+
+int ECCollector::RunEctoolCmd(const std::vector<std::string>& args,
+                              std::string* output) {
+  ProcessImpl ectool_cmd;
+  std::string null_output;
+
+  ectool_cmd.AddArg("/usr/sbin/ectool");
+  for (std::string arg : args) {
+    ectool_cmd.AddArg(arg);
+  }
+  if (output == nullptr) {
+    output = &null_output;
+  }
+  return util::RunAndCaptureOutput(&ectool_cmd, STDOUT_FILENO, output);
+}
+
+bool ECCollector::FetchEcPanicLog(std::string& panic_log_dump) {
+  bool success = false;
+  std::string panic_log_info_output;
+  std::string panic_log_length_str;
+  int panic_log_length;
+
+  LOG(INFO) << "Fetching EC panic log";
+
+  if (RunEctoolCmd({"paniclog", "info"}, &panic_log_info_output) != 0) {
+    LOG(INFO) << "EC Panic Log is not supported";
+    return false;
+  }
+
+  if (!RE2::PartialMatch(panic_log_info_output, "(?im)^Frozen:\\s*1$")) {
+    LOG(INFO) << "EC Panic Log is not available";
+    return false;
+  }
+
+  if (!RE2::PartialMatch(panic_log_info_output, "(?im)^Valid:\\s*1$")) {
+    LOG(INFO) << "EC Panic Log is not valid";
+    goto reset_panic_log;
+  }
+
+  if (!RE2::PartialMatch(panic_log_info_output, "(?im)^Length:\\s*(\\d+)$",
+                         &panic_log_length_str)) {
+    LOG(ERROR) << "Failed to parse EC panic log length";
+    goto reset_panic_log;
+  }
+  panic_log_length = std::stoi(panic_log_length_str);
+  if (!panic_log_length) {
+    LOG(INFO) << "EC Panic Log is empty";
+    goto reset_panic_log;
+  }
+
+  LOG(INFO) << "Dumping EC panic log";
+  if (RunEctoolCmd({"paniclog", "dump"}, &panic_log_dump) != 0) {
+    LOG(ERROR) << "Failed to dump EC panic log";
+    goto reset_panic_log;
+  }
+  success = true;
+
+reset_panic_log:
+
+  /* Panic log should be reset after dumping or when invalid */
+
+  LOG(INFO) << "Resetting EC panic log";
+
+  if (RunEctoolCmd({"paniclog", "reset"}, nullptr) != 0) {
+    LOG(INFO) << "Failed to reset EC panic log";
+  }
+
+  if (RunEctoolCmd({"paniclog", "unfreeze"}, nullptr) != 0) {
+    LOG(INFO) << "Failed to unfreeze EC panic log";
+  }
+
+  return success;
 }

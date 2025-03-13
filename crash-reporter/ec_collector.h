@@ -13,6 +13,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
@@ -53,6 +54,15 @@ class ECCollector : public CrashCollector {
 
   base::FilePath debugfs_path_;
   base::FilePath libfs_path_;
+
+  // Fetch panic log from  EC.
+  // Returns a string dump of the panic if available, nullopt otherwise.
+  virtual bool FetchEcPanicLog(std::string& panic_log_dump);
+
+  // Run an ectool command and capture the output.
+  // Returns the return code. Output contains stdout.
+  virtual int RunEctoolCmd(const std::vector<std::string>& args,
+                           std::string* output);
 };
 
 #endif  // CRASH_REPORTER_EC_COLLECTOR_H_
