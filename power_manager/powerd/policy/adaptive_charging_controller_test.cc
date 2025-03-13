@@ -1125,6 +1125,7 @@ TEST_F(AdaptiveChargingControllerTest, TestHeuristicDisabledOnRatio) {
   // heuristic check.
   ConnectCharger();
   PowerManagementPolicy policy;
+  policy.set_adaptive_charging_enabled(true);
   policy.set_adaptive_charging_min_full_on_ac_ratio(0.7);
   adaptive_charging_controller_.HandlePolicyChange(policy);
 
@@ -1616,6 +1617,22 @@ TEST_F(AdaptiveChargingControllerTest, ChargeLimitEnabledViaPolicy) {
   EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
 }
 
+// Test that Adaptive Charging and Charge Limit can be disabled via policy.
+TEST_F(AdaptiveChargingControllerTest, DisableChargingOptimizationViaPolicy) {
+  Init();
+
+  PowerManagementPolicy policy;
+  policy.set_adaptive_charging_enabled(false);
+  policy.set_charge_limit_enabled(false);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+
+  // Adaptive Charging is always disabled when Charge Limit is enabled.
+  EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+            metrics::AdaptiveChargingState::USER_DISABLED);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+}
+
 // Test that enabling both Adaptive Charging and Charge Limit enables just
 // Charge Limit, since the features cannot both be enabled.
 TEST_F(AdaptiveChargingControllerTest, ChargeLimitExcludesAdaptiveCharging) {
@@ -1628,6 +1645,16 @@ TEST_F(AdaptiveChargingControllerTest, ChargeLimitExcludesAdaptiveCharging) {
   adaptive_charging_controller_.HandlePolicyChange(policy);
   base::RunLoop().RunUntilIdle();
 
+  EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+            metrics::AdaptiveChargingState::USER_DISABLED);
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+
+  // Setting adaptive charging enabled again with charge limit enabled
+  // previously Adaptive Charging is still disabled and charge limit is still
+  // enabled.
+  policy.set_adaptive_charging_enabled(true);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
   EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
             metrics::AdaptiveChargingState::USER_DISABLED);
   EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);

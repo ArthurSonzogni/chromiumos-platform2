@@ -20,7 +20,6 @@
 #include <featured/feature_library.h>
 
 #include "ml/proto_bindings/ranker_example.pb.h"
-
 #include "power_manager/common/clock.h"
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
@@ -550,13 +549,14 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // false otherwise.
   bool SetSlowCharging(uint32_t limit_mA);
 
-  // Initiates Adaptive Charging logic, which fetches predictions from the
-  // Adaptive Charging ml-service, and delays charging if
-  // `adaptive_charging_enabled_` is true. Should not be called a second time if
-  // Adaptive Charging is already started.
-  // Returns true if Adaptive Charging is started.
-  // Battery full is one reason this will return false.
-  bool StartAdaptiveCharging(const UserChargingEvent::Event::Reason& reason);
+  // Determines the adaptive charging state based on user settings, platform
+  // support, and charge history. Adaptive charging will not be activated if the
+  // battery is full or near full. It also manages slow charging settings and
+  // logs state changes. If adaptive charging is enabled and conditions are
+  // favorable, this method calls UpdateAdaptiveCharging to initiate the
+  // charging logic using ml-service predictions.
+  void UpdateAdaptiveChargingState(
+      const UserChargingEvent::Event::Reason& reason);
 
   // Starts the prediction evaluation. Logic is finished via the
   // `OnPredictionResponse` callback.
@@ -586,8 +586,8 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   void StartChargeLimit();
 
   // Stops Adaptive Charging from delaying charge anymore. The `recheck_alarm_`
-  // and `charge_alarm_` will no longer run unless `StartAdaptiveCharging` is
-  // called. When slow charging is enabled, the battery charge current limit
+  // and `charge_alarm_` will no longer run unless `UpdateAdaptiveChargingState`
+  // is called. When slow charging is enabled, the battery charge current limit
   // will also be reset so if the battery is not fully charged yet, it will now
   // be charged as quickly as possible.
   void StopAdaptiveCharging();

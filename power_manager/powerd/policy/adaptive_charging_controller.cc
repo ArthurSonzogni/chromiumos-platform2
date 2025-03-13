@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/policy/adaptive_charging_controller.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -23,7 +25,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/policy/adaptive_charging_controller.h"
 
 namespace power_manager::policy {
 
@@ -919,12 +920,12 @@ void AdaptiveChargingController::Init(
   LOG(INFO) << "Adaptive Charging is "
             << (adaptive_charging_supported_ ? "supported" : "not supported")
             << " and " << (adaptive_charging_enabled_ ? "enabled" : "disabled")
-            << ". Battery sustain range: ("
+            << " at Init. Battery sustain range: ("
             << hold_percent_ - hold_delta_percent_ << ", " << hold_percent_
             << "), Minimum ML probability value: " << min_probability_;
 
   LOG(INFO) << "Charge Limit is "
-            << (charge_limit_enabled_ ? "enabled" : "disabled");
+            << (charge_limit_enabled_ ? "enabled" : "disabled") << " at Init";
   if (charge_limit_enabled_) {
     // Start Charge Limit via a call to `PostTask`, since the
     // `policy::Suspender` class, which Charge Limit relies on to delay suspend,
@@ -939,10 +940,31 @@ void AdaptiveChargingController::Init(
 
 void AdaptiveChargingController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {
+  // Returns early if the policy does not contain any settings related to
+  // adaptive charging or charge limiting.
+  if (!policy.has_adaptive_charging_enabled() &&
+      !policy.has_adaptive_charging_min_probability() &&
+      !policy.has_adaptive_charging_max_delay_percentile() &&
+      !policy.has_adaptive_charging_hold_percent() &&
+      !policy.has_adaptive_charging_min_days_history() &&
+      !policy.has_adaptive_charging_min_full_on_ac_ratio() &&
+      !policy.has_charge_limit_enabled()) {
+    return;
+  }
   if (state_ == AdaptiveChargingState::SHUTDOWN) {
     return;
   }
 
+  // 1. Capture new policy values.
+  bool new_adaptive_charging_enabled = policy.has_adaptive_charging_enabled()
+                                           ? policy.adaptive_charging_enabled()
+                                           : adaptive_charging_enabled_;
+
+  bool new_charge_limit_enabled = policy.has_charge_limit_enabled()
+                                      ? policy.charge_limit_enabled()
+                                      : charge_limit_enabled_;
+
+  // 2. Checking if adaptive charging configuration has changed.
   bool restart_adaptive = false;
   if (policy.has_adaptive_charging_hold_percent() &&
       policy.adaptive_charging_hold_percent() != hold_percent_) {
@@ -976,67 +998,64 @@ void AdaptiveChargingController::HandlePolicyChange(
     restart_adaptive = IsRunning();
   }
 
-  if (policy.has_adaptive_charging_enabled() &&
-      policy.adaptive_charging_enabled() != adaptive_charging_enabled_) {
-    if (adaptive_charging_supported_) {
-      adaptive_charging_enabled_ = policy.adaptive_charging_enabled();
-      restart_adaptive = true;
-
-      if (!adaptive_charging_enabled_) {
-        LOG(INFO) << "Policy update disabling Adaptive Charging";
-        state_ = AdaptiveChargingState::USER_DISABLED;
-      } else {
-        LOG(INFO) << "Policy update enabling Adaptive Charging";
-      }
-    } else {
+  // 3. Check for platform support *after* updating the enabled flags
+  if (!adaptive_charging_supported_) {
+    if (new_adaptive_charging_enabled) {
       LOG(ERROR) << "Policy Change attempted to enable Adaptive Charging "
                  << "without platform support.";
+      new_adaptive_charging_enabled = false;
     }
-  }
-
-  if (policy.has_charge_limit_enabled() &&
-      policy.charge_limit_enabled() != charge_limit_enabled_) {
-    // Adaptive Charging and Charge Limit have the same platform feature
-    // requirements (battery sustainer), so check if Adaptive Charging is
-    // supported.
-    if (adaptive_charging_supported_) {
-      charge_limit_enabled_ = policy.charge_limit_enabled();
-      if (charge_limit_enabled_) {
-        // Call `StartChargeLimit` after Adaptive Charging is stopped.
-        LOG(INFO) << "Policy update enabling Charge Limit";
-      } else {
-        LOG(INFO) << "Policy update disabling Charge Limit";
-        StopChargeLimit();
-      }
-    } else {
+    if (new_charge_limit_enabled) {
       LOG(ERROR) << "Policy Change attempted to enable Charge Limit without "
                  << "platform support.";
+      new_charge_limit_enabled = false;
+    }
+    // Set state to NOT_SUPPORTED if either adaptive charging or charge limit
+    // is enabled but not supported.
+    if (adaptive_charging_enabled_ || charge_limit_enabled_) {
+      state_ = AdaptiveChargingState::NOT_SUPPORTED;
     }
   }
 
-  if (adaptive_charging_enabled_ && charge_limit_enabled_) {
-    LOG(ERROR) << "Policy update enabled both Adaptive Charging and Charge "
-               << "Limit, which are mutually exclusive features. Disabling "
-               << "Adaptive Charging in favor of Charge Limit.";
-    adaptive_charging_enabled_ = false;
-    state_ = AdaptiveChargingState::USER_DISABLED;
-    // Restart Adaptive Charging to handle bookkeeping for our metrics, even
-    // though it will just be disabled.
+  // 4. Handle mutual exclusivity after checking for platform support and
+  // before enforcing policy update.
+  if (new_charge_limit_enabled && new_adaptive_charging_enabled) {
+    LOG(ERROR) << "Policy update attempted to enable both Adaptive Charging "
+               << "and Charge Limit, which are mutually exclusive features. "
+               << "Disabling Adaptive Charging in favor of Charge Limit.";
+    new_adaptive_charging_enabled = false;
+    // Set restart_adaptive to true to restart adaptive charging logic
+    // evaluation. This is for handling bookkeeping for our metrics, even though
+    // adaptive charging will just be disabled.
     restart_adaptive = true;
   }
 
-  if (!restart_adaptive) {
-    return;
+  if (adaptive_charging_enabled_ != new_adaptive_charging_enabled) {
+    restart_adaptive = true;
   }
+  // 5. Apply the new states and handle restarts.
+  adaptive_charging_enabled_ = new_adaptive_charging_enabled;
+  charge_limit_enabled_ = new_charge_limit_enabled;
 
-  // Stop adaptive charging, then restart it with the new values.
-  StopAdaptiveCharging();
-  StartAdaptiveCharging(UserChargingEvent::Event::PERIODIC_LOG);
-
-  // If Charge Limit is enabled, we need to make sure it's enabled after
-  // the battery sustainer is disabled in StopAdaptiveCharging.
   if (charge_limit_enabled_) {
+    LOG(INFO) << "Policy update to enable Charge Limit";
+    StopAdaptiveCharging();
+    UpdateAdaptiveChargingState(UserChargingEvent::Event::PERIODIC_LOG);
     StartChargeLimit();
+  } else if (adaptive_charging_enabled_) {
+    LOG(INFO) << "Policy update to enable Aaptive Charging";
+    StopChargeLimit();
+    if (restart_adaptive) {
+      LOG(INFO) << "Policy update to change Aaptive Charging config";
+      StopAdaptiveCharging();
+      UpdateAdaptiveChargingState(UserChargingEvent::Event::PERIODIC_LOG);
+    }
+  } else {
+    LOG(INFO)
+        << "Policy update to disable both Adaptive Charging and Charge Limit";
+    StopAdaptiveCharging();
+    UpdateAdaptiveChargingState(UserChargingEvent::Event::PERIODIC_LOG);
+    StopChargeLimit();
   }
 }
 
@@ -1270,7 +1289,7 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
 
   if (status.external_power != last_external_power) {
     if (status.external_power == PowerSupplyProperties_ExternalPower_AC) {
-      StartAdaptiveCharging(UserChargingEvent::Event::CHARGER_PLUGGED_IN);
+      UpdateAdaptiveChargingState(UserChargingEvent::Event::CHARGER_PLUGGED_IN);
     } else if (last_external_power == PowerSupplyProperties_ExternalPower_AC) {
       StopAdaptiveCharging();
 
@@ -1411,12 +1430,12 @@ bool AdaptiveChargingController::SetSlowCharging(uint32_t limit_mA) {
   return success;
 }
 
-bool AdaptiveChargingController::StartAdaptiveCharging(
+void AdaptiveChargingController::UpdateAdaptiveChargingState(
     const UserChargingEvent::Event::Reason& reason) {
-  // Keep the current value of `started_` just in case AC unplug happens right
-  // before shutdown.
+  // Keep the current value of `started_` just in case AC unplug happens
+  // right before shutdown.
   if (state_ == AdaptiveChargingState::SHUTDOWN) {
-    return false;
+    return;
   }
 
   const system::PowerStatus status = power_supply_->GetPowerStatus();
@@ -1430,25 +1449,26 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
     ratio = (hold_time_on_ac + time_full_on_ac) / time_on_ac;
   }
 
-  if (charge_history_.DaysOfHistory() < min_days_history_ ||
-      ratio < min_full_on_ac_ratio_) {
-    LOG(INFO) << "Adaptive Charging not started due to charge history doesn't "
-                 "meet heuristic requirements: "
-              << "days of history are " << charge_history_.DaysOfHistory()
-              << ", minimal requirement is " << min_days_history_
-              << "; full on ac ratio is " << ratio
-              << ", minimal requirement is " << min_full_on_ac_ratio_ << ".";
-    state_ = AdaptiveChargingState::HEURISTIC_DISABLED;
-    if (adaptive_charging_enabled_) {
-      power_supply_->SetAdaptiveChargingHeuristicEnabled(false);
-    }
-  } else if (!adaptive_charging_supported_) {
+  // Prioritize the user setting for adaptive charging.
+  if (!adaptive_charging_supported_) {
     state_ = AdaptiveChargingState::NOT_SUPPORTED;
-  } else if (adaptive_charging_enabled_) {
+    LOG(INFO) << "Adaptive Charging state: Not supported by platform.";
+  } else if (!adaptive_charging_enabled_) {
+    state_ = AdaptiveChargingState::USER_DISABLED;
+    LOG(INFO) << "Adaptive Charging state: Disabled by user or policy.";
+  } else if (charge_history_.DaysOfHistory() < min_days_history_ ||
+             ratio < min_full_on_ac_ratio_) {
+    LOG(INFO) << "Adaptive Charging state: heuristic requirement not met. "
+                 "Insufficient charge history."
+              << " Days of history: " << charge_history_.DaysOfHistory()
+              << ", Minimum required: " << min_days_history_
+              << "; Full on AC ratio: " << ratio
+              << ", Minimum required: " << min_full_on_ac_ratio_;
+    state_ = AdaptiveChargingState::HEURISTIC_DISABLED;
+    power_supply_->SetAdaptiveChargingHeuristicEnabled(false);
+  } else {
     state_ = AdaptiveChargingState::ACTIVE;
     power_supply_->SetAdaptiveChargingHeuristicEnabled(true);
-  } else {
-    state_ = AdaptiveChargingState::USER_DISABLED;
   }
 
   // Don't start Adaptive Charging if the battery is full or above 95% display
@@ -1460,7 +1480,7 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
     }
 
     started_ = false;
-    return false;
+    return;
   }
 
   if (adaptive_charging_enabled_) {
@@ -1484,7 +1504,6 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
             << " and " << (slow_charging_enabled_ ? "enabled" : "disabled");
 
   UpdateAdaptiveCharging(reason, true /* async */);
-  return true;
 }
 
 void AdaptiveChargingController::UpdateAdaptiveCharging(

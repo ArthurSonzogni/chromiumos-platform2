@@ -1802,10 +1802,18 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
             << policy::StateController::GetPolicyDebugString(policy);
   state_controller_->HandlePolicyChange(policy);
 
+  // Charge controller is platform-specific and currently implemented for
+  // Wilco devices using the WilcoChargeControllerHelper.
+  // It handles Wilco related power policies, such as battery charge mode,
+  // advanced battery charge modes and peak shift.
   if (charge_controller_) {
     charge_controller_->HandlePolicyChange(policy);
   }
 
+  // Adaptive charging controller is designed to work with Chromebooks that
+  // use the ChromeOS EC, providing features like battery sustain. It uses
+  // machine learning to predict unplug times and optimize charging. It handles
+  // both adaptive charging and charge limit.
   if (adaptive_charging_controller_) {
     adaptive_charging_controller_->HandlePolicyChange(policy);
   }
