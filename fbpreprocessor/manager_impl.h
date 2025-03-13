@@ -9,6 +9,8 @@
 
 #include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
+#include <debugd/dbus-proxies.h>
+#include <session_manager/dbus-proxies.h>
 
 #include "fbpreprocessor/configuration.h"
 #include "fbpreprocessor/firmware_dump.h"
@@ -61,6 +63,13 @@ class ManagerImpl : public Manager {
 
  private:
   int default_file_expiration_in_secs_;
+
+  // Proxy for dbus communication with session manager / login.
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+      session_manager_proxy_;
+
+  // Proxy for dbus communication with debugd.
+  std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
 
   std::unique_ptr<PseudonymizationManager> pseudonymization_manager_;
   std::unique_ptr<OutputManager> output_manager_;

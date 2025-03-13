@@ -8,6 +8,8 @@
 
 #include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
+#include <debugd/dbus-proxies.h>
+#include <session_manager/dbus-proxies.h>
 
 #include "fbpreprocessor/configuration.h"
 #include "fbpreprocessor/crash_reporter_dbus_adaptor.h"
@@ -36,7 +38,12 @@ void ManagerImpl::Start(dbus::Bus* bus) {
   platform_features_ = std::make_unique<PlatformFeaturesClient>();
   // |SessionStateManager| is an |Observer| of |PlatformFeaturesClient| so we
   // instantiate it after.
-  session_state_manager_ = std::make_unique<SessionStateManager>(this, bus);
+  session_manager_proxy_ =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus);
+  debugd_proxy_ = std::make_unique<org::chromium::debugdProxy>(bus);
+
+  session_state_manager_ = std::make_unique<SessionStateManager>(
+      this, session_manager_proxy_.get(), debugd_proxy_.get());
 
   pseudonymization_manager_ = std::make_unique<PseudonymizationManager>(this);
   output_manager_ = std::make_unique<OutputManager>(this);

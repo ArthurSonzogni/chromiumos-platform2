@@ -134,10 +134,12 @@ bool IsUserInAllowedDomain(std::string_view username) {
 
 namespace fbpreprocessor {
 
-SessionStateManager::SessionStateManager(Manager* manager, dbus::Bus* bus)
-    : session_manager_proxy_(
-          std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus)),
-      debugd_proxy_(std::make_unique<org::chromium::debugdProxy>(bus)),
+SessionStateManager::SessionStateManager(
+    Manager* manager,
+    org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
+    org::chromium::debugdProxyInterface* debugd_proxy)
+    : session_manager_proxy_(session_manager_proxy),
+      debugd_proxy_(debugd_proxy),
       base_dir_(kDaemonStorageRoot),
       active_sessions_num_(kNumberActiveSessionsUnknown),
       wifi_fw_dumps_allowed_by_policy_(false),
@@ -394,7 +396,7 @@ void SessionStateManager::OnPolicyUpdated() {
   descriptor.set_domain(login_manager::POLICY_DOMAIN_CHROME);
   descriptor.set_account_id(primary_user_);
 
-  if (!RetrieveAndParsePolicy(session_manager_proxy_.get(), descriptor)) {
+  if (!RetrieveAndParsePolicy(session_manager_proxy_, descriptor)) {
     LOG(ERROR) << "Failed to get policy.";
     return;
   }

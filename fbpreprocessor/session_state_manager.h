@@ -49,7 +49,11 @@ class SessionStateManagerInterface {
 class SessionStateManager : public SessionStateManagerInterface,
                             public PlatformFeaturesClientInterface::Observer {
  public:
-  explicit SessionStateManager(Manager* manager, dbus::Bus* bus);
+  explicit SessionStateManager(
+      Manager* manager,
+      org::chromium::SessionManagerInterfaceProxyInterface*
+          session_manager_proxy,
+      org::chromium::debugdProxyInterface* debugd_proxy);
   SessionStateManager(const SessionStateManager&) = delete;
   SessionStateManager& operator=(const SessionStateManager&) = delete;
   ~SessionStateManager() override;
@@ -147,11 +151,10 @@ class SessionStateManager : public SessionStateManagerInterface,
   bool PrimaryUserInAllowlist() const;
 
   // Proxy for dbus communication with session manager / login.
-  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
-      session_manager_proxy_;
+  org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy_;
 
   // Proxy for dbus communication with debugd.
-  std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
+  org::chromium::debugdProxyInterface* debugd_proxy_;
 
   // Base directory to the root of the daemon-store where the firmware dumps are
   // stored, typically /run/daemon-store/fbpreprocessord/. Unit tests can
