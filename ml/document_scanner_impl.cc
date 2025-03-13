@@ -5,12 +5,14 @@
 #include "ml/document_scanner_impl.h"
 
 #include <stdint.h>
+
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/memory/read_only_shared_memory_region.h>
 #include <brillo/message_loops/message_loop.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 

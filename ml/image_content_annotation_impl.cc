@@ -9,6 +9,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/memory/read_only_shared_memory_region.h>
 #include <brillo/message_loops/message_loop.h>
 
 #include "base/debug/leak_annotations.h"
