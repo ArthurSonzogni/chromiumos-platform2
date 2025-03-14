@@ -6,6 +6,7 @@
 #define ODML_CORAL_SERVICE_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/memory/raw_ref.h>
@@ -79,7 +80,8 @@ class CoralService : public mojom::CoralService, public mojom::CoralProcessor {
   void Initialize(
       mojo::PendingRemote<
           chromeos::machine_learning::mojom::MachineLearningService> ml_service,
-      mojo::PendingReceiver<mojom::CoralProcessor> receiver) override;
+      mojo::PendingReceiver<mojom::CoralProcessor> receiver,
+      const std::optional<std::string>& language_code) override;
 
  private:
   // These callbacks are used for asynchronous Engine::Process calls, performs

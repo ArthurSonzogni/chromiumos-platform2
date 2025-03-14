@@ -232,9 +232,14 @@ interface CoralService {
   PrepareResource@2();
 
   // Initializes the processor with ML Service and prepare necessary resources.
+  // Language code can be specified such that we will install the title
+  // generation model of the specified language on initialization. The language
+  // code follows the ISO 639-2 language code definition. If not set, EN is
+  // assumed.
   [MinVersion=1]
   Initialize@3(
       pending_remote<chromeos.machine_learning.mojom.MachineLearningService>?
           ml_service,
-      pending_receiver<CoralProcessor> processor);
+      pending_receiver<CoralProcessor> processor,
+      [MinVersion=2] string? language_code);
 };

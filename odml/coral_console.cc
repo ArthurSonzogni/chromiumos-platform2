@@ -197,8 +197,10 @@ int main(int argc, char** argv) {
   // Currently it is not possible to obtain ML Service outside Chrome. This
   // means the coral_console can only be run after Chrome initializes the
   // CoralProcessor for us.
-  coral_service->Initialize(mojo::NullRemote(),
-                            coral_processor.BindNewPipeAndPassReceiver());
+  coral_service->Initialize(
+      mojo::NullRemote(), coral_processor.BindNewPipeAndPassReceiver(),
+      cl->HasSwitch(kLocale) ? std::optional(cl->GetSwitchValueASCII(kLocale))
+                             : std::nullopt);
   coral_processor.set_disconnect_with_reason_handler(
       base::BindOnce([](uint32_t error, const std::string& reason) {
         LOG(FATAL) << "Coral service disconnected, error: " << error

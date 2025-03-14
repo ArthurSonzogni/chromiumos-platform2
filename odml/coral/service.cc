@@ -4,6 +4,7 @@
 
 #include "odml/coral/service.h"
 
+#include <string>
 #include <vector>
 
 #include <metrics/metrics_library.h>
@@ -78,7 +79,8 @@ void CoralService::PrepareResource() {
 void CoralService::Initialize(
     mojo::PendingRemote<
         chromeos::machine_learning::mojom::MachineLearningService> ml_service,
-    mojo::PendingReceiver<mojom::CoralProcessor> receiver) {
+    mojo::PendingReceiver<mojom::CoralProcessor> receiver,
+    const std::optional<std::string>& language_code) {
   if (!ml_service_) {
     if (!ml_service.is_valid()) {
       LOG(ERROR) << "Initializing CoralService failed due to invalid "
@@ -91,7 +93,7 @@ void CoralService::Initialize(
     }
   }
   embedding_engine_->PrepareResource();
-  title_generation_engine_->PrepareResource();
+  title_generation_engine_->PrepareResource(language_code);
   processor_receiver_set_.Add(this, std::move(receiver),
                               base::SequencedTaskRunner::GetCurrentDefault());
 }

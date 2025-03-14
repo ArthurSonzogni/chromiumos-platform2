@@ -45,7 +45,7 @@ class TitleGenerationEngineInterface {
   // Claim resources necessary for `Process`, like downloading from dlc, loading
   // model etc. It is not necessary to call this before `Process`, but the first
   // `Process` will take longer without calling `PrepareResource` first.
-  virtual void PrepareResource() {}
+  virtual void PrepareResource(std::optional<std::string> language_code) {}
 
   using TitleGenerationCallback =
       base::OnceCallback<void(CoralResult<TitleGenerationResponse>)>;
@@ -72,7 +72,7 @@ class TitleGenerationEngine
   // TitleGenerationEngine only processes 1 PrepareResource/Process request,
   // until it finishes. This is to simplify state management of the loaded
   // models.
-  void PrepareResource() override;
+  void PrepareResource(std::optional<std::string> language_code) override;
   void Process(mojom::GroupRequestPtr request,
                ClusteringResponse clustering_response,
                mojo::PendingRemote<mojom::TitleObserver> observer,
@@ -190,6 +190,9 @@ class TitleGenerationEngine
       on_device_model_service_;
 
   const raw_ref<i18n::Translator> translator_;
+
+  // The default locale of the engine.
+  std::optional<std::string> default_locale_;
 
   // `model_` should only be used after a successful LoadModelResult is received
   // because on device service only binds the model receiver when model loading

@@ -180,25 +180,26 @@ TitleGenerationEngine::TitleGenerationEngine(
   }
 }
 
-void TitleGenerationEngine::PrepareResource() {
+void TitleGenerationEngine::PrepareResource(
+    std::optional<std::string> language_code) {
   if (is_processing_) {
-    pending_callbacks_.push(
-        base::BindOnce(&TitleGenerationEngine::PrepareResource,
-                       weak_ptr_factory_.GetWeakPtr()));
+    pending_callbacks_.push(base::BindOnce(
+        &TitleGenerationEngine::PrepareResource, weak_ptr_factory_.GetWeakPtr(),
+        std::move(language_code)));
     return;
   }
   is_processing_ = true;
+  if (language_code.has_value() && kModelUuids.contains(*language_code)) {
+    default_locale_ = std::move(language_code);
+  }
   // Ensure `is_processing_` will always be reset no matter callback is run or
   // dropped.
   auto on_process_complete = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
       base::BindOnce(&TitleGenerationEngine::OnProcessCompleted,
                      weak_ptr_factory_.GetWeakPtr()));
-  // TODO(b/399282851): Get target locale of the model for PrepareResource from
-  // mojom.
-  std::string target_locale(kEnglish);
   EnsureTranslatorInitialized(base::BindOnce(
       &TitleGenerationEngine::GetModelState, weak_ptr_factory_.GetWeakPtr(),
-      target_locale, std::move(on_process_complete)));
+      default_locale_.value_or(kEnglish), std::move(on_process_complete)));
 }
 
 void TitleGenerationEngine::Process(
@@ -262,10 +263,11 @@ void TitleGenerationEngine::Process(
     return;
   }
   metrics_->SendTitleGenerationModelLoaded(model_.is_bound());
-  // Use English as a fallback if the specified language isn't supported. This
-  // shouldn't really happen though because client side should be using a same
-  // language allowlist as us.
-  std::string target_locale(kEnglish);
+  // Use the default locale (or English, if no default) as a fallback if the
+  // specified language isn't supported (or no specified language). The
+  // unsupported case shouldn't really happen though because client side should
+  // be using a same language allowlist as us.
+  std::string target_locale = default_locale_.value_or(kEnglish);
   if (request->title_generation_options->language_code.has_value() &&
       kModelUuids.contains(*request->title_generation_options->language_code)) {
     target_locale = *request->title_generation_options->language_code;
