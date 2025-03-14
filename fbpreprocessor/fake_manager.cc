@@ -15,6 +15,7 @@
 #include <dbus/bus.h>
 #include <metrics/fake_metrics_library.h>
 
+#include "fbpreprocessor/fake_platform_features_client.h"
 #include "fbpreprocessor/fake_session_state_manager.h"
 #include "fbpreprocessor/metrics.h"
 #include "fbpreprocessor/output_manager.h"
@@ -26,11 +27,11 @@ constexpr int kTestDefaultExpirationSeconds = 1800;
 namespace fbpreprocessor {
 
 FakeManager::FakeManager()
-    : fw_dumps_allowed_(true),
-      default_file_expiration_in_secs_(kTestDefaultExpirationSeconds) {
+    : default_file_expiration_in_secs_(kTestDefaultExpirationSeconds) {
   auto uma_lib = std::make_unique<FakeMetricsLibrary>();
   uma_lib_ = uma_lib.get();
   metrics().SetLibraryForTesting(std::move(uma_lib));
+  platform_features_ = std::make_unique<FakePlatformFeaturesClient>();
   session_state_manager_ = std::make_unique<FakeSessionStateManager>(this);
   output_manager_ = std::make_unique<OutputManager>(this);
 }

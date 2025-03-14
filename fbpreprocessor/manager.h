@@ -42,7 +42,7 @@ class Manager {
 
   virtual InputManager* input_manager() const = 0;
 
-  virtual PlatformFeaturesClient* platform_features() const = 0;
+  virtual PlatformFeaturesClientInterface* platform_features() const = 0;
 
   Metrics& metrics() { return metrics_; }
 

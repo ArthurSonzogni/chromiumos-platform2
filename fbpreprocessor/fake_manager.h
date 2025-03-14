@@ -18,6 +18,7 @@
 #include <dbus/bus.h>
 #include <metrics/fake_metrics_library.h>
 
+#include "fbpreprocessor/fake_platform_features_client.h"
 #include "fbpreprocessor/fake_session_state_manager.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
@@ -49,7 +50,7 @@ class FakeManager : public Manager {
   void Start(dbus::Bus* bus) override;
 
   bool FirmwareDumpsAllowed(FirmwareDump::Type type) const override {
-    return fw_dumps_allowed_;
+    return platform_features_->FirmwareDumpsAllowedByFinch();
   };
 
   SessionStateManagerInterface* session_state_manager() const override;
@@ -64,7 +65,9 @@ class FakeManager : public Manager {
 
   InputManager* input_manager() const override { return nullptr; }
 
-  PlatformFeaturesClient* platform_features() const override { return nullptr; }
+  PlatformFeaturesClientInterface* platform_features() const override {
+    return platform_features_.get();
+  }
 
   scoped_refptr<base::SequencedTaskRunner> task_runner() override {
     return task_env_.GetMainThreadTaskRunner();
@@ -105,7 +108,9 @@ class FakeManager : public Manager {
 
   // Let tests simulate cases where firmware dump collection is disallowed, for
   // example by policy.
-  void set_firmware_dumps_allowed(bool allowed) { fw_dumps_allowed_ = allowed; }
+  void set_firmware_dumps_allowed(bool allowed) {
+    platform_features_->SetFinchEnabled(allowed);
+  }
 
   // Returns the calls to a particular UMA metric.
   std::vector<int> GetMetricCalls(const std::string& name) const {
@@ -123,13 +128,13 @@ class FakeManager : public Manager {
   base::test::TaskEnvironment task_env_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  bool fw_dumps_allowed_;
-
   int default_file_expiration_in_secs_;
 
   // Temporary directory used to recreate the equivalent of the daemon-store
   // /run/daemon-store/fbpreprocessord/${USER_HASH} used by the "real" daemon.
   base::ScopedTempDir root_dir_;
+
+  std::unique_ptr<FakePlatformFeaturesClient> platform_features_;
 
   std::unique_ptr<FakeSessionStateManager> session_state_manager_;
 

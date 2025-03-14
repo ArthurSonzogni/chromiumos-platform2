@@ -111,6 +111,7 @@ if (use.test) {
   executable("fbpreprocessord_test_runner") {
     sources = [
       "fake_manager.cc",
+      "fake_platform_features_client.cc",
       "fake_session_state_manager.cc",
       "firmware_dump_test.cc",
       "input_manager_test.cc",

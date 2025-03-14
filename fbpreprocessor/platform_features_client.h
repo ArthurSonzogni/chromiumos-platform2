@@ -24,6 +24,8 @@ class PlatformFeaturesClientInterface {
   virtual void AddObserver(Observer* observer) = 0;
   virtual void RemoveObserver(Observer* observer) = 0;
 
+  virtual bool FirmwareDumpsAllowedByFinch() const = 0;
+
   virtual ~PlatformFeaturesClientInterface() = default;
 };
 
@@ -36,7 +38,7 @@ class PlatformFeaturesClient : public PlatformFeaturesClientInterface {
   void AddObserver(Observer* observer) override;
   void RemoveObserver(Observer* observer) override;
 
-  bool FirmwareDumpsAllowedByFinch() const { return allowed_; }
+  bool FirmwareDumpsAllowedByFinch() const override { return allowed_; }
 
   void set_base_dir_for_test(const base::FilePath& base_dir) {
     base_dir_ = base_dir;

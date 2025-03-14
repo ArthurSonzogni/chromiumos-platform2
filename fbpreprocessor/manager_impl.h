@@ -49,7 +49,7 @@ class ManagerImpl : public Manager {
 
   InputManager* input_manager() const override { return input_manager_.get(); }
 
-  PlatformFeaturesClient* platform_features() const override {
+  PlatformFeaturesClientInterface* platform_features() const override {
     return platform_features_.get();
   }
 
