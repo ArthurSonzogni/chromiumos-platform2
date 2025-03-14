@@ -48,7 +48,8 @@ CoralService::CoralService(
           safety_service_manager,
           std::make_unique<EmbeddingDatabaseFactory>(),
           session_state_manager,
-          raw_ref(*language_detector_.get()))),
+          raw_ref(*language_detector_.get()),
+          translator)),
       clustering_engine_(std::make_unique<ClusteringEngine>(
           raw_ref(metrics_),
           std::make_unique<clustering::ClusteringFactory>())),
@@ -92,7 +93,7 @@ void CoralService::Initialize(
       ml_service_.reset_on_disconnect();
     }
   }
-  embedding_engine_->PrepareResource();
+  embedding_engine_->PrepareResource(language_code);
   title_generation_engine_->PrepareResource(language_code);
   processor_receiver_set_.Add(this, std::move(receiver),
                               base::SequencedTaskRunner::GetCurrentDefault());

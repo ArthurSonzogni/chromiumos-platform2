@@ -20,6 +20,7 @@
 
 #include "odml/coral/common.h"
 #include "odml/coral/metrics.h"
+#include "odml/i18n/translator.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -30,6 +31,9 @@ namespace {
 using embedding_model::mojom::OnDeviceEmbeddingModelInferenceError;
 using mojom::CoralError;
 using on_device_model::mojom::LoadModelResult;
+
+// The English locale.
+constexpr char kEnglish[] = "en";
 
 constexpr char kModelUuid[] = "a97333ed-3157-49a3-b503-2d2d3f23c81d";
 
@@ -88,9 +92,9 @@ bool CheckIfLanguageSupported(
   // Current logic is to accept the result if any language code in the TOP3
   // classification result is supported.
   constexpr size_t kTopLanguageResultEntriesToCheck = 3;
-  for (int i = 0; i < std::min(language_detection_result.size(),
-                               kTopLanguageResultEntriesToCheck);
-       i++) {
+  size_t entries_to_check = std::min(language_detection_result.size(),
+                                     kTopLanguageResultEntriesToCheck);
+  for (int i = 0; i < entries_to_check; i++) {
     const on_device_model::LanguageDetector::TextLanguage& language =
         language_detection_result[i];
     if (IsLanguageSupported(language.locale)) {
@@ -98,6 +102,32 @@ bool CheckIfLanguageSupported(
     }
   }
   return false;
+}
+
+// nullopt for doesn't need translation.
+std::optional<std::string> GetTranslationSource(
+    const LanguageDetectionResult& language_detection_result,
+    const std::optional<std::string>& target_locale) {
+  constexpr size_t kTopLanguageResultEntriesToCheck = 3;
+  size_t entries_to_check = std::min(language_detection_result.size(),
+                                     kTopLanguageResultEntriesToCheck);
+  // Doesn't need translation if it's English or the target locale already.
+  for (int i = 0; i < entries_to_check; i++) {
+    const on_device_model::LanguageDetector::TextLanguage& language =
+        language_detection_result[i];
+    if (language.locale == kEnglish || target_locale == language.locale) {
+      return std::nullopt;
+    }
+  }
+
+  for (int i = 0; i < entries_to_check; i++) {
+    const on_device_model::LanguageDetector::TextLanguage& language =
+        language_detection_result[i];
+    if (IsLanguageSupported(language.locale)) {
+      return language.locale;
+    }
+  }
+  return std::nullopt;
 }
 
 }  // namespace
@@ -152,24 +182,29 @@ EmbeddingEngine::EmbeddingEngine(
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
     std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory,
     odml::SessionStateManagerInterface* session_state_manager,
-    raw_ref<on_device_model::LanguageDetector> language_detector)
+    raw_ref<on_device_model::LanguageDetector> language_detector,
+    raw_ref<i18n::Translator> translator)
     : metrics_(metrics),
       embedding_service_(embedding_service),
       safety_service_manager_(safety_service_manager),
       embedding_database_factory_(std::move(embedding_database_factory)),
-      language_detector_(language_detector) {
+      language_detector_(language_detector),
+      translator_(translator) {
   if (session_state_manager) {
     session_state_manager->AddObserver(this);
   }
 }
 
-void EmbeddingEngine::PrepareResource() {
+void EmbeddingEngine::PrepareResource(
+    std::optional<std::string> language_code) {
   if (is_processing_) {
     pending_callbacks_.push(base::BindOnce(&EmbeddingEngine::PrepareResource,
-                                           weak_ptr_factory_.GetWeakPtr()));
+                                           weak_ptr_factory_.GetWeakPtr(),
+                                           std::move(language_code)));
     return;
   }
   is_processing_ = true;
+  default_locale_ = std::move(language_code);
   // Ensure `is_processing_` will always be reset no matter callback is run or
   // dropped.
   EnsureModelLoaded(mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(
@@ -367,6 +402,17 @@ void EmbeddingEngine::CheckLanguageResult(ProcessingParams params,
     ProcessEachPrompt(std::move(params));
     return;
   }
+
+  // Download DLC for translator takes time, and seeing an entity that would be
+  // translated if grouped suggests that we can pre-download the DLC for the
+  // user.
+  std::optional<std::string> source_locale =
+      GetTranslationSource(*entry.languages, default_locale_);
+  if (source_locale.has_value()) {
+    i18n::LangPair lang_pair{*source_locale, kEnglish};
+    translator_->DownloadDlc(lang_pair, base::DoNothing());
+  }
+
   CheckEntrySafety(std::move(params), entry);
 }
 

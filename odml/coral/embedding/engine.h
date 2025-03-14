@@ -18,6 +18,7 @@
 #include "odml/coral/metrics.h"
 #include "odml/cros_safety/safety_service_manager.h"
 #include "odml/i18n/language_detector.h"
+#include "odml/i18n/translator.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -62,7 +63,7 @@ class EmbeddingEngineInterface {
   // Claim resources necessary for `Process`, like downloading from dlc, loading
   // model etc. It is not necessary to call this before `Process`, but the first
   // `Process` will take longer without calling `PrepareResource` first.
-  virtual void PrepareResource() {}
+  virtual void PrepareResource(std::optional<std::string> language_code) {}
 
   using EmbeddingCallback = base::OnceCallback<void(
       mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>)>;
@@ -80,11 +81,12 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
       std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory,
       odml::SessionStateManagerInterface* session_state_manager,
-      raw_ref<on_device_model::LanguageDetector> language_detector);
+      raw_ref<on_device_model::LanguageDetector> language_detector,
+      raw_ref<i18n::Translator> translator);
   ~EmbeddingEngine() = default;
 
   // EmbeddingEngineInterface overrides.
-  void PrepareResource() override;
+  void PrepareResource(std::optional<std::string> language_code) override;
   void Process(mojom::GroupRequestPtr request,
                EmbeddingCallback callback) override;
 
@@ -169,6 +171,13 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
   std::unique_ptr<EmbeddingDatabaseInterface> embedding_database_;
 
   const raw_ref<on_device_model::LanguageDetector> language_detector_;
+
+  // The default locale of the engine. We hold translator in this class because
+  // we want to install translator DLCs for the languages that appear in
+  // embedding requests. However, the default locale likely doesn't need to be
+  // translated as well, so we need to record that.
+  std::optional<std::string> default_locale_;
+  const raw_ref<i18n::Translator> translator_;
 
   // The version of the loaded embedding model.
   std::string model_version_;

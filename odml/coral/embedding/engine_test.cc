@@ -23,6 +23,7 @@
 #include "odml/coral/test_util.h"
 #include "odml/cros_safety/safety_service_manager_mock.h"
 #include "odml/i18n/mock_language_detector.h"
+#include "odml/i18n/mock_translator.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/session_state_manager/fake_session_state_manager.h"
@@ -159,7 +160,8 @@ class EmbeddingEngineTest : public testing::Test {
         raw_ref(coral_metrics_), raw_ref(model_service_),
         raw_ref(safety_service_manager_),
         base::WrapUnique(embedding_database_factory_),
-        session_state_manager_.get(), raw_ref(language_detector_));
+        session_state_manager_.get(), raw_ref(language_detector_),
+        raw_ref(translator_));
 
     EXPECT_CALL(safety_service_manager_, ClassifyTextSafety)
         .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<2>(
@@ -234,6 +236,7 @@ class EmbeddingEngineTest : public testing::Test {
   cros_safety::SafetyServiceManagerMock safety_service_manager_;
 
   on_device_model::MockLanguageDetector language_detector_;
+  NiceMock<i18n::MockTranslator> translator_;
 
   std::unique_ptr<EmbeddingEngine> engine_;
 };
@@ -306,6 +309,15 @@ TEST_F(EmbeddingEngineTest, TextLanguage) {
         std::move(callback).Run(LanguageDetectionResult{
             TextLanguage{.locale = "zh", .confidence = 1.0}});
       });
+  // Simulate that one of the entries is a non-English supported language. This
+  // should trigger a DLC download.
+  EXPECT_CALL(language_detector_, Classify("ABC app 1", _))
+      .WillOnce([](auto&&, auto&& callback) {
+        std::move(callback).Run(LanguageDetectionResult{
+            TextLanguage{.locale = "ja", .confidence = 1.0}});
+      });
+  EXPECT_CALL(translator_, DownloadDlc(i18n::LangPair{"ja", "en"}, _, _))
+      .Times(1);
 
   TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
       embedding_future;
@@ -317,6 +329,8 @@ TEST_F(EmbeddingEngineTest, TextLanguage) {
   // The first entry has unsupported language.
   fake_response.embeddings[0].embedding.clear();
   fake_response.embeddings[0].language_result.clear();
+  fake_response.embeddings[1].language_result =
+      LanguageDetectionResult{TextLanguage{.locale = "ja", .confidence = 1.0}};
   EXPECT_EQ(response, fake_response);
 }
 
