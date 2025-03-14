@@ -96,7 +96,7 @@ TEST_F(EnumFlagsTest, SampleUsageWithBigEnumType) {
 
   // Set another
   value |= BIG_FLAG_THREE;
-  EXPECT_EQ(FLAG_ONE | BIG_FLAG_THREE, value);
+  EXPECT_EQ(BIG_FLAG_ONE | BIG_FLAG_THREE, value);
 
   // Clear a flag
   value &= ~BIG_FLAG_ONE;
