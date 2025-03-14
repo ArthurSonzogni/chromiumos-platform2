@@ -43,5 +43,23 @@ TEST(FlashInfoParams, FlashBankNotEqual) {
   EXPECT_FALSE(expected_bank0 == expected_bank1);
 }
 
+TEST(FlashInfoParams, HeaderSize) {
+  EXPECT_EQ(sizeof(flash_info::Header::flash_size),
+            sizeof(ec_response_flash_info_2::flash_size));
+  EXPECT_EQ(sizeof(flash_info::Header::flags),
+            sizeof(ec_response_flash_info_2::flags));
+  EXPECT_EQ(sizeof(flash_info::Header::write_ideal_size),
+            sizeof(ec_response_flash_info_2::write_ideal_size));
+  EXPECT_EQ(sizeof(flash_info::Header::num_banks_total),
+            sizeof(ec_response_flash_info_2::num_banks_total));
+  EXPECT_EQ(sizeof(flash_info::Header::num_banks_desc),
+            sizeof(ec_response_flash_info_2::num_banks_desc));
+  EXPECT_EQ(sizeof(flash_info::Header), sizeof(ec_response_flash_info_2));
+}
+
+TEST(FlashInfoParams, ParamsSize) {
+  EXPECT_EQ(sizeof(flash_info::Params_v2), kMaxPacketSize);
+}
+
 }  // namespace
 }  // namespace ec
