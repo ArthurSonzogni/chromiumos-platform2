@@ -293,7 +293,7 @@ class Resolver {
   };
 
   // Callback to handle newly opened connections on TCP sockets.
-  void OnTCPConnection(std::string_view ifname, sa_family_t family);
+  void OnTCPConnection(const std::string& ifname, sa_family_t family);
 
   // Send back data taken from CURL or Ares to the client.
   void ReplyDNS(base::WeakPtr<SocketFd> sock_fd,

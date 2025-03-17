@@ -284,9 +284,10 @@ bool Resolver::ListenTCP(struct sockaddr* addr, std::string_view ifname) {
   tcp_src_watchers_.emplace(
       std::make_pair(ifname, addr->sa_family),
       base::FileDescriptorWatcher::WatchReadable(
-          tcp_src->Get(), base::BindRepeating(&Resolver::OnTCPConnection,
-                                              weak_factory_.GetWeakPtr(),
-                                              ifname, addr->sa_family)));
+          tcp_src->Get(),
+          base::BindRepeating(&Resolver::OnTCPConnection,
+                              weak_factory_.GetWeakPtr(), std::string(ifname),
+                              addr->sa_family)));
   tcp_srcs_.emplace(std::make_pair(ifname, addr->sa_family),
                     std::move(tcp_src));
 
@@ -329,10 +330,10 @@ bool Resolver::ListenUDP(struct sockaddr* addr, std::string_view ifname) {
   return true;
 }
 
-void Resolver::OnTCPConnection(std::string_view ifname, sa_family_t family) {
+void Resolver::OnTCPConnection(const std::string& ifname, sa_family_t family) {
   struct sockaddr_storage client_src = {};
   socklen_t sockaddr_len = sizeof(client_src);
-  const auto& it = tcp_srcs_.find(std::make_pair(std::string(ifname), family));
+  const auto& it = tcp_srcs_.find(std::make_pair(ifname, family));
   if (it == tcp_srcs_.end()) {
     LOG(ERROR) << *this << " Failed to find TCP socket";
     return;
