@@ -1079,33 +1079,36 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMtkLegacy) {
 
   for (auto& testcase :
        {std::tuple<const char*, const char*, const char*>{
-            "MT8173\n", "MT8173\n",
+            "MT8173\n", "MediaTek MT8173\n",
             "ro.mediatek.platform=MT8173\n"
             "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8173\n"},
-        {"MT8183\n", "Kompanio 500\n",
+        {"MT8183\n", "MediaTek Kompanio 500\n",
          "ro.mediatek.platform=Kompanio 500\n"
          "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8183\n"},
-        {"MT8192\n", "Kompanio 820\n",
+        {"MT8192\n", "MediaTek Kompanio 820\n",
          "ro.mediatek.platform=Kompanio 820\n"
          "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8192\n"},
-        {"MT8192T\n", "Kompanio 828\n",
+        {"MT8192T\n", "MediaTek Kompanio 828\n",
          "ro.mediatek.platform=Kompanio 828\n"
          "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8192\n"},
-        {"MT8195\n", "Kompanio 1200\n",
+        {"MT8195\n", "MediaTek Kompanio 1200\n",
          "ro.mediatek.platform=Kompanio 1200\n"
          "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8195\n"},
-        {"MT8188\n", "Kompanio 838\n",
+        {"MT8188\n", "MediaTek Kompanio 838\n",
          "ro.mediatek.platform=Kompanio 838\n"
          "ro.soc.manufacturer=Mediatek\nro.soc.model=Kompanio 838 MT8188\n"},
-        {"MT8196\n", "Kompanio TBD\n",
+        {"MT8196\n", "MediaTek Kompanio TBD\n",
          "ro.mediatek.platform=Kompanio TBD\n"
+         "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8196\n"},
+        {"MT8196\n", "MediaTek\n",
+         "ro.mediatek.platform=\n"
          "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8196\n"}}) {
     std::string soc_id = std::get<0>(testcase);
-    std::string machine = std::get<1>(testcase);
+    std::string family = std::get<1>(testcase);
     std::string expected = std::get<2>(testcase);
 
     ASSERT_TRUE(base::WriteFile(soc_id0_path, soc_id));
-    ASSERT_TRUE(base::WriteFile(machine0_path, machine));
+    ASSERT_TRUE(base::WriteFile(family0_path, family));
 
     std::string actual;
     AppendArmSocProperties(socinfo_devices_dir, config(), &actual);
@@ -1121,22 +1124,20 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMtkLegacyMT8186) {
   auto soc0_path = socinfo_devices_dir.Append("soc0");
   auto soc_id0_path = soc0_path.Append("soc_id");
   auto family0_path = soc0_path.Append("family");
-  auto machine0_path = soc0_path.Append("machine");
   auto soc1_path = socinfo_devices_dir.Append("soc1");
   auto soc_id1_path = soc1_path.Append("soc_id");
   auto family1_path = soc1_path.Append("family");
 
   ASSERT_TRUE(base::CreateDirectory(soc0_path));
   ASSERT_TRUE(base::WriteFile(soc_id0_path, "MT8186\n"));
-  ASSERT_TRUE(base::WriteFile(family0_path, "MediaTek\n"));
-  ASSERT_TRUE(base::WriteFile(machine0_path, "Kompanio 520\n"));
+  ASSERT_TRUE(base::WriteFile(family0_path, "MediaTek Kompanio 520\n"));
 
   ASSERT_TRUE(base::CreateDirectory(soc1_path));
   ASSERT_TRUE(base::WriteFile(soc_id1_path, "jep106:0426:8186\n"));
   ASSERT_TRUE(base::WriteFile(family1_path, "jep106:0426\n"));
 
   // Make sure the file is opened read-only by turning off the writable perms.
-  ASSERT_EQ(chmod(machine0_path.value().c_str(), 0444), 0);
+  ASSERT_EQ(chmod(soc_id0_path.value().c_str(), 0444), 0);
   ASSERT_EQ(chmod(family0_path.value().c_str(), 0444), 0);
   ASSERT_EQ(chmod(soc_id1_path.value().c_str(), 0444), 0);
   ASSERT_EQ(chmod(family1_path.value().c_str(), 0444), 0);

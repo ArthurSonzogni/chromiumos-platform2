@@ -425,32 +425,25 @@ StringPieceType SafelyReadFile(const base::FilePath& path,
 // meet Android CDD requirements.
 // Here are the possible values:
 //   - Older platforms before MT8186
-//       manufacturer = Mediatek
 //       model        = MT8173/MT8183/MT8192/MT8195
 //   - Launched MT8186
-//       manufacturer = Mediatek
 //       model        = MT8186
 //   - Unlaunched MT8186
-//       manufacturer = Mediatek
 //       model        = Kompanio 520 MT8186/Kompanio 528 MT8186T
 //   - MT8188
-//       manufacturer = Mediatek
 //       model        = Kompanio 838 MT8188
 //   - New platforms
-//       manufacturer = Mediatek
 //       model        = MTxxxx(T)
-static std::tuple<std::string, std::string> FixUpMediaTekInfo(
-    std::string soc_id,
-    std::string machine,
-    brillo::CrosConfigInterface* config) {
-  constexpr std::string kMtkManufacturerName = "Mediatek";
+static std::string FixUpMediaTekInfo(std::string soc_id,
+                                     std::string marketing_name,
+                                     brillo::CrosConfigInterface* config) {
   constexpr int kFridPrefixLength = 7;  // Frid format is Google_XXXX
   base::TrimString(soc_id, "\r\n", &soc_id);
-  base::TrimString(machine, "\r\n", &machine);
+  base::TrimString(marketing_name, "\r\n", &marketing_name);
 
   // For historical reasons, both MT8192 and MT8192T are mapped to "MT8192".
   if (soc_id.find("MT8192") != std::string::npos) {
-    return {kMtkManufacturerName, "MT8192"};
+    return "MT8192";
   }
 
   // MT8186 has new devices in the pipeline and requires special attention.
@@ -459,7 +452,7 @@ static std::tuple<std::string, std::string> FixUpMediaTekInfo(
 
     // Not able to read frid, assume it is legacy
     if (!config || !config->GetString("/identity", "frid", &frid)) {
-      return {kMtkManufacturerName, "MT8186"};
+      return "MT8186";
     }
 
     // Launched devices use the legacy info
@@ -469,19 +462,19 @@ static std::tuple<std::string, std::string> FixUpMediaTekInfo(
             {"Chinchou", "Chinchou360", "Magneton", "Ponyta", "Rusty",
              "Starmie", "Steelix", "Tentacool", "Tentacruel", "Voltorb"});
     if (base::Contains(kLaunchedDevices, device)) {
-      return {kMtkManufacturerName, "MT8186"};
+      return "MT8186";
     }
   }
 
   // Unlaunched/follower MT8186 devices and MT8188 devices
   if (soc_id.find("MT8186") != std::string::npos ||
       soc_id.find("MT8188") != std::string::npos) {
-    return {kMtkManufacturerName, machine + " " + soc_id};
+    return marketing_name + " " + soc_id;
   }
 
   // New platforms are expected to use "MTxxxx" pattern for the the model field.
   // Some older platforms can also be handled here.
-  return {kMtkManufacturerName, soc_id};
+  return soc_id;
 }
 
 static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
@@ -541,11 +534,17 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
   std::string manufacturer;
   if (family == "Snapdragon\n" && machine != "") {
     manufacturer = "Qualcomm";
-  } else if (family == "MediaTek\n") {
+  } else if (base::StartsWith(family, "MediaTek",
+                              base::CompareCase::SENSITIVE)) {
+    // manufacturer is intentionally "Mediatek" with lowercase 't' to match what
+    // was registered in the database.
+    manufacturer = "Mediatek";
     // For promoting MTK's marketing name e.g. Kompanio xxx
-    *dest += "ro.mediatek.platform=" + machine;
-    std::tie(manufacturer, machine) =
-        FixUpMediaTekInfo(soc_id, machine, config);
+    // Note that family will be "MediaTek <marketing name>" if the marketing
+    // name is announced and available, otherwise "MediaTek"
+    re2::RE2::Replace(&family, R"(^(MediaTek ?))", "");
+    *dest += "ro.mediatek.platform=" + family;
+    machine = FixUpMediaTekInfo(soc_id, family, config);
     machine = machine + "\n";
   } else {
     return false;
