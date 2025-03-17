@@ -72,7 +72,9 @@ class MantisServiceTest : public testing::Test {
     auto dlc_name = std::string(kDlcPrefix) + std::string(kDefaultDlcUUID);
     auto dlc_path = base::FilePath("testdata").Append(dlc_name);
     cros::DlcClient::SetDlcPathForTest(&dlc_path);
-    ON_CALL(translator_, IsDlcDownloaded).WillByDefault(Return(true));
+    // Ensure mojo's callback is always called to prevent failed CHECK.
+    ON_CALL(translator_, DownloadDlc)
+        .WillByDefault(base::test::RunOnceCallbackRepeatedly<1>(true));
   }
 
   void SetupShimForI18nDlcTest() {
@@ -314,38 +316,8 @@ TEST_F(MantisServiceTest, MultipleClients) {
   EXPECT_TRUE(service_->IsProcessorNullForTesting());
 }
 
-TEST_F(MantisServiceTest, I18nDLCIsDownloaded) {
-  SetupShimForI18nDlcTest();
-  EXPECT_CALL(translator_, IsDlcDownloaded).WillRepeatedly(Return(true));
-  EXPECT_CALL(translator_, DownloadDlc).Times(0);
-  SetupDlc();
-
-  MockProgressObserver progress_observer;
-  {
-    InSequence s;
-    EXPECT_CALL(progress_observer, Progress(0));
-    // First language
-    EXPECT_CALL(progress_observer, Progress(0.95));
-    // Second language
-    EXPECT_CALL(progress_observer, Progress(0.975));
-    // Third language
-    EXPECT_CALL(progress_observer, Progress(1.0));
-  }
-
-  mojo::Remote<mojom::MantisProcessor> processor;
-  TestFuture<mojom::InitializeResult> result_future;
-  service_remote_->Initialize(progress_observer.BindNewPipeAndPassRemote(),
-                              processor.BindNewPipeAndPassReceiver(),
-                              base::Uuid::ParseLowercase(kDefaultDlcUUID),
-                              result_future.GetCallback());
-  service_remote_.FlushForTesting();
-
-  EXPECT_EQ(result_future.Take(), mojom::InitializeResult::kSuccess);
-}
-
 TEST_F(MantisServiceTest, I18nDLCProgressIsSequential) {
   SetupShimForI18nDlcTest();
-  EXPECT_CALL(translator_, IsDlcDownloaded).WillRepeatedly(Return(false));
   EXPECT_CALL(translator_, DownloadDlc)
       .WillRepeatedly([](const i18n::LangPair& lang_pair,
                          base::OnceCallback<void(bool)> callback,
@@ -385,7 +357,6 @@ TEST_F(MantisServiceTest, I18nDLCProgressIsSequential) {
 
 TEST_F(MantisServiceTest, I18nDLCDownloadFailed) {
   SetupShimForI18nDlcTest();
-  EXPECT_CALL(translator_, IsDlcDownloaded).WillRepeatedly(Return(false));
   EXPECT_CALL(translator_, DownloadDlc)
       // Success for the first language but failed at second
       .WillOnce([](const i18n::LangPair& lang_pair,

@@ -168,6 +168,9 @@ void TranslatorImpl::DownloadDlcInternal(
     return;
   }
   if (IsDlcDownloaded(lang_pair)) {
+    if (progress) {
+      std::move(progress).Run(1.0);
+    }
     std::move(callback).Run(true);
     return;
   }
