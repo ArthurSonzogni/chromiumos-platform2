@@ -62,12 +62,10 @@ class TestResolver : public Resolver {
  public:
   TestResolver(std::unique_ptr<AresClient> ares_client,
                std::unique_ptr<DoHCurlClientInterface> curl_client,
-               std::unique_ptr<net_base::SocketFactory> socket_factory,
-               std::string_view ifname)
+               std::unique_ptr<net_base::SocketFactory> socket_factory)
       : Resolver(std::move(ares_client),
                  std::move(curl_client),
-                 std::move(socket_factory),
-                 ifname) {}
+                 std::move(socket_factory)) {}
 
   TestResolver(const TestResolver&) = delete;
   TestResolver& operator=(const TestResolver&) = delete;
@@ -106,9 +104,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   auto ares_client = std::make_unique<FakeAresClient>(&provider);
   auto curl_client = std::make_unique<FakeCurlClient>(&provider);
   auto socket_factory = std::make_unique<net_base::SocketFactory>();
-  std::string ifname = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
   TestResolver resolver(std::move(ares_client), std::move(curl_client),
-                        std::move(socket_factory), ifname);
+                        std::move(socket_factory));
 
   while (provider.remaining_bytes() > 0) {
     size_t n = provider.ConsumeIntegralInRange<size_t>(0, 99);

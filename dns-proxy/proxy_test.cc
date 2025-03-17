@@ -157,7 +157,6 @@ class MockResolver : public Resolver {
  public:
   MockResolver()
       : Resolver(base::DoNothing(),
-                 /*ifname=*/"",
                  kRequestTimeout,
                  kRequestRetryDelay,
                  kRequestMaxRetry) {}
@@ -180,6 +179,7 @@ class MockResolver : public Resolver {
               SetDoHProviders,
               (const std::vector<std::string>&, bool),
               (override));
+  MOCK_METHOD(void, SetInterface, (std::string_view), (override));
 };
 
 class TestProxy : public Proxy {
@@ -1651,5 +1651,45 @@ TEST_P(ProxyTest, DomainDoHConfigsUpdate_ProxyStopped) {
   std::vector<std::string> props = {"domain1.com", "domain2.net"};
   proxy_->OnDoHIncludedDomainsChanged(props);
   proxy_->OnDoHExcludedDomainsChanged(props);
+}
+
+TEST_P(ProxyTest, ArcProxy_SetInterface) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"});
+  SetListenAddresses(ipv4_address_, ipv6_address_);
+
+  auto wifi = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
+                          shill::Client::Device::Type::kWifi, "wlan0",
+                          {"8.8.8.8"}, {"2001:4860:4860::8888"});
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*resolver_, SetInterface("wlan0"));
+  } else {
+    EXPECT_CALL(*resolver_, SetInterface).Times(0);
+  }
+  proxy_->OnDeviceChanged(wifi.get());
+}
+
+TEST_P(ProxyTest, DefaultProxy_SetInterface) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
+  SetListenAddresses(ipv4_address_, ipv6_address_);
+
+  auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
+                         shill::Client::Device::Type::kEthernet, "eth0",
+                         {"8.8.8.8", "8.8.4.4"},
+                         {"2001:4860:4860::8888", "2001:4860:4860::8844"});
+  EXPECT_CALL(*resolver_, SetInterface).Times(0);
+  proxy_->OnDefaultDeviceChanged(dev.get());
+}
+
+TEST_P(ProxyTest, SystemProxy_SetInterface) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
+  SetListenAddresses(ipv4_address_, ipv6_address_);
+
+  auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
+                         shill::Client::Device::Type::kEthernet, "eth0",
+                         {"8.8.8.8", "8.8.4.4"},
+                         {"2001:4860:4860::8888", "2001:4860:4860::8844"});
+  EXPECT_CALL(*resolver_, SetInterface).Times(0);
+  proxy_->OnDefaultDeviceChanged(dev.get());
 }
 }  // namespace dns_proxy

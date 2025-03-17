@@ -143,10 +143,7 @@ class Resolver {
     base::Time start_time;
   };
 
-  // When |ifname| is not empty, all DNS queries will be sent with the sockets
-  // bound to |ifname|.
   Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
-           std::string_view ifname,
            base::TimeDelta timeout,
            base::TimeDelta retry_delay,
            int max_num_retries);
@@ -154,7 +151,6 @@ class Resolver {
   Resolver(std::unique_ptr<AresClient> ares_client,
            std::unique_ptr<DoHCurlClientInterface> curl_client,
            std::unique_ptr<net_base::SocketFactory> socket_factory,
-           std::string_view ifname = "",
            bool disable_probe = true,
            bool disable_query_validation = true,
            std::unique_ptr<Metrics> metrics = nullptr);
@@ -175,6 +171,10 @@ class Resolver {
   virtual void SetNameServers(const std::vector<std::string>& name_servers);
   virtual void SetDoHProviders(const std::vector<std::string>& doh_providers,
                                bool always_on_doh = false);
+
+  // Set interface name to bind to when sending queries. This is only used for
+  // ARC proxies.
+  virtual void SetInterface(std::string_view ifname);
 
   // Set DNS-over-HTTPS included and excluded domains. This is used to
   // disable DoH (and falls back to plain-text DNS) for certain domains.

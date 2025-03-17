@@ -448,6 +448,18 @@ void Proxy::ApplyDeviceUpdate() {
   MaybeCreateResolver();
   UpdateNameServers();
 
+  // Update the interface to use for sending DNS queries. This is only necessary
+  // when DNS proxy is running on the root namespace, as otherwise the routing
+  // is handled through ConnectNamespace. This is also only necessary for ARC
+  // proxies:
+  // - For non-cell, the interface is the fixed interface the proxy is tied to.
+  // - For cell, the interface is the primary multiplexed interface of the fixed
+  // interface the proxy is tied to. This needs to be updated whenever the
+  // primary multiplexed interface changes.
+  if (root_ns_enabled_ && opts_.type == Proxy::Type::kARC && resolver_) {
+    resolver_->SetInterface(device_->active_ifname());
+  }
+
   if (opts_.type == Type::kSystem) {
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
@@ -494,15 +506,9 @@ void Proxy::Stop() {
 std::unique_ptr<Resolver> Proxy::NewResolver(base::TimeDelta timeout,
                                              base::TimeDelta retry_delay,
                                              int max_num_retries) {
-  // ARC proxies listen on a specific network interface. Bind the sending socket
-  // to the interface.
-  std::string ifname = "";
-  if (root_ns_enabled_ && opts_.type == Type::kARC) {
-    ifname = opts_.ifname;
-  }
   return std::make_unique<Resolver>(
-      base::BindRepeating(&Proxy::LogName, weak_factory_.GetWeakPtr()), ifname,
-      timeout, retry_delay, max_num_retries);
+      base::BindRepeating(&Proxy::LogName, weak_factory_.GetWeakPtr()), timeout,
+      retry_delay, max_num_retries);
 }
 
 void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {

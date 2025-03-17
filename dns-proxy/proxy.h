@@ -317,6 +317,9 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, ArcProxy_NeverListenForOtherIfname);
   FRIEND_TEST(ProxyTest, DomainDoHConfigsUpdate);
   FRIEND_TEST(ProxyTest, DomainDoHConfigsUpdate_ProxyStopped);
+  FRIEND_TEST(ProxyTest, ArcProxy_SetInterface);
+  FRIEND_TEST(ProxyTest, DefaultProxy_SetInterface);
+  FRIEND_TEST(ProxyTest, SystemProxy_SetInterface);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;

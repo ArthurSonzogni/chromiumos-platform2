@@ -219,7 +219,6 @@ Resolver::ProbeState::ProbeState(const std::string& target,
     : target(target), doh(doh), validated(validated), num_retries(0) {}
 
 Resolver::Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
-                   std::string_view ifname,
                    base::TimeDelta timeout,
                    base::TimeDelta retry_delay,
                    int max_num_retries)
@@ -228,8 +227,7 @@ Resolver::Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
       doh_enabled_(false),
       retry_delay_(retry_delay),
       max_num_retries_(max_num_retries),
-      metrics_(new Metrics),
-      ifname_(ifname) {
+      metrics_(new Metrics) {
   ares_client_ = std::make_unique<AresClient>(timeout);
   curl_client_ = std::make_unique<DoHCurlClient>(timeout);
 }
@@ -237,7 +235,6 @@ Resolver::Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
 Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
                    std::unique_ptr<DoHCurlClientInterface> curl_client,
                    std::unique_ptr<net_base::SocketFactory> socket_factory,
-                   std::string_view ifname,
                    bool disable_probe,
                    bool disable_query_validation,
                    std::unique_ptr<Metrics> metrics)
@@ -248,7 +245,6 @@ Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
       disable_probe_(disable_probe),
       disable_query_validation_(disable_query_validation),
       metrics_(std::move(metrics)),
-      ifname_(ifname),
       ares_client_(std::move(ares_client)),
       curl_client_(std::move(curl_client)) {}
 
@@ -784,6 +780,10 @@ void Resolver::SetDomainDoHConfigs(
          return a.second == DomainDoHConfig::kIncluded &&
                 b.second == DomainDoHConfig::kExcluded;
        });
+}
+
+void Resolver::SetInterface(std::string_view ifname) {
+  ifname_ = std::string(ifname);
 }
 
 std::unique_ptr<Resolver::SocketFd> Resolver::PopPendingSocketFd(int fd) {
