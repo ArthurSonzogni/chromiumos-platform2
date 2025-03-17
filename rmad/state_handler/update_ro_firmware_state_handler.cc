@@ -24,12 +24,11 @@
 #include "rmad/constants.h"
 #include "rmad/logs/logs_constants.h"
 #include "rmad/logs/logs_utils.h"
-#include "rmad/rmad_config.pb.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/udev/udev_device.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils_impl.h"
-#include "rmad/utils/cros_config_utils_impl.h"
+#include "rmad/utils/rmad_config_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
@@ -57,35 +56,32 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
       is_mocked_(false),
-      mock_update_success_(false),
-      config_dir_path_(kDefaultConfigDirPath) {
+      mock_update_success_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
-  cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
+  rmad_config_utils_ = std::make_unique<RmadConfigUtilsImpl>();
 }
 
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     bool update_success,
-    const base::FilePath& config_dir_path,
     std::unique_ptr<UdevUtils> udev_utils,
     std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<PowerManagerClient> power_manager_client,
-    std::unique_ptr<CrosConfigUtils> cros_config_utils)
+    std::unique_ptr<RmadConfigUtils> rmad_config_utils)
     : BaseStateHandler(json_store, daemon_callback),
       is_mocked_(true),
       mock_update_success_(update_success),
-      config_dir_path_(config_dir_path),
       udev_utils_(std::move(udev_utils)),
       cmd_utils_(std::move(cmd_utils)),
       write_protect_utils_(std::move(write_protect_utils)),
       power_manager_client_(std::move(power_manager_client)),
-      cros_config_utils_(std::move(cros_config_utils)) {
+      rmad_config_utils_(std::move(rmad_config_utils)) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
@@ -225,41 +221,18 @@ bool UpdateRoFirmwareStateHandler::CanSkipUpdate() const {
   return false;
 }
 
-std::optional<RmadConfig> UpdateRoFirmwareStateHandler::GetRmadConfig() const {
-  std::string model_name;
-  if (!cros_config_utils_->GetModelName(&model_name)) {
-    LOG(ERROR) << "Failed to get model name";
-    return std::nullopt;
-  }
-
-  const base::FilePath textproto_file_path =
-      config_dir_path_.Append(model_name)
-          .Append(kDefaultRmadConfigProtoFilePath);
-  if (!base::PathExists(textproto_file_path)) {
-    return std::nullopt;
-  }
-
-  std::string textproto;
-  if (!base::ReadFileToString(textproto_file_path, &textproto)) {
-    LOG(ERROR) << "Failed to read " << textproto_file_path.value();
-    return std::nullopt;
-  }
-
-  RmadConfig rmad_config;
-  if (!google::protobuf::TextFormat::ParseFromString(textproto, &rmad_config)) {
-    LOG(ERROR) << "Failed to parse RmadConfig";
-    return std::nullopt;
-  }
-
-  return rmad_config;
-}
-
 bool UpdateRoFirmwareStateHandler::SkipUpdateFromRootfs() const {
-  std::optional<RmadConfig> rmad_config = GetRmadConfig();
-  if (!rmad_config || !rmad_config->has_skip_update_ro_firmware_from_rootfs()) {
-    return false;
+  auto rmad_config = rmad_config_utils_->GetConfig();
+
+  if (rmad_config.has_value() &&
+      rmad_config->skip_update_ro_firmware_from_rootfs()) {
+    LOG(ERROR)
+        << "Firmware update from rootfs is disabled by device rmad config.";
+
+    return true;
   }
-  return rmad_config->skip_update_ro_firmware_from_rootfs();
+
+  return false;
 }
 
 void UpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal() {

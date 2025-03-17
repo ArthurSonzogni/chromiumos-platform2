@@ -5,6 +5,7 @@
 #include "rmad/state_handler/update_ro_firmware_state_handler.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -19,12 +20,13 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_power_manager_client.h"
-#include "rmad/udev/mock_udev_device.h"
 #include "rmad/udev/mock_udev_utils.h"
+#include "rmad/udev/udev_device.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cmd_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
+#include "rmad/utils/rmad_config_utils_impl.h"
 
 using testing::_;
 using testing::DoAll;
@@ -34,12 +36,6 @@ using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
-
-namespace {
-
-constexpr char kModel[] = "Model";
-
-}  // namespace
 
 namespace rmad {
 
@@ -53,7 +49,7 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
   struct StateHandlerArgs {
     bool ro_verified = true;
     bool hwwp_enabled = false;
-    std::optional<std::string> rmad_config_textproto = std::nullopt;
+    std::string rmad_config_text = "";
     bool copy_success = true;
     bool update_success = true;
   };
@@ -92,26 +88,32 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
         std::make_unique<NiceMock<MockPowerManagerClient>>();
     ON_CALL(*mock_power_manager_client, Restart).WillByDefault(Return(true));
 
+    // Inject textproto content for |RmadConfigUtils|.
     auto mock_cros_config_utils =
-        std::make_unique<NiceMock<MockCrosConfigUtils>>();
-    ON_CALL(*mock_cros_config_utils, GetModelName(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(kModel), Return(true)));
+        std::make_unique<StrictMock<MockCrosConfigUtils>>();
+    if (!args.rmad_config_text.empty()) {
+      EXPECT_CALL(*mock_cros_config_utils, GetModelName(_))
+          .WillOnce(DoAll(SetArgPointee<0>("model_name"), Return(true)));
 
-    if (args.rmad_config_textproto.has_value()) {
-      base::FilePath textproto_dir = GetTempDirPath().Append(kModel);
-      base::FilePath textproto_path =
-          textproto_dir.Append("rmad_config.textproto");
-      EXPECT_TRUE(base::CreateDirectory(textproto_dir));
-      EXPECT_TRUE(
-          base::WriteFile(textproto_path, args.rmad_config_textproto.value()));
+      const base::FilePath textproto_file_path =
+          GetTempDirPath()
+              .Append("model_name")
+              .Append(kDefaultRmadConfigProtoFilePath);
+
+      EXPECT_TRUE(base::CreateDirectory(textproto_file_path.DirName()));
+      EXPECT_TRUE(base::WriteFile(textproto_file_path, args.rmad_config_text));
+    } else {
+      EXPECT_CALL(*mock_cros_config_utils, GetModelName(_))
+          .WillOnce(Return(false));
     }
+    auto rmad_config_utils = std::make_unique<RmadConfigUtilsImpl>(
+        GetTempDirPath(), std::move(mock_cros_config_utils));
 
     return base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
-        json_store_, daemon_callback_, args.update_success, GetTempDirPath(),
+        json_store_, daemon_callback_, args.update_success,
         std::move(mock_udev_utils), std::move(mock_cmd_utils),
         std::move(mock_write_protect_utils),
-        std::move(mock_power_manager_client),
-        std::move(mock_cros_config_utils));
+        std::move(mock_power_manager_client), std::move(rmad_config_utils));
   }
 
   void ExpectSignal(UpdateRoFirmwareStatus expected_status) {
@@ -149,19 +151,18 @@ TEST_F(UpdateRoFirmwareStateHandlerTest,
 
 TEST_F(UpdateRoFirmwareStateHandlerTest,
        InitializeState_Success_RmadConfig_Empty) {
-  constexpr char textproto[] = "";
-  auto handler = CreateStateHandler({.rmad_config_textproto = textproto});
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   UpdateRoFirmwareState state = handler->GetState().update_ro_firmware();
   EXPECT_EQ(state.skip_update_ro_firmware_from_rootfs(), false);
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest,
-       InitializeState_Success_RmadConfig_NonEmpty) {
-  constexpr char textproto[] = R"(
-skip_update_ro_firmware_from_rootfs: true
-  )";
-  auto handler = CreateStateHandler({.rmad_config_textproto = textproto});
+       InitializeState_Success_RmadConfig_SkipUpdateRoFirmwareFromRootfs_True) {
+  std::string textproto = R"(
+          skip_update_ro_firmware_from_rootfs: true
+        )";
+  auto handler = CreateStateHandler({.rmad_config_text = textproto});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   UpdateRoFirmwareState state = handler->GetState().update_ro_firmware();
   EXPECT_EQ(state.skip_update_ro_firmware_from_rootfs(), true);
@@ -173,10 +174,10 @@ TEST_F(UpdateRoFirmwareStateHandlerTest, InitializeState_HwwpEnabled_Failed) {
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, RunState_SkipRootfs_WaitUsb) {
-  constexpr char textproto[] = R"(
-skip_update_ro_firmware_from_rootfs: true
+  std::string textproto = R"(
+    skip_update_ro_firmware_from_rootfs: true
   )";
-  auto handler = CreateStateHandler({.rmad_config_textproto = textproto,
+  auto handler = CreateStateHandler({.rmad_config_text = textproto,
                                      .copy_success = true,
                                      .update_success = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
