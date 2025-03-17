@@ -1677,7 +1677,11 @@ TEST_P(ProxyTest, DefaultProxy_SetInterface) {
                          shill::Client::Device::Type::kEthernet, "eth0",
                          {"8.8.8.8", "8.8.4.4"},
                          {"2001:4860:4860::8888", "2001:4860:4860::8844"});
-  EXPECT_CALL(*resolver_, SetInterface).Times(0);
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*resolver_, SetInterface("eth0"));
+  } else {
+    EXPECT_CALL(*resolver_, SetInterface).Times(0);
+  }
   proxy_->OnDefaultDeviceChanged(dev.get());
 }
 
@@ -1689,7 +1693,11 @@ TEST_P(ProxyTest, SystemProxy_SetInterface) {
                          shill::Client::Device::Type::kEthernet, "eth0",
                          {"8.8.8.8", "8.8.4.4"},
                          {"2001:4860:4860::8888", "2001:4860:4860::8844"});
-  EXPECT_CALL(*resolver_, SetInterface).Times(0);
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*resolver_, SetInterface("eth0"));
+  } else {
+    EXPECT_CALL(*resolver_, SetInterface).Times(0);
+  }
   proxy_->OnDefaultDeviceChanged(dev.get());
 }
 }  // namespace dns_proxy

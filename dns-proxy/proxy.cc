@@ -448,15 +448,17 @@ void Proxy::ApplyDeviceUpdate() {
   MaybeCreateResolver();
   UpdateNameServers();
 
-  // Update the interface to use for sending DNS queries. This is only necessary
-  // when DNS proxy is running on the root namespace, as otherwise the routing
-  // is handled through ConnectNamespace. This is also only necessary for ARC
-  // proxies:
-  // - For non-cell, the interface is the fixed interface the proxy is tied to.
-  // - For cell, the interface is the primary multiplexed interface of the fixed
-  // interface the proxy is tied to. This needs to be updated whenever the
-  // primary multiplexed interface changes.
-  if (root_ns_enabled_ && opts_.type == Proxy::Type::kARC && resolver_) {
+  // Update the interface to use for sending DNS queries for:
+  // - ARC proxies to use the network it is tied to.
+  // - All proxies to be able to reach link-local addresses.
+  // This is only necessary when DNS proxy is running on the root namespace, as
+  // otherwise the routing is handled through ConnectNamespace.
+  // The interface to use follows the rule of:
+  // - For non-cell, use the current interface the proxy is tied to.
+  // - For cell, use the primary multiplexed interface of the current interface
+  // the proxy is tied to. This needs to be updated whenever the primary
+  // multiplexed interface changes.
+  if (root_ns_enabled_ && resolver_) {
     resolver_->SetInterface(device_->active_ifname());
   }
 
