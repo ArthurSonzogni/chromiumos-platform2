@@ -786,6 +786,10 @@ void Resolver::SetInterface(std::string_view ifname) {
   ifname_ = std::string(ifname);
 }
 
+void Resolver::ClearInterface() {
+  ifname_.clear();
+}
+
 std::unique_ptr<Resolver::SocketFd> Resolver::PopPendingSocketFd(int fd) {
   auto it = pending_sock_fds_.find(fd);
   if (it != pending_sock_fds_.end()) {

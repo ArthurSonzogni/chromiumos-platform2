@@ -448,16 +448,24 @@ void Proxy::ApplyDeviceUpdate() {
   MaybeCreateResolver();
   UpdateNameServers();
 
-  // Update the interface to use for sending DNS queries. This is only necessary
-  // when DNS proxy is running on the root namespace, as otherwise the routing
-  // is handled through ConnectNamespace. This is also only necessary for ARC
-  // proxies:
-  // - For non-cell, the interface is the fixed interface the proxy is tied to.
-  // - For cell, the interface is the primary multiplexed interface of the fixed
-  // interface the proxy is tied to. This needs to be updated whenever the
-  // primary multiplexed interface changes.
-  if (root_ns_enabled_ && opts_.type == Proxy::Type::kARC && resolver_) {
-    resolver_->SetInterface(device_->active_ifname());
+  // Update the interface to use for sending DNS queries for:
+  // - ARC proxies to use the network it is tied to.
+  // - All proxies to be able to reach link-local addresses.
+  // This is only necessary when DNS proxy is running on the root namespace, as
+  // otherwise the routing is handled through ConnectNamespace.
+  // The interface to use follows the rule of:
+  // - For non-cell and non-VPN, use the current interface the proxy is tied to.
+  // - For cell, use the primary multiplexed interface of the current interface
+  // the proxy is tied to. This needs to be updated whenever the primary
+  // multiplexed interface changes.
+  // - For VPN, don't bind to any interface. Rely fully on the existing routing
+  // rules. Binding to VPN interface does not work on IKEv2 VPNs.
+  if (root_ns_enabled_ && resolver_) {
+    if (device_->type == shill::Client::Device::Type::kVPN) {
+      resolver_->ClearInterface();
+    } else {
+      resolver_->SetInterface(device_->active_ifname());
+    }
   }
 
   if (opts_.type == Type::kSystem) {

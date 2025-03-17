@@ -172,9 +172,14 @@ class Resolver {
   virtual void SetDoHProviders(const std::vector<std::string>& doh_providers,
                                bool always_on_doh = false);
 
-  // Set interface name to bind to when sending queries. This is only used for
-  // ARC proxies.
+  // Set interface name to bind to when sending queries. This is necessary for:
+  // - ARC proxies to use the network it is tied to.
+  // - All proxies to be able to reach link-local addresses.
+  // When SetInterface is called with an empty string, queries will be sent
+  // without binding to any interface. This is the same behavior with
+  // ClearInterface.
   virtual void SetInterface(std::string_view ifname);
+  virtual void ClearInterface();
 
   // Set DNS-over-HTTPS included and excluded domains. This is used to
   // disable DoH (and falls back to plain-text DNS) for certain domains.
