@@ -40,6 +40,7 @@ source_set("libutils") {
     "json_store.cc",
     "mojo_service_utils_impl.cc",
     "regions_utils_impl.cc",
+    "rmad_config_utils_impl.cc",
     "sensor_calibration_utils_impl.cc",
     "sys_utils_impl.cc",
     "type_conversions.cc",
@@ -47,7 +48,10 @@ source_set("libutils") {
     "write_protect_utils_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
+  deps = [
+    "//hardware_verifier/proto:hardware_verifier-protos",
+    "//rmad/proto:rmad-protos",
+  ]
 }
 
 if (use.test) {
@@ -74,6 +78,7 @@ if (use.test) {
       "json_store_test.cc",
       "mojo_service_utils_test.cc",
       "regions_utils_impl_test.cc",
+      "rmad_config_utils_impl_test.cc",
       "rpc_utils_test.cc",
       "sensor_calibration_utils_impl_test.cc",
       "sys_utils_impl_test.cc",
