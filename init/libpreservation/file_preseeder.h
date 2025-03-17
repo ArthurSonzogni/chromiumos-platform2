@@ -38,6 +38,7 @@ class BRILLO_EXPORT FilePreseeder {
                                   const base::FilePath& path);
   bool RestoreExtentFiles(FilesystemManager* fs_manager);
   bool RestoreInlineFiles();
+  bool RestoreRootFlagFiles(const std::set<base::FilePath>& file_allowlist);
 
  protected:
   virtual bool GetFileExtents(const base::FilePath& file, ExtentArray* extents);

@@ -91,7 +91,11 @@ std::set<std::string> GetDebugBuildPaths() {
 }
 
 std::set<std::string> GetDevModePaths() {
-  return std::set<std::string>({"unencrypted/dev_image.block"});
+  return std::set<std::string>({
+      ".developer_mode",
+      "dev_image/factory/enabled",
+      "unencrypted/dev_image.block",
+  });
 }
 
 }  // namespace
@@ -183,6 +187,15 @@ std::set<std::string> GetPreservationFileList() {
 std::set<std::string> GetStartupPreseedingPaths() {
   return std::set<std::string>(
       {"unencrypted/clobber.log", "unencrypted/clobber-state.log"});
+}
+
+std::set<std::string> GetRootFlagFileAllowlist() {
+  return std::set<std::string>({
+      ".labmachine",
+      ".developer_mode",
+      ".install_completed",
+      "factory_install_reset",
+  });
 }
 
 }  // namespace libpreservation

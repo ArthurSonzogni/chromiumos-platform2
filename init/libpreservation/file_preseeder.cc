@@ -68,7 +68,7 @@ bool FilePreseeder::SaveFileState(const std::set<base::FilePath>& file_list) {
     }
     std::string data;
 
-    if (*file_size < kInlineFileSizeLimit) {
+    if (*file_size < kInlineFileSizeLimit && *file_size != 0) {
       if (!base::ReadFileToString(file, &data)) {
         PLOG(ERROR) << "Failed to read config from " << file;
         continue;
@@ -81,7 +81,7 @@ bool FilePreseeder::SaveFileState(const std::set<base::FilePath>& file_list) {
 
     if (*file_size < kInlineFileSizeLimit) {
       pfile->mutable_contents()->set_data(data);
-    } else {
+    } else if (*file_size != 0) {
       if (!GetFileExtents(file, pfile->mutable_contents()->mutable_extents())) {
         LOG(ERROR) << "Failed to get extents for " << preseeded_file;
         ret = false;
@@ -209,13 +209,32 @@ bool FilePreseeder::RestoreInlineFiles() {
       }
     }
 
-    std::string contents = file.contents().data();
+    std::string contents = file.size() != 0 ? file.contents().data() : "";
     if (!base::WriteFile(path, contents)) {
-      LOG(ERROR) << "Failed to create file";
+      LOG(ERROR) << "Failed to create file: " << path;
     }
   }
 
   return true;
+}
+
+bool FilePreseeder::RestoreRootFlagFiles(
+    const std::set<base::FilePath>& file_allowlist) {
+  bool ret = true;
+  for (auto& file : preseeded_files_.file_list()) {
+    base::FilePath root_file = base::FilePath(file.path());
+    if (file_allowlist.find(root_file) == file_allowlist.end()) {
+      continue;
+    }
+
+    if (!base::WriteFile(mount_root_.Append(root_file), "")) {
+      LOG(ERROR) << "Failed to create file" << root_file;
+      ret = false;
+      continue;
+    }
+  }
+
+  return ret;
 }
 
 bool FilePreseeder::GetFileExtents(const base::FilePath& path,

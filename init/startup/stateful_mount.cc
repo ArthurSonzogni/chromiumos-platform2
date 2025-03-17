@@ -443,6 +443,16 @@ void StatefulMount::MountStateful(
     if (preseeder.LoadMetadata() && !preseeder.RestoreInlineFiles()) {
       LOG(ERROR) << "Failed to restore inline files";
     }
+
+    std::set<base::FilePath> root_flag_allowlist;
+    for (auto& file : libpreservation::GetRootFlagFileAllowlist()) {
+      root_flag_allowlist.insert(base::FilePath(file));
+    }
+
+    if (!preseeder.RestoreRootFlagFiles(root_flag_allowlist)) {
+      LOG(ERROR) << "Failed to restore root flag files";
+    }
+
     platform_->DeleteFile(metadata_path);
   }
 

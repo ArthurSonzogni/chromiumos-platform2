@@ -32,6 +32,8 @@ BRILLO_EXPORT std::set<std::string> GetStartupPreseedingPaths();
 BRILLO_EXPORT std::set<std::string> GetFactoryPreservationPathList(
     const base::FilePath& mount_path);
 
+BRILLO_EXPORT std::set<std::string> GetRootFlagFileAllowlist();
+
 }  // namespace libpreservation
 
 #endif  // INIT_LIBPRESERVATION_PRESERVATION_H_

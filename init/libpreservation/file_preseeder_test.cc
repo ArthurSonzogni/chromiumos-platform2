@@ -18,6 +18,7 @@
 #include "base/files/file_util.h"
 #include "init/libpreservation/fake_ext2fs.h"
 #include "init/libpreservation/filesystem_manager.h"
+#include "init/libpreservation/preservation.h"
 
 using ::testing::_;
 using ::testing::Return;
@@ -30,6 +31,10 @@ const base::FilePath kBarFoo = base::FilePath("bar/foo");
 const base::FilePath kBarFooAr = base::FilePath("bar/foo/ar");
 const base::FilePath kBaz = base::FilePath("baz");
 const base::FilePath kBar = base::FilePath("bar");
+const base::FilePath kDevMode = base::FilePath(".developer_mode");
+const base::FilePath kLabMachine = base::FilePath(".labmachine");
+const base::FilePath kEncryptedKey = base::FilePath("encrypted.key");
+
 }  // namespace
 
 class FilePreseederTest : public ::testing::Test {
@@ -164,6 +169,40 @@ TEST_F(FilePreseederTest, CheckAllowlist) {
   EXPECT_TRUE(preseeder.CheckAllowlist(kBarFooAr));
 
   EXPECT_FALSE(preseeder.CheckAllowlist(kBaz));
+}
+
+TEST_F(FilePreseederTest, RestoreRootFlagFiles) {
+  std::set<base::FilePath> file_allowlist = {kDevMode, kLabMachine,
+                                             kEncryptedKey};
+  std::set<base::FilePath> directory_allowlist = {kBar};
+  FilePreseeder preseeder(directory_allowlist, fs_root_, mount_root_,
+                          metadata_path_);
+  base::FilePath file_devmode = mount_root_.Append(kDevMode);
+  base::FilePath file_labmachine = mount_root_.Append(kLabMachine);
+  base::FilePath file_encryptedkey = mount_root_.Append(kEncryptedKey);
+  ASSERT_TRUE(base::CreateDirectory(mount_root_.Append(kBar)));
+  ASSERT_TRUE(brillo::WriteStringToFile(file_devmode, ""));
+  ASSERT_TRUE(brillo::WriteStringToFile(file_labmachine, ""));
+  ASSERT_TRUE(brillo::WriteStringToFile(file_encryptedkey, ""));
+  EXPECT_TRUE(preseeder.SaveFileState(file_allowlist));
+  EXPECT_TRUE(base::PathExists(metadata_path_));
+  EXPECT_TRUE(brillo::DeleteFile(file_devmode));
+  EXPECT_TRUE(brillo::DeleteFile(file_labmachine));
+  EXPECT_TRUE(brillo::DeleteFile(file_encryptedkey));
+
+  FilePreseeder preseeder2(directory_allowlist, fs_root_, mount_root_,
+                           metadata_path_);
+  EXPECT_TRUE(preseeder2.LoadMetadata());
+
+  std::set<base::FilePath> root_flag_allowlist;
+  for (auto& file : libpreservation::GetRootFlagFileAllowlist()) {
+    root_flag_allowlist.insert(base::FilePath(file));
+  }
+  EXPECT_TRUE(preseeder2.RestoreRootFlagFiles(root_flag_allowlist));
+
+  EXPECT_TRUE(base::PathExists(file_devmode));
+  EXPECT_TRUE(base::PathExists(file_labmachine));
+  EXPECT_FALSE(base::PathExists(file_encryptedkey));
 }
 
 }  // namespace libpreservation
