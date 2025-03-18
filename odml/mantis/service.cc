@@ -86,8 +86,15 @@ void InstallI18nDlcForIndex(
     std::move(callback).Run(true);
     return;
   }
+  i18n::LangPair lang_pair = {.source = kI18nLanguage[index], .target = "en"};
+  if (translator->IsDlcDownloaded(lang_pair)) {
+    // Move to next index and do not show progress 1.0, as required by frontend.
+    InstallI18nDlcForIndex(translator, progress_observer, index + 1,
+                           std::move(callback));
+    return;
+  }
   translator->DownloadDlc(
-      {.source = kI18nLanguage[index], .target = "en"},
+      lang_pair,
       base::BindOnce(
           [](raw_ref<i18n::Translator> translator,
              std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>

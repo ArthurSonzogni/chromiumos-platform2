@@ -73,16 +73,11 @@ class MantisServiceTest : public testing::Test {
     auto dlc_path = base::FilePath("testdata").Append(dlc_name);
     cros::DlcClient::SetDlcPathForTest(&dlc_path);
     // Ensure mojo's callback is always called to prevent failed CHECK.
-    ON_CALL(translator_, DownloadDlc)
-        .WillByDefault(base::test::RunOnceCallbackRepeatedly<1>(true));
+    ON_CALL(translator_, IsDlcDownloaded).WillByDefault(Return(true));
   }
 
   void SetupShimForI18nDlcTest() {
-    EXPECT_CALL(shim_loader_, IsShimReady).WillOnce(Return(false));
-    EXPECT_CALL(shim_loader_, InstallVerifiedShim)
-        .WillOnce(base::test::RunOnceCallback<0>(false));
-    EXPECT_CALL(shim_loader_, EnsureShimReady)
-        .WillOnce(base::test::RunOnceCallback<0>(true));
+    EXPECT_CALL(shim_loader_, IsShimReady).WillOnce(Return(true));
 
     // Optional calls, depends on whether i18n DLC succeed or not.
     ON_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
@@ -316,8 +311,30 @@ TEST_F(MantisServiceTest, MultipleClients) {
   EXPECT_TRUE(service_->IsProcessorNullForTesting());
 }
 
+TEST_F(MantisServiceTest, I18nDLCIsDownloaded) {
+  SetupShimForI18nDlcTest();
+  EXPECT_CALL(translator_, IsDlcDownloaded).WillRepeatedly(Return(true));
+  EXPECT_CALL(translator_, DownloadDlc).Times(0);
+  SetupDlc();
+
+  MockProgressObserver progress_observer;
+  // If already downloaded, ensure no progress is sent.
+  EXPECT_CALL(progress_observer, Progress).Times(0);
+
+  mojo::Remote<mojom::MantisProcessor> processor;
+  TestFuture<mojom::InitializeResult> result_future;
+  service_remote_->Initialize(progress_observer.BindNewPipeAndPassRemote(),
+                              processor.BindNewPipeAndPassReceiver(),
+                              base::Uuid::ParseLowercase(kDefaultDlcUUID),
+                              result_future.GetCallback());
+  service_remote_.FlushForTesting();
+
+  EXPECT_EQ(result_future.Take(), mojom::InitializeResult::kSuccess);
+}
+
 TEST_F(MantisServiceTest, I18nDLCProgressIsSequential) {
   SetupShimForI18nDlcTest();
+  EXPECT_CALL(translator_, IsDlcDownloaded).WillRepeatedly(Return(false));
   EXPECT_CALL(translator_, DownloadDlc)
       .WillRepeatedly([](const i18n::LangPair& lang_pair,
                          base::OnceCallback<void(bool)> callback,
@@ -332,7 +349,6 @@ TEST_F(MantisServiceTest, I18nDLCProgressIsSequential) {
   MockProgressObserver progress_observer;
   {
     InSequence s;
-    EXPECT_CALL(progress_observer, Progress(0));
     // First language
     EXPECT_CALL(progress_observer, Progress(0.9375));
     EXPECT_CALL(progress_observer, Progress(0.95));
@@ -357,6 +373,7 @@ TEST_F(MantisServiceTest, I18nDLCProgressIsSequential) {
 
 TEST_F(MantisServiceTest, I18nDLCDownloadFailed) {
   SetupShimForI18nDlcTest();
+  EXPECT_CALL(translator_, IsDlcDownloaded).WillRepeatedly(Return(false));
   EXPECT_CALL(translator_, DownloadDlc)
       // Success for the first language but failed at second
       .WillOnce([](const i18n::LangPair& lang_pair,
@@ -371,7 +388,6 @@ TEST_F(MantisServiceTest, I18nDLCDownloadFailed) {
   MockProgressObserver progress_observer;
   {
     InSequence s;
-    EXPECT_CALL(progress_observer, Progress(0));
     // Still got progress for the first successful language
     EXPECT_CALL(progress_observer, Progress(0.95));
     // No progress for the second failed language
