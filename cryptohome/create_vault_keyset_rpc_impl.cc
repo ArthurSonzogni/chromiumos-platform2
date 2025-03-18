@@ -99,12 +99,20 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
     return;
   }
 
-  // Determine the AuthBlock type to use for auth block creation.
+  // Get this list of block types supported by this driver. We need to modify
+  // this to remove pinweaver from the set of password types, as this is not
+  // supported by vault keyset passwords.
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(*type);
+  std::vector<AuthBlockType> block_types(factor_driver.block_types().begin(),
+                                         factor_driver.block_types().end());
+  if (*type == AuthFactorType::kPassword) {
+    std::erase(block_types, AuthBlockType::kPinWeaver);
+  }
+
+  // Determine the AuthBlock type to use for auth block creation.
   CryptoStatusOr<AuthBlockType> auth_block_type =
-      auth_block_utility_->SelectAuthBlockTypeForCreation(
-          factor_driver.block_types());
+      auth_block_utility_->SelectAuthBlockTypeForCreation(block_types);
   if (!auth_block_type.ok()) {
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
@@ -122,8 +130,10 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
       .obfuscated_username = auth_session.obfuscated_username()};
   AuthFactorMetadata auth_factor_metadata;
 
-  // Generate the reset seed for AuthInput.
-  if (factor_driver.NeedsResetSecret()) {
+  // Generate the reset secret for AuthInput. Exclude passwords from this check
+  // because they only need reset secrets when using pinweaver passwords, which
+  // this operation does not support.
+  if (factor_driver.NeedsResetSecret() && *type != AuthFactorType::kPassword) {
     // When using VaultKeyset, reset is implemented via a seed that's shared
     // among all of the user's VKs. Hence copy it from the previously loaded VK.
     if (!initial_vault_keyset_) {
