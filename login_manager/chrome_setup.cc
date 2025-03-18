@@ -1293,6 +1293,7 @@ void AddXSFlags(ChromiumCommandBuilder* builder) {
 void AddCoralFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("coral")) {
     builder->AddFeatureEnableOverride("CoralFeature");
+    builder->AddFeatureEnableOverride("CoralFeatureMultiLanguage");
   }
 }
 

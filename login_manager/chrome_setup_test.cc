@@ -496,4 +496,17 @@ TEST_F(ChromeSetupTest, TestArcVmDlcDisabled) {
   EXPECT_EQ(kNotPresent, GetFlag(argv, "--enable-arcvm-dlc"));
 }
 
+TEST_F(ChromeSetupTest, TestCoralEnabled) {
+  base::ScopedTempDir temp_dir;
+  InitWithUseFlag("coral", &temp_dir, &builder_);
+  login_manager::AddCoralFlags(&builder_);
+
+  auto argv = builder_.arguments();
+  std::vector<std::string> result =
+      base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
+  EXPECT_THAT(result, testing::Contains("CoralFeature"));
+  EXPECT_THAT(result, testing::Contains("CoralFeatureMultiLanguage"));
+}
+
 }  // namespace login_manager
