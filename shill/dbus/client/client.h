@@ -92,6 +92,12 @@ class BRILLO_EXPORT Client {
       kDisconnecting,
     };
 
+    // Returns the interface that is expected to be used for network operations.
+    // For cell, this mean the primary multiplexed interface.
+    std::string active_ifname() {
+      return cellular_primary_ifname.empty() ? ifname : cellular_primary_ifname;
+    }
+
     Type type;
     ConnectionState state;
     std::string ifname;
