@@ -66,6 +66,14 @@
 namespace cryptohome {
 namespace {
 
+using ::base::test::TaskEnvironment;
+using ::base::test::TestFuture;
+using ::brillo::cryptohome::home::SanitizeUserName;
+using ::cryptohome::error::CryptohomeError;
+using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::NotOk;
+using ::hwsec_foundation::error::testing::ReturnValue;
+using ::hwsec_foundation::status::OkStatus;
 using ::testing::_;
 using ::testing::Contains;
 using ::testing::Eq;
@@ -76,15 +84,6 @@ using ::testing::Optional;
 using ::testing::Return;
 using ::testing::UnorderedElementsAre;
 using ::testing::VariantWith;
-
-using base::test::TaskEnvironment;
-using base::test::TestFuture;
-using brillo::cryptohome::home::SanitizeUserName;
-using cryptohome::error::CryptohomeError;
-using hwsec_foundation::error::testing::IsOk;
-using hwsec_foundation::error::testing::NotOk;
-using hwsec_foundation::error::testing::ReturnValue;
-using hwsec_foundation::status::OkStatus;
 
 using AuthenticateTestFuture =
     TestFuture<const AuthSession::PostAuthAction&, CryptohomeStatus>;
@@ -137,6 +136,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         .WillRepeatedly(ReturnValue(brillo::Blob()));
     EXPECT_CALL(system_apis_.hwsec, GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
+    ON_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+        .WillByDefault(ReturnValue(false));
 
     // Mock the VK factory with some useful default functions to create basic
     // minimal keysets.
@@ -708,6 +709,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   auto pw_manager = factory.GetPinWeaverManagerFrontend();
   system_apis_.crypto.set_pinweaver_manager_for_testing(pw_manager.get());
   system_apis_.crypto.Init();
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(false));
 
   SetUpHwsecAuthenticationMocks();
   AuthInput auth_input = {
@@ -816,6 +819,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       &system_apis_.uss_manager,
       &features_.async};
   backing_apis_ = std::move(backing_api_with_mock_km);
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(false));
 
   {
     AuthSession auth_session = StartAuthSession();
@@ -858,6 +863,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
     AuthenticatePasswordFactor(auth_session, kPasswordLabel, kPassword);
 
     // Attempting too many wrong PINs, but don't lock yet.
+    EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+        .WillRepeatedly(ReturnValue(true));
     for (int i = 0; i < kMaxWrongAttempts - 2; i++) {
       EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
                 AttemptAuthWithPinFactor(auth_session, kPinLabel, kWrongPin));

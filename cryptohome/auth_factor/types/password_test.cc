@@ -41,7 +41,8 @@ class PasswordDriverTest : public AuthFactorDriverGenericTest {
   FakeFeaturesForTesting features_;
 };
 
-TEST_F(PasswordDriverTest, BlockTypesDefault) {
+TEST_F(PasswordDriverTest, BlockTypesOriginal) {
+  features_.SetDefaultForFeature(Features::kPinweaverForPassword, false);
   PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
 

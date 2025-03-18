@@ -189,6 +189,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         .WillByDefault(ReturnValue(2));
     ON_CALL(system_apis_.hwsec_pw_manager, BlockGeneratePk())
         .WillByDefault(ReturnOk<TPMError>());
+    ON_CALL(system_apis_.hwsec_pw_manager, InsertCredential(_, _, _, _, _, _))
+        .WillByDefault(ReturnValue(0));
   }
 
   void CreateAuthSessionManager(AuthBlockUtility* auth_block_utility) {
@@ -1199,7 +1201,7 @@ TEST_F(AuthSessionInterfaceTest, RemoveAuthFactorSuccess) {
 
 // Test that RemoveAuthFactor returns failure from remove request for the wrong
 // label.
-TEST_F(AuthSessionInterfaceTest, RemoveAuthFactorFailsNonExitingLabel) {
+TEST_F(AuthSessionInterfaceTest, RemoveAuthFactorFailsNonExistingLabel) {
   // Arrange.
   std::string serialized_token =
       StartAuthenticatedAuthSession(kUsernameString, AUTH_INTENT_DECRYPT);

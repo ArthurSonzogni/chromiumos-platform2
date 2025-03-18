@@ -336,6 +336,8 @@ TEST_F(AuthBlockUtilityImplTest,
 // TpmBoundToPcrAuthBlock when the AuthBlock type is
 // AuthBlockType::kTpmBoundToPcr.
 TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
+
   // Setup test inputs and the mock expectations.
   AuthInput auth_input = {
       .user_input = brillo::SecureBlob(20, 'A'),
@@ -439,6 +441,8 @@ TEST_F(AuthBlockUtilityImplTest,
 // TpmNotBoundToPcrAuthBlock when the AuthBlock type is
 // AuthBlockType::kTpmNotBoundToPcr.
 TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
+
   // Setup test inputs and the mock expectations.
   AuthInput auth_input = {
       .user_input = brillo::SecureBlob(20, 'A'),
@@ -543,6 +547,8 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlockErrorNoLoader) {
 // TpmEccAuthBlock when the AuthBlock type is
 // AuthBlockType::kTpmEcc.
 TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
+
   // Setup test inputs and the mock expectations.
   AuthInput auth_input = {
       .user_input = brillo::SecureBlob(20, 'A'),
@@ -714,6 +720,8 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
 // DoubleWrappedCompatAuthBlock when the AuthBlock type is
 // AuthBlockType::kDoubleWrappedCompat.
 TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
+
   // Setup test inputs and the mock expectations.
   crypto_.Init();
   brillo::Blob wrapped_keyset = {

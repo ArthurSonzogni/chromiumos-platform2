@@ -54,6 +54,7 @@ void SetupMockHwsec(NiceMock<hwsec::MockCryptohomeFrontend>& hwsec) {
       .WillByDefault(ReturnValue(brillo::BlobFromString("public key hash")));
   ON_CALL(hwsec, IsEnabled()).WillByDefault(ReturnValue(true));
   ON_CALL(hwsec, IsReady()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec, IsPinWeaverEnabled()).WillByDefault(ReturnValue(false));
 }
 
 class TpmNotBoundToPcrTest : public ::testing::Test {

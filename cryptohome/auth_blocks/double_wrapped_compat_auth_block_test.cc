@@ -24,6 +24,7 @@ namespace {
 
 using ::base::test::TestFuture;
 using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::NiceMock;
 
 using DeriveTestFuture = TestFuture<CryptohomeStatus,
@@ -125,6 +126,9 @@ TEST_F(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
 
   FakeFeaturesForTesting features;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
+  ON_CALL(hwsec, IsEnabled()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec, IsReady()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec, IsPinWeaverEnabled()).WillByDefault(ReturnValue(false));
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   DoubleWrappedCompatAuthBlock auth_block(features.async, hwsec,
                                           cryptohome_keys_manager);
