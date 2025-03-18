@@ -882,6 +882,7 @@ int BPF_PROG(cros_handle_inet_recvmsg_exit,
   return 0;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 CROS_IF_FUNCTION_HOOK("lsm/socket_post_create",
                       "tp_btf/cros_security_socket_post_create_enter")
 int BPF_PROG(cros_handle_socket_post_create,
@@ -903,3 +904,20 @@ int BPF_PROG(cros_handle_socket_post_create,
   cros_maybe_new_socket(sock);
   return 0;
 }
+#else
+SEC("fexit/udpv6_init_sock")
+int BPF_PROG(cros_handle_udpv6_init_sock, struct sock* sk, int rv) {
+  struct socket* sock = sk->sk_socket;
+  if (rv !=
+      0) {  // Don't bother allocating storage if socket initialization fails.
+    return 0;
+  }
+  const struct cros_sk_info* sk_info =
+      create_process_map_entry(sock, "fexit/udpv6_init_sock");
+  if (!sk_info) {
+    bpf_printk("fexit/udpv6_init_sock failed to allocate and populate sk_info");
+  }
+  cros_maybe_new_socket(sock);
+  return 0;
+}
+#endif
