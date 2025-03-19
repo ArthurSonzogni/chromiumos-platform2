@@ -12,7 +12,7 @@ use log::{debug, error, trace};
 ///
 /// If this is not done, then stale data left over in internal buffers could be sent to clients,
 /// resulting in strange bugs.
-pub struct CompleteReader<R: Read> {
+pub(crate) struct CompleteReader<R: Read> {
     reader: R,
     finished: bool,
 }
@@ -21,7 +21,7 @@ impl<R> CompleteReader<R>
 where
     R: Read,
 {
-    pub fn new(reader: R) -> Self {
+    pub(crate) fn new(reader: R) -> Self {
         Self {
             reader,
             finished: false,
@@ -61,7 +61,7 @@ where
 
 /// A Read adapter that logs a message every time a data is successfully read.
 /// This is used to provide logs of data read from an HTTP client.
-pub struct LoggingReader<R: Read> {
+pub(crate) struct LoggingReader<R: Read> {
     reader: R,
     name: String,
 }
@@ -70,7 +70,7 @@ impl<R> LoggingReader<R>
 where
     R: Read,
 {
-    pub fn new(reader: R, name: &str) -> Self {
+    pub(crate) fn new(reader: R, name: &str) -> Self {
         Self {
             reader,
             name: name.to_string(),
@@ -92,7 +92,7 @@ where
     }
 }
 
-pub struct LoggingWriter<W: Write> {
+pub(crate) struct LoggingWriter<W: Write> {
     inner: W,
     log: bool,
 }
@@ -101,7 +101,7 @@ impl<W> LoggingWriter<W>
 where
     W: Write,
 {
-    pub fn new(writer: W, log: bool) -> Self {
+    pub(crate) fn new(writer: W, log: bool) -> Self {
         Self { inner: writer, log }
     }
 }
@@ -148,7 +148,7 @@ where
 /// A Writer adapter that splits written data into HTTP chunked encoding.
 /// The format of each chunk is "[data-length in hex]\r\n[data]\r\n",
 /// and there is a terminating "0\r\n\r\n" chunk appended to the stream.
-pub struct ChunkedWriter<W: Write> {
+pub(crate) struct ChunkedWriter<W: Write> {
     writer: W,
     buf: Vec<u8>,
 }
@@ -157,7 +157,7 @@ impl<W> ChunkedWriter<W>
 where
     W: Write,
 {
-    pub fn new(writer: W) -> Self {
+    pub(crate) fn new(writer: W) -> Self {
         Self {
             writer,
             buf: Vec::new(),

@@ -24,7 +24,7 @@ const CHUNKED_THRESHOLD: usize = 1 << 15;
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
 #[derive(Debug)]
-pub enum Error {
+pub(crate) enum Error {
     DuplicateBodyReader,
     EmptyField(String),
     ReadRequestBody(hyper::Error),
@@ -455,7 +455,7 @@ fn send_request_body<R: Read>(
 // because tokio can't guarantee that this async function stays alive long enough to keep the
 // reference valid.  Instead, this function uses the pattern of passing ownership of the
 // UsbConnection to each blocking task and returning it back again when it completes.
-pub async fn handle_request(
+pub(crate) async fn handle_request(
     verbose_log: bool,
     mut usb: UsbConnection,
     request: hyper::Request<Body>,

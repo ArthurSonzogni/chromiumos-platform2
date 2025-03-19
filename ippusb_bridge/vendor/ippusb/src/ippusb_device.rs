@@ -15,6 +15,7 @@ pub(crate) fn is_ippusb_interface(descriptor: &rusb::InterfaceDescriptor) -> boo
 }
 
 /// The information for an interface descriptor that supports IPP-USB.
+///
 /// Bulk transfers can be read/written to the in/out endpoints, respectively.
 #[derive(Copy, Clone)]
 pub struct IppusbDescriptor {
@@ -24,7 +25,8 @@ pub struct IppusbDescriptor {
     pub out_endpoint: u8,
 }
 
-/// The configuration and descriptors that support IPP-USB for a USB device.
+/// The configuration and interfaces that support IPP-USB for a USB device.
+///
 ///  A valid IPP-USB device will have at least two interfaces.
 pub struct IppusbDeviceInfo {
     pub config: u8,
@@ -32,18 +34,23 @@ pub struct IppusbDeviceInfo {
 }
 
 impl IppusbDeviceInfo {
-    /// Given a rusb Device, searches through the device's configurations to see if there is a
-    /// particular configuration that supports IPP over USB.  If such a configuration is found,
-    /// returns an IppusbDeviceInfo struct, which specifies the configuration as well as the
+    /// Given a rusb Device, search through the device's configurations to see if there is a
+    /// particular configuration that supports IPP-over-USB (aka IPP-USB).  If such a configuration
+    /// is found, return an `IppusbDeviceInfo`, which specifies the configuration as well as the
     /// IPP-USB interfaces within that configuration.
     ///
-    /// If the given device does not support IPP over USB, returns Err.
-    ///
-    /// A device is considered to support IPP over USB if it has a configuration with at least two
+    /// A device is considered to support IPP-USB if it has a configuration with at least two
     /// IPP-USB interfaces.
     ///
-    /// An interface is considered an IPP-USB interface if it has the proper class, sub-class, and
-    /// protocol, and if it has a bulk-in and bulk-out endpoint.
+    /// An interface is considered an IPP-USB interface if all of the following are true:
+    ///
+    /// *  The USB class is Printer (7).
+    /// *  The USB subclass is Printer (1).
+    /// *  The USB protocol is IPP-USB (4).
+    /// *  The interface contains a bulk-in and a bulk-out endpoint.
+    ///
+    /// If the given device does not support IPP-USB or the descriptors cannot be read, return
+    /// `Err`.
     pub fn new<T: UsbContext>(device: &rusb::Device<T>) -> Result<Self> {
         let desc = device
             .device_descriptor()

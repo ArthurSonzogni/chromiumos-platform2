@@ -173,7 +173,7 @@ impl InterfaceManagerState {
 /// and claims free interfaces to allow sharing with other programs that might need
 /// to access the USB interfaces.
 #[derive(Clone)]
-pub struct InterfaceManager {
+struct InterfaceManager {
     interface_available: Arc<Condvar>,
     state: Arc<Mutex<InterfaceManagerState>>,
 }
@@ -334,9 +334,11 @@ impl InterfaceManager {
     }
 }
 
-/// A UsbConnector represents an active connection to an IPP-USB device.
-/// Users can temporarily request a UsbConnection from the UsbConnector using
-/// get_connection(), and use that UsbConnection to perform I/O to the device.
+/// An opened IPP-USB device.
+///
+/// `UsbConnector` itself manages a pool of IPP-USB interfaces, but does not perform I/O.  Users
+/// can temporarily request a `UsbConnection` from the `UsbConnector` using `get_connection()`. The
+/// `UsbConnection` can be used to perform I/O to the device.
 #[derive(Clone)]
 pub struct UsbConnector {
     verbose_log: bool,
@@ -345,6 +347,13 @@ pub struct UsbConnector {
 }
 
 impl UsbConnector {
+    /// Create a new `UsbConnector` to wrap an `rusb::DeviceHandle`.
+    ///
+    /// The device will be reset into the correct configuration and all IPP-USB interfaces will be
+    /// claimed.  A background thread will be started to manage the active interface pool.
+    ///
+    /// Returns an error if the device does not support IPP-USB or an error occurs during the
+    /// initialization described above.
     pub fn new(verbose_log: bool, handle: rusb::DeviceHandle<Context>) -> Result<UsbConnector> {
         let handle = Arc::new(handle);
         handle
@@ -380,10 +389,15 @@ impl UsbConnector {
         })
     }
 
+    /// Return the contained device.
     pub fn device(&self) -> rusb::Device<Context> {
         self.handle.device()
     }
 
+    /// Return a `UsbConnection` representing a claimed IPP-USB interface.
+    ///
+    /// The returned interface can be used for I/O with the USB device.  Returns an error if no
+    /// IPP-USB interfaces are currently available or if claiming the interface fails.
     pub fn get_connection(&mut self) -> Result<UsbConnection> {
         let interface = self.manager.request_interface()?;
         Ok(UsbConnection::new(
@@ -394,8 +408,9 @@ impl UsbConnector {
     }
 }
 
-/// A struct representing a claimed IPP-USB interface. The owner of this struct
-/// can communicate with the IPP-USB device via the Read and Write.
+/// A struct representing a claimed IPP-USB interface.
+///
+/// The owner of this struct can communicate with the IPP-USB device via the Read and Write traits.
 pub struct UsbConnection {
     verbose_log: bool,
     manager: InterfaceManager,

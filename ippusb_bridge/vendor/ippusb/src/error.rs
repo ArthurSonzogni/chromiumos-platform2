@@ -5,18 +5,47 @@
 use std::fmt;
 use std::io;
 
+/// Errors returned while handling IPP-over-USB HTTP requests.
 #[derive(Debug)]
 pub enum Error {
+    /// Failed to claim an IPP-USB interface.  The value contains the interface number and
+    /// underlying `rusb` error.
     ClaimInterface(u8, rusb::Error),
+
+    /// Failed to release an IPP-USB interface.  The value contains the interface number and
+    /// underlying `rusb` error.
     ReleaseInterface(u8, rusb::Error),
+
+    /// Failed to detach a kernel driver from an interface.  The value contains the interface
+    /// number and underlying `rusb` error.
     DetachDrivers(u8, rusb::Error),
+
+    /// Failed to re-attach a kernel driver from an interface.  The value contains the interface
+    /// number and underlying `rusb` error.
     AttachDrivers(u8, rusb::Error),
+
+    /// An error occurred while cleaning up the released interface pool.  The value contains the
+    /// underlying I/O error.
     CleanupThread(io::Error),
+
+    /// Failed to read the device config descriptor.  The value contains the underlying `rusb`
+    /// error.
     ReadConfigDescriptor(rusb::Error),
+
+    /// Failed to read the device descriptor.  The value contains the underlying `rusb` error.
     ReadDeviceDescriptor(rusb::Error),
+
+    /// Failed to set the active device config.  The value contains the underlying `rusb` error.
     SetActiveConfig(rusb::Error),
+
+    /// Failed to set an interface to the alternate needed for IPP-USB.  The value contains the
+    /// interface number and underlying `rusb` error.
     SetAlternateSetting(u8, rusb::Error),
+
+    /// Could not find a free IPP-USB interface to handle a request.
     NoFreeInterface,
+
+    /// The specified device does not support IPP-USB.
     NotIppUsb,
 }
 
