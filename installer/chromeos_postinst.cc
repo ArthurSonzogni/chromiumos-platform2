@@ -607,7 +607,7 @@ bool ESPPostInstall(const InstallConfig& install_config) {
 // On update, install file to check for default-key-stateful migraiton for
 // supported boards.
 void CheckForDefaultKeyStatefulMigration() {
-  if (USE_DEFAULT_KEY_STATEFUL) {
+  if (FormatMetaDataPartitionNeeded()) {
     base::WriteFile(base::FilePath(kDefaultKeyStatefulMigrationTrigger), "");
   }
 }
