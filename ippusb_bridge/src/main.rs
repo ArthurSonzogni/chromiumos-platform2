@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use dbus::blocking::Connection;
-use ippusb::{Bridge, IppusbDeviceInfo, ShutdownReason, UsbConnector};
+use ippusb::{device_supports_ippusb, Bridge, ShutdownReason};
 use log::{error, info};
 use rusb::UsbContext;
 use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
@@ -30,7 +30,7 @@ use crate::listeners::ScopedUnixListener;
 #[derive(Debug)]
 pub enum Error {
     CreateSocket(io::Error),
-    CreateUsbConnector(ippusb::Error),
+    CreateUsbDevice(ippusb::Error),
     DBus(dbus::Error),
     ParseArgs(arguments::Error),
     Syslog(syslog::Error),
@@ -50,7 +50,7 @@ impl fmt::Display for Error {
         use Error::*;
         match self {
             CreateSocket(err) => write!(f, "Failed to create socket: {}", err),
-            CreateUsbConnector(err) => write!(f, "Failed to create USB connector: {}", err),
+            CreateUsbDevice(err) => write!(f, "Failed to create IPP-USB device: {}", err),
             DBus(err) => write!(f, "DBus error: {}", err),
             ParseArgs(err) => write!(f, "Failed to parse arguments: {}", err),
             Syslog(err) => write!(f, "Failed to initalize syslog: {}", err),
@@ -100,7 +100,7 @@ fn open_device<T: UsbContext>(
             .find(|d| d.bus_number() == bus && d.address() == address),
         None => device_list
             .iter()
-            .find(|d| IppusbDeviceInfo::new(d).is_ok()),
+            .find(|d| device_supports_ippusb(d).unwrap_or(false)),
     }
     .ok_or(Error::NoDevice)?;
 
@@ -152,22 +152,22 @@ fn run() -> Result<()> {
     // This is run to make sure there are no cached signals from DBus.
     while dbus_conn.process(Duration::ZERO).map_err(Error::DBus)? {}
 
-    // Try to create UsbConnector in loop until it is created successfully or
+    // Try to create ippusb::Device in loop until it is created successfully or
     // an unexpected error occurs. ReadConfigDescriptor error means that access
     // to USB is blocked by usbguard (e.g.: the screen is locked).
-    let usb: UsbConnector;
+    let usb: ippusb::Device;
     let context = rusb::Context::new().map_err(Error::CreateContext)?;
     loop {
         let device = open_device(context.clone(), args.bus_device);
         match device {
             Ok(handle) => {
-                match UsbConnector::new(args.verbose_log, handle) {
+                match ippusb::Device::new(args.verbose_log, handle) {
                     Ok(obj) => {
                         usb = obj;
                         break;
                     }
                     Err(ippusb::Error::ReadConfigDescriptor(..)) => {}
-                    Err(err) => return Err(Error::CreateUsbConnector(err)),
+                    Err(err) => return Err(Error::CreateUsbDevice(err)),
                 };
             }
             Err(err) => {

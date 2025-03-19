@@ -34,7 +34,7 @@
 //!
 //! ```no_run
 //! use std::time::Duration;
-//! use ippusb::{Bridge, ShutdownReason, UsbConnector};
+//! use ippusb::{Bridge, Device, ShutdownReason};
 //! use rusb::{Context, UsbContext};
 //! use tokio::net::TcpListener;
 //! use tokio::runtime::Handle;
@@ -43,9 +43,9 @@
 //!
 //! async fn serve(verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
 //!     let context = Context::new()?;
-//!     let device = context.open_device_with_vid_pid(0x18d1, 0x505e)
+//!     let rusb_device = context.open_device_with_vid_pid(0x18d1, 0x505e)
 //!             .ok_or(ippusb::Error::NotIppUsb)?;
-//!     let connector = UsbConnector::new(verbose, device)?;
+//!     let ippusb_device = ippusb::Device::new(verbose, rusb_device)?;
 //!     let (tx, rx) = mpsc::channel(1);
 //!     let listener = TcpListener::bind("127.0.0.1:0").await?;
 //!
@@ -55,20 +55,20 @@
 //!         tx.send(ShutdownReason::Unplugged);
 //!     });
 //!
-//!     let mut bridge = Bridge::new(verbose, rx, listener, connector, handle);
+//!     let mut bridge = Bridge::new(verbose, rx, listener, ippusb_device, handle);
 //!     bridge.run().await;
 //!     Ok(())
 //! }
 //! ```
 
 mod bridge;
+mod device;
+mod device_info;
 mod error;
 mod http;
 mod io_adapters;
-mod ippusb_device;
-mod usb_connector;
 
 pub use crate::bridge::{Bridge, ShutdownReason};
+pub use crate::device::Device;
+pub use crate::device_info::device_supports_ippusb;
 pub use crate::error::Error;
-pub use crate::ippusb_device::IppusbDeviceInfo;
-pub use crate::usb_connector::UsbConnector;

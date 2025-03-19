@@ -13,9 +13,9 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Handle as AsyncHandle;
 use tokio::sync::mpsc;
 
+use crate::device::{Connection, Device};
 use crate::error::Error;
 use crate::http::handle_request;
-use crate::usb_connector::{UsbConnection, UsbConnector};
 
 /// Reason for shutting down the proxy.
 ///
@@ -45,7 +45,7 @@ pub struct Bridge {
 
     shutdown: mpsc::Receiver<ShutdownReason>,
     listener: TcpListener,
-    usb: UsbConnector,
+    usb: Device,
     handle: AsyncHandle,
 }
 
@@ -63,7 +63,7 @@ impl Bridge {
         verbose_log: bool,
         shutdown: mpsc::Receiver<ShutdownReason>,
         listener: TcpListener,
-        usb: UsbConnector,
+        usb: Device,
         handle: AsyncHandle,
     ) -> Self {
         Self {
@@ -125,7 +125,7 @@ impl Bridge {
 
     async fn service_request(
         verbose: bool,
-        usb: Option<UsbConnection>,
+        usb: Option<Connection>,
         request: Request<Body>,
         handle: AsyncHandle,
     ) -> std::result::Result<Response<Body>, Infallible> {

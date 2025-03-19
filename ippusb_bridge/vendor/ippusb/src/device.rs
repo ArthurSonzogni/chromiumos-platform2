@@ -17,9 +17,9 @@ use log::{debug, error, info};
 use rusb::{Context, UsbContext};
 use std::sync::{Condvar, Mutex};
 
+use crate::device_info::{is_ippusb_interface, IppusbDescriptor, IppusbDeviceInfo};
 use crate::error::Error;
 use crate::error::Result;
-use crate::ippusb_device::{is_ippusb_interface, IppusbDescriptor, IppusbDeviceInfo};
 
 const USB_TRANSFER_TIMEOUT: Duration = Duration::from_secs(60);
 const USB_CLEANUP_TIMEOUT: Duration = Duration::from_secs(2);
@@ -336,25 +336,25 @@ impl InterfaceManager {
 
 /// An opened IPP-USB device.
 ///
-/// `UsbConnector` itself manages a pool of IPP-USB interfaces, but does not perform I/O.  Users
-/// can temporarily request a `UsbConnection` from the `UsbConnector` using `get_connection()`. The
-/// `UsbConnection` can be used to perform I/O to the device.
+/// `Device` itself manages a pool of IPP-USB interfaces, but does not perform I/O.  Users
+/// can temporarily request a `Connection` from the `Device` using `get_connection()`. The
+/// `Connection` can be used to perform I/O to the device.
 #[derive(Clone)]
-pub struct UsbConnector {
+pub struct Device {
     verbose_log: bool,
     handle: Arc<rusb::DeviceHandle<Context>>,
     manager: InterfaceManager,
 }
 
-impl UsbConnector {
-    /// Create a new `UsbConnector` to wrap an `rusb::DeviceHandle`.
+impl Device {
+    /// Create a new `Device` to wrap an `rusb::DeviceHandle`.
     ///
     /// The device will be reset into the correct configuration and all IPP-USB interfaces will be
     /// claimed.  A background thread will be started to manage the active interface pool.
     ///
     /// Returns an error if the device does not support IPP-USB or an error occurs during the
     /// initialization described above.
-    pub fn new(verbose_log: bool, handle: rusb::DeviceHandle<Context>) -> Result<UsbConnector> {
+    pub fn new(verbose_log: bool, handle: rusb::DeviceHandle<Context>) -> Result<Device> {
         let handle = Arc::new(handle);
         handle
             .set_auto_detach_kernel_driver(true)
@@ -382,7 +382,7 @@ impl UsbConnector {
         let mut manager = InterfaceManager::new(handle.clone(), info.config, connections);
         manager.start_cleanup_thread()?;
 
-        Ok(UsbConnector {
+        Ok(Device {
             verbose_log,
             handle,
             manager,
@@ -394,13 +394,13 @@ impl UsbConnector {
         self.handle.device()
     }
 
-    /// Return a `UsbConnection` representing a claimed IPP-USB interface.
+    /// Return a `Connection` representing a claimed IPP-USB interface.
     ///
     /// The returned interface can be used for I/O with the USB device.  Returns an error if no
     /// IPP-USB interfaces are currently available or if claiming the interface fails.
-    pub fn get_connection(&mut self) -> Result<UsbConnection> {
+    pub fn get_connection(&mut self) -> Result<Connection> {
         let interface = self.manager.request_interface()?;
-        Ok(UsbConnection::new(
+        Ok(Connection::new(
             self.verbose_log,
             self.manager.clone(),
             interface,
@@ -411,15 +411,15 @@ impl UsbConnector {
 /// A struct representing a claimed IPP-USB interface.
 ///
 /// The owner of this struct can communicate with the IPP-USB device via the Read and Write traits.
-pub struct UsbConnection {
+pub struct Connection {
     verbose_log: bool,
     manager: InterfaceManager,
-    // `interface` is never None until the UsbConnection is dropped, at which point the
+    // `interface` is never None until the Connection is dropped, at which point the
     // ClaimedInterface is returned to the pool of connections in InterfaceManager.
     interface: Option<ClaimedInterface>,
 }
 
-impl UsbConnection {
+impl Connection {
     fn new(verbose_log: bool, manager: InterfaceManager, interface: ClaimedInterface) -> Self {
         Self {
             verbose_log,
@@ -429,7 +429,7 @@ impl UsbConnection {
     }
 }
 
-impl Drop for UsbConnection {
+impl Drop for Connection {
     fn drop(&mut self) {
         // Unwrap because interface only becomes None at drop.
         let interface = self.interface.take().unwrap();
@@ -449,7 +449,7 @@ fn to_io_error(err: rusb::Error) -> io::Error {
     io::Error::new(kind, err)
 }
 
-impl Write for &UsbConnection {
+impl Write for &Connection {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         // Unwrap because interface only becomes None at drop.
         let interface = self.interface.as_ref().unwrap();
@@ -471,7 +471,7 @@ impl Write for &UsbConnection {
     }
 }
 
-impl Read for UsbConnection {
+impl Read for Connection {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         // Unwrap because interface only becomes None at drop.
         let interface = self.interface.as_ref().unwrap();

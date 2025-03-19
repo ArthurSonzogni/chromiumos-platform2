@@ -15,8 +15,8 @@ use tokio::runtime::Handle as AsyncHandle;
 use tokio::sync::mpsc::{self, Receiver};
 use tokio::task::JoinError;
 
+use crate::device::Connection;
 use crate::io_adapters::{ChunkedWriter, CompleteReader, LoggingReader, LoggingWriter};
-use crate::usb_connector::UsbConnection;
 
 // Minimum Request body size, in bytes, before we switch to forwarding requests
 // using a chunked Transfer-Encoding.
@@ -312,8 +312,8 @@ fn title_case_header(field: &HeaderName) -> String {
 fn send_request_header(
     verbose_log: bool,
     request: &Request,
-    usb: UsbConnection,
-) -> io::Result<UsbConnection> {
+    usb: Connection,
+) -> io::Result<Connection> {
     let mut writer = BufWriter::new(&usb);
     serialize_request_header(verbose_log, request, &mut writer)?;
     drop(writer);
@@ -417,14 +417,14 @@ fn copy_response_body<R: BufRead + Sized>(
 }
 
 // The request body is expected to be delivered as a sequence of readers.  For each reader received
-// on the incoming channel, copy all of its bytes to the UsbConnection.  When the input channel
-// closes, return the total number of bytes copied plus the original UsbConnection.
+// on the incoming channel, copy all of its bytes to the Connection.  When the input channel
+// closes, return the total number of bytes copied plus the original Connection.
 fn send_request_body<R: Read>(
     mut rx: Receiver<R>,
-    usb: UsbConnection,
+    usb: Connection,
     length: BodyLength,
     log_body: bool,
-) -> Result<(UsbConnection, u64)> {
+) -> Result<(Connection, u64)> {
     trace!("Starting body sender");
     let mut total = 0;
     let usb_writer =
@@ -450,14 +450,14 @@ fn send_request_body<R: Read>(
 //    4. Stream the response body to the client.
 //
 // rusb and libusb don't support async I/O, so each task that interacts with the USB device
-// needs to be run as a blocking task.  Even though the UsbConnection is only needed by one
+// needs to be run as a blocking task.  Even though the Connection is only needed by one
 // task at a time and we wait for completion before continuing, we can't pass a reference
 // because tokio can't guarantee that this async function stays alive long enough to keep the
 // reference valid.  Instead, this function uses the pattern of passing ownership of the
-// UsbConnection to each blocking task and returning it back again when it completes.
+// Connection to each blocking task and returning it back again when it completes.
 pub(crate) async fn handle_request(
     verbose_log: bool,
-    mut usb: UsbConnection,
+    mut usb: Connection,
     request: hyper::Request<Body>,
     handle: AsyncHandle,
 ) -> Result<Response<Body>> {
@@ -543,7 +543,7 @@ pub(crate) async fn handle_request(
     // Now that we have written data to the printer, we must ensure that we read a complete HTTP
     // response from the printer. Otherwise, that data may remain in the printer's buffers and be
     // sent to some other client.  ResponseReader ensures that this happens internally.  Since we
-    // don't need to get the UsbConnection back for any subsequent steps, we give it away entirely
+    // don't need to get the Connection back for any subsequent steps, we give it away entirely
     // instead of following the earlier pattern.
     let usb_reader = BufReader::new(LoggingReader::new(usb, "printer"));
     let mut response_reader = ResponseReader::new(verbose_log, usb_reader);
