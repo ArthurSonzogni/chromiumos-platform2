@@ -13,10 +13,12 @@
 #include <string>
 #include <vector>
 
+#include <base/base64.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/memory/free_deleter.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <brillo/file_utils.h>
 #include <init/libpreservation/file_preseeder.h>
 #include <init/libpreservation/filesystem_manager.h>
@@ -97,7 +99,8 @@ bool FilePreseeder::PersistMetadata() {
   std::string serialized = preseeded_files_.SerializeAsString();
   auto base64_encoded = base::Base64Encode(serialized);
 
-  return brillo::WriteStringToFile(metadata_path_, base64_encoded);
+  return brillo::WriteToFileAtomic(metadata_path_, base64_encoded.c_str(),
+                                   base64_encoded.size(), 0644);
 }
 
 bool FilePreseeder::LoadMetadata() {
@@ -107,10 +110,16 @@ bool FilePreseeder::LoadMetadata() {
   }
 
   std::string decoded_pb;
-  base::Base64Decode(base64_data, &decoded_pb);
-  if (!preseeded_files_.ParseFromString(decoded_pb)) {
+  if (!base::Base64Decode(base64_data, &decoded_pb)) {
+    LOG(ERROR) << "Failed to base64 decode protobuf";
     return false;
   }
+
+  if (!preseeded_files_.ParseFromString(decoded_pb)) {
+    LOG(ERROR) << "Failed to parse protobuf";
+    return false;
+  }
+
   return true;
 }
 
@@ -160,8 +169,13 @@ bool FilePreseeder::RestoreExtentFiles(FilesystemManager* fs_manager) {
       continue;
     }
 
+    // Skip files with no contents.
+    if (!file.has_contents()) {
+      continue;
+    }
+
     // Skip small files.
-    if (file.contents().has_data()) {
+    if (file.contents().has_data() || !file.contents().has_extents()) {
       continue;
     }
 
@@ -195,8 +209,13 @@ bool FilePreseeder::RestoreInlineFiles() {
       continue;
     }
 
+    // Skip files with no contents.
+    if (!file.has_contents()) {
+      continue;
+    }
+
     // Skip extent files.
-    if (file.contents().has_extents()) {
+    if (file.contents().has_extents() || !file.contents().has_data()) {
       continue;
     }
 

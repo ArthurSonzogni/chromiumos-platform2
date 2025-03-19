@@ -30,14 +30,14 @@ message ExtentArray {
 message FileContents {
   oneof Contents {
     ExtentArray extents = 1;
-    string data = 2;
+    bytes data = 2;
   }
 }
 
 // Represents a preseeded file, with path (relative to root), size and
 // contents.
 message PreseededFile {
-  string path = 1;
+  bytes path = 1;
   uint64 size = 2;
   FileContents contents = 3;
 }

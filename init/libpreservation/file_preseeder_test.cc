@@ -205,4 +205,37 @@ TEST_F(FilePreseederTest, RestoreRootFlagFiles) {
   EXPECT_FALSE(base::PathExists(file_encryptedkey));
 }
 
+TEST_F(FilePreseederTest, NonUtf8InlineFiles) {
+  std::set<base::FilePath> file_allowlist = {kFoo, kBarBaz};
+  std::set<base::FilePath> directory_allowlist = {kBar};
+  FilePreseeder preseeder(directory_allowlist, fs_root_, mount_root_,
+                          metadata_path_);
+  base::FilePath file_foo = mount_root_.Append(kFoo);
+  base::FilePath file_baz = mount_root_.Append(kBarBaz);
+  ASSERT_TRUE(base::CreateDirectory(mount_root_.Append(kBar)));
+  // Create a non-utf8 file name.
+  char non_utf8_name[] = "foo\xff";
+  base::FilePath non_utf8_file = mount_root_.Append(non_utf8_name);
+  // Create a non-utf8 file data.
+  char non_utf8_data[] = "bar\xff";
+  ASSERT_TRUE(brillo::WriteStringToFile(file_foo, non_utf8_data));
+  ASSERT_TRUE(brillo::WriteStringToFile(file_baz, non_utf8_data));
+  ASSERT_TRUE(brillo::WriteStringToFile(non_utf8_file, "baz"));
+  file_allowlist.insert(base::FilePath(non_utf8_name));
+  EXPECT_TRUE(preseeder.SaveFileState(file_allowlist));
+  EXPECT_TRUE(base::PathExists(metadata_path_));
+
+  ASSERT_TRUE(brillo::DeleteFile(file_foo));
+  ASSERT_TRUE(brillo::DeleteFile(file_baz));
+  ASSERT_TRUE(brillo::DeleteFile(non_utf8_file));
+
+  FilePreseeder preseeder2(directory_allowlist, fs_root_, mount_root_,
+                           metadata_path_);
+  EXPECT_TRUE(preseeder2.LoadMetadata());
+  EXPECT_TRUE(preseeder2.RestoreInlineFiles());
+  EXPECT_FALSE(base::PathExists(file_foo));
+  EXPECT_TRUE(base::PathExists(file_baz));
+  EXPECT_FALSE(base::PathExists(non_utf8_file));
+}
+
 }  // namespace libpreservation

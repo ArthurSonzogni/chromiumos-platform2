@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <init/libpreservation/ext2fs.h>
 
 #include "base/functional/callback_helpers.h"
@@ -19,6 +20,10 @@ namespace libpreservation {
 namespace {
 
 bool ValidatePath(const base::FilePath& path) {
+  if (!base::IsStringUTF8(path.value())) {
+    return false;
+  }
+
   auto path_components = path.GetComponents();
 
   if (path_components.empty()) {
