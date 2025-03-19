@@ -298,6 +298,11 @@ where
     // State will be C2Stopped after this call.
     pub fn stop(&mut self) -> C2Status {
         *self.state.lock().unwrap() = C2State::C2Stopped;
+
+        self.work_queue.lock().unwrap().drain(..);
+
+        self.awaiting_job_event.write(1).unwrap();
+
         let mut worker_thread: Option<JoinHandle<()>> = None;
         std::mem::swap(&mut worker_thread, &mut self.worker_thread);
         self.worker_thread = match worker_thread {
@@ -307,10 +312,6 @@ where
             }
             None => None,
         };
-
-        self.work_queue.lock().unwrap().drain(..);
-
-        self.awaiting_job_event.write(1).unwrap();
 
         C2Status::C2Ok
     }
