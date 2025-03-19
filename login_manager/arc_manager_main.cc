@@ -36,6 +36,7 @@ int main(int argc, char** argv) {
   brillo_loop.SetAsCurrent();
 
   brillo::AsynchronousSignalHandler signal_handler;
+  signal_handler.Init();
   brillo::ProcessReaper process_reaper;
   process_reaper.Register(&signal_handler);
 
