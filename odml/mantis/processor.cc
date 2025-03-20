@@ -152,11 +152,10 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
       .callback = std::move(callback),
       .process_func = base::BindOnce(
           [](const MantisAPI* api, MantisComponent component,
-             const std::vector<uint8_t>& image,
-             const std::vector<uint8_t>& mask,
-             uint32_t seed) -> ProcessFuncResult {
+             MantisProcess* process) -> ProcessFuncResult {
             InpaintingResult lib_result =
-                api->Inpainting(component.processor, image, mask, seed);
+                api->Inpainting(component.processor, process->image,
+                                process->mask, process->seed);
             if (lib_result.status != MantisStatus::kOk) {
               return ProcessFuncResult{
                   .error = kMapStatusToError.at(lib_result.status),
@@ -168,7 +167,7 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
                 .generated_region = lib_result.generated_region,
             };
           },
-          api_, component_, image, mask, seed),
+          api_, component_),
       .time_metric = TimeMetric::kInpaintingLatency,
       .generated_image_type_metric = ImageGenerationType::kInpainting,
       .timer = odml::PerformanceTimer::Create(),
@@ -188,11 +187,10 @@ void MantisProcessor::Outpainting(const std::vector<uint8_t>& image,
       .callback = std::move(callback),
       .process_func = base::BindOnce(
           [](const MantisAPI* api, MantisComponent component,
-             const std::vector<uint8_t>& image,
-             const std::vector<uint8_t>& mask,
-             uint32_t seed) -> ProcessFuncResult {
+             MantisProcess* process) -> ProcessFuncResult {
             OutpaintingResult lib_result =
-                api->Outpainting(component.processor, image, mask, seed);
+                api->Outpainting(component.processor, process->image,
+                                 process->mask, process->seed);
             if (lib_result.status != MantisStatus::kOk) {
               return ProcessFuncResult{
                   .error = kMapStatusToError.at(lib_result.status),
@@ -203,7 +201,7 @@ void MantisProcessor::Outpainting(const std::vector<uint8_t>& image,
                 .generated_region = lib_result.generated_region,
             };
           },
-          api_, component_, image, mask, seed),
+          api_, component_),
       .time_metric = TimeMetric::kOutpaintingLatency,
       .generated_image_type_metric = ImageGenerationType::KOutpainting,
       .timer = odml::PerformanceTimer::Create(),
@@ -215,20 +213,23 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
                                      uint32_t seed,
                                      const std::string& prompt,
                                      GenerativeFillCallback callback) {
+  std::string rewritten_prompt = RewritePromptForGenerativeFill(prompt);
+  if (rewritten_prompt.empty()) {
+    return Inpainting(image, mask, seed, std::move(callback));
+  }
   ProcessImage(std::make_unique<MantisProcess>(MantisProcess{
       .image = image,
       .mask = mask,
       .seed = seed,
-      .prompt = RewritePromptForGenerativeFill(prompt),
+      .prompt = rewritten_prompt,
       .operation_type = OperationType::kGenfill,
       .callback = std::move(callback),
       .process_func = base::BindOnce(
           [](const MantisAPI* api, MantisComponent component,
-             const std::vector<uint8_t>& image,
-             const std::vector<uint8_t>& mask, uint32_t seed,
-             const std::string& prompt) -> ProcessFuncResult {
+             MantisProcess* process) -> ProcessFuncResult {
             GenerativeFillResult lib_result = api->GenerativeFill(
-                component.processor, image, mask, seed, prompt);
+                component.processor, process->image, process->mask,
+                process->seed, *process->prompt);
             if (lib_result.status != MantisStatus::kOk) {
               return ProcessFuncResult{
                   .error = kMapStatusToError.at(lib_result.status),
@@ -240,7 +241,7 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
                 .generated_region = lib_result.generated_region,
             };
           },
-          api_, component_, image, mask, seed, prompt),
+          api_, component_),
       .time_metric = TimeMetric::kGenerativeFillLatency,
       .generated_image_type_metric = ImageGenerationType::kGenerativeFill,
       .timer = odml::PerformanceTimer::Create(),
@@ -292,7 +293,8 @@ void MantisProcessor::ProcessImage(std::unique_ptr<MantisProcess> process) {
   }
 
   mantis_api_runner_->PostTaskAndReplyWithResult(
-      FROM_HERE, std::move(process->process_func),
+      FROM_HERE,
+      base::BindOnce(std::move(process->process_func), process.get()),
       base::BindOnce(&MantisProcessor::OnProcessDone,
                      weak_ptr_factory_.GetWeakPtr(), std::move(process)));
 }

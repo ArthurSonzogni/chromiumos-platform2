@@ -58,7 +58,7 @@ struct MantisProcess {
   std::optional<std::string> prompt;
   const OperationType operation_type;
   base::OnceCallback<void(mojom::MantisResultPtr)> callback;
-  base::OnceCallback<ProcessFuncResult()> process_func;
+  base::OnceCallback<ProcessFuncResult(MantisProcess*)> process_func;
   // Metric info to be used on main thread.
   mantis::TimeMetric time_metric;
   mantis::ImageGenerationType generated_image_type_metric;
