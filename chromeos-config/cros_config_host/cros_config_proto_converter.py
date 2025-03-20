@@ -515,28 +515,28 @@ def _build_derived_connectivity_power_prefs(config: Config) -> dict:
             or result["set-cellular-transmit-power-for-activity-proximity"]
         ):
             if dpr_config.HasField("gpio"):
-                result[
-                    "set-cellular-transmit-power-dpr-gpio"
-                ] = wrappers_pb2.UInt32Value(value=dpr_config.gpio)
+                result["set-cellular-transmit-power-dpr-gpio"] = (
+                    wrappers_pb2.UInt32Value(value=dpr_config.gpio)
+                )
             elif dpr_config.HasField("modem_manager"):
                 result["use-modemmanager-for-dynamic-sar"] = True
-                result[
-                    "use-multi-power-level-dynamic-sar"
-                ] = dpr_config.enable_multi_power_level_sar
-                result[
-                    "set-default-proximity-state-high"
-                ] = dpr_config.enable_default_proximity_state_far
-                result[
-                    "set-cellular-transmit-power-level-mapping"
-                ] = dpr_config.power_level_mapping
-                result[
-                    "set-cellular-regulatory-domain-mapping"
-                ] = dpr_config.regulatory_domain_mapping
+                result["use-multi-power-level-dynamic-sar"] = (
+                    dpr_config.enable_multi_power_level_sar
+                )
+                result["set-default-proximity-state-high"] = (
+                    dpr_config.enable_default_proximity_state_far
+                )
+                result["set-cellular-transmit-power-level-mapping"] = (
+                    dpr_config.power_level_mapping
+                )
+                result["set-cellular-regulatory-domain-mapping"] = (
+                    dpr_config.regulatory_domain_mapping
+                )
                 if result["set-cellular-regulatory-domain-mapping"]:
                     result["use-regulatory-domain-for-dynamic-sar"] = True
-    result[
-        "set-wifi-transmit-power-for-tablet-mode"
-    ] = hw_features.wifi.HasField("wifi_config")
+    result["set-wifi-transmit-power-for-tablet-mode"] = (
+        hw_features.wifi.HasField("wifi_config")
+    )
 
     return result
 
@@ -546,9 +546,9 @@ def _build_derived_external_display_timeout_power_prefs(config: Config) -> dict:
     result = {}
 
     if hw_features.usb_c.defer_external_display_timeout:
-        result[
-            "defer-external-display-timeout"
-        ] = hw_features.usb_c.defer_external_display_timeout
+        result["defer-external-display-timeout"] = (
+            hw_features.usb_c.defer_external_display_timeout
+        )
     elif hw_features.usb_c.usb4:
         result["defer-external-display-timeout"] = 10
 
@@ -575,16 +575,16 @@ def _build_derived_panel_power_prefs(config: Config) -> dict:
     result = {}
 
     if hw_features.screen.panel_properties.min_visible_backlight_level:
-        result[
-            "min-visible-backlight-level"
-        ] = hw_features.screen.panel_properties.min_visible_backlight_level
+        result["min-visible-backlight-level"] = (
+            hw_features.screen.panel_properties.min_visible_backlight_level
+        )
 
     if hw_features.screen.panel_properties.HasField(
         "turn_off_screen_timeout_ms"
     ):
-        result[
-            "turn-off-screen-timeout-ms"
-        ] = hw_features.screen.panel_properties.turn_off_screen_timeout_ms
+        result["turn-off-screen-timeout-ms"] = (
+            hw_features.screen.panel_properties.turn_off_screen_timeout_ms
+        )
 
     light_sensor = hw_features.light_sensor
     if present in (
@@ -598,9 +598,9 @@ def _build_derived_panel_power_prefs(config: Config) -> dict:
                 hw_features.screen.panel_properties.max_screen_brightness,
                 "hw_features.screen.panel_properties.als_steps",
             )
-            result[
-                "internal-backlight-als-steps"
-            ] = hw_features.screen.panel_properties.als_steps
+            result["internal-backlight-als-steps"] = (
+                hw_features.screen.panel_properties.als_steps
+            )
     else:
         panel_properties = hw_features.screen.panel_properties
         if panel_properties.no_als_battery_brightness:
@@ -608,34 +608,34 @@ def _build_derived_panel_power_prefs(config: Config) -> dict:
                 panel_properties.no_als_battery_brightness,
                 "screen.panel_properties.no_als_battery_brightness",
             )
-            result[
-                "internal-backlight-no-als-battery-brightness"
-            ] = panel_properties.no_als_battery_brightness
+            result["internal-backlight-no-als-battery-brightness"] = (
+                panel_properties.no_als_battery_brightness
+            )
         elif panel_properties.no_als_battery_brightness_nits:
             brightness_pct_calc = _brightness_nits_to_percent(
                 panel_properties.no_als_battery_brightness_nits,
                 panel_properties.max_screen_brightness,
             )
-            result[
-                "internal-backlight-no-als-battery-brightness"
-            ] = brightness_pct_calc
+            result["internal-backlight-no-als-battery-brightness"] = (
+                brightness_pct_calc
+            )
 
         if hw_features.screen.panel_properties.no_als_ac_brightness:
             _check_percentage_value(
                 hw_features.screen.panel_properties.no_als_ac_brightness,
                 "screen.panel_properties.no_als_ac_brightness",
             )
-            result[
-                "internal-backlight-no-als-ac-brightness"
-            ] = hw_features.screen.panel_properties.no_als_ac_brightness
+            result["internal-backlight-no-als-ac-brightness"] = (
+                hw_features.screen.panel_properties.no_als_ac_brightness
+            )
         elif hw_features.screen.panel_properties.no_als_ac_brightness_nits:
             brightness_pct_calc = _brightness_nits_to_percent(
                 hw_features.screen.panel_properties.no_als_ac_brightness_nits,
                 hw_features.screen.panel_properties.max_screen_brightness,
             )
-            result[
-                "internal-backlight-no-als-ac-brightness"
-            ] = brightness_pct_calc
+            result["internal-backlight-no-als-ac-brightness"] = (
+                brightness_pct_calc
+            )
 
     return result
 
@@ -687,9 +687,9 @@ def _build_derived_power_prefs(config: Config) -> dict:
                 % hw_features.keyboard.backlight_user_steps[0]
             )
 
-        result[
-            "keyboard-backlight-user-steps"
-        ] = hw_features.keyboard.backlight_user_steps
+        result["keyboard-backlight-user-steps"] = (
+            hw_features.keyboard.backlight_user_steps
+        )
 
     if present in (
         light_sensor.lid_lightsensor,
@@ -701,30 +701,30 @@ def _build_derived_power_prefs(config: Config) -> dict:
                 [step.lux_threshold for step in hw_features.keyboard.als_steps],
                 "hw_features.keyboard.als_steps",
             )
-            result[
-                "keyboard-backlight-als-steps"
-            ] = hw_features.keyboard.als_steps
+            result["keyboard-backlight-als-steps"] = (
+                hw_features.keyboard.als_steps
+            )
     else:
         if hw_features.keyboard.no_als_brightness:
             _check_percentage_value(
                 hw_features.keyboard.no_als_brightness,
                 "hw_features.keyboard.no_als_brightness",
             )
-            result[
-                "keyboard-backlight-no-als-brightness"
-            ] = hw_features.keyboard.no_als_brightness
+            result["keyboard-backlight-no-als-brightness"] = (
+                hw_features.keyboard.no_als_brightness
+            )
 
     if hw_features.screen.panel_properties.min_visible_backlight_level:
-        result[
-            "min-visible-backlight-level"
-        ] = hw_features.screen.panel_properties.min_visible_backlight_level
+        result["min-visible-backlight-level"] = (
+            hw_features.screen.panel_properties.min_visible_backlight_level
+        )
 
     if hw_features.screen.panel_properties.HasField(
         "turn_off_screen_timeout_ms"
     ):
-        result[
-            "turn-off-screen-timeout-ms"
-        ] = hw_features.screen.panel_properties.turn_off_screen_timeout_ms
+        result["turn-off-screen-timeout-ms"] = (
+            hw_features.screen.panel_properties.turn_off_screen_timeout_ms
+        )
 
     result.update(_build_derived_panel_power_prefs(config))
 
@@ -1674,8 +1674,26 @@ def _build_health_routines(health_config, hw_features):
 
     if health_config.HasField("routines"):
         routines = health_config.routines
+        if routines.HasField("battery_capacity"):
+            battery_capacity_result = {}
+            _upsert(
+                routines.battery_capacity.high_mah,
+                battery_capacity_result,
+                "high-mah",
+            )
+            _upsert(
+                routines.battery_capacity.low_mah,
+                battery_capacity_result,
+                "low-mah",
+            )
+            _upsert(battery_capacity_result, result, "battery-capacity")
         if routines.HasField("battery_health"):
             battery_health_result = {}
+            _upsert(
+                routines.battery_health.maximum_cycle_count,
+                battery_health_result,
+                "maximum-cycle-count",
+            )
             _upsert(
                 routines.battery_health.percent_battery_wear_allowed,
                 battery_health_result,
@@ -2167,16 +2185,16 @@ def _build_hardware_properties(hw_features):
 
     if hw_features.HasField("embedded_controller"):
         if hw_features.embedded_controller.HasField("max_sensor_odr_mhz"):
-            result[
-                "ec-max-sensor-odr"
-            ] = hw_features.embedded_controller.max_sensor_odr_mhz.value
+            result["ec-max-sensor-odr"] = (
+                hw_features.embedded_controller.max_sensor_odr_mhz.value
+            )
         if hw_features.embedded_controller.HasField(
             "max_accelerometer_calibration"
         ):
-            result[
-                "ec-max-calibration-accel"
-            ] = (
+            result["ec-max-calibration-accel"] = (
+                # pylint: disable=line-too-long
                 hw_features.embedded_controller.max_accelerometer_calibration.value
+                # pylint: enable=line-too-long
             )
 
     return result
@@ -2543,18 +2561,22 @@ class _AudioConfigBuilder:
         wf_mics = self._count_mics(self.Camera.FACING_BACK)
         mic_details = [(uf_mics, "uf"), (wf_mics, "wf")]
         suffix = suffix_format.format(
-            headset_codec=self._get_audio_enum_name(
-                topology_pb2.HardwareFeatures.Audio.AudioCodec,
-                self._audio.headphone_codec,
-            ).lower()
-            if self._audio.headphone_codec
-            else "",
-            speaker_amp=self._get_audio_enum_name(
-                topology_pb2.HardwareFeatures.Audio.Amplifier,
-                self._audio.speaker_amp,
-            ).lower()
-            if self._audio.speaker_amp
-            else "",
+            headset_codec=(
+                self._get_audio_enum_name(
+                    topology_pb2.HardwareFeatures.Audio.AudioCodec,
+                    self._audio.headphone_codec,
+                ).lower()
+                if self._audio.headphone_codec
+                else ""
+            ),
+            speaker_amp=(
+                self._get_audio_enum_name(
+                    topology_pb2.HardwareFeatures.Audio.Amplifier,
+                    self._audio.speaker_amp,
+                ).lower()
+                if self._audio.speaker_amp
+                else ""
+            ),
             design=design_name,
             camera_count=len(self._hw_features.camera.devices),
             mic_description="".join(
@@ -2717,10 +2739,10 @@ class _AudioConfigBuilder:
         )
         if sound_card_init_conf:
             result["main"]["sound-card-init-conf"] = sound_card_init_conf
-            result["main"][
-                "speaker-amp"
-            ] = topology_pb2.HardwareFeatures.Audio.Amplifier.Name(
-                self._audio.speaker_amp
+            result["main"]["speaker-amp"] = (
+                topology_pb2.HardwareFeatures.Audio.Amplifier.Name(
+                    self._audio.speaker_amp
+                )
             )
 
         return result
@@ -2843,9 +2865,9 @@ def _build_battery(hw_features):
 
     result = {}
     if hw_feat_battery.no_battery_boot_supported:
-        result[
-            "no-battery-boot-supported"
-        ] = hw_feat_battery.no_battery_boot_supported
+        result["no-battery-boot-supported"] = (
+            hw_feat_battery.no_battery_boot_supported
+        )
     return result
 
 

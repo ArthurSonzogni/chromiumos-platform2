@@ -472,9 +472,30 @@
                   "routines": {
                     "additionalProperties": false,
                     "properties": {
+                      "battery-capacity": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "high-mah": {
+                            "description": "Upper bound for the allowable design capacity of the\nbattery, in mAh.\nBattery capacity routine in cros_healthd uses this\nfield as a threshold to determine whether the\nbattery is in good condition.\n",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "low-mah": {
+                            "description": "Lower bound for the allowable design capacity of the\nbattery, in mAh.\nBattery capacity routine in cros_healthd uses this\nfield as a threshold to determine whether the\nbattery is in good condition.\n",
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
                       "battery-health": {
                         "additionalProperties": false,
                         "properties": {
+                          "maximum-cycle-count": {
+                            "description": "Upper bound for the battery's cycle count.\nBattery health routine in cros_healthd uses this\nfield as a threshold to determine whether the\nbattery is in good condition.\n",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
                           "percent-battery-wear-allowed": {
                             "description": "Upper bound for the battery's wear percentage.\nBattery health routine in cros_healthd uses this\nfield as a threshold to determine whether the\nbattery is in good condition.\n",
                             "maximum": 100,

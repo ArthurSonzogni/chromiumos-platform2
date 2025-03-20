@@ -1550,9 +1550,39 @@ properties:
                 routines:
                   type: object
                   properties:
+                    battery-capacity:
+                      type: object
+                      properties:
+                        low-mah:
+                          type: integer
+                          description: |
+                            Lower bound for the allowable design capacity of the
+                            battery, in mAh.
+                            Battery capacity routine in cros_healthd uses this
+                            field as a threshold to determine whether the
+                            battery is in good condition.
+                          minimum: 0
+                        high-mah:
+                          type: integer
+                          description: |
+                            Upper bound for the allowable design capacity of the
+                            battery, in mAh.
+                            Battery capacity routine in cros_healthd uses this
+                            field as a threshold to determine whether the
+                            battery is in good condition.
+                          minimum: 0
+                      additionalProperties: false
                     battery-health:
                       type: object
                       properties:
+                        maximum-cycle-count:
+                          type: integer
+                          description: |
+                            Upper bound for the battery's cycle count.
+                            Battery health routine in cros_healthd uses this
+                            field as a threshold to determine whether the
+                            battery is in good condition.
+                          minimum: 0
                         percent-battery-wear-allowed:
                           type: integer
                           description: |

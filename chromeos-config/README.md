@@ -675,13 +675,21 @@ In the tables below,
 ### routines
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| battery-capacity | [battery-capacity](#battery_capacity) |  | False |  | False |  |
 | battery-health | [battery-health](#battery_health) |  | False |  | False |  |
 | fingerprint-diag | [fingerprint-diag](#fingerprint_diag) |  | False |  | False |  |
 | nvme-wear-level | [nvme-wear-level](#nvme_wear_level) |  | False |  | False |  |
 
+### battery-capacity
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| high-mah | integer |  | False |  | False | Upper bound for the allowable design capacity of the battery, in mAh. Battery capacity routine in cros_healthd uses this field as a threshold to determine whether the battery is in good condition.  Minimum value: 0x0. |
+| low-mah | integer |  | False |  | False | Lower bound for the allowable design capacity of the battery, in mAh. Battery capacity routine in cros_healthd uses this field as a threshold to determine whether the battery is in good condition.  Minimum value: 0x0. |
+
 ### battery-health
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| maximum-cycle-count | integer |  | False |  | False | Upper bound for the battery's cycle count. Battery health routine in cros_healthd uses this field as a threshold to determine whether the battery is in good condition.  Minimum value: 0x0. |
 | percent-battery-wear-allowed | integer |  | False |  | False | Upper bound for the battery's wear percentage. Battery health routine in cros_healthd uses this field as a threshold to determine whether the battery is in good condition.  Minimum value: 0x0. Maximum value: 0x64. |
 
 ### fingerprint-diag
