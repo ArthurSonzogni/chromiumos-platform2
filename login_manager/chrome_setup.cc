@@ -444,6 +444,10 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("WebUITabStripTabDragIntegration");
   }
 
+  if (builder->UseFlagIsSet("ambient_eq_default_off")) {
+    builder->AddFeatureEnableOverride("AmbientEQDefaultOff");
+  }
+
   // TODO(b/180138001): Remove the following flag when a proper fix for
   // the freeze issue is found.
   if (builder->UseFlagIsSet("set_hw_overlay_strategy_none")) {
