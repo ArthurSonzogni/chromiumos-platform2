@@ -18,11 +18,14 @@
 #include <base/types/expected.h>
 #include <base/uuid.h>
 #include <metrics/metrics_library.h>
+#include <ml/mojom/text_classifier.mojom.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "odml/cros_safety/safety_service_manager.h"
+#include "odml/i18n/language_detector.h"
+#include "odml/i18n/ml_service_language_detector.h"
 #include "odml/i18n/translator.h"
 #include "odml/mantis/processor.h"
 #include "odml/mojom/mantis_processor.mojom.h"
@@ -54,11 +57,14 @@ class MantisService : public mojom::MantisService {
   raw_ref<MantisProcessor> processor() { return raw_ref(*processor_); }
 
   // mojom::MantisService:
-  void Initialize(mojo::PendingRemote<mojom::PlatformModelProgressObserver>
-                      progress_observer,
-                  mojo::PendingReceiver<mojom::MantisProcessor> processor,
-                  const std::optional<base::Uuid>& dlc_uuid,
-                  InitializeCallback callback) override;
+  void Initialize(
+      mojo::PendingRemote<mojom::PlatformModelProgressObserver>
+          progress_observer,
+      mojo::PendingReceiver<mojom::MantisProcessor> processor,
+      const std::optional<base::Uuid>& dlc_uuid,
+      mojo::PendingRemote<chromeos::machine_learning::mojom::TextClassifier>
+          text_classifier,
+      InitializeCallback callback) override;
 
   void GetMantisFeatureStatus(GetMantisFeatureStatusCallback callback) override;
 
@@ -72,6 +78,7 @@ class MantisService : public mojom::MantisService {
       const MantisAPI* api,
       mojo::PendingReceiver<mojom::MantisProcessor> receiver,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      raw_ref<on_device_model::LanguageDetector> language_detector,
       raw_ref<i18n::Translator> translator,
       base::OnceCallback<void()> on_disconnected,
       base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
@@ -152,6 +159,11 @@ class MantisService : public mojom::MantisService {
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
 
   raw_ref<cros_safety::SafetyServiceManager> safety_service_manager_;
+
+  mojo::Remote<chromeos::machine_learning::mojom::TextClassifier>
+      text_classifier_;
+  std::unique_ptr<on_device_model::MlServiceLanguageDetector>
+      language_detector_;
 
   const raw_ref<i18n::Translator> translator_;
 

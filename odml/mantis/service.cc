@@ -20,8 +20,10 @@
 #include <base/task/thread_pool.h>
 #include <base/uuid.h>
 #include <metrics/metrics_library.h>
+#include <ml/mojom/text_classifier.mojom.h>
 #include <ml_core/dlc/dlc_client.h>
 
+#include "odml/i18n/ml_service_language_detector.h"
 #include "odml/i18n/translator.h"
 #include "odml/mantis/lib_api.h"
 #include "odml/mantis/metrics.h"
@@ -133,6 +135,7 @@ MantisService::MantisService(
           base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()})),
       shim_loader_(shim_loader),
       safety_service_manager_(safety_service_manager),
+      language_detector_(nullptr),
       translator_(translator) {}
 
 void MantisService::DeleteProcessor() {
@@ -146,7 +149,21 @@ void MantisService::Initialize(
     mojo::PendingRemote<mojom::PlatformModelProgressObserver> progress_observer,
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
     const std::optional<base::Uuid>& dlc_uuid,
+    mojo::PendingRemote<chromeos::machine_learning::mojom::TextClassifier>
+        text_classifier,
     InitializeCallback callback) {
+  if (language_detector_ == nullptr) {
+    if (!text_classifier.is_valid()) {
+      LOG(ERROR) << "Initializing MantisService failed due to invalid "
+                    "text_classifier remote.";
+      std::move(callback).Run(mojom::InitializeResult::kFailedToLoadLibrary);
+      return;
+    }
+    language_detector_ =
+        std::make_unique<on_device_model::MlServiceLanguageDetector>();
+    language_detector_->Initialize(std::move(text_classifier));
+  }
+
   std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>> remote =
       std::make_shared<mojo::Remote<mojom::PlatformModelProgressObserver>>(
           std::move(progress_observer));
@@ -282,7 +299,8 @@ void MantisService::PrepareMantisProcessor(
       base::BindOnce(&MantisService::CreateMantisProcessor,
                      weak_ptr_factory_.GetWeakPtr(), metrics_lib_,
                      periodic_metrics_, mantis_api_runner_, api,
-                     std::move(processor), safety_service_manager_, translator_,
+                     std::move(processor), safety_service_manager_,
+                     raw_ref(*language_detector_), translator_,
                      base::BindOnce(&MantisService::DeleteProcessor,
                                     base::Unretained(this)),
                      std::move(callback), std::move(timer))
@@ -322,6 +340,7 @@ void MantisService::CreateMantisProcessor(
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+    raw_ref<on_device_model::LanguageDetector> language_detector,
     const raw_ref<i18n::Translator> translator,
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
@@ -329,8 +348,9 @@ void MantisService::CreateMantisProcessor(
     MantisComponent component) {
   processor_ = std::make_unique<MantisProcessor>(
       metrics_lib, periodic_metrics, std::move(mantis_api_runner), component,
-      api, std::move(processor), safety_service_manager, translator,
-      std::move(on_disconnected), std::move(callback));
+      api, std::move(processor), safety_service_manager,
+      raw_ref(language_detector), translator, std::move(on_disconnected),
+      std::move(callback));
   SendTimeMetric(*metrics_lib_, TimeMetric::kLoadModelLatency, *timer);
   periodic_metrics->UpdateAndRecordMetricsNow();
 }

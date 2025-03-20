@@ -33,6 +33,12 @@ class MlServiceLanguageDetector : public LanguageDetector {
   void Initialize(
       chromeos::machine_learning::mojom::MachineLearningService& ml_service);
 
+  // Initialize the language detector with TextClassifier. IsAvailable
+  // will be true if the given TextClassifier is valid.
+  void Initialize(
+      mojo::PendingRemote<chromeos::machine_learning::mojom::TextClassifier>
+          text_classifier);
+
   // LanguageDetector overrides.
   bool IsAvailable() override;
   void Classify(

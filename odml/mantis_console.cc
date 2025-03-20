@@ -191,6 +191,7 @@ class MantisServiceForInterception : public mantis::MantisService {
       const mantis::MantisAPI* api,
       mojo::PendingReceiver<mantis::mojom::MantisProcessor> receiver,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      raw_ref<on_device_model::LanguageDetector> language_detector,
       raw_ref<i18n::Translator> translator,
       base::OnceCallback<void()> on_disconnected,
       base::OnceCallback<void(mantis::mojom::InitializeResult)> callback,
@@ -199,8 +200,8 @@ class MantisServiceForInterception : public mantis::MantisService {
     LOG(INFO) << "MantisServiceForInterception::CreateMantisProcessor called";
     mantis_processor = std::make_unique<MantisProcessorForInterception>(
         metrics_lib, periodic_metrics, mantis_api_runner, component, api,
-        std::move(receiver), safety_service_manager, translator,
-        std::move(on_disconnected), std::move(callback));
+        std::move(receiver), safety_service_manager, language_detector,
+        translator, std::move(on_disconnected), std::move(callback));
   }
 };
 
@@ -309,9 +310,12 @@ class MantisConsole : public brillo::DBusDaemon {
         dlc_uuid = base::Uuid::ParseLowercase(dlc_uuid_string.value());
       }
 
+      // Currently it is not possible to obtain TextClassifier outside of
+      // Chrome. This means the mantis_console can only be run after Chrome
+      // initializes the MantisService (e.g. by initializing in Gallery).
       service->Initialize(
           mojo::NullRemote(), processor_remote.BindNewPipeAndPassReceiver(),
-          dlc_uuid,
+          dlc_uuid, /*text_classifier=*/mojo::NullRemote(),
           base::BindOnce(
               [](base::RunLoop* run_loop,
                  mantis::mojom::InitializeResult result) {

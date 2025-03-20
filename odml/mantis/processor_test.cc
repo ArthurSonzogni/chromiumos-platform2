@@ -18,6 +18,7 @@
 
 #include "metrics/metrics_library_mock.h"
 #include "odml/cros_safety/safety_service_manager_mock.h"
+#include "odml/i18n/mock_language_detector.h"
 #include "odml/i18n/mock_translator.h"
 #include "odml/mantis/fake/fake_mantis_api.h"
 #include "odml/mantis/lib_api.h"
@@ -57,8 +58,8 @@ class MantisProcessorTest : public testing::Test {
         raw_ref(metrics_lib_), raw_ref(periodic_metrics_),
         base::SequencedTaskRunner::GetCurrentDefault(), component, api,
         processor_remote_.BindNewPipeAndPassReceiver(),
-        raw_ref(safety_service_manager_), raw_ref(translator_),
-        base::DoNothing(), base::DoNothing());
+        raw_ref(safety_service_manager_), raw_ref(language_detector_),
+        raw_ref(translator_), base::DoNothing(), base::DoNothing());
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -66,6 +67,7 @@ class MantisProcessorTest : public testing::Test {
   odml::PeriodicMetrics periodic_metrics_{raw_ref(metrics_lib_)};
   mojo::Remote<mojom::MantisProcessor> processor_remote_;
   cros_safety::SafetyServiceManagerMock safety_service_manager_;
+  on_device_model::MockLanguageDetector language_detector_;
   i18n::MockTranslator translator_;
 };
 

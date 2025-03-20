@@ -89,6 +89,7 @@ MantisProcessor::MantisProcessor(
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> receiver,
     raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+    raw_ref<on_device_model::LanguageDetector> language_detector,
     raw_ref<i18n::Translator> translator,
     base::OnceCallback<void()> on_disconnected,
     base::OnceCallback<void(InitializeResult)> callback)
@@ -98,6 +99,7 @@ MantisProcessor::MantisProcessor(
       component_(component),
       api_(api),
       safety_service_manager_(safety_service_manager),
+      language_detector_(language_detector),
       translator_(translator),
       on_disconnected_(std::move(on_disconnected)) {
   CHECK(api_);

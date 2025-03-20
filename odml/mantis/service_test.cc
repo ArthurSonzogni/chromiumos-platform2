@@ -97,6 +97,8 @@ class MantisServiceTest : public testing::Test {
   std::unique_ptr<MantisService> service_;
   mojo::Remote<mojom::MantisService> service_remote_;
   cros_safety::SafetyServiceManagerMock safety_service_manager_;
+  mojo::PendingReceiver<chromeos::machine_learning::mojom::TextClassifier>
+      text_classifier_;
   i18n::MockTranslator translator_;
 };
 
@@ -116,8 +118,10 @@ TEST_F(MantisServiceTest, InitializeUnableToResolveGetMantisAPISymbol) {
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
-      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
+      /*progress_observer=*/mojo::NullRemote(),
+      processor.BindNewPipeAndPassReceiver(),
       base::Uuid::ParseLowercase(kDefaultDlcUUID),
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kFailedToLoadLibrary);
         run_loop.Quit();
@@ -142,8 +146,10 @@ TEST_F(MantisServiceTest, InitializeUnableToGetMantisAPI) {
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
-      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
+      /*progress_observer=*/mojo::NullRemote(),
+      processor.BindNewPipeAndPassReceiver(),
       base::Uuid::ParseLowercase(kDefaultDlcUUID),
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kFailedToLoadLibrary);
         run_loop.Quit();
@@ -161,7 +167,9 @@ TEST_F(MantisServiceTest, InitializeFailedToDownloadShim) {
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
-      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      /*progress_observer=*/mojo::NullRemote(),
+      processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kFailedToLoadLibrary);
         run_loop.Quit();
@@ -187,8 +195,10 @@ TEST_F(MantisServiceTest, InitializeSucceeds) {
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
-      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
+      /*progress_observer=*/mojo::NullRemote(),
+      processor.BindNewPipeAndPassReceiver(),
       base::Uuid::ParseLowercase(kDefaultDlcUUID),
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop.Quit();
@@ -208,7 +218,9 @@ TEST_F(MantisServiceTest, InitializeSucceedsWithEmptyDLC) {
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
-      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      /*progress_observer=*/mojo::NullRemote(),
+      processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop.Quit();
@@ -230,7 +242,9 @@ TEST_F(MantisServiceTest, InitializeSucceedsWithShimInstallation) {
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
-      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      /*progress_observer=*/mojo::NullRemote(),
+      processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop.Quit();
@@ -254,7 +268,9 @@ TEST_F(MantisServiceTest, InitializeSucceedsWithShimDownload) {
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
-      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      /*progress_observer=*/mojo::NullRemote(),
+      processor.BindNewPipeAndPassReceiver(), std::nullopt,
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop.Quit();
@@ -286,8 +302,10 @@ TEST_F(MantisServiceTest, MultipleClients) {
   base::RunLoop run_loop_1;
   mojo::Remote<mojom::MantisProcessor> processor1;
   service_remote_->Initialize(
-      mojo::NullRemote(), processor1.BindNewPipeAndPassReceiver(),
+      /*progress_observer=*/mojo::NullRemote(),
+      processor1.BindNewPipeAndPassReceiver(),
       base::Uuid::ParseLowercase(kDefaultDlcUUID),
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop_1.Quit();
@@ -296,9 +314,12 @@ TEST_F(MantisServiceTest, MultipleClients) {
 
   base::RunLoop run_loop_2;
   mojo::Remote<mojom::MantisProcessor> processor2;
+  text_classifier_.reset();
   service_remote_->Initialize(
-      mojo::NullRemote(), processor2.BindNewPipeAndPassReceiver(),
+      /*progress_observer=*/mojo::NullRemote(),
+      processor2.BindNewPipeAndPassReceiver(),
       base::Uuid::ParseLowercase(kDefaultDlcUUID),
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](mojom::InitializeResult result) {
         EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop_2.Quit();
@@ -326,10 +347,12 @@ TEST_F(MantisServiceTest, I18nDLCIsDownloaded) {
 
   mojo::Remote<mojom::MantisProcessor> processor;
   TestFuture<mojom::InitializeResult> result_future;
-  service_remote_->Initialize(progress_observer.BindNewPipeAndPassRemote(),
-                              processor.BindNewPipeAndPassReceiver(),
-                              base::Uuid::ParseLowercase(kDefaultDlcUUID),
-                              result_future.GetCallback());
+  service_remote_->Initialize(
+      progress_observer.BindNewPipeAndPassRemote(),
+      processor.BindNewPipeAndPassReceiver(),
+      base::Uuid::ParseLowercase(kDefaultDlcUUID),
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
+      result_future.GetCallback());
   service_remote_.FlushForTesting();
 
   EXPECT_EQ(result_future.Take(), mojom::InitializeResult::kSuccess);
@@ -365,10 +388,12 @@ TEST_F(MantisServiceTest, I18nDLCProgressIsSequential) {
 
   mojo::Remote<mojom::MantisProcessor> processor;
   TestFuture<mojom::InitializeResult> result_future;
-  service_remote_->Initialize(progress_observer.BindNewPipeAndPassRemote(),
-                              processor.BindNewPipeAndPassReceiver(),
-                              base::Uuid::ParseLowercase(kDefaultDlcUUID),
-                              result_future.GetCallback());
+  service_remote_->Initialize(
+      progress_observer.BindNewPipeAndPassRemote(),
+      processor.BindNewPipeAndPassReceiver(),
+      base::Uuid::ParseLowercase(kDefaultDlcUUID),
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
+      result_future.GetCallback());
   service_remote_.FlushForTesting();
 
   EXPECT_EQ(result_future.Take(), mojom::InitializeResult::kSuccess);
@@ -399,10 +424,12 @@ TEST_F(MantisServiceTest, I18nDLCDownloadFailed) {
 
   mojo::Remote<mojom::MantisProcessor> processor;
   TestFuture<mojom::InitializeResult> result_future;
-  service_remote_->Initialize(progress_observer.BindNewPipeAndPassRemote(),
-                              processor.BindNewPipeAndPassReceiver(),
-                              base::Uuid::ParseLowercase(kDefaultDlcUUID),
-                              result_future.GetCallback());
+  service_remote_->Initialize(
+      progress_observer.BindNewPipeAndPassRemote(),
+      processor.BindNewPipeAndPassReceiver(),
+      base::Uuid::ParseLowercase(kDefaultDlcUUID),
+      /*text_classifier=*/text_classifier_.InitWithNewPipeAndPassRemote(),
+      result_future.GetCallback());
   service_remote_.FlushForTesting();
 
   EXPECT_EQ(result_future.Take(),

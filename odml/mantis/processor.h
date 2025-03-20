@@ -24,6 +24,7 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "odml/cros_safety/safety_service_manager.h"
+#include "odml/i18n/language_detector.h"
 #include "odml/i18n/translator.h"
 #include "odml/mantis/lib_api.h"
 #include "odml/mantis/metrics.h"
@@ -79,6 +80,7 @@ class MantisProcessor : public mojom::MantisProcessor {
       const MantisAPI* api,
       mojo::PendingReceiver<mojom::MantisProcessor> receiver,
       raw_ref<cros_safety::SafetyServiceManager> safety_service_manager,
+      raw_ref<on_device_model::LanguageDetector> language_detector,
       raw_ref<i18n::Translator> translator,
       base::OnceCallback<void()> on_disconnected,
       base::OnceCallback<void(mantis::mojom::InitializeResult)> callback);
@@ -150,6 +152,8 @@ class MantisProcessor : public mojom::MantisProcessor {
   const raw_ptr<const MantisAPI> api_;
 
   raw_ref<cros_safety::SafetyServiceManager> safety_service_manager_;
+
+  const raw_ref<on_device_model::LanguageDetector> language_detector_;
 
   const raw_ref<i18n::Translator> translator_;
 

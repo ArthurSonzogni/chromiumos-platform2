@@ -37,6 +37,21 @@ void MlServiceLanguageDetector::Initialize(
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
+void MlServiceLanguageDetector::Initialize(
+    mojo::PendingRemote<chromeos::machine_learning::mojom::TextClassifier>
+        text_classifier) {
+  is_available_ = false;
+  if (!text_classifier.is_valid()) {
+    return;
+  }
+  is_available_ = true;
+  text_classifier_.reset();
+  text_classifier_.Bind(std::move(text_classifier));
+  text_classifier_.set_disconnect_handler(
+      base::BindOnce(&MlServiceLanguageDetector::OnDisconnected,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
 void MlServiceLanguageDetector::Classify(
     const std::string& text,
     base::OnceCallback<void(std::optional<std::vector<TextLanguage>>)>
