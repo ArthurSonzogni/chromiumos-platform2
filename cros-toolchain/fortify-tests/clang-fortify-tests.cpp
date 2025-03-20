@@ -131,8 +131,10 @@ class Tests {
 
 //////////////////////////////// FORTIFY tests! ////////////////////////////////
 
+#if defined(__GLIBC__) && __GLIBC_MINOR__ < 41
 // FIXME(gbiv): glibc shouldn't #define this with FORTIFY on.
 #undef mempcpy
+#endif
 
 const static int kBogusFD = -1;
 
@@ -149,7 +151,12 @@ void Tests::TestString() {
     EXPECT_DEATH(mempcpy(small_buffer, large_buffer, sizeof(large_buffer)));
     // expected-warning@+1{{called with bigger length than the destination}}
     EXPECT_DEATH(memset(small_buffer, 0, sizeof(large_buffer)));
-    // expected-warning@+1{{transposed parameters}}
+#if defined(__GLIBC__) && __GLIBC_MINOR__ < 41
+    // expected-warning@+5{{transposed parameters}}
+#else
+    // expected-warning@+3{{did you mean to transpose the last two arguments}}
+    // expected-note@+2{{parenthesize the third argument to silence}}
+#endif
     memset(small_buffer, sizeof(small_buffer), 0);
     // expected-warning@+1{{called with bigger length than the destination}}
     EXPECT_DEATH(bcopy(large_buffer, small_buffer, sizeof(large_buffer)));
@@ -171,7 +178,13 @@ void Tests::TestString() {
     EXPECT_DEATH(stpncpy(small_buffer, large_string, sizeof(large_string)));
     // expected-warning@+1{{destination buffer will always be overflown}}
     EXPECT_DEATH(strcat(small_buffer, large_string));
-    // expected-warning@+1{{destination buffer will always be overflown}}
+#if defined(__GLIBC__) && __GLIBC_MINOR__ < 41
+    // expected-warning@+6{{destination buffer will always be overflown}}
+#else
+    // expected-warning@+4{{destination buffer will always be overflown}}
+    // expected-warning@+3{{argument in 'strncat' call appears to be size of}}
+    // expected-note@+2{{change the argument to be the free space in the dest}}
+#endif
     EXPECT_DEATH(strncat(small_buffer, large_string, sizeof(large_string)));
   }
 
@@ -220,9 +233,17 @@ void Tests::TestString() {
 #endif
     EXPECT_DEATH_STRUCT(strcat(split.tiny_buffer, small_string));
 
+#if defined(__GLIBC__) && __GLIBC_MINOR__ < 41
 #if _FORTIFY_SOURCE > 1
-    // expected-warning@+2{{destination buffer will always be overflown}}
+    // expected-warning@+9{{destination buffer will always be overflown}}
 #endif
+#else
+#if _FORTIFY_SOURCE > 1
+    // expected-warning@+6{{destination buffer will always be overflown}}
+#endif
+    // expected-warning@+4{{argument in 'strncat' call appears to be size of}}
+    // expected-note@+3{{change the argument to be the free space in the dest}}
+#endif  // defined(__GLIBC__)
     EXPECT_DEATH_STRUCT(
         strncat(split.tiny_buffer, small_string, sizeof(small_string)));
   }
@@ -237,8 +258,8 @@ void testFcntl() {
   // expected-error@+1{{either with 2 or 3 arguments, not more}}
 #endif
   open("/", 0, 0, 0);
-#if 0
-  // expected-error@+1{{either with 2 or 3 arguments, not more}}
+#if defined(__GLIBC__) && __GLIBC_MINOR__ >= 41
+  // expected-error@+2{{either with 2 or 3 arguments, not more}}
 #endif
   open64("/", 0, 0, 0);
   // expected-error@+1{{either with 3 or 4 arguments, not more}}
@@ -582,11 +603,19 @@ void Tests::TestWchar() {
     // expected-warning@+1{{length bigger than size of destination buffer}}
     EXPECT_DEATH(wcpncpy(small_buffer, large_string, small_buffer_size + 1));
 
-    // expected-warning@+2{{ignoring return value of function}}
-    // expected-warning@+1{{length bigger than size of destination buffer}}
+    // expected-warning@+6{{ignoring return value of function}}
+#if defined(__GLIBC__) && __GLIBC_MINOR__ < 41
+    // expected-warning@+4{{length bigger than size of destination buffer}}
+#else
+    // expected-warning@+2{{length bigger than size of destination buffer}}
+#endif
     EXPECT_DEATH(fgetws(small_buffer, sizeof(small_buffer) + 1, 0));
-    // expected-warning@+2{{ignoring return value of function}}
-    // expected-warning@+1{{bigger size than length of destination buffer}}
+    // expected-warning@+6{{ignoring return value of function}}
+#if defined(__GLIBC__) && __GLIBC_MINOR__ < 41
+    // expected-warning@+4{{bigger size than length of destination buffer}}
+#else
+    // expected-warning@+2{{length bigger than size of destination buffer}}
+#endif
     EXPECT_DEATH(fgetws_unlocked(small_buffer, sizeof(small_buffer) + 1, 0));
 
     // No diagnostics emitted for either clang or gcc :(
@@ -655,10 +684,14 @@ void Tests::TestWchar() {
 
     // FIXME(gbiv): FORTIFY doesn't warn about this eagerly enough on
     // _FORTIFY_SOURCE=1.
-    // expected-warning@+4{{ignoring return value of function}}
+    // expected-warning@+8{{ignoring return value of function}}
 #if _FORTIFY_SOURCE > 1
-    // expected-warning@+2{{bigger size than length of destination buffer}}
-#endif
+#if defined(__GLIBC__) && __GLIBC_MINOR__ < 41
+    // expected-warning@+5{{bigger size than length of destination buffer}}
+#else
+    // expected-warning@+3{{length bigger than size of destination buffer}}
+#endif  // defined(__GLIBC__)
+#endif  // _FORTIFY_SOURCE > 1
     EXPECT_DEATH(fgetws_unlocked(small_split.buf, small_buffer_size, 0));
 
     // No diagnostics emitted for either clang or gcc :(
