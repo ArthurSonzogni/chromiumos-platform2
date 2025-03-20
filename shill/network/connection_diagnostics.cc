@@ -61,6 +61,8 @@ std::string ConnectionDiagnostics::ResultName(Result result) {
       return "Failure";
     case Result::kTimeout:
       return "Timeout";
+    case Result::kPending:
+      return "Pending";
   }
 }
 
@@ -77,10 +79,12 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       iface_index_(iface_index),
       ip_family_(ip_family),
       gateway_(gateway),
+      dns_resolution_diagnostic_id_(0),
       icmp_session_(new IcmpSession(dispatcher_)),
       running_(false),
       event_number_(0),
       logging_tag_(logging_tag),
+      next_diagnostic_id_(0),
       weak_ptr_factory_(this) {
   dns_client_ = std::make_unique<DnsClient>(
       ip_family_, iface_name, DnsClient::kDnsTimeout, dispatcher_,
@@ -110,10 +114,7 @@ bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
   running_ = true;
 
   // Always ping the gateway.
-  dispatcher_->PostTask(FROM_HERE,
-                        base::BindOnce(&ConnectionDiagnostics::PingHost,
-                                       weak_ptr_factory_.GetWeakPtr(),
-                                       Type::kPingGateway, gateway_));
+  StartPingDiagnostic(Type::kPingGateway, gateway_);
 
   // Ping DNS servers to make sure at least one is reachable before resolving
   // the hostname of |target_url_|;
@@ -124,6 +125,7 @@ bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
 }
 
 void ConnectionDiagnostics::Stop() {
+  PrintEvents();
   LOG(INFO) << logging_tag_ << " " << __func__;
   running_ = false;
   event_number_ = 0;
@@ -147,43 +149,65 @@ std::string ConnectionDiagnostics::EventToString(const Event& event) {
   return message;
 }
 
-void ConnectionDiagnostics::LogEvent(Type type,
+void ConnectionDiagnostics::LogEvent(int diagnostic_id,
+                                     Type type,
                                      Result result,
                                      const std::string& message) {
   event_number_++;
   Event ev(type, result, message);
-  if (result == Result::kSuccess) {
-    LOG(INFO) << logging_tag_ << " " << __func__ << ": " << ip_family_ << " "
-              << EventToString(ev);
-  } else {
-    LOG(WARNING) << logging_tag_ << " " << __func__ << ": " << ip_family_ << " "
-                 << EventToString(ev);
+  auto [it, success] = diagnostic_results_.insert({diagnostic_id, ev});
+  if (!success) {
+    it->second = ev;
   }
+}
+
+void ConnectionDiagnostics::PrintEvents() {
+  if (!running_) {
+    return;
+  }
+  for (const auto& [id, ev] : diagnostic_results_) {
+    if (ev.result == Result::kSuccess) {
+      LOG(INFO) << logging_tag_ << " " << __func__ << ": " << ip_family_ << " "
+                << EventToString(ev);
+    } else {
+      LOG(WARNING) << logging_tag_ << " " << __func__ << ": " << ip_family_
+                   << " " << EventToString(ev);
+    }
+  }
+  next_diagnostic_id_ = 0;
+  diagnostic_results_.clear();
 }
 
 void ConnectionDiagnostics::ResolveTargetServerIPAddress(
     const std::vector<net_base::IPAddress>& dns_list) {
+  const std::string& host = target_url_->host();
+  dns_resolution_diagnostic_id_ =
+      AssignDiagnosticId(Type::kResolveTargetServerIP, "Resolving " + host);
+
   std::vector<std::string> dns;
   for (const auto& addr : dns_list) {
     dns.push_back(addr.ToString());
   }
+
   Error e;
-  if (!dns_client_->Start(dns, target_url_->host(), &e)) {
-    LogEvent(Type::kResolveTargetServerIP, Result::kFailure,
-             "Could not start DNS: " + e.message());
+  if (!dns_client_->Start(dns, host, &e)) {
+    LogEvent(dns_resolution_diagnostic_id_, Type::kResolveTargetServerIP,
+             Result::kFailure, "Could not start DNS: " + e.message());
     Stop();
     return;
   }
 
-  LogEvent(Type::kResolveTargetServerIP, Result::kSuccess,
-           "Started resolving " + target_url_->host());
   SLOG(2) << logging_tag_ << " " << __func__ << ": looking up "
           << target_url_->host();
 }
 
 void ConnectionDiagnostics::PingDNSServers() {
+  // get id for this operation
+  int dns_diag_id =
+      AssignDiagnosticId(Type::kPingDNSServers, "Ping DNS servers");
+
   if (dns_list_.empty()) {
-    LogEvent(Type::kPingDNSServers, Result::kFailure,
+    LogEvent(dns_diag_id, Type::kPingDNSServers, Result::kFailure,
              "No DNS servers for this connection");
     Stop();
     return;
@@ -191,14 +215,16 @@ void ConnectionDiagnostics::PingDNSServers() {
 
   for (size_t i = 0; i < dns_list_.size(); ++i) {
     const auto& dns_server_ip_addr = dns_list_[i];
+    int diag_id = AssignDiagnosticId(
+        Type::kPingDNSServers, "Pinging " + dns_server_ip_addr.ToString());
     auto icmp_session = StartIcmpSession(
         dns_server_ip_addr, iface_index_, iface_name_,
         base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
-                       weak_ptr_factory_.GetWeakPtr(), i));
+                       weak_ptr_factory_.GetWeakPtr(), diag_id, i));
     if (!icmp_session) {
       // If we encounter any errors starting ping for any DNS server, carry on
       // attempting to ping the other DNS servers rather than failing.
-      LogEvent(Type::kPingDNSServers, Result::kFailure,
+      LogEvent(diag_id, Type::kPingDNSServers, Result::kFailure,
                "Failed to initiate ping to DNS server " +
                    dns_server_ip_addr.ToString());
       continue;
@@ -210,33 +236,33 @@ void ConnectionDiagnostics::PingDNSServers() {
   }
 
   if (id_to_pending_dns_server_icmp_session_.empty()) {
-    LogEvent(Type::kPingDNSServers, Result::kFailure,
+    LogEvent(dns_diag_id, Type::kPingDNSServers, Result::kFailure,
              "Could not start ping for any of the given DNS servers");
     Stop();
-    return;
+  } else {
+    ClearDiagnosticId(dns_diag_id);
   }
 }
 
-void ConnectionDiagnostics::PingHost(Type event_type,
+void ConnectionDiagnostics::PingHost(int diagnostic_id,
+                                     Type event_type,
                                      const net_base::IPAddress& address) {
   SLOG(2) << logging_tag_ << " " << __func__;
   if (!icmp_session_->Start(
           address, iface_index_, iface_name_,
           base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
-                         weak_ptr_factory_.GetWeakPtr(), event_type,
-                         address))) {
-    LogEvent(event_type, Result::kFailure,
+                         weak_ptr_factory_.GetWeakPtr(), diagnostic_id,
+                         event_type, address))) {
+    LogEvent(diagnostic_id, event_type, Result::kFailure,
              "Failed to start ICMP session with " + address.ToString());
     Stop();
-    return;
   }
-
-  LogEvent(event_type, Result::kSuccess,
-           "Started pinging " + address.ToString());
 }
 
 void ConnectionDiagnostics::OnPingDNSServerComplete(
-    int dns_server_index, const std::vector<base::TimeDelta>& result) {
+    int diagnostic_id,
+    int dns_server_index,
+    const std::vector<base::TimeDelta>& result) {
   SLOG(2) << logging_tag_ << " " << __func__ << ": DNS server index "
           << dns_server_index;
 
@@ -247,13 +273,14 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
     // any reason, |id_to_pending_dns_server_icmp_session_| might never become
     // empty, and we might never move to the next step after pinging DNS
     // servers. Stop diagnostics immediately to prevent this from happening.
-    LogEvent(Type::kPingDNSServers, Result::kFailure,
+    LogEvent(diagnostic_id, Type::kPingDNSServers, Result::kFailure,
              "No matching pending DNS server ICMP session found");
     Stop();
     return;
   }
 
-  OnPingResult(Type::kPingDNSServers, dns_list_[dns_server_index], result);
+  OnPingResult(diagnostic_id, Type::kPingDNSServers,
+               dns_list_[dns_server_index], result);
 
   if (!id_to_pending_dns_server_icmp_session_.empty()) {
     SLOG(2) << logging_tag_ << " " << __func__
@@ -271,26 +298,24 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(
     const base::expected<net_base::IPAddress, Error>& address) {
   SLOG(2) << logging_tag_ << " " << __func__;
   if (address.has_value()) {
-    LogEvent(Type::kResolveTargetServerIP, Result::kSuccess,
-             "Target address is " + address->ToString());
-    dispatcher_->PostTask(FROM_HERE,
-                          base::BindOnce(&ConnectionDiagnostics::PingHost,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         Type::kPingTargetServer, *address));
+    LogEvent(dns_resolution_diagnostic_id_, Type::kResolveTargetServerIP,
+             Result::kSuccess, "Target address is " + address->ToString());
+    StartPingDiagnostic(Type::kPingTargetServer, *address);
   } else {
-    LogEvent(Type::kResolveTargetServerIP, Result::kFailure,
-             address.error().message());
+    LogEvent(dns_resolution_diagnostic_id_, Type::kResolveTargetServerIP,
+             Result::kFailure, address.error().message());
     Stop();
   }
 }
 
 void ConnectionDiagnostics::OnPingHostComplete(
+    int diagnostic_id,
     Type event_type,
     const net_base::IPAddress& address_pinged,
     const std::vector<base::TimeDelta>& result) {
   SLOG(2) << logging_tag_ << " " << __func__;
 
-  OnPingResult(event_type, address_pinged, result);
+  OnPingResult(diagnostic_id, event_type, address_pinged, result);
 
   // Pinging the target server is the last operation.
   if (event_type == Type::kPingTargetServer) {
@@ -299,6 +324,7 @@ void ConnectionDiagnostics::OnPingHostComplete(
 }
 
 void ConnectionDiagnostics::OnPingResult(
+    int diagnostic_id,
     Type event_type,
     const net_base::IPAddress& address_pinged,
     const std::vector<base::TimeDelta>& result) {
@@ -317,7 +343,7 @@ void ConnectionDiagnostics::OnPingResult(
   Result result_type = IcmpSession::AnyRepliesReceived(result)
                            ? Result::kSuccess
                            : Result::kFailure;
-  LogEvent(event_type, result_type, message);
+  LogEvent(diagnostic_id, event_type, result_type, message);
 }
 
 std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
@@ -344,6 +370,27 @@ std::unique_ptr<IcmpSession> ConnectionDiagnostics::StartIcmpSession(
     return nullptr;
   }
   return icmp_session;
+}
+
+int ConnectionDiagnostics::AssignDiagnosticId(
+    Type type, const std::string& default_message) {
+  int id = next_diagnostic_id_++;
+  diagnostic_results_.insert(
+      {id, Event(type, Result::kPending, default_message)});
+  return id;
+}
+
+void ConnectionDiagnostics::ClearDiagnosticId(int diag_id) {
+  diagnostic_results_.erase(diag_id);
+}
+
+void ConnectionDiagnostics::StartPingDiagnostic(
+    Type type, const net_base::IPAddress& addr) {
+  int diagnostic_id = AssignDiagnosticId(type, "Pinging " + addr.ToString());
+  dispatcher_->PostTask(
+      FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
+                                weak_ptr_factory_.GetWeakPtr(), diagnostic_id,
+                                type, addr));
 }
 
 }  // namespace shill

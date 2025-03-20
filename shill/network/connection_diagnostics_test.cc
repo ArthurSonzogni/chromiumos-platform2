@@ -36,6 +36,7 @@ namespace shill {
 namespace {
 constexpr const char kInterfaceName[] = "int0";
 constexpr const int kInterfaceIndex = 4;
+constexpr const int kDiagnosticId = 1;
 constexpr net_base::IPAddress kIPv4DNSServer0(
     net_base::IPv4Address(8, 8, 8, 8));
 constexpr net_base::IPAddress kIPv4DNSServer1(
@@ -194,9 +195,11 @@ class ConnectionDiagnosticsTest : public Test {
   void ExpectPingDNSServersEndFailure() {
     // Post task to find DNS server route only after all (i.e. 2) pings are
     // done.
-    connection_diagnostics_.OnPingDNSServerComplete(0, kEmptyResult);
+    connection_diagnostics_.OnPingDNSServerComplete(kDiagnosticId, 0,
+                                                    kEmptyResult);
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
-    connection_diagnostics_.OnPingDNSServerComplete(1, kEmptyResult);
+    connection_diagnostics_.OnPingDNSServerComplete(kDiagnosticId, 1,
+                                                    kEmptyResult);
   }
 
   void ExpectResolveTargetServerIPAddressStartSuccess() {
@@ -235,7 +238,7 @@ class ConnectionDiagnosticsTest : public Test {
                 Start(address, kInterfaceIndex, kInterfaceName, _))
         .WillOnce(Return(true));
     connection_diagnostics_.PingHost(
-        ConnectionDiagnostics::Type::kPingTargetServer, address);
+        kDiagnosticId, ConnectionDiagnostics::Type::kPingTargetServer, address);
   }
 
   void ExpectPingHostStartFailure(ConnectionDiagnostics::Type ping_event_type,
@@ -244,25 +247,27 @@ class ConnectionDiagnosticsTest : public Test {
                 Start(address, kInterfaceIndex, kInterfaceName, _))
         .WillOnce(Return(false));
     connection_diagnostics_.PingHost(
-        ConnectionDiagnostics::Type::kPingTargetServer, address);
+        kDiagnosticId, ConnectionDiagnostics::Type::kPingTargetServer, address);
   }
 
   void ExpectPingHostEndSuccess(ConnectionDiagnostics::Type ping_event_type,
                                 const net_base::IPAddress& address) {
-    connection_diagnostics_.OnPingHostComplete(ping_event_type, address,
-                                               kNonEmptyResult);
+    connection_diagnostics_.OnPingHostComplete(kDiagnosticId, ping_event_type,
+                                               address, kNonEmptyResult);
   }
 
   void ExpectPingHostEndFailure(ConnectionDiagnostics::Type ping_event_type,
                                 const net_base::IPAddress& address) {
-    connection_diagnostics_.OnPingHostComplete(ping_event_type, address,
-                                               kEmptyResult);
+    connection_diagnostics_.OnPingHostComplete(kDiagnosticId, ping_event_type,
+                                               address, kEmptyResult);
   }
 
   void ExpectPingDNSServersEndSuccess() {
     // Post retry task or report done only after all (i.e. 2) pings are done.
-    connection_diagnostics_.OnPingDNSServerComplete(0, kNonEmptyResult);
-    connection_diagnostics_.OnPingDNSServerComplete(1, kNonEmptyResult);
+    connection_diagnostics_.OnPingDNSServerComplete(kDiagnosticId, 0,
+                                                    kNonEmptyResult);
+    connection_diagnostics_.OnPingDNSServerComplete(kDiagnosticId, 1,
+                                                    kNonEmptyResult);
   }
 
  private:

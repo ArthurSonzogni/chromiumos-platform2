@@ -50,7 +50,7 @@ class ConnectionDiagnostics {
   };
 
   // Describes the result of a diagnostic test.
-  enum class Result { kSuccess, kFailure, kTimeout };
+  enum class Result { kSuccess, kFailure, kTimeout, kPending };
 
   struct Event {
     Event(Type type_in, Result result_in, const std::string& message_in)
@@ -103,8 +103,15 @@ class ConnectionDiagnostics {
  private:
   friend class ConnectionDiagnosticsTest;
 
-  // Logs a diagnostic events with |type|, |result|, and an optional message.
-  void LogEvent(Type type, Result result, const std::string& message = "");
+  // Buffers a diagnostic event with |type|, |result|, and an optional message,
+  // and associates it with the given diagnostic id.
+  void LogEvent(int diagnostic_id,
+                Type type,
+                Result result,
+                const std::string& message = "");
+
+  // Prints all buffered events in the order of their diagnostic ids.
+  void PrintEvents();
 
   // Attempts to resolve the IP address of the hostname of |target_url_| using
   // |dns_list|.
@@ -114,14 +121,20 @@ class ConnectionDiagnostics {
   // Pings all the DNS servers of |dns_list_|.
   void PingDNSServers();
 
+  // Starts a ping diagnostic to the given address.
+  void StartPingDiagnostic(Type type, const net_base::IPAddress& addr);
+
   // Starts an IcmpSession with |address|. Called when we want to ping the
   // target web server or local gateway.
-  void PingHost(Type event_type, const net_base::IPAddress& address);
+  void PingHost(int diagnostic_id,
+                Type event_type,
+                const net_base::IPAddress& address);
 
   // Called after each IcmpSession started in
   // ConnectionDiagnostics::PingDNSServers finishes or times out. The DNS server
   // that was pinged can be uniquely identified with |dns_server_index|.
-  void OnPingDNSServerComplete(int dns_server_index,
+  void OnPingDNSServerComplete(int diagnostic_id,
+                               int dns_server_index,
                                const std::vector<base::TimeDelta>& result);
 
   // Called after the DNS IP address resolution on started in
@@ -133,13 +146,21 @@ class ConnectionDiagnostics {
   // |address_pinged| finishes or times out. |ping_event_type| indicates the
   // type of ping that was started (gateway or target web server), and |result|
   // is the result of the IcmpSession.
-  void OnPingHostComplete(Type ping_event_type,
+  void OnPingHostComplete(int diagnostic_id,
+                          Type ping_event_type,
                           const net_base::IPAddress& address_pinged,
                           const std::vector<base::TimeDelta>& result);
 
-  void OnPingResult(Type ping_event_type,
+  void OnPingResult(int diagnostic_id,
+                    Type ping_event_type,
                     const net_base::IPAddress& address_pinged,
                     const std::vector<base::TimeDelta>& result);
+
+  // Assigns a new diagnostic id and populates a temporary log event with the
+  // given type and default message.
+  int AssignDiagnosticId(Type type, const std::string& default_message);
+  // Clears a diagnostic id and remove any buffered log for that id.
+  void ClearDiagnosticId(int diag_id);
 
   EventDispatcher* dispatcher_;
 
@@ -154,6 +175,7 @@ class ConnectionDiagnostics {
   std::vector<net_base::IPAddress> dns_list_;
 
   // TODO(b/307880493): Migrate to net_base::DNSClient.
+  int dns_resolution_diagnostic_id_;
   std::unique_ptr<DnsClient> dns_client_;
   std::unique_ptr<IcmpSession> icmp_session_;
 
@@ -171,6 +193,9 @@ class ConnectionDiagnostics {
   int event_number_;
 
   std::string logging_tag_;
+
+  int next_diagnostic_id_;
+  std::map<int, Event> diagnostic_results_;
 
   base::WeakPtrFactory<ConnectionDiagnostics> weak_ptr_factory_;
 };
