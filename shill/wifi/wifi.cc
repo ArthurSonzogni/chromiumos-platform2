@@ -887,20 +887,9 @@ void WiFi::DisconnectFrom(WiFiService* service,
     LOG(ERROR) << "In " << __func__
                << "(): wpa_supplicant is not present; silently resetting "
                << "current_service_.";
-    // |service| is either pending or current and pending service is already
-    // marked as disconnected above.
-    if (service && service == current_service_) {
-      // The logic for the determination of "attempt failure" is:
-      // - if this disconnect is expected then it is not a failure
-      // - otherwise we need to check if this is a connection attempt or
-      //   a disconnect for a later state of connection.
-      // For the second point - since here we have no connection to supplicant
-      // - we should not rely on |supplicant_state_| (so no call to
-      // IsWPAStateConnectionInProgress() or IsConnectionAttemptFailure() and
-      // should rely only on the |service| state.
-      bool is_attempt_failure = !disconnect_expected &&
-                                service->state() == Service::kStateAssociating;
-      ServiceDisconnected(service, is_attempt_failure);
+    if (service && service == current_service_ &&
+        !service->ShouldIgnoreFailure()) {
+      GenerateFirmwareDump();
     }
     if (current_service_ == selected_service()) {
       DropConnection();
@@ -921,14 +910,9 @@ void WiFi::DisconnectFrom(WiFiService* service,
     // Can't depend on getting a notification of CurrentBSS change.
     // So effect changes immediately.  For instance, this can happen when
     // a disconnect is triggered by a BSS going away.
-    if (service && service == current_service_) {
-      // The logic for the determination of "attempt failure" is:
-      // - if this disconnect is expected then it is not a failure
-      // - otherwise we need to check if this is a connection attempt or
-      //   a disconnect for a later state of connection.
-      bool is_attempt_failure =
-          !disconnect_expected && IsConnectionAttemptFailure(*service);
-      ServiceDisconnected(service, is_attempt_failure);
+    if (service && service == current_service_ &&
+        !service->ShouldIgnoreFailure()) {
+      GenerateFirmwareDump();
     }
     Error unused_error;
     RemoveNetworkForService(service, &unused_error);

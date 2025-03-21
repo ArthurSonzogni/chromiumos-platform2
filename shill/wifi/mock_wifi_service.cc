@@ -10,6 +10,7 @@ class ControlInterface;
 class EventDispatcher;
 class Manager;
 
+using testing::InvokeWithoutArgs;
 using testing::WithArg;
 
 MockWiFiService::MockWiFiService(Manager* manager,
@@ -32,6 +33,10 @@ MockWiFiService::MockWiFiService(Manager* manager,
   ON_CALL(*this, SetState).WillByDefault(WithArg<0>([this](auto state) {
     this->WiFiService::SetState(state);
   }));
+  // The same for ShouldIgnoreFailure.
+  ON_CALL(*this, ShouldIgnoreFailure).WillByDefault([this]() {
+    return this->WiFiService::ShouldIgnoreFailure();
+  });
 }
 
 MockWiFiService::~MockWiFiService() = default;

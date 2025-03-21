@@ -650,6 +650,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->adaptor_.reset(adaptor_);  // Transfers ownership.
     wifi_->wifi_link_statistics_.reset(wifi_link_statistics_);
 
+    manager_.running_ = true;
     manager_.set_power_manager(power_manager_);  // Transfers ownership.
 
     wake_on_wifi_ = static_cast<MockWakeOnWiFi*>(wifi_->wake_on_wifi_.get());
