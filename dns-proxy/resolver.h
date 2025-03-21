@@ -172,9 +172,8 @@ class Resolver {
   virtual void SetDoHProviders(const std::vector<std::string>& doh_providers,
                                bool always_on_doh = false);
 
-  // Set interface name to bind to when sending queries. This is necessary for:
-  // - ARC proxies to use the network it is tied to.
-  // - All proxies to be able to reach link-local addresses.
+  // Set interface name to bind to when sending queries. This is only used for
+  // ARC proxies.
   virtual void SetInterface(std::string_view ifname);
 
   // Set DNS-over-HTTPS included and excluded domains. This is used to
