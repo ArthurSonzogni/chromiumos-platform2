@@ -132,6 +132,10 @@ class InstallAction : public Action<InstallAction>, public HttpFetcherDelegate {
   std::string manifest_dir_;
 
   InstallTarget target_ = kStateful;
+
+  // Cached mirror partition info.
+  std::string mirror_src_partition_;
+  std::string mirror_tgt_partition_;
 };
 
 }  // namespace chromeos_update_engine

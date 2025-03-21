@@ -81,9 +81,11 @@ void InstallAction::PerformAction() {
   }
 
   // Get the DLC device partition.
-  auto* boot_control = SystemState::Get()->boot_control();
   std::string partition_name;
-  BootControlInterface::Slot target_slot;
+  const auto& sanitized_id = manifest_->sanitized_id();
+  auto* boot_control = SystemState::Get()->boot_control();
+  BootControlInterface::Slot target_slot = BootControlInterface::kInvalidSlot;
+  BootControlInterface::Slot mirror_slot = BootControlInterface::kInvalidSlot;
   switch (target_) {
     case kRoot:
       if (manifest_->fs_type() != imageloader::FileSystem::kBlob) {
@@ -99,16 +101,31 @@ void InstallAction::PerformAction() {
       partition_name =
           base::FilePath("dlc").Append(id_).Append(kDefaultPackage).value();
       target_slot = boot_control->GetCurrentSlot();
+      if (manifest_->scaled()) {
+        LOG(INFO) << "Set to mirror DLC=" << sanitized_id;
+        mirror_slot = boot_control->GetFirstInactiveSlot();
+      }
       break;
   }
 
   std::string partition;
-  const auto& sanitized_id = manifest_->sanitized_id();
   if (!boot_control->GetPartitionDevice(partition_name, target_slot,
                                         &partition)) {
     LOG(ERROR) << "Could not retrieve device partition for " << sanitized_id;
     processor_->ActionComplete(this, ErrorCode::kScaledInstallationError);
     return;
+  }
+  if (mirror_slot != BootControlInterface::kInvalidSlot) {
+    if (!boot_control->GetPartitionDevice(partition_name, mirror_slot,
+                                          &mirror_tgt_partition_)) {
+      LOG(WARNING) << "Could not retrieve device partition for "
+                   << sanitized_id;
+      mirror_src_partition_.clear();
+      mirror_tgt_partition_.clear();
+      // Continue here as best effort, don't return.
+    } else {
+      mirror_src_partition_ = partition;
+    }
   }
   const auto& sanitized_partition =
       user_tied ? kRedactedDlcPartition : partition;
@@ -240,6 +257,20 @@ void InstallAction::TransferComplete(HttpFetcher* fetcher, bool successful) {
   }
   LOG(INFO) << "Transferred bytes hash (" << manifest_->sanitized_image_sha256()
             << ") is valid.";
+
+  // Note: Optimized copies for scaled pipeline DLCs.
+  // Entire file/logical volumes copied for simplicity for unsparsing too.
+  if (!mirror_src_partition_.empty() && !mirror_tgt_partition_.empty() &&
+      mirror_src_partition_ != mirror_tgt_partition_) {
+    // Separate case for PLOG(..)'ing.
+    if (!base::CopyFile(base::FilePath{mirror_src_partition_},
+                        base::FilePath{mirror_tgt_partition_})) {
+      // Do not log the partition info.
+      PLOG(WARNING) << "Failed to copy to mirror partition";
+    } else {
+      LOG(INFO) << "Mirrored DLC=" << manifest_->sanitized_id();
+    }
+  }
 
   processor_->ActionComplete(this, ErrorCode::kSuccess);
 }

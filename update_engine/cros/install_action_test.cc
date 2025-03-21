@@ -24,7 +24,7 @@ namespace chromeos_update_engine {
 namespace {
 constexpr char kDefaultOffset[] = "1024";
 constexpr char kDefaultSha[] =
-    "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef";
+    "0EC77647B018967B6E56575535A78E12C48D35D27550A8A89E1D39A7BEA89788";
 constexpr char kArtifactsMetaSomeUri[] = "some/uri/path";
 
 constexpr char kManifestTemplate[] =
@@ -58,7 +58,7 @@ constexpr char kManifestWithArtifactsMetaTemplate[] =
   "fs-type": "squashfs",
   "id": "sample-dlc",
   "image-sha256-hash": )"
-    R"("5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+    R"("0EC77647B018967B6E56575535A78E12C48D35D27550A8A89E1D39A7BEA89788",
   "image-type": "dlc",
   "is-removable": true,
   "loadpin-verity-digest": false,
@@ -69,6 +69,7 @@ constexpr char kManifestWithArtifactsMetaTemplate[] =
   "pre-allocated-size": "4194304",
   "preload-allowed": true,
   "reserved": false,
+  "scaled": %s,
   "size": "1024",
   "table-sha256-hash": )"
     R"("44a4e688209bda4e06fd41aadc85a51de7d74a641275cb63b7caead96a9b03b7",
@@ -135,7 +136,7 @@ class InstallActionTestProcessorDelegate : public ActionProcessorDelegate {
 
 class InstallActionTest : public ::testing::Test {
  protected:
-  InstallActionTest() : data_(1024) {}
+  InstallActionTest() : data_(1024, 0b10101010) {}
   ~InstallActionTest() override = default;
 
   void SetUp() override {
@@ -184,6 +185,10 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         base::StringPrintf(kManifestTemplate, kDefaultSha, kDefaultOffset),
         base::StringPrintf(kManifestWithArtifactsMetaTemplate,
+                           "false",
+                           kArtifactsMetaSomeUri),
+        base::StringPrintf(kManifestWithArtifactsMetaTemplate,
+                           "true",
                            kArtifactsMetaSomeUri)));
 
 TEST_P(InstallActionTestSuite, ManifestReadFailure) {
@@ -214,11 +219,16 @@ TEST_P(InstallActionTestSuite, PerformSuccessfulTest) {
       tempdir_.GetPath().Append("etc/lsb-release").value(), kProperties));
   delegate_.expected_code_ = ErrorCode::kSuccess;
 
-  ASSERT_TRUE(test_utils::WriteFileString(
-      tempdir_.GetPath().Append("foobar-dlc-device").value(), ""));
-  FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice(
-      "dlc/foobar-dlc/package", 0,
-      tempdir_.GetPath().Append("foobar-dlc-device").value());
+  constexpr auto kPartName = "dlc/foobar-dlc/package";
+  const auto fdd0 = tempdir_.GetPath().Append("foobar-dlc-device-0");
+  const auto fdd1 = tempdir_.GetPath().Append("foobar-dlc-device-1");
+  ASSERT_TRUE(test_utils::WriteFileString(fdd0.value(), ""));
+  FakeSystemState::Get()->fake_boot_control()->SetCurrentSlot(0);
+  FakeSystemState::Get()->fake_boot_control()->SetFirstInactiveSlot(1);
+  FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice(kPartName, 0,
+                                                                  fdd0.value());
+  FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice(kPartName, 1,
+                                                                  fdd1.value());
   EXPECT_CALL(mock_dlc_utils_, GetDlcManifest(testing::_, testing::_))
       .WillOnce(testing::Return(manifest_ptr));
 
@@ -229,6 +239,14 @@ TEST_P(InstallActionTestSuite, PerformSuccessfulTest) {
                                 base::Unretained(&processor_)));
   loop_.Run();
   EXPECT_FALSE(loop_.PendingTasks());
+
+  // Extra checks for scaled pipeline bits.
+  if (manifest_ptr->scaled()) {
+    std::string actual_data;
+    ASSERT_TRUE(base::PathExists(fdd1));
+    EXPECT_TRUE(base::ReadFileToString(fdd1, &actual_data));
+    EXPECT_EQ(std::string(data_.cbegin(), data_.cend()), actual_data);
+  }
 }
 
 // This also tests backup URLs.
