@@ -829,6 +829,21 @@
                 },
                 "type": "array"
               },
+              "dsp": {
+                "additionalProperties": false,
+                "description": "Contains details about the model's dsp implementation.",
+                "properties": {
+                  "dsp-vendor": {
+                    "description": "DSP vendor.",
+                    "type": "string"
+                  },
+                  "has-dsp": {
+                    "description": "Whether the model has DSP and make use of it.",
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
               "efi": {
                 "description": "Contains settings related to EFI firmware.",
                 "properties": {

@@ -482,6 +482,7 @@ In the tables below,
 | dgpu | [dgpu](#dgpu) |  | False |  | False | Contains details about the model's dgpu implementation. |
 | disk-layout | [disk-layout](#disk_layout) |  | False |  | False |  |
 | displays | array - [displays](#displays) |  | False |  | False | Additional display properties beyond what is available thru standards such as EDID.  The display matches based on the libdrm connector type. |
+| dsp | [dsp](#dsp) |  | False |  | False | Contains details about the model's dsp implementation. |
 | efi | [efi](#efi) |  | False |  | False | Contains settings related to EFI firmware. |
 | fingerprint | [fingerprint](#fingerprint) |  | False |  | False | Contains details about the model's fingerprint implementation. |
 | firmware | [firmware](#firmware) |  | False |  | False |  |
@@ -788,6 +789,12 @@ In the tables below,
 | bottom-right | integer |  | False |  | False | The radius, in physical pixels, of the rounded corner. Minimum value: 0x0. |
 | top-left | integer |  | False |  | False | The radius, in physical pixels, of the rounded corner. Minimum value: 0x0. |
 | top-right | integer |  | False |  | False | The radius, in physical pixels, of the rounded corner. Minimum value: 0x0. |
+
+### dsp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| dsp-vendor | string |  | False |  | False | DSP vendor. |
+| has-dsp | boolean |  | False |  | False | Whether the model has DSP and make use of it. |
 
 ### efi
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

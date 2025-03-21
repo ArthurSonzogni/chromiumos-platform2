@@ -160,6 +160,10 @@
           "dgpu-type": "nv3050",
           "has-dgpu": true
         },
+        "dsp": {
+          "dsp-vendor": "intel",
+          "has-dsp": true
+        },
         "fingerprint": {
           "board": "fake_fingerprint_board",
           "sensor-location": "keyboard-bottom-left"

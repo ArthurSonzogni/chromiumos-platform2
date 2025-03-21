@@ -833,6 +833,17 @@ properties:
                     Use dm-default-key to encrypt all the data in stateful
                     that is not encrypted by user keys.
                   type: boolean
+            dsp:
+              type: object
+              description: Contains details about the model's dsp implementation.
+              properties:
+                has-dsp:
+                  description: Whether the model has DSP and make use of it.
+                  type: boolean
+                dsp-vendor:
+                  description: DSP vendor.
+                  type: string
+              additionalProperties: false
             hwid-override:
               type: string
               description: |
