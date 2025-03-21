@@ -10,7 +10,7 @@ namespace ec {
  * @return An optional SensorId object. This will be empty if the command hasn't
  * been run or if no sensor id is available.
  */
-std::optional<SensorId> FpInfoCommand::sensor_id() {
+std::optional<SensorId> FpInfoCommand_v1::sensor_id() {
   if (!Resp()) {
     return std::nullopt;
   }
@@ -25,7 +25,7 @@ std::optional<SensorId> FpInfoCommand::sensor_id() {
  * @return An optional SensorImage object. This will be empty if the command
  * hasn't been run or if no sensor image is available.
  */
-std::optional<SensorImage> FpInfoCommand::sensor_image() {
+std::optional<SensorImage> FpInfoCommand_v1::sensor_image() {
   if (!Resp()) {
     return std::nullopt;
   }
@@ -40,7 +40,7 @@ std::optional<SensorImage> FpInfoCommand::sensor_image() {
  * @return An optional TemplateInfo object. This will be empty if the command
  * hasn't been run or if no template info is available.
  */
-std::optional<TemplateInfo> FpInfoCommand::template_info() {
+std::optional<TemplateInfo> FpInfoCommand_v1::template_info() {
   if (!Resp()) {
     return std::nullopt;
   }
@@ -55,7 +55,7 @@ std::optional<TemplateInfo> FpInfoCommand::template_info() {
 /**
  * @return number of dead pixels or kDeadPixelsUnknown
  */
-int FpInfoCommand::NumDeadPixels() {
+int FpInfoCommand_v1::NumDeadPixels() {
   if (!Resp()) {
     return kDeadPixelsUnknown;
   }
@@ -69,7 +69,7 @@ int FpInfoCommand::NumDeadPixels() {
 /**
  * @return FpSensorErrors
  */
-FpSensorErrors FpInfoCommand::GetFpSensorErrors() {
+FpSensorErrors FpInfoCommand_v1::GetFpSensorErrors() {
   FpSensorErrors ret = FpSensorErrors::kNone;
 
   if (!Resp()) {

@@ -20,13 +20,13 @@
 
 namespace ec {
 
-class BRILLO_EXPORT FpInfoCommand
+class BRILLO_EXPORT FpInfoCommand_v1
     : public EcCommand<EmptyParam, struct ec_response_fp_info> {
  public:
   static constexpr int kDeadPixelsUnknown = -1;
 
-  FpInfoCommand() : EcCommand(EC_CMD_FP_INFO, kVersionOne) {}
-  ~FpInfoCommand() override = default;
+  FpInfoCommand_v1() : EcCommand(EC_CMD_FP_INFO, kVersionOne) {}
+  ~FpInfoCommand_v1() override = default;
 
   std::optional<SensorId> sensor_id();
   std::optional<SensorImage> sensor_image();

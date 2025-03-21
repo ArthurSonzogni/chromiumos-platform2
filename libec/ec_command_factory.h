@@ -54,11 +54,12 @@ class EcCommandFactoryInterface {
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
-  virtual std::unique_ptr<FpInfoCommand> FpInfoCommand(
+  virtual std::unique_ptr<FpInfoCommand_v1> FpInfoCommand_v1(
       EcCommandVersionSupportedInterface* ec_cmd_ver_supported) = 0;
-  static_assert(std::is_base_of<EcCommandInterface, ec::FpInfoCommand>::value,
-                "All commands created by this class should derive from "
-                "EcCommandInterface");
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::FpInfoCommand_v1>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
 
   virtual std::unique_ptr<FpSeedCommand> FpSeedCommand(
       const brillo::SecureVector& seed, uint16_t seed_version) = 0;
@@ -235,7 +236,7 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
       flash_protect::Flags flags,
       flash_protect::Flags mask) override;
 
-  std::unique_ptr<ec::FpInfoCommand> FpInfoCommand(
+  std::unique_ptr<ec::FpInfoCommand_v1> FpInfoCommand_v1(
       EcCommandVersionSupportedInterface* ec_cmd_ver_supported) override;
 
   std::unique_ptr<ec::FpSeedCommand> FpSeedCommand(

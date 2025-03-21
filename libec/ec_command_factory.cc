@@ -28,9 +28,9 @@ std::unique_ptr<FlashProtectCommand> EcCommandFactory::FlashProtectCommand(
   return FlashProtectCommandFactory::Create(ec_cmd_ver_supported, flags, mask);
 }
 
-std::unique_ptr<FpInfoCommand> EcCommandFactory::FpInfoCommand(
+std::unique_ptr<FpInfoCommand_v1> EcCommandFactory::FpInfoCommand_v1(
     EcCommandVersionSupportedInterface* ec_cmd_ver_supported) {
-  return std::make_unique<ec::FpInfoCommand>();
+  return std::make_unique<ec::FpInfoCommand_v1>();
 }
 
 std::unique_ptr<ec::FpFrameCommand> EcCommandFactory::FpFrameCommand(

@@ -31,8 +31,8 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
                flash_protect::Flags flags,
                flash_protect::Flags mask),
               (override));
-  MOCK_METHOD(std::unique_ptr<ec::FpInfoCommand>,
-              FpInfoCommand,
+  MOCK_METHOD(std::unique_ptr<ec::FpInfoCommand_v1>,
+              FpInfoCommand_v1,
               (EcCommandVersionSupportedInterface * ec_cmd_ver_supported),
               (override));
   MOCK_METHOD(std::unique_ptr<ec::FpSeedCommand>,
