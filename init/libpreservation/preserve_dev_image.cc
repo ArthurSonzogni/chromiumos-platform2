@@ -41,5 +41,11 @@ int main(int argc, char** argv) {
     file_allowlist.insert(base::FilePath(path));
   }
 
-  return preseeder.SaveFileState(file_allowlist) ? EXIT_SUCCESS : EXIT_FAILURE;
+  if (!preseeder.SaveFileState(file_allowlist)) {
+    return EXIT_FAILURE;
+  }
+
+  sync();
+
+  return EXIT_SUCCESS;
 }
