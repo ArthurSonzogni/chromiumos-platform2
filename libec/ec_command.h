@@ -71,6 +71,7 @@ using ArrayData =
 
 inline constexpr uint32_t kVersionZero = 0;
 inline constexpr uint32_t kVersionOne = 1;
+inline constexpr uint32_t kVersionTwo = 2;
 
 inline constexpr auto kEcCommandUninitializedResult =
     std::numeric_limits<uint32_t>::max();
