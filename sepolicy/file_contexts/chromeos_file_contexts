@@ -446,6 +446,9 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /opt/google/containers/android/rootfs/android-data/data/dalvik-cache(/.*)? u:object_r:dalvikcache_data_file:s0
 /opt/google/easy_unlock/easy_unlock u:object_r:cros_easy_unlock_exec:s0
 
+# /opt/starbase
+/opt/starbase(/.*)*             u:object_r:cros_starbase_exec:s0
+
 # /etc
 /etc(/.*)?                      u:object_r:cros_conf_file:s0
 /etc/group                      u:object_r:cros_passwd_file:s0
