@@ -315,7 +315,7 @@ void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
         //   machine: "<marketing_name> (<soc_name>)"
         //       e.g. "Kompanio 1380 (MT8195)"
         //   soc_id:  <null>
-        // And the new theme (working on with Linux upstream):
+        // And the new theme:
         //   family:  "MediaTek" or "MediaTek <marketing_name>", depends on
         //            whether the marketing name is presented.
         //       e.g. "MediaTek Kompanio 1380"
@@ -325,11 +325,12 @@ void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
         //       e.g. "MT8195"
         //
         // We check "soc_id" to distinguish which theme is in use.
-        // If that's readable, the info is presented in new theme, and we
-        // use the "<family> (<soc_id>)" pattern.
+        // If that's readable, the info is presented in new theme, and we use
+        // the "<family>" pattern - MTK prefers promoting marketing/brand name
+        // and without displaying the SoC name at the same time.
         // Otherwise, we use the legacy "<family> <machine>" pattern.
         if (ReadAndTrimString(path.Append("soc_id"), &soc_id)) {
-          *model_name = family + " (" + soc_id + ")";
+          *model_name = family;
           return;
         } else if (ReadAndTrimString(path.Append("machine"), &machine)) {
           *model_name = family + " " + machine;

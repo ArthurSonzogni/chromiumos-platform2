@@ -833,7 +833,7 @@ TEST_F(CpuFetcherTest, ModelNameFromMediaTekSoCIDNew) {
 
   auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
   EXPECT_TRUE(model_name.has_value());
-  ASSERT_EQ(model_name.value(), "MediaTek Kompanio 838 (MT8188)");
+  ASSERT_EQ(model_name.value(), "MediaTek Kompanio 838");
 }
 
 // Test that we have device tree compatible string for Arm devices.
