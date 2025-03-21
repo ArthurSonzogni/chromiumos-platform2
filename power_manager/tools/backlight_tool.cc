@@ -392,7 +392,9 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  InternalBacklight backlight;
+  InternalBacklight backlight(
+      FLAGS_keyboard ? power_manager::kKeyboardBrightnessTransitionInterval
+                     : power_manager::kDisplayBrightnessTransitionInterval);
   base::FilePath path(FLAGS_keyboard ? power_manager::kKeyboardBacklightPath
                                      : power_manager::kInternalBacklightPath);
   std::string pattern = FLAGS_keyboard

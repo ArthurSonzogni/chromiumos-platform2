@@ -415,6 +415,12 @@ extern const double kEpsilon;
 // not use animated transitions.
 extern const base::TimeDelta kFastBacklightTransition;
 extern const base::TimeDelta kSlowBacklightTransition;
+
+// Amount of time between subsequent updates when animating a brightness
+// transition for displays or keyboards.
+extern const base::TimeDelta kDisplayBrightnessTransitionInterval;
+extern const base::TimeDelta kKeyboardBrightnessTransitionInterval;
+
 // udev subsystem to watch for input device related events.
 extern const char kInputUdevSubsystem[];
 

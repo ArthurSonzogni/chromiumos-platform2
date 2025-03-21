@@ -26,7 +26,7 @@ class UdevInterface;
 class PluggableInternalBacklight : public BacklightInterface,
                                    public UdevSubsystemObserver {
  public:
-  PluggableInternalBacklight() = default;
+  explicit PluggableInternalBacklight(base::TimeDelta transition_interval);
   PluggableInternalBacklight(const PluggableInternalBacklight&) = delete;
   PluggableInternalBacklight& operator=(const PluggableInternalBacklight&) =
       delete;
@@ -70,6 +70,9 @@ class PluggableInternalBacklight : public BacklightInterface,
 
   // The underlying backlight device, or null when the device isn't present.
   std::unique_ptr<InternalBacklight> device_;
+
+  // Transition interval to be set on the underlying device.
+  base::TimeDelta transition_interval_;
 };
 
 }  // namespace power_manager::system

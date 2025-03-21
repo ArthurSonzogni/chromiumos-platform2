@@ -15,6 +15,10 @@
 
 namespace power_manager::system {
 
+PluggableInternalBacklight::PluggableInternalBacklight(
+    base::TimeDelta transition_interval)
+    : transition_interval_(transition_interval) {}
+
 PluggableInternalBacklight::~PluggableInternalBacklight() {
   if (udev_) {
     udev_->RemoveSubsystemObserver(udev_subsystem_, this);
@@ -72,7 +76,7 @@ bool PluggableInternalBacklight::TransitionInProgress() const {
 }
 
 void PluggableInternalBacklight::UpdateDevice() {
-  device_ = std::make_unique<InternalBacklight>();
+  device_ = std::make_unique<InternalBacklight>(transition_interval_);
   if (!device_->Init(base_path_, pattern_)) {
     LOG(INFO) << "No backlight found under " << base_path_.value()
               << " matching pattern " << pattern_;

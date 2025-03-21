@@ -172,6 +172,10 @@ const char kPowerWakeup[] = "power/wakeup";
 const double kEpsilon = 0.001;
 const base::TimeDelta kFastBacklightTransition = base::Milliseconds(200);
 const base::TimeDelta kSlowBacklightTransition = base::Seconds(2);
+const base::TimeDelta kDisplayBrightnessTransitionInterval =
+    base::Milliseconds(20);
+const base::TimeDelta kKeyboardBrightnessTransitionInterval =
+    base::Milliseconds(50);
 const char kInputUdevSubsystem[] = "input";
 const char kCrosECLightName[] = "cros-ec-light";
 const char kAcpiAlsName[] = "acpi-als";

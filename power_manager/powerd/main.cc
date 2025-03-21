@@ -164,8 +164,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
   }
 
   std::unique_ptr<system::BacklightInterface> CreateInternalBacklight(
-      const base::FilePath& base_path, const std::string& pattern) override {
-    auto backlight = std::make_unique<system::InternalBacklight>();
+      const base::FilePath& base_path,
+      const std::string& pattern,
+      base::TimeDelta transition_interval) override {
+    auto backlight =
+        std::make_unique<system::InternalBacklight>(transition_interval);
     return backlight->Init(base_path, pattern)
                ? std::move(backlight)
                : std::unique_ptr<system::BacklightInterface>();
@@ -175,8 +178,10 @@ class DaemonDelegateImpl : public DaemonDelegate {
       system::UdevInterface* udev,
       const std::string& udev_subsystem,
       const base::FilePath& base_path,
-      const std::string& pattern) override {
-    auto backlight = std::make_unique<system::PluggableInternalBacklight>();
+      const std::string& pattern,
+      base::TimeDelta transition_interval) override {
+    auto backlight = std::make_unique<system::PluggableInternalBacklight>(
+        transition_interval);
     backlight->Init(udev, udev_subsystem, base_path, pattern);
     return backlight;
   }

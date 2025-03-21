@@ -11,18 +11,18 @@
 #include <string>
 #include <vector>
 
-#include "power_manager/common/battery_percentage_converter.h"
-#include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/policy/adaptive_charging_controller.h"
-#include "power_manager/powerd/system/cros_ec_helper_interface.h"
-#include "power_manager/powerd/system/suspend_freezer.h"
-
 #include <base/files/file_path.h>
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 #include <libec/charge_control_set_command.h>
 #include <libec/charge_current_limit_set_command.h>
 #include <ml/dbus-proxies.h>
+
+#include "power_manager/common/battery_percentage_converter.h"
+#include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/policy/adaptive_charging_controller.h"
+#include "power_manager/powerd/system/cros_ec_helper_interface.h"
+#include "power_manager/powerd/system/suspend_freezer.h"
 
 namespace power_manager {
 
@@ -114,13 +114,16 @@ class DaemonDelegate {
 
   // Returns null if the backlight couldn't be initialized.
   virtual std::unique_ptr<system::BacklightInterface> CreateInternalBacklight(
-      const base::FilePath& base_path, const std::string& pattern) = 0;
+      const base::FilePath& base_path,
+      const std::string& pattern,
+      base::TimeDelta transition_interval) = 0;
 
   virtual std::unique_ptr<system::BacklightInterface>
   CreatePluggableInternalBacklight(system::UdevInterface* udev,
                                    const std::string& udev_subsystem,
                                    const base::FilePath& base_path,
-                                   const std::string& pattern) = 0;
+                                   const std::string& pattern,
+                                   base::TimeDelta transition_interval) = 0;
 
   virtual std::unique_ptr<ec::EcCommandFactoryInterface>
   CreateEcCommandFactory() = 0;

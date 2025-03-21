@@ -28,7 +28,7 @@ class InternalBacklight : public BacklightInterface {
   static const char kBlPowerFilename[];
   static const char kScaleFilename[];
 
-  InternalBacklight() = default;
+  explicit InternalBacklight(base::TimeDelta transition_interval);
   InternalBacklight(const InternalBacklight&) = delete;
   InternalBacklight& operator=(const InternalBacklight&) = delete;
 
@@ -48,6 +48,9 @@ class InternalBacklight : public BacklightInterface {
   const base::FilePath& device_path() const { return device_path_; }
   bool transition_timer_is_running() const {
     return transition_timer_.IsRunning();
+  }
+  base::TimeDelta transition_timer_interval() const {
+    return transition_timer_.GetCurrentDelay();
   }
   base::TimeTicks transition_timer_start_time() const {
     return transition_timer_start_time_;
@@ -98,6 +101,10 @@ class InternalBacklight : public BacklightInterface {
 
   // Scale of the brightness curve (linear, non-linear or unknown).
   BrightnessScale brightness_scale_ = BrightnessScale::kUnknown;
+
+  // When animating a brightness level transition, amount of time to wait
+  // between each update.
+  base::TimeDelta transition_interval_;
 
   // Calls HandleTransitionTimeout().
   base::RepeatingTimer transition_timer_;

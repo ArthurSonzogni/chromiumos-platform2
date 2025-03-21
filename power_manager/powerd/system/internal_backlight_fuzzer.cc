@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/internal_backlight.h"
-
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/task/single_thread_task_executor.h>
-#include "fuzzer/FuzzedDataProvider.h"
 
+#include "fuzzer/FuzzedDataProvider.h"
 #include "power_manager/common/clock.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/internal_backlight.h"
 
 namespace {
 
@@ -58,7 +58,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   PopulateBacklightDir(random_backlight_path,
                        data_provider.ConsumeIntegral<int64_t>(),
                        data_provider.ConsumeIntegral<int64_t>());
-  power_manager::system::InternalBacklight random_backlight;
+  power_manager::system::InternalBacklight random_backlight{
+      power_manager::kDisplayBrightnessTransitionInterval};
   random_backlight.Init(random_test_dir, "*");
 
   // Now, we create a legitimate backlight. But set the following randomly:
@@ -71,7 +72,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   PopulateBacklightDir(real_backlight_path,
                        data_provider.ConsumeIntegral<int64_t>(),
                        data_provider.ConsumeIntegral<int64_t>());
-  power_manager::system::InternalBacklight real_backlight;
+  power_manager::system::InternalBacklight real_backlight{
+      power_manager::kDisplayBrightnessTransitionInterval};
   const base::TimeTicks start_time =
       base::TimeTicks() + base::Microseconds(10000);
   real_backlight.clock()->set_current_time_for_testing(start_time);

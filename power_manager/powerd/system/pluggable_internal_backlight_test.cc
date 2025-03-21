@@ -28,6 +28,7 @@ const char* const kSubsystem = kKeyboardBacklightUdevSubsystem;
 
 constexpr char kSuffix[] = ":kbd_backlight";
 constexpr char kPattern[] = "*:kbd_backlight";
+constexpr base::TimeDelta kTransitionInterval = base::Milliseconds(50);
 
 // BacklightObserver implementation for testing that just counts changes.
 class TestObserver : public BacklightObserver {
@@ -59,7 +60,7 @@ class TestObserver : public BacklightObserver {
 
 class PluggableInternalBacklightTest : public TestEnvironment {
  public:
-  PluggableInternalBacklightTest() {
+  PluggableInternalBacklightTest() : backlight_(kTransitionInterval) {
     CHECK(temp_dir_.CreateUniqueTempDir());
     backlight_.Init(&udev_, kSubsystem, temp_dir_.GetPath(), kPattern);
   }

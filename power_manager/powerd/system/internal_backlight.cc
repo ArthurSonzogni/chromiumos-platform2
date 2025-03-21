@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/internal_backlight.h"
 
+#include <linux/fb.h>
+
 #include <cmath>
 #include <string>
 
@@ -15,7 +17,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
-#include <linux/fb.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/tracing.h"
@@ -23,18 +24,13 @@
 
 namespace power_manager::system {
 
-namespace {
-
-// When animating a brightness level transition, amount of time to wait between
-// each update.
-constexpr base::TimeDelta kTransitionInterval = base::Milliseconds(20);
-
-}  // namespace
-
 const char InternalBacklight::kBrightnessFilename[] = "brightness";
 const char InternalBacklight::kMaxBrightnessFilename[] = "max_brightness";
 const char InternalBacklight::kBlPowerFilename[] = "bl_power";
 const char InternalBacklight::kScaleFilename[] = "scale";
+
+InternalBacklight::InternalBacklight(base::TimeDelta transition_interval)
+    : transition_interval_(transition_interval) {}
 
 bool InternalBacklight::Init(const base::FilePath& base_path,
                              const std::string& pattern) {
@@ -131,7 +127,7 @@ bool InternalBacklight::DoSetBrightnessLevel(int64_t level,
     return true;
   }
 
-  if (interval <= kTransitionInterval) {
+  if (interval <= transition_interval_) {
     CancelTransition();
     return WriteBrightness(level);
   }
@@ -141,7 +137,7 @@ bool InternalBacklight::DoSetBrightnessLevel(int64_t level,
   transition_start_level_ = current_brightness_level_;
   transition_end_level_ = level;
   if (!transition_timer_.IsRunning()) {
-    transition_timer_.Start(FROM_HERE, kTransitionInterval, this,
+    transition_timer_.Start(FROM_HERE, transition_interval_, this,
                             &InternalBacklight::HandleTransitionTimeout);
     transition_timer_start_time_ = transition_start_time_;
   }

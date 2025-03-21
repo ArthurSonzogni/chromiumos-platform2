@@ -466,7 +466,8 @@ void Daemon::Init() {
               dbus_wrapper_.get());
     } else {
       display_backlight_ = delegate_->CreateInternalBacklight(
-          base::FilePath(kInternalBacklightPath), kInternalBacklightPattern);
+          base::FilePath(kInternalBacklightPath), kInternalBacklightPattern,
+          kDisplayBrightnessTransitionInterval);
       if (!display_backlight_) {
         LOG(ERROR) << "Failed to initialize display backlight under "
                    << kInternalBacklightPath << " using pattern "
@@ -492,13 +493,14 @@ void Daemon::Init() {
       if (config->GetString("/keyboard", "mcutype", &value) &&
           value == kPrismRgbController) {
         LOG(INFO) << "Attempting to create RGB keyboard backlight";
-        keyboard_backlight_ =
-            std::make_unique<system::UsbBacklight>(udev_.get());
+        keyboard_backlight_ = std::make_unique<system::UsbBacklight>(
+            udev_.get(), kKeyboardBrightnessTransitionInterval);
       } else {
         LOG(INFO) << "Attempting to create PluggableInternalKeyboardBacklight";
         keyboard_backlight_ = delegate_->CreatePluggableInternalBacklight(
             udev_.get(), kKeyboardBacklightUdevSubsystem,
-            base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
+            base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern,
+            kKeyboardBrightnessTransitionInterval);
       }
 
       keyboard_backlight_controller_ =

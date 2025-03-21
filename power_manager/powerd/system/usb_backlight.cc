@@ -4,8 +4,9 @@
 
 #include "power_manager/powerd/system/usb_backlight.h"
 
-#include <cmath>
 #include <fcntl.h>
+
+#include <cmath>
 #include <string>
 #include <utility>
 
@@ -28,7 +29,9 @@ namespace power_manager::system {
 constexpr int kMaxBrightnessLevel = 100;
 constexpr char kUsbRgbBacklightRole[] = "role_usb_rgb_backlight";
 
-UsbBacklight::UsbBacklight(UdevInterface* udev) : udev_(udev) {
+UsbBacklight::UsbBacklight(UdevInterface* udev,
+                           base::TimeDelta transition_interval)
+    : InternalBacklight(transition_interval), udev_(udev) {
   if (udev_) {
     udev_->AddTaggedDeviceObserver(this);
   }

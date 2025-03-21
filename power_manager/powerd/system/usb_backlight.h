@@ -24,7 +24,8 @@ namespace power_manager::system {
 class UsbBacklight : public InternalBacklight, public UdevTaggedDeviceObserver {
  public:
   UsbBacklight();
-  explicit UsbBacklight(UdevInterface* udev);
+  explicit UsbBacklight(UdevInterface* udev,
+                        base::TimeDelta transition_interval);
   UsbBacklight(const UsbBacklight&) = delete;
   UsbBacklight& operator=(const UsbBacklight&) = delete;
 
