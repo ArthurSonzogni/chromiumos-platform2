@@ -230,7 +230,7 @@ class FpInfoCommandTemplateInfoTest : public testing::Test {
 TEST_F(FpInfoCommandTemplateInfoTest, NullResponse) {
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(nullptr));
 
-  EXPECT_EQ(mock_fp_info_command.sensor_image(), nullptr);
+  EXPECT_EQ(mock_fp_info_command.template_info(), nullptr);
 }
 
 TEST_F(FpInfoCommandTemplateInfoTest, ValidTemplateInfo) {
