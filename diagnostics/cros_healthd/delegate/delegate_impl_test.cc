@@ -22,6 +22,7 @@
 #include <libec/led_control_command.h>
 #include <libec/mkbp_event.h>
 #include <libec/mock_ec_command_factory.h>
+#include <libec/mock_ec_command_version_supported.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/base/file_test_utils.h"
@@ -390,9 +391,13 @@ class MockEvdevMonitor : public EvdevMonitor {
 
 class MockDelegateImpl : public DelegateImpl {
  public:
-  MockDelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory,
-                   DisplayUtilFactory* display_util_factory)
-      : DelegateImpl(ec_command_factory, display_util_factory) {}
+  MockDelegateImpl(
+      ec::EcCommandFactoryInterface* ec_command_factory,
+      DisplayUtilFactory* display_util_factory,
+      ec::EcCommandVersionSupportedInterface* ec_command_version_supported)
+      : DelegateImpl(ec_command_factory,
+                     display_util_factory,
+                     ec_command_version_supported) {}
   MockDelegateImpl(const MockDelegateImpl&) = delete;
   MockDelegateImpl& operator=(const MockDelegateImpl&) = delete;
   ~MockDelegateImpl() = default;
@@ -563,8 +568,11 @@ class DelegateImplTest : public BaseFileTest {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   StrictMock<ec::MockEcCommandFactory> mock_ec_command_factory_;
   MockDisplayUtilFactory mock_display_util_factory_;
+  StrictMock<ec::MockEcCommandVersionSupported>
+      mock_ec_command_version_supported_;
   MockDelegateImpl delegate_{&mock_ec_command_factory_,
-                             &mock_display_util_factory_};
+                             &mock_display_util_factory_,
+                             &mock_ec_command_version_supported_};
 };
 
 TEST_F(DelegateImplTest, GetFingerprintFrameFpInfoCommandFailed) {

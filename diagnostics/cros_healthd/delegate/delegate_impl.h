@@ -54,8 +54,10 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   static constexpr base::TimeDelta kGetExternalDisplayInfoRetryPeriod =
       base::Milliseconds(500);
 
-  explicit DelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory,
-                        DisplayUtilFactory* display_util_factory);
+  explicit DelegateImpl(
+      ec::EcCommandFactoryInterface* ec_command_factory,
+      DisplayUtilFactory* display_util_factory,
+      ec::EcCommandVersionSupportedInterface* ec_command_version_supported);
   DelegateImpl(const DelegateImpl&) = delete;
   DelegateImpl& operator=(const DelegateImpl&) = delete;
   ~DelegateImpl() override;
@@ -154,6 +156,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
 
   ec::EcCommandFactoryInterface* const ec_command_factory_;
   DisplayUtilFactory* const display_util_factory_;
+  ec::EcCommandVersionSupportedInterface* const ec_command_version_supported_;
 };
 
 }  // namespace diagnostics
