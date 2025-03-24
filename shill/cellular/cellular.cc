@@ -348,7 +348,7 @@ Cellular::Cellular(Manager* manager,
   // With single device approach, cellular device will exist irrespective of
   // modem exposed by MM so we will not create capability here in device
   // constructor and it will be created when MM reports the mode.
-  if (Modem::kCellularDefaultInterfaceIndex != interface_index) {
+  if (!path.value().empty()) {
     CreateCapability();
   }
 

@@ -4,21 +4,21 @@
 
 #include "shill/cellular/modem.h"
 
+#include <net/if.h>
+#include <sys/ioctl.h>
+
 #include <memory>
 #include <optional>
 #include <tuple>
 #include <utility>
 #include <vector>
 
-#include <ModemManager/ModemManager.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
-
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <ModemManager/ModemManager.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
@@ -170,8 +170,8 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   modem_->OnDeviceInfoAvailable(kLinkName);
   EXPECT_FALSE(modem_->has_pending_device_info_for_testing());
   ASSERT_TRUE(modem_->interface_index_for_testing().has_value());
-  int interface_index = modem_->interface_index_for_testing().value();
-  DeviceRefPtr device = device_info_.GetDevice(interface_index);
+  DeviceRefPtr device =
+      device_info_.GetDevice(Modem::kCellularDefaultInterfaceIndex);
   ASSERT_TRUE(device);
   EXPECT_EQ(kMacAddress, device->mac_address());
 }
@@ -222,7 +222,8 @@ TEST_F(ModemTest, CreateDevicePPP) {
   ASSERT_TRUE(modem_->interface_index_for_testing().has_value());
   int interface_index = modem_->interface_index_for_testing().value();
   EXPECT_EQ(interface_index, Modem::kFakeDevInterfaceIndex);
-  DeviceRefPtr device = device_info_.GetDevice(interface_index);
+  DeviceRefPtr device =
+      device_info_.GetDevice(Modem::kCellularDefaultInterfaceIndex);
   ASSERT_TRUE(device);
   EXPECT_EQ(device->mac_address(), Modem::kFakeDevAddress);
 }
@@ -263,8 +264,8 @@ TEST_F(ModemTest, Create3gppDevice) {
 
   modem_->CreateDevice(properties);
   ASSERT_TRUE(modem_->interface_index_for_testing().has_value());
-  int interface_index = modem_->interface_index_for_testing().value();
-  DeviceRefPtr device = device_info_.GetDevice(interface_index);
+  DeviceRefPtr device =
+      device_info_.GetDevice(Modem::kCellularDefaultInterfaceIndex);
   ASSERT_TRUE(device);
   Cellular* cellular = static_cast<Cellular*>(device.get());
   CellularCapability3gpp* capability = cellular->capability_for_testing();

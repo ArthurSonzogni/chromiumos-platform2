@@ -173,7 +173,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     cellular_ =
         new Cellular(&manager_, "", "",
                      net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05),
-                     0, "", RpcIdentifier(""));
+                     0, "", kTestModemDBusPath);
 
     service_ = new MockCellularService(&manager_, cellular_);
     device_adaptor_ = static_cast<DeviceMockAdaptor*>(cellular_->adaptor());

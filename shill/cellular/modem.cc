@@ -245,11 +245,19 @@ CellularRefPtr Modem::GetOrCreateCellularDevice(
     LOG(WARNING) << "Creating missing cellular device with name: " << link_name_
                  << " Interface Index: " << interface_index;
   }
+  // Create internal device with default interface name and index so that its
+  // registered into device_info at kCellularDefaultInterfaceIndex and does
+  // not get deregistered on link_down event.
 
-  cellular =
-      new Cellular(device_info_->manager(), kCellularDeviceName, link_name_,
-                   mac_address, interface_index, service_, path_);
+  cellular = new Cellular(device_info_->manager(), kCellularDeviceName,
+                          kCellularDefaultInterfaceName, mac_address,
+                          kCellularDefaultInterfaceIndex, service_, path_);
   device_info_->RegisterDevice(cellular);
+  // Update the Cellular modem dbus path, mac address, interface index
+  // and interface name to match the new Modem.
+  cellular->UpdateModemProperties(path_, mac_address, interface_index,
+                                  link_name_);
+
   return cellular;
 }
 
