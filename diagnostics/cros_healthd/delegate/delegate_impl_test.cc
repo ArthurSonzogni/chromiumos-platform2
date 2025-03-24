@@ -19,6 +19,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libec/fingerprint/fp_mode_command.h>
+#include <libec/flash_protect_command_factory.h>
 #include <libec/led_control_command.h>
 #include <libec/mkbp_event.h>
 #include <libec/mock_ec_command_factory.h>
@@ -585,6 +586,22 @@ TEST_F(DelegateImplTest, GetFingerprintFrameFpInfoCommandFailed) {
   auto [unused, err] =
       GetFingerprintFrameSync(mojom::FingerprintCaptureType::kCheckerboardTest);
   EXPECT_EQ(err, "Failed to run ec::FpInfoCommand");
+}
+
+TEST_F(DelegateImplTest, FlashProtectCommandFactorySuccess) {
+  ec::flash_protect::Flags flags = ec::flash_protect::Flags::kRollbackAtBoot |
+                                   ec::flash_protect::Flags::kRoAtBoot;
+  ec::flash_protect::Flags mask = ec::flash_protect::Flags::kNone;
+
+  EXPECT_CALL(mock_ec_command_version_supported_, EcCmdVersionSupported)
+      .Times(1)
+      .WillOnce(Return(ec::EcCmdVersionSupportStatus::SUPPORTED));
+
+  auto cmd = ec::FlashProtectCommandFactory::Create(
+      &mock_ec_command_version_supported_, flags, mask);
+
+  EXPECT_TRUE(cmd);
+  EXPECT_EQ(cmd->Version(), 2);
 }
 
 TEST_F(DelegateImplTest, GetFingerprintFrameMkbpEventEnableFailed) {
