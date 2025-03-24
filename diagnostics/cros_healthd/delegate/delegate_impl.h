@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <chromeos/ec/ec_commands.h>
+#include <libec/ec_command_version_supported.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/mojom/delegate.mojom.h"
@@ -22,6 +23,20 @@ class TimeDelta;
 namespace ec {
 class EcCommandFactoryInterface;
 class MkbpEvent;
+
+class EcCommandVersionSupported : public EcCommandVersionSupportedInterface {
+ public:
+  EcCommandVersionSupported() = default;
+  EcCommandVersionSupported(const EcCommandVersionSupported&) = delete;
+  EcCommandVersionSupported& operator=(const EcCommandVersionSupported&) =
+      delete;
+
+  virtual ~EcCommandVersionSupported() = default;
+
+  EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
+                                                  uint32_t ver) override;
+};
+
 }  // namespace ec
 
 namespace diagnostics {

@@ -28,6 +28,7 @@
 #include <brillo/udev/udev.h>
 #include <chromeos/ec/ec_commands.h>
 #include <libec/ec_command_factory.h>
+#include <libec/ec_command_version_supported.h>
 #include <libec/fingerprint/fp_frame_command.h>
 #include <libec/fingerprint/fp_info_command.h>
 #include <libec/fingerprint/fp_mode_command.h>
@@ -41,6 +42,7 @@
 #include <libec/pwm/pwm_get_fan_target_rpm_command.h>
 #include <libec/pwm/pwm_set_fan_target_rpm_command.h>
 #include <libec/thermal/thermal_auto_fan_ctrl_command.h>
+#include <libec/versions_command.h>
 
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/events/audio_jack_evdev_delegate.h"
@@ -739,3 +741,21 @@ void DelegateImpl::MonitorEvdevEvents(
 }
 
 }  // namespace diagnostics
+
+namespace ec {
+namespace {
+
+constexpr int kMaxIoAttempts = 2;
+
+}  // namespace
+
+EcCmdVersionSupportStatus EcCommandVersionSupported::EcCmdVersionSupported(
+    uint16_t cmd, uint32_t ver) {
+  auto cros_fd = base::ScopedFD(open(diagnostics::path::kCrosFpDevice, O_RDWR));
+
+  VersionsCommand versions_cmd(cmd);
+  versions_cmd.RunWithMultipleAttempts(cros_fd.get(), kMaxIoAttempts);
+  return versions_cmd.IsVersionSupported(ver);
+}
+
+}  // namespace ec
