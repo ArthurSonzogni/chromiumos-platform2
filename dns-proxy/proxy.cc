@@ -446,8 +446,6 @@ void Proxy::ApplyDeviceUpdate() {
   }
 
   MaybeCreateResolver();
-  UpdateNameServers();
-
   // Update the interface to use for sending DNS queries for:
   // - ARC proxies to use the network it is tied to.
   // - All proxies to be able to reach link-local addresses.
@@ -467,6 +465,7 @@ void Proxy::ApplyDeviceUpdate() {
       resolver_->SetInterface(device_->active_ifname());
     }
   }
+  UpdateNameServers();
 
   if (opts_.type == Type::kSystem) {
     // Start DNS redirection rule to exclude traffic with destination not equal
