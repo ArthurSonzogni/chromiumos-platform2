@@ -65,11 +65,26 @@ impl<V: VideoFrame> V4l2Picture<V> {
 pub struct V4l2StatelessDecoderHandle<V: VideoFrame> {
     pub picture: Rc<RefCell<V4l2Picture<V>>>,
     pub stream_info: StreamInfo,
+    pub override_timestamp: Option<u64>,
+}
+
+impl<V: VideoFrame> V4l2StatelessDecoderHandle<V> {
+    pub(crate) fn new_handle_from_same_buffer(&self, timestamp: u64) -> Self {
+        Self {
+            picture: self.picture.clone(),
+            stream_info: self.stream_info.clone(),
+            override_timestamp: Some(timestamp),
+        }
+    }
 }
 
 impl<V: VideoFrame> Clone for V4l2StatelessDecoderHandle<V> {
     fn clone(&self) -> Self {
-        Self { picture: Rc::clone(&self.picture), stream_info: self.stream_info.clone() }
+        Self {
+            picture: Rc::clone(&self.picture),
+            stream_info: self.stream_info.clone(),
+            override_timestamp: self.override_timestamp,
+        }
     }
 }
 
@@ -89,7 +104,10 @@ impl<V: VideoFrame> DecodedHandle for V4l2StatelessDecoderHandle<V> {
     }
 
     fn timestamp(&self) -> u64 {
-        self.picture.borrow().timestamp()
+        match self.override_timestamp {
+            Some(timestamp) => timestamp,
+            None => self.picture.borrow().timestamp(),
+        }
     }
 
     fn sync(&self) -> anyhow::Result<()> {

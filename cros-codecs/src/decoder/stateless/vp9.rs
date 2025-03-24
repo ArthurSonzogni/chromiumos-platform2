@@ -54,6 +54,13 @@ pub trait StatelessVp9DecoderBackend:
         >,
     ) -> NewPictureResult<Self::Picture>;
 
+    /// Called when we encounter a |show_existing_frame=true| frame.
+    fn new_handle_from_existing_handle(
+        &mut self,
+        existing_handle: &Self::Handle,
+        timestamp: u64,
+    ) -> NewPictureResult<Self::Handle>;
+
     /// Called when the decoder wants the backend to finish the decoding
     /// operations for `picture`.
     ///
@@ -156,7 +163,11 @@ where
     }
 
     /// Handle a frame which `show_existing_frame` flag is `true`.
-    fn handle_show_existing_frame(&mut self, frame_to_show_map_idx: u8) -> Result<(), DecodeError> {
+    fn handle_show_existing_frame(
+        &mut self,
+        frame_to_show_map_idx: u8,
+        timestamp: u64,
+    ) -> Result<(), DecodeError> {
         // Frame to be shown. Because the spec mandates that frame_to_show_map_idx references a
         // valid entry in the DPB, an non-existing index means that the stream is invalid.
         let idx = usize::from(frame_to_show_map_idx);
@@ -169,7 +180,7 @@ where
             .ok_or_else(|| anyhow::anyhow!("empty reference frame referenced in frame header"))?;
 
         // We are done, no further processing needed.
-        let decoded_handle = ref_frame.clone();
+        let decoded_handle = self.backend.new_handle_from_existing_handle(ref_frame, timestamp)?;
 
         self.ready_queue.push(decoded_handle);
 
@@ -322,9 +333,10 @@ where
                 // Then process each frame.
                 for (frame, picture) in frames_with_pictures {
                     match picture {
-                        None => {
-                            self.handle_show_existing_frame(frame.header.frame_to_show_map_idx)?
-                        }
+                        None => self.handle_show_existing_frame(
+                            frame.header.frame_to_show_map_idx,
+                            timestamp,
+                        )?,
                         Some(picture) => self.handle_frame(&frame, picture)?,
                     }
                 }

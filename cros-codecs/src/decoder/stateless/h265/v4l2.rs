@@ -197,6 +197,7 @@ impl<V: VideoFrame> StatelessH265DecoderBackend for V4l2StatelessDecoderBackend<
         Ok(V4l2StatelessDecoderHandle {
             picture: picture.clone(),
             stream_info: self.stream_info.clone(),
+            override_timestamp: None,
         })
     }
 }

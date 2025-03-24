@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use anyhow::anyhow;
@@ -251,6 +252,14 @@ impl<V: VideoFrame> StatelessVp9DecoderBackend for VaapiBackend<V> {
             Rc::clone(context),
             alloc_cb().ok_or(NewPictureError::OutOfOutputBuffers)?,
         ))
+    }
+
+    fn new_handle_from_existing_handle(
+        &mut self,
+        existing_handle: &Self::Handle,
+        timestamp: u64,
+    ) -> NewPictureResult<Self::Handle> {
+        Ok(Rc::new(RefCell::new(existing_handle.borrow().new_handle_from_same_surface(timestamp)?)))
     }
 
     fn submit_picture(

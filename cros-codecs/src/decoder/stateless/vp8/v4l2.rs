@@ -150,6 +150,7 @@ impl<V: VideoFrame> StatelessVp8DecoderBackend for V4l2StatelessDecoderBackend<V
         Ok(V4l2StatelessDecoderHandle {
             picture: picture.clone(),
             stream_info: self.stream_info.clone(),
+            override_timestamp: None,
         })
     }
 }

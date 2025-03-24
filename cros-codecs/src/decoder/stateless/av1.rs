@@ -58,6 +58,13 @@ pub trait StatelessAV1DecoderBackend:
         >,
     ) -> NewPictureResult<Self::Picture>;
 
+    /// Called when we encounter a |show_existing_frame=true| frame.
+    fn new_handle_from_existing_handle(
+        &mut self,
+        existing_handle: &Self::Handle,
+        timestamp: u64,
+    ) -> NewPictureResult<Self::Handle>;
+
     /// Called to set the global parameters of a picture.
     fn begin_picture(
         &mut self,
@@ -178,7 +185,7 @@ where
                 .ok_or(anyhow!("Broken stream: no reference picture to display"))?;
             self.codec.current_pic = Some(CurrentPicState::ShowExistingFrame {
                 header: frame_header,
-                handle: ref_frame.clone(),
+                handle: self.backend.new_handle_from_existing_handle(ref_frame, timestamp)?,
             });
         } else if let Some(stream_info) = &self.codec.stream_info {
             let mut backend_picture =

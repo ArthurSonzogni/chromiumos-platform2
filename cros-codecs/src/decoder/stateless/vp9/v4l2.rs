@@ -112,6 +112,14 @@ impl<V: VideoFrame> StatelessVp9DecoderBackend for V4l2StatelessDecoderBackend<V
         Ok(picture)
     }
 
+    fn new_handle_from_existing_handle(
+        &mut self,
+        existing_handle: &Self::Handle,
+        timestamp: u64,
+    ) -> NewPictureResult<Self::Handle> {
+        Ok(existing_handle.new_handle_from_same_buffer(timestamp))
+    }
+
     fn submit_picture(
         &mut self,
         picture: Self::Picture,
@@ -171,6 +179,7 @@ impl<V: VideoFrame> StatelessVp9DecoderBackend for V4l2StatelessDecoderBackend<V
         Ok(V4l2StatelessDecoderHandle {
             picture: picture.clone(),
             stream_info: self.stream_info.clone(),
+            override_timestamp: None,
         })
     }
 }

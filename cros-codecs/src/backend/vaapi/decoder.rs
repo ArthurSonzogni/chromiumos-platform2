@@ -87,6 +87,7 @@ pub(crate) trait VaStreamInfo {
 enum PictureState<M: SurfaceMemoryDescriptor> {
     Ready(Picture<PictureSync, Surface<M>>),
     Pending(Picture<PictureEnd, Surface<M>>),
+    ShowExisting(Picture<PictureNew, Surface<M>>),
     // Only set in sync when we take ownership of the VA picture.
     Invalid,
 }
@@ -97,11 +98,15 @@ impl<M: SurfaceMemoryDescriptor> PictureState<M> {
         let res;
 
         (*self, res) = match std::mem::replace(self, PictureState::Invalid) {
+            // The backing frame is the same as a picture that was already sync'd(), so we should
+            // be ok.
+            state @ PictureState::ShowExisting(_) => (state, Ok(())),
             state @ PictureState::Ready(_) => (state, Ok(())),
             PictureState::Pending(picture) => match picture.sync() {
                 Ok(picture) => (PictureState::Ready(picture), Ok(())),
                 Err((e, picture)) => (PictureState::Pending(picture), Err(e)),
             },
+
             PictureState::Invalid => unreachable!(),
         };
 
@@ -112,6 +117,7 @@ impl<M: SurfaceMemoryDescriptor> PictureState<M> {
         match self {
             PictureState::Ready(picture) => picture.surface(),
             PictureState::Pending(picture) => picture.surface(),
+            PictureState::ShowExisting(picture) => picture.surface(),
             PictureState::Invalid => unreachable!(),
         }
     }
@@ -120,13 +126,14 @@ impl<M: SurfaceMemoryDescriptor> PictureState<M> {
         match self {
             PictureState::Ready(picture) => picture.timestamp(),
             PictureState::Pending(picture) => picture.timestamp(),
+            PictureState::ShowExisting(picture) => picture.timestamp(),
             PictureState::Invalid => unreachable!(),
         }
     }
 
     fn is_ready(&self) -> Result<bool, VaError> {
         match self {
-            PictureState::Ready(_) => Ok(true),
+            PictureState::Ready(_) | PictureState::ShowExisting(_) => Ok(true),
             PictureState::Pending(picture) => picture
                 .surface()
                 .query_status()
@@ -137,6 +144,9 @@ impl<M: SurfaceMemoryDescriptor> PictureState<M> {
 
     fn new_from_same_surface(&self, timestamp: u64) -> Picture<PictureNew, Surface<M>> {
         match &self {
+            PictureState::ShowExisting(picture) => {
+                Picture::new_from_same_surface(timestamp, picture)
+            }
             PictureState::Ready(picture) => Picture::new_from_same_surface(timestamp, picture),
             PictureState::Pending(picture) => Picture::new_from_same_surface(timestamp, picture),
             PictureState::Invalid => unreachable!(),
@@ -172,12 +182,22 @@ impl<V: VideoFrame> VaapiDecodedHandle<V> {
     }
 
     /// Creates a new picture from the surface backing the current one. Useful for interlaced
-    /// decoding. TODO: Do we need this for other purposes? We don't intend to support interlaced.
+    /// decoding.
     pub(crate) fn new_picture_from_same_surface(&self, timestamp: u64) -> VaapiPicture<V> {
         VaapiPicture {
             picture: self.state.new_from_same_surface(timestamp),
             backing_frame: self.backing_frame.clone(),
         }
+    }
+
+    /// Similar to above function, but produces a VaapiDecodedHandle. Useful for AV1 and VP9
+    /// "show_existing_frame=true" feature.
+    pub(crate) fn new_handle_from_same_surface(&self, timestamp: u64) -> anyhow::Result<Self> {
+        Ok(Self {
+            backing_frame: self.backing_frame.clone(),
+            state: PictureState::ShowExisting(self.state.new_from_same_surface(timestamp)),
+            display_resolution: self.display_resolution.clone(),
+        })
     }
 
     pub(crate) fn surface(&self) -> &Surface<<V as VideoFrame>::MemDescriptor> {
