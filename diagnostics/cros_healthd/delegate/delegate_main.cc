@@ -51,7 +51,9 @@ class DelegateDaemon : public brillo::Daemon {
   mojo::core::ScopedIPCSupport scoped_ipc_support_;
   ec::EcCommandFactory ec_command_factory_;
   DisplayUtilFactoryImpl display_util_factory_;
-  DelegateImpl delegate_{&ec_command_factory_, &display_util_factory_};
+  ec::EcCommandVersionSupported ec_command_version_supported_;
+  DelegateImpl delegate_{&ec_command_factory_, &display_util_factory_,
+                         &ec_command_version_supported_};
   mojo::Receiver<mojom::Delegate> receiver_{&delegate_};
 };
 
