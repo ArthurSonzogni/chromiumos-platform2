@@ -2911,7 +2911,11 @@ impl Parser {
             -32768,
             32767,
             warp_params[5]
-                - helpers::round2signed(w * div_factor, div_shift)?
+                - helpers::round2signed(
+                    w.checked_mul(div_factor)
+                        .ok_or("Multiple overflow on w * div_factor".to_string())?,
+                    div_shift,
+                )?
                 - (1 << WARPEDMODEL_PREC_BITS),
         );
 
@@ -2923,6 +2927,7 @@ impl Parser {
         let delta =
             helpers::round2signed(delta0, WARP_PARAM_REDUCE_BITS)? << WARP_PARAM_REDUCE_BITS;
 
+        // These can't overflow because of the clipping functions above.
         #[allow(clippy::needless_bool)]
         let warp_valid = if 4 * alpha.abs() + 7 * beta.abs() >= (1 << WARPEDMODEL_PREC_BITS)
             || 4 * gamma.abs() + 4 * delta.abs() >= (1 << WARPEDMODEL_PREC_BITS)
