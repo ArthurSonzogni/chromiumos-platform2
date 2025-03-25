@@ -11,19 +11,17 @@ use std::fs::File;
 use std::io::Result;
 use std::io::Write;
 use std::mem;
-use std::os::unix::prelude::FromRawFd;
 use std::panic;
 use std::process::abort;
 
 const PANIC_MEMFD_NAME: &str = "RUST_PANIC_SIG";
 
 fn create_panic_memfd() -> nix::Result<File> {
-    let fd: i32 = memfd_create(
+    let fd = memfd_create(
         &CString::new(PANIC_MEMFD_NAME).unwrap(),
         MemFdCreateFlag::MFD_CLOEXEC | MemFdCreateFlag::MFD_ALLOW_SEALING,
     )?;
-    // SAFETY: Safe since the fd is newly created and not owned yet. `File` will own the fd.
-    Ok(unsafe { File::from_raw_fd(fd) })
+    Ok(File::from(fd))
 }
 
 fn panic_info_payload_str<'a>(panic_info: &'a panic::PanicHookInfo<'_>) -> Option<&'a str> {
