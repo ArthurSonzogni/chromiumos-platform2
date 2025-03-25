@@ -276,7 +276,7 @@ pub fn echo_syslog(enable: bool) -> Result<(), Error> {
 ///
 /// # Arguments
 /// * `file` - `Some(file)` to echo to `file`, `None` to disable echoing to the file previously
-///            passed to `echo_file`.
+///   passed to `echo_file`.
 pub fn echo_file(file: Option<File>) {
     let mut state = lock!();
     state.file = file;
@@ -315,7 +315,7 @@ pub fn push_fds(fds: &mut Vec<RawFd>) {
 /// * `pri` - The `Priority` (i.e. severity) of the log message.
 /// * `fac` - The `Facility` of the log message. Usually `Facility::User` should be used.
 /// * `file_line` - Optional tuple of the name of the file that generated the
-///                 log and the line number within that file.
+///   log and the line number within that file.
 /// * `args` - The log's message to record, in the form of `format_args!()`  return value
 ///
 /// # Examples
@@ -451,7 +451,6 @@ mod tests {
     use libc::{shm_open, shm_unlink, O_CREAT, O_EXCL, O_RDWR};
 
     use std::{
-        ffi::CStr,
         io::{Read, Seek, SeekFrom},
         os::unix::io::FromRawFd,
     };
@@ -504,7 +503,7 @@ mod tests {
     #[test]
     fn syslog_file() {
         init().unwrap();
-        let shm_name = CStr::from_bytes_with_nul(b"/crosvm_shm\0").unwrap();
+        let shm_name = c"/crosvm_shm";
         let mut file = unsafe {
             shm_unlink(shm_name.as_ptr());
             let fd = shm_open(shm_name.as_ptr(), O_RDWR | O_CREAT | O_EXCL, 0o666);

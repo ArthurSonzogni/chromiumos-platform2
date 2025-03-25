@@ -122,7 +122,7 @@ pub struct PollEvent<'a, T> {
     token: PhantomData<T>, // Needed to satisfy usage of T
 }
 
-impl<'a, T: PollToken> PollEvent<'a, T> {
+impl<T: PollToken> PollEvent<'_, T> {
     /// Gets the token associated in `PollContext::add` with this event.
     pub fn token(&self) -> T {
         T::from_raw_token(self.event.u64)
@@ -178,7 +178,7 @@ pub struct PollEvents<'a, T> {
     tokens: PhantomData<[T]>, // Needed to satisfy usage of T
 }
 
-impl<'a, T: PollToken> PollEvents<'a, T> {
+impl<T: PollToken> PollEvents<'_, T> {
     /// Copies the events to an owned structure so the reference to this (and by extension
     /// `PollContext`) can be dropped.
     pub fn to_owned(&self) -> PollEventsOwned<T> {

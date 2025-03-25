@@ -18,7 +18,7 @@ use std::{
 /// - /dev/disk/by-path
 /// - /dev/disk/by-id
 pub fn get_partition_device<P: AsRef<Path>>(disk_device: P, num: u32) -> Option<PathBuf> {
-    return match disk_device.as_ref().parent() {
+    match disk_device.as_ref().parent() {
         Some(path) => {
             if path.as_os_str() == "/dev" {
                 return Some(get_partition_device_dev(disk_device, num));
@@ -31,7 +31,7 @@ pub fn get_partition_device<P: AsRef<Path>>(disk_device: P, num: u32) -> Option<
             None
         }
         None => None,
-    };
+    }
 }
 
 fn get_partition_device_dev<P: AsRef<Path>>(disk_device: P, num: u32) -> PathBuf {
