@@ -2998,7 +2998,7 @@ impl Parser {
         if fh.primary_ref_frame == PRIMARY_REF_NONE {
             // setup_past_independence()
             #[allow(clippy::needless_range_loop)]
-            for ref_frame in ReferenceFrameType::Last as usize..ReferenceFrameType::AltRef as usize
+            for ref_frame in ReferenceFrameType::Last as usize..=ReferenceFrameType::AltRef as usize
             {
                 for i in 0..5 {
                     prev_gm_params[ref_frame][i] =
