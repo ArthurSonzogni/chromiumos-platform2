@@ -99,6 +99,15 @@ class FakeFpInfoCommand : public ec::FpInfoCommand {
   bool fake_run_result_ = false;
 };
 
+class FakeFlashProtectCommand : public ec::FlashProtectCommand {
+ public:
+  explicit FakeFlashProtectCommand(ec::flash_protect::Flags flags,
+                                   ec::flash_protect::Flags mask,
+                                   uint32_t version)
+      : FlashProtectCommand(flags, mask, version) {}
+  ~FakeFlashProtectCommand() = default;
+};
+
 class FakeMkbpEvent : public ec::MkbpEvent {
  public:
   FakeMkbpEvent() : ec::MkbpEvent(0, EC_MKBP_EVENT_FINGERPRINT) {}
@@ -598,6 +607,44 @@ TEST_F(DelegateImplTest, FlashProtectCommandFactorySuccess) {
       .WillOnce(Return(ec::EcCmdVersionSupportStatus::SUPPORTED));
 
   auto cmd = ec::FlashProtectCommandFactory::Create(
+      &mock_ec_command_version_supported_, flags, mask);
+
+  EXPECT_TRUE(cmd);
+  EXPECT_EQ(cmd->Version(), 2);
+}
+
+TEST_F(DelegateImplTest, FlashProtectCommand_v1) {
+  ec::flash_protect::Flags flags = ec::flash_protect::Flags::kRollbackAtBoot |
+                                   ec::flash_protect::Flags::kRoAtBoot;
+  ec::flash_protect::Flags mask = ec::flash_protect::Flags::kNone;
+
+  auto flash_protect_cmd =
+      std::make_unique<FakeFlashProtectCommand>(flags, mask, /*version=*/1);
+
+  EXPECT_CALL(mock_ec_command_factory_, FlashProtectCommand)
+      .Times(1)
+      .WillOnce(Return(std::move(flash_protect_cmd)));
+
+  auto cmd = mock_ec_command_factory_.FlashProtectCommand(
+      &mock_ec_command_version_supported_, flags, mask);
+
+  EXPECT_TRUE(cmd);
+  EXPECT_EQ(cmd->Version(), 1);
+}
+
+TEST_F(DelegateImplTest, FlashProtectCommand_v2) {
+  ec::flash_protect::Flags flags = ec::flash_protect::Flags::kRollbackAtBoot |
+                                   ec::flash_protect::Flags::kRoAtBoot;
+  ec::flash_protect::Flags mask = ec::flash_protect::Flags::kNone;
+
+  auto flash_protect_cmd =
+      std::make_unique<FakeFlashProtectCommand>(flags, mask, /*version=*/2);
+
+  EXPECT_CALL(mock_ec_command_factory_, FlashProtectCommand)
+      .Times(1)
+      .WillOnce(Return(std::move(flash_protect_cmd)));
+
+  auto cmd = mock_ec_command_factory_.FlashProtectCommand(
       &mock_ec_command_version_supported_, flags, mask);
 
   EXPECT_TRUE(cmd);
