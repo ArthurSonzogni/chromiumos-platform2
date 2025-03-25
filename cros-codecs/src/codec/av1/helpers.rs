@@ -148,17 +148,17 @@ pub fn inverse_recenter(r: i32, v: i32) -> i32 {
 }
 
 /// Implements Round2. See 4.7: mathematical functions.
-pub fn round2(x: u32, n: u32) -> u32 {
-    (x + 2u32.pow(n - 1)) / 2u32.pow(n)
+pub fn round2(x: u64, n: u32) -> Result<u32, String> {
+    u32::try_from((x + 2u64.pow(n - 1)) / 2u64.pow(n)).map_err(|e| e.to_string())
 }
 
 /// Implements Round2Signed. See 4.7: mathematical functions.
-pub fn round2signed(x: i32, n: u32) -> Result<i32, String> {
+pub fn round2signed(x: i64, n: u32) -> Result<i32, String> {
     if x >= 0 {
-        i32::try_from(round2(x as u32, n)).map_err(|e| e.to_string())
+        i32::try_from(round2(x as u64, n)?).map_err(|e| e.to_string())
     } else {
         let x = x as i64;
-        let val = i32::try_from(round2(-x as u32, n)).map_err(|e| e.to_string())?;
+        let val = i32::try_from(round2(-x as u64, n)?).map_err(|e| e.to_string())?;
         Ok(-val)
     }
 }
@@ -169,7 +169,11 @@ pub fn resolve_divisor(d: i32) -> Result<(u32, i32), String> {
     let n = floor_log2(abs_d);
     let e = abs_d - (1 << n);
 
-    let f = if n > DIV_LUT_BITS { round2(e, n - DIV_LUT_BITS) } else { e << (DIV_LUT_BITS - n) };
+    let f = if n > DIV_LUT_BITS {
+        round2(e as u64, n - DIV_LUT_BITS)?
+    } else {
+        e << (DIV_LUT_BITS - n)
+    };
 
     let div_shift = n + DIV_LUT_PREC_BITS;
     let div_factor = if d < 0 { -DIV_LUT[f as usize] } else { DIV_LUT[f as usize] };

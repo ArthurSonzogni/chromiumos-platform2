@@ -2902,7 +2902,7 @@ impl Parser {
         let (div_shift, div_factor) = helpers::resolve_divisor(warp_params[2])?;
 
         let v = i64::from(warp_params[4] << WARPEDMODEL_PREC_BITS);
-        let v = (v * i64::from(div_factor)) as i32;
+        let v = v * i64::from(div_factor);
         let gamma0 = helpers::clip3(-32678, 32767, helpers::round2signed(v, div_shift)?);
 
         let w = warp_params[3] * warp_params[4];
@@ -2911,21 +2911,18 @@ impl Parser {
             -32768,
             32767,
             warp_params[5]
-                - helpers::round2signed(
-                    w.checked_mul(div_factor)
-                        .ok_or("Multiple overflow on w * div_factor".to_string())?,
-                    div_shift,
-                )?
+                - helpers::round2signed((w as i64) * (div_factor as i64), div_shift)?
                 - (1 << WARPEDMODEL_PREC_BITS),
         );
 
         let alpha =
-            helpers::round2signed(alpha0, WARP_PARAM_REDUCE_BITS)? << WARP_PARAM_REDUCE_BITS;
-        let beta = helpers::round2signed(beta0, WARP_PARAM_REDUCE_BITS)? << WARP_PARAM_REDUCE_BITS;
+            helpers::round2signed(alpha0 as i64, WARP_PARAM_REDUCE_BITS)? << WARP_PARAM_REDUCE_BITS;
+        let beta =
+            helpers::round2signed(beta0 as i64, WARP_PARAM_REDUCE_BITS)? << WARP_PARAM_REDUCE_BITS;
         let gamma =
-            helpers::round2signed(gamma0, WARP_PARAM_REDUCE_BITS)? << WARP_PARAM_REDUCE_BITS;
+            helpers::round2signed(gamma0 as i64, WARP_PARAM_REDUCE_BITS)? << WARP_PARAM_REDUCE_BITS;
         let delta =
-            helpers::round2signed(delta0, WARP_PARAM_REDUCE_BITS)? << WARP_PARAM_REDUCE_BITS;
+            helpers::round2signed(delta0 as i64, WARP_PARAM_REDUCE_BITS)? << WARP_PARAM_REDUCE_BITS;
 
         // These can't overflow because of the clipping functions above.
         #[allow(clippy::needless_bool)]

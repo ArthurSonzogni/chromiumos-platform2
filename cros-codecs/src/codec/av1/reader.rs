@@ -195,7 +195,7 @@ impl<'a> Reader<'a> {
             if num_syms <= mk + 3 * a {
                 let num_bits = num_syms - mk;
                 let subexp_final_bits = self.read_ns(num_bits as usize)?;
-                return Ok(subexp_final_bits);
+                return Ok(subexp_final_bits + mk as u32);
             } else {
                 let subexp_more_bits = self.0.read_bit()?;
                 if subexp_more_bits {
