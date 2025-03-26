@@ -1,0 +1,22 @@
+[package]
+name = "chromeos-install"
+description = "Install ChromeOS"
+
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+fs-err.workspace = true
+glob.workspace = true
+libchromeos.workspace = true
+log.workspace = true
+nix.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+mockall.workspace = true
+tempfile.workspace = true

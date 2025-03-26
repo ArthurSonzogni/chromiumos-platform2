@@ -1,5 +1,7 @@
 [package]
 name = "libinstall"
+
+authors.workspace = true
 version.workspace = true
 edition.workspace = true
 

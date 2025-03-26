@@ -1,14 +1,13 @@
-[package]
-name = "chromeos-installer"
-version = "0.1.0"
-authors = ["The ChromiumOS Authors"]
-description = "Install ChromeOS"
-edition = "2021"
-include = [
-    "src/*.rs",
-]
+[workspace]
+members = [ "chromeos-install", "libinstall", "xtask"]
+resolver = "2"
 
-[dependencies]
+[workspace.package]
+authors = ["The ChromiumOS Authors"]
+version = "0.1.0"
+edition = "2021"
+
+[workspace.dependencies]
 anyhow = "1.0"
 clap = { version = "4.5.4", features = ["derive"] }
 fs-err = "3.0.0"
@@ -18,14 +17,6 @@ log = { version = "0.4", features = ["std"] }
 nix = { version = "0.28.0", features = ["mount", "user"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-[dev-dependencies]
 mockall = "0.12.1"
 tempfile = "3.10"
 
-[workspace]
-members = [ "libinstall", "xtask"]
-
-[workspace.package]
-version = "0.1.0"
-edition = "2021"
