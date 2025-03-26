@@ -4,7 +4,9 @@
 
 #include "odml/mantis/processor.h"
 
+#include <algorithm>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -21,7 +23,9 @@
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
+#include "odml/i18n/language_detector.h"
 #include "odml/i18n/translator.h"
+#include "odml/mantis/common.h"
 #include "odml/mantis/lib_api.h"
 #include "odml/mantis/metrics.h"
 #include "odml/mantis/prompt_rewriter.h"
@@ -39,6 +43,7 @@ using mojom::InitializeResult;
 using mojom::MantisError;
 using mojom::MantisResult;
 using mojom::SafetyClassifierVerdict;
+using ::on_device_model::LanguageDetector;
 
 constexpr auto kMapStatusToError =
     base::MakeFixedFlatMap<MantisStatus, MantisError>({
@@ -79,6 +84,37 @@ constexpr auto kMapImageTypeToRuleset =
         {ImageType::kGeneratedRegionOutpaintng,
          cros_safety::mojom::SafetyRuleset::kMantisGeneratedRegionOutpainting},
     });
+
+// Selects the prompt's origin language from all possibilities. The result
+// can be used to translate the prompt from that language to English. Returns
+// `std::nullopt` if no translation is needed (e.g. it's English or language is
+// undetected)
+std::optional<std::string> SelectLanguage(
+    const std::optional<std::vector<LanguageDetector::TextLanguage>>&
+        possible_languages) {
+  if (!possible_languages.has_value()) {
+    return std::nullopt;
+  }
+
+  const size_t kTopLanguageToCheck =
+      std::min(possible_languages->size(), static_cast<size_t>(3));
+  for (int i = 0; i < kTopLanguageToCheck; ++i) {
+    const LanguageDetector::TextLanguage language = (*possible_languages)[i];
+    if (language.locale == kEnglishLocale) {
+      return std::nullopt;
+    }
+  }
+
+  for (int i = 0; i < kTopLanguageToCheck; ++i) {
+    const LanguageDetector::TextLanguage language = (*possible_languages)[i];
+    if (IsLanguageSupported(language.locale)) {
+      return language.locale;
+    }
+  }
+
+  return std::nullopt;
+}
+
 }  // namespace
 
 MantisProcessor::MantisProcessor(
@@ -213,20 +249,45 @@ void MantisProcessor::Outpainting(const std::vector<uint8_t>& image,
   }));
 }
 
+void MantisProcessor::OnLanguageDetectionResult(
+    std::unique_ptr<MantisProcess> process,
+    std::optional<std::vector<LanguageDetector::TextLanguage>> results) {
+  std::optional<std::string> language = SelectLanguage(results);
+  if (!language.has_value()) {
+    // Use the original prompt.
+    ProcessImage(std::move(process));
+    return;
+  }
+  LOG(INFO) << "Prompt is in language " << *language;
+  translator_->Translate(
+      i18n::LangPair{.source = *language, .target = kEnglishLocale},
+      *process->prompt,
+      base::BindOnce(&MantisProcessor::OnTranslateResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(process)));
+}
+
+void MantisProcessor::OnTranslateResult(std::unique_ptr<MantisProcess> process,
+                                        std::optional<std::string> result) {
+  if (result.has_value()) {
+    process->prompt = *result;
+  }
+  ProcessImage(std::move(process));
+}
+
 void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
                                      const std::vector<uint8_t>& mask,
                                      uint32_t seed,
                                      const std::string& prompt,
                                      GenerativeFillCallback callback) {
-  std::string rewritten_prompt = RewritePromptForGenerativeFill(prompt);
-  if (rewritten_prompt.empty()) {
+  if (prompt.empty()) {
+    // No need to go through detection-translation flow.
     return Inpainting(image, mask, seed, std::move(callback));
   }
-  ProcessImage(std::make_unique<MantisProcess>(MantisProcess{
+  auto process = std::make_unique<MantisProcess>(MantisProcess{
       .image = image,
       .mask = mask,
       .seed = seed,
-      .prompt = rewritten_prompt,
+      .prompt = prompt,
       .operation_type = OperationType::kGenfill,
       .callback = std::move(callback),
       .process_func = base::BindOnce(
@@ -250,7 +311,11 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
       .time_metric = TimeMetric::kGenerativeFillLatency,
       .generated_image_type_metric = ImageGenerationType::kGenerativeFill,
       .timer = odml::PerformanceTimer::Create(),
-  }));
+  });
+  language_detector_->Classify(
+      prompt,
+      base::BindOnce(&MantisProcessor::OnLanguageDetectionResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(process)));
 }
 
 void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
@@ -295,6 +360,16 @@ void MantisProcessor::ProcessImage(std::unique_ptr<MantisProcess> process) {
     std::move(process->callback)
         .Run(MantisResult::NewError(MantisError::kProcessorNotInitialized));
     return;
+  }
+
+  if (process->operation_type == OperationType::kGenfill &&
+      process->prompt.has_value() && !process->prompt->empty()) {
+    // Rewrite prompt regardless if the prompt comes from translation or not.
+    process->prompt = RewritePromptForGenerativeFill(*process->prompt);
+    if (process->prompt->empty()) {
+      return Inpainting(process->image, process->mask, process->seed,
+                        std::move(process->callback));
+    }
   }
 
   mantis_api_runner_->PostTaskAndReplyWithResult(

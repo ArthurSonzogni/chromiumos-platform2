@@ -176,6 +176,7 @@ source_set("utils") {
 
 source_set("mantis") {
   sources = [
+    "mantis/common.cc",
     "mantis/metrics.cc",
     "mantis/processor.cc",
     "mantis/prompt_rewriter.cc",

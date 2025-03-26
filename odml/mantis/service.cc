@@ -25,6 +25,7 @@
 
 #include "odml/i18n/ml_service_language_detector.h"
 #include "odml/i18n/translator.h"
+#include "odml/mantis/common.h"
 #include "odml/mantis/lib_api.h"
 #include "odml/mantis/metrics.h"
 #include "odml/mantis/processor.h"
@@ -44,13 +45,12 @@ using MantisAPIGetter = const MantisAPI* (*)();
 constexpr char kDlcPrefix[] = "ml-dlc-";
 constexpr char kDefaultDlcUUID[] = "9807ba80-5bee-4b94-a901-e6972d136051";
 constexpr double kFinishedProgress = 1;
-constexpr std::array<const char*, 3> kI18nLanguage = {"fr", "de", "ja"};
 // We split the overall progress into 1 Mantis model DLC and n i18n language
 // translate models. For example, the Mantis model DLC can take 92.5% of the
 // progress, continued with 2.5% each for 3 translation models.
 constexpr double kI18nDlcProgressAllocation = 0.025;
 constexpr double kMantisDlcProgressAllocation =
-    kFinishedProgress - kI18nLanguage.size() * kI18nDlcProgressAllocation;
+    kFinishedProgress - kI18nLocale.size() * kI18nDlcProgressAllocation;
 constexpr char kReclaimFile[] = "/proc/self/reclaim";
 constexpr char kAll[] = "all";
 
@@ -85,11 +85,11 @@ void InstallI18nDlcForIndex(
         progress_observer,
     int index,
     base::OnceCallback<void(bool)> callback) {
-  if (index == kI18nLanguage.size()) {
+  if (index == kI18nLocale.size()) {
     std::move(callback).Run(true);
     return;
   }
-  i18n::LangPair lang_pair = {.source = kI18nLanguage[index], .target = "en"};
+  i18n::LangPair lang_pair = {.source = kI18nLocale[index], .target = "en"};
   if (translator->IsDlcDownloaded(lang_pair)) {
     // Move to next index and do not show progress 1.0, as required by frontend.
     InstallI18nDlcForIndex(translator, progress_observer, index + 1,
@@ -105,7 +105,7 @@ void InstallI18nDlcForIndex(
              int index, base::OnceCallback<void(bool)> callback, bool success) {
             LOG_IF(WARNING, !success)
                 << "Failed to install translate for language "
-                << kI18nLanguage[index];
+                << kI18nLocale[index];
             if (success) {
               InstallI18nDlcForIndex(translator, progress_observer, index + 1,
                                      std::move(callback));

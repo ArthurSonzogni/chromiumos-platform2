@@ -20,6 +20,7 @@
 #include "odml/cros_safety/safety_service_manager_mock.h"
 #include "odml/i18n/mock_language_detector.h"
 #include "odml/i18n/mock_translator.h"
+#include "odml/mantis/common.h"
 #include "odml/mantis/fake/fake_mantis_api.h"
 #include "odml/mantis/lib_api.h"
 #include "odml/mojom/cros_safety.mojom.h"
@@ -33,13 +34,26 @@ using mojom::MantisResult;
 using mojom::SafetyClassifierVerdict;
 using ::testing::_;
 using ::testing::IsEmpty;
+using LanguageDetectonResult =
+    std::vector<on_device_model::LanguageDetector::TextLanguage>;
 
 constexpr ProcessorPtr kFakeProcessorPtr = 0xDEADBEEF;
 constexpr SegmenterPtr kFakeSegmenterPtr = 0xCAFEBABE;
 
 class MantisProcessorTest : public testing::Test {
  public:
-  MantisProcessorTest() { mojo::core::Init(); }
+  MantisProcessorTest() {
+    mojo::core::Init();
+
+    // Bypass translation flow by detecting English.
+    ON_CALL(language_detector_, Classify)
+        .WillByDefault(base::test::RunOnceCallback<1>(LanguageDetectonResult(
+            {{.locale = kEnglishLocale, .confidence = 1.0}})));
+    // Bypass T&S
+    ON_CALL(safety_service_manager_, ClassifyImageSafety)
+        .WillByDefault(base::test::RunOnceCallbackRepeatedly<3>(
+            cros_safety::mojom::SafetyClassifierVerdict::kPass));
+  }
 
  protected:
   std::vector<uint8_t> GetFakeImage() {
@@ -62,8 +76,25 @@ class MantisProcessorTest : public testing::Test {
         raw_ref(translator_), base::DoNothing(), base::DoNothing());
   }
 
+  void ExpectFinalPrompt(std::string final_prompt) {
+    // Currently, it is infeasible to mock MantisAPI to check the final prompt.
+    // This is a workaround by checking the prompt sent for T&S.
+    EXPECT_CALL(
+        safety_service_manager_,
+        ClassifyImageSafety(
+            cros_safety::mojom::SafetyRuleset::kMantisGeneratedRegion, _, _, _))
+        .WillOnce(base::test::RunOnceCallback<3>(
+            cros_safety::mojom::SafetyClassifierVerdict::kPass));
+    EXPECT_CALL(safety_service_manager_,
+                ClassifyImageSafety(
+                    cros_safety::mojom::SafetyRuleset::kMantisOutputImage,
+                    std::optional(final_prompt), _, _))
+        .WillOnce(base::test::RunOnceCallback<3>(
+            cros_safety::mojom::SafetyClassifierVerdict::kPass));
+  }
+
   base::test::TaskEnvironment task_environment_;
-  MetricsLibraryMock metrics_lib_;
+  testing::NiceMock<MetricsLibraryMock> metrics_lib_;
   odml::PeriodicMetrics periodic_metrics_{raw_ref(metrics_lib_)};
   mojo::Remote<mojom::MantisProcessor> processor_remote_;
   cros_safety::SafetyServiceManagerMock safety_service_manager_;
@@ -382,6 +413,77 @@ TEST_F(MantisProcessorTest, GenerativeFillSucceeds) {
   EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
 }
 
+TEST_F(MantisProcessorTest, GenerativeFillI18nUnknownlanguage) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+  EXPECT_CALL(language_detector_, Classify)
+      .WillOnce(base::test::RunOnceCallback<1>(LanguageDetectonResult({})));
+  // Should pass the prompt as is.
+  ExpectFinalPrompt("$1abc@ &2#");
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "$1abc@ &2#",
+                           result_future.GetCallback());
+
+  auto result = result_future.Take();
+  // Should get the non-error result from the original prompt.
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
+TEST_F(MantisProcessorTest, GenerativeFillI18nUnsupportedlanguage) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+  EXPECT_CALL(language_detector_, Classify)
+      .WillOnce(base::test::RunOnceCallback<1>(
+          LanguageDetectonResult({{.locale = "pt", .confidence = 1.0}})));
+  // Should pass the prompt as is.
+  ExpectFinalPrompt("pequeno lago");
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "pequeno lago",
+                           result_future.GetCallback());
+
+  auto result = result_future.Take();
+  // Should get the non-error result from the original prompt.
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
+TEST_F(MantisProcessorTest, GenerativeFillI18nSucceeds) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+  EXPECT_CALL(language_detector_, Classify)
+      .WillOnce(base::test::RunOnceCallback<1>(
+          LanguageDetectonResult({{.locale = "fr", .confidence = 1.0}})));
+  EXPECT_CALL(translator_, Translate)
+      .WillOnce(base::test::RunOnceCallback<2>("small pond"));
+  ExpectFinalPrompt("small pond");
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "petit étang",
+                           result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
 TEST_F(MantisProcessorTest, SegmentationMissingSegmenter) {
   mojo::Remote<mojom::MantisProcessor> processor_remote;
   MantisProcessor processor = InitializeMantisProcessor(
@@ -504,22 +606,7 @@ TEST_F(MantisProcessorTest, RewriteUserPrompt) {
       },
       fake::GetMantisApi());
 
-  EXPECT_CALL(
-      safety_service_manager_,
-      ClassifyImageSafety(
-          testing::Eq(cros_safety::mojom::SafetyRuleset::kMantisOutputImage),
-          testing::Eq("the cute cat"), testing::_, testing::_))
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass));
-
-  EXPECT_CALL(
-      safety_service_manager_,
-      ClassifyImageSafety(
-          testing::Eq(
-              cros_safety::mojom::SafetyRuleset::kMantisGeneratedRegion),
-          testing::Eq(""), testing::_, testing::_))
-      .WillOnce(base::test::RunOnceCallback<3>(
-          cros_safety::mojom::SafetyClassifierVerdict::kPass));
+  ExpectFinalPrompt("the cute cat");
 
   // Test one of the cases to confirm rewrite is active.
   // All other cases are tested in the unit test of the utility function.

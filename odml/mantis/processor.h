@@ -132,6 +132,15 @@ class MantisProcessor : public mojom::MantisProcessor {
 
   void OnDisconnected();
 
+  void OnLanguageDetectionResult(
+      std::unique_ptr<MantisProcess> process,
+      std::optional<
+          std::vector<on_device_model::LanguageDetector::TextLanguage>>
+          results);
+
+  void OnTranslateResult(std::unique_ptr<MantisProcess> process,
+                         std::optional<std::string> result);
+
   void OnSegmentationDone(SegmentationCallback callback,
                           odml::PerformanceTimer::Ptr timer,
                           const SegmentationResult& lib_result);
