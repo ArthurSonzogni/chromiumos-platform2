@@ -24,4 +24,8 @@ mockall = "0.12.1"
 tempfile = "3.10"
 
 [workspace]
-members = ["xtask"]
+members = [ "libinstall", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
