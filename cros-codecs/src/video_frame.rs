@@ -267,18 +267,20 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                     / (horizontal_subsampling[plane] as f32)) as usize;
 
             if plane_pitch[plane] < minimum_pitch {
-                return Err(
-                    "Pitch of plane {plane} is insufficient to accomodate format!".to_string()
-                );
+                return Err(format!(
+                    "Pitch of plane {} is insufficient to accomodate format! Expected {}, got {}",
+                    plane, minimum_pitch, plane_pitch[plane]
+                ));
             }
             let minimum_size =
                 align_up(self.resolution().height as usize, vertical_subsampling[plane])
                     / vertical_subsampling[plane]
                     * plane_pitch[plane];
             if plane_size[plane] < minimum_size {
-                return Err(
-                    "Size of plane {plane} is insufficient to accomodate format!".to_string()
-                );
+                return Err(format!(
+                    "Size of plane {} is insufficient to accomodate format! Expected {}, got {}",
+                    plane, minimum_size, plane_size[plane]
+                ));
             }
         }
 
