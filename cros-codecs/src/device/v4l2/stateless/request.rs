@@ -82,7 +82,7 @@ struct PendingRequestHandle<V: VideoFrame> {
 impl<V: VideoFrame> PendingRequestHandle<V> {
     fn sync(self) -> DoneRequestHandle<V> {
         DoneRequestHandle {
-            capture_buffer: Rc::new(RefCell::new(self.device.sync(self.timestamp))),
+            capture_buffer: Rc::new(RefCell::new(self.device.sync(self.timestamp).unwrap())),
         }
     }
     fn associate_dequeued_buffer(

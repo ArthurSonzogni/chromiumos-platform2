@@ -102,6 +102,8 @@ pub enum QueueError {
     ResetOutputQueue,
     #[error("failed to reset CAPTURE queue.")]
     ResetCaptureQueue,
+    #[error("unable to access device handle.")]
+    InvalidDevice,
 }
 
 impl From<QueueError> for DecodeError {

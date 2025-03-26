@@ -6,17 +6,22 @@ use std::ffi::c_char;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::v4l2r::ioctl::FormatIterator;
+use crate::DecodedFormat;
+use crate::Fourcc;
+
 use v4l2r::device::queue::Queue;
 use v4l2r::device::{Device as VideoDevice, DeviceConfig};
 use v4l2r::ioctl::Capability;
 use v4l2r::nix::fcntl::{open, OFlag};
 use v4l2r::nix::sys::stat::Mode;
+use v4l2r::QueueType;
 use zerocopy::FromZeros;
 
 const MAX_DEVICE_NO: usize = 128;
 
 /// Enumerate V4L2 (video and media) devices on the system.
-pub fn enumerate_devices() -> Option<(PathBuf, PathBuf)> {
+pub fn enumerate_devices(format: Fourcc) -> Option<(PathBuf, PathBuf)> {
     let decoder_device_prefix = "/dev/video";
 
     for dev_no in 0..MAX_DEVICE_NO {
@@ -33,14 +38,26 @@ pub fn enumerate_devices() -> Option<(PathBuf, PathBuf)> {
         }
 
         let caps = device.caps();
-        if let Some(media_device_path) = find_media_device(caps) {
-            log::info!(
-                "Using video device {:?} with media device {:?}",
-                video_device_path,
-                media_device_path
-            );
-            return Some((video_device_path, media_device_path));
+        let media_device_path = match find_media_device(caps) {
+            Some(path) => path,
+            None => continue,
+        };
+
+        let supported_formats: Vec<Fourcc> =
+            FormatIterator::new(&device, QueueType::VideoOutputMplane)
+                .map(|x| Fourcc(x.pixelformat.into()))
+                .filter(|x| *x == format)
+                .collect();
+
+        if supported_formats.len() < 1 {
+            continue;
         }
+
+        log::info!("Supported Formats: {:?}", supported_formats);
+        log::info!("Chosen Video Device: {:?}", video_device_path);
+        log::info!("Chosen Media Device: {:?}", media_device_path);
+
+        return Some((video_device_path, media_device_path));
     }
     None
 }

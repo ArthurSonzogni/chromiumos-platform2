@@ -42,8 +42,8 @@ struct DeviceHandle<V: VideoFrame> {
 }
 
 impl<V: VideoFrame> DeviceHandle<V> {
-    fn new() -> Result<Self, NewStatelessDecoderError> {
-        let devices = enumerate_devices();
+    fn new(format: Fourcc) -> Result<Self, NewStatelessDecoderError> {
+        let devices = enumerate_devices(format);
         let (video_device_path, media_device_path) = match devices {
             Some(paths) => paths,
             None => return Err(NewStatelessDecoderError::DriverInitialization),
@@ -150,16 +150,16 @@ impl<V: VideoFrame> DeviceHandle<V> {
 }
 
 pub struct V4l2Device<V: VideoFrame> {
-    handle: Rc<RefCell<DeviceHandle<V>>>,
+    handle: Option<Rc<RefCell<DeviceHandle<V>>>>,
 }
 
 impl<V: VideoFrame> V4l2Device<V> {
     pub fn new() -> Result<Self, NewStatelessDecoderError> {
-        Ok(Self { handle: Rc::new(RefCell::new(DeviceHandle::new()?)) })
+        Ok(Self { handle: None })
     }
 
     pub fn reset_queues(&mut self) -> Result<(), QueueError> {
-        self.handle.borrow_mut().reset_queues()
+        self.handle.as_ref().ok_or(QueueError::InvalidDevice)?.borrow_mut().reset_queues()
     }
 
     pub fn initialize_queues(
@@ -168,8 +168,13 @@ impl<V: VideoFrame> V4l2Device<V> {
         coded_size: Resolution,
         num_buffers: u32,
     ) -> Result<(), anyhow::Error> {
-        self.handle.borrow_mut().output_queue.initialize(format, coded_size)?;
-        self.handle.borrow_mut().capture_queue.initialize(num_buffers)?;
+        if self.handle.is_none() {
+            self.handle = Some(Rc::new(RefCell::new(DeviceHandle::new(format)?)));
+        }
+
+        let mut handle = self.handle.as_ref().ok_or(QueueError::InvalidDevice)?.borrow_mut();
+        handle.output_queue.initialize(format, coded_size)?;
+        handle.capture_queue.initialize(num_buffers)?;
         Ok(())
     }
     pub fn alloc_request(
@@ -177,40 +182,47 @@ impl<V: VideoFrame> V4l2Device<V> {
         timestamp: u64,
         frame: V,
     ) -> Result<Rc<RefCell<V4l2Request<V>>>, DecodeError> {
-        if self.handle.borrow().capture_queue.num_free_buffers() == 0 {
+        let mut handle = self.handle.as_ref().ok_or(QueueError::InvalidDevice)?.borrow_mut();
+
+        if handle.capture_queue.num_free_buffers() == 0 {
             return Err(DecodeError::NotEnoughOutputBuffers(0));
         }
 
-        let output_buffer = self.handle.borrow().output_queue.alloc_buffer();
+        let output_buffer = handle.output_queue.alloc_buffer();
 
         let output_buffer = match output_buffer {
             Ok(buffer) => buffer,
             Err(DecodeError::NotEnoughOutputBuffers(_)) => {
-                self.handle.borrow_mut().dequeue_output_buffer();
-                match self.handle.borrow().output_queue.alloc_buffer() {
+                handle.dequeue_output_buffer();
+                match handle.output_queue.alloc_buffer() {
                     Ok(buffer) => buffer,
                     Err(e) => return Err(e),
                 }
             }
             Err(error) => return Err(error),
         };
-        self.handle.borrow_mut().try_dequeue_capture_buffers();
+        handle.try_dequeue_capture_buffers();
 
         let request = Rc::new(RefCell::new(V4l2Request::new(
             self.clone(),
             timestamp,
-            self.handle.borrow().alloc_request(),
+            handle.alloc_request(),
             output_buffer,
             frame,
         )));
-        self.handle.borrow_mut().insert_request_into_hash(Rc::downgrade(&request.clone()));
+        handle.insert_request_into_hash(Rc::downgrade(&request.clone()));
         Ok(request)
     }
-    pub fn sync(&self, timestamp: u64) -> V4l2CaptureBuffer<V> {
-        self.handle.borrow_mut().sync(timestamp)
+    pub fn sync(&self, timestamp: u64) -> Result<V4l2CaptureBuffer<V>, QueueError> {
+        Ok(self.handle.as_ref().ok_or(QueueError::InvalidDevice)?.borrow_mut().sync(timestamp))
     }
     pub fn queue_capture_buffer(&self, frame: V) -> Result<(), QueueError> {
-        self.handle.borrow().capture_queue.queue_buffer(frame)
+        self.handle
+            .as_ref()
+            .ok_or(QueueError::InvalidDevice)?
+            .borrow()
+            .capture_queue
+            .queue_buffer(frame)
     }
 }
 
@@ -222,6 +234,6 @@ impl<V: VideoFrame> Clone for V4l2Device<V> {
 
 impl<V: VideoFrame> AsRawFd for V4l2Device<V> {
     fn as_raw_fd(&self) -> i32 {
-        self.handle.borrow().video_device.as_raw_fd()
+        self.handle.as_ref().unwrap().borrow().video_device.as_raw_fd()
     }
 }
