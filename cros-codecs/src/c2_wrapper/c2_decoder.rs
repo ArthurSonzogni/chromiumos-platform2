@@ -292,6 +292,10 @@ where
                         ),
                         C2Decoder::ConvertingDecoder(decoder) => {
                             decoder.decode(job.timestamp, bitstream, &mut || {
+                                // HACK: Perform a test allocation to make sure we will actually have a
+                                // buffer to put this frame in after image processing.
+                                let _ = (*self.alloc_cb.lock().unwrap())()?;
+
                                 self.auxiliary_frame_pool.as_mut().unwrap().alloc()
                             })
                         }
