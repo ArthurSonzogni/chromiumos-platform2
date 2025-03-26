@@ -47,6 +47,7 @@ type cros_auditd_exec, exec_type, file_type, cros_file_type, cros_system_file_ty
 type cros_avahi_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_backlight_tool_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_biod_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_blkid_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_blockdev_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_bluetoothd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_bootlockboxd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -145,6 +146,7 @@ type cros_minijail_exec, exec_type, file_type, cros_file_type, cros_system_file_
 type cros_minios_util_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_missived_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mke2fs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_mkfs_fat_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_ml_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mmdata_mgr_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_modem_manager_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

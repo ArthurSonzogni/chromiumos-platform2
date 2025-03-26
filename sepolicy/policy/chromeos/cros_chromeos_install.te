@@ -10,6 +10,7 @@ allow cros_chromeos_install cros_chromeos_install_exec:file rx_file_perms;
 # that needs to run lots of other programs.
 allow cros_chromeos_install sh_exec:file rx_file_perms;
 allow cros_chromeos_install cros_blockdev_exec:file rx_file_perms;
+allow cros_chromeos_install cros_blkid_exec:file rx_file_perms;
 allow cros_chromeos_install cros_cgpt_exec:file rx_file_perms;
 allow cros_chromeos_install cros_coreutils_exec:file rx_file_perms;
 allow cros_chromeos_install cros_crossystem_exec:file rx_file_perms;
@@ -22,6 +23,7 @@ allow cros_chromeos_install cros_jq_exec:file rx_file_perms;
 allow cros_chromeos_install cros_losetup_exec:file rx_file_perms;
 allow cros_chromeos_install cros_mawk_exec:file rx_file_perms;
 allow cros_chromeos_install cros_mke2fs_exec:file rx_file_perms;
+allow cros_chromeos_install cros_mkfs_fat_exec:file rx_file_perms;
 allow cros_chromeos_install cros_mount_exec:file rx_file_perms;
 allow cros_chromeos_install cros_mountpoint_exec:file rx_file_perms;
 allow cros_chromeos_install cros_sed_exec:file rx_file_perms;
@@ -38,6 +40,8 @@ allow cros_chromeos_install cros_os_install_service:fifo_file rw_file_perms;
 allow cros_chromeos_install self:capability { chown fowner fsetid sys_admin };
 allow cros_chromeos_install self:process setfscreate;
 allow cros_chromeos_install kernel:process setsched;
+# Needed by mkfs.vfat
+allow cros_chromeos_install kernel:system module_request;
 
 allow cros_chromeos_install cros_var_lock:dir search;
 allow cros_chromeos_install cros_run_lock:file { read write lock };
@@ -69,6 +73,9 @@ allow cros_chromeos_install proc_cmdline:file r_file_perms;
 allow cros_chromeos_install proc_filesystems:file r_file_perms;
 allow cros_chromeos_install tmpfs:dir mounton;
 allow cros_chromeos_install tmpfs:file create_file_perms;
+allow cros_chromeos_install vfat:dir create_dir_perms;
+allow cros_chromeos_install vfat:file create_file_perms;
+allow cros_chromeos_install vfat:filesystem { mount unmount };
 
 # Special handling for permissions that conflict with CTS neverallow
 # rules. This makes the policy permissive when used with the ARC
