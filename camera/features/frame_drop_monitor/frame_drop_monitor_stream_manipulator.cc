@@ -17,6 +17,7 @@ namespace {
 
 constexpr int32_t kMinExpectedFps = 15;
 constexpr int64_t kNanoSecondsPerSecond = 1000000000;
+constexpr int32_t kMinTotalFrames = 200;
 
 std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc) {
   base::span<const int64_t> timestamp =
@@ -327,7 +328,7 @@ void FrameDropMonitorStreamManipulator::ResetOnThread() {
 void FrameDropMonitorStreamManipulator::UploadMetricsOnThread() {
   CHECK(thread_.IsCurrentThread());
 
-  if (total_frames_ == 0) {
+  if (total_frames_ == 0 || total_frames_ < kMinTotalFrames) {
     return;
   }
 
