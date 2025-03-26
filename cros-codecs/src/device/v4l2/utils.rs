@@ -62,6 +62,15 @@ pub fn enumerate_devices(format: Fourcc) -> Option<(PathBuf, PathBuf)> {
     None
 }
 
+// Query the Capture queue for the supported decoded format.
+pub fn get_decoded_format(device: Arc<VideoDevice>) -> DecodedFormat {
+    return FormatIterator::new(&device, QueueType::VideoCaptureMplane)
+        .map(|x| Fourcc(x.pixelformat.into()))
+        .next()
+        .unwrap()
+        .into();
+}
+
 /// A struct that contains information about media device.
 ///
 /// See: https://docs.kernel.org/userspace-api/media/mediactl/media-ioc-device-info.html

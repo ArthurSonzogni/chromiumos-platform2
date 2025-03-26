@@ -59,6 +59,10 @@ impl V4l2StreamInfo for &Rc<Sps> {
 
         Rect { x: rect.min.x, y: rect.min.y, width: rect.max.x, height: rect.max.y }
     }
+
+    fn bit_depth(&self) -> usize {
+        (self.bit_depth_chroma_minus8 + 8) as usize
+    }
 }
 
 impl<V: VideoFrame> StatelessDecoderBackendPicture<H264> for V4l2StatelessDecoderBackend<V> {

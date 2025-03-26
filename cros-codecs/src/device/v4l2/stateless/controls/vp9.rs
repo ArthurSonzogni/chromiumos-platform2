@@ -46,6 +46,12 @@ impl V4l2CtrlVp9FrameParams {
         Default::default()
     }
 
+    pub fn set_10bit_params(&mut self) {
+        self.handle.bit_depth = 10;
+        self.handle.profile = 2;
+        self.handle.flags = V4L2_VP9_FRAME_FLAG_X_SUBSAMPLING | V4L2_VP9_FRAME_FLAG_Y_SUBSAMPLING;
+    }
+
     pub fn set_loop_filter_params(&mut self, hdr: &Header) -> &mut Self {
         self.handle.lf.level = hdr.lf.level;
         self.handle.lf.sharpness = hdr.lf.sharpness;

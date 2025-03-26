@@ -44,6 +44,10 @@ impl V4l2StreamInfo for &Header {
     fn visible_rect(&self) -> Rect {
         Rect::from(self.coded_size())
     }
+
+    fn bit_depth(&self) -> usize {
+        8
+    }
 }
 
 impl<V: VideoFrame> StatelessDecoderBackendPicture<Vp8> for V4l2StatelessDecoderBackend<V> {

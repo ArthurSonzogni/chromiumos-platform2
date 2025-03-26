@@ -162,7 +162,11 @@ impl<V: VideoFrame> V4l2Device<V> {
         self.handle.as_ref().ok_or(QueueError::InvalidDevice)?.borrow_mut().reset_queues()
     }
 
-    pub fn initialize_queues(
+    pub fn get_video_device(&mut self) -> Arc<VideoDevice> {
+        return self.handle.as_ref().unwrap().borrow_mut().video_device.clone();
+    }
+
+    pub fn initialize_output_queue(
         &mut self,
         format: Fourcc,
         coded_size: Resolution,
@@ -174,9 +178,15 @@ impl<V: VideoFrame> V4l2Device<V> {
 
         let mut handle = self.handle.as_ref().ok_or(QueueError::InvalidDevice)?.borrow_mut();
         handle.output_queue.initialize(format, coded_size)?;
+        Ok(())
+    }
+
+    pub fn initialize_capture_queue(&mut self, num_buffers: u32) -> Result<(), anyhow::Error> {
+        let mut handle = self.handle.as_ref().ok_or(QueueError::InvalidDevice)?.borrow_mut();
         handle.capture_queue.initialize(num_buffers)?;
         Ok(())
     }
+
     pub fn alloc_request(
         &self,
         timestamp: u64,

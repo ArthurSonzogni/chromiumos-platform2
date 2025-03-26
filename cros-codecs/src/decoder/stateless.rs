@@ -58,6 +58,8 @@ pub type NewPictureResult<T> = Result<T, NewPictureError>;
 pub enum StatelessBackendError {
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+    #[error("unsupported profile")]
+    UnsupportedProfile,
 }
 
 /// Result type returned by stateless backend methods.

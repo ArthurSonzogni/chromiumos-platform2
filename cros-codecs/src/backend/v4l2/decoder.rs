@@ -18,4 +18,6 @@ pub trait V4l2StreamInfo {
     fn coded_size(&self) -> Resolution;
     /// Returns the visible rectangle within the coded size for the stream.
     fn visible_rect(&self) -> Rect;
+    // Returns the bit depth for the stream.
+    fn bit_depth(&self) -> usize;
 }

@@ -485,6 +485,11 @@ impl V4l2CtrlAv1SequenceParams {
     pub fn new() -> Self {
         Default::default()
     }
+
+    pub fn set_10bit_params(&mut self) {
+        self.handle.bit_depth = 10;
+    }
+
     pub fn set_ctrl_sequence(&mut self, hdr: &SequenceHeaderObu) -> &mut Self {
         if hdr.still_picture {
             self.handle.flags |= V4L2_AV1_SEQUENCE_FLAG_STILL_PICTURE;

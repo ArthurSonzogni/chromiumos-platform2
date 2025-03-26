@@ -12,6 +12,7 @@ use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderBackend;
 use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderHandle;
 use crate::backend::v4l2::decoder::V4l2StreamInfo;
 use crate::backend::v4l2::decoder::ADDITIONAL_REFERENCE_FRAME_BUFFER;
+use crate::codec::av1::parser::BitDepth;
 use crate::codec::av1::parser::FrameHeaderObu;
 use crate::codec::av1::parser::StreamInfo;
 use crate::codec::av1::parser::TileGroupObu;
@@ -54,6 +55,14 @@ impl V4l2StreamInfo for &StreamInfo {
 
     fn visible_rect(&self) -> Rect {
         Rect::from(((0, 0), (self.render_width, self.render_height)))
+    }
+
+    fn bit_depth(&self) -> usize {
+        match self.seq_header.bit_depth {
+            BitDepth::Depth8 => return 8,
+            BitDepth::Depth10 => return 10,
+            BitDepth::Depth12 => return 12,
+        }
     }
 }
 
