@@ -13,9 +13,9 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <libmems/common_types.h>
 #include <libmems/iio_channel.h>
@@ -28,8 +28,6 @@
 namespace iioservice {
 
 namespace {
-
-constexpr char kHWFifoFlushPath[] = "buffer/hwfifo_flush";
 
 constexpr char kAccelChannelNameFormat[] = "%s_%c";
 
@@ -316,12 +314,7 @@ void SamplesHandler::SetSampleWatcherOnThread() {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
   DCHECK(!watcher_.get());
 
-  // Flush the old samples in EC FIFO.
-  if (iio_device_->HasFifo()) {
-    if (!iio_device_->WriteStringAttribute(kHWFifoFlushPath, "1\n")) {
-      LOGF(ERROR) << "Failed to flush the old samples in EC FIFO";
-    }
-  } else if (iio_device_->GetHrtimer()) {
+  if (!iio_device_->HasFifo() && iio_device_->GetHrtimer()) {
     auto* hrtimer = iio_device_->GetHrtimer();
     if (hrtimer && !iio_device_->SetTrigger(hrtimer)) {
       LOGF(ERROR) << "Failed to set trigger";
