@@ -3,6 +3,11 @@
 // found in the LICENSE file.
 
 use std::path::PathBuf;
+use std::sync::Arc;
+
+use v4l2r::device::Device as VideoDevice;
+use v4l2r::device::DeviceConfig;
+use v4l2r::QueueType;
 
 use crate::c2_wrapper::c2_decoder::C2DecoderBackend;
 use crate::decoder::stateless::av1::Av1;
@@ -14,6 +19,9 @@ use crate::decoder::stateless::DynStatelessVideoDecoder;
 use crate::decoder::stateless::StatelessDecoder;
 use crate::decoder::stateless::StatelessVideoDecoder;
 use crate::decoder::BlockingMode;
+use crate::device::v4l2::utils::enumerate_devices;
+use crate::fourcc_for_v4l2_stateless;
+use crate::v4l2r::ioctl::FormatIterator;
 use crate::video_frame::VideoFrame;
 use crate::EncodedFormat;
 use crate::Fourcc;
@@ -33,9 +41,29 @@ impl C2DecoderBackend for C2V4L2Decoder {
         Ok(Self {})
     }
 
-    // TODO: Actually query the driver for this information.
     fn supported_output_formats(&self, fourcc: Fourcc) -> Result<Vec<Fourcc>, String> {
-        Ok(vec![Fourcc::from(b"MM21")])
+        // TODO(bchoobineh): Update to support HEVC when we support V4L2 HEVC stateless decoding.
+        // TODO(bchoobineh): Update logic to support 10 bit streams.
+        let devices = enumerate_devices(fourcc_for_v4l2_stateless(fourcc)?);
+        let (video_device_path, _) = match devices {
+            Some(paths) => paths,
+            None => return Err(String::from("Failed to enumerate devices")),
+        };
+
+        let video_device_config = DeviceConfig::new().non_blocking_dqbuf();
+        let video_device = Arc::new(
+            VideoDevice::open(&video_device_path, video_device_config)
+                .map_err(|_| String::from("Failed to open video device"))?,
+        );
+
+        let supported_formats: Vec<Fourcc> =
+            FormatIterator::new(&video_device, QueueType::VideoCaptureMplane)
+                .map(|x| Fourcc(x.pixelformat.into()))
+                .collect();
+
+        log::info!("Supported Output Formats: {:?}", supported_formats);
+
+        Ok(supported_formats)
     }
 
     fn get_decoder<V: VideoFrame + 'static>(
