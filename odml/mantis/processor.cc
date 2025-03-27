@@ -279,10 +279,6 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
                                      uint32_t seed,
                                      const std::string& prompt,
                                      GenerativeFillCallback callback) {
-  if (prompt.empty()) {
-    // No need to go through detection-translation flow.
-    return Inpainting(image, mask, seed, std::move(callback));
-  }
   auto process = std::make_unique<MantisProcess>(MantisProcess{
       .image = image,
       .mask = mask,
@@ -312,6 +308,10 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
       .generated_image_type_metric = ImageGenerationType::kGenerativeFill,
       .timer = odml::PerformanceTimer::Create(),
   });
+  if (process->prompt->empty()) {
+    // No need to go through detection-translation flow.
+    return ProcessImage(std::move(process));
+  }
   language_detector_->Classify(
       prompt,
       base::BindOnce(&MantisProcessor::OnLanguageDetectionResult,
@@ -366,6 +366,9 @@ void MantisProcessor::ProcessImage(std::unique_ptr<MantisProcess> process) {
       process->prompt.has_value() && !process->prompt->empty()) {
     // Rewrite prompt regardless if the prompt comes from translation or not.
     process->prompt = RewritePromptForGenerativeFill(*process->prompt);
+    // If the prompt becomes empty, do Inpainting. Note that we will not reach
+    // this point if the original prompt is empty, so it's expected in such case
+    // to do Generative Fill. See b/406208444#comment2 for details.
     if (process->prompt->empty()) {
       return Inpainting(process->image, process->mask, process->seed,
                         std::move(process->callback));

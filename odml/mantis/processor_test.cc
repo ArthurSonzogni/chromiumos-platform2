@@ -76,6 +76,28 @@ class MantisProcessorTest : public testing::Test {
         raw_ref(translator_), base::DoNothing(), base::DoNothing());
   }
 
+  // Checks the final operation type. For example, some Generative Fill requests
+  // can be routed to Inpainting.
+  void ExpectFinalOperationType(OperationType operation_type) {
+    CHECK(operation_type == OperationType::kGenfill ||
+          operation_type == OperationType::kInpainting);
+
+    // Currently, it is infeasible to mock MantisAPI to check the final
+    // operation type. This is a workaround by checking the metric being sent.
+    std::string uma_string_name =
+        "Platform.MantisService.Latency.GenerativeFill";
+    if (operation_type == OperationType::kInpainting) {
+      uma_string_name = "Platform.MantisService.Latency.Inpainting";
+    }
+    EXPECT_CALL(metrics_lib_, SendTimeToUMA(uma_string_name, _, _, _, _));
+    // This T&S metric will always be called regardless of the operation type.
+    EXPECT_CALL(
+        metrics_lib_,
+        SendTimeToUMA("Platform.MantisService.Latency.ClassifyImageSafety", _,
+                      _, _, _))
+        .Times(2);
+  }
+
   void ExpectFinalPrompt(std::string final_prompt) {
     // Currently, it is infeasible to mock MantisAPI to check the final prompt.
     // This is a workaround by checking the prompt sent for T&S.
@@ -484,6 +506,73 @@ TEST_F(MantisProcessorTest, GenerativeFillI18nSucceeds) {
   EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
 }
 
+TEST_F(MantisProcessorTest, GenerativeFillRewriteUserPrompt) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+
+  ExpectFinalOperationType(OperationType::kGenfill);
+  ExpectFinalPrompt("the cute cat");
+
+  // Test one of the cases to confirm rewrite is active.
+  // All other cases are tested in the unit test of the utility function.
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "Add the Cute Cat",
+                           result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
+TEST_F(MantisProcessorTest, GenerativeFillRemainsOnEmptyPrompt) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+
+  // Remains Genfill instead of Inpainting on empty prompt.
+  ExpectFinalOperationType(OperationType::kGenfill);
+  ExpectFinalPrompt("");
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "",
+                           result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
+TEST_F(MantisProcessorTest, GenerativeFillBecomesInpaintingAfterRewrite) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+
+  // With stopword, the rewritten prompt is empty and we should do Inpainting.
+  ExpectFinalOperationType(OperationType::kInpainting);
+
+  constexpr char kStopword[] = "eliminate";
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, kStopword,
+                           result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
 TEST_F(MantisProcessorTest, SegmentationMissingSegmenter) {
   mojo::Remote<mojom::MantisProcessor> processor_remote;
   MantisProcessor processor = InitializeMantisProcessor(
@@ -595,28 +684,6 @@ TEST_F(MantisProcessorTest, ClassifyImageSafetyReturnFail) {
 
   auto verdict = verdict_future.Take();
   EXPECT_EQ(verdict, SafetyClassifierVerdict::kFailedImage);
-}
-
-TEST_F(MantisProcessorTest, RewriteUserPrompt) {
-  mojo::Remote<mojom::MantisProcessor> processor_remote;
-  MantisProcessor processor = InitializeMantisProcessor(
-      {
-          .processor = kFakeProcessorPtr,
-          .segmenter = 0,
-      },
-      fake::GetMantisApi());
-
-  ExpectFinalPrompt("the cute cat");
-
-  // Test one of the cases to confirm rewrite is active.
-  // All other cases are tested in the unit test of the utility function.
-  TestFuture<mojom::MantisResultPtr> result_future;
-  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "Add the Cute Cat",
-                           result_future.GetCallback());
-
-  auto result = result_future.Take();
-  ASSERT_TRUE(result->is_result_image());
-  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
 }
 
 }  // namespace
