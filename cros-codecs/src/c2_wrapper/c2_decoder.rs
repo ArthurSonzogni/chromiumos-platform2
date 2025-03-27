@@ -30,6 +30,7 @@ use crate::decoder::stateless::DynStatelessVideoDecoder;
 use crate::decoder::DecoderEvent;
 use crate::decoder::StreamInfo;
 use crate::image_processing::convert_video_frame;
+use crate::video_frame::auxiliary_video_frame::AuxiliaryVideoFrame;
 use crate::video_frame::frame_pool::FramePool;
 use crate::video_frame::frame_pool::PooledVideoFrame;
 #[cfg(feature = "vaapi")]
@@ -63,9 +64,9 @@ pub trait C2DecoderBackend {
 }
 
 #[cfg(feature = "vaapi")]
-type AuxiliaryVideoFrame = GbmVideoFrame;
+type InternalAuxiliaryVideoFrame = GbmVideoFrame;
 #[cfg(feature = "v4l2")]
-type AuxiliaryVideoFrame = V4l2MmapVideoFrame;
+type InternalAuxiliaryVideoFrame = V4l2MmapVideoFrame;
 
 // An "importing decoder" can directly import the DMA bufs we are getting, while a "converting
 // decoder" is used for performing image processing routines to convert between the video hardware
@@ -73,7 +74,11 @@ type AuxiliaryVideoFrame = V4l2MmapVideoFrame;
 // TODO: Come up with a better name for these?
 enum C2Decoder<V: VideoFrame> {
     ImportingDecoder(DynStatelessVideoDecoder<V>),
-    ConvertingDecoder(DynStatelessVideoDecoder<PooledVideoFrame<AuxiliaryVideoFrame>>),
+    ConvertingDecoder(
+        DynStatelessVideoDecoder<
+            AuxiliaryVideoFrame<PooledVideoFrame<InternalAuxiliaryVideoFrame>, V>,
+        >,
+    ),
 }
 
 pub struct C2DecoderWorker<V, B>
@@ -84,7 +89,7 @@ where
     decoder: C2Decoder<V>,
     epoll_fd: Epoll,
     awaiting_job_event: Arc<EventFd>,
-    auxiliary_frame_pool: Option<FramePool<AuxiliaryVideoFrame>>,
+    auxiliary_frame_pool: Option<FramePool<InternalAuxiliaryVideoFrame>>,
     error_cb: Arc<Mutex<dyn FnMut(C2Status) + Send + 'static>>,
     work_done_cb: Arc<Mutex<dyn FnMut(C2DecodeJob<V>) + Send + 'static>>,
     framepool_hint_cb: Arc<Mutex<dyn FnMut(StreamInfo) + Send + 'static>>,
@@ -131,9 +136,9 @@ where
                 C2Decoder::ConvertingDecoder(decoder) => match decoder.next_event() {
                     Some(DecoderEvent::FrameReady(frame)) => {
                         frame.sync().unwrap();
-                        let mut dst_frame =
-                            (*self.alloc_cb.lock().unwrap())().expect("Allocation failed!");
-                        let src_frame = &*frame.video_frame();
+                        let aux_frame = &*frame.video_frame();
+                        let mut dst_frame = (*aux_frame.external.lock().unwrap()).take().unwrap();
+                        let src_frame = &aux_frame.internal;
                         if let Err(err) = convert_video_frame(src_frame, &mut dst_frame) {
                             log::debug!("Error converting VideoFrame! {err}");
                             *self.state.lock().unwrap() = C2State::C2Error;
@@ -292,11 +297,13 @@ where
                         ),
                         C2Decoder::ConvertingDecoder(decoder) => {
                             decoder.decode(job.timestamp, bitstream, &mut || {
-                                // HACK: Perform a test allocation to make sure we will actually have a
-                                // buffer to put this frame in after image processing.
-                                let _ = (*self.alloc_cb.lock().unwrap())()?;
-
-                                self.auxiliary_frame_pool.as_mut().unwrap().alloc()
+                                let external = (*self.alloc_cb.lock().unwrap())()?;
+                                let internal =
+                                    self.auxiliary_frame_pool.as_mut().unwrap().alloc()?;
+                                Some(AuxiliaryVideoFrame {
+                                    internal: internal,
+                                    external: Mutex::new(Some(external)),
+                                })
                             })
                         }
                     }

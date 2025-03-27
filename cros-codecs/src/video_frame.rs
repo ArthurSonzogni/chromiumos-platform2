@@ -15,6 +15,7 @@ use crate::EncodedFormat;
 use crate::Fourcc;
 use crate::Resolution;
 
+pub mod auxiliary_video_frame;
 pub mod frame_pool;
 #[cfg(feature = "backend")]
 pub mod gbm_video_frame;
