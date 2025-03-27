@@ -11,6 +11,7 @@ use std::io::Read;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::Condvar;
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
@@ -132,6 +133,11 @@ fn main() {
     };
     let alloc_cb = move || (*framepool.lock().unwrap()).alloc();
 
+    // This is a condition variable that allows us to block until the we receive a notification
+    // that the decoder has reached the end-of-stream.
+    let eos_cv_pair = Arc::new((Mutex::new(/*received_eos=*/ false), Condvar::new()));
+    let _eos_cv_pair = Arc::clone(&eos_cv_pair);
+
     let frames_needed = Arc::new(AtomicU64::new((*golden_iter.lock().unwrap()).len() as u64));
 
     let _frames_needed = frames_needed.clone();
@@ -143,6 +149,10 @@ fn main() {
         if job.output.is_none() {
             // Indicates an empty "drain" signal.
             assert_eq!(job.drain, DrainMode::EOSDrain);
+            let (lock, eos_cv) = &*_eos_cv_pair;
+            let mut received_eos = lock.lock().unwrap();
+            *received_eos = true;
+            eos_cv.notify_one();
             return;
         }
 
@@ -239,10 +249,18 @@ fn main() {
     }
     decoder.drain(DrainMode::EOSDrain);
 
+    // Block until the decoder reaches the end-of-stream.
+    let (lock, eos_cv) = &*eos_cv_pair;
+    let mut received_eos = lock.lock().unwrap();
+    while !*received_eos {
+        received_eos = eos_cv.wait(received_eos).unwrap();
+    }
+
+    decoder.stop();
+
     while decoder.is_alive() {
         thread::sleep(Duration::from_millis(10));
     }
-    decoder.stop();
 
     assert!((*frames_needed).load(Ordering::SeqCst) == 0, "Not all frames were output.");
 

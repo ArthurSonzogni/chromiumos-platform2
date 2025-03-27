@@ -345,7 +345,6 @@ where
                             } else {
                                 self.check_events();
                                 if job.get_drain() == DrainMode::EOSDrain {
-                                    *self.state.lock().unwrap() = C2State::C2Stopped;
                                     (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
                                         timestamp: job.timestamp,
                                         drain: DrainMode::EOSDrain,

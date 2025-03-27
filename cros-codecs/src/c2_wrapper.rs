@@ -291,13 +291,19 @@ where
         C2Status::C2Ok
     }
 
-    // Stop the decoder/encoder and abandon in-flight work.
-    // C2's reset() function is equivalent for our purposes.
-    // Note that in event of error, stop() must be called before we can start()
-    // again. This is to ensure we clear out the work queue.
-    // State will be C2Stopped after this call.
-    pub fn stop(&mut self) -> C2Status {
-        *self.state.lock().unwrap() = C2State::C2Stopped;
+    // Helper method for stop() and reset() to re-use code: if `is_reset` is
+    // true, no state validation is performed (suitable for reset()), otherwise
+    // we validate that we're in the C2Running state (suitable for stop()). This
+    // is necessary to abide by the C2Component API.
+    fn stop_internal(&mut self, is_reset: bool) -> C2Status {
+        {
+            let mut state = self.state.lock().unwrap();
+            if !is_reset && *state != C2State::C2Running {
+                (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
+                return C2Status::C2BadState;
+            }
+            *state = C2State::C2Stopped;
+        }
 
         self.work_queue.lock().unwrap().drain(..);
 
@@ -314,6 +320,22 @@ where
         };
 
         C2Status::C2Ok
+    }
+
+    // Stop the decoder/encoder and abandon in-flight work.
+    // Note that in event of error, stop() must be called before we can start()
+    // again. This is to ensure we clear out the work queue.
+    // State will be C2Stopped after this call.
+    pub fn stop(&mut self) -> C2Status {
+        self.stop_internal(/*is_reset=*/ false)
+    }
+
+    // Reset the decoder/encoder and abandon in-flight work.
+    // For our purposes, this is equivalent to stop() except for the fact that
+    // this method doesn't fail if the state is already C2Stopped.
+    // State will be C2Stopped after this call.
+    pub fn reset(&mut self) -> C2Status {
+        self.stop_internal(/*is_reset=*/ true)
     }
 
     // Add work to the work queue.
@@ -360,8 +382,11 @@ where
     // additional work to begin processing. This is an unusual name for this
     // function, but it is the convention that C2 uses.
     // State must be C2Running or this function is invalid.
-    // State will remain C2Running until the last frames drain, at which point
-    // the state will change to C2Stopped.
+    // State will remain C2Running after the drain is complete.
+    //
+    // TODO(b/389993558): The "state will remain C2Running after the drain is complete" behavior
+    // still needs to be implemented for the encoder.
+    //
     // TODO: Support different drain modes.
     pub fn drain(&mut self, mode: DrainMode) -> C2Status {
         if *self.state.lock().unwrap() != C2State::C2Running {
@@ -387,6 +412,8 @@ where
     W: C2Worker<J>,
 {
     fn drop(&mut self) {
-        self.stop();
+        // Note: we call reset() instead of stop() so that if we're already
+        // C2Stopped, we don't trigger a call to the error callback.
+        self.reset();
     }
 }
