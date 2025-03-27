@@ -34,8 +34,8 @@ impl C2DecoderBackend for C2V4L2Decoder {
     }
 
     // TODO: Actually query the driver for this information.
-    fn supported_output_formats(&self) -> Vec<Fourcc> {
-        vec![Fourcc::from(b"MM21")]
+    fn supported_output_formats(&self, fourcc: Fourcc) -> Result<Vec<Fourcc>, String> {
+        Ok(vec![Fourcc::from(b"MM21")])
     }
 
     fn get_decoder<V: VideoFrame + 'static>(

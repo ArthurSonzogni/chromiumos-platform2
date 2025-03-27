@@ -41,9 +41,18 @@ impl C2DecoderBackend for C2VaapiDecoder {
         Ok(Self { display: display })
     }
 
-    // TODO: Actually query the driver for this information.
-    fn supported_output_formats(&self) -> Vec<Fourcc> {
-        vec![Fourcc::from(b"NV12")]
+    fn supported_output_formats(&self, fourcc: Fourcc) -> Result<Vec<Fourcc>, String> {
+        let image_fmts = self
+            .display
+            .query_image_formats()
+            .map_err(|_| String::from("Failed to query image formats."))?;
+
+        let mut supported_formats: Vec<Fourcc> = Vec::new();
+        for format in image_fmts.iter() {
+            supported_formats.push(Fourcc::from(format.fourcc));
+        }
+
+        return Ok(supported_formats);
     }
 
     fn get_decoder<V: VideoFrame + 'static>(

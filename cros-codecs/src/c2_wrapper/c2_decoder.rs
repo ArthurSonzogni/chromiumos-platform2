@@ -54,7 +54,7 @@ pub trait C2DecoderBackend {
     fn new(options: Self::DecoderOptions) -> Result<Self, String>
     where
         Self: Sized;
-    fn supported_output_formats(&self) -> Vec<Fourcc>;
+    fn supported_output_formats(&self, fourcc: Fourcc) -> Result<Vec<Fourcc>, String>;
     // TODO: Support stateful video decoders.
     fn get_decoder<V: VideoFrame + 'static>(
         &mut self,
@@ -180,7 +180,7 @@ where
         options: Self::Options,
     ) -> Result<Self, String> {
         let mut backend = B::new(options)?;
-        let backend_fourccs = backend.supported_output_formats();
+        let backend_fourccs = backend.supported_output_formats(input_fourcc)?;
         let (auxiliary_frame_pool, decoder) = if backend_fourccs.contains(&output_fourcc) {
             (
                 None,
