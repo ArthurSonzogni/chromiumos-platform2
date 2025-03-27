@@ -32,7 +32,7 @@ struct Partition {
 
   void PrettyPrint() {
     char guid_str[GUID_STRLEN];
-    GuidToStr(&type, guid_str, GUID_STRLEN);
+    GptGuidToStr(&type, guid_str, GUID_STRLEN, GPT_GUID_UPPERCASE);
 
     LOG(INFO) << "Partition " << number;
     LOG(INFO) << "  Label: " << label;
