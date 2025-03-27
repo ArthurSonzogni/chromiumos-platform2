@@ -99,6 +99,19 @@ where
     _phantom: PhantomData<B>,
 }
 
+fn external_timestamp(internal_timestamp: u64) -> u64 {
+    #[cfg(feature = "vaapi")]
+    {
+        internal_timestamp
+    }
+    #[cfg(feature = "v4l2")]
+    {
+        // We have a hack on V4L2 for VP9 and AV1 where we use the LSB to deduplicate the hidden frame
+        // of a superframe.
+        internal_timestamp >> 1
+    }
+}
+
 impl<V, B> C2DecoderWorker<V, B>
 where
     V: VideoFrame,
@@ -117,7 +130,7 @@ where
                         frame.sync().unwrap();
                         (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
                             output: Some(frame.video_frame()),
-                            timestamp: frame.timestamp(),
+                            timestamp: external_timestamp(frame.timestamp()),
                             ..Default::default()
                         });
                     }
@@ -137,7 +150,9 @@ where
                     Some(DecoderEvent::FrameReady(frame)) => {
                         frame.sync().unwrap();
                         let aux_frame = &*frame.video_frame();
-                        let mut dst_frame = (*aux_frame.external.lock().unwrap()).take().unwrap();
+                        let mut dst_frame = (*aux_frame.external.lock().unwrap())
+                            .take()
+                            .expect("Received the same auxiliary frame twice!");
                         let src_frame = &aux_frame.internal;
                         if let Err(err) = convert_video_frame(src_frame, &mut dst_frame) {
                             log::debug!("Error converting VideoFrame! {err}");
@@ -146,7 +161,7 @@ where
                         }
                         (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
                             output: Some(Arc::new(dst_frame)),
-                            timestamp: frame.timestamp(),
+                            timestamp: external_timestamp(frame.timestamp()),
                             ..Default::default()
                         });
                     }
