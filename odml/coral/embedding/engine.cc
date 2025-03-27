@@ -419,11 +419,6 @@ void EmbeddingEngine::CheckLanguageResult(ProcessingParams params,
 void EmbeddingEngine::CheckEntrySafety(ProcessingParams params,
                                        EmbeddingEntry entry) {
   size_t index = params.response.embeddings.size();
-  // If safety check is not required, directly check embedding.
-  if (!params.request->embedding_options->check_safety_filter.value_or(false)) {
-    CheckEntryEmbedding(std::move(params), std::move(entry));
-    return;
-  }
 
   if (entry.safety_verdict.has_value()) {
     if (IsFullGroupRequest(params.request)) {

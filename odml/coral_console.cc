@@ -51,7 +51,6 @@ namespace {
 constexpr const char kInput[] = "input";
 constexpr const char kSuppressionContext[] = "suppression_context";
 constexpr const char kOutputFile[] = "output_file";
-constexpr const char kSkipSafetyCheck[] = "skip_safety_check";
 constexpr const char kLocale[] = "locale";
 constexpr int kMinItemsInGroup = 4;
 constexpr int kMaxItemsInGroup = 25;
@@ -213,8 +212,6 @@ int main(int argc, char** argv) {
   auto group_request = coral::mojom::GroupRequest::New();
 
   group_request->embedding_options = coral::mojom::EmbeddingOptions::New();
-  group_request->embedding_options->check_safety_filter =
-      !cl->HasSwitch(kSkipSafetyCheck);
   group_request->clustering_options = coral::mojom::ClusteringOptions::New();
   group_request->clustering_options->min_items_in_cluster = kMinItemsInGroup;
   group_request->clustering_options->max_items_in_cluster = kMaxItemsInGroup;

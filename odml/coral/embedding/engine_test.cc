@@ -451,12 +451,18 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   // When language results are out, the engine will write to database first. At
   // this moment embeddings are not generated yet.
   std::vector<EmbeddingEntry> language_only_entries;
+  std::vector<EmbeddingEntry> language_safety_entries;
   for (const auto& fake_embedding : fake_embeddings) {
     fake_embedding_entries.push_back(
         EmbeddingEntry{.embedding = fake_embedding.embedding,
+                       .safety_verdict = true,
                        .languages = fake_embedding.language_result});
     language_only_entries.push_back(
         EmbeddingEntry{.languages = LanguageDetectionResult{
+                           TextLanguage{.locale = "en", .confidence = 1.0}}});
+    language_safety_entries.push_back(
+        EmbeddingEntry{.safety_verdict = true,
+                       .languages = LanguageDetectionResult{
                            TextLanguage{.locale = "en", .confidence = 1.0}}});
   }
   std::vector<std::string> cache_keys;
@@ -483,6 +489,14 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
       .Times(1);
   EXPECT_CALL(*database_1, Put(cache_keys[5], language_only_entries[5]))
       .Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[0], language_safety_entries[0]))
+      .Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[2], language_safety_entries[2]))
+      .Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[3], language_safety_entries[3]))
+      .Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[5], language_safety_entries[5]))
+      .Times(1);
   EXPECT_CALL(*database_1, Put(cache_keys[0], fake_embedding_entries[0]))
       .Times(1);
   EXPECT_CALL(*database_1, Put(cache_keys[2], fake_embedding_entries[2]))
@@ -507,6 +521,14 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   EXPECT_CALL(*database_2, Put(cache_keys[3], language_only_entries[3]))
       .Times(1);
   EXPECT_CALL(*database_2, Put(cache_keys[4], language_only_entries[4]))
+      .Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[1], language_safety_entries[1]))
+      .Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[2], language_safety_entries[2]))
+      .Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[3], language_safety_entries[3]))
+      .Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[4], language_safety_entries[4]))
       .Times(1);
   EXPECT_CALL(*database_2, Put(cache_keys[1], fake_embedding_entries[1]))
       .Times(1);
