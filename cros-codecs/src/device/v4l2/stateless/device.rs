@@ -170,7 +170,6 @@ impl<V: VideoFrame> V4l2Device<V> {
         &mut self,
         format: Fourcc,
         coded_size: Resolution,
-        num_buffers: u32,
     ) -> Result<(), anyhow::Error> {
         if self.handle.is_none() {
             self.handle = Some(Rc::new(RefCell::new(DeviceHandle::new(format)?)));

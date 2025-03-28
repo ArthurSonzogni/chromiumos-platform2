@@ -6,7 +6,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use v4l2r::bindings;
 use v4l2r::ioctl;
 use v4l2r::ioctl::CtrlWhich;
 
@@ -170,11 +169,11 @@ impl<V: VideoFrame> V4l2StatelessDecoderBackend<V> {
         let coded_resolution = stream_params.coded_size().clone();
         let min_num_frames = stream_params.min_num_frames();
 
-        self.device.initialize_output_queue(fourcc, coded_resolution, min_num_frames as u32)?;
+        self.device.initialize_output_queue(fourcc, coded_resolution)?;
 
         // Send a fake header to handle 10 bit streams
         if stream_params.bit_depth() == 10 {
-            self.set_ext_ctrl_10bit(fourcc);
+            self.set_ext_ctrl_10bit(fourcc)?;
         }
 
         self.stream_info.format = get_decoded_format(self.device.get_video_device());
