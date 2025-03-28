@@ -193,6 +193,17 @@ impl std::fmt::Debug for Fourcc {
     }
 }
 
+// Translate fourcc to v4l2 fourcc value.
+pub fn fourcc_for_v4l2_stateless(fourcc: Fourcc) -> Result<Fourcc, String> {
+    match fourcc.to_string().as_str() {
+        "VP80" => Ok(Fourcc::from(b"VP8F")),
+        "VP90" => Ok(Fourcc::from(b"VP9F")),
+        "H264" => Ok(Fourcc::from(b"S264")),
+        "AV1F" => Ok(Fourcc::from(b"AV1F")),
+        _ => Err("Unsupported fourcc".into()),
+    }
+}
+
 /// Formats that buffers can be mapped into for the CPU to read.
 ///
 /// The conventions here largely follow these of libyuv.
