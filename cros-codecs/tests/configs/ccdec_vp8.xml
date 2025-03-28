@@ -17,7 +17,244 @@
     <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer"/>
     <target_preparer class="com.android.tradefed.targetprep.PushFilePreparer">
         <option name="push-file" key="ccdec_vp8_test" value="/data/local/tmp/ccdec_vp8_test" />
-        <!-- TODO(b/400788075): Add external data dependencies once exempt to use GS dynamic links  -->
+        <!-- Android build requires Rust test to be 1-1 mapped to its test configuration file
+        so the configs to download and push external data must be all included in one file. -->
+        <!-- External test vectors by group -->
+        <!-- VP8 inter multi coeff-->
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1408_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1408.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1408_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1408.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1409_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1409.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1409_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1409.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1410_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1410.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1410_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1410.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1413_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1413.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1413_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-03-segmentation-1413.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1404_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1404.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1404_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1404.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1405_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1405.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1405_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1405.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1406_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1406.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1406_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter_multi_coeff/vp80-04-partitions-1406.ivf.json"/>
+        <!-- VP8 inter segment -->
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_segment/vp80-03-segmentation-1407_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter_segment/vp80-03-segmentation-1407.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter_segment/vp80-03-segmentation-1407_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter_segment/vp80-03-segmentation-1407.ivf.json"/>
+        <!-- VP8 inter -->
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-02-inter-1402_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-02-inter-1402.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-02-inter-1402_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-02-inter-1402.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-02-inter-1412_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-02-inter-1412.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-02-inter-1412_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-02-inter-1412.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-02-inter-1418_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-02-inter-1418.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-02-inter-1418_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-02-inter-1418.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-02-inter-1424_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-02-inter-1424.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-02-inter-1424_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-02-inter-1424.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1403_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1403.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1403_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1403.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1425_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1425.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1425_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1425.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1426_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1426.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1426_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1426.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1427_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1427.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1427_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1427.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1432_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1432.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1432_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1432.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1435_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1435.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1435_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1435.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1436_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1436.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1436_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1436.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1437_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1437.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1437_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1437.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1441_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1441.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1441_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1441.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1442_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1442.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-03-segmentation-1442_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-03-segmentation-1442.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1428_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1428.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1428_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1428.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1429_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1429.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1429_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1429.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1430_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1430.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1430_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1430.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1431_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1431.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1431_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1431.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1433_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1433.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1433_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1433.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1434_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1434.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1434_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1434.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1438_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1438.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1438_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1438.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1439_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1439.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1439_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1439.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1440_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1440.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1440_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1440.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1443_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1443.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/inter/vp80-05-sharpness-1443_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/inter/vp80-05-sharpness-1443.ivf.json"/>
+        <!-- VP8 intra multi coeff -->
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-03-segmentation-1414_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/intra_multi_coeff/vp80-03-segmentation-1414.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-03-segmentation-1414_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/intra_multi_coeff/vp80-03-segmentation-1414.ivf.json"/>
+        <!-- VP8 intra segment -->
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra_segment/vp80-03-segmentation-1415_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/intra_segment/vp80-03-segmentation-1415.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra_segment/vp80-03-segmentation-1415_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/intra_segment/vp80-03-segmentation-1415.ivf.json"/>
+        <!-- VP8 intra -->
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra/vp80-01-intra-1400_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/intra/vp80-01-intra-1400.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra/vp80-01-intra-1400_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/intra/vp80-01-intra-1400.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra/vp80-01-intra-1411_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/intra/vp80-01-intra-1411.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra/vp80-01-intra-1411_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/intra/vp80-01-intra-1411.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra/vp80-01-intra-1416_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/intra/vp80-01-intra-1416.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra/vp80-01-intra-1416_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/intra/vp80-01-intra-1416.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra/vp80-01-intra-1417_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/intra/vp80-01-intra-1417.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra/vp80-01-intra-1417_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/intra/vp80-01-intra-1417.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra/vp80-03-segmentation-1401_20210719.ivf"
+        value="/data/local/tmp/test_vectors/vp8/intra/vp80-03-segmentation-1401.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/intra/vp80-03-segmentation-1401_20210719.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/intra/vp80-03-segmentation-1401.ivf.json"/>
+        <!-- VP8 comprehensive -->
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-001_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-001.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-001_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-001.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-002_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-002.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-002_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-002.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-003_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-003.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-003_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-003.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-004_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-004.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-004_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-004.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-005_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-005.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-005_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-005.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-006_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-006.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-006_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-006.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-007_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-007.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-007_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-007.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-008_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-008.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-008_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-008.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-009_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-009.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-009_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-009.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-010_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-010.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-010_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-010.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-011_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-011.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-011_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-011.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-012_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-012.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-012_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-012.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-013_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-013.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-013_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-013.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-014_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-014.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-014_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-014.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-015_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-015.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-015_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-015.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-016_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-016.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-016_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-016.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-017_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-017.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-017_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-017.ivf.json"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-018_20210720.ivf"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-018.ivf"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/test_vectors/vp8/vp80-00-comprehensive-018_20210720.ivf.json"
+        value="/data/local/tmp/test_vectors/vp8/vp80-00-comprehensive-018.ivf.json"/>
         <option name="cleanup" value="true" />
     </target_preparer>
 

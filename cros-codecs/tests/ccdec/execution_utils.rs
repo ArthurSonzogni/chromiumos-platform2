@@ -11,11 +11,9 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 
-#[allow(dead_code)]
 const CCDEC_BINARY: &str = "ccdec";
 const TEST_DATA_PREFIX: &str = "/data/local/tmp/";
 
-#[allow(dead_code)]
 fn get_ccdec_path() -> PathBuf {
     let parent_test_path = current_exe()
         .unwrap()
@@ -25,7 +23,6 @@ fn get_ccdec_path() -> PathBuf {
     parent_test_path.join(CCDEC_BINARY)
 }
 
-#[allow(dead_code)]
 fn get_ccdec_args(test_file_path: &Path, json_file_path: &Path, input_format: &str) -> Vec<String> {
     vec![
         test_file_path.display().to_string(),
@@ -36,7 +33,6 @@ fn get_ccdec_args(test_file_path: &Path, json_file_path: &Path, input_format: &s
     ]
 }
 
-#[allow(dead_code)]
 fn execute(test_binary_path: &PathBuf, args: &[&str]) -> Result<ExitStatus, String> {
     let mut command = Command::new(test_binary_path);
     command.args(args);
@@ -56,7 +52,6 @@ fn execute(test_binary_path: &PathBuf, args: &[&str]) -> Result<ExitStatus, Stri
     }
 }
 
-#[allow(dead_code)]
 fn cros_codecs_decode(test_file: &str, input_format: &str) {
     let test_binary_path = get_ccdec_path();
     let test_file_path = Path::new(&test_file);
@@ -78,7 +73,6 @@ fn cros_codecs_decode(test_file: &str, input_format: &str) {
     log::info!("Cros-codecs decode test succeeded: {}", test_file_name);
 }
 
-#[allow(dead_code)]
 pub fn run_ccdec_test_by_codec_group(test_files: &[&str], input_format: &str) {
     for file in test_files {
         let full_path = format!("{}{}", TEST_DATA_PREFIX, file);
