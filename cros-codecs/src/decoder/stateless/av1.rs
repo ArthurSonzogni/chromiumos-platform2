@@ -466,6 +466,13 @@ where
                         render_height: frame.header.render_height,
                     };
                     self.backend.change_stream_info(&new_stream_info)?;
+                    // TODO(b/407100275): calling await_format_change() and returning
+                    // DecodeError::CheckEvents gives the client a chance to handle a resolution
+                    // change event that occurs at a frame. However, it's not clear that this is
+                    // the best way to handle this situation, particularly because data has already
+                    // been sent to the parser. We should revisit this.
+                    self.await_format_change(new_stream_info);
+                    return Err(DecodeError::CheckEvents);
                 }
                 if self.codec.current_pic.is_some() {
                     /* submit this frame immediately, as we need to update the
