@@ -33,7 +33,7 @@ IioContextImpl::IioContextImpl() {
                         &max_sensor_odr_override);
   int max_sensor_odr_value;
   if (base::StringToInt(max_sensor_odr_override, &max_sensor_odr_value)) {
-    *max_sensor_odr_ = max_sensor_odr_value / 1000.0;
+    max_sensor_odr_ = max_sensor_odr_value / 1000.0;
   }
 }
 

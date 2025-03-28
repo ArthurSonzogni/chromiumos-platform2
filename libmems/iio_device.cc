@@ -218,7 +218,7 @@ bool IioDevice::GetMinMaxFrequency(double* min_freq, double* max_freq) {
         }
       }
   }
-  std::optional<int> max_sensor_odr = GetContext()->GetMaxSensorOdr();
+  std::optional<double> max_sensor_odr = GetContext()->GetMaxSensorOdr();
   if (max_sensor_odr && *max_sensor_odr < *max_freq) {
     *max_freq = *max_sensor_odr;
   }
