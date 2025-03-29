@@ -127,7 +127,7 @@ class FpInfoCommand_v2_NumDeadPixelsTest : public testing::Test {
 TEST_F(FpInfoCommand_v2_NumDeadPixelsTest, NoResponse) {
   EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(nullptr));
 
-  const auto expected = FpInfoCommand_v2::kDeadPixelsUnknown;
+  const auto expected = FpInfoCommand::kDeadPixelsUnknown;
   EXPECT_EQ(mock_fp_info_command_.NumDeadPixels(), expected);
 }
 
@@ -138,7 +138,7 @@ TEST_F(FpInfoCommand_v2_NumDeadPixelsTest, DeadPixelsUnknown) {
 
   EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
 
-  const auto expected = FpInfoCommand_v2::kDeadPixelsUnknown;
+  const auto expected = FpInfoCommand::kDeadPixelsUnknown;
   EXPECT_EQ(mock_fp_info_command_.NumDeadPixels(), expected);
 }
 

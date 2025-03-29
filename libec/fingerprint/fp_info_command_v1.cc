@@ -57,11 +57,11 @@ std::optional<TemplateInfo> FpInfoCommand_v1::template_info() {
  */
 int FpInfoCommand_v1::NumDeadPixels() {
   if (!Resp()) {
-    return kDeadPixelsUnknown;
+    return FpInfoCommand::kDeadPixelsUnknown;
   }
   uint16_t num_dead_pixels = FP_ERROR_DEAD_PIXELS(Resp()->errors);
   if (num_dead_pixels == FP_ERROR_DEAD_PIXELS_UNKNOWN) {
-    return kDeadPixelsUnknown;
+    return FpInfoCommand::kDeadPixelsUnknown;
   }
   return num_dead_pixels;
 }
