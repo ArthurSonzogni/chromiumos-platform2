@@ -356,4 +356,6 @@ class GenerateTests(cros_test_lib.TestCase):
 
 
 if __name__ == "__main__":
-    cros_test_lib.main(module=__name__)
+    # All the tests in here are cheap, so don't spend time spinning up parallel
+    # jobs to run them as it'll be slower (even a single fork is slower).
+    chromite_init.test_main(__file__, jobs=0)

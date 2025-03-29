@@ -425,4 +425,6 @@ class Platform2ConfigureInstall(Platform2Configure):
 
 
 if __name__ == "__main__":
-    cros_test_lib.main(module=__name__)
+    # The tests in here are slow, but we don't have that many, so cap the
+    # jobs value to avoid forking way more than needed.
+    chromite_init.test_main(__file__, jobs=15)
