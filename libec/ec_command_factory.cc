@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "libec/fingerprint/fp_info_command.h"
+#include "libec/fingerprint/fp_info_command_factory.h"
 #include "libec/fingerprint/fp_template_command.h"
 #include "libec/flash_protect_command_factory.h"
 
@@ -28,9 +28,9 @@ std::unique_ptr<FlashProtectCommand> EcCommandFactory::FlashProtectCommand(
   return FlashProtectCommandFactory::Create(ec_cmd_ver_supported, flags, mask);
 }
 
-std::unique_ptr<FpInfoCommand_v1> EcCommandFactory::FpInfoCommand_v1(
+std::unique_ptr<FpInfoCommand> EcCommandFactory::FpInfoCommand(
     EcCommandVersionSupportedInterface* ec_cmd_ver_supported) {
-  return std::make_unique<ec::FpInfoCommand_v1>();
+  return FpInfoCommandFactory::Create(ec_cmd_ver_supported);
 }
 
 std::unique_ptr<ec::FpFrameCommand> EcCommandFactory::FpFrameCommand(
