@@ -26,7 +26,7 @@ namespace {
 using clustering::Distance;
 using mojom::CoralError;
 
-const Distance kDefaultAgglomerativeClusteringThreshold = 0.24;
+const Distance kDefaultAgglomerativeClusteringThreshold = 0.20;
 
 constexpr float kFloatErrorTolerance = 1e-6;
 
