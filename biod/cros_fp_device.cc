@@ -453,13 +453,17 @@ bool CrosFpDevice::Init() {
 
   LOG(INFO) << "  Errors     : " << error_flags;
   LOG(INFO) << "CROS FP Image Info ";
-  // Prints the pixel format in FOURCC format.
-  LOG(INFO) << "  Pixel Format     : "
-            << ec::FourCCToString(info_->sensor_image()->pixel_format);
-  LOG(INFO) << "  Image Data Size  : " << info_->sensor_image()->frame_size;
-  LOG(INFO) << "  Image Dimensions : " << info_->sensor_image()->width << "x"
-            << info_->sensor_image()->height << " "
-            << info_->sensor_image()->bpp << " bpp";
+  if (!info_->sensor_image().empty()) {
+    // Prints the pixel format in FOURCC format.
+    LOG(INFO) << "  Pixel Format     : "
+              << ec::FourCCToString(info_->sensor_image()[0].pixel_format);
+    LOG(INFO) << "  Image Data Size  : " << info_->sensor_image()[0].frame_size;
+    LOG(INFO) << "  Image Dimensions : " << info_->sensor_image()[0].width
+              << "x" << info_->sensor_image()[0].height << " "
+              << info_->sensor_image()[0].bpp << " bpp";
+  } else {
+    LOG(ERROR) << "  Invalid sensor image info.";
+  }
   LOG(INFO) << "CROS FP Finger Template Info ";
   LOG(INFO) << "  Template data format  : " << info_->template_info()->version;
   LOG(INFO) << "  Template Data Size    : " << info_->template_info()->size;

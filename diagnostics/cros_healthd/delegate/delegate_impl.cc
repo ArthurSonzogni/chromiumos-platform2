@@ -286,8 +286,12 @@ void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
     return;
   }
 
-  result->width = info->sensor_image()->width;
-  result->height = info->sensor_image()->height;
+  if (!info->sensor_image().empty()) {
+    result->width = info->sensor_image()[0].width;
+    result->height = info->sensor_image()[0].height;
+  } else {
+    PLOG(ERROR) << "Failed to get Sensor Image.";
+  }
 
   std::unique_ptr<ec::MkbpEvent> mkbp_event =
       CreateMkbpEvent(cros_fd.get(), EC_MKBP_EVENT_FINGERPRINT);
