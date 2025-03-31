@@ -52,6 +52,9 @@ namespace {
 // there is a legitimate case that these packets are actually required.
 constexpr bool kDropUnresolvableUnicastToUpstream = false;
 
+constexpr size_t kCmsgPacketAuxDataSize =
+    CMSG_SPACE(sizeof(struct tpacket_auxdata));
+
 constexpr net_base::MacAddress kAllNodesMulticastMacAddress(
     0x33, 0x33, 0, 0, 0, 0x01);
 constexpr net_base::MacAddress kAllRoutersMulticastMacAddress(
@@ -186,6 +189,12 @@ std::unique_ptr<net_base::Socket> NDProxy::PreparePacketSocket() {
                           net_base::byte_utils::AsBytes(kNDPacketBpfProgram))) {
     PLOG(ERROR) << "setsockopt(SO_ATTACH_FILTER) failed";
     return nullptr;
+  }
+  int32_t v = 1;
+  if (!socket->SetSockOpt(SOL_SOCKET, PACKET_AUXDATA,
+                          net_base::byte_utils::AsBytes(v))) {
+    PLOG(WARNING) << "setsockopt(PACKET_AUXDATA, 1) failed, cannot filter out "
+                     "VLAN tagged packets";
   }
   return socket;
 }
@@ -333,13 +342,14 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       .iov_base = in_packet,
       .iov_len = IP_MAXPACKET,
   };
+  char msg_control[kCmsgPacketAuxDataSize];
   msghdr hdr = {
       .msg_name = &recv_ll_addr,
       .msg_namelen = sizeof(recv_ll_addr),
       .msg_iov = &iov_in,
       .msg_iovlen = 1,
-      .msg_control = nullptr,
-      .msg_controllen = 0,
+      .msg_control = msg_control,
+      .msg_controllen = sizeof(msg_control),
       .msg_flags = 0,
   };
 
@@ -351,8 +361,25 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     }
     return;
   }
-  size_t len = static_cast<size_t>(slen);
 
+  // b/400590479: a packet socket will also receive VLAN tagged packets even if
+  // they are unrelated to the upstream network. To avoid potentially mixing
+  // IPv6 router advertisements, these packets should be ignored and dropped.
+  for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&hdr); cmsg != nullptr;
+       cmsg = CMSG_NXTHDR(&hdr, cmsg)) {
+    if (cmsg->cmsg_level == SOL_PACKET && cmsg->cmsg_type == PACKET_AUXDATA) {
+      struct tpacket_auxdata* aux =
+          reinterpret_cast<struct tpacket_auxdata*>(CMSG_DATA(cmsg));
+      if ((aux->tp_status & TP_STATUS_VLAN_TPID_VALID) != 0 &&
+          (aux->tp_vlan_tci & 0x0fff) != 0) {
+        VLOG(1) << "Ignoring packet tagged with VLAN TCI 0x" << std::hex
+                << aux->tp_vlan_tci;
+        return;
+      }
+    }
+  }
+
+  size_t len = static_cast<size_t>(slen);
   ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(in_packet);
   icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(in_packet + sizeof(ip6_hdr));
 
