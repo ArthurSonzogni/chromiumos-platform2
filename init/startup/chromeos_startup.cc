@@ -691,11 +691,13 @@ bool ChromeosStartup::ExtendPCRForVersionAttestation() {
   }
 
   base::FilePath cmdline_path = root_.Append(kProcCmdline);
-  brillo::Blob cmdline;
-  if (!platform_->ReadFile(cmdline_path, &cmdline)) {
+
+  std::string contents;
+  if (!platform_->ReadFileToString(cmdline_path, &contents)) {
     PLOG(WARNING) << "Failure to read /proc/cmdline for PCR Extension.";
     return false;
   }
+  brillo::Blob cmdline = brillo::BlobFromString(contents);
 
   brillo::Blob digest(SHA256_DIGEST_LENGTH);
   SHA256(cmdline.data(), cmdline.size(), digest.data());
