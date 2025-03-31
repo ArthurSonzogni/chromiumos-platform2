@@ -5,8 +5,8 @@
 //! Command line argument parsing, with a focus on matching the old shell
 //! script's arguments.
 
-use crate::process_util::Environment;
 use clap::Parser;
+use libinstall::process_util::Environment;
 use std::ffi::OsString;
 use std::path::PathBuf;
 

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use crate::process_util::{self, ProcessError};
 use anyhow::{Context, Result};
+use libinstall::process_util::{self, ProcessError};
 use nix::mount::{umount2, MntFlags};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};

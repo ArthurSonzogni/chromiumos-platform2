@@ -86,13 +86,13 @@ impl Environment {
     }
 
     /// Get an iterator of the key/value pairs. Only used for tests.
-    #[cfg(test)]
+    #[cfg(feature = "test_util")]
     pub fn iter(&self) -> impl Iterator<Item = (&String, &OsString)> {
         self.0.iter()
     }
 
     /// Convert to a `Vec` of key/value pairs. Only used for tests.
-    #[cfg(test)]
+    #[cfg(feature = "test_util")]
     pub fn into_vec(self) -> Vec<(String, OsString)> {
         self.0.into_iter().collect()
     }

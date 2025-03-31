@@ -5,11 +5,11 @@
 //! Utilities for getting information about disks/block devices/etc.
 
 use anyhow::Result;
+use libinstall::process_util::ProcessError;
 use std::path::PathBuf;
 use std::process::Command;
 
 use crate::platform::Platform;
-use crate::process_util::ProcessError;
 
 /// Find device path for the disk containing the root filesystem.
 ///

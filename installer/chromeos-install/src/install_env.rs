@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 use crate::platform::Platform;
-use crate::process_util::Environment;
 use anyhow::{Context, Result};
+use libinstall::process_util::Environment;
 use log::debug;
 use nix::mount::MntFlags;
 use serde::Deserialize;
@@ -144,8 +144,8 @@ fn create_dir_if_needed(path: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use crate::platform::MockPlatform;
-    use crate::process_util::ProcessError;
     use fs_err as fs;
+    use libinstall::process_util::ProcessError;
     use std::process::Output;
 
     /// Test that `get_directory_contents` successfully gets all

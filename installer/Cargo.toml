@@ -13,6 +13,7 @@ clap = { version = "4.5.4", features = ["derive"] }
 fs-err = "3.0.0"
 glob = "0.3"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
+libinstall = { path = "libinstall" }
 log = { version = "0.4", features = ["std"] }
 nix = { version = "0.28.0", features = ["mount", "user"] }
 serde = { version = "1.0", features = ["derive"] }

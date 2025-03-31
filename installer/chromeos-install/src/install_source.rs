@@ -4,8 +4,8 @@
 
 use crate::disk_util;
 use crate::platform::Platform;
-use crate::process_util::Environment;
 use anyhow::Result;
+use libinstall::process_util::Environment;
 use std::path::PathBuf;
 
 /// Where to install from: where to pull the disk layout, files, mbr bootloader, etc. from.
