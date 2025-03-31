@@ -5,11 +5,10 @@
 //! Utilities for getting information about disks/block devices/etc.
 
 use anyhow::Result;
+use libinstall::platform::Platform;
 use libinstall::process_util::ProcessError;
 use std::path::PathBuf;
 use std::process::Command;
-
-use crate::platform::Platform;
 
 /// Find device path for the disk containing the root filesystem.
 ///
@@ -39,8 +38,8 @@ pub fn init_ufs(platform: &dyn Platform) -> Result<(), ProcessError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::platform::MockPlatform;
     use fs_err as fs;
+    use libinstall::platform::MockPlatform;
 
     /// Test a successful call to `get_root_disk_device_path`.
     #[test]

@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 use crate::disk_util;
-use crate::platform::Platform;
 use anyhow::Result;
+use libinstall::platform::Platform;
 use libinstall::process_util::Environment;
 use std::path::PathBuf;
 

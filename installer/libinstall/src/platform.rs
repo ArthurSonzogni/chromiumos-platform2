@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use crate::process_util::{self, ProcessError};
 use anyhow::{Context, Result};
-use libinstall::process_util::{self, ProcessError};
 use nix::mount::{umount2, MntFlags};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 /// Platform abstraction layer.
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(feature = "test_util", mockall::automock)]
 pub trait Platform {
     /// Get the filesystem root.
     ///
@@ -74,7 +74,7 @@ impl Platform for PlatformImpl {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test_util")]
 impl MockPlatform {
     pub fn expect_root_path(&mut self, root: &Path) {
         let root = root.to_owned();

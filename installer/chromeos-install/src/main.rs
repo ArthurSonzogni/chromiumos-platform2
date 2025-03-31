@@ -11,7 +11,6 @@ mod disk_util;
 mod install_env;
 mod install_source;
 mod logger;
-mod platform;
 
 use anyhow::{bail, Error, Result};
 use clap::Parser;
@@ -20,8 +19,8 @@ use std::process::Command;
 
 use command_line::Args;
 use install_source::InstallSource;
+use libinstall::platform::PlatformImpl;
 use libinstall::process_util::log_and_run_command;
-use platform::PlatformImpl;
 
 fn main() -> Result<()> {
     let platform = &PlatformImpl;

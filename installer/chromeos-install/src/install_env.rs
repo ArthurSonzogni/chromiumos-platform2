@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use crate::platform::Platform;
 use anyhow::{Context, Result};
+use libinstall::platform::Platform;
 use libinstall::process_util::Environment;
 use log::debug;
 use nix::mount::MntFlags;
@@ -143,8 +143,8 @@ fn create_dir_if_needed(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::platform::MockPlatform;
     use fs_err as fs;
+    use libinstall::platform::MockPlatform;
     use libinstall::process_util::ProcessError;
     use std::process::Output;
 
