@@ -286,10 +286,10 @@ where
         let show_existing_frame = header.show_existing_frame;
         if header.show_frame || show_existing_frame {
             match self.codec.highest_spatial_layer {
-                None => self.ready_queue.push(handle),
+                None => self.ready_queue.push(handle.into()),
                 Some(highest_spatial_layer) => {
                     if header.obu_header.spatial_id >= highest_spatial_layer {
-                        self.ready_queue.push(handle);
+                        self.ready_queue.push(handle.into());
                     } else {
                         log::debug!(
                             "Dropping frame with spatial_id {}",
@@ -325,7 +325,9 @@ where
         alloc_cb: &mut dyn FnMut() -> Option<
             <<B as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
-    ) -> Result<usize, DecodeError> {
+    ) -> Result<(usize, bool), DecodeError> {
+        let mut processed_visible_frame = false;
+
         let obu = match self
             .codec
             .parser
@@ -334,7 +336,7 @@ where
         {
             ObuAction::Process(obu) => obu,
             // This OBU should be dropped.
-            ObuAction::Drop(length) => return Ok(length as usize),
+            ObuAction::Drop(length) => return Ok((length as usize, false)),
         };
         let obu_length = obu.bytes_used;
 
@@ -351,7 +353,7 @@ where
                 /* otherwise... */
                 DecodingState::AwaitingStreamInfo => {
                     /* Skip input until we get information from the stream. */
-                    return Ok(obu_length);
+                    return Ok((obu_length, false));
                 }
                 /* Ask the client to confirm the format before we can process this. */
                 DecodingState::FlushingForDRC | DecodingState::AwaitingFormat(_) => {
@@ -375,7 +377,7 @@ where
 
                     /* we can only resume from key frames */
                     if !is_key_frame {
-                        return Ok(obu_length);
+                        return Ok((obu_length, false));
                     } else {
                         self.decoding_state = DecodingState::Decoding;
                     }
@@ -441,6 +443,8 @@ where
                 }
             }
             ParsedObu::FrameHeader(frame_header) => {
+                processed_visible_frame |=
+                    frame_header.show_frame | frame_header.show_existing_frame;
                 if self.codec.current_pic.is_some() {
                     /* submit this frame immediately, as we need to update the
                      * DPB and the reference info state *before* processing the
@@ -453,6 +457,8 @@ where
                 self.decode_tile_group(tile_group)?;
             }
             ParsedObu::Frame(frame) => {
+                processed_visible_frame |=
+                    frame.header.show_frame | frame.header.show_existing_frame;
                 let stream_info =
                     self.codec.stream_info.as_ref().ok_or(DecodeError::DecoderError(anyhow!(
                         "broken stream: a picture is being decoded without a sequence header"
@@ -501,7 +507,11 @@ where
             self.submit_frame(timestamp)?;
         }
 
-        Ok(obu_length)
+        Ok((obu_length, processed_visible_frame))
+    }
+
+    fn queue_empty_frame(&mut self, timestamp: u64) {
+        self.ready_queue.push(timestamp.into());
     }
 
     fn flush(&mut self) -> Result<(), super::DecodeError> {

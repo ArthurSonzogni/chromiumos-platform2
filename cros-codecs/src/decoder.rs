@@ -75,7 +75,7 @@ pub struct StreamInfo {
 /// Events that can be retrieved using the `next_event` method of a decoder.
 pub enum DecoderEvent<H: DecodedHandle> {
     /// The next frame has been decoded.
-    FrameReady(H),
+    FrameReady(ReadyFrame<H>),
     /// The format of the stream has changed and action is required.
     FormatChanged,
 }
@@ -138,17 +138,44 @@ where
 /// Trait object for [`DecodedHandle`]s using a specific `VideoFrame`.
 pub type DynDecodedHandle<F> = Box<dyn DecodedHandle<Frame = F>>;
 
+/// Hack to allow us to return C2Work items for codec specific data.
+pub enum ReadyFrame<T: DecodedHandle> {
+    Frame(T),
+    CSD(u64),
+}
+
+impl<T: DecodedHandle> ReadyFrame<T> {
+    pub fn sync(&self) -> anyhow::Result<()> {
+        match self {
+            ReadyFrame::CSD(_) => Ok(()),
+            ReadyFrame::Frame(frame) => frame.sync(),
+        }
+    }
+}
+
+impl<T: DecodedHandle> From<u64> for ReadyFrame<T> {
+    fn from(timestamp: u64) -> Self {
+        ReadyFrame::CSD(timestamp)
+    }
+}
+
+impl<T: DecodedHandle> From<T> for ReadyFrame<T> {
+    fn from(frame: T) -> Self {
+        ReadyFrame::Frame(frame)
+    }
+}
+
 /// A queue where decoding jobs wait until they are completed, at which point they can be
 /// retrieved.
-struct ReadyFramesQueue<T> {
+struct ReadyFramesQueue<T: DecodedHandle> {
     /// Queue of all the frames waiting to be sent to the client.
-    queue: VecDeque<T>,
+    queue: VecDeque<ReadyFrame<T>>,
 
     /// EventFd signaling `EPOLLIN` whenever the queue is not empty.
     poll_fd: EventFd,
 }
 
-impl<T> ReadyFramesQueue<T> {
+impl<T: DecodedHandle> ReadyFramesQueue<T> {
     /// Create a nwe `ReadyFramesQueue`.
     ///
     /// This can only fail if the `EventFd` creation fails ; in this case the corresponding `Errno`
@@ -160,8 +187,8 @@ impl<T> ReadyFramesQueue<T> {
     }
 
     /// Push `handle` to the back of the queue.
-    fn push(&mut self, handle: T) {
-        self.queue.push_back(handle);
+    fn push(&mut self, ready_frame: ReadyFrame<T>) {
+        self.queue.push_back(ready_frame);
         if let Err(e) = self.poll_fd.write(1) {
             log::error!("failed to write ready frames queue poll FD: {:#}", e);
         }
@@ -174,8 +201,8 @@ impl<T> ReadyFramesQueue<T> {
     }
 }
 
-impl<T> Extend<T> for ReadyFramesQueue<T> {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+impl<T: DecodedHandle> Extend<ReadyFrame<T>> for ReadyFramesQueue<T> {
+    fn extend<I: IntoIterator<Item = ReadyFrame<T>>>(&mut self, iter: I) {
         let len_before = self.queue.len();
         self.queue.extend(iter);
         if let Err(e) = self.poll_fd.write((self.queue.len() - len_before) as u64) {
@@ -186,11 +213,11 @@ impl<T> Extend<T> for ReadyFramesQueue<T> {
 
 /// Allows us to manipulate the frames list like an iterator without consuming it and resetting its
 /// display order counter.
-impl<T> Iterator for ReadyFramesQueue<T> {
-    type Item = T;
+impl<T: DecodedHandle> Iterator for ReadyFramesQueue<T> {
+    type Item = ReadyFrame<T>;
 
     /// Returns the next frame (if any) waiting to be dequeued.
-    fn next(&mut self) -> Option<T> {
+    fn next(&mut self) -> Option<ReadyFrame<T>> {
         let next = self.queue.pop_front();
 
         if next.is_some() && self.queue.is_empty() {

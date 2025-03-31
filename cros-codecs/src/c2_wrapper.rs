@@ -53,6 +53,12 @@ pub struct C2DecodeJob<V: VideoFrame> {
     pub output: Option<Arc<V>>,
     pub timestamp: u64,
     pub drain: DrainMode,
+    // Keeps track of whether or not the corresponding C2Work item contains actual frame data.
+    // Codec2 will expect the C2Work item back regardless, so we will need to send back an empty
+    // C2Work with the correct timestamp if this is false. Note that this field is populated by the
+    // C2DecoderWorker based on parsing, so we don't actually need to populate this at the HAL
+    // level.
+    pub contains_visible_frame: bool,
     // TODO: Add output delay and color aspect support as needed.
 }
 
@@ -73,7 +79,13 @@ where
 
 impl<V: VideoFrame> Default for C2DecodeJob<V> {
     fn default() -> Self {
-        Self { input: vec![], output: None, timestamp: 0, drain: DrainMode::NoDrain }
+        Self {
+            input: vec![],
+            output: None,
+            timestamp: 0,
+            contains_visible_frame: false,
+            drain: DrainMode::NoDrain,
+        }
     }
 }
 

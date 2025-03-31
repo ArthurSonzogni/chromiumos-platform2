@@ -766,7 +766,7 @@ where
 
         log::trace!("{:#?}", pics.iter().map(|p| p.0.borrow()).collect::<Vec<_>>());
 
-        self.ready_queue.extend(pics.into_iter().map(|h| h.1));
+        self.ready_queue.extend(pics.into_iter().map(|h| h.1.into()));
         self.codec.dpb.clear();
 
         Ok(())
@@ -834,7 +834,7 @@ where
 
             log::trace!("{:#?}", bumped.iter().map(|p| p.0.borrow()).collect::<Vec<_>>());
 
-            let bumped = bumped.into_iter().map(|p| p.1).collect::<Vec<_>>();
+            let bumped = bumped.into_iter().map(|p| p.1.into()).collect::<Vec<_>>();
             self.ready_queue.extend(bumped);
         }
 
@@ -988,7 +988,7 @@ where
 
         log::trace!("{:#?}", bumped.iter().map(|p| p.0.borrow()).collect::<Vec<_>>());
 
-        let bumped = bumped.into_iter().map(|p| p.1).collect::<Vec<_>>();
+        let bumped = bumped.into_iter().map(|p| p.1.into()).collect::<Vec<_>>();
         self.ready_queue.extend(bumped);
 
         Ok(())
@@ -1026,7 +1026,7 @@ where
         timestamp: u64,
         nalu: Nalu,
         alloc_cb: &mut dyn FnMut() -> Option<<B::Handle as DecodedHandle>::Frame>,
-    ) -> Result<(), DecodeError> {
+    ) -> Result<bool, DecodeError> {
         log::debug!("Processing NALU {:?}, length is {}", nalu.header.type_, nalu.size);
 
         match nalu.header.type_ {
@@ -1035,6 +1035,7 @@ where
                     .parser
                     .parse_vps(&nalu)
                     .map_err(|err| DecodeError::ParseFrameError(err))?;
+                Ok(false)
             }
             NaluType::SpsNut => {
                 let sps = self
@@ -1053,12 +1054,16 @@ where
                         self.codec.pending_pps.push(pps);
                     }
                 }
+
+                Ok(false)
             }
 
             NaluType::PpsNut => {
                 if self.codec.parser.parse_pps(&nalu).is_err() {
                     self.codec.pending_pps.push(nalu.into_owned())
                 }
+
+                Ok(false)
             }
 
             NaluType::BlaWLp
@@ -1109,22 +1114,25 @@ where
                     self.handle_slice(&mut cur_pic, &slice)?;
                     self.codec.current_pic = Some(cur_pic);
                 }
+
+                Ok(true)
             }
 
             NaluType::EosNut => {
                 self.codec.first_picture_after_eos = true;
+                Ok(false)
             }
 
             NaluType::EobNut => {
                 self.codec.first_picture_in_bitstream = true;
+                Ok(false)
             }
 
             other => {
                 log::debug!("Unsupported NAL unit type {:?}", other,);
+                Ok(false)
             }
         }
-
-        Ok(())
     }
 
     /// Submits the picture to the accelerator.
@@ -1153,7 +1161,9 @@ where
         alloc_cb: &mut dyn FnMut() -> Option<
             <<B as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
-    ) -> Result<usize, DecodeError> {
+    ) -> Result<(usize, bool), DecodeError> {
+        let mut processed_visible_frame = false;
+
         let mut cursor = Cursor::new(bitstream);
         let nalu = Nalu::next(&mut cursor).map_err(|err| DecodeError::ParseFrameError(err))?;
 
@@ -1193,7 +1203,7 @@ where
                     nalu.header.type_,
                     NaluType::VpsNut | NaluType::SpsNut | NaluType::PpsNut
                 ) {
-                    self.process_nalu(timestamp, nalu, alloc_cb)?;
+                    processed_visible_frame |= self.process_nalu(timestamp, nalu, alloc_cb)?;
                 }
             }
             // Ask the client to confirm the format before we can process this.
@@ -1203,11 +1213,15 @@ where
                 return Err(DecodeError::CheckEvents);
             }
             DecodingState::Decoding => {
-                self.process_nalu(timestamp, nalu, alloc_cb)?;
+                processed_visible_frame |= self.process_nalu(timestamp, nalu, alloc_cb)?;
             }
         }
 
-        Ok(nalu_len)
+        Ok((nalu_len, processed_visible_frame))
+    }
+
+    fn queue_empty_frame(&mut self, timestamp: u64) {
+        self.ready_queue.push(timestamp.into());
     }
 
     fn flush(&mut self) -> Result<(), DecodeError> {

@@ -491,8 +491,8 @@ where
 
     /// Returns an iterator of the handles of the frames that need to be bumped into the ready
     /// queue.
-    fn bump_as_needed(&mut self, current_pic: &PictureData) -> impl Iterator<Item = H> {
-        self.dpb.bump_as_needed(current_pic).into_iter().flatten()
+    fn bump_as_needed(&mut self) -> impl Iterator<Item = H> {
+        self.dpb.bump_as_needed().into_iter().flatten()
     }
 
     /// Returns an iterator of the handles of all the frames still present in the DPB.
@@ -868,7 +868,7 @@ where
             self.finish_picture(cur_pic)?;
         }
 
-        self.ready_queue.extend(self.codec.drain());
+        self.ready_queue.extend(self.codec.drain().map(|x| x.into()));
 
         Ok(())
     }
@@ -876,9 +876,9 @@ where
     /// Adds picture to the ready queue if it could not be added to the DPB.
     fn add_to_ready_queue(&mut self, pic: PictureData, handle: B::Handle) {
         if matches!(pic.field, Field::Frame) {
-            self.ready_queue.push(handle);
+            self.ready_queue.push(handle.into());
         } else if let FieldRank::Second(..) = pic.field_rank() {
-            self.ready_queue.push(handle)
+            self.ready_queue.push(handle.into())
         }
     }
 
@@ -905,9 +905,6 @@ where
             // to 5, as specified in clause C.4.4.
             self.drain()?;
         }
-
-        // Bump the DPB as per C.4.5.3 to cover clauses 1, 4, 5 and 6.
-        self.ready_queue.extend(self.codec.bump_as_needed(&pic));
 
         // C.4.5.1, C.4.5.2
         // If the current decoded picture is the second field of a complementary
@@ -938,6 +935,9 @@ where
         } else {
             self.add_to_ready_queue(pic, handle);
         }
+
+        // Bump the DPB as per C.4.5.3 to cover clauses 1, 4, 5 and 6.
+        self.ready_queue.extend(self.codec.bump_as_needed().map(|x| x.into()));
 
         Ok(())
     }
@@ -973,8 +973,6 @@ where
 
             self.codec.dpb.sliding_window_marking(&mut pic, sps);
 
-            self.ready_queue.extend(self.codec.bump_as_needed(&pic));
-
             if self.codec.dpb.interlaced() {
                 let (first_field, second_field) = PictureData::split_frame(pic);
 
@@ -983,6 +981,8 @@ where
             } else {
                 self.codec.dpb.store_picture(pic.into_rc(), None)?;
             }
+
+            self.ready_queue.extend(self.codec.bump_as_needed().map(|x| x.into()));
 
             unused_short_term_frame_num += 1;
             unused_short_term_frame_num %= max_frame_num;
@@ -1183,19 +1183,21 @@ where
         alloc_cb: &mut dyn FnMut() -> Option<
             <<B as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
-    ) -> Result<(), DecodeError> {
+    ) -> Result<bool, DecodeError> {
         match nalu.header.type_ {
             NaluType::Sps => {
                 self.codec
                     .parser
                     .parse_sps(&nalu)
                     .map_err(|err| DecodeError::ParseFrameError(err))?;
+                Ok(false)
             }
             NaluType::Pps => {
                 self.codec
                     .parser
                     .parse_pps(&nalu)
                     .map_err(|err| DecodeError::ParseFrameError(err))?;
+                Ok(false)
             }
             NaluType::Slice
             | NaluType::SliceDpa
@@ -1230,13 +1232,14 @@ where
 
                 self.handle_slice(&mut cur_pic, &slice)?;
                 self.codec.current_pic = Some(cur_pic);
+
+                Ok(true)
             }
             other => {
                 debug!("Unsupported NAL unit type {:?}", other,);
+                Ok(false)
             }
         }
-
-        Ok(())
     }
 }
 
@@ -1254,7 +1257,9 @@ where
         alloc_cb: &mut dyn FnMut() -> Option<
             <<B as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
-    ) -> Result<usize, DecodeError> {
+    ) -> Result<(usize, bool), DecodeError> {
+        let mut processed_visible_frame = false;
+
         self.wait_for_drc_flush()?;
 
         let mut cursor = Cursor::new(bitstream);
@@ -1306,7 +1311,7 @@ where
             // from the stream.
             DecodingState::AwaitingStreamInfo | DecodingState::Reset => {
                 if matches!(nalu.header.type_, NaluType::Pps) {
-                    self.process_nalu(timestamp, nalu, alloc_cb)?;
+                    processed_visible_frame |= self.process_nalu(timestamp, nalu, alloc_cb)?;
                 }
             }
             // Ask the client to confirm the format before we can process this.
@@ -1314,11 +1319,15 @@ where
                 return Err(DecodeError::CheckEvents)
             }
             DecodingState::Decoding => {
-                self.process_nalu(timestamp, nalu, alloc_cb)?;
+                processed_visible_frame |= self.process_nalu(timestamp, nalu, alloc_cb)?;
             }
         }
 
-        Ok(nalu_len)
+        Ok((nalu_len, processed_visible_frame))
+    }
+
+    fn queue_empty_frame(&mut self, timestamp: u64) {
+        self.ready_queue.push(timestamp.into());
     }
 
     fn flush(&mut self) -> Result<(), DecodeError> {

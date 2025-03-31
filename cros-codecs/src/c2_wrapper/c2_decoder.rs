@@ -28,6 +28,7 @@ use crate::c2_wrapper::Job;
 use crate::decoder::stateless::DecodeError;
 use crate::decoder::stateless::DynStatelessVideoDecoder;
 use crate::decoder::DecoderEvent;
+use crate::decoder::ReadyFrame;
 use crate::decoder::StreamInfo;
 use crate::image_processing::convert_video_frame;
 use crate::video_frame::auxiliary_video_frame::AuxiliaryVideoFrame;
@@ -126,7 +127,14 @@ where
             };
             match &mut self.decoder {
                 C2Decoder::ImportingDecoder(decoder) => match decoder.next_event() {
-                    Some(DecoderEvent::FrameReady(frame)) => {
+                    Some(DecoderEvent::FrameReady(ReadyFrame::CSD(timestamp))) => {
+                        (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
+                            // CSD timestamps are already external.
+                            timestamp: timestamp,
+                            ..Default::default()
+                        });
+                    }
+                    Some(DecoderEvent::FrameReady(ReadyFrame::Frame(frame))) => {
                         frame.sync().unwrap();
                         (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
                             output: Some(frame.video_frame()),
@@ -147,7 +155,14 @@ where
                     _ => break,
                 },
                 C2Decoder::ConvertingDecoder(decoder) => match decoder.next_event() {
-                    Some(DecoderEvent::FrameReady(frame)) => {
+                    Some(DecoderEvent::FrameReady(ReadyFrame::CSD(timestamp))) => {
+                        (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
+                            // CSD timestamps are already external.
+                            timestamp: timestamp,
+                            ..Default::default()
+                        });
+                    }
+                    Some(DecoderEvent::FrameReady(ReadyFrame::Frame(frame))) => {
                         frame.sync().unwrap();
                         let aux_frame = &*frame.video_frame();
                         let mut dst_frame = (*aux_frame.external.lock().unwrap())
@@ -323,36 +338,49 @@ where
                         }
                     }
                 } else {
-                    // This generally indicates a drain signal. Drain signals can be associated
-                    // with specific C2Work objects, or they can be a standalone call to the
-                    // drain() function of the C2Component, so we have to accommodate both.
-                    Ok(0)
+                    // The drain signals are artificial jobs constructed by the C2Wrapper itself,
+                    // so we don't want to return C2Work objects for them.
+                    Ok((0, job.get_drain() != DrainMode::NoDrain))
                 };
                 match decode_result {
-                    Ok(num_bytes) => {
+                    Ok((num_bytes, processed_visible_frame)) => {
+                        job.contains_visible_frame |= processed_visible_frame;
                         if num_bytes != job.input.len() {
                             job.input = (&job.input[num_bytes..]).to_vec();
                             (*self.work_queue.lock().unwrap()).push_front(job);
-                        } else if job.get_drain() != DrainMode::NoDrain {
-                            let flush_result = match &mut self.decoder {
-                                C2Decoder::ImportingDecoder(decoder) => decoder.flush(),
-                                C2Decoder::ConvertingDecoder(decoder) => decoder.flush(),
-                            };
-                            if let Err(_) = flush_result {
-                                log::debug!("Error handling drain request!");
-                                *self.state.lock().unwrap() = C2State::C2Error;
-                                (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
-                            } else {
-                                self.check_events();
-                                if job.get_drain() == DrainMode::EOSDrain {
-                                    (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
-                                        timestamp: job.timestamp,
-                                        drain: DrainMode::EOSDrain,
-                                        ..Default::default()
-                                    });
-                                }
+                        } else {
+                            if !job.contains_visible_frame {
+                                match &mut self.decoder {
+                                    C2Decoder::ImportingDecoder(decoder) => {
+                                        decoder.queue_empty_frame(job.timestamp)
+                                    }
+                                    C2Decoder::ConvertingDecoder(decoder) => {
+                                        decoder.queue_empty_frame(job.timestamp)
+                                    }
+                                };
                             }
-                            break;
+
+                            if job.get_drain() != DrainMode::NoDrain {
+                                let flush_result = match &mut self.decoder {
+                                    C2Decoder::ImportingDecoder(decoder) => decoder.flush(),
+                                    C2Decoder::ConvertingDecoder(decoder) => decoder.flush(),
+                                };
+                                if let Err(_) = flush_result {
+                                    log::debug!("Error handling drain request!");
+                                    *self.state.lock().unwrap() = C2State::C2Error;
+                                    (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                                } else {
+                                    self.check_events();
+                                    if job.get_drain() == DrainMode::EOSDrain {
+                                        (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
+                                            timestamp: job.timestamp,
+                                            drain: DrainMode::EOSDrain,
+                                            ..Default::default()
+                                        });
+                                    }
+                                }
+                                break;
+                            }
                         }
                     }
                     Err(DecodeError::NotEnoughOutputBuffers(_) | DecodeError::CheckEvents) => {

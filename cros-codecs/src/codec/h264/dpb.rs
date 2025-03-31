@@ -163,7 +163,7 @@ impl<T: Clone> Dpb<T> {
 
     /// Set the DPB's limits in terms of maximum number or pictures.
     pub fn set_limits(&mut self, max_num_pics: usize, max_num_reorder_frames: usize) {
-        self.max_num_pics = max_num_pics;
+        self.max_num_pics = max_num_pics + 1;
         self.max_num_reorder_frames = max_num_reorder_frames;
     }
 
@@ -493,14 +493,12 @@ impl<T: Clone> Dpb<T> {
     }
 
     /// Bumps the DPB if needed. DPB bumping is described on C.4.5.3.
-    pub fn bump_as_needed(&mut self, current_pic: &PictureData) -> Vec<Option<T>> {
+    pub fn bump_as_needed(&mut self) -> Vec<Option<T>> {
         let mut pics = vec![];
         // We bump proactively, even though the spec only says we need to bump if the DPB is full.
         // This cuts down on decode latency and seems to be in line with Codec2's expectations.
         // Also, there is precedence for this in Chrome's H264 decoder.
-        while self.needs_bumping(current_pic)
-            || self.num_not_outputted() >= self.max_num_reorder_frames
-        {
+        while self.num_not_outputted() > self.max_num_reorder_frames {
             match self.bump() {
                 Some(pic) => pics.push(pic),
                 None => return pics,

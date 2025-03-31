@@ -182,7 +182,7 @@ where
         // We are done, no further processing needed.
         let decoded_handle = self.backend.new_handle_from_existing_handle(ref_frame, timestamp)?;
 
-        self.ready_queue.push(decoded_handle);
+        self.ready_queue.push(decoded_handle.into());
 
         Ok(())
     }
@@ -213,7 +213,7 @@ where
         )?;
 
         if frame.header.show_frame {
-            self.ready_queue.push(decoded_handle);
+            self.ready_queue.push(decoded_handle.into());
         }
 
         Ok(())
@@ -246,7 +246,9 @@ where
         alloc_cb: &mut dyn FnMut() -> Option<
             <<B as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
-    ) -> Result<usize, DecodeError> {
+    ) -> Result<(usize, bool), DecodeError> {
+        let mut processed_visible_frame = false;
+
         let frames = self
             .codec
             .parser
@@ -332,6 +334,8 @@ where
 
                 // Then process each frame.
                 for (frame, picture) in frames_with_pictures {
+                    processed_visible_frame |=
+                        frame.header.show_frame | frame.header.show_existing_frame;
                     match picture {
                         None => self.handle_show_existing_frame(
                             frame.header.frame_to_show_map_idx,
@@ -343,7 +347,11 @@ where
             }
         }
 
-        Ok(bitstream.len())
+        Ok((bitstream.len(), processed_visible_frame))
+    }
+
+    fn queue_empty_frame(&mut self, timestamp: u64) {
+        self.ready_queue.push(timestamp.into());
     }
 
     fn flush(&mut self) -> Result<(), DecodeError> {

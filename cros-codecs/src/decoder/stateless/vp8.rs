@@ -213,7 +213,7 @@ where
         self.codec.update_references(&frame.header, &decoded_handle)?;
 
         if show_frame {
-            self.ready_queue.push(decoded_handle);
+            self.ready_queue.push(decoded_handle.into());
         }
 
         Ok(())
@@ -243,7 +243,7 @@ where
         alloc_cb: &mut dyn FnMut() -> Option<
             <<B as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
-    ) -> Result<usize, DecodeError> {
+    ) -> Result<(usize, bool), DecodeError> {
         let frame = self
             .codec
             .parser
@@ -273,17 +273,24 @@ where
 
         match &mut self.decoding_state {
             // Skip input until we get information from the stream.
-            DecodingState::AwaitingStreamInfo | DecodingState::Reset => Ok(bitstream.len()),
+            DecodingState::AwaitingStreamInfo | DecodingState::Reset => {
+                Ok((bitstream.len(), false))
+            }
             // Ask the client to confirm the format before we can process this.
             DecodingState::FlushingForDRC | DecodingState::AwaitingFormat(_) => {
                 Err(DecodeError::CheckEvents)
             }
             DecodingState::Decoding => {
+                let processed_visible_frame = frame.header.show_frame;
                 let len = frame.header.frame_len();
                 self.handle_frame(frame, timestamp, alloc_cb)?;
-                Ok(len)
+                Ok((len, processed_visible_frame))
             }
         }
+    }
+
+    fn queue_empty_frame(&mut self, timestamp: u64) {
+        self.ready_queue.push(timestamp.into());
     }
 
     fn flush(&mut self) -> Result<(), DecodeError> {

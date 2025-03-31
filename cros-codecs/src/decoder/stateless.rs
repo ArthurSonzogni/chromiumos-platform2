@@ -34,6 +34,7 @@ use crate::decoder::BlockingMode;
 use crate::decoder::DecodedHandle;
 use crate::decoder::DecoderEvent;
 use crate::decoder::DynDecodedHandle;
+use crate::decoder::ReadyFrame;
 use crate::decoder::ReadyFramesQueue;
 use crate::decoder::StreamInfo;
 use crate::Resolution;
@@ -176,17 +177,24 @@ pub trait StatelessVideoDecoder {
     /// resources and dequeueing and returning pending frames will fix that. After the cause has
     /// been addressed, the client is responsible for calling this method again with the same data.
     ///
-    /// The return value is the number of bytes in `bitstream` that have been processed. Usually
-    /// this will be equal to the length of `bitstream`, but some codecs may only do partial
-    /// processing if e.g. several units are sent at the same time. It is the responsibility of the
-    /// caller to check that all submitted input has been processed, and to resubmit the
+    /// The return value is the number of bytes in `bitstream` that have been processed, and a
+    /// boolean indicating whether or not we processed visible frame data. It is the responsibility
+    /// of the caller to check that all submitted input has been processed, and to resubmit the
     /// unprocessed part if it hasn't. See the documentation of each codec for their expectations.
     fn decode(
         &mut self,
         timestamp: u64,
         bitstream: &[u8],
         alloc_cb: &mut dyn FnMut() -> Option<<Self::Handle as DecodedHandle>::Frame>,
-    ) -> Result<usize, DecodeError>;
+    ) -> Result<(usize, bool), DecodeError>;
+
+    /// Put an empty frame (with the correct timestamp) onto the ready queue. This is useful for
+    /// handling C2Work items that only contain codec specific configuration data, because Codec2
+    /// still expects us to hand back a C2Work item with the correct timestamp. We use this helper
+    /// function for this purpose instead of just immediately returning the C2Work to ensure that
+    /// we are serializing the returned C2Work in the right order, because otherwise we might
+    /// jump frames stuck the ready queue that we technically received earlier.
+    fn queue_empty_frame(&mut self, timestamp: u64);
 
     /// Flush the decoder i.e. finish processing all pending decode requests and make sure the
     /// resulting frames are ready to be retrieved via [`next_event`].
@@ -254,8 +262,12 @@ where
         timestamp: u64,
         bitstream: &[u8],
         alloc_cb: &mut dyn FnMut() -> Option<<Self::Handle as DecodedHandle>::Frame>,
-    ) -> Result<usize, DecodeError> {
+    ) -> Result<(usize, bool), DecodeError> {
         self.0.decode(timestamp, bitstream, alloc_cb)
+    }
+
+    fn queue_empty_frame(&mut self, timestamp: u64) {
+        self.0.queue_empty_frame(timestamp)
     }
 
     fn flush(&mut self) -> Result<(), DecodeError> {
@@ -268,8 +280,9 @@ where
 
     fn next_event(&mut self) -> Option<DecoderEvent<Self::Handle>> {
         self.0.next_event().map(|e| match e {
-            DecoderEvent::FrameReady(h) => {
-                DecoderEvent::FrameReady(Box::new(h) as DynDecodedHandle<_>)
+            DecoderEvent::FrameReady(ReadyFrame::CSD(t)) => DecoderEvent::FrameReady(t.into()),
+            DecoderEvent::FrameReady(ReadyFrame::Frame(h)) => {
+                DecoderEvent::FrameReady((Box::new(h) as DynDecodedHandle<_>).into())
             }
             DecoderEvent::FormatChanged => DecoderEvent::FormatChanged,
         })
