@@ -1,0 +1,19 @@
+[package]
+name = "install-copy-esp"
+description = "Copy the EFI System Partition during install"
+
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+fs-err.workspace = true
+libchromeos.workspace = true
+libinstall.workspace = true
+nix.workspace = true
+
+[dev-dependencies]
+libinstall = { workspace = true, features = ["test_util"] }
+tempfile.workspace = true
