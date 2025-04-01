@@ -387,6 +387,8 @@ where
             work_queue.push_back(drain_job);
         }
 
+        self.awaiting_job_event.write(1).unwrap();
+
         C2Status::C2Ok
     }
 
