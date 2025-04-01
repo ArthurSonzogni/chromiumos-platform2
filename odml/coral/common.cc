@@ -13,9 +13,7 @@ namespace coral {
 
 bool IsLanguageSupported(const std::string& locale) {
   static constexpr auto kSupportedLanguages =
-      base::MakeFixedFlatSet<std::string_view>({"en", "ja", "de", "fr", "da",
-                                                "es", "it", "pt", "nl", "no",
-                                                "fi", "sv"});
+      base::MakeFixedFlatSet<std::string_view>({"en", "ja", "de", "fr"});
   return base::Contains(kSupportedLanguages, locale);
 }
 
