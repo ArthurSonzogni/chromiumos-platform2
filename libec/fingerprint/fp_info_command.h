@@ -26,16 +26,16 @@ class BRILLO_EXPORT FpInfoCommand
   FpInfoCommand() : EcCommand(EC_CMD_FP_INFO, kVersionOne) {}
   ~FpInfoCommand() override = default;
 
-  SensorId* sensor_id();
-  SensorImage* sensor_image();
-  TemplateInfo* template_info();
+  std::optional<SensorId> sensor_id();
+  std::optional<SensorImage> sensor_image();
+  std::optional<TemplateInfo> template_info();
   int NumDeadPixels();
   FpSensorErrors GetFpSensorErrors();
 
  private:
-  std::unique_ptr<SensorId> sensor_id_;
-  std::unique_ptr<SensorImage> sensor_image_;
-  std::unique_ptr<TemplateInfo> template_info_;
+  std::optional<SensorId> sensor_id_;
+  std::optional<SensorImage> sensor_image_;
+  std::optional<TemplateInfo> template_info_;
 };
 
 }  // namespace ec

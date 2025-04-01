@@ -169,7 +169,7 @@ class FpInfoCommandSensorIdTest : public testing::Test {
 TEST_F(FpInfoCommandSensorIdTest, NullResponse) {
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(nullptr));
 
-  EXPECT_EQ(mock_fp_info_command.sensor_id(), nullptr);
+  EXPECT_EQ(mock_fp_info_command.sensor_id(), std::nullopt);
 }
 
 TEST_F(FpInfoCommandSensorIdTest, ValidSensorId) {
@@ -177,7 +177,7 @@ TEST_F(FpInfoCommandSensorIdTest, ValidSensorId) {
       .vendor_id = 1, .product_id = 2, .model_id = 3, .version = 4};
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
 
-  EXPECT_NE(mock_fp_info_command.sensor_id(), nullptr);
+  EXPECT_TRUE(mock_fp_info_command.sensor_id().has_value());
   EXPECT_EQ(mock_fp_info_command.sensor_id()->vendor_id, 1);
   EXPECT_EQ(mock_fp_info_command.sensor_id()->product_id, 2);
   EXPECT_EQ(mock_fp_info_command.sensor_id()->model_id, 3);
@@ -199,7 +199,7 @@ class FpInfoCommandSensorImageTest : public testing::Test {
 TEST_F(FpInfoCommandSensorImageTest, NullResponse) {
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(nullptr));
 
-  EXPECT_EQ(mock_fp_info_command.sensor_image(), nullptr);
+  EXPECT_EQ(mock_fp_info_command.sensor_image(), std::nullopt);
 }
 
 TEST_F(FpInfoCommandSensorImageTest, ValidSensorImage) {
@@ -207,7 +207,7 @@ TEST_F(FpInfoCommandSensorImageTest, ValidSensorImage) {
       .frame_size = 1, .pixel_format = 2, .width = 3, .height = 4, .bpp = 5};
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
 
-  EXPECT_NE(mock_fp_info_command.sensor_image(), nullptr);
+  EXPECT_TRUE(mock_fp_info_command.sensor_image().has_value());
   EXPECT_EQ(mock_fp_info_command.sensor_image()->frame_size, 1);
   EXPECT_EQ(mock_fp_info_command.sensor_image()->pixel_format, 2);
   EXPECT_EQ(mock_fp_info_command.sensor_image()->width, 3);
@@ -230,7 +230,7 @@ class FpInfoCommandTemplateInfoTest : public testing::Test {
 TEST_F(FpInfoCommandTemplateInfoTest, NullResponse) {
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(nullptr));
 
-  EXPECT_EQ(mock_fp_info_command.template_info(), nullptr);
+  EXPECT_EQ(mock_fp_info_command.template_info(), std::nullopt);
 }
 
 TEST_F(FpInfoCommandTemplateInfoTest, ValidTemplateInfo) {
@@ -242,7 +242,7 @@ TEST_F(FpInfoCommandTemplateInfoTest, ValidTemplateInfo) {
 
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
 
-  EXPECT_NE(mock_fp_info_command.template_info(), nullptr);
+  EXPECT_TRUE(mock_fp_info_command.template_info().has_value());
   EXPECT_EQ(mock_fp_info_command.template_info()->size, 1024);
   EXPECT_EQ(mock_fp_info_command.template_info()->max_templates, 4);
   EXPECT_EQ(mock_fp_info_command.template_info()->num_valid, 3);

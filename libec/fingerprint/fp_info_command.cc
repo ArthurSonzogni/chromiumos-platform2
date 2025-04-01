@@ -7,48 +7,49 @@
 namespace ec {
 
 /**
- * @return non-owning pointer which can be nullptr if command hasn't been run.
+ * @return An optional SensorId object. This will be empty if the command hasn't
+ * been run or if no sensor id is available.
  */
-SensorId* FpInfoCommand::sensor_id() {
+std::optional<SensorId> FpInfoCommand::sensor_id() {
   if (!Resp()) {
-    return nullptr;
+    return std::nullopt;
   }
-  if (!sensor_id_) {
-    sensor_id_ =
-        std::make_unique<SensorId>(Resp()->vendor_id, Resp()->product_id,
-                                   Resp()->model_id, Resp()->version);
+  if (!sensor_id_.has_value()) {
+    sensor_id_.emplace(Resp()->vendor_id, Resp()->product_id, Resp()->model_id,
+                       Resp()->version);
   }
-  return sensor_id_.get();
+  return sensor_id_;
 }
 
 /**
- * @return non-owning pointer which can be nullptr if command hasn't been run.
+ * @return An optional SensorImage object. This will be empty if the command
+ * hasn't been run or if no sensor image is available.
  */
-SensorImage* FpInfoCommand::sensor_image() {
+std::optional<SensorImage> FpInfoCommand::sensor_image() {
   if (!Resp()) {
-    return nullptr;
+    return std::nullopt;
   }
-  if (!sensor_image_) {
-    sensor_image_ = std::make_unique<SensorImage>(
-        Resp()->width, Resp()->height, Resp()->frame_size, Resp()->pixel_format,
-        Resp()->bpp);
+  if (!sensor_image_.has_value()) {
+    sensor_image_.emplace(Resp()->width, Resp()->height, Resp()->frame_size,
+                          Resp()->pixel_format, Resp()->bpp);
   }
-  return sensor_image_.get();
+  return sensor_image_;
 }
 
 /**
- * @return non-owning pointer which can be nullptr if command hasn't been run.
+ * @return An optional TemplateInfo object. This will be empty if the command
+ * hasn't been run or if no template info is available.
  */
-TemplateInfo* FpInfoCommand::template_info() {
+std::optional<TemplateInfo> FpInfoCommand::template_info() {
   if (!Resp()) {
-    return nullptr;
+    return std::nullopt;
   }
-  if (!template_info_) {
-    template_info_ = std::make_unique<TemplateInfo>(
-        Resp()->template_version, Resp()->template_size, Resp()->template_max,
-        Resp()->template_valid, Resp()->template_dirty);
+  if (!template_info_.has_value()) {
+    template_info_.emplace(Resp()->template_version, Resp()->template_size,
+                           Resp()->template_max, Resp()->template_valid,
+                           Resp()->template_dirty);
   }
-  return template_info_.get();
+  return template_info_;
 }
 
 /**
