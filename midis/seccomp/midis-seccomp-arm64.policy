@@ -71,3 +71,4 @@ socketpair: 1
 uname: 1
 write: 1
 fstatfs: 1
+tgkill: 1
