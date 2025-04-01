@@ -5,7 +5,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use v4l2r::device::Device as VideoDevice;
 use v4l2r::ioctl;
+use v4l2r::ioctl::CtrlWhich;
+use v4l2r::ioctl::FormatIterator;
+use v4l2r::QueueType;
 
 use crate::backend::v4l2::decoder::stateless::V4l2Picture;
 use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderBackend;
@@ -26,6 +30,7 @@ use crate::decoder::stateless::StatelessBackendError;
 use crate::decoder::stateless::StatelessBackendResult;
 use crate::decoder::stateless::StatelessDecoder;
 use crate::decoder::stateless::StatelessDecoderBackendPicture;
+use crate::decoder::Arc;
 use crate::decoder::BlockingMode;
 use crate::decoder::DecodedHandle;
 use crate::device::v4l2::stateless::controls::av1::Av1V4l2FilmGrainCtrl;
@@ -37,6 +42,7 @@ use crate::device::v4l2::stateless::controls::av1::V4l2CtrlAv1FrameParams;
 use crate::device::v4l2::stateless::controls::av1::V4l2CtrlAv1SequenceParams;
 use crate::device::v4l2::stateless::controls::av1::V4l2CtrlAv1TileGroupEntryParams;
 use crate::video_frame::VideoFrame;
+use crate::DecodedFormat;
 use crate::Fourcc;
 use crate::Rect;
 use crate::Resolution;
@@ -63,6 +69,23 @@ impl V4l2StreamInfo for &StreamInfo {
             BitDepth::Depth10 => return 10,
             BitDepth::Depth12 => return 12,
         }
+    }
+
+    fn get_decoded_format(&self, device: Arc<VideoDevice>) -> Result<DecodedFormat, String> {
+        if self.bit_depth() == 10 {
+            let mut av1_seq_params = V4l2CtrlAv1SequenceParams::new();
+            av1_seq_params.set_10bit_params();
+            let mut ctrl = Av1V4l2SequenceCtrl::from(&av1_seq_params);
+
+            ioctl::s_ext_ctrls(&device, CtrlWhich::Current, &mut ctrl)
+                .map_err(|_| String::from("Failed to send ext ctrls to device."))?;
+        }
+
+        Ok(FormatIterator::new(&device, QueueType::VideoCaptureMplane)
+            .map(|x| Fourcc(x.pixelformat.into()))
+            .next()
+            .unwrap()
+            .into())
     }
 }
 

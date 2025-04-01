@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::v4l2r::ioctl::FormatIterator;
-use crate::DecodedFormat;
 use crate::Fourcc;
 
 use v4l2r::device::queue::Queue;
@@ -60,15 +59,6 @@ pub fn enumerate_devices(format: Fourcc) -> Option<(PathBuf, PathBuf)> {
         return Some((video_device_path, media_device_path));
     }
     None
-}
-
-// Query the Capture queue for the supported decoded format.
-pub fn get_decoded_format(device: Arc<VideoDevice>) -> DecodedFormat {
-    return FormatIterator::new(&device, QueueType::VideoCaptureMplane)
-        .map(|x| Fourcc(x.pixelformat.into()))
-        .next()
-        .unwrap()
-        .into();
 }
 
 /// A struct that contains information about media device.

@@ -406,6 +406,23 @@ macro_rules! multiple_desc_type {
     }
 }
 
+pub fn get_format_bit_depth(format: DecodedFormat) -> usize {
+    match format {
+        DecodedFormat::MM21
+        | DecodedFormat::I420
+        | DecodedFormat::NV12
+        | DecodedFormat::I422
+        | DecodedFormat::I444 => 8,
+        DecodedFormat::MT2T | DecodedFormat::P010 => 10,
+        DecodedFormat::I010
+        | DecodedFormat::I012
+        | DecodedFormat::I210
+        | DecodedFormat::I212
+        | DecodedFormat::I410
+        | DecodedFormat::I412 => 16,
+    }
+}
+
 /// Returns the size required to store a frame of `format` with size `width`x`height`, without any
 /// padding. This is the minimum size of the destination buffer passed to `nv12_copy` or
 /// `i420_copy`.

@@ -60,6 +60,8 @@ pub enum StatelessBackendError {
     Other(#[from] anyhow::Error),
     #[error("unsupported profile")]
     UnsupportedProfile,
+    #[error("unsupported format")]
+    UnsupportedFormat,
 }
 
 /// Result type returned by stateless backend methods.

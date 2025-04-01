@@ -12,6 +12,9 @@ use v4l2r::controls::codec::H264Pps;
 use v4l2r::controls::codec::H264ScalingMatrix;
 use v4l2r::controls::codec::H264Sps;
 use v4l2r::controls::SafeExtControl;
+use v4l2r::device::Device as VideoDevice;
+use v4l2r::ioctl::FormatIterator;
+use v4l2r::QueueType;
 
 use crate::backend::v4l2::decoder::stateless::V4l2Picture;
 use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderBackend;
@@ -34,6 +37,7 @@ use crate::decoder::stateless::StatelessBackendResult;
 use crate::decoder::stateless::StatelessDecoder;
 use crate::decoder::stateless::StatelessDecoderBackend;
 use crate::decoder::stateless::StatelessDecoderBackendPicture;
+use crate::decoder::Arc;
 use crate::decoder::BlockingMode;
 use crate::decoder::DecodedHandle;
 use crate::device::v4l2::stateless::controls::h264::V4l2CtrlH264DecodeMode;
@@ -41,6 +45,7 @@ use crate::device::v4l2::stateless::controls::h264::V4l2CtrlH264DecodeParams;
 use crate::device::v4l2::stateless::controls::h264::V4l2CtrlH264DpbEntry;
 use crate::device::v4l2::stateless::controls::h264::V4l2CtrlH264StartCode;
 use crate::video_frame::VideoFrame;
+use crate::DecodedFormat;
 use crate::Fourcc;
 use crate::Rect;
 use crate::Resolution;
@@ -62,6 +67,15 @@ impl V4l2StreamInfo for &Rc<Sps> {
 
     fn bit_depth(&self) -> usize {
         (self.bit_depth_chroma_minus8 + 8) as usize
+    }
+
+    fn get_decoded_format(&self, device: Arc<VideoDevice>) -> Result<DecodedFormat, String> {
+        // TODO(bchoobineh): Support 10-bit H264
+        Ok(FormatIterator::new(&device, QueueType::VideoCaptureMplane)
+            .map(|x| Fourcc(x.pixelformat.into()))
+            .next()
+            .unwrap()
+            .into())
     }
 }
 

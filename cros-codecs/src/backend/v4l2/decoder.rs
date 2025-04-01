@@ -3,8 +3,12 @@
 // found in the LICENSE file.
 
 #[cfg(feature = "v4l2")]
+use crate::DecodedFormat;
 use crate::Rect;
 use crate::Resolution;
+
+use std::sync::Arc;
+use v4l2r::device::Device as VideoDevice;
 
 pub const ADDITIONAL_REFERENCE_FRAME_BUFFER: usize = 4;
 
@@ -20,4 +24,6 @@ pub trait V4l2StreamInfo {
     fn visible_rect(&self) -> Rect;
     // Returns the bit depth for the stream.
     fn bit_depth(&self) -> usize;
+    // Returns the queried DecodedFormat for the current stream.
+    fn get_decoded_format(&self, device: Arc<VideoDevice>) -> Result<DecodedFormat, String>;
 }
