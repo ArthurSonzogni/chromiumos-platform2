@@ -41,6 +41,9 @@ pub enum DrainMode {
     EOSDrain = 0,
     // Drain the C2 component, but keep accepting new jobs in the queue immediately after.
     NoEOSDrain = 1,
+    // Drain signal coming from a drain() or flush() call. These are distinct because we should
+    // not return C2Work items for these.
+    SyntheticDrain = 2,
 }
 
 #[derive(Debug)]
@@ -383,7 +386,7 @@ where
             // Note that we don't just call drain() because we want to guarantee atomicity with respect
             // to the work_queue eviction.
             let mut drain_job: J = Default::default();
-            drain_job.set_drain(DrainMode::NoEOSDrain);
+            drain_job.set_drain(DrainMode::SyntheticDrain);
             work_queue.push_back(drain_job);
         }
 
@@ -402,14 +405,14 @@ where
     // still needs to be implemented for the encoder.
     //
     // TODO: Support different drain modes.
-    pub fn drain(&mut self, mode: DrainMode) -> C2Status {
+    pub fn drain(&mut self, _mode: DrainMode) -> C2Status {
         if *self.state.lock().unwrap() != C2State::C2Running {
             (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
             return C2Status::C2BadState;
         }
 
         let mut drain_job: J = Default::default();
-        drain_job.set_drain(mode);
+        drain_job.set_drain(DrainMode::SyntheticDrain);
         self.work_queue.lock().unwrap().push_back(drain_job);
 
         self.awaiting_job_event.write(1).unwrap();

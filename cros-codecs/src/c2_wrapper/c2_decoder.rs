@@ -145,6 +145,8 @@ where
                     Some(DecoderEvent::FormatChanged) => match stream_info {
                         Some(stream_info) => {
                             (*self.framepool_hint_cb.lock().unwrap())(stream_info.clone());
+                            // Retry the frame that caused the format change.
+                            self.awaiting_job_event.write(1).unwrap();
                         }
                         None => {
                             log::debug!("Could not get stream info after format change!");
@@ -184,6 +186,8 @@ where
                         Some(stream_info) => {
                             (*self.framepool_hint_cb.lock().unwrap())(stream_info.clone());
                             self.auxiliary_frame_pool.as_mut().unwrap().resize(&stream_info);
+                            // Retry the frame that caused the format change.
+                            self.awaiting_job_event.write(1).unwrap();
                         }
                         None => {
                             log::debug!("Could not get stream info after format change!");
@@ -340,7 +344,7 @@ where
                 } else {
                     // The drain signals are artificial jobs constructed by the C2Wrapper itself,
                     // so we don't want to return C2Work objects for them.
-                    Ok((0, job.get_drain() != DrainMode::NoDrain))
+                    Ok((0, job.get_drain() == DrainMode::SyntheticDrain))
                 };
                 match decode_result {
                     Ok((num_bytes, processed_visible_frame)) => {
@@ -349,17 +353,6 @@ where
                             job.input = (&job.input[num_bytes..]).to_vec();
                             (*self.work_queue.lock().unwrap()).push_front(job);
                         } else {
-                            if !job.contains_visible_frame {
-                                match &mut self.decoder {
-                                    C2Decoder::ImportingDecoder(decoder) => {
-                                        decoder.queue_empty_frame(job.timestamp)
-                                    }
-                                    C2Decoder::ConvertingDecoder(decoder) => {
-                                        decoder.queue_empty_frame(job.timestamp)
-                                    }
-                                };
-                            }
-
                             if job.get_drain() != DrainMode::NoDrain {
                                 let flush_result = match &mut self.decoder {
                                     C2Decoder::ImportingDecoder(decoder) => decoder.flush(),
@@ -371,15 +364,18 @@ where
                                     (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                                 } else {
                                     self.check_events();
-                                    if job.get_drain() == DrainMode::EOSDrain {
-                                        (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
-                                            timestamp: job.timestamp,
-                                            drain: DrainMode::EOSDrain,
-                                            ..Default::default()
-                                        });
-                                    }
                                 }
-                                break;
+                            }
+
+                            if !job.contains_visible_frame {
+                                match &mut self.decoder {
+                                    C2Decoder::ImportingDecoder(decoder) => {
+                                        decoder.queue_empty_frame(job.timestamp)
+                                    }
+                                    C2Decoder::ConvertingDecoder(decoder) => {
+                                        decoder.queue_empty_frame(job.timestamp)
+                                    }
+                                };
                             }
                         }
                     }
