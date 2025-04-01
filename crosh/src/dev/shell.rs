@@ -5,7 +5,6 @@
 // Provides the command "shell" for crosh which gives developers access to bash if it is available,
 // or dash otherwise.
 
-use std::os::unix::io::AsRawFd;
 use std::os::unix::io::FromRawFd;
 use std::os::unix::io::IntoRawFd;
 use std::path::Path;
@@ -16,7 +15,7 @@ use crate::util::{add_epoll_for_fd, epoll_wait, is_no_new_privs_set, DEFAULT_DBU
 use dbus::arg::OwnedFd;
 use dbus::blocking::Connection;
 use libc::{dup, SIGWINCH};
-use nix::sys::eventfd::{eventfd, EfdFlags};
+use nix::sys::eventfd::{EfdFlags, EventFd};
 use nix::unistd::write;
 
 use libchromeos::pipe;
@@ -42,14 +41,13 @@ fn execute_shell(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Err
     }
 
     if tokens.contains(&ISOLATED_SHELL.to_owned()) {
-        let event_fd = eventfd(0, EfdFlags::empty()).unwrap();
-        // SAFETY: safe because event_fd is a valid FD and we own it at this point.
-        let resize_event = unsafe { OwnedFd::from_raw_fd(event_fd) };
+        let event_fd = EventFd::from_value_and_flags(0, EfdFlags::empty()).unwrap();
+        let resize_event = OwnedFd::from(event_fd);
         let resize_event_dup = resize_event.try_clone().unwrap();
         // Safe because the signal handler only calls write(), which is async-signal-safe.
         unsafe {
             let _ = signal_hook_registry::register(SIGWINCH, move || {
-                let _ = write(resize_event.as_raw_fd(), &RESIZE_MSG_VAL.to_le_bytes());
+                let _ = write(&resize_event, &RESIZE_MSG_VAL.to_le_bytes());
             });
         };
         // TODO(b/330734519): restore previous SIGWINCH handler on shell exit.
