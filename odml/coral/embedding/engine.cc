@@ -130,6 +130,37 @@ std::optional<std::string> GetTranslationSource(
   return std::nullopt;
 }
 
+// nullopt for doesn't need translation. Since
+// IsLanguageSupportedBySafetyModel(kEnglish) is true, this function could never
+// return kEnglish.
+std::optional<std::string> GetSafetyTranslationSource(
+    const LanguageDetectionResult& language_detection_result) {
+  constexpr size_t kTopLanguageResultEntriesToCheck = 3;
+  size_t entries_to_check = std::min(language_detection_result.size(),
+                                     kTopLanguageResultEntriesToCheck);
+  // Doesn't need translation if it's a supported language by safety model.
+  for (int i = 0; i < entries_to_check; i++) {
+    const on_device_model::LanguageDetector::TextLanguage& language =
+        language_detection_result[i];
+    if (IsLanguageSupportedBySafetyModel(language.locale)) {
+      return std::nullopt;
+    }
+  }
+
+  // Otherwise, return the first supported language.
+  for (int i = 0; i < entries_to_check; i++) {
+    const on_device_model::LanguageDetector::TextLanguage& language =
+        language_detection_result[i];
+    if (IsLanguageSupported(language.locale)) {
+      return language.locale;
+    }
+  }
+
+  // Shouldn't really reach here, but if does, returning nullopt and not
+  // translating as fallback.
+  return std::nullopt;
+}
+
 }  // namespace
 
 namespace internal {
@@ -431,15 +462,37 @@ void EmbeddingEngine::CheckEntrySafety(ProcessingParams params,
   if (IsFullGroupRequest(params.request)) {
     metrics_->SendSafetyVerdictCacheHit(false);
   }
-  // TODO(b/379964585) Figure out what is the best format for safety check.
   std::string entity_string =
       internal::EntityToTitle(*params.request->entities[index]);
+  std::optional<std::string> source_locale =
+      GetSafetyTranslationSource(*entry.languages);
+  if (source_locale.has_value()) {
+    // GetSafetyTranslationSource should never return kEnglish.
+    i18n::LangPair lang_pair{*source_locale, kEnglish};
+    translator_->Translate(lang_pair, entity_string,
+                           base::BindOnce(&EmbeddingEngine::ClassifyTextSafety,
+                                          weak_ptr_factory_.GetWeakPtr(),
+                                          std::move(params), std::move(entry)));
+    return;
+  }
 
+  ClassifyTextSafety(std::move(params), std::move(entry),
+                     std::move(entity_string));
+}
+
+void EmbeddingEngine::ClassifyTextSafety(ProcessingParams params,
+                                         EmbeddingEntry entry,
+                                         std::optional<std::string> text) {
+  if (!text.has_value()) {
+    params.response.embeddings.push_back(EmbeddingWithMetadata());
+    ProcessEachPrompt(std::move(params));
+    return;
+  }
   auto on_classify_entity_safety_done = base::BindOnce(
       &EmbeddingEngine::OnClassifyEntitySafetyDone,
       weak_ptr_factory_.GetWeakPtr(), std::move(params), std::move(entry));
   safety_service_manager_->ClassifyTextSafety(
-      cros_safety::mojom::SafetyRuleset::kCoral, entity_string,
+      cros_safety::mojom::SafetyRuleset::kCoral, *text,
       std::move(on_classify_entity_safety_done));
 }
 

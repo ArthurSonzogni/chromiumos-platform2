@@ -120,6 +120,9 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
           text_languages);
   void CheckLanguageResult(ProcessingParams params, EmbeddingEntry entry);
   void CheckEntrySafety(ProcessingParams params, EmbeddingEntry entry);
+  void ClassifyTextSafety(ProcessingParams params,
+                          EmbeddingEntry entry,
+                          std::optional<std::string> text);
   void OnClassifyEntitySafetyDone(
       ProcessingParams params,
       EmbeddingEntry entry,

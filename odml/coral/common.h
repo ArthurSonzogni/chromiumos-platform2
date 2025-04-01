@@ -45,6 +45,9 @@ struct EmbeddingEntry {
 // Returns if the locale is a supported language by the coral service.
 bool IsLanguageSupported(const std::string& locale);
 
+// Returns if the locale is a supported language by the safety model.
+bool IsLanguageSupportedBySafetyModel(const std::string& locale);
+
 }  // namespace coral
 
 #endif  // ODML_CORAL_COMMON_H_

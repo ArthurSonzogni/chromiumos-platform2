@@ -19,4 +19,11 @@ bool IsLanguageSupported(const std::string& locale) {
   return base::Contains(kSupportedLanguages, locale);
 }
 
+bool IsLanguageSupportedBySafetyModel(const std::string& locale) {
+  static constexpr auto kSupportedLanguagesBySafetyModel =
+      base::MakeFixedFlatSet<std::string_view>(
+          {"en", "ja", "de", "fr", "da", "es", "it", "nl", "sv"});
+  return base::Contains(kSupportedLanguagesBySafetyModel, locale);
+}
+
 }  // namespace coral

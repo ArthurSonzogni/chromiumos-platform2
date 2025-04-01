@@ -316,8 +316,22 @@ TEST_F(EmbeddingEngineTest, TextLanguage) {
         std::move(callback).Run(LanguageDetectionResult{
             TextLanguage{.locale = "ja", .confidence = 1.0}});
       });
+  // Simulate that one of the entries is a language not supported by the
+  // language model. This should trigger a DLC download and a translation.
+  EXPECT_CALL(language_detector_, Classify("ABC app 2", _))
+      .WillOnce([](auto&&, auto&& callback) {
+        std::move(callback).Run(LanguageDetectionResult{
+            TextLanguage{.locale = "pt", .confidence = 1.0}});
+      });
   EXPECT_CALL(translator_, DownloadDlc(i18n::LangPair{"ja", "en"}, _, _))
       .Times(1);
+  EXPECT_CALL(translator_, DownloadDlc(i18n::LangPair{"pt", "en"}, _, _))
+      .Times(1);
+  EXPECT_CALL(translator_,
+              Translate(i18n::LangPair{"pt", "en"}, "ABC app 2", _))
+      .WillOnce([](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run("ABC app 2 translated");
+      });
 
   TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
       embedding_future;
@@ -331,6 +345,8 @@ TEST_F(EmbeddingEngineTest, TextLanguage) {
   fake_response.embeddings[0].language_result.clear();
   fake_response.embeddings[1].language_result =
       LanguageDetectionResult{TextLanguage{.locale = "ja", .confidence = 1.0}};
+  fake_response.embeddings[2].language_result =
+      LanguageDetectionResult{TextLanguage{.locale = "pt", .confidence = 1.0}};
   EXPECT_EQ(response, fake_response);
 }
 
