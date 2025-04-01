@@ -66,3 +66,4 @@ fstatfs: 1
 uname: 1
 clock_nanosleep: 1
 process_vm_readv: 1
+tgkill: 1

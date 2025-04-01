@@ -57,6 +57,7 @@ lseek: 1
 sysinfo: 1
 clock_nanosleep: 1
 flock: 1
+tgkill: 1
 
 # Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd

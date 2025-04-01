@@ -74,3 +74,4 @@ clock_nanosleep: 1
 clock_nanosleep_time64: 1
 rt_sigaction: 1
 process_vm_readv: 1
+tgkill: 1
