@@ -134,7 +134,10 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
             | DecodedFormat::I212
             | DecodedFormat::I410
             | DecodedFormat::I412 => 3,
-            DecodedFormat::NV12 | DecodedFormat::MM21 => 2,
+            DecodedFormat::NV12
+            | DecodedFormat::MM21
+            | DecodedFormat::MT2T
+            | DecodedFormat::P010 => 2,
         }
     }
 
@@ -152,7 +155,9 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                     | DecodedFormat::I012
                     | DecodedFormat::I210
                     | DecodedFormat::I212
-                    | DecodedFormat::MM21 => {
+                    | DecodedFormat::MM21
+                    | DecodedFormat::MT2T
+                    | DecodedFormat::P010 => {
                         if plane_idx == 0 {
                             1
                         } else {
@@ -177,7 +182,9 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                     | DecodedFormat::NV12
                     | DecodedFormat::I010
                     | DecodedFormat::I012
-                    | DecodedFormat::MM21 => {
+                    | DecodedFormat::MM21
+                    | DecodedFormat::MT2T
+                    | DecodedFormat::P010 => {
                         if plane_idx == 0 {
                             1
                         } else {
@@ -210,6 +217,20 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                     | DecodedFormat::I212
                     | DecodedFormat::I410
                     | DecodedFormat::I412 => 2.0,
+                    DecodedFormat::P010 => {
+                        if plane_idx == 0 {
+                            2.0
+                        } else {
+                            4.0
+                        }
+                    }
+                    DecodedFormat::MT2T => {
+                        if plane_idx == 0 {
+                            1.25
+                        } else {
+                            2.5
+                        }
+                    }
                     DecodedFormat::NV12 | DecodedFormat::MM21 => {
                         if plane_idx == 0 {
                             1.0

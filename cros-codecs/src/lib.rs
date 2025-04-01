@@ -233,6 +233,11 @@ pub enum DecodedFormat {
     /// One Y and one interleaved UV plane, 4:2:0 sampling, 8 bits per sample.
     /// In a tiled format.
     MM21,
+    /// One Y and one interleaved UV plane, 4:2:0 sampling, 10 bits per sample.
+    /// In a tiled format.
+    MT2T,
+    // Y, U, and V planes, 4:2:0 sampling, 10 bits per sample.
+    P010,
 }
 
 impl FromStr for DecodedFormat {
@@ -251,8 +256,11 @@ impl FromStr for DecodedFormat {
             "i410" | "I410" => Ok(DecodedFormat::I410),
             "i412" | "I412" => Ok(DecodedFormat::I412),
             "mm21" | "MM21" => Ok(DecodedFormat::MM21),
+            "mt2t" | "MT2T" => Ok(DecodedFormat::MT2T),
+            "p010" | "P010" => Ok(DecodedFormat::P010),
             _ => Err("unrecognized output format. \
-                Valid values: i420, nv12, i422, i444, i010, i012, i210, i212, i410, i412, mm21"),
+                Valid values: i420, nv12, i422, i444, i010, i012, i210, i212, i410,
+                i412, mm21, mt2t, p010"),
         }
     }
 }
@@ -263,6 +271,8 @@ impl From<Fourcc> for DecodedFormat {
             "I420" => DecodedFormat::I420,
             "NV12" | "NM12" => DecodedFormat::NV12,
             "MM21" => DecodedFormat::MM21,
+            "MT2T" => DecodedFormat::MT2T,
+            "P010" => DecodedFormat::P010,
             _ => todo!("Fourcc {} not yet supported", fourcc),
         }
     }
@@ -274,6 +284,8 @@ impl From<DecodedFormat> for Fourcc {
             DecodedFormat::I420 => Fourcc::from(b"I420"),
             DecodedFormat::NV12 => Fourcc::from(b"NV12"),
             DecodedFormat::MM21 => Fourcc::from(b"MM21"),
+            DecodedFormat::MT2T => Fourcc::from(b"MT2T"),
+            DecodedFormat::P010 => Fourcc::from(b"P010"),
             _ => todo!(),
         }
     }
@@ -425,7 +437,9 @@ pub fn decoded_frame_size(format: DecodedFormat, width: usize, height: usize) ->
             u_size + uv_size
         }
         DecodedFormat::I410 | DecodedFormat::I412 => (width * height * 2) * 3,
-        DecodedFormat::MM21 => panic!("Unable to convert to MM21"),
+        DecodedFormat::MM21 | DecodedFormat::MT2T | DecodedFormat::P010 => {
+            panic!("Unable to convert to MM21/MT2T/P010")
+        }
     }
 }
 
