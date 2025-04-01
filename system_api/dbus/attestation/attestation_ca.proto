@@ -79,6 +79,13 @@ enum CertificateProfile {
 
   // A certificate for an Android UDS public key.
   UDS_CERTIFICATE = 15;
+
+  // A certificate establishing Android product identity values. It has the
+  // following subjectName fields:
+  //   CN=<ADID>
+  //   OU=<BoardID.Type as brand code>
+  //   O=Android Product Identity
+  ANDROID_PRODUCT_IDENTITY_CERTIFICATE = 16;
 }
 
 enum TpmVersion {
@@ -277,9 +284,13 @@ message AttestationCertificateRequest {
   }
   // ADID read from the VPD. Used as the host identifier incorporated in the
   // certificates.
-  // Used for `ENTERPRISE_ENROLLMENT_CERTIFICATE` and
-  // `ENTERPRISE_VTPM_EK_CERTIFICATE` profiles only.
+  // Used for `ENTERPRISE_ENROLLMENT_CERTIFICATE`,
+  // `ENTERPRISE_VTPM_EK_CERTIFICATE` and `ANDROID_PRODUCT_IDENTITY_CERTIFICATE`
+  // profiles only.
   optional bytes attested_device_id = 17;
+  // SN read from the RO VPD.
+  // Used for `ANDROID_PRODUCT_IDENTITY_CERTIFICATE` profile only.
+  optional string serial_number = 18;
 }
 
 // The response from the attestation server for the certificate request.
