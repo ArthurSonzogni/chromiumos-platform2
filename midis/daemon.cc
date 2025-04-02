@@ -67,6 +67,11 @@ void Daemon::BootstrapMojoConnection(
   LOG(INFO) << "Successfully received call from D-Bus client.";
   if (client_tracker_->IsProxyConnected()) {
     LOG(WARNING) << "Midis can only instantiate one Mojo Proxy instance.";
+    std::move(response_sender)
+        .Run(
+            std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+                method_call, DBUS_ERROR_LIMITS_EXCEEDED,
+                "Midis can only instantiate one Mojo Proxy instance")));
     return;
   }
 
@@ -75,16 +80,31 @@ void Daemon::BootstrapMojoConnection(
 
   if (!reader.PopFileDescriptor(&file_handle)) {
     LOG(ERROR) << "Couldn't extract Mojo IPC handle.";
+    std::move(response_sender)
+        .Run(
+            std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+                method_call, DBUS_ERROR_INVALID_ARGS,
+                "Couldn't extract Mojo IPC handle")));
     return;
   }
 
   if (!file_handle.is_valid()) {
     LOG(ERROR) << "Couldn't get file handle sent over D-Bus.";
+    std::move(response_sender)
+        .Run(
+            std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+                method_call, DBUS_ERROR_INVALID_ARGS,
+                "Couldn't get file handle sent over D-Bus")));
     return;
   }
 
   if (!base::SetCloseOnExec(file_handle.get())) {
     PLOG(ERROR) << "Failed setting FD_CLOEXEC on fd.";
+    std::move(response_sender)
+        .Run(
+            std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+                method_call, DBUS_ERROR_INVALID_ARGS,
+                "Failed setting FD_CLOEXEC on fd")));
     return;
   }
 
