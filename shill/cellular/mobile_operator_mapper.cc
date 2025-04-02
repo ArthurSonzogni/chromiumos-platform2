@@ -1053,7 +1053,8 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
     }
     apn.authentication = GetApnAuthentication(apn_data);
     apn.apn_types = GetApnTypes(apn_data);
-    const auto default_ip_type = kApnIpTypeV4;
+    // Use IPv4v6 by default, unless modb specifies otherwise.
+    const auto default_ip_type = kApnIpTypeV4V6;
     if (apn_data.has_ip_type()) {
       apn.ip_type =
           GetIpType(apn_data, apn_data.ip_type()).value_or(default_ip_type);
@@ -1061,7 +1062,8 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
       apn.ip_type = default_ip_type;
     }
     apn.is_required_by_carrier_spec = apn_data.is_required_by_carrier_spec();
-    const auto default_roaming_ip_type = "";
+    // Use IPv4 for roaming by default, unless modb specifies otherwise.
+    const auto default_roaming_ip_type = kApnIpTypeV4;
     apn.roaming_ip_type = apn_data.has_roaming_ip_type()
                               ? GetIpType(apn_data, apn_data.roaming_ip_type())
                                     .value_or(default_roaming_ip_type)

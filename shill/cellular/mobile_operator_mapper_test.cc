@@ -1233,7 +1233,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     apn.apn = "test@test.com";
     apn.username = "testuser";
     apn.password = "is_public_boohoohoo";
-    apn.ip_type = "ipv4";
+    apn.ip_type = "ipv4v6";
     apn.roaming_ip_type = "ipv4v6";
     apn.operator_name_list = {{"name200003", "hi"}};
     apn.apn_types = apn_types_;
@@ -1260,7 +1260,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     apn.apn = "test2@test.com";
     apn.username = "testuser2";
     apn.password = "is_public_boohoohoo_too";
-    apn.ip_type = "ipv4";
+    apn.ip_type = "ipv4v6";
     apn.roaming_ip_type = "ipv4";
     apn.apn_types = apn_types_;
     apn.is_required_by_carrier_spec = true;

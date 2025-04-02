@@ -39,8 +39,9 @@ namespace shill {
 class ApnBuilder {
  public:
   ApnBuilder() {
-    // Set ip_type to ipv4 by default to match the behavior of the proto
-    apn_.ip_type = kApnIpTypeV4;
+    // Set ip_type to ipv4v6 by default to match the behavior of the proto
+    apn_.ip_type = kApnIpTypeV4V6;
+    apn_.roaming_ip_type = kApnIpTypeV4;
   }
   explicit ApnBuilder(std::string apn_name) : ApnBuilder() { Name(apn_name); }
 
