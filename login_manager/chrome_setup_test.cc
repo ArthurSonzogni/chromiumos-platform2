@@ -509,4 +509,26 @@ TEST_F(ChromeSetupTest, TestCoralEnabled) {
   EXPECT_THAT(result, testing::Contains("CoralFeatureMultiLanguage"));
 }
 
+TEST_F(ChromeSetupTest, TestHeliumArcvmKioskEnabled) {
+  base::ScopedTempDir temp_dir;
+  InitWithUseFlag("helium_arcvm_kiosk", &temp_dir, &builder_);
+  login_manager::AddDeviceSpecificFlags(&builder_);
+
+  auto argv = builder_.arguments();
+  std::vector<std::string> result =
+      base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
+  EXPECT_THAT(result, testing::Contains("HeliumArcvmKiosk"));
+}
+
+TEST_F(ChromeSetupTest, TestHeliumArcvmKioskDisabled) {
+  login_manager::AddDeviceSpecificFlags(&builder_);
+
+  auto argv = builder_.arguments();
+  std::vector<std::string> result =
+      base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
+  EXPECT_THAT(result, testing::Not(testing::Contains("HeliumArcvmKiosk")));
+}
+
 }  // namespace login_manager

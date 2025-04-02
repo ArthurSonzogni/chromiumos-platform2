@@ -1274,6 +1274,11 @@ void AddDeviceSpecificFlags(ChromiumCommandBuilder* builder) {
     // etc.
     builder->AddFeatureDisableOverride("AllowCrossDeviceFeatureSuite");
   }
+  // Helium Arcvm Kiosk specific customization
+  // (go/helium-kiosk-dd)
+  if (builder->UseFlagIsSet("helium_arcvm_kiosk")) {
+    builder->AddFeatureEnableOverride("HeliumArcvmKiosk");
+  }
 }
 
 void AddMantisFlags(ChromiumCommandBuilder* builder) {
