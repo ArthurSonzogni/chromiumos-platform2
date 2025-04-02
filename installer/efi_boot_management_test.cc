@@ -2,15 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cros_config/fake_cros_config.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "installer/efi_boot_management.cc"
+
 #include <list>
 #include <map>
 #include <optional>
 #include <vector>
 
-#include "installer/efi_boot_management.cc"
+#include <cros_config/fake_cros_config.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include "installer/efivar.cc"
 #include "installer/mock_metrics.h"
 
@@ -206,11 +208,10 @@ class MockEnvironment : public base::Environment {
  public:
   // Some of these mock methods are unused right now, but we have to implement
   // the pure virtual methods of base::Environment.
-  MOCK_METHOD(bool,
+  MOCK_METHOD(std::optional<std::string>,
               GetVar,
-              (std::string_view variable_name, std::string* result),
+              (std::string_view variable_name),
               (override));
-  MOCK_METHOD(bool, HasVar, (std::string_view variable_name), (override));
   MOCK_METHOD(bool,
               SetVar,
               (std::string_view variable_name, const std::string& new_value),
@@ -825,10 +826,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_LoadFailMetrics) {
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_InstallFailure) {
-  const bool is_install = true;
-
   StrictMock<MockEnvironment> env;
-  EXPECT_CALL(env, HasVar(StrEq(kEnvIsInstall))).WillOnce(Return(is_install));
+  EXPECT_CALL(env, GetVar(StrEq(kEnvIsInstall))).WillOnce(Return("1"));
 
   // Simulate a failed load.
   efivar_->variable_names_.push_back("Boot0BAD");
@@ -853,10 +852,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_InstallFailure) {
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_UpdateFailure) {
-  const bool is_install = false;
-
   StrictMock<MockEnvironment> env;
-  EXPECT_CALL(env, HasVar(StrEq(kEnvIsInstall))).WillOnce(Return(is_install));
+  EXPECT_CALL(env, GetVar(StrEq(kEnvIsInstall))).WillOnce(Return(std::nullopt));
 
   // Simulate a failed load.
   efivar_->variable_names_.push_back("Boot0BAD");
