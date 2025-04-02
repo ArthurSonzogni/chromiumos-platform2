@@ -31,6 +31,7 @@
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/kernel_util.h"
 #include "crash-reporter/paths.h"
+#include "crash-reporter/util.h"
 
 using base::FilePath;
 using base::StringPrintf;
@@ -717,6 +718,29 @@ CrashCollectionStatus KernelCollector::HandleCrash(
     const std::string& bios_dump,
     const std::string& corrupted_dump,
     const std::string& signature) {
+  if (force_use_saved_lsb_for_testing_ != std::nullopt) {
+    SetUseSavedLsb(*force_use_saved_lsb_for_testing_);
+  } else if (util::HasSavedOsVersionEntryInKernelLog(kernel_dump) ||
+             util::IsKernelLogOverflown(kernel_dump)) {
+    // * Unclean shutdown collector will log "crash-reporter: Saved OS version"
+    //   to kernel log when the OS version is saved to file. If the kernel
+    //   ramoops contains the string, it means the crash happens after the OS
+    //   version file is saved. So using the saved version is desired.
+    //
+    // * If "crash-reporter: Saved OS version" is not found in kernel dump, and
+    //   the kernel dump doesn't have early logs, that means the crash happened
+    //   late after boot in previous boot, not early boot after restart. So
+    //   saved version should be used.
+    SetUseSavedLsb(true);
+  } else {
+    // If "crash-reporter: Saved OS version" is missing from the kernel dump,
+    // but the dump contains logs from early boot, it indicates that the crash
+    // occurred between boot up and the crash reporter's boot collection.
+    // This means the crash happened before the saved OS version could be
+    // recorded, rather than during the previous boot cycle.
+    SetUseSavedLsb(false);
+  }
+
   FilePath root_crash_directory;
 
   LOG(INFO) << "Received prior crash notification from kernel (signature "
@@ -793,9 +817,7 @@ CrashCollectionStatus KernelCollector::HandleCrash(
 
 // CollectEfiCrashes looks at /sys/fs/pstore and extracts crashes written via
 // efi-pstore.
-std::vector<CrashCollectionStatus> KernelCollector::CollectEfiCrashes(
-    bool use_saved_lsb) {
-  SetUseSavedLsb(use_saved_lsb);
+std::vector<CrashCollectionStatus> KernelCollector::CollectEfiCrashes() {
   // List of efi crashes.
   const std::vector<KernelCollector::EfiCrash> efi_crashes = FindEfiCrashes();
 
@@ -832,9 +854,7 @@ std::vector<CrashCollectionStatus> KernelCollector::CollectEfiCrashes(
   return result;
 }
 
-std::vector<CrashCollectionStatus> KernelCollector::CollectRamoopsCrashes(
-    bool use_saved_lsb) {
-  SetUseSavedLsb(use_saved_lsb);
+std::vector<CrashCollectionStatus> KernelCollector::CollectRamoopsCrashes() {
   const std::vector<KernelCollector::RamoopsCrash> ramoops_crashes =
       FindRamoopsCrashes();
 

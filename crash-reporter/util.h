@@ -233,6 +233,16 @@ bool IsIgnoredRustPanicSignature(const std::string& rust_panic_sig);
 // Returns true if the OOBE pre-consent crash reporting feature is enabled.
 bool IsOOBEPreConsentCrashesEnabled();
 
+// Best effort to log to kernel log while OS version is saved to file.
+void LogKernelVersionToKmsg();
+
+// Returns true if the record saved by `LogToKernelLogOnSaveVersion` is in the
+// kernel dump.
+bool HasSavedOsVersionEntryInKernelLog(std::string_view log);
+
+// Returns if kernel log has been overflown by checking the early timestamp.
+bool IsKernelLogOverflown(std::string_view log);
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_UTIL_H_

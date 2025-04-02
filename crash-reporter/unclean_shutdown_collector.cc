@@ -4,6 +4,8 @@
 
 #include "crash-reporter/unclean_shutdown_collector.h"
 
+#include <fcntl.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -19,6 +21,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/util.h"
 
 using base::FilePath;
 using brillo::SafeFD;
@@ -187,6 +190,7 @@ bool UncleanShutdownCollector::SaveVersionData() {
 
   // TODO(bmgordon): When crash_sender reads from os-release.d, copy it also.
 
+  util::LogKernelVersionToKmsg();
   return true;
 }
 

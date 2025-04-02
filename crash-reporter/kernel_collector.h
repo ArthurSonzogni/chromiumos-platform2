@@ -66,11 +66,11 @@ class KernelCollector : public CrashCollector {
 
   // Collects efi crashes. Returns 1 status per EFI crash found *or*
   // a vector containing the single element kNoCrashFound.
-  std::vector<CrashCollectionStatus> CollectEfiCrashes(bool use_saved_lsb);
+  std::vector<CrashCollectionStatus> CollectEfiCrashes();
 
   // Collects ramoops crashes. Returns 1 status per ramoops crash found *or*
   // a vector containing the single element kNoCrashFound.
-  std::vector<CrashCollectionStatus> CollectRamoopsCrashes(bool use_saved_lsb);
+  std::vector<CrashCollectionStatus> CollectRamoopsCrashes();
 
   // Given the returned results of CollectEfiCrashes and CollectRamoopsCrashes,
   // was there actually a kernel crash available to collect?
@@ -252,6 +252,8 @@ class KernelCollector : public CrashCollector {
     uint64_t timestamp_;
     uint32_t crash_count_;
   };
+
+  std::optional<bool> force_use_saved_lsb_for_testing_ = std::nullopt;
 
  private:
   friend class KernelCollectorTest;

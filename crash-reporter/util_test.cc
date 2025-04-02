@@ -981,4 +981,23 @@ TEST_F(CrashCommonUtilTest, IsIgnoredRustPanicSignature_notignored) {
       "clip_end_time + CLIP_COLLECTION_SPAN_MS', src/main.rs:1199:21"));
 }
 
+TEST(UtilTest, HasSavedOsVersionEntryInKernelLogShouldReturnTrue) {
+  EXPECT_TRUE(HasSavedOsVersionEntryInKernelLog(
+      "[   23.045472] SAMPLE LOG \n[   31.999450] crash-reporter: Saved OS "
+      "version\n[   32.038183] SAMPLE_LOG"));
+}
+
+TEST(UtilTest, IsKernelLogOverflownShouldReturnTrue) {
+  EXPECT_TRUE(IsKernelLogOverflown(
+      "[   23.045472] SAMPLE LOG \n[   31.999450] crash-reporter: Saved OS "
+      "version\n[   32.038183] SAMPLE_LOG"));
+}
+
+TEST(UtilTest, IsKernelLogOverflownShouldReturnFalse) {
+  EXPECT_FALSE(
+      IsKernelLogOverflown("[    0.000000] microcode:\n[   23.045472] SAMPLE "
+                           "LOG \n[   31.999450] crash-reporter: Saved OS "
+                           "version\n[   32.038183] SAMPLE_LOG"));
+}
+
 }  // namespace util

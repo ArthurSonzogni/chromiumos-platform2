@@ -111,8 +111,9 @@ class KernelCollectorForFuzzing : public KernelCollector {
     OverrideBiosLogPath(bios_log);
     OverridePreservedDumpPath(kcrash_dir);
 
-    CollectEfiCrashes(/*use_saved_lsb=*/false);
-    CollectRamoopsCrashes(/*use_saved_lsb=*/false);
+    force_use_saved_lsb_for_testing_ = false;
+    CollectEfiCrashes();
+    CollectRamoopsCrashes();
 
     return 0;
   }

@@ -166,9 +166,9 @@ int BootCollect(
     kernel_collector->Enable();
     if (kernel_collector->is_enabled()) {
       std::vector<CrashCollectionStatus> efi_statuses =
-          kernel_collector->CollectEfiCrashes(use_saved_lsb);
+          kernel_collector->CollectEfiCrashes();
       std::vector<CrashCollectionStatus> ramoops_statuses =
-          kernel_collector->CollectRamoopsCrashes(use_saved_lsb);
+          kernel_collector->CollectRamoopsCrashes();
       was_kernel_crash =
           KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses);
     }
@@ -252,6 +252,8 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
   if (!log_to_stderr) {
     minijail_bind(j, "/dev/log", "/dev/log", 0);
   }
+  // Allow access to kmsg for unclean shutdown collector to write to kernel log.
+  minijail_bind(j, "/dev/kmsg", "/dev/kmsg", 0);
   minijail_no_new_privs(j);
 
   // We need access to /sys/class/watchdog to determine if the device rebooted

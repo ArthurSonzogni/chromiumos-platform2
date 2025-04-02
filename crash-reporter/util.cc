@@ -4,6 +4,7 @@
 
 #include "crash-reporter/util.h"
 
+#include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -69,6 +70,9 @@ const char kEnableFeaturesFlag[] = "enable-features";
 // Name of the session keyring.
 const char kDircrypt[] = "dircrypt";
 #endif  // USE_DIRENCRYPTION
+
+constexpr char kDevKmsg[] = "/dev/kmsg";
+constexpr char kKernelLogOnSaveVersion[] = "crash-reporter: Saved OS version";
 
 }  // namespace
 
@@ -870,6 +874,30 @@ bool IsOOBEPreConsentCrashesEnabled() {
     }
   }
   return is_enabled;
+}
+
+void LogKernelVersionToKmsg() {
+  int kmsg_fd = open(kDevKmsg, O_WRONLY | O_CLOEXEC);
+  if (kmsg_fd == -1) {
+    LOG(WARNING) << "Failed to open /dev/kmsg";
+    return;
+  }
+
+  if (ssize_t res = write(kmsg_fd, kKernelLogOnSaveVersion,
+                          sizeof(kKernelLogOnSaveVersion) - 1);
+      res == -1) {
+    LOG(WARNING) << "Failed to write to kmsg";
+  }
+  close(kmsg_fd);
+}
+
+bool HasSavedOsVersionEntryInKernelLog(std::string_view log) {
+  return log.find(kKernelLogOnSaveVersion) != std::string::npos;
+}
+
+bool IsKernelLogOverflown(std::string_view log) {
+  static const RE2 pattern(R"(\[\s*0+\.0+\s*\])");
+  return !RE2::PartialMatch(log, pattern);
 }
 
 }  // namespace util
