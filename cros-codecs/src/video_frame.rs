@@ -196,25 +196,25 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
         ret
     }
 
-    fn get_bytes_per_element(&self) -> Vec<usize> {
-        let mut ret: Vec<usize> = vec![];
+    fn get_bytes_per_element(&self) -> Vec<f32> {
+        let mut ret: Vec<f32> = vec![];
         for plane_idx in 0..self.num_planes() {
             if self.is_compressed() {
-                ret.push(1);
+                ret.push(1.0);
             } else {
                 ret.push(match self.decoded_format().unwrap() {
-                    DecodedFormat::I420 | DecodedFormat::I422 | DecodedFormat::I444 => 1,
+                    DecodedFormat::I420 | DecodedFormat::I422 | DecodedFormat::I444 => 1.0,
                     DecodedFormat::I010
                     | DecodedFormat::I012
                     | DecodedFormat::I210
                     | DecodedFormat::I212
                     | DecodedFormat::I410
-                    | DecodedFormat::I412 => 2,
+                    | DecodedFormat::I412 => 2.0,
                     DecodedFormat::NV12 | DecodedFormat::MM21 => {
                         if plane_idx == 0 {
-                            1
+                            1.0
                         } else {
-                            2
+                            2.0
                         }
                     }
                 })
@@ -241,9 +241,10 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
 
         for plane in 0..self.num_planes() {
             let minimum_pitch =
-                align_up(self.resolution().width as usize, horizontal_subsampling[plane])
-                    * bytes_per_element[plane]
-                    / horizontal_subsampling[plane];
+                ((align_up(self.resolution().width as usize, horizontal_subsampling[plane]) as f32)
+                    * (bytes_per_element[plane])
+                    / (horizontal_subsampling[plane] as f32)) as usize;
+
             if plane_pitch[plane] < minimum_pitch {
                 return Err(
                     "Pitch of plane {plane} is insufficient to accomodate format!".to_string()

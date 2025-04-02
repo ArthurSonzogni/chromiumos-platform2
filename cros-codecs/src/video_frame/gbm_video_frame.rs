@@ -569,10 +569,10 @@ impl GbmDevice {
                 let bo = unsafe {
                     gbm_bo_create(
                         self.device,
-                        (align_up(
+                        ((align_up(
                             coded_resolution.width as usize,
                             horizontal_subsampling[plane_idx],
-                        ) / horizontal_subsampling[plane_idx]
+                        ) / horizontal_subsampling[plane_idx]) as f32
                             * bytes_per_element[plane_idx]) as u32,
                         (align_up(
                             coded_resolution.height as usize,
@@ -661,8 +661,8 @@ impl GbmDevice {
                 let bo = import_bo_from_dmabuf_fd(
                     self.device,
                     native_handle[plane_idx].0.as_fd(),
-                    (align_up(resolution.width as usize, horizontal_subsampling[plane_idx])
-                        / horizontal_subsampling[plane_idx]
+                    ((align_up(resolution.width as usize, horizontal_subsampling[plane_idx])
+                        / horizontal_subsampling[plane_idx]) as f32
                         * bytes_per_element[plane_idx]) as u32,
                     (align_up(resolution.height as usize, vertical_subsampling[plane_idx])
                         / vertical_subsampling[plane_idx]) as u32,

@@ -115,11 +115,11 @@ impl VideoFrame for V4l2MmapVideoFrame {
                 let bpp = self.get_bytes_per_element();
                 for i in 0..self.num_planes() {
                     plane_size.push(
-                        align_up(self.resolution.width as usize, horizontal_subsampling[i])
+                        ((align_up(self.resolution.width as usize, horizontal_subsampling[i])
                             / horizontal_subsampling[i]
                             * align_up(self.resolution.height as usize, vertical_subsampling[i])
-                            / vertical_subsampling[i]
-                            * bpp[i],
+                            / vertical_subsampling[i]) as f32
+                            * bpp[i]) as usize,
                     );
                 }
                 plane_size
@@ -131,7 +131,7 @@ impl VideoFrame for V4l2MmapVideoFrame {
         match self.queue_format.as_ref() {
             Some(format) => format.plane_fmt.iter().map(|x| x.bytesperline as usize).collect(),
             None => zip(self.get_bytes_per_element(), self.get_horizontal_subsampling())
-                .map(|x| align_up(self.resolution.width as usize, x.1) / x.1 * x.0)
+                .map(|x| align_up(self.resolution.width as usize, x.1) / x.1 * (x.0 as usize))
                 .collect(),
         }
     }
