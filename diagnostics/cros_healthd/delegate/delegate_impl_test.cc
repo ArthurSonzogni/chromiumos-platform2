@@ -75,27 +75,27 @@ constexpr uint8_t kBatteryI2cReadLen = 2;
 
 class FakeFpInfoCommand : public ec::FpInfoCommand {
  public:
-  // ec::EcCommand overrides.
+  FakeFpInfoCommand() : ec::FpInfoCommand(/*version=*/2) {}
+
   bool Run(int fd) override { return fake_run_result_; }
-  struct ec_response_fp_info* Resp() override { return &fake_response_; }
+  std::optional<SensorId> sensor_id() override { return fake_sensor_id_; }
+  std::vector<SensorImage> sensor_image() override {
+    return std::vector<SensorImage>{fake_sensor_image_};
+  }
+  std::optional<TemplateInfo> template_info() override {
+    return fake_template_info_;
+  }
 
-  void SetRunResult(bool result) { fake_run_result_ = result; }
-
+  void SetRunResult(bool run_result) { fake_run_result_ = run_result; }
   void SetSensorImageSize(uint16_t width, uint16_t height) {
-    fake_response_.width = width;
-    fake_response_.height = height;
+    fake_sensor_image_.width = width;
+    fake_sensor_image_.height = height;
   }
 
  private:
-  struct ec_response_fp_info fake_response_ = {
-      .frame_size = 0,
-      .pixel_format = 0,
-      .width = 0,
-      .height = 0,
-      .bpp = 0,
-  };
-  // If `fake_run_result_` is declared before `fake_response_`, there will be
-  // "runtime error: reference binding to misaligned address" errors in ubsan.
+  SensorId fake_sensor_id_ = SensorId(1, 2, 3, 4);
+  SensorImage fake_sensor_image_ = SensorImage(64, 80, 5120, 0x59455247, 16);
+  TemplateInfo fake_template_info_ = TemplateInfo(1, 1024, 4, 3, 1 << 3);
   bool fake_run_result_ = false;
 };
 
