@@ -11,7 +11,7 @@
 bool operator==(const struct fp_image_frame_params& lhs,
                 const struct fp_image_frame_params& rhs) {
   return std::tie(lhs.bpp, lhs.frame_size, lhs.pixel_format, lhs.width,
-                  lhs.height, lhs.reserved) ==
+                  lhs.height, lhs.fp_capture_type, lhs.reserved) ==
          std::tie(rhs.bpp, rhs.frame_size, rhs.pixel_format, rhs.width,
-                  rhs.height, lhs.reserved);
+                  rhs.height, rhs.fp_capture_type, rhs.reserved);
 }

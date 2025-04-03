@@ -41,6 +41,7 @@ TEST(FpInfoParams, ImageFrameParamsEqual) {
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
+      .fp_capture_type = 2,
       .reserved = 0};
   struct fp_image_frame_params expected_image_frame_params_1 = {
       .bpp = 8,
@@ -48,6 +49,7 @@ TEST(FpInfoParams, ImageFrameParamsEqual) {
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
+      .fp_capture_type = 2,
       .reserved = 0};
   EXPECT_EQ(expected_image_frame_params_0, expected_image_frame_params_1);
 }
@@ -59,6 +61,7 @@ TEST(FpInfoParams, ImageFrameParamsNotEqual) {
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
+      .fp_capture_type = 2,
       .reserved = 0};
   struct fp_image_frame_params expected_image_frame_params_1 = {
       .bpp = 16,
@@ -66,6 +69,7 @@ TEST(FpInfoParams, ImageFrameParamsNotEqual) {
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
+      .fp_capture_type = 2,
       .reserved = 0};
   EXPECT_FALSE(expected_image_frame_params_0 == expected_image_frame_params_1);
 }
