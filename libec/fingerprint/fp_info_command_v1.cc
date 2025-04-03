@@ -15,8 +15,10 @@ std::optional<SensorId> FpInfoCommand_v1::sensor_id() {
     return std::nullopt;
   }
   if (!sensor_id_.has_value()) {
-    sensor_id_.emplace(Resp()->vendor_id, Resp()->product_id, Resp()->model_id,
-                       Resp()->version);
+    sensor_id_.emplace(SensorId{.vendor_id = Resp()->vendor_id,
+                                .product_id = Resp()->product_id,
+                                .model_id = Resp()->model_id,
+                                .version = Resp()->version});
   }
   return sensor_id_;
 }
@@ -30,8 +32,11 @@ std::optional<SensorImage> FpInfoCommand_v1::sensor_image() {
     return std::nullopt;
   }
   if (!sensor_image_.has_value()) {
-    sensor_image_.emplace(Resp()->width, Resp()->height, Resp()->frame_size,
-                          Resp()->pixel_format, Resp()->bpp);
+    sensor_image_.emplace(SensorImage{.width = Resp()->width,
+                                      .height = Resp()->height,
+                                      .frame_size = Resp()->frame_size,
+                                      .pixel_format = Resp()->pixel_format,
+                                      .bpp = Resp()->bpp});
   }
   return sensor_image_;
 }
@@ -45,9 +50,11 @@ std::optional<TemplateInfo> FpInfoCommand_v1::template_info() {
     return std::nullopt;
   }
   if (!template_info_.has_value()) {
-    template_info_.emplace(Resp()->template_version, Resp()->template_size,
-                           Resp()->template_max, Resp()->template_valid,
-                           Resp()->template_dirty);
+    template_info_.emplace(TemplateInfo{.version = Resp()->template_version,
+                                        .size = Resp()->template_size,
+                                        .max_templates = Resp()->template_max,
+                                        .num_valid = Resp()->template_valid,
+                                        .dirty = Resp()->template_dirty});
   }
   return template_info_;
 }

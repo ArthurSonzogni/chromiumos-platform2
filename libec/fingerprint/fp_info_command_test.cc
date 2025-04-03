@@ -15,6 +15,8 @@
 namespace ec {
 namespace {
 
+using ::testing::ElementsAre;
+using ::testing::Eq;
 using ::testing::Return;
 using ::testing::SizeIs;
 
@@ -90,11 +92,12 @@ TEST_F(FpInfoCommandTest, sensor_id_v1) {
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
       1, std::move(mock_fp_info_command_v1_), nullptr);
 
-  EXPECT_TRUE(fp_info_command->sensor_id().has_value());
-  EXPECT_EQ(fp_info_command->sensor_id()->vendor_id, 1);
-  EXPECT_EQ(fp_info_command->sensor_id()->product_id, 2);
-  EXPECT_EQ(fp_info_command->sensor_id()->model_id, 3);
-  EXPECT_EQ(fp_info_command->sensor_id()->version, 4);
+  EXPECT_THAT(fp_info_command->sensor_id().value(), Eq(SensorId{
+                                                        .vendor_id = 1,
+                                                        .product_id = 2,
+                                                        .model_id = 3,
+                                                        .version = 4,
+                                                    }));
 }
 
 TEST_F(FpInfoCommandTest, sensor_image_valid_v1) {
@@ -105,12 +108,13 @@ TEST_F(FpInfoCommandTest, sensor_image_valid_v1) {
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
       1, std::move(mock_fp_info_command_v1_), nullptr);
 
-  EXPECT_THAT(fp_info_command->sensor_image(), SizeIs(1));
-  EXPECT_EQ(fp_info_command->sensor_image()[0].frame_size, 1);
-  EXPECT_EQ(fp_info_command->sensor_image()[0].pixel_format, 2);
-  EXPECT_EQ(fp_info_command->sensor_image()[0].width, 3);
-  EXPECT_EQ(fp_info_command->sensor_image()[0].height, 4);
-  EXPECT_EQ(fp_info_command->sensor_image()[0].bpp, 5);
+  EXPECT_THAT(fp_info_command->sensor_image(), ElementsAre(SensorImage{
+                                                   .width = 3,
+                                                   .height = 4,
+                                                   .frame_size = 1,
+                                                   .pixel_format = 2,
+                                                   .bpp = 5,
+                                               }));
 }
 
 TEST_F(FpInfoCommandTest, sensor_image_empty_v1) {
@@ -132,12 +136,14 @@ TEST_F(FpInfoCommandTest, template_info_v1) {
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
       1, std::move(mock_fp_info_command_v1_), nullptr);
 
-  EXPECT_TRUE(fp_info_command->template_info().has_value());
-  EXPECT_EQ(fp_info_command->template_info()->size, 1024);
-  EXPECT_EQ(fp_info_command->template_info()->max_templates, 4);
-  EXPECT_EQ(fp_info_command->template_info()->num_valid, 3);
-  EXPECT_EQ(fp_info_command->template_info()->dirty, std::bitset<32>(1 << 3));
-  EXPECT_EQ(fp_info_command->template_info()->version, 1);
+  EXPECT_THAT(fp_info_command->template_info().value(),
+              Eq(TemplateInfo{
+                  .version = 1,
+                  .size = 1024,
+                  .max_templates = 4,
+                  .num_valid = 3,
+                  .dirty = std::bitset<32>(1 << 3),
+              }));
 }
 
 TEST_F(FpInfoCommandTest, Run_v1) {
@@ -189,11 +195,12 @@ TEST_F(FpInfoCommandTest, sensor_id_v2) {
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
       2, nullptr, std::move(mock_fp_info_command_v2_));
 
-  EXPECT_TRUE(fp_info_command->sensor_id().has_value());
-  EXPECT_EQ(fp_info_command->sensor_id()->vendor_id, 1);
-  EXPECT_EQ(fp_info_command->sensor_id()->product_id, 2);
-  EXPECT_EQ(fp_info_command->sensor_id()->model_id, 3);
-  EXPECT_EQ(fp_info_command->sensor_id()->version, 4);
+  EXPECT_THAT(fp_info_command->sensor_id().value(), Eq(SensorId{
+                                                        .vendor_id = 1,
+                                                        .product_id = 2,
+                                                        .model_id = 3,
+                                                        .version = 4,
+                                                    }));
 }
 
 TEST_F(FpInfoCommandTest, sensor_image_valid_v2) {
@@ -219,17 +226,22 @@ TEST_F(FpInfoCommandTest, sensor_image_valid_v2) {
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
       2, nullptr, std::move(mock_fp_info_command_v2_));
 
-  EXPECT_THAT(fp_info_command->sensor_image(), SizeIs(2));
-  EXPECT_EQ(fp_info_command->sensor_image()[0].frame_size, 5120);
-  EXPECT_EQ(fp_info_command->sensor_image()[0].pixel_format, 0x59455247);
-  EXPECT_EQ(fp_info_command->sensor_image()[0].width, 64);
-  EXPECT_EQ(fp_info_command->sensor_image()[0].height, 80);
-  EXPECT_EQ(fp_info_command->sensor_image()[0].bpp, 8);
-  EXPECT_EQ(fp_info_command->sensor_image()[1].frame_size, 36864);
-  EXPECT_EQ(fp_info_command->sensor_image()[1].pixel_format, 0x59455247);
-  EXPECT_EQ(fp_info_command->sensor_image()[1].width, 192);
-  EXPECT_EQ(fp_info_command->sensor_image()[1].height, 96);
-  EXPECT_EQ(fp_info_command->sensor_image()[1].bpp, 16);
+  EXPECT_THAT(fp_info_command->sensor_image(),
+              ElementsAre(
+                  SensorImage{
+                      .width = 64,
+                      .height = 80,
+                      .frame_size = 5120,
+                      .pixel_format = 0x59455247,
+                      .bpp = 8,
+                  },
+                  SensorImage{
+                      .width = 192,
+                      .height = 96,
+                      .frame_size = 36864,
+                      .pixel_format = 0x59455247,
+                      .bpp = 16,
+                  }));
 }
 
 TEST_F(FpInfoCommandTest, sensor_image_empty_v2) {
@@ -252,12 +264,14 @@ TEST_F(FpInfoCommandTest, template_info_v2) {
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
       2, nullptr, std::move(mock_fp_info_command_v2_));
 
-  EXPECT_TRUE(fp_info_command->template_info().has_value());
-  EXPECT_EQ(fp_info_command->template_info()->size, 1024);
-  EXPECT_EQ(fp_info_command->template_info()->max_templates, 4);
-  EXPECT_EQ(fp_info_command->template_info()->num_valid, 3);
-  EXPECT_EQ(fp_info_command->template_info()->dirty, std::bitset<32>(1 << 3));
-  EXPECT_EQ(fp_info_command->template_info()->version, 1);
+  EXPECT_THAT(fp_info_command->template_info().value(),
+              Eq(TemplateInfo{
+                  .version = 1,
+                  .size = 1024,
+                  .max_templates = 4,
+                  .num_valid = 3,
+                  .dirty = std::bitset<32>(1 << 3),
+              }));
 }
 
 TEST_F(FpInfoCommandTest, Run_v2) {

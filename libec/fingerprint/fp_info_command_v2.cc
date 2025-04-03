@@ -18,8 +18,10 @@ std::optional<SensorId> FpInfoCommand_v2::sensor_id() {
   }
   if (!sensor_id_.has_value()) {
     sensor_id_.emplace(
-        Resp()->info.sensor_info.vendor_id, Resp()->info.sensor_info.product_id,
-        Resp()->info.sensor_info.model_id, Resp()->info.sensor_info.version);
+        SensorId{.vendor_id = Resp()->info.sensor_info.vendor_id,
+                 .product_id = Resp()->info.sensor_info.product_id,
+                 .model_id = Resp()->info.sensor_info.model_id,
+                 .version = Resp()->info.sensor_info.version});
   }
   return sensor_id_;
 }
@@ -40,11 +42,12 @@ std::vector<SensorImage> FpInfoCommand_v2::sensor_image() {
   uint32_t count = Resp()->info.sensor_info.num_capture_types;
 
   for (uint32_t i = 0; i < count; ++i) {
-    sensor_image_.emplace_back(Resp()->image_frame_params[i].width,
-                               Resp()->image_frame_params[i].height,
-                               Resp()->image_frame_params[i].frame_size,
-                               Resp()->image_frame_params[i].pixel_format,
-                               Resp()->image_frame_params[i].bpp);
+    sensor_image_.emplace_back(
+        SensorImage{.width = Resp()->image_frame_params[i].width,
+                    .height = Resp()->image_frame_params[i].height,
+                    .frame_size = Resp()->image_frame_params[i].frame_size,
+                    .pixel_format = Resp()->image_frame_params[i].pixel_format,
+                    .bpp = Resp()->image_frame_params[i].bpp});
   }
 
   return sensor_image_;
@@ -59,11 +62,12 @@ std::optional<TemplateInfo> FpInfoCommand_v2::template_info() {
     return std::nullopt;
   }
   if (!template_info_.has_value()) {
-    template_info_.emplace(Resp()->info.template_info.template_version,
-                           Resp()->info.template_info.template_size,
-                           Resp()->info.template_info.template_max,
-                           Resp()->info.template_info.template_valid,
-                           Resp()->info.template_info.template_dirty);
+    template_info_.emplace(
+        TemplateInfo{.version = Resp()->info.template_info.template_version,
+                     .size = Resp()->info.template_info.template_size,
+                     .max_templates = Resp()->info.template_info.template_max,
+                     .num_valid = Resp()->info.template_info.template_valid,
+                     .dirty = Resp()->info.template_info.template_dirty});
   }
   return template_info_;
 }

@@ -13,6 +13,7 @@
 namespace ec {
 namespace {
 
+using ::testing::Eq;
 using ::testing::Return;
 
 TEST(FpInfoCommand_v1, FpInfoCommand_v1) {
@@ -176,11 +177,12 @@ TEST_F(FpInfoCommand_v1_SensorIdTest, ValidSensorId) {
       .vendor_id = 1, .product_id = 2, .model_id = 3, .version = 4};
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
 
-  EXPECT_TRUE(mock_fp_info_command.sensor_id().has_value());
-  EXPECT_EQ(mock_fp_info_command.sensor_id()->vendor_id, 1);
-  EXPECT_EQ(mock_fp_info_command.sensor_id()->product_id, 2);
-  EXPECT_EQ(mock_fp_info_command.sensor_id()->model_id, 3);
-  EXPECT_EQ(mock_fp_info_command.sensor_id()->version, 4);
+  EXPECT_THAT(mock_fp_info_command.sensor_id().value(), Eq(SensorId{
+                                                            .vendor_id = 1,
+                                                            .product_id = 2,
+                                                            .model_id = 3,
+                                                            .version = 4,
+                                                        }));
 }
 
 /**
@@ -206,12 +208,14 @@ TEST_F(FpInfoCommand_v1_SensorImageTest, ValidSensorImage) {
       .frame_size = 1, .pixel_format = 2, .width = 3, .height = 4, .bpp = 5};
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
 
-  EXPECT_TRUE(mock_fp_info_command.sensor_image().has_value());
-  EXPECT_EQ(mock_fp_info_command.sensor_image()->frame_size, 1);
-  EXPECT_EQ(mock_fp_info_command.sensor_image()->pixel_format, 2);
-  EXPECT_EQ(mock_fp_info_command.sensor_image()->width, 3);
-  EXPECT_EQ(mock_fp_info_command.sensor_image()->height, 4);
-  EXPECT_EQ(mock_fp_info_command.sensor_image()->bpp, 5);
+  EXPECT_THAT(mock_fp_info_command.sensor_image().value(),
+              Eq(SensorImage{
+                  .width = 3,
+                  .height = 4,
+                  .frame_size = 1,
+                  .pixel_format = 2,
+                  .bpp = 5,
+              }));
 }
 
 /**
@@ -241,13 +245,14 @@ TEST_F(FpInfoCommand_v1_TemplateInfoTest, ValidTemplateInfo) {
 
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
 
-  EXPECT_TRUE(mock_fp_info_command.template_info().has_value());
-  EXPECT_EQ(mock_fp_info_command.template_info()->size, 1024);
-  EXPECT_EQ(mock_fp_info_command.template_info()->max_templates, 4);
-  EXPECT_EQ(mock_fp_info_command.template_info()->num_valid, 3);
-  EXPECT_EQ(mock_fp_info_command.template_info()->dirty,
-            std::bitset<32>(1 << 3));
-  EXPECT_EQ(mock_fp_info_command.template_info()->version, 1);
+  EXPECT_THAT(mock_fp_info_command.template_info().value(),
+              Eq(TemplateInfo{
+                  .version = 1,
+                  .size = 1024,
+                  .max_templates = 4,
+                  .num_valid = 3,
+                  .dirty = std::bitset<32>(1 << 3),
+              }));
 }
 
 }  // namespace

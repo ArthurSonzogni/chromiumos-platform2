@@ -13,8 +13,9 @@
 namespace ec {
 namespace {
 
+using ::testing::ElementsAre;
+using ::testing::Eq;
 using ::testing::Return;
-using ::testing::SizeIs;
 
 TEST(FpInfoCommand_v2, FpInfoCommand_v2) {
   auto cmd = std::make_unique<FpInfoCommand_v2>();
@@ -187,11 +188,12 @@ TEST_F(FpInfoCommand_v2_SensorIdTest, ValidSensorId) {
                                                              .version = 4}}};
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
 
-  EXPECT_TRUE(mock_fp_info_command.sensor_id().has_value());
-  EXPECT_EQ(mock_fp_info_command.sensor_id()->vendor_id, 1);
-  EXPECT_EQ(mock_fp_info_command.sensor_id()->product_id, 2);
-  EXPECT_EQ(mock_fp_info_command.sensor_id()->model_id, 3);
-  EXPECT_EQ(mock_fp_info_command.sensor_id()->version, 4);
+  EXPECT_THAT(mock_fp_info_command.sensor_id().value(), Eq(SensorId{
+                                                            .vendor_id = 1,
+                                                            .product_id = 2,
+                                                            .model_id = 3,
+                                                            .version = 4,
+                                                        }));
 }
 
 /**
@@ -241,19 +243,22 @@ TEST_F(FpInfoCommand_v2_SensorImageTest, ValidSensorImage) {
 
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
 
-  auto result = mock_fp_info_command.sensor_image();
-
-  EXPECT_THAT(result, SizeIs(2));
-  EXPECT_EQ(result[0].frame_size, 5120);
-  EXPECT_EQ(result[0].pixel_format, 0x59455247);
-  EXPECT_EQ(result[0].width, 64);
-  EXPECT_EQ(result[0].height, 80);
-  EXPECT_EQ(result[0].bpp, 8);
-  EXPECT_EQ(result[1].frame_size, 36864);
-  EXPECT_EQ(result[1].pixel_format, 0x59455247);
-  EXPECT_EQ(result[1].width, 192);
-  EXPECT_EQ(result[1].height, 96);
-  EXPECT_EQ(result[1].bpp, 16);
+  EXPECT_THAT(mock_fp_info_command.sensor_image(),
+              ElementsAre(
+                  SensorImage{
+                      .width = 64,
+                      .height = 80,
+                      .frame_size = 5120,
+                      .pixel_format = 0x59455247,
+                      .bpp = 8,
+                  },
+                  SensorImage{
+                      .width = 192,
+                      .height = 96,
+                      .frame_size = 36864,
+                      .pixel_format = 0x59455247,
+                      .bpp = 16,
+                  }));
 }
 
 /**
@@ -284,13 +289,14 @@ TEST_F(FpInfoCommand_v2_TemplateInfoTest, ValidTemplateInfo) {
 
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
 
-  EXPECT_TRUE(mock_fp_info_command.template_info().has_value());
-  EXPECT_EQ(mock_fp_info_command.template_info()->size, 1024);
-  EXPECT_EQ(mock_fp_info_command.template_info()->max_templates, 4);
-  EXPECT_EQ(mock_fp_info_command.template_info()->num_valid, 3);
-  EXPECT_EQ(mock_fp_info_command.template_info()->dirty,
-            std::bitset<32>(1 << 3));
-  EXPECT_EQ(mock_fp_info_command.template_info()->version, 1);
+  EXPECT_THAT(mock_fp_info_command.template_info().value(),
+              Eq(TemplateInfo{
+                  .version = 1,
+                  .size = 1024,
+                  .max_templates = 4,
+                  .num_valid = 3,
+                  .dirty = std::bitset<32>(1 << 3),
+              }));
 }
 
 }  // namespace

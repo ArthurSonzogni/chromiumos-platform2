@@ -8,19 +8,12 @@
 #include <cstdint>
 
 struct SensorId {
-  SensorId(uint32_t vendor_id,
-           uint32_t product_id,
-           uint32_t model_id,
-           uint32_t version)
-      : vendor_id(vendor_id),
-        product_id(product_id),
-        model_id(model_id),
-        version(version) {}
-
   uint32_t vendor_id = 0;
   uint32_t product_id = 0;
   uint32_t model_id = 0;
   uint32_t version = 0;
+
+  friend bool operator==(const SensorId&, const SensorId&) = default;
 };
 
 #endif  // LIBEC_FINGERPRINT_SENSOR_ID_H_
