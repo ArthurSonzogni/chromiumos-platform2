@@ -346,11 +346,14 @@ class CrosFpDevice_DeadPixelCount : public testing::Test {
         : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
   };
 
-  class MockFpInfoCommand : public FpInfoCommand {
+  class MockFpInfoCommand : public ec::FpInfoCommand {
    public:
-    MockFpInfoCommand() { ON_CALL(*this, Run).WillByDefault(Return(true)); }
+    MockFpInfoCommand() : ec::FpInfoCommand(/*version=*/2) {
+      ON_CALL(*this, Run).WillByDefault(Return(true));
+    }
+
     MOCK_METHOD(bool, Run, (int fd), (override));
-    MOCK_METHOD(ec_response_fp_info*, Resp, (), (override));
+    MOCK_METHOD(int, NumDeadPixels, (), (override));
   };
 
   metrics::MockBiodMetrics mock_biod_metrics_;
@@ -359,24 +362,23 @@ class CrosFpDevice_DeadPixelCount : public testing::Test {
 };
 
 TEST_F(CrosFpDevice_DeadPixelCount, UnknownCount) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_DEAD_PIXELS_UNKNOWN};
-  EXPECT_CALL(*mock_ec_command_factory_, FpInfoCommand).WillOnce([&resp]() {
-    auto mock_fp_info_command = std::make_unique<NiceMock<MockFpInfoCommand>>();
-    EXPECT_CALL(*mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-    return mock_fp_info_command;
-  });
+  auto mock_fp_info_command = std::make_unique<MockFpInfoCommand>();
+  EXPECT_CALL(*mock_fp_info_command, NumDeadPixels)
+      .WillOnce(Return(FpInfoCommand::kDeadPixelsUnknown));
+  EXPECT_CALL(*mock_ec_command_factory_,
+              FpInfoCommand(mock_cros_fp_device_.get()))
+      .WillOnce(Return(std::move(mock_fp_info_command)));
 
   EXPECT_EQ(mock_cros_fp_device_->DeadPixelCount(),
             FpInfoCommand::kDeadPixelsUnknown);
 }
 
 TEST_F(CrosFpDevice_DeadPixelCount, OneDeadPixel) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_DEAD_PIXELS(1)};
-  EXPECT_CALL(*mock_ec_command_factory_, FpInfoCommand).WillOnce([&resp]() {
-    auto mock_fp_info_command = std::make_unique<NiceMock<MockFpInfoCommand>>();
-    EXPECT_CALL(*mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-    return mock_fp_info_command;
-  });
+  auto mock_fp_info_command = std::make_unique<MockFpInfoCommand>();
+  EXPECT_CALL(*mock_fp_info_command, NumDeadPixels).WillOnce(Return(1));
+  EXPECT_CALL(*mock_ec_command_factory_,
+              FpInfoCommand(mock_cros_fp_device_.get()))
+      .WillOnce(Return(std::move(mock_fp_info_command)));
 
   EXPECT_EQ(mock_cros_fp_device_->DeadPixelCount(), 1);
 }
@@ -546,11 +548,14 @@ class CrosFpDevice_HwErrors : public testing::Test {
         : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
   };
 
-  class MockFpInfoCommand : public FpInfoCommand {
+  class MockFpInfoCommand : public ec::FpInfoCommand {
    public:
-    MockFpInfoCommand() { ON_CALL(*this, Run).WillByDefault(Return(true)); }
+    MockFpInfoCommand() : ec::FpInfoCommand(/*version=*/2) {
+      ON_CALL(*this, Run).WillByDefault(Return(true));
+    }
+
     MOCK_METHOD(bool, Run, (int fd), (override));
-    MOCK_METHOD(ec_response_fp_info*, Resp, (), (override));
+    MOCK_METHOD(FpSensorErrors, GetFpSensorErrors, (), (override));
   };
 
   metrics::MockBiodMetrics mock_biod_metrics_;
@@ -559,76 +564,71 @@ class CrosFpDevice_HwErrors : public testing::Test {
 };
 
 TEST_F(CrosFpDevice_HwErrors, Errors_None) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_DEAD_PIXELS_UNKNOWN};
-  EXPECT_CALL(*mock_ec_command_factory_, FpInfoCommand).WillOnce([&resp]() {
-    auto mock_fp_info_command = std::make_unique<NiceMock<MockFpInfoCommand>>();
-    EXPECT_CALL(*mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-    return mock_fp_info_command;
-  });
+  auto mock_fp_info_command = std::make_unique<MockFpInfoCommand>();
+  EXPECT_CALL(*mock_fp_info_command, GetFpSensorErrors)
+      .WillOnce(Return(FpSensorErrors::kNone));
+  EXPECT_CALL(*mock_ec_command_factory_,
+              FpInfoCommand(mock_cros_fp_device_.get()))
+      .WillOnce(Return(std::move(mock_fp_info_command)));
 
   EXPECT_EQ(mock_cros_fp_device_->GetHwErrors(), FpSensorErrors::kNone);
 }
 
 TEST_F(CrosFpDevice_HwErrors, Errors_NoIrq) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_NO_IRQ |
-                                               FP_ERROR_DEAD_PIXELS_UNKNOWN};
-  EXPECT_CALL(*mock_ec_command_factory_, FpInfoCommand).WillOnce([&resp]() {
-    auto mock_fp_info_command = std::make_unique<NiceMock<MockFpInfoCommand>>();
-    EXPECT_CALL(*mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-    return mock_fp_info_command;
-  });
+  auto mock_fp_info_command = std::make_unique<MockFpInfoCommand>();
+  EXPECT_CALL(*mock_fp_info_command, GetFpSensorErrors)
+      .WillOnce(Return(FpSensorErrors::kNoIrq));
+  EXPECT_CALL(*mock_ec_command_factory_,
+              FpInfoCommand(mock_cros_fp_device_.get()))
+      .WillOnce(Return(std::move(mock_fp_info_command)));
 
   EXPECT_EQ(mock_cros_fp_device_->GetHwErrors(), FpSensorErrors::kNoIrq);
 }
 
 TEST_F(CrosFpDevice_HwErrors, Errors_SpiCommunication) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_SPI_COMM |
-                                               FP_ERROR_DEAD_PIXELS_UNKNOWN};
-  EXPECT_CALL(*mock_ec_command_factory_, FpInfoCommand).WillOnce([&resp]() {
-    auto mock_fp_info_command = std::make_unique<NiceMock<MockFpInfoCommand>>();
-    EXPECT_CALL(*mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-    return mock_fp_info_command;
-  });
+  auto mock_fp_info_command = std::make_unique<MockFpInfoCommand>();
+  EXPECT_CALL(*mock_fp_info_command, GetFpSensorErrors)
+      .WillOnce(Return(FpSensorErrors::kSpiCommunication));
+  EXPECT_CALL(*mock_ec_command_factory_,
+              FpInfoCommand(mock_cros_fp_device_.get()))
+      .WillOnce(Return(std::move(mock_fp_info_command)));
 
   EXPECT_EQ(mock_cros_fp_device_->GetHwErrors(),
             FpSensorErrors::kSpiCommunication);
 }
 
 TEST_F(CrosFpDevice_HwErrors, Errors_BadHardwareID) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_BAD_HWID |
-                                               FP_ERROR_DEAD_PIXELS_UNKNOWN};
-  EXPECT_CALL(*mock_ec_command_factory_, FpInfoCommand).WillOnce([&resp]() {
-    auto mock_fp_info_command = std::make_unique<NiceMock<MockFpInfoCommand>>();
-    EXPECT_CALL(*mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-    return mock_fp_info_command;
-  });
+  auto mock_fp_info_command = std::make_unique<MockFpInfoCommand>();
+  EXPECT_CALL(*mock_fp_info_command, GetFpSensorErrors)
+      .WillOnce(Return(FpSensorErrors::kBadHardwareID));
+  EXPECT_CALL(*mock_ec_command_factory_,
+              FpInfoCommand(mock_cros_fp_device_.get()))
+      .WillOnce(Return(std::move(mock_fp_info_command)));
 
   EXPECT_EQ(mock_cros_fp_device_->GetHwErrors(),
             FpSensorErrors::kBadHardwareID);
 }
 
 TEST_F(CrosFpDevice_HwErrors, Errors_InitializationFailure) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_INIT_FAIL |
-                                               FP_ERROR_DEAD_PIXELS_UNKNOWN};
-  EXPECT_CALL(*mock_ec_command_factory_, FpInfoCommand).WillOnce([&resp]() {
-    auto mock_fp_info_command = std::make_unique<NiceMock<MockFpInfoCommand>>();
-    EXPECT_CALL(*mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-    return mock_fp_info_command;
-  });
+  auto mock_fp_info_command = std::make_unique<MockFpInfoCommand>();
+  EXPECT_CALL(*mock_fp_info_command, GetFpSensorErrors)
+      .WillOnce(Return(FpSensorErrors::kInitializationFailure));
+  EXPECT_CALL(*mock_ec_command_factory_,
+              FpInfoCommand(mock_cros_fp_device_.get()))
+      .WillOnce(Return(std::move(mock_fp_info_command)));
 
   EXPECT_EQ(mock_cros_fp_device_->GetHwErrors(),
             FpSensorErrors::kInitializationFailure);
 }
 
 TEST_F(CrosFpDevice_HwErrors, Errors_InitializationFailureOrBadHardwareID) {
-  struct ec_response_fp_info resp = {.errors = FP_ERROR_INIT_FAIL |
-                                               FP_ERROR_DEAD_PIXELS_UNKNOWN |
-                                               FP_ERROR_BAD_HWID};
-  EXPECT_CALL(*mock_ec_command_factory_, FpInfoCommand).WillOnce([&resp]() {
-    auto mock_fp_info_command = std::make_unique<NiceMock<MockFpInfoCommand>>();
-    EXPECT_CALL(*mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-    return mock_fp_info_command;
-  });
+  auto mock_fp_info_command = std::make_unique<MockFpInfoCommand>();
+  EXPECT_CALL(*mock_fp_info_command, GetFpSensorErrors)
+      .WillOnce(Return(FpSensorErrors::kInitializationFailure |
+                       FpSensorErrors::kBadHardwareID));
+  EXPECT_CALL(*mock_ec_command_factory_,
+              FpInfoCommand(mock_cros_fp_device_.get()))
+      .WillOnce(Return(std::move(mock_fp_info_command)));
 
   EXPECT_EQ(
       mock_cros_fp_device_->GetHwErrors(),
