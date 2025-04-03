@@ -57,7 +57,7 @@ impl fmt::Display for ProcessError {
 impl std::error::Error for ProcessError {}
 
 /// A type for passing to `Command::envs`.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Environment(
     /// Use `OsString` rather than `String` to reduce the number of
     /// conversions between Path(Buf) and String we need to do, since
