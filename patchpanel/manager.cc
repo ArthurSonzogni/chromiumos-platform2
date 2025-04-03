@@ -1094,7 +1094,8 @@ void Manager::ConfigureNetwork(int ifindex,
   if (area == NetworkApplier::Area::kClear) {
     shill_client_->ClearNetworkConfigCache(ifindex);
   } else {
-    shill_client_->UpdateNetworkConfigCache(ifindex, network_config);
+    shill_client_->UpdateNetworkConfigCache(ifindex, network_config,
+                                            session_id);
   }
 }
 

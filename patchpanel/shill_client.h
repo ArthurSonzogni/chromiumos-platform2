@@ -63,16 +63,28 @@ class ShillClient {
     // Index of the network interface used for the packet datapath. This is
     // always derived from the interface name by querying the kernel directly.
     int ifindex;
-    // Name of the network interface used for the packet datapath. This
-    // currently corresponds to the shill Device kInterfaceProperty value.
+    // Name of the network interface associated with the shill Device and
+    // exposed in DBus as the shill Device kInterfaceProperty value. For a
+    // non-Cellular Device this is also the interface used for the packet
+    // datapath. For a Cellular Device, this corresponds to the interface
+    // associated with the modem.
     std::string ifname;
     // The DBus path of the shill Service currently selected by the shill
     // Device, if any.
     std::string service_path;
+    // An anonymous name that uniquely identifies the Service until reboot and
+    // does not contain PIIs.
+    std::string service_logname;
     // IP configuration for this shill Device. For multiplexed Cellular Devices
     // this corresponds to the IP configuration of the primary network
     // interface.
     net_base::NetworkConfig network_config;
+    // The session identifier of the shill Network session this shill Device is
+    // associated to.
+    std::optional<int> session_id;
+    // A string that can be used in logs and will be consistent with shill's
+    // Network::LoggingTag() output.
+    std::string logging_tag;
 
     // Return if the device is connected by checking if IPv4 or IPv6 address is
     // available.
@@ -80,6 +92,16 @@ class ShillClient {
 
     // Return if the device has no IPv4 address and has an IPv6 address.
     bool IsIPv6Only() const;
+
+    // Returns the name of the network interface that is used for the packet
+    // datapath. For a non-Cellular Device this is equivalent to |ifname|, and
+    // for a Cellular Device this corresponds to the primary multiplexed
+    // interface.
+    std::string_view ActiveIfname() const;
+
+    // Returns as a string the shill session IDs for the shill Network
+    // associated with this shill Device.
+    std::string SessionIDString() const;
   };
 
   // Client callback for learning when shill default logical and physical
@@ -147,8 +169,11 @@ class ShillClient {
 
   void ScanDevices();
 
+  // Updates the cache of NetworkConfig and shill session IDs for the shill
+  // Network associated with the interface index |ifindex|.
   void UpdateNetworkConfigCache(int ifindex,
-                                const net_base::NetworkConfig& network_config);
+                                const net_base::NetworkConfig& network_config,
+                                int session_id);
   void ClearNetworkConfigCache(int ifindex);
 
   // Finds the shill physical or VPN Device whose "Interface" property matches
@@ -231,6 +256,13 @@ class ShillClient {
   virtual std::optional<Device> GetDeviceFromServicePath(
       const dbus::ObjectPath& service_path);
 
+  // Gets the ObjectPath of the shill Device that is currently selecting the
+  // shill Service |service_path|, or returns std::nullopt if the Service is not
+  // active or not selected by any Device. Calling this function will also
+  // populate |service_logname_cache_| for |service_path|.
+  std::optional<dbus::ObjectPath> GetDevicePathFromServicePath(
+      const dbus::ObjectPath& service_path);
+
   // Getter for FakeShillClient.
   const std::map<int, net_base::NetworkConfig>& network_config_cache() const {
     return network_config_cache_;
@@ -295,6 +327,18 @@ class ShillClient {
   // ShillClient will be updated and retrieved from this cache instead of some
   // other D-Bus calls to shill.
   std::map<int, net_base::NetworkConfig> network_config_cache_;
+
+  // A map of interface index to shill Network session id values. This mapping
+  // is updated for a given interface index when UpdateNetworkConfigCache() is
+  // called.
+  std::map<int, int> session_id_cache_;
+
+  // A map of Service DBus path to Service logging names. This mapping is stable
+  // until reboot and only serves to avoid looking Service properties when
+  // constructing shill Device objects. Entries from this cache are never
+  // removed and it will keep growing overtime in parallel to shill's own list
+  // of Services.
+  std::map<dbus::ObjectPath, std::string> service_logname_cache_;
 
   // Tracks the DoH providers from the DNSProxyDOHProviders property on shill's
   // Manager.

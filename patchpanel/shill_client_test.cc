@@ -351,6 +351,7 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   network_config2.ipv4_address = kIPv4CIDR2;
 
   constexpr int kInterfaceIndex = 1;
+  constexpr int kSessionID = 7;
 
   // Adds a fake WiFi device.
   dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
@@ -368,7 +369,8 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
 
   // Update IP configuration.
-  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config1);
+  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config1,
+                                    kSessionID);
   ASSERT_EQ(ipconfig_change_calls_.size(), 1u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
   EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv4_address,
@@ -377,11 +379,13 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
             std::vector<net_base::IPAddress>({kIPv4DNS1}));
 
   // No callback should be triggered for the same update.
-  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config1);
+  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config1,
+                                    kSessionID);
   ASSERT_EQ(ipconfig_change_calls_.size(), 1u);
 
   // Update the config, callback should be triggered.
-  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config2);
+  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config2,
+                                    kSessionID);
   ASSERT_EQ(ipconfig_change_calls_.size(), 2u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
   EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv4_address,
@@ -401,7 +405,8 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   // Adds the device again. The device will first appear before it acquires a
   // new IP configuration.
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
-  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config1);
+  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config1,
+                                    kSessionID);
   ASSERT_EQ(ipconfig_change_calls_.size(), 4u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
   EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv4_address,
@@ -423,6 +428,7 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   network_config.dns_servers.push_back(kIPv6DNS);
 
   constexpr int kInterfaceIndex = 1;
+  constexpr int kSessionID = 7;
 
   // Adds a fake WiFi device.
   dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
@@ -438,7 +444,8 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   // listeners are triggered.
   client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
-  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config);
+  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config,
+                                    kSessionID);
   ASSERT_EQ(ipconfig_change_calls_.size(), 1u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
   EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv6_addresses,
@@ -473,7 +480,8 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   network_config.dns_servers = {};
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
   client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
-  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config);
+  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config,
+                                    kSessionID);
   ASSERT_EQ(ipconfig_change_calls_.size(), 3u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
   EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv6_addresses,
@@ -489,7 +497,8 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   // Adds IPv6 DNS, IPv6NetworkChangedHandler is not triggered.
   network_config.dns_servers.push_back(kIPv6DNS);
   client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
-  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config);
+  client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config,
+                                    kSessionID);
   ASSERT_EQ(ipconfig_change_calls_.size(), 4u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
   EXPECT_EQ(ipconfig_change_calls_.back().network_config.dns_servers,

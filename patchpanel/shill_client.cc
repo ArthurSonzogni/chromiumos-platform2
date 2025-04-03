@@ -14,6 +14,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
@@ -27,6 +29,8 @@
 namespace patchpanel {
 
 namespace {
+
+constexpr std::string_view kNoService = "no_service";
 
 std::optional<net_base::Technology> ParseDeviceType(std::string_view type_str) {
   static constexpr auto str2enum =
@@ -78,6 +82,15 @@ bool ShillClient::Device::IsConnected() const {
 bool ShillClient::Device::IsIPv6Only() const {
   return !network_config.ipv4_address.has_value() &&
          !network_config.ipv6_addresses.empty();
+}
+
+std::string_view ShillClient::Device::ActiveIfname() const {
+  return primary_multiplexed_interface ? *primary_multiplexed_interface
+                                       : ifname;
+}
+
+std::string ShillClient::Device::SessionIDString() const {
+  return session_id ? base::NumberToString(session_id.value()) : "none";
 }
 
 std::unique_ptr<ShillClient> ShillClient::New(
@@ -157,9 +170,27 @@ void ShillClient::ScanDevices() {
 }
 
 void ShillClient::UpdateNetworkConfigCache(
-    int ifindex, const net_base::NetworkConfig& network_config) {
-  const auto it = network_config_cache_.find(ifindex);
+    int ifindex,
+    const net_base::NetworkConfig& network_config,
+    int session_id) {
+  // Currently the session ID is only used for logging, it is not needed to
+  // react to changes of the session id for an interface other than updating the
+  // corresponding Device state in ShillClient.
+  session_id_cache_[ifindex] = session_id;
+  for (auto& [_, device] : devices_) {
+    if (device.ifindex == ifindex) {
+      device.session_id = session_id;
+    }
+  }
+  if (default_physical_device_ &&
+      default_physical_device_->ifindex == ifindex) {
+    default_physical_device_->session_id = session_id;
+  }
+  if (default_logical_device_ && default_logical_device_->ifindex == ifindex) {
+    default_logical_device_->session_id = session_id;
+  }
 
+  const auto it = network_config_cache_.find(ifindex);
   bool has_changed = false;
   if (it == network_config_cache_.end()) {
     network_config_cache_.insert({ifindex, network_config});
@@ -177,6 +208,7 @@ void ShillClient::UpdateNetworkConfigCache(
 }
 
 void ShillClient::ClearNetworkConfigCache(int ifindex) {
+  session_id_cache_.erase(ifindex);
   if (network_config_cache_.erase(ifindex) == 1) {
     OnDeviceNetworkConfigChange(ifindex);
   }
@@ -195,6 +227,16 @@ void ShillClient::UpdateDefaultDevices() {
   //   - the shill Manager Technology order property has VPN in front
   //     (Manager.GetServiceOrder).
   const auto services = GetServices();
+
+  // Complete |service_logname_cache_|. The service lognames are stable until
+  // reboot and only need to be fetched once per service. Most of the time there
+  // is no extra Service DBus property fetch.
+  for (const auto& service_path : services) {
+    if (!base::Contains(service_logname_cache_, service_path)) {
+      GetDevicePathFromServicePath(service_path);
+    }
+  }
+
   if (services.empty()) {
     SetDefaultLogicalDevice(std::nullopt);
     SetDefaultPhysicalDevice(std::nullopt);
@@ -251,7 +293,7 @@ std::vector<dbus::ObjectPath> ShillClient::GetServices() {
       manager_properties, shill::kServicesProperty);
 }
 
-std::optional<ShillClient::Device> ShillClient::GetDeviceFromServicePath(
+std::optional<dbus::ObjectPath> ShillClient::GetDevicePathFromServicePath(
     const dbus::ObjectPath& service_path) {
   brillo::VariantDictionary service_properties;
   org::chromium::flimflam::ServiceProxy service_proxy(bus_, service_path);
@@ -259,6 +301,12 @@ std::optional<ShillClient::Device> ShillClient::GetDeviceFromServicePath(
     LOG(ERROR) << "Unable to get Service properties for "
                << service_path.value();
     return std::nullopt;
+  }
+
+  // Populate |service_logname_cache_|.
+  if (const auto it = service_properties.find(shill::kLogNameProperty);
+      it != service_properties.end()) {
+    service_logname_cache_[service_path] = it->second.TryGet<std::string>();
   }
 
   // Check if there is any connected Service at the moment.
@@ -281,7 +329,16 @@ std::optional<ShillClient::Device> ShillClient::GetDeviceFromServicePath(
     return std::nullopt;
   }
 
-  return GetDeviceProperties(device_path);
+  return device_path;
+}
+
+std::optional<ShillClient::Device> ShillClient::GetDeviceFromServicePath(
+    const dbus::ObjectPath& service_path) {
+  const auto device_path = GetDevicePathFromServicePath(service_path);
+  if (!device_path) {
+    return std::nullopt;
+  }
+  return GetDeviceProperties(*device_path);
 }
 
 void ShillClient::OnManagerPropertyChangeRegistration(
@@ -560,6 +617,27 @@ std::optional<ShillClient::Device> ShillClient::GetDeviceProperties(
         selected_service_it->second.TryGet<dbus::ObjectPath>().value();
   }
 
+  if (const auto it =
+          service_logname_cache_.find(dbus::ObjectPath(output->service_path));
+      it != service_logname_cache_.end()) {
+    output->service_logname = it->second;
+  } else if (output->service_path != "") {
+    output->service_logname = output->service_path;
+  } else {
+    output->service_logname = std::string(kNoService);
+  }
+
+  if (const auto it = session_id_cache_.find(output->ifindex);
+      it != session_id_cache_.end()) {
+    output->session_id = it->second;
+  } else {
+    output->session_id = std::nullopt;
+  }
+
+  output->logging_tag =
+      base::StrCat({output->ActiveIfname(), " ", output->service_logname,
+                    " sid=", output->SessionIDString()});
+
   return output;
 }
 
@@ -793,7 +871,8 @@ std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {
            << dev.primary_multiplexed_interface.value_or("none");
   }
   return stream << ", ifname: " << dev.ifname << ", ifindex: " << dev.ifindex
-                << ", service: " << dev.service_path << "}";
+                << ", service: " << dev.service_logname
+                << ", sid: " << dev.SessionIDString() << "}";
 }
 
 std::ostream& operator<<(std::ostream& stream,
