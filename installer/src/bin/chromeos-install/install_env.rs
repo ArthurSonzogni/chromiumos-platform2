@@ -145,7 +145,6 @@ mod tests {
     use super::*;
     use crate::platform::MockPlatform;
     use crate::process_util::ProcessError;
-    use anyhow::anyhow;
     use fs_err as fs;
     use std::process::Output;
 
