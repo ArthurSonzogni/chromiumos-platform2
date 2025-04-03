@@ -23,7 +23,7 @@ class GetMemmapThermalVersionCommandTest : public testing::Test {
    public:
     MockGetMemmapThermalVersionCommand() = default;
     using GetMemmapThermalVersionCommand::GetMemmapThermalVersionCommand;
-    MOCK_METHOD(uint8_t*, Resp, (), (const, override));
+    MOCK_METHOD(const uint8_t*, Resp, (), (const, override));
   };
 };
 

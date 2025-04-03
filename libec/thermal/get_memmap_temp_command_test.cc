@@ -22,7 +22,7 @@ class GetMemmapTempCommandTest : public testing::Test {
    public:
     explicit MockGetMemmapTempCommand(uint8_t id) : GetMemmapTempCommand(id) {}
     using GetMemmapTempCommand::GetMemmapTempCommand;
-    MOCK_METHOD(uint8_t*, Resp, (), (const, override));
+    MOCK_METHOD(const uint8_t*, Resp, (), (const, override));
   };
 };
 

@@ -22,7 +22,7 @@ class PwmGetFanTargetRpmCommandTest : public testing::Test {
     explicit MockPwmGetFanTargetRpmCommand(uint8_t id)
         : PwmGetFanTargetRpmCommand(id) {}
     using PwmGetFanTargetRpmCommand::PwmGetFanTargetRpmCommand;
-    MOCK_METHOD(uint16_t*, Resp, (), (const, override));
+    MOCK_METHOD(const uint16_t*, Resp, (), (const, override));
   };
 };
 
