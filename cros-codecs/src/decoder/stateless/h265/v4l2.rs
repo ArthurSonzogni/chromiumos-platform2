@@ -7,6 +7,8 @@ use std::rc::Rc;
 
 use crate::backend::v4l2::decoder::stateless::V4l2Picture;
 use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderBackend;
+use crate::backend::v4l2::decoder::V4l2StreamInfo;
+use crate::backend::v4l2::decoder::ADDITIONAL_REFERENCE_FRAME_BUFFER;
 use crate::codec::h265::dpb::Dpb;
 use crate::codec::h265::parser::Pps;
 use crate::codec::h265::parser::Slice;
@@ -25,14 +27,37 @@ use crate::decoder::stateless::StatelessDecoderBackendPicture;
 use crate::decoder::BlockingMode;
 use crate::decoder::DecodedHandle;
 use crate::video_frame::VideoFrame;
+use crate::Fourcc;
+use crate::Rect;
+use crate::Resolution;
+
+impl V4l2StreamInfo for &Sps {
+    fn min_num_frames(&self) -> usize {
+        self.max_dpb_size() + ADDITIONAL_REFERENCE_FRAME_BUFFER
+    }
+
+    fn coded_size(&self) -> Resolution {
+        Resolution::from((self.width() as u32, self.height() as u32))
+    }
+
+    fn visible_rect(&self) -> Rect {
+        let rect = self.visible_rectangle();
+
+        Rect { x: rect.min.x, y: rect.min.y, width: rect.max.x, height: rect.max.y }
+    }
+
+    fn bit_depth(&self) -> usize {
+        (self.bit_depth_chroma_minus8 + 8) as usize
+    }
+}
 
 impl<V: VideoFrame> StatelessDecoderBackendPicture<H265> for V4l2StatelessDecoderBackend<V> {
     type Picture = Rc<RefCell<V4l2Picture<V>>>;
 }
 
 impl<V: VideoFrame> StatelessH265DecoderBackend for V4l2StatelessDecoderBackend<V> {
-    fn new_sequence(&mut self, _sps: &Sps) -> StatelessBackendResult<()> {
-        todo!()
+    fn new_sequence(&mut self, sps: &Sps) -> StatelessBackendResult<()> {
+        self.new_sequence(sps, Fourcc::from(b"S265"))
     }
 
     fn new_picture(
