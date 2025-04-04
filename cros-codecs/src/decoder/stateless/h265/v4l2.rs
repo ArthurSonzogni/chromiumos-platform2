@@ -18,6 +18,7 @@ use crate::decoder::stateless::h265::RefPicListEntry;
 use crate::decoder::stateless::h265::RefPicSet;
 use crate::decoder::stateless::h265::StatelessH265DecoderBackend;
 use crate::decoder::stateless::h265::H265;
+use crate::decoder::stateless::NewPictureError;
 use crate::decoder::stateless::NewPictureResult;
 use crate::decoder::stateless::NewStatelessDecoderError;
 use crate::decoder::stateless::StatelessBackendResult;
@@ -62,12 +63,23 @@ impl<V: VideoFrame> StatelessH265DecoderBackend for V4l2StatelessDecoderBackend<
 
     fn new_picture(
         &mut self,
-        _timestamp: u64,
-        _alloc_cb: &mut dyn FnMut() -> Option<
+        timestamp: u64,
+        alloc_cb: &mut dyn FnMut() -> Option<
             <<Self as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
     ) -> NewPictureResult<Self::Picture> {
-        todo!()
+        let frame = alloc_cb().ok_or(NewPictureError::OutOfOutputBuffers)?;
+        let request_buffer = match self.device.alloc_request(timestamp, frame) {
+            Ok(buffer) => buffer,
+            _ => return Err(NewPictureError::OutOfOutputBuffers),
+        };
+
+        let picture = Rc::new(RefCell::new(V4l2Picture::new(request_buffer.clone())));
+        request_buffer
+            .as_ref()
+            .borrow_mut()
+            .set_picture_ref(Rc::<RefCell<V4l2Picture<V>>>::downgrade(&picture));
+        Ok(picture)
     }
 
     fn begin_picture(
