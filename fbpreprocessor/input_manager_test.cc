@@ -116,5 +116,20 @@ TEST_F(InputManagerTest, OnNewFirmwareDumpRejectsNonExistingFiles) {
   EXPECT_FALSE(input_manager()->OnNewFirmwareDump(fw_dump));
 }
 
+TEST_F(InputManagerTest, OnNewFirmwareDumpRejectsWhenFeatureIsDisabled) {
+  SimulateUserLogin();
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
+  base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+  EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
+
+  manager()->set_firmware_dumps_allowed(false);
+
+  // Since the feature is disabled, expect the request to be rejected.
+  EXPECT_FALSE(input_manager()->OnNewFirmwareDump(fw_dump));
+  // Expect that the input file has been deleted since the feature is disabled.
+  EXPECT_FALSE(base::PathExists(fw_dump.DumpFile()));
+}
+
 }  // namespace
 }  // namespace fbpreprocessor
