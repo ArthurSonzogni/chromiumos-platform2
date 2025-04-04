@@ -199,6 +199,7 @@ pub fn fourcc_for_v4l2_stateless(fourcc: Fourcc) -> Result<Fourcc, String> {
         "VP80" => Ok(Fourcc::from(b"VP8F")),
         "VP90" => Ok(Fourcc::from(b"VP9F")),
         "H264" => Ok(Fourcc::from(b"S264")),
+        "H265" => Ok(Fourcc::from(b"S265")),
         "AV1F" => Ok(Fourcc::from(b"AV1F")),
         _ => Err("Unsupported fourcc".into()),
     }
