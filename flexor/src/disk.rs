@@ -18,7 +18,7 @@ use crate::lsblk::LsBlkDevice;
 use crate::util::execute_command;
 
 /// Constants for the newly created FLEX_DEPLOY partition.
-pub const FLEX_DEPLOY_PART_NUM_BLOCKS: u64 = 9_000_000_000 / 512;
+pub const FLEX_DEPLOY_PART_NUM_BLOCKS: u64 = 10_000_000_000 / 512;
 pub const FLEX_DEPLOY_PART_LABEL: &str = "FLEX_DEPLOY";
 pub const FLEX_DEPLOY_PART_NUM: u32 = 13;
 
