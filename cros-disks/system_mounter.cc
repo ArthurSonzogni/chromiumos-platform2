@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
