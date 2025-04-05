@@ -6,6 +6,7 @@
 #define LIBEC_FINGERPRINT_FP_INFO_COMMAND_H_
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <brillo/brillo_export.h>
@@ -67,6 +68,22 @@ class BRILLO_EXPORT FpInfoCommand : public EcCommandInterface {
       fp_info_command_v2_ = std::make_unique<FpInfoCommand_v2>();
     } else {
       fp_info_command_v1_ = std::make_unique<FpInfoCommand_v1>();
+    }
+  }
+
+  // Only for testing.
+  FpInfoCommand(uint32_t version,
+                std::unique_ptr<FpInfoCommand_v1> v1,
+                std::unique_ptr<FpInfoCommand_v2> v2)
+      : command_version(version) {
+    CHECK_GT(version, 0);
+    CHECK_LE(version, 2);
+    if (version == 2) {
+      CHECK_EQ(v1, nullptr);
+      fp_info_command_v2_ = std::move(v2);
+    } else {
+      fp_info_command_v1_ = std::move(v1);
+      CHECK_EQ(v2, nullptr);
     }
   }
 
