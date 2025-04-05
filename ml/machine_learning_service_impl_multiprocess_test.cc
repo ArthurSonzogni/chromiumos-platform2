@@ -14,6 +14,7 @@
 
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
+#include <base/memory/read_only_shared_memory_region.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/bind.h>

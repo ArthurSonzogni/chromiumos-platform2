@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
+#include <base/memory/read_only_shared_memory_region.h>
 #include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
