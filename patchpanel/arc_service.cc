@@ -46,6 +46,7 @@ constexpr uint32_t kConfigPoolSize = 5;
 constexpr uint32_t kInvalidId = 0;
 constexpr char kArcNetnsName[] = "arc_netns";
 constexpr char kArcVmIfnamePrefix[] = "eth";
+constexpr std::string_view kArc0LoggingTag = "arc0 no_service sid=none";
 
 void RecordEvent(MetricsLibraryInterface* metrics, ArcServiceUmaEvent event) {
   metrics->SendEnumToUMA(kArcServiceUmaEventMetrics, event);
@@ -345,7 +346,8 @@ void ArcService::RefreshMacAddressesInConfigs() {
 
 std::unique_ptr<ArcService::ArcConfig> ArcService::AcquireConfig() {
   if (available_configs_.empty()) {
-    LOG(ERROR) << "Cannot make virtual Device: No more addresses available.";
+    LOG(ERROR) << __func__
+               << ": Cannot make virtual Device: No more addresses available.";
     return nullptr;
   }
 
@@ -359,39 +361,35 @@ void ArcService::ReleaseConfig(std::unique_ptr<ArcConfig> config) {
   available_configs_.emplace_back(std::move(config));
 }
 
-bool ArcService::StartInternal(
-    uint32_t id, std::unique_ptr<GuestIfManager> mock_guest_if_manager) {
+bool ArcService::Start(uint32_t id) {
   RecordEvent(metrics_, ArcServiceUmaEvent::kStart);
 
   if (IsStarted()) {
     RecordEvent(metrics_, ArcServiceUmaEvent::kStartWithoutStop);
-    LOG(WARNING) << "Already running - did something crash?"
+    LOG(WARNING) << __func__ << ": Already running - did something crash?"
                  << " Stopping and restarting...";
     Stop(id_);
   }
 
-  if (mock_guest_if_manager) {
-    guest_if_manager_ = std::move(mock_guest_if_manager);
-  }
   std::string arc0_device_ifname;
   if (!arc0_config_) {
-    LOG(ERROR) << "arc0 config not allocated";
+    LOG(ERROR) << __func__ << ": arc0 config not allocated";
     return false;
   }
   switch (arc_type_) {
     case ArcType::kContainer: {
       pid_t pid = static_cast<int>(id);
       if (pid < 0) {
-        LOG(ERROR) << "Invalid ARC container pid " << pid;
+        LOG(ERROR) << __func__ << ": Invalid ARC container pid " << pid;
         return false;
       }
       if (!OneTimeContainerSetup(*datapath_, *system_, pid)) {
         RecordEvent(metrics_, ArcServiceUmaEvent::kOneTimeContainerSetupError);
-        LOG(ERROR) << "One time container setup failed";
+        LOG(ERROR) << __func__ << ": One time container setup failed";
       }
       if (!datapath_->NetnsAttachName(kArcNetnsName, pid)) {
-        LOG(ERROR) << "Failed to attach name " << kArcNetnsName << " to pid "
-                   << pid;
+        LOG(ERROR) << __func__ << ": Failed to attach name " << kArcNetnsName
+                   << " to pid " << pid;
         return false;
       }
       // b/208240700: Refresh MAC address in AddressConfigs every time ARC
@@ -413,7 +411,7 @@ bool ArcService::StartInternal(
             /*ipv4_cidr=*/std::nullopt, vm_tools::kCrosVmUser,
             DeviceMode::kTap);
         if (tap.empty()) {
-          LOG(ERROR) << "Failed to create TAP device";
+          LOG(ERROR) << __func__ << ": Failed to create TAP device";
           continue;
         }
 
@@ -436,8 +434,8 @@ bool ArcService::StartInternal(
                            arc0_device_ifname, arc0_config_->mac_addr(),
                            *arc0_config_, kArcbr0Ifname, kArc0Ifname);
 
-  LOG(INFO) << "Starting ARC management Device " << *arc0_device_;
-  StartArcDeviceDatapath(*arc0_device_);
+  LOG(INFO) << __func__ << ": Starting ARC management Device " << *arc0_device_;
+  StartArcDeviceDatapath(kArc0LoggingTag, *arc0_device_);
 
   // Start already known shill <-> ARC mapped devices.
   for (const auto& [_, shill_device] : shill_devices_) {
@@ -452,7 +450,7 @@ bool ArcService::StartInternal(
   // 6.1+ kernels.
   if (arc_type_ == ArcType::kContainer) {
     if (!datapath_->SetConntrackHelpers(true)) {
-      LOG(ERROR) << "Failed to enable conntrack helpers";
+      LOG(ERROR) << __func__ << ": Failed to enable conntrack helpers";
     }
   }
 
@@ -460,23 +458,11 @@ bool ArcService::StartInternal(
   return true;
 }
 
-bool ArcService::Start(uint32_t id) {
-  return StartInternal(id, nullptr);
-}
-
-bool ArcService::StartWithMockGuestIfManager(
-    uint32_t id, std::unique_ptr<GuestIfManager> mock_guest_if_manager) {
-  if (arc_type_ == ArcType::kContainer) {
-    return false;
-  }
-  return StartInternal(id, std::move(mock_guest_if_manager));
-}
-
 void ArcService::Stop(uint32_t id) {
   RecordEvent(metrics_, ArcServiceUmaEvent::kStop);
   if (!IsStarted()) {
     RecordEvent(metrics_, ArcServiceUmaEvent::kStopBeforeStart);
-    LOG(ERROR) << "ArcService was not running";
+    LOG(ERROR) << __func__ << ": ArcService was not running";
     return;
   }
 
@@ -484,12 +470,13 @@ void ArcService::Stop(uint32_t id) {
   // The stop message for ARCVM may be sent after a new VM is started. Only
   // stop if the CID matched the latest started ARCVM CID.
   if (arc_type_ == ArcType::kVM && id_ != id) {
-    LOG(WARNING) << "Mismatched ARCVM CIDs " << id_ << " != " << id;
+    LOG(WARNING) << __func__ << ": Mismatched ARCVM CIDs " << id_
+                 << " != " << id;
     return;
   }
 
   if (!datapath_->SetConntrackHelpers(false)) {
-    LOG(ERROR) << "Failed to disable conntrack helpers";
+    LOG(ERROR) << __func__ << ": Failed to disable conntrack helpers";
   }
 
   // Remove all ARC Devices associated with a shill Device.
@@ -501,8 +488,8 @@ void ArcService::Stop(uint32_t id) {
   }
   shill_devices_ = shill_devices;
 
-  StopArcDeviceDatapath(*arc0_device_);
-  LOG(INFO) << "Stopped ARC management Device " << *arc0_device_;
+  StopArcDeviceDatapath(kArc0LoggingTag, *arc0_device_);
+  LOG(INFO) << __func__ << ": Stopped ARC management Device " << *arc0_device_;
   arc0_device_ = std::nullopt;
 
   if (arc_type_ == ArcType::kVM) {
@@ -517,7 +504,8 @@ void ArcService::Stop(uint32_t id) {
   } else {
     // Free the network namespace name attached to the ARC container.
     if (!datapath_->NetnsDeleteName(kArcNetnsName)) {
-      LOG(ERROR) << "Failed to delete netns name " << kArcNetnsName;
+      LOG(ERROR) << __func__ << ": Failed to delete netns name "
+                 << kArcNetnsName;
     }
   }
 
@@ -539,7 +527,8 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDevice);
 
   if (devices_.find(shill_device.ifname) != devices_.end()) {
-    LOG(DFATAL) << "Attemping to add already tracked shill device "
+    LOG(DFATAL) << shill_device.logging_tag << " " << __func__
+                << ": Attemping to add already tracked shill device "
                 << shill_device;
     return;
   }
@@ -547,8 +536,8 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   // TODO(b:323291863): Fix config leak when AddDevice fails.
   auto config = AcquireConfig();
   if (!config) {
-    LOG(ERROR) << "Cannot acquire an ARC IPv4 config for shill device "
-               << shill_device;
+    LOG(ERROR) << shill_device.logging_tag << " " << __func__
+               << ": Cannot acquire an ARC IPv4 config";
     return;
   }
   // The interface name visible inside ARC depends on the type of ARC
@@ -564,14 +553,16 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   if (arc_type_ == ArcType::kVM) {
     arc_device_ifname = config->tap_ifname();
     if (arc_device_ifname.empty()) {
-      LOG(ERROR) << "No TAP device for " << shill_device;
+      LOG(ERROR) << shill_device.logging_tag << " " << __func__
+                 << ": No TAP device";
       ReleaseConfig(std::move(config));
       return;
     }
     const auto guest_ifname_opt =
         guest_if_manager_->GetGuestIfName(config->tap_ifname());
     if (!guest_ifname_opt.has_value()) {
-      LOG(ERROR) << "No guest device for " << shill_device;
+      LOG(ERROR) << shill_device.logging_tag << " " << __func__
+                 << ": No guest device";
       ReleaseConfig(std::move(config));
       return;
     }
@@ -582,7 +573,8 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   }
 
   if (!IsArcValidTechnology(shill_device.technology)) {
-    LOG(ERROR) << "Shill device technology type "
+    LOG(ERROR) << shill_device.logging_tag << " " << __func__
+               << ": Shill device technology type "
                << (shill_device.technology.has_value()
                        ? net_base::ToString(*shill_device.technology)
                        : "unknown")
@@ -596,8 +588,9 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
       shill_device.shill_device_interface_property, arc_device_ifname,
       config->mac_addr(), *config, ArcBridgeName(shill_device), guest_ifname);
 
-  LOG(INFO) << "Starting ARC Device " << arc_device_it.first->second;
-  StartArcDeviceDatapath(arc_device_it.first->second);
+  LOG(INFO) << shill_device.logging_tag << " " << __func__
+            << ": Starting ARC Device " << arc_device_it.first->second;
+  StartArcDeviceDatapath(shill_device.logging_tag, arc_device_it.first->second);
   forwarding_service_->StartIPv6NDPForwarding(
       shill_device, arc_device_it.first->second.bridge_ifname());
 
@@ -629,10 +622,11 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
   if (IsStarted()) {
     const auto it = devices_.find(shill_device.ifname);
     if (it == devices_.end()) {
-      LOG(WARNING) << "Unknown shill Device " << shill_device;
+      LOG(WARNING) << __func__ << ": Unknown shill Device " << shill_device;
     } else {
       const auto& arc_device = it->second;
-      LOG(INFO) << "Removing ARC Device " << arc_device;
+      LOG(INFO) << shill_device.logging_tag << " " << __func__
+                << ": Removing ARC Device " << arc_device;
       auto signal_device = std::make_unique<NetworkDevice>();
       arc_device.ConvertToProto(signal_device.get());
       dbus_client_notifier_->OnNetworkDeviceChanged(
@@ -644,10 +638,11 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
           MulticastForwarder::Direction::kTwoWays);
       forwarding_service_->StopBroadcastForwarding(shill_device,
                                                    arc_device.bridge_ifname());
-      StopArcDeviceDatapath(arc_device);
+      StopArcDeviceDatapath(shill_device.logging_tag, arc_device);
       auto config_it = assigned_configs_.find(shill_device.ifname);
       if (config_it == assigned_configs_.end()) {
-        LOG(ERROR) << "No IPv4 configuration found for ARC Device "
+        LOG(ERROR) << shill_device.logging_tag << " " << __func__
+                   << ": No IPv4 configuration found for ARC Device "
                    << arc_device;
       } else {
         ReleaseConfig(std::move(config_it->second));
@@ -663,7 +658,7 @@ void ArcService::UpdateDeviceIPConfig(const ShillClient::Device& shill_device) {
   auto shill_device_it =
       shill_devices_.find(shill_device.shill_device_interface_property);
   if (shill_device_it == shill_devices_.end()) {
-    LOG(WARNING) << "Unknown shill Device " << shill_device;
+    LOG(WARNING) << __func__ << ": Unknown shill Device " << shill_device;
     return;
   }
   shill_device_it->second = shill_device;
@@ -727,14 +722,14 @@ std::ostream& operator<<(std::ostream& stream, ArcService::ArcType arc_type) {
 }
 
 void ArcService::StartArcDeviceDatapath(
-    const ArcService::ArcDevice& arc_device) {
+    std::string_view logging_tag, const ArcService::ArcDevice& arc_device) {
   // Only create the host virtual interface and guest virtual interface for
   // the container. The TAP devices are currently always created statically
   // ahead of time.
   if (arc_type_ == ArcType::kContainer) {
     pid_t pid = static_cast<int>(id_);
     if (pid < 0) {
-      LOG(ERROR) << __func__ << "(" << arc_device
+      LOG(ERROR) << logging_tag << " " << __func__ << "(" << arc_device
                  << "): Invalid ARC container pid " << pid;
       return;
     }
@@ -749,7 +744,7 @@ void ArcService::StartArcDeviceDatapath(
             /*remote_ipv6_cidr=*/std::nullopt,
             /*remote_multicast_flag=*/true,
             /*up=*/false)) {
-      LOG(ERROR) << __func__ << "(" << arc_device
+      LOG(ERROR) << logging_tag << " " << __func__ << "(" << arc_device
                  << "): Cannot create virtual ethernet pair";
       return;
     }
@@ -765,13 +760,14 @@ void ArcService::StartArcDeviceDatapath(
   // bridge.
   if (!datapath_->AddBridge(arc_device.bridge_ifname(),
                             arc_device.bridge_ipv4_address())) {
-    LOG(ERROR) << __func__ << "(" << arc_device << "): Failed to setup bridge";
+    LOG(ERROR) << logging_tag << " " << __func__ << "(" << arc_device
+               << "): Failed to setup bridge";
     return;
   }
 
   if (!datapath_->AddToBridge(arc_device.bridge_ifname(),
                               arc_device.arc_device_ifname())) {
-    LOG(ERROR) << __func__ << "(" << arc_device
+    LOG(ERROR) << logging_tag << " " << __func__ << "(" << arc_device
                << "): Failed to link bridge and ARC virtual interface";
     return;
   }
@@ -787,7 +783,7 @@ void ArcService::StartArcDeviceDatapath(
   const auto shill_device_it =
       shill_devices_.find(*arc_device.shill_device_ifname());
   if (shill_device_it == shill_devices_.end()) {
-    LOG(ERROR) << __func__ << "(" << arc_device
+    LOG(ERROR) << logging_tag << " " << __func__ << "(" << arc_device
                << "): Failed to find shill Device";
     return;
   }
@@ -798,18 +794,18 @@ void ArcService::StartArcDeviceDatapath(
                                 arc_device.arc_ipv4_address().address());
   if (IsAdbAllowed(shill_device_it->second.technology) &&
       !datapath_->AddAdbPortAccessRule(shill_device_it->second.ifname)) {
-    LOG(ERROR) << __func__ << "(" << arc_device
+    LOG(ERROR) << logging_tag << " " << __func__ << "(" << arc_device
                << "): Failed to add ADB port access rule";
   }
 }
 
 void ArcService::StopArcDeviceDatapath(
-    const ArcService::ArcDevice& arc_device) {
+    std::string_view logging_tag, const ArcService::ArcDevice& arc_device) {
   if (arc_device.shill_device_ifname()) {
     const auto shill_device_it =
         shill_devices_.find(*arc_device.shill_device_ifname());
     if (shill_device_it == shill_devices_.end()) {
-      LOG(ERROR) << __func__ << "(" << arc_device
+      LOG(ERROR) << logging_tag << " " << __func__ << "(" << arc_device
                  << "): Failed to find shill Device";
     } else {
       if (IsAdbAllowed(shill_device_it->second.technology)) {

@@ -225,9 +225,7 @@ class ArcService {
   // Starts ArcService.
   bool Start(uint32_t id);
 
-  // Starts ArcService with a mock GuestIfManager for unit test.
-  bool StartWithMockGuestIfManager(
-      uint32_t id, std::unique_ptr<GuestIfManager> mock_guest_if_manager);
+  // Stops ArcService.
   void Stop(uint32_t id);
 
   // Returns the IPv4 address of the "arc0" legacy management interface.
@@ -251,17 +249,6 @@ class ArcService {
   // Teardown the ARC datapath associated with the upstream network interface
   // |ifname|.
   void RemoveDevice(const ShillClient::Device& shill_device);
-
-  // Starts the packet datapath on the host for the ARC device |arc_device|.
-  // If ARC is running in container mode, the veth interface
-  // |arc_device_ifname| is also created together with its counterpart inside
-  // the container. Otherwise if ARC is running in VM mode, the tap device must
-  // already exist.
-  void StartArcDeviceDatapath(const ArcDevice& arc_device);
-  // Stops the packet datapath on the host for the ARC device |arc_device|. If
-  // ARC is running in container mode, the veth interface |arc_device_ifname| is
-  // also destroyed.
-  void StopArcDeviceDatapath(const ArcDevice& arc_device);
 
   // Notifies ArcService that the IP configuration of the physical shill Device
   // |shill_device| changed.
@@ -291,15 +278,24 @@ class ArcService {
 
   void RefreshMacAddressesInConfigs();
 
+  // Starts the packet datapath on the host for the ARC device |arc_device|.
+  // If ARC is running in container mode, the veth interface
+  // |arc_device_ifname| is also created together with its counterpart inside
+  // the container. Otherwise if ARC is running in VM mode, the tap device must
+  // already exist.
+  void StartArcDeviceDatapath(std::string_view logging_tag,
+                              const ArcDevice& arc_device);
+  // Stops the packet datapath on the host for the ARC device |arc_device|. If
+  // ARC is running in container mode, the veth interface |arc_device_ifname| is
+  // also destroyed.
+  void StopArcDeviceDatapath(std::string_view logging_tag,
+                             const ArcDevice& arc_device);
+
   // Reserve a configuration for an interface.
   std::unique_ptr<ArcConfig> AcquireConfig();
 
   // Returns a configuration to the pool.
   void ReleaseConfig(std::unique_ptr<ArcConfig> config);
-
-  // Starts ArcService. Use mock_guest_if_manager if not null.
-  bool StartInternal(uint32_t id,
-                     std::unique_ptr<GuestIfManager> mock_guest_if_manager);
 
   FRIEND_TEST(ArcServiceTest, NotStarted_AddDevice);
   FRIEND_TEST(ArcServiceTest, NotStarted_AddRemoveDevice);

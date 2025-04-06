@@ -92,6 +92,8 @@ ShillClient::Device MakeShillDevice(
   dev.technology = technology;
   dev.ifname =
       primary_multiplexed_interface.value_or(shill_device_interface_property);
+  dev.service_logname = "mock_service_1";
+  dev.logging_tag = dev.ifname + " " + dev.service_logname + " sid=1";
   return dev;
 }
 
