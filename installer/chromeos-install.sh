@@ -658,6 +658,27 @@ copy_partition() {
     write_partition "${part_size}" "${src_block}" "${dst_block}" \
       "${chunk_num}" "${total_chunks}" "${cache_input}"
     ;;
+  "${PARTITION_NUM_EFI_SYSTEM:?}")
+    # On destination devices with a 4k block size, the vfat filesystem on the
+    # EFI-System Partition (ESP) can't be bitwise copied to the destination and
+    # then mount successfully. Instead we need to make a new filesystem and
+    # copy the files over.
+    # Unfortunately, doing that seems to break BIOS/legacy booting. For 512 byte
+    # block sizes, continue to do this the way we always have, and for other
+    # block sizes, which are unlikely to use legacy boot, use the new method.
+    if [ "${DST_BLKSIZE}" -eq 512 ]; then
+      if safety_check_size "${part_num}" "${part_size}" "${dst}" ; then
+        write_partition "${part_size}" "${src_block}" "${dst_block}" \
+          "${chunk_num}" "${total_chunks}" "${cache_input}"
+      fi
+    else
+      # >= 4k block size safe, but legacy-boot unsafe.
+      # Implemented in a separate Rust binary.
+      /usr/sbin/install-copy-esp \
+          --src "${src_block}" \
+          --dst "${dst_block}"
+    fi
+    ;;
   *)
     if safety_check_size "${part_num}" "${part_size}" "${dst}" ; then
       write_partition "${part_size}" "${src_block}" "${dst_block}" \
