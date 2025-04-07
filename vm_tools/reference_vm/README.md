@@ -91,3 +91,12 @@ cd src/platform/tast-tests
 git commit -a
 cros_sdk tast run $DUT bruschetta.Basic  # try running test locally.
 ```
+
+Commit message can be something like:
+
+```
+bruschetta: uprev to refvm-xxx
+
+BUG=b:366103608
+TEST=cros_sdk tast run $DUT bruschetta.Basic
+```
