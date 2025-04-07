@@ -565,6 +565,26 @@ get_recovery_key_version() {
   set -e
 }
 
+safety_check_size() {
+  local part_num="$1"
+  local part_size="$2"
+  local dst="$3"
+
+  local src_part_size
+  local dst_part_size
+  src_part_size="$((part_size * SRC_BLKSIZE))"
+  dst_part_size="$(partsize "${dst}" "${part_num}")"
+  dst_part_size="$((dst_part_size * DST_BLKSIZE))"
+  if [ "${src_part_size}" -ne "${dst_part_size}" ] || \
+      [ "${src_part_size}" -le 4096 ]; then
+    # We only copy partitions that are equally sized and greater than the
+    # min fs block size. This matches the build_image logic.
+    return 1
+  fi
+
+  return 0
+}
+
 # Copy partition from src to dst (figures out partition offsets). Note, this
 # has some special casing for rootfs, kernel, and stateful partitions. In
 # addition, it only copies partitions that are equally sized over one another.
@@ -639,19 +659,10 @@ copy_partition() {
       "${chunk_num}" "${total_chunks}" "${cache_input}"
     ;;
   *)
-    local src_part_size
-    local dst_part_size
-    src_part_size="$((part_size * SRC_BLKSIZE))"
-    dst_part_size="$(partsize "${dst}" "${part_num}")"
-    dst_part_size="$((dst_part_size * DST_BLKSIZE))"
-    if [ "${src_part_size}" -ne "${dst_part_size}" ] || \
-        [ "${src_part_size}" -le 4096 ]; then
-      # We only copy partitions that are equally sized and greater than the
-      # min fs block size. This matches the build_image logic.
-      return
+    if safety_check_size "${part_num}" "${part_size}" "${dst}" ; then
+      write_partition "${part_size}" "${src_block}" "${dst_block}" \
+        "${chunk_num}" "${total_chunks}" "${cache_input}"
     fi
-    write_partition "${part_size}" "${src_block}" "${dst_block}" \
-      "${chunk_num}" "${total_chunks}" "${cache_input}"
     ;;
   esac
 }
