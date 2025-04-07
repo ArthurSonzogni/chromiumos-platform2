@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/check.h>
@@ -64,7 +65,11 @@ void Daemon::BootstrapMojoConnection(
   LOG(INFO) << "Receiving bootstrap mojo call from D-Bus client.";
 
   if (is_bound_) {
-    LOG(WARNING) << "Trying to instantiate multiple Mojo proxies.";
+    std::string err_mssg = "Trying to instantiate multiple Mojo proxies.";
+    LOG(WARNING) << err_mssg;
+    std::move(response_sender)
+        .Run(dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+                                                 err_mssg));
     return;
   }
 
@@ -72,17 +77,29 @@ void Daemon::BootstrapMojoConnection(
   dbus::MessageReader reader(method_call);
 
   if (!reader.PopFileDescriptor(&file_handle)) {
-    LOG(ERROR) << "Couldn't extract Mojo IPC handle.";
+    std::string err_mssg = "Couldn't extract Mojo IPC handle.";
+    LOG(ERROR) << err_mssg;
+    std::move(response_sender)
+        .Run(dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+                                                 err_mssg));
     return;
   }
 
   if (!file_handle.is_valid()) {
-    LOG(ERROR) << "Couldn't get file handle sent over D-Bus.";
+    std::string err_mssg = "Couldn't get file handle sent over D-Bus.";
+    LOG(ERROR) << err_mssg;
+    std::move(response_sender)
+        .Run(dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+                                                 err_mssg));
     return;
   }
 
   if (!base::SetCloseOnExec(file_handle.get())) {
-    PLOG(ERROR) << "Failed setting FD_CLOEXEC on fd.";
+    std::string err_mssg = "Failed setting FD_CLOEXEC on fd.";
+    PLOG(ERROR) << err_mssg;
+    std::move(response_sender)
+        .Run(dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+                                                 err_mssg));
     return;
   }
 
