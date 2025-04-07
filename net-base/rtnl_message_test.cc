@@ -415,6 +415,20 @@ alignas(4) const uint8_t kNdDnsslMessage[] = {
     0x00, 0x00, 0x00, 0x00, 0x88, 0xb9, 0xec, 0xff, 0xfe, 0x20, 0x7e, 0x26,
 };
 
+// Invalid DNSSL notification
+// ifindex: 5
+// Lifetime: 300
+// Domain names: non-UTF8 data
+alignas(4) const uint8_t kInvalidNdDnsslMessage[] = {
+    0x54, 0x00, 0x00, 0x00, 0x44, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x20, 0x00, 0x05, 0x00, 0x00, 0x00,
+    0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1f, 0x04, 0x00, 0x00,
+    0x00, 0x00, 0x01, 0x2c, 0x03, 0xb6, 0xa0, 0x6f, 0x03, 0xb7, 0xc5, 0x72,
+    0x00, 0x03, 0xaa, 0x6f, 0x6f, 0x01, 0x32, 0x03, 0x62, 0x61, 0x72, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 0x01, 0x00, 0xfe, 0x80, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x88, 0xb9, 0xec, 0xff, 0xfe, 0x20, 0x7e, 0x26,
+};
+
 // CaptivePortal notification
 // ifindex: 7
 // URI: https://example.org/api
@@ -901,9 +915,13 @@ TEST_F(RTNLMessageTest, DnsslOption) {
 
   RTNLMessage::DnsslOption dnssl = msg->dnssl_option();
 
-  // Verify life time and addresses.
+  // Verify life time and domains.
   EXPECT_EQ(600, dnssl.lifetime);
   EXPECT_EQ(expected_domains, dnssl.domains);
+}
+
+TEST_F(RTNLMessageTest, DnsslOptionWithInvalidData) {
+  EXPECT_EQ(nullptr, RTNLMessage::Decode(kInvalidNdDnsslMessage));
 }
 
 TEST_F(RTNLMessageTest, CaptivePortalOption) {
@@ -1202,4 +1220,19 @@ TEST_F(RTNLMessageTest, EncodeGetMessageLength) {
   EXPECT_EQ(NLMSG_LENGTH(sizeof(struct ndmsg)), msg_neighor.Encode().size());
 }
 
+TEST_F(RTNLMessageTest, DnsslOptionsStringWithoutPIIs) {
+  const auto msg = RTNLMessage::Decode(kNdDnsslMessage);
+  ASSERT_NE(nullptr, msg);
+  const RTNLMessage::DnsslOption& dnssl = msg->dnssl_option();
+
+  std::vector<std::string> expected_domains = {"foo.bar", "foo.2.bar"};
+  EXPECT_EQ(expected_domains, dnssl.domains);
+
+  std::string output = dnssl.ToString();
+  for (const auto& expected : expected_domains) {
+    EXPECT_EQ(output.find(expected), std::string::npos)
+        << "DnsslOption string must not contain \"" << expected
+        << "\", but was: " << output;
+  }
+}
 }  // namespace net_base

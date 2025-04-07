@@ -26,6 +26,7 @@
 
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -437,8 +438,10 @@ std::string RTNLMessage::RdnssOption::ToString() const {
 }
 
 std::string RTNLMessage::DnsslOption::ToString() const {
-  return base::StringPrintf("DnsslOption lifetime %d",
-                            static_cast<int>(lifetime));
+  // b/408883419: domain names can constitute PIIs and should not be printed
+  // directly.
+  return base::StrCat({"DnsslOption lifetime: ", base::NumberToString(lifetime),
+                       "s, domains: ", base::NumberToString(domains.size())});
 }
 
 std::string RTNLMessage::NdUserOption::ToString() const {
@@ -825,6 +828,13 @@ bool RTNLMessage::ParseDnsslOption(base::span<const uint8_t> data) {
   }
   if (!tokens.empty()) {
     domains.push_back(base::JoinString(tokens, "."));
+  }
+  // b/408883419: if any invalid character is seen in the list of domain names,
+  // the whole option is deemed not trustworthy and is thrown away.
+  if (!std::all_of(domains.begin(), domains.end(), [](const std::string& s) {
+        return base::IsStringASCII(s);
+      })) {
+    return false;
   }
   dnssl_option_.domains = std::move(domains);
   dnssl_option_.lifetime = lifetime;

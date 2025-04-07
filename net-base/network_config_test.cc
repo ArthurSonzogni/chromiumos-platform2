@@ -4,6 +4,9 @@
 
 #include "net-base/network_config.h"
 
+#include <sstream>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -122,5 +125,20 @@ TEST(NetworkConfigTest, MergeCaptivePortalURI) {
   EXPECT_EQ(merged_config.captive_portal_uri, ipv4_config.captive_portal_uri);
   merged_config = NetworkConfig::Merge(&ipv4_config, &ipv6_config);
   EXPECT_EQ(merged_config.captive_portal_uri, ipv6_config.captive_portal_uri);
+}
+
+TEST(NetworkConfigTest, NoPIIsInLogs) {
+  NetworkConfig config;
+  config.dns_search_domains = {"example1.com", "example2.com"};
+
+  std::string output = (std::ostringstream() << config).str();
+  EXPECT_EQ(std::string::npos, output.find("example1"))
+      << "NetworkConfig string representation must not contain \"example1\", "
+         "but was: "
+      << output;
+  EXPECT_EQ(std::string::npos, output.find("example2"))
+      << "NetworkConfig string representation must not contain \"example2\", "
+         "but was: "
+      << output;
 }
 }  // namespace net_base

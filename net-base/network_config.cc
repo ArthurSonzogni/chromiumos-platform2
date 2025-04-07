@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include <base/containers/flat_set.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
 #include "net-base/ipv4_address.h"
@@ -185,8 +186,10 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   stream << base::JoinString(dns_str, ",");
   stream << "]";
   if (!config.dns_search_domains.empty()) {
-    stream << ", search domains: ["
-           << base::JoinString(config.dns_search_domains, ",") << "]";
+    // b/408883419: domain names can constitute PIIs and should not be printed
+    // directly.
+    stream << ", search domains: "
+           << base::NumberToString(config.dns_search_domains.size());
   }
   if (config.mtu) {
     stream << ", mtu: " << *config.mtu;
