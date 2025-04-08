@@ -35,13 +35,7 @@ config("common_fuzzer") {
   }
 
   if (use.ubsan) {
-    cflags += [
-      "-fsanitize=undefined",
-      "-fno-sanitize=vptr",
-    ]
-    ldflags += [
-      "-fsanitize=undefined",
-      "-fno-sanitize=vptr",
-    ]
+    cflags += [ "-fsanitize=undefined" ]
+    ldflags += [ "-fsanitize=undefined" ]
   }
 }
