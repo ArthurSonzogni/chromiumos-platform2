@@ -146,69 +146,69 @@ fn main() {
             return;
         }
 
-        if job.output.is_none() {
+        if job.output.is_some() {
+            let width = job.output.as_ref().unwrap().resolution().width as usize;
+            let height = job.output.as_ref().unwrap().resolution().height as usize;
+            let luma_size = job.output.as_ref().unwrap().resolution().get_area();
+            let chroma_size = align_up(width, 2) / 2 * align_up(height, 2) / 2;
+            let mut frame_data: Vec<u8> = vec![0; luma_size + 2 * chroma_size];
+            let (dst_y, dst_uv) = frame_data.split_at_mut(luma_size);
+            let (dst_u, dst_v) = dst_uv.split_at_mut(chroma_size);
+            {
+                let src_pitches = job.output.as_ref().unwrap().get_plane_pitch();
+                let src_mapping =
+                    job.output.as_ref().unwrap().map().expect("Failed to map output frame!");
+                let src_planes = src_mapping.get();
+                nv12_to_i420(
+                    src_planes[Y_PLANE],
+                    src_pitches[Y_PLANE],
+                    dst_y,
+                    width,
+                    src_planes[UV_PLANE],
+                    src_pitches[UV_PLANE],
+                    dst_u,
+                    align_up(width, 2) / 2,
+                    dst_v,
+                    align_up(width, 2) / 2,
+                    width,
+                    height,
+                );
+            }
+
+            if args.multiple_output_files {
+                let file_name = decide_output_file_name(
+                    args.output.as_ref().expect("multiple_output_files need output to be set"),
+                    output_filename_idx,
+                );
+
+                let mut output = File::create(file_name).expect("error creating output file");
+                output_filename_idx += 1;
+                output.write_all(&frame_data).expect("failed to write to output file");
+            } else if let Some(output) = &mut output {
+                output.write_all(&frame_data).expect("failed to write to output file");
+            }
+
+            let frame_md5: String =
+                if need_per_frame_md5 { md5_digest(&frame_data) } else { "".to_string() };
+
+            match args.compute_md5 {
+                None => (),
+                Some(Md5Computation::Frame) => println!("{}", frame_md5),
+                Some(Md5Computation::Stream) => (*md5_context.lock().unwrap()).consume(&frame_data),
+            }
+
+            if args.golden.is_some() {
+                assert_eq!(frame_md5, (*golden_iter.lock().unwrap()).next().unwrap());
+                (*_frames_needed).fetch_sub(1, Ordering::SeqCst);
+            }
+        }
+
+        if job.drain == DrainMode::EOSDrain {
             // Indicates an empty "drain" signal.
-            assert_eq!(job.drain, DrainMode::EOSDrain);
             let (lock, eos_cv) = &*_eos_cv_pair;
             let mut received_eos = lock.lock().unwrap();
             *received_eos = true;
             eos_cv.notify_one();
-            return;
-        }
-
-        let width = job.output.as_ref().unwrap().resolution().width as usize;
-        let height = job.output.as_ref().unwrap().resolution().height as usize;
-        let luma_size = job.output.as_ref().unwrap().resolution().get_area();
-        let chroma_size = align_up(width, 2) / 2 * align_up(height, 2) / 2;
-        let mut frame_data: Vec<u8> = vec![0; luma_size + 2 * chroma_size];
-        let (dst_y, dst_uv) = frame_data.split_at_mut(luma_size);
-        let (dst_u, dst_v) = dst_uv.split_at_mut(chroma_size);
-        {
-            let src_pitches = job.output.as_ref().unwrap().get_plane_pitch();
-            let src_mapping =
-                job.output.as_ref().unwrap().map().expect("Failed to map output frame!");
-            let src_planes = src_mapping.get();
-            nv12_to_i420(
-                src_planes[Y_PLANE],
-                src_pitches[Y_PLANE],
-                dst_y,
-                width,
-                src_planes[UV_PLANE],
-                src_pitches[UV_PLANE],
-                dst_u,
-                align_up(width, 2) / 2,
-                dst_v,
-                align_up(width, 2) / 2,
-                width,
-                height,
-            );
-        }
-
-        if args.multiple_output_files {
-            let file_name = decide_output_file_name(
-                args.output.as_ref().expect("multiple_output_files need output to be set"),
-                output_filename_idx,
-            );
-
-            let mut output = File::create(file_name).expect("error creating output file");
-            output_filename_idx += 1;
-            output.write_all(&frame_data).expect("failed to write to output file");
-        } else if let Some(output) = &mut output {
-            output.write_all(&frame_data).expect("failed to write to output file");
-        }
-
-        let frame_md5: String =
-            if need_per_frame_md5 { md5_digest(&frame_data) } else { "".to_string() };
-
-        match args.compute_md5 {
-            None => (),
-            Some(Md5Computation::Frame) => println!("{}", frame_md5),
-            Some(Md5Computation::Stream) => (*md5_context.lock().unwrap()).consume(&frame_data),
-        }
-
-        if args.golden.is_some() {
-            assert_eq!(frame_md5, (*golden_iter.lock().unwrap()).next().unwrap());
-            (*_frames_needed).fetch_sub(1, Ordering::SeqCst);
         }
     };
 
@@ -240,14 +240,22 @@ fn main() {
     );
     let _ = decoder.start();
 
-    for (timestamp, input_frame) in frame_iter.enumerate() {
+    let mut timestamp = 0;
+    for input_frame in frame_iter {
         decoder.queue(vec![C2DecodeJob {
             input: input_frame.as_ref().to_vec(),
             timestamp: timestamp as u64,
             ..Default::default()
         }]);
+        timestamp += 1;
     }
-    decoder.drain(DrainMode::EOSDrain);
+    // Manually construct a "drain" job to ensure we get an EOS marked C2DecodeJob in our callback.
+    // We use this to determine when it is safe to shut down the decoder.
+    decoder.queue(vec![C2DecodeJob {
+        timestamp: timestamp as u64,
+        drain: DrainMode::EOSDrain,
+        ..Default::default()
+    }]);
 
     // Block until the decoder reaches the end-of-stream.
     let (lock, eos_cv) = &*eos_cv_pair;

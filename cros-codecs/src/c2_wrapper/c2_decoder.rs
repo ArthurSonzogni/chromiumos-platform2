@@ -97,6 +97,7 @@ where
     alloc_cb: Arc<Mutex<dyn FnMut() -> Option<V> + Send + 'static>>,
     work_queue: Arc<Mutex<VecDeque<C2DecodeJob<V>>>>,
     state: Arc<Mutex<C2State>>,
+    drain_status: Option<(u64, DrainMode)>,
     _phantom: PhantomData<B>,
 }
 
@@ -118,6 +119,21 @@ where
     V: VideoFrame,
     B: C2DecoderBackend,
 {
+    // Helper function for correctly populating the |drain| field of the C2DecodeJob objects we
+    // return to the HAL.
+    fn get_drain_status(&mut self, timestamp: u64) -> DrainMode {
+        if let Some((drain_timestamp, drain_mode)) = self.drain_status.take() {
+            if drain_timestamp == timestamp {
+                drain_mode
+            } else {
+                self.drain_status = Some((drain_timestamp, drain_mode));
+                DrainMode::NoDrain
+            }
+        } else {
+            DrainMode::NoDrain
+        }
+    }
+
     // Processes events from the decoder. Primarily these are frame decoded events and DRCs.
     fn check_events(&mut self) {
         loop {
@@ -128,17 +144,22 @@ where
             match &mut self.decoder {
                 C2Decoder::ImportingDecoder(decoder) => match decoder.next_event() {
                     Some(DecoderEvent::FrameReady(ReadyFrame::CSD(timestamp))) => {
+                        let drain = self.get_drain_status(timestamp);
                         (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
                             // CSD timestamps are already external.
                             timestamp: timestamp,
+                            drain: drain,
                             ..Default::default()
                         });
                     }
                     Some(DecoderEvent::FrameReady(ReadyFrame::Frame(frame))) => {
                         frame.sync().unwrap();
+                        let timestamp = external_timestamp(frame.timestamp());
+                        let drain = self.get_drain_status(timestamp);
                         (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
                             output: Some(frame.video_frame()),
-                            timestamp: external_timestamp(frame.timestamp()),
+                            timestamp: timestamp,
+                            drain: drain,
                             ..Default::default()
                         });
                     }
@@ -158,9 +179,11 @@ where
                 },
                 C2Decoder::ConvertingDecoder(decoder) => match decoder.next_event() {
                     Some(DecoderEvent::FrameReady(ReadyFrame::CSD(timestamp))) => {
+                        let drain = self.get_drain_status(timestamp);
                         (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
                             // CSD timestamps are already external.
                             timestamp: timestamp,
+                            drain: drain,
                             ..Default::default()
                         });
                     }
@@ -176,9 +199,12 @@ where
                             *self.state.lock().unwrap() = C2State::C2Error;
                             (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         }
+                        let timestamp = external_timestamp(frame.timestamp());
+                        let drain = self.get_drain_status(timestamp);
                         (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
                             output: Some(Arc::new(dst_frame)),
-                            timestamp: external_timestamp(frame.timestamp()),
+                            timestamp: timestamp,
+                            drain: drain,
                             ..Default::default()
                         });
                     }
@@ -284,6 +310,7 @@ where
             alloc_cb: alloc_cb,
             work_queue: work_queue,
             state: state,
+            drain_status: None,
             _phantom: Default::default(),
         })
     }
@@ -358,6 +385,7 @@ where
                                     C2Decoder::ImportingDecoder(decoder) => decoder.flush(),
                                     C2Decoder::ConvertingDecoder(decoder) => decoder.flush(),
                                 };
+                                self.drain_status = Some((job.timestamp, job.get_drain()));
                                 if let Err(_) = flush_result {
                                     log::debug!("Error handling drain request!");
                                     *self.state.lock().unwrap() = C2State::C2Error;
