@@ -210,9 +210,11 @@ where
     alloc_cb: Arc<Mutex<dyn FnMut() -> Option<<J as Job>::Frame> + Send + 'static>>,
     options: <W as C2Worker<J>>::Options,
     worker_thread: Option<JoinHandle<()>>,
-    // The instance of V actually lives in the thread creation closure, not
-    // this struct.
-    _phantom: PhantomData<W>,
+    // The instance of W actually lives in the thread creation closure, not
+    // this struct. We use "fn() -> W" for this type signature instead of just regular "W" as a
+    // workaround to make sure this PhantomData doesn't affect the Send and Sync properties of the
+    // overall C2Wrapper.
+    _phantom: PhantomData<fn() -> W>,
 }
 
 impl<J, W> C2Wrapper<J, W>
