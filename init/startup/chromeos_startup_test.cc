@@ -358,9 +358,9 @@ TEST_F(TPMTest, PcrExtended) {
                                          48,  192, 33,  135, 113, 201, 177, 10,
                                          181, 241, 127, 20,  155, 7,   115, 37,
                                          163, 95,  217, 115, 174, 118, 14,  67};
-    base::FilePath cmdline_path = base_dir_.Append(kProcCmdLine);
-    ASSERT_TRUE(
-        platform_->WriteStringToFile(cmdline_path, "TEST_LSB_CONTENT=true"));
+    base::FilePath lsb_release_path = base_dir_.Append(kLsbRelease);
+    ASSERT_TRUE(platform_->WriteStringToFile(lsb_release_path,
+                                             "TEST_LSB_CONTENT=true"));
 
     EXPECT_CALL(*tlcl_, Init()).WillOnce(Return(0));
     EXPECT_CALL(*tlcl_, Extend(kPcrNum,

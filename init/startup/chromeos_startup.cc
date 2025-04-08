@@ -65,7 +65,7 @@ constexpr char kChronos[] = "chronos";
 constexpr char kUser[] = "user";
 constexpr char kRoot[] = "root";
 
-constexpr char kProcCmdline[] = "proc/cmdline";
+constexpr char kLsbRelease[] = "etc/lsb-release";
 
 constexpr int kVersionAttestationPcr = 13;
 
@@ -690,17 +690,17 @@ bool ChromeosStartup::ExtendPCRForVersionAttestation() {
     return true;
   }
 
-  base::FilePath cmdline_path = root_.Append(kProcCmdline);
-
+  base::FilePath lsb_release_path = root_.Append(kLsbRelease);
   std::string contents;
-  if (!platform_->ReadFileToString(cmdline_path, &contents)) {
-    PLOG(WARNING) << "Failure to read /proc/cmdline for PCR Extension.";
+  if (!platform_->ReadFileToString(lsb_release_path, &contents)) {
+    PLOG(WARNING) << "Failure to read /etc/lsb-release for PCR Extension.";
     return false;
   }
-  brillo::Blob cmdline = brillo::BlobFromString(contents);
+
+  brillo::Blob lsb_release = brillo::BlobFromString(contents);
 
   brillo::Blob digest(SHA256_DIGEST_LENGTH);
-  SHA256(cmdline.data(), cmdline.size(), digest.data());
+  SHA256(lsb_release.data(), lsb_release.size(), digest.data());
 
   if (tlcl_->Init() != 0) {
     PLOG(WARNING) << "Failure to init TlclWrapper.";
