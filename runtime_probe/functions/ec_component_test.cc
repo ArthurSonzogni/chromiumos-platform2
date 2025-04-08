@@ -103,6 +103,21 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     SetFile({kCmePath, image_name, kEcComponentManifestName}, content);
   }
 
+  void SetI2cReadSuccess(MockEcComponentFunction* probe_function,
+                         uint8_t port,
+                         uint8_t addr7) const {
+    constexpr uint8_t kRturnValue[] = {0x00};
+    auto cmd =
+        MockI2cPassthruCommand::Create<NiceMock<MockI2cPassthruCommand>>();
+    ON_CALL(*cmd, Run).WillByDefault(Return(true));
+    ON_CALL(*cmd, Result).WillByDefault(Return(kEcResultSuccess));
+    ON_CALL(*cmd, I2cStatus).WillByDefault(Return(kEcI2cStatusSuccess));
+    ON_CALL(*cmd, RespData)
+        .WillByDefault(Return(base::span<const uint8_t>{kRturnValue}));
+    ON_CALL(*probe_function, GetI2cReadCommand(port, addr7, _, _))
+        .WillByDefault(Return(ByMove(std::move(cmd))));
+  }
+
   void ExpectI2cReadSuccess(MockEcComponentFunction* probe_function,
                             uint8_t port,
                             uint8_t addr7) const {
@@ -118,7 +133,7 @@ class EcComponentFunctionTest : public BaseFunctionTest {
         .WillOnce(Return(ByMove(std::move(cmd))));
   }
 
-  void ExpectI2cReadSuccessWithResult(
+  void SetI2cReadSuccessWithResult(
       MockEcComponentFunction* probe_function,
       uint8_t port,
       uint8_t addr7,
@@ -131,13 +146,13 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     ON_CALL(*cmd, Result).WillByDefault(Return(kEcResultSuccess));
     ON_CALL(*cmd, I2cStatus).WillByDefault(Return(kEcI2cStatusSuccess));
     ON_CALL(*cmd, RespData).WillByDefault(Return(return_value));
-    EXPECT_CALL(*probe_function, GetI2cReadCommand(port, addr7, offset, len))
-        .WillOnce(Return(ByMove(std::move(cmd))));
+    ON_CALL(*probe_function, GetI2cReadCommand(port, addr7, offset, len))
+        .WillByDefault(Return(ByMove(std::move(cmd))));
   }
 
-  void ExpectI2cReadFailed(MockEcComponentFunction* probe_function,
-                           uint8_t port,
-                           uint8_t addr7) const {
+  void SetI2cReadFailed(MockEcComponentFunction* probe_function,
+                        uint8_t port,
+                        uint8_t addr7) const {
     constexpr uint8_t kRturnValue[] = {0x00};
     auto cmd =
         MockI2cPassthruCommand::Create<NiceMock<MockI2cPassthruCommand>>();
@@ -146,8 +161,8 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     ON_CALL(*cmd, I2cStatus).WillByDefault(Return(kEcI2cStatusSuccess));
     ON_CALL(*cmd, RespData)
         .WillByDefault(Return(base::span<const uint8_t>{kRturnValue}));
-    EXPECT_CALL(*probe_function, GetI2cReadCommand(port, addr7, _, _))
-        .WillOnce(Return(ByMove(std::move(cmd))));
+    ON_CALL(*probe_function, GetI2cReadCommand(port, addr7, _, _))
+        .WillByDefault(Return(ByMove(std::move(cmd))));
   }
 };
 
@@ -180,11 +195,13 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeWithTypeSucceed) {
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
   // bc12_1
-  ExpectI2cReadSuccess(probe_function.get(), 2, 0x5f);
+  SetI2cReadSuccess(probe_function.get(), 2, 0x5f);
   // bc12_2
-  ExpectI2cReadSuccess(probe_function.get(), 3, 0x5f);
-  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
-                           CreateProbeResultFromJson(R"JSON(
+  SetI2cReadSuccess(probe_function.get(), 3, 0x5f);
+
+  auto actual = EvalProbeFunction(probe_function.get());
+
+  ExpectUnorderedListEqual(actual, CreateProbeResultFromJson(R"JSON(
     [
       {
         "component_type": "bc12",
@@ -208,9 +225,11 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeWithNameSucceed) {
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
   // bc12_1
-  ExpectI2cReadSuccess(probe_function.get(), 2, 0x5f);
-  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
-                           CreateProbeResultFromJson(R"JSON(
+  SetI2cReadSuccess(probe_function.get(), 2, 0x5f);
+
+  auto actual = EvalProbeFunction(probe_function.get());
+
+  ExpectUnorderedListEqual(actual, CreateProbeResultFromJson(R"JSON(
     [
       {
         "component_type": "bc12",
@@ -231,9 +250,11 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeWithTypeAndNameSucceed) {
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
   // bc12_1
-  ExpectI2cReadSuccess(probe_function.get(), 2, 0x5f);
-  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
-                           CreateProbeResultFromJson(R"JSON(
+  SetI2cReadSuccess(probe_function.get(), 2, 0x5f);
+
+  auto actual = EvalProbeFunction(probe_function.get());
+
+  ExpectUnorderedListEqual(actual, CreateProbeResultFromJson(R"JSON(
     [
       {
         "component_type": "bc12",
@@ -254,68 +275,17 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeI2cFailed) {
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
   // bc12_1
-  ExpectI2cReadFailed(probe_function.get(), 2, 0x5f);
-  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
-                           CreateProbeResultFromJson("[]"));
+  SetI2cReadFailed(probe_function.get(), 2, 0x5f);
+
+  auto actual = EvalProbeFunction(probe_function.get());
+
+  ExpectUnorderedListEqual(actual, CreateProbeResultFromJson("[]"));
 }
 
 TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatch) {
-  constexpr uint8_t kMatchValue[] = {0x00};
-  auto arguments = base::JSONReader::Read(R"JSON(
-    {
-      "type": "base_sensor",
-      "name": "base_sensor_1"
-    }
-  )JSON");
-  auto probe_function =
-      CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
-  // base_sensor_1 with 0xff mask
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
-                                 kMatchValue);
-  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
-                           CreateProbeResultFromJson(R"JSON(
-    [
-      {
-        "component_type": "base_sensor",
-        "component_name": "base_sensor_1"
-      }
-    ]
-  )JSON"));
-}
-
-TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatchWithMask) {
-  constexpr uint8_t kMismatchValue[] = {0xff};
-  constexpr uint8_t kMatchValues[][1] = {{0x01}, {0x11}, {0xa1}, {0xf1}};
-  auto arguments = base::JSONReader::Read(R"JSON(
-    {
-      "type": "base_sensor",
-      "name": "base_sensor_1"
-    }
-  )JSON");
-  for (const auto& match_value : kMatchValues) {
-    auto probe_function =
-        CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
-    // base_sensor_1 with 0x0f mask
-    ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
-                                   kMismatchValue);
-    ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
-                                   match_value);
-
-    ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
-                             CreateProbeResultFromJson(R"JSON(
-      [
-        {
-          "component_type": "base_sensor",
-          "component_name": "base_sensor_1"
-        }
-      ]
-    )JSON"));
-  }
-}
-
-TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatchWithoutMask) {
-  constexpr uint8_t kMatchValue[] = {0x02};
-  constexpr uint8_t kMismatchValue[] = {0xff};
+  constexpr uint8_t kMatchValueForReg0[] = {0x00};
+  constexpr uint8_t kMatchValueForReg1[] = {0x01};
+  constexpr uint8_t kMatchValueForReg2[] = {0x02};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",
@@ -325,14 +295,16 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatchWithoutMask) {
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
   // base_sensor_1 without a mask
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
-                                 kMismatchValue);
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
-                                 kMismatchValue);
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
-                                 kMatchValue);
-  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
-                           CreateProbeResultFromJson(R"JSON(
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
+                              kMatchValueForReg0);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
+                              kMatchValueForReg1);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
+                              kMatchValueForReg2);
+
+  auto actual = EvalProbeFunction(probe_function.get());
+
+  ExpectUnorderedListEqual(actual, CreateProbeResultFromJson(R"JSON(
     [
       {
         "component_type": "base_sensor",
@@ -342,13 +314,12 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatchWithoutMask) {
   )JSON"));
 }
 
-TEST_F(EcComponentFunctionTestWithExpect,
-       ProbeI2cMultiBytesValueMatchWithMask) {
-  constexpr uint8_t kMisMatchValue[] = {0x00, 0x00, 0x00, 0x00};
-  constexpr uint8_t kMatchValues[][4] = {{0x00, 0x11, 0x00, 0x22},
-                                         {0x01, 0x11, 0x10, 0x22},
-                                         {0x20, 0x11, 0x02, 0x22},
-                                         {0xaa, 0x11, 0xbb, 0x22}};
+TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cMultiBytesValueMatch) {
+  constexpr uint8_t kMatchValueForReg3[] = {0x01, 0x02, 0x03, 0x04};
+  constexpr uint8_t kMatchValuesForReg4[][4] = {{0x00, 0x11, 0x00, 0x22},
+                                                {0x01, 0x11, 0x10, 0x22},
+                                                {0x20, 0x11, 0x02, 0x22},
+                                                {0xaa, 0x11, 0xbb, 0x22}};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",
@@ -356,16 +327,18 @@ TEST_F(EcComponentFunctionTestWithExpect,
     }
   )JSON");
 
-  for (const auto& match_value : kMatchValues) {
+  for (const auto& match_value_for_reg4 : kMatchValuesForReg4) {
     auto probe_function =
         CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
+    SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x03, 4,
+                                kMatchValueForReg3);
     // base_sensor_3 with mask 0x00ff00ff.
-    ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x03, 4,
-                                   kMisMatchValue);
-    ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x04, 4,
-                                   match_value);
-    ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
-                             CreateProbeResultFromJson(R"JSON(
+    SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x04, 4,
+                                match_value_for_reg4);
+
+    auto actual = EvalProbeFunction(probe_function.get());
+
+    ExpectUnorderedListEqual(actual, CreateProbeResultFromJson(R"JSON(
       [
         {
           "component_type": "base_sensor",
@@ -376,34 +349,10 @@ TEST_F(EcComponentFunctionTestWithExpect,
   }
 }
 
-TEST_F(EcComponentFunctionTestWithExpect,
-       ProbeI2cMultiBytesValueMatchWithoutMask) {
-  constexpr uint8_t kMatchValue[] = {0x01, 0x02, 0x03, 0x04};
-  auto arguments = base::JSONReader::Read(R"JSON(
-    {
-      "type": "base_sensor",
-      "name": "base_sensor_3"
-    }
-  )JSON");
-  auto probe_function =
-      CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
-  // base_sensor_3 without a mask.
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x03, 4,
-                                 kMatchValue);
-  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
-                           CreateProbeResultFromJson(R"JSON(
-    [
-      {
-        "component_type": "base_sensor",
-        "component_name": "base_sensor_3"
-      }
-    ]
-  )JSON"));
-}
-
 TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
-  constexpr uint8_t kMismatchValue[] = {0xff};
-  constexpr uint8_t kLongerValue[] = {0x00, 0x00};
+  constexpr uint8_t kMismatchValueForReg0[] = {0xff};
+  constexpr uint8_t kMatchValueForReg1[] = {0x01};
+  constexpr uint8_t kMatchValueForReg2[] = {0x02};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",
@@ -413,12 +362,58 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
-                                 kLongerValue);
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
-                                 kMismatchValue);
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
-                                 kMismatchValue);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
+                              kMismatchValueForReg0);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
+                              kMatchValueForReg1);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
+                              kMatchValueForReg2);
+  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
+                           CreateProbeResultFromJson("[]"));
+}
+
+TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueLengthMismatch) {
+  constexpr uint8_t kMatchValueForReg0[] = {0x00};
+  constexpr uint8_t kMismatchValueForReg1[] = {0x01, 0x12};
+  constexpr uint8_t kMatchValueForReg2[] = {0x02};
+  auto arguments = base::JSONReader::Read(R"JSON(
+    {
+      "type": "base_sensor",
+      "name": "base_sensor_1"
+    }
+  )JSON");
+  auto probe_function =
+      CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
+
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
+                              kMatchValueForReg0);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
+                              kMismatchValueForReg1);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
+                              kMatchValueForReg2);
+  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
+                           CreateProbeResultFromJson("[]"));
+}
+
+TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOnlyOneValueMismatch) {
+  constexpr uint8_t kMismatchValue[] = {0xff};
+  constexpr uint8_t kMatchedValueForReg0[] = {0x00};
+  constexpr uint8_t kMatchedValueForReg3[] = {0x22};
+  auto arguments = base::JSONReader::Read(R"JSON(
+    {
+      "type": "base_sensor",
+      "name": "base_sensor_1"
+    }
+  )JSON");
+  auto probe_function =
+      CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
+
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
+                              kMatchedValueForReg0);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
+                              kMismatchValue);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
+                              kMatchedValueForReg3);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
 }
@@ -435,10 +430,12 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOptionalValue) {
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
   // base_sensor_2
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
-                                 kMismatchValue);
-  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
-                           CreateProbeResultFromJson(R"JSON(
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
+                              kMismatchValue);
+
+  auto actual = EvalProbeFunction(probe_function.get());
+
+  ExpectUnorderedListEqual(actual, CreateProbeResultFromJson(R"JSON(
     [
       {
         "component_type": "base_sensor",

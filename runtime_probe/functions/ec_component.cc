@@ -42,6 +42,14 @@ bool IsMatchExpect(EcComponentManifest::Component::I2c::Expect expect,
   }
   return true;
 }
+
+bool RunI2cCommandAndCheckSuccess(const base::ScopedFD& ec_dev_fd,
+                                  ec::I2cPassthruCommand* cmd) {
+  return cmd != nullptr &&
+         cmd->RunWithMultipleAttempts(ec_dev_fd.get(), kEcCmdNumAttempts) &&
+         !cmd->I2cStatus();
+}
+
 }  // namespace
 
 base::ScopedFD EcComponentFunction::GetEcDevice() const {
@@ -85,24 +93,19 @@ bool EcComponentFunction::IsValidComponent(
   if (comp.i2c.expect.size() == 0) {
     // No expect value. Just verify the accessibility of the component.
     auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, 0u, 1u);
-    if (cmd &&
-        cmd->RunWithMultipleAttempts(ec_dev_fd.get(), kEcCmdNumAttempts) &&
-        !cmd->I2cStatus()) {
-      return true;
-    }
+    return RunI2cCommandAndCheckSuccess(ec_dev_fd, cmd.get());
   }
   for (const auto& expect : comp.i2c.expect) {
     auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, expect.reg,
                                  expect.bytes);
-    if (cmd &&
-        cmd->RunWithMultipleAttempts(ec_dev_fd.get(), kEcCmdNumAttempts) &&
-        !cmd->I2cStatus()) {
-      if (!expect.value.has_value() || IsMatchExpect(expect, cmd->RespData())) {
-        return true;
-      }
+    if (!RunI2cCommandAndCheckSuccess(ec_dev_fd, cmd.get())) {
+      return false;
+    }
+    if (expect.value.has_value() && !IsMatchExpect(expect, cmd->RespData())) {
+      return false;
     }
   }
-  return false;
+  return true;
 }
 
 bool EcComponentFunction::PostParseArguments() {
