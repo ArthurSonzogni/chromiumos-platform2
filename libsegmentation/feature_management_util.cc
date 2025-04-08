@@ -209,7 +209,7 @@ std::optional<base::Value> GetPartitionVars(const base::FilePath& root,
   // JSON_PARSE_RFC (no override) is acceptable for produciong json,
   // but for testing, it is more readable to add '\n' for readability.
   auto part_vars = base::JSONReader::ReadAndReturnValueWithError(
-      json_string, base::JSON_ALLOW_CONTROL_CHARS);
+      json_string, base::JSON_ALLOW_NEWLINES_IN_STRINGS);
   if (!part_vars.has_value()) {
     PLOG(ERROR) << "Failed to parse image variables.";
     return std::nullopt;
