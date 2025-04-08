@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 use v4l2r::bindings::v4l2_ctrl_hevc_pps;
+use v4l2r::bindings::v4l2_ctrl_hevc_scaling_matrix;
 use v4l2r::bindings::v4l2_ctrl_hevc_sps;
 
 use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_AMP_ENABLED;
@@ -39,6 +40,35 @@ use v4l2r::bindings::V4L2_HEVC_PPS_FLAG_WEIGHTED_PRED;
 
 use crate::codec::h265::parser::Pps;
 use crate::codec::h265::parser::Sps;
+
+// Defined in 7.4.5
+const SCALING_LIST_SIZE_1_TO_3_COUNT: usize = 64;
+const SCALING_LIST_SIZE_0_COUNT: usize = 16;
+
+const RASTER_SCAN_ORDER_4X4: [usize; 16] = [0, 2, 5, 9, 1, 4, 8, 12, 3, 7, 11, 14, 6, 10, 13, 15];
+const RASTER_SCAN_ORDER_8X8: [usize; 64] = [
+    0, 2, 5, 9, 14, 20, 27, 35, 1, 4, 8, 13, 19, 26, 34, 42, 3, 7, 12, 18, 25, 33, 41, 48, 6, 11,
+    17, 24, 32, 40, 47, 53, 10, 16, 23, 31, 39, 46, 52, 57, 15, 22, 30, 38, 45, 51, 56, 60, 21, 29,
+    37, 44, 50, 55, 59, 62, 28, 36, 43, 49, 54, 58, 61, 63,
+];
+
+fn get_scaling_in_raster_order_4x4(
+    matrix_id: usize,
+    raster_idx: usize,
+    scaling_list: &[[u8; 16]; 6],
+) -> u8 {
+    let up_right_diag_idx: usize = RASTER_SCAN_ORDER_4X4[raster_idx];
+    scaling_list[matrix_id][up_right_diag_idx]
+}
+
+fn get_scaling_in_raster_order_8x8(
+    matrix_id: usize,
+    raster_idx: usize,
+    scaling_list: &[[u8; 64]; 6],
+) -> u8 {
+    let up_right_diag_idx: usize = RASTER_SCAN_ORDER_8X8[raster_idx];
+    scaling_list[matrix_id][up_right_diag_idx]
+}
 
 impl From<&Sps> for v4l2_ctrl_hevc_sps {
     fn from(sps: &Sps) -> Self {
@@ -211,5 +241,47 @@ impl From<&Pps> for v4l2_ctrl_hevc_pps {
         }
 
         ret
+    }
+}
+
+impl From<&Pps> for v4l2_ctrl_hevc_scaling_matrix {
+    fn from(pps: &Pps) -> Self {
+        let mut scaling_list_4x4 = [[0; 16]; 6];
+        let mut scaling_list_8x8 = [[0; 64]; 6];
+        let mut scaling_list_16x16 = [[0; 64]; 6];
+        let mut scaling_list_32x32 = [[0; 64]; 2];
+        let mut scaling_list_dc_coef_16x16 = [0; 6];
+        let mut scaling_list_dc_coef_32x32 = [0; 2];
+
+        for i in 0..6 {
+            for j in 0..SCALING_LIST_SIZE_1_TO_3_COUNT {
+                if j < SCALING_LIST_SIZE_0_COUNT {
+                    scaling_list_4x4[i][j] =
+                        get_scaling_in_raster_order_4x4(i, j, &pps.scaling_list.scaling_list_4x4);
+                }
+                scaling_list_8x8[i][j] =
+                    get_scaling_in_raster_order_8x8(i, j, &pps.scaling_list.scaling_list_8x8);
+                scaling_list_16x16[i][j] =
+                    get_scaling_in_raster_order_8x8(i, j, &pps.scaling_list.scaling_list_16x16);
+                scaling_list_32x32[i][j] =
+                    get_scaling_in_raster_order_8x8(i, j, &pps.scaling_list.scaling_list_32x32);
+            }
+        }
+
+        for i in 0..6 {
+            scaling_list_dc_coef_16x16[i] =
+                pps.scaling_list.scaling_list_dc_coef_minus8_16x16[i] as u8;
+        }
+        scaling_list_dc_coef_32x32[0] = pps.scaling_list.scaling_list_dc_coef_minus8_32x32[0] as u8;
+        scaling_list_dc_coef_32x32[1] = pps.scaling_list.scaling_list_dc_coef_minus8_32x32[3] as u8;
+
+        Self {
+            scaling_list_4x4,
+            scaling_list_8x8,
+            scaling_list_16x16,
+            scaling_list_32x32,
+            scaling_list_dc_coef_16x16,
+            scaling_list_dc_coef_32x32,
+        }
     }
 }
