@@ -155,7 +155,7 @@ uint64_t SuspendConfigurator::PrepareForSuspend(
 
   // Do this at the end so that system spends close to |suspend_duration| in
   // suspend.
-  if (suspend_duration == base::TimeDelta()) {
+  if (suspend_duration.is_zero()) {
     return 0;
   }
 
@@ -188,9 +188,19 @@ uint64_t SuspendConfigurator::PrepareForSuspend(
   return wa_val;
 }
 
-bool SuspendConfigurator::UndoPrepareForSuspend() {
+bool SuspendConfigurator::UndoPrepareForSuspend(
+    const base::TimeDelta& suspend_duration) {
+  // If we set the wakealarm in the PrepareForSuspend call, reset it just in
+  // case the device was woken for some reason before the alarm fires.
+  if (!suspend_duration.is_zero()) {
+    if (!base::WriteFile(base::FilePath(kWakealarmPath), "0")) {
+      PLOG(ERROR) << "Couldn't reset wakealarm";
+    }
+  }
+
   base::FilePath resume_result_path =
       GetPrefixedFilePath(base::FilePath(kECLastResumeResultPath));
+
   unsigned resume_result = 0;
   if (base::PathExists(resume_result_path) &&
       util::ReadHexUint32File(resume_result_path, &resume_result) &&

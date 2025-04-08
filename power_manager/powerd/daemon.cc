@@ -1023,7 +1023,8 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     }
   }
   bool thaw_userspace_succ = suspend_freezer_->ThawProcesses();
-  bool undo_prep_suspend_succ = suspend_configurator_->UndoPrepareForSuspend();
+  bool undo_prep_suspend_succ =
+      suspend_configurator_->UndoPrepareForSuspend(duration);
   if (!(thaw_userspace_succ && undo_prep_suspend_succ)) {
     return policy::Suspender::Delegate::SuspendResult::FAILURE;
   }

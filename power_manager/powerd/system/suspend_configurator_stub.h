@@ -23,7 +23,9 @@ class SuspendConfiguratorStub : public SuspendConfiguratorInterface {
     return 0;
   }
 
-  bool UndoPrepareForSuspend() override { return true; }
+  bool UndoPrepareForSuspend(const base::TimeDelta& duration) override {
+    return true;
+  }
 };
 
 }  // namespace power_manager::system

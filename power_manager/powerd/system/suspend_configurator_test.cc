@@ -529,7 +529,7 @@ TEST_F(SuspendConfiguratorTest, TestSuspendModeDeep) {
 // Test that UndoPrepareForSuspend() returns success when
 // |kECLastResumeResultPath| does not exist .
 TEST_F(SuspendConfiguratorTest, TestNokECLastResumeResultPath) {
-  EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
+  EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend(base::TimeDelta()));
 }
 
 // Test that UndoPrepareForSuspend() returns success/failure based on value in
@@ -537,21 +537,21 @@ TEST_F(SuspendConfiguratorTest, TestNokECLastResumeResultPath) {
 TEST_F(SuspendConfiguratorTest, TestkECLastResumeResultPathExist) {
   CreateFileInTempRootDir(temp_root_dir_.GetPath(), kECLastResumeResultPath);
   // Empty |kECLastResumeResultPath| file should not fail suspend.
-  EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
+  EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend(base::TimeDelta()));
 
   // Write a value that indicates hang to |kECLastResumeResultPath| and test
   // UndoPrepareForSuspend() returns false.
   std::string last_resume_result_string = kECResumeResultHang;
   ASSERT_TRUE(base::WriteFile(GetPath(base::FilePath(kECLastResumeResultPath)),
                               last_resume_result_string));
-  EXPECT_FALSE(suspend_configurator_.UndoPrepareForSuspend());
+  EXPECT_FALSE(suspend_configurator_.UndoPrepareForSuspend(base::TimeDelta()));
 
   // Write a value that does not indicate hang to |kECLastResumeResultPath| and
   // test UndoPrepareForSuspend() returns true.
   last_resume_result_string = kECResumeResultNoHang;
   ASSERT_TRUE(base::WriteFile(GetPath(base::FilePath(kECLastResumeResultPath)),
                               last_resume_result_string));
-  EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
+  EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend(base::TimeDelta()));
 }
 
 }  // namespace power_manager::system
