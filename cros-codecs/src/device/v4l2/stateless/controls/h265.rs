@@ -5,17 +5,8 @@
 use v4l2r::bindings::v4l2_ctrl_hevc_pps;
 use v4l2r::bindings::v4l2_ctrl_hevc_scaling_matrix;
 use v4l2r::bindings::v4l2_ctrl_hevc_sps;
-
-use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_AMP_ENABLED;
-use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_LONG_TERM_REF_PICS_PRESENT;
-use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_PCM_ENABLED;
-use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_PCM_LOOP_FILTER_DISABLED;
-use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SAMPLE_ADAPTIVE_OFFSET;
-use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SCALING_LIST_ENABLED;
-use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SEPARATE_COLOUR_PLANE;
-use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SPS_TEMPORAL_MVP_ENABLED;
-use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_STRONG_INTRA_SMOOTHING_ENABLED;
-
+use v4l2r::bindings::v4l2_hevc_dpb_entry;
+use v4l2r::bindings::V4L2_HEVC_DPB_ENTRY_LONG_TERM_REFERENCE;
 use v4l2r::bindings::V4L2_HEVC_PPS_FLAG_CABAC_INIT_PRESENT;
 use v4l2r::bindings::V4L2_HEVC_PPS_FLAG_CONSTRAINED_INTRA_PRED;
 use v4l2r::bindings::V4L2_HEVC_PPS_FLAG_CU_QP_DELTA_ENABLED;
@@ -37,9 +28,21 @@ use v4l2r::bindings::V4L2_HEVC_PPS_FLAG_TRANSQUANT_BYPASS_ENABLED;
 use v4l2r::bindings::V4L2_HEVC_PPS_FLAG_UNIFORM_SPACING;
 use v4l2r::bindings::V4L2_HEVC_PPS_FLAG_WEIGHTED_BIPRED;
 use v4l2r::bindings::V4L2_HEVC_PPS_FLAG_WEIGHTED_PRED;
+use v4l2r::bindings::V4L2_HEVC_SEI_PIC_STRUCT_FRAME;
+use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_AMP_ENABLED;
+use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_LONG_TERM_REF_PICS_PRESENT;
+use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_PCM_ENABLED;
+use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_PCM_LOOP_FILTER_DISABLED;
+use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SAMPLE_ADAPTIVE_OFFSET;
+use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SCALING_LIST_ENABLED;
+use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SEPARATE_COLOUR_PLANE;
+use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SPS_TEMPORAL_MVP_ENABLED;
+use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_STRONG_INTRA_SMOOTHING_ENABLED;
 
 use crate::codec::h265::parser::Pps;
 use crate::codec::h265::parser::Sps;
+use crate::codec::h265::picture::PictureData;
+use crate::codec::h265::picture::RcPictureData;
 
 // Defined in 7.4.5
 const SCALING_LIST_SIZE_1_TO_3_COUNT: usize = 64;
@@ -282,6 +285,30 @@ impl From<&Pps> for v4l2_ctrl_hevc_scaling_matrix {
             scaling_list_32x32,
             scaling_list_dc_coef_16x16,
             scaling_list_dc_coef_32x32,
+        }
+    }
+}
+
+pub struct V4l2CtrlHEVCDpbEntry {
+    pub timestamp: u64,
+    pub pic: RcPictureData,
+}
+
+impl From<&V4l2CtrlHEVCDpbEntry> for v4l2_hevc_dpb_entry {
+    fn from(dpb: &V4l2CtrlHEVCDpbEntry) -> Self {
+        let pic: &PictureData = &dpb.pic.borrow();
+
+        let mut flags: u32 = 0;
+        if pic.is_long_term() {
+            flags = V4L2_HEVC_DPB_ENTRY_LONG_TERM_REFERENCE;
+        }
+
+        Self {
+            timestamp: dpb.timestamp * 1000, // usec to nsec
+            flags: flags as u8,
+            field_pic: V4L2_HEVC_SEI_PIC_STRUCT_FRAME as u8,
+            pic_order_cnt_val: pic.pic_order_cnt_val,
+            ..Default::default()
         }
     }
 }
