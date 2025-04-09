@@ -2,10 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use v4l2r::bindings::v4l2_ctrl_hevc_decode_params;
 use v4l2r::bindings::v4l2_ctrl_hevc_pps;
 use v4l2r::bindings::v4l2_ctrl_hevc_scaling_matrix;
 use v4l2r::bindings::v4l2_ctrl_hevc_sps;
 use v4l2r::bindings::v4l2_hevc_dpb_entry;
+use v4l2r::bindings::V4L2_HEVC_DECODE_PARAM_FLAG_IDR_PIC;
+use v4l2r::bindings::V4L2_HEVC_DECODE_PARAM_FLAG_IRAP_PIC;
+use v4l2r::bindings::V4L2_HEVC_DECODE_PARAM_FLAG_NO_OUTPUT_OF_PRIOR;
 use v4l2r::bindings::V4L2_HEVC_DPB_ENTRY_LONG_TERM_REFERENCE;
 use v4l2r::bindings::V4L2_HEVC_PPS_FLAG_CABAC_INIT_PRESENT;
 use v4l2r::bindings::V4L2_HEVC_PPS_FLAG_CONSTRAINED_INTRA_PRED;
@@ -39,7 +43,9 @@ use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SEPARATE_COLOUR_PLANE;
 use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SPS_TEMPORAL_MVP_ENABLED;
 use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_STRONG_INTRA_SMOOTHING_ENABLED;
 
+use crate::codec::h265::parser::NaluType;
 use crate::codec::h265::parser::Pps;
+use crate::codec::h265::parser::SliceHeader;
 use crate::codec::h265::parser::Sps;
 use crate::codec::h265::picture::PictureData;
 use crate::codec::h265::picture::RcPictureData;
@@ -310,5 +316,81 @@ impl From<&V4l2CtrlHEVCDpbEntry> for v4l2_hevc_dpb_entry {
             pic_order_cnt_val: pic.pic_order_cnt_val,
             ..Default::default()
         }
+    }
+}
+
+#[derive(Default)]
+pub struct V4l2CtrlHEVCDecodeParams {
+    handle: v4l2_ctrl_hevc_decode_params,
+}
+
+impl V4l2CtrlHEVCDecodeParams {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn set_picture_data(&mut self, pic: &PictureData) -> &mut Self {
+        self.handle.pic_order_cnt_val = pic.pic_order_cnt_val;
+        if (pic.nalu_type >= NaluType::IdrWRadl) && (pic.nalu_type <= NaluType::IdrNLp) {
+            self.handle.flags |= V4L2_HEVC_DECODE_PARAM_FLAG_IDR_PIC as u64;
+        }
+        if pic.no_output_of_prior_pics_flag {
+            self.handle.flags |= V4L2_HEVC_DECODE_PARAM_FLAG_NO_OUTPUT_OF_PRIOR as u64;
+        }
+        if (pic.nalu_type >= NaluType::BlaWLp) && (pic.nalu_type <= NaluType::RsvIrapVcl23) {
+            self.handle.flags |= V4L2_HEVC_DECODE_PARAM_FLAG_IRAP_PIC as u64;
+        }
+
+        self
+    }
+
+    pub fn set_dpb_entries(&mut self, dpb: Vec<V4l2CtrlHEVCDpbEntry>) -> &mut Self {
+        for i in 0..dpb.len() {
+            self.handle.dpb[i] = v4l2_hevc_dpb_entry::from(&dpb[i]);
+        }
+        self.handle.num_active_dpb_entries = dpb.len() as u8;
+        self
+    }
+
+    pub fn set_slice_header(&mut self, slice_header: &SliceHeader) -> &mut Self {
+        self.handle.short_term_ref_pic_set_size = slice_header.st_rps_bits as u16;
+        self.handle.long_term_ref_pic_set_size = slice_header.num_long_term_pics as u16;
+        self.handle.num_delta_pocs_of_ref_rps_idx =
+            slice_header.short_term_ref_pic_set.num_delta_pocs as u8;
+
+        // Equation 8-5
+        let mut j: usize = 0;
+        let mut k: usize = 0;
+        for i in 0..slice_header.short_term_ref_pic_set.num_negative_pics {
+            let mut poc = slice_header.pic_order_cnt_lsb;
+            poc += slice_header.short_term_ref_pic_set.delta_poc_s0[i as usize] as u16;
+
+            if slice_header.short_term_ref_pic_set.used_by_curr_pic_s0[i as usize] {
+                self.handle.poc_st_curr_before[j] = poc as u8;
+                j += 1;
+            } else {
+                self.handle.poc_lt_curr[k] = poc as u8;
+                k += 1;
+            }
+        }
+        self.handle.num_poc_st_curr_before = j as u8;
+
+        j = 0;
+        for i in 0..slice_header.short_term_ref_pic_set.num_positive_pics {
+            let mut poc = slice_header.pic_order_cnt_lsb;
+            poc += slice_header.short_term_ref_pic_set.delta_poc_s1[i as usize] as u16;
+
+            if slice_header.short_term_ref_pic_set.used_by_curr_pic_s1[i as usize] {
+                self.handle.poc_st_curr_after[j] = poc as u8;
+                j += 1;
+            } else {
+                self.handle.poc_lt_curr[k] = poc as u8;
+                k += 1;
+            }
+        }
+        self.handle.num_poc_st_curr_after = j as u8;
+        self.handle.num_poc_lt_curr = k as u8;
+
+        self
     }
 }
