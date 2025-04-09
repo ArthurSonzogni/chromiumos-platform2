@@ -20,6 +20,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/task/sequenced_task_runner.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
@@ -444,6 +445,11 @@ void StateController::Init(Delegate* delegate,
       base::BindRepeating(
           &StateController::MaybeStopWaitForCrashBootCollectTimer,
           weak_ptr_factory_.GetWeakPtr()));
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&StateController::MaybeStopWaitForCrashBootCollectTimer,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     base::FilePath(kCrashBootCollectorDoneFile), false));
 
   wait_for_crash_boot_collect_timer_.Start(
       FROM_HERE, kCrashBootCollectTimeout, this,
