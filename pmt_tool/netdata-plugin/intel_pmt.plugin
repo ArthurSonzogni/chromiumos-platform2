@@ -4,12 +4,47 @@
 # found in the LICENSE file.
 # Netdata plugin for Intel PMT data
 
-# Define the path to the CSV file
+# Parse command line arguments
+parse_arguments() {
+  # Drop the first argument (update_every), not relevant
+  shift
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --source=*)
+        source_type="${1#*=}"
+        ;;
+      --path=*)
+        csv_file="${1#*=}"
+        ;;
+      --records=*)
+        records="${1#*=}"
+        ;;
+      --seconds=*)
+        seconds="${1#*=}"
+        ;;
+      *)
+        echo "PMT ERROR: Unknown argument: $1" >&2
+        exit 1
+        ;;
+    esac
+    shift
+  done
+}
+
+
+# Define default values for arguments
+source_type="csv"
 csv_file="/tmp/pmt.csv"
 seconds=2
 records=30
-# Max number of samples to display
-MAX_SAMPLES=1000
+
+parse_arguments "$@"
+
+if [[ "${source_type}" != "csv" ]]; then
+  # Decoding not supported yet
+  echo "PMT ERROR: Unknown source type: ${source_type}" >&2
+  exit 1
+fi
 
 # Keep alive
 while true; do
@@ -51,7 +86,7 @@ while true; do
   samples_row=$(awk -F, -v row=5 'NR == row {print; exit}' "${csv_file}")
   IFS=',' read -r -a samples_array <<< "${samples_row}"
   num_cols=${#samples_array[@]}
-  max_col=$(( num_cols < MAX_SAMPLES + 1 ? num_cols : MAX_SAMPLES + 1))
+  max_col=${num_cols}
   echo "PMT INFO: creating dimensions for ${max_col} samples" >&2
 
   declare -a chart_ids
