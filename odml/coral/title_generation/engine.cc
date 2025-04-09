@@ -53,7 +53,15 @@ constexpr auto kModelUuids =
         {{kEnglish, "fa9a157a-696d-48c5-9e46-efa048743587"},
          {"ja", "820d5cba-c79d-4d28-acb3-8e27c79551b6"},
          {"fr", "aa5c96bc-7ec0-4494-a549-d3783658cd33"},
-         {"de", "29d50ca4-e1a4-4879-81dd-87e2ffd5de12"}});
+         {"de", "29d50ca4-e1a4-4879-81dd-87e2ffd5de12"},
+         {"da", "42f14db3-07f1-4ba2-b0f7-8f463cf7abd6"},
+         {"es", "251d37df-da83-441a-995f-162a73a60fea"},
+         {"fi", "a63f2915-db4f-4351-a074-5bdf71c6d94a"},
+         {"it", "63c0299b-65bd-4145-b3ed-54a9dbcbef3c"},
+         {"nl", "fbd2dc30-ecca-4a79-9609-504c3894a05b"},
+         {"no", "a7d0325a-c000-43af-8fbe-862f8978ef9b"},
+         {"pt", "08397a45-7001-417d-83cd-1643663b7923"},
+         {"sv", "3ca7623a-4770-44af-9a7c-62602a65fbab"}});
 
 // Ensures cache hits when user triggers feature in turn from 2 desktops both
 // having 2 coral groups.
