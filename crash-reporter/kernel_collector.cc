@@ -430,7 +430,7 @@ bool KernelCollector::LoadConsoleRamoops(std::string* contents) {
       GetDumpRecordPath(kDumpRecordConsoleName, kDumpDriverRamoopsName, 0);
 
   if (!base::PathExists(record_path)) {
-    LOG(WARNING) << "No console-ramoops file found after watchdog reset";
+    LOG(INFO) << "No console-ramoops file found";
     return false;
   }
 
