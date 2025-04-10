@@ -288,9 +288,6 @@ message AttestationCertificateRequest {
   // `ENTERPRISE_VTPM_EK_CERTIFICATE` and `ANDROID_PRODUCT_IDENTITY_CERTIFICATE`
   // profiles only.
   optional bytes attested_device_id = 17;
-  // SN read from the RO VPD.
-  // Used for `ANDROID_PRODUCT_IDENTITY_CERTIFICATE` profile only.
-  optional string serial_number = 18;
 }
 
 // The response from the attestation server for the certificate request.
