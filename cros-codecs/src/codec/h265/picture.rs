@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::cell::RefCell;
-use std::ops::Deref;
-use std::rc::Rc;
-
 use crate::codec::h265::parser::NaluType;
 use crate::codec::h265::parser::Slice;
 
@@ -38,19 +34,6 @@ pub struct PictureData {
     pub pic_latency_cnt: i32,
     pub needed_for_output: bool,
     pub short_term_ref_pic_set_size_bits: u32,
-}
-
-#[derive(Default, Debug, Clone)]
-pub struct RcPictureData {
-    pic: Rc<RefCell<PictureData>>,
-}
-
-impl Deref for RcPictureData {
-    type Target = Rc<RefCell<PictureData>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.pic
-    }
 }
 
 impl PictureData {

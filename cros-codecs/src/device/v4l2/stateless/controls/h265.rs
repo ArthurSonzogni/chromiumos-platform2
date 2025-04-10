@@ -61,7 +61,6 @@ use crate::codec::h265::parser::Pps;
 use crate::codec::h265::parser::SliceHeader;
 use crate::codec::h265::parser::Sps;
 use crate::codec::h265::picture::PictureData;
-use crate::codec::h265::picture::RcPictureData;
 
 // Defined in 7.4.5
 const SCALING_LIST_SIZE_1_TO_3_COUNT: usize = 64;
@@ -310,12 +309,12 @@ impl From<&Pps> for v4l2_ctrl_hevc_scaling_matrix {
 
 pub struct V4l2CtrlHEVCDpbEntry {
     pub timestamp: u64,
-    pub pic: RcPictureData,
+    pub pic: PictureData,
 }
 
 impl From<&V4l2CtrlHEVCDpbEntry> for v4l2_hevc_dpb_entry {
     fn from(dpb: &V4l2CtrlHEVCDpbEntry) -> Self {
-        let pic: &PictureData = &dpb.pic.borrow();
+        let pic: &PictureData = &dpb.pic;
 
         let mut flags: u32 = 0;
         if pic.is_long_term() {
@@ -340,6 +339,10 @@ pub struct V4l2CtrlHEVCDecodeParams {
 impl V4l2CtrlHEVCDecodeParams {
     pub fn new() -> Self {
         Default::default()
+    }
+
+    pub fn handle(&self) -> v4l2_ctrl_hevc_decode_params {
+        self.handle
     }
 
     pub fn set_picture_data(&mut self, pic: &PictureData) -> &mut Self {
