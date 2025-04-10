@@ -12,6 +12,7 @@ use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
+use std::sync::Condvar;
 use std::sync::Mutex;
 use std::thread;
 use std::thread::JoinHandle;
@@ -145,10 +146,12 @@ where
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum C2State {
     C2Running,
+    C2Stopping,
     C2Stopped,
     // Note that on state C2Error, stop() must be called before we can start()
     // again.
     C2Error,
+    C2Release,
 }
 
 // This is not a very "Rust-y" way of doing error handling, but it will
@@ -176,7 +179,7 @@ where
         error_cb: Arc<Mutex<dyn FnMut(C2Status) + Send + 'static>>,
         work_done_cb: Arc<Mutex<dyn FnMut(J) + Send + 'static>>,
         work_queue: Arc<Mutex<VecDeque<J>>>,
-        state: Arc<Mutex<C2State>>,
+        state: Arc<(Mutex<C2State>, Condvar)>,
         framepool_hint_cb: Arc<Mutex<dyn FnMut(StreamInfo) + Send + 'static>>,
         alloc_cb: Arc<Mutex<dyn FnMut() -> Option<<J as Job>::Frame> + Send + 'static>>,
         options: Self::Options,
@@ -200,15 +203,12 @@ where
     W: C2Worker<J>,
 {
     awaiting_job_event: Arc<EventFd>,
-    input_fourcc: Fourcc,
-    output_fourcc: Fourcc,
     error_cb: Arc<Mutex<dyn FnMut(C2Status) + Send + 'static>>,
-    work_done_cb: Arc<Mutex<dyn FnMut(J) + Send + 'static>>,
     work_queue: Arc<Mutex<VecDeque<J>>>,
-    state: Arc<Mutex<C2State>>,
-    framepool_hint_cb: Arc<Mutex<dyn FnMut(StreamInfo) + Send + 'static>>,
-    alloc_cb: Arc<Mutex<dyn FnMut() -> Option<<J as Job>::Frame> + Send + 'static>>,
-    options: <W as C2Worker<J>>::Options,
+    state: Arc<(Mutex<C2State>, Condvar)>,
+    // This isn't actually optional, but we want to join this handle in drop(), but because drop()
+    // takes an &mut self, we can't actually take ownership of this variable. So we workaround this
+    // by just making it an optional and swapping it with None in drop().
     worker_thread: Option<JoinHandle<()>>,
     // The instance of W actually lives in the thread creation closure, not
     // this struct. We use "fn() -> W" for this type signature instead of just regular "W" as a
@@ -231,79 +231,100 @@ where
         alloc_cb: impl FnMut() -> Option<<J as Job>::Frame> + Send + 'static,
         options: <W as C2Worker<J>>::Options,
     ) -> Self {
-        Self {
-            awaiting_job_event: Arc::new(
-                EventFd::from_flags(EfdFlags::EFD_SEMAPHORE)
-                    .map_err(C2WrapperError::AwaitingJobEventFd)
-                    .unwrap(),
-            ),
-            input_fourcc: input_fourcc,
-            output_fourcc: output_fourcc,
-            error_cb: Arc::new(Mutex::new(error_cb)),
-            work_done_cb: Arc::new(Mutex::new(work_done_cb)),
-            work_queue: Arc::new(Mutex::new(VecDeque::new())),
-            state: Arc::new(Mutex::new(C2State::C2Stopped)),
-            framepool_hint_cb: Arc::new(Mutex::new(framepool_hint_cb)),
-            alloc_cb: Arc::new(Mutex::new(alloc_cb)),
-            options: options,
-            worker_thread: None,
-            _phantom: Default::default(),
-        }
-    }
+        let awaiting_job_event = Arc::new(
+            EventFd::from_flags(EfdFlags::EFD_SEMAPHORE)
+                .map_err(C2WrapperError::AwaitingJobEventFd)
+                .unwrap(),
+        );
+        let awaiting_job_event_clone = awaiting_job_event.clone();
+        let error_cb = Arc::new(Mutex::new(error_cb));
+        let error_cb_clone = error_cb.clone();
+        let work_done_cb = Arc::new(Mutex::new(work_done_cb));
+        let work_queue: Arc<Mutex<VecDeque<J>>> = Arc::new(Mutex::new(VecDeque::new()));
+        let work_queue_clone = work_queue.clone();
+        let state = Arc::new((Mutex::new(C2State::C2Stopped), Condvar::new()));
+        let state_clone = state.clone();
+        let framepool_hint_cb = Arc::new(Mutex::new(framepool_hint_cb));
+        let alloc_cb = Arc::new(Mutex::new(alloc_cb));
+        let worker_thread = Some(thread::spawn(move || {
+            let (state_lock, state_cvar) = &*state_clone;
+            let mut state = state_lock.lock().expect("Could not lock state");
+            while *state != C2State::C2Release {
+                if *state == C2State::C2Running {
+                    // Otherwise we will just hold the lock during the processing loop, which will
+                    // cause a deadlock.
+                    drop(state);
 
-    // This isn't part of C2, but it's convenient to check if our worker thread
-    // is still running.
-    pub fn is_alive(&self) -> bool {
-        match &self.worker_thread {
-            Some(worker_thread) => !worker_thread.is_finished(),
-            None => false,
+                    let worker = W::new(
+                        input_fourcc.clone(),
+                        output_fourcc.clone(),
+                        awaiting_job_event_clone.clone(),
+                        error_cb_clone.clone(),
+                        work_done_cb.clone(),
+                        work_queue_clone.clone(),
+                        state_clone.clone(),
+                        framepool_hint_cb.clone(),
+                        alloc_cb.clone(),
+                        options.clone(),
+                    );
+                    match worker {
+                        Ok(mut worker) => {
+                            worker.process_loop();
+
+                            // Note that we only lock the state again after the process loop exits.
+                            state = state_lock.lock().expect("Could not lock state");
+                            *state = C2State::C2Stopped;
+                            state_cvar.notify_one();
+                        }
+                        Err(msg) => {
+                            log::debug!("Error instantiating C2Worker {}", msg);
+                            state = state_lock.lock().expect("Could not lock state");
+                            *state = C2State::C2Error;
+                            state_cvar.notify_one();
+                            (*error_cb_clone.lock().unwrap())(C2Status::C2BadValue);
+                        }
+                    };
+                } else {
+                    // This is needed to handle the circumstance in which we call reset() after an
+                    // error. The state will be C2Error, not C2Running, so we can't rely on the
+                    // above logic to process the stop request.
+                    if *state == C2State::C2Stopping {
+                        *state = C2State::C2Stopped;
+                        state_cvar.notify_one();
+                    }
+
+                    // It's important that this wait() call goes here, after the check for
+                    // C2Running. Otherwise the call to start() might be executed before we fully
+                    // initialize this thread. Because notify_one() doesn't do any kind of
+                    // buffering, we can miss our "wake-up call" and just wait indefinitely.
+                    state = state_cvar.wait(state).unwrap();
+                }
+            }
+        }));
+
+        Self {
+            awaiting_job_event: awaiting_job_event,
+            error_cb,
+            work_queue,
+            state,
+            worker_thread,
+            _phantom: Default::default(),
         }
     }
 
     // Start the decoder/encoder.
     // State will be C2Running after this call.
     pub fn start(&mut self) -> C2Status {
+        let (state_lock, state_cvar) = &*self.state;
         {
-            let mut state = self.state.lock().unwrap();
+            let mut state = state_lock.lock().expect("Could not lock state");
             if *state != C2State::C2Stopped {
                 (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
                 return C2Status::C2BadState;
             }
             *state = C2State::C2Running;
+            state_cvar.notify_one();
         }
-
-        let input_fourcc = self.input_fourcc.clone();
-        let output_fourcc = self.output_fourcc.clone();
-        let error_cb = self.error_cb.clone();
-        let work_done_cb = self.work_done_cb.clone();
-        let work_queue = self.work_queue.clone();
-        let state = self.state.clone();
-        let options = self.options.clone();
-        let awaiting_job_event = self.awaiting_job_event.clone();
-        let framepool_hint_cb = self.framepool_hint_cb.clone();
-        let alloc_cb = self.alloc_cb.clone();
-        self.worker_thread = Some(thread::spawn(move || {
-            let worker = W::new(
-                input_fourcc,
-                output_fourcc,
-                awaiting_job_event,
-                error_cb.clone(),
-                work_done_cb,
-                work_queue,
-                state.clone(),
-                framepool_hint_cb,
-                alloc_cb,
-                options,
-            );
-            match worker {
-                Ok(mut worker) => worker.process_loop(),
-                Err(msg) => {
-                    log::debug!("Error instantiating C2Worker {}", msg);
-                    *state.lock().unwrap() = C2State::C2Error;
-                    (*error_cb.lock().unwrap())(C2Status::C2BadValue);
-                }
-            };
-        }));
 
         C2Status::C2Ok
     }
@@ -313,28 +334,25 @@ where
     // we validate that we're in the C2Running state (suitable for stop()). This
     // is necessary to abide by the C2Component API.
     fn stop_internal(&mut self, is_reset: bool) -> C2Status {
+        let (state_lock, state_cvar) = &*self.state;
         {
-            let mut state = self.state.lock().unwrap();
+            let mut state = state_lock.lock().expect("Could not lock state");
             if !is_reset && *state != C2State::C2Running {
                 (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
                 return C2Status::C2BadState;
             }
-            *state = C2State::C2Stopped;
+            *state = C2State::C2Stopping;
+            state_cvar.notify_one();
         }
 
         self.work_queue.lock().unwrap().drain(..);
 
         self.awaiting_job_event.write(1).unwrap();
 
-        let mut worker_thread: Option<JoinHandle<()>> = None;
-        std::mem::swap(&mut worker_thread, &mut self.worker_thread);
-        self.worker_thread = match worker_thread {
-            Some(worker_thread) => {
-                let _ = worker_thread.join();
-                None
-            }
-            None => None,
-        };
+        let mut state = state_lock.lock().expect("Could not lock state");
+        while *state == C2State::C2Stopping {
+            state = state_cvar.wait(state).unwrap();
+        }
 
         C2Status::C2Ok
     }
@@ -359,7 +377,7 @@ where
     // State must be C2Running or this function is invalid.
     // State will remain C2Running.
     pub fn queue(&mut self, work_items: Vec<J>) -> C2Status {
-        if *self.state.lock().unwrap() != C2State::C2Running {
+        if *self.state.0.lock().expect("Could not lock state") != C2State::C2Running {
             (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
             return C2Status::C2BadState;
         }
@@ -375,7 +393,7 @@ where
     // State will not change after this call.
     // TODO: Support different flush modes.
     pub fn flush(&mut self, flushed_work: &mut Vec<J>) -> C2Status {
-        if *self.state.lock().unwrap() != C2State::C2Running {
+        if *self.state.0.lock().expect("Could not lock state") != C2State::C2Running {
             (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
             return C2Status::C2BadState;
         }
@@ -408,7 +426,7 @@ where
     //
     // TODO: Support different drain modes.
     pub fn drain(&mut self, _mode: DrainMode) -> C2Status {
-        if *self.state.lock().unwrap() != C2State::C2Running {
+        if *self.state.0.lock().expect("Could not lock state") != C2State::C2Running {
             (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
             return C2Status::C2BadState;
         }
@@ -434,5 +452,10 @@ where
         // Note: we call reset() instead of stop() so that if we're already
         // C2Stopped, we don't trigger a call to the error callback.
         self.reset();
+
+        let (state_lock, state_cvar) = &*self.state;
+        *state_lock.lock().expect("Could not lock state") = C2State::C2Release;
+        state_cvar.notify_one();
+        self.worker_thread.take().unwrap().join();
     }
 }

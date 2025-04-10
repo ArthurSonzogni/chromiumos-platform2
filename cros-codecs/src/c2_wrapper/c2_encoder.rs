@@ -14,6 +14,7 @@ use std::marker::PhantomData;
 use std::os::fd::AsFd;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::Condvar;
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -79,7 +80,7 @@ where
     alloc_cb: Arc<Mutex<dyn FnMut() -> Option<V> + Send + 'static>>,
     work_queue: Arc<Mutex<VecDeque<C2EncodeJob<V>>>>,
     in_flight_queue: VecDeque<C2EncodeJob<V>>,
-    state: Arc<Mutex<C2State>>,
+    state: Arc<(Mutex<C2State>, Condvar)>,
     current_tunings: Tunings,
     visible_resolution: Resolution,
     coded_resolution: Resolution,
@@ -101,7 +102,7 @@ where
                 }
                 Err(err) => {
                     log::debug!("Error during encode! {:?}", err);
-                    *self.state.lock().unwrap() = C2State::C2Error;
+                    *self.state.0.lock().unwrap() = C2State::C2Error;
                     (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                     break;
                 }
@@ -125,7 +126,7 @@ where
         error_cb: Arc<Mutex<dyn FnMut(C2Status) + Send + 'static>>,
         work_done_cb: Arc<Mutex<dyn FnMut(C2EncodeJob<V>) + Send + 'static>>,
         work_queue: Arc<Mutex<VecDeque<C2EncodeJob<V>>>>,
-        state: Arc<Mutex<C2State>>,
+        state: Arc<(Mutex<C2State>, Condvar)>,
         framepool_hint_cb: Arc<Mutex<dyn FnMut(StreamInfo) + Send + 'static>>,
         alloc_cb: Arc<Mutex<dyn FnMut() -> Option<V> + Send + 'static>>,
         options: Self::Options,
@@ -164,7 +165,7 @@ where
             .add(self.awaiting_job_event.as_fd(), EpollEvent::new(EpollFlags::EPOLLIN, 1))
             .expect("Failed to add job event to Epoll");
 
-        while *self.state.lock().unwrap() == C2State::C2Running {
+        while *self.state.0.lock().unwrap() == C2State::C2Running {
             let mut events = [EpollEvent::empty()];
             // We need an actual timeout because the encoder is poll based rather than async.
             let _ = epoll_fd
@@ -186,12 +187,12 @@ where
             if job.get_drain() != DrainMode::NoDrain {
                 if let Err(err) = self.encoder.drain() {
                     log::debug!("Error draining encoder! {:?}", err);
-                    *self.state.lock().unwrap() = C2State::C2Error;
+                    *self.state.0.lock().unwrap() = C2State::C2Error;
                     (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                     break;
                 }
                 if job.get_drain() == DrainMode::EOSDrain {
-                    *self.state.lock().unwrap() = C2State::C2Stopped;
+                    *self.state.0.lock().unwrap() = C2State::C2Stopped;
                 }
             } else {
                 let frame_y_stride = job.input.as_ref().unwrap().get_plane_pitch()[0];
@@ -205,7 +206,7 @@ where
 
                     if let Err(_) = convert_video_frame(job.input.as_ref().unwrap(), &mut tmp) {
                         log::debug!("Failed to copy input frame to properly aligned buffer!");
-                        *self.state.lock().unwrap() = C2State::C2Error;
+                        *self.state.0.lock().unwrap() = C2State::C2Error;
                         (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         break;
                     }
@@ -229,7 +230,7 @@ where
                     ConstantBitrate(bitrate) => bitrate,
                     ConstantQuality(_) => {
                         log::debug!("CQ encoding not currently supported");
-                        *self.state.lock().unwrap() = C2State::C2Error;
+                        *self.state.0.lock().unwrap() = C2State::C2Error;
                         (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         break;
                     }
@@ -240,7 +241,7 @@ where
                     self.current_tunings.framerate = new_framerate;
                     if let Err(err) = self.encoder.tune(self.current_tunings.clone()) {
                         log::debug!("Error adjusting tunings! {:?}", err);
-                        *self.state.lock().unwrap() = C2State::C2Error;
+                        *self.state.0.lock().unwrap() = C2State::C2Error;
                         (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         break;
                     }
@@ -259,7 +260,7 @@ where
                     Ok(_) => self.in_flight_queue.push_back(job),
                     Err(err) => {
                         log::debug!("Error encoding frame! {:?}", err);
-                        *self.state.lock().unwrap() = C2State::C2Error;
+                        *self.state.0.lock().unwrap() = C2State::C2Error;
                         (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         break;
                     }

@@ -13,8 +13,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Condvar;
 use std::sync::Mutex;
-use std::thread;
-use std::time::Duration;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -262,12 +260,6 @@ fn main() {
     let mut received_eos = lock.lock().unwrap();
     while !*received_eos {
         received_eos = eos_cv.wait(received_eos).unwrap();
-    }
-
-    decoder.stop();
-
-    while decoder.is_alive() {
-        thread::sleep(Duration::from_millis(10));
     }
 
     assert!((*frames_needed).load(Ordering::SeqCst) == 0, "Not all frames were output.");

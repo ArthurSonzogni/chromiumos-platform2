@@ -16,6 +16,7 @@ use std::os::fd::AsFd;
 #[cfg(feature = "vaapi")]
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::Condvar;
 use std::sync::Mutex;
 use thiserror::Error;
 
@@ -96,7 +97,7 @@ where
     framepool_hint_cb: Arc<Mutex<dyn FnMut(StreamInfo) + Send + 'static>>,
     alloc_cb: Arc<Mutex<dyn FnMut() -> Option<V> + Send + 'static>>,
     work_queue: Arc<Mutex<VecDeque<C2DecodeJob<V>>>>,
-    state: Arc<Mutex<C2State>>,
+    state: Arc<(Mutex<C2State>, Condvar)>,
     drain_status: Option<(u64, DrainMode)>,
     _phantom: PhantomData<B>,
 }
@@ -171,7 +172,7 @@ where
                         }
                         None => {
                             log::debug!("Could not get stream info after format change!");
-                            *self.state.lock().unwrap() = C2State::C2Error;
+                            *self.state.0.lock().unwrap() = C2State::C2Error;
                             (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         }
                     },
@@ -196,7 +197,7 @@ where
                         let src_frame = &aux_frame.internal;
                         if let Err(err) = convert_video_frame(src_frame, &mut dst_frame) {
                             log::debug!("Error converting VideoFrame! {err}");
-                            *self.state.lock().unwrap() = C2State::C2Error;
+                            *self.state.0.lock().unwrap() = C2State::C2Error;
                             (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         }
                         let timestamp = external_timestamp(frame.timestamp());
@@ -217,7 +218,7 @@ where
                         }
                         None => {
                             log::debug!("Could not get stream info after format change!");
-                            *self.state.lock().unwrap() = C2State::C2Error;
+                            *self.state.0.lock().unwrap() = C2State::C2Error;
                             (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         }
                     },
@@ -242,7 +243,7 @@ where
         error_cb: Arc<Mutex<dyn FnMut(C2Status) + Send + 'static>>,
         work_done_cb: Arc<Mutex<dyn FnMut(C2DecodeJob<V>) + Send + 'static>>,
         work_queue: Arc<Mutex<VecDeque<C2DecodeJob<V>>>>,
-        state: Arc<Mutex<C2State>>,
+        state: Arc<(Mutex<C2State>, Condvar)>,
         framepool_hint_cb: Arc<Mutex<dyn FnMut(StreamInfo) + Send + 'static>>,
         alloc_cb: Arc<Mutex<dyn FnMut() -> Option<V> + Send + 'static>>,
         options: Self::Options,
@@ -334,7 +335,7 @@ where
             .map_err(C2DecoderPollErrorWrapper::EpollAdd)
             .unwrap();
 
-        while *self.state.lock().unwrap() == C2State::C2Running {
+        while *self.state.0.lock().unwrap() == C2State::C2Running {
             // Poll for decoder events or pending job events.
             let mut events = [EpollEvent::empty()];
             let _nb_fds = self.epoll_fd.wait(&mut events, EpollTimeout::NONE).unwrap();
@@ -388,7 +389,7 @@ where
                                 self.drain_status = Some((job.timestamp, job.get_drain()));
                                 if let Err(_) = flush_result {
                                     log::debug!("Error handling drain request!");
-                                    *self.state.lock().unwrap() = C2State::C2Error;
+                                    *self.state.0.lock().unwrap() = C2State::C2Error;
                                     (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                                 } else {
                                     self.check_events();
@@ -413,7 +414,7 @@ where
                     }
                     Err(e) => {
                         log::debug!("Unhandled error message from decoder {e:?}");
-                        *self.state.lock().unwrap() = C2State::C2Error;
+                        *self.state.0.lock().unwrap() = C2State::C2Error;
                         (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         break;
                     }

@@ -242,8 +242,13 @@ fn main() {
         );
         hdr.writo_into(&mut *output_file.lock().unwrap()).expect("Error writing IVF file header!");
     }
+    let is_done = Arc::new(Mutex::new(false));
+    let is_done_clone = is_done.clone();
     let codec_ = codec;
     let work_done_cb = move |job: C2EncodeJob<PooledVideoFrame<GenericDmaVideoFrame<()>>>| {
+        if job.drain == DrainMode::EOSDrain {
+            *is_done_clone.lock().expect("Could not lock done var") = true;
+        }
         if codec_ != Codec::H264 {
             let hdr =
                 IvfFrameHeader { timestamp: job.timestamp, frame_size: job.output.len() as u32 };
@@ -295,7 +300,7 @@ fn main() {
     encoder.start();
 
     // Run the encode job
-    while encoder.is_alive() {
+    while !*is_done.lock().expect("Could not lock done var") {
         // Enqueue as much as we can until the framepool is exhausted
         while enqueue_work(
             &mut encoder,
@@ -311,7 +316,4 @@ fn main() {
 
         thread::sleep(Duration::from_millis(10));
     }
-
-    // Shut down the encoder
-    encoder.stop();
 }
