@@ -613,18 +613,20 @@ TEST_F(DBusServiceTest, SignalHardwareVerification) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "HardwareVerificationResult");
-        EXPECT_EQ("(bs)", signal->GetSignature());
+        EXPECT_EQ("(bsb)", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        std::tuple<bool, std::string> result;
+        std::tuple<bool, std::string, bool> result;
         ASSERT_TRUE(
-            (brillo::dbus_utils::DBusType<std::tuple<bool, std::string>>::Read(
-                &reader, &result)));
+            (brillo::dbus_utils::DBusType<
+                std::tuple<bool, std::string, bool>>::Read(&reader, &result)));
         EXPECT_TRUE(std::get<0>(result));
         EXPECT_EQ("test_error_string", std::get<1>(result));
+        EXPECT_TRUE(std::get<2>(result));
       }));
   HardwareVerificationResult result;
   result.set_is_compliant(true);
   result.set_error_str("test_error_string");
+  result.set_is_skipped(true);
   SignalHardwareVerification(result);
 }
 

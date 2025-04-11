@@ -23,8 +23,9 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_hardware_verifier_client.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
-#include "rmad/utils/vpd_utils.h"
+#include "rmad/utils/rmad_config_utils_impl.h"
 
 using testing::_;
 using testing::DoAll;
@@ -63,6 +64,7 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
     bool hw_verification_request_success = true;
     bool hw_verification_result = true;
     uint64_t shimless_mode_flags = 0;
+    std::string rmad_config_text = "";
   };
 
   scoped_refptr<WelcomeScreenStateHandler> CreateStateHandler(
@@ -94,21 +96,46 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
         .WillByDefault(
             DoAll(SetArgPointee<0>(args.shimless_mode_flags), Return(true)));
 
+    // Inject textproto content for |RmadConfigUtils|.
+    auto mock_cros_config_utils =
+        std::make_unique<StrictMock<MockCrosConfigUtils>>();
+    if (!args.rmad_config_text.empty()) {
+      EXPECT_CALL(*mock_cros_config_utils, GetModelName(_))
+          .WillOnce(DoAll(SetArgPointee<0>("model_name"), Return(true)));
+
+      const base::FilePath textproto_file_path =
+          GetTempDirPath()
+              .Append("model_name")
+              .Append(kDefaultRmadConfigProtoFilePath);
+
+      EXPECT_TRUE(base::CreateDirectory(textproto_file_path.DirName()));
+      EXPECT_TRUE(base::WriteFile(textproto_file_path, args.rmad_config_text));
+    } else {
+      EXPECT_CALL(*mock_cros_config_utils, GetModelName(_))
+          .WillOnce(Return(false));
+    }
+    auto rmad_config_utils = std::make_unique<RmadConfigUtilsImpl>(
+        GetTempDirPath(), std::move(mock_cros_config_utils));
+
     // Initialization should always succeed.
     auto handler = base::MakeRefCounted<WelcomeScreenStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_hardware_verifier_client), std::move(mock_vpd_utils));
+        std::move(mock_hardware_verifier_client), std::move(mock_vpd_utils),
+        std::move(rmad_config_utils));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
     return handler;
   }
 
-  void ExpectSignal(bool is_compliant, const std::string& error_str) {
+  void ExpectSignal(bool is_compliant,
+                    const std::string& error_str,
+                    bool is_skipped) {
     EXPECT_CALL(signal_sender_, SendHardwareVerificationSignal(_))
-        .WillOnce(Invoke([is_compliant,
-                          error_str](const HardwareVerificationResult& result) {
+        .WillOnce(Invoke([is_compliant, error_str, is_skipped](
+                             const HardwareVerificationResult& result) {
           EXPECT_EQ(result.is_compliant(), is_compliant);
           EXPECT_EQ(result.error_str(), error_str);
+          EXPECT_EQ(result.is_skipped(), is_skipped);
         }));
     task_environment_.RunUntilIdle();
   }
@@ -125,7 +152,7 @@ TEST_F(WelcomeScreenStateHandlerTest,
   auto handler = CreateStateHandler({});
 
   RmadState state = handler->GetState(true);
-  ExpectSignal(true, "");
+  ExpectSignal(true, "", false);
 
   // Verify the hardware verification result is recorded to logs.
   base::Value logs(base::Value::Type::DICT);
@@ -148,19 +175,28 @@ TEST_F(WelcomeScreenStateHandlerTest,
 
   auto handler = CreateStateHandler({.hw_verification_request_success = false});
   RmadState state = handler->GetState(true);
-  ExpectSignal(true, "");
+  ExpectSignal(false, "", true);
 }
 
 TEST_F(WelcomeScreenStateHandlerTest,
        InitializeState_Succeeded_VerificationBypassWithFlags_DoGetStateTask) {
-  // Bypass hardware verification check.
-  ASSERT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kDisableRaccFilePath)));
-
   auto handler = CreateStateHandler(
       {.hw_verification_request_success = false,
        .shimless_mode_flags = kShimlessModeFlagsRaccResultBypass});
   RmadState state = handler->GetState(true);
-  ExpectSignal(true, "");
+  ExpectSignal(false, "", true);
+}
+
+TEST_F(
+    WelcomeScreenStateHandlerTest,
+    InitializeState_Succeeded_VerificationBypassWithRmadConfig_DoGetStateTask) {
+  std::string textproto = R"(
+      skip_hardware_verification: true
+    )";
+  auto handler = CreateStateHandler({.hw_verification_request_success = false,
+                                     .rmad_config_text = textproto});
+  RmadState state = handler->GetState(true);
+  ExpectSignal(false, "", true);
 }
 
 TEST_F(WelcomeScreenStateHandlerTest,
@@ -177,7 +213,7 @@ TEST_F(WelcomeScreenStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState(true);
-  ExpectSignal(false, kVerificationFailedErrorStr);
+  ExpectSignal(false, kVerificationFailedErrorStr, false);
 
   // Verify the hardware verification result is recorded to logs.
   base::Value logs(base::Value::Type::DICT);

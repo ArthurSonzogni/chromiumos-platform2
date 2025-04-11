@@ -206,7 +206,7 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 
   error_signal_ = dbus_interface->RegisterSignal<int>(kErrorSignal);
   hardware_verification_signal_ =
-      dbus_interface->RegisterSignal<std::tuple<bool, std::string>>(
+      dbus_interface->RegisterSignal<std::tuple<bool, std::string, bool>>(
           kHardwareVerificationResultSignal);
   update_ro_firmware_status_signal_ =
       dbus_interface->RegisterSignal<int>(kUpdateRoFirmwareStatusSignal);
@@ -372,7 +372,8 @@ void DBusService::SendHardwareVerificationResultSignal(
     const HardwareVerificationResult& result) {
   auto signal = hardware_verification_signal_.lock();
   if (signal) {
-    signal->Send(std::tuple(result.is_compliant(), result.error_str()));
+    signal->Send(std::tuple(result.is_compliant(), result.error_str(),
+                            result.is_skipped()));
   }
 }
 

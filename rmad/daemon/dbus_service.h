@@ -156,7 +156,8 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   // D-Bus signals.
   std::weak_ptr<brillo::dbus_utils::DBusSignal<int>> error_signal_;
-  std::weak_ptr<brillo::dbus_utils::DBusSignal<std::tuple<bool, std::string>>>
+  std::weak_ptr<
+      brillo::dbus_utils::DBusSignal<std::tuple<bool, std::string, bool>>>
       hardware_verification_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<int>>
       update_ro_firmware_status_signal_;
