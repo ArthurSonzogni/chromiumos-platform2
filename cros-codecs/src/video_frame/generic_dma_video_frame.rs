@@ -41,6 +41,8 @@ use nix::sys::mman::MapFlags;
 use nix::sys::mman::ProtFlags;
 use nix::unistd::dup;
 
+use static_assertions::const_assert_eq;
+
 #[cfg(feature = "vaapi")]
 use libva::{
     Display, ExternalBufferDescriptor, MemoryType, Surface, UsageHint, VADRMPRIMESurfaceDescriptor,
@@ -123,9 +125,65 @@ fn detile_y_tile(dst: &mut [u8], src: &[u8], width: usize, height: usize) {
     }
 }
 
+/// Offsets an address that was returned by `nix::sys::mman::mmap`.
+///
+/// # Safety
+///
+/// The caller asserts that `mmapped_addr` was returned by a successful call to
+/// `nix::sys::mman::mmap` for which:
+///
+/// - The requested `length` was `mmapped_size`.
+///
+///   AND
+///
+/// - The requested `offset` was 0.
+unsafe fn offset_mmapped_addr(
+    mmapped_addr: NonNull<u8>,
+    mmapped_size: NonZeroUsize,
+    offset_in_bytes: usize,
+) -> Result<NonNull<u8>, String> {
+    const_assert_eq!(size_of::<u8>(), 1);
+    let offset: isize = offset_in_bytes
+        .try_into()
+        .or(Err("Cannot convert the desired offset to an isize".to_string()))?;
+
+    if offset
+        >= mmapped_size.get().try_into().or(Err("Cannot convert the mmapped_size to an isize"))?
+    {
+        return Err("The desired offset is too large".to_string());
+    }
+    assert!(offset >= 0);
+
+    // SAFETY: The `offset()` method requires the following in order to be safe [1]:
+    //
+    // - "The computed offset, count * size_of::<T>() bytes, must not overflow isize":
+    //
+    //   The assertion that `size_of::<u8>()` is 1 and the conversion of `offset_in_bytes` to an
+    //   `isize` guarantee this.
+    //
+    // - "If the computed offset is non-zero, then self must be derived from a pointer to some
+    //   allocated object, and the entire memory range between self and the result must be in bounds
+    //   of that allocated object. In particular, this range must not “wrap around” the edge of the
+    //   address space":
+    //
+    //   Since `mmapped_addr` is assumed to come from a successful `mmap()` call with `mmapped_size`
+    //   as the `length` and 0 as the `offset`, it's reasonable to assume that all addresses in
+    //   [`mmapped_addr`, `mmapped_addr` + `mmapped_size`) are part of an allocated object.
+    //   Furthermore, the `offset` check above guarantees that `offset` is in [0, `mmapped_size`) so
+    //   the entire memory range between `mmapped_addr` and `mmapped_addr` + `offset` is in that
+    //   allocated object.
+    //
+    //   Additionally, it's reasonable to assume that `mmap()` returns a range that does
+    //   not wrap around the edge of the address space.
+    //
+    // [1] https://doc.rust-lang.org/std/ptr/struct.NonNull.html#method.offset
+    Ok(unsafe { mmapped_addr.offset(offset) })
+}
+
 pub struct DmaMapping<'a> {
     dma_handles: Vec<BorrowedFd<'a>>,
-    addrs: Vec<NonNull<libc::c_void>>,
+    mmapped_addrs: Vec<NonNull<u8>>,
+    plane_addrs: Vec<NonNull<u8>>,
     detiled_bufs: Vec<Vec<u8>>,
     lens: Vec<usize>,
     is_writable: bool,
@@ -171,53 +229,71 @@ impl<'a> DmaMapping<'a> {
             handle_eintr(&mut || unsafe { dma_buf_ioctl_sync(fd.as_raw_fd(), &sync_struct) })?;
         }
 
-        // Offsets aren't guaranteed to page aligned, so we have to map the entire FD and then
-        // do pointer arithmetic to get the right buffer.
-        let mut addrs: Vec<NonNull<libc::c_void>> = vec![];
+        let mmap_access = if is_writable {
+            ProtFlags::PROT_READ | ProtFlags::PROT_WRITE
+        } else {
+            ProtFlags::PROT_READ
+        };
+
+        // Offsets aren't guaranteed to be page aligned, so we have to map the entire FD and then do
+        // pointer arithmetic to get the right buffer. That said, we track the addresses returned by
+        // `mmap()` separately from the addresses that result from adding the offset because there
+        // may be a single `mmap()` call reused by multiple planes, and we don't want to call
+        // `munmap()` later more times than `mmap()` was called.
+        let mut mmapped_addrs: Vec<NonNull<u8>> = vec![];
+        let mut plane_addrs: Vec<NonNull<u8>> = vec![];
         if borrowed_dma_handles.len() > 1 {
+            // In this case, we assume there is one fd per plane.
+            if borrowed_dma_handles.len() != offsets.len() {
+                return Err(
+                    "The number of dma-buf handles doesn't match the number of offsets".to_string()
+                );
+            }
+            if borrowed_dma_handles.len() != lens.len() {
+                return Err(
+                    "The number of dma-buf handles doesn't match the number of lens".to_string()
+                );
+            }
             for i in 0..offsets.len() {
+                let size_to_map = NonZeroUsize::new(lens[i] + offsets[i])
+                    .ok_or("Attempted to map plane of length 0!")?;
+                let fd = borrowed_dma_handles[i].as_fd();
+
                 // SAFETY: This assumes that fd is a valid DMA buffer and that our lens and offsets
                 // are correct.
-                addrs.push(unsafe {
-                    mmap(
-                        None,
-                        NonZeroUsize::new(lens[i] + offsets[i])
-                            .ok_or("Attempted to map plane of length 0!")?,
-                        if is_writable {
-                            ProtFlags::PROT_READ | ProtFlags::PROT_WRITE
-                        } else {
-                            ProtFlags::PROT_READ
-                        },
-                        MapFlags::MAP_SHARED,
-                        borrowed_dma_handles[i].as_fd(),
-                        0,
-                    )
-                    .map_err(|err| format!("Error mapping plane {err}"))?
-                    .add(offsets[i])
-                });
+                let mmapped_addr = unsafe {
+                    mmap(None, size_to_map, mmap_access, MapFlags::MAP_SHARED, fd, 0)
+                        .map_err(|err| format!("Error mapping plane {err}"))?
+                };
+                let mmapped_addr: NonNull<u8> = mmapped_addr.cast();
+                mmapped_addrs.push(mmapped_addr);
+
+                // SAFETY: `mmapped_addr` was returned by a successful call to `mmap()` for which
+                // the requested `length` was `size_to_map` and the requested `offset` was 0.
+                let plane_addr =
+                    unsafe { offset_mmapped_addr(mmapped_addr, size_to_map, offsets[i])? };
+                plane_addrs.push(plane_addr);
             }
         } else {
+            // In this case, we assume there's one fd that covers all planes.
             let total_size = NonZeroUsize::new(lens.iter().sum::<usize>() + offsets[0])
                 .ok_or("Attempted to map VideoFrame of length 0")?;
+            let fd = borrowed_dma_handles[0].as_fd();
+
             // SAFETY: This assumes that fd is a valid DMA buffer and that our lens and offsets are
             // correct.
-            unsafe {
-                let base_addr = mmap(
-                    None,
-                    total_size,
-                    if is_writable {
-                        ProtFlags::PROT_READ | ProtFlags::PROT_WRITE
-                    } else {
-                        ProtFlags::PROT_READ
-                    },
-                    MapFlags::MAP_SHARED,
-                    borrowed_dma_handles[0].as_fd(),
-                    0,
-                )
-                .map_err(|err| format!("Error mapping plane {err}"))?;
-                for i in 0..offsets.len() {
-                    addrs.push(base_addr.add(offsets[i]));
-                }
+            let mmapped_addr = unsafe {
+                mmap(None, total_size, mmap_access, MapFlags::MAP_SHARED, fd, 0)
+                    .map_err(|err| format!("Error mapping plane {err}"))?
+            };
+            let mmapped_addr: NonNull<u8> = mmapped_addr.cast();
+            mmapped_addrs.push(mmapped_addr);
+
+            for offset in offsets {
+                // SAFETY: `mmapped_addr` was returned by a successful call to `mmap()` for which
+                // the requested `length` was `total_size` and the requested `offset` was 0.
+                let plane_addr = unsafe { offset_mmapped_addr(mmapped_addr, total_size, offset)? };
+                plane_addrs.push(plane_addr);
             }
         }
 
@@ -228,8 +304,8 @@ impl<'a> DmaMapping<'a> {
             // this assumption will only be violated if mmap itself has a bug that returns a
             // non-NULL, but invalid pointer.
             let tiled_bufs: Vec<&[u8]> = unsafe {
-                zip(addrs.iter(), lens.iter())
-                    .map(|x| slice::from_raw_parts(x.0.as_ptr() as *const u8, *x.1))
+                zip(plane_addrs.iter(), lens.iter())
+                    .map(|x| slice::from_raw_parts(x.0.as_ptr(), *x.1))
                     .collect()
             };
             for i in 0..tiled_bufs.len() {
@@ -247,10 +323,11 @@ impl<'a> DmaMapping<'a> {
 
         Ok(DmaMapping {
             dma_handles: borrowed_dma_handles.clone(),
-            addrs: addrs,
-            detiled_bufs: detiled_bufs,
+            mmapped_addrs,
+            plane_addrs,
+            detiled_bufs,
             lens: lens.clone(),
-            is_writable: is_writable,
+            is_writable,
         })
     }
 }
@@ -265,8 +342,8 @@ impl<'a> ReadMapping<'a> for DmaMapping<'a> {
             // this assumption will only be violated if mmap itself has a bug that returns a
             // non-NULL, but invalid pointer.
             unsafe {
-                zip(self.addrs.iter(), self.lens.iter())
-                    .map(|x| slice::from_raw_parts(x.0.as_ptr() as *const u8, *x.1))
+                zip(self.plane_addrs.iter(), self.lens.iter())
+                    .map(|x| slice::from_raw_parts(x.0.as_ptr(), *x.1))
                     .collect()
             }
         }
@@ -286,8 +363,8 @@ impl<'a> WriteMapping<'a> for DmaMapping<'a> {
         // will only be violated if mmap itself has a bug that returns a non-NULL, but invalid
         // pointer.
         unsafe {
-            zip(self.addrs.iter(), self.lens.iter())
-                .map(|x| RefCell::new(slice::from_raw_parts_mut(x.0.as_ptr() as *mut u8, *x.1)))
+            zip(self.plane_addrs.iter(), self.lens.iter())
+                .map(|x| RefCell::new(slice::from_raw_parts_mut(x.0.as_ptr(), *x.1)))
                 .collect()
         }
     }
@@ -315,12 +392,12 @@ impl<'a> Drop for DmaMapping<'a> {
                 // operations, and we need to call _mm_mfence() to guarantee the CPU won't do it.
                 _mm_mfence();
 
-                for (addr, len) in zip(self.addrs.iter(), self.lens.iter()) {
+                for (addr, len) in zip(self.plane_addrs.iter(), self.lens.iter()) {
                     // TODO: We shouldn't actually have to flush every address, we should just
                     // flush the address at the beginning of each cache line. But, during testing
                     // this caused a race condition.
                     for offset in 0..*len {
-                        _mm_clflush((addr.as_ptr() as *const u8).offset(offset as isize));
+                        _mm_clflush((addr.as_ptr()).offset(offset as isize));
                     }
                 }
 
@@ -329,7 +406,9 @@ impl<'a> Drop for DmaMapping<'a> {
 
             fence(Ordering::SeqCst);
 
-            let _ = zip(self.addrs.iter(), self.lens.iter()).map(|x| munmap(*x.0, *x.1).unwrap());
+            zip(self.mmapped_addrs.iter(), self.lens.iter())
+                .map(|x| munmap((*x.0).cast(), *x.1).unwrap())
+                .collect::<Vec<_>>();
         }
     }
 }
