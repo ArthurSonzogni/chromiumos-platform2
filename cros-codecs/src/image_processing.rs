@@ -17,6 +17,85 @@ use std::arch::aarch64::*;
 pub const MM21_TILE_WIDTH: usize = 16;
 pub const MM21_TILE_HEIGHT: usize = 32;
 
+// Constants taken from LibYUV.
+// 8-bit fixed point conversions between ARGB and YUV
+const K_ARGB_TO_Y: [u16; 16] = [25, 129, 66, 0, 25, 129, 66, 0, 25, 129, 66, 0, 25, 129, 66, 0];
+const K_ARGB_TO_U: [i16; 16] = [-112, 74, 38, 0, -112, 74, 38, 0, -112, 74, 38, 0, -112, 74, 38, 0];
+const K_ARGB_TO_V: [i16; 16] = [18, 94, -112, 0, 18, 94, -112, 0, 18, 94, -112, 0, 18, 94, -112, 0];
+
+/// Converts an ARGB row into an NV12 Y row.
+/// TODO(b:409361773): Add AVX2 and Neon support.
+pub fn argb_to_nv12_y_row(src_argb: &[u8], dst_y: &mut [u8]) {
+    for i in 0..(dst_y.len()) {
+        let b = src_argb[i * 4] as u16;
+        let g = src_argb[i * 4 + 1] as u16;
+        let r = src_argb[i * 4 + 2] as u16;
+        let a = src_argb[i * 4 + 3] as u16;
+        dst_y[i] =
+            (((K_ARGB_TO_Y[0] * b + K_ARGB_TO_Y[1] * g + K_ARGB_TO_Y[2] * r + K_ARGB_TO_Y[3] * a)
+                >> 8)
+                + 16) as u8;
+    }
+}
+
+/// Converts an ARGB row into an NV12 UV row.
+/// TODO(b:409361773): Add AVX2 and Neon support.
+pub fn argb_to_nv12_uv_row(src_argb: &[u8], dst_uv: &mut [u8]) {
+    for i in (0..dst_uv.len()).step_by(2) {
+        let b = src_argb[i * 4] as i16;
+        let g = src_argb[i * 4 + 1] as i16;
+        let r = src_argb[i * 4 + 2] as i16;
+        let a = src_argb[i * 4 + 3] as i16;
+        dst_uv[i] = (-1
+            * ((K_ARGB_TO_U[0] * b + K_ARGB_TO_U[1] * g + K_ARGB_TO_U[2] * r + K_ARGB_TO_U[3] * a)
+                >> 8)
+            + 128) as u8;
+        dst_uv[i + 1] = (-1
+            * ((K_ARGB_TO_V[0] * b + K_ARGB_TO_V[1] * g + K_ARGB_TO_V[2] * r + K_ARGB_TO_V[3] * a)
+                >> 8)
+            + 128) as u8;
+    }
+}
+
+/// Convert an ARGB frame into an NV12 frame.
+pub fn argb_to_nv12(
+    src_argb: &[u8],
+    src_stride: usize,
+    dst_y: &mut [u8],
+    dst_y_stride: usize,
+    dst_uv: &mut [u8],
+    dst_uv_stride: usize,
+    width: usize,
+    height: usize,
+) {
+    for y in 0..(height / 2) {
+        argb_to_nv12_y_row(
+            &src_argb[(y * 2 * src_stride)..(y * 2 * src_stride + width * 4)],
+            &mut dst_y[(y * 2 * dst_y_stride)..(y * 2 * dst_y_stride + width)],
+        );
+        argb_to_nv12_y_row(
+            &src_argb[((y * 2 + 1) * src_stride)..((y * 2 + 1) * src_stride + width * 4)],
+            &mut dst_y[((y * 2 + 1) * dst_y_stride)..((y * 2 + 1) * dst_y_stride + width)],
+        );
+        argb_to_nv12_uv_row(
+            &src_argb[(y * 2 * src_stride)..(y * 2 * src_stride + width * 4)],
+            &mut dst_uv[(y * dst_uv_stride)..(y * dst_uv_stride + width)],
+        );
+    }
+
+    if height % 2 == 1 {
+        let y = height - 1;
+        argb_to_nv12_y_row(
+            &src_argb[(y * src_stride)..(y * src_stride + width * 4)],
+            &mut dst_y[(y * dst_y_stride)..(y * dst_y_stride + width)],
+        );
+        argb_to_nv12_uv_row(
+            &src_argb[(y * src_stride)..(y * src_stride + width * 4)],
+            &mut dst_uv[((y + 1) / 2 * dst_uv_stride)..((y + 1) / 2 * dst_uv_stride + width)],
+        );
+    }
+}
+
 /// Copies `src` into `dst` as NV12, handling padding.
 pub fn nv12_copy(
     src_y: &[u8],
