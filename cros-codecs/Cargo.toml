@@ -12,6 +12,7 @@ default = []
 backend = ["anyhow", "byteorder", "thiserror", "crc32fast", "nix", "gbm", "gbm-sys", "drm", "drm-fourcc", "zerocopy"]
 vaapi = ["libva", "backend"]
 v4l2 = ["v4l2r", "backend"]
+android = []
 
 [dependencies]
 anyhow = { version = "1.0.75", optional = true }

@@ -64,6 +64,13 @@ fn create_vpx_frame_iterator(input: &[u8]) -> Box<dyn Iterator<Item = Cow<[u8]>>
 }
 
 fn main() {
+    #[cfg(feature = "android")]
+    android_logger::init_once(
+        android_logger::Config::default()
+            .with_max_level(log::LevelFilter::Trace)
+            .with_tag("cros-codecs"),
+    );
+    #[cfg(not(feature = "android"))]
     env_logger::init();
 
     let args: Args = argh::from_env();
