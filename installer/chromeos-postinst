@@ -17,7 +17,7 @@
 INSTALL_ROOT=$(dirname "$0")
 
 # Set up the mount points userland needs/expects.
-MOUNTS="/proc /dev /sys /tmp /run /var /mnt/stateful_partition"
+MOUNTS="/proc /dev /sys /tmp /run /var /mnt/stateful_partition /mnt/chromeos_metadata_partition"
 
 # Include efivarfs, which is a submount of /sys, if it's present.
 # This will only exist on efi systems with the appropriate kernel module. On
@@ -43,6 +43,9 @@ main() {
 
     local d
     for d in ${MOUNTS}; do
+      if [ ! -d "${d}" ]; then
+        continue
+      fi
       mount -n --bind "${d}" "./${d}"
       mount --make-slave "./${d}"
     done

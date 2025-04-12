@@ -52,6 +52,8 @@ const char kUMANonChromebookBiosSuccessUnknown[] =
 const char kUMAESPMountRetries[] = "Installer.Postinstall.ESPMountRetries";
 const char kDefaultKeyStatefulMigrationTrigger[] =
     "/mnt/stateful_partition/unencrypted/.default_key_stateful_migration";
+const char kDefaultKeyEncryptedKey[] =
+    "/mnt/chromeos_metadata_partition/encrypted.key";
 
 bool GetKernelCommandLine(string* kernel_cmd_line) {
   if (!base::ReadFileToString(base::FilePath("/proc/cmdline"),
@@ -319,6 +321,22 @@ bool FormatMetaDataPartition(const InstallConfig& install_config) {
                            metadata_partition_dev.value()});
   if (result) {
     LOG(ERROR) << "formatting metadata failed, result: " << result;
+  }
+
+  return result == 0;
+}
+
+bool WipeMetaDataPartition(const InstallConfig& install_config) {
+  base::FilePath metadata_partition_dev = MakePartitionDev(
+      install_config.root.base_device(), PartitionNum::POWERWASH_DATA);
+
+  // TODO(gwendal): Use brillo::StorageDevice and ZeroBlockDevice.
+  // Will need to add platform.cc as well.
+  // However, the metadata partition is really small.
+  int result =
+      RunCommand({"/sbin/blkdiscard", "-z", metadata_partition_dev.value()});
+  if (result) {
+    LOG(ERROR) << "wiping metadata failed, result: " << result;
   }
 
   return result == 0;
@@ -604,11 +622,21 @@ bool ESPPostInstall(const InstallConfig& install_config) {
   return success;
 }
 
-// On update, install file to check for default-key-stateful migraiton for
+// On update, install file to check for default-key-stateful migration for
 // supported boards.
-void CheckForDefaultKeyStatefulMigration() {
+// Wipe metadata partition if it was already installed but not used.
+// It could happen if the rollback to an image that do not support
+// dm-default-key. It will use something else, like LVM, but when a newer image
+// with support will boot, there will be an inconsistency.
+void CheckForDefaultKeyStatefulMigration(const InstallConfig& install_config) {
   if (FormatMetaDataPartitionNeeded()) {
     base::WriteFile(base::FilePath(kDefaultKeyStatefulMigrationTrigger), "");
+
+    // The device has not mounted meta data partition although it should,
+    // wipe the metadata partition, it will be re-created at next boot.
+    if (!base::PathExists(base::FilePath(kDefaultKeyEncryptedKey))) {
+      WipeMetaDataPartition(install_config);
+    }
   }
 }
 
@@ -724,7 +752,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
       FixUnencryptedPermission();
       if (is_update) {
-        CheckForDefaultKeyStatefulMigration();
+        CheckForDefaultKeyStatefulMigration(install_config);
       }
 
       // Create a file indicating that the install is completed. The file
