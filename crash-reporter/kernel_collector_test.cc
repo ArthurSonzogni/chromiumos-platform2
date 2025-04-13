@@ -1092,17 +1092,16 @@ INSTANTIATE_TEST_SUITE_P(
     KernelCollectorSavedLsbTest,
     KernelCollectorSavedLsbTest,
     testing::ValuesIn<SavedLsbTestCase>({
-        // Kernel dump with "crash-reporter: Saved OS version" should use saved
-        // lsb.
-        {"English1", "[   31.999450] crash-reporter: Saved OS version\n",
+        // Should use saved lsb for overflown kernel dump.
+        {"OverflownKernelDump", "[   31.999450] rambom log\n",
          "ver=12345.0.2015_01_26_0853\n"},
-        // Overflown kernel dump should use saved lsb.
-        {"English2", "[   23.045472] overflown",
+        // Non-overflown kernel dump with linux version mismatch will use
+        // saved lsb.
+        {"KernelReleaseMismatch", "[    0.000000] Linux version 1.2.3\n",
          "ver=12345.0.2015_01_26_0853\n"},
-        // Non-overflown kernel dump without "crash-reporter: Saved OS version"
-        // should use current lsb.
-        {"English3", "[    0.000000] not overflown",
-         "ver=6727.0.2015_01_26_0853\n"},
+        // The case to use current lsb version requires a match between current
+        // kernel release and kernel dump. At this point it's hard to test this
+        // case.
     }),
     [](const testing::TestParamInfo<KernelCollectorSavedLsbTest::ParamType>&
            info) { return info.param.test_name; });

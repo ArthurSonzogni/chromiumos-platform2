@@ -8,6 +8,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/utsname.h>
 
 #include <algorithm>
 #include <map>
@@ -898,6 +899,15 @@ bool HasSavedOsVersionEntryInKernelLog(std::string_view log) {
 bool IsKernelLogOverflown(std::string_view log) {
   static const RE2 pattern(R"(\[\s*0+\.0+\s*\])");
   return !RE2::PartialMatch(log, pattern);
+}
+
+std::optional<bool> HasCurrentOsReleaseInKernelLog(std::string_view log) {
+  struct utsname name;
+
+  if (uname(&name)) {
+    return std::nullopt;
+  }
+  return log.find(name.release) != std::string::npos;
 }
 
 }  // namespace util

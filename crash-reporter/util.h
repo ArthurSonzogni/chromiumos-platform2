@@ -243,6 +243,10 @@ bool HasSavedOsVersionEntryInKernelLog(std::string_view log);
 // Returns if kernel log has been overflown by checking the early timestamp.
 bool IsKernelLogOverflown(std::string_view log);
 
+// Returns if the current kernel release "uname --kernel-release" is in the
+// kernel log.
+std::optional<bool> HasCurrentOsReleaseInKernelLog(std::string_view log);
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_UTIL_H_

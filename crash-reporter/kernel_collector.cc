@@ -721,7 +721,8 @@ CrashCollectionStatus KernelCollector::HandleCrash(
   if (force_use_saved_lsb_for_testing_ != std::nullopt) {
     SetUseSavedLsb(*force_use_saved_lsb_for_testing_);
   } else if (util::HasSavedOsVersionEntryInKernelLog(kernel_dump) ||
-             util::IsKernelLogOverflown(kernel_dump)) {
+             util::IsKernelLogOverflown(kernel_dump) ||
+             !util::HasCurrentOsReleaseInKernelLog(kernel_dump).value_or(true)) {
     // * Unclean shutdown collector will log "crash-reporter: Saved OS version"
     //   to kernel log when the OS version is saved to file. If the kernel
     //   ramoops contains the string, it means the crash happens after the OS
@@ -731,6 +732,11 @@ CrashCollectionStatus KernelCollector::HandleCrash(
     //   the kernel dump doesn't have early logs, that means the crash happened
     //   late after boot in previous boot, not early boot after restart. So
     //   saved version should be used.
+    //
+    // * If a crash occurred on an older OS version lacking kmsg logging
+    //   capability and the system has been updated, no saved OS version entry
+    //   will be present in the kernel log at all. In such case, we need to
+    //   additionally check if current release version is in kernel log.
     SetUseSavedLsb(true);
   } else {
     // If "crash-reporter: Saved OS version" is missing from the kernel dump,
