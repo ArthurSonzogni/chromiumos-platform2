@@ -178,23 +178,14 @@ where
 
             self.awaiting_job_event.read().unwrap();
 
-            // Unlike the decoder, we can assume a 1:1 relationship between jobs in the work_queue
-            // and wake-up events. The encoders are not asynchronous, so the only events we will
-            // ever wake-up for are jobs being added to the work_queue.
-            let mut job = (*self.work_queue.lock().unwrap())
-                .pop_front()
-                .expect("Missing job from work queue!");
-            if job.get_drain() != DrainMode::NoDrain {
-                if let Err(err) = self.encoder.drain() {
-                    log::debug!("Error draining encoder! {:?}", err);
-                    *self.state.0.lock().unwrap() = C2State::C2Error;
-                    (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
-                    break;
-                }
-                if job.get_drain() == DrainMode::EOSDrain {
-                    *self.state.0.lock().unwrap() = C2State::C2Stopped;
-                }
-            } else {
+            let mut job = match (*self.work_queue.lock().unwrap()).pop_front() {
+                Some(job) => job,
+                None => continue,
+            };
+            let is_empty_job = job.input.is_none();
+            let drain = job.get_drain();
+            let timestamp = job.timestamp;
+            if !is_empty_job {
                 let frame_y_stride = job.input.as_ref().unwrap().get_plane_pitch()[0];
                 let frame_y_size = job.input.as_ref().unwrap().get_plane_size()[0];
                 let can_import_frame = frame_y_stride == self.coded_resolution.width as usize
@@ -248,7 +239,7 @@ where
                 };
 
                 let meta = FrameMetadata {
-                    timestamp: job.timestamp,
+                    timestamp: timestamp,
                     layout: Default::default(),
                     force_keyframe: false,
                 };
@@ -267,7 +258,28 @@ where
                 }
             }
 
+            if drain != DrainMode::NoDrain {
+                if let Err(err) = self.encoder.drain() {
+                    log::debug!("Error draining encoder! {:?}", err);
+                    *self.state.0.lock().unwrap() = C2State::C2Error;
+                    (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                    break;
+                }
+            }
+
             self.poll_complete_frames();
+
+            // Return a C2Work item for explicit drain requests.
+            if is_empty_job && drain != DrainMode::NoDrain && drain != DrainMode::SyntheticDrain {
+                // Note that drains flush all pending frames, so there should be nothing in the
+                // queue after the poll_complete_frames() call during a drain. Thus, the timestamp
+                // is correct without any additional logic.
+                (*self.work_done_cb.lock().unwrap())(C2EncodeJob {
+                    timestamp: timestamp,
+                    drain: drain,
+                    ..Default::default()
+                });
+            }
         }
     }
 }

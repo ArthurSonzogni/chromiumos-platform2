@@ -94,7 +94,11 @@ where
 
     if *timestamp >= num_frames {
         if *timestamp == num_frames {
-            encoder.drain(DrainMode::EOSDrain);
+            encoder.queue(vec![C2EncodeJob {
+                drain: DrainMode::EOSDrain,
+                timestamp: *timestamp,
+                ..Default::default()
+            }]);
             *timestamp += 1;
         }
         return false;
@@ -112,7 +116,11 @@ where
         Err(e) => {
             if e.kind() == ErrorKind::UnexpectedEof {
                 // We've reached the end of the input file, start draining.
-                encoder.drain(DrainMode::EOSDrain);
+                encoder.queue(vec![C2EncodeJob {
+                    drain: DrainMode::EOSDrain,
+                    timestamp: *timestamp,
+                    ..Default::default()
+                }]);
                 *timestamp = u64::MAX;
                 return false;
             } else {
