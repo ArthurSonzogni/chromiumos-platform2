@@ -46,6 +46,8 @@ mantis_console --image=/usr/local/tmp/image.jpg \
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
+#include "ml/mojom/text_classifier.mojom.h"
+#include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "odml/cros_safety/safety_service_manager.h"
 #include "odml/cros_safety/safety_service_manager_bypass.h"
 #include "odml/cros_safety/safety_service_manager_impl.h"
@@ -228,6 +230,32 @@ class MantisServiceProviderImpl {
   MantisServiceForInterception service_impl_;
 };
 
+// A fake text classifier which always returns empty result. This fake is needed
+// since we can't pass the real implementation that can only be provided by
+// chrome.
+class FakeTextClassifier
+    : public chromeos::machine_learning::mojom::TextClassifier {
+ private:
+  // Implements `chromeos::machine_learning::mojom::TextClassifier`:
+  void Annotate(
+      chromeos::machine_learning::mojom::TextAnnotationRequestPtr request,
+      AnnotateCallback callback) override {
+    std::move(callback).Run({});
+  }
+
+  void FindLanguages(const std::string& text,
+                     FindLanguagesCallback callback) override {
+    std::move(callback).Run({});
+  }
+
+  void REMOVED_1(
+      chromeos::machine_learning::mojom::REMOVED_TextSuggestSelectionRequestPtr
+          request,
+      REMOVED_1Callback callback) override {
+    NOTIMPLEMENTED();
+  }
+};
+
 class MantisConsole : public brillo::DBusDaemon {
  protected:
   int OnInit() override {
@@ -309,13 +337,14 @@ class MantisConsole : public brillo::DBusDaemon {
       if (dlc_uuid_string.has_value()) {
         dlc_uuid = base::Uuid::ParseLowercase(dlc_uuid_string.value());
       }
-
-      // Currently it is not possible to obtain TextClassifier outside of
-      // Chrome. This means the mantis_console can only be run after Chrome
-      // initializes the MantisService (e.g. by initializing in Gallery).
+      mojo::PendingRemote<chromeos::machine_learning::mojom::TextClassifier>
+          fake_text_classifier;
+      mojo::MakeSelfOwnedReceiver(
+          std::make_unique<FakeTextClassifier>(),
+          fake_text_classifier.InitWithNewPipeAndPassReceiver());
       service->Initialize(
           mojo::NullRemote(), processor_remote.BindNewPipeAndPassReceiver(),
-          dlc_uuid, /*text_classifier=*/mojo::NullRemote(),
+          dlc_uuid, std::move(fake_text_classifier),
           base::BindOnce(
               [](base::RunLoop* run_loop,
                  mantis::mojom::InitializeResult result) {
