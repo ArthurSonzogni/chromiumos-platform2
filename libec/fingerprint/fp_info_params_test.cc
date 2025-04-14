@@ -36,19 +36,19 @@ TEST(FpInfoParams, ValidateSize) {
 
 TEST(FpInfoParams, ImageFrameParamsEqual) {
   struct fp_image_frame_params expected_image_frame_params_0 = {
-      .bpp = 8,
       .frame_size = 5120,
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
+      .bpp = 8,
       .fp_capture_type = 2,
       .reserved = 0};
   struct fp_image_frame_params expected_image_frame_params_1 = {
-      .bpp = 8,
       .frame_size = 5120,
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
+      .bpp = 8,
       .fp_capture_type = 2,
       .reserved = 0};
   EXPECT_EQ(expected_image_frame_params_0, expected_image_frame_params_1);
@@ -56,19 +56,19 @@ TEST(FpInfoParams, ImageFrameParamsEqual) {
 
 TEST(FpInfoParams, ImageFrameParamsNotEqual) {
   struct fp_image_frame_params expected_image_frame_params_0 = {
-      .bpp = 8,
       .frame_size = 5120,
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
+      .bpp = 8,
       .fp_capture_type = 2,
       .reserved = 0};
   struct fp_image_frame_params expected_image_frame_params_1 = {
-      .bpp = 16,
       .frame_size = 5120,
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
+      .bpp = 16,
       .fp_capture_type = 2,
       .reserved = 0};
   EXPECT_FALSE(expected_image_frame_params_0 == expected_image_frame_params_1);
