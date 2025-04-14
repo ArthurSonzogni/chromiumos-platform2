@@ -192,6 +192,8 @@ allow cros_cryptohomed {
   cgroup
 }:dir r_dir_perms;
 
+allow cros_cryptohomed cgroup:file rw_file_perms;
+
 # iocts needed by mkfs.ext4 to format loop dev as ext4.
 allowxperm cros_cryptohomed device:blk_file ioctl {
   BLKROGET  # 0x125e
