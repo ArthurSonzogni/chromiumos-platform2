@@ -17,6 +17,7 @@ use crate::backend::v4l2::decoder::ADDITIONAL_REFERENCE_FRAME_BUFFER;
 use crate::codec::vp8::parser::Header;
 use crate::codec::vp8::parser::MbLfAdjustments;
 use crate::codec::vp8::parser::Segmentation;
+use crate::codec::vp8::parser::NUM_REF_FRAMES;
 use crate::decoder::stateless::vp8::StatelessVp8DecoderBackend;
 use crate::decoder::stateless::vp8::Vp8;
 use crate::decoder::stateless::NewPictureError;
@@ -35,8 +36,6 @@ use crate::DecodedFormat;
 use crate::Fourcc;
 use crate::Rect;
 use crate::Resolution;
-
-const NUM_REF_FRAMES: usize = 3;
 
 impl V4l2StreamInfo for &Header {
     fn min_num_frames(&self) -> usize {

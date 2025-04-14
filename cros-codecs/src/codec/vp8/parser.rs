@@ -21,6 +21,8 @@ use crate::codec::vp8::probs::MV_UPDATE_PROBS;
 use crate::codec::vp8::probs::NK_UV_MODE_PROBS;
 use crate::codec::vp8::probs::NK_Y_MODE_PROBS;
 
+pub const NUM_REF_FRAMES: usize = 3;
+
 /// Dequantization indices as parsed from the quant_indices() syntax.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct QuantIndices {

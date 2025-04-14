@@ -24,6 +24,9 @@ use crate::c2_wrapper::C2Status;
 use crate::c2_wrapper::C2Worker;
 use crate::c2_wrapper::DrainMode;
 use crate::c2_wrapper::Job;
+use crate::codec::av1::parser::NUM_REF_FRAMES as AV1_NUM_REF_FRAMES;
+use crate::codec::vp8::parser::NUM_REF_FRAMES as VP8_NUM_REF_FRAMES;
+use crate::codec::vp9::parser::NUM_REF_FRAMES as VP9_NUM_REF_FRAMES;
 use crate::decoder::StreamInfo;
 use crate::encoder::FrameMetadata;
 use crate::encoder::RateControl;
@@ -33,6 +36,7 @@ use crate::encoder::Tunings;
 use crate::encoder::VideoEncoder;
 use crate::image_processing::convert_video_frame;
 use crate::image_processing::extend_border_nv12;
+use crate::image_processing::SUPPORTED_CONVERSION;
 #[cfg(feature = "v4l2")]
 use crate::video_frame::V4l2VideoFrame;
 use crate::video_frame::VideoFrame;
@@ -42,6 +46,12 @@ use crate::DecodedFormat;
 use crate::EncodedFormat;
 use crate::Fourcc;
 use crate::Resolution;
+
+// TODO: We should query this dynamically to avoid unnecessary conversions. In practice everything
+// at least supports NV12 though.
+const REAL_INPUT_FORMAT: DecodedFormat = DecodedFormat::NV12;
+// TODO: Chosen arbitrarily.
+const IN_FLIGHT_FRAMES: usize = 4;
 
 pub trait C2EncoderBackend {
     type EncoderOptions: Clone + Send + 'static;
@@ -131,16 +141,35 @@ where
         alloc_cb: Arc<Mutex<dyn FnMut() -> Option<V> + Send + 'static>>,
         options: Self::Options,
     ) -> Result<Self, String> {
+        if DecodedFormat::from(input_fourcc) != REAL_INPUT_FORMAT {
+            let mut conversion_support = false;
+            for conversion in SUPPORTED_CONVERSION {
+                if conversion.0 == DecodedFormat::from(input_fourcc)
+                    && conversion.1 == REAL_INPUT_FORMAT
+                {
+                    conversion_support = true;
+                    break;
+                }
+            }
+            if !conversion_support {
+                return Err(format!("Unsupported input format {input_fourcc}"));
+            }
+        }
+
         let mut backend = B::new(options)?;
-        let (encoder, visible_resolution, coded_resolution) = backend
-            .get_encoder(DecodedFormat::from(input_fourcc), EncodedFormat::from(output_fourcc))?;
+        let (encoder, visible_resolution, coded_resolution) =
+            backend.get_encoder(REAL_INPUT_FORMAT, EncodedFormat::from(output_fourcc))?;
         (*framepool_hint_cb.lock().unwrap())(StreamInfo {
-            format: DecodedFormat::from(input_fourcc),
+            format: REAL_INPUT_FORMAT,
             coded_resolution: coded_resolution.clone(),
             display_resolution: visible_resolution.clone(),
-            // Needs to be equal to the pipeline depth, which is decided by the client. Ideally, we
-            // will never need these temp frames though if Gralloc works properly.
-            min_num_frames: 0,
+            min_num_frames: match EncodedFormat::from(output_fourcc) {
+                // TODO: Chosen arbitrarily. Do we ever use more than one reference frame for H264?
+                EncodedFormat::H264 | EncodedFormat::H265 => 4,
+                EncodedFormat::VP8 => VP8_NUM_REF_FRAMES,
+                EncodedFormat::VP9 => VP9_NUM_REF_FRAMES,
+                EncodedFormat::AV1 => AV1_NUM_REF_FRAMES,
+            } + IN_FLIGHT_FRAMES,
         });
 
         Ok(Self {
@@ -171,114 +200,130 @@ where
             let _ = epoll_fd
                 .wait(&mut events, EpollTimeout::try_from(Duration::from_millis(10)).unwrap())
                 .expect("Epoll wait failed");
-            if events != [EpollEvent::new(EpollFlags::EPOLLIN, 1)] {
-                self.poll_complete_frames();
-                continue;
+            if events == [EpollEvent::new(EpollFlags::EPOLLIN, 1)] {
+                // We can wake up from the timeout too. If we try to read the EventFD after waking
+                // up from a timeout instead of a real event, we'll just block, so only call read()
+                // if we got a real event.
+                self.awaiting_job_event.read().unwrap();
             }
 
-            self.awaiting_job_event.read().unwrap();
+            // We have to do this outside of the loop to make sure we don't hold the lock (and a
+            // reference to self).
+            let mut possible_job = (*self.work_queue.lock().unwrap()).pop_front();
+            while let Some(mut job) = possible_job {
+                let is_empty_job = job.input.is_none();
+                let drain = job.get_drain();
+                let timestamp = job.timestamp;
+                if !is_empty_job {
+                    let frame_fourcc = job.input.as_ref().unwrap().fourcc();
+                    let frame_y_stride = job.input.as_ref().unwrap().get_plane_pitch()[0];
+                    let frame_y_size = job.input.as_ref().unwrap().get_plane_size()[0];
+                    let can_import_frame = frame_y_stride == self.coded_resolution.width as usize
+                        && frame_y_size >= self.coded_resolution.get_area()
+                        && DecodedFormat::from(frame_fourcc) == REAL_INPUT_FORMAT;
+                    let frame = if can_import_frame {
+                        job.input.take().unwrap()
+                    } else {
+                        let mut tmp = match (*self.alloc_cb.lock().unwrap())() {
+                            Some(tmp_frame) => tmp_frame,
+                            None => {
+                                // Try again when a temp frame is available.
+                                (*self.work_queue.lock().unwrap()).push_front(job);
+                                break;
+                            }
+                        };
 
-            let mut job = match (*self.work_queue.lock().unwrap()).pop_front() {
-                Some(job) => job,
-                None => continue,
-            };
-            let is_empty_job = job.input.is_none();
-            let drain = job.get_drain();
-            let timestamp = job.timestamp;
-            if !is_empty_job {
-                let frame_y_stride = job.input.as_ref().unwrap().get_plane_pitch()[0];
-                let frame_y_size = job.input.as_ref().unwrap().get_plane_size()[0];
-                let can_import_frame = frame_y_stride == self.coded_resolution.width as usize
-                    && frame_y_size >= self.coded_resolution.get_area();
-                let frame = if can_import_frame {
-                    job.input.take().unwrap()
-                } else {
-                    let mut tmp = (*self.alloc_cb.lock().unwrap())().expect("Allocation failed!");
+                        if let Err(_) = convert_video_frame(job.input.as_ref().unwrap(), &mut tmp) {
+                            log::debug!("Failed to copy input frame to properly aligned buffer!");
+                            *self.state.0.lock().unwrap() = C2State::C2Error;
+                            (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                            break;
+                        }
+                        {
+                            let tmp_mapping = tmp.map_mut().expect("Failed to map tmp frame!");
+                            let tmp_planes = tmp_mapping.get();
+                            extend_border_nv12(
+                                *tmp_planes[Y_PLANE].borrow_mut(),
+                                *tmp_planes[UV_PLANE].borrow_mut(),
+                                self.visible_resolution.width as usize,
+                                self.visible_resolution.height as usize,
+                                self.coded_resolution.width as usize,
+                                self.coded_resolution.height as usize,
+                            );
+                        }
 
-                    if let Err(_) = convert_video_frame(job.input.as_ref().unwrap(), &mut tmp) {
-                        log::debug!("Failed to copy input frame to properly aligned buffer!");
-                        *self.state.0.lock().unwrap() = C2State::C2Error;
-                        (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
-                        break;
-                    }
+                        tmp
+                    };
+
+                    let curr_bitrate = match self.current_tunings.rate_control {
+                        ConstantBitrate(bitrate) => bitrate,
+                        ConstantQuality(_) => {
+                            log::debug!("CQ encoding not currently supported");
+                            *self.state.0.lock().unwrap() = C2State::C2Error;
+                            (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                            break;
+                        }
+                    };
+                    let new_framerate = job.framerate.load(Ordering::Relaxed);
+                    if job.bitrate != curr_bitrate
+                        || new_framerate != self.current_tunings.framerate
                     {
-                        let tmp_mapping = tmp.map_mut().expect("Failed to map tmp frame!");
-                        let tmp_planes = tmp_mapping.get();
-                        extend_border_nv12(
-                            *tmp_planes[Y_PLANE].borrow_mut(),
-                            *tmp_planes[UV_PLANE].borrow_mut(),
-                            self.visible_resolution.width as usize,
-                            self.visible_resolution.height as usize,
-                            self.coded_resolution.width as usize,
-                            self.coded_resolution.height as usize,
-                        );
-                    }
+                        self.current_tunings.rate_control =
+                            RateControl::ConstantBitrate(job.bitrate);
+                        self.current_tunings.framerate = new_framerate;
+                        if let Err(err) = self.encoder.tune(self.current_tunings.clone()) {
+                            log::debug!("Error adjusting tunings! {:?}", err);
+                            *self.state.0.lock().unwrap() = C2State::C2Error;
+                            (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                            break;
+                        }
+                    };
 
-                    tmp
-                };
-
-                let curr_bitrate = match self.current_tunings.rate_control {
-                    ConstantBitrate(bitrate) => bitrate,
-                    ConstantQuality(_) => {
-                        log::debug!("CQ encoding not currently supported");
-                        *self.state.0.lock().unwrap() = C2State::C2Error;
-                        (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
-                        break;
+                    let meta = FrameMetadata {
+                        timestamp: timestamp,
+                        layout: Default::default(),
+                        force_keyframe: false,
+                    };
+                    #[cfg(feature = "vaapi")]
+                    let encode_result = self.encoder.encode(meta, frame);
+                    #[cfg(feature = "v4l2")]
+                    let encode_result = self.encoder.encode(meta, V4l2VideoFrame(frame));
+                    match encode_result {
+                        Ok(_) => self.in_flight_queue.push_back(job),
+                        Err(err) => {
+                            log::debug!("Error encoding frame! {:?}", err);
+                            *self.state.0.lock().unwrap() = C2State::C2Error;
+                            (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                            break;
+                        }
                     }
-                };
-                let new_framerate = job.framerate.load(Ordering::Relaxed);
-                if job.bitrate != curr_bitrate || new_framerate != self.current_tunings.framerate {
-                    self.current_tunings.rate_control = RateControl::ConstantBitrate(job.bitrate);
-                    self.current_tunings.framerate = new_framerate;
-                    if let Err(err) = self.encoder.tune(self.current_tunings.clone()) {
-                        log::debug!("Error adjusting tunings! {:?}", err);
-                        *self.state.0.lock().unwrap() = C2State::C2Error;
-                        (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
-                        break;
-                    }
-                };
+                }
 
-                let meta = FrameMetadata {
-                    timestamp: timestamp,
-                    layout: Default::default(),
-                    force_keyframe: false,
-                };
-                #[cfg(feature = "vaapi")]
-                let encode_result = self.encoder.encode(meta, frame);
-                #[cfg(feature = "v4l2")]
-                let encode_result = self.encoder.encode(meta, V4l2VideoFrame(frame));
-                match encode_result {
-                    Ok(_) => self.in_flight_queue.push_back(job),
-                    Err(err) => {
-                        log::debug!("Error encoding frame! {:?}", err);
+                if drain != DrainMode::NoDrain {
+                    if let Err(err) = self.encoder.drain() {
+                        log::debug!("Error draining encoder! {:?}", err);
                         *self.state.0.lock().unwrap() = C2State::C2Error;
                         (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
                         break;
                     }
                 }
-            }
 
-            if drain != DrainMode::NoDrain {
-                if let Err(err) = self.encoder.drain() {
-                    log::debug!("Error draining encoder! {:?}", err);
-                    *self.state.0.lock().unwrap() = C2State::C2Error;
-                    (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
-                    break;
+                self.poll_complete_frames();
+
+                // Return a C2Work item for explicit drain requests.
+                if is_empty_job && drain != DrainMode::NoDrain && drain != DrainMode::SyntheticDrain
+                {
+                    // Note that drains flush all pending frames, so there should be nothing in the
+                    // queue after the poll_complete_frames() call during a drain. Thus, the timestamp
+                    // is correct without any additional logic.
+                    (*self.work_done_cb.lock().unwrap())(C2EncodeJob {
+                        timestamp: timestamp,
+                        drain: drain,
+                        ..Default::default()
+                    });
                 }
-            }
 
-            self.poll_complete_frames();
-
-            // Return a C2Work item for explicit drain requests.
-            if is_empty_job && drain != DrainMode::NoDrain && drain != DrainMode::SyntheticDrain {
-                // Note that drains flush all pending frames, so there should be nothing in the
-                // queue after the poll_complete_frames() call during a drain. Thus, the timestamp
-                // is correct without any additional logic.
-                (*self.work_done_cb.lock().unwrap())(C2EncodeJob {
-                    timestamp: timestamp,
-                    drain: drain,
-                    ..Default::default()
-                });
+                possible_job = (*self.work_queue.lock().unwrap()).pop_front();
             }
         }
     }
