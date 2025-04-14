@@ -34,6 +34,8 @@ cros_tcp_connect(cros_chapsd)
 
 allow cros_chapsd sysfs:file r_file_perms;
 
+allow cros_chapsd proc_sys_kernel:file r_file_perms;
+
 allow cros_chapsd kernel:system module_request;
 
 # SafeFD requires traversing from /
