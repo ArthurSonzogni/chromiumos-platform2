@@ -83,6 +83,11 @@ even though the CPU is 64-bit, the UEFI environment is 32-bit.
 This enum metric reports the method used to boot the device. This can be
 BIOS/legacy, Coreboot, 32-bit UEFI, or 64-bit UEFI.
 
+## Bootloader log
+
+The `init/upstart/flex_boot_log.conf` upstart script copies the UEFI
+bootloader log (if present) from a UEFI variable to `/var/log`.
+
 ## Contributing
 
 ### Testing

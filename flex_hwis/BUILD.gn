@@ -108,6 +108,7 @@ install_config("install_tmpfiles_config") {
 
 install_config("install_upstart_config") {
   sources = [
+    "init/upstart/flex_boot_log.conf",
     "init/upstart/flex_device_metrics.conf",
     "init/upstart/flex_hardware_cache.conf",
     "init/upstart/flex_hwis.conf",
