@@ -15,6 +15,7 @@ use v4l2r::QueueType;
 
 use crate::backend::v4l2::decoder::stateless::V4l2Picture;
 use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderBackend;
+use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderHandle;
 use crate::backend::v4l2::decoder::V4l2StreamInfo;
 use crate::backend::v4l2::decoder::ADDITIONAL_REFERENCE_FRAME_BUFFER;
 use crate::codec::h265::dpb::Dpb;
@@ -170,21 +171,31 @@ impl<V: VideoFrame> StatelessH265DecoderBackend for V4l2StatelessDecoderBackend<
 
     fn decode_slice(
         &mut self,
-        _picture: &mut Self::Picture,
-        _slice: &Slice,
+        picture: &mut Self::Picture,
+        slice: &Slice,
         _sps: &Sps,
         _: &Pps,
         _ref_pic_list0: &[Option<RefPicListEntry<Self::Handle>>; 16],
         _ref_pic_list1: &[Option<RefPicListEntry<Self::Handle>>; 16],
     ) -> crate::decoder::stateless::StatelessBackendResult<()> {
-        todo!()
+        const START_CODE: [u8; 3] = [0, 0, 1];
+
+        let request = picture.borrow_mut().request();
+        let mut request = request.as_ref().borrow_mut();
+
+        request.write(&START_CODE);
+        request.write(slice.nalu.as_ref());
+        Ok(())
     }
 
-    fn submit_picture(
-        &mut self,
-        mut _picture: Self::Picture,
-    ) -> StatelessBackendResult<Self::Handle> {
-        todo!()
+    fn submit_picture(&mut self, picture: Self::Picture) -> StatelessBackendResult<Self::Handle> {
+        let request = picture.borrow_mut().request();
+        let mut request = request.as_ref().borrow_mut();
+        request.submit()?;
+        Ok(V4l2StatelessDecoderHandle {
+            picture: picture.clone(),
+            stream_info: self.stream_info.clone(),
+        })
     }
 }
 
