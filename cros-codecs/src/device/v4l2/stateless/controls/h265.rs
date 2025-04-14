@@ -2,11 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::marker::PhantomData;
+
 use v4l2r::bindings::v4l2_ctrl_hevc_decode_params;
 use v4l2r::bindings::v4l2_ctrl_hevc_pps;
 use v4l2r::bindings::v4l2_ctrl_hevc_scaling_matrix;
 use v4l2r::bindings::v4l2_ctrl_hevc_sps;
+use v4l2r::bindings::v4l2_ext_control;
+use v4l2r::bindings::v4l2_ext_control__bindgen_ty_1;
 use v4l2r::bindings::v4l2_hevc_dpb_entry;
+use v4l2r::bindings::v4l2_stateless_hevc_decode_mode_V4L2_STATELESS_HEVC_DECODE_MODE_FRAME_BASED as V4L2_STATELESS_HEVC_DECODE_MODE_FRAME_BASED;
+use v4l2r::bindings::v4l2_stateless_hevc_decode_mode_V4L2_STATELESS_HEVC_DECODE_MODE_SLICE_BASED as V4L2_STATELESS_HEVC_DECODE_MODE_SLICE_BASED;
+use v4l2r::bindings::v4l2_stateless_hevc_start_code_V4L2_STATELESS_HEVC_START_CODE_ANNEX_B as V4L2_STATELESS_HEVC_START_CODE_ANNEX_B;
+use v4l2r::bindings::v4l2_stateless_hevc_start_code_V4L2_STATELESS_HEVC_START_CODE_NONE as V4L2_STATELESS_HEVC_START_CODE_NONE;
+use v4l2r::bindings::V4L2_CID_STATELESS_HEVC_DECODE_PARAMS;
+use v4l2r::bindings::V4L2_CID_STATELESS_HEVC_PPS;
+use v4l2r::bindings::V4L2_CID_STATELESS_HEVC_SCALING_MATRIX;
+use v4l2r::bindings::V4L2_CID_STATELESS_HEVC_SPS;
 use v4l2r::bindings::V4L2_HEVC_DECODE_PARAM_FLAG_IDR_PIC;
 use v4l2r::bindings::V4L2_HEVC_DECODE_PARAM_FLAG_IRAP_PIC;
 use v4l2r::bindings::V4L2_HEVC_DECODE_PARAM_FLAG_NO_OUTPUT_OF_PRIOR;
@@ -42,6 +54,7 @@ use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SCALING_LIST_ENABLED;
 use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SEPARATE_COLOUR_PLANE;
 use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SPS_TEMPORAL_MVP_ENABLED;
 use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_STRONG_INTRA_SMOOTHING_ENABLED;
+use v4l2r::controls::AsV4l2ControlSlice;
 
 use crate::codec::h265::parser::NaluType;
 use crate::codec::h265::parser::Pps;
@@ -392,5 +405,139 @@ impl V4l2CtrlHEVCDecodeParams {
         self.handle.num_poc_lt_curr = k as u8;
 
         self
+    }
+}
+
+pub enum V4l2CtrlHEVCDecodeMode {
+    SliceBased = V4L2_STATELESS_HEVC_DECODE_MODE_SLICE_BASED as isize,
+    FrameBased = V4L2_STATELESS_HEVC_DECODE_MODE_FRAME_BASED as isize,
+}
+
+pub enum V4l2CtrlHEVCStartCode {
+    None = V4L2_STATELESS_HEVC_START_CODE_NONE as isize,
+    AnnexB = V4L2_STATELESS_HEVC_START_CODE_ANNEX_B as isize,
+}
+
+pub struct HevcV4l2Sps(v4l2_ext_control, PhantomData<v4l2_ctrl_hevc_sps>);
+impl From<&v4l2_ctrl_hevc_sps> for HevcV4l2Sps {
+    fn from(sps: &v4l2_ctrl_hevc_sps) -> Self {
+        let payload = Box::new(*sps);
+        Self(
+            v4l2_ext_control {
+                id: V4L2_CID_STATELESS_HEVC_SPS,
+                size: std::mem::size_of::<v4l2_ctrl_hevc_sps>() as u32,
+                __bindgen_anon_1: v4l2_ext_control__bindgen_ty_1 {
+                    p_hevc_sps: Box::into_raw(payload),
+                },
+                ..Default::default()
+            },
+            PhantomData,
+        )
+    }
+}
+impl AsV4l2ControlSlice for &mut HevcV4l2Sps {
+    fn as_v4l2_control_slice(&mut self) -> &mut [v4l2_ext_control] {
+        std::slice::from_mut(&mut self.0)
+    }
+}
+impl Drop for HevcV4l2Sps {
+    fn drop(&mut self) {
+        // SAFETY: p_hevc_sps contains a pointer to a non-NULL v4l2_ctrl_hevc_sps object.
+        unsafe {
+            let _ = Box::from_raw(self.0.__bindgen_anon_1.p_hevc_sps);
+        }
+    }
+}
+
+pub struct HevcV4l2Pps(v4l2_ext_control, PhantomData<v4l2_ctrl_hevc_pps>);
+impl From<&v4l2_ctrl_hevc_pps> for HevcV4l2Pps {
+    fn from(pps: &v4l2_ctrl_hevc_pps) -> Self {
+        let payload = Box::new(*pps);
+        Self(
+            v4l2_ext_control {
+                id: V4L2_CID_STATELESS_HEVC_PPS,
+                size: std::mem::size_of::<v4l2_ctrl_hevc_pps>() as u32,
+                __bindgen_anon_1: v4l2_ext_control__bindgen_ty_1 {
+                    p_hevc_pps: Box::into_raw(payload),
+                },
+                ..Default::default()
+            },
+            PhantomData,
+        )
+    }
+}
+impl AsV4l2ControlSlice for &mut HevcV4l2Pps {
+    fn as_v4l2_control_slice(&mut self) -> &mut [v4l2_ext_control] {
+        std::slice::from_mut(&mut self.0)
+    }
+}
+impl Drop for HevcV4l2Pps {
+    fn drop(&mut self) {
+        // SAFETY: p_hevc_pps contains a pointer to a non-NULL v4l2_ctrl_hevc_pps object.
+        unsafe {
+            let _ = Box::from_raw(self.0.__bindgen_anon_1.p_hevc_pps);
+        }
+    }
+}
+
+pub struct HevcV4l2ScalingMatrix(v4l2_ext_control, PhantomData<v4l2_ctrl_hevc_scaling_matrix>);
+impl From<&v4l2_ctrl_hevc_scaling_matrix> for HevcV4l2ScalingMatrix {
+    fn from(mat: &v4l2_ctrl_hevc_scaling_matrix) -> Self {
+        let payload = Box::new(*mat);
+        Self(
+            v4l2_ext_control {
+                id: V4L2_CID_STATELESS_HEVC_SCALING_MATRIX,
+                size: std::mem::size_of::<v4l2_ctrl_hevc_scaling_matrix>() as u32,
+                __bindgen_anon_1: v4l2_ext_control__bindgen_ty_1 {
+                    p_hevc_scaling_matrix: Box::into_raw(payload),
+                },
+                ..Default::default()
+            },
+            PhantomData,
+        )
+    }
+}
+impl AsV4l2ControlSlice for &mut HevcV4l2ScalingMatrix {
+    fn as_v4l2_control_slice(&mut self) -> &mut [v4l2_ext_control] {
+        std::slice::from_mut(&mut self.0)
+    }
+}
+impl Drop for HevcV4l2ScalingMatrix {
+    fn drop(&mut self) {
+        // SAFETY: p_hevc_scaling_matrix contains a pointer to a non-NULL v4l2_ctrl_hevc_scaling_matrix object.
+        unsafe {
+            let _ = Box::from_raw(self.0.__bindgen_anon_1.p_hevc_scaling_matrix);
+        }
+    }
+}
+
+pub struct HevcV4l2DecodeParams(v4l2_ext_control, PhantomData<v4l2_ctrl_hevc_decode_params>);
+impl From<&v4l2_ctrl_hevc_decode_params> for HevcV4l2DecodeParams {
+    fn from(params: &v4l2_ctrl_hevc_decode_params) -> Self {
+        let payload = Box::new(*params);
+        Self(
+            v4l2_ext_control {
+                id: V4L2_CID_STATELESS_HEVC_DECODE_PARAMS,
+                size: std::mem::size_of::<v4l2_ctrl_hevc_decode_params>() as u32,
+                __bindgen_anon_1: v4l2_ext_control__bindgen_ty_1 {
+                    p_hevc_decode_params: Box::into_raw(payload),
+                },
+                ..Default::default()
+            },
+            PhantomData,
+        )
+    }
+}
+impl AsV4l2ControlSlice for &mut HevcV4l2DecodeParams {
+    fn as_v4l2_control_slice(&mut self) -> &mut [v4l2_ext_control] {
+        std::slice::from_mut(&mut self.0)
+    }
+}
+impl Drop for HevcV4l2DecodeParams {
+    fn drop(&mut self) {
+        // SAFETY: p_hevc_decode_params contains a pointer to a non-NULL v4l2_ctrl_hevc_decode_params object.
+        unsafe {
+            let _ = Box::from_raw(self.0.__bindgen_anon_1.p_hevc_decode_params);
+        }
     }
 }
