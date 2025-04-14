@@ -56,6 +56,9 @@ struct ChromeMLModelData {
   // library and closed once weight loading is complete. kApuBackend provides
   // the `model_path` and not this field.
   PlatformFile weights_file;
+  // A unique ID to identify `weights_file`s which point to the same data.
+  // Matching `file_id` tells the backend that the data also matches.
+  std::optional<uint32_t> file_id;
 
   // Null-terminated model path pointing to the model to use. Only kApuBackend
   // provides this field. Other backends provide model through the
@@ -224,6 +227,9 @@ struct ChromeMLMetricsFns {
       const char* name, int sample, int min, int exclusive_max, size_t buckets);
 };
 
+// Precision used by the gpu delegate during inference.
+enum class GpuDelegatePrecision { kFp16, kFp32 };
+
 struct ChromeMLTSAPI {
   // Construct a text safety model.
   // Destroy the returned object by passing it to DestroyModel.
@@ -377,6 +383,9 @@ struct ChromeMLAPI {
 
   // Creates a new TFLite delegate using the GPU inference engine.
   TfLiteDelegate* (*CreateGpuDelegate)();
+
+  TfLiteDelegate* (*CreateGpuDelegateWithPrecision)(
+      GpuDelegatePrecision precision);
 
   // Destroys the TFLite delegate created by `CreateDelegate()` call.
   void (*DestroyGpuDelegate)(TfLiteDelegate* delegate);

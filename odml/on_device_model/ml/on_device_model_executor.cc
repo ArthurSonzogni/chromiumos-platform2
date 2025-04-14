@@ -284,14 +284,12 @@ SessionImpl::SessionImpl(raw_ref<MetricsLibraryInterface> metrics,
                          const ChromeML& chrome_ml,
                          ChromeMLModel model,
                          SessionAccessor::Ptr session,
-                         SessionAccessor::Ptr empty_session,
                          uint32_t max_tokens,
                          std::optional<uint32_t> adaptation_id)
     : metrics_(metrics),
       chrome_ml_(chrome_ml),
       model_(model),
       session_(std::move(session)),
-      empty_session_(std::move(empty_session)),
       max_tokens_(max_tokens),
       adaptation_id_(adaptation_id) {}
 SessionImpl::~SessionImpl() = default;
@@ -345,9 +343,9 @@ void SessionImpl::Score(const std::string& text,
 }
 
 std::unique_ptr<SessionImpl> SessionImpl::Clone() {
-  return std::make_unique<SessionImpl>(
-      metrics_, chrome_ml_.get(), model_, session_->Clone(),
-      empty_session_->Clone(), max_tokens_, adaptation_id_);
+  return std::make_unique<SessionImpl>(metrics_, chrome_ml_.get(), model_,
+                                       session_->Clone(), max_tokens_,
+                                       adaptation_id_);
 }
 
 void SessionImpl::RemoveContext(ContextHolder* context) {
@@ -412,7 +410,7 @@ std::unique_ptr<SessionImpl> OnDeviceModelExecutor::CreateSession(
   auto it = base_sessions_.find(adaptation_id);
   CHECK(it != base_sessions_.end());
   return std::make_unique<SessionImpl>(
-      metrics_, *chrome_ml_, model_, it->second->Clone(), it->second->Clone(),
+      metrics_, *chrome_ml_, model_, it->second->Clone(),
       max_tokens_ - kReserveTokensForSafety, adaptation_id);
 }
 
