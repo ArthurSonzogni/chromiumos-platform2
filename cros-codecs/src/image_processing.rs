@@ -4,6 +4,7 @@
 
 use std::cmp::min;
 
+use crate::utils::align_up;
 use crate::video_frame::{VideoFrame, UV_PLANE, U_PLANE, V_PLANE, Y_PLANE};
 use crate::DecodedFormat;
 
@@ -421,8 +422,8 @@ pub fn nv12_to_i420(
     copy_plane(src_y, src_y_stride, dst_y, dst_y_stride, width, height);
 
     // We can just assume 4:2:0 subsampling
-    let aligned_width = (width + 1) & (!1);
-    for y in 0..((height + 1) / 2) {
+    let aligned_width = align_up(width, 2);
+    for y in 0..(align_up(height, 2) / 2) {
         let src_row = &src_uv[(y * src_uv_stride)..(y * src_uv_stride + aligned_width)];
         let dst_u_row = &mut dst_u[(y * dst_u_stride)..(y * dst_u_stride + aligned_width / 2)];
         let dst_v_row = &mut dst_v[(y * dst_v_stride)..(y * dst_v_stride + aligned_width / 2)];
@@ -436,19 +437,35 @@ pub fn nv12_to_i420(
     }
 }
 
-pub fn i420_to_nv12_chroma(src_u: &[u8], src_v: &[u8], dst_uv: &mut [u8]) {
-    for i in 0..dst_uv.len() {
-        if i % 2 == 0 {
-            dst_uv[i] = src_u[i / 2];
-        } else {
-            dst_uv[i] = src_v[i / 2];
+pub fn i420_to_nv12(
+    src_y: &[u8],
+    src_y_stride: usize,
+    dst_y: &mut [u8],
+    dst_y_stride: usize,
+    src_u: &[u8],
+    src_u_stride: usize,
+    src_v: &[u8],
+    src_v_stride: usize,
+    dst_uv: &mut [u8],
+    dst_uv_stride: usize,
+    width: usize,
+    height: usize,
+) {
+    copy_plane(src_y, src_y_stride, dst_y, dst_y_stride, width, height);
+
+    let aligned_width = align_up(width, 2);
+    for y in 0..(align_up(height, 2) / 2) {
+        let src_u_row = &src_u[(y * src_u_stride)..(y * src_u_stride + aligned_width / 2)];
+        let src_v_row = &src_v[(y * src_v_stride)..(y * src_v_stride + aligned_width / 2)];
+        let dst_uv_row = &mut dst_uv[(y * dst_uv_stride)..(y * dst_uv_stride + aligned_width)];
+        for x in 0..aligned_width {
+            if x % 2 == 0 {
+                dst_uv_row[x] = src_u_row[x / 2];
+            } else {
+                dst_uv_row[x] = src_v_row[x / 2];
+            }
         }
     }
-}
-
-pub fn i420_to_nv12(src_y: &[u8], dst_y: &mut [u8], src_u: &[u8], src_v: &[u8], dst_uv: &mut [u8]) {
-    dst_y.copy_from_slice(src_y);
-    i420_to_nv12_chroma(src_u, src_v, dst_uv);
 }
 
 // TODO: Add more conversions. All supported conversion functions need to take stride parameters.
@@ -457,6 +474,7 @@ pub const SUPPORTED_CONVERSION: &'static [(DecodedFormat, DecodedFormat)] = &[
     (DecodedFormat::MM21, DecodedFormat::NV12),
     (DecodedFormat::NV12, DecodedFormat::NV12),
     (DecodedFormat::I420, DecodedFormat::I420),
+    (DecodedFormat::I420, DecodedFormat::NV12),
     (DecodedFormat::I422, DecodedFormat::I422),
     (DecodedFormat::I444, DecodedFormat::I444),
 ];
@@ -518,6 +536,23 @@ pub fn convert_video_frame(src: &impl VideoFrame, dst: &mut impl VideoFrame) -> 
                 width,
                 height,
                 (true, true),
+            );
+            Ok(())
+        }
+        (DecodedFormat::I420, DecodedFormat::NV12) => {
+            i420_to_nv12(
+                src_planes[Y_PLANE],
+                src_pitches[Y_PLANE],
+                *dst_planes[Y_PLANE].borrow_mut(),
+                dst_pitches[Y_PLANE],
+                src_planes[U_PLANE],
+                src_pitches[U_PLANE],
+                src_planes[V_PLANE],
+                src_pitches[V_PLANE],
+                *dst_planes[UV_PLANE].borrow_mut(),
+                dst_pitches[UV_PLANE],
+                width,
+                height,
             );
             Ok(())
         }
@@ -620,10 +655,16 @@ mod tests {
         let (test_y_output, test_uv_output) = test_output.split_at_mut(480 * 288);
         i420_to_nv12(
             &test_input[0..(480 * 288)],
+            480,
             test_y_output,
             &test_input[(480 * 288)..(480 * 288 * 5 / 4)],
+            240,
             &test_input[(480 * 288 * 5 / 4)..(480 * 288 * 3 / 2)],
+            240,
             test_uv_output,
+            480,
+            480,
+            280,
         );
         assert_eq!(test_output, *test_expected_output);
     }

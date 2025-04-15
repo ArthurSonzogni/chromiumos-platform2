@@ -113,10 +113,17 @@ fn test_i420_to_nv12_perf() {
     for _cycle in 0..K_NUMBER_OF_TEST_CYCLES {
         i420_to_nv12(
             &test_input[..test_input.len() * 2 / 3],
+            K_WIDTH,
             test_y_output,
+            K_WIDTH,
             &test_input[(test_input.len() * 2 / 3)..(test_input.len() * 5 / 6)],
+            K_WIDTH / 2,
             &test_input[(test_input.len() * 5 / 6)..],
+            K_WIDTH / 2,
             test_uv_output,
+            K_WIDTH,
+            K_WIDTH,
+            K_HEIGHT,
         );
     }
 
