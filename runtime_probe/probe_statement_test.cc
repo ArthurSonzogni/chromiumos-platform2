@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/probe_statement.h"
+
 #include <optional>
 #include <string>
 
@@ -13,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "runtime_probe/probe_function.h"
-#include "runtime_probe/probe_statement.h"
 #include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {
@@ -262,6 +263,33 @@ TEST_F(ProbeStatementTest, GetInformationWithoutInformation) {
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
 
   auto res = probe_statement->GetInformation();
+  EXPECT_EQ(res, std::nullopt);
+}
+
+TEST_F(ProbeStatementTest, GetPosition) {
+  auto dict_value = base::JSONReader::Read(R"({
+    "eval": {
+      "memory": {}
+    },
+    "position": "123"
+  })");
+
+  auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
+
+  auto res = probe_statement->GetPosition();
+  EXPECT_EQ(res, "123");
+}
+
+TEST_F(ProbeStatementTest, GetPositionWithoutPosition) {
+  auto dict_value = base::JSONReader::Read(R"({
+    "eval": {
+      "memory": {}
+    }
+  })");
+
+  auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
+
+  auto res = probe_statement->GetPosition();
   EXPECT_EQ(res, std::nullopt);
 }
 

@@ -25,6 +25,7 @@ namespace {
 
 using ::testing::ElementsAre;
 using ::testing::NiceMock;
+using ::testing::Return;
 
 class MockProbeStatement : public ProbeStatement {
  public:
@@ -36,18 +37,21 @@ class MockProbeStatement : public ProbeStatement {
               GetInformation,
               (),
               (const, override));
+  MOCK_METHOD(std::optional<std::string>, GetPosition, (), (const, override));
 };
 
 class ComponentCategoryTest : public ::testing::Test {
  protected:
   // Set a mocked probe statement that would return |eval_result| on
-  // calling ProbeStatement::Eval, and return |information| on calling
-  // ProbeStatement::GetInformation() for |component_category|.
+  // calling ProbeStatement::Eval, return |information| on calling
+  // ProbeStatement::GetInformation(), and return |position| on calling
+  // ProbeStatement::GetPosition() for |component_category|.
   void SetComponent(
       ComponentCategory& component_category,
       const std::string& component_name,
       const base::Value::List& eval_result,
-      const std::optional<base::Value>& information = std::nullopt) {
+      const std::optional<base::Value>& information = std::nullopt,
+      const std::optional<std::string>& position = std::nullopt) {
     auto probe_statement = std::make_unique<NiceMock<MockProbeStatement>>();
     ON_CALL(*probe_statement, Eval)
         .WillByDefault(
@@ -65,6 +69,15 @@ class ComponentCategoryTest : public ::testing::Test {
         return std::nullopt;
       });
     }
+
+    if (position) {
+      ON_CALL(*probe_statement, GetPosition).WillByDefault(Return(position));
+    } else {
+      ON_CALL(*probe_statement, GetPosition).WillByDefault([]() {
+        return std::nullopt;
+      });
+    }
+
     component_category.SetComponentForTesting(component_name,
                                               std::move(probe_statement));
   }
@@ -163,6 +176,57 @@ TEST_F(ComponentCategoryTest, EvalWithInformation) {
       "information": {
         "info_field": "info_value"
       }
+    }
+  ])");
+  base::test::TestFuture<base::Value::List> future;
+  category->Eval(future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
+}
+
+TEST_F(ComponentCategoryTest, EvalWithPosition) {
+  auto dict_value = base::JSONReader::Read("{}");
+  auto category = ComponentCategory::FromValue("category_1", *dict_value);
+  EXPECT_TRUE(category);
+
+  const auto eval_result_1 = base::JSONReader::Read(R"([
+    {
+      "field_1": "value_1"
+    },
+    {
+      "field_1": "value_2"
+    }
+  ])");
+  const auto eval_result_2 = base::JSONReader::Read(R"([
+    {
+      "field_1": "value_3"
+    }
+  ])");
+  SetComponent(*category, "component_1", eval_result_1->GetList(), std::nullopt,
+               "123");
+  SetComponent(*category, "component_2", eval_result_2->GetList(), std::nullopt,
+               "456");
+
+  auto ans = base::JSONReader::Read(R"([
+    {
+      "name": "component_1",
+      "values": {
+        "field_1": "value_1"
+      },
+      "position": "123"
+    },
+    {
+      "name": "component_1",
+      "values": {
+        "field_1": "value_2"
+      },
+      "position": "123"
+    },
+    {
+      "name": "component_2",
+      "values": {
+        "field_1": "value_3"
+      },
+      "position": "456"
     }
   ])");
   base::test::TestFuture<base::Value::List> future;

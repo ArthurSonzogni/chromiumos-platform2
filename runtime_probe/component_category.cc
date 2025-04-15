@@ -25,6 +25,7 @@ void OnProbeStatementEvalCompleted(
     base::OnceCallback<void(base::Value::List)> callback,
     const std::string& component_name,
     std::optional<base::Value> information_dv,
+    std::optional<std::string> position,
     base::Value::List probe_result) {
   base::Value::List results;
   for (auto& probe_statement_dv : probe_result) {
@@ -33,6 +34,9 @@ void OnProbeStatementEvalCompleted(
     result.Set("values", std::move(probe_statement_dv));
     if (information_dv.has_value()) {
       result.Set("information", information_dv->Clone());
+    }
+    if (position.has_value()) {
+      result.Set("position", *position);
     }
     results.Append(std::move(result));
   }
@@ -85,9 +89,9 @@ void ComponentCategory::Eval(
       component_.size(),
       base::BindOnce(&CollectProbeStatementResults, std::move(callback)));
   for (auto& [component_name, probe_statement] : component_) {
-    probe_statement->Eval(base::BindOnce(&OnProbeStatementEvalCompleted,
-                                         barrier_callback, component_name,
-                                         probe_statement->GetInformation()));
+    probe_statement->Eval(base::BindOnce(
+        &OnProbeStatementEvalCompleted, barrier_callback, component_name,
+        probe_statement->GetInformation(), probe_statement->GetPosition()));
   }
 }
 

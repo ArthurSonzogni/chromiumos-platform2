@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/probe_statement.h"
+
 #include <memory>
 #include <optional>
 #include <vector>
@@ -14,7 +16,6 @@
 #include "runtime_probe/matchers/matcher.h"
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/probe_result_checker.h"
-#include "runtime_probe/probe_statement.h"
 
 namespace runtime_probe {
 
@@ -119,6 +120,14 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
     VLOG(3) << "\"information\" does not exist or is not a dictionary";
   } else {
     instance->information_ = base::Value(information->Clone());
+  }
+
+  // Parse optional field "position"
+  const auto position = dict.FindString("position");
+  if (!position) {
+    VLOG(3) << "\"position\" does not exist or is not a string";
+  } else {
+    instance->position_ = *position;
   }
 
   return instance;

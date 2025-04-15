@@ -31,6 +31,7 @@ class ProbeStatement {
   //     "keys": [<key:string>],
   //     "expect": <see |ProbeResultChecker|>,
   //     "information": <info:DictValue>,
+  //     "position": <string>
   //   }
   //
   // For "eval", the case "[<func:ProbeFunction>]" will be transformed into::
@@ -71,6 +72,13 @@ class ProbeStatement {
     return std::nullopt;
   }
 
+  virtual std::optional<std::string> GetPosition() const {
+    if (position_) {
+      return position_;
+    }
+    return std::nullopt;
+  }
+
   // Gets pointer to the probe function or nullptr on failure.
   const ProbeFunction* probe_function() const { return probe_function_.get(); }
 
@@ -94,6 +102,7 @@ class ProbeStatement {
   std::unique_ptr<ProbeResultChecker> probe_result_checker_;
   std::unique_ptr<Matcher> matcher_;
   std::optional<base::Value> information_;
+  std::optional<std::string> position_;
   // Must be the last member.
   base::WeakPtrFactory<ProbeStatement> weak_ptr_factory_{this};
 
