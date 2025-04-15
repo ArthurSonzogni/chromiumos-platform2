@@ -32,8 +32,6 @@ class DBusUpdateEngineService
   bool Update(brillo::ErrorPtr* error,
               const update_engine::UpdateParams& in_update_params) override;
 
-  bool ApplyDeferredUpdate(brillo::ErrorPtr* error) override;
-
   bool ApplyDeferredUpdateAdvanced(
       brillo::ErrorPtr* error,
       const update_engine::ApplyUpdateConfig& config) override;

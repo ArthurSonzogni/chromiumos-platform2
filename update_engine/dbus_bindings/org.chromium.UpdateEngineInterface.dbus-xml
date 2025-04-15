@@ -20,9 +20,6 @@
                     value="update_engine::UpdateParams"/>
       </arg>
     </method>
-    <!-- TODO(b/242813465): DEPRECATE -->
-    <method name="ApplyDeferredUpdate">
-    </method>
     <method name="ApplyDeferredUpdateAdvanced">
       <arg type="ay" name="config" direction="in">
         <tp:docstring>

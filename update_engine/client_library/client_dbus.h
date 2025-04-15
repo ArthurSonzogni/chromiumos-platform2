@@ -30,7 +30,8 @@ class DBusUpdateEngineClient : public UpdateEngineClient {
 
   bool Update(const update_engine::UpdateParams& update_params) override;
 
-  bool ApplyDeferredUpdate() override;
+  bool ApplyDeferredUpdateAdvanced(
+      const update_engine::ApplyUpdateConfig& config) override;
 
   bool AttemptInstall(const std::string& omaha_url,
                       const std::vector<std::string>& dlc_ids) override;

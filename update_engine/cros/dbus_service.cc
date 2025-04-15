@@ -64,10 +64,6 @@ bool DBusUpdateEngineService::Update(
   return common_->Update(error, in_update_params, &result);
 }
 
-bool DBusUpdateEngineService::ApplyDeferredUpdate(ErrorPtr* error) {
-  return common_->ApplyDeferredUpdate(error, /*shutdown=*/false);
-}
-
 bool DBusUpdateEngineService::ApplyDeferredUpdateAdvanced(
     ErrorPtr* error, const update_engine::ApplyUpdateConfig& config) {
   return common_->ApplyDeferredUpdate(

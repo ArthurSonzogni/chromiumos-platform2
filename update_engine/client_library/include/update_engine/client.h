@@ -29,7 +29,8 @@ class UpdateEngineClient {
   virtual bool Update(const update_engine::UpdateParams& update_params) = 0;
 
   // Applies the deferred update if there is one.
-  virtual bool ApplyDeferredUpdate() = 0;
+  virtual bool ApplyDeferredUpdateAdvanced(
+      const update_engine::ApplyUpdateConfig& config) = 0;
 
   // Request the update_engine to install a list of DLC modules.
   // |omaha_url|

@@ -498,7 +498,9 @@ int UpdateEngineClient::ProcessFlags() {
   }
 
   if (FLAGS_apply_deferred_update) {
-    if (!client_->ApplyDeferredUpdate()) {
+    update_engine::ApplyUpdateConfig config;
+    config.set_done_action(update_engine::UpdateDoneAction::REBOOT);
+    if (!client_->ApplyDeferredUpdateAdvanced(config)) {
       LOG(ERROR) << "Apply deferred update failed.";
       return 1;
     }
