@@ -524,8 +524,27 @@ impl GbmDevice {
             ret.bo.push(bo);
         } else if ret.is_contiguous() {
             // These flags are not present in every system's GBM headers.
+            const GBM_BO_USE_CAMERA_WRITE: u32 = 1 << 6;
             const GBM_BO_USE_HW_VIDEO_DECODER: u32 = 1 << 13;
             const GBM_BO_USE_HW_VIDEO_ENCODER: u32 = 1 << 14;
+
+            let (fourcc, usage) = if fourcc == Fourcc::from(b"I420") {
+                // One quirk of minigbm is that it does not support YUV420, it only supports
+                // YVU420 and YVU420_ANDROID. Unfortunately YVU420 is only usable with
+                // BO_USE_TEXTURE_MASK while YVU420_ANDROID is only usable with BO_USE_TEXTURE_MASK
+                // and BO_USE_CAMERA_WRITE.
+                //
+                // Because the shape of the allocation will be the same, we just lie to minigbm and
+                // say the allocation is YVU420_ANDROID and BO_USE_CAMERA_WRITE.
+                (Fourcc::from(b"9997"), GBM_BO_USE_CAMERA_WRITE)
+            } else {
+                if usage == GbmUsage::Decode {
+                    (fourcc, GBM_BO_USE_HW_VIDEO_DECODER)
+                } else {
+                    (fourcc, GBM_BO_USE_HW_VIDEO_ENCODER)
+                }
+            };
+
             // It's important that we use the correct use flag for platforms that support directly
             // importing GBM allocated frame buffers to the video decoding hardware because the
             // video decoding hardware sometimes makes assumptions about the modifier flags. If we
@@ -539,11 +558,7 @@ impl GbmDevice {
                     coded_resolution.width,
                     coded_resolution.height,
                     u32::from(fourcc),
-                    if usage == GbmUsage::Decode {
-                        GBM_BO_USE_HW_VIDEO_DECODER
-                    } else {
-                        GBM_BO_USE_HW_VIDEO_ENCODER
-                    },
+                    usage,
                 )
             };
             if bo.is_null() {
