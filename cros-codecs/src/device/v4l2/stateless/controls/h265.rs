@@ -284,7 +284,12 @@ impl From<&Pps> for v4l2_ctrl_hevc_scaling_matrix {
                     get_scaling_in_raster_order_8x8(i, j, &pps.scaling_list.scaling_list_8x8);
                 scaling_list_16x16[i][j] =
                     get_scaling_in_raster_order_8x8(i, j, &pps.scaling_list.scaling_list_16x16);
-                scaling_list_32x32[i][j] =
+            }
+        }
+
+        for i in (0..6).step_by(3) {
+            for j in 0..SCALING_LIST_SIZE_1_TO_3_COUNT {
+                scaling_list_32x32[i / 3][j] =
                     get_scaling_in_raster_order_8x8(i, j, &pps.scaling_list.scaling_list_32x32);
             }
         }
@@ -379,7 +384,8 @@ impl V4l2CtrlHEVCDecodeParams {
         let mut k: usize = 0;
         for i in 0..slice_header.short_term_ref_pic_set.num_negative_pics {
             let mut poc = slice_header.pic_order_cnt_lsb;
-            poc += slice_header.short_term_ref_pic_set.delta_poc_s0[i as usize] as u16;
+            poc = poc
+                .wrapping_add(slice_header.short_term_ref_pic_set.delta_poc_s0[i as usize] as u16);
 
             if slice_header.short_term_ref_pic_set.used_by_curr_pic_s0[i as usize] {
                 self.handle.poc_st_curr_before[j] = poc as u8;
