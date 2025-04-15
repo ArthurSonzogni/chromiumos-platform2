@@ -37,6 +37,7 @@ use v4l2r::memory::{BufferHandles, Memory, MemoryType, PlaneHandle, PrimitiveBuf
 #[cfg(feature = "v4l2")]
 use v4l2r::Format;
 
+pub const ARGB_PLANE: usize = 0;
 pub const Y_PLANE: usize = 0;
 pub const UV_PLANE: usize = 1;
 pub const U_PLANE: usize = 1;
@@ -126,6 +127,7 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
         }
 
         match self.decoded_format().unwrap() {
+            DecodedFormat::AR24 => 1,
             DecodedFormat::I420
             | DecodedFormat::I422
             | DecodedFormat::I444
@@ -165,7 +167,10 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                             2
                         }
                     }
-                    DecodedFormat::I444 | DecodedFormat::I410 | DecodedFormat::I412 => 1,
+                    DecodedFormat::AR24
+                    | DecodedFormat::I444
+                    | DecodedFormat::I410
+                    | DecodedFormat::I412 => 1,
                 });
             }
         }
@@ -192,7 +197,8 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                             2
                         }
                     }
-                    DecodedFormat::I422
+                    DecodedFormat::AR24
+                    | DecodedFormat::I422
                     | DecodedFormat::I444
                     | DecodedFormat::I210
                     | DecodedFormat::I212
@@ -211,6 +217,7 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                 ret.push(1.0);
             } else {
                 ret.push(match self.decoded_format().unwrap() {
+                    DecodedFormat::AR24 => 4.0,
                     DecodedFormat::I420 | DecodedFormat::I422 | DecodedFormat::I444 => 1.0,
                     DecodedFormat::I010
                     | DecodedFormat::I012

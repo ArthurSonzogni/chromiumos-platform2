@@ -345,6 +345,23 @@ impl VideoFrame for GbmVideoFrame {
         self.resolution.clone()
     }
 
+    // This is a hack to mark AR24 planes as "non-contiguous" for GBM allocations. AR24 is
+    // interleaved and only has one plane, so the distinction is meaningless, but it will trigger
+    // logic below to allocate the plane as a large R8 plane instead of a proper AR24 plane. This
+    // is important because some minigbm backends do not allocate linear AR24 planes, but we need
+    // linear AR24 planes to test AR24 encoding.
+    fn is_contiguous(&self) -> bool {
+        if self.is_compressed() {
+            return false;
+        }
+
+        // TODO: Add more formats.
+        match self.fourcc().to_string().as_str() {
+            "AR24" | "MM21" | "NM12" => false,
+            _ => true,
+        }
+    }
+
     // GBM allocates all the planes in one buffer and doesn't expose a means to get the size of a
     // single plane, so just stub this method.
     fn get_plane_size(&self) -> Vec<usize> {

@@ -5,7 +5,7 @@
 use std::cmp::min;
 
 use crate::utils::align_up;
-use crate::video_frame::{VideoFrame, UV_PLANE, U_PLANE, V_PLANE, Y_PLANE};
+use crate::video_frame::{VideoFrame, ARGB_PLANE, UV_PLANE, U_PLANE, V_PLANE, Y_PLANE};
 use crate::DecodedFormat;
 
 /// TODO(greenjustin): This entire file should be replaced with LibYUV.
@@ -477,6 +477,7 @@ pub const SUPPORTED_CONVERSION: &'static [(DecodedFormat, DecodedFormat)] = &[
     (DecodedFormat::I420, DecodedFormat::NV12),
     (DecodedFormat::I422, DecodedFormat::I422),
     (DecodedFormat::I444, DecodedFormat::I444),
+    (DecodedFormat::AR24, DecodedFormat::NV12),
 ];
 
 pub fn convert_video_frame(src: &impl VideoFrame, dst: &mut impl VideoFrame) -> Result<(), String> {
@@ -593,6 +594,19 @@ pub fn convert_video_frame(src: &impl VideoFrame, dst: &mut impl VideoFrame) -> 
                 width,
                 height,
                 (false, false),
+            );
+            Ok(())
+        }
+        (DecodedFormat::AR24, DecodedFormat::NV12) => {
+            argb_to_nv12(
+                src_planes[ARGB_PLANE],
+                src_pitches[ARGB_PLANE],
+                *dst_planes[Y_PLANE].borrow_mut(),
+                dst_pitches[Y_PLANE],
+                *dst_planes[UV_PLANE].borrow_mut(),
+                dst_pitches[UV_PLANE],
+                width,
+                height,
             );
             Ok(())
         }

@@ -210,6 +210,8 @@ pub fn fourcc_for_v4l2_stateless(fourcc: Fourcc) -> Result<Fourcc, String> {
 /// The conventions here largely follow these of libyuv.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DecodedFormat {
+    /// ARGB interleaved, 8 bits per sample.
+    AR24,
     /// Y, U and V planes, 4:2:0 sampling, 8 bits per sample.
     I420,
     /// One Y and one interleaved UV plane, 4:2:0 sampling, 8 bits per sample.
@@ -245,6 +247,7 @@ impl FromStr for DecodedFormat {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "ar24" | "AR24" => Ok(DecodedFormat::AR24),
             "i420" | "I420" => Ok(DecodedFormat::I420),
             "i422" | "I422" => Ok(DecodedFormat::I422),
             "i444" | "I444" => Ok(DecodedFormat::I444),
@@ -259,8 +262,8 @@ impl FromStr for DecodedFormat {
             "mt2t" | "MT2T" => Ok(DecodedFormat::MT2T),
             "p010" | "P010" => Ok(DecodedFormat::P010),
             _ => Err("unrecognized output format. \
-                Valid values: i420, nv12, i422, i444, i010, i012, i210, i212, i410,
-                i412, mm21, mt2t, p010"),
+                Valid values: ar24, i420, nv12, i422, i444, i010, i012, i210, i212, i410, i412, \
+                mm21"),
         }
     }
 }
@@ -268,6 +271,7 @@ impl FromStr for DecodedFormat {
 impl From<Fourcc> for DecodedFormat {
     fn from(fourcc: Fourcc) -> DecodedFormat {
         match fourcc.to_string().as_str() {
+            "AR24" => DecodedFormat::AR24,
             "I420" => DecodedFormat::I420,
             "NV12" | "NM12" => DecodedFormat::NV12,
             "MM21" => DecodedFormat::MM21,
@@ -281,6 +285,7 @@ impl From<Fourcc> for DecodedFormat {
 impl From<DecodedFormat> for Fourcc {
     fn from(format: DecodedFormat) -> Fourcc {
         match format {
+            DecodedFormat::AR24 => Fourcc::from(b"AR24"),
             DecodedFormat::I420 => Fourcc::from(b"I420"),
             DecodedFormat::NV12 => Fourcc::from(b"NV12"),
             DecodedFormat::MM21 => Fourcc::from(b"MM21"),
@@ -409,6 +414,7 @@ macro_rules! multiple_desc_type {
 pub fn get_format_bit_depth(format: DecodedFormat) -> usize {
     match format {
         DecodedFormat::MM21
+        | DecodedFormat::AR24
         | DecodedFormat::I420
         | DecodedFormat::NV12
         | DecodedFormat::I422
@@ -454,9 +460,7 @@ pub fn decoded_frame_size(format: DecodedFormat, width: usize, height: usize) ->
             u_size + uv_size
         }
         DecodedFormat::I410 | DecodedFormat::I412 => (width * height * 2) * 3,
-        DecodedFormat::MM21 | DecodedFormat::MT2T | DecodedFormat::P010 => {
-            panic!("Unable to convert to MM21/MT2T/P010")
-        }
+        _ => panic!("Unable to convert to {:?}", format),
     }
 }
 
