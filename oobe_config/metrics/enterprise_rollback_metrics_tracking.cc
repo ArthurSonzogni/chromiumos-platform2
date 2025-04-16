@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_split.h>
 #include <base/system/sys_info.h>
