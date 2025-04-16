@@ -319,6 +319,18 @@ where
 
         Ok(ref_pic_lists)
     }
+
+    pub fn get_ref_pic_set_st_curr_before(&mut self) -> [Option<DpbEntry<T>>; MAX_DPB_SIZE] {
+        self.ref_pic_set_st_curr_before.clone()
+    }
+
+    pub fn get_ref_pic_set_st_curr_after(&mut self) -> [Option<DpbEntry<T>>; MAX_DPB_SIZE] {
+        self.ref_pic_set_st_curr_after.clone()
+    }
+
+    pub fn get_ref_pic_set_lt_curr(&mut self) -> [Option<DpbEntry<T>>; MAX_DPB_SIZE] {
+        self.ref_pic_set_lt_curr.clone()
+    }
 }
 
 impl<T: Clone> Default for RefPicSet<T> {

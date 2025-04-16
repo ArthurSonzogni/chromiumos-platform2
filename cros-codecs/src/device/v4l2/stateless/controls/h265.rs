@@ -56,11 +56,14 @@ use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_SPS_TEMPORAL_MVP_ENABLED;
 use v4l2r::bindings::V4L2_HEVC_SPS_FLAG_STRONG_INTRA_SMOOTHING_ENABLED;
 use v4l2r::controls::AsV4l2ControlSlice;
 
+use crate::backend::v4l2::decoder::stateless::V4l2StatelessDecoderHandle;
 use crate::codec::h265::parser::NaluType;
 use crate::codec::h265::parser::Pps;
 use crate::codec::h265::parser::SliceHeader;
 use crate::codec::h265::parser::Sps;
 use crate::codec::h265::picture::PictureData;
+use crate::decoder::stateless::h265::RefPicSet;
+use crate::video_frame::VideoFrame;
 
 // Defined in 7.4.5
 const SCALING_LIST_SIZE_1_TO_3_COUNT: usize = 64;
@@ -346,6 +349,64 @@ impl V4l2CtrlHEVCDecodeParams {
         Default::default()
     }
 
+    pub fn set_ref_pic_set<V: VideoFrame>(
+        &mut self,
+        mut rps: RefPicSet<V4l2StatelessDecoderHandle<V>>,
+    ) -> &mut Self {
+        let mut i = 0;
+        for pic in rps.get_ref_pic_set_st_curr_before() {
+            if pic.is_some() == false {
+                continue;
+            }
+            let pic_entry = pic.unwrap().0.clone();
+            for j in 0..self.handle.num_active_dpb_entries {
+                if pic_entry.as_ref().clone().into_inner().pic_order_cnt_val
+                    == self.handle.dpb[j as usize].pic_order_cnt_val
+                {
+                    self.handle.poc_st_curr_before[i as usize] = j;
+                    i += 1;
+                }
+            }
+        }
+        self.handle.num_poc_st_curr_before = i;
+
+        i = 0;
+        for pic in rps.get_ref_pic_set_st_curr_after() {
+            if pic.is_some() == false {
+                continue;
+            }
+            let pic_entry = pic.unwrap().0.clone();
+            for j in 0..self.handle.num_active_dpb_entries {
+                if pic_entry.as_ref().clone().into_inner().pic_order_cnt_val
+                    == self.handle.dpb[j as usize].pic_order_cnt_val
+                {
+                    self.handle.poc_st_curr_after[i as usize] = j;
+                    i += 1;
+                }
+            }
+        }
+        self.handle.num_poc_st_curr_after = i;
+
+        i = 0;
+        for pic in rps.get_ref_pic_set_lt_curr() {
+            if pic.is_some() == false {
+                continue;
+            }
+            let pic_entry = pic.unwrap().0.clone();
+            for j in 0..self.handle.num_active_dpb_entries {
+                if pic_entry.as_ref().clone().into_inner().pic_order_cnt_val
+                    == self.handle.dpb[j as usize].pic_order_cnt_val
+                {
+                    self.handle.poc_lt_curr[i as usize] = j;
+                    i += 1;
+                }
+            }
+        }
+        self.handle.num_poc_lt_curr = i;
+
+        self
+    }
+
     pub fn handle(&self) -> v4l2_ctrl_hevc_decode_params {
         self.handle
     }
@@ -378,40 +439,6 @@ impl V4l2CtrlHEVCDecodeParams {
         self.handle.long_term_ref_pic_set_size = slice_header.num_long_term_pics as u16;
         self.handle.num_delta_pocs_of_ref_rps_idx =
             slice_header.short_term_ref_pic_set.num_delta_pocs as u8;
-
-        // Equation 8-5
-        let mut j: usize = 0;
-        let mut k: usize = 0;
-        for i in 0..slice_header.short_term_ref_pic_set.num_negative_pics {
-            let mut poc = slice_header.pic_order_cnt_lsb;
-            poc = poc
-                .wrapping_add(slice_header.short_term_ref_pic_set.delta_poc_s0[i as usize] as u16);
-
-            if slice_header.short_term_ref_pic_set.used_by_curr_pic_s0[i as usize] {
-                self.handle.poc_st_curr_before[j] = poc as u8;
-                j += 1;
-            } else {
-                self.handle.poc_lt_curr[k] = poc as u8;
-                k += 1;
-            }
-        }
-        self.handle.num_poc_st_curr_before = j as u8;
-
-        j = 0;
-        for i in 0..slice_header.short_term_ref_pic_set.num_positive_pics {
-            let mut poc = slice_header.pic_order_cnt_lsb;
-            poc += slice_header.short_term_ref_pic_set.delta_poc_s1[i as usize] as u16;
-
-            if slice_header.short_term_ref_pic_set.used_by_curr_pic_s1[i as usize] {
-                self.handle.poc_st_curr_after[j] = poc as u8;
-                j += 1;
-            } else {
-                self.handle.poc_lt_curr[k] = poc as u8;
-                k += 1;
-            }
-        }
-        self.handle.num_poc_st_curr_after = j as u8;
-        self.handle.num_poc_lt_curr = k as u8;
 
         self
     }

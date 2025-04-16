@@ -116,7 +116,7 @@ impl<V: VideoFrame> StatelessH265DecoderBackend for V4l2StatelessDecoderBackend<
         sps: &Sps,
         pps: &Pps,
         dpb: &Dpb<Self::Handle>,
-        _rps: &RefPicSet<Self::Handle>,
+        rps: &RefPicSet<Self::Handle>,
         slice: &Slice,
     ) -> crate::decoder::stateless::StatelessBackendResult<()> {
         let mut dpb_entries = Vec::<V4l2CtrlHEVCDpbEntry>::new();
@@ -138,7 +138,9 @@ impl<V: VideoFrame> StatelessH265DecoderBackend for V4l2StatelessDecoderBackend<
         h265_decode_params
             .set_picture_data(picture_data)
             .set_dpb_entries(dpb_entries)
-            .set_slice_header(&slice.header);
+            .set_slice_header(&slice.header)
+            .set_ref_pic_set(rps.clone());
+
         let mut picture = picture.borrow_mut();
 
         let request = picture.request();
