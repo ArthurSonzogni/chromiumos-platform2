@@ -16,7 +16,6 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/process/launch.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/file_utils.h>
 #include <gmock/gmock.h>

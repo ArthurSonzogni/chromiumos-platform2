@@ -15,7 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/process/launch.h>
 #include <base/task/single_thread_task_runner.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
