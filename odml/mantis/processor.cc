@@ -120,9 +120,9 @@ std::optional<std::string> SelectLanguage(
 
 constexpr float kMaxFirstLastTotalRatio = 1.2;
 constexpr float kMaxPerimeterRatio = 1.2;
-constexpr float kMinPerimeterRatio = 1.0;
+constexpr float kMinPerimeterRatio = 0.9;
 constexpr float kMaxAreaRatio = 1.4;
-constexpr float kMinAreaRatio = 1.0;
+constexpr float kMinAreaRatio = 0.9;
 
 float CalculateEuclideanDistance(float p1_x,
                                  float p1_y,
