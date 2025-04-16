@@ -65,7 +65,9 @@ fn config_dlserver_params(runtime: &str, period: &str) {
         return;
     }
     if let Err(e) = fs::write(params_path, format!("{},{}\0", period, runtime)) {
-        info!("Could not write to to params, {:?}, (period: {}, runtime: {}) {:?}",
-                params_path, period, runtime, e);
+        info!(
+            "Could not write to to params, {:?}, (period: {}, runtime: {}) {:?}",
+            params_path, period, runtime, e
+        );
     }
 }

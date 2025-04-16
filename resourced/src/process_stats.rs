@@ -241,7 +241,7 @@ fn strip_chrome_directory(exe: &Path) -> Option<PathBuf> {
         };
         if dir_name
             .to_str()
-            .map_or(false, |dir_name| dir_name.starts_with("lacros-"))
+            .is_some_and(|dir_name| dir_name.starts_with("lacros-"))
         {
             return Some(components.skip(1).collect::<PathBuf>());
         }
@@ -509,7 +509,7 @@ fn get_memfd_dev_id_from_smaps() -> Result<String> {
     let memfd = unsafe {
         libc::syscall(
             libc::SYS_memfd_create,
-            b"memfd\0".as_ptr() as *const libc::c_char,
+            c"memfd".as_ptr() as *const libc::c_char,
             0,
         )
     };
@@ -591,9 +591,8 @@ fn parse_shmem_swap_from_smaps(procfs_path: &str, pid: u32) -> Option<u64> {
         // Rather than trying to match the address in the VMA headers, it's easier
         // to match the 'Size:' prefix on the second line.
         if line.starts_with("Size:") {
-            processing_shmem = local_prev_line.map_or(false, |header| {
-                parse_dev_id_from_vma_header(header) == Some(&dev_id)
-            });
+            processing_shmem = local_prev_line
+                .is_some_and(|header| parse_dev_id_from_vma_header(header) == Some(&dev_id));
         }
 
         if processing_shmem && line.starts_with("Swap:") {

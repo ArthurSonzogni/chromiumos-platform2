@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-/// This module is a wrapper of lib metrics_rs to only use it on ebuild.
+//! This module is a wrapper of lib metrics_rs to only use it on ebuild.
 
 #[cfg(feature = "chromeos")]
 use anyhow::Context;

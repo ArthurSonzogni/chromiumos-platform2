@@ -24,8 +24,11 @@ pub struct SimpleProcessEntry {
     thread_map: HashMap<ThreadId, ThreadEntry>,
 }
 
-impl<'a> ProcessContext for SimpleProcessContext<'a> {
-    type TM<'b> = SimpleThreadMap<'b>  where Self: 'b;
+impl ProcessContext for SimpleProcessContext<'_> {
+    type TM<'b>
+        = SimpleThreadMap<'b>
+    where
+        Self: 'b;
 
     fn timestamp(&self) -> u64 {
         self.timestamp

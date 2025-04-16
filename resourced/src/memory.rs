@@ -1103,28 +1103,27 @@ fn get_chrome_tab_processes(
 
     let now = Instant::now();
 
-    return match min_last_visible_age {
+    match min_last_visible_age {
         Some(duration) => Ok(filtered_process_list
             .iter()
             .filter(|tab_process| now - tab_process.last_visible >= duration)
             .cloned()
             .collect()),
         None => Ok(filtered_process_list.clone()),
-    };
+    }
 }
 
 fn background_tabs_exist() -> bool {
     let all_tab_processes = CHROME_TAB_PROCESSES.do_lock();
     all_tab_processes
         .iter()
-        .map(|((_, process_type), processes)| {
+        .any(|((_, process_type), processes)| {
             if process_type == &ChromeProcessType::Background {
                 !processes.is_empty()
             } else {
                 false
             }
         })
-        .any(|v| v)
 }
 
 pub fn set_browser_tab_processes(

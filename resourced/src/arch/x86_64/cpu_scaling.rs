@@ -295,10 +295,10 @@ impl DeviceCpuStatus {
             .to_string();
 
         if let Ok(core_paths) = glob(&cpu_policy_path) {
+            let re = Regex::new(r".*cpufreq/policy(\d{1,2}).*")?;
             for core_path in core_paths.flatten() {
                 let policy_path = core_path.display().to_string();
 
-                let re = Regex::new(r".*cpufreq/policy(\d{1,2}).*")?;
                 if let Some(cap) = re.captures(&policy_path) {
                     core_num = cap
                         .get(1)

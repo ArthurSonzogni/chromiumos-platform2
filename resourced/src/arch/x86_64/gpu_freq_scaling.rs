@@ -240,16 +240,16 @@ pub mod intel_device {
                 .map(BufReader::new)
                 .context("Couldn't read cpuinfo")
             {
+                // Regex will only match 10th gen intel i3, i5, i7
+                // Intel CPU naming convention can be found here:
+                // `https://www.intel.com/content/www/us/en/processors/processor-numbers.html`
+                let Ok(re) = Regex::new(r".*Intel.* i(3|5|7)-10.*") else {
+                    return false;
+                };
                 for line in reader.lines().map_while(Result::ok) {
                     // Only check CPU0 and fail early.
                     if line.starts_with(r"model name") {
-                        // Regex will only match 10th gen intel i3, i5, i7
-                        // Intel CPU naming convention can be found here:
-                        // `https://www.intel.com/content/www/us/en/processors/processor-numbers.html`
-                        if let Ok(re) = Regex::new(r".*Intel.* i(3|5|7)-10.*") {
-                            return re.is_match(&line);
-                        };
-                        return false;
+                        return re.is_match(&line);
                     }
                 }
             }
@@ -446,9 +446,9 @@ pub mod amd_device {
         ///
         /// Boolean denoting if device has a supported AMD GPU.
         pub fn is_amd_device(&self) -> bool {
-            return Path::new(&self.gpu_mode_path).exists()
+            Path::new(&self.gpu_mode_path).exists()
                 && Path::new(&self.sclk_mode_path).exists()
-                && Path::new(&self.clk_voltage_path).exists();
+                && Path::new(&self.clk_voltage_path).exists()
         }
 
         /// Returns array of available sclk modes and the current selection.
@@ -575,9 +575,8 @@ pub mod amd_device {
 
         let amd_dev_dir = find_amd_dev_dir().context("No AMD device detected")?;
 
-        let concat_and_get_string = |file_name: &str| {
-            return amd_dev_dir.join(file_name).display().to_string();
-        };
+        let concat_and_get_string =
+            |file_name: &str| amd_dev_dir.join(file_name).display().to_string();
 
         let gpu_mode_str = concat_and_get_string(AMDGPU_DPM_FORCE_PERFORMANCE_LEVEL);
         let sclk_mode_str = concat_and_get_string(AMDGPU_PP_DPM_SCLK);
