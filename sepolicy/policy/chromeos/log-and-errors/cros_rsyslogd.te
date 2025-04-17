@@ -11,6 +11,8 @@ filetrans_pattern(cros_rsyslogd, cros_run_rsyslogd, logger_device, fifo_file, "l
 filetrans_pattern(cros_rsyslogd, device, logger_device, sock_file, "log")
 allow cros_rsyslogd logger_device:sock_file create_file_perms;
 
+allow cros_rsyslogd self:udp_socket create_socket_perms;
+
 allow cros_rsyslogd cros_run_rsyslogd:file create_file_perms;
 allow cros_rsyslogd cros_run_rsyslogd:dir create_dir_perms;
 allow cros_rsyslogd cros_run_rsyslogd:sock_file create_file_perms;
@@ -21,6 +23,7 @@ allow cros_rsyslogd cros_log_type:file rw_file_perms;
 allow cros_rsyslogd cros_passwd_file:file r_file_perms;
 
 allow cros_rsyslogd proc_kmsg:file r_file_perms;
+allow cros_rsyslogd proc_sys_kernel:file r_file_perms;
 
 allow cros_rsyslogd kernel:system syslog_mod;
 allow cros_rsyslogd self:capability2 syslog;
