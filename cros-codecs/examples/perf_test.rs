@@ -204,6 +204,15 @@ fn test_argb_to_nv12_perf() {
 }
 
 fn main() {
+    #[cfg(feature = "android")]
+    android_logger::init_once(
+        android_logger::Config::default()
+            .with_max_level(log::LevelFilter::Trace)
+            .with_tag("cros-codecs"),
+    );
+    #[cfg(not(feature = "android"))]
+    env_logger::init();
+
     #[cfg(feature = "v4l2")]
     test_mm21_to_nv12_perf();
 

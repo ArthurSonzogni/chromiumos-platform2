@@ -38,6 +38,7 @@ serde_json = "1.0.96"
 [lints.rust]
 # Required to allow #[cfg(fuzzing)]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+overflowing_literals = { level = "warn" }
 
 [[example]]
 name = "ccdec"

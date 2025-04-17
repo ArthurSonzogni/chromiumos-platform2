@@ -26,6 +26,13 @@ where
     ((x + alignment - T::from(1)) / alignment) * alignment
 }
 
+pub fn align_down<T>(x: T, alignment: T) -> T
+where
+    T: Div<Output = T> + Mul<Output = T> + From<u8> + Copy,
+{
+    (x / alignment) * alignment
+}
+
 // This is the formula we use to approximate the maximum compressed buffer size for a video frame.
 pub fn buffer_size_for_area(width: u32, height: u32) -> u32 {
     let area = width * height;
