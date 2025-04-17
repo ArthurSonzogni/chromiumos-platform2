@@ -650,13 +650,58 @@ pub fn i420_to_nv12(
     width: usize,
     height: usize,
 ) {
+    assert!(width <= src_y_stride);
+    assert!(src_y_stride * height <= src_y.len());
+    assert!(align_up(width, 2) / 2 <= src_u_stride);
+    assert!(src_u_stride * align_up(height, 2) / 2 <= src_u.len());
+    assert!(align_up(width, 2) / 2 <= src_v_stride);
+    assert!(src_v_stride * align_up(height, 2) / 2 <= src_u.len());
+    assert!(align_up(width, 2) <= dst_y_stride);
+    assert!(dst_y_stride * height <= dst_y.len());
+    assert!(align_up(width, 2) <= dst_uv_stride);
+    assert!(dst_uv_stride * align_up(height, 2) / 2 <= dst_uv.len());
+
     copy_plane(src_y, src_y_stride, dst_y, dst_y_stride, width, height);
 
-    let aligned_width = align_up(width, 2);
     for y in 0..(align_up(height, 2) / 2) {
-        let src_u_row = &src_u[(y * src_u_stride)..(y * src_u_stride + aligned_width / 2)];
-        let src_v_row = &src_v[(y * src_v_stride)..(y * src_v_stride + aligned_width / 2)];
-        let dst_uv_row = &mut dst_uv[(y * dst_uv_stride)..(y * dst_uv_stride + aligned_width)];
+        let mut aligned_width = align_up(width, 2);
+        let mut src_u_row = &src_u[(y * src_u_stride)..(y * src_u_stride + aligned_width / 2)];
+        let mut src_v_row = &src_v[(y * src_v_stride)..(y * src_v_stride + aligned_width / 2)];
+        let mut dst_uv_row = &mut dst_uv[(y * dst_uv_stride)..(y * dst_uv_stride + aligned_width)];
+
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        {
+            let simd_aligned_width = align_down(aligned_width / 2, 32);
+            for x in (0..simd_aligned_width).step_by(32) {
+                // SAFETY: The above logic guarantees that src_u_row, src_v_row, and dst_uv_row are
+                // valid slices, and thus the pointers to them are valid. We are also guaranteed
+                // that simd_aligned_width will not exceed the length of src_u_row and src_v_row,
+                // and that 2 * simd_aligned_width will not exceed the length of dst_uv_row. Note
+                // that loadu and storeu have no memory alignment requirements.
+                unsafe {
+                    let input_u =
+                        _mm256_loadu_si256(src_u_row[x..(x + 32)].as_ptr() as *const __m256i);
+                    let input_v =
+                        _mm256_loadu_si256(src_v_row[x..(x + 32)].as_ptr() as *const __m256i);
+                    let output1 = _mm256_unpacklo_epi8(input_u, input_v);
+                    let output2 = _mm256_unpackhi_epi8(input_u, input_v);
+                    _mm256_storeu_si256(
+                        dst_uv_row[(2 * x)..(2 * x + 32)].as_mut_ptr() as *mut __m256i,
+                        _mm256_permute2x128_si256(output1, output2, 0x20),
+                    );
+                    _mm256_storeu_si256(
+                        dst_uv_row[(2 * x + 32)..(2 * x + 64)].as_mut_ptr() as *mut __m256i,
+                        _mm256_permute2x128_si256(output1, output2, 0x31),
+                    );
+                }
+            }
+
+            src_u_row = &src_u_row[simd_aligned_width..];
+            src_v_row = &src_v_row[simd_aligned_width..];
+            dst_uv_row = &mut dst_uv_row[(2 * simd_aligned_width)..];
+            aligned_width -= 2 * simd_aligned_width;
+        }
+
         for x in 0..aligned_width {
             if x % 2 == 0 {
                 dst_uv_row[x] = src_u_row[x / 2];
