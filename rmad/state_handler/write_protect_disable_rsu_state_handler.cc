@@ -15,7 +15,6 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <libec/reboot_command.h>
 
 #include "rmad/constants.h"
 #include "rmad/logs/logs_utils.h"

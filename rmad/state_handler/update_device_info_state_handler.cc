@@ -19,7 +19,6 @@
 #include <base/strings/string_util.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/text_format.h>
-#include <libsegmentation/feature_management.h>
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
