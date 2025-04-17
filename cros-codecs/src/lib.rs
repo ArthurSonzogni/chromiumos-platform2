@@ -319,7 +319,7 @@ impl From<Fourcc> for EncodedFormat {
     fn from(fourcc: Fourcc) -> EncodedFormat {
         match fourcc.to_string().as_str() {
             "H264" => EncodedFormat::H264,
-            "HEVC" => EncodedFormat::H265,
+            "H265" => EncodedFormat::H265,
             "VP80" => EncodedFormat::VP8,
             "VP90" => EncodedFormat::VP9,
             "AV1F" => EncodedFormat::AV1,
@@ -332,7 +332,7 @@ impl From<EncodedFormat> for Fourcc {
     fn from(format: EncodedFormat) -> Fourcc {
         match format {
             EncodedFormat::H264 => Fourcc::from(b"H264"),
-            EncodedFormat::H265 => Fourcc::from(b"HEVC"),
+            EncodedFormat::H265 => Fourcc::from(b"H265"),
             EncodedFormat::VP8 => Fourcc::from(b"VP80"),
             EncodedFormat::VP9 => Fourcc::from(b"VP90"),
             EncodedFormat::AV1 => Fourcc::from(b"AV1F"),
