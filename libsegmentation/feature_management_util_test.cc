@@ -2,16 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
-#include <utility>
+#include "libsegmentation/feature_management_util.h"
 
-#include <brillo/file_utils.h>
 #include <base/files/scoped_temp_dir.h>
-
+#include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "libsegmentation/feature_management_util.h"
 
 namespace segmentation {
 
@@ -23,28 +19,6 @@ class FeatureManagementUtilTest : public ::testing::Test {
   FeatureManagementUtilTest() = default;
   ~FeatureManagementUtilTest() override = default;
 };
-
-TEST_F(FeatureManagementUtilTest, DecodeHwidFail) {
-  // Test to check we are finding badly formatted HWID strings.
-  EXPECT_FALSE(FeatureManagementUtil::DecodeHWID(""));
-  EXPECT_FALSE(FeatureManagementUtil::DecodeHWID("ZZZZ"));
-  EXPECT_FALSE(FeatureManagementUtil::DecodeHWID("ZZZ ZZZZ"));
-  // Minimum viable HID: 1 bit, 1 EOS, 3 bit of padding, 8 bit of checksum.
-  EXPECT_EQ(FeatureManagementUtil::DecodeHWID("ZZZ I6F")->size(), 1);
-  EXPECT_EQ(FeatureManagementUtil::DecodeHWID("ZZZ Y6F")->size(), 1);
-  // 13 bits but no end of String:
-  EXPECT_FALSE(FeatureManagementUtil::DecodeHWID("ZZZ A6F"));
-  EXPECT_FALSE(FeatureManagementUtil::DecodeHWID("REDRIX-ZZCR D3A-39-27K-E6B"));
-  EXPECT_TRUE(FeatureManagementUtil::DecodeHWID("REDRIX-ZZCR D3A-39F-27K-E6B"));
-}
-
-TEST_F(FeatureManagementUtilTest, DecodeHwidValid) {
-  EXPECT_EQ(FeatureManagementUtil::DecodeHWID("ZEROONE A2A-797").value(),
-            "00000000000001111");
-  EXPECT_EQ(
-      FeatureManagementUtil::DecodeHWID("REDRIX-ZZCR D3A-39F-27K-E6B").value(),
-      "00011001000001101111100101110101010101000");
-}
 
 class FeatureManagementUtilRootDevTest : public ::testing::Test {
  public:

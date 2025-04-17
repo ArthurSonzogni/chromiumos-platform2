@@ -7,6 +7,7 @@
 #include <optional>
 
 #include <base/logging.h>
+#include <brillo/hwid/hwid_utils.h>
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_interface.h"
@@ -22,7 +23,7 @@ std::optional<DeviceSelection> FeatureManagementHwid::GetSelectionFromHWID(
     const std::string& user_readable_hwid,
     bool check_prefix_only) {
   const std::optional<std::string> hwid =
-      FeatureManagementUtil::DecodeHWID(user_readable_hwid);
+      brillo::hwid::DecodeHWID(user_readable_hwid);
   if (!hwid) {
     return std::nullopt;
   }

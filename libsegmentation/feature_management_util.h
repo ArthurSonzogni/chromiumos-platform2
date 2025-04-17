@@ -5,13 +5,13 @@
 #ifndef LIBSEGMENTATION_FEATURE_MANAGEMENT_UTIL_H_
 #define LIBSEGMENTATION_FEATURE_MANAGEMENT_UTIL_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/values.h>
 #include <brillo/brillo_export.h>
 
-#include "base/files/file.h"
-#include <base/values.h>
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_interface.h"
 
@@ -42,10 +42,6 @@ class BRILLO_EXPORT FeatureManagementUtil {
   // Converts scope level from the internal proto to the external API.
   static FeatureManagementInterface::ScopeLevel ConvertProtoScopeLevel(
       libsegmentation::DeviceInfo_ScopeLevel scope_level);
-
-  // Implement base8192 decoding used by hwid.
-  // Returns a string of '0' and '1' suitable for decoding.
-  static std::optional<std::string> DecodeHWID(const std::string& hwid);
 
   // Return the size of a block device.
   // dev format is '/dev/sda', '/dev/nvme0n1', '/dev/mmcblk0', ...
