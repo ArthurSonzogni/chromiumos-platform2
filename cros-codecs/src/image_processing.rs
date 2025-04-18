@@ -34,13 +34,12 @@ const K_ARGB_TO_UV: [i8; 32] = [
 ];
 
 /// Converts an ARGB row into an NV12 Y row. This algorithm was ported directly from LibYUV.
-/// TODO(b:410821582): Add Neon support.
-// SAFETY: The caller, argb_to_nv12_y_row, ensures that src_argb and dst_y point to valid slices,
-// that width does not exceed the length of the dst_y slice, and that 4 * width does not exceed the
-// length of the src_argb slice. Note that _mm256_loadu_si256 has no alignment requirements, so the
-// caller does not need to make guarantees about pointer alignment.
+// Safety: The caller, argb_to_nv12_y_row, must ensure that src_argb.len() == dst_y.len() * 4.
+// Note that _mm256_loadu_si256 has no alignment requirements, so the caller does not need to make
+// guarantees about pointer alignment.
 #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-unsafe fn argb_to_nv12_y_row_avx2(src_argb: *const u8, dst_y: *mut u8, width: usize) {
+unsafe fn argb_to_nv12_y_row_simd(src_argb: &[u8], dst_y: &mut [u8]) -> usize {
+    const kSimdWidth: usize = 32;
     // maddubs takes one unsigned and one signed vector, and unfortunately one of our coefficients
     // is 129, so those have to go into the unsigned vector. This means that our input data needs
     // to be put into the signed vector. To prevent overflow, we center all of our input pixels
@@ -55,10 +54,20 @@ unsafe fn argb_to_nv12_y_row_avx2(src_argb: *const u8, dst_y: *mut u8, width: us
     const kSub128: [i8; 32] = [128; 32];
     const kAddY16: [u16; 16] = [0x7e80; 16];
     const kUnpermute: [u32; 8] = [0, 4, 1, 5, 2, 6, 3, 7];
+
+    debug_assert!(dst_y.len() * 4 == src_argb.len());
+    let width = align_down(dst_y.len(), kSimdWidth);
+    let src_argb = src_argb.as_ptr();
+    let dst_y = dst_y.as_mut_ptr();
+
     unsafe {
         // SAFETY: K_ARGB_TO_Y, must be an array with 32 u8 elements. kSub128 must be an array with
         // 32 i8 elements. kAddY16 must be an array with 16 u16 elements. kUnpermute must be an
         // array with 8 u32 elements.
+        debug_assert!(K_ARGB_TO_Y.len() == 32);
+        debug_assert!(kAddY16.len() == 16);
+        debug_assert!(kSub128.len() == 32);
+        debug_assert!(kUnpermute.len() == 8);
         let argb_to_y = _mm256_loadu_si256(K_ARGB_TO_Y.as_ptr() as *const __m256i);
         let sub128 = _mm256_loadu_si256(kSub128.as_ptr() as *const __m256i);
         let offset = _mm256_loadu_si256(kAddY16.as_ptr() as *const __m256i);
@@ -106,17 +115,88 @@ unsafe fn argb_to_nv12_y_row_avx2(src_argb: *const u8, dst_y: *mut u8, width: us
             _mm256_storeu_si256(dst_y.offset(i) as *mut __m256i, output);
         }
     }
+
+    width
 }
 
-// SAFETY: The caller must ensure that src_argb.len() == dst_y.len() * 4.
-unsafe fn argb_to_nv12_y_row(mut src_argb: &[u8], mut dst_y: &mut [u8]) {
-    #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-    {
-        let aligned_width = align_down(dst_y.len(), 32);
-        // SAFETY: The caller, argb_to_nv12, validates the stride and width parameters.
-        unsafe {
-            argb_to_nv12_y_row_avx2(src_argb.as_ptr(), dst_y.as_mut_ptr(), aligned_width);
+// Safety: The caller, argb_to_nv12_uv_row, must ensure that src_argb.len() == dst_uv.len() * 4.
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+unsafe fn argb_to_nv12_y_row_simd(src_argb: &[u8], dst_y: &mut [u8]) -> usize {
+    const kSimdWidth: usize = 16;
+    const kZero: [u16; 8] = [0; 8];
+    const kAddY16: [u16; 8] = [0x1080; 8];
+
+    debug_assert!(dst_y.len() * 4 == src_argb.len());
+    let width = align_down(dst_y.len(), kSimdWidth);
+    let src_argb = src_argb.as_ptr();
+    let dst_y = dst_y.as_mut_ptr();
+
+    unsafe {
+        // SAFETY: kZero must be an array of 8 u16 elements. K_ARGB_TO_Y must be an array with at
+        // least 8 u8 elements. kAddY16 must be an array of 8 u16 elements.
+        debug_assert!(K_ARGB_TO_Y.len() >= 8);
+        debug_assert!(kAddY16.len() == 8);
+        debug_assert!(kZero.len() == 8);
+        let zero = vld1q_u16(kZero.as_ptr());
+        let argb_to_y = vld1_u8(K_ARGB_TO_Y.as_ptr());
+        let offset = vld1q_u16(kAddY16.as_ptr());
+        for i in (0..(width as isize)).step_by(16) {
+            // SAFETY: src_argb must be a valid pointer, and i * 4 through i * 4 + 64 must be
+            // valid indices into the underlying slice.
+            let input1 = vld1_u8_x4(src_argb.offset(i * 4));
+            let input2 = vld1_u8_x4(src_argb.offset(i * 4 + 32));
+
+            // Compute the dot products.
+            // SAFETY: These should actually always be safe if the CPU supports neon.
+            let output1 = vpaddq_u16(
+                vpaddq_u16(
+                    vmlal_u8(zero, input1.0, argb_to_y),
+                    vmlal_u8(zero, input1.1, argb_to_y),
+                ),
+                vpaddq_u16(
+                    vmlal_u8(zero, input1.2, argb_to_y),
+                    vmlal_u8(zero, input1.3, argb_to_y),
+                ),
+            );
+            let output2 = vpaddq_u16(
+                vpaddq_u16(
+                    vmlal_u8(zero, input2.0, argb_to_y),
+                    vmlal_u8(zero, input2.1, argb_to_y),
+                ),
+                vpaddq_u16(
+                    vmlal_u8(zero, input2.2, argb_to_y),
+                    vmlal_u8(zero, input2.3, argb_to_y),
+                ),
+            );
+
+            // Add the offset and shift back down to 8 bit.
+            // SAFETY: These should actually always be safe if the CPU supports neon.
+            let output = vcombine_u8(
+                vqshrn_n_u16(vaddq_u16(output1, offset), 8),
+                vqshrn_n_u16(vaddq_u16(output2, offset), 8),
+            );
+
+            // Store output data.
+            // SAFETY: dst_y must be a valid pointer, and i through i + 16 must be valid offsets
+            // into the underlying slice.
+            vst1q_u8(dst_y.offset(i), output);
         }
+    }
+
+    width
+}
+
+// Safety: The caller must ensure that src_argb.len() == dst_y.len() * 4.
+unsafe fn argb_to_nv12_y_row(mut src_argb: &[u8], mut dst_y: &mut [u8]) {
+    debug_assert!(src_argb.len() == dst_y.len() * 4);
+
+    #[cfg(any(
+        all(target_arch = "x86_64", target_feature = "avx2"),
+        all(target_arch = "aarch64", target_feature = "neon")
+    ))]
+    {
+        // SAFETY: The caller, argb_to_nv12, validates the stride and width parameters.
+        let aligned_width = unsafe { argb_to_nv12_y_row_simd(src_argb, dst_y) };
         src_argb = &src_argb[(aligned_width * 4)..];
         dst_y = &mut dst_y[aligned_width..];
     }
@@ -136,21 +216,33 @@ unsafe fn argb_to_nv12_y_row(mut src_argb: &[u8], mut dst_y: &mut [u8]) {
 }
 
 /// Converts an ARGB row into an NV12 UV row.
-/// TODO(b:410821582): Add Neon support.
-// SAFETY: The caller, argb_to_nv12_uv_row, ensures that src_argb and dst_iv point to valid slices,
-// that width does not exceed the length of the dst_uv slice, and that 4 * width does not exceed the
-// length of the src_argb slice. Note that _mm256_loadu_si256 has no alignment requirements, so the
-// caller does not need to make guarantees about pointer alignment.
+// Safety: The caller, argb_to_nv12_y_row, must ensure that src_argb.len() == dst_y.len() * 4.
+// Note that _mm256_loadu_si256 has no alignment requirements, so the caller does not need to make
+// guarantees about pointer alignment.
 #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-unsafe fn argb_to_nv12_uv_row_avx2(src_argb: *const u8, dst_uv: *mut u8, width: usize) {
+unsafe fn argb_to_nv12_uv_row_simd(src_argb: &[u8], dst_uv: &mut [u8]) -> usize {
+    let kSimdWidth: usize = 32;
+
     const kGatherIndices1: [u32; 8] = [0, 0, 8, 8, 64, 64, 72, 72];
     const kGatherIndices2: [u32; 8] = [16, 16, 24, 24, 80, 80, 88, 88];
     const kGatherIndices3: [u32; 8] = [32, 32, 40, 40, 96, 96, 104, 104];
     const kGatherIndices4: [u32; 8] = [48, 48, 56, 56, 112, 112, 120, 120];
     const kAdd128: [i16; 16] = [0x8080; 16];
+
+    debug_assert!(dst_uv.len() * 4 == src_argb.len());
+    let width = align_down(dst_uv.len(), kSimdWidth);
+    let src_argb = src_argb.as_ptr();
+    let dst_uv = dst_uv.as_mut_ptr();
+
     unsafe {
         // SAFETY: K_ARGB_TO_UV must be an array of 32 i8 elements. kGatherIndices* must be arrays
         // of 8 u32 elements. kAdd128 must be an array of 16 i16 elements.
+        debug_assert!(K_ARGB_TO_UV.len() == 32);
+        debug_assert!(kAdd128.len() == 16);
+        debug_assert!(kGatherIndices1.len() == 8);
+        debug_assert!(kGatherIndices2.len() == 8);
+        debug_assert!(kGatherIndices3.len() == 8);
+        debug_assert!(kGatherIndices4.len() == 8);
         let argb_to_uv = _mm256_loadu_si256(K_ARGB_TO_UV.as_ptr() as *const __m256i);
         let gather1 = _mm256_loadu_si256(kGatherIndices1.as_ptr() as *const __m256i);
         let gather2 = _mm256_loadu_si256(kGatherIndices2.as_ptr() as *const __m256i);
@@ -197,19 +289,91 @@ unsafe fn argb_to_nv12_uv_row_avx2(src_argb: *const u8, dst_uv: *mut u8, width: 
             _mm256_storeu_si256(dst_uv.offset(i) as *mut __m256i, output);
         }
     }
+
+    width
 }
 
-// SAFETY: The caller must ensure that src_argb.len() == dst_uv.len() * 4. Note that even though UV
+// Safety: The caller, argb_to_nv12_uv_row, must ensure that src_argb.len() == dst_y.len() * 4.
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+unsafe fn argb_to_nv12_uv_row_simd(src_argb: &[u8], dst_uv: &mut [u8]) -> usize {
+    let kSimdWidth: usize = 16;
+
+    const kZero: [u16; 8] = [0; 8];
+    const kAdd128: [i16; 8] = [0x8080; 8];
+
+    debug_assert!(dst_uv.len() * 4 == src_argb.len());
+    let width = align_down(dst_uv.len(), kSimdWidth);
+    let src_argb = src_argb.as_ptr();
+    let dst_uv = dst_uv.as_mut_ptr();
+
+    unsafe {
+        // SAFETY: kZero must be an array of 8 u16 elements. K_ARGB_TO_UV must be an array with
+        // at least 8 u8 elements. kAdd128 must be an array of 8 i16 elements.
+        debug_assert!(K_ARGB_TO_UV.len() >= 8);
+        debug_assert!(kAdd128.len() == 8);
+        debug_assert!(kZero.len() == 8);
+        let zero = vld1q_u16(kZero.as_ptr());
+        let argb_to_u =
+            vmovl_s8(vreinterpret_s8_u32(vld1_dup_u32(K_ARGB_TO_UV.as_ptr() as *const u32)));
+        let argb_to_v = vmovl_s8(vreinterpret_s8_u32(vld1_dup_u32(
+            K_ARGB_TO_UV.as_ptr().offset(4) as *const u32,
+        )));
+        let offset = vld1q_s16(kAdd128.as_ptr());
+        for i in (0..(width as isize)).step_by(16) {
+            // SAFETY: src_argb must be a valid pointer, and i * 4 through i * 4 + 64 must be valid
+            // indices into the underlying slice.
+            let input1 = vreinterpretq_s16_u16(vmovl_u8(vreinterpret_u8_u32(
+                vld2_u32(src_argb.offset(i * 4) as *const u32).0,
+            )));
+            let input2 = vreinterpretq_s16_u16(vmovl_u8(vreinterpret_u8_u32(
+                vld2_u32(src_argb.offset(i * 4 + 16) as *const u32).0,
+            )));
+            let input3 = vreinterpretq_s16_u16(vmovl_u8(vreinterpret_u8_u32(
+                vld2_u32(src_argb.offset(i * 4 + 32) as *const u32).0,
+            )));
+            let input4 = vreinterpretq_s16_u16(vmovl_u8(vreinterpret_u8_u32(
+                vld2_u32(src_argb.offset(i * 4 + 48) as *const u32).0,
+            )));
+
+            // Compute dot products.
+            // SAFETY: These should actually always be safe if the CPU supports neon.
+            let output_u = vpaddq_s16(
+                vpaddq_s16(vmulq_s16(input1, argb_to_u), vmulq_s16(input2, argb_to_u)),
+                vpaddq_s16(vmulq_s16(input3, argb_to_u), vmulq_s16(input4, argb_to_u)),
+            );
+            let output_v = vpaddq_s16(
+                vpaddq_s16(vmulq_s16(input1, argb_to_v), vmulq_s16(input2, argb_to_v)),
+                vpaddq_s16(vmulq_s16(input3, argb_to_v), vmulq_s16(input4, argb_to_v)),
+            );
+
+            // Add the offset and shift back down to 8 bit.
+            // SAFETY: These should actually always be safe if the CPU supports neon.
+            let output_u = vqshrn_n_u16(vreinterpretq_u16_s16(vsubq_s16(offset, output_u)), 8);
+            let output_v = vqshrn_n_u16(vreinterpretq_u16_s16(vsubq_s16(offset, output_v)), 8);
+
+            // Store output data.
+            // SAFETY: dst_y must be a valid pointer, and i through i + 16 must be valid offsets
+            // into the underlying slice.
+            vst2_u8(dst_uv.offset(i), uint8x8x2_t(output_u, output_v));
+        }
+    }
+
+    width
+}
+
+// Safety: The caller must ensure that src_argb.len() == dst_uv.len() * 4. Note that even though UV
 // elements are interleaved, the horizontal subsampling means the UV and Y planes have the same
 // stride.
 unsafe fn argb_to_nv12_uv_row(mut src_argb: &[u8], mut dst_uv: &mut [u8]) {
-    #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+    debug_assert!(src_argb.len() == dst_uv.len() * 4);
+
+    #[cfg(any(
+        all(target_arch = "x86_64", target_feature = "avx2"),
+        all(target_arch = "aarch64", target_feature = "neon")
+    ))]
     {
-        let aligned_width = align_down(dst_uv.len(), 32);
         // SAFETY: The caller, argb_to_nv12, validates the stride and width parameters.
-        unsafe {
-            argb_to_nv12_uv_row_avx2(src_argb.as_ptr(), dst_uv.as_mut_ptr(), aligned_width);
-        }
+        let aligned_width = unsafe { argb_to_nv12_uv_row_simd(src_argb, dst_uv) };
         src_argb = &src_argb[(aligned_width * 4)..];
         dst_uv = &mut dst_uv[aligned_width..];
     }
