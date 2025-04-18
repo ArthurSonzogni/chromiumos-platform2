@@ -865,6 +865,31 @@ pub fn i420_to_nv12(
             dst_uv_row = &mut dst_uv_row[(2 * simd_aligned_width)..];
             aligned_width -= 2 * simd_aligned_width;
         }
+        #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+        {
+            let simd_aligned_width = align_down(aligned_width / 2, 16);
+            for x in (0..simd_aligned_width).step_by(16) {
+                // SAFETY: The above logic guarantees that src_u_row, src_v_row, and dst_uv_row are
+                // valid slices, and thus the pointers to them are valid. We are also guaranteed
+                // that simd_aligned_width will not exceed the length of src_u_row and src_v_row,
+                // and that 2 * simd_aligned_width will not exceed the length of dst_uv_row. Note
+                // that vld1q_u8 and vst2q_u8 have no memory alignment requirements.
+                unsafe {
+                    vst2q_u8(
+                        dst_uv_row[(2 * x)..(2 * x + 32)].as_mut_ptr(),
+                        uint8x16x2_t(
+                            vld1q_u8(src_u_row[x..(x + 16)].as_ptr()),
+                            vld1q_u8(src_v_row[x..(x + 16)].as_ptr()),
+                        ),
+                    );
+                }
+            }
+
+            src_u_row = &src_u_row[simd_aligned_width..];
+            src_v_row = &src_v_row[simd_aligned_width..];
+            dst_uv_row = &mut dst_uv_row[(2 * simd_aligned_width)..];
+            aligned_width -= 2 * simd_aligned_width;
+        }
 
         for x in 0..aligned_width {
             if x % 2 == 0 {
