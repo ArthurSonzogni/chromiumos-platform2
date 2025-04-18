@@ -196,6 +196,43 @@ TEST_F(MetricsTest, SparseMetric) {
   Mock::VerifyAndClearExpectations(&library_);
 }
 
+TEST_F(MetricsTest, DHCPv4ProvisionResultMetric) {
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA("Network.Shill.Wifi.Connect.DHCPv4ProvisionResult",
+                    Metrics::DHCPv4ProvisionResult::kSuccess,
+                    Metrics::DHCPv4ProvisionResult::kDHCPv4ProvisionResultMax));
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          "Network.Shill.Ethernet.LeaseExpiration.DHCPv4ProvisionResult",
+          Metrics::DHCPv4ProvisionResult::kIPv6OnlyPreferred,
+          Metrics::DHCPv4ProvisionResult::kDHCPv4ProvisionResultMax));
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA("Network.Shill.Wifi.Roaming.DHCPv4ProvisionResult",
+                    Metrics::DHCPv4ProvisionResult::kNak,
+                    Metrics::DHCPv4ProvisionResult::kDHCPv4ProvisionResultMax));
+  EXPECT_CALL(library_,
+              SendEnumToUMA(
+                  "Network.Shill.Ethernet.SuspendResume.DHCPv4ProvisionResult",
+                  Metrics::DHCPv4ProvisionResult::kTimeout,
+                  Metrics::DHCPv4ProvisionResult::kDHCPv4ProvisionResultMax));
+  metrics_.SendDHCPv4ProvisionResultEnumToUMA(
+      Technology::kWiFi, DHCPProvisionReason::kConnect,
+      Metrics::DHCPv4ProvisionResult::kSuccess);
+  metrics_.SendDHCPv4ProvisionResultEnumToUMA(
+      Technology::kEthernet, DHCPProvisionReason::kLeaseExpiration,
+      Metrics::DHCPv4ProvisionResult::kIPv6OnlyPreferred);
+  metrics_.SendDHCPv4ProvisionResultEnumToUMA(
+      Technology::kWiFi, DHCPProvisionReason::kRoaming,
+      Metrics::DHCPv4ProvisionResult::kNak);
+  metrics_.SendDHCPv4ProvisionResultEnumToUMA(
+      Technology::kEthernet, DHCPProvisionReason::kSuspendResume,
+      Metrics::DHCPv4ProvisionResult::kTimeout);
+  Mock::VerifyAndClearExpectations(&library_);
+}
+
 TEST_F(MetricsTest, FrequencyToChannel) {
   EXPECT_EQ(Metrics::kWiFiChannelUndef, metrics_.WiFiFrequencyToChannel(2411));
   EXPECT_EQ(Metrics::kWiFiChannel2412, metrics_.WiFiFrequencyToChannel(2412));

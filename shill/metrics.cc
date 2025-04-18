@@ -185,6 +185,17 @@ void Metrics::SendEnumToUMA(const EnumMetric<PrefixName>& metric,
                           metric.max);
 }
 
+void Metrics::SendDHCPv4ProvisionResultEnumToUMA(Technology tech,
+                                                 DHCPProvisionReason reason,
+                                                 DHCPv4ProvisionResult result) {
+  std::string technology = TechnologyName(tech);
+  technology[0] = base::ToUpperASCII(technology[0]);
+  const std::string name = base::StrCat(
+      {kMetricPrefix, ".", technology, ".",
+       DHCPProvisionReasonToMetricString(reason), ".DHCPv4ProvisionResult"});
+  library_->SendEnumToUMA(name, result, kDHCPv4ProvisionResultMax);
+}
+
 void Metrics::SendToUMA(const Metrics::HistogramMetric<FixedName>& metric,
                         int sample) {
   // The std::string conversion should be removed once MetricsLibraryInterface

@@ -20,6 +20,7 @@
 
 #include "shill/error.h"
 #include "shill/mockable.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/technology.h"
 #include "shill/vpn/vpn_types.h"
 #include "shill/wifi/ieee80211.h"
@@ -2641,6 +2642,24 @@ class Metrics {
     }
   };
 
+  // Result enum for DHCPv4 provisioning.
+  enum DHCPv4ProvisionResult {
+    // Got a lease successfully.
+    kSuccess = 0,
+    // Received IPv6OnlyPreferred from dhcpcd. Stopped obtaining an IPv4
+    // address.
+    kIPv6OnlyPreferred = 1,
+    // DHCP client failed.
+    kClientFailure = 2,
+    // Failed to acquire a lease before timeout and received at lease one NAK
+    // during the acquisition process.
+    kNak = 3,
+    // Lease acquisition timed out without receiving any response from the DHCP
+    // server.
+    kTimeout = 4,
+    kDHCPv4ProvisionResultMax,
+  };
+
   // Emits the |WiFiLinkQualityTrigger| structured event.
   mockable void NotifyWiFiLinkQualityTrigger(WiFiLinkQualityTrigger trigger,
                                              uint64_t session_tag);
@@ -2695,6 +2714,11 @@ class Metrics {
   virtual void SendEnumToUMA(const EnumMetric<PrefixName>& metric,
                              const std::string& suffix,
                              int sample);
+
+  // Sends linear histogram data to UMA for a DHCPv4 provision result event.
+  virtual void SendDHCPv4ProvisionResultEnumToUMA(Technology tech,
+                                                  DHCPProvisionReason reason,
+                                                  DHCPv4ProvisionResult result);
 
   // Sends logarithmic histogram data to UMA for a metric with a fixed name.
   virtual void SendToUMA(const HistogramMetric<FixedName>& metric, int sample);

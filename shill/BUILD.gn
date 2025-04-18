@@ -332,6 +332,7 @@ static_library("libshill") {
     "network/connection_diagnostics.cc",
     "network/dhcp_client_proxy.cc",
     "network/dhcp_controller.cc",
+    "network/dhcp_provision_reasons.cc",
     "network/dhcpcd_proxy.cc",
     "network/dhcpv4_config.cc",
     "network/icmp_session.cc",
