@@ -19,6 +19,7 @@
 #include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/regions_utils.h"
+#include "rmad/utils/rmad_config_utils.h"
 #include "rmad/utils/vpd_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
@@ -31,7 +32,7 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |working_dir_path|, |config_dir_path|, |cbi_utils_|,
   // |cros_config_utils_|, |write_protect_utils_|, |regions_utils_|,
-  // |vpd_utils_| and |segmentation_utils_| for testing.
+  // |vpd_utils_|, |segmentation_utils_|, and |rmad_config_utils_| for testing.
   explicit UpdateDeviceInfoStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
@@ -42,7 +43,8 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
       std::unique_ptr<WriteProtectUtils> write_protect_utils,
       std::unique_ptr<RegionsUtils> regions_utils,
       std::unique_ptr<VpdUtils> vpd_utils,
-      std::unique_ptr<SegmentationUtils> segmentation_utils);
+      std::unique_ptr<SegmentationUtils> segmentation_utils,
+      std::unique_ptr<RmadConfigUtils> rmad_config_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kUpdateDeviceInfo);
   SET_REPEATABLE;
@@ -69,6 +71,8 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
   std::optional<SkuFilter> GetSkuFilter() const;
   std::optional<std::unordered_map<uint32_t, std::string>>
   GetSkuDescriptionOverrides() const;
+  bool IsSpareMlb() const;
+  void SetFieldModifiabilities(UpdateDeviceInfoState* update_dev_info);
 
   RmadCrosConfig rmad_cros_config_;
 
@@ -80,6 +84,7 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
   std::unique_ptr<RegionsUtils> regions_utils_;
   std::unique_ptr<VpdUtils> vpd_utils_;
   std::unique_ptr<SegmentationUtils> segmentation_utils_;
+  std::unique_ptr<RmadConfigUtils> rmad_config_utils_;
 };
 
 }  // namespace rmad

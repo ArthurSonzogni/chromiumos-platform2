@@ -30,6 +30,7 @@
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/regions_utils_impl.h"
+#include "rmad/utils/rmad_config_utils_impl.h"
 #include "rmad/utils/vpd_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
@@ -97,6 +98,7 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   regions_utils_ = std::make_unique<RegionsUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
+  rmad_config_utils_ = std::make_unique<RmadConfigUtilsImpl>();
   if (base::PathExists(GetFakeFeaturesInputFilePath())) {
     segmentation_utils_ = CreateFakeSegmentationUtils();
   } else {
@@ -114,7 +116,8 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<RegionsUtils> regions_utils,
     std::unique_ptr<VpdUtils> vpd_utils,
-    std::unique_ptr<SegmentationUtils> segmentation_utils)
+    std::unique_ptr<SegmentationUtils> segmentation_utils,
+    std::unique_ptr<RmadConfigUtils> rmad_config_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       config_dir_path_(config_dir_path),
@@ -123,7 +126,8 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
       write_protect_utils_(std::move(write_protect_utils)),
       regions_utils_(std::move(regions_utils)),
       vpd_utils_(std::move(vpd_utils)),
-      segmentation_utils_(std::move(segmentation_utils)) {}
+      segmentation_utils_(std::move(segmentation_utils)),
+      rmad_config_utils_(std::move(rmad_config_utils)) {}
 
 RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   CHECK(cbi_utils_);
@@ -318,6 +322,8 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   }
 
   update_dev_info->set_mlb_repair(mlb_repair);
+
+  SetFieldModifiabilities(update_dev_info.get());
 
   state_.set_allocated_update_device_info(update_dev_info.release());
   return RMAD_ERROR_OK;
@@ -684,6 +690,44 @@ UpdateDeviceInfoStateHandler::GetSkuDescriptionOverrides() const {
     }
   }
   return sku_description_map;
+}
+
+bool UpdateDeviceInfoStateHandler::IsSpareMlb() const {
+  bool spare_mlb = false;
+  return json_store_->GetValue(kSpareMlb, &spare_mlb) && spare_mlb;
+}
+
+void UpdateDeviceInfoStateHandler::SetFieldModifiabilities(
+    UpdateDeviceInfoState* update_dev_info) {
+  // All the input fields are modifiable by default.
+  update_dev_info->set_serial_number_modifiable(true);
+  update_dev_info->set_region_modifiable(true);
+  update_dev_info->set_sku_modifiable(true);
+  update_dev_info->set_whitelabel_modifiable(true);
+  update_dev_info->set_dram_part_number_modifiable(true);
+  update_dev_info->set_custom_label_modifiable(true);
+  update_dev_info->set_feature_level_modifiable(true);
+
+  if (auto rmad_config = rmad_config_utils_->GetConfig();
+      !rmad_config.has_value() || !rmad_config->dynamic_device_info_inputs()) {
+    return;
+  }
+
+  // With dynamic input field config set to be true, DRAM part number and
+  // Custom-label are greyed out.
+  update_dev_info->set_dram_part_number_modifiable(false);
+  update_dev_info->set_whitelabel_modifiable(false);
+  update_dev_info->set_custom_label_modifiable(false);
+
+  if (!IsSpareMlb()) {
+    // If it is not a spare MLB case, further grey out the followings:
+    // 1. Serial Number
+    // 2. SKU
+    // 3. Feature Level
+    update_dev_info->set_serial_number_modifiable(false);
+    update_dev_info->set_sku_modifiable(false);
+    update_dev_info->set_feature_level_modifiable(false);
+  }
 }
 
 }  // namespace rmad

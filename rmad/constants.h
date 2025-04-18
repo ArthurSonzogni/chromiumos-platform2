@@ -68,6 +68,8 @@ inline constexpr char kProvisionFinishedStatus[] = "provision_finished_status";
 inline constexpr char kPowerwashCount[] = "powerwash_count";
 inline constexpr char kRoFirmwareVerified[] = "ro_firmware_verified";
 inline constexpr char kFinalizeRebooted[] = "finalize_rebooted";
+// Indicates that Shimless RMA is initiated by the spare MLB flow in factory.
+inline constexpr char kSpareMlb[] = "spare_mlb";
 
 // Component traits.
 inline constexpr auto kComponentsNeedManualCalibration =

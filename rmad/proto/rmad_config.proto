@@ -9,4 +9,5 @@ package rmad;
 message RmadConfig {
   optional bool skip_update_ro_firmware_from_rootfs = 1;
   optional bool skip_hardware_verification = 2;
+  optional bool dynamic_device_info_inputs = 3;
 }
