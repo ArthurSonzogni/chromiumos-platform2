@@ -97,10 +97,21 @@ class VtpmDBusProxyTest : public testing::Test {
   void set_next_response(const std::string& response) {
     object_proxy_->next_response_ = response;
   }
+
   std::string last_command() const {
     std::string last_command = object_proxy_->last_command_;
     object_proxy_->last_command_.clear();
     return last_command;
+  }
+
+  template <typename T>
+  static base::PlatformThreadId GetFakeId(T value) {
+    static_assert(std::is_same_v<T, int> || std::is_class_v<T>);
+    if constexpr (std::is_class_v<T>) {
+      return base::PlatformThreadId(value.raw() ^ 1);
+    } else {
+      return value ^ 1;
+    }
   }
 
  protected:
@@ -247,7 +258,8 @@ TEST_F(VtpmDBusProxyTest, SendCommandFailureWrongThread) {
   // without sending the command.
   EXPECT_TRUE(proxy_.Init());
   // xor 1 would change the thread id without overflow.
-  base::PlatformThreadId fake_id = proxy_.origin_thread_id_for_testing() ^ 1;
+  base::PlatformThreadId fake_id =
+      GetFakeId(proxy_.origin_thread_id_for_testing());
   proxy_.set_origin_thread_id_for_testing(fake_id);
   set_next_response(tpm_response);
   auto callback = [](const std::string& response) {
@@ -268,7 +280,8 @@ TEST_F(VtpmDBusProxyTest, SendCommandAndWaitFailureWrongThread) {
   // without sending the command.
   EXPECT_TRUE(proxy_.Init());
   // xor 1 would change the thread id without overflow.
-  base::PlatformThreadId fake_id = proxy_.origin_thread_id_for_testing() ^ 1;
+  base::PlatformThreadId fake_id =
+      GetFakeId(proxy_.origin_thread_id_for_testing());
   proxy_.set_origin_thread_id_for_testing(fake_id);
   set_next_response(tpm_response);
   EXPECT_EQ(trunks_response, proxy_.SendCommandAndWait(command));
