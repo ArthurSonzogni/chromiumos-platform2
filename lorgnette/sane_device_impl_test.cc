@@ -1909,4 +1909,56 @@ TEST(SaneDeviceImplFakeSaneTest, SetOptionValidUpdateSucceeds) {
   EXPECT_EQ(int_option, 24);
 }
 
+TEST(SaneDeviceImplFakeSaneTest, SetOptionUpdatesKnownCache) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      {
+          .name = "resolution",
+          .title = "Resolution",
+          .desc = "Resolution in DPI",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_DPI,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      }};
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 2;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int resolution = 42;
+  libsane.SetOptionValue(h, 1, &resolution);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr);
+
+  // Setting the resolution through the known option should update both places.
+  EXPECT_TRUE(device.SetScanResolution(nullptr, 100));
+  EXPECT_EQ(resolution, 100);
+  auto newres = device.GetScanResolution(nullptr);
+  ASSERT_TRUE(newres.has_value());
+  EXPECT_EQ(newres.value(), 100);
+
+  // Setting the resolution directly should also update both places.
+  ScannerOption option;
+  option.set_name("resolution");
+  option.set_option_type(OptionType::TYPE_INT);
+  option.mutable_int_value()->add_value(200);
+  EXPECT_EQ(device.SetOption(&error, option), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+  EXPECT_EQ(resolution, 200);
+  newres = device.GetScanResolution(nullptr);
+  ASSERT_TRUE(newres.has_value());
+  EXPECT_EQ(newres.value(), 200);
+}
+
 }  // namespace lorgnette

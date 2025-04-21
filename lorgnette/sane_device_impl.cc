@@ -645,7 +645,16 @@ SANE_Status SaneDeviceImpl::UpdateDeviceOption(brillo::ErrorPtr* error,
   if ((result_flags & (SANE_INFO_RELOAD_OPTIONS | SANE_INFO_INEXACT)) ||
       action == SANE_ACTION_SET_AUTO) {
     LoadOptions(error);
+  } else {
+    // If all the options aren't being reloaded, make sure any copy of the new
+    // value stored in known_options_ is also updated.
+    for (auto& kv : known_options_) {
+      if (kv.second.GetName() == option->GetName()) {
+        kv.second = *option;
+      }
+    }
   }
+
   return SANE_STATUS_GOOD;
 }
 
