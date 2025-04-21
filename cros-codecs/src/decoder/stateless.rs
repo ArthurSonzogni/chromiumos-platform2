@@ -185,6 +185,7 @@ pub trait StatelessVideoDecoder {
         &mut self,
         timestamp: u64,
         bitstream: &[u8],
+        codec_specific_data: bool,
         alloc_cb: &mut dyn FnMut() -> Option<<Self::Handle as DecodedHandle>::Frame>,
     ) -> Result<(usize, bool), DecodeError>;
 
@@ -261,9 +262,10 @@ where
         &mut self,
         timestamp: u64,
         bitstream: &[u8],
+        codec_specific_data: bool,
         alloc_cb: &mut dyn FnMut() -> Option<<Self::Handle as DecodedHandle>::Frame>,
     ) -> Result<(usize, bool), DecodeError> {
-        self.0.decode(timestamp, bitstream, alloc_cb)
+        self.0.decode(timestamp, bitstream, codec_specific_data, alloc_cb)
     }
 
     fn queue_empty_frame(&mut self, timestamp: u64) {

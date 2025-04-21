@@ -12,6 +12,8 @@ mod vaapi;
 use std::os::fd::AsFd;
 use std::os::fd::BorrowedFd;
 
+use log::debug;
+
 use crate::codec::vp8::parser::Frame;
 use crate::codec::vp8::parser::Header;
 use crate::codec::vp8::parser::MbLfAdjustments;
@@ -240,10 +242,16 @@ where
         &mut self,
         timestamp: u64,
         bitstream: &[u8],
+        codec_specific_data: bool,
         alloc_cb: &mut dyn FnMut() -> Option<
             <<B as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
     ) -> Result<(usize, bool), DecodeError> {
+        if codec_specific_data {
+            debug!("discarding {} bytes of codec specific data", bitstream.len());
+            return Ok((bitstream.len(), false));
+        }
+
         let frame = self
             .codec
             .parser

@@ -355,10 +355,14 @@ where
                         C2Decoder::ImportingDecoder(decoder) => decoder.decode(
                             job.timestamp,
                             bitstream,
+                            job.codec_specific_data,
                             &mut *self.alloc_cb.lock().unwrap(),
                         ),
-                        C2Decoder::ConvertingDecoder(decoder) => {
-                            decoder.decode(job.timestamp, bitstream, &mut || {
+                        C2Decoder::ConvertingDecoder(decoder) => decoder.decode(
+                            job.timestamp,
+                            bitstream,
+                            job.codec_specific_data,
+                            &mut || {
                                 let external = (*self.alloc_cb.lock().unwrap())()?;
                                 let internal =
                                     self.auxiliary_frame_pool.as_mut().unwrap().alloc()?;
@@ -366,8 +370,8 @@ where
                                     internal: internal,
                                     external: Mutex::new(Some(external)),
                                 })
-                            })
-                        }
+                            },
+                        ),
                     }
                 } else {
                     // The drain signals are artificial jobs constructed by the C2Wrapper itself,

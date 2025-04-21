@@ -63,6 +63,7 @@ pub struct C2DecodeJob<V: VideoFrame> {
     // C2DecoderWorker based on parsing, so we don't actually need to populate this at the HAL
     // level.
     pub contains_visible_frame: bool,
+    pub codec_specific_data: bool,
     // TODO: Add output delay and color aspect support as needed.
 }
 
@@ -89,6 +90,7 @@ impl<V: VideoFrame> Default for C2DecodeJob<V> {
             timestamp: 0,
             contains_visible_frame: false,
             drain: DrainMode::NoDrain,
+            codec_specific_data: false,
         }
     }
 }

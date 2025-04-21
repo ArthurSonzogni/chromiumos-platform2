@@ -243,11 +243,17 @@ where
         &mut self,
         timestamp: u64,
         bitstream: &[u8],
+        codec_specific_data: bool,
         alloc_cb: &mut dyn FnMut() -> Option<
             <<B as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
     ) -> Result<(usize, bool), DecodeError> {
         let mut processed_visible_frame = false;
+
+        if codec_specific_data {
+            debug!("discarding {} bytes of codec specific data", bitstream.len());
+            return Ok((bitstream.len(), processed_visible_frame));
+        }
 
         let frames = self
             .codec

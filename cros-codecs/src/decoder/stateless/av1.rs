@@ -322,6 +322,7 @@ where
         &mut self,
         timestamp: u64,
         bitstream: &[u8],
+        _codec_specific_data: bool,
         alloc_cb: &mut dyn FnMut() -> Option<
             <<B as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
