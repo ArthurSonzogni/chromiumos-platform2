@@ -552,6 +552,7 @@ std::optional<ChromeSetup::Result> ChromeSetup::Run() {
   AddMantisFlags(&builder);
   AddXSFlags(&builder);
   AddCoralFlags(&builder);
+  AddCuttlefishFlags(&builder);
 
   // Apply any modifications requested by the developer.
   if (builder.is_developer_end_user()) {
@@ -1299,6 +1300,13 @@ void AddCoralFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("coral")) {
     builder->AddFeatureEnableOverride("CoralFeature");
     builder->AddFeatureEnableOverride("CoralFeatureMultiLanguage");
+  }
+}
+
+void AddCuttlefishFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
+  if (builder->UseFlagIsSet("cuttlefish")) {
+    builder->AddFeatureEnableOverride("TiledDisplaySupport");
+    builder->AddFeatureEnableOverride("FastDrmMasterDrop");
   }
 }
 
