@@ -42,6 +42,9 @@ std::optional<HttpUrl> HttpUrl::CreateFromString(std::string_view url_string) {
 }
 
 bool HttpUrl::ParseFromString(std::string_view url_string) {
+  if (!base::IsStringUTF8(url_string)) {
+    return false;
+  }
   Protocol protocol = Protocol::kUnknown;
   size_t host_start = 0;
   int port = 0;

@@ -6,6 +6,7 @@
 #include <cstdint>
 
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
 #include "net-base/http_url.h"
@@ -23,6 +24,7 @@ class HttpUrlFuzz {
     const std::string fuzzed_str(reinterpret_cast<const char*>(data), size);
     HttpUrl url_;
     url_.ParseFromString(fuzzed_str);
+    CHECK(base::IsStringUTF8(url_.ToString()));
   }
 };
 

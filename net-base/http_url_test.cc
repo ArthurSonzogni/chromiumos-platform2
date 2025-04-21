@@ -62,14 +62,17 @@ INSTANTIATE_TEST_SUITE_P(
     ParseFailed,
     HttpUrlParseTest,
     ::testing::Values(
-        StringAndResult(""),                        // Empty string
-        StringAndResult("xxx"),                     // No known prefix
-        StringAndResult(" http://www.foo.com"),     // Leading garbage
-        StringAndResult("http://"),                 // No hostname
-        StringAndResult("http://:100"),             // Port but no hostname
-        StringAndResult("http://www.foo.com:"),     // Colon but no port
-        StringAndResult("http://www.foo.com:x"),    // Non-numeric port
-        StringAndResult("http://foo.com:10:20")));  // Too many colons
+        StringAndResult(""),                             // Empty string
+        StringAndResult("xxx"),                          // No known prefix
+        StringAndResult(" http://www.foo.com"),          // Leading garbage
+        StringAndResult("http://"),                      // No hostname
+        StringAndResult("http://:100"),                  // Port but no hostname
+        StringAndResult("http://www.foo.com:"),          // Colon but no port
+        StringAndResult("http://www.foo.com:x"),         // Non-numeric port
+        StringAndResult("http://foo.com:10:20"),         // Too many colons
+        StringAndResult("http://foo.\xff\x67\xe0/baz"),  // Hostname is not UTF8
+        StringAndResult(
+            "http://foo.com/\xa5\xb2\xdd")));  // Subdirectory is not UTF8
 
 INSTANTIATE_TEST_SUITE_P(
     ParseSucceeded,
