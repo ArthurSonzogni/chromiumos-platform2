@@ -7,6 +7,7 @@ use super::EncoderConfig;
 use crate::codec::vp9::parser::BitDepth;
 use crate::codec::vp9::parser::FrameType;
 use crate::codec::vp9::parser::Header;
+use crate::codec::vp9::parser::LoopFilterParams;
 use crate::codec::vp9::parser::Profile;
 use crate::codec::vp9::parser::QuantizationParams;
 use crate::encoder::stateless::predictor::LowDelay;
@@ -50,14 +51,23 @@ impl<Picture, Reference> LowDelayVP9<Picture, Reference> {
             BitDepth::Depth10 | BitDepth::Depth12 => Profile::Profile2,
         };
 
-        let base_q_idx = if let RateControl::ConstantQuality(base_q_idx) = self.tunings.rate_control
-        {
-            // Limit Q index to valid values
-            base_q_idx.clamp(MIN_Q_IDX as u32, MAX_Q_IDX as u32) as u8
-        } else {
-            // Pick middle Q index
-            (MAX_Q_IDX + MIN_Q_IDX) / 2
-        };
+        let (base_q_idx, filter_level) =
+            if let RateControl::ConstantQuality(base_q_idx) = self.tunings.rate_control {
+                // Limit Q index to valid values.
+                let base_q_idx = base_q_idx.clamp(MIN_Q_IDX as u32, MAX_Q_IDX as u32) as u8;
+                // Use libvpx's loopfilter calculation algorithm to compute the lf parameter from a
+                // given QP value.
+                // The libvpx vp9 loop filter calculation:
+                // https://chromium.googlesource.com/webm/libvpx/+/ff1d193f4b9dfa9b2ced51efbb6ec7a69e58e88c/vp9/encoder/vp9_picklpf.c#172
+                let mut filter = (base_q_idx as f64 * 0.316206 / 4.0 + 3.87252) as u8;
+                if filter >= 4 && matches!(frame_type, FrameType::KeyFrame) {
+                    filter -= 4;
+                }
+                (base_q_idx, filter)
+            } else {
+                // Pick middle Q index
+                ((MAX_Q_IDX + MIN_Q_IDX) / 2, 0)
+            };
 
         Header {
             profile,
@@ -71,6 +81,7 @@ impl<Picture, Reference> LowDelayVP9<Picture, Reference> {
             intra_only: matches!(frame_type, FrameType::KeyFrame),
             refresh_frame_flags: 0x01,
             ref_frame_idx: [0, 0, 0],
+            lf: LoopFilterParams { level: filter_level, ..Default::default() },
             quant: QuantizationParams { base_q_idx, ..Default::default() },
 
             ..Default::default()
