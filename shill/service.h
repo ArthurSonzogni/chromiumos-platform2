@@ -102,6 +102,8 @@ class Service : public base::RefCounted<Service> {
   static constexpr char kStorageStartTime[] = "StartTime";
   // See the comment for `enable_rfc_8925()` below.
   static constexpr char kStorageEnableRFC8925[] = "EnableRFC8925";
+  // HTTP URL hint to use for captive portal detection on this Service.
+  static constexpr char kStorageProbeUrlHint[] = "ProbeUrlHint";
 
   static constexpr uint8_t kStrengthMax = 100;
   static constexpr uint8_t kStrengthMin = 0;
@@ -371,9 +373,14 @@ class Service : public base::RefCounted<Service> {
   // may call this as a result of DHCP renewal, but it's ignored.
   virtual void SetRoamState(RoamState roam_state) {}
 
-  // Set probe URL hint. This function is called when a redirect URL is found
-  // during portal detection.
+  // Sets the "ProbeUrl" DBus property of this Service to the given URL as a
+  // string. This function is called when a redirect URL is found during portal
+  // detection.
   void SetProbeUrl(const std::string& probe_url_string);
+
+  // Sets and persists a captive portal probe URL hint for future portal
+  // detection attempts.
+  void SetProbeUrlHint(const NetworkMonitor::Result& result);
 
   // Whether or not the most recent failure should be ignored. This will return
   // true if the failure was the result of a user-initiated disconnect, a
@@ -832,6 +839,10 @@ class Service : public base::RefCounted<Service> {
   // should only be used in WiFi.
   bool enable_rfc_8925() const { return enable_rfc_8925_; }
 
+  const std::optional<net_base::HttpUrl>& probe_url_hint() const {
+    return probe_url_hint_;
+  }
+
   // Get the storage key for current traffic counters corresponding
   // to |source| and |suffix| (one of kStorageTrafficCounterSuffixes).
   static std::string GetCurrentTrafficCounterKey(
@@ -1261,6 +1272,7 @@ class Service : public base::RefCounted<Service> {
   bool key_rotation_;
   bool endpoint_auth_;
   std::string probe_url_string_;
+  std::optional<net_base::HttpUrl> probe_url_hint_ = std::nullopt;
 
   uint8_t strength_;
   std::string proxy_config_;

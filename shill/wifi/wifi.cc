@@ -2777,7 +2777,7 @@ void WiFi::StateChanged(const std::string& new_state) {
       // servers.
       dhcp_opts.use_rfc_8925 =
           dhcp_opts.use_rfc_8925 && affected_service->enable_rfc_8925();
-      const Network::StartOptions opts = {
+      Network::StartOptions opts = {
           .dhcp = dhcp_opts,
           .accept_ra = true,
           .ignore_link_monitoring = affected_service->link_monitor_disabled(),
@@ -2785,6 +2785,8 @@ void WiFi::StateChanged(const std::string& new_state) {
               manager()->GetPortalDetectorProbingConfiguration(),
           .validation_mode = affected_service->GetNetworkValidationMode(),
       };
+      opts.probing_configuration.http_url_hint =
+          affected_service->probe_url_hint();
       CHECK(GetPrimaryNetwork());
       GetPrimaryNetwork()->Start(opts);
       LOG(INFO) << link_name() << " is up; started L3 configuration.";

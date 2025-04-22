@@ -947,32 +947,107 @@ TEST_F(PortalDetectorTest, PickProbeURLs) {
   const auto url1 = *net_base::HttpUrl::CreateFromString("http://www.url1.com");
   const auto url2 = *net_base::HttpUrl::CreateFromString("http://www.url2.com");
   const auto url3 = *net_base::HttpUrl::CreateFromString("http://www.url3.com");
+  const std::optional<net_base::HttpUrl> url_hint = std::nullopt;
+
+  // Invalid input -> Default URL
+  int attempt_count = -1;
+  EXPECT_EQ(url1, PortalDetector::PickProbeUrl(attempt_count, url1,
+                                               {url2, url3}, url_hint));
+
+  // Invalid input -> Default URL
+  attempt_count = 0;
+  EXPECT_EQ(url1, PortalDetector::PickProbeUrl(attempt_count, url1,
+                                               {url2, url3}, url_hint));
+
+  // Default URL
+  attempt_count = 1;
+  EXPECT_EQ(url1, PortalDetector::PickProbeUrl(attempt_count, url1,
+                                               {url2, url3}, url_hint));
+
+  // First fallback URL
+  attempt_count = 2;
+  EXPECT_EQ(url2, PortalDetector::PickProbeUrl(attempt_count, url1,
+                                               {url2, url3}, url_hint));
+
+  // Second fallback URL
+  attempt_count = 3;
+  EXPECT_EQ(url3, PortalDetector::PickProbeUrl(attempt_count, url1,
+                                               {url2, url3}, url_hint));
+
   const std::set<std::string> all_urls = {url1.ToString(), url2.ToString(),
                                           url3.ToString()};
   std::set<std::string> all_found_urls;
-
-  EXPECT_EQ(url1, portal_detector_->PickProbeUrl(url1, {}));
-  EXPECT_EQ(url1, portal_detector_->PickProbeUrl(url1, {url2, url3}));
-
-  // The loop index starts at 2 to force |attempt_count_| > 1 and simulate
-  // attempts after the first attempts and force using the fallback list.
-  for (int i = 2; i < 100; i++) {
-    portal_detector_->attempt_count_ = i;
-    EXPECT_EQ(portal_detector_->PickProbeUrl(url1, {}), url1);
-
-    const auto& found =
-        portal_detector_->PickProbeUrl(url1, {url2, url3}).ToString();
-    if (i == 2) {
-      EXPECT_EQ(url2.ToString(), found);
-    } else if (i == 3) {
-      EXPECT_EQ(url3.ToString(), found);
-    } else {
-      all_found_urls.insert(found);
-    }
-    EXPECT_NE(all_urls.find(found), all_urls.end());
+  // The loop index starts at 4 to simulate attempts selecting randomly between
+  // all probes.
+  for (int i = 4; i < 100; i++) {
+    const auto found =
+        PortalDetector::PickProbeUrl(i, url1, {url2, url3}, url_hint);
+    all_found_urls.insert(found.ToString());
   }
   // Probability this assert fails = 3 * 1/3 ^ 97 + 3 * 2/3 ^ 97
   EXPECT_EQ(all_urls, all_found_urls);
+}
+
+TEST_F(PortalDetectorTest, PickProbeURLsWithNoFallback) {
+  const auto url1 = *net_base::HttpUrl::CreateFromString("http://www.url1.com");
+  for (int i = -1; i < 100; i++) {
+    EXPECT_EQ(url1, PortalDetector::PickProbeUrl(i, url1, /*fallback_urls=*/{},
+                                                 /*url_hint=*/std::nullopt));
+  }
+}
+
+TEST_F(PortalDetectorTest, PickProbeURLsWithHint) {
+  const auto url1 = *net_base::HttpUrl::CreateFromString("http://www.url1.com");
+  const auto url2 = *net_base::HttpUrl::CreateFromString("http://www.url2.com");
+  const auto url3 = *net_base::HttpUrl::CreateFromString("http://www.url3.com");
+  const std::optional<net_base::HttpUrl> url_hint =
+      net_base::HttpUrl::CreateFromString("http://www.portal-signin.com");
+  ASSERT_NE(std::nullopt, url_hint);
+
+  // URL hint
+  int attempt_count = 1;
+  EXPECT_EQ(*url_hint, PortalDetector::PickProbeUrl(attempt_count, url1,
+                                                    {url2, url3}, url_hint));
+
+  // Default URL
+  attempt_count = 2;
+  EXPECT_EQ(url1, PortalDetector::PickProbeUrl(attempt_count, url1,
+                                               {url2, url3}, url_hint));
+
+  // First fallback URL
+  attempt_count = 3;
+  EXPECT_EQ(url2, PortalDetector::PickProbeUrl(attempt_count, url1,
+                                               {url2, url3}, url_hint));
+
+  // Second fallback URL
+  attempt_count = 4;
+  EXPECT_EQ(url3, PortalDetector::PickProbeUrl(attempt_count, url1,
+                                               {url2, url3}, url_hint));
+
+  const std::set<std::string> all_urls_without_hint = {
+      url1.ToString(), url2.ToString(), url3.ToString()};
+  std::set<std::string> all_found_urls;
+  // The loop index starts at 5 to simulate attempts selecting randomly between
+  // all probes.
+  for (int i = 5; i < 100; i++) {
+    const auto found =
+        PortalDetector::PickProbeUrl(i, url1, {url2, url3}, url_hint);
+    all_found_urls.insert(found.ToString());
+  }
+  // Probability this assert fails = 3 * 1/3 ^ 97 + 3 * 2/3 ^ 97
+  EXPECT_EQ(all_urls_without_hint, all_found_urls);
+}
+
+TEST_F(PortalDetectorTest, PickProbeURLsWithRedundantHint) {
+  const auto url1 = *net_base::HttpUrl::CreateFromString("http://www.url1.com");
+  const auto url2 = *net_base::HttpUrl::CreateFromString("http://www.url2.com");
+  //  const std::optional<net_base::HttpUrl> url_hint = url1;
+  const std::set<std::string> all_urls_without_hint;
+
+  EXPECT_EQ(url1,
+            PortalDetector::PickProbeUrl(1, url1, {url2}, url1));  // url_hint);
+  EXPECT_EQ(url2,
+            PortalDetector::PickProbeUrl(2, url1, {url2}, url1));  // url_hint);
 }
 
 TEST_F(PortalDetectorTest, CreateHTTPRequest) {

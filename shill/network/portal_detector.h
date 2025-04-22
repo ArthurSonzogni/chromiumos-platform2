@@ -91,6 +91,10 @@ class PortalDetector {
     // Set of fallback URLs used for retrying the HTTPS probe when portal
     // detection is not conclusive.
     std::vector<net_base::HttpUrl> portal_fallback_https_urls;
+    // An optional HTTP URL that is known to successfully find the captive
+    // portal on the current network from prior connections or from some other
+    // channel.
+    std::optional<net_base::HttpUrl> http_url_hint;
 
     friend bool operator==(const ProbingConfiguration& lhs,
                            const ProbingConfiguration& rhs);
@@ -269,6 +273,15 @@ class PortalDetector {
     probing_configuration_ = probing_configuration;
   }
 
+  // Picks the next probe URL based on |attempt_count_|. Rotates first through
+  // |default_url| and |fallback_urls| to pick each URL in order at least once,
+  // then return randomly any URL with equal probability.
+  static const net_base::HttpUrl& PickProbeUrl(
+      int attempt_count,
+      const net_base::HttpUrl& default_url,
+      const std::vector<net_base::HttpUrl>& fallback_urls,
+      const std::optional<net_base::HttpUrl>& http_url_hint);
+
  protected:
   // Can be overwritten in tests;
   mockable std::unique_ptr<HttpRequest> CreateHTTPRequest(
@@ -282,7 +295,6 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
   FRIEND_TEST(PortalDetectorTest, CreateHTTPRequest);
   FRIEND_TEST(PortalDetectorTest, IsInProgress);
-  FRIEND_TEST(PortalDetectorTest, PickProbeURLs);
   FRIEND_TEST(PortalDetectorTest, Request200WithContent);
   FRIEND_TEST(PortalDetectorTest, RequestFail);
   FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
@@ -295,13 +307,6 @@ class PortalDetector {
 
   // Gets the reduced user-agent string for this current version of ChromeOS.
   static std::string GetUserAgentString();
-
-  // Picks the next probe URL based on |attempt_count_|. Rotates first through
-  // |default_url| and |fallback_urls| to pick each URL in order at least once,
-  // then return randomely any URL with equal probability.
-  const net_base::HttpUrl& PickProbeUrl(
-      const net_base::HttpUrl& default_url,
-      const std::vector<net_base::HttpUrl>& fallback_urls) const;
 
   // Create and start the HTTP probe.
   void StartHttpProbe(base::TimeTicks start_time,

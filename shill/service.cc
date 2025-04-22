@@ -626,6 +626,17 @@ void Service::SetProbeUrl(const std::string& probe_url_string) {
   adaptor_->EmitStringChanged(kProbeUrlProperty, probe_url_string);
 }
 
+void Service::SetProbeUrlHint(const NetworkMonitor::Result& result) {
+  if (result.origin != NetworkMonitor::ResultOrigin::kProbe) {
+    return;
+  }
+  if (probe_url_hint_ == result.target_url) {
+    return;
+  }
+  probe_url_hint_ = result.target_url;
+  SaveToProfile();
+}
+
 void Service::ReEnableAutoConnectTask() {
   // Kill the thing blocking AutoConnect().
   reenable_auto_connect_task_.Cancel();
@@ -832,6 +843,10 @@ bool Service::Load(const StoreInterface* storage) {
     start_time_ =
         base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(temp_ms));
   }
+  std::string probe_url_hint;
+  if (storage->GetString(id, kStorageProbeUrlHint, &probe_url_hint)) {
+    probe_url_hint_ = net_base::HttpUrl::CreateFromString(probe_url_hint);
+  }
   return true;
 }
 
@@ -974,6 +989,10 @@ bool Service::Save(StoreInterface* storage) {
   if (!start_time_.ToDeltaSinceWindowsEpoch().is_zero()) {
     storage->SetUint64(id, kStorageStartTime,
                        GetStartTimeProperty(/*error=*/nullptr));
+  }
+
+  if (probe_url_hint_) {
+    storage->SetString(id, kStorageProbeUrlHint, probe_url_hint_->ToString());
   }
 
   return true;
@@ -2868,6 +2887,7 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
       break;
     case PortalDetector::ValidationState::kPortalRedirect:
     case PortalDetector::ValidationState::kPortalSuspected:
+      service_->SetProbeUrlHint(result);
       service_->SetState(Service::kStateRedirectFound);
       break;
     case PortalDetector::ValidationState::kNoConnectivity:

@@ -517,6 +517,8 @@ TEST_F(ServiceTest, Load) {
   storage.SetInt(storage_id_, Service::kStoragePriority, kPriority);
   storage.SetString(storage_id_, Service::kStorageProxyConfig, kProxyConfig);
   storage.SetString(storage_id_, Service::kStorageUIData, kUIData);
+  storage.SetString(storage_id_, Service::kStorageProbeUrlHint,
+                    "http://www.url.com");
 
   EXPECT_TRUE(service_->Load(&storage));
   EXPECT_EQ(Service::CheckPortalState::kFalse, service_->check_portal());
@@ -525,6 +527,8 @@ TEST_F(ServiceTest, Load) {
   EXPECT_TRUE(service_->has_ever_connected_);
   EXPECT_EQ(kProxyConfig, service_->proxy_config_);
   EXPECT_EQ(kUIData, service_->ui_data_);
+  EXPECT_EQ(*net_base::HttpUrl::CreateFromString("http://www.url.com"),
+            service_->probe_url_hint());
 
   // Removing the storage entry should cause the service to fail to load.
   storage.DeleteGroup(storage_id_);
@@ -662,11 +666,18 @@ TEST_F(ServiceTest, SaveTrafficCounters) {
 TEST_F(ServiceTest, Save) {
   FakeStore storage;
   service_->technology_ = Technology::kWiFi;
+  service_->probe_url_hint_ =
+      net_base::HttpUrl::CreateFromString("http://www.url.com");
   EXPECT_TRUE(service_->Save(&storage));
 
   std::string type;
   EXPECT_TRUE(storage.GetString(storage_id_, Service::kStorageType, &type));
   EXPECT_EQ(type, service_->GetTechnologyName());
+
+  std::string probe_url_string;
+  EXPECT_TRUE(storage.GetString(storage_id_, Service::kStorageProbeUrlHint,
+                                &probe_url_string));
+  EXPECT_EQ("http://www.url.com", probe_url_string);
 }
 
 TEST_F(ServiceTest, SaveEap) {
@@ -3305,10 +3316,13 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   const NetworkMonitor::Result result{
+      .origin = NetworkMonitor::ResultOrigin::kProbe,
       .num_attempts = 1,
       .validation_state =
           PortalDetector::ValidationState::kInternetConnectivity,
       .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+      .target_url =
+          net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl),
   };
 
   ASSERT_NE(service_->network_event_handler(), nullptr);
@@ -3316,6 +3330,7 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
 
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
+  EXPECT_EQ(std::nullopt, service_->probe_url_hint());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_Online) {
@@ -3324,15 +3339,19 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   const NetworkMonitor::Result result{
+      .origin = NetworkMonitor::ResultOrigin::kProbe,
       .num_attempts = 1,
       .validation_state =
           PortalDetector::ValidationState::kInternetConnectivity,
       .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+      .target_url =
+          net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl),
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateOnline, service_->state());
-  EXPECT_EQ("", service_->probe_url_string());
+  EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
+  EXPECT_EQ(std::nullopt, service_->probe_url_hint());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
@@ -3341,15 +3360,19 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   const NetworkMonitor::Result result{
+      .origin = NetworkMonitor::ResultOrigin::kProbe,
       .num_attempts = 1,
       .validation_state =
           PortalDetector::ValidationState::kInternetConnectivity,
       .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+      .target_url =
+          net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl),
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateOnline, service_->state());
-  EXPECT_EQ("", service_->probe_url_string());
+  EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
+  EXPECT_EQ(std::nullopt, service_->probe_url_hint());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
@@ -3358,14 +3381,18 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   const NetworkMonitor::Result result{
+      .origin = NetworkMonitor::ResultOrigin::kProbe,
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kNoConnectivity,
       .probe_result_metric = Metrics::kPortalDetectorResultConnectionFailure,
+      .target_url =
+          net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl),
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
-  EXPECT_EQ("", service_->probe_url_string());
+  EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
+  EXPECT_EQ(std::nullopt, service_->probe_url_hint());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
@@ -3374,14 +3401,18 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   const NetworkMonitor::Result result{
+      .origin = NetworkMonitor::ResultOrigin::kProbe,
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kNoConnectivity,
       .probe_result_metric = Metrics::kPortalDetectorResultDNSFailure,
+      .target_url =
+          net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl),
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
-  EXPECT_EQ("", service_->probe_url_string());
+  EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
+  EXPECT_EQ(std::nullopt, service_->probe_url_hint());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
@@ -3390,14 +3421,18 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   const NetworkMonitor::Result result{
+      .origin = NetworkMonitor::ResultOrigin::kProbe,
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kNoConnectivity,
       .probe_result_metric = Metrics::kPortalDetectorResultDNSTimeout,
+      .target_url =
+          net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl),
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
-  EXPECT_EQ("", service_->probe_url_string());
+  EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
+  EXPECT_EQ(std::nullopt, service_->probe_url_hint());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
@@ -3405,17 +3440,20 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
+  const auto probe_url =
+      *net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl);
   const NetworkMonitor::Result result{
+      .origin = NetworkMonitor::ResultOrigin::kProbe,
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kPortalRedirect,
       .probe_result_metric = Metrics::kPortalDetectorResultRedirectFound,
-      .target_url =
-          net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl),
+      .target_url = probe_url,
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateRedirectFound, service_->state());
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
+  EXPECT_EQ(probe_url, service_->probe_url_hint());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
@@ -3423,15 +3461,20 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
+  const auto probe_url =
+      *net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl);
   const NetworkMonitor::Result result{
+      .origin = NetworkMonitor::ResultOrigin::kProbe,
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kPortalSuspected,
       .probe_result_metric = Metrics::kPortalDetectorResultRedirectNoUrl,
+      .target_url = probe_url,
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateRedirectFound, service_->state());
-  EXPECT_EQ("", service_->probe_url_string());
+  EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
+  EXPECT_EQ(probe_url, service_->probe_url_hint());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
@@ -3439,15 +3482,20 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
+  const auto probe_url =
+      *net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl);
   const NetworkMonitor::Result result{
+      .origin = NetworkMonitor::ResultOrigin::kProbe,
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kPortalSuspected,
       .probe_result_metric = Metrics::kPortalDetectorResultHTTPSFailure,
+      .target_url = probe_url,
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateRedirectFound, service_->state());
-  EXPECT_EQ("", service_->probe_url_string());
+  EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
+  EXPECT_EQ(probe_url, service_->probe_url_hint());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
@@ -3456,14 +3504,18 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   const NetworkMonitor::Result result{
+      .origin = NetworkMonitor::ResultOrigin::kProbe,
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kNoConnectivity,
       .probe_result_metric = Metrics::kPortalDetectorResultUnknown,
+      .target_url =
+          net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl),
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
-  EXPECT_EQ("", service_->probe_url_string());
+  EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
+  EXPECT_EQ(std::nullopt, service_->probe_url_hint());
 }
 
 TEST_F(ServiceTest, UpdateNetworkValidationMode) {
