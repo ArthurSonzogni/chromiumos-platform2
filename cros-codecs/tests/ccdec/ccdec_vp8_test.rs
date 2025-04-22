@@ -2,20 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-mod execution_utils;
-mod verification_test_vectors;
-
 #[cfg(test)]
 mod tests {
-    use lazy_static::lazy_static;
-    use std::collections::HashMap;
-
-    use crate::execution_utils::run_ccdec_test_by_codec_group;
-    use crate::verification_test_vectors::vp8_files;
-
-    lazy_static! {
-        static ref VP8_FILENAMES: HashMap<&'static str, Vec<&'static str>> = vp8_files();
-    }
+    use cros_codecs_test_common::ccdec::execution_utils::run_ccdec_test_by_codec_group;
+    use cros_codecs_test_common::ccdec::verification_test_vectors::VP8_FILENAMES;
 
     #[test]
     fn inter_multi_coeff() {

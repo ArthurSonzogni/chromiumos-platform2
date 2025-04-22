@@ -6,6 +6,7 @@ description = "Hardware-accelerated codecs for Linux"
 repository = "https://github.com/chromeos/cros-codecs"
 authors = ["The ChromiumOS Authors"]
 edition = "2021"
+autotests = false
 
 [features]
 default = []

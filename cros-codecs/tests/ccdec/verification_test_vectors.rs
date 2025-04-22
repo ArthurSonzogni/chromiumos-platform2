@@ -6,8 +6,15 @@
 // It is kept separate and not exposed in a common file to avoid to having all
 // test modules grouped together by test harness.
 
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 
+lazy_static! {
+    /// A HashMap lazily initialized to contain VP8 test filenames categorized by group.
+    pub static ref VP8_FILENAMES: HashMap<&'static str, Vec<&'static str>> = vp8_files();
+}
+
+/// Provides a collection of VP8 test vector files categorized by test type.
 pub fn vp8_files() -> HashMap<&'static str, Vec<&'static str>> {
     let mut vp8_files: HashMap<&'static str, Vec<&'static str>> = HashMap::new();
     vp8_files.insert(

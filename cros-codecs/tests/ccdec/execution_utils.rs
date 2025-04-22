@@ -33,6 +33,7 @@ fn get_ccdec_args(test_file_path: &Path, json_file_path: &Path, input_format: &s
     ]
 }
 
+/// Executes an external command for decoding tests.
 fn execute(test_binary_path: &PathBuf, args: &[&str]) -> Result<ExitStatus, String> {
     let mut command = Command::new(test_binary_path);
     command.args(args);
@@ -52,7 +53,8 @@ fn execute(test_binary_path: &PathBuf, args: &[&str]) -> Result<ExitStatus, Stri
     }
 }
 
-fn cros_codecs_decode(test_file: &str, input_format: &str) {
+/// Runs cros-codecs integration test for a single file.
+pub fn cros_codecs_decode(test_file: &str, input_format: &str) {
     let test_binary_path = get_ccdec_path();
     let test_file_path = Path::new(&test_file);
     assert!(test_file_path.exists(), "{:?} is not a valid path", test_file_path);
@@ -73,6 +75,7 @@ fn cros_codecs_decode(test_file: &str, input_format: &str) {
     log::info!("Cros-codecs decode test succeeded: {}", test_file_name);
 }
 
+/// Runs cros-codecs integration test for a group of test files by codec.
 pub fn run_ccdec_test_by_codec_group(test_files: &[&str], input_format: &str) {
     for file in test_files {
         let full_path = format!("{}{}", TEST_DATA_PREFIX, file);
