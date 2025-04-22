@@ -4008,6 +4008,7 @@ int sl_run_parent(int argc,
             strstr(arg, "--support-damage-buffer") == arg ||
             strstr(arg, "--vm-identififer") == arg ||
             strstr(arg, "--trace-system") == arg ||
+            strstr(arg, "--virtgpu-channel") == arg ||
             strstr(arg, "--enable-linux-dmabuf") == arg) {
           args[i++] = arg;
         }
