@@ -334,9 +334,12 @@ where
 
                     #[cfg(feature = "ubc")]
                     {
+                        // TODO: Add a field to the job for "force keyframe" instead of just
+                        // hard-coding it to false.
                         let qp = self.bitrate_controller.get_qp(
                             self.current_tunings.min_quality,
                             self.current_tunings.max_quality,
+                            false,
                         );
                         self.encoder.tune(Tunings {
                             rate_control: RateControl::ConstantQuality(qp),

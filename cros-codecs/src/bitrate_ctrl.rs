@@ -8,10 +8,12 @@ use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 
+use crate::bitrate_ctrl::key_frame_model::KeyFrameModel;
 use crate::bitrate_ctrl::leaky_bucket::LeakyBucket;
 use crate::bitrate_ctrl::neural_network::NeuralNetwork;
 use crate::Resolution;
 
+pub mod key_frame_model;
 pub mod leaky_bucket;
 pub mod neural_network;
 
@@ -20,14 +22,17 @@ struct BitrateControlHistory {
     qp_model_output: f64,
     target_size: f64,
     actual_size: f64,
+    keyframe: bool,
 }
 
 pub struct BitrateController {
     qp_model: NeuralNetwork,
+    key_frame_model: KeyFrameModel,
     leaky_bucket: LeakyBucket,
     resolution: Resolution,
     history: VecDeque<BitrateControlHistory>,
     in_flight: VecDeque<(BitrateControlHistory, Vec<f64>)>,
+    sent_keyframe: bool,
 }
 
 // TODO: Tweak these numbers
@@ -50,6 +55,7 @@ impl BitrateController {
                 qp_model_output: 0.0,
                 target_size: target_size,
                 actual_size: target_size,
+                keyframe: false,
             });
         }
 
@@ -135,10 +141,12 @@ impl BitrateController {
 
         BitrateController {
             qp_model: qp_model,
+            key_frame_model: KeyFrameModel::new(),
             leaky_bucket: leaky_bucket,
             resolution: resolution,
             history: initial_history,
             in_flight: VecDeque::new(),
+            sent_keyframe: false,
         }
     }
 
@@ -151,27 +159,43 @@ impl BitrateController {
         );
     }
 
-    pub fn get_qp(&mut self, min_qp: u32, max_qp: u32) -> u32 {
+    pub fn get_qp(&mut self, min_qp: u32, max_qp: u32, mut force_keyframe: bool) -> u32 {
+        if !self.sent_keyframe {
+            force_keyframe = true;
+            self.sent_keyframe = true;
+        }
+
+        // TODO: Should we adjust the budget size for key frames?
         let mut target_size = self.leaky_bucket.get_frame_budget() as f64;
 
         // The idea here is that having historical QP values and the actual frame sizes they
         // correspond to will give us a sense of the entropy of the scene.
         let mut input_vec: Vec<f64> = vec![];
         for history_entry in self.history.iter() {
-            input_vec.push(history_entry.qp_model_output);
-            input_vec.push(history_entry.actual_size);
+            if history_entry.keyframe {
+                input_vec.push(0.0);
+                input_vec.push(history_entry.target_size);
+            } else {
+                input_vec.push(history_entry.qp_model_output);
+                input_vec.push(history_entry.actual_size);
+            }
         }
 
         target_size /= self.resolution.get_area() as f64;
         input_vec.push(target_size);
 
-        let qp = self.qp_model.forward(input_vec.clone())[0];
+        let qp = if force_keyframe {
+            self.key_frame_model.forward(input_vec.clone())
+        } else {
+            self.qp_model.forward(input_vec.clone())[0]
+        };
 
         self.in_flight.push_back((
             BitrateControlHistory {
                 qp_model_output: qp,
                 target_size: target_size,
                 actual_size: 0.0,
+                keyframe: force_keyframe,
             },
             input_vec,
         ));
@@ -190,8 +214,13 @@ impl BitrateController {
 
         // Learn QP model.
         let grad_loss = ((actual_size / history_entry.target_size) - 1.0).clamp(-1.0, 1.0);
-        self.qp_model.forward(input_vec);
-        self.qp_model.backward(vec![grad_loss], LEARNING_RATE);
+        if history_entry.keyframe {
+            self.key_frame_model.forward(input_vec);
+            self.key_frame_model.backward(vec![grad_loss], LEARNING_RATE);
+        } else {
+            self.qp_model.forward(input_vec);
+            self.qp_model.backward(vec![grad_loss], LEARNING_RATE);
+        }
 
         // Manage history
         let _ = self.history.pop_front();
