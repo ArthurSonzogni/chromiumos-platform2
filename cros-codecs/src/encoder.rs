@@ -69,7 +69,10 @@ pub struct Tunings {
 impl Default for Tunings {
     fn default() -> Self {
         Self {
+            #[cfg(not(feature = "ubc"))]
             rate_control: RateControl::ConstantBitrate(200_000),
+            #[cfg(feature = "ubc")]
+            rate_control: RateControl::ConstantQuality(25),
             framerate: 30,
             min_quality: 0,
             max_quality: u32::MAX,

@@ -25,6 +25,8 @@ pub mod codec;
 
 #[cfg(feature = "backend")]
 pub mod backend;
+#[cfg(feature = "ubc")]
+pub mod bitrate_ctrl;
 #[cfg(feature = "backend")]
 pub mod c2_wrapper;
 #[cfg(feature = "backend")]

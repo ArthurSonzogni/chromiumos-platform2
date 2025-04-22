@@ -18,6 +18,8 @@ use std::sync::Condvar;
 use std::sync::Mutex;
 use std::time::Duration;
 
+#[cfg(feature = "ubc")]
+use crate::bitrate_ctrl::BitrateController;
 use crate::c2_wrapper::C2EncodeJob;
 use crate::c2_wrapper::C2State;
 use crate::c2_wrapper::C2Status;
@@ -94,6 +96,8 @@ where
     current_tunings: Tunings,
     visible_resolution: Resolution,
     coded_resolution: Resolution,
+    #[cfg(feature = "ubc")]
+    bitrate_controller: BitrateController,
     _phantom: PhantomData<B>,
 }
 
@@ -108,6 +112,10 @@ where
                 Ok(Some(coded)) => {
                     let mut job = self.in_flight_queue.pop_front().unwrap();
                     job.output = coded.bitstream;
+
+                    #[cfg(feature = "ubc")]
+                    self.bitrate_controller.process_frame(job.output.len() as u64);
+
                     (*self.work_done_cb.lock().unwrap())(job);
                 }
                 Err(err) => {
@@ -172,20 +180,57 @@ where
             } + IN_FLIGHT_FRAMES,
         });
 
-        Ok(Self {
-            encoder: encoder,
-            awaiting_job_event: awaiting_job_event,
-            error_cb: error_cb,
-            work_done_cb: work_done_cb,
-            work_queue: work_queue,
-            in_flight_queue: VecDeque::new(),
-            state: state,
-            alloc_cb: alloc_cb,
-            current_tunings: Default::default(),
-            visible_resolution: visible_resolution,
-            coded_resolution: coded_resolution,
-            _phantom: Default::default(),
-        })
+        #[cfg(feature = "ubc")]
+        {
+            let (min_qp, max_qp) = match EncodedFormat::from(output_fourcc) {
+                EncodedFormat::AV1 | EncodedFormat::VP9 => (0, 255),
+                EncodedFormat::VP8 => (0, 127),
+                EncodedFormat::H264 | EncodedFormat::H265 => (1, 51),
+            };
+            let init_bitrate: u64 = 200000;
+            let init_framerate: u32 = 30;
+            let init_tunings = Tunings {
+                rate_control: RateControl::ConstantBitrate(init_bitrate),
+                framerate: init_framerate,
+                min_quality: min_qp,
+                max_quality: max_qp,
+            };
+            let bitrate_controller =
+                BitrateController::new(visible_resolution, init_bitrate, init_framerate);
+
+            Ok(Self {
+                encoder: encoder,
+                awaiting_job_event: awaiting_job_event,
+                error_cb: error_cb,
+                work_done_cb: work_done_cb,
+                work_queue: work_queue,
+                in_flight_queue: VecDeque::new(),
+                state: state,
+                alloc_cb: alloc_cb,
+                current_tunings: init_tunings,
+                visible_resolution: visible_resolution,
+                coded_resolution: coded_resolution,
+                bitrate_controller: bitrate_controller,
+                _phantom: Default::default(),
+            })
+        }
+        #[cfg(not(feature = "ubc"))]
+        {
+            Ok(Self {
+                encoder: encoder,
+                awaiting_job_event: awaiting_job_event,
+                error_cb: error_cb,
+                work_done_cb: work_done_cb,
+                work_queue: work_queue,
+                in_flight_queue: VecDeque::new(),
+                state: state,
+                alloc_cb: alloc_cb,
+                current_tunings: Default::default(),
+                visible_resolution: visible_resolution,
+                coded_resolution: coded_resolution,
+                _phantom: Default::default(),
+            })
+        }
     }
 
     fn process_loop(&mut self) {
@@ -268,16 +313,38 @@ where
                     if job.bitrate != curr_bitrate
                         || new_framerate != self.current_tunings.framerate
                     {
-                        self.current_tunings.rate_control =
-                            RateControl::ConstantBitrate(job.bitrate);
-                        self.current_tunings.framerate = new_framerate;
-                        if let Err(err) = self.encoder.tune(self.current_tunings.clone()) {
-                            log::debug!("Error adjusting tunings! {:?}", err);
-                            *self.state.0.lock().unwrap() = C2State::C2Error;
-                            (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
-                            break;
+                        #[cfg(feature = "ubc")]
+                        {
+                            self.bitrate_controller.tune(job.bitrate, new_framerate);
+                        }
+                        #[cfg(not(feature = "ubc"))]
+                        {
+                            self.current_tunings.rate_control =
+                                RateControl::ConstantBitrate(job.bitrate);
+                            self.current_tunings.framerate = new_framerate;
+
+                            if let Err(err) = self.encoder.tune(self.current_tunings.clone()) {
+                                log::debug!("Error adjusting tunings! {:?}", err);
+                                *self.state.0.lock().unwrap() = C2State::C2Error;
+                                (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                                break;
+                            }
                         }
                     };
+
+                    #[cfg(feature = "ubc")]
+                    {
+                        let qp = self.bitrate_controller.get_qp(
+                            self.current_tunings.min_quality,
+                            self.current_tunings.max_quality,
+                        );
+                        self.encoder.tune(Tunings {
+                            rate_control: RateControl::ConstantQuality(qp),
+                            framerate: self.current_tunings.framerate,
+                            min_quality: self.current_tunings.min_quality,
+                            max_quality: self.current_tunings.max_quality,
+                        });
+                    }
 
                     let meta = FrameMetadata {
                         timestamp: timestamp,
