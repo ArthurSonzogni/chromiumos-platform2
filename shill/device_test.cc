@@ -32,6 +32,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_service.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"
@@ -564,13 +565,13 @@ TEST_F(DeviceTest, ResumeConnected) {
   EXPECT_CALL(*service0, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service0);
   EXPECT_CALL(*service0, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*network_, RenewDHCPLease());
+  EXPECT_CALL(*network_, RenewDHCPLease(DHCPProvisionReason::kSuspendResume));
   EXPECT_CALL(*network_, InvalidateIPv6Config());
   device_->OnAfterResume();
 }
 
 TEST_F(DeviceTest, ResumeDisconnected) {
-  EXPECT_CALL(*network_, RenewDHCPLease()).Times(0);
+  EXPECT_CALL(*network_, RenewDHCPLease).Times(0);
   EXPECT_CALL(*network_, InvalidateIPv6Config()).Times(0);
   device_->OnAfterResume();
 }

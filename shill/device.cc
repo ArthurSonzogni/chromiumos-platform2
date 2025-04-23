@@ -43,6 +43,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"
 #include "shill/refptr_types.h"
@@ -302,7 +303,7 @@ void Device::OnBeforeSuspend(ResultCallback callback) {
 }
 
 void Device::OnAfterResume() {
-  ForceIPConfigUpdate();
+  ForceIPConfigUpdate(DHCPProvisionReason::kSuspendResume);
 }
 
 void Device::OnDarkResume(ResultCallback callback) {
@@ -331,7 +332,7 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
   std::move(callback).Run(error);
 }
 
-void Device::ForceIPConfigUpdate() {
+void Device::ForceIPConfigUpdate(DHCPProvisionReason reason) {
   SLOG(2) << *this << " " << __func__;
   if (!IsConnected()) {
     return;
@@ -339,7 +340,7 @@ void Device::ForceIPConfigUpdate() {
   // When already connected, a Network must exist.
   CHECK(GetPrimaryNetwork());
   LOG(INFO) << *this << " " << __func__;
-  GetPrimaryNetwork()->RenewDHCPLease();
+  GetPrimaryNetwork()->RenewDHCPLease(reason);
   GetPrimaryNetwork()->InvalidateIPv6Config();
 }
 

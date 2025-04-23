@@ -139,6 +139,10 @@ class MockMetrics : public Metrics {
                Technology,
                int),
               (override));
+  MOCK_METHOD(void,
+              SendDHCPv4ProvisionResultEnumToUMA,
+              (Technology, DHCPProvisionReason, DHCPv4ProvisionResult),
+              (override));
 };
 
 }  // namespace shill

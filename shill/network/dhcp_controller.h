@@ -22,6 +22,7 @@
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/network/dhcp_client_proxy.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/store/key_value_store.h"
 #include "shill/technology.h"
@@ -82,10 +83,14 @@ class DHCPController : public DHCPClientProxy::EventHandler {
   // depending on the configuration of the specific IPConfig subclass, we may
   // end up holding on to the lease so we can resume to the network lease
   // faster.
-  mockable bool RenewIP();
+  mockable bool RenewIP(DHCPProvisionReason reason);
   mockable bool ReleaseIP(ReleaseReason reason);
 
   std::string device_name() const { return device_name_; }
+
+  std::optional<DHCPProvisionReason> provision_reason() const {
+    return provision_reason_;
+  }
 
   // Returns the time left (in seconds) till the current DHCP lease is to be
   // renewed in |time_left|. Returns nullopt if an error occurs (i.e. current
@@ -156,6 +161,16 @@ class DHCPController : public DHCPClientProxy::EventHandler {
   // Resets |current_lease_expiration_time_| to its default value.
   void ResetLeaseExpirationTime();
 
+  // Updates current provision status by setting |provision_reason_| to |reason|
+  // and |nak_received_| to false.
+  void UpdateProvisionStatus(DHCPProvisionReason reason);
+  // Resets current provision status by resetting |provision_reason_| and
+  // setting |nak_received_| to false.
+  void ResetProvisionStatus();
+
+  // Sends DHCPv4 provision result metrics to UMA.
+  void SendDHCPv4ProvisionResultMetrics(Metrics::DHCPv4ProvisionResult result);
+
   // The lifetime of these variables should outlive this instance.
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
@@ -190,6 +205,17 @@ class DHCPController : public DHCPClientProxy::EventHandler {
   // The timer to measure the duration from the last Start() until we get the
   // DHCP lease information from the DHCP client for the first time.
   std::unique_ptr<chromeos_metrics::Timer> last_provision_timer_;
+
+  // The reason for current DHCP provisioning event. It is for emission of
+  // the DHCPv4ProvisionResult metric. Given that we only want to send one
+  // result per provision, this property will be reset after metric emission.
+  // This property should only be modified with UpdateProvisionStatus() and
+  // ResetProvisionStatus() so that |nak_received_| can also get changed
+  // accordingly.
+  std::optional<DHCPProvisionReason> provision_reason_;
+  // Whether dhcpcd has received any NAK from the DHCP server in current
+  // provision.
+  bool nak_received_{false};
 
   base::WeakPtrFactory<DHCPController> weak_ptr_factory_{this};
 };

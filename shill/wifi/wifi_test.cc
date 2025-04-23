@@ -53,6 +53,7 @@
 #include "shill/mock_power_manager.h"
 #include "shill/mock_time.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/store/key_value_store.h"
@@ -3665,7 +3666,7 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
   EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*network(), TimeToNextDHCPLeaseRenewal())
       .WillOnce(Return(base::Minutes(1)));
-  EXPECT_CALL(*network(), RenewDHCPLease());
+  EXPECT_CALL(*network(), RenewDHCPLease(DHCPProvisionReason::kRoaming));
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   EXPECT_FALSE(GetIsRoamingInProgress());
 }

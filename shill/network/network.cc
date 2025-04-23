@@ -41,6 +41,7 @@
 #include "shill/metrics.h"
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_context.h"
 #include "shill/network/network_monitor.h"
@@ -257,7 +258,7 @@ void Network::Start(const Network::StartOptions& opts) {
                                          AsWeakPtr()),
                      base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()),
                      context_.logging_tag());
-    dhcp_started = dhcp_controller_->RenewIP();
+    dhcp_started = dhcp_controller_->RenewIP(DHCPProvisionReason::kConnect);
     if (!dhcp_started) {
       LOG(ERROR) << *this << " " << __func__ << ": Failed to request DHCP IP";
     }
@@ -331,7 +332,7 @@ void Network::StartDHCPPD() {
   if (!dhcp_pd_controller_) {
     LOG(ERROR) << *this << " " << __func__
                << ": Failed to create DHCPv6-PD controller";
-  } else if (!dhcp_pd_controller_->RenewIP()) {
+  } else if (!dhcp_pd_controller_->RenewIP(DHCPProvisionReason::kConnect)) {
     LOG(ERROR) << *this << " " << __func__ << ": Failed to start DHCPv6-PD";
   }
 }
@@ -537,7 +538,7 @@ void Network::OnStaticIPConfigChanged(const net_base::NetworkConfig& config) {
 
   if (dhcp_controller_ && !config.ipv4_address) {
     // Trigger DHCP renew.
-    dhcp_controller_->RenewIP();
+    dhcp_controller_->RenewIP(DHCPProvisionReason::kConnect);
   }
 }
 
@@ -708,13 +709,13 @@ void Network::OnDHCPv6Drop(bool /*is_voluntary*/) {
   StopInternal(/*is_failure=*/true, /*trigger_callback=*/true);
 }
 
-bool Network::RenewDHCPLease() {
+bool Network::RenewDHCPLease(DHCPProvisionReason reason) {
   if (!dhcp_controller_) {
     return false;
   }
   SLOG(2) << *this << " " << __func__;
   // If RenewIP() fails, LegacyDHCPController will output a ERROR log.
-  return dhcp_controller_->RenewIP();
+  return dhcp_controller_->RenewIP(reason);
 }
 
 std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {

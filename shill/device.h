@@ -28,6 +28,7 @@
 #include "shill/geolocation_info.h"
 #include "shill/metrics.h"
 #include "shill/network/connection_diagnostics.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/network.h"
 #include "shill/network/portal_detector.h"
 #include "shill/refptr_types.h"
@@ -223,8 +224,10 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   virtual void SetUsbEthernetMacAddressSource(const std::string& source,
                                               ResultCallback callback);
 
-  // Renew DHCPv4 lease and invalidate the IPv6 config kept in shill.
-  void ForceIPConfigUpdate();
+  // Renews DHCPv4 lease with the given reason and invalidates the IPv6 config
+  // kept in shill. So far only DHCPProvisionReason::kSuspendResume is used in
+  // this function.
+  void ForceIPConfigUpdate(DHCPProvisionReason reason);
 
   // Request the WiFi device to roam to AP with |addr|.
   // This call will send Roam command to wpa_supplicant.

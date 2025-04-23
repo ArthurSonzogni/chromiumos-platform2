@@ -14,8 +14,10 @@
 #include <chromeos/net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/metrics.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_time.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/mock_dhcp_client_proxy.h"
 #include "shill/technology.h"
@@ -28,6 +30,7 @@ constexpr Technology kTechnology = Technology::kEthernet;
 const DHCPController::Options kOptions = {};
 constexpr uint32_t kTimeNowInSeconds = 10;
 constexpr base::TimeDelta kLeaseDuration = base::Minutes(30);
+constexpr DHCPProvisionReason kProvisionReason = DHCPProvisionReason::kConnect;
 
 using testing::_;
 using testing::DoAll;
@@ -76,7 +79,7 @@ class DHCPControllerTest : public ::testing::Test {
         base::BindRepeating(&DHCPControllerTest::DropCallback,
                             base::Unretained(this)),
         "mock_device mock_service sid=mock");
-    EXPECT_TRUE(controller->RenewIP());
+    EXPECT_TRUE(controller->RenewIP(kProvisionReason));
 
     testing::Mock::VerifyAndClearExpectations(&mock_dhcp_client_proxy_factory_);
     return controller;
@@ -95,7 +98,7 @@ class DHCPControllerTest : public ::testing::Test {
         base::BindRepeating(&DHCPControllerTest::DropCallback,
                             base::Unretained(this)),
         "mock_device mock_service sid=mock");
-    EXPECT_FALSE(controller->RenewIP());
+    EXPECT_FALSE(controller->RenewIP(kProvisionReason));
 
     testing::Mock::VerifyAndClearExpectations(&mock_dhcp_client_proxy_factory_);
     return controller;
@@ -146,14 +149,14 @@ TEST_F(DHCPControllerTest, RenewIP) {
   ON_CALL(*mock_dhcp_client_proxy_, IsReady).WillByDefault(Return(true));
   EXPECT_CALL(*mock_dhcp_client_proxy_, Rebind).WillOnce(Return(true));
 
-  EXPECT_TRUE(dhcp_controller_->RenewIP());
+  EXPECT_TRUE(dhcp_controller_->RenewIP(kProvisionReason));
 }
 
 TEST_F(DHCPControllerTest, RenewIPWhenDHCPClientNotReady) {
   ON_CALL(*mock_dhcp_client_proxy_, IsReady).WillByDefault(Return(false));
   EXPECT_CALL(*mock_dhcp_client_proxy_, Rebind).Times(0);
 
-  EXPECT_FALSE(dhcp_controller_->RenewIP());
+  EXPECT_FALSE(dhcp_controller_->RenewIP(kProvisionReason));
 }
 
 TEST_F(DHCPControllerTest, RenewIPWhenDHCPClientNotRunning) {
@@ -170,7 +173,7 @@ TEST_F(DHCPControllerTest, RenewIPWhenDHCPClientNotRunning) {
                    net_base::IPFamily) {
         return std::make_unique<MockDHCPClientProxy>(interface, handler);
       });
-  EXPECT_TRUE(dhcp_controller_->RenewIP());
+  EXPECT_TRUE(dhcp_controller_->RenewIP(kProvisionReason));
 }
 
 TEST_F(DHCPControllerTest, ReleaseIP) {
@@ -225,6 +228,9 @@ TEST_F(DHCPControllerTest, OnProcessExited) {
 }
 
 TEST_F(DHCPControllerTest, FailEvent) {
+  EXPECT_CALL(metrics_, SendDHCPv4ProvisionResultEnumToUMA(
+                            kTechnology, kProvisionReason,
+                            Metrics::DHCPv4ProvisionResult::kClientFailure));
   EXPECT_CALL(*this, DropCallback(false));
 
   dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kFail, {}, {});
@@ -232,6 +238,10 @@ TEST_F(DHCPControllerTest, FailEvent) {
 }
 
 TEST_F(DHCPControllerTest, IPv6OnlyPreferredEvent) {
+  EXPECT_CALL(metrics_,
+              SendDHCPv4ProvisionResultEnumToUMA(
+                  kTechnology, kProvisionReason,
+                  Metrics::DHCPv4ProvisionResult::kIPv6OnlyPreferred));
   EXPECT_CALL(*this, DropCallback(true));
 
   dhcp_controller_->OnDHCPEvent(
@@ -243,9 +253,29 @@ TEST_F(DHCPControllerTest, BoundEvent) {
   const net_base::NetworkConfig network_config = GenerateNetworkConfig();
   const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
 
+  EXPECT_CALL(metrics_, SendDHCPv4ProvisionResultEnumToUMA(
+                            kTechnology, kProvisionReason,
+                            Metrics::DHCPv4ProvisionResult::kSuccess));
   EXPECT_CALL(*this, UpdateCallback(network_config, dhcp_data,
                                     /*new_lease_acquired=*/true));
 
+  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kBound,
+                                network_config, dhcp_data);
+  task_environment_.RunUntilIdle();
+}
+
+TEST_F(DHCPControllerTest, MultipleBoundEvents) {
+  const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+  const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
+
+  // At most one result can be emitted per provision.
+  EXPECT_CALL(metrics_, SendDHCPv4ProvisionResultEnumToUMA(
+                            kTechnology, kProvisionReason,
+                            Metrics::DHCPv4ProvisionResult::kSuccess))
+      .Times(1);
+
+  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kBound,
+                                network_config, dhcp_data);
   dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kBound,
                                 network_config, dhcp_data);
   task_environment_.RunUntilIdle();
@@ -342,6 +372,31 @@ TEST_F(DHCPControllerTest, LeaseExpiry) {
   testing::Mock::VerifyAndClearExpectations(this);
 }
 
+TEST_F(DHCPControllerTest, LeaseExpiryProvisionReason) {
+  const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+  const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
+
+  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kBound,
+                                network_config, dhcp_data);
+
+  // When the lease is expired, the original proxy is removed. We need to create
+  // a new proxy to restart provision.
+  EXPECT_CALL(mock_dhcp_client_proxy_factory_,
+              Create(kDeviceName, kTechnology, kOptions, _, _,
+                     net_base::IPFamily::kIPv4))
+      .WillOnce([](std::string_view interface, Technology,
+                   const DHCPController::Options&,
+                   DHCPClientProxy::EventHandler* handler, std::string_view,
+                   net_base::IPFamily) {
+        return std::make_unique<MockDHCPClientProxy>(interface, handler);
+      });
+  task_environment_.FastForwardBy(kLeaseDuration);
+
+  // Now the provision should be triggered by lease expiration.
+  EXPECT_EQ(DHCPProvisionReason::kLeaseExpiration,
+            dhcp_controller_->provision_reason());
+}
+
 TEST_F(DHCPControllerTest, RenewIPCancelLeaseExpiration) {
   constexpr base::TimeDelta kPeriodBeforeExpiry = base::Seconds(1);
 
@@ -349,7 +404,7 @@ TEST_F(DHCPControllerTest, RenewIPCancelLeaseExpiration) {
 
   // RenewIP() should cancel the lease expiry timeout.
   task_environment_.FastForwardBy(kLeaseDuration - kPeriodBeforeExpiry);
-  dhcp_controller_->RenewIP();
+  dhcp_controller_->RenewIP(kProvisionReason);
 
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricExpiredLeaseLengthSeconds,
                                   kTechnology, _))
@@ -358,10 +413,28 @@ TEST_F(DHCPControllerTest, RenewIPCancelLeaseExpiration) {
 }
 
 TEST_F(DHCPControllerTest, AcquisitionTimeout) {
+  EXPECT_CALL(metrics_, SendDHCPv4ProvisionResultEnumToUMA(
+                            kTechnology, kProvisionReason,
+                            Metrics::DHCPv4ProvisionResult::kTimeout));
   // When no lease is received and acquisition timeout, it should notify the
   // caller.
   EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/false));
 
+  task_environment_.FastForwardBy(DHCPController::kAcquisitionTimeout);
+}
+
+TEST_F(DHCPControllerTest, AcquisitionTimeoutWithNak) {
+  // If any NAK was received during provision, kNak instead of kTimeout should
+  // be reported as the DHCPv4ProvisionResult.
+  EXPECT_CALL(metrics_, SendDHCPv4ProvisionResultEnumToUMA(
+                            kTechnology, kProvisionReason,
+                            Metrics::DHCPv4ProvisionResult::kNak));
+  EXPECT_CALL(metrics_, SendDHCPv4ProvisionResultEnumToUMA(
+                            kTechnology, kProvisionReason,
+                            Metrics::DHCPv4ProvisionResult::kTimeout))
+      .Times(0);
+
+  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kNak, {}, {});
   task_environment_.FastForwardBy(DHCPController::kAcquisitionTimeout);
 }
 

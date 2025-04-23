@@ -52,6 +52,7 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/scope_logger.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_accessor.h"
@@ -2761,7 +2762,7 @@ void WiFi::StateChanged(const std::string& new_state) {
         if (GetPrimaryNetwork()->TimeToNextDHCPLeaseRenewal() != std::nullopt) {
           LOG(INFO) << link_name() << " renewing L3 configuration after roam.";
           RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPRenewOnRoam);
-          GetPrimaryNetwork()->RenewDHCPLease();
+          GetPrimaryNetwork()->RenewDHCPLease(DHCPProvisionReason::kRoaming);
           affected_service->SetRoamState(Service::kRoamStateConfiguring);
         }
       } else if (affected_service->is_rekey_in_progress()) {
@@ -3154,7 +3155,8 @@ void WiFi::OnBeforeSuspend(ResultCallback callback) {
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), std::move(callback),
       base::BindOnce(&Device::ForceIPConfigUpdate,
-                     weak_ptr_factory_while_started_.GetWeakPtr()),
+                     weak_ptr_factory_while_started_.GetWeakPtr(),
+                     DHCPProvisionReason::kSuspendResume),
       base::BindOnce(&WiFi::RemoveSupplicantNetworks,
                      weak_ptr_factory_while_started_.GetWeakPtr()),
       GetPrimaryNetwork()->TimeToNextDHCPLeaseRenewal());
@@ -3176,7 +3178,8 @@ void WiFi::OnDarkResume(ResultCallback callback) {
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), std::move(callback),
       base::BindOnce(&Device::ForceIPConfigUpdate,
-                     weak_ptr_factory_while_started_.GetWeakPtr()),
+                     weak_ptr_factory_while_started_.GetWeakPtr(),
+                     DHCPProvisionReason::kSuspendResume),
       base::BindOnce(&WiFi::InitiateScanInDarkResume,
                      weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindRepeating(&WiFi::RemoveSupplicantNetworks,

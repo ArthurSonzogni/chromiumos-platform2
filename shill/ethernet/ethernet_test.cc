@@ -393,7 +393,7 @@ TEST_F(EthernetTest, ConnectToSuccess) {
     auto dhcp_controller = std::make_unique<MockDHCPController>(
         nullptr, nullptr, nullptr, nullptr, ifname_, Technology::kEthernet,
         DHCPController::Options{}, base::DoNothing(), base::DoNothing());
-    EXPECT_CALL(*dhcp_controller, RenewIP()).WillOnce(Return(true));
+    EXPECT_CALL(*dhcp_controller, RenewIP).WillOnce(Return(true));
     return dhcp_controller;
   });
   EXPECT_CALL(*mock_service_, SetState(Service::kStateConfiguring));

@@ -13,6 +13,7 @@
 
 #include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/technology.h"
 #include "shill/time.h"
@@ -38,7 +39,7 @@ class MockDHCPController : public DHCPController {
   void TriggerDropCallback(bool is_voluntary);
 
   MOCK_METHOD(bool, ReleaseIP, (ReleaseReason), (override));
-  MOCK_METHOD(bool, RenewIP, (), (override));
+  MOCK_METHOD(bool, RenewIP, (DHCPProvisionReason), (override));
 
  private:
   UpdateCallback update_callback_;

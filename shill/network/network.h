@@ -33,6 +33,7 @@
 #include "shill/mockable.h"
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_context.h"
 #include "shill/network/network_monitor.h"
@@ -299,9 +300,10 @@ class Network : public NetworkMonitor::ClientNetwork {
   const net_base::NetworkConfig* GetSavedIPConfig() const;
 
   // Functions for DHCP.
-  // Initiates renewal of existing DHCP lease. Return false if the renewal
-  // failed immediately, or we don't have active lease now.
-  mockable bool RenewDHCPLease();
+  // Initiates renewal of existing DHCP lease with the given reason. Return
+  // false if the renewal failed immediately, or if we don't have active lease
+  // now.
+  mockable bool RenewDHCPLease(DHCPProvisionReason reason);
   // Calculates the duration till a DHCP lease is due for renewal, and stores
   // this value in |result|. Returns std::nullopt if there is no upcoming DHCP
   // lease renewal, base::TimeDelta wrapped in std::optional otherwise.

@@ -34,6 +34,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_network.h"
@@ -67,6 +68,8 @@ constexpr char kHostname[] = "hostname";
 const DHCPController::Options kDHCPOptions = {
     .hostname = kHostname,
 };
+constexpr DHCPProvisionReason kDHCPRenewReason =
+    DHCPProvisionReason::kSuspendResume;
 
 // IPv4 properties from DHCP.
 constexpr char kIPv4DHCPAddress[] = "192.168.1.2";
@@ -567,12 +570,13 @@ TEST_F(NetworkTest, ResetUseARPGatewayWhenStaticIP) {
 TEST_F(NetworkTest, DHCPRenew) {
   ExpectCreateDHCPController(true);
   network_->Start(Network::StartOptions{.dhcp = kDHCPOptions});
-  EXPECT_CALL(*dhcp_controller_, RenewIP()).WillOnce(Return(true));
-  EXPECT_TRUE(network_->RenewDHCPLease());
+  EXPECT_CALL(*dhcp_controller_, RenewIP(kDHCPRenewReason))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(network_->RenewDHCPLease(kDHCPRenewReason));
 }
 
 TEST_F(NetworkTest, DHCPRenewWithoutController) {
-  EXPECT_FALSE(network_->RenewDHCPLease());
+  EXPECT_FALSE(network_->RenewDHCPLease(kDHCPRenewReason));
 }
 
 TEST_F(NetworkTest, DHCPPDStartOnNetworkStart) {
@@ -1758,7 +1762,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
   VerifyIPConfigs(IPConfigType::kIPv4DHCPWithStatic, IPConfigType::kNone);
 
   // Reset static IP, DHCP should be renewed.
-  EXPECT_CALL(*dhcp_controller_, RenewIP());
+  EXPECT_CALL(*dhcp_controller_, RenewIP(DHCPProvisionReason::kConnect));
   network_->OnStaticIPConfigChanged({});
 }
 

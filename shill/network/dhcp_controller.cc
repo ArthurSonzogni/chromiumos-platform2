@@ -19,6 +19,7 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/network/dhcp_client_proxy.h"
+#include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/store/key_value_store.h"
 #include "shill/technology.h"
@@ -70,8 +71,9 @@ DHCPController::DHCPController(
 
 DHCPController::~DHCPController() = default;
 
-bool DHCPController::RenewIP() {
+bool DHCPController::RenewIP(DHCPProvisionReason reason) {
   SLOG(this, 2) << logging_tag_ << " " << __func__;
+  UpdateProvisionStatus(reason);
   if (!dhcp_client_proxy_) {
     return Start();
   }
@@ -79,6 +81,7 @@ bool DHCPController::RenewIP() {
   if (!dhcp_client_proxy_->IsReady()) {
     LOG(ERROR) << logging_tag_ << " " << __func__
                << ": Unable to renew IP before acquiring destination.";
+    ResetProvisionStatus();
     return false;
   }
 
@@ -119,10 +122,14 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
     case DHCPClientProxy::EventReason::kFail:
       LOG(ERROR) << logging_tag_ << " " << __func__
                  << ": Received failure event from DHCP client.";
+      SendDHCPv4ProvisionResultMetrics(
+          Metrics::DHCPv4ProvisionResult::kClientFailure);
       NotifyDropCallback(false);
       return;
 
     case DHCPClientProxy::EventReason::kIPv6OnlyPreferred:
+      SendDHCPv4ProvisionResultMetrics(
+          Metrics::DHCPv4ProvisionResult::kIPv6OnlyPreferred);
       NotifyDropCallback(true);
       return;
 
@@ -132,6 +139,7 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
       LOG_IF(ERROR, is_gateway_arp_active_)
           << logging_tag_ << " " << __func__
           << ": Received NAK event for our gateway-ARP lease.";
+      nak_received_ = true;
       is_gateway_arp_active_ = false;
       return;
 
@@ -139,6 +147,10 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
     case DHCPClientProxy::EventReason::kRebind:
     case DHCPClientProxy::EventReason::kReboot:
     case DHCPClientProxy::EventReason::kRenew:
+      SendDHCPv4ProvisionResultMetrics(
+          Metrics::DHCPv4ProvisionResult::kSuccess);
+      [[fallthrough]];
+
     case DHCPClientProxy::EventReason::kBound6:
     case DHCPClientProxy::EventReason::kRebind6:
     case DHCPClientProxy::EventReason::kReboot6:
@@ -243,6 +255,9 @@ bool DHCPController::Start() {
 
   dhcp_client_proxy_ = create_dhcp_client_proxy_cb_.Run(family_);
   if (dhcp_client_proxy_ == nullptr) {
+    LOG(ERROR) << logging_tag_ << " " << __func__
+               << ": Unable to create DHCP client proxy.";
+    ResetProvisionStatus();
     return false;
   }
 
@@ -259,6 +274,7 @@ void DHCPController::Stop() {
 
   is_lease_active_ = false;
   is_gateway_arp_active_ = false;
+  ResetProvisionStatus();
 }
 
 void DHCPController::OnProcessExited(int pid, int exit_status) {
@@ -285,6 +301,12 @@ void DHCPController::ProcessAcquisitionTimeout() {
   LOG(ERROR) << logging_tag_ << " " << __func__
              << ": Timed out waiting for DHCP lease (after "
              << kAcquisitionTimeout.InSeconds() << " seconds).";
+
+  // Send kNak if any NAK from the DHCP server was received during provision,
+  // otherwise send kTimeout.
+  SendDHCPv4ProvisionResultMetrics(
+      nak_received_ ? Metrics::DHCPv4ProvisionResult::kNak
+                    : Metrics::DHCPv4ProvisionResult::kTimeout);
 
   // Continue to use previous lease if gateway ARP is active.
   if (is_gateway_arp_active_) {
@@ -318,6 +340,7 @@ void DHCPController::ProcessExpirationTimeout(base::TimeDelta lease_duration) {
                       lease_duration.InSeconds());
 
   Stop();
+  UpdateProvisionStatus(DHCPProvisionReason::kLeaseExpiration);
   if (!Start()) {
     NotifyDropCallback(false);
   }
@@ -332,6 +355,35 @@ void DHCPController::UpdateLeaseExpirationTime(uint32_t new_lease_duration) {
 
 void DHCPController::ResetLeaseExpirationTime() {
   current_lease_expiration_time_ = std::nullopt;
+}
+
+void DHCPController::UpdateProvisionStatus(DHCPProvisionReason reason) {
+  provision_reason_ = reason;
+  nak_received_ = false;
+}
+
+void DHCPController::ResetProvisionStatus() {
+  provision_reason_.reset();
+  nak_received_ = false;
+}
+
+void DHCPController::SendDHCPv4ProvisionResultMetrics(
+    Metrics::DHCPv4ProvisionResult result) {
+  // Only send DHCPv4 result.
+  if (family_ == net_base::IPFamily::kIPv6) {
+    return;
+  }
+
+  if (!provision_reason_) {
+    return;
+  }
+
+  metrics_->SendDHCPv4ProvisionResultEnumToUMA(technology_, *provision_reason_,
+                                               result);
+
+  // Reset the provision status so that we won't report a result again for
+  // current provision.
+  ResetProvisionStatus();
 }
 
 std::optional<base::TimeDelta>
