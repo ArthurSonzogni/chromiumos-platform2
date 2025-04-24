@@ -281,6 +281,32 @@ TEST_F(DHCPControllerTest, MultipleBoundEvents) {
   task_environment_.RunUntilIdle();
 }
 
+TEST_F(DHCPControllerTest, RenewEvent) {
+  const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+  const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
+
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricDHCPv4RenewRebind, kTechnology,
+                            Metrics::DHCPv4RenewRebind::kRenew));
+
+  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kRenew,
+                                network_config, dhcp_data);
+  task_environment_.RunUntilIdle();
+}
+
+TEST_F(DHCPControllerTest, RebindEvent) {
+  const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+  const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
+
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricDHCPv4RenewRebind, kTechnology,
+                            Metrics::DHCPv4RenewRebind::kRebind));
+
+  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kRebind,
+                                network_config, dhcp_data);
+  task_environment_.RunUntilIdle();
+}
+
 TEST_F(DHCPControllerTest, GatewayArpEvent) {
   const net_base::NetworkConfig network_config = GenerateNetworkConfig();
   const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};

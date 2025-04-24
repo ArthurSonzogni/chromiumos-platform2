@@ -1041,6 +1041,19 @@ class Metrics {
           .num_buckets = kTimerHistogramNumBuckets,
   };
 
+  // Types of requests that dhcpcd may initiate to reacquire a DHCPv4 lease.
+  enum DHCPv4RenewRebind {
+    kRenew = 0,
+    kRebind = 1,
+    kDHCPv4RenewRebindMax,
+  };
+  // Number of successful attempts that dhcpcd reacquires a DHCPv4 lease with
+  // renew/rebind.
+  static constexpr EnumMetric<NameByTechnology> kMetricDHCPv4RenewRebind = {
+      .n = NameByTechnology{"DHCPv4RenewRebind"},
+      .max = kDHCPv4RenewRebindMax,
+  };
+
   // WiFi disconnect type, indicates the source of the WiFi disconnection.
   enum WiFiDisconnectType {
     // The disconnection is due to a system error

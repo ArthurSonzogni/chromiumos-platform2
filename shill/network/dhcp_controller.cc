@@ -143,10 +143,22 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
       is_gateway_arp_active_ = false;
       return;
 
-    case DHCPClientProxy::EventReason::kBound:
-    case DHCPClientProxy::EventReason::kRebind:
-    case DHCPClientProxy::EventReason::kReboot:
     case DHCPClientProxy::EventReason::kRenew:
+      metrics_->SendEnumToUMA(Metrics::kMetricDHCPv4RenewRebind, technology_,
+                              Metrics::DHCPv4RenewRebind::kRenew);
+      SendDHCPv4ProvisionResultMetrics(
+          Metrics::DHCPv4ProvisionResult::kSuccess);
+      return;
+
+    case DHCPClientProxy::EventReason::kRebind:
+      metrics_->SendEnumToUMA(Metrics::kMetricDHCPv4RenewRebind, technology_,
+                              Metrics::DHCPv4RenewRebind::kRebind);
+      SendDHCPv4ProvisionResultMetrics(
+          Metrics::DHCPv4ProvisionResult::kSuccess);
+      return;
+
+    case DHCPClientProxy::EventReason::kBound:
+    case DHCPClientProxy::EventReason::kReboot:
       SendDHCPv4ProvisionResultMetrics(
           Metrics::DHCPv4ProvisionResult::kSuccess);
       [[fallthrough]];
