@@ -322,12 +322,17 @@ where
         &mut self,
         timestamp: u64,
         bitstream: &[u8],
-        _codec_specific_data: bool,
+        codec_specific_data: bool,
         alloc_cb: &mut dyn FnMut() -> Option<
             <<B as StatelessDecoderBackend>::Handle as DecodedHandle>::Frame,
         >,
     ) -> Result<(usize, bool), DecodeError> {
         let mut processed_visible_frame = false;
+
+        if codec_specific_data {
+            log::debug!("discarding {} bytes of codec specific data", bitstream.len());
+            return Ok((bitstream.len(), processed_visible_frame));
+        }
 
         let obu = match self
             .codec
