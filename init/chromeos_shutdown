@@ -120,7 +120,7 @@ collect_shutdown_umount_failure_logs() {
     # Get a list of processes with files open. lsof is verbose: keep it at the
     # end of the log.
     echo "Processes with files open:"
-    lsof -n /mnt/stateful_partition /var /home/chronos
+    lsof -n /mnt/stateful_partition /mnt/chromeos_metadata_partition /var /home/chronos
     cat "${PROCESS_KILLER_LOG}"
   ) >/run/shutdown_umount_failure.log 2>&1
 }
@@ -262,6 +262,10 @@ rc="$?"
 
 # Check if /home is mounted before attempting to umount().
 umount_mountpoint "/home"
+: "$(( rc |= $? ))"
+
+# Check if /mnt/chromeos_metadata_partition is unmounted.
+umount_mountpoint "/mnt/chromeos_metadata_partition"
 : "$(( rc |= $? ))"
 
 # Unmount /mnt/stateful_partition only if the previous unmounts succeeded.

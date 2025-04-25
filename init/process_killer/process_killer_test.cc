@@ -69,6 +69,17 @@ ActiveProcess GetUsrLocalProcess(pid_t pid,
                        {{base::FilePath("/usr/local/foo")}});
 }
 
+ActiveProcess GetMetadataPartitionProcess(pid_t pid,
+                                          const std::string& comm,
+                                          bool root_ns) {
+  return ActiveProcess(
+      pid, root_ns, comm,
+      {{base::FilePath("/mnt/chromeos_metadata_partition"),
+        base::FilePath("/mnt/chromeos_metadata_partition"),
+        std::string("/dev/mmcblk0p1")}},
+      {{base::FilePath("/mnt/chromeos_metadata_partition/foo")}});
+}
+
 TEST(ProcessKiller, SessionIrrelevantProcessTest) {
   std::unique_ptr<FakeProcessManager> pm =
       std::make_unique<FakeProcessManager>();
@@ -221,6 +232,22 @@ TEST(ProcessKiller, MountFilterTest) {
           "[\"/usr/local/foo\", \"/usr/local/bar\"]" /*mount_filter*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, false);
+
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
+}
+
+TEST(ProcessKiller, MetadataPartitionFileOpenTest) {
+  std::unique_ptr<FakeProcessManager> pm =
+      std::make_unique<FakeProcessManager>();
+  FakeProcessManager* fake_pm = pm.get();
+  fake_pm->SetProcessListForTesting(
+      {GetMetadataPartitionProcess(7, "dlcservice", true)});
+
+  std::unique_ptr<ProcessKiller> process_killer =
+      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/,
+                                      "" /*mount_filter*/);
+  process_killer->SetProcessManagerForTesting(std::move(pm));
+  process_killer->KillProcesses(true, true);
 
   EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
 }

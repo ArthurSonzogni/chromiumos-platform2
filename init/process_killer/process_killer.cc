@@ -32,18 +32,27 @@ constexpr char const* kSessionMountRegexes[] = {
     "/run/daemon-store",
 };
 
-constexpr char const* kSystemMountRegexes[] = {"/var", "/home", "/usr/local",
-                                               "/mnt/stateful_partition"};
+constexpr char const* kSystemMountRegexes[] = {
+    "/var",
+    "/home",
+    "/usr/local",
+    "/mnt/stateful_partition",
+    "/mnt/chromeos_metadata_partition"
+};
 
 constexpr char const* kSessionDeviceRegexes[] = {
     "/dev/mapper/dmcrypt-",
 };
 
 constexpr char const* kSystemDeviceRegexes[] = {
+    "/dev/mapper/defaultkey_stateful",
     "/dev/mapper/encstateful",
     "/dev/sd[a-z]1",
+    "/dev/sd[a-z]11",
     "/dev/mmcblk[0-9]p1",
+    "/dev/mmcblk[0-9]p11",
     "/dev/nvme[0-9]n[0-9]p1",
+    "/dev/nvme[0-9]n[0-9]p11",
 };
 
 constexpr char kMatchNothingRegex[] = "$^";
