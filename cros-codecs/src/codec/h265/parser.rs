@@ -1708,7 +1708,7 @@ pub struct SliceHeader {
     /// num_entry_point_offsets + 1 subsets, with subset index values ranging
     /// from 0 to num_entry_point_offsets, inclusive. See the specification for
     /// more details.
-    pub entry_point_offset_minus1: [u32; 32],
+    pub entry_point_offset_minus1: Vec<u32>,
     /// Same as NumPicTotalCurr in the specification.
     pub num_pic_total_curr: u32,
     // Size of slice_header() in bits.
@@ -1771,7 +1771,7 @@ impl Default for SliceHeader {
             loop_filter_across_slices_enabled_flag: Default::default(),
             num_entry_point_offsets: Default::default(),
             offset_len_minus1: Default::default(),
-            entry_point_offset_minus1: Default::default(),
+            entry_point_offset_minus1: Vec::new(),
             num_pic_total_curr: Default::default(),
             header_bit_size: Default::default(),
             n_emulation_prevention_bytes: Default::default(),
@@ -1804,7 +1804,7 @@ impl<'a> Slice<'a> {
             let segment_address = self.header.segment_address;
 
             let offset_len_minus1 = self.header.offset_len_minus1;
-            let entry_point_offset_minus1 = self.header.entry_point_offset_minus1;
+            let entry_point_offset_minus1 = self.header.entry_point_offset_minus1.clone();
             let num_pic_total_curr = self.header.num_pic_total_curr;
             let header_bit_size = self.header.header_bit_size;
             let n_emulation_prevention_bytes = self.header.n_emulation_prevention_bytes;
@@ -4080,6 +4080,7 @@ impl Parser {
 
             hdr.num_entry_point_offsets = r.read_ue_max(max)?;
             if hdr.num_entry_point_offsets > 0 {
+                hdr.entry_point_offset_minus1.resize(hdr.num_entry_point_offsets as usize, 0);
                 hdr.offset_len_minus1 = r.read_ue_max(31)?;
                 for i in 0..hdr.num_entry_point_offsets as usize {
                     let num_bits = usize::from(hdr.offset_len_minus1 + 1);
