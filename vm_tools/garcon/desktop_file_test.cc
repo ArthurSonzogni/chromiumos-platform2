@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -59,9 +60,9 @@ class DesktopFileTest : public ::testing::Test {
     env->SetVar("XDG_DATA_DIRS", temp_dir_.GetPath().value());
     base::FilePath sys_path = temp_dir_.GetPath().Append("path");
     CHECK(base::CreateDirectory(sys_path));
-    std::string curr_path;
-    CHECK(env->GetVar("PATH", &curr_path));
-    env->SetVar("PATH", curr_path + ":" + sys_path.value());
+    std::optional<std::string> curr_path = env->GetVar("PATH");
+    CHECK(curr_path.has_value());
+    env->SetVar("PATH", curr_path.value() + ":" + sys_path.value());
   }
   DesktopFileTest(const DesktopFileTest&) = delete;
   DesktopFileTest& operator=(const DesktopFileTest&) = delete;

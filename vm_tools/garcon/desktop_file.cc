@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/garcon/desktop_file.h"
+
 #include <stdlib.h>
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/environment.h>
@@ -16,7 +19,6 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
-#include "vm_tools/garcon/desktop_file.h"
 #include "vm_tools/garcon/ini_parse_util.h"
 #include "vm_tools/garcon/xdg_util.h"
 
@@ -477,14 +479,16 @@ bool DesktopFile::ShouldPassToHost() const {
       }
     } else {
       // Search the system path instead.
-      std::string path;
-      if (!base::Environment::Create()->GetVar(kPathEnvVar, &path)) {
+      std::optional<std::string> path =
+          base::Environment::Create()->GetVar(kPathEnvVar);
+      if (!path.has_value()) {
         // If there's no PATH set we can't search.
         return false;
       }
       bool found_match = false;
-      for (std::string_view cur_path : base::SplitStringPiece(
-               path, ":", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+      for (std::string_view cur_path :
+           base::SplitStringPiece(path.value(), ":", base::KEEP_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY)) {
         base::FilePath file(cur_path);
         int permissions;
         if (base::GetPosixFilePermissions(file.Append(try_exec_),

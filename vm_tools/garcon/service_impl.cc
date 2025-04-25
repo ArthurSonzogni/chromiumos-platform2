@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -417,11 +418,11 @@ grpc::Status ServiceImpl::GetDebugInformation(
 
   // Their username might be PII so filter it out of the logs.
   std::unique_ptr<base::Environment> env = base::Environment::Create();
-  std::string username;
-  if (!env->GetVar("USER", &username)) {
+  std::optional<std::string> username = env->GetVar("USER");
+  if (!username.has_value()) {
     LOG(ERROR) << "Unable to retrieve username from environment";
   } else {
-    base::ReplaceSubstringsAfterOffset(debug_information, 0, username,
+    base::ReplaceSubstringsAfterOffset(debug_information, 0, username.value(),
                                        "$USERNAME");
   }
   return grpc::Status::OK;
@@ -600,11 +601,17 @@ grpc::Status ServiceImpl::GetGarconSessionInfo(
   }
   response->set_sftp_vsock_port(host_notifier_->sftp_vsock_port());
   auto env = base::Environment::Create();
-  if (!env->GetVar("USER", response->mutable_container_username())) {
+  std::optional<std::string> env_var = env->GetVar("USER");
+  if (!env_var.has_value()) {
     LOG(ERROR) << "$USER not set";
+  } else {
+    *response->mutable_container_username() = env_var.value();
   }
-  if (!env->GetVar("HOME", response->mutable_container_homedir())) {
+  env_var = env->GetVar("HOME");
+  if (!env_var.has_value()) {
     LOG(ERROR) << "$HOME not set";
+  } else {
+    *response->mutable_container_homedir() = env_var.value();
   }
   response->set_status(
       vm_tools::container::GetGarconSessionInfoResponse::SUCCEEDED);
