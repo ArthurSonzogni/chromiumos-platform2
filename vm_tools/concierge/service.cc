@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -568,6 +569,48 @@ uint64_t CalculateDesiredDiskSize(base::FilePath disk_location,
   return std::max(disk_size, kMinimumDiskSize);
 }
 
+// Returns true if a disk image has a set xattr matching the desired vm_type.
+std::optional<vm_tools::apps::VmType> GetDiskImageVmType(
+    const std::string& disk_path) {
+  // VmType is assumed to be >=0 and <=99
+  static const int xattr_max_size = 2;
+  std::string xattr_vm_type;
+  xattr_vm_type.resize(xattr_max_size);
+
+  ssize_t bytes_read = getxattr(disk_path.c_str(), kDiskImageVmTypeXattr,
+                                xattr_vm_type.data(), sizeof(xattr_vm_type));
+  if (bytes_read < 0) {
+    LOG(ERROR) << "Unable to obtain xattr " << kDiskImageVmTypeXattr
+               << " for file " << disk_path << " [" << strerror(errno) << "]";
+    return {};
+  }
+  if (bytes_read <= xattr_max_size) {
+    xattr_vm_type.resize(bytes_read);
+  }
+
+  int vm_type_int;
+  if (!base::StringToInt(xattr_vm_type, &vm_type_int)) {
+    LOG(ERROR) << "VM type xattr of " << xattr_vm_type
+               << " was not a valid int.";
+    return {};
+  }
+  if (!vm_tools::apps::VmType_IsValid(vm_type_int)) {
+    LOG(ERROR) << "VM type of " << vm_type_int << " was not valid.";
+    return {};
+  }
+  vm_tools::apps::VmType disk_image_vm_type =
+      static_cast<vm_tools::apps::VmType>(vm_type_int);
+
+  return disk_image_vm_type;
+}
+
+bool SetDiskImageVmType(const base::ScopedFD& fd,
+                        vm_tools::apps::VmType vm_type) {
+  std::string vm_type_str = base::NumberToString(static_cast<int>(vm_type));
+  return fsetxattr(fd.get(), kDiskImageVmTypeXattr, vm_type_str.c_str(),
+                   vm_type_str.size(), 0) == 0;
+}
+
 // Returns true if the disk should not be automatically resized because it is
 // not sparse and its size was specified by the user.
 bool IsDiskPreallocatedWithUserChosenSize(const std::string& disk_path) {
@@ -1092,6 +1135,10 @@ bool Service::ListVmDisksInLocation(const std::string& cryptohome_id,
     image->set_user_chosen_size(
         IsDiskPreallocatedWithUserChosenSize(path.value()));
     image->set_path(path.value());
+    auto vm_type = GetDiskImageVmType(path.value());
+    if (vm_type.has_value() && vm_type == vm_tools::apps::VmType::BAGUETTE) {
+      image->set_vm_type(ToLegacyVmType(vm_tools::apps::VmType::BAGUETTE));
+    }
   }
 
   response->set_total_size(response->total_size() + total_size);
@@ -2821,20 +2868,29 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
 
     if (request.copy_baguette_image()) {
       if (!in_fd.is_valid()) {
-        LOG(ERROR) << "CreateDiskImage: fd is not valid";
+        PLOG(ERROR) << "CreateDiskImage: fd is not valid";
+        unlink(disk_path.value().c_str());
         response.set_status(DISK_STATUS_FAILED);
         response.set_failure_reason("fd is not valid");
         return response;
       }
 
       if (!WriteSourceImageToDisk(in_fd, fd)) {
+        PLOG(ERROR) << "Failed to create disk from provided disk image";
+        unlink(disk_path.value().c_str());
         response.set_status(DISK_STATUS_FAILED);
-        LOG(ERROR) << "Failed to create disk from provided disk image";
+        response.set_failure_reason("unable to write source image to disk");
         return response;
       }
       LOG(INFO) << "Disk image created from compressed image";
       response.set_status(DISK_STATUS_CREATED);
       response.set_disk_path(disk_path.value());
+
+      if (!SetDiskImageVmType(fd, vm_tools::apps::VmType::BAGUETTE)) {
+        LOG(WARNING) << "Unable to set xattr for disk image's VmType";
+      } else {
+        LOG(INFO) << "Set xattr for disk image.";
+      }
     }
 
     if (!is_sparse) {

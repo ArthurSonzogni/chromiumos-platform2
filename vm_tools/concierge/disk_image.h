@@ -32,6 +32,8 @@ class Service;
 // disk image and it should not be resized.
 constexpr char kDiskImagePreallocatedWithUserChosenSizeXattr[] =
     "user.crostini.user_chosen_size";
+// Extended attribute indicating the vm_type of the image.
+constexpr char kDiskImageVmTypeXattr[] = "user.crostini.vm_type";
 
 class DiskImageOperation {
  public:
