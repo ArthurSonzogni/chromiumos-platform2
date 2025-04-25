@@ -60,7 +60,11 @@ static bool is_widevine_cbc_device(int fd) {
  * HW decode.
  */
 static bool is_amd_protected_content(int fd) {
+#if defined(ENABLE_L1HWDRM)
   return (access("/dev/tee0", F_OK) == 0) && is_amd_implementation(fd);
+#else
+  return false;
+#endif
 }
 
 /* Helper function for detect_video_prot_cencv1_h264_cbc.
@@ -202,7 +206,11 @@ static bool is_vaapi_prot_vp9_cencv3_ctr_device(int fd) {
  * HW decode.
  */
 static bool is_mtk_protected_content() {
+#if defined(ENABLE_L1HWDRM)
   return (access("/dev/dma_heap/restricted_mtk_cma", F_OK) == 0);
+#else
+  return false;
+#endif
 }
 #endif  // defined(USE_V4L2_CODEC)
 

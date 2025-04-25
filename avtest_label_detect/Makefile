@@ -17,6 +17,10 @@ ifeq ($(USE_V4L2_CODEC),yes)
   V4L2_OBJS = $(filter util_v4l2.o,$(C_OBJECTS))
 endif
 
+ifeq ($(ENABLE_L1HWDRM),yes)
+  CPPFLAGS += -DENABLE_L1HWDRM
+endif
+
 ifneq ($(PC_DEPS),)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
