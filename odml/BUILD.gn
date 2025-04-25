@@ -141,6 +141,8 @@ source_set("mojo_bindings_lib") {
     "mojom/uuid_mojom_traits.h",
     "on_device_model/ml/chrome_ml_types_traits.cc",
     "on_device_model/ml/chrome_ml_types_traits.h",
+    "on_device_model/public/cpp/capabilities.h",
+    "on_device_model/public/cpp/capabilities_mojom_traits.h",
   ]
   public_deps = [ ":mojo_bindings" ]
   configs += [ ":target_defaults" ]

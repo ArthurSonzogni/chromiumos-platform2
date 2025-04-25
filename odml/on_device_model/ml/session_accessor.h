@@ -28,7 +28,9 @@ class SessionAccessor {
       const ChromeML& chrome_ml,
       scoped_refptr<base::SequencedTaskRunner> task_runner,
       ChromeMLModel model,
-      on_device_model::mojom::LoadAdaptationParamsPtr params = nullptr);
+      on_device_model::mojom::SessionParamsPtr params,
+      on_device_model::mojom::LoadAdaptationParamsPtr adaptation_params,
+      std::optional<uint32_t> adaptation_id);
 
   ~SessionAccessor();
 
@@ -51,7 +53,10 @@ class SessionAccessor {
                   ChromeMLModel model);
 
   void CloneFrom(SessionAccessor* other);
-  void CreateInternal(on_device_model::mojom::LoadAdaptationParamsPtr params);
+  void CreateInternal(
+      on_device_model::mojom::SessionParamsPtr params,
+      on_device_model::mojom::LoadAdaptationParamsPtr adaptation_params,
+      std::optional<uint32_t> adaptation_id);
   void AppendInternal(on_device_model::mojom::AppendOptionsPtr append_options,
                       ChromeMLContextSavedFn context_saved_fn,
                       scoped_refptr<Canceler> canceler);

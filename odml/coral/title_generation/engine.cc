@@ -471,7 +471,7 @@ void TitleGenerationEngine::DoProcess(
   }
 
   auto session = SimpleSession::New();
-  model_->StartSession(session->BindReceiver());
+  model_->StartSession(session->BindReceiver(), nullptr);
   if (!session->is_bound()) {
     std::move(callback).Run(std::move(observer), std::move(groups),
                             base::unexpected(CoralError::kLoadModelFailed));

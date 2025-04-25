@@ -49,6 +49,8 @@ struct AdaptationAssetPaths {
 // for execution.
 struct AdaptationAssets {
   AdaptationAssets();
+  AdaptationAssets(const AdaptationAssets&);
+  AdaptationAssets& operator=(const AdaptationAssets&);
   AdaptationAssets(AdaptationAssets&&);
   AdaptationAssets& operator=(AdaptationAssets&&);
   ~AdaptationAssets();

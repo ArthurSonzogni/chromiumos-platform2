@@ -178,7 +178,7 @@ class OnDeviceModelServiceTest : public testing::Test {
                                         const std::string& input) {
     TestResponseHolder response;
     mojo::Remote<mojom::Session> session;
-    model.StartSession(session.BindNewPipeAndPassReceiver());
+    model.StartSession(session.BindNewPipeAndPassReceiver(), nullptr);
     auto options = mojom::AppendOptions::New();
     options->input =
         mojom::Input::New(std::vector<ml::InputPiece>{ml::InputPiece(input)});
@@ -213,7 +213,7 @@ TEST_F(OnDeviceModelServiceTest, Append) {
 
   TestResponseHolder response;
   mojo::Remote<mojom::Session> session;
-  model->StartSession(session.BindNewPipeAndPassReceiver());
+  model->StartSession(session.BindNewPipeAndPassReceiver(), nullptr);
   session->Append(MakeInput("cheese"), {});
   session->Append(MakeInput("more"), {});
   session->Append(MakeInput("cheddar"), {});
@@ -229,7 +229,7 @@ TEST_F(OnDeviceModelServiceTest, CloneContextAndContinue) {
   auto model = LoadModel();
 
   mojo::Remote<mojom::Session> session;
-  model->StartSession(session.BindNewPipeAndPassReceiver());
+  model->StartSession(session.BindNewPipeAndPassReceiver(), nullptr);
   session->Append(MakeInput("cheese"), {});
   session->Append(MakeInput("more"), {});
 
@@ -277,8 +277,8 @@ TEST_F(OnDeviceModelServiceTest, MultipleSessionsAppend) {
   TestResponseHolder response1, response2, response3, response4, response5;
   mojo::Remote<mojom::Session> session1, session2, session3, session4, session5;
 
-  model->StartSession(session1.BindNewPipeAndPassReceiver());
-  model->StartSession(session2.BindNewPipeAndPassReceiver());
+  model->StartSession(session1.BindNewPipeAndPassReceiver(), nullptr);
+  model->StartSession(session2.BindNewPipeAndPassReceiver(), nullptr);
 
   session1->Append(MakeInput("cheese"), {});
   session1->Append(MakeInput("more"), {});
@@ -332,7 +332,7 @@ TEST_F(OnDeviceModelServiceTest, CountTokens) {
 
   TestResponseHolder response;
   mojo::Remote<mojom::Session> session;
-  model->StartSession(session.BindNewPipeAndPassReceiver());
+  model->StartSession(session.BindNewPipeAndPassReceiver(), nullptr);
   session->Append(MakeInput("cheese"), {});
   session->Append(MakeInput("more"), {});
 
@@ -350,7 +350,7 @@ TEST_F(OnDeviceModelServiceTest, AppendWithTokenLimits) {
 
   TestResponseHolder response;
   mojo::Remote<mojom::Session> session;
-  model->StartSession(session.BindNewPipeAndPassReceiver());
+  model->StartSession(session.BindNewPipeAndPassReceiver(), nullptr);
 
   std::string input = "big cheese";
   ContextClientWaiter client1;
@@ -379,12 +379,12 @@ TEST_F(OnDeviceModelServiceTest, MultipleSessionsWaitPreviousSession) {
 
   TestResponseHolder response1;
   mojo::Remote<mojom::Session> session1;
-  model->StartSession(session1.BindNewPipeAndPassReceiver());
+  model->StartSession(session1.BindNewPipeAndPassReceiver(), nullptr);
   session1->Append(MakeInput("1"), {});
   session1->Generate(mojom::GenerateOptions::New(), response1.BindRemote());
 
   mojo::Remote<mojom::Session> session2;
-  model->StartSession(session2.BindNewPipeAndPassReceiver());
+  model->StartSession(session2.BindNewPipeAndPassReceiver(), nullptr);
 
   // First session should not get canceled.
   session1.reset_on_disconnect();
@@ -410,38 +410,14 @@ TEST_F(OnDeviceModelServiceTest, LoadsAdaptation) {
   auto adaptation1 = LoadAdaptation(*model, weights1.Open());
   EXPECT_THAT(GetResponses(*model, "foo"), ElementsAre("Context: foo\n"));
   EXPECT_THAT(GetResponses(*adaptation1, "foo"),
-              ElementsAre("Adaptation: Adapt1\n", "Context: foo\n"));
+              ElementsAre("Adaptation: Adapt1 (0)\n", "Context: foo\n"));
 
   auto adaptation2 = LoadAdaptation(*model, weights2.Open());
   EXPECT_THAT(GetResponses(*model, "foo"), ElementsAre("Context: foo\n"));
   EXPECT_THAT(GetResponses(*adaptation1, "foo"),
-              ElementsAre("Adaptation: Adapt1\n", "Context: foo\n"));
+              ElementsAre("Adaptation: Adapt1 (0)\n", "Context: foo\n"));
   EXPECT_THAT(GetResponses(*adaptation2, "foo"),
-              ElementsAre("Adaptation: Adapt2\n", "Context: foo\n"));
-}
-
-TEST_F(OnDeviceModelServiceTest, DestroysAdaptationSession) {
-  FakeFile weights1("Adapt1");
-  FakeFile weights2("Adapt2");
-  auto model = LoadModel();
-  task_environment_.RunUntilIdle();
-  EXPECT_EQ(fake_ml::GetActiveNonCloneSessions(), 1);
-
-  auto adaptation1 = LoadAdaptation(*model, weights1.Open());
-  task_environment_.RunUntilIdle();
-  EXPECT_EQ(fake_ml::GetActiveNonCloneSessions(), 2);
-
-  auto adaptation2 = LoadAdaptation(*model, weights2.Open());
-  task_environment_.RunUntilIdle();
-  EXPECT_EQ(fake_ml::GetActiveNonCloneSessions(), 3);
-
-  adaptation1.reset();
-  task_environment_.RunUntilIdle();
-  EXPECT_EQ(fake_ml::GetActiveNonCloneSessions(), 2);
-
-  adaptation2.reset();
-  task_environment_.RunUntilIdle();
-  EXPECT_EQ(fake_ml::GetActiveNonCloneSessions(), 1);
+              ElementsAre("Adaptation: Adapt2 (1)\n", "Context: foo\n"));
 }
 
 TEST_F(OnDeviceModelServiceTest, LoadsAdaptationWithPath) {
@@ -451,14 +427,14 @@ TEST_F(OnDeviceModelServiceTest, LoadsAdaptationWithPath) {
   auto adaptation1 = LoadAdaptation(*model, weights1.Path());
   EXPECT_THAT(GetResponses(*model, "foo"), ElementsAre("Context: foo\n"));
   EXPECT_THAT(GetResponses(*adaptation1, "foo"),
-              ElementsAre("Adaptation: Adapt1\n", "Context: foo\n"));
+              ElementsAre("Adaptation: Adapt1 (0)\n", "Context: foo\n"));
 
   auto adaptation2 = LoadAdaptation(*model, weights2.Path());
   EXPECT_THAT(GetResponses(*model, "foo"), ElementsAre("Context: foo\n"));
   EXPECT_THAT(GetResponses(*adaptation1, "foo"),
-              ElementsAre("Adaptation: Adapt1\n", "Context: foo\n"));
+              ElementsAre("Adaptation: Adapt1 (0)\n", "Context: foo\n"));
   EXPECT_THAT(GetResponses(*adaptation2, "foo"),
-              ElementsAre("Adaptation: Adapt2\n", "Context: foo\n"));
+              ElementsAre("Adaptation: Adapt2 (1)\n", "Context: foo\n"));
 }
 
 TEST_F(OnDeviceModelServiceTest, LoadingAdaptationDoesNotCancelSession) {
@@ -466,7 +442,7 @@ TEST_F(OnDeviceModelServiceTest, LoadingAdaptationDoesNotCancelSession) {
   auto model = LoadModel();
 
   mojo::Remote<mojom::Session> session;
-  model->StartSession(session.BindNewPipeAndPassReceiver());
+  model->StartSession(session.BindNewPipeAndPassReceiver(), nullptr);
   session.reset_on_disconnect();
 
   LoadAdaptation(*model, weights1.Open());
@@ -509,7 +485,7 @@ TEST_F(OnDeviceModelServiceTest, Score) {
   auto model = LoadModel();
 
   mojo::Remote<mojom::Session> session;
-  model->StartSession(session.BindNewPipeAndPassReceiver());
+  model->StartSession(session.BindNewPipeAndPassReceiver(), nullptr);
   session->Append(MakeInput("hi"), {});
 
   {
@@ -634,7 +610,7 @@ TEST_F(OnDeviceModelServiceTest, AppendWithTokens) {
 
   TestResponseHolder response;
   mojo::Remote<mojom::Session> session;
-  model->StartSession(session.BindNewPipeAndPassReceiver());
+  model->StartSession(session.BindNewPipeAndPassReceiver(), nullptr);
   {
     std::vector<ml::InputPiece> pieces;
     pieces.push_back(ml::Token::kSystem);

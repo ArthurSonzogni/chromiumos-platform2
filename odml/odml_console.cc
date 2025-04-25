@@ -360,14 +360,17 @@ int main(int argc, char** argv) {
   }
 
   mojo::Remote<Session> session;
-  model->StartSession(session.BindNewPipeAndPassReceiver());
+  model->StartSession(session.BindNewPipeAndPassReceiver(), nullptr);
 
-  const struct ProcessingParams params {
-    .service = service, .model = model, .session = session, .uuid = uuid,
-    .request_safety = request_safety, .response_safety = response_safety,
-    .format_feature = format_feature, .format_field = format_field,
-    .delimiter = delimiter
-  };
+  const struct ProcessingParams params{.service = service,
+                                       .model = model,
+                                       .session = session,
+                                       .uuid = uuid,
+                                       .request_safety = request_safety,
+                                       .response_safety = response_safety,
+                                       .format_feature = format_feature,
+                                       .format_field = format_field,
+                                       .delimiter = delimiter};
   if (input_file_path.has_value()) {
     BatchProcess(params, *input_file_path, *output_file_path);
   } else {

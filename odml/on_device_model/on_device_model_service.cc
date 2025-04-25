@@ -143,9 +143,11 @@ class ModelWrapper final : public mojom::OnDeviceModel {
     RunTaskIfPossible();
   }
 
-  void StartSession(mojo::PendingReceiver<mojom::Session> session) override {
+  void StartSession(mojo::PendingReceiver<mojom::Session> session,
+                    mojom::SessionParamsPtr params) override {
     AddSession(std::move(session),
-               model_->CreateSession(receivers_.current_context().get()));
+               model_->CreateSession(receivers_.current_context().get(),
+                                     std::move(params)));
   }
 
   void ClassifyTextSafety(const std::string& text,
@@ -211,26 +213,12 @@ class ModelWrapper final : public mojom::OnDeviceModel {
                               mojo::PendingReceiver<mojom::OnDeviceModel> model,
                               LoadAdaptationCallback callback) {
     auto start = base::TimeTicks::Now();
-    auto result = model_->LoadAdaptation(
-        std::move(params),
-        base::BindPostTask(
-            base::SequencedTaskRunner::GetCurrentDefault(),
-            base::BindOnce(
-                [](base::WeakPtr<ModelWrapper> self, base::TimeTicks start) {
-                  if (!self) {
-                    return;
-                  }
-                  ReportHistogramMediumTimes(
-                      self->metrics_,
-                      "OnDeviceModel.LoadAdaptationModelDuration",
-                      base::TimeTicks::Now() - start);
-                },
-                weak_ptr_factory_.GetWeakPtr(), start)));
-    if (!result.has_value()) {
-      std::move(callback).Run(result.error());
-      return;
-    }
-    receivers_.Add(this, std::move(model), std::move(*result));
+    auto result = model_->LoadAdaptation(std::move(params));
+    CHECK(result);
+    ReportHistogramMediumTimes(metrics_,
+                               "OnDeviceModel.LoadAdaptationModelDuration",
+                               base::TimeTicks::Now() - start);
+    receivers_.Add(this, std::move(model), std::move(result));
     std::move(callback).Run(mojom::LoadModelResult::kSuccess);
   }
 

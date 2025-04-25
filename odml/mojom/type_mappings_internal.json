@@ -72,6 +72,24 @@
       ],
       "typename": "on_device_model::AdaptationAssets"
     },
+    "on_device_model.mojom.Capabilities": {
+      "copyable_pass_by_value": false,
+      "default_constructible": true,
+      "force_serialize": false,
+      "forward_declaration": null,
+      "hashable": false,
+      "move_only": false,
+      "non_copyable_non_movable": false,
+      "non_const_ref": false,
+      "nullable_is_same_type": false,
+      "public_headers": [
+        "odml/on_device_model/public/cpp/capabilities_mojom_traits.h"
+      ],
+      "traits_headers": [
+        "odml/on_device_model/public/cpp/capabilities_mojom_traits.h"
+      ],
+      "typename": "::on_device_model::Capabilities"
+    },
     "on_device_model.mojom.ModelAssets": {
       "copyable_pass_by_value": false,
       "default_constructible": true,
