@@ -132,7 +132,7 @@ static void show_frame(uintptr_t ip,
 
 static void show_stack_trace(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
   const struct blaze_symbolize_inlined_fn* inlined;
-  const struct blaze_result* res;
+  const struct blaze_syms* res;
   const struct blaze_sym* sym;
 
   if (pid) {
@@ -153,6 +153,10 @@ static void show_stack_trace(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
                                            num_ents);
   }
 
+  if (!res) {
+    return;
+  }
+
   for (size_t i = 0; i < num_ents; i++) {
     if (!res || res->cnt <= i || !res->syms[i].name) {
       printf("    %016lx: <no-symbol>\n", ents[i]);
@@ -168,7 +172,7 @@ static void show_stack_trace(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
     }
   }
   printf("\n");
-  blaze_result_free(res);
+  blaze_syms_free(res);
 }
 
 void show_ustack(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
@@ -193,7 +197,7 @@ static void decode_stack_trace(pid_t pid,
                                uint32_t num_ents,
                                std::vector<std::string>& trace) {
   const struct blaze_symbolize_inlined_fn* inlined;
-  const struct blaze_result* res;
+  const struct blaze_syms* res;
   const struct blaze_sym* sym;
 
   if (pid) {
@@ -212,6 +216,10 @@ static void decode_stack_trace(pid_t pid,
 
     res = blaze_symbolize_kernel_abs_addrs(symb, &src, (const uintptr_t*)ents,
                                            num_ents);
+  }
+
+  if (!res) {
+    return;
   }
 
   for (size_t i = 0; i < num_ents; i++) {
@@ -233,7 +241,7 @@ static void decode_stack_trace(pid_t pid,
       trace.push_back(frame);
     }
   }
-  blaze_result_free(res);
+  blaze_syms_free(res);
 }
 
 void decode_ustack(pid_t pid,
