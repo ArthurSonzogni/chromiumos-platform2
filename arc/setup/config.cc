@@ -55,7 +55,13 @@ bool Config::GetString(std::string_view name, std::string* out) const {
     }
     return false;
   }
-  return env_->GetVar(name, out);
+  std::optional<std::string> val = env_->GetVar(name);
+  if (!val.has_value()) {
+    return false;
+  }
+
+  *out = std::move(val.value());
+  return true;
 }
 
 bool Config::GetInt(std::string_view name, int* out) const {
@@ -67,8 +73,11 @@ bool Config::GetInt(std::string_view name, int* out) const {
     }
     return false;
   }
-  std::string env_str;
-  return env_->GetVar(name, &env_str) && base::StringToInt(env_str, out);
+  std::optional<std::string> env_str = env_->GetVar(name);
+  if (!env_str.has_value()) {
+    return false;
+  }
+  return base::StringToInt(env_str.value(), out);
 }
 
 bool Config::GetBool(std::string_view name, bool* out) const {
@@ -80,8 +89,11 @@ bool Config::GetBool(std::string_view name, bool* out) const {
     }
     return false;
   }
-  std::string env_str;
-  return env_->GetVar(name, &env_str) && StringToBool(env_str, out);
+  std::optional<std::string> env_str = env_->GetVar(name);
+  if (!env_str.has_value()) {
+    return false;
+  }
+  return StringToBool(env_str.value(), out);
 }
 
 std::string Config::GetStringOrDie(std::string_view name) const {
