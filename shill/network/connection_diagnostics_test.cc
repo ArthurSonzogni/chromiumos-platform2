@@ -162,7 +162,6 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_TRUE(connection_diagnostics_.icmp_sessions_.empty());
     EXPECT_TRUE(
         connection_diagnostics_.id_to_pending_dns_server_icmp_session_.empty());
-    EXPECT_EQ(std::nullopt, connection_diagnostics_.target_url_);
   }
 
   void ExpectSuccessfulStart() {
@@ -198,11 +197,11 @@ class ConnectionDiagnosticsTest : public Test {
     for (const auto& dns : dns_list_) {
       pingable_dns_servers.push_back(dns.ToString());
     }
-    EXPECT_CALL(*dns_client_,
-                Start(pingable_dns_servers,
-                      connection_diagnostics_.target_url_->host(), _))
+    net_base::HttpUrl url = *net_base::HttpUrl::CreateFromString(kHttpUrl);
+    EXPECT_CALL(*dns_client_, Start(pingable_dns_servers, url.host(), _))
         .WillOnce(Return(true));
-    connection_diagnostics_.ResolveTargetServerIPAddress(dns_list_);
+    connection_diagnostics_.ResolveTargetServerIPAddress(kDiagnosticId, url,
+                                                         dns_list_);
   }
 
   void ExpectResolveTargetServerIPAddressEndSuccess(
@@ -265,7 +264,7 @@ class ConnectionDiagnosticsTest : public Test {
       }
     }
 
-    connection_diagnostics_.PingDNSServers();
+    connection_diagnostics_.PingDNSServers(kDiagnosticId);
     if (is_success) {
       EXPECT_EQ(expected_dns.size(),
                 connection_diagnostics_.id_to_pending_dns_server_icmp_session_

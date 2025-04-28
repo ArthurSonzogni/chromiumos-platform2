@@ -79,7 +79,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       iface_index_(iface_index),
       ip_family_(ip_family),
       gateway_(gateway),
-      dns_resolution_diagnostic_id_(0),
+      host_dns_resolution_diag_id_(0),
       running_(false),
       event_number_(0),
       logging_tag_(logging_tag),
@@ -109,17 +109,11 @@ void ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
 
   LOG(INFO) << logging_tag_ << " " << __func__ << ": Starting " << ip_family_
             << " diagnostics for " << url.ToString();
-  target_url_ = url;
   running_ = true;
 
-  // Always ping the gateway.
   StartPingDiagnostic(Type::kPingGateway, gateway_);
-
-  // Ping DNS servers to make sure at least one is reachable before resolving
-  // the hostname of |target_url_|;
-  dispatcher_->PostTask(FROM_HERE,
-                        base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
-                                       weak_ptr_factory_.GetWeakPtr()));
+  StartDNSServerPingDiagnostic();
+  StartHostDiagnostic(url);
 }
 
 void ConnectionDiagnostics::Stop() {
@@ -131,7 +125,6 @@ void ConnectionDiagnostics::Stop() {
   dns_client_.reset();
   id_to_pending_dns_server_icmp_session_.clear();
   icmp_sessions_.clear();
-  target_url_ = std::nullopt;
 }
 
 bool ConnectionDiagnostics::IsRunning() const {
@@ -177,30 +170,37 @@ void ConnectionDiagnostics::PrintEvents() {
   diagnostic_results_.clear();
 }
 
-void ConnectionDiagnostics::ResolveTargetServerIPAddress(
-    const std::vector<net_base::IPAddress>& dns_list) {
-  const std::string& host = target_url_->host();
-  dns_resolution_diagnostic_id_ =
-      AssignDiagnosticId(Type::kResolveTargetServerIP, "Resolving " + host);
+void ConnectionDiagnostics::StartHostDiagnostic(const net_base::HttpUrl& url) {
+  host_dns_resolution_diag_id_ = AssignDiagnosticId(
+      Type::kResolveTargetServerIP, "Resolving " + url.host());
+  dispatcher_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     host_dns_resolution_diag_id_, url, dns_list_));
+}
 
+void ConnectionDiagnostics::ResolveTargetServerIPAddress(
+    int dns_resolution_diagnostic_id,
+    const net_base::HttpUrl& url,
+    const std::vector<net_base::IPAddress>& dns_list) {
   std::vector<std::string> dns;
   for (const auto& addr : dns_list) {
     dns.push_back(addr.ToString());
   }
 
   Error e;
-  if (!dns_client_->Start(dns, host, &e)) {
-    LogEvent(dns_resolution_diagnostic_id_, Type::kResolveTargetServerIP,
+  if (!dns_client_->Start(dns, url.host(), &e)) {
+    LogEvent(dns_resolution_diagnostic_id, Type::kResolveTargetServerIP,
              Result::kFailure, "Could not start DNS: " + e.message());
     Stop();
     return;
   }
 
-  SLOG(2) << logging_tag_ << " " << __func__ << ": looking up "
-          << target_url_->host();
+  SLOG(2) << logging_tag_ << " " << __func__ << ": looking up " << url.host();
 }
 
-void ConnectionDiagnostics::PingDNSServers() {
+void ConnectionDiagnostics::StartDNSServerPingDiagnostic() {
   // get id for this operation
   int dns_diag_id =
       AssignDiagnosticId(Type::kPingDNSServers, "Ping DNS servers");
@@ -208,10 +208,15 @@ void ConnectionDiagnostics::PingDNSServers() {
   if (dns_list_.empty()) {
     LogEvent(dns_diag_id, Type::kPingDNSServers, Result::kFailure,
              "No DNS servers for this connection");
-    Stop();
     return;
   }
 
+  dispatcher_->PostTask(
+      FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
+                                weak_ptr_factory_.GetWeakPtr(), dns_diag_id));
+}
+
+void ConnectionDiagnostics::PingDNSServers(int dns_diag_id) {
   for (size_t i = 0; i < dns_list_.size(); ++i) {
     const auto& dns_server_ip_addr = dns_list_[i];
     int diag_id = AssignDiagnosticId(
@@ -275,9 +280,6 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
     int diagnostic_id,
     int dns_server_index,
     const std::vector<base::TimeDelta>& result) {
-  SLOG(2) << logging_tag_ << " " << __func__ << ": DNS server index "
-          << dns_server_index;
-
   if (!id_to_pending_dns_server_icmp_session_.erase(dns_server_index)) {
     // This should not happen, since we expect exactly one callback for each
     // IcmpSession started with a unique |dns_server_index| value in
@@ -293,28 +295,17 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
 
   OnPingResult(diagnostic_id, Type::kPingDNSServers,
                dns_list_[dns_server_index], result);
-
-  if (!id_to_pending_dns_server_icmp_session_.empty()) {
-    SLOG(2) << logging_tag_ << " " << __func__
-            << ": not yet finished pinging all DNS servers";
-    return;
-  }
-
-  dispatcher_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
-                     weak_ptr_factory_.GetWeakPtr(), dns_list_));
 }
 
 void ConnectionDiagnostics::OnDNSResolutionComplete(
     const base::expected<net_base::IPAddress, Error>& address) {
   SLOG(2) << logging_tag_ << " " << __func__;
   if (address.has_value()) {
-    LogEvent(dns_resolution_diagnostic_id_, Type::kResolveTargetServerIP,
+    LogEvent(host_dns_resolution_diag_id_, Type::kResolveTargetServerIP,
              Result::kSuccess, "Target address is " + address->ToString());
     StartPingDiagnostic(Type::kPingTargetServer, *address);
   } else {
-    LogEvent(dns_resolution_diagnostic_id_, Type::kResolveTargetServerIP,
+    LogEvent(host_dns_resolution_diag_id_, Type::kResolveTargetServerIP,
              Result::kFailure, address.error().message());
     Stop();
   }

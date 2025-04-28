@@ -113,16 +113,25 @@ class ConnectionDiagnostics {
   // Prints all buffered events in the order of their diagnostic ids.
   void PrintEvents();
 
-  // Attempts to resolve the IP address of the hostname of |target_url_| using
+  // Attempts to resolve the IP address of the hostname of |url| using
   // |dns_list|.
   void ResolveTargetServerIPAddress(
+      int dns_resolution_diagnostic_id,
+      const net_base::HttpUrl& url,
       const std::vector<net_base::IPAddress>& dns_list);
 
-  // Pings all the DNS servers of |dns_list_|.
-  void PingDNSServers();
+  // Starts ping diagnostics to all configured DNS servers of the current IP
+  // family.
+  void StartDNSServerPingDiagnostic();
 
   // Starts a ping diagnostic to the given address.
   void StartPingDiagnostic(Type type, const net_base::IPAddress& addr);
+
+  // Starts a DNS and ping diagnostics for |url|.
+  void StartHostDiagnostic(const net_base::HttpUrl& url);
+
+  // Pings all the DNS servers of |dns_list_|.
+  void PingDNSServers(int dns_diag_id);
 
   // Starts an IcmpSession with |address|. Called when we want to ping the
   // target web server or local gateway.
@@ -175,12 +184,8 @@ class ConnectionDiagnostics {
   std::vector<net_base::IPAddress> dns_list_;
 
   // TODO(b/307880493): Migrate to net_base::DNSClient.
-  int dns_resolution_diagnostic_id_;
+  int host_dns_resolution_diag_id_;
   std::unique_ptr<DnsClient> dns_client_;
-
-  // The URL whose hostname is being diagnosed. Only defined when the
-  // diagnostics is running.
-  std::optional<net_base::HttpUrl> target_url_;
 
   // Used to ping multiple DNS servers in parallel.
   std::map<int, std::unique_ptr<IcmpSession>>
