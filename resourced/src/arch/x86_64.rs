@@ -9,7 +9,6 @@ mod cgroup_x86_64;
 mod cpu_scaling;
 mod globals;
 mod gpu_freq_scaling;
-mod msr_logger;
 mod platform;
 
 use std::fs;
@@ -195,8 +194,6 @@ pub fn init() {
     cgroup_x86_64::register_feature();
 
     auto_epp::init();
-
-    msr_logger::init();
 }
 
 #[cfg(test)]
