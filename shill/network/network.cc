@@ -1182,7 +1182,7 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
 
 void Network::StartConnectivityTest() {
   if (network_monitor_) {
-    network_monitor_->StartConnectionDiagnostics();
+    network_monitor_->StartConnectivityTest();
   }
 
   RequestTrafficCounters(

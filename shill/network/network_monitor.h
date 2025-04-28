@@ -217,7 +217,7 @@ class NetworkMonitor {
   // Starts IPv4 and IPv6 connectivity diagnostics and IPv4 and IPv6 portal
   // detection if the IP family is configured and if there is no diagnostics
   // already running. Results are only logged.
-  void StartConnectionDiagnostics();
+  void StartConnectivityTest();
 
   // Injects the PortalDetector for testing.
   void set_portal_detector_for_testing(

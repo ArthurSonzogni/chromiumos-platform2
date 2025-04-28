@@ -226,11 +226,15 @@ void NetworkMonitor::OnPortalDetectorResult(
       std::max(result.http_duration.InMilliseconds(),
                result.https_duration.InMilliseconds());
   switch (result.GetValidationState()) {
-    case PortalDetector::ValidationState::kNoConnectivity:
+    case PortalDetector::ValidationState::kNoConnectivity: {
       // If network validation cannot verify Internet access, then start
       // additional connection diagnostics for the current network connection.
-      StartConnectionDiagnostics();
+      const net_base::NetworkConfig& network_config =
+          client_->GetCurrentConfig();
+      StartIPv4ConnectionDiagnostics(network_config);
+      StartIPv6ConnectionDiagnostics(network_config);
       break;
+    }
     case PortalDetector::ValidationState::kInternetConnectivity:
       metrics_->SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
                           technology_, total_duration);
@@ -327,7 +331,7 @@ void NetworkMonitor::StopNetworkValidationLog() {
   }
 }
 
-void NetworkMonitor::StartConnectionDiagnostics() {
+void NetworkMonitor::StartConnectivityTest() {
   const net_base::NetworkConfig& network_config = client_->GetCurrentConfig();
   StartIPv4ConnectionDiagnostics(network_config);
   StartIPv4PortalDetectorTest(network_config);
