@@ -9,6 +9,7 @@
 
 #include <base/files/file.h>
 #include <base/files/file_util.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "odml/on_device_model/ml/chrome_ml_api.h"
@@ -31,6 +32,16 @@ std::string PieceToString(const ml::InputPiece& piece) {
   }
 }
 
+std::string ReadFile(PlatformFile api_file) {
+  base::File file(static_cast<base::PlatformFile>(api_file));
+  std::vector<uint8_t> contents;
+  contents.resize(file.GetLength());
+  if (!file.ReadAndCheck(0, contents)) {
+    return std::string();
+  }
+  return std::string(contents.begin(), contents.end());
+}
+
 }  // namespace
 
 void InitDawnProcs(const DawnProcTable& procs) {}
@@ -51,6 +62,13 @@ bool QueryGPUAdapter(void (*adapter_callback_fn)(WGPUAdapter adapter,
   return false;
 }
 
+bool GetCapabilities(PlatformFile file, ChromeMLCapabilities& capabilities) {
+  std::string contents = ReadFile(file);
+  capabilities.image_input = contents.find("image") != std::string::npos;
+  capabilities.audio_input = contents.find("audio") != std::string::npos;
+  return true;
+}
+
 struct FakeModelInstance {
   ml::ModelBackendType backend_type_;
   ml::ModelPerformanceHint performance_hint;
@@ -64,6 +82,8 @@ struct FakeSessionInstance {
   bool cloned;
   bool enable_image_input;
   bool enable_audio_input;
+  uint32_t top_k;
+  float temperature;
 };
 
 struct FakeTsModelInstance {
@@ -73,16 +93,6 @@ struct FakeTsModelInstance {
 struct FakeCancelInstance {
   bool cancelled = false;
 };
-
-std::string ReadFile(PlatformFile api_file) {
-  base::File file(static_cast<base::PlatformFile>(api_file));
-  std::vector<uint8_t> contents;
-  contents.resize(file.GetLength());
-  if (!file.ReadAndCheck(0, contents)) {
-    return std::string();
-  }
-  return std::string(contents.begin(), contents.end());
-}
 
 ChromeMLModel SessionCreateModel(const ChromeMLModelDescriptor* descriptor,
                                  uintptr_t context,
@@ -112,6 +122,8 @@ ChromeMLSession CreateSession(ChromeMLModel model,
   if (descriptor) {
     instance->enable_image_input = descriptor->enable_image_input;
     instance->enable_audio_input = descriptor->enable_audio_input;
+    instance->top_k = descriptor->top_k;
+    instance->temperature = descriptor->temperature;
     if (descriptor->model_data) {
       instance->adaptation_file_id_ = descriptor->model_data->file_id;
       if (model_instance->backend_type_ == ml::ModelBackendType::kGpuBackend) {
@@ -137,6 +149,8 @@ ChromeMLSession CloneSession(ChromeMLSession session) {
       .cloned = true,
       .enable_image_input = instance->enable_image_input,
       .enable_audio_input = instance->enable_audio_input,
+      .top_k = instance->top_k,
+      .temperature = instance->temperature,
   });
 }
 
@@ -197,6 +211,14 @@ bool SessionExecuteModel(ChromeMLSession session,
     }
     OutputChunk(adaptation_str + "\n");
   }
+
+  // Only include sampling params if they're not the respective default values.
+  if (instance->top_k != 1 || instance->temperature != 0) {
+    OutputChunk(base::StrCat(
+        {"TopK: ", base::NumberToString(instance->top_k),
+         ", Temp: ", base::NumberToString(instance->temperature), "\n"}));
+  }
+
   if (!instance->context_.empty()) {
     for (const std::string& context : instance->context_) {
       OutputChunk("Context: " + context + "\n");
@@ -274,6 +296,7 @@ const ChromeMLAPI g_api = {
     .DestroyModel = &DestroyModel,
     .GetEstimatedPerformance = &GetEstimatedPerformance,
     .QueryGPUAdapter = &QueryGPUAdapter,
+    .GetCapabilities = &GetCapabilities,
     .SetFatalErrorNonGpuFn = &SetFatalErrorNonGpuFn,
 
     .SessionCreateModel = &SessionCreateModel,

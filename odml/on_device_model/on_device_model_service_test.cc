@@ -651,8 +651,10 @@ TEST_F(OnDeviceModelServiceTest, ClassifyTextSafety) {
                                     model.BindNewPipeAndPassReceiver());
   base::test::TestFuture<mojom::SafetyInfoPtr> future1;
   base::test::TestFuture<mojom::SafetyInfoPtr> future2;
-  model->ClassifyTextSafety("unsafe text", future1.GetCallback());
-  model->ClassifyTextSafety("reasonable text", future2.GetCallback());
+  mojo::Remote<mojom::TextSafetySession> session;
+  model->StartSession(session.BindNewPipeAndPassReceiver());
+  session->ClassifyTextSafety("unsafe text", future1.GetCallback());
+  session->ClassifyTextSafety("reasonable text", future2.GetCallback());
   auto resp1 = future1.Take();
   auto resp2 = future2.Take();
 

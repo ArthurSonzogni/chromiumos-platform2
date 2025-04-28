@@ -24,6 +24,8 @@ struct ModelAssetPaths {
 // execution.
 struct ModelAssets {
   ModelAssets();
+  ModelAssets(const ModelAssets&);
+  ModelAssets& operator=(const ModelAssets&);
   ModelAssets(ModelAssets&&);
   ModelAssets& operator=(ModelAssets&&);
   ~ModelAssets();

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 
 #include "odml/on_device_model/ml/chrome_ml_types.h"
@@ -114,6 +115,10 @@ struct ChromeMLAdaptationDescriptor {
   // `max_tokens` set by the base model will be used.
   uint32_t max_tokens;
 
+  // Parameters which control the output sampling.
+  uint32_t top_k;
+  float temperature;
+
   // Whether this model will handle InputPieces containing images.
   bool enable_image_input;
 
@@ -199,6 +204,8 @@ struct ChromeMLExecuteOptions {
   const ChromeMLExecutionOutputFn* execution_output_fn;
   // Optional adaptation ID for this request.
   uint32_t* adaptation_id;
+
+  // TODO(crbug.com/403383823): Remove these members from this struct.
   uint32_t top_k;
   float temperature;
 
@@ -213,6 +220,12 @@ struct ChromeMLPerformanceInfo {
   bool is_integrated_gpu = false;
   uint64_t device_heap_size = 0;
   uint64_t max_buffer_size = 0;
+};
+
+// A set of capabilities that a model can have.
+struct ChromeMLCapabilities {
+  bool image_input = false;
+  bool audio_input = false;
 };
 
 struct ChromeMLMetricsFns {
@@ -311,6 +324,10 @@ struct ChromeMLAPI {
   bool (*QueryGPUAdapter)(void (*adapter_callback_fn)(WGPUAdapter adapter,
                                                       void* userdata),
                           void* userdata);
+
+  // Gets the model capabilities for the model pointed to by `model_data`.
+  bool (*GetCapabilities)(PlatformFile file,
+                          ChromeMLCapabilities& capabilities);
 
   // Same as SetFatalErrorFn(), but for fatal errors that occur outside of the
   // gpu.

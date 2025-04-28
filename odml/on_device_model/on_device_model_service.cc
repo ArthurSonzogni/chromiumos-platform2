@@ -117,6 +117,9 @@ class ModelWrapper final : public mojom::OnDeviceModel {
         model_(std::move(model)),
         on_delete_(std::move(on_delete)),
         ts_model_(ts_model) {
+    if (ts_model_) {
+      ts_model_->StartSession(ts_session_.BindNewPipeAndPassReceiver());
+    }
     receivers_.Add(
         this, std::move(receiver),
         std::unique_ptr<ml::OnDeviceModelExecutor::ScopedAdaptation>());
@@ -152,20 +155,20 @@ class ModelWrapper final : public mojom::OnDeviceModel {
 
   void ClassifyTextSafety(const std::string& text,
                           ClassifyTextSafetyCallback callback) override {
-    if (!ts_model_) {
+    if (!ts_model_ || !ts_session_.is_bound()) {
       std::move(callback).Run(nullptr);
       return;
     }
-    ts_model_->ClassifyTextSafety(text, std::move(callback));
+    ts_session_->ClassifyTextSafety(text, std::move(callback));
   }
 
   void DetectLanguage(const std::string& text,
                       DetectLanguageCallback callback) override {
-    if (!ts_model_) {
+    if (!ts_model_ || !ts_session_.is_bound()) {
       std::move(callback).Run(nullptr);
       return;
     }
-    ts_model_->DetectLanguage(text, std::move(callback));
+    ts_session_->DetectLanguage(text, std::move(callback));
   }
 
   void LoadAdaptation(mojom::LoadAdaptationParamsPtr params,
@@ -261,6 +264,7 @@ class ModelWrapper final : public mojom::OnDeviceModel {
   // Last session a task was executed in.
   base::WeakPtr<SessionWrapper> last_session_;
   mojom::TextSafetyModel* ts_model_;
+  mojo::Remote<mojom::TextSafetySession> ts_session_;
   base::WeakPtrFactory<ModelWrapper> weak_ptr_factory_{this};
 };
 

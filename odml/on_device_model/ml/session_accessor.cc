@@ -93,12 +93,15 @@ ChromeMLCancelFn SessionAccessor::Append(
 
 ChromeMLCancelFn SessionAccessor::Generate(
     on_device_model::mojom::GenerateOptionsPtr options,
+    uint32_t top_k,
+    float temperature,
     ChromeMLExecutionOutputFn output_fn) {
   auto canceler = base::MakeRefCounted<Canceler>(chrome_ml_.get());
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&SessionAccessor::GenerateInternal, base::Unretained(this),
-                     std::move(options), std::move(output_fn), canceler));
+                     std::move(options), top_k, temperature,
+                     std::move(output_fn), canceler));
   return [canceler] { canceler->Cancel(); };
 }
 
@@ -129,6 +132,8 @@ void SessionAccessor::CreateInternal(
     on_device_model::mojom::LoadAdaptationParamsPtr adaptation_params,
     std::optional<uint32_t> adaptation_id) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
+  // TODO(crbug.com/403383823): Require `params` to be non-null and remove
+  // this fallback path.
   if (!params) {
     params = on_device_model::mojom::SessionParams::New();
     // If session params are not provided but adaptation params are, inherit
@@ -142,10 +147,14 @@ void SessionAccessor::CreateInternal(
       }
       params->max_tokens = adaptation_params->max_tokens;
     }
+    params->top_k = 1;
+    params->temperature = 0.0;
   }
 
   ChromeMLAdaptationDescriptor descriptor = {
       .max_tokens = params->max_tokens,
+      .top_k = params->top_k,
+      .temperature = params->temperature,
       .enable_image_input = params->capabilities.Has(
           on_device_model::CapabilityFlags::kImageInput),
       .enable_audio_input = params->capabilities.Has(
@@ -192,13 +201,17 @@ void SessionAccessor::AppendInternal(
 DISABLE_CFI_DLSYM
 void SessionAccessor::GenerateInternal(
     on_device_model::mojom::GenerateOptionsPtr generate_options,
+    uint32_t top_k,
+    float temperature,
     ChromeMLExecutionOutputFn output_fn,
     scoped_refptr<Canceler> canceler) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   ChromeMLExecuteOptions options{
       .max_output_tokens = generate_options->max_output_tokens,
-      .top_k = generate_options->top_k.value_or(1),
-      .temperature = generate_options->temperature.value_or(0),
+      // TODO(crbug.com/403383823): Remove these fields from
+      // ChromeMLExecuteOptions.
+      .top_k = top_k,
+      .temperature = temperature,
   };
   if (output_fn) {
     options.execution_output_fn = &output_fn;

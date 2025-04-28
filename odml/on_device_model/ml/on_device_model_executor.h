@@ -41,6 +41,8 @@ class SessionImpl final {
               ChromeMLModel model,
               SessionAccessor::Ptr session,
               uint32_t max_tokens,
+              uint32_t top_k,
+              float temperature,
               std::optional<uint32_t> adaptation_id);
   ~SessionImpl();
 
@@ -67,6 +69,8 @@ class SessionImpl final {
   ChromeMLModel model_;
   SessionAccessor::Ptr session_;
   const uint32_t max_tokens_;
+  const uint32_t top_k_;
+  const float temperature_;
   std::unique_ptr<Responder> responder_;
   std::set<std::unique_ptr<ContextHolder>> context_holders_;
   std::optional<uint32_t> adaptation_id_;
@@ -102,6 +106,9 @@ class OnDeviceModelExecutor final {
                    const ChromeML& chrome_ml,
                    on_device_model::mojom::LoadModelParamsPtr params,
                    base::OnceClosure on_complete);
+
+  static on_device_model::Capabilities GetCapabilities(
+      const ChromeML& chrome_ml, on_device_model::ModelAssets assets);
 
   std::unique_ptr<SessionImpl> CreateSession(
       const ScopedAdaptation* adaptation,
