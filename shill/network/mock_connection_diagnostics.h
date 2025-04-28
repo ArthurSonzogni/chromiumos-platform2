@@ -23,7 +23,7 @@ class MockConnectionDiagnostics : public ConnectionDiagnostics {
   MockConnectionDiagnostics();
   ~MockConnectionDiagnostics() override;
 
-  MOCK_METHOD(bool, Start, (const net_base::HttpUrl& url), (override));
+  MOCK_METHOD(void, Start, (const net_base::HttpUrl& url), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));
 };
 

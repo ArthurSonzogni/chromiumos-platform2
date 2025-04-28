@@ -365,16 +365,7 @@ void NetworkMonitor::StartIPv4ConnectionDiagnostics(
       interface_, interface_index_, net_base::IPFamily::kIPv4,
       net_base::IPAddress(*network_config.ipv4_gateway),
       network_config.dns_servers, logging_tag_, dispatcher_);
-  if (!ipv4_connection_diagnostics_->Start(
-          probing_configuration_.portal_http_url)) {
-    ipv4_connection_diagnostics_.reset();
-    LOG(WARNING) << logging_tag_ << " " << __func__
-                 << ": Failed to start IPv4 ConnectionDiagnostics";
-    return;
-  }
-
-  LOG(INFO) << logging_tag_ << " " << __func__
-            << ": IPv4 ConnectionDiagnostics started";
+  ipv4_connection_diagnostics_->Start(probing_configuration_.portal_http_url);
 }
 
 void NetworkMonitor::StartIPv6ConnectionDiagnostics(
@@ -402,16 +393,7 @@ void NetworkMonitor::StartIPv6ConnectionDiagnostics(
       interface_, interface_index_, net_base::IPFamily::kIPv6,
       net_base::IPAddress(*network_config.ipv6_gateway),
       network_config.dns_servers, logging_tag_, dispatcher_);
-  if (!ipv6_connection_diagnostics_->Start(
-          probing_configuration_.portal_http_url)) {
-    ipv6_connection_diagnostics_.reset();
-    LOG(WARNING) << logging_tag_ << " " << __func__
-                 << ": Failed to start IPv6 ConnectionDiagnostics";
-    return;
-  }
-
-  LOG(INFO) << logging_tag_ << " " << __func__
-            << ": IPv6 ConnectionDiagnostics started";
+  ipv6_connection_diagnostics_->Start(probing_configuration_.portal_http_url);
 }
 
 void NetworkMonitor::StartIPv4PortalDetectorTest(

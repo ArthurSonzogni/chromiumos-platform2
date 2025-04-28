@@ -101,11 +101,11 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
   Stop();
 }
 
-bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
+void ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
   if (IsRunning()) {
     LOG(ERROR) << logging_tag_ << " " << __func__ << ": " << ip_family_
                << " Diagnostics already started";
-    return false;
+    return;
   }
 
   LOG(INFO) << logging_tag_ << " " << __func__ << ": Starting " << ip_family_
@@ -121,7 +121,6 @@ bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
   dispatcher_->PostTask(FROM_HERE,
                         base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
                                        weak_ptr_factory_.GetWeakPtr()));
-  return true;
 }
 
 void ConnectionDiagnostics::Stop() {

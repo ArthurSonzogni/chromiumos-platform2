@@ -400,7 +400,7 @@ TEST_F(NetworkMonitorTest, MetricsWithPartialConnectivity) {
   EXPECT_CALL(*mock_connection_diagnostics_factory_, Create).WillOnce([]() {
     auto mock_connection_diagnostics =
         std::make_unique<MockConnectionDiagnostics>();
-    EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+    EXPECT_CALL(*mock_connection_diagnostics, Start);
     return mock_connection_diagnostics;
   });
 
@@ -426,7 +426,7 @@ TEST_F(NetworkMonitorTest, MetricsWithNoConnectivity) {
   EXPECT_CALL(*mock_connection_diagnostics_factory_, Create).WillOnce([]() {
     auto mock_connection_diagnostics =
         std::make_unique<MockConnectionDiagnostics>();
-    EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+    EXPECT_CALL(*mock_connection_diagnostics, Start);
     return mock_connection_diagnostics;
   });
 
@@ -526,7 +526,7 @@ TEST_F(NetworkMonitorTest, MetricsWithPortalInvalidRedirect) {
   EXPECT_CALL(*mock_connection_diagnostics_factory_, Create).WillOnce([]() {
     auto mock_connection_diagnostics =
         std::make_unique<MockConnectionDiagnostics>();
-    EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+    EXPECT_CALL(*mock_connection_diagnostics, Start);
     return mock_connection_diagnostics;
   });
 
@@ -664,7 +664,7 @@ TEST_F(NetworkMonitorTest, ConnectionDiagnosticsIsNotRestartedUntilFinished) {
   EXPECT_CALL(*mock_connection_diagnostics_factory_, Create).WillOnce([]() {
     auto mock_connection_diagnostics =
         std::make_unique<MockConnectionDiagnostics>();
-    EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+    EXPECT_CALL(*mock_connection_diagnostics, Start);
     ON_CALL(*mock_connection_diagnostics, IsRunning)
         .WillByDefault(Return(true));
     return mock_connection_diagnostics;
@@ -692,7 +692,7 @@ TEST_F(NetworkMonitorTest, ConnectionDiagnosticsIsRestartedIfFinished) {
       .WillRepeatedly([]() {
         auto mock_connection_diagnostics =
             std::make_unique<MockConnectionDiagnostics>();
-        EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+        EXPECT_CALL(*mock_connection_diagnostics, Start);
         ON_CALL(*mock_connection_diagnostics, IsRunning)
             .WillByDefault(Return(false));
         return mock_connection_diagnostics;
@@ -727,7 +727,7 @@ TEST_F(NetworkMonitorTest, DualStackConnectionDiagnostics) {
       .WillRepeatedly([]() {
         auto mock_connection_diagnostics =
             std::make_unique<MockConnectionDiagnostics>();
-        EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+        EXPECT_CALL(*mock_connection_diagnostics, Start);
         return mock_connection_diagnostics;
       });
   EXPECT_CALL(*mock_connection_diagnostics_factory_,
@@ -736,7 +736,7 @@ TEST_F(NetworkMonitorTest, DualStackConnectionDiagnostics) {
       .WillRepeatedly([]() {
         auto mock_connection_diagnostics =
             std::make_unique<MockConnectionDiagnostics>();
-        EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+        EXPECT_CALL(*mock_connection_diagnostics, Start);
         return mock_connection_diagnostics;
       });
 

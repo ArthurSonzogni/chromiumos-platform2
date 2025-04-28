@@ -158,11 +158,6 @@ class ConnectionDiagnosticsTest : public Test {
     SetDNS({kIPv6DNSServer0, kIPv6DNSServer1});
   }
 
-  bool Start(const std::string& url) {
-    return connection_diagnostics_.Start(
-        *net_base::HttpUrl::CreateFromString(url));
-  }
-
   void VerifyStopped() {
     EXPECT_FALSE(connection_diagnostics_.IsRunning());
     EXPECT_EQ(0, connection_diagnostics_.event_number());
@@ -178,7 +173,8 @@ class ConnectionDiagnosticsTest : public Test {
   void ExpectSuccessfulStart() {
     EXPECT_FALSE(connection_diagnostics_.IsRunning());
     EXPECT_EQ(0, connection_diagnostics_.event_number());
-    EXPECT_TRUE(Start(kHttpUrl));
+    connection_diagnostics_.Start(
+        *net_base::HttpUrl::CreateFromString(kHttpUrl));
     EXPECT_TRUE(connection_diagnostics_.IsRunning());
   }
 

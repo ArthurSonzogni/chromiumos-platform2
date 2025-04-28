@@ -80,7 +80,7 @@ class ConnectionDiagnostics {
   virtual ~ConnectionDiagnostics();
 
   // Performs connectivity diagnostics for the hostname of the URL |url|.
-  mockable bool Start(const net_base::HttpUrl& url);
+  mockable void Start(const net_base::HttpUrl& url);
   void Stop();
   mockable bool IsRunning() const;
   int event_number() const { return event_number_; }
