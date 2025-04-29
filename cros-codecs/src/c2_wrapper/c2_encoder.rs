@@ -313,16 +313,15 @@ where
                     if job.bitrate != curr_bitrate
                         || new_framerate != self.current_tunings.framerate
                     {
+                        self.current_tunings.rate_control =
+                            RateControl::ConstantBitrate(job.bitrate);
+                        self.current_tunings.framerate = new_framerate;
                         #[cfg(feature = "ubc")]
                         {
                             self.bitrate_controller.tune(job.bitrate, new_framerate);
                         }
                         #[cfg(not(feature = "ubc"))]
                         {
-                            self.current_tunings.rate_control =
-                                RateControl::ConstantBitrate(job.bitrate);
-                            self.current_tunings.framerate = new_framerate;
-
                             if let Err(err) = self.encoder.tune(self.current_tunings.clone()) {
                                 log::debug!("Error adjusting tunings! {:?}", err);
                                 *self.state.0.lock().unwrap() = C2State::C2Error;
