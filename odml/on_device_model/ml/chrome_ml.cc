@@ -102,6 +102,24 @@ void RecordCustomCountsHistogram(
   }
 }
 
+void RecordMediumTimesHistogram(const char* name, int64_t milliseconds) {
+  base::AutoLock lock(*g_metrics_lock);
+  if (g_metrics) {
+    // This is originally Uma_HistogramMediumTimes() in Chromium but ChromiumOS
+    // doesn't have Uma_HistogramMediumTimes() so an equivalent is implemented
+    // here.
+    // Note: The actual function name of Uma_HistogramMediumTimes() is without
+    // the underscore, it is mentioned with the underscore here because
+    // check-libchrome.py will detect that function name in comment and
+    // incorrectly assume we used that method and fail, thus it is mentioned
+    // with an extra underscore.
+    g_metrics->SendToUMA(name,
+                         base::Milliseconds(milliseconds).InMilliseconds(),
+                         base::Milliseconds(1).InMilliseconds(),
+                         base::Minutes(3).InMilliseconds(), 50);
+  }
+}
+
 }  // namespace
 
 ChromeML::ChromeML(raw_ref<MetricsLibraryInterface> metrics,
@@ -174,6 +192,7 @@ std::unique_ptr<ChromeML> ChromeML::Create(
     const ChromeMLMetricsFns metrics_fns{
         .RecordExactLinearHistogram = &RecordExactLinearHistogram,
         .RecordCustomCountsHistogram = &RecordCustomCountsHistogram,
+        .RecordMediumTimesHistogram = &RecordMediumTimesHistogram,
     };
     api->SetMetricsFns(&metrics_fns);
   }

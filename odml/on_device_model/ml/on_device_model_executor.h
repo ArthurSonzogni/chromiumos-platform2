@@ -10,6 +10,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <absl/container/flat_hash_map.h>
 #include <base/files/file_path.h>
@@ -57,6 +58,9 @@ class SessionImpl final {
   void SizeInTokens(on_device_model::mojom::InputPtr input,
                     base::OnceCallback<void(uint32_t)> callback);
   void Score(const std::string& text, base::OnceCallback<void(float)> callback);
+  void GetProbabilitiesBlocking(
+      const std::string& input,
+      base::OnceCallback<void(const std::vector<float>&)> callback);
   std::unique_ptr<SessionImpl> Clone();
 
  private:

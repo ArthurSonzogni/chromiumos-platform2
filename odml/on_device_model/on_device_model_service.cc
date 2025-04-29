@@ -66,6 +66,10 @@ class SessionWrapper final : public mojom::Session {
                        GetSizeInTokensCallback callback) override;
   void Score(const std::string& text, ScoreCallback callback) override;
   void Clone(mojo::PendingReceiver<mojom::Session> session) override;
+  void GetProbabilitiesBlocking(
+      const std::string& input,
+      GetProbabilitiesBlockingCallback callback) override;
+  void SetPriority(mojom::Priority priority) override;
 
   mojo::Receiver<mojom::Session>& receiver() { return receiver_; }
 
@@ -95,6 +99,14 @@ class SessionWrapper final : public mojom::Session {
                      ScoreCallback callback,
                      base::OnceClosure on_complete) {
     session_->Score(text, std::move(callback).Then(std::move(on_complete)));
+  }
+
+  void GetProbabilitiesBlockingInternal(
+      const std::string& input,
+      GetProbabilitiesBlockingCallback callback,
+      base::OnceClosure on_complete) {
+    session_->GetProbabilitiesBlocking(
+        input, std::move(callback).Then(std::move(on_complete)));
   }
 
   void CloneInternal(mojo::PendingReceiver<mojom::Session> session);
@@ -320,6 +332,23 @@ void SessionWrapper::Score(const std::string& text, ScoreCallback callback) {
       base::BindOnce(&SessionWrapper::ScoreInternal,
                      weak_ptr_factory_.GetWeakPtr(), text, std::move(callback)),
       weak_ptr_factory_.GetWeakPtr());
+}
+
+void SessionWrapper::GetProbabilitiesBlocking(
+    const std::string& input, GetProbabilitiesBlockingCallback callback) {
+  if (!model_) {
+    return;
+  }
+
+  model_->AddAndRunPendingTask(
+      base::BindOnce(&SessionWrapper::GetProbabilitiesBlockingInternal,
+                     weak_ptr_factory_.GetWeakPtr(), input,
+                     std::move(callback)),
+      weak_ptr_factory_.GetWeakPtr());
+}
+
+void SessionWrapper::SetPriority(mojom::Priority priority) {
+  LOG(INFO) << "on_device_model priority is not supported on ChromeOS";
 }
 
 void SessionWrapper::Clone(mojo::PendingReceiver<mojom::Session> session) {

@@ -44,6 +44,10 @@ struct AdaptationAssetPaths {
   AdaptationAssetPaths(const AdaptationAssetPaths&);
   ~AdaptationAssetPaths();
 
+  bool operator==(const AdaptationAssetPaths& other) const {
+    return weights == other.weights;
+  }
+
   base::FilePath weights;
 };
 

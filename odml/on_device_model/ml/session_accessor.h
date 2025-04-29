@@ -42,6 +42,8 @@ class SessionAccessor {
   ChromeMLCancelFn Generate(on_device_model::mojom::GenerateOptionsPtr options,
                             ChromeMLExecutionOutputFn output_fn);
   void Score(const std::string& text, ChromeMLScoreFn score_fn);
+  void GetProbabilitiesBlocking(const std::string& input,
+                                ChromeMLGetProbabilitiesBlockingFn get_prob_fn);
   void SizeInTokens(on_device_model::mojom::InputPtr input,
                     ChromeMLSizeInTokensFn size_in_tokens_fn);
 
@@ -65,6 +67,8 @@ class SessionAccessor {
       ChromeMLExecutionOutputFn output_fn,
       scoped_refptr<Canceler> canceler);
   void ScoreInternal(const std::string& text, ChromeMLScoreFn score_fn);
+  void GetProbabilitiesBlockingInternal(
+      const std::string& input, ChromeMLGetProbabilitiesBlockingFn get_prob_fn);
   void SizeInTokensInternal(on_device_model::mojom::InputPtr input,
                             ChromeMLSizeInTokensFn size_in_tokens_fn);
 
