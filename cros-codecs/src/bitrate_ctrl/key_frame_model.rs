@@ -13,7 +13,7 @@ impl KeyFrameModel {
     pub fn new() -> KeyFrameModel {
         // Values chosen by encoding an H264 bitstream using CQP values of 20, 25, 30, 35, and 40
         // and using the resulting bitrate to fit a logarithmic curve.
-        Self { bias: -1.76, coefficient: -0.34, ln_output: 0.0 }
+        Self { bias: -1.05, coefficient: -0.34, ln_output: 0.0 }
     }
 
     pub fn forward(&mut self, input_vec: Vec<f64>) -> f64 {
