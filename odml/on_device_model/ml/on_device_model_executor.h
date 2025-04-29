@@ -41,8 +41,6 @@ class SessionImpl final {
               ChromeMLModel model,
               SessionAccessor::Ptr session,
               uint32_t max_tokens,
-              uint32_t top_k,
-              float temperature,
               std::optional<uint32_t> adaptation_id);
   ~SessionImpl();
 
@@ -69,8 +67,6 @@ class SessionImpl final {
   ChromeMLModel model_;
   SessionAccessor::Ptr session_;
   const uint32_t max_tokens_;
-  const uint32_t top_k_;
-  const float temperature_;
   std::unique_ptr<Responder> responder_;
   std::set<std::unique_ptr<ContextHolder>> context_holders_;
   std::optional<uint32_t> adaptation_id_;

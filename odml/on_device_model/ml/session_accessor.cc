@@ -4,6 +4,7 @@
 
 #include "odml/on_device_model/ml/session_accessor.h"
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -12,6 +13,21 @@
 #include "odml/on_device_model/ml/chrome_ml.h"
 
 namespace ml {
+
+namespace {
+
+float GetTemperature(std::optional<float> temperature) {
+  return std::max(0.0f, temperature.value_or(0.0f));
+}
+
+uint32_t GetTopK(std::optional<uint32_t> top_k) {
+  // 128 is from GetOnDeviceModelMaxTopK().
+  // The Chromium version of this code calls GetOnDeviceModelMaxTopK() which is
+  // unavailable in platform2.
+  return std::min(static_cast<uint32_t>(128), std::max(1u, top_k.value_or(1)));
+}
+
+}  // namespace
 
 // Wrapper for the ChromeMLCancel object.
 class SessionAccessor::Canceler : public base::RefCountedThreadSafe<Canceler> {
@@ -93,15 +109,12 @@ ChromeMLCancelFn SessionAccessor::Append(
 
 ChromeMLCancelFn SessionAccessor::Generate(
     on_device_model::mojom::GenerateOptionsPtr options,
-    uint32_t top_k,
-    float temperature,
     ChromeMLExecutionOutputFn output_fn) {
   auto canceler = base::MakeRefCounted<Canceler>(chrome_ml_.get());
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&SessionAccessor::GenerateInternal, base::Unretained(this),
-                     std::move(options), top_k, temperature,
-                     std::move(output_fn), canceler));
+                     std::move(options), std::move(output_fn), canceler));
   return [canceler] { canceler->Cancel(); };
 }
 
@@ -147,8 +160,12 @@ void SessionAccessor::CreateInternal(
       }
       params->max_tokens = adaptation_params->max_tokens;
     }
-    params->top_k = 1;
-    params->temperature = 0.0;
+    params->top_k = GetTopK(std::nullopt);
+    params->temperature = GetTemperature(std::nullopt);
+  } else {
+    // Clamp sampling params.
+    params->top_k = GetTopK(params->top_k);
+    params->temperature = GetTemperature(params->temperature);
   }
 
   ChromeMLAdaptationDescriptor descriptor = {
@@ -201,17 +218,11 @@ void SessionAccessor::AppendInternal(
 DISABLE_CFI_DLSYM
 void SessionAccessor::GenerateInternal(
     on_device_model::mojom::GenerateOptionsPtr generate_options,
-    uint32_t top_k,
-    float temperature,
     ChromeMLExecutionOutputFn output_fn,
     scoped_refptr<Canceler> canceler) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   ChromeMLExecuteOptions options{
       .max_output_tokens = generate_options->max_output_tokens,
-      // TODO(crbug.com/403383823): Remove these fields from
-      // ChromeMLExecuteOptions.
-      .top_k = top_k,
-      .temperature = temperature,
   };
   if (output_fn) {
     options.execution_output_fn = &output_fn;
