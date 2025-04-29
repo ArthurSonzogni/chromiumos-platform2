@@ -41,6 +41,7 @@ const HIDDEN_LAYER_SIZE: usize = 5;
 const LEARNING_RATE: f64 = 0.01;
 const FRAME_CAPACITY: u64 = 60;
 const MIN_FRAME_BITS_PER_PIXEL: f64 = 0.01;
+const KEYFRAME_FACTOR: f64 = 10.0;
 
 impl BitrateController {
     pub fn new(
@@ -182,6 +183,9 @@ impl BitrateController {
         }
 
         target_size /= self.resolution.get_area() as f64;
+        if force_keyframe {
+            target_size *= KEYFRAME_FACTOR;
+        }
         input_vec.push(target_size);
 
         let qp = if force_keyframe {
