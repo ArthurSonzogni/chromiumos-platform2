@@ -183,6 +183,7 @@ unsafe fn offset_mmapped_addr(
 pub struct DmaMapping<'a> {
     dma_handles: Vec<BorrowedFd<'a>>,
     mmapped_addrs: Vec<NonNull<u8>>,
+    mmap_lens: Vec<usize>,
     plane_addrs: Vec<NonNull<u8>>,
     detiled_bufs: Vec<Vec<u8>>,
     lens: Vec<usize>,
@@ -241,6 +242,7 @@ impl<'a> DmaMapping<'a> {
         // may be a single `mmap()` call reused by multiple planes, and we don't want to call
         // `munmap()` later more times than `mmap()` was called.
         let mut mmapped_addrs: Vec<NonNull<u8>> = vec![];
+        let mut mmap_lens: Vec<usize> = vec![];
         let mut plane_addrs: Vec<NonNull<u8>> = vec![];
         if borrowed_dma_handles.len() > 1 {
             // In this case, we assume there is one fd per plane.
@@ -267,6 +269,7 @@ impl<'a> DmaMapping<'a> {
                 };
                 let mmapped_addr: NonNull<u8> = mmapped_addr.cast();
                 mmapped_addrs.push(mmapped_addr);
+                mmap_lens.push(size_to_map.into());
 
                 // SAFETY: `mmapped_addr` was returned by a successful call to `mmap()` for which
                 // the requested `length` was `size_to_map` and the requested `offset` was 0.
@@ -288,6 +291,7 @@ impl<'a> DmaMapping<'a> {
             };
             let mmapped_addr: NonNull<u8> = mmapped_addr.cast();
             mmapped_addrs.push(mmapped_addr);
+            mmap_lens.push(total_size.into());
 
             for offset in offsets {
                 // SAFETY: `mmapped_addr` was returned by a successful call to `mmap()` for which
@@ -324,6 +328,7 @@ impl<'a> DmaMapping<'a> {
         Ok(DmaMapping {
             dma_handles: borrowed_dma_handles.clone(),
             mmapped_addrs,
+            mmap_lens,
             plane_addrs,
             detiled_bufs,
             lens: lens.clone(),
@@ -406,7 +411,7 @@ impl<'a> Drop for DmaMapping<'a> {
 
             fence(Ordering::SeqCst);
 
-            zip(self.mmapped_addrs.iter(), self.lens.iter())
+            zip(self.mmapped_addrs.iter(), self.mmap_lens.iter())
                 .map(|x| munmap((*x.0).cast(), *x.1).unwrap())
                 .collect::<Vec<_>>();
         }
