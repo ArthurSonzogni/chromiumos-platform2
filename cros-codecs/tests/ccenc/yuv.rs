@@ -43,7 +43,7 @@ pub fn decode_in_i420(webm_file: &WebMFile) -> Result<PathBuf, EncodeTestError> 
         )));
     }
 
-    let vpxdec_args = get_vpxdec_args(webm_file.path, &yuv_file_path);
+    let vpxdec_args = get_vpxdec_args(&webm_file.path, &yuv_file_path);
     let vpxdec_args_str = vpxdec_args.iter().map(String::as_str).collect::<Vec<_>>();
     let vpxdec_command = Decoder::Libvpx.command();
     execute(&vpxdec_command, &vpxdec_args_str, None, None)?;

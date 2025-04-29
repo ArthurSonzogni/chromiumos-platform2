@@ -75,7 +75,7 @@ pub fn cros_codecs_decode(test_file: &str, input_format: &str) {
     log::info!("Cros-codecs decode test succeeded: {}", test_file_name);
 }
 
-/// Runs cros-codecs integration test for a group of test files by codec.
+/// Run cros-codecs integration test for a group of test files by codec.
 pub fn run_ccdec_test_by_codec_group(test_files: &[&str], input_format: &str) {
     for file in test_files {
         let full_path = format!("{}{}", TEST_DATA_PREFIX, file);
