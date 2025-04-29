@@ -1006,7 +1006,7 @@ int ChromeosStartup::Run() {
                // If the partition does not exists, assume legacy layout:
                // The device should have been installed with the partition
                // initialized.
-               .recovery = libstorage::RecoveryType::kDoNothing},
+               .recovery = libstorage::RecoveryType::kEnforceCleaning},
           .unencrypted_config = {
               .backing_device_config = {
                   .type = libstorage::BackingDeviceType::kPartition,
