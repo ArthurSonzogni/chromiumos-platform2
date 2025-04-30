@@ -603,6 +603,7 @@ const std::array kVarLogFileLogs {
   Log{kFile, "chrome_system_log.PREVIOUS", "/var/log/chrome/chrome.PREVIOUS"},
   Log{kFile, "clobber-state.log", "/var/log/clobber-state.log"},
   Log{kFile, "clobber.log", "/var/log/clobber.log"},
+  Log{kFile, "crdyboot.log", "/var/log/crdyboot.log"},
   Log{kFile, "cros_ec.log", "/var/log/cros_ec.log",
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},

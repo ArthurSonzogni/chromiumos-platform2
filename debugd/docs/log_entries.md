@@ -205,6 +205,10 @@ See the `/proc/cpuinfo` section of the [proc(5)] man page for more details.
 
 ## cr50_version
 
+## crdyboot.log
+
+UEFI boot log for ChromeOS Flex.
+
 ## cros_ec.log
 
 ## cros_ec.previous
@@ -711,6 +715,7 @@ Useful to know how much memory is being stored compressed in zram.
 
 [ACPI]: https://en.wikipedia.org/wiki/ACPI
 [auditd(8)]: https://man7.org/linux/man-pages/man8/auditd.8.html
+[crdyboot]: https://source.chromium.org/chromiumos/chromiumos/codesearch/+/HEAD:src/platform/crdyboot
 [FPMCU]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/fingerprint/fingerprint.md
 [fwupd]: https://github.com/fwupd/fwupd
 [Intel PCH (Platform Controller Hub)]: https://en.wikipedia.org/wiki/Platform_Controller_Hub
