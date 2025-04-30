@@ -14,6 +14,8 @@ lazy_static! {
     pub static ref VP8_FILENAMES: HashMap<&'static str, Vec<&'static str>> = vp8_files();
     /// VP9 test filenames categorized by profile, group and test type.
     pub static ref VP9_WEBM_FILES: HashMap<&'static str, HashMap<&'static str, HashMap<&'static str, Vec<&'static str>>>> = vp9_webm_files();
+    /// H264 test filenames categorized by group.
+    pub static ref H264_FILENAMES: HashMap<&'static str, Vec<&'static str>> = h264_files();
 }
 
 #[allow(dead_code)]
@@ -500,4 +502,125 @@ pub fn vp9_webm_files(
     profile_0_groups.insert("level5_1", p0_level5_1);
     vp9_webm_files.insert("profile_0", profile_0_groups);
     vp9_webm_files
+}
+
+#[allow(dead_code)]
+/// Provides H.264 test vector files categorized by group.
+pub fn h264_files() -> HashMap<&'static str, Vec<&'static str>> {
+    let mut h264_files: HashMap<&'static str, Vec<&'static str>> = HashMap::new();
+    h264_files.insert(
+        "baseline",
+        vec![
+            "test_vectors/h264/baseline/AUD_MW_E.h264",
+            "test_vectors/h264/baseline/BA1_Sony_D.h264",
+            "test_vectors/h264/baseline/BA2_Sony_F.h264",
+            "test_vectors/h264/baseline/BAMQ1_JVC_C.h264",
+            "test_vectors/h264/baseline/BAMQ2_JVC_C.h264",
+            "test_vectors/h264/baseline/BANM_MW_D.h264",
+            "test_vectors/h264/baseline/BA_MW_D.h264",
+            "test_vectors/h264/baseline/CI_MW_D.h264",
+            "test_vectors/h264/baseline/CVSE2_Sony_B.h264",
+            "test_vectors/h264/baseline/HCBP1_HHI_A.h264",
+            "test_vectors/h264/baseline/HCBP2_HHI_A.h264",
+            "test_vectors/h264/baseline/LS_SVA_D.h264",
+            "test_vectors/h264/baseline/MIDR_MW_D.h264",
+            "test_vectors/h264/baseline/MPS_MW_A.h264",
+            "test_vectors/h264/baseline/MR1_MW_A.h264",
+            "test_vectors/h264/baseline/MR2_MW_A.h264",
+            "test_vectors/h264/baseline/NL1_Sony_D.h264",
+            "test_vectors/h264/baseline/NL2_Sony_H.h264",
+            "test_vectors/h264/baseline/NLMQ1_JVC_C.h264",
+            "test_vectors/h264/baseline/NLMQ2_JVC_C.h264",
+            "test_vectors/h264/baseline/NRF_MW_E.h264",
+            "test_vectors/h264/baseline/SVA_BA1_B.h264",
+            "test_vectors/h264/baseline/SVA_BA2_D.h264",
+            "test_vectors/h264/baseline/SVA_NL1_B.h264",
+            "test_vectors/h264/baseline/SVA_NL2_E.h264",
+        ],
+    );
+    h264_files.insert(
+        "main",
+        vec![
+            "test_vectors/h264/main/CABA1_SVA_B.h264",
+            "test_vectors/h264/main/CABA1_Sony_D.h264",
+            "test_vectors/h264/main/CABA2_SVA_B.h264",
+            "test_vectors/h264/main/CABA2_Sony_E.h264",
+            "test_vectors/h264/main/CABA3_SVA_B.h264",
+            "test_vectors/h264/main/CABA3_Sony_C.h264",
+            "test_vectors/h264/main/CABA3_TOSHIBA_E.h264",
+            "test_vectors/h264/main/CACQP3_Sony_D.h264",
+            "test_vectors/h264/main/CANL1_SVA_B.h264",
+            "test_vectors/h264/main/CANL1_Sony_E.h264",
+            "test_vectors/h264/main/CANL1_TOSHIBA_G.h264",
+            "test_vectors/h264/main/CANL2_SVA_B.h264",
+            "test_vectors/h264/main/CANL2_Sony_E.h264",
+            "test_vectors/h264/main/CANL3_SVA_B.h264",
+            "test_vectors/h264/main/CANL3_Sony_C.h264",
+            "test_vectors/h264/main/CANL4_SVA_B.h264",
+            "test_vectors/h264/main/CAPCM1_Sand_E.h264",
+            "test_vectors/h264/main/CAPCMNL1_Sand_E.h264",
+            "test_vectors/h264/main/CAPM3_Sony_D.h264",
+            "test_vectors/h264/main/CAQP1_Sony_B.h264",
+            "test_vectors/h264/main/CAWP1_TOSHIBA_E.h264",
+            "test_vectors/h264/main/CAWP5_TOSHIBA_E.h264",
+            "test_vectors/h264/main/CVBS3_Sony_C.h264",
+            "test_vectors/h264/main/CVPCMNL1_SVA_C.h264",
+            "test_vectors/h264/main/CVPCMNL2_SVA_C.h264",
+            "test_vectors/h264/main/CVSE3_Sony_H.h264",
+            "test_vectors/h264/main/CVSEFDFT3_Sony_E.h264",
+            "test_vectors/h264/main/CVWP1_TOSHIBA_E.h264",
+            "test_vectors/h264/main/CVWP2_TOSHIBA_E.h264",
+            "test_vectors/h264/main/CVWP3_TOSHIBA_E.h264",
+            "test_vectors/h264/main/CVWP5_TOSHIBA_E.h264",
+            "test_vectors/h264/main/NL3_SVA_E.h264",
+            "test_vectors/h264/main/camp_mot_frm0_full.h264",
+            "test_vectors/h264/main/cvmp_mot_frm0_full_B.h264",
+            "test_vectors/h264/main/src19td.IBP.h264",
+            "test_vectors/h264/main/HCMP1_HHI_A.h264",
+        ],
+    );
+    // The following test vectors are separated because they don't verify that all
+    // slice header's |first_mb_in_slice| is zero. Stateful decoders, who have their own
+    // H.264 parsers, might support them, though.
+    h264_files.insert(
+        "first_mb_in_slice",
+        vec![
+            "test_vectors/h264/baseline/BA1_FT_C.h264",
+            "test_vectors/h264/baseline/BASQP1_Sony_C.h264",
+            "test_vectors/h264/baseline/CI1_FT_B.h264",
+            "test_vectors/h264/baseline/SVA_Base_B.h264",
+            "test_vectors/h264/baseline/SVA_CL1_E.h264",
+            "test_vectors/h264/baseline/SVA_FM1_E.h264",
+            "test_vectors/h264/baseline/MR1_BT_A.h264",
+            "test_vectors/h264/main/CABACI3_Sony_B.h264",
+            "test_vectors/h264/main/CABAST3_Sony_E.h264",
+            "test_vectors/h264/main/CABASTBR3_Sony_B.h264",
+            "test_vectors/h264/main/SL1_SVA_B.h264",
+        ],
+    );
+    h264_files.insert(
+        "high",
+        vec![
+            "test_vectors/h264/high/FREH12_B.h264",
+            "test_vectors/h264/high/FREH1_B.h264",
+            "test_vectors/h264/high/FREH2_B.h264",
+            "test_vectors/h264/high/FREH3.h264",
+            "test_vectors/h264/high/FREH8.h264",
+            "test_vectors/h264/high/FREH9.h264",
+            "test_vectors/h264/high/HCAFR1_HHI.h264",
+            "test_vectors/h264/high/HCAFR2_HHI.h264",
+            "test_vectors/h264/high/HCAFR3_HHI.h264",
+            "test_vectors/h264/high/HCAFR4_HHI.h264",
+            "test_vectors/h264/high/HCHP1_HHI_B.h264",
+            "test_vectors/h264/high/HCHP2_HHI_A.h264",
+            "test_vectors/h264/high/HPCADQ_BRCM_B.h264",
+            "test_vectors/h264/high/HPCALQ_BRCM_B.h264",
+            "test_vectors/h264/high/HPCANL_BRCM_C.h264",
+            "test_vectors/h264/high/HPCAQ2LQ_BRCM_B.h264",
+            "test_vectors/h264/high/HPCA_BRCM_C.h264",
+            "test_vectors/h264/high/HPCVNL_BRCM_A.h264",
+            "test_vectors/h264/high/HPCV_BRCM_A.h264",
+        ],
+    );
+    h264_files
 }
