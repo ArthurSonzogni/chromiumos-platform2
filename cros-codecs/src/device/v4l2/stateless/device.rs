@@ -10,6 +10,8 @@ use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 
+use log::debug;
+
 use v4l2r::device::Device as VideoDevice;
 use v4l2r::device::DeviceConfig;
 use v4l2r::ioctl;
@@ -159,6 +161,10 @@ impl<V: VideoFrame> V4l2Device<V> {
     }
 
     pub fn reset_queues(&mut self) -> Result<(), QueueError> {
+        if self.handle.is_none() {
+            log::debug!("attempting to reset queues before device is initialized.");
+            return Ok(());
+        }
         self.handle.as_ref().ok_or(QueueError::InvalidDevice)?.borrow_mut().reset_queues()
     }
 
