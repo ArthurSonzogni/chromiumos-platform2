@@ -154,7 +154,7 @@ bool ReadSignatures(const std::string& text,
       LOG(ERROR) << "The length of the signature is not long enough.";
       return false;
     }
-    uint32_t key_hash = base::numerics::U32FromBigEndian(
+    uint32_t key_hash = base::U32FromBigEndian(
         base::as_byte_span(signature_str.substr(0, kSignatureHashSize))
             .first<4u>());
 

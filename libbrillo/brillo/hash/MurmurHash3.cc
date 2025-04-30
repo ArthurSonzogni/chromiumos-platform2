@@ -68,8 +68,7 @@ FORCE_INLINE uint32_t getblock32(const uint8_t* p, int i) {
   // is expected to run on any endian and therefore we need to do byte swap.
   uint32_t res;
   memcpy(&res, &p[i * sizeof(res)], sizeof(res));
-  return base::numerics::U32FromLittleEndian(
-      base::numerics::U32ToNativeEndian(res));
+  return base::U32FromLittleEndian(base::U32ToNativeEndian(res));
 }
 
 //-----------------------------------------------------------------------------

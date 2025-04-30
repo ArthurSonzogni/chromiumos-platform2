@@ -7,18 +7,17 @@
 #include <string_view>
 #include <utility>
 
+#include <base/check.h>
+
 #include "base/containers/span.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/numerics/byte_conversions.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/sys_byteorder.h"
-
 #include "patchpanel/dns/dns_protocol.h"
 #include "patchpanel/dns/dns_util.h"
 #include "patchpanel/dns/io_buffer.h"
-
-#include <base/check.h>
 
 namespace patchpanel {
 
@@ -86,7 +85,7 @@ std::string_view DnsQuery::qname() const {
 }
 
 uint16_t DnsQuery::qtype() const {
-  return base::numerics::U16FromBigEndian(base::span<const uint8_t, 2u>(
+  return base::U16FromBigEndian(base::span<const uint8_t, 2u>(
       reinterpret_cast<const uint8_t*>(io_buffer_->data() + kHeaderSize +
                                        qname_size_),
       2u));

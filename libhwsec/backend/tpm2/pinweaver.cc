@@ -111,13 +111,11 @@ std::optional<brillo::Blob> BlobOrNullopt(const std::string& str) {
 }
 
 uint32_t ByteSwapToLE32(uint32_t n) {
-  return base::numerics::U32FromLittleEndian(
-      base::numerics::U32ToNativeEndian(n));
+  return base::U32FromLittleEndian(base::U32ToNativeEndian(n));
 }
 
 uint32_t ByteSwapToLE64(uint64_t n) {
-  return base::numerics::U64FromLittleEndian(
-      base::numerics::U64ToNativeEndian(n));
+  return base::U64FromLittleEndian(base::U64ToNativeEndian(n));
 }
 
 }  // namespace

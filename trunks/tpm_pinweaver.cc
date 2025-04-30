@@ -727,9 +727,8 @@ TPM_RC Parse_pw_sys_info_t(const std::string& buffer,
 
   auto payload =
       base::as_byte_span(buffer).subspan(sizeof(struct pw_response_header_t));
-  *boot_count = base::numerics::U32FromLittleEndian(payload.subspan<0, 4>());
-  *seconds_since_boot =
-      base::numerics::U64FromLittleEndian(payload.subspan<4, 8>());
+  *boot_count = base::U32FromLittleEndian(payload.subspan<0, 4>());
+  *seconds_since_boot = base::U64FromLittleEndian(payload.subspan<4, 8>());
 
   return TPM_RC_SUCCESS;
 }

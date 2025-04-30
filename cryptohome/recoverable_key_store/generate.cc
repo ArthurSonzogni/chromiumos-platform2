@@ -42,7 +42,7 @@ constexpr size_t kCrOSRecoverableKeyStoreHandleBodySize = 16;
 constexpr uint32_t kRecoveryMaxFailedAttempts = 10;
 // The max attempts should be serialized in little-endian byte representation.
 constexpr auto kRecoveryMaxFailedAttemptsLeBytes =
-    base::numerics::U32ToLittleEndian(kRecoveryMaxFailedAttempts);
+    base::U32ToLittleEndian(kRecoveryMaxFailedAttempts);
 
 constexpr char kSecurityDomainKeyName[] =
     "security_domain_member_key_encrypted_locally";

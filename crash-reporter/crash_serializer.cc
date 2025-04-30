@@ -253,7 +253,7 @@ bool Serializer::WriteFetchCrashesResponse(
   uint64_t size_uint64 = size;
 
   std::array<uint8_t, sizeof(uint64_t)> size_bytes =
-      base::numerics::U64ToBigEndian(size_uint64);
+      base::U64ToBigEndian(size_uint64);
 
   std::string buf(size_bytes.begin(), size_bytes.end());
   if (!crash_data.AppendToString(&buf)) {

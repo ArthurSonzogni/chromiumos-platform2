@@ -97,7 +97,7 @@ bool SignForTesting(const std::string& text,
     signature_bytes.resize(signature_length);
 
     std::array<uint8_t, sizeof(uint32_t)> key_bytes =
-        base::numerics::U32ToBigEndian(ledger_info.key_hash.value());
+        base::U32ToBigEndian(ledger_info.key_hash.value());
 
     std::string key_hash(key_bytes.begin(), key_bytes.end());
     // `signature_str` has the format: "{key_hash}{signature_bytes}".
