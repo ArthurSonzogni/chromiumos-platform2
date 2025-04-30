@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/bind.h>
@@ -39,6 +40,7 @@
 #include "rmad/utils/mock_iio_sensor_probe_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
+#include "rmad/utils/rmad_config_utils_impl.h"
 #include "rmad/utils/vpd_utils.h"
 
 using testing::_;
@@ -50,6 +52,7 @@ using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
+using testing::StrictMock;
 using testing::WithArg;
 
 namespace {
@@ -136,6 +139,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     std::optional<std::string> checksum = kHwidElements.checksum.value();
     std::set<rmad::RmadComponent> probed_components = {};
     int shimless_mode_flags = 0x0;
+    std::string rmad_config_text = "";
   };
 
   scoped_refptr<ProvisionDeviceStateHandler> CreateInitializedStateHandler(
@@ -316,6 +320,26 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_tpm_manager_client, GetGscDevice(_))
         .WillByDefault(DoAll(SetArgPointee<0>(args.gsc_device), Return(true)));
 
+    // Inject textproto content for |RmadConfigUtils|.
+    auto cros_config_utils =
+        std::make_unique<StrictMock<MockCrosConfigUtils>>();
+    if (!args.rmad_config_text.empty()) {
+      EXPECT_CALL(*cros_config_utils, GetModelName(_))
+          .WillOnce(DoAll(SetArgPointee<0>("model_name"), Return(true)));
+
+      const base::FilePath textproto_file_path =
+          GetTempDirPath()
+              .Append("model_name")
+              .Append(kDefaultRmadConfigProtoFilePath);
+
+      EXPECT_TRUE(base::CreateDirectory(textproto_file_path.DirName()));
+      EXPECT_TRUE(base::WriteFile(textproto_file_path, args.rmad_config_text));
+    } else {
+      EXPECT_CALL(*cros_config_utils, GetModelName(_)).WillOnce(Return(false));
+    }
+    auto rmad_config_utils = std::make_unique<RmadConfigUtilsImpl>(
+        GetTempDirPath(), std::move(cros_config_utils));
+
     auto handler = base::MakeRefCounted<ProvisionDeviceStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_ssfc_prober), std::move(mock_power_manager_client),
@@ -324,7 +348,8 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         std::move(mock_write_protect_utils),
         std::move(mock_iio_sensor_probe_utils), std::move(mock_vpd_utils),
         std::move(mock_hwid_utils), std::move(mock_crossystem_utils),
-        std::move(mock_futility_utils), std::move(mock_tpm_manager_client));
+        std::move(mock_futility_utils), std::move(mock_tpm_manager_client),
+        std::move(rmad_config_utils));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
     return handler;
   }
@@ -530,6 +555,50 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   StateHandlerArgs args = {.probed_components = {kComponentNeedCalibration,
                                                  kComponentNeedCalibration2}};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
+
+  // Check calibration map. |kComponentNeedCalibration| and
+  // |kComponentNeedCalibration2| are skipped.
+  InstructionCalibrationStatusMap calibration_map;
+  EXPECT_TRUE(GetCalibrationMap(json_store_, &calibration_map));
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                kComponentNeedCalibration)][kComponentNeedCalibration],
+            CalibrationComponentStatus::RMAD_CALIBRATION_SKIP);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                kComponentNeedCalibration2)][kComponentNeedCalibration2],
+            CalibrationComponentStatus::RMAD_CALIBRATION_SKIP);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       TryGetNextStateCaseAtBoot_SkipCalibrationRmadConfigSucceeded) {
+  // Set up environment for different owner and all replaced components need
+  // calibration.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  json_store_->SetValue(
+      kReplacedComponentNames,
+      std::vector<std::string>{RmadComponent_Name(kComponentNeedCalibration),
+                               RmadComponent_Name(kComponentNeedCalibration2)});
+  // Bypass calibration.
+  std::string textproto = R"(
+  skip_calibration_with_golden_value: true
+)";
+
+  StateHandlerArgs args = {.probed_components = {kComponentNeedCalibration,
+                                                 kComponentNeedCalibration2},
+                           .rmad_config_text = textproto};
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();

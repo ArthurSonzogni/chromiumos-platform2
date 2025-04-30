@@ -30,6 +30,7 @@
 #include "rmad/utils/hwid_utils.h"
 #include "rmad/utils/iio_sensor_probe_utils.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/rmad_config_utils.h"
 #include "rmad/utils/vpd_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
@@ -46,12 +47,12 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
+
   // Used to inject |working_dir_path_|, mock |ssfc_prober_|,
   // |power_manager_client_|, |cbi_utils_|, |cmd_utils_|, |gsc_utils_|,
   // |cros_config_utils_|, |write_protect_utils_|, |iio_sensor_probe_utils_|,
-  // |vpd_utils_|, |hwid_utils_|, |crossystem_utils_|, and |futility_utils_|,
-  // |tpm_manager_client_| for testing.
-
+  // |vpd_utils_|, |hwid_utils_|, |crossystem_utils_|, |futility_utils_|,
+  // |tpm_manager_client_|, and |rmad_config_utils_| for testing.
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
@@ -68,7 +69,8 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
       std::unique_ptr<HwidUtils> hwid_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<FutilityUtils> futility_utils,
-      std::unique_ptr<TpmManagerClient> tpm_manager_client);
+      std::unique_ptr<TpmManagerClient> tpm_manager_client,
+      std::unique_ptr<RmadConfigUtils> rmad_config_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kProvisionDevice);
   SET_REPEATABLE;
@@ -126,6 +128,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<FutilityUtils> futility_utils_;
   std::unique_ptr<TpmManagerClient> tpm_manager_client_;
+  std::unique_ptr<RmadConfigUtils> rmad_config_utils_;
 
   RmadCrosConfig rmad_cros_config_;
 

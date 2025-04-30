@@ -40,6 +40,7 @@
 #include "rmad/utils/hwid_utils_impl.h"
 #include "rmad/utils/iio_sensor_probe_utils_impl.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/rmad_config_utils_impl.h"
 #include "rmad/utils/vpd_utils.h"
 #include "rmad/utils/vpd_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
@@ -99,6 +100,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   futility_utils_ = std::make_unique<FutilityUtilsImpl>();
   tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
+  rmad_config_utils_ = std::make_unique<RmadConfigUtilsImpl>();
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   status_.set_progress(kProgressInit);
   status_.set_error(ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
@@ -120,7 +122,8 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<HwidUtils> hwid_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<FutilityUtils> futility_utils,
-    std::unique_ptr<TpmManagerClient> tpm_manager_client)
+    std::unique_ptr<TpmManagerClient> tpm_manager_client,
+    std::unique_ptr<RmadConfigUtils> rmad_config_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       ssfc_prober_(std::move(ssfc_prober)),
@@ -136,6 +139,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       crossystem_utils_(std::move(crossystem_utils)),
       futility_utils_(std::move(futility_utils)),
       tpm_manager_client_(std::move(tpm_manager_client)),
+      rmad_config_utils_(std::move(rmad_config_utils)),
       should_calibrate_(false),
       sensor_integrity_(false) {
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
@@ -259,9 +263,12 @@ void ProvisionDeviceStateHandler::InitializeCalibrationTask() {
   // 4. replaced only w/o mlb repair -> error
 
   InstructionCalibrationStatusMap calibration_map;
+  auto rmad_config = rmad_config_utils_->GetConfig();
 
   std::set<RmadComponent> replaced_components_need_calibration;
-  if (!IsCalibrationDisabled(working_dir_path_)) {
+  if (!IsCalibrationDisabled(working_dir_path_) &&
+      !(rmad_config.has_value() &&
+        rmad_config->skip_calibration_with_golden_value())) {
     if (bool mlb_repair;
         json_store_->GetValue(kMlbRepair, &mlb_repair) && mlb_repair) {
       // Potentially everything needs to be calibrated when MLB is repaired.
