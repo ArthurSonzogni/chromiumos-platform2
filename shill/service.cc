@@ -1660,11 +1660,17 @@ void Service::NoteFailureEvent() {
   // take into account the last non-idle state.
   ConnectState state = state_ == kStateIdle ? previous_state_ : state_;
   if (IsConnectedState(state)) {
-    LOG(INFO) << *this << " " << __func__ << ": Unexpected connection drop";
+    // The "Noting an unexpected connection drop" string is used by FRA and
+    // should not be changed. See b/414679121 for details.
+    LOG(INFO) << *this << " " << __func__
+              << ": Noting an unexpected connection drop";
     period = kDisconnectsMonitorDuration.InSeconds();
     events = &disconnects_;
   } else if (IsConnectingState(state)) {
-    LOG(INFO) << *this << " " << __func__ << ": Unexpected failure to connect";
+    // The "Noting an unexpected failure to connect" string is used by FRA and
+    // should not be changed. See b/414679121 for details.
+    LOG(INFO) << *this << " " << __func__
+              << ": Noting an unexpected failure to connect";
     period = kMisconnectsMonitorDuration.InSeconds();
     events = &misconnects_;
   } else {
