@@ -288,6 +288,8 @@ TEST_F(DHCPControllerTest, RenewEvent) {
   EXPECT_CALL(metrics_,
               SendEnumToUMA(Metrics::kMetricDHCPv4RenewRebind, kTechnology,
                             Metrics::DHCPv4RenewRebind::kRenew));
+  EXPECT_CALL(*this, UpdateCallback(network_config, dhcp_data,
+                                    /*new_lease_acquired=*/true));
 
   dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kRenew,
                                 network_config, dhcp_data);
@@ -301,6 +303,8 @@ TEST_F(DHCPControllerTest, RebindEvent) {
   EXPECT_CALL(metrics_,
               SendEnumToUMA(Metrics::kMetricDHCPv4RenewRebind, kTechnology,
                             Metrics::DHCPv4RenewRebind::kRebind));
+  EXPECT_CALL(*this, UpdateCallback(network_config, dhcp_data,
+                                    /*new_lease_acquired=*/true));
 
   dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kRebind,
                                 network_config, dhcp_data);

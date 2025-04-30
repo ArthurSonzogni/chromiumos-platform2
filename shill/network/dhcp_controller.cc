@@ -148,6 +148,7 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
                               Metrics::DHCPv4RenewRebind::kRenew);
       SendDHCPv4ProvisionResultMetrics(
           Metrics::DHCPv4ProvisionResult::kSuccess);
+      UpdateConfiguration(network_config, dhcp_data, /*is_gateway_arp=*/false);
       return;
 
     case DHCPClientProxy::EventReason::kRebind:
@@ -155,6 +156,7 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
                               Metrics::DHCPv4RenewRebind::kRebind);
       SendDHCPv4ProvisionResultMetrics(
           Metrics::DHCPv4ProvisionResult::kSuccess);
+      UpdateConfiguration(network_config, dhcp_data, /*is_gateway_arp=*/false);
       return;
 
     case DHCPClientProxy::EventReason::kBound:
