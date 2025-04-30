@@ -125,7 +125,8 @@ void ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
 
 void ConnectionDiagnostics::Stop() {
   PrintEvents();
-  LOG(INFO) << logging_tag_ << " " << __func__;
+  LOG(INFO) << logging_tag_ << " " << __func__ << ": Stopping " << ip_family_
+            << " diagnostics";
   running_ = false;
   event_number_ = 0;
   dns_client_.reset();
