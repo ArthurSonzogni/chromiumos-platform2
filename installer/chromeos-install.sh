@@ -731,7 +731,17 @@ reload_partitions() {
   # avoid the conflict by using `udevadm settle`, so that udev goes
   # first.  cf. crbug.com/343681.
   udevadm settle
-  /sbin/blockdev --rereadpt "${DST}"
+
+  # Sometimes `blockdev --rereadpt` will fail with "ioctl error on
+  # BLKRRPART: Device or resource busy" right after `udevadm settle`
+  # completes. If the first attempt fails, sleep for a short time and
+  # then retry. b/410051948
+  local rc=0
+  /sbin/blockdev --rereadpt "${DST}" || rc=$?
+  if [ "${rc}" -ne 0 ]; then
+      sleep 1s
+      /sbin/blockdev --rereadpt "${DST}"
+  fi
 }
 
 # Post partition copying work and special casing
