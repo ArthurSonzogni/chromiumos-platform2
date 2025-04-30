@@ -1311,6 +1311,8 @@ VmInfo_VmType ToLegacyVmType(apps::VmType type) {
       return VmInfo::ARC_VM;
     case apps::BRUSCHETTA:
       return VmInfo::BRUSCHETTA;
+    case apps::BAGUETTE:
+      return VmInfo::BAGUETTE;
     default:
       return VmInfo::UNKNOWN;
   }
