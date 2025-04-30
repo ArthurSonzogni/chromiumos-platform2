@@ -18,6 +18,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/logs/logs_utils.h"
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/system/hardware_verifier_client_impl.h"
 #include "rmad/utils/rmad_config_utils_impl.h"
 #include "rmad/utils/vpd_utils_impl.h"
@@ -78,6 +79,22 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
     case WelcomeState::RMAD_CHOICE_UNKNOWN:
       return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
     case WelcomeState::RMAD_CHOICE_FINALIZE_REPAIR:
+      if (IsSpareMlb()) {
+        json_store_->SetValue(kMlbRepair, true);
+        json_store_->SetValue(kSameOwner, false);
+        json_store_->SetValue(kWpDisableRequired, true);
+        json_store_->SetValue(kWipeDevice, true);
+        json_store_->SetValue(kCcdBlocked, false);
+        MetricsUtils::SetMetricsValue(
+            json_store_, kMetricsReturningOwner,
+            ReturningOwner_Name(
+                ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER));
+        MetricsUtils::SetMetricsValue(
+            json_store_, kMetricsMlbReplacement,
+            MainboardReplacement_Name(
+                MainboardReplacement::RMAD_MLB_REPLACEMENT_REPLACED));
+        return NextStateCaseWrapper(RmadState::StateCase::kWpDisablePhysical);
+      }
       return NextStateCaseWrapper(RmadState::StateCase::kComponentsRepair);
     default:
       break;
@@ -126,6 +143,11 @@ bool WelcomeScreenStateHandler::ShouldSkipHardwareVerification() const {
       base::PathExists(working_dir_path_.AppendASCII(kDisableRaccFilePath));
 
   return shimless_mode_skipped || rmad_config_skipped || racc_disable;
+}
+
+bool WelcomeScreenStateHandler::IsSpareMlb() const {
+  bool spare_mlb = false;
+  return json_store_->GetValue(kSpareMlb, &spare_mlb) && spare_mlb;
 }
 
 }  // namespace rmad

@@ -249,6 +249,24 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_Succeeded) {
   EXPECT_EQ(state_case, RmadState::StateCase::kComponentsRepair);
 }
 
+TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_SpareMlb_Succeeded) {
+  auto handler = CreateStateHandler({});
+  json_store_->SetValue(kSpareMlb, true);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  RmadState state;
+  state.mutable_welcome()->set_choice(
+      WelcomeState::RMAD_CHOICE_FINALIZE_REPAIR);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  bool mlb_repair;
+  json_store_->GetValue(kMlbRepair, &mlb_repair);
+
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_TRUE(mlb_repair);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
+}
+
 TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingState) {
   auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);

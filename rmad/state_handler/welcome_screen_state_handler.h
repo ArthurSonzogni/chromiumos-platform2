@@ -47,6 +47,7 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
 
  private:
   bool ShouldSkipHardwareVerification() const;
+  bool IsSpareMlb() const;
 
   base::FilePath working_dir_path_;
   // Helper utilities.
