@@ -30,6 +30,8 @@ pub mod bitrate_ctrl;
 #[cfg(feature = "backend")]
 pub mod c2_wrapper;
 #[cfg(feature = "backend")]
+pub mod capabilities;
+#[cfg(feature = "backend")]
 pub mod decoder;
 #[cfg(feature = "v4l2")]
 pub mod device;
