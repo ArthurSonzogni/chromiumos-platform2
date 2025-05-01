@@ -118,18 +118,62 @@ bool DHCPController::ReleaseIP(ReleaseReason reason) {
 void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
                                  const net_base::NetworkConfig& network_config,
                                  const DHCPv4Config::Data& dhcp_data) {
+  // Report metrics before triggering updates.
   switch (reason) {
     case DHCPClientProxy::EventReason::kFail:
-      LOG(ERROR) << logging_tag_ << " " << __func__
-                 << ": Received failure event from DHCP client.";
       SendDHCPv4ProvisionResultMetrics(
           Metrics::DHCPv4ProvisionResult::kClientFailure);
-      NotifyDropCallback(false);
-      return;
+      break;
 
     case DHCPClientProxy::EventReason::kIPv6OnlyPreferred:
       SendDHCPv4ProvisionResultMetrics(
           Metrics::DHCPv4ProvisionResult::kIPv6OnlyPreferred);
+      break;
+
+    case DHCPClientProxy::EventReason::kNak:
+      // It is still possible that we acquire a lease later, so instead of
+      // reporting kNak immediately, we record it in |nak_received_| and report
+      // kNak only when the lease acquisition times out.
+      nak_received_ = true;
+      break;
+
+    case DHCPClientProxy::EventReason::kRenew:
+      metrics_->SendEnumToUMA(Metrics::kMetricDHCPv4RenewRebind, technology_,
+                              Metrics::DHCPv4RenewRebind::kRenew);
+      SendDHCPv4ProvisionResultMetrics(
+          Metrics::DHCPv4ProvisionResult::kSuccess);
+      break;
+
+    case DHCPClientProxy::EventReason::kRebind:
+      metrics_->SendEnumToUMA(Metrics::kMetricDHCPv4RenewRebind, technology_,
+                              Metrics::DHCPv4RenewRebind::kRebind);
+      SendDHCPv4ProvisionResultMetrics(
+          Metrics::DHCPv4ProvisionResult::kSuccess);
+      break;
+
+    case DHCPClientProxy::EventReason::kBound:
+    case DHCPClientProxy::EventReason::kReboot:
+      SendDHCPv4ProvisionResultMetrics(
+          Metrics::DHCPv4ProvisionResult::kSuccess);
+      break;
+
+    case DHCPClientProxy::EventReason::kBound6:
+    case DHCPClientProxy::EventReason::kRebind6:
+    case DHCPClientProxy::EventReason::kReboot6:
+    case DHCPClientProxy::EventReason::kRenew6:
+    case DHCPClientProxy::EventReason::kGatewayArp:
+      break;
+  }
+
+  // Now trigger updates.
+  switch (reason) {
+    case DHCPClientProxy::EventReason::kFail:
+      LOG(ERROR) << logging_tag_ << " " << __func__
+                 << ": Received failure event from DHCP client.";
+      NotifyDropCallback(false);
+      return;
+
+    case DHCPClientProxy::EventReason::kIPv6OnlyPreferred:
       NotifyDropCallback(true);
       return;
 
@@ -139,32 +183,13 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
       LOG_IF(ERROR, is_gateway_arp_active_)
           << logging_tag_ << " " << __func__
           << ": Received NAK event for our gateway-ARP lease.";
-      nak_received_ = true;
       is_gateway_arp_active_ = false;
       return;
 
     case DHCPClientProxy::EventReason::kRenew:
-      metrics_->SendEnumToUMA(Metrics::kMetricDHCPv4RenewRebind, technology_,
-                              Metrics::DHCPv4RenewRebind::kRenew);
-      SendDHCPv4ProvisionResultMetrics(
-          Metrics::DHCPv4ProvisionResult::kSuccess);
-      UpdateConfiguration(network_config, dhcp_data, /*is_gateway_arp=*/false);
-      return;
-
     case DHCPClientProxy::EventReason::kRebind:
-      metrics_->SendEnumToUMA(Metrics::kMetricDHCPv4RenewRebind, technology_,
-                              Metrics::DHCPv4RenewRebind::kRebind);
-      SendDHCPv4ProvisionResultMetrics(
-          Metrics::DHCPv4ProvisionResult::kSuccess);
-      UpdateConfiguration(network_config, dhcp_data, /*is_gateway_arp=*/false);
-      return;
-
     case DHCPClientProxy::EventReason::kBound:
     case DHCPClientProxy::EventReason::kReboot:
-      SendDHCPv4ProvisionResultMetrics(
-          Metrics::DHCPv4ProvisionResult::kSuccess);
-      [[fallthrough]];
-
     case DHCPClientProxy::EventReason::kBound6:
     case DHCPClientProxy::EventReason::kRebind6:
     case DHCPClientProxy::EventReason::kReboot6:

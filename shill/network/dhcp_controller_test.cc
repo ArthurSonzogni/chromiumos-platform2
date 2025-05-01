@@ -311,6 +311,21 @@ TEST_F(DHCPControllerTest, RebindEvent) {
   task_environment_.RunUntilIdle();
 }
 
+TEST_F(DHCPControllerTest, RebootEvent) {
+  const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+  const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
+
+  EXPECT_CALL(metrics_, SendDHCPv4ProvisionResultEnumToUMA(
+                            kTechnology, kProvisionReason,
+                            Metrics::DHCPv4ProvisionResult::kSuccess));
+  EXPECT_CALL(*this, UpdateCallback(network_config, dhcp_data,
+                                    /*new_lease_acquired=*/true));
+
+  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kReboot,
+                                network_config, dhcp_data);
+  task_environment_.RunUntilIdle();
+}
+
 TEST_F(DHCPControllerTest, GatewayArpEvent) {
   const net_base::NetworkConfig network_config = GenerateNetworkConfig();
   const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
