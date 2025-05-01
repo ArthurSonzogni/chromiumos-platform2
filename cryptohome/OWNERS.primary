@@ -9,5 +9,4 @@ include chromiumos/owners:v1:/security/OWNERS.cryptohome
 # Other team owners
 apronin@chromium.org
 dlunev@chromium.org
-yich@google.com
 zuan@chromium.org
