@@ -7,7 +7,6 @@ sukhomlinov@chromium.org
 
 # TPE
 zuan@chromium.org
-yich@google.com
 
 
 per-file *oobe_config*=file:/oobe_config/OWNERS
