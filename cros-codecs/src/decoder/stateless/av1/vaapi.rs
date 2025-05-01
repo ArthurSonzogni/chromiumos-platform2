@@ -101,6 +101,14 @@ impl VaStreamInfo for &StreamInfo {
     fn visible_rect(&self) -> Rect {
         Rect::from(((0, 0), (self.render_width, self.render_height)))
     }
+
+    fn bit_depth(&self) -> usize {
+        match self.seq_header.bit_depth {
+            BitDepth::Depth8 => return 8,
+            BitDepth::Depth10 => return 10,
+            BitDepth::Depth12 => return 12,
+        }
+    }
 }
 
 impl From<&FrameHeaderObu> for libva::AV1FilmGrain {

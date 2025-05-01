@@ -110,6 +110,10 @@ impl VaStreamInfo for &Rc<Sps> {
 
         Rect { x: rect.min.x, y: rect.min.y, width: rect.max.x, height: rect.max.y }
     }
+
+    fn bit_depth(&self) -> usize {
+        (self.bit_depth_chroma_minus8 + 8) as usize
+    }
 }
 
 /// Fills the internal `va_pic` picture parameter with data from `h264_pic`

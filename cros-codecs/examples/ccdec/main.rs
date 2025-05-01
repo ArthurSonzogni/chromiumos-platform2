@@ -35,7 +35,6 @@ use cros_codecs::c2_wrapper::DrainMode;
 use cros_codecs::codec::h264::parser::Nalu as H264Nalu;
 use cros_codecs::codec::h265::parser::Nalu as H265Nalu;
 use cros_codecs::decoder::StreamInfo;
-use cros_codecs::image_processing::nv12_to_i420;
 use cros_codecs::utils::align_up;
 use cros_codecs::video_frame::frame_pool::FramePool;
 use cros_codecs::video_frame::frame_pool::PooledVideoFrame;
@@ -43,9 +42,6 @@ use cros_codecs::video_frame::gbm_video_frame::GbmDevice;
 use cros_codecs::video_frame::gbm_video_frame::GbmUsage;
 use cros_codecs::video_frame::generic_dma_video_frame::GenericDmaVideoFrame;
 use cros_codecs::video_frame::VideoFrame;
-use cros_codecs::video_frame::UV_PLANE;
-use cros_codecs::video_frame::Y_PLANE;
-use cros_codecs::DecodedFormat;
 use cros_codecs::EncodedFormat;
 use cros_codecs::Fourcc;
 
@@ -81,11 +77,6 @@ fn main() {
     let args: Args = argh::from_env();
 
     let mut input = File::open(&args.input).expect("error opening input file");
-
-    assert!(
-        args.output_format == DecodedFormat::I420,
-        "Only I420 currently supported by VA-API ccdec"
-    );
 
     let input = {
         let mut buf = Vec::new();
@@ -126,7 +117,7 @@ fn main() {
     let framepool = Arc::new(Mutex::new(FramePool::new(move |stream_info: &StreamInfo| {
         <Arc<GbmDevice> as Clone>::clone(&gbm_device)
             .new_frame(
-                Fourcc::from(b"NV12"),
+                Fourcc::from(args.output_format),
                 stream_info.display_resolution,
                 stream_info.coded_resolution,
                 GbmUsage::Decode,
@@ -157,32 +148,32 @@ fn main() {
         }
 
         if job.output.is_some() {
+            let horizontal_subsampling = job.output.as_ref().unwrap().get_horizontal_subsampling();
+            let vertical_subsampling = job.output.as_ref().unwrap().get_vertical_subsampling();
+            let bpp = job.output.as_ref().unwrap().get_bytes_per_element();
+            let pitches = job.output.as_ref().unwrap().get_plane_pitch();
             let width = job.output.as_ref().unwrap().resolution().width as usize;
             let height = job.output.as_ref().unwrap().resolution().height as usize;
-            let luma_size = job.output.as_ref().unwrap().resolution().get_area();
-            let chroma_size = align_up(width, 2) / 2 * align_up(height, 2) / 2;
-            let mut frame_data: Vec<u8> = vec![0; luma_size + 2 * chroma_size];
-            let (dst_y, dst_uv) = frame_data.split_at_mut(luma_size);
-            let (dst_u, dst_v) = dst_uv.split_at_mut(chroma_size);
+            let mut frame_data: Vec<u8> = vec![];
             {
-                let src_pitches = job.output.as_ref().unwrap().get_plane_pitch();
-                let src_mapping =
-                    job.output.as_ref().unwrap().map().expect("Failed to map output frame!");
-                let src_planes = src_mapping.get();
-                nv12_to_i420(
-                    src_planes[Y_PLANE],
-                    src_pitches[Y_PLANE],
-                    dst_y,
-                    width,
-                    src_planes[UV_PLANE],
-                    src_pitches[UV_PLANE],
-                    dst_u,
-                    align_up(width, 2) / 2,
-                    dst_v,
-                    align_up(width, 2) / 2,
-                    width,
-                    height,
-                );
+                let frame_map =
+                    job.output.as_ref().unwrap().map().expect("failed to map output frame!");
+                let planes = frame_map.get();
+                for plane_idx in 0..planes.len() {
+                    let plane_height = align_up(height, vertical_subsampling[plane_idx])
+                        / vertical_subsampling[plane_idx];
+                    let plane_width = ((align_up(width, horizontal_subsampling[plane_idx])
+                        / horizontal_subsampling[plane_idx])
+                        as f32
+                        * bpp[plane_idx]) as usize;
+                    let plane = planes[plane_idx];
+                    for y in 0..plane_height {
+                        frame_data.extend_from_slice(
+                            &plane
+                                [(y * pitches[plane_idx])..(y * pitches[plane_idx] + plane_width)],
+                        );
+                    }
+                }
             }
 
             if args.multiple_output_files {
@@ -229,8 +220,7 @@ fn main() {
     #[cfg(feature = "vaapi")]
     let mut decoder: C2Wrapper<_, C2DecoderWorker<_, C2VaapiDecoder>> = C2Wrapper::new(
         Fourcc::from(args.input_format),
-        // TODO: Support other pixel formats
-        Fourcc::from(b"NV12"),
+        Fourcc::from(args.output_format),
         error_cb,
         on_new_frame,
         framepool_hint_cb,
@@ -240,8 +230,7 @@ fn main() {
     #[cfg(feature = "v4l2")]
     let mut decoder: C2Wrapper<_, C2DecoderWorker<_, C2V4L2Decoder>> = C2Wrapper::new(
         Fourcc::from(args.input_format),
-        // TODO: Support other pixel formats
-        Fourcc::from(b"NV12"),
+        Fourcc::from(args.output_format),
         error_cb,
         on_new_frame,
         framepool_hint_cb,

@@ -130,6 +130,10 @@ impl VaStreamInfo for &Header {
     fn visible_rect(&self) -> Rect {
         Rect::from(self.coded_size())
     }
+
+    fn bit_depth(&self) -> usize {
+        self.bit_depth as usize
+    }
 }
 
 fn build_pic_param(

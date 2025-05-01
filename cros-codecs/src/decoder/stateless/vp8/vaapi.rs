@@ -58,6 +58,10 @@ impl VaStreamInfo for &Header {
     fn visible_rect(&self) -> Rect {
         Rect { x: 0, y: 0, width: self.coded_size().width, height: self.coded_size().height }
     }
+
+    fn bit_depth(&self) -> usize {
+        8
+    }
 }
 
 /// A clamp such that min <= x <= max

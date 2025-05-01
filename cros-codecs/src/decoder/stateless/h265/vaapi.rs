@@ -185,6 +185,10 @@ impl VaStreamInfo for &Sps {
 
         Rect { x: rect.min.x, y: rect.min.y, width: rect.max.x, height: rect.max.y }
     }
+
+    fn bit_depth(&self) -> usize {
+        (self.bit_depth_chroma_minus8 + 8) as usize
+    }
 }
 
 fn build_slice_ref_pic_list<V: VideoFrame>(

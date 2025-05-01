@@ -905,7 +905,9 @@ pub fn i420_to_nv12(
 pub const SUPPORTED_CONVERSION: &'static [(DecodedFormat, DecodedFormat)] = &[
     #[cfg(feature = "v4l2")]
     (DecodedFormat::MM21, DecodedFormat::NV12),
+    (DecodedFormat::MM21, DecodedFormat::I420),
     (DecodedFormat::NV12, DecodedFormat::NV12),
+    (DecodedFormat::NV12, DecodedFormat::I420),
     (DecodedFormat::I420, DecodedFormat::I420),
     (DecodedFormat::I420, DecodedFormat::NV12),
     (DecodedFormat::I422, DecodedFormat::I422),
@@ -938,6 +940,38 @@ pub fn convert_video_frame(src: &impl VideoFrame, dst: &mut impl VideoFrame) -> 
             width,
             height as isize,
         ),
+        #[cfg(feature = "v4l2")]
+        (DecodedFormat::MM21, DecodedFormat::I420) => {
+            let mut tmp_y: Vec<u8> = vec![0; src_planes[Y_PLANE].len()];
+            let mut tmp_uv: Vec<u8> = vec![0; src_planes[UV_PLANE].len()];
+            mm21_to_nv12(
+                src_planes[Y_PLANE],
+                src_pitches[Y_PLANE],
+                &mut tmp_y[..],
+                src_pitches[Y_PLANE],
+                src_planes[UV_PLANE],
+                src_pitches[UV_PLANE],
+                &mut tmp_uv[..],
+                src_pitches[UV_PLANE],
+                width,
+                height as isize,
+            )?;
+            nv12_to_i420(
+                &mut tmp_y[..],
+                src_pitches[Y_PLANE],
+                *dst_planes[Y_PLANE].borrow_mut(),
+                dst_pitches[Y_PLANE],
+                &mut tmp_uv[..],
+                src_pitches[UV_PLANE],
+                *dst_planes[U_PLANE].borrow_mut(),
+                dst_pitches[U_PLANE],
+                *dst_planes[V_PLANE].borrow_mut(),
+                dst_pitches[V_PLANE],
+                width,
+                height,
+            );
+            Ok(())
+        }
         (DecodedFormat::NV12, DecodedFormat::NV12) => {
             nv12_copy(
                 src_planes[Y_PLANE],
@@ -948,6 +982,23 @@ pub fn convert_video_frame(src: &impl VideoFrame, dst: &mut impl VideoFrame) -> 
                 src_pitches[UV_PLANE],
                 *dst_planes[UV_PLANE].borrow_mut(),
                 dst_pitches[UV_PLANE],
+                width,
+                height,
+            );
+            Ok(())
+        }
+        (DecodedFormat::NV12, DecodedFormat::I420) => {
+            nv12_to_i420(
+                src_planes[Y_PLANE],
+                src_pitches[Y_PLANE],
+                *dst_planes[Y_PLANE].borrow_mut(),
+                dst_pitches[Y_PLANE],
+                src_planes[UV_PLANE],
+                src_pitches[UV_PLANE],
+                *dst_planes[U_PLANE].borrow_mut(),
+                dst_pitches[U_PLANE],
+                *dst_planes[V_PLANE].borrow_mut(),
+                dst_pitches[V_PLANE],
                 width,
                 height,
             );

@@ -81,6 +81,8 @@ pub(crate) trait VaStreamInfo {
     fn coded_size(&self) -> Resolution;
     /// Returns the visible rectangle within the coded size for the stream.
     fn visible_rect(&self) -> Rect;
+    /// Returns the bit depth of the stream.
+    fn bit_depth(&self) -> usize;
 }
 
 /// Rendering state of a VA picture.
@@ -265,6 +267,13 @@ impl<V: VideoFrame> VaapiBackend<V> {
         self.stream_info.display_resolution = Resolution::from(stream_params.visible_rect());
         self.stream_info.coded_resolution = stream_params.coded_size().clone();
         self.stream_info.min_num_frames = stream_params.min_num_surfaces();
+        let rt_format = if stream_params.bit_depth() == 10 {
+            self.stream_info.format = DecodedFormat::P010;
+            libva::VA_RT_FORMAT_YUV420_10
+        } else {
+            self.stream_info.format = DecodedFormat::NV12;
+            libva::VA_RT_FORMAT_YUV420
+        };
 
         // TODO: Handle context re-use
         // TODO: We should obtain RT_FORMAT from stream_info
@@ -273,7 +282,7 @@ impl<V: VideoFrame> VaapiBackend<V> {
             .create_config(
                 vec![libva::VAConfigAttrib {
                     type_: libva::VAConfigAttribType::VAConfigAttribRTFormat,
-                    value: libva::VA_RT_FORMAT_YUV420,
+                    value: rt_format,
                 }],
                 stream_params.va_profile().map_err(|_| anyhow!("Could not get VAProfile!"))?,
                 libva::VAEntrypoint::VAEntrypointVLD,

@@ -49,7 +49,13 @@ impl C2DecoderBackend for C2VaapiDecoder {
 
         let mut supported_formats: Vec<Fourcc> = Vec::new();
         for format in image_fmts.iter() {
-            supported_formats.push(Fourcc::from(format.fourcc));
+            let fourcc = Fourcc::from(format.fourcc);
+            // Minigbm does not support YUV420 for decode usage, only camera write on I915.
+            // TODO: We should be able to query minigbm to ask it what decoding formats it
+            // supports.
+            if fourcc != Fourcc::from(b"I420") {
+                supported_formats.push(fourcc);
+            }
         }
 
         return Ok(supported_formats);
