@@ -120,6 +120,7 @@ class TaskRunnerContext {
       : callback_(std::move(callback)), task_runner_(std::move(task_runner)) {
     // Constructor can be called from any thread.
     DETACH_FROM_SEQUENCE(sequence_checker_);
+    CHECK(!callback_.is_null()) << "Null callback provided by the caller";
   }
 
   // Context can only be deleted by calling Response method.
