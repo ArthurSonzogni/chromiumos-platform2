@@ -16,6 +16,7 @@ use std::sync::Mutex;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use cros_codecs::bitstream_utils::parse_matroska;
 use cros_codecs::bitstream_utils::IvfIterator;
 use cros_codecs::bitstream_utils::NalIterator;
 use cros_codecs::c2_wrapper::c2_decoder::C2DecoderWorker;
@@ -58,9 +59,13 @@ use crate::util::Md5Computation;
 mod md5;
 mod util;
 
-// Returns the frame iterator for IVF file.
+// Returns the frame iterator for IVF or MKV file.
 fn create_vpx_frame_iterator(input: &[u8]) -> Box<dyn Iterator<Item = Cow<[u8]>> + '_> {
-    Box::new(IvfIterator::new(input).map(Cow::Borrowed))
+    if let Ok(ivf_iterator) = IvfIterator::new(input) {
+        Box::new(ivf_iterator.map(Cow::Borrowed))
+    } else {
+        Box::new(parse_matroska(input).into_iter().map(Cow::Borrowed))
+    }
 }
 
 fn main() {

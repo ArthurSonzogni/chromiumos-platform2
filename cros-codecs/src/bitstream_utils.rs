@@ -300,13 +300,17 @@ pub struct IvfIterator<'a> {
 }
 
 impl<'a> IvfIterator<'a> {
-    pub fn new(data: &'a [u8]) -> Self {
+    pub fn new(data: &'a [u8]) -> Result<Self, String> {
+        if data.len() < 4 || &data[0..4] != IvfFileHeader::MAGIC {
+            return Err("File does not appear to be an IVF file!".into());
+        }
+
         let mut cursor = Cursor::new(data);
 
         // Skip the IVH header entirely.
         cursor.seek(std::io::SeekFrom::Start(32)).unwrap();
 
-        Self { cursor }
+        Ok(Self { cursor })
     }
 }
 
@@ -541,6 +545,99 @@ impl<W: Write> Drop for BitWriter<W> {
             log::error!("Unable to flush bits {e:?}");
         }
     }
+}
+
+/// Very basic Matroska bitstream parser
+#[derive(Debug)]
+pub struct EbmlElement<'a> {
+    pub id: u64,
+    pub contents: &'a [u8],
+}
+
+impl<'a> EbmlElement<'a> {
+    fn parse_varint(stream: &'a [u8]) -> Option<(u64, &'a [u8])> {
+        if stream.len() == 0 {
+            return None;
+        }
+
+        let num_extra_octets = stream[0].leading_zeros() as usize;
+        if num_extra_octets > 8 {
+            return None;
+        }
+        let mut ret: u64 = (stream[0] as u64) & (((1 << (7 - num_extra_octets)) - 1) as u64);
+
+        // EMBL VARINTs are apparently big endian.
+        if stream.len() < 1 + num_extra_octets {
+            return None;
+        }
+        for i in 0..num_extra_octets {
+            ret <<= 8;
+            ret |= stream[i + 1] as u64;
+        }
+
+        Some((ret, &stream[(1 + num_extra_octets)..]))
+    }
+
+    pub fn parse_ebml(mut stream: &'a [u8]) -> Vec<Self> {
+        let mut ret: Vec<Self> = Vec::new();
+        while let Some((id, rest_of_stream)) = Self::parse_varint(stream) {
+            if let Some((element_len, rest_of_stream)) = Self::parse_varint(rest_of_stream) {
+                ret.push(Self {
+                    id: id, // Note that this will remove the leading 1 from element IDs.
+                    contents: &rest_of_stream[..element_len as usize],
+                });
+                stream = &rest_of_stream[element_len as usize..];
+            } else {
+                break;
+            }
+        }
+
+        ret
+    }
+}
+
+pub fn parse_matroska<'a>(stream: &'a [u8]) -> Vec<&'a [u8]> {
+    const SEGMENT_ELEMENT_ID: u64 = 0x8538067;
+    const CLUSTER_ELEMENT_ID: u64 = 0xF43B675;
+    const SIMPLE_BLOCK_ELEMENT_ID: u64 = 0x23;
+    const BLOCK_GROUP_ELEMENT_ID: u64 = 0x20;
+    const BLOCK_ELEMENT_ID: u64 = 0x21;
+
+    let mut ret: Vec<&'a [u8]> = Vec::new();
+    let top_elements = EbmlElement::parse_ebml(stream);
+    for top_element in top_elements {
+        if top_element.id == SEGMENT_ELEMENT_ID {
+            let segment_elements = EbmlElement::parse_ebml(top_element.contents);
+            for segment_element in segment_elements {
+                if segment_element.id == CLUSTER_ELEMENT_ID {
+                    let cluster_elements = EbmlElement::parse_ebml(segment_element.contents);
+                    for cluster_element in cluster_elements {
+                        if cluster_element.id == SIMPLE_BLOCK_ELEMENT_ID {
+                            let (_track_num, block_contents) =
+                                EbmlElement::parse_varint(cluster_element.contents)
+                                    .expect("Error parsing matroska simple block!");
+                            // Skip 16 bit timestamp and 8 bits of other metadata.
+                            ret.push(&block_contents[3..]);
+                        }
+                        if cluster_element.id == BLOCK_GROUP_ELEMENT_ID {
+                            let group_elements = EbmlElement::parse_ebml(cluster_element.contents);
+                            for group_element in group_elements {
+                                if group_element.id == BLOCK_ELEMENT_ID {
+                                    let (_track_num, block_contents) =
+                                        EbmlElement::parse_varint(group_element.contents)
+                                            .expect("Error parsing matroska block!");
+                                    // Skip 16 bit timestamp and 8 bits of other metadata.
+                                    ret.push(&block_contents[3..]);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ret
 }
 
 #[cfg(test)]

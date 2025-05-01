@@ -4073,7 +4073,8 @@ mod tests {
     #[test]
     fn parse_test25fps() {
         let mut parser = Parser::default();
-        let ivf_iter = IvfIterator::new(STREAM_TEST_25_FPS);
+        let ivf_iter =
+            IvfIterator::new(STREAM_TEST_25_FPS).expect("Failed to construct IVF iterator");
         let mut num_obus = 0;
 
         for packet in ivf_iter {
@@ -4104,14 +4105,16 @@ mod tests {
     /// Annex B formats.
     fn parse_annexb() {
         let mut parser = Parser::default();
-        let mut ivf_iter = IvfIterator::new(STREAM_TEST_25_FPS);
+        let mut ivf_iter =
+            IvfIterator::new(STREAM_TEST_25_FPS).expect("Failed to construct IVF iterator");
         let packet = ivf_iter.next().unwrap();
 
         parser.read_obu(packet).unwrap();
         assert!(matches!(parser.stream_format, StreamFormat::LowOverhead));
 
         let mut parser = Parser::default();
-        let mut ivf_iter = IvfIterator::new(STREAM_ANNEXB);
+        let mut ivf_iter =
+            IvfIterator::new(STREAM_ANNEXB).expect("Failed to construct IVF iterator");
         let packet = ivf_iter.next().unwrap();
 
         parser.read_obu(packet).unwrap();
@@ -4123,7 +4126,8 @@ mod tests {
     /// Annex B formats and identify all the OBUs in the stream until the end.
     fn parse_annexb_full() {
         let mut parser = Parser::default();
-        let ivf_iter = IvfIterator::new(STREAM_TEST_25_FPS);
+        let ivf_iter =
+            IvfIterator::new(STREAM_TEST_25_FPS).expect("Failed to construct IVF iterator");
 
         for packet in ivf_iter {
             let mut consumed = 0;
@@ -4143,7 +4147,7 @@ mod tests {
         }
 
         let mut parser = Parser::default();
-        let ivf_iter = IvfIterator::new(STREAM_ANNEXB);
+        let ivf_iter = IvfIterator::new(STREAM_ANNEXB).expect("Failed to construct IVF iterator");
         let mut num_obus = 0;
 
         for packet in ivf_iter {
@@ -4176,7 +4180,8 @@ mod tests {
     #[test]
     fn parse_test25fps_obus() {
         let mut parser = Parser::default();
-        let ivf_iter = IvfIterator::new(STREAM_TEST_25_FPS);
+        let ivf_iter =
+            IvfIterator::new(STREAM_TEST_25_FPS).expect("Failed to construct IVF iterator");
 
         for packet in ivf_iter {
             let mut consumed = 0;

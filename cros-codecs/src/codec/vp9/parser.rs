@@ -1219,7 +1219,7 @@ mod tests {
         const TEST_STREAM: &[u8] = include_bytes!("test_data/test-25fps.vp9");
 
         let mut parser = Parser::default();
-        let ivf_iter = IvfIterator::new(TEST_STREAM);
+        let ivf_iter = IvfIterator::new(TEST_STREAM).expect("Failed to construct IVF iterator");
 
         for (frame_n, packet) in ivf_iter.enumerate() {
             let frames = parser.parse_chunk(packet.as_ref()).expect("Parsing a superframe failed");
