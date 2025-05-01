@@ -5,5 +5,4 @@ include chromiumos/owners:v1:/firmware/OWNERS.cros_gsc
 apronin@chromium.org
 
 # TPE
-yich@google.com
 zuan@chromium.org
