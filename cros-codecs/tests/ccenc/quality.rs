@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use chrono::prelude::Utc;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::fs::{self, File};
@@ -26,9 +27,6 @@ pub enum Decoder {
     Libavc,
     /// A VP8 and VP9 decoder built from https://chromium.googlesource.com/webm/libvpx/.
     Libvpx,
-    #[allow(dead_code)]
-    /// An AV1 decoder built from https://aomedia.googlesource.com/aom/.
-    Libaom,
 }
 
 /// Decoder is a command line software decoder that can be used in compare_files().
@@ -37,7 +35,7 @@ impl Decoder {
     pub fn command(&self) -> PathBuf {
         match self {
             Decoder::Libvpx => Path::new("vpxdec").to_path_buf(),
-            &Decoder::Libavc | &Decoder::Libaom => todo!("Not yet supported by ccenc_test."),
+            &Decoder::Libavc => Path::new("avcdec").to_path_buf(),
         }
     }
 
@@ -45,7 +43,7 @@ impl Decoder {
     pub fn name(&self) -> &'static str {
         match self {
             Decoder::Libvpx => "vpxdec",
-            &Decoder::Libavc | &Decoder::Libaom => todo!("Not yet supported by ccenc_test."),
+            &Decoder::Libavc => "avcdec",
         }
     }
 }
@@ -69,13 +67,14 @@ pub fn compare_files(
         encoded_file_path
     );
 
-    // Construct path for the temporary YUV file by appending ".2" to the original filename within out_dir
+    // Constructs path for the temporary YUV file by appending ".temp" to the
+    // original filename within out_dir.
     let parent_dir = yuv_file_path.parent().ok_or_else(|| {
         EncodeTestError::IoError(format!("Could not get parent directory of {:?}", yuv_file_path))
     })?;
     let temp_yuv_path = yuv_file_path
         .file_name()
-        .map(|name| parent_dir.join(format!("{}.2", name.to_string_lossy())))
+        .map(|name| parent_dir.join(format!("{}.temp", name.to_string_lossy())))
         .ok_or_else(|| {
             EncodeTestError::IoError(format!(
                 "Could not extract filename from path: {:?}",
@@ -90,22 +89,37 @@ pub fn compare_files(
         )));
     }
 
-    let mut decode_args = vec![encoded_file_path.display().to_string()];
-    if decoder == Decoder::Libvpx {
-        decode_args.push("--i420".to_string()); // Assume I420 output format
-        decode_args.push("-o".to_string());
-    }
-    decode_args.push(temp_yuv_path.display().to_string());
+    let decode_args = match decoder {
+        Decoder::Libavc => {
+            vec![
+                "--input".to_string(),
+                encoded_file_path.display().to_string(),
+                "--output".to_string(),
+                temp_yuv_path.display().to_string(),
+                // avcdec expects each argument and its value to be separate.
+                "--save_output".to_string(),
+                "1".to_string(),
+                "--num_frames".to_string(),
+                "-1".to_string(),
+            ]
+        }
+        Decoder::Libvpx => {
+            vec![
+                encoded_file_path.display().to_string(),
+                "--i420".to_string(), // Assume I420 output format
+                "-o".to_string(),
+                temp_yuv_path.display().to_string(),
+                // TODO(b/400791632): The encoded IVF test file lacks an EOS marker
+                // for vpxdec to recognize. Use --limit to explicitly specify the
+                // expected frame counts.
+                format!("--limit={}", num_frames),
+            ]
+        }
+    };
 
-    // TODO(b/400791632): The encoded IVF test file lacks an EOS marker
-    // for vpxdec to recognize. Use --limit to explicitly specify the
-    // expected frame counts.
-    let num_frames_limit = format!("--limit={}", num_frames);
-    decode_args.push(num_frames_limit);
     let decode_args_str = decode_args.iter().map(String::as_str).collect::<Vec<_>>();
-
     let decoder_name = decoder.name();
-    let decoder_log_path = Path::new(out_dir).join(format!("{}.txt", decoder_name));
+    let decoder_log_path = get_command_log_path(out_dir, decoder_name, decoder_name);
     execute(
         &decoder.command(),
         &decode_args_str,
@@ -118,7 +132,7 @@ pub fn compare_files(
     let ssim_args =
         [yuv_file_path.display().to_string(), temp_yuv_path.display().to_string(), size_str];
     let ssim_args_str = ssim_args.iter().map(String::as_str).collect::<Vec<_>>();
-    let ssim_log_path = Path::new(out_dir).join("tiny_ssim.txt");
+    let ssim_log_path = get_command_log_path(out_dir, "tiny_ssim", decoder_name);
     execute(ssim_command, &ssim_args_str, Some(&ssim_log_path), None)?;
     let tiny_ssim_values =
         extract_float_values(&ssim_log_path, &[("PSNR", &REGEX_PSNR), ("SSIM", &REGEX_SSIM)])?;
@@ -177,4 +191,17 @@ fn extract_float_values(
         }
     }
     Ok(results)
+}
+
+// Test methods are run within the same module execution so artifacts
+// including logs are shared between them. This function generates unique log
+// file names to avoid collisions between test methods.
+fn get_command_log_path(out_dir: &Path, command: &str, decoder_name: &str) -> PathBuf {
+    let time = Utc::now();
+    Path::new(out_dir).join(format!(
+        "{}_{}_{}.txt",
+        command,
+        decoder_name,
+        time.format("%Y-%m-%d_%H:%M:%S")
+    ))
 }

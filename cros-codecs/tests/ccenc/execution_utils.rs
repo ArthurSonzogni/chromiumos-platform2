@@ -58,10 +58,10 @@ fn get_ccenc_args(
 
     let mut target_bitrate = (0.1 * fps as f64 * size.width as f64 * size.height as f64) as i32;
     let encoded_file_path = match output_format {
-        "vp8" => return Err(EncodeTestError::UnsupportedOutputFormat(output_format.to_string())),
         "vp9" => yuv_file.with_extension("ivf"),
+        "h264" => yuv_file.with_extension("h264"),
         _ => {
-            todo!("Unrecognized supported format by ccenc_test: {}", output_format);
+            return Err(EncodeTestError::UnsupportedOutputFormat(output_format.to_string()));
         }
     };
     args.push("--codec".to_string());
@@ -107,6 +107,8 @@ fn write_to_log(output: &str, log_path: Option<&Path>) {
             if let Err(err) = file.write_all(output.as_bytes()) {
                 log::error!("Failed to append stdout to {:?}: {}", path, err);
             }
+        } else {
+            log::error!("Failed to open log file {:?}", path);
         }
     }
 }

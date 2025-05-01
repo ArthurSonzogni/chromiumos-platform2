@@ -34,7 +34,10 @@ pub fn decode_in_i420(webm_file: &WebMFile) -> Result<PathBuf, EncodeTestError> 
     }
 
     let yuv_file_name = webm_file.name.strip_suffix(webm_suffix).unwrap().to_string() + "i420.yuv";
-    let yuv_file_path = PathBuf::from(&yuv_file_name);
+    let parent_dir = webm_file.path.parent().ok_or_else(|| {
+        EncodeTestError::IoError(format!("Could not get parent directory of {:?}", webm_file.path))
+    })?;
+    let yuv_file_path = parent_dir.join(yuv_file_name);
 
     if let Err(e) = File::create(&yuv_file_path) {
         return Err(EncodeTestError::IoError(format!(
