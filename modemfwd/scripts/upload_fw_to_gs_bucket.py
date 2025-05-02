@@ -106,18 +106,23 @@ class TempDir:
 class FwUploader:
   """Class to verify the files and upload the tarball to a gs bucket."""
 
-  def __init__(self, path, upload, tarball_dir_name):
+  def __init__(self, path, upload, tarball_postfix, tarball_dir_name):
     self.path = os.path.abspath(path)
     self.upload = upload
     self.basename = os.path.basename(self.path)
     self.tarball_dir_name = tarball_dir_name
+    self.tarball_postfix = tarball_postfix
 
   def process_fw_and_upload(self, keep_tmp_files):
     if not self.validate():
       return os.EX_USAGE
 
+    tarball_dir_name = self.tarball_dir_name
+    if self.tarball_postfix:
+        tarball_dir_name += "-" + self.tarball_postfix
+
     with TempDir(keep_tmp_files) as tempdir:
-      path_to_package = os.path.join(tempdir, self.tarball_dir_name)
+      path_to_package = os.path.join(tempdir, tarball_dir_name)
       os.mkdir(path_to_package)
 
       if not self.prepare_files(self.path, path_to_package):
@@ -125,14 +130,14 @@ class FwUploader:
         return os.EX_OSFILE
 
       os.chdir(tempdir)
-      tarball_name = f"{self.tarball_dir_name}.tar.xz"
+      tarball_name = f"{tarball_dir_name}.tar.xz"
       subprocess.run(
           [
               "tar",
               "-Ipixz",
               "-cf",
               f"{tarball_name}",
-              f"{self.tarball_dir_name}/",
+              f"{tarball_dir_name}/",
           ],
           stderr=subprocess.DEVNULL,
           check=True,
@@ -182,8 +187,8 @@ class FwUploader:
 class L850MainFw(FwUploader):
   """Uploader class for L850GL main FW."""
 
-  def __init__(self, path, upload):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix):
+    super().__init__(path, upload, tarball_postfix, None)
     self.tarball_dir_name = L850_TARBALL_PREFIX + self.basename.replace(
         ".fls3.xz", ""
     )
@@ -209,8 +214,8 @@ class L850MainFw(FwUploader):
 class L850OemFw(FwUploader):
   """Uploader class for L850GL OEM FW."""
 
-  def __init__(self, path, upload):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix):
+    super().__init__(path, upload, tarball_postfix, None)
     self.tarball_dir_name = (
         f"{L850_TARBALL_PREFIX}"
         + f'[{self.basename.replace(OEM_FW_POSTFIX, "")}]'
@@ -240,8 +245,8 @@ class L850OemFw(FwUploader):
 class L850OemDir(FwUploader):
   """Uploader class for L850GL cust packs directory."""
 
-  def __init__(self, path, upload, revision, board):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix, revision, board):
+    super().__init__(path, upload, tarball_postfix, None)
     self.tarball_dir_name = (
         f"{L850_TARBALL_PREFIX}{board}"
         + f"-carriers_OEM_{self.basename}-{revision}"
@@ -272,8 +277,8 @@ class L850OemDir(FwUploader):
 class NL668MainFw(FwUploader):
   """Uploader class for NL668 main FW."""
 
-  def __init__(self, path, upload):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix):
+    super().__init__(path, upload, tarball_postfix, None)
     self.tarball_dir_name = NL668_TARBALL_PREFIX + self.basename
 
   def validate(self):
@@ -294,8 +299,8 @@ class NL668MainFw(FwUploader):
 class FM101Fw(FwUploader):
   """Uploader class for FM101 main FW."""
 
-  def __init__(self, path, upload):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix):
+    super().__init__(path, upload, tarball_postfix, None)
     self.tarball_dir_name = FM101_TARBALL_PREFIX + self.basename
 
   def validate(self):
@@ -315,8 +320,8 @@ class FM101Fw(FwUploader):
 class FM101RecoveryFw(FwUploader):
   """Uploader class for FM101 recovery FW."""
 
-  def __init__(self, path, upload, main_fw_version, ap_fw_version, extra_ap_fw_version):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix, main_fw_version, ap_fw_version, extra_ap_fw_version):
+    super().__init__(path, upload, tarball_postfix, None)
     if not main_fw_version or not ap_fw_version:
       logging.error("The main, and AP FW versions are required for FM101 recovery FW")
       return os.EX_USAGE
@@ -344,8 +349,8 @@ class FM101RecoveryFw(FwUploader):
 class RW101Fw(FwUploader):
   """Uploader class for RW101 main FW."""
 
-  def __init__(self, path, upload):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix):
+    super().__init__(path, upload, tarball_postfix, None)
     self.tarball_dir_name = RW101_TARBALL_PREFIX + self.basename
 
   def validate(self):
@@ -365,8 +370,8 @@ class RW101Fw(FwUploader):
 class RW101RecoveryFw(FwUploader):
   """Uploader class for RW101 recovery FW."""
 
-  def __init__(self, path, upload, main_fw_version, ap_fw_version, extra_ap_fw_version):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix, main_fw_version, ap_fw_version, extra_ap_fw_version):
+    super().__init__(path, upload, tarball_postfix, None)
     if not main_fw_version or not ap_fw_version:
       logging.error("The main, and AP FW versions are required for RW101 recovery FW")
       return os.EX_USAGE
@@ -394,8 +399,8 @@ class RW101RecoveryFw(FwUploader):
 class RW135Fw(FwUploader):
   """Uploader class for RW135 main FW."""
 
-  def __init__(self, path, upload):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix):
+    super().__init__(path, upload, tarball_postfix, None)
     self.tarball_dir_name = RW135_TARBALL_PREFIX + self.basename
 
   def validate(self):
@@ -415,8 +420,8 @@ class RW135Fw(FwUploader):
 class RW135RecoveryFw(FwUploader):
   """Uploader class for RW135 recovery FW."""
 
-  def __init__(self, path, upload, main_fw_version, ap_fw_version, extra_ap_fw_version):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix, main_fw_version, ap_fw_version, extra_ap_fw_version):
+    super().__init__(path, upload, tarball_postfix, None)
     if not main_fw_version or not ap_fw_version:
       logging.error("The main, and AP FW versions are required for RW135 recovery FW")
       return os.EX_USAGE
@@ -449,8 +454,8 @@ class FM350MainFw(FwUploader):
   This should be used for both main and AP firmware payloads.
   """
 
-  def __init__(self, path, upload):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix):
+    super().__init__(path, upload, tarball_postfix, None)
     self.tarball_dir_name = FM350_TARBALL_PREFIX + self.basename
 
   def validate(self):
@@ -474,8 +479,8 @@ class FM350MiscFw(FwUploader):
   This should be used for OEM_OTA, DEV_OTA, and OP_OTA payloads.
   """
 
-  def __init__(self, path, upload):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix):
+    super().__init__(path, upload, tarball_postfix, None)
     self.tarball_dir_name = FM350_TARBALL_PREFIX + self.basename
 
   def validate(self):
@@ -511,8 +516,8 @@ class EM060DerivFw(FwUploader):
   as path argument.
   """
 
-  def __init__(self, path, upload, module_type):
-    super().__init__(path, upload, None)
+  def __init__(self, path, upload, tarball_postfix, module_type):
+    super().__init__(path, upload, tarball_postfix, None)
 
     self.firmware_version = None
     self.payload_type = None
@@ -621,7 +626,15 @@ def parse_arguments(argv):
       "--revision",
       help=(
           "The next ebuild number for that board. If the current ebuild "
-          "revision is r12, enter r13."
+          "revision is r12, enter r13. Only used on L850 OEM FW"
+      ),
+  )
+
+  parser.add_argument(
+      "--tarball-postfix",
+      help=(
+          "Add a postfix to the tarball dir name. Useful for testing EB FWs and"
+          " to fix mistakes when an incorrect FW is uploaded."
       ),
   )
 
@@ -671,9 +684,9 @@ def main(argv):
   opts = parse_arguments(argv)
   logging.info("opts: %s", opts)
   if opts.type == PackageType.L850_MAIN_FW:
-    fw_uploader = L850MainFw(opts.path, opts.upload)
+    fw_uploader = L850MainFw(opts.path, opts.upload, opts.tarball_postfix)
   elif opts.type == PackageType.L850_OEM_FW:
-    fw_uploader = L850OemFw(opts.path, opts.upload)
+    fw_uploader = L850OemFw(opts.path, opts.upload, opts.tarball_postfix)
   elif opts.type == PackageType.L850_OEM_DIR_ONLY:
     if not opts.revision:
       logging.error(
@@ -684,9 +697,9 @@ def main(argv):
     if not opts.board:
       logging.error("Please enter the board name.")
       return os.EX_USAGE
-    fw_uploader = L850OemDir(opts.path, opts.upload, opts.revision, opts.board)
+    fw_uploader = L850OemDir(opts.path, opts.upload, opts.tarball_postfix, opts.revision, opts.board)
   elif opts.type == PackageType.NL668_MAIN_FW:
-    fw_uploader = NL668MainFw(opts.path, opts.upload)
+    fw_uploader = NL668MainFw(opts.path, opts.upload, opts.tarball_postfix)
   elif opts.type in [
       PackageType.FM101_MAIN_FW,
       PackageType.FM101_AP_FW,
@@ -694,19 +707,19 @@ def main(argv):
       PackageType.FM101_OEM_FW,
       PackageType.FM101_OP_FW,
   ]:
-    fw_uploader = FM101Fw(opts.path, opts.upload)
+    fw_uploader = FM101Fw(opts.path, opts.upload, opts.tarball_postfix)
   elif opts.type in [
       PackageType.FM101_RECOVERY_FW,
   ]:
-    fw_uploader = FM101RecoveryFw(opts.path, opts.upload, opts.main_fw_version, opts.ap_fw_version, opts.extra_ap_fw_version)
+    fw_uploader = FM101RecoveryFw(opts.path, opts.upload, opts.tarball_postfix, opts.main_fw_version, opts.ap_fw_version, opts.extra_ap_fw_version)
   elif opts.type in [PackageType.FM350_MAIN_FW, PackageType.FM350_AP_FW]:
-    fw_uploader = FM350MainFw(opts.path, opts.upload)
+    fw_uploader = FM350MainFw(opts.path, opts.upload, opts.tarball_postfix)
   elif opts.type in [
       PackageType.FM350_DEV_FW,
       PackageType.FM350_OEM_FW,
       PackageType.FM350_CARRIER_FW,
   ]:
-    fw_uploader = FM350MiscFw(opts.path, opts.upload)
+    fw_uploader = FM350MiscFw(opts.path, opts.upload, opts.tarball_postfix)
   elif opts.type in [
       PackageType.RW101_MAIN_FW,
       PackageType.RW101_AP_FW,
@@ -714,11 +727,11 @@ def main(argv):
       PackageType.RW101_OEM_FW,
       PackageType.RW101_OP_FW,
   ]:
-    fw_uploader = RW101Fw(opts.path, opts.upload)
+    fw_uploader = RW101Fw(opts.path, opts.upload, opts.tarball_postfix)
   elif opts.type in [
       PackageType.RW101_RECOVERY_FW,
   ]:
-    fw_uploader = RW101RecoveryFw(opts.path, opts.upload, opts.main_fw_version, opts.ap_fw_version, opts.extra_ap_fw_version)
+    fw_uploader = RW101RecoveryFw(opts.path, opts.upload, opts.tarball_postfix, opts.main_fw_version, opts.ap_fw_version, opts.extra_ap_fw_version)
   elif opts.type in [
       PackageType.RW135_MAIN_FW,
       PackageType.RW135_AP_FW,
@@ -726,14 +739,14 @@ def main(argv):
       PackageType.RW135_OEM_FW,
       PackageType.RW135_OP_FW,
   ]:
-    fw_uploader = RW135Fw(opts.path, opts.upload)
+    fw_uploader = RW135Fw(opts.path, opts.upload, opts.tarball_postfix)
   elif opts.type in [
       PackageType.RW135_RECOVERY_FW,
   ]:
-    fw_uploader = RW135RecoveryFw(opts.path, opts.upload, opts.main_fw_version, opts.ap_fw_version, opts.extra_ap_fw_version)
+    fw_uploader = RW135RecoveryFw(opts.path, opts.upload, opts.tarball_postfix, opts.main_fw_version, opts.ap_fw_version, opts.extra_ap_fw_version)
   # EM060 and its derivatives
   elif opts.type in [PackageType.EM060_FW, PackageType.LCUK54_FW]:
-    fw_uploader = EM060DerivFw(opts.path, opts.upload, opts.type)
+    fw_uploader = EM060DerivFw(opts.path, opts.upload, opts.tarball_postfix, opts.type)
 
   return fw_uploader.process_fw_and_upload(opts.keep_files)
 
