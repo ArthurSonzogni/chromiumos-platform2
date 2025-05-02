@@ -55,9 +55,12 @@ bool AppendDecodedBits(char key,
 namespace brillo {
 
 std::optional<std::string> hwid::DecodeHWID(const std::string_view hwid) {
-  // For instance, assume hwid = "REDRIX-ZZCR D3A-39F-27K-E6B"
-  // After removing the prefix, translate the triplet of character using the
-  // maps above, the middle character using a smaller map.
+  // For instance, assume hwid = "SARIEN-MCOO 0-8-77-1D0 A2A-797" or
+  // "REDRIX-ZZCR D3A-39F-27K-E6B".
+  // After removing the MODEL-RLZ (e.g., "SARIEN-MCOO") and the optional
+  // configless field (e.g., "0-8-77-1D0"), translate the component field (the
+  // triplets of characters, e.g., "A2A-797") using the maps above. The middle
+  // character uses a smaller map.
   //
   // Also, remove the trailer and checksum:
   // HWID format is as follow:
@@ -73,7 +76,7 @@ std::optional<std::string> hwid::DecodeHWID(const std::string_view hwid) {
   //
   // To remove the end, look for the last bit set to 1 in the whole string,
   // excluding the checksum.
-  auto payload = base::SplitStringOnce(
+  auto payload = base::RSplitStringOnce(
       base::TrimWhitespaceASCII(hwid, base::TrimPositions::TRIM_ALL), " ");
   if (!payload.has_value() || payload->second.empty()) {
     return std::nullopt;
