@@ -17,6 +17,12 @@ namespace brillo::hwid {
 BRILLO_EXPORT std::optional<std::string> DecodeHWID(
     const std::string_view hwid);
 
+// Calculate checksum from the given HWID string without checksum. The
+// original checksum should be stripped before passing the HWID string to the
+// function.
+BRILLO_EXPORT std::optional<std::string> CalculateChecksum(
+    const std::string_view hwid);
+
 }  // namespace brillo::hwid
 
 #endif  // LIBBRILLO_BRILLO_HWID_HWID_UTILS_H_

@@ -44,12 +44,6 @@ class HwidUtils {
   // `model name`, `brand code`, `encoded components`, and `checksum`.
   virtual std::optional<HwidElements> DecomposeHwid(
       const std::string& hwid) = 0;
-
-  // Calculate checksum from the given HWID string without checksum. The
-  // original checksum should be stripped before passing the HWID string to the
-  // function.
-  virtual std::optional<std::string> CalculateChecksum(
-      const std::string& hwid) const = 0;
 };
 
 }  // namespace rmad

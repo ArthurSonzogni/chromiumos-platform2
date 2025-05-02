@@ -46,4 +46,13 @@ TEST(DecodeHWIDTest, DecodeMalformedHWIDFailure) {
   EXPECT_EQ(hwid::DecodeHWID("ZZZ A6F"), std::nullopt);
 }
 
+TEST(CalculateChecksumTest, Success) {
+  EXPECT_EQ(hwid::CalculateChecksum("CHROMEBOOK ASDFQWERZXCV"), "6C");
+  EXPECT_EQ(hwid::CalculateChecksum("MODEL-CODE A1B-C2D-E"), "2J");
+}
+
+TEST(CalculateChecksumTest, Fail) {
+  EXPECT_EQ(hwid::CalculateChecksum("MODEL TEST A1B-C2D-E"), std::nullopt);
+}
+
 }  // namespace brillo

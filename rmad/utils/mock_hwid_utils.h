@@ -27,10 +27,6 @@ class MockHwidUtils : public HwidUtils {
               DecomposeHwid,
               (const std::string&),
               (override));
-  MOCK_METHOD(std::optional<std::string>,
-              CalculateChecksum,
-              (const std::string&),
-              (const, override));
 };
 
 }  // namespace rmad

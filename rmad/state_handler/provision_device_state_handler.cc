@@ -22,6 +22,7 @@
 #include <base/synchronization/lock.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
+#include <brillo/hwid/hwid_utils.h>
 #include <openssl/rand.h>
 #include <re2/re2.h>
 
@@ -691,7 +692,7 @@ ProvisionStatus::Error ProvisionDeviceStateHandler::UpdateHwidBrandCode() {
       brand_code.c_str(),
       hwid_elements.value().encoded_components.value().c_str());
 
-  auto checksum = hwid_utils_->CalculateChecksum(raw_hwid);
+  auto checksum = brillo::hwid::CalculateChecksum(raw_hwid);
 
   if (!checksum.has_value()) {
     LOG(ERROR) << "Failed to calculate HWID checksum.";

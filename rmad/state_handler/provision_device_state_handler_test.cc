@@ -136,7 +136,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     GscDevice gsc_device = GscDevice::GSC_DEVICE_H1;
     std::optional<FlashInfo> flash_info = std::nullopt;
     std::optional<HwidElements> hwid_elements = kHwidElements;
-    std::optional<std::string> checksum = kHwidElements.checksum.value();
     std::set<rmad::RmadComponent> probed_components = {};
     int shimless_mode_flags = 0x0;
     std::string rmad_config_text = "";
@@ -286,8 +285,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     auto mock_hwid_utils = std::make_unique<NiceMock<MockHwidUtils>>();
     ON_CALL(*mock_hwid_utils, DecomposeHwid(_))
         .WillByDefault(Return(args.hwid_elements));
-    ON_CALL(*mock_hwid_utils, CalculateChecksum(_))
-        .WillByDefault(Return(args.checksum));
 
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
@@ -1038,23 +1035,6 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   // Successfully transition to Finalize state.
   ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_UpdateHwidBrandCodeCalculateChecksumFailedBlocking) {
-  // Set up normal environment.
-  json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(kWipeDevice, true);
-
-  StateHandlerArgs args = {.checksum = std::nullopt};
-
-  auto handler = CreateInitializedStateHandler(args);
-  handler->RunState();
-  task_environment_.RunUntilIdle();
-
-  // Provision failed signal is sent.
-  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-               ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,

@@ -7,10 +7,14 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <base/containers/fixed_flat_map.h>
+#include <base/containers/span.h>
+#include <base/metrics/crc32.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 namespace {
 
@@ -34,8 +38,13 @@ constexpr auto kBase32Map = base::MakeFixedFlatMap<char, std::string_view>(
      {'Y', "11000"}, {'Z', "11001"}, {'2', "11010"}, {'3', "11011"},
      {'4', "11100"}, {'5', "11101"}, {'6', "11110"}, {'7', "11111"}});
 
-// Size of the checksum used at end the of the HWID
+// Size of the checksum used at the end of the HWID
 constexpr size_t kHWIDChecksumBits = 8;
+
+constexpr char kBase8Alphabet[] = "23456789";
+constexpr char kBase32Alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+constexpr uint32_t kChecksumBitMask = 0xFF;
+constexpr int kBase32BitWidth = 5;
 
 template <typename MapType>
 bool AppendDecodedBits(char key,
@@ -76,15 +85,15 @@ std::optional<std::string> hwid::DecodeHWID(const std::string_view hwid) {
   //
   // To remove the end, look for the last bit set to 1 in the whole string,
   // excluding the checksum.
-  auto payload = base::RSplitStringOnce(
+  auto parts = base::RSplitStringOnce(
       base::TrimWhitespaceASCII(hwid, base::TrimPositions::TRIM_ALL), " ");
-  if (!payload.has_value() || payload->second.empty()) {
+  if (!parts.has_value() || parts->second.empty()) {
     return std::nullopt;
   }
 
   std::string decoded_bit_string;
   for (const auto& key :
-       base::SplitStringPiece(payload->second, "-", base::TRIM_WHITESPACE,
+       base::SplitStringPiece(parts->second, "-", base::TRIM_WHITESPACE,
                               base::SPLIT_WANT_NONEMPTY)) {
     if (key.size() != 3) {
       return std::nullopt;
@@ -109,4 +118,30 @@ std::optional<std::string> hwid::DecodeHWID(const std::string_view hwid) {
 
   return decoded_bit_string.substr(0, pos);
 }
+
+std::optional<std::string> hwid::CalculateChecksum(
+    const std::string_view hwid) {
+  std::vector<std::string> parts =
+      base::SplitString(hwid, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
+                        base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+  if (parts.size() != 2) {
+    return std::nullopt;
+  }
+
+  base::RemoveChars(parts[1], "-", &parts[1]);
+
+  std::string stripped =
+      base::StringPrintf("%s %s", parts[0].c_str(), parts[1].c_str());
+
+  uint32_t crc32 =
+      ~base::Crc32(0xFFFFFFFF, base::as_byte_span(stripped)) & kChecksumBitMask;
+
+  std::string checksum =
+      base::StringPrintf("%c%c", kBase8Alphabet[crc32 >> kBase32BitWidth],
+                         kBase32Alphabet[crc32 & ((1 << kBase32BitWidth) - 1)]);
+
+  return checksum;
+}
+
 }  // namespace brillo
