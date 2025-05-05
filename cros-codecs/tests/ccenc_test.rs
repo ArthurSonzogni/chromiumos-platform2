@@ -9,6 +9,7 @@ mod tests {
     use cros_codecs_test_common::{Resolution, WebMFile};
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn vp9_encode() {
         let webm_file = WebMFile::new(
             "desktop2-320x180_30frames.vp9.webm", // name
