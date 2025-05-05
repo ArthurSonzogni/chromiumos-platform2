@@ -331,7 +331,7 @@ where
 
     fn new(
         input_fourcc: Fourcc,
-        output_fourcc: Fourcc,
+        output_fourccs: Vec<Fourcc>,
         awaiting_job_event: Arc<EventFd>,
         error_cb: Arc<Mutex<dyn FnMut(C2Status) + Send + 'static>>,
         work_done_cb: Arc<Mutex<dyn FnMut(C2DecodeJob<V>) + Send + 'static>>,
@@ -344,7 +344,10 @@ where
         let mut backend = B::new(options)?;
         let backend_fourccs = backend.supported_output_formats(input_fourcc)?;
         let decoder_modifier = backend.modifier();
-        let (auxiliary_frame_pool, decoder) = if backend_fourccs.contains(&output_fourcc) {
+        let can_import = output_fourccs
+            .iter()
+            .fold(true, |acc, fourcc| -> bool { acc & backend_fourccs.contains(fourcc) });
+        let (auxiliary_frame_pool, decoder) = if can_import {
             (
                 None,
                 C2Decoder::ImportingDecoder(

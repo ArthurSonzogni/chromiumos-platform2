@@ -220,7 +220,7 @@ fn main() {
     #[cfg(feature = "vaapi")]
     let mut decoder: C2Wrapper<_, C2DecoderWorker<_, C2VaapiDecoder>> = C2Wrapper::new(
         Fourcc::from(args.input_format),
-        Fourcc::from(args.output_format),
+        vec![Fourcc::from(args.output_format)],
         error_cb,
         on_new_frame,
         framepool_hint_cb,
@@ -230,7 +230,7 @@ fn main() {
     #[cfg(feature = "v4l2")]
     let mut decoder: C2Wrapper<_, C2DecoderWorker<_, C2V4L2Decoder>> = C2Wrapper::new(
         Fourcc::from(args.input_format),
-        Fourcc::from(args.output_format),
+        vec![Fourcc::from(args.output_format)],
         error_cb,
         on_new_frame,
         framepool_hint_cb,

@@ -293,7 +293,7 @@ fn main() {
     #[cfg(feature = "v4l2")]
     let mut encoder: C2Wrapper<_, C2EncoderWorker<_, C2V4L2Encoder>> = C2Wrapper::new(
         input_fourcc,
-        output_fourcc,
+        vec![output_fourcc],
         error_cb,
         work_done_cb,
         aux_framepool_hint_cb,
@@ -306,7 +306,7 @@ fn main() {
     #[cfg(feature = "vaapi")]
     let mut encoder: C2Wrapper<_, C2EncoderWorker<_, C2VaapiEncoder>> = C2Wrapper::new(
         input_fourcc,
-        output_fourcc,
+        vec![output_fourcc],
         error_cb,
         work_done_cb,
         aux_framepool_hint_cb,

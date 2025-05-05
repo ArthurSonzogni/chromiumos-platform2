@@ -139,7 +139,8 @@ where
 
     fn new(
         input_fourcc: Fourcc,
-        output_fourcc: Fourcc,
+        // Note that the size of output_fourccs should only ever be 1 for encoders.
+        output_fourccs: Vec<Fourcc>,
         awaiting_job_event: Arc<EventFd>,
         error_cb: Arc<Mutex<dyn FnMut(C2Status) + Send + 'static>>,
         work_done_cb: Arc<Mutex<dyn FnMut(C2EncodeJob<V>) + Send + 'static>>,
@@ -149,6 +150,10 @@ where
         alloc_cb: Arc<Mutex<dyn FnMut() -> Option<V> + Send + 'static>>,
         options: Self::Options,
     ) -> Result<Self, String> {
+        if output_fourccs.len() != 1 {
+            return Err("Expected exactly one output fourcc!".into());
+        }
+
         if DecodedFormat::from(input_fourcc) != REAL_INPUT_FORMAT {
             let mut conversion_support = false;
             for conversion in SUPPORTED_CONVERSION {
@@ -166,12 +171,12 @@ where
 
         let mut backend = B::new(options)?;
         let (encoder, visible_resolution, coded_resolution) =
-            backend.get_encoder(REAL_INPUT_FORMAT, EncodedFormat::from(output_fourcc))?;
+            backend.get_encoder(REAL_INPUT_FORMAT, EncodedFormat::from(output_fourccs[0]))?;
         (*framepool_hint_cb.lock().unwrap())(StreamInfo {
             format: REAL_INPUT_FORMAT,
             coded_resolution: coded_resolution.clone(),
             display_resolution: visible_resolution.clone(),
-            min_num_frames: match EncodedFormat::from(output_fourcc) {
+            min_num_frames: match EncodedFormat::from(output_fourccs[0]) {
                 // TODO: Chosen arbitrarily. Do we ever use more than one reference frame for H264?
                 EncodedFormat::H264 | EncodedFormat::H265 => 4,
                 EncodedFormat::VP8 => VP8_NUM_REF_FRAMES,
@@ -182,7 +187,7 @@ where
 
         #[cfg(feature = "ubc")]
         {
-            let (min_qp, max_qp) = match EncodedFormat::from(output_fourcc) {
+            let (min_qp, max_qp) = match EncodedFormat::from(output_fourccs[0]) {
                 EncodedFormat::AV1 | EncodedFormat::VP9 => (0, 255),
                 EncodedFormat::VP8 => (0, 127),
                 EncodedFormat::H264 | EncodedFormat::H265 => (1, 51),

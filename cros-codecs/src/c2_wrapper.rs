@@ -176,7 +176,7 @@ where
 
     fn new(
         input_fourcc: Fourcc,
-        output_fourcc: Fourcc,
+        output_fourccs: Vec<Fourcc>,
         awaiting_job_event: Arc<EventFd>,
         error_cb: Arc<Mutex<dyn FnMut(C2Status) + Send + 'static>>,
         work_done_cb: Arc<Mutex<dyn FnMut(J) + Send + 'static>>,
@@ -226,7 +226,10 @@ where
 {
     pub fn new(
         input_fourcc: Fourcc,
-        output_fourcc: Fourcc,
+        // List of output Fourccs that must be supported. For decoders, this should include 1
+        // output format for each bit depth supported. For encoders, this list should only ever
+        // have one element.
+        output_fourccs: Vec<Fourcc>,
         error_cb: impl FnMut(C2Status) + Send + 'static,
         work_done_cb: impl FnMut(J) + Send + 'static,
         framepool_hint_cb: impl FnMut(StreamInfo) + Send + 'static,
@@ -259,7 +262,7 @@ where
 
                     let worker = W::new(
                         input_fourcc.clone(),
-                        output_fourcc.clone(),
+                        output_fourccs.clone(),
                         awaiting_job_event_clone.clone(),
                         error_cb_clone.clone(),
                         work_done_cb.clone(),
