@@ -407,19 +407,19 @@ manifest the change in a board target. Since the actual work to combine and
 process the YAML files is done in the `chromeos-config` ebuild, it
 needs to be remerged after the input YAML has been modified.
 
-1.  Start `cros-workon` on the ebuild where your source `model.yaml` lives:
+1.  Start `cros workon` on the ebuild where your source `model.yaml` lives:
 
     ```bash
-    (chroot) $ cros-workon-${BOARD} start chromeos-base/chromeos-config-bsp
+    (chroot) $ cros workon -b ${BOARD} start chromeos-base/chromeos-config-bsp
     ```
 
     **Note:** If you have access to the private overlays for a board,
     you'll notice there's an additional package containing private
     configuration data, `chromeos-base/chromeos-config-bsp-private`.
-    To `cros-workon` this package:
+    To `cros workon` this package:
 
     ```bash
-    (chroot) $ cros-workon-${BOARD} start chromeos-base/chromeos-config-bsp-private
+    (chroot) $ cros workon -b ${BOARD} start chromeos-base/chromeos-config-bsp-private
     ```
 
 1.  After making your changes, emerge all affected ebuilds and the
@@ -2860,11 +2860,11 @@ used widely across `platform2` to read these files.
 
 ## Adding and testing new properties
 
-Before starting, `cros_workon` the following:
+Before starting, `cros workon` the following:
 
 ```bash
-(chroot) $ cros_workon --host start chromeos-config-host
-(chroot) $ cros_workon --board=BOARD start chromeos-config-bsp chromeos-config
+(chroot) $ cros workon --host start chromeos-config-host
+(chroot) $ cros workon --board=$BOARD start chromeos-config-bsp chromeos-config
 ```
 
 To introduce a new property, first add its definition to the schema:
