@@ -912,6 +912,10 @@ def _build_resource(config: Config) -> dict:
             result["ac"] = _build_power_preference(config.ac)
         if config.HasField("dc"):
             result["dc"] = _build_power_preference(config.dc)
+        if config.HasField("thermal"):
+            result["thermal"] = json_format.MessageToDict(
+                config.thermal, including_default_value_fields=False
+            )
         return result
 
     result = _build_power_source(resource_config)
