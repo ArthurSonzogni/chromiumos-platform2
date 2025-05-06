@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/files/file_enumerator.h>
+#include <base/logging.h>
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/delegate/utils/libevdev_wrapper_impl.h"
