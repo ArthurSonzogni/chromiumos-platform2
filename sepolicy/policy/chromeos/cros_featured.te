@@ -26,6 +26,11 @@ allow cros_featured cros_run:dir { r_dir_perms };
 allow cros_featured cros_run_featured_seed:dir { rw_dir_perms };
 allow cros_featured cros_run_featured_seed:file { rw_file_perms unlink };
 
+# Allow traversing pseudo-filesystem roots
+allow cros_featured debugfs:dir { search };
+allow cros_featured cgroup:dir { search };
+allow cros_featured debugfs_tracing_debug:dir { search };
+
 # For tests
 # will be created by tast tests, in the "cros_ssh_session".
 filetrans_pattern(cros_ssh_session, cros_run, cros_run_featured_test, dir, "featured_test")
