@@ -9,13 +9,6 @@
 #include <memory>
 #include <tuple>
 
-#include <camera/camera_metadata.h>
-#include <cutils/native_handle.h>
-#include <hardware/camera3.h>
-#include <hardware/gralloc.h>
-#include <system/camera_metadata.h>
-#include <system/graphics-base.h>
-
 #include <base/command_line.h>
 #include <base/containers/flat_map.h>
 #include <base/files/scoped_file.h>
@@ -25,8 +18,14 @@
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_timeouts.h>
+#include <camera/camera_metadata.h>
+#include <cutils/native_handle.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <hardware/camera3.h>
+#include <hardware/gralloc.h>
+#include <system/camera_metadata.h>
+#include <system/graphics-base.h>
 
 #include "common/camera_buffer_handle.h"
 #include "common/camera_hal3_helpers.h"
@@ -2090,7 +2089,7 @@ ScopedBufferHandle CameraBufferManager::AllocateScopedBuffer(size_t width,
 void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
   if (handle != nullptr) {
     CHECK_NE(*handle, nullptr);
-    delete *handle;
+    delete reinterpret_cast<const camera_buffer_handle_t*>(*handle);
     delete handle;
   }
 }
