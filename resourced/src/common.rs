@@ -3,22 +3,29 @@
 // found in the LICENSE file.
 
 use std::convert::TryFrom;
+use std::fs::read_to_string;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::sync::Mutex;
 
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use glob::glob;
 use log::warn;
 
 use crate::arch;
+use crate::config::ThermalConfig;
 use crate::power;
 use crate::sync::NoPoison;
+
+const THERMAL_ZONE_TYPE_PATTERN: &str = "sys/class/thermal/thermal_zone*/type";
+const THERMAL_ZONE_TEMP: &str = "temp";
 
 /// Parse the first line of a file as a type implementing std::str::FromStr.
 pub fn read_from_file<T: FromStr, P: AsRef<Path>>(path: &P) -> Result<T>
@@ -190,6 +197,106 @@ impl TryFrom<u8> for BatterySaverMode {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ThermalState {
+    Normal = 0,
+    Stress = 1,
+}
+static THERMAL_STATE: Mutex<ThermalState> = Mutex::new(ThermalState::Normal);
+
+impl TryFrom<u8> for ThermalState {
+    type Error = anyhow::Error;
+
+    fn try_from(active_raw: u8) -> Result<ThermalState> {
+        Ok(match active_raw {
+            0 => ThermalState::Normal,
+            1 => ThermalState::Stress,
+            _ => bail!("Unsupported thermal state value"),
+        })
+    }
+}
+
+fn find_thermal_zone(
+    root: PathBuf,
+    thermal_config_mutex: &Mutex<ThermalConfig>,
+) -> Result<Option<PathBuf>> {
+    let thermal_config = thermal_config_mutex.do_lock();
+
+    let pattern = root
+        .join(THERMAL_ZONE_TYPE_PATTERN)
+        .to_str()
+        .context(format!(
+            "Failed to construct {THERMAL_ZONE_TYPE_PATTERN} glob pattern"
+        ))?
+        .to_owned();
+
+    for thermal_zone_type in
+        (glob(&pattern).context(format!("Failed to read {pattern} glob pattern"))?).flatten()
+    {
+        if let Ok(content) = read_to_string(&thermal_zone_type) {
+            if content.trim() == thermal_config.thermal_type {
+                let mut temp_path = thermal_zone_type.clone();
+                temp_path.set_file_name(THERMAL_ZONE_TEMP);
+                if temp_path.exists() {
+                    return Ok(Some(temp_path));
+                }
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+pub fn thermal_state_callback(
+    root: PathBuf,
+    thermal_config_mutex: Arc<Mutex<ThermalConfig>>,
+) -> Option<impl Fn(ThermalState) -> Result<ThermalState>> {
+    let thermal_path =
+        find_thermal_zone(root, thermal_config_mutex.as_ref()).unwrap_or_else(|e| {
+            warn!("Error finding thermal zone, error: {}", e);
+            None
+        })?;
+
+    Some(move |thermal_state| -> Result<ThermalState> {
+        let thermal_config = thermal_config_mutex.do_lock();
+
+        let temp: i32 = read_from_file(&thermal_path).context(format!(
+            "Error reading temp from {}",
+            thermal_path.display()
+        ))?;
+
+        if (thermal_state == ThermalState::Normal && temp >= thermal_config.trip_temp)
+            || (thermal_state == ThermalState::Stress
+                && temp >= thermal_config.trip_temp - thermal_config.hysteresis as i32)
+        {
+            Ok(ThermalState::Stress)
+        } else {
+            Ok(ThermalState::Normal)
+        }
+    })
+}
+
+pub fn update_thermal_state(
+    read_thermal_state: &impl Fn(ThermalState) -> Result<ThermalState>,
+) -> bool {
+    let mut thermal_state = THERMAL_STATE.do_lock();
+
+    let prev_thermal_state = *thermal_state;
+
+    match read_thermal_state(prev_thermal_state) {
+        Ok(new_thermal_state) => {
+            *thermal_state = new_thermal_state;
+
+            new_thermal_state != prev_thermal_state
+        }
+        Err(_) => false,
+    }
+}
+
+pub fn get_thermal_state() -> ThermalState {
+    *THERMAL_STATE.do_lock()
+}
+
 pub fn update_power_preferences(
     power_preference_manager: &dyn power::PowerPreferencesManager,
 ) -> Result<()> {
@@ -200,8 +307,15 @@ pub fn update_power_preferences(
     let game_data = GAME_MODE.do_lock();
     let boot_data = VMBOOT_MODE.do_lock();
     let bsm_data = BATTERY_SAVER_MODE.do_lock();
-    power_preference_manager
-        .update_power_preferences(*rtc_data, *fsv_data, *game_data, *boot_data, *bsm_data)
+    let thermal_state = THERMAL_STATE.do_lock();
+    power_preference_manager.update_power_preferences(
+        *rtc_data,
+        *fsv_data,
+        *game_data,
+        *boot_data,
+        *bsm_data,
+        *thermal_state,
+    )
 }
 
 pub fn set_rtc_audio_active(

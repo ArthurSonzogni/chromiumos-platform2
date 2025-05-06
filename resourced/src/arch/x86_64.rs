@@ -362,6 +362,7 @@ mod tests {
                     common::GameMode::Off,
                     common::VmBootMode::Inactive,
                     common::BatterySaverMode::Inactive,
+                    common::ThermalState::Normal,
                 )
                 .unwrap();
 
@@ -464,6 +465,7 @@ mod tests {
                     common::GameMode::Arc,
                     common::VmBootMode::Inactive,
                     test.0,
+                    common::ThermalState::Normal,
                 )
                 .unwrap();
 
@@ -485,6 +487,7 @@ mod tests {
                     common::GameMode::Arc,
                     common::VmBootMode::Inactive,
                     test.0,
+                    common::ThermalState::Normal,
                 )
                 .unwrap();
 

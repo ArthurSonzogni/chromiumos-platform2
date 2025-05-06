@@ -18,6 +18,7 @@ use crate::common::read_from_file;
 
 const CHROMEOS_CONFIG_PATH: &str = "run/chromeos-config/v1";
 const RESOURCE_CONFIG_DIR: &str = "resource";
+const THERMAL_CONFIG_DIR: &str = "thermal";
 const SCHEDQOS_CONFIG_DIR: &str = "schedqos";
 const DEFUALT_MIN_ACTIVE_THREADS: u32 = 2;
 
@@ -170,6 +171,7 @@ pub enum PowerPreferencesType {
     BorealisGaming,
     ArcvmGaming,
     BatterySaver,
+    ThermalStress,
 }
 
 impl PowerPreferencesType {
@@ -182,6 +184,7 @@ impl PowerPreferencesType {
             PowerPreferencesType::BorealisGaming => "borealis-gaming-power-preferences",
             PowerPreferencesType::ArcvmGaming => "arcvm-gaming-power-preferences",
             PowerPreferencesType::BatterySaver => "battery-saver-power-preferences",
+            PowerPreferencesType::ThermalStress => "thermal-stress-power-preferences",
         }
     }
 }
@@ -238,6 +241,38 @@ fn parse_ondemand_governor(path: &Path) -> Result<Governor> {
         powersave_bias,
         sampling_rate,
     })
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ThermalConfig {
+    pub thermal_type: String,
+    pub trip_temp: i32,
+    pub hysteresis: u32,
+}
+
+impl ThermalConfig {
+    fn parse(path: &Path) -> Result<Option<Self>> {
+        let thermal_type_path = path.join("thermal-type");
+        let trip_temp_path = path.join("trip-temp");
+        let hysteresis_path = path.join("hysteresis");
+
+        if !thermal_type_path.exists() || !trip_temp_path.exists() || !hysteresis_path.exists() {
+            return Ok(None);
+        }
+
+        let thermal_type = fs::read_to_string(&thermal_type_path)
+            .context(format!("failed to read {}", thermal_type_path.display()))?;
+        let trip_temp: i32 = read_from_file(&trip_temp_path)
+            .context(format!("failed to read {}", trip_temp_path.display()))?;
+        let hysteresis: u32 = read_from_file(&hysteresis_path)
+            .context(format!("failed to read {}", hysteresis_path.display()))?;
+
+        Ok(Some(Self {
+            thermal_type,
+            trip_temp,
+            hysteresis,
+        }))
+    }
 }
 
 // Returns Ok(None) when there is no sub directory in path.
@@ -531,6 +566,19 @@ impl ConfigProvider {
         Ok(Some(preferences))
     }
 
+    pub fn read_thermal_config(&self) -> Result<Option<ThermalConfig>> {
+        let path = self
+            .config_path
+            .join(RESOURCE_CONFIG_DIR)
+            .join(THERMAL_CONFIG_DIR);
+
+        if !path.exists() || !path.is_dir() {
+            return Ok(None);
+        }
+
+        ThermalConfig::parse(&path)
+    }
+
     pub fn read_sched_qos_config(&self, name: &str) -> Result<Option<SchedqosConfig>> {
         let path = self.config_path.join(SCHEDQOS_CONFIG_DIR).join(name);
 
@@ -731,6 +779,10 @@ mod tests {
             (
                 PowerPreferencesType::BatterySaver,
                 "battery-saver-power-preferences",
+            ),
+            (
+                PowerPreferencesType::ThermalStress,
+                "thermal-stress-power-preferences",
             ),
         ];
 
@@ -1180,6 +1232,7 @@ mod tests {
                 PowerPreferencesType::BorealisGaming,
                 PowerPreferencesType::ArcvmGaming,
                 PowerPreferencesType::BatterySaver,
+                PowerPreferencesType::ThermalStress,
             ] {
                 for preference in [
                     PowerPreferences {

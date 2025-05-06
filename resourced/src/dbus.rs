@@ -39,6 +39,7 @@ use tokio::sync::Notify;
 use crate::arch;
 use crate::common;
 use crate::config::ConfigProvider;
+use crate::config::ThermalConfig;
 use crate::feature;
 use crate::feature::is_feature_enabled;
 use crate::feature::register_feature;
@@ -66,6 +67,7 @@ use crate::qos::QOS_ERROR_NO_SENDER;
 use crate::realtime;
 use crate::swappiness_config::new_swappiness_config;
 use crate::swappiness_config::SwappinessConfig;
+use crate::sync::NoPoison;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
@@ -77,6 +79,7 @@ const POWERD_INTERFACE_NAME: &str = "org.chromium.PowerManager";
 const POWERD_PATH_NAME: &str = "/org/chromium/PowerManager";
 
 pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(5);
+const THERMAL_POLLING_PERIOD: Duration = Duration::from_secs(5);
 
 // The timeout in second for VM boot mode. Currently this is
 // 60seconds which is long enough for booting a VM on low-end DUTs.
@@ -94,6 +97,8 @@ struct DbusContext {
     reset_game_mode_timer_id: Arc<AtomicUsize>,
     reset_fullscreen_video_timer_id: Arc<AtomicUsize>,
     reset_vm_boot_mode_timer_id: Arc<AtomicUsize>,
+
+    thermal_config_mutex: Option<Arc<Mutex<ThermalConfig>>>,
 
     scheduler_context: Option<Arc<Mutex<SchedQosContext>>>,
 }
@@ -449,6 +454,36 @@ fn register_interface(
                 }
             }
         });
+        b.method(
+            "GetThermalState",
+            (),
+            ("thermal_state",),
+            move |_, _, ()| Ok((common::get_thermal_state() as u8,)),
+        );
+        b.method(
+            "SetThermalTripTemp",
+            ("temp",),
+            (),
+            move |_, context, (temp,): (i32,)| {
+                if let Some(thermal_config_mutex) = context.thermal_config_mutex.as_ref() {
+                    let mut thermal_config = thermal_config_mutex.do_lock();
+                    thermal_config.trip_temp = temp;
+                }
+                Ok(())
+            },
+        );
+        b.method(
+            "GetThermalTripTemp",
+            (),
+            ("temp",),
+            move |_, context, ()| match context.thermal_config_mutex.as_ref() {
+                Some(thermal_config_mutex) => {
+                    let thermal_config = thermal_config_mutex.do_lock();
+                    Ok((thermal_config.trip_temp,))
+                }
+                None => Ok((0_i32,)),
+            },
+        );
         b.method(
             "SetLogLevel",
             ("level",),
@@ -887,6 +922,15 @@ pub async fn service_main() -> Result<()> {
             None
         }
     };
+    let thermal_config_mutex: Option<Arc<Mutex<ThermalConfig>>> =
+        match config_provider.read_thermal_config() {
+            Ok(Some(config)) => Some(Arc::new(Mutex::new(config))),
+            Ok(None) => None,
+            Err(e) => {
+                error!("failed to read thermal config: {e}");
+                None
+            }
+        };
     let context = DbusContext {
         power_preferences_manager: Arc::new(power::new_directory_power_preferences_manager(
             root,
@@ -895,6 +939,7 @@ pub async fn service_main() -> Result<()> {
         reset_game_mode_timer_id: Arc::new(AtomicUsize::new(0)),
         reset_fullscreen_video_timer_id: Arc::new(AtomicUsize::new(0)),
         reset_vm_boot_mode_timer_id: Arc::new(AtomicUsize::new(0)),
+        thermal_config_mutex: thermal_config_mutex.clone(),
         scheduler_context,
     };
 
@@ -920,6 +965,26 @@ pub async fn service_main() -> Result<()> {
             error!("Error with swappiness proxy {:?}", err);
         }
     });
+
+    if let Some(thermal_config_mutex) = thermal_config_mutex {
+        if let Some(read_thermal_state) =
+            common::thermal_state_callback(root.to_path_buf(), thermal_config_mutex)
+        {
+            let power_preferences_manager = context.power_preferences_manager.clone();
+            tokio::spawn(async move {
+                loop {
+                    if common::update_thermal_state(&read_thermal_state) {
+                        if let Err(e) =
+                            common::update_power_preferences(power_preferences_manager.as_ref())
+                        {
+                            error!("update_power_preferences failed: {:#}", e);
+                        }
+                    }
+                    tokio::time::sleep(THERMAL_POLLING_PERIOD).await;
+                }
+            });
+        }
+    }
 
     let psi_memory_policy_notify = Arc::new(Notify::new());
     let notify_cloned = psi_memory_policy_notify.clone();

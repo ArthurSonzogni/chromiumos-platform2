@@ -18,6 +18,7 @@ use crate::common::BatterySaverMode;
 use crate::common::FullscreenVideo;
 use crate::common::GameMode;
 use crate::common::RTCAudioActive;
+use crate::common::ThermalState;
 use crate::common::VmBootMode;
 use crate::config::ConfigProvider;
 use crate::config::CpuOfflinePreference;
@@ -182,6 +183,7 @@ pub trait PowerPreferencesManager {
         game: common::GameMode,
         vmboot: common::VmBootMode,
         batterysaver: common::BatterySaverMode,
+        thermalstate: common::ThermalState,
     ) -> Result<()>;
     fn get_root(&self) -> &Path;
 }
@@ -366,17 +368,23 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
         game: GameMode,
         vmboot: VmBootMode,
         batterysaver: BatterySaverMode,
+        thermalstate: ThermalState,
     ) -> Result<()> {
         let mut preferences: Option<PowerPreferences> = None;
 
         let power_source = self.power_source_provider.get_power_source()?;
 
         info!("Power source {:?}", power_source);
+        info!("Thermal state {:?}", thermalstate);
 
         if batterysaver == BatterySaverMode::Active {
             preferences = self
                 .config_provider
                 .read_power_preferences(power_source, PowerPreferencesType::BatterySaver)?;
+        } else if thermalstate == ThermalState::Stress {
+            preferences = self
+                .config_provider
+                .read_power_preferences(power_source, PowerPreferencesType::ThermalStress)?;
         } else if game == GameMode::Borealis {
             preferences = self
                 .config_provider
@@ -642,6 +650,7 @@ mod tests {
                 common::GameMode::Off,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
+                common::ThermalState::Normal,
             )
             .unwrap();
 
@@ -678,6 +687,7 @@ mod tests {
                 common::GameMode::Off,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
+                common::ThermalState::Normal,
             )
             .unwrap();
 
@@ -730,6 +740,7 @@ mod tests {
                 common::GameMode::Off,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
+                common::ThermalState::Normal,
             )
             .unwrap();
 
@@ -785,6 +796,7 @@ mod tests {
                 common::GameMode::Off,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
+                common::ThermalState::Normal,
             )
             .unwrap();
 
@@ -839,6 +851,7 @@ mod tests {
                 common::GameMode::Off,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
+                common::ThermalState::Normal,
             )
             .unwrap();
 
@@ -890,6 +903,7 @@ mod tests {
                 common::GameMode::Off,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
+                common::ThermalState::Normal,
             )
             .unwrap();
 
@@ -1105,6 +1119,7 @@ mod tests {
                 common::GameMode::Off,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
+                common::ThermalState::Normal,
             )
             .unwrap();
 
@@ -1156,6 +1171,7 @@ mod tests {
                 common::GameMode::Borealis,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
+                common::ThermalState::Normal,
             )
             .unwrap();
 
@@ -1206,6 +1222,7 @@ mod tests {
                 common::GameMode::Arc,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
+                common::ThermalState::Normal,
             )
             .unwrap();
 
@@ -1278,6 +1295,7 @@ mod tests {
                 common::GameMode::Arc,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
+                common::ThermalState::Normal,
             )
             .unwrap();
         check_per_policy_scaling_governor(root, vec![ondemand, ondemand]);
@@ -1348,6 +1366,7 @@ mod tests {
                     common::GameMode::Arc,
                     common::VmBootMode::Inactive,
                     common::BatterySaverMode::Inactive,
+                    common::ThermalState::Normal,
                 )
                 .unwrap();
 

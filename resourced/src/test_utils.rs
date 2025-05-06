@@ -13,6 +13,7 @@ use crate::common::BatterySaverMode;
 use crate::common::FullscreenVideo;
 use crate::common::GameMode;
 use crate::common::RTCAudioActive;
+use crate::common::ThermalState;
 use crate::common::VmBootMode;
 pub use crate::config::FakeConfig;
 use crate::config::Governor;
@@ -48,6 +49,7 @@ impl power::PowerPreferencesManager for MockPowerPreferencesManager {
         _game: GameMode,
         _vmboot: VmBootMode,
         _batterysaver: BatterySaverMode,
+        _thermalstate: ThermalState,
     ) -> Result<()> {
         Ok(())
     }
