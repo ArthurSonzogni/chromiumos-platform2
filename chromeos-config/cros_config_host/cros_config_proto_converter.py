@@ -880,6 +880,10 @@ def _build_resource(config: Config) -> dict:
             result["battery-saver-power-preferences"] = _build_preference(
                 config.battery_saver_power_preferences
             )
+        if config.HasField("thermal_stress_power_preferences"):
+            result["thermal-stress-power-preferences"] = _build_preference(
+                config.thermal_stress_power_preferences
+            )
         if config.HasField("borealis_gaming_power_preferences"):
             result["borealis-gaming-power-preferences"] = _build_preference(
                 config.borealis_gaming_power_preferences
