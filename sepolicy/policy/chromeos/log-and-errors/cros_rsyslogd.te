@@ -18,6 +18,8 @@ allow cros_rsyslogd cros_run_rsyslogd:dir create_dir_perms;
 allow cros_rsyslogd cros_run_rsyslogd:sock_file create_file_perms;
 allow cros_rsyslogd cros_run_rsyslogd:fifo_file rw_file_perms;
 
+allow cros_rsyslogd cros_run_crosdns:dir search;
+
 allow cros_rsyslogd cros_log_type:file rw_file_perms;
 
 allow cros_rsyslogd cros_passwd_file:file r_file_perms;
