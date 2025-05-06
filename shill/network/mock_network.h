@@ -106,8 +106,6 @@ class MockNetworkEventHandler : public Network::EventHandler {
   MOCK_METHOD(void, OnGetDHCPLease, (int), (override));
   MOCK_METHOD(void, OnGetDHCPFailure, (int), (override));
   MOCK_METHOD(void, OnGetSLAACAddress, (int), (override));
-  MOCK_METHOD(void, OnIPv4ConfiguredWithDHCPLease, (int), (override));
-  MOCK_METHOD(void, OnIPv6ConfiguredWithSLAACAddress, (int), (override));
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,
               (int,

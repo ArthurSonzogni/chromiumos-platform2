@@ -129,15 +129,6 @@ class Network : public NetworkMonitor::ClientNetwork {
     // started if IPv4 is not configured.
     virtual void OnGetSLAACAddress(int interface_index) {}
 
-    // Called after IPv4 has been configured as a result of acquiring a new DHCP
-    // lease. This is called after OnGetDHCPLease, OnIPConfigsPropertyUpdated,
-    // and OnConnectionUpdated.
-    virtual void OnIPv4ConfiguredWithDHCPLease(int interface_index) {}
-    // Called after IPv6 has been configured as a result of acquiring an IPv6
-    // address from the kernel when SLAAC completes. This is called after
-    // OnGetSLAACAddress, OnIPConfigsPropertyUpdated, and OnConnectionUpdated
-    // (if IPv4 is not yet configured).
-    virtual void OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}
     // Called after shill receives a NeighborReachabilityEventSignal from
     // patchpanel's link monitor for the network interface of this Network.
     virtual void OnNeighborReachabilityEvent(

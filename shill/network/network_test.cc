@@ -1691,11 +1691,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCP) {
 
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCP);
   EXPECT_CALL(event_handler_, OnGetDHCPLease(network_->interface_index()));
-  EXPECT_CALL(event_handler_,
-              OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
   EXPECT_CALL(event_handler2_, OnGetDHCPLease(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kNone);
@@ -1719,11 +1715,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPWithoutNetworkValidation) {
 
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCP);
   EXPECT_CALL(event_handler_, OnGetDHCPLease(network_->interface_index()));
-  EXPECT_CALL(event_handler_,
-              OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
   EXPECT_CALL(event_handler2_, OnGetDHCPLease(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kNone);
@@ -1747,12 +1739,8 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
   // Still expect the DHCP lease callback in this case.
   EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_, OnGetDHCPLease(network_->interface_index()));
-  EXPECT_CALL(event_handler_,
-              OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
   EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_, OnGetDHCPLease(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
   // Release DHCP should be called since we have static IP now.
   EXPECT_CALL(*dhcp_controller_,
               ReleaseIP(DHCPController::ReleaseReason::kStaticIP));
@@ -1898,11 +1886,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAAC) {
 
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
   EXPECT_CALL(event_handler_, OnGetSLAACAddress(network_->interface_index()));
-  EXPECT_CALL(event_handler_,
-              OnIPv6ConfiguredWithSLAACAddress(network_->interface_index()));
   EXPECT_CALL(event_handler2_, OnGetSLAACAddress(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnIPv6ConfiguredWithSLAACAddress(network_->interface_index()));
   TriggerSLAACUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6SLAAC);
@@ -1925,11 +1909,7 @@ TEST_F(NetworkStartTest, IPv6OnlyPref64Update) {
 
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
   EXPECT_CALL(event_handler_, OnGetSLAACAddress(network_->interface_index()));
-  EXPECT_CALL(event_handler_,
-              OnIPv6ConfiguredWithSLAACAddress(network_->interface_index()));
   EXPECT_CALL(event_handler2_, OnGetSLAACAddress(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnIPv6ConfiguredWithSLAACAddress(network_->interface_index()));
   TriggerSLAACUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6SLAAC);

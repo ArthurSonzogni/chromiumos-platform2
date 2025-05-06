@@ -582,15 +582,6 @@ void Network::OnIPConfigUpdatedFromDHCP(
   }
 
   OnIPv4ConfigUpdated();
-  // TODO(b/232177767): OnIPv4ConfiguredWithDHCPLease() should be called inside
-  // Network::OnIPv4ConfigUpdated() and only if SetupConnection() happened as a
-  // result of the new lease. The current call pattern reproduces the same
-  // conditions as before crrev/c/3840983.
-  if (new_lease_acquired) {
-    for (auto& ev : event_handlers_) {
-      ev.OnIPv4ConfiguredWithDHCPLease(interface_index_);
-    }
-  }
 
   // Report DHCP provision duration metric.
   std::optional<base::TimeDelta> dhcp_duration =
@@ -812,14 +803,6 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   OnIPv6ConfigUpdated();
 
   if (update_type == SLAACController::UpdateType::kAddress) {
-    // TODO(b/232177767): OnIPv6ConfiguredWithSLAACAddress() should be called
-    // inside Network::OnIPv6ConfigUpdated() and only if SetupConnection()
-    // happened as a result of the new address (ignoring IPv4 and assuming
-    // Network is fully dual-stack). The current call pattern reproduces the
-    // same conditions as before crrev/c/3840983.
-    for (auto& ev : event_handlers_) {
-      ev.OnIPv6ConfiguredWithSLAACAddress(interface_index_);
-    }
     std::optional<base::TimeDelta> slaac_duration =
         slaac_controller_->GetAndResetLastProvisionDuration();
     if (slaac_duration.has_value()) {
