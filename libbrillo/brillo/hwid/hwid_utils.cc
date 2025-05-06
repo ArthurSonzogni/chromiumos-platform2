@@ -121,18 +121,20 @@ std::optional<std::string> hwid::DecodeHWID(const std::string_view hwid) {
 
 std::optional<std::string> hwid::CalculateChecksum(
     const std::string_view hwid) {
-  std::vector<std::string> parts =
-      base::SplitString(hwid, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
-                        base::SplitResult::SPLIT_WANT_NONEMPTY);
+  auto parts = base::SplitStringOnce(
+      base::TrimWhitespaceASCII(hwid, base::TrimPositions::TRIM_ALL), " ");
 
-  if (parts.size() != 2) {
+  if (!parts.has_value() || parts->second.empty()) {
     return std::nullopt;
   }
 
-  base::RemoveChars(parts[1], "-", &parts[1]);
+  auto prefix = std::string(parts->first);
+  auto encoded_string = std::string(parts->second);
+
+  base::RemoveChars(encoded_string, "-", &encoded_string);
 
   std::string stripped =
-      base::StringPrintf("%s %s", parts[0].c_str(), parts[1].c_str());
+      base::StringPrintf("%s %s", prefix.c_str(), encoded_string.c_str());
 
   uint32_t crc32 =
       ~base::Crc32(0xFFFFFFFF, base::as_byte_span(stripped)) & kChecksumBitMask;
