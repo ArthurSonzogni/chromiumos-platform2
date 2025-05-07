@@ -47,6 +47,10 @@ impl<I: VideoFrame, E: VideoFrame> VideoFrame for AuxiliaryVideoFrame<I, E> {
         self.internal.fourcc()
     }
 
+    fn modifier(&self) -> u64 {
+        self.internal.modifier()
+    }
+
     fn resolution(&self) -> Resolution {
         self.internal.resolution()
     }

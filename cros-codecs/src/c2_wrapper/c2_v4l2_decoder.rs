@@ -66,6 +66,11 @@ impl C2DecoderBackend for C2V4L2Decoder {
         Ok(supported_formats)
     }
 
+    fn modifier(&self) -> u64 {
+        // TODO: There should be some way to dynamically query this?
+        0
+    }
+
     fn get_decoder<V: VideoFrame + 'static>(
         &mut self,
         format: EncodedFormat,

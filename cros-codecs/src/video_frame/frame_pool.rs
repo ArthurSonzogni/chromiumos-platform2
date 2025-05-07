@@ -43,6 +43,10 @@ impl<V: VideoFrame> VideoFrame for PooledVideoFrame<V> {
         self.inner.as_ref().unwrap().fourcc()
     }
 
+    fn modifier(&self) -> u64 {
+        self.inner.as_ref().unwrap().modifier()
+    }
+
     fn resolution(&self) -> Resolution {
         self.inner.as_ref().unwrap().resolution()
     }

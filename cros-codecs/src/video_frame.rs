@@ -81,6 +81,8 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
 
     fn fourcc(&self) -> Fourcc;
 
+    fn modifier(&self) -> u64;
+
     // Outputs visible resolution. Use pitch and plane size for coded resolution calculations.
     fn resolution(&self) -> Resolution;
 

@@ -9,9 +9,9 @@ use crate::utils::align_up;
 use crate::video_frame::{VideoFrame, ARGB_PLANE, UV_PLANE, U_PLANE, V_PLANE, Y_PLANE};
 use crate::DecodedFormat;
 
-/// TODO(greenjustin): This entire file should be replaced with LibYUV.
 use byteorder::ByteOrder;
 use byteorder::LittleEndian;
+use drm_fourcc::DrmModifier;
 
 #[cfg(feature = "v4l2")]
 use std::arch::aarch64::*;
@@ -1096,6 +1096,77 @@ pub fn convert_video_frame(src: &impl VideoFrame, dst: &mut impl VideoFrame) -> 
         }
         _ => Err(format!("Unsupported conversion {:?} -> {:?}", conversion.0, conversion.1)),
     }
+}
+
+const Y_SUBTILE_WIDTH: usize = 16;
+const Y_SUBTILE_HEIGHT: usize = 4;
+const Y_SUBTILE_SIZE: usize = Y_SUBTILE_WIDTH * Y_SUBTILE_HEIGHT;
+const Y_TILE_WIDTH_IN_SUBTILES: usize = 8;
+const Y_TILE_HEIGHT_IN_SUBTILES: usize = 8;
+pub const Y_TILE_WIDTH: usize = Y_TILE_WIDTH_IN_SUBTILES * Y_SUBTILE_WIDTH;
+pub const Y_TILE_HEIGHT: usize = Y_TILE_HEIGHT_IN_SUBTILES * Y_SUBTILE_HEIGHT;
+pub const Y_TILE_SIZE: usize = Y_TILE_WIDTH * Y_TILE_HEIGHT;
+
+pub fn detile_y_tile(dst: &mut [u8], src: &[u8], width: usize, height: usize) {
+    let tiles_per_row = width / Y_TILE_WIDTH;
+    for y in 0..height {
+        for x in 0..width {
+            let tile_x = x / Y_TILE_WIDTH;
+            let tile_y = y / Y_TILE_HEIGHT;
+            let intra_tile_x = x % Y_TILE_WIDTH;
+            let intra_tile_y = y % Y_TILE_HEIGHT;
+            let subtile_x = intra_tile_x / Y_SUBTILE_WIDTH;
+            let subtile_y = intra_tile_y / Y_SUBTILE_HEIGHT;
+            let intra_subtile_x = intra_tile_x % Y_SUBTILE_WIDTH;
+            let intra_subtile_y = intra_tile_y % Y_SUBTILE_HEIGHT;
+            // TODO: We should batch up the writes since subtile rows are contiguous. Also consider
+            // SIMD'ifying this function.
+            dst[y * width + x] = src[(tile_y * tiles_per_row + tile_x) * Y_TILE_SIZE
+                + (subtile_x * Y_TILE_HEIGHT_IN_SUBTILES + subtile_y) * Y_SUBTILE_SIZE
+                + intra_subtile_y * Y_SUBTILE_WIDTH
+                + intra_subtile_x]
+        }
+    }
+}
+
+pub fn modifier_conversion(
+    src_frame: &impl VideoFrame,
+    src_modifier: u64,
+    dst_frame: &mut impl VideoFrame,
+    dst_modifier: u64,
+) -> Result<(), String> {
+    if src_modifier != DrmModifier::I915_y_tiled.into()
+        || dst_modifier != DrmModifier::Linear.into()
+    {
+        return Err(format!(
+            "Unsupported modifier conversion {:?} -> {:?}",
+            DrmModifier::from(src_modifier),
+            DrmModifier::from(dst_modifier)
+        ));
+    }
+
+    let plane_sizes = dst_frame.get_plane_size();
+    let plane_pitches = dst_frame.get_plane_pitch();
+    let src_mapping = src_frame.map().expect("Unable to map modifier convert src!");
+    let src_planes = src_mapping.get();
+    let resolution = dst_frame.resolution();
+    let dst_mapping = dst_frame.map_mut().expect("Unable to map modifier convert dst!");
+    let dst_planes = dst_mapping.get();
+    for i in 0..plane_sizes.len() {
+        if plane_pitches[i] % Y_TILE_WIDTH != 0
+            || (plane_sizes[i] / plane_pitches[i]) % Y_TILE_HEIGHT != 0
+        {
+            return Err("Invalid alignment on Y-tiled buffer!".into());
+        }
+        detile_y_tile(
+            *dst_planes[i].borrow_mut(),
+            src_planes[i],
+            plane_pitches[i],
+            plane_sizes[i] / plane_pitches[i],
+        );
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

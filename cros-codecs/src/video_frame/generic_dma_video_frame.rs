@@ -22,6 +22,7 @@ use std::sync::atomic::{fence, Ordering};
 #[cfg(feature = "v4l2")]
 use std::sync::Arc;
 
+use crate::image_processing::detile_y_tile;
 use crate::video_frame::{ReadMapping, VideoFrame, WriteMapping};
 #[cfg(feature = "vaapi")]
 use crate::DecodedFormat;
@@ -87,40 +88,6 @@ fn handle_eintr<T>(cb: &mut impl FnMut() -> nix::Result<T>) -> Result<T, String>
                     return Err(format!("Error executing DMA buf sync! {errno}"));
                 }
             }
-        }
-    }
-}
-
-// Because we are limited to executing raw mmap instead of leveraging the GEM driver, all of our
-// buffers will be mapped linear even if the backing frame has a modifier. So, we have to manually
-// detile the buffers.
-const Y_SUBTILE_WIDTH: usize = 16;
-const Y_SUBTILE_HEIGHT: usize = 4;
-const Y_SUBTILE_SIZE: usize = Y_SUBTILE_WIDTH * Y_SUBTILE_HEIGHT;
-const Y_TILE_WIDTH_IN_SUBTILES: usize = 8;
-const Y_TILE_HEIGHT_IN_SUBTILES: usize = 8;
-const Y_TILE_WIDTH: usize = Y_TILE_WIDTH_IN_SUBTILES * Y_SUBTILE_WIDTH;
-const Y_TILE_HEIGHT: usize = Y_TILE_HEIGHT_IN_SUBTILES * Y_SUBTILE_HEIGHT;
-const Y_TILE_SIZE: usize = Y_TILE_WIDTH * Y_TILE_HEIGHT;
-
-fn detile_y_tile(dst: &mut [u8], src: &[u8], width: usize, height: usize) {
-    let tiles_per_row = width / Y_TILE_WIDTH;
-    for y in 0..height {
-        for x in 0..width {
-            let tile_x = x / Y_TILE_WIDTH;
-            let tile_y = y / Y_TILE_HEIGHT;
-            let intra_tile_x = x % Y_TILE_WIDTH;
-            let intra_tile_y = y % Y_TILE_HEIGHT;
-            let subtile_x = intra_tile_x / Y_SUBTILE_WIDTH;
-            let subtile_y = intra_tile_y / Y_SUBTILE_HEIGHT;
-            let intra_subtile_x = intra_tile_x % Y_SUBTILE_WIDTH;
-            let intra_subtile_y = intra_tile_y % Y_SUBTILE_HEIGHT;
-            // TODO: We should batch up the writes since subtile rows are contiguous. Also consider
-            // SIMD'ifying this function.
-            dst[y * width + x] = src[(tile_y * tiles_per_row + tile_x) * Y_TILE_SIZE
-                + (subtile_x * Y_TILE_HEIGHT_IN_SUBTILES + subtile_y) * Y_SUBTILE_SIZE
-                + intra_subtile_y * Y_SUBTILE_WIDTH
-                + intra_subtile_x]
         }
     }
 }
@@ -312,6 +279,9 @@ impl<'a> DmaMapping<'a> {
                     .map(|x| slice::from_raw_parts(x.0.as_ptr(), *x.1))
                     .collect()
             };
+            // Because we are limited to executing raw mmap instead of leveraging the GEM driver,
+            // all of our buffers will be mapped linear even if the backing frame has a modifier.
+            // So, we have to manually detile the buffers.
             for i in 0..tiled_bufs.len() {
                 let mut detiled_buf: Vec<u8> = vec![];
                 detiled_buf.resize(tiled_bufs[i].len(), 0);
@@ -569,6 +539,10 @@ impl<T: Clone + Send + Sync + Sized + Debug + 'static> VideoFrame for GenericDma
 
     fn fourcc(&self) -> Fourcc {
         self.layout.format.0.clone()
+    }
+
+    fn modifier(&self) -> u64 {
+        self.layout.format.1
     }
 
     fn resolution(&self) -> Resolution {

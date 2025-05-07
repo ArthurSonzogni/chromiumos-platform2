@@ -211,12 +211,6 @@ impl GbmVideoFrame {
         ret
     }
 
-    #[allow(dead_code)]
-    fn get_modifier(&self) -> u64 {
-        // SAFETY: This assumes self.bo[0] contains a valid GBM buffer object.
-        unsafe { gbm_bo_get_modifier(self.bo[0]) }
-    }
-
     fn map_helper(&self, is_writable: bool) -> Result<GbmMapping, String> {
         let offsets = self.get_plane_offset();
         let mut ret = GbmMapping {
@@ -249,7 +243,7 @@ impl GbmVideoFrame {
             (),
             dma_handles,
             FrameLayout {
-                format: (self.fourcc, self.get_modifier()),
+                format: (self.fourcc, self.modifier()),
                 size: self.resolution(),
                 planes: planes,
             },
@@ -339,6 +333,11 @@ impl VideoFrame for GbmVideoFrame {
 
     fn fourcc(&self) -> Fourcc {
         self.fourcc.clone()
+    }
+
+    fn modifier(&self) -> u64 {
+        // SAFETY: This assumes self.bo[0] contains a valid GBM buffer object.
+        unsafe { gbm_bo_get_modifier(self.bo[0]) }
     }
 
     fn resolution(&self) -> Resolution {
@@ -432,7 +431,7 @@ impl VideoFrame for GbmVideoFrame {
 
         let export_descriptor = vec![GbmExternalBufferDescriptor {
             fourcc: self.fourcc.clone(),
-            modifier: self.get_modifier(),
+            modifier: self.modifier(),
             resolution: self.resolution(),
             pitches: self.get_plane_pitch(),
             offsets: self.get_plane_offset(),

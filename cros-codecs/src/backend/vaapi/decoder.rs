@@ -265,7 +265,7 @@ impl<V: VideoFrame> VaapiBackend<V> {
         for<'a> &'a StreamData: VaStreamInfo,
     {
         self.stream_info.display_resolution = Resolution::from(stream_params.visible_rect());
-        self.stream_info.coded_resolution = stream_params.coded_size().clone();
+        self.stream_info.coded_resolution = stream_params.coded_size();
         self.stream_info.min_num_frames = stream_params.min_num_surfaces();
         let rt_format = if stream_params.bit_depth() == 10 {
             self.stream_info.format = DecodedFormat::P010;

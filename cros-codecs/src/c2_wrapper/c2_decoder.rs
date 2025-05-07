@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use drm_fourcc::DrmModifier;
 use nix::errno::Errno;
 use nix::sys::epoll::Epoll;
 use nix::sys::epoll::EpollCreateFlags;
@@ -32,6 +33,10 @@ use crate::decoder::DecoderEvent;
 use crate::decoder::ReadyFrame;
 use crate::decoder::StreamInfo;
 use crate::image_processing::convert_video_frame;
+use crate::image_processing::detile_y_tile;
+use crate::image_processing::modifier_conversion;
+use crate::image_processing::{Y_TILE_HEIGHT, Y_TILE_WIDTH};
+use crate::utils::align_up;
 use crate::video_frame::auxiliary_video_frame::AuxiliaryVideoFrame;
 use crate::video_frame::frame_pool::FramePool;
 use crate::video_frame::frame_pool::PooledVideoFrame;
@@ -42,6 +47,7 @@ use crate::video_frame::v4l2_mmap_video_frame::V4l2MmapVideoFrame;
 use crate::video_frame::VideoFrame;
 use crate::EncodedFormat;
 use crate::Fourcc;
+use crate::Resolution;
 
 #[derive(Debug, Error)]
 pub enum C2DecoderPollErrorWrapper {
@@ -58,6 +64,7 @@ pub trait C2DecoderBackend {
     where
         Self: Sized;
     fn supported_output_formats(&self, fourcc: Fourcc) -> Result<Vec<Fourcc>, String>;
+    fn modifier(&self) -> u64;
     // TODO: Support stateful video decoders.
     fn get_decoder<V: VideoFrame + 'static>(
         &mut self,
@@ -99,6 +106,18 @@ where
     work_queue: Arc<Mutex<VecDeque<C2DecodeJob<V>>>>,
     state: Arc<(Mutex<C2State>, Condvar)>,
     drain_status: Option<(u64, DrainMode)>,
+    // Keep track of what DRM modifier the decoder expects. At least in VA-API, the driver will
+    // import a DMA buffer of any modifier type and simply ignore the given modifier entirely.
+    decoder_modifier: u64,
+    needs_scratch_frame: bool,
+    // If we need to "convert" the DRM modifier, we don't need to allocate a full auxiliary frame
+    // pool because the existing frame pool already gives us frames with the right size, format,
+    // and layout.
+    // TODO: Should we use this same technique in place of AuxiliaryVideoFrame? We should really
+    // only ever need 1 frame in the output frame pool for the ConvertingDecoder since we manage
+    // all the reference frames internally. We could save some memory this way, which might be
+    // especially important for L1.
+    scratch_frame: Option<V>,
     _phantom: PhantomData<B>,
 }
 
@@ -138,6 +157,14 @@ where
     // Processes events from the decoder. Primarily these are frame decoded events and DRCs.
     fn check_events(&mut self) {
         loop {
+            let mut scratch_frame = if let Some(frame) = self.scratch_frame.take() {
+                Some(frame)
+            } else if self.needs_scratch_frame {
+                return;
+            } else {
+                None
+            };
+
             let stream_info = match &self.decoder {
                 C2Decoder::ImportingDecoder(decoder) => decoder.stream_info().map(|x| x.clone()),
                 C2Decoder::ConvertingDecoder(decoder) => decoder.stream_info().map(|x| x.clone()),
@@ -157,8 +184,24 @@ where
                         frame.sync().unwrap();
                         let timestamp = external_timestamp(frame.timestamp());
                         let drain = self.get_drain_status(timestamp);
+                        let mut frame = frame.video_frame();
+                        if self.needs_scratch_frame {
+                            let dst_modifier = scratch_frame.as_ref().unwrap().modifier();
+                            if let Err(msg) = modifier_conversion(
+                                &*frame,
+                                self.decoder_modifier,
+                                scratch_frame.as_mut().unwrap(),
+                                dst_modifier,
+                            ) {
+                                log::debug!("Error converting modifiers: {}", msg);
+                                *self.state.0.lock().unwrap() = C2State::C2Error;
+                                (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                                return;
+                            }
+                            frame = Arc::new(scratch_frame.unwrap());
+                        }
                         (*self.work_done_cb.lock().unwrap())(C2DecodeJob {
-                            output: Some(frame.video_frame()),
+                            output: Some(frame),
                             timestamp: timestamp,
                             drain: drain,
                             ..Default::default()
@@ -166,9 +209,52 @@ where
                     }
                     Some(DecoderEvent::FormatChanged) => match stream_info {
                         Some(stream_info) => {
-                            (*self.framepool_hint_cb.lock().unwrap())(stream_info.clone());
+                            if self.decoder_modifier == DrmModifier::I915_y_tiled.into() {
+                                // Sometimes gralloc will give us linear buffers with incorrect
+                                // alignment, so we leverage coded_size to make sure the alignment
+                                // is appropriate for the decoder's tiling scheme. Note that
+                                // because the chroma plane is subsampled, we double the alignment
+                                // requirement.
+                                // TODO: We may have to change this to support other tiling schemes.
+                                (*self.framepool_hint_cb.lock().unwrap())(StreamInfo {
+                                    format: stream_info.format,
+                                    coded_resolution: Resolution {
+                                        width: align_up(
+                                            stream_info.coded_resolution.width,
+                                            2 * Y_TILE_WIDTH as u32,
+                                        ),
+                                        height: align_up(
+                                            stream_info.coded_resolution.height,
+                                            2 * Y_TILE_HEIGHT as u32,
+                                        ),
+                                    },
+                                    display_resolution: stream_info.display_resolution.clone(),
+                                    min_num_frames: stream_info.min_num_frames + 1,
+                                });
+                            } else {
+                                (*self.framepool_hint_cb.lock().unwrap())(stream_info.clone());
+                            }
+
+                            self.scratch_frame = None;
+
+                            let test_alloc = match (*self.alloc_cb.lock().unwrap())() {
+                                Some(frame) => frame,
+                                None => {
+                                    log::debug!("Could not allocate test frame!");
+                                    *self.state.0.lock().unwrap() = C2State::C2Error;
+                                    (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                                    return;
+                                }
+                            };
+                            if test_alloc.modifier() != self.decoder_modifier {
+                                self.needs_scratch_frame = true;
+                                self.scratch_frame = Some(test_alloc);
+                            }
+
                             // Retry the frame that caused the format change.
                             self.awaiting_job_event.write(1).unwrap();
+
+                            return;
                         }
                         None => {
                             log::debug!("Could not get stream info after format change!");
@@ -225,6 +311,10 @@ where
                     _ => break,
                 },
             }
+
+            if self.needs_scratch_frame {
+                self.scratch_frame = (*self.alloc_cb.lock().unwrap())();
+            }
         }
     }
 }
@@ -250,6 +340,7 @@ where
     ) -> Result<Self, String> {
         let mut backend = B::new(options)?;
         let backend_fourccs = backend.supported_output_formats(input_fourcc)?;
+        let decoder_modifier = backend.modifier();
         let (auxiliary_frame_pool, decoder) = if backend_fourccs.contains(&output_fourcc) {
             (
                 None,
@@ -312,6 +403,9 @@ where
             work_queue: work_queue,
             state: state,
             drain_status: None,
+            decoder_modifier: decoder_modifier,
+            needs_scratch_frame: false,
+            scratch_frame: None,
             _phantom: Default::default(),
         })
     }
@@ -342,6 +436,14 @@ where
 
             if events == [EpollEvent::new(EpollFlags::EPOLLIN, 2)] {
                 self.awaiting_job_event.read().unwrap();
+            }
+
+            if self.needs_scratch_frame && self.scratch_frame.is_none() {
+                self.scratch_frame = (*self.alloc_cb.lock().unwrap())();
+                if self.scratch_frame.is_none() {
+                    self.check_events();
+                    continue;
+                }
             }
 
             // We want to try sending compressed buffers to the decoder regardless of what event
@@ -427,5 +529,8 @@ where
             }
             self.check_events();
         }
+
+        self.scratch_frame = None;
+        self.needs_scratch_frame = false;
     }
 }

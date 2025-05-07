@@ -101,6 +101,11 @@ impl VideoFrame for V4l2MmapVideoFrame {
         self.fourcc.clone()
     }
 
+    fn modifier(&self) -> u64 {
+        // TODO: Is there any circumstance where this won't be 0?
+        0
+    }
+
     fn resolution(&self) -> Resolution {
         self.resolution.clone()
     }

@@ -19,6 +19,8 @@ use crate::video_frame::VideoFrame;
 use crate::EncodedFormat;
 use crate::Fourcc;
 
+use drm_fourcc::DrmModifier;
+
 #[derive(Clone, Debug)]
 pub struct C2VaapiDecoderOptions {
     pub libva_device_path: Option<PathBuf>,
@@ -59,6 +61,12 @@ impl C2DecoderBackend for C2VaapiDecoder {
         }
 
         return Ok(supported_formats);
+    }
+
+    fn modifier(&self) -> u64 {
+        // TODO: There should be some way to dynamically query this? This will definitely be a
+        // problem for different generations of Intel platforms.
+        u64::from(DrmModifier::I915_y_tiled)
     }
 
     fn get_decoder<V: VideoFrame + 'static>(
