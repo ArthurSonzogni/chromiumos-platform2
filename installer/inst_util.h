@@ -12,9 +12,9 @@
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
 
-extern const char kEnvIsInstall[];
-extern const char kEnvIsFactoryInstall[];
-extern const char kEnvIsRecoveryInstall[];
+constexpr char kEnvIsInstall[] = "IS_INSTALL";
+constexpr char kEnvIsFactoryInstall[] = "IS_FACTORY_INSTALL";
+constexpr char kEnvIsRecoveryInstall[] = "IS_RECOVERY_INSTALL";
 
 // Index of a partition entry in the GPT.
 //

@@ -210,13 +210,13 @@ class MockEnvironment : public base::Environment {
   // the pure virtual methods of base::Environment.
   MOCK_METHOD(std::optional<std::string>,
               GetVar,
-              (std::string_view variable_name),
+              (base::cstring_view variable_name),
               (override));
   MOCK_METHOD(bool,
               SetVar,
-              (std::string_view variable_name, const std::string& new_value),
+              (base::cstring_view variable_name, const std::string& new_value),
               (override));
-  MOCK_METHOD(bool, UnSetVar, (std::string_view variable_name), (override));
+  MOCK_METHOD(bool, UnSetVar, (base::cstring_view variable_name), (override));
 };
 
 }  // namespace

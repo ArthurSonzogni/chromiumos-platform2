@@ -51,10 +51,6 @@ using std::vector;
 // Used by LoggingTimerStart/Finish methods.
 static time_t START_TIME = 0;
 
-const char kEnvIsInstall[] = "IS_INSTALL";
-const char kEnvIsFactoryInstall[] = "IS_FACTORY_INSTALL";
-const char kEnvIsRecoveryInstall[] = "IS_RECOVERY_INSTALL";
-
 namespace {
 constexpr char kPartitionNumKey[] = "num";
 constexpr char kPartitionLabelKey[] = "label";
