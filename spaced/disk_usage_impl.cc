@@ -4,13 +4,6 @@
 
 #include "spaced/disk_usage_impl.h"
 
-#include <algorithm>
-#include <map>
-#include <memory>
-#include <optional>
-#include <string>
-#include <vector>
-
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -19,6 +12,13 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
+#include <algorithm>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
+
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -26,6 +26,7 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <brillo/blkdev_utils/get_backing_block_device.h>

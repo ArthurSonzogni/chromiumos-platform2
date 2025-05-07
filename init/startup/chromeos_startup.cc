@@ -23,6 +23,7 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <brillo/blkdev_utils/storage_utils.h>
 #include <brillo/files/file_util.h>
