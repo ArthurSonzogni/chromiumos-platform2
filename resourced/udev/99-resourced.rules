@@ -47,5 +47,6 @@ DRIVERS=="amdgpu", ACTION=="add", TEST=="power_dpm_force_performance_level", \
   $sys$devpath/power_dpm_force_performance_level"
 
 ACTION=="change", SUBSYSTEM=="power_supply", \
-  RUN+="/usr/bin/dbus-send --system --dest=org.chromium.ResourceManager \
-  /org/chromium/ResourceManager org.chromium.ResourceManager.PowerSupplyChange"
+  RUN+="/usr/bin/dbus-send --system --type=method_call \
+  --dest=org.chromium.ResourceManager /org/chromium/ResourceManager \
+  org.chromium.ResourceManager.PowerSupplyChange"
