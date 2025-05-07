@@ -17,7 +17,12 @@
     <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer"/>
     <target_preparer class="com.android.tradefed.targetprep.PushFilePreparer">
         <option name="push-file" key="ccenc_h264_test" value="/data/local/tmp/ccenc_h264_test" />
-        <!-- TODO(b/400788075): Add external data dependencies once exempt to use GS dynamic link  -->
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/tulip2-320x180_20190108.vp9.webm" value="/data/local/tmp/test_vectors/tulip2-320x180.vp9.webm"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/tulip2-640x360_20190108.vp9.webm" value="/data/local/tmp/test_vectors/tulip2-640x360.vp9.webm"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/tulip2-1280x720_20190108.vp9.webm" value="/data/local/tmp/test_vectors/tulip2-1280x720.vp9.webm"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/gipsrestat-320x180_20210211.vp9.webm" value="/data/local/tmp/test_vectors/gipsrestat-320x180.vp9.webm"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/gipsrestat-640x360_20210211.vp9.webm" value="/data/local/tmp/test_vectors/gipsrestat-640x360.vp9.webm"/>
+        <option name="push-file" key="gs://chromiumos-test-assets-public/tast/cros/video/gipsrestat-1280x720_20210211.vp9.webm" value="/data/local/tmp/test_vectors/gipsrestat-1280x720.vp9.webm"/>
         <option name="cleanup" value="true" />
     </target_preparer>
 
