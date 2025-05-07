@@ -20,6 +20,10 @@ lazy_static! {
     pub static ref H265_FILENAMES: HashMap<&'static str, Vec<&'static str>> = h265_files();
     /// H265 test filenames filed from bugs.
     pub static ref H265_FILES_FROM_BUGS: HashMap<&'static str, Vec<&'static str>> = h265_files_from_bugs();
+    /// AV1 test filenames categorized by bit depth.
+    pub static ref AV1_FILES: HashMap<&'static str, Vec<&'static str>> = av1_files();
+    /// AV1 AOM test filenames categorized by group.
+    pub static ref AV1_AOM_8BIT_FILES: HashMap<&'static str, Vec<&'static str>> = av1_aom_8bit_files();
 }
 
 #[allow(dead_code)]
@@ -817,4 +821,185 @@ pub fn h265_files_from_bugs() -> HashMap<&'static str, Vec<&'static str>> {
         ],
     );
     h265_files_from_bugs
+}
+
+#[allow(dead_code)]
+/// Provides AV1 test vector files categorized by bit depth.
+pub fn av1_files() -> HashMap<&'static str, Vec<&'static str>> {
+    let mut av1_files: HashMap<&'static str, Vec<&'static str>> = HashMap::new();
+    av1_files.insert(
+        "8bit",
+        vec![
+            "test_vectors/av1/8-bit/00000527.ivf",
+            "test_vectors/av1/8-bit/00000535.ivf",
+            "test_vectors/av1/8-bit/00000548.ivf",
+            "test_vectors/av1/8-bit/48_delayed.ivf",
+            "test_vectors/av1/8-bit/av1-1-b8-02-allintra.ivf",
+            "test_vectors/av1/8-bit/frames_refs_short_signaling.ivf",
+            "test_vectors/av1/8-bit/non_uniform_tiling.ivf",
+            "test_vectors/av1/8-bit/test-25fps-192x288-only-tile-cols-is-power-of-2.ivf",
+            "test_vectors/av1/8-bit/test-25fps-192x288-only-tile-rows-is-power-of-2.ivf",
+            "test_vectors/av1/8-bit/test-25fps-192x288-tile-rows-3-tile-cols-3.ivf",
+            "test_vectors/av1/8-bit/llama_av1_240p_200kbps_24fps.ivf",
+        ],
+    );
+    av1_files
+}
+
+#[allow(dead_code)]
+/// Provides AV1 AOM 8bit test vector files categorized by group.
+pub fn av1_aom_8bit_files() -> HashMap<&'static str, Vec<&'static str>> {
+    let mut av1_aom_8bit_files: HashMap<&'static str, Vec<&'static str>> = HashMap::new();
+    av1_aom_8bit_files.insert(
+        "quantizer",
+        vec![
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-00.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-01.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-02.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-03.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-04.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-05.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-06.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-07.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-08.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-09.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-10.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-11.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-12.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-13.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-14.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-15.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-16.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-17.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-18.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-19.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-20.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-21.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-22.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-23.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-24.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-25.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-26.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-27.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-28.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-29.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-30.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-31.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-32.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-33.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-34.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-35.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-36.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-37.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-38.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-39.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-40.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-41.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-42.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-43.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-44.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-45.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-46.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-47.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-48.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-49.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-50.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-51.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-52.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-53.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-54.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-55.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-56.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-57.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-58.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-59.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-60.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-61.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-62.ivf",
+            "test_vectors/av1/aom/av1-1-b8-00-quantizer-63.ivf",
+        ],
+    );
+    av1_aom_8bit_files.insert(
+        "size",
+        vec![
+            "test_vectors/av1/aom/av1-1-b8-01-size-64x64.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-64x66.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-66x64.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-66x66.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-196x196.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-196x198.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-196x200.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-196x202.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-196x208.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-196x210.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-196x224.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-196x226.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-198x196.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-198x198.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-198x200.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-198x202.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-198x208.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-198x210.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-198x224.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-198x226.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-200x196.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-200x198.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-200x200.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-200x202.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-200x208.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-200x210.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-200x224.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-200x226.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-202x196.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-202x198.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-202x200.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-202x202.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-202x208.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-202x210.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-202x224.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-202x226.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-208x196.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-208x198.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-208x200.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-208x202.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-208x208.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-208x210.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-208x224.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-208x226.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-210x196.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-210x198.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-210x200.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-210x202.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-210x208.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-210x210.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-210x224.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-210x226.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-224x196.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-224x198.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-224x200.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-224x202.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-224x208.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-224x210.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-224x224.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-224x226.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-226x196.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-226x198.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-226x200.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-226x202.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-226x208.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-226x210.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-226x224.ivf",
+            "test_vectors/av1/aom/av1-1-b8-01-size-226x226.ivf",
+        ],
+    );
+    av1_aom_8bit_files.insert("allintra", vec!["test_vectors/av1/aom/av1-1-b8-02-allintra.ivf"]);
+    av1_aom_8bit_files.insert("cdfupdate", vec!["test_vectors/av1/aom/av1-1-b8-04-cdfupdate.ivf"]);
+    av1_aom_8bit_files.insert(
+        "motionvec",
+        vec![
+            "test_vectors/av1/aom/av1-1-b8-05-mv.ivf",
+            "test_vectors/av1/aom/av1-1-b8-06-mfmv.ivf",
+        ],
+    );
+    av1_aom_8bit_files
 }
