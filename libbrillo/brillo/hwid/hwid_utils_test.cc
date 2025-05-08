@@ -58,4 +58,38 @@ TEST(CalculateChecksumTest, Failure) {
   EXPECT_EQ(hwid::CalculateChecksum("MODEL-CODE"), std::nullopt);
 }
 
+TEST(EncodeHWIDTest, Success) {
+  EXPECT_EQ(hwid::EncodeHWID("MODEL", ""), "MODEL Q64");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "0"), "ZZZ I4B");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "1"), "ZZZ Y3F");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "00000"), "ZZZ A6A-A3T");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "000000"), "ZZZ A4A-A45");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "0000000"), "ZZZ A3A-A8Y");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "00000000"), "ZZZ A2Q-A76");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "000000000"), "ZZZ A2I-A9H");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "0000000000"), "ZZZ A2E-A9L");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "00000000000"), "ZZZ A2C-A5N");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "000000000000"), "ZZZ A2B-A3M");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "0000000000000"), "ZZZ A2A-Q6L");
+  EXPECT_EQ(hwid::EncodeHWID("ZZZ", "00000000000000"), "ZZZ A2A-I85");
+  EXPECT_EQ(hwid::EncodeHWID("ZEROONE", "00000000000001111"),
+            "ZEROONE A2A-747");
+  EXPECT_EQ(hwid::EncodeHWID("SARIEN-MCOO 0-8-77-1D0", "00000000000001111"),
+            "SARIEN-MCOO 0-8-77-1D0 A2A-73B");
+  EXPECT_EQ(hwid::EncodeHWID("REDRIX-ZZCR",
+                             "00011001000001101111100101110101010101000"),
+            "REDRIX-ZZCR D3A-39F-27K-E2A");
+}
+
+TEST(EncodeHWIDTest, FailureWithMalformedBinaryString) {
+  EXPECT_EQ(hwid::EncodeHWID("MODEL", "012"), std::nullopt);
+  EXPECT_EQ(hwid::EncodeHWID("MODEL", "abc"), std::nullopt);
+  EXPECT_EQ(hwid::EncodeHWID("MODEL", "0101 01"), std::nullopt);
+}
+
+TEST(EncodeHWIDTest, FailureWithInvalidPrefix) {
+  EXPECT_EQ(hwid::EncodeHWID("", "00000"), std::nullopt);
+  EXPECT_EQ(hwid::EncodeHWID("   ", "00000"), std::nullopt);
+}
+
 }  // namespace brillo

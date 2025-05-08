@@ -7,7 +7,6 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/containers/span.h>
@@ -27,6 +26,15 @@ constexpr auto kBase8Map =
                                                     {'7', "101"},
                                                     {'8', "110"},
                                                     {'9', "111"}});
+constexpr auto kReversedBase8Map =
+    base::MakeFixedFlatMap<std::string_view, std::string_view>({{"000", "2"},
+                                                                {"001", "3"},
+                                                                {"010", "4"},
+                                                                {"011", "5"},
+                                                                {"100", "6"},
+                                                                {"101", "7"},
+                                                                {"110", "8"},
+                                                                {"111", "9"}});
 
 constexpr auto kBase32Map = base::MakeFixedFlatMap<char, std::string_view>(
     {{'A', "00000"}, {'B', "00001"}, {'C', "00010"}, {'D', "00011"},
@@ -37,14 +45,26 @@ constexpr auto kBase32Map = base::MakeFixedFlatMap<char, std::string_view>(
      {'U', "10100"}, {'V', "10101"}, {'W', "10110"}, {'X', "10111"},
      {'Y', "11000"}, {'Z', "11001"}, {'2', "11010"}, {'3', "11011"},
      {'4', "11100"}, {'5', "11101"}, {'6', "11110"}, {'7', "11111"}});
+constexpr auto kReversedBase32Map =
+    base::MakeFixedFlatMap<std::string_view, std::string_view>(
+        {{"00000", "A"}, {"00001", "B"}, {"00010", "C"}, {"00011", "D"},
+         {"00100", "E"}, {"00101", "F"}, {"00110", "G"}, {"00111", "H"},
+         {"01000", "I"}, {"01001", "J"}, {"01010", "K"}, {"01011", "L"},
+         {"01100", "M"}, {"01101", "N"}, {"01110", "O"}, {"01111", "P"},
+         {"10000", "Q"}, {"10001", "R"}, {"10010", "S"}, {"10011", "T"},
+         {"10100", "U"}, {"10101", "V"}, {"10110", "W"}, {"10111", "X"},
+         {"11000", "Y"}, {"11001", "Z"}, {"11010", "2"}, {"11011", "3"},
+         {"11100", "4"}, {"11101", "5"}, {"11110", "6"}, {"11111", "7"}});
 
 // Size of the checksum used at the end of the HWID
-constexpr size_t kHWIDChecksumBits = 8;
+constexpr size_t kHWIDChecksumBitWidth = 8;
 
 constexpr char kBase8Alphabet[] = "23456789";
 constexpr char kBase32Alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 constexpr uint32_t kChecksumBitMask = 0xFF;
-constexpr int kBase32BitWidth = 5;
+constexpr size_t kBase32BitWidth = 5;
+constexpr size_t kBase8BitWidth = 3;
+constexpr size_t kBase8192BitWidth = 13;
 
 template <typename MapType>
 bool AppendDecodedBits(char key,
@@ -57,6 +77,33 @@ bool AppendDecodedBits(char key,
 
   decoded_string.append(it->second);
   return true;
+}
+
+template <typename MapType>
+bool AppendEncodedStrAndUpdateBitPos(std::string_view binary_string,
+                                     size_t& bit_pos,
+                                     size_t bit_width,
+                                     const MapType& encoded_str_map,
+                                     std::string& encoded_string) {
+  if (bit_pos + bit_width > binary_string.size()) {
+    return false;
+  }
+
+  auto key = binary_string.substr(bit_pos, bit_width);
+  auto it = encoded_str_map.find(key);
+  if (it == encoded_str_map.end()) {
+    return false;
+  }
+
+  encoded_string.append(it->second);
+  bit_pos += bit_width;
+  return true;
+}
+
+size_t GetPaddingLength(std::string_view binary_string) {
+  return (kBase8192BitWidth - ((binary_string.size() + kHWIDChecksumBitWidth) %
+                               kBase8192BitWidth)) %
+         kBase8192BitWidth;
 }
 
 }  // namespace
@@ -105,18 +152,58 @@ std::optional<std::string> hwid::DecodeHWID(const std::string_view hwid) {
       return std::nullopt;
     }
   }
-  if (decoded_bit_string.size() <= kHWIDChecksumBits) {
+  if (decoded_bit_string.size() <= kHWIDChecksumBitWidth) {
     return std::nullopt;
   }
 
   auto pos = decoded_bit_string.find_last_of(
-      '1', decoded_bit_string.size() - kHWIDChecksumBits - 1);
+      '1', decoded_bit_string.size() - kHWIDChecksumBitWidth - 1);
 
   if (pos == std::string::npos) {
     return std::nullopt;
   }
 
   return decoded_bit_string.substr(0, pos);
+}
+
+std::optional<std::string> hwid::EncodeHWID(
+    const std::string_view hwid_prefix, const std::string_view binary_payload) {
+  auto invalid_pos = binary_payload.find_first_not_of("01");
+  if (invalid_pos != std::string::npos) {
+    return std::nullopt;
+  }
+
+  // Append EOS and padding.
+  auto binary_hwid = std::string(binary_payload) + "1";
+  binary_hwid.append(GetPaddingLength(binary_hwid), '0');
+
+  std::string encoded_hwid;
+  size_t bit_pos = 0;
+  while (bit_pos + kBase8192BitWidth <=
+         binary_hwid.length() - kBase32BitWidth) {
+    if (!AppendEncodedStrAndUpdateBitPos(binary_hwid, bit_pos, kBase32BitWidth,
+                                         kReversedBase32Map, encoded_hwid) ||
+        !AppendEncodedStrAndUpdateBitPos(binary_hwid, bit_pos, kBase8BitWidth,
+                                         kReversedBase8Map, encoded_hwid) ||
+        !AppendEncodedStrAndUpdateBitPos(binary_hwid, bit_pos, kBase32BitWidth,
+                                         kReversedBase32Map, encoded_hwid)) {
+      return std::nullopt;
+    }
+    encoded_hwid.append("-");
+  }
+  // The last group is only 5-bit long.
+  if (!AppendEncodedStrAndUpdateBitPos(binary_hwid, bit_pos, kBase32BitWidth,
+                                       kReversedBase32Map, encoded_hwid)) {
+    return std::nullopt;
+  }
+
+  auto hwid = base::JoinString({hwid_prefix, encoded_hwid}, " ");
+  auto checksum = CalculateChecksum(hwid);
+  if (!checksum.has_value()) {
+    return std::nullopt;
+  }
+
+  return hwid + checksum.value();
 }
 
 std::optional<std::string> hwid::CalculateChecksum(
