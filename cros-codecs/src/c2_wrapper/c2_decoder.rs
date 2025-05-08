@@ -42,6 +42,8 @@ use crate::video_frame::frame_pool::FramePool;
 use crate::video_frame::frame_pool::PooledVideoFrame;
 #[cfg(feature = "vaapi")]
 use crate::video_frame::gbm_video_frame::{GbmDevice, GbmUsage, GbmVideoFrame};
+#[cfg(feature = "vaapi")]
+use crate::video_frame::generic_dma_video_frame::GenericDmaVideoFrame;
 #[cfg(feature = "v4l2")]
 use crate::video_frame::v4l2_mmap_video_frame::V4l2MmapVideoFrame;
 use crate::video_frame::VideoFrame;
@@ -72,8 +74,9 @@ pub trait C2DecoderBackend {
     ) -> Result<DynStatelessVideoDecoder<V>, String>;
 }
 
+// TODO(b/416546169): Switch this back to GbmVideoFrame once b/416546169 is fixed.
 #[cfg(feature = "vaapi")]
-type InternalAuxiliaryVideoFrame = GbmVideoFrame;
+type InternalAuxiliaryVideoFrame = GenericDmaVideoFrame<()>;
 #[cfg(feature = "v4l2")]
 type InternalAuxiliaryVideoFrame = V4l2MmapVideoFrame;
 
@@ -365,6 +368,8 @@ where
                             GbmUsage::Decode,
                         )
                         .expect("Could not allocate frame for auxiliary frame pool!")
+                        .to_generic_dma_video_frame()
+                        .expect("Could not export GBM frame to DMA frame!")
                 });
                 (
                     Some(framepool),
