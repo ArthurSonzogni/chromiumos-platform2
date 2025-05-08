@@ -2,22 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <spaced/disk_usage_impl.h>
-
 #include <fcntl.h>
 #include <sys/quota.h>
 #include <sys/statvfs.h>
+#include <sys/sysmacros.h>
 
 #include <optional>
 #include <string>
 #include <vector>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
+#include <brillo/file_utils.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <spaced/disk_usage_impl.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 
 extern "C" {
@@ -43,16 +45,36 @@ constexpr char kQuotaSamplePath[] = "/home/user/chronos";
 class DiskUsageUtilMock : public DiskUsageUtilImpl {
  public:
   DiskUsageUtilMock(struct statvfs st, std::optional<brillo::Thinpool> thinpool)
-      : DiskUsageUtilImpl(base::FilePath("/dev/foo"), thinpool), st_(st) {}
+      : DiskUsageUtilImpl(base::FilePath("/dev/foo"), thinpool),
+        st_(st),
+        stat_status_(0) {}
+
+  DiskUsageUtilMock(struct statvfs st,
+                    std::optional<brillo::Thinpool> thinpool,
+                    std::string proc_dir,
+                    std::string sys_dev_block_dir)
+      : DiskUsageUtilImpl(
+            base::FilePath("/dev/foo"), thinpool, proc_dir, sys_dev_block_dir),
+        st_(st),
+        stat_status_(0) {}
+
+  void set_stat_status(int status) { stat_status_ = status; }
 
  protected:
   int StatVFS(const base::FilePath& path, struct statvfs* st) override {
     memcpy(st, &st_, sizeof(struct statvfs));
     return !st_.f_fsid;
   }
+  int Stat(const std::string& path, struct stat* st) override {
+    *st = {};
+    st->st_dev = makedev(path.size(), path.size() + 1);
+    st->st_mode |= S_IFDIR;
+    return stat_status_;
+  }
 
  private:
   struct statvfs st_;
+  int stat_status_;
 };
 
 TEST(DiskUsageUtilTest, FailedVfsCall) {
@@ -429,6 +451,272 @@ TEST(DiskUsageUtilTest, SetProjectInheritanceFlag) {
   flags = 0;
   ASSERT_EQ(disk_usage_mock.Ioctl(fd.get(), FS_IOC_GETFLAGS, &flags), 0);
   EXPECT_EQ(flags, kOriginalFlags);
+}
+
+TEST(DiskUsageUtilTest, GetDiskIOStats) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath disk_stats_path = temp_dir.GetPath().Append("diskstats");
+  brillo::WriteToFile(disk_stats_path, "1 2 3", 5);
+
+  DiskUsageUtilMock disk_usage_mock({}, std::nullopt,
+                                    temp_dir.GetPath().value(), "");
+
+  std::string str_reply = disk_usage_mock.GetDiskIOStats();
+  EXPECT_EQ(str_reply, "\nI/O stats for all block devices:\n1 2 3");
+}
+
+TEST(DiskUsageUtilTest, GetDiskIOStatsWithFailedFileRead) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // The diskstats file is left uncreated
+
+  DiskUsageUtilMock disk_usage_mock({}, std::nullopt,
+                                    temp_dir.GetPath().value(), "");
+
+  std::string str_reply = disk_usage_mock.GetDiskIOStats();
+  EXPECT_EQ(str_reply, "");
+}
+
+TEST(DiskUsageUtilTest, GetDiskIOStatsForPaths) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  DiskUsageUtilMock disk_usage_mock({}, std::nullopt, "",
+                                    temp_dir.GetPath().value());
+
+  base::FilePath dir67 = temp_dir.GetPath().Append("6:7");
+  ASSERT_TRUE(base::CreateDirectory(dir67));
+  base::FilePath file67 = dir67.Append("stat");
+  std::string contents67 = "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17";
+  brillo::WriteToFile(file67, contents67.c_str(), contents67.size());
+
+  base::FilePath dir78 = temp_dir.GetPath().Append("7:8");
+  ASSERT_TRUE(base::CreateDirectory(dir78));
+  base::FilePath file78 = dir78.Append("stat");
+  std::string contents78 =
+      "11 21 31 41 51 61 71 81 91 101 111 121 131 141 151 161 171";
+  brillo::WriteToFile(file78, contents78.c_str(), contents78.size());
+
+  GetDiskIOStatsForPathsReply reply = disk_usage_mock.GetDiskIOStatsForPaths(
+      {base::FilePath("/test1"), base::FilePath("/test12")});
+  EXPECT_EQ(reply.stats_for_path().size(), 2);
+  EXPECT_EQ(reply.stats_for_path().at(0).path(), "/test1");
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().read_ios(), 1);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().read_merges(), 2);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().read_sectors(), 3);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().read_ticks(), 4);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().write_ios(), 5);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().write_merges(), 6);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().write_sectors(), 7);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().write_ticks(), 8);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().in_flight(), 9);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().io_ticks(), 10);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().time_in_queue(), 11);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().discard_ios(), 12);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().discard_merges(), 13);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().discard_sectors(), 14);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().discard_ticks(), 15);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().flush_ios(), 16);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().flush_ticks(), 17);
+  EXPECT_EQ(reply.stats_for_path().at(1).path(), "/test12");
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().read_ios(), 11);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().read_merges(), 21);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().read_sectors(), 31);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().read_ticks(), 41);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().write_ios(), 51);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().write_merges(), 61);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().write_sectors(), 71);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().write_ticks(), 81);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().in_flight(), 91);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().io_ticks(), 101);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().time_in_queue(), 111);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().discard_ios(), 121);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().discard_merges(), 131);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().discard_sectors(), 141);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().discard_ticks(), 151);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().flush_ios(), 161);
+  EXPECT_EQ(reply.stats_for_path().at(1).stats().flush_ticks(), 171);
+}
+
+TEST(DiskUsageUtilTest, GetDiskIOStatsForPathsWithFailedFileRead) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // The stat files are left uncreated
+
+  DiskUsageUtilMock disk_usage_mock({}, std::nullopt, "",
+                                    temp_dir.GetPath().value());
+
+  GetDiskIOStatsForPathsReply reply = disk_usage_mock.GetDiskIOStatsForPaths(
+      {base::FilePath("/test1"), base::FilePath("/test12")});
+  EXPECT_EQ(reply.stats_for_path().size(), 0);
+}
+
+TEST(DiskUsageUtilTest, GetDiskIOStatsForPathsWithFailedStat) {
+  DiskUsageUtilMock disk_usage_mock({}, std::nullopt);
+
+  // Simulate a stat() failure
+  disk_usage_mock.set_stat_status(1);
+
+  GetDiskIOStatsForPathsReply reply = disk_usage_mock.GetDiskIOStatsForPaths(
+      {base::FilePath("/test1"), base::FilePath("/test12")});
+  EXPECT_EQ(reply.stats_for_path().size(), 0);
+}
+
+TEST(DiskUsageUtilTest, GetDiskIOStatsForPathsWithFailedFileParsing) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  DiskUsageUtilMock disk_usage_mock({}, std::nullopt, "",
+                                    temp_dir.GetPath().value());
+
+  base::FilePath dir67 = temp_dir.GetPath().Append("6:7");
+  ASSERT_TRUE(base::CreateDirectory(dir67));
+  base::FilePath file67 = dir67.Append("stat");
+  // Insufficient number of entries: 16 rather than 17
+  std::string contents67 = "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16";
+  brillo::WriteToFile(file67, contents67.c_str(), contents67.size());
+
+  base::FilePath dir78 = temp_dir.GetPath().Append("7:8");
+  ASSERT_TRUE(base::CreateDirectory(dir78));
+  base::FilePath file78 = dir78.Append("stat");
+  std::string contents78 =
+      "11 21 31 41 51 61 71 81 91 101 111 121 131 141 151 161 171";
+  brillo::WriteToFile(file78, contents78.c_str(), contents78.size());
+
+  GetDiskIOStatsForPathsReply reply = disk_usage_mock.GetDiskIOStatsForPaths(
+      {base::FilePath("/test1"), base::FilePath("/test12")});
+  EXPECT_EQ(reply.stats_for_path().size(), 1);
+  EXPECT_EQ(reply.stats_for_path().at(0).path(), "/test12");
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().read_ios(), 11);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().read_merges(), 21);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().read_sectors(), 31);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().read_ticks(), 41);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().write_ios(), 51);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().write_merges(), 61);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().write_sectors(), 71);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().write_ticks(), 81);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().in_flight(), 91);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().io_ticks(), 101);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().time_in_queue(), 111);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().discard_ios(), 121);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().discard_merges(), 131);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().discard_sectors(), 141);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().discard_ticks(), 151);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().flush_ios(), 161);
+  EXPECT_EQ(reply.stats_for_path().at(0).stats().flush_ticks(), 171);
+}
+
+TEST(DiskUsageUtilTest, GetDiskIOStatsForPathsPrettyPrint) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  DiskUsageUtilMock disk_usage_mock({}, std::nullopt, "",
+                                    temp_dir.GetPath().value());
+
+  base::FilePath dir67 = temp_dir.GetPath().Append("6:7");
+  ASSERT_TRUE(base::CreateDirectory(dir67));
+  base::FilePath file67 = dir67.Append("stat");
+  std::string contents67 = "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17";
+  brillo::WriteToFile(file67, contents67.c_str(), contents67.size());
+
+  base::FilePath dir78 = temp_dir.GetPath().Append("7:8");
+  ASSERT_TRUE(base::CreateDirectory(dir78));
+  base::FilePath file78 = dir78.Append("stat");
+  std::string contents78 =
+      "11 21 31 41 51 61 71 81 91 101 111 121 131 141 151 161 171";
+  brillo::WriteToFile(file78, contents78.c_str(), contents78.size());
+
+  std::string str_reply =
+      disk_usage_mock.GetDiskIOStatsForPathsPrettyPrint("/test1,/test12");
+  EXPECT_EQ(str_reply,
+            "\nDisk I/O stats for /test1:\n"
+            "Read IOs: 1\n"
+            "Read Merges: 2\n"
+            "Read Sectors: 3\n"
+            "Read Ticks: 4\n"
+            "Writes IOs: 5\n"
+            "Write Merges: 6\n"
+            "Write Sectors: 7\n"
+            "Write Ticks: 8\n"
+            "In Flight: 9\n"
+            "IO Ticks: 10\n"
+            "Time In Queue: 11\n"
+            "Discard IOs: 12\n"
+            "Discard Merges: 13\n"
+            "Discard Sectors: 14\n"
+            "Discard Ticks: 15\n"
+            "Flush IOs: 16\n"
+            "Flush Ticks: 17\n"
+            "\nDisk I/O stats for /test12:\n"
+            "Read IOs: 11\n"
+            "Read Merges: 21\n"
+            "Read Sectors: 31\n"
+            "Read Ticks: 41\n"
+            "Writes IOs: 51\n"
+            "Write Merges: 61\n"
+            "Write Sectors: 71\n"
+            "Write Ticks: 81\n"
+            "In Flight: 91\n"
+            "IO Ticks: 101\n"
+            "Time In Queue: 111\n"
+            "Discard IOs: 121\n"
+            "Discard Merges: 131\n"
+            "Discard Sectors: 141\n"
+            "Discard Ticks: 151\n"
+            "Flush IOs: 161\n"
+            "Flush Ticks: 171\n");
+
+  // Verify elimination of duplicates (i.e. paths  that point to the same
+  // block device)
+  str_reply =
+      disk_usage_mock.GetDiskIOStatsForPathsPrettyPrint("/test1,/test2");
+  EXPECT_EQ(str_reply,
+            "\nDisk I/O stats for /test1:\n"
+            "Read IOs: 1\n"
+            "Read Merges: 2\n"
+            "Read Sectors: 3\n"
+            "Read Ticks: 4\n"
+            "Writes IOs: 5\n"
+            "Write Merges: 6\n"
+            "Write Sectors: 7\n"
+            "Write Ticks: 8\n"
+            "In Flight: 9\n"
+            "IO Ticks: 10\n"
+            "Time In Queue: 11\n"
+            "Discard IOs: 12\n"
+            "Discard Merges: 13\n"
+            "Discard Sectors: 14\n"
+            "Discard Ticks: 15\n"
+            "Flush IOs: 16\n"
+            "Flush Ticks: 17\n");
+}
+
+TEST(DiskUsageUtilTest, GetDiskIOStatsForWithFailedStat) {
+  DiskUsageUtilMock disk_usage_mock({}, std::nullopt);
+
+  // Simulate a stat() failure
+  disk_usage_mock.set_stat_status(1);
+
+  std::string str_reply =
+      disk_usage_mock.GetDiskIOStatsForPathsPrettyPrint("/test1,/test12");
+  EXPECT_EQ(str_reply, "");
+}
+
+TEST(DiskUsageUtilTest, GetDiskIOStatsForWithFailedFileRead) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // The stat file is left uncreated
+
+  DiskUsageUtilMock disk_usage_mock({}, std::nullopt, "",
+                                    temp_dir.GetPath().value());
+
+  std::string str_reply =
+      disk_usage_mock.GetDiskIOStatsForPathsPrettyPrint("/test");
+  EXPECT_EQ(str_reply, "");
 }
 
 }  // namespace spaced

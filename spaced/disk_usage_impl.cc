@@ -11,6 +11,8 @@
 #include <sys/quota.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/sysmacros.h>
+#include <sys/types.h>
 
 #include <algorithm>
 #include <map>
@@ -28,6 +30,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <brillo/blkdev_utils/get_backing_block_device.h>
 #include <brillo/userdb_utils.h>
@@ -42,12 +45,35 @@ namespace spaced {
 
 constexpr char kProjectIdJson[] = "/etc/spaced/projects.json";
 
+constexpr char kProcPrefix[] = "/proc";
+constexpr char kDiskstatsFilename[] = "diskstats";
+constexpr char kSysDevBlockPrefix[] = "/sys/dev/block";
+constexpr char kStatFilename[] = "stat";
+
+constexpr int kNumIOStatsEntries = 17;
+
 DiskUsageUtilImpl::DiskUsageUtilImpl(const base::FilePath& rootdev,
                                      std::optional<brillo::Thinpool> thinpool)
-    : rootdev_(rootdev), thinpool_(thinpool) {}
+    : rootdev_(rootdev),
+      thinpool_(thinpool),
+      proc_dir_(kProcPrefix),
+      sys_dev_block_dir_(kSysDevBlockPrefix) {}
+
+DiskUsageUtilImpl::DiskUsageUtilImpl(const base::FilePath& rootdev,
+                                     std::optional<brillo::Thinpool> thinpool,
+                                     std::string proc_dir,
+                                     std::string sys_dev_block_dir)
+    : rootdev_(rootdev),
+      thinpool_(thinpool),
+      proc_dir_(proc_dir),
+      sys_dev_block_dir_(sys_dev_block_dir) {}
 
 int DiskUsageUtilImpl::StatVFS(const base::FilePath& path, struct statvfs* st) {
   return HANDLE_EINTR(statvfs(path.value().c_str(), st));
+}
+
+int DiskUsageUtilImpl::Stat(const std::string& path, struct stat* st) {
+  return HANDLE_EINTR(stat(path.c_str(), st));
 }
 
 int DiskUsageUtilImpl::QuotaCtl(int cmd,
@@ -296,6 +322,152 @@ std::string DiskUsageUtilImpl::GetQuotaOverallUsagePrettyPrint(
       output.append(s);
     }
   }
+  return output;
+}
+
+std::map<std::pair<uint32_t, uint32_t>, std::string>
+DiskUsageUtilImpl::GetDeviceMap(const std::vector<base::FilePath>& paths) {
+  // Use stat() to get the major/minor numbers for the specified path.
+  struct stat stat;
+
+  std::map<std::pair<uint32_t, uint32_t>, std::string> dev_map;
+  for (auto const& path : paths) {
+    if (Stat(path.value(), &stat) != 0) {
+      PLOG(ERROR) << "Failed to run stat() on:" << path;
+      continue;
+    }
+
+    if (!S_ISDIR(stat.st_mode)) {
+      PLOG(ERROR) << path << " is not a directory";
+      continue;
+    }
+
+    dev_t dev_num = stat.st_dev;
+    unsigned int major_num = major(dev_num);
+    unsigned int minor_num = minor(dev_num);
+    if (dev_map.count({major_num, minor_num})) {
+      PLOG(WARNING) << "Skipping duplicate entry: " << path;
+      continue;
+    }
+    dev_map[{major_num, minor_num}] = path.value();
+  }
+  return dev_map;
+}
+
+void DiskUsageUtilImpl::ParseDiskIOStatsAndUpdateReply(
+    const std::string& name,
+    const std::string& stats,
+    GetDiskIOStatsForPathsReply* reply) {
+  std::stringstream stats_stream(stats);
+  std::vector<uint64_t> stats_list;
+  uint64_t value;
+  while (stats_stream >> value) {
+    stats_list.push_back(value);
+  }
+  if (stats_list.size() != kNumIOStatsEntries) {
+    PLOG(ERROR) << "Unable to parse I/O stats file for " << name;
+    return;
+  }
+  auto reply_entry = reply->add_stats_for_path();
+  *reply_entry->mutable_path() = name;
+  int index = 0;
+  reply_entry->mutable_stats()->set_read_ios(stats_list[index++]);
+  reply_entry->mutable_stats()->set_read_merges(stats_list[index++]);
+  reply_entry->mutable_stats()->set_read_sectors(stats_list[index++]);
+  reply_entry->mutable_stats()->set_read_ticks(stats_list[index++]);
+  reply_entry->mutable_stats()->set_write_ios(stats_list[index++]);
+  reply_entry->mutable_stats()->set_write_merges(stats_list[index++]);
+  reply_entry->mutable_stats()->set_write_sectors(stats_list[index++]);
+  reply_entry->mutable_stats()->set_write_ticks(stats_list[index++]);
+  reply_entry->mutable_stats()->set_in_flight(stats_list[index++]);
+  reply_entry->mutable_stats()->set_io_ticks(stats_list[index++]);
+  reply_entry->mutable_stats()->set_time_in_queue(stats_list[index++]);
+  reply_entry->mutable_stats()->set_discard_ios(stats_list[index++]);
+  reply_entry->mutable_stats()->set_discard_merges(stats_list[index++]);
+  reply_entry->mutable_stats()->set_discard_sectors(stats_list[index++]);
+  reply_entry->mutable_stats()->set_discard_ticks(stats_list[index++]);
+  reply_entry->mutable_stats()->set_flush_ios(stats_list[index++]);
+  reply_entry->mutable_stats()->set_flush_ticks(stats_list[index++]);
+}
+
+GetDiskIOStatsForPathsReply DiskUsageUtilImpl::GetDiskIOStatsForPaths(
+    const std::vector<base::FilePath>& paths) {
+  // Map each specified path to the corresponding device major:minor numbers.
+  std::map<std::pair<uint32_t, uint32_t>, std::string> dev_map =
+      GetDeviceMap(paths);
+
+  GetDiskIOStatsForPathsReply reply;
+  for (const auto& p : dev_map) {
+    unsigned int major_num = p.first.first;
+    unsigned int minor_num = p.first.second;
+    const std::string& name = p.second;
+
+    std::string sysfspath =
+        base::StringPrintf("%s/%d:%d/%s", sys_dev_block_dir_.c_str(), major_num,
+                           minor_num, kStatFilename);
+
+    std::string stats;
+    if (!base::ReadFileToString(base::FilePath(sysfspath), &stats)) {
+      PLOG(ERROR) << "Unable to read sysfs file: " << sysfspath;
+      continue;
+    }
+
+    ParseDiskIOStatsAndUpdateReply(name, stats, &reply);
+  }
+  return reply;
+}
+
+std::string DiskUsageUtilImpl::GetDiskIOStatsForPathsPrettyPrint(
+    const std::string& paths) {
+  std::vector<base::FilePath> file_paths;
+  std::stringstream path_stream(paths);
+  std::string path;
+  while (std::getline(path_stream, path, ',')) {
+    file_paths.push_back(base::FilePath(path));
+  }
+
+  GetDiskIOStatsForPathsReply reply = GetDiskIOStatsForPaths(file_paths);
+  std::string output;
+  std::stringstream stats_stream;
+  for (auto const& entry : reply.stats_for_path()) {
+    stats_stream
+        << std::endl
+        << "Disk I/O stats for " << entry.path() << ":" << std::endl
+        << "Read IOs: " << entry.stats().read_ios() << std::endl
+        << "Read Merges: " << entry.stats().read_merges() << std::endl
+        << "Read Sectors: " << entry.stats().read_sectors() << std::endl
+        << "Read Ticks: " << entry.stats().read_ticks() << std::endl
+        << "Writes IOs: " << entry.stats().write_ios() << std::endl
+        << "Write Merges: " << entry.stats().write_merges() << std::endl
+        << "Write Sectors: " << entry.stats().write_sectors() << std::endl
+        << "Write Ticks: " << entry.stats().write_ticks() << std::endl
+        << "In Flight: " << entry.stats().in_flight() << std::endl
+        << "IO Ticks: " << entry.stats().io_ticks() << std::endl
+        << "Time In Queue: " << entry.stats().time_in_queue() << std::endl
+        << "Discard IOs: " << entry.stats().discard_ios() << std::endl
+        << "Discard Merges: " << entry.stats().discard_merges() << std::endl
+        << "Discard Sectors: " << entry.stats().discard_sectors() << std::endl
+        << "Discard Ticks: " << entry.stats().discard_ticks() << std::endl
+        << "Flush IOs: " << entry.stats().flush_ios() << std::endl
+        << "Flush Ticks: " << entry.stats().flush_ticks() << std::endl;
+    output.append(stats_stream.str());
+    stats_stream.str("");
+  }
+  return output;
+}
+
+std::string DiskUsageUtilImpl::GetDiskIOStats() {
+  std::string output;
+
+  std::string diskstats_path =
+      base::StringPrintf("%s/%s", proc_dir_.c_str(), kDiskstatsFilename);
+  if (!base::ReadFileToString(base::FilePath(diskstats_path), &output)) {
+    PLOG(ERROR) << "Unable to read diskstats file: " << diskstats_path;
+    return "";
+  }
+
+  output.insert(0, "\nI/O stats for all block devices:\n");
+
   return output;
 }
 

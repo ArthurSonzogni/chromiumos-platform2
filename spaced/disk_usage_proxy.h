@@ -62,6 +62,13 @@ class BRILLO_EXPORT DiskUsageProxy : public DiskUsageUtil {
       const base::FilePath& path) override;
   std::string GetQuotaOverallUsagePrettyPrint(
       const base::FilePath& path) override;
+
+  GetDiskIOStatsForPathsReply GetDiskIOStatsForPaths(
+      const std::vector<base::FilePath>& paths) override;
+  std::string GetDiskIOStatsForPathsPrettyPrint(
+      const std::string& paths) override;
+  std::string GetDiskIOStats() override;
+
   bool SetProjectId(const base::ScopedFD& fd,
                     uint32_t project_id,
                     int* out_error) override;

@@ -155,6 +155,24 @@ std::string DBusAdaptor::GetQuotaOverallUsagePrettyPrint(
       base::FilePath(path));
 }
 
+GetDiskIOStatsForPathsReply DBusAdaptor::GetDiskIOStatsForPaths(
+    const GetDiskIOStatsForPathsRequest& request) {
+  std::vector<base::FilePath> paths;
+  for (auto const& path : request.path()) {
+    paths.push_back(base::FilePath(path));
+  }
+  return disk_usage_util_->GetDiskIOStatsForPaths(paths);
+}
+
+std::string DBusAdaptor::GetDiskIOStatsForPathsPrettyPrint(
+    const std::string& paths) {
+  return disk_usage_util_->GetDiskIOStatsForPathsPrettyPrint(paths);
+}
+
+std::string DBusAdaptor::GetDiskIOStats() {
+  return disk_usage_util_->GetDiskIOStats();
+}
+
 SetProjectIdReply DBusAdaptor::SetProjectId(const base::ScopedFD& fd,
                                             uint32_t project_id) {
   SetProjectIdReply reply;

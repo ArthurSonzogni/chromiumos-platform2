@@ -200,6 +200,46 @@ std::string DiskUsageProxy::GetQuotaOverallUsagePrettyPrint(
   return reply;
 }
 
+GetDiskIOStatsForPathsReply DiskUsageProxy::GetDiskIOStatsForPaths(
+    const std::vector<base::FilePath>& paths) {
+  GetDiskIOStatsForPathsRequest request;
+  for (auto const& path : paths) {
+    *request.add_path() = path.value();
+  }
+  GetDiskIOStatsForPathsReply reply;
+  brillo::ErrorPtr error;
+  // Return -1 if call fails.
+  if (!spaced_proxy_->GetDiskIOStatsForPaths(request, &reply, &error)) {
+    LOG(ERROR) << "Failed to call GetDiskIOStatsForPaths, error: "
+               << error->GetMessage();
+  }
+  return reply;
+}
+
+std::string DiskUsageProxy::GetDiskIOStatsForPathsPrettyPrint(
+    const std::string& paths) {
+  std::string reply;
+  brillo::ErrorPtr error;
+  // Return -1 if call fails.
+  if (!spaced_proxy_->GetDiskIOStatsForPathsPrettyPrint(paths, &reply,
+                                                        &error)) {
+    LOG(ERROR) << "Failed to call GetDiskIOStatsForPathsPrettyPrint, error: "
+               << error->GetMessage();
+  }
+  return reply;
+}
+
+std::string DiskUsageProxy::GetDiskIOStats() {
+  std::string reply;
+  brillo::ErrorPtr error;
+  // Return -1 if call fails.
+  if (!spaced_proxy_->GetDiskIOStats(&reply, &error)) {
+    LOG(ERROR) << "Failed to call GetDiskIOStats, error: "
+               << error->GetMessage();
+  }
+  return reply;
+}
+
 bool DiskUsageProxy::SetProjectId(const base::ScopedFD& fd,
                                   uint32_t project_id,
                                   int* out_error) {

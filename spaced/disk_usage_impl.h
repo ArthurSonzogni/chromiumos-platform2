@@ -6,7 +6,9 @@
 #define SPACED_DISK_USAGE_IMPL_H_
 
 #include <sys/quota.h>
+#include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/types.h>
 
 #include <map>
 #include <memory>
@@ -15,9 +17,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/task/task_runner.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/task/task_runner.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/brillo_export.h>
 #include <spaced/proto_bindings/spaced.pb.h>
@@ -30,6 +32,10 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
  public:
   DiskUsageUtilImpl(const base::FilePath& rootdev,
                     std::optional<brillo::Thinpool> thinpool);
+  DiskUsageUtilImpl(const base::FilePath& rootdev,
+                    std::optional<brillo::Thinpool> thinpool,
+                    std::string proc_dir,
+                    std::string sys_dev_block_dir);
   ~DiskUsageUtilImpl() override = default;
 
   int64_t GetFreeDiskSpace(const base::FilePath& path) override;
@@ -60,9 +66,16 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
                                  bool enable,
                                  int* out_error) override;
 
+  GetDiskIOStatsForPathsReply GetDiskIOStatsForPaths(
+      const std::vector<base::FilePath>& paths) override;
+  std::string GetDiskIOStatsForPathsPrettyPrint(
+      const std::string& paths) override;
+  std::string GetDiskIOStats() override;
+
  protected:
   // Runs statvfs() on a given path.
   virtual int StatVFS(const base::FilePath& path, struct statvfs* st);
+  virtual int Stat(const std::string& path, struct stat* st);
 
   // Runs quotactl() on the given device.
   virtual int QuotaCtl(int cmd,
@@ -85,6 +98,14 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
 
   virtual std::vector<uint32_t> GetProjectIds();
 
+  virtual std::map<std::pair<uint32_t, uint32_t>, std::string> GetDeviceMap(
+      const std::vector<base::FilePath>& paths);
+
+  virtual void ParseDiskIOStatsAndUpdateReply(
+      const std::string& name,
+      const std::string& stats,
+      GetDiskIOStatsForPathsReply* reply);
+
  private:
   int64_t GetQuotaCurrentSpaceForId(const base::FilePath& path,
                                     uint32_t id,
@@ -98,6 +119,8 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
   const base::FilePath rootdev_;
   std::optional<brillo::Thinpool> thinpool_;
   std::map<uint32_t, std::string> projects_;
+  std::string proc_dir_;
+  std::string sys_dev_block_dir_;
 };
 
 }  // namespace spaced

@@ -55,6 +55,9 @@ allow cros_spaced cros_vm_concierge:fd { use };
 # Needed for passing fd from crosvm over D-Bus call.
 allow cros_spaced cros_vhost_user_starter:fd { use };
 
+# Needed for reading disk I/O stats.
+allow cros_spaced proc_diskstats:file r_file_perms;
+
 # Needed for calling SetProjectId and SetProjectInheritanceFlag for ARC files
 # and dirs.
 has_arc(`

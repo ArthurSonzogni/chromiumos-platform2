@@ -11,8 +11,8 @@
 
 #include <base/files/scoped_file.h>
 #include <base/task/task_runner.h>
-#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/daemons/dbus_daemon.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 
 #include "spaced/calculator/stateful_free_space_calculator.h"
@@ -53,6 +53,12 @@ class DBusAdaptor : public org::chromium::SpacedInterface,
                                  uint32_t project_id) override;
   SetProjectInheritanceFlagReply SetProjectInheritanceFlag(
       const base::ScopedFD& fd, bool enable) override;
+
+  GetDiskIOStatsForPathsReply GetDiskIOStatsForPaths(
+      const GetDiskIOStatsForPathsRequest& request) override;
+  std::string GetDiskIOStatsForPathsPrettyPrint(
+      const std::string& path) override;
+  std::string GetDiskIOStats() override;
 
   void StatefulDiskSpaceUpdateCallback(const StatefulDiskSpaceUpdate& state);
 

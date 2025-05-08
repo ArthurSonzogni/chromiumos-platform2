@@ -11,11 +11,11 @@
 #include <string>
 
 #include <base/command_line.h>
-#include <base/task/single_thread_task_executor.h>
-#include <base/files/file_path.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/file_path.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
+#include <base/task/single_thread_task_executor.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
@@ -121,6 +121,10 @@ int main(int argc, char** argv) {
                 "Use with --get_quota_usage,"
                 " gets the quota usage information for the given project ID");
 
+  DEFINE_string(get_disk_io_stats_for_paths, "",
+                "Use with --get_disk_io_stats_for_paths, "
+                " gets the disk I/O stats for the specified comma-separated "
+                " list of paths");
   brillo::FlagHelper::Init(argc, argv,
                            "ChromiumOS Space Daemon CLI\n\n"
                            "Usage: spaced_cli [options] [path]\n");
@@ -174,6 +178,12 @@ int main(int argc, char** argv) {
     disk_usage_proxy->StartMonitoring();
     // Infinite loop; let the user interrupt monitoring with Ctrl+C.
     base::RunLoop().Run();
+    return EXIT_SUCCESS;
+  }
+
+  if (!FLAGS_get_disk_io_stats_for_paths.empty()) {
+    std::cout << disk_usage_proxy->GetDiskIOStatsForPathsPrettyPrint(
+        FLAGS_get_disk_io_stats_for_paths);
     return EXIT_SUCCESS;
   }
 

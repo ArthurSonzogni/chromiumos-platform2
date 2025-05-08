@@ -109,6 +109,35 @@
       <arg name="reply" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="GetDiskIOStatsForPaths">
+      <tp:docstring>
+        Returns I/O stats for the given set of paths
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="spaced/proto_bindings/spaced.pb.h;spaced::GetDiskIOStatsForPathsRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="spaced/proto_bindings/spaced.pb.h;spaced::GetDiskIOStatsForPathsReply"/>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="GetDiskIOStatsForPathsPrettyPrint">
+      <tp:docstring>
+        Returns I/O stats for the given set of paths
+      </tp:docstring>
+      <arg name="path" type="s" direction="in"/>
+      <arg name="reply" type="s" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="GetDiskIOStats">
+      <tp:docstring>
+        Returns I/O stats for all disks
+      </tp:docstring>
+      <arg name="reply" type="s" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="SetProjectId">
       <tp:docstring>
         Sets the project ID to the given file.

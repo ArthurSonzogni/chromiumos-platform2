@@ -46,6 +46,12 @@ class DiskUsageUtil {
   virtual bool SetProjectInheritanceFlag(const base::ScopedFD& path,
                                          bool enable,
                                          int* out_error) = 0;
+  // Disk I/O stats.
+  virtual GetDiskIOStatsForPathsReply GetDiskIOStatsForPaths(
+      const std::vector<base::FilePath>& paths) = 0;
+  virtual std::string GetDiskIOStatsForPathsPrettyPrint(
+      const std::string& paths) = 0;
+  virtual std::string GetDiskIOStats() = 0;
 };
 
 }  // namespace spaced
