@@ -4,7 +4,9 @@
 
 #include <fcntl.h>
 #include <grp.h>
+#include <libminijail.h>
 #include <pwd.h>
+#include <scoped_minijail.h>
 #include <sys/fanotify.h>
 #include <sys/mount.h>
 
@@ -17,10 +19,8 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <libminijail.h>
-#include <scoped_minijail.h>
 
-#include "dlp/dlp_metrics.h"
+// #include "dlp/dlp_metrics.h"
 #include "dlp/kernel_version_tools.h"
 
 namespace {
@@ -153,7 +153,8 @@ int main(int /* argc */, char* /* argv */[]) {
   brillo::OpenLog("dlp_init", true /* log_pid */);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  dlp::DlpMetrics dlp_metrics;
+  // TODO(b/416549734): Fix metrics reporting during init.
+  // dlp::DlpMetrics dlp_metrics;
 
   LOG(INFO) << "DLP Init";
 
@@ -161,7 +162,9 @@ int main(int /* argc */, char* /* argv */[]) {
   std::string sanitized_username;
   if (!RetrieveSanitizedPrimaryUsername(&sanitized_username)) {
     LOG(ERROR) << "Failed to get primary username";
-    dlp_metrics.SendInitError(dlp::InitError::kPrimaryUsernameRetrievalError);
+    // TODO(b/416549734): Fix metrics reporting during init.
+    // dlp_metrics.SendInitError(
+    //     dlp::InitError::kPrimaryUsernameRetrievalError);
     return 1;
   }
 
@@ -169,12 +172,14 @@ int main(int /* argc */, char* /* argv */[]) {
   const base::FilePath database_path = GetDatabaseFilePath(sanitized_username);
   if (!base::CreateDirectory(database_path)) {
     PLOG(ERROR) << "Can't create database directory: " << database_path;
-    dlp_metrics.SendDatabaseError(dlp::DatabaseError::kCreateDirError);
+    // TODO(b/416549734): Fix metrics reporting during init.
+    // dlp_metrics.SendDatabaseError(dlp::DatabaseError::kCreateDirError);
     return 1;
   }
   if (!SetDatabaseDirectoryOwnership(database_path)) {
     LOG(ERROR) << "Can't set database directory ownership: " << database_path;
-    dlp_metrics.SendDatabaseError(dlp::DatabaseError::kSetOwnershipError);
+    // TODO(b/416549734): Fix metrics reporting during init.
+    // dlp_metrics.SendDatabaseError(dlp::DatabaseError::kSetOwnershipError);
     return 1;
   }
 
@@ -186,30 +191,34 @@ int main(int /* argc */, char* /* argv */[]) {
       fanotify_init(FAN_CLASS_CONTENT, O_RDONLY | O_LARGEFILE);
   if (fanotify_perm_fd < 0) {
     PLOG(ERROR) << "fanotify_init() failed";
-    dlp_metrics.SendFanotifyError(dlp::FanotifyError::kInitError);
+    // TODO(b/416549734): Fix metrics reporting during init.
+    // dlp_metrics.SendFanotifyError(dlp::FanotifyError::kInitError);
     return 1;
   }
 
   const std::pair<int, int> kernel_version = dlp::GetKernelVersion();
 
-  dlp_metrics.SendBooleanHistogram(
-      dlp::kDlpFanotifyMarkFilesystemSupport,
-      kernel_version >= dlp::kMinKernelVersionForFanMarkFilesystem);
+  // TODO(b/416549734): Fix metrics reporting during init.
+  // dlp_metrics.SendBooleanHistogram(
+  //     dlp::kDlpFanotifyMarkFilesystemSupport,
+  //     kernel_version >= dlp::kMinKernelVersionForFanMarkFilesystem);
 
   if (kernel_version >= dlp::kMinKernelVersionForFanMarkFilesystem) {
     if (fanotify_mark(fanotify_perm_fd, FAN_MARK_ADD | FAN_MARK_FILESYSTEM,
                       FAN_OPEN_PERM, AT_FDCWD, home_path.value().c_str()) < 0) {
       PLOG(ERROR) << "fanotify_mark for OPEN_PERM (" << home_path << ") failed";
-      dlp_metrics.SendFanotifyError(dlp::FanotifyError::kMarkError);
+      // TODO(b/416549734): Fix metrics reporting during init.
+      // dlp_metrics.SendFanotifyError(dlp::FanotifyError::kMarkError);
       return 1;
     }
   } else {
     LOG(INFO) << "FAN_MARK_FILESYSTEM is not supported, DLP is not active";
   }
 
-  dlp_metrics.SendBooleanHistogram(
-      dlp::kDlpFanotifyDeleteEventSupport,
-      kernel_version >= dlp::kMinKernelVersionForFanDeleteEvents);
+  // TODO(b/416549734): Fix metrics reporting during init.
+  // dlp_metrics.SendBooleanHistogram(
+  //     dlp::kDlpFanotifyDeleteEventSupport,
+  //     kernel_version >= dlp::kMinKernelVersionForFanDeleteEvents);
 
   int fanoify_notif_fd = 0;
   if (kernel_version >= dlp::kMinKernelVersionForFanDeleteEvents) {
@@ -217,7 +226,8 @@ int main(int /* argc */, char* /* argv */[]) {
         fanotify_init(FAN_CLASS_NOTIF | /*FAN_REPORT_FID=*/0x00000200, 0);
     if (fanoify_notif_fd < 0) {
       PLOG(ERROR) << "fanotify_init() failed";
-      dlp_metrics.SendFanotifyError(dlp::FanotifyError::kInitError);
+      // TODO(b/416549734): Fix metrics reporting during init.
+      // dlp_metrics.SendFanotifyError(dlp::FanotifyError::kInitError);
       return 1;
     }
   } else {
