@@ -55,7 +55,7 @@ bool Config::GetString(std::string_view name, std::string* out) const {
     }
     return false;
   }
-  std::optional<std::string> val = env_->GetVar(name);
+  std::optional<std::string> val = env_->GetVar(std::string(name));
   if (!val.has_value()) {
     return false;
   }
@@ -73,7 +73,7 @@ bool Config::GetInt(std::string_view name, int* out) const {
     }
     return false;
   }
-  std::optional<std::string> env_str = env_->GetVar(name);
+  std::optional<std::string> env_str = env_->GetVar(std::string(name));
   if (!env_str.has_value()) {
     return false;
   }
@@ -89,7 +89,7 @@ bool Config::GetBool(std::string_view name, bool* out) const {
     }
     return false;
   }
-  std::optional<std::string> env_str = env_->GetVar(name);
+  std::optional<std::string> env_str = env_->GetVar(std::string(name));
   if (!env_str.has_value()) {
     return false;
   }
