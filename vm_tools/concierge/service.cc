@@ -572,7 +572,9 @@ uint64_t CalculateDesiredDiskSize(base::FilePath disk_location,
 // Returns true if a disk image has a set xattr matching the desired vm_type.
 std::optional<vm_tools::apps::VmType> GetDiskImageVmType(
     const std::string& disk_path) {
-  // VmType is assumed to be >=0 and <=99
+  static_assert(
+      vm_tools::apps::VmType_MAX < 100,
+      "VmType enum has more than two digits, update xattr buffer size");
   static const int xattr_max_size = 2;
   std::string xattr_vm_type;
   xattr_vm_type.resize(xattr_max_size);
