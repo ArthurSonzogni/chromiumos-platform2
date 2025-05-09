@@ -10,7 +10,7 @@
 
 namespace typecd {
 
-UsbLimitWatcher::UsbLimitWatcher() : dbus_mgr_(nullptr) {}
+UsbLimitWatcher::UsbLimitWatcher() : dbus_mgr_(nullptr), metrics_(nullptr) {}
 
 void UsbLimitWatcher::OnUsbDeviceAdded() {
   // TODO(b/416716383): Add a check/notification for endpoint limit.
@@ -19,6 +19,9 @@ void UsbLimitWatcher::OnUsbDeviceAdded() {
        kMTk8196DeviceLimit)) {
     LOG(WARNING) << "USB device limit reached.";
     dbus_mgr_->NotifyUsbLimit(UsbLimitType::kDeviceLimit);
+    if (metrics_) {
+      metrics_->ReportUsbLimit(UsbLimitMetric::kDeviceLimit);
+    }
   }
 }
 

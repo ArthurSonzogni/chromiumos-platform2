@@ -87,6 +87,7 @@ int Daemon::OnInit() {
   if (AddUsbLimitWatcher()) {
     usb_limit_watcher_ = std::make_unique<UsbLimitWatcher>();
     usb_limit_watcher_->SetDBusManager(dbus_mgr_.get());
+    usb_limit_watcher_->SetMetrics(&metrics_);
     udev_monitor_->EnableUsbMonitor(true);
     udev_monitor_->AddUsbObserver(usb_limit_watcher_.get());
   }

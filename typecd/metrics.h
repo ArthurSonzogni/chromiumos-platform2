@@ -164,6 +164,13 @@ enum class PowerRoleMetric {
   kMaxValue = kSource,
 };
 
+enum class UsbLimitMetric {
+  kOther = 0,
+  kDeviceLimit = 1,
+  kEndpointLimit = 2,
+  kMaxValue = kEndpointLimit,
+};
+
 // A class for collecting UMA metrics.
 class Metrics {
  public:
@@ -180,6 +187,7 @@ class Metrics {
   void ReportPowerSourceLocation(PowerSourceLocationMetric location);
   void ReportDpSuccess(DpSuccessMetric val);
   void ReportModeEntry(ModeEntryMetric val);
+  void ReportUsbLimit(UsbLimitMetric val);
 
   // Structured metrics
   void ReportBasicPdDeviceInfo(int vid,

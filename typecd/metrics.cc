@@ -20,6 +20,7 @@ constexpr char kPowerSourceLocationMetricName[] =
     "ChromeOS.TypeC.PowerSourceLocation";
 constexpr char kDpSuccessMetricName[] = "ChromeOS.TypeC.DpSuccess";
 constexpr char kModeEntryMetricName[] = "ChromeOS.TypeC.ModeEntry";
+constexpr char kUsbLimitMetricName[] = "ChromeOS.TypeC.UsbLimit";
 }  // namespace
 
 namespace typecd {
@@ -71,6 +72,13 @@ void Metrics::ReportDpSuccess(DpSuccessMetric val) {
 void Metrics::ReportModeEntry(ModeEntryMetric val) {
   if (!metrics_library_.SendEnumToUMA(kModeEntryMetricName, val)) {
     LOG(WARNING) << "Failed to send Mode Entry sample to UMA, val: "
+                 << static_cast<int>(val);
+  }
+}
+
+void Metrics::ReportUsbLimit(UsbLimitMetric val) {
+  if (!metrics_library_.SendEnumToUMA(kUsbLimitMetricName, val)) {
+    LOG(WARNING) << "Failed to send USB Limit sample to UMA, val: "
                  << static_cast<int>(val);
   }
 }

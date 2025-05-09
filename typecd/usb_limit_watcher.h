@@ -6,6 +6,7 @@
 #define TYPECD_USB_LIMIT_WATCHER_H_
 
 #include "typecd/dbus_manager.h"
+#include "typecd/metrics.h"
 #include "typecd/udev_monitor.h"
 
 namespace typecd {
@@ -21,6 +22,7 @@ class UsbLimitWatcher : public UdevMonitor::UsbObserver {
   UsbLimitWatcher& operator=(const UsbLimitWatcher&) = delete;
 
   void SetDBusManager(DBusManager* mgr) { dbus_mgr_ = mgr; }
+  void SetMetrics(Metrics* metrics) { metrics_ = metrics; }
 
  private:
   friend class UsbLimitWatcherTest;
@@ -28,6 +30,7 @@ class UsbLimitWatcher : public UdevMonitor::UsbObserver {
 
   void OnUsbDeviceAdded() override;
   DBusManager* dbus_mgr_;
+  Metrics* metrics_;
 };
 
 }  // namespace typecd
