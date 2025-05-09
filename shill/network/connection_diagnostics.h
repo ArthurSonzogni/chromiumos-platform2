@@ -86,7 +86,6 @@ class ConnectionDiagnostics {
   // Performs connectivity diagnostics for the hostname of the URL |url|.
   mockable void Start(const net_base::HttpUrl& url);
   mockable bool IsRunning() const;
-  int event_number() const { return event_number_; }
 
   const std::string& interface_name() const { return iface_name_; }
   int interface_index() const { return iface_index_; }
@@ -207,9 +206,6 @@ class ConnectionDiagnostics {
   bool dns_ping_running_ = false;
   bool host_resolution_running_ = false;
   bool host_ping_running_ = false;
-
-  // Number of record of all diagnostic events that occurred.
-  int event_number_;
 
   std::string logging_tag_;
 

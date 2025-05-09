@@ -81,7 +81,6 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       iface_index_(iface_index),
       ip_family_(ip_family),
       gateway_(gateway),
-      event_number_(0),
       logging_tag_(logging_tag),
       next_diagnostic_id_(0),
       weak_ptr_factory_(this) {
@@ -117,7 +116,6 @@ void ConnectionDiagnostics::Stop() {
   PrintEvents();
   LOG(INFO) << logging_tag_ << " " << __func__ << ": Stopping " << ip_family_
             << " diagnostics";
-  event_number_ = 0;
   dns_queries_.clear();
   target_url_addresses_.clear();
   id_to_pending_dns_server_icmp_session_.clear();
@@ -148,7 +146,6 @@ void ConnectionDiagnostics::LogEvent(int diagnostic_id,
                                      Type type,
                                      Result result,
                                      const std::string& message) {
-  event_number_++;
   Event ev(type, result, message);
   auto [it, success] = diagnostic_results_.insert({diagnostic_id, ev});
   if (!success) {
