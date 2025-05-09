@@ -22,6 +22,7 @@ class MockDBusManager : public DBusManager {
 
   MOCK_METHOD(void, NotifyConnected, (DeviceConnectedType), ());
   MOCK_METHOD(void, NotifyCableWarning, (CableWarningType), ());
+  MOCK_METHOD(void, NotifyUsbLimit, (UsbLimitType), ());
 };
 
 }  // namespace typecd

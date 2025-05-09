@@ -31,6 +31,17 @@
         </tp:docstring>
       </arg>
     </signal>
+    <signal name="UsbLimit">
+      <tp:docstring>
+        Signal emitted by the Type-C Daemon to alert the UI that some USB limit
+        has been reached. Further attempted USB connections may fail.
+      </tp:docstring>
+      <arg name="type" type="u">
+        <tp:docstring>
+          Type of limitation encountered by the device.
+        </tp:docstring>
+      </arg>
+    </signal>
     <method name="GetAltModes">
       <tp:docstring>
         Method to request a list of alternate modes supported by a partner or

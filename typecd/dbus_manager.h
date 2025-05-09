@@ -34,6 +34,7 @@ class DBusManager : public org::chromium::typecdAdaptor,
 
   virtual void NotifyConnected(DeviceConnectedType type);
   virtual void NotifyCableWarning(CableWarningType type);
+  virtual void NotifyUsbLimit(UsbLimitType type);
 
   bool GetAltModes(
       brillo::ErrorPtr* err,

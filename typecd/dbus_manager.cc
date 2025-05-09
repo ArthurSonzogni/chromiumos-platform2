@@ -26,6 +26,10 @@ void DBusManager::NotifyCableWarning(CableWarningType type) {
   SendCableWarningSignal(static_cast<uint32_t>(type));
 }
 
+void DBusManager::NotifyUsbLimit(UsbLimitType type) {
+  SendUsbLimitSignal(static_cast<uint32_t>(type));
+}
+
 bool DBusManager::GetAltModes(
     brillo::ErrorPtr* err,
     uint32_t port,
