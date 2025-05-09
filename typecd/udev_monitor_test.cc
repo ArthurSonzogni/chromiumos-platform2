@@ -28,6 +28,7 @@ namespace {
 constexpr char kFakePd0SysPath[] = "/sys/class/usb_power_delivery/pd0";
 constexpr char kInvalidPortSysPath[] = "/sys/class/typec/a-yz";
 constexpr char kInvalidPdSyspath[] = "/sys/class/usb_power_delivery/a-yz";
+constexpr char kFakeUsbSysPath[] = "/sys/bus/usb/devices/2-3.4";
 
 // A really dumb typec observer to verify that UdevMonitor is invoking the right
 // callbacks.
@@ -133,6 +134,17 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
   std::map<int, bool> port_change_tracker_;
 };
 
+// Basic UsbObserver class to test UdevMonitor callbacks.
+class TestUsbObserver : public UdevMonitor::UsbObserver {
+ public:
+  void OnUsbDeviceAdded() override { num_usb_callbacks_++; }
+
+  int GetNumUsbCallbacks() { return num_usb_callbacks_; }
+
+ private:
+  int num_usb_callbacks_;
+};
+
 }  // namespace
 
 class UdevMonitorTest : public ::testing::Test {
@@ -145,15 +157,19 @@ class UdevMonitorTest : public ::testing::Test {
  protected:
   void SetUp() override {
     typec_observer_ = std::make_unique<TestTypecObserver>();
+    usb_observer_ = std::make_unique<TestUsbObserver>();
 
     monitor_ = std::make_unique<UdevMonitor>();
     monitor_->AddTypecObserver(typec_observer_.get());
+    monitor_->AddUsbObserver(usb_observer_.get());
+    monitor_->EnableUsbMonitor(false);
   }
 
   void TearDown() override {
     mock_udev_monitor_.reset();
     monitor_.reset();
     typec_observer_.reset();
+    usb_observer_.reset();
   }
 
   // Helper function to collect MockUdevMonitor initialization code in 1 place.
@@ -174,6 +190,7 @@ class UdevMonitorTest : public ::testing::Test {
   // Add a task environment to keep the FileDescriptorWatcher code happy.
   base::test::TaskEnvironment task_environment_;
   std::unique_ptr<TestTypecObserver> typec_observer_;
+  std::unique_ptr<TestUsbObserver> usb_observer_;
   std::unique_ptr<UdevMonitor> monitor_;
   std::unique_ptr<brillo::MockUdevMonitor> mock_udev_monitor_;
   // A valid socket pair used to make MockUdevMonitor happy.
@@ -523,6 +540,136 @@ TEST_F(UdevMonitorTest, CablePlugChanged) {
   ASSERT_TRUE(monitor_->BeginMonitoring());
   monitor_->HandleUdevEvent();
   EXPECT_THAT(1, typec_observer_->GetNumCablePlugChangeEvents());
+}
+
+// Check USB device callback on ScanDevices when USB monitoring is enabled.
+TEST_F(UdevMonitorTest, UsbDeviceScanWithCallback) {
+  // Initial USB device.
+  auto list_entry = std::make_unique<brillo::MockUdevListEntry>();
+  EXPECT_CALL(*list_entry, GetName()).WillOnce(Return(kFakeUsbSysPath));
+  EXPECT_CALL(*list_entry, GetNext())
+      .WillOnce(Return(ByMove(std::move(nullptr))));
+
+  auto enumerate = std::make_unique<brillo::MockUdevEnumerate>();
+  EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(kUsbSubsystem)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(kTypeCSubsystem)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(kUsbPdSubsystem)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, ScanDevices()).WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, GetListEntry())
+      .WillOnce(Return(ByMove(std::move(list_entry))));
+
+  auto udev = std::make_unique<brillo::MockUdev>();
+  EXPECT_CALL(*udev, CreateEnumerate())
+      .WillOnce(Return(ByMove(std::move(enumerate))));
+
+  monitor_->SetUdev(std::move(udev));
+
+  // Confirm that scanning devices with "usb_monitor" set results in a
+  // callback.
+  monitor_->EnableUsbMonitor(true);
+  EXPECT_THAT(0, usb_observer_->GetNumUsbCallbacks());
+  ASSERT_TRUE(monitor_->ScanDevices());
+  EXPECT_THAT(1, usb_observer_->GetNumUsbCallbacks());
+}
+
+// Check USB device callback is not run on ScanDevices when USB monitoring is
+// disabled.
+TEST_F(UdevMonitorTest, UsbDeviceScanWithoutCallback) {
+  // Initial USB device.
+  auto list_entry = std::make_unique<brillo::MockUdevListEntry>();
+  EXPECT_CALL(*list_entry, GetName()).WillOnce(Return(kFakeUsbSysPath));
+  EXPECT_CALL(*list_entry, GetNext())
+      .WillOnce(Return(ByMove(std::move(nullptr))));
+
+  auto enumerate = std::make_unique<brillo::MockUdevEnumerate>();
+  EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(kTypeCSubsystem)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(kUsbPdSubsystem)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, ScanDevices()).WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, GetListEntry())
+      .WillOnce(Return(ByMove(std::move(list_entry))));
+
+  auto udev = std::make_unique<brillo::MockUdev>();
+  EXPECT_CALL(*udev, CreateEnumerate())
+      .WillOnce(Return(ByMove(std::move(enumerate))));
+
+  monitor_->SetUdev(std::move(udev));
+
+  // Confirm that scanning devices with "usb_monitor" cleared does not result
+  // in a callback.
+  monitor_->EnableUsbMonitor(false);
+  EXPECT_THAT(0, usb_observer_->GetNumUsbCallbacks());
+  ASSERT_TRUE(monitor_->ScanDevices());
+  EXPECT_THAT(0, usb_observer_->GetNumUsbCallbacks());
+}
+
+// Check USB device callback on USB add event when USB monitoring is enabled.
+TEST_F(UdevMonitorTest, UsbDeviceAddWithCallback) {
+  // USB add event.
+  auto usb_add_event = std::make_unique<brillo::MockUdevDevice>();
+  EXPECT_CALL(*usb_add_event, GetSysPath()).WillOnce(Return(kFakeUsbSysPath));
+  EXPECT_CALL(*usb_add_event, GetAction()).WillOnce(Return("add"));
+
+  // Create the Mock Udev objects and function invocation expectations.
+  mock_udev_monitor_ = std::make_unique<brillo::MockUdevMonitor>();
+  EXPECT_CALL(*mock_udev_monitor_,
+              FilterAddMatchSubsystemDeviceType(StrEq(kUsbSubsystem), nullptr))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_udev_monitor_, FilterAddMatchSubsystemDeviceType(
+                                       StrEq(kTypeCSubsystem), nullptr))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_udev_monitor_, FilterAddMatchSubsystemDeviceType(
+                                       StrEq(kUsbPdSubsystem), nullptr))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_udev_monitor_, EnableReceiving()).WillOnce(Return(true));
+  fds_ = std::make_unique<brillo::ScopedSocketPair>();
+  EXPECT_CALL(*mock_udev_monitor_, GetFileDescriptor())
+      .WillOnce(Return(fds_->left));
+  EXPECT_CALL(*mock_udev_monitor_, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(usb_add_event))));
+
+  auto udev = std::make_unique<brillo::MockUdev>();
+  EXPECT_CALL(*udev, CreateMonitorFromNetlink(StrEq(kUdevMonitorName)))
+      .WillOnce(Return(ByMove(std::move(mock_udev_monitor_))));
+  monitor_->SetUdev(std::move(udev));
+
+  // Confirm the add event results in callback when USB monitoring is enabled.
+  monitor_->EnableUsbMonitor(true);
+  EXPECT_THAT(0, usb_observer_->GetNumUsbCallbacks());
+  ASSERT_TRUE(monitor_->BeginMonitoring());
+  monitor_->HandleUdevEvent();
+  EXPECT_THAT(1, usb_observer_->GetNumUsbCallbacks());
+}
+
+// Check USB device callback on USB add event is not run when USB monitoring is
+// disabled.
+TEST_F(UdevMonitorTest, UsbDeviceAddWithoutCallback) {
+  // USB add event.
+  auto usb_add_event = std::make_unique<brillo::MockUdevDevice>();
+  EXPECT_CALL(*usb_add_event, GetSysPath()).WillOnce(Return(kFakeUsbSysPath));
+  EXPECT_CALL(*usb_add_event, GetAction()).WillOnce(Return("add"));
+
+  // Create the Mock Udev objects and function invocation expectations.
+  InitMockUdevMonitor();
+  EXPECT_CALL(*mock_udev_monitor_, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(usb_add_event))));
+
+  auto udev = std::make_unique<brillo::MockUdev>();
+  EXPECT_CALL(*udev, CreateMonitorFromNetlink(StrEq(kUdevMonitorName)))
+      .WillOnce(Return(ByMove(std::move(mock_udev_monitor_))));
+  monitor_->SetUdev(std::move(udev));
+
+  // Confirm the add event does not result in a callback when USB monitoring is
+  // disabled.
+  monitor_->EnableUsbMonitor(false);
+  EXPECT_THAT(0, usb_observer_->GetNumUsbCallbacks());
+  ASSERT_TRUE(monitor_->BeginMonitoring());
+  monitor_->HandleUdevEvent();
+  EXPECT_THAT(0, usb_observer_->GetNumUsbCallbacks());
 }
 
 }  // namespace typecd

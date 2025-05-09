@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <sysexits.h>
-
 #include "typecd/daemon.h"
+
+#include <sysexits.h>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -81,6 +81,7 @@ int Daemon::OnInit() {
   // Add any observers to |udev_monitor_| here.
   udev_monitor_->AddTypecObserver(port_manager_.get());
 
+  udev_monitor_->EnableUsbMonitor(false);
   udev_monitor_->ScanDevices();
   udev_monitor_->BeginMonitoring();
 

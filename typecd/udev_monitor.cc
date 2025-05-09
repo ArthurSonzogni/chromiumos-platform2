@@ -19,6 +19,7 @@ constexpr char kPortRegex[] = R"(port(\d+))";
 constexpr char kSOPPrimePlugRegex[] = R"(port(\d+)-plug0)";
 constexpr char kSOPPrimePlugAltModeRegex[] = R"(port(\d+)-plug0.(\d+))";
 constexpr char kPdRegex[] = R"(pd\d+)";
+constexpr char kUsbRegex[] = R"([\d]+\-[\d\.]+)";
 
 }  // namespace
 
@@ -46,6 +47,10 @@ bool UdevMonitor::ScanDevices() {
   if (!enumerate->AddMatchSubsystem(kUsbPdSubsystem)) {
     PLOG(ERROR) << "Couldn't add USB PD to enumerator match.";
     return false;
+  }
+
+  if (usb_monitor_enabled_ && !enumerate->AddMatchSubsystem(kUsbSubsystem)) {
+    PLOG(WARNING) << "Couldn't add USB to enumerator match.";
   }
 
   enumerate->ScanDevices();
@@ -84,6 +89,11 @@ bool UdevMonitor::BeginMonitoring() {
     return false;
   }
 
+  if (usb_monitor_enabled_ && !udev_monitor_->FilterAddMatchSubsystemDeviceType(
+                                  kUsbSubsystem, nullptr)) {
+    PLOG(WARNING) << "Failed to add usb subsystem to udev monitor.";
+  }
+
   if (!udev_monitor_->EnableReceiving()) {
     PLOG(ERROR) << "Failed to enable receiving for udev monitor.";
     return false;
@@ -114,6 +124,14 @@ void UdevMonitor::RemoveTypecObserver(TypecObserver* obs) {
   typec_observer_list_.RemoveObserver(obs);
 }
 
+void UdevMonitor::AddUsbObserver(UsbObserver* obs) {
+  usb_observer_list_.AddObserver(obs);
+}
+
+void UdevMonitor::RemoveUsbObserver(UsbObserver* obs) {
+  usb_observer_list_.RemoveObserver(obs);
+}
+
 bool UdevMonitor::HandleDeviceAddedRemoved(const base::FilePath& path,
                                            bool added,
                                            bool is_initial_scan) {
@@ -137,6 +155,14 @@ bool UdevMonitor::HandleDeviceAddedRemoved(const base::FilePath& path,
       observer.OnCableAltModeAdded(path, port_num);
     } else if (RE2::FullMatch(name.value(), kPdRegex)) {
       observer.OnPdDeviceAddedOrRemoved(path, added);
+    }
+  }
+
+  if (usb_monitor_enabled_ && added) {
+    for (UsbObserver& observer : usb_observer_list_) {
+      if (RE2::FullMatch(name.value(), kUsbRegex)) {
+        observer.OnUsbDeviceAdded();
+      }
     }
   }
 

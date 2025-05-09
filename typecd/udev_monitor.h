@@ -25,6 +25,7 @@ constexpr char kPartnerRegex[] = R"(port(\d+)-partner)";
 constexpr char kTypeCSubsystem[] = "typec";
 constexpr char kUdevMonitorName[] = "udev";
 constexpr char kUsbPdSubsystem[] = "usb_power_delivery";
+constexpr char kUsbSubsystem[] = "usb";
 
 // Class to monitor udev events on the Type C subsystem and inform other
 // objects / classes of these events.
@@ -133,8 +134,19 @@ class UdevMonitor {
     virtual void OnPortChanged(int port_num) = 0;
   };
 
+  class UsbObserver : public base::CheckedObserver {
+   public:
+    virtual ~UsbObserver() {}
+    // Callback that is executed when a USB device is connected.
+    virtual void OnUsbDeviceAdded() = 0;
+  };
+
   void AddTypecObserver(TypecObserver* obs);
   void RemoveTypecObserver(TypecObserver* obs);
+
+  void EnableUsbMonitor(bool enable) { usb_monitor_enabled_ = enable; }
+  void AddUsbObserver(UsbObserver* obs);
+  void RemoveUsbObserver(UsbObserver* obs);
 
  private:
   friend class UdevMonitorTest;
@@ -148,6 +160,10 @@ class UdevMonitor {
   FRIEND_TEST(UdevMonitorTest, CablePlugChanged);
   FRIEND_TEST(UdevMonitorTest, PortChanged);
   FRIEND_TEST(UdevMonitorTest, PdDevice);
+  FRIEND_TEST(UdevMonitorTest, UsbDeviceScanWithCallback);
+  FRIEND_TEST(UdevMonitorTest, UsbDeviceScanWithoutCallback);
+  FRIEND_TEST(UdevMonitorTest, UsbDeviceAddWithCallback);
+  FRIEND_TEST(UdevMonitorTest, UsbDeviceAddWithoutCallback);
 
   // Set the |udev_| pointer to a MockUdev device. *Only* used by unit tests.
   void SetUdev(std::unique_ptr<brillo::MockUdev> udev) {
@@ -171,6 +187,10 @@ class UdevMonitor {
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
   base::ObserverList<TypecObserver> typec_observer_list_;
+
+  // Optional USB udev observer
+  bool usb_monitor_enabled_;
+  base::ObserverList<UsbObserver> usb_observer_list_;
 };
 
 }  // namespace typecd
