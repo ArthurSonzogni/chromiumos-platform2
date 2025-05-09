@@ -18,6 +18,7 @@
 #include "typecd/port_manager.h"
 #include "typecd/session_manager_proxy.h"
 #include "typecd/udev_monitor.h"
+#include "typecd/usb_limit_watcher.h"
 
 namespace typecd {
 
@@ -50,6 +51,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<DBusManager> dbus_mgr_;
   std::unique_ptr<ChromeFeaturesServiceClient> features_client_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<UsbLimitWatcher> usb_limit_watcher_;
   Metrics metrics_;
   base::WeakPtrFactory<Daemon> weak_factory_;
 };

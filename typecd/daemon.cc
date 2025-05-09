@@ -12,6 +12,7 @@
 #include <dbus/typecd/dbus-constants.h>
 
 #include "typecd/cros_config_util.h"
+#include "typecd/utils.h"
 
 namespace {
 const char kObjectServicePath[] = "/org/chromium/typecd/ObjectManager";
@@ -81,7 +82,15 @@ int Daemon::OnInit() {
   // Add any observers to |udev_monitor_| here.
   udev_monitor_->AddTypecObserver(port_manager_.get());
 
+  usb_limit_watcher_ = nullptr;
   udev_monitor_->EnableUsbMonitor(false);
+  if (AddUsbLimitWatcher()) {
+    usb_limit_watcher_ = std::make_unique<UsbLimitWatcher>();
+    usb_limit_watcher_->SetDBusManager(dbus_mgr_.get());
+    udev_monitor_->EnableUsbMonitor(true);
+    udev_monitor_->AddUsbObserver(usb_limit_watcher_.get());
+  }
+
   udev_monitor_->ScanDevices();
   udev_monitor_->BeginMonitoring();
 

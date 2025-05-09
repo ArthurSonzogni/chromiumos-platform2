@@ -12,9 +12,9 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <re2/re2.h>
 
 #include "typecd/metrics_allowlist.h"
@@ -26,6 +26,8 @@ constexpr char kTbtDeviceDir[] = "sys/bus/thunderbolt/devices";
 constexpr char kBusnum[] = "busnum";
 constexpr char kDevnum[] = "devnum";
 constexpr char kDuration[] = "power/connected_duration";
+constexpr char kSocIdPath[] = "sys/devices/soc0/soc_id";
+constexpr char kMtk8196[] = "MT8196";
 
 }  // namespace
 
@@ -111,6 +113,31 @@ std::string GetConnectionId(std::string boot_id, base::FilePath usb_device) {
       "%s.%s.%s.%s", boot_id.c_str(), std::to_string(connect_time).c_str(),
       std::to_string(ReadUsbProp(usb_device, kBusnum)).c_str(),
       std::to_string(ReadUsbProp(usb_device, kDevnum)).c_str());
+}
+
+bool AddUsbLimitWatcher() {
+  std::string soc_id;
+  if (!base::ReadFileToString(base::FilePath(kSocIdPath), &soc_id)) {
+    return false;
+  }
+
+  base::TrimWhitespaceASCII(soc_id, base::TRIM_TRAILING, &soc_id);
+  return soc_id == kMtk8196;
+}
+
+int GetUsbDeviceCount(base::FilePath usb_dir, std::string device_re) {
+  int device_count = 0;
+  base::FileEnumerator usb_links(
+      usb_dir, false,
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
+  for (base::FilePath usb_link = usb_links.Next(); !usb_link.empty();
+       usb_link = usb_links.Next()) {
+    if (RE2::FullMatch(usb_link.BaseName().value(), device_re)) {
+      device_count++;
+    }
+  }
+
+  return device_count;
 }
 
 }  // namespace typecd

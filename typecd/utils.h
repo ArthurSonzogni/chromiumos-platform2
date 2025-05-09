@@ -40,6 +40,14 @@ int ReadUsbProp(base::FilePath usb_device, std::string prop);
 // boot_id, enumeration time, busnum and devnum.
 std::string GetConnectionId(std::string boot_id, base::FilePath usb_device);
 
+// Helper function to check if the current device supports USB Limit
+// notifications.
+bool AddUsbLimitWatcher();
+
+// Helper function to count the number of currently connected USB devices or
+// interfaces matching the provided regular expression.
+int GetUsbDeviceCount(base::FilePath usb_dir, std::string device_re);
+
 }  // namespace typecd
 
 #endif  // TYPECD_UTILS_H_

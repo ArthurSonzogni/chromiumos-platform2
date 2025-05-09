@@ -85,6 +85,7 @@ static_library("typecd_common") {
     "power_profile.cc",
     "session_manager_proxy.cc",
     "udev_monitor.cc",
+    "usb_limit_watcher.cc",
     "utils.cc",
   ]
   all_dependent_configs = [ ":target_defaults" ]
@@ -116,6 +117,7 @@ if (use.test) {
       "power_profile_test.cc",
       "test_utils.cc",
       "udev_monitor_test.cc",
+      "usb_limit_watcher_test.cc",
     ]
     configs += [
       ":test_defaults",
