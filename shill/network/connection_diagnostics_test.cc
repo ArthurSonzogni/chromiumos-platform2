@@ -97,18 +97,18 @@ class ConnectionDiagnosticsUnderTest : public ConnectionDiagnostics {
       int interface_index,
       std::string_view interface_name,
       IcmpSession::IcmpSessionResultCallback result_callback) override {
-    auto it = icmp_sessions_.find(destination);
-    return (it != icmp_sessions_.end()) ? std::move(it->second) : nullptr;
+    auto it = mock_icmp_sessions_.find(destination);
+    return (it != mock_icmp_sessions_.end()) ? std::move(it->second) : nullptr;
   }
 
   void SetIcmpSession(const net_base::IPAddress& destination) {
     auto icmp_session = std::make_unique<NiceMock<MockIcmpSession>>(
         get_dispatcher_for_testing());
-    icmp_sessions_[destination] = std::move(icmp_session);
+    mock_icmp_sessions_[destination] = std::move(icmp_session);
   }
 
   std::map<net_base::IPAddress, std::unique_ptr<MockIcmpSession>>
-      icmp_sessions_;
+      mock_icmp_sessions_;
 };
 
 }  // namespace
@@ -135,10 +135,7 @@ class ConnectionDiagnosticsTest : public Test {
     ASSERT_EQ(net_base::IPFamily::kIPv6, kIPv6GatewayAddress.GetFamily());
 
     dns_client_ = new NiceMock<MockDnsClient>();
-    icmp_session_ = new NiceMock<MockIcmpSession>(&dispatcher_);
     connection_diagnostics_.dns_client_.reset(dns_client_);  // Passes ownership
-    connection_diagnostics_.icmp_session_.reset(
-        icmp_session_);  // Passes ownership
   }
 
   void TearDown() override {}
@@ -162,13 +159,11 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_FALSE(connection_diagnostics_.IsRunning());
     EXPECT_EQ(0, connection_diagnostics_.event_number());
     EXPECT_EQ(nullptr, connection_diagnostics_.dns_client_);
-    EXPECT_FALSE(connection_diagnostics_.icmp_session_->IsStarted());
+    EXPECT_TRUE(connection_diagnostics_.icmp_sessions_.empty());
     EXPECT_TRUE(
         connection_diagnostics_.id_to_pending_dns_server_icmp_session_.empty());
     EXPECT_EQ(std::nullopt, connection_diagnostics_.target_url_);
   }
-
-  void ExpectIcmpSessionStop() { EXPECT_CALL(*icmp_session_, Stop()); }
 
   void ExpectSuccessfulStart() {
     EXPECT_FALSE(connection_diagnostics_.IsRunning());
@@ -230,18 +225,13 @@ class ConnectionDiagnosticsTest : public Test {
 
   void ExpectPingHostStartSuccess(ConnectionDiagnostics::Type ping_event_type,
                                   const net_base::IPAddress& address) {
-    EXPECT_CALL(*icmp_session_,
-                Start(address, kInterfaceIndex, kInterfaceName, _))
-        .WillOnce(Return(true));
+    connection_diagnostics_.SetIcmpSession(address);
     connection_diagnostics_.PingHost(
         kDiagnosticId, ConnectionDiagnostics::Type::kPingTargetServer, address);
   }
 
   void ExpectPingHostStartFailure(ConnectionDiagnostics::Type ping_event_type,
                                   const net_base::IPAddress& address) {
-    EXPECT_CALL(*icmp_session_,
-                Start(address, kInterfaceIndex, kInterfaceName, _))
-        .WillOnce(Return(false));
     connection_diagnostics_.PingHost(
         kDiagnosticId, ConnectionDiagnostics::Type::kPingTargetServer, address);
   }
@@ -313,7 +303,6 @@ class ConnectionDiagnosticsTest : public Test {
   // Used only for EXPECT_CALL(). Objects are owned by
   // |connection_diagnostics_|.
   NiceMock<MockDnsClient>* dns_client_;
-  NiceMock<MockIcmpSession>* icmp_session_;
 };
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {

@@ -80,7 +80,6 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       ip_family_(ip_family),
       gateway_(gateway),
       dns_resolution_diagnostic_id_(0),
-      icmp_session_(new IcmpSession(dispatcher_)),
       running_(false),
       event_number_(0),
       logging_tag_(logging_tag),
@@ -130,8 +129,8 @@ void ConnectionDiagnostics::Stop() {
   running_ = false;
   event_number_ = 0;
   dns_client_.reset();
-  icmp_session_->Stop();
   id_to_pending_dns_server_icmp_session_.clear();
+  icmp_sessions_.clear();
   target_url_ = std::nullopt;
 }
 
@@ -247,16 +246,29 @@ void ConnectionDiagnostics::PingDNSServers() {
 void ConnectionDiagnostics::PingHost(int diagnostic_id,
                                      Type event_type,
                                      const net_base::IPAddress& address) {
-  SLOG(2) << logging_tag_ << " " << __func__;
-  if (!icmp_session_->Start(
-          address, iface_index_, iface_name_,
-          base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
-                         weak_ptr_factory_.GetWeakPtr(), diagnostic_id,
-                         event_type, address))) {
-    LogEvent(diagnostic_id, event_type, Result::kFailure,
-             "Failed to start ICMP session with " + address.ToString());
-    Stop();
+  SLOG(2) << logging_tag_ << " " << __func__ << "(" << address << ")";
+  if (base::Contains(icmp_sessions_, address)) {
+    LogEvent(diagnostic_id, event_type, Result::kSuccess,
+             "Skipped, a ping request already exists for destination " +
+                 address.ToString());
+    // Pinging the target server is the last operation.
+    if (event_type == Type::kPingTargetServer) {
+      Stop();
+    }
+    return;
   }
+  auto icmp_session = StartIcmpSession(
+      address, iface_index_, iface_name_,
+      base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
+                     weak_ptr_factory_.GetWeakPtr(), diagnostic_id, event_type,
+                     address));
+  if (!icmp_session) {
+    LogEvent(diagnostic_id, event_type, Result::kFailure,
+             "Failed to initiate ping to " + address.ToString());
+    Stop();
+    return;
+  }
+  icmp_sessions_[address] = std::move(icmp_session);
 }
 
 void ConnectionDiagnostics::OnPingDNSServerComplete(
@@ -313,10 +325,9 @@ void ConnectionDiagnostics::OnPingHostComplete(
     Type event_type,
     const net_base::IPAddress& address_pinged,
     const std::vector<base::TimeDelta>& result) {
-  SLOG(2) << logging_tag_ << " " << __func__;
-
+  SLOG(2) << logging_tag_ << " " << __func__ << "(" << address_pinged << ")";
   OnPingResult(diagnostic_id, event_type, address_pinged, result);
-
+  icmp_sessions_.erase(address_pinged);
   // Pinging the target server is the last operation.
   if (event_type == Type::kPingTargetServer) {
     Stop();

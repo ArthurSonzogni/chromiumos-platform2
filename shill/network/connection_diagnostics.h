@@ -177,7 +177,6 @@ class ConnectionDiagnostics {
   // TODO(b/307880493): Migrate to net_base::DNSClient.
   int dns_resolution_diagnostic_id_;
   std::unique_ptr<DnsClient> dns_client_;
-  std::unique_ptr<IcmpSession> icmp_session_;
 
   // The URL whose hostname is being diagnosed. Only defined when the
   // diagnostics is running.
@@ -186,6 +185,10 @@ class ConnectionDiagnostics {
   // Used to ping multiple DNS servers in parallel.
   std::map<int, std::unique_ptr<IcmpSession>>
       id_to_pending_dns_server_icmp_session_;
+
+  // All other ping requests currently in flight, tracked by the target
+  // destination address.
+  std::map<net_base::IPAddress, std::unique_ptr<IcmpSession>> icmp_sessions_;
 
   bool running_;
 
