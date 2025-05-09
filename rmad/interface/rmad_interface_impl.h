@@ -28,6 +28,7 @@
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/mojo_service_utils.h"
 
 namespace rmad {
 
@@ -57,7 +58,8 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   ~RmadInterfaceImpl() override = default;
 
-  bool SetUp(scoped_refptr<DaemonCallback> daemon_callback) override;
+  bool SetUp(scoped_refptr<DaemonCallback> daemon_callback,
+             scoped_refptr<MojoServiceUtilsImpl> mojo_service) override;
 
   RmadState::StateCase GetCurrentStateCase() override {
     return current_state_case_;
@@ -84,7 +86,9 @@ class RmadInterfaceImpl final : public RmadInterface {
       const GetInstalledDiagnosticsAppCallback callback) override;
 
  private:
-  void InitializeExternalUtils(scoped_refptr<DaemonCallback> daemon_callback);
+  void InitializeExternalUtils(
+      scoped_refptr<DaemonCallback> daemon_callback,
+      scoped_refptr<MojoServiceUtilsImpl> mojo_service);
   bool WaitForServices();
   bool StartFromInitialState();
 

@@ -11,6 +11,7 @@
 
 #include "rmad/daemon/daemon_callback.h"
 #include "rmad/state_handler/base_state_handler.h"
+#include "rmad/utils/mojo_service_utils.h"
 
 namespace rmad {
 
@@ -22,7 +23,8 @@ class StateHandlerManager {
   ~StateHandlerManager() = default;
 
   void RegisterStateHandler(scoped_refptr<BaseStateHandler> handler);
-  void RegisterStateHandlers(scoped_refptr<DaemonCallback> daemon_callback);
+  void RegisterStateHandlers(scoped_refptr<DaemonCallback> daemon_callback,
+                             scoped_refptr<MojoServiceUtilsImpl> mojo_service);
 
   scoped_refptr<BaseStateHandler> GetStateHandler(
       RmadState::StateCase state) const;

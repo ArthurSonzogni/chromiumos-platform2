@@ -377,7 +377,9 @@ TEST_F(RmadInterfaceImplTest, Setup) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
       CreateCmdUtils({"waiting"}), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   EXPECT_TRUE(cellular_disabled);
@@ -406,7 +408,9 @@ TEST_F(RmadInterfaceImplTest, Setup_WaitForServices_Timeout) {
       CreatePowerManagerClient(), CreateUdevUtils(),
       CreateCmdUtils(std::vector<std::string>(10, "waiting")),
       CreateMetricsUtils(true));
-  EXPECT_FALSE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_FALSE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                    mojo_service));
   EXPECT_EQ(RmadState::STATE_NOT_SET, rmad_interface.GetCurrentStateCase());
 }
 
@@ -423,7 +427,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   EXPECT_TRUE(cellular_disabled);
@@ -451,7 +457,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   EXPECT_FALSE(cellular_disabled);
@@ -480,7 +488,9 @@ TEST_F(RmadInterfaceImplTest,
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::STATE_NOT_SET, rmad_interface.GetCurrentStateCase());
 
   EXPECT_FALSE(cellular_disabled);
@@ -505,7 +515,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_PASS),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -531,7 +543,9 @@ TEST_F(RmadInterfaceImplTest,
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -557,7 +571,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_CorruptedFile) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_FALSE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_FALSE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                    mojo_service));
   EXPECT_EQ(RmadState::STATE_NOT_SET, rmad_interface.GetCurrentStateCase());
 }
 
@@ -572,7 +588,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -597,7 +615,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -622,7 +642,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -647,7 +669,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -673,7 +697,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -698,7 +724,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -723,7 +751,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -746,7 +776,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_TRUE(rmad_interface.CanAbort());
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
   auto callback1 = [](const GetStateReply& reply, bool quit_daemon) {
@@ -832,12 +864,15 @@ TEST_F(RmadInterfaceImplTest, TransitionNextStateAfterInterval) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   // Set up again after a while.
   task_environment_.FastForwardBy(kTestTransitionInterval);
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   task_environment_.FastForwardBy(kTestTransitionInterval);
@@ -887,7 +922,9 @@ TEST_F(RmadInterfaceImplTest, TryTransitionNextState) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_TRUE(rmad_interface.CanAbort());
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
   rmad_interface.TryTransitionNextStateFromCurrentState();
@@ -911,7 +948,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   TransitionNextStateRequest request;
@@ -933,7 +972,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   TransitionNextStateRequest request;
@@ -960,7 +1001,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_GetNextStateCaseFail) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_TRUE(rmad_interface.CanAbort());
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
@@ -987,7 +1030,9 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   task_environment_.FastForwardBy(kTestTransitionInterval);
@@ -1058,7 +1103,9 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -1084,7 +1131,9 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -1111,7 +1160,9 @@ TEST_F(RmadInterfaceImplTest,
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -1137,7 +1188,9 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   // Check that the state file exists now.
@@ -1166,7 +1219,9 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   // Check that the state file exists now.
@@ -1195,7 +1250,9 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kDeviceDestination,
             rmad_interface.GetCurrentStateCase());
 
@@ -1226,7 +1283,9 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
       CreateCmdUtils({}, {"test_log"}), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   auto callback1 = [](const GetLogReply& reply, bool quit_daemon) {
@@ -1272,7 +1331,8 @@ TEST_F(RmadInterfaceImplTest, SaveLog_Success) {
   daemon_callback->SetExecuteMountAndWriteLogCallback(
       base::BindRepeating(&RmadInterfaceImplTest::MountAndWriteLogCallback,
                           base::Unretained(this)));
-  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback, mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const SaveLogReply& reply, bool quit_daemon) {
@@ -1301,7 +1361,9 @@ TEST_F(RmadInterfaceImplTest, SaveLog_NoExternalDisk) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(0), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const SaveLogReply& reply, bool quit_daemon) {
@@ -1334,7 +1396,8 @@ TEST_F(RmadInterfaceImplTest, SaveLog_NoValidPartition) {
   daemon_callback->SetExecuteMountAndWriteLogCallback(
       base::BindRepeating(&RmadInterfaceImplTest::MountAndWriteLogCallback,
                           base::Unretained(this)));
-  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback, mojo_service));
 
   auto callback = [](const SaveLogReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_CANNOT_SAVE_LOG, reply.error());
@@ -1361,7 +1424,9 @@ TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const RecordBrowserActionMetricReply& reply,
@@ -1400,7 +1465,8 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_Success) {
   daemon_callback->SetExecuteMountAndCopyDiagnosticsAppCallback(
       base::BindRepeating(&RmadInterfaceImplTest::MountDiagnosticsAppCallback,
                           base::Unretained(this)));
-  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback, mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const ExtractExternalDiagnosticsAppReply& reply,
@@ -1429,7 +1495,8 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_NoExternalDisk) {
   daemon_callback->SetExecuteMountAndCopyDiagnosticsAppCallback(
       base::BindRepeating(&RmadInterfaceImplTest::MountDiagnosticsAppCallback,
                           base::Unretained(this)));
-  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback, mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const ExtractExternalDiagnosticsAppReply& reply,
@@ -1456,7 +1523,8 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_NoValidPartition) {
   daemon_callback->SetExecuteMountAndCopyDiagnosticsAppCallback(
       base::BindRepeating(&RmadInterfaceImplTest::MountDiagnosticsAppCallback,
                           base::Unretained(this)));
-  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback, mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const ExtractExternalDiagnosticsAppReply& reply,
@@ -1478,7 +1546,9 @@ TEST_F(RmadInterfaceImplTest, InstallExtractedDiagnosticsApp_Success) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   // Create diagnostics app in working directory.
@@ -1515,7 +1585,9 @@ TEST_F(RmadInterfaceImplTest, InstallExtractedDiagnosticsApp_NotFound) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const InstallExtractedDiagnosticsAppReply& reply,
@@ -1542,7 +1614,9 @@ TEST_F(RmadInterfaceImplTest, GetInstalledDiagnosticsApp_Success) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   // Create diagnostics app in unencrypted RMA directory.
@@ -1579,7 +1653,9 @@ TEST_F(RmadInterfaceImplTest, GetInstalledDiagnosticsApp_NotFound) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetInstalledDiagnosticsAppReply& reply,

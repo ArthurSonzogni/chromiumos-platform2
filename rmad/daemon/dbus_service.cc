@@ -30,6 +30,7 @@
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/futility_utils.h"
+#include "rmad/utils/mojo_service_utils.h"
 #include "rmad/utils/vpd_utils.h"
 #include "rmad/utils/vpd_utils_impl.h"
 
@@ -74,11 +75,17 @@ DBusService::DBusService(mojo::PlatformChannelEndpoint endpoint,
           base::FilePath(kDefaultWorkingDirPath).Append(kTestDirPath)),
       is_external_utils_initialized_(false),
       is_interface_set_up_(false) {
-  // Establish connection to the executor process.
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
-  // Send invitation to the executor process.
+
+  // Connect to Mojo Service Manager.
+  mojo_service_ = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  mojo_service_->Initialize();
+
+  // Connect to the root-level executor. Must after creating mojo services
+  // because we need to wait the mojo broker (the service manager) being
+  // connected.
   mojo::OutgoingInvitation invitation;
   mojo::ScopedMessagePipeHandle pipe =
       invitation.AttachMessagePipe(kRmadInternalMojoPipeName);
@@ -286,7 +293,7 @@ bool DBusService::CheckRmaCriteria() const {
 bool DBusService::SetUpInterface() {
   CHECK(rmad_interface_);
   if (!is_interface_set_up_) {
-    if (!rmad_interface_->SetUp(CreateDaemonCallback())) {
+    if (!rmad_interface_->SetUp(CreateDaemonCallback(), mojo_service_)) {
       return false;
     }
     is_interface_set_up_ = true;

@@ -31,7 +31,8 @@ class RunCalibrationStateHandler : public BaseStateHandler {
 
   explicit RunCalibrationStateHandler(
       scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback);
+      scoped_refptr<DaemonCallback> daemon_callback,
+      scoped_refptr<MojoServiceUtilsImpl> mojo_service);
 
   // Used to inject |base_acc_utils|, |lid_acc_utils|, |base_gyro_utils|, and
   // |lid_gyro_utils| to mock |sensor_calibration_utils_map_| for testing.

@@ -131,7 +131,7 @@ class DBusServiceTestBase : public testing::Test {
             DoAll(SetArgPointee<0>(options.shimless_mode_flags), Return(true)));
 
     // Mock |RmadInterface|.
-    ON_CALL(mock_rmad_service_, SetUp(_))
+    ON_CALL(mock_rmad_service_, SetUp(_, _))
         .WillByDefault(Return(options.rmad_setup_result));
 
     dbus_service_ = std::make_unique<DBusService>(
@@ -273,7 +273,7 @@ class DBusServiceTest : public DBusServiceTestBase {
  protected:
   void SetUp() override {
     DBusServiceTestBase::SetUp();
-    EXPECT_CALL(mock_rmad_service_, SetUp(_)).Times(AnyNumber());
+    EXPECT_CALL(mock_rmad_service_, SetUp(_, _)).Times(AnyNumber());
     EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
         .Times(AnyNumber());
 
@@ -422,7 +422,7 @@ TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_IsNotDevModeNoTestDir) {
 }
 
 TEST_F(DBusServiceIsRequiredTest, GetCurrentState_Success) {
-  EXPECT_CALL(mock_rmad_service_, SetUp(_));
+  EXPECT_CALL(mock_rmad_service_, SetUp(_, _));
   EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState());
   EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
       .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
@@ -439,7 +439,7 @@ TEST_F(DBusServiceIsRequiredTest, GetCurrentState_Success) {
 }
 
 TEST_F(DBusServiceIsRequiredTest, GetCurrentState_RmaNotRequired) {
-  EXPECT_CALL(mock_rmad_service_, SetUp(_)).Times(0);
+  EXPECT_CALL(mock_rmad_service_, SetUp(_, _)).Times(0);
   EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
       .Times(0);
 
@@ -451,7 +451,7 @@ TEST_F(DBusServiceIsRequiredTest, GetCurrentState_RmaNotRequired) {
 }
 
 TEST_F(DBusServiceIsRequiredTest, GetCurrentState_InterfaceSetUpFailed) {
-  EXPECT_CALL(mock_rmad_service_, SetUp(_));
+  EXPECT_CALL(mock_rmad_service_, SetUp(_, _));
   EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
       .Times(0);
 

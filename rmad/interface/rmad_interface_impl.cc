@@ -33,6 +33,7 @@
 #include "rmad/udev/udev_device.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils_impl.h"
+#include "rmad/utils/mojo_service_utils.h"
 #include "rmad/utils/rpc_utils.h"
 
 namespace rmad {
@@ -113,14 +114,15 @@ bool RmadInterfaceImpl::StoreStateHistory() {
 }
 
 void RmadInterfaceImpl::InitializeExternalUtils(
-    scoped_refptr<DaemonCallback> daemon_callback) {
+    scoped_refptr<DaemonCallback> daemon_callback,
+    scoped_refptr<MojoServiceUtilsImpl> mojo_service) {
   json_store_ = base::MakeRefCounted<JsonStore>(
       base::FilePath(kDefaultUnencryptedRmaDirPath).Append(kJsonStoreFilePath),
       false);
   working_dir_path_ = base::FilePath(kDefaultWorkingDirPath);
   unencrypted_rma_dir_path_ = base::FilePath(kDefaultUnencryptedRmaDirPath);
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
-  state_handler_manager_->RegisterStateHandlers(daemon_callback);
+  state_handler_manager_->RegisterStateHandlers(daemon_callback, mojo_service);
   runtime_probe_client_ = std::make_unique<RuntimeProbeClientImpl>();
   shill_client_ = std::make_unique<ShillClientImpl>();
   tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
@@ -162,11 +164,13 @@ bool RmadInterfaceImpl::StartFromInitialState() {
   return true;
 }
 
-bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
+bool RmadInterfaceImpl::SetUp(
+    scoped_refptr<DaemonCallback> daemon_callback,
+    scoped_refptr<MojoServiceUtilsImpl> mojo_service) {
   daemon_callback_ = daemon_callback;
   // Initialize external utilities if needed.
   if (!external_utils_initialized_) {
-    InitializeExternalUtils(daemon_callback);
+    InitializeExternalUtils(daemon_callback, mojo_service);
     external_utils_initialized_ = true;
     metrics_utils_ = std::make_unique<MetricsUtilsImpl>();
   }

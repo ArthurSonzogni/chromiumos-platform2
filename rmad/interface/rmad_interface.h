@@ -12,6 +12,7 @@
 
 #include "rmad/daemon/daemon_callback.h"
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/utils/mojo_service_utils.h"
 
 namespace rmad {
 
@@ -23,7 +24,8 @@ class RmadInterface {
   // Fully set up the interface. To minimize unnecessary initialization when RMA
   // is not required, the D-Bus APIs might be called when the class is
   // initialized by the constructor but not fully set up.
-  virtual bool SetUp(scoped_refptr<DaemonCallback> daemon_callback) = 0;
+  virtual bool SetUp(scoped_refptr<DaemonCallback> daemon_callback,
+                     scoped_refptr<MojoServiceUtilsImpl> mojo_service) = 0;
 
   // Get the current state_case.
   virtual RmadState::StateCase GetCurrentStateCase() = 0;

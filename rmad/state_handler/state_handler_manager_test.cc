@@ -89,7 +89,8 @@ TEST_F(StateHandlerManagerTest, RegisterStateHandlerCollision) {
 
 TEST_F(StateHandlerManagerTest, RegisterStateHandlers) {
   base::test::SingleThreadTaskEnvironment task_environment;
-  state_handler_manager_->RegisterStateHandlers(daemon_callback_);
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  state_handler_manager_->RegisterStateHandlers(daemon_callback_, mojo_service);
 }
 
 }  // namespace rmad

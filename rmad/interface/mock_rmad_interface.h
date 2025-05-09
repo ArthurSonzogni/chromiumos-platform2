@@ -18,7 +18,11 @@ class MockRmadInterface : public RmadInterface {
   MockRmadInterface() = default;
   virtual ~MockRmadInterface() = default;
 
-  MOCK_METHOD(bool, SetUp, (scoped_refptr<DaemonCallback>), (override));
+  MOCK_METHOD(bool,
+              SetUp,
+              (scoped_refptr<DaemonCallback>,
+               scoped_refptr<MojoServiceUtilsImpl>),
+              (override));
   MOCK_METHOD(RmadState::StateCase, GetCurrentStateCase, (), (override));
   MOCK_METHOD(bool, CanAbort, (), (const, override));
   MOCK_METHOD(void, TryTransitionNextStateFromCurrentState, (), (override));

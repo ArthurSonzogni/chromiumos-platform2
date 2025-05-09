@@ -97,3 +97,4 @@ futex: 1
 sync: 1
 unlinkat: 1
 fstat: 1
+sendmsg: 1

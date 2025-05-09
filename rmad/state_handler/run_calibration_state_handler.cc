@@ -21,11 +21,12 @@ namespace rmad {
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback)
+    scoped_refptr<DaemonCallback> daemon_callback,
+    scoped_refptr<MojoServiceUtilsImpl> mojo_service)
     : BaseStateHandler(json_store, daemon_callback),
+      mojo_service_(mojo_service),
       current_round_finished_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
-  mojo_service_ = base::MakeRefCounted<MojoServiceUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::make_unique<SensorCalibrationUtilsImpl>(
@@ -75,12 +76,6 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
 RmadErrorCode RunCalibrationStateHandler::InitializeState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!state_.has_run_calibration()) {
-    if (!is_testing_) {
-      mojo_service_->Initialize();
-      mojo_service_->SetConnectionErrorHandler(base::BindRepeating(
-          &RunCalibrationStateHandler::HandleMojoServiceDisconnection,
-          weak_factory_.GetMutableWeakPtr()));
-    }
     state_.set_allocated_run_calibration(new RunCalibrationState);
     sequenced_task_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
   }

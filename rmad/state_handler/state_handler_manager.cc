@@ -43,7 +43,8 @@ void StateHandlerManager::RegisterStateHandler(
 }
 
 void StateHandlerManager::RegisterStateHandlers(
-    scoped_refptr<DaemonCallback> daemon_callback) {
+    scoped_refptr<DaemonCallback> daemon_callback,
+    scoped_refptr<MojoServiceUtilsImpl> mojo_service) {
   // TODO(gavindodd): Some form of validation of state loaded from the store is
   // needed. e.g. RMA abortable state must match what is expected by the
   // current position in the state flow, but depends on some state in the
@@ -79,7 +80,7 @@ void StateHandlerManager::RegisterStateHandlers(
   RegisterStateHandler(base::MakeRefCounted<SetupCalibrationStateHandler>(
       json_store_, daemon_callback));
   RegisterStateHandler(base::MakeRefCounted<RunCalibrationStateHandler>(
-      json_store_, daemon_callback));
+      json_store_, daemon_callback, mojo_service));
   RegisterStateHandler(base::MakeRefCounted<ProvisionDeviceStateHandler>(
       json_store_, daemon_callback));
   RegisterStateHandler(

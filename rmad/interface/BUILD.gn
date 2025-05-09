@@ -6,8 +6,10 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "iioservice_ipc",
     "libbrillo",
     "libchrome",
+    "mojo_service_manager",
     "protobuf",
     "re2",
     "system_api",

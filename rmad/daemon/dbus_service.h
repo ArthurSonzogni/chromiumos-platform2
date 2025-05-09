@@ -29,6 +29,7 @@
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/futility_utils.h"
+#include "rmad/utils/mojo_service_utils.h"
 #include "rmad/utils/vpd_utils.h"
 
 namespace rmad {
@@ -172,6 +173,9 @@ class DBusService : public brillo::DBusServiceDaemon {
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> hwwp_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> power_cable_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> external_disk_signal_;
+
+  // Necessary to establish Mojo communication with the Mojo Service Manager.
+  scoped_refptr<MojoServiceUtilsImpl> mojo_service_;
 
   // Necessary to establish Mojo communication with the executor.
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
