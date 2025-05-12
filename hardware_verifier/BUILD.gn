@@ -54,7 +54,10 @@ static_library("libhardware_verifier") {
     "verifier_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
+  deps = [
+    "//hardware_verifier/proto:hardware_verifier-protos",
+    "//hardware_verifier/system:system",
+  ]
   pkg_deps = [ "libstructuredmetrics" ]
 }
 
@@ -122,6 +125,7 @@ if (use.test) {
       ":libhardware_verifier",
       ":libhardware_verifier_test",
       "//common-mk/testrunner",
+      "//hardware_verifier/system:test_utils",
     ]
   }
 }

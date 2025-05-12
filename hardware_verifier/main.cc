@@ -18,6 +18,7 @@
 #include "hardware_verifier/cli.h"
 #include "hardware_verifier/daemon.h"
 #include "hardware_verifier/observer.h"
+#include "hardware_verifier/system/context_impl.h"
 
 namespace {
 
@@ -133,6 +134,7 @@ int main(int argc, char* argv[]) {
 
   const auto output_format =
       SafeConvertOutputFormatFlagToEnum(FLAGS_output_format);
+  hardware_verifier::ContextImpl context;
 
   int exit_status;
   if (FLAGS_dbus) {
