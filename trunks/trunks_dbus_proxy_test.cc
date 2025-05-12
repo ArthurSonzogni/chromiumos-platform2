@@ -112,16 +112,6 @@ class TrunksDBusProxyTest : public testing::Test {
     return last_command;
   }
 
-  template <typename T>
-  static base::PlatformThreadId GetFakeId(T value) {
-    static_assert(std::is_same_v<T, int> || std::is_class_v<T>);
-    if constexpr (std::is_class_v<T>) {
-      return base::PlatformThreadId(value.raw() ^ 1);
-    } else {
-      return value ^ 1;
-    }
-  }
-
  protected:
   scoped_refptr<FakeObjectProxy> object_proxy_ = new FakeObjectProxy();
   scoped_refptr<NiceMock<MockDBusBus>> bus_ = new NiceMock<MockDBusBus>();
@@ -315,7 +305,7 @@ TEST_F(TrunksDBusProxyTest, SendCommandFailureWrongThread) {
   EXPECT_TRUE(proxy_.Init());
   // xor 1 would change the thread id without overflow.
   base::PlatformThreadId fake_id =
-      GetFakeId(proxy_.origin_thread_id_for_testing());
+      base::PlatformThreadId(proxy_.origin_thread_id_for_testing().raw() ^ 1);
   proxy_.set_origin_thread_id_for_testing(fake_id);
   set_next_response(tpm_response);
   auto callback = [](const std::string& response) {
@@ -337,7 +327,7 @@ TEST_F(TrunksDBusProxyTest, SendCommandAndWaitFailureWrongThread) {
   EXPECT_TRUE(proxy_.Init());
   // xor 1 would change the thread id without overflow.
   base::PlatformThreadId fake_id =
-      GetFakeId(proxy_.origin_thread_id_for_testing());
+      base::PlatformThreadId(proxy_.origin_thread_id_for_testing().raw() ^ 1);
   proxy_.set_origin_thread_id_for_testing(fake_id);
   set_next_response(tpm_response);
   EXPECT_EQ(trunks_response, proxy_.SendCommandAndWait(command));
