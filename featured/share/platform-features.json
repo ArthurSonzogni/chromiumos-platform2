@@ -274,5 +274,26 @@
         "path": "/sys/kernel/debug/sched/features"
       }
     ]
+  },
+  {
+    "name": "CrOSLateBootDirtyWritebackMaxBytes",
+    "commands": [
+      {
+        "name": "WriteFile",
+        "path": "/proc/sys/vm/dirty_background_ratio_max_bytes",
+        "value": "409600000"
+      },
+     {
+        "name": "WriteFile",
+        "path": "/proc/sys/vm/dirty_ratio_max_bytes",
+        "value": "1699840000"
+      }
+    ],
+    "support_check_commands": [
+      {
+        "name": "FileExists",
+        "path": "/proc/sys/vm/dirty_background_ratio_max_bytes"
+      }
+    ]
   }
 ]
