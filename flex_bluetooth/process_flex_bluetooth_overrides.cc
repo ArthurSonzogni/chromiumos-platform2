@@ -75,6 +75,28 @@ const std::map<flex_bluetooth::BluetoothAdapter,
          {flex_bluetooth::SyspropOverride::kEnableLEAdvMonRTLQuirk}},
         {flex_bluetooth::BluetoothAdapter{0x0489, 0xe125},
          {flex_bluetooth::SyspropOverride::kEnableLEAdvMonRTLQuirk}},
+
+        // Disable packet boundary & sniff mode opcode for qca chips
+        {flex_bluetooth::BluetoothAdapter{0x0cf3, 0x311e},
+         {flex_bluetooth::SyspropOverride::kDisableSniffMode}},
+        {flex_bluetooth::BluetoothAdapter{0x0cf3, 0xe04e},
+         {flex_bluetooth::SyspropOverride::kDisableSniffMode}},
+        {flex_bluetooth::BluetoothAdapter{0x0cf3, 0x311e},
+         {flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+        {flex_bluetooth::BluetoothAdapter{0x0cf3, 0xe04e},
+         {flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+        {flex_bluetooth::BluetoothAdapter{0x0cf3, 0x817b},
+         {flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+        {flex_bluetooth::BluetoothAdapter{0x0489, 0xe04e},
+         {flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+        {flex_bluetooth::BluetoothAdapter{0x04c5, 0x1330},
+         {flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+        {flex_bluetooth::BluetoothAdapter{0x0cf3, 0x817b},
+         {flex_bluetooth::SyspropOverride::kDisableSniffMode}},
+        {flex_bluetooth::BluetoothAdapter{0x0489, 0xe04e},
+         {flex_bluetooth::SyspropOverride::kDisableSniffMode}},
+        {flex_bluetooth::BluetoothAdapter{0x04c5, 0x1330},
+         {flex_bluetooth::SyspropOverride::kDisableSniffMode}},
 };
 }  // namespace
 

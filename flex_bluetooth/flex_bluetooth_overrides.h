@@ -17,6 +17,8 @@ enum class SyspropOverride {
   kDisableLEGetVendorCapabilities = 0,
   kDisableEnhancedSCOConnection = 1,
   kEnableLEAdvMonRTLQuirk = 2,
+  kDisablePacketBoundary = 3,
+  kDisableSniffMode = 4,
 };
 
 const char kSyspropsLine[] = "[Sysprops]\n";
@@ -27,7 +29,12 @@ const std::map<SyspropOverride, std::string> kSyspropOverrideToString = {
     {SyspropOverride::kDisableEnhancedSCOConnection,
      "bluetooth.sco.disable_enhanced_connection=true\n"},
     {SyspropOverride::kEnableLEAdvMonRTLQuirk,
-     "bluetooth.core.le.adv_mon_rtl_quirk=true\n"}};
+     "bluetooth.core.le.adv_mon_rtl_quirk=true\n"},
+    {SyspropOverride::kDisablePacketBoundary,
+     "bluetooth.core.disable_packet_boundary=true\n"},
+    {SyspropOverride::kDisableSniffMode,
+     "bluetooth.core.disable_sniff_mode=true\n"},
+};
 
 class BluetoothAdapter {
  public:
