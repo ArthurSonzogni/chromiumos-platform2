@@ -53,10 +53,10 @@ static constexpr uint16_t kGenesisDataStoreInfoSize = 1024;
 static constexpr uint32_t kDelayUSec = 1e6;
 
 // Unique ID for PSR MEI requests.
-const uuid_le kGuid = GUID_INIT(
+const uuid_le kGuid = UUID_LE(
     0xED6703FA, 0xD312, 0x4E8B, 0x9D, 0xDD, 0x21, 0x55, 0xBB, 0x2D, 0xEE, 0x65);
 
-const uuid_le kHciGuid = GUID_INIT(
+const uuid_le kHciGuid = UUID_LE(
     0x8E6A6715, 0x9ABC, 0x4043, 0x88, 0xEF, 0x9E, 0x39, 0xC6, 0xF6, 0x3E, 0x0F);
 
 enum LedgerCounterIndex {
