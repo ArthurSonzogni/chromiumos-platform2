@@ -8,9 +8,10 @@
 #include <string>
 
 #include <brillo/brillo_export.h>
+
 #include "base/types/expected.h"
 #include "bindings/chrome_device_policy.pb.h"
-#include "components/policy/core/common/device_local_account_type.h"
+#include "chromeos/ash/components/policy/device_local_account/device_local_account_type.h"
 
 namespace policy {
 // Both CanonicalizeEmail and GenerateDeviceLocalAccountUserId is
