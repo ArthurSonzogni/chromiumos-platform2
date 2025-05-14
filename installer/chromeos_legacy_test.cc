@@ -4,10 +4,10 @@
 
 #include "installer/chromeos_legacy.h"
 
+#include <base/files/file_enumerator.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <base/files/file_enumerator.h>
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/strings/string_util.h"
@@ -16,6 +16,12 @@
 using std::string;
 
 namespace {
+
+std::string ReadFileToString(const base::FilePath& path) {
+  std::string contents;
+  CHECK(base::ReadFileToString(path, &contents));
+  return contents;
+}
 
 // this string is a grub file stripped down to (mostly) just what we update.
 const char kExampleGrubCfgFile[] =
@@ -256,6 +262,96 @@ TEST_F(UpdateEfiBootloadersTest, InvalidDestDir) {
   // The destination directory does not exist, so the copy operation
   // will fail.
   EXPECT_FALSE(UpdateEfiBootloaders(install_config_));
+}
+
+class UpdateLegacyKernelTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+
+    const auto root_dir = temp_dir_.GetPath().Append("root");
+    const auto boot_dir = temp_dir_.GetPath().Append("boot");
+    install_config_.root = Partition(base::FilePath(), root_dir);
+    install_config_.boot = Partition(base::FilePath(), boot_dir);
+    install_config_.bios_type = BiosType::kLegacy;
+    install_config_.slot = "A";
+
+    src_dir_ = root_dir.Append("boot");
+    dst_dir_ = boot_dir.Append("syslinux");
+
+    CHECK(base::CreateDirectory(src_dir_));
+    CHECK(base::CreateDirectory(dst_dir_));
+  }
+
+ protected:
+  base::ScopedTempDir temp_dir_;
+  InstallConfig install_config_;
+  base::FilePath src_dir_;
+  base::FilePath dst_dir_;
+};
+
+// Test a successful slot-A update.
+TEST_F(UpdateLegacyKernelTest, SlotA) {
+  install_config_.slot = "A";
+  CHECK(base::WriteFile(src_dir_.Append("vmlinuz"), "new"));
+  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
+  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.B"), "kern_b_old"));
+
+  EXPECT_TRUE(UpdateLegacyKernel(install_config_));
+  // "A" kernel updated, "B" unchanged.
+  EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.A")), "new");
+  EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.B")), "kern_b_old");
+}
+
+// Test a successful slot-B update.
+TEST_F(UpdateLegacyKernelTest, SlotB) {
+  install_config_.slot = "B";
+  CHECK(base::WriteFile(src_dir_.Append("vmlinuz"), "new"));
+  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
+  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.B"), "kern_b_old"));
+
+  EXPECT_TRUE(UpdateLegacyKernel(install_config_));
+  // "B" kernel updated, "A" unchanged.
+  EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.A")), "kern_a_old");
+  EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.B")), "new");
+}
+
+// Test that an update fails if the source kernel is missing.
+TEST_F(UpdateLegacyKernelTest, ErrorMissingSource) {
+  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
+  EXPECT_FALSE(UpdateLegacyKernel(install_config_));
+}
+
+// Test that a fresh install returns success if the source kernel is
+// missing and the install type is legacy.
+TEST_F(UpdateLegacyKernelTest, MissingSourceLegacyInstall) {
+  install_config_.bios_type = BiosType::kLegacy;
+  install_config_.is_install = true;
+  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
+
+  EXPECT_TRUE(UpdateLegacyKernel(install_config_));
+}
+
+// Test that a fresh install returns success if the source kernel is
+// missing and the install type is EFI.
+TEST_F(UpdateLegacyKernelTest, MissingSourceEfiInstall) {
+  install_config_.bios_type = BiosType::kEFI;
+  install_config_.is_install = true;
+  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
+
+  EXPECT_TRUE(UpdateLegacyKernel(install_config_));
+}
+
+// Test that a fresh legacy install does copy the kernel if the source
+// exists.
+TEST_F(UpdateLegacyKernelTest, LegacyInstallCopy) {
+  install_config_.bios_type = BiosType::kLegacy;
+  install_config_.is_install = true;
+  CHECK(base::WriteFile(src_dir_.Append("vmlinuz"), "new"));
+  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
+
+  EXPECT_TRUE(UpdateLegacyKernel(install_config_));
+  EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.A")), "new");
 }
 
 }  // namespace
