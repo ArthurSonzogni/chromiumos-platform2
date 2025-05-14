@@ -19,6 +19,8 @@
 // * BootOrder contains an ordered list of Boot#### entries to be tried when
 //   booting, e.g. "try to boot from entry 2, and if that fails try entry 0"
 
+#include "installer/efi_boot_management.h"
+
 #include <limits>
 #include <map>
 #include <memory>
@@ -28,7 +30,6 @@
 #include <vector>
 
 #include <base/containers/contains.h>
-#include <base/environment.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -38,7 +39,6 @@
 #include <base/strings/stringprintf.h>
 #include <cros_config/cros_config.h>
 
-#include "installer/efi_boot_management.h"
 #include "installer/efivar.h"
 #include "installer/inst_util.h"
 #include "installer/metrics.h"
@@ -654,14 +654,12 @@ class EfiBootManager {
 
   // A thin wrapper around UpdateEfiBootEntriesImpl to handle sending UMAs and
   // choosing an appropriate return code.
-  bool UpdateEfiBootEntries(const InstallConfig& install_config,
-                            base::Environment& env,
-                            int efi_size) {
+  bool UpdateEfiBootEntries(const InstallConfig& install_config, int efi_size) {
     if (!UpdateEfiBootEntriesImpl(install_config, efi_size)) {
       // On install if we can't manage efi entries we can't be sure that we've
       // created a system that will boot (some firmware can't find the default
       // location).
-      const bool management_required = env.HasVar(kEnvIsInstall);
+      const bool management_required = install_config.is_install;
       if (management_required) {
         SendEfiManagementEvent(
             EfiManagementEvent::kRequiredEntryManagementFailed);
@@ -766,10 +764,9 @@ bool UpdateEfiBootEntries(const InstallConfig& install_config) {
 
   std::unique_ptr<MetricsInterface> metrics =
       MetricsInterface::GetMetricsInstance();
-  auto env = base::Environment::Create();
 
   EfiBootManager efi_boot_manager(std::move(efivar), std::move(metrics),
                                   EfiDescription());
-  return efi_boot_manager.UpdateEfiBootEntries(install_config, *env,
+  return efi_boot_manager.UpdateEfiBootEntries(install_config,
                                                efi_size.value());
 }

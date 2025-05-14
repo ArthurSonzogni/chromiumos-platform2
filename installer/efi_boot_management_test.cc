@@ -204,21 +204,6 @@ std::vector<uint8_t> BootOrderData(const std::vector<uint16_t>& input) {
                                   (input.size() * sizeof(uint16_t)));
 }
 
-class MockEnvironment : public base::Environment {
- public:
-  // Some of these mock methods are unused right now, but we have to implement
-  // the pure virtual methods of base::Environment.
-  MOCK_METHOD(std::optional<std::string>,
-              GetVar,
-              (base::cstring_view variable_name),
-              (override));
-  MOCK_METHOD(bool,
-              SetVar,
-              (base::cstring_view variable_name, const std::string& new_value),
-              (override));
-  MOCK_METHOD(bool, UnSetVar, (base::cstring_view variable_name), (override));
-};
-
 }  // namespace
 
 TEST(EfiDescriptionTest, Default) {
@@ -826,13 +811,11 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_LoadFailMetrics) {
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_InstallFailure) {
-  StrictMock<MockEnvironment> env;
-  EXPECT_CALL(env, GetVar(StrEq(kEnvIsInstall))).WillOnce(Return("1"));
-
   // Simulate a failed load.
   efivar_->variable_names_.push_back("Boot0BAD");
 
   InstallConfig install_config;
+  install_config.is_install = 1;
 
   // We don't care about the details here, but these will be sent.
   ExpectEntryCountMetric(1);
@@ -847,14 +830,11 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_InstallFailure) {
           static_cast<int>(EfiManagementEvent::kMaxValue)));
 
   bool continue_postinst =
-      efi_boot_manager_->UpdateEfiBootEntries(install_config, env, 64);
+      efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
   EXPECT_FALSE(continue_postinst);
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_UpdateFailure) {
-  StrictMock<MockEnvironment> env;
-  EXPECT_CALL(env, GetVar(StrEq(kEnvIsInstall))).WillOnce(Return(std::nullopt));
-
   // Simulate a failed load.
   efivar_->variable_names_.push_back("Boot0BAD");
 
@@ -873,13 +853,12 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_UpdateFailure) {
           static_cast<int>(EfiManagementEvent::kMaxValue)));
 
   bool continue_postinst =
-      efi_boot_manager_->UpdateEfiBootEntries(install_config, env, 64);
+      efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
   EXPECT_TRUE(continue_postinst);
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_Success) {
   InstallConfig install_config;
-  StrictMock<MockEnvironment> env;
 
   // We don't care about the details here, but these will be sent.
   ExpectEntriesMetricsZero();
@@ -888,7 +867,7 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_Success) {
   // Not actively checking, just implied by the StrictMock.
 
   bool continue_postinst =
-      efi_boot_manager_->UpdateEfiBootEntries(install_config, env, 64);
+      efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
   EXPECT_TRUE(continue_postinst);
 }
 
