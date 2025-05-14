@@ -425,6 +425,11 @@ generate a report along with failed tpm commands.
 
 TODO(chingkang): Expand on this section
 
+### dlcservice failures
+
+When the `dlcservice` logs an error, generate a report including `messages` and
+update_engine logs.
+
 ### modem failures
 
 When the modem rejects a user request to perform an operation on the modem, we

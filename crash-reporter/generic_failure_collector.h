@@ -63,6 +63,7 @@ class GenericFailureCollector : public CrashCollector {
   struct HandlerInfoOptions {
     bool suspend_failure = false;
     bool auth_failure = false;
+    bool dlc_service_failure = false;
     bool modem_failure = false;
     bool modemfwd_failure = false;
     bool recovery_failure = false;
@@ -102,6 +103,7 @@ class GenericFailureCollector : public CrashCollector {
   static const char* const kGenericFailure;
   static const char* const kAuthFailure;
   static const char* const kCryptohome;
+  static const char* const kDlcServiceFailure;
   static const char* const kSuspendFailure;
   static const char* const kServiceFailure;
   static const char* const kArcServiceFailure;

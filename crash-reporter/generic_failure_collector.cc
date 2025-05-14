@@ -31,6 +31,8 @@ using base::StringPrintf;
 
 const char* const GenericFailureCollector::kAuthFailure = "auth-failure";
 const char* const GenericFailureCollector::kCryptohome = "cryptohome";
+const char* const GenericFailureCollector::kDlcServiceFailure =
+    "dlc_service_failure";
 const char* const GenericFailureCollector::kSuspendFailure = "suspend-failure";
 const char* const GenericFailureCollector::kServiceFailure = "service-failure";
 const char* const GenericFailureCollector::kArcServiceFailure =
@@ -153,6 +155,13 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
               .cb =
                   base::BindRepeating(&GenericFailureCollector::Collect,
                                       generic_failure_collector, kAuthFailure),
+          },
+          {
+              .should_handle = options.dlc_service_failure,
+              .cb = base::BindRepeating(
+                  &GenericFailureCollector::CollectWithWeight,
+                  generic_failure_collector, kDlcServiceFailure,
+                  options.weight),
           },
           {
               .should_handle = options.modem_failure,

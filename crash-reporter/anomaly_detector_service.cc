@@ -80,6 +80,8 @@ Service::Service(base::OnceClosure shutdown_callback, bool testonly_send_all)
       std::make_unique<MetricsLibrary>(), testonly_send_all);
   parsers_["cryptohomed"] =
       std::make_unique<anomaly::CryptohomeParser>(testonly_send_all);
+  parsers_["dlcservice"] =
+      std::make_unique<anomaly::DlcServiceParser>(testonly_send_all);
   parsers_["tcsd"] = std::make_unique<anomaly::TcsdParser>();
   parsers_["shill"] = std::make_unique<anomaly::ShillParser>(testonly_send_all);
   parsers_["hermes"] =

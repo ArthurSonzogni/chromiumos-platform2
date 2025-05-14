@@ -30,6 +30,7 @@ using ::testing::NiceMock;
 using ::testing::Return;
 
 using ::anomaly::CryptohomeParser;
+using ::anomaly::DlcServiceParser;
 using ::anomaly::HermesParser;
 using ::anomaly::KernelParser;
 using ::anomaly::ModemfwdParser;
@@ -968,4 +969,23 @@ TEST(AnomalyDetectorTest, BrowserHang) {
           {"--browser_hang", base::StringPrintf("--weight=%d", 40)}}};
   SessionManagerParser parser(/*testonly_send_all=*/true);
   ParserTest("TEST_BROWSER_HANG", {browser_hang}, &parser);
+}
+
+TEST(AnomalyDetectorTest, DlcServiceFailure) {
+  ParserRun dlc_service_failure = {
+      .expected_substr = "failedInstallInUpdateEngine",
+      .expected_flags = {
+          {"--dlc_service_failure", base::StringPrintf("--weight=%d", 50)}}};
+  DlcServiceParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_DLC_SERVICE_FAILURE", {dlc_service_failure}, &parser);
+}
+
+TEST(AnomalyDetectorTest, DlcServiceDbusDomainFailure) {
+  ParserRun dlc_service_failure = {
+      .expected_substr = "INVALID_DLC",
+      .expected_flags = {
+          {"--dlc_service_failure", base::StringPrintf("--weight=%d", 100)}}};
+  DlcServiceParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_DLC_SERVICE_DBUS_DOMAIN_FAILURE", {dlc_service_failure},
+             &parser);
 }

@@ -430,6 +430,7 @@ int main(int argc, char* argv[]) {
                "Metadata for ARCVM native crashes");
   DEFINE_bool(arc_kernel, false, "ARC Kernel Crash");
 #endif
+  DEFINE_bool(dlc_service_failure, false, "Report DlcService failure");
   DEFINE_bool(modem_failure, false, "Report modem failure");
   DEFINE_bool(modemfwd_failure, false, "Report modemfwd failure");
   DEFINE_bool(hermes_failure, false, "Report hermes failure");
@@ -735,6 +736,7 @@ int main(int argc, char* argv[]) {
   GenericFailureCollector::HandlerInfoOptions handler_info_options = {
       .suspend_failure = FLAGS_suspend_failure,
       .auth_failure = FLAGS_auth_failure,
+      .dlc_service_failure = FLAGS_dlc_service_failure,
       .modem_failure = FLAGS_modem_failure,
       .modemfwd_failure = FLAGS_modemfwd_failure,
       .recovery_failure = FLAGS_cryptohome_recovery_failure,

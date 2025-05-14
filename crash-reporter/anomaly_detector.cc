@@ -20,6 +20,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <dbus/dlcservice/dbus-constants.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <dbus/modemfwd/dbus-constants.h>
@@ -928,6 +929,53 @@ MaybeCrashReport SessionManagerParser::ParseLogEntry(const std::string& line) {
   return CrashReport(
       base::StrCat({"browser_hang-", response_time, "s\n"}),
       {"--browser_hang", base::StringPrintf("--weight=%d", weight)});
+}
+
+DlcServiceParser::DlcServiceParser(bool testonly_send_all)
+    : testonly_send_all_(testonly_send_all) {}
+// logged by dlc_service when an Error is logged.
+constexpr LazyRE2 dlc_service_failure = {
+    R"(Domain=dlcservice, Code=(\S+), Message=(.*))"};
+
+constexpr LazyRE2 dlc_service_dbus_domain_failure = {
+    R"(Domain=dbus, Code=(org\.chromium\.DlcServiceInterface\.\S+), Message=(.*))"};
+
+MaybeCrashReport DlcServiceParser::ParseLogEntry(const std::string& line) {
+  std::string error_code;
+  std::string error_message;
+  int weight = 1;
+  if (RE2::PartialMatch(line, *dlc_service_failure, &error_code,
+                        &error_message)) {
+    weight = 50;
+  } else if (RE2::PartialMatch(line, *dlc_service_dbus_domain_failure,
+                               &error_code, &error_message)) {
+    // Avoid creating crash reports for common errors that are not critical.
+    if (error_code == dlcservice::kErrorBusy ||
+        error_code == dlcservice::kErrorNeedReboot ||
+        error_code == dlcservice::kErrorNone) {
+      return std::nullopt;
+    }
+    weight = 100;
+  } else {
+    return std::nullopt;
+  }
+  if (error_code.empty()) {
+    return std::nullopt;
+  }
+
+  if (!testonly_send_all_ && base::RandGenerator(weight) != 0) {
+    return std::nullopt;
+  }
+
+  uint32_t hash = StringHash((error_code + error_message).c_str());
+  if (WasAlreadySeen(hash)) {
+    return std::nullopt;
+  }
+
+  std::string text = base::StringPrintf("%08x-%s\n", hash, error_code.c_str());
+  return CrashReport(
+      std::move(text),
+      {"--dlc_service_failure", base::StringPrintf("--weight=%d", weight)});
 }
 
 }  // namespace anomaly
