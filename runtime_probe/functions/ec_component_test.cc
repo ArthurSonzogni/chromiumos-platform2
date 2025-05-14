@@ -73,7 +73,11 @@ class EcComponentFunctionTest : public BaseFunctionTest {
 
     MOCK_METHOD(std::unique_ptr<ec::I2cPassthruCommand>,
                 GetI2cReadCommand,
-                (uint8_t port, uint8_t addr7, uint8_t offset, uint8_t read_len),
+                (uint8_t port,
+                 uint8_t addr7,
+                 uint8_t offset,
+                 const std::vector<uint8_t>& write_data,
+                 uint8_t read_len),
                 (const override));
 
     std::optional<struct ec_response_get_version> ec_response_get_version_{
@@ -114,7 +118,7 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     ON_CALL(*cmd, I2cStatus).WillByDefault(Return(kEcI2cStatusSuccess));
     ON_CALL(*cmd, RespData)
         .WillByDefault(Return(base::span<const uint8_t>{kRturnValue}));
-    ON_CALL(*probe_function, GetI2cReadCommand(port, addr7, _, _))
+    ON_CALL(*probe_function, GetI2cReadCommand(port, addr7, _, _, _))
         .WillByDefault(Return(ByMove(std::move(cmd))));
   }
 
@@ -129,7 +133,7 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     ON_CALL(*cmd, I2cStatus).WillByDefault(Return(kEcI2cStatusSuccess));
     ON_CALL(*cmd, RespData)
         .WillByDefault(Return(base::span<const uint8_t>{kRturnValue}));
-    EXPECT_CALL(*probe_function, GetI2cReadCommand(port, addr7, _, _))
+    EXPECT_CALL(*probe_function, GetI2cReadCommand(port, addr7, _, _, _))
         .WillOnce(Return(ByMove(std::move(cmd))));
   }
 
@@ -138,6 +142,7 @@ class EcComponentFunctionTest : public BaseFunctionTest {
       uint8_t port,
       uint8_t addr7,
       uint8_t offset,
+      const std::vector<uint8_t>& write_data,
       uint8_t len,
       base::span<const uint8_t> return_value) const {
     auto cmd =
@@ -146,7 +151,8 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     ON_CALL(*cmd, Result).WillByDefault(Return(kEcResultSuccess));
     ON_CALL(*cmd, I2cStatus).WillByDefault(Return(kEcI2cStatusSuccess));
     ON_CALL(*cmd, RespData).WillByDefault(Return(return_value));
-    ON_CALL(*probe_function, GetI2cReadCommand(port, addr7, offset, len))
+    ON_CALL(*probe_function,
+            GetI2cReadCommand(port, addr7, offset, write_data, len))
         .WillByDefault(Return(ByMove(std::move(cmd))));
   }
 
@@ -161,7 +167,7 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     ON_CALL(*cmd, I2cStatus).WillByDefault(Return(kEcI2cStatusSuccess));
     ON_CALL(*cmd, RespData)
         .WillByDefault(Return(base::span<const uint8_t>{kRturnValue}));
-    ON_CALL(*probe_function, GetI2cReadCommand(port, addr7, _, _))
+    ON_CALL(*probe_function, GetI2cReadCommand(port, addr7, _, _, _))
         .WillByDefault(Return(ByMove(std::move(cmd))));
   }
 };
@@ -295,12 +301,12 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatch) {
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
   // base_sensor_1 without a mask
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
-                              kMatchValueForReg0);
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
-                              kMatchValueForReg1);
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
-                              kMatchValueForReg2);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg0);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg1);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg2);
 
   auto actual = EvalProbeFunction(probe_function.get());
 
@@ -330,10 +336,11 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cMultiBytesValueMatch) {
   for (const auto& match_value_for_reg4 : kMatchValuesForReg4) {
     auto probe_function =
         CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
-    SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x03, 4,
-                                kMatchValueForReg3);
+    SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x03,
+                                std::vector<uint8_t>{}, 4, kMatchValueForReg3);
     // base_sensor_3 with mask 0x00ff00ff.
-    SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x04, 4,
+    SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x04,
+                                std::vector<uint8_t>{}, 4,
                                 match_value_for_reg4);
 
     auto actual = EvalProbeFunction(probe_function.get());
@@ -362,12 +369,12 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
-                              kMismatchValueForReg0);
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
-                              kMatchValueForReg1);
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
-                              kMatchValueForReg2);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00,
+                              std::vector<uint8_t>{}, 1, kMismatchValueForReg0);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg1);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg2);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
 }
@@ -385,12 +392,12 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueLengthMismatch) {
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
-                              kMatchValueForReg0);
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
-                              kMismatchValueForReg1);
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
-                              kMatchValueForReg2);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg0);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01,
+                              std::vector<uint8_t>{}, 1, kMismatchValueForReg1);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg2);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
 }
@@ -408,12 +415,12 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOnlyOneValueMismatch) {
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
-                              kMatchedValueForReg0);
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
-                              kMismatchValue);
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
-                              kMatchedValueForReg3);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00,
+                              std::vector<uint8_t>{}, 1, kMatchedValueForReg0);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01,
+                              std::vector<uint8_t>{}, 1, kMismatchValue);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
+                              std::vector<uint8_t>{}, 1, kMatchedValueForReg3);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
 }
@@ -430,8 +437,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOptionalValue) {
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
   // base_sensor_2
-  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02, 1,
-                              kMismatchValue);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
+                              std::vector<uint8_t>{}, 1, kMismatchValue);
 
   auto actual = EvalProbeFunction(probe_function.get());
 
@@ -440,6 +447,34 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOptionalValue) {
       {
         "component_type": "base_sensor",
         "component_name": "base_sensor_2"
+      }
+    ]
+  )JSON"));
+}
+
+TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cWithWriteData) {
+  constexpr uint8_t kUnusedI2cResponseValue[] = {0xff};
+  auto arguments = base::JSONReader::Read(R"JSON(
+    {
+      "type": "base_sensor",
+      "name": "base_sensor_4"
+    }
+  )JSON");
+  auto probe_function =
+      CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
+
+  // base_sensor_2
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x03,
+                              std::vector<uint8_t>{0xaa, 0xbb, 0xcc}, 1,
+                              kUnusedI2cResponseValue);
+
+  auto actual = EvalProbeFunction(probe_function.get());
+
+  ExpectUnorderedListEqual(actual, CreateProbeResultFromJson(R"JSON(
+    [
+      {
+        "component_type": "base_sensor",
+        "component_name": "base_sensor_4"
       }
     ]
   )JSON"));
@@ -472,7 +507,7 @@ class EcComponentFunctionTestECVersion : public EcComponentFunctionTest {
   }
 
   void ExpectNoI2cRead(MockEcComponentFunction* probe_function) {
-    EXPECT_CALL(*probe_function, GetI2cReadCommand(_, _, _, _)).Times(0);
+    EXPECT_CALL(*probe_function, GetI2cReadCommand(_, _, _, _, _)).Times(0);
   }
 
   std::unique_ptr<MockEcComponentFunction> probe_function_{

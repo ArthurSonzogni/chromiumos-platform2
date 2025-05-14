@@ -57,8 +57,15 @@ base::ScopedFD EcComponentFunction::GetEcDevice() const {
 }
 
 std::unique_ptr<ec::I2cPassthruCommand> EcComponentFunction::GetI2cReadCommand(
-    uint8_t port, uint8_t addr7, uint8_t offset, uint8_t read_len) const {
-  return ec::I2cPassthruCommand::Create(port, addr7, {offset}, read_len);
+    uint8_t port,
+    uint8_t addr7,
+    uint8_t offset,
+    const std::vector<uint8_t>& write_data,
+    uint8_t read_len) const {
+  std::vector<uint8_t> passthru_data(1, offset);
+  passthru_data.insert(passthru_data.end(), write_data.begin(),
+                       write_data.end());
+  return ec::I2cPassthruCommand::Create(port, addr7, passthru_data, read_len);
 }
 
 std::unique_ptr<ec::GetVersionCommand>
@@ -92,12 +99,12 @@ bool EcComponentFunction::IsValidComponent(
     const base::ScopedFD& ec_dev_fd) const {
   if (comp.i2c.expect.size() == 0) {
     // No expect value. Just verify the accessibility of the component.
-    auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, 0u, 1u);
+    auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, 0u, {}, 1u);
     return RunI2cCommandAndCheckSuccess(ec_dev_fd, cmd.get());
   }
   for (const auto& expect : comp.i2c.expect) {
     auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, expect.reg,
-                                 expect.bytes);
+                                 expect.write_data, expect.bytes);
     if (!RunI2cCommandAndCheckSuccess(ec_dev_fd, cmd.get())) {
       return false;
     }

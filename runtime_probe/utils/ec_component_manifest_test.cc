@@ -111,14 +111,18 @@ TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
     EXPECT_EQ(comp.i2c.addr, 0x1);
     EXPECT_EQ(comp.i2c.expect.size(), 3);
     EXPECT_EQ(comp.i2c.expect[0].reg, 0);
+    EXPECT_EQ(comp.i2c.expect[0].write_data,
+              (std::vector<uint8_t>{0xaa, 0xbb, 0xcc}));
     EXPECT_EQ(comp.i2c.expect[0].value, std::vector<uint8_t>{0x00});
     EXPECT_EQ(comp.i2c.expect[0].mask, std::vector<uint8_t>{0xff});
     EXPECT_EQ(comp.i2c.expect[0].bytes, 1);
     EXPECT_EQ(comp.i2c.expect[1].reg, 1);
+    EXPECT_EQ(comp.i2c.expect[1].write_data, std::vector<uint8_t>{});
     EXPECT_EQ(comp.i2c.expect[1].value, std::vector<uint8_t>{0x01});
     EXPECT_EQ(comp.i2c.expect[1].mask, std::vector<uint8_t>{0xff});
     EXPECT_EQ(comp.i2c.expect[1].bytes, 1);
     EXPECT_EQ(comp.i2c.expect[2].reg, 2);
+    EXPECT_EQ(comp.i2c.expect[2].write_data, std::vector<uint8_t>{});
     EXPECT_EQ(comp.i2c.expect[2].value,
               (std::vector<uint8_t>{0x00, 0x00, 0x42, 0x00}));
     EXPECT_EQ(comp.i2c.expect[2].mask,

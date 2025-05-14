@@ -11,6 +11,7 @@
         "expect": [
           {
             "reg": "0x00",
+            "write_data": "0xaabbcc",
             "mask": "0xff",
             "value": "0x00"
           },

@@ -121,6 +121,12 @@ EcComponentManifest::Component::I2c::Expect::Create(
     return std::nullopt;
   }
 
+  auto write_data = dv.FindString("write_data");
+  if (write_data && !SetBytes(write_data, ret.write_data)) {
+    LOG(ERROR) << "Invalid field: write_data";
+    return std::nullopt;
+  }
+
   auto value = dv.FindString("value");
   auto multi_byte_value = dv.FindString("multi_byte_value");
   if (value && multi_byte_value) {

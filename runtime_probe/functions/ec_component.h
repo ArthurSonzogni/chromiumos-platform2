@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/files/scoped_file.h>
 
@@ -36,7 +37,11 @@ class EcComponentFunction : public PrivilegedProbeFunction {
   // Virtuals for testing.
   virtual base::ScopedFD GetEcDevice() const;
   virtual std::unique_ptr<ec::I2cPassthruCommand> GetI2cReadCommand(
-      uint8_t port, uint8_t addr8, uint8_t offset, uint8_t read_len) const;
+      uint8_t port,
+      uint8_t addr8,
+      uint8_t offset,
+      const std::vector<uint8_t>& write_data,
+      uint8_t read_len) const;
   virtual std::unique_ptr<ec::GetVersionCommand> GetGetVersionCommand() const;
 
   std::optional<std::string> GetCurrentECVersion(
