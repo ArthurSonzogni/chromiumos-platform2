@@ -222,7 +222,7 @@ int RunGscBinary(const base::FilePath& install_dir,
 // kernels may lead to recovery screen (due to new key).
 // TODO(hungte) Replace the shell execution by native code (crosbug.com/25407).
 // Note that this returns an exit code, not bool success/failure.
-int FirmwareUpdate(const InstallConfig& install_config, bool is_update) {
+int FirmwareUpdate(const InstallConfig& install_config) {
   base::FilePath install_dir = install_config.root.mount();
   base::FilePath command =
       install_dir.Append("usr/sbin/chromeos-firmwareupdate");
@@ -233,7 +233,7 @@ int FirmwareUpdate(const InstallConfig& install_config, bool is_update) {
   }
 
   string mode;
-  if (is_update) {
+  if (install_config.is_update) {
     switch (install_config.defer_update_action) {
       case DeferUpdateAction::kAuto:
         // Background auto update by Update Engine.
@@ -392,8 +392,7 @@ bool RunBoardPostInstall(const base::FilePath& install_dir) {
 }
 
 bool UpdatePartitionTable(CgptManager& cgpt_manager,
-                          const InstallConfig& install_config,
-                          bool is_update) {
+                          const InstallConfig& install_config) {
   LOG(INFO) << "Updating Partition Table Attributes using CgptManager...";
 
   CgptErrorCode result =
@@ -406,7 +405,7 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
 
   // If it's not an update, pre-mark the first boot as successful
   // since we can't fall back on the old install.
-  bool new_kern_successful = !is_update;
+  bool new_kern_successful = !install_config.is_update;
   result = cgpt_manager.SetSuccessful(install_config.kernel.number(),
                                       new_kern_successful);
   if (result != CgptErrorCode::kSuccess) {
@@ -709,8 +708,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
         RepairPartitionTable(cgpt_manager);
       }
 
-      if (!UpdatePartitionTable(cgpt_manager, install_config,
-                                install_config.is_update)) {
+      if (!UpdatePartitionTable(cgpt_manager, install_config)) {
         LOG(ERROR) << "UpdatePartitionTable failed.";
         return false;
       }
@@ -813,7 +811,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       SlowBootNotifyPreFwUpdate(fspm_main);
     }
 
-    *exit_code = FirmwareUpdate(install_config, install_config.is_update);
+    *exit_code = FirmwareUpdate(install_config);
     if (*exit_code == 0) {
       base::FilePath fspm_next;
       if (CreateTemporaryFile(&fspm_next)) {
