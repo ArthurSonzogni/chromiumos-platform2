@@ -82,6 +82,13 @@ struct InstallConfig {
   BiosType bios_type;
   DeferUpdateAction defer_update_action;
   bool force_update_firmware{false};
+
+  // TODO(nicholasbishop): consider if these should be consolidated into
+  // a PostinstallType enum.
+  bool is_factory_install{false};
+  bool is_recovery_install{false};
+  bool is_install{false};
+  bool is_update{false};
 };
 
 #endif  // INSTALLER_CHROMEOS_INSTALL_CONFIG_H_

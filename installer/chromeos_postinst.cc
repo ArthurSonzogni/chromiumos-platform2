@@ -110,6 +110,15 @@ bool ConfigureInstall(const base::FilePath& install_dev,
   install_config->defer_update_action = defer_update_action;
   install_config->force_update_firmware = force_update_firmware;
 
+  // Read env vars.
+  auto env = base::Environment::Create();
+  install_config->is_factory_install = env->HasVar(kEnvIsFactoryInstall);
+  install_config->is_recovery_install = env->HasVar(kEnvIsRecoveryInstall);
+  install_config->is_install = env->HasVar(kEnvIsInstall);
+  install_config->is_update = !install_config->is_factory_install &&
+                              !install_config->is_recovery_install &&
+                              !install_config->is_install && !IsRunningMiniOS();
+
   return true;
 }
 
@@ -649,15 +658,6 @@ void CheckForDefaultKeyStatefulMigration(const InstallConfig& install_config) {
 //
 bool ChromeosChrootPostinst(const InstallConfig& install_config,
                             int* exit_code) {
-  auto env = base::Environment::Create();
-
-  // Extract External ENVs
-  bool is_factory_install = env->HasVar(kEnvIsFactoryInstall);
-  bool is_recovery_install = env->HasVar(kEnvIsRecoveryInstall);
-  bool is_install = env->HasVar(kEnvIsInstall);
-  bool is_update = !is_factory_install && !is_recovery_install && !is_install &&
-                   !IsRunningMiniOS();
-
   switch (install_config.defer_update_action) {
     case DeferUpdateAction::kAuto:
     case DeferUpdateAction::kHold: {
@@ -709,7 +709,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
         RepairPartitionTable(cgpt_manager);
       }
 
-      if (!UpdatePartitionTable(cgpt_manager, install_config, is_update)) {
+      if (!UpdatePartitionTable(cgpt_manager, install_config,
+                                install_config.is_update)) {
         LOG(ERROR) << "UpdatePartitionTable failed.";
         return false;
       }
@@ -734,7 +735,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
         return false;
       }
 
-      if (!is_update && !is_factory_install) {
+      if (!install_config.is_update && !install_config.is_factory_install) {
         if (USE_DEFAULT_KEY_STATEFUL && FormatMetaDataPartitionNeeded()) {
           // Format the metadata partition if needed.
           if (!FormatMetaDataPartition(install_config)) {
@@ -751,7 +752,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       }
 
       FixUnencryptedPermission();
-      if (is_update) {
+      if (install_config.is_update) {
         CheckForDefaultKeyStatefulMigration(install_config);
       }
 
@@ -773,7 +774,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
           "/unencrypted/cache/.disk_firmware_upgrade_completed";
       unlink(disk_fw_check_complete.c_str());
 
-      if (!is_factory_install &&
+      if (!install_config.is_factory_install &&
           !RunBoardPostInstall(install_config.root.mount())) {
         LOG(ERROR) << "Failed to perform board specific post install script.";
         // The comment starting "For Chromebook firmware..." says not to return
@@ -792,8 +793,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   base::FilePath firmware_tag_file =
       install_config.root.mount().Append("root/.force_update_firmware");
 
-  bool attempt_firmware_update =
-      (!is_factory_install && base::PathExists(firmware_tag_file));
+  bool attempt_firmware_update = (!install_config.is_factory_install &&
+                                  base::PathExists(firmware_tag_file));
 
   if (install_config.force_update_firmware) {
     if (attempt_firmware_update) {
@@ -812,7 +813,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       SlowBootNotifyPreFwUpdate(fspm_main);
     }
 
-    *exit_code = FirmwareUpdate(install_config, is_update);
+    *exit_code = FirmwareUpdate(install_config, install_config.is_update);
     if (*exit_code == 0) {
       base::FilePath fspm_next;
       if (CreateTemporaryFile(&fspm_next)) {
@@ -848,7 +849,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   }
 
   // Don't modify GSC in factory.
-  if (!is_factory_install) {
+  if (!install_config.is_factory_install) {
     int result = 0;
 
     // Check the device state to determine if the board id should be set.
