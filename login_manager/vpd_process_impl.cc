@@ -62,7 +62,13 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
       << "Another subprocess is running";
   subprocess_.reset(new Subprocess(0 /*root*/, system_utils_));
 
-  std::vector<std::string> argv = {"/usr/sbin/update_rw_vpd"};
+  std::vector<std::string> argv = {
+      // update_rw_vpd uses absl logging library, rather than the ones provided
+      // by libchrome/libbrillo, which outputs the logs to stderr, rather than
+      // syslog. Use syslog-cat to redirect it to syslog so that errors can
+      // be captured.
+      "/usr/sbin/syslog-cat", "--identifier=update_rw_vpd",
+      "--severity_stderr=error", "--", "/usr/sbin/update_rw_vpd"};
   for (const auto& entry : updates) {
     argv.push_back(entry.first);
     argv.push_back(entry.second);
