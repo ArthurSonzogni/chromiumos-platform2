@@ -466,6 +466,9 @@ void Daemon::OnModemDeviceSeen(std::string device_id,
       !modems_seen_since_oobe_prefs_->Exists(device_id)) {
     if (!modems_seen_since_oobe_prefs_->Create(device_id)) {
       LOG(ERROR) << "Failed to create modem seen pref for modem: " << device_id;
+    } else {
+      // Do not modify this log line, since it will be used in FRA
+      LOG(INFO) << "Modem seen for the first time: " << device_id;
     }
   }
 

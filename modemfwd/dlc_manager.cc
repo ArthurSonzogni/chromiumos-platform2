@@ -159,7 +159,8 @@ void DlcManager::OnServiceAvailable(bool available) {
 }
 
 void DlcManager::PostRetryInstallTask() {
-  LOG(INFO) << "Posting DLC install retry task";
+  LOG(INFO) << "Posting DLC install retry task. Attempt: "
+            << install_retry_counter_;
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&DlcManager::TryInstall, weak_ptr_factory_.GetWeakPtr()),
