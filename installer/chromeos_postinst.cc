@@ -63,6 +63,12 @@ bool GetKernelCommandLine(string* kernel_cmd_line) {
   }
   return true;
 }
+
+bool IsRunningMiniOS() {
+  string kernel_cmd_line;
+  return GetKernelCommandLine(&kernel_cmd_line) &&
+         kernel_cmd_line.find("cros_minios") != string::npos;
+}
 }  // namespace
 
 bool ConfigureInstall(const base::FilePath& install_dev,
@@ -105,12 +111,6 @@ bool ConfigureInstall(const base::FilePath& install_dev,
   install_config->force_update_firmware = force_update_firmware;
 
   return true;
-}
-
-bool IsRunningMiniOS() {
-  string kernel_cmd_line;
-  return GetKernelCommandLine(&kernel_cmd_line) &&
-         kernel_cmd_line.find("cros_minios") != string::npos;
 }
 
 bool DetectBiosType(BiosType* bios_type) {
