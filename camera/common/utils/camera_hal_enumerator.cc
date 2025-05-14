@@ -22,14 +22,22 @@ std::vector<base::FilePath> GetCameraHalPaths() {
       base::FilePath("/usr/lib64/camera_hal")};
 
   std::vector<base::FilePath> camera_hal_paths;
+  std::optional<DeviceConfig> device_config = DeviceConfig::Create();
+  bool has_mipi = device_config && device_config->HasMipiCamera();
+
+  // Reven is not a single SKU but can be an arbitrary device that may have
+  // a MIPI camera, which will not be reflected by the device_config because
+  // we do not know what cameras exist until loading them. Always load the
+  // libcamera DLL so we can load any MIPI cameras.
+  bool is_reven = device_config && device_config->GetModelName() == "reven";
 
   for (base::FilePath dir : kCameraHalDirs) {
     base::FileEnumerator dlls(dir, false, base::FileEnumerator::FILES, "*.so");
     for (base::FilePath dll = dlls.Next(); !dll.empty(); dll = dlls.Next()) {
       auto filename = dll.BaseName().value();
       if (filename != "usb.so" && filename != "fake.so" &&
-          filename != "ip.so" && filename != "cavern.so" &&
-          !DeviceConfig::Create()->HasMipiCamera()) {
+          filename != "ip.so" && filename != "cavern.so" && !has_mipi &&
+          !is_reven) {
         LOGF(INFO) << "No MIPI camera so skip camera hal " << dll.value();
         continue;
       }
