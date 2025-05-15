@@ -5,6 +5,7 @@
 #include "installer/chromeos_legacy.h"
 
 #include <base/files/file_enumerator.h>
+#include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -12,8 +13,12 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/strings/string_util.h"
 #include "installer/chromeos_install_config.h"
+#include "installer/mock_platform.h"
 
 using std::string;
+using ::testing::_;
+using ::testing::Expectation;
+using ::testing::Return;
 
 namespace {
 
@@ -352,6 +357,105 @@ TEST_F(UpdateLegacyKernelTest, LegacyInstallCopy) {
 
   EXPECT_TRUE(UpdateLegacyKernel(install_config_));
   EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.A")), "new");
+}
+
+class PostInstallTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+
+    install_config_.root =
+        Partition(base::FilePath(), temp_dir_.GetPath().Append("root"));
+    install_config_.boot =
+        Partition(base::FilePath(), temp_dir_.GetPath().Append("boot"));
+    install_config_.bios_type = BiosType::kLegacy;
+    install_config_.slot = "A";
+
+    rootfs_boot_ = install_config_.root.mount().Append("boot");
+    esp_ = install_config_.boot.mount();
+
+    CHECK(base::CreateDirectory(rootfs_boot_.Append("syslinux")));
+    CHECK(base::CreateDirectory(esp_.Append("syslinux")));
+
+    // Create source kernel.
+    CHECK(base::WriteFile(rootfs_boot_.Append("vmlinuz"), "vmlinuz"));
+    // Create syslinux configs.
+    CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.A.cfg"),
+                          "root=HDROOTA dm=\"DMTABLEA\""));
+    CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/syslinux.cfg"),
+                          "syslinux_cfg"));
+
+    EXPECT_CALL(platform_, DumpKernelConfig(_)).WillRepeatedly([this]() {
+      return kernel_config_;
+    });
+  }
+
+ protected:
+  base::ScopedTempDir temp_dir_;
+  InstallConfig install_config_;
+  MockPlatform platform_;
+
+  // Path of the `<rootfs>/boot` directory.
+  base::FilePath rootfs_boot_;
+  // Path of the ESP mount point.
+  base::FilePath esp_;
+
+  std::string kernel_config_{"dm=\"dm args\""};
+};
+
+// Test successful call to RunLegacyPostInstall.
+TEST_F(PostInstallTest, LegacyPostInstallSuccess) {
+  EXPECT_TRUE(RunLegacyPostInstall(platform_, install_config_));
+
+  // Syslinux files were copied.
+  EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/syslinux.cfg")),
+            "syslinux_cfg");
+  // Kernel was copied.
+  EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/vmlinuz.A")), "vmlinuz");
+}
+
+// Test that RunLegacyPostInstall fails if the source syslinux directory
+// is missing.
+TEST_F(PostInstallTest, LegacyPostInstallMissingSourceSyslinuxDir) {
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux/root.A.cfg")));
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux/syslinux.cfg")));
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux")));
+  EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
+}
+
+// Test that RunLegacyPostInstall fails if the source kernel is missing.
+TEST_F(PostInstallTest, LegacyPostInstallMissingKernel) {
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("vmlinuz")));
+  EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
+}
+
+// Test that RunLegacyPostInstall fails if the syslinux config is
+// missing.
+TEST_F(PostInstallTest, LegacyPostInstallMissingSyslinuxConfig) {
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux/root.A.cfg")));
+  EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
+}
+
+// Test that RunLegacyPostInstall fails if the syslinux config is
+// missing the HDROOT variable.
+TEST_F(PostInstallTest, LegacyPostInstallMissingSyslinuxHdroot) {
+  CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.A.cfg"),
+                        "dm=\"DMTABLEA\""));
+  EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
+}
+
+// Test that RunLegacyPostInstall fails if the syslinux config is
+// missing the DMTABLE variable.
+TEST_F(PostInstallTest, LegacyPostInstallMissingSyslinuxDmtable) {
+  CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.A.cfg"),
+                        "root=HDROOTA"));
+  EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
+}
+
+// Test that RunLegacyPostInstall fails if the kernel config has no "dm" arg.
+TEST_F(PostInstallTest, LegacyPostInstallMissingDmArg) {
+  kernel_config_ = "";
+  EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
 }
 
 }  // namespace
