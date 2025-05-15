@@ -4,9 +4,10 @@
 
 #include "dlp/dlp_adaptor.h"
 
+#include <poll.h>
+
 #include <map>
 #include <memory>
-#include <poll.h>
 #include <string>
 #include <utility>
 
@@ -18,11 +19,12 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/process/process_handle.h>
 #include <base/run_loop.h>
-#include "base/time/time.h"
+#include <base/test/task_environment.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
+#include "base/time/time.h"
 #include "dlp/dlp_adaptor_test_helper.h"
 #include "dlp/file_id.h"
 
@@ -379,6 +381,8 @@ class DlpAdaptorTest : public ::testing::Test {
   bool is_file_policy_restricted_;
   std::vector<std::pair<FileMetadata, RestrictionLevel>> files_restrictions_;
   std::unique_ptr<base::ScopedTempDir> database_directory_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
 
   DlpAdaptorTestHelper helper_;
 };

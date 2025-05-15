@@ -6,9 +6,15 @@
 
 #include <utility>
 
+#include <base/task/thread_pool.h>
+
 namespace dlp {
 
-DlpMetrics::DlpMetrics() : metrics_lib_(std::make_unique<MetricsLibrary>()) {}
+DlpMetrics::DlpMetrics()
+    : metrics_lib_(std::make_unique<MetricsLibrary>(
+          base::MakeRefCounted<AsynchronousMetricsWriter>(
+              base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}),
+              /*wait_on_destructor=*/false))) {}
 DlpMetrics::~DlpMetrics() = default;
 
 void DlpMetrics::SendBooleanHistogram(const std::string& name,

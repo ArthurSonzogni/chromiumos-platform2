@@ -119,10 +119,9 @@ ScopedMinijail SetupMinijail(const base::FilePath& home_path,
   minijail_enter_pivot_root(j.get(), "/mnt/empty");
   minijail_bind(j.get(), "/", "/", 0);
   minijail_bind(j.get(), "/dev", "/dev", 0);
-  minijail_bind(j.get(), "/proc", "/proc", 0);
+  minijail_bind(j.get(), "/proc", "/proc", 1);
 
   minijail_remount_mode(j.get(), MS_SLAVE);
-  minijail_remount_proc_readonly(j.get());
   minijail_mount_tmp(j.get());
   minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs", 0, nullptr);
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
@@ -134,7 +133,7 @@ ScopedMinijail SetupMinijail(const base::FilePath& home_path,
                 0);
   minijail_bind(j.get(), home_path.Append("MyFiles/Downloads").value().c_str(),
                 home_path.Append("MyFiles/Downloads").value().c_str(), 0);
-  minijail_bind(j.get(), "/var/lib/metrics", "/var/lib/metrics", 0);
+  minijail_bind(j.get(), "/var/lib/metrics", "/var/lib/metrics", 1);
 
   // Use a seccomp filter.
   minijail_parse_seccomp_filters(j.get(), kDlpSeccompPolicy);
