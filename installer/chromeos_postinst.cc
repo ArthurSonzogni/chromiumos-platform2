@@ -31,6 +31,7 @@
 #include "installer/chromeos_setimage.h"
 #include "installer/inst_util.h"
 #include "installer/metrics.h"
+#include "installer/platform.h"
 #include "installer/slow_boot_notify.h"
 
 using std::string;
@@ -492,7 +493,7 @@ void RepairPartitionTable(CgptManager& cgpt_manager) {
 // Returns false for some errors, true otherwise.
 // TODO(tbrandston): perhaps we should only return false for errors that would
 // interfere with completing install/update?
-bool ESPPostInstall(const InstallConfig& install_config) {
+bool ESPPostInstall(Platform& platform, const InstallConfig& install_config) {
   std::unique_ptr<MetricsInterface> metrics =
       MetricsInterface::GetMetricsInstance();
   // Early-return for bootloaders we don't handle here.
@@ -580,7 +581,7 @@ bool ESPPostInstall(const InstallConfig& install_config) {
       break;
 
     case BiosType::kLegacy:
-      if (!RunLegacyPostInstall(install_config)) {
+      if (!RunLegacyPostInstall(platform, install_config)) {
         LOG(ERROR) << "Legacy PostInstall failed.";
         success = false;
         break;
@@ -592,7 +593,7 @@ bool ESPPostInstall(const InstallConfig& install_config) {
       // Errors here are not necessarily fatal as the common
       // case is the machine will boot successfully from legacy.
       if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
-        if (!RunEfiPostInstall(install_config)) {
+        if (!RunEfiPostInstall(platform, install_config)) {
           LOG(WARNING) << "Ignored secondary EFI PostInstall failure.";
         }
       }
@@ -600,7 +601,7 @@ bool ESPPostInstall(const InstallConfig& install_config) {
       break;
 
     case BiosType::kEFI:
-      if (!RunEfiPostInstall(install_config)) {
+      if (!RunEfiPostInstall(platform, install_config)) {
         LOG(ERROR) << "EFI PostInstall failed.";
         success = false;
         break;
@@ -610,7 +611,7 @@ bool ESPPostInstall(const InstallConfig& install_config) {
       // devices that can boot from the USB in EFI mode with the
       // installed disk booting in legacy mode.
       if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
-        if (!RunLegacyPostInstall(install_config)) {
+        if (!RunLegacyPostInstall(platform, install_config)) {
           LOG(WARNING) << "Ignored secondary Legacy PostInstall failure.";
         }
       }
@@ -657,6 +658,8 @@ void CheckForDefaultKeyStatefulMigration(const InstallConfig& install_config) {
 //
 bool ChromeosChrootPostinst(const InstallConfig& install_config,
                             int* exit_code) {
+  PlatformImpl platform;
+
   switch (install_config.defer_update_action) {
     case DeferUpdateAction::kAuto:
     case DeferUpdateAction::kHold: {
@@ -722,7 +725,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       // For other BiosTypes, while we might boot to the new partition the files
       // on the EFI System Partition aren't yet set up to boot successfully.
       //
-      if (!ESPPostInstall(install_config)) {
+      if (!ESPPostInstall(platform, install_config)) {
         LOG(ERROR) << "ESPPostInstall failed.";
         // ESPPostInstall has failed. We don't know which changes have been made
         // or which slot they'll allow booting into. My best guess is that a

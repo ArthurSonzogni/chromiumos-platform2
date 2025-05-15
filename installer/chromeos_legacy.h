@@ -10,6 +10,8 @@
 
 #include "installer/chromeos_install_config.h"
 
+class Platform;
+
 // Attempts to update the kernel for one slot on the ESP.
 //
 // The kernel is read from <rootfs>/boot/vmlinuz and copied to
@@ -20,7 +22,8 @@ bool UpdateLegacyKernel(const InstallConfig& install_config);
 
 // Attempts to update boot files needed by the legacy bios boot
 // (syslinux config files) on the boot partition. Returns false on error.
-bool RunLegacyPostInstall(const InstallConfig& install_config);
+bool RunLegacyPostInstall(Platform& platform,
+                          const InstallConfig& install_config);
 
 // Attempts to update boot files needed by u-boot (not our secure u-boot)
 // in some development situations.
@@ -28,7 +31,7 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config);
 
 // Attempts to update boot files needed by the EFI bios boot
 // (grub config files) on the boot partition. Returns false on error.
-bool RunEfiPostInstall(const InstallConfig& install_config);
+bool RunEfiPostInstall(Platform& platform, const InstallConfig& install_config);
 
 // Copy UEFI bootloader files from the rootfs to the ESP (EFI System
 // Partition).

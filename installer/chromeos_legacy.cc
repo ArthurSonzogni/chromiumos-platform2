@@ -20,6 +20,7 @@
 
 #include "installer/efi_boot_management.h"
 #include "installer/inst_util.h"
+#include "installer/platform.h"
 
 using std::string;
 using std::vector;
@@ -163,7 +164,8 @@ string ExpandVerityArguments(const string& kernel_config,
   return kernel_config_dm;
 }
 
-bool RunLegacyPostInstall(const InstallConfig& install_config) {
+bool RunLegacyPostInstall(Platform& platform,
+                          const InstallConfig& install_config) {
   const base::FilePath root_mount(install_config.root.mount());
   const base::FilePath root_syslinux = root_mount.Append("boot/syslinux");
   const base::FilePath boot_mount(install_config.boot.mount());
@@ -179,7 +181,8 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
     return false;
   }
 
-  string kernel_config = DumpKernelConfig(install_config.kernel.device());
+  string kernel_config =
+      platform.DumpKernelConfig(install_config.kernel.device());
   base::FilePath kernel_config_root =
       base::FilePath(ExtractKernelArg(kernel_config, "root"));
 
@@ -313,9 +316,10 @@ bool StringToSlot(const std::string& slot_string, BootSlot* slot) {
 // template in the target rootfs.
 //
 // Returns true if the boot grub.cfg file was successfully updated.
-bool UpdateEfiGrubCfg(const InstallConfig& install_config) {
+bool UpdateEfiGrubCfg(Platform& platform, const InstallConfig& install_config) {
   // Of the form: PARTUUID=XXX-YYY-ZZZ
-  string kernel_config = DumpKernelConfig(install_config.kernel.device());
+  string kernel_config =
+      platform.DumpKernelConfig(install_config.kernel.device());
   string root_uuid = install_config.root.uuid();
   string kernel_config_dm = ExpandVerityArguments(kernel_config, root_uuid);
 
@@ -386,7 +390,8 @@ bool UpdateEfiGrubCfg(const InstallConfig& install_config) {
   return true;
 }
 
-bool RunEfiPostInstall(const InstallConfig& install_config) {
+bool RunEfiPostInstall(Platform& platform,
+                       const InstallConfig& install_config) {
   LOG(INFO) << "Running EfiPostInstall.";
 
   // Update the kernel we are about to use.
@@ -399,7 +404,7 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
   }
 
   // Update the grub.cfg configuration files.
-  if (!UpdateEfiGrubCfg(install_config)) {
+  if (!UpdateEfiGrubCfg(platform, install_config)) {
     return false;
   }
 
