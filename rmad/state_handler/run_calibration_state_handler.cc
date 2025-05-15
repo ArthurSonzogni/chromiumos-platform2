@@ -60,8 +60,7 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store, daemon_callback),
       vpd_utils_(std::move(vpd_utils)),
-      current_round_finished_(false),
-      is_testing_(true) {
+      current_round_finished_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::move(base_acc_utils);

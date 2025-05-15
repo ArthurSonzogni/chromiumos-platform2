@@ -90,7 +90,6 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   std::unique_ptr<VpdUtils> vpd_utils_;
   scoped_refptr<MojoServiceUtilsImpl> mojo_service_;
   bool current_round_finished_;
-  bool is_testing_ = false;
 
   base::WeakPtrFactory<RunCalibrationStateHandler> weak_factory_{this};
 };
