@@ -7,8 +7,6 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::rc::Weak;
 
-use log::debug;
-
 use crate::codec::h264::parser::MaxLongTermFrameIdx;
 use crate::codec::h264::parser::RefPicMarking;
 use crate::codec::h264::parser::Slice;
@@ -256,7 +254,7 @@ impl PictureData {
 
     /// Mark the picture as a reference picture.
     pub fn set_reference(&mut self, reference: Reference, apply_to_other_field: bool) {
-        log::debug!("Set reference of {:#?} to {:?}", self, reference);
+        log::trace!("Set reference of {:#?} to {:?}", self, reference);
         self.reference = reference;
 
         if apply_to_other_field {
@@ -332,9 +330,10 @@ impl PictureData {
         assert!(matches!(self.field, Field::Frame));
         assert!(matches!(self.field_rank, FieldRank::Single));
 
-        debug!(
+        log::debug!(
             "Splitting picture (frame_num, POC) ({:?}, {:?})",
-            self.frame_num, self.pic_order_cnt
+            self.frame_num,
+            self.pic_order_cnt
         );
 
         let second_pic_order_cnt = if self.top_field_order_cnt < self.bottom_field_order_cnt {
@@ -360,13 +359,17 @@ impl PictureData {
             ..Default::default()
         };
 
-        debug!(
+        log::debug!(
             "Split into picture (frame_num, POC) ({:?}, {:?}), field: {:?}",
-            self.frame_num, self.pic_order_cnt, self.field
+            self.frame_num,
+            self.pic_order_cnt,
+            self.field
         );
-        debug!(
+        log::debug!(
             "Split into picture (frame_num, POC) ({:?}, {:?}), field {:?}",
-            second_field.frame_num, second_field.pic_order_cnt, second_field.field
+            second_field.frame_num,
+            second_field.pic_order_cnt,
+            second_field.field
         );
 
         let first_field = Rc::new(RefCell::new(self));

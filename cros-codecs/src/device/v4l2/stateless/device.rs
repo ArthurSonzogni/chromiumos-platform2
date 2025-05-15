@@ -10,8 +10,6 @@ use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 
-use log::debug;
-
 use v4l2r::device::Device as VideoDevice;
 use v4l2r::device::DeviceConfig;
 use v4l2r::ioctl;

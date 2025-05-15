@@ -7,8 +7,6 @@ use std::cell::RefMut;
 use std::fmt;
 use std::rc::Rc;
 
-use log::debug;
-
 use crate::codec::h264::parser::MaxLongTermFrameIdx;
 use crate::codec::h264::parser::RefPicMarkingInner;
 use crate::codec::h264::parser::Sps;
@@ -221,7 +219,7 @@ impl<T: Clone> Dpb<T> {
             let discard = !pic.is_ref() && !entry.needed_for_output;
 
             if discard {
-                log::debug!("Removing unused picture {:#?}", pic);
+                log::trace!("Removing unused picture {:#?}", pic);
             }
 
             !discard
@@ -289,7 +287,7 @@ impl<T: Clone> Dpb<T> {
         // pictures
         let needed_for_output = !pic.nonexisting;
 
-        debug!(
+        log::debug!(
             "Stored picture POC {:?}, field {:?}, the DPB length is {:?}",
             pic.pic_order_cnt,
             pic.field,
@@ -388,7 +386,7 @@ impl<T: Clone> Dpb<T> {
         let handle = dpb_entry.decoded_frame.take();
         let pic = dpb_entry.pic.borrow();
 
-        debug!("Bumping picture {:#?} from the dpb", pic);
+        log::trace!("Bumping picture {:#?} from the dpb", pic);
 
         dpb_entry.needed_for_output = false;
         // Lookup the second field entry and flip as well.
@@ -408,7 +406,7 @@ impl<T: Clone> Dpb<T> {
 
     /// Drains the DPB by continuously invoking the bumping process.
     pub fn drain(&mut self) -> Vec<Option<T>> {
-        debug!("Draining the DPB.");
+        log::debug!("Draining the DPB.");
 
         let mut pics = vec![];
 
@@ -423,7 +421,7 @@ impl<T: Clone> Dpb<T> {
 
     /// Clears the DPB, dropping all the pictures.
     pub fn clear(&mut self) {
-        debug!("Clearing the DPB");
+        log::debug!("Clearing the DPB");
 
         let max_num_pics = self.max_num_pics;
         let max_num_reorder_frames = self.max_num_reorder_frames;
@@ -792,7 +790,7 @@ impl<T: Clone> Dpb<T> {
 
     #[cfg(debug_assertions)]
     fn debug_ref_list_p(ref_pic_list: &[&DpbEntry<T>], field_pic: bool) {
-        debug!(
+        log::debug!(
             "ref_list_p0: (ShortTerm|LongTerm, pic_num) {:?}",
             ref_pic_list
                 .iter()
@@ -825,7 +823,7 @@ impl<T: Clone> Dpb<T> {
 
     #[cfg(debug_assertions)]
     fn debug_ref_list_b(ref_pic_list: &[&DpbEntry<T>], ref_pic_list_name: &str) {
-        debug!(
+        log::debug!(
             "{:?}: (ShortTerm|LongTerm, (POC|LongTermPicNum)) {:?}",
             ref_pic_list_name,
             ref_pic_list
