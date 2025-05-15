@@ -167,6 +167,9 @@ const std::array kCommandLogs {
     "/usr/bin/nsenter -t1 -m /usr/bin/metrics_client -i", kRoot, kDebugfsGroup},
   // We consistently use UTC in feedback reports.
   Log{kCommand, "LOGDATE", "/bin/date --utc; /bin/date"},
+  Log{kCommand, "all_disk_stats",
+    "dbus-send --system --print-reply --fixed --dest=org.chromium.Spaced"
+    " /org/chromium/Spaced org.chromium.Spaced.GetDiskIOStats", kRoot, kRoot},
   Log{kFile, "amdgpu_gem_info", "/sys/kernel/debug/dri/0/amdgpu_gem_info",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kFile, "amdgpu_gtt_mm", "/sys/kernel/debug/dri/0/amdgpu_gtt_mm",
@@ -224,6 +227,11 @@ const std::array kCommandLogs {
     SandboxedProcess::kDefaultUser, kPstoreAccessGroup },
   Log{kFile, "cpuinfo", "/proc/cpuinfo"},
   Log{kFile, "cr50_version", "/var/cache/cr50-version"},
+  Log{kCommand, "critical_disk_stats",
+    "dbus-send --system --print-reply --fixed --dest=org.chromium.Spaced"
+    " /org/chromium/Spaced "
+    "org.chromium.Spaced.GetDiskIOStatsForPathsPrettyPrint"
+    " string:/,/home/chronos/user,/home", kRoot, kRoot},
   Log{kFile, "cros_ec_panicinfo", "/sys/kernel/debug/cros_ec/panicinfo",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
     LogTool::Encoding::kBase64},

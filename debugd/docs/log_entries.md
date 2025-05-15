@@ -10,6 +10,10 @@ what it means and how to parse it.
 
 ## LOGDATE
 
+## all_disk_stats
+
+Disk I/O stats for all block devices on the system.
+
 ## amd_pmc_idlemask
 
 Value of the SMU idlemask
@@ -208,6 +212,11 @@ See the `/proc/cpuinfo` section of the [proc(5)] man page for more details.
 ## crdyboot.log
 
 UEFI boot log for ChromeOS Flex.
+
+## critical_disk_stats
+
+Disk I/O stats for block devices assigned to the stateful partition, user home,
+and root.
 
 ## cros_ec.log
 
