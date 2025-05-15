@@ -662,15 +662,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
         return false;
       }
 
-      // For Chromebook firmware (`BiosType::kSecure`) the new partition has now
-      // been marked bootable (for most devices, see Note below) and a reboot
-      // will boot into it. Thus, it's important that any future errors in this
-      // script do not cause this script to return failure unless in factory
-      // mode.
-      //
-      // For other BiosTypes, while we might boot to the new partition the files
-      // on the EFI System Partition aren't yet set up to boot successfully.
-      //
+      // For `kLegacy` and some cases of `kEFI` we're still not set up to boot
+      // until we update files on the EFI System Partition.
       if (!ESPPostInstall(platform, install_config)) {
         LOG(ERROR) << "ESPPostInstall failed.";
         // ESPPostInstall has failed. We don't know which changes have been made
@@ -681,6 +674,13 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
         }
         return false;
       }
+
+      // NB: The new partition has now been marked bootable and a reboot will
+      // boot into it. Thus, it's important to be extra thoughtful about
+      // failures from this point on:
+      // * In factory mode it's fine to fail.
+      // * Failure during an update is handled by update engine (resets slot).
+      // * Other cases need extra consideration.
 
       if (!install_config.is_update && !install_config.is_factory_install) {
         if (USE_DEFAULT_KEY_STATEFUL && FormatMetaDataPartitionNeeded()) {
@@ -724,8 +724,6 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       if (!install_config.is_factory_install &&
           !RunBoardPostInstall(install_config.root.mount())) {
         LOG(ERROR) << "Failed to perform board specific post install script.";
-        // The comment starting "For Chromebook firmware..." says not to return
-        // failure here. Looks like we're doing it anyway?
         return false;
       }
 
