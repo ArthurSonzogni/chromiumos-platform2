@@ -44,6 +44,8 @@ bool UpdateEfiBootloaders(const InstallConfig& install_config);
 bool UpdateEfiGrubCfg(const Platform& platform,
                       const InstallConfig& install_config);
 
+bool MaybeDeleteLegacyKernels(const InstallConfig& install_config);
+
 // Valid boot slots for kernel command lines.
 enum class BootSlot { A, B };
 

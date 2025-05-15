@@ -582,6 +582,52 @@ TEST_F(RunEfiPostInstallTest, ErrorUpdateEfiGrubCfg) {
   EXPECT_FALSE(RunEfiPostInstall(platform_, install_config_));
 }
 
+class MaybeDeleteLegacyKernelsTest : public PostInstallTest {
+  void SetUp() override {
+    PostInstallTest::SetUp();
+
+    install_config_.bios_type = BiosType::kEFI;
+
+    // Create legacy kernels on the ESP.
+    CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.A"), "kern_a"));
+    CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.B"), "kern_a"));
+
+    // Create crdyboot on the ESP.
+    CHECK(base::WriteFile(esp_.Append("efi/boot/crdybootx64.efi"), "crdyboot"));
+  }
+};
+
+// Test that MaybeDeleteLegacyKernels deletes the kernels on an update
+// booted via crdyboot.
+TEST_F(MaybeDeleteLegacyKernelsTest, UpdateWithCrdyboot) {
+  install_config_.is_update = true;
+  EXPECT_TRUE(MaybeDeleteLegacyKernels(install_config_));
+
+  EXPECT_FALSE(base::PathExists(esp_.Append("syslinux/vmlinuz.A")));
+  EXPECT_FALSE(base::PathExists(esp_.Append("syslinux/vmlinuz.B")));
+}
+
+// Test that MaybeDeleteLegacyKernels does nothing if the update was not
+// booted via crdyboot.
+TEST_F(MaybeDeleteLegacyKernelsTest, UpdateWithoutCrdyboot) {
+  CHECK(brillo::DeleteFile(esp_.Append("efi/boot/crdybootx64.efi")));
+
+  install_config_.is_update = true;
+  EXPECT_TRUE(MaybeDeleteLegacyKernels(install_config_));
+
+  // Kernel was not deleted.
+  EXPECT_TRUE(base::PathExists(esp_.Append("syslinux/vmlinuz.A")));
+}
+
+// Test that MaybeDeleteLegacyKernels does nothing for fresh installs.
+TEST_F(MaybeDeleteLegacyKernelsTest, FreshInstall) {
+  install_config_.is_update = false;
+  EXPECT_TRUE(MaybeDeleteLegacyKernels(install_config_));
+
+  // Kernel was not deleted.
+  EXPECT_TRUE(base::PathExists(esp_.Append("syslinux/vmlinuz.A")));
+}
+
 class RunNonChromebookPostInstallTest : public PostInstallTest {};
 
 // Test that RunNonChromebookPostInstall fails with bios_type kSecure.
@@ -643,6 +689,24 @@ TEST_F(RunNonChromebookPostInstallTest, Uefi) {
   } else {
     // A syslinux file was not copied.
     EXPECT_FALSE(base::PathExists(esp_.Append("syslinux/syslinux.cfg")));
+  }
+}
+
+// Test that RunNonChromebookPostInstall conditionally deletes legacy
+// kernels.
+TEST_F(RunNonChromebookPostInstallTest, UefiKernelDelete) {
+  CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.A"), "kern_a"));
+  CHECK(base::WriteFile(esp_.Append("efi/boot/crdybootx64.efi"), "crdyboot"));
+  install_config_.bios_type = BiosType::kEFI;
+  install_config_.is_update = true;
+  EXPECT_TRUE(RunNonChromebookPostInstall(platform_, install_config_));
+
+  if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
+    // The kernel was deleted.
+    EXPECT_FALSE(base::PathExists(esp_.Append("syslinux/vmlinuz.A")));
+  } else {
+    // The kernel still exists.
+    EXPECT_TRUE(base::PathExists(esp_.Append("syslinux/vmlinuz.A")));
   }
 }
 

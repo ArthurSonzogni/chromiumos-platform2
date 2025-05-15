@@ -17,6 +17,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 
 #include "installer/chromeos_legacy_private.h"
 #include "installer/efi_boot_management.h"
@@ -418,6 +419,46 @@ bool RunEfiPostInstall(const Platform& platform,
   return true;
 }
 
+// If crdyboot is in use and the post install context is an update (not
+// a fresh install), delete the legacy kernel files from the ESP.
+//
+// This frees up more space on the ESP for UEFI firmware updates.
+//
+// Precondition: the boot mode must be kEFI.
+//
+// Returns true on success (including if there are no files to delete),
+// false otherwise.
+bool MaybeDeleteLegacyKernels(const InstallConfig& install_config) {
+  CHECK_EQ(install_config.bios_type, BiosType::kEFI);
+
+  // Only delete the legacy kernel for updates, not fresh installs.
+  //
+  // For installs, the user could be booting the USB in a different mode
+  // from the mode the installed system is ultimately booted in. See
+  // crrev.com/c/3389662 and the linked bugs for details.
+  //
+  // Also, fresh installs have a larger ESP already, so freeing up space
+  // is not necessary.
+  if (!install_config.is_update) {
+    return true;
+  }
+
+  // Only delete the legacy kernel if crdyboot is in use. Grub still
+  // uses the legacy kernel.
+  const base::FilePath crdyboot_path =
+      install_config.boot.mount().Append("efi/boot/crdybootx64.efi");
+  if (!base::PathExists(crdyboot_path)) {
+    return true;
+  }
+
+  const base::FilePath syslinux_dir =
+      install_config.boot.mount().Append("syslinux");
+
+  // Note: DeleteFile does not return an error if the file does not exist.
+  return brillo::DeleteFile(syslinux_dir.Append("vmlinuz.A")) &&
+         brillo::DeleteFile(syslinux_dir.Append("vmlinuz.B"));
+}
+
 bool RunNonChromebookPostInstall(const Platform& platform,
                                  const InstallConfig& install_config) {
   switch (install_config.bios_type) {
@@ -465,6 +506,11 @@ bool RunNonChromebookPostInstall(const Platform& platform,
       if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
         if (!RunLegacyPostInstall(platform, install_config)) {
           LOG(WARNING) << "Ignored secondary Legacy PostInstall failure.";
+        }
+
+        // Conditionally free up space on the ESP for UEFI firmware updates.
+        if (!MaybeDeleteLegacyKernels(install_config)) {
+          LOG(WARNING) << "Ignored MaybeDeleteLegacyKernels failure";
         }
       }
 
