@@ -16,6 +16,7 @@ use std::process::Command;
 
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEXOR_VMLINUZ_FILENAME: &str = "flexor_vmlinuz";
+const FRD_BUNDLE_INSTALL_DIR: &str = "install";
 
 const SECTOR_SIZE: BlockSize = BlockSize::BS_512;
 
@@ -108,16 +109,19 @@ fn create_esp(args: &CreateTestDisk, disk_file: &mut File) -> Result<()> {
     fatfs::format_volume(&mut view, FormatVolumeOptions::new())?;
 
     // Add files to the filesystem.
+    let frd_bundle_install_dir = args.frd_bundle.join(FRD_BUNDLE_INSTALL_DIR);
     let files_to_copy = ["bootx64.efi", "crdybootx64.efi", "crdybootx64.sig"];
     let fs = FileSystem::new(view, FsOptions::new())?;
     let root = fs.root_dir();
     let boot = root.create_dir("EFI")?.create_dir("BOOT")?;
     for file_name in files_to_copy {
-        write_to_fatfs(
-            &boot,
-            file_name,
-            &args.frd_bundle.join("install").join(file_name),
-        )?;
+        write_to_fatfs(&boot, file_name, &frd_bundle_install_dir.join(file_name))?;
+    }
+
+    // Also grab crdyboot_verbose if it's there.
+    let crdyboot_verbose = frd_bundle_install_dir.join("crdyboot_verbose");
+    if crdyboot_verbose.exists() {
+        write_to_fatfs(&boot, "crdyboot_verbose", &crdyboot_verbose)?;
     }
 
     Ok(())
@@ -141,7 +145,7 @@ fn create_flexor_data_partition(args: &CreateTestDisk, disk_file: &mut File) -> 
         write_to_fatfs(
             &root,
             file_name,
-            &args.frd_bundle.join("install").join(file_name),
+            &args.frd_bundle.join(FRD_BUNDLE_INSTALL_DIR).join(file_name),
         )?;
     }
 
