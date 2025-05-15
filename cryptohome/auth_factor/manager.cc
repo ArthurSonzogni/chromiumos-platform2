@@ -445,6 +445,8 @@ AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
   auto encrypted_uss = uss_manager_->LoadEncrypted(obfuscated_username);
   if (encrypted_uss.ok()) {
     uss_labels = (*encrypted_uss)->WrappedMainKeyIds();
+  } else {
+    LOG(ERROR) << "Failed to load encrypted USS " << encrypted_uss.status();
   }
 
   // Load all of the USS-based auth factors.
