@@ -11,6 +11,8 @@
 
 #include "installer/inst_util.h"
 
+class Platform;
+
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum class BiosType {
@@ -58,7 +60,7 @@ class Partition {
   // If the device is /dev/sda3 the number is 3
   PartitionNum number() const { return GetPartitionFromPartitionDev(device()); }
 
-  virtual std::string uuid() const;
+  virtual std::string uuid(const Platform& platform) const;
 
   // The mount point for this device or "" if unmounted/unknown
   base::FilePath mount() const { return mount_; }

@@ -22,6 +22,13 @@ using ::testing::Return;
 
 namespace {
 
+constexpr Guid kRootAGuid = {{{0xcc6f2e74,
+                               0x8803,
+                               0x7843,
+                               0xb6,
+                               0x74,
+                               {0x84, 0x81, 0xef, 0x4c, 0xf6, 0x73}}}};
+
 std::string ReadFileToString(const base::FilePath& path) {
   std::string contents;
   CHECK(base::ReadFileToString(path, &contents));
@@ -364,10 +371,10 @@ class PostInstallTest : public ::testing::Test {
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
 
-    install_config_.root =
-        Partition(base::FilePath(), temp_dir_.GetPath().Append("root"));
-    install_config_.boot =
-        Partition(base::FilePath(), temp_dir_.GetPath().Append("boot"));
+    install_config_.root = Partition(base::FilePath("/dev/sda3"),
+                                     temp_dir_.GetPath().Append("root"));
+    install_config_.boot = Partition(base::FilePath("/dev/sda12"),
+                                     temp_dir_.GetPath().Append("boot"));
     install_config_.bios_type = BiosType::kLegacy;
     install_config_.slot = "A";
 
@@ -390,6 +397,9 @@ class PostInstallTest : public ::testing::Test {
     EXPECT_CALL(platform_, DumpKernelConfig(_)).WillRepeatedly([this]() {
       return kernel_config_;
     });
+
+    EXPECT_CALL(platform_, GetPartitionUniqueId(_, PartitionNum::ROOT_A))
+        .WillRepeatedly(Return(kRootAGuid));
   }
 
  protected:
@@ -412,6 +422,10 @@ TEST_F(PostInstallTest, LegacyPostInstallSuccess) {
   // Syslinux files were copied.
   EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/syslinux.cfg")),
             "syslinux_cfg");
+  // Syslinux root config variables were updated as expected.
+  EXPECT_EQ(
+      ReadFileToString(esp_.Append("syslinux/root.A.cfg")),
+      "root=PARTUUID=CC6F2E74-8803-7843-B674-8481EF4CF673 dm=\"dm args\"");
   // Kernel was copied.
   EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/vmlinuz.A")), "vmlinuz");
 }

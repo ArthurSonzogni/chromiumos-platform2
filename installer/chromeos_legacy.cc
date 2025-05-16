@@ -212,14 +212,14 @@ bool RunLegacyPostInstall(const Platform& platform,
   }
 
   // Insert the proper root device for non-verity boots
-  const string root_opt = "PARTUUID=" + install_config.root.uuid();
+  const string root_opt = "PARTUUID=" + install_config.root.uuid(platform);
   if (!ReplaceInFile("HDROOT" + install_config.slot, root_opt,
                      new_root_cfg_file)) {
     return false;
   }
 
   string kernel_config_dm =
-      ExpandVerityArguments(kernel_config, install_config.root.uuid());
+      ExpandVerityArguments(kernel_config, install_config.root.uuid(platform));
 
   if (kernel_config_dm.empty()) {
     LOG(ERROR) << "Failed to extract Verity arguments.";
@@ -321,7 +321,7 @@ bool UpdateEfiGrubCfg(const Platform& platform,
   // Of the form: PARTUUID=XXX-YYY-ZZZ
   string kernel_config =
       platform.DumpKernelConfig(install_config.kernel.device());
-  string root_uuid = install_config.root.uuid();
+  string root_uuid = install_config.root.uuid(platform);
   string kernel_config_dm = ExpandVerityArguments(kernel_config, root_uuid);
 
   BootSlot slot;

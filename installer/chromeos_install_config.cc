@@ -9,6 +9,7 @@
 #include <base/logging.h>
 
 #include "installer/cgpt_manager.h"
+#include "installer/platform.h"
 
 using std::string;
 
@@ -63,16 +64,14 @@ void GuidToStr(const Guid* guid, char* str, unsigned int buflen) {
            guid->u.Uuid.node[3], guid->u.Uuid.node[4], guid->u.Uuid.node[5]);
 }
 
-string Partition::uuid() const {
-  CgptManager cgpt(base_device());
-  Guid guid;
-
-  if (cgpt.GetPartitionUniqueId(number(), &guid) != CgptErrorCode::kSuccess) {
+string Partition::uuid(const Platform& platform) const {
+  const auto guid = platform.GetPartitionUniqueId(base_device(), number());
+  if (!guid.has_value()) {
     LOG(ERROR) << "CgptManager failed to get guid for " << number();
     return "";
   }
 
   char guid_str[GUID_STRLEN];
-  GuidToStr(&guid, guid_str, GUID_STRLEN);
+  GuidToStr(&guid.value(), guid_str, GUID_STRLEN);
   return guid_str;
 }
