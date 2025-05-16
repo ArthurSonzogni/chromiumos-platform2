@@ -207,6 +207,55 @@ TEST_F(EfiGrubCfgTest, ReplaceKernelCommand) {
   EXPECT_EQ(cfg.ToString(), base::JoinString(lines, "\n"));
 }
 
+class PostInstallTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+
+    install_config_.root = Partition(base::FilePath("/dev/sda3"),
+                                     temp_dir_.GetPath().Append("root"));
+    install_config_.boot = Partition(base::FilePath("/dev/sda12"),
+                                     temp_dir_.GetPath().Append("boot"));
+    install_config_.bios_type = BiosType::kLegacy;
+    install_config_.slot = "A";
+
+    rootfs_boot_ = install_config_.root.mount().Append("boot");
+    esp_ = install_config_.boot.mount();
+
+    CHECK(base::CreateDirectory(rootfs_boot_.Append("syslinux")));
+    CHECK(base::CreateDirectory(esp_.Append("syslinux")));
+
+    // Create source kernel.
+    CHECK(base::WriteFile(rootfs_boot_.Append("vmlinuz"), "vmlinuz"));
+    // Create syslinux configs.
+    CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.A.cfg"),
+                          "root=HDROOTA dm=\"DMTABLEA\""));
+    CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.B.cfg"),
+                          "root=HDROOTB dm=\"DMTABLEB\""));
+    CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/syslinux.cfg"),
+                          "syslinux_cfg"));
+
+    EXPECT_CALL(platform_, DumpKernelConfig(_)).WillRepeatedly([this]() {
+      return kernel_config_;
+    });
+
+    EXPECT_CALL(platform_, GetPartitionUniqueId(_, PartitionNum::ROOT_A))
+        .WillRepeatedly(Return(kRootAGuid));
+  }
+
+ protected:
+  base::ScopedTempDir temp_dir_;
+  InstallConfig install_config_;
+  MockPlatform platform_;
+
+  // Path of the `<rootfs>/boot` directory.
+  base::FilePath rootfs_boot_;
+  // Path of the ESP mount point.
+  base::FilePath esp_;
+
+  std::string kernel_config_{"dm=\"dm args\""};
+};
+
 class UpdateEfiBootloadersTest : public ::testing::Test {
  public:
   void SetUp() override {
@@ -365,55 +414,6 @@ TEST_F(UpdateLegacyKernelTest, LegacyInstallCopy) {
   EXPECT_TRUE(UpdateLegacyKernel(install_config_));
   EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.A")), "new");
 }
-
-class PostInstallTest : public ::testing::Test {
- public:
-  void SetUp() override {
-    CHECK(temp_dir_.CreateUniqueTempDir());
-
-    install_config_.root = Partition(base::FilePath("/dev/sda3"),
-                                     temp_dir_.GetPath().Append("root"));
-    install_config_.boot = Partition(base::FilePath("/dev/sda12"),
-                                     temp_dir_.GetPath().Append("boot"));
-    install_config_.bios_type = BiosType::kLegacy;
-    install_config_.slot = "A";
-
-    rootfs_boot_ = install_config_.root.mount().Append("boot");
-    esp_ = install_config_.boot.mount();
-
-    CHECK(base::CreateDirectory(rootfs_boot_.Append("syslinux")));
-    CHECK(base::CreateDirectory(esp_.Append("syslinux")));
-
-    // Create source kernel.
-    CHECK(base::WriteFile(rootfs_boot_.Append("vmlinuz"), "vmlinuz"));
-    // Create syslinux configs.
-    CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.A.cfg"),
-                          "root=HDROOTA dm=\"DMTABLEA\""));
-    CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.B.cfg"),
-                          "root=HDROOTB dm=\"DMTABLEB\""));
-    CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/syslinux.cfg"),
-                          "syslinux_cfg"));
-
-    EXPECT_CALL(platform_, DumpKernelConfig(_)).WillRepeatedly([this]() {
-      return kernel_config_;
-    });
-
-    EXPECT_CALL(platform_, GetPartitionUniqueId(_, PartitionNum::ROOT_A))
-        .WillRepeatedly(Return(kRootAGuid));
-  }
-
- protected:
-  base::ScopedTempDir temp_dir_;
-  InstallConfig install_config_;
-  MockPlatform platform_;
-
-  // Path of the `<rootfs>/boot` directory.
-  base::FilePath rootfs_boot_;
-  // Path of the ESP mount point.
-  base::FilePath esp_;
-
-  std::string kernel_config_{"dm=\"dm args\""};
-};
 
 // Test successful call to RunLegacyPostInstall.
 TEST_F(PostInstallTest, LegacyPostInstallSuccess) {
