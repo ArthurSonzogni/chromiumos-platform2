@@ -307,61 +307,36 @@ TEST_F(UpdateEfiBootloadersTest, InvalidDestDir) {
   EXPECT_FALSE(UpdateEfiBootloaders(install_config_));
 }
 
-class UpdateLegacyKernelTest : public ::testing::Test {
- public:
-  void SetUp() override {
-    CHECK(temp_dir_.CreateUniqueTempDir());
-
-    const auto root_dir = temp_dir_.GetPath().Append("root");
-    const auto boot_dir = temp_dir_.GetPath().Append("boot");
-    install_config_.root = Partition(base::FilePath(), root_dir);
-    install_config_.boot = Partition(base::FilePath(), boot_dir);
-    install_config_.bios_type = BiosType::kLegacy;
-    install_config_.slot = "A";
-
-    src_dir_ = root_dir.Append("boot");
-    dst_dir_ = boot_dir.Append("syslinux");
-
-    CHECK(base::CreateDirectory(src_dir_));
-    CHECK(base::CreateDirectory(dst_dir_));
-  }
-
- protected:
-  base::ScopedTempDir temp_dir_;
-  InstallConfig install_config_;
-  base::FilePath src_dir_;
-  base::FilePath dst_dir_;
-};
+class UpdateLegacyKernelTest : public PostInstallTest {};
 
 // Test a successful slot-A update.
 TEST_F(UpdateLegacyKernelTest, SlotA) {
   install_config_.slot = "A";
-  CHECK(base::WriteFile(src_dir_.Append("vmlinuz"), "new"));
-  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
-  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.B"), "kern_b_old"));
+  CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.A"), "kern_a_old"));
+  CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.B"), "kern_b_old"));
 
   EXPECT_TRUE(UpdateLegacyKernel(install_config_));
   // "A" kernel updated, "B" unchanged.
-  EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.A")), "new");
-  EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.B")), "kern_b_old");
+  EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/vmlinuz.A")), "vmlinuz");
+  EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/vmlinuz.B")), "kern_b_old");
 }
 
 // Test a successful slot-B update.
 TEST_F(UpdateLegacyKernelTest, SlotB) {
   install_config_.slot = "B";
-  CHECK(base::WriteFile(src_dir_.Append("vmlinuz"), "new"));
-  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
-  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.B"), "kern_b_old"));
+  CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.A"), "kern_a_old"));
+  CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.B"), "kern_b_old"));
 
   EXPECT_TRUE(UpdateLegacyKernel(install_config_));
   // "B" kernel updated, "A" unchanged.
-  EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.A")), "kern_a_old");
-  EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.B")), "new");
+  EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/vmlinuz.A")), "kern_a_old");
+  EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/vmlinuz.B")), "vmlinuz");
 }
 
 // Test that an update fails if the source kernel is missing.
 TEST_F(UpdateLegacyKernelTest, ErrorMissingSource) {
-  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("vmlinuz")));
+  CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.A"), "kern_a_old"));
   EXPECT_FALSE(UpdateLegacyKernel(install_config_));
 }
 
@@ -370,7 +345,8 @@ TEST_F(UpdateLegacyKernelTest, ErrorMissingSource) {
 TEST_F(UpdateLegacyKernelTest, MissingSourceLegacyInstall) {
   install_config_.bios_type = BiosType::kLegacy;
   install_config_.is_install = true;
-  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("vmlinuz")));
+  CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.A"), "kern_a_old"));
 
   EXPECT_TRUE(UpdateLegacyKernel(install_config_));
 }
@@ -380,7 +356,8 @@ TEST_F(UpdateLegacyKernelTest, MissingSourceLegacyInstall) {
 TEST_F(UpdateLegacyKernelTest, MissingSourceEfiInstall) {
   install_config_.bios_type = BiosType::kEFI;
   install_config_.is_install = true;
-  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("vmlinuz")));
+  CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.A"), "kern_a_old"));
 
   EXPECT_TRUE(UpdateLegacyKernel(install_config_));
 }
@@ -390,11 +367,10 @@ TEST_F(UpdateLegacyKernelTest, MissingSourceEfiInstall) {
 TEST_F(UpdateLegacyKernelTest, LegacyInstallCopy) {
   install_config_.bios_type = BiosType::kLegacy;
   install_config_.is_install = true;
-  CHECK(base::WriteFile(src_dir_.Append("vmlinuz"), "new"));
-  CHECK(base::WriteFile(dst_dir_.Append("vmlinuz.A"), "kern_a_old"));
+  CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.A"), "kern_a_old"));
 
   EXPECT_TRUE(UpdateLegacyKernel(install_config_));
-  EXPECT_EQ(ReadFileToString(dst_dir_.Append("vmlinuz.A")), "new");
+  EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/vmlinuz.A")), "vmlinuz");
 }
 
 // Test successful call to RunLegacyPostInstall.
