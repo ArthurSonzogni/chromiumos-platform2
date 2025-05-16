@@ -6,6 +6,7 @@
 #define SHILL_NETWORK_MOCK_CONNECTION_DIAGNOSTICS_H_
 
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -38,7 +39,7 @@ class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
               (std::string_view iface_name,
                int iface_index,
                net_base::IPFamily ip_family,
-               const net_base::IPAddress& gateway,
+               std::optional<net_base::IPAddress> gateway,
                const std::vector<net_base::IPAddress>& dns_list,
                std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
                std::string_view logging_tag,

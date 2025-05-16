@@ -70,7 +70,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     std::string_view iface_name,
     int iface_index,
     net_base::IPFamily ip_family,
-    const net_base::IPAddress& gateway,
+    std::optional<net_base::IPAddress> gateway,
     const std::vector<net_base::IPAddress>& dns_list,
     std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
     std::string_view logging_tag,
@@ -106,11 +106,29 @@ void ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
 
   LOG(INFO) << logging_tag_ << " " << __func__ << ": Starting " << ip_family_
             << " diagnostics for " << url.ToString();
-  running_ = true;
 
-  StartPingDiagnostic(Type::kPingGateway, gateway_);
-  StartDNSServerPingDiagnostic();
-  StartHostDiagnostic(url);
+  if (gateway_) {
+    running_ = true;
+    StartPingDiagnostic(Type::kPingGateway, *gateway_);
+  } else {
+    LogEvent(AssignDiagnosticId(Type::kPingGateway, "Pinging gateway"),
+             Type::kPingGateway, Result::kSuccess,
+             "Skipped because gateway is not defined");
+  }
+
+  if (dns_list_.size() > 0) {
+    running_ = true;
+    StartDNSServerPingDiagnostic();
+    StartHostDiagnostic(url);
+  } else {
+    LogEvent(AssignDiagnosticId(Type::kPingDNSServers, "Pinging DNS servers"),
+             Type::kPingDNSServers, Result::kSuccess,
+             "Skipped because DNS servers are not defined");
+    LogEvent(AssignDiagnosticId(Type::kPingTargetServer,
+                                "Pinging " + url.ToString()),
+             Type::kPingTargetServer, Result::kSuccess,
+             "Skipped because DNS servers are not defined");
+  }
 }
 
 void ConnectionDiagnostics::Stop() {
@@ -200,13 +218,6 @@ void ConnectionDiagnostics::StartDNSServerPingDiagnostic() {
   // get id for this operation
   int dns_diag_id =
       AssignDiagnosticId(Type::kPingDNSServers, "Ping DNS servers");
-
-  if (dns_list_.empty()) {
-    LogEvent(dns_diag_id, Type::kPingDNSServers, Result::kFailure,
-             "No DNS servers for this connection");
-    return;
-  }
-
   dispatcher_->PostTask(
       FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
                                 weak_ptr_factory_.GetWeakPtr(), dns_diag_id));
@@ -377,7 +388,7 @@ std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
     std::string_view iface_name,
     int iface_index,
     net_base::IPFamily ip_family,
-    const net_base::IPAddress& gateway,
+    std::optional<net_base::IPAddress> gateway,
     const std::vector<net_base::IPAddress>& dns_list,
     std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
     std::string_view logging_tag,

@@ -5,6 +5,7 @@
 #include "shill/network/network_monitor.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -159,7 +160,9 @@ class NetworkMonitorTest : public ::testing::Test {
 
   // Starts NetworkMonitor and waits until PortalDetector returns |result|.
   void StartWithPortalDetectorResultReturned(
-      bool expect_http_only, const PortalDetector::Result& result) {
+      bool expect_http_only,
+      bool expect_connection_diagnostics,
+      const PortalDetector::Result& result) {
     EXPECT_CALL(
         *mock_portal_detector_,
         Start(expect_http_only, net_base::IPFamily::kIPv4, kIPv4DnsList, _))
@@ -172,6 +175,42 @@ class NetworkMonitorTest : public ::testing::Test {
                 OnNetworkMonitorResult(
                     NetworkMonitor::Result::FromPortalDetectorResult(result)))
         .Times(1);
+    if (expect_connection_diagnostics) {
+      EXPECT_CALL(*mock_connection_diagnostics_factory_,
+                  Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv4,
+                         config_.ipv4_gateway
+                             ? std::make_optional(
+                                   net_base::IPAddress(*config_.ipv4_gateway))
+                             : std::nullopt,
+                         config_.dns_servers,
+                         /*factory=*/_, kLoggingTag,
+                         /*dispatcher=*/_))
+          .WillOnce([]() {
+            auto mock_connection_diagnostics =
+                std::make_unique<MockConnectionDiagnostics>();
+            EXPECT_CALL(*mock_connection_diagnostics, Start);
+            ON_CALL(*mock_connection_diagnostics, IsRunning)
+                .WillByDefault(Return(true));
+            return mock_connection_diagnostics;
+          });
+      EXPECT_CALL(*mock_connection_diagnostics_factory_,
+                  Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv6,
+                         config_.ipv6_gateway
+                             ? std::make_optional(
+                                   net_base::IPAddress(*config_.ipv6_gateway))
+                             : std::nullopt,
+                         config_.dns_servers,
+                         /*factory=*/_, kLoggingTag,
+                         /*dispatcher=*/_))
+          .WillOnce([]() {
+            auto mock_connection_diagnostics =
+                std::make_unique<MockConnectionDiagnostics>();
+            EXPECT_CALL(*mock_connection_diagnostics, Start);
+            ON_CALL(*mock_connection_diagnostics, IsRunning)
+                .WillByDefault(Return(true));
+            return mock_connection_diagnostics;
+          });
+    }
 
     StartAndExpectResult(NetworkMonitor::ValidationReason::kDBusRequest,
                          /*is_success=*/true);
@@ -288,7 +327,9 @@ TEST_F(NetworkMonitorTest, StartWithResultReturned) {
               SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
                               kTechnology, 204));
 
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/false,
+                                        result);
 }
 
 TEST_F(NetworkMonitorTest, StartWithHTTPOnly) {
@@ -318,7 +359,9 @@ TEST_F(NetworkMonitorTest, StartWithHTTPOnly) {
 
   network_monitor_->SetValidationMode(
       NetworkMonitor::ValidationMode::kHTTPOnly);
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/true, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/true,
+                                        /*expect_connection_diagnostics=*/false,
+                                        result);
 }
 
 TEST_F(NetworkMonitorTest, Stop) {
@@ -397,14 +440,9 @@ TEST_F(NetworkMonitorTest, MetricsWithPartialConnectivity) {
       .Times(0);
 
   // ConnectionDiagnostics should be started when the result is kNoConnectivity.
-  EXPECT_CALL(*mock_connection_diagnostics_factory_, Create).WillOnce([]() {
-    auto mock_connection_diagnostics =
-        std::make_unique<MockConnectionDiagnostics>();
-    EXPECT_CALL(*mock_connection_diagnostics, Start);
-    return mock_connection_diagnostics;
-  });
-
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/true,
+                                        result);
 }
 
 TEST_F(NetworkMonitorTest, MetricsWithNoConnectivity) {
@@ -422,15 +460,9 @@ TEST_F(NetworkMonitorTest, MetricsWithNoConnectivity) {
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration,
                                   kTechnology, 200));
 
-  // ConnectionDiagnostics should be started when the result is kNoConnectivity.
-  EXPECT_CALL(*mock_connection_diagnostics_factory_, Create).WillOnce([]() {
-    auto mock_connection_diagnostics =
-        std::make_unique<MockConnectionDiagnostics>();
-    EXPECT_CALL(*mock_connection_diagnostics, Start);
-    return mock_connection_diagnostics;
-  });
-
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/true,
+                                        result);
 }
 
 TEST_F(NetworkMonitorTest, MetricsWithInternetConnectivity) {
@@ -462,7 +494,9 @@ TEST_F(NetworkMonitorTest, MetricsWithInternetConnectivity) {
       SendToUMA(Metrics::kPortalDetectorHTTPResponseContentLength, _, _))
       .Times(0);
 
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/false,
+                                        result);
 }
 
 TEST_F(NetworkMonitorTest, MetricsWithPortalRedirect) {
@@ -495,7 +529,9 @@ TEST_F(NetworkMonitorTest, MetricsWithPortalRedirect) {
       SendToUMA(Metrics::kPortalDetectorHTTPResponseContentLength, _, _))
       .Times(0);
 
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/false,
+                                        result);
 }
 
 TEST_F(NetworkMonitorTest, MetricsWithPortalInvalidRedirect) {
@@ -522,15 +558,9 @@ TEST_F(NetworkMonitorTest, MetricsWithPortalInvalidRedirect) {
                   Metrics::kPortalDetectorHTTPResponseCode, Technology::kWiFi,
                   Metrics::kPortalDetectorHTTPResponseCodeIncompleteRedirect));
 
-  // ConnectionDiagnostics should be started when the result is kNoConnectivity.
-  EXPECT_CALL(*mock_connection_diagnostics_factory_, Create).WillOnce([]() {
-    auto mock_connection_diagnostics =
-        std::make_unique<MockConnectionDiagnostics>();
-    EXPECT_CALL(*mock_connection_diagnostics, Start);
-    return mock_connection_diagnostics;
-  });
-
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/true,
+                                        result);
 }
 
 TEST(NetworkMonitorResultTest, FromCapportStatusIsCaptive) {
@@ -660,21 +690,15 @@ TEST_F(NetworkMonitorTest, ConnectionDiagnosticsIsNotRestartedUntilFinished) {
   ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
 
-  // ConnectionDiagnostics should be started when the result is kNoConnectivity.
-  EXPECT_CALL(*mock_connection_diagnostics_factory_, Create).WillOnce([]() {
-    auto mock_connection_diagnostics =
-        std::make_unique<MockConnectionDiagnostics>();
-    EXPECT_CALL(*mock_connection_diagnostics, Start);
-    ON_CALL(*mock_connection_diagnostics, IsRunning)
-        .WillByDefault(Return(true));
-    return mock_connection_diagnostics;
-  });
-
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/true,
+                                        result);
 
   // A second network validation attempt does not retrigger a new
   // ConnectionDiagnostics if the previous one is still running.
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/false,
+                                        result);
 }
 
 TEST_F(NetworkMonitorTest, ConnectionDiagnosticsIsRestartedIfFinished) {
@@ -687,22 +711,15 @@ TEST_F(NetworkMonitorTest, ConnectionDiagnosticsIsRestartedIfFinished) {
   ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
 
-  // ConnectionDiagnostics should be started when the result is kNoConnectivity.
-  EXPECT_CALL(*mock_connection_diagnostics_factory_, Create)
-      .WillRepeatedly([]() {
-        auto mock_connection_diagnostics =
-            std::make_unique<MockConnectionDiagnostics>();
-        EXPECT_CALL(*mock_connection_diagnostics, Start);
-        ON_CALL(*mock_connection_diagnostics, IsRunning)
-            .WillByDefault(Return(false));
-        return mock_connection_diagnostics;
-      });
-
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/true,
+                                        result);
 
   // A second network validation attempt will retrigger a new
   // ConnectionDiagnostics if the previous one has finished.
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/false,
+                                        result);
 }
 
 TEST_F(NetworkMonitorTest, DualStackConnectionDiagnostics) {
@@ -720,27 +737,9 @@ TEST_F(NetworkMonitorTest, DualStackConnectionDiagnostics) {
   ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
 
-  // ConnectionDiagnostics should be started for both IPv4 and IPv6.
-  EXPECT_CALL(*mock_connection_diagnostics_factory_,
-              Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv4,
-                     net_base::IPAddress(kIPv4GatewayAddress), dns, _, _, _))
-      .WillRepeatedly([]() {
-        auto mock_connection_diagnostics =
-            std::make_unique<MockConnectionDiagnostics>();
-        EXPECT_CALL(*mock_connection_diagnostics, Start);
-        return mock_connection_diagnostics;
-      });
-  EXPECT_CALL(*mock_connection_diagnostics_factory_,
-              Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv6,
-                     net_base::IPAddress(kIPv6GatewayAddress), dns, _, _, _))
-      .WillRepeatedly([]() {
-        auto mock_connection_diagnostics =
-            std::make_unique<MockConnectionDiagnostics>();
-        EXPECT_CALL(*mock_connection_diagnostics, Start);
-        return mock_connection_diagnostics;
-      });
-
-  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false,
+                                        /*expect_connection_diagnostics=*/true,
+                                        result);
 }
 
 }  // namespace

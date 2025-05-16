@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -350,25 +351,17 @@ void NetworkMonitor::StartIPv4ConnectionDiagnostics(
               << ": IPv4 ConnectionDiagnostics already running";
     return;
   }
-
   if (!network_config.ipv4_address) {
-    LOG(INFO)
-        << logging_tag_ << " " << __func__
-        << ": No IPv4 address configured, aborting connection diagnostics";
+    LOG(INFO) << logging_tag_ << " " << __func__
+              << ": Skipping because no IPv4 address is configured";
     return;
   }
-
-  if (!network_config.ipv4_gateway) {
-    // TODO(b/229309479): Support optional gateway argument.
-    LOG(WARNING)
-        << logging_tag_ << " " << __func__
-        << ": IPv4 Gateway unavailable, aborting connection diagnostics";
-    return;
+  std::optional<net_base::IPAddress> gateway = std::nullopt;
+  if (network_config.ipv4_gateway) {
+    gateway = net_base::IPAddress(*network_config.ipv4_gateway);
   }
-
   ipv4_connection_diagnostics_ = connection_diagnostics_factory_->Create(
-      interface_, interface_index_, net_base::IPFamily::kIPv4,
-      net_base::IPAddress(*network_config.ipv4_gateway),
+      interface_, interface_index_, net_base::IPFamily::kIPv4, gateway,
       network_config.dns_servers,
       std::make_unique<net_base::DNSClientFactory>(), logging_tag_,
       dispatcher_);
@@ -385,20 +378,15 @@ void NetworkMonitor::StartIPv6ConnectionDiagnostics(
               << ": IPv6 ConnectionDiagnostics already running";
     return;
   }
-
   // For IPv6, do no check global addresses. It is possible to have no global
   // IPv6 address but still be able to reach the gateway with the link local
   // address.
-  if (!network_config.ipv6_gateway) {
-    // TODO(b/229309479): Support optional gateway argument.
-    LOG(INFO) << logging_tag_ << " " << __func__
-              << ": IPv6 Gateway unavailable, aborting connection diagnostics";
-    return;
+  std::optional<net_base::IPAddress> gateway = std::nullopt;
+  if (network_config.ipv6_gateway) {
+    gateway = net_base::IPAddress(*network_config.ipv6_gateway);
   }
-
   ipv6_connection_diagnostics_ = connection_diagnostics_factory_->Create(
-      interface_, interface_index_, net_base::IPFamily::kIPv6,
-      net_base::IPAddress(*network_config.ipv6_gateway),
+      interface_, interface_index_, net_base::IPFamily::kIPv6, gateway,
       network_config.dns_servers,
       std::make_unique<net_base::DNSClientFactory>(), logging_tag_,
       dispatcher_);
@@ -412,7 +400,8 @@ void NetworkMonitor::StartIPv4PortalDetectorTest(
     return;
   }
   if (!network_config.ipv4_address) {
-    LOG(INFO) << logging_tag_ << " " << __func__ << ": no IPv4 Address";
+    LOG(INFO) << logging_tag_ << " " << __func__
+              << ": Skipping because no IPv4 address is configured";
     return;
   }
   std::vector<net_base::IPAddress> dns_list;
@@ -422,7 +411,8 @@ void NetworkMonitor::StartIPv4PortalDetectorTest(
     }
   }
   if (dns_list.empty()) {
-    LOG(INFO) << logging_tag_ << " " << __func__ << ": No IPv4 DNS servers";
+    LOG(INFO) << logging_tag_ << " " << __func__
+              << ": Skipping because no IPv4 DNS servers are configured";
     return;
   }
   LOG(INFO) << logging_tag_ << " " << __func__;
@@ -451,7 +441,8 @@ void NetworkMonitor::StartIPv6PortalDetectorTest(
     return;
   }
   if (network_config.ipv6_addresses.empty()) {
-    LOG(INFO) << logging_tag_ << " " << __func__ << ": no IPv6 Address";
+    LOG(INFO) << logging_tag_ << " " << __func__
+              << ": Skipping because no IPv6 address is configured";
     return;
   }
   std::vector<net_base::IPAddress> dns_list;
@@ -461,7 +452,8 @@ void NetworkMonitor::StartIPv6PortalDetectorTest(
     }
   }
   if (dns_list.empty()) {
-    LOG(INFO) << logging_tag_ << " " << __func__ << ": No IPv6 DNS servers";
+    LOG(INFO) << logging_tag_ << " " << __func__
+              << ": Skipping because no IPv6 DNS servers are configured";
     return;
   }
   LOG(INFO) << logging_tag_ << " " << __func__;
