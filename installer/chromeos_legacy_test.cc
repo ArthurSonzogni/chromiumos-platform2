@@ -382,6 +382,8 @@ class PostInstallTest : public ::testing::Test {
     // Create syslinux configs.
     CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.A.cfg"),
                           "root=HDROOTA dm=\"DMTABLEA\""));
+    CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.B.cfg"),
+                          "root=HDROOTB dm=\"DMTABLEB\""));
     CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/syslinux.cfg"),
                           "syslinux_cfg"));
 
@@ -414,12 +416,23 @@ TEST_F(PostInstallTest, LegacyPostInstallSuccess) {
   EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/vmlinuz.A")), "vmlinuz");
 }
 
+// Test that RunLegacyPostInstall does not clobber existing syslinux
+// files when copying.
+TEST_F(PostInstallTest, LegacyPostInstallNoClobber) {
+  // Create a syslinux config file that should not be clobbered by
+  // RunLegacyPostInstall.
+  CHECK(base::WriteFile(esp_.Append("syslinux/root.B.cfg"), "old B cfg"));
+
+  EXPECT_TRUE(RunLegacyPostInstall(platform_, install_config_));
+
+  // Existing config not clobbered.
+  CHECK(base::WriteFile(esp_.Append("syslinux/root.B.cfg"), "old B cfg"));
+}
+
 // Test that RunLegacyPostInstall fails if the source syslinux directory
 // is missing.
 TEST_F(PostInstallTest, LegacyPostInstallMissingSourceSyslinuxDir) {
-  CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux/root.A.cfg")));
-  CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux/syslinux.cfg")));
-  CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux")));
+  CHECK(brillo::DeletePathRecursively(rootfs_boot_.Append("syslinux")));
   EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
 }
 
