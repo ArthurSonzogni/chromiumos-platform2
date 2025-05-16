@@ -9,8 +9,7 @@
 
 namespace fbpreprocessor {
 
-FakeSessionStateManager::FakeSessionStateManager(Manager* manager)
-    : manager_(manager) {}
+FakeSessionStateManager::FakeSessionStateManager() = default;
 
 void FakeSessionStateManager::AddObserver(
     SessionStateManagerInterface::Observer* observer) {

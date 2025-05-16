@@ -20,13 +20,13 @@ class FakeSessionStateManager
     : public SessionStateManagerInterface,
       public PlatformFeaturesClientInterface::Observer {
  public:
-  explicit FakeSessionStateManager(Manager* manager);
+  FakeSessionStateManager();
   ~FakeSessionStateManager() override = default;
 
   void AddObserver(SessionStateManagerInterface::Observer* observer) override;
   void RemoveObserver(
       SessionStateManagerInterface::Observer* observer) override;
-  void OnFeatureChanged(bool allowed) override{};
+  void OnFeatureChanged(bool allowed) override {};
 
   // The "real" daemon receives D-Bus signals when the user logs in. Since we
   // don't have D-Bus in unit tests, call this function instead to simulate what
@@ -39,9 +39,6 @@ class FakeSessionStateManager
   void SimulateLogout();
 
  private:
-  // Pointer to the Manager class that instantiates all the main modules.
-  Manager* manager_;
-
   // List of SessionStateManager observers
   base::ObserverList<SessionStateManagerInterface::Observer>::Unchecked
       observers_;

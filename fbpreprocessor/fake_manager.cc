@@ -32,7 +32,7 @@ FakeManager::FakeManager()
   uma_lib_ = uma_lib.get();
   metrics().SetLibraryForTesting(std::move(uma_lib));
   platform_features_ = std::make_unique<FakePlatformFeaturesClient>();
-  session_state_manager_ = std::make_unique<FakeSessionStateManager>(this);
+  session_state_manager_ = std::make_unique<FakeSessionStateManager>();
   output_manager_ = std::make_unique<OutputManager>(this);
 }
 
