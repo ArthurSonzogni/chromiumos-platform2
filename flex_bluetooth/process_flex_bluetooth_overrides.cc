@@ -97,6 +97,14 @@ const std::map<flex_bluetooth::BluetoothAdapter,
          {flex_bluetooth::SyspropOverride::kDisableSniffMode}},
         {flex_bluetooth::BluetoothAdapter{0x04c5, 0x1330},
          {flex_bluetooth::SyspropOverride::kDisableSniffMode}},
+
+        // Disable packet boundary for Intel AC7265 chips
+        {flex_bluetooth::BluetoothAdapter{0x8087, 0x0a2a},
+         {flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+        {flex_bluetooth::BluetoothAdapter{0x8087, 0x0a2b},
+         {flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+        {flex_bluetooth::BluetoothAdapter{0x8087, 0x0aa7},
+         {flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
 };
 }  // namespace
 
