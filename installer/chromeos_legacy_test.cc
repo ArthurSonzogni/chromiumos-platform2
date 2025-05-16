@@ -223,7 +223,9 @@ class PostInstallTest : public ::testing::Test {
     esp_ = install_config_.boot.mount();
 
     CHECK(base::CreateDirectory(rootfs_boot_.Append("syslinux")));
+    CHECK(base::CreateDirectory(rootfs_boot_.Append("efi/boot")));
     CHECK(base::CreateDirectory(esp_.Append("syslinux")));
+    CHECK(base::CreateDirectory(esp_.Append("efi/boot")));
 
     // Create source kernel.
     CHECK(base::WriteFile(rootfs_boot_.Append("vmlinuz"), "vmlinuz"));
@@ -234,6 +236,13 @@ class PostInstallTest : public ::testing::Test {
                           "root=HDROOTB dm=\"DMTABLEB\""));
     CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/syslinux.cfg"),
                           "syslinux_cfg"));
+    // Create EFI bootloader files.
+    CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/bootia32.efi"),
+                          "bootia32_efi"));
+    CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/bootx64.efi"),
+                          "bootx64_efi"));
+    CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/bootx64.sig"),
+                          "bootx64_sig"));
 
     EXPECT_CALL(platform_, DumpKernelConfig(_)).WillRepeatedly([this]() {
       return kernel_config_;
@@ -256,59 +265,33 @@ class PostInstallTest : public ::testing::Test {
   std::string kernel_config_{"dm=\"dm args\""};
 };
 
-class UpdateEfiBootloadersTest : public ::testing::Test {
- public:
-  void SetUp() override {
-    CHECK(temp_dir_.CreateUniqueTempDir());
-
-    const auto root_dir = temp_dir_.GetPath().Append("root");
-    const auto boot_dir = temp_dir_.GetPath().Append("boot");
-    install_config_.root = Partition(base::FilePath(), root_dir);
-    install_config_.boot = Partition(base::FilePath(), boot_dir);
-
-    src_dir_ = root_dir.Append("boot/efi/boot");
-    dst_dir_ = boot_dir.Append("efi/boot");
-  }
-
- protected:
-  base::ScopedTempDir temp_dir_;
-  InstallConfig install_config_;
-  base::FilePath src_dir_;
-  base::FilePath dst_dir_;
-};
+class UpdateEfiBootloadersTest : public PostInstallTest {};
 
 TEST_F(UpdateEfiBootloadersTest, Success) {
-  CHECK(base::CreateDirectory(src_dir_));
-  CHECK(base::CreateDirectory(dst_dir_));
-
-  // These files will be copied due to ".efi" and ".sig" extensions.
-  CHECK(base::WriteFile(src_dir_.Append("bootia32.efi"), "123"));
-  CHECK(base::WriteFile(src_dir_.Append("bootx64.efi"), "456"));
-  CHECK(base::WriteFile(src_dir_.Append("bootx64.sig"), "789"));
-
-  // These files won't be copied.
-  CHECK(base::WriteFile(src_dir_.Append("bootx64.EFI"), ""));
-  CHECK(base::WriteFile(src_dir_.Append("bootx64.txt"), ""));
-  CHECK(base::WriteFile(src_dir_.Append("bootx64.efi.bak"), ""));
-  CHECK(base::WriteFile(src_dir_.Append("definition"), ""));
-  CHECK(base::WriteFile(src_dir_.Append("efi.txt"), ""));
+  // Create some files that won't be copied since they don't have ".efi"
+  // or ".sig" extensions.
+  CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/bootx64.EFI"), ""));
+  CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/bootx64.txt"), ""));
+  CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/bootx64.efi.bak"), ""));
+  CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/definition"), ""));
+  CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/efi.txt"), ""));
 
   EXPECT_TRUE(UpdateEfiBootloaders(install_config_));
 
   // Check files were copied as expected.
   std::string contents;
   EXPECT_TRUE(
-      base::ReadFileToString(dst_dir_.Append("bootia32.efi"), &contents));
-  EXPECT_EQ(contents, "123");
+      base::ReadFileToString(esp_.Append("efi/boot/bootia32.efi"), &contents));
+  EXPECT_EQ(contents, "bootia32_efi");
   EXPECT_TRUE(
-      base::ReadFileToString(dst_dir_.Append("bootx64.efi"), &contents));
-  EXPECT_EQ(contents, "456");
+      base::ReadFileToString(esp_.Append("efi/boot/bootx64.efi"), &contents));
+  EXPECT_EQ(contents, "bootx64_efi");
   EXPECT_TRUE(
-      base::ReadFileToString(dst_dir_.Append("bootx64.sig"), &contents));
-  EXPECT_EQ(contents, "789");
+      base::ReadFileToString(esp_.Append("efi/boot/bootx64.sig"), &contents));
+  EXPECT_EQ(contents, "bootx64_sig");
 
   // Check that only those files were copied.
-  base::FileEnumerator file_enum(dst_dir_, /*recursive=*/false,
+  base::FileEnumerator file_enum(esp_.Append("efi/boot"), /*recursive=*/false,
                                  base::FileEnumerator::FILES);
   int num_files = 0;
   file_enum.ForEach(
@@ -317,8 +300,7 @@ TEST_F(UpdateEfiBootloadersTest, Success) {
 }
 
 TEST_F(UpdateEfiBootloadersTest, InvalidDestDir) {
-  CHECK(base::CreateDirectory(src_dir_));
-  CHECK(base::WriteFile(src_dir_.Append("bootx64.efi"), ""));
+  CHECK(brillo::DeletePathRecursively(esp_.Append("efi/boot")));
 
   // The destination directory does not exist, so the copy operation
   // will fail.
