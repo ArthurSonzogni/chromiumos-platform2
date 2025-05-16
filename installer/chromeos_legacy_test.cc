@@ -4,6 +4,8 @@
 
 #include "installer/chromeos_legacy.h"
 
+#include <string_view>
+
 #include <base/files/file_enumerator.h>
 #include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
@@ -65,6 +67,38 @@ const char kGrubCfgExpectedResult[] =
     "  linux (hd0,3)/boot/vmlinuz quiet console=tty2 init=/sbin/init "
     "rootwait ro noresume loglevel=1 noinitrd "
     "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n";
+
+// Example of a real rootfs grub.cfg, stripped down to just the slot-A lines.
+constexpr std::string_view kRootGrubCfgNoVerity =
+    "linux /syslinux/vmlinuz.A quiet init=/sbin/init rootwait ro noresume "
+    " loglevel=7 noinitrd console= kvm-intel.vmentry_l1d_flush=always "
+    " i915.modeset=1 cros_efi cros_debug root=/dev/$linuxpartA \n";
+constexpr std::string_view kRootGrubCfgVerity =
+    "linux /syslinux/vmlinuz.A quiet init=/sbin/init rootwait ro noresume "
+    " loglevel=7 noinitrd console= kvm-intel.vmentry_l1d_flush=always "
+    " dm_verity.error_behavior=3 dm_verity.max_bios=-1 dm_verity.dev_wait=1 "
+    " i915.modeset=1 cros_efi cros_debug root=/dev/dm-0 dm=\"DMTABLEA\" \n";
+
+// Very stripped-down grub.cfg, used in tests as the grub.cfg on the ESP
+// prior to updating.
+constexpr std::string_view kEspOriginalGrubCfg =
+    "linux /syslinux/vmlinuz.A "
+    " root=PARTUUID=CC6F2E74-8803-7843-B674-8481EF4CF673 \n"
+    ""
+    "linux /syslinux/vmlinuz.A root=/dev/dm-0 dm=\"orig DM args\" \n";
+
+// Result of updating kEspOriginalGrubCfg with kRootGrubCfg, plus the DM
+// args read from DumpKernelConfig.
+constexpr std::string_view kEspUpdatedGrubCfg =
+    "linux /syslinux/vmlinuz.A quiet init=/sbin/init rootwait ro noresume "
+    " loglevel=7 noinitrd console= kvm-intel.vmentry_l1d_flush=always "
+    " i915.modeset=1 cros_efi cros_debug"
+    " root=PARTUUID=CC6F2E74-8803-7843-B674-8481EF4CF673 \n"
+    ""
+    "linux /syslinux/vmlinuz.A quiet init=/sbin/init rootwait ro noresume "
+    " loglevel=7 noinitrd console= kvm-intel.vmentry_l1d_flush=always "
+    " dm_verity.error_behavior=3 dm_verity.max_bios=-1 dm_verity.dev_wait=1 "
+    " i915.modeset=1 cros_efi cros_debug root=/dev/dm-0 dm=\"dm args\" \n";
 
 class EfiGrubCfgTest : public ::testing::Test {
  public:
@@ -227,6 +261,7 @@ class PostInstallTest : public ::testing::Test {
     CHECK(base::CreateDirectory(esp_.Append("syslinux")));
     CHECK(base::CreateDirectory(esp_.Append("efi/boot")));
 
+    // Create files in the rootfs boot dir.
     // Create source kernel.
     CHECK(base::WriteFile(rootfs_boot_.Append("vmlinuz"), "vmlinuz"));
     // Create syslinux configs.
@@ -243,6 +278,13 @@ class PostInstallTest : public ::testing::Test {
                           "bootx64_efi"));
     CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/bootx64.sig"),
                           "bootx64_sig"));
+    CHECK(base::WriteFile(
+        rootfs_boot_.Append("efi/boot/grub.cfg"),
+        std::string(kRootGrubCfgNoVerity) + std::string(kRootGrubCfgVerity)));
+
+    // Create files on the ESP.
+    CHECK(
+        base::WriteFile(esp_.Append("efi/boot/grub.cfg"), kEspOriginalGrubCfg));
 
     EXPECT_CALL(platform_, DumpKernelConfig(_)).WillRepeatedly([this]() {
       return kernel_config_;
@@ -296,7 +338,9 @@ TEST_F(UpdateEfiBootloadersTest, Success) {
   int num_files = 0;
   file_enum.ForEach(
       [&num_files](const base::FilePath& item) { num_files += 1; });
-  EXPECT_EQ(num_files, 3);
+  // 3 files copied, plus grub.cfg already present.
+  const int expected_num_files = 4;
+  EXPECT_EQ(num_files, expected_num_files);
 }
 
 TEST_F(UpdateEfiBootloadersTest, InvalidDestDir) {
@@ -443,6 +487,64 @@ TEST_F(RunLegacyPostInstallTest, ErrorMissingSyslinuxDmtable) {
 TEST_F(RunLegacyPostInstallTest, ErrorMissingDmArg) {
   kernel_config_ = "";
   EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
+}
+
+class UpdateEfiGrubCfgTest : public PostInstallTest {};
+
+// Test successful call to UpdateEfiGrubCfg.
+TEST_F(UpdateEfiGrubCfgTest, Success) {
+  EXPECT_TRUE(UpdateEfiGrubCfg(platform_, install_config_));
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/grub.cfg")),
+            kEspUpdatedGrubCfg);
+}
+
+// Test that UpdateEfiGrubCfg fails with an invalid slot.
+TEST_F(UpdateEfiGrubCfgTest, ErrorInvalidSlot) {
+  install_config_.slot = "C";
+  EXPECT_FALSE(UpdateEfiGrubCfg(platform_, install_config_));
+}
+
+// Test that UpdateEfiGrubCfg fails if the ESP grub.cfg is missing.
+TEST_F(UpdateEfiGrubCfgTest, ErrorMissingEspConfig) {
+  CHECK(brillo::DeleteFile(esp_.Append("efi/boot/grub.cfg")));
+  EXPECT_FALSE(UpdateEfiGrubCfg(platform_, install_config_));
+}
+
+// Test that UpdateEfiGrubCfg fails if the rootfs grub.cfg is missing.
+TEST_F(UpdateEfiGrubCfgTest, ErrorMissingRootfsConfig) {
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("efi/boot/grub.cfg")));
+  EXPECT_FALSE(UpdateEfiGrubCfg(platform_, install_config_));
+}
+
+// Test that UpdateEfiGrubCfg fails if the rootfs grub.cfg is missing
+// the entry with verity enabled.
+TEST_F(UpdateEfiGrubCfgTest, ErrorMissingRootfsVerityEntry) {
+  CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/grub.cfg"),
+                        kRootGrubCfgNoVerity));
+  EXPECT_FALSE(UpdateEfiGrubCfg(platform_, install_config_));
+}
+
+// Test that UpdateEfiGrubCfg fails if the rootfs grub.cfg is missing
+// the entry without verity.
+TEST_F(UpdateEfiGrubCfgTest, ErrorMissingRootfsNonVerityEntry) {
+  CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/grub.cfg"),
+                        kRootGrubCfgVerity));
+  EXPECT_FALSE(UpdateEfiGrubCfg(platform_, install_config_));
+}
+
+// Test that UpdateEfiGrubCfg fails if the ESP grub.cfg is missing
+// the entry with verity enabled.
+TEST_F(UpdateEfiGrubCfgTest, ErrorMissingEspVerityEntry) {
+  CHECK(
+      base::WriteFile(esp_.Append("efi/boot/grub.cfg"), kRootGrubCfgNoVerity));
+  EXPECT_FALSE(UpdateEfiGrubCfg(platform_, install_config_));
+}
+
+// Test that UpdateEfiGrubCfg fails if the ESP grub.cfg is missing
+// the entry without verity.
+TEST_F(UpdateEfiGrubCfgTest, ErrorMissingEspNonVerityEntry) {
+  CHECK(base::WriteFile(esp_.Append("efi/boot/grub.cfg"), kRootGrubCfgVerity));
+  EXPECT_FALSE(UpdateEfiGrubCfg(platform_, install_config_));
 }
 
 }  // namespace

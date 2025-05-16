@@ -40,6 +40,10 @@ bool RunEfiPostInstall(const Platform& platform,
 // Returns true if all copies succeed, false otherwise.
 bool UpdateEfiBootloaders(const InstallConfig& install_config);
 
+// Exposed here for unit testing.
+bool UpdateEfiGrubCfg(const Platform& platform,
+                      const InstallConfig& install_config);
+
 // Valid boot slots for kernel command lines.
 enum class BootSlot { A, B };
 
