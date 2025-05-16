@@ -27,6 +27,7 @@
 #include "rmad/system/tpm_manager_client.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils.h"
+#include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mojo_service_utils.h"
 
@@ -39,8 +40,8 @@ class RmadInterfaceImpl final : public RmadInterface {
   RmadInterfaceImpl();
   // Used to inject mocked |json_store_|, |state_handler_manager_|,
   // |runtime_probe_client_|, |shill_client_|, |tpm_manager_client_|,
-  // |power_manager_client_|, |udev_utils_|, |cmd_utils_| and
-  // |metrics_utils_|.
+  // |power_manager_client_|, |udev_utils_|, |cmd_utils_|, |metrics_utils_|,
+  // and |gsc_utils_|.
   explicit RmadInterfaceImpl(
       scoped_refptr<JsonStore> json_store,
       const base::FilePath& working_dir_path,
@@ -52,7 +53,8 @@ class RmadInterfaceImpl final : public RmadInterface {
       std::unique_ptr<PowerManagerClient> power_manager_client,
       std::unique_ptr<UdevUtils> udev_utils,
       std::unique_ptr<CmdUtils> cmd_utils_,
-      std::unique_ptr<MetricsUtils> metrics_utils);
+      std::unique_ptr<MetricsUtils> metrics_utils,
+      std::unique_ptr<GscUtils> gsc_utils);
   RmadInterfaceImpl(const RmadInterfaceImpl&) = delete;
   RmadInterfaceImpl& operator=(const RmadInterfaceImpl&) = delete;
 
@@ -177,6 +179,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   std::unique_ptr<UdevUtils> udev_utils_;
   std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<MetricsUtils> metrics_utils_;
+  std::unique_ptr<GscUtils> gsc_utils_;
 
   // External Callbacks.
   scoped_refptr<DaemonCallback> daemon_callback_;

@@ -33,6 +33,7 @@
 #include "rmad/udev/udev_device.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils_impl.h"
+#include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/mojo_service_utils.h"
 #include "rmad/utils/rpc_utils.h"
 
@@ -53,6 +54,8 @@ constexpr char kDiagnosticsAppCrxRelPath[] = "diagnostics_app.crx";
 constexpr char kSummaryDivider[] =
     "\n========================================="
     "=================================\n\n";
+
+constexpr char kEmptyBoardIdType[] = "ffffffff";
 
 bool GetDeviceIdFromDeviceNode(const std::string& device_node,
                                char* device_id) {
@@ -89,7 +92,8 @@ RmadInterfaceImpl::RmadInterfaceImpl(
     std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<UdevUtils> udev_utils,
     std::unique_ptr<CmdUtils> cmd_utils,
-    std::unique_ptr<MetricsUtils> metrics_utils)
+    std::unique_ptr<MetricsUtils> metrics_utils,
+    std::unique_ptr<GscUtils> gsc_utils)
     : RmadInterface(),
       json_store_(json_store),
       working_dir_path_(working_dir_path),
@@ -102,6 +106,7 @@ RmadInterfaceImpl::RmadInterfaceImpl(
       udev_utils_(std::move(udev_utils)),
       cmd_utils_(std::move(cmd_utils)),
       metrics_utils_(std::move(metrics_utils)),
+      gsc_utils_(std::move(gsc_utils)),
       external_utils_initialized_(true),
       current_state_case_(RmadState::STATE_NOT_SET) {}
 
@@ -129,6 +134,7 @@ void RmadInterfaceImpl::InitializeExternalUtils(
   power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
+  gsc_utils_ = std::make_unique<GscUtilsImpl>();
 }
 
 bool RmadInterfaceImpl::WaitForServices() {
@@ -181,7 +187,11 @@ bool RmadInterfaceImpl::SetUp(
   // Initialize |current state_|, |state_history_|, and |can_abort_| flag.
   current_state_case_ = RmadState::STATE_NOT_SET;
   state_history_.clear();
-  can_abort_ = true;
+  auto board_id_type = gsc_utils_->GetBoardIdType();
+
+  can_abort_ =
+      board_id_type.has_value() && board_id_type.value() != kEmptyBoardIdType;
+
   // Something's wrong with the state file. Try to clear it.
   if (json_store_->ReadOnly()) {
     LOG(WARNING) << "Corrupted RMA state file. Trying to fix it";

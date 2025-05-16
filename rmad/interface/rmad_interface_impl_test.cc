@@ -34,8 +34,10 @@
 #include "rmad/system/mock_tpm_manager_client.h"
 #include "rmad/udev/mock_udev_device.h"
 #include "rmad/udev/mock_udev_utils.h"
+#include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cmd_utils.h"
+#include "rmad/utils/mock_gsc_utils.h"
 
 using testing::_;
 using testing::Assign;
@@ -109,6 +111,9 @@ constexpr char kMountSuccessDeviceId = 'e';
 
 constexpr base::TimeDelta kTestTransitionInterval = base::Seconds(1);
 constexpr base::TimeDelta kInitialStateOverallTime = base::Seconds(0);
+
+constexpr char kPvtBoardIdFlags[] = "00007f80";
+constexpr char kEmptyBoardIdType[] = "ffffffff";
 
 class RmadInterfaceImplTest : public testing::Test {
  public:
@@ -319,6 +324,14 @@ class RmadInterfaceImplTest : public testing::Test {
     return mock_metrics_utils;
   }
 
+  std::unique_ptr<GscUtils> CreateGscUtils(
+      std::string board_id_type = kPvtBoardIdFlags) {
+    auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
+    ON_CALL(*mock_gsc_utils, GetBoardIdType())
+        .WillByDefault(Return(board_id_type));
+    return mock_gsc_utils;
+  }
+
   void MountAndWriteLogCallback(
       uint8_t device_id,
       const std::string& text_log,
@@ -376,7 +389,7 @@ TEST_F(RmadInterfaceImplTest, Setup) {
       CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
-      CreateCmdUtils({"waiting"}), CreateMetricsUtils(true));
+      CreateCmdUtils({"waiting"}), CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -407,7 +420,7 @@ TEST_F(RmadInterfaceImplTest, Setup_WaitForServices_Timeout) {
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
       CreateCmdUtils(std::vector<std::string>(10, "waiting")),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_FALSE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                     mojo_service));
@@ -426,7 +439,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
       CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -456,7 +469,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
       CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -469,6 +482,33 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_FALSE(reply.can_go_back());
     EXPECT_TRUE(reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
+}
+
+TEST_F(RmadInterfaceImplTest, GetCurrentState_BoardId_NotProvisioned) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
+  RmadInterfaceImpl rmad_interface(
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
+      CreateMetricsUtils(true), CreateGscUtils(kEmptyBoardIdType));
+  auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
+                                   mojo_service));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_FALSE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -487,7 +527,7 @@ TEST_F(RmadInterfaceImplTest,
       CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -514,7 +554,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_PASS),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -542,7 +582,7 @@ TEST_F(RmadInterfaceImplTest,
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -570,7 +610,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_CorruptedFile) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_FALSE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                     mojo_service));
@@ -587,7 +627,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -614,7 +654,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -641,7 +681,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -668,7 +708,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -696,7 +736,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -723,7 +763,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -750,7 +790,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -775,7 +815,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -863,7 +903,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextStateAfterInterval) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -921,7 +961,7 @@ TEST_F(RmadInterfaceImplTest, TryTransitionNextState) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -947,7 +987,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -971,7 +1011,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1000,7 +1040,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_GetNextStateCaseFail) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1029,7 +1069,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1102,7 +1142,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1130,7 +1170,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1159,7 +1199,7 @@ TEST_F(RmadInterfaceImplTest,
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1187,7 +1227,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1218,7 +1258,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1249,7 +1289,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1282,7 +1322,8 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
-      CreateCmdUtils({}, {"test_log"}), CreateMetricsUtils(true));
+      CreateCmdUtils({}, {"test_log"}), CreateMetricsUtils(true),
+      CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1325,7 +1366,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog_Success) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(10), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   // Inject fake |ExecuteMountAndWriteLog| callback.
   auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
   daemon_callback->SetExecuteMountAndWriteLogCallback(
@@ -1360,7 +1401,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog_NoExternalDisk) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(0), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1390,7 +1431,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog_NoValidPartition) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(3), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   // Inject fake |ExecuteMountAndWriteLog| callback.
   auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
   daemon_callback->SetExecuteMountAndWriteLogCallback(
@@ -1423,7 +1464,7 @@ TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1459,7 +1500,7 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_Success) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(10), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   // Inject fake |ExecuteMountAndCopyDiagnosticsApp| callback.
   auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
   daemon_callback->SetExecuteMountAndCopyDiagnosticsAppCallback(
@@ -1489,7 +1530,7 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_NoExternalDisk) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(0), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   // Inject fake |ExecuteMountAndCopyDiagnosticsApp| callback.
   auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
   daemon_callback->SetExecuteMountAndCopyDiagnosticsAppCallback(
@@ -1517,7 +1558,7 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_NoValidPartition) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(3), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   // Inject fake |ExecuteMountAndCopyDiagnosticsApp| callback.
   auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
   daemon_callback->SetExecuteMountAndCopyDiagnosticsAppCallback(
@@ -1545,7 +1586,7 @@ TEST_F(RmadInterfaceImplTest, InstallExtractedDiagnosticsApp_Success) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1584,7 +1625,7 @@ TEST_F(RmadInterfaceImplTest, InstallExtractedDiagnosticsApp_NotFound) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1613,7 +1654,7 @@ TEST_F(RmadInterfaceImplTest, GetInstalledDiagnosticsApp_Success) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
@@ -1652,7 +1693,7 @@ TEST_F(RmadInterfaceImplTest, GetInstalledDiagnosticsApp_NotFound) {
       CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
-      CreateMetricsUtils(true));
+      CreateMetricsUtils(true), CreateGscUtils());
   auto mojo_service = base::MakeRefCounted<MojoServiceUtilsImpl>();
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>(),
                                    mojo_service));
