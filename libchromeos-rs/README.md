@@ -1,6 +1,6 @@
-# libchromeos-rs - The Rust crate for common Chrome OS code
+# libchromeos-rs - The Rust crate for common ChromeOS code
 
-`libchromeos-rs` contains Rust code that can be reused across any Chrome OS
+`libchromeos-rs` contains Rust code that can be reused across any ChromeOS
 project. It's the Rust equivalent of [libbrillo](../libbrillo/).
 
 Current modules include:
