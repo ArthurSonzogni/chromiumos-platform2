@@ -373,8 +373,10 @@ TEST_F(UpdateLegacyKernelTest, LegacyInstallCopy) {
   EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/vmlinuz.A")), "vmlinuz");
 }
 
+class RunLegacyPostInstallTest : public PostInstallTest {};
+
 // Test successful call to RunLegacyPostInstall.
-TEST_F(PostInstallTest, LegacyPostInstallSuccess) {
+TEST_F(RunLegacyPostInstallTest, Success) {
   EXPECT_TRUE(RunLegacyPostInstall(platform_, install_config_));
 
   // Syslinux files were copied.
@@ -390,7 +392,7 @@ TEST_F(PostInstallTest, LegacyPostInstallSuccess) {
 
 // Test that RunLegacyPostInstall does not clobber existing syslinux
 // files when copying.
-TEST_F(PostInstallTest, LegacyPostInstallNoClobber) {
+TEST_F(RunLegacyPostInstallTest, NoClobber) {
   // Create a syslinux config file that should not be clobbered by
   // RunLegacyPostInstall.
   CHECK(base::WriteFile(esp_.Append("syslinux/root.B.cfg"), "old B cfg"));
@@ -403,27 +405,27 @@ TEST_F(PostInstallTest, LegacyPostInstallNoClobber) {
 
 // Test that RunLegacyPostInstall fails if the source syslinux directory
 // is missing.
-TEST_F(PostInstallTest, LegacyPostInstallMissingSourceSyslinuxDir) {
+TEST_F(RunLegacyPostInstallTest, ErrorMissingSourceSyslinuxDir) {
   CHECK(brillo::DeletePathRecursively(rootfs_boot_.Append("syslinux")));
   EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
 }
 
 // Test that RunLegacyPostInstall fails if the source kernel is missing.
-TEST_F(PostInstallTest, LegacyPostInstallMissingKernel) {
+TEST_F(RunLegacyPostInstallTest, ErrorMissingKernel) {
   CHECK(brillo::DeleteFile(rootfs_boot_.Append("vmlinuz")));
   EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
 }
 
 // Test that RunLegacyPostInstall fails if the syslinux config is
 // missing.
-TEST_F(PostInstallTest, LegacyPostInstallMissingSyslinuxConfig) {
+TEST_F(RunLegacyPostInstallTest, ErrorMissingSyslinuxConfig) {
   CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux/root.A.cfg")));
   EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
 }
 
 // Test that RunLegacyPostInstall fails if the syslinux config is
 // missing the HDROOT variable.
-TEST_F(PostInstallTest, LegacyPostInstallMissingSyslinuxHdroot) {
+TEST_F(RunLegacyPostInstallTest, ErrorMissingSyslinuxHdroot) {
   CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.A.cfg"),
                         "dm=\"DMTABLEA\""));
   EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
@@ -431,14 +433,14 @@ TEST_F(PostInstallTest, LegacyPostInstallMissingSyslinuxHdroot) {
 
 // Test that RunLegacyPostInstall fails if the syslinux config is
 // missing the DMTABLE variable.
-TEST_F(PostInstallTest, LegacyPostInstallMissingSyslinuxDmtable) {
+TEST_F(RunLegacyPostInstallTest, ErrorMissingSyslinuxDmtable) {
   CHECK(base::WriteFile(rootfs_boot_.Append("syslinux/root.A.cfg"),
                         "root=HDROOTA"));
   EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
 }
 
 // Test that RunLegacyPostInstall fails if the kernel config has no "dm" arg.
-TEST_F(PostInstallTest, LegacyPostInstallMissingDmArg) {
+TEST_F(RunLegacyPostInstallTest, ErrorMissingDmArg) {
   kernel_config_ = "";
   EXPECT_FALSE(RunLegacyPostInstall(platform_, install_config_));
 }
