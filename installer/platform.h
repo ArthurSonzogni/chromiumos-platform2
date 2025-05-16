@@ -17,13 +17,14 @@ class Platform {
   virtual ~Platform();
 
   // Read the kernel config from a vboot kernel partition.
-  virtual std::string DumpKernelConfig(const base::FilePath& kernel_dev) = 0;
+  virtual std::string DumpKernelConfig(
+      const base::FilePath& kernel_dev) const = 0;
 };
 
 // Real implementation of Platform (used outside of tests).
 class PlatformImpl : public Platform {
  public:
-  std::string DumpKernelConfig(const base::FilePath& kernel_dev) override;
+  std::string DumpKernelConfig(const base::FilePath& kernel_dev) const override;
 };
 
 #endif  // INSTALLER_PLATFORM_H_

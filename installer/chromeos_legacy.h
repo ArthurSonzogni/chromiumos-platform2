@@ -22,7 +22,7 @@ bool UpdateLegacyKernel(const InstallConfig& install_config);
 
 // Attempts to update boot files needed by the legacy bios boot
 // (syslinux config files) on the boot partition. Returns false on error.
-bool RunLegacyPostInstall(Platform& platform,
+bool RunLegacyPostInstall(const Platform& platform,
                           const InstallConfig& install_config);
 
 // Attempts to update boot files needed by u-boot (not our secure u-boot)
@@ -31,7 +31,8 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config);
 
 // Attempts to update boot files needed by the EFI bios boot
 // (grub config files) on the boot partition. Returns false on error.
-bool RunEfiPostInstall(Platform& platform, const InstallConfig& install_config);
+bool RunEfiPostInstall(const Platform& platform,
+                       const InstallConfig& install_config);
 
 // Copy UEFI bootloader files from the rootfs to the ESP (EFI System
 // Partition).

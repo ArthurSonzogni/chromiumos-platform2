@@ -16,7 +16,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD(std::string,
               DumpKernelConfig,
               (const base::FilePath& kernel_dev),
-              (override));
+              (const override));
 };
 
 #endif  // INSTALLER_MOCK_PLATFORM_H_

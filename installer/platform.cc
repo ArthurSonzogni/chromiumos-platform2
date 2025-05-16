@@ -8,6 +8,7 @@
 
 Platform::~Platform() = default;
 
-std::string PlatformImpl::DumpKernelConfig(const base::FilePath& kernel_dev) {
+std::string PlatformImpl::DumpKernelConfig(
+    const base::FilePath& kernel_dev) const {
   return ::DumpKernelConfig(kernel_dev);
 }

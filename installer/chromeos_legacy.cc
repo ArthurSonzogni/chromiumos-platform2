@@ -164,7 +164,7 @@ string ExpandVerityArguments(const string& kernel_config,
   return kernel_config_dm;
 }
 
-bool RunLegacyPostInstall(Platform& platform,
+bool RunLegacyPostInstall(const Platform& platform,
                           const InstallConfig& install_config) {
   const base::FilePath root_mount(install_config.root.mount());
   const base::FilePath root_syslinux = root_mount.Append("boot/syslinux");
@@ -316,7 +316,8 @@ bool StringToSlot(const std::string& slot_string, BootSlot* slot) {
 // template in the target rootfs.
 //
 // Returns true if the boot grub.cfg file was successfully updated.
-bool UpdateEfiGrubCfg(Platform& platform, const InstallConfig& install_config) {
+bool UpdateEfiGrubCfg(const Platform& platform,
+                      const InstallConfig& install_config) {
   // Of the form: PARTUUID=XXX-YYY-ZZZ
   string kernel_config =
       platform.DumpKernelConfig(install_config.kernel.device());
@@ -390,7 +391,7 @@ bool UpdateEfiGrubCfg(Platform& platform, const InstallConfig& install_config) {
   return true;
 }
 
-bool RunEfiPostInstall(Platform& platform,
+bool RunEfiPostInstall(const Platform& platform,
                        const InstallConfig& install_config) {
   LOG(INFO) << "Running EfiPostInstall.";
 
