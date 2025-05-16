@@ -207,27 +207,30 @@ bool DlcLvm::UseLogicalVolume() const {
     return false;
   }
 
-  // Special handle for LVM migrating devices.
-  // If any file based images exist..
-  for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
+  auto file_exists = [this](BootSlot::Slot slot) -> bool {
     const auto& image_path = DlcBase::GetImagePath(slot);
-    if (image_path.empty()) {
-      continue;
-    }
-    if (!base::PathExists(image_path)) {
-      continue;
-    }
-    // .. prioritize file based images iff no logical volumes exist.
-    base::FilePath lv_path(
-        SystemState::Get()->lvmd_wrapper()->GetLogicalVolumePath(
-            utils_->LogicalVolumeName(id_, ToPartitionSlot(slot))));
-    if (!lv_path.empty() && base::PathExists(lv_path)) {
-      break;
-    }
-    // .. sticking with file based images.
-    return false;
+    return !image_path.empty() && base::PathExists(image_path);
+  };
+  // If no file based images exist, prioritize logical volumes.
+  if (!file_exists(BootSlot::Slot::A) && !file_exists(BootSlot::Slot::B)) {
+    return true;
   }
-  return true;
+
+  auto lv_exists = [this](BootSlot::Slot slot) -> bool {
+    auto lv_name = utils_->LogicalVolumeName(id_, ToPartitionSlot(slot));
+    // Do NOT check for active/inactive.
+    return !lv_name.empty() && !SystemState::Get()
+                                    ->lvmd_wrapper()
+                                    ->GetLogicalVolumePath(lv_name)
+                                    .empty();
+  };
+  // If any logical volumes exist, prioritize them over file based images.
+  if (lv_exists(BootSlot::Slot::A) || lv_exists(BootSlot::Slot::B)) {
+    return true;
+  }
+
+  // .. sticking with file based images.
+  return false;
 }
 
 }  // namespace dlcservice

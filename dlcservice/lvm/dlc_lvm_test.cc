@@ -161,10 +161,11 @@ TEST_F(DlcLvmTest, LvmMigrationCheckFileBasedPriority) {
   DlcLvm dlc(kFourthDlc);
   dlc.Initialize();
 
-  // If any file based images in cache exists..
+  // If both file based images in cache exists w/o logical volumes..
   SetUpDlcWithSlots(kFourthDlc);
   // .. sticking with file based images.
   EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, GetLogicalVolumePath(_))
+      .WillOnce(Return(""))
       .WillOnce(Return(""));
   EXPECT_FALSE(dlc.UseLogicalVolume());
 }
