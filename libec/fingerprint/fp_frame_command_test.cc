@@ -277,7 +277,7 @@ TEST(FpFrameCommand, FrameToPgmSuccess_16bpp) {
                                        2000, 4000, 8000, 16000};
 
   EXPECT_EQ(
-      FpFrameCommand::FrameToPgm(base::as_bytes(base::make_span(frame)),
+      FpFrameCommand::FrameToPgm(base::as_byte_span(frame),
                                  {.bpp = 16, .width = 3, .height = 3})
           .value(),
       "P2\n3 3\n65535\n1 100 300 \n600 1000 2000 \n4000 8000 16000 \n# END OF "
