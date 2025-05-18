@@ -52,6 +52,8 @@ constexpr size_t kKeymasterOperationTableSize = 16;
 
 constexpr uint32_t kOsVersion = 13;
 constexpr uint32_t kOsPatchlevel = 20230705;
+constexpr uint32_t kVendorPatchlevel = 20230705;
+constexpr uint32_t kBootPatchlevel = 20230705;
 constexpr int32_t kKeyMintMessageVersion = 4;
 constexpr ::keymaster::KmVersion kKeyMintVersion =
     ::keymaster::KmVersion::KEYMINT_2;
@@ -653,9 +655,11 @@ TEST_F(ArcKeyMintContextTest, SerializeThenDeserialize) {
   EXPECT_TRUE(AuthorizationSetEquals(sw_enforced_, out_sw_enforced));
 }
 
-TEST_F(ArcKeyMintContextTest, UpgradeKeyBlob) {
+TEST_F(ArcKeyMintContextTest, UpgradeKeyBlobWithOsVersion) {
   // Prepare a key generated at an arbitrary system version.
   context_->SetSystemVersion(kOsVersion, kOsPatchlevel);
+  context_->SetVendorPatchlevelForTesting(kVendorPatchlevel);
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
   ::keymaster::KeymasterKeyBlob generated_key;
   keymaster_error_t error = generateTestKey(&keymint_, &generated_key);
   ASSERT_EQ(error, KM_ERROR_OK);
@@ -690,9 +694,89 @@ TEST_F(ArcKeyMintContextTest, UpgradeKeyBlob) {
   ASSERT_EQ(characteristicsResponse2.error, KM_ERROR_OK);
 }
 
+TEST_F(ArcKeyMintContextTest, UpgradeKeyBlobWithVendorPatchlevel) {
+  // Prepare a key generated at an arbitrary system version.
+  context_->SetSystemVersion(kOsVersion, kOsPatchlevel);
+  context_->SetVendorPatchlevelForTesting(kVendorPatchlevel);
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
+  ::keymaster::KeymasterKeyBlob generated_key;
+  keymaster_error_t error = generateTestKey(&keymint_, &generated_key);
+  ASSERT_EQ(error, KM_ERROR_OK);
+
+  // Verify the old blob can't be used after a system upgrade.
+  context_->SetVendorPatchlevelForTesting(kVendorPatchlevel + 1);
+  ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest1(
+      kKeyMintMessageVersion);
+  characteristicsRequest1.SetKeyMaterial(generated_key);
+  ::keymaster::GetKeyCharacteristicsResponse characteristicsResponse1(
+      kKeyMintMessageVersion);
+  keymint_.GetKeyCharacteristics(characteristicsRequest1,
+                                 &characteristicsResponse1);
+  ASSERT_EQ(characteristicsResponse1.error, KM_ERROR_KEY_REQUIRES_UPGRADE);
+
+  // Upgrade the key blob.
+  ::keymaster::KeymasterKeyBlob key_blob(generated_key);
+  ::keymaster::KeymasterKeyBlob upgraded_key_blob;
+  ::keymaster::AuthorizationSet upgrade_params;
+  error =
+      context_->UpgradeKeyBlob(key_blob, upgrade_params, &upgraded_key_blob);
+  ASSERT_EQ(error, KM_ERROR_OK);
+
+  // Verify the blob can be used without errors once upgraded.
+  ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest2(
+      kKeyMintMessageVersion);
+  characteristicsRequest2.SetKeyMaterial(upgraded_key_blob);
+  ::keymaster::GetKeyCharacteristicsResponse characteristicsResponse2(
+      kKeyMintMessageVersion);
+  keymint_.GetKeyCharacteristics(characteristicsRequest2,
+                                 &characteristicsResponse2);
+  ASSERT_EQ(characteristicsResponse2.error, KM_ERROR_OK);
+}
+
+TEST_F(ArcKeyMintContextTest, UpgradeKeyBlobWithBootPatchlevel) {
+  // Prepare a key generated at an arbitrary system version.
+  context_->SetSystemVersion(kOsVersion, kOsPatchlevel);
+  context_->SetVendorPatchlevelForTesting(kVendorPatchlevel);
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
+  ::keymaster::KeymasterKeyBlob generated_key;
+  keymaster_error_t error = generateTestKey(&keymint_, &generated_key);
+  ASSERT_EQ(error, KM_ERROR_OK);
+
+  // Verify the old blob can't be used after a system upgrade.
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel + 1);
+  ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest1(
+      kKeyMintMessageVersion);
+  characteristicsRequest1.SetKeyMaterial(generated_key);
+  ::keymaster::GetKeyCharacteristicsResponse characteristicsResponse1(
+      kKeyMintMessageVersion);
+  keymint_.GetKeyCharacteristics(characteristicsRequest1,
+                                 &characteristicsResponse1);
+  ASSERT_EQ(characteristicsResponse1.error, KM_ERROR_KEY_REQUIRES_UPGRADE);
+
+  // Upgrade the key blob.
+  ::keymaster::KeymasterKeyBlob key_blob(generated_key);
+  ::keymaster::KeymasterKeyBlob upgraded_key_blob;
+  ::keymaster::AuthorizationSet upgrade_params;
+  error =
+      context_->UpgradeKeyBlob(key_blob, upgrade_params, &upgraded_key_blob);
+  ASSERT_EQ(error, KM_ERROR_OK);
+
+  // Verify the blob can be used without errors once upgraded.
+  ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest2(
+      kKeyMintMessageVersion);
+  characteristicsRequest2.SetKeyMaterial(upgraded_key_blob);
+  ::keymaster::GetKeyCharacteristicsResponse characteristicsResponse2(
+      kKeyMintMessageVersion);
+  keymint_.GetKeyCharacteristics(characteristicsRequest2,
+                                 &characteristicsResponse2);
+  ASSERT_EQ(characteristicsResponse2.error, KM_ERROR_OK);
+}
+
 TEST_F(ArcKeyMintContextTest, UpgradeKeyBlobAlreadyUpToDate) {
   // Prepare a key generated at an arbitrary system version.
   context_->SetSystemVersion(kOsVersion, kOsPatchlevel);
+  context_->SetVendorPatchlevelForTesting(kVendorPatchlevel);
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
   ::keymaster::KeymasterKeyBlob generated_key;
   keymaster_error_t error = generateTestKey(&keymint_, &generated_key);
   ASSERT_EQ(error, KM_ERROR_OK);
@@ -710,12 +794,82 @@ TEST_F(ArcKeyMintContextTest, UpgradeKeyBlobAlreadyUpToDate) {
 TEST_F(ArcKeyMintContextTest, UpgradeKeyBlobLowerVersionError) {
   // Prepare a key generated at an arbitrary system version.
   context_->SetSystemVersion(kOsVersion, kOsPatchlevel);
+  context_->SetVendorPatchlevelForTesting(kVendorPatchlevel);
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
   ::keymaster::KeymasterKeyBlob generated_key;
   keymaster_error_t error = generateTestKey(&keymint_, &generated_key);
   ASSERT_EQ(error, KM_ERROR_OK);
 
   // Downgrade the system to a previous version.
   context_->SetSystemVersion(kOsVersion, kOsPatchlevel - 1);
+
+  // Verify the old blob becomes invalid.
+  ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest1(
+      kKeyMintMessageVersion);
+  characteristicsRequest1.SetKeyMaterial(generated_key);
+  ::keymaster::GetKeyCharacteristicsResponse characteristicsResponse1(
+      kKeyMintMessageVersion);
+  keymint_.GetKeyCharacteristics(characteristicsRequest1,
+                                 &characteristicsResponse1);
+  EXPECT_EQ(characteristicsResponse1.error, KM_ERROR_INVALID_KEY_BLOB);
+
+  // Verify the blob cannot be upgraded.
+  ::keymaster::KeymasterKeyBlob key_blob(generated_key);
+  ::keymaster::KeymasterKeyBlob upgraded_key_blob;
+  ::keymaster::AuthorizationSet upgrade_params;
+  error =
+      context_->UpgradeKeyBlob(key_blob, upgrade_params, &upgraded_key_blob);
+  ASSERT_EQ(error, KM_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(ArcKeyMintContextTest,
+       UpgradeKeyBlobLowerVersionErrorFromVendorPatchlevel) {
+  // Prepare a key generated at an arbitrary system version.
+  context_->SetSystemVersion(kOsVersion, kOsPatchlevel);
+  context_->SetVendorPatchlevelForTesting(kVendorPatchlevel);
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
+  ::keymaster::KeymasterKeyBlob generated_key;
+  keymaster_error_t error = generateTestKey(&keymint_, &generated_key);
+  ASSERT_EQ(error, KM_ERROR_OK);
+
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
+
+  // Downgrade the system to a previous version.
+  context_->SetSystemVersion(kOsVersion, kVendorPatchlevel - 1);
+
+  // Verify the old blob becomes invalid.
+  ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest1(
+      kKeyMintMessageVersion);
+  characteristicsRequest1.SetKeyMaterial(generated_key);
+  ::keymaster::GetKeyCharacteristicsResponse characteristicsResponse1(
+      kKeyMintMessageVersion);
+  keymint_.GetKeyCharacteristics(characteristicsRequest1,
+                                 &characteristicsResponse1);
+  EXPECT_EQ(characteristicsResponse1.error, KM_ERROR_INVALID_KEY_BLOB);
+
+  // Verify the blob cannot be upgraded.
+  ::keymaster::KeymasterKeyBlob key_blob(generated_key);
+  ::keymaster::KeymasterKeyBlob upgraded_key_blob;
+  ::keymaster::AuthorizationSet upgrade_params;
+  error =
+      context_->UpgradeKeyBlob(key_blob, upgrade_params, &upgraded_key_blob);
+  ASSERT_EQ(error, KM_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(ArcKeyMintContextTest,
+       UpgradeKeyBlobLowerVersionErrorFromBootPatchlevel) {
+  // Prepare a key generated at an arbitrary system version.
+  context_->SetSystemVersion(kOsVersion, kOsPatchlevel);
+  context_->SetVendorPatchlevelForTesting(kVendorPatchlevel);
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
+  ::keymaster::KeymasterKeyBlob generated_key;
+  keymaster_error_t error = generateTestKey(&keymint_, &generated_key);
+  ASSERT_EQ(error, KM_ERROR_OK);
+
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
+
+  // Downgrade the system to a previous version.
+  context_->SetSystemVersion(kOsVersion, kBootPatchlevel - 1);
 
   // Verify the old blob becomes invalid.
   ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest1(

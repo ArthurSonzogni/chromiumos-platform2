@@ -563,16 +563,33 @@ keymaster_error_t ArcKeyMintContext::UpgradeKeyBlob(
 
   // Try to upgrade system version and patchlevel, return if upgrade fails.
   bool os_version_did_change = false;
-  bool patchlevel_did_change = false;
+  bool os_patchlevel_did_change = false;
   if (!UpgradeIntegerTag(::keymaster::TAG_OS_VERSION, os_version_, &hw_enforced,
                          &os_version_did_change) ||
       !UpgradeIntegerTag(::keymaster::TAG_OS_PATCHLEVEL, os_patchlevel_,
-                         &hw_enforced, &patchlevel_did_change)) {
+                         &hw_enforced, &os_patchlevel_did_change)) {
     return KM_ERROR_INVALID_ARGUMENT;
   }
 
-  // Do nothing if blob is already up to date.
-  if (!os_version_did_change && !patchlevel_did_change) {
+  bool vendor_patchlevel_did_change = false;
+  if (!vendor_patchlevel_.has_value() ||
+      !UpgradeIntegerTag(::keymaster::TAG_VENDOR_PATCHLEVEL,
+                         vendor_patchlevel_.value(), &hw_enforced,
+                         &vendor_patchlevel_did_change)) {
+    return KM_ERROR_INVALID_ARGUMENT;
+  }
+
+  bool boot_patchlevel_did_change = false;
+  if (!boot_patchlevel_.has_value() ||
+      !UpgradeIntegerTag(::keymaster::TAG_BOOT_PATCHLEVEL,
+                         boot_patchlevel_.value(), &hw_enforced,
+                         &boot_patchlevel_did_change)) {
+    return KM_ERROR_INVALID_ARGUMENT;
+  }
+
+  // If OS or any patch level has not changed, do not upgrade.
+  if (!os_version_did_change && !os_patchlevel_did_change &&
+      !vendor_patchlevel_did_change && !boot_patchlevel_did_change) {
     return KM_ERROR_OK;
   }
 
@@ -1198,4 +1215,12 @@ ArcKeyMintContext::GetVerifiedBootParams(keymaster_error_t* error) const {
       arc_enforcement_policy_.get());
 }
 
+void ArcKeyMintContext::SetVendorPatchlevelForTesting(
+    uint32_t vendor_patchlevel) {
+  vendor_patchlevel_ = vendor_patchlevel;
+}
+
+void ArcKeyMintContext::SetBootPatchlevelForTesting(uint32_t boot_patchlevel) {
+  boot_patchlevel_ = boot_patchlevel;
+}
 }  // namespace arc::keymint::context

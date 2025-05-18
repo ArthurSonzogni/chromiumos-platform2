@@ -116,6 +116,8 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
 
   // Sets the ARCVM's serial number in KeyMint.
   keymaster_error_t SetSerialNumber(const std::string& serial_number);
+  void SetVendorPatchlevelForTesting(uint32_t vendor_patch_level);
+  void SetBootPatchlevelForTesting(uint32_t boot_patch_level);
 
  private:
   // If |key_blob| contains an ARC owned key, deserialize it into |key_material|
