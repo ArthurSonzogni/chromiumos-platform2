@@ -585,12 +585,17 @@ TEST_F(RecoveryCryptoTest, GenerateFreshRecoveryId) {
 
   // Generate a new seed and compute recovery_id.
   EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
+  std::string recovery_seed = recovery_->LoadStoredRecoverySeed(account_id);
+  EXPECT_FALSE(recovery_seed.empty());
   std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   EXPECT_FALSE(recovery_id.empty());
   // Re-generate a recovery id from the existing persisted data.
   EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
+  std::string new_recovery_seed = recovery_->LoadStoredRecoverySeed(account_id);
+  EXPECT_FALSE(new_recovery_seed.empty());
   std::string new_recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   EXPECT_FALSE(new_recovery_id.empty());
+  EXPECT_EQ(recovery_seed, new_recovery_seed);
   EXPECT_NE(recovery_id, new_recovery_id);
 }
 
@@ -600,12 +605,17 @@ TEST_F(RecoveryCryptoTest, GenerateFreshRecoveryIdWithoutRotation) {
 
   // Generate a new seed and compute recovery_id.
   EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
+  std::string recovery_seed = recovery_->LoadStoredRecoverySeed(account_id);
+  EXPECT_FALSE(recovery_seed.empty());
   std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   EXPECT_FALSE(recovery_id.empty());
   // Retrieve the recovery id from the existing persisted data.
   EXPECT_TRUE(recovery_->EnsureRecoveryIdPresent(account_id));
+  std::string new_recovery_seed = recovery_->LoadStoredRecoverySeed(account_id);
+  EXPECT_FALSE(new_recovery_seed.empty());
   std::string new_recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   EXPECT_FALSE(new_recovery_id.empty());
+  EXPECT_EQ(recovery_seed, new_recovery_seed);
   EXPECT_EQ(recovery_id, new_recovery_id);
 }
 
@@ -613,7 +623,9 @@ TEST_F(RecoveryCryptoTest, NoRecoveryId) {
   AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
 
-  // Try to load recovery_id before generating it.
+  // Try to load seed and recovery_id before generating it.
+  std::string recovery_seed = recovery_->LoadStoredRecoverySeed(account_id);
+  EXPECT_THAT(recovery_seed, testing::IsEmpty());
   std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   EXPECT_THAT(recovery_id, testing::IsEmpty());
   std::vector<std::string> recovery_ids_history =
@@ -626,6 +638,7 @@ TEST_F(RecoveryCryptoTest, VerifyRecoveryIdsHistory) {
   account_id.set_account_id(kFakeUserId);
 
   std::vector<std::string> recovery_id;
+  std::string recovery_seed;
   // Generate an initial recovery_id and re-compute it a few times.
   for (int i = 0; i < kMaxRecoveryIdDepth; i++) {
     EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
@@ -633,6 +646,12 @@ TEST_F(RecoveryCryptoTest, VerifyRecoveryIdsHistory) {
         recovery_->LoadStoredRecoveryId(account_id);
     EXPECT_FALSE(current_recovery_id.empty());
     recovery_id.push_back(current_recovery_id);
+    if (i == 0) {
+      recovery_seed = recovery_->LoadStoredRecoverySeed(account_id);
+      EXPECT_FALSE(recovery_seed.empty());
+    } else {
+      EXPECT_EQ(recovery_seed, recovery_->LoadStoredRecoverySeed(account_id));
+    }
   }
 
   std::vector<std::string> recovery_ids_history =
@@ -648,6 +667,7 @@ TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShorterThanRequested) {
   account_id.set_account_id(kFakeUserId);
 
   std::vector<std::string> recovery_id;
+  std::string recovery_seed;
   // Generate an initial recovery_id and re-compute it a few times.
   for (int i = 0; i < kRecoveryIdDepth; i++) {
     EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
@@ -655,6 +675,12 @@ TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShorterThanRequested) {
         recovery_->LoadStoredRecoveryId(account_id);
     EXPECT_FALSE(current_recovery_id.empty());
     recovery_id.push_back(current_recovery_id);
+    if (i == 0) {
+      recovery_seed = recovery_->LoadStoredRecoverySeed(account_id);
+      EXPECT_FALSE(recovery_seed.empty());
+    } else {
+      EXPECT_EQ(recovery_seed, recovery_->LoadStoredRecoverySeed(account_id));
+    }
   }
 
   std::vector<std::string> recovery_ids_history =

@@ -4188,7 +4188,7 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
         recovery_reply.add_recovery_ids(recovery_id);
       }
       std::string recovery_seed =
-          recovery->LoadStoredRecoveryId(request.account_id());
+          recovery->LoadStoredRecoverySeed(request.account_id());
       recovery_reply.set_recovery_seed(recovery_seed);
       *reply.mutable_recovery_info_reply() = std::move(recovery_reply);
       break;

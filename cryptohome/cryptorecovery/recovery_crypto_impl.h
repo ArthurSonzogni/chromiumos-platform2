@@ -58,7 +58,11 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   // that will be passed as an argument.
   std::string LoadStoredRecoveryIdFromFile(
       const base::FilePath& recovery_id_path) const;
+  std::string LoadStoredRecoverySeedFromFile(
+      const base::FilePath& recovery_id_path) const;
   std::string LoadStoredRecoveryId(const AccountIdentifier& account_id) const;
+  std::string LoadStoredRecoverySeed(const AccountIdentifier& account_id) const;
+
   // This method should be called on the initial creation of OnboardingMetadata
   // and after every successful recovery operation to refresh the Recovery Id.
   // Secrets used to generate Recovery Id are stored in cryptohome but the

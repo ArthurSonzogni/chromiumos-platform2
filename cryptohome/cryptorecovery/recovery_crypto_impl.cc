@@ -1093,10 +1093,37 @@ std::string RecoveryCryptoImpl::LoadStoredRecoveryIdFromFile(
                    recovery_id_pb.recovery_id().end()));
 }
 
+std::string RecoveryCryptoImpl::LoadStoredRecoverySeedFromFile(
+    const base::FilePath& recovery_id_path) const {
+  if (recovery_id_path.empty()) {
+    LOG(ERROR) << "Unable to get path to serialized RecoveryId container";
+    return "";
+  }
+  CryptoRecoveryIdContainer recovery_id_pb;
+  if (!LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb)) {
+    LOG(ERROR) << "Unable to deserialize RecoveryId protobuf";
+    return "";
+  }
+  if (!recovery_id_pb.has_seed() ||
+      recovery_id_pb.seed().empty()) {
+    LOG(ERROR) << "Serialized protobuf does not contain the actual Recovery seed";
+    return "";
+  }
+  return hwsec_foundation::BlobToHex(
+      brillo::Blob(recovery_id_pb.seed().begin(),
+                   recovery_id_pb.seed().end()));
+}
+
 std::string RecoveryCryptoImpl::LoadStoredRecoveryId(
     const AccountIdentifier& account_id) const {
   base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
   return LoadStoredRecoveryIdFromFile(recovery_id_path);
+}
+
+std::string RecoveryCryptoImpl::LoadStoredRecoverySeed(
+    const AccountIdentifier& account_id) const {
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
+  return LoadStoredRecoverySeedFromFile(recovery_id_path);
 }
 
 bool RecoveryCryptoImpl::EnsureRecoveryIdPresent(
