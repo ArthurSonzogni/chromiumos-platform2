@@ -185,7 +185,7 @@ class Decisions(Table):
 
         if expected_match_type is MatchType.Genuine:
             # FRR table should not contain any imposter matches, where the
-            # Verify User+Finger doesn't equal Enroll USer+Finger.
+            # Verify User+Finger doesn't equal Enroll User+Finger.
 
             bad_fr_attempts = self.filter_match_attempts(MatchType.Imposter)
             if len(bad_fr_attempts) > 0:
