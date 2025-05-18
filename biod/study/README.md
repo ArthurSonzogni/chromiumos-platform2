@@ -13,5 +13,5 @@ This directory holds many tools that pertain to fingerprint system evaluation.
 
 1.  Run `python-venv-setup.sh`, as mentioned above.
 2.  Run `. sourceme.bash` from any terminal that you will be developing with, to
-    active the Python3 virtual environment. This will need to be rerun in every
-    new terminal/shell.
+    activate the Python3 virtual environment. This will need to be rerun in
+    every new terminal/shell.

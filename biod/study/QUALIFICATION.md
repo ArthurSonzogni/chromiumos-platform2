@@ -107,7 +107,7 @@ fingerprint MCU (FPMCU), and matching library that runs on the FPMCU.
 
 1.  Process all collected participant fingerprint samples using the
     [Performance Evaluation Tool]. This tool is intended to simulate enrollments
-    and matches under multiple testing schenarios/modes.
+    and matches under multiple testing scenarios/modes.
 
     *For qualifications, no fingerprint samples may be excluded/filtered. If a
     truly unique and unnatural fingerprint capturing situation arises, the

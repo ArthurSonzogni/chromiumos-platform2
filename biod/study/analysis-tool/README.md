@@ -2,7 +2,7 @@
 
 # Fingerprint Performance Analysis Tool
 
-This tool is used to asses the performance of a fingerprint system.
+This tool is used to assess the performance of a fingerprint system.
 
 It uses matcher decision output from test user fingerprint samples to
 statistically determine its FAR and FRR confidence range.
@@ -70,7 +70,7 @@ FRR probability of 6%, run the following:
 ./analysis-tool/simulate_fpstudy.py study_output --fingers 4 --samples 40 --frr_prob_percent 6
 ```
 
-The output files will be stored in the `study_output` direction and will have
+The output files will be stored in the `study_output` directory and will have
 the following:
 
 *   FAR_decisions.csv: contains all matcher imposter (false-accept) attempts
@@ -168,7 +168,7 @@ following files for use by the analysis tool.
 . .venv/bin/activate
 
 # You can use defaults, but limiting finger, samples, and users will make the
-# analysis run faster. If you provide an non group multiple for users count,
+# analysis run faster. If you provide a non-group multiple for users count,
 # you can simply disable groups by adding --groups=0.
 ./analysis-tool/simulate_fpstudy.py simulation --fingers 4 --samples 40 --frr_prob_percent 6
 # The next command will launch two plots in your browser, so you need to
