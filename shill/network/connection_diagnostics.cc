@@ -81,7 +81,6 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       iface_index_(iface_index),
       ip_family_(ip_family),
       gateway_(gateway),
-      running_(false),
       event_number_(0),
       logging_tag_(logging_tag),
       next_diagnostic_id_(0),
@@ -94,7 +93,9 @@ ConnectionDiagnostics::ConnectionDiagnostics(
 }
 
 ConnectionDiagnostics::~ConnectionDiagnostics() {
-  Stop();
+  if (IsRunning()) {
+    Stop();
+  }
 }
 
 void ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
@@ -107,44 +108,30 @@ void ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
   LOG(INFO) << logging_tag_ << " " << __func__ << ": Starting " << ip_family_
             << " diagnostics for " << url.ToString();
 
-  if (gateway_) {
-    running_ = true;
-    StartPingDiagnostic(Type::kPingGateway, *gateway_);
-  } else {
-    LogEvent(AssignDiagnosticId(Type::kPingGateway, "Pinging gateway"),
-             Type::kPingGateway, Result::kSuccess,
-             "Skipped because gateway is not defined");
-  }
-
-  if (dns_list_.size() > 0) {
-    running_ = true;
-    StartDNSServerPingDiagnostic();
-    StartHostDiagnostic(url);
-  } else {
-    LogEvent(AssignDiagnosticId(Type::kPingDNSServers, "Pinging DNS servers"),
-             Type::kPingDNSServers, Result::kSuccess,
-             "Skipped because DNS servers are not defined");
-    LogEvent(AssignDiagnosticId(Type::kPingTargetServer,
-                                "Pinging " + url.ToString()),
-             Type::kPingTargetServer, Result::kSuccess,
-             "Skipped because DNS servers are not defined");
-  }
+  StartGatewayPingDiagnostic();
+  StartDNSServerPingDiagnostic();
+  StartHostDiagnostic(url);
 }
 
 void ConnectionDiagnostics::Stop() {
   PrintEvents();
   LOG(INFO) << logging_tag_ << " " << __func__ << ": Stopping " << ip_family_
             << " diagnostics";
-  running_ = false;
   event_number_ = 0;
   dns_queries_.clear();
   target_url_addresses_.clear();
   id_to_pending_dns_server_icmp_session_.clear();
-  icmp_sessions_.clear();
+  host_icmp_sessions_.clear();
+  gateway_icmp_session_ = nullptr;
+  gateway_ping_running_ = false;
+  dns_ping_running_ = false;
+  host_resolution_running_ = false;
+  host_ping_running_ = false;
 }
 
 bool ConnectionDiagnostics::IsRunning() const {
-  return running_;
+  return gateway_ping_running_ || dns_ping_running_ ||
+         host_resolution_running_ || host_ping_running_;
 }
 
 // static
@@ -167,12 +154,12 @@ void ConnectionDiagnostics::LogEvent(int diagnostic_id,
   if (!success) {
     it->second = ev;
   }
+  if (!IsRunning()) {
+    Stop();
+  }
 }
 
 void ConnectionDiagnostics::PrintEvents() {
-  if (!running_) {
-    return;
-  }
   for (const auto& [id, ev] : diagnostic_results_) {
     if (ev.result == Result::kSuccess) {
       LOG(INFO) << logging_tag_ << " " << __func__ << ": " << ip_family_ << " "
@@ -187,15 +174,25 @@ void ConnectionDiagnostics::PrintEvents() {
 }
 
 void ConnectionDiagnostics::StartHostDiagnostic(const net_base::HttpUrl& url) {
+  host_resolution_running_ = true;
   dispatcher_->PostTask(
       FROM_HERE,
-      base::BindOnce(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
+      base::BindOnce(&ConnectionDiagnostics::ResolveHostIPAddress,
                      weak_ptr_factory_.GetWeakPtr(), url, dns_list_));
 }
 
-void ConnectionDiagnostics::ResolveTargetServerIPAddress(
+void ConnectionDiagnostics::ResolveHostIPAddress(
     const net_base::HttpUrl& url,
     const std::vector<net_base::IPAddress>& dns_list) {
+  if (dns_list_.empty()) {
+    host_resolution_running_ = false;
+    LogEvent(AssignDiagnosticId(Type::kPingTargetServer,
+                                "Pinging " + url.ToString()),
+             Type::kPingTargetServer, Result::kSuccess,
+             "Skipped because DNS servers are not defined");
+    return;
+  }
+
   for (const auto& dns : dns_list) {
     net_base::DNSClient::Options opts = {
         .number_of_tries = kDNSNumberOfQueries,
@@ -208,14 +205,14 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
         "Resolving " + url.host() + " with DNS " + dns.ToString());
     dns_queries_[dns] = dns_client_factory_->Resolve(
         ip_family_, url.host(),
-        base::BindOnce(&ConnectionDiagnostics::OnDNSResolutionComplete,
+        base::BindOnce(&ConnectionDiagnostics::OnHostResolutionComplete,
                        weak_ptr_factory_.GetWeakPtr(), diagnostic_id, dns),
         opts);
   }
 }
 
 void ConnectionDiagnostics::StartDNSServerPingDiagnostic() {
-  // get id for this operation
+  dns_ping_running_ = true;
   int dns_diag_id =
       AssignDiagnosticId(Type::kPingDNSServers, "Ping DNS servers");
   dispatcher_->PostTask(
@@ -224,6 +221,14 @@ void ConnectionDiagnostics::StartDNSServerPingDiagnostic() {
 }
 
 void ConnectionDiagnostics::PingDNSServers(int dns_diag_id) {
+  if (dns_list_.empty()) {
+    dns_ping_running_ = false;
+    LogEvent(AssignDiagnosticId(Type::kPingDNSServers, "Pinging DNS servers"),
+             Type::kPingDNSServers, Result::kSuccess,
+             "Skipped because DNS servers are not defined");
+    return;
+  }
+
   for (size_t i = 0; i < dns_list_.size(); ++i) {
     const auto& dns_server_ip_addr = dns_list_[i];
     int diag_id = AssignDiagnosticId(
@@ -247,67 +252,34 @@ void ConnectionDiagnostics::PingDNSServers(int dns_diag_id) {
   }
 
   if (id_to_pending_dns_server_icmp_session_.empty()) {
+    dns_ping_running_ = false;
     LogEvent(dns_diag_id, Type::kPingDNSServers, Result::kFailure,
              "Could not start ping for any of the given DNS servers");
-    Stop();
   } else {
     ClearDiagnosticId(dns_diag_id);
   }
-}
-
-void ConnectionDiagnostics::PingHost(int diagnostic_id,
-                                     Type event_type,
-                                     const net_base::IPAddress& address) {
-  SLOG(2) << logging_tag_ << " " << __func__ << "(" << address << ")";
-  if (base::Contains(icmp_sessions_, address)) {
-    LogEvent(diagnostic_id, event_type, Result::kSuccess,
-             "Skipped, a ping request already exists for destination " +
-                 address.ToString());
-    // Pinging the target server is the last operation.
-    if (event_type == Type::kPingTargetServer) {
-      Stop();
-    }
-    return;
-  }
-  auto icmp_session = StartIcmpSession(
-      address, iface_index_, iface_name_,
-      base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
-                     weak_ptr_factory_.GetWeakPtr(), diagnostic_id, event_type,
-                     address));
-  if (!icmp_session) {
-    LogEvent(diagnostic_id, event_type, Result::kFailure,
-             "Failed to initiate ping to " + address.ToString());
-    Stop();
-    return;
-  }
-  icmp_sessions_[address] = std::move(icmp_session);
 }
 
 void ConnectionDiagnostics::OnPingDNSServerComplete(
     int diagnostic_id,
     int dns_server_index,
     const std::vector<base::TimeDelta>& result) {
-  if (!id_to_pending_dns_server_icmp_session_.erase(dns_server_index)) {
-    // This should not happen, since we expect exactly one callback for each
-    // IcmpSession started with a unique |dns_server_index| value in
-    // ConnectionDiagnostics::PingDNSServers. However, if this does happen for
-    // any reason, |id_to_pending_dns_server_icmp_session_| might never become
-    // empty, and we might never move to the next step after pinging DNS
-    // servers. Stop diagnostics immediately to prevent this from happening.
+  bool found = id_to_pending_dns_server_icmp_session_.erase(dns_server_index);
+  dns_ping_running_ = !id_to_pending_dns_server_icmp_session_.empty();
+  if (!found) {
     LogEvent(diagnostic_id, Type::kPingDNSServers, Result::kFailure,
              "No matching pending DNS server ICMP session found");
-    Stop();
     return;
   }
-
   OnPingResult(diagnostic_id, Type::kPingDNSServers,
                dns_list_[dns_server_index], result);
 }
 
-void ConnectionDiagnostics::OnDNSResolutionComplete(
+void ConnectionDiagnostics::OnHostResolutionComplete(
     int diagnostic_id,
     const net_base::IPAddress& dns,
     const net_base::DNSClient::Result& result) {
+  dns_queries_.erase(dns);
   if (result.has_value()) {
     std::string message = dns.ToString() + " returned ";
     std::string sep = "";
@@ -327,38 +299,56 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(
              message);
   }
 
-  dns_queries_.erase(dns);
+  // Wait for all DNS queries to complete first.
+  if (!dns_queries_.empty()) {
+    return;
+  }
 
-  // Starts pinging the addresses of the target host if all queries have
-  // finished.
-  if (dns_queries_.empty()) {
-    if (target_url_addresses_.empty()) {
-      Stop();
-      return;
+  host_resolution_running_ = false;
+
+  if (target_url_addresses_.empty()) {
+    int diagnostic_id =
+        AssignDiagnosticId(Type::kPingTargetServer, "Pinging host server");
+    LogEvent(diagnostic_id, Type::kPingTargetServer, Result::kFailure,
+             "Failed to initiate ping to host server: no DNS result");
+    return;
+  }
+
+  host_ping_running_ = true;
+
+  // Otherwise starts pinging the addresses of the target host.
+  for (const auto& addr : target_url_addresses_) {
+    int diagnostic_id = AssignDiagnosticId(Type::kPingTargetServer,
+                                           "Pinging " + addr.ToString());
+    auto icmp_session = StartIcmpSession(
+        addr, iface_index_, iface_name_,
+        base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
+                       weak_ptr_factory_.GetWeakPtr(), diagnostic_id, addr));
+    if (!icmp_session) {
+      LogEvent(diagnostic_id, Type::kPingTargetServer, Result::kFailure,
+               "Failed to initiate ping to " + addr.ToString());
+      continue;
     }
-    for (const auto& target_addr : target_url_addresses_) {
-      StartPingDiagnostic(Type::kPingTargetServer, target_addr);
+    host_icmp_sessions_[addr] = std::move(icmp_session);
+  }
+
+  if (host_icmp_sessions_.empty()) {
+    host_ping_running_ = false;
+    // Explicitly check if ConnectionDiagnostics should stop since there is
+    // no log event associated with this case.
+    if (!IsRunning()) {
+      Stop();
     }
   }
 }
 
 void ConnectionDiagnostics::OnPingHostComplete(
     int diagnostic_id,
-    Type event_type,
     const net_base::IPAddress& address_pinged,
     const std::vector<base::TimeDelta>& result) {
-  SLOG(2) << logging_tag_ << " " << __func__ << "(" << address_pinged << ")";
-  OnPingResult(diagnostic_id, event_type, address_pinged, result);
-  icmp_sessions_.erase(address_pinged);
-  if (event_type == Type::kPingTargetServer) {
-    // Pinging the last address of the target server is the last operation.
-    // TODO(b/229309479) This is actually not true if for some reasons some of
-    // the parallel sessions end later.
-    target_url_addresses_.erase(address_pinged);
-    if (target_url_addresses_.empty()) {
-      Stop();
-    }
-  }
+  host_icmp_sessions_.erase(address_pinged);
+  host_ping_running_ = !host_icmp_sessions_.empty();
+  OnPingResult(diagnostic_id, Type::kPingTargetServer, address_pinged, result);
 }
 
 void ConnectionDiagnostics::OnPingResult(
@@ -423,13 +413,36 @@ void ConnectionDiagnostics::ClearDiagnosticId(int diag_id) {
   diagnostic_results_.erase(diag_id);
 }
 
-void ConnectionDiagnostics::StartPingDiagnostic(
-    Type type, const net_base::IPAddress& addr) {
-  int diagnostic_id = AssignDiagnosticId(type, "Pinging " + addr.ToString());
+void ConnectionDiagnostics::StartGatewayPingDiagnostic() {
+  int diagnostic_id = AssignDiagnosticId(Type::kPingGateway, "Pinging gateway");
+  gateway_ping_running_ = true;
   dispatcher_->PostTask(
-      FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
-                                weak_ptr_factory_.GetWeakPtr(), diagnostic_id,
-                                type, addr));
+      FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingGateway,
+                                weak_ptr_factory_.GetWeakPtr(), diagnostic_id));
+}
+
+void ConnectionDiagnostics::PingGateway(int diagnostic_id) {
+  if (!gateway_) {
+    gateway_ping_running_ = false;
+    LogEvent(diagnostic_id, Type::kPingGateway, Result::kSuccess,
+             "Skipped because gateway is not defined");
+    return;
+  }
+  gateway_icmp_session_ = StartIcmpSession(
+      *gateway_, iface_index_, iface_name_,
+      base::BindOnce(&ConnectionDiagnostics::OnPingGatewayComplete,
+                     weak_ptr_factory_.GetWeakPtr(), diagnostic_id));
+  if (!gateway_icmp_session_) {
+    gateway_ping_running_ = false;
+    LogEvent(diagnostic_id, Type::kPingGateway, Result::kFailure,
+             "Failed to initiate ping to " + gateway_->ToString());
+  }
+}
+
+void ConnectionDiagnostics::OnPingGatewayComplete(
+    int diagnostic_id, const std::vector<base::TimeDelta>& result) {
+  gateway_ping_running_ = false;
+  OnPingResult(diagnostic_id, Type::kPingGateway, *gateway_, result);
 }
 
 }  // namespace shill
