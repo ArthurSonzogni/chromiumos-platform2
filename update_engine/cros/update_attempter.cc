@@ -193,7 +193,12 @@ void UpdateAttempter::Init() {
     // Check if the pending update should be invalidated due to the enterprise
     // invalidation after update_engine restart.
     if (status_ == UpdateStatus::UPDATED_NEED_REBOOT) {
-      ScheduleEnterpriseUpdateInvalidationCheck();
+      MessageLoop::current()->PostTask(
+          FROM_HERE,
+          base::BindOnce(
+              base::IgnoreResult(
+                  &UpdateAttempter::ScheduleEnterpriseUpdateInvalidationCheck),
+              weak_ptr_factory_.GetWeakPtr()));
     }
   } else {
     // Send metric before deleting prefs. Metric tells us how many times the

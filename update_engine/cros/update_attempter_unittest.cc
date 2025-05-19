@@ -2963,6 +2963,7 @@ TEST_F(UpdateAttempterTest, AfterRestartUpdateInvalidationScheduled) {
   ASSERT_TRUE(attempter_.GetBootTimeAtUpdate(nullptr));
 
   attempter_.Init();
+  loop_.RunOnce(false);
 
   EXPECT_TRUE(attempter_.enterprise_update_invalidation_check_scheduled_);
 }
@@ -2971,6 +2972,7 @@ TEST_F(UpdateAttempterTest, AfterRestartNoInvalidationScheduledIfNoUpdate) {
   ASSERT_FALSE(attempter_.GetBootTimeAtUpdate(nullptr));
 
   attempter_.Init();
+  loop_.RunOnce(false);
 
   EXPECT_FALSE(attempter_.enterprise_update_invalidation_check_scheduled_);
 }
@@ -2985,6 +2987,7 @@ TEST_F(UpdateAttempterTest,
                                                   "");
 
   attempter_.Init();
+  loop_.RunOnce(false);
 
   EXPECT_FALSE(attempter_.enterprise_update_invalidation_check_scheduled_);
 }
@@ -2996,6 +2999,7 @@ TEST_F(UpdateAttempterTest, AfterRestartInvalidatesUpdate) {
   ASSERT_TRUE(attempter_.GetBootTimeAtUpdate(nullptr));
   // Init the update attempter to schedule the update invalidation.
   attempter_.Init();
+  loop_.RunOnce(false);
   ASSERT_TRUE(attempter_.enterprise_update_invalidation_check_scheduled_);
   // Configure the enterprise policy.
   chromeos_update_manager::FakeDevicePolicyProvider* device_policy_provider =
@@ -3019,6 +3023,7 @@ TEST_F(UpdateAttempterTest, AfterRestartSubscribesInvalidatesUpdate) {
   ASSERT_TRUE(attempter_.GetBootTimeAtUpdate(nullptr));
   // Init the update attempter to schedule the update invalidation.
   attempter_.Init();
+  loop_.RunOnce(false);
   ASSERT_TRUE(attempter_.enterprise_update_invalidation_check_scheduled_);
   // Enable updates first, so that the update attempter subscribes to
   // the policy changes.
@@ -3051,6 +3056,7 @@ TEST_F(UpdateAttempterTest,
   ASSERT_TRUE(attempter_.GetBootTimeAtUpdate(nullptr));
   // Init the update attempter to schedule the update invalidation.
   attempter_.Init();
+  loop_.RunOnce(false);
   ASSERT_TRUE(attempter_.enterprise_update_invalidation_check_scheduled_);
   // Configure the non enterprise policy.
   chromeos_update_manager::FakeDevicePolicyProvider* device_policy_provider =
@@ -3074,6 +3080,7 @@ TEST_F(UpdateAttempterTest, AfterRestartSkipsUpdateInvalidationIfNotIdle) {
   ASSERT_TRUE(attempter_.GetBootTimeAtUpdate(nullptr));
   // Init the update attempter to schedule the update invalidation.
   attempter_.Init();
+  loop_.RunOnce(false);
   ASSERT_TRUE(attempter_.enterprise_update_invalidation_check_scheduled_);
   // Disable the updates via the enterprise policy, but make
   // the update engine non IDLE.

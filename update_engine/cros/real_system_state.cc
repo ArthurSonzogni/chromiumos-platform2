@@ -159,6 +159,9 @@ bool RealSystemState::Initialize() {
   update_manager_.reset(new chromeos_update_manager::UpdateManager(
       base::Seconds(5), base::Hours(12), um_state));
 
+  // Run tasks from UpdateAttempter that has dependency on UpdateManager.
+  brillo::MessageLoop::current()->RunOnce(false);
+
   // The P2P Manager depends on the Update Manager for its initialization.
   p2p_manager_.reset(P2PManager::Construct(nullptr, update_manager_.get(),
                                            "cros_au", kMaxP2PFilesToKeep,
