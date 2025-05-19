@@ -72,6 +72,17 @@ constexpr char kBoostArcVmProperty[] = "boost-arcvm";
 // Path to cpu information directories
 constexpr char kCpuInfosPath[] = "/sys/devices/system/cpu/";
 
+bool EpollCtlAdd(int epoll_fd, int event_fd) {
+  struct epoll_event ep_event{
+      .events = EPOLLIN,
+      .data.u32 = static_cast<uint32_t>(event_fd),
+  };
+  if (HANDLE_EINTR(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, event_fd, &ep_event)) <
+      0) {
+    return false;
+  }
+  return true;
+}
 }  // namespace
 
 namespace internal {
@@ -1224,24 +1235,14 @@ std::unique_ptr<VmStartChecker> VmStartChecker::Create(int32_t signal_fd) {
     return nullptr;
   }
 
-  struct epoll_event ep_event{
-      .events = EPOLLIN,
-      .data.u32 = static_cast<uint32_t>(vm_start_event_fd.get()),
-  };
-  if (HANDLE_EINTR(epoll_ctl(vm_start_epoll_fd.get(), EPOLL_CTL_ADD,
-                             vm_start_event_fd.get(), &ep_event)) < 0) {
+  if (!EpollCtlAdd(vm_start_epoll_fd.get(), vm_start_event_fd.get())) {
     PLOG(ERROR) << "Failed to epoll add VM start event fd";
     return nullptr;
   }
 
   // Add the signal fd to the epoll set to see if a signal is received while
   // waiting for the VM.
-  ep_event = {
-      .events = EPOLLIN,
-      .data.u32 = static_cast<uint32_t>(signal_fd),
-  };
-  if (HANDLE_EINTR(epoll_ctl(vm_start_epoll_fd.get(), EPOLL_CTL_ADD, signal_fd,
-                             &ep_event)) < 0) {
+  if (!EpollCtlAdd(vm_start_epoll_fd.get(), signal_fd)) {
     PLOG(ERROR) << "Failed to epoll add signal fd";
     return nullptr;
   }
