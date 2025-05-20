@@ -10,6 +10,8 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -79,6 +81,7 @@ class IcmpSession {
   virtual bool Start(const net_base::IPAddress& destination,
                      int interface_index,
                      std::string_view interface_name,
+                     std::string_view logging_tag,
                      IcmpSessionResultCallback result_callback);
 
   // Stops the current ICMP session by closing the ICMP socket and resetting
@@ -151,6 +154,7 @@ class IcmpSession {
   std::unique_ptr<net_base::Socket> socket_;
   std::optional<net_base::IPAddress> destination_;
   int interface_index_ = -1;
+  std::string logging_tag_;
 
   // unique ID for this object's echo request/replies
   uint16_t echo_id_;

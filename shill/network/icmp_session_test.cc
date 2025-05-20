@@ -80,6 +80,7 @@ const net_base::IPAddress kIPv6Address =
     *net_base::IPAddress::CreateFromString("2001:db8::1234:5678");
 constexpr int kInterfaceIndex = 3;
 constexpr std::string_view kInterfaceName = "eth0";
+constexpr std::string_view kLoggingTag = "logging_tag";
 
 std::vector<uint8_t> ConcatBuffers(base::span<const uint8_t> a,
                                    base::span<const uint8_t> b) {
@@ -128,7 +129,8 @@ TEST_F(IcmpSessionTest, SocketOpenFail) {
       .WillOnce(Return(nullptr));
 
   EXPECT_FALSE(icmp_session_->Start(kIPv4Address, kInterfaceIndex,
-                                    kInterfaceName, base::DoNothing()));
+                                    kInterfaceName, kLoggingTag,
+                                    base::DoNothing()));
   EXPECT_FALSE(icmp_session_->IsStarted());
 }
 
@@ -194,13 +196,14 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
         return socket;
       });
 
-  EXPECT_TRUE(
-      icmp_session_->Start(kIPv4Address, kInterfaceIndex, kInterfaceName,
-                           base::BindOnce(&IcmpSessionTest::ResultCallback,
-                                          base::Unretained(this))));
+  EXPECT_TRUE(icmp_session_->Start(
+      kIPv4Address, kInterfaceIndex, kInterfaceName, kLoggingTag,
+      base::BindOnce(&IcmpSessionTest::ResultCallback,
+                     base::Unretained(this))));
   // When the session is started, Start() should fail.
   EXPECT_FALSE(icmp_session_->Start(kIPv4Address, kInterfaceIndex,
-                                    kInterfaceName, base::DoNothing()));
+                                    kInterfaceName, kLoggingTag,
+                                    base::DoNothing()));
 
   // Send 1st request immediately (T + 0s).
   EXPECT_CALL(*mock_socket,
@@ -266,10 +269,10 @@ TEST_F(IcmpSessionTest, SessionSuccessIPv6) {
       });
 
   EXPECT_CALL(*this, ResultCallback).Times(1);
-  EXPECT_TRUE(
-      icmp_session_->Start(kIPv6Address, kInterfaceIndex, kInterfaceName,
-                           base::BindOnce(&IcmpSessionTest::ResultCallback,
-                                          base::Unretained(this))));
+  EXPECT_TRUE(icmp_session_->Start(
+      kIPv6Address, kInterfaceIndex, kInterfaceName, kLoggingTag,
+      base::BindOnce(&IcmpSessionTest::ResultCallback,
+                     base::Unretained(this))));
 
   // Send 1st request.
   icmp_header.icmp6_seq = 0;
@@ -321,10 +324,10 @@ TEST_F(IcmpSessionTest, StopSession) {
       });
 
   EXPECT_CALL(*this, ResultCallback).Times(0);
-  EXPECT_TRUE(
-      icmp_session_->Start(kIPv4Address, kInterfaceIndex, kInterfaceName,
-                           base::BindOnce(&IcmpSessionTest::ResultCallback,
-                                          base::Unretained(this))));
+  EXPECT_TRUE(icmp_session_->Start(
+      kIPv4Address, kInterfaceIndex, kInterfaceName, kLoggingTag,
+      base::BindOnce(&IcmpSessionTest::ResultCallback,
+                     base::Unretained(this))));
 
   icmp_session_->Stop();
   task_environment_.FastForwardBy(IcmpSession::kTimeout);
@@ -349,10 +352,10 @@ TEST_F(IcmpSessionTest, SessionTimeout) {
         return socket;
       });
 
-  EXPECT_TRUE(
-      icmp_session_->Start(kIPv4Address, kInterfaceIndex, kInterfaceName,
-                           base::BindOnce(&IcmpSessionTest::ResultCallback,
-                                          base::Unretained(this))));
+  EXPECT_TRUE(icmp_session_->Start(
+      kIPv4Address, kInterfaceIndex, kInterfaceName, kLoggingTag,
+      base::BindOnce(&IcmpSessionTest::ResultCallback,
+                     base::Unretained(this))));
 
   EXPECT_CALL(*mock_socket, SendTo)
       .WillRepeatedly(Return(sizeof(struct icmphdr)));

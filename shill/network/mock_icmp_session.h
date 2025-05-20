@@ -5,9 +5,13 @@
 #ifndef SHILL_NETWORK_MOCK_ICMP_SESSION_H_
 #define SHILL_NETWORK_MOCK_ICMP_SESSION_H_
 
-#include "shill/network/icmp_session.h"
+#include <string_view>
 
+#include <chromeos/net-base/ip_address.h>
 #include <gmock/gmock.h>
+
+#include "shill/event_dispatcher.h"
+#include "shill/network/icmp_session.h"
 
 namespace shill {
 
@@ -23,6 +27,7 @@ class MockIcmpSession : public IcmpSession {
               Start,
               (const net_base::IPAddress&,
                int,
+               std::string_view,
                std::string_view,
                IcmpSession::IcmpSessionResultCallback),
               (override));

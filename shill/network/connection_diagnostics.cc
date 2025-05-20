@@ -392,7 +392,7 @@ std::unique_ptr<IcmpSession> ConnectionDiagnostics::StartIcmpSession(
     IcmpSession::IcmpSessionResultCallback result_callback) {
   auto icmp_session = std::make_unique<IcmpSession>(dispatcher_);
   if (!icmp_session->Start(destination, interface_index, interface_name,
-                           std::move(result_callback))) {
+                           logging_tag_, std::move(result_callback))) {
     return nullptr;
   }
   return icmp_session;

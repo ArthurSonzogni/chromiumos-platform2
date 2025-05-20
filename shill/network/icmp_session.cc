@@ -4,16 +4,17 @@
 
 #include "shill/network/icmp_session.h"
 
-#include <cstdint>
-#include <memory>
-#include <optional>
-#include <utility>
-#include <vector>
-
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
+
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include <base/check_op.h>
 #include <base/containers/span.h>
@@ -66,13 +67,14 @@ IcmpSession::~IcmpSession() {
 bool IcmpSession::Start(const net_base::IPAddress& destination,
                         int interface_index,
                         std::string_view interface_name,
+                        std::string_view logging_tag,
                         IcmpSessionResultCallback result_callback) {
   if (!dispatcher_) {
-    LOG(ERROR) << "Invalid dispatcher";
+    LOG(ERROR) << logging_tag << __func__ << ": Invalid dispatcher";
     return false;
   }
   if (IsStarted()) {
-    LOG(WARNING) << "ICMP session already started";
+    LOG(WARNING) << logging_tag << __func__ << ": Already started";
     return false;
   }
 
@@ -88,16 +90,17 @@ bool IcmpSession::Start(const net_base::IPAddress& destination,
       break;
   }
   if (socket == nullptr) {
-    PLOG(ERROR) << "Could not create ICMP socket";
+    PLOG(ERROR) << logging_tag << __func__ << ": Could not create ICMP socket";
     return false;
   }
   if (!base::SetNonBlocking(socket->Get())) {
-    PLOG(ERROR) << "Could not set socket to be non-blocking";
+    PLOG(ERROR) << logging_tag << __func__
+                << ": Could not set socket to be non-blocking";
     return false;
   }
 
   if (interface_name.size() >= IFNAMSIZ) {
-    LOG(ERROR) << "The interface name '" << interface_name << "' is too long";
+    LOG(ERROR) << logging_tag << __func__ << ": Interface name was too long";
     return false;
   }
   struct ifreq ifr;
@@ -105,13 +108,14 @@ bool IcmpSession::Start(const net_base::IPAddress& destination,
   memcpy(ifr.ifr_name, interface_name.data(), interface_name.size());
   if (!socket->SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
                           net_base::byte_utils::AsBytes(ifr))) {
-    PLOG(ERROR) << "Failed to bind socket on " << interface_name;
+    PLOG(ERROR) << logging_tag << __func__ << ": Failed to bind socket";
     return false;
   }
 
   socket_ = std::move(socket);
   destination_ = destination;
   interface_index_ = interface_index;
+  logging_tag_ = logging_tag;
   result_callback_ = std::move(result_callback);
 
   socket_->SetReadableCallback(base::BindRepeating(&IcmpSession::OnIcmpReadable,
@@ -251,10 +255,11 @@ bool IcmpSession::TransmitV4EchoRequest(const net_base::IPv4Address& address) {
       payload, 0, reinterpret_cast<struct sockaddr*>(&destination_address),
       sizeof(destination_address));
   if (!result) {
-    PLOG(ERROR) << "Socket sendto failed";
+    PLOG(ERROR) << logging_tag_ << " " << __func__ << ": Socket sendto failed";
   } else if (result < payload.size()) {
-    LOG(ERROR) << "Socket sendto returned " << *result
-               << " which is less than the expected result " << payload.size();
+    LOG(ERROR) << logging_tag_ << " " << __func__ << ": Socket sendto returned "
+               << *result << " which is less than the expected result "
+               << payload.size();
   }
 
   return result == payload.size();
@@ -282,10 +287,11 @@ bool IcmpSession::TransmitV6EchoRequest(const net_base::IPv6Address& address) {
       payload, 0, reinterpret_cast<struct sockaddr*>(&destination_address),
       sizeof(destination_address));
   if (!result) {
-    PLOG(ERROR) << "Socket sendto failed";
+    PLOG(ERROR) << logging_tag_ << " " << __func__ << ": Socket sendto failed";
   } else if (result < payload.size()) {
-    LOG(ERROR) << "Socket sendto returned " << *result
-               << " which is less than the expected result " << payload.size();
+    LOG(ERROR) << logging_tag_ << " " << __func__ << ": Socket sendto returned "
+               << *result << " which is less than the expected result "
+               << payload.size();
   }
 
   return result == payload.size();
@@ -293,7 +299,8 @@ bool IcmpSession::TransmitV6EchoRequest(const net_base::IPv6Address& address) {
 
 int IcmpSession::OnV4EchoReplyReceived(base::span<const uint8_t> message) {
   if (message.size() < sizeof(struct iphdr)) {
-    LOG(WARNING) << "Received ICMP packet is too short to contain IP header";
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": Received ICMP packet is too short to contain IP header";
     return -1;
   }
   const struct iphdr* received_ip_header =
@@ -301,7 +308,9 @@ int IcmpSession::OnV4EchoReplyReceived(base::span<const uint8_t> message) {
 
   if (message.size() < received_ip_header->ihl * kIPHeaderLengthUnitBytes +
                            sizeof(struct icmphdr)) {
-    LOG(WARNING) << "Received ICMP packet is too short to contain ICMP header";
+    LOG(WARNING)
+        << logging_tag_ << " " << __func__
+        << ": Received ICMP packet is too short to contain ICMP header";
     return -1;
   }
   const struct icmphdr* received_icmp_header =
@@ -316,12 +325,14 @@ int IcmpSession::OnV4EchoReplyReceived(base::span<const uint8_t> message) {
 
   // Make sure the message is valid and matches a pending echo request.
   if (received_icmp_header->code != kIcmpEchoCode) {
-    LOG(WARNING) << "ICMP header code is invalid";
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": ICMP header code is invalid";
     return -1;
   }
 
   if (received_icmp_header->un.echo.id != echo_id_) {
-    SLOG(2) << "received message echo id (" << received_icmp_header->un.echo.id
+    SLOG(2) << logging_tag_ << " " << __func__ << ": received message echo id ("
+            << received_icmp_header->un.echo.id
             << ") does not match this ICMP session's echo id (" << echo_id_
             << ")";
     return -1;
@@ -333,7 +344,8 @@ int IcmpSession::OnV4EchoReplyReceived(base::span<const uint8_t> message) {
 int IcmpSession::OnV6EchoReplyReceived(base::span<const uint8_t> message) {
   if (message.size() < sizeof(struct icmp6_hdr)) {
     LOG(WARNING)
-        << "Received ICMP packet is too short to contain ICMPv6 header";
+        << logging_tag_ << " " << __func__
+        << ": Received ICMP packet is too short to contain ICMPv6 header";
     return -1;
   }
 
@@ -349,7 +361,8 @@ int IcmpSession::OnV6EchoReplyReceived(base::span<const uint8_t> message) {
 
   // Make sure the message is valid and matches a pending echo request.
   if (received_icmp_header->icmp6_code != kIcmpEchoCode) {
-    LOG(WARNING) << "ICMPv6 header code is invalid";
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": ICMPv6 header code is invalid";
     return -1;
   }
 
@@ -368,7 +381,8 @@ void IcmpSession::OnIcmpReadable() {
   if (socket_->RecvMessage(&message)) {
     OnEchoReplyReceived(message);
   } else {
-    PLOG(ERROR) << __func__ << ": failed to receive message from socket";
+    PLOG(ERROR) << logging_tag_ << " " << __func__
+                << ": failed to receive message from socket";
     // Do nothing when we encounter an IO error, so we can continue receiving
     // other pending echo replies.
   }
@@ -376,7 +390,8 @@ void IcmpSession::OnIcmpReadable() {
 
 void IcmpSession::OnEchoReplyReceived(base::span<const uint8_t> message) {
   if (!destination_) {
-    LOG(WARNING) << "Failed to get ICMP destination";
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": Failed to get ICMP destination";
     return;
   }
 
@@ -438,7 +453,8 @@ std::vector<base::TimeDelta> IcmpSession::GenerateIcmpResult() {
 
 void IcmpSession::ReportResultAndStopSession() {
   if (!IsStarted()) {
-    LOG(WARNING) << "ICMP session not started";
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": ICMP session not started";
     return;
   }
   Stop();
