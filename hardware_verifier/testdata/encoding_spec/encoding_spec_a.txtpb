@@ -1,0 +1,34 @@
+encoding_patterns {
+  image_ids: 0
+  image_ids: 1
+  bit_ranges {
+    category: battery
+    start: 0
+    end: 1
+  }
+  bit_ranges {
+    category: camera
+    start: 2
+    end: 2
+  }
+  first_zero_bits {
+    category: touchscreen
+    zero_bit_position: 42
+  }
+}
+encoded_fields {
+  category: battery
+  encoded_components {
+    component_names: "battery_111_222"
+  }
+}
+encoded_fields {
+  category: camera
+  encoded_components {
+  }
+  encoded_components {
+    index: 1
+    component_names: "camera_333_444"
+  }
+}
+waived_categories: dram

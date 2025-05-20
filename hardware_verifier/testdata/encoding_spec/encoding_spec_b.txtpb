@@ -1,0 +1,18 @@
+encoding_patterns {
+  image_ids: 0
+  bit_ranges {
+    category: touchscreen
+    start: 0
+    end: 2
+  }
+  first_zero_bits {
+    category: camera
+    zero_bit_position: 42
+  }
+}
+encoded_fields {
+  category: touchscreen
+  encoded_components {
+    component_names: "touchscreen_111_222"
+  }
+}

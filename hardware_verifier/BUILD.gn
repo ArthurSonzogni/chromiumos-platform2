@@ -47,6 +47,7 @@ static_library("libhardware_verifier") {
     "cli.cc",
     "daemon.cc",
     "dbus_adaptor.cc",
+    "encoding_spec_loader.cc",
     "hw_verification_report_getter_impl.cc",
     "hw_verification_spec_getter_impl.cc",
     "observer.cc",
@@ -110,6 +111,7 @@ if (use.test) {
     sources = [
       "cli_test.cc",
       "dbus_adaptor_test.cc",
+      "encoding_spec_loader_test.cc",
       "hw_verification_report_getter_impl_test.cc",
       "hw_verification_spec_getter_impl_test.cc",
       "probe_result_getter_impl_test.cc",
