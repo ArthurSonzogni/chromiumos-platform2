@@ -44,6 +44,16 @@ bool UpdateEfiBootloaders(const InstallConfig& install_config);
 bool UpdateEfiGrubCfg(const Platform& platform,
                       const InstallConfig& install_config);
 
+// Run non-chromebook postinstall, with the particular actions taken
+// depending on `install_config.bios_type`.
+//
+// An error will be returned if `bios_type` is `kUnknown` (i.e. not
+// properly initialized) or `kSecure` (i.e. a Chromebook).
+//
+// Returns true on success, false if any fatal error occurs.
+bool RunNonChromebookPostInstall(const Platform& platform,
+                                 const InstallConfig& install_config);
+
 // Valid boot slots for kernel command lines.
 enum class BootSlot { A, B };
 

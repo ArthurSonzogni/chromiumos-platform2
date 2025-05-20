@@ -416,3 +416,57 @@ bool RunEfiPostInstall(const Platform& platform,
   // We finished.
   return true;
 }
+
+bool RunNonChromebookPostInstall(const Platform& platform,
+                                 const InstallConfig& install_config) {
+  switch (install_config.bios_type) {
+    case BiosType::kUnknown:
+    case BiosType::kSecure:
+      return false;
+
+    case BiosType::kUBoot:
+      // The Arm platform only uses U-Boot, but may set cros_legacy to mean
+      // U-Boot without secure boot modifications. This may need handling.
+      if (!RunLegacyUBootPostInstall(install_config)) {
+        LOG(ERROR) << "Legacy PostInstall failed.";
+        return false;
+      }
+      return true;
+
+    case BiosType::kLegacy:
+      if (!RunLegacyPostInstall(platform, install_config)) {
+        LOG(ERROR) << "Legacy PostInstall failed.";
+        return false;
+      }
+
+      // Configure EFI entries in addition to the legacy.
+      // Allows devices that can boot installers in legacy
+      // but will boot the installed target in EFI mode.
+      // Errors here are not necessarily fatal as the common
+      // case is the machine will boot successfully from legacy.
+      if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
+        if (!RunEfiPostInstall(platform, install_config)) {
+          LOG(WARNING) << "Ignored secondary EFI PostInstall failure.";
+        }
+      }
+
+      return true;
+
+    case BiosType::kEFI:
+      if (!RunEfiPostInstall(platform, install_config)) {
+        LOG(ERROR) << "EFI PostInstall failed.";
+        return false;
+      }
+
+      // Optionally update the legacy boot entries to support
+      // devices that can boot from the USB in EFI mode with the
+      // installed disk booting in legacy mode.
+      if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
+        if (!RunLegacyPostInstall(platform, install_config)) {
+          LOG(WARNING) << "Ignored secondary Legacy PostInstall failure.";
+        }
+      }
+
+      return true;
+  }
+}

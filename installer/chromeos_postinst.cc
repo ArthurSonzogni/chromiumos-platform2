@@ -563,61 +563,7 @@ bool ESPPostInstall(Platform& platform, const InstallConfig& install_config) {
     return false;
   }
 
-  bool success = true;
-
-  switch (install_config.bios_type) {
-    case BiosType::kUnknown:
-    case BiosType::kSecure:
-      success = false;
-      break;
-
-    case BiosType::kUBoot:
-      // The Arm platform only uses U-Boot, but may set cros_legacy to mean
-      // U-Boot without secure boot modifications. This may need handling.
-      if (!RunLegacyUBootPostInstall(install_config)) {
-        LOG(ERROR) << "Legacy PostInstall failed.";
-        success = false;
-      }
-      break;
-
-    case BiosType::kLegacy:
-      if (!RunLegacyPostInstall(platform, install_config)) {
-        LOG(ERROR) << "Legacy PostInstall failed.";
-        success = false;
-        break;
-      }
-
-      // Configure EFI entries in addition to the legacy.
-      // Allows devices that can boot installers in legacy
-      // but will boot the installed target in EFI mode.
-      // Errors here are not necessarily fatal as the common
-      // case is the machine will boot successfully from legacy.
-      if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
-        if (!RunEfiPostInstall(platform, install_config)) {
-          LOG(WARNING) << "Ignored secondary EFI PostInstall failure.";
-        }
-      }
-
-      break;
-
-    case BiosType::kEFI:
-      if (!RunEfiPostInstall(platform, install_config)) {
-        LOG(ERROR) << "EFI PostInstall failed.";
-        success = false;
-        break;
-      }
-
-      // Optionally update the legacy boot entries to support
-      // devices that can boot from the USB in EFI mode with the
-      // installed disk booting in legacy mode.
-      if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
-        if (!RunLegacyPostInstall(platform, install_config)) {
-          LOG(WARNING) << "Ignored secondary Legacy PostInstall failure.";
-        }
-      }
-
-      break;
-  }
+  bool success = RunNonChromebookPostInstall(platform, install_config);
 
   SendNonChromebookBiosSuccess(*metrics, install_config.bios_type, success);
 
