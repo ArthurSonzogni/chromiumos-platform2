@@ -8,10 +8,6 @@ these files to be uploaded.
 
 There is currently no way for events to be uploaded independent of Chromium.
 
-## Using Structured Metrics
-
-TODO(jongahn): Write a How-to-use section.
-
 ## Lib Directory
 
 The `lib` directory is synced manually from Chromium directory
