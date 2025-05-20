@@ -321,16 +321,12 @@ TEST_F(UpdateEfiBootloadersTest, Success) {
   EXPECT_TRUE(UpdateEfiBootloaders(install_config_));
 
   // Check files were copied as expected.
-  std::string contents;
-  EXPECT_TRUE(
-      base::ReadFileToString(esp_.Append("efi/boot/bootia32.efi"), &contents));
-  EXPECT_EQ(contents, "bootia32_efi");
-  EXPECT_TRUE(
-      base::ReadFileToString(esp_.Append("efi/boot/bootx64.efi"), &contents));
-  EXPECT_EQ(contents, "bootx64_efi");
-  EXPECT_TRUE(
-      base::ReadFileToString(esp_.Append("efi/boot/bootx64.sig"), &contents));
-  EXPECT_EQ(contents, "bootx64_sig");
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/bootia32.efi")),
+            "bootia32_efi");
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/bootx64.efi")),
+            "bootx64_efi");
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/bootx64.sig")),
+            "bootx64_sig");
 
   // Check that only those files were copied.
   base::FileEnumerator file_enum(esp_.Append("efi/boot"), /*recursive=*/false,
