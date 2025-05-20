@@ -581,4 +581,86 @@ TEST_F(RunEfiPostInstallTest, ErrorUpdateEfiGrubCfg) {
   EXPECT_FALSE(RunEfiPostInstall(platform_, install_config_));
 }
 
+class RunNonChromebookPostInstallTest : public PostInstallTest {};
+
+// Test that RunNonChromebookPostInstall fails with bios_type kSecure.
+TEST_F(RunNonChromebookPostInstallTest, ErrorSecure) {
+  install_config_.bios_type = BiosType::kSecure;
+  EXPECT_FALSE(RunNonChromebookPostInstall(platform_, install_config_));
+}
+
+// Test a successful call to RunNonChromebookPostInstall with bios_type
+// kLegacy.
+TEST_F(RunNonChromebookPostInstallTest, Legacy) {
+  install_config_.bios_type = BiosType::kLegacy;
+  EXPECT_TRUE(RunNonChromebookPostInstall(platform_, install_config_));
+
+  // A syslinux file was copied.
+  EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/syslinux.cfg")),
+            "syslinux_cfg");
+  if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
+    // A UEFI bootloader was copied.
+    EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/bootx64.efi")),
+              "bootx64_efi");
+  } else {
+    // A UEFI bootloader was not copied.
+    EXPECT_FALSE(base::PathExists(esp_.Append("efi/boot/bootx64.efi")));
+  }
+}
+
+// Test that an error in RunLegacyPostInstall is fatal with bios_type
+// kLegacy.
+TEST_F(RunNonChromebookPostInstallTest, ErrorLegacy) {
+  install_config_.bios_type = BiosType::kLegacy;
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux/root.A.cfg")));
+
+  EXPECT_FALSE(RunNonChromebookPostInstall(platform_, install_config_));
+}
+
+// Test that an error from RunEfiPostInstall is not fatal with bios_type
+// kLegacy.
+TEST_F(RunNonChromebookPostInstallTest, LegacyNonFatalUefiError) {
+  install_config_.bios_type = BiosType::kLegacy;
+  CHECK(brillo::DeletePathRecursively(esp_.Append("efi/boot")));
+
+  EXPECT_TRUE(RunNonChromebookPostInstall(platform_, install_config_));
+}
+
+// Test a successful call to RunNonChromebookPostInstall with bios_type
+// kEFI.
+TEST_F(RunNonChromebookPostInstallTest, Uefi) {
+  install_config_.bios_type = BiosType::kEFI;
+  EXPECT_TRUE(RunNonChromebookPostInstall(platform_, install_config_));
+
+  // A UEFI bootloader was copied.
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/bootx64.efi")),
+            "bootx64_efi");
+  if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
+    // A syslinux file was copied.
+    EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/syslinux.cfg")),
+              "syslinux_cfg");
+  } else {
+    // A syslinux file was not copied.
+    EXPECT_FALSE(base::PathExists(esp_.Append("syslinux/syslinux.cfg")));
+  }
+}
+
+// Test that an error in RunEfiPostInstall is fatal with bios_type
+// kEFI.
+TEST_F(RunNonChromebookPostInstallTest, ErrorUefi) {
+  install_config_.bios_type = BiosType::kEFI;
+  CHECK(brillo::DeletePathRecursively(esp_.Append("efi/boot")));
+
+  EXPECT_FALSE(RunNonChromebookPostInstall(platform_, install_config_));
+}
+
+// Test that an error from RunLegacyPostInstall is not fatal with
+// bios_type kEFI.
+TEST_F(RunNonChromebookPostInstallTest, UefiNonFatalLegacyError) {
+  install_config_.bios_type = BiosType::kEFI;
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux/root.A.cfg")));
+
+  EXPECT_TRUE(RunNonChromebookPostInstall(platform_, install_config_));
+}
+
 }  // namespace
