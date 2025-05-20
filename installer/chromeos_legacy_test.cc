@@ -544,4 +544,41 @@ TEST_F(UpdateEfiGrubCfgTest, ErrorMissingEspNonVerityEntry) {
   EXPECT_FALSE(UpdateEfiGrubCfg(platform_, install_config_));
 }
 
+class RunEfiPostInstallTest : public PostInstallTest {};
+
+// Test a successful call to RunEfiPostInstall.
+TEST_F(RunEfiPostInstallTest, Success) {
+  CHECK(base::WriteFile(esp_.Append("syslinux/vmlinuz.A"), "kern_a_old"));
+  CHECK(
+      base::WriteFile(esp_.Append("efi/boot/bootx64.efi"), "bootx64_efi_old"));
+  EXPECT_TRUE(RunEfiPostInstall(platform_, install_config_));
+
+  // Kernel was updated.
+  EXPECT_EQ(ReadFileToString(esp_.Append("syslinux/vmlinuz.A")), "vmlinuz");
+  // Bootloader was updated.
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/bootx64.efi")),
+            "bootx64_efi");
+  // Grub config was updated.
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/grub.cfg")),
+            kEspUpdatedGrubCfg);
+}
+
+// Test that RunEfiPostInstall fails if UpdateLegacyKernel fails.
+TEST_F(RunEfiPostInstallTest, ErrorUpdateLegacyKernel) {
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("vmlinuz")));
+  EXPECT_FALSE(RunEfiPostInstall(platform_, install_config_));
+}
+
+// Test that RunEfiPostInstall fails if UpdateEfiBootloaders fails.
+TEST_F(RunEfiPostInstallTest, ErrorUpdateEfiBootloaders) {
+  CHECK(brillo::DeletePathRecursively(esp_.Append("efi/boot")));
+  EXPECT_FALSE(RunEfiPostInstall(platform_, install_config_));
+}
+
+// Test that RunEfiPostInstall fails if UpdateEfiGrubCfg fails.
+TEST_F(RunEfiPostInstallTest, ErrorUpdateEfiGrubCfg) {
+  CHECK(brillo::DeleteFile(esp_.Append("efi/boot/grub.cfg")));
+  EXPECT_FALSE(RunEfiPostInstall(platform_, install_config_));
+}
+
 }  // namespace
