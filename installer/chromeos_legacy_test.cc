@@ -4,7 +4,9 @@
 
 #include "installer/chromeos_legacy.h"
 
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include <base/files/file_enumerator.h>
 #include <brillo/files/file_util.h>
@@ -17,7 +19,6 @@
 #include "installer/chromeos_install_config.h"
 #include "installer/mock_platform.h"
 
-using std::string;
 using ::testing::_;
 using ::testing::Expectation;
 using ::testing::Return;
@@ -38,7 +39,7 @@ std::string ReadFileToString(const base::FilePath& path) {
 }
 
 // this string is a grub file stripped down to (mostly) just what we update.
-const char kExampleGrubCfgFile[] =
+constexpr std::string_view kExampleGrubCfgFile =
     "unrelated line\n"
     "\n"
     "  linuxefi /syslinux/vmlinuz.A cros_efi cros_debug "
@@ -53,7 +54,7 @@ const char kExampleGrubCfgFile[] =
     "rootwait ro noresume loglevel=1 noinitrd "
     "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n";
 
-const char kGrubCfgExpectedResult[] =
+constexpr std::string_view kGrubCfgExpectedResult =
     "unrelated line\n"
     "\n"
     "  linux /syslinux/vmlinuz.A cros_efi cros_debug "
@@ -182,7 +183,7 @@ TEST_F(EfiGrubCfgTest, FixupLinuxEfi) {
       "rootwait ro noresume loglevel=1 noinitrd "
       "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n"));
 
-  string expected =
+  constexpr std::string_view expected =
       "  linux /syslinux/vmlinuz.A root=PARTUUID=xyz\n"
       "  linux /syslinux/vmlinuz.B root=PARTUUID=fake_root_uuid\n"
       "  linux /syslinux/vmlinuz.A root=/dev/dm-0 dm=\"DM verity=A\"\n"
@@ -215,7 +216,7 @@ TEST_F(EfiGrubCfgTest, ReplaceKernelCommand) {
   EfiGrubCfg cfg;
   ASSERT_TRUE(cfg.LoadFile(cfg_path_));
   // Replace an entry with a "A" slot dm= entry.
-  string test_a_dm =
+  const std::string test_a_dm =
       "linux /syslinux/vmlinuz.A dm=\"with verity\" trailing options";
   EXPECT_TRUE(cfg.ReplaceKernelCommand(
       BootSlot::A, EfiGrubCfg::DmOption::Present, test_a_dm));
@@ -226,7 +227,7 @@ TEST_F(EfiGrubCfgTest, ReplaceKernelCommand) {
   lines[2] = test_a_dm;
   EXPECT_EQ(cfg.ToString(), base::JoinString(lines, "\n"));
 
-  string test_b_dm =
+  const std::string test_b_dm =
       "linux /syslinux/vmlinuz.B dm=\" verity args\" trailing options";
   EXPECT_TRUE(cfg.ReplaceKernelCommand(
       BootSlot::B, EfiGrubCfg::DmOption::Present, test_b_dm));
