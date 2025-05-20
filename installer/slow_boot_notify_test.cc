@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "installer/slow_boot_notify.h"
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "installer/slow_boot_notify.h"
 
 class SlowBootNotifyTest : public ::testing::Test {};
 

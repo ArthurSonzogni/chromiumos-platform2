@@ -288,7 +288,9 @@ TEST(UtilTest, ScopedPathRemoverWithFile) {
   EXPECT_TRUE(base::PathExists(filename));
 
   // No releasing, the file should be removed.
-  { ScopedPathRemover remover(filename); }
+  {
+    ScopedPathRemover remover(filename);
+  }
   EXPECT_FALSE(base::PathExists(filename));
 }
 
@@ -299,7 +301,9 @@ TEST(UtilTest, ScopedPathRemoverWithDirectory) {
   ASSERT_TRUE(base::PathExists(dirname));
   EXPECT_TRUE(base::WriteFile(filename, "abc"));
   ASSERT_TRUE(base::PathExists(filename));
-  { ScopedPathRemover remover(dirname); }
+  {
+    ScopedPathRemover remover(dirname);
+  }
   EXPECT_FALSE(base::PathExists(filename));
   EXPECT_FALSE(base::PathExists(dirname));
 }
@@ -307,7 +311,9 @@ TEST(UtilTest, ScopedPathRemoverWithDirectory) {
 TEST(UtilTest, ScopedPathRemoverWithNonExistingPath) {
   base::FilePath filename = base::FilePath(tmpnam(NULL));
   ASSERT_FALSE(base::PathExists(filename));
-  { ScopedPathRemover remover(filename); }
+  {
+    ScopedPathRemover remover(filename);
+  }
   // There should be no crash.
 }
 

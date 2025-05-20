@@ -11,7 +11,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-
 #include <verity/dm-bht.h>
 
 /* chromeos_verity

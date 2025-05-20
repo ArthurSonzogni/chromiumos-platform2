@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <metrics/metrics_library.h>
-
 #include "installer/metrics.h"
+
+#include <metrics/metrics_library.h>
 
 // This is a "real" metrics implementation,
 // which just passes through to libmetrics.
