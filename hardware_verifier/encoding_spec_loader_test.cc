@@ -13,10 +13,10 @@
 
 #include "hardware_verifier/test_utils.h"
 
-using google::protobuf::util::MessageDifferencer;
-
 namespace hardware_verifier {
 namespace {
+
+using google::protobuf::util::MessageDifferencer;
 
 class EncodingSpecLoaderTest : public BaseFileTest {
  protected:

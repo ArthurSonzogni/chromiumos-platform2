@@ -20,10 +20,11 @@ class EncodingSpecLoader {
   EncodingSpecLoader() = default;
   EncodingSpecLoader(const EncodingSpecLoader&) = delete;
   EncodingSpecLoader& operator=(const EncodingSpecLoader&) = delete;
+  virtual ~EncodingSpecLoader() = default;
 
   // Loads the encoding spec.
   // Return |std::nullptr| if loading fails.
-  std::unique_ptr<EncodingSpec> Load() const;
+  virtual std::unique_ptr<EncodingSpec> Load() const;
 
  private:
   std::vector<base::FilePath> GetPaths() const;
