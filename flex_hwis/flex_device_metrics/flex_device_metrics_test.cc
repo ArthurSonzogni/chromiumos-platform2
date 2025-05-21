@@ -219,3 +219,33 @@ TEST(FlexBootMethodMetrics, SendBootMethodMetric) {
 
   EXPECT_TRUE(SendBootMethodMetric(metrics, BootMethod::kUefi64));
 }
+
+// Test detection and deletion of the installed_via_frd file.
+TEST(FlexFlexorInstallMetrics, ShouldSendFlexorInstallMetric) {
+  base::ScopedTempDir root_dir;
+  CHECK(root_dir.CreateUniqueTempDir());
+
+  EXPECT_EQ(ShouldSendFlexorInstallMetric(root_dir.GetPath()), false);
+
+  const auto unencrypted_stateful_dir = root_dir.GetPath().Append(
+      "mnt/stateful_partition/unencrypted/install_metrics");
+  const auto frd_install_path = unencrypted_stateful_dir.Append("install_type");
+
+  ASSERT_TRUE(base::CreateDirectory(unencrypted_stateful_dir));
+  ASSERT_TRUE(base::WriteFile(frd_install_path, ""));
+  EXPECT_EQ(ShouldSendFlexorInstallMetric(root_dir.GetPath()), false);
+  EXPECT_EQ(base::PathExists(frd_install_path), true);
+
+  ASSERT_TRUE(base::WriteFile(frd_install_path, "flexor"));
+  EXPECT_EQ(ShouldSendFlexorInstallMetric(root_dir.GetPath()), true);
+  EXPECT_EQ(base::PathExists(frd_install_path), false);
+}
+
+// Test successfully sending the FRD install metric.
+TEST(FlexFlexorInstallMetrics, SendFlexorInstallMetric) {
+  StrictMock<MetricsLibraryMock> metrics;
+  EXPECT_CALL(metrics, SendToUMA("Platform.FlexInstalledViaFlexor", 0, 0, 0, 1))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(SendFlexorInstallMetric(metrics));
+}

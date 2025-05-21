@@ -13,6 +13,9 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
+constexpr char kInstallTypeFile[] =
+    "mnt/stateful_partition/unencrypted/install_metrics/install_type";
+
 int ConvertBlocksToMiB(int num_blocks) {
   const int bytes_per_block = 512;
   const int bytes_per_mib = 1024 * 1024;
@@ -188,4 +191,36 @@ BootMethod GetBootMethod(const base::FilePath& root) {
 bool SendBootMethodMetric(MetricsLibraryInterface& metrics,
                           BootMethod boot_method) {
   return metrics.SendEnumToUMA("Platform.FlexBootMethod", boot_method);
+}
+
+bool ShouldSendFlexorInstallMetric(const base::FilePath& root) {
+  const auto install_type_path = root.Append(kInstallTypeFile);
+
+  if (!base::PathExists(install_type_path)) {
+    return false;
+  }
+
+  // Try to read the file, but if we can't that's fine: we'll try again later.
+  std::string content;
+  size_t max_len = 32;
+  if (base::ReadFileToStringWithMaxSize(install_type_path, &content, max_len)) {
+    if (base::TrimWhitespaceASCII(content, base::TRIM_TRAILING) == "flexor") {
+      LOG(INFO) << "Flexor was used to install.";
+      // Only return true if we manage to delete, to avoid double-sends.
+      // If it stays we'll send next time.
+      return base::DeleteFile(install_type_path);
+    }
+  } else {
+    LOG(WARNING) << "Install type file is present but could not be read.";
+  }
+
+  return false;
+}
+
+bool SendFlexorInstallMetric(MetricsLibraryInterface& metrics) {
+  // This metric is a count of flexor installs, so there's only one bucket.
+  const int sample = 0, min = 0, max = 0;
+  const int nbuckets = 1;
+  return metrics.SendToUMA("Platform.FlexInstalledViaFlexor", sample, min, max,
+                           nbuckets);
 }

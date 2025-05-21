@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "flex_hwis/flex_device_metrics/flex_device_metrics.h"
-
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 #include <rootdev/rootdev.h>
+
+#include "flex_hwis/flex_device_metrics/flex_device_metrics.h"
 
 namespace {
 
@@ -68,6 +68,12 @@ int main() {
 
   if (!SendBootMethodMetric(metrics, GetBootMethod(base::FilePath("/")))) {
     rc = EXIT_FAILURE;
+  }
+
+  if (ShouldSendFlexorInstallMetric(base::FilePath("/"))) {
+    if (!SendFlexorInstallMetric(metrics)) {
+      rc = EXIT_FAILURE;
+    }
   }
 
   return rc;

@@ -160,4 +160,19 @@ BootMethod GetBootMethod(const base::FilePath& root);
 bool SendBootMethodMetric(MetricsLibraryInterface& metrics,
                           BootMethod boot_method);
 
+// Whether FRD/flexor was used to install the device.
+//
+// Only returns true one time per install.
+bool ShouldSendFlexorInstallMetric(const base::FilePath& root);
+
+// Send the FRD install metric.
+//
+// This is a metric with only one bucket.
+//
+// Returns true on success, false if any error occurs.
+// NB: Because `ShouldSendFlexorInstallMetric` will only return true once per
+// install, a failure to send here will result in an under-counting of flexor
+// installs. For realistic rates of failure, that should be fine.
+bool SendFlexorInstallMetric(MetricsLibraryInterface& metrics);
+
 #endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_
