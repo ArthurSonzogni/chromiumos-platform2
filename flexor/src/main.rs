@@ -239,12 +239,7 @@ fn perform_installation(config: &InstallConfig) -> Result<()> {
         info!("Couldn't indicate install method. Install metric won't be sent from Flex.")
     }
 
-    if matches!(
-        Path::new("root")
-            .join(FLEX_CONFIG_SRC_FILENAME)
-            .try_exists(),
-        Ok(true)
-    ) {
+    if Path::new("root").join(FLEX_CONFIG_SRC_FILENAME).exists() {
         if let Err(err) = copy_flex_config_to_stateful(stateful.mount_path()) {
             error!("Unable to copy Flex config due to: {err}");
             // If this fails, we can't do anything about it, so ignore the error.
