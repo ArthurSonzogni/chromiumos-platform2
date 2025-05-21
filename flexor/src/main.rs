@@ -9,7 +9,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Context, Result};
-use libchromeos::mount::{self, FsType};
+use libchromeos::mount::{self, FsType, Mount};
 use libchromeos::panic_handler;
 use log::{error, info};
 use nix::sys::{reboot::reboot, stat::Mode};
@@ -135,20 +135,22 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
     .context("Unable to install the image to disk")
 }
 
-/// Copies the flex config to stateful partition.
-fn copy_flex_config_to_stateful(config: &InstallConfig) -> Result<()> {
-    let stateful_partition = &libchromeos::disk::get_partition_device(
-        &config.target_device,
-        disk::STATEFUL_PARTITION_NUM,
-    )
-    .context("Unable to find stateful partition")?;
-    let stateful_mount = mount::Builder::new(stateful_partition)
-        .fs_type(FsType::Ext4)
-        .temp_backed_mount()?;
+/// Finds and mounts the stateful partition.
+///
+/// Returns the mount object holding stateful open.
+fn mount_stateful(device: &Path) -> Result<Mount> {
+    let stateful_partition =
+        &libchromeos::disk::get_partition_device(device, disk::STATEFUL_PARTITION_NUM)
+            .context("Unable to find stateful partition")?;
 
-    let config_path = stateful_mount
-        .mount_path()
-        .join(FLEX_CONFIG_TARGET_FILEPATH);
+    Ok(mount::Builder::new(stateful_partition)
+        .fs_type(FsType::Ext4)
+        .temp_backed_mount()?)
+}
+
+/// Copies the flex config to stateful partition.
+fn copy_flex_config_to_stateful(stateful: &Path) -> Result<()> {
+    let config_path = stateful.join(FLEX_CONFIG_TARGET_FILEPATH);
 
     // Create the new `flex_config` folder and copy the file.
     nix::unistd::mkdir(
@@ -191,13 +193,15 @@ fn perform_installation(config: &InstallConfig) -> Result<()> {
     info!("Trying to remove the flex deployment partition");
     disk::try_remove_thirteenth_partition(&config.target_device)?;
 
+    let stateful = mount_stateful(&config.target_device)?;
+
     if matches!(
         Path::new("root")
             .join(FLEX_CONFIG_SRC_FILENAME)
             .try_exists(),
         Ok(true)
     ) {
-        if let Err(err) = copy_flex_config_to_stateful(config) {
+        if let Err(err) = copy_flex_config_to_stateful(stateful.mount_path()) {
             error!("Unable to copy Flex config due to: {err}");
             // If this fails, we can't do anything about it, so ignore the error.
             let _ = try_save_logs(config);
