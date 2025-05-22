@@ -35,8 +35,12 @@ use crate::decoder::stateless::StatelessDecoder;
 use crate::decoder::stateless::StatelessDecoderBackendPicture;
 use crate::decoder::BlockingMode;
 use crate::video_frame::VideoFrame;
+use crate::ColorPrimaries;
+use crate::ColorRange;
+use crate::MatrixCoefficients;
 use crate::Rect;
 use crate::Resolution;
+use crate::TransferFunction;
 
 /// The number of surfaces to allocate for this codec.
 const NUM_SURFACES: usize = 16;
@@ -108,6 +112,22 @@ impl VaStreamInfo for &StreamInfo {
             BitDepth::Depth10 => return 10,
             BitDepth::Depth12 => return 12,
         }
+    }
+
+    fn range(&self) -> ColorRange {
+        self.seq_header.color_config.color_range.into()
+    }
+
+    fn primaries(&self) -> ColorPrimaries {
+        self.seq_header.color_config.color_primaries.into()
+    }
+
+    fn transfer(&self) -> TransferFunction {
+        self.seq_header.color_config.transfer_characteristics.into()
+    }
+
+    fn matrix(&self) -> MatrixCoefficients {
+        self.seq_header.color_config.matrix_coefficients.into()
     }
 }
 

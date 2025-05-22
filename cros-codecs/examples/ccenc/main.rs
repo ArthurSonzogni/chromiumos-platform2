@@ -334,6 +334,10 @@ fn main() {
         coded_resolution: input_coded_resolution,
         display_resolution: Resolution::from((args.width, args.height)),
         min_num_frames: PIPELINE_DEPTH,
+        range: Default::default(),
+        primaries: Default::default(),
+        transfer: Default::default(),
+        matrix: Default::default(),
     });
 
     let mut timestamp: u64 = 0;

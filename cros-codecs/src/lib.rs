@@ -476,6 +476,175 @@ pub enum BlockingMode {
     NonBlocking,
 }
 
+/// Information about the range of the stream.
+///
+/// This will either be full swing, or limited/"studio" swing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum ColorRange {
+    #[default]
+    Unspecified = 2,
+    Limited = 0,
+    Full = 1,
+}
+
+impl From<bool> for ColorRange {
+    fn from(value: bool) -> Self {
+        if value {
+            ColorRange::Full
+        } else {
+            ColorRange::Limited
+        }
+    }
+}
+
+/// Information about the color primaries of the stream.
+///
+/// These are encoded as an enum referring to specific standards rather than the actual XY
+/// coordinates.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum ColorPrimaries {
+    #[default]
+    Unspecified = 2,
+    BT709 = 1,
+    BT470M = 4,
+    BT470BG = 5,
+    BT601 = 6,
+    SMPTE240 = 7,
+    GenericFilm = 8,
+    BT2020 = 9,
+    SMPTE428 = 10,
+    SMPTE431 = 11,
+    SMPTE432 = 12,
+    EBU = 22,
+}
+
+/// These come from a union of H264 spec E-3, H265 spec H265 spec E-3, and AV1 spec 6.4.2. The
+/// numerical values have been standardized across all codecs.
+impl From<u32> for ColorPrimaries {
+    fn from(value: u32) -> Self {
+        match value {
+            1 => ColorPrimaries::BT709,
+            4 => ColorPrimaries::BT470M,
+            5 => ColorPrimaries::BT470BG,
+            6 => ColorPrimaries::BT601,
+            7 => ColorPrimaries::SMPTE240,
+            8 => ColorPrimaries::GenericFilm,
+            9 => ColorPrimaries::BT2020,
+            10 => ColorPrimaries::SMPTE428,
+            11 => ColorPrimaries::SMPTE431,
+            12 => ColorPrimaries::SMPTE432,
+            22 => ColorPrimaries::EBU,
+            _ => ColorPrimaries::Unspecified,
+        }
+    }
+}
+
+/// Information about the transfer function of the stream.
+///
+/// These are encoded as an enum for specific standards, not actual coefficients for any equations.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum TransferFunction {
+    #[default]
+    Unspecified = 2,
+    BT709 = 1,
+    BT470M = 4,
+    BT470BG = 5,
+    BT601 = 6,
+    SMPTE240 = 7,
+    Linear = 8,
+    Log100 = 9,
+    Log100Sqrt10 = 10,
+    IEC61966 = 11,
+    BT1361 = 12,
+    sRGB = 13,
+    BT2020TenBit = 14,
+    BT2020TwelveBit = 15,
+    SMPTE2084 = 16,
+    SMPTE428 = 17,
+    HLG = 18,
+}
+
+/// These come from a union of H264 spec E-4, H265 spec H265 spec E-4, and AV1 spec 6.4.2. The
+/// numerical values have been standardized across all codecs.
+impl From<u32> for TransferFunction {
+    fn from(value: u32) -> Self {
+        match value {
+            1 => TransferFunction::BT709,
+            4 => TransferFunction::BT470M,
+            5 => TransferFunction::BT470BG,
+            6 => TransferFunction::BT601,
+            7 => TransferFunction::SMPTE240,
+            8 => TransferFunction::Linear,
+            9 => TransferFunction::Log100,
+            10 => TransferFunction::Log100Sqrt10,
+            11 => TransferFunction::IEC61966,
+            12 => TransferFunction::BT1361,
+            13 => TransferFunction::sRGB,
+            14 => TransferFunction::BT2020TenBit,
+            15 => TransferFunction::BT2020TwelveBit,
+            16 => TransferFunction::SMPTE2084,
+            17 => TransferFunction::SMPTE428,
+            18 => TransferFunction::HLG,
+            _ => TransferFunction::Unspecified,
+        }
+    }
+}
+
+/// Information about the YUV->RGB conversion matrix.
+///
+/// These are encoded as an enum for specific standards, not the actual coefficients.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum MatrixCoefficients {
+    #[default]
+    Unspecified = 2,
+    Identity = 0,
+    BT709 = 1,
+    FCC = 4,
+    BT470BG = 5,
+    BT601 = 6,
+    SMPTE240M = 7,
+    YCgCo = 8,
+    BT2020NonConst = 9,
+    BT2020Const = 10,
+    SMPTE2085 = 11,
+    ChromNonConst = 12,
+    ChromConst = 13,
+    BT2100 = 14,
+    IPTC2 = 15,
+    YCgCoRe = 16,
+    YCgCoRo = 17,
+}
+
+/// These come from a union of H264 spec E-5, H265 spec H265 spec E-5, and AV1 spec 6.4.2. The
+/// numerical values have been standardized across all codecs.
+impl From<u32> for MatrixCoefficients {
+    fn from(value: u32) -> Self {
+        match value {
+            0 => MatrixCoefficients::Identity,
+            1 => MatrixCoefficients::BT709,
+            4 => MatrixCoefficients::FCC,
+            5 => MatrixCoefficients::BT470BG,
+            6 => MatrixCoefficients::BT601,
+            7 => MatrixCoefficients::SMPTE240M,
+            8 => MatrixCoefficients::YCgCo,
+            9 => MatrixCoefficients::BT2020NonConst,
+            10 => MatrixCoefficients::BT2020Const,
+            11 => MatrixCoefficients::SMPTE2085,
+            12 => MatrixCoefficients::ChromNonConst,
+            13 => MatrixCoefficients::ChromConst,
+            14 => MatrixCoefficients::BT2100,
+            15 => MatrixCoefficients::IPTC2,
+            16 => MatrixCoefficients::YCgCoRe,
+            17 => MatrixCoefficients::YCgCoRo,
+            _ => MatrixCoefficients::Unspecified,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Fourcc;

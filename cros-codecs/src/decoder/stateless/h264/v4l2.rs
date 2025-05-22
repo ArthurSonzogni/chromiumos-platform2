@@ -45,10 +45,14 @@ use crate::device::v4l2::stateless::controls::h264::V4l2CtrlH264DecodeParams;
 use crate::device::v4l2::stateless::controls::h264::V4l2CtrlH264DpbEntry;
 use crate::device::v4l2::stateless::controls::h264::V4l2CtrlH264StartCode;
 use crate::video_frame::VideoFrame;
+use crate::ColorPrimaries;
+use crate::ColorRange;
 use crate::DecodedFormat;
 use crate::Fourcc;
+use crate::MatrixCoefficients;
 use crate::Rect;
 use crate::Resolution;
+use crate::TransferFunction;
 
 impl V4l2StreamInfo for &Rc<Sps> {
     fn min_num_frames(&self) -> usize {
@@ -76,6 +80,22 @@ impl V4l2StreamInfo for &Rc<Sps> {
             .next()
             .unwrap()
             .into())
+    }
+
+    fn range(&self) -> ColorRange {
+        self.vui_parameters.video_full_range_flag.into()
+    }
+
+    fn primaries(&self) -> ColorPrimaries {
+        (self.vui_parameters.colour_primaries as u32).into()
+    }
+
+    fn transfer(&self) -> TransferFunction {
+        (self.vui_parameters.transfer_characteristics as u32).into()
+    }
+
+    fn matrix(&self) -> MatrixCoefficients {
+        (self.vui_parameters.matrix_coefficients as u32).into()
     }
 }
 

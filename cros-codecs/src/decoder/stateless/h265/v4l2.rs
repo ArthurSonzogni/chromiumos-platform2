@@ -45,10 +45,14 @@ use crate::device::v4l2::stateless::controls::h265::HevcV4l2Sps;
 use crate::device::v4l2::stateless::controls::h265::V4l2CtrlHEVCDecodeParams;
 use crate::device::v4l2::stateless::controls::h265::V4l2CtrlHEVCDpbEntry;
 use crate::video_frame::VideoFrame;
+use crate::ColorPrimaries;
+use crate::ColorRange;
 use crate::DecodedFormat;
 use crate::Fourcc;
+use crate::MatrixCoefficients;
 use crate::Rect;
 use crate::Resolution;
+use crate::TransferFunction;
 
 impl V4l2StreamInfo for &Sps {
     fn min_num_frames(&self) -> usize {
@@ -76,6 +80,22 @@ impl V4l2StreamInfo for &Sps {
             .next()
             .unwrap()
             .into())
+    }
+
+    fn range(&self) -> ColorRange {
+        self.vui_parameters.video_full_range_flag.into()
+    }
+
+    fn primaries(&self) -> ColorPrimaries {
+        (self.vui_parameters.colour_primaries as u32).into()
+    }
+
+    fn transfer(&self) -> TransferFunction {
+        (self.vui_parameters.transfer_characteristics as u32).into()
+    }
+
+    fn matrix(&self) -> MatrixCoefficients {
+        (self.vui_parameters.matrix_coeffs as u32).into()
     }
 }
 
@@ -140,7 +160,6 @@ impl<V: VideoFrame> StatelessH265DecoderBackend for V4l2StatelessDecoderBackend<
             .set_dpb_entries(dpb_entries)
             .set_slice_header(&slice.header)
             .set_ref_pic_set(rps.clone());
-
         let mut picture = picture.borrow_mut();
 
         let request = picture.request();
@@ -190,7 +209,10 @@ impl<V: VideoFrame> StatelessH265DecoderBackend for V4l2StatelessDecoderBackend<
         Ok(())
     }
 
-    fn submit_picture(&mut self, picture: Self::Picture) -> StatelessBackendResult<Self::Handle> {
+    fn submit_picture(
+        &mut self,
+        mut picture: Self::Picture,
+    ) -> StatelessBackendResult<Self::Handle> {
         let request = picture.borrow_mut().request();
         let mut request = request.as_ref().borrow_mut();
         request.submit()?;

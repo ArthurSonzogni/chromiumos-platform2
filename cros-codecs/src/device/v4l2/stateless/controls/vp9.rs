@@ -28,13 +28,13 @@ use v4l2r::bindings::V4L2_VP9_SEGMENTATION_FLAG_UPDATE_DATA;
 use v4l2r::bindings::V4L2_VP9_SEGMENTATION_FLAG_UPDATE_MAP;
 use v4l2r::controls::AsV4l2ControlSlice;
 
-use crate::codec::vp9::parser::ColorRange;
 use crate::codec::vp9::parser::FrameType;
 use crate::codec::vp9::parser::Header;
 use crate::codec::vp9::parser::LAST_FRAME;
 use crate::codec::vp9::parser::MAX_REF_FRAMES;
 use crate::codec::vp9::parser::MAX_SEGMENTS;
 use crate::codec::vp9::parser::SEG_LVL_MAX;
+use crate::ColorRange;
 
 #[derive(Default)]
 pub struct V4l2CtrlVp9FrameParams {
@@ -167,7 +167,7 @@ impl V4l2CtrlVp9FrameParams {
         if hdr.subsampling_y {
             self.handle.flags |= V4L2_VP9_FRAME_FLAG_Y_SUBSAMPLING;
         }
-        if hdr.color_range == ColorRange::FullSwing {
+        if hdr.color_range == ColorRange::Full {
             self.handle.flags |= V4L2_VP9_FRAME_FLAG_COLOR_RANGE_FULL_SWING;
         }
 

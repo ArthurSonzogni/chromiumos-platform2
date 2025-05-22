@@ -9,6 +9,7 @@ use crate::codec::vp9::lookups::AC_QLOOKUP_12;
 use crate::codec::vp9::lookups::DC_QLOOKUP;
 use crate::codec::vp9::lookups::DC_QLOOKUP_10;
 use crate::codec::vp9::lookups::DC_QLOOKUP_12;
+use crate::ColorRange;
 
 pub const REFS_PER_FRAME: usize = 3;
 
@@ -162,6 +163,7 @@ impl TryFrom<u32> for BitDepth {
     }
 }
 
+/// Note that this convention deviates from H264, H265, and AV1, so we need a separate enum here.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum ColorSpace {
     #[default]
@@ -189,25 +191,6 @@ impl TryFrom<u32> for ColorSpace {
             6 => Ok(ColorSpace::Reserved2),
             7 => Ok(ColorSpace::CsSrgb),
             _ => Err(format!("Invalid ColorSpace {}", value)),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum ColorRange {
-    #[default]
-    StudioSwing = 0,
-    FullSwing = 1,
-}
-
-impl TryFrom<u32> for ColorRange {
-    type Error = String;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(ColorRange::StudioSwing),
-            1 => Ok(ColorRange::FullSwing),
-            _ => Err(format!("Invalid ColorRange {}", value)),
         }
     }
 }
@@ -741,7 +724,7 @@ impl Parser {
         if !matches!(hdr.color_space, ColorSpace::CsSrgb) {
             let color_range = r.read_bits::<u32>(1)?;
 
-            hdr.color_range = ColorRange::try_from(color_range)?;
+            hdr.color_range = ColorRange::from(color_range != 0);
 
             if matches!(hdr.profile, Profile::Profile1 | Profile::Profile3) {
                 hdr.subsampling_x = r.read_bit()?;
@@ -754,7 +737,7 @@ impl Parser {
                 hdr.subsampling_y = true;
             }
         } else {
-            hdr.color_range = ColorRange::FullSwing;
+            hdr.color_range = ColorRange::Full;
             if matches!(hdr.profile, Profile::Profile1 | Profile::Profile3) {
                 hdr.subsampling_x = false;
                 hdr.subsampling_y = false;
@@ -1235,10 +1218,7 @@ mod tests {
                 assert!(h.subsampling_y);
 
                 assert!(matches!(h.color_space, ColorSpace::Unknown));
-                assert!(matches!(
-                    h.color_range,
-                    crate::codec::vp9::parser::ColorRange::StudioSwing
-                ));
+                assert!(matches!(h.color_range, crate::ColorRange::Limited));
 
                 assert!(!h.show_existing_frame);
                 assert_eq!(h.frame_to_show_map_idx, 0);
@@ -1322,10 +1302,7 @@ mod tests {
                 assert!(h.subsampling_y);
 
                 assert!(matches!(h.color_space, ColorSpace::Unknown));
-                assert!(matches!(
-                    h.color_range,
-                    crate::codec::vp9::parser::ColorRange::StudioSwing
-                ));
+                assert!(matches!(h.color_range, crate::ColorRange::Limited));
 
                 assert!(!h.show_existing_frame);
                 assert_eq!(h.frame_to_show_map_idx, 0);
@@ -1402,10 +1379,7 @@ mod tests {
                 assert!(h.subsampling_y);
 
                 assert!(matches!(h.color_space, ColorSpace::Unknown));
-                assert!(matches!(
-                    h.color_range,
-                    crate::codec::vp9::parser::ColorRange::StudioSwing
-                ));
+                assert!(matches!(h.color_range, crate::ColorRange::Limited));
 
                 assert!(!h.show_existing_frame);
                 assert_eq!(h.frame_to_show_map_idx, 0);

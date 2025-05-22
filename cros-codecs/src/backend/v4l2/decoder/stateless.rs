@@ -18,9 +18,13 @@ use crate::device::v4l2::stateless::request::V4l2Request;
 
 use crate::get_format_bit_depth;
 use crate::video_frame::VideoFrame;
+use crate::ColorPrimaries;
+use crate::ColorRange;
 use crate::DecodedFormat;
 use crate::Fourcc;
+use crate::MatrixCoefficients;
 use crate::Resolution;
+use crate::TransferFunction;
 
 pub struct V4l2Picture<V: VideoFrame> {
     request: Rc<RefCell<V4l2Request<V>>>,
@@ -135,6 +139,10 @@ impl<V: VideoFrame> V4l2StatelessDecoderBackend<V> {
                 min_num_frames: 0,
                 coded_resolution: Resolution::from((0, 0)),
                 display_resolution: Resolution::from((0, 0)),
+                range: Default::default(),
+                primaries: Default::default(),
+                transfer: Default::default(),
+                matrix: Default::default(),
             },
             frame_counter: 0,
         })
@@ -165,6 +173,10 @@ impl<V: VideoFrame> V4l2StatelessDecoderBackend<V> {
         self.stream_info.display_resolution = Resolution::from(stream_params.visible_rect());
         self.stream_info.coded_resolution = coded_resolution;
         self.stream_info.min_num_frames = min_num_frames;
+        self.stream_info.range = stream_params.range();
+        self.stream_info.primaries = stream_params.primaries();
+        self.stream_info.transfer = stream_params.transfer();
+        self.stream_info.matrix = stream_params.matrix();
 
         Ok(self.device.initialize_capture_queue(min_num_frames as u32)?)
     }

@@ -21,9 +21,13 @@ use crate::decoder::stateless::StatelessDecoderBackendPicture;
 use crate::decoder::DecodedHandle as DecodedHandleTrait;
 use crate::decoder::StreamInfo;
 use crate::video_frame::VideoFrame;
+use crate::ColorPrimaries;
+use crate::ColorRange;
 use crate::DecodedFormat;
+use crate::MatrixCoefficients;
 use crate::Rect;
 use crate::Resolution;
+use crate::TransferFunction;
 
 /// A decoded frame handle.
 pub(crate) type DecodedHandle<V> = Rc<RefCell<VaapiDecodedHandle<V>>>;
@@ -83,6 +87,11 @@ pub(crate) trait VaStreamInfo {
     fn visible_rect(&self) -> Rect;
     /// Returns the bit depth of the stream.
     fn bit_depth(&self) -> usize;
+    /// The following are used for exposing color aspect information for the stream.
+    fn range(&self) -> ColorRange;
+    fn primaries(&self) -> ColorPrimaries;
+    fn transfer(&self) -> TransferFunction;
+    fn matrix(&self) -> MatrixCoefficients;
 }
 
 /// Rendering state of a VA picture.
@@ -228,6 +237,10 @@ impl<V: VideoFrame> VaapiBackend<V> {
             coded_resolution: Resolution::from((16, 16)),
             display_resolution: Resolution::from((16, 16)),
             min_num_frames: 1,
+            range: Default::default(),
+            primaries: Default::default(),
+            transfer: Default::default(),
+            matrix: Default::default(),
         };
         let config = display
             .create_config(
@@ -274,6 +287,10 @@ impl<V: VideoFrame> VaapiBackend<V> {
             self.stream_info.format = DecodedFormat::NV12;
             libva::VA_RT_FORMAT_YUV420
         };
+        self.stream_info.range = stream_params.range();
+        self.stream_info.primaries = stream_params.primaries();
+        self.stream_info.transfer = stream_params.transfer();
+        self.stream_info.matrix = stream_params.matrix();
 
         // TODO: Handle context re-use
         // TODO: We should obtain RT_FORMAT from stream_info

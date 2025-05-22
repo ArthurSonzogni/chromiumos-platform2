@@ -22,8 +22,12 @@ use nix::sys::eventfd::EventFd;
 pub use crate::BlockingMode;
 
 use crate::video_frame::VideoFrame;
+use crate::ColorPrimaries;
+use crate::ColorRange;
 use crate::DecodedFormat;
+use crate::MatrixCoefficients;
 use crate::Resolution;
+use crate::TransferFunction;
 
 /// Trait for a pool of frames in a particular format.
 ///
@@ -70,6 +74,11 @@ pub struct StreamInfo {
     /// they are returned. Allocating at least this number of frames guarantees that the decoder
     /// won't starve from output frames.
     pub min_num_frames: usize,
+    /// Color information of the stream.
+    pub range: ColorRange,
+    pub primaries: ColorPrimaries,
+    pub transfer: TransferFunction,
+    pub matrix: MatrixCoefficients,
 }
 
 /// Events that can be retrieved using the `next_event` method of a decoder.

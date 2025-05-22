@@ -2,10 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use crate::ColorPrimaries;
+use crate::ColorRange;
 #[cfg(feature = "v4l2")]
 use crate::DecodedFormat;
+use crate::MatrixCoefficients;
 use crate::Rect;
 use crate::Resolution;
+use crate::TransferFunction;
 
 use std::sync::Arc;
 use v4l2r::device::Device as VideoDevice;
@@ -26,4 +30,9 @@ pub trait V4l2StreamInfo {
     fn bit_depth(&self) -> usize;
     // Returns the queried DecodedFormat for the current stream.
     fn get_decoded_format(&self, device: Arc<VideoDevice>) -> Result<DecodedFormat, String>;
+    // The following are used for exposing color aspect information for the stream.
+    fn range(&self) -> ColorRange;
+    fn primaries(&self) -> ColorPrimaries;
+    fn transfer(&self) -> TransferFunction;
+    fn matrix(&self) -> MatrixCoefficients;
 }

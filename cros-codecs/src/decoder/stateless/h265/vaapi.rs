@@ -38,8 +38,12 @@ use crate::decoder::stateless::StatelessDecoderBackendPicture;
 use crate::decoder::BlockingMode;
 use crate::decoder::DecodedHandle;
 use crate::video_frame::VideoFrame;
+use crate::ColorPrimaries;
+use crate::ColorRange;
+use crate::MatrixCoefficients;
 use crate::Rect;
 use crate::Resolution;
+use crate::TransferFunction;
 
 // Equation 5-8
 fn clip3(x: i32, y: i32, z: i32) -> i32 {
@@ -188,6 +192,22 @@ impl VaStreamInfo for &Sps {
 
     fn bit_depth(&self) -> usize {
         (self.bit_depth_chroma_minus8 + 8) as usize
+    }
+
+    fn range(&self) -> ColorRange {
+        self.vui_parameters.video_full_range_flag.into()
+    }
+
+    fn primaries(&self) -> ColorPrimaries {
+        (self.vui_parameters.colour_primaries as u32).into()
+    }
+
+    fn transfer(&self) -> TransferFunction {
+        (self.vui_parameters.transfer_characteristics as u32).into()
+    }
+
+    fn matrix(&self) -> MatrixCoefficients {
+        (self.vui_parameters.matrix_coeffs as u32).into()
     }
 }
 

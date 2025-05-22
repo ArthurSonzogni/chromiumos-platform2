@@ -7,6 +7,10 @@ use std::rc::Rc;
 
 use crate::codec::av1::helpers;
 use crate::codec::av1::reader::Reader;
+use crate::ColorPrimaries;
+use crate::ColorRange;
+use crate::MatrixCoefficients;
+use crate::TransferFunction;
 
 pub const TOTAL_REFS_PER_FRAME: usize = 8;
 pub const NUM_REF_FRAMES: usize = 8;
@@ -333,100 +337,6 @@ pub struct DecoderModelInfo {
     pub frame_presentation_time_length_minus_1: u32,
 }
 
-/// Defined by the “Color primaries” section of ISO/IEC 23091-4/ITU-T H.273
-/// See 6.4.2
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ColorPrimaries {
-    Bt709 = 1,
-    #[default]
-    Unspecified = 2,
-    Bt470M = 4,
-    Bt470bg = 5,
-    Bt601 = 6,
-    Smpte240 = 7,
-    GenericFilm = 8,
-    Bt2020 = 9,
-    Xyz = 10,
-    Smpte431 = 11,
-    Smpte432 = 12,
-    Ebu3213 = 22,
-}
-
-impl TryFrom<u32> for ColorPrimaries {
-    type Error = String;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        match value {
-            1 => Ok(ColorPrimaries::Bt709),
-            2 => Ok(ColorPrimaries::Unspecified),
-            4 => Ok(ColorPrimaries::Bt470M),
-            5 => Ok(ColorPrimaries::Bt470bg),
-            6 => Ok(ColorPrimaries::Bt601),
-            7 => Ok(ColorPrimaries::Smpte240),
-            8 => Ok(ColorPrimaries::GenericFilm),
-            9 => Ok(ColorPrimaries::Bt2020),
-            10 => Ok(ColorPrimaries::Xyz),
-            11 => Ok(ColorPrimaries::Smpte431),
-            12 => Ok(ColorPrimaries::Smpte432),
-            22 => Ok(ColorPrimaries::Ebu3213),
-            _ => Err(format!("Invalid ColorPrimaries {}", value)),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub enum TransferCharacteristics {
-    Reserved0 = 0,
-    Bt709 = 1,
-    #[default]
-    Unspecified = 2,
-    Reserved3 = 3,
-    Bt470m = 4,
-    Bt470bg = 5,
-    Bt601 = 6,
-    Smpte240 = 7,
-    Linear = 8,
-    Log100 = 9,
-    Log100Sqrt10 = 10,
-    Iec61966 = 11,
-    Bt1361 = 12,
-    Srgb = 13,
-    Bt202010Bit = 14,
-    Bt202012Bit = 15,
-    Smpte2084 = 16,
-    Smpte428 = 17,
-    Hlg = 18,
-}
-
-impl TryFrom<u32> for TransferCharacteristics {
-    type Error = String;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(TransferCharacteristics::Reserved0),
-            1 => Ok(TransferCharacteristics::Bt709),
-            2 => Ok(TransferCharacteristics::Unspecified),
-            3 => Ok(TransferCharacteristics::Reserved3),
-            4 => Ok(TransferCharacteristics::Bt470m),
-            5 => Ok(TransferCharacteristics::Bt470bg),
-            6 => Ok(TransferCharacteristics::Bt601),
-            7 => Ok(TransferCharacteristics::Smpte240),
-            8 => Ok(TransferCharacteristics::Linear),
-            9 => Ok(TransferCharacteristics::Log100),
-            10 => Ok(TransferCharacteristics::Log100Sqrt10),
-            11 => Ok(TransferCharacteristics::Iec61966),
-            12 => Ok(TransferCharacteristics::Bt1361),
-            13 => Ok(TransferCharacteristics::Srgb),
-            14 => Ok(TransferCharacteristics::Bt202010Bit),
-            15 => Ok(TransferCharacteristics::Bt202012Bit),
-            16 => Ok(TransferCharacteristics::Smpte2084),
-            17 => Ok(TransferCharacteristics::Smpte428),
-            18 => Ok(TransferCharacteristics::Hlg),
-            _ => Err(format!("Invalid TransferCharacteristics {}", value)),
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BitDepth {
     #[default]
@@ -444,51 +354,6 @@ impl TryFrom<u32> for BitDepth {
             1 => Ok(BitDepth::Depth10),
             2 => Ok(BitDepth::Depth12),
             _ => Err(format!("Invalid BitDepth {}", value)),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub enum MatrixCoefficients {
-    Identity = 0,
-    Bt709 = 1,
-    #[default]
-    Unspecified = 2,
-    Reserved3 = 3,
-    Fcc = 4,
-    Bt470bg = 5,
-    Bt601 = 6,
-    Smpte240 = 7,
-    Ycgco = 8,
-    Bt2020Ncl = 9,
-    Bt2020Cl = 10,
-    Smpte2085 = 11,
-    ChromaDerivedNcl = 12,
-    ChromaDerivedCl = 13,
-    Ictcp = 14,
-}
-
-impl TryFrom<u32> for MatrixCoefficients {
-    type Error = String;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(MatrixCoefficients::Identity),
-            1 => Ok(MatrixCoefficients::Bt709),
-            2 => Ok(MatrixCoefficients::Unspecified),
-            3 => Ok(MatrixCoefficients::Reserved3),
-            4 => Ok(MatrixCoefficients::Fcc),
-            5 => Ok(MatrixCoefficients::Bt470bg),
-            6 => Ok(MatrixCoefficients::Bt601),
-            7 => Ok(MatrixCoefficients::Smpte240),
-            8 => Ok(MatrixCoefficients::Ycgco),
-            9 => Ok(MatrixCoefficients::Bt2020Ncl),
-            10 => Ok(MatrixCoefficients::Bt2020Cl),
-            11 => Ok(MatrixCoefficients::Smpte2085),
-            12 => Ok(MatrixCoefficients::ChromaDerivedNcl),
-            13 => Ok(MatrixCoefficients::ChromaDerivedCl),
-            14 => Ok(MatrixCoefficients::Ictcp),
-            _ => Err(format!("Invalid MatrixCoefficients {}", value)),
         }
     }
 }
@@ -536,7 +401,7 @@ pub struct ColorConfig {
     pub color_primaries: ColorPrimaries,
     /// Defined by the “Transfer characteristics” section of ISO/IEC
     /// 23091-4/ITU-T H.273.
-    pub transfer_characteristics: TransferCharacteristics,
+    pub transfer_characteristics: TransferFunction,
     /// Defined by the “Matrix coefficients” section of ISO/IEC 23091-4/ITU-T
     /// H.273.
     pub matrix_coefficients: MatrixCoefficients,
@@ -1906,13 +1771,12 @@ impl Parser {
 
         cc.color_description_present_flag = r.0.read_bit()?;
         if cc.color_description_present_flag {
-            cc.color_primaries = ColorPrimaries::try_from(r.0.read_bits::<u32>(8)?)?;
-            cc.transfer_characteristics =
-                TransferCharacteristics::try_from(r.0.read_bits::<u32>(8)?)?;
-            cc.matrix_coefficients = MatrixCoefficients::try_from(r.0.read_bits::<u32>(8)?)?;
+            cc.color_primaries = ColorPrimaries::from(r.0.read_bits::<u32>(8)?);
+            cc.transfer_characteristics = TransferFunction::from(r.0.read_bits::<u32>(8)?);
+            cc.matrix_coefficients = MatrixCoefficients::from(r.0.read_bits::<u32>(8)?);
         } else {
             cc.color_primaries = ColorPrimaries::Unspecified;
-            cc.transfer_characteristics = TransferCharacteristics::Unspecified;
+            cc.transfer_characteristics = TransferFunction::Unspecified;
             cc.matrix_coefficients = MatrixCoefficients::Unspecified;
         }
 
@@ -1923,9 +1787,9 @@ impl Parser {
             cc.chroma_sample_position = ChromaSamplePosition::Unknown;
             cc.separate_uv_delta_q = false;
             return Ok(());
-        } else if matches!(cc.color_primaries, ColorPrimaries::Bt709)
-            && matches!(cc.transfer_characteristics, TransferCharacteristics::Srgb)
-            && matches!(cc.matrix_coefficients, MatrixCoefficients::Identity)
+        } else if cc.color_primaries == ColorPrimaries::BT709
+            && cc.transfer_characteristics == TransferFunction::sRGB
+            && cc.matrix_coefficients == MatrixCoefficients::Identity
         {
             cc.color_range = true;
             cc.subsampling_x = false;

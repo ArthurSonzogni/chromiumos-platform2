@@ -9,19 +9,16 @@ use std::num::TryFromIntError;
 use crate::codec::av1::helpers::clip3;
 use crate::codec::av1::parser::BitDepth;
 use crate::codec::av1::parser::ChromaSamplePosition;
-use crate::codec::av1::parser::ColorPrimaries;
 use crate::codec::av1::parser::FrameHeaderObu;
 use crate::codec::av1::parser::FrameRestorationType;
 use crate::codec::av1::parser::FrameType;
 use crate::codec::av1::parser::InterpolationFilter;
-use crate::codec::av1::parser::MatrixCoefficients;
 use crate::codec::av1::parser::ObuHeader;
 use crate::codec::av1::parser::ObuType;
 use crate::codec::av1::parser::Profile;
 use crate::codec::av1::parser::ReferenceFrameType;
 use crate::codec::av1::parser::SequenceHeaderObu;
 use crate::codec::av1::parser::TemporalDelimiterObu;
-use crate::codec::av1::parser::TransferCharacteristics;
 use crate::codec::av1::parser::TxMode;
 use crate::codec::av1::parser::WarpModelType;
 use crate::codec::av1::parser::FEATURE_BITS;
@@ -42,6 +39,9 @@ use crate::codec::av1::parser::SUPERRES_NUM;
 use crate::codec::av1::parser::TOTAL_REFS_PER_FRAME;
 use crate::codec::av1::writer::ObuWriter;
 use crate::codec::av1::writer::ObuWriterError;
+use crate::ColorPrimaries;
+use crate::MatrixCoefficients;
+use crate::TransferFunction;
 
 mod private {
     pub trait ObuStruct {}
@@ -488,13 +488,13 @@ where
             self.f(8, cc.transfer_characteristics as u32)?;
             self.f(8, cc.matrix_coefficients as u32)?;
         } else {
-            if !matches!(cc.color_primaries, ColorPrimaries::Unspecified) {
+            if cc.color_primaries != ColorPrimaries::Unspecified {
                 self.invalid_element_value("color_primaries")?;
             }
-            if !matches!(cc.transfer_characteristics, TransferCharacteristics::Unspecified) {
+            if cc.transfer_characteristics != TransferFunction::Unspecified {
                 self.invalid_element_value("transfer_characteristics")?;
             }
-            if !matches!(cc.matrix_coefficients, MatrixCoefficients::Unspecified) {
+            if cc.matrix_coefficients != MatrixCoefficients::Unspecified {
                 self.invalid_element_value("matrix_coefficients")?;
             }
         }
@@ -519,9 +519,9 @@ where
             }
 
             return Ok(());
-        } else if matches!(cc.color_primaries, ColorPrimaries::Bt709)
-            && matches!(cc.transfer_characteristics, TransferCharacteristics::Srgb)
-            && matches!(cc.matrix_coefficients, MatrixCoefficients::Identity)
+        } else if cc.color_primaries == ColorPrimaries::BT709
+            && cc.transfer_characteristics == TransferFunction::sRGB
+            && cc.matrix_coefficients == MatrixCoefficients::Identity
         {
             if !cc.color_range {
                 self.invalid_element_value("color_range")?;

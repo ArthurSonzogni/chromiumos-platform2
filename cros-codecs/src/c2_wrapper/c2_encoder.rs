@@ -44,10 +44,14 @@ use crate::video_frame::V4l2VideoFrame;
 use crate::video_frame::VideoFrame;
 use crate::video_frame::UV_PLANE;
 use crate::video_frame::Y_PLANE;
+use crate::ColorPrimaries;
+use crate::ColorRange;
 use crate::DecodedFormat;
 use crate::EncodedFormat;
 use crate::Fourcc;
+use crate::MatrixCoefficients;
 use crate::Resolution;
+use crate::TransferFunction;
 
 // TODO: We should query this dynamically to avoid unnecessary conversions. In practice everything
 // at least supports NV12 though.
@@ -183,6 +187,10 @@ where
                 EncodedFormat::VP9 => VP9_NUM_REF_FRAMES,
                 EncodedFormat::AV1 => AV1_NUM_REF_FRAMES,
             } + IN_FLIGHT_FRAMES,
+            range: Default::default(),
+            primaries: Default::default(),
+            transfer: Default::default(),
+            matrix: Default::default(),
         });
 
         #[cfg(feature = "ubc")]

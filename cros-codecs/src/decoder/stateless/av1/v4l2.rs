@@ -42,10 +42,14 @@ use crate::device::v4l2::stateless::controls::av1::V4l2CtrlAv1FrameParams;
 use crate::device::v4l2::stateless::controls::av1::V4l2CtrlAv1SequenceParams;
 use crate::device::v4l2::stateless::controls::av1::V4l2CtrlAv1TileGroupEntryParams;
 use crate::video_frame::VideoFrame;
+use crate::ColorPrimaries;
+use crate::ColorRange;
 use crate::DecodedFormat;
 use crate::Fourcc;
+use crate::MatrixCoefficients;
 use crate::Rect;
 use crate::Resolution;
+use crate::TransferFunction;
 
 impl V4l2StreamInfo for &StreamInfo {
     fn min_num_frames(&self) -> usize {
@@ -86,6 +90,22 @@ impl V4l2StreamInfo for &StreamInfo {
             .next()
             .unwrap()
             .into())
+    }
+
+    fn range(&self) -> ColorRange {
+        self.seq_header.color_config.color_range.into()
+    }
+
+    fn primaries(&self) -> ColorPrimaries {
+        self.seq_header.color_config.color_primaries.into()
+    }
+
+    fn transfer(&self) -> TransferFunction {
+        self.seq_header.color_config.transfer_characteristics.into()
+    }
+
+    fn matrix(&self) -> MatrixCoefficients {
+        self.seq_header.color_config.matrix_coefficients.into()
     }
 }
 

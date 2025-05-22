@@ -32,10 +32,14 @@ use crate::decoder::BlockingMode;
 use crate::decoder::DecodedHandle;
 use crate::device::v4l2::stateless::controls::vp8::V4l2CtrlVp8FrameParams;
 use crate::video_frame::VideoFrame;
+use crate::ColorPrimaries;
+use crate::ColorRange;
 use crate::DecodedFormat;
 use crate::Fourcc;
+use crate::MatrixCoefficients;
 use crate::Rect;
 use crate::Resolution;
+use crate::TransferFunction;
 
 impl V4l2StreamInfo for &Header {
     fn min_num_frames(&self) -> usize {
@@ -60,6 +64,22 @@ impl V4l2StreamInfo for &Header {
             .next()
             .unwrap()
             .into())
+    }
+
+    fn range(&self) -> ColorRange {
+        ColorRange::Unspecified
+    }
+
+    fn primaries(&self) -> ColorPrimaries {
+        ColorPrimaries::Unspecified
+    }
+
+    fn transfer(&self) -> TransferFunction {
+        TransferFunction::Unspecified
+    }
+
+    fn matrix(&self) -> MatrixCoefficients {
+        MatrixCoefficients::Unspecified
     }
 }
 

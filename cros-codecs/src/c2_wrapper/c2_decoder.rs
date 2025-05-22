@@ -233,6 +233,10 @@ where
                                     },
                                     display_resolution: stream_info.display_resolution.clone(),
                                     min_num_frames: stream_info.min_num_frames + 1,
+                                    range: stream_info.range,
+                                    primaries: stream_info.primaries,
+                                    transfer: stream_info.transfer,
+                                    matrix: stream_info.matrix,
                                 });
                             } else {
                                 (*self.framepool_hint_cb.lock().unwrap())(stream_info.clone());
