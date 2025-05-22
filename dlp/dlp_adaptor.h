@@ -16,9 +16,9 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <base/memory/weak_ptr.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <featured/feature_library.h>
 #include <metrics/metrics_library.h>
@@ -49,7 +49,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
              feature::PlatformFeaturesInterface* feature_lib,
              int fanotify_perm_fd,
              int fanotify_notif_fd,
-             const base::FilePath& home_path);
+             const base::FilePath& home_path,
+             bool create_task_runner = false);
   DlpAdaptor(const DlpAdaptor&) = delete;
   DlpAdaptor& operator=(const DlpAdaptor&) = delete;
   virtual ~DlpAdaptor();

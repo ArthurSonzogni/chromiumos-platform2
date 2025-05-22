@@ -27,6 +27,7 @@
 #include <base/process/process_handle.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/task/thread_pool/thread_pool_instance.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
@@ -132,15 +133,21 @@ DlpAdaptor::DlpAdaptor(
     feature::PlatformFeaturesInterface* feature_lib,
     int fanotify_perm_fd,
     int fanotify_notif_fd,
-    const base::FilePath& home_path)
+    const base::FilePath& home_path,
+    bool create_task_runner)
     : org::chromium::DlpAdaptor(this),
       dbus_object_(std::move(dbus_object)),
       feature_lib_(feature_lib),
       home_path_(home_path),
       file_enumeration_thread_("file_enumeration_thread") {
-  dlp_metrics_ = std::make_unique<DlpMetrics>();
+  // Starting watcher first, before the thread pool, so that it can respond.
   fanotify_watcher_ = std::make_unique<FanotifyWatcher>(this, fanotify_perm_fd,
                                                         fanotify_notif_fd);
+  if (create_task_runner) {
+    base::ThreadPoolInstance::CreateAndStartWithDefaultParams(
+        "dlp_thread_pool");
+  }
+  dlp_metrics_ = std::make_unique<DlpMetrics>();
   dlp_files_policy_service_ =
       std::make_unique<org::chromium::DlpFilesPolicyServiceProxy>(
           dbus_object_->GetBus().get(), kDlpFilesPolicyServiceName);
@@ -150,6 +157,7 @@ DlpAdaptor::DlpAdaptor(
   file_enumeration_task_runner_ = file_enumeration_thread_.task_runner();
 
   CHECK(!file_enumeration_task_runner_->RunsTasksInCurrentSequence());
+  LOG(INFO) << "DLP adaptor successfully created";
 }
 
 DlpAdaptor::~DlpAdaptor() {
