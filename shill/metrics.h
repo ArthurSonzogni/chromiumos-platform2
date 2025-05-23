@@ -41,6 +41,11 @@ struct MetricsNameByTechnology {
   bool operator==(const MetricsNameByTechnology& that) const = default;
 };
 
+// Metrics class that describes UMA metrics and implements metric reporting
+// functions.
+// Note: Metric enum values in this class are persisted in metrics server
+// storage. Entries should not be renumbered and numeric values should never be
+// reused.
 class Metrics {
  public:
   using NameByTechnology = MetricsNameByTechnology;
@@ -1042,6 +1047,8 @@ class Metrics {
   };
 
   // Types of requests that dhcpcd may initiate to reacquire a DHCPv4 lease.
+  // These values are persisted in metrics server storage. Entries should not be
+  // renumbered and numeric values should never be reused.
   enum DHCPv4RenewRebind {
     kRenew = 0,
     kRebind = 1,
@@ -2656,6 +2663,8 @@ class Metrics {
   };
 
   // Result enum for DHCPv4 provisioning.
+  // These values are persisted in metrics server storage. Entries should not be
+  // renumbered and numeric values should never be reused.
   enum DHCPv4ProvisionResult {
     // Got a lease successfully.
     kSuccess = 0,
