@@ -2041,7 +2041,6 @@
 
 <project name="WiFiChipset">
   <owner>druth@google.com</owner>
-  <owner>matthewmwang@chromium.org</owner>
   <owner>norvez@chromium.org</owner>
   <owner>cros-network-metrics@google.com</owner>
   <id>none</id>
@@ -2083,7 +2082,6 @@
 
 <project name="WiFiAP">
   <owner>druth@google.com</owner>
-  <owner>matthewmwang@chromium.org</owner>
   <owner>norvez@chromium.org</owner>
   <owner>cros-network-metrics@google.com</owner>
   <id>none</id>
@@ -2114,7 +2112,6 @@
 
 <project name="WiFi">
   <owner>druth@google.com</owner>
-  <owner>matthewmwang@chromium.org</owner>
   <owner>norvez@chromium.org</owner>
   <owner>cros-network-metrics@google.com</owner>
   <id>per-project</id>
