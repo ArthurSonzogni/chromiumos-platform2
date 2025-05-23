@@ -8,6 +8,7 @@
 #include <iterator>
 #include <utility>
 
+#include <base/containers/contains.h>
 #include <base/task/bind_post_task.h>
 
 #include "common/camera_buffer_handle.h"
