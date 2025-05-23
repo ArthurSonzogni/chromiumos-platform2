@@ -81,6 +81,105 @@ pub trait C2EncoderBackend {
     ) -> Result<(Box<dyn VideoEncoder<V4l2VideoFrame<V>>>, Resolution, Resolution), String>;
 }
 
+// If `bitstream` starts with a start code (either [0x0, 0x0, 0x1] or [0x0, 0x0, 0x0, 0x1]), this
+// function returns the length of that start code (either 3 or 4). Otherwise, it returns None.
+fn maybe_get_nalu_start_code_prefix(bitstream: &[u8]) -> Option<usize> {
+    if bitstream.len() >= 3 && bitstream[0] == 0x0 && bitstream[1] == 0x0 && bitstream[2] == 0x1 {
+        return Some(3usize);
+    }
+    if bitstream.len() >= 4
+        && bitstream[0] == 0x0
+        && bitstream[1] == 0x0
+        && bitstream[2] == 0x0
+        && bitstream[3] == 0x1
+    {
+        return Some(4usize);
+    }
+    None
+}
+
+// Scans `bitstream` to find the first NALU of type `nalu_type` (see the H.264 specification, Table
+// 7-1 for the allowable types). If found, returns the start and end positions in `bitstream`
+// corresponding to that NALU, not including the start code (such that
+// `bitstream[start_pos..end_pos]` is the NALU). Otherwise, returns None.
+fn find_nalu(
+    bitstream: &[u8],
+    nalu_type: u8,
+) -> Option<(/*start_pos:*/ usize, /*end_pos:*/ usize)> {
+    enum State {
+        SearchingForStartCode,
+        FoundStartCode,
+        FoundStartOfDesiredNalu(/*start_pos: */ usize),
+    }
+    let mut pos = 0usize;
+    let mut state = State::SearchingForStartCode;
+    while pos < bitstream.len() {
+        (pos, state) = match state {
+            State::SearchingForStartCode => {
+                match maybe_get_nalu_start_code_prefix(&bitstream[pos..]) {
+                    Some(start_code_length) => (pos + start_code_length, State::FoundStartCode),
+                    None => (pos + 1, State::SearchingForStartCode),
+                }
+            }
+            State::FoundStartCode => {
+                if bitstream[pos] & 0x1F == nalu_type {
+                    let new_pos = pos + 1;
+                    (new_pos, State::FoundStartOfDesiredNalu(/*start_pos=*/ pos))
+                } else {
+                    (pos + 1, State::SearchingForStartCode)
+                }
+            }
+            State::FoundStartOfDesiredNalu(start_pos) => {
+                match maybe_get_nalu_start_code_prefix(&bitstream[pos..]) {
+                    Some(start_code_length) => {
+                        break;
+                    }
+                    None => (pos + 1, State::FoundStartOfDesiredNalu(start_pos)),
+                }
+            }
+        }
+    }
+    if let State::FoundStartOfDesiredNalu(start_pos) = state {
+        if pos > start_pos {
+            Some((start_pos, /*end_pos=*/ pos))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+// If `encoded_format` is EncodedFormat::H264, this function scans `bitstream` to find the first SPS
+// NALU and the first PPS NALU after that SPS. If found, returns the concatenation of them as
+// follows:
+//
+//     [0x0, 0x0, 0x0, 0x1, ... SPS ..., 0x0, 0x0, 0x0, 0x1, ... PPS ...]
+//
+// If not found, returns an error.
+//
+// If `encoded_format` is not EncodedFormat::H264, this function returns an empty vector.
+fn get_csd(encoded_format: EncodedFormat, bitstream: &[u8]) -> Result<Vec<u8>, String> {
+    if encoded_format != EncodedFormat::H264 {
+        // TODO(b/389993558): Also get the codec-specific data for H.265.
+        return Ok(vec![]);
+    }
+
+    // First let's search for the SPS.
+    let sps = find_nalu(&bitstream, 7).ok_or("Could not find the SPS")?;
+
+    // Now let's search for the PPS but starting after the SPS.
+    let bitstream_minus_first_sps = &bitstream[sps.1..];
+    let pps = find_nalu(bitstream_minus_first_sps, 8).ok_or("Could not find the PPS")?;
+
+    // Now concatenate everything together.
+    let mut csd = vec![0x0, 0x0, 0x0, 0x1];
+    csd.extend_from_slice(&bitstream[sps.0..sps.1]);
+    csd.extend_from_slice(&[0x0, 0x0, 0x0, 0x1]);
+    csd.extend_from_slice(&bitstream_minus_first_sps[pps.0..pps.1]);
+    Ok(csd)
+}
+
 pub struct C2EncoderWorker<V, B>
 where
     V: VideoFrame,
@@ -100,6 +199,8 @@ where
     current_tunings: Tunings,
     visible_resolution: Resolution,
     coded_resolution: Resolution,
+    encoded_format: EncodedFormat,
+    csd_has_been_output: bool,
     #[cfg(feature = "ubc")]
     bitrate_controller: BitrateController,
     _phantom: PhantomData<B>,
@@ -116,6 +217,21 @@ where
                 Ok(Some(coded)) => {
                     let mut job = self.in_flight_queue.pop_front().unwrap();
                     job.output = coded.bitstream;
+                    // Only output the CSD if it hasn't been output before.
+                    if !self.csd_has_been_output {
+                        job.csd = match get_csd(self.encoded_format, &job.output) {
+                            Ok(csd) => {
+                                self.csd_has_been_output = true;
+                                csd
+                            }
+                            Err(err) => {
+                                log::debug!("Could not get the CSD! {err}");
+                                *self.state.0.lock().unwrap() = C2State::C2Error;
+                                (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
+                                break;
+                            }
+                        }
+                    }
 
                     #[cfg(feature = "ubc")]
                     self.bitrate_controller.process_frame(job.output.len() as u64);
@@ -173,14 +289,15 @@ where
             }
         }
 
+        let encoded_format = EncodedFormat::from(output_fourccs[0]);
         let mut backend = B::new(options)?;
         let (encoder, visible_resolution, coded_resolution) =
-            backend.get_encoder(REAL_INPUT_FORMAT, EncodedFormat::from(output_fourccs[0]))?;
+            backend.get_encoder(REAL_INPUT_FORMAT, encoded_format)?;
         (*framepool_hint_cb.lock().unwrap())(StreamInfo {
             format: REAL_INPUT_FORMAT,
             coded_resolution: coded_resolution.clone(),
             display_resolution: visible_resolution.clone(),
-            min_num_frames: match EncodedFormat::from(output_fourccs[0]) {
+            min_num_frames: match encoded_format {
                 // TODO: Chosen arbitrarily. Do we ever use more than one reference frame for H264?
                 EncodedFormat::H264 | EncodedFormat::H265 => 4,
                 EncodedFormat::VP8 => VP8_NUM_REF_FRAMES,
@@ -195,7 +312,7 @@ where
 
         #[cfg(feature = "ubc")]
         {
-            let (min_qp, max_qp) = match EncodedFormat::from(output_fourccs[0]) {
+            let (min_qp, max_qp) = match encoded_format {
                 EncodedFormat::AV1 | EncodedFormat::VP9 => (0, 255),
                 EncodedFormat::VP8 => (0, 127),
                 EncodedFormat::H264 | EncodedFormat::H265 => (1, 51),
@@ -223,6 +340,8 @@ where
                 current_tunings: init_tunings,
                 visible_resolution: visible_resolution,
                 coded_resolution: coded_resolution,
+                encoded_format: encoded_format,
+                csd_has_been_output: false,
                 bitrate_controller: bitrate_controller,
                 _phantom: Default::default(),
             })
@@ -241,6 +360,8 @@ where
                 current_tunings: Default::default(),
                 visible_resolution: visible_resolution,
                 coded_resolution: coded_resolution,
+                encoded_format: encoded_format,
+                csd_has_been_output: false,
                 _phantom: Default::default(),
             })
         }

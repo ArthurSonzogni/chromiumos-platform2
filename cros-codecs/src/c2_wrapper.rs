@@ -107,6 +107,16 @@ pub struct C2EncodeJob<V: VideoFrame> {
     pub input: Option<V>,
     // TODO: Use VideoFrame for output too
     pub output: Vec<u8>,
+    // Codec-specific data to output as part of this C2EncodeJob. This is intended to be used in the
+    // H.264 case as "initialization data" for the client: the first C2EncodeJob to be sent to the
+    // client should contain the concatenation of the SPS and PPS NALUs separated by start codes as
+    // follows:
+    //
+    //     [0x0, 0x0, 0x0, 0x1, ... SPS ..., 0x0, 0x0, 0x0, 0x1, ... PPS ...]
+    //
+    // On the C++ HAL side, this CSD, if not empty, is expected to get copied to a
+    // C2StreamInitDataInfo::output parameter.
+    pub csd: Vec<u8>,
     // In microseconds.
     pub timestamp: u64,
     // TODO: only support CBR right now, follow up with VBR support.
@@ -122,6 +132,7 @@ impl<V: VideoFrame> Default for C2EncodeJob<V> {
         Self {
             input: None,
             output: vec![],
+            csd: vec![],
             timestamp: 0,
             bitrate: 0,
             framerate: Arc::new(AtomicU32::new(0)),

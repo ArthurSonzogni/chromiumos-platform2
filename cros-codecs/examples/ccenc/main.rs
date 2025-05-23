@@ -193,6 +193,7 @@ where
     let job = C2EncodeJob {
         input: Some(new_frame),
         output: vec![],
+        csd: vec![],
         timestamp: *timestamp,
         bitrate,
         framerate: Arc::new(AtomicU32::new(framerate)),
@@ -267,6 +268,8 @@ fn main() {
     }
     let is_done = Arc::new(Mutex::new(false));
     let is_done_clone = is_done.clone();
+    let saw_csd = Arc::new(Mutex::new(false));
+    let saw_csd_clone = saw_csd.clone();
     let codec_ = codec;
     let work_done_cb = move |job: C2EncodeJob<PooledVideoFrame<GenericDmaVideoFrame<()>>>| {
         if job.drain == DrainMode::EOSDrain {
@@ -281,6 +284,8 @@ fn main() {
         let _ = (*output_file.lock().unwrap())
             .write(job.output.as_slice())
             .expect("Error writing output file!");
+        let mut locked_saw_csd = saw_csd_clone.lock().expect("Could not lock saw_csd var");
+        *locked_saw_csd = *locked_saw_csd || !job.csd.is_empty();
     };
 
     let input_coded_resolution = Resolution {
@@ -361,4 +366,10 @@ fn main() {
 
         thread::sleep(Duration::from_millis(10));
     }
+
+    // We should have seen codec-specific data (which presumably contains the SPS and PPS) if and
+    // only if the codec is H.264.
+    //
+    // TODO(b/389993558): Also get the codec-specific data for H.265.
+    assert_eq!(codec == Codec::H264, *saw_csd.lock().expect("Could not lock saw_csd var"));
 }
