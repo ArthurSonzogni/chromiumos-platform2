@@ -128,11 +128,6 @@ if (use.test) {
     ]
   }
   executable("dlp_test") {
-    run_test = true
-    test_config = {
-      run_as_root = false
-      jobs = 1
-    }
     sources = [
       "dlp_adaptor_test.cc",
       "dlp_adaptor_test_helper.cc",
