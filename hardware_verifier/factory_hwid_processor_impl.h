@@ -6,6 +6,9 @@
 #define HARDWARE_VERIFIER_FACTORY_HWID_PROCESSOR_IMPL_H_
 
 #include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 #include "hardware_verifier/encoding_spec_loader.h"
 #include "hardware_verifier/factory_hwid_processor.h"
@@ -22,6 +25,9 @@ class FactoryHWIDProcessorImpl : FactoryHWIDProcessor {
   // Returns |nullptr| if initialization fails.
   static std::unique_ptr<FactoryHWIDProcessorImpl> Create(
       const EncodingSpecLoader& encoding_spec_loader);
+
+  std::optional<CategoryMapping<std::vector<std::string>>> DecodeFactoryHWID()
+      const override;
 
  private:
   explicit FactoryHWIDProcessorImpl(
