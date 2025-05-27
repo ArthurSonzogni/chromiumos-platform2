@@ -21,6 +21,9 @@ setresuid: 1
 statfs: 1
 write: 1
 
+# For deleting the install_type file.
+unlinkat: 1
+
 # Allow syslog.
 socket: arg0 == AF_UNIX
 connect: 1

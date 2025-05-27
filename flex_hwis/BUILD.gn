@@ -100,6 +100,7 @@ install_config("install_seccomp_policy") {
 
 install_config("install_tmpfiles_config") {
   sources = [
+    "init/tmpfiles.d/flex_device_metrics.conf",
     "init/tmpfiles.d/flex_hardware_cache.conf",
     "init/tmpfiles.d/flex_hwis.conf",
   ]
