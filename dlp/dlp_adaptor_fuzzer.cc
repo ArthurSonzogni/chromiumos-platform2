@@ -4,6 +4,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/test/task_environment.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <dbus/error.h>
 #include <gtest/gtest.h>
@@ -34,6 +35,8 @@ class Environment {
 DEFINE_PROTO_FUZZER(const dlp::DlpFuzzer& input) {
   static Environment env;
 
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
   dlp::DlpAdaptorTestHelper helper;
   dlp::DlpAdaptor* adaptor = helper.adaptor();
 
