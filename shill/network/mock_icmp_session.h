@@ -10,14 +10,13 @@
 #include <chromeos/net-base/ip_address.h>
 #include <gmock/gmock.h>
 
-#include "shill/event_dispatcher.h"
 #include "shill/network/icmp_session.h"
 
 namespace shill {
 
 class MockIcmpSession : public IcmpSession {
  public:
-  explicit MockIcmpSession(EventDispatcher* dispatcher);
+  MockIcmpSession();
   MockIcmpSession(const MockIcmpSession&) = delete;
   MockIcmpSession& operator=(const MockIcmpSession&) = delete;
 

@@ -109,46 +109,25 @@ class FakeDNSClientFactory : public net_base::DNSClientFactory {
               (override));
 };
 
-class ConnectionDiagnosticsUnderTest : public ConnectionDiagnostics {
+class FakeIcmpSessionFactory : public IcmpSessionFactory {
  public:
-  ConnectionDiagnosticsUnderTest(
-      std::string_view iface_name,
-      int iface_index,
-      net_base::IPFamily ip_family,
-      const net_base::IPAddress& gateway,
-      const std::vector<net_base::IPAddress>& dns_list,
-      std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-      std::string_view logging_tag,
-      EventDispatcher* dispatcher)
-      : ConnectionDiagnostics
+  FakeIcmpSessionFactory() : IcmpSessionFactory() {}
 
-        (iface_name,
-         iface_index,
-         ip_family,
-         gateway,
-         dns_list,
-         std::move(dns_client_factory),
-         logging_tag,
-         dispatcher) {}
-
-  ConnectionDiagnosticsUnderTest(const ConnectionDiagnosticsUnderTest&) =
-      delete;
-  ConnectionDiagnosticsUnderTest& operator=(
-      const ConnectionDiagnosticsUnderTest&) = delete;
-
-  std::unique_ptr<IcmpSession> StartIcmpSession(
+  std::unique_ptr<IcmpSession> SendPingRequest(
       const net_base::IPAddress& destination,
       int interface_index,
       std::string_view interface_name,
-      IcmpSession::IcmpSessionResultCallback result_callback) override {
+      std::string_view logging_tag,
+      IcmpSession::IcmpSessionResultCallback result_callback,
+      EventDispatcher* dispatcher,
+      std::unique_ptr<net_base::SocketFactory> socket_factory) override {
     auto it = mock_icmp_sessions_.find(destination);
     return (it != mock_icmp_sessions_.end()) ? std::move(it->second) : nullptr;
   }
 
   void SetIcmpSession(const net_base::IPAddress& destination) {
-    auto icmp_session = std::make_unique<NiceMock<MockIcmpSession>>(
-        get_dispatcher_for_testing());
-    mock_icmp_sessions_[destination] = std::move(icmp_session);
+    mock_icmp_sessions_[destination] =
+        std::make_unique<NiceMock<MockIcmpSession>>();
   }
 
   std::map<net_base::IPAddress, std::unique_ptr<MockIcmpSession>>
@@ -163,12 +142,14 @@ class ConnectionDiagnosticsTest : public Test {
       : gateway_(kIPv4GatewayAddress),
         dns_list_({kIPv4DNSServer0, kIPv4DNSServer1}),
         dns_client_factory_(new FakeDNSClientFactory()),
+        icmp_session_factory_(new FakeIcmpSessionFactory()),
         connection_diagnostics_(kInterfaceName,
                                 kInterfaceIndex,
                                 net_base::IPFamily::kIPv4,
                                 kIPv4GatewayAddress,
                                 {kIPv4DNSServer0, kIPv4DNSServer1},
                                 base::WrapUnique(dns_client_factory_),
+                                base::WrapUnique(icmp_session_factory_),
                                 "int0 mock_service sid=0",
                                 &dispatcher_) {}
 
@@ -258,7 +239,7 @@ class ConnectionDiagnosticsTest : public Test {
       bool simulate_icmp_failure = false) {
     if (!simulate_icmp_failure) {
       for (const auto& addr : resolved_addresses) {
-        connection_diagnostics_.SetIcmpSession(addr);
+        icmp_session_factory_->SetIcmpSession(addr);
       }
     }
     connection_diagnostics_.OnHostResolutionComplete(kDiagnosticId, dns_server,
@@ -291,7 +272,7 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void TriggerPingGatewayStartSuccess(const net_base::IPAddress& address) {
-    connection_diagnostics_.SetIcmpSession(address);
+    icmp_session_factory_->SetIcmpSession(address);
     connection_diagnostics_.PingGateway(kDiagnosticId);
   }
 
@@ -313,7 +294,7 @@ class ConnectionDiagnosticsTest : public Test {
       const std::vector<net_base::IPAddress>& expected_dns, bool is_success) {
     if (is_success) {
       for (size_t i = 0; i < expected_dns.size(); i++) {
-        connection_diagnostics_.SetIcmpSession(expected_dns[i]);
+        icmp_session_factory_->SetIcmpSession(expected_dns[i]);
       }
     }
 
@@ -331,7 +312,8 @@ class ConnectionDiagnosticsTest : public Test {
   net_base::IPAddress gateway_;
   std::vector<net_base::IPAddress> dns_list_;
   FakeDNSClientFactory* dns_client_factory_;
-  ConnectionDiagnosticsUnderTest connection_diagnostics_;
+  FakeIcmpSessionFactory* icmp_session_factory_;
+  ConnectionDiagnostics connection_diagnostics_;
   NiceMock<MockEventDispatcher> dispatcher_;
 };
 

@@ -76,6 +76,7 @@ class ConnectionDiagnostics {
       std::optional<net_base::IPAddress> gateway,
       const std::vector<net_base::IPAddress>& dns_list,
       std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
+      std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
       std::string_view logging_tag,
       EventDispatcher* dispatcher);
   ConnectionDiagnostics(const ConnectionDiagnostics&) = delete;
@@ -90,17 +91,6 @@ class ConnectionDiagnostics {
   const std::string& interface_name() const { return iface_name_; }
   int interface_index() const { return iface_index_; }
   net_base::IPFamily ip_family() const { return ip_family_; }
-
- protected:
-  EventDispatcher* get_dispatcher_for_testing() { return dispatcher_; }
-
-  // Starts an ICMP session on |interface_index| to target |destination| and
-  // returns the tracking IcmpSession object. Returns nullptr in case of error.
-  mockable std::unique_ptr<IcmpSession> StartIcmpSession(
-      const net_base::IPAddress& destination,
-      int interface_index,
-      std::string_view interface_name,
-      IcmpSession::IcmpSessionResultCallback result_callback);
 
  private:
   friend class ConnectionDiagnosticsTest;
@@ -173,6 +163,7 @@ class ConnectionDiagnostics {
 
   EventDispatcher* dispatcher_;
   std::unique_ptr<net_base::DNSClientFactory> dns_client_factory_;
+  std::unique_ptr<IcmpSessionFactory> icmp_session_factory_;
 
   // The name of the network interface associated with the connection.
   std::string iface_name_;
@@ -230,6 +221,7 @@ class ConnectionDiagnosticsFactory {
       std::optional<net_base::IPAddress> gateway,
       const std::vector<net_base::IPAddress>& dns_list,
       std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
+      std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
       std::string_view logging_tag,
       EventDispatcher* dispatcher);
 };

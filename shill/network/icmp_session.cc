@@ -49,6 +49,25 @@ std::unique_ptr<IcmpSession> IcmpSession::CreateForTesting(
   return icmp_session;
 }
 
+std::unique_ptr<IcmpSession> IcmpSessionFactory::SendPingRequest(
+    const net_base::IPAddress& destination,
+    int interface_index,
+    std::string_view interface_name,
+    std::string_view logging_tag,
+    IcmpSession::IcmpSessionResultCallback result_callback,
+    EventDispatcher* dispatcher,
+    std::unique_ptr<net_base::SocketFactory> socket_factory) {
+  std::unique_ptr<IcmpSession> icmp_session =
+      std::make_unique<IcmpSession>(dispatcher, std::move(socket_factory));
+  bool success_start =
+      icmp_session->Start(destination, interface_index, interface_name,
+                          logging_tag, std::move(result_callback));
+  if (!success_start) {
+    return nullptr;
+  }
+  return icmp_session;
+}
+
 IcmpSession::IcmpSession(
     EventDispatcher* dispatcher,
     std::unique_ptr<net_base::SocketFactory> socket_factory)

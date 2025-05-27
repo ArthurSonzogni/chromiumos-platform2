@@ -24,6 +24,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/network/capport_proxy.h"
 #include "shill/network/connection_diagnostics.h"
+#include "shill/network/icmp_session.h"
 #include "shill/network/portal_detector.h"
 #include "shill/network/trial_scheduler.h"
 #include "shill/network/validation_log.h"
@@ -363,8 +364,8 @@ void NetworkMonitor::StartIPv4ConnectionDiagnostics(
   ipv4_connection_diagnostics_ = connection_diagnostics_factory_->Create(
       interface_, interface_index_, net_base::IPFamily::kIPv4, gateway,
       network_config.dns_servers,
-      std::make_unique<net_base::DNSClientFactory>(), logging_tag_,
-      dispatcher_);
+      std::make_unique<net_base::DNSClientFactory>(),
+      std::make_unique<IcmpSessionFactory>(), logging_tag_, dispatcher_);
   ipv4_connection_diagnostics_->Start(probing_configuration_.portal_http_url);
 }
 
@@ -388,8 +389,8 @@ void NetworkMonitor::StartIPv6ConnectionDiagnostics(
   ipv6_connection_diagnostics_ = connection_diagnostics_factory_->Create(
       interface_, interface_index_, net_base::IPFamily::kIPv6, gateway,
       network_config.dns_servers,
-      std::make_unique<net_base::DNSClientFactory>(), logging_tag_,
-      dispatcher_);
+      std::make_unique<net_base::DNSClientFactory>(),
+      std::make_unique<IcmpSessionFactory>(), logging_tag_, dispatcher_);
   ipv6_connection_diagnostics_->Start(probing_configuration_.portal_http_url);
 }
 

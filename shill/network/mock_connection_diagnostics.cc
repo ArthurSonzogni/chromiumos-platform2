@@ -16,6 +16,7 @@ MockConnectionDiagnostics::MockConnectionDiagnostics()
           *net_base::IPAddress::CreateFromString("192.168.1.1"),
           {},
           nullptr,
+          nullptr,
           "wlan1 mock_service sid=0",
           nullptr) {}
 

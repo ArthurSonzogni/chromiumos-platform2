@@ -6,8 +6,7 @@
 
 namespace shill {
 
-MockIcmpSession::MockIcmpSession(EventDispatcher* dispatcher)
-    : IcmpSession(dispatcher) {}
+MockIcmpSession::MockIcmpSession() : IcmpSession(/*dispatcher=*/nullptr) {}
 
 MockIcmpSession::~MockIcmpSession() = default;
 

@@ -24,6 +24,7 @@
 #include <chromeos/net-base/socket.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/mockable.h"
 
 namespace shill {
 
@@ -165,6 +166,25 @@ class IcmpSession {
   IcmpSessionResultCallback result_callback_;
 
   base::WeakPtrFactory<IcmpSession> weak_ptr_factory_{this};
+};
+
+// The factory class of the IcmpSession, used to derive a mock factory
+// to create mock IcmpSession instances at testing.
+class IcmpSessionFactory {
+ public:
+  IcmpSessionFactory() = default;
+  virtual ~IcmpSessionFactory() = default;
+
+  // The default factory method, calling ConnectionDiagnostics's constructor.
+  mockable std::unique_ptr<IcmpSession> SendPingRequest(
+      const net_base::IPAddress& destination,
+      int interface_index,
+      std::string_view interface_name,
+      std::string_view logging_tag,
+      IcmpSession::IcmpSessionResultCallback result_callback,
+      EventDispatcher* dispatcher,
+      std::unique_ptr<net_base::SocketFactory> socket_factory =
+          std::make_unique<net_base::SocketFactory>());
 };
 
 }  // namespace shill

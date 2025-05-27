@@ -73,10 +73,12 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     std::optional<net_base::IPAddress> gateway,
     const std::vector<net_base::IPAddress>& dns_list,
     std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
+    std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
     std::string_view logging_tag,
     EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
       dns_client_factory_(std::move(dns_client_factory)),
+      icmp_session_factory_(std::move(icmp_session_factory)),
       iface_name_(iface_name),
       iface_index_(iface_index),
       ip_family_(ip_family),
@@ -230,10 +232,11 @@ void ConnectionDiagnostics::PingDNSServers(int dns_diag_id) {
     const auto& dns_server_ip_addr = dns_list_[i];
     int diag_id = AssignDiagnosticId(
         Type::kPingDNSServers, "Pinging " + dns_server_ip_addr.ToString());
-    auto icmp_session = StartIcmpSession(
-        dns_server_ip_addr, iface_index_, iface_name_,
+    auto icmp_session = icmp_session_factory_->SendPingRequest(
+        dns_server_ip_addr, iface_index_, iface_name_, logging_tag_,
         base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
-                       weak_ptr_factory_.GetWeakPtr(), diag_id, i));
+                       weak_ptr_factory_.GetWeakPtr(), diag_id, i),
+        dispatcher_);
     if (!icmp_session) {
       // If we encounter any errors starting ping for any DNS server, carry on
       // attempting to ping the other DNS servers rather than failing.
@@ -317,10 +320,11 @@ void ConnectionDiagnostics::OnHostResolutionComplete(
   for (const auto& addr : target_url_addresses_) {
     int diagnostic_id = AssignDiagnosticId(Type::kPingTargetServer,
                                            "Pinging " + addr.ToString());
-    auto icmp_session = StartIcmpSession(
-        addr, iface_index_, iface_name_,
+    auto icmp_session = icmp_session_factory_->SendPingRequest(
+        addr, iface_index_, iface_name_, logging_tag_,
         base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
-                       weak_ptr_factory_.GetWeakPtr(), diagnostic_id, addr));
+                       weak_ptr_factory_.GetWeakPtr(), diagnostic_id, addr),
+        dispatcher_);
     if (!icmp_session) {
       LogEvent(diagnostic_id, Type::kPingTargetServer, Result::kFailure,
                "Failed to initiate ping to " + addr.ToString());
@@ -378,24 +382,13 @@ std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
     std::optional<net_base::IPAddress> gateway,
     const std::vector<net_base::IPAddress>& dns_list,
     std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
+    std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
     std::string_view logging_tag,
     EventDispatcher* dispatcher) {
   return std::make_unique<ConnectionDiagnostics>(
       iface_name, iface_index, ip_family, gateway, dns_list,
-      std::move(dns_client_factory), logging_tag, dispatcher);
-}
-
-std::unique_ptr<IcmpSession> ConnectionDiagnostics::StartIcmpSession(
-    const net_base::IPAddress& destination,
-    int interface_index,
-    std::string_view interface_name,
-    IcmpSession::IcmpSessionResultCallback result_callback) {
-  auto icmp_session = std::make_unique<IcmpSession>(dispatcher_);
-  if (!icmp_session->Start(destination, interface_index, interface_name,
-                           logging_tag_, std::move(result_callback))) {
-    return nullptr;
-  }
-  return icmp_session;
+      std::move(dns_client_factory), std::move(icmp_session_factory),
+      logging_tag, dispatcher);
 }
 
 int ConnectionDiagnostics::AssignDiagnosticId(
@@ -425,10 +418,11 @@ void ConnectionDiagnostics::PingGateway(int diagnostic_id) {
              "Skipped because gateway is not defined");
     return;
   }
-  gateway_icmp_session_ = StartIcmpSession(
-      *gateway_, iface_index_, iface_name_,
+  gateway_icmp_session_ = icmp_session_factory_->SendPingRequest(
+      *gateway_, iface_index_, iface_name_, logging_tag_,
       base::BindOnce(&ConnectionDiagnostics::OnPingGatewayComplete,
-                     weak_ptr_factory_.GetWeakPtr(), diagnostic_id));
+                     weak_ptr_factory_.GetWeakPtr(), diagnostic_id),
+      dispatcher_);
   if (!gateway_icmp_session_) {
     gateway_ping_running_ = false;
     LogEvent(diagnostic_id, Type::kPingGateway, Result::kFailure,

@@ -183,7 +183,8 @@ class NetworkMonitorTest : public ::testing::Test {
                                    net_base::IPAddress(*config_.ipv4_gateway))
                              : std::nullopt,
                          config_.dns_servers,
-                         /*factory=*/_, kLoggingTag,
+                         /*dns_client_factory=*/_, /*icmp_session_factory=*/_,
+                         kLoggingTag,
                          /*dispatcher=*/_))
           .WillOnce([]() {
             auto mock_connection_diagnostics =
@@ -200,7 +201,8 @@ class NetworkMonitorTest : public ::testing::Test {
                                    net_base::IPAddress(*config_.ipv6_gateway))
                              : std::nullopt,
                          config_.dns_servers,
-                         /*factory=*/_, kLoggingTag,
+                         /*dns_client_factory=*/_, /*icmp_session_factory=*/_,
+                         kLoggingTag,
                          /*dispatcher=*/_))
           .WillOnce([]() {
             auto mock_connection_diagnostics =

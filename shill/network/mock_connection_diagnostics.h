@@ -17,6 +17,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/network/connection_diagnostics.h"
+#include "shill/network/icmp_session.h"
 
 namespace shill {
 
@@ -42,6 +43,7 @@ class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
                std::optional<net_base::IPAddress> gateway,
                const std::vector<net_base::IPAddress>& dns_list,
                std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
+               std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
                std::string_view logging_tag,
                EventDispatcher* dispatcher),
               (override));
