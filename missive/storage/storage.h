@@ -125,6 +125,9 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // Private helper class to initialize a single queue
   friend class CreateQueueContext;
 
+  // Private helper class to write into queue.
+  friend class WriteContext;
+
   // Private helper class to flush all queues with a given priority
   friend class FlushContext;
 
@@ -144,12 +147,6 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // return it, if succeeded, or return failure status otherwise.
   StatusOr<scoped_refptr<StorageQueue>> TryGetQueue(
       Priority priority, StatusOr<GenerationGuid> generation_guid);
-
-  // Writes a record to the given queue.
-  void WriteToQueue(Record record,
-                    HealthModule::Recorder recorder,
-                    scoped_refptr<StorageQueue> queue,
-                    base::OnceCallback<void(Status)> completion_cb);
 
   // Immutable options, stored at the time of creation.
   const StorageOptions options_;

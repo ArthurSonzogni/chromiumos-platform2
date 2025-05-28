@@ -375,167 +375,177 @@ Storage::Storage(const Storage::Settings& settings)
 
 Storage::~Storage() = default;
 
+class WriteContext : public TaskRunnerContext<Status> {
+ public:
+  WriteContext(Priority priority,
+               Record record,
+               base::OnceCallback<void(Status)> write_callback,
+               scoped_refptr<Storage> storage)
+      : TaskRunnerContext<Status>(std::move(write_callback),
+                                  storage->sequenced_task_runner_),
+        storage_(storage),
+        priority_(priority),
+        record_(std::move(record)) {
+    CHECK(storage.get());
+  }
+
+ private:
+  // Context can only be deleted by calling Response method.
+  ~WriteContext() override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
+  }
+
+  void OnStart() override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
+
+    // Provide health module recorded, if debugging is enabled.
+    recorder_ = storage_->health_module_->NewRecorder();
+    if (recorder_) {
+      auto* const enqueue_record = recorder_->mutable_enqueue_record_call();
+      enqueue_record->set_priority(priority_);
+      enqueue_record->set_destination(record_.destination());
+    }
+
+    // Check if the destination is blocked by the current configuration
+    // file provided by the server, this file has already been
+    // fetched and validated on the browser code.
+    if (storage_->server_configuration_controller_->IsDestinationBlocked(
+            record_.destination())) {
+      // If the health module is enabled then we generate a record and
+      // move `recorder` into local variable, so that it gets
+      // destructed.
+      if (auto blocked_recorder = storage_->health_module_->NewRecorder()) {
+        auto* const blocked_record =
+            blocked_recorder->mutable_blocked_record_call();
+        blocked_record->set_priority(priority_);
+        blocked_record->set_destination(record_.destination());
+        // Move `blocked_recorder` into local variable, so that it
+        // destructs. After that it is no longer necessary anyway,
+        // but being destructed here, it will be included in
+        // health history and attached to write response request
+        // and thus immediately visible on Chrome.
+        const auto finished_recording = std::move(blocked_recorder);
+      }
+      // Since we are blocking this record we are not adding it to the
+      // storage, we are just returning.
+      Response(Status(error::CANCELLED, "Record blocked by destination."));
+      return;
+    }
+
+    if (storage_->encryption_module_->is_enabled() &&
+        !storage_->encryption_module_->has_encryption_key()) {
+      // Key was not found at startup time. Note that if the key
+      // is outdated, we still can use it, and won't load it now.
+      // So this processing can only happen after Storage is
+      // initialized (until the first successful delivery of a
+      // key). After that we will resume the write into the queue.
+      storage_->key_delivery_->Request(
+          base::BindPostTaskToCurrentDefault(base::BindOnce(
+              &WriteContext::ProceedToQueue, base::Unretained(this))));
+      return;
+    }
+
+    ProceedToQueue(Status::StatusOK());
+  }
+
+  void ProceedToQueue(Status status) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
+    if (!status.ok()) {
+      Response(status);
+      return;
+    }
+
+    GenerationGuid generation_guid;
+    if (storage_->options_.is_multi_generational(priority_)) {
+      // Get or create the generation guid associated with the dm token
+      // and priority in this record.
+      StatusOr<GenerationGuid> generation_guid_result =
+          storage_->queues_container_->GetOrCreateGenerationGuid(
+              record_.dm_token(), priority_);
+
+      // This should never happen. We should always be able to create a
+      // generation guid if one doesn't exist.
+      CHECK(generation_guid_result.has_value());
+
+      generation_guid = generation_guid_result.value();
+    }
+
+    // Find the queue for this generation guid + priority and write to
+    // it.
+    auto queue_result = storage_->TryGetQueue(priority_, generation_guid);
+    if (queue_result.has_value()) {
+      // The queue we need already exists, so we can write to it.
+      PerformWriteQueue(queue_result.value(),
+                        base::BindPostTaskToCurrentDefault(base::BindOnce(
+                            &WriteContext::Response, base::Unretained(this))));
+      return;
+    }
+
+    // We don't have a queue for this priority + generation guid, so
+    // create one, and then let the context execute the write
+    // via `write_queue_action`. Note that we can end up in a race
+    // with another `Write` of the same `priority` and
+    // `generation_guid`, and in that case only one queue will survive
+    // and be used.
+    Start<CreateQueueContext>(
+        priority_, storage_->options_.ProduceQueueOptions(priority_), storage_,
+        generation_guid,
+        base::BindPostTaskToCurrentDefault(base::BindOnce(
+            &WriteContext::PerformWriteQueue, base::Unretained(this))),
+        base::BindPostTaskToCurrentDefault(
+            base::BindOnce(&WriteContext::Response, base::Unretained(this))));
+  }
+
+  void PerformWriteQueue(scoped_refptr<StorageQueue> queue,
+                         base::OnceCallback<void(Status)> cb) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
+
+    // Provide health module recorded, if debugging is enabled.
+    auto recorder = storage_->health_module_->NewRecorder();
+    if (recorder) {
+      auto* const queue_action_record =
+          recorder->mutable_storage_queue_action();
+      queue_action_record->set_priority(priority_);
+      queue_action_record
+          ->mutable_storage_enqueue();  // Expected enqueue action.
+    }
+
+    queue->Write(std::move(record_), std::move(recorder),
+                 base::BindPostTaskToCurrentDefault(std::move(cb)));
+  }
+
+  void OnCompletion(const Status& status) override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
+
+    // Complete health module recording, if debugging is enabled.
+    if (recorder_) {
+      if (!status.ok()) {
+        status.SaveTo(
+            recorder_->mutable_enqueue_record_call()->mutable_status());
+      }
+      // Move `recorder` into local variable, so that it
+      // destructs. After that it is no longer necessary anyway,
+      // but being destructed here, it will be included in
+      // health history and attached to write response request
+      // and thus immediately visible on Chrome.
+      const auto finished_recording = std::move(recorder_);
+    }
+  }
+
+  const scoped_refptr<Storage> storage_;
+
+  const Priority priority_;
+  Record record_ GUARDED_BY_CONTEXT(storage_->sequence_checker_);
+
+  HealthModule::Recorder recorder_
+      GUARDED_BY_CONTEXT(storage_->sequence_checker_);
+};
+
 void Storage::Write(Priority priority,
                     Record record,
                     base::OnceCallback<void(Status)> completion_cb) {
-  // Ensure everything is executed on Storage's sequenced task runner
-  sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](scoped_refptr<Storage> self, Priority priority, Record record,
-             base::OnceCallback<void(Status)> completion_cb) {
-            // Check if the destination is blocked by the current configuration
-            // file provided by the server, this file has already been
-            // fetched and validated on the browser code.
-            if (self->server_configuration_controller_->IsDestinationBlocked(
-                    record.destination())) {
-              // If the health module is enabled then we generate a record and
-              // move `recorder` into local variable, so that it gets
-              // destructed.
-              if (auto blocked_recorder = self->health_module_->NewRecorder()) {
-                auto* const blocked_record =
-                    blocked_recorder->mutable_blocked_record_call();
-                blocked_record->set_priority(priority);
-                blocked_record->set_destination(record.destination());
-                // Move `blocked_recorder` into local variable, so that it
-                // destructs. After that it is no longer necessary anyway,
-                // but being destructed here, it will be included in
-                // health history and attached to write response request
-                // and thus immediately visible on Chrome.
-                const auto finished_recording = std::move(blocked_recorder);
-              }
-              // Since we are blocking this record we are not adding it to the
-              // storage, we are just returning.
-              std::move(completion_cb)
-                  .Run(Status(error::CANCELLED,
-                              "Record blocked by destination."));
-              return;
-            }
-
-            // Provide health module recorded, if debugging is enabled.
-            if (auto recorder = self->health_module_->NewRecorder()) {
-              auto* const enqueue_record =
-                  recorder->mutable_enqueue_record_call();
-              enqueue_record->set_priority(priority);
-              enqueue_record->set_destination(record.destination());
-              completion_cb = base::BindOnce(
-                  [](HealthModule::Recorder recorder,
-                     base::OnceCallback<void(Status)> completion_cb,
-                     Status status) {
-                    if (recorder) {
-                      if (!status.ok()) {
-                        status.SaveTo(recorder->mutable_enqueue_record_call()
-                                          ->mutable_status());
-                      }
-                      // Move `recorder` into local variable, so that it
-                      // destructs. After that it is no longer necessary anyway,
-                      // but being destructed here, it will be included in
-                      // health history and attached to write response request
-                      // and thus immediately visible on Chrome.
-                      const auto finished_recording = std::move(recorder);
-                    }
-                    std::move(completion_cb).Run(status);
-                  },
-                  std::move(recorder), std::move(completion_cb));
-            }
-
-            const DMtoken& dm_token = record.dm_token();
-
-            // Provide health module recorded, if debugging is enabled.
-            auto recorder = self->health_module_->NewRecorder();
-            if (recorder) {
-              auto* const queue_action_record =
-                  recorder->mutable_storage_queue_action();
-              queue_action_record->set_priority(priority);
-              queue_action_record
-                  ->mutable_storage_enqueue();  // Expected enqueue action.
-            }
-
-            // Callback that writes to the queue.
-            auto write_queue_action =
-                base::BindOnce(&Storage::WriteToQueue, self, std::move(record),
-                               std::move(recorder));
-
-            GenerationGuid generation_guid;
-            if (self->options_.is_multi_generational(priority)) {
-              // Get or create the generation guid associated with the dm token
-              // and priority in this record.
-              StatusOr<GenerationGuid> generation_guid_result =
-                  self->queues_container_->GetOrCreateGenerationGuid(dm_token,
-                                                                     priority);
-
-              // This should never happen. We should always be able to create a
-              // generation guid if one doesn't exist.
-              CHECK(generation_guid_result.has_value());
-
-              generation_guid = generation_guid_result.value();
-            }
-
-            // Find the queue for this generation guid + priority and write to
-            // it.
-            auto queue_result = self->TryGetQueue(priority, generation_guid);
-            if (queue_result.has_value()) {
-              // The queue we need already exists, so we can write to it.
-              std::move(write_queue_action)
-                  .Run(std::move(queue_result.value()),
-                       std::move(completion_cb));
-              return;
-            }
-            // We don't have a queue for this priority + generation guid, so
-            // create one, and then let the context execute the write
-            // via `write_queue_action`. Note that we can end up in a race
-            // with another `Write` of the same `priority` and
-            // `generation_guid`, and in that case only one queue will survive
-            // and be used.
-            Start<CreateQueueContext>(
-                priority, self->options_.ProduceQueueOptions(priority), self,
-                generation_guid, std::move(write_queue_action),
-                std::move(completion_cb));
-          },
-          base::WrapRefCounted(this), priority, std::move(record),
-          std::move(completion_cb)));
-}
-
-void Storage::WriteToQueue(Record record,
-                           HealthModule::Recorder recorder,
-                           scoped_refptr<StorageQueue> queue,
-                           base::OnceCallback<void(Status)> completion_cb) {
-  if (encryption_module_->is_enabled() &&
-      !encryption_module_->has_encryption_key()) {
-    // Key was not found at startup time. Note that if the key
-    // is outdated, we still can use it, and won't load it now.
-    // So this processing can only happen after Storage is
-    // initialized (until the first successful delivery of a
-    // key). After that we will resume the write into the queue.
-    KeyDelivery::RequestCallback action = base::BindOnce(
-        [](scoped_refptr<StorageQueue> queue, Record record,
-           HealthModule::Recorder recorder,
-           base::OnceCallback<void(Status)> completion_cb, Status status) {
-          if (!status.ok()) {
-            if (recorder) {
-              status.SaveTo(
-                  recorder->mutable_storage_queue_action()->mutable_status());
-              // Move `recorder` into local variable, so that it destructs.
-              // After that it is no longer necessary anyway, but being
-              // destructed here, it will be included in health history and
-              // attached to write response request and thus immediately
-              // visible on Chrome.
-              const auto finished_recording = std::move(recorder);
-            }
-            std::move(completion_cb).Run(status);
-            return;
-          }
-          queue->Write(std::move(record), std::move(recorder),
-                       std::move(completion_cb));
-        },
-        queue, std::move(record), std::move(recorder),
-        std::move(completion_cb));
-    key_delivery_->Request(std::move(action));
-    return;
-  }
-  // Otherwise we can write into the queue right away.
-  queue->Write(std::move(record), std::move(recorder),
-               std::move(completion_cb));
+  Start<WriteContext>(priority, std::move(record), std::move(completion_cb),
+                      this);
 }
 
 void Storage::Confirm(SequenceInformation sequence_information,
