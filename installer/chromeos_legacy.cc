@@ -18,6 +18,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "installer/chromeos_legacy_private.h"
 #include "installer/efi_boot_management.h"
 #include "installer/inst_util.h"
 #include "installer/platform.h"

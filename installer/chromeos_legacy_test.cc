@@ -17,6 +17,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/strings/string_util.h"
 #include "installer/chromeos_install_config.h"
+#include "installer/chromeos_legacy_private.h"
 #include "installer/mock_platform.h"
 
 using ::testing::_;
