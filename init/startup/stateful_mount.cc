@@ -62,6 +62,7 @@ constexpr char kDirtyExpireCentisecs[] = "proc/sys/vm/dirty_expire_centisecs";
 constexpr char kUpdateAvailable[] = ".update_available";
 constexpr char kLabMachine[] = ".labmachine";
 constexpr char kDevModeFile[] = ".developer_mode";
+constexpr char kRmaData[] = "rma-data";
 
 constexpr char kVar[] = "var";
 constexpr char kVarNew[] = "var_new";
@@ -611,6 +612,7 @@ bool StatefulMount::DevUpdateStatefulPartition(
         stateful_.Append(kUnencrypted).Append(kClobberLogFile),
         stateful_.Append(kUnencrypted).Append(kClobberStateLogFile),
         stateful_.Append(kUnencrypted).Append(kDevImageBlockFile),
+        stateful_.Append(kUnencrypted).Append(kRmaData),
         stateful_.Append(kDeveloperToolsMount),
         stateful_dev_image,
         var_target,
