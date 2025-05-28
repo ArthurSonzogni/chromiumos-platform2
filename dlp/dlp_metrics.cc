@@ -10,10 +10,10 @@
 
 namespace dlp {
 
-DlpMetrics::DlpMetrics()
+DlpMetrics::DlpMetrics(scoped_refptr<base::SingleThreadTaskRunner> task_runner)
     : metrics_lib_(std::make_unique<MetricsLibrary>(
           base::MakeRefCounted<AsynchronousMetricsWriter>(
-              base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}),
+              task_runner,
               /*wait_on_destructor=*/false))) {}
 DlpMetrics::~DlpMetrics() = default;
 

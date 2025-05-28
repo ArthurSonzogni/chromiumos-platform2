@@ -6,8 +6,10 @@
 #define DLP_DLP_METRICS_H_
 
 #include <memory>
-#include <metrics/metrics_library.h>
 #include <string>
+
+#include <base/task/single_thread_task_runner.h>
+#include <metrics/metrics_library.h>
 
 namespace dlp {
 
@@ -122,7 +124,7 @@ enum class AdaptorError {
 // Sends UMAs related to the DLP daemon.
 class DlpMetrics {
  public:
-  DlpMetrics();
+  explicit DlpMetrics(scoped_refptr<base::SingleThreadTaskRunner> task_runner);
   ~DlpMetrics();
 
   // Send a boolean to UMA.

@@ -70,8 +70,7 @@ DlpAdaptorTestHelper::DlpAdaptorTestHelper() {
   adaptor_ = std::make_unique<DlpAdaptor>(
       std::make_unique<brillo::dbus_utils::DBusObject>(nullptr, bus_,
                                                        object_path),
-      feature_lib_.get(), fd_1.release(), fd_2.release(), home_dir_.GetPath(),
-      /*create_task_runner=*/false);
+      feature_lib_.get(), fd_1.release(), fd_2.release(), home_dir_.GetPath());
   std::unique_ptr<FakeMetricsLibrary> metrics_library =
       std::make_unique<FakeMetricsLibrary>();
   metrics_library_ = metrics_library.get();

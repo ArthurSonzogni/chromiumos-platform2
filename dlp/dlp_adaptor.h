@@ -49,8 +49,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
              feature::PlatformFeaturesInterface* feature_lib,
              int fanotify_perm_fd,
              int fanotify_notif_fd,
-             const base::FilePath& home_path,
-             bool create_task_runner = false);
+             const base::FilePath& home_path);
   DlpAdaptor(const DlpAdaptor&) = delete;
   DlpAdaptor& operator=(const DlpAdaptor&) = delete;
   virtual ~DlpAdaptor();
@@ -294,6 +293,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // Files that were added before database was initialized, so they need to be
   // added once it's ready.
   std::vector<FileEntry> pending_files_to_add_;
+
+  // For metrics reporting.
+  base::Thread metrics_thread_;
 
   // For long-running file enumeration tasks.
   base::Thread file_enumeration_thread_;
