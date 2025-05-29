@@ -225,7 +225,7 @@ bool CreateDir(const base::FilePath& path) {
 // able to unsparse in |ResizeFile()| up to the actual size necessary and not
 // the preallocated size from the manifest as is the |size| here for DLC to
 // install successfully.
-bool CreateFile(const base::FilePath& path, int64_t size) {
+bool CreateFile(const base::FilePath& path, int64_t size, bool no_truncate) {
   if (!CreateDir(path.DirName())) {
     return false;
   }
@@ -236,6 +236,15 @@ bool CreateFile(const base::FilePath& path, int64_t size) {
       LOG(ERROR) << "Failed to create file at " << path.value()
                  << " reason: " << base::File::ErrorToString(f.error_details());
       return false;
+    }
+    // Do not truncate the file.
+    if (no_truncate) {
+      if (int64_t length = f.GetLength(); length < 0) {
+        LOG(ERROR) << "Failed to get length for file at " << path.value();
+        return false;
+      } else if (length >= size) {
+        return SetFilePermissions(path, kDlcFilePerms);
+      }
     }
   }
   return ResizeFile(path, size) && SetFilePermissions(path, kDlcFilePerms);

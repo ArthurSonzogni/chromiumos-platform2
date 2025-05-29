@@ -50,7 +50,7 @@ class FixtureUtilsTest : public testing::Test {
     base::ScopedFD fd(brillo::OpenSafely(path, O_RDONLY, 0));
     EXPECT_TRUE(fd.is_valid());
 
-    struct stat stat {};
+    struct stat stat{};
     EXPECT_EQ(0, fstat(fd.get(), &stat));
     return stat.st_blksize * stat.st_blocks < stat.st_size;
   }
@@ -152,6 +152,24 @@ TEST_F(FixtureUtilsTest, CreateFileEvenIfItExists) {
   maybe_size = GetFileSize(path);
   ASSERT_TRUE(maybe_size.has_value());
   EXPECT_EQ(maybe_size.value(), 8192);
+}
+
+TEST_F(FixtureUtilsTest, CreateFileEvenIfItExistsNoTruncate) {
+  auto path = JoinPaths(scoped_temp_dir_.GetPath(), "file");
+  EXPECT_FALSE(base::PathExists(path));
+  EXPECT_TRUE(CreateFile(path, 4096));
+  EXPECT_TRUE(base::PathExists(path));
+  CheckPerms(path, kDlcFilePerms);
+  std::optional<int64_t> maybe_size = GetFileSize(path);
+  ASSERT_TRUE(maybe_size.has_value());
+  EXPECT_EQ(maybe_size.value(), 4096);
+
+  // Create again with different size.
+  EXPECT_TRUE(CreateFile(path, 2048, /*no_truncate=*/true));
+  EXPECT_TRUE(base::PathExists(path));
+  maybe_size = GetFileSize(path);
+  ASSERT_TRUE(maybe_size.has_value());
+  EXPECT_EQ(maybe_size.value(), 4096);
 }
 
 TEST_F(FixtureUtilsTest, ResizeFile) {

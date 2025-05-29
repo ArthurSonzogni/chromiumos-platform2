@@ -406,7 +406,8 @@ bool DlcBase::MakeReadyForUpdate() const {
 bool DlcBase::MakeReadyForUpdateInternal() const {
   const FilePath& inactive_image_path =
       GetImagePath(SystemState::Get()->inactive_boot_slot());
-  if (!CreateFile(inactive_image_path, manifest_->size())) {
+  if (!CreateFile(inactive_image_path, manifest_->size(),
+                  /*no_truncate=*/true)) {
     LOG(ERROR) << "Failed to create inactive image "
                << inactive_image_path.value()
                << " when making DLC=" << sanitized_id_ << " ready for update.";

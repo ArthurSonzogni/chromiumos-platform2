@@ -88,7 +88,9 @@ bool WriteToImage(const base::FilePath& path, const std::string& data);
 bool CreateDir(const base::FilePath& path);
 
 // Creates a directory with an empty file and resizes it.
-bool CreateFile(const base::FilePath& path, int64_t size);
+bool CreateFile(const base::FilePath& path,
+                int64_t size,
+                bool no_truncate = false);
 
 // Resizes the file in |path| to a new |size|. When shrinking, meaning current
 // file size is > |size|, the file will only be resized and not unsparsed as the
