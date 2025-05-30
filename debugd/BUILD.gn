@@ -33,6 +33,7 @@ group("all") {
     ":netif",
     ":network_status",
     ":power_manager-proto",
+    ":top_io_threads",
     ":typec_connector_class_helper",
     ":usb4_devinfo_helper",
   ]
@@ -467,6 +468,8 @@ if (use.test) {
       "src/helpers/modetest_helper_utils.cc",
       "src/helpers/modetest_helper_utils_test.cc",
       "src/helpers/scheduler_configuration_utils_test.cc",
+      "src/helpers/top_io_threads_utils.cc",
+      "src/helpers/top_io_threads_utils_test.cc",
       "src/log_tool_doc_test.cc",
       "src/log_tool_test.cc",
       "src/metrics_test.cc",
@@ -507,4 +510,13 @@ if (use.fuzzer) {
       ":target_defaults",
     ]
   }
+}
+
+executable("top_io_threads") {
+  sources = [
+    "src/helpers/top_io_threads.cc",
+    "src/helpers/top_io_threads_utils.cc",
+  ]
+  install_path = debugd_helpers_install_path
+  configs += [ ":target_defaults" ]
 }

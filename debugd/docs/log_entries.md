@@ -623,6 +623,12 @@ requirements. They are latched on every [Package Cstate] 10 entry & exit and
 
 ## tlsdate
 
+## top io threads
+
+Shows the stats for the top I/O intensive threads, including the thread and
+process IDs, the associated command name, and the number of bytes read and
+written.
+
 ## top memory
 
 ## top thread
