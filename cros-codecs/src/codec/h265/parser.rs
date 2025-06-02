@@ -298,6 +298,16 @@ impl TryFrom<u8> for Level {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
+            // A level of 0 is technically incorrect. The spec specifically states that if the
+            // value is not in the table, it is invalid. However, clips exist that have level
+            // set to 0.
+            0 => {
+                log::warn!(
+                    "A value of 0 for general_idc_level was found. This is technically incorrect. \
+                     However, parsing will continue by interpreting this as Level::L1"
+                );
+                Ok(Level::L1)
+            }
             30 => Ok(Level::L1),
             60 => Ok(Level::L2),
             63 => Ok(Level::L2_1),
