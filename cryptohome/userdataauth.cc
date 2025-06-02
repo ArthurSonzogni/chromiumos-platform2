@@ -1913,6 +1913,7 @@ void UserDataAuth::RemoveWithSession(
 
   const UserSession* const session = sessions_->Find(account_id);
   if (session && session->IsActive()) {
+    LOG(ERROR) << "UDA: User removal failed, user is still active.";
     // Can't remove active user
     ReplyWithError(
         std::move(on_done), reply,
@@ -1936,6 +1937,7 @@ void UserDataAuth::OnPreparedUserForRemoval(
     base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done) {
   user_data_auth::RemoveReply reply;
   if (!homedirs_->Remove(obfuscated)) {
+    LOG(ERROR) << "UDA: User removal failed, unable to remove homedir.";
     // User vault removal failed.
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
