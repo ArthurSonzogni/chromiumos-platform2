@@ -129,7 +129,7 @@ fn create_esp(args: &CreateTestDisk, disk_file: &mut File) -> Result<()> {
 
 /// Create the data partition in a flexor test disk.
 ///
-/// The flexor kernel and installation image are copied to the filesystem.
+/// The flexor kernel, installation image, and optional flex_config, are copied to the filesystem.
 fn create_flexor_data_partition(args: &CreateTestDisk, disk_file: &mut File) -> Result<()> {
     // Create the flexor data partition
     let partition_range = find_partition_range(disk_file, GptPartitionType::BASIC_DATA)
@@ -138,15 +138,21 @@ fn create_flexor_data_partition(args: &CreateTestDisk, disk_file: &mut File) -> 
     fatfs::format_volume(&mut view, FormatVolumeOptions::new())?;
 
     // Add files to the filesystem.
-    let files_to_copy = ["flex_image.tar.xz", "flexor_vmlinuz"];
+    let frd_bundle_install_dir = args.frd_bundle.join(FRD_BUNDLE_INSTALL_DIR);
+    let mut files_to_copy = vec!["flex_image.tar.xz", "flexor_vmlinuz"];
+
+    // Also grab flex_config.json if it's there.
+    // This is a little different from running under the agent, which would create the config rather
+    // than grabbing it from the install dir.
+    let flex_config = frd_bundle_install_dir.join("flex_config.json");
+    if flex_config.exists() {
+        files_to_copy.push("flex_config.json");
+    }
+
     let fs = FileSystem::new(view, FsOptions::new())?;
     let root = fs.root_dir();
     for file_name in files_to_copy {
-        write_to_fatfs(
-            &root,
-            file_name,
-            &args.frd_bundle.join(FRD_BUNDLE_INSTALL_DIR).join(file_name),
-        )?;
+        write_to_fatfs(&root, file_name, &frd_bundle_install_dir.join(file_name))?;
     }
 
     Ok(())
