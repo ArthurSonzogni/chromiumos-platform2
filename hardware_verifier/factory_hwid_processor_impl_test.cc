@@ -187,8 +187,8 @@ TEST_F(FactoryHWIDProcessorImplTest, DecodeFactoryHWID_WithZeroBits) {
            {runtime_probe::ProbeRequest_SupportCategory_camera, 11, 12},
            {runtime_probe::ProbeRequest_SupportCategory_wireless, 100, 100}},
           {{runtime_probe::ProbeRequest_SupportCategory_camera, 5},
-           {runtime_probe::ProbeRequest_SupportCategory_touchscreen, 10},
-           {runtime_probe::ProbeRequest_SupportCategory_wireless, 20}}),
+           {runtime_probe::ProbeRequest_SupportCategory_touchscreen, 12},
+           {runtime_probe::ProbeRequest_SupportCategory_wireless, 13}}),
       CreateEncodingPattern({2}, {}, {})};
   std::vector<EncodedFields> encoded_fields = {
       CreateEncodedField(runtime_probe::ProbeRequest_SupportCategory_camera,

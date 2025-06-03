@@ -90,7 +90,7 @@ CategoryMapping<int> ExtractEncodedComponentIndex(
     const auto& category = first_zero_bit.category();
     const auto& zero_bit_pos = first_zero_bit.zero_bit_position();
     if (component_indexes.find(category) != component_indexes.end() ||
-        zero_bit_pos > decoded_bits.length()) {
+        zero_bit_pos > component_bits_segment.length() - 1) {
       continue;
     }
     component_indexes[category] = 0;

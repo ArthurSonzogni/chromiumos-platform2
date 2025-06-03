@@ -16,7 +16,7 @@
 
 namespace hardware_verifier {
 
-class FactoryHWIDProcessorImpl : FactoryHWIDProcessor {
+class FactoryHWIDProcessorImpl : public FactoryHWIDProcessor {
  public:
   FactoryHWIDProcessorImpl(const FactoryHWIDProcessorImpl&) = delete;
   FactoryHWIDProcessorImpl& operator=(const FactoryHWIDProcessorImpl&) = delete;
