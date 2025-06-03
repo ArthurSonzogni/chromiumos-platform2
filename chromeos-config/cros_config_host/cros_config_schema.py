@@ -963,6 +963,12 @@ def MergeConfigs(configs):
 
     result_json = json_files[0]
     for overlay_json in json_files[1:]:
+        # Collect new configs from the current overlay separately. This ensures
+        # that configs within the same overlay file only attempt to merge with
+        # configs from previous files (already in result_json), not with other
+        # new configs from the current overlay that haven't yet been fully
+        # processed.
+        new_configs = []
         for to_merge_config in overlay_json["chromeos"]["configs"]:
             to_merge_identity = to_merge_config.get("identity", {})
             to_merge_name = to_merge_config.get("name", "")
@@ -997,7 +1003,8 @@ def MergeConfigs(configs):
                     matched = True
 
             if not matched:
-                result_json["chromeos"]["configs"].append(to_merge_config)
+                new_configs.append(to_merge_config)
+        result_json["chromeos"]["configs"].extend(new_configs)
 
     return GenerateFridMatches(result_json)
 

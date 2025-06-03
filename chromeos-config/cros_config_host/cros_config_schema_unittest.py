@@ -8,7 +8,9 @@
 import contextlib
 import io
 import os
+import pathlib
 import re
+import tempfile
 import unittest
 
 from cros_config_host import cros_config_schema
@@ -70,6 +72,82 @@ class MergeDictionaries(unittest.TestCase):
         overlay = {"a": {"c": [3, 4]}}
         cros_config_schema.MergeDictionaries(primary, overlay)
         self.assertEqual({"a": {"b": 1, "c": [1, 2, 3, 4]}}, primary)
+
+
+class MergeConfigsTests(unittest.TestCase):
+    def testMergeConfigs_noMergeWithinFile(self):
+        base_yaml_content = """
+chromeos:
+  devices:
+    - $name: 'base_device'
+      skus:
+        - $sku-id: 0
+          config:
+            name: 'base_model'
+            identity:
+              sku-id: "{{$sku-id}}"
+              platform-name: "PlatformBase"
+"""
+
+        overlay_yaml_content = """
+chromeos:
+  devices:
+    - $name: 'overlay_device_for_A_B'
+      skus:
+        - $sku-id: 10
+          config:
+            name: 'overlay_model_A'
+            identity:
+              sku-id: "{{$sku-id}}"
+              custom-label-tag: "TAG_A"
+              platform-name: "PlatformOverlay"
+        - $sku-id: 10
+          config:
+            name: 'overlay_model_B'
+            identity:
+              sku-id: "{{$sku-id}}" # Evaluates to 10
+              platform-name: "PlatformOverlay"
+"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = pathlib.Path(temp_dir)
+            base_file_path = temp_dir_path / "base.yaml"
+            overlay_file_path = temp_dir_path / "overlay.yaml"
+
+            base_file_path.write_text(base_yaml_content, encoding="utf-8")
+            overlay_file_path.write_text(overlay_yaml_content, encoding="utf-8")
+
+            merged_result = cros_config_schema.MergeConfigs(
+                [str(base_file_path), str(overlay_file_path)]
+            )
+            final_configs_list = merged_result["chromeos"]["configs"]
+
+            self.assertListEqual(
+                final_configs_list,
+                [
+                    {
+                        "identity": {
+                            "platform-name": "PlatformBase",
+                            "sku-id": 0,
+                        },
+                        "name": "base_model",
+                    },
+                    {
+                        "identity": {
+                            "custom-label-tag": "TAG_A",
+                            "platform-name": "PlatformOverlay",
+                            "sku-id": 10,
+                        },
+                        "name": "overlay_model_A",
+                    },
+                    {
+                        "identity": {
+                            "platform-name": "PlatformOverlay",
+                            "sku-id": 10,
+                        },
+                        "name": "overlay_model_B",
+                    },
+                ],
+            )
 
 
 class ParseArgsTests(unittest.TestCase):
