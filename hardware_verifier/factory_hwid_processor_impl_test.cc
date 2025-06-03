@@ -111,20 +111,76 @@ class FactoryHWIDProcessorImplTest : public BaseFileTest {
   }
 };
 
-TEST_F(FactoryHWIDProcessorImplTest, Create_LoadSuccess) {
-  auto dummy_spec = std::make_unique<EncodingSpec>();
+TEST_F(FactoryHWIDProcessorImplTest, Create_Success) {
+  std::string decoded_bits = "0000000";
+  SetFactoryHWID(ConstructHWID("TESTMODEL", decoded_bits));
+  std::vector<EncodingPattern> encoding_patterns = {
+      CreateEncodingPattern({0}, {}, {})};
+  auto spec = CreateTestEncodingSpec(encoding_patterns, {});
   NiceMock<MockEncodingSpecLoader> mock_loader;
-  EXPECT_CALL(mock_loader, Load())
-      .WillOnce(Return(ByMove(std::move(dummy_spec))));
+  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(ByMove(std::move(spec))));
 
   auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
 
   EXPECT_NE(processor, nullptr);
 }
 
-TEST_F(FactoryHWIDProcessorImplTest, Create_LoadFails) {
+TEST_F(FactoryHWIDProcessorImplTest, Create_LoadFailed_Failure) {
   NiceMock<MockEncodingSpecLoader> mock_loader;
   EXPECT_CALL(mock_loader, Load()).WillOnce(Return(nullptr));
+
+  auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
+
+  EXPECT_EQ(processor, nullptr);
+}
+
+TEST_F(FactoryHWIDProcessorImplTest, Create_CrossystemFailed_Failure) {
+  std::vector<EncodingPattern> encoding_patterns = {
+      CreateEncodingPattern({0}, {}, {})};
+  auto spec = CreateTestEncodingSpec(encoding_patterns, {});
+  NiceMock<MockEncodingSpecLoader> mock_loader;
+  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(ByMove(std::move(spec))));
+
+  auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
+
+  EXPECT_EQ(processor, nullptr);
+}
+
+TEST_F(FactoryHWIDProcessorImplTest, Create_DecodeHWIDFailed_Failure) {
+  SetFactoryHWID("INVALID HWID");
+  std::vector<EncodingPattern> encoding_patterns = {
+      CreateEncodingPattern({0}, {}, {})};
+  auto spec = CreateTestEncodingSpec(encoding_patterns, {});
+  NiceMock<MockEncodingSpecLoader> mock_loader;
+  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(ByMove(std::move(spec))));
+
+  auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
+
+  EXPECT_EQ(processor, nullptr);
+}
+
+TEST_F(FactoryHWIDProcessorImplTest, Create_HWIDTooShortFailed_Failure) {
+  SetFactoryHWID(ConstructHWID("TESTMODEL", "000"));
+  std::vector<EncodingPattern> encoding_patterns = {
+      CreateEncodingPattern({0}, {}, {})};
+  auto spec = CreateTestEncodingSpec(encoding_patterns, {});
+  NiceMock<MockEncodingSpecLoader> mock_loader;
+  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(ByMove(std::move(spec))));
+
+  auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
+
+  EXPECT_EQ(processor, nullptr);
+}
+
+TEST_F(FactoryHWIDProcessorImplTest, Create_NoMatchingEncodingPattern_Failure) {
+  // Image ID = 0000 = 0. No pattern with image ID = 0.
+  std::string decoded_bits = "0000000";
+  SetFactoryHWID(ConstructHWID("TESTMODEL", decoded_bits));
+  std::vector<EncodingPattern> encoding_patterns = {
+      CreateEncodingPattern({1}, {}, {})};
+  auto spec = CreateTestEncodingSpec(encoding_patterns, {});
+  NiceMock<MockEncodingSpecLoader> mock_loader;
+  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(ByMove(std::move(spec))));
 
   auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
 
@@ -218,51 +274,6 @@ TEST_F(FactoryHWIDProcessorImplTest, DecodeFactoryHWID_WithZeroBits) {
   EXPECT_THAT(
       mapping.at(runtime_probe::ProbeRequest_SupportCategory_touchscreen),
       testing::UnorderedElementsAre("touchscreen_6_6"));
-}
-
-TEST_F(FactoryHWIDProcessorImplTest, DecodeFactoryHWID_CrossystemFail) {
-  auto spec = std::make_unique<EncodingSpec>();
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
-
-  auto result = processor->DecodeFactoryHWID();
-
-  EXPECT_EQ(result, std::nullopt);
-}
-
-TEST_F(FactoryHWIDProcessorImplTest, DecodeFactoryHWID_WithInvalidHWID) {
-  SetFactoryHWID("INVALID HWID");
-  auto spec = std::make_unique<EncodingSpec>();
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
-
-  auto result = processor->DecodeFactoryHWID();
-
-  EXPECT_EQ(result, std::nullopt);
-}
-
-TEST_F(FactoryHWIDProcessorImplTest, DecodeFactoryHWID_DecodedBitsTooShort) {
-  SetFactoryHWID(ConstructHWID("TESTMODEL", "0000"));
-  auto spec = std::make_unique<EncodingSpec>();
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
-
-  auto result = processor->DecodeFactoryHWID();
-
-  EXPECT_EQ(result, std::nullopt);
-}
-
-TEST_F(FactoryHWIDProcessorImplTest,
-       DecodeFactoryHWID_NoMatchingEncodingPattern) {
-  // Image ID = 0001 = 1. No pattern with image ID = 1.
-  std::string decoded_bits = "000010100101011101";
-  SetFactoryHWID(ConstructHWID("TESTMODEL", decoded_bits));
-  std::vector<EncodingPattern> encoding_patterns = {
-      CreateEncodingPattern({0}, {}, {}), CreateEncodingPattern({2}, {}, {})};
-  std::vector<EncodedFields> encoded_fields = {};
-  auto spec = CreateTestEncodingSpec(encoding_patterns, encoded_fields);
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
-
-  auto result = processor->DecodeFactoryHWID();
-
-  EXPECT_EQ(result, std::nullopt);
 }
 
 TEST_F(FactoryHWIDProcessorImplTest,

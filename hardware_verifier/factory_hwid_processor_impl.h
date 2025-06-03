@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include <google/protobuf/repeated_ptr_field.h>
+
 #include "hardware_verifier/encoding_spec_loader.h"
 #include "hardware_verifier/factory_hwid_processor.h"
 #include "hardware_verifier/hardware_verifier.pb.h"
@@ -31,9 +33,12 @@ class FactoryHWIDProcessorImpl : public FactoryHWIDProcessor {
 
  private:
   explicit FactoryHWIDProcessorImpl(
-      std::unique_ptr<EncodingSpec> encoding_spec);
-  std::unique_ptr<EncodingSpec> encoding_spec_;
-  CategoryMapping<const EncodedFields*> encoded_fields_;
+      EncodingPattern& encoding_pattern,
+      std::string hwid_component_bits,
+      const google::protobuf::RepeatedPtrField<EncodedFields>& encoded_fields);
+  EncodingPattern encoding_pattern_;
+  CategoryMapping<EncodedFields> encoded_fields_;
+  std::string hwid_component_bits_;
 };
 
 }  // namespace hardware_verifier

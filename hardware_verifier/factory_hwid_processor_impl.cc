@@ -11,11 +11,12 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 #include <brillo/hwid/hwid_utils.h>
+#include <google/protobuf/repeated_ptr_field.h>
 #include <libcrossystem/crossystem.h>
 
-#include "base/strings/strcat.h"
 #include "hardware_verifier/encoding_spec_loader.h"
 #include "hardware_verifier/factory_hwid_processor.h"
 #include "hardware_verifier/hardware_verifier.pb.h"
@@ -63,20 +64,17 @@ std::optional<EncodingPattern> GetEncodingPattern(
 // Helper function to get the component index from HWID decoded bits.
 // Returns a |CategoryMapping| mapping component category to component index.
 CategoryMapping<int> ExtractEncodedComponentIndex(
-    const std::string_view& decoded_bits,
+    const std::string_view& hwid_component_bits,
     const EncodingPattern& encoding_pattern) {
   CategoryMapping<std::vector<std::string>> component_bits;
-  const auto component_bits_segment =
-      decoded_bits.substr(kIgnoreBitWidth + kImageIDBitWidth);
-
   for (const auto& bit_range : encoding_pattern.bit_ranges()) {
-    if (bit_range.start() >= component_bits_segment.length()) {
+    if (bit_range.start() >= hwid_component_bits.length()) {
       break;
     }
     const auto& category = bit_range.category();
     auto bit_length = bit_range.end() - bit_range.start() + 1;
-    component_bits[category].push_back(std::string(
-        component_bits_segment.substr(bit_range.start(), bit_length)));
+    component_bits[category].push_back(
+        std::string(hwid_component_bits.substr(bit_range.start(), bit_length)));
   }
 
   CategoryMapping<int> component_indexes;
@@ -90,7 +88,7 @@ CategoryMapping<int> ExtractEncodedComponentIndex(
     const auto& category = first_zero_bit.category();
     const auto& zero_bit_pos = first_zero_bit.zero_bit_position();
     if (component_indexes.find(category) != component_indexes.end() ||
-        zero_bit_pos > component_bits_segment.length() - 1) {
+        zero_bit_pos > hwid_component_bits.length() - 1) {
       continue;
     }
     component_indexes[category] = 0;
@@ -105,7 +103,7 @@ CategoryMapping<int> ExtractEncodedComponentIndex(
 std::optional<CategoryMapping<std::vector<std::string>>>
 ComponentIndexToComponentNames(
     const CategoryMapping<int>& component_indexes,
-    const CategoryMapping<const EncodedFields*>& encoded_fields) {
+    const CategoryMapping<EncodedFields>& encoded_fields) {
   CategoryMapping<std::vector<std::string>> res;
   for (const auto& [category, encoded_comp_idx] : component_indexes) {
     auto encoded_fields_it = encoded_fields.find(category);
@@ -115,7 +113,7 @@ ComponentIndexToComponentNames(
       return std::nullopt;
     }
     const auto& components_of_category =
-        encoded_fields_it->second->encoded_components();
+        encoded_fields_it->second.encoded_components();
     auto encoded_comp_it = std::find_if(
         components_of_category.begin(), components_of_category.end(),
         [&](const EncodedComponents& component) {
@@ -144,44 +142,49 @@ std::unique_ptr<FactoryHWIDProcessorImpl> FactoryHWIDProcessorImpl::Create(
     LOG(ERROR) << "Failed to load encoding spec.";
     return nullptr;
   }
-  return std::unique_ptr<FactoryHWIDProcessorImpl>(
-      new FactoryHWIDProcessorImpl(std::move(spec)));
-}
 
-FactoryHWIDProcessorImpl::FactoryHWIDProcessorImpl(
-    std::unique_ptr<EncodingSpec> encoding_spec)
-    : encoding_spec_(std::move(encoding_spec)) {
-  CHECK(encoding_spec_ != nullptr);
-
-  for (const auto& field : encoding_spec_->encoded_fields()) {
-    encoded_fields_[field.category()] = &field;
-  }
-}
-
-std::optional<CategoryMapping<std::vector<std::string>>>
-FactoryHWIDProcessorImpl::DecodeFactoryHWID() const {
   auto hwid = Context::Get()->crossystem()->VbGetSystemPropertyString(
       kCrosSystemHWIDKey);
   if (!hwid.has_value()) {
     LOG(ERROR) << "Failed to get HWID from crossystem.";
-    return std::nullopt;
+    return nullptr;
   }
 
   auto decoded_bits = brillo::hwid::DecodeHWID(*hwid);
   if (!decoded_bits.has_value() ||
       decoded_bits->length() <= kIgnoreBitWidth + kImageIDBitWidth) {
     LOG(ERROR) << "Got invalid HWID: " << *hwid;
-    return std::nullopt;
+    return nullptr;
   }
 
-  const auto encoding_pattern =
-      GetEncodingPattern(*decoded_bits, *encoding_spec_);
+  auto encoding_pattern = GetEncodingPattern(*decoded_bits, *spec);
   if (!encoding_pattern.has_value()) {
-    return std::nullopt;
+    LOG(ERROR) << "Failed to get encoding pattern.";
+    return nullptr;
   }
 
+  std::string hwid_component_bits =
+      decoded_bits->substr(kIgnoreBitWidth + kImageIDBitWidth);
+
+  return std::unique_ptr<FactoryHWIDProcessorImpl>(new FactoryHWIDProcessorImpl(
+      *encoding_pattern, hwid_component_bits, spec->encoded_fields()));
+}
+
+FactoryHWIDProcessorImpl::FactoryHWIDProcessorImpl(
+    EncodingPattern& encoding_pattern,
+    std::string hwid_component_bits,
+    const google::protobuf::RepeatedPtrField<EncodedFields>& encoded_fields)
+    : encoding_pattern_(encoding_pattern),
+      hwid_component_bits_(hwid_component_bits) {
+  for (const auto& field : encoded_fields) {
+    encoded_fields_[field.category()] = field;
+  }
+}
+
+std::optional<CategoryMapping<std::vector<std::string>>>
+FactoryHWIDProcessorImpl::DecodeFactoryHWID() const {
   auto component_indexes =
-      ExtractEncodedComponentIndex(*decoded_bits, *encoding_pattern);
+      ExtractEncodedComponentIndex(hwid_component_bits_, encoding_pattern_);
   return ComponentIndexToComponentNames(component_indexes, encoded_fields_);
 }
 
