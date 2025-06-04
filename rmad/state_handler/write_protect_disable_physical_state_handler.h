@@ -12,6 +12,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/state_handler/base_state_handler.h"
+#include "rmad/system/power_manager_client.h"
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/write_protect_utils.h"
@@ -30,15 +31,16 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |gsc_utils_|, |crossystem_utils_|, and
-  // |write_protect_utils_| for testing.
+  // Used to inject mock |gsc_utils_|, |crossystem_utils_|,
+  // |write_protect_utils_|, and |power_manager_client_| for testing.
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
       std::unique_ptr<GscUtils> gsc_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
-      std::unique_ptr<WriteProtectUtils> write_protect_utils);
+      std::unique_ptr<WriteProtectUtils> write_protect_utils,
+      std::unique_ptr<PowerManagerClient> power_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisablePhysical);
   SET_REPEATABLE;
@@ -68,10 +70,9 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   bool CanSkipEnablingFactoryMode() const;
   void CheckWriteProtectOffTask();
   void OnWriteProtectDisabled();
-  void RequestRmaPowerwashAndRebootEc();
-  void RequestRmaPowerwashAndRebootEcCallback(bool success);
-  void RebootEc();
-  void RebootEcCallback(bool success);
+  void RequestRmaPowerwashAndReboot();
+  void RequestRmaPowerwashAndRebootCallback(bool success);
+  void Reboot();
 
   base::FilePath working_dir_path_;
 
@@ -81,6 +82,7 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   std::unique_ptr<GscUtils> gsc_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
+  std::unique_ptr<PowerManagerClient> power_manager_client_;
 };
 
 }  // namespace rmad

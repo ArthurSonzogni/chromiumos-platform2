@@ -19,6 +19,7 @@
 #include "rmad/constants.h"
 #include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils.h"
+#include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/gsc_utils_impl.h"
 
@@ -41,6 +42,7 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
       reboot_scheduled_(false) {
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
 }
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
@@ -48,11 +50,13 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
     std::unique_ptr<GscUtils> gsc_utils,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils)
+    std::unique_ptr<CrosSystemUtils> crossystem_utils,
+    std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       gsc_utils_(std::move(gsc_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
+      power_manager_client_(std::move(power_manager_client)),
       reboot_scheduled_(false) {}
 
 RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
@@ -119,13 +123,13 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   // Request RMA mode powerwash if it is not disabled.
   if (IsPowerwashDisabled(working_dir_path_)) {
     timer_.Start(FROM_HERE, kRebootDelay,
-                 base::BindOnce(&WriteProtectDisableRsuStateHandler::RebootEc,
+                 base::BindOnce(&WriteProtectDisableRsuStateHandler::Reboot,
                                 base::Unretained(this)));
   } else {
     timer_.Start(
         FROM_HERE, kRebootDelay,
         base::BindOnce(
-            &WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEc,
+            &WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndReboot,
             base::Unretained(this)));
   }
 
@@ -157,36 +161,27 @@ bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {
   return factory_mode_enabled;
 }
 
-void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEc() {
+void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndReboot() {
   DLOG(INFO) << "Requesting RMA mode powerwash";
-  daemon_callback_->GetExecuteRequestRmaPowerwashCallback().Run(
-      base::BindOnce(&WriteProtectDisableRsuStateHandler::
-                         RequestRmaPowerwashAndRebootEcCallback,
-                     base::Unretained(this)));
+  daemon_callback_->GetExecuteRequestRmaPowerwashCallback().Run(base::BindOnce(
+      &WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootCallback,
+      base::Unretained(this)));
 }
 
-void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEcCallback(
+void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootCallback(
     bool success) {
   if (!success) {
     LOG(ERROR) << "Failed to request RMA mode powerwash";
   }
-  RebootEc();
+  Reboot();
 }
 
-void WriteProtectDisableRsuStateHandler::RebootEc() {
-  DLOG(INFO) << "Rebooting EC after RSU";
-  // Sync filesystems before doing EC reboot.
+void WriteProtectDisableRsuStateHandler::Reboot() {
+  DLOG(INFO) << "Rebooting after RSU";
+  // Sync filesystems before doing reboot.
   sync();
-  daemon_callback_->GetExecuteRebootEcCallback().Run(
-      base::BindOnce(&WriteProtectDisableRsuStateHandler::RebootEcCallback,
-                     base::Unretained(this)));
-}
-
-void WriteProtectDisableRsuStateHandler::RebootEcCallback(bool success) {
-  // Just an informative callback.
-  // TODO(chenghan): Send an error to Chrome when the reboot fails.
-  if (!success) {
-    LOG(ERROR) << "Failed to reboot EC";
+  if (!power_manager_client_->Restart()) {
+    LOG(ERROR) << "Failed to reboot";
   }
 }
 

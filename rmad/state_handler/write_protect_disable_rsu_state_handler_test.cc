@@ -20,6 +20,7 @@
 #include "rmad/logs/logs_constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
+#include "rmad/system/mock_power_manager_client.h"
 #include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_gsc_utils.h"
 
@@ -52,7 +53,6 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
     bool factory_mode_enabled = false;
     bool is_cros_debug = false;
     bool* powerwash_requested = nullptr;
-    bool* reboot_toggled = nullptr;
   };
 
   scoped_refptr<WriteProtectDisableRsuStateHandler> CreateStateHandler(
@@ -80,19 +80,22 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
         .WillByDefault(
             DoAll(SetArgPointee<1>(args.is_cros_debug ? 1 : 0), Return(true)));
 
+    // Mock |PowerManagerClient|.
+    reboot_called_ = false;
+    auto mock_power_manager_client =
+        std::make_unique<NiceMock<MockPowerManagerClient>>();
+    ON_CALL(*mock_power_manager_client, Restart())
+        .WillByDefault(DoAll(Assign(&reboot_called_, true), Return(true)));
+
     // Register request powerwash feedback.
     daemon_callback_->SetExecuteRequestRmaPowerwashCallback(base::BindRepeating(
         &WriteProtectDisableRsuStateHandlerTest::RequestRmaPowerwash,
         base::Unretained(this), args.powerwash_requested));
 
-    // Register reboot EC callback.
-    daemon_callback_->SetExecuteRebootEcCallback(
-        base::BindRepeating(&WriteProtectDisableRsuStateHandlerTest::RebootEc,
-                            base::Unretained(this), args.reboot_toggled));
-
     return base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_gsc_utils), std::move(mock_crossystem_utils));
+        std::move(mock_gsc_utils), std::move(mock_crossystem_utils),
+        std::move(mock_power_manager_client));
   }
 
   void RequestRmaPowerwash(bool* request_powerwash,
@@ -103,15 +106,10 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
     std::move(callback).Run(true);
   }
 
-  void RebootEc(bool* reboot_toggled, base::OnceCallback<void(bool)> callback) {
-    if (reboot_toggled) {
-      *reboot_toggled = true;
-    }
-    std::move(callback).Run(true);
-  }
-
  protected:
   // Variables for TaskRunner.
+  bool reboot_called_;
+
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
@@ -158,18 +156,17 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        TryGetNextStateCaseAtBoot_Succeeded) {
-  bool powerwash_requested = false, reboot_toggled = false;
+  bool powerwash_requested = false;
   auto handler =
       CreateStateHandler({.factory_mode_enabled = true,
-                          .powerwash_requested = &powerwash_requested,
-                          .reboot_toggled = &reboot_toggled});
+                          .powerwash_requested = &powerwash_requested});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
   EXPECT_FALSE(powerwash_requested);
-  EXPECT_FALSE(reboot_toggled);
+  EXPECT_FALSE(reboot_called_);
 
   // Check |json_store_|.
   std::string wp_disable_method_name;
@@ -189,26 +186,24 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        TryGetNextStateCaseAtBoot_Failed_FactoryModeDisabled) {
-  bool powerwash_requested = false, reboot_toggled = false;
+  bool powerwash_requested = false;
   auto handler =
       CreateStateHandler({.factory_mode_enabled = false,
-                          .powerwash_requested = &powerwash_requested,
-                          .reboot_toggled = &reboot_toggled});
+                          .powerwash_requested = &powerwash_requested});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
   EXPECT_FALSE(powerwash_requested);
-  EXPECT_FALSE(reboot_toggled);
+  EXPECT_FALSE(reboot_called_);
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Succeeded_Rsu) {
-  bool powerwash_requested = false, reboot_toggled = false;
+  bool powerwash_requested = false;
   auto handler =
       CreateStateHandler({.factory_mode_enabled = false,
-                          .powerwash_requested = &powerwash_requested,
-                          .reboot_toggled = &reboot_toggled});
+                          .powerwash_requested = &powerwash_requested});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -219,7 +214,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Succeeded_Rsu) {
     EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
     EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
     EXPECT_FALSE(powerwash_requested);
-    EXPECT_FALSE(reboot_toggled);
+    EXPECT_FALSE(reboot_called_);
   }
 
   // A second call to |GetNextStateCase| before rebooting is fine.
@@ -228,23 +223,22 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Succeeded_Rsu) {
     EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
     EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
     EXPECT_FALSE(powerwash_requested);
-    EXPECT_FALSE(reboot_toggled);
+    EXPECT_FALSE(reboot_called_);
   }
 
   task_environment_.FastForwardBy(
       WriteProtectDisableRsuStateHandler::kRebootDelay);
   EXPECT_TRUE(powerwash_requested);
-  EXPECT_TRUE(reboot_toggled);
+  EXPECT_TRUE(reboot_called_);
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        GetNextStateCase_PowerwashDisabled_CrosDebug) {
-  bool powerwash_requested = false, reboot_toggled = false;
+  bool powerwash_requested = false;
   auto handler =
       CreateStateHandler({.factory_mode_enabled = false,
                           .is_cros_debug = true,
-                          .powerwash_requested = &powerwash_requested,
-                          .reboot_toggled = &reboot_toggled});
+                          .powerwash_requested = &powerwash_requested});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
@@ -256,22 +250,21 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
   EXPECT_FALSE(powerwash_requested);
-  EXPECT_FALSE(reboot_toggled);
+  EXPECT_FALSE(reboot_called_);
 
   task_environment_.FastForwardBy(
       WriteProtectDisableRsuStateHandler::kRebootDelay);
   EXPECT_FALSE(powerwash_requested);
-  EXPECT_TRUE(reboot_toggled);
+  EXPECT_TRUE(reboot_called_);
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        GetNextStateCase_PowerwashDisabled_NonCrosDebug) {
-  bool powerwash_requested = false, reboot_toggled = false;
+  bool powerwash_requested = false;
   auto handler =
       CreateStateHandler({.factory_mode_enabled = false,
                           .is_cros_debug = false,
-                          .powerwash_requested = &powerwash_requested,
-                          .reboot_toggled = &reboot_toggled});
+                          .powerwash_requested = &powerwash_requested});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
@@ -283,12 +276,12 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
   EXPECT_FALSE(powerwash_requested);
-  EXPECT_FALSE(reboot_toggled);
+  EXPECT_FALSE(reboot_called_);
 
   task_environment_.FastForwardBy(
       WriteProtectDisableRsuStateHandler::kRebootDelay);
   EXPECT_TRUE(powerwash_requested);
-  EXPECT_TRUE(reboot_toggled);
+  EXPECT_TRUE(reboot_called_);
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_MissingState) {

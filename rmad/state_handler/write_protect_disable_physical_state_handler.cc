@@ -14,6 +14,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
+#include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
@@ -29,6 +30,7 @@ WriteProtectDisablePhysicalStateHandler::
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
+  power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
 }
 
 WriteProtectDisablePhysicalStateHandler::
@@ -38,12 +40,14 @@ WriteProtectDisablePhysicalStateHandler::
         const base::FilePath& working_dir_path,
         std::unique_ptr<GscUtils> gsc_utils,
         std::unique_ptr<CrosSystemUtils> crossystem_utils,
-        std::unique_ptr<WriteProtectUtils> write_protect_utils)
+        std::unique_ptr<WriteProtectUtils> write_protect_utils,
+        std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       gsc_utils_(std::move(gsc_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
-      write_protect_utils_(std::move(write_protect_utils)) {}
+      write_protect_utils_(std::move(write_protect_utils)),
+      power_manager_client_(std::move(power_manager_client)) {}
 
 RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
   if (!state_.has_wp_disable_physical()) {
@@ -174,51 +178,43 @@ void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
   // Chrome picks up the signal and shows the "Preparing to reboot" message.
   daemon_callback_->GetWriteProtectSignalCallback().Run(false);
 
-  // Request RMA mode powerwash if required, then reboot EC.
+  // Request RMA mode powerwash if required, then reboot.
   if (powerwash_required) {
     reboot_timer_.Start(
         FROM_HERE, kRebootDelay,
         base::BindOnce(&WriteProtectDisablePhysicalStateHandler::
-                           RequestRmaPowerwashAndRebootEc,
+                           RequestRmaPowerwashAndReboot,
                        base::Unretained(this)));
   } else {
     reboot_timer_.Start(
         FROM_HERE, kRebootDelay,
-        base::BindOnce(&WriteProtectDisablePhysicalStateHandler::RebootEc,
+        base::BindOnce(&WriteProtectDisablePhysicalStateHandler::Reboot,
                        base::Unretained(this)));
   }
 }
 
-void WriteProtectDisablePhysicalStateHandler::RequestRmaPowerwashAndRebootEc() {
+void WriteProtectDisablePhysicalStateHandler::RequestRmaPowerwashAndReboot() {
   DLOG(INFO) << "Requesting RMA mode powerwash";
   daemon_callback_->GetExecuteRequestRmaPowerwashCallback().Run(
       base::BindOnce(&WriteProtectDisablePhysicalStateHandler::
-                         RequestRmaPowerwashAndRebootEcCallback,
+                         RequestRmaPowerwashAndRebootCallback,
                      base::Unretained(this)));
 }
 
 void WriteProtectDisablePhysicalStateHandler::
-    RequestRmaPowerwashAndRebootEcCallback(bool success) {
+    RequestRmaPowerwashAndRebootCallback(bool success) {
   if (!success) {
     LOG(ERROR) << "Failed to request RMA mode powerwash";
   }
-  RebootEc();
+  Reboot();
 }
 
-void WriteProtectDisablePhysicalStateHandler::RebootEc() {
-  DLOG(INFO) << "Rebooting EC after physically removing WP";
-  // Sync filesystems before doing EC reboot.
+void WriteProtectDisablePhysicalStateHandler::Reboot() {
+  DLOG(INFO) << "Rebooting after physically removing WP";
+  // Sync filesystems before doing reboot.
   sync();
-  daemon_callback_->GetExecuteRebootEcCallback().Run(
-      base::BindOnce(&WriteProtectDisablePhysicalStateHandler::RebootEcCallback,
-                     base::Unretained(this)));
-}
-
-void WriteProtectDisablePhysicalStateHandler::RebootEcCallback(bool success) {
-  // Just an informative callback.
-  // TODO(chenghan): Send an error to Chrome when the reboot fails.
-  if (!success) {
-    LOG(ERROR) << "Failed to reboot EC";
+  if (!power_manager_client_->Restart()) {
+    LOG(ERROR) << "Failed to reboot";
   }
 }
 
