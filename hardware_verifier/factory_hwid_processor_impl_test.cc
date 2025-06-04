@@ -27,6 +27,7 @@ using ::testing::_;
 using ::testing::ByMove;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::UnorderedElementsAre;
 
 class MockEncodingSpecLoader : public EncodingSpecLoader {
  public:
@@ -224,9 +225,9 @@ TEST_F(FactoryHWIDProcessorImplTest, DecodeFactoryHWID_WithoutZeroBits) {
   const auto mapping = result.value();
   EXPECT_EQ(mapping.size(), 2);
   EXPECT_THAT(mapping.at(runtime_probe::ProbeRequest_SupportCategory_battery),
-              testing::UnorderedElementsAre("battery_4_4"));
+              UnorderedElementsAre("battery_4_4"));
   EXPECT_THAT(mapping.at(runtime_probe::ProbeRequest_SupportCategory_camera),
-              testing::UnorderedElementsAre("camera_2_2", "camera_2_2#2"));
+              UnorderedElementsAre("camera_2_2", "camera_2_2#2"));
 }
 
 TEST_F(FactoryHWIDProcessorImplTest, DecodeFactoryHWID_WithZeroBits) {
@@ -268,12 +269,12 @@ TEST_F(FactoryHWIDProcessorImplTest, DecodeFactoryHWID_WithZeroBits) {
   const auto mapping = result.value();
   EXPECT_EQ(mapping.size(), 3);
   EXPECT_THAT(mapping.at(runtime_probe::ProbeRequest_SupportCategory_battery),
-              testing::UnorderedElementsAre("battery_4_4"));
+              UnorderedElementsAre("battery_4_4"));
   EXPECT_THAT(mapping.at(runtime_probe::ProbeRequest_SupportCategory_camera),
-              testing::UnorderedElementsAre("camera_2_2", "camera_2_2#2"));
+              UnorderedElementsAre("camera_2_2", "camera_2_2#2"));
   EXPECT_THAT(
       mapping.at(runtime_probe::ProbeRequest_SupportCategory_touchscreen),
-      testing::UnorderedElementsAre("touchscreen_6_6"));
+      UnorderedElementsAre("touchscreen_6_6"));
 }
 
 TEST_F(FactoryHWIDProcessorImplTest,
@@ -312,6 +313,32 @@ TEST_F(FactoryHWIDProcessorImplTest,
   auto result = processor->DecodeFactoryHWID();
 
   EXPECT_EQ(result, std::nullopt);
+}
+
+TEST_F(FactoryHWIDProcessorImplTest, GetSkipZeroBitCategories) {
+  // component bits: 000, should skip categories with zero_bit_position >= 3.
+  std::string decoded_bits = "00000000";
+  SetFactoryHWID(ConstructHWID("TESTMODEL", decoded_bits));
+  std::vector<EncodingPattern> encoding_patterns = {
+      CreateEncodingPattern(
+          {0}, {},
+          {{runtime_probe::ProbeRequest_SupportCategory_battery, 0},
+           {runtime_probe::ProbeRequest_SupportCategory_camera, 1},
+           {runtime_probe::ProbeRequest_SupportCategory_touchscreen, 2},
+           {runtime_probe::ProbeRequest_SupportCategory_wireless, 3},
+           {runtime_probe::ProbeRequest_SupportCategory_storage, 4},
+           {runtime_probe::ProbeRequest_SupportCategory_cellular, 5}}),
+      CreateEncodingPattern({2}, {}, {})};
+  auto spec = CreateTestEncodingSpec(encoding_patterns, {});
+  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
+
+  auto result = processor->GetSkipZeroBitCategories();
+
+  EXPECT_THAT(result,
+              UnorderedElementsAre(
+                  runtime_probe::ProbeRequest_SupportCategory_wireless,
+                  runtime_probe::ProbeRequest_SupportCategory_storage,
+                  runtime_probe::ProbeRequest_SupportCategory_cellular));
 }
 
 }  // namespace

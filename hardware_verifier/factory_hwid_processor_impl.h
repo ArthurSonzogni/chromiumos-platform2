@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,9 @@ class FactoryHWIDProcessorImpl : public FactoryHWIDProcessor {
 
   std::optional<CategoryMapping<std::vector<std::string>>> DecodeFactoryHWID()
       const override;
+
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+  GetSkipZeroBitCategories() const override;
 
  private:
   explicit FactoryHWIDProcessorImpl(

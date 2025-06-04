@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -42,6 +43,11 @@ uint32_t BinaryStringToUint32(const std::string_view& binary_str) {
     }
   }
   return res;
+}
+
+bool ShouldSkipZeroBitCategory(int zero_bit_pos,
+                               const std::string_view& hwid_component_bits) {
+  return zero_bit_pos > hwid_component_bits.length() - 1;
 }
 
 std::optional<EncodingPattern> GetEncodingPattern(
@@ -88,7 +94,7 @@ CategoryMapping<int> ExtractEncodedComponentIndex(
     const auto& category = first_zero_bit.category();
     const auto& zero_bit_pos = first_zero_bit.zero_bit_position();
     if (component_indexes.find(category) != component_indexes.end() ||
-        zero_bit_pos > hwid_component_bits.length() - 1) {
+        ShouldSkipZeroBitCategory(zero_bit_pos, hwid_component_bits)) {
       continue;
     }
     component_indexes[category] = 0;
@@ -186,6 +192,18 @@ FactoryHWIDProcessorImpl::DecodeFactoryHWID() const {
   auto component_indexes =
       ExtractEncodedComponentIndex(hwid_component_bits_, encoding_pattern_);
   return ComponentIndexToComponentNames(component_indexes, encoded_fields_);
+}
+
+std::set<runtime_probe::ProbeRequest_SupportCategory>
+FactoryHWIDProcessorImpl::GetSkipZeroBitCategories() const {
+  std::set<runtime_probe::ProbeRequest_SupportCategory> skip_categories;
+  for (const auto& first_zero_bit : encoding_pattern_.first_zero_bits()) {
+    if (ShouldSkipZeroBitCategory(first_zero_bit.zero_bit_position(),
+                                  hwid_component_bits_)) {
+      skip_categories.insert(first_zero_bit.category());
+    }
+  }
+  return skip_categories;
 }
 
 }  // namespace hardware_verifier

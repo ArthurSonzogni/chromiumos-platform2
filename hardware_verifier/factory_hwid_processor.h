@@ -7,6 +7,7 @@
 
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,13 @@ class FactoryHWIDProcessor {
   // If the decode fails, return |std::nullopt|.
   virtual std::optional<CategoryMapping<std::vector<std::string>>>
   DecodeFactoryHWID() const = 0;
+
+  // Returns a set of component categories that should be skipped when
+  // processing 0-bit components. A category is skipped if the position of its
+  // first 0-bit is greater than the length of the Factory HWID component bits
+  // (i.e. exceeds the component bits).
+  virtual std::set<runtime_probe::ProbeRequest_SupportCategory>
+  GetSkipZeroBitCategories() const = 0;
 };
 
 }  // namespace hardware_verifier
