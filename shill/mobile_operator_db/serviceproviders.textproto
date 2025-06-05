@@ -7614,6 +7614,29 @@ mno {
       type: IA
     }
   }
+  mvno {
+    mvno_filter {
+      type: GID1
+      regex: "26"
+    }
+    data {
+      uuid: "cc1c7135-d55e-4560-80f3-689a7be85d89"
+      country: "jp"
+      mccmnc: "44051"  # POVO 4G
+      mccmnc: "44054"  # POVO 5G
+      localized_name {
+        name: "povo"
+      }
+      mobile_apn {
+        apn: "povo.jp"
+        localized_name {
+          name: "povo"
+        }
+        type: DEFAULT
+        type: IA
+      }
+    }
+  }
 }
 
 mno {
