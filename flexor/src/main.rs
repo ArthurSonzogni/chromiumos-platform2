@@ -136,6 +136,9 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
 
     // Needed for managing boot entries in postinst.
     let _efivarfs = chromeos_install::mount_efivarfs().context("Unable to mount efivarfs")?;
+    if chromeos_install::maybe_set_uefi_entry_name().is_err() {
+        info!("Couldn't set UEFI boot entry name, using default.");
+    }
 
     // Finally install the image on disk.
     chromeos_install::install_image_to_disk(

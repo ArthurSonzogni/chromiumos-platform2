@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::{path::Path, process::Command};
+use std::{fs, path::Path, process::Command};
 
 use crate::util::execute_command;
 use anyhow::Result;
@@ -31,6 +31,19 @@ pub fn mount_efivarfs() -> Result<Mount> {
     Ok(mount::Builder::new(Path::new("none"))
         .fs_type(FsType::Efivarfs)
         .mount(Path::new(EFIVARFS_PATH))?)
+}
+
+/// Attempt to set the uefi boot entry name to something other than the default "ChromiumOS".
+///
+/// By default the installer (actually, postinstall) will create a UEFI boot entry with the name
+/// "ChromiumOS". This puts a file in place to change that to our preferred "ChromeOS Flex".
+///
+/// If we can't put the file there it's fine, this is mostly cosmetic.
+pub fn maybe_set_uefi_entry_name() -> Result<()> {
+    let cros_config_efi_dir = Path::new("/run/chromeos-config/v1/efi/");
+    let name_file = cros_config_efi_dir.join("bootvar-name-override");
+    fs::create_dir_all(cros_config_efi_dir)?;
+    Ok(fs::write(name_file, "ChromeOS Flex")?)
 }
 
 /// Installs an image onto a disk using the chromeos_install script.
