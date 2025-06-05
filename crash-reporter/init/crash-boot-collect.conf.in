@@ -8,9 +8,7 @@ author          "chromium-os-dev@chromium.org"
 # Updates to this job's started conditions should also update
 # init/upstart/test-init/boot-kernel-crash.conf.
 start on \
-    stopped crash-reporter and \
-    stopped ecloggers and \
-    started system-services
+    stopped crash-reporter and started system-services @dependent_start_events@
 
 # This is a one-shot program that exits when it's done.
 task
