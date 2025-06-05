@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
