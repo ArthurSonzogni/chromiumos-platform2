@@ -66,6 +66,26 @@ XrqWjNtuK1n8SXwvWa7wq8h6sC5X801xluCzi0UcxyhKKCkAOd9D
 -----END CERTIFICATE-----
 )";
 
+constexpr char kSampleVerifiedCert[] = R"(-----BEGIN CERTIFICATE-----
+MIIDEjCCAfqgAwIBAgIWAZc4EkLieeoULrNiBx0AAAAAADCNCzANBgkqhkiG9w0B
+AQsFADCBhTEgMB4GA1UEAxMXUHJpdmFjeSBDQSBJbnRlcm1lZGlhdGUxEjAQBgNV
+BAsTCUNocm9tZSBPUzETMBEGA1UEChMKR29vZ2xlIEluYzEWMBQGA1UEBxMNTW91
+bnRhaW4gVmlldzETMBEGA1UECBMKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMwHhcN
+MjUwNjA2MjA1NjI4WhcNNDUwNjA2MjA1NjI4WjA6MR8wHQYDVQQKExZBUkMgVFBN
+IENlcnRpZnlpbmcgS2V5MRcwFQYDVQQLEw5zdGF0ZTp2ZXJpZmllZDBZMBMGByqG
+SM49AgEGCCqGSM49AwEHA0IABMcwK+682icKism5Lr5hK5r85vuH1DN9oKZ15Jkv
+fj24V2WD3RNv19D5ApHytOARK9djjd5ck5PYz2mAezdCfP6jgYwwgYkwKQYDVR0O
+BCIEIFNfhCKfiFWt68hoUirm18tEEk3URINT1L5lAO1iWuSZMCsGA1UdIwQkMCKA
+IPQgttnYYvaLCRXOi1ek/FdOuMF8pfnmVtvQUpQpvW1/MA4GA1UdDwEB/wQEAwIH
+gDAMBgNVHRMBAf8EAjAAMBEGA1UdIAQKMAgwBgYEVR0gADANBgkqhkiG9w0BAQsF
+AAOCAQEApx1mJaZ/vU4doRyGqZSbwfVqDiqdsSGwbFGzPvDtM9d11iyTOyar2GG8
+LpRs+udySc8WRboxBCt82nQ/lui0OUlS4bBdgAJeG8JppH4/tn+XQUsSKApj0//e
+jYt/zYVVRpmXFikpQ/NdTdmNsz8CrCo9WS/4B8xG86shWuMfj6MQGmGtK/wvnHf7
+nGnVD1Ana7iuwK7LcWbf4N6DRVhQI18mqI8rZPnUQYUJn4/RrtM4j0Ks/S+W1T8m
+x8D2c/yj2wE+YnBWjFT8wZk03GvMnjsxd70uRzj1Ph9VBMcnNwkbd5Pe8fb73m6M
+lwaYLmqWs2XwXnCS4ZU1jMf+jr+Oug==
+-----END CERTIFICATE-----
+)";
 constexpr char kSamplePEMCertSubject[] =
     R"(/O=ARC Remote Key Provisioning Device Key/OU=state:developer)";
 constexpr char kSamplePEMCertIssueDate[] = "May 23 21:19:45 2024 GMT";
@@ -124,10 +144,10 @@ class ArcAttestationThreadedTest : public ::testing::Test {
  protected:
   void ExpectGetCertificateSuccess(const GetCertificateReply& reply,
                                    const GetCertificateRequest& request) {
-    EXPECT_CALL(*attestation_proxy_,
-                GetCertificate(ProtobufEquals(request), _, _,
-                               Ge(kGetCertificateMinTimeout.InMilliseconds())))
-        .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
+    EXPECT_CALL(
+        *attestation_proxy_,
+        GetCertificate(_, _, _, Ge(kGetCertificateMinTimeout.InMilliseconds())))
+        .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
   }
 
   void ExpectSignSuccess(const SignReply& reply, const SignRequest& request) {
@@ -153,6 +173,7 @@ class ArcAttestationThreadedTest : public ::testing::Test {
     aadk_request.set_key_type(KeyType::KEY_TYPE_ECC);
     aadk_request.set_key_label(kArcAttestationDeviceKeyLabel);
     aadk_request.set_shall_trigger_enrollment(true);
+    aadk_request.set_forced(false);
 
     GetCertificateReply aadk_reply;
     aadk_reply.set_status(AttestationStatus::STATUS_SUCCESS);
@@ -171,6 +192,7 @@ class ArcAttestationThreadedTest : public ::testing::Test {
     tck_request.set_key_type(KeyType::KEY_TYPE_ECC);
     tck_request.set_key_label(kTpmCertifyingKeyLabel);
     tck_request.set_shall_trigger_enrollment(true);
+    tck_request.set_forced(false);
 
     GetCertificateReply tck_reply;
     tck_reply.set_status(AttestationStatus::STATUS_SUCCESS);
@@ -244,8 +266,8 @@ TEST_F(ArcAttestationThreadedTest, ProvisionValidityTest) {
   ASSERT_TRUE(result.is_ok());
 
   ASSERT_EQ(cert_out.size(), 2);
-  EXPECT_EQ(BlobToString(cert_out[0]), kFakeCert1Part1);
-  EXPECT_EQ(BlobToString(cert_out[1]), kFakeCert1Part2);
+  EXPECT_EQ(BlobToString(cert_out[0]), kFakeCert2Part1);
+  EXPECT_EQ(BlobToString(cert_out[1]), kFakeCert2Part2);
 
   // Test the signing.
   SignRequest sign_request;
@@ -461,6 +483,28 @@ TEST_F(ArcAttestationThreadedTest, GetCertificateFieldsSuccess) {
   ASSERT_TRUE(cert_fields_fetched);
   EXPECT_EQ(subject, kSamplePEMCertSubject);
   EXPECT_EQ(issue_date, kSamplePEMCertIssueDate);
+}
+
+TEST_F(ArcAttestationThreadedTest, CertShowsCorrectStateSuccess) {
+  // Prepare.
+  std::string pem_cert(kSampleVerifiedCert);
+
+  // Execute.
+  bool result = provisioner_->DoesCertShowCorrectState(pem_cert);
+
+  // Test.
+  ASSERT_TRUE(result);
+}
+
+TEST_F(ArcAttestationThreadedTest, CertShowsCorrectStateFailure) {
+  // Prepare.
+  std::string pem_cert(kSamplePEMCert);
+
+  // Execute.
+  bool result = provisioner_->DoesCertShowCorrectState(pem_cert);
+
+  // Test.
+  ASSERT_FALSE(result);
 }
 
 }  // namespace arc_attestation

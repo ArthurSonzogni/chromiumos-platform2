@@ -66,6 +66,11 @@ class Provisioner {
                                    std::string* subject_out,
                                    std::string* issue_date_out);
 
+  // Returns true if the certificate does not need to be forced refreshed.
+  // Returns false is certificate does not show verified state, and is
+  // issued before the cut-off date.
+  bool DoesCertShowCorrectState(const std::string& pem_cert);
+
  private:
   // Ensures that the dbus connection is ready.
   // This must be called from runner_.
@@ -79,6 +84,9 @@ class Provisioner {
 
   // Provision the TPM Certifying Key.
   AndroidStatus ProvisionCertifyingKey();
+
+  AndroidStatus ProvisionForcedCertifyingKey(bool forced);
+  AndroidStatus ProvisionForcedArcAttestationDeviceKey(bool forced);
 
   // Provision the ARC Attestation Device Key.
   AndroidStatus ProvisionArcAttestationDeviceKey();

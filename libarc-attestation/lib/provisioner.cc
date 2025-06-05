@@ -15,6 +15,8 @@
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
+#include "base/time/time.h"
+
 using brillo::BlobFromString;
 using brillo::BlobToString;
 
@@ -32,6 +34,7 @@ constexpr char kTpmCertifyingKeyLabel[] = "tpm-certifying-key";
 constexpr char kArcAttestationDeviceKeyLabel[] = "arc-attestation-device-key";
 
 constexpr char kEndOfCertForPem[] = "-----END CERTIFICATE-----";
+constexpr char kCertificateForcedRefreshDate[] = "Mar 13 00:00:00 2025 GMT";
 
 void SplitPEMCerts(const std::string& bundle_in,
                    std::vector<std::string>& certs_out) {
@@ -82,6 +85,30 @@ AndroidStatus Provisioner::ProvisionCert() {
 }
 
 AndroidStatus Provisioner::ProvisionCertifyingKey() {
+  bool forced = false;
+  auto result = ProvisionForcedCertifyingKey(forced);
+  if (!result.is_ok()) {
+    return result;
+  }
+
+  CHECK(tck_data_.has_value());
+  std::optional<std::string> tck_cert = tck_data_->certificate();
+  if (!tck_cert.has_value()) {
+    return result;
+  }
+
+  std::vector<std::string> splitted_certs;
+  SplitPEMCerts(tck_cert.value(), splitted_certs);
+  if (!splitted_certs.empty() &&
+      !DoesCertShowCorrectState(splitted_certs.at(0))) {
+    forced = true;
+    result = ProvisionForcedCertifyingKey(forced);
+  }
+
+  return result;
+}
+
+AndroidStatus Provisioner::ProvisionForcedCertifyingKey(bool forced) {
   attestation::GetCertificateRequest request;
   request.set_certificate_profile(
       attestation::CertificateProfile::ARC_TPM_CERTIFYING_KEY_CERTIFICATE);
@@ -89,6 +116,7 @@ AndroidStatus Provisioner::ProvisionCertifyingKey() {
   request.set_key_type(attestation::KeyType::KEY_TYPE_ECC);
   request.set_key_label(kTpmCertifyingKeyLabel);
   request.set_shall_trigger_enrollment(true);
+  request.set_forced(forced);
 
   attestation::GetCertificateReply reply;
   brillo::ErrorPtr err;
@@ -116,6 +144,30 @@ AndroidStatus Provisioner::ProvisionCertifyingKey() {
 }
 
 AndroidStatus Provisioner::ProvisionArcAttestationDeviceKey() {
+  bool forced = false;
+  auto result = ProvisionForcedArcAttestationDeviceKey(forced);
+  if (!result.is_ok()) {
+    return result;
+  }
+
+  CHECK(aadk_data_.has_value());
+  std::optional<std::string> aadk_cert = aadk_data_->certificate();
+  if (!aadk_cert.has_value()) {
+    return result;
+  }
+
+  std::vector<std::string> splitted_certs;
+  SplitPEMCerts(aadk_cert.value(), splitted_certs);
+  if (!splitted_certs.empty() &&
+      !DoesCertShowCorrectState(splitted_certs.at(0))) {
+    forced = true;
+    result = ProvisionForcedArcAttestationDeviceKey(forced);
+  }
+
+  return result;
+}
+
+AndroidStatus Provisioner::ProvisionForcedArcAttestationDeviceKey(bool forced) {
   attestation::GetCertificateRequest request;
   request.set_certificate_profile(
       attestation::CertificateProfile::ARC_ATTESTATION_DEVICE_KEY_CERTIFICATE);
@@ -123,6 +175,7 @@ AndroidStatus Provisioner::ProvisionArcAttestationDeviceKey() {
   request.set_key_type(attestation::KeyType::KEY_TYPE_ECC);
   request.set_key_label(kArcAttestationDeviceKeyLabel);
   request.set_shall_trigger_enrollment(true);
+  request.set_forced(forced);
 
   attestation::GetCertificateReply reply;
   brillo::ErrorPtr err;
@@ -393,6 +446,40 @@ bool Provisioner::GetCertificateFields(const std::string& pem_cert,
   }
   *issue_date_out = std::string(time_str, len);
 
+  return true;
+}
+
+bool Provisioner::DoesCertShowCorrectState(const std::string& pem_cert) {
+  std::string subject;
+  std::string issue_date;
+  bool cert_fields_fetched =
+      GetCertificateFields(pem_cert, &subject, &issue_date);
+  if (!cert_fields_fetched) {
+    LOG(ERROR) << "Certificate fields could not be extracted";
+    return false;
+  }
+
+  base::Time cert_issue_date;
+  if (!base::Time::FromString(issue_date.c_str(), &cert_issue_date)) {
+    LOG(ERROR) << "Unable to parse certificate issue date";
+    return false;
+  }
+
+  std::string refresh_date = kCertificateForcedRefreshDate;
+  base::Time cert_forced_refresh_date;
+  if (!base::Time::FromString(refresh_date.c_str(),
+                              &cert_forced_refresh_date)) {
+    LOG(ERROR) << "Unable to parse forced refresh date for certificate";
+    return false;
+  }
+
+  // Force a certificate refresh if the certificate shows developer mode
+  // and has been issued before the forced refresh date.
+  bool verified_state = subject.find("verified") != std::string::npos;
+  if (!verified_state && (cert_issue_date < cert_forced_refresh_date)) {
+    LOG(INFO) << "Certificate needs a forced refresh";
+    return false;
+  }
   return true;
 }
 
