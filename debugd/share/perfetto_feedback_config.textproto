@@ -78,6 +78,31 @@ data_sources: {
   config {
     name: "linux.ftrace"
     ftrace_config {
+      # Block device request/completion events.
+      ftrace_events: "block/block_rq_issue"
+      ftrace_events: "block/block_rq_complete"
+      ftrace_events: "block/block_bio_queue"
+      ftrace_events: "block/block_bio_bounce"
+      ftrace_events: "block/block_dirty_buffer"
+      ftrace_events: "block/block_clean_buffer"
+      ftrace_events: "block/block_read_ahead"
+
+      # Filesystem events.
+      ftrace_events: "ext4/ext4_da_write_begin"
+      ftrace_events: "ext4/ext4_da_write_end"
+      ftrace_events: "ext4/ext4_sync_file_enter"
+      ftrace_events: "ext4/ext4_sync_file_exit"
+      ftrace_events: "ext4/ext4_journal_start"
+      ftrace_events: "ext4/ext4_journal_commit"
+      ftrace_events: "ext4/ext4_trim_extent"
+
+      # Memory management events related to I/O.
+      ftrace_events: "mm_event/mm_event_major_fault"
+      ftrace_events: "mm_event/mm_event_minor_fault"
+      ftrace_events: "mm_event/mm_event_page_alloc"
+      ftrace_events: "mm_event/mm_event_page_free"
+      ftrace_events: "mm_event/mm_event_read_io"
+
       # RSS and dma buffer events:
       ftrace_events: "gpu_mem/gpu_mem_total"
       ftrace_events: "dmabuf_heap/dma_heap_stat"
