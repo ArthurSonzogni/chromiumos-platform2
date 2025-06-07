@@ -138,7 +138,8 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
             | DecodedFormat::I210
             | DecodedFormat::I212
             | DecodedFormat::I410
-            | DecodedFormat::I412 => 3,
+            | DecodedFormat::I412
+            | DecodedFormat::YV12 => 3,
             DecodedFormat::NV12
             | DecodedFormat::MM21
             | DecodedFormat::MT2T
@@ -162,7 +163,8 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                     | DecodedFormat::I212
                     | DecodedFormat::MM21
                     | DecodedFormat::MT2T
-                    | DecodedFormat::P010 => {
+                    | DecodedFormat::P010
+                    | DecodedFormat::YV12 => {
                         if plane_idx == 0 {
                             1
                         } else {
@@ -192,7 +194,8 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                     | DecodedFormat::I012
                     | DecodedFormat::MM21
                     | DecodedFormat::MT2T
-                    | DecodedFormat::P010 => {
+                    | DecodedFormat::P010
+                    | DecodedFormat::YV12 => {
                         if plane_idx == 0 {
                             1
                         } else {
@@ -220,7 +223,10 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
             } else {
                 ret.push(match self.decoded_format().unwrap() {
                     DecodedFormat::AR24 => 4.0,
-                    DecodedFormat::I420 | DecodedFormat::I422 | DecodedFormat::I444 => 1.0,
+                    DecodedFormat::I420
+                    | DecodedFormat::I422
+                    | DecodedFormat::I444
+                    | DecodedFormat::YV12 => 1.0,
                     DecodedFormat::I010
                     | DecodedFormat::I012
                     | DecodedFormat::I210

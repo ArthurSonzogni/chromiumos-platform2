@@ -244,6 +244,9 @@ pub enum DecodedFormat {
     MT2T,
     // Y, U, and V planes, 4:2:0 sampling, 10 bits per sample.
     P010,
+    /// Y, V and U planes, 4:2:0 sampling, 8 bits per sample.
+    /// Like `I420` with U and V planes swapped.
+    YV12,
 }
 
 impl FromStr for DecodedFormat {
@@ -265,9 +268,10 @@ impl FromStr for DecodedFormat {
             "mm21" | "MM21" => Ok(DecodedFormat::MM21),
             "mt2t" | "MT2T" => Ok(DecodedFormat::MT2T),
             "p010" | "P010" => Ok(DecodedFormat::P010),
+            "yv12" | "YV12" => Ok(DecodedFormat::YV12),
             _ => Err("unrecognized output format. \
                 Valid values: ar24, i420, nv12, i422, i444, i010, i012, i210, i212, i410, i412, \
-                mm21"),
+                mm21, mt2t, p010, yv12"),
         }
     }
 }
@@ -281,6 +285,7 @@ impl From<Fourcc> for DecodedFormat {
             "MM21" => DecodedFormat::MM21,
             "MT2T" => DecodedFormat::MT2T,
             "P010" => DecodedFormat::P010,
+            "YV12" => DecodedFormat::YV12,
             _ => todo!("Fourcc {} not yet supported", fourcc),
         }
     }
@@ -295,6 +300,7 @@ impl From<DecodedFormat> for Fourcc {
             DecodedFormat::MM21 => Fourcc::from(b"MM21"),
             DecodedFormat::MT2T => Fourcc::from(b"MT2T"),
             DecodedFormat::P010 => Fourcc::from(b"P010"),
+            DecodedFormat::YV12 => Fourcc::from(b"YV12"),
             _ => todo!(),
         }
     }
@@ -422,7 +428,8 @@ pub fn get_format_bit_depth(format: DecodedFormat) -> usize {
         | DecodedFormat::I420
         | DecodedFormat::NV12
         | DecodedFormat::I422
-        | DecodedFormat::I444 => 8,
+        | DecodedFormat::I444
+        | DecodedFormat::YV12 => 8,
         DecodedFormat::MT2T | DecodedFormat::P010 => 10,
         DecodedFormat::I010
         | DecodedFormat::I012

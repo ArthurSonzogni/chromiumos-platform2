@@ -1041,6 +1041,24 @@ pub fn convert_video_frame(src: &impl VideoFrame, dst: &mut impl VideoFrame) -> 
             );
             Ok(())
         }
+        (DecodedFormat::YV12, DecodedFormat::NV12) => {
+            // We can re-use i420_to_nv12() simply by swapping the source U and V planes.
+            i420_to_nv12(
+                src_planes[Y_PLANE],
+                src_pitches[Y_PLANE],
+                *dst_planes[Y_PLANE].borrow_mut(),
+                dst_pitches[Y_PLANE],
+                src_planes[V_PLANE],
+                src_pitches[V_PLANE],
+                src_planes[U_PLANE],
+                src_pitches[U_PLANE],
+                *dst_planes[UV_PLANE].borrow_mut(),
+                dst_pitches[UV_PLANE],
+                width,
+                height,
+            );
+            Ok(())
+        }
         (DecodedFormat::I422, DecodedFormat::I422) => {
             i4xx_copy(
                 src_planes[Y_PLANE],
