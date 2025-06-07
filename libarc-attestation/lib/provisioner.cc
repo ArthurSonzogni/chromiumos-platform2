@@ -8,7 +8,12 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/secure_blob.h>
+#include <crypto/libcrypto-compat.h>
+#include <crypto/scoped_openssl_types.h>
 #include <libarc-attestation/lib/provisioner.h>
+#include <openssl/bio.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
 
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -306,6 +311,89 @@ AndroidStatus Provisioner::GetEndorsementPublicKey(
 
   ek_public_key_out = brillo::BlobFromString(reply.ek_public_key());
   return AndroidStatus::ok();
+}
+
+bool Provisioner::GetCertificateFields(const std::string& pem_cert,
+                                       std::string* subject_out,
+                                       std::string* issue_date_out) {
+  // Ensure output pointers are valid.
+  if (!subject_out || !issue_date_out) {
+    LOG(ERROR) << "decodePemCertificate: Output pointers cannot be null.";
+    return false;
+  }
+  // Clear previous output values.
+  subject_out->clear();
+  issue_date_out->clear();
+
+  // Create X509 object.
+  crypto::ScopedBIO bio(
+      BIO_new_mem_buf(const_cast<char*>(pem_cert.data()), pem_cert.size()));
+  if (!bio) {
+    LOG(WARNING) << __func__ << ": Failed to create mem BIO";
+    return false;
+  }
+
+  crypto::ScopedX509 x509(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  if (!x509) {
+    LOG(WARNING) << __func__ << ": Failed to call PEM_read_bio_X509";
+    return false;
+  }
+
+  // Extract Certificate Subject.
+  unsigned char* subject_buffer = nullptr;
+  int length =
+      i2d_X509_NAME(X509_get_subject_name(x509.get()), &subject_buffer);
+  crypto::ScopedOpenSSLBytes scoped_subject_buffer(subject_buffer);
+  if (length <= 0) {
+    LOG(WARNING) << "Pkcs11KeyStore: Failed to encode certificate subject.";
+    return false;
+  }
+
+  X509_NAME* subject_name = X509_get_subject_name(x509.get());
+  if (!subject_name) {
+    LOG(WARNING) << "Pkcs11KeyStore: Certificate has no subject name.";
+    subject_out->clear();
+    return false;
+  }
+
+  char* oneline_subject = X509_NAME_oneline(subject_name, nullptr, 0);
+  if (!oneline_subject) {
+    LOG(WARNING) << "Pkcs11KeyStore: Failed to get subject oneline length.";
+    return false;
+  }
+
+  crypto::ScopedOpenSSLBytes scoped_oneline_subject(
+      reinterpret_cast<unsigned char*>(oneline_subject));
+  subject_out->assign(reinterpret_cast<char*>(scoped_oneline_subject.get()));
+
+  // Extract Certificate Issue Date.
+  ASN1_TIME* not_before = X509_get_notBefore(x509.get());
+  if (!not_before) {
+    LOG(WARNING) << "Failed to get certificate issue date.";
+    return false;
+  }
+
+  crypto::ScopedBIO bio_time(BIO_new(BIO_s_mem()));
+  if (!bio_time) {
+    LOG(WARNING) << "Failed to create BIO for issue date.";
+    return false;
+  }
+
+  if (ASN1_TIME_print(bio_time.get(), not_before) <= 0) {
+    LOG(WARNING) << "Failed to print certificate issue date.";
+    return false;
+  }
+
+  char* time_str;
+  int64_t len = BIO_get_mem_data(bio_time.get(), &time_str);
+  if (len <= 0) {
+    LOG(WARNING) << "Failed to get BIO mem data for issue date.";
+    return false;
+  }
+  *issue_date_out = std::string(time_str, len);
+
+  return true;
 }
 
 }  // namespace arc_attestation

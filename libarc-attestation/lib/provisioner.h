@@ -59,6 +59,13 @@ class Provisioner {
     proxy_ = std::move(proxy);
   }
 
+  // This function takes in a X509 certificate in PEM format and
+  // returns the certificate subject and issued date in the provided
+  // function arguments.
+  static bool GetCertificateFields(const std::string& pem_data,
+                                   std::string* subject_out,
+                                   std::string* issue_date_out);
+
  private:
   // Ensures that the dbus connection is ready.
   // This must be called from runner_.

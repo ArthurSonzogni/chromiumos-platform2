@@ -45,6 +45,31 @@ namespace arc_attestation {
 
 namespace {
 
+constexpr char kSamplePEMCert[] = R"(-----BEGIN CERTIFICATE-----
+MIIDIzCCAgugAwIBAgIWAY90AREo6PnvDXoULHkAAAAAAFZJ/TANBgkqhkiG9w0B
+AQsFADCBhTEgMB4GA1UEAxMXUHJpdmFjeSBDQSBJbnRlcm1lZGlhdGUxEjAQBgNV
+BAsTCUNocm9tZSBPUzETMBEGA1UEChMKR29vZ2xlIEluYzEWMBQGA1UEBxMNTW91
+bnRhaW4gVmlldzETMBEGA1UECBMKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMwHhcN
+MjQwNTIzMjExOTQ1WhcNNDQwNTIzMjExOTQ1WjBLMS8wLQYDVQQKEyZBUkMgUmVt
+b3RlIEtleSBQcm92aXNpb25pbmcgRGV2aWNlIEtleTEYMBYGA1UECxMPc3RhdGU6
+ZGV2ZWxvcGVyMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEv/vqwnEBQPTFFzx8
+Zoh1G1UnHFHP44I/OfJgmNSXPMgWuG3DNmbjx37NdLMvZDdOCmGO9rBLW4mYGw+s
+1G4rpqOBjDCBiTApBgNVHQ4EIgQgryr7Nm+PvuYDdg5kgj5m8kwpHvhRV6N+fBn5
+1Kq1Jo0wKwYDVR0jBCQwIoAg9CC22dhi9osJFc6LV6T8V064wXyl+eZW29BSlCm9
+bX8wDgYDVR0PAQH/BAQDAgeAMAwGA1UdEwEB/wQCMAAwEQYDVR0gBAowCDAGBgRV
+HSAAMA0GCSqGSIb3DQEBCwUAA4IBAQCSGfeftmQYFmWXhtZlCo+Otf4HnUUH460F
+uvSqrvnndWVvB0F5Q7ZFkGKnWQkBc/UIXLttBpcIme389VwR+U2OJ8HNc1+aaGiy
+QUJHfFMcIyLatHMrlzeqNaLvnKM6oRipQyI9gBT+N28FtZFdHpY2HRXZV6e37T4N
+MrJz6UCWQv8KVcVhXVKhXlnifgFcAUc3ci76vbNRaNAHcrEV9qW3rJzzi2tUDieF
+9cYnJ112Rd+zwQT3mqdD5m7SnBQy4xN5wRYZ/tcdNc3kQJPS3q/xykojEzUDSOEQ
+XrqWjNtuK1n8SXwvWa7wq8h6sC5X801xluCzi0UcxyhKKCkAOd9D
+-----END CERTIFICATE-----
+)";
+
+constexpr char kSamplePEMCertSubject[] =
+    R"(/O=ARC Remote Key Provisioning Device Key/OU=state:developer)";
+constexpr char kSamplePEMCertIssueDate[] = "May 23 21:19:45 2024 GMT";
+
 // gmock matcher for protobufs, allowing to check protobuf arguments in mocks.
 MATCHER_P(ProtobufEquals, expected_message, "") {
   std::string arg_dumped;
@@ -420,6 +445,22 @@ TEST_F(ArcAttestationThreadedTest, GetEndorsementKeyFailure) {
   Blob ek_public_key;
   result = GetEndorsementPublicKey(ek_public_key);
   EXPECT_FALSE(result.is_ok());
+}
+
+TEST_F(ArcAttestationThreadedTest, GetCertificateFieldsSuccess) {
+  // Prepare.
+  std::string pem_cert(kSamplePEMCert);
+  std::string subject;
+  std::string issue_date;
+
+  // Execute.
+  bool cert_fields_fetched =
+      provisioner_->GetCertificateFields(pem_cert, &subject, &issue_date);
+
+  // Test.
+  ASSERT_TRUE(cert_fields_fetched);
+  EXPECT_EQ(subject, kSamplePEMCertSubject);
+  EXPECT_EQ(issue_date, kSamplePEMCertIssueDate);
 }
 
 }  // namespace arc_attestation

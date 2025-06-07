@@ -148,6 +148,7 @@ if (use.test) {
     pkg_deps = [
       "libattestation-client",
       "libattestation-client-test",
+      "openssl",
     ]
   }
 }
