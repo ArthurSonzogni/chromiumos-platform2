@@ -432,17 +432,10 @@ where
                     /* there is nothing to drain, much like vp8 and vp9 */
                     self.codec.highest_spatial_layer = self.codec.parser.highest_operating_point();
 
-                    let stream_info = match &self.codec.parser.last_frame_header {
-                        Some(fh) => StreamInfo {
-                            seq_header: sequence.clone(),
-                            render_width: fh.render_width,
-                            render_height: fh.render_height,
-                        },
-                        None => StreamInfo {
-                            seq_header: sequence.clone(),
-                            render_width: sequence.max_frame_width_minus_1 as u32 + 1,
-                            render_height: sequence.max_frame_height_minus_1 as u32 + 1,
-                        },
+                    let stream_info = StreamInfo {
+                        seq_header: sequence.clone(),
+                        render_width: sequence.max_frame_width_minus_1 as u32 + 1,
+                        render_height: sequence.max_frame_height_minus_1 as u32 + 1,
                     };
                     self.backend.change_stream_info(&stream_info)?;
                     self.await_format_change(stream_info);
