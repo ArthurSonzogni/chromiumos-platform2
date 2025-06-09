@@ -63,6 +63,7 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "activate_date.s",
     "agetty",
     "arc-file-syncer",
+    "arc_manager",
     "auditd",
     "bash",
     "bootstat",
