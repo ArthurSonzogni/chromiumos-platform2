@@ -15,6 +15,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
