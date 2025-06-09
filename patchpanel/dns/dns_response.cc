@@ -19,6 +19,7 @@
 #include <base/numerics/byte_conversions.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/string_view_util.h>
 #include <base/sys_byteorder.h>
 #include <openssl/sha.h>
 
