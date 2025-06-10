@@ -341,5 +341,57 @@ TEST_F(FactoryHWIDProcessorImplTest, GetSkipZeroBitCategories) {
                   runtime_probe::ProbeRequest_SupportCategory_cellular));
 }
 
+TEST_F(FactoryHWIDProcessorImplTest, GenerateMaskedFactoryHWID) {
+  // 0 0001(image ID) 010 0(camera) 101 01(battery) 11 01(camera)
+  // battery: 01 = index 1
+  // camera: 010 = index 2
+  std::string decoded_bits = "000010100101011101";
+  SetFactoryHWID(ConstructHWID("MODEL-RLZ", decoded_bits));
+  std::vector<EncodingPattern> encoding_patterns = {
+      CreateEncodingPattern(
+          {0, 1},
+          {{runtime_probe::ProbeRequest_SupportCategory_camera, 3, 3},
+           {runtime_probe::ProbeRequest_SupportCategory_battery, 7, 8},
+           {runtime_probe::ProbeRequest_SupportCategory_camera, 11, 12},
+           {runtime_probe::ProbeRequest_SupportCategory_wireless, 100, 100}},
+          {{runtime_probe::ProbeRequest_SupportCategory_camera, 5},
+           {runtime_probe::ProbeRequest_SupportCategory_touchscreen, 12},
+           {runtime_probe::ProbeRequest_SupportCategory_wireless, 13}}),
+      CreateEncodingPattern({2}, {}, {})};
+  auto spec = CreateTestEncodingSpec(encoding_patterns, {});
+  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
+
+  auto result = processor->GenerateMaskedFactoryHWID();
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(*result, "MODEL-RLZ B4K-M6A-A2Z");
+}
+
+TEST_F(FactoryHWIDProcessorImplTest, GenerateMaskedFactoryHWID_WithConfigless) {
+  // 0 0001(image ID) 010 0(camera) 101 01(battery) 11 01(camera)
+  // battery: 01 = index 1
+  // camera: 010 = index 2
+  std::string decoded_bits = "000010100101011101";
+  SetFactoryHWID(ConstructHWID("MODEL-RLZ 0-8-77-1D0", decoded_bits));
+  std::vector<EncodingPattern> encoding_patterns = {
+      CreateEncodingPattern(
+          {0, 1},
+          {{runtime_probe::ProbeRequest_SupportCategory_camera, 3, 3},
+           {runtime_probe::ProbeRequest_SupportCategory_battery, 7, 8},
+           {runtime_probe::ProbeRequest_SupportCategory_camera, 11, 12},
+           {runtime_probe::ProbeRequest_SupportCategory_wireless, 100, 100}},
+          {{runtime_probe::ProbeRequest_SupportCategory_camera, 5},
+           {runtime_probe::ProbeRequest_SupportCategory_touchscreen, 12},
+           {runtime_probe::ProbeRequest_SupportCategory_wireless, 13}}),
+      CreateEncodingPattern({2}, {}, {})};
+  auto spec = CreateTestEncodingSpec(encoding_patterns, {});
+  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
+
+  auto result = processor->GenerateMaskedFactoryHWID();
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(*result, "MODEL-RLZ 0-8-77-1D0 B4K-M6A-A54");
+}
+
 }  // namespace
 }  // namespace hardware_verifier

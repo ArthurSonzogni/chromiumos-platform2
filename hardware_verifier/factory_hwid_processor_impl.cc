@@ -4,6 +4,7 @@
 
 #include "hardware_verifier/factory_hwid_processor_impl.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <set>
@@ -13,6 +14,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/hwid/hwid_utils.h>
 #include <google/protobuf/repeated_ptr_field.h>
@@ -43,6 +45,25 @@ uint32_t BinaryStringToUint32(const std::string_view& binary_str) {
     }
   }
   return res;
+}
+
+std::string ExtractHWIDComponentBits(const std::string& hwid_decode_bits) {
+  return hwid_decode_bits.substr(kIgnoreBitWidth + kImageIDBitWidth);
+}
+
+std::string ExtractHeaderBits(const std::string& hwid_decode_bits) {
+  return hwid_decode_bits.substr(0, kIgnoreBitWidth + kImageIDBitWidth);
+}
+
+std::optional<std::string> GetFactoryHWIDPrefix() {
+  auto hwid = Context::Get()->crossystem()->VbGetSystemPropertyString(
+      kCrosSystemHWIDKey);
+  auto hwid_split = base::RSplitStringOnce(*hwid, ' ');
+  if (!hwid_split.has_value()) {
+    LOG(ERROR) << "Got malformed Factory HWID: " << *hwid;
+    return std::nullopt;
+  }
+  return std::string(hwid_split->first);
 }
 
 bool ShouldSkipZeroBitCategory(int zero_bit_pos,
@@ -169,19 +190,15 @@ std::unique_ptr<FactoryHWIDProcessorImpl> FactoryHWIDProcessorImpl::Create(
     return nullptr;
   }
 
-  std::string hwid_component_bits =
-      decoded_bits->substr(kIgnoreBitWidth + kImageIDBitWidth);
-
   return std::unique_ptr<FactoryHWIDProcessorImpl>(new FactoryHWIDProcessorImpl(
-      *encoding_pattern, hwid_component_bits, spec->encoded_fields()));
+      *encoding_pattern, *decoded_bits, spec->encoded_fields()));
 }
 
 FactoryHWIDProcessorImpl::FactoryHWIDProcessorImpl(
     EncodingPattern& encoding_pattern,
-    std::string hwid_component_bits,
+    std::string& hwid_decode_bits,
     const google::protobuf::RepeatedPtrField<EncodedFields>& encoded_fields)
-    : encoding_pattern_(encoding_pattern),
-      hwid_component_bits_(hwid_component_bits) {
+    : encoding_pattern_(encoding_pattern), hwid_decode_bits_(hwid_decode_bits) {
   for (const auto& field : encoded_fields) {
     encoded_fields_[field.category()] = field;
   }
@@ -189,21 +206,53 @@ FactoryHWIDProcessorImpl::FactoryHWIDProcessorImpl(
 
 std::optional<CategoryMapping<std::vector<std::string>>>
 FactoryHWIDProcessorImpl::DecodeFactoryHWID() const {
+  const auto hwid_component_bits = ExtractHWIDComponentBits(hwid_decode_bits_);
   auto component_indexes =
-      ExtractEncodedComponentIndex(hwid_component_bits_, encoding_pattern_);
+      ExtractEncodedComponentIndex(hwid_component_bits, encoding_pattern_);
   return ComponentIndexToComponentNames(component_indexes, encoded_fields_);
 }
 
 std::set<runtime_probe::ProbeRequest_SupportCategory>
 FactoryHWIDProcessorImpl::GetSkipZeroBitCategories() const {
   std::set<runtime_probe::ProbeRequest_SupportCategory> skip_categories;
+  const auto hwid_component_bits = ExtractHWIDComponentBits(hwid_decode_bits_);
   for (const auto& first_zero_bit : encoding_pattern_.first_zero_bits()) {
     if (ShouldSkipZeroBitCategory(first_zero_bit.zero_bit_position(),
-                                  hwid_component_bits_)) {
+                                  hwid_component_bits)) {
       skip_categories.insert(first_zero_bit.category());
     }
   }
   return skip_categories;
+}
+
+std::string FactoryHWIDProcessorImpl::GetMaskedComponentBits() const {
+  std::string masked_component_bits =
+      ExtractHWIDComponentBits(hwid_decode_bits_);
+  for (const auto& bit_range : encoding_pattern_.bit_ranges()) {
+    if (bit_range.start() >= masked_component_bits.length()) {
+      break;
+    }
+    for (int idx = bit_range.start();
+         idx <= std::min(bit_range.end(),
+                         static_cast<int>(masked_component_bits.length()) - 1);
+         idx++) {
+      masked_component_bits[idx] = '0';
+    }
+  }
+  return masked_component_bits;
+}
+
+std::optional<std::string> FactoryHWIDProcessorImpl::GenerateMaskedFactoryHWID()
+    const {
+  const auto factory_hwid_prefix = GetFactoryHWIDPrefix();
+  if (!factory_hwid_prefix.has_value()) {
+    return std::nullopt;
+  }
+
+  const auto masked_component_bits = GetMaskedComponentBits();
+  const auto header_bits = ExtractHeaderBits(hwid_decode_bits_);
+  return brillo::hwid::EncodeHWID(*factory_hwid_prefix,
+                                  header_bits + masked_component_bits);
 }
 
 }  // namespace hardware_verifier

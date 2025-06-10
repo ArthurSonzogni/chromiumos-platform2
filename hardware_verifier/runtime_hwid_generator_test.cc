@@ -36,6 +36,10 @@ class MockFactoryHWIDProcessor : public FactoryHWIDProcessor {
               GetSkipZeroBitCategories,
               (),
               (const, override));
+  MOCK_METHOD(std::optional<std::string>,
+              GenerateMaskedFactoryHWID,
+              (),
+              (const, override));
 };
 
 class RuntimeHWIDGeneratorTest : public BaseFileTest {

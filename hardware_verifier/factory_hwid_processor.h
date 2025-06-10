@@ -35,6 +35,12 @@ class FactoryHWIDProcessor {
   // (i.e. exceeds the component bits).
   virtual std::set<runtime_probe::ProbeRequest_SupportCategory>
   GetSkipZeroBitCategories() const = 0;
+
+  // Returns a masked Factory HWID. This HWID will have the RACC-related
+  // component bits masked out, while preserving other information (e.g. image
+  // ID).
+  // Returns |std::nullopt| on failure.
+  virtual std::optional<std::string> GenerateMaskedFactoryHWID() const = 0;
 };
 
 }  // namespace hardware_verifier

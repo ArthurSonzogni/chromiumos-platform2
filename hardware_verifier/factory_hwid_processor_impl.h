@@ -35,14 +35,18 @@ class FactoryHWIDProcessorImpl : public FactoryHWIDProcessor {
   std::set<runtime_probe::ProbeRequest_SupportCategory>
   GetSkipZeroBitCategories() const override;
 
+  std::optional<std::string> GenerateMaskedFactoryHWID() const override;
+
  private:
   explicit FactoryHWIDProcessorImpl(
       EncodingPattern& encoding_pattern,
-      std::string hwid_component_bits,
+      std::string& hwid_decode_bits,
       const google::protobuf::RepeatedPtrField<EncodedFields>& encoded_fields);
   EncodingPattern encoding_pattern_;
   CategoryMapping<EncodedFields> encoded_fields_;
-  std::string hwid_component_bits_;
+  std::string hwid_decode_bits_;
+
+  std::string GetMaskedComponentBits() const;
 };
 
 }  // namespace hardware_verifier
