@@ -105,6 +105,24 @@ const std::map<flex_bluetooth::BluetoothAdapter,
          {flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
         {flex_bluetooth::BluetoothAdapter{0x8087, 0x0aa7},
          {flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+
+        // Resolve crashes from b/408887245
+        {flex_bluetooth::BluetoothAdapter{0x04ca, 0x3016},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3496},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3501},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3503},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        {flex_bluetooth::BluetoothAdapter{0x8087, 0x07dc},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        {flex_bluetooth::BluetoothAdapter{0x3641, 0x0902},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        {flex_bluetooth::BluetoothAdapter{0x0489, 0xe09f},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        {flex_bluetooth::BluetoothAdapter{0x0a5c, 0x216d},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
 };
 }  // namespace
 
