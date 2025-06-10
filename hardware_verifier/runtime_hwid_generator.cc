@@ -1,0 +1,287 @@
+// Copyright 2025 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "hardware_verifier/runtime_hwid_generator.h"
+
+#include <optional>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/check.h>
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <chromeos-config/libcros_config/cros_config.h>
+#include <re2/re2.h>
+#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
+
+#include "hardware_verifier/factory_hwid_processor.h"
+#include "hardware_verifier/system/context.h"
+
+namespace hardware_verifier {
+
+namespace {
+
+constexpr char kCameraCategoryName[] = "camera";
+constexpr char kDisplayPanelCategoryName[] = "display_panel";
+constexpr char kDramCategoryName[] = "dram";
+
+constexpr char kCompGroupField[] = "comp_group";
+constexpr char kInformationField[] = "information";
+constexpr char kCompNameField[] = "name";
+
+constexpr char kGenericComponent[] = "generic";
+constexpr char kCrosConfigModelNamePath[] = "/";
+constexpr char kCrosConfigModelNameKey[] = "name";
+
+// Get the device model name.
+std::string ModelName() {
+  std::string model_name;
+
+  if (Context::Get()->cros_config()->GetString(
+          kCrosConfigModelNamePath, kCrosConfigModelNameKey, &model_name)) {
+    return model_name;
+  }
+
+  LOG(ERROR) << "Failed to get \"" << kCrosConfigModelNamePath << " "
+             << kCrosConfigModelNameKey << "\" from cros config";
+  return "";
+}
+
+std::string GenerateCategoryRegex(const std::string_view& category_name) {
+  if (category_name == kCameraCategoryName) {
+    return R"((?:camera|video))";
+  }
+  return RE2::QuoteMeta(category_name);
+}
+
+bool HasUnidentifiedComponent(
+    const std::vector<std::string>& probe_components) {
+  int generic_count = std::count(probe_components.begin(),
+                                 probe_components.end(), kGenericComponent);
+  int identified_count = probe_components.size() - generic_count;
+  return generic_count > identified_count;
+}
+
+// Checks if the component name is AVL compliant, i.e. matches format:
+//   ({MODEL}_){CATEGORY}_{CID}(_{QID})(#{SEQ})
+// Where:
+//   {MODEL} is the device model name (optional prefix).
+//   {CATEGORY} is the component category name.
+//   {CID} is the component ID.
+//   {QID} is the qualification ID (optional suffix).
+//   {SEQ} is the sequence number (optional suffix).
+// If it matches, returns the normalized format: {CATEGORY}_{CID}.
+std::optional<std::string> NormalizeComponentNameIfAVLCompliant(
+    const std::string_view& component_name,
+    const std::string_view& category_name,
+    const std::string_view& model_name) {
+  std::string regex_str = R"(^(?:)" + RE2::QuoteMeta(model_name) + R"(_)?)" +
+                          GenerateCategoryRegex(category_name) +
+                          R"(_(\d+)(?:_\d+)?(?:#.*)?$)";
+
+  RE2 regex(regex_str);
+  std::string cid;
+  if (RE2::FullMatch(component_name, regex, &cid)) {
+    return base::JoinString({category_name, cid}, "_");
+  }
+  return std::nullopt;
+}
+
+// Normalizes all component names in |component_names|, and returns a
+// |std::multiset| of normalized component names. Skips names that are not AVL
+// compliant.
+std::multiset<std::string> GetNormalizedComponentNames(
+    const std::vector<std::string>& component_names,
+    const std::string_view& category_name,
+    const std::string_view& model_name) {
+  std::multiset<std::string> normalized_comp_names;
+  for (const auto& comp_name : component_names) {
+    const auto normalized_name = NormalizeComponentNameIfAVLCompliant(
+        comp_name, category_name, model_name);
+    if (!normalized_name.has_value()) {
+      continue;
+    }
+    normalized_comp_names.insert(*normalized_name);
+  }
+  return normalized_comp_names;
+}
+
+// Extracts component names from |probe_result| for the category with name
+// |category_name|. If `comp_group` in `information` field is set, use it as the
+// component name. Otherwise, use the `name` field as the component name.
+std::vector<std::string> GetProbeComponentsByCategoryName(
+    const runtime_probe::ProbeResult& probe_result,
+    const std::string_view& category_name,
+    const std::string_view& model_name) {
+  const auto* probe_result_ref = probe_result.GetReflection();
+  const auto* probe_result_desc = probe_result.GetDescriptor();
+  const auto* component_field_desc =
+      probe_result_desc->FindFieldByName(category_name);
+  CHECK(component_field_desc != nullptr);
+
+  int comp_count =
+      probe_result_ref->FieldSize(probe_result, component_field_desc);
+  std::vector<std::string> probe_components;
+  for (int i = 0; i < comp_count; ++i) {
+    const auto& component_message = probe_result_ref->GetRepeatedMessage(
+        probe_result, component_field_desc, i);
+    const auto* component_reflection = component_message.GetReflection();
+    const auto* component_descriptor = component_message.GetDescriptor();
+
+    // Try to get component name from information.comp_group.
+    std::string component_name;
+    const auto* information_field_desc =
+        component_descriptor->FindFieldByName(kInformationField);
+    if (information_field_desc &&
+        component_reflection->HasField(component_message,
+                                       information_field_desc)) {
+      const auto& information_message = component_reflection->GetMessage(
+          component_message, information_field_desc);
+      const auto* information_ref = information_message.GetReflection();
+      const auto* information_desc = information_message.GetDescriptor();
+      const auto* comp_group_field_desc =
+          information_desc->FindFieldByName(kCompGroupField);
+
+      if (comp_group_field_desc &&
+          information_ref->HasField(information_message,
+                                    comp_group_field_desc)) {
+        component_name = information_ref->GetString(information_message,
+                                                    comp_group_field_desc);
+      }
+    }
+
+    if (component_name.empty()) {
+      const auto* name_descriptor =
+          component_descriptor->FindFieldByName(kCompNameField);
+      CHECK(name_descriptor != nullptr &&
+            component_reflection->HasField(component_message, name_descriptor));
+      component_name =
+          component_reflection->GetString(component_message, name_descriptor);
+    }
+    probe_components.push_back(component_name);
+  }
+  return probe_components;
+}
+
+// Extracts component names from |decode_result| for the category |category|.
+std::vector<std::string> GetDecodeComponentsByCategory(
+    const CategoryMapping<std::vector<std::string>>& decode_result,
+    runtime_probe::ProbeRequest_SupportCategory category) {
+  if (!decode_result.contains(category)) {
+    return {};
+  }
+
+  return decode_result.at(category);
+}
+
+// Checks if the probed components match the decoded components for a given
+// category.
+//
+// For most categories, this function returns true if the normalized probed
+// components are an exact match to the normalized decoded components, and there
+// are no unidentified components in the probe result.
+//
+// For the "display_panel" category, it returns true if all normalized decoded
+// components are present in the normalized probed components (i.e., probed is a
+// superset of decoded).
+bool MatchProbeAndDecodeComponents(
+    const std::vector<std::string>& probe_components,
+    const std::vector<std::string>& decode_components,
+    const std::string_view& category_name,
+    const std::string_view& model_name) {
+  if (category_name != kDisplayPanelCategoryName &&
+      HasUnidentifiedComponent(probe_components)) {
+    return false;
+  }
+
+  const std::multiset<std::string> normalized_probe_components =
+      GetNormalizedComponentNames(probe_components, category_name, model_name);
+  const std::multiset<std::string> normalized_decode_components =
+      GetNormalizedComponentNames(decode_components, category_name, model_name);
+
+  if (category_name == kDisplayPanelCategoryName) {
+    for (const auto& decode_comp : normalized_decode_components) {
+      if (!normalized_probe_components.contains(decode_comp)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return normalized_probe_components == normalized_decode_components;
+}
+
+}  // namespace
+
+std::unique_ptr<RuntimeHWIDGenerator> RuntimeHWIDGenerator::Create(
+    std::unique_ptr<FactoryHWIDProcessor> factory_hwid_processor,
+    const EncodingSpec& encoding_spec) {
+  if (factory_hwid_processor == nullptr) {
+    return nullptr;
+  }
+  std::set<runtime_probe::ProbeRequest_SupportCategory> waived_categories;
+  for (const auto& waived_category : encoding_spec.waived_categories()) {
+    if (!runtime_probe::ProbeRequest_SupportCategory_IsValid(waived_category)) {
+      LOG(ERROR) << "Got invalid category: " << waived_category;
+    }
+    waived_categories.insert(
+        static_cast<runtime_probe::ProbeRequest_SupportCategory>(
+            waived_category));
+  }
+  return std::unique_ptr<RuntimeHWIDGenerator>(new RuntimeHWIDGenerator(
+      std::move(factory_hwid_processor), waived_categories));
+}
+
+RuntimeHWIDGenerator::RuntimeHWIDGenerator(
+    std::unique_ptr<FactoryHWIDProcessor> factory_hwid_processor,
+    const std::set<runtime_probe::ProbeRequest_SupportCategory>&
+        waived_categories)
+    : factory_hwid_processor_(std::move(factory_hwid_processor)),
+      waived_categories_(waived_categories) {
+  CHECK(factory_hwid_processor_ != nullptr);
+}
+
+bool RuntimeHWIDGenerator::ShouldGenerateRuntimeHWID(
+    const runtime_probe::ProbeResult& probe_result) const {
+  const auto decode_result = factory_hwid_processor_->DecodeFactoryHWID();
+  if (!decode_result.has_value()) {
+    LOG(ERROR) << "Failed to decode factory HWID.";
+    return false;
+  }
+
+  const std::string model_name = ModelName();
+  const auto skip_zero_bit_categories =
+      factory_hwid_processor_->GetSkipZeroBitCategories();
+  const auto runtime_hwid_comp_desc =
+      runtime_probe::RuntimeHwidComponent::GetDescriptor();
+  for (int i = 0; i < runtime_hwid_comp_desc->field_count(); ++i) {
+    const google::protobuf::FieldDescriptor* field =
+        runtime_hwid_comp_desc->field(i);
+    const auto category_name = field->name();
+    runtime_probe::ProbeRequest_SupportCategory category;
+    if (category_name == kDramCategoryName ||
+        !runtime_probe::ProbeRequest_SupportCategory_Parse(category_name,
+                                                           &category) ||
+        skip_zero_bit_categories.contains(category) ||
+        waived_categories_.contains(category)) {
+      continue;
+    }
+
+    const std::vector<std::string> probe_components =
+        GetProbeComponentsByCategoryName(probe_result, category_name,
+                                         model_name);
+    const std::vector<std::string> decode_components =
+        GetDecodeComponentsByCategory(*decode_result, category);
+    if (!MatchProbeAndDecodeComponents(probe_components, decode_components,
+                                       category_name, model_name)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace hardware_verifier
