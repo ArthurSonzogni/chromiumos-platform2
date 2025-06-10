@@ -193,7 +193,6 @@ void MulticastProxy::ProcessBroadcastForwardingControlMessage(
     if (bcast_fwd == bcast_fwds_.end()) {
       LOG(INFO) << "Enabling broadcast forwarding for device " << lan_ifname;
       auto fwd = std::make_unique<BroadcastForwarder>(lan_ifname);
-      fwd->Init();
       bcast_fwd = bcast_fwds_.emplace(lan_ifname, std::move(fwd)).first;
     }
     LOG(INFO) << "Starting broadcast forwarding between " << lan_ifname

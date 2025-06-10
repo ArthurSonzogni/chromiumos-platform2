@@ -33,9 +33,6 @@ class BroadcastForwarder {
 
   virtual ~BroadcastForwarder() = default;
 
-  // Starts listening to RTNL IPv4 address events.
-  void Init();
-
   // Starts or stops forwarding broadcast packets to and from a downstream
   // guest on network interface |int_ifname|.
   bool AddGuest(std::string_view int_ifname);
@@ -58,6 +55,10 @@ class BroadcastForwarder {
     net_base::IPv4Address broadaddr;
     net_base::IPv4Address netmask;
   };
+
+  // Creates |dev_socket_| and starts to listen to RTNL IPv4 address events.
+  // Returns whether or not the initialization succeeded.
+  bool LazyInit();
 
   // Creates a broadcast socket which is used for sending broadcasts.
   virtual std::unique_ptr<net_base::Socket> Bind(std::string_view ifname,

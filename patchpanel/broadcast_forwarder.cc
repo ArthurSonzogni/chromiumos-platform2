@@ -138,14 +138,6 @@ BroadcastForwarder::CreateSocket(std::unique_ptr<net_base::Socket> socket,
 BroadcastForwarder::BroadcastForwarder(std::string_view lan_ifname)
     : lan_ifname_(lan_ifname) {}
 
-void BroadcastForwarder::Init() {
-  addr_listener_ = std::make_unique<net_base::RTNLListener>(
-      net_base::RTNLHandler::kRequestAddr,
-      base::BindRepeating(&BroadcastForwarder::AddrMsgHandler,
-                          weak_factory_.GetWeakPtr()));
-  net_base::RTNLHandler::GetInstance()->Start(RTMGRP_IPV4_IFADDR);
-}
-
 void BroadcastForwarder::AddrMsgHandler(const net_base::RTNLMessage& msg) {
   if (!msg.HasAttribute(IFA_LABEL)) {
     LOG(ERROR) << "Address event message does not have IFA_LABEL";
@@ -281,6 +273,36 @@ std::unique_ptr<net_base::Socket> BroadcastForwarder::BindRaw(
   return socket;
 }
 
+bool BroadcastForwarder::LazyInit() {
+  // Broadcast forwarder is started.
+  if (dev_socket_ != nullptr) {
+    return true;
+  }
+
+  std::unique_ptr<net_base::Socket> dev_socket = BindRaw(lan_ifname_);
+  if (!dev_socket) {
+    LOG(WARNING) << "Could not bind socket on " << lan_ifname_;
+    br_sockets_.clear();
+    return false;
+  }
+
+  addr_listener_ = std::make_unique<net_base::RTNLListener>(
+      net_base::RTNLHandler::kRequestAddr,
+      base::BindRepeating(&BroadcastForwarder::AddrMsgHandler,
+                          weak_factory_.GetWeakPtr()));
+  net_base::RTNLHandler::GetInstance()->Start(RTMGRP_IPV4_IFADDR);
+
+  struct ifreq ifr;
+  Ioctl(dev_socket->Get(), lan_ifname_, SIOCGIFADDR, &ifr);
+  const auto dev_addr = GetIfreqAddr(ifr);
+  Ioctl(dev_socket->Get(), lan_ifname_, SIOCGIFBRDADDR, &ifr);
+  const auto dev_broadaddr = GetIfreqBroadaddr(ifr);
+
+  dev_socket_ = CreateSocket(std::move(dev_socket), dev_addr, dev_broadaddr,
+                             /*netmask=*/{});
+  return true;
+}
+
 bool BroadcastForwarder::AddGuest(std::string_view int_ifname) {
   if (br_sockets_.find(int_ifname) != br_sockets_.end()) {
     LOG(WARNING) << "Forwarding is already started between " << lan_ifname_
@@ -306,24 +328,9 @@ bool BroadcastForwarder::AddGuest(std::string_view int_ifname) {
       CreateSocket(std::move(socket), br_addr, br_broadaddr, br_netmask);
   br_sockets_.emplace(int_ifname, std::move(br_socket));
 
-  // Broadcast forwarder is not started yet.
-  if (dev_socket_ == nullptr) {
-    std::unique_ptr<net_base::Socket> dev_socket = BindRaw(lan_ifname_);
-    if (!dev_socket) {
-      LOG(WARNING) << "Could not bind socket on " << lan_ifname_;
-      br_sockets_.clear();
-      return false;
-    }
-
-    Ioctl(dev_socket->Get(), lan_ifname_, SIOCGIFADDR, &ifr);
-    const auto dev_addr = GetIfreqAddr(ifr);
-    Ioctl(dev_socket->Get(), lan_ifname_, SIOCGIFBRDADDR, &ifr);
-    const auto dev_broadaddr = GetIfreqBroadaddr(ifr);
-
-    dev_socket_ = CreateSocket(std::move(dev_socket), dev_addr, dev_broadaddr,
-                               /*netmask=*/{});
-  }
-  return true;
+  // Initialize sockets and RTNL listeners if broadcast forwarder has not
+  // started yet.
+  return LazyInit();
 }
 
 void BroadcastForwarder::RemoveGuest(std::string_view int_ifname) {
