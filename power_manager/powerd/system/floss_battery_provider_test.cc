@@ -7,6 +7,8 @@
 #include <memory>
 #include <vector>
 
+#include <base/functional/bind.h>
+#include <base/strings/string_util.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_manager.h>
 #include <dbus/mock_object_proxy.h>
