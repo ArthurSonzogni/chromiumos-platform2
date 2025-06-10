@@ -695,10 +695,16 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
 void ShillClient::OnDevicePrimaryMultiplexedInterfaceChange(
     const dbus::ObjectPath& device_path,
     const std::string& primary_multiplexed_interface) {
+  const auto& device_it = devices_.find(device_path);
+  if (device_it == devices_.end() && primary_multiplexed_interface.empty()) {
+    // b/423793120: Ignore notifications about empty primary multiplexed
+    // interface if the shill Device is already considered inactive.
+    return;
+  }
+
   LOG(INFO) << __func__ << ": Device " << device_path.value()
             << " has primary multiplexed interface \""
             << primary_multiplexed_interface << "\"";
-  const auto& device_it = devices_.find(device_path);
   if (device_it == devices_.end() && !primary_multiplexed_interface.empty()) {
     // If the shill Device is not found in |devices_| it is not active. If the
     // primary multiplexed interface is now defined, that Device is active and
