@@ -47,6 +47,7 @@ use crate::video_frame::generic_dma_video_frame::GenericDmaVideoFrame;
 #[cfg(feature = "v4l2")]
 use crate::video_frame::v4l2_mmap_video_frame::V4l2MmapVideoFrame;
 use crate::video_frame::VideoFrame;
+use crate::DecodedFormat;
 use crate::EncodedFormat;
 use crate::Fourcc;
 use crate::Resolution;
@@ -112,7 +113,9 @@ where
     // Keep track of what DRM modifier the decoder expects. At least in VA-API, the driver will
     // import a DMA buffer of any modifier type and simply ignore the given modifier entirely.
     decoder_modifier: u64,
-    needs_scratch_frame: bool,
+    // Keep track of what DRM modifier the client expects. This can sometimes change during
+    // detached surface mode, so we just cache the modifier of the first test alloc.
+    client_modifier: u64,
     // If we need to "convert" the DRM modifier, we don't need to allocate a full auxiliary frame
     // pool because the existing frame pool already gives us frames with the right size, format,
     // and layout.
@@ -162,7 +165,7 @@ where
         loop {
             let mut scratch_frame = if let Some(frame) = self.scratch_frame.take() {
                 Some(frame)
-            } else if self.needs_scratch_frame {
+            } else if self.client_modifier != self.decoder_modifier {
                 return;
             } else {
                 None
@@ -188,13 +191,14 @@ where
                         let timestamp = external_timestamp(frame.timestamp());
                         let drain = self.get_drain_status(timestamp);
                         let mut frame = frame.video_frame();
-                        if self.needs_scratch_frame {
-                            let dst_modifier = scratch_frame.as_ref().unwrap().modifier();
+                        if self.client_modifier != self.decoder_modifier
+                            && scratch_frame.as_ref().unwrap().modifier() == self.client_modifier
+                        {
                             if let Err(msg) = modifier_conversion(
                                 &*frame,
                                 self.decoder_modifier,
                                 scratch_frame.as_mut().unwrap(),
-                                dst_modifier,
+                                self.client_modifier,
                             ) {
                                 log::debug!("Error converting modifiers: {}", msg);
                                 *self.state.0.lock().unwrap() = C2State::C2Error;
@@ -243,20 +247,6 @@ where
                             }
 
                             self.scratch_frame = None;
-
-                            let test_alloc = match (*self.alloc_cb.lock().unwrap())() {
-                                Some(frame) => frame,
-                                None => {
-                                    log::debug!("Could not allocate test frame!");
-                                    *self.state.0.lock().unwrap() = C2State::C2Error;
-                                    (*self.error_cb.lock().unwrap())(C2Status::C2BadValue);
-                                    return;
-                                }
-                            };
-                            if test_alloc.modifier() != self.decoder_modifier {
-                                self.needs_scratch_frame = true;
-                                self.scratch_frame = Some(test_alloc);
-                            }
 
                             // Retry the frame that caused the format change.
                             self.awaiting_job_event.write(1).unwrap();
@@ -319,7 +309,7 @@ where
                 },
             }
 
-            if self.needs_scratch_frame {
+            if self.client_modifier != self.decoder_modifier {
                 self.scratch_frame = (*self.alloc_cb.lock().unwrap())();
             }
         }
@@ -348,10 +338,29 @@ where
         let mut backend = B::new(options)?;
         let backend_fourccs = backend.supported_output_formats(input_fourcc)?;
         let decoder_modifier = backend.modifier();
+        let mut client_modifier: u64 = decoder_modifier;
+
         let can_import = output_fourccs
             .iter()
             .fold(true, |acc, fourcc| -> bool { acc & backend_fourccs.contains(fourcc) });
         let (auxiliary_frame_pool, decoder) = if can_import {
+            // Perform a test alloc to determine what DRM modifiers the client expects of us.
+            // 256x256 was chosen because it was thought to maximize compatibility with various
+            // alignment constraints.
+            (*framepool_hint_cb.lock().unwrap())(StreamInfo {
+                format: DecodedFormat::from(output_fourccs[0]),
+                coded_resolution: Resolution { width: 256, height: 256 },
+                display_resolution: Resolution { width: 256, height: 256 },
+                min_num_frames: 1,
+                range: Default::default(),
+                primaries: Default::default(),
+                transfer: Default::default(),
+                matrix: Default::default(),
+            });
+            let test_alloc = (*alloc_cb.lock().unwrap())()
+                .ok_or("Failed to perform test allocation!".to_string())?;
+            client_modifier = test_alloc.modifier();
+
             (
                 None,
                 C2Decoder::ImportingDecoder(
@@ -416,7 +425,7 @@ where
             state: state,
             drain_status: None,
             decoder_modifier: decoder_modifier,
-            needs_scratch_frame: false,
+            client_modifier: client_modifier,
             scratch_frame: None,
             _phantom: Default::default(),
         })
@@ -450,7 +459,7 @@ where
                 self.awaiting_job_event.read().unwrap();
             }
 
-            if self.needs_scratch_frame && self.scratch_frame.is_none() {
+            if self.client_modifier != self.decoder_modifier && self.scratch_frame.is_none() {
                 self.scratch_frame = (*self.alloc_cb.lock().unwrap())();
                 if self.scratch_frame.is_none() {
                     self.check_events();
@@ -543,6 +552,5 @@ where
         }
 
         self.scratch_frame = None;
-        self.needs_scratch_frame = false;
     }
 }
