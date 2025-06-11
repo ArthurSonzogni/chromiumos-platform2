@@ -15,7 +15,7 @@
 # Call sudo when not root already. Otherwise, add usual path before calling a
 # command, as sudo does.
 # This way we avoid using sudo when running on a device in verified mode.
-maybe_sudo() {
+_maybe_sudo() {
    if [ "$(id -u)" = "0" ]; then
      PATH="${PATH}:/sbin:/usr/sbin" "$@"
    else
@@ -106,7 +106,7 @@ locate_gpt() {
 # Args: DEVICE PARTNUM
 # Returns: offset (in sectors) of partition PARTNUM
 partoffset() {
-  maybe_sudo "${GPT}" show -b -i "$2" "$1"
+  _maybe_sudo "${GPT}" show -b -i "$2" "$1"
 }
 
 # Read GPT table to find the size of a specific partition.
@@ -114,7 +114,7 @@ partoffset() {
 # Args: DEVICE PARTNUM
 # Returns: size (in sectors) of partition PARTNUM
 partsize() {
-  maybe_sudo "${GPT}" show -s -i "$2" "$1"
+  _maybe_sudo "${GPT}" show -s -i "$2" "$1"
 }
 
 # Extract the whole disk block device from the partition device.
@@ -400,7 +400,7 @@ edit_mbr() {
 
   start_esp="$(partoffset "$1" "$2")"
   num_esp_sectors="$(partsize "$1" "$2")"
-  maybe_sudo sfdisk -w never -X dos "${1}" <<EOF
+  _maybe_sudo sfdisk -w never -X dos "${1}" <<EOF
 unit: sectors
 
 disk1 : start=   ${start_esp}, size=    ${num_esp_sectors}, Id= c, bootable
@@ -423,7 +423,7 @@ install_hybrid_mbr() {
   echo "Creating hybrid MBR"
   if ! edit_mbr "${1}" "${2}"; then
     udevadm settle
-    maybe_sudo blockdev --rereadpt "${1}"
+    _maybe_sudo blockdev --rereadpt "${1}"
   fi
 }
 
