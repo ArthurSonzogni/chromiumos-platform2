@@ -227,6 +227,7 @@ std::unique_ptr<RuntimeHWIDGenerator> RuntimeHWIDGenerator::Create(
   for (const auto& waived_category : encoding_spec.waived_categories()) {
     if (!runtime_probe::ProbeRequest_SupportCategory_IsValid(waived_category)) {
       LOG(ERROR) << "Got invalid category: " << waived_category;
+      continue;
     }
     waived_categories.insert(
         static_cast<runtime_probe::ProbeRequest_SupportCategory>(

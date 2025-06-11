@@ -111,7 +111,7 @@ TEST_F(RuntimeHWIDGeneratorTest, Create_FactoryHWIDProcessorIsNull_Failure) {
 }
 
 TEST_F(RuntimeHWIDGeneratorTest,
-       ShouldGenerateRuntimeHWID_WithComponentDiff_ShouldReturnsTrue) {
+       ShouldGenerateRuntimeHWID_WithComponentDiff_ShouldReturnTrue) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
@@ -129,7 +129,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 }
 
 TEST_F(RuntimeHWIDGeneratorTest,
-       ShouldGenerate_WithUnidentifiedComponent_ShouldReturnsTrue) {
+       ShouldGenerate_WithUnidentifiedComponent_ShouldReturnTrue) {
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
   };
@@ -147,7 +147,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 }
 
 TEST_F(RuntimeHWIDGeneratorTest,
-       ShouldGenerateRuntimeHWID_NoDiffAfterNormalization_ShouldReturnsFalse) {
+       ShouldGenerateRuntimeHWID_NoDiffAfterNormalization_ShouldReturnFalse) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
@@ -184,7 +184,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 }
 
 TEST_F(RuntimeHWIDGeneratorTest,
-       ShouldGenerateRuntimeHWID_MultipleMatchedComponents_ShouldReturnsFalse) {
+       ShouldGenerateRuntimeHWID_MultipleMatchedComponents_ShouldReturnFalse) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_camera,
@@ -292,7 +292,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 }
 
 TEST_F(RuntimeHWIDGeneratorTest,
-       ShouldGenerate_ExtraDisplayPanelInProbeResult_ShouldReturnsFalse) {
+       ShouldGenerate_ExtraDisplayPanelInProbeResult_ShouldReturnFalse) {
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
@@ -307,9 +307,8 @@ TEST_F(RuntimeHWIDGeneratorTest,
   EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
 
-TEST_F(
-    RuntimeHWIDGeneratorTest,
-    ShouldGenerate_UnidentifiedDisplayPanelInProbeResult_ShouldReturnsFalse) {
+TEST_F(RuntimeHWIDGeneratorTest,
+       ShouldGenerate_UnidentifiedDisplayPanelInProbeResult_ShouldReturnFalse) {
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
@@ -323,7 +322,7 @@ TEST_F(
 }
 
 TEST_F(RuntimeHWIDGeneratorTest,
-       ShouldGenerate_ExtraDisplayPanelInDecodeResult_ShouldReturnsTrue) {
+       ShouldGenerate_ExtraDisplayPanelInDecodeResult_ShouldReturnTrue) {
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_display_panel,
        {"display_panel_1"}},
@@ -339,7 +338,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 }
 
 TEST_F(RuntimeHWIDGeneratorTest,
-       ShouldGenerate_MismatchedDisplayPanel_ShouldReturnsTrue) {
+       ShouldGenerate_MismatchedDisplayPanel_ShouldReturnTrue) {
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_display_panel,
        {"display_panel_1"}},
@@ -357,7 +356,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 }
 
 TEST_F(RuntimeHWIDGeneratorTest,
-       ShouldGenerateRuntimeHWID_MismatchedCamera_ShouldReturnsTrue) {
+       ShouldGenerateRuntimeHWID_MismatchedCamera_ShouldReturnTrue) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_camera, {"camera_1_1"}},
@@ -375,7 +374,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 }
 
 TEST_F(RuntimeHWIDGeneratorTest,
-       ShouldGenerateRuntimeHWID_MismatchedVideo_ShouldReturnsTrue) {
+       ShouldGenerateRuntimeHWID_MismatchedVideo_ShouldReturnTrue) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_camera, {"video_1_1"}},
@@ -390,6 +389,17 @@ TEST_F(RuntimeHWIDGeneratorTest,
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "generic");
 
   EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
+}
+
+TEST_F(RuntimeHWIDGeneratorTest,
+       ShouldGenerateRuntimeHWID_DecodeFactoryHWIDFailed_ShouldReturnFalse) {
+  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
+      .WillOnce(Return(std::nullopt));
+  auto generator =
+      RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
+  runtime_probe::ProbeResult probe_result;
+
+  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
 
 }  // namespace
