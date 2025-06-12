@@ -5,11 +5,12 @@
 
 #include "hal/usb/stream_format.h"
 
+#include <linux/videodev2.h>
+
 #include <algorithm>
 #include <cmath>
 #include <tuple>
 
-#include <linux/videodev2.h>
 #include <system/graphics.h>
 
 #include "cros-camera/common.h"
@@ -57,8 +58,7 @@ const SupportedFormat* FindFormatByResolution(const SupportedFormats& formats,
 }
 
 SupportedFormat GetMaximumFormat(const SupportedFormats& supported_formats) {
-  SupportedFormat max_format;
-  memset(&max_format, 0, sizeof(max_format));
+  SupportedFormat max_format = {};
   for (const auto& supported_format : supported_formats) {
     if (supported_format.width >= max_format.width &&
         supported_format.height >= max_format.height) {
