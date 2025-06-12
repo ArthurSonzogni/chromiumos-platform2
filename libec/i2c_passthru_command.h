@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <base/check_op.h>
 #include <base/containers/span.h>
 #include <brillo/brillo_export.h>
 
