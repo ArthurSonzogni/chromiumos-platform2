@@ -292,13 +292,18 @@ fn run(config: &InstallConfig) -> Result<()> {
 ///    partition though).
 fn try_save_logs(config: &InstallConfig) -> Result<()> {
     // Case 1: The install partition still exists, so we write the logs to it.
-    if matches!(config.install_partition.try_exists(), Ok(true)) {
+    // There should be a partition at this path in either case, so to confirm that it's the install
+    // partition we try to mount it as VFAT: in Case 2 it probably won't be.
+    if config.install_partition.exists() {
         let install_mount = mount::Builder::new(&config.install_partition)
             .fs_type(FsType::Vfat)
-            .temp_backed_mount()?;
-        std::fs::copy(FLEXOR_LOG_FILE, install_mount.mount_path())
-            .context("Unable to copy the logfile to the install partition")?;
-        return Ok(());
+            .temp_backed_mount();
+        if let Ok(install_mount) = install_mount {
+            std::fs::copy(FLEXOR_LOG_FILE, install_mount.mount_path())
+                .context("Unable to copy the logfile to the install partition")?;
+            return Ok(());
+        }
+        // If it exists, but we couldn't mount it it's probably a new partition and we're in Case 2.
     }
 
     let flex_depl_partition_path =
@@ -306,7 +311,7 @@ fn try_save_logs(config: &InstallConfig) -> Result<()> {
             .context("Error finding a place to write logs to")?;
 
     // Case 2: We already have the Flex layout and can try to write to the FLEX_DEPLOY partition.
-    if let Ok(true) = flex_depl_partition_path.try_exists() {
+    if flex_depl_partition_path.exists() {
         match mount::Builder::new(&flex_depl_partition_path)
             .fs_type(FsType::Ext4)
             .temp_backed_mount()
@@ -327,14 +332,13 @@ fn try_save_logs(config: &InstallConfig) -> Result<()> {
                 )?;
             }
         }
-    } else {
-        bail!(
-            "Unable to write logs since neither the data partition
-             nor the flex deployment partition exist"
-        );
+        return Ok(());
     }
 
-    Ok(())
+    bail!(
+        "Unable to write logs since neither the data partition
+         nor the flex deployment partition exist"
+    );
 }
 
 fn main() -> ExitCode {
