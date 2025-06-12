@@ -263,7 +263,8 @@ fn run(config: &InstallConfig) -> Result<()> {
 
     // Try installing on the device three times at most.
     let mut return_err = anyhow!("");
-    for _ in 0..3 {
+    for attempt in 1..=3 {
+        info!("Starting attempt number {attempt} to install ChromeOS Flex.");
         match perform_installation(config) {
             Ok(_) => {
                 // On success we reboot and end execution.
