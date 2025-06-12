@@ -38,7 +38,10 @@ pub fn disk_info() -> Result<DiskInfo> {
     let device = get_disks()?;
 
     for device in device {
-        info!("Checking device: {}", device.name);
+        info!(
+            "Searching device '{}' for the install partition.",
+            device.name
+        );
         if let Some(disk_info) = get_install_disk_info(device) {
             info!(
                 "Installing to disk: {}, reading installation payload from: {}",
@@ -82,6 +85,8 @@ fn get_install_disk_info(disk: LsBlkDevice) -> Option<DiskInfo> {
                 target_device: PathBuf::from(&disk.name),
                 install_partition: PathBuf::from(&children.name),
             });
+        } else {
+            info!("{} is not the install partition", children.name)
         }
     }
     None
