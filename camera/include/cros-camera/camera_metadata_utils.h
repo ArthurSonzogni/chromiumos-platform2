@@ -7,9 +7,11 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_CAMERA_METADATA_UTILS_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_CAMERA_METADATA_UTILS_H_
 
+#include <optional>
+
+#include <base/check_op.h>
 #include <base/containers/span.h>
 #include <base/numerics/safe_conversions.h>
-#include <optional>
 #include <system/camera_metadata.h>
 
 // Utility template functions for accessing and modifying the contents of a
