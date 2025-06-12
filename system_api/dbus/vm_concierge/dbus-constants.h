@@ -28,7 +28,6 @@ const char kDetachUsbDeviceMethod[] = "DetachUsbDevice";
 const char kDiskImageStatusMethod[] = "DiskImageStatus";
 const char kExportDiskImageMethod[] = "ExportDiskImage";
 const char kGetBaguetteImageUrlMethod[] = "GetBaguetteImageUrl";
-const char kGetContainerSshKeysMethod[] = "GetContainerSshKeys";
 const char kGetDnsSettingsMethod[] = "GetDnsSettings";
 const char kGetVmEnterpriseReportingInfoMethod[] =
     "GetVmEnterpriseReportingInfo";
