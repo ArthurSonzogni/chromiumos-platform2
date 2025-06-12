@@ -15,8 +15,12 @@
 #include <string_view>
 #include <vector>
 
+#include <base/at_exit.h>
+#include <base/command_line.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
 #include <chromeos/net-base/rtnl_message.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
@@ -74,9 +78,20 @@ class TestBroadcastForwarder : public BroadcastForwarder {
   std::vector<uint8_t> payload;
 };
 
+class Environment {
+ public:
+  Environment() {
+    logging::SetMinLogLevel(logging::LOGGING_FATAL);  // <- DISABLE LOGGING.
+    base::CommandLine::Init(0, nullptr);
+    TestTimeouts::Initialize();
+  }
+  base::AtExitManager at_exit;
+};
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  // Turn off logging.
-  logging::SetMinLogLevel(logging::LOGGING_FATAL);
+  static Environment env;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
 
   FuzzedDataProvider provider(data, size);
   std::string lan_ifname = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
