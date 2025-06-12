@@ -5,6 +5,7 @@
 #include "hardware_verifier/runtime_hwid_generator.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <optional>
 #include <set>
 #include <string>
@@ -17,6 +18,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <libsegmentation/feature_management.h>
 #include <re2/re2.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
@@ -35,10 +37,19 @@ constexpr char kCompGroupField[] = "comp_group";
 constexpr char kInformationField[] = "information";
 constexpr char kCompNameField[] = "name";
 constexpr char kPositionField[] = "position";
+constexpr char kFeatureLevelField[] = "feature_level";
+constexpr char kScopeLevelField[] = "scope_level";
 
 constexpr char kGenericComponent[] = "generic";
 constexpr char kCrosConfigModelNamePath[] = "/";
 constexpr char kCrosConfigModelNameKey[] = "name";
+
+constexpr char kRuntimeHWIDMagicString[] = "R:";
+constexpr char kRuntimeHWIDFieldSeparator[] = "-";
+constexpr char kRuntimeHWIDCompSeparator[] = ",";
+constexpr char kRuntimeHWIDUnidentifiedComp[] = "?";
+constexpr char kRuntimeHWIDNullComp[] = "X";
+constexpr char kRuntimeHWIDSkipComp[] = "#";
 
 struct ProbeComponent {
   std::string name;
@@ -251,6 +262,19 @@ std::vector<std::string> GetRuntimeHWIDComponentFieldNames() {
   return field_names;
 }
 
+void HandleNonComponentField(const std::string_view& field_name,
+                             std::vector<std::string>& comp_segment) {
+  if (field_name == kFeatureLevelField) {
+    comp_segment.push_back(base::NumberToString(
+        Context::Get()->feature_management()->GetFeatureLevel()));
+  } else if (field_name == kScopeLevelField) {
+    comp_segment.push_back(base::NumberToString(
+        Context::Get()->feature_management()->GetScopeLevel()));
+  } else {
+    LOG(ERROR) << "Got invalid Runtime HWID field: " << field_name;
+  }
+}
+
 }  // namespace
 
 std::unique_ptr<RuntimeHWIDGenerator> RuntimeHWIDGenerator::Create(
@@ -315,6 +339,72 @@ bool RuntimeHWIDGenerator::ShouldGenerateRuntimeHWID(
     }
   }
   return false;
+}
+
+std::optional<std::string> RuntimeHWIDGenerator::Generate(
+    const runtime_probe::ProbeResult& probe_result) const {
+  const auto masked_factory_hwid =
+      factory_hwid_processor_->GenerateMaskedFactoryHWID();
+  if (!masked_factory_hwid.has_value()) {
+    LOG(ERROR) << "Failed to generate masked Factory HWID.";
+    return std::nullopt;
+  }
+
+  const std::string model_name = ModelName();
+  const auto field_names = GetRuntimeHWIDComponentFieldNames();
+  std::vector<std::string> runtime_hwid_comp_segment;
+  for (const auto& field_name : field_names) {
+    runtime_probe::ProbeRequest_SupportCategory category;
+    if (!runtime_probe::ProbeRequest_SupportCategory_Parse(field_name,
+                                                           &category)) {
+      HandleNonComponentField(field_name, runtime_hwid_comp_segment);
+      continue;
+    }
+
+    std::vector<std::string> component_positions;
+    const std::vector<ProbeComponent> probe_components =
+        GetProbeComponentsByCategoryName(probe_result, field_name, model_name);
+    for (const auto& component : probe_components) {
+      if (!component.position.empty()) {
+        uint32_t unused_position;
+        if (!base::StringToUint(component.position, &unused_position)) {
+          LOG(ERROR) << "Got invalid component position \""
+                     << component.position << "\" for component \""
+                     << component.name << "\" in category \"" << field_name
+                     << "\"";
+          return std::nullopt;
+        }
+        component_positions.push_back(component.position);
+      }
+    }
+    std::sort(component_positions.begin(), component_positions.end(),
+              [](const std::string& lhs, const std::string& rhs) {
+                uint32_t lhs_num, rhs_num;
+                base::StringToUint(lhs, &lhs_num);
+                base::StringToUint(rhs, &rhs_num);
+                return lhs_num < rhs_num;
+              });
+
+    int unidentified_count = GetUnidentifiedComponentCount(probe_components);
+    component_positions.insert(component_positions.end(), unidentified_count,
+                               kRuntimeHWIDUnidentifiedComp);
+
+    if (component_positions.empty()) {
+      if (waived_categories_.contains(category)) {
+        component_positions.push_back(kRuntimeHWIDSkipComp);
+      } else {
+        component_positions.push_back(kRuntimeHWIDNullComp);
+      }
+    }
+    runtime_hwid_comp_segment.push_back(
+        base::JoinString(component_positions, kRuntimeHWIDCompSeparator));
+  }
+
+  std::string runtime_hwid_comp =
+      base::JoinString(runtime_hwid_comp_segment, kRuntimeHWIDFieldSeparator);
+
+  return *masked_factory_hwid + " " + kRuntimeHWIDMagicString +
+         runtime_hwid_comp;
 }
 
 }  // namespace hardware_verifier

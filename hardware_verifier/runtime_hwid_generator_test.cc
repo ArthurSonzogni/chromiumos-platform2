@@ -14,6 +14,7 @@
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libsegmentation/feature_management_fake.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/factory_hwid_processor.h"
@@ -22,9 +23,10 @@
 namespace hardware_verifier {
 namespace {
 
-using ::testing::IsEmpty;
 using ::testing::NiceMock;
 using ::testing::Return;
+
+constexpr char kGenericComponent[] = "generic";
 
 class MockFactoryHWIDProcessor : public FactoryHWIDProcessor {
  public:
@@ -57,39 +59,77 @@ class RuntimeHWIDGeneratorTest : public BaseFileTest {
     mock_context()->fake_cros_config()->SetString("/", "name", model_name);
   }
 
+  void SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FeatureLevel feature_level,
+      segmentation::FeatureManagementInterface::ScopeLevel scope_level) {
+    auto fake_feature_management =
+        std::make_unique<segmentation::fake::FeatureManagementFake>();
+    fake_feature_management->SetFeatureLevel(feature_level);
+    fake_feature_management->SetScopeLevel(scope_level);
+    mock_context()->InitializeFeatureManagementForTest(
+        std::move(fake_feature_management));
+  }
+
   template <typename T>
   void AddProbeComponent(runtime_probe::ProbeResult* probe_result,
                          const std::string_view& name,
                          const std::string_view& category_name = "",
-                         const std::string_view& comp_group = "") {
+                         const std::string_view& comp_group = "",
+                         const std::string_view& comp_pos = "") {
     T* component = nullptr;
+    T* generic_component = nullptr;
     if constexpr (std::is_same_v<T, runtime_probe::Battery>) {
       component = probe_result->add_battery();
+      generic_component = probe_result->add_battery();
     } else if constexpr (std::is_same_v<T, runtime_probe::Storage>) {
       component = probe_result->add_storage();
+      generic_component = probe_result->add_storage();
     } else if constexpr (std::is_same_v<T, runtime_probe::Camera>) {
       component = probe_result->add_camera();
+      generic_component = probe_result->add_camera();
     } else if constexpr (std::is_same_v<T, runtime_probe::Edid>) {
       component = probe_result->add_display_panel();
+      generic_component = probe_result->add_display_panel();
     } else if constexpr (std::is_same_v<T, runtime_probe::Memory>) {
       component = probe_result->add_dram();
+      generic_component = probe_result->add_dram();
     } else if constexpr (std::is_same_v<T, runtime_probe::InputDevice>) {
       if (category_name == "stylus") {
         component = probe_result->add_stylus();
+        generic_component = probe_result->add_stylus();
       } else if (category_name == "touchpad") {
         component = probe_result->add_touchpad();
+        generic_component = probe_result->add_touchpad();
       } else if (category_name == "touchscreen") {
         component = probe_result->add_touchscreen();
+        generic_component = probe_result->add_touchscreen();
       } else {
         CHECK(false) << "Unexpected input device category: " << category_name;
+      }
+    } else if constexpr (std::is_same_v<T, runtime_probe::Network>) {
+      if (category_name == "cellular") {
+        component = probe_result->add_cellular();
+        generic_component = probe_result->add_cellular();
+      } else if (category_name == "ethernet") {
+        component = probe_result->add_ethernet();
+        generic_component = probe_result->add_ethernet();
+      } else if (category_name == "wireless") {
+        component = probe_result->add_wireless();
+        generic_component = probe_result->add_wireless();
+      } else {
+        CHECK(false) << "Unexpected network category: " << category_name;
       }
     } else {
       CHECK(false) << "Unexpected component type.";
     }
 
     component->set_name(name);
+    generic_component->set_name(kGenericComponent);
     if (!comp_group.empty()) {
       component->mutable_information()->set_comp_group(comp_group);
+    }
+    if (!comp_pos.empty()) {
+      component->set_position(comp_pos);
     }
   }
 
@@ -123,7 +163,6 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_2");
-  AddProbeComponent<runtime_probe::Storage>(&probe_result, "generic");
 
   EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -140,8 +179,8 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1");
-  AddProbeComponent<runtime_probe::Storage>(&probe_result, "generic");
-  AddProbeComponent<runtime_probe::Storage>(&probe_result, "generic");
+  auto* unidentified_comp = probe_result.add_storage();
+  unidentified_comp->set_name(kGenericComponent);
 
   EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -165,20 +204,13 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1_1");
-  AddProbeComponent<runtime_probe::Storage>(&probe_result, "generic");
   AddProbeComponent<runtime_probe::Battery>(&probe_result,
                                             "MODEL_battery_2_2#2");
-  AddProbeComponent<runtime_probe::Battery>(&probe_result, "generic");
   AddProbeComponent<runtime_probe::InputDevice>(
       &probe_result, "MODEL_touchscreen_3", "touchscreen");
-  AddProbeComponent<runtime_probe::InputDevice>(&probe_result, "generic",
-                                                "touchscreen");
   AddProbeComponent<runtime_probe::InputDevice>(&probe_result,
                                                 "MODEL_stylus_4_4#5", "stylus");
-  AddProbeComponent<runtime_probe::InputDevice>(&probe_result, "generic",
-                                                "stylus");
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "INVALID_FORMAT_2");
-  AddProbeComponent<runtime_probe::Camera>(&probe_result, "generic");
 
   EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -198,8 +230,6 @@ TEST_F(RuntimeHWIDGeneratorTest,
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_camera_1_1#2");
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_camera_2_2#4");
-  AddProbeComponent<runtime_probe::Camera>(&probe_result, "generic");
-  AddProbeComponent<runtime_probe::Camera>(&probe_result, "generic");
 
   EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -218,9 +248,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1");
-  AddProbeComponent<runtime_probe::Storage>(&probe_result, "generic");
   AddProbeComponent<runtime_probe::Memory>(&probe_result, "MODEL_dram_3_3");
-  AddProbeComponent<runtime_probe::Memory>(&probe_result, "generic");
 
   EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -239,7 +267,6 @@ TEST_F(RuntimeHWIDGeneratorTest,
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_2",
                                             "storage", "MODEL_storage_1");
-  AddProbeComponent<runtime_probe::Storage>(&probe_result, "generic");
 
   EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -262,8 +289,8 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1");
-  AddProbeComponent<runtime_probe::Storage>(&probe_result, "generic");
-  AddProbeComponent<runtime_probe::Battery>(&probe_result, "generic");
+  auto* unidentified_comp = probe_result.add_battery();
+  unidentified_comp->set_name(kGenericComponent);
 
   EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -285,8 +312,8 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1");
-  AddProbeComponent<runtime_probe::Storage>(&probe_result, "generic");
-  AddProbeComponent<runtime_probe::Battery>(&probe_result, "generic");
+  auto* unidentified_comp = probe_result.add_battery();
+  unidentified_comp->set_name(kGenericComponent);
 
   EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -302,7 +329,6 @@ TEST_F(RuntimeHWIDGeneratorTest,
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Edid>(&probe_result,
                                          "MODEL_display_panel_1");
-  AddProbeComponent<runtime_probe::Edid>(&probe_result, "generic");
 
   EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -316,7 +342,8 @@ TEST_F(RuntimeHWIDGeneratorTest,
       RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
-  AddProbeComponent<runtime_probe::Edid>(&probe_result, "generic");
+  auto* unidentified_comp = probe_result.add_display_panel();
+  unidentified_comp->set_name(kGenericComponent);
 
   EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -350,7 +377,6 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Edid>(&probe_result, "display_panel_2");
-  AddProbeComponent<runtime_probe::Edid>(&probe_result, "generic");
 
   EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -368,7 +394,6 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_camera_2_2");
-  AddProbeComponent<runtime_probe::Camera>(&probe_result, "generic");
 
   EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -386,7 +411,6 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_video_2_2");
-  AddProbeComponent<runtime_probe::Camera>(&probe_result, "generic");
 
   EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
 }
@@ -400,6 +424,154 @@ TEST_F(RuntimeHWIDGeneratorTest,
   runtime_probe::ProbeResult probe_result;
 
   EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
+}
+
+TEST_F(RuntimeHWIDGeneratorTest, Generate) {
+  EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
+      .WillOnce(Return("MODEL-RLZ A2A"));
+  SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
+      segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
+  auto generator =
+      RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1_1",
+                                            "", "", "1");
+  AddProbeComponent<runtime_probe::Battery>(&probe_result,
+                                            "MODEL_battery_2_2#2", "", "", "2");
+  AddProbeComponent<runtime_probe::InputDevice>(
+      &probe_result, "MODEL_touchscreen_3", "touchscreen", "", "3");
+  AddProbeComponent<runtime_probe::InputDevice>(
+      &probe_result, "MODEL_stylus_4_4#5", "stylus", "", "4");
+  AddProbeComponent<runtime_probe::InputDevice>(
+      &probe_result, "MODEL_touchpad_6_6", "touchpad", "", "5");
+  AddProbeComponent<runtime_probe::Camera>(&probe_result, "camera_5_5", "", "",
+                                           "6");
+  AddProbeComponent<runtime_probe::Memory>(&probe_result, "dram_7_7", "", "",
+                                           "7");
+  AddProbeComponent<runtime_probe::Network>(&probe_result, "cellular_8_8",
+                                            "cellular", "", "8");
+  AddProbeComponent<runtime_probe::Network>(&probe_result, "wireless_9_9",
+                                            "wireless", "", "9");
+  AddProbeComponent<runtime_probe::Network>(&probe_result, "ethernet_10_10",
+                                            "ethernet", "", "10");
+  AddProbeComponent<runtime_probe::Edid>(&probe_result, "display_panel_11_11",
+                                         "", "", "11");
+
+  auto res = generator->Generate(probe_result);
+
+  EXPECT_EQ(res, "MODEL-RLZ A2A R:1-1-2-6-11-4-5-3-7-8-10-9-1");
+}
+
+TEST_F(RuntimeHWIDGeneratorTest, Generate_WithUnidentifiedComponent) {
+  EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
+      .WillOnce(Return("MODEL-RLZ A2A"));
+  SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
+      segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
+  auto generator =
+      RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  AddProbeComponent<runtime_probe::Battery>(&probe_result,
+                                            "MODEL_battery_2_2#2", "", "", "2");
+  auto* unidentified_comp1 = probe_result.add_battery();
+  unidentified_comp1->set_name(kGenericComponent);
+  AddProbeComponent<runtime_probe::Camera>(&probe_result, "camera_5_5", "", "",
+                                           "5");
+  AddProbeComponent<runtime_probe::Camera>(&probe_result, "camera_6_6", "", "",
+                                           "6");
+  auto* unidentified_comp2 = probe_result.add_camera();
+  auto* unidentified_comp3 = probe_result.add_camera();
+  unidentified_comp2->set_name(kGenericComponent);
+  unidentified_comp3->set_name(kGenericComponent);
+
+  auto res = generator->Generate(probe_result);
+
+  EXPECT_EQ(res, "MODEL-RLZ A2A R:1-1-2,?-5,6,?,?-X-X-X-X-X-X-X-X-X");
+}
+
+TEST_F(RuntimeHWIDGeneratorTest, Generate_WithSkipComponent) {
+  EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
+      .WillOnce(Return("MODEL-RLZ A2A"));
+  SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
+      segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
+  EncodingSpec encoding_spec;
+  encoding_spec.add_waived_categories(
+      runtime_probe::ProbeRequest_SupportCategory_battery);
+  encoding_spec.add_waived_categories(
+      runtime_probe::ProbeRequest_SupportCategory_dram);
+  auto generator = RuntimeHWIDGenerator::Create(
+      std::move(mock_factory_hwid_processor_), encoding_spec);
+
+  runtime_probe::ProbeResult probe_result;
+
+  auto res = generator->Generate(probe_result);
+
+  EXPECT_EQ(res, "MODEL-RLZ A2A R:1-1-#-X-X-X-X-X-#-X-X-X-X");
+}
+
+TEST_F(RuntimeHWIDGeneratorTest, Generate_ComponentPositionsShouldBeSorted) {
+  EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
+      .WillOnce(Return("MODEL-RLZ A2A"));
+  SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
+      segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
+  auto generator =
+      RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  AddProbeComponent<runtime_probe::Camera>(&probe_result, "camera_5_5", "", "",
+                                           "100");
+  AddProbeComponent<runtime_probe::Camera>(&probe_result, "camera_6_6", "", "",
+                                           "1");
+  AddProbeComponent<runtime_probe::Camera>(&probe_result, "camera_6_6", "", "",
+                                           "9");
+  auto* unidentified_comp1 = probe_result.add_camera();
+  auto* unidentified_comp2 = probe_result.add_camera();
+  unidentified_comp1->set_name(kGenericComponent);
+  unidentified_comp2->set_name(kGenericComponent);
+
+  auto res = generator->Generate(probe_result);
+
+  EXPECT_EQ(res, "MODEL-RLZ A2A R:1-1-X-1,9,100,?,?-X-X-X-X-X-X-X-X-X");
+}
+
+TEST_F(RuntimeHWIDGeneratorTest,
+       Generate_GenerateMaskedFactoryHWIDFailed_Failure) {
+  EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
+      .WillOnce(Return(std::nullopt));
+  SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
+      segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
+  auto generator =
+      RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+
+  auto res = generator->Generate(probe_result);
+
+  EXPECT_EQ(res, std::nullopt);
+}
+
+TEST_F(RuntimeHWIDGeneratorTest, Generate_InvalidComponentPosition_Failure) {
+  EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
+      .WillOnce(Return("MODEL-RLZ A2A"));
+  SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
+      segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
+  auto generator =
+      RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  AddProbeComponent<runtime_probe::Camera>(&probe_result, "camera_5_5", "", "",
+                                           "invalid-position");
+
+  auto res = generator->Generate(probe_result);
+
+  EXPECT_EQ(res, std::nullopt);
 }
 
 }  // namespace

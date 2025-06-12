@@ -6,7 +6,9 @@
 #define HARDWARE_VERIFIER_RUNTIME_HWID_GENERATOR_H_
 
 #include <memory>
+#include <optional>
 #include <set>
+#include <string>
 
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
@@ -29,6 +31,11 @@ class RuntimeHWIDGenerator {
   // Returns a bool indicating if Runtime HWID should be generated based on the
   // Runtime Probe result and the Factory HWID decode result.
   bool ShouldGenerateRuntimeHWID(
+      const runtime_probe::ProbeResult& probe_result) const;
+
+  // Generates the Runtime HWID string based on the probe result.
+  // Returns |std::nullopt| if generation fails.
+  std::optional<std::string> Generate(
       const runtime_probe::ProbeResult& probe_result) const;
 
  private:
