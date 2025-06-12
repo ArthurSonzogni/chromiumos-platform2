@@ -7,6 +7,7 @@
 
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <libcrossystem/crossystem.h>
+#include <libsegmentation/feature_management.h>
 
 #include "hardware_verifier/system/context.h"
 
@@ -21,12 +22,19 @@ class ContextImpl : public Context {
 
   crossystem::Crossystem* crossystem() override { return &crossystem_; }
 
+  segmentation::FeatureManagement* feature_management() override {
+    return &feature_management_;
+  }
+
  private:
   // The object to access the ChromeOS model configuration.
   brillo::CrosConfig cros_config_;
 
   // The object to access crossystem system properties.
   crossystem::Crossystem crossystem_;
+
+  // The object to access feature_management system properties.
+  segmentation::FeatureManagement feature_management_;
 };
 
 }  // namespace hardware_verifier

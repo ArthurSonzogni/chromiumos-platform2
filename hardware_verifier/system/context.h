@@ -15,6 +15,10 @@ namespace crossystem {
 class Crossystem;
 }
 
+namespace segmentation {
+class FeatureManagement;
+}
+
 namespace hardware_verifier {
 
 // A context class for holding the helper objects used in Hardware Verifier,
@@ -36,6 +40,9 @@ class Context {
 
   // The object to access crossystem system properties.
   virtual crossystem::Crossystem* crossystem() = 0;
+
+  // The object to access feature_management system properties.
+  virtual segmentation::FeatureManagement* feature_management() = 0;
 
   // Returns the root directory. This can be overridden during test.
   virtual const base::FilePath& root_dir();
