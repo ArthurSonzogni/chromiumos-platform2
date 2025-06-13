@@ -269,47 +269,49 @@ constexpr char kVmmSwapTbwHistoryFilePath[] =
 // system bus (usually 32 MiB).
 constexpr int64_t kMaxGetVmLogsSize = MiB(30);
 
-static const std::map<vm_tools::VmInstallState_State,
-                      vm_tools::concierge::VmInstallStateSignal_State>
-    state_to_signal_state = {{VmInstallState_State_IN_PROGRESS,
-                              vm_tools::concierge::VmInstallStateSignal_State::
-                                  VmInstallStateSignal_State_IN_PROGRESS},
-                             {VmInstallState_State_FAILED,
-                              vm_tools::concierge::VmInstallStateSignal_State::
-                                  VmInstallStateSignal_State_FAILED},
-                             {VmInstallState_State_SUCCEEDED,
-                              vm_tools::concierge::VmInstallStateSignal_State::
-                                  VmInstallStateSignal_State_SUCCEEDED},
-                             {VmInstallState_State_UNKNOWN,
-                              vm_tools::concierge::VmInstallStateSignal_State::
-                                  VmInstallStateSignal_State_UNKNOWN}};
+static constexpr auto state_to_signal_state =
+    base::MakeFixedFlatMap<vm_tools::VmInstallState_State,
+                           vm_tools::concierge::VmInstallStateSignal_State>(
+        {{VmInstallState_State_IN_PROGRESS,
+          vm_tools::concierge::VmInstallStateSignal_State::
+              VmInstallStateSignal_State_IN_PROGRESS},
+         {VmInstallState_State_FAILED,
+          vm_tools::concierge::VmInstallStateSignal_State::
+              VmInstallStateSignal_State_FAILED},
+         {VmInstallState_State_SUCCEEDED,
+          vm_tools::concierge::VmInstallStateSignal_State::
+              VmInstallStateSignal_State_SUCCEEDED},
+         {VmInstallState_State_UNKNOWN,
+          vm_tools::concierge::VmInstallStateSignal_State::
+              VmInstallStateSignal_State_UNKNOWN}});
 
-static const std::map<vm_tools::VmInstallState_Step,
-                      vm_tools::concierge::VmInstallStateSignal_Step>
-    state_to_signal_step = {{VmInstallState_Step_launcher_start,
-                             vm_tools::concierge::VmInstallStateSignal_Step::
-                                 VmInstallStateSignal_Step_launcher_start},
-                            {VmInstallState_Step_core_start,
-                             vm_tools::concierge::VmInstallStateSignal_Step::
-                                 VmInstallStateSignal_Step_core_start},
-                            {VmInstallState_Step_install_fetch_image,
-                             vm_tools::concierge::VmInstallStateSignal_Step::
-                                 VmInstallStateSignal_Step_install_fetch_image},
-                            {VmInstallState_Step_install_configure,
-                             vm_tools::concierge::VmInstallStateSignal_Step::
-                                 VmInstallStateSignal_Step_install_configure},
-                            {VmInstallState_Step_install_done,
-                             vm_tools::concierge::VmInstallStateSignal_Step::
-                                 VmInstallStateSignal_Step_install_done},
-                            {VmInstallState_Step_install_success,
-                             vm_tools::concierge::VmInstallStateSignal_Step::
-                                 VmInstallStateSignal_Step_install_success},
-                            {VmInstallState_Step_install_failure,
-                             vm_tools::concierge::VmInstallStateSignal_Step::
-                                 VmInstallStateSignal_Step_install_failure},
-                            {VmInstallState_Step_unknown,
-                             vm_tools::concierge::VmInstallStateSignal_Step::
-                                 VmInstallStateSignal_Step_unknown}};
+static constexpr auto state_to_signal_step =
+    base::MakeFixedFlatMap<vm_tools::VmInstallState_Step,
+                           vm_tools::concierge::VmInstallStateSignal_Step>(
+        {{VmInstallState_Step_launcher_start,
+          vm_tools::concierge::VmInstallStateSignal_Step::
+              VmInstallStateSignal_Step_launcher_start},
+         {VmInstallState_Step_core_start,
+          vm_tools::concierge::VmInstallStateSignal_Step::
+              VmInstallStateSignal_Step_core_start},
+         {VmInstallState_Step_install_fetch_image,
+          vm_tools::concierge::VmInstallStateSignal_Step::
+              VmInstallStateSignal_Step_install_fetch_image},
+         {VmInstallState_Step_install_configure,
+          vm_tools::concierge::VmInstallStateSignal_Step::
+              VmInstallStateSignal_Step_install_configure},
+         {VmInstallState_Step_install_done,
+          vm_tools::concierge::VmInstallStateSignal_Step::
+              VmInstallStateSignal_Step_install_done},
+         {VmInstallState_Step_install_success,
+          vm_tools::concierge::VmInstallStateSignal_Step::
+              VmInstallStateSignal_Step_install_success},
+         {VmInstallState_Step_install_failure,
+          vm_tools::concierge::VmInstallStateSignal_Step::
+              VmInstallStateSignal_Step_install_failure},
+         {VmInstallState_Step_unknown,
+          vm_tools::concierge::VmInstallStateSignal_Step::
+              VmInstallStateSignal_Step_unknown}});
 
 std::string ConvertToFdBasedPaths(brillo::SafeFD& root_fd,
                                   bool is_rootfs_writable,
