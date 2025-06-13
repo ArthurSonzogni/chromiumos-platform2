@@ -5,8 +5,10 @@
 #include "dlp/kernel_version_tools.h"
 
 #include <sys/utsname.h>
+
 #include <vector>
 
+#include <base/check_op.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
