@@ -335,7 +335,6 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     uint64_t id = s->id;
     auto& stream = new_streams[id];
     stream = std::make_unique<internal::camera3_stream_aux_t>();
-    memset(stream.get(), 0, sizeof(*stream.get()));
     stream->stream_type = static_cast<camera3_stream_type_t>(s->stream_type);
     stream->width = s->width;
     stream->height = s->height;
