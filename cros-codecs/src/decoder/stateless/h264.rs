@@ -1264,7 +1264,21 @@ where
         self.wait_for_drc_flush()?;
 
         let mut cursor = Cursor::new(bitstream);
-        let nalu = Nalu::next(&mut cursor).map_err(|err| DecodeError::ParseFrameError(err))?;
+        let nalu = Nalu::next(&mut cursor);
+        let nalu = if nalu.is_ok() {
+            nalu.unwrap()
+        } else if nalu.as_ref().err().unwrap() == "No NAL found" {
+            // This may happen if `bitstream` contains, e.g., a bunch of 0's. There's no need to
+            // fail in this case. We just report that the entire `bitstream` was processed but with
+            // no visible frame. That way, we'll continue decoding incoming data as if nothing
+            // happened.
+            //
+            // TODO(b/414856492): The comparison against "No NAL found" is brittle. Maybe we should
+            // use an enum for the error type instead.
+            return Ok((bitstream.len(), false));
+        } else {
+            return Err(DecodeError::ParseFrameError(nalu.err().unwrap()));
+        };
 
         if nalu.header.type_ == NaluType::Sps {
             let sps = self
