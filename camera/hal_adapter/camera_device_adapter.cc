@@ -6,6 +6,8 @@
 
 #include "hal_adapter/camera_device_adapter.h"
 
+#include <drm_fourcc.h>
+#include <libyuv.h>
 #include <malloc.h>
 #include <unistd.h>
 
@@ -27,9 +29,7 @@
 #include <base/synchronization/lock.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
-#include <drm_fourcc.h>
 #include <hardware/camera3.h>
-#include <libyuv.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
