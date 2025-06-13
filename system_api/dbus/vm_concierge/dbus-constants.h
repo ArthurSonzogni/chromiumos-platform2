@@ -66,6 +66,7 @@ const char kSyncVmTimesMethod[] = "SyncVmTimes";
 const char kDiskImageProgressSignal[] = "DiskImageProgress";
 const char kDnsSettingsChangedSignal[] = "DnsSettingsChanged";
 const char kVmGuestUserlandReadySignal[] = "VmGuestUserlandReadySignal";
+const char kVmInstallStateSignal[] = "VmInstallStateSignal";
 const char kVmStartedSignal[] = "VmStartedSignal";
 const char kVmStartingUpSignal[] = "VmStartingUpSignal";
 const char kVmStoppedSignal[] = "VmStoppedSignal";
