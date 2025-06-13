@@ -716,7 +716,7 @@ mod tests {
         assert!(!intel_cache_allocation_supported(root.path()).unwrap());
     }
 
-    pub fn setup_mock_msr_regs(root: PathBuf) {
+    pub fn setup_mock_msr_regs(root: &Path) {
         for cpu_idx in 0..MOCK_NUM_CPU {
             fs::create_dir_all(root.join(DEV_CPU_PATH).join(cpu_idx.to_string())).unwrap();
 
@@ -732,23 +732,23 @@ mod tests {
 
     #[test]
     pub fn test_msr_write() {
-        let root = tempdir().unwrap().into_path();
-        let path = root.join(DEV_CPU_PATH);
+        let root = tempdir().unwrap();
+        let dev_cpu_path = root.path().join(DEV_CPU_PATH);
 
         let test_msr_addr = 0x20;
         let test_msr_val = 0x5;
 
         //setup
-        setup_mock_msr_regs(root.to_owned());
+        setup_mock_msr_regs(root.path());
 
         for i in 0..MOCK_NUM_CPU {
-            let contents = fs::read(path.as_path().join(i.to_string()).join("msr")).unwrap();
+            let contents = fs::read(dev_cpu_path.join(i.to_string()).join("msr")).unwrap();
             assert_eq!(0, contents.iter().map(|x| *x as i32).sum());
         }
 
-        write_msr_on_all_cpus(root.as_path(), test_msr_val, test_msr_addr).unwrap();
+        write_msr_on_all_cpus(root.path(), test_msr_val, test_msr_addr).unwrap();
         for i in 0..MOCK_NUM_CPU {
-            let contents = fs::read(path.as_path().join(i.to_string()).join("msr")).unwrap();
+            let contents = fs::read(dev_cpu_path.join(i.to_string()).join("msr")).unwrap();
             assert_eq!(
                 test_msr_val as i32,
                 contents.iter().map(|x| *x as i32).sum()
