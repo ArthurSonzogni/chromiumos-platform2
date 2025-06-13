@@ -49,6 +49,7 @@ static constexpr std::array kLogsToRotate{
     std::string_view("/var/log/hypervisor.log"),
     std::string_view("/var/log/secagentd.log"),
     std::string_view("/var/log/extensions.log"),
+    std::string_view("/var/log/kiosk_apps.log"),
     std::string_view("/var/log/minios/minios.log"),
     std::string_view("/var/log/minios/update_engine.log"),
     std::string_view("/var/log/minios/upstart.log"),

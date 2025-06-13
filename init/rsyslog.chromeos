@@ -105,6 +105,10 @@ if ($programname startswith 'tlsdate') then -/var/log/tlsdate.log
 if ($msg contains 'system_log_api') then -/var/log/extensions.log
 & stop # Don't log extension messages anywhere else.
 
+# Keep kiosk app logs in /var/log/kiosk_apps.log
+if ($msg contains 'kiosk_app_level') then -/var/log/kiosk_apps.log
+& stop # Don't log kiosk_apps messages anywhere else.
+
 # Log all kernel messages to the console.
 # Logging much else clutters up the screen.
 #kern.*                                                 /dev/console

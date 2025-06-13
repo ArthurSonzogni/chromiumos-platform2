@@ -402,6 +402,11 @@ Console output of an MCU controlling an RGB keyboard.
 
 ## kernel-crashes
 
+## kiosk_apps_log
+
+Application level logs collected from kiosk apps including logs from
+browser windows, service workers and secondary extensions.
+
 ## logcat
 
 Log (adb logcat) from Android instance in ARC. Note that timestamp timezone is

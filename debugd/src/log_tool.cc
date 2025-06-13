@@ -650,6 +650,7 @@ const std::array kVarLogFileLogs {
       kRoot},
   Log{kFile, "hammerd", "/var/log/hammerd.log"},
   Log{kFile, "hypervisor.log", "/var/log/hypervisor.log"},
+  Log{kFile, "kiosk_apps_log", "/var/log/kiosk_apps.log"},
   Log{kFile, "nbr_minios_log", "/var/log/minios/minios.log"},
   Log{kFile, "nbr_update_engine_log", "/var/log/minios/update_engine.log"},
   Log{kFile, "nbr_upstart_log", "/var/log/minios/upstart.log"},
