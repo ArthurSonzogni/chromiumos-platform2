@@ -401,13 +401,9 @@ class MockEvdevMonitor : public EvdevMonitor {
 
 class MockDelegateImpl : public DelegateImpl {
  public:
-  MockDelegateImpl(
-      ec::EcCommandFactoryInterface* ec_command_factory,
-      DisplayUtilFactory* display_util_factory,
-      ec::EcCommandVersionSupportedInterface* ec_command_version_supported)
-      : DelegateImpl(ec_command_factory,
-                     display_util_factory,
-                     ec_command_version_supported) {}
+  MockDelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory,
+                   DisplayUtilFactory* display_util_factory)
+      : DelegateImpl(ec_command_factory, display_util_factory) {}
   MockDelegateImpl(const MockDelegateImpl&) = delete;
   MockDelegateImpl& operator=(const MockDelegateImpl&) = delete;
   ~MockDelegateImpl() = default;
@@ -581,8 +577,7 @@ class DelegateImplTest : public BaseFileTest {
   StrictMock<ec::MockEcCommandVersionSupported>
       mock_ec_command_version_supported_;
   MockDelegateImpl delegate_{&mock_ec_command_factory_,
-                             &mock_display_util_factory_,
-                             &mock_ec_command_version_supported_};
+                             &mock_display_util_factory_};
 };
 
 TEST_F(DelegateImplTest, GetFingerprintFrameFpInfoCommandFailed) {

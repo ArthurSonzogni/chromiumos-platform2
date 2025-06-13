@@ -263,13 +263,10 @@ void GetConnectedExternalDisplayConnectorsHelper(
 
 }  // namespace
 
-DelegateImpl::DelegateImpl(
-    ec::EcCommandFactoryInterface* ec_command_factory,
-    DisplayUtilFactory* display_util_factory,
-    ec::EcCommandVersionSupportedInterface* ec_command_version_supported)
+DelegateImpl::DelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory,
+                           DisplayUtilFactory* display_util_factory)
     : ec_command_factory_(ec_command_factory),
-      display_util_factory_(display_util_factory),
-      ec_command_version_supported_(ec_command_version_supported) {}
+      display_util_factory_(display_util_factory) {}
 
 DelegateImpl::~DelegateImpl() = default;
 
