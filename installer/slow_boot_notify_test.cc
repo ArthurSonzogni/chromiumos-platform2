@@ -23,7 +23,7 @@ TEST(SlowBootNotifyTest, PreFwFspmNotPresentTest) {
   base::FilePath fspm_next;
 
   EXPECT_TRUE(CreateTemporaryFile(&fspm_next));
-  EXPECT_EQ(WriteFile(fspm_next, "next", 4), 4);
+  EXPECT_TRUE(WriteFile(fspm_next, "next"));
   ASSERT_FALSE(SlowBootNotifyRequired(fspm_main, fspm_next));
 }
 
@@ -32,7 +32,7 @@ TEST(SlowBootNotifyTest, PostFwFspmNotPresentTest) {
   base::FilePath fspm_next;
 
   EXPECT_TRUE(CreateTemporaryFile(&fspm_main));
-  EXPECT_EQ(WriteFile(fspm_main, "main", 4), 4);
+  EXPECT_TRUE(WriteFile(fspm_main, "main"));
   ASSERT_FALSE(SlowBootNotifyRequired(fspm_main, fspm_next));
 }
 
@@ -41,9 +41,9 @@ TEST(SlowBootNotifyTest, FspmDiffTest) {
   base::FilePath fspm_next;
 
   EXPECT_TRUE(CreateTemporaryFile(&fspm_main));
-  EXPECT_EQ(WriteFile(fspm_main, "main", 4), 4);
+  EXPECT_TRUE(WriteFile(fspm_main, "main"));
   EXPECT_TRUE(CreateTemporaryFile(&fspm_next));
-  EXPECT_EQ(WriteFile(fspm_next, "next", 4), 4);
+  EXPECT_TRUE(WriteFile(fspm_next, "next"));
   ASSERT_TRUE(SlowBootNotifyRequired(fspm_main, fspm_next));
 }
 
@@ -52,9 +52,9 @@ TEST(SlowBootNotifyTest, FspmIdenticalTest) {
   base::FilePath fspm_next;
 
   EXPECT_TRUE(CreateTemporaryFile(&fspm_main));
-  EXPECT_EQ(WriteFile(fspm_main, "fspm", 4), 4);
+  EXPECT_TRUE(WriteFile(fspm_main, "fspm"));
   EXPECT_TRUE(CreateTemporaryFile(&fspm_next));
-  EXPECT_EQ(WriteFile(fspm_next, "fspm", 4), 4);
+  EXPECT_TRUE(WriteFile(fspm_next, "fspm"));
   ASSERT_FALSE(SlowBootNotifyRequired(fspm_main, fspm_next));
 }
 

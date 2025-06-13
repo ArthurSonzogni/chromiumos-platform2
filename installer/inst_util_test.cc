@@ -147,37 +147,37 @@ TEST(UtilTest, ReplaceInFileTest) {
   EXPECT_EQ(ReplaceInFile("was", "wuz", base::FilePath("/fuzzy/wuzzy")), false);
 
   // Change middle, same length
-  EXPECT_EQ(base::WriteFile(file, start), true);
+  EXPECT_TRUE(base::WriteFile(file, start));
   EXPECT_EQ(ReplaceInFile("was", "wuz", file), true);
   EXPECT_EQ(base::ReadFileToString(file, &finish), true);
   EXPECT_EQ(finish, "Fuzzy Wuzzy wuz a lamb");
 
   // Change middle, longer
-  EXPECT_EQ(base::WriteFile(file, start), true);
+  EXPECT_TRUE(base::WriteFile(file, start));
   EXPECT_EQ(ReplaceInFile("was", "wasn't", file), true);
   EXPECT_EQ(base::ReadFileToString(file, &finish), true);
   EXPECT_EQ(finish, "Fuzzy Wuzzy wasn't a lamb");
 
   // Change middle, longer, could match again
-  EXPECT_EQ(base::WriteFile(file, start), true);
+  EXPECT_TRUE(base::WriteFile(file, start));
   EXPECT_EQ(ReplaceInFile("was", "was was", file), true);
   EXPECT_EQ(base::ReadFileToString(file, &finish), true);
   EXPECT_EQ(finish, "Fuzzy Wuzzy was was a lamb");
 
   // Change middle, shorter
-  EXPECT_EQ(base::WriteFile(file, start), true);
+  EXPECT_TRUE(base::WriteFile(file, start));
   EXPECT_EQ(ReplaceInFile("Wuzzy", "Wuz", file), true);
   EXPECT_EQ(ReadFileToString(file, &finish), true);
   EXPECT_EQ(finish, "Fuzzy Wuz was a lamb");
 
   // Change beginning, longer
-  EXPECT_EQ(base::WriteFile(file, start), true);
+  EXPECT_TRUE(base::WriteFile(file, start));
   EXPECT_EQ(ReplaceInFile("Fuzzy", "AFuzzy", file), true);
   EXPECT_EQ(base::ReadFileToString(file, &finish), true);
   EXPECT_EQ(finish, "AFuzzy Wuzzy was a lamb");
 
   // Change end, shorter
-  EXPECT_EQ(base::WriteFile(file, start), true);
+  EXPECT_TRUE(base::WriteFile(file, start));
   EXPECT_EQ(ReplaceInFile("lamb", "la", file), true);
   EXPECT_EQ(base::ReadFileToString(file, &finish), true);
   EXPECT_EQ(finish, "Fuzzy Wuzzy was a la");
