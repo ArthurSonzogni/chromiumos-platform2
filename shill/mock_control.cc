@@ -8,7 +8,6 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/bluetooth/mock_bluetooth_manager_proxy.h"
 #include "shill/mock_adaptors.h"
 
 using testing::NiceMock;
@@ -73,17 +72,4 @@ const base::RepeatingClosure& MockControl::supplicant_vanish() const {
   return supplicant_vanish_;
 }
 
-#if !defined(DISABLE_FLOSS)
-std::unique_ptr<BluetoothManagerProxyInterface>
-MockControl::CreateBluetoothManagerProxy(
-    const base::RepeatingClosure& service_appeared_callback) {
-  bt_manager_appear_ = service_appeared_callback;
-  return std::make_unique<NiceMock<MockBluetoothManagerProxy>>();
-}
-
-const base::RepeatingClosure& MockControl::bluetooth_manager_appear() const {
-  return bt_manager_appear_;
-}
-
-#endif  // DISABLE_FLOSS
 }  // namespace shill

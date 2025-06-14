@@ -11,14 +11,6 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/service_constants.h>
 
-#if !defined(DISABLE_FLOSS)
-#include "shill/bluetooth/bluetooth_adapter_proxy_interface.h"
-#include "shill/bluetooth/bluetooth_bluez_proxy_interface.h"
-#include "shill/bluetooth/bluetooth_manager_proxy_interface.h"
-#include "shill/dbus/bluetooth_adapter_proxy.h"
-#include "shill/dbus/bluetooth_bluez_proxy.h"
-#include "shill/dbus/bluetooth_manager_proxy.h"
-#endif  // DISABLE_FLOSS
 #include "shill/dbus/dbus_objectmanager_proxy.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/debugd_proxy.h"
@@ -45,9 +37,8 @@
 #include "shill/dbus/supplicant_process_proxy.h"
 #include "shill/dbus/third_party_vpn_dbus_adaptor.h"
 #include "shill/dbus/upstart_proxy.h"
-#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_proxy.h"
-
 #include "shill/manager.h"
+#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_proxy.h"
 
 namespace shill {
 
@@ -279,24 +270,5 @@ std::unique_ptr<mm1::SimProxyInterface> DBusControl::CreateMM1SimProxy(
     const RpcIdentifier& path, const std::string& service) {
   return std::make_unique<mm1::SimProxy>(proxy_bus_, path, service);
 }
-
-#if !defined(DISABLE_FLOSS)
-std::unique_ptr<BluetoothManagerProxyInterface>
-DBusControl::CreateBluetoothManagerProxy(
-    const base::RepeatingClosure& service_appeared_callback) {
-  return std::make_unique<BluetoothManagerProxy>(proxy_bus_, dispatcher_,
-                                                 service_appeared_callback);
-}
-
-std::unique_ptr<BluetoothAdapterProxyInterface>
-DBusControl::CreateBluetoothAdapterProxy(int32_t hci) {
-  return std::make_unique<BluetoothAdapterProxy>(proxy_bus_, hci);
-}
-
-std::unique_ptr<BluetoothBlueZProxyInterface>
-DBusControl::CreateBluetoothBlueZProxy() {
-  return std::make_unique<BluetoothBlueZProxy>(proxy_bus_, dispatcher_);
-}
-#endif  // DISABLE_FLOSS
 
 }  // namespace shill

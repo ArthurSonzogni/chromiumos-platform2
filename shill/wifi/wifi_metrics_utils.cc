@@ -168,22 +168,4 @@ std::string GetBootId() {
   return boot_id;
 }
 
-Metrics::BTProfileConnectionState ConvertBTProfileConnectionState(
-    BluetoothManagerInterface::BTProfileConnectionState state) {
-  switch (state) {
-    case BluetoothManagerInterface::BTProfileConnectionState::kDisconnected:
-      return Metrics::kBTProfileConnectionStateDisconnected;
-    case BluetoothManagerInterface::BTProfileConnectionState::kDisconnecting:
-      return Metrics::kBTProfileConnectionStateDisconnecting;
-    case BluetoothManagerInterface::BTProfileConnectionState::kConnecting:
-      return Metrics::kBTProfileConnectionStateConnecting;
-    case BluetoothManagerInterface::BTProfileConnectionState::kConnected:
-      return Metrics::kBTProfileConnectionStateConnected;
-    case BluetoothManagerInterface::BTProfileConnectionState::kActive:
-      return Metrics::kBTProfileConnectionStateActive;
-    case BluetoothManagerInterface::BTProfileConnectionState::kInvalid:
-      return Metrics::kBTProfileConnectionStateInvalid;
-  }
-}
-
 }  // namespace shill::WiFiMetricsUtils

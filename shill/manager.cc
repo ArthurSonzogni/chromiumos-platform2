@@ -42,9 +42,6 @@
 #include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/adaptor_interfaces.h"
-#if !defined(DISABLE_FLOSS)
-#include "shill/bluetooth/bluetooth_manager.h"
-#endif  // DISABLE_FLOSS
 #include "shill/callbacks.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/modem_info.h"
@@ -210,9 +207,6 @@ Manager::Manager(ControlInterface* control_interface,
       always_on_vpn_service_(nullptr),
       always_on_vpn_connect_attempts_(0u),
       ephemeral_profile_(new EphemeralProfile(this)),
-#if !defined(DISABLE_FLOSS)
-      bluetooth_manager_(new BluetoothManager(control_interface)),
-#endif  // DISABLE_FLOSS
       technology_order_(kDefaultTechnologyOrder),
       termination_actions_(dispatcher),
       is_wake_on_lan_enabled_(true),
@@ -363,11 +357,6 @@ void Manager::Start() {
                           weak_factory_.GetWeakPtr()));
   upstart_ = std::make_unique<Upstart>(control_interface_);
   debugd_proxy_ = control_interface_->CreateDebugdProxy();
-#if !defined(DISABLE_FLOSS)
-  if (!bluetooth_manager_->Start()) {
-    LOG(ERROR) << __func__ << ": Failed to start BT manager interface.";
-  }
-#endif  // DISABLE_FLOSS
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   const auto filepath = run_path_.Append("resolv.conf");
@@ -431,9 +420,6 @@ void Manager::Stop() {
   device_status_check_task_.Cancel();
   sort_services_task_.Cancel();
   init_patchpanel_client_task_.Cancel();
-#if !defined(DISABLE_FLOSS)
-  bluetooth_manager_->Stop();
-#endif  // DISABLE_FLOSS
   power_manager_->Stop();
   power_manager_.reset();
   debugd_proxy_.reset();

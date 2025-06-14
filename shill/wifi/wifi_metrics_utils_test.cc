@@ -41,29 +41,4 @@ TEST(WiFiMetricsUtilsTest, CanNotReportAdapterMAX3) {
       Metrics::WiFiAdapterInfo{0x1bbf, 0x0003, -1}));
 }
 
-TEST(WiFiMetricsUtilsTest, BTProfileConversion) {
-  std::vector<enum Metrics::BTProfileConnectionState> converted{
-      WiFiMetricsUtils::ConvertBTProfileConnectionState(
-          BluetoothManagerInterface::BTProfileConnectionState::kDisconnected),
-      WiFiMetricsUtils::ConvertBTProfileConnectionState(
-          BluetoothManagerInterface::BTProfileConnectionState::kDisconnecting),
-      WiFiMetricsUtils::ConvertBTProfileConnectionState(
-          BluetoothManagerInterface::BTProfileConnectionState::kConnecting),
-      WiFiMetricsUtils::ConvertBTProfileConnectionState(
-          BluetoothManagerInterface::BTProfileConnectionState::kConnected),
-      WiFiMetricsUtils::ConvertBTProfileConnectionState(
-          BluetoothManagerInterface::BTProfileConnectionState::kActive),
-      WiFiMetricsUtils::ConvertBTProfileConnectionState(
-          BluetoothManagerInterface::BTProfileConnectionState::kInvalid),
-  };
-  std::vector<enum Metrics::BTProfileConnectionState> expected{
-      Metrics::kBTProfileConnectionStateDisconnected,
-      Metrics::kBTProfileConnectionStateDisconnecting,
-      Metrics::kBTProfileConnectionStateConnecting,
-      Metrics::kBTProfileConnectionStateConnected,
-      Metrics::kBTProfileConnectionStateActive,
-      Metrics::kBTProfileConnectionStateInvalid};
-  EXPECT_EQ(converted, expected);
-}
-
 }  // namespace shill

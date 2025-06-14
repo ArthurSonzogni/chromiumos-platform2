@@ -1321,15 +1321,6 @@ void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
       .SetLastAckSignal(report.last_ack_signal)
       .SetSignal(report.signal)
       .SetSignalAverage(report.signal_avg);
-#if !defined(DISABLE_FLOSS)
-  sm_report.SetBTEnabled(report.bt_enabled)
-      .SetBTStack(report.bt_stack)
-      .SetBTHFP(report.bt_hfp)
-      .SetBTA2DP(report.bt_a2dp)
-      .SetBTActivelyScanning(report.bt_active_scanning);
-#else   // DISABLE_FLOSS
-  sm_report.SetBTStack(kBTStackBlueZ);
-#endif  // DISABLE_FLOSS
 
   sm_report.Record();
 }

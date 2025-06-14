@@ -40,9 +40,6 @@
 #include <chromeos/net-base/netlink_message.h>
 #include <chromeos/net-base/rtnl_handler.h>
 
-#if !defined(DISABLE_FLOSS)
-#include "shill/bluetooth/bluetooth_manager_interface.h"
-#endif  // DISABLE_FLOSS
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/device.h"
@@ -72,7 +69,6 @@
 #include "shill/wifi/wifi_cqm.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_link_statistics.h"
-#include "shill/wifi/wifi_metrics_utils.h"
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_rf.h"
@@ -4165,81 +4161,6 @@ void WiFi::RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
                                 kRequestStationInfoPeriod);
 }
 
-void WiFi::AddBTStateToLinkQualityReport(
-    Metrics::WiFiLinkQualityReport& report) const {
-#if !defined(DISABLE_FLOSS)
-  BluetoothManagerInterface* bt_manager = manager()->bluetooth_manager();
-  if (!bt_manager) {
-    LOG(ERROR) << link_name() << ": BT manager is not ready";
-    return;
-  }
-
-  bool floss = false;
-  bool bt_enabled = false;
-  int32_t hci = BluetoothManagerInterface::kInvalidHCI;
-  std::vector<BluetoothManagerInterface::BTAdapterWithEnabled> bt_adapters;
-  if (!bt_manager->GetAvailableAdapters(&floss, &bt_adapters)) {
-    LOG(ERROR) << link_name() << ": Failed to query available BT adapters";
-    return;
-  }
-  report.bt_stack = floss ? Metrics::kBTStackFloss : Metrics::kBTStackBlueZ;
-
-  for (auto adapter : bt_adapters) {
-    if (adapter.enabled) {
-      bt_enabled = true;
-      if (hci == BluetoothManagerInterface::kInvalidHCI) {
-        // If this is the first adapter that is enabled, store its HCI and query
-        // that adapter directly. That saves a D-Bus roundtrip to find out which
-        // adapter is the default one.
-        hci = adapter.hci_interface;
-      } else {
-        // At least 2 adapters are enabled. Reset the HCI and query the BT stack
-        // to know which adapter is the default one. Only then will we be able
-        // to query the state of that particular adapter.
-        hci = BluetoothManagerInterface::kInvalidHCI;
-        break;
-      }
-    }
-  }
-  report.bt_enabled = bt_enabled;
-
-  if (!(floss && bt_enabled)) {
-    // Querying the state of BT adapters is only possible if both:
-    // - the device is using Floss
-    // - BT is enabled
-    return;
-  }
-  if (hci == BluetoothManagerInterface::kInvalidHCI) {
-    // More than 1 adapter is enabled, find out the HCI of the default one and
-    // then query that adapter directly.
-    if (!bt_manager->GetDefaultAdapter(&hci)) {
-      LOG(ERROR) << link_name() << ": Failed to query default BT adapter";
-      return;
-    }
-  }
-  SLOG(this, 3) << __func__ << ": WiFi " << link_name()
-                << ": Default BT adapter HCI " << hci;
-  BluetoothManagerInterface::BTProfileConnectionState profile_state;
-  if (bt_manager->GetProfileConnectionState(
-          hci, BluetoothManagerInterface::BTProfile::kHFP, &profile_state)) {
-    report.bt_hfp =
-        WiFiMetricsUtils::ConvertBTProfileConnectionState(profile_state);
-  }
-  if (bt_manager->GetProfileConnectionState(
-          hci, BluetoothManagerInterface::BTProfile::kA2DPSink,
-          &profile_state)) {
-    report.bt_a2dp =
-        WiFiMetricsUtils::ConvertBTProfileConnectionState(profile_state);
-  }
-  bool discovering;
-  if (bt_manager->IsDiscovering(hci, &discovering)) {
-    report.bt_active_scanning = discovering;
-  }
-#else   // DISABLE_FLOSS
-  (void)report;
-#endif  // DISABLE_FLOSS
-}
-
 void WiFi::EmitStationInfoReceivedEvent(
     const WiFiLinkStatistics::StationStats& stats) {
   if (!current_service_.get()) {
@@ -4250,7 +4171,6 @@ void WiFi::EmitStationInfoReceivedEvent(
   }
   Metrics::WiFiLinkQualityReport report =
       WiFiLinkStatistics::ConvertLinkStatsReport(stats);
-  AddBTStateToLinkQualityReport(report);
   current_service_->EmitLinkQualityReportEvent(report);
 }
 

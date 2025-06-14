@@ -15,11 +15,6 @@
 
 namespace shill {
 
-#if !defined(DISABLE_FLOSS)
-class BluetoothAdapterProxyInterface;
-class BluetoothBlueZProxyInterface;
-class BluetoothManagerProxyInterface;
-#endif  // DISABLE_FLOSS
 class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxy;
 class DebugdProxyInterface;
@@ -166,18 +161,6 @@ class ControlInterface {
 
   virtual std::unique_ptr<mm1::SimProxyInterface> CreateMM1SimProxy(
       const RpcIdentifier& path, const std::string& service) = 0;
-
-#if !defined(DISABLE_FLOSS)
-  virtual std::unique_ptr<BluetoothManagerProxyInterface>
-  CreateBluetoothManagerProxy(
-      const base::RepeatingClosure& service_appeared_callback) = 0;
-
-  virtual std::unique_ptr<BluetoothAdapterProxyInterface>
-  CreateBluetoothAdapterProxy(int32_t hci) = 0;
-
-  virtual std::unique_ptr<BluetoothBlueZProxyInterface>
-  CreateBluetoothBlueZProxy() = 0;
-#endif  // DISABLE_FLOSS
 };
 
 }  // namespace shill

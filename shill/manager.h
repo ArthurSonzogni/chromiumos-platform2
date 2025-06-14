@@ -48,9 +48,6 @@
 
 namespace shill {
 
-#if !defined(DISABLE_FLOSS)
-class BluetoothManagerInterface;
-#endif  // DISABLE_FLOSS
 class CellularServiceProvider;
 class ControlInterface;
 class DefaultProfile;
@@ -547,12 +544,6 @@ class Manager {
     return tethering_manager_.get();
   }
 
-#if !defined(DISABLE_FLOSS)
-  BluetoothManagerInterface* bluetooth_manager() const {
-    return bluetooth_manager_.get();
-  }
-#endif  // DISABLE_FLOSS
-
   // Refresh tethering capabilities in TetheringManager.
   mockable void RefreshTetheringCapabilities();
 
@@ -880,9 +871,6 @@ class Manager {
   std::unique_ptr<PowerManager> power_manager_;
   std::unique_ptr<Upstart> upstart_;
   std::unique_ptr<DebugdProxyInterface> debugd_proxy_;
-#if !defined(DISABLE_FLOSS)
-  std::unique_ptr<BluetoothManagerInterface> bluetooth_manager_;
-#endif  // DISABLE_FLOSS
 
   // The priority order of technologies
   std::vector<Technology> technology_order_;

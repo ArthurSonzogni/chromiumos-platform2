@@ -6,11 +6,10 @@
 
 #include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
-
-#include "shill/logging.h"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "shill/logging.h"
 
 using ::testing::_;
 
@@ -39,7 +38,6 @@ TEST_F(ScopeLoggerTest, DefaultConstruction) {
 
 TEST_F(ScopeLoggerTest, GetAllScopeNames) {
   EXPECT_EQ(
-      "bluetooth+"
       "cellular+"
       "connection+"
       "crypto+"

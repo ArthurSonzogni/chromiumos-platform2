@@ -117,17 +117,6 @@ class DBusControl : public ControlInterface {
   std::unique_ptr<mm1::SimProxyInterface> CreateMM1SimProxy(
       const RpcIdentifier& path, const std::string& service) override;
 
-#if !defined(DISABLE_FLOSS)
-  std::unique_ptr<BluetoothManagerProxyInterface> CreateBluetoothManagerProxy(
-      const base::RepeatingClosure& service_appeared_callback) override;
-
-  std::unique_ptr<BluetoothAdapterProxyInterface> CreateBluetoothAdapterProxy(
-      int32_t hci) override;
-
-  std::unique_ptr<BluetoothBlueZProxyInterface> CreateBluetoothBlueZProxy()
-      override;
-#endif  // DISABLE_FLOSS
-
  private:
   void OnDBusServiceRegistered(base::OnceCallback<void(bool)> completion_action,
                                bool success);

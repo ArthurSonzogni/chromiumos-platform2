@@ -71,12 +71,6 @@ pkg_config("target_defaults") {
     "SHIMDIR=\"${libdir}/shill/shims\"",
   ]
 
-  # TODO(b/262602479): Remove the 'floss' USE flag once all boards have migrated
-  # to Floss.
-  if (!use.floss) {
-    defines += [ "DISABLE_FLOSS" ]
-  }
-
   # We can't have address space limits for certain allocators.
   # See b/271214988 for details.
   if (use.system_wide_scudo) {
@@ -227,15 +221,6 @@ generate_dbus_proxies("generate_supplicant_proxies") {
     "dbus_bindings/supplicant-p2pdevice.dbus-xml",
     "dbus_bindings/supplicant-peer.dbus-xml",
     "dbus_bindings/supplicant-process.dbus-xml",
-  ]
-}
-
-generate_dbus_proxies("generate_bluetooth_proxies") {
-  proxy_output_file = "include/bluetooth/dbus-proxies.h"
-  sources = [
-    "dbus_bindings/bluetooth.dbus-xml",
-    "dbus_bindings/bluetooth_bluez.dbus-xml",
-    "dbus_bindings/bluetooth_manager.dbus-xml",
   ]
 }
 
@@ -439,16 +424,6 @@ static_library("libshill") {
   ]
   pkg_deps = [ "libstructuredmetrics" ]
 
-  if (use.floss) {
-    sources += [
-      "bluetooth/bluetooth_manager.cc",
-      "dbus/bluetooth_adapter_proxy.cc",
-      "dbus/bluetooth_bluez_proxy.cc",
-      "dbus/bluetooth_manager_proxy.cc",
-    ]
-    deps += [ ":generate_bluetooth_proxies" ]
-  }
-
   if (use.vpn) {
     sources += [
       "vpn/arc_vpn_driver.cc",
@@ -607,7 +582,6 @@ if (use.fuzzer) {
   }
   executable("wifi_anqp_fuzzer") {
     sources = [
-      "bluetooth/mock_bluetooth_manager_proxy.cc",
       "ethernet/mock_ethernet_provider.cc",
       "mock_adaptors.cc",
       "mock_control.cc",
@@ -629,7 +603,6 @@ if (use.fuzzer) {
   }
   executable("wifi_ies_fuzzer") {
     sources = [
-      "bluetooth/mock_bluetooth_manager_proxy.cc",
       "ethernet/mock_ethernet_provider.cc",
       "mock_adaptors.cc",
       "mock_control.cc",
@@ -651,7 +624,6 @@ if (use.fuzzer) {
   }
   executable("wifi_service_fuzzer") {
     sources = [
-      "bluetooth/mock_bluetooth_manager_proxy.cc",
       "ethernet/mock_ethernet_provider.cc",
       "mock_adaptors.cc",
       "mock_control.cc",
@@ -702,7 +674,6 @@ if (use.test) {
   executable("shill_unittest") {
     run_test = true
     sources = [
-      "bluetooth/mock_bluetooth_manager_proxy.cc",
       "cellular/apn_list_test.cc",
       "cellular/carrier_entitlement_test.cc",
       "cellular/cellular_bearer_test.cc",

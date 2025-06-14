@@ -169,21 +169,6 @@ TEST_F(DaemonTaskTest, SupplicantAppearsAfterStop) {
   dispatcher_->DispatchPendingEvents();
 }
 
-#if !defined(DISABLE_FLOSS)
-TEST_F(DaemonTaskTest, BTManagerAppearsAfterStop) {
-  // This test verifies that the daemon won't crash upon receiving Dbus message
-  // via ControlInterface, which outlives the Manager. The BluetoothManager is
-  // owned by the Manager, which is freed after Stop().
-  StartDaemon();
-  manager_->bluetooth_manager()->Start();
-
-  StopDaemon();
-
-  control_->bluetooth_manager_appear().Run();
-  dispatcher_->DispatchPendingEvents();
-}
-#endif  // DISABLE_FLOSS
-
 ACTION_P2(CompleteAction, manager, name) {
   manager->TerminationActionComplete(name);
 }

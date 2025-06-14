@@ -710,11 +710,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void EmitStationInfoReceivedEvent(
       const WiFiLinkStatistics::StationStats& stats);
 
-  // Query the state of the BT stack and populate the relevant fields of the
-  // WiFiLinkQualityReport.
-  void AddBTStateToLinkQualityReport(
-      Metrics::WiFiLinkQualityReport& report) const;
-
   // Request and retrieve information about the currently connected station.
   void RequestStationInfo(WiFiLinkStatistics::Trigger trigger);
   void OnReceivedStationInfo(const Nl80211Message& nl80211_message);

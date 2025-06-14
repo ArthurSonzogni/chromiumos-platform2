@@ -11,11 +11,6 @@
 #include <base/functional/callback.h>
 #include <gmock/gmock.h>
 
-#if !defined(DISABLE_FLOSS)
-#include "shill/bluetooth/bluetooth_adapter_proxy_interface.h"
-#include "shill/bluetooth/bluetooth_bluez_proxy_interface.h"
-#include "shill/bluetooth/bluetooth_manager_proxy_interface.h"
-#endif  // DISABLE_FLOSS
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"
 #include "shill/cellular/mm1_modem_modem3gpp_profile_manager_proxy_interface.h"
@@ -166,27 +161,11 @@ class MockControl : public ControlInterface {
       const RpcIdentifier&, const std::string&) override {
     return nullptr;
   }
-#if !defined(DISABLE_FLOSS)
-  std::unique_ptr<BluetoothManagerProxyInterface> CreateBluetoothManagerProxy(
-      const base::RepeatingClosure& service_appeared_callback) override;
-
-  const base::RepeatingClosure& bluetooth_manager_appear() const;
-
-  std::unique_ptr<BluetoothAdapterProxyInterface> CreateBluetoothAdapterProxy(
-      int32_t) override {
-    return nullptr;
-  }
-  std::unique_ptr<BluetoothBlueZProxyInterface> CreateBluetoothBlueZProxy()
-      override {
-    return nullptr;
-  }
-#endif  // DISABLE_FLOSS
 
  private:
   RpcIdentifier null_identifier_;
   base::RepeatingClosure supplicant_appear_;
   base::RepeatingClosure supplicant_vanish_;
-  base::RepeatingClosure bt_manager_appear_;
 };
 
 }  // namespace shill
