@@ -293,6 +293,15 @@ fn run(config: &InstallConfig) -> Result<()> {
 ///    in that case we write the logs to that partition (may need to create a filesystem on that
 ///    partition though).
 fn try_save_logs(config: &InstallConfig) -> Result<()> {
+    info!("Attempting to save logs to disk.");
+
+    fn copy_log(out_dir: &Path, decription: &str) -> Result<()> {
+        let logfile = out_dir.join("install_log");
+        std::fs::copy(FLEXOR_LOG_FILE, logfile)
+            .with_context(|| format!("Unable to copy the logfile to the {}", decription))?;
+        Ok(())
+    }
+
     // Case 1: The install partition still exists, so we write the logs to it.
     // There should be a partition at this path in either case, so to confirm that it's the install
     // partition we try to mount it as VFAT: in Case 2 it probably won't be.
@@ -301,8 +310,7 @@ fn try_save_logs(config: &InstallConfig) -> Result<()> {
             .fs_type(FsType::Vfat)
             .temp_backed_mount();
         if let Ok(install_mount) = install_mount {
-            std::fs::copy(FLEXOR_LOG_FILE, install_mount.mount_path())
-                .context("Unable to copy the logfile to the install partition")?;
+            copy_log(install_mount.mount_path(), "install partition")?;
             return Ok(());
         }
         // If it exists, but we couldn't mount it it's probably a new partition and we're in Case 2.
@@ -319,8 +327,7 @@ fn try_save_logs(config: &InstallConfig) -> Result<()> {
             .temp_backed_mount()
         {
             Ok(flex_depl_mount) => {
-                std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path())
-                    .context("Unable to copy the logfile to the flex deployment partition")?;
+                copy_log(flex_depl_mount.mount_path(), "flex deployment partition")?;
             }
             Err(_) => {
                 // The partition seems to exist, but we can't mount it as ext4,
@@ -329,8 +336,9 @@ fn try_save_logs(config: &InstallConfig) -> Result<()> {
                 let flex_depl_mount = mount::Builder::new(&flex_depl_partition_path)
                     .fs_type(FsType::Ext4)
                     .temp_backed_mount()?;
-                std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path()).context(
-                    "Unable to copy the logfile to the formatted flex deployment partition",
+                copy_log(
+                    flex_depl_mount.mount_path(),
+                    "formatted flex deployment partition",
                 )?;
             }
         }
