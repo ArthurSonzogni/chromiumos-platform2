@@ -127,21 +127,21 @@ EcComponentFunction::DataType EcComponentFunction::EvalImpl() const {
   base::ScopedFD ec_dev = GetEcDevice();
 
   std::optional<EcComponentManifest> manifest;
+  auto ec_version = GetCurrentECVersion(ec_dev);
+  if (!ec_version) {
+    LOG(ERROR) << "Get EC version failed.";
+    return {};
+  }
+
+  auto ec_manifest_reader = EcComponentManifestReader(*ec_version);
   if (manifest_path_) {
-    manifest = EcComponentManifestReader::ReadFromFilePath(
+    manifest = ec_manifest_reader.ReadFromFilePath(
         base::FilePath(manifest_path_.value()));
   } else {
-    manifest = EcComponentManifestReader::Read();
+    manifest = ec_manifest_reader.Read();
   }
   if (!manifest) {
     LOG(ERROR) << "Get component manifest failed.";
-    return {};
-  }
-  auto ec_version = GetCurrentECVersion(ec_dev);
-  if (ec_version != manifest->ec_version) {
-    LOG(ERROR) << "Current EC version \"" << ec_version.value_or("std::nullopt")
-               << "\" doesn't match manifest version \"" << manifest->ec_version
-               << "\".";
     return {};
   }
 

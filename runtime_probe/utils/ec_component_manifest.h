@@ -55,30 +55,38 @@ struct EcComponentManifest {
   static std::optional<EcComponentManifest> Create(const base::Value::Dict&);
 };
 
-// This class contains only static methods to read and parse a component
-// manifest file to an EcComponentManifest instance.
+// A class that reads and parses an EC component manifest file to an
+// EcComponentManifest instance.
 class EcComponentManifestReader {
  public:
-  EcComponentManifestReader() = delete;
+  explicit EcComponentManifestReader(std::string_view ec_version);
   EcComponentManifestReader(const EcComponentManifestReader&) = delete;
   EcComponentManifestReader& operator=(const EcComponentManifestReader&) =
       delete;
+  virtual ~EcComponentManifestReader() = default;
 
   // Reads and parses the component manifest from default path, returning a
   // EcComponentManifest.
   // If the content is not a valid manifest, returns std::nullopt.
-  static std::optional<EcComponentManifest> Read();
-
-  // Returns the default path to the component manifest file. This should be
-  // `/usr/share/cme/<name>/component_manifest.json` where `name` can be
-  // obtained by `cros_config /firmware image-name`.
-  static base::FilePath EcComponentManifestDefaultPath();
+  std::optional<EcComponentManifest> Read() const;
 
   // Reads and parses the component manifest from the given path, returning a
   // EcComponentManifest.
   // If the content is not a valid manifest, returns std::nullopt.
-  static std::optional<EcComponentManifest> ReadFromFilePath(
-      const base::FilePath&);
+  std::optional<EcComponentManifest> ReadFromFilePath(
+      const base::FilePath&) const;
+
+ protected:
+  std::string ec_version_;
+
+ private:
+  // Gets the EC firmware name with `cros_config /firmware image-name`.
+  virtual std::optional<std::string> GetCmeProjectName() const;
+
+  // Returns the default path to the component manifest file. This should be
+  // `/usr/share/cme/<cme-project-name>/component_manifest.json` where
+  // `cme-project-name` can be obtained by `GetCmeProjectName()`.
+  base::FilePath EcComponentManifestDefaultPath() const;
 };
 
 }  // namespace runtime_probe

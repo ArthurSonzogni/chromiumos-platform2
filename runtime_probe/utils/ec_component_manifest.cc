@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos-config/libcros_config/cros_config.h>
@@ -95,19 +96,6 @@ bool SetList(const base::Value::List* list, std::vector<T>& vec) {
   }
   vec = std::move(ret);
   return true;
-}
-
-std::string ImageName() {
-  std::string image_name;
-
-  if (Context::Get()->cros_config()->GetString(
-          kCrosConfigImageNamePath, kCrosConfigImageNameKey, &image_name)) {
-    return image_name;
-  }
-
-  LOG(ERROR) << "Failed to get \"" << kCrosConfigImageNamePath << " "
-             << kCrosConfigImageNameKey << "\" from cros config";
-  return "";
 }
 
 }  // namespace
@@ -232,19 +220,38 @@ std::optional<EcComponentManifest> EcComponentManifest::Create(
   return ret;
 }
 
-base::FilePath EcComponentManifestReader::EcComponentManifestDefaultPath() {
-  std::string image_name = ImageName();
-  if (image_name.empty()) {
+EcComponentManifestReader::EcComponentManifestReader(
+    std::string_view ec_version)
+    : ec_version_(ec_version) {}
+
+std::optional<std::string> EcComponentManifestReader::GetCmeProjectName()
+    const {
+  std::string image_name;
+
+  if (Context::Get()->cros_config()->GetString(
+          kCrosConfigImageNamePath, kCrosConfigImageNameKey, &image_name)) {
+    return image_name;
+  }
+
+  LOG(ERROR) << "Failed to get \"" << kCrosConfigImageNamePath << " "
+             << kCrosConfigImageNameKey << "\" from cros config";
+  return std::nullopt;
+}
+
+base::FilePath EcComponentManifestReader::EcComponentManifestDefaultPath()
+    const {
+  const auto cme_project_name = GetCmeProjectName();
+  if (!cme_project_name.has_value()) {
     return {};
   }
   return Context::Get()
       ->root_dir()
       .Append(kCmePath)
-      .Append(image_name)
+      .Append(*cme_project_name)
       .Append(kEcComponentManifestName);
 }
 
-std::optional<EcComponentManifest> EcComponentManifestReader::Read() {
+std::optional<EcComponentManifest> EcComponentManifestReader::Read() const {
   base::FilePath manifest_path = EcComponentManifestDefaultPath();
   if (manifest_path.empty()) {
     return std::nullopt;
@@ -253,8 +260,9 @@ std::optional<EcComponentManifest> EcComponentManifestReader::Read() {
 }
 
 std::optional<EcComponentManifest> EcComponentManifestReader::ReadFromFilePath(
-    const base::FilePath& manifest_path) {
+    const base::FilePath& manifest_path) const {
   std::string manifest_json;
+  LOG(INFO) << "Reading component manifest from: " << manifest_path.value();
   if (!base::ReadFileToString(manifest_path, &manifest_json)) {
     LOG(ERROR) << "Failed to read component manifest, path: " << manifest_path;
     return std::nullopt;
@@ -269,6 +277,14 @@ std::optional<EcComponentManifest> EcComponentManifestReader::ReadFromFilePath(
     LOG(ERROR) << "Failed to parse component manifest, path: " << manifest_path;
     return std::nullopt;
   }
+
+  if (ec_version_ != manifest->ec_version) {
+    LOG(ERROR) << "Current EC version \"" << ec_version_
+               << "\" doesn't match manifest version \"" << manifest->ec_version
+               << "\".";
+    return std::nullopt;
+  }
+
   return manifest;
 }
 

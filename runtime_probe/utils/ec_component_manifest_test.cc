@@ -43,13 +43,19 @@ class EcComponentManifestTestBasic : public EcComponentManifestTest {
 
 TEST_F(EcComponentManifestTest, EcComponentManifestReader_ReadEmptySuccess) {
   SetUpEcComponentManifest("image1", "empty");
-  const auto manifest = EcComponentManifestReader::Read();
+  const auto reader = EcComponentManifestReader("model-0.0.0-abcdefa");
+
+  const auto manifest = reader.Read();
+
   EXPECT_TRUE(manifest.has_value());
 }
 
 TEST_F(EcComponentManifestTest,
        EcComponentManifestReader_ReadWithMissingImageNameFailed) {
-  const auto manifest = EcComponentManifestReader::Read();
+  const auto reader = EcComponentManifestReader("model-0.0.0-abcdefa");
+
+  const auto manifest = reader.Read();
+
   EXPECT_FALSE(manifest.has_value());
 }
 
@@ -57,47 +63,76 @@ TEST_F(EcComponentManifestTest,
        EcComponentManifestReader_ReadNonexistentManifestFailed) {
   mock_context().fake_cros_config()->SetString(
       kCrosConfigImageNamePath, kCrosConfigImageNameKey, "image1");
-  const auto manifest = EcComponentManifestReader::Read();
+  const auto reader = EcComponentManifestReader("model-0.0.0-abcdefa");
+
+  const auto manifest = reader.Read();
+
   EXPECT_FALSE(manifest.has_value());
 }
 
 TEST_F(EcComponentManifestTest,
        EcComponentManifestReader_ManifestWithMissingField_ReadFailed) {
   SetUpEcComponentManifest("image1", "invalid.missing-field");
-  const auto manifest = EcComponentManifestReader::Read();
+  const auto reader = EcComponentManifestReader("model-0.0.0-abcdefa");
+
+  const auto manifest = reader.Read();
+
   EXPECT_FALSE(manifest.has_value());
 }
 
 TEST_F(EcComponentManifestTest,
        EcComponentManifestReader_ManifestWithMaskLengthMismatch_ReadFailed) {
   SetUpEcComponentManifest("image1", "invalid.mask-length-mismatch");
-  const auto manifest = EcComponentManifestReader::Read();
+  const auto reader = EcComponentManifestReader("model-0.0.0-abcdefa");
+
+  const auto manifest = reader.Read();
+
   EXPECT_FALSE(manifest.has_value());
 }
 
 TEST_F(EcComponentManifestTest,
        EcComponentManifestReader_ManifestWithByteLengthMismatch_ReadFailed) {
   SetUpEcComponentManifest("image1", "invalid.byte-length-mismatch");
-  const auto manifest = EcComponentManifestReader::Read();
+  const auto reader = EcComponentManifestReader("model-0.0.0-abcdefa");
+
+  const auto manifest = reader.Read();
+
   EXPECT_FALSE(manifest.has_value());
 }
 
 TEST_F(EcComponentManifestTest,
        EcComponentManifestReader_ManifestWithConflictValue_ReadFailed) {
   SetUpEcComponentManifest("image1", "invalid.conflict-value");
-  const auto manifest = EcComponentManifestReader::Read();
+  const auto reader = EcComponentManifestReader("model-0.0.0-abcdefa");
+
+  const auto manifest = reader.Read();
+
   EXPECT_FALSE(manifest.has_value());
 }
 
 TEST_F(EcComponentManifestTest,
        EcComponentManifestReader_ManifestWithConflictMask_ReadFailed) {
   SetUpEcComponentManifest("image1", "invalid.conflict-mask");
-  const auto manifest = EcComponentManifestReader::Read();
+  const auto reader = EcComponentManifestReader("model-0.0.0-abcdefa");
+
+  const auto manifest = reader.Read();
+
+  EXPECT_FALSE(manifest.has_value());
+}
+
+TEST_F(EcComponentManifestTestBasic,
+       EcComponentManifestReader_EcVersionMismatch_ReadFailed) {
+  const auto reader = EcComponentManifestReader("mismatch-version");
+
+  const auto manifest = reader.Read();
+
   EXPECT_FALSE(manifest.has_value());
 }
 
 TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
-  const auto manifest = EcComponentManifestReader::Read();
+  const auto reader = EcComponentManifestReader("model-0.0.0-abcdefa");
+
+  const auto manifest = reader.Read();
 
   EXPECT_TRUE(manifest.has_value());
   EXPECT_EQ(manifest->manifest_version, 1);
