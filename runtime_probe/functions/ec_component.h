@@ -35,7 +35,6 @@ class EcComponentFunction : public PrivilegedProbeFunction {
   DataType EvalImpl() const override;
 
   // Virtuals for testing.
-  virtual base::ScopedFD GetEcDevice() const;
   virtual std::unique_ptr<ec::I2cPassthruCommand> GetI2cReadCommand(
       uint8_t port,
       uint8_t addr8,
@@ -50,9 +49,14 @@ class EcComponentFunction : public PrivilegedProbeFunction {
   bool IsValidComponent(const EcComponentManifest::Component& comp,
                         const base::ScopedFD& ec_dev_fd) const;
 
+  template <typename ManifestReader>
+  DataType ProbeWithManifest(const std::optional<std::string>& manifest_path,
+                             const std::string_view dev_path) const;
+
   PROBE_FUNCTION_ARG_DEF(std::optional<std::string>, type);
   PROBE_FUNCTION_ARG_DEF(std::optional<std::string>, name);
   PROBE_FUNCTION_ARG_DEF(std::optional<std::string>, manifest_path);
+  PROBE_FUNCTION_ARG_DEF(std::optional<std::string>, ish_manifest_path);
 };
 
 }  // namespace runtime_probe

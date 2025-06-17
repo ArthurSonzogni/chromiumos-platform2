@@ -4,12 +4,17 @@
 
 #include "runtime_probe/functions/ec_component.h"
 
+#include <fcntl.h>
+
 #include <memory>
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/json/json_reader.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libec/get_version_command.h>
@@ -32,17 +37,35 @@ constexpr uint32_t kEcResultSuccess = 0;
 constexpr uint32_t kEcResultTimeout = 10;
 constexpr uint8_t kEcI2cStatusSuccess = 0;
 
+constexpr auto kEcDevPath("dev/cros_ec");
+constexpr auto kIshDevPath("dev/cros_ish");
+
 class EcComponentFunctionTest : public BaseFunctionTest {
  protected:
+  void SetUp() override {
+    // Default to EC device.
+    SetUpEcDevice();
+  }
+
   class FakeGetEcVersionCommand : public ec::GetVersionCommand {
     using ec::GetVersionCommand::GetVersionCommand;
 
    public:
     struct ec_response_get_version* Resp() override { return &resp_.value(); }
 
-    bool EcCommandRun(int fd) override { return resp_.has_value(); }
+    bool EcCommandRun(int fd) override {
+      const auto file_path = brillo::GetFDPath(fd);
+      if (base::EndsWith(file_path.value(), kEcDevPath)) {
+        resp_ = ec_resp_;
+      } else if (base::EndsWith(file_path.value(), kIshDevPath)) {
+        resp_ = ish_resp_;
+      }
+      return resp_.has_value();
+    }
 
     std::optional<struct ec_response_get_version> resp_;
+    std::optional<struct ec_response_get_version> ec_resp_;
+    std::optional<struct ec_response_get_version> ish_resp_;
   };
 
   class MockI2cPassthruCommand : public ec::I2cPassthruCommand {
@@ -62,12 +85,11 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     using EcComponentFunction::EcComponentFunction;
 
    public:
-    base::ScopedFD GetEcDevice() const override { return base::ScopedFD{}; }
-
     std::unique_ptr<ec::GetVersionCommand> GetGetVersionCommand()
         const override {
       auto cmd = std::make_unique<FakeGetEcVersionCommand>();
-      cmd->resp_ = ec_response_get_version_;
+      cmd->ec_resp_ = ec_response_get_version_;
+      cmd->ish_resp_ = ish_response_get_version_;
       return cmd;
     }
 
@@ -84,7 +106,15 @@ class EcComponentFunctionTest : public BaseFunctionTest {
         {.version_string_ro = "ro_version",
          .version_string_rw = "model-0.0.0-abcdefa",
          .current_image = EC_IMAGE_RW}};
+    std::optional<struct ec_response_get_version> ish_response_get_version_{
+        {.version_string_ro = "ro_version",
+         .version_string_rw = "model-ish-0.0.0-abcdefa",
+         .current_image = EC_IMAGE_RW}};
   };
+
+  void SetUpEcDevice() { SetFile(kEcDevPath, ""); }
+
+  void SetUpIshDevice() { SetFile(kIshDevPath, ""); }
 
   void SetUpEcComponentManifest(const std::string& image_name,
                                 const std::string& case_name) {
@@ -94,6 +124,18 @@ class EcComponentFunctionTest : public BaseFunctionTest {
         kCrosConfigImageNamePath, kCrosConfigImageNameKey, image_name);
     const base::FilePath manifest_dir =
         base::FilePath{kCmePath}.Append(image_name);
+    SetDirectory(manifest_dir);
+    ASSERT_TRUE(base::CopyFile(
+        GetTestDataPath().Append(file_path),
+        GetPathUnderRoot(manifest_dir.Append(kEcComponentManifestName))));
+  }
+
+  void SetUpIshComponentManifest(const std::string& ish_project_name,
+                                 const std::string& case_name) {
+    const std::string file_path =
+        base::StringPrintf("cme/component_manifest.%s.json", case_name.c_str());
+    const base::FilePath manifest_dir =
+        base::FilePath{kCmePath}.Append(ish_project_name);
     SetDirectory(manifest_dir);
     ASSERT_TRUE(base::CopyFile(
         GetTestDataPath().Append(file_path),
@@ -174,12 +216,27 @@ class EcComponentFunctionTest : public BaseFunctionTest {
 
 class EcComponentFunctionTestNoExpect : public EcComponentFunctionTest {
  protected:
-  void SetUp() override { SetUpEcComponentManifest("image1", "no_expect"); }
+  void SetUp() override {
+    EcComponentFunctionTest::SetUp();
+    SetUpEcComponentManifest("image1", "no_expect");
+  }
 };
 
 class EcComponentFunctionTestWithExpect : public EcComponentFunctionTest {
  protected:
-  void SetUp() override { SetUpEcComponentManifest("image1", "with_expect"); }
+  void SetUp() override {
+    EcComponentFunctionTest::SetUp();
+    SetUpEcComponentManifest("image1", "with_expect");
+  }
+};
+
+class EcComponentFunctionTestWithIsh : public EcComponentFunctionTestNoExpect {
+ protected:
+  void SetUp() override {
+    EcComponentFunctionTestNoExpect::SetUp();
+    SetUpIshDevice();
+    SetUpIshComponentManifest("model-ish", "no_expect_ish");
+  }
 };
 
 TEST_F(EcComponentFunctionTest, ProbeWithInvalidManifestFailed) {
@@ -375,6 +432,7 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
                               std::vector<uint8_t>{}, 1, kMatchValueForReg1);
   SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
                               std::vector<uint8_t>{}, 1, kMatchValueForReg2);
+
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
 }
@@ -398,6 +456,7 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueLengthMismatch) {
                               std::vector<uint8_t>{}, 1, kMismatchValueForReg1);
   SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
                               std::vector<uint8_t>{}, 1, kMatchValueForReg2);
+
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
 }
@@ -421,6 +480,7 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOnlyOneValueMismatch) {
                               std::vector<uint8_t>{}, 1, kMismatchValue);
   SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
                               std::vector<uint8_t>{}, 1, kMatchedValueForReg3);
+
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
 }
@@ -480,9 +540,59 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cWithWriteData) {
   )JSON"));
 }
 
+TEST_F(EcComponentFunctionTestWithIsh, ProbeWithIshComponentsSucceed) {
+  auto arguments = base::JSONReader::Read("{}");
+  auto probe_function =
+      CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
+
+  // bc12_1 in the EC component manifest.
+  SetI2cReadSuccess(probe_function.get(), 2, 0x5f);
+  // charger_1 in the ISH component manifest.
+  SetI2cReadSuccess(probe_function.get(), 4, 0x9);
+
+  auto actual = EvalProbeFunction(probe_function.get());
+
+  ExpectUnorderedListEqual(actual, CreateProbeResultFromJson(R"JSON(
+    [
+      {
+        "component_type": "bc12",
+        "component_name": "bc12_1"
+      },
+      {
+        "component_type": "charger",
+        "component_name": "charger_1"
+      }
+    ]
+  )JSON"));
+}
+
+TEST_F(EcComponentFunctionTestWithIsh, ProbeWithoutIshDevFailed) {
+  UnsetPath(kIshDevPath);
+  auto arguments = base::JSONReader::Read("{}");
+  auto probe_function =
+      CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
+
+  // bc12_1 in the EC component manifest.
+  SetI2cReadSuccess(probe_function.get(), 2, 0x5f);
+  // charger_1 in the ISH component manifest.
+  SetI2cReadSuccess(probe_function.get(), 4, 0x9);
+
+  auto actual = EvalProbeFunction(probe_function.get());
+
+  ExpectUnorderedListEqual(actual, CreateProbeResultFromJson(R"JSON(
+    [
+      {
+        "component_type": "bc12",
+        "component_name": "bc12_1"
+      }
+    ]
+  )JSON"));
+}
+
 class EcComponentFunctionTestECVersion : public EcComponentFunctionTest {
  protected:
   void SetUp() override {
+    EcComponentFunctionTest::SetUp();
     SetFakeEcComponentManifest(R"JSON(
       {
         "manifest_version": 1,
@@ -614,6 +724,42 @@ TEST_F(EcComponentFunctionTest, ProbeWithManifestPathNonFactoryMode) {
   mock_context()->SetFactoryMode(false);
   base::Value::Dict argument;
   argument.Set("manifest_path", "/a/fake/path/manifest.json");
+  ASSERT_FALSE(CreateProbeFunction<MockEcComponentFunction>(argument));
+}
+
+TEST_F(EcComponentFunctionTest, ProbeWithIshManifestPathSuccess) {
+  mock_context()->SetFactoryMode(true);
+  SetUpIshDevice();
+  auto manifest_path = "/a/fake/path/manifest.json";
+  SetFile(manifest_path, R"JSON(
+      {
+        "manifest_version": 1,
+        "ec_version": "model-ish-0.0.0-abcdefa",
+        "component_list": [
+          {
+            "component_type": "base_sensor",
+            "component_name": "base_sensor_2",
+            "i2c": {
+              "port": 3,
+              "addr": "0x01"
+            }
+          }
+        ]
+      }
+    )JSON");
+  base::Value::Dict argument;
+  argument.Set("ish_manifest_path", GetPathUnderRoot(manifest_path).value());
+
+  auto probe_function = CreateProbeFunction<MockEcComponentFunction>(argument);
+  ExpectI2cReadSuccess(probe_function.get(), 3, 0x01);
+  EvalProbeFunction(probe_function.get());
+}
+
+TEST_F(EcComponentFunctionTest, ProbeWithIshManifestPathNonFactoryMode) {
+  mock_context()->SetFactoryMode(false);
+  SetUpIshDevice();
+  base::Value::Dict argument;
+  argument.Set("ish_manifest_path", "/a/fake/path/manifest.json");
   ASSERT_FALSE(CreateProbeFunction<MockEcComponentFunction>(argument));
 }
 

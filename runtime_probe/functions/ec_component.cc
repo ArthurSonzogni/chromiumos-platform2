@@ -7,10 +7,13 @@
 #include <fcntl.h>
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/values.h>
 #include <libec/get_version_command.h>
@@ -18,11 +21,14 @@
 
 #include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/ec_component_manifest.h"
+#include "runtime_probe/utils/ish_component_manifest.h"
 
 namespace runtime_probe {
 
 namespace {
 constexpr int kEcCmdNumAttempts = 10;
+constexpr char kCrosEcPath[] = "dev/cros_ec";
+constexpr char kCrosIshPath[] = "dev/cros_ish";
 
 bool IsMatchExpect(EcComponentManifest::Component::I2c::Expect expect,
                    base::span<const uint8_t> resp_data) {
@@ -51,10 +57,6 @@ bool RunI2cCommandAndCheckSuccess(const base::ScopedFD& ec_dev_fd,
 }
 
 }  // namespace
-
-base::ScopedFD EcComponentFunction::GetEcDevice() const {
-  return base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
-}
 
 std::unique_ptr<ec::I2cPassthruCommand> EcComponentFunction::GetI2cReadCommand(
     uint8_t port,
@@ -115,31 +117,31 @@ bool EcComponentFunction::IsValidComponent(
   return true;
 }
 
-bool EcComponentFunction::PostParseArguments() {
-  if (manifest_path_ && !Context::Get()->factory_mode()) {
-    LOG(ERROR) << "manifest_path can only be set in factory_runtime_probe.";
-    return false;
+template <typename ManifestReader>
+EcComponentFunction::DataType EcComponentFunction::ProbeWithManifest(
+    const std::optional<std::string>& manifest_path,
+    const std::string_view dev_path) const {
+  const auto path = Context::Get()->root_dir().Append(dev_path);
+  if (!base::PathExists(path)) {
+    VLOG(1) << path << " doesn't exist.";
+    return {};
   }
-  return true;
-}
+  auto dev_fd = base::ScopedFD(open(path.value().c_str(), O_RDWR));
 
-EcComponentFunction::DataType EcComponentFunction::EvalImpl() const {
-  base::ScopedFD ec_dev = GetEcDevice();
-
-  std::optional<EcComponentManifest> manifest;
-  auto ec_version = GetCurrentECVersion(ec_dev);
-  if (!ec_version) {
-    LOG(ERROR) << "Get EC version failed.";
+  auto ec_version = GetCurrentECVersion(dev_fd);
+  if (!ec_version.has_value()) {
+    LOG(ERROR) << "Failed to get EC version for device \"" << path << "\".";
     return {};
   }
 
-  auto ec_manifest_reader = EcComponentManifestReader(*ec_version);
-  if (manifest_path_) {
-    manifest = ec_manifest_reader.ReadFromFilePath(
-        base::FilePath(manifest_path_.value()));
+  ManifestReader manifest_reader(ec_version.value());
+  std::optional<EcComponentManifest> manifest;
+  if (manifest_path) {
+    manifest = manifest_reader.ReadFromFilePath(base::FilePath(*manifest_path));
   } else {
-    manifest = ec_manifest_reader.Read();
+    manifest = manifest_reader.Read();
   }
+
   if (!manifest) {
     LOG(ERROR) << "Get component manifest failed.";
     return {};
@@ -153,13 +155,41 @@ EcComponentFunction::DataType EcComponentFunction::EvalImpl() const {
         (name_ && comp.component_name != name_)) {
       continue;
     }
-    if (IsValidComponent(comp, ec_dev)) {
+    if (IsValidComponent(comp, dev_fd)) {
       result.Append(base::Value::Dict()
                         .Set("component_type", comp.component_type)
                         .Set("component_name", comp.component_name));
     }
   }
   return result;
+}
+
+bool EcComponentFunction::PostParseArguments() {
+  if ((manifest_path_ || ish_manifest_path_) &&
+      !Context::Get()->factory_mode()) {
+    LOG(ERROR) << "manifest_path and ish_manifest_path can only be set in "
+                  "factory_runtime_probe.";
+    return false;
+  }
+  return true;
+}
+
+EcComponentFunction::DataType EcComponentFunction::EvalImpl() const {
+  DataType results{};
+
+  auto ec_result =
+      ProbeWithManifest<EcComponentManifestReader>(manifest_path_, kCrosEcPath);
+  for (auto& res : ec_result) {
+    results.Append(std::move(res));
+  }
+
+  auto ish_result = ProbeWithManifest<IshComponentManifestReader>(
+      ish_manifest_path_, kCrosIshPath);
+  for (auto& res : ish_result) {
+    results.Append(std::move(res));
+  }
+
+  return results;
 }
 
 }  // namespace runtime_probe

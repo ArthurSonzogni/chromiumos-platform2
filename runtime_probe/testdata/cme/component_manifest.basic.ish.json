@@ -1,0 +1,42 @@
+{
+  "manifest_version": 1,
+  "ec_version": "model-ish-0.0.0-abcdefa",
+  "component_list": [
+    {
+      "component_type": "base_sensor",
+      "component_name": "base_sensor_1",
+      "i2c": {
+        "port": 3,
+        "addr": "0x01",
+        "expect": [
+          {
+            "reg": "0x00",
+            "write_data": "0xaabbcc",
+            "mask": "0xff",
+            "value": "0x00"
+          },
+          {
+            "reg": "0x01",
+            "mask": "0xff",
+            "value": "0x01",
+            "bytes": 1
+          },
+          {
+            "reg": "0x02",
+            "multi_byte_mask": "0x0000ff00",
+            "multi_byte_value": "0x00004200",
+            "bytes": 4
+          }
+        ]
+      }
+    },
+    {
+      "component_type": "base_sensor",
+      "component_name": "base_sensor_2",
+      "i2c": {
+        "port": 3,
+        "addr": "0x02"
+      }
+    }
+  ]
+}
