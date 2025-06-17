@@ -245,8 +245,10 @@ fn perform_installation(config: &InstallConfig) -> Result<()> {
     if Path::new("root").join(FLEX_CONFIG_SRC_FILENAME).exists() {
         if let Err(err) = copy_flex_config_to_stateful(stateful.mount_path()) {
             error!("Unable to copy Flex config due to: {err}");
-            // If this fails, we can't do anything about it, so ignore the error.
-            let _ = try_save_logs(config);
+            // If this fails, we can't do anything about it, so just log the error.
+            if let Err(err) = try_save_logs(config) {
+                error!("Unable to save logs due to: {err:#}");
+            }
         } else {
             info!("Successfully copied a flex config to stateful partition.");
         }
@@ -363,7 +365,7 @@ fn main() -> ExitCode {
 
         // If we weren't successful, try to save the logs.
         if let Err(err) = try_save_logs(&config) {
-            error!("Unable to save logs due to: {err}")
+            error!("Unable to save logs due to: {err:#}")
         }
         // TODO(b/314965086): Add an error screen displaying the log.
         ExitCode::FAILURE
