@@ -5,11 +5,10 @@
 #ifndef CHAPS_OBJECT_STORE_IMPL_H_
 #define CHAPS_OBJECT_STORE_IMPL_H_
 
-#include "chaps/object_store.h"
-
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
@@ -18,6 +17,7 @@
 #include <leveldb/env.h>
 
 #include "chaps/chaps_metrics.h"
+#include "chaps/object_store.h"
 
 namespace chaps {
 
@@ -71,7 +71,7 @@ class ObjectStoreImpl : public ObjectStore {
   // Given a valid blob key (as created by CreateBlobKey), determines whether
   // the blob is internal, public, or private and the blob id. Returns true on
   // success.
-  bool ParseBlobKey(const std::string& key, BlobType* type, int* blob_id);
+  bool ParseBlobKey(std::string_view key, BlobType* type, int* blob_id);
 
   // Computes and returns the next (unused) blob id;
   bool GetNextID(int* next_id);

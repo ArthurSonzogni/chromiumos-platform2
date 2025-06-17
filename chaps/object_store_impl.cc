@@ -11,14 +11,13 @@
 #include <string_view>
 #include <vector>
 
-#include "base/files/file_enumerator.h"
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/secure_blob.h>
 #include <brillo/files/file_util.h>
+#include <brillo/secure_blob.h>
 #include <leveldb/db.h>
 
 #include "chaps/chaps_metrics.h"
@@ -391,21 +390,20 @@ string ObjectStoreImpl::CreateBlobKey(BlobType type, int blob_id) {
   return base::StringPrintf("%s%s%d", prefix, kBlobKeySeparator, blob_id);
 }
 
-bool ObjectStoreImpl::ParseBlobKey(const string& key,
+bool ObjectStoreImpl::ParseBlobKey(std::string_view key,
                                    BlobType* type,
                                    int* blob_id) {
   size_t index = key.rfind(kBlobKeySeparator);
-  if (index == string::npos) {
+  if (index == std::string_view::npos) {
     // This isn't a blob.
     return false;
   }
-  std::string_view key_piece =
-      base::MakeStringPiece(key.begin() + (index + 1), key.end());
+  std::string_view key_piece = key.substr(index + 1);
   if (!base::StringToInt(key_piece, blob_id)) {
     LOG(ERROR) << "Invalid blob key id: " << key;
     return false;
   }
-  string prefix = key.substr(0, index);
+  std::string_view prefix = key.substr(0, index);
   if (prefix == kInternalBlobKeyPrefix) {
     *type = kInternal;
   } else if (prefix == kPublicBlobKeyPrefix) {

@@ -113,6 +113,7 @@ absl::Status GetStatFromProcfs(const base::FilePath& stat_path,
     return absl::NotFoundError(
         base::StrCat({kErrorFailedToRead, stat_path.value()}));
   }
+  std::string_view proc_stat = proc_stat_contents;
 
   // See https://man7.org/linux/man-pages/man5/proc.5.html for
   // /proc/[pid]/stat format. All tokens are delimited with a whitespace. One
@@ -121,13 +122,15 @@ absl::Status GetStatFromProcfs(const base::FilePath& stat_path,
   // parentheses though so we just ignore everything until the final ')'.
   // StringTokenizer::set_quote_chars does not help with this. It accepts
   // multiple quote chars but does not work for asymmetric quoting.
-  size_t end_of_comm = proc_stat_contents.rfind(')');
-  if (end_of_comm == std::string::npos) {
+  size_t end_of_comm = proc_stat.rfind(')');
+  if (end_of_comm == std::string_view::npos) {
     return absl::OutOfRangeError(
         base::StrCat({kErrorFailedToParse, stat_path.value()}));
   }
-  base::StringTokenizer t(proc_stat_contents.begin() + end_of_comm,
-                          proc_stat_contents.end(), " ");
+
+  // The last ')' in comm is included as well.
+  std::string_view proc_stat_after_comm = proc_stat.substr(end_of_comm);
+  base::StringViewTokenizer t(proc_stat_after_comm, " ");
   // We could avoid a separate loop here but the tokenizer API is awkward for
   // random access.
   std::vector<std::string_view> stat_tokens;
@@ -153,13 +156,12 @@ absl::Status GetStatFromProcfs(const base::FilePath& stat_path,
   }
   constexpr uint32_t kPfKthread = 0x00200000;  // Defined in linux/sched.h.
   if (flags & kPfKthread) {
-    size_t start_of_comm = proc_stat_contents.find('(');
-    if (start_of_comm != std::string::npos &&
+    size_t start_of_comm = proc_stat.find('(');
+    if (start_of_comm != std::string_view::npos &&
         (start_of_comm + 1 <= end_of_comm)) {
       *set_comm_if_kthread = base::StrCat(
           {"[",
-           base::MakeStringPiece(proc_stat_contents.begin() + start_of_comm + 1,
-                                 proc_stat_contents.begin() + end_of_comm),
+           proc_stat.substr(start_of_comm + 1, end_of_comm - start_of_comm - 1),
            "]"});
     }
   }
