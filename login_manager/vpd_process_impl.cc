@@ -4,18 +4,38 @@
 
 #include "login_manager/vpd_process_impl.h"
 
+#include <linux/capability.h>
+
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <brillo/process/process_reaper.h>
 #include <metrics/metrics_library.h>
 
 namespace {
 
 constexpr char kVpdUpdateMetric[] = "Enterprise.VpdUpdateStatus";
+
+std::optional<int> GetMaxCapability() {
+  std::string content;
+  if (!base::ReadFileToString(base::FilePath("/proc/sys/kernel/cap_last_cap"),
+                              &content)) {
+    return std::nullopt;
+  }
+  int result = 0;
+  if (!base::StringToInt(base::TrimWhitespaceASCII(content, base::TRIM_ALL),
+                         &result)) {
+    return std::nullopt;
+  }
+  return result;
+}
 
 }  // namespace
 
@@ -60,7 +80,13 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
                                      CompletionCallback completion) {
   DUMP_WILL_BE_CHECK(!subprocess_ || subprocess_->GetPid() <= 0)
       << "Another subprocess is running";
-  subprocess_.reset(new Subprocess(0 /*root*/, system_utils_));
+  subprocess_.reset(new Subprocess(std::nullopt, system_utils_));
+  // Set recognized full bits to emulate root user's capability for transition.
+  if (std::optional<int> max_capability = GetMaxCapability()) {
+    subprocess_->SetCaps(CAP_TO_MASK(max_capability.value()) - 1);
+  } else {
+    LOG(ERROR) << "Failed to identify the max capability";
+  }
 
   std::vector<std::string> argv = {
       // update_rw_vpd uses absl logging library, rather than the ones provided

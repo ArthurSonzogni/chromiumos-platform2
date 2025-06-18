@@ -129,7 +129,8 @@ TEST_F(AndroidOciWrapperTest, KillOnLaunchTimeOut) {
 
   EXPECT_CALL(system_utils_, ProcessGroupIsGone(run_oci_pid_, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(system_utils_, kill(-run_oci_pid_, -1, SIGKILL))
+  EXPECT_CALL(system_utils_,
+              kill(-run_oci_pid_, std::optional<uid_t>(), SIGKILL))
       .WillOnce(Return(0));
 
   EXPECT_FALSE(CallStartContainer());

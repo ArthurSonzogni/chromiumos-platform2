@@ -57,7 +57,7 @@ bool IsDevMode() {
 
 }  // anonymous namespace
 
-Subprocess::Subprocess(uid_t uid, SystemUtils* system_utils)
+Subprocess::Subprocess(std::optional<uid_t> uid, SystemUtils* system_utils)
     : pid_(-1),
       desired_uid_(uid),
       new_mount_namespace_(false),
@@ -76,19 +76,23 @@ void Subprocess::EnterExistingMountNamespace(
   new_mount_namespace_ = false;
 }
 
+void Subprocess::SetCaps(std::optional<uint64_t> caps) {
+  caps_ = caps;
+}
+
 bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
                              const std::vector<std::string>& env_vars) {
   gid_t gid = 0;
   std::vector<gid_t> groups;
-  if (desired_uid_ != 0 &&
-      !system_utils_->GetGidAndGroups(desired_uid_, &gid, &groups)) {
-    LOG(ERROR) << "Can't get group info for UID " << desired_uid_;
+  if (desired_uid_.has_value() &&
+      !system_utils_->GetGidAndGroups(desired_uid_.value(), &gid, &groups)) {
+    LOG(ERROR) << "Can't get group info for UID " << desired_uid_.value();
     return false;
   }
 
   ScopedMinijail j(minijail_new());
-  if (desired_uid_ != 0) {
-    minijail_change_uid(j.get(), desired_uid_);
+  if (desired_uid_.has_value()) {
+    minijail_change_uid(j.get(), desired_uid_.value());
     minijail_change_gid(j.get(), gid);
     minijail_set_supplementary_gids(j.get(), groups.size(), groups.data());
     minijail_create_session(j.get());
@@ -99,6 +103,11 @@ bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
   if (ShouldApplyLandlockPolicy() && minijail_is_fs_restriction_available()) {
     LandlockPolicy fs_policy;
     fs_policy.SetupPolicy(j.get());
+  }
+
+  if (caps_) {
+    minijail_use_caps(j.get(), caps_.value());
+    minijail_set_ambient_caps(j.get());
   }
 
   minijail_preserve_fd(j.get(), STDOUT_FILENO, STDOUT_FILENO);
@@ -158,8 +167,9 @@ void Subprocess::KillEverything(int signal) {
   // If we failed to kill the process group (maybe it doesn't exist yet because
   // the forked process hasn't had a chance to call setsid()), just kill the
   // child directly. If it hasn't called setsid() yet, then it hasn't called
-  // setuid() either, so kill it as root instead of as |desired_uid_|.
-  system_utils_->kill(pid_.value(), 0, signal);
+  // setuid() either, so kill it as the current user instead of as
+  // |desired_uid_|.
+  system_utils_->kill(pid_.value(), std::nullopt, signal);
 }
 
 void Subprocess::Kill(int signal) {
