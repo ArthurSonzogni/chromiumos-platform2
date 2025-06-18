@@ -123,6 +123,14 @@ const std::map<flex_bluetooth::BluetoothAdapter,
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
         {flex_bluetooth::BluetoothAdapter{0x0a5c, 0x216d},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+
+        // Resolve crashes from b/401624875
+        {flex_bluetooth::BluetoothAdapter{0x413c, 0x8140},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        {flex_bluetooth::BluetoothAdapter{0x044e, 0x301d},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        {flex_bluetooth::BluetoothAdapter{0x05ac, 0x8205},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
 };
 }  // namespace
 
