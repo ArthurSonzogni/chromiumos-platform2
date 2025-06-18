@@ -24,7 +24,7 @@
 #include <tuple>
 #include <utility>
 
-#include <base/containers/flat_map.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -118,17 +118,17 @@ constexpr uint32_t kExpectedVbMetaDigestSize = 64;
 // for |vb_state|.
 // DeviceInfo expected values:
 // https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/security/rkp/aidl/android/hardware/security/keymint/DeviceInfoV2.cddl
-const base::flat_map<VerifiedBootState, std::string>
-    kVerifiedBootStateToStringMap = {
-        {VerifiedBootState::kVerifiedBoot, "green"},
-        {VerifiedBootState::kUnverifiedBoot, "orange"}};
+constexpr auto kVerifiedBootStateToStringMap =
+    base::MakeFixedFlatMap<VerifiedBootState, const char*>(
+        {{VerifiedBootState::kVerifiedBoot, "green"},
+         {VerifiedBootState::kUnverifiedBoot, "orange"}});
 
 // Converts VerifiedBootDeviceState to the value expected by Android in
 // DeviceInfo for |bootloader_state|.
-const base::flat_map<VerifiedBootDeviceState, std::string>
-    kDeviceStateToStringMap = {
-        {VerifiedBootDeviceState::kLockedDevice, "locked"},
-        {VerifiedBootDeviceState::kUnlockedDevice, "unlocked"}};
+constexpr auto kDeviceStateToStringMap =
+    base::MakeFixedFlatMap<VerifiedBootDeviceState, const char*>(
+        {{VerifiedBootDeviceState::kLockedDevice, "locked"},
+         {VerifiedBootDeviceState::kUnlockedDevice, "unlocked"}});
 
 // The vmm-swap out should be skipped for 24 hours once it's done.
 constexpr base::TimeDelta kVmmSwapOutCoolingDownPeriod = base::Hours(24);
@@ -221,6 +221,27 @@ std::string GetChromeOsChannelFromLsbRelease() {
     return kUnknown;
   }
   return value.erase(value.find(kChannelSuffix), kChannelSuffix.size());
+}
+
+// Returns the value of Verified Boot State based on developer mode.
+// static
+const char* DeriveVerifiedBootState(const bool dev_mode) {
+  if (!dev_mode) {
+    return kVerifiedBootStateToStringMap.at(VerifiedBootState::kVerifiedBoot);
+  }
+  return kVerifiedBootStateToStringMap.at(VerifiedBootState::kUnverifiedBoot);
+}
+
+// Devices in debug mode are considered unlocked since new
+// software can be flashed and it does not enforce verification.
+// Non-debug devices do not allow modification and must go through
+// verified boot.
+// static
+const char* DeriveBootloaderState(const bool dev_mode) {
+  if (!dev_mode) {
+    return kDeviceStateToStringMap.at(VerifiedBootDeviceState::kLockedDevice);
+  }
+  return kDeviceStateToStringMap.at(VerifiedBootDeviceState::kUnlockedDevice);
 }
 
 }  // namespace
@@ -954,8 +975,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
   arc::StartArcMiniInstanceRequest mini_instance_request =
       request.mini_instance_request();
 
-  const std::string vb_device_state = DeriveBootloaderState(is_dev_mode);
-  const std::string verified_boot_state = DeriveVerifiedBootState(is_dev_mode);
+  const char* vb_device_state = DeriveBootloaderState(is_dev_mode);
+  const char* verified_boot_state = DeriveVerifiedBootState(is_dev_mode);
   const std::optional<std::vector<uint8_t>> vbmeta_digest_opt =
       GetVbMetaDigestFromFile(base::FilePath(kVbMetaDigestFileName));
 
@@ -998,9 +1019,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
       base::StringPrintf("androidboot.arc.signed_in=%d",
                          mini_instance_request.arc_signed_in()),
       base::StringPrintf("androidboot.verifiedbootstate=%s",
-                         verified_boot_state.c_str()),
-      base::StringPrintf("androidboot.vbmeta.device_state=%s",
-                         vb_device_state.c_str()),
+                         verified_boot_state),
+      base::StringPrintf("androidboot.vbmeta.device_state=%s", vb_device_state),
       // Avoid the RCU synchronization from blocking. See b/285791678#comment74
       // for the context.
       "rcupdate.rcu_expedited=1",
@@ -1184,27 +1204,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
   }
 
   return params;
-}
-
-// Returns the value of Verified Boot State based on developer mode.
-// static
-std::string ArcVm::DeriveVerifiedBootState(const bool dev_mode) {
-  if (!dev_mode) {
-    return kVerifiedBootStateToStringMap.at(VerifiedBootState::kVerifiedBoot);
-  }
-  return kVerifiedBootStateToStringMap.at(VerifiedBootState::kUnverifiedBoot);
-}
-
-// Devices in debug mode are considered unlocked since new
-// software can be flashed and it does not enforce verification.
-// Non-debug devices do not allow modification and must go through
-// verified boot.
-// static
-std::string ArcVm::DeriveBootloaderState(const bool dev_mode) {
-  if (!dev_mode) {
-    return kDeviceStateToStringMap.at(VerifiedBootDeviceState::kLockedDevice);
-  }
-  return kDeviceStateToStringMap.at(VerifiedBootDeviceState::kUnlockedDevice);
 }
 
 // static

@@ -212,10 +212,6 @@ class ArcVm final : public VmBaseImpl {
 
   const patchpanel::Client::ArcVMAllocation& GetNetworkAllocation() const;
 
-  // Derive values for ARC verified boot parameters.
-  static std::string DeriveBootloaderState(const bool dev_mode);
-  static std::string DeriveVerifiedBootState(const bool dev_mode);
-
   // Read and return ARCVM verified boot meta digest from
   // arcvm_vbmeta_digest.sha256. The digest is the hash of the combined
   // hash values of the system and vendor images, calculated when the

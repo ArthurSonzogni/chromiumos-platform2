@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/fixed_flat_set.h>
 #include <base/files/file_path.h>
 #include <vm_concierge/concierge_service.pb.h>
 
@@ -51,7 +52,7 @@ constexpr size_t kAndroidBootPrefixLen = 12;
 // by their androidboot.* (i.e., not just ro.boot.*) name should be added to
 // this list. Please refer to the 'Property Migration' section of
 // go/arcvm-prop-blk-device for context.
-const std::set<std::string> kBootPropAllowList = {
+constexpr auto kBootPropAllowList = base::MakeFixedFlatSet<std::string_view>({
     // Properties that are fixed by ExportKernelBootProps during Android
     // PropertyInit in property_service.cpp.
     "androidboot.mode",        // ro.bootmode
@@ -76,7 +77,7 @@ const std::set<std::string> kBootPropAllowList = {
     "androidboot.slot_suffix",               // fs_mgr, verified boot
     "androidboot.verifiedbootstate",         // verified boot
     "androidboot.veritymode",                // verified boot
-};
+});
 
 // Returns "/run/daemon-store/crosvm/<owner_id>".
 base::FilePath GetCryptohomePath(const std::string& owner_id);
