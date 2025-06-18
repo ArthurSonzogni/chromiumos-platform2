@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <absl/strings/str_cat.h>
 #include <base/containers/flat_map.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
