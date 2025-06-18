@@ -114,8 +114,10 @@ where
     // import a DMA buffer of any modifier type and simply ignore the given modifier entirely.
     decoder_modifier: u64,
     // Keep track of what DRM modifier the client expects. This can sometimes change during
-    // detached surface mode, so we just cache the modifier of the first test alloc.
-    client_modifier: u64,
+    // detached surface mode, so we just cache the modifier of the first test alloc. Note that we
+    // only distinguish between linear and non-linear client modifiers so we can be forward
+    // compatible with future driver versions that may support other types of tiling modifiers.
+    client_linear_modifier: bool,
     // If we need to "convert" the DRM modifier, we don't need to allocate a full auxiliary frame
     // pool because the existing frame pool already gives us frames with the right size, format,
     // and layout.
@@ -165,7 +167,7 @@ where
         loop {
             let mut scratch_frame = if let Some(frame) = self.scratch_frame.take() {
                 Some(frame)
-            } else if self.client_modifier != self.decoder_modifier {
+            } else if self.client_linear_modifier {
                 return;
             } else {
                 None
@@ -191,14 +193,15 @@ where
                         let timestamp = external_timestamp(frame.timestamp());
                         let drain = self.get_drain_status(timestamp);
                         let mut frame = frame.video_frame();
-                        if self.client_modifier != self.decoder_modifier
-                            && scratch_frame.as_ref().unwrap().modifier() == self.client_modifier
+                        if self.client_linear_modifier
+                            && scratch_frame.as_ref().unwrap().modifier()
+                                == DrmModifier::Linear.into()
                         {
                             if let Err(msg) = modifier_conversion(
                                 &*frame,
                                 self.decoder_modifier,
                                 scratch_frame.as_mut().unwrap(),
-                                self.client_modifier,
+                                DrmModifier::Linear.into(),
                             ) {
                                 log::debug!("Error converting modifiers: {}", msg);
                                 *self.state.0.lock().unwrap() = C2State::C2Error;
@@ -309,7 +312,7 @@ where
                 },
             }
 
-            if self.client_modifier != self.decoder_modifier {
+            if self.client_linear_modifier {
                 self.scratch_frame = (*self.alloc_cb.lock().unwrap())();
             }
         }
@@ -338,7 +341,7 @@ where
         let mut backend = B::new(options)?;
         let backend_fourccs = backend.supported_output_formats(input_fourcc)?;
         let decoder_modifier = backend.modifier();
-        let mut client_modifier: u64 = decoder_modifier;
+        let mut client_linear_modifier = false;
 
         let can_import = output_fourccs
             .iter()
@@ -359,7 +362,7 @@ where
             });
             let test_alloc = (*alloc_cb.lock().unwrap())()
                 .ok_or("Failed to perform test allocation!".to_string())?;
-            client_modifier = test_alloc.modifier();
+            client_linear_modifier = test_alloc.modifier() == DrmModifier::Linear.into();
 
             (
                 None,
@@ -425,7 +428,7 @@ where
             state: state,
             drain_status: None,
             decoder_modifier: decoder_modifier,
-            client_modifier: client_modifier,
+            client_linear_modifier: client_linear_modifier,
             scratch_frame: None,
             _phantom: Default::default(),
         })
@@ -459,7 +462,7 @@ where
                 self.awaiting_job_event.read().unwrap();
             }
 
-            if self.client_modifier != self.decoder_modifier && self.scratch_frame.is_none() {
+            if self.client_linear_modifier && self.scratch_frame.is_none() {
                 self.scratch_frame = (*self.alloc_cb.lock().unwrap())();
                 if self.scratch_frame.is_none() {
                     self.check_events();
