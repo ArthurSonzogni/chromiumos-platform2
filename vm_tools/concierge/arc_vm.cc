@@ -114,22 +114,6 @@ constexpr const char kVbMetaDigestFileName[] =
     "/opt/google/vms/android/arcvm_vbmeta_digest.sha256";
 constexpr uint32_t kExpectedVbMetaDigestSize = 64;
 
-// Converts VerifiedBootState to the value expected by Android in DeviceInfo
-// for |vb_state|.
-// DeviceInfo expected values:
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/security/rkp/aidl/android/hardware/security/keymint/DeviceInfoV2.cddl
-constexpr auto kVerifiedBootStateToStringMap =
-    base::MakeFixedFlatMap<VerifiedBootState, const char*>(
-        {{VerifiedBootState::kVerifiedBoot, "green"},
-         {VerifiedBootState::kUnverifiedBoot, "orange"}});
-
-// Converts VerifiedBootDeviceState to the value expected by Android in
-// DeviceInfo for |bootloader_state|.
-constexpr auto kDeviceStateToStringMap =
-    base::MakeFixedFlatMap<VerifiedBootDeviceState, const char*>(
-        {{VerifiedBootDeviceState::kLockedDevice, "locked"},
-         {VerifiedBootDeviceState::kUnlockedDevice, "unlocked"}});
-
 // The vmm-swap out should be skipped for 24 hours once it's done.
 constexpr base::TimeDelta kVmmSwapOutCoolingDownPeriod = base::Hours(24);
 // Vmm-swap trim should be triggered 10 minutes after enable to let hot pages of
@@ -224,24 +208,28 @@ std::string GetChromeOsChannelFromLsbRelease() {
 }
 
 // Returns the value of Verified Boot State based on developer mode.
-// static
+// DeviceInfo expected values:
+// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/security/rkp/aidl/android/hardware/security/keymint/DeviceInfoV2.cddl
 const char* DeriveVerifiedBootState(const bool dev_mode) {
+  static constexpr char kVerifiedBoot[] = "green";
+  static constexpr char kUnverifiedBoot[] = "orange";
   if (!dev_mode) {
-    return kVerifiedBootStateToStringMap.at(VerifiedBootState::kVerifiedBoot);
+    return kVerifiedBoot;
   }
-  return kVerifiedBootStateToStringMap.at(VerifiedBootState::kUnverifiedBoot);
+  return kUnverifiedBoot;
 }
 
 // Devices in debug mode are considered unlocked since new
 // software can be flashed and it does not enforce verification.
 // Non-debug devices do not allow modification and must go through
 // verified boot.
-// static
 const char* DeriveBootloaderState(const bool dev_mode) {
+  static constexpr char kLockedDevice[] = "locked";
+  static constexpr char kUnlockedDevice[] = "unlocked";
   if (!dev_mode) {
-    return kDeviceStateToStringMap.at(VerifiedBootDeviceState::kLockedDevice);
+    return kLockedDevice;
   }
-  return kDeviceStateToStringMap.at(VerifiedBootDeviceState::kUnlockedDevice);
+  return kUnlockedDevice;
 }
 
 }  // namespace
