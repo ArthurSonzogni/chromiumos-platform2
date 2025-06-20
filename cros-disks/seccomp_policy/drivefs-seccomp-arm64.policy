@@ -49,6 +49,7 @@ getppid: 1
 getrandom: arg2 in ~GRND_RANDOM
 getresgid: 1
 getresuid: 1
+getrlimit: 1
 getsockname: 1
 getsockopt: 1
 gettid: 1
@@ -90,6 +91,7 @@ readlinkat: 1
 recvfrom: 1
 recvmsg: 1
 renameat: 1
+renameat2: 1
 restart_syscall: 1
 rt_sigaction: 1
 rt_sigpending: 1
@@ -123,6 +125,7 @@ signalfd4: 1
 socket: arg0 == AF_UNIX || arg0 == AF_INET || arg0 == AF_INET6 || arg0 == AF_NETLINK
 socketpair: 1
 statfs: 1
+statx: 1
 syncfs: 1
 sysinfo: 1
 tgkill: 1
