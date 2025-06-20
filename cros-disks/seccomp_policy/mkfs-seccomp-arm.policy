@@ -8,8 +8,12 @@ rseq: 1
 _llseek: 1
 access: 1
 brk: 1
+clock_getres: 1
+clock_getres_time64: 1
 clock_gettime: 1
 clock_gettime64: 1
+clock_nanosleep: 1
+clock_nanosleep_time64: 1
 close: 1
 connect: 1
 dup: 1
@@ -34,12 +38,15 @@ gettid: 1
 gettimeofday: 1
 getuid32: 1
 ioctl: 1
+kill: arg1 == SIGKILL || arg1 == SIGTERM
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mremap: 1
 munmap: 1
+nanosleep: 1
 openat: 1
+prctl: arg0 == PR_SET_NAME
 pwrite64: 1
 read: 1
 readlink: 1
@@ -47,8 +54,13 @@ restart_syscall: 1
 rt_sigreturn: 1
 sched_getaffinity: 1
 send: 1
+sendmmsg: 1
+sendmsg: 1
+sendto: 1
 sigreturn: 1
 socket: arg0 == AF_UNIX
+socketpair: 1
 statx: 1
+sysinfo: 1
 uname: 1
 write: 1
