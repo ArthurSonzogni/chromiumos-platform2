@@ -3028,27 +3028,6 @@ void Service::DestroyDiskImage(
   }
 
   if (location == STORAGE_CRYPTOHOME_PLUGINVM) {
-    // Plugin VMs need to be unregistered before we can delete them.
-    bool registered;
-    if (!pvm::dispatcher::IsVmRegistered(bus_, vmplugin_service_proxy_, vm_id,
-                                         &registered)) {
-      response.set_status(DISK_STATUS_FAILED);
-      response.set_failure_reason(
-          "failed to check Plugin VM registration status");
-
-      response_cb->Return(response);
-      return;
-    }
-
-    if (registered &&
-        !pvm::dispatcher::UnregisterVm(bus_, vmplugin_service_proxy_, vm_id)) {
-      response.set_status(DISK_STATUS_FAILED);
-      response.set_failure_reason("failed to unregister Plugin VM");
-
-      response_cb->Return(response);
-      return;
-    }
-
     base::FilePath iso_dir;
     if (GetPluginIsoDirectory(vm_id, false /* create */, &iso_dir) &&
         base::PathExists(iso_dir) && !base::DeletePathRecursively(iso_dir)) {
@@ -3287,28 +3266,11 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
 
   if (!request.force()) {
     // Ensure the VM is not currently running. This is sufficient to ensure
-    // a consistent on-disk state for non-Parallels VMs.
+    // a consistent on-disk state.
     if (FindVm(vm_id) != vms_.end()) {
       LOG(ERROR) << "VM " << request.vm_name() << " is currently running";
       response.set_failure_reason("VM is currently running");
       return response;
-    }
-
-    // For Parallels VMs we want to be sure that the VM is shut down, not
-    // merely suspended, to have consistent export.
-    if (location == STORAGE_CRYPTOHOME_PLUGINVM) {
-      bool is_shut_down;
-      if (!pvm::dispatcher::IsVmShutDown(bus_, vmplugin_service_proxy_, vm_id,
-                                         &is_shut_down)) {
-        LOG(ERROR) << "Unable to query VM state";
-        response.set_failure_reason("Unable to query VM state");
-        return response;
-      }
-      if (!is_shut_down) {
-        LOG(ERROR) << "VM is not shut down";
-        response.set_failure_reason("VM needs to be shut down for exporting");
-        return response;
-      }
     }
   }
 
