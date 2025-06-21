@@ -216,7 +216,6 @@ where
     W: C2Worker<J>,
 {
     awaiting_job_event: Arc<EventFd>,
-    error_cb: Arc<Mutex<dyn FnMut(C2Status) + Send + 'static>>,
     work_queue: Arc<Mutex<VecDeque<J>>>,
     state: Arc<(Mutex<C2State>, Condvar)>,
     // This isn't actually optional, but we want to join this handle in drop(), but because drop()
@@ -254,7 +253,6 @@ where
         );
         let awaiting_job_event_clone = awaiting_job_event.clone();
         let error_cb = Arc::new(Mutex::new(error_cb));
-        let error_cb_clone = error_cb.clone();
         let work_done_cb = Arc::new(Mutex::new(work_done_cb));
         let work_queue: Arc<Mutex<VecDeque<J>>> = Arc::new(Mutex::new(VecDeque::new()));
         let work_queue_clone = work_queue.clone();
@@ -275,7 +273,7 @@ where
                         input_fourcc.clone(),
                         output_fourccs.clone(),
                         awaiting_job_event_clone.clone(),
-                        error_cb_clone.clone(),
+                        error_cb.clone(),
                         work_done_cb.clone(),
                         work_queue_clone.clone(),
                         state_clone.clone(),
@@ -297,7 +295,7 @@ where
                             state = state_lock.lock().expect("Could not lock state");
                             *state = C2State::C2Error;
                             state_cvar.notify_one();
-                            (*error_cb_clone.lock().unwrap())(C2Status::C2BadValue);
+                            (*error_cb.lock().unwrap())(C2Status::C2BadValue);
                         }
                     };
                 } else {
@@ -320,7 +318,6 @@ where
 
         Self {
             awaiting_job_event: awaiting_job_event,
-            error_cb,
             work_queue,
             state,
             worker_thread,
@@ -335,7 +332,6 @@ where
         {
             let mut state = state_lock.lock().expect("Could not lock state");
             if *state != C2State::C2Stopped {
-                (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
                 return C2Status::C2BadState;
             }
             *state = C2State::C2Running;
@@ -354,7 +350,6 @@ where
         {
             let mut state = state_lock.lock().expect("Could not lock state");
             if !is_reset && *state != C2State::C2Running {
-                (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
                 return C2Status::C2BadState;
             }
             *state = C2State::C2Stopping;
@@ -394,7 +389,6 @@ where
     // State will remain C2Running.
     pub fn queue(&mut self, work_items: Vec<J>) -> C2Status {
         if *self.state.0.lock().expect("Could not lock state") != C2State::C2Running {
-            (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
             return C2Status::C2BadState;
         }
 
@@ -410,7 +404,6 @@ where
     // TODO: Support different flush modes.
     pub fn flush(&mut self, flushed_work: &mut Vec<J>) -> C2Status {
         if *self.state.0.lock().expect("Could not lock state") != C2State::C2Running {
-            (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
             return C2Status::C2BadState;
         }
 
@@ -443,7 +436,6 @@ where
     // TODO: Support different drain modes.
     pub fn drain(&mut self, _mode: DrainMode) -> C2Status {
         if *self.state.0.lock().expect("Could not lock state") != C2State::C2Running {
-            (*self.error_cb.lock().unwrap())(C2Status::C2BadState);
             return C2Status::C2BadState;
         }
 
@@ -465,8 +457,8 @@ where
     W: C2Worker<J>,
 {
     fn drop(&mut self) {
-        // Note: we call reset() instead of stop() so that if we're already
-        // C2Stopped, we don't trigger a call to the error callback.
+        // Note: we call reset() instead of stop() so that it doesn't matter if
+        // we're already in the C2Stopped state.
         self.reset();
 
         let (state_lock, state_cvar) = &*self.state;
