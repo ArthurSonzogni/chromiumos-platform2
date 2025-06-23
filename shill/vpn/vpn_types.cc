@@ -8,7 +8,6 @@
 #include <string_view>
 
 #include <base/containers/fixed_flat_map.h>
-#include <base/notreached.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
 namespace shill {
@@ -45,8 +44,6 @@ std::string VPNTypeEnumToString(VPNType type) {
     case VPNType::kWireGuard:
       return kProviderWireGuard;
   }
-  NOTREACHED_IN_MIGRATION();
-  return "";
 }
 
 }  // namespace shill

@@ -5,7 +5,6 @@
 #include "shill/ephemeral_profile.h"
 
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -53,7 +52,7 @@ bool EphemeralProfile::AbandonService(const ServiceRefPtr& service) {
 }
 
 bool EphemeralProfile::Save() {
-  NOTREACHED_IN_MIGRATION();
+  LOG(ERROR) << "Cannot save ephemeral profile";
   return false;
 }
 

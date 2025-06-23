@@ -297,11 +297,11 @@ void Ethernet::TryEapAuthentication() {
 
 void Ethernet::BSSAdded(const RpcIdentifier& path,
                         const KeyValueStore& properties) {
-  NOTREACHED_IN_MIGRATION() << __func__ << " is not implemented for Ethernet";
+  NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
 void Ethernet::BSSRemoved(const RpcIdentifier& path) {
-  NOTREACHED_IN_MIGRATION() << __func__ << " is not implemented for Ethernet";
+  NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
 void Ethernet::Certification(const KeyValueStore& properties) {
@@ -336,17 +336,17 @@ void Ethernet::PropertiesChanged(const KeyValueStore& properties) {
 }
 
 void Ethernet::ScanDone(const bool& /*success*/) {
-  NOTREACHED_IN_MIGRATION() << __func__ << " is not implemented for Ethernet";
+  NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
 void Ethernet::InterworkingAPAdded(const RpcIdentifier& /*BSS*/,
                                    const RpcIdentifier& /*cred*/,
                                    const KeyValueStore& /*properties*/) {
-  NOTREACHED_IN_MIGRATION() << __func__ << " is not implemented for Ethernet";
+  NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
 void Ethernet::InterworkingSelectDone() {
-  NOTREACHED_IN_MIGRATION() << __func__ << " is not implemented for Ethernet";
+  NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
 EthernetEapProvider* Ethernet::GetEapProvider() {

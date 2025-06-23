@@ -14,7 +14,6 @@
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -115,8 +114,6 @@ std::string VPNTypeToMetricString(VPNType type) {
     case VPNType::kWireGuard:
       return "WireGuard";
   }
-  NOTREACHED_IN_MIGRATION();
-  return "";
 }
 
 std::string GetApnTypeString(

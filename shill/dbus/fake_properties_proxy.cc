@@ -111,8 +111,7 @@ const dbus::ObjectPath& FakePropertiesProxy::GetObjectPath() const {
 }
 
 dbus::ObjectProxy* FakePropertiesProxy::GetObjectProxy() const {
-  NOTREACHED_IN_MIGRATION();
-  return nullptr;
+  NOTREACHED();
 }
 
 void FakePropertiesProxy::SetForTesting(const std::string& in_interface_name,

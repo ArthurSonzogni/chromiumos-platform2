@@ -1000,9 +1000,7 @@ bool Manager::IsProfileBefore(const ProfileRefPtr& a,
       return false;
     }
   }
-  NOTREACHED_IN_MIGRATION()
-      << "We should have found both profiles in the profiles_ list!";
-  return false;
+  NOTREACHED() << "We should have found both profiles in the profiles_ list!";
 }
 
 bool Manager::IsServiceEphemeral(const ServiceConstRefPtr& service) const {

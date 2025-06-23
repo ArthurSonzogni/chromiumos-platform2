@@ -219,7 +219,7 @@ void DeviceInfoTest::SendMessageToDeviceInfo(
   if (message.type() == net_base::RTNLMessage::kTypeLink) {
     device_info_.LinkMsgHandler(message);
   } else {
-    NOTREACHED_IN_MIGRATION();
+    NOTREACHED();
   }
 }
 

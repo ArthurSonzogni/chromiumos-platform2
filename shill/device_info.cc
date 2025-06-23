@@ -38,7 +38,6 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -1230,7 +1229,8 @@ void DeviceInfo::LinkMsgHandler(const net_base::RTNLMessage& msg) {
   } else if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
     DelLinkMsgHandler(msg);
   } else {
-    NOTREACHED_IN_MIGRATION();
+    LOG(ERROR) << __func__ << ": Unexpected mode " << msg.mode()
+               << " for rtnl link message";
   }
 }
 
