@@ -131,6 +131,8 @@ RenameError RenameManager::StartRenaming(const std::string& device_path,
   process.NewIpcNamespace();
   process.NewNetworkNamespace();
   process.SetCapabilities(0);
+  process.SetSeccompPolicy(
+      base::FilePath("/usr/share/policy/mkfs-seccomp.policy"));
 
   process.AddArgument(p->program_path);
   process.AddArgument(device_file);
