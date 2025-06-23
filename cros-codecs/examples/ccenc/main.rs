@@ -285,7 +285,7 @@ fn main() {
             .write(job.output.as_slice())
             .expect("Error writing output file!");
         let mut locked_saw_csd = saw_csd_clone.lock().expect("Could not lock saw_csd var");
-        *locked_saw_csd = *locked_saw_csd || !job.csd.is_empty();
+        *locked_saw_csd |= !job.csd.is_empty();
     };
 
     let input_coded_resolution = Resolution {
