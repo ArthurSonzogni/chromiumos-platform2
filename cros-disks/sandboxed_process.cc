@@ -60,6 +60,10 @@ SandboxedProcess::~SandboxedProcess() {
 }
 
 void SandboxedProcess::SetSeccompPolicy(const base::FilePath& file) {
+  // Synchronizing SECCOMP filters across thread group ensures that, in case of
+  // SECCOMP violation, the whole offending process gets killed instead of only
+  // one of its threads (b/424206022).
+  minijail_set_seccomp_filter_tsync(jail_);
   minijail_parse_seccomp_filters(jail_, file.value().c_str());
   minijail_use_seccomp_filter(jail_);
 }
