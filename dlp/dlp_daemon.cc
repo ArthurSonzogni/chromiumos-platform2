@@ -51,4 +51,13 @@ void DlpDaemon::RegisterDBusObjectsAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
 }
 
+void DlpDaemon::OnShutdown(int* exit_code) {
+  adaptor_.reset();
+  object_manager_.reset();
+  if (bus_) {
+    bus_->ShutdownAndBlock();
+  }
+  brillo::DBusServiceDaemon::OnShutdown(exit_code);
+}
+
 }  // namespace dlp

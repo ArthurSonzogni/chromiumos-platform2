@@ -28,11 +28,12 @@ class DlpDaemon : public brillo::DBusServiceDaemon {
   DlpDaemon& operator=(const DlpDaemon&) = delete;
   ~DlpDaemon();
 
- protected:
+ private:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
- private:
+  void OnShutdown(int* exit_code) override;
+
   // Params to be passed to DlpAdaptor:
   // Already initialized fanotify file descriptors.
   int fanotify_perm_fd_;
