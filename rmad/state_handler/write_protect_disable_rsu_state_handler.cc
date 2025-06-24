@@ -120,20 +120,11 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
         RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);
   }
 
-  // Request RMA mode powerwash if it is not disabled.
-  if (IsPowerwashDisabled(working_dir_path_)) {
-    timer_.Start(FROM_HERE, kRebootDelay,
-                 base::BindOnce(&WriteProtectDisableRsuStateHandler::Reboot,
-                                base::Unretained(this)));
-  } else {
-    timer_.Start(
-        FROM_HERE, kRebootDelay,
-        base::BindOnce(
-            &WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndReboot,
-            base::Unretained(this)));
-  }
+  // Preseed rmad state file so it can be preserved across TPM reset.
+  daemon_callback_->GetExecutePreseedRmaStateCallback().Run(base::BindOnce(
+      &WriteProtectDisableRsuStateHandler::ExecutePreseedRmaStateCallback,
+      base::Unretained(this)));
 
-  reboot_scheduled_ = true;
   return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
                               RMAD_ADDITIONAL_ACTIVITY_REBOOT);
 }
@@ -174,6 +165,28 @@ void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootCallback(
     LOG(ERROR) << "Failed to request RMA mode powerwash";
   }
   Reboot();
+}
+
+void WriteProtectDisableRsuStateHandler::ExecutePreseedRmaStateCallback(
+    bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to preseed rmad state file.";
+  }
+
+  // Request RMA mode powerwash if it is not disabled.
+  if (IsPowerwashDisabled(working_dir_path_)) {
+    timer_.Start(FROM_HERE, kRebootDelay,
+                 base::BindOnce(&WriteProtectDisableRsuStateHandler::Reboot,
+                                base::Unretained(this)));
+  } else {
+    timer_.Start(
+        FROM_HERE, kRebootDelay,
+        base::BindOnce(
+            &WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndReboot,
+            base::Unretained(this)));
+  }
+
+  reboot_scheduled_ = true;
 }
 
 void WriteProtectDisableRsuStateHandler::Reboot() {

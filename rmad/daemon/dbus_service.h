@@ -83,6 +83,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   void ExecuteResetFpmcuEntropy(base::OnceCallback<void(bool)> callback);
   void ExecuteGetFlashInfo(
       base::OnceCallback<void(const std::optional<FlashInfo>&)> callback);
+  void ExecutePreseedRmaState(base::OnceCallback<void(bool)> callback);
 
  protected:
   // brillo::DBusServiceDaemon overrides.

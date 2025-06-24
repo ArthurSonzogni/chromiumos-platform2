@@ -32,6 +32,9 @@ inline constexpr char kDefaultRmadConfigProtoFilePath[] =
 inline constexpr char kDefaultUnencryptedPreserveFilePath[] =
     "/mnt/stateful_partition/unencrypted/preserve";
 
+inline constexpr char kPreserveRmaStateHelperPath[] =
+    "/usr/bin/preserve_rma_state";
+
 // Files in unencrypted RMA directory.
 inline constexpr char kDefaultUnencryptedRmaDirPath[] =
     "/mnt/stateful_partition/unencrypted/rma-data";

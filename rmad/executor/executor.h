@@ -46,6 +46,7 @@ class Executor final : public chromeos::rmad::mojom::Executor {
   void RequestBatteryCutoff(RequestBatteryCutoffCallback callback) override;
   void ResetFpmcuEntropy(ResetFpmcuEntropyCallback callback) override;
   void GetFlashInfo(GetFlashInfoCallback callback) override;
+  void PreseedRmaState(PreseedRmaStateCallback callback) override;
 
  private:
   // Provides a Mojo endpoint that rmad can call to access the executor's Mojo

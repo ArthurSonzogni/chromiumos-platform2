@@ -357,6 +357,9 @@ scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
   daemon_callback->SetExecuteGetFlashInfoCallback(
       base::BindRepeating(&DBusService::ExecuteGetFlashInfo,
                           weak_ptr_factory_.GetMutableWeakPtr()));
+  daemon_callback->SetExecutePreseedRmaStateCallback(
+      base::BindRepeating(&DBusService::ExecutePreseedRmaState,
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   return daemon_callback;
 }
 
@@ -500,6 +503,11 @@ void DBusService::ExecuteGetFlashInfo(
     base::OnceCallback<void(const std::optional<FlashInfo>&)> callback) {
   executor_->GetFlashInfo(
       base::BindOnce(&ConvertFromMojomFlashInfo).Then(std::move(callback)));
+}
+
+void DBusService::ExecutePreseedRmaState(
+    base::OnceCallback<void(bool)> callback) {
+  executor_->PreseedRmaState(std::move(callback));
 }
 
 void DBusService::OnExecutorDisconnected() {

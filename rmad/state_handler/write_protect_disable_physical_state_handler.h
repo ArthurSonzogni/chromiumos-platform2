@@ -72,6 +72,7 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   void OnWriteProtectDisabled();
   void RequestRmaPowerwashAndReboot();
   void RequestRmaPowerwashAndRebootCallback(bool success);
+  void ExecutePreseedRmaStateCallback(bool success);
   void Reboot();
 
   base::FilePath working_dir_path_;

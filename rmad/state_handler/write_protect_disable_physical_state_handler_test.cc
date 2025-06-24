@@ -11,6 +11,7 @@
 
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <brillo/file_utils.h>
 #include <gmock/gmock.h>
@@ -110,6 +111,11 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
     daemon_callback_->SetExecuteRequestRmaPowerwashCallback(base::BindRepeating(
         &WriteProtectDisablePhysicalStateHandlerTest::RequestRmaPowerwash,
         base::Unretained(this), args.powerwash_requested));
+    // Register preseed rma state callback.
+    daemon_callback_->SetExecutePreseedRmaStateCallback(
+        base::BindLambdaForTesting([](base::OnceCallback<void(bool)> callback) {
+          std::move(callback).Run(true);
+        }));
 
     return base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),

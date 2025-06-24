@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -163,34 +164,22 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
 }
 
 void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
-  bool powerwash_required = false;
   if (!CanSkipEnablingFactoryMode()) {
     // Enable GSC factory mode. This no longer reboots the device, so we need
     // to trigger a reboot ourselves.
     if (!gsc_utils_->EnableFactoryMode()) {
       LOG(ERROR) << "Failed to enable factory mode.";
     }
-    if (!IsPowerwashDisabled(working_dir_path_)) {
-      powerwash_required = true;
-    }
-  }
 
-  // Chrome picks up the signal and shows the "Preparing to reboot" message.
-  daemon_callback_->GetWriteProtectSignalCallback().Run(false);
-
-  // Request RMA mode powerwash if required, then reboot.
-  if (powerwash_required) {
-    reboot_timer_.Start(
-        FROM_HERE, kRebootDelay,
+    // Preseed rmad state file so it can be preserved across TPM reset.
+    daemon_callback_->GetExecutePreseedRmaStateCallback().Run(
         base::BindOnce(&WriteProtectDisablePhysicalStateHandler::
-                           RequestRmaPowerwashAndReboot,
+                           ExecutePreseedRmaStateCallback,
                        base::Unretained(this)));
-  } else {
-    reboot_timer_.Start(
-        FROM_HERE, kRebootDelay,
-        base::BindOnce(&WriteProtectDisablePhysicalStateHandler::Reboot,
-                       base::Unretained(this)));
+    return;
   }
+
+  ExecutePreseedRmaStateCallback(true);
 }
 
 void WriteProtectDisablePhysicalStateHandler::RequestRmaPowerwashAndReboot() {
@@ -207,6 +196,30 @@ void WriteProtectDisablePhysicalStateHandler::
     LOG(ERROR) << "Failed to request RMA mode powerwash";
   }
   Reboot();
+}
+
+void WriteProtectDisablePhysicalStateHandler::ExecutePreseedRmaStateCallback(
+    bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to preseed rmad state file.";
+  }
+
+  // Chrome picks up the signal and shows the "Preparing to reboot" message.
+  daemon_callback_->GetWriteProtectSignalCallback().Run(false);
+
+  // Request RMA mode powerwash if required, then reboot.
+  if (!IsPowerwashDisabled(working_dir_path_)) {
+    reboot_timer_.Start(
+        FROM_HERE, kRebootDelay,
+        base::BindOnce(&WriteProtectDisablePhysicalStateHandler::
+                           RequestRmaPowerwashAndReboot,
+                       base::Unretained(this)));
+  } else {
+    reboot_timer_.Start(
+        FROM_HERE, kRebootDelay,
+        base::BindOnce(&WriteProtectDisablePhysicalStateHandler::Reboot,
+                       base::Unretained(this)));
+  }
 }
 
 void WriteProtectDisablePhysicalStateHandler::Reboot() {

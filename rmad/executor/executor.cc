@@ -23,6 +23,7 @@
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/file_utils.h>
 
+#include "rmad/constants.h"
 #include "rmad/executor/mojom/executor.mojom.h"
 #include "rmad/executor/mount.h"
 #include "rmad/utils/cmd_utils_impl.h"
@@ -318,6 +319,7 @@ void Executor::RequestBatteryCutoff(RequestBatteryCutoffCallback callback) {
   }
   std::move(callback).Run(true);
 }
+
 void Executor::ResetFpmcuEntropy(ResetFpmcuEntropyCallback callback) {
   if (std::string output;
       !cmd_utils_->GetOutputAndError({kDefaultBioWashPath}, &output)) {
@@ -339,6 +341,22 @@ void Executor::GetFlashInfo(GetFlashInfoCallback callback) {
                                                       info.value().wpsr_start,
                                                       info.value().wpsr_length);
   std::move(callback).Run(std::move(result));
+}
+
+void Executor::PreseedRmaState(PreseedRmaStateCallback callback) {
+  sync();
+
+  // Preseed rmad state file so it can be preserved across TPM reset.
+  if (std::string output;
+      !cmd_utils_->GetOutputAndError({kPreserveRmaStateHelperPath}, &output)) {
+    LOG(ERROR)
+        << "Failed to call preserve_rma_state for preserving rma state file: "
+        << output;
+    std::move(callback).Run(false);
+    return;
+  }
+
+  std::move(callback).Run(true);
 }
 
 }  // namespace rmad

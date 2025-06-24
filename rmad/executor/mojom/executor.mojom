@@ -113,4 +113,13 @@ interface Executor {
   //            chip reported by futility, or null if failed to extract the
   //            information.
   GetFlashInfo() => (FlashInfo? info);
+
+  // Preseed RMA Daemon state file.
+  //
+  // Input: None
+  //
+  // Response:
+  // * |success| - true if successfully preseed the state file for potential TPM
+  // reset.
+  PreseedRmaState() => (bool success);
 };

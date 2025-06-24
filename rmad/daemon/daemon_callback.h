@@ -60,6 +60,8 @@ using ExecuteResetFpmcuEntropyCallback =
     base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
 using ExecuteGetFlashInfoCallback = base::RepeatingCallback<void(
     base::OnceCallback<void(const std::optional<FlashInfo>&)>)>;
+using ExecutePreseedRmaStateCallback =
+    base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
 
 #define DECLARE_CALLBACK(type, var) \
  public:                            \
@@ -113,6 +115,8 @@ class DaemonCallback : public base::RefCounted<DaemonCallback> {
                    execute_reset_fpmcu_entropy_callback_);
   DECLARE_CALLBACK(ExecuteGetFlashInfoCallback,
                    execute_get_flash_name_callback_);
+  DECLARE_CALLBACK(ExecutePreseedRmaStateCallback,
+                   execute_preseed_rma_state_callback_);
 };
 
 }  // namespace rmad

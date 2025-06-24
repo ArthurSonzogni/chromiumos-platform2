@@ -60,6 +60,7 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   bool IsFactoryModeEnabled() const;
   void RequestRmaPowerwashAndReboot();
   void RequestRmaPowerwashAndRebootCallback(bool success);
+  void ExecutePreseedRmaStateCallback(bool success);
   void Reboot();
 
   base::FilePath working_dir_path_;

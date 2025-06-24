@@ -15,6 +15,7 @@ mseal: 1
 write: 1
 faccessat2: 1
 munmap: 1
+renameat: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 gettid: 1
 fstatfs: 1
@@ -33,13 +34,14 @@ brk: 1
 # BLKIOMIN                      = 0x1278
 # BLKIOOPT                      = 0x1279
 # BLKGETZONESZ                  = 0x80041284
+# FS_IOC_FIEMAP                 = 0xc020660b
 ioctl: arg1 == 0x5395 || arg1 == 0x40084d02 || \
        arg1 == 0x1268 || arg1 == 0x80280215 || \
        arg1 == 0x5331 || arg1 == 0x80081272 || \
        arg1 == 0x5401 || arg1 == 0xc014ec00 || \
        arg1 == 0x80084d17 || arg1 == 0x40084d06 || \
        arg1 == 0x1278 || arg1 == 0x1279 || \
-       arg1 == 0x80041284
+       arg1 == 0x80041284 || arg1 == 0xc020660b
 epoll_pwait: 1
 process_vm_readv: 1
 unlinkat: 1

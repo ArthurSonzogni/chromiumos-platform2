@@ -178,6 +178,11 @@ void NewMountNamespace() {
 
   // Required by |crossystem| utility.
   minijail_bind(j.get(), "/run/lock", "/run/lock", 1);
+  // Required to run preserve_rma_state.
+  minijail_bind(j.get(), "/mnt/chromeos_metadata_partition",
+                "/mnt/chromeos_metadata_partition", 1);
+  minijail_bind(j.get(), "/mnt/stateful_partition/unencrypted/rma-data",
+                "/mnt/stateful_partition/unencrypted/rma-data", 0);
 
   minijail_use_seccomp_filter(j.get());
   minijail_parse_seccomp_filters(j.get(), kRmadExecutorSeccompFilterPath);
