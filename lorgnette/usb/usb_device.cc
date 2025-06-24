@@ -4,15 +4,16 @@
 
 #include "lorgnette/usb/usb_device.h"
 
+#include <libusb.h>
+
 #include <map>
+#include <set>
 #include <string>
 
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/constants/lorgnette_dlc.h>
-#include <libusb.h>
-#include <set>
 
 #include "lorgnette/ippusb_device.h"
 #include "lorgnette/scanner_match.h"
@@ -25,7 +26,8 @@ const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
 
 // Scanners requiring the sane-backends-pfu DLC.
 std::set<VidPid> kScannersRequiringSaneBackendsPfuDlc = {
-    {0x04c5, 0x132e}, {0x04c5, 0x15fc}, {0x04c5, 0x15ff}, {0x05ca, 0x0307}};
+    {0x04c5, 0x132e}, {0x04c5, 0x15fc}, {0x04c5, 0x15ff},
+    {0x05ca, 0x0307}, {0x05ca, 0x03d5}, {0x05ca, 0x03d8}};
 
 std::set<VidPid> kScannerRequiringSaneBackendsCanonDlc = {
     {0x1083, 0x165f}, {0x1083, 0x166d}, {0x1083, 0x165d}, {0x1083, 0x165b},
