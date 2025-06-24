@@ -17,13 +17,16 @@ read: 1
 # _IOC(_IOC_READ|_IOC_WRITE, 0x3a, 0, 0x28) = 0xc0283a00
 # GPIO_GET_LINEINFO_IOCTL                   = 0xc048b402
 # FIONBIO                                   = 0x5421
+# SNDRV_CTL_IOCTL_CARD_INFO                 = 0x81785501 (For audio calibration)
+# SNDRV_CTL_IOCTL_PVERSION                  = 0x80045500 (For audio calibration)
 ioctl: arg1 == 0xc16cb403 || arg1 == 0xc014ec00 || \
        arg1 == 0x8044b401 || arg1 == 0xc040b408 || \
        arg1 == 0x80084d17 || arg1 == 0x40084d02 || \
        arg1 == 0x40084d06 || arg1 == 0x40084d05 || \
        arg1 == 0x5401 || arg1 == 0xc108ec01 || \
        arg1 == 0xc0283a00 || arg1 == 0xc048b402 || \
-       arg1 == 0x5421
+       arg1 == 0x5421 || arg1 == 0x81785501 || \
+       arg1 == 0x80045500
 newfstatat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mseal: 1
@@ -85,6 +88,7 @@ getcwd: 1
 # AF_UNIX = 0x1
 socket: arg0 == 0x1
 connect: 1
+statx: 1
 getsockname: 1
 umask: 1
 getresuid: 1

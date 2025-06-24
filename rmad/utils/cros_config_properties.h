@@ -82,6 +82,10 @@ std::string GetAudioUcmSuffixDescription(const base::FilePath& root_path);
 // cros_config property /audio/main/cras-config-dir.
 constexpr char kCrosAudioCrasConfigDirKey[] = "cras-config-dir";
 std::string GetAudioCrasConfigDirDescription(const base::FilePath& root_path);
+// cros_config property /audio/main/sound-card-init-conf.
+constexpr char kCrosAudioSoundCardInitConfKey[] = "sound-card-init-conf";
+// cros_config property /audio/main/speaker-amp.
+constexpr char kCrosAudioSpeakerAmpKey[] = "speaker-amp";
 
 // cros_config path /power.
 constexpr char kCrosPowerPath[] = "power";

@@ -86,6 +86,8 @@ constexpr rmad::RmadComponent kComponentNeedCalibration2 =
     rmad::RMAD_COMPONENT_LID_ACCELEROMETER;
 constexpr rmad::RmadComponent kComponentNoNeedCalibration =
     rmad::RMAD_COMPONENT_BATTERY;
+constexpr char kSoundCardInitCmd[] = "/usr/bin/sound_card_init";
+constexpr char kSoundCardInitRmaCaliSubCmd[] = "rma_calibration";
 
 }  // namespace
 
@@ -109,6 +111,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
   struct StateHandlerArgs {
     bool get_model_name_success = true;
     bool get_ssfc_success = true;
+    bool calibrate_sound_card_success = true;
     bool need_update_ssfc = true;
     bool set_ssfc_success = true;
     bool set_stable_device_secret_success = true;
@@ -199,6 +202,12 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
           .WillByDefault(DoAll(SetArgPointee<1>(args.ap_wpsr_output),
                                Return(args.get_ap_wpsr_success)));
     }
+    ON_CALL(*mock_cmd_utils,
+            GetOutputAndError(
+                ElementsAre(kSoundCardInitCmd, kSoundCardInitRmaCaliSubCmd, _,
+                            _, _, _, _, _),
+                _))
+        .WillByDefault(Return(args.calibrate_sound_card_success));
 
     // Mock |GscUtils|.
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
@@ -258,6 +267,10 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
               GetSpiFlashTransform(args.flash_info.value().flash_name))
           .WillByDefault(Return(kMappedFlashName));
     }
+    ON_CALL(*mock_cros_config_utils, GetSoundCardConfig())
+        .WillByDefault(Return("fake_sound_card_config"));
+    ON_CALL(*mock_cros_config_utils, GetSpeakerAmp())
+        .WillByDefault(Return("fake_speaker_amp"));
 
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
@@ -1651,6 +1664,28 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingArgs) {
       ProvisionDeviceState::RMAD_PROVISION_CHOICE_UNKNOWN));
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_MISSING);
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_CalibrateSmartAmp_Failed_Nonblocking) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  StateHandlerArgs args = {.calibrate_sound_card_success = false};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
 }
 
 }  // namespace rmad

@@ -43,6 +43,11 @@ class MockCrosConfigUtils : public CrosConfigUtils {
               GetCustomLabelTagList,
               (std::vector<std::string>*),
               (const override));
+  MOCK_METHOD(std::optional<std::string>,
+              GetSoundCardConfig,
+              (),
+              (const, override));
+  MOCK_METHOD(std::optional<std::string>, GetSpeakerAmp, (), (const, override));
 };
 
 }  // namespace rmad

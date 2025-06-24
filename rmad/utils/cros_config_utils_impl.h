@@ -37,6 +37,8 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
       const std::string& flash_name) const override;
   std::optional<std::string> GetFingerprintSensorLocation() const override;
   std::optional<std::string> GetOemName() const override;
+  std::optional<std::string> GetSoundCardConfig() const override;
+  std::optional<std::string> GetSpeakerAmp() const override;
 
   // Get cros_config attributes of all supported designs from the database.
   bool GetDesignConfigList(

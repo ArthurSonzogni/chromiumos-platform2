@@ -74,6 +74,10 @@ void EnterMinijail(bool set_admin_caps) {
   minijail_bind(j.get(), "/run/vpd", "/run/vpd", 1);
   minijail_add_fs_restriction_rw(j.get(), "/run/vpd");
 
+  // Required by |sound_card_init|.
+  minijail_bind(j.get(), "/run/cras", "/run/cras", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/run/cras");
+
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
 
   // Required to write structured metrics.

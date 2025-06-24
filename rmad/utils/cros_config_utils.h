@@ -56,6 +56,8 @@ class CrosConfigUtils {
       const std::string& flash_name) const = 0;
   virtual std::optional<std::string> GetFingerprintSensorLocation() const = 0;
   virtual std::optional<std::string> GetOemName() const = 0;
+  virtual std::optional<std::string> GetSoundCardConfig() const = 0;
+  virtual std::optional<std::string> GetSpeakerAmp() const = 0;
 
   // Get cros_config attributes of all supported designs from the database.
   virtual bool GetDesignConfigList(

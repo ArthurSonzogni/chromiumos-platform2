@@ -99,6 +99,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   void StartProvision();
   void RunProvision(std::optional<uint32_t> ssfc);
   void ProvisionTi50();
+  bool CalibrateSmartAmp();
   void ProvisionWpsr(const std::optional<FlashInfo>& flash_info);
   void UpdateStatus(ProvisionStatus::Status status,
                     double progress,

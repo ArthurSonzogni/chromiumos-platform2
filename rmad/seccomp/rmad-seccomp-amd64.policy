@@ -18,6 +18,7 @@ gettid: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 brk: 1
 rt_sigprocmask: 1
+recvfrom: 1
 access: 1
 faccessat: 1
 faccessat2: 1
@@ -70,6 +71,12 @@ sched_getaffinity: 1
 # UI_DEV_SETUP                              = 0x405c5503
 # UI_DEV_CREATE                             = 0x5501
 # UI_DEV_DESTROY                            = 0x5502
+# SNDRV_CTL_IOCTL_TLV_WRITE                 = 0xc008551b (For audio calibration)
+# SNDRV_CTL_IOCTL_CARD_INFO                 = 0x81785501 (For audio calibration)
+# SNDRV_CTL_IOCTL_ELEM_INFO                 = 0xc1105511 (For audio calibration)
+# SNDRV_CTL_IOCTL_PVERSION                  = 0x80045500 (For audio calibration)
+# SNDRV_CTL_IOCTL_ELEM_READ                 = 0xc4c85512 (For audio calibration)
+# SNDRV_CTL_IOCTL_TLV_READ                  = 0xc008551a (For audio calibration)
 #
 # Driver type 0x3a (":") = CROS_EC_DEV_IOC
 # (Old iotcl format, used by ChromeOS 3.18 and older)
@@ -82,7 +89,10 @@ ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS || \
        arg1 == 0x80046990 || arg1 == 0x5421 || \
        arg1 == 0xec02 || arg1 == 0x40045564 || \
        arg1 == 0x40045565 || arg1 == 0x405c5503 || \
-       arg1 == 0x5501 || arg1 == 0x5502
+       arg1 == 0x5501 || arg1 == 0x5502 || \
+       arg1 == 0xc008551b || arg1 == 0x81785501 || \
+       arg1 == 0xc1105511 || arg1 == 0x80045500 || \
+       arg1 == 0xc4c85512 || arg1 == 0xc008551a
 set_tid_address: 1
 poll: 1
 pipe: 1
@@ -97,6 +107,7 @@ getegid: 1
 unshare: 1
 signalfd4: 1
 socket: arg0 == AF_UNIX
+statx: 1
 connect: 1
 pipe2: 1
 statfs: 1

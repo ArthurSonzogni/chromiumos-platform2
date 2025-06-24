@@ -180,6 +180,34 @@ std::optional<std::string> CrosConfigUtilsImpl::GetOemName() const {
   return result;
 }
 
+std::optional<std::string> CrosConfigUtilsImpl::GetSoundCardConfig() const {
+  std::string result;
+  const base::FilePath path = base::FilePath(kCrosRootPath)
+                                  .Append(kCrosAudioPath)
+                                  .Append(kCrosAudioMainPath);
+
+  if (!cros_config_->GetString(path.value(), kCrosAudioSoundCardInitConfKey,
+                               &result)) {
+    return std::nullopt;
+  }
+
+  return result;
+}
+
+std::optional<std::string> CrosConfigUtilsImpl::GetSpeakerAmp() const {
+  std::string result;
+  const base::FilePath path = base::FilePath(kCrosRootPath)
+                                  .Append(kCrosAudioPath)
+                                  .Append(kCrosAudioMainPath);
+
+  if (!cros_config_->GetString(path.value(), kCrosAudioSpeakerAmpKey,
+                               &result)) {
+    return std::nullopt;
+  }
+
+  return result;
+}
+
 bool CrosConfigUtilsImpl::GetDesignConfigList(
     std::vector<DesignConfig>* design_config_list) const {
   DCHECK(design_config_list);

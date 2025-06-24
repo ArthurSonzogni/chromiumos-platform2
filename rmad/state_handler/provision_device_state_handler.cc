@@ -18,6 +18,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/lock.h>
 #include <base/task/task_traits.h>
@@ -76,6 +77,10 @@ const std::vector<std::string> kResetGbbFlagsArgv = {
 
 constexpr char kApWpsrCmd[] = "/usr/sbin/ap_wpsr";
 constexpr char kApWpsrValueMaskRegexp[] = R"(SR Value\/Mask = (.+))";
+
+constexpr char kSoundCardInitCmd[] = "/usr/bin/sound_card_init";
+constexpr char kSoundCardIdPath[] = "/proc/asound/card0/id";
+constexpr char kSoundCardInitRmaCaliSubCmd[] = "rma_calibration";
 
 }  // namespace
 
@@ -578,6 +583,12 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
     }
   }
 
+  if (!CalibrateSmartAmp()) {
+    // We are not blocking the process when it fails to calibrate because it is
+    // expected on devices without Smart Amp.
+    LOG(ERROR) << "Failed to calibrate smart amp";
+  }
+
   if (GscDevice device; tpm_manager_client_->GetGscDevice(&device) &&
                         (device == GscDevice::GSC_DEVICE_DT ||
                          device == GscDevice::GSC_DEVICE_NT)) {
@@ -744,6 +755,44 @@ void ProvisionDeviceStateHandler::ProvisionTi50() {
 
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
                kProgressProvisionTi50);
+}
+
+bool ProvisionDeviceStateHandler::CalibrateSmartAmp() {
+  base::FilePath path = base::FilePath(kSoundCardIdPath);
+  std::string id;
+  if (!base::ReadFileToString(path, &id)) {
+    LOG(ERROR) << "Failed to get sound card id";
+    return false;
+  } else if (!base::TrimWhitespaceASCII(id, base::TRIM_TRAILING, &id)) {
+    LOG(ERROR) << "Failed to trim sound card id";
+    return false;
+  }
+  DLOG(INFO) << "Got sound card id: " << id;
+
+  auto conf = cros_config_utils_->GetSoundCardConfig();
+  if (!conf.has_value()) {
+    LOG(ERROR) << "Failed to get sound card config";
+    return false;
+  }
+  DLOG(INFO) << "Got sound card config: " << conf.value();
+
+  auto amp = cros_config_utils_->GetSpeakerAmp();
+  if (!amp.has_value()) {
+    LOG(ERROR) << "Failed to get speaker amp";
+    return false;
+  }
+  DLOG(INFO) << "Got speaker amp: " << amp.value();
+
+  std::string output;
+  if (!cmd_utils_->GetOutputAndError(
+          {kSoundCardInitCmd, kSoundCardInitRmaCaliSubCmd, "--id", id, "--conf",
+           conf.value(), "--amp", amp.value()},
+          &output)) {
+    LOG(ERROR) << "Failed to calibrate sound card: " << output;
+    return false;
+  }
+
+  return true;
 }
 
 void ProvisionDeviceStateHandler::ProvisionWpsr(
