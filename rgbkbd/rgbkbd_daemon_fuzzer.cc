@@ -11,7 +11,6 @@
 #include <dbus/message.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 #include <fuzzer/FuzzedDataProvider.h>
-
 #include <rgbkbd/rgbkbd_daemon.h>
 
 namespace rgbkbd {
