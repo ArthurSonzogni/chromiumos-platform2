@@ -80,8 +80,7 @@ const std::vector<uint32_t>& RgbKeyboardControllerImpl::GetZone(
   DCHECK(zone >= 0 && zone < GetZoneCount());
   switch (capabilities_.value()) {
     case RgbKeyboardCapabilities::kNone:
-      NOTREACHED_IN_MIGRATION();
-      return kEmptyZone;
+      NOTREACHED();
     case RgbKeyboardCapabilities::kIndividualKey:
       return GetIndividualKeyZones()[zone];
     case RgbKeyboardCapabilities::kFourZoneFortyLed:
@@ -112,8 +111,7 @@ Color RgbKeyboardControllerImpl::GetRainbowZoneColor(int zone) const {
   DCHECK(zone >= 0 && zone < GetZoneCount());
   switch (capabilities_.value()) {
     case RgbKeyboardCapabilities::kNone:
-      NOTREACHED_IN_MIGRATION();
-      return kWhiteBackgroundColor;
+      NOTREACHED();
     case RgbKeyboardCapabilities::kIndividualKey:
       return kIndividualKeyRainbowColors[zone];
     case RgbKeyboardCapabilities::kFourZoneFortyLed:
