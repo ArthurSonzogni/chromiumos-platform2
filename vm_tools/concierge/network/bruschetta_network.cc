@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/notreached.h>
 
 #include "chromeos/patchpanel/dbus/client.h"
 #include "vm_tools/concierge/network/guest_os_network.h"
@@ -62,13 +63,11 @@ net_base::IPv4CIDR BruschettaNetwork::SubnetV4() const {
 }
 
 net_base::IPv4Address BruschettaNetwork::ContainerAddressV4() const {
-  CHECK(false) << "Bruschetta has no container";
-  return {};
+  NOTREACHED() << "Bruschetta has no container";
 }
 
 net_base::IPv4CIDR BruschettaNetwork::ContainerSubnetV4() const {
-  CHECK(false) << "Bruschetta has no container";
-  return {};
+  NOTREACHED() << "Bruschetta has no container";
 }
 
 BruschettaNetwork::BruschettaNetwork(

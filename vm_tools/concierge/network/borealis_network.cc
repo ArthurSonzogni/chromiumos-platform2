@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/notreached.h>
 
 #include "chromeos/patchpanel/dbus/client.h"
 #include "vm_tools/concierge/network/guest_os_network.h"
@@ -61,13 +62,11 @@ net_base::IPv4CIDR BorealisNetwork::SubnetV4() const {
 }
 
 net_base::IPv4Address BorealisNetwork::ContainerAddressV4() const {
-  CHECK(false) << "Borealis has no container";
-  return {};
+  NOTREACHED() << "Borealis has no container";
 }
 
 net_base::IPv4CIDR BorealisNetwork::ContainerSubnetV4() const {
-  CHECK(false) << "Borealis has no container";
-  return {};
+  NOTREACHED() << "Borealis has no container";
 }
 
 BorealisNetwork::BorealisNetwork(
