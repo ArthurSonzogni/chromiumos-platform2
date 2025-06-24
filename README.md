@@ -25,6 +25,7 @@ copies.
 
 | Project | Description |
 |---------|-------------|
+| [anx7625-ta](./anx7625-ta/) | ANX7625 controller trusted application for hardware DRM |
 | [arc](./arc/) | Tools/deamons/init-scripts to run ARC |
 | [attestation](./attestation/) | Daemon and client for managing remote attestation |
 | [avtest_label_detect](./avtest_label_detect/) | Test tool for OCRing device labels |
