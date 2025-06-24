@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/input_device.h"
+
 #include <string>
 
 #include <base/containers/span.h>
 #include <base/notreached.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/functions/input_device.h"
 #include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {
@@ -23,10 +24,8 @@ std::string GetStylusKey() {
     return "800 0 0 0 0 0";
   } else if (kBitsPerBitmap == 32) {
     return "800 0 0 0 0 0 0 0 0 0 0";
-  } else {
-    NOTREACHED_IN_MIGRATION() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
-    return "";
   }
+  NOTREACHED() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
 }
 
 std::string GetTouchscreenAbs() {
@@ -34,10 +33,8 @@ std::string GetTouchscreenAbs() {
     return "800000000000";
   } else if (kBitsPerBitmap == 32) {
     return "8000 0";
-  } else {
-    NOTREACHED_IN_MIGRATION() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
-    return "";
   }
+  NOTREACHED() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
 }
 
 std::string GetTouchpadKey() {
@@ -45,10 +42,8 @@ std::string GetTouchpadKey() {
     return "400 10000 0 0 0 0";
   } else if (kBitsPerBitmap == 32) {
     return "400 0 10000 0 0 0 0 0 0 0 0";
-  } else {
-    NOTREACHED_IN_MIGRATION() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
-    return "";
   }
+  NOTREACHED() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
 }
 
 class InputDeviceFunctionTest : public BaseFunctionTest {};

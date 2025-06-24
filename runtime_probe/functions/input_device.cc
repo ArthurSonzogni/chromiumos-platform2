@@ -47,8 +47,7 @@ std::string DeviceTypeEnumToString(InputDevice::Type device_type) {
     case InputDevice::TYPE_UNKNOWN:
       return "unknown";
     default:
-      NOTREACHED_IN_MIGRATION() << "Invalid device_type: " << device_type;
-      return "unknown";
+      NOTREACHED() << "Invalid device_type: " << device_type;
   }
 }
 

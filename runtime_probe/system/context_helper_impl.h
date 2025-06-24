@@ -8,8 +8,8 @@
 #include <memory>
 
 #include <base/notreached.h>
-#include <chromeos-config/libcros_config/cros_config.h>
 #include <brillo/dbus/dbus_connection.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 #include <libcrossystem/crossystem.h>
 #include <shill/dbus-proxies.h>
 
@@ -30,13 +30,11 @@ class ContextHelperImpl : public Context {
   Syscaller* syscaller() override { return &syscaller_; }
 
   org::chromium::debugdProxyInterface* debugd_proxy() override {
-    NOTREACHED_IN_MIGRATION() << "The helper should not call debugd.";
-    return nullptr;
+    NOTREACHED() << "The helper should not call debugd.";
   };
 
   HelperInvoker* helper_invoker() override {
-    NOTREACHED_IN_MIGRATION() << "The helper should not call helper.";
-    return nullptr;
+    NOTREACHED() << "The helper should not call helper.";
   }
 
   org::chromium::flimflam::ManagerProxyInterface* shill_manager_proxy()
@@ -52,8 +50,7 @@ class ContextHelperImpl : public Context {
 
   cros_healthd_mojom::CrosHealthdProbeService* GetCrosHealthdProbeServiceProxy()
       override {
-    NOTREACHED_IN_MIGRATION() << "The helper should not call mojo.";
-    return nullptr;
+    NOTREACHED() << "The helper should not call mojo.";
   }
 
  protected:

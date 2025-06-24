@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/mipi_camera.h"
+
 #include <optional>
 #include <utility>
 #include <vector>
@@ -12,7 +14,6 @@
 #include <base/values.h>
 
 #include "cros-camera/device_config.h"
-#include "runtime_probe/functions/mipi_camera.h"
 
 namespace runtime_probe {
 
@@ -50,7 +51,7 @@ MipiCameraFunction::DataType MipiCameraFunction::EvalImpl() const {
       node.Set("mipi_vendor", camera.v4l2_sensor->vendor_id);
       node.Set("path", camera.v4l2_sensor->subdev_path.value());
     } else {
-      NOTREACHED_IN_MIGRATION() << "Unknown source of camera info.";
+      NOTREACHED() << "Unknown source of camera info.";
     }
     node.Set("bus_type", "mipi");
     results.Append(std::move(node));
