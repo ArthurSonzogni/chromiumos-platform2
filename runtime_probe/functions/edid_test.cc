@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/edid.h"
+
 #include <string>
 
 #include <base/containers/span.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/functions/edid.h"
 #include "runtime_probe/system/context_mock_impl.h"
 #include "runtime_probe/utils/function_test_utils.h"
 

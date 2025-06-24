@@ -2,13 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/ap_i2c.h"
+
+#include <linux/i2c-dev.h>
+#include <linux/i2c.h>
+
 #include <base/json/json_reader.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <linux/i2c.h>
-#include <linux/i2c-dev.h>
 
-#include "runtime_probe/functions/ap_i2c.h"
 #include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {

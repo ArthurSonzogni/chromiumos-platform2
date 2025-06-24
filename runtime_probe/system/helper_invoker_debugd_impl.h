@@ -5,10 +5,10 @@
 #ifndef RUNTIME_PROBE_SYSTEM_HELPER_INVOKER_DEBUGD_IMPL_H_
 #define RUNTIME_PROBE_SYSTEM_HELPER_INVOKER_DEBUGD_IMPL_H_
 
+#include <string>
+
 #include "runtime_probe/system/context.h"
 #include "runtime_probe/system/helper_invoker.h"
-
-#include <string>
 
 namespace runtime_probe {
 

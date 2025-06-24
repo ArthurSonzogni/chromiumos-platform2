@@ -5,11 +5,12 @@
 #ifndef RUNTIME_PROBE_MATCHERS_RE_MATCHER_H_
 #define RUNTIME_PROBE_MATCHERS_RE_MATCHER_H_
 
+#include <pcrecpp.h>
+
 #include <memory>
 #include <string>
 
 #include <base/values.h>
-#include <pcrecpp.h>
 
 #include "runtime_probe/matchers/matcher.h"
 

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "runtime_probe/functions/generic_camera.h"
+
 #include "runtime_probe/functions/mipi_camera.h"
 #include "runtime_probe/functions/usb_camera.h"
 #include "runtime_probe/probe_function.h"

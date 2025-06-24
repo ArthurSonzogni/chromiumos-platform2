@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/mipi_camera.h"
+
 #include <optional>
 #include <string>
 #include <utility>
@@ -11,7 +13,6 @@
 #include <gtest/gtest.h>
 
 #include "cros-camera/device_config.h"
-#include "runtime_probe/functions/mipi_camera.h"
 #include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/daemon.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -18,7 +20,6 @@
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "runtime_probe/avl_probe_config_loader.h"
-#include "runtime_probe/daemon.h"
 #include "runtime_probe/probe_config.h"
 #include "runtime_probe/proto_bindings/runtime_probe.pb.h"
 #include "runtime_probe/ssfc_probe_config_loader.h"

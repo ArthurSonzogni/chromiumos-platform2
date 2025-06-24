@@ -2,16 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/matchers/field_matcher.h"
+
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <gtest/gtest.h>
-
 #include <base/strings/string_util.h>
 #include <base/values.h>
-
-#include "runtime_probe/matchers/field_matcher.h"
+#include <gtest/gtest.h>
 
 namespace runtime_probe::internal {
 namespace {

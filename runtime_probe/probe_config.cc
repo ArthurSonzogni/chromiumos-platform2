@@ -11,8 +11,8 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
-#include <base/json/json_reader.h>
 #include <base/hash/sha1.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>

@@ -2,24 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/probe_config.h"
+
 #include <memory>
 #include <utility>
 
-#include <brillo/map_utils.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/json/json_reader.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
-#include <base/strings/stringprintf.h>
 #include <base/values.h>
+#include <brillo/map_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "runtime_probe/component_category.h"
 #include "runtime_probe/functions/sysfs.h"
-#include "runtime_probe/probe_config.h"
 #include "runtime_probe/utils/file_test_utils.h"
 
 namespace runtime_probe {

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/field_converter.h"
+
 #include <string>
 #include <utility>
 
@@ -9,8 +11,6 @@
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "runtime_probe/field_converter.h"
 
 namespace runtime_probe {
 

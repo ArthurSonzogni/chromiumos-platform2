@@ -11,8 +11,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/functional/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
 

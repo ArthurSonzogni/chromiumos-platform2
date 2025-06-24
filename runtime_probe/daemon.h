@@ -17,7 +17,8 @@
 // messages are defined before adaptors.
 // TODO(crbug.com/1255584): Includes headers in alphabetical order.
 #include "runtime_probe/proto_bindings/runtime_probe.pb.h"
-#include "runtime_probe/dbus_adaptors/org.chromium.RuntimeProbe.h"  // NOLINT(build/include_alpha)
+// NOLINTNEXTLINE(build/include_alpha)
+#include "runtime_probe/dbus_adaptors/org.chromium.RuntimeProbe.h"
 #include "runtime_probe/probe_config.h"
 
 namespace runtime_probe {

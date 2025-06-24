@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "runtime_probe/functions/memory.h"
-#include "runtime_probe/system/context.h"
 
 #include <algorithm>
 #include <memory>
@@ -16,6 +15,8 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
+
+#include "runtime_probe/system/context.h"
 
 namespace runtime_probe {
 

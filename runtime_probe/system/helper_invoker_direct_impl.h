@@ -5,9 +5,9 @@
 #ifndef RUNTIME_PROBE_SYSTEM_HELPER_INVOKER_DIRECT_IMPL_H_
 #define RUNTIME_PROBE_SYSTEM_HELPER_INVOKER_DIRECT_IMPL_H_
 
-#include "runtime_probe/system/helper_invoker.h"
-
 #include <string>
+
+#include "runtime_probe/system/helper_invoker.h"
 
 namespace runtime_probe {
 

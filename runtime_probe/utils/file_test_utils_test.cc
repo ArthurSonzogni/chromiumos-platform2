@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/utils/file_test_utils.h"
+
 #include <string>
 
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
-
-#include "runtime_probe/utils/file_test_utils.h"
 
 namespace runtime_probe {
 namespace {

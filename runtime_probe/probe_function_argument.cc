@@ -2,15 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/probe_function_argument.h"
+
 #include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "runtime_probe/probe_function.h"
-#include "runtime_probe/probe_function_argument.h"
-
 #include <base/logging.h>
+
+#include "runtime_probe/probe_function.h"
 
 namespace runtime_probe {
 namespace internal {

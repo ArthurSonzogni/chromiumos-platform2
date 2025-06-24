@@ -5,8 +5,6 @@
 #ifndef RUNTIME_PROBE_PROBE_RESULT_CHECKER_H_
 #define RUNTIME_PROBE_PROBE_RESULT_CHECKER_H_
 
-#include "runtime_probe/field_converter.h"
-
 #include <map>
 #include <memory>
 #include <string>
@@ -14,6 +12,8 @@
 
 #include <base/values.h>
 #include <gtest/gtest.h>
+
+#include "runtime_probe/field_converter.h"
 
 namespace runtime_probe {
 

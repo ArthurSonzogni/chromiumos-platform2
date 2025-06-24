@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/generic_probe_config_loader.h"
+
 #include <utility>
 
 #include <base/check.h>
@@ -10,7 +12,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/generic_probe_config_loader.h"
 #include "runtime_probe/system/context_mock_impl.h"
 #include "runtime_probe/utils/file_test_utils.h"
 

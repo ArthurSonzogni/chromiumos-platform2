@@ -5,9 +5,9 @@
 #ifndef RUNTIME_PROBE_RUNTIME_PROBE_FUZZER_HELPER_H_
 #define RUNTIME_PROBE_RUNTIME_PROBE_FUZZER_HELPER_H_
 
-#include <base/strings/utf_string_conversions.h>
-
 #include <string>
+
+#include <base/strings/utf_string_conversions.h>
 
 using std::string;
 

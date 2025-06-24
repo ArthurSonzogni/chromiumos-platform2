@@ -4,12 +4,13 @@
 
 #include "runtime_probe/matchers/re_matcher.h"
 
+#include <pcrecpp.h>
+
 #include <memory>
 #include <string>
 
 #include <base/logging.h>
 #include <base/values.h>
-#include <pcrecpp.h>
 
 namespace runtime_probe {
 

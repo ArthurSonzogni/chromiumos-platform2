@@ -2,19 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/avl_probe_config_loader.h"
+
 #include <memory>
 #include <string>
 #include <utility>
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/avl_probe_config_loader.h"
 #include "runtime_probe/system/context_mock_impl.h"
 #include "runtime_probe/utils/file_test_utils.h"
 

@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/utils/edid.h"
+
 #include <algorithm>
 #include <numeric>
 
 #include <base/logging.h>
-
-#include "runtime_probe/utils/edid.h"
 
 namespace {
 constexpr int kSize = sizeof(runtime_probe::EdidRaw);

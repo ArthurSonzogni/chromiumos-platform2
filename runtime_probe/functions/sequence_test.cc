@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/sequence.h"
+
 #include <memory>
 #include <set>
 #include <string>
@@ -14,7 +16,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/functions/sequence.h"
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/utils/function_test_utils.h"
 

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/tcpc.h"
+
 #include <string>
 #include <utility>
 
@@ -9,7 +11,6 @@
 #include <gtest/gtest.h>
 #include <libec/pd_chip_info_command.h>
 
-#include "runtime_probe/functions/tcpc.h"
 #include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {
@@ -52,9 +53,8 @@ TEST_F(TcpcFunctionTest, ProbeTcpc) {
 
   auto cmd0 = std::make_unique<MockPdChipInfoCommandV0>();
   EXPECT_CALL(*cmd0, Run(_)).WillOnce(Return(true));
-  struct ec_response_pd_chip_info mock_resp0 {
-    .vendor_id = 0xd456, .product_id = 0xc123, .device_id = 0x1
-  };
+  struct ec_response_pd_chip_info mock_resp0{
+      .vendor_id = 0xd456, .product_id = 0xc123, .device_id = 0x1};
   EXPECT_CALL(*cmd0, Resp()).WillRepeatedly(Return(&mock_resp0));
   EXPECT_CALL(*cmd0, Result()).WillRepeatedly(Return(EC_RES_SUCCESS));
   EXPECT_CALL(*probe_function, GetPdChipInfoCommandV0(0))
@@ -62,9 +62,8 @@ TEST_F(TcpcFunctionTest, ProbeTcpc) {
 
   auto cmd1 = std::make_unique<MockPdChipInfoCommandV0>();
   EXPECT_CALL(*cmd1, Run(_)).WillOnce(Return(true));
-  struct ec_response_pd_chip_info mock_resp1 {
-    .vendor_id = 0xf456, .product_id = 0xe123, .device_id = 0x2
-  };
+  struct ec_response_pd_chip_info mock_resp1{
+      .vendor_id = 0xf456, .product_id = 0xe123, .device_id = 0x2};
   EXPECT_CALL(*cmd1, Resp()).WillRepeatedly(Return(&mock_resp1));
   EXPECT_CALL(*cmd1, Result()).WillRepeatedly(Return(EC_RES_SUCCESS));
   EXPECT_CALL(*probe_function, GetPdChipInfoCommandV0(1))

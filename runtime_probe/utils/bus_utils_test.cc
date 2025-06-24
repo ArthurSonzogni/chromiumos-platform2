@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/utils/bus_utils.h"
+
 #include <optional>
 #include <string>
 #include <utility>
@@ -10,7 +12,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/utils/bus_utils.h"
 #include "runtime_probe/utils/file_test_utils.h"
 
 namespace runtime_probe {

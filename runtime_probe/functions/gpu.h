@@ -5,9 +5,9 @@
 #ifndef RUNTIME_PROBE_FUNCTIONS_GPU_H_
 #define RUNTIME_PROBE_FUNCTIONS_GPU_H_
 
-#include "runtime_probe/probe_function.h"
-
 #include <base/files/file_path.h>
+
+#include "runtime_probe/probe_function.h"
 
 typedef struct gbm_device_info GbmDeviceInfo;
 

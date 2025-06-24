@@ -9,11 +9,11 @@
 #include <vector>
 
 #include <base/check.h>
+#include <diagnostics/mojom/public/cros_healthd.mojom.h>
+#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/receiver.h>
-#include <diagnostics/mojom/public/cros_healthd.mojom.h>
-#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 
 #include "runtime_probe/utils/function_test_utils.h"
 #include "runtime_probe/utils/mojo_test_utils.h"

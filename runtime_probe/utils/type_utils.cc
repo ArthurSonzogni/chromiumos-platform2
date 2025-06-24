@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/utils/type_utils.h"
+
 #include <string>
 #include <string_view>
 
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-
-#include "runtime_probe/utils/type_utils.h"
 
 namespace runtime_probe {
 

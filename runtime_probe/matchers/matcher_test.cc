@@ -2,17 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/matchers/matcher.h"
+
 #include <string>
 #include <string_view>
 #include <utility>
 
-#include <base/values.h>
-#include <gtest/gtest.h>
-
 #include <base/json/json_reader.h>
 #include <base/strings/string_util.h>
-
-#include "runtime_probe/matchers/matcher.h"
+#include <base/values.h>
+#include <gtest/gtest.h>
 
 namespace runtime_probe::matchers {
 namespace {

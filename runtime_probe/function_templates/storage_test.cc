@@ -1,6 +1,8 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#include "runtime_probe/function_templates/storage.h"
+
 #include <map>
 #include <optional>
 #include <utility>
@@ -10,7 +12,6 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/function_templates/storage.h"
 #include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {

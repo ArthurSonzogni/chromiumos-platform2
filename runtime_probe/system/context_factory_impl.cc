@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/system/context_factory_impl.h"
+
 #include <memory>
 
-#include "runtime_probe/system/context_factory_impl.h"
 #include "runtime_probe/system/helper_invoker_direct_impl.h"
 
 namespace runtime_probe {

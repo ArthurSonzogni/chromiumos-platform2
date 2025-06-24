@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/gpu.h"
+
 #include <map>
 #include <string>
 
 #include <gtest/gtest.h>
 #include <minigbm/minigbm_helpers.h>
 
-#include "runtime_probe/functions/gpu.h"
 #include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {

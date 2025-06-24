@@ -5,10 +5,11 @@
 #include "runtime_probe/functions/ap_i2c.h"
 
 #include <fcntl.h>
-#include <linux/i2c.h>
 #include <linux/i2c-dev.h>
+#include <linux/i2c.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+
 #include <string>
 #include <utility>
 

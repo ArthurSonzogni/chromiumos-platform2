@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/ec_i2c.h"
+
 #include <string>
 #include <utility>
 
@@ -11,7 +13,6 @@
 #include <gtest/gtest.h>
 #include <libec/i2c_read_command.h>
 
-#include "runtime_probe/functions/ec_i2c.h"
 #include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {

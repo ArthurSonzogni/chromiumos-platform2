@@ -1,13 +1,13 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#include "runtime_probe/system/context_helper_impl.h"
+
 #include <memory>
 
 #include <base/logging.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <shill/dbus-proxies.h>
-
-#include "runtime_probe/system/context_helper_impl.h"
 
 namespace runtime_probe {
 

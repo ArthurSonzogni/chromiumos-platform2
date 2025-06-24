@@ -8,10 +8,10 @@
 #include <memory>
 #include <string>
 
+#include <base/logging.h>
+
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/probe_function_argument.h"
-
-#include <base/logging.h>
 
 namespace runtime_probe {
 

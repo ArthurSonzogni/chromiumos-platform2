@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/daemon.h"
+
 #include <memory>
 #include <optional>
 #include <utility>
@@ -12,7 +14,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/daemon.h"
 #include "runtime_probe/proto_bindings/runtime_probe.pb.h"
 #include "runtime_probe/system/context_mock_impl.h"
 

@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/containers/span.h>
-#include <base/files/file_path.h>
-#include <base/strings/stringprintf.h>
-#include <gtest/gtest.h>
+#include "runtime_probe/functions/memory.h"
 
 #include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
 
-#include "runtime_probe/functions/memory.h"
+#include <base/containers/span.h>
+#include <base/files/file_path.h>
+#include <base/strings/stringprintf.h>
+#include <gtest/gtest.h>
+
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/utils/file_test_utils.h"
 #include "runtime_probe/utils/function_test_utils.h"
