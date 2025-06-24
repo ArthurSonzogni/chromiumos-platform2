@@ -14,14 +14,14 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_forward.h>
+#include <base/notreached.h>
 #include <mojo/public/cpp/system/handle.h>
 
 namespace diagnostics {
 
 FakeProcessControl::FakeProcessControl() {
   if (!temp_dir_.CreateUniqueTempDir()) {
-    CHECK(false) << "Failed to create unique temporary directory";
-    return;
+    NOTREACHED() << "Failed to create unique temporary directory";
   }
   base::FilePath stdout_filepath;
   stdout_fd_ = base::CreateAndOpenFdForTemporaryFileInDir(temp_dir_.GetPath(),

@@ -8,8 +8,8 @@
 #include <string>
 #include <utility>
 
-#include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/notreached.h>
 
 namespace diagnostics {
 
@@ -21,7 +21,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 BaseRoutineControl::ExceptionCallback UnexpectedRoutineExceptionCallback() {
   return base::BindOnce([](uint32_t error, const std::string& reason) {
-    CHECK(false) << "An unexpected routine exception has occurred; error="
+    NOTREACHED() << "An unexpected routine exception has occurred; error="
                  << error << ", reason=" << reason;
   });
 }
