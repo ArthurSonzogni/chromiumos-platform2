@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/command_line.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <dbus/error.h>
 #include <gtest/gtest.h>
@@ -29,6 +31,9 @@ class Environment {
  public:
   Environment() {
     logging::SetMinLogLevel(logging::LOGGING_FATAL);  // <- DISABLE LOGGING.
+    // Uses TaskEnvironment, which needs TestTimeouts, which needs CommandLine.
+    base::CommandLine::Init(0, nullptr);
+    TestTimeouts::Initialize();
   }
 };
 
