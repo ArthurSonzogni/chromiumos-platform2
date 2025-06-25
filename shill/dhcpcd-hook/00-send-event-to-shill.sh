@@ -108,7 +108,7 @@ main() {
       --dest org.chromium.flimflam \
       --object-path / \
       --method org.chromium.flimflam.Manager.NotifyDHCPEvent \
-      "{ $(build_dhcpcd_configuration) }"
+      "{ $(build_dhcpcd_configuration) }" &
 }
 
 if [ "${UNITTEST_FLAG:=}" != "1" ]; then
