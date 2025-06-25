@@ -6,6 +6,7 @@ access: 1
 brk: 1
 clock_getres: 1
 clock_gettime: 1
+clock_nanosleep: 1
 clone: 1
 close: 1
 connect: 1
@@ -40,6 +41,7 @@ mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mremap: 1
 munmap: 1
+nanosleep: 1
 newfstatat: 1
 openat: 1
 pipe2: 1
