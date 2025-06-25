@@ -239,7 +239,7 @@ void Tests::TestString() {
 #endif
 #else
 #if _FORTIFY_SOURCE > 1
-    // expected-warning@+6{{destination buffer will always be overflown}}
+    // expected-warning@+5{{destination buffer will always be overflown}}
 #endif
     // expected-warning@+4{{argument in 'strncat' call appears to be size of}}
     // expected-note@+3{{change the argument to be the free space in the dest}}
