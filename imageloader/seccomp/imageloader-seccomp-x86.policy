@@ -55,6 +55,7 @@ process_vm_readv: 1
 pwrite64: 1
 read: 1
 rename: 1
+restart_syscall: 1
 rmdir: 1
 rt_sigaction: 1
 rt_sigreturn: 1
