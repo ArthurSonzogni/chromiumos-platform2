@@ -377,8 +377,7 @@ bool CrtcFinder::MatchesSpec(const Crtc* crtc) const {
     case Spec::kById:
       return crtc->crtc()->crtc_id == crtc_id_;
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid spec";
-  return false;
+  NOTREACHED() << "Invalid spec";
 }
 
 std::vector<Crtc::PlaneInfo> Crtc::GetConnectedPlanes() const {
