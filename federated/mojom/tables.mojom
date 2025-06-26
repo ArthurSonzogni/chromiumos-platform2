@@ -5,10 +5,9 @@
 // NOTE: This mojom should exist in two places and must be kept in sync:
 //       Chromium: //chromeos/ash/services/federated/public/mojom
 //       Chrome OS: src/platform2/federated/mojom/
-
 module chromeos.federated.mojom;
 
-[Stable, Extensible]
+[Extensible]
 enum FederatedExampleTableId {
   [Default] UNKNOWN = 0,
   TIMEZONE_CODE = 1,
