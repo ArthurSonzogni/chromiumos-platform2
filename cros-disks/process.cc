@@ -98,7 +98,7 @@ std::ostream& operator<<(std::ostream& out, const Process::ExitCode exit_code) {
     PRINT(MINIJAIL_ERR_NO_COMMAND)
     PRINT(MINIJAIL_ERR_MOUNT)
     PRINT(MINIJAIL_ERR_PRELOAD)
-    PRINT(MINIJAIL_ERR_JAIL)
+    PRINT(MINIJAIL_ERR_SECCOMP_VIOLATION)
     PRINT(MINIJAIL_ERR_INIT)
 #undef PRINT
   }
@@ -336,9 +336,7 @@ bool Process::WaitAndCaptureOutput() {
 
   const int fd = out_fd_.get();
 
-  struct pollfd pfd {
-    fd, POLLIN, 0
-  };
+  struct pollfd pfd{fd, POLLIN, 0};
 
   const int ret = poll(&pfd, 1, 100 /* milliseconds */);
 

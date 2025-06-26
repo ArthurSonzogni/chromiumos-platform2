@@ -260,7 +260,7 @@ TEST_P(ProcessRunTest, RunKilledBySigSys) {
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
   process.AddArgument("kill -SYS $$; sleep 1000");
-  EXPECT_EQ(process.Run(), MINIJAIL_ERR_JAIL);
+  EXPECT_EQ(process.Run(), MINIJAIL_ERR_SECCOMP_VIOLATION);
   EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
@@ -272,7 +272,7 @@ TEST_P(ProcessRunTest, WaitKilledBySigSys) {
   process.AddArgument("kill -SYS $$; sleep 1000");
   EXPECT_TRUE(process.Start());
   EXPECT_NE(process.pid(), Process::kInvalidProcessId);
-  EXPECT_EQ(process.Wait(), MINIJAIL_ERR_JAIL);
+  EXPECT_EQ(process.Wait(), MINIJAIL_ERR_SECCOMP_VIOLATION);
   EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 

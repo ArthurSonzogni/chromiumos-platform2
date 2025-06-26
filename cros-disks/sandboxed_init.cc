@@ -326,7 +326,7 @@ int SandboxedInit::WaitStatusToExitCode(int wstatus) {
   if (WIFSIGNALED(wstatus)) {
     // Mirrors behavior of minijail_wait().
     const int signum = WTERMSIG(wstatus);
-    return signum == SIGSYS ? MINIJAIL_ERR_JAIL
+    return signum == SIGSYS ? MINIJAIL_ERR_SECCOMP_VIOLATION
                             : MINIJAIL_ERR_SIG_BASE + signum;
   }
 
