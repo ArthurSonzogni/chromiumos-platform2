@@ -3021,11 +3021,9 @@ void WiFi::DisassociateFromService(const WiFiServiceRefPtr& service,
 void WiFi::UpdateGeolocationObjects(
     std::vector<GeolocationInfo>* geolocation_infos) const {
   int old_size = geolocation_infos->size();
-  // Move all the geolocation objects from geolocation_infos to
-  // geolocation_infos_copy. After this move, geolocation_infos is empty, and
-  // all the geolocation objects are in geolocation_infos_copy
   std::vector<GeolocationInfo> geolocation_infos_copy =
       std::move(*geolocation_infos);
+  geolocation_infos->clear();
   // Update the geolocation cache using the current WiFi scan results
   for (const auto& endpoint_entry : endpoint_by_rpcid_) {
     GeolocationInfo geoinfo;
