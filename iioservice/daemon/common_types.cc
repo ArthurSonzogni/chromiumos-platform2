@@ -121,8 +121,7 @@ cros::mojom::IioChanType ConvertChanType(iio_chan_type chan_type) {
       return cros::mojom::IioChanType::IIO_PROXIMITY;
 
     default:
-      NOTREACHED_IN_MIGRATION() << "Invalid iio_chan_type: " << chan_type;
-      return cros::mojom::IioChanType::IIO_PROXIMITY;
+      NOTREACHED() << "Invalid iio_chan_type: " << chan_type;
   }
 }
 
@@ -147,8 +146,7 @@ cros::mojom::IioEventType ConvertEventType(iio_event_type event_type) {
       return cros::mojom::IioEventType::IIO_EV_TYPE_CHANGE;
 
     default:
-      NOTREACHED_IN_MIGRATION() << "Invalid iio_event_type: " << event_type;
-      return cros::mojom::IioEventType::IIO_EV_TYPE_THRESH;
+      NOTREACHED() << "Invalid iio_event_type: " << event_type;
   }
 }
 
@@ -167,8 +165,7 @@ cros::mojom::IioEventDirection ConvertDirection(iio_event_direction direction) {
       return cros::mojom::IioEventDirection::IIO_EV_DIR_NONE;
 
     default:
-      NOTREACHED_IN_MIGRATION() << "Invalid iio_event_direction: " << direction;
-      return cros::mojom::IioEventDirection::IIO_EV_DIR_EITHER;
+      NOTREACHED() << "Invalid iio_event_direction: " << direction;
   }
 }
 

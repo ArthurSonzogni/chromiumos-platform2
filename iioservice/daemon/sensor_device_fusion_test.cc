@@ -216,7 +216,7 @@ class IioDeviceHandlerTest : public ::testing::Test,
   }
 
   void Invalidate() override {
-    NOTREACHED_IN_MIGRATION() << "IioDeviceHandler is invalidated";
+    NOTREACHED() << "IioDeviceHandler is invalidated";
   }
 
   void WaitUntilFinishObserving() {
@@ -291,12 +291,10 @@ class IioDeviceHandlerInvalidTest : public ::testing::Test,
   void TearDown() override { TearDownBase(); }
 
   void HandleAccelSample(std::vector<int64_t> accel_sample) override {
-    NOTREACHED_IN_MIGRATION() << "Shouldn't get any sample";
+    NOTREACHED() << "Shouldn't get any sample";
   }
 
-  void OnReadFailed() override {
-    NOTREACHED_IN_MIGRATION() << "Shouldn't get any error";
-  }
+  void OnReadFailed() override { NOTREACHED() << "Shouldn't get any error"; }
 
   void Invalidate() override {
     // IioDeviceHandler will only call Invalidate callback once.
@@ -339,7 +337,7 @@ TEST_F(IioDeviceHandlerInvalidTest, MissingChannel) {
   iio_device_handler_->SetFrequency(
       libmems::fakes::kFakeSamplingFrequency,
       base::BindOnce([](double result_freq) {
-        NOTREACHED_IN_MIGRATION() << "Mojo pipe SensorDevice should be reset";
+        NOTREACHED() << "Mojo pipe SensorDevice should be reset";
       }));
 
   base::RunLoop loop;

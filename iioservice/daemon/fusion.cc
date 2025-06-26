@@ -244,8 +244,7 @@ bool Fusion::CheckInitComplete(cros::mojom::DeviceType type,
       break;
 
     default:
-      NOTREACHED_IN_MIGRATION() << "Invalid type: " << type;
-      break;
+      NOTREACHED() << "Invalid type: " << type;
   }
 
   if (HasEstimate()) {
