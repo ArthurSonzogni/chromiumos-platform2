@@ -1373,8 +1373,7 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
     // The data_out contents will be the computed digest.
     return ECCVerify(context, data_out, signature);
   } else {
-    NOTREACHED_IN_MIGRATION();
-    return false;
+    NOTREACHED();
   }
 }
 
