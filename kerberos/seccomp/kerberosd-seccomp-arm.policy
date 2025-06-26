@@ -63,6 +63,7 @@ clock_getres: 1
 clock_getres_time64: 1
 getresuid32: 1
 getresgid32: 1
+sendmmsg: 1
 sendmsg: 1
 access: 1
 faccessat: 1
