@@ -72,7 +72,6 @@ copies.
 | [fbpreprocessor](./fbpreprocessor/) | Debug file preprocessing for feedback reports |
 | [feature_usage](./feature_usage/) | Library to provide a unified approach to report feature usage events |
 | [featured](./featured/) | Feature daemon for enabling and managing platform features |
-| [federated](./federated/) | Federated computation service (Federated Analytics & Federated Learning) |
 | [feedback](./feedback/) | Daemon for headless systems that want to gather feedback (normally Chrome manages it) |
 | [ferrochrome](./ferrochrome/) | Components to run Ferrochrome |
 | [flex_bluetooth](./flex_bluetooth/) | Updates Floss overrides for ChromeOS Flex |
