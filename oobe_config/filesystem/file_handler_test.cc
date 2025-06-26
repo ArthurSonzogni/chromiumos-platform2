@@ -337,10 +337,8 @@ TEST_F(FileHandlerTest, RamoopsFileEnumeratorEmptyFolder) {
 
   // Empty folder should give an enumerator, but no files to enumerate over.
   base::FileEnumerator enumerator_empty = file_handler_.RamoopsFileEnumerator();
-  for (auto file = enumerator_empty.Next(); !file.empty();
-       file = enumerator_empty.Next()) {
-    NOTREACHED_IN_MIGRATION();
-  }
+  auto file = enumerator_empty.Next();
+  ASSERT_TRUE(file.empty());
 }
 
 TEST_F(FileHandlerTest, RamoopsFileEnumeratorTwoFiles) {
