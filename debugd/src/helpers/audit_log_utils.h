@@ -6,6 +6,7 @@
 #define DEBUGD_SRC_HELPERS_AUDIT_LOG_UTILS_H_
 
 #include <string>
+#include <string_view>
 
 namespace debugd {
 
@@ -13,7 +14,7 @@ namespace debugd {
 // tokens that shouldn't be included in a feedback report. (b/209618299)
 // Delimiter line ("----") included in ausearch output will be replaced with an
 // empty string.
-std::string FilterAuditLine(const std::string& line);
+std::string FilterAuditLine(std::string_view line);
 
 }  // namespace debugd
 

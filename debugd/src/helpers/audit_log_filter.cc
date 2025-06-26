@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToStderr);
 
   if (argc != 1) {
-    LOG(ERROR) << "audit_log_filter takes no arguements.";
+    LOG(ERROR) << "audit_log_filter takes no arguments.";
     return EXIT_FAILURE;
   }
 
@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
   p.AddArg("/sbin/ausearch");
   p.AddArg("--interpret");
   p.AddStringOption("--start", "today");
-  p.AddStringOption("--message", "AVC,SYSCALL");
+  p.AddStringOption("--message", "AVC,SYSCALL,SECCOMP");
   p.RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
 
   if (!p.Start()) {
@@ -45,10 +45,12 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  char* buffer = NULL;
+  char* buffer = nullptr;
   size_t buffer_len = 0;
-  while (getline(&buffer, &buffer_len, file) >= 0) {
-    std::cout << debugd::FilterAuditLine(buffer) << std::endl;
+  ssize_t line_len;
+  while ((line_len = getline(&buffer, &buffer_len, file)) >= 0) {
+    std::cout << debugd::FilterAuditLine(std::string_view(buffer, line_len))
+              << std::endl;
   }
 
   if (p.Wait() != 0) {
