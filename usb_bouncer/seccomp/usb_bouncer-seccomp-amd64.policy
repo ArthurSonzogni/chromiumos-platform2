@@ -49,6 +49,7 @@ capget: 1
 clock_gettime: 1
 # Needed for fork.
 clone: 1
+clone3: 1
 creat: 1
 dup: 1
 dup3: 1

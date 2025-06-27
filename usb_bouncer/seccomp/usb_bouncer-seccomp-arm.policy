@@ -56,6 +56,7 @@ ARM_set_tls: 1
 capget: 1
 # Needed for fork.
 clone: 1
+clone3: 1
 dup: 1
 dup3: 1
 fstatat64: 1

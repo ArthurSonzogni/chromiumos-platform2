@@ -55,6 +55,7 @@ capget: 1
 socketpair: 1
 # needed for fork
 clone: 1
+clone3: 1
 sendmsg: 1
 arch_prctl: 1
 set_tid_address: 1

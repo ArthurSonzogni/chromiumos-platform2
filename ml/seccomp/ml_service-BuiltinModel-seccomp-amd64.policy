@@ -55,6 +55,7 @@ writev: 1
 # For emitting perfetto trace events.
 access: 1
 clone: arg0 & CLONE_THREAD
+clone3: 1
 fcntl: 1
 ioctl: arg1 == TCGETS
 poll: 1

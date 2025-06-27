@@ -10,6 +10,7 @@ rseq: 1
 brk: 1
 clock_gettime: 1
 clone: arg0 & CLONE_THREAD
+clone3: 1
 close: 1
 connect: 1
 epoll_ctl: 1

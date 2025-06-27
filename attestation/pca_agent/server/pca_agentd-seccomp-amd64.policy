@@ -84,6 +84,7 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 
 clone: 1
+clone3: 1
 setpriority: 1
 setitimer: 1
 pwrite64: 1

@@ -10,6 +10,7 @@ clock_gettime: 1
 clock_nanosleep: 1
 # used to create a thread reading IIO devices' samples
 clone: 1
+clone3: 1
 close: 1
 connect: 1
 epoll_create1: 1

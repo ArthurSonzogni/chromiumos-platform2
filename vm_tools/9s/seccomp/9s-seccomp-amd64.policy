@@ -52,6 +52,7 @@ set_tid_address: 1
 listen: 1
 # Disallow clone's other than new threads.
 clone: arg0 & 0x00010000
+clone3: 1
 unlinkat: 1
 madvise: 1
 futex: 1

@@ -51,6 +51,7 @@ readlinkat: 1
 symlink: 1
 # clone: bio_crypto_init forks a child process.
 clone: 1
+clone3: 1
 futex: 1
 futex_time64: 1
 # kill: Used to kill hanging child process (Process.Terminate).

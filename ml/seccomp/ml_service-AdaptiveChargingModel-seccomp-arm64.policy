@@ -66,5 +66,6 @@ writev: 1
 
 # For emitting perfetto trace events.
 clone: arg0 & CLONE_THREAD
+clone3: 1
 eventfd2: 1
 shutdown: 1

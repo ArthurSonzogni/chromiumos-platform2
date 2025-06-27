@@ -120,6 +120,7 @@ pwrite64: 1
 
 # For mediapipe threads
 clone: arg0 & CLONE_THREAD
+clone3: 1
 
 # For mediapipe threads
 # 0x53564d41 == PR_SET_VMA

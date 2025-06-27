@@ -51,6 +51,7 @@ statx: 1
 
 # For emitting perfetto trace events.
 clone: arg0 & CLONE_THREAD
+clone3: 1
 fcntl: 1
 ioctl: arg1 == TCGETS
 munmap: 1

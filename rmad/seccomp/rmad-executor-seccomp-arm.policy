@@ -33,6 +33,7 @@ flock: 1
 fstatfs64: 1
 umask: 1
 clone: 1
+clone3: 1
 wait4: 1
 dup2: 1
 execve: 1

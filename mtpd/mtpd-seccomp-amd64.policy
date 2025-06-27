@@ -51,6 +51,7 @@ clock_getres: 1
 clock_gettime: 1
 exit_group: 1
 clone: 1
+clone3: 1
 sched_get_priority_min: 1
 setsockopt: 1
 restart_syscall: 1

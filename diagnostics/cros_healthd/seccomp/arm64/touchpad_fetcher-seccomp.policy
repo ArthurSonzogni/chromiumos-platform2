@@ -46,6 +46,7 @@ socket: arg0 == AF_UNIX
 socketpair: 1
 # needed for fork
 clone: 1
+clone3: 1
 set_tid_address: 1
 rseq: 1
 prlimit64: 1

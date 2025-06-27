@@ -54,6 +54,7 @@ clock_getres: 1
 getresuid: 1
 getresgid: 1
 clone: 1
+clone3: 1
 creat: 1
 setpriority: 1
 prctl: arg0 == PR_SET_NAME

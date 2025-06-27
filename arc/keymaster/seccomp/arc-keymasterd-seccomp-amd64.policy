@@ -62,6 +62,7 @@ munmap: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 prctl: arg0 == PR_SET_NAME
 clone: 1
+clone3: 1
 setpriority: 1
 mlock: 1
 munlock: 1

@@ -6,6 +6,7 @@ brk: 1
 clock_getres: 1
 clock_nanosleep: 1
 clone: 1
+clone3: 1
 close: 1
 connect: 1
 exit_group: 1

@@ -55,6 +55,7 @@ socket: arg0 == AF_UNIX
 socketpair: 1
 # needed for fork
 clone: 1
+clone3: 1
 sendmsg: 1
 ARM_set_tls: 1
 set_tid_address: 1

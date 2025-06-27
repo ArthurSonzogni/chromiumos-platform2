@@ -37,6 +37,7 @@ getgid: 1
 mremap: 1
 munmap: 1
 clone: 1
+clone3: 1
 set_robust_list: 1
 getegid: 1
 getuid: 1

@@ -8,6 +8,7 @@ brk: 1
 clock_nanosleep: 1
 # Used to fork futility & tar
 clone: 1
+clone3: 1
 close: 1
 creat: 1
 dup2: 1

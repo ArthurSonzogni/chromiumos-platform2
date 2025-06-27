@@ -65,6 +65,7 @@ epoll_pwait: 1
 prctl: arg0 == PR_SET_NAME
 # Allow clone for new threads.
 clone: arg0 & CLONE_THREAD
+clone3: 1
 sched_getaffinity: 1
 prlimit64: 1
 rseq: 1

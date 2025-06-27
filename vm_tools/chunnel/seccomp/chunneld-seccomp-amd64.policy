@@ -46,6 +46,7 @@ sched_getaffinity: 1
 eventfd2: 1
 dup: 1
 clone: arg0 & CLONE_THREAD
+clone3: 1
 getrandom: arg2 in ~GRND_RANDOM
 geteuid: 1
 setsockopt: 1

@@ -17,6 +17,7 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 set_robust_list: 1
 rseq: 1
 clone: 1
+clone3: 1
 madvise: 1
 exit: 1
 statx: 1

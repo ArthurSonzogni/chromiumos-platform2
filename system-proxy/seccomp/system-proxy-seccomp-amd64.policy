@@ -66,6 +66,7 @@ rt_sigreturn: 1
 pipe: 1
 # For starting minijailed worker proxy server instances.
 clone: 1
+clone3: 1
 rt_sigtimedwait: 1
 getdents64: 1
 dup2: 1

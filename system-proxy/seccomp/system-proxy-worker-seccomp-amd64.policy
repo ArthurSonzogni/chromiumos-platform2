@@ -72,6 +72,7 @@ getpeername: 1
 getsockname: 1
 # For forwarding proxy traffic on a separate thread.
 clone: 1
+clone3: 1
 setpriority: 1
 # For forwarding proxy traffic on a separate thread.
 prctl: arg0 == PR_SET_NAME

@@ -20,6 +20,7 @@ munmap: 1
 rt_sigaction: 1
 # clone is used to fork libhwsec
 clone: 1
+clone3: 1
 set_robust_list: 1
 setpriority: 1
 exit_group: 1

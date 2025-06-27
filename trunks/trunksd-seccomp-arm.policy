@@ -79,6 +79,7 @@ munlock: 1
 # Don't allow mprotect with PROT_EXEC.
 mprotect: arg2 in ~PROT_EXEC
 clone: 1
+clone3: 1
 set_robust_list: 1
 set_tid_address: 1
 tgkill: 1

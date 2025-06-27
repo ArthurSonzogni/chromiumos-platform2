@@ -123,6 +123,7 @@ write: 1
 rt_sigaction: 1
 # TODO(b/333978583): Document why clone is required.
 clone: 1
+clone3: 1
 set_robust_list: 1
 # Graphics fetcher will crash without prctl.
 # TODO(b/333978583): Document why prctl is required.

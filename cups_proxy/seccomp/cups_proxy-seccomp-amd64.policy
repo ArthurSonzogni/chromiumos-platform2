@@ -16,6 +16,7 @@ chmod: 1
 clock_getres: 1
 clock_gettime: 1
 clone: 1
+clone3: 1
 close: 1
 connect: 1
 creat: 1

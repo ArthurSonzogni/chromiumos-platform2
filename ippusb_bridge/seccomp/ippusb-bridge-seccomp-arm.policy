@@ -19,6 +19,7 @@ clock_gettime64: 1
 clock_nanosleep: 1
 clock_nanosleep_time64: 1
 clone: arg0 & CLONE_THREAD
+clone3: 1
 close: 1
 connect: 1
 dup: 1
