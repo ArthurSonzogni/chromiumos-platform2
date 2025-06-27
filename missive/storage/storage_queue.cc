@@ -263,6 +263,12 @@ void StorageQueue::Init(
 
 Status StorageQueue::DoInit() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+  // Test only: Simulate failure if requested
+  if (test_injection_handler_) {
+    RETURN_IF_ERROR_STATUS(test_injection_handler_.Run(
+        test::StorageQueueOperationKind::kCreateDirectory, 0L));
+  }
+
   // Make sure the assigned directory exists.
   if (base::File::Error error;
       !base::CreateDirectoryAndGetError(options_.directory(), &error)) {

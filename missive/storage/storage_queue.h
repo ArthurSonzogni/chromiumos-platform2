@@ -55,6 +55,7 @@ enum class StorageQueueOperationKind {
   kWrappedRecordLowMemory,
   kEncryptedRecordLowMemory,
   kWriteLowDiskSpace,
+  kCreateDirectory,
 };
 
 using ErrorInjectionHandlerType =

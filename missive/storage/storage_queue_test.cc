@@ -29,8 +29,8 @@
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
 #include <base/threading/sequence_bound.h>
-#include <base/types/expected.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <brillo/files/file_util.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
@@ -82,11 +82,6 @@ const CompressionInformation::CompressionAlgorithm kCompressionType =
 
 // Forbidden file/folder names
 const char kInvalidFilePrefix[] = "..";
-#if defined(OS_WIN)
-const char kInvalidDirectoryPath[] = "o:\\some\\inaccessible\\dir";
-#else
-const char kInvalidDirectoryPath[] = "////////////";
-#endif
 
 // UMA Id for the test.
 constexpr char kUmaId[] = "SomeUmaId";
@@ -666,6 +661,7 @@ class StorageQueueTest
   // module and returns the corresponding result of the operation.
   StatusOr<scoped_refptr<StorageQueue>> CreateTestStorageQueue(
       const QueueOptions& options,
+      const Status& create_directory_status = Status::StatusOK(),
       StorageQueue::InitRetryCb init_retry_cb = base::BindRepeating(
           [](Status init_status,
              size_t retry_count) -> StatusOr<base::TimeDelta> {
@@ -700,6 +696,29 @@ class StorageQueueTest
             /*is_enabled=*/true, kCompressionThreshold, kCompressionType),
         .uma_id = kUmaId,
     });
+    auto inject = std::make_unique<::testing::MockFunction<Status(
+        test::StorageQueueOperationKind, int64_t)>>();
+    // By default return OK status - no error injected.
+    EXPECT_CALL(*inject, Call(_, _))
+        .WillRepeatedly(WithoutArgs(Return(Status::StatusOK())));
+    if (!create_directory_status.ok()) {
+      test::TestCallbackAutoWaiter waiter;
+      storage_queue->TestInjectErrorsForOperation(
+          base::BindOnce(&test::TestCallbackAutoWaiter::Signal,
+                         base::Unretained(&waiter)),
+          base::BindRepeating(
+              &::testing::MockFunction<Status(test::StorageQueueOperationKind,
+                                              int64_t)>::Call,
+              base::Unretained(inject.get())));
+      // Inject simulated failure
+      EXPECT_CALL(
+          *inject,
+          Call(Eq(test::StorageQueueOperationKind::kCreateDirectory), _))
+          .WillRepeatedly(WithoutArgs(Invoke([create_directory_status]() {
+            return create_directory_status;
+          })));
+    }
+
     storage_queue->Init(init_retry_cb, initialized_event.cb());
     RETURN_IF_ERROR_STATUS(base::unexpected(initialized_event.result()));
     return storage_queue;
@@ -2291,15 +2310,14 @@ TEST_P(StorageQueueTest, WriteRecordWithInvalidFilePrefix) {
 }
 
 TEST_P(StorageQueueTest, CreateStorageQueueInvalidOptionsPath) {
-  options_.set_directory(base::FilePath(kInvalidDirectoryPath));
-  StatusOr<scoped_refptr<StorageQueue>> queue_result =
-      CreateTestStorageQueue(BuildStorageQueueOptionsPeriodic());
+  StatusOr<scoped_refptr<StorageQueue>> queue_result = CreateTestStorageQueue(
+      BuildStorageQueueOptionsPeriodic(),
+      Status(error::UNAVAILABLE, "Wrong directory path"));
   EXPECT_FALSE(queue_result.has_value());
   EXPECT_EQ(queue_result.error().error_code(), error::UNAVAILABLE);
 }
 
 TEST_P(StorageQueueTest, CreateStorageQueueAllRetriesFail) {
-  options_.set_directory(base::FilePath(kInvalidDirectoryPath));
   auto init_retry_cb = base::BindRepeating(
       [](base::RepeatingCallback<void(base::TimeDelta)> forward_cb,
          Status init_status, size_t retry_count) -> StatusOr<base::TimeDelta> {
@@ -2309,8 +2327,9 @@ TEST_P(StorageQueueTest, CreateStorageQueueAllRetriesFail) {
       base::BindPostTaskToCurrentDefault(
           base::BindRepeating(&base::test::TaskEnvironment::FastForwardBy,
                               base::Unretained(&task_environment_))));
-  StatusOr<scoped_refptr<StorageQueue>> queue_result =
-      CreateTestStorageQueue(BuildStorageQueueOptionsPeriodic(), init_retry_cb);
+  StatusOr<scoped_refptr<StorageQueue>> queue_result = CreateTestStorageQueue(
+      BuildStorageQueueOptionsPeriodic(),
+      Status(error::UNAVAILABLE, "Wrong directory path"), init_retry_cb);
   EXPECT_FALSE(queue_result.has_value());
   EXPECT_EQ(queue_result.error().error_code(), error::UNAVAILABLE);
 }
@@ -2398,7 +2417,7 @@ TEST_P(StorageQueueTest, CreateStorageQueueRetry) {
                               base::Unretained(&task_environment_))),
       bad_file);
   StatusOr<scoped_refptr<StorageQueue>> queue_result =
-      CreateTestStorageQueue(queue_options, init_retry_cb);
+      CreateTestStorageQueue(queue_options, Status::StatusOK(), init_retry_cb);
   EXPECT_OK(queue_result) << queue_result.error();
 }
 

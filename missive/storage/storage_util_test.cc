@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <limits>
+#include "missive/storage/storage_util.h"
+
 #include <tuple>
 #include <unordered_set>
 #include <utility>
@@ -21,8 +22,6 @@
 #include <gtest/gtest.h>
 
 #include "missive/storage/storage_configuration.h"
-#include "missive/storage/storage_queue.h"
-#include "missive/storage/storage_util.h"
 
 using ::testing::Eq;
 using ::testing::SizeIs;
