@@ -101,7 +101,8 @@ void DecodeEventThread::OnEventPipeReadable() {
 
   vda_event_t event;
   if (!base::ReadFromFD(session_->event_pipe_fd,
-                        base::as_writable_chars(base::span_from_ref(event)))) {
+                        base::as_writable_chars(base::allow_nonunique_obj,
+                                                base::span_from_ref(event)))) {
     LOG(ERROR) << "Failed to read from event pipe.";
     return;
   }
