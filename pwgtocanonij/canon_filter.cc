@@ -428,8 +428,9 @@ std::optional<std::string> CanonFilter::BorderlessValue() const {
 std::optional<std::string> CanonFilter::ColorModelValue() const {
   const ppd_choice_t* ppdValue = ppdFindMarkedChoice(ppd_, "ColorModel");
   if (ppdValue) {
-    // If this is "rgb", return Color.  For all other values return monochrome.
-    if (!strcmp(ppdValue->choice, "rgb")) {
+    // If this is "rgb" (case-insensitive) return Color.  For all other values
+    // return monochrome.
+    if (!strcasecmp(ppdValue->choice, "rgb")) {
       return "color";
     }
     return "monochrome";
