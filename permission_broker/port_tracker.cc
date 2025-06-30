@@ -303,8 +303,7 @@ bool PortTracker::ValidatePortRule(const PortRule& rule) {
     case kForwardingRule:
       break;
     default:
-      CHECK(false) << "Unknown port rule type value " << rule.type;
-      return false;
+      NOTREACHED() << "Unknown port rule type value " << rule.type;
   }
 
   switch (rule.proto) {
@@ -312,9 +311,8 @@ bool PortTracker::ValidatePortRule(const PortRule& rule) {
     case patchpanel::Client::FirewallRequestProtocol::kUdp:
       break;
     default:
-      CHECK(false) << "Unknown L4 protocol value "
+      NOTREACHED() << "Unknown L4 protocol value "
                    << patchpanel::Client::ProtocolName(rule.proto);
-      return false;
   }
 
   // TODO(hugobenichi): add some validation for port access and port lockdown
