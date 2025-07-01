@@ -17,6 +17,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/notimplemented.h>
 #include <base/notreached.h>
 #include <brillo/message_loops/message_loop.h>
 #if USE_INPUT_DEVICES_SPI_HEATMAP

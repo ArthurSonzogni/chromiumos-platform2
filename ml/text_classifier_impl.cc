@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/debug/leak_annotations.h>
 #include <base/logging.h>
+#include <base/notimplemented.h>
 #include <brillo/message_loops/message_loop.h>
 #include <lang_id/lang-id-wrapper.h>
 #include <utils/utf8/unicodetext.h>
