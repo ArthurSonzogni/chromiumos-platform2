@@ -16,7 +16,7 @@
 #include <android/binder_ibinder.h>
 #include <base/immediate_crash.h>
 #include <base/logging.h>
-#include <base/notreached.h>
+#include <base/notimplemented.h>
 
 AStatus* AStatus_newOk() {
   // This method is called by getInterfaceVersion and getInterfaceHash within
