@@ -27,6 +27,7 @@
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/notimplemented.h>
 #include <base/notreached.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>

@@ -7,7 +7,7 @@
 #include <time.h>
 
 #include <base/logging.h>
-#include <base/notreached.h>
+#include <base/notimplemented.h>
 
 namespace shill {
 
