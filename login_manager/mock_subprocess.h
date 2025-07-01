@@ -39,7 +39,6 @@ class MockSubprocess : public SubprocessInterface {
   MOCK_METHOD(void, KillEverything, (int), (override));
   MOCK_METHOD(pid_t, GetPid, (), (const, override));
   MOCK_METHOD(void, ClearPid, (), (override));
-  MOCK_METHOD(void, SetCaps, (std::optional<uint64_t> caps), (override));
 };
 
 }  // namespace login_manager

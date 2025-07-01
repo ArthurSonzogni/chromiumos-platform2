@@ -35,8 +35,7 @@ TEST(SubprocessTest, ForkAndKill) {
   ASSERT_TRUE(subp->ForkAndExec(std::vector<std::string>{"/bin/false"},
                                 std::vector<std::string>()));
 
-  EXPECT_CALL(utils, kill(kFakePid, std::optional(getuid()), SIGUSR1))
-      .WillOnce(Return(0));
+  EXPECT_CALL(utils, kill(kFakePid, getuid(), SIGUSR1)).WillOnce(Return(0));
   subp->Kill(SIGUSR1);
 }
 

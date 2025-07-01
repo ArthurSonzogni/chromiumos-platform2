@@ -20,14 +20,11 @@ class SystemUtils;
 
 class SubprocessInterface {
  public:
-  virtual ~SubprocessInterface() = default;
+  virtual ~SubprocessInterface() {}
 
   virtual void UseNewMountNamespace() = 0;
   virtual void EnterExistingMountNamespace(
       const base::FilePath& ns_mnt_path) = 0;
-
-  // Sets up capabilities for the subprocess.
-  virtual void SetCaps(std::optional<uint64_t> caps) = 0;
 
   // fork(), export |environment_variables|, and exec(argv, env_vars).
   // Returns false if fork() fails, true otherwise.
@@ -48,7 +45,7 @@ class SubprocessInterface {
 // A class that provides functionality for creating/destroying a subprocess.
 class Subprocess : public SubprocessInterface {
  public:
-  Subprocess(std::optional<uid_t> uid, SystemUtils* system_utils);
+  Subprocess(uid_t uid, SystemUtils* system_utils);
   Subprocess(const Subprocess&) = delete;
   Subprocess& operator=(const Subprocess&) = delete;
 
@@ -57,7 +54,6 @@ class Subprocess : public SubprocessInterface {
   // SubprocessInterface:
   void UseNewMountNamespace() override;
   void EnterExistingMountNamespace(const base::FilePath& ns_mnt_path) override;
-  void SetCaps(std::optional<uint64_t> caps) override;
   bool ForkAndExec(const std::vector<std::string>& args,
                    const std::vector<std::string>& env_vars) override;
   void Kill(int signal) override;
@@ -71,11 +67,9 @@ class Subprocess : public SubprocessInterface {
 
   // Run-time options for the subprocess.
   // The UID the subprocess should be run as.
-  const std::optional<uid_t> desired_uid_;
+  const uid_t desired_uid_;
   // Whether to enter a new mount namespace before execve(2)-ing the subprocess.
   bool new_mount_namespace_ = false;
-  // Capabilities for the subprocess.
-  std::optional<uint64_t> caps_;
   // If present, enter an existing mount namespace before execve(2)-ing the
   // subprocess.
   // Mutually exclusive with |new_mount_namespace_|.

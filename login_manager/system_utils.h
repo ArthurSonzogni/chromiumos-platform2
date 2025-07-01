@@ -64,7 +64,7 @@ class SystemUtils {
   // Sends |signal| to |pid|, with uid and euid set to |owner|.
   // NOTE: Your saved UID is kept unchanged.  If you expect to drop and regain
   // root privs, MAKE SURE YOUR suid == 0.
-  virtual int kill(pid_t pid, std::optional<uid_t> owner, int signal) = 0;
+  virtual int kill(pid_t pid, uid_t owner, int signal) = 0;
 
   // Returns time, in seconds, since the unix epoch.
   virtual time_t time(time_t* t) = 0;

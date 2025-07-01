@@ -59,7 +59,7 @@ class FakeSystemUtils : public SystemUtils {
   [[nodiscard]] bool DeletePathRecursively(const base::FilePath& path);
 
   // SystemUtils override:
-  int kill(pid_t pid, std::optional<uid_t> owner, int signal) override;
+  int kill(pid_t pid, uid_t owner, int signal) override;
   time_t time(time_t* t) override;
   pid_t fork() override;
   int close(int fd) override;

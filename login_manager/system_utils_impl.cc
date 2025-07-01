@@ -132,23 +132,19 @@ VmState SystemUtilsImpl::GetVmState() {
   return vm_state_;
 }
 
-int SystemUtilsImpl::kill(pid_t pid, std::optional<uid_t> owner, int signal) {
+int SystemUtilsImpl::kill(pid_t pid, uid_t owner, int signal) {
   LOG(INFO) << "Sending signal " << signal << " to PID " << pid << " as UID "
-            << owner.value_or(-1);
+            << owner;
   uid_t uid, euid, suid;
-  if (owner.has_value()) {
-    getresuid(&uid, &euid, &suid);
-    if (setresuid(owner.value(), owner.value(), -1)) {
-      PLOG(ERROR) << "Couldn't assume uid " << owner.value();
-      return -1;
-    }
+  getresuid(&uid, &euid, &suid);
+  if (setresuid(owner, owner, -1)) {
+    PLOG(ERROR) << "Couldn't assume uid " << owner;
+    return -1;
   }
   int ret = ::kill(pid, signal);
-  if (owner.has_value()) {
-    if (setresuid(uid, euid, -1)) {
-      PLOG(ERROR) << "Couldn't return to root";
-      return -1;
-    }
+  if (setresuid(uid, euid, -1)) {
+    PLOG(ERROR) << "Couldn't return to root";
+    return -1;
   }
   return ret;
 }
