@@ -17,7 +17,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/notreached.h>
+#include <base/notimplemented.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 
