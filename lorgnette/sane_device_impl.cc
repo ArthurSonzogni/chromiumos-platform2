@@ -101,73 +101,69 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
         CreateDocumentSource(kUnspecifiedDefaultSourceName));
   }
 
-  if (known_options_.count(kTopLeftX) != 0 &&
-      known_options_.count(kTopLeftY) != 0 &&
-      known_options_.count(kBottomRightX) != 0 &&
-      known_options_.count(kBottomRightY) != 0) {
-    DCHECK(!values.sources.empty())
-        << "Sources is missing default source value.";
-    // We can get the capabilities for each scan source by setting the
-    // document source to each possible value, and then calculating the area
-    // for that source and retrieving the source's supported resolutions and
-    // color modes.
-    std::optional<std::string> initial_source = GetDocumentSource(error);
-    if (!initial_source.has_value()) {
+  DCHECK(!values.sources.empty()) << "Sources is missing default source value.";
+  // We can get the capabilities for each scan source by setting the
+  // document source to each possible value, and then calculating the area
+  // for that source and retrieving the source's supported resolutions and
+  // color modes.
+  std::optional<std::string> initial_source = GetDocumentSource(error);
+  if (!initial_source.has_value()) {
+    return std::nullopt;  // brillo::Error::AddTo already called.
+  }
+
+  for (DocumentSource& source : values.sources) {
+    LOG(INFO) << __func__ << ": Loading options for source: " << source.name();
+    if (!SetDocumentSource(error, source.name())) {
       return std::nullopt;  // brillo::Error::AddTo already called.
     }
 
-    for (DocumentSource& source : values.sources) {
-      LOG(INFO) << __func__
-                << ": Loading options for source: " << source.name();
-      if (!SetDocumentSource(error, source.name())) {
-        return std::nullopt;  // brillo::Error::AddTo already called.
-      }
-
+    if (known_options_.count(kTopLeftX) != 0 &&
+        known_options_.count(kTopLeftY) != 0 &&
+        known_options_.count(kBottomRightX) != 0 &&
+        known_options_.count(kBottomRightY) != 0) {
       std::optional<ScannableArea> area = CalculateScannableArea(error);
       if (!area.has_value()) {
         return std::nullopt;  // brillo::Error::AddTo already called.
       }
-
       *source.mutable_area() = std::move(area.value());
-
-      std::optional<std::vector<uint32_t>> resolutions = GetResolutions(error);
-      if (!resolutions.has_value()) {
-        return std::nullopt;  // brillo::Error::AddTo already called.
-      }
-
-      // These values correspond to the values of Chromium's
-      // ScanJobSettingsResolution enum in
-      // src/ash/webui/scanning/scanning_uma.h. Before adding values
-      // here, add them to the ScanJobSettingsResolution enum.
-      const std::vector<uint32_t> supported_resolutions = {75,  100, 150,
-                                                           200, 300, 600};
-
-      for (const uint32_t resolution : resolutions.value()) {
-        if (base::Contains(supported_resolutions, resolution)) {
-          source.add_resolutions(resolution);
-        }
-      }
-
-      std::optional<std::vector<std::string>> color_modes =
-          GetColorModes(error);
-      if (!color_modes.has_value()) {
-        return std::nullopt;  // brillo::Error::AddTo already called.
-      }
-
-      for (const std::string& mode : color_modes.value()) {
-        const ColorMode color_mode = ColorModeFromSaneString(mode);
-        if (color_mode != MODE_UNSPECIFIED) {
-          source.add_color_modes(color_mode);
-        }
-      }
     }
 
-    // Restore DocumentSource to its initial value.
-    LOG(INFO) << __func__
-              << ": Restoring original source: " << initial_source.value();
-    if (!SetDocumentSource(error, initial_source.value())) {
+    std::optional<std::vector<uint32_t>> resolutions = GetResolutions(error);
+    if (!resolutions.has_value()) {
       return std::nullopt;  // brillo::Error::AddTo already called.
     }
+
+    // These values correspond to the values of Chromium's
+    // ScanJobSettingsResolution enum in
+    // src/ash/webui/scanning/scanning_uma.h. Before adding values
+    // here, add them to the ScanJobSettingsResolution enum.
+    const std::vector<uint32_t> supported_resolutions = {75,  100, 150,
+                                                         200, 300, 600};
+
+    for (const uint32_t resolution : resolutions.value()) {
+      if (base::Contains(supported_resolutions, resolution)) {
+        source.add_resolutions(resolution);
+      }
+    }
+
+    std::optional<std::vector<std::string>> color_modes = GetColorModes(error);
+    if (!color_modes.has_value()) {
+      return std::nullopt;  // brillo::Error::AddTo already called.
+    }
+
+    for (const std::string& mode : color_modes.value()) {
+      const ColorMode color_mode = ColorModeFromSaneString(mode);
+      if (color_mode != MODE_UNSPECIFIED) {
+        source.add_color_modes(color_mode);
+      }
+    }
+  }
+
+  // Restore DocumentSource to its initial value.
+  LOG(INFO) << __func__
+            << ": Restoring original source: " << initial_source.value();
+  if (!SetDocumentSource(error, initial_source.value())) {
+    return std::nullopt;  // brillo::Error::AddTo already called.
   }
 
   // TODO(b/179492658): Once the scan app is using the color modes from
