@@ -13,6 +13,7 @@
 #include <base/files/memory_mapped_file.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/notimplemented.h>
 #include <base/strings/utf_string_conversions.h>
 #include <base/task/thread_pool.h>
 #include <base/threading/sequence_bound.h>
