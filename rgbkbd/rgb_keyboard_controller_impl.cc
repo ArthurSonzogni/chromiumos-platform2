@@ -11,6 +11,7 @@
 
 #include "base/check.h"
 #include "base/logging.h"
+#include "base/notimplemented.h"
 #include "base/notreached.h"
 #include "rgbkbd/constants.h"
 
