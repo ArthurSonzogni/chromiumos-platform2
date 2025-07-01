@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/notimplemented.h>
 #include <metrics/metrics_library.h>
 
 #include "diagnostics/cros_healthd/events/audio_events_impl.h"
