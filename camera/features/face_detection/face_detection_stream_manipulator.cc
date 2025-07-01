@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/functional/callback_helpers.h>
+#include <base/notimplemented.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "common/stream_manipulator.h"
