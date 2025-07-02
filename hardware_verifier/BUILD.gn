@@ -14,6 +14,7 @@ group("all") {
     ":install_init_config",
     ":install_minijail_config",
     ":install_minijail_dbus_config",
+    ":install_tmpfiles_config",
   ]
   if (use.test) {
     deps += [ ":unittest_runner" ]
@@ -101,6 +102,11 @@ install_config("install_minijail_config") {
 install_config("install_minijail_dbus_config") {
   sources = [ "minijail/hardware_verifier-dbus.conf" ]
   install_path = "minijail_conf"
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/hardware_verifier.conf" ]
+  install_path = "tmpfilesd"
 }
 
 if (use.test) {

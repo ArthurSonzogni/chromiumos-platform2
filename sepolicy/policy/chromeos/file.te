@@ -423,6 +423,7 @@ type cros_var_cache_dlcservice_images, file_type, cros_file_type, cros_var_file_
 # details.
 type cros_var_cache_reporting, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_tlsdated, file_type, cros_file_type, cros_var_file_type;
+type cros_var_cache_hardware_verifier, file_type, cros_file_type, cros_var_file_type;
 
 # /var/db
 type cros_var_db, file_type, cros_file_type, cros_var_file_type;
