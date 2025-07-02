@@ -7,11 +7,13 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "farfetchd/dbus_adaptors/org.chromium.Farfetchd.h"
 #include "farfetchd/prefetch_helper.h"
+#include "farfetchd/trace_manager.h"
 #include "libstorage/platform/platform.h"
 
 namespace farfetchd {
@@ -39,8 +41,21 @@ class DBusAdaptor : public org::chromium::FarfetchdInterface,
   // the MAP_POPULATE flag.
   bool PreloadFileMmap(const std::string& path) override;
 
+  // Tracing methods
+  std::string StartTrace(
+      const std::string& app_name,
+      const std::vector<std::string>& process_names,
+      const std::vector<std::string>& path_allowlist,
+      const std::vector<std::string>& path_denylist) override;
+
+  bool StopTrace(const std::string& trace_id) override;
+  bool CancelTrace(const std::string& trace_id) override;
+  std::string GetTraceStatus(const std::string& trace_id) override;
+  std::string GetTracePath(const std::string& trace_id) override;
+
  private:
   std::unique_ptr<farfetchd::PrefetchHelper> helper_;
+  std::unique_ptr<farfetchd::TraceManager> trace_manager_;
   libstorage::Platform platform_;
   brillo::dbus_utils::DBusObject dbus_object_;
 };

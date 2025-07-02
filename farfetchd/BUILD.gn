@@ -27,6 +27,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libstorage_platform",
+    "re2",
   ]
 }
 
@@ -47,8 +48,10 @@ generate_dbus_proxies("farfetchd_proxy") {
 executable("farfetchd") {
   sources = [
     "daemon.cc",
+    "kernel_trace_reader.cc",
     "main.cc",
     "prefetch_helper.cc",
+    "trace_manager.cc",
   ]
   configs += [ ":target_defaults" ]
   install_path = "sbin"
@@ -64,6 +67,8 @@ install_config("install_headers") {
   sources = [
     "daemon.h",
     "prefetch_helper.h",
+    "trace_manager.h",
+    "trace_session.h",
   ]
   install_path = "/usr/include/farfetchd"
 }
@@ -79,6 +84,8 @@ if (use.test) {
       "daemon.cc",
       "prefetch_helper.cc",
       "prefetch_helper_test.cc",
+      "trace_manager.cc",
+      "trace_manager_test.cc",
     ]
     configs += [
       "//common-mk:test",
