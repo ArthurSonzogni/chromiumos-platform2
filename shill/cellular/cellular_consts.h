@@ -39,6 +39,10 @@ const int kFM350Vid = 0x14c3;
 const int kFM350Pid = 0x4d75;
 const shill::DeviceId::BusType kFM350BusType = shill::DeviceId::BusType::kPci;
 
+const int kRW350Vid = 0x14c3;
+const int kRW350Pid = 0x4d75;
+const shill::DeviceId::BusType kRW350BusType = shill::DeviceId::BusType::kPci;
+
 }  // namespace cellular
 
 #endif  // SHILL_CELLULAR_CELLULAR_CONSTS_H_

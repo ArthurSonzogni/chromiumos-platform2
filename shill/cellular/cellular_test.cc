@@ -4480,6 +4480,7 @@ TEST_F(CellularTest, IsModemUnknown) {
   EXPECT_FALSE(device_->IsModemFM350());
   EXPECT_FALSE(device_->IsModemRW101());
   EXPECT_FALSE(device_->IsModemRW135());
+  EXPECT_FALSE(device_->IsModemRW350());
 }
 
 TEST_F(CellularTest, IsModemOther) {
@@ -4491,6 +4492,7 @@ TEST_F(CellularTest, IsModemOther) {
   EXPECT_FALSE(device_->IsModemFM350());
   EXPECT_FALSE(device_->IsModemRW101());
   EXPECT_FALSE(device_->IsModemRW135());
+  EXPECT_FALSE(device_->IsModemRW350());
 }
 
 TEST_F(CellularTest, IsModemL850GL) {
@@ -4502,6 +4504,7 @@ TEST_F(CellularTest, IsModemL850GL) {
   EXPECT_FALSE(device_->IsModemFM350());
   EXPECT_FALSE(device_->IsModemRW101());
   EXPECT_FALSE(device_->IsModemRW135());
+  EXPECT_FALSE(device_->IsModemRW350());
 }
 
 TEST_F(CellularTest, IsModemFM101) {
@@ -4513,6 +4516,7 @@ TEST_F(CellularTest, IsModemFM101) {
   EXPECT_FALSE(device_->IsModemFM350());
   EXPECT_FALSE(device_->IsModemRW101());
   EXPECT_FALSE(device_->IsModemRW135());
+  EXPECT_FALSE(device_->IsModemRW350());
 }
 
 TEST_F(CellularTest, IsModemFM350) {
@@ -4524,6 +4528,8 @@ TEST_F(CellularTest, IsModemFM350) {
   EXPECT_FALSE(device_->IsModemL850GL());
   EXPECT_FALSE(device_->IsModemRW101());
   EXPECT_FALSE(device_->IsModemRW135());
+  // TODO(b/429496042): RW350 shares the same bus type, VID and PID with FM350,
+  // Ignore the check for device_->IsModemRW350() here for now
 }
 
 TEST_F(CellularTest, IsModemRW101) {
@@ -4535,6 +4541,7 @@ TEST_F(CellularTest, IsModemRW101) {
   EXPECT_FALSE(device_->IsModemFM350());
   EXPECT_TRUE(device_->IsModemRW101());
   EXPECT_FALSE(device_->IsModemRW135());
+  EXPECT_FALSE(device_->IsModemRW350());
 }
 
 TEST_F(CellularTest, IsModemRW135) {
@@ -4546,6 +4553,22 @@ TEST_F(CellularTest, IsModemRW135) {
   EXPECT_FALSE(device_->IsModemFM350());
   EXPECT_FALSE(device_->IsModemRW101());
   EXPECT_TRUE(device_->IsModemRW135());
+  EXPECT_FALSE(device_->IsModemRW350());
+}
+
+TEST_F(CellularTest, IsModemRW350) {
+  auto device_id = std::make_unique<DeviceId>(
+      cellular::kRW350BusType, cellular::kRW350Vid, cellular::kRW350Pid);
+  device_->SetDeviceId(std::move(device_id));
+  EXPECT_FALSE(device_->IsModemFM101());
+  EXPECT_FALSE(device_->IsModemL850GL());
+  // TODO(b/429496042): RW350 shares the same bus type, VID and PID with FM350,
+  // Ignore the check for device_->IsModemFM350() here for now
+  EXPECT_FALSE(device_->IsModemRW101());
+  EXPECT_FALSE(device_->IsModemRW135());
+  // TODO(b/429496042): Need to find a way to distinguish RW350 and FM350, mark
+  // below check out for now
+  // EXPECT_TRUE(device_->IsModemRW350());
 }
 
 TEST_F(CellularTest, FirmwareSupportsTetheringUnknownModem) {

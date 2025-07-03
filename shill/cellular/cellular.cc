@@ -4077,6 +4077,12 @@ void Cellular::SetDeviceId(std::unique_ptr<DeviceId> device_id) {
                                           cellular::kRW135Vid,
                                           cellular::kRW135Pid))) {
       modem_type_ = ModemType::kRW135;
+    } else if (device_id_->Match(DeviceId(cellular::kRW350BusType,
+                                          cellular::kRW350Vid,
+                                          cellular::kRW350Pid))) {
+      // TODO(b/429496042): Need to find another way to distinguish FM350 and
+      // RW350 given bus type, VID and PID share between these modules
+      modem_type_ = ModemType::kRW350;
     } else {
       modem_type_ = ModemType::kOther;
     }
@@ -4239,6 +4245,12 @@ bool Cellular::IsModemRW135() {
   return modem_type_ == ModemType::kRW135;
 }
 
+bool Cellular::IsModemRW350() {
+  SLOG(2) << LoggingTag() << ": " << __func__ << " : " << std::boolalpha
+          << (modem_type_ == ModemType::kRW350);
+  return modem_type_ == ModemType::kRW350;
+}
+
 Cellular::ModemMR Cellular::GetModemFWRevision() {
   const struct {
     ModemType modem_type;
@@ -4279,6 +4291,8 @@ std::string Cellular::ModemTypeEnumToString(ModemType type) {
       return "RW101";
     case ModemType::kRW135:
       return "RW135";
+    case ModemType::kRW350:
+      return "RW350";
     case ModemType::kOther:
       return "OTHER";
     case ModemType::kUnknown:
