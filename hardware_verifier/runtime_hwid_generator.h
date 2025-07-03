@@ -17,6 +17,9 @@
 
 namespace hardware_verifier {
 
+constexpr char kRuntimeHWIDFilePath[] =
+    "var/cache/hardware_verifier/runtime_hwid";
+
 class RuntimeHWIDGenerator {
  public:
   RuntimeHWIDGenerator(const RuntimeHWIDGenerator&) = delete;
@@ -37,6 +40,8 @@ class RuntimeHWIDGenerator {
   // Returns |std::nullopt| if generation fails.
   std::optional<std::string> Generate(
       const runtime_probe::ProbeResult& probe_result) const;
+
+  bool GenerateToDevice(const runtime_probe::ProbeResult& probe_result) const;
 
  private:
   explicit RuntimeHWIDGenerator(

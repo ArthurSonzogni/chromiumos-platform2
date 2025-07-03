@@ -13,10 +13,14 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file_util.h>
+#include <base/hash/sha1.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <brillo/file_utils.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <libsegmentation/feature_management.h>
 #include <re2/re2.h>
@@ -51,6 +55,10 @@ constexpr char kRuntimeHWIDUnidentifiedComp[] = "?";
 constexpr char kRuntimeHWIDNullComp[] = "X";
 constexpr char kRuntimeHWIDSkipComp[] = "#";
 
+constexpr int kFilePermission644 =
+    base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER |
+    base::FILE_PERMISSION_READ_BY_GROUP | base::FILE_PERMISSION_READ_BY_OTHERS;
+
 struct ProbeComponent {
   std::string name;
   std::string position;
@@ -68,6 +76,11 @@ std::string ModelName() {
   LOG(ERROR) << "Failed to get \"" << kCrosConfigModelNamePath << " "
              << kCrosConfigModelNameKey << "\" from cros config";
   return "";
+}
+
+std::string CalculateChecksum(std::string_view runtime_hwid) {
+  const auto& sha1_hash = base::SHA1HashString(runtime_hwid);
+  return base::HexEncode(sha1_hash.data(), sha1_hash.size());
 }
 
 std::string GenerateCategoryRegex(const std::string_view& category_name) {
@@ -405,6 +418,29 @@ std::optional<std::string> RuntimeHWIDGenerator::Generate(
 
   return *masked_factory_hwid + " " + kRuntimeHWIDMagicString +
          runtime_hwid_comp;
+}
+
+bool RuntimeHWIDGenerator::GenerateToDevice(
+    const runtime_probe::ProbeResult& probe_result) const {
+  const auto runtime_hwid = Generate(probe_result);
+  if (!runtime_hwid.has_value()) {
+    LOG(ERROR) << "Failed to generate Runtime HWID.";
+    return false;
+  }
+  const auto checksum = CalculateChecksum(*runtime_hwid);
+  std::string content =
+      base::StringPrintf("%s\n%s", runtime_hwid->c_str(), checksum.c_str());
+
+  const auto runtime_hwid_path =
+      Context::Get()->root_dir().Append(kRuntimeHWIDFilePath);
+  auto file_data = base::span<const uint8_t>(
+      reinterpret_cast<const uint8_t*>(content.data()), content.size());
+  if (!brillo::WriteFileAtomically(runtime_hwid_path, file_data,
+                                   kFilePermission644)) {
+    PLOG(ERROR) << "Failed to write Runtime HWID to " << runtime_hwid_path;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace hardware_verifier

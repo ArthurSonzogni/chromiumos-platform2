@@ -11,6 +11,9 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file_util.h>
+#include <base/hash/sha1.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -572,6 +575,86 @@ TEST_F(RuntimeHWIDGeneratorTest, Generate_InvalidComponentPosition_Failure) {
   auto res = generator->Generate(probe_result);
 
   EXPECT_EQ(res, std::nullopt);
+}
+
+TEST_F(RuntimeHWIDGeneratorTest, GenerateToDevice_Success) {
+  EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
+      .WillOnce(Return("MODEL-RLZ A2A"));
+  SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
+      segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
+  auto generator =
+      RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1_1",
+                                            "", "", "1");
+  AddProbeComponent<runtime_probe::Battery>(&probe_result,
+                                            "MODEL_battery_2_2#2", "", "", "2");
+  AddProbeComponent<runtime_probe::InputDevice>(
+      &probe_result, "MODEL_touchscreen_3", "touchscreen", "", "3");
+  AddProbeComponent<runtime_probe::InputDevice>(
+      &probe_result, "MODEL_stylus_4_4#5", "stylus", "", "4");
+  AddProbeComponent<runtime_probe::InputDevice>(
+      &probe_result, "MODEL_touchpad_6_6", "touchpad", "", "5");
+  AddProbeComponent<runtime_probe::Camera>(&probe_result, "camera_5_5", "", "",
+                                           "6");
+  AddProbeComponent<runtime_probe::Memory>(&probe_result, "dram_7_7", "", "",
+                                           "7");
+  AddProbeComponent<runtime_probe::Network>(&probe_result, "cellular_8_8",
+                                            "cellular", "", "8");
+  AddProbeComponent<runtime_probe::Network>(&probe_result, "wireless_9_9",
+                                            "wireless", "", "9");
+  AddProbeComponent<runtime_probe::Network>(&probe_result, "ethernet_10_10",
+                                            "ethernet", "", "10");
+  AddProbeComponent<runtime_probe::Edid>(&probe_result, "display_panel_11_11",
+                                         "", "", "11");
+
+  EXPECT_TRUE(generator->GenerateToDevice(probe_result));
+
+  std::string file_content;
+  std::string expected_file_content =
+      R"(MODEL-RLZ A2A R:1-1-2-6-11-4-5-3-7-8-10-9-1
+27BBB9DDFA4210711C5ED57400D0311FF89D1C90)";
+  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
+  EXPECT_TRUE(base::ReadFileToString(runtime_hwid_path, &file_content));
+  EXPECT_EQ(file_content, expected_file_content);
+
+  int file_mode;
+  ASSERT_TRUE(base::GetPosixFilePermissions(runtime_hwid_path, &file_mode));
+  EXPECT_EQ(file_mode, 0644);
+}
+
+TEST_F(RuntimeHWIDGeneratorTest, GenerateToDevice_GenerateFailed_Failure) {
+  // The generation will be failed due to GenerateMaskedFactoryHWID failure.
+  EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
+      .WillOnce(Return(std::nullopt));
+  SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
+      segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
+  auto generator =
+      RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
+
+  EXPECT_FALSE(generator->GenerateToDevice({}));
+
+  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
+  EXPECT_FALSE(base::PathExists(runtime_hwid_path));
+}
+
+TEST_F(RuntimeHWIDGeneratorTest, GenerateToDevice_WriteFileFailed_Failure) {
+  EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
+      .WillOnce(Return("MODEL-RLZ A2A"));
+  SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
+      segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
+  auto generator =
+      RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
+
+  // Make the path a directory to make the file unwritable.
+  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
+  ASSERT_TRUE(base::CreateDirectory(runtime_hwid_path));
+
+  EXPECT_FALSE(generator->GenerateToDevice({}));
 }
 
 }  // namespace

@@ -67,7 +67,8 @@ class BaseFileTest : public ::testing::Test {
   BaseFileTest(const BaseFileTest&) = delete;
   BaseFileTest& operator=(const BaseFileTest&) = delete;
 
-  // Unsets a file or a directory in the test rootfs.
+  // Turns the path into the path under the test rootfs. This should work for
+  // both absolute and relative path.
   base::FilePath GetPathUnderRoot(const PathType& path) const;
   // Returns the path of the rootfs for testing.
   const base::FilePath& root_dir() const;
