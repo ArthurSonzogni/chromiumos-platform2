@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <attestation/proto_bindings/interface.pb.h>
-// NOLINTBEGIN(build/include_alpha) dbus-proxies.h needs interface.pb.h
+// NOLINTNEXT(build/include_alpha) dbus-proxies.h needs interface.pb.h
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/check.h>
 #include <base/logging.h>
