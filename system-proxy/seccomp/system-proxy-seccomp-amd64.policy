@@ -83,7 +83,7 @@ wait4: 1
 futex: 1
 tgkill: 1
 # For stopping minijailed worker proxy server instances.
-kill: arg1 == SIGTERM
+kill: arg1 == SIGTERM || arg1 == SIGSYS
 bind: 1
 listen: 1
 accept: 1

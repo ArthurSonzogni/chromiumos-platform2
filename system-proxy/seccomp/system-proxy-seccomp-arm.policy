@@ -36,10 +36,13 @@ brk: 1
 getpid: 1
 epoll_ctl: 1
 rt_sigaction: 1
+# For proxying HTTPS traffic from Chrome OS clients (PlayStore and
+# system services)
 socket: arg0 == AF_UNIX || arg0 == AF_INET || arg0 == AF_INET6 || arg0 == AF_NETLINK
 connect: 1
 pipe2: 1
 fcntl: 1
+# For starting minijailed proxy server instances.
 execve: 1
 uname: 1
 access: 1
@@ -50,6 +53,9 @@ munmap: 1
 set_tid_address: 1
 set_robust_list: 1
 ugetrlimit: 1
+# Gets the data size that can be read from a socket.
+# Sets the network interface flags.
+# Sets or clears nonblocking input/output for a socket.
 ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == FIONREAD || arg1 == TIOCGWINSZ || arg1 == FIONBIO
 _llseek: 1
 epoll_create1: 1
@@ -63,14 +69,17 @@ exit: 1
 exit_group: 1
 rt_sigreturn: 1
 pipe: 1
+# For starting minijailed worker proxy server instances.
 clone: 1
 rt_sigtimedwait: 1
 rt_sigtimedwait_time64: 1
 getdents64: 1
 dup2: 1
 unshare: 1
+# For starting minijailed worker proxy server instances.
 prctl: 1
 open: 1
+# For starting minijailed worker proxy server instances.
 mount: 1
 writev:1
 umount2: 1
@@ -80,7 +89,8 @@ wait4: 1
 futex: 1
 futex_time64: 1
 tgkill: 1
-kill: arg1 == SIGTERM
+# For stopping minijailed worker proxy server instances.
+kill: arg1 == SIGTERM || arg1 == SIGSYS
 bind: 1
 listen: 1
 accept: 1
