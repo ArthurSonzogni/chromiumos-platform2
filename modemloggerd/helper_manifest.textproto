@@ -98,3 +98,10 @@ helper {
     output_dir_argument: "-o"
   }
 }
+helper {
+  modem_name: "rw350"
+  exe {
+    filename: "/usr/local/opt/fibocom/modemlogger"
+    output_dir_argument: "-o"
+  }
+}
