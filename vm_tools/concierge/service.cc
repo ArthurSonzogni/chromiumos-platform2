@@ -583,8 +583,8 @@ std::optional<vm_tools::apps::VmType> GetDiskImageVmType(
   ssize_t bytes_read = getxattr(disk_path.c_str(), kDiskImageVmTypeXattr,
                                 xattr_vm_type.data(), sizeof(xattr_vm_type));
   if (bytes_read < 0) {
-    PLOG(ERROR) << "Unable to obtain xattr " << kDiskImageVmTypeXattr
-                << " for file " << disk_path;
+    PLOG(WARNING) << "Unable to obtain xattr " << kDiskImageVmTypeXattr
+                  << " for file " << disk_path;
     return {};
   }
   if (bytes_read <= xattr_max_size) {
