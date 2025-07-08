@@ -343,10 +343,10 @@ TEST_F(AuthFactorDriverManagerTest, NeedsResetSecret) {
     return manager_.GetDriver(type).NeedsResetSecret();
   };
 
-  EXPECT_THAT(needs_secret(AuthFactorType::kPassword), IsFalse());
+  EXPECT_THAT(needs_secret(AuthFactorType::kPassword), IsTrue());
   EXPECT_THAT(needs_secret(AuthFactorType::kPin), IsTrue());
   EXPECT_THAT(needs_secret(AuthFactorType::kCryptohomeRecovery), IsFalse());
-  EXPECT_THAT(needs_secret(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(needs_secret(AuthFactorType::kKiosk), IsTrue());
   EXPECT_THAT(needs_secret(AuthFactorType::kSmartCard), IsFalse());
   EXPECT_THAT(needs_secret(AuthFactorType::kLegacyFingerprint), IsFalse());
   EXPECT_THAT(needs_secret(AuthFactorType::kFingerprint), IsFalse());

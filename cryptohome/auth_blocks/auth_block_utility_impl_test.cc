@@ -1062,15 +1062,13 @@ TEST_F(AuthBlockUtilityImplTest, SelectAuthBlockTypeForCreationWithTpm20) {
       .WillRepeatedly(
           Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
 
-  // Password and Kiosk auth factor maps to TpmEcc Auth Block.
+  // All knowledge factor blocks map to pinweaver.
   EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
                   GetBlockTypes(AuthFactorType::kPassword)),
-              IsOkAndHolds(AuthBlockType::kTpmEcc));
+              IsOkAndHolds(AuthBlockType::kPinWeaver));
   EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
                   GetBlockTypes(AuthFactorType::kKiosk)),
-              IsOkAndHolds(AuthBlockType::kTpmEcc));
-
-  // Other Tpm related auth block works as expected.
+              IsOkAndHolds(AuthBlockType::kPinWeaver));
   EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
                   GetBlockTypes(AuthFactorType::kPin)),
               IsOkAndHolds(AuthBlockType::kPinWeaver));
@@ -1109,15 +1107,13 @@ TEST_F(AuthBlockUtilityImplTest, SelectAuthBlockTypeForCreationWithTpm20NoEcc) {
       .WillRepeatedly(
           Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
 
-  // Password and Kiosk auth factor maps to TpmBoundToPcr Auth Block.
+  // All knowledge factor blocks map to pinweaver.
   EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
                   GetBlockTypes(AuthFactorType::kPassword)),
-              IsOkAndHolds(AuthBlockType::kTpmBoundToPcr));
+              IsOkAndHolds(AuthBlockType::kPinWeaver));
   EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
                   GetBlockTypes(AuthFactorType::kKiosk)),
-              IsOkAndHolds(AuthBlockType::kTpmBoundToPcr));
-
-  // Other TPM related auth block works as expected.
+              IsOkAndHolds(AuthBlockType::kPinWeaver));
   EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
                   GetBlockTypes(AuthFactorType::kPin)),
               IsOkAndHolds(AuthBlockType::kPinWeaver));
@@ -1157,15 +1153,13 @@ TEST_F(AuthBlockUtilityImplTest, SelectAuthBlockTypeForCreationWithTpm11) {
       .WillRepeatedly(
           Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
 
-  // Password and Kiosk auth factor maps to TpmBoundToPcr Auth Block.
+  // All knowledge factor blocks map to pinweaver.
   EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
                   GetBlockTypes(AuthFactorType::kPassword)),
-              IsOkAndHolds(AuthBlockType::kTpmNotBoundToPcr));
+              IsOkAndHolds(AuthBlockType::kPinWeaver));
   EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
                   GetBlockTypes(AuthFactorType::kKiosk)),
-              IsOkAndHolds(AuthBlockType::kTpmNotBoundToPcr));
-
-  // Other tpm related auth block works as expected.
+              IsOkAndHolds(AuthBlockType::kPinWeaver));
   EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
                   GetBlockTypes(AuthFactorType::kPin)),
               IsOkAndHolds(AuthBlockType::kPinWeaver));
