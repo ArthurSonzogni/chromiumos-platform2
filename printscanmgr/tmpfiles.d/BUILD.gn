@@ -1,0 +1,12 @@
+# Copyright 2025 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tmpfiles.d") {
+  deps = [ ":install_tmpfiles_config" ]
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "on-demand/printscan-debug-cleanup.conf" ]
+  install_path = "tmpfiled_ondemand"
+}

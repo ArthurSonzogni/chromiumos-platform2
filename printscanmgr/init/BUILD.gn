@@ -3,6 +3,9 @@
 # found in the LICENSE file.
 
 install_config("init_config") {
-  sources = [ "printscanmgr.conf" ]
+  sources = [
+    "printscan-debug-cleanup.conf",
+    "printscanmgr.conf",
+  ]
   install_path = "upstart"
 }

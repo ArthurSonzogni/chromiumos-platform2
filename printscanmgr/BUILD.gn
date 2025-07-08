@@ -13,6 +13,7 @@ group("all") {
     "//printscanmgr/init:init_config",
     "//printscanmgr/mojom:mojo_bindings",
     "//printscanmgr/seccomp:seccomp_policy",
+    "//printscanmgr/tmpfiles.d:install_tmpfiles_config",
   ]
   if (use.test) {
     deps += [ ":printscanmgr_test" ]
