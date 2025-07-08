@@ -58,6 +58,7 @@ copies.
 | [cups_proxy](./cups_proxy/) | Daemon for proxying CUPS printing request |
 | [dbus_perfetto_producer](./dbus_perfetto_producer/) | A D-bus event producer of perfetto |
 | [debugd](./debugd/) | Centralized debug daemon for random tools |
+| [desktop_ota_recovery](./desktop_ota_recovery/) | Utility and modules to recover via network |
 | [dev-install](./dev-install/) | Tools & settings for managing the developer environment on the device |
 | [device_management](./device_management/) | Daemon for handling device management related attributes (e.g. fwmp, install_attributes etc) |
 | [diagnostics](./diagnostics/) | Device telemetry and diagnostics daemons |
