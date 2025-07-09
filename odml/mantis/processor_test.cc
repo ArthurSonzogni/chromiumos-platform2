@@ -196,6 +196,75 @@ TEST_F(MantisProcessorTest, InpaintingOutputSafetyError) {
   EXPECT_EQ(result->get_error(), MantisError::kOutputSafetyError);
 }
 
+TEST_F(MantisProcessorTest, InpaintingProccesingFailedNoInternet) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
+      .WillOnce(base::test::RunOnceCallback<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kNoInternetConnection))
+      .WillOnce(base::test::RunOnceCallback<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kNoInternetConnection));
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
+                       result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error(), MantisError::kProcessFailed);
+}
+
+TEST_F(MantisProcessorTest, InpaintingProccesingFailedServiceNotAvailable) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
+      .WillOnce(base::test::RunOnceCallback<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kServiceNotAvailable))
+      .WillOnce(base::test::RunOnceCallback<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kServiceNotAvailable));
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
+                       result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error(), MantisError::kProcessFailed);
+}
+
+TEST_F(MantisProcessorTest, InpaintingProccesingFailedBackendFailure) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor = InitializeMantisProcessor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi());
+  EXPECT_CALL(safety_service_manager_, ClassifyImageSafety)
+      .WillOnce(base::test::RunOnceCallback<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kBackendFailure))
+      .WillOnce(base::test::RunOnceCallback<3>(
+          cros_safety::mojom::SafetyClassifierVerdict::kBackendFailure));
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
+                       result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error(), MantisError::kProcessFailed);
+}
+
 TEST_F(MantisProcessorTest, InpaintingGeneratedRegionFails) {
   mojo::Remote<mojom::MantisProcessor> processor_remote;
   MantisProcessor processor = InitializeMantisProcessor(

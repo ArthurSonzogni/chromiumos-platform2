@@ -484,10 +484,14 @@ void MantisProcessor::OnClassifyImageOutputDone(
           .Run(MantisResult::NewError(MantisError::kPromptSafetyError));
       return;
     }
-    if (result == SafetyClassifierVerdict::kFailedImage ||
-        result == SafetyClassifierVerdict::kFail) {
+    if (result == SafetyClassifierVerdict::kFailedImage) {
       std::move(process->callback)
           .Run(MantisResult::NewError(MantisError::kOutputSafetyError));
+      return;
+    }
+    if (result != SafetyClassifierVerdict::kPass) {
+      std::move(process->callback)
+          .Run(MantisResult::NewError(MantisError::kProcessFailed));
       return;
     }
   }
