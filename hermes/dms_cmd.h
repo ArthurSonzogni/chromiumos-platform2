@@ -7,8 +7,7 @@
 
 #include <cstdint>
 
-#include <base/check.h>
-#include <base/logging.h>
+#include <base/notreached.h>
 #include <libqrtr.h>
 
 #include "hermes/qmi_cmd_interface.h"
@@ -33,9 +32,8 @@ class DmsCmd : public QmiCmdInterface {
       case QmiType::kGetDeviceSerialNumbers:
         return "GetDeviceSerialNumbers";
       default:
-        CHECK(false) << "Unrecognized value: "
+        NOTREACHED() << "Unrecognized value: "
                      << static_cast<uint16_t>(qmi_type_);
-        return "";
     }
   }
 

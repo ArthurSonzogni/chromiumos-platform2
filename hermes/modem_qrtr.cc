@@ -12,6 +12,7 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <libqrtr.h>
 
@@ -452,8 +453,7 @@ bool ModemQrtr::SendCommand(QmiCmdInterface* qmi_command,
           static_cast<UimCmd::QmiType>(qmi_command->qmi_type()));
       break;
     default:
-      CHECK(false) << "Unknown service: " << qmi_command->service();
-      return false;
+      NOTREACHED() << "Unknown service: " << qmi_command->service();
   }
   return true;
 }
