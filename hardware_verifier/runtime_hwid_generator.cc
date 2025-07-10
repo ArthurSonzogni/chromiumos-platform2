@@ -83,7 +83,7 @@ std::string CalculateChecksum(std::string_view runtime_hwid) {
   return base::HexEncode(sha1_hash.data(), sha1_hash.size());
 }
 
-std::string GenerateCategoryRegex(const std::string_view& category_name) {
+std::string GenerateCategoryRegex(std::string_view category_name) {
   if (category_name == kCameraCategoryName) {
     return R"((?:camera|video))";
   }
@@ -109,9 +109,9 @@ int GetUnidentifiedComponentCount(
 //   {SEQ} is the sequence number (optional suffix).
 // If it matches, returns the normalized format: {CATEGORY}_{CID}.
 std::optional<std::string> NormalizeComponentNameIfAVLCompliant(
-    const std::string_view& component_name,
-    const std::string_view& category_name,
-    const std::string_view& model_name) {
+    std::string_view component_name,
+    std::string_view category_name,
+    std::string_view model_name) {
   std::string regex_str = R"(^(?:)" + RE2::QuoteMeta(model_name) + R"(_)?)" +
                           GenerateCategoryRegex(category_name) +
                           R"(_(\d+)(?:_\d+)?(?:#.*)?$)";
@@ -129,8 +129,8 @@ std::optional<std::string> NormalizeComponentNameIfAVLCompliant(
 // compliant.
 std::multiset<std::string> GetNormalizedComponentNames(
     const std::vector<std::string>& component_names,
-    const std::string_view& category_name,
-    const std::string_view& model_name) {
+    std::string_view category_name,
+    std::string_view model_name) {
   std::multiset<std::string> normalized_comp_names;
   for (const auto& comp_name : component_names) {
     const auto normalized_name = NormalizeComponentNameIfAVLCompliant(
@@ -148,7 +148,7 @@ std::multiset<std::string> GetNormalizedComponentNames(
 // component name. Otherwise, use the `name` field as the component name.
 std::vector<ProbeComponent> GetProbeComponentsByCategoryName(
     const runtime_probe::ProbeResult& probe_result,
-    const std::string_view& category_name) {
+    std::string_view category_name) {
   const auto* probe_result_ref = probe_result.GetReflection();
   const auto* probe_result_desc = probe_result.GetDescriptor();
   const auto* component_field_desc =
@@ -234,8 +234,8 @@ std::vector<std::string> GetDecodeComponentsByCategory(
 bool MatchProbeAndDecodeComponents(
     const std::vector<ProbeComponent>& probe_components,
     const std::vector<std::string>& decode_components,
-    const std::string_view& category_name,
-    const std::string_view& model_name) {
+    std::string_view category_name,
+    std::string_view model_name) {
   if (category_name != kDisplayPanelCategoryName &&
       GetUnidentifiedComponentCount(probe_components) > 0) {
     return false;
@@ -274,7 +274,7 @@ std::vector<std::string> GetRuntimeHWIDComponentFieldNames() {
   return field_names;
 }
 
-void HandleNonComponentField(const std::string_view& field_name,
+void HandleNonComponentField(std::string_view field_name,
                              std::vector<std::string>& comp_segment) {
   if (field_name == kFeatureLevelField) {
     comp_segment.push_back(base::NumberToString(

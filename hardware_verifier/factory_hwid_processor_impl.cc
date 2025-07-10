@@ -32,7 +32,7 @@ constexpr int kIgnoreBitWidth = 1;
 constexpr int kImageIDBitWidth = 4;
 constexpr char kCrosSystemHWIDKey[] = "hwid";
 
-uint32_t BinaryStringToUint32(const std::string_view& binary_str) {
+uint32_t BinaryStringToUint32(std::string_view binary_str) {
   CHECK(!binary_str.empty() && binary_str.length() <= 32 &&
         binary_str.find_first_not_of("01") == std::string::npos);
 
@@ -67,12 +67,12 @@ std::optional<std::string> GetFactoryHWIDPrefix() {
 }
 
 bool ShouldSkipZeroBitCategory(int zero_bit_pos,
-                               const std::string_view& hwid_component_bits) {
+                               std::string_view hwid_component_bits) {
   return zero_bit_pos > hwid_component_bits.length() - 1;
 }
 
 std::optional<EncodingPattern> GetEncodingPattern(
-    const std::string_view& decoded_bits, const EncodingSpec& encoding_spec) {
+    std::string_view decoded_bits, const EncodingSpec& encoding_spec) {
   auto image_id_bits =
       std::string(decoded_bits.substr(kIgnoreBitWidth, kImageIDBitWidth));
   auto image_id = BinaryStringToUint32(image_id_bits);
@@ -91,7 +91,7 @@ std::optional<EncodingPattern> GetEncodingPattern(
 // Helper function to get the component index from HWID decoded bits.
 // Returns a |CategoryMapping| mapping component category to component index.
 CategoryMapping<int> ExtractEncodedComponentIndex(
-    const std::string_view& hwid_component_bits,
+    std::string_view hwid_component_bits,
     const EncodingPattern& encoding_pattern) {
   CategoryMapping<std::vector<std::string>> component_bits;
   for (const auto& bit_range : encoding_pattern.bit_ranges()) {

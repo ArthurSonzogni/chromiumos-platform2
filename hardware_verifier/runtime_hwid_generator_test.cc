@@ -75,10 +75,10 @@ class RuntimeHWIDGeneratorTest : public BaseFileTest {
 
   template <typename T>
   void AddProbeComponent(runtime_probe::ProbeResult* probe_result,
-                         const std::string_view& name,
-                         const std::string_view& category_name = "",
-                         const std::string_view& comp_group = "",
-                         const std::string_view& comp_pos = "") {
+                         std::string_view name,
+                         std::string_view category_name = "",
+                         std::string_view comp_group = "",
+                         std::string_view comp_pos = "") {
     T* component = nullptr;
     T* generic_component = nullptr;
     if constexpr (std::is_same_v<T, runtime_probe::Battery>) {
