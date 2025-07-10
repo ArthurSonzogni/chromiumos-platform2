@@ -148,8 +148,7 @@ std::multiset<std::string> GetNormalizedComponentNames(
 // component name. Otherwise, use the `name` field as the component name.
 std::vector<ProbeComponent> GetProbeComponentsByCategoryName(
     const runtime_probe::ProbeResult& probe_result,
-    const std::string_view& category_name,
-    const std::string_view& model_name) {
+    const std::string_view& category_name) {
   const auto* probe_result_ref = probe_result.GetReflection();
   const auto* probe_result_desc = probe_result.GetDescriptor();
   const auto* component_field_desc =
@@ -328,6 +327,11 @@ bool RuntimeHWIDGenerator::ShouldGenerateRuntimeHWID(
   }
 
   const std::string model_name = ModelName();
+  if (model_name.empty()) {
+    LOG(ERROR) << "Failed to get device model name.";
+    return false;
+  }
+
   const auto skip_zero_bit_categories =
       factory_hwid_processor_->GetSkipZeroBitCategories();
   const auto field_names = GetRuntimeHWIDComponentFieldNames();
@@ -342,8 +346,7 @@ bool RuntimeHWIDGenerator::ShouldGenerateRuntimeHWID(
     }
 
     const std::vector<ProbeComponent> probe_components =
-        GetProbeComponentsByCategoryName(probe_result, category_name,
-                                         model_name);
+        GetProbeComponentsByCategoryName(probe_result, category_name);
     const std::vector<std::string> decode_components =
         GetDecodeComponentsByCategory(*decode_result, category);
     if (!MatchProbeAndDecodeComponents(probe_components, decode_components,
@@ -363,7 +366,6 @@ std::optional<std::string> RuntimeHWIDGenerator::Generate(
     return std::nullopt;
   }
 
-  const std::string model_name = ModelName();
   const auto field_names = GetRuntimeHWIDComponentFieldNames();
   std::vector<std::string> runtime_hwid_comp_segment;
   for (const auto& field_name : field_names) {
@@ -376,7 +378,7 @@ std::optional<std::string> RuntimeHWIDGenerator::Generate(
 
     std::vector<std::string> component_positions;
     const std::vector<ProbeComponent> probe_components =
-        GetProbeComponentsByCategoryName(probe_result, field_name, model_name);
+        GetProbeComponentsByCategoryName(probe_result, field_name);
     for (const auto& component : probe_components) {
       if (!component.position.empty()) {
         uint32_t unused_position;

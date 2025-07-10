@@ -172,6 +172,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
 TEST_F(RuntimeHWIDGeneratorTest,
        ShouldGenerate_WithUnidentifiedComponent_ShouldReturnTrue) {
+  SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
   };
@@ -186,6 +187,17 @@ TEST_F(RuntimeHWIDGeneratorTest,
   unidentified_comp->set_name(kGenericComponent);
 
   EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
+}
+
+TEST_F(RuntimeHWIDGeneratorTest,
+       ShouldGenerate_GetModelNameFailed_ShouldReturnFalse) {
+  CategoryMapping<std::vector<std::string>> factory_hwid = {};
+  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
+      .WillOnce(Return(factory_hwid));
+  auto generator =
+      RuntimeHWIDGenerator::Create(std::move(mock_factory_hwid_processor_), {});
+
+  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID({}));
 }
 
 TEST_F(RuntimeHWIDGeneratorTest,
@@ -323,6 +335,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
 TEST_F(RuntimeHWIDGeneratorTest,
        ShouldGenerate_ExtraDisplayPanelInProbeResult_ShouldReturnFalse) {
+  SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
@@ -338,6 +351,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
 TEST_F(RuntimeHWIDGeneratorTest,
        ShouldGenerate_UnidentifiedDisplayPanelInProbeResult_ShouldReturnFalse) {
+  SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
@@ -353,6 +367,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
 TEST_F(RuntimeHWIDGeneratorTest,
        ShouldGenerate_ExtraDisplayPanelInDecodeResult_ShouldReturnTrue) {
+  SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_display_panel,
        {"display_panel_1"}},
@@ -369,6 +384,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
 TEST_F(RuntimeHWIDGeneratorTest,
        ShouldGenerate_MismatchedDisplayPanel_ShouldReturnTrue) {
+  SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_display_panel,
        {"display_panel_1"}},
@@ -420,6 +436,7 @@ TEST_F(RuntimeHWIDGeneratorTest,
 
 TEST_F(RuntimeHWIDGeneratorTest,
        ShouldGenerateRuntimeHWID_DecodeFactoryHWIDFailed_ShouldReturnFalse) {
+  SetModelName("MODEL");
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(std::nullopt));
   auto generator =
