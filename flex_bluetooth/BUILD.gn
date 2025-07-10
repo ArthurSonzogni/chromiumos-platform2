@@ -6,7 +6,6 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":install_upstart_config",
     ":libflex_bluetooth_overrides",
     ":process_flex_bluetooth_overrides",
   ]
@@ -32,11 +31,6 @@ executable("process_flex_bluetooth_overrides") {
   install_path = "bin"
   configs += [ ":target_defaults" ]
   deps = [ ":libflex_bluetooth_overrides" ]
-}
-
-install_config("install_upstart_config") {
-  sources = [ "init/flex-bluetooth.conf" ]
-  install_path = "upstart"
 }
 
 if (use.test) {
