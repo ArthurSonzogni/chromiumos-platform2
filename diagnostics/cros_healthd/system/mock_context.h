@@ -21,8 +21,10 @@ namespace chromium {
 class AttestationProxyMock;
 class debugdProxyMock;
 class PowerManagerProxyMock;
+class SessionManagerInterfaceProxyMock;
 class SpacedProxyMock;
 class TpmManagerProxyMock;
+class VmConciergeProxyMock;
 
 namespace cras {
 class ControlProxyMock;
@@ -78,6 +80,9 @@ class MockContext final : public Context {
   brillo::MockUdev* mock_udev() const;
   brillo::MockUdevMonitor* mock_udev_monitor() const;
   org::chromium::SpacedProxyMock* mock_spaced_proxy() const;
+  org::chromium::SessionManagerInterfaceProxyMock* mock_session_manager_proxy()
+      const;
+  org::chromium::VmConciergeProxyMock* mock_concierge_proxy() const;
 
  private:
   // Used to create a fake pci util.

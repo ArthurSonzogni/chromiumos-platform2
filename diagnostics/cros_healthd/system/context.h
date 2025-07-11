@@ -28,6 +28,8 @@ class debugdProxyInterface;
 class PowerManagerProxyInterface;
 class TpmManagerProxyInterface;
 class SpacedProxyInterface;
+class SessionManagerInterfaceProxyInterface;
+class VmConciergeProxyInterface;
 
 namespace bluetooth {
 class ObjectManagerProxy;
@@ -112,6 +114,17 @@ class Context {
   org::freedesktop::fwupdProxyInterface* fwupd_proxy() const {
     return fwupd_proxy_.get();
   }
+  // Use the object returned by session_manager_proxy() to communicate with
+  // session_manager through dbus.
+  org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy()
+      const {
+    return session_manager_proxy_.get();
+  }
+  // Use the object returned by concierge_proxy() to communicate with
+  // concierge through dbus.
+  org::chromium::VmConciergeProxyInterface* concierge_proxy() const {
+    return concierge_proxy_.get();
+  }
   // Gets GroundTruth to determine conditional features.
   GroundTruth* ground_truth() const { return ground_truth_.get(); }
   // Use the object returned by powerd_adapter() to subscribe to notifications
@@ -189,6 +202,9 @@ class Context {
   std::unique_ptr<CrosConfig> cros_config_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<org::freedesktop::fwupdProxyInterface> fwupd_proxy_;
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+      session_manager_proxy_;
+  std::unique_ptr<org::chromium::VmConciergeProxyInterface> concierge_proxy_;
   std::unique_ptr<GroundTruth> ground_truth_;
   std::unique_ptr<MeminfoReader> meminfo_reader_;
   std::unique_ptr<MojoService> mojo_service_;

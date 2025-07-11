@@ -11,11 +11,13 @@
 #include <attestation-client-test/attestation/dbus-proxy-mocks.h>
 #include <brillo/udev/mock_udev.h>
 #include <brillo/udev/mock_udev_monitor.h>
+#include <concierge/dbus-proxy-mocks.h>
 #include <cras/dbus-proxy-mocks.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <fwupd/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 #include <power_manager/dbus-proxy-mocks.h>
+#include <session_manager/dbus-proxy-mocks.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxy-mocks.h needs spaced.pb.h
 #include <spaced/dbus-proxy-mocks.h>
@@ -66,6 +68,9 @@ MockContext::MockContext() {
   udev_ = std::make_unique<brillo::MockUdev>();
   udev_monitor_ = std::make_unique<brillo::MockUdevMonitor>();
   spaced_proxy_ = std::make_unique<org::chromium::SpacedProxyMock>();
+  session_manager_proxy_ =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+  concierge_proxy_ = std::make_unique<org::chromium::VmConciergeProxyMock>();
 
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
 }
@@ -158,6 +163,17 @@ brillo::MockUdevMonitor* MockContext::mock_udev_monitor() const {
 
 org::chromium::SpacedProxyMock* MockContext::mock_spaced_proxy() const {
   return static_cast<org::chromium::SpacedProxyMock*>(spaced_proxy_.get());
+}
+
+org::chromium::SessionManagerInterfaceProxyMock*
+MockContext::mock_session_manager_proxy() const {
+  return static_cast<org::chromium::SessionManagerInterfaceProxyMock*>(
+      session_manager_proxy_.get());
+}
+
+org::chromium::VmConciergeProxyMock* MockContext::mock_concierge_proxy() const {
+  return static_cast<org::chromium::VmConciergeProxyMock*>(
+      concierge_proxy_.get());
 }
 
 FakeMeminfoReader* MockContext::fake_meminfo_reader() const {

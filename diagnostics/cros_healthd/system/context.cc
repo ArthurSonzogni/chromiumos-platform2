@@ -15,11 +15,13 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/udev/udev.h>
 #include <chromeos/dbus/service_constants.h>
+#include <concierge/dbus-proxies.h>
 #include <cras/dbus-proxies.h>
 #include <debugd/dbus-proxies.h>
 #include <fwupd/dbus-proxies.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <power_manager/dbus-proxies.h>
+#include <session_manager/dbus-proxies.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs spaced.pb.h
 #include <spaced/dbus-proxies.h>
@@ -107,7 +109,10 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   tpm_manager_proxy_ =
       std::make_unique<org::chromium::TpmManagerProxy>(dbus_bus);
   spaced_proxy_ = std::make_unique<org::chromium::SpacedProxy>(dbus_bus);
-
+  session_manager_proxy_ =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxy>(dbus_bus);
+  concierge_proxy_ =
+      std::make_unique<org::chromium::VmConciergeProxy>(dbus_bus);
   // Create the mojo clients which will be initialized after connecting with
   // chrome.
   mojo_service_ = MojoServiceImpl::Create(std::move(shutdown_callback));
