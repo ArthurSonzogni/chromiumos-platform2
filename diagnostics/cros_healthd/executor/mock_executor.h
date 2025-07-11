@@ -44,8 +44,10 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
                    receiver),
               (override));
   MOCK_METHOD(void,
-              GetProcessIOContents,
-              (const std::vector<uint32_t>& pids, GetProcessIOContentsCallback),
+              GetProcessContents,
+              (ProcFile,
+               const std::vector<uint32_t>& pids,
+               GetProcessContentsCallback),
               (override));
   MOCK_METHOD(void,
               ReadMsr,

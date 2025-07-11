@@ -23,6 +23,7 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom-data-view.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
@@ -239,11 +240,12 @@ class ProcessFetcherTest : public BaseFileTest {
         new_fake_data);
   }
 
-  void ExpectAndSetExecutorGetProcessIOContentsResponse(
-      const base::flat_map<uint32_t, std::string>& io_contents) {
+  void ExpectAndSetExecutorGetProcessContentsResponse(
+      mojom::Executor::ProcFile file,
+      const base::flat_map<uint32_t, std::string>& contents) {
     // Set the mock executor response.
-    EXPECT_CALL(*mock_context_.mock_executor(), GetProcessIOContents(_, _))
-        .WillOnce(base::test::RunOnceCallback<1>(io_contents));
+    EXPECT_CALL(*mock_context_.mock_executor(), GetProcessContents(file, _, _))
+        .WillOnce(base::test::RunOnceCallback<2>(contents));
   }
 
  private:
@@ -280,8 +282,8 @@ class ProcessFetcherTest : public BaseFileTest {
 
 // Test that process info can be read when it exists.
 TEST_F(ProcessFetcherTest, FetchProcessInfoSync) {
-  ExpectAndSetExecutorGetProcessIOContentsResponse(
-      kFakeProcPidIOContentsResult);
+  ExpectAndSetExecutorGetProcessContentsResponse(mojom::Executor::ProcFile::kIo,
+                                                 kFakeProcPidIOContentsResult);
   auto process_result = FetchProcessInfoSync();
 
   ASSERT_TRUE(process_result->is_process_info());
@@ -371,7 +373,8 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatmFile) {
 TEST_F(ProcessFetcherTest, MissingProcPidIOFile) {
   ASSERT_TRUE(brillo::DeleteFile(
       GetProcProcessDirectoryPath(GetRootDir(), kPid).Append(kProcessIOFile)));
-  ExpectAndSetExecutorGetProcessIOContentsResponse({});
+  ExpectAndSetExecutorGetProcessContentsResponse(mojom::Executor::ProcFile::kIo,
+                                                 {});
 
   auto process_result = FetchProcessInfoSync();
 
@@ -541,7 +544,8 @@ TEST_F(ProcessFetcherTest, ProcPidIOFileInsufficientTokens) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetProcProcessDirectoryPath(GetRootDir(), kPid).Append(kProcessIOFile),
       kFakeProcPidIOContentsInsufficientFields[0]));
-  ExpectAndSetExecutorGetProcessIOContentsResponse(
+  ExpectAndSetExecutorGetProcessContentsResponse(
+      mojom::Executor::ProcFile::kIo,
       kFakeProcPidIOContentsInsufficientFieldsResult);
 
   auto process_result = FetchProcessInfoSync();
@@ -619,8 +623,8 @@ TEST_F(ProcessFetcherTest, ProcPidStatusFileUidKeyWithNegativeValues) {
 
 // Test that multiple process info can be read when all exists.
 TEST_F(ProcessFetcherTest, FetchMultipleProcessInfoSync) {
-  ExpectAndSetExecutorGetProcessIOContentsResponse(
-      kFakeProcPidIOContentsMultipleResult);
+  ExpectAndSetExecutorGetProcessContentsResponse(
+      mojom::Executor::ProcFile::kIo, kFakeProcPidIOContentsMultipleResult);
   auto process_result = FetchMultipleProcessInfoSync(false);
 
   ASSERT_TRUE(process_result->errors.empty());
@@ -663,8 +667,8 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatFileMultipleProcessIgnoreError) {
   ASSERT_TRUE(
       brillo::DeleteFile(GetProcProcessDirectoryPath(GetRootDir(), kSecondPid)
                              .Append(kProcessStatFile)));
-  ExpectAndSetExecutorGetProcessIOContentsResponse(
-      kFakeProcPidIOContentsOnlyTwoResult);
+  ExpectAndSetExecutorGetProcessContentsResponse(
+      mojom::Executor::ProcFile::kIo, kFakeProcPidIOContentsOnlyTwoResult);
   auto process_result = FetchMultipleProcessInfoSync(true);
 
   ASSERT_TRUE(process_result->errors.empty());
@@ -679,8 +683,8 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatFileMultipleProcess) {
   ASSERT_TRUE(
       brillo::DeleteFile(GetProcProcessDirectoryPath(GetRootDir(), kSecondPid)
                              .Append(kProcessStatFile)));
-  ExpectAndSetExecutorGetProcessIOContentsResponse(
-      kFakeProcPidIOContentsOnlyTwoResult);
+  ExpectAndSetExecutorGetProcessContentsResponse(
+      mojom::Executor::ProcFile::kIo, kFakeProcPidIOContentsOnlyTwoResult);
   auto process_result = FetchMultipleProcessInfoSync(false);
 
   EXPECT_EQ(process_result->errors.size(), 1);
@@ -698,7 +702,8 @@ TEST_F(ProcessFetcherTest, ProcPidIOFileInsufficientTokensMultipleProcess) {
       GetProcProcessDirectoryPath(GetRootDir(), kSecondPid)
           .Append(kProcessIOFile),
       kFakeProcPidIOContentsInsufficientFields[0]));
-  ExpectAndSetExecutorGetProcessIOContentsResponse(
+  ExpectAndSetExecutorGetProcessContentsResponse(
+      mojom::Executor::ProcFile::kIo,
       kFakeProcPidIOContentsInsufficientFieldsMultipleResult);
 
   auto process_result = FetchMultipleProcessInfoSync(false);
@@ -717,8 +722,8 @@ TEST_F(ProcessFetcherTest, MissingProcPidIOFileMultipleProcess) {
   ASSERT_TRUE(
       brillo::DeleteFile(GetProcProcessDirectoryPath(GetRootDir(), kSecondPid)
                              .Append(kProcessIOFile)));
-  ExpectAndSetExecutorGetProcessIOContentsResponse(
-      kFakeProcPidIOContentsOnlyTwoResult);
+  ExpectAndSetExecutorGetProcessContentsResponse(
+      mojom::Executor::ProcFile::kIo, kFakeProcPidIOContentsOnlyTwoResult);
 
   auto process_result = FetchMultipleProcessInfoSync(false);
 
@@ -749,8 +754,8 @@ class ParseProcessStateTest
 TEST_P(ParseProcessStateTest, ParseState) {
   ASSERT_TRUE(WriteProcPidStatData(params().raw_state,
                                    ProcPidStatIndices::kState, kPid));
-  ExpectAndSetExecutorGetProcessIOContentsResponse(
-      kFakeProcPidIOContentsResult);
+  ExpectAndSetExecutorGetProcessContentsResponse(mojom::Executor::ProcFile::kIo,
+                                                 kFakeProcPidIOContentsResult);
 
   auto process_result = FetchProcessInfoSync();
 

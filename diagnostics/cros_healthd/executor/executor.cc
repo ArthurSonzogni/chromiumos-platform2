@@ -182,6 +182,16 @@ base::FilePath FileEnumToFilePath(mojom::Executor::File file_enum) {
   }
 }
 
+// Convert an enum to a file path component (ex. "io" for /proc/PID/io)
+const char* ProcFileEnumToBaseName(mojom::Executor::ProcFile file_enum) {
+  switch (file_enum) {
+    case mojom::Executor::ProcFile::kIo:
+      return "io";
+    case mojom::Executor::ProcFile::kSmaps:
+      return "smaps";
+  }
+}
+
 // A helper to create a delegate callback which only run once and reply the
 // result to a callback. This takes a delegate instance and will destruct it
 // after the callback is called. If the callback is dropped (e.g. mojo
@@ -398,15 +408,16 @@ void Executor::RunMemtester(
                         /*combine_stdout_and_stderr=*/true);
 }
 
-void Executor::GetProcessIOContents(const std::vector<uint32_t>& pids,
-                                    GetProcessIOContentsCallback callback) {
+void Executor::GetProcessContents(ProcFile file_enum,
+                                  const std::vector<uint32_t>& pids,
+                                  GetProcessContentsCallback callback) {
   std::vector<std::pair<uint32_t, std::string>> results;
 
   for (const auto& pid : pids) {
     std::string result;
     if (ReadAndTrimString(base::FilePath("/proc/")
                               .Append(base::StringPrintf("%" PRId32, pid))
-                              .AppendASCII("io"),
+                              .AppendASCII(ProcFileEnumToBaseName(file_enum)),
                           &result)) {
       results.push_back({pid, result});
     }

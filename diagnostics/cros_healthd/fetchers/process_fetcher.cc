@@ -536,7 +536,8 @@ void FetchProcessInfo(
     return;
   }
 
-  context->executor()->GetProcessIOContents(
+  context->executor()->GetProcessContents(
+      mojom::Executor::ProcFile::kIo,
       /*pids=*/{process_id},
       base::BindOnce(&FinishFetchingProcessInfo, std::move(callback),
                      std::move(process_id), std::move(result.value())));
@@ -582,7 +583,8 @@ void FetchMultipleProcessInfo(
     }
   }
 
-  context->executor()->GetProcessIOContents(
+  context->executor()->GetProcessContents(
+      mojom::Executor::ProcFile::kIo,
       /*pids=*/{process_ids.begin(), process_ids.end()},
       base::BindOnce(&FinishFetchingMultipleProcessInfo, std::move(callback),
                      ignore_single_process_error, std::move(process_infos),

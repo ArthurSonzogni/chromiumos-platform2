@@ -283,13 +283,20 @@ interface Executor {
   RunMemtester(
       uint32 test_mem_kib, pending_receiver<ProcessControl> receiver);
 
-  // Reads the I/O file of each process in the array and returns a map of the
-  // raw, trimmed contents with no parsing.
+  // An enumeration of process-specific proc file to read.
+  enum ProcFile {
+    kIo,  // /proc/<PID>/io
+    kSmaps,  // /proc/<PID>/smaps
+  };
+
+  // Reads the specified file of each process in the array and returns a map of
+  // the raw, trimmed contents with no parsing.
   //
   // The response:
   // * |contents| - a map that contains contents of each I/O file with pids as
   //                keys.
-  GetProcessIOContents(array<uint32> pids) => (map<uint32, string> contents);
+  GetProcessContents(ProcFile file_enum, array<uint32> pids)
+      => (map<uint32, string> contents);
 
   // Reads MSR register from /dev/cpu/|cpu_index|/msr file.
   //

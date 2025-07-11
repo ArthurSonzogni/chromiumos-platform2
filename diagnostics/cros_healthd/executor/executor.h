@@ -62,8 +62,9 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       uint32_t test_mem_kib,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver)
       override;
-  void GetProcessIOContents(const std::vector<uint32_t>& pids,
-                            GetProcessIOContentsCallback callback) override;
+  void GetProcessContents(ProcFile file_enum,
+                          const std::vector<uint32_t>& pids,
+                          GetProcessContentsCallback callback) override;
   void ReadMsr(const uint32_t msr_reg,
                uint32_t cpu_index,
                ReadMsrCallback callback) override;
