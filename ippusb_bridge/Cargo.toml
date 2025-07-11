@@ -1,6 +1,6 @@
 [package]
 name = "ippusb_bridge"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["The ChromiumOS Authors"]
 edition = "2021"
 
