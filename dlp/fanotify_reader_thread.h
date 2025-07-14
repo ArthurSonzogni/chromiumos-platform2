@@ -19,7 +19,7 @@ namespace dlp {
 // Reads events from fanotify file descriptor and post them to the delegate.
 class FanotifyReaderThread : public base::PlatformThread::Delegate {
  public:
-  // Watchdog waiting for timely (1sec) reply to fanotify file access.
+  // Watchdog waiting for timely (10sec) reply to fanotify file access.
   // Crashes the daemon if it hangs.
   class FanotifyReplyWatchdog : public base::Watchdog::Delegate {
    public:

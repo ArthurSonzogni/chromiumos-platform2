@@ -24,8 +24,8 @@
 
 namespace {
 
-// Kill the daemon if not responding in 1 second.
-constexpr base::TimeDelta kWatchdogTimeout = base::Milliseconds(1000);
+// Kill the daemon if not responding in 10 second.
+constexpr base::TimeDelta kWatchdogTimeout = base::Milliseconds(10000);
 constexpr char kWatchdogName[] = "DLP daemon";
 
 // TODO(b/189218019): this `#if` and everything in it can be removed once the
