@@ -74,6 +74,7 @@ struct DeviceName {
 constexpr DeviceFamily kTpm2FamiliesAllowlist[] = {
     DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 8", kVendorIdStm},
     DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 9", kVendorIdStm},
+    DeviceFamily{"LENOVO", "ThinkCentre M70q Gen 3", kVendorIdIfx},
 };
 
 constexpr DeviceName kTpm2DeviceNameAllowlist[] = {
