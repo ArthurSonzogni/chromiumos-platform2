@@ -1364,6 +1364,7 @@ VmInfo ToVmInfo(const VmBaseImpl::Info& info, bool fill_sensitive_info) {
   }
 
   vm_info.set_status(ToVmStatus(info.status));
+  vm_info.set_allocated_memory(info.allocated_memory);
 
   return vm_info;
 }

@@ -278,6 +278,23 @@
                     value="vm_tools::concierge::GetBaguetteImageUrlResponse"/>
       </arg>
     </method>
+    <method name="GetBalloonInfo">
+      <tp:docstring>
+        Gets balloon info of a VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::GetBalloonInfoRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::GetBalloonInfoResponse"/>
+        <tp:docstring>
+          Returns success==true when successful.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="GetDnsSettings">
       <tp:docstring>
         Gets DNS info.

@@ -84,6 +84,9 @@ class VmBaseImpl {
 
     // Whether the VM is using storage ballooning.
     bool storage_ballooning;
+
+    // Memory allocated for the VM.
+    int64_t allocated_memory = 0;
   };
 
   using SwapVmCallback =

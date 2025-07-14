@@ -224,6 +224,11 @@ class Service final : public org::chromium::VmConciergeInterface,
           response_cb,
       const GetVmInfoRequest& request) override;
 
+  // Handles a request to get balloon info.
+  void GetBalloonInfo(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                          GetBalloonInfoResponse>> response_cb,
+                      const GetBalloonInfoRequest& request) override;
+
   // Handles a request to get VM info specific to enterprise reporting.
   void GetVmEnterpriseReportingInfo(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<

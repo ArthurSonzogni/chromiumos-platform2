@@ -567,6 +567,9 @@ VmBaseImpl::Info ArcVm::GetInfo() const {
       .status = VmBaseImpl::Status::RUNNING,
       .type = apps::VmType::ARCVM,
   };
+  if (guest_memory_size_) {
+    info.allocated_memory = *guest_memory_size_;
+  }
 
   return info;
 }

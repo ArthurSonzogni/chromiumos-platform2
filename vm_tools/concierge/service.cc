@@ -637,6 +637,23 @@ std::string GetMd5HashForFilename(const std::string& str) {
   return result;
 }
 
+// Gets the balloon info. Since this function may take long, do not call
+// on the main thread.
+GetBalloonInfoResponse GetBalloonInfoInternal(const std::string& socket_path) {
+  GetBalloonInfoResponse response;
+
+  std::optional<BalloonStats> stats = vm_tools::concierge::GetBalloonStats(
+      socket_path, base::Milliseconds(100));
+  if (stats) {
+    response.set_success(true);
+    auto* balloon_info = response.mutable_balloon_info();
+    balloon_info->set_available_memory(stats->stats_ffi.available_memory);
+    balloon_info->set_free_memory(stats->stats_ffi.free_memory);
+    balloon_info->set_balloon_size(stats->balloon_actual);
+  }
+  return response;
+}
+
 // Reclaims memory of the crosvm process with |pid| by writing "shmem" to
 // /proc/<pid>/reclaim. Since this function may block 10 seconds or more, do
 // not call on the main thread.
@@ -2315,6 +2332,40 @@ void Service::GetVmInfo(
   response.set_success(true);
   response_cb->Return(response);
   return;
+}
+
+void Service::GetBalloonInfo(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        GetBalloonInfoResponse>> response_cb,
+    const GetBalloonInfoRequest& request) {
+  ASYNC_SERVICE_METHOD();
+
+  GetBalloonInfoResponse response;
+
+  VmId vm_id(request.owner_id(), request.name());
+  if (!CheckVmNameAndOwner(request, response)) {
+    response_cb->Return(response);
+    return;
+  }
+
+  auto iter = FindVm(vm_id);
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
+
+    response_cb->Return(response);
+    return;
+  }
+
+  const std::string socket_path = iter->second->GetVmSocketPath();
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, base::BindOnce(&GetBalloonInfoInternal, socket_path),
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 GetBalloonInfoResponse>> response_sender,
+             GetBalloonInfoResponse response) {
+            response_sender->Return(response);
+          },
+          std::move(response_cb)));
 }
 
 void Service::GetVmEnterpriseReportingInfo(
