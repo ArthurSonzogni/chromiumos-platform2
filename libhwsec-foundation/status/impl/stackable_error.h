@@ -17,7 +17,6 @@
 #include <base/check_op.h>
 
 #include "libhwsec-foundation/status/impl/stackable_error_forward_declarations.h"
-
 #include "libhwsec-foundation/status/impl/stackable_error_range.h"
 
 namespace hwsec_foundation {
@@ -463,15 +462,14 @@ class [[clang::consumable(unknown)]]   //
   // template, for practically the tail would be cast to |Base| anyway, but
   // add |ExplicitArgumentBarrier| just for the safety of mind to make |_Ut|
   // automatically deducible only.
+  //
+  // We first define a helper function to work around a compiler issue in
+  // connection to CHECK failures having noreturn semantics.
   template <int&... ExplicitArgumentBarrier, typename _Ut>
     requires(std::same_as<base_element_type, typename _Ut::BaseErrorType>)
-  [[clang::callable_when("unconsumed")]] void WrapInPlace(
+  [[clang::callable_when("unconsumed")]] void WrapInPlaceInternal(
       StackableError<_Ut>&& other [[clang::param_typestate(unconsumed)]]  //
       [[clang::return_typestate(consumed)]]) {
-    CHECK(!other.ok()) << " Can't wrap an OK object.";
-    CHECK(!ok()) << " OK object can't be wrapping.";
-    CHECK(!IsWrapping()) << " Object can wrap only once.";
-
     // Call into current error's |WrapTransform| and provide it the range object
     // for the stack being wrapped. We do it before actual wrapping so the
     // current error doees not appear in the view. We provide const_view to
@@ -483,6 +481,23 @@ class [[clang::consumable(unknown)]]   //
     error_stack_ = std::move(other.error_stack_);
     error_stack_.push_front(std::move(other.head_));
   }
+  //
+  // The actual WrapInPlace function merely adds extra CHECKs. It's safe to
+  // ignore the -Wconsumed failures here because the WrapInPlaceInternal has the
+  // same annotations and is equivalent whenever WrapInPlace returns.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconsumed"
+  template <int&... ExplicitArgumentBarrier, typename _Ut>
+    requires(std::same_as<base_element_type, typename _Ut::BaseErrorType>)
+  [[clang::callable_when("unconsumed")]] void WrapInPlace(
+      StackableError<_Ut>&& other [[clang::param_typestate(unconsumed)]]  //
+      [[clang::return_typestate(consumed)]]) {
+    CHECK(!other.ok()) << " Can't wrap an OK object.";
+    CHECK(!ok()) << " OK object can't be wrapping.";
+    CHECK(!IsWrapping()) << " Object can wrap only once.";
+    WrapInPlaceInternal(std::move(other));
+  }
+#pragma clang diagnostic pop
 
   // This is an overload of |WrapInPlace| that drops the previous stack. In that
   // case the code relies on a |WrapTransform| overload provided for the
