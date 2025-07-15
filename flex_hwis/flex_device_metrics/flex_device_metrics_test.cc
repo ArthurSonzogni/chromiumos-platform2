@@ -368,3 +368,117 @@ INSTANTIATE_TEST_SUITE_P(IntToUpdateStateTests,
                              {4, FwupdUpdateState::kNeedsReboot},
                              {5, FwupdUpdateState::kTransient},  // kMaxValue
                          }));
+
+TEST(FlexFwupHistoryMetrics, ParseMultipleUefiUpdates) {
+  constexpr std::string_view test_json =
+      R"(
+      {
+        "Devices" : [
+          {
+            "Name" : "System Firmware",
+            "Plugin" : "uefi_capsule",
+            "Created" : 1,
+            "UpdateState" : 2,
+            "Releases" : [
+              {
+                "FwupdLastAttemptStatus" : "0x0"
+              },
+              {
+                "FwupdLastAttemptStatus" : "0x2"
+              }
+            ]
+          },
+          {
+            "Name" : "EC Firmware",
+            "Plugin" : "uefi_capsule",
+            "Created" : 1,
+            "UpdateState" : 0,
+            "Releases" : [
+              {
+                "FwupdLastAttemptStatus" : "0x3"
+              }
+            ]
+          }
+        ]
+      }
+    )";
+
+  std::vector<FwupdDeviceHistory> histories;
+  ASSERT_TRUE(ParseFwupHistoriesFromJson(test_json, histories));
+
+  // Ensure first update was parsed.
+  EXPECT_EQ("System Firmware", histories[0].name);
+  EXPECT_EQ("uefi_capsule", histories[0].plugin);
+  EXPECT_EQ(base::Time::UnixEpoch() + base::Seconds(1), histories[0].created);
+  EXPECT_EQ(FwupdUpdateState::kSuccess, histories[0].update_state);
+  const FwupdRelease* release = histories[0].releases[0].get();
+  EXPECT_TRUE(release);
+  EXPECT_EQ(FwupdLastAttemptStatus::kSuccess, release->last_attempt_status);
+  release = histories[0].releases[1].get();
+  EXPECT_TRUE(release);
+  EXPECT_EQ(FwupdLastAttemptStatus::kErrorInsufficientResources,
+            release->last_attempt_status);
+
+  // Ensure second update was parsed.
+  EXPECT_EQ("EC Firmware", histories[1].name);
+  EXPECT_EQ("uefi_capsule", histories[1].plugin);
+  EXPECT_EQ(base::Time::UnixEpoch() + base::Seconds(1), histories[1].created);
+  EXPECT_EQ(FwupdUpdateState::kUnknown, histories[1].update_state);
+  release = histories[1].releases[0].get();
+  EXPECT_TRUE(release);
+  EXPECT_EQ(FwupdLastAttemptStatus::kErrorIncorrectVersion,
+            release->last_attempt_status);
+}
+
+TEST(FlexFwupHistoryMetrics, JsonNotFormattedAsDictionary) {
+  constexpr std::string_view test_json =
+      R"(
+        "Name" : "UEFI dbx",
+        "Plugin" : "uefi_dbx",
+        "Created" : 1,
+        "UpdateState" : 2
+    )";
+
+  std::vector<FwupdDeviceHistory> histories;
+  EXPECT_FALSE(ParseFwupHistoriesFromJson(test_json, histories));
+}
+
+TEST(FlexFwupHistoryMetrics, DevicesListNotFoundInJson) {
+  constexpr std::string_view test_json =
+      R"(
+      {
+        "Name" : "UEFI dbx",
+        "Plugin" : "uefi_dbx",
+        "Created" : 1,
+        "UpdateState" : 2
+      }
+    )";
+
+  std::vector<FwupdDeviceHistory> histories;
+  EXPECT_FALSE(ParseFwupHistoriesFromJson(test_json, histories));
+}
+
+TEST(FlexFwupHistoryMetrics, ReturnFalseOnFailedConversion) {
+  // Erroneous `UpdateState` should fail the conversion.
+  constexpr std::string_view test_json =
+      R"(
+      {
+        "Devices" : [
+          {
+            "Name" : "System Firmware",
+            "Plugin" : "uefi_capsule",
+            "Created" : 1,
+            "UpdateState" : 99,
+            "Releases" : [
+              {
+              "FwupdLastAttemptStatus" : "0x0"
+              }
+            ]
+          }
+        ]
+      }
+    )";
+
+  std::vector<FwupdDeviceHistory> histories;
+  EXPECT_FALSE(ParseFwupHistoriesFromJson(test_json, histories));
+}

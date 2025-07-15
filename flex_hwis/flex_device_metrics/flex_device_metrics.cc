@@ -10,6 +10,7 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -293,4 +294,32 @@ void FwupdDeviceHistory::RegisterJSONConverter(
   converter->RegisterCustomValueField<FwupdUpdateState>(
       "UpdateState", &FwupdDeviceHistory::update_state, &ValToUpdateState);
   converter->RegisterRepeatedMessage("Releases", &FwupdDeviceHistory::releases);
+}
+
+bool ParseFwupHistoriesFromJson(std::string_view history_json,
+                                std::vector<FwupdDeviceHistory>& histories) {
+  std::optional<base::Value::Dict> response_dict =
+      base::JSONReader::ReadDict(history_json);
+  if (!response_dict.has_value()) {
+    LOG(ERROR) << "fwupdmgr response not formatted as json dictionary.";
+    return false;
+  }
+
+  base::Value::List* devices = response_dict.value().FindList("Devices");
+  if (!devices) {
+    LOG(ERROR) << "List of devices not found in fwupdmgr response.";
+    return false;
+  }
+
+  base::JSONValueConverter<FwupdDeviceHistory> converter;
+  for (const base::Value& device : *devices) {
+    FwupdDeviceHistory history;
+    if (!converter.Convert(device, &history)) {
+      LOG(ERROR)
+          << "Failed to convert value into device update history struct.";
+      return false;
+    }
+    histories.push_back(std::move(history));
+  }
+  return true;
 }

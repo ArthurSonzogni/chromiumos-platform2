@@ -276,4 +276,11 @@ struct FwupdDeviceHistory {
       base::JSONValueConverter<FwupdDeviceHistory>* converter);
 };
 
+// Find all update histories in a json string and collect them in `histories`.
+//
+// Returns true on success, false if the json is not formatted correctly, e.g.
+// it is not a json dict or an `update_state` is missing.
+bool ParseFwupHistoriesFromJson(std::string_view history_json,
+                                std::vector<FwupdDeviceHistory>& histories);
+
 #endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_
