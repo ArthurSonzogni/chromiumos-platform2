@@ -577,6 +577,10 @@ class UserDataAuth {
       user_data_auth::GetAuthFactorExtendedInfoRequest request,
       OnDoneCallback<user_data_auth::GetAuthFactorExtendedInfoReply> on_done);
 
+  void GenerateFreshRecoveryId(
+      user_data_auth::GenerateFreshRecoveryIdRequest request,
+      OnDoneCallback<user_data_auth::GenerateFreshRecoveryIdReply> on_done);
+
   void PrepareAuthFactor(
       user_data_auth::PrepareAuthFactorRequest request,
       OnDoneCallback<user_data_auth::PrepareAuthFactorReply> on_done);

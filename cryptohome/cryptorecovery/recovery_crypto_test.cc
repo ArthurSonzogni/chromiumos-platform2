@@ -597,6 +597,19 @@ TEST_F(RecoveryCryptoTest, GenerateFreshRecoveryId) {
   EXPECT_FALSE(new_recovery_id.empty());
   EXPECT_EQ(recovery_seed, new_recovery_seed);
   EXPECT_NE(recovery_id, new_recovery_id);
+  // Retrieve the seed from user directory.
+  base::FilePath recovery_container_path = GetRecoveryContainerPath(account_id);
+  CryptoRecoveryIdContainer recovery_container_pb;
+  EXPECT_TRUE(recovery_->LoadPersistedRecoveryIdContainer(
+      recovery_container_path, &recovery_container_pb));
+  EXPECT_TRUE(recovery_container_pb.has_seed());
+  // Retrieve the recovery id from a shadow directory
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
+  CryptoRecoveryIdContainer recovery_id_pb;
+  EXPECT_TRUE(recovery_->LoadPersistedRecoveryIdContainer(recovery_id_path,
+                                                          &recovery_id_pb));
+  EXPECT_TRUE(recovery_id_pb.has_recovery_id());
+  EXPECT_FALSE(recovery_id_pb.has_seed());
 }
 
 TEST_F(RecoveryCryptoTest, GenerateFreshRecoveryIdWithoutRotation) {
@@ -617,6 +630,19 @@ TEST_F(RecoveryCryptoTest, GenerateFreshRecoveryIdWithoutRotation) {
   EXPECT_FALSE(new_recovery_id.empty());
   EXPECT_EQ(recovery_seed, new_recovery_seed);
   EXPECT_EQ(recovery_id, new_recovery_id);
+  // Retrieve the seed from user directory.
+  base::FilePath recovery_container_path = GetRecoveryContainerPath(account_id);
+  CryptoRecoveryIdContainer recovery_container_pb;
+  EXPECT_TRUE(recovery_->LoadPersistedRecoveryIdContainer(
+      recovery_container_path, &recovery_container_pb));
+  EXPECT_TRUE(recovery_container_pb.has_seed());
+  // Retrieve the recovery id from a shadow directory
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
+  CryptoRecoveryIdContainer recovery_id_pb;
+  EXPECT_TRUE(recovery_->LoadPersistedRecoveryIdContainer(recovery_id_path,
+                                                          &recovery_id_pb));
+  EXPECT_TRUE(recovery_id_pb.has_recovery_id());
+  EXPECT_FALSE(recovery_id_pb.has_seed());
 }
 
 TEST_F(RecoveryCryptoTest, NoRecoveryId) {
@@ -631,6 +657,16 @@ TEST_F(RecoveryCryptoTest, NoRecoveryId) {
   std::vector<std::string> recovery_ids_history =
       recovery_->GetLastRecoveryIds(account_id, kMaxRecoveryIdDepth);
   EXPECT_THAT(recovery_ids_history, testing::IsEmpty());
+  // Retrieve the seed from user directory.
+  base::FilePath recovery_container_path = GetRecoveryContainerPath(account_id);
+  CryptoRecoveryIdContainer recovery_container_pb;
+  EXPECT_FALSE(recovery_->LoadPersistedRecoveryIdContainer(
+      recovery_container_path, &recovery_container_pb));
+  // Retrieve the recovery id from a shadow directory
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
+  CryptoRecoveryIdContainer recovery_id_pb;
+  EXPECT_FALSE(recovery_->LoadPersistedRecoveryIdContainer(recovery_id_path,
+                                                           &recovery_id_pb));
 }
 
 TEST_F(RecoveryCryptoTest, VerifyRecoveryIdsHistory) {
@@ -660,6 +696,19 @@ TEST_F(RecoveryCryptoTest, VerifyRecoveryIdsHistory) {
   // so reversing it will match the order from recovery_id vector above.
   std::reverse(recovery_ids_history.begin(), recovery_ids_history.end());
   EXPECT_EQ(recovery_id, recovery_ids_history);
+  // Retrieve the seed from user directory.
+  base::FilePath recovery_container_path = GetRecoveryContainerPath(account_id);
+  CryptoRecoveryIdContainer recovery_container_pb;
+  EXPECT_TRUE(recovery_->LoadPersistedRecoveryIdContainer(
+      recovery_container_path, &recovery_container_pb));
+  EXPECT_TRUE(recovery_container_pb.has_seed());
+  // Retrieve the recovery id from a shadow directory
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
+  CryptoRecoveryIdContainer recovery_id_pb;
+  EXPECT_TRUE(recovery_->LoadPersistedRecoveryIdContainer(recovery_id_path,
+                                                          &recovery_id_pb));
+  EXPECT_TRUE(recovery_id_pb.has_recovery_id());
+  EXPECT_FALSE(recovery_id_pb.has_seed());
 }
 
 TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShorterThanRequested) {
@@ -689,6 +738,19 @@ TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShorterThanRequested) {
   // Reverse recovery_id_depth to simplify comparison with recovery_id.
   std::reverse(recovery_ids_history.begin(), recovery_ids_history.end());
   EXPECT_EQ(recovery_id, recovery_ids_history);
+  // Retrieve the seed from user directory.
+  base::FilePath recovery_container_path = GetRecoveryContainerPath(account_id);
+  CryptoRecoveryIdContainer recovery_container_pb;
+  EXPECT_TRUE(recovery_->LoadPersistedRecoveryIdContainer(
+      recovery_container_path, &recovery_container_pb));
+  EXPECT_TRUE(recovery_container_pb.has_seed());
+  // Retrieve the recovery id from a shadow directory
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
+  CryptoRecoveryIdContainer recovery_id_pb;
+  EXPECT_TRUE(recovery_->LoadPersistedRecoveryIdContainer(recovery_id_path,
+                                                          &recovery_id_pb));
+  EXPECT_TRUE(recovery_id_pb.has_recovery_id());
+  EXPECT_FALSE(recovery_id_pb.has_seed());
 }
 
 TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataSuccess) {

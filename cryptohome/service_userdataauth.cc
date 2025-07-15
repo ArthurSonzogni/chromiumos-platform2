@@ -573,6 +573,35 @@ void UserDataAuthAdaptor::DoGetAuthFactorExtendedInfo(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::GenerateFreshRecoveryId(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GenerateFreshRecoveryIdReply>> response,
+    const user_data_auth::GenerateFreshRecoveryIdRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoGenerateFreshRecoveryId,
+                     weak_factory_.GetWeakPtr(),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::GenerateFreshRecoveryIdReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoGenerateFreshRecoveryId(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GenerateFreshRecoveryIdReply>> response,
+    const user_data_auth::GenerateFreshRecoveryIdRequest& in_request) {
+  service_->GenerateFreshRecoveryId(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::GenerateFreshRecoveryIdReply>> local_response,
+             const user_data_auth::GenerateFreshRecoveryIdReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::PrepareAuthFactor(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::PrepareAuthFactorReply>> response,

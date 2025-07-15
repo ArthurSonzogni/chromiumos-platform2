@@ -1331,6 +1331,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthUserInactiveInSetUserDataStorageWriteEnabled = 752,
   /* ./userdataauth.cc */
   kLocUserDataAuthUserFailedToSetUserDataStorageWriteEnabled = 753,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthFreshRecoveryIdFailure = 754,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.

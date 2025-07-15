@@ -1094,24 +1094,26 @@ std::string RecoveryCryptoImpl::LoadStoredRecoveryIdFromFile(
 }
 
 std::string RecoveryCryptoImpl::LoadStoredRecoverySeedFromFile(
-    const base::FilePath& recovery_id_path) const {
-  if (recovery_id_path.empty()) {
-    LOG(ERROR) << "Unable to get path to serialized RecoveryId container";
+    const base::FilePath& recovery_container_path) const {
+  if (recovery_container_path.empty()) {
+    LOG(ERROR) << "Unable to get path to serialized Recovery container";
     return "";
   }
-  CryptoRecoveryIdContainer recovery_id_pb;
-  if (!LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb)) {
-    LOG(ERROR) << "Unable to deserialize RecoveryId protobuf";
+  CryptoRecoveryIdContainer recovery_container_pb;
+  if (!LoadPersistedRecoveryIdContainer(recovery_container_path,
+                                        &recovery_container_pb)) {
+    LOG(ERROR) << "Unable to deserialize Recovery container protobuf";
     return "";
   }
-  if (!recovery_id_pb.has_seed() ||
-      recovery_id_pb.seed().empty()) {
-    LOG(ERROR) << "Serialized protobuf does not contain the actual Recovery seed";
+  if (!recovery_container_pb.has_seed() ||
+      recovery_container_pb.seed().empty()) {
+    LOG(ERROR)
+        << "Serialized protobuf does not contain the actual Recovery seed";
     return "";
   }
   return hwsec_foundation::BlobToHex(
-      brillo::Blob(recovery_id_pb.seed().begin(),
-                   recovery_id_pb.seed().end()));
+      brillo::Blob(recovery_container_pb.seed().begin(),
+                   recovery_container_pb.seed().end()));
 }
 
 std::string RecoveryCryptoImpl::LoadStoredRecoveryId(
@@ -1122,42 +1124,48 @@ std::string RecoveryCryptoImpl::LoadStoredRecoveryId(
 
 std::string RecoveryCryptoImpl::LoadStoredRecoverySeed(
     const AccountIdentifier& account_id) const {
-  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
-  return LoadStoredRecoverySeedFromFile(recovery_id_path);
+  base::FilePath recovery_container_path = GetRecoveryContainerPath(account_id);
+  return LoadStoredRecoverySeedFromFile(recovery_container_path);
 }
 
 bool RecoveryCryptoImpl::EnsureRecoveryIdPresent(
     const AccountIdentifier& account_id) const {
   base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
-  return GenerateRecoveryIdToFile(recovery_id_path, /*rotate=*/false);
+  CryptoRecoveryIdContainer recovery_id_pb;
+  return !recovery_id_path.empty() &&
+         LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb) &&
+         recovery_id_pb.has_recovery_id();
 }
 
 bool RecoveryCryptoImpl::GenerateFreshRecoveryId(
     const AccountIdentifier& account_id) const {
+  base::FilePath recovery_container_path = GetRecoveryContainerPath(account_id);
   base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
-  return GenerateRecoveryIdToFile(recovery_id_path, /*rotate=*/true);
+  return GenerateRecoveryIdToFiles(recovery_container_path, recovery_id_path);
 }
 
-bool RecoveryCryptoImpl::GenerateRecoveryIdToFile(
-    const base::FilePath& recovery_id_path, bool rotate) const {
-  if (recovery_id_path.empty()) {
+bool RecoveryCryptoImpl::GenerateRecoveryIdToFiles(
+    const base::FilePath& recovery_container_path,
+    const base::FilePath& recovery_id_path) const {
+  if (recovery_container_path.empty()) {
     LOG(ERROR) << "Unable to get path to serialized RecoveryId container";
     return false;
   }
-  CryptoRecoveryIdContainer recovery_id_pb;
-  if (!IsRecoveryIdAvailable(recovery_id_path) ||
-      !LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb)) {
+  CryptoRecoveryIdContainer recovery_container_pb;
+  if (!LoadPersistedRecoveryIdContainer(recovery_container_path,
+                                        &recovery_container_pb)) {
     // Persisted RecoveryIdContainer cannot be retrieved because it has been not
     // created before or there was an error on storage access attempt so we are
     // clearing it up before trying to generate a fresh one.
-    recovery_id_pb.Clear();
+    recovery_container_pb.Clear();
   }
-  if (!rotate && recovery_id_pb.has_seed()) {
-    return true;
-  }
+  GenerateRecoveryIdProto(&recovery_container_pb);
 
-  GenerateRecoveryIdProto(&recovery_id_pb);
-  if (!PersistRecoveryIdContainer(recovery_id_path, recovery_id_pb)) {
+  CryptoRecoveryIdContainer recovery_id_pb;
+  recovery_id_pb.set_recovery_id(recovery_container_pb.recovery_id());
+  if (!PersistRecoveryIdContainer(recovery_id_path, recovery_id_pb) ||
+      !PersistRecoveryIdContainer(recovery_container_path,
+                                  recovery_container_pb)) {
     LOG(ERROR) << "Unable to serialize the new Recovery Id";
     return false;
   }
@@ -1214,7 +1222,8 @@ std::vector<std::string> RecoveryCryptoImpl::GetLastRecoveryIdsFromFile(
 
 std::vector<std::string> RecoveryCryptoImpl::GetLastRecoveryIds(
     const AccountIdentifier& account_id, int max_depth) const {
-  return GetLastRecoveryIdsFromFile(GetRecoveryIdPath(account_id), max_depth);
+  return GetLastRecoveryIdsFromFile(GetRecoveryContainerPath(account_id),
+                                    max_depth);
 }
 
 bool RecoveryCryptoImpl::RotateRecoveryId(

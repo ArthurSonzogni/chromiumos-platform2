@@ -298,6 +298,17 @@ class UserDataAuthAdaptor
           user_data_auth::GetAuthFactorExtendedInfoReply>> response,
       const user_data_auth::GetAuthFactorExtendedInfoRequest& in_request);
 
+  void GenerateFreshRecoveryId(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GenerateFreshRecoveryIdReply>> response,
+      const user_data_auth::GenerateFreshRecoveryIdRequest& in_request)
+      override;
+
+  void DoGenerateFreshRecoveryId(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GenerateFreshRecoveryIdReply>> response,
+      const user_data_auth::GenerateFreshRecoveryIdRequest& in_request);
+
   void PrepareAuthFactor(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::PrepareAuthFactorReply>> response,

@@ -221,6 +221,7 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     const FilePath& channel_priv_key_out_file_path,
     const FilePath& serialized_hsm_payload_out_file_path,
     const FilePath& recovery_secret_out_file_path,
+    const FilePath& recovery_container_file_path,
     const FilePath& recovery_id_file_path,
     libstorage::Platform* platform) {
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
@@ -239,8 +240,8 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
   }
 
   // Generates a new recovery_id to be persisted on a chromebook.
-  if (!recovery_crypto->GenerateRecoveryIdToFile(recovery_id_file_path,
-                                                 /*rotate=*/true)) {
+  if (!recovery_crypto->GenerateRecoveryIdToFiles(recovery_container_file_path,
+                                                  recovery_id_file_path)) {
     LOG(ERROR) << "Failed to generate a new recovery_id.";
     return false;
   }
@@ -770,6 +771,9 @@ int main(int argc, char* argv[]) {
   DEFINE_string(
       mediator_pub_key_out_file, "",
       "Path to the file containing the hex-encoded fake mediator pub key.");
+  DEFINE_string(recovery_container_file, "",
+                "Path to the file containing serialized data to generate "
+                "recovery container(seed, increment).");
   DEFINE_string(
       recovery_id_file, "",
       "Path to the file containing serialized data to generate recovery_id.");
@@ -827,6 +831,8 @@ int main(int argc, char* argv[]) {
                            FLAGS_serialized_hsm_payload_out_file) &&
         CheckMandatoryFlag("recovery_secret_out_file",
                            FLAGS_recovery_secret_out_file) &&
+        CheckMandatoryFlag("recovery_container_file",
+                           FLAGS_recovery_container_file) &&
         CheckMandatoryFlag("recovery_id_file", FLAGS_recovery_id_file)) {
       success = cryptohome::DoRecoveryCryptoCreateHsmPayloadAction(
           FilePath(FLAGS_mediator_pub_key_in_file),
@@ -837,6 +843,7 @@ int main(int argc, char* argv[]) {
           FilePath(FLAGS_channel_priv_key_out_file),
           FilePath(FLAGS_serialized_hsm_payload_out_file),
           FilePath(FLAGS_recovery_secret_out_file),
+          FilePath(FLAGS_recovery_container_file),
           FilePath(FLAGS_recovery_id_file), &platform);
     }
   } else if (FLAGS_action == "recovery_crypto_create_recovery_request") {

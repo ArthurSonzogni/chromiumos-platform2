@@ -271,7 +271,7 @@ bool GetPublicMountSalt(libstorage::Platform* platform,
   return GetOrCreateSalt(platform, PublicMountSaltFile(), salt);
 }
 
-base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id) {
+base::FilePath GetRecoveryContainerPath(const AccountIdentifier& account_id) {
   ObfuscatedUsername obfuscated =
       brillo::cryptohome::home::SanitizeUserName(GetAccountId(account_id));
   if (obfuscated->empty()) {
@@ -279,6 +279,15 @@ base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id) {
   }
   return brillo::cryptohome::home::GetUserPath(obfuscated)
       .Append(kRecoveryIdFile);
+}
+
+base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id) {
+  ObfuscatedUsername obfuscated =
+      brillo::cryptohome::home::SanitizeUserName(GetAccountId(account_id));
+  if (obfuscated->empty()) {
+    return base::FilePath();
+  }
+  return UserPath(obfuscated).Append(kRecoveryIdFile);
 }
 
 base::FilePath GetRecoveryFactorLockPath() {

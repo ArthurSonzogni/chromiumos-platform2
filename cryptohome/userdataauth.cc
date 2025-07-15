@@ -4203,6 +4203,28 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
+void UserDataAuth::GenerateFreshRecoveryId(
+    user_data_auth::GenerateFreshRecoveryIdRequest request,
+    OnDoneCallback<user_data_auth::GenerateFreshRecoveryIdReply> on_done) {
+  AssertOnMountThread();
+
+  user_data_auth::GenerateFreshRecoveryIdReply reply;
+  std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
+      cryptorecovery::RecoveryCryptoImpl::Create(recovery_crypto_, platform_);
+  if (!recovery || recovery->GenerateFreshRecoveryId(request.account_id())) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthFreshRecoveryIdFailure),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_RECOVERY_FATAL));
+    return;
+  }
+
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+}
+
 void UserDataAuth::PrepareAuthFactor(
     user_data_auth::PrepareAuthFactorRequest request,
     OnDoneCallback<user_data_auth::PrepareAuthFactorReply> on_done) {

@@ -183,7 +183,8 @@ void CryptohomeRecoveryAuthBlock::Create(
     return;
   }
   if (!cryptohome_recovery_auth_input.ensure_fresh_recovery_id &&
-      !recovery->EnsureRecoveryIdPresent(account_id)) {
+      !recovery->EnsureRecoveryIdPresent(account_id) &&
+      !recovery->GenerateFreshRecoveryId(account_id)) {
     LOG(ERROR) << "Unable to ensure recovery_id is present";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(

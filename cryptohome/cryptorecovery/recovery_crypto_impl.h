@@ -62,6 +62,9 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       const base::FilePath& recovery_id_path) const;
   std::string LoadStoredRecoveryId(const AccountIdentifier& account_id) const;
   std::string LoadStoredRecoverySeed(const AccountIdentifier& account_id) const;
+  [[nodiscard]] bool LoadPersistedRecoveryIdContainer(
+      const base::FilePath& recovery_id_path,
+      CryptoRecoveryIdContainer* recovery_id_pb) const;
 
   // This method should be called on the initial creation of OnboardingMetadata
   // and after every successful recovery operation to refresh the Recovery Id.
@@ -77,8 +80,9 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   // cryptohome.
   [[nodiscard]] bool GenerateFreshRecoveryId(
       const AccountIdentifier& account_id) const;
-  [[nodiscard]] bool GenerateRecoveryIdToFile(
-      const base::FilePath& recovery_id_path, bool rotate) const;
+  [[nodiscard]] bool GenerateRecoveryIdToFiles(
+      const base::FilePath& recovery_container_path,
+      const base::FilePath& recovery_id_path) const;
 
   // Returns a vector of last |max_depth| Recovery ids. The current recovery_id
   // is returned as the first entry.
@@ -112,9 +116,6 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   void GenerateInitialRecoveryId(
       CryptoRecoveryIdContainer* recovery_id_pb) const;
   void GenerateRecoveryIdProto(CryptoRecoveryIdContainer* recovery_id_pb) const;
-  [[nodiscard]] bool LoadPersistedRecoveryIdContainer(
-      const base::FilePath& recovery_id_path,
-      CryptoRecoveryIdContainer* recovery_id_pb) const;
   [[nodiscard]] bool PersistRecoveryIdContainer(
       const base::FilePath& recovery_id_path,
       const CryptoRecoveryIdContainer& recovery_id_pb) const;

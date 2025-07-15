@@ -94,6 +94,10 @@ bool GetSystemSalt(libstorage::Platform* platform, brillo::SecureBlob* salt);
 bool GetPublicMountSalt(libstorage::Platform* platform,
                         brillo::SecureBlob* salt);
 
+// Gets the full path for the serialized RecoveryContainer, which contains the
+// recovery ID, seed, and increment.
+base::FilePath GetRecoveryContainerPath(const AccountIdentifier& account_id);
+
 // Gets full path for serialized RecoveryId.
 base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id);
 
