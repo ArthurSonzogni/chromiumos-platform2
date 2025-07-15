@@ -565,21 +565,29 @@ void MissiveImpl::SetEnabled(bool is_enabled) {
 }
 
 void MissiveImpl::OnStorageParametersUpdate(
+    base::WeakPtr<MissiveImpl> self,
     MissiveArgs::StorageParameters storage_parameters) {
-  queues_container_->SetValue(storage_parameters.controlled_degradation);
-  compression_module_->SetValue(storage_parameters.compression_enabled);
-  encryption_module_->SetValue(storage_parameters.encryption_enabled);
-  signature_verification_dev_flag_->SetValue(
+  if (!self) {
+    return;
+  }
+  self->queues_container_->SetValue(storage_parameters.controlled_degradation);
+  self->compression_module_->SetValue(storage_parameters.compression_enabled);
+  self->encryption_module_->SetValue(storage_parameters.encryption_enabled);
+  self->signature_verification_dev_flag_->SetValue(
       storage_parameters.signature_verification_dev_enabled);
-  if (storage_module_) {
-    storage_module_->SetLegacyEnabledPriorities(
+  if (self->storage_module_) {
+    self->storage_module_->SetLegacyEnabledPriorities(
         storage_parameters.legacy_storage_enabled);
   }
 }
 
 void MissiveImpl::OnConfigFileParametersUpdate(
+    base::WeakPtr<MissiveImpl> self,
     MissiveArgs::ConfigFileParameters config_file_parameters) {
-  server_configuration_controller_->SetValue(
+  if (!self) {
+    return;
+  }
+  self->server_configuration_controller_->SetValue(
       config_file_parameters.blocking_destinations_enabled);
 }
 

@@ -32,7 +32,8 @@ class ResourceCollectorStorage : public ResourceCollector {
 
   // Update upload progress timestamp. Reset every time the device makes
   // progress uploading events.
-  void RecordUploadProgress();
+  static void RecordUploadProgress(
+      base::WeakPtr<ResourceCollectorStorage> self);
 
   // Retrieve weak pointer.
   base::WeakPtr<ResourceCollectorStorage> GetWeakPtr();

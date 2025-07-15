@@ -15,6 +15,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
+#include "base/memory/weak_ptr.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/statusor.h"
 
@@ -53,7 +54,7 @@ class EnqueuingRecordTallier {
   // was not successfully obtained, |Average| will return |std::nullopt|. All
   // calls to this method must be on the same sequence. It is called by the
   // timer owned by this instance.
-  void UpdateAverage() VALID_CONTEXT_REQUIRED(sequence_checker_);
+  static void UpdateAverage(base::WeakPtr<EnqueuingRecordTallier> self);
 
   // Resets |cumulated_size_| and |last_wall_time_|. Returns the average rate of
   // enqueuing records in bytes/sec since last time this method is called. If
@@ -63,6 +64,8 @@ class EnqueuingRecordTallier {
   // this method must be on the same sequence.
   [[nodiscard]] StatusOr<uint64_t> ComputeAverage()
       VALID_CONTEXT_REQUIRED(sequence_checker_);
+
+  SEQUENCE_CHECKER(sequence_checker_);
 
   // The tallied size until now.
   std::atomic<uint64_t> cumulated_size_{0};
@@ -79,10 +82,8 @@ class EnqueuingRecordTallier {
   // Timer for executing the resource usage collection task.
   base::RepeatingTimer timer_;
 
-  // Weak pointer Factory for the timer.
+  // Weak pointer Factory for the timer (must be the last member of the class).
   base::WeakPtrFactory<EnqueuingRecordTallier> weak_ptr_factory_{this};
-
-  SEQUENCE_CHECKER(sequence_checker_);
 };
 
 }  // namespace reporting

@@ -14,6 +14,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
+#include "base/memory/weak_ptr.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/statusor.h"
 #include "missive/util/time.h"
@@ -45,18 +46,26 @@ std::optional<uint64_t> EnqueuingRecordTallier::GetAverage() const {
   }
 }
 
-void EnqueuingRecordTallier::UpdateAverage() {
-  if (auto average_status = ComputeAverage(); average_status.has_value()) {
-    average_ = average_status.value();
+// static
+void EnqueuingRecordTallier::UpdateAverage(
+    base::WeakPtr<EnqueuingRecordTallier> self) {
+  if (!self) {
+    return;
+  }
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+  if (auto average_status = self->ComputeAverage();
+      average_status.has_value()) {
+    self->average_ = average_status.value();
   } else {
     LOG(ERROR)
         << "The rate of new events (enqueuing events) cannot be computed: "
         << average_status.error();
-    average_ = kAverageNullOpt;
+    self->average_ = kAverageNullOpt;
   }
 }
 
 StatusOr<uint64_t> EnqueuingRecordTallier::ComputeAverage() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Reset cumulated_size_ and last_wall_time_ here so no need to worry about
   // returning early.
   const uint64_t cumulated_size = cumulated_size_.exchange(0U);

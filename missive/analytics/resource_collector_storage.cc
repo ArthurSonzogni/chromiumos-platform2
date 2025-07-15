@@ -60,9 +60,14 @@ bool ResourceCollectorStorage::SendDirectorySizeToUma(std::string_view uma_name,
       /*nbuckets=*/kUmaNumberOfBuckets);
 }
 
-void ResourceCollectorStorage::RecordUploadProgress() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  upload_progress_timestamp_ = base::Time::Now();
+// static
+void ResourceCollectorStorage::RecordUploadProgress(
+    base::WeakPtr<ResourceCollectorStorage> self) {
+  if (!self) {
+    return;
+  }
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+  self->upload_progress_timestamp_ = base::Time::Now();
 }
 
 base::WeakPtr<ResourceCollectorStorage> ResourceCollectorStorage::GetWeakPtr() {

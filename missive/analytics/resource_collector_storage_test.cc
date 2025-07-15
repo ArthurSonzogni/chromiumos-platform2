@@ -117,7 +117,8 @@ TEST_P(ResourceCollectorStorageTest, SuccessfullySend) {
                     /*nbuckets=*/ResourceCollectorStorage::kUmaNumberOfBuckets))
         .Times(0);
     task_environment_.FastForwardBy(kInterval);
-    resource_collector_.RecordUploadProgress();
+    ResourceCollectorStorage::RecordUploadProgress(
+        resource_collector_.GetWeakPtr());
     task_environment_.RunUntilIdle();
   }
 }

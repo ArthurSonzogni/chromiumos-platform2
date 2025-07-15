@@ -16,9 +16,9 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 #include <base/task/bind_post_task.h>
+#include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <base/time/time_delta_from_string.h>
-#include <base/threading/thread.h>
 #include <base/types/expected.h>
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
@@ -316,8 +316,10 @@ void MissiveArgs::OnCollectionParametersUpdate(
   auto cb = base::BindRepeating(
       [](base::WeakPtr<MissiveArgs> self,
          base::RepeatingCallback<void(CollectionParameters)> update_cb) {
-        DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-        update_cb.Run(self->collection_parameters_);  // Making a copy.
+        if (self) {
+          DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+          update_cb.Run(self->collection_parameters_);  // Making a copy.
+        }
       },
       weak_ptr_factory_.GetWeakPtr(), update_cb);
   update_cbs_.push_back(cb);
@@ -331,8 +333,10 @@ void MissiveArgs::OnStorageParametersUpdate(
   auto cb = base::BindRepeating(
       [](base::WeakPtr<MissiveArgs> self,
          base::RepeatingCallback<void(StorageParameters)> update_cb) {
-        DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-        update_cb.Run(self->storage_parameters_);  // Making a copy.
+        if (self) {
+          DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+          update_cb.Run(self->storage_parameters_);  // Making a copy.
+        }
       },
       weak_ptr_factory_.GetWeakPtr(), update_cb);
   update_cbs_.push_back(cb);
@@ -346,8 +350,10 @@ void MissiveArgs::OnConfigFileParametersUpdate(
   auto cb = base::BindRepeating(
       [](base::WeakPtr<MissiveArgs> self,
          base::RepeatingCallback<void(ConfigFileParameters)> update_cb) {
-        DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-        update_cb.Run(self->config_file_parameters_);  // Making a copy.
+        if (self) {
+          DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+          update_cb.Run(self->config_file_parameters_);  // Making a copy.
+        }
       },
       weak_ptr_factory_.GetWeakPtr(), update_cb);
   update_cbs_.push_back(cb);

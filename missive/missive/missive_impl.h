@@ -177,10 +177,12 @@ class MissiveImpl : public MissiveService {
 
   void SetEnabled(bool is_enabled);
 
-  void OnStorageParametersUpdate(
+  static void OnStorageParametersUpdate(
+      base::WeakPtr<MissiveImpl> self,
       MissiveArgs::StorageParameters storage_parameters);
 
-  void OnConfigFileParametersUpdate(
+  static void OnConfigFileParametersUpdate(
+      base::WeakPtr<MissiveImpl> self,
       MissiveArgs::ConfigFileParameters config_file_parameters);
 
   // Component factories called no more than once during `MissiveImpl::StartUp`
