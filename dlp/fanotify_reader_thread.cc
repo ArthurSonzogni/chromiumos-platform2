@@ -4,13 +4,13 @@
 
 #include "dlp/fanotify_reader_thread.h"
 
-#include <linux/version.h>
-
 #include <fcntl.h>
-#include <memory>
+#include <linux/version.h>
 #include <sys/fanotify.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+
+#include <memory>
 #include <utility>
 #include <vector>
 
