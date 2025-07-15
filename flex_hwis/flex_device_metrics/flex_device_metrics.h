@@ -175,4 +175,9 @@ bool ShouldSendFlexorInstallMetric(const base::FilePath& root);
 // installs. For realistic rates of failure, that should be fine.
 bool SendFlexorInstallMetric(MetricsLibraryInterface& metrics);
 
+// Query the fwupdmgr for the update history as a raw json string.
+//
+// Returns a string on success, std::nullopt if any error occurs.
+std::optional<std::string> GetHistoryFromFwupdmgr();
+
 #endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_

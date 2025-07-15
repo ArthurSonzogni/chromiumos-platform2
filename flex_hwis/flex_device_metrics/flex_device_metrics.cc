@@ -4,6 +4,8 @@
 
 #include "flex_hwis/flex_device_metrics/flex_device_metrics.h"
 
+#include <unistd.h>
+
 #include <utility>
 
 #include <base/files/file_enumerator.h>
@@ -12,6 +14,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <brillo/process/process.h>
 
 constexpr char kInstallTypeFile[] =
     "mnt/stateful_partition/unencrypted/install_metrics/install_type";
@@ -223,4 +226,20 @@ bool SendFlexorInstallMetric(MetricsLibraryInterface& metrics) {
   const int nbuckets = 1;
   return metrics.SendToUMA("Platform.FlexInstalledViaFlexor", sample, min, max,
                            nbuckets);
+}
+
+std::optional<std::string> GetHistoryFromFwupdmgr() {
+  brillo::ProcessImpl fwupdmgr_process;
+  fwupdmgr_process.RedirectOutputToMemory(true);
+  fwupdmgr_process.AddArg("/usr/bin/fwupdmgr");
+  fwupdmgr_process.AddArg("get-history");
+  fwupdmgr_process.AddArg("--json");
+
+  int fwupdmgr_rc = fwupdmgr_process.Run();
+  if (fwupdmgr_rc == 0) {
+    return fwupdmgr_process.GetOutputString(STDOUT_FILENO);
+  } else {
+    LOG(ERROR) << "Failed to run `fwupdmgr get-history`.";
+    return std::nullopt;
+  }
 }
