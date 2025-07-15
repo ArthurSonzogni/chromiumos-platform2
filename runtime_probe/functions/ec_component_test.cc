@@ -23,6 +23,7 @@
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/utils/ec_component_manifest.h"
 #include "runtime_probe/utils/function_test_utils.h"
+#include "runtime_probe/utils/ish_component_manifest.h"
 
 namespace runtime_probe {
 namespace {
@@ -135,7 +136,7 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     const std::string file_path =
         base::StringPrintf("cme/component_manifest.%s.json", case_name.c_str());
     const base::FilePath manifest_dir =
-        base::FilePath{kCmePath}.Append(ish_project_name);
+        base::FilePath{kIshCmePath}.Append(ish_project_name);
     SetDirectory(manifest_dir);
     ASSERT_TRUE(base::CopyFile(
         GetTestDataPath().Append(file_path),

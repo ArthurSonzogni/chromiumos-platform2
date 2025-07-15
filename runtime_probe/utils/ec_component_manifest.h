@@ -80,13 +80,10 @@ class EcComponentManifestReader {
   std::string ec_version_;
 
  private:
-  // Gets the EC firmware name with `cros_config /firmware image-name`.
-  virtual std::optional<std::string> GetCmeProjectName() const;
-
   // Returns the default path to the component manifest file. This should be
-  // `/usr/share/cme/<cme-project-name>/component_manifest.json` where
-  // `cme-project-name` can be obtained by `GetCmeProjectName()`.
-  base::FilePath EcComponentManifestDefaultPath() const;
+  // `/usr/share/cme/<ec-project-name>/component_manifest.json` where
+  // `ec-project-name` can be obtained by `cros_config /firmware image-name`.
+  virtual base::FilePath EcComponentManifestDefaultPath() const;
 };
 
 }  // namespace runtime_probe

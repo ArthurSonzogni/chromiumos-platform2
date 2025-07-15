@@ -5,9 +5,6 @@
 #ifndef RUNTIME_PROBE_UTILS_ISH_COMPONENT_MANIFEST_H_
 #define RUNTIME_PROBE_UTILS_ISH_COMPONENT_MANIFEST_H_
 
-#include <optional>
-#include <string>
-
 #include <base/values.h>
 
 #include "runtime_probe/utils/ec_component_manifest.h"
@@ -18,6 +15,8 @@ class FilePath;
 
 namespace runtime_probe {
 
+constexpr char kIshCmePath[] = "usr/share/cme/ish/";
+
 // A class that reads and parses an ISH component manifest file to an
 // EcComponentManifest instance.
 class IshComponentManifestReader : public EcComponentManifestReader {
@@ -25,8 +24,11 @@ class IshComponentManifestReader : public EcComponentManifestReader {
   using EcComponentManifestReader::EcComponentManifestReader;
 
  private:
-  // Gets the ISH firmware name with `ectool --name=cros_ish version`.
-  std::optional<std::string> GetCmeProjectName() const override;
+  // Returns the default path to the component manifest file. This should be
+  // `/usr/share/cme/ish/<ish-project-name>/component_manifest.json` where
+  // `ish-project-name` can be obtained by parsing the output of
+  // `ectool --name=cros_ish version`.
+  base::FilePath EcComponentManifestDefaultPath() const override;
 };
 
 }  // namespace runtime_probe

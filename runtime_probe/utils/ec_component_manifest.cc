@@ -98,6 +98,20 @@ bool SetList(const base::Value::List* list, std::vector<T>& vec) {
   return true;
 }
 
+std::optional<std::string> GetEcProjectName() {
+  std::string ec_project_name;
+
+  if (Context::Get()->cros_config()->GetString(kCrosConfigImageNamePath,
+                                               kCrosConfigImageNameKey,
+                                               &ec_project_name)) {
+    return ec_project_name;
+  }
+
+  LOG(ERROR) << "Failed to get \"" << kCrosConfigImageNamePath << " "
+             << kCrosConfigImageNameKey << "\" from cros config";
+  return std::nullopt;
+}
+
 }  // namespace
 
 std::optional<EcComponentManifest::Component::I2c::Expect>
@@ -224,30 +238,16 @@ EcComponentManifestReader::EcComponentManifestReader(
     std::string_view ec_version)
     : ec_version_(ec_version) {}
 
-std::optional<std::string> EcComponentManifestReader::GetCmeProjectName()
-    const {
-  std::string image_name;
-
-  if (Context::Get()->cros_config()->GetString(
-          kCrosConfigImageNamePath, kCrosConfigImageNameKey, &image_name)) {
-    return image_name;
-  }
-
-  LOG(ERROR) << "Failed to get \"" << kCrosConfigImageNamePath << " "
-             << kCrosConfigImageNameKey << "\" from cros config";
-  return std::nullopt;
-}
-
 base::FilePath EcComponentManifestReader::EcComponentManifestDefaultPath()
     const {
-  const auto cme_project_name = GetCmeProjectName();
-  if (!cme_project_name.has_value()) {
+  const auto ec_project_name = GetEcProjectName();
+  if (!ec_project_name.has_value()) {
     return {};
   }
   return Context::Get()
       ->root_dir()
       .Append(kCmePath)
-      .Append(*cme_project_name)
+      .Append(*ec_project_name)
       .Append(kEcComponentManifestName);
 }
 

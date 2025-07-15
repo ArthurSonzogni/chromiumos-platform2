@@ -26,7 +26,7 @@ class IshComponentManifestTest : public BaseFileTest {
     const std::string file_path =
         base::StringPrintf("cme/component_manifest.%s.json", case_name.c_str());
     const base::FilePath manifest_dir =
-        Context::Get()->root_dir().Append(kCmePath).Append(ish_project_name);
+        Context::Get()->root_dir().Append(kIshCmePath).Append(ish_project_name);
     ASSERT_TRUE(base::CreateDirectory(manifest_dir));
     ASSERT_TRUE(base::CopyFile(GetTestDataPath().Append(file_path),
                                manifest_dir.Append(kEcComponentManifestName)));
