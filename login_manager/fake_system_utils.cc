@@ -74,7 +74,7 @@ bool FakeSystemUtils::DeletePathRecursively(const base::FilePath& path) {
 
 // TODO(hidehiko): Support NOTREACHED() functions when needed.
 
-int FakeSystemUtils::kill(pid_t pid, uid_t owner, int signal) {
+int FakeSystemUtils::kill(pid_t pid, std::optional<uid_t> owner, int signal) {
   NOTREACHED();
 }
 

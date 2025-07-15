@@ -28,7 +28,7 @@ class MockSystemUtils : public SystemUtils {
 
   ~MockSystemUtils() override;
 
-  MOCK_METHOD(int, kill, (pid_t, uid_t, int), (override));
+  MOCK_METHOD(int, kill, (pid_t, std::optional<uid_t>, int), (override));
   MOCK_METHOD(time_t, time, (time_t*), (override));  // NOLINT
   MOCK_METHOD(pid_t, fork, (), (override));
   MOCK_METHOD(int, close, (int), (override));

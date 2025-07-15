@@ -98,7 +98,7 @@ void AndroidOciWrapper::EnsureJobExit(base::TimeDelta timeout) {
   pid_t pid;
   if (GetContainerPID(&pid) && !system_utils_->ProcessIsGone(pid, timeout)) {
     LOG(INFO) << "Killing container " << pid;
-    if (system_utils_->kill(pid, -1, SIGKILL)) {
+    if (system_utils_->kill(pid, std::nullopt, SIGKILL)) {
       PLOG(ERROR) << "Failed to kill container " << pid;
     }
 
@@ -356,7 +356,7 @@ void AndroidOciWrapper::KillProcessGroup(pid_t pgid) {
   CHECK_GT(pgid, 1);
 
   if (!system_utils_->ProcessGroupIsGone(pgid, base::TimeDelta()) &&
-      system_utils_->kill(-pgid, -1, SIGKILL)) {
+      system_utils_->kill(-pgid, std::nullopt, SIGKILL)) {
     PLOG(ERROR) << "Failed to kill run_oci pgroup";
   }
 }
