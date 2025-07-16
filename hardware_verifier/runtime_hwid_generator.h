@@ -41,6 +41,9 @@ class RuntimeHWIDGenerator {
   std::optional<std::string> Generate(
       const runtime_probe::ProbeResult& probe_result) const;
 
+  // Generates the Runtime HWID string based on the probe result, and writes the
+  // Runtime HWID and its checksum to the `/var/cache/runtime_hwid` file on the
+  // device.
   bool GenerateToDevice(const runtime_probe::ProbeResult& probe_result) const;
 
  private:

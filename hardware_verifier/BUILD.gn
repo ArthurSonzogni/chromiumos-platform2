@@ -56,6 +56,7 @@ static_library("libhardware_verifier") {
     "observer.cc",
     "probe_result_getter_impl.cc",
     "runtime_hwid_generator.cc",
+    "runtime_hwid_utils.cc",
     "verifier_impl.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -126,6 +127,7 @@ if (use.test) {
       "hw_verification_spec_getter_impl_test.cc",
       "probe_result_getter_impl_test.cc",
       "runtime_hwid_generator_test.cc",
+      "runtime_hwid_utils_test.cc",
       "verifier_impl_test.cc",
     ]
     configs += [
