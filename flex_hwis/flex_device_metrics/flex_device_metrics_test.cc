@@ -599,3 +599,107 @@ TEST(FlexFwupHistoryMetrics, GetTimestampFailsWhenFromStringFails) {
   ASSERT_TRUE(base::WriteFile(last_fwup_report_file, "invalid string"));
   EXPECT_EQ(GetFwupMetricTimestamp(last_fwup_report_file), std::nullopt);
 }
+
+TEST(FlexFwupHistoryMetrics, SendAttemptStatusAsMetric) {
+  StrictMock<MetricsLibraryMock> metrics;
+  FwupdDeviceHistory history;
+  history.name = "test_device";
+  history.update_state = FwupdUpdateState::kFailed;
+  auto release = std::make_unique<FwupdRelease>();
+  release->last_attempt_status = FwupdLastAttemptStatus::kErrorUnsuccessful;
+  history.releases.push_back(std::move(release));
+
+  EXPECT_CALL(metrics,
+              SendEnumToUMA(
+                  "Platform.FlexUefiCapsuleUpdateResult",
+                  static_cast<int>(AttemptStatusToUpdateResult(
+                                       history.releases[0]->last_attempt_status)
+                                       .value()),
+                  static_cast<int>(UpdateResult::kMaxValue) + 1))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(SendFwupMetric(metrics, history));
+}
+
+TEST(FlexFwupHistoryMetrics, SendMultipleAttemptStatusesAsMetrics) {
+  StrictMock<MetricsLibraryMock> metrics;
+  FwupdDeviceHistory history;
+  history.name = "test_device";
+  history.update_state = FwupdUpdateState::kFailed;
+  auto first_release = std::make_unique<FwupdRelease>();
+  first_release->last_attempt_status =
+      FwupdLastAttemptStatus::kErrorUnsuccessful;
+  history.releases.push_back(std::move(first_release));
+  auto second_release = std::make_unique<FwupdRelease>();
+  second_release->last_attempt_status =
+      FwupdLastAttemptStatus::kErrorIncorrectVersion;
+  history.releases.push_back(std::move(second_release));
+
+  EXPECT_CALL(metrics,
+              SendEnumToUMA(
+                  "Platform.FlexUefiCapsuleUpdateResult",
+                  static_cast<int>(AttemptStatusToUpdateResult(
+                                       history.releases[0]->last_attempt_status)
+                                       .value()),
+                  static_cast<int>(UpdateResult::kMaxValue) + 1))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(metrics,
+              SendEnumToUMA(
+                  "Platform.FlexUefiCapsuleUpdateResult",
+                  static_cast<int>(AttemptStatusToUpdateResult(
+                                       history.releases[1]->last_attempt_status)
+                                       .value()),
+                  static_cast<int>(UpdateResult::kMaxValue) + 1))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(SendFwupMetric(metrics, history));
+}
+
+TEST(FlexFwupHistoryMetrics, SendUpdateStateAsMetric) {
+  StrictMock<MetricsLibraryMock> metrics;
+  FwupdDeviceHistory history;
+  history.name = "test_device";
+  history.update_state = FwupdUpdateState::kSuccess;
+
+  EXPECT_CALL(metrics,
+              SendEnumToUMA(
+                  "Platform.FlexUefiCapsuleUpdateResult",
+                  static_cast<int>(
+                      UpdateStateToUpdateResult(history.update_state).value()),
+                  static_cast<int>(UpdateResult::kMaxValue) + 1))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(SendFwupMetric(metrics, history));
+}
+
+TEST(FlexFwupHistoryMetrics, LastAttemptStatusIgnoredOnNonFailingUpdates) {
+  StrictMock<MetricsLibraryMock> metrics;
+  FwupdDeviceHistory history;
+  history.name = "test_device";
+  history.update_state = FwupdUpdateState::kSuccess;
+  auto release = std::make_unique<FwupdRelease>();
+
+  // kErrorUnsuccessful indicates failure, however this should be ignored as
+  // the update state is successful.
+  release->last_attempt_status = FwupdLastAttemptStatus::kErrorUnsuccessful;
+  history.releases.push_back(std::move(release));
+
+  EXPECT_CALL(metrics,
+              SendEnumToUMA(
+                  "Platform.FlexUefiCapsuleUpdateResult",
+                  static_cast<int>(
+                      UpdateStateToUpdateResult(history.update_state).value()),
+                  static_cast<int>(UpdateResult::kMaxValue) + 1))
+      .WillOnce(Return(true));
+  EXPECT_CALL(metrics,
+              SendEnumToUMA(
+                  "Platform.FlexUefiCapsuleUpdateResult",
+                  static_cast<int>(AttemptStatusToUpdateResult(
+                                       history.releases[0]->last_attempt_status)
+                                       .value()),
+                  static_cast<int>(UpdateResult::kMaxValue) + 1))
+      .Times(0);
+
+  EXPECT_TRUE(SendFwupMetric(metrics, history));
+}

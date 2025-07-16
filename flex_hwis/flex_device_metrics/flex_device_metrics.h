@@ -321,4 +321,69 @@ std::optional<base::Time> GetFwupMetricTimestamp(
     const base::FilePath& last_fwup_report =
         base::FilePath(kFwupTimestampFile));
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class UpdateResult {
+  // The following correlate to the `FwupdUpdateState` enum.
+
+  // Unknown.
+  kUnknown = 0,
+
+  // Update is pending.
+  kPending = 1,
+  // Update was successful.
+  kSuccess = 2,
+  // Waiting for a reboot to apply update.
+  kNeedsReboot = 3,
+  // Update failed due to transient issue, e.g. AC power required.
+  kTransient = 4,
+
+  // The following correlate to the `FwupdLastAttemptStatus` enum.
+  // They represent possible causes for a `kFailed` update state.
+
+  // Firmware version does not match expected version, but the plugin does not
+  // know what specifically went wrong.
+  kGenericFailure = 5,
+  // Update was unsuccessful.
+  kErrorUnsuccessful = 6,
+  // There were insufficient resources to process the capsule.
+  kErrorInsufficientResources = 7,
+  // Version mismatch.
+  kErrorIncorrectVersion = 8,
+  // Firmware had invalid format.
+  kErrorInvalidFormat = 9,
+  // Authentication signing error.
+  kErrorAuthError = 10,
+  // AC power was not connected during update.
+  kErrorPwrEvtAc = 11,
+  // Battery level is too low.
+  kErrorPwrEvtBatt = 12,
+  // Unsatisfied Dependencies.
+  kErrorUnsatisfiedDependencies = 13,
+
+  kMaxValue = kErrorUnsatisfiedDependencies,
+};
+
+// Convert `FwupdLastAttemptStatus` into its associated `UpdateResult`,
+// returning `std::nullopt` in case of error.
+std::optional<UpdateResult> AttemptStatusToUpdateResult(
+    FwupdLastAttemptStatus status);
+
+// Convert `FwupdUpdateState` into its associated `UpdateResult`,
+// returning `std::nullopt` in case of error.
+std::optional<UpdateResult> UpdateStateToUpdateResult(FwupdUpdateState state);
+
+// Send the Firmware Update Result metric.
+//
+// This is an enum metric, see `UpdateResult`.
+//
+// For failed updates, a metric will be sent for each release.
+// The program will not exit early if one release was not successfully
+// sent, however it will return false.
+//
+// Returns true if all metrics were sent successfully,
+// false if any error occurs.
+bool SendFwupMetric(MetricsLibraryInterface& metrics,
+                    const FwupdDeviceHistory& history);
+
 #endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_

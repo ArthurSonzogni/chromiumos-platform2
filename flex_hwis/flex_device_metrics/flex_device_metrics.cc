@@ -6,6 +6,7 @@
 
 #include <unistd.h>
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_enumerator.h>
@@ -374,4 +375,85 @@ std::optional<base::Time> GetFwupMetricTimestamp(
     return std::nullopt;
   }
   return time;
+}
+
+std::optional<UpdateResult> AttemptStatusToUpdateResult(
+    FwupdLastAttemptStatus status) {
+  switch (status) {
+    case FwupdLastAttemptStatus::kSuccess:
+      return UpdateResult::kGenericFailure;
+    case FwupdLastAttemptStatus::kErrorUnsuccessful:
+      return UpdateResult::kErrorUnsuccessful;
+    case FwupdLastAttemptStatus::kErrorInsufficientResources:
+      return UpdateResult::kErrorInsufficientResources;
+    case FwupdLastAttemptStatus::kErrorIncorrectVersion:
+      return UpdateResult::kErrorIncorrectVersion;
+    case FwupdLastAttemptStatus::kErrorInvalidFormat:
+      return UpdateResult::kErrorInvalidFormat;
+    case FwupdLastAttemptStatus::kErrorAuthError:
+      return UpdateResult::kErrorAuthError;
+    case FwupdLastAttemptStatus::kErrorPwrEvtAc:
+      return UpdateResult::kErrorPwrEvtAc;
+    case FwupdLastAttemptStatus::kErrorPwrEvtBatt:
+      return UpdateResult::kErrorPwrEvtBatt;
+    case FwupdLastAttemptStatus::kErrorUnsatisfiedDependencies:
+      return UpdateResult::kErrorUnsatisfiedDependencies;
+  }
+  LOG(ERROR) << "Unexpected value for FwupdLastAttemptStatus: "
+             << static_cast<int>(status);
+  return std::nullopt;
+}
+
+std::optional<UpdateResult> UpdateStateToUpdateResult(FwupdUpdateState state) {
+  switch (state) {
+    case FwupdUpdateState::kUnknown:
+      return UpdateResult::kUnknown;
+    case FwupdUpdateState::kPending:
+      return UpdateResult::kPending;
+    case FwupdUpdateState::kSuccess:
+      return UpdateResult::kSuccess;
+    case FwupdUpdateState::kFailed:
+      LOG(ERROR) << "No associated update result for kFailed update state.";
+      return std::nullopt;
+    case FwupdUpdateState::kNeedsReboot:
+      return UpdateResult::kNeedsReboot;
+    case FwupdUpdateState::kTransient:
+      return UpdateResult::kTransient;
+  }
+  LOG(ERROR) << "Unexpected value for FwupdUpdateState "
+             << static_cast<int>(state);
+  return std::nullopt;
+}
+
+bool SendFwupMetric(MetricsLibraryInterface& metrics,
+                    const FwupdDeviceHistory& history) {
+  if (history.update_state == FwupdUpdateState::kFailed) {
+    bool r = true;
+    for (const std::unique_ptr<FwupdRelease>& release : history.releases) {
+      std::optional<UpdateResult> status =
+          AttemptStatusToUpdateResult(release->last_attempt_status);
+      if (!status.has_value() ||
+          !metrics.SendEnumToUMA("Platform.FlexUefiCapsuleUpdateResult",
+                                 status.value())) {
+        LOG(ERROR)
+            << "Failed to send FlexUefiCapsuleUpdateResult metric for device "
+            << history.name;
+        r = false;
+      }
+    }
+    return r;
+  } else {
+    std::optional<UpdateResult> state =
+        UpdateStateToUpdateResult(history.update_state);
+    if (!state.has_value() ||
+        !metrics.SendEnumToUMA("Platform.FlexUefiCapsuleUpdateResult",
+                               state.value())) {
+      LOG(ERROR)
+          << "Failed to send FlexUefiCapsuleUpdateResult metric for device "
+          << history.name;
+      return false;
+    } else {
+      return true;
+    }
+  }
 }
