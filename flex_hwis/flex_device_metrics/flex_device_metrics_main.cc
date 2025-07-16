@@ -7,6 +7,7 @@
 #include <rootdev/rootdev.h>
 
 #include "flex_hwis/flex_device_metrics/flex_device_metrics.h"
+#include "metrics/metrics_library.h"
 
 namespace {
 
@@ -49,6 +50,27 @@ bool GatherAndSendDiskMetrics(MetricsLibraryInterface& metrics) {
   return true;
 }
 
+// Send each UEFI update history since the last fwup report as UMAs.
+//
+// Returns true on success, false if any error occurs.
+bool GatherAndSendFwupMetrics(MetricsLibraryInterface& metrics) {
+  const auto last_fwup_report =
+      GetAndUpdateFwupMetricTimestamp(base::Time::Now());
+
+  // Fail if the timestamp is invalid. The timestamp file has already
+  // been rewritten, so it should be valid the next time the service runs.
+  if (!last_fwup_report.has_value()) {
+    return false;
+  }
+
+  const auto devices = GetUpdateHistoryFromFwupd();
+  if (!devices.has_value()) {
+    return false;
+  }
+
+  return SendFwupMetrics(metrics, devices.value(), last_fwup_report.value());
+}
+
 }  // namespace
 
 int main() {
@@ -73,6 +95,10 @@ int main() {
   }
 
   if (!MaybeSendInstallMethodMetric(metrics, root, GetInstallState(root))) {
+    rc = EXIT_FAILURE;
+  }
+
+  if (!GatherAndSendFwupMetrics(metrics)) {
     rc = EXIT_FAILURE;
   }
 

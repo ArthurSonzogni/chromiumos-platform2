@@ -88,6 +88,11 @@ BIOS/legacy, Coreboot, 32-bit UEFI, or 64-bit UEFI.
 The `init/upstart/flex_boot_log.conf` upstart script copies the UEFI
 bootloader log (if present) from a UEFI variable to `/var/log`.
 
+## Firmware Update History
+
+ChromeOS Flex enables UEFI firmware updates. This enum metric records
+the results of all UEFI firmware updates.
+
 ## Contributing
 
 ### Testing
