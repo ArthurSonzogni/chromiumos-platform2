@@ -323,3 +323,32 @@ bool ParseFwupHistoriesFromJson(std::string_view history_json,
   }
   return true;
 }
+
+bool RecordFwupMetricTimestamp(const base::FilePath& last_fwup_report,
+                               base::Time time) {
+  if (!base::WriteFile(base::FilePath(last_fwup_report),
+                       base::ToString(time).append("\n"))) {
+    LOG(ERROR) << "Failed to write timestamp of last fwup history metric "
+                  "submission to "
+               << last_fwup_report;
+    return false;
+  }
+  return true;
+}
+
+std::optional<base::Time> GetFwupMetricTimestamp(
+    const base::FilePath& last_fwup_report) {
+  std::string time_str;
+  if (!base::ReadFileToString(base::FilePath(last_fwup_report), &time_str)) {
+    LOG(ERROR) << "Failed to read fwup history metric timestamp from "
+               << last_fwup_report;
+    return std::nullopt;
+  }
+  base::Time time;
+  base::TrimWhitespaceASCII(time_str, base::TRIM_TRAILING, &time_str);
+  if (!base::Time::FromString(time_str.c_str(), &time)) {
+    LOG(ERROR) << "Failed to convert string to fwup history metric timestamp.";
+    return std::nullopt;
+  }
+  return time;
+}

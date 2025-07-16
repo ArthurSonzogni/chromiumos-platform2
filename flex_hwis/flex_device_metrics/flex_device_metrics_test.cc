@@ -4,6 +4,7 @@
 
 #include "flex_hwis/flex_device_metrics/flex_device_metrics.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -12,6 +13,8 @@
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+
+#include "base/time/time.h"
 
 using testing::Return;
 using testing::StrictMock;
@@ -481,4 +484,46 @@ TEST(FlexFwupHistoryMetrics, ReturnFalseOnFailedConversion) {
 
   std::vector<FwupdDeviceHistory> histories;
   EXPECT_FALSE(ParseFwupHistoriesFromJson(test_json, histories));
+}
+
+TEST(FlexFwupHistoryMetrics, RecordAndGetTimestampFromFS) {
+  base::ScopedTempDir temp_dir;
+  CHECK(temp_dir.CreateUniqueTempDir());
+  base::FilePath last_fwup_report_file =
+      temp_dir.GetPath().Append("last_fwup_report");
+  EXPECT_TRUE(RecordFwupMetricTimestamp(last_fwup_report_file,
+                                        base::Time::UnixEpoch()));
+
+  std::string time_str;
+  ASSERT_TRUE(base::ReadFileToString(last_fwup_report_file, &time_str));
+  EXPECT_EQ(time_str, "1970-01-01 00:00:00.000000 UTC\n");
+
+  EXPECT_EQ(GetFwupMetricTimestamp(last_fwup_report_file),
+            base::Time::UnixEpoch());
+}
+
+TEST(FlexFwupHistoryMetrics, RecordTimestampFailsWhenWriteFileFails) {
+  base::ScopedTempDir temp_dir;
+  CHECK(temp_dir.CreateUniqueTempDir());
+  base::FilePath nonexistent_file =
+      temp_dir.GetPath().Append("nonexistent/file");
+  EXPECT_FALSE(
+      RecordFwupMetricTimestamp(nonexistent_file, base::Time::UnixEpoch()));
+}
+
+TEST(FlexFwupHistoryMetrics, GetTimestampFailsWhenReadFileFails) {
+  base::ScopedTempDir temp_dir;
+  CHECK(temp_dir.CreateUniqueTempDir());
+  base::FilePath nonexistent_file =
+      temp_dir.GetPath().Append("nonexistent_file");
+  EXPECT_EQ(GetFwupMetricTimestamp(nonexistent_file), std::nullopt);
+}
+
+TEST(FlexFwupHistoryMetrics, GetTimestampFailsWhenFromStringFails) {
+  base::ScopedTempDir temp_dir;
+  CHECK(temp_dir.CreateUniqueTempDir());
+  base::FilePath last_fwup_report_file =
+      temp_dir.GetPath().Append("last_fwup_report");
+  ASSERT_TRUE(base::WriteFile(last_fwup_report_file, "invalid string"));
+  EXPECT_EQ(GetFwupMetricTimestamp(last_fwup_report_file), std::nullopt);
 }

@@ -283,4 +283,20 @@ struct FwupdDeviceHistory {
 bool ParseFwupHistoriesFromJson(std::string_view history_json,
                                 std::vector<FwupdDeviceHistory>& histories);
 
+// Filepath to record the last time fwup history metrics were sent.
+inline constexpr std::string_view kFwupTimestampFile =
+    "/run/flex_device_metrics/last_fwup_report";
+
+// Records the current time to file.
+//
+// Returns true on success, false if any error occurs.
+bool RecordFwupMetricTimestamp(
+    const base::FilePath& last_fwup_report = base::FilePath(kFwupTimestampFile),
+    base::Time time = base::Time::UnixEpoch());
+
+// Gets the timestamp stored in file.
+std::optional<base::Time> GetFwupMetricTimestamp(
+    const base::FilePath& last_fwup_report =
+        base::FilePath(kFwupTimestampFile));
+
 #endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_
