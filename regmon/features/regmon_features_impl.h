@@ -15,7 +15,7 @@ class RegmonFeaturesImpl : public RegmonFeatures {
  public:
   static constexpr VariationsFeature kRegmonPolicyMonitoringEnabled = {
       .name = "CrOSLateBootRegmonPolicyMonitoringEnabled",
-      .default_state = FEATURE_DISABLED_BY_DEFAULT,
+      .default_state = FEATURE_ENABLED_BY_DEFAULT,
   };
 
   explicit RegmonFeaturesImpl(feature::PlatformFeaturesInterface* features_lib);
