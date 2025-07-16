@@ -36,6 +36,7 @@ using mojom::TouchPoint;
 using mojom::TouchPointPtr;
 using ::testing::_;
 using ::testing::IsEmpty;
+using ::testing::WithArg;
 using LanguageDetectonResult =
     std::vector<on_device_model::LanguageDetector::TextLanguage>;
 
@@ -117,7 +118,8 @@ class MantisProcessorTest : public testing::Test {
             cros_safety::mojom::SafetyClassifierVerdict::kPass));
   }
 
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   testing::NiceMock<MetricsLibraryMock> metrics_lib_;
   odml::PeriodicMetrics periodic_metrics_{raw_ref(metrics_lib_)};
   mojo::Remote<mojom::MantisProcessor> processor_remote_;
@@ -320,6 +322,45 @@ TEST_F(MantisProcessorTest, InpaintingSucceeds) {
   auto result = result_future.Take();
   ASSERT_TRUE(result->is_result_image());
   EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
+TEST_F(MantisProcessorTest, LatencyMetricOnlyIncludesInferenceTime) {
+  MantisProcessor processor = InitializeMantisProcessor(
+      {.processor = kFakeProcessorPtr, .segmenter = 0}, fake::GetMantisApi());
+  EXPECT_CALL(
+      metrics_lib_,
+      SendTimeToUMA("Platform.MantisService.Latency.ClassifyImageSafety", _, _,
+                    _, _))
+      .Times(4);
+  // Simulate long latency when sending a metric, with instant inference time.
+  // This is easier to set than having a custom fake MantisApi due to C function
+  // pointer limitation on capturing variables.
+  const base::TimeDelta kSendMetricLatency = base::Seconds(10);
+  EXPECT_CALL(
+      metrics_lib_,
+      SendTimeToUMA("Platform.MantisService.Latency.Inpainting",
+                    // Expect 0 duration sent for instant inference time.
+                    base::Seconds(0), _, _, _))
+      .Times(2)
+      .WillRepeatedly(WithArg<1>([&](base::TimeDelta sample) {
+        // Simulate long latency when sending a metric.
+        task_environment_.FastForwardBy(kSendMetricLatency);
+        return true;
+      }));
+
+  // Call Inpainting twice, back-to-back. This ensures queue time is not
+  // included in the latency metric as well.
+  TestFuture<mojom::MantisResultPtr> result_future1, result_future2;
+  processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
+                       result_future1.GetCallback());
+  processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
+                       result_future2.GetCallback());
+
+  // Wait for both asynchronous calls to complete and check results.
+  auto result1 = result_future1.Take();
+  auto result2 = result_future2.Take();
+  ASSERT_TRUE(result1->is_result_image());
+  ASSERT_TRUE(result2->is_result_image());
 }
 
 TEST_F(MantisProcessorTest, OutpaintingSucceeds) {

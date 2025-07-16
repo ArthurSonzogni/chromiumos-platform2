@@ -217,6 +217,8 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
       .process_func = base::BindOnce(
           [](const MantisAPI* api, MantisComponent component,
              MantisProcess* process) -> ProcessFuncResult {
+            odml::PerformanceTimer::Ptr timer =
+                odml::PerformanceTimer::Create();
             InpaintingResult lib_result =
                 api->Inpainting(component.processor, process->image,
                                 process->mask, process->seed);
@@ -229,12 +231,12 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
             return ProcessFuncResult{
                 .image = lib_result.image,
                 .generated_region = lib_result.generated_region,
+                .timer = std::move(timer),
             };
           },
           api_, component_),
       .time_metric = TimeMetric::kInpaintingLatency,
       .generated_image_type_metric = ImageGenerationType::kInpainting,
-      .timer = odml::PerformanceTimer::Create(),
   }));
 }
 
@@ -252,6 +254,8 @@ void MantisProcessor::Outpainting(const std::vector<uint8_t>& image,
       .process_func = base::BindOnce(
           [](const MantisAPI* api, MantisComponent component,
              MantisProcess* process) -> ProcessFuncResult {
+            odml::PerformanceTimer::Ptr timer =
+                odml::PerformanceTimer::Create();
             OutpaintingResult lib_result =
                 api->Outpainting(component.processor, process->image,
                                  process->mask, process->seed);
@@ -263,12 +267,12 @@ void MantisProcessor::Outpainting(const std::vector<uint8_t>& image,
             return ProcessFuncResult{
                 .image = lib_result.image,
                 .generated_region = lib_result.generated_region,
+                .timer = std::move(timer),
             };
           },
           api_, component_),
       .time_metric = TimeMetric::kOutpaintingLatency,
       .generated_image_type_metric = ImageGenerationType::KOutpainting,
-      .timer = odml::PerformanceTimer::Create(),
   }));
 }
 
@@ -312,6 +316,8 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
       .process_func = base::BindOnce(
           [](const MantisAPI* api, MantisComponent component,
              MantisProcess* process) -> ProcessFuncResult {
+            odml::PerformanceTimer::Ptr timer =
+                odml::PerformanceTimer::Create();
             GenerativeFillResult lib_result = api->GenerativeFill(
                 component.processor, process->image, process->mask,
                 process->seed, *process->prompt);
@@ -324,12 +330,12 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
             return ProcessFuncResult{
                 .image = lib_result.image,
                 .generated_region = lib_result.generated_region,
+                .timer = std::move(timer),
             };
           },
           api_, component_),
       .time_metric = TimeMetric::kGenerativeFillLatency,
       .generated_image_type_metric = ImageGenerationType::kGenerativeFill,
-      .timer = odml::PerformanceTimer::Create(),
   });
   if (process->prompt->empty()) {
     // No need to go through detection-translation flow.
@@ -356,7 +362,20 @@ void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
           [](const MantisAPI* api, MantisComponent component,
              const std::vector<uint8_t>& image,
              const std::vector<uint8_t>& prior) {
-            return api->Segmentation(component.segmenter, image, prior);
+            odml::PerformanceTimer::Ptr timer =
+                odml::PerformanceTimer::Create();
+            SegmentationResult lib_result =
+                api->Segmentation(component.segmenter, image, prior);
+            if (lib_result.status != MantisStatus::kOk) {
+              return SegmentationFuncResult{
+                  .error = kMapStatusToError.at(lib_result.status),
+              };
+            }
+
+            return SegmentationFuncResult{
+                .image = lib_result.image,
+                .timer = std::move(timer),
+            };
           },
           api_, component_, image, prior),
       base::BindOnce(&MantisProcessor::OnSegmentationDone,
@@ -364,12 +383,12 @@ void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
                      odml::PerformanceTimer::Create()));
 }
 
-void MantisProcessor::OnSegmentationDone(SegmentationCallback callback,
-                                         odml::PerformanceTimer::Ptr timer,
-                                         const SegmentationResult& lib_result) {
-  if (lib_result.status != MantisStatus::kOk) {
-    std::move(callback).Run(
-        MantisResult::NewError(kMapStatusToError.at(lib_result.status)));
+void MantisProcessor::OnSegmentationDone(
+    SegmentationCallback callback,
+    odml::PerformanceTimer::Ptr timer,
+    const SegmentationFuncResult& lib_result) {
+  if (lib_result.error.has_value()) {
+    std::move(callback).Run(MantisResult::NewError(lib_result.error.value()));
     return;
   }
   SendTimeMetric(*metrics_lib_, TimeMetric::kSegmentationLatency, *timer);
@@ -415,7 +434,7 @@ void MantisProcessor::OnProcessDone(std::unique_ptr<MantisProcess> process,
         .Run(MantisResult::NewError(lib_result.error.value()));
     return;
   }
-  SendTimeMetric(*metrics_lib_, process->time_metric, *process->timer);
+  SendTimeMetric(*metrics_lib_, process->time_metric, *lib_result.timer);
   SendImageGenerationTypeMetric(*metrics_lib_,
                                 process->generated_image_type_metric);
   std::string prompt =

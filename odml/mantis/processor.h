@@ -51,7 +51,15 @@ struct ProcessFuncResult {
   std::optional<mojom::MantisError> error;
   std::vector<uint8_t> image;
   std::vector<uint8_t> generated_region;
+  odml::PerformanceTimer::Ptr timer;
 };
+
+struct SegmentationFuncResult {
+  std::optional<mojom::MantisError> error;
+  std::vector<uint8_t> image;
+  odml::PerformanceTimer::Ptr timer;
+};
+
 // TODO(b/375929152): Use NoDefault for required args.
 struct MantisProcess {
   const std::vector<uint8_t> image;
@@ -64,7 +72,6 @@ struct MantisProcess {
   // Metric info to be used on main thread.
   mantis::TimeMetric time_metric;
   mantis::ImageGenerationType generated_image_type_metric;
-  odml::PerformanceTimer::Ptr timer;
   // Might not be populated
   std::vector<uint8_t> image_result;
   std::vector<uint8_t> generated_region;
@@ -146,7 +153,7 @@ class MantisProcessor : public mojom::MantisProcessor {
 
   void OnSegmentationDone(SegmentationCallback callback,
                           odml::PerformanceTimer::Ptr timer,
-                          const SegmentationResult& lib_result);
+                          const SegmentationFuncResult& lib_result);
 
   void ProcessImage(std::unique_ptr<MantisProcess> process);
 
