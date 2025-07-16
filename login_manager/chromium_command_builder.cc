@@ -591,6 +591,10 @@ void ChromiumCommandBuilder::AddUiFlags() {
     AddFeatureEnableOverride("AvoidDuplicateDelayBeginFrame");
   }
 
+  if (UseFlagIsSet("disable_use_multiple_overlays")) {
+    AddFeatureDisableOverride("UseMultipleOverlays");
+  }
+
   brillo::CrosConfig cros_config;
 
   // Disable LLPrivacy if the cros config was specified.

@@ -8,10 +8,13 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/util.h"
@@ -370,6 +373,62 @@ TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
       "Helper for the Netflix application#2.0.0;application/netflix,"
       "/opt/google/chrome/pepper/other.so#Some other plugin;";
   EXPECT_EQ(kExpected, GetFirstArgWithPrefix("--register-pepper-plugins"));
+}
+
+TEST_F(ChromiumCommandBuilderTest, UseFlagsToFeatures) {
+  const char kEnableFeaturesPrefix[] = "--enable-features=";
+  const char kDisableFeaturesPrefix[] = "--disable-features=";
+
+  use_flags_data_ =
+      "disable_cros_video_decoder\n"
+      "arc_disable_cros_video_decoder\n"
+      "disable_video_decode_batching\n"
+      "reduce_hardware_video_decoder_buffers\n"
+      "drm_atomic\n"
+      "disable_spectre_variant2_mitigation\n"
+      "vulkan_chrome\n"
+      "avoid_duplicate_begin_frames\n"
+      "disable_use_multiple_overlays";
+
+  ASSERT_TRUE(Init());
+  ASSERT_TRUE(builder_.SetUpChromium());
+
+  struct TestCase {
+    const char* feature;
+    bool enable;
+  };
+
+  const std::vector<TestCase> kTestCases = {
+      {"ReduceHardwareVideoDecoderBuffers", true},
+      {"Pepper3DImageChromium", true},
+      {"Vulkan", true},
+      {"DefaultANGLEVulkan", true},
+      {"VulkanFromANGLE", true},
+      {"AvoidDuplicateDelayBeginFrame", true},
+      {"UseChromeOSDirectVideoDecoder", false},
+      {"ArcVideoDecoder", false},
+      {"VideoDecodeBatching", false},
+      {"SpectreVariant2Mitigation", false},
+      {"UseMultipleOverlays", false}};
+
+  auto enable_features = base::SplitString(
+      base::RemovePrefix(GetFirstArgWithPrefix(kEnableFeaturesPrefix),
+                         kEnableFeaturesPrefix)
+          .value(),
+      ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  auto disable_features = base::SplitString(
+      base::RemovePrefix(GetFirstArgWithPrefix(kDisableFeaturesPrefix),
+                         kDisableFeaturesPrefix)
+          .value(),
+      ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+
+  for (const auto& tc : kTestCases) {
+    EXPECT_TRUE(base::Contains(tc.enable ? enable_features : disable_features,
+                               tc.feature))
+        << tc.feature << " is not found.";
+    EXPECT_FALSE(base::Contains(tc.enable ? disable_features : enable_features,
+                                tc.feature));
+  }
 }
 
 }  // namespace ui
