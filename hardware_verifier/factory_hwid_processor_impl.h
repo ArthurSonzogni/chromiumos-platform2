@@ -13,7 +13,6 @@
 
 #include <google/protobuf/repeated_ptr_field.h>
 
-#include "hardware_verifier/encoding_spec_loader.h"
 #include "hardware_verifier/factory_hwid_processor.h"
 #include "hardware_verifier/hardware_verifier.pb.h"
 
@@ -27,7 +26,7 @@ class FactoryHWIDProcessorImpl : public FactoryHWIDProcessor {
   // Factory method to create a |FactoryHWIDProcessorImpl|.
   // Returns |nullptr| if initialization fails.
   static std::unique_ptr<FactoryHWIDProcessorImpl> Create(
-      const EncodingSpecLoader& encoding_spec_loader);
+      const EncodingSpec& encoding_spec);
 
   std::optional<CategoryMapping<std::vector<std::string>>> DecodeFactoryHWID()
       const override;

@@ -20,7 +20,6 @@
 #include <google/protobuf/repeated_ptr_field.h>
 #include <libcrossystem/crossystem.h>
 
-#include "hardware_verifier/encoding_spec_loader.h"
 #include "hardware_verifier/factory_hwid_processor.h"
 #include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/system/context.h"
@@ -163,13 +162,7 @@ ComponentIndexToComponentNames(
 }  // namespace
 
 std::unique_ptr<FactoryHWIDProcessorImpl> FactoryHWIDProcessorImpl::Create(
-    const EncodingSpecLoader& encoding_spec_loader) {
-  auto spec = encoding_spec_loader.Load();
-  if (!spec) {
-    LOG(ERROR) << "Failed to load encoding spec.";
-    return nullptr;
-  }
-
+    const EncodingSpec& encoding_spec) {
   auto hwid = Context::Get()->crossystem()->VbGetSystemPropertyString(
       kCrosSystemHWIDKey);
   if (!hwid.has_value()) {
@@ -184,14 +177,14 @@ std::unique_ptr<FactoryHWIDProcessorImpl> FactoryHWIDProcessorImpl::Create(
     return nullptr;
   }
 
-  auto encoding_pattern = GetEncodingPattern(*decoded_bits, *spec);
+  auto encoding_pattern = GetEncodingPattern(*decoded_bits, encoding_spec);
   if (!encoding_pattern.has_value()) {
     LOG(ERROR) << "Failed to get encoding pattern.";
     return nullptr;
   }
 
   return std::unique_ptr<FactoryHWIDProcessorImpl>(new FactoryHWIDProcessorImpl(
-      *encoding_pattern, *decoded_bits, spec->encoded_fields()));
+      *encoding_pattern, *decoded_bits, encoding_spec.encoded_fields()));
 }
 
 FactoryHWIDProcessorImpl::FactoryHWIDProcessorImpl(

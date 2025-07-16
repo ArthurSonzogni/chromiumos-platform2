@@ -16,40 +16,19 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "hardware_verifier/encoding_spec_loader.h"
 #include "hardware_verifier/test_utils.h"
 
 namespace hardware_verifier {
 namespace {
 
 using runtime_probe::ProbeRequest_SupportCategory;
-using ::testing::_;
-using ::testing::ByMove;
-using ::testing::NiceMock;
-using ::testing::Return;
 using ::testing::UnorderedElementsAre;
-
-class MockEncodingSpecLoader : public EncodingSpecLoader {
- public:
-  MOCK_METHOD(std::unique_ptr<EncodingSpec>, Load, (), (const, override));
-};
 
 class FactoryHWIDProcessorImplTest : public BaseFileTest {
  protected:
   // Sets the HWID returned by crossystem to the given value.
   void SetFactoryHWID(const std::string hwid) {
     mock_context()->fake_crossystem()->VbSetSystemPropertyString("hwid", hwid);
-  }
-
-  std::unique_ptr<FactoryHWIDProcessorImpl> CreateFactoryHWIDProcessor(
-      std::unique_ptr<EncodingSpec> spec) {
-    NiceMock<MockEncodingSpecLoader> mock_encoding_spec_loader;
-    EXPECT_CALL(mock_encoding_spec_loader, Load())
-        .WillOnce(Return(ByMove(std::move(spec))));
-    auto processor =
-        FactoryHWIDProcessorImpl::Create(mock_encoding_spec_loader);
-    CHECK(processor != nullptr);
-    return processor;
   }
 
   EncodingPattern CreateEncodingPattern(
@@ -118,31 +97,18 @@ TEST_F(FactoryHWIDProcessorImplTest, Create_Success) {
   std::vector<EncodingPattern> encoding_patterns = {
       CreateEncodingPattern({0}, {}, {})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, {});
-  NiceMock<MockEncodingSpecLoader> mock_loader;
-  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(ByMove(std::move(spec))));
 
-  auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   EXPECT_NE(processor, nullptr);
-}
-
-TEST_F(FactoryHWIDProcessorImplTest, Create_LoadFailed_Failure) {
-  NiceMock<MockEncodingSpecLoader> mock_loader;
-  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(nullptr));
-
-  auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
-
-  EXPECT_EQ(processor, nullptr);
 }
 
 TEST_F(FactoryHWIDProcessorImplTest, Create_CrossystemFailed_Failure) {
   std::vector<EncodingPattern> encoding_patterns = {
       CreateEncodingPattern({0}, {}, {})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, {});
-  NiceMock<MockEncodingSpecLoader> mock_loader;
-  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(ByMove(std::move(spec))));
 
-  auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   EXPECT_EQ(processor, nullptr);
 }
@@ -152,10 +118,8 @@ TEST_F(FactoryHWIDProcessorImplTest, Create_DecodeHWIDFailed_Failure) {
   std::vector<EncodingPattern> encoding_patterns = {
       CreateEncodingPattern({0}, {}, {})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, {});
-  NiceMock<MockEncodingSpecLoader> mock_loader;
-  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(ByMove(std::move(spec))));
 
-  auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   EXPECT_EQ(processor, nullptr);
 }
@@ -165,10 +129,8 @@ TEST_F(FactoryHWIDProcessorImplTest, Create_HWIDTooShortFailed_Failure) {
   std::vector<EncodingPattern> encoding_patterns = {
       CreateEncodingPattern({0}, {}, {})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, {});
-  NiceMock<MockEncodingSpecLoader> mock_loader;
-  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(ByMove(std::move(spec))));
 
-  auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   EXPECT_EQ(processor, nullptr);
 }
@@ -180,10 +142,8 @@ TEST_F(FactoryHWIDProcessorImplTest, Create_NoMatchingEncodingPattern_Failure) {
   std::vector<EncodingPattern> encoding_patterns = {
       CreateEncodingPattern({1}, {}, {})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, {});
-  NiceMock<MockEncodingSpecLoader> mock_loader;
-  EXPECT_CALL(mock_loader, Load()).WillOnce(Return(ByMove(std::move(spec))));
 
-  auto processor = FactoryHWIDProcessorImpl::Create(mock_loader);
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   EXPECT_EQ(processor, nullptr);
 }
@@ -217,7 +177,7 @@ TEST_F(FactoryHWIDProcessorImplTest, DecodeFactoryHWID_WithoutZeroBits) {
       CreateEncodedField(runtime_probe::ProbeRequest_SupportCategory_wireless,
                          {{0, {"wireless_7_7"}}})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, encoded_fields);
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   auto result = processor->DecodeFactoryHWID();
 
@@ -261,7 +221,7 @@ TEST_F(FactoryHWIDProcessorImplTest, DecodeFactoryHWID_WithZeroBits) {
       CreateEncodedField(runtime_probe::ProbeRequest_SupportCategory_wireless,
                          {{0, {"wireless_7_7"}}})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, encoded_fields);
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   auto result = processor->DecodeFactoryHWID();
 
@@ -289,7 +249,7 @@ TEST_F(FactoryHWIDProcessorImplTest,
       runtime_probe::ProbeRequest_SupportCategory_battery,
       {{0, {"battery_3_3"}}, {1, {"battery_4_4"}}, {2, {"battery_5_5"}}})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, encoded_fields);
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   auto result = processor->DecodeFactoryHWID();
 
@@ -308,7 +268,7 @@ TEST_F(FactoryHWIDProcessorImplTest,
       runtime_probe::ProbeRequest_SupportCategory_camera,
       {{1, {"camera_1_1"}}, {2, {"camera_2_2", "camera_2_2#2"}}})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, encoded_fields);
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   auto result = processor->DecodeFactoryHWID();
 
@@ -330,7 +290,7 @@ TEST_F(FactoryHWIDProcessorImplTest, GetSkipZeroBitCategories) {
            {runtime_probe::ProbeRequest_SupportCategory_cellular, 5}}),
       CreateEncodingPattern({2}, {}, {})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, {});
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   auto result = processor->GetSkipZeroBitCategories();
 
@@ -359,7 +319,7 @@ TEST_F(FactoryHWIDProcessorImplTest, GenerateMaskedFactoryHWID) {
            {runtime_probe::ProbeRequest_SupportCategory_wireless, 13}}),
       CreateEncodingPattern({2}, {}, {})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, {});
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   auto result = processor->GenerateMaskedFactoryHWID();
 
@@ -385,7 +345,7 @@ TEST_F(FactoryHWIDProcessorImplTest, GenerateMaskedFactoryHWID_WithConfigless) {
            {runtime_probe::ProbeRequest_SupportCategory_wireless, 13}}),
       CreateEncodingPattern({2}, {}, {})};
   auto spec = CreateTestEncodingSpec(encoding_patterns, {});
-  auto processor = CreateFactoryHWIDProcessor(std::move(spec));
+  auto processor = FactoryHWIDProcessorImpl::Create(*spec);
 
   auto result = processor->GenerateMaskedFactoryHWID();
 
