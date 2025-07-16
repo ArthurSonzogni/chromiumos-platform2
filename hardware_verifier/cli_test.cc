@@ -3,6 +3,8 @@
  * found in the LICENSE file.
  */
 
+#include "hardware_verifier/cli.h"
+
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -13,7 +15,6 @@
 #include <metrics/metrics_library_mock.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
-#include "hardware_verifier/cli.h"
 #include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/hw_verification_report_getter.h"
 #include "hardware_verifier/mock_hw_verification_report_getter.h"
@@ -57,7 +58,7 @@ class CLITest : public testing::Test {
     // Set everything works by default.
     HwVerificationReport vr;
     vr.set_is_compliant(true);
-    ON_CALL(*mock_vr_getter_, Get(_, _, _))
+    ON_CALL(*mock_vr_getter_, Get(_, _, _, _))
         .WillByDefault(
             DoAll(SetArgPointee<2>(ReportGetterErrorCode::kErrorCodeNoError),
                   Return(vr)));
@@ -81,7 +82,7 @@ class CLITest : public testing::Test {
 TEST_F(CLITest, TestOutput) {
   HwVerificationReport vr;
   vr.set_is_compliant(true);
-  ON_CALL(*mock_vr_getter_, Get(_, _, _))
+  ON_CALL(*mock_vr_getter_, Get(_, _, _, _))
       .WillByDefault(
           DoAll(SetArgPointee<2>(ReportGetterErrorCode::kErrorCodeNoError),
                 Return(vr)));
@@ -105,7 +106,7 @@ TEST_F(CLITest, TestOutput) {
 }
 
 TEST_F(CLITest, TestGetReportFailed) {
-  ON_CALL(*mock_vr_getter_, Get(_, _, _))
+  ON_CALL(*mock_vr_getter_, Get(_, _, _, _))
       .WillByDefault(
           DoAll(SetArgPointee<2>(ReportGetterErrorCode::kErrorCodeProbeFail),
                 Return(std::nullopt)));
@@ -115,7 +116,7 @@ TEST_F(CLITest, TestGetReportFailed) {
 }
 
 TEST_F(CLITest, TestMissingPayloads) {
-  ON_CALL(*mock_vr_getter_, Get(_, _, _))
+  ON_CALL(*mock_vr_getter_, Get(_, _, _, _))
       .WillByDefault(DoAll(
           SetArgPointee<2>(ReportGetterErrorCode::
                                kErrorCodeMissingDefaultHwVerificationSpecFile),
@@ -130,7 +131,7 @@ TEST_F(CLITest, TestVerifyReportSample1) {
                          .Append("verifier_impl_sample_data")
                          .Append("expect_hw_verification_report_1.prototxt");
   const auto& vr = LoadHwVerificationReport(path);
-  ON_CALL(*mock_vr_getter_, Get(_, _, _))
+  ON_CALL(*mock_vr_getter_, Get(_, _, _, _))
       .WillByDefault(
           DoAll(SetArgPointee<2>(ReportGetterErrorCode::kErrorCodeNoError),
                 Return(vr)));
@@ -151,7 +152,7 @@ TEST_F(CLITest, TestVerifyReportSample2) {
                          .Append("verifier_impl_sample_data")
                          .Append("expect_hw_verification_report_2.prototxt");
   const auto& vr = LoadHwVerificationReport(path);
-  ON_CALL(*mock_vr_getter_, Get(_, _, _))
+  ON_CALL(*mock_vr_getter_, Get(_, _, _, _))
       .WillByDefault(
           DoAll(SetArgPointee<2>(ReportGetterErrorCode::kErrorCodeNoError),
                 Return(vr)));

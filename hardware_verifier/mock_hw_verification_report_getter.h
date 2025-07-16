@@ -8,9 +8,9 @@
 
 #include <optional>
 
-#include "hardware_verifier/hw_verification_report_getter.h"
+#include <gmock/gmock.h>
 
-#include "gmock/gmock.h"
+#include "hardware_verifier/hw_verification_report_getter.h"
 
 namespace hardware_verifier {
 
@@ -20,7 +20,8 @@ class MockHwVerificationReportGetter : public HwVerificationReportGetter {
               Get,
               (std::string_view probe_result_file,
                std::string_view hw_verification_spec_file,
-               ErrorCode* error_code),
+               ErrorCode* error_code,
+               RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy),
               (const, override));
 };
 

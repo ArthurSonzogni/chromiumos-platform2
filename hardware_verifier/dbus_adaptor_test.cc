@@ -11,8 +11,8 @@
 #include <vector>
 
 #include <brillo/dbus/mock_dbus_method_response.h>
-#include <google/protobuf/util/message_differencer.h>
 #include <gmock/gmock.h>
+#include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
@@ -61,7 +61,7 @@ class DBusAdaptorTest : public testing::Test {
 TEST_F(DBusAdaptorTest, VerifyComponents_Success) {
   HwVerificationReport vr;
   vr.set_is_compliant(true);
-  ON_CALL(*vr_getter_, Get(_, _, _))
+  ON_CALL(*vr_getter_, Get(_, _, _, _))
       .WillByDefault(
           DoAll(SetArgPointee<2>(ReportGetterErrorCode ::kErrorCodeNoError),
                 Return(vr)));
@@ -90,7 +90,7 @@ TEST_F(DBusAdaptorTest, VerifyComponents_Fail) {
            kErrorCodeProbeResultHwVerificationSpecMisalignment,
        ERROR_PROBE_RESULT_HW_VERIFICATION_SPEC_MISALIGNMENT}};
   for (const auto& [input, output] : testdata) {
-    ON_CALL(*vr_getter_, Get(_, _, _))
+    ON_CALL(*vr_getter_, Get(_, _, _, _))
         .WillByDefault(DoAll(SetArgPointee<2>(input), Return(std::nullopt)));
     std::optional<VerifyComponentsReply> reply;
     auto response =

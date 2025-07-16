@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <optional>
-#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -16,6 +15,8 @@
 #include "hardware_verifier/hw_verification_spec_getter_impl.h"
 #include "hardware_verifier/observer.h"
 #include "hardware_verifier/probe_result_getter_impl.h"
+#include "hardware_verifier/runtime_hwid_generator_impl.h"
+#include "hardware_verifier/runtime_hwid_utils.h"
 #include "hardware_verifier/verifier_impl.h"
 
 namespace hardware_verifier {
@@ -23,12 +24,44 @@ namespace hardware_verifier {
 HwVerificationReportGetterImpl::HwVerificationReportGetterImpl()
     : pr_getter_(std::make_unique<ProbeResultGetterImpl>()),
       vs_getter_(std::make_unique<HwVerificationSpecGetterImpl>()),
-      verifier_(std::make_unique<VerifierImpl>()) {}
+      verifier_(std::make_unique<VerifierImpl>()),
+      runtime_hwid_generator_(RuntimeHWIDGeneratorImpl::Create()) {}
+
+void HwVerificationReportGetterImpl::RefreshRuntimeHWID(
+    RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy,
+    const runtime_probe::ProbeResult& probe_result) const {
+  if (runtime_hwid_generator_ == nullptr) {
+    LOG(ERROR) << "Runtime HWID generator initialization failed. Clean up "
+                  "Runtime HWID.";
+    DeleteRuntimeHWIDFromDevice();
+    return;
+  }
+
+  switch (refresh_runtime_hwid_policy) {
+    case RuntimeHWIDRefreshPolicy::kSkip:
+      break;
+    case RuntimeHWIDRefreshPolicy::kRefresh:
+      if (runtime_hwid_generator_->ShouldGenerateRuntimeHWID(probe_result)) {
+        runtime_hwid_generator_->GenerateToDevice(probe_result);
+      } else {
+        DeleteRuntimeHWIDFromDevice();
+      }
+      break;
+    case RuntimeHWIDRefreshPolicy::kForceGenerate:
+      runtime_hwid_generator_->GenerateToDevice(probe_result);
+      break;
+    default:
+      NOTREACHED()
+          << "Invalid HwVerificationReportGetter::RuntimeHWIDRefreshPolicy: "
+          << static_cast<int>(refresh_runtime_hwid_policy);
+  }
+}
 
 std::optional<HwVerificationReport> HwVerificationReportGetterImpl::Get(
     std::string_view probe_result_file,
     std::string_view hw_verification_spec_file,
-    ErrorCode* out_error_code) const {
+    ErrorCode* out_error_code,
+    RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy) const {
   DVLOG(1) << "Get the verification payload.";
   std::optional<HwVerificationSpec> hw_verification_spec;
   if (hw_verification_spec_file.empty()) {
@@ -86,6 +119,11 @@ std::optional<HwVerificationReport> HwVerificationReportGetterImpl::Get(
       *out_error_code = ErrorCode::kErrorCodeNoError;
     }
   }
+
+  if (verifier_result.has_value()) {
+    RefreshRuntimeHWID(refresh_runtime_hwid_policy, probe_result.value());
+  }
+
   return verifier_result;
 }
 
