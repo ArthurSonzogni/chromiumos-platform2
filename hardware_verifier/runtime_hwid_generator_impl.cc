@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "hardware_verifier/runtime_hwid_generator.h"
+#include "hardware_verifier/runtime_hwid_generator_impl.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -28,6 +28,7 @@
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/factory_hwid_processor.h"
+#include "hardware_verifier/runtime_hwid_generator.h"
 #include "hardware_verifier/system/context.h"
 
 namespace hardware_verifier {
@@ -290,7 +291,7 @@ void HandleNonComponentField(std::string_view field_name,
 
 }  // namespace
 
-std::unique_ptr<RuntimeHWIDGenerator> RuntimeHWIDGenerator::Create(
+std::unique_ptr<RuntimeHWIDGeneratorImpl> RuntimeHWIDGeneratorImpl::Create(
     std::unique_ptr<FactoryHWIDProcessor> factory_hwid_processor,
     const EncodingSpec& encoding_spec) {
   if (factory_hwid_processor == nullptr) {
@@ -306,11 +307,11 @@ std::unique_ptr<RuntimeHWIDGenerator> RuntimeHWIDGenerator::Create(
         static_cast<runtime_probe::ProbeRequest_SupportCategory>(
             waived_category));
   }
-  return std::unique_ptr<RuntimeHWIDGenerator>(new RuntimeHWIDGenerator(
+  return std::unique_ptr<RuntimeHWIDGeneratorImpl>(new RuntimeHWIDGeneratorImpl(
       std::move(factory_hwid_processor), waived_categories));
 }
 
-RuntimeHWIDGenerator::RuntimeHWIDGenerator(
+RuntimeHWIDGeneratorImpl::RuntimeHWIDGeneratorImpl(
     std::unique_ptr<FactoryHWIDProcessor> factory_hwid_processor,
     const std::set<runtime_probe::ProbeRequest_SupportCategory>&
         waived_categories)
@@ -319,7 +320,7 @@ RuntimeHWIDGenerator::RuntimeHWIDGenerator(
   CHECK(factory_hwid_processor_ != nullptr);
 }
 
-bool RuntimeHWIDGenerator::ShouldGenerateRuntimeHWID(
+bool RuntimeHWIDGeneratorImpl::ShouldGenerateRuntimeHWID(
     const runtime_probe::ProbeResult& probe_result) const {
   const auto decode_result = factory_hwid_processor_->DecodeFactoryHWID();
   if (!decode_result.has_value()) {
@@ -358,7 +359,7 @@ bool RuntimeHWIDGenerator::ShouldGenerateRuntimeHWID(
   return false;
 }
 
-std::optional<std::string> RuntimeHWIDGenerator::Generate(
+std::optional<std::string> RuntimeHWIDGeneratorImpl::Generate(
     const runtime_probe::ProbeResult& probe_result) const {
   const auto masked_factory_hwid =
       factory_hwid_processor_->GenerateMaskedFactoryHWID();
@@ -423,7 +424,7 @@ std::optional<std::string> RuntimeHWIDGenerator::Generate(
          runtime_hwid_comp;
 }
 
-bool RuntimeHWIDGenerator::GenerateToDevice(
+bool RuntimeHWIDGeneratorImpl::GenerateToDevice(
     const runtime_probe::ProbeResult& probe_result) const {
   const auto runtime_hwid = Generate(probe_result);
   if (!runtime_hwid.has_value()) {
