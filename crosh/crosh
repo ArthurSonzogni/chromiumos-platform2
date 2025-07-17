@@ -188,7 +188,8 @@ HELP_vsh='
 # shellcheck disable=SC2034
 EXEC_vsh='/usr/bin/vsh'
 cmd_vsh() (
-  if ! is_chrome_feature_enabled "IsCrostiniEnabled"; then
+  if ! is_chrome_feature_enabled "IsCrostiniEnabled" && \
+     ! is_chrome_feature_enabled "IsBruschettaEnabled"; then
     echo "This command is not available."
     return 1
   fi

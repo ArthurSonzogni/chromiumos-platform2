@@ -621,6 +621,7 @@ fn cicerone<'a>(connection: &Connection, timeout: Duration) -> blocking::Proxy<'
 /// privilege. Uses a combination of D-Bus, protobufs, and shell protocols.
 pub struct Methods {
     connection: ConnectionProxy,
+    bruschetta_enabled: Option<VmTypeStatus>,
     crostini_enabled: Option<VmTypeStatus>,
     plugin_vm_enabled: Option<VmTypeStatus>,
 }
@@ -631,6 +632,7 @@ impl Methods {
         let connection = Connection::new_system()?;
         Ok(Methods {
             connection: connection.into(),
+            bruschetta_enabled: None,
             crostini_enabled: None,
             plugin_vm_enabled: None,
         })
@@ -655,6 +657,7 @@ impl Methods {
     pub fn dummy() -> Methods {
         Methods {
             connection: ConnectionProxy::dummy(),
+            bruschetta_enabled: Some(VmTypeStatus::Enabled),
             crostini_enabled: Some(VmTypeStatus::Enabled),
             plugin_vm_enabled: Some(VmTypeStatus::Enabled),
         }
@@ -782,6 +785,31 @@ impl Methods {
         }
     }
 
+    fn check_bruschetta_status(
+        &mut self,
+        user_id_hash: &str,
+    ) -> Result<VmTypeStatus, Box<dyn Error>> {
+        let status = match &self.bruschetta_enabled {
+            Some(value) => value.clone(),
+            None => {
+                let value = self.check_vm_type_status(
+                    user_id_hash,
+                    CHROME_FEATURES_SERVICE_IS_BRUSCHETTA_ENABLED_METHOD,
+                )?;
+                self.bruschetta_enabled = Some(value.clone());
+                value
+            }
+        };
+        Ok(status)
+    }
+
+    fn is_bruschetta_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<dyn Error>> {
+        match self.check_bruschetta_status(user_id_hash)? {
+            VmTypeStatus::Enabled => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
     fn check_crostini_status(
         &mut self,
         user_id_hash: &str,
@@ -890,7 +918,9 @@ impl Methods {
         if self.is_plugin_vm_enabled(user_id_hash)? {
             // Starting the dispatcher will also start concierge.
             self.start_vm_plugin_dispatcher(user_id_hash)
-        } else if self.is_crostini_enabled(user_id_hash)? {
+        } else if self.is_crostini_enabled(user_id_hash)?
+            || self.is_bruschetta_enabled(user_id_hash)?
+        {
             Ok(())
         } else {
             Err(NoVmTechnologyEnabled.into())
