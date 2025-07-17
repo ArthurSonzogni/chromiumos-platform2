@@ -2277,11 +2277,14 @@ bool UpdateAttempter::ScheduleErrorEventAction() {
 
 void UpdateAttempter::ScheduleProcessingStart() {
   LOG(INFO) << "Scheduling an action processor start.";
-  MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(processor_.get())));
+  MessageLoop::current()->PostTask(FROM_HERE,
+                                   base::BindOnce(
+                                       [](ActionProcessor* processor) {
+                                         if (!processor->IsRunning()) {
+                                           processor->StartProcessing();
+                                         }
+                                       },
+                                       base::Unretained(processor_.get())));
 }
 
 void UpdateAttempter::DisableDeltaUpdateIfNeeded() {
