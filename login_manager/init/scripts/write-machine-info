@@ -55,9 +55,24 @@ chmod 0644 "${MACHINE_INFO}"
 
 # Generate the key-value pairs we need, and capture and log errors.
 MACHINE_INFO_ERR=$( {
-  # If we have the Flex ID tool, output a Flex ID, or a serial number if not.
+  # If we have the Flex ID tool, output a Flex ID
+  # plus additional DMI info, or a serial number if not.
   if command -v flex_id_tool >/dev/null; then
     echo "flex_id=\"$(flex_id_tool --type=id)\""
+    sys_vendor_path="/sys/class/dmi/id/sys_vendor"
+    if [ -r "${sys_vendor_path}" ]; then
+      echo "sys_vendor=\"$(cat "${sys_vendor_path}")\""
+    fi
+
+    product_name_path="/sys/class/dmi/id/product_name"
+    if [ -r "${product_name_path}" ]; then
+      echo "product_name=\"$(cat "${product_name_path}")\""
+    fi
+
+    product_version_path="/sys/class/dmi/id/product_version"
+    if [ -r "${product_version_path}" ]; then
+      echo "product_version=\"$(cat "${product_version_path}")\""
+    fi
   else
     echo "serial_number=\"$(serial_number)\""
   fi
