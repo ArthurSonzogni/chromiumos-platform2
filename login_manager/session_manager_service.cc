@@ -251,8 +251,7 @@ bool SessionManagerService::Initialize() {
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
       nss_.get(), chrome_mount_ns_path_, system_utils_, &crossystem_,
       &vpd_process_, &owner_key_, arc_manager_proxy_.get(),
-      &install_attributes_reader_, powerd_dbus_proxy_, system_clock_proxy,
-      fwmp_dbus_proxy_);
+      &install_attributes_reader_, powerd_dbus_proxy_, system_clock_proxy);
   if (!InitializeImpl()) {
     return false;
   }

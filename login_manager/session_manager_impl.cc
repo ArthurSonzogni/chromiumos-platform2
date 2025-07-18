@@ -407,8 +407,7 @@ SessionManagerImpl::SessionManagerImpl(
     ArcManagerProxy* arc_manager,
     InstallAttributesReader* install_attributes_reader,
     dbus::ObjectProxy* powerd_proxy,
-    dbus::ObjectProxy* system_clock_proxy,
-    dbus::ObjectProxy* fwmp_proxy)
+    dbus::ObjectProxy* system_clock_proxy)
     : init_controller_(std::move(init_controller)),
       system_clock_last_sync_info_retry_delay_(
           kSystemClockLastSyncInfoRetryDelay),
@@ -428,7 +427,6 @@ SessionManagerImpl::SessionManagerImpl(
       install_attributes_reader_(install_attributes_reader),
       powerd_proxy_(powerd_proxy),
       system_clock_proxy_(system_clock_proxy),
-      fwmp_proxy_(fwmp_proxy),
       arc_manager_(arc_manager),
       ui_log_symlink_path_(kDefaultUiLogSymlinkPath),
       password_provider_(

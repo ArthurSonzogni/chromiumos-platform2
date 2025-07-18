@@ -170,8 +170,7 @@ class SessionManagerImpl
                      ArcManagerProxy* arc_manager,
                      InstallAttributesReader* install_attributes_reader,
                      dbus::ObjectProxy* powerd_proxy,
-                     dbus::ObjectProxy* system_clock_proxy,
-                     dbus::ObjectProxy* fwmp_proxy);
+                     dbus::ObjectProxy* system_clock_proxy);
   SessionManagerImpl(const SessionManagerImpl&) = delete;
   SessionManagerImpl& operator=(const SessionManagerImpl&) = delete;
 
@@ -434,7 +433,6 @@ class SessionManagerImpl
   InstallAttributesReader* install_attributes_reader_;
   dbus::ObjectProxy* powerd_proxy_;
   dbus::ObjectProxy* system_clock_proxy_;
-  dbus::ObjectProxy* fwmp_proxy_;
   std::unique_ptr<DevicePolicyService> device_policy_;
   std::unique_ptr<UserPolicyServiceFactory> user_policy_factory_;
   std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager_;

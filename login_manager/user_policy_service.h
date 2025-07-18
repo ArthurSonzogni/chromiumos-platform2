@@ -57,9 +57,6 @@ class UserPolicyService : public PolicyService {
   // If non-empty then a copy of |scoped_policy_key_| will be stored at this
   // path, readable by chronos.
   base::FilePath key_copy_path_;
-
-  // Owned by our owner.
-  SystemUtils* system_utils_;
 };
 
 }  // namespace login_manager

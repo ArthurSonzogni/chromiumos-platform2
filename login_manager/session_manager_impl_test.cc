@@ -298,7 +298,7 @@ class SessionManagerImplTest : public ::testing::Test,
         &device_identifier_generator_, &manager_, &metrics_, &nss_,
         std::nullopt, &system_utils_, &crossystem_, &vpd_process_, &owner_key_,
         /*arc_manager=*/nullptr, &install_attributes_reader_,
-        powerd_proxy_.get(), system_clock_proxy_.get(), fwmp_proxy_.get());
+        powerd_proxy_.get(), system_clock_proxy_.get());
 
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
     impl_->SetUiLogSymlinkPathForTesting(log_symlink_);
