@@ -53,7 +53,7 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
       if (di_.file) {
         rv = std::move(di_.file);
       } else {
-        rv = std::make_unique<FileBpfSkeleton>(batch_interval_s);
+        rv = std::make_unique<FileBpfSkeleton>();
       }
       break;
     default:

@@ -218,9 +218,8 @@ absl::StatusOr<int> NetworkBpfSkeleton::FindBpfMapByName(
   return default_bpf_skeleton_->FindBpfMapByName(name);
 }
 
-FileBpfSkeleton::FileBpfSkeleton(uint32_t batch_interval_s,
-                                 std::optional<SkeletonCallbacks<file_bpf>> cbs)
-    : batch_interval_s_(batch_interval_s), weak_ptr_factory_(this) {
+FileBpfSkeleton::FileBpfSkeleton(std::optional<SkeletonCallbacks<file_bpf>> cbs)
+    : weak_ptr_factory_(this) {
   platform_ = GetPlatform();
   SkeletonCallbacks<file_bpf> skel_cbs;
   if (cbs) {

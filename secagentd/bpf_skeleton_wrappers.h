@@ -253,7 +253,6 @@ class NetworkBpfSkeleton : public BpfSkeletonInterface {
 class FileBpfSkeleton : public BpfSkeletonInterface {
  public:
   explicit FileBpfSkeleton(
-      uint32_t batch_interval_s,
       std::optional<SkeletonCallbacks<file_bpf>> cbs = std::nullopt);
   int ConsumeEvent() override;
 
@@ -263,7 +262,6 @@ class FileBpfSkeleton : public BpfSkeletonInterface {
   absl::StatusOr<int> FindBpfMapByName(const std::string& name) override;
 
  private:
-  uint32_t batch_interval_s_;
   std::unique_ptr<BpfSkeleton<file_bpf>> default_bpf_skeleton_;
   base::WeakPtr<PlatformInterface> platform_;
   base::WeakPtrFactory<FileBpfSkeleton> weak_ptr_factory_;
