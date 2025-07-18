@@ -13,7 +13,6 @@
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/factory_hwid_processor.h"
-#include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/runtime_hwid_generator.h"
 
 namespace hardware_verifier {
@@ -25,9 +24,7 @@ class RuntimeHWIDGeneratorImpl : public RuntimeHWIDGenerator {
 
   // Factory method to create a |RuntimeHWIDGeneratorImpl|.
   // Returns |nullptr| if initialization fails.
-  static std::unique_ptr<RuntimeHWIDGeneratorImpl> Create(
-      std::unique_ptr<FactoryHWIDProcessor> factory_hwid_processor,
-      const EncodingSpec& encoding_spec);
+  static std::unique_ptr<RuntimeHWIDGeneratorImpl> Create();
 
   bool ShouldGenerateRuntimeHWID(
       const runtime_probe::ProbeResult& probe_result) const override;
@@ -38,12 +35,13 @@ class RuntimeHWIDGeneratorImpl : public RuntimeHWIDGenerator {
   bool GenerateToDevice(
       const runtime_probe::ProbeResult& probe_result) const override;
 
- private:
+ protected:
   explicit RuntimeHWIDGeneratorImpl(
       std::unique_ptr<FactoryHWIDProcessor> factory_hwid_processor,
       const std::set<runtime_probe::ProbeRequest_SupportCategory>&
           waived_categories);
 
+ private:
   std::unique_ptr<FactoryHWIDProcessor> factory_hwid_processor_;
   const std::set<runtime_probe::ProbeRequest_SupportCategory>
       waived_categories_;

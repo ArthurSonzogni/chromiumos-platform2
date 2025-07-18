@@ -27,7 +27,9 @@
 #include <re2/re2.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
+#include "hardware_verifier/encoding_spec_loader.h"
 #include "hardware_verifier/factory_hwid_processor.h"
+#include "hardware_verifier/factory_hwid_processor_impl.h"
 #include "hardware_verifier/runtime_hwid_generator.h"
 #include "hardware_verifier/system/context.h"
 
@@ -291,14 +293,22 @@ void HandleNonComponentField(std::string_view field_name,
 
 }  // namespace
 
-std::unique_ptr<RuntimeHWIDGeneratorImpl> RuntimeHWIDGeneratorImpl::Create(
-    std::unique_ptr<FactoryHWIDProcessor> factory_hwid_processor,
-    const EncodingSpec& encoding_spec) {
+std::unique_ptr<RuntimeHWIDGeneratorImpl> RuntimeHWIDGeneratorImpl::Create() {
+  EncodingSpecLoader encoding_spec_loader;
+  const auto& encoding_spec = encoding_spec_loader.Load();
+  if (encoding_spec == nullptr) {
+    LOG(ERROR) << "Failed to load the encoding spec.";
+    return nullptr;
+  }
+
+  auto factory_hwid_processor =
+      FactoryHWIDProcessorImpl::Create(*encoding_spec);
   if (factory_hwid_processor == nullptr) {
     return nullptr;
   }
+
   std::set<runtime_probe::ProbeRequest_SupportCategory> waived_categories;
-  for (const auto& waived_category : encoding_spec.waived_categories()) {
+  for (const auto& waived_category : encoding_spec->waived_categories()) {
     if (!runtime_probe::ProbeRequest_SupportCategory_IsValid(waived_category)) {
       LOG(ERROR) << "Got invalid category: " << waived_category;
       continue;

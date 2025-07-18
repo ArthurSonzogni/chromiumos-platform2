@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/hash/sha1.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/hwid/hwid_utils.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -21,6 +22,7 @@
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/factory_hwid_processor.h"
+#include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/runtime_hwid_generator.h"
 #include "hardware_verifier/test_utils.h"
 
@@ -46,6 +48,16 @@ class MockFactoryHWIDProcessor : public FactoryHWIDProcessor {
               GenerateMaskedFactoryHWID,
               (),
               (const, override));
+};
+
+class RuntimeHWIDGeneratorImplForTesting : public RuntimeHWIDGeneratorImpl {
+ public:
+  explicit RuntimeHWIDGeneratorImplForTesting(
+      std::unique_ptr<FactoryHWIDProcessor> factory_hwid_processor,
+      const std::set<runtime_probe::ProbeRequest_SupportCategory>&
+          waived_categories)
+      : RuntimeHWIDGeneratorImpl(std::move(factory_hwid_processor),
+                                 waived_categories) {}
 };
 
 class RuntimeHWIDGeneratorImplTest : public BaseFileTest {
@@ -141,20 +153,6 @@ class RuntimeHWIDGeneratorImplTest : public BaseFileTest {
       mock_factory_hwid_processor_;
 };
 
-TEST_F(RuntimeHWIDGeneratorImplTest, Create_Success) {
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
-      std::move(mock_factory_hwid_processor_), {});
-
-  EXPECT_NE(generator, nullptr);
-}
-
-TEST_F(RuntimeHWIDGeneratorImplTest,
-       Create_FactoryHWIDProcessorIsNull_Failure) {
-  auto generator = RuntimeHWIDGeneratorImpl::Create(nullptr, {});
-
-  EXPECT_EQ(generator, nullptr);
-}
-
 TEST_F(RuntimeHWIDGeneratorImplTest,
        ShouldGenerateRuntimeHWID_WithComponentDiff_ShouldReturnTrue) {
   SetModelName("MODEL");
@@ -163,13 +161,13 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_2");
 
-  EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -180,7 +178,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
@@ -188,7 +186,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   auto* unidentified_comp = probe_result.add_storage();
   unidentified_comp->set_name(kGenericComponent);
 
-  EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -196,10 +194,10 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   CategoryMapping<std::vector<std::string>> factory_hwid = {};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
-  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID({}));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID({}));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -216,7 +214,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
@@ -229,7 +227,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
                                                 "MODEL_stylus_4_4#5", "stylus");
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "INVALID_FORMAT_2");
 
-  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -241,14 +239,14 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_camera_1_1#2");
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_camera_2_2#4");
 
-  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -260,14 +258,14 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1");
   AddProbeComponent<runtime_probe::Memory>(&probe_result, "MODEL_dram_3_3");
 
-  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -278,14 +276,14 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_2",
                                             "storage", "MODEL_storage_1");
 
-  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -301,7 +299,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
       .WillOnce(Return(factory_hwid));
   EXPECT_CALL(*mock_factory_hwid_processor_, GetSkipZeroBitCategories())
       .WillOnce(Return(skip_zero_bit_categories));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
@@ -309,7 +307,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   auto* unidentified_comp = probe_result.add_battery();
   unidentified_comp->set_name(kGenericComponent);
 
-  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -321,18 +319,17 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  EncodingSpec encoding_spec;
-  encoding_spec.add_waived_categories(
-      runtime_probe::ProbeRequest_SupportCategory_battery);
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
-      std::move(mock_factory_hwid_processor_), encoding_spec);
+  std::set<runtime_probe::ProbeRequest_SupportCategory> waived_categories = {
+      runtime_probe::ProbeRequest_SupportCategory_battery};
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
+      std::move(mock_factory_hwid_processor_), waived_categories);
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1");
   auto* unidentified_comp = probe_result.add_battery();
   unidentified_comp->set_name(kGenericComponent);
 
-  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -341,14 +338,14 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Edid>(&probe_result,
                                          "MODEL_display_panel_1");
 
-  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -357,14 +354,14 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
   auto* unidentified_comp = probe_result.add_display_panel();
   unidentified_comp->set_name(kGenericComponent);
 
-  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -376,12 +373,12 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
 
-  EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -393,13 +390,13 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Edid>(&probe_result, "display_panel_2");
 
-  EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -410,13 +407,13 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_camera_2_2");
 
-  EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -427,13 +424,13 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_video_2_2");
 
-  EXPECT_TRUE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -441,11 +438,11 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   SetModelName("MODEL");
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(std::nullopt));
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
   runtime_probe::ProbeResult probe_result;
 
-  EXPECT_FALSE(generator->ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest, Generate) {
@@ -454,7 +451,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest, Generate) {
   SetFeatureManagement(
       segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
       segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
@@ -481,7 +478,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest, Generate) {
   AddProbeComponent<runtime_probe::Edid>(&probe_result, "display_panel_11_11",
                                          "", "", "11");
 
-  auto res = generator->Generate(probe_result);
+  auto res = generator.Generate(probe_result);
 
   EXPECT_EQ(res, "MODEL-RLZ A2A R:1-1-2-6-11-4-5-3-7-8-10-9-1");
 }
@@ -492,7 +489,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest, Generate_WithUnidentifiedComponent) {
   SetFeatureManagement(
       segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
       segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
@@ -509,7 +506,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest, Generate_WithUnidentifiedComponent) {
   unidentified_comp2->set_name(kGenericComponent);
   unidentified_comp3->set_name(kGenericComponent);
 
-  auto res = generator->Generate(probe_result);
+  auto res = generator.Generate(probe_result);
 
   EXPECT_EQ(res, "MODEL-RLZ A2A R:1-1-2,?-5,6,?,?-X-X-X-X-X-X-X-X-X");
 }
@@ -520,17 +517,15 @@ TEST_F(RuntimeHWIDGeneratorImplTest, Generate_WithSkipComponent) {
   SetFeatureManagement(
       segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
       segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
-  EncodingSpec encoding_spec;
-  encoding_spec.add_waived_categories(
-      runtime_probe::ProbeRequest_SupportCategory_battery);
-  encoding_spec.add_waived_categories(
-      runtime_probe::ProbeRequest_SupportCategory_dram);
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
-      std::move(mock_factory_hwid_processor_), encoding_spec);
+  std::set<runtime_probe::ProbeRequest_SupportCategory> waived_categories = {
+      runtime_probe::ProbeRequest_SupportCategory_battery,
+      runtime_probe::ProbeRequest_SupportCategory_dram};
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
+      std::move(mock_factory_hwid_processor_), waived_categories);
 
   runtime_probe::ProbeResult probe_result;
 
-  auto res = generator->Generate(probe_result);
+  auto res = generator.Generate(probe_result);
 
   EXPECT_EQ(res, "MODEL-RLZ A2A R:1-1-#-X-X-X-X-X-#-X-X-X-X");
 }
@@ -542,7 +537,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   SetFeatureManagement(
       segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
       segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
@@ -557,7 +552,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   unidentified_comp1->set_name(kGenericComponent);
   unidentified_comp2->set_name(kGenericComponent);
 
-  auto res = generator->Generate(probe_result);
+  auto res = generator.Generate(probe_result);
 
   EXPECT_EQ(res, "MODEL-RLZ A2A R:1-1-X-1,9,100,?,?-X-X-X-X-X-X-X-X-X");
 }
@@ -569,12 +564,12 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   SetFeatureManagement(
       segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
       segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
 
-  auto res = generator->Generate(probe_result);
+  auto res = generator.Generate(probe_result);
 
   EXPECT_EQ(res, std::nullopt);
 }
@@ -586,14 +581,14 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   SetFeatureManagement(
       segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
       segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "camera_5_5", "", "",
                                            "invalid-position");
 
-  auto res = generator->Generate(probe_result);
+  auto res = generator.Generate(probe_result);
 
   EXPECT_EQ(res, std::nullopt);
 }
@@ -604,7 +599,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest, GenerateToDevice_Success) {
   SetFeatureManagement(
       segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
       segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
@@ -631,7 +626,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest, GenerateToDevice_Success) {
   AddProbeComponent<runtime_probe::Edid>(&probe_result, "display_panel_11_11",
                                          "", "", "11");
 
-  EXPECT_TRUE(generator->GenerateToDevice(probe_result));
+  EXPECT_TRUE(generator.GenerateToDevice(probe_result));
 
   std::string file_content;
   std::string expected_file_content =
@@ -653,10 +648,10 @@ TEST_F(RuntimeHWIDGeneratorImplTest, GenerateToDevice_GenerateFailed_Failure) {
   SetFeatureManagement(
       segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
       segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
-  EXPECT_FALSE(generator->GenerateToDevice({}));
+  EXPECT_FALSE(generator.GenerateToDevice({}));
 
   const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
   EXPECT_FALSE(base::PathExists(runtime_hwid_path));
@@ -668,14 +663,77 @@ TEST_F(RuntimeHWIDGeneratorImplTest, GenerateToDevice_WriteFileFailed_Failure) {
   SetFeatureManagement(
       segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
       segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
-  auto generator = RuntimeHWIDGeneratorImpl::Create(
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
   // Make the path a directory to make the file unwritable.
   const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
   ASSERT_TRUE(base::CreateDirectory(runtime_hwid_path));
 
-  EXPECT_FALSE(generator->GenerateToDevice({}));
+  EXPECT_FALSE(generator.GenerateToDevice({}));
+}
+
+class RuntimeHWIDGeneratorImplCreateTest : public RuntimeHWIDGeneratorImplTest {
+ protected:
+  void SetCrosDebug(bool is_enabled) {
+    mock_context()->fake_crossystem()->VbSetSystemPropertyInt(
+        "cros_debug", static_cast<int>(is_enabled));
+  }
+
+  void SetFactoryHWID(const std::string hwid) {
+    mock_context()->fake_crossystem()->VbSetSystemPropertyString("hwid", hwid);
+  }
+
+  std::string ConstructHWID(const std::string& prefix,
+                            const std::string& expected_decoded_bits) {
+    auto encoded_hwid = brillo::hwid::EncodeHWID(prefix, expected_decoded_bits);
+    CHECK(encoded_hwid.has_value());
+    return encoded_hwid.value();
+  }
+};
+
+TEST_F(RuntimeHWIDGeneratorImplCreateTest, Success) {
+  EncodingPattern encoding_pattern;
+  encoding_pattern.add_image_ids(0);
+  EncodingSpec encoding_spec;
+  encoding_spec.add_encoding_patterns()->CopyFrom(encoding_pattern);
+  SetCrosDebug(false);
+  SetModelName("TESTMODEL");
+  SetFile({"etc/runtime_probe", "TESTMODEL", "encoding_spec.pb"},
+          encoding_spec.SerializeAsString());
+  std::string decoded_bits = "0000000";
+  SetFactoryHWID(ConstructHWID("TESTMODEL", decoded_bits));
+
+  auto generator = RuntimeHWIDGeneratorImpl::Create();
+
+  EXPECT_NE(generator, nullptr);
+}
+
+TEST_F(RuntimeHWIDGeneratorImplCreateTest, EncodingSpecLoadFailed_Failure) {
+  SetCrosDebug(false);
+  SetModelName("TESTMODEL");
+  std::string decoded_bits = "0000000";
+  SetFactoryHWID(ConstructHWID("TESTMODEL", decoded_bits));
+
+  auto generator = RuntimeHWIDGeneratorImpl::Create();
+
+  EXPECT_EQ(generator, nullptr);
+}
+
+TEST_F(RuntimeHWIDGeneratorImplCreateTest,
+       FactoryHWIDProcessorCreateFailed_Failure) {
+  EncodingPattern encoding_pattern;
+  encoding_pattern.add_image_ids(0);
+  EncodingSpec encoding_spec;
+  encoding_spec.add_encoding_patterns()->CopyFrom(encoding_pattern);
+  SetCrosDebug(false);
+  SetModelName("TESTMODEL");
+  SetFile({"etc/runtime_probe", "TESTMODEL", "encoding_spec.pb"},
+          encoding_spec.SerializeAsString());
+
+  auto generator = RuntimeHWIDGeneratorImpl::Create();
+
+  EXPECT_EQ(generator, nullptr);
 }
 
 }  // namespace
