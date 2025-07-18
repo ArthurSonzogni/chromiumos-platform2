@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace base {
 class FilePath;
@@ -40,6 +41,19 @@ extern const char kProcessStatmFile[];
 extern const char kProcessStatusFile[];
 extern const char kProcessIOFile[];
 
+// Information collected from /proc/PID/smaps.
+// The crosvm guest information is computed by looking at memory regions
+// marked as "*/memfd:crosvm_guest*".
+struct ProcSmaps {
+  // Total RSS size of the crosvm guest in bytes.
+  int64_t crosvm_guest_rss = 0;
+  // Total swap size of the crosvm guest in byptes.
+  int64_t crosvm_guest_swap = 0;
+
+  // Used to check if any bits of information is collected.
+  bool operator==(const ProcSmaps& other) const = default;
+};
+
 // Returns an absolute path to the procfs subdirectory containing files related
 // to the process with ID |pid|. On a real device, this will be /proc/|pid|.
 base::FilePath GetProcProcessDirectoryPath(const base::FilePath& root_dir,
@@ -61,9 +75,24 @@ base::FilePath GetProcUptimePath(const base::FilePath& root_dir);
 // this will be /proc/crypto.
 base::FilePath GetProcCryptoPath(const base::FilePath& root_dir);
 
+// Gets the PID of ARCVM by traversing /proc/*/cmdline.
+// Returns nullopt on error.
+//
+// Other approaches were considered but those didn't work:
+// 1) Ask concierge to return the PID of crosvm
+//    Didn't work because concierge is running in a PID namespace.
+// 2) Ask concierge to read crosvm's smaps file
+//    Didn't work because concierge does not have CAP_SYS_PTRACE
+//    which is required to read smaps files.
+std::optional<int> GetArcVmPid(const base::FilePath& root_dir);
+
 // Gets the total memory size as bytes from /proc/iomem content.
 // Returns std::nullopt on error.
-std::optional<uint64_t> ParseIomemContent(const std::string& content);
+std::optional<uint64_t> ParseIomemContent(std::string_view content);
+
+// Gets the memory information from /proc/PID/smaps content.
+// Returns std::nullopt on error or no information is collected.
+std::optional<ProcSmaps> ParseProcSmaps(std::string_view content);
 
 }  // namespace diagnostics
 

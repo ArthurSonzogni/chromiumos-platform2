@@ -6,8 +6,14 @@
 
 #include <sys/types.h>
 
+#include <optional>
+
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <gtest/gtest.h>
+
+#include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/file_utils.h"
 
 namespace diagnostics {
 namespace {
@@ -41,6 +47,38 @@ TEST(ProcfsUtilsTest, GetProcUptimePath) {
   EXPECT_EQ(uptime_path.value(), "/proc/uptime");
 }
 
+TEST(ProcfsUtilsTest, GetArcVmPidEmpty) {
+  ScopedRootDirOverrides overrides;
+  EXPECT_EQ(GetArcVmPid(GetRootDir()), std::nullopt);
+}
+
+TEST(ProcfsUtilsTest, GetArcVmPidNoCrosvm) {
+  ScopedRootDirOverrides overrides;
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetRootDir().Append("proc/1/cmdline"), "/sbin/init"));
+  EXPECT_EQ(GetArcVmPid(GetRootDir()), std::nullopt);
+}
+
+TEST(ProcfsUtilsTest, GetArcVmPidFound) {
+  ScopedRootDirOverrides overrides;
+  const char cmdline[] = "/usr/bin/crosvm\0--syslog-tag\0ARCVM(32)";
+  ASSERT_TRUE(
+      WriteFileAndCreateParentDirs(GetRootDir().Append("proc/2/cmdline"),
+                                   std::string(cmdline, sizeof(cmdline) - 1)));
+  auto pid = GetArcVmPid(GetRootDir());
+  ASSERT_TRUE(pid.has_value());
+  EXPECT_EQ(*pid, 2);
+}
+
+TEST(ProcfsUtilsTest, GetArcVmPidAnotherVM) {
+  ScopedRootDirOverrides overrides;
+  const char cmdline[] = "/usr/bin/crosvm\0--syslog-tag\0VM(32)";
+  ASSERT_TRUE(
+      WriteFileAndCreateParentDirs(GetRootDir().Append("proc/2/cmdline"),
+                                   std::string(cmdline, sizeof(cmdline) - 1)));
+  EXPECT_EQ(GetArcVmPid(GetRootDir()), std::nullopt);
+}
+
 TEST(ProcfsUtilsTest, IomemSuccess_Intel) {
   const std::string kContent = R"(
 00000000-00000fff : Unknown E820 type
@@ -56,7 +94,7 @@ ff000000-ffffffff : INT0800:00
   ASSERT_TRUE(memory_info.has_value());
   // Sum of "System RAM" ranges:
   // 0x9ffff-0x1000+1 + 0x99a29fff-0x100000+1 + 0x25e7fffff-0x100000000+1
-  EXPECT_EQ(8457588736, *memory_info);
+  EXPECT_EQ(*memory_info, 8457588736);
 }
 
 TEST(ProcfsUtilsTest, IomemSuccess_ARM) {
@@ -77,7 +115,7 @@ c0000000-ffdfffff : System RAM
   auto memory_info = ParseIomemContent(kContent);
   ASSERT_TRUE(memory_info.has_value());
   // Sum of "System RAM" ranges:
-  EXPECT_EQ(8419000320, *memory_info);
+  EXPECT_EQ(*memory_info, 8419000320);
 }
 
 TEST(ProcfsUtilsTest, IomemEmpty) {
@@ -113,6 +151,79 @@ TEST(ProcfsUtilsTest, IomemIncorrectlyFormattedRanges) {
 
   auto memory_info = ParseIomemContent(kContent);
   EXPECT_FALSE(memory_info.has_value());
+}
+
+TEST(ProcfsUtilsTest, SmapsEmpty) {
+  const std::string kContent = "";
+
+  auto smaps = ParseProcSmaps(kContent);
+  EXPECT_FALSE(smaps.has_value());
+}
+
+TEST(ProcfsUtilsTest, SmapsNoArcVmGuest) {
+  const std::string kContent = R"(
+56ad6eb41000-56ad6f91e000 r-xp 00000000 b3:03 21058    /usr/bin/crosvm
+Size:              14196 kB
+Rss:                2940 kB
+Swap:                  0 kB
+56ad6f91e000-56ad6f9b5000 r--p 00ddc000 b3:03 21058    /usr/bin/crosvm
+Size:                604 kB
+Rss:                 120 kB
+Swap:                484 kB
+)";
+
+  auto smaps = ParseProcSmaps(kContent);
+  EXPECT_FALSE(smaps.has_value());
+}
+
+TEST(ProcfsUtilsTest, SmapsSuccess) {
+  const std::string kContent = R"(
+7980712e6000-79813e7e6000 rw-s 00100000 00:01 164    /memfd:crosvm_guest
+Size:            3363840 kB
+Rss:             2243936 kB
+Swap:             490460 kB
+79813e846000-79813e8e6000 rw-s 00000000 00:01 164    /memfd:crosvm_guest
+Size:                640 kB
+Rss:                 228 kB
+Swap:                408 kB
+)";
+
+  auto smaps = ParseProcSmaps(kContent);
+  ASSERT_TRUE(smaps.has_value());
+  // Sum of "Rss" sizes:
+  // (2243936 + 228) * 1024
+  EXPECT_EQ(smaps->crosvm_guest_rss, 2298023936);
+  // Sum of "Swap" sizes:
+  // (490460 + 408) * 1024
+  EXPECT_EQ(smaps->crosvm_guest_swap, 502648832);
+}
+
+TEST(ProcfsUtilsTest, SmapsSuccessMixedContent) {
+  const std::string kContent = R"(
+56ad6eb41000-56ad6f91e000 r-xp 00000000 b3:03 21058 /usr/bin/crosvm
+Size:              14196 kB
+Rss:                2940 kB
+Swap:                  0 kB
+7980712e6000-79813e7e6000 rw-s 00100000 00:01 164 /memfd:crosvm_guest (deleted)
+Size:            3363840 kB
+Rss:             2243936 kB
+Swap:             490460 kB
+56ad6f91e000-56ad6f9b5000 r--p 00ddc000 b3:03 21058 /usr/bin/crosvm
+Size:                604 kB
+Rss:                 120 kB
+Swap:                484 kB
+79813e846000-79813e8e6000 rw-s 00000000 00:01 164 /memfd:crosvm_guest (deleted)
+Size:                640 kB
+Rss:                 228 kB
+Swap:                408 kB
+)";
+
+  auto smaps = ParseProcSmaps(kContent);
+  ASSERT_TRUE(smaps.has_value());
+  // Sum of "Rss" sizes: (LL for avoiding integer overflow)
+  EXPECT_EQ(smaps->crosvm_guest_rss, (2243936LL + 228) * 1024);
+  // Sum of "Swap" sizes:
+  EXPECT_EQ(smaps->crosvm_guest_swap, (490460 + 408) * 1024);
 }
 
 }  // namespace
