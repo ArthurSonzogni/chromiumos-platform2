@@ -433,7 +433,6 @@ class ModemImpl : public Modem {
   }
 
  private:
-  int heartbeat_failures_;
   State state_;
   PowerState power_state_;
   std::string heartbeat_port_;
@@ -600,7 +599,6 @@ class StubModem : public Modem {
   bool UpdatePowerState(PowerState new_power_state) override { return true; }
 
  private:
-  int heartbeat_failures_;
   State state_;
   PowerState power_state_;
   std::string heartbeat_port_;

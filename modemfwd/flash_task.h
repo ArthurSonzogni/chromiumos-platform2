@@ -85,7 +85,6 @@ class FlashTask : public Task {
   static int num_flash_tasks_;
 
   // Owned by Daemon
-  Delegate* delegate_;
   Journal* journal_;
   NotificationManager* notification_mgr_;
   Metrics* metrics_;
