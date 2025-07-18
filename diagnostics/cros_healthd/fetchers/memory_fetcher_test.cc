@@ -5,15 +5,21 @@
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <brillo/errors/error.h>
 #include <brillo/files/file_util.h>
+#include <concierge/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <session_manager/dbus-proxy-mocks.h>
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/executor/constants.h"
@@ -41,6 +47,15 @@ constexpr char kFakeIomemContents[] =
     "00000000-1f81c8ffe : System RAM\n";  // 8259363 kib
 constexpr char kFakeIomemContentsIncorrectlyFormattedFile[] =
     "Incorrectly formatted iomem contents.\n";
+
+constexpr char kFakeSmapsContents[] = R"(
+7980712e6000-79813e7e6000 rw-s 00100000 00:01 164  /memfd:crosvm_guest (deleted)
+Size:            3363840 kB
+Rss:             2243936 kB
+Swap:             490460 kB
+)";
+
+constexpr int kFakeCrosvmProcessId = 2;
 
 constexpr char kFakeVmStatContents[] = "foo 98\npgfault 654654\n";
 constexpr char kFakeVmStatContentsIncorrectlyFormattedFile[] =
@@ -101,6 +116,47 @@ class MemoryFetcherTest : public BaseFileTest {
   void SetUp() override {
     ON_CALL(*mock_executor(), ReadFile(mojom::Executor::File::kProcIomem, _))
         .WillByDefault(base::test::RunOnceCallback<1>(kFakeIomemContents));
+
+    // Set up the fake session manager behaviors.
+    ON_CALL(*mock_context_.mock_session_manager_proxy(),
+            RetrievePrimarySessionAsync(_, _, _))
+        .WillByDefault(base::test::RunOnceCallback<0>("testaccount@example.com",
+                                                      "0123456789abcdef"));
+
+    // Set up the fake crosvm cmdline file.
+    crosvm_proc_ = GetRootDir().Append(
+        base::StringPrintf("proc/%d", kFakeCrosvmProcessId));
+    ASSERT_TRUE(base::CreateDirectory(crosvm_proc_));
+    const char cmdline[] = "/usr/bin/crosvm\0--syslog-tag\0ARCVM(32)";
+    ASSERT_TRUE(
+        base::WriteFile(crosvm_proc_.Append("cmdline"),
+                        std::string_view(cmdline, sizeof(cmdline) - 1)));
+
+    // Set up the fake smaps contents for the fake crosvm process.
+    base::flat_map<uint32_t, std::string> contents;
+    contents[kFakeCrosvmProcessId] = kFakeSmapsContents;
+    ON_CALL(*mock_executor(),
+            GetProcessContents(mojom::Executor::ProcFile::kSmaps, _, _))
+        .WillByDefault(base::test::RunOnceCallback<2>(contents));
+
+    // Set up the fake concierge behaviors.
+    // The following numbers were collected from a 8GiB hatch device by
+    // adding LOG(INFO) in HandleGetVmInfo().
+    vm_tools::concierge::GetVmInfoResponse vm_response;
+    vm_response.set_success(true);
+    vm_response.mutable_vm_info()->set_allocated_memory(7567572992);
+    ON_CALL(*mock_context_.mock_concierge_proxy(), GetVmInfoAsync(_, _, _, _))
+        .WillByDefault(base::test::RunOnceCallback<1>(vm_response));
+
+    vm_tools::concierge::GetBalloonInfoResponse balloon_response;
+    balloon_response.set_success(true);
+    balloon_response.mutable_balloon_info()->set_balloon_size(5577539584);
+    balloon_response.mutable_balloon_info()->set_available_memory(658972672);
+    balloon_response.mutable_balloon_info()->set_free_memory(333049856);
+    ON_CALL(*mock_context_.mock_concierge_proxy(),
+            GetBalloonInfoAsync(_, _, _, _))
+        .WillByDefault(base::test::RunOnceCallback<1>(balloon_response));
+
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         GetRootDir().Append(kRelativeProcCpuInfoPath),
         kFakeCpuInfoNoTmeContent));
@@ -131,6 +187,7 @@ class MemoryFetcherTest : public BaseFileTest {
   }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
+  MockContext& mock_context() { return mock_context_; }
 
   FakeMeminfoReader* fake_meminfo_reader() {
     return mock_context_.fake_meminfo_reader();
@@ -141,6 +198,8 @@ class MemoryFetcherTest : public BaseFileTest {
     FetchMemoryInfo(&mock_context_, future.GetCallback());
     return future.Take();
   }
+
+  base::FilePath crosvm_proc_;
 
  private:
   base::test::TaskEnvironment task_environment_{
@@ -179,7 +238,10 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
   // total_memory_kib should be computed with /proc/iomem with rounding.
   EXPECT_EQ(info->total_memory_kib, 8388608);
   EXPECT_EQ(info->free_memory_kib, 4544564);
-  EXPECT_EQ(info->available_memory_kib, 5569176);
+  // available_memory_kib should be adjusted with the guest VM memory info
+  // with ComputeAdjustedAvailable(), which is tested separately below,
+  // rather than the exact value set by SetAvailableMemoryKib() above.
+  EXPECT_EQ(info->available_memory_kib, 6791518);
 
   EXPECT_EQ(info->buffers_kib, 166684);
   EXPECT_EQ(info->page_cache_kib, 1455512);
@@ -229,6 +291,121 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcIomemFormattedIncorrectly) {
   const auto& info = result->get_memory_info();
   // 8000424 in /proc/meminfo should be used instead.
   EXPECT_EQ(info->total_memory_kib, 8000424);
+}
+
+// Test that fetching memory info does not take ARCVM into account when
+// RetrievePrimarySessionAsync failed.
+TEST_F(MemoryFetcherTest, TestFetchMemoryInfoRetrievePrimarySessionFailed) {
+  fake_meminfo_reader()->SetError(false);
+  const int kAvailableMemory = 5569176;
+  fake_meminfo_reader()->SetAvailableMemoryKib(kAvailableMemory);
+
+  // Override the RetrievePriamarySessionAsync() behavior.
+  brillo::ErrorPtr error =
+      brillo::Error::Create(FROM_HERE, "", "", "random failure");
+  ON_CALL(*mock_context().mock_session_manager_proxy(),
+          RetrievePrimarySessionAsync(_, _, _))
+      .WillByDefault(base::test::RunOnceCallback<1>(error.get()));
+
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+
+  auto result = FetchMemoryInfoSync();
+  ASSERT_TRUE(result->is_memory_info());
+  const auto& info = result->get_memory_info();
+  // kAvailableMemory should be used as is.
+  EXPECT_EQ(info->available_memory_kib, kAvailableMemory);
+}
+
+// Test that fetching memory info does not take ARCVM into account when
+// GetVmInfo failed.
+TEST_F(MemoryFetcherTest, TestFetchMemoryInfoGetVmInfoFailed) {
+  fake_meminfo_reader()->SetError(false);
+  const int kAvailableMemory = 5569176;
+  fake_meminfo_reader()->SetAvailableMemoryKib(kAvailableMemory);
+
+  // Override the GetVmInfoAsync() behavior.
+  brillo::ErrorPtr error =
+      brillo::Error::Create(FROM_HERE, "", "", "random failure");
+  ON_CALL(*mock_context().mock_concierge_proxy(), GetVmInfoAsync(_, _, _, _))
+      .WillByDefault(base::test::RunOnceCallback<2>(error.get()));
+
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+
+  auto result = FetchMemoryInfoSync();
+  ASSERT_TRUE(result->is_memory_info());
+  const auto& info = result->get_memory_info();
+  // kAvailableMemory should be used as is.
+  EXPECT_EQ(info->available_memory_kib, kAvailableMemory);
+}
+
+// Test that fetching memory info does not take ARCVM into account when
+// GetBalloonInfo failed.
+TEST_F(MemoryFetcherTest, TestFetchMemoryInfoGetBalloonInfoFailed) {
+  fake_meminfo_reader()->SetError(false);
+  const int kAvailableMemory = 5569176;
+  fake_meminfo_reader()->SetAvailableMemoryKib(kAvailableMemory);
+
+  // Override the GetBalloonInfoAsync() behavior.
+  brillo::ErrorPtr error =
+      brillo::Error::Create(FROM_HERE, "", "", "random failure");
+  ON_CALL(*mock_context().mock_concierge_proxy(),
+          GetBalloonInfoAsync(_, _, _, _))
+      .WillByDefault(base::test::RunOnceCallback<2>(error.get()));
+
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+
+  auto result = FetchMemoryInfoSync();
+  ASSERT_TRUE(result->is_memory_info());
+  const auto& info = result->get_memory_info();
+  // kAvailableMemory should be used as is.
+  EXPECT_EQ(info->available_memory_kib, kAvailableMemory);
+}
+
+// Test that fetching memory info does not take ARCVM into account when
+// crosvm process was not found.
+TEST_F(MemoryFetcherTest, TestFetchMemoryInfoCrosvmNotFound) {
+  fake_meminfo_reader()->SetError(false);
+  const int kAvailableMemory = 5569176;
+  fake_meminfo_reader()->SetAvailableMemoryKib(kAvailableMemory);
+
+  // Delete the fake crosvm process directory.
+  brillo::DeletePathRecursively(crosvm_proc_);
+
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+
+  auto result = FetchMemoryInfoSync();
+  ASSERT_TRUE(result->is_memory_info());
+  const auto& info = result->get_memory_info();
+  // kAvailableMemory should be used as is.
+  EXPECT_EQ(info->available_memory_kib, kAvailableMemory);
+}
+
+// Test that fetching memory info does not take ARCVM into account when
+// the smaps file contents are formatted incorrectly.
+TEST_F(MemoryFetcherTest, TestFetchMemoryInfoSmapsFormattedIncorrectly) {
+  fake_meminfo_reader()->SetError(false);
+  const int kAvailableMemory = 5569176;
+  fake_meminfo_reader()->SetAvailableMemoryKib(kAvailableMemory);
+
+  // Override the fake smaps contents for the fake crosvm process.
+  base::flat_map<uint32_t, std::string> contents;
+  contents[kFakeCrosvmProcessId] = "broken smaps contents";
+  ON_CALL(*mock_executor(),
+          GetProcessContents(mojom::Executor::ProcFile::kSmaps, _, _))
+      .WillByDefault(base::test::RunOnceCallback<2>(contents));
+
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+
+  auto result = FetchMemoryInfoSync();
+  ASSERT_TRUE(result->is_memory_info());
+  const auto& info = result->get_memory_info();
+  // kAvailableMemory should be used as is.
+  EXPECT_EQ(info->available_memory_kib, kAvailableMemory);
 }
 
 // Test that fetching memory info returns an error when /proc/vmstat doesn't
@@ -376,6 +553,19 @@ TEST_F(MemoryFetcherTest, TestFetchTmeInfo) {
                              kExpectedTmeState, kExpectedActiveAlgorithm,
                              kExpectedTmeKeyCount,
                              kExpectedEncryptionKeyLength);
+}
+
+TEST_F(MemoryFetcherTest, ComputeAdjustedAvailable) {
+  GuestMemoryInfo guest;
+  // The followings are roughly based on numbers collected from a 4GiB device.
+  guest.balloon_size = 900000000;
+  guest.allocated_memory = 3500000000;
+  guest.available_memory = 1600000000;
+  guest.free_memory = 400000000;
+  guest.crosvm_rss = 500000000;
+  guest.crosvm_swap = 1500000000;
+
+  EXPECT_EQ(ComputeAdjustedAvailable(guest), 400000000);
 }
 
 }  // namespace
