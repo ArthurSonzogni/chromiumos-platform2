@@ -36,6 +36,8 @@ namespace camera3_test {
 
 #define IGNORE_HARDWARE_LEVEL UINT8_MAX
 
+int cur_cam_id = -1;
+
 static camera_module_t* g_cam_module = nullptr;
 static cros::cros_camera_hal_t* g_cros_camera_hal = nullptr;
 
@@ -373,6 +375,7 @@ static void InitCameraModuleByFacing(int facing,
         camera_info info;
         ASSERT_EQ(0, camera_module.GetCameraInfo(i, &info));
         if (info.facing == facing) {
+          cur_cam_id = i;
           auto* cmd_line = base::CommandLine::ForCurrentProcess();
           cmd_line->AppendSwitchASCII("camera_ids", std::to_string(i));
           cmd_line->AppendSwitchPath("camera_hal_path", hal_path);
@@ -386,15 +389,16 @@ static void InitCameraModuleByFacing(int facing,
   FAIL() << "Cannot find camera with facing=" << facing;
 }
 
-static void EnableCameraFacing(int facing,
-                               camera3_test::CameraHalClient* camera_hal_client,
-                               base::FilePath* camera_hal_path) {
+void EnableCameraFacing(int facing,
+                        camera3_test::CameraHalClient* camera_hal_client,
+                        base::FilePath* camera_hal_path) {
   ASSERT_NE(nullptr, camera_hal_client) << "camera_hal_client is not valid";
   for (const auto& hal_path : cros::GetCameraHalPaths()) {
     for (int i = 0; i < camera_hal_client->GetNumberOfCameras(); i++) {
       camera_info info;
       ASSERT_EQ(0, camera_hal_client->GetCameraInfo(i, &info));
       if (info.facing == facing) {
+        cur_cam_id = i;
         *camera_hal_path = hal_path;
         return;
       }

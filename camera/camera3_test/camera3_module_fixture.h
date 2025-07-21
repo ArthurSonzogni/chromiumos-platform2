@@ -23,6 +23,8 @@
 
 namespace camera3_test {
 
+extern int cur_cam_id;
+
 const int kMaxNumCameras = 2;
 const size_t kNumOfElementsInStreamConfigEntry = 4;
 enum {

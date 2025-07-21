@@ -10,6 +10,7 @@
 #include <base/functional/bind.h>
 #include <base/strings/string_number_conversions.h>
 
+#include "camera3_test/camera3_module_fixture.h"
 #include "camera3_test/camera3_preview_fixture.h"
 #include "camera3_test/camera3_still_capture_fixture.h"
 
@@ -289,7 +290,7 @@ void Camera3FaceAutoExposureTest::ProcessPreviewResult(
   preview_result_metadata_ = std::move(metadata);
 }
 
-#define DIV_ROUND_UP(n, d) (((n) + (d)-1) / (d))
+#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 Camera3FaceAutoExposureTest::ImageI420::ImageI420(uint32_t w, uint32_t h)
     : width(w), height(h) {
   y_stride = DIV_ROUND_UP(w, 2) * 2;
@@ -512,6 +513,12 @@ TEST_P(Camera3FaceAutoExposureTest, GetFaceLumaValueWithFaceAutoExposure) {
   if (expected_num_faces_ < 0) {
     GTEST_SKIP();
   }
+
+  // Run only if cam_id_ equals to current camera id
+  if (cur_cam_id != -1 && cur_cam_id != cam_id_) {
+    GTEST_SKIP();
+  }
+
   GetFaceLumaValue(true);
 }
 
@@ -520,6 +527,12 @@ TEST_P(Camera3FaceAutoExposureTest, GetFaceLumaValueWithoutFaceAutoExposure) {
   if (expected_num_faces_ < 0) {
     GTEST_SKIP();
   }
+
+  // Run only if cam_id_ equals to current camera id
+  if (cur_cam_id != -1 && cur_cam_id != cam_id_) {
+    GTEST_SKIP();
+  }
+
   GetFaceLumaValue(false);
 }
 
