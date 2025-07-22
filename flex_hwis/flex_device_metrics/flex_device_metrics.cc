@@ -244,6 +244,25 @@ std::optional<std::string> GetHistoryFromFwupdmgr() {
   }
 }
 
+bool ValToTime(const base::Value* val, base::Time* result) {
+  std::optional<int> time_as_int = val->GetIfInt();
+  if (time_as_int.has_value()) {
+    *result = base::Time::FromSecondsSinceUnixEpoch((time_as_int.value()));
+    return true;
+  }
+  return false;
+}
+
+bool ValToUpdateState(const base::Value* val, FwupdUpdateState* result) {
+  std::optional<int> state_as_int = val->GetIfInt();
+  if (state_as_int.has_value() && state_as_int.value() >= 0 &&
+      state_as_int.value() <= static_cast<int>(FwupdUpdateState::kMaxValue)) {
+    *result = static_cast<FwupdUpdateState>(state_as_int.value());
+    return true;
+  }
+  return false;
+}
+
 bool StringToAttemptStatus(std::string_view s, FwupdLastAttemptStatus* result) {
   int status = 0;
   if (!base::HexStringToInt(s, &status)) {
@@ -263,4 +282,15 @@ void FwupdRelease::RegisterJSONConverter(
   converter->RegisterCustomField<FwupdLastAttemptStatus>(
       "FwupdLastAttemptStatus", &FwupdRelease::last_attempt_status,
       &StringToAttemptStatus);
+}
+
+void FwupdDeviceHistory::RegisterJSONConverter(
+    base::JSONValueConverter<FwupdDeviceHistory>* converter) {
+  converter->RegisterStringField("Name", &FwupdDeviceHistory::name);
+  converter->RegisterStringField("Plugin", &FwupdDeviceHistory::plugin);
+  converter->RegisterCustomValueField<base::Time>(
+      "Created", &FwupdDeviceHistory::created, &ValToTime);
+  converter->RegisterCustomValueField<FwupdUpdateState>(
+      "UpdateState", &FwupdDeviceHistory::update_state, &ValToUpdateState);
+  converter->RegisterRepeatedMessage("Releases", &FwupdDeviceHistory::releases);
 }

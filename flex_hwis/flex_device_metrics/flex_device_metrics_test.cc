@@ -8,6 +8,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/json/json_reader.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -294,3 +295,76 @@ TEST(StringToAttemptStatusTest, InvalidConversionChecks) {
   // Empty string
   EXPECT_FALSE(StringToAttemptStatus("", &test_result_));
 }
+
+TEST(FlexFwupHistoryMetrics, ConvertDoesNotFailOnMissingPlugin) {
+  constexpr std::string_view test_json =
+      R"(
+      {
+        "Name" : "UEFI dbx",
+        "Created" : 1,
+        "UpdateState" : 2,
+        "Releases" : [{}]
+      }
+    )";
+
+  std::optional<base::Value::Dict> response_dict =
+      base::JSONReader::ReadDict(test_json);
+  ASSERT_TRUE(response_dict.has_value());
+  base::JSONValueConverter<FwupdDeviceHistory> converter;
+  FwupdDeviceHistory history;
+  EXPECT_TRUE(converter.Convert(response_dict.value(), &history));
+  EXPECT_EQ(history.plugin, "");
+}
+
+TEST(FlexFwupHistoryMetrics, ConvertDoesNotFailOnMissingReleases) {
+  constexpr std::string_view test_json =
+      R"(
+      {
+        "Name" : "UEFI dbx",
+        "Plugin" : "uefi_dbx",
+        "Created" : 1,
+        "UpdateState" : 2
+      }
+    )";
+
+  std::optional<base::Value::Dict> response_dict =
+      base::JSONReader::ReadDict(test_json);
+  ASSERT_TRUE(response_dict.has_value());
+  base::JSONValueConverter<FwupdDeviceHistory> converter;
+  FwupdDeviceHistory history;
+  EXPECT_TRUE(converter.Convert(response_dict.value(), &history));
+  EXPECT_TRUE(history.releases.empty());
+}
+
+struct IntToUpdateStateTestParam {
+  int input_int;
+  FwupdUpdateState expected_result;
+};
+
+class IntToUpdateStateTest
+    : public testing::TestWithParam<IntToUpdateStateTestParam> {
+ protected:
+  FwupdUpdateState test_result_;
+};
+
+TEST_P(IntToUpdateStateTest, ConversionChecks) {
+  const auto& param = GetParam();
+
+  std::unique_ptr<base::Value> val_ptr =
+      std::make_unique<base::Value>(param.input_int);
+  const base::Value* val_to_pass = val_ptr.get();
+
+  EXPECT_TRUE(ValToUpdateState(val_to_pass, &test_result_));
+  EXPECT_EQ(test_result_, param.expected_result);
+}
+
+INSTANTIATE_TEST_SUITE_P(IntToUpdateStateTests,
+                         IntToUpdateStateTest,
+                         testing::ValuesIn<IntToUpdateStateTestParam>({
+                             {0, FwupdUpdateState::kUnknown},
+                             {1, FwupdUpdateState::kPending},
+                             {2, FwupdUpdateState::kSuccess},
+                             {3, FwupdUpdateState::kFailed},
+                             {4, FwupdUpdateState::kNeedsReboot},
+                             {5, FwupdUpdateState::kTransient},  // kMaxValue
+                         }));

@@ -6,6 +6,7 @@
 #define FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -13,6 +14,7 @@
 
 #include <base/files/file_path.h>
 #include <base/json/json_value_converter.h>
+#include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
 // Convert from 512-byte disk blocks to MiB. Round down if the size is
@@ -181,6 +183,25 @@ bool SendFlexorInstallMetric(MetricsLibraryInterface& metrics);
 // Returns a string on success, std::nullopt if any error occurs.
 std::optional<std::string> GetHistoryFromFwupdmgr();
 
+// Enum representing the fwupd update state as defined in
+// https://github.com/fwupd/fwupd/blob/240e65e92e53ead489a3ecdff668d6b4eea340fc/libfwupd/fwupd-enums.h#L1185
+enum class FwupdUpdateState {
+  // Unknown.
+  kUnknown = 0,
+  // Update is pending.
+  kPending = 1,
+  // Update was successful.
+  kSuccess = 2,
+  // Update failed.
+  kFailed = 3,
+  // Waiting for a reboot to apply.
+  kNeedsReboot = 4,
+  // Update failed due to transient issue, e.g. AC power required.
+  kTransient = 5,
+
+  kMaxValue = kTransient,
+};
+
 // The capsule device status [1] resulting from the last update attempt.
 // This can provide a more specific failure reason in the case of update
 // failure.
@@ -212,6 +233,12 @@ enum class FwupdLastAttemptStatus {
 };
 
 // Helpers to ease conversion of json values to their real types.
+
+// Internally, the fwupdmgr stores the timestamp as an int64, however
+// the JSON converter only accepts ints. This should work OK up until 2038:
+// https://en.wikipedia.org/wiki/Year_2038_problem
+bool ValToTime(const base::Value* val, base::Time* result);
+bool ValToUpdateState(const base::Value* val, FwupdUpdateState* result);
 bool StringToAttemptStatus(std::string_view s, FwupdLastAttemptStatus* result);
 
 // Struct containing the only field we are interested in from
@@ -224,6 +251,29 @@ struct FwupdRelease {
 
   static void RegisterJSONConverter(
       base::JSONValueConverter<FwupdRelease>* converter);
+};
+
+// The `Device` struct within fwupd's json response
+// contains many more fields than those listed below,
+// however we only convert the fields we need.
+struct FwupdDeviceHistory {
+  // Device name.
+  std::string name;
+  // The fwupd plugin, used to check whether the update was installed
+  // with a UEFI plugin.
+  std::string plugin;
+  // The time when the history entry for the device was created.
+  base::Time created;
+  // Update state, a per device value.
+  FwupdUpdateState update_state;
+  // The list of `Release` struct, each containing a `FwupdLastAttemptStatus`
+  // which can narrow down failure reasons.
+  std::vector<std::unique_ptr<FwupdRelease>> releases;
+
+  FwupdDeviceHistory() = default;
+
+  static void RegisterJSONConverter(
+      base::JSONValueConverter<FwupdDeviceHistory>* converter);
 };
 
 #endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_
