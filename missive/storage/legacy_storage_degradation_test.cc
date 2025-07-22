@@ -14,6 +14,7 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_helpers.h>
+#include <base/hash/hash.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -165,11 +166,7 @@ class LegacyStorageDegradationTest
                            int64_t /*generation id*/,
                            int64_t /*sequencing id*/>& v) const noexcept {
         const auto& [priority, generation_id, sequencing_id] = v;
-        static constexpr std::hash<Priority> priority_hasher;
-        static constexpr std::hash<int64_t> generation_hasher;
-        static constexpr std::hash<int64_t> sequencing_hasher;
-        return priority_hasher(priority) ^ generation_hasher(generation_id) ^
-               sequencing_hasher(sequencing_id);
+        return base::HashCombine(0uL, priority, generation_id, sequencing_id);
       }
     };
     using Map = std::unordered_map<std::tuple<Priority,

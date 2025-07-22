@@ -10,6 +10,7 @@
 #include <unordered_set>
 
 #include <base/files/file_path.h>
+#include <base/hash/hash.h>
 
 #include "missive/storage/storage_configuration.h"
 #include "missive/util/statusor.h"
@@ -27,9 +28,7 @@ class StorageDirectory {
     size_t operator()(
         const std::tuple<Priority, GenerationGuid>& v) const noexcept {
       const auto& [priority, guid] = v;
-      static constexpr std::hash<Priority> priority_hasher;
-      static constexpr std::hash<GenerationGuid> guid_hasher;
-      return priority_hasher(priority) ^ guid_hasher(guid);
+      return base::HashCombine(0uL, priority, guid);
     }
   };
   using Set = std::unordered_set<std::tuple<Priority, GenerationGuid>, Hash>;

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/storage/storage_queue.h"
-
 #include <cstdint>
 #include <initializer_list>
 #include <optional>
@@ -14,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/hash/hash.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/sequenced_task_runner.h>
@@ -32,6 +31,7 @@
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/storage/storage_configuration.h"
+#include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
@@ -59,10 +59,7 @@ class TestUploadClient : public UploaderInterface {
           const std::pair<int64_t /*generation id */,
                           int64_t /*sequencing id*/>& v) const noexcept {
         const auto& [generation_id, sequencing_id] = v;
-        static constexpr std::hash<int64_t> generation_hasher;
-        static constexpr std::hash<int64_t> sequencing_hasher;
-        return generation_hasher(generation_id) ^
-               sequencing_hasher(sequencing_id);
+        return base::HashCombine(0uL, generation_id, sequencing_id);
       }
     };
     using Map = std::unordered_map<

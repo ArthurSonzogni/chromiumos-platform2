@@ -21,6 +21,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
+#include <base/hash/hash.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -293,10 +294,7 @@ class StorageQueueTest
             const std::pair<int64_t /*generation id */,
                             int64_t /*sequencing id*/>& v) const noexcept {
           const auto& [generation_id, sequencing_id] = v;
-          static constexpr std::hash<int64_t> generation_hasher;
-          static constexpr std::hash<int64_t> sequencing_hasher;
-          return generation_hasher(generation_id) ^
-                 sequencing_hasher(sequencing_id);
+          return base::HashCombine(0uL, generation_id, sequencing_id);
         }
       };
       using Map = std::unordered_map<

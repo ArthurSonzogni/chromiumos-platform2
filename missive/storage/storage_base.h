@@ -19,6 +19,7 @@
 
 #include <base/files/file.h>
 #include <base/functional/callback_forward.h>
+#include <base/hash/hash.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/ref_counted_delete_on_sequence.h>
 #include <base/memory/scoped_refptr.h>
@@ -122,9 +123,7 @@ class QueuesContainer
     size_t operator()(
         const std::tuple<Priority, GenerationGuid>& v) const noexcept {
       const auto& [priority, guid] = v;
-      static constexpr std::hash<Priority> priority_hasher;
-      static constexpr std::hash<GenerationGuid> guid_hasher;
-      return priority_hasher(priority) ^ guid_hasher(guid);
+      return base::HashCombine(0uL, priority, guid);
     }
   };
 
@@ -141,10 +140,8 @@ class QueuesContainer
   // map so that they can send their remaining events.
   struct GenerationGuidMapHash {
     size_t operator()(const std::tuple<DMtoken, Priority>& v) const noexcept {
-      static constexpr std::hash<DMtoken> dm_token_hasher;
-      static constexpr std::hash<Priority> priority_hasher;
       const auto& [token, priority] = v;
-      return dm_token_hasher(token) ^ priority_hasher(priority);
+      return base::HashCombine(0uL, token, priority);
     }
   };
   using GenerationGuidMap = std::unordered_map<std::tuple<DMtoken, Priority>,
