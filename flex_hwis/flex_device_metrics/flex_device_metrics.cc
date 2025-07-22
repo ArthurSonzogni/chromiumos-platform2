@@ -243,3 +243,24 @@ std::optional<std::string> GetHistoryFromFwupdmgr() {
     return std::nullopt;
   }
 }
+
+bool StringToAttemptStatus(std::string_view s, FwupdLastAttemptStatus* result) {
+  int status = 0;
+  if (!base::HexStringToInt(s, &status)) {
+    return false;
+  }
+
+  if (status >= static_cast<int>(FwupdLastAttemptStatus::kMinValue) &&
+      status <= static_cast<int>(FwupdLastAttemptStatus::kMaxValue)) {
+    *result = static_cast<FwupdLastAttemptStatus>(status);
+    return true;
+  }
+  return false;
+}
+
+void FwupdRelease::RegisterJSONConverter(
+    base::JSONValueConverter<FwupdRelease>* converter) {
+  converter->RegisterCustomField<FwupdLastAttemptStatus>(
+      "FwupdLastAttemptStatus", &FwupdRelease::last_attempt_status,
+      &StringToAttemptStatus);
+}

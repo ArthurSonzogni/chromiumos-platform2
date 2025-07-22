@@ -249,3 +249,48 @@ TEST(FlexFlexorInstallMetrics, SendFlexorInstallMetric) {
 
   EXPECT_TRUE(SendFlexorInstallMetric(metrics));
 }
+
+struct StringToAttemptStatusTestParam {
+  std::string input_string;
+  FwupdLastAttemptStatus expected_result;
+};
+
+class StringToAttemptStatusTest
+    : public testing::TestWithParam<StringToAttemptStatusTestParam> {
+ protected:
+  FwupdLastAttemptStatus test_result_;
+};
+
+TEST_P(StringToAttemptStatusTest, ValidConversionChecks) {
+  const auto& param = GetParam();
+  EXPECT_TRUE(StringToAttemptStatus(param.input_string, &test_result_));
+  EXPECT_EQ(test_result_, param.expected_result);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    StringToAttemptStatusTests,
+    StringToAttemptStatusTest,
+    testing::ValuesIn<StringToAttemptStatusTestParam>({
+        {"0x0", FwupdLastAttemptStatus::kSuccess},
+        {"0x1", FwupdLastAttemptStatus::kErrorUnsuccessful},
+        {"0x2", FwupdLastAttemptStatus::kErrorInsufficientResources},
+        {"0x3", FwupdLastAttemptStatus::kErrorIncorrectVersion},
+        {"0x4", FwupdLastAttemptStatus::kErrorInvalidFormat},
+        {"0x5", FwupdLastAttemptStatus::kErrorAuthError},
+        {"0x6", FwupdLastAttemptStatus::kErrorPwrEvtAc},
+        {"0x7", FwupdLastAttemptStatus::kErrorPwrEvtBatt},
+        {"0x8", FwupdLastAttemptStatus::kErrorUnsatisfiedDependencies},
+    }));
+
+TEST(StringToAttemptStatusTest, InvalidConversionChecks) {
+  FwupdLastAttemptStatus test_result_;
+
+  // Not a hex number.
+  EXPECT_FALSE(StringToAttemptStatus("10", &test_result_));
+
+  // Greater than max hex number in enum.
+  EXPECT_FALSE(StringToAttemptStatus("0x9", &test_result_));
+
+  // Empty string
+  EXPECT_FALSE(StringToAttemptStatus("", &test_result_));
+}

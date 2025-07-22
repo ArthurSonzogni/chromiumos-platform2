@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/json/json_value_converter.h>
 #include <metrics/metrics_library.h>
 
 // Convert from 512-byte disk blocks to MiB. Round down if the size is
@@ -179,5 +180,50 @@ bool SendFlexorInstallMetric(MetricsLibraryInterface& metrics);
 //
 // Returns a string on success, std::nullopt if any error occurs.
 std::optional<std::string> GetHistoryFromFwupdmgr();
+
+// The capsule device status [1] resulting from the last update attempt.
+// This can provide a more specific failure reason in the case of update
+// failure.
+//
+// [1]:
+// https://uefi.org/specs/UEFI/2.11/23_Firmware_Update_and_Reporting.html#id30
+enum class FwupdLastAttemptStatus {
+  // Update was successful.
+  kSuccess = 0,
+  // Update was unsuccessful.
+  kErrorUnsuccessful = 1,
+  // There were insufficient resources to process the capsule.
+  kErrorInsufficientResources = 2,
+  // Version mismatch.
+  kErrorIncorrectVersion = 3,
+  // Firmware had invalid format.
+  kErrorInvalidFormat = 4,
+  // Authentication signing error.
+  kErrorAuthError = 5,
+  // AC power was not connected during update.
+  kErrorPwrEvtAc = 6,
+  // Battery level is too low.
+  kErrorPwrEvtBatt = 7,
+  // Unsatisfied Dependencies.
+  kErrorUnsatisfiedDependencies = 8,
+
+  kMinValue = kSuccess,
+  kMaxValue = kErrorUnsatisfiedDependencies,
+};
+
+// Helpers to ease conversion of json values to their real types.
+bool StringToAttemptStatus(std::string_view s, FwupdLastAttemptStatus* result);
+
+// Struct containing the only field we are interested in from
+// the `Release` json object contained in the fwupd history response:
+// the last attempt status.
+struct FwupdRelease {
+  FwupdLastAttemptStatus last_attempt_status;
+
+  FwupdRelease() = default;
+
+  static void RegisterJSONConverter(
+      base::JSONValueConverter<FwupdRelease>* converter);
+};
 
 #endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_
