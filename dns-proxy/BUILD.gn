@@ -68,6 +68,9 @@ static_library("libdnsproxy") {
     "resolver.cc",
     "session_monitor.cc",
   ]
+  cflags = [
+    "-Wno-error=deprecated-declarations",  # TODO(b/433521512) needed for c-ares
+  ]
   configs += [ ":target_defaults" ]
   deps = [ ":dnsproxy_ipc_protos" ]
 }
