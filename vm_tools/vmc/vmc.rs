@@ -48,7 +48,6 @@ enum VmcError {
     ExpectedVmDeviceUpdates,
     ExpectedVmHidrawDevice,
     ExpectedVmPort,
-    UnexpectedSizeWithPluginVm,
     InvalidVmDevice(String),
     InvalidVmDeviceAction(String),
     ExpectedPrivilegedFlagValue,
@@ -130,9 +129,6 @@ impl fmt::Display for VmcError {
                 write!(f, "expected <vm name> <hidraw file>")
             }
             ExpectedVmPort => write!(f, "expected <vm name> <port>"),
-            UnexpectedSizeWithPluginVm => {
-                write!(f, "unexpected --size parameter; -p doesn't support --size")
-            }
             InvalidVmDevice(v) => write!(f, "invalid vm device {}", v),
             InvalidVmDeviceAction(a) => write!(f, "invalid vm device action {}", a),
             ExpectedPrivilegedFlagValue => {
@@ -241,7 +237,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         opts.optopt(
             "",
             "vm-type",
-            "type of VM (TERMINA / ARC_VM / PLUGIN_VM / BOREALIS / BRUSCHETTA / BAGUETTE)",
+            "type of VM (TERMINA / ARC_VM / BOREALIS / BRUSCHETTA / BAGUETTE)",
             "TYPE",
         );
         opts.optflag(
@@ -315,7 +311,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             None => None,
             Some(vm_type) => Some(match vm_type.to_uppercase().as_ref() {
                 "TERMINA" => VmType::TERMINA,
-                "PLUGIN_VM" => VmType::PLUGIN_VM,
                 "BOREALIS" => VmType::BOREALIS,
                 "BRUSCHETTA" => VmType::BRUSCHETTA,
                 "BAGUETTE" => VmType::BAGUETTE,
@@ -327,7 +322,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             _ => !matches.opt_present("no-start-lxd"),
         };
         let tools_dlc_id = match (vm_type, matches.opt_str("tools-dlc")) {
-            (Some(VmType::BAGUETTE), None) => Some("termina-dlc".into()),
+            (Some(VmType::BAGUETTE), None) => Some("termina-tools-dlc".into()),
             (_, opt_tools_dlc) => opt_tools_dlc,
         };
 
@@ -426,12 +421,10 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         // as a separator for params which avoids breaking the existing
         // interface.
         opts.parsing_style(getopts::ParsingStyle::StopAtFirstFree);
-        opts.optflag("p", "pluginvm", "create a pluginvm vm");
         opts.optopt("", "size", "size of the created vm's disk", "SIZE");
         opts.optopt("", "source", "location of baguette source image", "PATH");
 
         let matches = opts.parse(self.args)?;
-        let plugin_vm = matches.opt_present("p");
         let size = match matches.opt_str("size") {
             Some(s) => Some(parse_disk_size(&s)?),
             None => None,
@@ -440,10 +433,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             Some(path) => Some(path),
             None => None,
         };
-
-        if plugin_vm && size.is_some() {
-            return Err(UnexpectedSizeWithPluginVm.into());
-        }
 
         let mut s = matches.free.splitn(2, |arg| *arg == "--");
         let args = s.next().expect("failed to split argument list");
@@ -463,7 +452,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         if let Some(uuid) = try_command!(self.methods.vm_create(
             vm_name,
             self.user_id_hash,
-            plugin_vm,
             size,
             file_name,
             removable_media,
@@ -643,11 +631,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn import(&mut self) -> VmcResult {
-        let plugin_vm = !self.args.is_empty() && self.args[0] == "-p";
-        if plugin_vm {
-            // Discard the first argument (-p).
-            self.args = &self.args[1..];
-        }
         let (vm_name, file_name, removable_media) = match self.args.len() {
             2 => (self.args[0], self.args[1], None),
             3 => (self.args[0], self.args[1], Some(self.args[2])),
@@ -657,7 +640,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         if let Some(uuid) = try_command!(self.methods.vm_import(
             vm_name,
             self.user_id_hash,
-            plugin_vm,
             file_name,
             removable_media
         )) {
@@ -1080,7 +1062,7 @@ const USAGE: &str = " [
            [--enable-virtgpu-native-context] [--vtpm-proxy] \
            [--enable-audio-capture] [--extra-disk PATH] [--dlc ID] \
            [--tools-dlc ID] [--kernel PATH] [--initrd PATH] [--rootfs PATH] \
-           [--vm-type <TERMINA | ARC_VM | PLUGIN_VM | BOREALIS | BRUSCHETTA | BAGUETTE>] \
+           [--vm-type <TERMINA | ARC_VM | BOREALIS | BRUSCHETTA | BAGUETTE>] \
            [--no-start-lxd] [--writable-rootfs] [--kernel-param PARAM]... \
            [--oem-string STRING]... [--bios PATH] [--pflash PATH] [--bios-dlc ID] \
            [--timeout PARAM] [--no-shell] [--user NAME] [--user-uid PARAM] \
@@ -1420,19 +1402,6 @@ mod tests {
             &["vmc", "launch", "foo"],
             &["vmc", "launch", "a", "b", "c", "d", "e", "f"],
             &["vmc", "create", "termina"],
-            &["vmc", "create", "-p", "termina"],
-            &["vmc", "create", "--pluginvm", "termina"],
-            &[
-                "vmc",
-                "create",
-                "-p",
-                "termina",
-                "file name",
-                "removable media",
-            ],
-            &["vmc", "create", "-p", "termina", "--"],
-            &["vmc", "create", "-p", "termina", "--", "param"],
-            &["vmc", "create", "-p", "termina", "--", "param1", "param2"],
             &["vmc", "create", "--size", "1000000", "termina"],
             &["vmc", "create", "--size", "256M", "termina"],
             &["vmc", "create", "--size", "1G", "termina"],
@@ -1481,15 +1450,6 @@ mod tests {
             ],
             &["vmc", "import", "termina", "file name"],
             &["vmc", "import", "termina", "file name", "removable media"],
-            &["vmc", "import", "-p", "termina", "file name"],
-            &[
-                "vmc",
-                "import",
-                "-p",
-                "termina",
-                "file name",
-                "removable media",
-            ],
             &["vmc", "list"],
             &["vmc", "logs", "cowcat"],
             &["vmc", "share", "termina", "my-folder"],
@@ -1552,20 +1512,9 @@ mod tests {
             &["vmc", "stop", "termina", "extra args"],
             &["vmc", "launch"],
             &["vmc", "create"],
-            &["vmc", "create", "-p"],
-            &[
-                "vmc",
-                "create",
-                "-p",
-                "termina",
-                "file name",
-                "removable media",
-                "extra args",
-            ],
             &["vmc", "create", "--size", "termina"],
             &["vmc", "create", "--size", "52J", "termina"],
             &["vmc", "create", "--size", "foo", "termina"],
-            &["vmc", "create", "-p", "--size", "10G", "termina"],
             &["vmc", "create-extra-disk"],
             &["vmc", "create-extra-disk", "foo.img"],
             &["vmc", "create-extra-disk", "--size", "1G"],
@@ -1608,8 +1557,6 @@ mod tests {
             ],
             &["vmc", "import", "termina"],
             &["vmc", "import", "termina", "too", "many", "args"],
-            &["vmc", "import", "-p", "termina"],
-            &["vmc", "import", "-p", "termina", "too", "many", "args"],
             &["vmc", "list", "extra args"],
             &["vmc", "logs"],
             &["vmc", "logs", "too", "many args"],

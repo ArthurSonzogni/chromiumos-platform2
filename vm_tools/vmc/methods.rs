@@ -959,7 +959,6 @@ impl Methods {
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
-        plugin_vm: bool,
         size: Option<u64>,
         source_name: Option<&str>,
         removable_media: Option<&str>,
@@ -970,12 +969,7 @@ impl Methods {
         request.vm_name = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
         request.image_type = DiskImageType::DISK_IMAGE_AUTO.into();
-        request.storage_location = if plugin_vm {
-            StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM
-        } else {
-            StorageLocation::STORAGE_CRYPTOHOME_ROOT
-        }
-        .into();
+        request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT.into();
         if let Some(s) = size {
             request.disk_size = s;
         }
@@ -1146,7 +1140,6 @@ impl Methods {
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
-        plugin_vm: bool,
         import_name: &str,
         removable_media: Option<&str>,
     ) -> Result<Option<String>, Box<dyn Error>> {
@@ -1160,12 +1153,7 @@ impl Methods {
         let mut request = ImportDiskImageRequest::new();
         request.vm_name = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
-        request.storage_location = if plugin_vm {
-            StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM
-        } else {
-            StorageLocation::STORAGE_CRYPTOHOME_ROOT
-        }
-        .into();
+        request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT.into();
         request.source_size = import_file.size;
 
         let response: ImportDiskImageResponse = ProtoMessage::parse_from_bytes(
@@ -1315,7 +1303,7 @@ impl Methods {
     fn get_dlc_id_or_none(
         &mut self,
         dlc_param: Option<String>,
-        is_termina: bool,
+        is_crostini: bool,
     ) -> Result<Option<String>, Box<dyn Error>> {
         if let Some(id) = dlc_param {
             if id.is_empty() {
@@ -1324,7 +1312,7 @@ impl Methods {
             } else {
                 Ok(Some(id))
             }
-        } else if is_termina {
+        } else if is_crostini {
             Ok(Some("termina-dlc".to_owned()))
         } else {
             Ok(None)
@@ -1340,18 +1328,19 @@ impl Methods {
         features: VmFeatures,
         stateful_disk_path: String,
         user_disks: UserDisks,
-        start_termina: bool,
+        start_lxd: bool,
     ) -> Result<(), Box<dyn Error>> {
         let mut request = StartVmRequest::new();
-        if let Some(dlc_id) = self.get_dlc_id_or_none(features.dlc, start_termina)? {
+        if let Some(dlc_id) = self.get_dlc_id_or_none(features.dlc, start_lxd)? {
             self.install_dlc(&dlc_id)?;
             request.vm.mut_or_insert_default().dlc_id = dlc_id;
         }
 
         if let Some(tools_dlc_id) = features.tools_dlc_id {
-            // TODO(crbug/1276157): add `termina-tools` to this list when `termina-dlc` is split.
             match tools_dlc_id.as_ref() {
                 "termina-dlc" => (),
+                // Baguette only requires "termina-tools-dlc"
+                "termina-tools-dlc" => (),
                 _ => return Err(ToolsDlcNotAllowed(tools_dlc_id.to_owned()).into()),
             }
             self.install_dlc(&tools_dlc_id)?;
@@ -1374,7 +1363,8 @@ impl Methods {
         if let Some(vm_type) = features.vm_type {
             request.vm_type = vm_type.into();
         };
-        request.start_termina = start_termina;
+        // `start_termina` actually means automatically trigger lxd launch for crostini
+        request.start_termina = start_lxd;
         request.owner_id = user_id_hash.to_owned();
         request.vm_username = username.to_owned();
         request.enable_gpu = features.gpu;
@@ -1504,7 +1494,7 @@ impl Methods {
         match response.status.enum_value() {
             Ok(VmStatus::VM_STATUS_STARTING) => {
                 assert!(response.success);
-                if start_termina {
+                if start_lxd {
                     tremplin_started.wait_with_filter(
                         tremplin_timeout,
                         |s: &TremplinStartedSignal| {
@@ -2257,22 +2247,16 @@ impl Methods {
         &mut self,
         name: &str,
         user_id_hash: &str,
-        plugin_vm: bool,
         size: Option<u64>,
         source_name: Option<&str>,
         removable_media: Option<&str>,
         params: &[T],
         source: Option<&str>,
     ) -> Result<Option<String>, Box<dyn Error>> {
-        if plugin_vm {
-            self.ensure_plugin_vm_available(user_id_hash)?;
-        } else {
-            self.ensure_crostini_available(user_id_hash)?;
-        }
+        self.ensure_crostini_available(user_id_hash)?;
         self.create_vm_image(
             name,
             user_id_hash,
-            plugin_vm,
             size,
             source_name,
             removable_media,
@@ -2399,16 +2383,12 @@ impl Methods {
         &mut self,
         name: &str,
         user_id_hash: &str,
-        plugin_vm: bool,
         file_name: &str,
         removable_media: Option<&str>,
     ) -> Result<Option<String>, Box<dyn Error>> {
-        if plugin_vm {
-            self.ensure_plugin_vm_available(user_id_hash)?;
-        } else {
-            self.ensure_crostini_available(user_id_hash)?;
-        }
-        self.import_disk_image(name, user_id_hash, plugin_vm, file_name, removable_media)
+        self.ensure_crostini_available(user_id_hash)?;
+
+        self.import_disk_image(name, user_id_hash, file_name, removable_media)
     }
 
     pub fn vm_share_path(
