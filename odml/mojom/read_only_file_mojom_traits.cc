@@ -40,7 +40,7 @@ bool IsReadOnlyFile(base::File& file) {
                   (FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | FILE_WRITE_DATA |
                    FILE_WRITE_EA | WRITE_DAC | WRITE_OWNER | DELETE));
 #elif BUILDFLAG(IS_FUCHSIA) || \
-    (BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_NACL) && !BUILDFLAG(IS_AIX))
+    (BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_AIX))
   is_readonly =
       (fcntl(file.GetPlatformFile(), F_GETFL) & O_ACCMODE) == O_RDONLY;
 #endif
