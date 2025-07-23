@@ -77,6 +77,8 @@ sched_getaffinity: 1
 # SNDRV_CTL_IOCTL_PVERSION                  = 0x80045500 (For audio calibration)
 # SNDRV_CTL_IOCTL_ELEM_READ                 = 0xc4c85512 (For audio calibration)
 # SNDRV_CTL_IOCTL_TLV_READ                  = 0xc008551a (For audio calibration)
+# GPIO_GET_LINEHANDLE_IOCTL                 = 0xc16cb403
+# GPIOHANDLE_GET_LINE_VALUES_IOCTL          = 0xc040b408
 #
 # Driver type 0x3a (":") = CROS_EC_DEV_IOC
 # (Old iotcl format, used by ChromeOS 3.18 and older)
@@ -92,7 +94,8 @@ ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS || \
        arg1 == 0x5501 || arg1 == 0x5502 || \
        arg1 == 0xc008551b || arg1 == 0x81785501 || \
        arg1 == 0xc1105511 || arg1 == 0x80045500 || \
-       arg1 == 0xc4c85512 || arg1 == 0xc008551a
+       arg1 == 0xc4c85512 || arg1 == 0xc008551a || \
+       arg1 == 0xc16cb403 || arg1 == 0xc040b408
 set_tid_address: 1
 poll: 1
 pipe: 1
