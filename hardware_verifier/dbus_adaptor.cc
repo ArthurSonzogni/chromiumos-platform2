@@ -3,11 +3,11 @@
  * found in the LICENSE file.
  */
 
-#include "hardware_verifier/cli.h"
 #include "hardware_verifier/dbus_adaptor.h"
+
 #include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/hw_verification_report_getter.h"
-#include "hardware_verifier/hw_verification_report_getter_impl.h"
+#include "hardware_verifier/runtime_hwid_utils.h"
 
 namespace hardware_verifier {
 
@@ -20,7 +20,8 @@ using ReportGetterErrorCode = HwVerificationReportGetter::ErrorCode;
 void DBusAdaptor::VerifyComponents(VerifyComponentsResponseCallback callback) {
   VerifyComponentsReply reply;
   ReportGetterErrorCode vr_getter_error;
-  auto report = vr_getter_->Get("", "", &vr_getter_error);
+  auto report = vr_getter_->Get("", "", &vr_getter_error,
+                                RuntimeHWIDRefreshPolicy::kSkip);
   ErrorCode error;
   switch (vr_getter_error) {
     case ReportGetterErrorCode::kErrorCodeNoError:

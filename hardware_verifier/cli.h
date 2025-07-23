@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "hardware_verifier/hw_verification_report_getter.h"
+#include "hardware_verifier/runtime_hwid_utils.h"
 
 namespace hardware_verifier {
 
@@ -67,13 +68,18 @@ class CLI {
   // @param output_format: The format of the output data.
   // @param pii: Output result including PII data like UUID and generic device
   // info.
+  // @param refresh_runtime_hwid_policy: The refresh policy of the Runtime HWID
+  // file.
   //
   // @return Execution result, can be either the verification result or the
   //     failure code.
-  CLIVerificationResult Run(const std::string& probe_result_file,
-                            const std::string& hw_verification_spec_file,
-                            const CLIOutputFormat output_format,
-                            bool pii);
+  CLIVerificationResult Run(
+      const std::string& probe_result_file,
+      const std::string& hw_verification_spec_file,
+      const CLIOutputFormat output_format,
+      bool pii,
+      RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy =
+          RuntimeHWIDRefreshPolicy::kSkip);
 
  protected:
   // This constructor is reserved only for testing.

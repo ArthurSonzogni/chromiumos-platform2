@@ -10,6 +10,7 @@
 #include <sstream>
 #include <utility>
 
+#include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -166,6 +167,25 @@ TEST_F(CLITest, TestVerifyReportSample2) {
 
   EXPECT_EQ(cli_->Run("", "", CLIOutputFormat::kText, false),
             CLIVerificationResult::kFail);
+}
+
+TEST_F(CLITest, TestRuntimeHWIDRefreshPolicy) {
+  for (const auto refresh_policy :
+       {RuntimeHWIDRefreshPolicy::kSkip, RuntimeHWIDRefreshPolicy::kRefresh,
+        RuntimeHWIDRefreshPolicy::kForceGenerate}) {
+    HwVerificationReport vr;
+    vr.set_is_compliant(true);
+    EXPECT_CALL(*mock_vr_getter_, Get(_, _, _, refresh_policy))
+        .WillOnce(
+            DoAll(SetArgPointee<2>(ReportGetterErrorCode::kErrorCodeNoError),
+                  Return(vr)));
+    EXPECT_EQ(
+        cli_->Run("", "", CLIOutputFormat::kProtoBin, true, refresh_policy),
+        CLIVerificationResult::kPass);
+    HwVerificationReport result;
+    EXPECT_TRUE(result.ParseFromString(output_stream_->str()));
+    EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equals(result, vr));
+  }
 }
 
 }  // namespace

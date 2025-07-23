@@ -320,16 +320,23 @@ void VerifierImpl::RefreshRuntimeHWID(
 
   switch (refresh_runtime_hwid_policy) {
     case RuntimeHWIDRefreshPolicy::kSkip:
+      VLOG(1) << "Skip refreshing Runtime HWID.";
       break;
     case RuntimeHWIDRefreshPolicy::kRefresh:
+      VLOG(1) << "Refreshing Runtime HWID.";
       if (runtime_hwid_generator_->ShouldGenerateRuntimeHWID(
               probe_result, verification_spec_categories)) {
+        LOG(INFO)
+            << "Runtime HWID should be generated. Generating to the device.";
         runtime_hwid_generator_->GenerateToDevice(probe_result);
       } else {
+        LOG(INFO) << "Runtime HWID should not be generated. Deleting from the "
+                     "device.";
         DeleteRuntimeHWIDFromDevice();
       }
       break;
     case RuntimeHWIDRefreshPolicy::kForceGenerate:
+      LOG(INFO) << "Force to generate Runtime HWID.";
       runtime_hwid_generator_->GenerateToDevice(probe_result);
       break;
     default:

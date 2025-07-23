@@ -18,6 +18,7 @@
 #include "hardware_verifier/cli.h"
 #include "hardware_verifier/daemon.h"
 #include "hardware_verifier/observer.h"
+#include "hardware_verifier/runtime_hwid_utils.h"
 #include "hardware_verifier/system/context_impl.h"
 
 namespace {
@@ -83,6 +84,22 @@ hardware_verifier::CLIOutputFormat SafeConvertOutputFormatFlagToEnum(
   exit(EX_USAGE);
 }
 
+hardware_verifier::RuntimeHWIDRefreshPolicy SafeConvertRefreshPolicyFlagToEnum(
+    std::string_view refresh_policy_flag) {
+  if (refresh_policy_flag == "skip") {
+    return hardware_verifier::RuntimeHWIDRefreshPolicy::kSkip;
+  }
+  if (refresh_policy_flag == "refresh") {
+    return hardware_verifier::RuntimeHWIDRefreshPolicy::kRefresh;
+  }
+  if (refresh_policy_flag == "force_generate") {
+    return hardware_verifier::RuntimeHWIDRefreshPolicy::kForceGenerate;
+  }
+  LOG(ERROR) << "The refresh policy (" << refresh_policy_flag
+             << ") is invalid.";
+  exit(EX_USAGE);
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -107,6 +124,11 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(pii, false,
               "Output result including PII data like UUID and generic device "
               "info.  Only be available in normal mode.");
+  DEFINE_string(runtime_hwid_refresh_policy, "skip",
+                "The policy to refresh Runtime HWID, can be either "
+                "\"skip\", \"refresh\" or \"force_generate\". Only be "
+                "available in normal mode.");
+
   brillo::FlagHelper::Init(argc, argv, "ChromeOS Hardware Verifier Tool");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   base::CommandLine::Init(argc, argv);
@@ -130,10 +152,17 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "--pii is only available in normal mode.";
       exit(EX_USAGE);
     }
+    if (cl->HasSwitch("runtime_hwid_refresh_policy")) {
+      LOG(ERROR)
+          << "--runtime_hwid_refresh_policy is only available in normal mode.";
+      exit(EX_USAGE);
+    }
   }
 
   const auto output_format =
       SafeConvertOutputFormatFlagToEnum(FLAGS_output_format);
+  const auto runtime_hwid_refresh_policy =
+      SafeConvertRefreshPolicyFlagToEnum(FLAGS_runtime_hwid_refresh_policy);
   hardware_verifier::ContextImpl context;
 
   int exit_status;
@@ -145,7 +174,7 @@ int main(int argc, char* argv[]) {
     hardware_verifier::CLI cli;
     const auto cli_result =
         cli.Run(FLAGS_probe_result_file, FLAGS_hw_verification_spec_file,
-                output_format, FLAGS_pii);
+                output_format, FLAGS_pii, runtime_hwid_refresh_policy);
 
     exit_status = ConvertCLIVerificationResultToExitStatus(cli_result);
     observer->StopTimer(hardware_verifier::kMetricTimeToFinish);

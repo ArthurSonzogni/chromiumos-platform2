@@ -9,7 +9,6 @@
 #include <optional>
 #include <sstream>
 #include <string>
-#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -22,6 +21,7 @@
 #include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/hw_verification_report_getter_impl.h"
 #include "hardware_verifier/observer.h"
+#include "hardware_verifier/runtime_hwid_utils.h"
 
 namespace hardware_verifier {
 
@@ -95,13 +95,16 @@ CLI::CLI()
     : vr_getter_(std::make_unique<HwVerificationReportGetterImpl>()),
       output_stream_(&std::cout) {}
 
-CLIVerificationResult CLI::Run(const std::string& probe_result_file,
-                               const std::string& hw_verification_spec_file,
-                               const CLIOutputFormat output_format,
-                               bool pii) {
+CLIVerificationResult CLI::Run(
+    const std::string& probe_result_file,
+    const std::string& hw_verification_spec_file,
+    const CLIOutputFormat output_format,
+    bool pii,
+    RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy) {
   ReportGetterErrorCode error_code;
-  auto hw_verification_report = vr_getter_->Get(
-      probe_result_file, hw_verification_spec_file, &error_code);
+  auto hw_verification_report =
+      vr_getter_->Get(probe_result_file, hw_verification_spec_file, &error_code,
+                      refresh_runtime_hwid_policy);
   if (error_code != ReportGetterErrorCode::kErrorCodeNoError) {
     return ConvertHwVerificationReportGetterErrorCodeToCLIVerificationResult(
         error_code);
