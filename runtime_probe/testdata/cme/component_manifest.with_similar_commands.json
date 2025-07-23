@@ -1,0 +1,90 @@
+{
+  "manifest_version": 1,
+  "ec_version": "model-0.0.0-abcdefa",
+  "component_list": [
+    {
+      "component_type": "base_sensor",
+      "component_name": "component_i2c_response_11_22",
+      "i2c": {
+        "port": 1,
+        "addr": "0x01",
+        "expect": [
+          {
+            "reg": "0x00",
+            "write_data": "0xaabb",
+            "bytes": 0
+          },
+          {
+            "reg": "0x01",
+            "value": "0x11"
+          },
+          {
+            "reg": "0x02",
+            "value": "0x22"
+          }
+        ]
+      }
+    },
+    {
+      "component_type": "base_sensor",
+      "component_name": "component_i2c_response_11_bb",
+      "i2c": {
+        "port": 1,
+        "addr": "0x01",
+        "expect": [
+          {
+            "reg": "0x00",
+            "write_data": "0xaabb",
+            "bytes": 0
+          },
+          {
+            "reg": "0x01",
+            "value": "0x11"
+          },
+          {
+            "reg": "0x02",
+            "value": "0xbb"
+          }
+        ]
+      }
+    },
+    {
+      "component_type": "base_sensor",
+      "component_name": "component_i2c_with_different_cmds",
+      "i2c": {
+        "port": 1,
+        "addr": "0x01",
+        "expect": [
+          {
+            "reg": "0x00",
+            "write_data": "0xaabb",
+            "bytes": 0
+          },
+          {
+            "reg": "0xaa",
+            "value": "0xff"
+          }
+        ]
+      }
+    },
+    {
+      "component_type": "base_sensor",
+      "component_name": "component_i2c_with_different_cmds_2",
+      "i2c": {
+        "port": 1,
+        "addr": "0x01",
+        "expect": [
+          {
+            "reg": "0x00",
+            "write_data": "0xaabb",
+            "bytes": 0
+          },
+          {
+            "reg": "0xaa",
+            "value": "0x01"
+          }
+        ]
+      }
+    }
+  ]
+}
