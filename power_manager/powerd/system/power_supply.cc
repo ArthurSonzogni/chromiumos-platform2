@@ -1575,18 +1575,24 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
     return true;
   }
 
+  // Positive if the battery is charging and negative if it's discharging.
+  const double signed_current =
+      status->line_power_on ? current_samples_on_line_power_->GetAverage()
+                            : current_samples_on_battery_power_->GetAverage();
+
   if (!has_max_samples_) {
-    return false;
+    if (signed_current != 0.0) {
+      return false;
+    } else if (clock_->GetCurrentTime() >= battery_stabilized_timestamp_) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   if (clock_->GetCurrentTime() < battery_stabilized_timestamp_) {
     return false;
   }
-
-  // Positive if the battery is charging and negative if it's discharging.
-  const double signed_current =
-      status->line_power_on ? current_samples_on_line_power_->GetAverage()
-                            : current_samples_on_battery_power_->GetAverage();
 
   switch (status->battery_state) {
     case PowerSupplyProperties_BatteryState_CHARGING:
