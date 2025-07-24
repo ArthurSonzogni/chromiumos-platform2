@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <wayland-client.h>
 #include <wayland-client-protocol.h>
+#include <wayland-client.h>
 
 #include "base/command_line.h"
 #include "base/logging.h"
@@ -198,8 +198,7 @@ int main(int argc, char* argv[]) {
 
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  struct demo_data data;
-  memset(&data, 0, sizeof(data));
+  struct demo_data data = {};
   data.done = false;
 
   data.bgcolor = 0x3388DD;
