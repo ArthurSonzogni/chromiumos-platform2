@@ -29,12 +29,17 @@ void AresInterface::set_local_dev(ares_channel channel,
   return ares_set_local_dev(channel, local_dev_name);
 }
 
-void AresInterface::gethostbyname(ares_channel channel,
-                                  const char* name,
-                                  int family,
-                                  ares_host_callback callback,
-                                  void* arg) {
-  return ares_gethostbyname(channel, name, family, callback, arg);
+void AresInterface::getaddrinfo(ares_channel channel,
+                                const char* name,
+                                const char* service,
+                                const struct ares_addrinfo_hints* hints,
+                                ares_addrinfo_callback callback,
+                                void* arg) {
+  return ares_getaddrinfo(channel, name, service, hints, callback, arg);
+}
+
+void AresInterface::freeaddrinfo(struct ares_addrinfo* ai) {
+  return ares_freeaddrinfo(ai);
 }
 
 struct timeval* AresInterface::timeout(ares_channel channel,

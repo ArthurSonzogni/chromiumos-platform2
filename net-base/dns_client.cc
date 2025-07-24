@@ -29,35 +29,30 @@ namespace net_base {
 
 namespace {
 
-// Returns the IP addrs from |hostent|. Return empty vector on parsing failures.
-std::vector<IPAddress> GetIPsFromHostent(IPFamily expected_family,
-                                         const struct hostent* hostent) {
+// Returns the list of IP address from |ares_addrinfo|. Returns empty vector on
+// parsing failures.
+std::vector<IPAddress> GetIPsFromAddrinfo(IPFamily expected_family,
+                                          const struct ares_addrinfo* info) {
   std::vector<IPAddress> ret;
-  const size_t expected_length = IPAddress::GetAddressLength(expected_family);
-
-  if (!hostent) {
-    LOG(ERROR) << "hostent is nullptr";
-    return ret;
-  }
-  if (ToSAFamily(expected_family) != hostent->h_addrtype) {
-    LOG(ERROR) << "IP family mismatched: expect " << expected_family << ", got "
-               << hostent->h_addrtype;
-    return ret;
-  }
-  if (static_cast<size_t>(hostent->h_length) != expected_length) {
-    LOG(ERROR) << "IP address length mismatched: expect " << expected_length
-               << ", got " << hostent->h_length;
+  if (!info) {
+    LOG(ERROR) << "info is nullptr";
     return ret;
   }
 
-  // Iterate over h_addr_list to get the IP addresses.
-  for (int i = 0; hostent->h_addr_list[i] != nullptr; i++) {
-    auto addr = IPAddress::CreateFromBytes(
-        {reinterpret_cast<unsigned char*>(hostent->h_addr_list[i]),
-         expected_length});
-    ret.push_back(addr.value());  // should always be valid
-  }
+  for (struct ares_addrinfo_node* node = info->nodes; node != nullptr;
+       node = node->ai_next) {
+    if (node->ai_family != ToSAFamily(expected_family)) {
+      continue;
+    }
 
+    if (node->ai_family == AF_INET) {
+      ret.emplace_back(IPv4Address(
+          reinterpret_cast<struct sockaddr_in*>(node->ai_addr)->sin_addr));
+    } else if (node->ai_family == AF_INET6) {
+      ret.emplace_back(IPv6Address(
+          reinterpret_cast<struct sockaddr_in6*>(node->ai_addr)->sin6_addr));
+    }
+  }
   return ret;
 }
 
@@ -101,18 +96,18 @@ class DNSClientImpl : public DNSClient {
                 CallbackWithDuration callback,
                 const Options& options,
                 AresInterface* ares);
-  ~DNSClientImpl();
+  ~DNSClientImpl() override;
 
  private:
   // Clean up the internal state.
   void CleanUp();
 
   // Callback from c-ares.
-  static void AresGethostbynameCallback(void* arg,
-                                        int status,
-                                        int timeouts,
-                                        struct hostent* hostent);
-  void ProcessGethostbynameCallback(int status, struct hostent* hostent);
+  static void AresGetaddrinfoCallback(void* arg,
+                                      int status,
+                                      int timeouts,
+                                      struct ares_addrinfo* result);
+  void ProcessGetaddrinfoCallback(int status, struct ares_addrinfo* result);
 
   // Helper functions to invoke the callback. Passing by values are expected
   // here since we need move or copy inside the functions.
@@ -126,7 +121,7 @@ class DNSClientImpl : public DNSClient {
   //   called on the corresponding events. These three functions will call
   //   ProcessFd() inside.
   // - ProcessFd(): called ares_process_fd(), which may invoke the callback
-  //   (i.e., AresGethostbynameCallback()).
+  //   (i.e., AresGetaddrinfoCallback()).
   // - RefreshHandlers(): Set up the event handlers (OnSocketReadable(),
   //   OnSocketWritable()).
   // - RefreshTimeout(): Set up OnTimeout() and called by OnTimeout(). Note that
@@ -219,10 +214,13 @@ DNSClientImpl::DNSClientImpl(IPFamily family,
     }
   }
 
+  struct ares_addrinfo_hints hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = ToSAFamily(family_);
   // The raw pointer here is safe since the callback can only be invoked inside
   // some c-ares functions, while they can only be called from this object.
-  ares_->gethostbyname(channel_, std::string(hostname).c_str(),
-                       ToSAFamily(family_), AresGethostbynameCallback, this);
+  ares_->getaddrinfo(channel_, std::string(hostname).c_str(), nullptr, &hints,
+                     AresGetaddrinfoCallback, this);
 
   RefreshHandlers();
   RefreshTimeout();
@@ -247,21 +245,27 @@ void DNSClientImpl::CleanUp() {
 }
 
 // static
-void DNSClientImpl::AresGethostbynameCallback(void* arg,
-                                              int status,
-                                              int /*timeouts*/,
-                                              struct hostent* hostent) {
+void DNSClientImpl::AresGetaddrinfoCallback(void* arg,
+                                            int status,
+                                            int /*timeouts*/,
+                                            struct ares_addrinfo* result) {
   DNSClientImpl* res = static_cast<DNSClientImpl*>(arg);
 
   // Note that this function is called in the ares code path (and it will go
   // back to function which invokes the ares code path eventually) so it's
   // better to delayed the processing of the tasks in this function which can
   // affect the state of this object.
-  res->ProcessGethostbynameCallback(status, hostent);
+  res->ProcessGetaddrinfoCallback(status, result);
 }
 
-void DNSClientImpl::ProcessGethostbynameCallback(int status,
-                                                 struct hostent* hostent) {
+void DNSClientImpl::ProcessGetaddrinfoCallback(int status,
+                                               struct ares_addrinfo* info) {
+  base::ScopedClosureRunner free_info(base::BindOnce(
+      [](AresInterface* ares, struct ares_addrinfo* info) {
+        ares->freeaddrinfo(info);
+      },
+      ares_, info));
+
   if (!IsRunning()) {
     return;
   }
@@ -274,7 +278,7 @@ void DNSClientImpl::ProcessGethostbynameCallback(int status,
 
   // Note that ENODATA should be returned when there is no record for the
   // hostname, so empty list here means an error.
-  auto addrs = GetIPsFromHostent(family_, hostent);
+  auto addrs = GetIPsFromAddrinfo(family_, info);
   if (!addrs.empty()) {
     ReportSuccess(now, std::move(addrs));
   } else {

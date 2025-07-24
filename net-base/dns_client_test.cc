@@ -6,7 +6,9 @@
 
 #include <fcntl.h>
 #include <netdb.h>
+#include <sys/socket.h>
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -20,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "net-base/ares_interface.h"
+#include "net-base/ip_address.h"
 
 namespace net_base {
 namespace {
@@ -35,9 +38,75 @@ using ::testing::StrictMock;
 using Error = DNSClient::Error;
 using Result = DNSClient::Result;
 
+struct AresAddrinfoContext {
+  std::vector<struct sockaddr_in> sockaddr_in_list;
+  std::vector<struct sockaddr_in6> sockaddr_in6_list;
+  std::vector<struct ares_addrinfo_node> nodes;
+  struct ares_addrinfo info = {};
+};
+
+// Generates the ares_addrinfo struct and holds the elements pointed to by it.
+// The result is wrapped by unique_ptr to prevent copying, as ares_addrinfo
+// stores pointers to internal fields. Copying the struct would lead to
+// dangling pointers.
+std::unique_ptr<AresAddrinfoContext> GenerateAresAddrinfoContext(
+    const std::vector<IPAddress> addrs, std::optional<IPFamily> hint_family) {
+  auto ret = std::make_unique<AresAddrinfoContext>();
+
+  // Convert to the list of sockaddr_in and sockaddr_in6 instances, and store
+  // them at `ret.sockaddr_in_list` and `ret.sockaddr_in6_list` fields.
+  for (const IPAddress& ip : addrs) {
+    if (hint_family && ip.GetFamily() != *hint_family) {
+      continue;
+    }
+
+    if (const auto ipv4 = ip.ToIPv4Address(); ipv4.has_value()) {
+      struct sockaddr_in addr;
+      memset(&addr, 0, sizeof(addr));
+      addr.sin_addr = ipv4->ToInAddr();
+      ret->sockaddr_in_list.push_back(addr);
+    } else if (const auto ipv6 = ip.ToIPv6Address(); ipv6.has_value()) {
+      struct sockaddr_in6 addr;
+      memset(&addr, 0, sizeof(addr));
+      addr.sin6_addr = ipv6->ToIn6Addr();
+      ret->sockaddr_in6_list.push_back(addr);
+    }
+  }
+
+  // Generate the linked list of ares_addrinfo_node, and store the nodes at
+  // the `ret.nodes` field.
+  for (struct sockaddr_in& addr : ret->sockaddr_in_list) {
+    struct ares_addrinfo_node node;
+    memset(&node, 0, sizeof(node));
+    node.ai_family = AF_INET;
+    node.ai_addrlen = sizeof(addr);
+    node.ai_addr = reinterpret_cast<sockaddr*>(&addr);
+    ret->nodes.push_back(node);
+  }
+  for (struct sockaddr_in6& addr : ret->sockaddr_in6_list) {
+    struct ares_addrinfo_node node;
+    memset(&node, 0, sizeof(node));
+    node.ai_family = AF_INET6;
+    node.ai_addrlen = sizeof(addr);
+    node.ai_addr = reinterpret_cast<sockaddr*>(&addr);
+    ret->nodes.push_back(node);
+  }
+  for (size_t idx = 0; idx + 1 < ret->nodes.size(); idx++) {
+    ret->nodes[idx].ai_next = &ret->nodes[idx + 1];
+  }
+
+  // Generate the ares_addrinfo that points to the linked list `ret.nodes`.
+  memset(&ret->info, 0, sizeof(ret->info));
+  if (!ret->nodes.empty()) {
+    ret->info.nodes = &ret->nodes[0];
+  }
+
+  return ret;
+}
+
 class FakeAres : public AresInterface {
  public:
-  ~FakeAres();
+  ~FakeAres() override;
 
   int init_options(ares_channel* channelptr,
                    struct ares_options* options,
@@ -47,11 +116,13 @@ class FakeAres : public AresInterface {
 
   void set_local_dev(ares_channel channel, const char* local_dev_name) override;
 
-  void gethostbyname(ares_channel channel,
-                     const char* name,
-                     int family,
-                     ares_host_callback callback,
-                     void* arg) override;
+  void getaddrinfo(ares_channel channel,
+                   const char* name,
+                   const char* service,
+                   const struct ares_addrinfo_hints* hints,
+                   ares_addrinfo_callback callback,
+                   void* arg) override;
+  void freeaddrinfo(struct ares_addrinfo* ai) override;
 
   struct timeval* timeout(ares_channel channel,
                           struct timeval* maxtv,
@@ -77,10 +148,10 @@ class FakeAres : public AresInterface {
   void InvokeCallbackOnNextProcessFD(int status, std::vector<IPAddress> addrs);
 
  private:
-  struct GethostbynameParams {
-    int family = 0;
+  struct GetaddrinfoParams {
+    std::optional<IPFamily> hint_family = std::nullopt;
     void* arg = nullptr;
-    ares_host_callback callback = nullptr;
+    ares_addrinfo_callback callback = nullptr;
   };
 
   struct CallbackResult {
@@ -105,7 +176,7 @@ class FakeAres : public AresInterface {
 
   void* channel_ = nullptr;
 
-  std::unique_ptr<GethostbynameParams> gethostbyname_params_;
+  std::unique_ptr<GetaddrinfoParams> getaddrinfo_params_;
 
   base::ScopedFD read_fd_local_;
   base::ScopedFD read_fd_remote_;
@@ -130,14 +201,13 @@ int FakeAres::init_options(ares_channel* channelptr,
 
 void FakeAres::destroy(ares_channel channel) {
   CheckChannel(channel);
-  if (gethostbyname_params_) {
-    gethostbyname_params_->callback(gethostbyname_params_->arg,
-                                    ARES_EDESTRUCTION,
-                                    /*timeouts=*/0, /*hostent=*/nullptr);
+  if (getaddrinfo_params_) {
+    getaddrinfo_params_->callback(getaddrinfo_params_->arg, ARES_EDESTRUCTION,
+                                  /*timeouts=*/0, /*result=*/nullptr);
+    getaddrinfo_params_ = nullptr;
   }
 
   channel_ = nullptr;
-  gethostbyname_params_ = nullptr;
   read_fd_local_.reset();
   read_fd_remote_.reset();
   write_fd_local_.reset();
@@ -148,17 +218,19 @@ void FakeAres::set_local_dev(ares_channel channel, const char* local_dev_name) {
   CheckChannel(channel);
 }
 
-void FakeAres::gethostbyname(ares_channel channel,
-                             const char* name,
-                             int family,
-                             ares_host_callback callback,
-                             void* arg) {
+void FakeAres::getaddrinfo(ares_channel channel,
+                           const char* name,
+                           const char* service,
+                           const struct ares_addrinfo_hints* hints,
+                           ares_addrinfo_callback callback,
+                           void* arg) {
   CheckChannel(channel);
-  CHECK_EQ(gethostbyname_params_, nullptr) << "Callback has been set";
-  gethostbyname_params_ = std::make_unique<GethostbynameParams>();
-  gethostbyname_params_->family = family;
-  gethostbyname_params_->callback = callback;
-  gethostbyname_params_->arg = arg;
+  CHECK_EQ(getaddrinfo_params_, nullptr) << "Callback has been set";
+  getaddrinfo_params_ = std::make_unique<GetaddrinfoParams>();
+  getaddrinfo_params_->hint_family =
+      FromSAFamily((sa_family_t)hints->ai_family);
+  getaddrinfo_params_->callback = callback;
+  getaddrinfo_params_->arg = arg;
 
   int fds[2];
   CHECK_EQ(pipe2(fds, 0), 0);
@@ -171,6 +243,11 @@ void FakeAres::gethostbyname(ares_channel channel,
   // Block the write fd at first so that the client won't get a ready event at
   // the beginning.
   BlockWriteFD();
+}
+
+void FakeAres::freeaddrinfo(struct ares_addrinfo* ai) {
+  // Do nothing, because the ares_addrinfo instance is freed by
+  // AresAddrinfoContext after callback.
 }
 
 struct timeval* FakeAres::timeout(ares_channel channel,
@@ -207,29 +284,13 @@ void FakeAres::process_fd(ares_channel channel,
     return;
   }
 
-  CHECK(gethostbyname_params_);
-  std::vector<std::vector<uint8_t>> addrs_in_bytes;
-  std::vector<char*> ptrs_to_addrs_in_bytes;
-  for (const auto& ip : callback_result_->addrs) {
-    addrs_in_bytes.push_back(ip.ToBytes());
-    ptrs_to_addrs_in_bytes.push_back(
-        reinterpret_cast<char*>(addrs_in_bytes.back().data()));
-  }
-  ptrs_to_addrs_in_bytes.push_back(nullptr);
+  CHECK(getaddrinfo_params_);
 
-  struct hostent ent;
-
-  // Not using these fields in the implementation now, just ignore them.
-  ent.h_name = nullptr;
-  ent.h_aliases = nullptr;
-
-  ent.h_addrtype = gethostbyname_params_->family;
-  ent.h_length = gethostbyname_params_->family == AF_INET ? 4 : 16;
-  ent.h_addr_list = ptrs_to_addrs_in_bytes.data();
-
-  gethostbyname_params_->callback(gethostbyname_params_->arg,
-                                  callback_result_->status,
-                                  /*timeouts=*/0, &ent);
+  std::unique_ptr<AresAddrinfoContext> context = GenerateAresAddrinfoContext(
+      callback_result_->addrs, getaddrinfo_params_->hint_family);
+  getaddrinfo_params_->callback(getaddrinfo_params_->arg,
+                                callback_result_->status,
+                                /*timeouts=*/0, &context->info);
 }
 
 int FakeAres::set_servers_csv(ares_channel channel, const char* servers) {

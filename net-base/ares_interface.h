@@ -29,11 +29,13 @@ class BRILLO_EXPORT AresInterface {
 
   virtual void set_local_dev(ares_channel channel, const char* local_dev_name);
 
-  virtual void gethostbyname(ares_channel channel,
-                             const char* name,
-                             int family,
-                             ares_host_callback callback,
-                             void* arg);
+  virtual void getaddrinfo(ares_channel channel,
+                           const char* name,
+                           const char* service,
+                           const struct ares_addrinfo_hints* hints,
+                           ares_addrinfo_callback callback,
+                           void* arg);
+  virtual void freeaddrinfo(struct ares_addrinfo* ai);
 
   virtual struct timeval* timeout(ares_channel channel,
                                   struct timeval* maxtv,
