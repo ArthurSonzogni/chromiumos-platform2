@@ -237,7 +237,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         opts.optopt(
             "",
             "vm-type",
-            "type of VM (TERMINA / ARC_VM / BOREALIS / BRUSCHETTA / BAGUETTE)",
+            "type of VM (CROSTINI / ARC_VM / BOREALIS / BRUSCHETTA / BAGUETTE)",
             "TYPE",
         );
         opts.optflag(
@@ -310,7 +310,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let vm_type = match matches.opt_str("vm-type") {
             None => None,
             Some(vm_type) => Some(match vm_type.to_uppercase().as_ref() {
-                "TERMINA" => VmType::TERMINA,
+                // User-managed linux vm has default vm name of "termina", but this does not imply
+                // a specific vm type.
+                "CROSTINI" | "TERMINA" => VmType::TERMINA,
                 "BOREALIS" => VmType::BOREALIS,
                 "BRUSCHETTA" => VmType::BRUSCHETTA,
                 "BAGUETTE" => VmType::BAGUETTE,
@@ -1062,7 +1064,7 @@ const USAGE: &str = " [
            [--enable-virtgpu-native-context] [--vtpm-proxy] \
            [--enable-audio-capture] [--extra-disk PATH] [--dlc ID] \
            [--tools-dlc ID] [--kernel PATH] [--initrd PATH] [--rootfs PATH] \
-           [--vm-type <TERMINA | ARC_VM | BOREALIS | BRUSCHETTA | BAGUETTE>] \
+           [--vm-type <CROSTINI | ARC_VM | BOREALIS | BRUSCHETTA | BAGUETTE>] \
            [--no-start-lxd] [--writable-rootfs] [--kernel-param PARAM]... \
            [--oem-string STRING]... [--bios PATH] [--pflash PATH] [--bios-dlc ID] \
            [--timeout PARAM] [--no-shell] [--user NAME] [--user-uid PARAM] \
@@ -1296,6 +1298,8 @@ mod tests {
     fn arg_parsing() {
         const DUMMY_SUCCESS_ARGS: &[&[&str]] = &[
             &["vmc", "start", "termina"],
+            &["vmc", "start", "--vm-type", "crostini", "termina"],
+            &["vmc", "start", "--vm-type", "baguette", "termina"],
             &["vmc", "start", "--enable-gpu", "termina"],
             &["vmc", "start", "termina", "--enable-gpu"],
             &["vmc", "start", "termina", "--enable-big-gl"],
