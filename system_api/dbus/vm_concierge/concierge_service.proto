@@ -1085,6 +1085,9 @@ message VmDiskInfo {
   // VM type of the disk image (mainly used to distinguish baguette and
   // crostini).
   VmInfo.VmType vm_type = 9;
+
+  // True if the disk image file has vm_type xattr and passed via vm_type.
+  bool has_vm_type = 10;
 }
 
 // Response to ListVmDisks {
