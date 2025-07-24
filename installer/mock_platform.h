@@ -23,6 +23,11 @@ class MockPlatform : public Platform {
               GetPartitionUniqueId,
               (const base::FilePath& base_device, PartitionNum partition_num),
               (const override));
+
+  MOCK_METHOD(std::optional<std::string>,
+              ReadDmi,
+              (DmiKey key),
+              (const override));
 };
 
 #endif  // INSTALLER_MOCK_PLATFORM_H_

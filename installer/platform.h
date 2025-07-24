@@ -16,6 +16,13 @@ namespace base {
 class FilePath;
 };
 
+// DMI keys to values typically exposed via
+// sysfs at /sys/class/dmi/id/*
+enum class DmiKey {
+  kSysVendor,
+  kProductName,
+};
+
 // Abstract interface for accessing system services.
 class Platform {
  public:
@@ -29,6 +36,9 @@ class Platform {
   // device `base_device`.
   virtual std::optional<Guid> GetPartitionUniqueId(
       const base::FilePath& base_device, PartitionNum partition_num) const = 0;
+
+  // Read a DMI value from the system.
+  virtual std::optional<std::string> ReadDmi(DmiKey key) const = 0;
 };
 
 // Real implementation of Platform (used outside of tests).
@@ -39,6 +49,8 @@ class PlatformImpl : public Platform {
   std::optional<Guid> GetPartitionUniqueId(
       const base::FilePath& base_device,
       PartitionNum partition_num) const override;
+
+  std::optional<std::string> ReadDmi(DmiKey key) const override;
 };
 
 #endif  // INSTALLER_PLATFORM_H_
