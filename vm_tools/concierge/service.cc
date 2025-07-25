@@ -1139,8 +1139,9 @@ bool Service::ListVmDisksInLocation(const std::string& cryptohome_id,
         IsDiskPreallocatedWithUserChosenSize(path.value()));
     image->set_path(path.value());
     auto vm_type = GetDiskImageVmType(path.value());
-    if (vm_type.has_value() && vm_type == vm_tools::apps::VmType::BAGUETTE) {
-      image->set_vm_type(ToLegacyVmType(vm_tools::apps::VmType::BAGUETTE));
+    image->set_has_vm_type(vm_type.has_value());
+    if (vm_type.has_value()) {
+      image->set_vm_type(ToLegacyVmType(vm_type.value()));
     }
   }
 
