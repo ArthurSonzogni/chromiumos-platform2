@@ -39,7 +39,8 @@ bool RunEfiPostInstall(const Platform& platform,
 // Partition).
 //
 // Returns true if all copies succeed, false otherwise.
-bool UpdateEfiBootloaders(const InstallConfig& install_config);
+bool UpdateEfiBootloaders(const Platform& platform,
+                          const InstallConfig& install_config);
 
 bool UpdateEfiGrubCfg(const Platform& platform,
                       const InstallConfig& install_config);

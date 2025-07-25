@@ -321,7 +321,7 @@ TEST_F(UpdateEfiBootloadersTest, Success) {
   CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/definition"), ""));
   CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/efi.txt"), ""));
 
-  EXPECT_TRUE(UpdateEfiBootloaders(install_config_));
+  EXPECT_TRUE(UpdateEfiBootloaders(platform_, install_config_));
 
   // Check files were copied as expected.
   EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/bootia32.efi")),
@@ -347,7 +347,7 @@ TEST_F(UpdateEfiBootloadersTest, InvalidDestDir) {
 
   // The destination directory does not exist, so the copy operation
   // will fail.
-  EXPECT_FALSE(UpdateEfiBootloaders(install_config_));
+  EXPECT_FALSE(UpdateEfiBootloaders(platform_, install_config_));
 }
 
 class UpdateLegacyKernelTest : public PostInstallTest {};
@@ -766,6 +766,68 @@ TEST(GrubQuirkTest, WrongVendor) {
       .WillOnce(Return("TravelMate Spin B3"));
 
   EXPECT_FALSE(CheckRequiresGrubQuirk(platform_));
+}
+
+class UpdateEfiBootloadersQuirkedTest : public PostInstallTest {
+  void SetUp() override {
+    PostInstallTest::SetUp();
+
+    install_config_.bios_type = BiosType::kEFI;
+
+    // Create crdyboot in the source.
+    CHECK(base::WriteFile(rootfs_boot_.Append("efi/boot/crdybootx64.efi"),
+                          "crdyboot"));
+  }
+
+ protected:
+  // Set expectations that the DMI information will
+  // result in a required grub quirk.
+  void ExpectGrubMatchDMI() {
+    EXPECT_CALL(platform_, ReadDmi(DmiKey::kSysVendor))
+        .WillRepeatedly(Return("Acer"));
+    EXPECT_CALL(platform_, ReadDmi(DmiKey::kProductName))
+        .WillRepeatedly(Return("TravelMate Spin B3"));
+  }
+};
+
+TEST_F(UpdateEfiBootloadersQuirkedTest, SuccessApplied) {
+  ExpectGrubMatchDMI();
+
+  EXPECT_TRUE(UpdateEfiBootloaders(platform_, install_config_));
+
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/bootx64.efi")),
+            "bootx64_efi");
+  // Confirm grubx64.efi matches the contents of bootx64.efi.
+  // This is the case when the quirk applies.
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/grubx64.efi")),
+            "bootx64_efi");
+}
+
+TEST_F(UpdateEfiBootloadersQuirkedTest, NoCrdyboot) {
+  ExpectGrubMatchDMI();
+
+  CHECK(brillo::DeleteFile(rootfs_boot_.Append("efi/boot/crdybootx64.efi")));
+
+  EXPECT_TRUE(UpdateEfiBootloaders(platform_, install_config_));
+
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/bootx64.efi")),
+            "bootx64_efi");
+  // The grubx64.efi should not be created if crdyboot isn't in use.
+  EXPECT_FALSE(base::PathExists(esp_.Append("efi/boot/grubx64.efi")));
+}
+
+TEST_F(UpdateEfiBootloadersQuirkedTest, NoQuirkNeeded) {
+  EXPECT_CALL(platform_, ReadDmi(DmiKey::kSysVendor)).WillOnce(Return("Acer"));
+  // Product name does not match a quirk.
+  EXPECT_CALL(platform_, ReadDmi(DmiKey::kProductName))
+      .WillOnce(Return("Not A TravelMate"));
+
+  EXPECT_TRUE(UpdateEfiBootloaders(platform_, install_config_));
+
+  EXPECT_EQ(ReadFileToString(esp_.Append("efi/boot/bootx64.efi")),
+            "bootx64_efi");
+  // The grub path isn't created when the quirk isn't applied.
+  EXPECT_FALSE(base::PathExists(esp_.Append("efi/boot/grubx64.efi")));
 }
 
 }  // namespace

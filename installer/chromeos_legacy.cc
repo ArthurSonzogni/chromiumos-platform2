@@ -286,7 +286,8 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config) {
   return result;
 }
 
-bool UpdateEfiBootloaders(const InstallConfig& install_config) {
+bool UpdateEfiBootloaders(const Platform& platform,
+                          const InstallConfig& install_config) {
   bool result = true;
   const base::FilePath src_dir =
       install_config.root.mount().Append("boot/efi/boot");
@@ -308,6 +309,24 @@ bool UpdateEfiBootloaders(const InstallConfig& install_config) {
       result = false;
     }
   }
+
+  // The grub workaround must only be applied for crdyboot builds.
+  // crdybootx64.efi will only exist when crdyboot is in use.
+  if (base::PathExists(dest_dir.Append("crdybootx64.efi")) &&
+      CheckRequiresGrubQuirk(platform)) {
+    // This is copying the shim for crdyboot, bootx64.efi (crdyshim), to
+    // the additional path grubx64.efi.
+    // On buggy firmware (those matching CheckRequiresGrubQuirk) the
+    // firmware makes it difficult to enter its menus if this path
+    // does not exist (b:431021440).
+    // crdyshim will load and verify crdyboot from either of
+    // these locations.
+    if (!base::CopyFile(dest_dir.Append("bootx64.efi"),
+                        dest_dir.Append("grubx64.efi"))) {
+      result = false;
+    }
+  }
+
   return result;
 }
 
@@ -438,7 +457,7 @@ bool RunEfiPostInstall(const Platform& platform,
     return false;
   }
 
-  if (!UpdateEfiBootloaders(install_config)) {
+  if (!UpdateEfiBootloaders(platform, install_config)) {
     return false;
   }
 
