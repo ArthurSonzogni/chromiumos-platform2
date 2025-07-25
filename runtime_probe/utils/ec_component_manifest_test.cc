@@ -32,6 +32,17 @@ class EcComponentManifestTest : public BaseFileTest {
                                manifest_dir.Append(kEcComponentManifestName)));
   }
 
+  void SetUpEcComponentManifestWithContents(const std::string& image_name,
+                                            const std::string& contents) {
+    mock_context().fake_cros_config()->SetString(
+        kCrosConfigImageNamePath, kCrosConfigImageNameKey, image_name);
+    const base::FilePath manifest_dir =
+        Context::Get()->root_dir().Append(kCmePath).Append(image_name);
+    ASSERT_TRUE(base::CreateDirectory(manifest_dir));
+    ASSERT_TRUE(base::WriteFile(manifest_dir.Append(kEcComponentManifestName),
+                                contents));
+  }
+
  private:
   ::testing::NiceMock<ContextMockImpl> mock_context_;
 };
@@ -172,6 +183,55 @@ TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
     EXPECT_EQ(comp.i2c.addr, 0x2);
     EXPECT_EQ(comp.i2c.expect.size(), 0);
   }
+}
+
+namespace {
+
+std::string FindAndReplace(const std::string& text,
+                           const std::string& from,
+                           const std::string& to) {
+  std::string result = text;
+  result.replace(text.find(from), from.length(), to);
+  return result;
+}
+
+}  // namespace
+
+TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_InvalidReg) {
+  // Arrange, prepare a manifest file that contains only one invalid part ---
+  // "reg" out of range.
+  std::string valid_manifest_content = R"JSON(
+      {
+        "manifest_version": 1,
+        "ec_version": "model-0.0.0-abcdefa",
+        "component_list": [{
+          "component_type": "the_comp_type",
+          "component_name": "the_comp_name",
+          "i2c": {
+            "port": 3,
+            "addr": "0x12",
+            "expect": [{
+              "reg": "0xab",
+              "bytes": 0
+            }]
+          }
+        }]
+      })JSON";
+  SetUpEcComponentManifestWithContents("the_unused_image_name",
+                                       valid_manifest_content);
+  ASSERT_TRUE(
+      EcComponentManifestReader("model-0.0.0-abcdefa").Read().has_value());
+  std::string invalid_manifest_content = FindAndReplace(
+      valid_manifest_content, "\"reg\": \"0xab\"", "\"reg\": \"0xabcd\"");
+  SetUpEcComponentManifestWithContents("the_unused_image_name",
+                                       invalid_manifest_content);
+
+  // Act, read the manifest
+  const auto invalid_manifest =
+      EcComponentManifestReader("model-0.0.0-abcdefa").Read();
+
+  // Assert, check if the manifest file is indeed failed to read.
+  EXPECT_FALSE(invalid_manifest.has_value());
 }
 
 }  // namespace
