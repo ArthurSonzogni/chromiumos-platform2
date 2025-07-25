@@ -4,6 +4,7 @@
 
 #include "installer/chromeos_legacy.h"
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -726,6 +727,45 @@ TEST_F(RunNonChromebookPostInstallTest, UefiNonFatalLegacyError) {
   CHECK(brillo::DeleteFile(rootfs_boot_.Append("syslinux/root.A.cfg")));
 
   EXPECT_TRUE(RunNonChromebookPostInstall(platform_, install_config_));
+}
+
+TEST(GrubQuirkTest, MatchSuccess) {
+  MockPlatform platform_;
+
+  EXPECT_CALL(platform_, ReadDmi(DmiKey::kSysVendor)).WillOnce(Return("Acer"));
+  EXPECT_CALL(platform_, ReadDmi(DmiKey::kProductName))
+      .WillOnce(Return("TravelMate Spin B3"));
+
+  EXPECT_TRUE(CheckRequiresGrubQuirk(platform_));
+}
+
+TEST(GrubQuirkTest, NoValue) {
+  MockPlatform platform_;
+
+  EXPECT_CALL(platform_, ReadDmi(_)).WillRepeatedly(Return(std::nullopt));
+
+  EXPECT_FALSE(CheckRequiresGrubQuirk(platform_));
+}
+
+TEST(GrubQuirkTest, WrongProduct) {
+  MockPlatform platform_;
+
+  EXPECT_CALL(platform_, ReadDmi(DmiKey::kSysVendor)).WillOnce(Return("Acer"));
+  EXPECT_CALL(platform_, ReadDmi(DmiKey::kProductName))
+      .WillOnce(Return("Not A TravelMate"));
+
+  EXPECT_FALSE(CheckRequiresGrubQuirk(platform_));
+}
+
+TEST(GrubQuirkTest, WrongVendor) {
+  MockPlatform platform_;
+
+  EXPECT_CALL(platform_, ReadDmi(DmiKey::kSysVendor))
+      .WillOnce(Return(std::nullopt));
+  EXPECT_CALL(platform_, ReadDmi(DmiKey::kProductName))
+      .WillOnce(Return("TravelMate Spin B3"));
+
+  EXPECT_FALSE(CheckRequiresGrubQuirk(platform_));
 }
 
 }  // namespace

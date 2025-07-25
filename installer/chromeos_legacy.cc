@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -26,6 +27,19 @@
 
 using std::string;
 using std::vector;
+
+namespace {
+
+struct GrubQuirkEntry {
+  std::string_view sys_vendor;
+  std::string_view product_name;
+};
+
+// Vendor and product_name prefix to check for the grub workaround
+// for b:431021440.
+constexpr GrubQuirkEntry kGrubQuirk =
+    GrubQuirkEntry{.sys_vendor = "Acer", .product_name = "TravelMate"};
+}  // namespace
 
 // String matching the kernel boot lines in grub.cfg files.
 const std::string CommandPatternForSlot(BootSlot slot) {
@@ -391,6 +405,28 @@ bool UpdateEfiGrubCfg(const Platform& platform,
     return false;
   }
   return true;
+}
+
+bool CheckRequiresGrubQuirk(const Platform& platform) {
+  std::optional<std::string> vendor = platform.ReadDmi(DmiKey::kSysVendor);
+  std::optional<std::string> product_name =
+      platform.ReadDmi(DmiKey::kProductName);
+
+  // If there is no vendor or product name the quirk can't
+  // match.
+  if (!vendor.has_value() || !product_name.has_value()) {
+    // Warn as it is expected this DMI information is available
+    // on reven.
+    LOG(WARNING) << "Unable to read DMI information.";
+    return false;
+  }
+
+  if (vendor == kGrubQuirk.sys_vendor &&
+      base::StartsWith(*product_name, kGrubQuirk.product_name)) {
+    LOG(INFO) << "Matched for the grub copy quirk.";
+    return true;
+  }
+  return false;
 }
 
 bool RunEfiPostInstall(const Platform& platform,

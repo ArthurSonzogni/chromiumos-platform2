@@ -18,4 +18,15 @@ class Platform;
 bool RunNonChromebookPostInstall(const Platform& platform,
                                  const InstallConfig& install_config);
 
+// Some machines, such as some Travelmates, have firmware which
+// run into issues getting the boot menu or into BIOS settings
+// when the installed ESP install does not have
+// an EFI binary at a hardcoded set of locations.
+// This function checks the DMI information matching
+// machines with these issues.
+// The result is used to install a binary `grubx64.efi`
+// on the ESP to work around the firmware issues.
+// See b:431021440
+bool CheckRequiresGrubQuirk(const Platform& platform);
+
 #endif  // INSTALLER_CHROMEOS_LEGACY_H_
