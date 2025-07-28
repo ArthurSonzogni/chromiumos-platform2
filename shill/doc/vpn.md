@@ -6,10 +6,10 @@ From the perspective of Shill's architecture, VPN is inherently different from
 physical connections because the corresponding `Device` (in this case
 representing a virtual interface) may not exist when a Connect is
 requested. Therefore the standard means of a `Service` passing Connect requests
-over to its corresponding `Device` does not work. Also since the `VirtualDevice`
-type is not unique to a particular VPN solution (`PPPDevices`, for example, are
-used for cellular dongles, and L2TP/IPsec VPNs), the VPN-specific logic cannot
-be contained within the `VirtualDevice` instance.
+over to its corresponding `Device` does not work. Also, since the `VirtualDevice`
+class is a general-purpose one used by other connection types like Cellular,
+the VPN-specific logic cannot be contained within the `VirtualDevice` instance
+itself.
 
 For VPN, this is solved through the use of `VPNDrivers`. A `VPNDriver` takes
 care of attaining a proper `VirtualDevice`, communicating with processes outside
@@ -20,21 +20,21 @@ routes and routing rules for the corresponding `VirtualDevice`. Thus a
 owning `VPNService`; `VPNDrivers` are an implementation detail that is not
 exposed to D-Bus clients.
 
-ChromeOS supports 4 types of VPN solutions:
+ChromeOS supports 6 types of VPN solutions:
 *   Android 3rd-party VPN apps in ARC
+*   Built-in IKEv2 VPN
 *   Built-in L2TP/IPsec VPN
 *   Built-in OpenVPN
+*   Built-in WireGuard VPN
 *   Chrome Extension VPN App
 
 Each of these types has a corresponding `VPNDriver` child which contains the
 functionality needed on the Shill-side to support that VPN solution (note that
-Shill's involvement varies between different types of VPNs):
-
-![VPNDriver Inheritance](https://storage.googleapis.com/chromium-website-lob-storage/3c5afd9bada7cc8f1d3bfe735d28824aed309d5c)
+Shill's involvement varies between different types of VPNs).
 
 When a `VPNService` is created by `VPNProvider` (whether from a `Manager`
 ConfigureService D-Bus call or from a `Profile` containing an already-configured
-`VPNService`), the "Provider.Type" `Service` property is used specify what type
+`VPNService`), the "Provider.Type" `Service` property is used to specify what type
 of `VPNDriver` that `VPNService` should use. Note that "Provider.Type" is only
 valid for `Services` whose "Type" property is of value "vpn". See
 `VPNProvider::CreateServiceInner` for more details.
@@ -66,15 +66,38 @@ connects. This triggers `ArcNetHostImpl::AndroidVpnConnected` on the
 Chrome-side, which will Connect the appropriate `VpnService` in Shill, first
 configuring a new `VpnService` in Shill if needed.
 
+### Built-in IKEv2 VPN
+
+The built-in IKEv2 VPN is implemented in the `IKEv2Driver`. It relies on the
+`IPsecConnection` class to establish a connection with the remote server using
+the [strongSwan](https://www.strongswan.org) (charon) daemon.
+
+Upon a connect request, the `IKEv2Driver` creates an `IPsecConnection` object,
+which is responsible for managing the lifecycle of the `charon` process.
+Configuration properties from the `VPNService` (e.g., server address,
+authentication parameters) are passed to the `IPsecConnection`. The driver
+supports authentication via Pre-Shared Key (PSK), user certificate, or EAP
+(currently only MS-CHAPv2). Once the IKEv2 negotiation is complete and the
+tunnel is established, `IPsecConnection` notifies the driver, which then sets
+up the virtual network interface with the IP configuration received from the
+server.
+
 ### Built-in L2TP/IPsec VPN
 
-The built-in L2TP/IPsec VPN is implemented with multiple projects, the two Chrome
-OS components being the Shill `L2TPIPsecDriver` and the
-[vpn-manager](../../vpn-manager) project. The vpn-manager project (in particular
-the l2tpipsec_vpn binary) serves to create the L2TP/IPsec nested tunnels that
-define the L2TP/IPsec VPN. l2tpipsec_vpn creates the outer IPsec tunnel using
-[strongSwan](https://www.strongswan.org), while the inner L2TP tunnel is created
-by [xl2tpd](https://linux.die.net/man/8/xl2tpd) (which itself uses pppd).
+The built-in L2TP/IPsec VPN is implemented within shill by the `L2TPIPsecDriver`.
+This driver coordinates two main components: an `IPsecConnection` for the outer
+IPsec tunnel and an `L2TPConnection` for the inner L2TP tunnel.
+
+Upon a connect request, `L2TPIPsecDriver` first resolves the VPN server hostname
+and then creates and starts an `IPsecConnection`. This object manages the
+[strongSwan](https://www.strongswan.org) (charon) process to establish the IKEv1
+IPsec tunnel. Once the IPsec tunnel is up, `IPsecConnection` starts the
+`L2TPConnection` object. This in turn spawns and manages an
+[xl2tpd](https://linux.die.net/man/8/xl2tpd) process to create the inner L2TP
+tunnel over the IPsec transport. `xl2tpd` itself uses `pppd` to establish the
+PPP link. When the PPP link is ready, the driver is notified with the new
+interface details and configures the connection using the network parameters
+from the server.
 
 >   Note: There are actually two distinct L2TP standards (distinguished as
 >   L2TPv2 and L2TPv3). [RFC 2661] defines L2TPv2, which is a protocol
@@ -82,20 +105,8 @@ by [xl2tpd](https://linux.die.net/man/8/xl2tpd) (which itself uses pppd).
 >   generalizes L2TPv2 such that the assumption of the L2 protocol being PPP is
 >   removed. L2TP/IPsec is described in [RFC 3193], which--as the RFC numbers
 >   might suggest--is based on L2TPv2. In particular, xl2tpd is an
->   implementation of RFC 2661, and all references to L2TP in Shill and
->   vpn-manager are specifically referencing L2TPv2.
-
-Upon a Connect request, `L2TPIPsecDriver` spawns an l2tpipsec_vpn process,
-passing the proper configuration flags and options given the configuration of
-relevant Service properties. One important configuration option set is the
-"--pppd_plugin" option, which is used so that `L2TPIPsecDriver` can get updates
-from the pppd process created by xl2tpd, which passes messages to
-`L2TPIPsecDriver::Notify`. One use of the `Notify` method is to get information
-of the PPP interface created by pppd when the PPP connection is established,
-which is used to create the corresponding `PPPDevice` instance. The `Notify`
-method is also used to get information about a disconnection, although
-`L2TPIPsecDriver::OnL2TPIPsecVPNDied` also serves that purpose but receives the
-exit status from l2tpipsec_vpn rather than pppd.
+>   implementation of RFC 2661, and all references to L2TP in Shill are
+>   specifically referencing L2TPv2.
 
 ### Built-in OpenVPN
 
@@ -135,6 +146,24 @@ and failure events back over to Shill (see
 `OpenVPNManagementServer` and `openvpn` is an out-of-band control channel; since
 `openvpn` already has the TUN interface opened, the Shill-side is not involved
 with processing data packets themselves.
+
+### Built-in WireGuard VPN
+
+The built-in WireGuard VPN is implemented in the `WireGuardDriver` and requires
+kernel support (available on kernel version 5.4+). Unlike other VPN types, it
+does not involve a long-running userspace daemon for the data path. Instead, it
+configures the in-kernel WireGuard module.
+
+Upon a connect request, the `WireGuardDriver` first requests the creation of a
+`wireguard` type network interface from `DeviceInfo`. Once the interface is
+ready, the driver generates a configuration file in memory based on the service
+properties (private key, peer public keys, allowed IPs, etc.) and pipes it to
+the `wg setconf` command from the `wireguard-tools` package. This command
+configures the kernel interface with the specified cryptographic keys, peer
+information, and routing rules. After the configuration is applied, the driver
+populates the `NetworkConfig` with the local IP addresses and routes defined in
+the service properties and notifies the service that it is connected. The driver
+also periodically runs `wg show` to update link statistics.
 
 ### Chrome Extension VPN App
 
