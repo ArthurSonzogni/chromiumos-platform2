@@ -6,6 +6,7 @@
 #define RUNTIME_PROBE_SYSTEM_SYSCALLER_H_
 
 #include <sys/select.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 namespace runtime_probe {
@@ -27,6 +28,7 @@ class Syscaller {
   virtual int Ioctl(int fd,
                     unsigned long request,  // NOLINT(runtime/int)
                     void* data) = 0;
+  virtual void Usleep(useconds_t microseconds) = 0;
 };
 
 }  // namespace runtime_probe

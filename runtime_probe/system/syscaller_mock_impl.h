@@ -6,6 +6,7 @@
 #define RUNTIME_PROBE_SYSTEM_SYSCALLER_MOCK_IMPL_H_
 
 #include <sys/select.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <gmock/gmock.h>
@@ -31,6 +32,7 @@ class SyscallerMockImpl : public Syscaller {
               Ioctl,
               (int, unsigned long, void*),  // NOLINT(runtime/int)
               (override));
+  MOCK_METHOD(void, Usleep, (useconds_t), (override));
 };
 
 }  // namespace runtime_probe

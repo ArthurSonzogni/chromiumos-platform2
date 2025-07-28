@@ -6,6 +6,7 @@
 #define RUNTIME_PROBE_SYSTEM_SYSCALLER_IMPL_H_
 
 #include <sys/select.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "runtime_probe/system/syscaller.h"
@@ -27,6 +28,7 @@ class SyscallerImpl : public Syscaller {
   int Ioctl(int fd,
             unsigned long request,  // NOLINT(runtime/int)
             void* data) override;
+  void Usleep(useconds_t microseconds) override;
 };
 
 }  // namespace runtime_probe

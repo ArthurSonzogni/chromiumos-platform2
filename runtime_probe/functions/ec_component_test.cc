@@ -47,6 +47,9 @@ class EcComponentFunctionTest : public BaseFunctionTest {
     run_command_count_ = 0;
     // Default to EC device.
     SetUpEcDevice();
+
+    auto syscaller = mock_context()->mock_syscaller();
+    EXPECT_CALL(*syscaller, Usleep(_)).WillRepeatedly(Return());
   }
 
   class FakeGetEcVersionCommand : public ec::GetVersionCommand {

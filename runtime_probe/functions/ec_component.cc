@@ -33,6 +33,7 @@ namespace {
 constexpr int kEcCmdNumAttempts = 10;
 constexpr char kCrosEcPath[] = "dev/cros_ec";
 constexpr char kCrosIshPath[] = "dev/cros_ish";
+constexpr int kPauseMicrosecsBetweenI2cCommands = 20 * 1000;
 
 bool IsMatchExpect(EcComponentManifest::Component::I2c::Expect expect,
                    base::span<const uint8_t> resp_data) {
@@ -55,8 +56,11 @@ bool IsMatchExpect(EcComponentManifest::Component::I2c::Expect expect,
 
 bool RunI2cCommandAndCheckSuccess(const base::ScopedFD& ec_dev_fd,
                                   ec::I2cPassthruCommand* cmd) {
-  return cmd->RunWithMultipleAttempts(ec_dev_fd.get(), kEcCmdNumAttempts) &&
-         !cmd->I2cStatus();
+  bool result =
+      cmd->RunWithMultipleAttempts(ec_dev_fd.get(), kEcCmdNumAttempts) &&
+      !cmd->I2cStatus();
+  Context::Get()->syscaller()->Usleep(kPauseMicrosecsBetweenI2cCommands);
+  return result;
 }
 
 std::string GenerateComponentLogLabel(
