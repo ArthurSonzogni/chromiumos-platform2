@@ -13,7 +13,6 @@ group("all") {
     ":install_dbus_service",
     ":install_init_config",
     ":install_minijail_config",
-    ":install_minijail_dbus_config",
     ":install_tmpfiles_config",
   ]
   if (use.test) {
@@ -96,12 +95,8 @@ install_config("install_init_config") {
 }
 
 install_config("install_minijail_config") {
-  sources = [ "minijail/hardware_verifier.conf" ]
-  install_path = "minijail_conf"
-}
-
-install_config("install_minijail_dbus_config") {
-  sources = [ "minijail/hardware_verifier-dbus.conf" ]
+  _arch = getenv("ARCH")
+  sources = [ "minijail/${_arch}/hardware_verifier.conf" ]
   install_path = "minijail_conf"
 }
 
