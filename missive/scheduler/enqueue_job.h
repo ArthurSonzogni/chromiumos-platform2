@@ -36,9 +36,9 @@ class EnqueueJob : public Scheduler::Job {
 
     // Task runner for final operations to take place on.
     // Matches the thread constructor was called on.
-    scoped_refptr<base::SequencedTaskRunner> task_runner_;
+    const scoped_refptr<base::SequencedTaskRunner> task_runner_;
 
-    scoped_refptr<HealthModule> health_module_;
+    const scoped_refptr<HealthModule> health_module_;
 
     // response_ can only be used once - the logic in Scheduler::Job ensures
     // that only Complete or Cancel are every called once.
@@ -74,8 +74,8 @@ class EnqueueJob : public Scheduler::Job {
              EnqueueRecordRequest request,
              std::unique_ptr<EnqueueResponseDelegate> delegate);
 
-  scoped_refptr<StorageModuleInterface> storage_module_;
-  scoped_refptr<HealthModule> health_module_;
+  const scoped_refptr<StorageModuleInterface> storage_module_;
+  const scoped_refptr<HealthModule> health_module_;
   const EnqueueRecordRequest request_;
   base::WeakPtrFactory<EnqueueJob> weak_ptr_factory_{this};
 };

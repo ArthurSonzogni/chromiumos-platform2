@@ -73,7 +73,7 @@ Scheduler::Job::SmartPtr<FlushJob> FlushJob::Create(
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner =
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
-  return std::unique_ptr<FlushJob, base::OnTaskRunnerDeleter>(
+  return Scheduler::Job::SmartPtr<FlushJob>(
       new FlushJob(storage_module, health_module, sequenced_task_runner,
                    std::move(request), std::move(delegate)),
       base::OnTaskRunnerDeleter(sequenced_task_runner));

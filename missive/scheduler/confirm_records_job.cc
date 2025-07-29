@@ -79,7 +79,7 @@ Scheduler::Job::SmartPtr<ConfirmRecordsJob> ConfirmRecordsJob::Create(
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner =
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
-  return std::unique_ptr<ConfirmRecordsJob, base::OnTaskRunnerDeleter>(
+  return Scheduler::Job::SmartPtr<ConfirmRecordsJob>(
       new ConfirmRecordsJob(storage_module, health_module,
                             sequenced_task_runner, std::move(request),
                             std::move(delegate)),

@@ -138,8 +138,7 @@ TEST_F(EnqueueJobTest, CancelsSuccessfully) {
   auto job = EnqueueJob::Create(storage_module_, health_module_, request,
                                 std::move(delegate));
 
-  auto status = job->Cancel(failure_status);
-  EXPECT_OK(status) << status;
+  job->Cancel(failure_status);
 }
 
 }  // namespace

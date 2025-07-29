@@ -1626,7 +1626,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // Resume at `NextRecord`.
   }
 
-  void InstantiateUploader(base::OnceCallback<void()> continuation) {
+  void InstantiateUploader(base::OnceClosure continuation) {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
       analytics::Metrics::SendEnumToUMA(
@@ -1640,7 +1640,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     base::ThreadPool::PostTask(
         FROM_HERE, {base::TaskPriority::BEST_EFFORT},
         base::BindOnce(
-            [](base::OnceCallback<void()> continuation,
+            [](base::OnceClosure continuation,
                UploaderInterface::InformAboutCachedUploadsCb inform_cb,
                ReadContext* self) {
               self->async_start_upload_cb_.Run(
@@ -1656,7 +1656,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void ScheduleOnUploaderInstantiated(
-      base::OnceCallback<void()> continuation,
+      base::OnceClosure continuation,
       StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
     Schedule(base::BindOnce(&ReadContext::OnUploaderInstantiated,
                             base::Unretained(this), std::move(continuation),
@@ -1664,7 +1664,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void OnUploaderInstantiated(
-      base::OnceCallback<void()> continuation,
+      base::OnceClosure continuation,
       StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));

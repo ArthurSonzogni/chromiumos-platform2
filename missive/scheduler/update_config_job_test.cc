@@ -138,8 +138,7 @@ TEST_F(UpdateConfigInMissiveJobTest, CancelsSuccessfully) {
                                               server_configuration_controller_,
                                               request, std::move(delegate));
 
-  auto status = job->Cancel(failure_status);
-  EXPECT_OK(status) << status;
+  job->Cancel(failure_status);
 }
 
 }  // namespace

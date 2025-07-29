@@ -74,8 +74,8 @@ class FlushJob : public Scheduler::Job {
            FlushPriorityRequest request,
            std::unique_ptr<FlushResponseDelegate> delegate);
 
-  scoped_refptr<StorageModuleInterface> storage_module_;
-  scoped_refptr<HealthModule> health_module_;
+  const scoped_refptr<StorageModuleInterface> storage_module_;
+  const scoped_refptr<HealthModule> health_module_;
   const FlushPriorityRequest request_;
   base::WeakPtrFactory<FlushJob> weak_ptr_factory_{this};
 };

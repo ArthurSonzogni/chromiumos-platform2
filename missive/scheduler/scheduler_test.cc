@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "missive/scheduler/scheduler.h"
+
 #include <memory>
 #include <utility>
 
@@ -17,7 +19,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "missive/scheduler/scheduler.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/test_support_callbacks.h"
 
@@ -30,7 +31,7 @@ namespace {
 
 class FakeJob : public Scheduler::Job {
  public:
-  using StartCallback = base::OnceCallback<void()>;
+  using StartCallback = base::OnceClosure;
   using ReportCompletionCallback = base::OnceCallback<Status()>;
   using CancelCallback = base::OnceCallback<Status(Status)>;
 
@@ -164,7 +165,7 @@ TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
   EXPECT_EQ(cancel_counter_, 0u);
   EXPECT_EQ(job->GetJobState(), Scheduler::Job::JobState::COMPLETED);
 
-  EXPECT_FALSE(job->Cancel(Status(error::INTERNAL, "Failing for tests")).ok());
+  job->Cancel(Status(error::INTERNAL, "Failing for tests"));
 
   // Nothing should have changed from before.
   EXPECT_EQ(completion_counter_, 1u);
@@ -197,7 +198,7 @@ TEST_F(JobTest, WillNotStartWithNonOKStatusAndCancels) {
   auto job = FakeJob::Create(std::make_unique<FakeJob::FakeJobDelegate>(
       report_completion_callback_, cancel_callback_));
 
-  EXPECT_TRUE(job->Cancel(Status(error::INTERNAL, "Failing For Tests")).ok());
+  job->Cancel(Status(error::INTERNAL, "Failing For Tests"));
 
   test::TestEvent<Status> start_event;
   job->Start(start_event.cb());

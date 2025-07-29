@@ -9,6 +9,7 @@
 #include <queue>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 
@@ -85,13 +86,13 @@ class Scheduler {
     // with the provided Status.
     // Job cannot be started after a cancellation, so care must be taken to only
     // cancel when appropriate.
-    Status Cancel(Status status);
+    void Cancel(Status status);
 
     // Returns the |job_state_| at the time of calling.
     JobState GetJobState() const;
 
    protected:
-    // Constructor to be used by subcalss constructors only.
+    // Constructor to be used by subclass constructors only.
     Job(std::unique_ptr<JobDelegate> job_response_delegate,
         scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
@@ -99,9 +100,9 @@ class Scheduler {
     // upon completion.
     virtual void StartImpl() = 0;
 
-    // Finish will call either report_completion_callback_ or cancel_callback_
-    // based on the provided status. In addition it will also update job_state_
-    // appropriately.
+    // Finish will call `JobDelegate` - either `Complete` or `Cancel` - based
+    // on the provided status. In addition it will also update `job_state_`
+    // accordingly.
     void Finish(Status status);
 
     // Checks that we are on a right sequenced task runner.
@@ -113,6 +114,8 @@ class Scheduler {
     std::unique_ptr<JobDelegate> job_response_delegate_;
 
    private:
+    Status DoCancel(Status status);
+
     // Must be first members in the class.
     const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
     SEQUENCE_CHECKER(sequence_checker_);
@@ -162,23 +165,26 @@ class Scheduler {
   ~Scheduler();
 
   void AddObserver(SchedulerObserver* observer);
-  void NotifyObservers(SchedulerObserver::Notification notification);
 
   // EnqueueJob will store the job in the |job_queue_|, and it will be executed
   // as long as system memory remains above CRITICAL.
   void EnqueueJob(Job::SmartPtr<Job> job);
 
  private:
-  class JobContext;
   class JobBlocker;
   class JobSemaphore;
 
-  void StartJobs();
-  void MaybeStartNextJob(std::unique_ptr<JobBlocker> job_blocker);
-  void RunJob(std::unique_ptr<JobBlocker> job_blocker,
-              Job::SmartPtr<Job> job_result);
+  static void StartJobs(base::WeakPtr<Scheduler> self);
+  static void MaybeStartNextJob(base::WeakPtr<Scheduler> self,
+                                std::unique_ptr<JobBlocker> job_blocker);
+  static void RunJob(base::WeakPtr<Scheduler> self,
+                     std::unique_ptr<JobBlocker> job_blocker,
+                     Job::SmartPtr<Job> job_result);
 
-  void ClearQueue();
+  static void NotifyObservers(base::WeakPtr<Scheduler> self,
+                              SchedulerObserver::Notification notification);
+
+  static void ClearQueue(base::WeakPtr<Scheduler> self);
 
   // TODO(1174889) Currently unused, once resourced implements
   // MemoryPressureLevels update. Also initialize JobSemaphorePool at
@@ -189,13 +195,18 @@ class Scheduler {
   //     memory_pressure_level);
 
   // Must be the first member of the class.
-  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
 
-  std::unique_ptr<JobSemaphore> job_semaphore_;
-  std::queue<Job::SmartPtr<Job>> jobs_queue_;
+  const std::unique_ptr<JobSemaphore, base::OnTaskRunnerDeleter> job_semaphore_;
 
-  std::vector<SchedulerObserver*> observers_;
+  std::queue<Job::SmartPtr<Job>> jobs_queue_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  std::vector<SchedulerObserver*> observers_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  base::WeakPtrFactory<Scheduler> weak_ptr_factory_{this};
 };
 
 }  // namespace reporting

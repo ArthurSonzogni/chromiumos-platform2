@@ -183,8 +183,7 @@ TEST_F(UpdateEncryptionKeyJobTest, CancelsSuccessfully) {
   auto job = UpdateEncryptionKeyJob::Create(storage_module_, request,
                                             std::move(delegate));
 
-  auto status = job->Cancel(failure_status);
-  EXPECT_OK(status) << status;
+  job->Cancel(failure_status);
 }
 
 }  // namespace

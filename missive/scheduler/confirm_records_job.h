@@ -74,7 +74,7 @@ class ConfirmRecordsJob : public Scheduler::Job {
       ConfirmRecordUploadRequest request,
       std::unique_ptr<ConfirmRecordsResponseDelegate> delegate);
 
-  scoped_refptr<StorageModule> storage_module_;
+  const scoped_refptr<StorageModule> storage_module_;
   scoped_refptr<HealthModule> health_module_;
   const ConfirmRecordUploadRequest request_;
   base::WeakPtrFactory<ConfirmRecordsJob> weak_ptr_factory_{this};

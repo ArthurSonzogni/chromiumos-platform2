@@ -10,7 +10,9 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
@@ -81,7 +83,7 @@ void Scheduler::Job::Start(base::OnceCallback<void(Status)> complete_cb) {
   StartImpl();
 }
 
-Status Scheduler::Job::Cancel(Status status) {
+Status Scheduler::Job::DoCancel(Status status) {
   if (status.ok()) {
     return Status(error::INVALID_ARGUMENT,
                   "Job cannot be cancelled with an OK Status");
@@ -103,6 +105,13 @@ Status Scheduler::Job::Cancel(Status status) {
   return job_response_delegate_->Cancel(status);
 }
 
+void Scheduler::Job::Cancel(Status status) {
+  auto cancel_status = DoCancel(status);
+  LOG_IF(ERROR, !cancel_status.ok())
+      << "Was unable to successfully cancel a job: " << cancel_status
+      << ", status: " << status;
+}
+
 Scheduler::Job::JobState Scheduler::Job::GetJobState() const {
   return job_state_;
 }
@@ -119,52 +128,15 @@ void Scheduler::Job::Finish(Status status) {
   std::move(complete_cb_).Run(job_response_delegate_->Complete());
 }
 
-class Scheduler::JobContext : public TaskRunnerContext<CompleteJobResponse> {
- public:
-  JobContext(Job::SmartPtr<Job> job,
-             CompleteJobCallback job_completion_callback,
-             scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
-      : TaskRunnerContext<CompleteJobResponse>(
-            std::move(job_completion_callback), sequenced_task_runner),
-        job_(std::move(job)) {}
-
- private:
-  ~JobContext() override { CHECK(job_); }
-
-  void OnStart() override {
-    if (job_ == nullptr) {
-      LOG(ERROR) << "Provided Job was null";
-      return;
-    }
-    // Post task on an arbitrary thread, get back upon completion.
-    base::ThreadPool::PostTask(
-        FROM_HERE, {base::TaskPriority::BEST_EFFORT, base::MayBlock()},
-        base::BindOnce(
-            &Job::Start, base::Unretained(job_.get()),
-            base::BindOnce(&JobContext::Complete, base::Unretained(this))));
-  }
-
-  void Complete(Status status) {
-    Schedule(&Scheduler::JobContext::Response, base::Unretained(this), status);
-  }
-
-  const Job::SmartPtr<Scheduler::Job> job_;
-};
-
 class Scheduler::JobBlocker {
  public:
   JobBlocker(scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
-             base::OnceCallback<void()> release_cb)
+             base::OnceClosure release_cb)
       : sequenced_task_runner_(sequenced_task_runner),
         release_cb_(std::move(release_cb)) {}
 
   ~JobBlocker() {
-    sequenced_task_runner_->PostTask(
-        FROM_HERE, base::BindOnce(
-                       [](base::OnceCallback<void()> release_cb) {
-                         std::move(release_cb).Run();
-                       },
-                       std::move(release_cb_)));
+    sequenced_task_runner_->PostTask(FROM_HERE, std::move(release_cb_));
   }
 
   JobBlocker(const JobBlocker&) = delete;
@@ -172,7 +144,7 @@ class Scheduler::JobBlocker {
 
  private:
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
-  base::OnceCallback<void()> release_cb_;
+  base::OnceClosure release_cb_;
 };
 
 class Scheduler::JobSemaphore {
@@ -184,6 +156,7 @@ class Scheduler::JobSemaphore {
   }
 
   ~JobSemaphore() {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     if (running_jobs_ > 0) {
       LOG(ERROR) << "JobSemaphore destructing with active jobs.";
     }
@@ -202,7 +175,7 @@ class Scheduler::JobSemaphore {
 
     return std::make_unique<JobBlocker>(
         sequenced_task_runner_,
-        base::BindOnce(&JobSemaphore::Release, base::Unretained(this)));
+        base::BindOnce(&JobSemaphore::Release, weak_ptr_factory_.GetWeakPtr()));
   }
 
   void UpdateTaskLimit(TaskLimit task_limit) {
@@ -218,26 +191,35 @@ class Scheduler::JobSemaphore {
     return task_limit_ != TaskLimit::OFF && running_jobs_ <= task_limit_;
   }
 
-  bool IsAcceptingJobs() const { return task_limit_ != TaskLimit::OFF; }
+  bool IsAcceptingJobs() const {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    return task_limit_ != TaskLimit::OFF;
+  }
 
  private:
-  void Release() {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    running_jobs_--;
+  static void Release(base::WeakPtr<JobSemaphore> self) {
+    if (!self) {
+      return;
+    }
+    DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+    self->running_jobs_--;
   }
 
   SEQUENCE_CHECKER(sequence_checker_);
 
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
 
-  std::atomic<TaskLimit> task_limit_{TaskLimit::OFF};
-  uint32_t running_jobs_{0};
+  TaskLimit task_limit_ GUARDED_BY_CONTEXT(sequence_checker_) = TaskLimit::OFF;
+  uint32_t running_jobs_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
+
+  base::WeakPtrFactory<JobSemaphore> weak_ptr_factory_{this};
 };
 
 Scheduler::Scheduler()
     : sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner({})),
-      job_semaphore_(std::make_unique<JobSemaphore>(sequenced_task_runner_,
-                                                    TaskLimit::NORMAL)) {
+      job_semaphore_(
+          new JobSemaphore(sequenced_task_runner_, TaskLimit::NORMAL),
+          base::OnTaskRunnerDeleter(sequenced_task_runner_)) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
@@ -245,99 +227,126 @@ Scheduler::~Scheduler() = default;
 
 void Scheduler::AddObserver(SchedulerObserver* observer) {
   sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(
-                     [](SchedulerObserver* observer, Scheduler* scheduler) {
-                       scheduler->observers_.push_back(observer);
-                     },
-                     base::Unretained(observer), base::Unretained(this)));
+      FROM_HERE,
+      base::BindOnce(
+          [](SchedulerObserver* observer, base::WeakPtr<Scheduler> self) {
+            if (!self) {
+              return;
+            }
+            self->observers_.push_back(observer);
+          },
+          base::Unretained(observer), weak_ptr_factory_.GetWeakPtr()));
 }
 
-void Scheduler::NotifyObservers(Notification notification) {
+// static
+void Scheduler::NotifyObservers(base::WeakPtr<Scheduler> self,
+                                Notification notification) {
+  if (!self) {
+    return;
+  }
+
   CHECK(base::SequencedTaskRunner::HasCurrentDefault());
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  for (auto* observer : observers_) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+  for (auto* observer : self->observers_) {
     observer->Notify(notification);
   }
 }
 
 void Scheduler::EnqueueJob(Job::SmartPtr<Job> job) {
   sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(
-                     [](Job::SmartPtr<Job> job, Scheduler* scheduler) {
-                       if (!scheduler->job_semaphore_->IsAcceptingJobs()) {
-                         scheduler->NotifyObservers(Notification::REJECTED_JOB);
-                         Status cancel_status = job->Cancel(Status(
-                             error::RESOURCE_EXHAUSTED,
-                             "Unable to process due to low system memory"));
-                         if (!cancel_status.ok()) {
-                           LOG(ERROR)
-                               << "Was unable to successfully cancel a job: "
-                               << cancel_status;
-                         }
-                         return;
-                       }
-                       scheduler->jobs_queue_.push(std::move(job));
-                       scheduler->NotifyObservers(Notification::ACCEPTED_JOB);
-                       scheduler->StartJobs();
-                     },
-                     std::move(job), base::Unretained(this)));
+      FROM_HERE,
+      base::BindOnce(
+          [](Job::SmartPtr<Job> job, base::WeakPtr<Scheduler> self) {
+            if (!self) {
+              job->Cancel(Status(
+                  error::UNAVAILABLE,
+                  "Unable to enqueue job, Scheduler is no longer available"));
+              return;
+            }
+            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+            if (!self->job_semaphore_->IsAcceptingJobs()) {
+              NotifyObservers(self->weak_ptr_factory_.GetWeakPtr(),
+                              Notification::REJECTED_JOB);
+              job->Cancel(Status(error::RESOURCE_EXHAUSTED,
+                                 "Unable to process due to low system memory"));
+              return;
+            }
+            self->jobs_queue_.push(std::move(job));
+            NotifyObservers(self, Notification::ACCEPTED_JOB);
+            StartJobs(self);
+          },
+          std::move(job), weak_ptr_factory_.GetWeakPtr()));
 }
 
-void Scheduler::StartJobs() {
-  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  if (jobs_queue_.empty()) {
+// static
+void Scheduler::StartJobs(base::WeakPtr<Scheduler> self) {
+  if (!self) {
     return;
   }
-  // Get JobBlockers and assign them to jobs until job_semaphore_ returns a
-  // non-OK status.
-  StatusOr<std::unique_ptr<JobBlocker>> blocker_result =
-      job_semaphore_->AcquireJobBlocker();
-  while (blocker_result.has_value()) {
-    RunJob(std::move(blocker_result.value()), std::move(jobs_queue_.front()));
-    jobs_queue_.pop();
-    if (jobs_queue_.empty()) {
+
+  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+
+  while (!self->jobs_queue_.empty()) {
+    // Get JobBlockers and assign them to jobs until job_semaphore_ returns a
+    // non-OK status.
+    auto blocker_result = self->job_semaphore_->AcquireJobBlocker();
+    if (!blocker_result.has_value()) {
+      // Some jobs have been blocked.
+      NotifyObservers(self, Notification::BLOCKED_JOB);
       return;
     }
-    blocker_result = job_semaphore_->AcquireJobBlocker();
+    RunJob(self, std::move(blocker_result.value()),
+           std::move(self->jobs_queue_.front()));
+    self->jobs_queue_.pop();
   }
-  // Some jobs have been blocked.
-  NotifyObservers(Notification::BLOCKED_JOB);
 }
 
-void Scheduler::MaybeStartNextJob(std::unique_ptr<JobBlocker> job_blocker) {
-  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  if (jobs_queue_.empty()) {
+// static
+void Scheduler::MaybeStartNextJob(base::WeakPtr<Scheduler> self,
+                                  std::unique_ptr<JobBlocker> job_blocker) {
+  if (!self) {
     return;
   }
-  if (job_semaphore_->IsUnderTaskLimit()) {
-    RunJob(std::move(job_blocker), std::move(jobs_queue_.front()));
-    jobs_queue_.pop();
-    if (jobs_queue_.empty()) {
+
+  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+
+  if (self->jobs_queue_.empty()) {
+    return;
+  }
+  if (self->job_semaphore_->IsUnderTaskLimit()) {
+    RunJob(self, std::move(job_blocker), std::move(self->jobs_queue_.front()));
+    self->jobs_queue_.pop();
+    if (self->jobs_queue_.empty()) {
       return;  // Last job unblocked.
     }
   }
   // Some jobs remain blocked.
-  NotifyObservers(Notification::BLOCKED_JOB);
+  self->NotifyObservers(self, Notification::BLOCKED_JOB);
 }
 
-void Scheduler::RunJob(std::unique_ptr<JobBlocker> job_blocker,
+// static
+void Scheduler::RunJob(base::WeakPtr<Scheduler> self,
+                       std::unique_ptr<JobBlocker> job_blocker,
                        Job::SmartPtr<Job> job) {
+  if (!self) {
+    job->Cancel(
+        Status(error::UNAVAILABLE,
+               "Unable to enqueue job, Scheduler is no longer available"));
+    return;
+  }
+
   CHECK(base::SequencedTaskRunner::HasCurrentDefault());
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
   CHECK(job_blocker);
   auto completion_cb = base::BindOnce(
-      [](scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
-         base::OnceCallback<void()> start_next_job_cb,
+      [](base::OnceClosure start_next_job_cb,
          base::OnceCallback<void(Notification)> notify_observers,
          Status job_result) {
         // The job has finished, pass its locker to the next one in the queue,
         // if any.
-        sequenced_task_runner->PostTask(FROM_HERE,
-                                        std::move(start_next_job_cb));
+        std::move(start_next_job_cb).Run();
         if (!job_result.ok()) {
           std::move(notify_observers)
               .Run(Notification::UNSUCCESSFUL_COMPLETION);
@@ -346,29 +355,39 @@ void Scheduler::RunJob(std::unique_ptr<JobBlocker> job_blocker,
         }
         std::move(notify_observers).Run(Notification::SUCCESSFUL_COMPLETION);
       },
-      sequenced_task_runner_,
-      base::BindOnce(
-          &Scheduler::MaybeStartNextJob, base::Unretained(this),
-          std::move(job_blocker)),  // Hold at least until the job completes.
-      base::BindOnce(&Scheduler::NotifyObservers, base::Unretained(this)));
+      base::BindPostTask(
+          self->sequenced_task_runner_,
+          base::BindOnce(
+              &Scheduler::MaybeStartNextJob, self,
+              std::move(
+                  job_blocker))),  // Hold at least until the job completes.
+      base::BindOnce(&Scheduler::NotifyObservers, self));
 
-  Start<JobContext>(std::move(job), std::move(completion_cb),
-                    sequenced_task_runner_);
-  NotifyObservers(Notification::STARTED_JOB);
+  // Post task on an arbitrary thread, get back upon completion.
+  raw_ptr<Job> job_ptr = job.get();
+  base::ThreadPool::PostTask(
+      FROM_HERE, {base::TaskPriority::BEST_EFFORT, base::MayBlock()},
+      base::BindOnce(&Job::Start, base::Unretained(job_ptr),
+                     base::BindPostTask(self->sequenced_task_runner_,
+                                        std::move(completion_cb))
+                         .Then(base::BindOnce([](Job::SmartPtr<Job> job) {},
+                                              std::move(job)))));
+
+  NotifyObservers(self, Notification::STARTED_JOB);
 }
 
-void Scheduler::ClearQueue() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  while (!jobs_queue_.empty()) {
-    auto& job = jobs_queue_.front();
-    const Status cancel_status =
-        job->Cancel(Status(error::RESOURCE_EXHAUSTED,
-                           "Unable to process due to low system memory"));
-    if (!cancel_status.ok()) {
-      LOG(ERROR) << "Was unable to successfully cancel a job: "
-                 << cancel_status;
-    }
-    jobs_queue_.pop();
+// static
+void Scheduler::ClearQueue(base::WeakPtr<Scheduler> self) {
+  if (!self) {
+    return;
+  }
+
+  DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+  while (!self->jobs_queue_.empty()) {
+    auto& job = self->jobs_queue_.front();
+    job->Cancel(Status(error::RESOURCE_EXHAUSTED,
+                       "Unable to process due to low system memory"));
+    self->jobs_queue_.pop();
   }
 }
 
@@ -383,11 +402,11 @@ void Scheduler::UpdateMemoryPressureLevel(
   switch (memory_pressure_level) {
     case base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE:
       job_semaphore_->UpdateTaskLimit(TaskLimit::NORMAL);
-      StartJobs();
+      StartJobs(weak_ptr_factory_.GetWeakPtr());
       return;
     case base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_MODERATE:
       job_semaphore_->UpdateTaskLimit(TaskLimit::REDUCED);
-      StartJobs();
+      StartJobs(weak_ptr_factory_.GetWeakPtr());
       return;
     case base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_CRITICAL:
       job_semaphore_->UpdateTaskLimit(TaskLimit::OFF);
