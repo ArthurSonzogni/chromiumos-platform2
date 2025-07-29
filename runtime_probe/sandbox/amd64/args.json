@@ -32,6 +32,7 @@
   "ec_component": {
     "binds": [
       "/dev/cros_ec",
+      "/dev/cros_ish",
       "/run/chromeos-config/v1/"
     ],
     "other_args": [
