@@ -47,17 +47,6 @@ std::unique_ptr<ec::FpTemplateCommand> EcCommandFactory::FpTemplateCommand(
   return FpTemplateCommand::Create(std::move(tmpl), max_write_size, commit);
 }
 
-std::unique_ptr<ec::FpUnlockTemplateCommand>
-EcCommandFactory::FpUnlockTemplateCommand(uint16_t finger_num) {
-  return FpUnlockTemplateCommand::Create(finger_num);
-}
-
-std::unique_ptr<ec::FpMigrateTemplateToNonceContextCommand>
-EcCommandFactory::FpMigrateTemplateToNonceContextCommand(
-    const std::string& user_id) {
-  return FpMigrateTemplateToNonceContextCommand::Create(user_id);
-}
-
 std::unique_ptr<ec::ChargeControlSetCommand>
 EcCommandFactory::ChargeControlSetCommand(uint32_t mode,
                                           uint8_t lower,
@@ -73,42 +62,6 @@ EcCommandFactory::ChargeCurrentLimitSetCommand(uint32_t limit_mA) {
 std::unique_ptr<ec::DisplayStateOfChargeCommand>
 EcCommandFactory::DisplayStateOfChargeCommand() {
   return std::make_unique<ec::DisplayStateOfChargeCommand>();
-}
-
-std::unique_ptr<ec::FpGetNonceCommand> EcCommandFactory::FpGetNonceCommand() {
-  return std::make_unique<ec::FpGetNonceCommand>();
-}
-
-std::unique_ptr<ec::FpSetNonceContextCommand>
-EcCommandFactory::FpSetNonceContextCommand(
-    const brillo::Blob& nonce,
-    const brillo::Blob& encrypted_user_id,
-    const brillo::Blob& iv) {
-  return FpSetNonceContextCommand::Create(nonce, encrypted_user_id, iv);
-}
-
-std::unique_ptr<ec::FpReadMatchSecretWithPubkeyCommand>
-EcCommandFactory::FpReadMatchSecretWithPubkeyCommand(
-    uint16_t index, const brillo::Blob& pk_in_x, const brillo::Blob& pk_in_y) {
-  return FpReadMatchSecretWithPubkeyCommand::Create(index, pk_in_x, pk_in_y);
-}
-
-std::unique_ptr<ec::FpPairingKeyKeygenCommand>
-EcCommandFactory::FpPairingKeyKeygenCommand() {
-  return std::make_unique<ec::FpPairingKeyKeygenCommand>();
-}
-
-std::unique_ptr<ec::FpPairingKeyLoadCommand>
-EcCommandFactory::FpPairingKeyLoadCommand(
-    const brillo::Blob& encrypted_pairing_key) {
-  return FpPairingKeyLoadCommand::Create(encrypted_pairing_key);
-}
-
-std::unique_ptr<ec::FpPairingKeyWrapCommand>
-EcCommandFactory::FpPairingKeyWrapCommand(const brillo::Blob& pub_x,
-                                          const brillo::Blob& pub_y,
-                                          const brillo::Blob& encrypted_priv) {
-  return FpPairingKeyWrapCommand::Create(pub_x, pub_y, encrypted_priv);
 }
 
 std::unique_ptr<ec::FpModeCommand> EcCommandFactory::FpModeCommand(

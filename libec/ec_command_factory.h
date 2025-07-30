@@ -16,18 +16,10 @@
 #include "libec/ec_command_version_supported.h"
 #include "libec/fingerprint/fp_context_command_factory.h"
 #include "libec/fingerprint/fp_frame_command.h"
-#include "libec/fingerprint/fp_get_nonce_command.h"
 #include "libec/fingerprint/fp_info_command.h"
-#include "libec/fingerprint/fp_migrate_template_to_nonce_context_command.h"
 #include "libec/fingerprint/fp_mode_command.h"
-#include "libec/fingerprint/fp_pairing_key_keygen_command.h"
-#include "libec/fingerprint/fp_pairing_key_load_command.h"
-#include "libec/fingerprint/fp_pairing_key_wrap_command.h"
-#include "libec/fingerprint/fp_read_match_secret_with_pubkey_command.h"
 #include "libec/fingerprint/fp_seed_command.h"
-#include "libec/fingerprint/fp_set_nonce_context_command.h"
 #include "libec/fingerprint/fp_template_command.h"
-#include "libec/fingerprint/fp_unlock_template_command.h"
 #include "libec/flash_protect_command.h"
 #include "libec/get_features_command.h"
 #include "libec/get_protocol_info_command.h"
@@ -86,21 +78,6 @@ class EcCommandFactoryInterface {
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
-  virtual std::unique_ptr<ec::FpUnlockTemplateCommand> FpUnlockTemplateCommand(
-      uint16_t finger_num) = 0;
-  static_assert(
-      std::is_base_of<EcCommandInterface, ec::FpUnlockTemplateCommand>::value,
-      "All commands created by this class should derive from "
-      "EcCommandInterface");
-
-  virtual std::unique_ptr<ec::FpMigrateTemplateToNonceContextCommand>
-  FpMigrateTemplateToNonceContextCommand(const std::string& user_id) = 0;
-  static_assert(
-      std::is_base_of<EcCommandInterface,
-                      ec::FpMigrateTemplateToNonceContextCommand>::value,
-      "All commands created by this class should derive from "
-      "EcCommandInterface");
-
   virtual std::unique_ptr<ec::ChargeControlSetCommand> ChargeControlSetCommand(
       uint32_t mode, uint8_t lower, uint8_t upper) = 0;
   static_assert(
@@ -121,53 +98,6 @@ class EcCommandFactoryInterface {
                                 ec::DisplayStateOfChargeCommand>::value,
                 "All commands created by this class should derive from "
                 "EcCommandInterface");
-
-  virtual std::unique_ptr<ec::FpGetNonceCommand> FpGetNonceCommand() = 0;
-  static_assert(
-      std::is_base_of<EcCommandInterface, ec::FpGetNonceCommand>::value,
-      "All commands created by this class should derive from "
-      "EcCommandInterface");
-
-  virtual std::unique_ptr<ec::FpSetNonceContextCommand>
-  FpSetNonceContextCommand(const brillo::Blob& nonce,
-                           const brillo::Blob& encrypted_user_id,
-                           const brillo::Blob& iv) = 0;
-  static_assert(
-      std::is_base_of<EcCommandInterface, ec::FpSetNonceContextCommand>::value,
-      "All commands created by this class should derive from "
-      "EcCommandInterface");
-
-  virtual std::unique_ptr<ec::FpReadMatchSecretWithPubkeyCommand>
-  FpReadMatchSecretWithPubkeyCommand(uint16_t index,
-                                     const brillo::Blob& pk_in_x,
-                                     const brillo::Blob& pk_in_y) = 0;
-  static_assert(std::is_base_of<EcCommandInterface,
-                                ec::FpReadMatchSecretWithPubkeyCommand>::value,
-                "All commands created by this class should derive from "
-                "EcCommandInterface");
-
-  virtual std::unique_ptr<ec::FpPairingKeyKeygenCommand>
-  FpPairingKeyKeygenCommand() = 0;
-  static_assert(
-      std::is_base_of<EcCommandInterface, ec::FpPairingKeyKeygenCommand>::value,
-      "All commands created by this class should derive from "
-      "EcCommandInterface");
-
-  virtual std::unique_ptr<ec::FpPairingKeyLoadCommand> FpPairingKeyLoadCommand(
-      const brillo::Blob& encrypted_pairing_key) = 0;
-  static_assert(
-      std::is_base_of<EcCommandInterface, ec::FpPairingKeyLoadCommand>::value,
-      "All commands created by this class should derive from "
-      "EcCommandInterface");
-
-  virtual std::unique_ptr<ec::FpPairingKeyWrapCommand> FpPairingKeyWrapCommand(
-      const brillo::Blob& pub_x,
-      const brillo::Blob& pub_y,
-      const brillo::Blob& encrypted_priv) = 0;
-  static_assert(
-      std::is_base_of<EcCommandInterface, ec::FpPairingKeyWrapCommand>::value,
-      "All commands created by this class should derive from "
-      "EcCommandInterface");
 
   virtual std::unique_ptr<ec::GetFpModeCommand> GetFpModeCommand() = 0;
   static_assert(
@@ -315,12 +245,6 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
   std::unique_ptr<ec::FpTemplateCommand> FpTemplateCommand(
       std::vector<uint8_t> tmpl, uint16_t max_write_size, bool commit) override;
 
-  std::unique_ptr<ec::FpUnlockTemplateCommand> FpUnlockTemplateCommand(
-      uint16_t finger_num) override;
-
-  std::unique_ptr<ec::FpMigrateTemplateToNonceContextCommand>
-  FpMigrateTemplateToNonceContextCommand(const std::string& user_id) override;
-
   std::unique_ptr<ec::ChargeControlSetCommand> ChargeControlSetCommand(
       uint32_t mode, uint8_t lower, uint8_t upper) override;
 
@@ -329,29 +253,6 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
 
   std::unique_ptr<ec::DisplayStateOfChargeCommand> DisplayStateOfChargeCommand()
       override;
-
-  std::unique_ptr<ec::FpGetNonceCommand> FpGetNonceCommand() override;
-
-  std::unique_ptr<ec::FpSetNonceContextCommand> FpSetNonceContextCommand(
-      const brillo::Blob& nonce,
-      const brillo::Blob& encrypted_user_id,
-      const brillo::Blob& iv) override;
-
-  std::unique_ptr<ec::FpReadMatchSecretWithPubkeyCommand>
-  FpReadMatchSecretWithPubkeyCommand(uint16_t index,
-                                     const brillo::Blob& pk_in_x,
-                                     const brillo::Blob& pk_in_y) override;
-
-  std::unique_ptr<ec::FpPairingKeyKeygenCommand> FpPairingKeyKeygenCommand()
-      override;
-
-  std::unique_ptr<ec::FpPairingKeyLoadCommand> FpPairingKeyLoadCommand(
-      const brillo::Blob& encrypted_pairing_key) override;
-
-  std::unique_ptr<ec::FpPairingKeyWrapCommand> FpPairingKeyWrapCommand(
-      const brillo::Blob& pub_x,
-      const brillo::Blob& pub_y,
-      const brillo::Blob& encrypted_priv) override;
 
   std::unique_ptr<ec::FpModeCommand> FpModeCommand(FpMode mode) override;
 

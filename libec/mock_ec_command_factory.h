@@ -47,14 +47,6 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               FpTemplateCommand,
               (std::vector<uint8_t> tmpl, uint16_t max_write_size, bool commit),
               (override));
-  MOCK_METHOD(std::unique_ptr<ec::FpUnlockTemplateCommand>,
-              FpUnlockTemplateCommand,
-              (uint16_t finger_num),
-              (override));
-  MOCK_METHOD(std::unique_ptr<ec::FpMigrateTemplateToNonceContextCommand>,
-              FpMigrateTemplateToNonceContextCommand,
-              (const std::string& user_id),
-              (override));
   MOCK_METHOD(std::unique_ptr<ec::ChargeControlSetCommand>,
               ChargeControlSetCommand,
               (uint32_t mode, uint8_t lower, uint8_t upper),
@@ -66,36 +58,6 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
   MOCK_METHOD(std::unique_ptr<ec::DisplayStateOfChargeCommand>,
               DisplayStateOfChargeCommand,
               (),
-              (override));
-  MOCK_METHOD(std::unique_ptr<ec::FpGetNonceCommand>,
-              FpGetNonceCommand,
-              (),
-              (override));
-  MOCK_METHOD(std::unique_ptr<ec::FpSetNonceContextCommand>,
-              FpSetNonceContextCommand,
-              (const brillo::Blob& nonce,
-               const brillo::Blob& encrypted_user_id,
-               const brillo::Blob& iv),
-              (override));
-  MOCK_METHOD(std::unique_ptr<ec::FpReadMatchSecretWithPubkeyCommand>,
-              FpReadMatchSecretWithPubkeyCommand,
-              (uint16_t index,
-               const brillo::Blob& pk_in_x,
-               const brillo::Blob& pk_in_y),
-              (override));
-  MOCK_METHOD(std::unique_ptr<ec::FpPairingKeyKeygenCommand>,
-              FpPairingKeyKeygenCommand,
-              (),
-              (override));
-  MOCK_METHOD(std::unique_ptr<ec::FpPairingKeyLoadCommand>,
-              FpPairingKeyLoadCommand,
-              (const brillo::Blob& encrypted_pairing_key),
-              (override));
-  MOCK_METHOD(std::unique_ptr<ec::FpPairingKeyWrapCommand>,
-              FpPairingKeyWrapCommand,
-              (const brillo::Blob& pub_x,
-               const brillo::Blob& pub_y,
-               const brillo::Blob& encrypted_priv),
               (override));
   MOCK_METHOD(std::unique_ptr<ec::FpModeCommand>,
               FpModeCommand,
