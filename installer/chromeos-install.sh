@@ -730,13 +730,22 @@ reload_partitions() {
   # device leading to EBUSY when we reread the partition table.  We
   # avoid the conflict by using `udevadm settle`, so that udev goes
   # first.  cf. crbug.com/343681.
-  udevadm settle
+  local rc=0
+
+  # Sometimes `udevadm settle` can time out. Log the timeout
+  # but still continue.
+  # The default timeout is 120s, shorten it to 10s to prevent
+  # delaying installation unnecessarily. b/379085243
+  udevadm settle --timeout=10 || rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    echo "udevadm settle timed out."
+  fi
 
   # Sometimes `blockdev --rereadpt` will fail with "ioctl error on
   # BLKRRPART: Device or resource busy" right after `udevadm settle`
   # completes. If the first attempt fails, sleep for a short time and
   # then retry. b/410051948
-  local rc=0
+  rc=0
   /sbin/blockdev --rereadpt "${DST}" || rc=$?
   if [ "${rc}" -ne 0 ]; then
       sleep 1s
@@ -831,7 +840,9 @@ main() {
   # Write the GPT using the board specific script.
   if [ "${FLAGS_skip_gpt_creation:?}" -eq "${FLAGS_FALSE}" ]; then
     write_base_table "${DST}" "$(get_pmbr_code)"
+    echo "Reloading system partition information."
     reload_partitions
+    echo "Done reloading system partition information."
   fi
 
   if [ "${FLAGS_skip_rootfs:?}" -eq "${FLAGS_TRUE}" ]; then
