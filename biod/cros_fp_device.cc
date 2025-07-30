@@ -241,31 +241,6 @@ std::optional<brillo::SecureVector> CrosFpDevice::FpReadMatchSecret(
   return secret;
 }
 
-std::optional<CrosFpDeviceInterface::GetSecretReply>
-CrosFpDevice::FpReadMatchSecretWithPubkey(int index,
-                                          const brillo::Blob& pk_in_x,
-                                          const brillo::Blob& pk_in_y) {
-  auto read_secret_cmd =
-      ec_command_factory_->FpReadMatchSecretWithPubkeyCommand(index, pk_in_x,
-                                                              pk_in_y);
-  if (!read_secret_cmd) {
-    LOG(ERROR) << "Invalid read secret params.";
-    return std::nullopt;
-  }
-  if (!read_secret_cmd->Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to read secret, result: "
-               << read_secret_cmd->Result();
-    return std::nullopt;
-  }
-
-  return CrosFpDeviceInterface::GetSecretReply{
-      .encrypted_secret = read_secret_cmd->EncryptedSecret(),
-      .iv = read_secret_cmd->Iv(),
-      .pk_out_x = read_secret_cmd->PkOutX(),
-      .pk_out_y = read_secret_cmd->PkOutY(),
-  };
-}
-
 bool CrosFpDevice::UpdateFpInfo() {
   info_ = ec_command_factory_->FpInfoCommand();
 
@@ -555,21 +530,6 @@ std::optional<brillo::SecureVector> CrosFpDevice::GetPositiveMatchSecret(
   return FpReadMatchSecret(static_cast<uint16_t>(*opt_index));
 }
 
-std::optional<CrosFpDeviceInterface::GetSecretReply>
-CrosFpDevice::GetPositiveMatchSecretWithPubkey(int index,
-                                               const brillo::Blob& pk_in_x,
-                                               const brillo::Blob& pk_in_y) {
-  auto opt_index = std::make_optional<int>(index);
-  if (index == kLastTemplate) {
-    opt_index = GetIndexOfLastTemplate();
-    if (!opt_index.has_value()) {
-      return std::nullopt;
-    }
-  }
-  return FpReadMatchSecretWithPubkey(static_cast<uint16_t>(*opt_index), pk_in_x,
-                                     pk_in_y);
-}
-
 std::unique_ptr<VendorTemplate> CrosFpDevice::GetTemplate(int index) {
   if (index == kLastTemplate) {
     auto opt_index = GetIndexOfLastTemplate();
@@ -596,28 +556,6 @@ std::unique_ptr<VendorTemplate> CrosFpDevice::GetTemplate(int index) {
     return nullptr;
   }
   return fp_frame_cmd->frame();
-}
-
-bool CrosFpDevice::UnlockTemplates(size_t num) {
-  if (num == 0) {
-    // Nothing needs to be done to unlock 0 templates.
-    return true;
-  }
-
-  auto fp_unlock_template_cmd =
-      ec_command_factory_->FpUnlockTemplateCommand(static_cast<uint16_t>(num));
-
-  if (!fp_unlock_template_cmd->Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to run FP_UNLOCK_TEMPLATE command";
-    return false;
-  }
-
-  if (fp_unlock_template_cmd->Result() != EC_RES_SUCCESS) {
-    LOG(ERROR) << "FP_UNLOCK_TEMPLATE command failed";
-    return false;
-  }
-
-  return true;
 }
 
 bool CrosFpDevice::UploadTemplate(const VendorTemplate& tmpl) {
@@ -706,36 +644,6 @@ bool CrosFpDevice::SetContext(std::string user_hex) {
   return success;
 }
 
-bool CrosFpDevice::SetNonceContext(const brillo::Blob& nonce,
-                                   const brillo::Blob& encrypted_user_id,
-                                   const brillo::Blob& iv) {
-  auto set_nonce_context_cmd = ec_command_factory_->FpSetNonceContextCommand(
-      nonce, encrypted_user_id, iv);
-  if (!set_nonce_context_cmd) {
-    LOG(ERROR) << "Invalid set nonce context params.";
-    return false;
-  }
-  if (!set_nonce_context_cmd->Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to set nonce context, result: "
-               << set_nonce_context_cmd->Result();
-    return false;
-  }
-  return true;
-}
-
-std::optional<brillo::Blob> CrosFpDevice::GetNonce() {
-  auto get_nonce_cmd = ec_command_factory_->FpGetNonceCommand();
-  if (!get_nonce_cmd) {
-    LOG(ERROR) << "Invalid get nonce params.";
-    return std::nullopt;
-  }
-  if (!get_nonce_cmd->Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to get nonce, result: " << get_nonce_cmd->Result();
-    return std::nullopt;
-  }
-  return get_nonce_cmd->Nonce();
-}
-
 bool CrosFpDevice::ResetContext() {
   FpMode cur_mode = GetFpMode();
   if (cur_mode == FpMode(FpMode::Mode::kModeInvalid)) {
@@ -805,55 +713,6 @@ bool CrosFpDevice::UpdateEntropy(bool reset) {
   return true;
 }
 
-std::optional<CrosFpDeviceInterface::PairingKeyKeygenReply>
-CrosFpDevice::PairingKeyKeygen() {
-  auto keygen_cmd = ec_command_factory_->FpPairingKeyKeygenCommand();
-  if (!keygen_cmd) {
-    LOG(ERROR) << "Invalid generate Pk params.";
-    return std::nullopt;
-  }
-  if (!keygen_cmd->Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to generate Pk: " << keygen_cmd->Result();
-    return std::nullopt;
-  }
-  return CrosFpDeviceInterface::PairingKeyKeygenReply{
-      .pub_x = keygen_cmd->PubX(),
-      .pub_y = keygen_cmd->PubY(),
-      .encrypted_private_key = keygen_cmd->EncryptedKey(),
-  };
-}
-
-std::optional<brillo::Blob> CrosFpDevice::PairingKeyWrap(
-    const brillo::Blob& pub_x,
-    const brillo::Blob& pub_y,
-    const brillo::Blob& encrypted_priv) {
-  auto wrap_cmd = ec_command_factory_->FpPairingKeyWrapCommand(pub_x, pub_y,
-                                                               encrypted_priv);
-  if (!wrap_cmd) {
-    LOG(ERROR) << "Invalid wrap Pk params.";
-    return std::nullopt;
-  }
-  if (!wrap_cmd->Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to wrap Pk: " << wrap_cmd->Result();
-    return std::nullopt;
-  }
-  return wrap_cmd->EncryptedPairingKey();
-}
-
-bool CrosFpDevice::LoadPairingKey(const brillo::Blob& encrypted_pairing_key) {
-  auto load_cmd =
-      ec_command_factory_->FpPairingKeyLoadCommand(encrypted_pairing_key);
-  if (!load_cmd) {
-    LOG(ERROR) << "Invalid load Pk params.";
-    return false;
-  }
-  if (!load_cmd->Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to load Pk: " << load_cmd->Result();
-    return false;
-  }
-  return true;
-}
-
 int CrosFpDevice::MaxTemplateCount() {
   if (!info_ || !info_->template_info()) {
     UpdateFpInfo();
@@ -891,37 +750,6 @@ FpSensorErrors CrosFpDevice::GetHwErrors() {
 
 void CrosFpDevice::SetMkbpEventCallback(CrosFpDevice::MkbpCallback callback) {
   mkbp_event_ = callback;
-}
-
-bool CrosFpDevice::MigrateLegacyTemplate(const std::string& user_id,
-                                         const VendorTemplate& tmpl) {
-  auto fp_template_cmd = ec_command_factory_->FpTemplateCommand(
-      tmpl, ec_protocol_info_.max_write, /*commit=*/false);
-
-  if (!fp_template_cmd->Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to run FP_TEMPLATE command";
-    biod_metrics_->SendUploadTemplateResult(metrics::kCmdRunFailure);
-    return false;
-  }
-  biod_metrics_->SendUploadTemplateResult(fp_template_cmd->Result());
-
-  if (fp_template_cmd->Result() != EC_RES_SUCCESS) {
-    LOG(ERROR) << "FP_TEMPLATE command failed";
-    return false;
-  }
-
-  auto migrate_cmd =
-      ec_command_factory_->FpMigrateTemplateToNonceContextCommand(user_id);
-  if (!migrate_cmd) {
-    LOG(ERROR) << "Invalid migrate legacy template params.";
-    return false;
-  }
-  if (!migrate_cmd->Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to migrate legacy template: "
-               << migrate_cmd->Result();
-    return false;
-  }
-  return true;
 }
 
 }  // namespace biod

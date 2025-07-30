@@ -61,7 +61,6 @@ pkg_config("target_defaults") {
 
 static_library("libbiod") {
   sources = [
-    "auth_stack_manager_wrapper.cc",
     "biod_config.cc",
     "biod_crypto.cc",
     "biod_feature.cc",
@@ -72,15 +71,12 @@ static_library("libbiod") {
     "biometrics_manager_record.cc",
     "biometrics_manager_record_wrapper.cc",
     "biometrics_manager_wrapper.cc",
-    "cros_fp_auth_stack_manager.cc",
     "cros_fp_biometrics_manager.cc",
     "cros_fp_device.cc",
     "cros_fp_firmware.cc",
     "cros_fp_record_manager.cc",
-    "cros_fp_session_manager_impl.cc",
     "crypto_init/bio_crypto_init.cc",
     "maintenance_scheduler.cc",
-    "pairing_key_storage_impl.cc",
     "power_button_filter.cc",
     "power_manager_client.cc",
     "session_state_manager.cc",
@@ -91,7 +87,6 @@ static_library("libbiod") {
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]
-  libs = [ "hwsec" ]
   pkg_deps = [
     "libfeatures",
     "vboot_host",
@@ -174,7 +169,6 @@ if (use.test) {
   }
   executable("biod_test_runner") {
     sources = [
-      "auth_stack_manager_wrapper_test.cc",
       "biod_config_test.cc",
       "biod_crypto_test.cc",
       "biod_feature_test.cc",
@@ -184,14 +178,11 @@ if (use.test) {
       "biometrics_manager_record_test.cc",
       "biometrics_manager_record_wrapper_test.cc",
       "biometrics_manager_wrapper_test.cc",
-      "cros_fp_auth_stack_manager_test.cc",
       "cros_fp_biometrics_manager_test.cc",
       "cros_fp_device_test.cc",
       "cros_fp_firmware_test.cc",
       "cros_fp_record_manager_test.cc",
-      "cros_fp_session_manager_impl_test.cc",
       "crypto_init/bio_crypto_init_test.cc",
-      "pairing_key_storage_impl_test.cc",
       "power_button_filter_test.cc",
       "power_manager_client_test.cc",
       "session_state_manager_test.cc",
@@ -206,7 +197,6 @@ if (use.test) {
       ":target_defaults",
     ]
     run_test = true
-    libs = [ "hwsec_test" ]
     deps = [
       ":fake_libbiod",
       ":libbiod",

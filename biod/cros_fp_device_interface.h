@@ -75,57 +75,15 @@ class CrosFpDeviceInterface : public ec::EcCommandVersionSupportedInterface {
   virtual bool SupportsPositiveMatchSecret() = 0;
   virtual std::optional<brillo::SecureVector> GetPositiveMatchSecret(
       int index) = 0;
-  // Get the positive match secret, but with response encrypted by a ECDH
-  // session.
-  virtual std::optional<GetSecretReply> GetPositiveMatchSecretWithPubkey(
-      int index, const brillo::Blob& pk_in_x, const brillo::Blob& pk_in_y) = 0;
   virtual std::unique_ptr<VendorTemplate> GetTemplate(int index) = 0;
   virtual bool UploadTemplate(const VendorTemplate& tmpl) = 0;
-  virtual bool UnlockTemplates(size_t num) = 0;
   virtual bool SetContext(std::string user_id) = 0;
-  // Set the nonce context by providing nonce and user_id of the context.
-  virtual bool SetNonceContext(const brillo::Blob& nonce,
-                               const brillo::Blob& encrypted_user_id,
-                               const brillo::Blob& iv) = 0;
-  // Get nonce from FPMCU to initiate the session key exchange.
-  virtual std::optional<brillo::Blob> GetNonce() = 0;
   virtual bool ResetContext() = 0;
   // Initialise the entropy in the SBP. If |reset| is true, the old entropy
   // will be deleted. If |reset| is false, we will only add entropy, and only
   // if no entropy had been added before.
   virtual bool InitEntropy(bool reset) = 0;
   virtual bool UpdateFpInfo() = 0;
-  // Initiate the ECDH session to establish the pairing key.
-  // The FPMCU generates and returns its public key and encrypted
-  // private key. This encrypted private key is provided to the FPMCU
-  // during the PairingKeyWrap command, so that no FPMCU state is required.
-  //
-  // Note that the encrypted private key Blob contains the as-is
-  // serialization of the returned private key struct. We do not
-  // unpack the key struct, since we are simply returning the as-is
-  // contents to the FPMCU through PairingKeyWrap.
-  virtual std::optional<PairingKeyKeygenReply> PairingKeyKeygen() = 0;
-  // Complete the ECDH session to establish the pairing key. Give the FPMCU
-  // the public key of the caller. Also, provide the wrapped private key of
-  // their key pair returned in PairingKeyKeygen. The wrapped pairing key is
-  // returned from the FPMCU because it doesn't have persistent storage, and
-  // relies on userland storing it.
-  virtual std::optional<brillo::Blob> PairingKeyWrap(
-      const brillo::Blob& pub_x,
-      const brillo::Blob& pub_y,
-      const brillo::Blob& encrypted_priv) = 0;
-  // Load the wrapped pairing key into the FPMCU. This will be called on
-  // each boot as most FP operations require the pairing key to be loaded in the
-  // FPMCU. This is the key returned from PairingKeyWrap, which must be
-  // persisted on the host.
-  virtual bool LoadPairingKey(const brillo::Blob& encrypted_pairing_key) = 0;
-
-  // Migrate a legacy template |tmpl| (which was created in a user id context
-  // |user_id| instead of nonce context) to a template in the nonce context.
-  // This marks the uploaded template as newly enrolled so it should be
-  // downloaded by GetTemplate() afterwards.
-  virtual bool MigrateLegacyTemplate(const std::string& user_id,
-                                     const VendorTemplate& tmpl) = 0;
 
   virtual int MaxTemplateCount() = 0;
   virtual int TemplateVersion() = 0;

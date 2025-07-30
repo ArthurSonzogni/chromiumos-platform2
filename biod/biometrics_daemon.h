@@ -10,9 +10,7 @@
 
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/bus.h>
-#include <libhwsec/factory/factory_impl.h>
 
-#include "biod/auth_stack_manager_wrapper.h"
 #include "biod/biod_feature.h"
 #include "biod/biod_metrics.h"
 #include "biod/biometrics_manager_wrapper.h"
@@ -41,9 +39,6 @@ class BiometricsDaemon {
   // them to make sure that pointers remain valid (destruction order is
   // correct).
   std::vector<std::unique_ptr<BiometricsManagerWrapper>> biometrics_managers_;
-  std::vector<std::unique_ptr<AuthStackManagerWrapper>> auth_stack_managers_;
-  hwsec::FactoryImpl hwsec_factory_ =
-      hwsec::FactoryImpl(hwsec::ThreadingMode::kCurrentThread);
 };
 }  // namespace biod
 

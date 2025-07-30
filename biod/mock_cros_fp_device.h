@@ -32,15 +32,7 @@ class MockCrosFpDevice : public CrosFpDeviceInterface {
               (int index),
               (override));
   MOCK_METHOD(bool, UploadTemplate, (const VendorTemplate& tmpl), (override));
-  MOCK_METHOD(bool, UnlockTemplates, (size_t num), (override));
   MOCK_METHOD(bool, SetContext, (std::string user_id), (override));
-  MOCK_METHOD(bool,
-              SetNonceContext,
-              (const brillo::Blob& nonce,
-               const brillo::Blob& encrypted_user_id,
-               const brillo::Blob& iv),
-              (override));
-  MOCK_METHOD(std::optional<brillo::Blob>, GetNonce, (), (override));
   MOCK_METHOD(bool, ResetContext, (), (override));
   MOCK_METHOD(bool, InitEntropy, (bool reset), (override));
   MOCK_METHOD(bool, UpdateFpInfo, (), (override));
@@ -56,30 +48,6 @@ class MockCrosFpDevice : public CrosFpDeviceInterface {
   MOCK_METHOD(std::optional<brillo::SecureVector>,
               GetPositiveMatchSecret,
               (int index),
-              (override));
-  MOCK_METHOD(std::optional<GetSecretReply>,
-              GetPositiveMatchSecretWithPubkey,
-              (int index,
-               const brillo::Blob& pk_in_x,
-               const brillo::Blob& pk_in_y),
-              (override));
-  MOCK_METHOD(std::optional<PairingKeyKeygenReply>,
-              PairingKeyKeygen,
-              (),
-              (override));
-  MOCK_METHOD(std::optional<brillo::Blob>,
-              PairingKeyWrap,
-              (const brillo::Blob& pub_x,
-               const brillo::Blob& pub_y,
-               const brillo::Blob& encrypted_priv),
-              (override));
-  MOCK_METHOD(bool,
-              LoadPairingKey,
-              (const brillo::Blob& encrypted_pairing_key),
-              (override));
-  MOCK_METHOD(bool,
-              MigrateLegacyTemplate,
-              (const std::string& user_id, const VendorTemplate& tmpl),
               (override));
 };
 

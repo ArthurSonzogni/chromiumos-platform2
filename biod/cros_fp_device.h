@@ -58,18 +58,9 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   bool SupportsPositiveMatchSecret() override;
   std::optional<brillo::SecureVector> GetPositiveMatchSecret(
       int index) override;
-  std::optional<GetSecretReply> GetPositiveMatchSecretWithPubkey(
-      int index,
-      const brillo::Blob& pk_in_x,
-      const brillo::Blob& pk_in_y) override;
   std::unique_ptr<VendorTemplate> GetTemplate(int index) override;
   bool UploadTemplate(const VendorTemplate& tmpl) override;
-  bool UnlockTemplates(size_t num) override;
   bool SetContext(std::string user_id) override;
-  bool SetNonceContext(const brillo::Blob& nonce,
-                       const brillo::Blob& encrypted_user_id,
-                       const brillo::Blob& iv) override;
-  std::optional<brillo::Blob> GetNonce() override;
   bool ResetContext() override;
   // Initialise the entropy in the SBP. If |reset| is true, the old entropy
   // will be deleted. If |reset| is false, we will only add entropy, and only
@@ -77,19 +68,9 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   bool InitEntropy(bool reset) override;
   bool UpdateFpInfo() override;
 
-  std::optional<PairingKeyKeygenReply> PairingKeyKeygen() override;
-  std::optional<brillo::Blob> PairingKeyWrap(
-      const brillo::Blob& pub_x,
-      const brillo::Blob& pub_y,
-      const brillo::Blob& encrypted_priv) override;
-  bool LoadPairingKey(const brillo::Blob& encrypted_pairing_key) override;
-
   int MaxTemplateCount() override;
   int TemplateVersion() override;
   int DeadPixelCount() override;
-
-  bool MigrateLegacyTemplate(const std::string& user_id,
-                             const VendorTemplate& tmpl) override;
 
   ec::FpSensorErrors GetHwErrors() override;
 
@@ -137,8 +118,6 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   // Get block id from rollback info.
   std::optional<int32_t> GetRollBackInfoId();
   std::optional<brillo::SecureVector> FpReadMatchSecret(uint16_t index);
-  std::optional<GetSecretReply> FpReadMatchSecretWithPubkey(
-      int index, const brillo::Blob& pk_in_x, const brillo::Blob& pk_in_y);
   std::optional<int> GetIndexOfLastTemplate();
   // Run a sequence of EC commands to update the entropy in the
   // MCU. If |reset| is set to true, it will additionally erase the existing
