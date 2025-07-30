@@ -44,7 +44,7 @@ use system_api::seneschal_service::*;
 use system_api::vm_plugin_dispatcher;
 use system_api::vm_plugin_dispatcher::VmErrorCode;
 
-use crate::disk::{DiskInfo, DiskOpType, VmDiskImageType, VmState};
+use crate::disk::{DiskInfo, DiskOpType, VmDiskImageType, VmState, VmType as DiskVmType};
 use crate::proto::system_api::*;
 
 const REMOVABLE_MEDIA_ROOT: &str = "/media/removable";
@@ -2531,6 +2531,16 @@ impl Methods {
                     },
                     user_chosen_size: e.user_chosen_size,
                     state,
+                    has_vm_type: e.has_vm_type,
+                    vm_type: match e.vm_type.enum_value_or_default() {
+                        VmType::UNKNOWN => DiskVmType::Unknown,
+                        VmType::TERMINA => DiskVmType::Termina,
+                        VmType::ARC_VM => DiskVmType::ArcVm,
+                        VmType::PLUGIN_VM => DiskVmType::PluginVm,
+                        VmType::BOREALIS => DiskVmType::Borealis,
+                        VmType::BRUSCHETTA => DiskVmType::Bruschetta,
+                        VmType::BAGUETTE => DiskVmType::Baguette,
+                    }
                 };
                 Ok(info)
             })

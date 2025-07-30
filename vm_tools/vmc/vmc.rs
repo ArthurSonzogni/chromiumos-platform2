@@ -714,9 +714,14 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
                 VmState::Starting | VmState::Running => format!(" {}", disk.state),
                 _ => String::new(),
             };
+            let on_disk_vm_type_str = if disk.has_vm_type {
+                format!("on disk VM type: {}", disk.vm_type)
+            } else {
+                "on disk VM type not specified".to_string()
+            };
             println!(
-                "{} ({} bytes{}){}",
-                disk.name, disk.size, extra_info, state_str
+                "{} ({} bytes{}) ({}) {}",
+                disk.name, disk.size, extra_info, on_disk_vm_type_str, state_str
             );
         }
         println!("Total Size (bytes): {}", total_size);

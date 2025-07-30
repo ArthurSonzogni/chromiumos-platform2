@@ -11,6 +11,32 @@ pub enum DiskOpType {
     Resize,
 }
 
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum VmType {
+    #[default]
+    Unknown,
+    Termina,
+    ArcVm,
+    PluginVm,
+    Borealis,
+    Bruschetta,
+    Baguette,
+}
+
+impl fmt::Display for VmType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            VmType::Unknown => write!(f, "unknown"),
+            VmType::Termina => write!(f, "crostini"),
+            VmType::ArcVm => write!(f, "arcvm"),
+            VmType::PluginVm => write!(f, "pvm"),
+            VmType::Borealis => write!(f, "borealis"),
+            VmType::Bruschetta => write!(f, "bruschetta"),
+            VmType::Baguette => write!(f, "baguette"),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default)]
 pub enum VmDiskImageType {
     Raw,
@@ -64,4 +90,8 @@ pub struct DiskInfo {
     pub user_chosen_size: bool,
     /// Indicates state of the VM owning this disk.
     pub state: VmState,
+    /// On-disk VM type of the image.
+    pub vm_type: VmType,
+    /// Whether on-disk vm_type is available.
+    pub has_vm_type: bool,
 }
