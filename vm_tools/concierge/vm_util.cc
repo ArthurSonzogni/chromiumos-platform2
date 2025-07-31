@@ -1300,7 +1300,7 @@ VmStartChecker::VmStartChecker(int32_t signal_fd,
       event_fd_(std::move(event_fd)),
       epoll_fd_(std::move(epoll_fd)) {}
 
-VmInfo_VmType ToLegacyVmType(apps::VmType type) {
+VmInfo_VmType ToConciergeServiceVmType(apps::VmType type) {
   switch (type) {
     case apps::VmType::TERMINA:
       return VmInfo::TERMINA;
@@ -1316,6 +1316,25 @@ VmInfo_VmType ToLegacyVmType(apps::VmType type) {
       return VmInfo::BAGUETTE;
     default:
       return VmInfo::UNKNOWN;
+  }
+}
+
+apps::VmType ToAppsVmType(VmInfo_VmType type){
+    switch (type) {
+    case VmInfo::TERMINA:
+      return apps::TERMINA;
+    case VmInfo::PLUGIN_VM:
+      return apps::PLUGIN_VM;
+    case VmInfo::BOREALIS:
+      return apps::BOREALIS;
+    case VmInfo::ARC_VM:
+      return apps::ARCVM;
+    case VmInfo::BRUSCHETTA:
+      return apps::BRUSCHETTA;
+    case VmInfo::BAGUETTE:
+      return apps::BAGUETTE;
+    default:
+      return apps::UNKNOWN;
   }
 }
 
@@ -1337,7 +1356,7 @@ VmInfo ToVmInfo(const VmBaseImpl::Info& info, bool fill_sensitive_info) {
   vm_info.set_pid(info.pid);
   vm_info.set_cid(info.cid);
   vm_info.set_seneschal_server_handle(info.seneschal_server_handle);
-  vm_info.set_vm_type(ToLegacyVmType(info.type));
+  vm_info.set_vm_type(ToConciergeServiceVmType(info.type));
   vm_info.set_storage_ballooning(info.storage_ballooning);
 
   if (fill_sensitive_info) {

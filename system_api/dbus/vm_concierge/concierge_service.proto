@@ -887,6 +887,9 @@ message CreateDiskImageRequest {
   // which will be decompressed and written as the disk image contents.
   // Currently this is only used for baguette vm's.
   bool copy_baguette_image = 13;
+
+  // Identify the vm type to write to the disk image.
+  VmInfo.VmType vm_type = 14;
 }
 
 // Response to a CreateDiskImageRequest.
@@ -995,6 +998,9 @@ message ImportDiskImageRequest {
   // Size of the source image (corresponding to the passed FD).
   // Used to calculate progress of the import operation.
   uint64 source_size = 4;
+
+  // Identify the vm type to write to the disk image.
+  VmInfo.VmType vm_type = 5;
 }
 
 // Response to a ImportDiskImageRequest.

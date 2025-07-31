@@ -179,9 +179,13 @@ std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
                                  int flags,
                                  std::vector<brillo::SafeFD>& fd_storage);
 
-// Convert the given |type| to the legacy VM type defined in
-// vm_concierge/concierge.pb
-VmInfo_VmType ToLegacyVmType(apps::VmType type);
+// Convert the given |type| to VM types defined in
+// system_api vm_concierge/concierge_service.pb
+VmInfo_VmType ToConciergeServiceVmType(apps::VmType type);
+
+// Convert the given |type| to VM types defined in
+// system_api vm_applications/apps.proto
+apps::VmType ToAppsVmType(VmInfo_VmType type);
 
 // Convert the given VM |status| to public protobuf variant
 // vm_tools::concierge::VmStatus

@@ -1141,7 +1141,7 @@ bool Service::ListVmDisksInLocation(const std::string& cryptohome_id,
     auto vm_type = GetDiskImageVmType(path.value());
     image->set_has_vm_type(vm_type.has_value());
     if (vm_type.has_value()) {
-      image->set_vm_type(ToLegacyVmType(vm_type.value()));
+      image->set_vm_type(ToConciergeServiceVmType(vm_type.value()));
     }
   }
 
@@ -2703,15 +2703,12 @@ void Service::CreateDiskImage(
   CreateDiskImageResponse response;
 
   base::ScopedFD in_fd;
-  if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM) {
-    if (file_handles.size() == 0) {
-      LOG(ERROR) << "CreateDiskImage: no fd found";
-      response.set_failure_reason("no source fd found");
-
-      response_cb->Return(response);
-      return;
-    }
-    in_fd.reset(dup(file_handles[0].get()));
+  if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM ||
+      request.vm_type() == VmInfo_VmType::VmInfo_VmType_PLUGIN_VM) {
+    LOG(ERROR) << "Plugin vm is not supported.";
+    response.set_failure_reason("no plugin vm support");
+    response_cb->Return(response);
+    return;
   }
 
   if (request.copy_baguette_image()) {
@@ -2777,13 +2774,6 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
       return response;
     }
 
-    if (disk_location == STORAGE_CRYPTOHOME_PLUGINVM) {
-      // We do not support extending Plugin VM images.
-      response.set_status(DISK_STATUS_FAILED);
-      response.set_failure_reason("Plugin VM with such name already exists");
-      return response;
-    }
-
     LOG(INFO) << "Found existing disk at " << disk_path.value();
 
     response.set_status(DISK_STATUS_EXISTS);
@@ -2795,50 +2785,6 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
                            request.image_type())) {
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Failed to create vm image");
-
-    return response;
-  }
-
-  if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM) {
-    // Make sure we have the FD to fill with disk image data.
-    if (!in_fd.is_valid()) {
-      LOG(ERROR) << "CreateDiskImage: fd is not valid";
-      response.set_failure_reason("fd is not valid");
-    }
-
-    // Get the name of directory for ISO images. Do not create it - it will be
-    // created by the PluginVmCreateOperation code.
-    base::FilePath iso_dir;
-    if (!GetPluginIsoDirectory(vm_id, false /* create */, &iso_dir)) {
-      LOG(ERROR) << "Unable to determine directory for ISOs";
-
-      response.set_failure_reason("Unable to determine ISO directory");
-      return response;
-    }
-
-    std::vector<std::string> params(
-        std::make_move_iterator(request.mutable_params()->begin()),
-        std::make_move_iterator(request.mutable_params()->end()));
-
-    std::unique_ptr<PluginVmCreateOperation> op =
-        PluginVmCreateOperation::Create(
-            std::move(in_fd), iso_dir, request.source_size(),
-            VmId(request.cryptohome_id(), request.vm_name()),
-            std::move(params));
-
-    response.set_disk_path(disk_path.value());
-    response.set_status(op->status());
-    response.set_command_uuid(op->uuid());
-    response.set_failure_reason(op->failure_reason());
-
-    if (op->status() == DISK_STATUS_IN_PROGRESS) {
-      std::string uuid = op->uuid();
-      disk_image_ops_.emplace_back(std::move(op));
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE,
-          base::BindOnce(&Service::RunDiskImageOperation,
-                         weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
-    }
 
     return response;
   }
@@ -2889,12 +2835,6 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
       LOG(INFO) << "Disk image created from compressed image";
       response.set_status(DISK_STATUS_CREATED);
       response.set_disk_path(disk_path.value());
-
-      if (!SetDiskImageVmType(fd, vm_tools::apps::VmType::BAGUETTE)) {
-        LOG(WARNING) << "Unable to set xattr for disk image's VmType";
-      } else {
-        LOG(INFO) << "Set xattr for disk image.";
-      }
     }
 
     if (!is_sparse) {
@@ -2921,7 +2861,6 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
       LOG(INFO) << "Disk image preallocated";
       response.set_status(DISK_STATUS_CREATED);
       response.set_disk_path(disk_path.value());
-
     } else {
       LOG(INFO) << "Creating sparse raw disk image";
       int ret = ftruncate(fd.get(), disk_size);
@@ -2937,6 +2876,21 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
       LOG(INFO) << "Sparse raw disk image created";
       response.set_status(DISK_STATUS_CREATED);
       response.set_disk_path(disk_path.value());
+    }
+
+    vm_tools::apps::VmType disk_image_vm_type = apps::UNKNOWN;
+    if (request.copy_baguette_image()) {
+      disk_image_vm_type = apps::BAGUETTE;
+    } else if (request.vm_type() != VmInfo::UNKNOWN) {
+      disk_image_vm_type = ToAppsVmType(request.vm_type());
+    }
+    if (disk_image_vm_type != apps::UNKNOWN) {
+      if (!SetDiskImageVmType(fd, disk_image_vm_type)) {
+        LOG(WARNING) << "Unable to set xattr for disk image's VmType: "
+                     << disk_image_vm_type;
+      } else {
+        LOG(INFO) << "Set xattr for disk image: " << disk_image_vm_type;
+      }
     }
 
     if (request.filesystem_type() == FilesystemType::UNSPECIFIED) {
@@ -4175,7 +4129,7 @@ void Service::SendVmStartingUpSignal(const VmId& vm_id,
   vm_tools::concierge::VmStartingUpSignal proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
-  proto.set_vm_type(ToLegacyVmType(vm_type));
+  proto.set_vm_type(ToConciergeServiceVmType(vm_type));
   proto.set_cid(cid);
   concierge_adaptor_->SendVmStartingUpSignalSignal(proto);
 }
