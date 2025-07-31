@@ -135,7 +135,7 @@ PowerOpt::PowerState PowerOpt::GetPowerState(const std::string& iccid) {
 bool PowerOpt::RequestPowerStateChange(PowerOpt::PowerState power_state) {
   if (power_state == PowerState::kLow || power_state == PowerState::kOff) {
     LOG(INFO) << __func__ << ": disable cellular.";
-    manager_->SetEnabledStateForTechnology(kTypeCellular, false, false,
+    manager_->SetEnabledStateForTechnology(kTypeCellular, false, true,
                                            base::DoNothing());
   }
   return true;
