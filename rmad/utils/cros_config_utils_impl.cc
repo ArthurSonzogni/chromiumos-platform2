@@ -361,7 +361,8 @@ CrosConfigUtilsImpl::GetSsfcComponentTypeConfigs(
   for (int i = 0; i < kMaxSsfcComponentTypeNum; ++i) {
     SsfcComponentTypeConfig component_type_config = GetSsfcComponentTypeConfig(
         component_type_configs_path.Append(base::NumberToString(i)));
-    if (component_type_config.probeable_components.size()) {
+    if (component_type_config.probeable_components.size() ||
+        component_type_config.default_value != 0) {
       component_type_configs.emplace_back(std::move(component_type_config));
     } else {
       break;

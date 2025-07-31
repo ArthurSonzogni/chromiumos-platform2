@@ -109,6 +109,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
     std::optional<std::string> custom_label_tag = std::nullopt;
     bool enable_rmad = true;
     bool set_optional_rmad_cros_configs = true;
+    bool has_probeable_components = true;
     std::optional<std::string> fingerprint_sensor_location = std::nullopt;
     std::optional<std::string> oem_name = std::nullopt;
   };
@@ -210,18 +211,20 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                     base::NumberToString(kSsfcDefaultValue));
       }
 
-      fake_cros_config->SetString(probeable_component_0_path.value(),
-                                  kCrosProbeableComponentsIdentifierKey,
-                                  kSsfcIdentifier1);
-      fake_cros_config->SetString(probeable_component_0_path.value(),
-                                  kCrosProbeableComponentsValueKey,
-                                  base::NumberToString(kSsfcValue1));
-      fake_cros_config->SetString(probeable_component_1_path.value(),
-                                  kCrosProbeableComponentsIdentifierKey,
-                                  kSsfcIdentifier2);
-      fake_cros_config->SetString(probeable_component_1_path.value(),
-                                  kCrosProbeableComponentsValueKey,
-                                  base::NumberToString(kSsfcValue2));
+      if (args.has_probeable_components) {
+        fake_cros_config->SetString(probeable_component_0_path.value(),
+                                    kCrosProbeableComponentsIdentifierKey,
+                                    kSsfcIdentifier1);
+        fake_cros_config->SetString(probeable_component_0_path.value(),
+                                    kCrosProbeableComponentsValueKey,
+                                    base::NumberToString(kSsfcValue1));
+        fake_cros_config->SetString(probeable_component_1_path.value(),
+                                    kCrosProbeableComponentsIdentifierKey,
+                                    kSsfcIdentifier2);
+        fake_cros_config->SetString(probeable_component_1_path.value(),
+                                    kCrosProbeableComponentsValueKey,
+                                    base::NumberToString(kSsfcValue2));
+      }
     }
 
     return std::make_unique<CrosConfigUtilsImpl>(cros_config_root_path,
@@ -277,6 +280,28 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadCrosConfig_Enabled_NoOptionalConfigss) {
   EXPECT_EQ(probeable_components.size(), 2);
   EXPECT_EQ(probeable_components.at(kSsfcIdentifier1), kSsfcValue1);
   EXPECT_EQ(probeable_components.at(kSsfcIdentifier2), kSsfcValue2);
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetRmadCrosConfig_Enabled_DefaultValueOnly) {
+  auto cros_config_utils =
+      CreateCrosConfigUtils({.set_optional_rmad_cros_configs = true,
+                             .has_probeable_components = false});
+
+  RmadCrosConfig config;
+  EXPECT_TRUE(cros_config_utils->GetRmadCrosConfig(&config));
+  EXPECT_TRUE(config.enabled);
+  EXPECT_TRUE(config.has_cbi);
+  EXPECT_EQ(config.ssfc.mask, kSsfcMask);
+  EXPECT_TRUE(config.use_legacy_custom_label);
+
+  const auto& component_type_configs = config.ssfc.component_type_configs;
+  EXPECT_EQ(component_type_configs.size(), 1);
+  EXPECT_EQ(component_type_configs[0].component_type, kSsfcComponentType);
+  EXPECT_EQ(component_type_configs[0].default_value, kSsfcDefaultValue);
+
+  const auto& probeable_components =
+      component_type_configs[0].probeable_components;
+  EXPECT_EQ(probeable_components.size(), 0);
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetRmadCrosConfig_Disabled) {
