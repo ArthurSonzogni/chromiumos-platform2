@@ -7,7 +7,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":intel_pmt.plugin",
+    ":intel_pmt_plugin",
     ":pmt_tool",
   ]
   if (use.test) {
@@ -53,8 +53,9 @@ if (use.test) {
   }
 }
 
-install_config("intel_pmt.plugin") {
-  sources = [ "netdata-plugin/intel_pmt.plugin" ]
+executable("intel_pmt_plugin") {
+  output_name = "intel_pmt.plugin"
+  sources = [ "netdata-plugin/intel_pmt_plugin.cc" ]
+  configs += [ ":target_defaults_pkg_deps" ]
   install_path = "/usr/local/etc/netdata/custom-plugins.d"
-  type = "executable"
 }
