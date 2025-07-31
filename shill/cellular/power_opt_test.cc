@@ -44,11 +44,17 @@ TEST_F(PowerOptTest, LowPowerLongNotOnline) {
   const base::TimeDelta DurationBelowLastManualConnectTrehsold =
       PowerOpt::kLastUserRequestThreshold - base::Seconds(10);
 
-  obj.AddOptInfoForNewService("123");
-  obj.AddOptInfoForNewService("456");
-  obj.UpdatePowerState("123", PowerOpt::PowerState::kOn);
+  obj.AddOptInfoForNewService("", PowerOpt::PowerState::kOn);
+  obj.AddOptInfoForNewService("123", PowerOpt::PowerState::kLow);
+  EXPECT_EQ(obj.GetPowerState(""), PowerOpt::PowerState::kOn);
+  EXPECT_EQ(obj.GetPowerState("123"), PowerOpt::PowerState::kLow);
+  // power opt info for iccid "456" does not exist, update power state
+  // will create entry and add power opt info for iccid "456"
+  EXPECT_TRUE(obj.UpdatePowerState("456", PowerOpt::PowerState::kOn));
+
+  // update iccid "123" power state to On for the following test
+  EXPECT_TRUE(obj.UpdatePowerState("123", PowerOpt::PowerState::kOn));
   EXPECT_EQ(obj.GetPowerState("123"), PowerOpt::PowerState::kOn);
-  EXPECT_FALSE(obj.UpdatePowerState("789", PowerOpt::PowerState::kOn));
 
   obj.UpdateManualConnectTime(base::Time::Now() -
                               DurationOverLastManualConnectTrehsold);
@@ -74,8 +80,8 @@ TEST_F(PowerOptTest, LowPowerInvalidApn) {
       PowerOpt::kLastOnlineShortThreshold + base::Seconds(10);
   const base::TimeDelta DurationInvalidApn =
       PowerOpt::kNoServiceInvalidApnTimeThreshold + base::Seconds(100);
-  obj.AddOptInfoForNewService("123");
-  obj.UpdatePowerState("123", PowerOpt::PowerState::kOn);
+  obj.AddOptInfoForNewService("123", PowerOpt::PowerState::kLow);
+  EXPECT_TRUE(obj.UpdatePowerState("123", PowerOpt::PowerState::kOn));
   // set and met not online duration
   obj.UpdateDurationSinceLastOnline(base::Time::Now() -
                                     DurationOverLastOnlineTreshold);
@@ -89,8 +95,7 @@ TEST_F(PowerOptTest, LowPowerInvalidApn) {
 
 TEST_F(PowerOptTest, RunPowerOptTask) {
   PowerOpt obj(&manager_);
-  obj.AddOptInfoForNewService("123");
-  obj.UpdatePowerState("123", PowerOpt::PowerState::kOn);
+  obj.AddOptInfoForNewService("123", PowerOpt::PowerState::kOn);
   obj.Start();
   EXPECT_CALL(manager_, cellular_service_provider()).Times(AtLeast(3));
   constexpr base::TimeDelta kTestTimeout =

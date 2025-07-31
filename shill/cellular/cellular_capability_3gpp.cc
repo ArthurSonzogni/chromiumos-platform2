@@ -453,6 +453,8 @@ void CellularCapability3gpp::StartModem(ResultCallback callback) {
       base::BindOnce(&CellularCapability3gpp::EnableModemCompleted,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
       kTimeoutEnable);
+  cellular()->power_opt()->UpdatePowerState(cellular()->iccid(),
+                                            PowerOpt::PowerState::kOn);
 }
 
 void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
@@ -512,10 +514,6 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
       base::BindOnce(&CellularCapability3gpp::OnProfilesListReply,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   modem_3gpp_profile_manager_proxy_->List(std::move(cb), kTimeoutDefault);
-  if (cellular()->service()) {
-    cellular()->power_opt()->UpdatePowerState(cellular()->service()->iccid(),
-                                              PowerOpt::PowerState::kOn);
-  }
 }
 
 void CellularCapability3gpp::StopModem(ResultCallback callback) {
@@ -548,10 +546,8 @@ void CellularCapability3gpp::StopModem(ResultCallback callback) {
       base::BindOnce(&CellularCapability3gpp::StopPowerDownCompleted,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
       kTimeoutSetPowerState);
-  if (cellular()->service()) {
-    cellular()->power_opt()->UpdatePowerState(cellular()->service()->iccid(),
-                                              PowerOpt::PowerState::kLow);
-  }
+  cellular()->power_opt()->UpdatePowerState(cellular()->iccid(),
+                                            PowerOpt::PowerState::kLow);
 }
 
 // Note: if we were in the middle of powering down the modem when the
@@ -1078,10 +1074,8 @@ bool CellularCapability3gpp::ConnectionAttemptContinue(
             ApnList::GetApnTypeString(apn_type).c_str()));
     ConnectionAttemptComplete(apn_type, error);
 
-    if (cellular()->service()) {
-      cellular()->power_opt()->NotifyConnectionFailInvalidApn(
-          cellular()->service()->iccid());
-    }
+    cellular()->power_opt()->NotifyConnectionFailInvalidApn(
+        cellular()->iccid());
     return false;
   }
 
@@ -2497,8 +2491,7 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
   }
 
   if (IsRegisteredState(state) && cellular()->service()) {
-    cellular()->power_opt()->NotifyRegistrationSuccess(
-        cellular()->service()->iccid());
+    cellular()->power_opt()->NotifyRegistrationSuccess(cellular()->iccid());
 
     // clear any network rejects for ICCID
     ClearNetworkRejections(cellular()->service()->iccid());

@@ -40,7 +40,7 @@ class PowerOpt {
   void UpdateDurationSinceLastOnline(const base::Time& last_online);
   void UpdateManualConnectTime(const base::Time& connect_time);
   bool UpdatePowerState(const std::string& iccid, PowerState state);
-  bool AddOptInfoForNewService(const std::string& iccid);
+  bool AddOptInfoForNewService(const std::string& iccid, PowerState state);
   base::Time GetLastOnlineTime(const std::string& iccid);
   base::TimeDelta GetInvalidApnDuration(const std::string& iccid);
   PowerState GetPowerState(const std::string& iccid);

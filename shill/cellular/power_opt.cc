@@ -85,6 +85,8 @@ void PowerOpt::UpdateDurationSinceLastOnline(
   if (!user_connect_request_time_.is_null()) {
     base::TimeDelta since_last_user_connect_request =
         base::Time::Now() - user_connect_request_time_;
+    SLOG(2) << "Time since last user request for cellular connection (hours): "
+            << since_last_user_connect_request.InHours();
     if (since_last_user_connect_request < kLastUserRequestThreshold) {
       return;
     }
@@ -102,8 +104,11 @@ void PowerOpt::UpdateDurationSinceLastOnline(
 }
 
 bool PowerOpt::UpdatePowerState(const std::string& iccid, PowerState state) {
+  SLOG(3) << __func__ << ": iccid " << iccid;
   if (opt_info_.count(iccid) == 0) {
-    return false;
+    AddOptInfoForNewService(iccid, state);
+    current_opt_info_ = &opt_info_[iccid];
+    return true;
   }
   current_opt_info_ = &opt_info_[iccid];
   if (state != opt_info_[iccid].power_state) {
@@ -141,13 +146,14 @@ bool PowerOpt::RequestPowerStateChange(PowerOpt::PowerState power_state) {
   return true;
 }
 
-bool PowerOpt::AddOptInfoForNewService(const std::string& iccid) {
+bool PowerOpt::AddOptInfoForNewService(const std::string& iccid,
+                                       PowerState state) {
   if (opt_info_.count(iccid) > 0) {
     return false;
   }
   // either |opt_info_| is empty or no match
   PowerOptimizationInfo info;
-  info.power_state = PowerState::kOn;
+  info.power_state = state;
   opt_info_[iccid] = info;
   return true;
 }

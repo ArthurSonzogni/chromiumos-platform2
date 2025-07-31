@@ -1259,7 +1259,8 @@ void Cellular::CreateServices() {
   // Ensure operator properties are updated.
   OnOperatorChanged();
   if (service_ && manager()->power_opt()) {
-    manager()->power_opt()->AddOptInfoForNewService(service_->iccid());
+    manager()->power_opt()->AddOptInfoForNewService(service_->iccid(),
+                                                    PowerOpt::PowerState::kOn);
   }
 }
 
