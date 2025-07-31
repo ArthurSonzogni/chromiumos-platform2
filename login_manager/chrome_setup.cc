@@ -427,10 +427,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--oobe-skip-postlogin");
   }
 
-  if (builder->UseFlagIsSet("disable_background_blur")) {
-    builder->AddFeatureDisableOverride("EnableBackgroundBlur");
-  }
-
   if (builder->UseFlagIsSet("disable_explicit_dma_fences")) {
     builder->AddArg("--disable-explicit-dma-fences");
   }
