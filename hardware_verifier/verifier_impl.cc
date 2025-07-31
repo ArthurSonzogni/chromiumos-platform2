@@ -20,6 +20,8 @@
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
+#include "hardware_verifier/runtime_hwid_generator_impl.h"
+
 namespace hardware_verifier {
 
 namespace {
@@ -90,7 +92,12 @@ bool IsModelComponent(const ComponentInfo& comp_info,
 
 }  // namespace
 
-VerifierImpl::VerifierImpl() {
+VerifierImpl::VerifierImpl()
+    : VerifierImpl(RuntimeHWIDGeneratorImpl::Create()) {}
+
+VerifierImpl::VerifierImpl(
+    std::unique_ptr<RuntimeHWIDGenerator> runtime_hwid_generator) {
+  runtime_hwid_generator_ = std::move(runtime_hwid_generator);
   cros_config_ = std::make_unique<brillo::CrosConfig>();
   // Resolve |comp_category_infos_| in the constructor.
   const auto* category_enum_desc =
@@ -153,7 +160,8 @@ VerifierImpl::VerifierImpl() {
 
 std::optional<HwVerificationReport> VerifierImpl::Verify(
     const runtime_probe::ProbeResult& probe_result,
-    const HwVerificationSpec& hw_verification_spec) const {
+    const HwVerificationSpec& hw_verification_spec,
+    RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy) const {
   // A dictionary of 'expected_component_category => seen'.
   std::map<SupportCategory, bool> seen_comp;
   // Collect the categories of generic components we found.
@@ -283,6 +291,8 @@ std::optional<HwVerificationReport> VerifierImpl::Verify(
     }
   }
 
+  RefreshRuntimeHWID(refresh_runtime_hwid_policy, probe_result);
+
   // TODO(yhong): Implement the SKU specific checks.
   return hw_verification_report;
 }
@@ -290,6 +300,35 @@ std::optional<HwVerificationReport> VerifierImpl::Verify(
 void VerifierImpl::SetCrosConfigForTesting(
     std::unique_ptr<brillo::CrosConfigInterface> cros_config) {
   cros_config_ = std::move(cros_config);
+}
+
+void VerifierImpl::RefreshRuntimeHWID(
+    RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy,
+    const runtime_probe::ProbeResult& probe_result) const {
+  if (runtime_hwid_generator_ == nullptr) {
+    LOG(ERROR) << "Runtime HWID generator initialization failed. Clean up "
+                  "Runtime HWID.";
+    DeleteRuntimeHWIDFromDevice();
+    return;
+  }
+
+  switch (refresh_runtime_hwid_policy) {
+    case RuntimeHWIDRefreshPolicy::kSkip:
+      break;
+    case RuntimeHWIDRefreshPolicy::kRefresh:
+      if (runtime_hwid_generator_->ShouldGenerateRuntimeHWID(probe_result)) {
+        runtime_hwid_generator_->GenerateToDevice(probe_result);
+      } else {
+        DeleteRuntimeHWIDFromDevice();
+      }
+      break;
+    case RuntimeHWIDRefreshPolicy::kForceGenerate:
+      runtime_hwid_generator_->GenerateToDevice(probe_result);
+      break;
+    default:
+      NOTREACHED() << "Invalid RuntimeHWIDRefreshPolicy: "
+                   << static_cast<int>(refresh_runtime_hwid_policy);
+  }
 }
 
 std::string VerifierImpl::GetModelName() const {

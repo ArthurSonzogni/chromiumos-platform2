@@ -7,23 +7,18 @@
 
 #include <memory>
 #include <optional>
-#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
-#include "base/files/file_util.h"
 #include "hardware_verifier/hw_verification_report_getter.h"
 #include "hardware_verifier/hw_verification_spec_getter.h"
 #include "hardware_verifier/observer.h"
 #include "hardware_verifier/probe_result_getter.h"
-#include "hardware_verifier/runtime_hwid_generator.h"
-#include "hardware_verifier/test_utils.h"
 #include "hardware_verifier/verifier.h"
 
 namespace hardware_verifier {
@@ -35,8 +30,6 @@ using ::testing::NiceMock;
 using ::testing::Return;
 
 using ReportGetterErrorCode = HwVerificationReportGetter::ErrorCode;
-using RuntimeHWIDRefreshPolicy =
-    HwVerificationReportGetter::RuntimeHWIDRefreshPolicy;
 
 class MockProbeResultGetter : public ProbeResultGetter {
  public:
@@ -67,23 +60,8 @@ class MockVerifier : public Verifier {
   MOCK_METHOD(std::optional<HwVerificationReport>,
               Verify,
               (const runtime_probe::ProbeResult& probe_result,
-               const HwVerificationSpec& hw_verification_spec),
-              (const, override));
-};
-
-class MockRuntimeHWIDGenerator : public RuntimeHWIDGenerator {
- public:
-  MOCK_METHOD(bool,
-              ShouldGenerateRuntimeHWID,
-              (const runtime_probe::ProbeResult&),
-              (const, override));
-  MOCK_METHOD(std::optional<std::string>,
-              Generate,
-              (const runtime_probe::ProbeResult&),
-              (const, override));
-  MOCK_METHOD(bool,
-              GenerateToDevice,
-              (const runtime_probe::ProbeResult&),
+               const HwVerificationSpec& hw_verification_spec,
+               RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy),
               (const, override));
 };
 
@@ -93,33 +71,26 @@ class HwVerificationReportGetterImplForTesting
   explicit HwVerificationReportGetterImplForTesting(
       std::unique_ptr<ProbeResultGetter> pr_getter,
       std::unique_ptr<HwVerificationSpecGetter> vs_getter,
-      std::unique_ptr<Verifier> verifier,
-      std::unique_ptr<RuntimeHWIDGenerator> runtime_hwid_generator)
-      : HwVerificationReportGetterImpl(std::move(pr_getter),
-                                       std::move(vs_getter),
-                                       std::move(verifier),
-                                       std::move(runtime_hwid_generator)) {}
+      std::unique_ptr<Verifier> verifier)
+      : HwVerificationReportGetterImpl(
+            std::move(pr_getter), std::move(vs_getter), std::move(verifier)) {}
 };
 
-class HwVerificationReportGetterImplTest : public BaseFileTest {
+class HwVerificationReportGetterImplTest : public testing::Test {
  protected:
   void SetUp() override {
     auto mock_pr_getter = std::make_unique<NiceMock<MockProbeResultGetter>>();
     auto mock_vs_getter =
         std::make_unique<NiceMock<MockHwVerificationSpecGetter>>();
     auto mock_verifier = std::make_unique<NiceMock<MockVerifier>>();
-    auto mock_runtime_hwid_generator =
-        std::make_unique<NiceMock<MockRuntimeHWIDGenerator>>();
     auto mock_metrics = std::make_unique<NiceMock<MetricsLibraryMock>>();
     mock_pr_getter_ = mock_pr_getter.get();
     mock_vs_getter_ = mock_vs_getter.get();
     mock_verifier_ = mock_verifier.get();
-    mock_runtime_hwid_generator_ = mock_runtime_hwid_generator.get();
     mock_metrics_ = mock_metrics.get();
-
-    vr_getter_ = std::make_unique<HwVerificationReportGetterImplForTesting>(
+    vr_getter_.reset(new HwVerificationReportGetterImplForTesting(
         std::move(mock_pr_getter), std::move(mock_vs_getter),
-        std::move(mock_verifier), std::move(mock_runtime_hwid_generator));
+        std::move(mock_verifier)));
     Observer::GetInstance()->SetMetricsLibrary(std::move(mock_metrics));
 
     // set everything works by default.
@@ -129,7 +100,7 @@ class HwVerificationReportGetterImplTest : public BaseFileTest {
         .WillByDefault(Return(runtime_probe::ProbeResult()));
     ON_CALL(*mock_vs_getter_, GetDefault())
         .WillByDefault(Return(HwVerificationSpec()));
-    ON_CALL(*mock_verifier_, Verify(_, _))
+    ON_CALL(*mock_verifier_, Verify(_, _, _))
         .WillByDefault(Return(positive_report));
   }
 
@@ -144,14 +115,13 @@ class HwVerificationReportGetterImplTest : public BaseFileTest {
   MockProbeResultGetter* mock_pr_getter_;
   MockHwVerificationSpecGetter* mock_vs_getter_;
   MockVerifier* mock_verifier_;
-  MockRuntimeHWIDGenerator* mock_runtime_hwid_generator_;
   MetricsLibraryMock* mock_metrics_;
 };
 
 TEST_F(HwVerificationReportGetterImplTest, TestBasicFlow) {
   HwVerificationReport vr;
   vr.set_is_compliant(true);
-  ON_CALL(*mock_verifier_, Verify(_, _)).WillByDefault(Return(vr));
+  ON_CALL(*mock_verifier_, Verify(_, _, _)).WillByDefault(Return(vr));
   ReportGetterErrorCode error_code;
 
   EXPECT_CALL(*mock_metrics_, SendToUMA(_, _, _, _, _)).Times(1);
@@ -212,7 +182,7 @@ TEST_F(HwVerificationReportGetterImplTest,
 TEST_F(HwVerificationReportGetterImplTest, TestVerifyFail) {
   ReportGetterErrorCode error_code;
 
-  ON_CALL(*mock_verifier_, Verify(_, _)).WillByDefault(Return(std::nullopt));
+  ON_CALL(*mock_verifier_, Verify(_, _, _)).WillByDefault(Return(std::nullopt));
   EXPECT_FALSE(vr_getter_->Get("", "", &error_code));
   EXPECT_EQ(error_code,
             ReportGetterErrorCode::
@@ -220,7 +190,8 @@ TEST_F(HwVerificationReportGetterImplTest, TestVerifyFail) {
 
   HwVerificationReport positive_report;
   positive_report.set_is_compliant(true);
-  ON_CALL(*mock_verifier_, Verify(_, _)).WillByDefault(Return(positive_report));
+  ON_CALL(*mock_verifier_, Verify(_, _, _))
+      .WillByDefault(Return(positive_report));
   auto result = vr_getter_->Get("", "", &error_code);
   EXPECT_TRUE(result);
   EXPECT_EQ(error_code, ReportGetterErrorCode::kErrorCodeNoError);
@@ -229,116 +200,13 @@ TEST_F(HwVerificationReportGetterImplTest, TestVerifyFail) {
 
   HwVerificationReport negative_report;
   negative_report.set_is_compliant(false);
-  ON_CALL(*mock_verifier_, Verify(_, _)).WillByDefault(Return(negative_report));
+  ON_CALL(*mock_verifier_, Verify(_, _, _))
+      .WillByDefault(Return(negative_report));
   result = vr_getter_->Get("", "", &error_code);
   EXPECT_TRUE(result);
   EXPECT_EQ(error_code, ReportGetterErrorCode::kErrorCodeNoError);
   EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equals(
       *result, negative_report));
-}
-
-class HwVerificationReportGetterImplRuntimeHWIDTest
-    : public HwVerificationReportGetterImplTest {
- protected:
-  void SetUp() override {
-    HwVerificationReportGetterImplTest::SetUp();
-    verification_report_.set_is_compliant(true);
-    ON_CALL(*mock_verifier_, Verify(_, _))
-        .WillByDefault(Return(verification_report_));
-    ON_CALL(*mock_runtime_hwid_generator_, GenerateToDevice)
-        .WillByDefault(Return(true));
-  }
-
-  HwVerificationReport verification_report_;
-};
-
-TEST_F(HwVerificationReportGetterImplRuntimeHWIDTest, TestDefaultPolicy) {
-  ReportGetterErrorCode error_code;
-  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
-      .Times(0);
-  EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(0);
-  SetFile(kRuntimeHWIDFilePath, "fake-file");
-
-  auto result = vr_getter_->Get("", "", &error_code);
-
-  EXPECT_TRUE(result);
-  EXPECT_EQ(error_code, ReportGetterErrorCode::kErrorCodeNoError);
-  EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equals(
-      *result, verification_report_));
-
-  std::string file_content;
-  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
-  EXPECT_TRUE(base::ReadFileToString(runtime_hwid_path, &file_content));
-  EXPECT_EQ(file_content, "fake-file");
-}
-
-TEST_F(HwVerificationReportGetterImplRuntimeHWIDTest, TestSkipPolicy) {
-  ReportGetterErrorCode error_code;
-  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
-      .Times(0);
-  EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(0);
-  SetFile(kRuntimeHWIDFilePath, "fake-file");
-
-  auto result =
-      vr_getter_->Get("", "", &error_code, RuntimeHWIDRefreshPolicy::kSkip);
-
-  EXPECT_TRUE(result);
-  EXPECT_EQ(error_code, ReportGetterErrorCode::kErrorCodeNoError);
-
-  std::string file_content;
-  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
-  EXPECT_TRUE(base::ReadFileToString(runtime_hwid_path, &file_content));
-  EXPECT_EQ(file_content, "fake-file");
-}
-
-TEST_F(HwVerificationReportGetterImplRuntimeHWIDTest,
-       TestRefreshPolicy_ShouldGenerate) {
-  ReportGetterErrorCode error_code;
-  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(1);
-
-  auto result =
-      vr_getter_->Get("", "", &error_code, RuntimeHWIDRefreshPolicy::kRefresh);
-
-  EXPECT_TRUE(result);
-  EXPECT_EQ(error_code, ReportGetterErrorCode::kErrorCodeNoError);
-  EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equals(
-      *result, verification_report_));
-}
-
-TEST_F(HwVerificationReportGetterImplRuntimeHWIDTest,
-       TestRefreshPolicy_ShouldNotGenerate) {
-  ReportGetterErrorCode error_code;
-  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
-      .WillOnce(Return(false));
-  EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(0);
-  SetFile(kRuntimeHWIDFilePath, "fake-file");
-
-  auto result =
-      vr_getter_->Get("", "", &error_code, RuntimeHWIDRefreshPolicy::kRefresh);
-
-  EXPECT_TRUE(result);
-  EXPECT_EQ(error_code, ReportGetterErrorCode::kErrorCodeNoError);
-  EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equals(
-      *result, verification_report_));
-  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
-  EXPECT_FALSE(base::PathExists(runtime_hwid_path));
-}
-
-TEST_F(HwVerificationReportGetterImplRuntimeHWIDTest, TestForceGeneratePolicy) {
-  ReportGetterErrorCode error_code;
-  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
-      .Times(0);
-  EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(1);
-
-  auto result = vr_getter_->Get("", "", &error_code,
-                                RuntimeHWIDRefreshPolicy::kForceGenerate);
-
-  EXPECT_TRUE(result);
-  EXPECT_EQ(error_code, ReportGetterErrorCode::kErrorCodeNoError);
-  EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equals(
-      *result, verification_report_));
 }
 
 }  // namespace

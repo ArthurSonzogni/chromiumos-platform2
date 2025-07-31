@@ -6,8 +6,6 @@
 #ifndef HARDWARE_VERIFIER_VERIFIER_IMPL_H_
 #define HARDWARE_VERIFIER_VERIFIER_IMPL_H_
 
-#include "hardware_verifier/verifier.h"
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -16,6 +14,10 @@
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <google/protobuf/descriptor.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
+
+#include "hardware_verifier/runtime_hwid_generator.h"
+#include "hardware_verifier/runtime_hwid_utils.h"
+#include "hardware_verifier/verifier.h"
 
 namespace hardware_verifier {
 
@@ -28,10 +30,16 @@ class VerifierImpl : public Verifier {
 
   std::optional<HwVerificationReport> Verify(
       const runtime_probe::ProbeResult& probe_result,
-      const HwVerificationSpec& hw_verification_spec) const override;
+      const HwVerificationSpec& hw_verification_spec,
+      RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy =
+          RuntimeHWIDRefreshPolicy::kSkip) const override;
 
   void SetCrosConfigForTesting(
       std::unique_ptr<brillo::CrosConfigInterface> cros_config);
+
+ protected:
+  explicit VerifierImpl(
+      std::unique_ptr<RuntimeHWIDGenerator> runtime_hwid_generator);
 
  private:
   struct CompCategoryInfo {
@@ -63,7 +71,12 @@ class VerifierImpl : public Verifier {
   // value and name.
   std::vector<CompCategoryInfo> comp_category_infos_;
 
+  std::unique_ptr<RuntimeHWIDGenerator> runtime_hwid_generator_;
+
   std::string GetModelName() const;
+
+  void RefreshRuntimeHWID(RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy,
+                          const runtime_probe::ProbeResult& probe_result) const;
 };
 
 }  // namespace hardware_verifier

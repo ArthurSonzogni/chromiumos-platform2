@@ -15,7 +15,7 @@
 #include "hardware_verifier/hw_verification_report_getter.h"
 #include "hardware_verifier/hw_verification_spec_getter.h"
 #include "hardware_verifier/probe_result_getter.h"
-#include "hardware_verifier/runtime_hwid_generator.h"
+#include "hardware_verifier/runtime_hwid_utils.h"
 #include "hardware_verifier/verifier.h"
 
 namespace hardware_verifier {
@@ -41,21 +41,15 @@ class HwVerificationReportGetterImpl : public HwVerificationReportGetter {
   explicit HwVerificationReportGetterImpl(
       std::unique_ptr<ProbeResultGetter> pr_getter,
       std::unique_ptr<HwVerificationSpecGetter> vs_getter,
-      std::unique_ptr<Verifier> verifier,
-      std::unique_ptr<RuntimeHWIDGenerator> runtime_hwid_generator)
+      std::unique_ptr<Verifier> verifier)
       : pr_getter_(std::move(pr_getter)),
         vs_getter_(std::move(vs_getter)),
-        verifier_(std::move(verifier)),
-        runtime_hwid_generator_(std::move(runtime_hwid_generator)) {}
+        verifier_(std::move(verifier)) {}
 
  private:
   std::unique_ptr<ProbeResultGetter> pr_getter_;
   std::unique_ptr<HwVerificationSpecGetter> vs_getter_;
   std::unique_ptr<Verifier> verifier_;
-  std::unique_ptr<RuntimeHWIDGenerator> runtime_hwid_generator_;
-
-  void RefreshRuntimeHWID(RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy,
-                          const runtime_probe::ProbeResult& probe_result) const;
 };
 
 }  // namespace hardware_verifier

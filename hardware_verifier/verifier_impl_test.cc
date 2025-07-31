@@ -3,6 +3,8 @@
  * found in the LICENSE file.
  */
 
+#include "hardware_verifier/verifier_impl.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -10,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
+#include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
@@ -17,14 +20,17 @@
 #include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/hw_verification_spec_getter_impl.h"
 #include "hardware_verifier/probe_result_getter_impl.h"
+#include "hardware_verifier/runtime_hwid_generator.h"
+#include "hardware_verifier/runtime_hwid_utils.h"
 #include "hardware_verifier/test_utils.h"
-#include "hardware_verifier/verifier_impl.h"
-
-using google::protobuf::util::MessageDifferencer;
 
 namespace hardware_verifier {
 
 namespace {
+
+using google::protobuf::util::MessageDifferencer;
+using ::testing::NiceMock;
+using ::testing::Return;
 
 constexpr auto kPrototxtExtension = ".prototxt";
 
@@ -33,9 +39,32 @@ class FakeVbSystemPropertyGetter : public VbSystemPropertyGetter {
   int GetCrosDebug() const override { return 1; }
 };
 
+class MockRuntimeHWIDGenerator : public RuntimeHWIDGenerator {
+ public:
+  MOCK_METHOD(bool,
+              ShouldGenerateRuntimeHWID,
+              (const runtime_probe::ProbeResult&),
+              (const, override));
+  MOCK_METHOD(std::optional<std::string>,
+              Generate,
+              (const runtime_probe::ProbeResult&),
+              (const, override));
+  MOCK_METHOD(bool,
+              GenerateToDevice,
+              (const runtime_probe::ProbeResult&),
+              (const, override));
+};
+
+class VerifierImplForTesting : public VerifierImpl {
+ public:
+  explicit VerifierImplForTesting(
+      std::unique_ptr<RuntimeHWIDGenerator> runtime_hwid_generator)
+      : VerifierImpl(std::move(runtime_hwid_generator)) {}
+};
+
 }  // namespace
 
-class TestVerifierImpl : public testing::Test {
+class TestVerifierImpl : public BaseFileTest {
  protected:
   void SetUp() override {
     pr_getter_.reset(new ProbeResultGetterImpl());
@@ -92,8 +121,10 @@ class TestVerifierImpl : public testing::Test {
         GetSampleDataPath().Append(spec_sample_name + kPrototxtExtension));
     const auto& expect_hw_verification_report = LoadHwVerificationReport(
         GetSampleDataPath().Append(report_sample_name + kPrototxtExtension));
+    auto mock_runtime_hwid_generator =
+        std::make_unique<NiceMock<MockRuntimeHWIDGenerator>>();
 
-    VerifierImpl verifier;
+    VerifierImplForTesting verifier(std::move(mock_runtime_hwid_generator));
     auto cros_config = std::make_unique<brillo::FakeCrosConfig>();
     cros_config_ = cros_config.get();
     verifier.SetCrosConfigForTesting(std::move(cros_config));
@@ -111,8 +142,10 @@ class TestVerifierImpl : public testing::Test {
         probe_result_sample_name + kPrototxtExtension));
     const auto& hw_verification_spec = LoadHwVerificationSpec(
         GetSampleDataPath().Append(spec_sample_name + kPrototxtExtension));
+    auto mock_runtime_hwid_generator =
+        std::make_unique<NiceMock<MockRuntimeHWIDGenerator>>();
 
-    VerifierImpl verifier;
+    VerifierImplForTesting verifier(std::move(mock_runtime_hwid_generator));
     auto cros_config = std::make_unique<brillo::FakeCrosConfig>();
     cros_config_ = cros_config.get();
     verifier.SetCrosConfigForTesting(std::move(cros_config));
@@ -124,8 +157,10 @@ class TestVerifierImpl : public testing::Test {
     return GetTestDataPath().Append("verifier_impl_sample_data");
   }
 
- private:
+ protected:
   brillo::FakeCrosConfig* cros_config_;
+
+ private:
   std::unique_ptr<ProbeResultGetter> pr_getter_;
   std::unique_ptr<HwVerificationSpecGetter> vs_getter_;
   MessageDifferencer hw_verification_report_differencer_;
@@ -165,6 +200,105 @@ TEST_F(TestVerifierImpl, TestVerifyFailWithSample3) {
 
 TEST_F(TestVerifierImpl, TestVerifyFailWithSample4) {
   TestVerifyFailWithSampleData("probe_result_1", "hw_verification_spec_bad_2");
+}
+
+class VerifierImplRuntimeHWIDTest : public TestVerifierImpl {
+ protected:
+  void SetUp() override {
+    TestVerifierImpl::SetUp();
+    probe_result_ =
+        LoadProbeResult(GetSampleDataPath().Append("probe_result_1.prototxt"));
+    hw_verification_spec_ = LoadHwVerificationSpec(
+        GetSampleDataPath().Append("hw_verification_spec_1.prototxt"));
+    auto mock_runtime_hwid_generator =
+        std::make_unique<NiceMock<MockRuntimeHWIDGenerator>>();
+    mock_runtime_hwid_generator_ = mock_runtime_hwid_generator.get();
+
+    verifier_ = std::make_unique<VerifierImplForTesting>(
+        std::move(mock_runtime_hwid_generator));
+    auto cros_config = std::make_unique<brillo::FakeCrosConfig>();
+    cros_config_ = cros_config.get();
+    verifier_->SetCrosConfigForTesting(std::move(cros_config));
+    SetModelName("");
+  }
+
+  std::unique_ptr<VerifierImplForTesting> verifier_;
+  MockRuntimeHWIDGenerator* mock_runtime_hwid_generator_;
+  runtime_probe::ProbeResult probe_result_;
+  HwVerificationSpec hw_verification_spec_;
+};
+
+TEST_F(VerifierImplRuntimeHWIDTest, TestDefaultPolicy) {
+  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
+      .Times(0);
+  EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(0);
+  SetFile(kRuntimeHWIDFilePath, "fake-file");
+
+  auto res = verifier_->Verify(probe_result_, hw_verification_spec_);
+
+  EXPECT_TRUE(res.has_value());
+  std::string file_content;
+  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
+  EXPECT_TRUE(base::ReadFileToString(runtime_hwid_path, &file_content));
+  EXPECT_EQ(file_content, "fake-file");
+}
+
+TEST_F(VerifierImplRuntimeHWIDTest, TestSkipPolicy) {
+  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
+      .Times(0);
+  EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(0);
+  SetFile(kRuntimeHWIDFilePath, "fake-file");
+
+  auto res = verifier_->Verify(probe_result_, hw_verification_spec_,
+                               RuntimeHWIDRefreshPolicy::kSkip);
+
+  EXPECT_TRUE(res.has_value());
+  std::string file_content;
+  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
+  EXPECT_TRUE(base::ReadFileToString(runtime_hwid_path, &file_content));
+  EXPECT_EQ(file_content, "fake-file");
+}
+
+TEST_F(VerifierImplRuntimeHWIDTest, TestRefreshPolicy_ShouldGenerate) {
+  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(1);
+  SetFile(kRuntimeHWIDFilePath, "fake-file");
+
+  auto res = verifier_->Verify(probe_result_, hw_verification_spec_,
+                               RuntimeHWIDRefreshPolicy::kRefresh);
+
+  EXPECT_TRUE(res.has_value());
+  std::string file_content;
+  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
+  EXPECT_TRUE(base::ReadFileToString(runtime_hwid_path, &file_content));
+  EXPECT_EQ(file_content, "fake-file");
+}
+
+TEST_F(VerifierImplRuntimeHWIDTest, TestRefreshPolicy_ShouldNotGenerate) {
+  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(0);
+  SetFile(kRuntimeHWIDFilePath, "fake-file");
+
+  auto res = verifier_->Verify(probe_result_, hw_verification_spec_,
+                               RuntimeHWIDRefreshPolicy::kRefresh);
+
+  EXPECT_TRUE(res.has_value());
+  std::string file_content;
+  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
+  EXPECT_FALSE(base::PathExists(runtime_hwid_path));
+}
+
+TEST_F(VerifierImplRuntimeHWIDTest, TestForceGeneratePolicy) {
+  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
+      .Times(0);
+  EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(1);
+
+  auto res = verifier_->Verify(probe_result_, hw_verification_spec_,
+                               RuntimeHWIDRefreshPolicy::kForceGenerate);
+
+  EXPECT_TRUE(res.has_value());
 }
 
 }  // namespace hardware_verifier
