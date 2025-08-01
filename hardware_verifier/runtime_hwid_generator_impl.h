@@ -27,7 +27,9 @@ class RuntimeHWIDGeneratorImpl : public RuntimeHWIDGenerator {
   static std::unique_ptr<RuntimeHWIDGeneratorImpl> Create();
 
   bool ShouldGenerateRuntimeHWID(
-      const runtime_probe::ProbeResult& probe_result) const override;
+      const runtime_probe::ProbeResult& probe_result,
+      const std::set<runtime_probe::ProbeRequest_SupportCategory>&
+          verification_spec_categories) const override;
 
   std::optional<std::string> Generate(
       const runtime_probe::ProbeResult& probe_result) const override;

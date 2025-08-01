@@ -291,7 +291,12 @@ std::optional<HwVerificationReport> VerifierImpl::Verify(
     }
   }
 
-  RefreshRuntimeHWID(refresh_runtime_hwid_policy, probe_result);
+  std::set<SupportCategory> verification_spec_categories;
+  for (const auto& [category, _] : seen_comp) {
+    verification_spec_categories.insert(category);
+  }
+  RefreshRuntimeHWID(refresh_runtime_hwid_policy, probe_result,
+                     verification_spec_categories);
 
   // TODO(yhong): Implement the SKU specific checks.
   return hw_verification_report;
@@ -304,7 +309,8 @@ void VerifierImpl::SetCrosConfigForTesting(
 
 void VerifierImpl::RefreshRuntimeHWID(
     RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy,
-    const runtime_probe::ProbeResult& probe_result) const {
+    const runtime_probe::ProbeResult& probe_result,
+    const std::set<SupportCategory>& verification_spec_categories) const {
   if (runtime_hwid_generator_ == nullptr) {
     LOG(ERROR) << "Runtime HWID generator initialization failed. Clean up "
                   "Runtime HWID.";
@@ -316,7 +322,8 @@ void VerifierImpl::RefreshRuntimeHWID(
     case RuntimeHWIDRefreshPolicy::kSkip:
       break;
     case RuntimeHWIDRefreshPolicy::kRefresh:
-      if (runtime_hwid_generator_->ShouldGenerateRuntimeHWID(probe_result)) {
+      if (runtime_hwid_generator_->ShouldGenerateRuntimeHWID(
+              probe_result, verification_spec_categories)) {
         runtime_hwid_generator_->GenerateToDevice(probe_result);
       } else {
         DeleteRuntimeHWIDFromDevice();

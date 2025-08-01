@@ -6,6 +6,7 @@
 #include "hardware_verifier/verifier_impl.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -29,6 +30,7 @@ namespace hardware_verifier {
 namespace {
 
 using google::protobuf::util::MessageDifferencer;
+using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
 
@@ -43,7 +45,8 @@ class MockRuntimeHWIDGenerator : public RuntimeHWIDGenerator {
  public:
   MOCK_METHOD(bool,
               ShouldGenerateRuntimeHWID,
-              (const runtime_probe::ProbeResult&),
+              (const runtime_probe::ProbeResult&,
+               const std::set<runtime_probe::ProbeRequest_SupportCategory>&),
               (const, override));
   MOCK_METHOD(std::optional<std::string>,
               Generate,
@@ -260,7 +263,12 @@ TEST_F(VerifierImplRuntimeHWIDTest, TestSkipPolicy) {
 }
 
 TEST_F(VerifierImplRuntimeHWIDTest, TestRefreshPolicy_ShouldGenerate) {
-  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage,
+          runtime_probe::ProbeRequest_SupportCategory_battery};
+  EXPECT_CALL(*mock_runtime_hwid_generator_,
+              ShouldGenerateRuntimeHWID(_, verification_spec_categories))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(1);
   SetFile(kRuntimeHWIDFilePath, "fake-file");
@@ -276,7 +284,12 @@ TEST_F(VerifierImplRuntimeHWIDTest, TestRefreshPolicy_ShouldGenerate) {
 }
 
 TEST_F(VerifierImplRuntimeHWIDTest, TestRefreshPolicy_ShouldNotGenerate) {
-  EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage,
+          runtime_probe::ProbeRequest_SupportCategory_battery};
+  EXPECT_CALL(*mock_runtime_hwid_generator_,
+              ShouldGenerateRuntimeHWID(_, verification_spec_categories))
       .WillOnce(Return(false));
   EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(0);
   SetFile(kRuntimeHWIDFilePath, "fake-file");

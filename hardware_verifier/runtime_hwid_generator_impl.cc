@@ -331,7 +331,9 @@ RuntimeHWIDGeneratorImpl::RuntimeHWIDGeneratorImpl(
 }
 
 bool RuntimeHWIDGeneratorImpl::ShouldGenerateRuntimeHWID(
-    const runtime_probe::ProbeResult& probe_result) const {
+    const runtime_probe::ProbeResult& probe_result,
+    const std::set<runtime_probe::ProbeRequest_SupportCategory>&
+        verification_spec_categories) const {
   const auto decode_result = factory_hwid_processor_->DecodeFactoryHWID();
   if (!decode_result.has_value()) {
     LOG(ERROR) << "Failed to decode factory HWID.";
@@ -352,6 +354,7 @@ bool RuntimeHWIDGeneratorImpl::ShouldGenerateRuntimeHWID(
     if (category_name == kDramCategoryName ||
         !runtime_probe::ProbeRequest_SupportCategory_Parse(category_name,
                                                            &category) ||
+        !verification_spec_categories.contains(category) ||
         skip_zero_bit_categories.contains(category) ||
         waived_categories_.contains(category)) {
       continue;

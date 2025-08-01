@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -75,8 +76,11 @@ class VerifierImpl : public Verifier {
 
   std::string GetModelName() const;
 
-  void RefreshRuntimeHWID(RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy,
-                          const runtime_probe::ProbeResult& probe_result) const;
+  void RefreshRuntimeHWID(
+      RuntimeHWIDRefreshPolicy refresh_runtime_hwid_policy,
+      const runtime_probe::ProbeResult& probe_result,
+      const std::set<runtime_probe::ProbeRequest_SupportCategory>&
+          verification_spec_categories) const;
 };
 
 }  // namespace hardware_verifier

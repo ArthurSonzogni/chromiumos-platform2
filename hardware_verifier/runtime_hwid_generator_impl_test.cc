@@ -159,6 +159,9 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -167,7 +170,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_2");
 
-  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -176,6 +180,9 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -186,7 +193,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   auto* unidentified_comp = probe_result.add_storage();
   unidentified_comp->set_name(kGenericComponent);
 
-  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -197,7 +205,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   auto generator = RuntimeHWIDGeneratorImplForTesting(
       std::move(mock_factory_hwid_processor_), {});
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID({}));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID({}, {}));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -212,6 +220,14 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
       {runtime_probe::ProbeRequest_SupportCategory_touchpad,
        {"INVALID_FORMAT_1"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage,
+          runtime_probe::ProbeRequest_SupportCategory_battery,
+          runtime_probe::ProbeRequest_SupportCategory_touchscreen,
+          runtime_probe::ProbeRequest_SupportCategory_stylus,
+          runtime_probe::ProbeRequest_SupportCategory_touchpad,
+          runtime_probe::ProbeRequest_SupportCategory_camera};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -227,7 +243,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
                                                 "MODEL_stylus_4_4#5", "stylus");
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "INVALID_FORMAT_2");
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -237,6 +254,9 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
       {runtime_probe::ProbeRequest_SupportCategory_camera,
        {"camera_1_1", "camera_2_2"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_camera};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -246,7 +266,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_camera_1_1#2");
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_camera_2_2#4");
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -256,6 +277,11 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
       {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
       {runtime_probe::ProbeRequest_SupportCategory_dram, {"dram_2_2"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage,
+          runtime_probe::ProbeRequest_SupportCategory_dram,
+      };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -265,7 +291,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1");
   AddProbeComponent<runtime_probe::Memory>(&probe_result, "MODEL_dram_3_3");
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -274,6 +301,9 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -283,7 +313,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_2",
                                             "storage", "MODEL_storage_1");
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -292,6 +323,11 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage,
+          runtime_probe::ProbeRequest_SupportCategory_battery,
+      };
   std::set<runtime_probe::ProbeRequest_SupportCategory>
       skip_zero_bit_categories = {
           runtime_probe::ProbeRequest_SupportCategory_battery};
@@ -307,7 +343,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   auto* unidentified_comp = probe_result.add_battery();
   unidentified_comp->set_name(kGenericComponent);
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -317,6 +354,11 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
       {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
       {runtime_probe::ProbeRequest_SupportCategory_battery, {"battery_2"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage,
+          runtime_probe::ProbeRequest_SupportCategory_battery,
+      };
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   std::set<runtime_probe::ProbeRequest_SupportCategory> waived_categories = {
@@ -329,13 +371,41 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   auto* unidentified_comp = probe_result.add_battery();
   unidentified_comp->set_name(kGenericComponent);
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
+}
+
+TEST_F(RuntimeHWIDGeneratorImplTest,
+       ShouldGenerateRuntimeHWID_ShouldApplyVerfiicationSpecCategories) {
+  SetModelName("MODEL");
+  CategoryMapping<std::vector<std::string>> factory_hwid = {
+      {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
+  };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage,
+      };
+  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
+      .WillOnce(Return(factory_hwid));
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
+      std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1");
+  auto* unidentified_comp = probe_result.add_battery();
+  unidentified_comp->set_name(kGenericComponent);
+
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
        ShouldGenerate_ExtraDisplayPanelInProbeResult_ShouldReturnFalse) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_display_panel};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -345,13 +415,17 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   AddProbeComponent<runtime_probe::Edid>(&probe_result,
                                          "MODEL_display_panel_1");
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
        ShouldGenerate_UnidentifiedDisplayPanelInProbeResult_ShouldReturnFalse) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_display_panel};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -361,7 +435,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   auto* unidentified_comp = probe_result.add_display_panel();
   unidentified_comp->set_name(kGenericComponent);
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -371,6 +446,9 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
       {runtime_probe::ProbeRequest_SupportCategory_display_panel,
        {"display_panel_1"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_display_panel};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -378,7 +456,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
 
   runtime_probe::ProbeResult probe_result;
 
-  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -388,6 +467,9 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
       {runtime_probe::ProbeRequest_SupportCategory_display_panel,
        {"display_panel_1"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_display_panel};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -396,7 +478,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Edid>(&probe_result, "display_panel_2");
 
-  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -405,6 +488,9 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_camera, {"camera_1_1"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_camera};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -413,7 +499,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_camera_2_2");
 
-  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -422,6 +509,9 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   CategoryMapping<std::vector<std::string>> factory_hwid = {
       {runtime_probe::ProbeRequest_SupportCategory_camera, {"video_1_1"}},
   };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_camera};
   EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
       .WillOnce(Return(factory_hwid));
   auto generator = RuntimeHWIDGeneratorImplForTesting(
@@ -430,7 +520,8 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Camera>(&probe_result, "MODEL_video_2_2");
 
-  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
@@ -442,7 +533,7 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
       std::move(mock_factory_hwid_processor_), {});
   runtime_probe::ProbeResult probe_result;
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result));
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result, {}));
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest, Generate) {
