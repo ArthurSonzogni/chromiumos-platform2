@@ -444,6 +444,11 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("AmbientEQDefaultOff");
   }
 
+  if (builder->UseFlagIsSet("rauru_max_display_limit")) {
+    builder->AddFeatureEnableOverride(
+        "MaxExternalDisplaySupportedNotification:display_limit/2");
+  }
+
   // TODO(b/180138001): Remove the following flag when a proper fix for
   // the freeze issue is found.
   if (builder->UseFlagIsSet("set_hw_overlay_strategy_none")) {
