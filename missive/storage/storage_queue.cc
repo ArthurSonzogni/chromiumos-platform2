@@ -857,8 +857,9 @@ Status StorageQueue::WriteMetadata(std::string_view current_record_digest,
   // Asynchronously delete all earlier metafiles. Do not wait for this to
   // happen.
   low_priority_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&StorageQueue::DeleteOutdatedMetadata, this,
-                                next_sequencing_id_));
+      FROM_HERE,
+      base::BindOnce(&StorageQueue::DeleteOutdatedMetadata,
+                     base::WrapRefCounted(this), next_sequencing_id_));
   return Status::StatusOK();
 }
 

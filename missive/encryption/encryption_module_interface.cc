@@ -11,6 +11,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
 
@@ -59,15 +60,14 @@ void EncryptionModuleInterface::UpdateAsymmetricKey(
   UpdateAsymmetricKeyImpl(
       new_public_key, new_public_key_id,
       base::BindOnce(
-          [](EncryptionModuleInterface* encryption_module_interface,
+          [](scoped_refptr<EncryptionModuleInterface> module,
              base::OnceCallback<void(Status)> response_cb, Status status) {
             if (status.ok()) {
-              encryption_module_interface->last_encryption_key_update_.store(
-                  base::TimeTicks::Now());
+              module->last_encryption_key_update_.store(base::TimeTicks::Now());
             }
             std::move(response_cb).Run(status);
           },
-          base::Unretained(this), std::move(response_cb)));
+          base::WrapRefCounted(this), std::move(response_cb)));
 }
 
 bool EncryptionModuleInterface::has_encryption_key() const {

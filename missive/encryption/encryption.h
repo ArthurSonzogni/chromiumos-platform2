@@ -74,7 +74,7 @@ class Encryptor : public base::RefCountedThreadSafe<Encryptor> {
     // Accumulated data to encrypt.
     std::string record_;
 
-    scoped_refptr<Encryptor> encryptor_;
+    const scoped_refptr<Encryptor> encryptor_;
   };
 
   // Factory method to instantiate the Encryptor.

@@ -111,7 +111,7 @@ class Scheduler {
     // Accesses sequenced task runner assigned to the Job.
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner() const;
 
-    std::unique_ptr<JobDelegate> job_response_delegate_;
+    const std::unique_ptr<JobDelegate> job_response_delegate_;
 
    private:
     Status DoCancel(Status status);
