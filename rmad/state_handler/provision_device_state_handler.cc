@@ -221,19 +221,15 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
         case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING:
           return NextStateCaseWrapper(RMAD_ERROR_PROVISIONING_FAILED);
         default:
-          break;
+          NOTREACHED();
       }
-      break;
     case ProvisionDeviceState::RMAD_PROVISION_CHOICE_RETRY:
       StartProvision();
       StartStatusTimer();
       return NextStateCaseWrapper(RMAD_ERROR_WAIT);
     default:
-      break;
+      NOTREACHED();
   }
-
-  NOTREACHED_IN_MIGRATION();
-  return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
 }
 
 BaseStateHandler::GetNextStateCaseReply

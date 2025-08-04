@@ -65,12 +65,8 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
       RecordRestockOptionToLogs(json_store_, /*restock=*/false);
       return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
     default:
-      break;
+      NOTREACHED();
   }
-  NOTREACHED_IN_MIGRATION();
-  return NextStateCaseWrapper(RmadState::StateCase::STATE_NOT_SET,
-                              RMAD_ERROR_NOT_SET,
-                              RMAD_ADDITIONAL_ACTIVITY_NOTHING);
 }
 
 void RestockStateHandler::Shutdown() {

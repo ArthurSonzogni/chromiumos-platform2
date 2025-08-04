@@ -97,12 +97,8 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
       }
       return NextStateCaseWrapper(RmadState::StateCase::kComponentsRepair);
     default:
-      break;
+      NOTREACHED();
   }
-  NOTREACHED_IN_MIGRATION();
-  return NextStateCaseWrapper(RmadState::StateCase::STATE_NOT_SET,
-                              RMAD_ERROR_NOT_SET,
-                              RMAD_ADDITIONAL_ACTIVITY_NOTHING);
 }
 
 void WelcomeScreenStateHandler::RunHardwareVerifier() const {

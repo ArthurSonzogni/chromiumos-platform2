@@ -123,19 +123,15 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
         case FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING:
           return NextStateCaseWrapper(RMAD_ERROR_FINALIZATION_FAILED);
         default:
-          break;
+          NOTREACHED();
       }
-      NOTREACHED_IN_MIGRATION();
-      break;
+      NOTREACHED();
     case FinalizeState::RMAD_FINALIZE_CHOICE_RETRY:
       StartFinalize();
       return NextStateCaseWrapper(RMAD_ERROR_WAIT);
     default:
-      break;
+      NOTREACHED();
   }
-
-  NOTREACHED_IN_MIGRATION();
-  return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
 }
 
 void FinalizeStateHandler::SendStatusSignal() {

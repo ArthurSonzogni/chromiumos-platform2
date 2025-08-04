@@ -115,12 +115,8 @@ WriteProtectDisableMethodStateHandler::GetNextStateCase(
     case WriteProtectDisableMethodState::RMAD_WP_DISABLE_PHYSICAL:
       return NextStateCaseWrapper(RmadState::StateCase::kWpDisablePhysical);
     default:
-      break;
+      NOTREACHED();
   }
-  NOTREACHED_IN_MIGRATION();
-  return NextStateCaseWrapper(RmadState::StateCase::STATE_NOT_SET,
-                              RMAD_ERROR_NOT_SET,
-                              RMAD_ADDITIONAL_ACTIVITY_NOTHING);
 }
 
 }  // namespace rmad

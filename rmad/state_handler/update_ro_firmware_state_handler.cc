@@ -200,12 +200,8 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
     case UpdateRoFirmwareState::RMAD_UPDATE_CHOICE_SKIP:
       return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
     default:
-      break;
+      NOTREACHED();
   }
-  NOTREACHED_IN_MIGRATION();
-  return NextStateCaseWrapper(RmadState::StateCase::STATE_NOT_SET,
-                              RMAD_ERROR_NOT_SET,
-                              RMAD_ADDITIONAL_ACTIVITY_NOTHING);
 }
 
 bool UpdateRoFirmwareStateHandler::CanSkipUpdate() const {
