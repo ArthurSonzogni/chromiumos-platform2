@@ -1044,7 +1044,6 @@ void AuthSession::OnMigrationUssCreated(
                << migration_auth_input_status.status();
     ReapAndReportError(std::move(migration_auth_input_status).status(),
                        kCryptohomeErrorUssMigrationErrorBucket);
-    ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedInput);
     std::move(on_done).Run(std::move(pre_migration_status));
     return;
   }
@@ -3584,7 +3583,6 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
                << auth_factor_label << " is failed: " << status;
     ReapAndReportError(std::move(status),
                        kCryptohomeErrorUssMigrationErrorBucket);
-    ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedPersist);
     std::move(on_done).Run(std::move(pre_migration_status));
     return;
   }
@@ -3595,15 +3593,12 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
     LOG(ERROR)
         << "USS migration of VaultKeyset with label " << auth_factor_label
         << " is completed, but failed removing the migrated VaultKeyset.";
-    ReportVkToUssMigrationStatus(
-        VkToUssMigrationStatus::kFailedRecordingMigrated);
     std::move(on_done).Run(std::move(pre_migration_status));
     return;
   }
 
   LOG(INFO) << "USS migration completed for VaultKeyset with label: "
             << auth_factor_label;
-  ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kSuccess);
   std::move(on_done).Run(std::move(pre_migration_status));
 }
 

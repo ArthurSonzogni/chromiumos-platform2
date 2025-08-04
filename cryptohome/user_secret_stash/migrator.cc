@@ -67,7 +67,6 @@ void UssMigrator::MigrateVaultKeysetToUss(
                  << label;
       ReapAndReportError(std::move(new_uss).status(),
                          kCryptohomeErrorUssMigrationErrorBucket);
-      ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssCreation);
       std::move(completion_callback).Run(std::nullopt);
       return;
     }
@@ -78,7 +77,6 @@ void UssMigrator::MigrateVaultKeysetToUss(
                  << label;
       ReapAndReportError(std::move(new_token).status(),
                          kCryptohomeErrorUssMigrationErrorBucket);
-      ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssCreation);
       std::move(completion_callback).Run(std::nullopt);
       return;
     }
@@ -92,8 +90,6 @@ void UssMigrator::MigrateVaultKeysetToUss(
             << "Failed to add the migration secret to the UserSecretStash.";
         ReapAndReportError(std::move(status),
                            kCryptohomeErrorUssMigrationErrorBucket);
-        ReportVkToUssMigrationStatus(
-            VkToUssMigrationStatus::kFailedAddingMigrationSecret);
         std::move(completion_callback).Run(std::nullopt);
         return;
       }
@@ -101,8 +97,6 @@ void UssMigrator::MigrateVaultKeysetToUss(
         LOG(ERROR) << "Failed to persist the new UserSecretStash.";
         ReapAndReportError(std::move(status),
                            kCryptohomeErrorUssMigrationErrorBucket);
-        ReportVkToUssMigrationStatus(
-            VkToUssMigrationStatus::kFailedAddingMigrationSecret);
         std::move(completion_callback).Run(std::nullopt);
         return;
       }
@@ -117,7 +111,6 @@ void UssMigrator::MigrateVaultKeysetToUss(
       LOG(ERROR) << "Failed to decrypt the UserSecretStash during migration.";
       ReapAndReportError(std::move(existing_token).status(),
                          kCryptohomeErrorUssMigrationErrorBucket);
-      ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssDecrypt);
       std::move(completion_callback).Run(std::nullopt);
       return;
     }

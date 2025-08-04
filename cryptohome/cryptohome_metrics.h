@@ -321,21 +321,6 @@ enum class AuthFactorBackingStoreConfig {
   kMaxValue = kMixed,
 };
 
-// List of errors from migrating a vault keyset to USS (or success=0). This enum
-// should be updated with any new errors that can occur, along with enums.xml.
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class VkToUssMigrationStatus {
-  kSuccess = 0,                      // Migration succeeded with no errors.
-  kFailedPersist = 1,                // Migration failed when persisting to USS.
-  kFailedInput = 2,                  // Unable to construct an AuthInput.
-  kFailedUssCreation = 3,            // Unable to construct USS.
-  kFailedAddingMigrationSecret = 4,  // Unable to construct a migration secret.
-  kFailedUssDecrypt = 5,             // Unable to decrypt USS.
-  kFailedRecordingMigrated = 6,      // Unable to store migrated state.
-  kMaxValue = kFailedRecordingMigrated,
-};
-
 // List of possible results of attempting to cleanup a backup keyset for a user
 // with mixed USS-VaultKeyset(VK) configuration. Mixed configuration is expected
 // to happen with PIN and password factors and enum values are defined based on
@@ -584,9 +569,6 @@ void DisableErrorMetricsReporting();
 
 // Reports the current state of the auth factor backing stores.
 void ReportAuthFactorBackingStoreConfig(AuthFactorBackingStoreConfig config);
-
-// Reports the result of an (attempted) migration of a keyset to USS.
-void ReportVkToUssMigrationStatus(VkToUssMigrationStatus status);
 
 // Reports the result of the backup VaultKeyset cleanup for users with
 // semi-migrated users, i.e users with mixed USS-VaultKeyset configuration.
