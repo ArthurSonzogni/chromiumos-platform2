@@ -1912,18 +1912,6 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
   void ProcessWrappedRecord(WrappedRecord wrapped_record,
                             ScopedReservation scoped_reservation) {
-    // UTC time of 2122-01-01T00:00:00Z since Unix epoch 1970-01-01T00:00:00Z
-    // in microseconds
-    static constexpr int64_t kTime2122 = 4'796'668'800'000'000;
-    // Log an error if the timestamp is larger than 2122-01-01T00:00:00Z. This
-    // is the latest spot in the code before a record is compressed or
-    // encrypted.
-    // TODO(b/254270304): Remove this log after M111 is released and no error
-    // is reported for 3 months.
-    LOG_IF(ERROR, wrapped_record.record().timestamp_us() > kTime2122)
-        << "Unusually large timestamp (in milliseconds): "
-        << wrapped_record.record().timestamp_us();
-
     // Serialize wrapped record into a string.
     std::string buffer;
     if (!wrapped_record.SerializeToString(&buffer)) {
@@ -2772,7 +2760,6 @@ Status StorageQueue::SingleFile::Open(bool read_only) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (handle_) {
     CHECK_EQ(is_readonly(), read_only);
-    // TODO(b/157943192): Restart auto-closing timer.
     return Status::StatusOK();
   }
   handle_ = std::make_unique<base::File>(
@@ -2809,7 +2796,6 @@ void StorageQueue::SingleFile::Close() {
   is_readonly_ = std::nullopt;
   buffer_.Clear();
   if (!handle_) {
-    // TODO(b/157943192): Restart auto-closing timer.
     return;
   }
   handle_.reset();
@@ -2850,8 +2836,6 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
     return base::unexpected(Status(error::OUT_OF_RANGE, "End of file"));
   }
   // If no buffer yet, allocate.
-  // TODO(b/157943192): Add buffer management - consider adding an UMA for
-  // tracking the average + peak memory the Storage module is consuming.
   if (buffer_.empty()) {
     const auto buffer_size =
         std::min(max_buffer_size, RoundUpToFrameSize(size_));

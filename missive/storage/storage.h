@@ -55,8 +55,7 @@ namespace reporting {
 // on the next restart of Storage.
 
 // Empty subdirectories in the storage directory are deleted on storage
-// creation. TODO(b/278620137): should also delete empty directories every 1-2
-// days.
+// creation.
 
 // In single-generation mode (legacy mode) there is only one queue per priority.
 // Queues are created at the first start of the Storage and never erased.
