@@ -34,6 +34,7 @@ constexpr int kEcCmdNumAttempts = 10;
 constexpr char kCrosEcPath[] = "dev/cros_ec";
 constexpr char kCrosIshPath[] = "dev/cros_ish";
 constexpr int kPauseMicrosecsBetweenI2cCommands = 20 * 1000;
+constexpr int kPauseMicrosecsBetweenComponents = 600 * 1000;
 
 bool IsMatchExpect(EcComponentManifest::Component::I2c::Expect expect,
                    base::span<const uint8_t> resp_data) {
@@ -262,7 +263,9 @@ bool EcComponentFunction::IsValidComponent(
       if (run_record == nullptr) {
         // The command hasn't been run, we should run through the whole command
         // sequence.
-        return IsValidComponent(comp, ec_dev_fd, tracker, false);
+        bool result = IsValidComponent(comp, ec_dev_fd, tracker, false);
+        Context::Get()->syscaller()->Usleep(kPauseMicrosecsBetweenComponents);
+        return result;
       }
       i2c_cmd_label = "(cached) " + i2c_cmd_label;
     } else {
