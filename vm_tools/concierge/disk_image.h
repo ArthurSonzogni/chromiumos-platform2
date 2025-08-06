@@ -299,68 +299,6 @@ class TerminaVmExportOperation : public DiskImageOperation {
   std::array<uint8_t, 128 << 10> decompressed_fb_;
 };
 
-class PluginVmImportOperation : public DiskImageOperation {
- public:
-  static std::unique_ptr<PluginVmImportOperation> Create(
-      base::ScopedFD in_fd,
-      const base::FilePath disk_path,
-      uint64_t source_size,
-      const VmId vm_id,
-      scoped_refptr<dbus::Bus> bus,
-      dbus::ObjectProxy* vmplugin_service_proxy);
-
-  ~PluginVmImportOperation() override;
-
- protected:
-  bool ExecuteIo(uint64_t io_limit) override;
-  void Finalize() override;
-
- private:
-  PluginVmImportOperation(base::ScopedFD in_fd,
-                          uint64_t source_size,
-                          const base::FilePath disk_path,
-                          const VmId vm_id_,
-                          scoped_refptr<dbus::Bus> bus,
-                          dbus::ObjectProxy* vmplugin_service_proxy);
-  PluginVmImportOperation(const PluginVmImportOperation&) = delete;
-  PluginVmImportOperation& operator=(const PluginVmImportOperation&) = delete;
-
-  bool PrepareInput();
-  bool PrepareOutput();
-
-  void MarkFailed(const char* msg, struct archive* a);
-
-  // Copies up to |io_limit| bytes of one archive entry of the image.
-  // Returns number of bytes read.
-  uint64_t CopyEntry(uint64_t io_limit);
-
-  // Path to the directory that will contain the imported image.
-  const base::FilePath dest_image_path_;
-
-  // Connection to the system bus.
-  scoped_refptr<dbus::Bus> bus_;
-
-  // Proxy to the dispatcher service.  Not owned.
-  dbus::ObjectProxy* vmplugin_service_proxy_;
-
-  // File descriptor from which to fetch the source image.
-  base::ScopedFD in_fd_;
-
-  // We are in a middle of copying an archive entry. Copying of one archive
-  // entry may span several Run() invocations, depending on the size of the
-  // entry.
-  bool copying_data_ = false;
-
-  // Destination directory object.
-  base::ScopedTempDir output_dir_;
-
-  // Input compressed archive backed up by the file descriptor.
-  ArchiveReader in_;
-
-  // "Archive" representing output uncompressed directory.
-  ArchiveWriter out_;
-};
-
 class TerminaVmImportOperation : public DiskImageOperation {
  public:
   static std::unique_ptr<TerminaVmImportOperation> Create(

@@ -3298,18 +3298,10 @@ void Service::ImportDiskImage(
       break;
 
     case STORAGE_CRYPTOHOME_PLUGINVM:
-      // Don't allow PluginVm import to replace an existing VM.
-      if (CheckVmExists(vm_id)) {
-        response.set_status(DISK_STATUS_EXISTS);
-        response.set_failure_reason("VM/disk with such name already exists");
-        response_cb->Return(response);
-        return;
-      }
-
-      op = PluginVmImportOperation::Create(std::move(source_file), disk_path,
-                                           request.source_size(), vm_id, bus_,
-                                           vmplugin_service_proxy_);
-      break;
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("Plugin VM import is not supported");
+      response_cb->Return(response);
+      return;
 
     default:
       LOG(ERROR) << "Unsupported location for disk image import";
