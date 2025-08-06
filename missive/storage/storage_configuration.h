@@ -72,9 +72,9 @@ class StorageOptions {
   static constexpr char kManualLacrosQueuePrefix[] = "P_ManualLacros";
 
   // Failed upload retry delay: if an upload fails and there are no more
-  // incoming events, collected events will not get uploaded for an indefinite
-  // time (see b/192666219).
-  static constexpr base::TimeDelta kFailedUploadRetryDelay = base::Seconds(1);
+  // incoming events, collected events will attempt to get re-uploaded after
+  // that long.
+  static constexpr base::TimeDelta kFailedUploadRetryDelay = base::Seconds(3);
 
   // Default period for Storage to check for encryption key.
   // Eagerly retried, if there is no key:
