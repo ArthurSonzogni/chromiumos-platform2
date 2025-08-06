@@ -114,9 +114,9 @@ CachedFrame::CachedFrame(const android::CameraMetadata& static_metadata)
   jpeg_compressor_ = JpegCompressor::GetInstance(mojo_manager_token);
 
   // Read force_jpeg_hw_dec configs
-  std::unique_ptr<CameraConfig> camera_config =
+  std::unique_ptr<CameraConfig> camera_test_config =
       CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
-  force_jpeg_hw_decode_ = camera_config->GetBoolean(
+  force_jpeg_hw_decode_ = camera_test_config->GetBoolean(
       constants::kCrosForceJpegHardwareDecodeOption, false);
   if (force_jpeg_hw_decode_) {
     LOGF(INFO) << "Force JPEG hardware decode";
@@ -128,7 +128,12 @@ CachedFrame::CachedFrame(const android::CameraMetadata& static_metadata)
   active_array_size_.width = entry.data.i32[2];
   active_array_size_.height = entry.data.i32[3];
 
-  face_detector_ = FaceDetector::Create();
+  std::unique_ptr<CameraConfig> camera_config =
+      CameraConfig::Create(constants::kCrosCameraConfigPathString);
+  face_detector_ = FaceDetector::CreateWithParameters(
+      std::stof(
+          camera_config->GetString(constants::kFaceSSDScoreThreshold, "0.5")),
+      camera_config->GetInteger(constants::kFaceSSDImageSize, 160));
 }
 
 int CachedFrame::Convert(

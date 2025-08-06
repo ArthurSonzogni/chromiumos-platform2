@@ -87,6 +87,9 @@ const char kCrosUsbFilteredOutResolutions[] = "usb_filtered_out_resolutions";
 const char kCrosZslLookback[] = "zsl_lookback";
 // ------End configuration for |kCrosCameraConfigPathString|-------
 
+const char kFaceSSDScoreThreshold[] = "face_ssd_score_threshold";
+const char kFaceSSDImageSize[] = "face_ssd_image_size";
+
 }  // namespace constants
 }  // namespace cros
 #endif  // CAMERA_INCLUDE_CROS_CAMERA_CONSTANTS_H_

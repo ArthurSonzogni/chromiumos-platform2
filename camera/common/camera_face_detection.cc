@@ -6,6 +6,8 @@
 
 #include "cros-camera/camera_face_detection.h"
 
+#include <libyuv.h>
+
 #include <optional>
 #include <string>
 
@@ -13,7 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <base/posix/safe_strerror.h>
-#include <libyuv.h>
 
 #include "common/common_tracing.h"
 #include "cros-camera/common.h"
@@ -29,8 +30,7 @@ constexpr char kFaceModelPath[] =
     "/usr/share/cros-camera/ml_models/fssd_small_8bit_gray_4orient_v4.tflite";
 constexpr char kFaceAnchorPath[] =
     "/usr/share/cros-camera/ml_models/fssd_anchors_v4.pb";
-constexpr float kScoreThreshold = 0.5;
-constexpr int kImageSizeForDetection = 160;
+
 constexpr int kDetectTimeoutMs = 1000;
 
 }  // namespace
@@ -52,6 +52,13 @@ const char* FaceDetectResultToString(FaceDetectResult detect_result) {
 
 // static
 std::unique_ptr<FaceDetector> FaceDetector::Create() {
+  return FaceDetector::CreateWithParameters(kScoreThreshold,
+                                            kImageSizeForDetection);
+}
+
+// static
+std::unique_ptr<FaceDetector> FaceDetector::CreateWithParameters(
+    float score_threshold, int image_size_for_detection) {
   if (!base::PathExists(base::FilePath(kFaceModelPath)) ||
       !base::PathExists(base::FilePath(kFaceAnchorPath))) {
     LOGF(ERROR) << "Cannot find face detection model file or anchor file";
@@ -61,17 +68,22 @@ std::unique_ptr<FaceDetector> FaceDetector::Create() {
   auto wrapper =
       std::make_unique<human_sensing::FaceDetectorClientCrosWrapper>();
   if (!wrapper->Initialize(std::string(kFaceModelPath),
-                           std::string(kFaceAnchorPath), kScoreThreshold)) {
+                           std::string(kFaceAnchorPath), score_threshold)) {
     return nullptr;
   }
-  return base::WrapUnique(new FaceDetector(std::move(wrapper)));
+  return base::WrapUnique(new FaceDetector(std::move(wrapper), score_threshold,
+                                           image_size_for_detection));
 }
 
 FaceDetector::FaceDetector(
-    std::unique_ptr<human_sensing::FaceDetectorClientCrosWrapper> wrapper)
+    std::unique_ptr<human_sensing::FaceDetectorClientCrosWrapper> wrapper,
+    float score_threshold,
+    int img_scaled_size)
     : buffer_manager_(CameraBufferManager::GetInstance()),
       wrapper_(std::move(wrapper)),
-      thread_("FaceDetectorThread") {
+      thread_("FaceDetectorThread"),
+      score_threshold_(score_threshold),
+      img_scaled_size_(img_scaled_size) {
   CHECK(thread_.Start());
 }
 
@@ -174,10 +186,10 @@ void FaceDetector::DetectOnThread(const uint8_t* buffer_addr,
 
   Size scaled_size =
       (input_size.width > input_size.height)
-          ? Size(kImageSizeForDetection,
-                 kImageSizeForDetection * input_size.height / input_size.width)
-          : Size(kImageSizeForDetection * input_size.width / input_size.height,
-                 kImageSizeForDetection);
+          ? Size(this->img_scaled_size_,
+                 this->img_scaled_size_ * input_size.height / input_size.width)
+          : Size(this->img_scaled_size_ * input_size.width / input_size.height,
+                 this->img_scaled_size_);
 
   PrepareBuffer(scaled_size);
 
@@ -195,6 +207,12 @@ void FaceDetector::DetectOnThread(const uint8_t* buffer_addr,
       std::move(result_callback).Run(FaceDetectResult::kDetectError, {});
       return;
     }
+
+    VLOGF(1) << "FaceDetector scaled size = (" << scaled_size.width << ", "
+             << scaled_size.height << "), "
+             << "input size = " << input_size.width << ", " << input_size.height
+             << "), "
+             << "score threshold = " << score_threshold_;
     TRACE_EVENT_END(kCameraTraceCategoryCommon, "num_faces", faces.size());
   }
 
@@ -210,6 +228,10 @@ void FaceDetector::DetectOnThread(const uint8_t* buffer_addr,
         l.x *= ratio;
         l.y *= ratio;
       }
+      VLOGF(1) << "Detected face: bounding_box = (" << f.bounding_box.x1 << ", "
+               << f.bounding_box.y1 << ", " << f.bounding_box.x2 << ", "
+               << f.bounding_box.y2 << "), "
+               << "confidence = " << f.confidence;
     }
   }
 

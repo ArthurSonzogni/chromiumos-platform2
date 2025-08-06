@@ -36,6 +36,9 @@ enum class FaceDetectResult {
 CROS_CAMERA_EXPORT const char* FaceDetectResultToString(
     FaceDetectResult detect_result);
 
+constexpr float kScoreThreshold = 0.5;
+constexpr int kImageSizeForDetection = 160;
+
 // This class encapsulates Google3 FaceSSD library.
 class CROS_CAMERA_EXPORT FaceDetector {
  public:
@@ -43,6 +46,10 @@ class CROS_CAMERA_EXPORT FaceDetector {
       FaceDetectResult, std::vector<human_sensing::CrosFace>)>;
 
   static std::unique_ptr<FaceDetector> Create();
+
+  static std::unique_ptr<FaceDetector> CreateWithParameters(
+      float score_threshold = kScoreThreshold,
+      int image_size_for_detection = kImageSizeForDetection);
 
   ~FaceDetector();
 
@@ -122,7 +129,9 @@ class CROS_CAMERA_EXPORT FaceDetector {
 
  private:
   explicit FaceDetector(
-      std::unique_ptr<human_sensing::FaceDetectorClientCrosWrapper> wrapper);
+      std::unique_ptr<human_sensing::FaceDetectorClientCrosWrapper> wrapper,
+      float score_threshold,
+      int img_scaled_size);
 
   void DetectOnThread(const uint8_t* buffer_addr,
                       int input_stride,
@@ -141,6 +150,10 @@ class CROS_CAMERA_EXPORT FaceDetector {
   std::unique_ptr<human_sensing::FaceDetectorClientCrosWrapper> wrapper_;
 
   base::Thread thread_;
+
+  float score_threshold_;
+
+  int img_scaled_size_;
 };
 
 std::string LandmarkTypeToString(human_sensing::Landmark::Type type);
