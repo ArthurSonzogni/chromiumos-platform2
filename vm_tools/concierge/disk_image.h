@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -285,7 +286,10 @@ class TerminaVmExportOperation : public DiskImageOperation {
   uint64_t zstd_total_frame_size_ = 0;
 
   // Count of written seek table entries
-  size_t seektable_entry_written = 0;
+  size_t seektable_entry_written_ = 0;
+
+  // Disk image vm type
+  std::optional<vm_tools::apps::VmType> disk_vm_type_ = std::nullopt;
 
   // We previously determined 128KiB frame size is a good middle ground for a
   // seekable frame. This size allows it to not consume too much memory when
@@ -398,6 +402,12 @@ class VmResizeOperation : public DiskImageOperation {
 
   uint64_t target_size_;
 };
+
+std::optional<vm_tools::apps::VmType> GetDiskImageVmType(
+    const std::string& disk_path);
+
+bool SetDiskImageVmType(const base::ScopedFD& fd,
+                        vm_tools::apps::VmType vm_type);
 
 }  // namespace vm_tools::concierge
 

@@ -570,49 +570,7 @@ uint64_t CalculateDesiredDiskSize(base::FilePath disk_location,
   return std::max(disk_size, kMinimumDiskSize);
 }
 
-// Returns true if a disk image has a set xattr matching the desired vm_type.
-std::optional<vm_tools::apps::VmType> GetDiskImageVmType(
-    const std::string& disk_path) {
-  static_assert(
-      vm_tools::apps::VmType_MAX < 100,
-      "VmType enum has more than two digits, update xattr buffer size");
-  static const int xattr_max_size = 2;
-  std::string xattr_vm_type;
-  xattr_vm_type.resize(xattr_max_size);
 
-  ssize_t bytes_read = getxattr(disk_path.c_str(), kDiskImageVmTypeXattr,
-                                xattr_vm_type.data(), sizeof(xattr_vm_type));
-  if (bytes_read < 0) {
-    PLOG(WARNING) << "Unable to obtain xattr " << kDiskImageVmTypeXattr
-                  << " for file " << disk_path;
-    return {};
-  }
-  if (bytes_read <= xattr_max_size) {
-    xattr_vm_type.resize(bytes_read);
-  }
-
-  int vm_type_int;
-  if (!base::StringToInt(xattr_vm_type, &vm_type_int)) {
-    LOG(ERROR) << "VM type xattr of " << xattr_vm_type
-               << " was not a valid int.";
-    return {};
-  }
-  if (!vm_tools::apps::VmType_IsValid(vm_type_int)) {
-    LOG(ERROR) << "VM type of " << vm_type_int << " was not valid.";
-    return {};
-  }
-  vm_tools::apps::VmType disk_image_vm_type =
-      static_cast<vm_tools::apps::VmType>(vm_type_int);
-
-  return disk_image_vm_type;
-}
-
-bool SetDiskImageVmType(const base::ScopedFD& fd,
-                        vm_tools::apps::VmType vm_type) {
-  std::string vm_type_str = base::NumberToString(static_cast<int>(vm_type));
-  return fsetxattr(fd.get(), kDiskImageVmTypeXattr, vm_type_str.c_str(),
-                   vm_type_str.size(), 0) == 0;
-}
 
 // Returns true if the disk should not be automatically resized because it is
 // not sparse and its size was specified by the user.

@@ -7,6 +7,8 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 #include <zstd.h>
 
@@ -29,19 +31,20 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/uuid.h>
+#include <vm_applications/apps.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
-#include "vm_tools/concierge/service.h"
-#include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 namespace {
 
 constexpr gid_t kCrosvmUGid = 299;
 constexpr uint32_t kZstdMagic = 0xFD2FB528;
+constexpr uint32_t kZstdVmMetadataSkippableFrameMagic = 0x184D2A55;
 constexpr uint32_t kZstdSeekSkippableFrameMagic = 0x184D2A5E;
 constexpr uint32_t kZstdSeekFooterMagic = 0x8F92EAB1;
+constexpr char kVmMetadataMagic[] = "CROSVMEXPMETA";
 
 struct __attribute__((packed)) SeekTableFooter {
   uint32_t num_of_frames;
@@ -538,6 +541,8 @@ bool TerminaVmExportOperation::PrepareInput() {
     return false;
   }
 
+  disk_vm_type_ = GetDiskImageVmType(src_image_path_.value());
+
   set_source_size(info.size * 2);
 
   in_ = ArchiveReader(archive_read_disk_new());
@@ -706,8 +711,56 @@ bool TerminaVmExportOperation::ExecuteIo(uint64_t io_limit) {
       // Free the output archive structures.
       out_.reset();
 
-      // TODO(b/345311779): Add custom metadata skippable frame, should at
-      // least contain VM name
+      // We insert a zstd skippable frame with magic 0x184D2A55 after the last
+      // zstd data frame used to compress the disk image. The length of this
+      // frame's content should be exactly 39, consists of "CROSVMEXPMETA\0"
+      // "user.crostini.vm_type\0" and a 2 digit integer str (with \0) concated.
+      // When reading, we can walk back from the zstd seek table (its size is
+      // known via seek table footer) header exactly 47 bytes (with zstd frame
+      // and magic and frame size each 4 bytes), check if all magic / keys
+      // matched, if so, we treat the 2 digit integer as the vm type metadata
+      // saved in the disk image.
+      if (disk_vm_type_.has_value() && disk_vm_type_.value() != apps::UNKNOWN) {
+        constexpr uint32_t frame_content_size =
+            sizeof(kVmMetadataMagic) + sizeof(kDiskImageVmTypeXattr) + 3;
+        static_assert(frame_content_size == 39);
+        static_assert(sizeof(frame_content_size) == 4);
+        static_assert(sizeof(kZstdVmMetadataSkippableFrameMagic) == 4);
+        // 4 bytes zstd skippable magic, 4 bytes frame size, 39 bytes content
+        uint8_t vm_meta_frame[39 + 4 + 4];
+        uint8_t* vm_meta_frame_offset = vm_meta_frame;
+        std::memcpy(vm_meta_frame_offset, &kZstdVmMetadataSkippableFrameMagic,
+                    4);
+        vm_meta_frame_offset += 4;
+        std::memcpy(vm_meta_frame_offset, &frame_content_size, 4);
+        vm_meta_frame_offset += 4;
+        std::memcpy(vm_meta_frame_offset, kVmMetadataMagic,
+                    sizeof(kVmMetadataMagic));
+        vm_meta_frame_offset += sizeof(kVmMetadataMagic);
+        std::memcpy(vm_meta_frame_offset, kDiskImageVmTypeXattr,
+                    sizeof(kDiskImageVmTypeXattr));
+        vm_meta_frame_offset += sizeof(kDiskImageVmTypeXattr);
+
+        // The max digits of this is 2 digits
+        std::string vm_type_str =
+            base::NumberToString(static_cast<int>(disk_vm_type_.value()));
+        if (vm_type_str.size() > 2) {
+          MarkFailed("Failed to write disk metadata, vm type too large",
+                     nullptr);
+        }
+        // std::string size don't count '\0' at the end of its c_str
+        std::memcpy(vm_meta_frame_offset, vm_type_str.c_str(),
+                    vm_type_str.size() + 1);
+
+        ssize_t bytes_written = HANDLE_EINTR(
+            write(out_fd_.get(), vm_meta_frame, sizeof(vm_meta_frame)));
+        if (bytes_written != sizeof(vm_meta_frame)) {
+          MarkFailed("failed to write VM metadata frame", nullptr);
+          break;
+        }
+        sha256_->Update(vm_meta_frame, sizeof(vm_meta_frame));
+      }
+
       {
         struct stat st;
         if (fstat(out_fd_.get(), &st) < 0) {
@@ -795,18 +848,18 @@ bool TerminaVmExportOperation::ExecuteIo(uint64_t io_limit) {
       break;
     case kWriteSeekTable:
       while (io_limit > 0 &&
-             seektable_entry_written < seek_table_entries_.size()) {
+             seektable_entry_written_ < seek_table_entries_.size()) {
         ssize_t bytes_written = HANDLE_EINTR(write(
-            out_fd_.get(), &seek_table_entries_[seektable_entry_written], 8));
+            out_fd_.get(), &seek_table_entries_[seektable_entry_written_], 8));
         if (bytes_written != 8) {
           MarkFailed("failed to write seek table entry", nullptr);
           break;
         }
-        sha256_->Update(&seek_table_entries_[seektable_entry_written], 8);
+        sha256_->Update(&seek_table_entries_[seektable_entry_written_], 8);
         io_limit -= std::min(io_limit, static_cast<uint64_t>(bytes_written));
-        seektable_entry_written++;
+        seektable_entry_written_++;
       }
-      if (seektable_entry_written >= seek_table_entries_.size()) {
+      if (seektable_entry_written_ >= seek_table_entries_.size()) {
         // Finished writing all seek table entries
         SeekTableFooter footer{
             .num_of_frames = static_cast<uint32_t>(seek_table_entries_.size()),
@@ -1254,5 +1307,49 @@ bool VmResizeOperation::ExecuteIo(uint64_t io_limit) {
 }
 
 void VmResizeOperation::Finalize() {}
+
+// Returns disk image vm type obtained from xattrs if it exist.
+std::optional<vm_tools::apps::VmType> GetDiskImageVmType(
+    const std::string& disk_path) {
+  static_assert(
+      vm_tools::apps::VmType_MAX < 100,
+      "VmType enum has more than two digits, update xattr buffer size");
+  static const int xattr_max_size = 2;
+  std::string xattr_vm_type;
+  xattr_vm_type.resize(xattr_max_size);
+
+  ssize_t bytes_read = getxattr(disk_path.c_str(), kDiskImageVmTypeXattr,
+                                xattr_vm_type.data(), sizeof(xattr_vm_type));
+  if (bytes_read < 0) {
+    PLOG(WARNING) << "Unable to obtain xattr " << kDiskImageVmTypeXattr
+                  << " for file " << disk_path;
+    return {};
+  }
+  if (bytes_read <= xattr_max_size) {
+    xattr_vm_type.resize(bytes_read);
+  }
+
+  int vm_type_int;
+  if (!base::StringToInt(xattr_vm_type, &vm_type_int)) {
+    LOG(ERROR) << "VM type xattr of " << xattr_vm_type
+               << " was not a valid int.";
+    return {};
+  }
+  if (!vm_tools::apps::VmType_IsValid(vm_type_int)) {
+    LOG(ERROR) << "VM type of " << vm_type_int << " was not valid.";
+    return {};
+  }
+  vm_tools::apps::VmType disk_image_vm_type =
+      static_cast<vm_tools::apps::VmType>(vm_type_int);
+
+  return disk_image_vm_type;
+}
+
+bool SetDiskImageVmType(const base::ScopedFD& fd,
+                        vm_tools::apps::VmType vm_type) {
+  std::string vm_type_str = base::NumberToString(static_cast<int>(vm_type));
+  return fsetxattr(fd.get(), kDiskImageVmTypeXattr, vm_type_str.c_str(),
+                   vm_type_str.size(), 0) == 0;
+}
 
 }  // namespace vm_tools::concierge
