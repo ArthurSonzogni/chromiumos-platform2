@@ -423,6 +423,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         // as a separator for params which avoids breaking the existing
         // interface.
         opts.parsing_style(getopts::ParsingStyle::StopAtFirstFree);
+        opts.reqopt("", "vm-type", "type of VM (CROSTINI / BAGUETTE)", "TYPE");
         opts.optopt("", "size", "size of the created vm's disk", "SIZE");
         opts.optopt("", "source", "location of baguette source image", "PATH");
 
@@ -434,6 +435,14 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let source = match matches.opt_str("source") {
             Some(path) => Some(path),
             None => None,
+        };
+        let vm_type = match matches.opt_str("vm-type") {
+            None => unreachable!(),
+            Some(vm_type) => match vm_type.to_uppercase().as_ref() {
+                "CROSTINI" | "TERMINA" => VmType::TERMINA,
+                "BAGUETTE" => VmType::BAGUETTE,
+                _ => return Err(ChromeOSError::NoSuchVmType.into()),
+            },
         };
 
         let mut s = matches.free.splitn(2, |arg| *arg == "--");
@@ -459,6 +468,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             removable_media,
             params,
             source.as_deref(),
+            vm_type
         )) {
             println!("VM creation in progress: {}", uuid);
             self.wait_disk_op_completion(&uuid, DiskOpType::Create, "VM creation")?;
@@ -1076,8 +1086,8 @@ const USAGE: &str = " [
            [--user-group PARAM]... [--help-start] <vm name>
   |  stop <vm name>
   |  launch <main descriptor> [<descriptor>...]
-  |  create [-p] [--size SIZE] <vm name> [<source media> [<removable storage name>]] \
-            [-- additional parameters]
+  |  create [-p] [--size SIZE] --vm-type <vm type> <vm name> \
+            [<source media> [<removable storage name>]] [-- additional parameters]
   |  create-extra-disk --size SIZE <file name> [<removable storage name>]
   |  adjust <vm name> <operation> [additional parameters]
   |  destroy [-y] <vm name>
@@ -1410,10 +1420,34 @@ mod tests {
             &["vmc", "stop", "termina"],
             &["vmc", "launch", "foo"],
             &["vmc", "launch", "a", "b", "c", "d", "e", "f"],
-            &["vmc", "create", "termina"],
-            &["vmc", "create", "--size", "1000000", "termina"],
-            &["vmc", "create", "--size", "256M", "termina"],
-            &["vmc", "create", "--size", "1G", "termina"],
+            &["vmc", "create", "--vm-type", "baguette", "termina"],
+            &[
+                "vmc",
+                "create",
+                "--vm-type",
+                "crostini",
+                "--size",
+                "1000000",
+                "termina",
+            ],
+            &[
+                "vmc",
+                "create",
+                "--vm-type",
+                "baguette",
+                "--size",
+                "256M",
+                "termina",
+            ],
+            &[
+                "vmc",
+                "create",
+                "--vm-type",
+                "crostini",
+                "--size",
+                "1G",
+                "termina",
+            ],
             &["vmc", "create-extra-disk", "--size=1000000", "foo.img"],
             &["vmc", "create-extra-disk", "--size=256M", "foo.img"],
             &["vmc", "create-extra-disk", "--size=1G", "foo.img"],
@@ -1520,10 +1554,30 @@ mod tests {
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
             &["vmc", "launch"],
+            &["vmc", "create", "termina"],
+            &["vmc", "create", "--size", "1000000", "termina"],
+            &["vmc", "create", "--size", "256M", "termina"],
+            &["vmc", "create", "--size", "1G", "termina"],
             &["vmc", "create"],
-            &["vmc", "create", "--size", "termina"],
+            &["vmc", "create", "--vm-type"],
+            &[
+                "vmc",
+                "create",
+                "--vm-type",
+                "baguette",
+                "--size",
+                "termina",
+            ],
             &["vmc", "create", "--size", "52J", "termina"],
-            &["vmc", "create", "--size", "foo", "termina"],
+            &[
+                "vmc",
+                "create",
+                "--vm-type",
+                "crostini",
+                "--size",
+                "foo",
+                "termina",
+            ],
             &["vmc", "create-extra-disk"],
             &["vmc", "create-extra-disk", "foo.img"],
             &["vmc", "create-extra-disk", "--size", "1G"],

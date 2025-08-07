@@ -994,12 +994,14 @@ impl Methods {
         removable_media: Option<&str>,
         params: &[T],
         source: Option<&str>,
+        vm_type: VmType,
     ) -> Result<Option<String>, Box<dyn Error>> {
         let mut request = CreateDiskImageRequest::new();
         request.vm_name = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
         request.image_type = DiskImageType::DISK_IMAGE_AUTO.into();
         request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT.into();
+        request.vm_type = vm_type.into();
         if let Some(s) = size {
             request.disk_size = s;
         }
@@ -2282,6 +2284,7 @@ impl Methods {
         removable_media: Option<&str>,
         params: &[T],
         source: Option<&str>,
+        vm_type: VmType,
     ) -> Result<Option<String>, Box<dyn Error>> {
         self.ensure_crostini_available(user_id_hash)?;
         self.create_vm_image(
@@ -2292,6 +2295,7 @@ impl Methods {
             removable_media,
             params,
             source,
+            vm_type,
         )
     }
 
@@ -2540,7 +2544,7 @@ impl Methods {
                         VmType::BOREALIS => DiskVmType::Borealis,
                         VmType::BRUSCHETTA => DiskVmType::Bruschetta,
                         VmType::BAGUETTE => DiskVmType::Baguette,
-                    }
+                    },
                 };
                 Ok(info)
             })
