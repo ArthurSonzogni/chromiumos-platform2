@@ -7,19 +7,21 @@
 
 #include <string>
 
-#include "runtime_probe/system/context.h"
 #include "runtime_probe/system/helper_invoker.h"
 
 namespace runtime_probe {
 
 class HelperInvokerDebugdImpl : public HelperInvoker {
-  using HelperInvoker::HelperInvoker;
-
  public:
+  explicit HelperInvokerDebugdImpl(int helper_timeout_sec);
+
   // Invoke the helper replica via `debugd`'s D-Bus RPC.
   bool Invoke(const ProbeFunction* probe_function,
               const std::string& probe_statement_str,
               std::string* result) const override;
+
+ private:
+  int helper_timeout_sec_;
 };
 
 }  // namespace runtime_probe

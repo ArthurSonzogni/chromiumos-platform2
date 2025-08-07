@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/json/json_reader.h>
@@ -20,6 +19,8 @@ namespace {
 using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::Return;
+
+constexpr int kDefaultTimeout = 5;
 
 class PipeUtilsTest : public BaseFunctionTest {};
 
@@ -89,7 +90,7 @@ TEST_F(PipeUtilsTest, ReadNonblockingPipeToString_Success) {
       })
       .WillOnce(Return(0));
 
-  EXPECT_TRUE(ReadNonblockingPipeToString(fds, &out));
+  EXPECT_TRUE(ReadNonblockingPipeToString(fds, &out, kDefaultTimeout));
   EXPECT_THAT(out, ElementsAre("12345678", "abcdef"));
 }
 
@@ -104,7 +105,7 @@ TEST_F(PipeUtilsTest, ReadNonblockingPipeToString_ReadFailed) {
   // Return -1 on read() failure.
   EXPECT_CALL(*syscaller, Read).WillOnce(Return(-1));
 
-  EXPECT_FALSE(ReadNonblockingPipeToString(fds, &out));
+  EXPECT_FALSE(ReadNonblockingPipeToString(fds, &out, kDefaultTimeout));
   EXPECT_THAT(out, ElementsAre("", ""));
 }
 
@@ -118,7 +119,7 @@ TEST_F(PipeUtilsTest, ReadNonblockingPipeToString_SelectTimeOut) {
   // Return 0 on select() timeout.
   EXPECT_CALL(*syscaller, Select).WillOnce(Return(0));
 
-  EXPECT_FALSE(ReadNonblockingPipeToString(fds, &out));
+  EXPECT_FALSE(ReadNonblockingPipeToString(fds, &out, kDefaultTimeout));
   EXPECT_THAT(out, ElementsAre("", ""));
 }
 
@@ -132,7 +133,7 @@ TEST_F(PipeUtilsTest, ReadNonblockingPipeToString_SelectFailed) {
   // Return -1 on select() failure.
   EXPECT_CALL(*syscaller, Select).WillOnce(Return(-1));
 
-  EXPECT_FALSE(ReadNonblockingPipeToString(fds, &out));
+  EXPECT_FALSE(ReadNonblockingPipeToString(fds, &out, kDefaultTimeout));
   EXPECT_THAT(out, ElementsAre("", ""));
 }
 

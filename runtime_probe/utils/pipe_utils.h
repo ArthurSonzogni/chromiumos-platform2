@@ -11,7 +11,8 @@
 namespace runtime_probe {
 
 bool ReadNonblockingPipeToString(const std::vector<int>& fds,
-                                 std::vector<std::string>* out);
+                                 std::vector<std::string>* out,
+                                 int timeout_sec);
 
 }  // namespace runtime_probe
 

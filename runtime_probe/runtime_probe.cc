@@ -79,16 +79,18 @@ int RunAsHelper() {
   return ExitStatus::kSuccess;
 }
 
-int RunAsDaemon() {
+int RunAsDaemon(int helper_timeout_sec) {
   LOG(INFO) << "Starting Runtime Probe. Running in daemon mode";
   runtime_probe::Daemon daemon;
-  runtime_probe::ContextRuntimeImpl context;
+  runtime_probe::ContextRuntimeImpl context(helper_timeout_sec);
   return daemon.Run();
 }
 
 // Invoke as a command line tool. Device can load arbitrary probe config
 // iff cros_debug == 1
-int RunningInCli(const std::string& config_file_path, bool to_stdout) {
+int RunningInCli(const std::string& config_file_path,
+                 bool to_stdout,
+                 int helper_timeout_sec) {
   LOG(INFO) << "Starting Runtime Probe. Running in CLI mode";
 
   // Required by dbus in libchrome.
@@ -101,7 +103,7 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
-  runtime_probe::ContextRuntimeImpl context;
+  runtime_probe::ContextRuntimeImpl context(helper_timeout_sec);
 
   std::unique_ptr<runtime_probe::ProbeConfigLoader> config_loader;
   if (config_file_path.empty()) {
@@ -152,6 +154,7 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(log_level, 0,
                "Logging level - 0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR), "
                "-1: VLOG(1), -2: VLOG(2), ...");
+  DEFINE_int32(helper_timeout, 5, "Helper timeout in seconds.");
   brillo::FlagHelper::Init(argc, argv, "ChromeOS runtime probe tool");
 
   logging::SetMinLogLevel(FLAGS_log_level);
@@ -177,7 +180,8 @@ int main(int argc, char* argv[]) {
     return RunAsHelper();
   }
   if (FLAGS_dbus) {
-    return RunAsDaemon();
+    return RunAsDaemon(FLAGS_helper_timeout);
   }
-  return RunningInCli(FLAGS_config_file_path, FLAGS_to_stdout);
+  return RunningInCli(FLAGS_config_file_path, FLAGS_to_stdout,
+                      FLAGS_helper_timeout);
 }

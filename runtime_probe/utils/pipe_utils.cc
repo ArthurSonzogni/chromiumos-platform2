@@ -28,9 +28,6 @@ enum class PipeState {
 // The system-defined size of buffer used to read from a pipe.
 constexpr size_t kBufferSize = PIPE_BUF;
 
-// Seconds to wait for runtime_probe helper to send probe results.
-constexpr time_t kWaitSeconds = 5;
-
 PipeState ReadPipe(int src_fd, std::string* dst_str) {
   char buffer[kBufferSize];
   const ssize_t bytes_read =
@@ -51,10 +48,11 @@ PipeState ReadPipe(int src_fd, std::string* dst_str) {
 }  // namespace
 
 bool ReadNonblockingPipeToString(const std::vector<int>& fds,
-                                 std::vector<std::string>* out) {
+                                 std::vector<std::string>* out,
+                                 int timeout_sec) {
   struct timeval timeout;
 
-  timeout.tv_sec = kWaitSeconds;
+  timeout.tv_sec = timeout_sec;
   timeout.tv_usec = 0;
 
   *out = std::vector<std::string>(fds.size(), "");

@@ -11,7 +11,7 @@ namespace runtime_probe {
 
 class ContextRuntimeImpl : public ContextImpl {
  public:
-  ContextRuntimeImpl();
+  explicit ContextRuntimeImpl(int helper_timeout_sec);
   ~ContextRuntimeImpl() override = default;
 };
 

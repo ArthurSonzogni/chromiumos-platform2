@@ -19,6 +19,9 @@
 
 namespace runtime_probe {
 
+HelperInvokerDebugdImpl::HelperInvokerDebugdImpl(int helper_timeout_sec)
+    : helper_timeout_sec_(helper_timeout_sec) {}
+
 bool HelperInvokerDebugdImpl::Invoke(const ProbeFunction* probe_function,
                                      const std::string& probe_statement_str,
                                      std::string* result) const {
@@ -34,8 +37,8 @@ bool HelperInvokerDebugdImpl::Invoke(const ProbeFunction* probe_function,
   }
 
   std::vector<std::string> out;
-  bool res =
-      ReadNonblockingPipeToString({result_fd.get(), error_fd.get()}, &out);
+  bool res = ReadNonblockingPipeToString({result_fd.get(), error_fd.get()},
+                                         &out, helper_timeout_sec_);
   if (out[1].size()) {
     LOG(INFO) << "Helper stderr:\n"
               << "^--------------------------------------------------------^\n"
