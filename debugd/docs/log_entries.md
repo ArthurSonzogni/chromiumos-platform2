@@ -407,6 +407,12 @@ Console output of an MCU controlling an RGB keyboard.
 Application level logs collected from kiosk apps including logs from
 browser windows, service workers and secondary extensions.
 
+## kiosk_apps_log.PREVIOUS
+
+kiosk_apps.1.log file which stores a day older kiosk application level
+logs from different sources like browser windows, service workers and
+app windows.
+
 ## logcat
 
 Log (adb logcat) from Android instance in ARC. Note that timestamp timezone is
