@@ -13,9 +13,9 @@
 #include <variant>
 #include <vector>
 
+#include <absl/functional/overload.h>
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/functional/overloaded.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <brillo/secure_blob.h>
@@ -96,11 +96,11 @@ const DelaySchedule& SelectDelayScheduleForNewFactor(DelayScheduleType type) {
 std::optional<DelayScheduleType> DetermineDelayScheduleType(
     const AuthFactorMetadata& auth_factor_metadata) {
   return std::visit<std::optional<DelayScheduleType>>(
-      base::Overloaded{
+      absl::Overload(
           [](const PasswordMetadata&) { return DelayScheduleType::kPassword; },
           [](const PinMetadata&) { return DelayScheduleType::kPin; },
           [](const KioskMetadata&) { return DelayScheduleType::kPassword; },
-          [](const auto&) { return std::nullopt; }},
+          [](const auto&) { return std::nullopt; }),
       auth_factor_metadata.metadata);
 }
 

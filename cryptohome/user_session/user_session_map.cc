@@ -8,8 +8,8 @@
 #include <utility>
 #include <variant>
 
+#include <absl/functional/overload.h>
 #include <base/check.h>
-#include <base/functional/overloaded.h>
 #include <base/memory/scoped_refptr.h>
 
 namespace cryptohome {
@@ -46,21 +46,21 @@ UserSessionMap::VerifierForwarder::~VerifierForwarder() {
 }
 
 bool UserSessionMap::VerifierForwarder::HasVerifier(const std::string& label) {
-  return std::visit(
-      base::Overloaded{[&](UserSession* session) {
-                         return session->HasCredentialVerifier(label);
-                       },
-                       [&](VerifierStorage& storage) {
-                         return storage.by_label.find(label) !=
-                                storage.by_label.end();
-                       }},
-      forwarding_destination_);
+  return std::visit(absl::Overload(
+                        [&](UserSession* session) {
+                          return session->HasCredentialVerifier(label);
+                        },
+                        [&](VerifierStorage& storage) {
+                          return storage.by_label.find(label) !=
+                                 storage.by_label.end();
+                        }),
+                    forwarding_destination_);
 }
 
 std::vector<const CredentialVerifier*>
 UserSessionMap::VerifierForwarder::GetCredentialVerifiers() const {
   return std::visit(
-      base::Overloaded{
+      absl::Overload(
           [](UserSession* session) {
             return session->GetCredentialVerifiers();
           },
@@ -74,7 +74,7 @@ UserSessionMap::VerifierForwarder::GetCredentialVerifiers() const {
               verifiers.push_back(verifier.get());
             }
             return verifiers;
-          }},
+          }),
       forwarding_destination_);
 }
 
@@ -82,7 +82,7 @@ void UserSessionMap::VerifierForwarder::AddVerifier(
     std::unique_ptr<CredentialVerifier> verifier) {
   std::string label = verifier->auth_factor_label();
   AuthFactorType type = verifier->auth_factor_type();
-  std::visit(base::Overloaded{
+  std::visit(absl::Overload(
                  [&](UserSession* session) {
                    session->AddCredentialVerifier(std::move(verifier));
                  },
@@ -92,44 +92,44 @@ void UserSessionMap::VerifierForwarder::AddVerifier(
                    } else {
                      storage.by_label[std::move(label)] = std::move(verifier);
                    }
-                 }},
+                 }),
              forwarding_destination_);
 }
 
 std::unique_ptr<CredentialVerifier>
 UserSessionMap::VerifierForwarder::ReleaseVerifier(const std::string& label) {
-  return std::visit(
-      base::Overloaded{[&](UserSession* session) {
-                         return session->ReleaseCredentialVerifier(label);
-                       },
-                       [&](VerifierStorage& storage) {
-                         auto iter = storage.by_label.find(label);
-                         if (iter != storage.by_label.end()) {
-                           auto verifier = std::move(iter->second);
-                           storage.by_label.erase(iter);
-                           return verifier;
-                         }
-                         return std::unique_ptr<CredentialVerifier>();
-                       }},
-      forwarding_destination_);
+  return std::visit(absl::Overload(
+                        [&](UserSession* session) {
+                          return session->ReleaseCredentialVerifier(label);
+                        },
+                        [&](VerifierStorage& storage) {
+                          auto iter = storage.by_label.find(label);
+                          if (iter != storage.by_label.end()) {
+                            auto verifier = std::move(iter->second);
+                            storage.by_label.erase(iter);
+                            return verifier;
+                          }
+                          return std::unique_ptr<CredentialVerifier>();
+                        }),
+                    forwarding_destination_);
 }
 
 std::unique_ptr<CredentialVerifier>
 UserSessionMap::VerifierForwarder::ReleaseVerifier(AuthFactorType type) {
-  return std::visit(
-      base::Overloaded{[&](UserSession* session) {
-                         return session->ReleaseCredentialVerifier(type);
-                       },
-                       [&](VerifierStorage& storage) {
-                         auto iter = storage.by_type.find(type);
-                         if (iter != storage.by_type.end()) {
-                           auto verifier = std::move(iter->second);
-                           storage.by_type.erase(iter);
-                           return verifier;
-                         }
-                         return std::unique_ptr<CredentialVerifier>();
-                       }},
-      forwarding_destination_);
+  return std::visit(absl::Overload(
+                        [&](UserSession* session) {
+                          return session->ReleaseCredentialVerifier(type);
+                        },
+                        [&](VerifierStorage& storage) {
+                          auto iter = storage.by_type.find(type);
+                          if (iter != storage.by_type.end()) {
+                            auto verifier = std::move(iter->second);
+                            storage.by_type.erase(iter);
+                            return verifier;
+                          }
+                          return std::unique_ptr<CredentialVerifier>();
+                        }),
+                    forwarding_destination_);
 }
 
 void UserSessionMap::VerifierForwarder::Resolve(UserSession* session) {

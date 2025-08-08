@@ -6,7 +6,7 @@
 
 #include <variant>
 
-#include <base/functional/overloaded.h>
+#include <absl/functional/overload.h>
 
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
@@ -26,13 +26,12 @@ const T* OptionalToPtr(const std::optional<T>& opt) {
 
 const SerializedKnowledgeFactorHashInfo* AuthFactorMetadata::hash_info() const {
   return std::visit<const SerializedKnowledgeFactorHashInfo*>(
-      base::Overloaded{
+      absl::Overload(
           [](const PasswordMetadata& pw) {
             return OptionalToPtr(pw.hash_info);
           },
           [](const PinMetadata& pin) { return OptionalToPtr(pin.hash_info); },
-          [](const auto&) { return nullptr; },
-      },
+          [](const auto&) { return nullptr; }),
       metadata);
 }
 

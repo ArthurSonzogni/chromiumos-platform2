@@ -9,7 +9,7 @@
 #include <variant>
 
 #include <absl/container/flat_hash_map.h>
-#include <base/functional/overloaded.h>
+#include <absl/functional/overload.h>
 #include <base/system/sys_info.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -208,12 +208,10 @@ CryptohomeStatus EncryptIntoContainer(
 CryptohomeStatusOr<DecryptedUss> DropEncryptedUssFromStatus(
     DecryptedUss::FailedDecryptOrDecryptedUss decrypted) {
   return std::visit<CryptohomeStatusOr<DecryptedUss>>(
-      base::Overloaded{
-          [](DecryptedUss decrypted) { return decrypted; },
-          [](DecryptedUss::FailedDecrypt failed) {
-            return std::move(failed.status);
-          },
-      },
+      absl::Overload([](DecryptedUss decrypted) { return decrypted; },
+                     [](DecryptedUss::FailedDecrypt failed) {
+                       return std::move(failed.status);
+                     }),
       std::move(decrypted));
 }
 
