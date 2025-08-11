@@ -246,6 +246,10 @@ const CertificateAuthoritySubjectPublicKeyInfo
          "3059301306072a8648ce3d020106082a8648ce3d030107034200048e72217be0"
          "16b33242092808a77dc4ec9671ceda85525748d6522455a3c61504afe1a21e12"
          "7876b346b6c89a84f1bd0e0343abcbc1617a1fbe2dbfd0bf18ce3e"},
+};
+
+const CertificateAuthoritySubjectPublicKeyInfo
+    kKnownEndorsementCASubjectKeyInfoD2[] = {
         {"CROS D2 CIK",
          "3059301306072a8648ce3d020106082a8648ce3d030107034200040f1ad2760b"
          "e780f36e57eee5a942ab5b153513b2117c74bb6e523216fb08afb008a09bdc7e"
@@ -254,10 +258,40 @@ const CertificateAuthoritySubjectPublicKeyInfo
          "3059301306072a8648ce3d020106082a8648ce3d03010703420004a011d8302f"
          "e79d51c4a8d30f45411c8b3afe5218e25f0f1efa97e568a6d98b847f3df336bc"
          "3948bb9d584f6c2dd80442b62c9bddece8472d0044b7d5c1083d73"},
+};
+
+const CertificateAuthoritySubjectPublicKeyInfo
+    kKnownEndorsementCASubjectKeyInfoNt[] = {
+        // NTA1 Cert
         {"Google Engineering ICA",
          "3059301306072a8648ce3d020106082a8648ce3d03010703420004d075e9eeb1"
          "a6e52e5a1b177ad0e0240416bb3a472639dc868dfe2626421f90335103e0d0ed"
          "f111ad119f2d22a05cca427870489f92bec31d514432edc674bcf8"},
+        // NTA2 hcslprov1 Cert
+        {"Google Engineering ICA",
+         "3059301306072A8648CE3D020106082A8648CE3D0301070342000498E2B56816"
+         "6152AB1011C4DDDC4D99EA0D3CA1BB94BEA9E9A5E82BE47F82E849A101C61D91"
+         "FD618239F97FAEC8296D5B2D2BD793DBA6597883088BA813E1E32B"},
+        // NTA2 hcslprov2 Cert
+        {"Google Engineering ICA",
+         "3059301306072A8648CE3D020106082A8648CE3D030107034200046A788A0126"
+         "B574E2B0C79CB5D20311055239F597897B089610C3AE89FE18DAAA52D89331E4"
+         "B1FA7B8CF1B91123855EFBC5031E69EE3DEF0CA5871929677B7EF2"},
+        // NTA2 hcslprov3 Cert
+        {"Google Engineering ICA",
+         "3059301306072A8648CE3D020106082A8648CE3D03010703420004FB8D829767"
+         "3DE77CEEEF80249934773D07302FBD22743CAEDE12A2D729364175272906D727"
+         "C0E5A38603305E8327B51AFF773FEFF1C7D48B70BBA55B2A580961"},
+        // NTA2 hcslprov4 Cert
+        {"Google Engineering ICA",
+         "3059301306072A8648CE3D020106082A8648CE3D03010703420004F6D7540D94"
+         "2F70156C667197B5F5E99357DA8196075FE3A8D404573F65E7D765D7774529A3"
+         "3F83CE46EA9AC4B78F257E4891BA1C5BAA3E270DC7861BEF56F33A"},
+        // NTA2 ntilprov2 Cert
+        {"Google Engineering ICA",
+         "3059301306072A8648CE3D020106082A8648CE3D03010703420004ED171A2715"
+         "71DBC9F3A6C121EFFBB85906CF7441C916D0AD8952A49445CE40E2C616C555E0"
+         "150CBDA885C15A32A3F0699A272789284FE3F1C4876EB9AD61F3D6"},
 };
 
 const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
@@ -3395,6 +3429,24 @@ bool AttestationService::VerifyCertificateWithSubjectPublicKeyInfo(
     return false;
   }
   bool has_subject_public_key_info = false;
+  for (const auto& info : kKnownEndorsementCASubjectKeyInfoNt) {
+    if (issuer_name == info.issuer) {
+      if (crypto_utility_->VerifyCertificateWithSubjectPublicKey(
+              ek_cert, info.subject_public_key_info)) {
+        return true;
+      }
+      has_subject_public_key_info = true;
+    }
+  }
+  for (const auto& info : kKnownEndorsementCASubjectKeyInfoD2) {
+    if (issuer_name == info.issuer) {
+      if (crypto_utility_->VerifyCertificateWithSubjectPublicKey(
+              ek_cert, info.subject_public_key_info)) {
+        return true;
+      }
+      has_subject_public_key_info = true;
+    }
+  }
   for (const auto& info : kKnownEndorsementCASubjectKeyInfo) {
     if (issuer_name == info.issuer) {
       if (crypto_utility_->VerifyCertificateWithSubjectPublicKey(
