@@ -87,6 +87,10 @@ bool DBusUpdateEngineClient::Install(
   return proxy_->Install(install_params, nullptr);
 }
 
+bool DBusUpdateEngineClient::IsEligibleForMigration(bool* out_is_eligible) {
+  return proxy_->IsEligibleForMigration(out_is_eligible, nullptr);
+}
+
 bool DBusUpdateEngineClient::Migrate() {
   return proxy_->Migrate(nullptr);
 }

@@ -81,6 +81,11 @@ bool DBusUpdateEngineService::Install(
   return common_->Install(error, install_params);
 }
 
+bool DBusUpdateEngineService::IsEligibleForMigration(ErrorPtr* error,
+                                                     bool* out_is_eligible) {
+  return common_->IsEligibleForMigration(error, out_is_eligible);
+}
+
 bool DBusUpdateEngineService::Migrate(ErrorPtr* error) {
   return common_->Migrate(error);
 }

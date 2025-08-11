@@ -102,6 +102,18 @@ bool UpdateEngineService::Install(
   return true;
 }
 
+bool UpdateEngineService::IsEligibleForMigration(brillo::ErrorPtr* error,
+                                                 bool* out_is_eligible) {
+  if (!SystemState::Get()->update_attempter()->IsEligibleForMigration(
+          out_is_eligible)) {
+    LogAndSetError(
+        error, FROM_HERE,
+        "Could not check if the device is eligible for migration or not.");
+    return false;
+  }
+  return true;
+}
+
 bool UpdateEngineService::Migrate(brillo::ErrorPtr* error) {
   if (!SystemState::Get()->update_attempter()->CheckForInstall(
           {}, /*omaha_url=*/"", /*scaled=*/true, /*force_ota=*/false,

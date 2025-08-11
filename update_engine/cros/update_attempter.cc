@@ -1237,6 +1237,12 @@ bool UpdateAttempter::ApplyDeferredUpdate(bool shutdown) {
   return true;
 }
 
+bool UpdateAttempter::IsEligibleForMigration(bool* out_is_eligible) {
+  // TODO(b/435189119): Get this information - board, model, build number
+  // Check with Omaha if the board is eligible for migration install.
+  return true;
+}
+
 bool UpdateAttempter::CheckForInstall(const vector<string>& dlc_ids,
                                       const string& omaha_url,
                                       bool scaled,

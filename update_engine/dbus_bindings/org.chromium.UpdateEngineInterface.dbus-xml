@@ -49,6 +49,9 @@
     </method>
     <method name="Migrate">
     </method>
+    <method name="IsEligibleForMigration">
+      <arg type="b" name="is_eligible" direction="out" />
+    </method>
     <method name="AttemptRollback">
       <arg type="b" name="powerwash" direction="in" />
     </method>

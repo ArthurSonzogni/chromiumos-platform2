@@ -111,6 +111,10 @@ class UpdateEngineClient {
   virtual bool IsFeatureEnabled(const std::string& feature,
                                 bool* out_enabled) = 0;
 
+  // Check with update_engine if the device is eligible for the migration
+  // install.
+  virtual bool IsEligibleForMigration(bool* out_is_eligible) = 0;
+
   // Request the update_engine to do a migration install.
   virtual bool Migrate() = 0;
 

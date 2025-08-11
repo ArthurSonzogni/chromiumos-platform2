@@ -45,6 +45,8 @@ class UpdateEngineService {
   bool Install(brillo::ErrorPtr* error,
                const update_engine::InstallParams& install_params);
 
+  bool IsEligibleForMigration(brillo::ErrorPtr* error, bool* out_is_eligible);
+
   bool Migrate(brillo::ErrorPtr* error);
 
   bool AttemptRollback(brillo::ErrorPtr* error, bool in_powerwash);

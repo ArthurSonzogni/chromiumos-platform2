@@ -43,6 +43,9 @@ class DBusUpdateEngineService
   bool Install(brillo::ErrorPtr* err,
                const update_engine::InstallParams& install_params) override;
 
+  bool IsEligibleForMigration(brillo::ErrorPtr* err,
+                              bool* out_is_eligible) override;
+
   bool Migrate(brillo::ErrorPtr* err) override;
 
   bool AttemptRollback(brillo::ErrorPtr* error, bool in_powerwash) override;

@@ -157,6 +157,9 @@ class UpdateAttempter : public ActionProcessorDelegate,
   // update.
   virtual bool ApplyDeferredUpdate(bool shutdown);
 
+  // It checks if the device is eligible for migration install.
+  virtual bool IsEligibleForMigration(bool* out_is_eligible);
+
   // This is the version of CheckForUpdate called by AttemptInstall API.
   virtual bool CheckForInstall(const std::vector<std::string>& dlc_ids,
                                const std::string& omaha_url,

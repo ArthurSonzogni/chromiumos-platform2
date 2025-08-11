@@ -313,6 +313,9 @@ int UpdateEngineClient::ProcessFlags() {
                "Operation of update_engine.proto. Used for testing.");
   DEFINE_bool(force_fw_update, false,
               "Forces a fw update with the OS update check.");
+  DEFINE_bool(
+      is_eligible_for_migration, false,
+      "Checks if the device is eligible to perform a migration install.");
   DEFINE_bool(migrate, false, "Set to perform a migration.");
 
   // Boilerplate init commands.
@@ -529,6 +532,17 @@ int UpdateEngineClient::ProcessFlags() {
     handlers_.emplace_back(handler);
     client_->RegisterStatusUpdateHandler(handler);
     return kContinueRunning;
+  }
+
+  if (FLAGS_is_eligible_for_migration) {
+    bool is_eligible;
+    if (!client_->IsEligibleForMigration(&is_eligible)) {
+      LOG(ERROR) << "Failed to check if the device is eligible to perform a "
+                    "migration install";
+      return 1;
+    }
+    LOG(INFO) << "Is the device is eligible for migration: " << is_eligible;
+    return 0;
   }
 
   if (FLAGS_migrate) {
