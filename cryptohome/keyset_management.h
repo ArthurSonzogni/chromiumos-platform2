@@ -93,11 +93,6 @@ class KeysetManagement {
   // Check if the vault keyset needs re-encryption.
   virtual bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
 
-  // Record various metrics about all the VaultKeyset for a given user
-  // obfuscated
-  virtual void RecordAllVaultKeysetMetrics(
-      const ObfuscatedUsername& obfuscated) const;
-
   // ========== KeysetManagement methods with KeyBlobs ===============
 
   // Resaves the vault keyset with |key_blobs|, restoring on failure.
@@ -171,11 +166,6 @@ class KeysetManagement {
       std::unique_ptr<AuthBlockState> auth_state);
 
  private:
-  // Records various metrics about the VaultKeyset into the VaultKeysetMetrics
-  // struct.
-  void RecordVaultKeysetMetrics(const VaultKeyset& vk,
-                                VaultKeysetMetrics& keyset_metrics) const;
-
   libstorage::Platform* platform_;
   Crypto* crypto_;
   std::unique_ptr<VaultKeysetFactory> vault_keyset_factory_;

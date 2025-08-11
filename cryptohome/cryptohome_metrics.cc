@@ -84,7 +84,6 @@ constexpr char kSelectFactorAuthBlockTypeHistogram[] =
     "Cryptohome.SelectFactorAuthBlockType";
 constexpr char kLegacyCodePathUsageHistogramPrefix[] =
     "Cryptohome.LegacyCodePathUsage";
-constexpr char kVaultKeysetMetric[] = "Cryptohome.VaultKeysetMetric";
 constexpr char kAuthFactorBackingStoreConfig[] =
     "Cryptohome.AuthFactorBackingStoreConfig";
 constexpr char kMaskedDownloadsItems[] = "Cryptohome.MaskedDownloadsItems";
@@ -628,44 +627,6 @@ void ReportUsageOfLegacyCodePath(const LegacyCodePathLocation location,
           .append(kLegacyCodePathLocations[static_cast<int>(location)]);
 
   g_metrics->SendBoolToUMA(hist_str, result);
-}
-
-void ReportVaultKeysetMetrics(const VaultKeysetMetrics& keyset_metrics) {
-  if (!g_metrics) {
-    return;
-  }
-
-  constexpr int kMin = 1, kMax = 99, kNumBuckets = 100;
-  g_metrics->SendToUMA(
-      std::string(kVaultKeysetMetric).append(".MissingKeyDataCount"),
-      keyset_metrics.missing_key_data_count, kMin, kMax, kNumBuckets);
-  g_metrics->SendToUMA(
-      std::string(kVaultKeysetMetric).append(".EmptyLabelCount"),
-      keyset_metrics.empty_label_count, kMin, kMax, kNumBuckets);
-  g_metrics->SendToUMA(
-      std::string(kVaultKeysetMetric).append(".EmptyLabelPINCount"),
-      keyset_metrics.empty_label_le_cred_count, kMin, kMax, kNumBuckets);
-  g_metrics->SendToUMA(std::string(kVaultKeysetMetric).append(".PINCount"),
-                       keyset_metrics.le_cred_count, kMin, kMax, kNumBuckets);
-  g_metrics->SendToUMA(
-      std::string(kVaultKeysetMetric).append(".UntypedKeysetCount"),
-      keyset_metrics.untyped_count, kMin, kMax, kNumBuckets);
-  g_metrics->SendToUMA(
-      std::string(kVaultKeysetMetric).append(".SmartUnlockCount"),
-      keyset_metrics.smart_unlock_count, kMin, kMax, kNumBuckets);
-  g_metrics->SendToUMA(std::string(kVaultKeysetMetric).append(".PasswordCount"),
-                       keyset_metrics.password_count, kMin, kMax, kNumBuckets);
-  g_metrics->SendToUMA(
-      std::string(kVaultKeysetMetric).append(".SmartCardCount"),
-      keyset_metrics.smartcard_count, kMin, kMax, kNumBuckets);
-  g_metrics->SendToUMA(
-      std::string(kVaultKeysetMetric).append(".FingerprintCount"),
-      keyset_metrics.fingerprint_count, kMin, kMax, kNumBuckets);
-  g_metrics->SendToUMA(std::string(kVaultKeysetMetric).append(".KioskCount"),
-                       keyset_metrics.kiosk_count, kMin, kMax, kNumBuckets);
-  g_metrics->SendToUMA(
-      std::string(kVaultKeysetMetric).append(".UnclassifedKeysetCount"),
-      keyset_metrics.unclassified_count, kMin, kMax, kNumBuckets);
 }
 
 void ReportMaskedDownloadsItems(int num_items) {

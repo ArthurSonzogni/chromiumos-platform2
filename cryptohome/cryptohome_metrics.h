@@ -255,21 +255,6 @@ enum class DownloadsMigrationStatus {
   kMaxValue = kAlreadyMigrated
 };
 
-// Various counts for ReportVaultKeysetMetrics.
-struct VaultKeysetMetrics {
-  int missing_key_data_count = 0;
-  int empty_label_count = 0;
-  int empty_label_le_cred_count = 0;
-  int le_cred_count = 0;
-  int untyped_count = 0;
-  int password_count = 0;
-  int smart_unlock_count = 0;
-  int smartcard_count = 0;
-  int fingerprint_count = 0;
-  int kiosk_count = 0;
-  int unclassified_count = 0;
-};
-
 // List of all the legacy code paths' usage we are tracking. This will enable us
 // to further clean up the code in the future, should any of these code paths
 // are found not being used.
@@ -518,12 +503,6 @@ void ReportSelectFactorAuthBlock(AuthBlockType type);
 
 // Reports which code paths are being used today and performing what actions.
 void ReportUsageOfLegacyCodePath(LegacyCodePathLocation location, bool result);
-
-// Reports certain metrics around VaultKeyset such as the number of empty
-// labels, the number of smart unlock keys, number of password keys with and
-// without KeyProviderData, and the number of labeled/label-less PIN
-// VaultKeysets.
-void ReportVaultKeysetMetrics(const VaultKeysetMetrics& keyset_metrics);
 
 // Reports number of files that exist in ~/MyFiles/Downloads prior to migrating
 // and bind mounting. This only records the top-level items but does not record

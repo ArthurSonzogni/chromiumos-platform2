@@ -2972,12 +2972,6 @@ void UserDataAuth::PreparePersistentVaultWithSession(
   };
   CryptohomeStatus status = PreparePersistentVaultImpl(auth_session, options);
 
-  if (status.ok() && !auth_session->obfuscated_username()->empty()) {
-    // Send UMA with VK stats once per successful mount operation.
-    keyset_management_->RecordAllVaultKeysetMetrics(
-        auth_session->obfuscated_username());
-  }
-
   // Send the mount completed signal and then the RPC reply.
   user_data_auth::PreparePersistentVaultReply reply;
   reply.set_sanitized_username(*auth_session->obfuscated_username());
