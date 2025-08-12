@@ -224,6 +224,16 @@ class SuspendDelayController {
   base::TimeDelta dark_resume_min_delay_ = kDarkResumeMinDelayTimeout;
 
   base::ObserverList<SuspendDelayObserver> observers_;
+
+  // True if the controller has initiated a suspend preparation process
+  // and is currently waiting for one or more registered delays to signal
+  // readiness. This flag is set in PrepareForSuspend() only if there are
+  // active delays. The flag becomes false when the *waiting period* ends,
+  // which occurs when:
+  // 1. All delays signal readiness (in NotifyIfReadyForSuspend).
+  // 2. The maximum delay timer expires (in OnMaxDelayExpiration).
+  // 3. The entire suspend attempt is terminated (in FinishSuspend).
+  bool waiting_for_delays_ = false;
 };
 
 }  // namespace policy

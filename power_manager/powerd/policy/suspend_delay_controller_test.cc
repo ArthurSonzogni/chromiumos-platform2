@@ -451,4 +451,77 @@ TEST_F(SuspendDelayControllerTest, StaleSuspendInternalDelay) {
   EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
+// This test simulates a race condition that the fix addresses.
+// The scenario is as follows:
+// 1. A component, as part of its cleanup logic, calls
+//    RemoveSuspendInternalDelay when no suspend is active.
+// 2. Before the fix, this action would incorrectly cause the controller to
+//    announce suspend readiness, putting it into an inconsistent state.
+// 3. A new, valid suspend request is then initiated.
+// 4. The new suspend attempt tries to add its own internal delay.
+//
+// This test verifies that step 4 succeeds. Without the fix, this step would
+// fail because the controller was "poisoned" in step 2 and would reject
+// the new delay.
+TEST_F(SuspendDelayControllerTest, RemoveDuringIdleDoesNotPreventAddingDelay) {
+  auto internal_delay =
+      std::make_unique<SuspendInternalDelay>("race_condition_delay");
+
+  controller_.RemoveSuspendInternalDelay(internal_delay.get());
+
+  const int kSuspendId = 10;
+  EXPECT_TRUE(controller_.AddSuspendInternalDelay(internal_delay.get()));
+  controller_.PrepareForSuspend(kSuspendId, false);
+
+  EXPECT_FALSE(controller_.ReadyForSuspend());
+
+  controller_.RemoveSuspendInternalDelay(internal_delay.get());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+
+  EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
+}
+
+// Verifies multiple edge cases for removing internal delays, especially when
+// the controller is idle. It checks that removing a non-existent delay, or a
+// delay that was just added, does not trigger false notifications or corrupt
+// the controller's state for subsequent suspend requests.
+TEST_F(SuspendDelayControllerTest, RemoveInternalDelayEdgeCasesWhileIdle) {
+  auto internal_delay =
+      std::make_unique<SuspendInternalDelay>("test_delay_desc");
+
+  // 1. First, attempt to remove a delay that has never been added.
+  // This should be a safe no-op.
+  controller_.RemoveSuspendInternalDelay(internal_delay.get());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+
+  // 2. Now, add and immediately remove the delay while still idle.
+  ASSERT_TRUE(controller_.AddSuspendInternalDelay(internal_delay.get()));
+  controller_.RemoveSuspendInternalDelay(internal_delay.get());
+
+  // 3. Verify that NO readiness notification was sent from either
+  // removal. We expect RunUntilReadyForSuspend to time out (return false),
+  // indicating that the OnReadyForSuspend callback was not invoked within the
+  // timeout.
+  observer_.set_timeout(base::Milliseconds(10));
+  EXPECT_FALSE(observer_.RunUntilReadyForSuspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+
+  // 4. Start a proper suspend request to ensure the controller remains in a
+  // clean state.
+  const int kSuspendId = 10;
+  EXPECT_TRUE(controller_.AddSuspendInternalDelay(internal_delay.get()));
+  controller_.PrepareForSuspend(kSuspendId, false);
+
+  // 5. Add the delay again during the active suspend. The controller should
+  // wait.
+  EXPECT_FALSE(controller_.ReadyForSuspend());
+
+  // 6. Remove the delay. The controller should now become ready.
+  controller_.RemoveSuspendInternalDelay(internal_delay.get());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+
+  // 7. Verify that a readiness notification IS sent now.
+  EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
+}
+
 }  // namespace power_manager::policy

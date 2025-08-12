@@ -59,6 +59,13 @@ const int64_t kBatterySustainDisabled = -1;
 
 const double kAdaptiveChargingMaxPercent = 96.0;
 
+// A conservative threshold to determine if the battery is physically full.
+// The `power-supply-full-factor` can be as low as 0.94 on some devices,
+// meaning the battery is considered full at 94%. This constant is used to
+// ensure the workaround for the EC bug (b/295239614) is only triggered when
+// the battery is at its maximum capacity.
+const double kPowerSupplyFullFactorPercent = 94.0;
+
 // Value passed to `SetSlowCharging` to disable the EC's charge current
 // limit logic.
 const uint32_t kSlowChargingDisabled = std::numeric_limits<uint32_t>::max();
@@ -1706,12 +1713,21 @@ void AdaptiveChargingController::StartChargeLimit() {
   DCHECK(state_ != AdaptiveChargingState::ACTIVE);
   LOG(INFO) << "Starting Charge Limit.";
   if (!is_sustain_set_) {
-    // TODO(b/295239614) Battery sustainer doesn't work when the battery is full
-    // (and not charging), but this can be worked around by discharging the
-    // battery for a second before enabling the battery sustainer. Remove this
-    // after all platforms have EC firmware with the fix to this bug.
+    // TODO(b/295239614) Remove this workaround after all platforms have EC
+    // firmware with the fix to this bug.
+    // Workaround for b/295239614: On some boards, the EC charging task is
+    // inactive when the battery is physically full, which prevents the battery
+    // sustainer from engaging. Forcing a brief discharge first wakes up the EC
+    // task, allowing the sustainer to be set correctly. This check is
+    // intentionally strict, triggering only when the battery state is FULL and
+    // display percentage is high (>= kPowerSupplyFullFactorPercent), to ensure
+    // the workaround runs only when the battery is at its maximum physical
+    // capacity, not when Charge Limit is simply holding the charge at 80%.
+    // Remove this after all platforms have EC firmware with the fix to this
+    // bug.
     const system::PowerStatus status = power_supply_->GetPowerStatus();
-    if (status.battery_state == PowerSupplyProperties_BatteryState_FULL) {
+    if (status.battery_state == PowerSupplyProperties_BatteryState_FULL &&
+        status.display_battery_percentage >= kPowerSupplyFullFactorPercent) {
       if (state_ == AdaptiveChargingState::SHUTDOWN) {
         LOG(INFO) << "Not enabling Charge Limit after shutdown started due to "
                   << "full battery workaround";

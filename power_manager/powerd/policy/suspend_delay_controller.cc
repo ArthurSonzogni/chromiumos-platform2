@@ -192,18 +192,18 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id,
             << delay_ids_being_waited_on_.size() << " pending delay(s) and "
             << old_count << " outstanding delay(s) from previous request";
 
-  const bool waiting =
+  waiting_for_delays_ =
       !delay_ids_being_waited_on_.empty() || !internal_delays_.empty();
 
   if (in_dark_resume) {
     min_delay_expiration_timer_.Start(
         FROM_HERE, dark_resume_min_delay_, this,
         &SuspendDelayController::OnMinDelayExpiration);
-  } else if (!waiting) {
+  } else if (!waiting_for_delays_) {
     PostNotifyObserversTask(current_suspend_id_);
   }
 
-  if (waiting) {
+  if (waiting_for_delays_) {
     base::TimeDelta max_timeout;
     for (DelayInfoMap::const_iterator it = registered_delays_.begin();
          it != registered_delays_.end(); ++it) {
@@ -225,6 +225,7 @@ void SuspendDelayController::FinishSuspend(int suspend_id) {
 
   max_delay_expiration_timer_.Stop();
   min_delay_expiration_timer_.Stop();
+  waiting_for_delays_ = false;
   delay_ids_being_waited_on_.clear();
   internal_delays_.clear();
   suspend_readiness_notified_ = false;
@@ -260,8 +261,13 @@ void SuspendDelayController::RemoveDelayFromWaitList(int delay_id) {
 }
 
 void SuspendDelayController::NotifyIfReadyForSuspend() {
+  // Only proceed if the controller is actively waiting for delays to complete.
+  if (!waiting_for_delays_) {
+    return;
+  }
   if (ReadyForSuspend()) {
     max_delay_expiration_timer_.Stop();
+    waiting_for_delays_ = false;
     PostNotifyObserversTask(current_suspend_id_);
   }
 }
@@ -294,6 +300,7 @@ void SuspendDelayController::OnMaxDelayExpiration() {
 
   delay_ids_being_waited_on_.clear();
   internal_delays_.clear();
+  waiting_for_delays_ = false;
   PostNotifyObserversTask(current_suspend_id_);
 }
 
@@ -301,6 +308,7 @@ void SuspendDelayController::OnMinDelayExpiration() {
   TRACE_EVENT("power", "SuspendDelayController::OnMinDelayExpiration");
   if (delay_ids_being_waited_on_.empty() && internal_delays_.empty()) {
     max_delay_expiration_timer_.Stop();
+    waiting_for_delays_ = false;
     PostNotifyObserversTask(current_suspend_id_);
   }
 }
