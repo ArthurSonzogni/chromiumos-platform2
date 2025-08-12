@@ -7,6 +7,7 @@ use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
 use std::iter::FromIterator;
 use std::os::fd::OwnedFd;
 use std::os::unix::io::AsRawFd;
@@ -25,8 +26,8 @@ use dbus::{
 };
 use libchromeos::chromeos::is_dev_mode;
 use libchromeos::OpenSafelyOptions;
-use protobuf::EnumOrUnknown;
 use protobuf::Message as ProtoMessage;
+use protobuf::{Enum, EnumOrUnknown};
 use system_api::cicerone_service::*;
 use system_api::client::OrgChromiumDebugd;
 use system_api::client::OrgChromiumDlcServiceInterface;
@@ -46,6 +47,12 @@ use system_api::vm_plugin_dispatcher::VmErrorCode;
 
 use crate::disk::{DiskInfo, DiskOpType, VmDiskImageType, VmState, VmType as DiskVmType};
 use crate::proto::system_api::*;
+
+const ZSTD_SEEKABLE_FOOTER_MAGIC: u32 = 0x8F92EAB1;
+const ZSTD_VM_METADATA_FRAME_MAGIC: u32 = 0x184D2A55;
+const ZSTD_COMPRESSED_FRAME_MAGIC: u32 = 0xFD2FB528;
+const VM_METADATA_MAGIC: &str = "CROSVMEXPMETA";
+const DISK_IMAGE_VM_TYPE_XATTR: &str = "user.crostini.vm_type";
 
 const REMOVABLE_MEDIA_ROOT: &str = "/media/removable";
 const CRYPTOHOME_USER: &str = "/home/user";
@@ -2281,7 +2288,7 @@ impl Methods {
         let sessions = self.sessions_list()?;
         let email = sessions
             .iter()
-            .find(|(_, hash)| hash == &user_id_hash)
+            .find(|(_, hash)| hash == user_id_hash)
             .map(|(email, _)| email)
             .ok_or(MissingActiveSession)?;
 
@@ -2466,7 +2473,7 @@ impl Methods {
     ) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         let vm_info = self.get_vm_info(name, user_id_hash)?;
-        self.unshare_path_with_vm(vm_info.seneschal_server_handle.try_into()?, path)
+        self.unshare_path_with_vm(vm_info.seneschal_server_handle, path)
     }
 
     pub fn vsh_exec(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
@@ -2782,5 +2789,106 @@ impl Methods {
         )?;
 
         Ok(response.log)
+    }
+
+    pub fn inspect_backup_file(
+        &mut self,
+        user_id_hash: &str,
+        file_path: &str,
+        removable_media: Option<&str>,
+    ) -> Result<String, Box<dyn Error>> {
+        let (mut file, _) = open_user_path(
+            user_id_hash,
+            file_path,
+            removable_media,
+            OpenSafelyOptions::new().read(true),
+        )?;
+        let file_size = file.seek(SeekFrom::End(0))?;
+
+        if file_size < 9 {
+            return Err("File is too small to be a zstd seekable archive".into());
+        }
+
+        if file_size < 40 {
+            return Err("File is too small to contain vm_type info".into());
+        }
+
+        // Check for zstd seekable magic number
+        let mut magic_buffer = [0u8; 4];
+        file.seek(SeekFrom::End(-4))?;
+        file.read_exact(&mut magic_buffer)?;
+        if u32::from_le_bytes(magic_buffer) != ZSTD_SEEKABLE_FOOTER_MAGIC {
+            return Err("Not a zstd seekable archive".into());
+        }
+
+        // Read the seek table footer
+        let mut footer_buffer = [0u8; 9];
+        file.seek(SeekFrom::End(-9))?;
+        file.read_exact(&mut footer_buffer)?;
+
+        let number_of_frames = u32::from_le_bytes(footer_buffer[0..4].try_into()?);
+        let seek_table_descriptor = footer_buffer[4];
+        let checksum_flag = (seek_table_descriptor & 0x80) != 0;
+
+        let seek_table_entry_size = if checksum_flag { 12 } else { 8 };
+        let seek_table_size = number_of_frames as u64 * seek_table_entry_size;
+
+        // The vm_type is in a skippable frame before the seek table frame.
+        // The seek table frame itself is a skippable frame, so we need to find the one before it.
+
+        // Skippable_Magic_Number + Frame_Size + Seek_Table_Entries + Seek_Table_Footer
+        let seek_table_frame_size = 4 + 4 + seek_table_size + 9;
+        file.seek(SeekFrom::End(-(seek_table_frame_size as i64)))?;
+
+        // Now we are at the beginning of the seek table frame. We need to go
+        // back further to find the vm_type skippable frame.
+        // We will read backwards until we find metadata skippable frame magic.
+        let mut pos = file.stream_position()?;
+        while pos > 0 {
+            pos -= 1;
+            file.seek(SeekFrom::Start(pos))?;
+            let mut magic_buffer = [0u8; 4];
+            file.read_exact(&mut magic_buffer)?;
+            if u32::from_le_bytes(magic_buffer) == ZSTD_VM_METADATA_FRAME_MAGIC {
+                // Found a potential vm metadata skippable frame. Check if it's the vm_type frame.
+                let mut frame_size_buffer: [u8; 4] = [0u8; 4];
+                file.read_exact(&mut frame_size_buffer)?;
+                let frame_size = u32::from_le_bytes(frame_size_buffer);
+
+                let mut frame_content_buffer = vec![0u8; frame_size as usize];
+                file.read_exact(&mut frame_content_buffer)?;
+
+                // Check for metadata magic and key, then parse the vm_type.
+                let parts: Vec<&[u8]> = frame_content_buffer.split(|&b| b == 0).collect();
+                if parts.len() < 3 {
+                    return Err("Invalid metadata format".into());
+                }
+
+                if parts[0] != VM_METADATA_MAGIC.as_bytes() {
+                    return Err("Invalid metadata magic".into());
+                }
+
+                if parts[1] != DISK_IMAGE_VM_TYPE_XATTR.as_bytes() {
+                    return Err("Invalid metadata key".into());
+                }
+
+                let value_str = std::str::from_utf8(parts[2])?;
+                let vm_type_int: i32 = value_str.parse()?;
+                let vm_type_str = match VmType::from_i32(vm_type_int).unwrap_or(VmType::UNKNOWN) {
+                    VmType::UNKNOWN => format!("Unknown ({vm_type_int})"),
+                    VmType::TERMINA => DiskVmType::Termina.to_string(),
+                    VmType::ARC_VM => DiskVmType::ArcVm.to_string(),
+                    VmType::PLUGIN_VM => DiskVmType::PluginVm.to_string(),
+                    VmType::BOREALIS => DiskVmType::Borealis.to_string(),
+                    VmType::BRUSCHETTA => DiskVmType::Bruschetta.to_string(),
+                    VmType::BAGUETTE => DiskVmType::Baguette.to_string(),
+                };
+                return Ok(vm_type_str);
+            } else if u32::from_le_bytes(magic_buffer) == ZSTD_COMPRESSED_FRAME_MAGIC {
+                return Err("No vm type info found in backup.".into());
+            }
+        }
+
+        Err("No vm_type found in backup".into())
     }
 }

@@ -437,10 +437,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             Some(s) => Some(parse_disk_size(&s)?),
             None => None,
         };
-        let source = match matches.opt_str("source") {
-            Some(path) => Some(path),
-            None => None,
-        };
         let vm_type = match matches.opt_str("vm-type") {
             None => unreachable!(),
             Some(vm_type) => match vm_type.to_uppercase().as_ref() {
@@ -472,7 +468,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             file_name,
             removable_media,
             params,
-            source.as_deref(),
+            matches.opt_str("source").as_deref(),
             vm_type
         )) {
             println!("VM creation in progress: {}", uuid);
@@ -1077,6 +1073,22 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         println!("Problem report has been sent. Report ID: {}", report_id);
         Ok(())
     }
+
+    fn inspect_backup(&mut self) -> VmcResult {
+        let (file_path, removable_media) = match self.args.len() {
+            1 => (self.args[0], None),
+            2 => (self.args[0], Some(self.args[1])),
+            _ => return Err(ExpectedPath.into()),
+        };
+
+        let vm_type = try_command!(self.methods.inspect_backup_file(
+            self.user_id_hash,
+            file_path,
+            removable_media
+        ));
+        println!("VM type of this backup is: {vm_type}");
+        Ok(())
+    }
 }
 
 const USAGE: &str = " [
@@ -1099,6 +1111,7 @@ const USAGE: &str = " [
   |  disk-op-status <command UUID>
   |  export [-d] [-f] <vm name> <file name> [<removable storage name>]
   |  import [-p] <vm name> <file name> [<removable storage name>]
+  |  inspect-backup <file name> [<removable storage name>]
   |  resize <vm name> <size>
   |  list
   |  logs <vm name>
@@ -1204,6 +1217,7 @@ impl Vmc<'_> {
             "usb-list" => command.usb_list(),
             "key-attach" => command.key_attach(),
             "pvm.send-problem-report" => command.pvm_send_problem_report(),
+            "inspect-backup" => command.inspect_backup(),
             "allow-all-io-devices" => {
                 self.try_chromebox_command(|| command.allow_all_io_devices(), command_name)
             }
