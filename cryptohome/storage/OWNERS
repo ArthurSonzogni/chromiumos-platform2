@@ -1,6 +1,5 @@
-dlunev@chromium.org
-gwendal@chromium.org
+include chromiumos/owners:v1:/platform/OWNERS.storage
+
 hashimoto@chromium.org
 jorgelo@chromium.org
 oka@chromium.org
-sarthakkukreti@google.com
