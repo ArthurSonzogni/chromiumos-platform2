@@ -15,6 +15,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 
 constexpr char kInstallTypeFile[] =
@@ -197,36 +198,58 @@ bool SendBootMethodMetric(MetricsLibraryInterface& metrics,
   return metrics.SendEnumToUMA("Platform.FlexBootMethod", boot_method);
 }
 
-bool ShouldSendFlexorInstallMetric(const base::FilePath& root) {
-  const auto install_type_path = root.Append(kInstallTypeFile);
+InstallMethod InstallMethodFromString(std::string_view method) {
+  if (method == "flexor") {
+    return InstallMethod::kFlexor;
+  }
 
+  return InstallMethod::kUnknown;
+}
+
+InstallState GetInstallState(const base::FilePath& root) {
+  InstallState state;
+
+  const auto install_type_path = root.Append(kInstallTypeFile);
   if (!base::PathExists(install_type_path)) {
-    return false;
+    return state;
+  } else {
+    // We still have our install_type file,
+    // so we're still in the "just installed" phase.
+    state.just_installed = true;
   }
 
   // Try to read the file, but if we can't that's fine: we'll try again later.
   std::string content;
   size_t max_len = 32;
-  if (base::ReadFileToStringWithMaxSize(install_type_path, &content, max_len)) {
-    if (base::TrimWhitespaceASCII(content, base::TRIM_TRAILING) == "flexor") {
-      LOG(INFO) << "Flexor was used to install.";
-      // Only return true if we manage to delete, to avoid double-sends.
-      // If it stays we'll send next time.
-      return base::DeleteFile(install_type_path);
-    }
-  } else {
+  if (!base::ReadFileToStringWithMaxSize(install_type_path, &content,
+                                         max_len)) {
     LOG(WARNING) << "Install type file is present but could not be read.";
+    return state;
+  }
+
+  std::string_view method =
+      base::TrimWhitespaceASCII(content, base::TRIM_TRAILING);
+  LOG(INFO) << "Successfully read install method: " << method;
+  state.method = InstallMethodFromString(method);
+
+  return state;
+}
+
+bool MaybeSendInstallMethodMetric(MetricsLibraryInterface& metrics,
+                                  const base::FilePath& root,
+                                  InstallState state) {
+  if (!state.just_installed || state.method == InstallMethod::kUnknown) {
+    return true;
+  }
+
+  const auto install_type_path = root.Append(kInstallTypeFile);
+  // Only return true if we manage to delete, to avoid double-sends.
+  // If it stays we'll send next time.
+  if (brillo::DeleteFile(install_type_path)) {
+    return metrics.SendEnumToUMA("Platform.FlexInstallMethod", state.method);
   }
 
   return false;
-}
-
-bool SendFlexorInstallMetric(MetricsLibraryInterface& metrics) {
-  // This metric is a count of flexor installs, so there's only one bucket.
-  const int sample = 0, min = 0, max = 0;
-  const int nbuckets = 1;
-  return metrics.SendToUMA("Platform.FlexInstalledViaFlexor", sample, min, max,
-                           nbuckets);
 }
 
 std::optional<std::string> GetHistoryFromFwupdmgr() {

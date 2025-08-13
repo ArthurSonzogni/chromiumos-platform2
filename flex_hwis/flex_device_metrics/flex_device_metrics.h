@@ -163,20 +163,42 @@ BootMethod GetBootMethod(const base::FilePath& root);
 bool SendBootMethodMetric(MetricsLibraryInterface& metrics,
                           BootMethod boot_method);
 
-// Whether FRD/flexor was used to install the device.
+// Enum representing the method used to install Flex.
 //
-// Only returns true one time per install.
-bool ShouldSendFlexorInstallMetric(const base::FilePath& root);
+// Not all installation methods are tracked.
+//
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class InstallMethod { kUnknown = 0, kFlexor = 1, kMaxValue = kFlexor };
 
-// Send the FRD install metric.
+InstallMethod InstallMethodFromString(std::string_view method);
+
+// Describes state we care about when deciding whether to send an install metric
 //
-// This is a metric with only one bucket.
+// We should only send a metric when we've just installed, and have a known
+// method of installation.
+struct InstallState {
+  bool just_installed = false;
+  InstallMethod method = InstallMethod::kUnknown;
+};
+
+// Get the state needed for the install metric.
+InstallState GetInstallState(const base::FilePath& root);
+
+// Send the install type metric.
 //
-// Returns true on success, false if any error occurs.
-// NB: Because `ShouldSendFlexorInstallMetric` will only return true once per
-// install, a failure to send here will result in an under-counting of flexor
-// installs. For realistic rates of failure, that should be fine.
-bool SendFlexorInstallMetric(MetricsLibraryInterface& metrics);
+// This won't send the metric if `just_installed` is `false` or `InstallMethod`
+// is `kUnknown`.
+//
+// This attempts to delete the `install_type` file before sending, which should
+// mean this only sends once per install. If deletion fails the metric won't be
+// sent, to avoid issues with deletion causing significant over-reporting.
+//
+// Returns false if there's a noteworthy failure, something to exit non-0 over.
+// Returns true otherwise.
+bool MaybeSendInstallMethodMetric(MetricsLibraryInterface& metrics,
+                                  const base::FilePath& root,
+                                  InstallState install_state);
 
 // Query the fwupdmgr for the update history as a raw json string.
 //

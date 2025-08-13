@@ -16,6 +16,7 @@
 
 #include "base/time/time.h"
 
+using testing::_;
 using testing::Return;
 using testing::StrictMock;
 
@@ -224,34 +225,105 @@ TEST(FlexBootMethodMetrics, SendBootMethodMetric) {
   EXPECT_TRUE(SendBootMethodMetric(metrics, BootMethod::kUefi64));
 }
 
-// Test detection and deletion of the installed_via_frd file.
-TEST(FlexFlexorInstallMetrics, ShouldSendFlexorInstallMetric) {
+// Test converting string to `InstallMethod`.
+TEST(FlexInstallMethodMetrics, InstallMethodFromString) {
+  ASSERT_EQ(InstallMethodFromString("flexor"), InstallMethod::kFlexor);
+
+  ASSERT_EQ(InstallMethodFromString(""), InstallMethod::kUnknown);
+  ASSERT_EQ(InstallMethodFromString("Flexor"), InstallMethod::kUnknown);
+  ASSERT_EQ(InstallMethodFromString("flexors"), InstallMethod::kUnknown);
+  ASSERT_EQ(InstallMethodFromString("aflexor"), InstallMethod::kUnknown);
+  ASSERT_EQ(InstallMethodFromString(" flexor"), InstallMethod::kUnknown);
+  ASSERT_EQ(InstallMethodFromString("flexor "), InstallMethod::kUnknown);
+
+  ASSERT_EQ(InstallMethodFromString("remote deploy"), InstallMethod::kUnknown);
+  ASSERT_EQ(InstallMethodFromString("mass deploy"), InstallMethod::kUnknown);
+}
+
+// Test reading `InstallState` based on the file.
+TEST(FlexInstallMethodMetrics, GetInstallState) {
   base::ScopedTempDir root_dir;
   CHECK(root_dir.CreateUniqueTempDir());
+  base::FilePath root_path = root_dir.GetPath();
 
-  EXPECT_EQ(ShouldSendFlexorInstallMetric(root_dir.GetPath()), false);
+  InstallState got = GetInstallState(root_path);
+  EXPECT_EQ(got.just_installed, false);
+  EXPECT_EQ(got.method, InstallMethod::kUnknown);
 
   const auto unencrypted_stateful_dir = root_dir.GetPath().Append(
       "mnt/stateful_partition/unencrypted/install_metrics");
-  const auto frd_install_path = unencrypted_stateful_dir.Append("install_type");
-
+  const auto install_type_path =
+      unencrypted_stateful_dir.Append("install_type");
   ASSERT_TRUE(base::CreateDirectory(unencrypted_stateful_dir));
-  ASSERT_TRUE(base::WriteFile(frd_install_path, ""));
-  EXPECT_EQ(ShouldSendFlexorInstallMetric(root_dir.GetPath()), false);
-  EXPECT_EQ(base::PathExists(frd_install_path), true);
 
-  ASSERT_TRUE(base::WriteFile(frd_install_path, "flexor"));
-  EXPECT_EQ(ShouldSendFlexorInstallMetric(root_dir.GetPath()), true);
-  EXPECT_EQ(base::PathExists(frd_install_path), false);
+  ASSERT_TRUE(base::WriteFile(install_type_path, ""));
+  got = GetInstallState(root_path);
+  EXPECT_EQ(got.just_installed, true);
+  EXPECT_EQ(got.method, InstallMethod::kUnknown);
+
+  ASSERT_TRUE(base::WriteFile(install_type_path, "flexor"));
+  got = GetInstallState(root_path);
+  EXPECT_EQ(got.just_installed, true);
+  EXPECT_EQ(got.method, InstallMethod::kFlexor);
 }
 
-// Test successfully sending the FRD install metric.
-TEST(FlexFlexorInstallMetrics, SendFlexorInstallMetric) {
-  StrictMock<MetricsLibraryMock> metrics;
-  EXPECT_CALL(metrics, SendToUMA("Platform.FlexInstalledViaFlexor", 0, 0, 0, 1))
-      .WillOnce(Return(true));
+// Test successful sends of the FRD install metric.
+TEST(FlexFlexorInstallMetrics, SendFlexorInstallMetric_Success) {
+  base::ScopedTempDir root_dir;
+  CHECK(root_dir.CreateUniqueTempDir());
+  base::FilePath root_path = root_dir.GetPath();
 
-  EXPECT_TRUE(SendFlexorInstallMetric(metrics));
+  StrictMock<MetricsLibraryMock> metrics;
+
+  EXPECT_CALL(metrics, SendEnumToUMA("Platform.FlexInstallMethod", _, 2))
+      .WillRepeatedly(Return(true));
+
+  // These pass without checking the existence of the file.
+  InstallState expected =
+      InstallState{.just_installed = true, .method = InstallMethod::kUnknown};
+  EXPECT_TRUE(MaybeSendInstallMethodMetric(metrics, root_path, expected));
+  expected =
+      InstallState{.just_installed = false, .method = InstallMethod::kUnknown};
+  EXPECT_TRUE(MaybeSendInstallMethodMetric(metrics, root_path, expected));
+
+  const auto unencrypted_stateful_dir = root_dir.GetPath().Append(
+      "mnt/stateful_partition/unencrypted/install_metrics");
+  const auto install_type_path =
+      unencrypted_stateful_dir.Append("install_type");
+  ASSERT_TRUE(base::CreateDirectory(unencrypted_stateful_dir));
+  ASSERT_TRUE(base::WriteFile(install_type_path, ""));
+
+  expected =
+      InstallState{.just_installed = true, .method = InstallMethod::kFlexor};
+  EXPECT_TRUE(MaybeSendInstallMethodMetric(metrics, root_path, expected));
+}
+
+// Test failure cases of the FRD install metric.
+TEST(FlexFlexorInstallMetrics, SendFlexorInstallMetric_Failure) {
+  base::ScopedTempDir root_dir;
+  CHECK(root_dir.CreateUniqueTempDir());
+  base::FilePath root_path = root_dir.GetPath();
+
+  StrictMock<MetricsLibraryMock> metrics;
+
+  EXPECT_CALL(metrics, SendEnumToUMA("Platform.FlexInstallMethod", _, 2))
+      .WillRepeatedly(Return(false));
+
+  InstallState expected =
+      InstallState{.just_installed = true, .method = InstallMethod::kFlexor};
+
+  // No file to delete,
+  EXPECT_FALSE(MaybeSendInstallMethodMetric(metrics, root_path, expected));
+
+  const auto unencrypted_stateful_dir = root_dir.GetPath().Append(
+      "mnt/stateful_partition/unencrypted/install_metrics");
+  const auto install_type_path =
+      unencrypted_stateful_dir.Append("install_type");
+  ASSERT_TRUE(base::CreateDirectory(unencrypted_stateful_dir));
+  ASSERT_TRUE(base::WriteFile(install_type_path, ""));
+
+  // Now there's a file to delete, but SendEnum will fail.
+  EXPECT_FALSE(MaybeSendInstallMethodMetric(metrics, root_path, expected));
 }
 
 struct StringToAttemptStatusTestParam {

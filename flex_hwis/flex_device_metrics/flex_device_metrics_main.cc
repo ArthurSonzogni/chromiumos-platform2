@@ -56,6 +56,8 @@ int main() {
 
   MetricsLibrary metrics;
 
+  base::FilePath root{"/"};
+
   int rc = EXIT_SUCCESS;
 
   if (!GatherAndSendDiskMetrics(metrics)) {
@@ -66,14 +68,12 @@ int main() {
     rc = EXIT_FAILURE;
   }
 
-  if (!SendBootMethodMetric(metrics, GetBootMethod(base::FilePath("/")))) {
+  if (!SendBootMethodMetric(metrics, GetBootMethod(root))) {
     rc = EXIT_FAILURE;
   }
 
-  if (ShouldSendFlexorInstallMetric(base::FilePath("/"))) {
-    if (!SendFlexorInstallMetric(metrics)) {
-      rc = EXIT_FAILURE;
-    }
+  if (!MaybeSendInstallMethodMetric(metrics, root, GetInstallState(root))) {
+    rc = EXIT_FAILURE;
   }
 
   return rc;
