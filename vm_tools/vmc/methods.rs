@@ -1594,6 +1594,22 @@ impl Methods {
         }
     }
 
+    fn wait_for_baguette_start(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+    ) -> Result<(), Box<dyn Error>> {
+        let lxd_started = ProtobusSignalWatcher::new(
+            self.connection.connection.as_ref(),
+            VM_CICERONE_INTERFACE,
+            CONTAINER_STARTED_SIGNAL,
+        )?;
+        lxd_started.wait_with_filter(DEFAULT_TIMEOUT, |s: &ContainerStartedSignal| {
+            s.vm_name == vm_name && s.owner_id == user_id_hash
+        })?;
+        Ok(())
+    }
+
     fn parse_plugin_vm_response(
         &mut self,
         error: EnumOrUnknown<VmErrorCode>,
@@ -2319,6 +2335,7 @@ impl Methods {
         user_disks: UserDisks,
         start_lxd: bool,
         user_info: Option<UserInfo>,
+        vm_type: Option<VmType>,
     ) -> Result<(), Box<dyn Error>> {
         if self.is_plugin_vm(name, user_id_hash)? {
             self.ensure_plugin_vm_available(user_id_hash)?;
@@ -2340,6 +2357,9 @@ impl Methods {
             )?;
             if start_lxd {
                 self.start_lxd(name, user_id_hash)?;
+            }
+            if vm_type == Some(VmType::BAGUETTE) {
+                self.wait_for_baguette_start(name, user_id_hash)?;
             }
             if let Some(info) = user_info {
                 self.setup_vm_user(name, user_id_hash, info)?;

@@ -356,7 +356,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         let group_names = match (vm_type, matches.opt_str("user-groups")) {
             (Some(VmType::BAGUETTE), None) => {
-                Some("cdrom,dialout,floppy,netdev,sudo,tss,video".into())
+                Some("audio,cdrom,dialout,floppy,kvm,netdev,sudo,tss,video".into())
             }
             (_, group_names) => group_names,
         };
@@ -365,17 +365,13 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             None => vec![],
         };
 
-        let user_name = match (vm_type, matches.opt_str("user")) {
-            (Some(VmType::BAGUETTE), None) => Some("chronos".into()),
-            (_, user_name) => user_name,
-        };
-        let user_info = match user_name {
+        let user_info = match matches.opt_str("user") {
             Some(username) => Some(UserInfo {
                 uid: matches.opt_str("user-uid").map(|x| x.parse()).transpose()?,
                 username,
                 group_names,
             }),
-            _ => None,
+            None => None,
         };
 
         self.metrics_send_sample("Vm.VmcStart");
@@ -387,11 +383,20 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             user_disks,
             start_lxd,
             user_info,
+            vm_type,
         ));
         self.metrics_send_sample("Vm.VmcStartSuccess");
 
         if !matches.opt_present("no-shell") {
-            try_command!(self.methods.vsh_exec(vm_name, self.user_id_hash));
+            match vm_type {
+                // Baguette is containerless but we pretend it has penguin.
+                Some(VmType::BAGUETTE) => try_command!(self.methods.vsh_exec_container(
+                    vm_name,
+                    self.user_id_hash,
+                    "penguin"
+                )),
+                _ => try_command!(self.methods.vsh_exec(vm_name, self.user_id_hash)),
+            };
         }
 
         Ok(())

@@ -11,16 +11,17 @@
 #include <pwd.h>
 #include <signal.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/signalfd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
 
-#include <sys/ioctl.h>
-#include <sys/signalfd.h>
+// clang-format off
 #include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
+// clang-format on
 
 #include <algorithm>
 #include <map>
@@ -45,8 +46,8 @@
 #include <brillo/key_value_store.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/syslog_logging.h>
-#include <vm_protos/proto_bindings/vsh.pb.h>
 #include <chromeos/constants/vm_tools.h>
+#include <vm_protos/proto_bindings/vsh.pb.h>
 
 #include "vm_tools/vsh/utils.h"
 
@@ -127,8 +128,11 @@ bool VshForwarder::Init() {
     passwd = getpwnam(user.c_str());  // NOLINT(runtime/threadsafe_fn)
     if (!passwd) {
       PLOG(ERROR) << "Failed to get passwd entry for user " << user;
-      SendConnectionResponse(FAILED,
-                             std::string("could not find user: ") + user);
+      SendConnectionResponse(
+          FAILED,
+          std::string("could not find user: ") + user +
+              std::string(", if attempting to connect to a containerless guest "
+                          "please use `vsh termina penguin`."));
       return false;
     }
   }
@@ -199,11 +203,11 @@ bool VshForwarder::Init() {
         connection_request.window_cols() > 0 &&
         connection_request.window_rows() <= USHRT_MAX &&
         connection_request.window_cols() <= USHRT_MAX) {
-      struct winsize ws {
-        .ws_row = (unsigned short)  // NOLINT(runtime/int)
-                  connection_request.window_rows(),
-        .ws_col = (unsigned short)  // NOLINT(runtime/int)
-                  connection_request.window_cols(),
+      struct winsize ws{
+          .ws_row = (unsigned short)  // NOLINT(runtime/int)
+                    connection_request.window_rows(),
+          .ws_col = (unsigned short)  // NOLINT(runtime/int)
+                    connection_request.window_cols(),
       };
       if (ioctl(ptm_fd_.get(), TIOCSWINSZ, &ws) < 0) {
         PLOG(ERROR) << "Failed to set initial window size";
