@@ -28,42 +28,8 @@ namespace reporting {
 class UploadJob : public Scheduler::Job {
  public:
   using EncryptedRecords = std::vector<EncryptedRecord>;
-  using SetRecordsCb = base::OnceCallback<void(EncryptedRecords)>;
   using DoneCb =
       base::OnceCallback<void(StatusOr<EncryptedRecords>, ScopedReservation)>;
-
-  class UploadDelegate : public Job::JobDelegate {
-   public:
-    UploadDelegate(scoped_refptr<UploadClient> upload_client,
-                   bool need_encryption_key,
-                   scoped_refptr<HealthModule> health_module,
-                   uint64_t remaining_storage_capacity,
-                   std::optional<uint64_t> new_events_rate,
-                   UploadClient::HandleUploadResponseCallback response_cb);
-    UploadDelegate(const UploadDelegate& other) = delete;
-    UploadDelegate& operator=(const UploadDelegate& other) = delete;
-    ~UploadDelegate() override;
-
-    SetRecordsCb GetSetRecordsCb();
-
-   private:
-    Status Complete() override;
-    Status Cancel(Status status) override;
-
-    void SetRecords(EncryptedRecords records);
-
-    const scoped_refptr<UploadClient> upload_client_;
-    const bool need_encryption_key_;
-    scoped_refptr<HealthModule> health_module_;
-
-    EncryptedRecords encrypted_records_;
-    ScopedReservation encrypted_records_reservation_;
-
-    uint64_t remaining_storage_capacity_;
-    std::optional<uint64_t> new_events_rate_;
-
-    UploadClient::HandleUploadResponseCallback response_cb_;
-  };
 
   class RecordProcessor : public UploaderInterface {
    public:
@@ -93,6 +59,43 @@ class UploadJob : public Scheduler::Job {
     SEQUENCE_CHECKER(sequence_checker_);
   };
 
+  class UploadDelegate : public Job::JobDelegate {
+   public:
+    UploadDelegate(scoped_refptr<UploadClient> upload_client,
+                   bool need_encryption_key,
+                   scoped_refptr<HealthModule> health_module,
+                   uint64_t remaining_storage_capacity,
+                   std::optional<uint64_t> new_events_rate,
+                   UploadClient::HandleUploadResponseCallback response_cb);
+    UploadDelegate(const UploadDelegate& other) = delete;
+    UploadDelegate& operator=(const UploadDelegate& other) = delete;
+    ~UploadDelegate() override;
+
+    static void SendRecords(base::WeakPtr<UploadDelegate> self,
+                            base::OnceCallback<void(Status)> done_cb,
+                            StatusOr<EncryptedRecords> encrypted_records,
+                            ScopedReservation reservation);
+
+    base::WeakPtr<UploadDelegate> GetWeakPtr() {
+      return weak_ptr_factory_.GetWeakPtr();
+    }
+
+   private:
+    Status Complete() override;
+    Status Cancel(Status status) override;
+
+    const scoped_refptr<UploadClient> upload_client_;
+    const bool need_encryption_key_;
+    scoped_refptr<HealthModule> health_module_;
+
+    uint64_t remaining_storage_capacity_;
+    std::optional<uint64_t> new_events_rate_;
+
+    UploadClient::HandleUploadResponseCallback response_cb_;
+
+    base::WeakPtrFactory<UploadDelegate> weak_ptr_factory_{this};
+  };
+
   UploadJob(const UploadJob& other) = delete;
   UploadJob& operator=(const UploadJob& other) = delete;
 
@@ -107,19 +110,14 @@ class UploadJob : public Scheduler::Job {
 
  protected:
   void StartImpl() override;
-  void Done(StatusOr<EncryptedRecords> records_result,
-            ScopedReservation records_reservation);
 
  private:
   UploadJob(std::unique_ptr<UploadDelegate> upload_delegate,
             scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
-            SetRecordsCb set_records_cb,
             UploaderInterface::UploaderInterfaceResultCb start_cb);
 
-  SetRecordsCb set_records_cb_;
   UploaderInterface::UploaderInterfaceResultCb start_cb_;
 
-  std::unique_ptr<UploadDelegate> upload_delegate_;
   base::WeakPtrFactory<UploadJob> weak_ptr_factory_{this};
 };
 

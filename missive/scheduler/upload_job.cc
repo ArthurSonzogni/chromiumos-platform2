@@ -11,6 +11,7 @@
 
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/scoped_refptr.h>
@@ -53,24 +54,35 @@ UploadJob::UploadDelegate::UploadDelegate(
       response_cb_(std::move(response_cb)) {}
 
 UploadJob::UploadDelegate::~UploadDelegate() = default;
-UploadJob::SetRecordsCb UploadJob::UploadDelegate::GetSetRecordsCb() {
-  return base::BindOnce(&UploadDelegate::SetRecords, base::Unretained(this));
+
+// static
+void UploadJob::UploadDelegate::SendRecords(
+    base::WeakPtr<UploadDelegate> self,
+    base::OnceCallback<void(Status)> done_cb,
+    StatusOr<EncryptedRecords> encrypted_records,
+    ScopedReservation reservation) {
+  if (!self) {
+    std::move(done_cb).Run(Status(error::CANCELLED, "UploadJob cancelled"));
+    return;
+  }
+  if (!encrypted_records.has_value()) {
+    std::move(done_cb).Run(encrypted_records.error());
+    return;
+  }
+  self->upload_client_->SendEncryptedRecords(
+      std::move(encrypted_records.value()), self->need_encryption_key_,
+      self->health_module_, self->remaining_storage_capacity_,
+      self->new_events_rate_, std::move(self->response_cb_));
+  std::move(done_cb).Run(Status::StatusOK());
 }
 
 Status UploadJob::UploadDelegate::Complete() {
-  upload_client_->SendEncryptedRecords(
-      std::move(encrypted_records_), need_encryption_key_, health_module_,
-      remaining_storage_capacity_, new_events_rate_, std::move(response_cb_));
   return Status::StatusOK();
 }
 
 Status UploadJob::UploadDelegate::Cancel(Status status) {
   // UploadJob has nothing to do in the event of cancellation.
   return Status::StatusOK();
-}
-
-void UploadJob::UploadDelegate::SetRecords(EncryptedRecords records) {
-  encrypted_records_ = std::move(records);
 }
 
 UploadJob::RecordProcessor::RecordProcessor(DoneCb done_cb)
@@ -148,41 +160,32 @@ StatusOr<Scheduler::Job::SmartPtr<UploadJob>> UploadJob::Create(
   auto upload_delegate = std::make_unique<UploadDelegate>(
       upload_client, need_encryption_key, std::move(health_module),
       remaining_storage_capacity, new_events_rate, std::move(response_cb));
-  SetRecordsCb set_records_callback = upload_delegate->GetSetRecordsCb();
-
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner =
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   return std::unique_ptr<UploadJob, base::OnTaskRunnerDeleter>(
       new UploadJob(std::move(upload_delegate), sequenced_task_runner,
-                    std::move(set_records_callback), std::move(start_cb)),
+                    std::move(start_cb)),
       base::OnTaskRunnerDeleter(sequenced_task_runner));
 }
 
 void UploadJob::StartImpl() {
+  auto delegate_weak_ptr =
+      static_cast<UploadJob::UploadDelegate*>(job_response_delegate_.get())
+          ->GetWeakPtr();
+
   std::move(start_cb_).Run(std::make_unique<RecordProcessor>(base::BindPostTask(
       sequenced_task_runner(),
-      base::BindOnce(&UploadJob::Done, weak_ptr_factory_.GetWeakPtr()))));
-}
-
-void UploadJob::Done(StatusOr<EncryptedRecords> records_result,
-                     ScopedReservation records_reservation) {
-  CheckValidSequence();
-  if (!records_result.has_value()) {
-    Finish(records_result.error());
-    return;
-  }
-  std::move(set_records_cb_).Run(std::move(records_result.value()));
-  Finish(Status::StatusOK());
+      base::BindOnce(&UploadJob::UploadDelegate::SendRecords, delegate_weak_ptr,
+                     base::BindOnce(&UploadJob::Finish,
+                                    weak_ptr_factory_.GetWeakPtr())))));
 }
 
 UploadJob::UploadJob(
     std::unique_ptr<UploadDelegate> upload_delegate,
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
-    SetRecordsCb set_records_cb,
     UploaderInterface::UploaderInterfaceResultCb start_cb)
     : Job(std::move(upload_delegate), sequenced_task_runner),
-      set_records_cb_(std::move(set_records_cb)),
       start_cb_(std::move(start_cb)) {}
 
 }  // namespace reporting
