@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <blkid/blkid.h>
 #include <brillo/udev/udev_device.h>
 #include <brillo/udev/utils.h>
@@ -26,6 +28,18 @@ UdevDeviceImpl::~UdevDeviceImpl() {
 
 bool UdevDeviceImpl::IsRemovable() const {
   return brillo::IsRemovable(*dev_);
+}
+
+bool UdevDeviceImpl::IsEmpty() const {
+  const char* size_str = dev_->GetSysAttributeValue("size");
+  if (!size_str) {
+    // If size is not available, assume it's empty.
+    LOG(ERROR) << "Failed to get device size.";
+    return true;
+  }
+
+  uint64_t size;
+  return base::StringToUint64(size_str, &size) && size == 0;
 }
 
 std::string UdevDeviceImpl::GetSysPath() const {

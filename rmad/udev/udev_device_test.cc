@@ -74,4 +74,39 @@ TEST_F(UdevDeviceTest, GetDeviceNode) {
   EXPECT_EQ("/dev/path", udev_device->GetDeviceNode());
 }
 
+TEST_F(UdevDeviceTest, IsEmpty_True) {
+  auto dev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
+  EXPECT_CALL(*dev, GetSysAttributeValue(StrEq("size"))).WillOnce(Return("0"));
+
+  auto udev_device = std::make_unique<UdevDeviceImpl>(std::move(dev));
+  EXPECT_TRUE(udev_device->IsEmpty());
+}
+
+TEST_F(UdevDeviceTest, IsEmpty_False_NonZeroSize) {
+  auto dev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
+  EXPECT_CALL(*dev, GetSysAttributeValue(StrEq("size")))
+      .WillOnce(Return("12345"));
+
+  auto udev_device = std::make_unique<UdevDeviceImpl>(std::move(dev));
+  EXPECT_FALSE(udev_device->IsEmpty());
+}
+
+TEST_F(UdevDeviceTest, IsEmpty_True_NoSizeAttribute) {
+  auto dev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
+  EXPECT_CALL(*dev, GetSysAttributeValue(StrEq("size")))
+      .WillOnce(Return(nullptr));
+
+  auto udev_device = std::make_unique<UdevDeviceImpl>(std::move(dev));
+  EXPECT_TRUE(udev_device->IsEmpty());
+}
+
+TEST_F(UdevDeviceTest, IsEmpty_False_InvalidSize) {
+  auto dev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
+  EXPECT_CALL(*dev, GetSysAttributeValue(StrEq("size")))
+      .WillOnce(Return("not a number"));
+
+  auto udev_device = std::make_unique<UdevDeviceImpl>(std::move(dev));
+  EXPECT_FALSE(udev_device->IsEmpty());
+}
+
 }  // namespace rmad

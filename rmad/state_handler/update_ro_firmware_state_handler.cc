@@ -244,7 +244,8 @@ UpdateRoFirmwareStateHandler::GetRemovableBlockDevices() const {
       udev_utils_->EnumerateBlockDevices();
   devices.erase(std::remove_if(devices.begin(), devices.end(),
                                [](const std::unique_ptr<UdevDevice>& device) {
-                                 return !device->IsRemovable();
+                                 return !device->IsRemovable() ||
+                                        device->IsEmpty();
                                }),
                 devices.end());
   return devices;

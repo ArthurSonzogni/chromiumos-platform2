@@ -21,6 +21,7 @@ class MockUdevDevice : public UdevDevice {
   ~MockUdevDevice() override = default;
 
   MOCK_METHOD(bool, IsRemovable, (), (const, override));
+  MOCK_METHOD(bool, IsEmpty, (), (const, override));
   MOCK_METHOD(std::string, GetSysPath, (), (const, override));
   MOCK_METHOD(std::string, GetDeviceNode, (), (const, override));
   MOCK_METHOD(std::string, GetFileSystemType, (), (override));

@@ -22,6 +22,7 @@ class UdevDevice {
   virtual ~UdevDevice() = default;
 
   virtual bool IsRemovable() const = 0;
+  virtual bool IsEmpty() const = 0;
   virtual std::string GetSysPath() const = 0;
   virtual std::string GetDeviceNode() const = 0;
   // Not a const method because the implementation updates |blkid_cache_|.
@@ -34,6 +35,7 @@ class UdevDeviceImpl : public UdevDevice {
   virtual ~UdevDeviceImpl();
 
   bool IsRemovable() const override;
+  bool IsEmpty() const override;
   std::string GetSysPath() const override;
   std::string GetDeviceNode() const override;
   std::string GetFileSystemType() override;
