@@ -919,6 +919,7 @@ bool TerminaVmImportOperation::PrepareInput() {
   // used as first frame.
   size_t file_size = lseek(in_fd_.get(), 0, SEEK_END);
   if (file_size < 4) {
+    set_status(DISK_STATUS_BAD_IMAGE);
     set_failure_reason("input file too small to be valid");
     return false;
   }
@@ -927,6 +928,7 @@ bool TerminaVmImportOperation::PrepareInput() {
   // read 4 bytes as a number
   uint32_t header_magic;
   if (HANDLE_EINTR(read(in_fd_.get(), &header_magic, 4)) != 4) {
+    set_status(DISK_STATUS_BAD_IMAGE);
     set_failure_reason("failed to read header");
     return false;
   }
@@ -940,6 +942,7 @@ bool TerminaVmImportOperation::PrepareInput() {
   }
   in_ = ArchiveReader(archive_read_new());
   if (!in_.get()) {
+    set_status(DISK_STATUS_BAD_IMAGE);
     set_failure_reason("libarchive: failed to create reader");
     return false;
   }
@@ -974,6 +977,7 @@ bool TerminaVmImportOperation::PrepareInput() {
 
   ret = archive_read_open_fd(in_.get(), in_fd_.get(), 102400);
   if (ret != ARCHIVE_OK) {
+    set_status(DISK_STATUS_BAD_IMAGE);
     set_failure_reason("failed to open input archive");
     return false;
   }

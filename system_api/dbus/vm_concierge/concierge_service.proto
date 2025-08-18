@@ -809,6 +809,9 @@ enum DiskImageStatus {
 
   // Operation failed because of lack of disk space.
   DISK_STATUS_NOT_ENOUGH_SPACE = 8;
+
+  // Operation failed due to bad provided source image
+  DISK_STATUS_BAD_IMAGE = 9;
 }
 
 enum DiskImageAllocationType {
