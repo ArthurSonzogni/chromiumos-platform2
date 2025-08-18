@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <absl/status/status.h>
+#include <base/byte_count.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <gtest/gtest.h>
 
@@ -48,9 +49,9 @@ TEST_F(ZramRecompressionTest, PeriodicRecompress) {
 
   // huge_idle
   // GetCurrentIdleTimeSec
-  base::SystemMemoryInfoKB mock_meminfo;
-  mock_meminfo.available = 346452;
-  mock_meminfo.total = 8144296;
+  base::SystemMemoryInfo mock_meminfo;
+  mock_meminfo.available = base::KiB(346452);
+  mock_meminfo.total = base::KiB(8144296);
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   // MarkIdle
   EXPECT_CALL(mock_util_,
@@ -63,7 +64,7 @@ TEST_F(ZramRecompressionTest, PeriodicRecompress) {
       .WillOnce(Return(absl::OkStatus()));
   // idle
   // GetCurrentIdleTimeSec
-  mock_meminfo.available = 348332;
+  mock_meminfo.available = base::KiB(348332);
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   // MarkIdle
   EXPECT_CALL(mock_util_,

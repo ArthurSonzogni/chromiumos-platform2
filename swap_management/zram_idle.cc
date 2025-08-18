@@ -16,7 +16,7 @@ absl::Status MarkIdle(uint32_t age_seconds) {
 }
 
 uint64_t GetCurrentIdleTimeSec(uint64_t min_sec, uint64_t max_sec) {
-  absl::StatusOr<base::SystemMemoryInfoKB> meminfo =
+  absl::StatusOr<base::SystemMemoryInfo> meminfo =
       Utils::Get()->GetSystemMemoryInfo();
   if (!meminfo.ok()) {
     LOG(ERROR) << "Can not read meminfo: " << meminfo.status();
@@ -26,7 +26,8 @@ uint64_t GetCurrentIdleTimeSec(uint64_t min_sec, uint64_t max_sec) {
 
   // Stay between idle_(min|max)_time.
   double mem_utilization =
-      (1.0 - (static_cast<double>((*meminfo).available) / (*meminfo).total));
+      (1.0 - (static_cast<double>((*meminfo).available.InKiB()) /
+              (*meminfo).total.InKiB()));
 
   // Exponentially decay the age vs. memory utilization. The reason
   // we choose exponential decay is because we want to do as little work as

@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <absl/status/status.h>
+#include <base/byte_count.h>
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <gtest/gtest.h>
@@ -72,11 +73,11 @@ class ZramWritebackTest : public ::testing::Test {
   void ExpectWriteback(std::string mode,
                        std::optional<uint32_t> idle_duration_seconds,
                        uint32_t after_writeback_limit,
-                       int available,
-                       int total) {
+                       base::ByteCount available,
+                       base::ByteCount total) {
     // GetCurrentIdleTimeSec
     if (idle_duration_seconds.has_value()) {
-      base::SystemMemoryInfoKB mock_meminfo;
+      base::SystemMemoryInfo mock_meminfo;
       mock_meminfo.available = available;
       mock_meminfo.total = total;
       EXPECT_CALL(mock_util_, GetSystemMemoryInfo())
@@ -248,9 +249,11 @@ TEST_F(ZramWritebackTest, PeriodicWriteback) {
       ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
       .WillOnce(DoAll(SetArgPointee<1>("21918\n"), Return(absl::OkStatus())));
 
-  ExpectWriteback("huge_idle", 72150, 8845, 346452, 8144296);
-  ExpectWriteback("idle", 72150, 5000, 348332, 8144296);
-  ExpectWriteback("huge", std::nullopt, 5000, 348332, 8144296);
+  ExpectWriteback("huge_idle", 72150, 8845, base::KiB(346452),
+                  base::KiB(8144296));
+  ExpectWriteback("idle", 72150, 5000, base::KiB(348332), base::KiB(8144296));
+  ExpectWriteback("huge", std::nullopt, 5000, base::KiB(348332),
+                  base::KiB(8144296));
 
   mock_zram_writeback_->PeriodicWriteback();
 }
@@ -284,8 +287,9 @@ TEST_F(ZramWritebackTest, PeriodicWritebackSkipOnWriteLimit) {
       ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
       .WillOnce(DoAll(SetArgPointee<1>("21918\n"), Return(absl::OkStatus())));
 
-  ExpectWriteback("huge_idle", 72150, 8845, 346452, 8144296);
-  ExpectWriteback("idle", 72150, 0, 348332, 8144296);
+  ExpectWriteback("huge_idle", 72150, 8845, base::KiB(346452),
+                  base::KiB(8144296));
+  ExpectWriteback("idle", 72150, 0, base::KiB(348332), base::KiB(8144296));
   // Skip huge page writeback since after_writeback_limit was 0.
 
   mock_zram_writeback_->PeriodicWriteback();
@@ -440,7 +444,7 @@ TEST_F(ZramWritebackTest, AdjustThresholdBySuspendTime) {
       .WillOnce(DoAll(SetArgPointee<1>("21918\n"), Return(absl::OkStatus())));
 
   // MarkIdle 75750 (= 72150 + 3600)
-  ExpectWriteback("huge_idle", 75750, 0, 346452, 8144296);
+  ExpectWriteback("huge_idle", 75750, 0, base::KiB(346452), base::KiB(8144296));
 
   SuspendHistory::Get()->OnSuspendImminent();
   SuspendHistory::Get()->OnSuspendDone(base::Hours(1));

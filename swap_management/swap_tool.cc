@@ -211,7 +211,7 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
 
   // 2. Feature
   // First, read /proc/meminfo for MemTotal in kiB.
-  absl::StatusOr<base::SystemMemoryInfoKB> meminfo =
+  absl::StatusOr<base::SystemMemoryInfo> meminfo =
       Utils::Get()->GetSystemMemoryInfo();
   if (!meminfo.ok()) {
     return meminfo.status();
@@ -219,7 +219,7 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
 
   // Should roundup with page size.
   return Utils::Get()->RoundupMultiple(
-      static_cast<uint64_t>((*meminfo).total) * 1024 * GetMultiplier(),
+      static_cast<uint64_t>((*meminfo).total.InBytes()) * GetMultiplier(),
       kPageSize);
 }
 

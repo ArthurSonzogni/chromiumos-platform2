@@ -5,12 +5,12 @@
 #ifndef SWAP_MANAGEMENT_MOCK_UTILS_H_
 #define SWAP_MANAGEMENT_MOCK_UTILS_H_
 
-#include "swap_management/utils.h"
-
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "swap_management/utils.h"
 
 namespace swap_management {
 
@@ -79,7 +79,7 @@ class MockUtils : public swap_management::Utils {
               GenerateRandHex,
               (size_t size),
               (override));
-  MOCK_METHOD(absl::StatusOr<base::SystemMemoryInfoKB>,
+  MOCK_METHOD(absl::StatusOr<base::SystemMemoryInfo>,
               GetSystemMemoryInfo,
               (),
               (override));

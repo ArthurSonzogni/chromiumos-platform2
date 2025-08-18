@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/status.h"
 #include "swap_management/utils.h"
 
 #include <fcntl.h>
+#include <sys/mount.h>
+
 #include <limits>
 #include <utility>
 
@@ -16,7 +17,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
-#include <sys/mount.h>
+
+#include "swap_management/status.h"
 
 namespace swap_management {
 
@@ -191,8 +193,8 @@ absl::StatusOr<std::string> Utils::GenerateRandHex(size_t size) {
   return base::HexEncode(random_bytes.data(), random_bytes.size());
 }
 
-absl::StatusOr<base::SystemMemoryInfoKB> Utils::GetSystemMemoryInfo() {
-  base::SystemMemoryInfoKB meminfo;
+absl::StatusOr<base::SystemMemoryInfo> Utils::GetSystemMemoryInfo() {
+  base::SystemMemoryInfo meminfo;
   if (!base::GetSystemMemoryInfo(&meminfo)) {
     return absl::NotFoundError("Could not get MemTotal in /proc/meminfo");
   }

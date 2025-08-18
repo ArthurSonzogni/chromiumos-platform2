@@ -63,7 +63,7 @@ class Utils {
   virtual absl::Status Umount(const std::string& target);
   virtual absl::StatusOr<struct statfs> GetStatfs(const std::string& path);
   virtual absl::StatusOr<std::string> GenerateRandHex(size_t size);
-  virtual absl::StatusOr<base::SystemMemoryInfoKB> GetSystemMemoryInfo();
+  virtual absl::StatusOr<base::SystemMemoryInfo> GetSystemMemoryInfo();
 
   uint64_t RoundupMultiple(uint64_t number, uint64_t alignment);
   absl::StatusOr<bool> SimpleAtob(const std::string& str);
