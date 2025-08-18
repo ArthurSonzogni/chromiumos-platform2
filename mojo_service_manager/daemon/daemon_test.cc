@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "mojo_service_manager/daemon/daemon.h"
+
 #include <pwd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -17,6 +19,7 @@
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/bind.h>
@@ -26,7 +29,6 @@
 #include <brillo/process/process_reaper.h>
 #include <gtest/gtest.h>
 
-#include "mojo_service_manager/daemon/daemon.h"
 #include "mojo_service_manager/daemon/daemon_test_helper.h"
 
 namespace chromeos::mojo_service_manager {
@@ -141,8 +143,7 @@ int FakeDelegate::GetSockOpt(const base::ScopedFD& socket,
               security_context_->size());
       return 0;
     default:
-      CHECK(false);
-      return 0;
+      NOTREACHED();
   }
 }
 
