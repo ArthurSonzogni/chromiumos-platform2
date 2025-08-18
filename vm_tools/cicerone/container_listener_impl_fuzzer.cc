@@ -66,6 +66,11 @@ void SetUpMockObjectProxy(
 grpc::Status ToStatus(int integer_status_code) {
   grpc::StatusCode status_code =
       static_cast<grpc::StatusCode>(integer_status_code);
+  // Guard against status codes outside of valid enum range.
+  if (integer_status_code > static_cast<int>(grpc::StatusCode::DATA_LOSS) ||
+      integer_status_code < static_cast<int>(grpc::StatusCode::DO_NOT_USE)) {
+    status_code = grpc::StatusCode::UNKNOWN;
+  }
   grpc::Status status(status_code, "");
   return status;
 }
