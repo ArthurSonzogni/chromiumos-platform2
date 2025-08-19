@@ -12,6 +12,7 @@
 <node name="/org/chromium/VmConcierge"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.VmConcierge">
+    <!-- LINT.IfChange -->
     <!-- keep-sorted start group_prefixes=</method> -->
     <method name="AddGroupPermissionMesa">
       <tp:docstring>
@@ -873,5 +874,6 @@
       </arg>
     </signal>
     <!-- keep-sorted end -->
+    <!-- LINT.ThenChange(/system_api/dbus/vm_concierge/dbus-constants.h) -->
   </interface>
 </node>

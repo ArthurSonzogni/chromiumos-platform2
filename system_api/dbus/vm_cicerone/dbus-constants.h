@@ -12,6 +12,7 @@ const char kVmCiceroneInterface[] = "org.chromium.VmCicerone";
 const char kVmCiceroneServicePath[] = "/org/chromium/VmCicerone";
 const char kVmCiceroneServiceName[] = "org.chromium.VmCicerone";
 
+// LINT.IfChange
 // Methods to be called from vm_concierge.
 const char kNotifyVmStartedMethod[] = "NotifyVmStarted";
 const char kNotifyVmStoppingMethod[] = "NotifyVmStopping";
@@ -80,6 +81,7 @@ const char kFileWatchTriggeredSignal[] = "FileWatchTriggered";
 const char kLowDiskSpaceTriggeredSignal[] = "LowDiskSpaceTriggered";
 const char kInhibitScreensaverSignal[] = "InhibitScreensaver";
 const char kUninhibitScreensaverSignal[] = "UninhibitScreensaver";
+// LINT.ThenChange(/vm_tools/dbus_bindings/org.chromium.VmCicerone.xml)
 
 }  // namespace cicerone
 }  // namespace vm_tools
