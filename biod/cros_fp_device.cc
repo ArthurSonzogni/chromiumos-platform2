@@ -31,6 +31,7 @@
 #include <libec/reboot_command.h>
 #include <libec/versions_command.h>
 
+#include "biod/utils.h"
 #include "libec/fourcc.h"
 
 using ec::EcCmdVersionSupportStatus;
@@ -198,9 +199,7 @@ FpMode CrosFpDevice::GetFpMode() {
 
 EcCmdVersionSupportStatus CrosFpDevice::EcCmdVersionSupported(uint16_t cmd_code,
                                                               uint32_t ver) {
-  VersionsCommand versions_cmd(cmd_code);
-  versions_cmd.RunWithMultipleAttempts(cros_fd_.get(), kMaxIoAttempts);
-  return versions_cmd.IsVersionSupported(ver);
+  return IsCommandSupported(cmd_code, ver, cros_fd_.get());
 }
 
 bool CrosFpDevice::SupportsPositiveMatchSecret() {
