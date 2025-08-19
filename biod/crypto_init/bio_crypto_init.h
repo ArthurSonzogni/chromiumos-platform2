@@ -14,10 +14,11 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/ec/ec_commands.h>
 #include <libec/ec_command_factory.h>
+#include <libec/ec_command_version_supported.h>
 
 namespace biod {
 
-class BioCryptoInit {
+class BioCryptoInit : public ec::EcCommandVersionSupportedInterface {
  public:
   explicit BioCryptoInit(
       std::unique_ptr<ec::EcCommandFactoryInterface> ec_command_factory)
@@ -29,6 +30,8 @@ class BioCryptoInit {
   virtual bool CrosFpTemplateVersionCompatible(
       const uint32_t firmware_fp_template_format_version,
       const uint32_t biod_fp_template_format_version);
+  ec::EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
+                                                      uint32_t ver) override;
 
  protected:
   virtual bool InitCrosFp();

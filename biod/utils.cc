@@ -9,7 +9,9 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <biod/cros_fp_device.h>
 #include <libec/ec_command.h>
+#include <libec/versions_command.h>
 
 namespace biod {
 
@@ -90,6 +92,14 @@ std::vector<int> GetDirtyList(CrosFpDeviceInterface* device) {
   }
 
   return dirty_list;
+}
+
+ec::EcCmdVersionSupportStatus IsCommandSupported(uint16_t cmd,
+                                                 uint32_t ver,
+                                                 int fd) {
+  ec::VersionsCommand versions_cmd(cmd);
+  versions_cmd.RunWithMultipleAttempts(fd, CrosFpDevice::kMaxIoAttempts);
+  return versions_cmd.IsVersionSupported(ver);
 }
 
 }  // namespace biod

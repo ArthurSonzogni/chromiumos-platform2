@@ -5,9 +5,12 @@
 #ifndef BIOD_UTILS_H_
 #define BIOD_UTILS_H_
 
+#include <cstdint>
 #include <string>
 #include <type_traits>
 #include <vector>
+
+#include <libec/ec_command_version_supported.h>
 
 #include "biod/cros_fp_device_interface.h"
 
@@ -59,6 +62,18 @@ std::string MatchResultToString(int result);
 // Common implementation of GetDirtyList for auth stack manager and biometrics
 // manager.
 std::vector<int> GetDirtyList(CrosFpDeviceInterface* device);
+
+/**
+ * @brief Check if a specific command version is supported by the EC.
+ *
+ * @param cmd The command code to check.
+ * @param ver The version of the command.
+ * @param fd A file descriptor used to communicate with the EC.
+ * @return ec::EcCmdVersionSupportStatus The support status.
+ */
+ec::EcCmdVersionSupportStatus IsCommandSupported(uint16_t cmd,
+                                                 uint32_t ver,
+                                                 int fd);
 
 }  // namespace biod
 

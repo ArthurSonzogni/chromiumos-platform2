@@ -18,8 +18,11 @@
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <libec/ec_command.h>
+#include <libec/ec_command_version_supported.h>
+#include <libec/versions_command.h>
 
 #include "biod/cros_fp_device.h"
+#include "biod/utils.h"
 
 using ec::FpSeedCommand;
 
@@ -136,6 +139,11 @@ bool BioCryptoInit::InitCrosFp() {
   }
 
   return true;
+}
+
+ec::EcCmdVersionSupportStatus BioCryptoInit::EcCmdVersionSupported(
+    uint16_t cmd, uint32_t ver) {
+  return IsCommandSupported(cmd, ver, cros_fp_fd_.get());
 }
 
 std::optional<uint32_t> BioCryptoInit::GetFirmwareTemplateVersion() {
