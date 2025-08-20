@@ -241,7 +241,7 @@ std::optional<brillo::SecureVector> CrosFpDevice::FpReadMatchSecret(
 }
 
 bool CrosFpDevice::UpdateFpInfo() {
-  info_ = ec_command_factory_->FpInfoCommand();
+  info_ = ec_command_factory_->FpInfoCommand(this);
 
   if (!info_->Run(cros_fd_.get())) {
     LOG(ERROR) << "Failed to get FP information.";

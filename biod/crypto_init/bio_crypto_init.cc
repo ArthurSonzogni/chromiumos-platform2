@@ -147,7 +147,7 @@ ec::EcCmdVersionSupportStatus BioCryptoInit::EcCmdVersionSupported(
 }
 
 std::optional<uint32_t> BioCryptoInit::GetFirmwareTemplateVersion() {
-  auto fp_info_cmd = ec_command_factory_->FpInfoCommand();
+  auto fp_info_cmd = ec_command_factory_->FpInfoCommand(this);
   if (!fp_info_cmd->RunWithMultipleAttempts(
           cros_fp_fd_.get(), biod::CrosFpDevice::kMaxIoAttempts)) {
     LOG(ERROR) << "Checking template format compatibility: failed to get FP "

@@ -279,7 +279,7 @@ void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
   auto cros_fd = base::ScopedFD(open(path::kCrosFpDevice, O_RDWR));
 
   std::unique_ptr<ec::FpInfoCommand> info =
-      ec_command_factory_->FpInfoCommand();
+      ec_command_factory_->FpInfoCommand(ec_command_version_supported_);
   if (!info || !info->Run(cros_fd.get())) {
     std::move(callback).Run(std::move(result),
                             "Failed to run ec::FpInfoCommand");
