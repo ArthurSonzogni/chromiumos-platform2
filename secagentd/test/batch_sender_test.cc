@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include <base/notreached.h>
+
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
@@ -51,8 +53,7 @@ class BatchSenderTestFixture : public ::testing::Test {
       case AVM::kProcessTerminate:
         return process_event.process_terminate().process().process_uuid();
       case AVM::VARIANT_TYPE_NOT_SET:
-        CHECK(false);
-        return "";
+        NOTREACHED();
     }
   }
 
