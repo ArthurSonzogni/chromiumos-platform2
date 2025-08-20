@@ -33,7 +33,7 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               (override));
   MOCK_METHOD(std::unique_ptr<ec::FpInfoCommand>,
               FpInfoCommand,
-              (),
+              (EcCommandVersionSupportedInterface * ec_cmd_ver_supported),
               (override));
   MOCK_METHOD(std::unique_ptr<ec::FpSeedCommand>,
               FpSeedCommand,
