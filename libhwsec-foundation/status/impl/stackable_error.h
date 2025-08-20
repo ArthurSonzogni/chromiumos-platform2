@@ -504,14 +504,10 @@ class [[clang::consumable(unknown)]]   //
   // |other|'s |BaseErrorType| to extract necessary info from the previous
   // stack.
   template <int&... ExplicitArgumentBarrier, typename _Ut>
-  [[clang::callable_when("unconsumed")]] void WrapInPlace(
+  [[clang::callable_when("unconsumed")]] void WrapInPlaceInternal(
       StackableError<_Ut>&& other [[clang::param_typestate(unconsumed)]]  //
       [[clang::return_typestate(consumed)]],
       WrapTransformOnly tag) {
-    CHECK(!other.ok()) << " Can't wrap an OK object.";
-    CHECK(!ok()) << " OK object can't be wrapping.";
-    CHECK(!IsWrapping()) << " Object can wrap only once.";
-
     // Call into current error's |WrapTransform| and provide it the range object
     // for the stack being wrapped. We do it before actual wrapping so the
     // current error doees not appear in the view. We provide const_view to
@@ -522,6 +518,23 @@ class [[clang::consumable(unknown)]]   //
     // Discard the prior stack.
     other.reset();
   }
+  //
+  // The actual WrapInPlace function merely adds extra CHECKs. It's safe to
+  // ignore the -Wconsumed failures here because the WrapInPlaceInternal has the
+  // same annotations and is equivalent whenever WrapInPlace returns.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconsumed"
+  template <int&... ExplicitArgumentBarrier, typename _Ut>
+  [[clang::callable_when("unconsumed")]] void WrapInPlace(
+      StackableError<_Ut>&& other [[clang::param_typestate(unconsumed)]]  //
+      [[clang::return_typestate(consumed)]],
+      WrapTransformOnly tag) {
+    CHECK(!other.ok()) << " Can't wrap an OK object.";
+    CHECK(!ok()) << " OK object can't be wrapping.";
+    CHECK(!IsWrapping()) << " Object can wrap only once.";
+    WrapInPlaceInternal(std::move(other));
+  }
+#pragma clang diagnostic pop
 
   // Make current error to wrap another stack. See template arguments
   // explanation in |WrapInPlace| comments.
