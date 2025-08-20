@@ -45,6 +45,7 @@ enum VmcError {
     ExpectedVmAndPath,
     ExpectedVmAndSize,
     ExpectedVmBusDevice,
+    ExpectedVmType,
     ExpectedVmDeviceUpdates,
     ExpectedVmHidrawDevice,
     ExpectedVmPort,
@@ -119,6 +120,7 @@ impl fmt::Display for VmcError {
             ExpectedVmBusDevice => {
                 write!(f, "expected <vm name> <bus>:<device> [<container name>]")
             }
+            ExpectedVmType => write!(f, "VM Type information is required for this command"),
             ExpectedNoArgs => write!(f, "expected no arguments"),
             ExpectedU8Bus => write!(f, "expected <bus> to fit into an 8-bit integer"),
             ExpectedU8Device => write!(f, "expected <device> to fit into an 8-bit integer"),
@@ -281,11 +283,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "Comma-separated additional groups for the non-root user to be set up.",
             "NAME,NAME,...",
         );
-        opts.optflag("", "help-start", "print this help menu");
+        opts.optflag("h", "help", "print this help menu");
 
         let matches = opts.parse(self.args)?;
 
-        if matches.opt_present("help-start") {
+        if matches.opt_present("help") {
             println!("{}", opts.usage("Usage: vmc start [options] <name>"));
             return Ok(());
         }
@@ -403,6 +405,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn stop(&mut self) -> VmcResult {
+        if self.args.contains(&"--help") || self.args.contains(&"-h") {
+            println!("Usage: vmc stop <vm name>");
+            return Ok(());
+        }
+
         if self.args.len() != 1 {
             return Err(ExpectedName.into());
         }
@@ -428,17 +435,29 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         // as a separator for params which avoids breaking the existing
         // interface.
         opts.parsing_style(getopts::ParsingStyle::StopAtFirstFree);
-        opts.reqopt("", "vm-type", "type of VM (CROSTINI / BAGUETTE)", "TYPE");
+        opts.optopt("", "vm-type", "type of VM (CROSTINI / BAGUETTE)", "TYPE");
         opts.optopt("", "size", "size of the created vm's disk", "SIZE");
         opts.optopt("", "source", "location of baguette source image", "PATH");
+        opts.optflag("h", "help", "print this help menu");
 
         let matches = opts.parse(self.args)?;
+
+        if matches.opt_present("help") {
+            println!(
+                "{}",
+                opts.usage(
+                    "Usage: vmc create [options] --vm-type <vm type> <vm name> \
+            [<source media> [<removable storage name>]] [-- additional parameters]"
+                )
+            );
+            return Ok(());
+        }
         let size = match matches.opt_str("size") {
             Some(s) => Some(parse_disk_size(&s)?),
             None => None,
         };
         let vm_type = match matches.opt_str("vm-type") {
-            None => unreachable!(),
+            None => return Err(VmcError::ExpectedVmType.into()),
             Some(vm_type) => match vm_type.to_uppercase().as_ref() {
                 "CROSTINI" | "TERMINA" => VmType::TERMINA,
                 "BAGUETTE" => VmType::BAGUETTE,
@@ -498,8 +517,14 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     fn destroy(&mut self) -> VmcResult {
         let mut opts = Options::new();
         opts.optflag("y", "yes", "destroy without prompting");
+        opts.optflag("h", "help", "print this help menu");
 
         let matches = opts.parse(self.args)?;
+
+        if matches.opt_present("help") {
+            println!("{}", opts.usage("Usage: vmc destroy [options] <vm name>"));
+            return Ok(());
+        }
         if matches.free.len() != 1 {
             return Err(ExpectedName.into());
         }
@@ -606,8 +631,19 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "force",
             "force export even if VM is running or not shut down",
         );
+        opts.optflag("h", "help", "print this help menu");
 
         let matches = opts.parse(self.args)?;
+
+        if matches.opt_present("help") {
+            println!(
+                "{}",
+                opts.usage(
+                    "Usage: vmc export [options] <vm name> <file name> [<removable storage name>]"
+                )
+            );
+            return Ok(());
+        }
 
         let generate_digest = matches.opt_present("digest");
         let force = matches.opt_present("force");
@@ -683,9 +719,15 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
     fn create_extra_disk(&mut self) -> VmcResult {
         let mut opts = Options::new();
-        opts.reqopt("", "size", "size of extra disk", "SIZE");
+        opts.optopt("", "size", "size of extra disk", "SIZE");
+        opts.optflag("h", "help", "print this help menu");
 
         let matches = opts.parse(self.args)?;
+
+        if matches.opt_present("help") {
+            println!("{}", opts.usage("Usage: vmc create-extra-disk --size SIZE <file name> [<removable storage name>]"));
+            return Ok(());
+        }
 
         let s = matches.opt_str("size").ok_or_else(|| ExpectedSize)?;
         let size = parse_disk_size(&s)?;
@@ -1100,7 +1142,7 @@ const USAGE: &str = " [
            [--no-start-lxd] [--writable-rootfs] [--kernel-param PARAM]... \
            [--oem-string STRING]... [--bios PATH] [--pflash PATH] [--bios-dlc ID] \
            [--timeout PARAM] [--no-shell] [--user NAME] [--user-uid PARAM] \
-           [--user-group PARAM]... [--help-start] <vm name>
+           [--user-group PARAM]... <vm name>
   |  stop <vm name>
   |  launch <main descriptor> [<descriptor>...]
   |  create [-p] [--size SIZE] --vm-type <vm type> <vm name> \
@@ -1175,17 +1217,6 @@ impl Vmc<'_> {
             return Ok(());
         }
 
-        for &arg in args {
-            match arg {
-                "--" => break,
-                "--help" | "-h" => {
-                    self.print_usage("vmc");
-                    return Ok(());
-                }
-                _ => {}
-            }
-        }
-
         let mut command = Command {
             methods,
             args: &args[2..],
@@ -1230,7 +1261,13 @@ impl Vmc<'_> {
             "unset-primary-keyboard" => {
                 self.try_chromebox_command(|| command.unset_primary_keyboard(), command_name)
             }
-            _ => Err(UnknownSubcommand(command_name.to_owned()).into()),
+            _ => {
+                if command_name == "--help" || command_name == "-h" {
+                    self.print_usage("vmc");
+                    return Ok(());
+                }
+                Err(UnknownSubcommand(command_name.to_owned()).into())
+            }
         }
     }
 }
