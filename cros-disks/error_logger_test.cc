@@ -74,6 +74,7 @@ TEST(ErrorLogger, MountError) {
   EXPECT_EQ(ToString(MountError::kUnsupportedFilesystem),
             "UnsupportedFilesystem");
   EXPECT_EQ(ToString(MountError::kInvalidArchive), "InvalidArchive");
+  EXPECT_EQ(ToString(MountError::kCorrupted), "Corrupted");
   EXPECT_EQ(ToString(MountError(987654)), "MountError(987654)");
 }
 

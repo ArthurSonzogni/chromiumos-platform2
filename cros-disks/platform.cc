@@ -449,6 +449,8 @@ MountError Platform::Mount(const std::string& source_path,
       return MountError::kInsufficientPermissions;
     case EBUSY:
       return MountError::kBusy;
+    case EUCLEAN:
+      return MountError::kCorrupted;
     default:
       return MountError::kUnknownError;
   }
