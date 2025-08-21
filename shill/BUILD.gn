@@ -12,6 +12,7 @@ import("//common-mk/protoctxt.gni")
 
 group("all") {
   deps = [
+    ":dhcpcd-hook",
     ":libshill",
     ":mobile_operator_db",
     ":mobile_operator_db-db",
@@ -20,7 +21,6 @@ group("all") {
     ":openvpn-script",
     ":shill",
     ":shill-chromeos-dbus-adaptors",
-    "//shill/dhcpcd-hook",
   ]
   if (use.cellular) {
     deps += [ ":cellular_mobile_operator_info_tester" ]
@@ -452,6 +452,29 @@ executable("shill") {
     ":target_defaults",
   ]
   deps = [ ":libshill" ]
+}
+
+pkg_config("dhcpcd-script_config") {
+  pkg_deps = [ "libshill-client" ]
+}
+
+executable("dhcpcd-script") {
+  sources = [
+    "shims/dhcpcd_script.cc",
+    "shims/dhcpcd_script_utils.cc",
+    "shims/environment.cc",
+  ]
+  configs += [
+    ":dhcpcd-script_config",
+    ":target_defaults",
+  ]
+  install_path = "/lib/dhcpcd"
+}
+
+install_config("dhcpcd-hook") {
+  sources = [ "shims/00-dhcpcd-script-wrapper.sh" ]
+  install_path = "/lib/dhcpcd/dhcpcd-hooks"
+  deps = [ ":dhcpcd-script" ]
 }
 
 pkg_config("openvpn-script_config") {
