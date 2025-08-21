@@ -10,6 +10,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <set>
 #include <utility>
 #include <vector>
@@ -39,6 +40,9 @@
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
+#include "login_manager/arc_dlc_hardware_filter.h"
+#include "login_manager/arc_dlc_hardware_filter_impl.h"
+#include "login_manager/arc_dlc_platform_info_impl.h"
 #include "login_manager/chromium_command_builder.h"
 #include "login_manager/util.h"
 
@@ -543,6 +547,7 @@ std::optional<ChromeSetup::Result> ChromeSetup::Run() {
   AddSystemFlags(&builder, &cros_config_);
   AddUiFlags(&builder, &cros_config_);
   AddArcFlags(&builder, &disallowed_prefixes, &cros_config_);
+  AddArcDlcFlags(&builder, nullptr);
   AddCrostiniFlags(&builder);
   AddPluginVmFlags(&builder);
   AddBorealisFlags(&builder);
@@ -1070,6 +1075,27 @@ void SetUpInstantTetheringFlag(ChromiumCommandBuilder* builder,
   }
 }
 
+void AddArcDlcFlags(ChromiumCommandBuilder* builder,
+                    ArcDlcHardwareFilter* filter) {
+  if (builder->UseFlagIsSet("arcvm_dlc")) {
+    builder->AddArg("--enable-arcvm-dlc");
+
+    std::optional<ArcDlcPlatformInfoImpl> platform_info_impl;
+    std::optional<ArcDlcHardwareFilterImpl> hardware_filter;
+    ArcDlcHardwareFilter* effective_filter = filter;
+
+    if (effective_filter == nullptr) {
+      platform_info_impl.emplace();
+      hardware_filter.emplace(base::FilePath("/"), &platform_info_impl.value());
+      effective_filter = &(*hardware_filter);
+    }
+
+    if (effective_filter->IsArcDlcHardwareRequirementSatisfied()) {
+      builder->AddArg("--arcvm-dlc-hardware-satisfied");
+    }
+  }
+}
+
 // Adds ARC related flags.
 void AddArcFlags(ChromiumCommandBuilder* builder,
                  std::set<std::string>* disallowed_params_out,
@@ -1104,9 +1130,6 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
   }
   if (builder->UseFlagIsSet("arcvm") && !builder->UseFlagIsSet("arcpp")) {
     builder->AddArg("--enable-arcvm");
-  }
-  if (builder->UseFlagIsSet("arcvm_dlc")) {
-    builder->AddArg("--enable-arcvm-dlc");
   }
   if (builder->UseFlagIsSet("arcvm_data_migration")) {
     builder->AddFeatureEnableOverride("ArcVmDataMigration");

@@ -98,6 +98,9 @@ generate_dbus_proxies("arc_manager-proxies") {
 static_library("libsession_manager") {
   sources = [
     "android_oci_wrapper.cc",
+    "arc_dlc_hardware_filter_helper.cc",
+    "arc_dlc_hardware_filter_impl.cc",
+    "arc_dlc_platform_info_impl.cc",
     "arc_manager.cc",
     "arc_manager_proxy.cc",
     "blob_util.cc",
@@ -258,6 +261,8 @@ if (use.test) {
   executable("session_manager_test") {
     sources = [
       "android_oci_wrapper_test.cc",
+      "arc_dlc_hardware_filter_helper_test.cc",
+      "arc_dlc_hardware_filter_impl_test.cc",
       "arc_manager_test.cc",
       "browser_job_test.cc",
       "chrome_setup_test.cc",
@@ -301,7 +306,10 @@ if (use.test) {
       ":test_config",
     ]
     defines = [ "UNIT_TEST" ]
-    libs = [ "keyutils" ]
+    libs = [
+      "keyutils",
+      "rootdev",
+    ]
     deps = [
       ":libsession_manager",
       "//common-mk/testrunner",

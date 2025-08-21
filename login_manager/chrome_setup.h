@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -15,6 +16,8 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/gtest_prod_util.h>
+
+#include "login_manager/arc_dlc_hardware_filter.h"
 
 namespace brillo {
 class CrosConfigInterface;
@@ -278,6 +281,11 @@ void AddVmodulePatterns(chromeos::ui::ChromiumCommandBuilder* builder);
 void AddArcFlags(chromeos::ui::ChromiumCommandBuilder* builder,
                  std::set<std::string>* disallowed_params_out,
                  brillo::CrosConfigInterface* cros_config);
+
+// Adds flags for devices whose ARCVM image is downloaded from a DLC.
+// The `filter` parameter is only for testing purposes.
+void AddArcDlcFlags(chromeos::ui::ChromiumCommandBuilder* builder,
+                    ArcDlcHardwareFilter* filter /* only for testing */);
 
 // Adds flags related to machine learning features that are enabled only on a
 // supported subset of devices.

@@ -30,6 +30,7 @@
 #include <libsegmentation/feature_management_fake.h>
 
 #include "login_manager/chromium_command_builder.h"
+#include "login_manager/fake_arc_dlc_hardware_filter_impl.h"
 #include "login_manager/util.h"
 
 using chromeos::ui::ChromiumCommandBuilder;
@@ -480,20 +481,38 @@ TEST_F(ChromeSetupTest, TestGkiDisabled) {
   EXPECT_THAT(result, testing::Not(testing::Contains("ArcVmGki")));
 }
 
-TEST_F(ChromeSetupTest, TestArcVmDlcEnabled) {
+TEST_F(ChromeSetupTest, TestArcVmDlcEnabledHardwareFilterPass) {
   base::ScopedTempDir temp_dir;
   std::set<std::string> disallowed_params;
   InitWithUseFlag("arcvm_dlc", &temp_dir, &builder_);
-  login_manager::AddArcFlags(&builder_, &disallowed_params, nullptr);
+  FakeArcDlcHardwareFilterImpl fake_filter;
+  fake_filter.set_all_checks_pass(true);
+  login_manager::AddArcDlcFlags(&builder_, &fake_filter);
   auto argv = builder_.arguments();
   EXPECT_EQ("", GetFlag(argv, "--enable-arcvm-dlc"));
+  EXPECT_EQ("", GetFlag(argv, "--arcvm-dlc-hardware-satisfied"));
+}
+
+TEST_F(ChromeSetupTest, TestArcVmDlcEnabledHardwareFilterFail) {
+  base::ScopedTempDir temp_dir;
+  std::set<std::string> disallowed_params;
+  InitWithUseFlag("arcvm_dlc", &temp_dir, &builder_);
+  FakeArcDlcHardwareFilterImpl fake_filter;
+  fake_filter.set_all_checks_pass(false);
+  login_manager::AddArcDlcFlags(&builder_, &fake_filter);
+  auto argv = builder_.arguments();
+  EXPECT_EQ("", GetFlag(argv, "--enable-arcvm-dlc"));
+  EXPECT_EQ(kNotPresent, GetFlag(argv, "--arcvm-dlc-hardware-satisfied"));
 }
 
 TEST_F(ChromeSetupTest, TestArcVmDlcDisabled) {
   std::set<std::string> disallowed_params;
-  login_manager::AddArcFlags(&builder_, &disallowed_params, nullptr);
+  FakeArcDlcHardwareFilterImpl fake_filter;
+  fake_filter.set_all_checks_pass(true);
+  login_manager::AddArcDlcFlags(&builder_, &fake_filter);
   auto argv = builder_.arguments();
   EXPECT_EQ(kNotPresent, GetFlag(argv, "--enable-arcvm-dlc"));
+  EXPECT_EQ(kNotPresent, GetFlag(argv, "--arcvm-dlc-hardware-satisfied"));
 }
 
 TEST_F(ChromeSetupTest, TestCoralEnabled) {
