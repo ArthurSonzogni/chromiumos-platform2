@@ -30,7 +30,6 @@ pkg_config("target_defaults") {
     "-Wextra",
     "-Werror",
     "-Wno-unused-parameter",  # needed for libchrome
-    "-Wno-error=deprecated-declarations",  # TODO(b/433521512) needed for c-ares
   ]
   pkg_deps = [
     "libbrillo",
