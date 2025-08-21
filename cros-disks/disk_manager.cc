@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <initializer_list>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -306,9 +307,11 @@ bool DiskManager::Initialize() {
   // native Linux, filesystem and use CrOS to access it, given all the problems
   // and limitations they would face, but for compatibility with previous
   // versions we keep it unofficially supported.
-  mounters_["ext4"] = std::make_unique<SystemMounter>(platform(), "ext4");
-  mounters_["ext3"] = std::make_unique<SystemMounter>(platform(), "ext3");
-  mounters_["ext2"] = std::make_unique<SystemMounter>(platform(), "ext2");
+  for (const std::string& s :
+       std::initializer_list<std::string>{"ext2", "ext3", "ext4"}) {
+    mounters_[s] = std::make_unique<SystemMounter>(
+        platform(), s, read_write, Options{"errors=remount-ro"});
+  }
 
   return MountManager::Initialize();
 }
