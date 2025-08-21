@@ -56,8 +56,7 @@ class AresClient {
   struct State {
     State(AresClient* client,
           ares_channel channel,
-          const QueryCallback& callback,
-          uint16_t query_id);
+          const QueryCallback& callback);
 
     // |client| holds the current class holding this state.
     AresClient* client;
@@ -69,10 +68,6 @@ class AresClient {
 
     // |callback| to be invoked back to the client upon request completion.
     QueryCallback callback;
-
-    // DNS query ID of the request. Given that ares is used as a proxy, the
-    // response query ID needs to be replaced to match the original request.
-    uint16_t query_id;
   };
 
   // Callback informed about what to wait for. When called, register or remove

@@ -21,12 +21,8 @@ static char kLookupsOpt[] = "b";
 
 AresClient::State::State(AresClient* client,
                          ares_channel channel,
-                         const QueryCallback& callback,
-                         uint16_t query_id)
-    : client(client),
-      channel(channel),
-      callback(callback),
-      query_id(query_id) {}
+                         const QueryCallback& callback)
+    : client(client), channel(channel), callback(callback) {}
 
 AresClient::AresClient(base::TimeDelta timeout) : timeout_(timeout) {
   if (ares_library_init(ARES_LIB_INIT_ALL) != ARES_SUCCESS) {
@@ -105,13 +101,6 @@ void AresClient::AresCallback(
   if (status == ARES_ECANCELLED || status == ARES_EDESTRUCTION) {
     delete state;
     return;
-  }
-
-  // Replace query response's query ID to match the request. DNS query ID is the
-  // first 2 bytes of the data (in big endian).
-  if (len >= 2) {
-    msg[0] = (state->query_id >> 8) & 0xFF;
-    msg[1] = state->query_id & 0xFF;
   }
 
   auto buf = std::make_unique<unsigned char[]>(len);
@@ -254,18 +243,12 @@ bool AresClient::Resolve(const base::span<const unsigned char>& query,
                          const std::string& name_server,
                          std::string_view ifname,
                          int type) {
-  if (query.size() < 2) {
-    LOG(ERROR) << "Invalid query size: " << query.size();
-    return false;
-  }
-  uint16_t query_id = (static_cast<uint16_t>(query[0]) << 8) | query[1];
-
   ares_channel channel = InitChannel(name_server, ifname, type);
   if (!channel) {
     return false;
   }
 
-  State* state = new State(this, channel, callback, query_id);
+  State* state = new State(this, channel, callback);
   ares_send(channel, query.data(), query.size(), &AresClient::AresCallback,
             state);
 
