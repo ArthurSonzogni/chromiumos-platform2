@@ -20,12 +20,12 @@ BalloonPolicyInterface::BalloonPolicyInterface()
     : balloon_trace_size_window_width_(base::SysInfo::AmountOfPhysicalMemory() /
                                        37) {
   LOG(INFO) << "BalloonTrace throttled with size window: "
-            << balloon_trace_size_window_width_ / MiB(1) << " MIB";
+            << balloon_trace_size_window_width_.InMiB() << " MIB";
 }
 
 bool BalloonPolicyInterface::ShouldLogBalloonTrace(int64_t new_balloon_size) {
   if (std::abs(last_balloon_trace_size_ - new_balloon_size) <
-      (balloon_trace_size_window_width_ / 2)) {
+      (balloon_trace_size_window_width_.InBytes() / 2)) {
     return false;
   }
 
@@ -52,6 +52,7 @@ BalanceAvailableBalloonPolicy::BalanceAvailableBalloonPolicy(
 int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
     const BalloonStats& stats, uint64_t host_available, const std::string& vm) {
   // returns delta size of balloon
+  // TODO(b:443161518) - Remove MiB helpers and replace with base::ByteCount.
   constexpr int64_t MAX_CRITICAL_DELTA = MiB(10);
 
   const int64_t balloon_actual = stats.balloon_actual;

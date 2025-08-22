@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/byte_count.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/strings/string_split.h>
@@ -44,7 +45,7 @@ namespace concierge {
 
 namespace internal {
 std::string GetDevConfPath(apps::VmType type);
-int64_t GetVmMemoryMiBInternal(int64_t system, bool is_32bit);
+int64_t GetVmMemoryMiBInternal(base::ByteCount system, bool is_32bit);
 std::vector<vm_tools::vhost_user_starter::IdMapItem> IdMapStringToIdMapItem(
     const std::string& id_map_string);
 }  // namespace internal
@@ -55,7 +56,7 @@ enum VmInfo_VmType : int;
 constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
 
 // Reserved memory for host when sizing a VM.
-constexpr int kHostReservedNumMiB = 1024;
+constexpr base::ByteCount kHostReservedNum = base::GiB(1);
 
 // Describes key components of a VM.
 struct VMImageSpec {

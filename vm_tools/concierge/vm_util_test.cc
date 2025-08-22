@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 
+#include <base/byte_count.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
@@ -747,20 +748,29 @@ TEST(VMUtilTest, GetDevConfPath) {
 
 TEST(VMUtilTest, GetVmMemoryMiB) {
   // elm 4GB SKUs.
-  EXPECT_EQ(internal::GetVmMemoryMiBInternal(3885, /* is_32bit */ true), 2913);
+  EXPECT_EQ(
+      internal::GetVmMemoryMiBInternal(base::MiB(3885), /* is_32bit */ true),
+      2913);
 
   // trogdor 4GB SKUs.
-  EXPECT_EQ(internal::GetVmMemoryMiBInternal(3885, /* is_32bit */ false), 2913);
+  EXPECT_EQ(
+      internal::GetVmMemoryMiBInternal(base::MiB(3885), /* is_32bit */ false),
+      2913);
 
   // jacuzzi 8GB SKUs.
-  EXPECT_EQ(internal::GetVmMemoryMiBInternal(7915, /* is_32bit */ true), 3328);
+  EXPECT_EQ(
+      internal::GetVmMemoryMiBInternal(base::MiB(7915), /* is_32bit */ true),
+      3328);
 
   // corsola 8GB SKUs.
-  EXPECT_EQ(internal::GetVmMemoryMiBInternal(7915, /* is_32bit */ false), 6891);
+  EXPECT_EQ(
+      internal::GetVmMemoryMiBInternal(base::MiB(7915), /* is_32bit */ false),
+      6891);
 
   // 16GB Brya
-  EXPECT_EQ(internal::GetVmMemoryMiBInternal(15785, /* is_32bit */ false),
-            14761);
+  EXPECT_EQ(
+      internal::GetVmMemoryMiBInternal(base::MiB(15785), /* is_32bit */ false),
+      14761);
 }
 
 TEST(VMUtilTest, GetCpuPackageIdAndCapacity) {

@@ -8,6 +8,7 @@
 
 #include <string>
 
+#include <base/byte_count.h>
 #include <crosvm/crosvm_control.h>
 
 #include "vm_tools/concierge/byte_unit.h"
@@ -71,7 +72,7 @@ class BalloonPolicyInterface {
  private:
   // Do not log a ballon trace if the balloon remains within a window of this
   // width from the previous log.
-  int64_t balloon_trace_size_window_width_;
+  base::ByteCount balloon_trace_size_window_width_;
 
   // The size of the balloon when the last balloon trace was logged.
   int64_t last_balloon_trace_size_ = 0;

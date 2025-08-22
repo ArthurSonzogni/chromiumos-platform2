@@ -24,6 +24,7 @@
 #include <tuple>
 #include <utility>
 
+#include <base/byte_count.h>
 #include <base/containers/fixed_flat_map.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
@@ -100,7 +101,7 @@ constexpr char kReadonlySharedDirTag[] = "ro";
 // because the physical memory size of 6GB devices is
 // usually slightly less than 6000MB.
 // It can be changed with the Finch feature.
-constexpr int kDefaultHighMemDeviceThreshold = 5500;
+constexpr base::ByteCount kDefaultHighMemDeviceThreshold = base::MiB(5500);
 
 // For |kOemEtcSharedDir|, map host's crosvm to guest's root, also arc-camera
 // (603) to vendor_arc_camera (5003).
@@ -326,11 +327,11 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   const base::FilePath jemalloc_config_file(kJemallocConfigFile);
 
   // Create a config symlink for memory-rich devices.
-  int64_t sys_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
+  base::ByteCount sys_memory = base::SysInfo::AmountOfPhysicalMemory();
 
   // jemalloc_config_file might have been created on the
   // previous ARCVM boot. If the file already exists we do nothing.
-  if ((sys_memory_mb >= kDefaultHighMemDeviceThreshold ||
+  if ((sys_memory >= kDefaultHighMemDeviceThreshold ||
        features_.low_mem_jemalloc_arenas_enabled) &&
       !base::IsLink(jemalloc_config_file)) {
     // This symbolic link does not point to any file. It is used as a string

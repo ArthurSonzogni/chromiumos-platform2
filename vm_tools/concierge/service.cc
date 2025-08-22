@@ -40,6 +40,7 @@
 #include <vector>
 
 #include <base/base64url.h>
+#include <base/byte_count.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/span.h>
@@ -569,8 +570,6 @@ uint64_t CalculateDesiredDiskSize(base::FilePath disk_location,
 
   return std::max(disk_size, kMinimumDiskSize);
 }
-
-
 
 // Returns true if the disk should not be automatically resized because it is
 // not sparse and its size was specified by the user.
@@ -1854,7 +1853,7 @@ StartVmResponse Service::StartVmInternal(
   vm_builder.SetVmCpuArgs(vm_cpu_args);
 
   /* Enable hugepages on devices with > 7 GB memory */
-  if (base::SysInfo::AmountOfPhysicalMemoryMB() >= 7 * 1024) {
+  if (base::SysInfo::AmountOfPhysicalMemory() >= base::GiB(7)) {
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 

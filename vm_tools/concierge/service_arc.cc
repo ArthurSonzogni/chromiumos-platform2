@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/byte_count.h>
 #include <base/cpu.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -656,7 +657,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   vm_builder.SetMemory(std::to_string(memory_mib));
 
   /* Enable THP if the VM has at least 7G of memory */
-  if (base::SysInfo::AmountOfPhysicalMemoryMB() >= 7 * 1024) {
+  if (base::SysInfo::AmountOfPhysicalMemory() >= base::GiB(7)) {
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 

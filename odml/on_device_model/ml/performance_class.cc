@@ -73,7 +73,7 @@ on_device_model::mojom::PerformanceClass GetEstimatedPerformanceClass(
   const float output_speed = info.output_speed;
   const bool is_integrated_gpu = info.is_integrated_gpu;
 
-  int system_ram = base::SysInfo::AmountOfPhysicalMemoryMB();
+  int system_ram = base::SysInfo::AmountOfPhysicalMemory().InMiB();
   ReportHistogramMemoryLargeMB(
       metrics,
       base::StrCat({"OnDeviceModel.SystemRAM.",

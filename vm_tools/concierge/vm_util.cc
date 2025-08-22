@@ -94,13 +94,13 @@ std::string GetDevConfPath(apps::VmType type) {
   });
 }
 
-int64_t GetVmMemoryMiBInternal(int64_t sys_memory_mb, bool is_32bit) {
-  int64_t vm_memory_mb;
-  if (sys_memory_mb >= 4096) {
+int64_t GetVmMemoryMiBInternal(base::ByteCount sys_memory, bool is_32bit) {
+  base::ByteCount vm_memory;
+  if (sys_memory >= base::GiB(4)) {
     // On devices with >=4GB RAM, reserve 1GB for other processes.
-    vm_memory_mb = sys_memory_mb - kHostReservedNumMiB;
+    vm_memory = sys_memory - kHostReservedNum;
   } else {
-    vm_memory_mb = sys_memory_mb / 4 * 3;
+    vm_memory = sys_memory / 4 * 3;
   }
 
   // Limit guest memory size to avoid running out of host process address space.
@@ -118,12 +118,12 @@ int64_t GetVmMemoryMiBInternal(int64_t sys_memory_mb, bool is_32bit) {
   //
   // 3328 is chosen because it's a rounded number (i.e. 3328 % 256 == 0).
   // TODO(hashimoto): Remove this once crosvm becomes 64-bit on ARM.
-  static constexpr int64_t k32bitVmMemoryMaxMb = 3328;
+  static constexpr base::ByteCount k32bitVmMemoryMax = base::MiB(3328);
   if (is_32bit) {
-    vm_memory_mb = std::min(vm_memory_mb, k32bitVmMemoryMaxMb);
+    vm_memory = std::min(vm_memory, k32bitVmMemoryMax);
   }
 
-  return vm_memory_mb;
+  return vm_memory.InMiB();
 }
 
 std::vector<vm_tools::vhost_user_starter::IdMapItem> IdMapStringToIdMapItem(
@@ -164,7 +164,7 @@ std::vector<vm_tools::vhost_user_starter::IdMapItem> IdMapStringToIdMapItem(
 
 int64_t GetVmMemoryMiB() {
   return internal::GetVmMemoryMiBInternal(
-      base::SysInfo::AmountOfPhysicalMemoryMB(), sizeof(uintptr_t) == 4);
+      base::SysInfo::AmountOfPhysicalMemory(), sizeof(uintptr_t) == 4);
 }
 
 std::optional<int32_t> ReadFileToInt32(const base::FilePath& filename) {
@@ -1319,8 +1319,8 @@ VmInfo_VmType ToConciergeServiceVmType(apps::VmType type) {
   }
 }
 
-apps::VmType ToAppsVmType(VmInfo_VmType type){
-    switch (type) {
+apps::VmType ToAppsVmType(VmInfo_VmType type) {
+  switch (type) {
     case VmInfo::TERMINA:
       return apps::TERMINA;
     case VmInfo::PLUGIN_VM:
