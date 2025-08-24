@@ -95,4 +95,73 @@ uint32_t FpInfoCommand::Result() const {
   return fp_info_command_v1_->Result();
 }
 
+std::string FpInfoCommand::ParseSensorInfo() {
+  std::stringstream ss;
+
+  auto sensor_id = this->sensor_id();
+  ss << "Fingerprint sensor: ";
+  if (sensor_id) {
+    ss << "vendor " << std::hex << sensor_id->vendor_id << " product "
+       << sensor_id->product_id << " model " << sensor_id->model_id
+       << " version " << sensor_id->version << std::dec << std::endl;
+  } else {
+    ss << "Not available" << std::endl;
+  }
+
+  auto errors = GetFpSensorErrors();
+  ss << "Error flags: ";
+  if (errors == FpSensorErrors::kNone) {
+    ss << "NONE";
+  } else {
+    if ((errors & FpSensorErrors::kNoIrq) != ec::FpSensorErrors::kNone) {
+      ss << "NO_IRQ ";
+    }
+    if ((errors & FpSensorErrors::kSpiCommunication) !=
+        ec::FpSensorErrors::kNone) {
+      ss << "SPI_COMM ";
+    }
+    if ((errors & FpSensorErrors::kBadHardwareID) !=
+        ec::FpSensorErrors::kNone) {
+      ss << "BAD_HWID ";
+    }
+    if ((errors & FpSensorErrors::kInitializationFailure) !=
+        ec::FpSensorErrors::kNone) {
+      ss << "INIT_FAIL ";
+    }
+  }
+  ss << std::endl;
+
+  int dead_pixels = NumDeadPixels();
+  if (dead_pixels == kDeadPixelsUnknown) {
+    ss << "Dead pixels: UNKNOWN" << std::endl;
+  } else {
+    ss << "Dead pixels: " << dead_pixels << std::endl;
+  }
+
+  auto images = sensor_image();
+  if (!images.empty()) {
+    int i = 0;
+    for (const auto& image : images) {
+      ss << "Image [" << i << "]: size " << image.width << "x" << image.height
+         << " " << image.bpp << " bpp" << std::endl;
+      i++;
+    }
+  } else {
+    ss << "Image: Not available" << std::endl;
+  }
+
+  auto template_info = this->template_info();
+  ss << "Templates: ";
+  if (template_info) {
+    ss << "version " << template_info->version << " size "
+       << template_info->size << " count " << template_info->num_valid << "/"
+       << template_info->max_templates << " dirty bitmap " << std::hex
+       << template_info->dirty.to_ulong() << std::dec << std::endl;
+  } else {
+    ss << "Not available" << std::endl;
+  }
+
+  return ss.str();
+}
+
 }  // namespace ec

@@ -163,6 +163,36 @@ TEST_F(FpInfoCommandTest, Result_v1) {
   EXPECT_EQ(fp_info_command->Result(), result);
 }
 
+TEST_F(FpInfoCommandTest, Parse_sensor_info_v1) {
+  struct ec_response_fp_info resp = {
+      .vendor_id = 1,
+      .product_id = 2,
+      .model_id = 3,
+      .version = 4,
+      .frame_size = 1,
+      .pixel_format = 2,
+      .width = 3,
+      .height = 4,
+      .bpp = 5,
+      .errors = FP_ERROR_INIT_FAIL | FP_ERROR_DEAD_PIXELS_UNKNOWN,
+      .template_size = 1024,
+      .template_max = 4,
+      .template_valid = 3,
+      .template_dirty = 1 << 3,
+      .template_version = 1};
+
+  EXPECT_CALL(*mock_fp_info_command_v1_, Resp).WillRepeatedly(Return(&resp));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      1, std::move(mock_fp_info_command_v1_), nullptr);
+
+  std::string expected_output =
+      "Fingerprint sensor: vendor 1 product 2 model 3 version 4\nError flags: "
+      "INIT_FAIL \nDead pixels: UNKNOWN\nImage [0]: size 3x4 5 bpp\nTemplates: "
+      "version 1 size 1024 count 3/4 dirty bitmap 8\n";
+
+  EXPECT_THAT(fp_info_command->ParseSensorInfo(), Eq(expected_output));
+}
+
 TEST_F(FpInfoCommandTest, GetFpSensorErrors_v2) {
   struct fp_info::Params_v2 resp = {
       .info = {.sensor_info = {.errors = FP_ERROR_INIT_FAIL |
@@ -289,6 +319,48 @@ TEST_F(FpInfoCommandTest, Result_v2) {
       2, nullptr, std::move(mock_fp_info_command_v2_));
 
   EXPECT_EQ(fp_info_command->Result(), result);
+}
+
+TEST_F(FpInfoCommandTest, Parse_sensor_info_v2) {
+  struct fp_info::Params_v2 resp = {
+      .info = {.sensor_info = {.vendor_id = 1,
+                               .product_id = 2,
+                               .model_id = 3,
+                               .version = 4,
+                               .errors = FP_ERROR_BAD_HWID},
+               .template_info = {.template_size = 1024,
+                                 .template_max = 4,
+                                 .template_valid = 3,
+                                 .template_dirty = 1 << 3,
+                                 .template_version = 1}}};
+
+  resp.info.sensor_info.num_capture_types = 2;
+  resp.image_frame_params[0] = {
+      .frame_size = 5120,
+      .pixel_format = 0x59455247,
+      .width = 64,
+      .height = 80,
+      .bpp = 8,
+  };
+  resp.image_frame_params[1] = {
+      .frame_size = 36864,
+      .pixel_format = 0x59455247,
+      .width = 192,
+      .height = 96,
+      .bpp = 16,
+  };
+
+  EXPECT_CALL(*mock_fp_info_command_v2_, Resp).WillRepeatedly(Return(&resp));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      2, nullptr, std::move(mock_fp_info_command_v2_));
+
+  std::string expected_output =
+      "Fingerprint sensor: vendor 1 product 2 model 3 version 4\nError flags: "
+      "BAD_HWID \nDead pixels: 0\nImage [0]: size 64x80 8 bpp\nImage [1]: size "
+      "192x96 16 bpp\nTemplates: version 1 size 1024 count 3/4 dirty bitmap "
+      "8\n";
+
+  EXPECT_THAT(fp_info_command->ParseSensorInfo(), Eq(expected_output));
 }
 
 }  // namespace

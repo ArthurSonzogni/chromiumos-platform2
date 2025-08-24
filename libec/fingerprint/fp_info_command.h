@@ -6,6 +6,7 @@
 #define LIBEC_FINGERPRINT_FP_INFO_COMMAND_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -101,6 +102,7 @@ class BRILLO_EXPORT FpInfoCommand : public EcCommandInterface {
   virtual std::optional<TemplateInfo> template_info();
   virtual int NumDeadPixels();
   virtual FpSensorErrors GetFpSensorErrors();
+  std::string ParseSensorInfo();
 
  private:
   std::unique_ptr<FpInfoCommand_v1> fp_info_command_v1_ = nullptr;
