@@ -26,6 +26,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "mtpd/device_event_delegate.h"
