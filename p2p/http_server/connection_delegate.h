@@ -12,6 +12,7 @@
 
 #include <base/command_line.h>
 #include <base/threading/simple_thread.h>
+#include <base/time/time.h>
 
 #include "p2p/common/server_message.h"
 #include "p2p/http_server/connection_delegate_interface.h"
