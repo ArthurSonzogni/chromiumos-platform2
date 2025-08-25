@@ -1,0 +1,5 @@
+# Copyright 2025 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+2025-05-14T23:36:52.414464Z ERR dlcservice[6698]: ERROR dlcservice: [dlc_service.cc(433)] GetDlc(...): Domain=dbus, Code=org.chromium.DlcServiceInterface.INVALID_DLC, Message=Passed unsupported DLC=assistant-dlc

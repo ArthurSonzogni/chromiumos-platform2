@@ -982,10 +982,20 @@ TEST(AnomalyDetectorTest, DlcServiceFailure) {
 
 TEST(AnomalyDetectorTest, DlcServiceDbusDomainFailure) {
   ParserRun dlc_service_failure = {
-      .expected_substr = "INVALID_DLC",
+      .expected_substr = "INTERNAL",
       .expected_flags = {
           {"--dlc_service_failure", base::StringPrintf("--weight=%d", 100)}}};
   DlcServiceParser parser(/*testonly_send_all=*/true);
   ParserTest("TEST_DLC_SERVICE_DBUS_DOMAIN_FAILURE", {dlc_service_failure},
+             &parser);
+}
+
+TEST(AnomalyDetectorTest, DlcServiceDbusFailureInvalidDlc) {
+  ParserRun dlc_service_failure = {
+      .expected_substr = "INVALID_DLC",
+      .expected_flags = {
+          {"--dlc_service_failure", base::StringPrintf("--weight=%d", 10000)}}};
+  DlcServiceParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_DLC_SERVICE_DBUS_FAILURE_INVALID_DLC", {dlc_service_failure},
              &parser);
 }

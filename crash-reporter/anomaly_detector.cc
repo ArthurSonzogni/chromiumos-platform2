@@ -955,7 +955,11 @@ MaybeCrashReport DlcServiceParser::ParseLogEntry(const std::string& line) {
         error_code == dlcservice::kErrorNone) {
       return std::nullopt;
     }
-    weight = 100;
+    if (error_code == dlcservice::kErrorInvalidDlc) {
+      weight = 10000;
+    } else {
+      weight = 100;
+    }
   } else {
     return std::nullopt;
   }
