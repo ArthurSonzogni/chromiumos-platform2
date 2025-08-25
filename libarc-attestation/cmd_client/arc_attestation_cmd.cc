@@ -8,6 +8,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <libarc_attestation/proto_bindings/arc_attestation_blob.pb.h>
