@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libhwsec-foundation/utility/synchronized.h"
+
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -11,10 +13,9 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "libhwsec-foundation/utility/synchronized.h"
 
 namespace hwsec_foundation::utility {
 
