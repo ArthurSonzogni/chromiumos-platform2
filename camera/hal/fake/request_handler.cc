@@ -3,18 +3,19 @@
  * found in the LICENSE file.
  */
 
-#include <hardware/gralloc.h>
-#include <sync/sync.h>
+#include "hal/fake/request_handler.h"
 
 #include <memory>
 #include <utility>
 
 #include <base/threading/platform_thread.h>
+#include <base/time/time.h>
+#include <hardware/gralloc.h>
+#include <sync/sync.h>
 
 #include "cros-camera/common.h"
 #include "hal/fake/fake_stream.h"
 #include "hal/fake/metadata_handler.h"
-#include "hal/fake/request_handler.h"
 
 namespace cros {
 
