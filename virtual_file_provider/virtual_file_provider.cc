@@ -17,6 +17,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
+#include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 

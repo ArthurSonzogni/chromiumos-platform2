@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "virtual_file_provider/operation_throttle.h"
+
 #include <base/functional/bind.h>
 #include <base/location.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
+#include <base/time/time.h>
 #include <gtest/gtest.h>
-
-#include "virtual_file_provider/operation_throttle.h"
 
 namespace virtual_file_provider {
 
