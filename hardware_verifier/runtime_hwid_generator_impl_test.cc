@@ -622,6 +622,31 @@ TEST_F(RuntimeHWIDGeneratorImplTest, Generate_WithSkipComponent) {
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
+       Generate_WithWrongNumberOfGenericComponents) {
+  EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
+      .WillOnce(Return("MODEL-RLZ A2A"));
+  SetFeatureManagement(
+      segmentation::FeatureManagementInterface::FEATURE_LEVEL_1,
+      segmentation::FeatureManagementInterface::SCOPE_LEVEL_1);
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
+      std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  auto* camera_1 = probe_result.add_camera();
+  camera_1->set_name("camera_5_5");
+  camera_1->set_position("5");
+  auto* camera_2 = probe_result.add_camera();
+  camera_2->set_name("camera_6_6");
+  camera_2->set_position("6");
+  auto* unidentified_comp = probe_result.add_camera();
+  unidentified_comp->set_name(kGenericComponent);
+
+  auto res = generator.Generate(probe_result);
+
+  EXPECT_EQ(res, "MODEL-RLZ A2A R:1-1-X-5,6-X-X-X-X-X-X-X-X-X");
+}
+
+TEST_F(RuntimeHWIDGeneratorImplTest,
        Generate_ComponentPositionsShouldBeSorted) {
   EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
       .WillOnce(Return("MODEL-RLZ A2A"));

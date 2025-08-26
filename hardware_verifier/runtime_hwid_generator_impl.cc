@@ -416,8 +416,14 @@ std::optional<std::string> RuntimeHWIDGeneratorImpl::Generate(
               });
 
     int unidentified_count = GetUnidentifiedComponentCount(probe_components);
-    component_positions.insert(component_positions.end(), unidentified_count,
-                               kRuntimeHWIDUnidentifiedComp);
+    if (unidentified_count < 0) {
+      LOG(WARNING) << "There are more probed components than generic "
+                      "components for category \""
+                   << field_name << "\". The probe config might be malformed.";
+    } else {
+      component_positions.insert(component_positions.end(), unidentified_count,
+                                 kRuntimeHWIDUnidentifiedComp);
+    }
 
     if (component_positions.empty()) {
       if (waived_categories_.contains(category)) {
