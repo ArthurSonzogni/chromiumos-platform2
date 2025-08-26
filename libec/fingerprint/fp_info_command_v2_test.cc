@@ -226,39 +226,35 @@ TEST_F(FpInfoCommand_v2_SensorImageTest, ValidSensorImage) {
   struct fp_info::Params_v2 resp;
 
   resp.info.sensor_info.num_capture_types = 2;
-  resp.image_frame_params[0] = {
-      .frame_size = 5120,
-      .pixel_format = 0x59455247,
-      .width = 64,
-      .height = 80,
-      .bpp = 8,
-  };
-  resp.image_frame_params[1] = {
-      .frame_size = 36864,
-      .pixel_format = 0x59455247,
-      .width = 192,
-      .height = 96,
-      .bpp = 16,
-  };
+  resp.image_frame_params[0] = {.frame_size = 5120,
+                                .pixel_format = 0x59455247,
+                                .width = 64,
+                                .height = 80,
+                                .bpp = 8,
+                                .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
+  resp.image_frame_params[1] = {.frame_size = 36864,
+                                .pixel_format = 0x59455247,
+                                .width = 192,
+                                .height = 96,
+                                .bpp = 16,
+                                .fp_capture_type = FP_CAPTURE_PATTERN0};
 
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
 
-  EXPECT_THAT(mock_fp_info_command.sensor_image(),
-              ElementsAre(
-                  SensorImage{
-                      .width = 64,
-                      .height = 80,
-                      .frame_size = 5120,
-                      .pixel_format = 0x59455247,
-                      .bpp = 8,
-                  },
-                  SensorImage{
-                      .width = 192,
-                      .height = 96,
-                      .frame_size = 36864,
-                      .pixel_format = 0x59455247,
-                      .bpp = 16,
-                  }));
+  EXPECT_THAT(
+      mock_fp_info_command.sensor_image(),
+      ElementsAre(SensorImage{.width = 64,
+                              .height = 80,
+                              .frame_size = 5120,
+                              .pixel_format = 0x59455247,
+                              .bpp = 8,
+                              .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE},
+                  SensorImage{.width = 192,
+                              .height = 96,
+                              .frame_size = 36864,
+                              .pixel_format = 0x59455247,
+                              .bpp = 16,
+                              .fp_capture_type = FP_CAPTURE_PATTERN0}));
 }
 
 /**

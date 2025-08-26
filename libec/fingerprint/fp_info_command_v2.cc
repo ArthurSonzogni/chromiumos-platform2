@@ -47,7 +47,9 @@ std::vector<SensorImage> FpInfoCommand_v2::sensor_image() {
                     .height = Resp()->image_frame_params[i].height,
                     .frame_size = Resp()->image_frame_params[i].frame_size,
                     .pixel_format = Resp()->image_frame_params[i].pixel_format,
-                    .bpp = Resp()->image_frame_params[i].bpp});
+                    .bpp = Resp()->image_frame_params[i].bpp,
+                    .fp_capture_type = static_cast<enum fp_capture_type>(
+                        Resp()->image_frame_params[i].fp_capture_type)});
   }
 
   return sensor_image_;

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
+
 #include "libec/fingerprint/fp_info_command.h"
 
 namespace ec {
@@ -36,7 +38,8 @@ std::optional<SensorImage> FpInfoCommand_v1::sensor_image() {
                                       .height = Resp()->height,
                                       .frame_size = Resp()->frame_size,
                                       .pixel_format = Resp()->pixel_format,
-                                      .bpp = Resp()->bpp});
+                                      .bpp = Resp()->bpp,
+                                      .fp_capture_type = std::nullopt});
   }
   return sensor_image_;
 }
