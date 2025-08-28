@@ -312,9 +312,9 @@ inline constexpr std::string_view kFwupTimestampFile =
 // Records the current time to file.
 //
 // Returns true on success, false if any error occurs.
-bool RecordFwupMetricTimestamp(
-    const base::FilePath& last_fwup_report = base::FilePath(kFwupTimestampFile),
-    base::Time time = base::Time::UnixEpoch());
+bool RecordFwupMetricTimestamp(base::Time time,
+                               const base::FilePath& last_fwup_report =
+                                   base::FilePath(kFwupTimestampFile));
 
 // Gets the timestamp stored in file.
 std::optional<base::Time> GetFwupMetricTimestamp(

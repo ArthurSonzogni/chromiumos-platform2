@@ -563,8 +563,8 @@ TEST(FlexFwupHistoryMetrics, RecordAndGetTimestampFromFS) {
   CHECK(temp_dir.CreateUniqueTempDir());
   base::FilePath last_fwup_report_file =
       temp_dir.GetPath().Append("last_fwup_report");
-  EXPECT_TRUE(RecordFwupMetricTimestamp(last_fwup_report_file,
-                                        base::Time::UnixEpoch()));
+  EXPECT_TRUE(RecordFwupMetricTimestamp(base::Time::UnixEpoch(),
+                                        last_fwup_report_file));
 
   std::string time_str;
   ASSERT_TRUE(base::ReadFileToString(last_fwup_report_file, &time_str));
@@ -580,7 +580,7 @@ TEST(FlexFwupHistoryMetrics, RecordTimestampFailsWhenWriteFileFails) {
   base::FilePath nonexistent_file =
       temp_dir.GetPath().Append("nonexistent/file");
   EXPECT_FALSE(
-      RecordFwupMetricTimestamp(nonexistent_file, base::Time::UnixEpoch()));
+      RecordFwupMetricTimestamp(base::Time::UnixEpoch(), nonexistent_file));
 }
 
 TEST(FlexFwupHistoryMetrics, GetTimestampFailsWhenReadFileFails) {

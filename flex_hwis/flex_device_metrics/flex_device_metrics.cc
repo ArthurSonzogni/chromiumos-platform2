@@ -348,8 +348,8 @@ bool ParseFwupHistoriesFromJson(std::string_view history_json,
   return true;
 }
 
-bool RecordFwupMetricTimestamp(const base::FilePath& last_fwup_report,
-                               base::Time time) {
+bool RecordFwupMetricTimestamp(base::Time time,
+                               const base::FilePath& last_fwup_report) {
   if (!base::WriteFile(base::FilePath(last_fwup_report),
                        base::ToString(time).append("\n"))) {
     LOG(ERROR) << "Failed to write timestamp of last fwup history metric "
