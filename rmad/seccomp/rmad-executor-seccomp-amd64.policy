@@ -22,6 +22,8 @@ getppid: 1
 gettid: 1
 access: 1
 lseek: 1
+fchmod: 1
+tgkill: 1
 rename: 1
 faccessat2: 1
 faccessat: 1
