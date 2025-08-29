@@ -1178,6 +1178,7 @@ impl Methods {
     fn import_disk_image(
         &mut self,
         vm_name: &str,
+        vm_type: Option<VmType>,
         user_id_hash: &str,
         import_name: &str,
         removable_media: Option<&str>,
@@ -1194,6 +1195,9 @@ impl Methods {
         request.cryptohome_id = user_id_hash.to_owned();
         request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT.into();
         request.source_size = import_file.size;
+        if let Some(vm_type) = vm_type {
+            request.vm_type = vm_type.into();
+        }
 
         let response: ImportDiskImageResponse = ProtoMessage::parse_from_bytes(
             &self
@@ -2444,13 +2448,14 @@ impl Methods {
     pub fn vm_import(
         &mut self,
         name: &str,
+        vm_type: Option<VmType>,
         user_id_hash: &str,
         file_name: &str,
         removable_media: Option<&str>,
     ) -> Result<Option<String>, Box<dyn Error>> {
         self.ensure_crostini_available(user_id_hash)?;
 
-        self.import_disk_image(name, user_id_hash, file_name, removable_media)
+        self.import_disk_image(name, vm_type, user_id_hash, file_name, removable_media)
     }
 
     pub fn vm_share_path(

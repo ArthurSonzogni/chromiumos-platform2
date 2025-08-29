@@ -680,17 +680,47 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn import(&mut self) -> VmcResult {
-        let (vm_name, file_name, removable_media) = match self.args.len() {
-            2 => (self.args[0], self.args[1], None),
-            3 => (self.args[0], self.args[1], Some(self.args[2])),
+        let mut opts = Options::new();
+        opts.optflag("h", "help", "print this help menu");
+        opts.optopt("", "vm-type", "type of VM (CROSTINI / BAGUETTE)", "TYPE");
+
+        let matches = opts.parse(self.args)?;
+
+        if matches.opt_present("help") {
+            println!(
+                "{}",
+                opts.usage(
+                    "Usage: vmc import [options] <vm name> <file name> [<removable storage name>]"
+                )
+            );
+            return Ok(());
+        }
+
+        let vm_type = match matches.opt_str("vm-type") {
+            None => None,
+            Some(vm_type) => Some(match vm_type.to_uppercase().as_ref() {
+                "CROSTINI" | "TERMINA" => VmType::TERMINA,
+                "BAGUETTE" => VmType::BAGUETTE,
+                _ => return Err(ChromeOSError::NoSuchVmType.into()),
+            }),
+        };
+
+        let (vm_name, file_name, removable_media) = match matches.free.len() {
+            2 => (&matches.free[0], &matches.free[1], None),
+            3 => (
+                &matches.free[0],
+                &matches.free[1],
+                Some(matches.free[2].as_str()),
+            ),
             _ => return Err(ExpectedVmAndFileName.into()),
         };
 
         if let Some(uuid) = try_command!(self.methods.vm_import(
             vm_name,
+            vm_type,
             self.user_id_hash,
             file_name,
-            removable_media
+            removable_media,
         )) {
             println!("Import in progress: {}", uuid);
             self.wait_disk_op_completion(&uuid, DiskOpType::Create, "import")?;
@@ -1152,7 +1182,7 @@ const USAGE: &str = " [
   |  destroy [-y] <vm name>
   |  disk-op-status <command UUID>
   |  export [-d] [-f] <vm name> <file name> [<removable storage name>]
-  |  import [-p] <vm name> <file name> [<removable storage name>]
+  |  import [--vm-type <vm type>] <vm name> <file name> [<removable storage name>]
   |  inspect-backup <file name> [<removable storage name>]
   |  resize <vm name> <size>
   |  list
