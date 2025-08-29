@@ -2719,4 +2719,55 @@ TEST_F(PowerSupplyTest, ReadMaxVoltageUcsi) {
   EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[0].max_power);
 }
 
+// Test that low battery shutdown is enabled after init if the device
+// uses cros_usbpd-charger to register power supplies.
+TEST_F(PowerSupplyTest, CrosUsbpdLowBatteryShutdownEnabled) {
+  const char kCrosUsbPdChargerSupply[] = "CROS_USBPD_CHARGER1";
+  const base::FilePath cros_supply_dir =
+      temp_dir_.GetPath().Append(kCrosUsbPdChargerSupply);
+
+  // Write to the sysfs properties used by the CROS_USBPD_CHARGER power supply
+  // driver.
+  ASSERT_TRUE(base::CreateDirectory(cros_supply_dir));
+  WriteValue(cros_supply_dir, "type", kUsbPdType);
+  WriteValue(cros_supply_dir, "online", "1");
+  WriteValue(cros_supply_dir, "status", kNotCharging);
+
+  // Check that |low_battery_shutdown_enabled_| is true after init.
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  ASSERT_TRUE(power_supply_->GetLowBatteryShutdownEnabled());
+}
+
+// Test that low battery shutdown is disabled after init if the device
+// uses cros_ec_ucsi to register power supplies.
+TEST_F(PowerSupplyTest, UcsiLowBatteryShutdownDisabled) {
+  const char kUcsiSupply[] = "ucsi-source-psy-cros_ec_ucsi.4.auto1";
+  const base::FilePath ucsi_supply_dir =
+      temp_dir_.GetPath().Append(kUcsiSupply);
+
+  // Write to the sysfs properties used by the UCSI power supply driver.
+  ASSERT_TRUE(base::CreateDirectory(ucsi_supply_dir));
+  WriteValue(ucsi_supply_dir, "type", kUsbPdType);
+  WriteValue(ucsi_supply_dir, "online", "1");
+  WriteValue(ucsi_supply_dir, "status", kCharging);
+
+  // Check that |low_battery_shutdown_enabled_| is false after init.
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  ASSERT_FALSE(power_supply_->GetLowBatteryShutdownEnabled());
+}
+
+// Test that low battery shutdown is disabled after init if no
+// ports have been added by the PowerSupply class.
+TEST_F(PowerSupplyTest, NoPortsLowBatteryShutdownDisabled) {
+  // Check that |low_battery_shutdown_enabled_| is false after init.
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  ASSERT_FALSE(power_supply_->GetLowBatteryShutdownEnabled());
+}
+
 }  // namespace power_manager::system

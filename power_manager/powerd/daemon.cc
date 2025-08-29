@@ -1321,7 +1321,8 @@ void Daemon::OnPowerStatusUpdate() {
   state_controller_->HandlePowerSourceChange(power_source);
   thermal_event_handler_->HandlePowerSourceChange(power_source);
 
-  if (status.battery_below_shutdown_threshold) {
+  if (status.battery_below_shutdown_threshold &&
+      power_supply_->GetLowBatteryShutdownEnabled()) {
     LOG(INFO) << "Shutting down due to low battery ("
               << base::StringPrintf("%0.2f", status.battery_percentage) << "%, "
               << util::TimeDeltaToString(status.battery_time_to_empty)

@@ -981,6 +981,8 @@ TEST_F(DaemonTest, ShutDownForLowBattery) {
   async_commands_.clear();
   status.battery_below_shutdown_threshold = true;
   power_supply_->set_status(status);
+  EXPECT_CALL(*power_supply_, GetLowBatteryShutdownEnabled())
+      .WillRepeatedly(testing::Return(true));
   power_supply_->NotifyObservers();
 
   ASSERT_EQ(1, async_commands_.size());
@@ -1022,6 +1024,8 @@ TEST_F(DaemonTest, ShutDownForLowBatteryInDarkResume) {
   status.battery_is_present = true;
   status.battery_below_shutdown_threshold = true;
   power_supply_->set_status(status);
+  EXPECT_CALL(*power_supply_, GetLowBatteryShutdownEnabled())
+      .WillRepeatedly(testing::Return(true));
   // Tell powerd that the battery is running out. powerd should initiate a
   // shutdown.
   power_supply_->NotifyObservers();
@@ -1035,6 +1039,32 @@ TEST_F(DaemonTest, ShutDownForLowBatteryInDarkResume) {
       static_cast<int>(SuspendJourneyResult::LOW_POWER_SHUTDOWN),
       static_cast<int>(SuspendJourneyResult::MAX));
   EXPECT_TRUE(metrics_sender_->ContainsMetric(want_metric));
+}
+
+TEST_F(DaemonTest, NoShutDownWithLowBattery) {
+  prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
+  Init();
+
+  // We shouldn't shut down if the battery isn't below the threshold.
+  async_commands_.clear();
+  system::PowerStatus status;
+  status.battery_is_present = true;
+  status.battery_below_shutdown_threshold = false;
+  power_supply_->set_status(status);
+  power_supply_->NotifyObservers();
+  EXPECT_EQ(0, async_commands_.size());
+
+  // Now drop below the threshold.
+  async_commands_.clear();
+  status.battery_below_shutdown_threshold = true;
+  power_supply_->set_status(status);
+
+  // If |power_supply_| hasn't enabled low battery shutdown, there should not
+  // by any asynchronous calls.
+  EXPECT_CALL(*power_supply_, GetLowBatteryShutdownEnabled())
+      .WillRepeatedly(testing::Return(false));
+  power_supply_->NotifyObservers();
+  ASSERT_EQ(0, async_commands_.size());
 }
 
 TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {

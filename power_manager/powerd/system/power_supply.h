@@ -72,6 +72,16 @@ struct PowerStatus {
       DUAL_ROLE,
     };
 
+    // Details about which driver is managing the power supply.
+    enum class PowerSupplyDriver {
+      // Chrome OS specific USB PD charger driver.
+      CROS_USBPD_CHARGER,
+      // USB power supply driver based on UCSI.
+      UCSI_PSY,
+      // Default value for the port's power supply driver.
+      UNKNOWN,
+    };
+
     // Tests for |o| having a matching ID and connection type.
     bool operator==(const Port& o) const;
 
@@ -96,6 +106,9 @@ struct PowerStatus {
     // True if the power source automatically provides charge when connected
     // (e.g. a dedicated charger).
     bool active_by_default = false;
+
+    // Driver managing the power supply class for this port.
+    PowerSupplyDriver driver = PowerSupplyDriver::UNKNOWN;
   };
 
   // Is a non-battery power source connected?
@@ -294,6 +307,10 @@ class PowerSupplyInterface {
   // notifies observers asynchronously, and schedules a poll for the near
   // future.
   virtual void OnBatterySaverStateChanged() = 0;
+
+  // Helper function to check whether or not the power status is sufficiently
+  // initialized for low battery shutdown.
+  virtual bool GetLowBatteryShutdownEnabled() = 0;
 };
 
 // Real implementation of PowerSupplyInterface that reads from sysfs.
@@ -419,6 +436,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
                         double hold_delta_percent) override;
   void ClearChargeLimited() override;
   void OnBatterySaverStateChanged() override;
+  bool GetLowBatteryShutdownEnabled() override {
+    return low_battery_shutdown_enabled_;
+  }
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;
@@ -548,6 +568,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // returning true on success.
   bool SetPowerSource(const std::string& id);
 
+  // Sets the |low_battery_shutdown_enabled_| variable and notifies observers.
+  void SetLowBatteryShutdownEnabled();
+
   ec::EcCommandFactoryInterface* ec_command_factory_ = nullptr;  // non-owned
   PrefsInterface* prefs_ = nullptr;                              // non-owned
   UdevInterface* udev_ = nullptr;                                // non-owned
@@ -567,6 +590,10 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // True after |power_status_| has been successfully updated at least once.
   bool power_status_initialized_ = false;
+
+  // True if the power supplies have been sufficiently discovered to check for
+  // a low battery shutdown.
+  bool low_battery_shutdown_enabled_ = false;
 
   // Base sysfs directory containing subdirectories corresponding to power
   // supplies.

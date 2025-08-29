@@ -5,14 +5,13 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_MOCK_POWER_SUPPLY_H_
 #define POWER_MANAGER_POWERD_SYSTEM_MOCK_POWER_SUPPLY_H_
 
-#include "power_manager/powerd/system/power_supply.h"
-
 #include <string>
 
 #include <base/observer_list.h>
 #include <base/time/time.h>
-
 #include <gmock/gmock.h>
+
+#include "power_manager/powerd/system/power_supply.h"
 
 namespace power_manager::system {
 
@@ -50,6 +49,7 @@ class MockPowerSupply : public PowerSupplyInterface {
   MOCK_METHOD(void, SetChargeLimited, (double, double), (override));
   MOCK_METHOD(void, ClearChargeLimited, (), (override));
   MOCK_METHOD(void, OnBatterySaverStateChanged, (), (override));
+  MOCK_METHOD(bool, GetLowBatteryShutdownEnabled, (), (override));
 
  private:
   // Result to return from RefreshImmediately().

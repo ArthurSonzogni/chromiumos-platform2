@@ -71,10 +71,18 @@ constexpr base::TimeDelta kDefaultBatteryStabilizedAfterResumeDelay =
 constexpr base::TimeDelta kDefaultBatteryStabilizedAfterBatterySaverDelay =
     base::Seconds(30);
 
+// Delay before allowing low battery shutdown when power status isn't ready to
+// be evaluated.
+constexpr base::TimeDelta kLowBatteryShutdownDelay = base::Seconds(5);
+
 // Number of retry attempts for reading the PowerStatus.
 constexpr int kPowerRefreshRetries = 5;
 // Delay in milliseconds of retry attempts for reading the PowerStatus.
 constexpr int kPowerRefreshDelays[] = {1, 10, 100, 1000, 1000};
+
+// Power supply driver names.
+constexpr char kCrosUsbPdCharger[] = "CROS_USBPD_CHARGER";
+constexpr char kUcsiPsy[] = "ucsi-source-psy";
 
 // Reads the contents of |filename| within |directory| into |out|, trimming
 // trailing whitespace.  Returns true on success.
@@ -1137,6 +1145,34 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
 
   power_status_ = status;
   power_status_initialized_ = true;
+
+  if (!low_battery_shutdown_enabled_) {
+    // Check for UCSI power supply
+    bool ucsi_power_supply = false;
+    for (auto port : status.ports) {
+      if (port.driver == PowerStatus::Port::PowerSupplyDriver::UCSI_PSY) {
+        ucsi_power_supply = true;
+        break;
+      }
+    }
+
+    // UCSI platforms are slower to register power supplies, and may not have
+    // registered any when the powerd PowerSupply class initializes. If the
+    // device uses UCSI or no power supplies have been registered, delay setting
+    // |low_battery_shutdown_enabled_| to allow the kernel to register power
+    // supplies. |power_status_| will be updated by PowerSupply udev handling,
+    // then low battery shutdown can be evaluated.
+    if (status.ports.size() == 0 || ucsi_power_supply) {
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&PowerSupply::SetLowBatteryShutdownEnabled,
+                         base::Unretained(this)),
+          kLowBatteryShutdownDelay);
+    } else {
+      low_battery_shutdown_enabled_ = true;
+    }
+  }
+
   return true;
 }
 
@@ -1149,6 +1185,15 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   const auto location_it = port_names_.find(path.BaseName().value());
   if (location_it != port_names_.end()) {
     port->location = location_it->second;
+  }
+
+  // Record the power supply driver for this port.
+  if (path.BaseName().value().find(kCrosUsbPdCharger) != std::string::npos) {
+    port->driver = PowerStatus::Port::PowerSupplyDriver::CROS_USBPD_CHARGER;
+  } else if (path.BaseName().value().find(kUcsiPsy) != std::string::npos) {
+    port->driver = PowerStatus::Port::PowerSupplyDriver::UCSI_PSY;
+  } else {
+    port->driver = PowerStatus::Port::PowerSupplyDriver::UNKNOWN;
   }
 
   // Bidirectional/dual-role ports export a "status" field.
@@ -1848,6 +1893,14 @@ bool PowerSupply::SetPowerSource(const std::string& id) {
     return false;
   }
   return true;
+}
+
+void PowerSupply::SetLowBatteryShutdownEnabled() {
+  low_battery_shutdown_enabled_ = true;
+
+  // After enabling low battery shutdown, notify observers to check for a low
+  // battery shutdown case.
+  NotifyObservers();
 }
 
 }  // namespace power_manager::system
