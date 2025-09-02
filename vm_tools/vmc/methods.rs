@@ -1606,14 +1606,15 @@ impl Methods {
         vm_name: &str,
         user_id_hash: &str,
     ) -> Result<(), Box<dyn Error>> {
-        let lxd_started = ProtobusSignalWatcher::new(
+        let garcon_start_signalled = ProtobusSignalWatcher::new(
             self.connection.connection.as_ref(),
             VM_CICERONE_INTERFACE,
             CONTAINER_STARTED_SIGNAL,
         )?;
-        lxd_started.wait_with_filter(DEFAULT_TIMEOUT, |s: &ContainerStartedSignal| {
-            s.vm_name == vm_name && s.owner_id == user_id_hash
-        })?;
+        garcon_start_signalled
+            .wait_with_filter(DEFAULT_TIMEOUT, |s: &ContainerStartedSignal| {
+                s.vm_name == vm_name && s.owner_id == user_id_hash
+            })?;
         Ok(())
     }
 

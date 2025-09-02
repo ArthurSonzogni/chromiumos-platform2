@@ -42,6 +42,7 @@ main() {
 
   echo penguin > /etc/hostname
   echo '127.0.0.1 penguin' >> /etc/hosts
+  echo '100.115.92.2 arc' >> /etc/hosts
 
   echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 
@@ -70,6 +71,11 @@ main() {
 
   install -D -m 0755 -t /usr/local/bin \
     "${DATA_ROOT}/usr/local/bin/first-boot-cros"
+
+  # chromeos-bsp-termina files for maitred
+  mkdir -p /mnt/chromeos/fonts
+  install -D -m 0755 -t /etc/maitred/50-mount-fonts.textproto \
+    "${DATA_ROOT}/etc/maitred/50-mount-fonts.textproto"
 
   # chromeos guest tools repo
   curl https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > \
