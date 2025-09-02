@@ -536,6 +536,27 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
   EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(probe_result, {}));
 }
 
+TEST_F(RuntimeHWIDGeneratorImplTest,
+       ShouldGenerateRuntimeHWID_ShouldHandleModelNameSuffix) {
+  SetModelName("MODEL_SUFFIX");
+  CategoryMapping<std::vector<std::string>> factory_hwid = {
+      {runtime_probe::ProbeRequest_SupportCategory_storage, {"storage_1"}},
+  };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_storage};
+  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
+      .WillOnce(Return(factory_hwid));
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
+      std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  AddProbeComponent<runtime_probe::Storage>(&probe_result, "MODEL_storage_1_1");
+
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
+}
+
 TEST_F(RuntimeHWIDGeneratorImplTest, Generate) {
   EXPECT_CALL(*mock_factory_hwid_processor_, GenerateMaskedFactoryHWID())
       .WillOnce(Return("MODEL-RLZ A2A"));

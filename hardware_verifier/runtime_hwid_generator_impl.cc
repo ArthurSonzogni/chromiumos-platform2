@@ -74,7 +74,9 @@ std::string ModelName() {
 
   if (Context::Get()->cros_config()->GetString(
           kCrosConfigModelNamePath, kCrosConfigModelNameKey, &model_name)) {
-    return model_name;
+    const auto& model_parts = base::SplitString(
+        model_name, "_", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+    return model_parts[0];
   }
 
   LOG(ERROR) << "Failed to get \"" << kCrosConfigModelNamePath << " "
