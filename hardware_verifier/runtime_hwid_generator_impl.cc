@@ -366,6 +366,7 @@ bool RuntimeHWIDGeneratorImpl::ShouldGenerateRuntimeHWID(
         GetDecodeComponentsByCategory(*decode_result, category);
     if (!MatchProbeAndDecodeComponents(probe_components, decode_components,
                                        category_name, model_name)) {
+      VLOG(1) << "Mismatch found for category \"" << category_name << "\".";
       return true;
     }
   }
