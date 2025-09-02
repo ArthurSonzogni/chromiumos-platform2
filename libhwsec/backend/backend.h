@@ -7,8 +7,6 @@
 
 #include <type_traits>
 
-#include <base/types/always_false.h>
-
 #include "libhwsec/backend/attestation.h"
 #include "libhwsec/backend/config.h"
 #include "libhwsec/backend/da_mitigation.h"
@@ -116,7 +114,7 @@ class Backend {
     } else if constexpr (std::is_same_v<SubClass, EventManagement>) {
       return GetEventManagement();
     } else {
-      static_assert(base::AlwaysFalse<SubClass>, "Unknown SubClass.");
+      static_assert(false, "Unknown SubClass.");
     }
   }
 

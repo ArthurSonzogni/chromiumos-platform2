@@ -10,21 +10,20 @@
 #include <tuple>
 #include <utility>
 
+#include <attestation-client/attestation/dbus-proxies.h>
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/interface.pb.h>
-#include <attestation-client/attestation/dbus-proxies.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
-#include <base/types/always_false.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
-#include <device_management/proto_bindings/device_management_interface.pb.h>
 #include <device_management-client/device_management/dbus-proxies.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <device_management/proto_bindings/device_management_interface.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "libhwsec-foundation/tool/hwsec_status.pb.h"
@@ -212,7 +211,7 @@ class ClientLoop : public brillo::Daemon {
       hwsec_status_.set_is_mounted(reply.is_mounted());
       hwsec_status_.set_is_ephemeral_mount(reply.is_ephemeral_mount());
     } else {
-      static_assert(base::AlwaysFalse<Reply>, "Forget to handle this reply");
+      static_assert(false, "Forget to handle this reply");
     }
     CallbackFinished();
   }
