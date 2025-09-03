@@ -2769,15 +2769,6 @@ mno {
     mccmnc: "46002"
     mccmnc: "46007"
     mobile_apn {
-      apn: "cmwap"
-      localized_name {
-        name: "WAP"
-      }
-      username: "guest"
-      password: "guest"
-      type: DEFAULT
-    }
-    mobile_apn {
       apn: "cmnet"
       localized_name {
         name: "Internet"
@@ -2787,6 +2778,15 @@ mno {
       ip_type: IPV4V6
       type: DEFAULT
       type: IA
+    }
+    mobile_apn {
+      apn: "cmwap"
+      localized_name {
+        name: "WAP"
+      }
+      username: "guest"
+      password: "guest"
+      type: DEFAULT
     }
   }
 }
