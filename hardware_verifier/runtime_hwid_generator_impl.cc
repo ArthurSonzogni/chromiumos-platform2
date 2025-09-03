@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/fixed_flat_set.h>
 #include <base/files/file_util.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
@@ -37,8 +38,11 @@ namespace hardware_verifier {
 
 namespace {
 
+// TODO(b/442751226): Find a better approach to handle stylus components.
+constexpr auto kSupersetMatchCategories =
+    base::MakeFixedFlatSet<std::string_view>({"display_panel", "stylus"});
+
 constexpr char kCameraCategoryName[] = "camera";
-constexpr char kDisplayPanelCategoryName[] = "display_panel";
 constexpr char kDramCategoryName[] = "dram";
 
 constexpr char kCompGroupField[] = "comp_group";
@@ -234,15 +238,15 @@ std::vector<std::string> GetDecodeComponentsByCategory(
 // components are an exact match to the normalized decoded components, and there
 // are no unidentified components in the probe result.
 //
-// For the "display_panel" category, it returns true if all normalized decoded
-// components are present in the normalized probed components (i.e., probed is a
-// superset of decoded).
+// For the "display_panel" and "stylus" category, it returns true if all
+// normalized decoded components are present in the normalized probed components
+// (i.e., probed is a superset of decoded).
 bool MatchProbeAndDecodeComponents(
     const std::vector<ProbeComponent>& probe_components,
     const std::vector<std::string>& decode_components,
     std::string_view category_name,
     std::string_view model_name) {
-  if (category_name != kDisplayPanelCategoryName &&
+  if (!kSupersetMatchCategories.contains(category_name) &&
       GetUnidentifiedComponentCount(probe_components) > 0) {
     return false;
   }
@@ -257,7 +261,7 @@ bool MatchProbeAndDecodeComponents(
   const std::multiset<std::string> normalized_decode_component_names =
       GetNormalizedComponentNames(decode_components, category_name, model_name);
 
-  if (category_name == kDisplayPanelCategoryName) {
+  if (kSupersetMatchCategories.contains(category_name)) {
     for (const auto& decode_comp : normalized_decode_component_names) {
       if (!normalized_probe_component_names.contains(decode_comp)) {
         return false;

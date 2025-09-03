@@ -420,6 +420,26 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
+       ShouldGenerate_ExtraStylusInProbeResult_ShouldReturnFalse) {
+  SetModelName("MODEL");
+  CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_stylus};
+  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
+      .WillOnce(Return(factory_hwid));
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
+      std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  AddProbeComponent<runtime_probe::InputDevice>(&probe_result, "MODEL_stylus_2",
+                                                "stylus");
+
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
+}
+
+TEST_F(RuntimeHWIDGeneratorImplTest,
        ShouldGenerate_UnidentifiedDisplayPanelInProbeResult_ShouldReturnFalse) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
@@ -433,6 +453,26 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
 
   runtime_probe::ProbeResult probe_result;
   auto* unidentified_comp = probe_result.add_display_panel();
+  unidentified_comp->set_name(kGenericComponent);
+
+  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
+}
+
+TEST_F(RuntimeHWIDGeneratorImplTest,
+       ShouldGenerate_UnidentifiedStylusInProbeResult_ShouldReturnFalse) {
+  SetModelName("MODEL");
+  CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_stylus};
+  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
+      .WillOnce(Return(factory_hwid));
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
+      std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  auto* unidentified_comp = probe_result.add_stylus();
   unidentified_comp->set_name(kGenericComponent);
 
   EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
@@ -461,6 +501,26 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
+       ShouldGenerate_ExtraStylusInDecodeResult_ShouldReturnTrue) {
+  SetModelName("MODEL");
+  CategoryMapping<std::vector<std::string>> factory_hwid = {
+      {runtime_probe::ProbeRequest_SupportCategory_stylus, {"stylus_1"}},
+  };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_stylus};
+  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
+      .WillOnce(Return(factory_hwid));
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
+      std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
+}
+
+TEST_F(RuntimeHWIDGeneratorImplTest,
        ShouldGenerate_MismatchedDisplayPanel_ShouldReturnTrue) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {
@@ -477,6 +537,27 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Edid>(&probe_result, "display_panel_2");
+
+  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
+      probe_result, verification_spec_categories));
+}
+
+TEST_F(RuntimeHWIDGeneratorImplTest,
+       ShouldGenerate_MismatchedStylus_ShouldReturnTrue) {
+  SetModelName("MODEL");
+  CategoryMapping<std::vector<std::string>> factory_hwid = {
+      {runtime_probe::ProbeRequest_SupportCategory_stylus, {"stylus_1"}},
+  };
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_stylus};
+  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
+      .WillOnce(Return(factory_hwid));
+  auto generator = RuntimeHWIDGeneratorImplForTesting(
+      std::move(mock_factory_hwid_processor_), {});
+
+  runtime_probe::ProbeResult probe_result;
+  AddProbeComponent<runtime_probe::Edid>(&probe_result, "stylus_2");
 
   EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
       probe_result, verification_spec_categories));
