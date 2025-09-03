@@ -88,6 +88,7 @@ memfd_create: 1
 setpriority: 1
 ftruncate: 1
 creat: 1
+dup: 1
 connect: 1
 pipe2: 1
 sigaltstack: 1
