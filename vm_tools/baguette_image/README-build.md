@@ -19,7 +19,8 @@ For docker build, you need docker buildx to be installed and callable as `docker
 
 #### Native Build
 
-Assume everything goes well, by running `src/build.sh` you will get a `rootfs.tar` which contains the rootfs of baguette image.
+Assume everything goes well, by running `src/build.sh -c` you will get a `rootfs.tar` which contains the rootfs of baguette image.
+Alternatively you can use `src/build.sh -u $USERNAME` for a specific username (otherwise chronos will be used).
 Then run `src/generate_disk_image.py rootfs.tar baguette_rootfs.img.zstd` will give you a compressed disk image of baguette.
 
 #### Docker Build

@@ -40,6 +40,29 @@ DATA_ROOT="/tmp/data"
 main() {
   export DEBIAN_FRONTEND=noninteractive
 
+  guest_user=""
+  while getopts ":cu:" opt; do
+    case ${opt} in
+      c)
+        echo "will create chronos user for dev environments"
+        guest_user="chronos"
+        ;;
+      u)
+        # strip whitespace from nested chroot and getopts
+        guest_user=$(echo "${OPTARG}" | xargs)
+        echo "will create ${guest_user} user for dev environemnts"
+        ;;
+      \?)
+        echo "Invalid option: -${OPTARG}" >&2
+        exit 1
+        ;;
+      :)
+        echo "-u option requires a username"
+        exit 1
+        ;;
+    esac
+  done
+
   echo penguin > /etc/hostname
   echo '127.0.0.1 penguin' >> /etc/hosts
   echo '100.115.92.2 arc' >> /etc/hosts
@@ -94,6 +117,15 @@ main() {
 
   apt-get update
   apt-get -y install "${CROS_PACKAGES[@]}"
+
+  if [ -n "${guest_user}" ]; then
+    # test user for debugging
+    useradd -m -s /bin/bash -G \
+      audio,cdrom,dialout,floppy,kvm,netdev,sudo,tss,video "${guest_user}"
+    chpasswd <<< "${guest_user}:test0000"
+    mkdir -p /var/lib/systemd/linger
+    touch "/var/lib/systemd/linger/${guest_user}"
+  fi
 
   # # TODO(b/271522474): leave networking to NM
   ln -sf /run/resolv.conf /etc/resolv.conf

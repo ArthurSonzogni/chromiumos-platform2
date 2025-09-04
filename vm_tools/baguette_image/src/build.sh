@@ -26,6 +26,37 @@ function cleanup {
 
 trap cleanup EXIT
 
+create_chronos=""
+total_flags=0
+
+while getopts ":cu:" opt; do
+  case ${opt} in
+    c)
+      echo "will create chronos user for dev environments"
+      create_chronos="-c"
+      total_flags=$((total_flags+=1))
+      ;;
+    u)
+      echo "will create ${OPTARG} user for dev environemnts"
+      create_chronos="-u ${OPTARG}"
+      total_flags=$((total_flags+=1))
+      ;;
+    \?)
+      echo "Invalid option: -${OPTARG}" >&2
+      exit 1
+      ;;
+    :)
+      echo "-u option requires a username"
+      exit 1
+      ;;
+  esac
+done
+
+if (( "${total_flags}" > 1)); then
+  echo "Only one of flags -u / -c is permitted to be used."
+  exit 1
+fi
+
 mkdir target
 sudo cdebootstrap --arch "${BAGUETTE_ARCH}" --include=ca-certificates trixie target https://deb.debian.org/debian/
 sudo mount --bind /dev target/dev
@@ -39,7 +70,7 @@ cp "${SCRIPT_DIR}/setup_in_guest.sh" target/tmp/
 sudo sed -i 's/CROS_PACKAGES_URL/https:\/\/storage.googleapis.com\/cros-packages-staging\/136\//g' target/tmp/setup_in_guest.sh
 sudo sed -i 's/CROS_RELEASE/trixie/g' target/tmp/setup_in_guest.sh
 
-sudo chroot target /tmp/setup_in_guest.sh
+sudo chroot target /tmp/setup_in_guest.sh "${create_chronos}"
 
 sudo rm -rf target/tmp/data
 sudo rm target/tmp/setup_in_guest.sh

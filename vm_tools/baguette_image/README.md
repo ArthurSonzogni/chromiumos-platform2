@@ -1,21 +1,21 @@
 ## How to use the image?
 
 Note: This instruction is subject to change. arm64 images are testesd on trogdor, amd64 images are tested on brya.
-
-Prerequisites: A DUT running at least R134 with crostini installed (for the DLC and updated vmc tools).
+Note: Instructions assume latest code checkout as development is ongoing.
 
 On workstation:
 `scp /path/to/baguette_rootfs.image.zst root@<DUT IP>:/home/chronos/user/MyFiles/Downloads`
 
 On DUT:
-`vmc create --size 15G --source /home/chronos/user/MyFiles/Downloads/baguette_rootfs.image.zst`
+```
+vmc create --vm-type baguette \
+           --size 15G \
+           --source /home/chronos/user/MyFiles/Downloads/baguette_rootfs.image.zst \
+           baguette
+```
 
 On DUT:
-```
-vmc start --vm-type baguette \
-          --kernel-param "root=/dev/vdb rw net.ifnames=0 systemd.log_color=0" \
-          baguette
-```
+`vmc start --vm-type baguette baguette`
 
 What to look for:
 
