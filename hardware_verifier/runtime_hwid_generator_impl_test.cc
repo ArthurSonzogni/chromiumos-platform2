@@ -63,16 +63,16 @@ class RuntimeHWIDGeneratorImplForTesting : public RuntimeHWIDGeneratorImpl {
 class RuntimeHWIDGeneratorImplTest : public BaseFileTest {
  protected:
   void SetUp() override {
-    mock_factory_hwid_processor_ =
-        std::make_unique<NiceMock<MockFactoryHWIDProcessor>>();
-    // Default skip zero bit categories to empty.
-    ON_CALL(*mock_factory_hwid_processor_, GetSkipZeroBitCategories())
-        .WillByDefault(
-            Return(std::set<runtime_probe::ProbeRequest_SupportCategory>{}));
+    mock_factory_hwid_processor_ = CreateFactoryHWIDProcessor();
   }
 
   void SetModelName(const std::string& model_name) {
     mock_context()->fake_cros_config()->SetString("/", "name", model_name);
+  }
+
+  void SetFormFactor(const std::string& form_factor) {
+    mock_context()->fake_cros_config()->SetString("/hardware-properties",
+                                                  "form-factor", form_factor);
   }
 
   void SetFeatureManagement(
@@ -147,6 +147,18 @@ class RuntimeHWIDGeneratorImplTest : public BaseFileTest {
     if (!comp_pos.empty()) {
       component->set_position(comp_pos);
     }
+  }
+
+  std::unique_ptr<NiceMock<MockFactoryHWIDProcessor>>
+  CreateFactoryHWIDProcessor() {
+    auto factory_hwid_processor =
+        std::make_unique<NiceMock<MockFactoryHWIDProcessor>>();
+    // Default skip zero bit categories to empty.
+    ON_CALL(*factory_hwid_processor, GetSkipZeroBitCategories())
+        .WillByDefault(
+            Return(std::set<runtime_probe::ProbeRequest_SupportCategory>{}));
+
+    return factory_hwid_processor;
   }
 
   std::unique_ptr<NiceMock<MockFactoryHWIDProcessor>>
@@ -400,167 +412,200 @@ TEST_F(RuntimeHWIDGeneratorImplTest,
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
-       ShouldGenerate_ExtraDisplayPanelInProbeResult_ShouldReturnFalse) {
+       ShouldGenerate_ExtraSupersetCompInProbeResult_ShouldReturnFalse) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
   std::set<runtime_probe::ProbeRequest_SupportCategory>
       verification_spec_categories = {
-          runtime_probe::ProbeRequest_SupportCategory_display_panel};
-  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
-      .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImplForTesting(
-      std::move(mock_factory_hwid_processor_), {});
+          runtime_probe::ProbeRequest_SupportCategory_display_panel,
+          runtime_probe::ProbeRequest_SupportCategory_stylus};
 
   runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::Edid>(&probe_result,
                                          "MODEL_display_panel_1");
-
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
-      probe_result, verification_spec_categories));
-}
-
-TEST_F(RuntimeHWIDGeneratorImplTest,
-       ShouldGenerate_ExtraStylusInProbeResult_ShouldReturnFalse) {
-  SetModelName("MODEL");
-  CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
-  std::set<runtime_probe::ProbeRequest_SupportCategory>
-      verification_spec_categories = {
-          runtime_probe::ProbeRequest_SupportCategory_stylus};
-  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
-      .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImplForTesting(
-      std::move(mock_factory_hwid_processor_), {});
-
-  runtime_probe::ProbeResult probe_result;
   AddProbeComponent<runtime_probe::InputDevice>(&probe_result, "MODEL_stylus_2",
                                                 "stylus");
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
-      probe_result, verification_spec_categories));
+  for (const auto& form_factor : {"CHROMEBOOK", "DETACHABLE"}) {
+    SetFormFactor(form_factor);
+    auto mock_factory_hwid_processor = CreateFactoryHWIDProcessor();
+    EXPECT_CALL(*mock_factory_hwid_processor, DecodeFactoryHWID())
+        .WillOnce(Return(factory_hwid));
+    auto generator = RuntimeHWIDGeneratorImplForTesting(
+        std::move(mock_factory_hwid_processor), {});
+
+    EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+        probe_result, verification_spec_categories));
+  }
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
-       ShouldGenerate_UnidentifiedDisplayPanelInProbeResult_ShouldReturnFalse) {
+       ShouldGenerate_ExtraTouchpadInProbeResult) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
   std::set<runtime_probe::ProbeRequest_SupportCategory>
       verification_spec_categories = {
-          runtime_probe::ProbeRequest_SupportCategory_display_panel};
-  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
-      .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImplForTesting(
-      std::move(mock_factory_hwid_processor_), {});
+          runtime_probe::ProbeRequest_SupportCategory_touchpad};
 
   runtime_probe::ProbeResult probe_result;
-  auto* unidentified_comp = probe_result.add_display_panel();
-  unidentified_comp->set_name(kGenericComponent);
+  AddProbeComponent<runtime_probe::InputDevice>(&probe_result,
+                                                "MODEL_touchpad_1", "touchpad");
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
-      probe_result, verification_spec_categories));
+  const std::vector<std::pair<std::string, bool>> test_cases = {
+      {"CHROMEBOOK", true}, {"DETACHABLE", false}};
+  for (const auto& [form_factor, expected] : test_cases) {
+    SetFormFactor(form_factor);
+    auto mock_factory_hwid_processor = CreateFactoryHWIDProcessor();
+    EXPECT_CALL(*mock_factory_hwid_processor, DecodeFactoryHWID())
+        .WillOnce(Return(factory_hwid));
+    auto generator = RuntimeHWIDGeneratorImplForTesting(
+        std::move(mock_factory_hwid_processor), {});
+
+    EXPECT_EQ(generator.ShouldGenerateRuntimeHWID(probe_result,
+                                                  verification_spec_categories),
+              expected);
+  }
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
-       ShouldGenerate_UnidentifiedStylusInProbeResult_ShouldReturnFalse) {
+       ShouldGenerate_UnidentifiedSupersetCompInProbeResult_ShouldReturnFalse) {
   SetModelName("MODEL");
   CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
   std::set<runtime_probe::ProbeRequest_SupportCategory>
       verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_display_panel,
           runtime_probe::ProbeRequest_SupportCategory_stylus};
-  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
-      .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImplForTesting(
-      std::move(mock_factory_hwid_processor_), {});
 
   runtime_probe::ProbeResult probe_result;
-  auto* unidentified_comp = probe_result.add_stylus();
+  auto* unidentified_comp1 = probe_result.add_display_panel();
+  unidentified_comp1->set_name(kGenericComponent);
+  auto* unidentified_comp2 = probe_result.add_stylus();
+  unidentified_comp2->set_name(kGenericComponent);
+
+  for (const auto& form_factor : {"CHROMEBOOK", "DETACHABLE"}) {
+    SetFormFactor(form_factor);
+    auto mock_factory_hwid_processor = CreateFactoryHWIDProcessor();
+    EXPECT_CALL(*mock_factory_hwid_processor, DecodeFactoryHWID())
+        .WillOnce(Return(factory_hwid));
+    auto generator = RuntimeHWIDGeneratorImplForTesting(
+        std::move(mock_factory_hwid_processor), {});
+
+    EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
+        probe_result, verification_spec_categories));
+  }
+}
+
+TEST_F(RuntimeHWIDGeneratorImplTest,
+       ShouldGenerate_UnidentifiedTouchpadInProbeResult) {
+  SetModelName("MODEL");
+  CategoryMapping<std::vector<std::string>> factory_hwid = {{}};
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_touchpad};
+
+  runtime_probe::ProbeResult probe_result;
+  auto* unidentified_comp = probe_result.add_touchpad();
   unidentified_comp->set_name(kGenericComponent);
 
-  EXPECT_FALSE(generator.ShouldGenerateRuntimeHWID(
-      probe_result, verification_spec_categories));
+  const std::vector<std::pair<std::string, bool>> test_cases = {
+      {"CHROMEBOOK", true}, {"DETACHABLE", false}};
+  for (const auto& [form_factor, expected] : test_cases) {
+    SetFormFactor(form_factor);
+    auto mock_factory_hwid_processor = CreateFactoryHWIDProcessor();
+    EXPECT_CALL(*mock_factory_hwid_processor, DecodeFactoryHWID())
+        .WillOnce(Return(factory_hwid));
+    auto generator = RuntimeHWIDGeneratorImplForTesting(
+        std::move(mock_factory_hwid_processor), {});
+
+    EXPECT_EQ(generator.ShouldGenerateRuntimeHWID(probe_result,
+                                                  verification_spec_categories),
+              expected);
+  }
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
-       ShouldGenerate_ExtraDisplayPanelInDecodeResult_ShouldReturnTrue) {
+       ShouldGenerate_ExtraSupersetCompInDecodeResult_ShouldReturnTrue) {
   SetModelName("MODEL");
-  CategoryMapping<std::vector<std::string>> factory_hwid = {
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_display_panel,
+          runtime_probe::ProbeRequest_SupportCategory_stylus,
+          runtime_probe::ProbeRequest_SupportCategory_touchpad};
+
+  CategoryMapping<std::vector<std::string>> factory_hwid_display_panel = {
       {runtime_probe::ProbeRequest_SupportCategory_display_panel,
        {"display_panel_1"}},
   };
-  std::set<runtime_probe::ProbeRequest_SupportCategory>
-      verification_spec_categories = {
-          runtime_probe::ProbeRequest_SupportCategory_display_panel};
-  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
-      .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImplForTesting(
-      std::move(mock_factory_hwid_processor_), {});
-
-  runtime_probe::ProbeResult probe_result;
-
-  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
-      probe_result, verification_spec_categories));
-}
-
-TEST_F(RuntimeHWIDGeneratorImplTest,
-       ShouldGenerate_ExtraStylusInDecodeResult_ShouldReturnTrue) {
-  SetModelName("MODEL");
-  CategoryMapping<std::vector<std::string>> factory_hwid = {
-      {runtime_probe::ProbeRequest_SupportCategory_stylus, {"stylus_1"}},
+  CategoryMapping<std::vector<std::string>> factory_hwid_stylus = {
+      {runtime_probe::ProbeRequest_SupportCategory_stylus, {"stylus_2"}},
   };
-  std::set<runtime_probe::ProbeRequest_SupportCategory>
-      verification_spec_categories = {
-          runtime_probe::ProbeRequest_SupportCategory_stylus};
-  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
-      .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImplForTesting(
-      std::move(mock_factory_hwid_processor_), {});
+  CategoryMapping<std::vector<std::string>> factory_hwid_touchpad = {
+      {runtime_probe::ProbeRequest_SupportCategory_touchpad, {"touchpad_3"}},
+  };
 
-  runtime_probe::ProbeResult probe_result;
+  for (const auto& form_factor : {"CHROMEBOOK", "DETACHABLE"}) {
+    SetFormFactor(form_factor);
+    for (const auto& factory_hwid :
+         {factory_hwid_display_panel, factory_hwid_stylus,
+          factory_hwid_touchpad}) {
+      auto mock_factory_hwid_processor = CreateFactoryHWIDProcessor();
+      EXPECT_CALL(*mock_factory_hwid_processor, DecodeFactoryHWID())
+          .WillOnce(Return(factory_hwid));
+      auto generator = RuntimeHWIDGeneratorImplForTesting(
+          std::move(mock_factory_hwid_processor), {});
 
-  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
-      probe_result, verification_spec_categories));
+      EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
+          {}, verification_spec_categories));
+    }
+  }
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,
-       ShouldGenerate_MismatchedDisplayPanel_ShouldReturnTrue) {
+       ShouldGenerate_MismatchedSupersetComp_ShouldReturnTrue) {
   SetModelName("MODEL");
-  CategoryMapping<std::vector<std::string>> factory_hwid = {
+  std::set<runtime_probe::ProbeRequest_SupportCategory>
+      verification_spec_categories = {
+          runtime_probe::ProbeRequest_SupportCategory_display_panel,
+          runtime_probe::ProbeRequest_SupportCategory_stylus,
+          runtime_probe::ProbeRequest_SupportCategory_touchpad};
+  CategoryMapping<std::vector<std::string>> factory_hwid_display_panel = {
       {runtime_probe::ProbeRequest_SupportCategory_display_panel,
        {"display_panel_1"}},
   };
-  std::set<runtime_probe::ProbeRequest_SupportCategory>
-      verification_spec_categories = {
-          runtime_probe::ProbeRequest_SupportCategory_display_panel};
-  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
-      .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImplForTesting(
-      std::move(mock_factory_hwid_processor_), {});
-
-  runtime_probe::ProbeResult probe_result;
-  AddProbeComponent<runtime_probe::Edid>(&probe_result, "display_panel_2");
-
-  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
-      probe_result, verification_spec_categories));
-}
-
-TEST_F(RuntimeHWIDGeneratorImplTest,
-       ShouldGenerate_MismatchedStylus_ShouldReturnTrue) {
-  SetModelName("MODEL");
-  CategoryMapping<std::vector<std::string>> factory_hwid = {
+  CategoryMapping<std::vector<std::string>> factory_hwid_stylus = {
       {runtime_probe::ProbeRequest_SupportCategory_stylus, {"stylus_1"}},
   };
-  std::set<runtime_probe::ProbeRequest_SupportCategory>
-      verification_spec_categories = {
-          runtime_probe::ProbeRequest_SupportCategory_stylus};
-  EXPECT_CALL(*mock_factory_hwid_processor_, DecodeFactoryHWID())
-      .WillOnce(Return(factory_hwid));
-  auto generator = RuntimeHWIDGeneratorImplForTesting(
-      std::move(mock_factory_hwid_processor_), {});
+  CategoryMapping<std::vector<std::string>> factory_hwid_touchpad = {
+      {runtime_probe::ProbeRequest_SupportCategory_touchpad, {"touchpad_3"}},
+  };
+  runtime_probe::ProbeResult probe_result_display_panel;
+  AddProbeComponent<runtime_probe::Edid>(&probe_result_display_panel,
+                                         "display_panel_2");
+  runtime_probe::ProbeResult probe_result_stylus;
+  AddProbeComponent<runtime_probe::InputDevice>(&probe_result_stylus,
+                                                "stylus_2", "stylus");
+  runtime_probe::ProbeResult probe_result_touchpad;
+  AddProbeComponent<runtime_probe::InputDevice>(&probe_result_touchpad,
+                                                "touchpad_3", "touchpad");
+  const std::vector<std::pair<CategoryMapping<std::vector<std::string>>,
+                              runtime_probe::ProbeResult>>
+      test_cases = {{factory_hwid_display_panel, probe_result_display_panel},
+                    {factory_hwid_stylus, probe_result_stylus},
+                    {factory_hwid_touchpad, probe_result_touchpad}};
 
-  runtime_probe::ProbeResult probe_result;
-  AddProbeComponent<runtime_probe::Edid>(&probe_result, "stylus_2");
+  for (const auto& form_factor : {"CHROMEBOOK", "DETACHABLE"}) {
+    SetFormFactor(form_factor);
+    for (const auto& [factory_hwid, probe_result] : test_cases) {
+      auto mock_factory_hwid_processor = CreateFactoryHWIDProcessor();
+      EXPECT_CALL(*mock_factory_hwid_processor, DecodeFactoryHWID())
+          .WillOnce(Return(factory_hwid));
+      auto generator = RuntimeHWIDGeneratorImplForTesting(
+          std::move(mock_factory_hwid_processor), {});
 
-  EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
-      probe_result, verification_spec_categories));
+      EXPECT_TRUE(generator.ShouldGenerateRuntimeHWID(
+          {}, verification_spec_categories));
+    }
+  }
 }
 
 TEST_F(RuntimeHWIDGeneratorImplTest,

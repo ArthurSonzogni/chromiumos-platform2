@@ -44,6 +44,7 @@ constexpr auto kSupersetMatchCategories =
 
 constexpr char kCameraCategoryName[] = "camera";
 constexpr char kDramCategoryName[] = "dram";
+constexpr char kTouchpadCategoryName[] = "touchpad";
 
 constexpr char kCompGroupField[] = "comp_group";
 constexpr char kInformationField[] = "information";
@@ -55,6 +56,9 @@ constexpr char kScopeLevelField[] = "scope_level";
 constexpr char kGenericComponent[] = "generic";
 constexpr char kCrosConfigModelNamePath[] = "/";
 constexpr char kCrosConfigModelNameKey[] = "name";
+constexpr char kCrosConfigHardwarePropertiesPath[] = "/hardware-properties";
+constexpr char kCrosConfigFormFactorKey[] = "form-factor";
+constexpr char kDetachableFormFactor[] = "DETACHABLE";
 
 constexpr char kRuntimeHWIDMagicString[] = "R:";
 constexpr char kRuntimeHWIDFieldSeparator[] = "-";
@@ -85,6 +89,21 @@ std::string ModelName() {
 
   LOG(ERROR) << "Failed to get \"" << kCrosConfigModelNamePath << " "
              << kCrosConfigModelNameKey << "\" from cros config";
+  return "";
+}
+
+// Get the device form factor.
+std::string FormFactor() {
+  std::string form_factor;
+
+  if (Context::Get()->cros_config()->GetString(
+          kCrosConfigHardwarePropertiesPath, kCrosConfigFormFactorKey,
+          &form_factor)) {
+    return form_factor;
+  }
+
+  LOG(ERROR) << "Failed to get \"" << kCrosConfigHardwarePropertiesPath << " "
+             << kCrosConfigFormFactorKey << "\" from cros config";
   return "";
 }
 
@@ -231,6 +250,13 @@ std::vector<std::string> GetDecodeComponentsByCategory(
   return decode_result.at(category);
 }
 
+bool ShouldApplySupersetMatch(std::string_view category_name,
+                              std::string_view form_factor) {
+  return kSupersetMatchCategories.contains(category_name) ||
+         (category_name == kTouchpadCategoryName &&
+          form_factor == kDetachableFormFactor);
+}
+
 // Checks if the probed components match the decoded components for a given
 // category.
 //
@@ -240,13 +266,15 @@ std::vector<std::string> GetDecodeComponentsByCategory(
 //
 // For the "display_panel" and "stylus" category, it returns true if all
 // normalized decoded components are present in the normalized probed components
-// (i.e., probed is a superset of decoded).
+// (i.e., probed is a superset of decoded). For detachable models, also apply
+// the superset match to the "touchpad" category.
 bool MatchProbeAndDecodeComponents(
     const std::vector<ProbeComponent>& probe_components,
     const std::vector<std::string>& decode_components,
     std::string_view category_name,
-    std::string_view model_name) {
-  if (!kSupersetMatchCategories.contains(category_name) &&
+    std::string_view model_name,
+    std::string_view form_factor) {
+  if (!ShouldApplySupersetMatch(category_name, form_factor) &&
       GetUnidentifiedComponentCount(probe_components) > 0) {
     return false;
   }
@@ -261,7 +289,7 @@ bool MatchProbeAndDecodeComponents(
   const std::multiset<std::string> normalized_decode_component_names =
       GetNormalizedComponentNames(decode_components, category_name, model_name);
 
-  if (kSupersetMatchCategories.contains(category_name)) {
+  if (ShouldApplySupersetMatch(category_name, form_factor)) {
     for (const auto& decode_comp : normalized_decode_component_names) {
       if (!normalized_probe_component_names.contains(decode_comp)) {
         return false;
@@ -346,6 +374,7 @@ bool RuntimeHWIDGeneratorImpl::ShouldGenerateRuntimeHWID(
     return false;
   }
 
+  const std::string form_factor = FormFactor();
   const std::string model_name = ModelName();
   if (model_name.empty()) {
     LOG(ERROR) << "Failed to get device model name.";
@@ -371,7 +400,8 @@ bool RuntimeHWIDGeneratorImpl::ShouldGenerateRuntimeHWID(
     const std::vector<std::string> decode_components =
         GetDecodeComponentsByCategory(*decode_result, category);
     if (!MatchProbeAndDecodeComponents(probe_components, decode_components,
-                                       category_name, model_name)) {
+                                       category_name, model_name,
+                                       form_factor)) {
       VLOG(1) << "Mismatch found for category \"" << category_name << "\".";
       return true;
     }
