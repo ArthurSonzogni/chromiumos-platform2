@@ -140,7 +140,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     std::optional<FlashInfo> flash_info = std::nullopt;
     std::optional<HwidElements> hwid_elements = kHwidElements;
     std::set<rmad::RmadComponent> probed_components = {};
-    int shimless_mode_flags = 0x0;
     std::string rmad_config_text = "";
   };
 
@@ -290,9 +289,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         .WillByDefault(Return(args.set_stable_device_secret_success));
     ON_CALL(*mock_vpd_utils, FlushOutRoVpdCache())
         .WillByDefault(Return(args.flush_vpd));
-    ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
-        .WillByDefault(
-            DoAll(SetArgPointee<0>(args.shimless_mode_flags), Return(true)));
 
     // Mock |HwidUtils|.
     auto mock_hwid_utils = std::make_unique<NiceMock<MockHwidUtils>>();
@@ -1123,10 +1119,11 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
+  json_store_->SetValue(
+      kShimlessMode,
+      base::StringPrintf("0x%" PRIx64, kShimlessModeFlagsPreserveGbbFlags));
   // Failed to reset GBB.
-  StateHandlerArgs args = {
-      .reset_gbb_success = false,
-      .shimless_mode_flags = kShimlessModeFlagsPreserveGbbFlags};
+  StateHandlerArgs args = {.reset_gbb_success = false};
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
@@ -1199,10 +1196,12 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
+  json_store_->SetValue(
+      kShimlessMode,
+      base::StringPrintf("0x%" PRIx64,
+                         kShimlessModeFlagsBoardIdCheckResultBypass));
   // Invalid board ID.
-  StateHandlerArgs args = {
-      .board_id_type = kInvalidBoardIdType,
-      .shimless_mode_flags = kShimlessModeFlagsBoardIdCheckResultBypass};
+  StateHandlerArgs args = {.board_id_type = kInvalidBoardIdType};
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();

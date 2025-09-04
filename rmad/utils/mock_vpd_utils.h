@@ -32,7 +32,7 @@ class MockVpdUtils : public VpdUtils {
               (std::string*, std::string*),
               (const, override));
   MOCK_METHOD(bool, GetStableDeviceSecret, (std::string*), (const, override));
-  MOCK_METHOD(bool, GetShimlessMode, (uint64_t*), (const, override));
+  MOCK_METHOD(bool, GetShimlessMode, (std::string*), (const, override));
   MOCK_METHOD(bool, SetSerialNumber, (const std::string&), (override));
   MOCK_METHOD(bool, SetCustomLabelTag, (const std::string&, bool), (override));
   MOCK_METHOD(bool, SetRegion, (const std::string&), (override));

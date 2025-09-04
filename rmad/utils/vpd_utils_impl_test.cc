@@ -232,9 +232,9 @@ TEST_F(VpdUtilsTest, GetShimlessMode_Success) {
       .WillOnce(DoAll(SetArgPointee<1>("0x5"), Return(true)));
   auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
 
-  uint64_t shimless_mode;
+  std::string shimless_mode;
   EXPECT_TRUE(vpd_utils->GetShimlessMode(&shimless_mode));
-  EXPECT_EQ(shimless_mode, 0x5);
+  EXPECT_EQ(shimless_mode, "0x5");
 }
 
 TEST_F(VpdUtilsTest, GetShimlessMode_Nullptr) {

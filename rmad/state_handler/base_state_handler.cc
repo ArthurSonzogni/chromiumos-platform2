@@ -43,7 +43,13 @@ namespace rmad {
 BaseStateHandler::BaseStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : json_store_(json_store), daemon_callback_(daemon_callback) {}
+    : json_store_(json_store), daemon_callback_(daemon_callback) {
+  std::string shimless_mode_str;
+  if (!json_store_->GetValue(kShimlessMode, &shimless_mode_str) ||
+      !base::HexStringToUInt64(shimless_mode_str, &shimless_mode_)) {
+    shimless_mode_ = 0;
+  }
+}
 
 const RmadState& BaseStateHandler::GetState(bool do_task) const {
   if (do_task) {

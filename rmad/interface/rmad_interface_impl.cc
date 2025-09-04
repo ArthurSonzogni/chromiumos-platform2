@@ -36,6 +36,7 @@
 #include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/mojo_service_utils.h"
 #include "rmad/utils/rpc_utils.h"
+#include "rmad/utils/vpd_utils_impl.h"
 
 namespace rmad {
 
@@ -124,6 +125,15 @@ void RmadInterfaceImpl::InitializeExternalUtils(
   json_store_ = base::MakeRefCounted<JsonStore>(
       base::FilePath(kDefaultUnencryptedRmaDirPath).Append(kJsonStoreFilePath),
       false);
+
+  // Set shimless mode in |json_store_|, this has to be done before registering
+  // state handlers.
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>();
+  std::string shimless_mode;
+  if (vpd_utils->GetShimlessMode(&shimless_mode)) {
+    json_store_->SetValue(kShimlessMode, shimless_mode);
+  }
+
   working_dir_path_ = base::FilePath(kDefaultWorkingDirPath);
   unencrypted_rma_dir_path_ = base::FilePath(kDefaultUnencryptedRmaDirPath);
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);

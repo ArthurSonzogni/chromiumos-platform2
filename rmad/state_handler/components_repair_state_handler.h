@@ -14,7 +14,6 @@
 #include "rmad/state_handler/base_state_handler.h"
 #include "rmad/system/device_management_client.h"
 #include "rmad/system/runtime_probe_client.h"
-#include "rmad/utils/vpd_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
@@ -25,16 +24,14 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject |working_dir_path|, |device_management_client_|,
-  // |runtime_probe_client_|, |write_protect_utils_|, and |vpd_utils_| for
-  // testing.
+  // |runtime_probe_client_|, and |write_protect_utils_| for testing.
   explicit ComponentsRepairStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
       std::unique_ptr<DeviceManagementClient> device_management_client,
       std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
-      std::unique_ptr<WriteProtectUtils> write_protect_utils,
-      std::unique_ptr<VpdUtils> vpd_utils);
+      std::unique_ptr<WriteProtectUtils> write_protect_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kComponentsRepair);
   SET_REPEATABLE;
@@ -60,7 +57,6 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   std::unique_ptr<DeviceManagementClient> device_management_client_;
   std::unique_ptr<RuntimeProbeClient> runtime_probe_client_;
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
-  std::unique_ptr<VpdUtils> vpd_utils_;
 };
 
 }  // namespace rmad

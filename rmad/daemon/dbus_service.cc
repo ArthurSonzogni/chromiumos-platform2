@@ -15,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
@@ -240,8 +241,15 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 
 bool DBusService::IsRMAAllowed() const {
   // Allow Shimless RMA in FSI testing mode.
-  if (uint64_t shimless_mode; vpd_utils_->GetShimlessMode(&shimless_mode) &&
-                              (shimless_mode & kShimlessModeFlagsTriggerable)) {
+  uint64_t shimless_mode = 0;
+  std::string shimless_mode_str;
+  if (vpd_utils_->GetShimlessMode(&shimless_mode_str) &&
+      !base::HexStringToUInt64(shimless_mode_str, &shimless_mode)) {
+    LOG(ERROR) << "Failed to parse shimless_mode from VPD. Rolling back to 0.";
+    shimless_mode = 0;
+  }
+
+  if (shimless_mode & kShimlessModeFlagsTriggerable) {
     LOG(INFO) << "Shimless RMA is allowed by VPD flags.";
     return true;
   }

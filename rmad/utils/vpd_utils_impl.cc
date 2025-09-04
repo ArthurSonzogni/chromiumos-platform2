@@ -112,17 +112,11 @@ bool VpdUtilsImpl::GetStableDeviceSecret(
   return GetRoVpd(kVpdKeyStableDeviceSecret, stable_device_secret);
 }
 
-bool VpdUtilsImpl::GetShimlessMode(uint64_t* flags) const {
+bool VpdUtilsImpl::GetShimlessMode(std::string* flags) const {
   CHECK(flags);
 
-  std::string mode;
-  if (!GetRwVpd(kVpdKeyShimlessMode, &mode)) {
+  if (!GetRwVpd(kVpdKeyShimlessMode, flags)) {
     LOG(ERROR) << "Failed to get shimless_mode from vpd.";
-    return false;
-  }
-
-  if (!base::HexStringToUInt64(mode, flags)) {
-    LOG(ERROR) << "Failed to parse shimless_mode to flags";
     return false;
   }
 

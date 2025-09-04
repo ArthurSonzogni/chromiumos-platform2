@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -22,7 +23,6 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_device_management_client.h"
 #include "rmad/system/mock_runtime_probe_client.h"
-#include "rmad/utils/mock_vpd_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using ComponentRepairStatus =
@@ -45,7 +45,6 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
     bool ccd_blocked = false;
     bool hwwp_enabled = true;
     bool chassis_open = false;
-    uint64_t shimless_mode_flags = 0;
   };
 
   scoped_refptr<ComponentsRepairStateHandler> CreateStateHandler(
@@ -69,17 +68,11 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_write_protect_utils, ReadyForFactoryMode())
         .WillByDefault(Return(!args.hwwp_enabled || args.chassis_open));
 
-    // Mock |VpdUtils|.
-    auto mock_vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
-    ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
-        .WillByDefault(
-            DoAll(SetArgPointee<0>(args.shimless_mode_flags), Return(true)));
-
     return base::MakeRefCounted<ComponentsRepairStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_device_management_client),
         std::move(mock_runtime_probe_client),
-        std::move(mock_write_protect_utils), std::move(mock_vpd_utils));
+        std::move(mock_write_protect_utils));
   }
 
   RmadState CreateDefaultComponentsRepairState() {
@@ -117,9 +110,10 @@ TEST_F(ComponentsRepairStateHandlerTest, InitializeState_BypassRacc_Success) {
 
 TEST_F(ComponentsRepairStateHandlerTest,
        InitializeState_BypassRaccWithFlags_Success) {
-  auto handler = CreateStateHandler(
-      {.runtime_probe_client_retval = false,
-       .shimless_mode_flags = kShimlessModeFlagsRaccResultBypass});
+  json_store_->SetValue(
+      kShimlessMode,
+      base::StringPrintf("0x%" PRIx64, kShimlessModeFlagsRaccResultBypass));
+  auto handler = CreateStateHandler({.runtime_probe_client_retval = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 

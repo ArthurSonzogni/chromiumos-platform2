@@ -15,7 +15,7 @@
 namespace rmad {
 
 // Mode flags to control Shimless RMA's behaviors
-enum {
+enum : uint64_t {
   kShimlessModeFlagsTriggerable = 1 << 0,               // 0x1
   kShimlessModeFlagsBoardIdCheckResultBypass = 1 << 1,  // 0x2
   kShimlessModeFlagsPreserveGbbFlags = 1 << 2,          // 0x4
@@ -73,6 +73,8 @@ inline constexpr char kRoFirmwareVerified[] = "ro_firmware_verified";
 inline constexpr char kFinalizeRebooted[] = "finalize_rebooted";
 // Indicates that Shimless RMA is initiated by the spare MLB flow in factory.
 inline constexpr char kSpareMlb[] = "spare_mlb";
+// Shimless RMA mode for different testing scenarios.
+inline constexpr char kShimlessMode[] = "shimless_mode";
 
 // Component traits.
 inline constexpr auto kComponentsNeedManualCalibration =

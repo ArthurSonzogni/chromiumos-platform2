@@ -128,11 +128,9 @@ void WelcomeScreenStateHandler::RunHardwareVerifier() const {
 }
 
 bool WelcomeScreenStateHandler::ShouldSkipHardwareVerification() const {
-  uint64_t shimless_mode;
   auto rmad_config = rmad_config_utils_->GetConfig();
   bool shimless_mode_skipped =
-      vpd_utils_->GetShimlessMode(&shimless_mode) &&
-      (shimless_mode & kShimlessModeFlagsRaccResultBypass);
+      shimless_mode_ & kShimlessModeFlagsRaccResultBypass;
   bool rmad_config_skipped =
       rmad_config.has_value() && rmad_config->skip_hardware_verification();
   bool racc_disable =

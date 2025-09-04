@@ -45,7 +45,7 @@ class VpdUtils {
 
   // Get the Shimless Mode from vpd.
   // Return true if it succeeds, otherwise return false.
-  virtual bool GetShimlessMode(uint64_t* flags) const = 0;
+  virtual bool GetShimlessMode(std::string* flags) const = 0;
 
   // Save the serial number in the cache until flush is called and set to vpd.
   // Return true if it succeeds, otherwise return false.

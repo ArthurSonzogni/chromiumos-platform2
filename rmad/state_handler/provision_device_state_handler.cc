@@ -513,9 +513,7 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
                kProgressFlushOutVpdCache);
 
   // Reset GBB flags.
-  if (uint64_t shimless_mode;
-      (vpd_utils_->GetShimlessMode(&shimless_mode) &&
-       shimless_mode & kShimlessModeFlagsPreserveGbbFlags) ||
+  if ((shimless_mode_ & kShimlessModeFlagsPreserveGbbFlags) ||
       base::PathExists(working_dir_path_.Append(kTestDirPath))) {
     // TODO(jeffulin): Remove test file usages.
     DLOG(INFO) << "GBB flags preserved for testing.";
@@ -565,9 +563,7 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
     // TODO(chenghan): Test board ID is not allowed in RMA. Record a metrics for
     //                 it.
     LOG(ERROR) << "GSC board ID type cannot be ZZCR in RMA";
-    if (uint64_t shimless_mode;
-        (vpd_utils_->GetShimlessMode(&shimless_mode) &&
-         shimless_mode & kShimlessModeFlagsBoardIdCheckResultBypass) ||
+    if ((shimless_mode_ & kShimlessModeFlagsBoardIdCheckResultBypass) ||
         base::PathExists(working_dir_path_.Append(kTestDirPath))) {
       // TODO(jeffulin): Remove test file usages.
       DLOG(INFO) << "GSC board ID check bypassed";

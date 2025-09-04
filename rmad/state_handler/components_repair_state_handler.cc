@@ -20,7 +20,6 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/device_management_client_impl.h"
 #include "rmad/system/runtime_probe_client_impl.h"
-#include "rmad/utils/vpd_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 // Used as an unique identifier for supported components.
@@ -147,7 +146,6 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
   device_management_client_ = std::make_unique<DeviceManagementClientImpl>();
   runtime_probe_client_ = std::make_unique<RuntimeProbeClientImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
-  vpd_utils_ = std::make_unique<VpdUtilsImpl>();
 }
 
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
@@ -156,15 +154,13 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     const base::FilePath& working_dir_path,
     std::unique_ptr<DeviceManagementClient> device_management_client,
     std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
-    std::unique_ptr<WriteProtectUtils> write_protect_utils,
-    std::unique_ptr<VpdUtils> vpd_utils)
+    std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
       active_(false),
       working_dir_path_(working_dir_path),
       device_management_client_(std::move(device_management_client)),
       runtime_probe_client_(std::move(runtime_probe_client)),
-      write_protect_utils_(std::move(write_protect_utils)),
-      vpd_utils_(std::move(vpd_utils)) {}
+      write_protect_utils_(std::move(write_protect_utils)) {}
 
 RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
   // Probing takes a lot of time. Early return to avoid probing again if we are
@@ -189,9 +185,7 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
   ComponentsWithIdentifier probed_components;
 
   if (!runtime_probe_client_->ProbeCategories({}, true, &probed_components)) {
-    if (uint64_t shimless_mode;
-        (vpd_utils_->GetShimlessMode(&shimless_mode) &&
-         shimless_mode & kShimlessModeFlagsRaccResultBypass) ||
+    if ((shimless_mode_ & kShimlessModeFlagsRaccResultBypass) ||
         IsRaccResultBypassed(working_dir_path_)) {
       LOG(INFO) << "Component compliance check bypassed.";
     } else {

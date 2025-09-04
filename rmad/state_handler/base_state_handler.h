@@ -110,6 +110,7 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   RmadState state_;
   scoped_refptr<JsonStore> json_store_;
   scoped_refptr<DaemonCallback> daemon_callback_;
+  uint64_t shimless_mode_;
 };
 
 #define ASSIGN_STATE(state)                            \

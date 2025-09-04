@@ -11,6 +11,7 @@
 
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <brillo/file_utils.h>
 #include <gmock/gmock.h>
@@ -23,7 +24,6 @@
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_gsc_utils.h"
-#include "rmad/utils/mock_vpd_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
@@ -72,7 +72,6 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     std::string board_id_flags = kValidBoardIdFlags;
     std::optional<std::string> fingerprint_sensor_location = std::nullopt;
     bool reset_fps_success = true;
-    uint64_t shimless_mode_flags = 0;
   };
 
   scoped_refptr<FinalizeStateHandler> CreateInitializedStateHandler(
@@ -100,12 +99,6 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     EXPECT_CALL(*mock_write_protect_utils, EnableSoftwareWriteProtection())
         .WillRepeatedly(Return(args.enable_swwp_success));
 
-    // Mock |VpdUtils|.
-    auto mock_vpd_utils = std::make_unique<MockVpdUtils>();
-    ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
-        .WillByDefault(
-            DoAll(SetArgPointee<0>(args.shimless_mode_flags), Return(true)));
-
     // Mock |PowerManagerClient|.
     reboot_called_ = false;
     auto mock_power_manager_client =
@@ -125,7 +118,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     auto handler = base::MakeRefCounted<FinalizeStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_cros_config_utils), std::move(mock_gsc_utils),
-        std::move(mock_write_protect_utils), std::move(mock_vpd_utils),
+        std::move(mock_write_protect_utils),
         std::move(mock_power_manager_client));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -261,9 +254,11 @@ TEST_F(FinalizeStateHandlerTest,
 
 TEST_F(FinalizeStateHandlerTest,
        TryGetNextStateCaseAtBoot_InvalidBoardId_BypassWithFlags) {
-  StateHandlerArgs args = {
-      .board_id_type = kInvalidBoardIdType,
-      .shimless_mode_flags = kShimlessModeFlagsBoardIdCheckResultBypass};
+  json_store_->SetValue(
+      kShimlessMode,
+      base::StringPrintf("0x%" PRIx64,
+                         kShimlessModeFlagsBoardIdCheckResultBypass));
+  StateHandlerArgs args = {.board_id_type = kInvalidBoardIdType};
   json_store_->SetValue(kFinalizeRebooted, true);
   auto handler = CreateInitializedStateHandler(args);
 
@@ -309,9 +304,11 @@ TEST_F(FinalizeStateHandlerTest,
 
 TEST_F(FinalizeStateHandlerTest,
        TryGetNextStateCaseAtBoot_InvalidBoardIdFlags_BypassWithFlags) {
-  StateHandlerArgs args = {
-      .board_id_type = kInvalidBoardIdFlags,
-      .shimless_mode_flags = kShimlessModeFlagsBoardIdCheckResultBypass};
+  json_store_->SetValue(
+      kShimlessMode,
+      base::StringPrintf("0x%" PRIx64,
+                         kShimlessModeFlagsBoardIdCheckResultBypass));
+  StateHandlerArgs args = {.board_id_flags = kInvalidBoardIdFlags};
   json_store_->SetValue(kFinalizeRebooted, true);
   auto handler = CreateInitializedStateHandler(args);
 

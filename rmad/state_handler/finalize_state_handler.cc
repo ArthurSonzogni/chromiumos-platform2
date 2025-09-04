@@ -19,7 +19,6 @@
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/gsc_utils_impl.h"
-#include "rmad/utils/vpd_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
@@ -41,7 +40,6 @@ FinalizeStateHandler::FinalizeStateHandler(
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
-  vpd_utils_ = std::make_unique<VpdUtilsImpl>();
   power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
 }
 
@@ -52,14 +50,12 @@ FinalizeStateHandler::FinalizeStateHandler(
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<GscUtils> gsc_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils,
-    std::unique_ptr<VpdUtils> vpd_utils,
     std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       cros_config_utils_(std::move(cros_config_utils)),
       gsc_utils_(std::move(gsc_utils)),
       write_protect_utils_(std::move(write_protect_utils)),
-      vpd_utils_(std::move(vpd_utils)),
       power_manager_client_(std::move(power_manager_client)) {}
 
 RmadErrorCode FinalizeStateHandler::InitializeState() {
@@ -268,15 +264,9 @@ bool FinalizeStateHandler::IsFingerprintSupported() const {
 }
 
 bool FinalizeStateHandler::IsBoardIdCheckBypassed() const {
-  uint64_t shimless_mode = 0;
-  if (!vpd_utils_->GetShimlessMode(&shimless_mode)) {
-    // If reading the flags fails, assume a value of 0.
-    LOG(ERROR) << "Failed to get shimless mode";
-  }
-
   // TODO(jeffulin): Remove test file usages.
   return base::PathExists(working_dir_path_.AppendASCII(kTestDirPath)) ||
-         shimless_mode & kShimlessModeFlagsBoardIdCheckResultBypass;
+         shimless_mode_ & kShimlessModeFlagsBoardIdCheckResultBypass;
 }
 
 void FinalizeStateHandler::Reboot() {

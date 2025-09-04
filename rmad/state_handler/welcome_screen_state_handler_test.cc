@@ -12,6 +12,7 @@
 
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <brillo/file_utils.h>
 #include <gmock/gmock.h>
@@ -63,7 +64,6 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
   struct StateHandlerArgs {
     bool hw_verification_request_success = true;
     bool hw_verification_result = true;
-    uint64_t shimless_mode_flags = 0;
     std::string rmad_config_text = "";
   };
 
@@ -92,9 +92,6 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
 
     // Mock |VpdUtils|.
     auto mock_vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
-    ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
-        .WillByDefault(
-            DoAll(SetArgPointee<0>(args.shimless_mode_flags), Return(true)));
 
     // Inject textproto content for |RmadConfigUtils|.
     auto mock_cros_config_utils =
@@ -180,9 +177,10 @@ TEST_F(WelcomeScreenStateHandlerTest,
 
 TEST_F(WelcomeScreenStateHandlerTest,
        InitializeState_Succeeded_VerificationBypassWithFlags_DoGetStateTask) {
-  auto handler = CreateStateHandler(
-      {.hw_verification_request_success = false,
-       .shimless_mode_flags = kShimlessModeFlagsRaccResultBypass});
+  json_store_->SetValue(
+      kShimlessMode,
+      base::StringPrintf("0x%" PRIx64, kShimlessModeFlagsRaccResultBypass));
+  auto handler = CreateStateHandler({.hw_verification_request_success = false});
   RmadState state = handler->GetState(true);
   ExpectSignal(false, "", true);
 }

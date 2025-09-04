@@ -10,6 +10,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/file_utils.h>
 #include <dbus/mock_bus.h>
@@ -127,8 +128,9 @@ class DBusServiceTestBase : public testing::Test {
 
     // Mock |VpdUtils|.
     ON_CALL(*mock_vpd_utils, GetShimlessMode(_))
-        .WillByDefault(
-            DoAll(SetArgPointee<0>(options.shimless_mode_flags), Return(true)));
+        .WillByDefault(DoAll(SetArgPointee<0>(base::StringPrintf(
+                                 "0x%" PRIx64, options.shimless_mode_flags)),
+                             Return(true)));
 
     // Mock |RmadInterface|.
     ON_CALL(mock_rmad_service_, SetUp(_, _))

@@ -17,7 +17,6 @@
 #include "rmad/system/power_manager_client.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/gsc_utils.h"
-#include "rmad/utils/vpd_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
@@ -33,8 +32,7 @@ class FinalizeStateHandler : public BaseStateHandler {
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store,
                                 scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject |working_dir_path_|,  |cros_config_utils_|, |gsc_utils_|,
-  // |write_protect_utils_|, |vpd_utils_|, and |power_manager_client_| for
-  // testing.
+  // |write_protect_utils_|, and |power_manager_client_| for testing.
   explicit FinalizeStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
@@ -42,7 +40,6 @@ class FinalizeStateHandler : public BaseStateHandler {
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
       std::unique_ptr<GscUtils> gsc_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils,
-      std::unique_ptr<VpdUtils> vpd_utils,
       std::unique_ptr<PowerManagerClient> power_manager_client_);
 
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
@@ -79,7 +76,6 @@ class FinalizeStateHandler : public BaseStateHandler {
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;
   std::unique_ptr<GscUtils> gsc_utils_;
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
-  std::unique_ptr<VpdUtils> vpd_utils_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
 
   base::RepeatingTimer status_timer_;
