@@ -76,6 +76,10 @@ int setup_sig_handlers(void) {
 int prepare_target(pid_t& pid, const char* cmd, std::vector<char*>& args) {
   pid_t npid = -1;
 
+  if (pid == -1 && args.empty()) {
+    return 0;
+  }
+
   if (pid != -1) {
     kill(pid, SIGSTOP);
     return 0;
@@ -114,6 +118,9 @@ int prepare_target(pid_t& pid, const char* cmd, std::vector<char*>& args) {
 }
 
 int follow_target(pid_t pid) {
+  if (pid == -1) {
+    return 0;
+  }
   /* Setup is done now we can resume target process */
   return kill(pid, SIGCONT);
 }
