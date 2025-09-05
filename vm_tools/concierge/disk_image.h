@@ -309,7 +309,7 @@ class TerminaVmImportOperation : public DiskImageOperation {
       base::ScopedFD in_fd,
       const base::FilePath disk_path,
       uint64_t source_size,
-      const VmId vm_id);
+      const VmId vm_id, vm_tools::apps::VmType request_vm_type);
 
   ~TerminaVmImportOperation() override;
 
@@ -325,7 +325,7 @@ class TerminaVmImportOperation : public DiskImageOperation {
   TerminaVmImportOperation(const TerminaVmImportOperation&) = delete;
   TerminaVmImportOperation& operator=(const TerminaVmImportOperation&) = delete;
 
-  bool PrepareInput();
+  bool PrepareInput(vm_tools::apps::VmType* vm_type_out);
   bool PrepareOutput();
 
   void MarkFailed(const char* msg, struct archive* a);
@@ -356,6 +356,9 @@ class TerminaVmImportOperation : public DiskImageOperation {
 
   // If the imported VM is zstd type
   bool zstd_ = false;
+
+  // Vm type of the image this op writes
+  vm_tools::apps::VmType dest_vm_type_;
 };
 
 class VmResizeOperation : public DiskImageOperation {

@@ -937,12 +937,46 @@ std::unique_ptr<TerminaVmImportOperation> TerminaVmImportOperation::Create(
     base::ScopedFD fd,
     const base::FilePath disk_path,
     uint64_t source_size,
-    const VmId vm_id) {
+    const VmId vm_id,
+    apps::VmType request_vm_type) {
   auto op = base::WrapUnique(new TerminaVmImportOperation(
       std::move(fd), source_size, std::move(disk_path), std::move(vm_id)));
 
-  if (op->PrepareInput() && op->PrepareOutput()) {
-    op->set_status(DISK_STATUS_IN_PROGRESS);
+  // We ensure a level of consistency of the vm type signals known here:
+  // We can have max in total of 3 vm type signal sources: import request,
+  // current disk's xattr, and incoming disk image's metadata.
+  // We require at least one of import request or incoming disk metadata
+  // present. If both are present, they need to be consistent. They are
+  // combined into an "incoming vm type". So "incoming vm type" is always
+  // present.
+  // During an overwriting import, We DO NOT check if the "incoming vm type"
+  // matches the destination disk's vm type stored in xattr, and xattr vm
+  // type signal is unused. Without this check it is still enough to guard
+  // against importing wrong vm typed disk images from the UI as chrome
+  // always passes its current known vm type in the request.
+  apps::VmType input_file_vm_type = apps::UNKNOWN;
+  if (op->PrepareInput(&input_file_vm_type) && op->PrepareOutput()) {
+    if (request_vm_type == apps::UNKNOWN &&
+        input_file_vm_type == apps::UNKNOWN) {
+      op->set_status(DISK_STATUS_FAILED);
+      op->set_failure_reason(
+          "No incoming vm type signal present, either specify vm type in "
+          "request or in disk image metadata");
+    } else if (request_vm_type != apps::UNKNOWN &&
+               input_file_vm_type != apps::UNKNOWN &&
+               request_vm_type != input_file_vm_type) {
+      op->set_status(DISK_STATUS_FAILED);
+      op->set_failure_reason(
+          "Incoming vm type signals are in conflict, disk image vm type is "
+          "different from request specified vm type");
+    } else {
+      if (request_vm_type != apps::UNKNOWN) {
+        op->dest_vm_type_ = request_vm_type;
+      } else {
+        op->dest_vm_type_ = input_file_vm_type;
+      }
+      op->set_status(DISK_STATUS_IN_PROGRESS);
+    }
   }
 
   return op;
@@ -966,7 +1000,7 @@ TerminaVmImportOperation::~TerminaVmImportOperation() {
   out_.reset();
 }
 
-bool TerminaVmImportOperation::PrepareInput() {
+bool TerminaVmImportOperation::PrepareInput(apps::VmType* vm_type_out) {
   // Test if input file has a valid zstd header
   // only standard frame will pass the test, normally skippable frame is not
   // used as first frame.
@@ -993,6 +1027,145 @@ bool TerminaVmImportOperation::PrepareInput() {
   } else {
     zstd_ = false;
   }
+
+  if (zstd_) {
+    // Reset file position to the beginning for upcoming reads.
+    lseek(in_fd_.get(), 0, SEEK_SET);
+    off_t file_size = lseek(in_fd_.get(), 0, SEEK_END);
+
+    // Using a do-while(false) loop for easy break-on-error.
+    do {
+      if (file_size < sizeof(SeekTableFooter)) {
+        LOG(ERROR) << "VM import: file too small for seek table footer.";
+        break;
+      }
+
+      SeekTableFooter footer;
+      if (HANDLE_EINTR(pread(in_fd_.get(), &footer, sizeof(footer),
+                             file_size - sizeof(footer))) != sizeof(footer)) {
+        LOG(WARNING) << "VM import: could not read seek table footer.";
+        break;
+      }
+
+      if (footer.magic != kZstdSeekFooterMagic) {
+        LOG(WARNING) << "VM import: could not find seek table footer magic.";
+        break;
+      }
+
+      bool checksum_flag = (footer.seek_table_descriptor & 0x80) != 0;
+      uint64_t seek_table_entry_size = checksum_flag ? 12 : 8;
+      uint64_t seek_table_size =
+          static_cast<uint64_t>(footer.num_of_frames) * seek_table_entry_size;
+
+      uint64_t seek_table_frame_content_size =
+          seek_table_size + sizeof(SeekTableFooter);
+      uint64_t seek_table_frame_size = 8 + seek_table_frame_content_size;
+
+      if (file_size < seek_table_frame_size) {
+        LOG(ERROR) << "VM import: file size smaller than calculated seek table "
+                      "frame size.";
+        break;
+      }
+
+      off_t search_start_pos = file_size - seek_table_frame_size;
+      // assume metadata frame is less than 4096 Bytes
+      constexpr off_t kMaxMetadataSearchDist = 4096;
+      off_t read_start_pos =
+          std::max((off_t)0, search_start_pos - kMaxMetadataSearchDist);
+      off_t read_size = search_start_pos - read_start_pos;
+
+      if (read_size <= sizeof(uint32_t)) {
+        LOG(WARNING) << "VM import: no space to search for metadata frame.";
+        break;
+      }
+
+      std::vector<uint8_t> search_buffer(read_size);
+      if (HANDLE_EINTR(pread(in_fd_.get(), search_buffer.data(), read_size,
+                             read_start_pos)) != read_size) {
+        LOG(WARNING) << "VM import: failed to read data for metadata search.";
+        break;
+      }
+
+      off_t metadata_frame_start_in_file = -1;
+      for (off_t i = read_size - sizeof(uint32_t); i >= 0; --i) {
+        uint32_t magic;
+        memcpy(&magic, search_buffer.data() + i, sizeof(magic));
+        if (magic == kZstdVmMetadataSkippableFrameMagic) {
+          metadata_frame_start_in_file = read_start_pos + i;
+          break;
+        }
+        if (magic == kZstdMagic) {
+          break;
+        }
+      }
+
+      if (metadata_frame_start_in_file == -1) {
+        LOG(WARNING) << "VM import: could not find vm_type metadata frame.";
+        break;
+      }
+
+      uint32_t metadata_frame_content_size;
+      if (HANDLE_EINTR(pread(in_fd_.get(), &metadata_frame_content_size,
+                             sizeof(metadata_frame_content_size),
+                             metadata_frame_start_in_file + 4)) !=
+          sizeof(metadata_frame_content_size)) {
+        LOG(WARNING) << "VM import: failed to read metadata frame size.";
+        break;
+      }
+
+      if (metadata_frame_content_size > 1024) {
+        LOG(WARNING) << "VM import: metadata frame size is unexpectedly large: "
+                     << metadata_frame_content_size;
+        break;
+      }
+
+      std::vector<uint8_t> content_buffer(metadata_frame_content_size);
+      if (HANDLE_EINTR(pread(in_fd_.get(), content_buffer.data(),
+                             metadata_frame_content_size,
+                             metadata_frame_start_in_file + 8)) !=
+          metadata_frame_content_size) {
+        LOG(WARNING) << "VM import: failed to read metadata frame content.";
+        break;
+      }
+
+      const char* expected_magic = kVmMetadataMagic;
+      const char* expected_key = kDiskImageVmTypeXattr;
+      size_t magic_len = sizeof(kVmMetadataMagic);
+      size_t key_len = sizeof(kDiskImageVmTypeXattr);
+
+      if (metadata_frame_content_size < magic_len + key_len + 1) {
+        LOG(WARNING) << "VM import: metadata content too small.";
+        break;
+      }
+      if (memcmp(content_buffer.data(), expected_magic, magic_len) != 0) {
+        LOG(WARNING) << "VM import: metadata content magic mismatch.";
+        break;
+      }
+      if (memcmp(content_buffer.data() + magic_len, expected_key, key_len) !=
+          0) {
+        LOG(WARNING) << "VM import: metadata xattr key mismatch.";
+        break;
+      }
+
+      const char* vm_type_str = reinterpret_cast<const char*>(
+          content_buffer.data() + magic_len + key_len);
+      int vm_type_int;
+      if (!base::StringToInt(vm_type_str, &vm_type_int)) {
+        LOG(WARNING) << "VM import: could not parse vm type: " << vm_type_str;
+      } else if (!vm_tools::apps::VmType_IsValid(vm_type_int)) {
+        LOG(WARNING) << "VM import: invalid vm type: " << vm_type_int;
+      } else {
+        vm_tools::apps::VmType vm_type =
+            static_cast<vm_tools::apps::VmType>(vm_type_int);
+        LOG(INFO) << "VM import: found vm type "
+                  << vm_tools::apps::VmType_Name(vm_type);
+        *vm_type_out = vm_type;
+      }
+    } while (false);
+    // Reset file position to the beginning for archive reader.
+    lseek(in_fd_.get(), 0, SEEK_SET);
+  }
+
   in_ = ArchiveReader(archive_read_new());
   if (!in_.get()) {
     set_status(DISK_STATUS_BAD_IMAGE);
@@ -1249,6 +1422,16 @@ void TerminaVmImportOperation::Finalize() {
     MarkFailed("Unable to rename imported disk image", nullptr);
     return;
   }
+
+  // Set destination disk vm type
+  int fd = HANDLE_EINTR(open(dest_image_path_.value().c_str(), O_WRONLY));
+  if (fd < 0) {
+    MarkFailed("Unable to open destination file to write vm type", nullptr);
+  }
+  if (!SetDiskImageVmType(base::ScopedFD(fd), dest_vm_type_)) {
+    MarkFailed("Unable to set destination vm type", nullptr);
+  }
+  close(fd);
 
   if (!output_dir_.Delete()) {
     LOG(ERROR) << "Failed to delete temporary import directory";

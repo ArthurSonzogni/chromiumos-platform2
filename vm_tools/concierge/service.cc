@@ -3302,7 +3302,8 @@ void Service::ImportDiskImage(
       }
 
       op = TerminaVmImportOperation::Create(std::move(source_file), disk_path,
-                                            request.source_size(), vm_id);
+                                            request.source_size(), vm_id,
+                                            ToAppsVmType(request.vm_type()));
       break;
 
     case STORAGE_CRYPTOHOME_PLUGINVM:
