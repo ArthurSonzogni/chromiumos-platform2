@@ -528,26 +528,30 @@ TEST_F(ChromeSetupTest, TestCoralEnabled) {
   EXPECT_THAT(result, testing::Contains("CoralFeatureMultiLanguage"));
 }
 
-TEST_F(ChromeSetupTest, TestHeliumArcvmKioskEnabled) {
+TEST_F(ChromeSetupTest, TestSquidFlagsEnabled) {
   base::ScopedTempDir temp_dir;
-  InitWithUseFlag("helium_arcvm_kiosk", &temp_dir, &builder_);
-  login_manager::AddDeviceSpecificFlags(&builder_);
+  InitWithUseFlag("squid", &temp_dir, &builder_);
+  login_manager::AddSquidFlags(&builder_);
 
   auto argv = builder_.arguments();
   std::vector<std::string> result =
       base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_ALL);
   EXPECT_THAT(result, testing::Contains("HeliumArcvmKiosk"));
+  EXPECT_THAT(result, testing::Contains("TiledDisplaySupport"));
+  EXPECT_THAT(result, testing::Contains("FastDrmMasterDrop"));
 }
 
-TEST_F(ChromeSetupTest, TestHeliumArcvmKioskDisabled) {
-  login_manager::AddDeviceSpecificFlags(&builder_);
+TEST_F(ChromeSetupTest, TestSquidFlagsDisabled) {
+  login_manager::AddSquidFlags(&builder_);
 
   auto argv = builder_.arguments();
   std::vector<std::string> result =
       base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_ALL);
   EXPECT_THAT(result, testing::Not(testing::Contains("HeliumArcvmKiosk")));
+  EXPECT_THAT(result, testing::Not(testing::Contains("TiledDisplaySupport")));
+  EXPECT_THAT(result, testing::Not(testing::Contains("FastDrmMasterDrop")));
 }
 
 }  // namespace login_manager

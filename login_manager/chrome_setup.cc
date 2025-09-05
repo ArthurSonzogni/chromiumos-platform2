@@ -559,6 +559,7 @@ std::optional<ChromeSetup::Result> ChromeSetup::Run() {
   AddXSFlags(&builder);
   AddCoralFlags(&builder);
   AddCuttlefishFlags(&builder);
+  AddSquidFlags(&builder);
 
   // Apply any modifications requested by the developer.
   if (builder.is_developer_end_user()) {
@@ -1299,11 +1300,6 @@ void AddDeviceSpecificFlags(ChromiumCommandBuilder* builder) {
     // etc.
     builder->AddFeatureDisableOverride("AllowCrossDeviceFeatureSuite");
   }
-  // Helium Arcvm Kiosk specific customization
-  // (go/helium-kiosk-dd)
-  if (builder->UseFlagIsSet("helium_arcvm_kiosk")) {
-    builder->AddFeatureEnableOverride("HeliumArcvmKiosk");
-  }
 }
 
 void AddMantisFlags(ChromiumCommandBuilder* builder) {
@@ -1332,6 +1328,16 @@ void AddCuttlefishFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
     builder->AddFeatureEnableOverride("TiledDisplaySupport");
     builder->AddFeatureEnableOverride("FastDrmMasterDrop");
     builder->AddFeatureEnableOverride("AllowChromeAppsInKioskSessions");
+  }
+}
+
+void AddSquidFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
+  if (builder->UseFlagIsSet("squid")) {
+    builder->AddFeatureEnableOverride("TiledDisplaySupport");
+    builder->AddFeatureEnableOverride("FastDrmMasterDrop");
+    // Helium Arcvm Kiosk specific customization
+    // (go/helium-kiosk-dd)
+    builder->AddFeatureEnableOverride("HeliumArcvmKiosk");
   }
 }
 
