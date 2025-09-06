@@ -19,6 +19,14 @@ namespace libmon {
 
 #define LIBMON_RB_POLL_TIMEOUT 888
 
+#define OOM_KILL(ptr)                                                  \
+  do {                                                                 \
+    if (!(ptr)) {                                                      \
+      fprintf(stderr, "Out of memory at %s:%d\n", __func__, __LINE__); \
+      exit(1);                                                         \
+    }                                                                  \
+  } while (0)
+
 #define LIBMON_ATTACH_UPROBE(mon, pid, obj, sym, prog)                        \
   do {                                                                        \
     LIBBPF_OPTS(bpf_uprobe_opts, uopts);                                      \

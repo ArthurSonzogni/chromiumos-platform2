@@ -74,10 +74,7 @@ static struct psi_scope* init_psi_scope(struct psimon_event* enter,
   struct psi_scope* scope;
 
   scope = new struct psi_scope;
-
-  if (!scope) {
-    exit(2);
-  }
+  OOM_KILL(scope);
 
   scope->max_duration = 0;
   scope->total_duration = 0;
@@ -131,10 +128,7 @@ static void psimon_event(void* ctx, int cpu, void* data, unsigned int data_sz) {
 
   if (tasks.find(id) == tasks.end()) {
     task = new struct task;
-
-    if (!task) {
-      exit(2);
-    }
+    OOM_KILL(task);
 
     task->comm = reinterpret_cast<char*>(event->comm);
     task->pid = event->pid;
