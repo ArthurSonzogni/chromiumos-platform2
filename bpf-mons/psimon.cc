@@ -212,7 +212,7 @@ static int psimon(pid_t pid, const char* cmd, std::vector<char*>& args) {
     goto cleanup;
   }
 
-  pb = perf_buffer__new(bpf_map__fd(mon->maps.pb), 8, psimon_event, lost_event,
+  pb = perf_buffer__new(bpf_map__fd(mon->maps.pb), 32, psimon_event, lost_event,
                         NULL, NULL);
   if (!pb) {
     fprintf(stderr, "Failed to open ring buffer\n");
