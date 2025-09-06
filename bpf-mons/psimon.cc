@@ -104,8 +104,8 @@ static struct psi_scope* lookup_mem_stall_scope(struct psimon_event* enter,
   struct psi_scope* scope;
   uint64_t seed;
 
-  seed = enter->kstack_ents[0];
-  seed ^= leave->kstack_ents[0] + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  seed = enter->kstack_ents[1];
+  seed ^= leave->kstack_ents[1] + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 
   if (mem_stall_scopes.find(seed) == mem_stall_scopes.end()) {
     scope = init_psi_scope(enter, leave);
@@ -114,8 +114,8 @@ static struct psi_scope* lookup_mem_stall_scope(struct psimon_event* enter,
   }
 
   scope = mem_stall_scopes[seed];
-  if (scope->enter_ents[0] != enter->kstack_ents[0] ||
-      scope->leave_ents[0] != leave->kstack_ents[0]) {
+  if (scope->enter_ents[1] != enter->kstack_ents[1] ||
+      scope->leave_ents[1] != leave->kstack_ents[1]) {
     // Hash collision
     scope = init_psi_scope(enter, leave);
     mem_stall_scopes[seed] = scope;
