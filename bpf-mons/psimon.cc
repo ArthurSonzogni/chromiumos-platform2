@@ -26,10 +26,25 @@ static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
                                        {"exec", required_argument, 0, 'e'},
                                        {0, 0, 0, 0}};
 
-struct psi_scope {
+struct task {
+  std::string comm;
+  int32_t pid;
+  int32_t tgid;
+
+  std::vector<struct psimon_event> enter_events;
+};
+
+struct psi_scope_call {
   uint64_t max_duration;
   uint64_t total_duration;
-  uint64_t num_samples;
+  uint64_t num_calls;
+};
+
+struct psi_scope {
+  uint64_t total_duration;
+  uint64_t num_calls;
+
+  std::unordered_map<uint64_t, struct psi_scope_call*> callers;
 
   uintptr_t enter_ents[PSIMON_MAX_KSTACK_ENTS];
   uint16_t num_enter_ents;
@@ -38,15 +53,7 @@ struct psi_scope {
   uint16_t num_leave_ents;
 };
 
-struct task {
-  std::string comm;
-  int32_t pid;
-  int32_t tgid;
-
-  std::unordered_map<uint64_t, struct psi_scope*> mem_stall_scopes;
-  std::vector<struct psimon_event> enter_events;
-};
-
+static std::unordered_map<uint64_t, struct psi_scope*> mem_stall_scopes;
 static std::unordered_map<uint64_t, struct task*> tasks;
 
 static int attach_probes(struct psimon_bpf* mon, pid_t pid) {
@@ -76,9 +83,8 @@ static struct psi_scope* init_psi_scope(struct psimon_event* enter,
   scope = new struct psi_scope;
   OOM_KILL(scope);
 
-  scope->max_duration = 0;
   scope->total_duration = 0;
-  scope->num_samples = 0;
+  scope->num_calls = 0;
 
   scope->num_enter_ents = enter->num_kstack_ents;
   for (int i = 0; i < enter->num_kstack_ents; i++) {
@@ -93,8 +99,7 @@ static struct psi_scope* init_psi_scope(struct psimon_event* enter,
   return scope;
 }
 
-static struct psi_scope* lookup_mem_stall_scope(struct task* task,
-                                                struct psimon_event* enter,
+static struct psi_scope* lookup_mem_stall_scope(struct psimon_event* enter,
                                                 struct psimon_event* leave) {
   struct psi_scope* scope;
   uint64_t seed;
@@ -102,42 +107,61 @@ static struct psi_scope* lookup_mem_stall_scope(struct task* task,
   seed = enter->kstack_ents[0];
   seed ^= leave->kstack_ents[0] + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 
-  if (task->mem_stall_scopes.find(seed) == task->mem_stall_scopes.end()) {
+  if (mem_stall_scopes.find(seed) == mem_stall_scopes.end()) {
     scope = init_psi_scope(enter, leave);
-    task->mem_stall_scopes[seed] = scope;
+    mem_stall_scopes[seed] = scope;
     return scope;
   }
 
-  scope = task->mem_stall_scopes[seed];
+  scope = mem_stall_scopes[seed];
   if (scope->enter_ents[0] != enter->kstack_ents[0] ||
       scope->leave_ents[0] != leave->kstack_ents[0]) {
     // Hash collision
     scope = init_psi_scope(enter, leave);
-    task->mem_stall_scopes[seed] = scope;
+    mem_stall_scopes[seed] = scope;
   }
 
   return scope;
 }
 
+static struct task* lookup_task(struct psimon_event* event, uint64_t id) {
+  if (tasks.find(id) == tasks.end()) {
+    struct task* t = new struct task;
+    OOM_KILL(t);
+
+    t->comm = reinterpret_cast<char*>(event->comm);
+    t->pid = event->pid;
+    t->tgid = event->tgid;
+    tasks[id] = t;
+  }
+
+  return tasks[id];
+}
+
+static struct psi_scope_call* lookup_caller(struct psi_scope* scope,
+                                            uint64_t id) {
+  if (scope->callers.find(id) == scope->callers.end()) {
+    struct psi_scope_call* call = new struct psi_scope_call;
+    OOM_KILL(call);
+
+    call->max_duration = 0;
+    call->total_duration = 0;
+    call->num_calls = 0;
+    scope->callers[id] = call;
+  }
+
+  return scope->callers[id];
+}
+
 static void psimon_event(void* ctx, int cpu, void* data, unsigned int data_sz) {
   struct psimon_event* event = (struct psimon_event*)data;
   struct psimon_event* last_enter;
+  struct psi_scope_call* call;
   struct psi_scope* scope;
   struct task* task;
   uint64_t id = generate_ctxid(event);
 
-  if (tasks.find(id) == tasks.end()) {
-    task = new struct task;
-    OOM_KILL(task);
-
-    task->comm = reinterpret_cast<char*>(event->comm);
-    task->pid = event->pid;
-    task->tgid = event->tgid;
-    tasks[id] = task;
-  } else {
-    task = tasks[id];
-  }
-
+  task = lookup_task(event, id);
   if (event->type == PSIMON_EVENT_MEMSTALL_ENTER) {
     task->enter_events.push_back(*event);
     return;
@@ -151,29 +175,51 @@ static void psimon_event(void* ctx, int cpu, void* data, unsigned int data_sz) {
   last_enter = &task->enter_events.back();
   task->enter_events.pop_back();
 
-  scope = lookup_mem_stall_scope(task, last_enter, event);
-  scope->num_samples++;
+  scope = lookup_mem_stall_scope(last_enter, event);
+  scope->num_calls++;
   scope->total_duration += event->ts - last_enter->ts;
-  scope->max_duration =
-      std::max(scope->max_duration, event->ts - last_enter->ts);
+
+  call = lookup_caller(scope, id);
+  call->num_calls++;
+  call->total_duration += event->ts - last_enter->ts;
+  call->max_duration = std::max(call->max_duration, event->ts - last_enter->ts);
 }
 
 static void show_psimon_records(void) {
-  for (auto& t : tasks) {
-    fprintf(stdout, "Task %s pid=%d tgid=%d\n", t.second->comm.c_str(),
-            t.second->pid, t.second->tgid);
+  std::vector<uint64_t> scopes;
 
-    for (auto& s : t.second->mem_stall_scopes) {
-      fprintf(stdout, "  PSI memstall: max=%lu avg=%lu samples=%lu\n",
-              s.second->max_duration,
-              s.second->total_duration / s.second->num_samples,
-              s.second->num_samples);
+  for (auto& s : mem_stall_scopes) {
+    scopes.push_back(s.first);
+  }
 
-      fprintf(stdout, "    enter kstack:\n");
-      libmon::show_kstack(s.second->enter_ents, s.second->num_enter_ents);
-      fprintf(stdout, "    leave kstack:\n");
-      libmon::show_kstack(s.second->leave_ents, s.second->num_leave_ents);
+  std::sort(scopes.begin(), scopes.end(), [](uint64_t a, uint64_t b) {
+    return mem_stall_scopes[a]->total_duration >
+           mem_stall_scopes[b]->total_duration;
+  });
+
+  for (auto& s : scopes) {
+    auto scope = mem_stall_scopes[s];
+    fprintf(stdout, "PSI memstall scope: total_duration=%lu num_calls=%lu\n",
+            scope->total_duration, scope->num_calls);
+
+    fprintf(stdout, "    enter:\n");
+    libmon::show_kstack(scope->enter_ents, scope->num_enter_ents);
+    fprintf(stdout, "    leave:\n");
+    libmon::show_kstack(scope->leave_ents, scope->num_leave_ents);
+
+    for (auto& t : scope->callers) {
+      auto task = tasks[t.first];
+      auto& call = t.second;
+
+      fprintf(stdout, "\tTask %s pid=%d tgid=%d\n", task->comm.c_str(),
+              task->pid, task->tgid);
+
+      fprintf(stdout, "\t  PSI memstall: max=%lu avg=%lu samples=%lu\n",
+              call->max_duration, call->total_duration / call->num_calls,
+              call->num_calls);
     }
+
+    printf("\n");
   }
 }
 
