@@ -538,7 +538,8 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
     return;
   }
   auto board_id_flags = gsc_utils_->GetBoardIdFlags();
-  if (board_id_type.value() == kEmptyBoardIdType) {
+  if (board_id_type.value() == kEmptyBoardIdType ||
+      (shimless_mode_ & kShimlessModeFlagsEnforceBoardId)) {
     bool is_two_stage = false;
     if (board_id_flags.has_value() &&
         board_id_flags == kTwoStagePvtBoardIdFlags) {
@@ -553,7 +554,8 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
       // TODO(chenghan): This is a security violation. Record a metric for it.
       LOG(ERROR) << "GSC board ID type is empty in RMA";
     }
-    if (!gsc_utils_->SetBoardId(is_two_stage)) {
+    if (!gsc_utils_->SetBoardId(is_two_stage) &&
+        !(shimless_mode_ & kShimlessModeFlagsEnforceBoardId)) {
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                    kProgressFailedBlocking,
                    ProvisionStatus::RMAD_PROVISION_ERROR_CR50);

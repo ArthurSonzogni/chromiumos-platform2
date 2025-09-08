@@ -1264,6 +1264,31 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_EnforceSetBoardId_Succeeded) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  json_store_->SetValue(
+      kShimlessMode,
+      base::StringPrintf("0x%" PRIx64, kShimlessModeFlagsEnforceBoardId));
+  // Non-empty board ID.
+  StateHandlerArgs args = {.board_id_type = kValidBoardIdType};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_ProvisionTi50_Succeeded) {
   // Set up environment for different owner.
   json_store_->SetValue(kSameOwner, false);
