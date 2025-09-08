@@ -87,14 +87,12 @@ static struct psi_scope* init_psi_scope(struct psimon_event* enter,
   scope->num_calls = 0;
 
   scope->num_enter_ents = enter->num_kstack_ents;
-  for (int i = 0; i < enter->num_kstack_ents; i++) {
-    scope->enter_ents[i] = enter->kstack_ents[i];
-  }
+  memcpy(scope->enter_ents, enter->kstack_ents,
+         sizeof(enter->kstack_ents[0]) * enter->num_kstack_ents);
 
   scope->num_leave_ents = leave->num_kstack_ents;
-  for (int i = 0; i < leave->num_kstack_ents; i++) {
-    scope->leave_ents[i] = leave->kstack_ents[i];
-  }
+  memcpy(scope->leave_ents, leave->kstack_ents,
+         sizeof(leave->kstack_ents[0]) * leave->num_kstack_ents);
 
   return scope;
 }
@@ -105,7 +103,8 @@ static struct psi_scope* lookup_mem_stall_scope(struct psimon_event* enter,
   uint64_t seed;
 
   seed = enter->kstack_ents[1];
-  seed ^= leave->kstack_ents[1] + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  seed ^= enter->kstack_ents[enter->num_kstack_ents - 1] + 0x9e3779b9 +
+          (seed << 6) + (seed >> 2);
 
   if (mem_stall_scopes.find(seed) == mem_stall_scopes.end()) {
     scope = init_psi_scope(enter, leave);
@@ -114,11 +113,24 @@ static struct psi_scope* lookup_mem_stall_scope(struct psimon_event* enter,
   }
 
   scope = mem_stall_scopes[seed];
-  if (scope->enter_ents[1] != enter->kstack_ents[1] ||
-      scope->leave_ents[1] != leave->kstack_ents[1]) {
+  // Fast path
+  if (scope->num_enter_ents != enter->num_kstack_ents ||
+      scope->num_leave_ents != leave->num_kstack_ents) {
     // Hash collision
     scope = init_psi_scope(enter, leave);
     mem_stall_scopes[seed] = scope;
+    return scope;
+  }
+
+  // Slow paths
+  if (memcmp(scope->enter_ents, enter->kstack_ents,
+             sizeof(enter->kstack_ents[0]) * enter->num_kstack_ents) ||
+      memcmp(scope->leave_ents, leave->kstack_ents,
+             sizeof(leave->kstack_ents[0]) * leave->num_kstack_ents)) {
+    // Hash collision
+    scope = init_psi_scope(enter, leave);
+    mem_stall_scopes[seed] = scope;
+    return scope;
   }
 
   return scope;
