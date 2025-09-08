@@ -717,9 +717,11 @@ ProvisionStatus::Error ProvisionDeviceStateHandler::UpdateHwidBrandCode() {
 
 void ProvisionDeviceStateHandler::ProvisionTi50() {
   // Set addressing mode.
-  if (gsc_utils_->GetAddressingMode() == SpiAddressingMode::kNotProvisioned) {
+  if (gsc_utils_->GetAddressingMode() == SpiAddressingMode::kNotProvisioned ||
+      shimless_mode_ & kShimlessModeFlagsForceProvisionTi50) {
     auto flash_size = futility_utils_->GetFlashSize();
     if (!flash_size.has_value()) {
+      LOG(ERROR) << "Failed to get flash size.";
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                    kProgressFailedBlocking,
                    ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
@@ -739,7 +741,8 @@ void ProvisionDeviceStateHandler::ProvisionTi50() {
 
   // Set WPSR.
   if (std::optional<bool> provision_status = gsc_utils_->IsApWpsrProvisioned();
-      provision_status.has_value() && !provision_status.value()) {
+      (provision_status.has_value() && !provision_status.value()) ||
+      shimless_mode_ & kShimlessModeFlagsForceProvisionTi50) {
     daemon_callback_->GetExecuteGetFlashInfoCallback().Run(base::BindOnce(
         &ProvisionDeviceStateHandler::ProvisionWpsr, base::Unretained(this)));
     return;

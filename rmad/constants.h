@@ -20,6 +20,7 @@ enum : uint64_t {
   kShimlessModeFlagsBoardIdCheckResultBypass = 1 << 1,  // 0x2
   kShimlessModeFlagsPreserveGbbFlags = 1 << 2,          // 0x4
   kShimlessModeFlagsRaccResultBypass = 1 << 3,          // 0x8
+  kShimlessModeFlagsForceProvisionTi50 = 1 << 4,        // 0x10
 };
 
 // Pipe name for internal mojo connection between D-Bus daemon and executor.

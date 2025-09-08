@@ -130,6 +130,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     bool get_ap_wpsr_success = true;
     bool set_ap_wpsr_success = true;
     bool set_addressing_success = true;
+    SpiAddressingMode addressing_mode = SpiAddressingMode::kNotProvisioned;
     std::optional<uint64_t> flash_size = 0x1000;
     std::string ap_wpsr_output = kValidApWpsrOutput;
     std::string board_id_type = kValidBoardIdType;
@@ -234,7 +235,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_gsc_utils, IsApWpsrProvisioned())
         .WillByDefault(Return(args.ap_wpsr_provisioned));
     ON_CALL(*mock_gsc_utils, GetAddressingMode())
-        .WillByDefault(Return(SpiAddressingMode::kNotProvisioned));
+        .WillByDefault(Return(args.addressing_mode));
     ON_CALL(*mock_gsc_utils, SetAddressingMode(_))
         .WillByDefault(Return(args.set_addressing_success));
     ON_CALL(*mock_gsc_utils, SetWpsr(_))
@@ -1340,6 +1341,36 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   auto handler = CreateInitializedStateHandler({
       .ap_wpsr_provisioned = true,
       .gsc_device = GscDevice::GSC_DEVICE_DT,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50_ForceProvision_Succeeded) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  json_store_->SetValue(
+      kShimlessMode,
+      base::StringPrintf("0x%" PRIx64, kShimlessModeFlagsForceProvisionTi50));
+
+  FlashInfo flash_info = {
+      .flash_name = "fake flash name", .wpsr_start = 0x0, .wpsr_length = 0x40};
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .ap_wpsr_provisioned = true,
+      // Use k4Byte to represent a provisioned state.
+      .addressing_mode = SpiAddressingMode::k4Byte,
+      .gsc_device = GscDevice::GSC_DEVICE_DT,
+      .flash_info = flash_info,
   });
   handler->RunState();
   task_environment_.RunUntilIdle();
