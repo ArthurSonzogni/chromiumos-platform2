@@ -197,11 +197,19 @@ static void psimon_event(void* ctx, int cpu, void* data, unsigned int data_sz) {
   call->max_duration = std::max(call->max_duration, event->ts - last_enter->ts);
 }
 
+#define NS_TO_SEC(ns) ((double)(ns) / 1000000000.0)
+
 static void show_psimon_records(void) {
   std::vector<uint64_t> scopes;
+  uint64_t total_duration = 0;
+
+  if (mem_stall_scopes.empty()) {
+    return;
+  }
 
   for (auto& s : mem_stall_scopes) {
     scopes.push_back(s.first);
+    total_duration += s.second->total_duration;
   }
 
   std::sort(scopes.begin(), scopes.end(), [](uint64_t a, uint64_t b) {
@@ -209,10 +217,13 @@ static void show_psimon_records(void) {
            mem_stall_scopes[b]->total_duration;
   });
 
+  fprintf(stdout, "\nPSI stalls total_duration=%f num_scopes=%zu\n\n",
+          NS_TO_SEC(total_duration), scopes.size());
+
   for (auto& s : scopes) {
     auto scope = mem_stall_scopes[s];
-    fprintf(stdout, "PSI memstall scope: total_duration=%lu num_calls=%lu\n",
-            scope->total_duration, scope->num_calls);
+    fprintf(stdout, "PSI memstall scope: total_duration=%f num_calls=%lu\n",
+            NS_TO_SEC(scope->total_duration), scope->num_calls);
 
     fprintf(stdout, "    enter:\n");
     libmon::show_kstack(scope->enter_ents, scope->num_enter_ents);
@@ -226,8 +237,8 @@ static void show_psimon_records(void) {
       fprintf(stdout, "\tTask %s pid=%d tgid=%d\n", task->comm.c_str(),
               task->pid, task->tgid);
 
-      fprintf(stdout, "\t  PSI memstall: max=%lu avg=%lu samples=%lu\n",
-              call->max_duration, call->total_duration / call->num_calls,
+      fprintf(stdout, "\t  PSI memstall: max=%f total=%f num_calls=%lu\n",
+              NS_TO_SEC(call->max_duration), NS_TO_SEC(call->total_duration),
               call->num_calls);
     }
 
