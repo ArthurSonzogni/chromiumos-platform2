@@ -17,6 +17,8 @@ CROS_PACKAGES=(
 )
 PACKAGES=(
   # base packages
+  acl
+  alsa-utils
   bash-completion
   btrfs-progs
   curl
@@ -24,15 +26,17 @@ PACKAGES=(
   gsettings-desktop-schemas
   locales
   nano
+  pulseaudio-utils
   pciutils
   pipewire
   pipewire-pulse
+  python3
   sudo
   systemd-timesyncd
   tpm2-tools
   usbutils
+  vim
   wireplumber
-  python3
   wget
 )
 DATA_ROOT="/tmp/data"
