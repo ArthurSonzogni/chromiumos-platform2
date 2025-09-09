@@ -47,7 +47,7 @@ class VhostUserStarterClientTest : public testing::Test {
     // Sets an expectation that the mock proxy's CallMethod() will use
     // CreateMockProxyResponse() to return responses.
     EXPECT_CALL(*vhost_user_starter_proxy_.get(),
-                DoCallMethodWithErrorCallback(_, _, _, _))
+                DoCallMethodWithErrorResponse(_, _, _))
         .WillOnce(
             Invoke(this, &VhostUserStarterClientTest::CreateMockProxyResponse));
   }
@@ -56,8 +56,7 @@ class VhostUserStarterClientTest : public testing::Test {
   void CreateMockProxyResponse(
       dbus::MethodCall* method_call,
       int timeout_ms,
-      dbus::ObjectProxy::ResponseCallback* response_callback,
-      dbus::ObjectProxy::ErrorCallback* error_callback) {
+      dbus::ObjectProxy::ResponseOrErrorCallback* callback) {
     EXPECT_EQ(method_call->GetInterface(),
               vm_tools::vhost_user_starter::kVhostUserStarterInterface);
     EXPECT_EQ(method_call->GetMember(),
@@ -70,7 +69,7 @@ class VhostUserStarterClientTest : public testing::Test {
       LOG(ERROR) << "Failed to encode RegisterSuspendDelayReply";
     }
 
-    std::move(*response_callback).Run(response.get());
+    std::move(*callback).Run(response.get(), nullptr);
   }
 
   base::test::TaskEnvironment task_environment_;

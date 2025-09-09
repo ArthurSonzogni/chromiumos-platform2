@@ -72,11 +72,11 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <brillo/brillo_export.h>
 #include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/utils.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
-#include <brillo/brillo_export.h>
 #include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -225,6 +225,21 @@ void TranslateSuccessResponse(
       std::move(tuple));
 }
 
+// A helper function that invokes the appropriate callback based on the given
+// D-Bus response values.
+template <typename... OutArgs>
+void TranslateResponse(base::OnceCallback<void(OutArgs...)> success_callback,
+                       AsyncErrorCallback error_callback,
+                       ::dbus::Response* resp,
+                       ::dbus::ErrorResponse* error_resp) {
+  if (resp) {
+    TranslateSuccessResponse(std::move(success_callback),
+                             std::move(error_callback), resp);
+  } else {
+    TranslateErrorResponse(std::move(error_callback), error_resp);
+  }
+}
+
 // A helper method to dispatch a non-blocking D-Bus method call. Can specify
 // zero or more method call arguments in |params| which will be sent over D-Bus.
 // This method sends a D-Bus message and returns immediately.
@@ -247,19 +262,10 @@ inline void CallMethodWithTimeout(
   ::dbus::MethodCall method_call(interface_name, method_name);
   ::dbus::MessageWriter writer(&method_call);
   WriteDBusArgs(&writer, params...);
-
-  auto split_error_callback =
-      base::SplitOnceCallback(std::move(error_callback));
-
-  ::dbus::ObjectProxy::ErrorCallback dbus_error_callback = base::BindOnce(
-      &TranslateErrorResponse, std::move(split_error_callback.first));
-  ::dbus::ObjectProxy::ResponseCallback dbus_success_callback = base::BindOnce(
-      &TranslateSuccessResponse<OutArgs...>, std::move(success_callback),
-      std::move(split_error_callback.second));
-
-  object->CallMethodWithErrorCallback(&method_call, timeout_ms,
-                                      std::move(dbus_success_callback),
-                                      std::move(dbus_error_callback));
+  object->CallMethodWithErrorResponse(
+      &method_call, timeout_ms,
+      base::BindOnce(&TranslateResponse<OutArgs...>,
+                     std::move(success_callback), std::move(error_callback)));
 }
 
 // Same as CallMethodWithTimeout() but uses a default timeout value.

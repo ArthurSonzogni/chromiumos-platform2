@@ -1812,20 +1812,14 @@ std::optional<bool> CrashCollector::IsEnterpriseEnrolled() {
   return device_policy_->IsEnterpriseEnrolled();
 }
 
-// Callback for CallMethodWithErrorCallback(). Discards the response pointer
+// Callback for CallMethodWithErrorResponse(). Discards the response pointers
 // and just calls |callback|.
-static void IgnoreResponsePointer(base::OnceCallback<void()> callback,
-                                  dbus::Response*) {
-  std::move(callback).Run();
-}
-
-// Error callback for CallMethodWithErrorCallback(). Discards the error pointer
-// and just calls |callback|.
-static void IgnoreErrorResponsePointer(base::OnceCallback<void()> callback,
-                                       dbus::ErrorResponse*) {
+static void IgnoreResponseOrErrorPointer(base::OnceCallback<void()> callback,
+                                         dbus::Response*,
+                                         dbus::ErrorResponse*) {
   // We set the timeout to 0, so of course we time out before we get a response.
-  // 99% of the time, the ErrorResponse is just "NoReply". Don't spam the error
-  // log with that information, just discard the error response.
+  // For 99% of the errors, the ErrorResponse is just "NoReply". Don't spam the
+  // error log with that information, just discard the error response.
   std::move(callback).Run();
 }
 
@@ -1978,7 +1972,7 @@ CrashCollectionStatus CrashCollector::FinishCrash(
     // the simplest method. However, calling debugd_proxy_->UploadSingleCrash
     // with a timeout of zero will spam the error log with messages about timing
     // out and not receiving a response. Going through
-    // CallMethodWithErrorCallback avoids the error messages, but it does mean
+    // CallMethodWithErrorResponse avoids the error messages, but it does mean
     // we need a RunLoop.
     base::RunLoop run_loop;
     auto quit_closure = run_loop.QuitClosure();
@@ -1992,10 +1986,9 @@ CrashCollectionStatus CrashCollector::FinishCrash(
         /*in_files=*/in_memory_files_,
         /*consent_already_checked_by_crash_reporter=*/true);
 
-    debugd_proxy_->GetObjectProxy()->CallMethodWithErrorCallback(
+    debugd_proxy_->GetObjectProxy()->CallMethodWithErrorResponse(
         &method_call, 0 /*timeout_ms*/,
-        base::BindOnce(IgnoreResponsePointer, quit_closure),
-        base::BindOnce(IgnoreErrorResponsePointer, quit_closure));
+        base::BindOnce(IgnoreResponseOrErrorPointer, quit_closure));
     run_loop.Run();
   }
 

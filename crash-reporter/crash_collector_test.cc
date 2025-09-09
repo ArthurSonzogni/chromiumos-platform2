@@ -2888,84 +2888,85 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
       .WillRepeatedly(Return(mock_object_proxy.get()));
   std::unique_ptr<dbus::Response> empty_response;
   std::unique_ptr<dbus::ErrorResponse> empty_error_response;
-  EXPECT_CALL(*mock_object_proxy, DoCallMethodWithErrorCallback(_, 0, _, _))
-      .WillOnce(Invoke([&](dbus::MethodCall* method_call, int timeout_ms,
-                           dbus::ObjectProxy::ResponseCallback* callback,
-                           dbus::ObjectProxy::ErrorCallback* error_callback) {
-        // We can't copy or move the method_call object, and it will be
-        // destroyed shortly after this lambda ends, so we must validate its
-        // contents inside the lambda.
-        dbus::MessageReader reader(method_call);
-        dbus::MessageReader array_reader(nullptr);
-        bool consent_already_checked = false;
-        EXPECT_TRUE(reader.PopArray(&array_reader));
-        EXPECT_TRUE(reader.PopBool(&consent_already_checked));
-        EXPECT_FALSE(reader.HasMoreData());
-        dbus::MessageReader struct_reader_1(nullptr);
-        EXPECT_TRUE(array_reader.PopStruct(&struct_reader_1));
-        dbus::MessageReader struct_reader_2(nullptr);
-        EXPECT_TRUE(array_reader.PopStruct(&struct_reader_2));
-        EXPECT_FALSE(array_reader.HasMoreData())
-            << "Should only have 2 files in array";
-        EXPECT_TRUE(consent_already_checked);
+  EXPECT_CALL(*mock_object_proxy, DoCallMethodWithErrorResponse(_, 0, _))
+      .WillOnce(
+          Invoke([&](dbus::MethodCall* method_call, int timeout_ms,
+                     dbus::ObjectProxy::ResponseOrErrorCallback* callback) {
+            // We can't copy or move the method_call object, and it will be
+            // destroyed shortly after this lambda ends, so we must validate its
+            // contents inside the lambda.
+            dbus::MessageReader reader(method_call);
+            dbus::MessageReader array_reader(nullptr);
+            bool consent_already_checked = false;
+            EXPECT_TRUE(reader.PopArray(&array_reader));
+            EXPECT_TRUE(reader.PopBool(&consent_already_checked));
+            EXPECT_FALSE(reader.HasMoreData());
+            dbus::MessageReader struct_reader_1(nullptr);
+            EXPECT_TRUE(array_reader.PopStruct(&struct_reader_1));
+            dbus::MessageReader struct_reader_2(nullptr);
+            EXPECT_TRUE(array_reader.PopStruct(&struct_reader_2));
+            EXPECT_FALSE(array_reader.HasMoreData())
+                << "Should only have 2 files in array";
+            EXPECT_TRUE(consent_already_checked);
 
-        std::string file_name_1;
-        EXPECT_TRUE(struct_reader_1.PopString(&file_name_1));
-        base::ScopedFD fd_1;
-        EXPECT_TRUE(struct_reader_1.PopFileDescriptor(&fd_1));
-        EXPECT_TRUE(fd_1.is_valid());
-        EXPECT_FALSE(struct_reader_1.HasMoreData());
+            std::string file_name_1;
+            EXPECT_TRUE(struct_reader_1.PopString(&file_name_1));
+            base::ScopedFD fd_1;
+            EXPECT_TRUE(struct_reader_1.PopFileDescriptor(&fd_1));
+            EXPECT_TRUE(fd_1.is_valid());
+            EXPECT_FALSE(struct_reader_1.HasMoreData());
 
-        std::string file_name_2;
-        EXPECT_TRUE(struct_reader_2.PopString(&file_name_2));
-        base::ScopedFD fd_2;
-        EXPECT_TRUE(struct_reader_2.PopFileDescriptor(&fd_2));
-        EXPECT_TRUE(fd_2.is_valid());
-        EXPECT_FALSE(struct_reader_2.HasMoreData());
+            std::string file_name_2;
+            EXPECT_TRUE(struct_reader_2.PopString(&file_name_2));
+            base::ScopedFD fd_2;
+            EXPECT_TRUE(struct_reader_2.PopFileDescriptor(&fd_2));
+            EXPECT_TRUE(fd_2.is_valid());
+            EXPECT_FALSE(struct_reader_2.HasMoreData());
 
-        base::ScopedFD payload_fd;
-        base::ScopedFD meta_fd;
-        if (file_name_1 == "buffer.txt") {
-          EXPECT_EQ(file_name_2, "meta.txt");
-          payload_fd = std::move(fd_1);
-          meta_fd = std::move(fd_2);
-        } else {
-          EXPECT_EQ(file_name_1, "meta.txt");
-          EXPECT_EQ(file_name_2, "buffer.txt");
-          payload_fd = std::move(fd_2);
-          meta_fd = std::move(fd_1);
-        }
-        base::File payload_file(payload_fd.release());
-        EXPECT_TRUE(payload_file.IsValid());
-        EXPECT_EQ(payload_file.GetLength(), strlen(kBuffer));
-        char result_buffer[100] = {'\0'};
-        EXPECT_EQ(payload_file.Read(0, result_buffer, sizeof(result_buffer)),
-                  strlen(kBuffer));
-        EXPECT_EQ(std::string(kBuffer), std::string(result_buffer));
+            base::ScopedFD payload_fd;
+            base::ScopedFD meta_fd;
+            if (file_name_1 == "buffer.txt") {
+              EXPECT_EQ(file_name_2, "meta.txt");
+              payload_fd = std::move(fd_1);
+              meta_fd = std::move(fd_2);
+            } else {
+              EXPECT_EQ(file_name_1, "meta.txt");
+              EXPECT_EQ(file_name_2, "buffer.txt");
+              payload_fd = std::move(fd_2);
+              meta_fd = std::move(fd_1);
+            }
+            base::File payload_file(payload_fd.release());
+            EXPECT_TRUE(payload_file.IsValid());
+            EXPECT_EQ(payload_file.GetLength(), strlen(kBuffer));
+            char result_buffer[100] = {'\0'};
+            EXPECT_EQ(
+                payload_file.Read(0, result_buffer, sizeof(result_buffer)),
+                strlen(kBuffer));
+            EXPECT_EQ(std::string(kBuffer), std::string(result_buffer));
 
-        base::File meta_file(meta_fd.release());
-        EXPECT_TRUE(meta_file.IsValid());
-        EXPECT_GT(meta_file.GetLength(), 0);
+            base::File meta_file(meta_fd.release());
+            EXPECT_TRUE(meta_file.IsValid());
+            EXPECT_GT(meta_file.GetLength(), 0);
 
-        ASSERT_TRUE(base::SingleThreadTaskRunner::HasCurrentDefault());
-        // Serial would normally be set by the transmission code before we tried
-        // to make a reply from it. Since we are bypassing the transmission
-        // code, we must set the serial number here.
-        method_call->SetSerial(1);
-        if (give_success_response) {
-          empty_response = dbus::Response::FromMethodCall(method_call);
-          base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-              FROM_HERE,
-              base::BindOnce(std::move(*callback), empty_response.get()));
-        } else {
-          empty_error_response = dbus::ErrorResponse::FromMethodCall(
-              method_call, "org.freedesktop.DBus.Error.Failed",
-              "Things didn't work");
-          base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-              FROM_HERE, base::BindOnce(std::move(*error_callback),
-                                        empty_error_response.get()));
-        }
-      }));
+            ASSERT_TRUE(base::SingleThreadTaskRunner::HasCurrentDefault());
+            // Serial would normally be set by the transmission code before we
+            // tried to make a reply from it. Since we are bypassing the
+            // transmission code, we must set the serial number here.
+            method_call->SetSerial(1);
+            if (give_success_response) {
+              empty_response = dbus::Response::FromMethodCall(method_call);
+              base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+                  FROM_HERE, base::BindOnce(std::move(*callback),
+                                            empty_response.get(), nullptr));
+            } else {
+              empty_error_response = dbus::ErrorResponse::FromMethodCall(
+                  method_call, "org.freedesktop.DBus.Error.Failed",
+                  "Things didn't work");
+              base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+                  FROM_HERE, base::BindOnce(std::move(*callback), nullptr,
+                                            empty_error_response.get()));
+            }
+          }));
 
   collector.Initialize(false);
 

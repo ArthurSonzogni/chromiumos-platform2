@@ -204,10 +204,10 @@ void ServiceTestingHelper::ExpectNoDBusMessages() {
                 DoCallMethod(A<dbus::MethodCall*>(), A<int>(),
                              A<dbus::ObjectProxy::ResponseCallback*>()))
         .Times(0);
-    EXPECT_CALL(*object_proxy, DoCallMethodWithErrorCallback(
-                                   A<dbus::MethodCall*>(), A<int>(),
-                                   A<dbus::ObjectProxy::ResponseCallback*>(),
-                                   A<dbus::ObjectProxy::ErrorCallback*>()))
+    EXPECT_CALL(*object_proxy,
+                DoCallMethodWithErrorResponse(
+                    A<dbus::MethodCall*>(), A<int>(),
+                    A<dbus::ObjectProxy::ResponseOrErrorCallback*>()))
         .Times(0);
   }
 }

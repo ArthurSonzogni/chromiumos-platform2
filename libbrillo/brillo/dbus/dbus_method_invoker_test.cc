@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/dbus/dbus_method_invoker.h>
-
 #include <stdio.h>
 #include <unistd.h>
 
@@ -12,6 +10,7 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <brillo/dbus/dbus_method_invoker.h>
 #include <dbus/error.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
@@ -239,10 +238,9 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
         .WillRepeatedly(Return(mock_object_proxy_.get()));
     int def_timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
     EXPECT_CALL(*mock_object_proxy_,
-                DoCallMethodWithErrorCallback(
+                DoCallMethodWithErrorResponse(
                     An<dbus::MethodCall*>(), def_timeout_ms,
-                    An<dbus::ObjectProxy::ResponseCallback*>(),
-                    An<dbus::ObjectProxy::ErrorCallback*>()))
+                    An<dbus::ObjectProxy::ResponseOrErrorCallback*>()))
         .WillRepeatedly(Invoke(this, &AsyncDBusMethodInvokerTest::HandleCall));
   }
 
@@ -250,8 +248,7 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
 
   void HandleCall(dbus::MethodCall* method_call,
                   int /* timeout_ms */,
-                  dbus::ObjectProxy::ResponseCallback* success_callback,
-                  dbus::ObjectProxy::ErrorCallback* error_callback) {
+                  dbus::ObjectProxy::ResponseOrErrorCallback* callback) {
     if (method_call->GetInterface() == kTestInterface) {
       if (method_call->GetMember() == kTestMethod1) {
         MessageReader reader(method_call);
@@ -262,14 +259,14 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
           auto response = Response::CreateEmpty();
           MessageWriter writer(response.get());
           writer.AppendString(std::to_string(v1 + v2));
-          std::move(*success_callback).Run(response.get());
+          std::move(*callback).Run(response.get(), nullptr);
         }
         return;
       } else if (method_call->GetMember() == kTestMethod2) {
         method_call->SetSerial(123);
         auto error_response = dbus::ErrorResponse::FromMethodCall(
             method_call, "org.MyError", "My error message");
-        std::move(*error_callback).Run(error_response.get());
+        std::move(*callback).Run(nullptr, error_response.get());
         return;
       }
     }

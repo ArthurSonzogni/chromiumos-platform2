@@ -38,21 +38,20 @@ class FakeObjectProxy : public dbus::ObjectProxy {
       : dbus::ObjectProxy(
             nullptr, "", dbus::ObjectPath(trunks::kTrunksServicePath), 0) {}
 
-  void CallMethodWithErrorCallback(
+  void CallMethodWithErrorResponse(
       dbus::MethodCall* method_call,
       int timeout_ms,
-      dbus::ObjectProxy::ResponseCallback callback,
-      dbus::ObjectProxy::ErrorCallback error_callback) override {
+      dbus::ObjectProxy::ResponseOrErrorCallback callback) override {
     base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response =
         CallMethodAndBlock(method_call, timeout_ms);
     if (response.has_value() && response.value()) {
-      std::move(callback).Run(response.value().get());
+      std::move(callback).Run(response.value().get(), nullptr);
     } else {
       method_call->SetSerial(1);
       std::unique_ptr<dbus::ErrorResponse> error_response =
           dbus::ErrorResponse::FromMethodCall(method_call, "org.MyError",
                                               "Error message");
-      std::move(error_callback).Run(error_response.get());
+      std::move(callback).Run(nullptr, error_response.get());
     }
   }
 
@@ -93,8 +92,8 @@ class TrunksDBusProxyTest : public testing::Test {
 
   void SetUp() override {
     ON_CALL(*bus_, Connect()).WillByDefault(Return(true));
-    ON_CALL(*bus_, GetObjectProxy(A<std::string_view>(),
-                                  A<const dbus::ObjectPath&>()))
+    ON_CALL(*bus_,
+            GetObjectProxy(A<std::string_view>(), A<const dbus::ObjectPath&>()))
         .WillByDefault(Return(object_proxy_.get()));
     ON_CALL(*bus_,
             GetServiceOwnerAndBlock(A<const std::string&>(),
