@@ -760,7 +760,13 @@ class CrosConfigBaseImpl:
                 continue
             targets = [device_targets.get(c) for c in components]
 
-            key = self.GetFirmwareGroupingName(device)
+            # For ISH firmware, use image-name as the key instead of
+            # coreboot name to allow devices which share the same
+            # coreboot to use different ISH firmware builds.
+            if "ish" in components:
+                key = device.GetProperties("/firmware/image-name")
+            else:
+                key = self.GetFirmwareGroupingName(device)
 
             if firmware_filter and key not in firmware_filter:
                 continue
