@@ -17,7 +17,7 @@ generate_dbus_proxies("concierge-proxies") {
   dbus_service_config = "../../dbus_bindings/concierge-dbus-service-config.json"
   proxy_output_file = "include/concierge/dbus-proxies.h"
   mock_output_file = "include/concierge/dbus-proxy-mocks.h"
-  proxy_path_in_mocks = "vm_tools/concierge/dbus-proxies.h"
+  proxy_path_in_mocks = "concierge/dbus-proxies.h"
   sources = [ "../../dbus_bindings/org.chromium.VmConcierge.xml" ]
 }
 
