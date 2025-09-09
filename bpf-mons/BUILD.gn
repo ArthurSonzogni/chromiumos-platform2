@@ -8,6 +8,7 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":bpf-fdmon",
+    ":bpf-genmon",
     ":bpf-lockmon",
     ":bpf-memmon",
     ":bpf-mons-fdmem-test",
@@ -58,6 +59,13 @@ generate_ebpf_skeletons("bpf_psimon") {
   deps = [ ":vmlinux_h" ]
 }
 
+generate_ebpf_skeletons("bpf_genmon") {
+  sources = [ "genmon.bpf.c" ]
+  bpf_skeleton_out_dir = "include/mons/bpf_skeletons"
+  btf_inout_dir = "bpf"
+  deps = [ ":vmlinux_h" ]
+}
+
 executable("bpf-memmon") {
   sources = [
     "libmon.cc",
@@ -101,6 +109,17 @@ executable("bpf-psimon") {
   configs += [ ":target_defaults" ]
   libs = [ "blazesym_c" ]
   deps = [ ":bpf_psimon" ]
+  install_path = "bin"
+}
+
+executable("bpf-genmon") {
+  sources = [
+    "genmon.cc",
+    "libmon.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  libs = [ "blazesym_c" ]
+  deps = [ ":bpf_genmon" ]
   install_path = "bin"
 }
 
