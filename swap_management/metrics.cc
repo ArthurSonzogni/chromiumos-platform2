@@ -212,24 +212,6 @@ void Metrics::PeriodicReportZramMetrics() {
                        kPressureMin, kPressureExclusiveMax,
                        kPressureHistogramBuckets);
   }
-
-  // We use exactly 15 buckets for zram, each of size 1GB except for the last
-  // which is unbounded. This means we have buckets: [0, 1), [1, 2), ..., [14,
-  // infinity).
-  constexpr uint32_t kZramBucketCount = 15;
-  uint32_t zram_bucket = (*zram_mm_stat).orig_data_size / kMiB / 1024;
-  zram_bucket = std::min(kZramBucketCount - 1, zram_bucket);
-
-  // We use exactly 20 buckets for metric_some of width 5 between 0 and 100.
-  constexpr uint32_t kPsiBucketWidth = 5;
-  constexpr uint32_t kPsiBucketCount = 100 / kPsiBucketWidth;
-  uint32_t psi_bucket = (*psi_memory_metrics)[0] / kPsiBucketWidth;
-  psi_bucket = std::min(kPsiBucketCount - 1, psi_bucket);
-
-  uint32_t composite_bucket = zram_bucket * kPsiBucketCount + psi_bucket;
-
-  metrics_.SendEnumToUMA("ChromeOS.Zram.PSISomeOrigDataSizeMB",
-                         composite_bucket, kZramBucketCount * kPsiBucketCount);
 }
 
 void Metrics::Start() {
