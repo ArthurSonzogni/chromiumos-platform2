@@ -142,7 +142,41 @@ struct sl_host_buffer* sl_linux_dmabuf_create_host_buffer(
   return host_buffer;
 }
 
-bool sl_linux_dmabuf_fixup_plane0_params(gbm_device* gbm,
+bool sl_linux_dmabuf_has_virtgpu_resource_info_type(int fd) {
+  /* see https://issuetracker.google.com/441537635
+   *
+   * Detect whether kernel supports resource info "type" specification in
+   * DRM_IOCTL_VIRTGPU_RESOURCE_INFO ioctl.
+   *
+   * Exploit the fact that the "type" member is validated first by supporting
+   * kernels, returning -EINVAL for invalid "type", while other kernels ignore
+   * it and return -ENOENT for the intentionally invalid buffer handle validated
+   * after.
+   */
+  int ret;
+  bool has_resource_info_type = false;
+
+  struct drm_virtgpu_getparam getparam;
+  uint32_t param;
+  memset(&getparam, 0, sizeof(getparam));
+  getparam.param = VIRTGPU_PARAM_3D_FEATURES;
+  getparam.value = (uint64_t)(uintptr_t)&param;
+
+  ret = drmIoctl(fd, DRM_IOCTL_VIRTGPU_GETPARAM, &getparam);
+  if (!ret) {
+    struct drm_virtgpu_resource_info_cros info;
+    memset(&info, 0, sizeof(info));
+    info.bo_handle = 0; // intentionally invalid
+    info.type = -1;
+
+    ret = drmIoctl(fd, DRM_IOCTL_VIRTGPU_RESOURCE_INFO, &info);
+    has_resource_info_type = ret && (errno == EINVAL);
+  }
+
+  return has_resource_info_type;
+}
+
+bool sl_linux_dmabuf_fixup_plane0_params(struct sl_context* ctx,
                                          int32_t fd,
                                          uint32_t* out_stride,
                                          uint32_t* out_modifier_hi,
@@ -152,7 +186,7 @@ bool sl_linux_dmabuf_fixup_plane0_params(gbm_device* gbm,
    * and may have different stride for host buffer and shadow/guest buffer.
    * For context, see: crbug.com/892242 and b/230510320.
    */
-  int drm_fd = gbm_device_get_fd(gbm);
+  int drm_fd = gbm_device_get_fd(ctx->gbm);
   struct drm_prime_handle prime_handle;
   int ret;
   bool is_virtgpu_buffer = false;
@@ -176,7 +210,7 @@ bool sl_linux_dmabuf_fixup_plane0_params(gbm_device* gbm,
     // Correct stride if we are able to get proper resource info.
     if (!ret) {
       is_virtgpu_buffer = true;
-      if (info_arg.stride) {
+      if (ctx->drm_has_virtgpu_resource_info_type && info_arg.stride) {
         *out_stride = info_arg.stride;
         *out_modifier_hi = info_arg.format_modifier >> 32;
         *out_modifier_lo = info_arg.format_modifier & 0xFFFFFFFF;
@@ -490,7 +524,7 @@ static void sl_linux_buffer_params_add(struct wl_client* client,
      * 3d resource (virgl), or silently leave unmodified.
      */
     bool is_virtgpu_buffer = sl_linux_dmabuf_fixup_plane0_params(
-        ctx->gbm, fd, &stride, &modifier_hi, &modifier_lo);
+        ctx, fd, &stride, &modifier_hi, &modifier_lo);
 
     if (stride == 0) {
       wl_resource_post_error(resource,

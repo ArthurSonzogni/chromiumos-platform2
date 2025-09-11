@@ -99,7 +99,7 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
   bool is_virtgpu_buffer = false;
   if (ctx->gbm) {
     is_virtgpu_buffer = sl_linux_dmabuf_fixup_plane0_params(
-        ctx->gbm, name, &host_stride0, &host_modifier_hi, &host_modifier_lo);
+        ctx, name, &host_stride0, &host_modifier_hi, &host_modifier_lo);
   }
 
   zwp_linux_buffer_params_v1_add(buffer_params, name, 0, offset0, host_stride0,

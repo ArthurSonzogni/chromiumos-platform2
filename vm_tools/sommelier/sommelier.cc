@@ -4509,6 +4509,9 @@ int real_main(int argc, char** argv) {
         return EXIT_FAILURE;
       }
 
+      ctx.drm_has_virtgpu_resource_info_type =
+        sl_linux_dmabuf_has_virtgpu_resource_info_type(drm_fd);
+
       ctx.drm_device = drm_device;
     }
   }

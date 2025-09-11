@@ -125,6 +125,7 @@ struct sl_context {
   std::unique_ptr<struct wl_event_source> wayland_channel_event_source;
   std::unique_ptr<struct wl_event_source> virtwl_socket_event_source;
   const char* drm_device;
+  bool drm_has_virtgpu_resource_info_type;
   struct gbm_device* gbm;
   int xwayland;
   pid_t xwayland_pid;

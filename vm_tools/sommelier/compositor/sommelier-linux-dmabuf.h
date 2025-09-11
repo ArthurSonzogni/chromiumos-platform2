@@ -11,8 +11,10 @@
 
 #define SL_LINUX_DMABUF_MAX_VERSION 4u
 
+bool sl_linux_dmabuf_has_virtgpu_resource_info_type(int fd);
+
 struct gbm_device;
-bool sl_linux_dmabuf_fixup_plane0_params(gbm_device* gbm,
+bool sl_linux_dmabuf_fixup_plane0_params(struct sl_context* ctx,
                                          int32_t fd,
                                          uint32_t* out_stride,
                                          uint32_t* out_modifier_hi,
