@@ -92,7 +92,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/cros_healthd           u:object_r:cros_healthd_exec:s0
 /usr/bin/cros_installer         u:object_r:cros_installer_exec:s0
 /usr/bin/crossystem             u:object_r:cros_crossystem_exec:s0
-/usr/bin/cups_proxy             u:object_r:cros_cups_proxy_exec:s0
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
 /usr/bin/dbus-monitor           u:object_r:cros_dbus_monitor_exec:s0
 /usr/bin/dbus-send              u:object_r:cros_dbus_send_exec:s0
@@ -496,7 +495,6 @@ has_arc(`
 /run/cryptohome                 u:object_r:cros_run_cryptohome:s0
 /run/cryptohome/ephemeral_mount u:object_r:cros_ephemeral_mount:s0
 /run/cups(/.*)?                 u:object_r:cros_run_cups:s0
-/run/cups_proxy(/.*)?           u:object_r:cros_run_cups_proxy:s0
 /run/daemon-store(-cache)?      u:object_r:cros_run_daemon_store:s0
 /run/dbus                       u:object_r:cros_run_dbus:s0
 /run/dbus.pid                   u:object_r:cros_dbus_pid_file:s0

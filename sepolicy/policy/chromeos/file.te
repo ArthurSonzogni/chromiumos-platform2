@@ -81,7 +81,6 @@ type cros_crossystem_exec, exec_type, file_type, cros_file_type, cros_system_fil
 type cros_cryptohome_namespace_mounter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_cryptohomed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_cupsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_cups_proxy_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_daisydog_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dbus_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dbus_monitor_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -559,7 +558,6 @@ type cros_run_crash_reporter, file_type, cros_file_type, cros_run_file_type;
 type cros_run_crosdns, file_type, cros_file_type, cros_run_file_type;
 type cros_run_cryptohome, file_type, cros_file_type, cros_run_file_type;
 type cros_run_cups, file_type, cros_file_type, cros_run_file_type;
-type cros_run_cups_proxy, file_type, cros_file_type, cros_run_file_type;
 type cros_run_daemon_store, file_type, cros_file_type, cros_run_file_type;
 type cros_run_dbus, file_type, cros_file_type, cros_run_file_type;
 type cros_run_debugd, file_type, cros_file_type, cros_run_file_type;
