@@ -55,7 +55,6 @@ copies.
 | [crosier-chrome](./crosier-chrome/) | Crosier testing framework |
 | [croslog](./croslog/) | The log manipulation command |
 | [cryptohome](./cryptohome/) | Daemon and tools for managing encrypted /home and /var directories |
-| [cups_proxy](./cups_proxy/) | Daemon for proxying CUPS printing request |
 | [dbus_perfetto_producer](./dbus_perfetto_producer/) | A D-bus event producer of perfetto |
 | [debugd](./debugd/) | Centralized debug daemon for random tools |
 | [desktop_ota_recovery](./desktop_ota_recovery/) | Utility and modules to recover via network |
