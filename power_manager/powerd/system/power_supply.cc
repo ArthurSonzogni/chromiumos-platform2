@@ -212,6 +212,8 @@ const char* ExternalPowerToString(PowerSupplyProperties::ExternalPower type) {
       return "USB";
     case PowerSupplyProperties_ExternalPower_DISCONNECTED:
       return "none";
+    case PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE:
+      return "low voltage non-charging";
   }
   return "unknown";
 }
@@ -523,6 +525,10 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
     } break;
     case PowerSupplyProperties_ExternalPower_DISCONNECTED:
       output = "On battery at ";
+      break;
+    case PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE:
+      output =
+          "Power source is low voltage and does not charge, on battery at ";
       break;
   }
 
