@@ -13,8 +13,8 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/json/json_value_converter.h>
 #include <base/time/time.h>
+#include <base/values.h>
 #include <metrics/metrics_library.h>
 
 // Convert from 512-byte disk blocks to MiB. Round down if the size is
@@ -270,9 +270,6 @@ struct FwupdRelease {
   FwupdLastAttemptStatus last_attempt_status;
 
   FwupdRelease() = default;
-
-  static void RegisterJSONConverter(
-      base::JSONValueConverter<FwupdRelease>* converter);
 };
 
 // The `Device` struct within fwupd's json response
@@ -293,17 +290,7 @@ struct FwupdDeviceHistory {
   std::vector<std::unique_ptr<FwupdRelease>> releases;
 
   FwupdDeviceHistory() = default;
-
-  static void RegisterJSONConverter(
-      base::JSONValueConverter<FwupdDeviceHistory>* converter);
 };
-
-// Find all update histories in a json string and collect them in `histories`.
-//
-// Returns true on success, false if the json is not formatted correctly, e.g.
-// it is not a json dict or an `update_state` is missing.
-bool ParseFwupHistoriesFromJson(std::string_view history_json,
-                                std::vector<FwupdDeviceHistory>& histories);
 
 // Filepath to record the last time fwup history metrics were sent.
 inline constexpr std::string_view kFwupTimestampFile =

@@ -303,52 +303,6 @@ bool StringToAttemptStatus(std::string_view s, FwupdLastAttemptStatus* result) {
   return false;
 }
 
-void FwupdRelease::RegisterJSONConverter(
-    base::JSONValueConverter<FwupdRelease>* converter) {
-  converter->RegisterCustomField<FwupdLastAttemptStatus>(
-      "FwupdLastAttemptStatus", &FwupdRelease::last_attempt_status,
-      &StringToAttemptStatus);
-}
-
-void FwupdDeviceHistory::RegisterJSONConverter(
-    base::JSONValueConverter<FwupdDeviceHistory>* converter) {
-  converter->RegisterStringField("Name", &FwupdDeviceHistory::name);
-  converter->RegisterStringField("Plugin", &FwupdDeviceHistory::plugin);
-  converter->RegisterCustomValueField<base::Time>(
-      "Created", &FwupdDeviceHistory::created, &ValToTime);
-  converter->RegisterCustomValueField<FwupdUpdateState>(
-      "UpdateState", &FwupdDeviceHistory::update_state, &ValToUpdateState);
-  converter->RegisterRepeatedMessage("Releases", &FwupdDeviceHistory::releases);
-}
-
-bool ParseFwupHistoriesFromJson(std::string_view history_json,
-                                std::vector<FwupdDeviceHistory>& histories) {
-  std::optional<base::Value::Dict> response_dict =
-      base::JSONReader::ReadDict(history_json);
-  if (!response_dict.has_value()) {
-    LOG(ERROR) << "fwupdmgr response not formatted as json dictionary.";
-    return false;
-  }
-
-  base::Value::List* devices = response_dict.value().FindList("Devices");
-  if (!devices) {
-    LOG(ERROR) << "List of devices not found in fwupdmgr response.";
-    return false;
-  }
-
-  base::JSONValueConverter<FwupdDeviceHistory> converter;
-  for (const base::Value& device : *devices) {
-    FwupdDeviceHistory history;
-    if (!converter.Convert(device, &history)) {
-      LOG(ERROR)
-          << "Failed to convert value into device update history struct.";
-      return false;
-    }
-    histories.push_back(std::move(history));
-  }
-  return true;
-}
-
 bool RecordFwupMetricTimestamp(base::Time time,
                                const base::FilePath& last_fwup_report) {
   if (!base::WriteFile(base::FilePath(last_fwup_report),
