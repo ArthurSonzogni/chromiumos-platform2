@@ -6,7 +6,6 @@
 #define FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_
 
 #include <map>
-#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -268,8 +267,6 @@ bool StringToAttemptStatus(std::string_view s, FwupdLastAttemptStatus* result);
 // the last attempt status.
 struct FwupdRelease {
   FwupdLastAttemptStatus last_attempt_status;
-
-  FwupdRelease() = default;
 };
 
 // The `Device` struct within fwupd's json response
@@ -287,9 +284,7 @@ struct FwupdDeviceHistory {
   FwupdUpdateState update_state;
   // The list of `Release` struct, each containing a `FwupdLastAttemptStatus`
   // which can narrow down failure reasons.
-  std::vector<std::unique_ptr<FwupdRelease>> releases;
-
-  FwupdDeviceHistory() = default;
+  std::vector<FwupdRelease> releases;
 };
 
 // Filepath to record the last time fwup history metrics were sent.

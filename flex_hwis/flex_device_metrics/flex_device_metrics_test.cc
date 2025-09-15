@@ -452,15 +452,15 @@ TEST(FlexFwupHistoryMetrics, SendAttemptStatusAsMetric) {
   FwupdDeviceHistory history;
   history.name = "test_device";
   history.update_state = FwupdUpdateState::kFailed;
-  auto release = std::make_unique<FwupdRelease>();
-  release->last_attempt_status = FwupdLastAttemptStatus::kErrorUnsuccessful;
-  history.releases.push_back(std::move(release));
+  FwupdRelease release;
+  release.last_attempt_status = FwupdLastAttemptStatus::kErrorUnsuccessful;
+  history.releases.push_back(release);
 
   EXPECT_CALL(metrics,
               SendEnumToUMA(
                   "Platform.FlexUefiCapsuleUpdateResult",
                   static_cast<int>(AttemptStatusToUpdateResult(
-                                       history.releases[0]->last_attempt_status)
+                                       history.releases[0].last_attempt_status)
                                        .value()),
                   static_cast<int>(UpdateResult::kMaxValue) + 1))
       .WillOnce(Return(true));
@@ -473,20 +473,20 @@ TEST(FlexFwupHistoryMetrics, SendMultipleAttemptStatusesAsMetrics) {
   FwupdDeviceHistory history;
   history.name = "test_device";
   history.update_state = FwupdUpdateState::kFailed;
-  auto first_release = std::make_unique<FwupdRelease>();
-  first_release->last_attempt_status =
+  FwupdRelease first_release;
+  first_release.last_attempt_status =
       FwupdLastAttemptStatus::kErrorUnsuccessful;
-  history.releases.push_back(std::move(first_release));
-  auto second_release = std::make_unique<FwupdRelease>();
-  second_release->last_attempt_status =
+  history.releases.push_back(first_release);
+  FwupdRelease second_release;
+  second_release.last_attempt_status =
       FwupdLastAttemptStatus::kErrorIncorrectVersion;
-  history.releases.push_back(std::move(second_release));
+  history.releases.push_back(second_release);
 
   EXPECT_CALL(metrics,
               SendEnumToUMA(
                   "Platform.FlexUefiCapsuleUpdateResult",
                   static_cast<int>(AttemptStatusToUpdateResult(
-                                       history.releases[0]->last_attempt_status)
+                                       history.releases[0].last_attempt_status)
                                        .value()),
                   static_cast<int>(UpdateResult::kMaxValue) + 1))
       .WillOnce(Return(true));
@@ -495,7 +495,7 @@ TEST(FlexFwupHistoryMetrics, SendMultipleAttemptStatusesAsMetrics) {
               SendEnumToUMA(
                   "Platform.FlexUefiCapsuleUpdateResult",
                   static_cast<int>(AttemptStatusToUpdateResult(
-                                       history.releases[1]->last_attempt_status)
+                                       history.releases[1].last_attempt_status)
                                        .value()),
                   static_cast<int>(UpdateResult::kMaxValue) + 1))
       .WillOnce(Return(true));
@@ -525,12 +525,12 @@ TEST(FlexFwupHistoryMetrics, LastAttemptStatusIgnoredOnNonFailingUpdates) {
   FwupdDeviceHistory history;
   history.name = "test_device";
   history.update_state = FwupdUpdateState::kSuccess;
-  auto release = std::make_unique<FwupdRelease>();
+  FwupdRelease release;
 
   // kErrorUnsuccessful indicates failure, however this should be ignored as
   // the update state is successful.
-  release->last_attempt_status = FwupdLastAttemptStatus::kErrorUnsuccessful;
-  history.releases.push_back(std::move(release));
+  release.last_attempt_status = FwupdLastAttemptStatus::kErrorUnsuccessful;
+  history.releases.push_back(release);
 
   EXPECT_CALL(metrics,
               SendEnumToUMA(
@@ -543,7 +543,7 @@ TEST(FlexFwupHistoryMetrics, LastAttemptStatusIgnoredOnNonFailingUpdates) {
               SendEnumToUMA(
                   "Platform.FlexUefiCapsuleUpdateResult",
                   static_cast<int>(AttemptStatusToUpdateResult(
-                                       history.releases[0]->last_attempt_status)
+                                       history.releases[0].last_attempt_status)
                                        .value()),
                   static_cast<int>(UpdateResult::kMaxValue) + 1))
       .Times(0);

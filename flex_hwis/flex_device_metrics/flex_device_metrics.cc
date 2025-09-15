@@ -6,7 +6,6 @@
 
 #include <unistd.h>
 
-#include <memory>
 #include <optional>
 #include <utility>
 
@@ -384,9 +383,9 @@ bool SendFwupMetric(MetricsLibraryInterface& metrics,
                     const FwupdDeviceHistory& history) {
   if (history.update_state == FwupdUpdateState::kFailed) {
     bool r = true;
-    for (const std::unique_ptr<FwupdRelease>& release : history.releases) {
+    for (const auto& release : history.releases) {
       std::optional<UpdateResult> status =
-          AttemptStatusToUpdateResult(release->last_attempt_status);
+          AttemptStatusToUpdateResult(release.last_attempt_status);
       if (!status.has_value() ||
           !metrics.SendEnumToUMA("Platform.FlexUefiCapsuleUpdateResult",
                                  status.value())) {
