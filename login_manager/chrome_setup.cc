@@ -1329,6 +1329,7 @@ void AddCuttlefishFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
     builder->AddFeatureEnableOverride("TiledDisplaySupport");
     builder->AddFeatureEnableOverride("FastDrmMasterDrop");
     builder->AddFeatureEnableOverride("AllowChromeAppsInKioskSessions");
+    builder->AddFeatureDisableOverride("LocalNetworkAccessChecks");
   }
 }
 
