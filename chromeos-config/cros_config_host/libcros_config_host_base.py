@@ -764,7 +764,7 @@ class CrosConfigBaseImpl:
             # coreboot name to allow devices which share the same
             # coreboot to use different ISH firmware builds.
             if "ish" in components:
-                key = device.GetProperties("/firmware/image-name")
+                key = device.GetProperty("/firmware", "image-name")
             else:
                 key = self.GetFirmwareGroupingName(device)
 
