@@ -220,7 +220,9 @@ void TimberSlide::OnEventReadable() {
 
   if (ret < 0) {
     PLOG(ERROR) << "Read error";
-    Quit();
+    // Stop listening to avoid a busy loop on the error condition.
+    watcher_.reset();
+    QuitWithExitCode(EX_OSERR);
     return;
   }
 
