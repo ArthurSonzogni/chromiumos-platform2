@@ -507,7 +507,7 @@ has_arc(`
 /run/fbpreprocessord            u:object_r:cros_run_fbpreprocessord:s0
 /run/featured/active            u:object_r:cros_run_featured_active:s0
 /run/featured_seed              u:object_r:cros_run_featured_seed:s0
-/run/flex_device_metrics/last_fwup_report       u:object_r:cros_run_flex_device_metrics_last_fwup_report:s0
+/run/flex_device_metrics(/.*)?  u:object_r:cros_run_flex_device_metrics
 /run/flex_hardware(/.*)?        u:object_r:cros_run_flex_hardware:s0
 /run/frecon                     u:object_r:cros_run_frecon:s0
 /run/fuse                       u:object_r:cros_run_fuse:s0
