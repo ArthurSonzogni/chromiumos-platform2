@@ -4,6 +4,7 @@
 
 #include "flex_hwis/flex_device_metrics/flex_device_metrics.h"
 
+#include <memory>
 #include <optional>
 #include <utility>
 
