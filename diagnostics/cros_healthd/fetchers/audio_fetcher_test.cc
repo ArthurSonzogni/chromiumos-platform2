@@ -94,15 +94,15 @@ class AudioFetcherTest : public ::testing::Test {
   }
 
   void SetExpectedVolumeStateError() {
+    volume_state_error_ = brillo::Error::Create(FROM_HERE, "", "", "");
     EXPECT_CALL(*mock_cras_proxy(), GetVolumeStateAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<1>(
-            brillo::Error::Create(FROM_HERE, "", "", "").get()));
+        .WillOnce(base::test::RunOnceCallback<1>(volume_state_error_.get()));
   }
 
   void SetExpectedNodeInfosError() {
+    node_infos_error_ = brillo::Error::Create(FROM_HERE, "", "", "");
     EXPECT_CALL(*mock_cras_proxy(), GetNodeInfosAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<1>(
-            brillo::Error::Create(FROM_HERE, "", "", "").get()));
+        .WillOnce(base::test::RunOnceCallback<1>(node_infos_error_.get()));
   }
 
   mojom::AudioResultPtr FetchAudioInfoSync() {
@@ -115,6 +115,8 @@ class AudioFetcherTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
+  brillo::ErrorPtr volume_state_error_;
+  brillo::ErrorPtr node_infos_error_;
 };
 
 class AudioFetcherGetVolumeStateTest
