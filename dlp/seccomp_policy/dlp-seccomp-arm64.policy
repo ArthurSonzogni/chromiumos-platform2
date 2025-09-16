@@ -21,6 +21,7 @@ faccessat: 1
 fanotify_mark: 1
 fcntl: 1
 fdatasync: 1
+flock: 1
 futex: 1
 getdents64: 1
 getegid: 1

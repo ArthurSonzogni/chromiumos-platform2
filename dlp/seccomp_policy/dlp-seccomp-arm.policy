@@ -25,6 +25,7 @@ exit_group: 1
 fanotify_mark: 1
 fcntl64: 1
 fdatasync: 1
+flock: 1
 futex: 1
 getdents64: 1
 getegid32: 1
