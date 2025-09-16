@@ -464,9 +464,9 @@ std::optional<base::Time> GetFwupMetricTimestamp(
     const base::FilePath& last_fwup_report) {
   std::string time_str;
   if (!base::ReadFileToString(base::FilePath(last_fwup_report), &time_str)) {
-    LOG(ERROR) << "Failed to read fwup history metric timestamp from "
-               << last_fwup_report;
-    return std::nullopt;
+    LOG(INFO) << "Failed to read fwup history metric timestamp from "
+              << last_fwup_report;
+    return base::Time::UnixEpoch();
   }
   base::Time time;
   base::TrimWhitespaceASCII(time_str, base::TRIM_TRAILING, &time_str);

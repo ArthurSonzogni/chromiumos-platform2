@@ -304,6 +304,12 @@ bool RecordFwupMetricTimestamp(base::Time time,
                                    base::FilePath(kFwupTimestampFile));
 
 // Gets the timestamp stored in file.
+//
+// If the file does not exist, `base::Time::UnixEpoch()` is
+// returned. (The file will not exist until the first time metrics are
+// sent, so this case is not handled as an error.)
+//
+// If the contents of the file are invalid, `nullopt` is returned.
 std::optional<base::Time> GetFwupMetricTimestamp(
     const base::FilePath& last_fwup_report =
         base::FilePath(kFwupTimestampFile));
