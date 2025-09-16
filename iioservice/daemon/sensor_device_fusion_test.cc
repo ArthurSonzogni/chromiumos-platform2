@@ -77,10 +77,6 @@ class FakeSensorDeviceFusion final : public SensorDeviceFusion {
   }
 
  protected:
-  void UpdateRequestedFrequency(double frequency) override {
-    SensorDeviceFusion::UpdateRequestedFrequency(frequency);
-  }
-
   FakeSensorDeviceFusion(
       int32_t id,
       Location location,
@@ -100,6 +96,21 @@ class FakeSensorDeviceFusion final : public SensorDeviceFusion {
                            channel_ids) {
     samples_handler_ = std::make_unique<SamplesHandlerFusion>(
         ipc_task_runner_, channel_ids,
+        // NOTE: UpdateRequestedFrequency should _not_ be overridden by this
+        // class.
+        //
+        // Doing so causes undefined behavior, as the samples_handler_ callback
+        // is called in the destructor of the parent of `this`.
+        //
+        // During the destructor of the parent of `this`, the dynamic type of
+        // `this` is the _parent_ class, not FakeSensorDeviceFusion. Hence,
+        // if `FakeSensorDeviceFusion::UpdateRequestedFrequency` refers to a
+        // method that overrides the parent class', we're calling a method
+        // on a derived class on a `this` that does not implement the derived
+        // class.
+        //
+        // Because this member is protected, we must access it using the name
+        // of the class that has access to it (read: this one).
         base::BindRepeating(&FakeSensorDeviceFusion::UpdateRequestedFrequency,
                             base::Unretained(this)));
   }
