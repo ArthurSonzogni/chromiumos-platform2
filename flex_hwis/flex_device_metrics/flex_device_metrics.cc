@@ -18,10 +18,18 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
+#include <dbus/bus.h>
+#include <dbus/object_proxy.h>
 
 namespace {
+
+constexpr std::string_view kFwupdServiceName = "org.freedesktop.fwupd";
+constexpr std::string_view kFwupdServicePath = "/";
+constexpr std::string_view kFwupdInterface = "org.freedesktop.fwupd";
+constexpr std::string_view kFwupdGetHistory = "GetHistory";
 
 constexpr char kInstallTypeFile[] =
     "mnt/stateful_partition/unencrypted/install_metrics/install_type";
@@ -415,6 +423,29 @@ std::optional<std::vector<FwupdDeviceHistory>> ParseFwupdGetHistoryResponse(
   }
 
   return devices;
+}
+
+std::optional<std::vector<FwupdDeviceHistory>> GetUpdateHistoryFromFwupd() {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  CHECK(bus->Connect());
+  dbus::ObjectProxy* fwupd_proxy = bus->GetObjectProxy(
+      kFwupdServiceName, dbus::ObjectPath(kFwupdServicePath));
+
+  brillo::ErrorPtr error;
+  auto resp = brillo::dbus_utils::CallMethodAndBlock(
+      fwupd_proxy, std::string(kFwupdInterface), std::string(kFwupdGetHistory),
+      &error);
+
+  std::vector<brillo::VariantDictionary> devices;
+  if (resp && brillo::dbus_utils::ExtractMethodCallResults(resp.get(), &error,
+                                                           &devices)) {
+    return ParseFwupdGetHistoryResponse(devices);
+  } else {
+    LOG(ERROR) << "GetHistory call failed: " << error;
+    return std::nullopt;
+  }
 }
 
 bool RecordFwupMetricTimestamp(base::Time time,

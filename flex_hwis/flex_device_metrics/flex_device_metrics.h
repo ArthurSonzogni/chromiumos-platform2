@@ -366,6 +366,13 @@ std::optional<UpdateResult> UpdateStateToUpdateResult(FwupdUpdateState state);
 std::optional<std::vector<FwupdDeviceHistory>> ParseFwupdGetHistoryResponse(
     const std::vector<brillo::VariantDictionary>& raw_devices);
 
+// Call fwupd's `GetHistory` dbus method and return the results.
+//
+// If there are no updates in the history, an empty vector is
+// returned. If the dbus call fails, or if the response cannot be
+// parsed, `nullopt` is returned.
+std::optional<std::vector<FwupdDeviceHistory>> GetUpdateHistoryFromFwupd();
+
 // Send the Firmware Update Result metric.
 //
 // This is an enum metric, see `UpdateResult`.
