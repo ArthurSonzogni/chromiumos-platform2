@@ -14765,6 +14765,10 @@ mno {
     }
     mccmnc: "65501"
     mobile_apn {
+      apn: "lte.vodacom.za"
+      type: DEFAULT
+    }
+    mobile_apn {
       apn: "internet"
       type: DEFAULT
     }
