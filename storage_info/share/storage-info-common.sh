@@ -32,7 +32,9 @@ MODEL_IGNORELIST_5="LITEON_LMH-.*"
 VERSION_IGNORELIST_5=".*"
 MODEL_IGNORELIST_6="LITEON_LCH-.*"
 VERSION_IGNORELIST_6=".*"
-IGNORELIST_MAX=6
+MODEL_IGNORELIST_7="SDINHFT4-.*"
+VERSION_IGNORELIST_7="1314"
+IGNORELIST_MAX=7
 
 MMC_NAME_0="cid"
 MMC_NAME_1="csd"
@@ -198,15 +200,22 @@ print_ufs_info() {
   # TODO(dlunev, b:219839139): deduce it instead of hardcoding.
   local bsg_dev="/dev/bsg/ufs-bsg0"
   local dev_node="/sys/block/${dev}/device"
+  local model
+  local version
+
+  model="$(cat "${dev_node}"/model)"
+  version="$(cat "${dev_node}"/rev)"
 
   echo "Device: /dev/$1"
   echo "Vendor:" "$(cat "${dev_node}"/vendor)"
-  echo "Model:" "$(cat "${dev_node}"/model)"
-  echo "Firmware:" "$(cat "${dev_node}"/rev)"
+  echo "Model: ${model}"
+  echo "Firmware: ${version}"
   echo ""
 
   echo_run ufs-utils desc -a -p "${bsg_dev}"
-  echo_run ufs-utils attr -a -p "${bsg_dev}"
+  if ! is_ssd_ignorelist "${model}" "${version}"; then
+    echo_run ufs-utils attr -a -p "${bsg_dev}"
+  fi
   echo_run ufs-utils fl -a -p "${bsg_dev}"
   echo_run ufs-utils uic -t 0 -a -p "${bsg_dev}"
   echo_run ufs-utils uic -t 1 -a -p "${bsg_dev}"
