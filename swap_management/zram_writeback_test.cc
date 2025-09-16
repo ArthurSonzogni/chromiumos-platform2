@@ -65,8 +65,10 @@ class ZramWritebackTest : public ::testing::Test {
   }
 
  protected:
-  std::unique_ptr<MockZramWriteback> mock_zram_writeback_;
+  // NOTE: mock_util_ is used by mock_zram_writeback_'s destructor. They must
+  // be declared in this order so they are destructed in the correct sequence.
   MockUtils mock_util_;
+  std::unique_ptr<MockZramWriteback> mock_zram_writeback_;
   base::test::TaskEnvironment task_environment{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
@@ -218,6 +220,10 @@ TEST_F(ZramWritebackTest, EnableWriteback) {
       .WillOnce(Return(absl::OkStatus()));
 
   EXPECT_THAT(mock_zram_writeback_->EnableWriteback(1024), absl::OkStatus());
+
+  // Destructors may call mock functions on cleanup. Allow those calls to
+  // happen without validating them against the above expectations.
+  testing::Mock::VerifyAndClearExpectations(&mock_util_);
 }
 
 TEST_F(ZramWritebackTest, PeriodicWriteback) {
