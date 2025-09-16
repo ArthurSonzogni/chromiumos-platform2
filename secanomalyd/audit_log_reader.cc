@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secanomalyd/audit_log_reader.h"
+
 #include <algorithm>
 #include <utility>
 #include <vector>
@@ -10,29 +12,10 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
-#include "secanomalyd/audit_log_reader.h"
-
 namespace secanomalyd {
 
-static constexpr LazyRE2 kSuccessFieldPattern = {R"(success=([a-z]+)\s)"};
-static constexpr LazyRE2 kSyscallFieldPattern = {R"(SYSCALL=([\w]+)\s)"};
 // Extracts the executable path from the cmd field of the log message.
 static constexpr LazyRE2 kExePathPattern = {R"(cmd=\"(\S+).*\")"};
-
-bool IsMemfdCreate(const std::string& log_message) {
-  std::string syscall;
-  std::string success;
-
-  if (!RE2::PartialMatch(log_message, *kSuccessFieldPattern, &success) ||
-      !RE2::PartialMatch(log_message, *kSyscallFieldPattern, &syscall)) {
-    return false;
-  }
-
-  if (syscall == "memfd_create" && success == "yes") {
-    return true;
-  }
-  return false;
-}
 
 bool IsMemfdExecutionAttempt(const std::string& log_message,
                              std::string& exe_path) {
@@ -79,14 +62,7 @@ bool AuditLogReader::GetNextEntry(LogRecord* log_record) {
 }
 
 bool AuditLogReader::ReadLine(const std::string& line, LogRecord& log_record) {
-  // The log line is parsed using the first Parser whose pattern matches the
-  // line. This is OK because there should only be one Parser per log line type.
-  for (auto& parser : parser_map_) {
-    if (parser.second->IsValid(line, log_record)) {
-      return true;
-    }
-  }
-  return false;
+  return avc_parser_->IsValid(line, log_record);
 }
 
 }  // namespace secanomalyd

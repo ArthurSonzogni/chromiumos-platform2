@@ -8,8 +8,6 @@
 #ifndef SECANOMALYD_AUDIT_LOG_READER_H_
 #define SECANOMALYD_AUDIT_LOG_READER_H_
 
-#include "secanomalyd/text_file_reader.h"
-
 #include <cstddef>
 #include <cstring>
 #include <map>
@@ -21,6 +19,8 @@
 #include <base/files/file_util.h>
 #include <base/time/time.h>
 #include <re2/re2.h>
+
+#include "secanomalyd/text_file_reader.h"
 
 namespace secanomalyd {
 
@@ -35,20 +35,8 @@ const base::FilePath kAuditLogPath("/var/log/audit/audit.log");
 // attempt, cmd="./memfd_test.execv.elf", filename=/proc/self/fd/3
 constexpr char kAVCRecordPattern[] = R"(type=AVC [^(]+\(([\d\.]+)\S+ (.+))";
 
-// Pattern used for catching audit log records of type SYSCALL.
-// Example of a SYSCALL log record:
-// type=SYSCALL msg=audit(1666651511.865:137464): arch=c000003e
-// syscall=319 success=yes exit=3 a0=57d1eca43748 a1=2 a2=0 a3=0 items=0
-// ppid=3187 pid=19347 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0
-// fsgid=0 tty=pts0 ses=12 comm="memfd_test.syml"
-// exe="/usr/bin/memfd/memfd_test.symlink" subj=u:r:cros_ssh_session:s0
-// key=(null)^]ARCH=x86_64 SYSCALL=memfd_create AUID="root" UID="root"
-constexpr char kSyscallRecordPattern[] =
-    R"(type=SYSCALL [^(]+\(([\d\.]+)\S+ (.+))";
-
-// Tags are used to uniquely ID various log record types.
+// Tags are used to uniquely ID log record types.
 constexpr char kAVCRecordTag[] = "AVC";
-constexpr char kSyscallRecordTag[] = "SYSCALL";
 
 // Represents a record (one entry) in the audit log file.
 // |tag| identifies the type of record and the parser that should be used on it.
@@ -63,10 +51,6 @@ struct LogRecord {
 // Used as the default value when the executable path cannot be extracted from
 // the log message, i.e: the pattern is not as expected.
 const char kUnknownExePath[] = "unknown_executable";
-
-// Returns true if the log message indicates a memfd_create syscall that
-// succeeded.
-bool IsMemfdCreate(const std::string& log_message);
 
 // Returns true if the log message indicates a memfd execution attempt and
 // extracts the executable path from the cmd field of the log entry.
@@ -103,10 +87,8 @@ class AuditLogReader {
  public:
   explicit AuditLogReader(const base::FilePath& path)
       : log_file_path_(path), log_file_(path) {
-    parser_map_[kAVCRecordTag] = std::make_unique<Parser>(
+    avc_parser_ = std::make_unique<Parser>(
         kAVCRecordTag, std::make_unique<RE2>(kAVCRecordPattern));
-    parser_map_[kSyscallRecordTag] = std::make_unique<Parser>(
-        kSyscallRecordTag, std::make_unique<RE2>(kSyscallRecordPattern));
     // TODO(b/257485632) Seeking to the beginning of the file here makes
     // AuditLogReader susceptible to reporting the same events again if the
     // daemon restarts. However, the target anomaly is expected to rarely occur
@@ -131,10 +113,8 @@ class AuditLogReader {
   // TextFileReader is defined in text_file_reader.h.
   TextFileReader log_file_;
 
-  // Keeps a map of all the parser objects that should be tested against the log
-  // records found in the log file.
-  std::map<std::string, std::unique_ptr<Parser>> parser_map_;
-
+  // Parser for AVC log records.
+  std::unique_ptr<Parser> avc_parser_;
   FRIEND_TEST(AuditLogReaderTest, AuditLogReaderTest);
 };
 

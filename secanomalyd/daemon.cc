@@ -429,22 +429,6 @@ void Daemon::DoAuditLogScan() {
   LogRecord log_record;
 
   while (audit_log_reader_->GetNextEntry(&log_record)) {
-    // This detects a successful memfd_create syscall and reports it to UMA to
-    // be used as the baseline metric for memfd execution attempts. The check
-    // will not be performed again, once the metric is successfully emitted.
-    if (!has_emitted_memfd_baseline_uma_ &&
-        log_record.tag == kSyscallRecordTag &&
-        secanomalyd::IsMemfdCreate(log_record.message)) {
-      // Report baseline condition to UMA if not in dev mode.
-      if (ShouldReport(dev_)) {
-        if (!SendSecurityAnomalyToUMA(
-                SecurityAnomaly::kSuccessfulMemfdCreateSyscall)) {
-          LOG(WARNING) << "Could not upload metrics";
-        } else {
-          has_emitted_memfd_baseline_uma_ = true;
-        }
-      }
-    }
     std::string exe_path;
     if (log_record.tag == kAVCRecordTag &&
         secanomalyd::IsMemfdExecutionAttempt(log_record.message, exe_path)) {

@@ -70,10 +70,6 @@ class Daemon : public brillo::DBusDaemon {
   // Forbidden intersection process count is sent once per boot.
   bool has_emitted_forbidden_intersection_uma_ = false;
 
-  // Used to track whether an UMA metric was emitted for the memfd execution
-  // baseline metric, as we only need one emission of the metric.
-  bool has_emitted_memfd_baseline_uma_ = false;
-
   // Landlock status should only be reported once per execution of secanomalyd,
   // as a change in the Landlock state would require a system reboot.
   bool has_emitted_landlock_status_uma_ = false;

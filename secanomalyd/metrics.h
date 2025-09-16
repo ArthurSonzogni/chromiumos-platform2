@@ -13,7 +13,7 @@ enum class SecurityAnomaly {
   kMountInitNsWx = 0,  // deprecated
   kMount_InitNs_WxInUsrLocal = 1,
   kMount_InitNs_WxNotInUsrLocal = 2,
-  kSuccessfulMemfdCreateSyscall = 3,
+  kSuccessfulMemfdCreateSyscall = 3,  // deprecated
   kBlockedMemoryFileExecAttempt = 4,
   kMaxValue = kBlockedMemoryFileExecAttempt,
 };
