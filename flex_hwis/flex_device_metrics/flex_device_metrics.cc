@@ -6,9 +6,11 @@
 
 #include <unistd.h>
 
+#include <map>
 #include <optional>
 #include <utility>
 
+#include <base/containers/map_util.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
@@ -19,8 +21,105 @@
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 
+namespace {
+
 constexpr char kInstallTypeFile[] =
     "mnt/stateful_partition/unencrypted/install_metrics/install_type";
+
+// Get the value of a field in `dict`.
+//
+// `nullopt` is returned if the key does not exist, or if the value of
+// the field does not match `T`.
+template <typename T>
+std::optional<T> GetVarDictField(const brillo::VariantDictionary& dict,
+                                 std::string_view key) {
+  const brillo::Any* field = base::FindOrNull(dict, key);
+  if (!field) {
+    LOG(ERROR) << "Missing key: \"" << key << "\"";
+    return std::nullopt;
+  }
+
+  T value;
+  if (!field->GetValue(&value)) {
+    LOG(ERROR) << "Value for key \"" << key << "\" has incorrect type";
+    return std::nullopt;
+  }
+
+  return value;
+}
+
+// Parse a `FwupdRelease` from a `VariantDictionary`.
+std::optional<FwupdRelease> ParseFwupdRelease(
+    const brillo::VariantDictionary& raw_release) {
+  // Note that the Metadata field is a string->string map, not a
+  // VariantDictionary.
+  const auto raw_metadata = GetVarDictField<std::map<std::string, std::string>>(
+      raw_release, "Metadata");
+  if (!raw_metadata.has_value()) {
+    return std::nullopt;
+  }
+
+  const auto last_attempt_status =
+      base::FindOrNull(raw_metadata.value(), "LastAttemptStatus");
+  if (!last_attempt_status) {
+    LOG(ERROR) << "Missing LastAttemptStatus field";
+    return std::nullopt;
+  }
+
+  FwupdRelease release;
+  if (!StringToAttemptStatus(*last_attempt_status,
+                             &release.last_attempt_status)) {
+    LOG(ERROR) << "Invalid FwupdLastAttemptStatus: " << *last_attempt_status;
+    return std::nullopt;
+  }
+
+  return release;
+}
+
+// Parse a `FwupdDeviceHistory` from a `VariantDictionary`.
+std::optional<FwupdDeviceHistory> ParseFwupdDeviceHistory(
+    const brillo::VariantDictionary& raw_device) {
+  const auto created = GetVarDictField<uint64_t>(raw_device, "Created");
+  const auto name = GetVarDictField<std::string>(raw_device, "Name");
+  const auto plugin = GetVarDictField<std::string>(raw_device, "Plugin");
+  const auto raw_releases =
+      GetVarDictField<std::vector<brillo::VariantDictionary>>(raw_device,
+                                                              "Release");
+  const auto update_state =
+      GetVarDictField<uint32_t>(raw_device, "UpdateState");
+
+  // Check that all expected fields exist.
+  if (!created.has_value() || !name.has_value() || !plugin.has_value() ||
+      !raw_releases.has_value() || !update_state.has_value()) {
+    return std::nullopt;
+  }
+
+  // Validate the update state value.
+  if (update_state.value() >
+      static_cast<uint32_t>(FwupdUpdateState::kMaxValue)) {
+    LOG(ERROR) << "Invalid FwupdUpdateState: " << update_state.value();
+    return std::nullopt;
+  }
+
+  FwupdDeviceHistory device;
+  device.name = name.value();
+  device.plugin = plugin.value();
+  device.created = base::Time::FromSecondsSinceUnixEpoch(created.value());
+  device.update_state = static_cast<FwupdUpdateState>(update_state.value());
+
+  // Parse releases.
+  for (const auto& raw_release : raw_releases.value()) {
+    const auto release = ParseFwupdRelease(raw_release);
+    if (!release.has_value()) {
+      return std::nullopt;
+    }
+    device.releases.push_back(release.value());
+  }
+
+  return device;
+}
+
+}  // namespace
 
 int ConvertBlocksToMiB(int num_blocks) {
   const int bytes_per_block = 512;
@@ -300,6 +399,22 @@ bool StringToAttemptStatus(std::string_view s, FwupdLastAttemptStatus* result) {
     return true;
   }
   return false;
+}
+
+std::optional<std::vector<FwupdDeviceHistory>> ParseFwupdGetHistoryResponse(
+    const std::vector<brillo::VariantDictionary>& raw_devices) {
+  std::vector<FwupdDeviceHistory> devices;
+
+  for (const auto& raw_device : raw_devices) {
+    const auto device = ParseFwupdDeviceHistory(raw_device);
+    if (!device) {
+      return std::nullopt;
+    }
+
+    devices.push_back(device.value());
+  }
+
+  return devices;
 }
 
 bool RecordFwupMetricTimestamp(base::Time time,

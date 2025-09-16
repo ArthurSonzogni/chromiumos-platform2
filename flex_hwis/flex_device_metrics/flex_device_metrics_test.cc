@@ -4,6 +4,7 @@
 
 #include "flex_hwis/flex_device_metrics/flex_device_metrics.h"
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -34,6 +35,30 @@ void CreatePartitionDir(const base::FilePath& dir,
 void ExpectSuccessfulKernAMetric(MetricsLibraryMock& metrics) {
   EXPECT_CALL(metrics, SendSparseToUMA("Platform.FlexPartitionSize.KERN-A", 16))
       .WillOnce(Return(true));
+}
+
+// Create a vector of fwupd device histories, simulating what would be
+// produced by calling the GetHistory dbus method.
+std::vector<brillo::VariantDictionary> CreateValidRawDevices() {
+  std::map<std::string, std::string> raw_metadata;
+  raw_metadata["LastAttemptStatus"] = std::string("0x0");
+
+  std::vector<brillo::VariantDictionary> raw_releases;
+  brillo::VariantDictionary raw_release;
+  raw_release["Metadata"] = raw_metadata;
+  raw_releases.push_back(raw_release);
+
+  brillo::VariantDictionary raw_device;
+  raw_device["Name"] = std::string("abc");
+  raw_device["Plugin"] = std::string("turtle");
+  raw_device["Created"] = static_cast<uint64_t>(1);
+  raw_device["UpdateState"] = static_cast<uint32_t>(FwupdUpdateState::kSuccess);
+  raw_device["Release"] = raw_releases;
+
+  std::vector<brillo::VariantDictionary> raw_devices;
+  raw_devices.push_back(raw_device);
+
+  return raw_devices;
 }
 
 }  // namespace
@@ -404,6 +429,83 @@ INSTANTIATE_TEST_SUITE_P(IntToUpdateStateTests,
                              {4, FwupdUpdateState::kNeedsReboot},
                              {5, FwupdUpdateState::kTransient},  // kMaxValue
                          }));
+
+TEST(ParseFwupdGetHistoryResponse, Valid) {
+  const auto raw_devices = CreateValidRawDevices();
+
+  const auto devices = ParseFwupdGetHistoryResponse(raw_devices);
+  EXPECT_TRUE(devices.has_value());
+  EXPECT_EQ(devices->size(), 1);
+
+  const FwupdDeviceHistory expected_device = {
+      "abc",
+      "turtle",
+      base::Time::UnixEpoch() + base::Seconds(1),
+      FwupdUpdateState::kSuccess,
+      {{FwupdLastAttemptStatus::kSuccess}}};
+  EXPECT_EQ((*devices)[0], expected_device);
+}
+
+TEST(ParseFwupdGetHistoryResponse, MissingField) {
+  auto raw_devices = CreateValidRawDevices();
+  raw_devices[0].erase(raw_devices[0].find("Name"));
+
+  EXPECT_FALSE(ParseFwupdGetHistoryResponse(raw_devices).has_value());
+}
+
+TEST(ParseFwupdGetHistoryResponse, WrongFieldType) {
+  auto raw_devices = CreateValidRawDevices();
+  raw_devices[0].erase(raw_devices[0].find("Name"));
+  raw_devices[0]["Name"] = 123;
+
+  EXPECT_FALSE(ParseFwupdGetHistoryResponse(raw_devices).has_value());
+}
+
+TEST(ParseFwupdGetHistoryResponse, InvalidUpdateState) {
+  auto raw_devices = CreateValidRawDevices();
+  raw_devices[0].erase(raw_devices[0].find("UpdateState"));
+  raw_devices[0]["UpdateState"] = static_cast<uint32_t>(123);
+
+  EXPECT_FALSE(ParseFwupdGetHistoryResponse(raw_devices).has_value());
+}
+
+TEST(ParseFwupdGetHistoryResponse, ReleaseMissingMetadata) {
+  auto raw_devices = CreateValidRawDevices();
+  std::vector<brillo::VariantDictionary>* raw_releases =
+      raw_devices[0]["Release"]
+          .GetPtr<std::vector<brillo::VariantDictionary>>();
+  brillo::VariantDictionary& raw_release = (*raw_releases)[0];
+  raw_release.erase(raw_release.find("Metadata"));
+
+  EXPECT_FALSE(ParseFwupdGetHistoryResponse(raw_devices).has_value());
+}
+
+TEST(ParseFwupdGetHistoryResponse, ReleaseMetadataMissingStatus) {
+  auto raw_devices = CreateValidRawDevices();
+  std::vector<brillo::VariantDictionary>* raw_releases =
+      raw_devices[0]["Release"]
+          .GetPtr<std::vector<brillo::VariantDictionary>>();
+  std::map<std::string, std::string>* raw_metadata =
+      (*raw_releases)[0]["Metadata"]
+          .GetPtr<std::map<std::string, std::string>>();
+  raw_metadata->erase(raw_metadata->find("LastAttemptStatus"));
+
+  EXPECT_FALSE(ParseFwupdGetHistoryResponse(raw_devices).has_value());
+}
+
+TEST(ParseFwupdGetHistoryResponse, ReleaseMetadataInvalidStatus) {
+  auto raw_devices = CreateValidRawDevices();
+  std::vector<brillo::VariantDictionary>* raw_releases =
+      raw_devices[0]["Release"]
+          .GetPtr<std::vector<brillo::VariantDictionary>>();
+  std::map<std::string, std::string>* raw_metadata =
+      (*raw_releases)[0]["Metadata"]
+          .GetPtr<std::map<std::string, std::string>>();
+  raw_metadata->erase(raw_metadata->find("LastAttemptStatus"));
+  (*raw_metadata)["LastAttemptStatus"] = std::string("0x123");
+
+  EXPECT_FALSE(ParseFwupdGetHistoryResponse(raw_devices).has_value());
+}
 
 TEST(FlexFwupHistoryMetrics, RecordAndGetTimestampFromFS) {
   base::ScopedTempDir temp_dir;

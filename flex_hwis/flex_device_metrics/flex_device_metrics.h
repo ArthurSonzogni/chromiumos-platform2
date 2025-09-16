@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <brillo/variant_dictionary.h>
 #include <metrics/metrics_library.h>
 
 // Convert from 512-byte disk blocks to MiB. Round down if the size is
@@ -266,6 +267,8 @@ bool StringToAttemptStatus(std::string_view s, FwupdLastAttemptStatus* result);
 // the `Release` json object contained in the fwupd history response:
 // the last attempt status.
 struct FwupdRelease {
+  bool operator==(const FwupdRelease&) const = default;
+
   FwupdLastAttemptStatus last_attempt_status;
 };
 
@@ -273,6 +276,8 @@ struct FwupdRelease {
 // contains many more fields than those listed below,
 // however we only convert the fields we need.
 struct FwupdDeviceHistory {
+  bool operator==(const FwupdDeviceHistory&) const = default;
+
   // Device name.
   std::string name;
   // The fwupd plugin, used to check whether the update was installed
@@ -354,6 +359,12 @@ std::optional<UpdateResult> AttemptStatusToUpdateResult(
 // Convert `FwupdUpdateState` into its associated `UpdateResult`,
 // returning `std::nullopt` in case of error.
 std::optional<UpdateResult> UpdateStateToUpdateResult(FwupdUpdateState state);
+
+// Parse a vector of `FwupdDeviceHistory` from a vector of
+// `VariantDictionary`. This is used to convert raw dbus data to a more
+// useful format.
+std::optional<std::vector<FwupdDeviceHistory>> ParseFwupdGetHistoryResponse(
+    const std::vector<brillo::VariantDictionary>& raw_devices);
 
 // Send the Firmware Update Result metric.
 //
