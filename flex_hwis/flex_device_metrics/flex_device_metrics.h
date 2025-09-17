@@ -309,23 +309,18 @@ struct FwupdDeviceHistory {
 inline constexpr std::string_view kFwupTimestampFile =
     "/run/flex_device_metrics/last_fwup_report";
 
-// Records the current time to file.
-//
-// Returns true on success, false if any error occurs.
-bool RecordFwupMetricTimestamp(base::Time time,
-                               const base::FilePath& last_fwup_report =
-                                   base::FilePath(kFwupTimestampFile));
-
-// Gets the timestamp stored in file.
+// Get the timestamp stored in `path`, and also update the file to
+// contain `new_timestamp`.
 //
 // If the file does not exist, `base::Time::UnixEpoch()` is
 // returned. (The file will not exist until the first time metrics are
 // sent, so this case is not handled as an error.)
 //
-// If the contents of the file are invalid, `nullopt` is returned.
-std::optional<base::Time> GetFwupMetricTimestamp(
-    const base::FilePath& last_fwup_report =
-        base::FilePath(kFwupTimestampFile));
+// If the contents of the file are invalid, or if the file cannot be
+// updated, `nullopt` is returned.
+std::optional<base::Time> GetAndUpdateFwupMetricTimestamp(
+    base::Time new_timestamp,
+    const base::FilePath& path = base::FilePath(kFwupTimestampFile));
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.

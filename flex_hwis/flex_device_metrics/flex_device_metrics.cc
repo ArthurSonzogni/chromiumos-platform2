@@ -458,32 +458,36 @@ std::optional<std::vector<FwupdDeviceHistory>> GetUpdateHistoryFromFwupd() {
   return CallFwupdGetHistory(fwupd_proxy);
 }
 
-bool RecordFwupMetricTimestamp(base::Time time,
-                               const base::FilePath& last_fwup_report) {
-  if (!base::WriteFile(base::FilePath(last_fwup_report),
-                       base::ToString(time).append("\n"))) {
-    LOG(ERROR) << "Failed to write timestamp of last fwup history metric "
-                  "submission to "
-               << last_fwup_report;
-    return false;
-  }
-  return true;
-}
-
-std::optional<base::Time> GetFwupMetricTimestamp(
-    const base::FilePath& last_fwup_report) {
+std::optional<base::Time> GetAndUpdateFwupMetricTimestamp(
+    base::Time new_timestamp, const base::FilePath& path) {
+  // Read the timestamp file.
   std::string time_str;
-  if (!base::ReadFileToString(base::FilePath(last_fwup_report), &time_str)) {
-    LOG(INFO) << "Failed to read fwup history metric timestamp from "
-              << last_fwup_report;
-    return base::Time::UnixEpoch();
-  }
-  base::Time time;
-  base::TrimWhitespaceASCII(time_str, base::TRIM_TRAILING, &time_str);
-  if (!base::Time::FromString(time_str.c_str(), &time)) {
-    LOG(ERROR) << "Failed to convert string to fwup history metric timestamp.";
+  const bool read_ok = base::ReadFileToString(base::FilePath(path), &time_str);
+
+  // Update the timestamp file. Do this early, before any returns from
+  // the function, to ensure we never skip updating the timestamp.
+  if (!base::WriteFile(path, base::ToString(new_timestamp).append("\n"))) {
+    PLOG(ERROR) << "Failed to write " << path;
     return std::nullopt;
   }
+
+  // If the read failed, return a default value rather than an
+  // error. It's expected that the timestamp file will not exist in some
+  // cases (e.g. a fresh install or powerwash).
+  if (!read_ok) {
+    LOG(ERROR) << "Failed to read " << path;
+    return base::Time::UnixEpoch();
+  }
+
+  // Trim the trailing newline from the file.
+  base::Time time;
+  base::TrimWhitespaceASCII(time_str, base::TRIM_TRAILING, &time_str);
+
+  if (!base::Time::FromString(time_str.c_str(), &time)) {
+    LOG(ERROR) << "Invalid timestamp: " << time_str;
+    return std::nullopt;
+  }
+
   return time;
 }
 

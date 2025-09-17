@@ -561,49 +561,43 @@ TEST_F(CallFwupdGetHistoryTest, Error) {
   EXPECT_FALSE(CallFwupdGetHistory(mock_object_.get()).has_value());
 }
 
-TEST(FlexFwupHistoryMetrics, RecordAndGetTimestampFromFS) {
+TEST(GetAndUpdateFwupMetricTimestamp, Success) {
   base::ScopedTempDir temp_dir;
   CHECK(temp_dir.CreateUniqueTempDir());
-  base::FilePath last_fwup_report_file =
-      temp_dir.GetPath().Append("last_fwup_report");
-  EXPECT_TRUE(RecordFwupMetricTimestamp(base::Time::UnixEpoch(),
-                                        last_fwup_report_file));
+  base::FilePath path = temp_dir.GetPath().Append("last_fwup_report");
 
-  std::string time_str;
-  ASSERT_TRUE(base::ReadFileToString(last_fwup_report_file, &time_str));
-  EXPECT_EQ(time_str, "1970-01-01 00:00:00.000000 UTC\n");
+  const auto timestamp2 = base::Time::UnixEpoch() + base::Seconds(123);
+  const auto timestamp3 = base::Time::UnixEpoch() + base::Seconds(456);
 
-  EXPECT_EQ(GetFwupMetricTimestamp(last_fwup_report_file),
+  // The file doesn't exist, so the first read should return the default
+  // `UnixEpoch` value.
+  EXPECT_EQ(GetAndUpdateFwupMetricTimestamp(timestamp2, path),
             base::Time::UnixEpoch());
+
+  // The second read should return the just-written timestamp.
+  EXPECT_EQ(GetAndUpdateFwupMetricTimestamp(timestamp3, path), timestamp2);
 }
 
-TEST(FlexFwupHistoryMetrics, RecordTimestampFailsWhenWriteFileFails) {
+TEST(GetAndUpdateFwupMetricTimestamp, WriteFail) {
   base::ScopedTempDir temp_dir;
   CHECK(temp_dir.CreateUniqueTempDir());
-  base::FilePath nonexistent_file =
-      temp_dir.GetPath().Append("nonexistent/file");
-  EXPECT_FALSE(
-      RecordFwupMetricTimestamp(base::Time::UnixEpoch(), nonexistent_file));
+  base::FilePath path =
+      temp_dir.GetPath().Append("does_not_exist/last_fwup_report");
+
+  // The directory doesn't exist, so the write will fail.
+  EXPECT_FALSE(GetAndUpdateFwupMetricTimestamp(base::Time::UnixEpoch(), path)
+                   .has_value());
 }
 
-TEST(FlexFwupHistoryMetrics, GetTimestampWhenReadFileFails) {
+TEST(GetAndUpdateFwupMetricTimestamp, InvalidTimestamp) {
   base::ScopedTempDir temp_dir;
   CHECK(temp_dir.CreateUniqueTempDir());
-  base::FilePath last_fwup_report_file =
-      temp_dir.GetPath().Append("last_fwup_report");
-  EXPECT_TRUE(RecordFwupMetricTimestamp(base::Time::UnixEpoch(),
-                                        last_fwup_report_file));
-  EXPECT_EQ(GetFwupMetricTimestamp(last_fwup_report_file),
-            base::Time::UnixEpoch());
-}
+  base::FilePath path = temp_dir.GetPath().Append("last_fwup_report");
+  CHECK(base::WriteFile(path, "invalid"));
 
-TEST(FlexFwupHistoryMetrics, GetTimestampFailsWhenFromStringFails) {
-  base::ScopedTempDir temp_dir;
-  CHECK(temp_dir.CreateUniqueTempDir());
-  base::FilePath last_fwup_report_file =
-      temp_dir.GetPath().Append("last_fwup_report");
-  ASSERT_TRUE(base::WriteFile(last_fwup_report_file, "invalid string"));
-  EXPECT_EQ(GetFwupMetricTimestamp(last_fwup_report_file), std::nullopt);
+  // The timestamp cannot be parsed.
+  EXPECT_FALSE(GetAndUpdateFwupMetricTimestamp(base::Time::UnixEpoch(), path)
+                   .has_value());
 }
 
 TEST(FlexFwupHistoryMetrics, SendAttemptStatusAsMetric) {
