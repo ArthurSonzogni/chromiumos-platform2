@@ -245,6 +245,9 @@ ExternalPowerType ExternalPowerToExternalPowerEnum(
     case PowerSupplyProperties_ExternalPower_USB:
       return ExternalPowerType::ExternalPowerUSB;
     case PowerSupplyProperties_ExternalPower_DISCONNECTED:
+    case PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE:
+      // In this case, the device is not taking in charge, so the behavior is
+      // the same as disconnected.
       return ExternalPowerType::ExternalPowerDisconnected;
     default:
       return ExternalPowerType::ExternalPowerUnknown;
@@ -496,7 +499,8 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
   std::string output;
   switch (status.external_power) {
     case PowerSupplyProperties_ExternalPower_AC:
-    case PowerSupplyProperties_ExternalPower_USB: {
+    case PowerSupplyProperties_ExternalPower_USB:
+    case PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE: {
       output = base::StringPrintf("On %s (%s",
                                   ExternalPowerToString(status.external_power),
                                   status.line_power_type.c_str());
@@ -525,10 +529,6 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
     } break;
     case PowerSupplyProperties_ExternalPower_DISCONNECTED:
       output = "On battery at ";
-      break;
-    case PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE:
-      output =
-          "Power source is low voltage and does not charge, on battery at ";
       break;
   }
 

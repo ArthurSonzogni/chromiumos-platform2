@@ -136,6 +136,10 @@ int main(int argc, char** argv) {
     case power_manager::PowerSupplyProperties_ExternalPower_DISCONNECTED:
       display.PrintStringValue("enum type", "Disconnected");
       break;
+    case power_manager::
+        PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE:
+      display.PrintStringValue("enum type", "Low voltage non-charging");
+      break;
     default:
       display.PrintStringValue("enum type", "Unknown");
   }
