@@ -544,6 +544,15 @@ TEST_F(CallFwupdGetHistoryTest, GetValidHistory) {
             CreateExpectedDeviceHistory());
 }
 
+TEST_F(CallFwupdGetHistoryTest, GetEmptyHistory) {
+  EXPECT_CALL(*mock_object_, CallMethodAndBlock)
+      .WillOnce(Return(ByMove(base::unexpected(dbus::Error(
+          std::string(kFwupdGetHistoryNothingToDo), "No history")))));
+
+  EXPECT_EQ(CallFwupdGetHistory(mock_object_.get()),
+            std::vector<FwupdDeviceHistory>());
+}
+
 TEST_F(CallFwupdGetHistoryTest, Error) {
   EXPECT_CALL(*mock_object_, CallMethodAndBlock)
       .WillOnce(

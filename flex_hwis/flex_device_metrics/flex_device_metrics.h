@@ -21,6 +21,10 @@ namespace dbus {
 class ObjectProxy;
 }
 
+// Error returned by fwupd's GetHistory method when the history is empty.
+constexpr std::string_view kFwupdGetHistoryNothingToDo =
+    "org.freedesktop.fwupd.NothingToDo";
+
 // Convert from 512-byte disk blocks to MiB. Round down if the size is
 // not an even MiB value.
 int ConvertBlocksToMiB(int num_blocks);

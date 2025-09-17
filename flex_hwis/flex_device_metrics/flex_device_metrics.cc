@@ -432,6 +432,11 @@ std::optional<std::vector<FwupdDeviceHistory>> CallFwupdGetHistory(
       fwupd_proxy, std::string(kFwupdInterface), std::string(kFwupdGetHistory),
       &error);
 
+  // Fwupd returns an error if there is no history.
+  if (!resp && error->GetCode() == kFwupdGetHistoryNothingToDo) {
+    return std::vector<FwupdDeviceHistory>();
+  }
+
   std::vector<brillo::VariantDictionary> devices;
   if (resp && brillo::dbus_utils::ExtractMethodCallResults(resp.get(), &error,
                                                            &devices)) {
