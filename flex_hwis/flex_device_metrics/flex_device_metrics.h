@@ -208,11 +208,6 @@ bool MaybeSendInstallMethodMetric(MetricsLibraryInterface& metrics,
                                   const base::FilePath& root,
                                   InstallState install_state);
 
-// Query the fwupdmgr for the update history as a raw json string.
-//
-// Returns a string on success, std::nullopt if any error occurs.
-std::optional<std::string> GetHistoryFromFwupdmgr();
-
 // Enum representing the fwupd update state as defined in
 // https://github.com/fwupd/fwupd/blob/240e65e92e53ead489a3ecdff668d6b4eea340fc/libfwupd/fwupd-enums.h#L1185
 enum class FwupdUpdateState {
@@ -267,8 +262,6 @@ enum class FwupdLastAttemptStatus {
 // Internally, the fwupdmgr stores the timestamp as an int64, however
 // the JSON converter only accepts ints. This should work OK up until 2038:
 // https://en.wikipedia.org/wiki/Year_2038_problem
-bool ValToTime(const base::Value* val, base::Time* result);
-bool ValToUpdateState(const base::Value* val, FwupdUpdateState* result);
 bool StringToAttemptStatus(std::string_view s, FwupdLastAttemptStatus* result);
 
 // Struct containing the only field we are interested in from

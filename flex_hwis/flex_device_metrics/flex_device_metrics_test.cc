@@ -424,39 +424,6 @@ TEST(StringToAttemptStatusTest, InvalidConversionChecks) {
   EXPECT_FALSE(StringToAttemptStatus("", &test_result_));
 }
 
-struct IntToUpdateStateTestParam {
-  int input_int;
-  FwupdUpdateState expected_result;
-};
-
-class IntToUpdateStateTest
-    : public testing::TestWithParam<IntToUpdateStateTestParam> {
- protected:
-  FwupdUpdateState test_result_;
-};
-
-TEST_P(IntToUpdateStateTest, ConversionChecks) {
-  const auto& param = GetParam();
-
-  std::unique_ptr<base::Value> val_ptr =
-      std::make_unique<base::Value>(param.input_int);
-  const base::Value* val_to_pass = val_ptr.get();
-
-  EXPECT_TRUE(ValToUpdateState(val_to_pass, &test_result_));
-  EXPECT_EQ(test_result_, param.expected_result);
-}
-
-INSTANTIATE_TEST_SUITE_P(IntToUpdateStateTests,
-                         IntToUpdateStateTest,
-                         testing::ValuesIn<IntToUpdateStateTestParam>({
-                             {0, FwupdUpdateState::kUnknown},
-                             {1, FwupdUpdateState::kPending},
-                             {2, FwupdUpdateState::kSuccess},
-                             {3, FwupdUpdateState::kFailed},
-                             {4, FwupdUpdateState::kNeedsReboot},
-                             {5, FwupdUpdateState::kTransient},  // kMaxValue
-                         }));
-
 TEST(ParseFwupdGetHistoryResponse, Valid) {
   const auto raw_devices = CreateValidRawDevices();
 

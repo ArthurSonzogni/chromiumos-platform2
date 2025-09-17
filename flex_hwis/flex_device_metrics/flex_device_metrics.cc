@@ -4,8 +4,6 @@
 
 #include "flex_hwis/flex_device_metrics/flex_device_metrics.h"
 
-#include <unistd.h>
-
 #include <map>
 #include <optional>
 #include <utility>
@@ -13,14 +11,12 @@
 #include <base/containers/map_util.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
-#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/files/file_util.h>
-#include <brillo/process/process.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
@@ -357,41 +353,6 @@ bool MaybeSendInstallMethodMetric(MetricsLibraryInterface& metrics,
     return metrics.SendEnumToUMA("Platform.FlexInstallMethod", state.method);
   }
 
-  return false;
-}
-
-std::optional<std::string> GetHistoryFromFwupdmgr() {
-  brillo::ProcessImpl fwupdmgr_process;
-  fwupdmgr_process.RedirectOutputToMemory(true);
-  fwupdmgr_process.AddArg("/usr/bin/fwupdmgr");
-  fwupdmgr_process.AddArg("get-history");
-  fwupdmgr_process.AddArg("--json");
-
-  int fwupdmgr_rc = fwupdmgr_process.Run();
-  if (fwupdmgr_rc == 0) {
-    return fwupdmgr_process.GetOutputString(STDOUT_FILENO);
-  } else {
-    LOG(ERROR) << "Failed to run `fwupdmgr get-history`.";
-    return std::nullopt;
-  }
-}
-
-bool ValToTime(const base::Value* val, base::Time* result) {
-  std::optional<int> time_as_int = val->GetIfInt();
-  if (time_as_int.has_value()) {
-    *result = base::Time::FromSecondsSinceUnixEpoch((time_as_int.value()));
-    return true;
-  }
-  return false;
-}
-
-bool ValToUpdateState(const base::Value* val, FwupdUpdateState* result) {
-  std::optional<int> state_as_int = val->GetIfInt();
-  if (state_as_int.has_value() && state_as_int.value() >= 0 &&
-      state_as_int.value() <= static_cast<int>(FwupdUpdateState::kMaxValue)) {
-    *result = static_cast<FwupdUpdateState>(state_as_int.value());
-    return true;
-  }
   return false;
 }
 
