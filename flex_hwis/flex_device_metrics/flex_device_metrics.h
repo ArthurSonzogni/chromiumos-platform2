@@ -17,6 +17,10 @@
 #include <brillo/variant_dictionary.h>
 #include <metrics/metrics_library.h>
 
+namespace dbus {
+class ObjectProxy;
+}
+
 // Convert from 512-byte disk blocks to MiB. Round down if the size is
 // not an even MiB value.
 int ConvertBlocksToMiB(int num_blocks);
@@ -371,6 +375,15 @@ std::optional<UpdateResult> UpdateStateToUpdateResult(FwupdUpdateState state);
 // useful format.
 std::optional<std::vector<FwupdDeviceHistory>> ParseFwupdGetHistoryResponse(
     const std::vector<brillo::VariantDictionary>& raw_devices);
+
+// Call fwupd's `GetHistory` dbus method on the provided `fwupd_proxy`,
+// and return the results.
+//
+// If there are no updates in the history, an empty vector is
+// returned. If the dbus call fails, or if the response cannot be
+// parsed, `nullopt` is returned.
+std::optional<std::vector<FwupdDeviceHistory>> CallFwupdGetHistory(
+    dbus::ObjectProxy* fwupd_proxy);
 
 // Call fwupd's `GetHistory` dbus method and return the results.
 //

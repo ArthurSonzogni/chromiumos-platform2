@@ -425,14 +425,8 @@ std::optional<std::vector<FwupdDeviceHistory>> ParseFwupdGetHistoryResponse(
   return devices;
 }
 
-std::optional<std::vector<FwupdDeviceHistory>> GetUpdateHistoryFromFwupd() {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-  CHECK(bus->Connect());
-  dbus::ObjectProxy* fwupd_proxy = bus->GetObjectProxy(
-      kFwupdServiceName, dbus::ObjectPath(kFwupdServicePath));
-
+std::optional<std::vector<FwupdDeviceHistory>> CallFwupdGetHistory(
+    dbus::ObjectProxy* fwupd_proxy) {
   brillo::ErrorPtr error;
   auto resp = brillo::dbus_utils::CallMethodAndBlock(
       fwupd_proxy, std::string(kFwupdInterface), std::string(kFwupdGetHistory),
@@ -446,6 +440,17 @@ std::optional<std::vector<FwupdDeviceHistory>> GetUpdateHistoryFromFwupd() {
     LOG(ERROR) << "GetHistory call failed: " << error;
     return std::nullopt;
   }
+}
+
+std::optional<std::vector<FwupdDeviceHistory>> GetUpdateHistoryFromFwupd() {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  CHECK(bus->Connect());
+  dbus::ObjectProxy* fwupd_proxy = bus->GetObjectProxy(
+      kFwupdServiceName, dbus::ObjectPath(kFwupdServicePath));
+
+  return CallFwupdGetHistory(fwupd_proxy);
 }
 
 bool RecordFwupMetricTimestamp(base::Time time,
