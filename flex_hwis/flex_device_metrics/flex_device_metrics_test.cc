@@ -37,8 +37,22 @@ void ExpectSuccessfulKernAMetric(MetricsLibraryMock& metrics) {
       .WillOnce(Return(true));
 }
 
+// Create a vector of `FwupdDeviceHistory`. This serves as the expected
+// value for various tests.
+std::vector<FwupdDeviceHistory> CreateExpectedDeviceHistory() {
+  const FwupdDeviceHistory device = {"abc",
+                                     "turtle",
+                                     base::Time::UnixEpoch() + base::Seconds(1),
+                                     FwupdUpdateState::kSuccess,
+                                     {{FwupdLastAttemptStatus::kSuccess}}};
+  std::vector<FwupdDeviceHistory> devices;
+  devices.push_back(device);
+  return devices;
+}
+
 // Create a vector of fwupd device histories, simulating what would be
-// produced by calling the GetHistory dbus method.
+// produced by calling the GetHistory dbus method. It contains
+// data equivalent to `CreateDeviceHistory`.
 std::vector<brillo::VariantDictionary> CreateValidRawDevices() {
   std::map<std::string, std::string> raw_metadata;
   raw_metadata["LastAttemptStatus"] = std::string("0x0");
@@ -434,16 +448,7 @@ TEST(ParseFwupdGetHistoryResponse, Valid) {
   const auto raw_devices = CreateValidRawDevices();
 
   const auto devices = ParseFwupdGetHistoryResponse(raw_devices);
-  EXPECT_TRUE(devices.has_value());
-  EXPECT_EQ(devices->size(), 1);
-
-  const FwupdDeviceHistory expected_device = {
-      "abc",
-      "turtle",
-      base::Time::UnixEpoch() + base::Seconds(1),
-      FwupdUpdateState::kSuccess,
-      {{FwupdLastAttemptStatus::kSuccess}}};
-  EXPECT_EQ((*devices)[0], expected_device);
+  EXPECT_EQ(devices, CreateExpectedDeviceHistory());
 }
 
 TEST(ParseFwupdGetHistoryResponse, MissingField) {
