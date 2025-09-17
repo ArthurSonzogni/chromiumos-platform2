@@ -13,12 +13,15 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/json/json_reader.h>
 #include <brillo/files/file_util.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
 #include "base/time/time.h"
 
 using testing::_;
+using testing::ByMove;
 using testing::Return;
 using testing::StrictMock;
 
@@ -73,6 +76,16 @@ std::vector<brillo::VariantDictionary> CreateValidRawDevices() {
   raw_devices.push_back(raw_device);
 
   return raw_devices;
+}
+
+// Create a `dbus::Response` with data equivalent to `CreateDeviceHistory`.
+std::unique_ptr<dbus::Response> CreateValidGetHistoryResponse() {
+  auto resp = dbus::Response::CreateEmpty();
+  dbus::MessageWriter writer(resp.get());
+
+  brillo::dbus_utils::AppendValueToWriter(&writer, CreateValidRawDevices());
+
+  return resp;
 }
 
 }  // namespace
@@ -510,6 +523,33 @@ TEST(ParseFwupdGetHistoryResponse, ReleaseMetadataInvalidStatus) {
   (*raw_metadata)["LastAttemptStatus"] = std::string("0x123");
 
   EXPECT_FALSE(ParseFwupdGetHistoryResponse(raw_devices).has_value());
+}
+
+class CallFwupdGetHistoryTest : public ::testing::Test {
+ protected:
+  CallFwupdGetHistoryTest()
+      : mock_bus_(new dbus::MockBus{dbus::Bus::Options{}}),
+        mock_object_(new dbus::MockObjectProxy(
+            mock_bus_.get(), "mock-fwupd-service", dbus::ObjectPath("/"))) {}
+
+  scoped_refptr<dbus::MockBus> mock_bus_;
+  scoped_refptr<dbus::MockObjectProxy> mock_object_;
+};
+
+TEST_F(CallFwupdGetHistoryTest, GetValidHistory) {
+  EXPECT_CALL(*mock_object_, CallMethodAndBlock)
+      .WillOnce(Return(ByMove(base::ok(CreateValidGetHistoryResponse()))));
+
+  EXPECT_EQ(CallFwupdGetHistory(mock_object_.get()),
+            CreateExpectedDeviceHistory());
+}
+
+TEST_F(CallFwupdGetHistoryTest, Error) {
+  EXPECT_CALL(*mock_object_, CallMethodAndBlock)
+      .WillOnce(
+          Return(ByMove(base::unexpected(dbus::Error("uh oh", "failed")))));
+
+  EXPECT_FALSE(CallFwupdGetHistory(mock_object_.get()).has_value());
 }
 
 TEST(FlexFwupHistoryMetrics, RecordAndGetTimestampFromFS) {
