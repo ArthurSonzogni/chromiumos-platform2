@@ -567,3 +567,26 @@ bool SendFwupMetric(MetricsLibraryInterface& metrics,
     }
   }
 }
+
+bool SendFwupMetrics(MetricsLibraryInterface& metrics,
+                     const std::vector<FwupdDeviceHistory>& devices,
+                     base::Time last_fwup_report) {
+  bool all_success = true;
+  for (const FwupdDeviceHistory& device : devices) {
+    // Ignore non-UEFI updates.
+    if (device.plugin != kUefiCapsulePlugin) {
+      continue;
+    }
+
+    // Ignore updates older than the last-sent timestamp; UMAs for these
+    // should already have been sent.
+    if (device.created <= last_fwup_report) {
+      continue;
+    }
+
+    if (!SendFwupMetric(metrics, device)) {
+      all_success = false;
+    }
+  }
+  return all_success;
+}

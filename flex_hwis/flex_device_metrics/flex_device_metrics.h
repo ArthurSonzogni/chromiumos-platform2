@@ -280,6 +280,11 @@ struct FwupdRelease {
   FwupdLastAttemptStatus last_attempt_status;
 };
 
+// The string representing the UEFI capsule [1] plugin [2] for fwupd.
+// [1]: https://github.com/fwupd/fwupd/tree/main/plugins/uefi-capsule
+// [2]: https://fwupd.github.io/libfwupdplugin
+inline constexpr std::string_view kUefiCapsulePlugin = "uefi_capsule";
+
 // The `Device` struct within fwupd's json response
 // contains many more fields than those listed below,
 // however we only convert the fields we need.
@@ -408,5 +413,17 @@ std::optional<std::vector<FwupdDeviceHistory>> GetUpdateHistoryFromFwupd();
 // false if any error occurs.
 bool SendFwupMetric(MetricsLibraryInterface& metrics,
                     const FwupdDeviceHistory& history);
+
+// Send the status of each update history as a UMA.
+//
+// Any updates that do not use the `uefi_capsule` plugin
+// or were created before the last time metrics were sent will
+// be skipped.
+//
+// Returns true if all metrics were sent successfully,
+// false if any error occurs.
+bool SendFwupMetrics(MetricsLibraryInterface& metrics,
+                     const std::vector<FwupdDeviceHistory>& devices,
+                     base::Time last_fwup_report);
 
 #endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_

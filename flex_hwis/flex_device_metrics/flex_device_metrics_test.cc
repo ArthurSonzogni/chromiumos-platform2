@@ -709,3 +709,47 @@ TEST(FlexFwupHistoryMetrics, LastAttemptStatusIgnoredOnNonFailingUpdates) {
 
   EXPECT_TRUE(SendFwupMetric(metrics, history));
 }
+
+TEST(SendFwupMetrics, UefiSuccess) {
+  StrictMock<MetricsLibraryMock> metrics;
+  auto devices = CreateExpectedDeviceHistory();
+  devices[0].plugin = kUefiCapsulePlugin;
+
+  EXPECT_CALL(metrics,
+              SendEnumToUMA("Platform.FlexUefiCapsuleUpdateResult",
+                            static_cast<int>(UpdateResult::kSuccess),
+                            static_cast<int>(UpdateResult::kMaxValue) + 1))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(SendFwupMetrics(metrics, devices, base::Time::UnixEpoch()));
+}
+
+TEST(SendFwupMetrics, SkipNonUefi) {
+  StrictMock<MetricsLibraryMock> metrics;
+  auto devices = CreateExpectedDeviceHistory();
+
+  EXPECT_TRUE(SendFwupMetrics(metrics, devices, base::Time::UnixEpoch()));
+}
+
+TEST(SendFwupMetrics, SkipOldReport) {
+  StrictMock<MetricsLibraryMock> metrics;
+  auto devices = CreateExpectedDeviceHistory();
+  devices[0].plugin = kUefiCapsulePlugin;
+
+  EXPECT_TRUE(SendFwupMetrics(metrics, devices,
+                              base::Time::UnixEpoch() + base::Seconds(100)));
+}
+
+TEST(SendFwupMetrics, Error) {
+  StrictMock<MetricsLibraryMock> metrics;
+  auto devices = CreateExpectedDeviceHistory();
+  devices[0].plugin = kUefiCapsulePlugin;
+
+  EXPECT_CALL(metrics,
+              SendEnumToUMA("Platform.FlexUefiCapsuleUpdateResult",
+                            static_cast<int>(UpdateResult::kSuccess),
+                            static_cast<int>(UpdateResult::kMaxValue) + 1))
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(SendFwupMetrics(metrics, devices, base::Time::UnixEpoch()));
+}
