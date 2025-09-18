@@ -69,7 +69,7 @@ std::vector<brillo::VariantDictionary> CreateValidRawDevices() {
   brillo::VariantDictionary raw_device;
   raw_device["Name"] = std::string("abc");
   raw_device["Plugin"] = std::string("turtle");
-  raw_device["Created"] = static_cast<uint64_t>(1);
+  raw_device["Modified"] = static_cast<uint64_t>(1);
   raw_device["UpdateState"] = static_cast<uint32_t>(FwupdUpdateState::kSuccess);
   raw_device["Release"] = raw_releases;
 

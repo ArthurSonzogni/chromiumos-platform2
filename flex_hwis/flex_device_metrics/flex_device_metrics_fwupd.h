@@ -144,8 +144,8 @@ struct FwupdDeviceHistory {
   // The fwupd plugin, used to check whether the update was installed
   // with a UEFI plugin.
   std::string plugin;
-  // The time when the history entry for the device was created.
-  base::Time created;
+  // The time when the history entry for the device was last modified.
+  base::Time modified;
   // Update state, a per device value.
   FwupdUpdateState update_state;
   // The list of `Release` struct, each containing a `FwupdLastAttemptStatus`

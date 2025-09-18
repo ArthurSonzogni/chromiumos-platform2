@@ -79,7 +79,7 @@ std::optional<FwupdRelease> ParseFwupdRelease(
 // Parse a `FwupdDeviceHistory` from a `VariantDictionary`.
 std::optional<FwupdDeviceHistory> ParseFwupdDeviceHistory(
     const brillo::VariantDictionary& raw_device) {
-  const auto created = GetVarDictField<uint64_t>(raw_device, "Created");
+  const auto modified = GetVarDictField<uint64_t>(raw_device, "Modified");
   const auto name = GetVarDictField<std::string>(raw_device, "Name");
   const auto plugin = GetVarDictField<std::string>(raw_device, "Plugin");
   const auto raw_releases =
@@ -89,7 +89,7 @@ std::optional<FwupdDeviceHistory> ParseFwupdDeviceHistory(
       GetVarDictField<uint32_t>(raw_device, "UpdateState");
 
   // Check that all expected fields exist.
-  if (!created.has_value() || !name.has_value() || !plugin.has_value() ||
+  if (!modified.has_value() || !name.has_value() || !plugin.has_value() ||
       !raw_releases.has_value() || !update_state.has_value()) {
     return std::nullopt;
   }
@@ -104,7 +104,7 @@ std::optional<FwupdDeviceHistory> ParseFwupdDeviceHistory(
   FwupdDeviceHistory device;
   device.name = name.value();
   device.plugin = plugin.value();
-  device.created = base::Time::FromSecondsSinceUnixEpoch(created.value());
+  device.modified = base::Time::FromSecondsSinceUnixEpoch(modified.value());
   device.update_state = static_cast<FwupdUpdateState>(update_state.value());
 
   // Parse releases.
@@ -352,7 +352,7 @@ bool SendFwupMetrics(MetricsLibraryInterface& metrics,
 
     // Ignore updates older than the last-sent timestamp; UMAs for these
     // should already have been sent.
-    if (device.created <= last_fwup_report) {
+    if (device.modified <= last_fwup_report) {
       continue;
     }
 
