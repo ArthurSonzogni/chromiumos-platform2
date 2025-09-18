@@ -12,6 +12,7 @@
 #include <base/containers/map_util.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -116,6 +117,41 @@ std::optional<FwupdDeviceHistory> ParseFwupdDeviceHistory(
   }
 
   return device;
+}
+
+std::string UpdateResultToString(UpdateResult r) {
+  switch (r) {
+    case UpdateResult::kUnknown:
+      return "Unknown";
+    case UpdateResult::kPending:
+      return "Pending";
+    case UpdateResult::kSuccess:
+      return "Success";
+    case UpdateResult::kNeedsReboot:
+      return "NeedsReboot";
+    case UpdateResult::kTransient:
+      return "Transient";
+    case UpdateResult::kGenericFailure:
+      return "GenericFailure";
+    case UpdateResult::kErrorUnsuccessful:
+      return "ErrorUnsuccessful";
+    case UpdateResult::kErrorInsufficientResources:
+      return "ErrorInsufficientResources";
+    case UpdateResult::kErrorIncorrectVersion:
+      return "ErrorIncorrectVersion";
+    case UpdateResult::kErrorInvalidFormat:
+      return "ErrorInvalidFormat";
+    case UpdateResult::kErrorAuthError:
+      return "ErrorAuthError";
+    case UpdateResult::kErrorPwrEvtAc:
+      return "ErrorPwrEvtAc";
+    case UpdateResult::kErrorPwrEvtBatt:
+      return "ErrorPwrEvtBatt";
+    case UpdateResult::kErrorUnsatisfiedDependencies:
+      return "ErrorUnsatisfiedDependencies";
+  }
+
+  NOTREACHED();
 }
 
 }  // namespace
@@ -271,9 +307,12 @@ bool SendFwupMetric(MetricsLibraryInterface& metrics,
     for (const auto& release : history.releases) {
       std::optional<UpdateResult> status =
           AttemptStatusToUpdateResult(release.last_attempt_status);
-      if (!status.has_value() ||
-          !metrics.SendEnumToUMA("Platform.FlexUefiCapsuleUpdateResult",
-                                 status.value())) {
+      if (status.has_value() &&
+          metrics.SendEnumToUMA("Platform.FlexUefiCapsuleUpdateResult",
+                                status.value())) {
+        LOG(ERROR) << "Failed firmware update on device " << history.name
+                   << ": " << UpdateResultToString(status.value());
+      } else {
         LOG(ERROR)
             << "Failed to send FlexUefiCapsuleUpdateResult metric for device "
             << history.name;
@@ -284,15 +323,16 @@ bool SendFwupMetric(MetricsLibraryInterface& metrics,
   } else {
     std::optional<UpdateResult> state =
         UpdateStateToUpdateResult(history.update_state);
-    if (!state.has_value() ||
-        !metrics.SendEnumToUMA("Platform.FlexUefiCapsuleUpdateResult",
-                               state.value())) {
+    if (state.has_value() &&
+        metrics.SendEnumToUMA("Platform.FlexUefiCapsuleUpdateResult",
+                              state.value())) {
+      LOG(INFO) << "Successful firmware update on device";
+      return true;
+    } else {
       LOG(ERROR)
           << "Failed to send FlexUefiCapsuleUpdateResult metric for device "
           << history.name;
       return false;
-    } else {
-      return true;
     }
   }
 }
@@ -300,6 +340,9 @@ bool SendFwupMetric(MetricsLibraryInterface& metrics,
 bool SendFwupMetrics(MetricsLibraryInterface& metrics,
                      const std::vector<FwupdDeviceHistory>& devices,
                      base::Time last_fwup_report) {
+  LOG(INFO) << "Sending metrics for firmware updates since "
+            << last_fwup_report;
+
   bool all_success = true;
   for (const FwupdDeviceHistory& device : devices) {
     // Ignore non-UEFI updates.
