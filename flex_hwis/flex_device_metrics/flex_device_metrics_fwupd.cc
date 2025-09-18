@@ -326,7 +326,7 @@ bool SendFwupMetric(MetricsLibraryInterface& metrics,
     if (state.has_value() &&
         metrics.SendEnumToUMA("Platform.FlexUefiCapsuleUpdateResult",
                               state.value())) {
-      LOG(INFO) << "Successful firmware update on device";
+      LOG(INFO) << "Successful firmware update on device " << history.name;
       return true;
     } else {
       LOG(ERROR)
