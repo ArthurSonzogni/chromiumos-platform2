@@ -20,7 +20,10 @@ pkg_config("target_defaults") {
 }
 
 source_set("flex_device_metrics_source_set") {
-  sources = [ "flex_device_metrics.cc" ]
+  sources = [
+    "flex_device_metrics.cc",
+    "flex_device_metrics_fwupd.cc",
+  ]
   configs += [ ":target_defaults" ]
 }
 
