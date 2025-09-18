@@ -61,17 +61,17 @@ MACHINE_INFO_ERR=$( {
     echo "flex_id=\"$(flex_id_tool --type=id)\""
     sys_vendor_path="/sys/class/dmi/id/sys_vendor"
     if [ -r "${sys_vendor_path}" ]; then
-      echo "sys_vendor=\"$(cat "${sys_vendor_path}")\""
+      echo "flex_sys_vendor=\"$(cat "${sys_vendor_path}")\""
     fi
 
     product_name_path="/sys/class/dmi/id/product_name"
     if [ -r "${product_name_path}" ]; then
-      echo "product_name=\"$(cat "${product_name_path}")\""
+      echo "flex_product_name=\"$(cat "${product_name_path}")\""
     fi
 
     product_version_path="/sys/class/dmi/id/product_version"
     if [ -r "${product_version_path}" ]; then
-      echo "product_version=\"$(cat "${product_version_path}")\""
+      echo "flex_product_version=\"$(cat "${product_version_path}")\""
     fi
   else
     echo "serial_number=\"$(serial_number)\""
