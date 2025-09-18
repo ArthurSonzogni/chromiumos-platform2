@@ -25,7 +25,7 @@ constexpr std::string_view kFwupdGetHistoryNothingToDo =
 
 // Filepath to record the last time fwup history metrics were sent.
 inline constexpr std::string_view kFwupTimestampFile =
-    "/run/flex_device_metrics/last_fwup_report";
+    "/var/lib/flex_device_metrics/last_fwup_report";
 
 // The string representing the UEFI capsule [1] plugin [2] for fwupd.
 // [1]: https://github.com/fwupd/fwupd/tree/main/plugins/uefi-capsule

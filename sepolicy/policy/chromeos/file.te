@@ -441,6 +441,7 @@ type cros_var_lib_device_management, file_type, cros_file_type, cros_var_file_ty
 type cros_var_lib_dlcservice, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_dbus, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_featured, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_flex_device_metrics, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_fpstudy, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_fwupd, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_fwupd_pending, file_type, cros_file_type, cros_var_file_type;
@@ -568,7 +569,6 @@ type cros_run_fbpreprocessord, file_type, cros_file_type, cros_run_file_type;
 type cros_run_featured_active, file_type, cros_file_type, cros_run_file_type;
 type cros_run_featured_seed, file_type, cros_file_type, cros_run_file_type;
 type cros_run_featured_test, file_type, cros_file_type, cros_run_file_type;
-type cros_run_flex_device_metrics, file_type, cros_file_type, cros_run_file_type;
 type cros_run_flex_hardware, file_type, cros_file_type, cros_run_file_type;
 type cros_run_frecon, file_type, cros_file_type, cros_run_file_type;
 type cros_run_fuse, file_type, cros_file_type, cros_run_file_type;

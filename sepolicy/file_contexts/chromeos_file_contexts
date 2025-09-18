@@ -337,6 +337,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/dhcpcd7(/.*)?           u:object_r:cros_var_lib_shill:s0
 /var/lib/featured(/.*)?         u:object_r:cros_var_lib_featured:s0
 /var/lib/fingers(/.*)?          u:object_r:cros_var_lib_fpstudy:s0
+/var/lib/flex_device_metrics(/.*)? u:object_r:cros_var_lib_flex_device_metrics:s0
 /var/lib/fpstudygnupg(/.*)?     u:object_r:cros_var_lib_fpstudy:s0
 /var/lib/fwupd                  u:object_r:cros_var_lib_fwupd:s0
 /var/lib/fwupd/pending          u:object_r:cros_var_lib_fwupd_pending:s0
@@ -507,7 +508,6 @@ has_arc(`
 /run/fbpreprocessord            u:object_r:cros_run_fbpreprocessord:s0
 /run/featured/active            u:object_r:cros_run_featured_active:s0
 /run/featured_seed              u:object_r:cros_run_featured_seed:s0
-/run/flex_device_metrics(/.*)?  u:object_r:cros_run_flex_device_metrics
 /run/flex_hardware(/.*)?        u:object_r:cros_run_flex_hardware:s0
 /run/frecon                     u:object_r:cros_run_frecon:s0
 /run/fuse                       u:object_r:cros_run_fuse:s0
