@@ -45,7 +45,7 @@ void ExpectSuccessfulKernAMetric(MetricsLibraryMock& metrics) {
 // value for various tests.
 std::vector<FwupdDeviceHistory> CreateExpectedDeviceHistory() {
   const FwupdDeviceHistory device = {"abc",
-                                     "turtle",
+                                     std::string(kUefiCapsulePlugin),
                                      base::Time::UnixEpoch() + base::Seconds(1),
                                      FwupdUpdateState::kSuccess,
                                      {{FwupdLastAttemptStatus::kSuccess}}};
@@ -68,7 +68,7 @@ std::vector<brillo::VariantDictionary> CreateValidRawDevices() {
 
   brillo::VariantDictionary raw_device;
   raw_device["Name"] = std::string("abc");
-  raw_device["Plugin"] = std::string("turtle");
+  raw_device["Plugin"] = std::string(kUefiCapsulePlugin);
   raw_device["Modified"] = static_cast<uint64_t>(1);
   raw_device["UpdateState"] = static_cast<uint32_t>(FwupdUpdateState::kSuccess);
   raw_device["Release"] = raw_releases;
@@ -466,6 +466,24 @@ TEST(ParseFwupdGetHistoryResponse, ReleaseMissingMetadata) {
   EXPECT_FALSE(ParseFwupdGetHistoryResponse(raw_devices).has_value());
 }
 
+TEST(ParseFwupdGetHistoryResponse, NonUefiInvalidRelease) {
+  auto raw_devices = CreateValidRawDevices();
+  raw_devices[0]["Plugin"] = std::string("not uefi");
+  std::vector<brillo::VariantDictionary>* raw_releases =
+      raw_devices[0]["Release"]
+          .GetPtr<std::vector<brillo::VariantDictionary>>();
+  brillo::VariantDictionary& raw_release = (*raw_releases)[0];
+  raw_release.erase(raw_release.find("Metadata"));
+
+  const auto devices = ParseFwupdGetHistoryResponse(raw_devices);
+
+  auto expected_devices = CreateExpectedDeviceHistory();
+  expected_devices[0].plugin = "not uefi";
+  expected_devices[0].releases.clear();
+
+  EXPECT_EQ(devices, expected_devices);
+}
+
 TEST(ParseFwupdGetHistoryResponse, ReleaseMetadataMissingStatus) {
   auto raw_devices = CreateValidRawDevices();
   std::vector<brillo::VariantDictionary>* raw_releases =
@@ -689,6 +707,7 @@ TEST(SendFwupMetrics, UefiSuccess) {
 TEST(SendFwupMetrics, SkipNonUefi) {
   StrictMock<MetricsLibraryMock> metrics;
   auto devices = CreateExpectedDeviceHistory();
+  devices[0].plugin = std::string("turtle");
 
   EXPECT_TRUE(SendFwupMetrics(metrics, devices, base::Time::UnixEpoch()));
 }

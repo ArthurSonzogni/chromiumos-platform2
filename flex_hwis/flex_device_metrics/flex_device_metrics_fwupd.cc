@@ -107,13 +107,16 @@ std::optional<FwupdDeviceHistory> ParseFwupdDeviceHistory(
   device.modified = base::Time::FromSecondsSinceUnixEpoch(modified.value());
   device.update_state = static_cast<FwupdUpdateState>(update_state.value());
 
-  // Parse releases.
-  for (const auto& raw_release : raw_releases.value()) {
-    const auto release = ParseFwupdRelease(raw_release);
-    if (!release.has_value()) {
-      return std::nullopt;
+  // Parse releases. Only do this for UEFI updates; other plugins do not
+  // have the LastAttemptStatus field in Release.Metadata.
+  if (device.plugin == kUefiCapsulePlugin) {
+    for (const auto& raw_release : raw_releases.value()) {
+      const auto release = ParseFwupdRelease(raw_release);
+      if (!release.has_value()) {
+        return std::nullopt;
+      }
+      device.releases.push_back(release.value());
     }
-    device.releases.push_back(release.value());
   }
 
   return device;
