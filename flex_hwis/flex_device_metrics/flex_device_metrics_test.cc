@@ -12,13 +12,14 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/json/json_reader.h>
+#include <base/time/time.h>
 #include <brillo/files/file_util.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
-#include "base/time/time.h"
+#include "flex_hwis/flex_device_metrics/flex_device_metrics_fwupd.h"
 
 using testing::_;
 using testing::ByMove;

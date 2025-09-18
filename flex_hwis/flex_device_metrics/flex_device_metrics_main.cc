@@ -7,6 +7,7 @@
 #include <rootdev/rootdev.h>
 
 #include "flex_hwis/flex_device_metrics/flex_device_metrics.h"
+#include "flex_hwis/flex_device_metrics/flex_device_metrics_fwupd.h"
 #include "metrics/metrics_library.h"
 
 namespace {

@@ -20,6 +20,8 @@
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
+#include "flex_hwis/flex_device_metrics/flex_device_metrics_fwupd.h"
+
 namespace {
 
 constexpr std::string_view kFwupdServiceName = "org.freedesktop.fwupd";
