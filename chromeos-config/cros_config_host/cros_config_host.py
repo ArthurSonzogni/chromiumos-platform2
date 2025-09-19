@@ -260,7 +260,15 @@ def GetFirmwareVersion(config, project_name, image_type):
     """
     bcs_uris = set()
     for device in config.GetDeviceConfigs():
-        if config.GetFirmwareGroupingName(device) != project_name:
+        # For ISH, use "/firmware-signing/signature-id" as the key
+        # (crrev/c/6960469)
+        if image_type == "ish":
+            if (
+                device.GetProperty("/firmware-signing", "signature-id")
+                != project_name
+            ):
+                continue
+        elif config.GetFirmwareGroupingName(device) != project_name:
             continue
         bcs_uris.add(device.GetProperty("/firmware", f"{image_type}-image"))
     assert len(bcs_uris) == 1
