@@ -627,6 +627,12 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // from kUsbMinAcWattsPref.
   double usb_min_ac_watts_ = 0.0;
 
+  // Maximum voltage in volts supported by an external power supply must be
+  // above this value for the Chrome device to be able to draw power from this
+  // power supply. This value is relevant only for Chrome devices with a Hybrid
+  // Power Boost charger. Read from kMinChargingVoltPref.
+  double min_charging_voltage_ = 0.0;
+
   // Set to true when the system is about to suspend and to false after it's
   // resumed.
   bool is_suspended_ = false;

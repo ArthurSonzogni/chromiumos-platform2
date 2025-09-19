@@ -73,6 +73,7 @@ const char kHasBarreljackPref[] = "has_barreljack";
 const char kMaxCurrentSamplesPref[] = "max_current_samples";
 const char kMaxChargeSamplesPref[] = "max_charge_samples";
 const char kUsbMinAcWattsPref[] = "usb_min_ac_watts";
+const char kMinChargingVoltPref[] = "min_charging_volt";
 const char kChargingPortsPref[] = "charging_ports";
 const char kAdaptiveChargingAlarmSecPref[] = "adaptive_charging_alarm_sec";
 const char kAdaptiveChargingHoldPercentPref[] =

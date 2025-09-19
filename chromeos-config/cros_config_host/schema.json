@@ -1701,6 +1701,11 @@
                     "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
                     "type": "string"
                   },
+                  "min-charging-volt": {
+                    "default": "0.0",
+                    "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
+                    "type": "string"
+                  },
                   "min-visible-backlight-level": {
                     "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
                     "type": "string"

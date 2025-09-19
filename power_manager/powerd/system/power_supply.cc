@@ -762,6 +762,7 @@ void PowerSupply::Init(
           .value_or(kDefaultBatteryStabilizedAfterBatterySaverDelay);
 
   prefs_->GetDouble(kUsbMinAcWattsPref, &usb_min_ac_watts_);
+  prefs_->GetDouble(kMinChargingVoltPref, &min_charging_voltage_);
 
   int64_t shutdown_time_sec = 0;
   if (prefs_->GetInt64(kLowBatteryShutdownTimePref, &shutdown_time_sec)) {

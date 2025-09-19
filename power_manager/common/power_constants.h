@@ -159,9 +159,15 @@ extern const char kHasBarreljackPref[];
 extern const char kMaxCurrentSamplesPref[];
 extern const char kMaxChargeSamplesPref[];
 
-// Minimum maximum power in watts that must be reported by a USB power source in
-// order for it to be classified as an AC power source.
+// Maximum power in watts reported by a USB power source must be above this
+// value in order for it to be classified as an AC power source.
 extern const char kUsbMinAcWattsPref[];
+
+// Maximum voltage in volts supported by an external power supply must be above
+// this value for the Chrome device to be able to draw power from this power
+// supply. This pref is relevant only for Chrome devices with a Hybrid Power
+// Boost charger.
+extern const char kMinChargingVoltPref[];
 
 // String describing the position of each charging port on the system. Each line
 // contains "NAME ENUM", where NAME is the basename of a sysfs subdirectory
