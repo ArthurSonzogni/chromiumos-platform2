@@ -37,6 +37,49 @@ size and complexity constraints of MiniOS, only standard ASCII characters are
 processed. Other special characters such as "ê" are ignored even if they are a
 part of the keyboard layout.
 
+## Building MiniOS image
+
+To build MiniOS image, create `${OUT_DIR}` and run
+
+```sh
+# ${VERSION} can be an arbitrary string
+build_minios --board ${BOARD} --kernel-only --kernel-output ${OUT_DIR} \
+  --version ${VERSION} --mod-for-dev --force-build
+```
+
+Alternatively, to manually build the MiniOS kernel and pack it, run
+
+```sh
+# Build /build/${BOARD}/boot/vmlinuz
+# ${KERNEL_EBUILD} is chromeos-kernel-6_6 for example
+USE="minios minios_ramfs" emerge-${BOARD} ${KERNEL_EBUILD}
+
+# Pack vmlinuz as ${OUT_IMAGE}
+vbutil_kernel --pack ${OUT_IMAGE} \
+  --keyblock /usr/share/vboot/devkeys/minios_kernel.keyblock \
+  --signprivate /usr/share/vboot/devkeys/minios_kernel_data_key.vbprivk \
+  --version 1 \
+  --arch ${ARCH} \
+  --config ${KERNEL_CONFIG} \
+  --vmlinuz "/build/${BOARD}/boot/vmlinuz"
+```
+
+## Flashing MiniOS image
+
+Currently `update_kernel.sh` doesn't support flashing MiniOS kernels
+(partitions 9 and 10).
+Therefore, scp the image to DUT and run `dd`.
+
+To modify MiniOS configs on DUT, run
+
+```
+/usr/share/vboot/bin/make_dev_ssd.sh --minios_key --partitions '9 10'
+```
+
+along with other flags (such as `--enable_earlycon` or `--set_config`).
+
+To flash MiniOS partitions from an OS image, pass `--minios-update` to `cros flash`.
+
 ## Locally testing on older devices
 MiniOS can be test on devices which don't have the newer partitions for miniOS.
 The way to test is by repartitioning the device.
