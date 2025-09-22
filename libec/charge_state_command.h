@@ -32,6 +32,15 @@ class BRILLO_EXPORT ChargeStateGetParamCommand : public ChargeStateCommand {
   std::optional<uint32_t> Get() const;
 };
 
+class BRILLO_EXPORT GetMinChargingVoltCommand
+    : public ChargeStateGetParamCommand {
+ public:
+  GetMinChargingVoltCommand();
+  ~GetMinChargingVoltCommand() override = default;
+
+  std::optional<double> Get() const;
+};
+
 static_assert(!std::is_copy_constructible<ChargeStateCommand>::value,
               "EcCommands are not copyable by default");
 static_assert(!std::is_copy_assignable<ChargeStateCommand>::value,

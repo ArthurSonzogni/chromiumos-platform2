@@ -21,4 +21,15 @@ std::optional<uint32_t> ChargeStateGetParamCommand::Get() const {
   return Resp()->get_param.value;
 }
 
+GetMinChargingVoltCommand::GetMinChargingVoltCommand()
+    : ChargeStateGetParamCommand(CS_PARAM_CHG_MIN_REQUIRED_MV) {}
+
+std::optional<double> GetMinChargingVoltCommand::Get() const {
+  std::optional<uint32_t> mv = ChargeStateGetParamCommand::Get();
+  if (!mv.has_value()) {
+    return std::nullopt;
+  }
+  return static_cast<double>(*mv) / 1000.0;
+}
+
 }  // namespace ec
