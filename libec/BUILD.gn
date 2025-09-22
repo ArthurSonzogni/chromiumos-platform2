@@ -41,6 +41,7 @@ source_set("libec_common") {
   sources = [
     "add_entropy_command.cc",
     "charge_current_limit_set_command.cc",
+    "charge_state_command.cc",
     "device_event_command.cc",
     "display_soc_command.cc",
     "ec_command_factory.cc",
@@ -114,6 +115,7 @@ install_config("install_libec_headers") {
     "add_entropy_command.h",
     "charge_control_set_command.h",
     "charge_current_limit_set_command.h",
+    "charge_state_command.h",
     "device_event_command.h",
     "display_soc_command.h",
     "ec_command.h",
@@ -222,6 +224,7 @@ if (use.test) {
       "add_entropy_command_test.cc",
       "charge_control_set_command_test.cc",
       "charge_current_limit_set_command_test.cc",
+      "charge_state_command_test.cc",
       "device_event_command_test.cc",
       "display_soc_command_test.cc",
       "ec_command_async_test.cc",
