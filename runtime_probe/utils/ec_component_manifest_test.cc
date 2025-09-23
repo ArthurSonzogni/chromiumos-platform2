@@ -4,6 +4,8 @@
 
 #include "runtime_probe/utils/ec_component_manifest.h"
 
+#include <optional>
+
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
@@ -155,17 +157,19 @@ TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
     EXPECT_EQ(comp.component_name, "base_sensor_1");
     EXPECT_EQ(comp.i2c.port, 3);
     EXPECT_EQ(comp.i2c.addr, 0x1);
-    EXPECT_EQ(comp.i2c.expect.size(), 3);
+    EXPECT_EQ(comp.i2c.expect.size(), 4);
     EXPECT_EQ(comp.i2c.expect[0].reg, 0);
     EXPECT_EQ(comp.i2c.expect[0].write_data,
               (std::vector<uint8_t>{0xaa, 0xbb, 0xcc}));
     EXPECT_EQ(comp.i2c.expect[0].value, std::vector<uint8_t>{0x00});
     EXPECT_EQ(comp.i2c.expect[0].mask, std::vector<uint8_t>{0xff});
+    EXPECT_EQ(comp.i2c.expect[0].override_addr, std::nullopt);
     EXPECT_EQ(comp.i2c.expect[0].bytes, 1);
     EXPECT_EQ(comp.i2c.expect[1].reg, 1);
     EXPECT_EQ(comp.i2c.expect[1].write_data, std::vector<uint8_t>{});
     EXPECT_EQ(comp.i2c.expect[1].value, std::vector<uint8_t>{0x01});
     EXPECT_EQ(comp.i2c.expect[1].mask, std::vector<uint8_t>{0xff});
+    EXPECT_EQ(comp.i2c.expect[1].override_addr, std::nullopt);
     EXPECT_EQ(comp.i2c.expect[1].bytes, 1);
     EXPECT_EQ(comp.i2c.expect[2].reg, 2);
     EXPECT_EQ(comp.i2c.expect[2].write_data, std::vector<uint8_t>{});
@@ -173,7 +177,14 @@ TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
               (std::vector<uint8_t>{0x00, 0x00, 0x42, 0x00}));
     EXPECT_EQ(comp.i2c.expect[2].mask,
               (std::vector<uint8_t>{0x00, 0x00, 0xff, 0x00}));
+    EXPECT_EQ(comp.i2c.expect[2].override_addr, std::nullopt);
     EXPECT_EQ(comp.i2c.expect[2].bytes, 4);
+    EXPECT_EQ(comp.i2c.expect[3].reg, 3);
+    EXPECT_EQ(comp.i2c.expect[3].write_data, std::vector<uint8_t>{});
+    EXPECT_EQ(comp.i2c.expect[3].value, std::vector<uint8_t>{0x03});
+    EXPECT_EQ(comp.i2c.expect[3].mask, std::vector<uint8_t>{0xff});
+    EXPECT_EQ(comp.i2c.expect[3].override_addr, 0x2);
+    EXPECT_EQ(comp.i2c.expect[3].bytes, 1);
   }
   {
     const EcComponentManifest::Component& comp = manifest->component_list[1];

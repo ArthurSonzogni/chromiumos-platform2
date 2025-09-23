@@ -421,6 +421,7 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatch) {
   constexpr uint8_t kMatchValueForReg0[] = {0x00};
   constexpr uint8_t kMatchValueForReg1[] = {0x01};
   constexpr uint8_t kMatchValueForReg2[] = {0x02};
+  constexpr uint8_t kMatchValueForReg3[] = {0x03};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",
@@ -436,6 +437,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatch) {
                               std::vector<uint8_t>{}, 1, kMatchValueForReg1);
   SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
                               std::vector<uint8_t>{}, 1, kMatchValueForReg2);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x2, 0x03,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg3);
 
   auto actual = EvalProbeFunction(probe_function.get());
 
@@ -489,6 +492,7 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
   constexpr uint8_t kMismatchValueForReg0[] = {0xff};
   constexpr uint8_t kMatchValueForReg1[] = {0x01};
   constexpr uint8_t kMatchValueForReg2[] = {0x02};
+  constexpr uint8_t kMatchValueForReg3[] = {0x03};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",
@@ -504,6 +508,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
                               std::vector<uint8_t>{}, 1, kMatchValueForReg1);
   SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
                               std::vector<uint8_t>{}, 1, kMatchValueForReg2);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x2, 0x03,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg3);
 
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
@@ -513,6 +519,7 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueLengthMismatch) {
   constexpr uint8_t kMatchValueForReg0[] = {0x00};
   constexpr uint8_t kMismatchValueForReg1[] = {0x01, 0x12};
   constexpr uint8_t kMatchValueForReg2[] = {0x02};
+  constexpr uint8_t kMatchValueForReg3[] = {0x03};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",
@@ -528,6 +535,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueLengthMismatch) {
                               std::vector<uint8_t>{}, 1, kMismatchValueForReg1);
   SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
                               std::vector<uint8_t>{}, 1, kMatchValueForReg2);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x2, 0x03,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg3);
 
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
@@ -537,6 +546,7 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOnlyOneValueMismatch) {
   constexpr uint8_t kMismatchValue[] = {0xff};
   constexpr uint8_t kMatchedValueForReg0[] = {0x00};
   constexpr uint8_t kMatchedValueForReg3[] = {0x22};
+  constexpr uint8_t kMatchValueForReg3[] = {0x03};
   auto arguments = base::JSONReader::Read(R"JSON(
     {
       "type": "base_sensor",
@@ -552,6 +562,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOnlyOneValueMismatch) {
                               std::vector<uint8_t>{}, 1, kMismatchValue);
   SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x02,
                               std::vector<uint8_t>{}, 1, kMatchedValueForReg3);
+  SetI2cReadSuccessWithResult(probe_function.get(), 3, 0x2, 0x03,
+                              std::vector<uint8_t>{}, 1, kMatchValueForReg3);
 
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));

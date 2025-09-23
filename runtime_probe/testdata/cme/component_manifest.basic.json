@@ -26,6 +26,15 @@
             "multi_byte_mask": "0x0000ff00",
             "multi_byte_value": "0x00004200",
             "bytes": 4
+          },
+          {
+            "reg": "0x03",
+            "mask": "0x00",
+            "value": "0x01",
+            "override_addr": "0x2",
+            "override_mask": "0xff",
+            "override_value": "0x03",
+            "bytes": 1
           }
         ]
       }

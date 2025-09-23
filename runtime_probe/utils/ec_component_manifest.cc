@@ -117,6 +117,37 @@ std::optional<std::string> GetEcProjectName() {
   return std::nullopt;
 }
 
+bool SetBytesFromDict(const base::Value::Dict& dv,
+                      const std::string& key,
+                      const std::string& multi_byte_key,
+                      const std::string& override_key,
+                      std::optional<std::vector<uint8_t>>& out) {
+  const std::string* override_value = dv.FindString(override_key);
+  if (override_value) {
+    if (!SetBytes(override_value, out)) {
+      LOG(ERROR) << "Invalid field: " << override_key;
+      return false;
+    }
+    return true;
+  }
+
+  const std::string* value = dv.FindString(key);
+  const std::string* multi_byte_value = dv.FindString(multi_byte_key);
+  if (value && multi_byte_value) {
+    LOG(ERROR) << "Conflict field: " << key << " and " << multi_byte_key;
+    return false;
+  }
+  if (value && !SetBytes(value, out)) {
+    LOG(ERROR) << "Invalid field: " << key;
+    return false;
+  }
+  if (multi_byte_value && !SetBytes(multi_byte_value, out)) {
+    LOG(ERROR) << "Invalid field: " << multi_byte_key;
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 std::optional<EcComponentManifest::Component::I2c::Expect>
@@ -134,34 +165,23 @@ EcComponentManifest::Component::I2c::Expect::Create(
     return std::nullopt;
   }
 
-  auto value = dv.FindString("value");
-  auto multi_byte_value = dv.FindString("multi_byte_value");
-  if (value && multi_byte_value) {
-    LOG(ERROR) << "Conflict field: value and multi_byte_value";
+  if (!SetBytesFromDict(dv, "value", "multi_byte_value", "override_value",
+                        ret.value)) {
     return std::nullopt;
   }
-  if (value && !SetBytes(value, ret.value)) {
-    LOG(ERROR) << "Invalid field: value";
-    return std::nullopt;
-  }
-  if (multi_byte_value && !SetBytes(multi_byte_value, ret.value)) {
-    LOG(ERROR) << "Invalid field: multi_byte_value";
+  if (!SetBytesFromDict(dv, "mask", "multi_byte_mask", "override_mask",
+                        ret.mask)) {
     return std::nullopt;
   }
 
-  auto mask = dv.FindString("mask");
-  auto multi_byte_mask = dv.FindString("multi_byte_mask");
-  if (mask && multi_byte_mask) {
-    LOG(ERROR) << "Conflict field: mask and multi_byte_mask";
-    return std::nullopt;
-  }
-  if (mask && !SetBytes(mask, ret.mask)) {
-    LOG(ERROR) << "Invalid field: mask";
-    return std::nullopt;
-  }
-  if (multi_byte_mask && !SetBytes(multi_byte_mask, ret.mask)) {
-    LOG(ERROR) << "Invalid field: multi_byte_mask";
-    return std::nullopt;
+  auto override_addr = dv.FindString("override_addr");
+  if (override_addr) {
+    uint8_t override_addr_val;
+    if (!SetHexValue(override_addr, override_addr_val)) {
+      LOG(ERROR) << "Invalid field: override_addr";
+      return std::nullopt;
+    }
+    ret.override_addr = override_addr_val;
   }
 
   auto bytes = dv.FindInt("bytes");

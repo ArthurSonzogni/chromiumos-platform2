@@ -31,6 +31,7 @@ struct EcComponentManifest {
         std::vector<uint8_t> write_data;
         std::optional<std::vector<uint8_t>> mask;
         std::optional<std::vector<uint8_t>> value;
+        std::optional<uint8_t> override_addr;
         static std::optional<Expect> Create(const base::Value::Dict&);
         int bytes;
       };

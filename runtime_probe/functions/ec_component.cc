@@ -79,6 +79,10 @@ std::string GenerateExpectI2cCommandLogLabel(
   std::stringstream string_builder;
   string_builder << "i2cxfer command reg=0x" << base::HexEncode({expect.reg})
                  << " write_data=0x" << base::HexEncode(expect.write_data);
+  if (expect.override_addr.has_value()) {
+    string_builder << " override_addr=0x"
+                   << base::HexEncode({*expect.override_addr});
+  }
   return string_builder.str();
 }
 
@@ -247,7 +251,12 @@ bool EcComponentFunction::IsValidComponent(
 
   auto curr_tracker = tracker;
   for (const auto& expect : comp.i2c.expect) {
-    auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, expect.reg,
+    auto addr = comp.i2c.addr;
+    if (expect.override_addr.has_value()) {
+      addr = *expect.override_addr;
+    }
+
+    auto cmd = GetI2cReadCommand(comp.i2c.port, addr, expect.reg,
                                  expect.write_data, expect.bytes);
     auto i2c_cmd_label = GenerateExpectI2cCommandLogLabel(expect);
     if (!cmd) {
@@ -256,9 +265,8 @@ bool EcComponentFunction::IsValidComponent(
       return false;
     }
 
-    auto run_record =
-        curr_tracker->LookupRunRecord(comp.i2c.port, comp.i2c.addr, expect.reg,
-                                      expect.write_data, expect.bytes);
+    auto run_record = curr_tracker->LookupRunRecord(
+        comp.i2c.port, addr, expect.reg, expect.write_data, expect.bytes);
     if (use_cached_invocations) {
       if (run_record == nullptr) {
         // The command hasn't been run, we should run through the whole command
@@ -272,8 +280,8 @@ bool EcComponentFunction::IsValidComponent(
       bool success = RunI2cCommandAndCheckSuccess(ec_dev_fd, cmd.get());
       if (run_record == nullptr || run_record->is_cmd_success() != success) {
         run_record = curr_tracker->RegisterRunRecord(
-            comp.i2c.port, comp.i2c.addr, expect.reg, expect.write_data,
-            expect.bytes, std::move(cmd), success);
+            comp.i2c.port, addr, expect.reg, expect.write_data, expect.bytes,
+            std::move(cmd), success);
       }
     }
     curr_tracker = run_record->next();

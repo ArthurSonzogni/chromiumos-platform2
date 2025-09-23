@@ -22,6 +22,15 @@
           {
             "reg": "0x02",
             "value": "0x02"
+          },
+          {
+            "reg": "0x03",
+            "mask": "0x00",
+            "value": "0x01",
+            "override_addr": "0x2",
+            "override_mask": "0xff",
+            "override_value": "0x03",
+            "bytes": 1
           }
         ]
       }
