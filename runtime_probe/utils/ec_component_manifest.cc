@@ -25,6 +25,7 @@ namespace runtime_probe {
 namespace {
 
 constexpr int kDefaultBytes = 1;
+constexpr char kLowPowerProbeOnce[] = "low_power_probe_once";
 
 template <typename T, typename U>
 bool SetValue(const U& value, T& val) {
@@ -118,9 +119,9 @@ std::optional<std::string> GetEcProjectName() {
 }
 
 bool SetBytesFromDict(const base::Value::Dict& dv,
-                      const std::string& key,
-                      const std::string& multi_byte_key,
-                      const std::string& override_key,
+                      std::string_view key,
+                      std::string_view multi_byte_key,
+                      std::string_view override_key,
                       std::optional<std::vector<uint8_t>>& out) {
   const std::string* override_value = dv.FindString(override_key);
   if (override_value) {
@@ -237,6 +238,13 @@ EcComponentManifest::Component::Create(const base::Value::Dict& dv) {
   if (i2c && !SetDict(i2c, ret.i2c)) {
     LOG(ERROR) << "Invalid field: i2c";
     return std::nullopt;
+  }
+
+  auto probe = dv.FindString("probe");
+  if (probe && *probe == kLowPowerProbeOnce) {
+    ret.probe_strategy = ProbeStrategy::WAKE_UP;
+  } else {
+    ret.probe_strategy = ProbeStrategy::DEFAULT;
   }
   return ret;
 }
