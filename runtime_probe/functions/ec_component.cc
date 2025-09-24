@@ -86,29 +86,42 @@ std::string GenerateExpectI2cCommandLogLabel(
   return string_builder.str();
 }
 
+uint8_t GetI2cAddr(const EcComponentManifest::Component& comp,
+                   const EcComponentManifest::Component::I2c::Expect& expect) {
+  if (expect.override_addr.has_value()) {
+    return *expect.override_addr;
+  }
+  return comp.i2c.addr;
+}
+
 }  // namespace
 
 class EcComponentFunction::CommandSequenceHistoryTracker {
  public:
   class I2cCommandRunRecord;
 
-  I2cCommandRunRecord* LookupRunRecord(uint8_t port,
-                                       uint8_t addr7,
-                                       uint8_t offset,
-                                       const std::vector<uint8_t>& write_data,
-                                       uint8_t read_len);
+  I2cCommandRunRecord* LookupRunRecord(
+      const EcComponentManifest::Component& comp,
+      const EcComponentManifest::Component::I2c::Expect& expect);
 
   I2cCommandRunRecord* RegisterRunRecord(
-      uint8_t port,
-      uint8_t addr7,
-      uint8_t offset,
-      const std::vector<uint8_t>& write_data,
-      uint8_t read_len,
+      const EcComponentManifest::Component& comp,
+      const EcComponentManifest::Component::I2c::Expect& expect,
       std::unique_ptr<ec::I2cPassthruCommand> cmd,
       bool is_cmd_success);
 
  private:
   struct RecordKey {
+    static RecordKey Create(
+        const EcComponentManifest::Component& comp,
+        const EcComponentManifest::Component::I2c::Expect& expect) {
+      const auto addr = GetI2cAddr(comp, expect);
+      return {.port = comp.i2c.port,
+              .addr7 = addr,
+              .offset = expect.reg,
+              .read_len = static_cast<uint8_t>(expect.bytes),
+              .write_data = expect.write_data};
+    }
     uint8_t port;
     uint8_t addr7;
     uint8_t offset;
@@ -152,16 +165,9 @@ class EcComponentFunction::CommandSequenceHistoryTracker::I2cCommandRunRecord {
 
 EcComponentFunction::CommandSequenceHistoryTracker::I2cCommandRunRecord*
 EcComponentFunction::CommandSequenceHistoryTracker::LookupRunRecord(
-    uint8_t port,
-    uint8_t addr7,
-    uint8_t offset,
-    const std::vector<uint8_t>& write_data,
-    uint8_t read_len) {
-  RecordKey key{.port = port,
-                .addr7 = addr7,
-                .offset = offset,
-                .read_len = read_len,
-                .write_data = write_data};
+    const EcComponentManifest::Component& comp,
+    const EcComponentManifest::Component::I2c::Expect& expect) {
+  const auto key = RecordKey::Create(comp, expect);
   auto it = run_records_.find(key);
   if (it == run_records_.end()) {
     return nullptr;
@@ -171,18 +177,11 @@ EcComponentFunction::CommandSequenceHistoryTracker::LookupRunRecord(
 
 EcComponentFunction::CommandSequenceHistoryTracker::I2cCommandRunRecord*
 EcComponentFunction::CommandSequenceHistoryTracker::RegisterRunRecord(
-    uint8_t port,
-    uint8_t addr7,
-    uint8_t offset,
-    const std::vector<uint8_t>& write_data,
-    uint8_t read_len,
+    const EcComponentManifest::Component& comp,
+    const EcComponentManifest::Component::I2c::Expect& expect,
     std::unique_ptr<ec::I2cPassthruCommand> cmd,
     bool is_cmd_success) {
-  RecordKey key{.port = port,
-                .addr7 = addr7,
-                .offset = offset,
-                .read_len = read_len,
-                .write_data = write_data};
+  const auto key = RecordKey::Create(comp, expect);
   auto emplace_result = run_records_.insert_or_assign(
       key,
       std::make_unique<I2cCommandRunRecord>(std::move(cmd), is_cmd_success));
@@ -199,6 +198,19 @@ std::unique_ptr<ec::I2cPassthruCommand> EcComponentFunction::GetI2cReadCommand(
   passthru_data.insert(passthru_data.end(), write_data.begin(),
                        write_data.end());
   return ec::I2cPassthruCommand::Create(port, addr7, passthru_data, read_len);
+}
+
+std::unique_ptr<ec::I2cPassthruCommand> EcComponentFunction::GetI2cReadCommand(
+    const EcComponentManifest::Component& comp) const {
+  // No expect value. Just verify the accessibility of the component.
+  return GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, 0u, {}, 1u);
+}
+
+std::unique_ptr<ec::I2cPassthruCommand> EcComponentFunction::GetI2cReadCommand(
+    const EcComponentManifest::Component& comp,
+    const EcComponentManifest::Component::I2c::Expect& expect) const {
+  return GetI2cReadCommand(comp.i2c.port, GetI2cAddr(comp, expect), expect.reg,
+                           expect.write_data, expect.bytes);
 }
 
 std::unique_ptr<ec::GetVersionCommand>
@@ -227,6 +239,32 @@ std::optional<std::string> EcComponentFunction::GetCurrentECVersion(
   }
 }
 
+bool EcComponentFunction::WakeUpComponent(
+    const EcComponentManifest::Component& comp,
+    const base::ScopedFD& ec_dev_fd) const {
+  auto comp_label = GenerateComponentLogLabel(comp);
+  std::unique_ptr<ec::I2cPassthruCommand> wakeup_cmd;
+  if (comp.i2c.expect.size() == 0) {
+    wakeup_cmd = GetI2cReadCommand(comp);
+    if (!wakeup_cmd) {
+      LOG(ERROR) << "Failed to construct the EC i2cxfer command for "
+                 << "accessibility check for " << comp_label;
+      return false;
+    }
+  } else {
+    const auto& expect = comp.i2c.expect[0];
+    wakeup_cmd = GetI2cReadCommand(comp, expect);
+    auto i2c_cmd_label = GenerateExpectI2cCommandLogLabel(expect);
+    if (!wakeup_cmd) {
+      LOG(ERROR) << "Failed to construct " << i2c_cmd_label << " for "
+                 << comp_label;
+      return false;
+    }
+  }
+  RunI2cCommandAndCheckSuccess(ec_dev_fd, wakeup_cmd.get());
+  return true;
+}
+
 bool EcComponentFunction::IsValidComponent(
     const EcComponentManifest::Component& comp,
     const base::ScopedFD& ec_dev_fd,
@@ -235,9 +273,15 @@ bool EcComponentFunction::IsValidComponent(
   auto comp_label = GenerateComponentLogLabel(comp);
   VLOG(1) << "Probing " << comp_label;
 
+  if (comp.probe_strategy == EcComponentManifest::ProbeStrategy::WAKE_UP &&
+      (!use_cached_invocations || comp.i2c.expect.size() == 0)) {
+    if (!WakeUpComponent(comp, ec_dev_fd)) {
+      return false;
+    }
+  }
+
   if (comp.i2c.expect.size() == 0) {
-    // No expect value. Just verify the accessibility of the component.
-    auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, 0u, {}, 1u);
+    auto cmd = GetI2cReadCommand(comp);
     if (!cmd) {
       LOG(ERROR) << "Failed to construct the EC i2cxfer command for "
                  << "accessibility check for " << comp_label;
@@ -251,22 +295,9 @@ bool EcComponentFunction::IsValidComponent(
 
   auto curr_tracker = tracker;
   for (const auto& expect : comp.i2c.expect) {
-    auto addr = comp.i2c.addr;
-    if (expect.override_addr.has_value()) {
-      addr = *expect.override_addr;
-    }
-
-    auto cmd = GetI2cReadCommand(comp.i2c.port, addr, expect.reg,
-                                 expect.write_data, expect.bytes);
     auto i2c_cmd_label = GenerateExpectI2cCommandLogLabel(expect);
-    if (!cmd) {
-      LOG(ERROR) << "Failed to construct " << i2c_cmd_label << " for "
-                 << comp_label;
-      return false;
-    }
 
-    auto run_record = curr_tracker->LookupRunRecord(
-        comp.i2c.port, addr, expect.reg, expect.write_data, expect.bytes);
+    auto run_record = curr_tracker->LookupRunRecord(comp, expect);
     if (use_cached_invocations) {
       if (run_record == nullptr) {
         // The command hasn't been run, we should run through the whole command
@@ -277,11 +308,16 @@ bool EcComponentFunction::IsValidComponent(
       }
       i2c_cmd_label = "(cached) " + i2c_cmd_label;
     } else {
+      auto cmd = GetI2cReadCommand(comp, expect);
+      if (!cmd) {
+        LOG(ERROR) << "Failed to construct " << i2c_cmd_label << " for "
+                   << comp_label;
+        return false;
+      }
       bool success = RunI2cCommandAndCheckSuccess(ec_dev_fd, cmd.get());
       if (run_record == nullptr || run_record->is_cmd_success() != success) {
-        run_record = curr_tracker->RegisterRunRecord(
-            comp.i2c.port, addr, expect.reg, expect.write_data, expect.bytes,
-            std::move(cmd), success);
+        run_record = curr_tracker->RegisterRunRecord(comp, expect,
+                                                     std::move(cmd), success);
       }
     }
     curr_tracker = run_record->next();
