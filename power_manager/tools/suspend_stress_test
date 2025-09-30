@@ -45,6 +45,8 @@ DEFINE_boolean ignore_s0ix_substates "${FLAGS_FALSE}" \
                 only check toplevel s0ix counter"
 DEFINE_boolean debug_s0ix "${FLAGS_FALSE}" \
                "Gather more S0ix debug info"
+DEFINE_integer waived_premature_wake_failure_limit 0 \
+               "Max number of this kinds of waved fatal errors to ignore"
 
 dmesg_last_cycle() {
   lines=0
@@ -254,6 +256,15 @@ EOF
   return 1
 }
 
+is_waived_premature_wake_failure() {
+  # Intel waived sighting case
+  if [ -e /sys/kernel/debug/pmc_core/substate_status_registers ] && \
+     intel_prepost_suspend --sighting_check; then
+    return 0
+  else
+    return 1
+  fi
+}
 
 FLAGS "$@" || exit 1
 
@@ -380,6 +391,7 @@ premature_wake_count=0
 late_wake_count=0
 last_firmware_errors=$(get_firmware_error_counts)
 s0ix_counter_support=$(has_ectool_s0ix_counter)
+waived_premature_wake_failure_count=0
 
 # Record necessary info before each suspend run
 # Will identify S0ix fail into various categories when suspend fail
@@ -486,6 +498,15 @@ while true; do
     echo "Ignore wakeup from IRQ ${FLAGS_ignore_wakeup_irq_name}"
     ignore_failure=1
   fi
+  # If we haven't exceeded the premature wake waived failure limit, we
+  # can waive this suspend failure.
+  if is_waived_premature_wake_failure && \
+     [ "${waived_premature_wake_failure_count}" -lt \
+       "${FLAGS_waived_premature_wake_failure_limit}" ]; then
+    : $(( waived_premature_wake_failure_count += 1 ))
+    ignore_failure=1
+    echo "Waiving premature wake failure, keep testing."
+  fi
   if [ "${ignore_failure}" -eq 0 ]; then
     if [ "${diff_sus_time}" -lt "${FLAGS_suspend_time_margin_min}" ]; then
       : $(( premature_wake_count += 1 ))
@@ -544,8 +565,9 @@ while true; do
   cur_successes=$(get_success_count)
   cur_s0ix_count=$(get_verify_s0ix_count)
   cur_s2idle_count=$(get_s2idle_count)
-  if [ "${cur_successes}" -eq "${last_successes}" ] && \
-     [ "${ignore_failure}" -eq "0" ]; then
+  if [ "${ignore_failure}" -eq "1" ]; then
+    echo "Ignore this failure, keep testing."
+  elif [ "${cur_successes}" -eq "${last_successes}" ]; then
     if [ "${FLAGS_errors_fatal}" -eq "${FLAGS_TRUE}" ]; then
       echo "Suspend failed."
       exit_loop=1
