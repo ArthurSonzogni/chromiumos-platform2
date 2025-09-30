@@ -6,8 +6,10 @@
 #define POWER_MANAGER_COMMON_CROS_EC_PREFS_SOURCE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
+#include <libec/charge_state_command.h>
 #include <libec/display_soc_command.h>
 
 #include "power_manager/common/prefs.h"
@@ -17,11 +19,16 @@ namespace power_manager {
 // PrefsSourceInterface implementation that reflects prefs controlled by the EC.
 class CrosEcPrefsSource : public PrefsSourceInterface {
  public:
+  struct EcPrefCommands {
+    std::unique_ptr<ec::DisplayStateOfChargeCommand> display_soc_command;
+    std::unique_ptr<ec::GetMinChargingVoltCommand>
+        get_min_charging_volt_command;
+  };
+
   CrosEcPrefsSource();
 
   // Injectable command for testing.
-  explicit CrosEcPrefsSource(
-      std::unique_ptr<ec::DisplayStateOfChargeCommand> cmd);
+  explicit CrosEcPrefsSource(EcPrefCommands ec_commands);
 
   CrosEcPrefsSource(const CrosEcPrefsSource&) = delete;
   CrosEcPrefsSource& operator=(const CrosEcPrefsSource&) = delete;
@@ -40,6 +47,7 @@ class CrosEcPrefsSource : public PrefsSourceInterface {
  private:
   std::optional<double> low_battery_shutdown_percent_;
   std::optional<double> power_supply_full_factor_;
+  std::optional<double> min_charging_voltage_;
 };
 
 }  // namespace power_manager

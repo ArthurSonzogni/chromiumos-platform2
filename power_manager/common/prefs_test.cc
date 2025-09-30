@@ -420,41 +420,96 @@ class MockDisplayStateOfChargeCommand : public ec::DisplayStateOfChargeCommand {
   MOCK_METHOD(struct ec_response_display_soc*, Resp, (), (const, override));
 };
 
-std::unique_ptr<ec::DisplayStateOfChargeCommand> ReturnMockCommand(
-    std::unique_ptr<MockDisplayStateOfChargeCommand> cmd) {
-  return cmd;
-}
+class MockGetMinChargingVoltCommand : public ec::GetMinChargingVoltCommand {
+ public:
+  using GetMinChargingVoltCommand::GetMinChargingVoltCommand;
+  MOCK_METHOD(struct ec_response_charge_state*, Resp, (), (const, override));
+};
 
 TEST_F(PrefsTest, CrosEcSuccess) {
-  auto mock_command = std::make_unique<MockDisplayStateOfChargeCommand>();
-  struct ec_response_display_soc response = {
+  auto mock_display_soc_command =
+      std::make_unique<MockDisplayStateOfChargeCommand>();
+  struct ec_response_display_soc response_display_soc = {
       .display_soc = 990, .full_factor = 980, .shutdown_soc = 51};
-  EXPECT_CALL(*mock_command, Resp).WillRepeatedly(testing::Return(&response));
+  EXPECT_CALL(*mock_display_soc_command, Resp)
+      .WillRepeatedly(testing::Return(&response_display_soc));
+
+  auto mock_get_min_charging_volt_command =
+      std::make_unique<MockGetMinChargingVoltCommand>();
+  struct ec_response_charge_state response_charge_state = {
+      .get_param = {.value = 15000}};
+  EXPECT_CALL(*mock_get_min_charging_volt_command, Resp)
+      .WillRepeatedly(testing::Return(&response_charge_state));
+
+  CrosEcPrefsSource::EcPrefCommands ec_commands;
+  ec_commands.display_soc_command = std::move(mock_display_soc_command);
+  ec_commands.get_min_charging_volt_command =
+      std::move(mock_get_min_charging_volt_command);
 
   auto prefs_source =
-      std::make_unique<CrosEcPrefsSource>(std::move(mock_command));
+      std::make_unique<CrosEcPrefsSource>(std::move(ec_commands));
   auto sources = GetSources();
   cros_config_->SetString("/power", "low-battery-shutdown-percent", "4");
   cros_config_->SetString("/power", "power-supply-full-factor", "0.9");
   cros_config_->SetString("/power", "low-battery-shutdown-time-s", "200");
+  cros_config_->SetString("/power", "min-charging-volt", "5.0");
   sources.insert(sources.begin(), std::move(prefs_source));
   ASSERT_TRUE(prefs_.Init(std::make_unique<FilePrefsStore>(paths_[0]),
                           std::move(sources)));
-  double shutdown_percent, full_factor;
+  double shutdown_percent, full_factor, min_charging_voltage;
   int64_t shutdown_time;
   ASSERT_TRUE(prefs_.GetInt64(kLowBatteryShutdownTimePref, &shutdown_time));
   ASSERT_TRUE(
       prefs_.GetDouble(kLowBatteryShutdownPercentPref, &shutdown_percent));
   ASSERT_TRUE(prefs_.GetDouble(kPowerSupplyFullFactorPref, &full_factor));
+  ASSERT_TRUE(prefs_.GetDouble(kMinChargingVoltPref, &min_charging_voltage));
   EXPECT_EQ(5.1, shutdown_percent);
   EXPECT_EQ(0.98, full_factor);
   EXPECT_EQ(200, shutdown_time);
+  EXPECT_EQ(15.0, min_charging_voltage);
+
   std::string value;
   EXPECT_FALSE(prefs_.GetExternalString("/external", "name", &value));
 }
 
 TEST_F(PrefsTest, CrosEcUnsupported) {
-  auto prefs_source = std::make_unique<CrosEcPrefsSource>(nullptr);
+  auto prefs_source =
+      std::make_unique<CrosEcPrefsSource>(CrosEcPrefsSource::EcPrefCommands{});
+  auto sources = GetSources();
+  cros_config_->SetString("/power", "low-battery-shutdown-percent", "4");
+  cros_config_->SetString("/power", "power-supply-full-factor", "0.9");
+  cros_config_->SetString("/power", "low-battery-shutdown-time-s", "200");
+  cros_config_->SetString("/power", "min-charging-volt", "5.0");
+  sources.insert(sources.begin(), std::move(prefs_source));
+  ASSERT_TRUE(prefs_.Init(std::make_unique<FilePrefsStore>(paths_[0]),
+                          std::move(sources)));
+  std::string pref;
+  double shutdown_percent, full_factor, min_charging_voltage;
+  int64_t shutdown_time;
+  ASSERT_TRUE(prefs_.GetInt64(kLowBatteryShutdownTimePref, &shutdown_time));
+  ASSERT_TRUE(
+      prefs_.GetDouble(kLowBatteryShutdownPercentPref, &shutdown_percent));
+  ASSERT_TRUE(prefs_.GetDouble(kPowerSupplyFullFactorPref, &full_factor));
+  ASSERT_TRUE(prefs_.GetDouble(kMinChargingVoltPref, &min_charging_voltage));
+  EXPECT_EQ(4, shutdown_percent);
+  EXPECT_EQ(0.9, full_factor);
+  EXPECT_EQ(200, shutdown_time);
+  EXPECT_EQ(5.0, min_charging_voltage);
+}
+
+TEST_F(PrefsTest, NoHybridPowerBoostCharger) {
+  auto mock_display_soc_command =
+      std::make_unique<MockDisplayStateOfChargeCommand>();
+  struct ec_response_display_soc response_display_soc = {
+      .display_soc = 990, .full_factor = 980, .shutdown_soc = 51};
+  EXPECT_CALL(*mock_display_soc_command, Resp)
+      .WillRepeatedly(testing::Return(&response_display_soc));
+
+  CrosEcPrefsSource::EcPrefCommands ec_commands;
+  ec_commands.display_soc_command = std::move(mock_display_soc_command);
+
+  auto prefs_source =
+      std::make_unique<CrosEcPrefsSource>(std::move(ec_commands));
   auto sources = GetSources();
   cros_config_->SetString("/power", "low-battery-shutdown-percent", "4");
   cros_config_->SetString("/power", "power-supply-full-factor", "0.9");
@@ -462,16 +517,20 @@ TEST_F(PrefsTest, CrosEcUnsupported) {
   sources.insert(sources.begin(), std::move(prefs_source));
   ASSERT_TRUE(prefs_.Init(std::make_unique<FilePrefsStore>(paths_[0]),
                           std::move(sources)));
-  std::string pref;
-  double shutdown_percent, full_factor;
+  double shutdown_percent, full_factor, min_charging_voltage;
   int64_t shutdown_time;
   ASSERT_TRUE(prefs_.GetInt64(kLowBatteryShutdownTimePref, &shutdown_time));
   ASSERT_TRUE(
       prefs_.GetDouble(kLowBatteryShutdownPercentPref, &shutdown_percent));
   ASSERT_TRUE(prefs_.GetDouble(kPowerSupplyFullFactorPref, &full_factor));
-  EXPECT_EQ(4, shutdown_percent);
-  EXPECT_EQ(0.9, full_factor);
+  ASSERT_FALSE(prefs_.GetDouble(kMinChargingVoltPref, &min_charging_voltage));
+  EXPECT_EQ(5.1, shutdown_percent);
+  EXPECT_EQ(0.98, full_factor);
   EXPECT_EQ(200, shutdown_time);
+
+  cros_config_->SetString("/power", "min-charging-volt", "5.0");
+  ASSERT_TRUE(prefs_.GetDouble(kMinChargingVoltPref, &min_charging_voltage));
+  EXPECT_EQ(5.0, min_charging_voltage);
 }
 
 }  // namespace power_manager
