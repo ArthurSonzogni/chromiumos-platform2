@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "featured/service.h"
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -24,8 +26,6 @@
 #include <build/build_config.h>
 #include <build/buildflag.h>
 #include <featured/proto_bindings/featured.pb.h>
-
-#include "featured/service.h"
 
 namespace featured {
 
@@ -165,7 +165,8 @@ bool JsonFeatureParser::ParseFileContents(const std::string& file_contents) {
 
   VLOG(1) << "JSON file contents: " << file_contents;
 
-  auto root = base::JSONReader::ReadAndReturnValueWithError(file_contents);
+  auto root = base::JSONReader::ReadAndReturnValueWithError(
+      file_contents, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!root.has_value()) {
     LOG(ERROR) << "Failed to parse conf file: " << kPlatformFeaturesPath;
     return false;
