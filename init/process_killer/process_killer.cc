@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <init/process_killer/process_killer.h>
+#include "init/process_killer/process_killer.h"
 
 #include <sys/signal.h>
 
@@ -17,8 +17,9 @@
 #include <base/strings/string_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <init/process_killer/process.h>
-#include <init/process_killer/process_manager.h>
+
+#include "init/process_killer/process.h"
+#include "init/process_killer/process_manager.h"
 
 namespace init {
 namespace {
@@ -37,7 +38,7 @@ constexpr char const* kSystemMountRegexes[] = {
     "/home",
     "/usr/local",
     "/mnt/stateful_partition",
-    "/mnt/chromeos_metadata_partition"
+    "/mnt/chromeos_metadata_partition",
 };
 
 constexpr char const* kSessionDeviceRegexes[] = {
@@ -77,7 +78,8 @@ re2::RE2 ConstructMountRegex(bool session,
   }
 
   if (mount_filter.size()) {
-    auto filter = base::JSONReader::ReadAndReturnValueWithError(mount_filter);
+    auto filter = base::JSONReader::ReadAndReturnValueWithError(
+        mount_filter, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     if (!filter.has_value()) {
       LOG(ERROR) << "Could not parse the mount filter JSON list. Error: "
                  << filter.error().message;
