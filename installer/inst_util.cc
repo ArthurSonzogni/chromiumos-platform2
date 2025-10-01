@@ -580,8 +580,8 @@ bool MigratePartition(const base::FilePath& device,
                       int reclaimed_partition_num,
                       const std::string_view& partition_layout,
                       bool revert) {
-  auto part_info =
-      base::JSONReader::ReadAndReturnValueWithError(partition_layout);
+  auto part_info = base::JSONReader::ReadAndReturnValueWithError(
+      partition_layout, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!part_info.has_value()) {
     LOG(ERROR) << "Could not parse the partition layout as JSON. Error: "
                << part_info.error().message;
