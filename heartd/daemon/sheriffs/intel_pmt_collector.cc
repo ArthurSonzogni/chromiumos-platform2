@@ -56,7 +56,9 @@ IntelPMTCollector::IntelPMTCollector(const base::FilePath& root_dir,
   // If fail to read the config file, we just use default setting.
   std::string content;
   if (base::ReadFileToString(root_dir_.Append(kIntelPMTConfigPath), &content)) {
-    config_ = base::JSONReader::ReadDict(content).value_or(base::Value::Dict{});
+    config_ = base::JSONReader::ReadDict(content,
+                                         base::JSON_PARSE_CHROMIUM_EXTENSIONS)
+                  .value_or(base::Value::Dict{});
   }
 
   // Open the log file.
