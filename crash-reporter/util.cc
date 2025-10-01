@@ -759,8 +759,8 @@ std::optional<std::string> ExtractChromeVersionFromMetadata(
     return std::nullopt;
   }
 
-  auto parsed_metadata =
-      base::JSONReader::ReadAndReturnValueWithError(raw_metadata);
+  auto parsed_metadata = base::JSONReader::ReadAndReturnValueWithError(
+      raw_metadata, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   if (!parsed_metadata.has_value()) {
     LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()

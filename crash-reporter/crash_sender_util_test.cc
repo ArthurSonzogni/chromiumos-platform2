@@ -166,7 +166,8 @@ std::vector<std::optional<base::Value>> ParseChromeUploadsLog(
   std::vector<std::string> lines = base::SplitString(
       contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (const auto& line : lines) {
-    rows.push_back(base::JSONReader::Read(line));
+    rows.push_back(
+        base::JSONReader::Read(line, base::JSON_PARSE_CHROMIUM_EXTENSIONS));
   }
 
   return rows;
