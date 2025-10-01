@@ -1210,7 +1210,8 @@ ManagedString FilterMediaProfile(const base::FilePath& media_profile_xml,
                << camera_test_config.value();
     return ManagedString(std::move(content));
   }
-  auto config = base::JSONReader::ReadAndReturnValueWithError(json_str);
+  auto config = base::JSONReader::ReadAndReturnValueWithError(
+      json_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!config.has_value() || !config->is_dict()) {
     LOG(ERROR) << "Failed to parse camera test config content: " << json_str;
     return ManagedString(std::move(content));
