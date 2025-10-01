@@ -103,7 +103,8 @@ static constexpr std::
 // Get JSON value from |json| dictionary keyed by |key|.
 std::optional<std::string> GetJSONDictValue(std::string_view json,
                                             std::string_view key) {
-  auto dict = base::JSONReader::ReadDict(json);
+  auto dict =
+      base::JSONReader::ReadDict(json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!dict) {
     return std::nullopt;
   }

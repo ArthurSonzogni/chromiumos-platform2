@@ -325,7 +325,8 @@ bool WireGuardDriver::Load(const StoreInterface* storage,
   }
 
   for (const auto& peer_json : encoded_peers) {
-    std::optional<base::Value> val = base::JSONReader::Read(peer_json);
+    std::optional<base::Value> val =
+        base::JSONReader::Read(peer_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     if (!val || !val->is_dict()) {
       LOG(ERROR) << "Failed to parse a peer. Skipped it.";
       continue;

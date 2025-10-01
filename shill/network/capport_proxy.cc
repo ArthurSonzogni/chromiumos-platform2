@@ -39,8 +39,8 @@ constexpr char kBytesRemainingKey[] = "bytes-remaining";
 
 std::optional<CapportStatus> CapportStatus::ParseFromJson(
     std::string_view json_str, std::string_view logging_tag) {
-  const std::optional<base::Value::Dict> dict =
-      base::JSONReader::ReadDict(json_str);
+  const std::optional<base::Value::Dict> dict = base::JSONReader::ReadDict(
+      json_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!dict.has_value()) {
     return std::nullopt;
   }
