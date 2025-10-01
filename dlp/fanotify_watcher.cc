@@ -5,8 +5,9 @@
 #include "dlp/fanotify_watcher.h"
 
 #include <fcntl.h>
-#include <memory>
 #include <sys/fanotify.h>
+
+#include <memory>
 #include <utility>
 
 #include "base/files/scoped_file.h"
@@ -20,14 +21,14 @@
 
 namespace dlp {
 
-FanotifyWatcher::FanotifyWatcher(Delegate* delegate,
+FanotifyWatcher::FanotifyWatcher(base::WeakPtr<Delegate> delegate,
                                  int fanotify_perm_fd,
                                  int fanotify_notif_fd)
     : task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
-      fd_events_thread_(task_runner_, this),
-      fh_events_thread_(task_runner_, this),
+      fd_events_thread_(task_runner_, weak_factory_.GetWeakPtr()),
+      fh_events_thread_(task_runner_, weak_factory_.GetWeakPtr()),
       delegate_(delegate) {
-  DCHECK(delegate);
+  DCHECK(delegate_);
 
   if (fanotify_perm_fd >= 0) {
     fanotify_fd_events_fd_.reset(fanotify_perm_fd);
@@ -80,7 +81,10 @@ void FanotifyWatcher::OnFileOpenRequested(
     OnRequestProcessed(std::move(fd), std::move(watchdog), /*allowed=*/true);
     return;
   }
-
+  if (!delegate_) {
+    OnRequestProcessed(std::move(fd), std::move(watchdog), /*allowed=*/true);
+    return;
+  }
   delegate_->ProcessFileOpenRequest(
       {inode, crtime}, pid,
       base::BindOnce(&FanotifyWatcher::OnRequestProcessed,
@@ -91,13 +95,17 @@ void FanotifyWatcher::OnFileOpenRequested(
 void FanotifyWatcher::OnFileDeleted(ino64_t inode) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
-  delegate_->OnFileDeleted(inode);
+  if (delegate_) {
+    delegate_->OnFileDeleted(inode);
+  }
 }
 
 void FanotifyWatcher::OnFanotifyError(FanotifyError error) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
-  delegate_->OnFanotifyError(error);
+  if (delegate_) {
+    delegate_->OnFanotifyError(error);
+  }
 }
 
 void FanotifyWatcher::OnRequestProcessed(

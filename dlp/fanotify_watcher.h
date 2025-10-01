@@ -12,6 +12,7 @@
 #include "base/files/scoped_file.h"
 #include "base/functional/callback.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "dlp/dlp_metrics.h"
 #include "dlp/fanotify_reader_thread.h"
@@ -34,7 +35,7 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
     virtual void OnFanotifyError(FanotifyError error) = 0;
   };
 
-  FanotifyWatcher(Delegate* delegate,
+  FanotifyWatcher(base::WeakPtr<Delegate> delegate,
                   int fanotify_perm_fd,
                   int fanotify_notif_fd);
   ~FanotifyWatcher() override;
@@ -72,6 +73,8 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
 
   bool active_ = false;
 
+  base::WeakPtrFactory<FanotifyReaderThread::Delegate> weak_factory_{this};
+
   // We need two sets of fanotify file descriptors and thread so that one of
   // them identifies objects by file handles (FAN_CLASS_NOTIF) and another
   // identifies objects by file descriptors (FAN_CLASS_CONTENT).
@@ -83,7 +86,7 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
   base::ScopedFD fanotify_fd_events_fd_;
   base::ScopedFD fanotify_fh_events_fd_;
 
-  Delegate* delegate_;
+  base::WeakPtr<Delegate> delegate_;
 };
 
 }  // namespace dlp

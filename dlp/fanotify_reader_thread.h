@@ -63,7 +63,7 @@ class FanotifyReaderThread : public base::PlatformThread::Delegate {
 
   FanotifyReaderThread(
       scoped_refptr<base::SequencedTaskRunner> parent_task_runner,
-      Delegate* delegate);
+      base::WeakPtr<Delegate> delegate);
   ~FanotifyReaderThread() override;
 
   // Starts the thread to read events from |fanotify_fd|.
@@ -82,7 +82,8 @@ class FanotifyReaderThread : public base::PlatformThread::Delegate {
   // Task runner from which this thread is started and where the delegate is
   // running.
   scoped_refptr<base::SequencedTaskRunner> parent_task_runner_;
-  Delegate* const delegate_;
+  base::WeakPtr<Delegate> const delegate_;
+
   int fanotify_fd_ = -1;
   base::PlatformThreadHandle handle_;
 };

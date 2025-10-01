@@ -47,7 +47,8 @@ class FanotifyWatcherTest : public ::testing::Test,
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     ASSERT_TRUE(base::CreatePipe(&perm_fd_out_, &perm_fd_in_));
-    watcher_ = std::make_unique<FanotifyWatcher>(this, perm_fd_in_.release(),
+    watcher_ = std::make_unique<FanotifyWatcher>(weak_factory_.GetWeakPtr(),
+                                                 perm_fd_in_.release(),
                                                  /*fanotify_notif_fd=*/-1);
   }
 
@@ -96,6 +97,8 @@ class FanotifyWatcherTest : public ::testing::Test,
   uint32_t counter_ = 0;
   base::ScopedTempDir temp_dir_;
   base::ScopedFD perm_fd_in_, perm_fd_out_;
+
+  base::WeakPtrFactory<FanotifyWatcher::Delegate> weak_factory_{this};
 };
 
 TEST_F(FanotifyWatcherTest, FileOpen) {

@@ -141,8 +141,8 @@ DlpAdaptor::DlpAdaptor(
       metrics_thread_("metrics_thread"),
       file_enumeration_thread_("file_enumeration_thread") {
   // Starting watcher first, before the threads, so that it can respond.
-  fanotify_watcher_ = std::make_unique<FanotifyWatcher>(this, fanotify_perm_fd,
-                                                        fanotify_notif_fd);
+  fanotify_watcher_ = std::make_unique<FanotifyWatcher>(
+      weak_factory_.GetWeakPtr(), fanotify_perm_fd, fanotify_notif_fd);
 
   CHECK(metrics_thread_.Start()) << "Failed to start metrics thread.";
   dlp_metrics_ = std::make_unique<DlpMetrics>(metrics_thread_.task_runner());

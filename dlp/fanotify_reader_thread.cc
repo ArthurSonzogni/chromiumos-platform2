@@ -87,7 +87,7 @@ void FanotifyReaderThread::FanotifyReplyWatchdog::Alarm() {
 
 FanotifyReaderThread::FanotifyReaderThread(
     scoped_refptr<base::SequencedTaskRunner> parent_task_runner,
-    Delegate* delegate)
+    base::WeakPtr<Delegate> delegate)
     : parent_task_runner_(std::move(parent_task_runner)), delegate_(delegate) {
   CHECK(delegate_);
   CHECK(parent_task_runner_->RunsTasksInCurrentSequence());
@@ -189,8 +189,8 @@ void FanotifyReaderThread::RunLoop() {
         watchdog->Arm();
         parent_task_runner_->PostTask(
             FROM_HERE,
-            base::BindOnce(&Delegate::OnFileOpenRequested,
-                           base::Unretained(delegate_), st.stx_ino,
+            base::BindOnce(&Delegate::OnFileOpenRequested, delegate_,
+                           st.stx_ino,
                            ConvertStatxTimestampToTimeT(st.stx_btime),
                            metadata->pid, std::move(fd), std::move(watchdog)));
       } else if (metadata->mask & FAN_DELETE_SELF) {
@@ -215,8 +215,8 @@ void FanotifyReaderThread::RunLoop() {
           continue;
         }
         parent_task_runner_->PostTask(
-            FROM_HERE, base::BindOnce(&Delegate::OnFileDeleted,
-                                      base::Unretained(delegate_), handle[0]));
+            FROM_HERE,
+            base::BindOnce(&Delegate::OnFileDeleted, delegate_, handle[0]));
       } else {
         LOG(WARNING) << "unexpected fanotify event: " << metadata->mask;
         ForwardUMAErrorToParentThread(FanotifyError::kUnknownError);
@@ -227,8 +227,7 @@ void FanotifyReaderThread::RunLoop() {
 
 void FanotifyReaderThread::ForwardUMAErrorToParentThread(FanotifyError error) {
   parent_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&Delegate::OnFanotifyError,
-                                base::Unretained(delegate_), error));
+      FROM_HERE, base::BindOnce(&Delegate::OnFanotifyError, delegate_, error));
 }
 
 void FanotifyReaderThread::AllowRequest(int fd) {
