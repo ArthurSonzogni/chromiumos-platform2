@@ -168,8 +168,8 @@ std::optional<ModelInfo> BuildModelInfo(
     return std::nullopt;
   }
 
-  std::optional<base::Value::Dict> model_dict =
-      base::JSONReader::ReadDict(model_json);
+  std::optional<base::Value::Dict> model_dict = base::JSONReader::ReadDict(
+      model_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   if (!model_dict) {
     metrics->SendEnumToUMA(kLoadDlcStatusHistogramName,

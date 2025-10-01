@@ -353,8 +353,8 @@ void ChromeosPlatformModelLoader::GetModelStateFromDlcState(
     return;
   }
 
-  std::optional<base::Value::Dict> model_dict =
-      base::JSONReader::ReadDict(model_json);
+  std::optional<base::Value::Dict> model_dict = base::JSONReader::ReadDict(
+      model_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!model_dict) {
     std::move(callback).Run(mojom::PlatformModelState::kInvalidModelDescriptor);
     return;
@@ -411,8 +411,8 @@ void ChromeosPlatformModelLoader::LoadModelFromDlcPath(
     return;
   }
 
-  std::optional<base::Value::Dict> model_dict =
-      base::JSONReader::ReadDict(model_json);
+  std::optional<base::Value::Dict> model_dict = base::JSONReader::ReadDict(
+      model_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   if (!model_dict) {
     LOG(ERROR) << "Failed to parse model descriptor file";
