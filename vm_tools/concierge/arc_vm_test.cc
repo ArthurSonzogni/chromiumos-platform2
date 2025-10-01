@@ -137,45 +137,6 @@ TEST(ArcVmParamsTest, EnableConsumerAutoUpdateToggleParamFalse) {
       params, "androidboot.enable_consumer_auto_update_toggle=0"));
 }
 
-TEST(ArcVmParamsTest, CustomTabsParamTrue) {
-  base::test::ScopedChromeOSVersionInfo info(
-      "CHROMEOS_RELEASE_TRACK=canary-channel", base::Time::Now());
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  auto* mini_instance_request = request.mutable_mini_instance_request();
-  mini_instance_request->set_arc_custom_tabs_experiment(true);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc_custom_tabs=1"));
-}
-
-TEST(ArcVmParamsTest, CustomTabsParamFalse) {
-  base::test::ScopedChromeOSVersionInfo info(
-      "CHROMEOS_RELEASE_TRACK=canary-channel", base::Time::Now());
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  auto* mini_instance_request = request.mutable_mini_instance_request();
-  mini_instance_request->set_arc_custom_tabs_experiment(false);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(is_parameter_set(params, "androidboot.arc_custom_tabs"));
-}
-
-TEST(ArcVmParamsTest, CustomTabsParamStableChannel) {
-  base::test::ScopedChromeOSVersionInfo info(
-      "CHROMEOS_RELEASE_TRACK=stable-channel", base::Time::Now());
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  auto* mini_instance_request = request.mutable_mini_instance_request();
-  mini_instance_request->set_arc_custom_tabs_experiment(true);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc_custom_tabs=1"));
-}
-
 TEST(ArcVmParamsTest, EnableTtsCachingParamTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());

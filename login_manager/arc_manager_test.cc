@@ -169,8 +169,6 @@ class StartArcInstanceExpectationsBuilder {
         "CHROMEOS_DEV_MODE=" + std::to_string(dev_mode_),
         "CHROMEOS_INSIDE_VM=0",
         "NATIVE_BRIDGE_EXPERIMENT=" + std::to_string(native_bridge_experiment_),
-        "ARC_CUSTOM_TABS_EXPERIMENT=" +
-            std::to_string(arc_custom_tab_experiment_),
         "DISABLE_MEDIA_STORE_MAINTENANCE=" +
             std::to_string(disable_media_store_maintenance_),
         "DISABLE_DOWNLOAD_PROVIDER=" +
@@ -1230,24 +1228,6 @@ TEST_F(ArcManagerTest, ArcNativeBridgeExperiment) {
   brillo::ErrorPtr error;
   arc::StartArcMiniInstanceRequest request;
   request.set_native_bridge_experiment(true);
-  // Use for login screen mode for minimalistic test.
-  EXPECT_TRUE(
-      arc_manager_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
-  EXPECT_FALSE(error.get());
-}
-
-TEST_F(ArcManagerTest, ArcCustomTabsExperiment) {
-  EXPECT_CALL(*arc_init_controller_,
-              TriggerImpulse(ArcManager::kStartArcInstanceImpulse,
-                             StartArcInstanceExpectationsBuilder()
-                                 .SetArcCustomTabExperiment(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
-
-  brillo::ErrorPtr error;
-  arc::StartArcMiniInstanceRequest request;
-  request.set_arc_custom_tabs_experiment(true);
   // Use for login screen mode for minimalistic test.
   EXPECT_TRUE(
       arc_manager_->StartArcMiniContainer(&error, SerializeAsBlob(request)));

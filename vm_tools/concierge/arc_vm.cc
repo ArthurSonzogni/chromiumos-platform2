@@ -1033,10 +1033,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
     params.push_back("androidboot.disable_runas=1");
   }
 
-  if (mini_instance_request.arc_custom_tabs_experiment()) {
-    params.push_back("androidboot.arc_custom_tabs=1");
-  }
-
   if (zram_size) {
     params.push_back(
         base::StringPrintf("androidboot.zram_size=%" PRId64, zram_size));
