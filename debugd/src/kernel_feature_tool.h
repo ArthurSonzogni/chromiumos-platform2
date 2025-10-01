@@ -8,10 +8,11 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
+#include <base/files/file_path.h>
 #include <base/values.h>
 #include <brillo/errors/error.h>
-#include <vector>
 
 namespace debugd {
 class FeatureCommand {

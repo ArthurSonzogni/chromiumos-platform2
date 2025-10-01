@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "debugd/src/kernel_feature_tool.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -21,9 +23,7 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_file.h"
 #include "base/files/scoped_temp_dir.h"
-
 #include "debugd/src/error_utils.h"
-#include "debugd/src/kernel_feature_tool.h"
 
 namespace debugd {
 
@@ -112,7 +112,8 @@ bool JsonFeatureParser::ParseFile(const base::FilePath& path,
 
   VLOG(1) << "JSON feature parsed result: " << input;
 
-  auto root = base::JSONReader::ReadAndReturnValueWithError(input);
+  auto root = base::JSONReader::ReadAndReturnValueWithError(
+      input, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!root.has_value()) {
     *err_str = "debugd: Failed to parse features conf file!";
     return false;

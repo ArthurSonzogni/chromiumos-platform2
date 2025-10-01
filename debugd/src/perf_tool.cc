@@ -234,7 +234,8 @@ void RestoreCpuIdleStates() {
                 << kCpuIdleStateMapLocation;
     return;
   }
-  std::optional<base::Value> all_cpu_states = base::JSONReader::Read(json);
+  std::optional<base::Value> all_cpu_states =
+      base::JSONReader::Read(json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (all_cpu_states.has_value() && all_cpu_states->is_dict()) {
     WriteCpuIdleStates(all_cpu_states->GetDict());
   }
