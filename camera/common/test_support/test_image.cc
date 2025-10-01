@@ -101,7 +101,8 @@ std::optional<TestImage> TestImage::Create(const base::FilePath& image_path) {
     LOGF(ERROR) << "Failed to read image metadata from " << metadata_path;
     return std::nullopt;
   }
-  const std::optional<base::Value> value = base::JSONReader::Read(json_data);
+  const std::optional<base::Value> value =
+      base::JSONReader::Read(json_data, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!value) {
     LOGF(ERROR) << "Failed to read image metadata file as JSON";
     return std::nullopt;

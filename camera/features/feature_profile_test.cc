@@ -21,7 +21,8 @@ namespace cros {
 namespace {
 
 base::Value::Dict CreateFakeFeatureProfile(std::string json_str) {
-  auto result = base::JSONReader::ReadAndReturnValueWithError(json_str);
+  auto result = base::JSONReader::ReadAndReturnValueWithError(
+      json_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   CHECK(result.has_value() && result->is_dict());
   return std::move(result.value().GetDict());
 }
