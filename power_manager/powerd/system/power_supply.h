@@ -231,6 +231,12 @@ struct PowerStatus {
   // can be displayed.
   double preferred_minimum_external_power = 0.0;
 
+  // Maximum voltage in volts supported by an external power supply must be
+  // above this value for the Chrome device to be able to draw power from this
+  // power supply. This value is relevant only for Chrome devices with a Hybrid
+  // Power Boost charger.
+  double min_charging_voltage = 0.0;
+
   // Indicates if Adaptive Charging is supported for this system.
   bool adaptive_charging_supported = false;
 

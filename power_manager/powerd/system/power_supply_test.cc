@@ -16,6 +16,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <libec/display_soc_command.h>
@@ -42,6 +43,7 @@ using Role = PowerStatus::Port::Role;
 const char* const kMainsType = PowerSupply::kMainsType;
 const char* const kBatteryType = PowerSupply::kBatteryType;
 const char* const kUsbType = PowerSupply::kUsbType;
+const char* const kUsbCType = PowerSupply::kUsbCType;
 const char* const kUsbPdType = PowerSupply::kUsbPdType;
 const char* const kUsbPdDrpType = PowerSupply::kUsbPdDrpType;
 const char* const kUnknownType = PowerSupply::kUnknownType;
@@ -151,6 +153,7 @@ class PowerSupplyTest : public TestEnvironment {
     prefs_.SetDouble(kPowerSupplyFullFactorPref, kFullFactor);
     prefs_.SetInt64(kMaxCurrentSamplesPref, 5);
     prefs_.SetInt64(kMaxChargeSamplesPref, 5);
+    prefs_.SetDouble(kMinChargingVoltPref, 0.0);
 
     power_supply_ = std::make_unique<PowerSupply>();
     test_api_ = std::make_unique<PowerSupply::TestApi>(power_supply_.get());
@@ -2768,6 +2771,405 @@ TEST_F(PowerSupplyTest, NoPortsLowBatteryShutdownDisabled) {
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
   ASSERT_FALSE(power_supply_->GetLowBatteryShutdownEnabled());
+}
+
+TEST_F(PowerSupplyTest, HybridPowerBoostChargerWith5VLinePowerSource) {
+  // Delete the AC power supply and report 1 line power source at 5V.
+  WriteDefaultValues(PowerSource::BATTERY);
+  brillo::DeletePathRecursively(ac_dir_);
+
+  const double kCurrentMax = 3.0;
+  const double kVoltageMax = 5.0;
+
+  const char kLine1Id[] = "line1";
+  const char kLine1Manufacturer[] = "04fe";
+  const char kLine1ModelName[] = "0256";
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUsbType);
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kNotCharging);
+  WriteDoubleValue(line1_dir, "current_max", kCurrentMax);
+  WriteDoubleValue(line1_dir, "current_now", kCurrentMax);
+  WriteDoubleValue(line1_dir, "voltage_max", kVoltageMax);
+  WriteDoubleValue(line1_dir, "voltage_now", kVoltageMax);
+  WriteValue(line1_dir, "manufacturer", kLine1Manufacturer);
+  WriteValue(line1_dir, "model_name", kLine1ModelName);
+
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE,
+            status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            status.battery_state);
+  ASSERT_EQ(1u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[0].role);
+  EXPECT_EQ(kUsbType, status.ports[0].type);
+  EXPECT_EQ("", status.external_power_source_id);
+  EXPECT_TRUE(status.supports_dual_role_devices);
+  EXPECT_EQ(kCurrentMax, status.line_power_max_current);
+  EXPECT_EQ(kVoltageMax, status.line_power_max_voltage);
+}
+
+TEST_F(PowerSupplyTest, HybridPowerBoostChargerWith5VDrpLinePowerSource) {
+  // Delete the AC power supply and report 1 line power source at 5V.
+  WriteDefaultValues(PowerSource::BATTERY);
+  brillo::DeletePathRecursively(ac_dir_);
+
+  const double kCurrentMax = 3.0;
+  const double kVoltageMax = 5.0;
+
+  // Electricity flows into the Chrome device.
+  const char kLine1Id[] = "line1";
+  const char kLine1Manufacturer[] = "04fe";
+  const char kLine1ModelName[] = "0256";
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUsbType);
+  WriteValue(line1_dir, "usb_type",
+             "Unknown SDP DCP CDP C PD [PD_DRP] BrickID");
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kNotCharging);
+  WriteDoubleValue(line1_dir, "current_max", kCurrentMax);
+  WriteDoubleValue(line1_dir, "current_now", kCurrentMax);
+  WriteDoubleValue(line1_dir, "voltage_max", kVoltageMax);
+  WriteDoubleValue(line1_dir, "voltage_now", kVoltageMax);
+  WriteValue(line1_dir, "manufacturer", kLine1Manufacturer);
+  WriteValue(line1_dir, "model_name", kLine1ModelName);
+
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE,
+            status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            status.battery_state);
+  ASSERT_EQ(1u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[0].role);
+  EXPECT_EQ("USB_PD_DRP", status.ports[0].type);
+  EXPECT_EQ("", status.external_power_source_id);
+  EXPECT_TRUE(status.supports_dual_role_devices);
+  EXPECT_EQ(kCurrentMax, status.line_power_max_current);
+  EXPECT_EQ(kVoltageMax, status.line_power_max_voltage);
+
+  // Electricity flows out of the Chrome device, so the Chrome device is
+  // charging another device.
+  WriteValue(line1_dir, "online", "0");
+  WriteValue(line1_dir, "status", kNotCharging);
+  WriteDoubleValue(line1_dir, "current_max", 3.0);
+  WriteDoubleValue(line1_dir, "voltage_max", 0.0);
+  WriteDoubleValue(line1_dir, "voltage_now", 5.0);
+
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            status.battery_state);
+  ASSERT_EQ(1u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[0].role);
+  EXPECT_EQ("USB_PD_DRP", status.ports[0].type);
+  EXPECT_EQ("", status.external_power_source_id);
+  EXPECT_TRUE(status.supports_dual_role_devices);
+  EXPECT_FALSE(status.has_line_power_max_current);
+  EXPECT_FALSE(status.has_line_power_max_voltage);
+}
+
+TEST_F(PowerSupplyTest, HybridPowerBoostChargerWithTwoLinePowerSources) {
+  // Delete the AC power supply and report two line power sources.
+  WriteDefaultValues(PowerSource::BATTERY);
+  brillo::DeletePathRecursively(ac_dir_);
+
+  // Define voltage and current max for a typical 65W charger.
+  const double kCurrentMax = 3.25;
+  const double kVoltageMax = 20.0;
+
+  // Compatible line power source.
+  const char kLine1Id[] = "line1";
+  const char kLine1Manufacturer[] = "04fe";
+  const char kLine1ModelName[] = "0256";
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUsbPdDrpType);
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kCharging);
+  WriteDoubleValue(line1_dir, "current_max", kCurrentMax);
+  WriteDoubleValue(line1_dir, "voltage_max_design", kVoltageMax);
+  WriteValue(battery_dir_, "status", kCharging);
+  WriteValue(line1_dir, "manufacturer", kLine1Manufacturer);
+  WriteValue(line1_dir, "model_name", kLine1ModelName);
+
+  // Incompatible line power source.
+  const char kLine2Id[] = "line2";
+  const char kLine2Manufacturer[] = "587b";
+  const char kLine2ModelName[] = "3402";
+  const base::FilePath line2_dir = temp_dir_.GetPath().Append(kLine2Id);
+  ASSERT_TRUE(base::CreateDirectory(line2_dir));
+  WriteValue(line2_dir, "type", kUsbType);
+  WriteValue(line2_dir, "usb_type",
+             "Unknown SDP DCP CDP [C] PD PD_DRP BrickID");
+  WriteValue(line2_dir, "online", "1");
+  WriteValue(line2_dir, "status", kNotCharging);
+  WriteDoubleValue(line2_dir, "current_max", 0.5);
+  WriteDoubleValue(line2_dir, "voltage_max_design", 5.0);
+  WriteValue(line2_dir, "manufacturer", kLine2Manufacturer);
+  WriteValue(line2_dir, "model_name", kLine2ModelName);
+
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_TRUE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[0].role);
+  EXPECT_EQ(kUsbPdDrpType, status.ports[0].type);
+  EXPECT_EQ(kLine1Manufacturer, status.ports[0].manufacturer_id);
+  EXPECT_EQ(kLine1ModelName, status.ports[0].model_id);
+  EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[0].max_power);
+  EXPECT_FALSE(status.ports[0].active_by_default);
+  EXPECT_EQ(kLine2Id, status.ports[1].id);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[1].role);
+  EXPECT_EQ(kUsbCType, status.ports[1].type);
+  EXPECT_EQ(kLine1Id, status.external_power_source_id);
+  EXPECT_TRUE(status.supports_dual_role_devices);
+  EXPECT_EQ(kCurrentMax, status.line_power_max_current);
+  EXPECT_EQ(kVoltageMax, status.line_power_max_voltage);
+}
+
+TEST_F(PowerSupplyTest,
+       HybridPowerBoostChargerWithTwoLinePowerSourcesDifferentOrder) {
+  // Delete the AC power supply and report two line power sources.
+  WriteDefaultValues(PowerSource::BATTERY);
+  brillo::DeletePathRecursively(ac_dir_);
+
+  // Incompatible line power source.
+  const char kLine1Id[] = "line1";
+  const char kLine1Manufacturer[] = "587b";
+  const char kLine1ModelName[] = "3402";
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUsbType);
+  WriteValue(line1_dir, "usb_type",
+             "Unknown SDP DCP CDP [C] PD PD_DRP BrickID");
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kNotCharging);
+  WriteDoubleValue(line1_dir, "current_max", 5.0);
+  WriteDoubleValue(line1_dir, "voltage_max_design", 10.0);
+  WriteValue(line1_dir, "manufacturer", kLine1Manufacturer);
+  WriteValue(line1_dir, "model_name", kLine1ModelName);
+
+  // Define voltage and current max for a typical 65W charger.
+  const double kCurrentMax = 4.33;
+  const double kVoltageMax = 15.0;
+
+  // Compatible line power source.
+  const char kLine2Id[] = "line2";
+  const char kLine2Manufacturer[] = "04fe";
+  const char kLine2ModelName[] = "0256";
+  const base::FilePath line2_dir = temp_dir_.GetPath().Append(kLine2Id);
+  ASSERT_TRUE(base::CreateDirectory(line2_dir));
+  WriteValue(line2_dir, "type", kUsbPdDrpType);
+  WriteValue(line2_dir, "online", "1");
+  WriteValue(line2_dir, "status", kCharging);
+  WriteDoubleValue(line2_dir, "current_max", kCurrentMax);
+  WriteDoubleValue(line2_dir, "voltage_max_design", kVoltageMax);
+  WriteValue(battery_dir_, "status", kCharging);
+  WriteValue(line2_dir, "manufacturer", kLine2Manufacturer);
+  WriteValue(line2_dir, "model_name", kLine2ModelName);
+
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_TRUE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[0].role);
+  EXPECT_EQ(kUsbCType, status.ports[0].type);
+  EXPECT_EQ(kLine2Id, status.ports[1].id);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[1].role);
+  EXPECT_EQ(kUsbPdDrpType, status.ports[1].type);
+  EXPECT_EQ(kLine2Manufacturer, status.ports[1].manufacturer_id);
+  EXPECT_EQ(kLine2ModelName, status.ports[1].model_id);
+  EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[1].max_power);
+  EXPECT_FALSE(status.ports[1].active_by_default);
+  EXPECT_EQ(kLine2Id, status.external_power_source_id);
+  EXPECT_TRUE(status.supports_dual_role_devices);
+  EXPECT_EQ(kCurrentMax, status.line_power_max_current);
+  EXPECT_EQ(kVoltageMax, status.line_power_max_voltage);
+}
+
+TEST_F(PowerSupplyTest,
+       HybridPowerBoostChargerWithTwoIncompatibleLinePowerSources) {
+  // Delete the AC power supply and report two line power sources.
+  WriteDefaultValues(PowerSource::BATTERY);
+  brillo::DeletePathRecursively(ac_dir_);
+
+  const char kLine1Id[] = "line1";
+  const char kLine1Manufacturer[] = "04fe";
+  const char kLine1ModelName[] = "0256";
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUsbPdDrpType);
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kNotCharging);
+  WriteDoubleValue(line1_dir, "current_max", 3.0);
+  WriteDoubleValue(line1_dir, "voltage_max_design", 12.0);
+  WriteValue(battery_dir_, "status", kDischarging);
+  WriteValue(line1_dir, "manufacturer", kLine1Manufacturer);
+  WriteValue(line1_dir, "model_name", kLine1ModelName);
+
+  const char kLine2Id[] = "line2";
+  const char kLine2Manufacturer[] = "587b";
+  const char kLine2ModelName[] = "3402";
+  const base::FilePath line2_dir = temp_dir_.GetPath().Append(kLine2Id);
+  ASSERT_TRUE(base::CreateDirectory(line2_dir));
+  WriteValue(line2_dir, "type", kUsbType);
+  WriteValue(line2_dir, "usb_type",
+             "Unknown SDP DCP CDP [C] PD PD_DRP BrickID");
+  WriteValue(line2_dir, "online", "1");
+  WriteValue(line2_dir, "status", kNotCharging);
+  WriteDoubleValue(line2_dir, "current_max", 5.0);
+  WriteDoubleValue(line2_dir, "voltage_max_design", 10.0);
+  WriteValue(line2_dir, "manufacturer", kLine2Manufacturer);
+  WriteValue(line2_dir, "model_name", kLine2ModelName);
+
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE,
+            status.external_power);
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[0].role);
+  EXPECT_EQ(kUsbPdDrpType, status.ports[0].type);
+  EXPECT_EQ(kLine1Manufacturer, status.ports[0].manufacturer_id);
+  EXPECT_EQ(kLine1ModelName, status.ports[0].model_id);
+  EXPECT_FALSE(status.ports[0].active_by_default);
+  EXPECT_EQ(kLine2Id, status.ports[1].id);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[1].role);
+  EXPECT_EQ(kUsbCType, status.ports[1].type);
+  EXPECT_EQ("", status.external_power_source_id);
+  EXPECT_TRUE(status.supports_dual_role_devices);
+  EXPECT_EQ(3.0, status.line_power_max_current);
+  EXPECT_EQ(12.0, status.line_power_max_voltage);
+}
+
+TEST_F(
+    PowerSupplyTest,
+    HybridPowerBoostChargerWithTwoIncompatibleLinePowerSourcesDifferentOrder) {
+  // Delete the AC power supply and report two line power sources.
+  WriteDefaultValues(PowerSource::BATTERY);
+  brillo::DeletePathRecursively(ac_dir_);
+
+  const char kLine1Id[] = "line1";
+  const char kLine1Manufacturer[] = "587b";
+  const char kLine1ModelName[] = "3402";
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUsbType);
+  WriteValue(line1_dir, "usb_type",
+             "Unknown SDP DCP CDP [C] PD PD_DRP BrickID");
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kNotCharging);
+  WriteDoubleValue(line1_dir, "current_max", 5.0);
+  WriteDoubleValue(line1_dir, "voltage_max_design", 10.0);
+  WriteValue(line1_dir, "manufacturer", kLine1Manufacturer);
+  WriteValue(line1_dir, "model_name", kLine1ModelName);
+
+  const char kLine2Id[] = "line2";
+  const char kLine2Manufacturer[] = "04fe";
+  const char kLine2ModelName[] = "0256";
+  const base::FilePath line2_dir = temp_dir_.GetPath().Append(kLine2Id);
+  ASSERT_TRUE(base::CreateDirectory(line2_dir));
+  WriteValue(line2_dir, "type", kUsbPdDrpType);
+  WriteValue(line2_dir, "online", "1");
+  WriteValue(line2_dir, "status", kNotCharging);
+  WriteDoubleValue(line2_dir, "current_max", 3.0);
+  WriteDoubleValue(line2_dir, "voltage_max_design", 12.0);
+  WriteValue(battery_dir_, "status", kDischarging);
+  WriteValue(line2_dir, "manufacturer", kLine2Manufacturer);
+  WriteValue(line2_dir, "model_name", kLine2ModelName);
+
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE,
+            status.external_power);
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[0].role);
+  EXPECT_EQ(kUsbCType, status.ports[0].type);
+  EXPECT_EQ(kLine2Id, status.ports[1].id);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[1].role);
+  EXPECT_EQ(kUsbPdDrpType, status.ports[1].type);
+  EXPECT_EQ(kLine2Manufacturer, status.ports[1].manufacturer_id);
+  EXPECT_EQ(kLine2ModelName, status.ports[1].model_id);
+  EXPECT_FALSE(status.ports[1].active_by_default);
+  EXPECT_EQ("", status.external_power_source_id);
+  EXPECT_TRUE(status.supports_dual_role_devices);
+  EXPECT_EQ(3.0, status.line_power_max_current);
+  EXPECT_EQ(12.0, status.line_power_max_voltage);
+}
+
+TEST_F(PowerSupplyTest, HybridPowerBoostChargerWithCompatibleLinePowerSource) {
+  // Delete the AC power supply and report 1 line power source at 15V.
+  WriteDefaultValues(PowerSource::BATTERY);
+  brillo::DeletePathRecursively(ac_dir_);
+
+  const double kCurrentMax = 3.0;
+  const double kVoltageMax = 15.0;
+
+  const char kLine1Id[] = "line1";
+  const char kLine1Manufacturer[] = "04fe";
+  const char kLine1ModelName[] = "0256";
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUsbPdType);
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kCharging);
+  WriteDoubleValue(line1_dir, "current_max", kCurrentMax);
+  WriteDoubleValue(line1_dir, "voltage_max_design", kVoltageMax);
+  WriteDoubleValue(line1_dir, "voltage_now", 14.8);
+  WriteValue(line1_dir, "manufacturer", kLine1Manufacturer);
+  WriteValue(line1_dir, "model_name", kLine1ModelName);
+
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_TRUE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  ASSERT_EQ(1u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[0].role);
+  EXPECT_EQ(kUsbPdType, status.ports[0].type);
+  EXPECT_EQ("line1", status.external_power_source_id);
+  EXPECT_TRUE(status.supports_dual_role_devices);
+  EXPECT_EQ(kCurrentMax, status.line_power_max_current);
+  EXPECT_EQ(kVoltageMax, status.line_power_max_voltage);
 }
 
 }  // namespace power_manager::system

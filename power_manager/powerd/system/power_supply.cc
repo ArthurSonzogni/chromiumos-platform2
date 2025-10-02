@@ -499,8 +499,7 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
   std::string output;
   switch (status.external_power) {
     case PowerSupplyProperties_ExternalPower_AC:
-    case PowerSupplyProperties_ExternalPower_USB:
-    case PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE: {
+    case PowerSupplyProperties_ExternalPower_USB: {
       output = base::StringPrintf("On %s (%s",
                                   ExternalPowerToString(status.external_power),
                                   status.line_power_type.c_str());
@@ -521,12 +520,34 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
                                       status.line_power_max_current,
                                       status.line_power_max_voltage);
       }
+      if (status.min_charging_voltage > kEpsilon) {
+        details += (details.empty() ? "" : ", ") +
+                   base::StringPrintf("minimum charging at %.1fV",
+                                      status.min_charging_voltage);
+      }
       if (!details.empty()) {
         output += ", " + details;
       }
 
       output += ") with battery at ";
     } break;
+    case PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE: {
+      output = base::StringPrintf("On %s (",
+                                  ExternalPowerToString(status.external_power));
+      // Add details in the form "max 2.0A at 15.0V, minimum charging at 15.0V",
+      // omitting unavailable data.
+      std::string details;
+      if (status.line_power_max_current && status.line_power_max_voltage) {
+        details += base::StringPrintf("max %.1fA at %.1fV",
+                                      status.line_power_max_current,
+                                      status.line_power_max_voltage);
+      }
+      details += (details.empty() ? "" : ", ") +
+                 base::StringPrintf("minimum charging at %.1fV",
+                                    status.min_charging_voltage);
+      output += details + ") with battery at ";
+      break;
+    }
     case PowerSupplyProperties_ExternalPower_DISCONNECTED:
       output = "On battery at ";
       break;
@@ -763,6 +784,12 @@ void PowerSupply::Init(
 
   prefs_->GetDouble(kUsbMinAcWattsPref, &usb_min_ac_watts_);
   prefs_->GetDouble(kMinChargingVoltPref, &min_charging_voltage_);
+
+  // The Chrome device uses a Hybrid Power Boost charger.
+  if (min_charging_voltage_ > kEpsilon) {
+    LOG(INFO) << "Devices only charges if line power voltage is at least "
+              << min_charging_voltage_ << "V";
+  }
 
   int64_t shutdown_time_sec = 0;
   if (prefs_->GetInt64(kLowBatteryShutdownTimePref, &shutdown_time_sec)) {
@@ -1056,6 +1083,7 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
   std::sort(status.ports.begin(), status.ports.end(), PortComparator());
 
   status.preferred_minimum_external_power = usb_min_ac_watts_;
+  status.min_charging_voltage = min_charging_voltage_;
 
   // Even though we haven't successfully finished initializing the status yet,
   // save what we have so far so that if we bail out early due to a messed-up
@@ -1254,8 +1282,38 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
           << " model=" << port->model_id << " max_power=" << port->max_power
           << " active_by_default=" << port->active_by_default;
 
+  // The Chrome device uses a Hybrid Power Boost charger, and cannot charge if
+  // the incoming voltage is lower than min_charging_voltage_.
+  const bool is_hybrid_boost = min_charging_voltage_ > kEpsilon;
+  const bool is_low_voltage = max_voltage < min_charging_voltage_ - kEpsilon;
+  if (is_hybrid_boost && online && is_low_voltage &&
+      status->line_power_path.empty()) {
+    // If we've already seen another low-voltage line power, only update the
+    // status if this one supplies higher max voltage.
+    const bool seen_low_voltage_line_power =
+        status->external_power ==
+        PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE;
+    if (seen_low_voltage_line_power &&
+        max_voltage <= status->line_power_max_voltage) {
+      return;
+    }
+
+    status->external_power =
+        PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE;
+    status->line_power_max_voltage = ReadMaxVoltage(path);
+    status->has_line_power_max_voltage =
+        base::PathExists(path.Append("voltage_max")) ||
+        base::PathExists(path.Append("voltage_max_design"));
+    status->line_power_max_current = ReadScaledDouble(path, "current_max");
+    status->has_line_power_max_current =
+        base::PathExists(path.Append("current_max"));
+    return;
+  }
+
   // If this is a dual-role device, make sure that we're actually getting
-  // charged by it.
+  // charged by it. There are at least 2 scenarios that return early here:
+  // - This port role is sink.
+  // - EC has decided that another port is charging and this port is not.
   if (dual_role_port && line_status != kLinePowerStatusCharging) {
     return;
   }
