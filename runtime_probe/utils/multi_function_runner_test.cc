@@ -49,7 +49,8 @@ TEST_F(MultiFunctionRunnerTest, Success) {
     {
       "key3": "key3"
     }]
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   base::test::TestFuture<base::Value::List> future;
   runner.Run(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
@@ -68,7 +69,8 @@ TEST_F(MultiFunctionRunnerTest, ProbeEmptyResults) {
   EXPECT_TRUE(runner.IsValid());
   auto ans = base::JSONReader::Read(R"JSON(
     []
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   base::test::TestFuture<base::Value::List> future;
   runner.Run(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);

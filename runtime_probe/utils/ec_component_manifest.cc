@@ -292,7 +292,8 @@ std::optional<EcComponentManifest> EcComponentManifestReader::ReadFromFilePath(
     LOG(ERROR) << "Failed to read component manifest, path: " << manifest_path;
     return std::nullopt;
   }
-  auto manifest_value = base::JSONReader::ReadDict(manifest_json);
+  auto manifest_value = base::JSONReader::ReadDict(
+      manifest_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!manifest_value) {
     LOG(ERROR) << "Failed to parse component manifest, path: " << manifest_path;
     return std::nullopt;

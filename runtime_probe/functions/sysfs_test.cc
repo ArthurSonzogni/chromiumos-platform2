@@ -44,7 +44,8 @@ TEST(SysfsFunctionTest, TestRead) {
   auto json_val = base::JSONReader::Read(R"({
       "keys": ["1"],
       "optional_keys": ["2"]
-  })");
+  })",
+                                         base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   json_val->GetDict().Set("dir_path", temp_dir.GetPath().Append("D*").value());
   auto p = CreateProbeFunction<SysfsFunction>(json_val->GetDict());
   ASSERT_TRUE(p) << "Failed to create SysfsFunction: " << *json_val;
@@ -76,10 +77,12 @@ TEST(SysfsFunctionTest, TestRead) {
     }
   }
 
-  auto json_val_abs = base::JSONReader::Read(R"({
+  auto json_val_abs =
+      base::JSONReader::Read(R"({
       "keys": ["/1"],
       "optional_keys": ["2"]
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   json_val_abs->GetDict().Set("dir_path",
                               temp_dir.GetPath().Append("D*").value());

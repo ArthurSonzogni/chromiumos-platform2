@@ -87,7 +87,8 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfs) {
       "mmc_manfid": "0x000002",
       "type": "MMC_ASSEMBLY"
     }
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 
@@ -124,7 +125,8 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfsPciHost) {
       "mmc_manfid": "0x000002",
       "type": "MMC_ASSEMBLY"
     }
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   // We don't want to check the actual value of path.
   EXPECT_TRUE(result->GetDict().Remove("mmc_host_path"));
   EXPECT_EQ(result, ans);
@@ -204,7 +206,8 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithAsciiStringFwVersion) {
     {
       "storage_fw_version": "4142434445464748 (ABCDEFGH)"
     }
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 
@@ -230,7 +233,8 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithHexValueFwVersion) {
     {
       "storage_fw_version": "0300000000000000 (3)"
     }
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 
@@ -258,7 +262,8 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolInvalidFwVersionHexValue) {
   // probed.
   auto ans = base::JSONReader::Read(R"JSON(
     {}
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 
@@ -279,7 +284,8 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolInvalidFwVersionByteCount) {
   // probed.
   auto ans = base::JSONReader::Read(R"JSON(
     {}
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 
@@ -297,7 +303,8 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolDBusCallFailed) {
   // probed.
   auto ans = base::JSONReader::Read(R"JSON(
     {}
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 

@@ -61,7 +61,8 @@ TEST_F(UfsStorageFunctionTest, ProbeFromSysfs) {
       "ufs_model": "XXX-256G",
       "ufs_vendor": "ABC"
     }
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 

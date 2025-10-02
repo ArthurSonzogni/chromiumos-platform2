@@ -136,7 +136,8 @@ std::optional<base::Value> PrivilegedProbeFunction::InvokeHelperToJSON() const {
     return std::nullopt;
   }
 
-  auto json_output = base::JSONReader::Read(raw_output);
+  auto json_output =
+      base::JSONReader::Read(raw_output, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!json_output) {
     LOG(ERROR) << "Failed to parse output into json format.";
     VLOG(3) << "InvokeHelper raw output:\n" << raw_output;

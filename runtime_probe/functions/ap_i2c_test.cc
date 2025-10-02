@@ -23,13 +23,15 @@ using ::testing::Return;
 class ApI2cFunctionTest : public BaseFunctionTest {};
 
 TEST_F(ApI2cFunctionTest, ProbeSucceed) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 1,
       "chip_addr": 2,
       "data_addr": 3
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   SetFile("/dev/i2c-1", "");
 
   auto probe_function =
@@ -56,13 +58,15 @@ TEST_F(ApI2cFunctionTest, ProbeSucceed) {
 
 TEST_F(ApI2cFunctionTest, InvalidArgument) {
   // i2c_bus should be an integer greater than 0.
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": -1,
       "chip_addr": 2,
       "data_addr": 3
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto probe_function =
       CreateProbeFunction<ApI2cFunction>(probe_statement->GetDict());
@@ -74,13 +78,15 @@ TEST_F(ApI2cFunctionTest, InvalidArgument) {
 }
 
 TEST_F(ApI2cFunctionTest, OpenI2cFileFailed) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 1,
       "chip_addr": 2,
       "data_addr": 3
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto probe_function =
       CreateProbeFunction<ApI2cFunction>(probe_statement->GetDict());
@@ -93,13 +99,15 @@ TEST_F(ApI2cFunctionTest, OpenI2cFileFailed) {
 }
 
 TEST_F(ApI2cFunctionTest, SetChipAddrFailed) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 1,
       "chip_addr": 2,
       "data_addr": 3
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   SetFile("/dev/i2c-1", "");
 
   auto probe_function =
@@ -115,13 +123,15 @@ TEST_F(ApI2cFunctionTest, SetChipAddrFailed) {
 }
 
 TEST_F(ApI2cFunctionTest, ReadI2cDataFailed) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 1,
       "chip_addr": 2,
       "data_addr": 3
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   SetFile("/dev/i2c-1", "");
 
   auto probe_function =

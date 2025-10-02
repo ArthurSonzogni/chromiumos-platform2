@@ -89,29 +89,35 @@ class ComponentCategoryTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(ComponentCategoryTest, FromNonDictionaryValue) {
-  auto non_dict_value = base::JSONReader::Read("[]");
+  auto non_dict_value =
+      base::JSONReader::Read("[]", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto category = ComponentCategory::FromValue("category_1", *non_dict_value);
   EXPECT_EQ(category, nullptr);
 }
 
 TEST_F(ComponentCategoryTest, Eval) {
-  auto dict_value = base::JSONReader::Read("{}");
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto category = ComponentCategory::FromValue("category_1", *dict_value);
   EXPECT_TRUE(category);
 
-  const auto eval_result_1 = base::JSONReader::Read(R"([
+  const auto eval_result_1 =
+      base::JSONReader::Read(R"([
     {
       "field_1": "value_1"
     },
     {
       "field_1": "value_2"
     }
-  ])");
-  const auto eval_result_2 = base::JSONReader::Read(R"([
+  ])",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  const auto eval_result_2 =
+      base::JSONReader::Read(R"([
     {
       "field_1": "value_3"
     }
-  ])");
+  ])",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   SetComponent(*category, "component_1", eval_result_1->GetList());
   SetComponent(*category, "component_2", eval_result_2->GetList());
 
@@ -134,28 +140,34 @@ TEST_F(ComponentCategoryTest, Eval) {
         "field_1": "value_3"
       }
     }
-  ])");
+  ])",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   base::test::TestFuture<base::Value::List> future;
   category->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ComponentCategoryTest, EvalWithInformation) {
-  auto dict_value = base::JSONReader::Read("{}");
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto category = ComponentCategory::FromValue("category_1", *dict_value);
   EXPECT_TRUE(category);
 
-  const auto eval_result_1 = base::JSONReader::Read(R"([
+  const auto eval_result_1 =
+      base::JSONReader::Read(R"([
     {
       "field_1": "value_1"
     },
     {
       "field_1": "value_2"
     }
-  ])");
-  const auto info = base::JSONReader::Read(R"({
+  ])",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  const auto info =
+      base::JSONReader::Read(R"({
     "info_field": "info_value"
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   SetComponent(*category, "component_1", eval_result_1->GetList(), info);
 
   auto ans = base::JSONReader::Read(R"([
@@ -177,30 +189,36 @@ TEST_F(ComponentCategoryTest, EvalWithInformation) {
         "info_field": "info_value"
       }
     }
-  ])");
+  ])",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   base::test::TestFuture<base::Value::List> future;
   category->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ComponentCategoryTest, EvalWithPosition) {
-  auto dict_value = base::JSONReader::Read("{}");
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto category = ComponentCategory::FromValue("category_1", *dict_value);
   EXPECT_TRUE(category);
 
-  const auto eval_result_1 = base::JSONReader::Read(R"([
+  const auto eval_result_1 =
+      base::JSONReader::Read(R"([
     {
       "field_1": "value_1"
     },
     {
       "field_1": "value_2"
     }
-  ])");
-  const auto eval_result_2 = base::JSONReader::Read(R"([
+  ])",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  const auto eval_result_2 =
+      base::JSONReader::Read(R"([
     {
       "field_1": "value_3"
     }
-  ])");
+  ])",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   SetComponent(*category, "component_1", eval_result_1->GetList(), std::nullopt,
                "123");
   SetComponent(*category, "component_2", eval_result_2->GetList(), std::nullopt,
@@ -228,27 +246,33 @@ TEST_F(ComponentCategoryTest, EvalWithPosition) {
       },
       "position": "456"
     }
-  ])");
+  ])",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   base::test::TestFuture<base::Value::List> future;
   category->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ComponentCategoryTest, GetComponentNames) {
-  auto dict_value = base::JSONReader::Read("{}");
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto category = ComponentCategory::FromValue("category_1", *dict_value);
   EXPECT_TRUE(category);
 
-  const auto eval_result_1 = base::JSONReader::Read(R"([
+  const auto eval_result_1 =
+      base::JSONReader::Read(R"([
     {
       "field_1": "value_1"
     }
-  ])");
-  const auto eval_result_2 = base::JSONReader::Read(R"([
+  ])",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  const auto eval_result_2 =
+      base::JSONReader::Read(R"([
     {
       "field_1": "value_2"
     }
-  ])");
+  ])",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   SetComponent(*category, "component_1", eval_result_1->GetList());
   SetComponent(*category, "component_2", eval_result_2->GetList());
 

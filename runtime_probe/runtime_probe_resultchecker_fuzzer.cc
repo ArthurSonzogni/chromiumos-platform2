@@ -59,12 +59,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     "hex": ")" + JsonSafe(str[3]) + R"("
   })";
 
-  auto expect = base::JSONReader::Read(expect_string);
+  auto expect = base::JSONReader::Read(expect_string,
+                                       base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!expect.has_value()) {
     return 0;
   }
 
-  auto probe_result = base::JSONReader::Read(probe_result_string);
+  auto probe_result = base::JSONReader::Read(
+      probe_result_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!probe_result.has_value()) {
     return 0;
   }

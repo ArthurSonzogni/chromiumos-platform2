@@ -47,13 +47,15 @@ class ProbeConfigTest : public BaseFileTest {
   void SetProbeConfigCategory(ProbeConfig& probe_config,
                               const std::string& category_name,
                               const std::string& category_eval_result) {
-    auto eval_result = base::JSONReader::Read(category_eval_result);
+    auto eval_result = base::JSONReader::Read(
+        category_eval_result, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     auto category = std::make_unique<NiceMock<MockComponentCategory>>();
     ON_CALL(*category, Eval)
         .WillByDefault(
             [&category_eval_result](
                 base::OnceCallback<void(base::Value::List)> callback) {
-              auto eval_result = base::JSONReader::Read(category_eval_result);
+              auto eval_result = base::JSONReader::Read(
+                  category_eval_result, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
               std::move(callback).Run(std::move(eval_result->GetList()));
             });
     probe_config.SetCategoryForTesting(category_name, std::move(category));
@@ -81,7 +83,8 @@ TEST_F(ProbeConfigTest, LoadConfig) {
       }
     }
   })";
-  auto dict_value = base::JSONReader::Read(config_content);
+  auto dict_value = base::JSONReader::Read(
+      config_content, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   EXPECT_TRUE(dict_value.has_value());
 
@@ -166,7 +169,8 @@ TEST_F(ProbeConfigTest, FromFileWithSymbolicLink) {
 }
 
 TEST_F(ProbeConfigTest, Eval) {
-  auto dict_value = base::JSONReader::Read("{}");
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_config = ProbeConfig::FromValue(*dict_value);
   EXPECT_TRUE(probe_config);
 
@@ -189,19 +193,21 @@ TEST_F(ProbeConfigTest, Eval) {
   SetProbeConfigCategory(*probe_config, "category_1", eval_content_1);
   SetProbeConfigCategory(*probe_config, "category_2", eval_content_2);
 
-  auto ans = base::JSONReader::Read(base::StringPrintf(R"({
+  auto ans = base::JSONReader::Read(
+      base::StringPrintf(R"({
     "category_1": %s,
     "category_2": %s
   })",
-                                                       eval_content_1.c_str(),
-                                                       eval_content_2.c_str()));
+                         eval_content_1.c_str(), eval_content_2.c_str()),
+      base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   base::test::TestFuture<base::Value::Dict> future;
   probe_config->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ProbeConfigTest, EvalWithDefinedCategory) {
-  auto dict_value = base::JSONReader::Read("{}");
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_config = ProbeConfig::FromValue(*dict_value);
   EXPECT_TRUE(probe_config);
 
@@ -229,14 +235,16 @@ TEST_F(ProbeConfigTest, EvalWithDefinedCategory) {
   auto ans = base::JSONReader::Read(base::StringPrintf(R"({
     "category_1": %s
   })",
-                                                       eval_content_1.c_str()));
+                                                       eval_content_1.c_str()),
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   base::test::TestFuture<base::Value::Dict> future;
   probe_config->Eval(categories, future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ProbeConfigTest, EvalWithUndefinedCategory) {
-  auto dict_value = base::JSONReader::Read("{}");
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_config = ProbeConfig::FromValue(*dict_value);
   EXPECT_TRUE(probe_config);
 
@@ -255,14 +263,16 @@ TEST_F(ProbeConfigTest, EvalWithUndefinedCategory) {
   auto ans = base::JSONReader::Read(base::StringPrintf(R"({
     "category_1": %s
   })",
-                                                       eval_content_1.c_str()));
+                                                       eval_content_1.c_str()),
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   base::test::TestFuture<base::Value::Dict> future;
   probe_config->Eval(categories, future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ProbeConfigTest, GetComponentCategory) {
-  auto dict_value = base::JSONReader::Read("{}");
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_config = ProbeConfig::FromValue(*dict_value);
   EXPECT_TRUE(probe_config);
 
@@ -276,7 +286,8 @@ TEST_F(ProbeConfigTest, GetComponentCategory) {
   ])";
   SetProbeConfigCategory(*probe_config, "category_1", eval_content_1);
 
-  auto ans = base::JSONReader::Read(eval_content_1);
+  auto ans = base::JSONReader::Read(eval_content_1,
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto category = probe_config->GetComponentCategory("category_1");
   EXPECT_NE(category, nullptr);
   base::test::TestFuture<base::Value::List> future;
@@ -285,7 +296,8 @@ TEST_F(ProbeConfigTest, GetComponentCategory) {
 }
 
 TEST_F(ProbeConfigTest, GetComponentCategoryWithUndefinedCategory) {
-  auto dict_value = base::JSONReader::Read("{}");
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_config = ProbeConfig::FromValue(*dict_value);
   EXPECT_TRUE(probe_config);
 

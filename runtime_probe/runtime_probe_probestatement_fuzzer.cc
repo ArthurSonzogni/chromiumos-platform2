@@ -106,7 +106,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       return 0;
   }
 
-  auto eval = base::JSONReader::Read(eval_str);
+  auto eval =
+      base::JSONReader::Read(eval_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!eval.has_value()) {
     return 0;
   }

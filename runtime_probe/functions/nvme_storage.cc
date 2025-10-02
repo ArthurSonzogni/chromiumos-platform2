@@ -67,7 +67,8 @@ std::optional<base::Value> GetStorageToolData() {
     return std::nullopt;
   }
 
-  auto value = base::JSONReader::Read(output);
+  auto value =
+      base::JSONReader::Read(output, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!value) {
     LOG(ERROR) << "Debugd::Nvme failed to parse output as json:\n" << output;
     return std::nullopt;

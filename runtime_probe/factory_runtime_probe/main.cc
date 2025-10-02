@@ -55,7 +55,8 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  std::optional<base::Value> value = base::JSONReader::Read(args[0]);
+  std::optional<base::Value> value =
+      base::JSONReader::Read(args[0], base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!value) {
     LOG(ERROR) << "Failed to parse probe config as json.";
     return EXIT_FAILURE;

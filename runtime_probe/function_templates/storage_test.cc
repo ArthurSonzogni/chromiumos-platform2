@@ -59,20 +59,28 @@ TEST_F(StorageFunctionTest, ProbeStorage) {
   SetFile({kStorageDirPath, "blk2/size"}, "200");
 
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
-  probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
+  probe_function->sysfs_map[blk1_path] =
+      *base::JSONReader::Read(R"({
       "field_1": "value_1"
-  })");
-  probe_function->tool_map[blk1_path] = *base::JSONReader::Read(R"({
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  probe_function->tool_map[blk1_path] =
+      *base::JSONReader::Read(R"({
       "field_2": "value_2"
-  })");
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   const auto blk2_path = GetPathUnderRoot({kStorageDirPath, "blk2"});
-  probe_function->sysfs_map[blk2_path] = *base::JSONReader::Read(R"({
+  probe_function->sysfs_map[blk2_path] =
+      *base::JSONReader::Read(R"({
       "field_3": "value_3",
       "field_4": "value_4"
-  })");
-  probe_function->tool_map[blk2_path] = *base::JSONReader::Read(R"({
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  probe_function->tool_map[blk2_path] =
+      *base::JSONReader::Read(R"({
       "field_5": "value_5"
-  })");
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(base::StringPrintf(
@@ -108,9 +116,11 @@ TEST_F(StorageFunctionTest, RemovableStorage) {
   SetFile({kStorageDirPath, "blk1/size"}, "100");
 
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
-  probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
+  probe_function->sysfs_map[blk1_path] =
+      *base::JSONReader::Read(R"({
       "field_1": "value_1"
-  })");
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto result = EvalProbeFunction(probe_function.get());
   // Removable storage device will not be probed.
@@ -127,9 +137,11 @@ TEST_F(StorageFunctionTest, NoRemovableProperty) {
   SetFile({kStorageDirPath, "blk1/size"}, "100");
 
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
-  probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
+  probe_function->sysfs_map[blk1_path] =
+      *base::JSONReader::Read(R"({
       "field_1": "value_1"
-  })");
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto result = EvalProbeFunction(probe_function.get());
   // Storage devices without removable property will not be probed.
@@ -146,9 +158,11 @@ TEST_F(StorageFunctionTest, LoopbackDevice) {
   SetFile({kStorageDirPath, "loop0/size"}, "100");
 
   const auto loop0_path = GetPathUnderRoot({kStorageDirPath, "loop0"});
-  probe_function->sysfs_map[loop0_path] = *base::JSONReader::Read(R"({
+  probe_function->sysfs_map[loop0_path] =
+      *base::JSONReader::Read(R"({
       "field_1": "value_1"
-  })");
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto result = EvalProbeFunction(probe_function.get());
   // Loopback device will not be probed.
@@ -165,9 +179,11 @@ TEST_F(StorageFunctionTest, DmVerityDevice) {
   SetFile({kStorageDirPath, "dm-0/size"}, "100");
 
   const auto dm0_path = GetPathUnderRoot({kStorageDirPath, "dm-0"});
-  probe_function->sysfs_map[dm0_path] = *base::JSONReader::Read(R"({
+  probe_function->sysfs_map[dm0_path] =
+      *base::JSONReader::Read(R"({
       "field_1": "value_1"
-  })");
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto result = EvalProbeFunction(probe_function.get());
   // dm-verity device will not be probed.
@@ -187,9 +203,11 @@ TEST_F(StorageFunctionTest, NoSysfsResult) {
 
   // No sysfs probe result for blk2.
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
-  probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
+  probe_function->sysfs_map[blk1_path] =
+      *base::JSONReader::Read(R"({
       "field_1": "value_1"
-  })");
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto result = EvalProbeFunction(probe_function.get());
   // Only contain results with sysfs probe result.
@@ -215,9 +233,11 @@ TEST_F(StorageFunctionTest, NoSectorCount) {
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
 
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
-  probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
+  probe_function->sysfs_map[blk1_path] =
+      *base::JSONReader::Read(R"({
       "field_1": "value_1"
-  })");
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto result = EvalProbeFunction(probe_function.get());
   // For results without sector count, get -1 for sectors and size.
@@ -244,9 +264,11 @@ TEST_F(StorageFunctionTest, InvalidSectorCount) {
   SetFile({kStorageDirPath, "blk1/size"}, "invalid format");
 
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
-  probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
+  probe_function->sysfs_map[blk1_path] =
+      *base::JSONReader::Read(R"({
       "field_1": "value_1"
-  })");
+  })",
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto result = EvalProbeFunction(probe_function.get());
   // For results with invalid sector count, get -1 for sectors and size.

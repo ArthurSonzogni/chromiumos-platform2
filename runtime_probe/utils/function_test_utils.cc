@@ -23,7 +23,7 @@ BaseFunctionTest::~BaseFunctionTest() = default;
 // static
 base::Value::List BaseFunctionTest::CreateProbeResultFromJson(
     const std::string& str) {
-  auto res = base::JSONReader::Read(str);
+  auto res = base::JSONReader::Read(str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   CHECK(res.has_value() && res->is_list());
   return std::move(res->GetList());
 }
@@ -43,7 +43,8 @@ void BaseFunctionTest::ExpectUnorderedListEqual(const base::Value::List& result,
 }
 
 FakeProbeFunction::FakeProbeFunction(const std::string& probe_result) {
-  auto res = base::JSONReader::Read(probe_result);
+  auto res = base::JSONReader::Read(probe_result,
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   fake_result_ = std::move(res->GetList());
 }
 

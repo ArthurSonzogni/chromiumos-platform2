@@ -109,11 +109,13 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
 }
 
 TEST(SequenceFunctionTest, TestParserEmptyList) {
-  auto json_object = base::JSONReader::Read(R"({
+  auto json_object =
+      base::JSONReader::Read(R"({
         "sequence": {
           "functions": []
         }
-      })");
+      })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto p = ProbeFunction::FromValue(*json_object);
   ASSERT_NE(p, nullptr) << "Failed to load function: " << *json_object;
@@ -125,7 +127,8 @@ TEST(SequenceFunctionTest, TestParserEmptyList) {
 }
 
 TEST(SequenceFunctionTest, TestParseFunctions) {
-  auto json_object = base::JSONReader::Read(R"({
+  auto json_object =
+      base::JSONReader::Read(R"({
         "sequence": {
           "functions": [
             {
@@ -142,7 +145,8 @@ TEST(SequenceFunctionTest, TestParseFunctions) {
             }
           ]
         }
-      })");
+      })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto p = ProbeFunction::FromValue(*json_object);
   ASSERT_NE(p, nullptr) << "Failed to load function: " << *json_object;

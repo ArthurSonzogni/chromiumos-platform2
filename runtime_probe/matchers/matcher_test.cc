@@ -17,7 +17,7 @@ namespace runtime_probe::matchers {
 namespace {
 
 base::Value::Dict MakeDictValue(std::string_view str) {
-  auto res = base::JSONReader::Read(str);
+  auto res = base::JSONReader::Read(str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   CHECK(res.has_value() && res->is_dict());
   return std::move(res->GetDict());
 }

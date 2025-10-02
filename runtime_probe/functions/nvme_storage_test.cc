@@ -71,7 +71,8 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromSysfs) {
       "pci_class": "0x000003",
       "type": "NVMe"
     }
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 
@@ -151,7 +152,8 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromStorageTool) {
       "storage_fw_version": "67890",
       "nvme_model": "BBB NVMe 256GB"
     }
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 
@@ -180,7 +182,8 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolNoFwVersion) {
     {
       "nvme_model": "AAA NVMe 256GB"
     }
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 
@@ -209,7 +212,8 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolNoModelNumber) {
     {
       "storage_fw_version": "12345"
     }
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 

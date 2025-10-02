@@ -266,7 +266,8 @@ class EcComponentFunctionTestWithSimilarCommands
 
 TEST_F(EcComponentFunctionTestWithSimilarCommands,
        ProbeWithCommandResultsReused) {
-  auto arguments = base::JSONReader::Read("{\"type\": \"base_sensor\"}");
+  auto arguments = base::JSONReader::Read("{\"type\": \"base_sensor\"}",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -312,7 +313,8 @@ class EcComponentFunctionTestWithIsh : public EcComponentFunctionTestNoExpect {
 };
 
 TEST_F(EcComponentFunctionTest, ProbeWithInvalidManifestFailed) {
-  auto arguments = base::JSONReader::Read("{}");
+  auto arguments =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
@@ -325,7 +327,8 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeWithTypeSucceed) {
       "type": "bc12",
       "name": null
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -355,7 +358,8 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeWithNameSucceed) {
     {
       "name": "bc12_1"
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -380,7 +384,8 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeWithTypeAndNameSucceed) {
       "type": "bc12",
       "name": "bc12_1"
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -405,7 +410,8 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeI2cFailed) {
       "type": "bc12",
       "name": "bc12_1"
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -427,7 +433,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatch) {
       "type": "base_sensor",
       "name": "base_sensor_1"
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
   // base_sensor_1 without a mask
@@ -463,7 +470,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cMultiBytesValueMatch) {
       "type": "base_sensor",
       "name": "base_sensor_3"
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   for (const auto& match_value_for_reg4 : kMatchValuesForReg4) {
     auto probe_function =
@@ -498,7 +506,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
       "type": "base_sensor",
       "name": "base_sensor_1"
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -525,7 +534,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueLengthMismatch) {
       "type": "base_sensor",
       "name": "base_sensor_1"
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -552,7 +562,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOnlyOneValueMismatch) {
       "type": "base_sensor",
       "name": "base_sensor_1"
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -576,7 +587,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOptionalValue) {
       "type": "base_sensor",
       "name": "base_sensor_2"
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -603,7 +615,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cWithWriteData) {
       "type": "base_sensor",
       "name": "base_sensor_4"
     }
-  )JSON");
+  )JSON",
+                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -625,7 +638,8 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cWithWriteData) {
 }
 
 TEST_F(EcComponentFunctionTestWithIsh, ProbeWithIshComponentsSucceed) {
-  auto arguments = base::JSONReader::Read("{}");
+  auto arguments =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
@@ -652,7 +666,8 @@ TEST_F(EcComponentFunctionTestWithIsh, ProbeWithIshComponentsSucceed) {
 
 TEST_F(EcComponentFunctionTestWithIsh, ProbeWithoutIshDevFailed) {
   UnsetPath(kIshDevPath);
-  auto arguments = base::JSONReader::Read("{}");
+  auto arguments =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 

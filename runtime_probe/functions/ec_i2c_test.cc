@@ -65,13 +65,15 @@ class EcI2cFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(EcI2cFunctionTest, ProbeSucceed) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 0,
       "chip_addr": 0,
       "data_addr": 0
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict());
 
@@ -94,14 +96,16 @@ TEST_F(EcI2cFunctionTest, ProbeSucceed) {
 }
 
 TEST_F(EcI2cFunctionTest, Probe16bitDataSucceed) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 0,
       "chip_addr": 0,
       "data_addr": 0,
       "size": 16
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict());
 
@@ -124,14 +128,16 @@ TEST_F(EcI2cFunctionTest, Probe16bitDataSucceed) {
 }
 
 TEST_F(EcI2cFunctionTest, Probe32bitDataSucceed) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 0,
       "chip_addr": 0,
       "data_addr": 0,
       "size": 32
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict());
 
@@ -154,14 +160,16 @@ TEST_F(EcI2cFunctionTest, Probe32bitDataSucceed) {
 }
 
 TEST_F(EcI2cFunctionTest, Probe32bitLargeDataSucceed) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 0,
       "chip_addr": 0,
       "data_addr": 0,
       "size": 32
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict());
 
@@ -184,26 +192,30 @@ TEST_F(EcI2cFunctionTest, Probe32bitLargeDataSucceed) {
 }
 
 TEST_F(EcI2cFunctionTest, InvalidSize) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 0,
       "chip_addr": 0,
       "data_addr": 0,
       "size": 7
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_FALSE(
       CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict()));
 }
 
 TEST_F(EcI2cFunctionTest, EcFailed) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 0,
       "chip_addr": 0,
       "data_addr": 0
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict());
 
@@ -223,13 +235,15 @@ TEST_F(EcI2cFunctionTest, EcFailed) {
 }
 
 TEST_F(EcI2cFunctionTest, EcI2cFailed) {
-  auto probe_statement = base::JSONReader::Read(R"JSON(
+  auto probe_statement =
+      base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 0,
       "chip_addr": 0,
       "data_addr": 0
     }
-  )JSON");
+  )JSON",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_function =
       CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict());
 

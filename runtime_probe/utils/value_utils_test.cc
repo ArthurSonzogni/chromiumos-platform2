@@ -14,7 +14,8 @@
 namespace {
 
 base::Value LoadValueFromJSON(const char* raw_json_content) {
-  auto load_result = base::JSONReader::Read(raw_json_content);
+  auto load_result = base::JSONReader::Read(
+      raw_json_content, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_TRUE(load_result.has_value());
   return std::move(load_result.value());
 }

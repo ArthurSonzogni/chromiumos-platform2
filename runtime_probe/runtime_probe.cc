@@ -55,7 +55,8 @@ int RunAsHelper() {
     return kFailedToParseProbeStatementFromArg;
   }
 
-  auto val = base::JSONReader::Read(args[0]);
+  auto val =
+      base::JSONReader::Read(args[0], base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!val || !val->is_dict()) {
     LOG(ERROR) << "Failed to parse the probe statement to JSON";
     return kFailedToParseProbeStatementFromArg;

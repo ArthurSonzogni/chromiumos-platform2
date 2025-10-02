@@ -26,18 +26,21 @@ class ProbeStatementTest : public testing::Test {
 };
 
 TEST_F(ProbeStatementTest, FromValue) {
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     }
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
   EXPECT_NE(probe_statement, nullptr);
 }
 
 TEST_F(ProbeStatementTest, FromValueWithNonDictValue) {
-  auto non_dict_value = base::JSONReader::Read("[]");
+  auto non_dict_value =
+      base::JSONReader::Read("[]", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto probe_statement =
       ProbeStatement::FromValue("component", *non_dict_value);
@@ -46,7 +49,8 @@ TEST_F(ProbeStatementTest, FromValueWithNonDictValue) {
 
 TEST_F(ProbeStatementTest, FromValueWithoutEval) {
   // No required field "eval".
-  auto dict_value = base::JSONReader::Read("{}");
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
   EXPECT_EQ(probe_statement, nullptr);
@@ -54,11 +58,13 @@ TEST_F(ProbeStatementTest, FromValueWithoutEval) {
 
 TEST_F(ProbeStatementTest, FromValueWithInvalidFunction) {
   // The probe function is not defined.
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "invalid_function": {}
     }
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
   EXPECT_EQ(probe_statement, nullptr);
@@ -66,11 +72,13 @@ TEST_F(ProbeStatementTest, FromValueWithInvalidFunction) {
 
 TEST_F(ProbeStatementTest, Eval) {
   // Set a valid probe function and mock it later.
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     }
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
   probe_statement->SetProbeFunctionForTesting(
       std::make_unique<FakeProbeFunction>(R"([
@@ -78,12 +86,14 @@ TEST_F(ProbeStatementTest, Eval) {
             "field": "value"
           }
         ])"));
-  auto ans = std::move(base::JSONReader::Read(R"([
+  auto ans =
+      std::move(base::JSONReader::Read(R"([
           {
             "field": "value"
           }
-        ])")
-                           ->GetList());
+        ])",
+                                       base::JSON_PARSE_CHROMIUM_EXTENSIONS)
+                    ->GetList());
 
   base::test::TestFuture<ProbeFunction::DataType> future;
   probe_statement->Eval(future.GetCallback());
@@ -92,12 +102,14 @@ TEST_F(ProbeStatementTest, Eval) {
 
 TEST_F(ProbeStatementTest, EvalWithFilteredKeys) {
   // Set a valid probe function and mock it later.
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     },
     "keys": ["field_1", "field_2"]
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
   probe_statement->SetProbeFunctionForTesting(
       std::make_unique<FakeProbeFunction>(R"([
@@ -109,13 +121,15 @@ TEST_F(ProbeStatementTest, EvalWithFilteredKeys) {
       ])"));
 
   // Should only get fields defined in "keys".
-  auto ans = std::move(base::JSONReader::Read(R"([
+  auto ans =
+      std::move(base::JSONReader::Read(R"([
         {
           "field_1": "value_1",
           "field_2": "value_2"
         }
-      ])")
-                           ->GetList());
+      ])",
+                                       base::JSON_PARSE_CHROMIUM_EXTENSIONS)
+                    ->GetList());
   base::test::TestFuture<ProbeFunction::DataType> future;
   probe_statement->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
@@ -123,7 +137,8 @@ TEST_F(ProbeStatementTest, EvalWithFilteredKeys) {
 
 TEST_F(ProbeStatementTest, EvalWithExpectValue) {
   // Set a valid probe function and mock it later.
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     },
@@ -132,7 +147,8 @@ TEST_F(ProbeStatementTest, EvalWithExpectValue) {
         "field_2": [true, "str"]
       }
     ]
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
   probe_statement->SetProbeFunctionForTesting(
       std::make_unique<FakeProbeFunction>(R"([
@@ -145,31 +161,36 @@ TEST_F(ProbeStatementTest, EvalWithExpectValue) {
       ])"));
 
   // Should only get results that pass the check.
-  auto ans = std::move(base::JSONReader::Read(R"([
+  auto ans =
+      std::move(base::JSONReader::Read(R"([
         {
           "field_2": "value_2"
         }
-      ])")
-                           ->GetList());
+      ])",
+                                       base::JSON_PARSE_CHROMIUM_EXTENSIONS)
+                    ->GetList());
   base::test::TestFuture<ProbeFunction::DataType> future;
   probe_statement->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ProbeStatementTest, InvalidExpectValue) {
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     },
     "expect": "wrong_type"
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
   EXPECT_FALSE(probe_statement);
 }
 
 TEST_F(ProbeStatementTest, EvalWithMatcher) {
   // Set a valid probe function and mock it later.
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     },
@@ -177,7 +198,8 @@ TEST_F(ProbeStatementTest, EvalWithMatcher) {
       "operator": "STRING_EQUAL",
       "operand": ["field_2", "value_2"]
     }
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
   probe_statement->SetProbeFunctionForTesting(
       std::make_unique<FakeProbeFunction>(R"([
@@ -193,30 +215,35 @@ TEST_F(ProbeStatementTest, EvalWithMatcher) {
       ])"));
 
   // Should only get results that pass the check.
-  auto ans = std::move(base::JSONReader::Read(R"([
+  auto ans =
+      std::move(base::JSONReader::Read(R"([
         {
           "field_2": "value_2"
         }
-      ])")
-                           ->GetList());
+      ])",
+                                       base::JSON_PARSE_CHROMIUM_EXTENSIONS)
+                    ->GetList());
   base::test::TestFuture<ProbeFunction::DataType> future;
   probe_statement->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ProbeStatementTest, InvalidMatcherValue) {
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     },
     "matcher": "wrong_type"
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
   EXPECT_FALSE(probe_statement);
 }
 
 TEST_F(ProbeStatementTest, CanOnlyHaveEitherMatcherOrExpect) {
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     },
@@ -229,36 +256,42 @@ TEST_F(ProbeStatementTest, CanOnlyHaveEitherMatcherOrExpect) {
       "operator": "STRING_EQUAL",
       "operand": ["field_2", "value_2"]
     }
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
   EXPECT_FALSE(probe_statement);
 }
 
 TEST_F(ProbeStatementTest, GetInformation) {
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     },
     "information": {
       "field": "value"
     }
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
 
   auto ans = base::JSONReader::Read(R"({
     "field": "value"
-  })");
+  })",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto res = probe_statement->GetInformation();
   EXPECT_EQ(res, ans);
 }
 
 TEST_F(ProbeStatementTest, GetInformationWithoutInformation) {
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     }
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
 
@@ -267,12 +300,14 @@ TEST_F(ProbeStatementTest, GetInformationWithoutInformation) {
 }
 
 TEST_F(ProbeStatementTest, GetPosition) {
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     },
     "position": "123"
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
 
@@ -281,11 +316,13 @@ TEST_F(ProbeStatementTest, GetPosition) {
 }
 
 TEST_F(ProbeStatementTest, GetPositionWithoutPosition) {
-  auto dict_value = base::JSONReader::Read(R"({
+  auto dict_value =
+      base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
     }
-  })");
+  })",
+                             base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
 

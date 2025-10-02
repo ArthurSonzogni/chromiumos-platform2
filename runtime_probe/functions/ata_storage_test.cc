@@ -59,7 +59,8 @@ TEST_F(AtaStorageFunctionTest, ProbeFromSysfs) {
       "ata_vendor": "ATA",
       "type": "ATA"
     }
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 
@@ -110,7 +111,8 @@ TEST_F(AtaStorageFunctionTest, ProbeFromStorageTool) {
   // always empty.
   auto ans = base::JSONReader::Read(R"JSON(
     {}
-  )JSON");
+  )JSON",
+                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   EXPECT_EQ(result, ans);
 }
 

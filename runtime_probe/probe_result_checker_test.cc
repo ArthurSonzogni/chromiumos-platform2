@@ -40,7 +40,8 @@ TEST(ProbeResultCheckerDictTest, TestFromValue) {
     "double_field": [true, "double"],
     "hex_field": [false, "hex"]
   })";
-  auto dict_value = base::JSONReader::Read(json_string);
+  auto dict_value =
+      base::JSONReader::Read(json_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(dict_value.has_value());
   ASSERT_TRUE(dict_value->is_dict());
 
@@ -85,11 +86,13 @@ TEST(ProbeResultCheckerDictTest, TestApplySuccess) {
     "double": "1e2"
   })";
 
-  auto expect = base::JSONReader::Read(expect_string);
+  auto expect = base::JSONReader::Read(expect_string,
+                                       base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(expect.has_value());
   ASSERT_TRUE(expect->is_dict());
 
-  auto probe_result = base::JSONReader::Read(probe_result_string);
+  auto probe_result = base::JSONReader::Read(
+      probe_result_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(probe_result.has_value());
   ASSERT_TRUE(probe_result->is_dict());
 
@@ -131,11 +134,13 @@ TEST(ProbeResultCheckerDictTest, TestApplyWithLimitsSuccess) {
     "double": "1e2"
   })";
 
-  auto expect = base::JSONReader::Read(expect_string);
+  auto expect = base::JSONReader::Read(expect_string,
+                                       base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(expect.has_value());
   ASSERT_TRUE(expect->is_dict());
 
-  auto probe_result = base::JSONReader::Read(probe_result_string);
+  auto probe_result = base::JSONReader::Read(
+      probe_result_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(probe_result.has_value());
   ASSERT_TRUE(probe_result->is_dict());
 
@@ -179,11 +184,13 @@ TEST(ProbeResultCheckerDictTest, TestApplyWithLimitsFail) {
     "double": "1e2"
   })";
 
-  auto expect = base::JSONReader::Read(expect_string);
+  auto expect = base::JSONReader::Read(expect_string,
+                                       base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(expect.has_value());
   ASSERT_TRUE(expect->is_dict());
 
-  auto probe_result = base::JSONReader::Read(probe_result_string);
+  auto probe_result = base::JSONReader::Read(
+      probe_result_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(probe_result.has_value());
   ASSERT_TRUE(probe_result->is_dict());
 
@@ -203,7 +210,8 @@ TEST(ProbeResultCheckerListTest, TestFromValue) {
       "hex_field": [true, "hex"]
     }
   ])";
-  const auto list_value = base::JSONReader::Read(json_string);
+  const auto list_value =
+      base::JSONReader::Read(json_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(list_value.has_value());
   ASSERT_TRUE(list_value->is_list());
 
@@ -284,7 +292,8 @@ TEST(ProbeResultCheckerListTest, TestApplyShortCircuit) {
 
 TEST(ProbeResultCheckerTest, TestFromValueDict) {
   const auto json_string = R"({})";
-  const auto list_value = base::JSONReader::Read(json_string);
+  const auto list_value =
+      base::JSONReader::Read(json_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(list_value.has_value());
   ASSERT_TRUE(list_value->is_dict());
 
@@ -294,7 +303,8 @@ TEST(ProbeResultCheckerTest, TestFromValueDict) {
 
 TEST(ProbeResultCheckerTest, TestFromValueList) {
   const auto json_string = R"([])";
-  const auto list_value = base::JSONReader::Read(json_string);
+  const auto list_value =
+      base::JSONReader::Read(json_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(list_value.has_value());
   ASSERT_TRUE(list_value->is_list());
 

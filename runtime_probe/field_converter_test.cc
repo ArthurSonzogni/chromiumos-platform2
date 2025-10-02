@@ -175,7 +175,8 @@ TEST(StringFieldConverterTest, TestValidateRule) {
     "2": "??? hello ???",
     "3": "??? hello"
   })";
-  auto dict_value = base::JSONReader::Read(json_string);
+  auto dict_value =
+      base::JSONReader::Read(json_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(dict_value.has_value());
   ASSERT_TRUE(dict_value->is_dict());
   {
@@ -228,7 +229,8 @@ TEST(IntegerFieldConverterTest, TestValidateRule) {
     "1": 1,
     "2": 2
   })";
-  auto dict_value = base::JSONReader::Read(json_string);
+  auto dict_value =
+      base::JSONReader::Read(json_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(dict_value.has_value());
   ASSERT_TRUE(dict_value->is_dict());
   {
@@ -296,7 +298,8 @@ TEST(HexFieldConverterTest, TestValidateRule) {
     "1": 1,
     "2": 2
   })";
-  auto dict_value = base::JSONReader::Read(json_string);
+  auto dict_value =
+      base::JSONReader::Read(json_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(dict_value.has_value());
   ASSERT_TRUE(dict_value->is_dict());
   {
@@ -364,7 +367,8 @@ TEST(DoubleFieldConverterTest, TestValidateRule) {
     "1": 1,
     "2": 2
   })";
-  auto dict_value = base::JSONReader::Read(json_string);
+  auto dict_value =
+      base::JSONReader::Read(json_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   ASSERT_TRUE(dict_value.has_value());
   ASSERT_TRUE(dict_value->is_dict());
   {
