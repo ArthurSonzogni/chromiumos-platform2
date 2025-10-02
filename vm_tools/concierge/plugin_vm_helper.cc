@@ -192,7 +192,8 @@ static std::optional<base::Value::Dict> GetVmInfo(const VmId& vm_id) {
     return std::nullopt;
   }
 
-  auto result = base::JSONReader::Read(output);
+  auto result =
+      base::JSONReader::Read(output, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!result) {
     LOG(ERROR) << "GetVmInfo(" << vm_id << "): Failed to parse VM info";
     return std::nullopt;
