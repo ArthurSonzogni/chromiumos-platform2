@@ -5,10 +5,9 @@
 #include "brillo/blkdev_utils/lvm_device.h"
 
 #include <fcntl.h>
+#include <linux/dm-ioctl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-
-#include <linux/dm-ioctl.h>
 
 #include <cstdint>
 #include <optional>
@@ -532,7 +531,8 @@ bool LvmCommandRunner::RunDmIoctl(unsigned long ioctl_num,
 
 std::optional<base::Value> LvmCommandRunner::UnwrapReportContents(
     const std::string& output, const std::string& key) {
-  auto report = base::JSONReader::Read(output);
+  auto report =
+      base::JSONReader::Read(output, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!report || !report->is_dict()) {
     LOG(ERROR) << "Failed to get report as dictionary";
     return std::nullopt;

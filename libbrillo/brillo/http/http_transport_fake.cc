@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
-#include <brillo/http/http_transport_fake.h>
+#include "brillo/http/http_transport_fake.h"
 
 #include <optional>
 #include <utility>
 
+#include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
@@ -183,7 +183,8 @@ std::string ServerRequestResponseBase::GetDataAsString() const {
 std::optional<base::Value> ServerRequestResponseBase::GetDataAsJson() const {
   if (brillo::mime::RemoveParameters(GetHeader(request_header::kContentType)) ==
       brillo::mime::application::kJson) {
-    auto value = base::JSONReader::Read(GetDataAsString());
+    auto value = base::JSONReader::Read(GetDataAsString(),
+                                        base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     if (!value->is_dict()) {
       return std::nullopt;
     }
