@@ -212,7 +212,8 @@ class BluezBluetoothScanningRoutineTest : public testing::Test {
     EXPECT_EQ(
         ConstructOutputDict(),
         base::JSONReader::Read(GetStringFromValidReadOnlySharedMemoryMapping(
-            std::move(update_.output))));
+                                   std::move(update_.output)),
+                               base::JSON_PARSE_CHROMIUM_EXTENSIONS));
   }
 
   base::test::TaskEnvironment task_environment_{

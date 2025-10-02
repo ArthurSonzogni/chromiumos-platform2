@@ -168,7 +168,8 @@ class MemoryRoutineAdapterTest : public MemoryRoutineTestBase {
     EXPECT_TRUE(output->is_valid());
 
     auto json = base::JSONReader::Read(
-        GetStringFromValidReadOnlySharedMemoryMapping(std::move(output)));
+        GetStringFromValidReadOnlySharedMemoryMapping(std::move(output)),
+        base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     EXPECT_TRUE(json.has_value());
     EXPECT_TRUE(json.value().is_dict());
     return std::move(json.value().GetDict());

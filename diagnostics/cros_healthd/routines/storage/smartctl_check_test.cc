@@ -51,7 +51,8 @@ void VerifyOutput(mojo::ScopedHandle handle,
                   const int expected_percentage_used_threshold,
                   const int expected_critical_warning) {
   const auto& json_output = base::JSONReader::Read(
-      GetStringFromValidReadOnlySharedMemoryMapping(std::move(handle)));
+      GetStringFromValidReadOnlySharedMemoryMapping(std::move(handle)),
+      base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   const auto& output_dict = json_output->GetIfDict();
   ASSERT_NE(output_dict, nullptr);
 

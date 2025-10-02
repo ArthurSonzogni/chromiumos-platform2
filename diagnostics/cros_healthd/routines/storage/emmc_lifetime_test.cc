@@ -49,7 +49,8 @@ void VerifyOutput(mojo::ScopedHandle handle,
                   const uint32_t expected_device_life_time_est_typ_b) {
   ASSERT_TRUE(handle->is_valid());
   const auto& json_output = base::JSONReader::Read(
-      GetStringFromValidReadOnlySharedMemoryMapping(std::move(handle)));
+      GetStringFromValidReadOnlySharedMemoryMapping(std::move(handle)),
+      base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   const auto& output_dict = json_output->GetIfDict();
   ASSERT_NE(output_dict, nullptr);
 

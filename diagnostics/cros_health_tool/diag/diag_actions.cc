@@ -573,8 +573,10 @@ bool DiagActions::PollRoutineAndProcessResult() {
       return false;
     }
 
-    auto output = base::JSONReader::Read(std::string(
-        shm_mapping.GetMemoryAs<const char>(), shm_mapping.mapped_size()));
+    auto output = base::JSONReader::Read(
+        std::string(shm_mapping.GetMemoryAs<const char>(),
+                    shm_mapping.mapped_size()),
+        base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     if (!output.has_value()) {
       LOG(ERROR) << "Failed to parse output.";
       return false;

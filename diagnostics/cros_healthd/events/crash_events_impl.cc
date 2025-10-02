@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/events/crash_events.h"
-
 #include <iterator>
 #include <optional>
 #include <string>
@@ -17,6 +15,7 @@
 #include <base/strings/string_util.h>
 #include <base/timer/timer.h>
 
+#include "diagnostics/cros_healthd/events/crash_events.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
@@ -35,7 +34,8 @@ mojom::CrashEventInfoPtr ParseUploadsLogEntry(const std::string& line,
   // The SplitString call guarantees that line can't be empty.
   DCHECK(!line.empty());
 
-  const auto json = base::JSONReader::Read(line);
+  const auto json =
+      base::JSONReader::Read(line, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!json.has_value() || !json->is_dict()) {
     LOG(ERROR) << "Invalid JSON in crash uploads log: " << line;
     return nullptr;

@@ -240,7 +240,8 @@ class BluezBluetoothPairingRoutineTest : public testing::Test {
                                status_message);
     EXPECT_EQ(output_dict, base::JSONReader::Read(
                                GetStringFromValidReadOnlySharedMemoryMapping(
-                                   std::move(update_.output))));
+                                   std::move(update_.output)),
+                               base::JSON_PARSE_CHROMIUM_EXTENSIONS));
   }
 
   base::test::TaskEnvironment task_environment_{
