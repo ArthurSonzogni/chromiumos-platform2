@@ -52,7 +52,8 @@ DEFINE_PROTO_FUZZER(const RollbackData& input) {
   std::string config;
   CHECK(load_config.GetOobeConfigJson(&config));
 
-  auto root = base::JSONReader::Read(config);
+  auto root =
+      base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   CHECK(root);
   auto dict = root->GetIfDict();
   CHECK(dict != nullptr);
