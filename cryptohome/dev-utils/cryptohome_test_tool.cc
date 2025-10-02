@@ -123,7 +123,8 @@ std::optional<LedgerInfo> LoadLedgerInfoFromJsonFile(
     LOG(ERROR) << "File is empty: " << file_path.value() << ".";
     return std::nullopt;
   }
-  auto result = base::JSONReader::Read(contents_string);
+  auto result = base::JSONReader::Read(contents_string,
+                                       base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!result || !result->is_dict()) {
     LOG(ERROR) << "Could not read JSON content: " << contents_string;
     return std::nullopt;
