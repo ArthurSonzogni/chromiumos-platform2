@@ -57,6 +57,15 @@ Mode FpMode::RawValToEnum(uint32_t mode) const {
     case (FP_MODE_CAPTURE | FP_CAPTURE_RESET_TEST
                                 << FP_MODE_CAPTURE_TYPE_SHIFT):
       return Mode::kCaptureResetTest;
+    case (FP_MODE_CAPTURE | FP_CAPTURE_DEFECT_PXL_TEST
+                                << FP_MODE_CAPTURE_TYPE_SHIFT):
+      return Mode::kCaptureDefectPixelTest;
+    case (FP_MODE_CAPTURE | FP_CAPTURE_ABNORMAL_TEST
+                                << FP_MODE_CAPTURE_TYPE_SHIFT):
+      return Mode::kCaptureAbnormalTest;
+    case (FP_MODE_CAPTURE | FP_CAPTURE_NOISE_TEST
+                                << FP_MODE_CAPTURE_TYPE_SHIFT):
+      return Mode::kCaptureNoiseTest;
     default:
       return Mode::kModeInvalid;
   }
@@ -105,6 +114,15 @@ uint32_t FpMode::EnumToRawVal(Mode mode) const {
                                     << FP_MODE_CAPTURE_TYPE_SHIFT);
     case Mode::kCaptureResetTest:
       return (FP_MODE_CAPTURE | FP_CAPTURE_RESET_TEST
+                                    << FP_MODE_CAPTURE_TYPE_SHIFT);
+    case Mode::kCaptureDefectPixelTest:
+      return (FP_MODE_CAPTURE | FP_CAPTURE_DEFECT_PXL_TEST
+                                    << FP_MODE_CAPTURE_TYPE_SHIFT);
+    case Mode::kCaptureAbnormalTest:
+      return (FP_MODE_CAPTURE | FP_CAPTURE_ABNORMAL_TEST
+                                    << FP_MODE_CAPTURE_TYPE_SHIFT);
+    case Mode::kCaptureNoiseTest:
+      return (FP_MODE_CAPTURE | FP_CAPTURE_NOISE_TEST
                                     << FP_MODE_CAPTURE_TYPE_SHIFT);
   }
 }

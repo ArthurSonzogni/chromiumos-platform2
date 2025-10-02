@@ -40,8 +40,11 @@ class BRILLO_EXPORT FpMode {
     kCapturePattern1 = 16,
     kCaptureQualityTest = 17,
     kCaptureResetTest = 18,
+    kCaptureDefectPixelTest = 19,
+    kCaptureAbnormalTest = 20,
+    kCaptureNoiseTest = 21,
 
-    kMaxValue = kCaptureResetTest,  // must be last item
+    kMaxValue = kCaptureNoiseTest,  // must be last item
   };
 
   FpMode() = default;
