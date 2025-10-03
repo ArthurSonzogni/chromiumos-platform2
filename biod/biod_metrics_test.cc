@@ -220,7 +220,8 @@ TEST_F(BiodMetricsTest, SendPositiveMatchSecretCorrect) {
 
 TEST_F(BiodMetricsTest, SendResetContextMode) {
   constexpr int kExpectedResetSensorEnum = 10;
-  constexpr int kExpectedMaxEnum = 18;
+  constexpr int kExpectedMaxEnum =
+      base::to_underlying(ec::FpMode::Mode::kMaxValue);
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendEnumToUMA(metrics::kResetContextMode,
