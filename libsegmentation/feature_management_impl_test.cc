@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libsegmentation/feature_management_impl.h"
+
 #include <memory>
 #include <utility>
 
@@ -10,16 +12,13 @@
 #include <base/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
 #include <libcrossystem/crossystem_fake.h>
 #include <vpd/fake_vpd.h>
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management.h"
-#include "libsegmentation/feature_management_impl.h"
 #include "libsegmentation/feature_management_interface.h"
 #include "libsegmentation/feature_management_util.h"
-
 #include "proto/feature_management.pb.h"
 
 namespace segmentation {
@@ -31,10 +30,11 @@ using ::testing::Return;
 
 // Use made up feature file:
 const char test_feature_proto[] =
-    "CiQKBUJhc2ljEhQKEmd3ZW5kYWxAZ29vZ2xlLmNvbSICAQIqAQEKHAoBRRIPCg1nZ0Bnb29nbG"
-    "UuY29tGAIiAQIqAQIKHgoBRBIPCg1nZ0Bnb29nbGUuY29tGAIiAQIqAwECAwodCgFDEg8KDWdn"
-    "QGdvb2dsZS5jb20YASIBAioCAgEKHAoBQhIPCg1nZ0Bnb29nbGUuY29tGAEiAQIqAQIKGwoBQR"
-    "IPCg1nZ0Bnb29nbGUuY29tIgIBAioBAw==";
+    "CiQKBUJhc2ljEhQKEmd3ZW5kYWxAZ29vZ2xlLmNvbSICAQIqAQEKHQoBRhIPCg1nZ0Bnb29n"
+    "bGUuY29tGAIiAgECKgECChwKAUUSDwoNZ2dAZ29vZ2xlLmNvbRgCIgECKgECCh4KAUQSDwoN"
+    "Z2dAZ29vZ2xlLmNvbRgCIgECKgMBAgMKHQoBQxIPCg1nZ0Bnb29nbGUuY29tGAEiAQIqAgIB"
+    "ChwKAUISDwoNZ2dAZ29vZ2xlLmNvbRgBIgECKgECChsKAUESDwoNZ2dAZ29vZ2xlLmNvbSIC"
+    "AQIqAQM=";
 
 /*
   It produces the following bundle.
@@ -51,6 +51,16 @@ features {
   scopes: SCOPE_DEVICES_0
   scopes: SCOPE_DEVICES_1
   usages: USAGE_LOCAL
+}
+features {
+  name: "F"
+  contacts {
+    email: "gg@google.com"
+  }
+  feature_level: 2
+  scopes: SCOPE_DEVICES_0
+  scopes: SCOPE_DEVICES_1
+  usages: USAGE_CHROME
 }
 features {
   name: "E"
@@ -295,7 +305,10 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope0) {
 
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementA"), true);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), false);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementC"), false);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementD"), false);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementE"), false);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementF"), false);
 }
 
 TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope1) {
@@ -311,7 +324,52 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope1) {
 
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementA"), true);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), true);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementC"), true);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementD"), false);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementE"), false);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementF"), false);
+}
+
+TEST_F(FeatureManagementImplTest, GetFeatureLevel2Scope0) {
+  libsegmentation::DeviceInfo device_info;
+  device_info.set_feature_level(
+      static_cast<libsegmentation::DeviceInfo_FeatureLevel>(
+          libsegmentation::DeviceInfo_FeatureLevel::
+              DeviceInfo_FeatureLevel_FEATURE_LEVEL_2));
+  device_info.set_scope_level(libsegmentation::DeviceInfo_ScopeLevel::
+                                  DeviceInfo_ScopeLevel_SCOPE_LEVEL_0);
+  device_info.set_cached_version_hash(kCurrentVersionHash);
+  EXPECT_TRUE(
+      vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo,
+                       FeatureManagementUtil::EncodeDeviceInfo(device_info)));
+
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementA"), true);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), false);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementC"), false);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementD"), false);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementE"), false);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementF"), true);
+}
+
+TEST_F(FeatureManagementImplTest, GetFeatureLevel2Scope1) {
+  libsegmentation::DeviceInfo device_info;
+  device_info.set_feature_level(
+      static_cast<libsegmentation::DeviceInfo_FeatureLevel>(
+          libsegmentation::DeviceInfo_FeatureLevel::
+              DeviceInfo_FeatureLevel_FEATURE_LEVEL_2));
+  device_info.set_scope_level(libsegmentation::DeviceInfo_ScopeLevel::
+                                  DeviceInfo_ScopeLevel_SCOPE_LEVEL_1);
+  device_info.set_cached_version_hash(kCurrentVersionHash);
+  EXPECT_TRUE(
+      vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo,
+                       FeatureManagementUtil::EncodeDeviceInfo(device_info)));
+
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementA"), true);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), true);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementD"), true);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementC"), true);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementE"), true);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementF"), true);
 }
 
 TEST_F(FeatureManagementImplTest, GetFeatureLevelInsideVM) {
