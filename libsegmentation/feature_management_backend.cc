@@ -253,7 +253,7 @@ bool FeatureManagementImpl::Check_HW_Requirement(
     return false;
   }
 
-  if (selection.feature_level() > 1) {
+  if (selection.feature_level() > 2) {
     LOG(ERROR) << "Requirement not defined yet for feature_level "
                << selection.feature_level();
     return false;
