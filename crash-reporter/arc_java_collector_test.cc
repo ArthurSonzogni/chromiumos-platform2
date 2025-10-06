@@ -84,6 +84,12 @@ class ArcJavaCollectorTest : public ::testing::Test {
     paths::SetPrefixForTesting(scoped_temp_dir_.GetPath());
     collector_ = std::make_unique<TestArcJavaCollector>(test_crash_directory_);
 
+    // Make sure we have an empty log config file by default.
+    base::FilePath log_config_path =
+        scoped_temp_dir_.GetPath().Append("logs.conf");
+    ASSERT_TRUE(base::WriteFile(log_config_path, ""));
+    collector_->set_log_config_path(log_config_path.value());
+
     std::unique_ptr<base::SimpleTestClock> test_clock =
         std::make_unique<base::SimpleTestClock>();
     test_clock->SetNow(base::Time::UnixEpoch() + base::Milliseconds(kFakeNow));

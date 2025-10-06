@@ -119,6 +119,14 @@ class CrashCollectorTest : public ::testing::Test {
 
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_dir_ = scoped_temp_dir_.GetPath();
+
+    // Use an empty log config file by default to avoid collecting any logs.
+    // The tests that specifically depend on the config contents individually
+    // set log_config_path_ to an actual config file.
+    const base::FilePath log_config_file = test_dir_.Append("logs.conf");
+    ASSERT_TRUE(base::WriteFile(log_config_file, ""));
+    collector_.set_log_config_path(log_config_file.value());
+
     // TODO(jkardatzke): Cleanup the usage of paths in here so that we use this
     // technique instead rather than setting various specific dirs.
     paths::SetPrefixForTesting(test_dir_);
@@ -860,6 +868,30 @@ TEST_F(CrashCollectorTest, Sanitize) {
   EXPECT_EQ("foo_bar", collector_.Sanitize("foo.bar"));
   EXPECT_EQ("", collector_.Sanitize(""));
   EXPECT_EQ("_", collector_.Sanitize(" "));
+}
+
+TEST_F(CrashCollectorTest, EventLogCollection) {
+  collector_.set_crash_directory_for_test(test_dir_);
+  const FilePath log_config_file = test_dir_.Append("logs.conf");
+  const FilePath eventlog_file = test_dir_.Append("eventlog.txt");
+  const std::string kEventLogContents = "fake event";
+  ASSERT_TRUE(test_util::CreateFile(eventlog_file, kEventLogContents));
+  const std::string kLogConfigContents =
+      base::StringPrintf("eventlog=cat %s\n", eventlog_file.value().c_str());
+  ASSERT_TRUE(test_util::CreateFile(log_config_file, kLogConfigContents));
+
+  const FilePath meta_path = test_dir_.Append("test.meta");
+  collector_.FinishCrash(meta_path, "exec", "payload.dmp");
+
+  std::string meta_contents;
+  ASSERT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
+  EXPECT_THAT(meta_contents,
+              testing::HasSubstr("upload_file_eventlog=test.eventlog"));
+
+  std::string eventlog_contents;
+  ASSERT_TRUE(base::ReadFileToString(test_dir_.Append("test.eventlog"),
+                                     &eventlog_contents));
+  EXPECT_EQ(eventlog_contents, kEventLogContents);
 }
 
 TEST_F(CrashCollectorTest, StripMacAddressesBasic) {
@@ -2166,6 +2198,8 @@ INSTANTIATE_TEST_SUITE_P(CrashCollectorInstantiation,
                          });
 
 TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
+  // Set the config path to the actual file for pslog and eventlog.
+  collector_.set_log_config_path(CrashCollector::kDefaultLogConfig);
   // Set up metadata the collector will read
   FilePath lsb_release = paths::Get("/etc/lsb-release");
   std::string contents;
@@ -2205,6 +2239,7 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
   base::FilePath base_name = meta_file_path.BaseName().RemoveExtension();
   base::FilePath pslog_name = base_name.AddExtension("pslog");
   base::FilePath log_name = base_name.AddExtension("log");
+  base::FilePath eventlog_name = base_name.AddExtension("eventlog");
 
   EXPECT_TRUE(base::ReadFileToString(meta_file_path, &contents));
   std::string expected_meta = StringPrintf(
@@ -2215,6 +2250,7 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "files not supported on 64-bit systems\n"
       "error_type=32 bit core files not supported on 64-bit systems\n"
       "upload_file_pslog=%s\n"
+      "upload_file_eventlog=%s\n"
       "upload_var_channel=beta\n"
       "upload_var_client_computed_severity=INFO\n"
       "upload_var_client_computed_product=Platform\n"
@@ -2231,9 +2267,9 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "upload_var_osVersion=%s\n"
       "payload=%s\n"
       "done=1\n",
-      pslog_name.value().c_str(), kARCStatus, kFakeNow,
-      (os_time - base::Time::UnixEpoch()).InMilliseconds(), kKernelName,
-      kKernelVersion, log_name.value().c_str());
+      pslog_name.value().c_str(), eventlog_name.value().c_str(), kARCStatus,
+      kFakeNow, (os_time - base::Time::UnixEpoch()).InMilliseconds(),
+      kKernelName, kKernelVersion, log_name.value().c_str());
   EXPECT_EQ(expected_meta, contents);
 }
 
@@ -2968,6 +3004,9 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
           }));
 
   collector.Initialize(false);
+  // The local `collector` needs to be told about the empty log config file
+  // path from the test fixture.
+  collector.set_log_config_path(test_dir_.Append("logs.conf").value());
 
   EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer), strlen(kBuffer));
   EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));

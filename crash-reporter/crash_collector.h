@@ -52,6 +52,8 @@ void ExtractEnvironmentVars(const std::string& contents,
 // User crash collector.
 class CrashCollector {
  public:
+  static const char kDefaultLogConfig[];
+
   enum CrashDirectorySelectionMethod {
     // Force reports to be stored in the user crash directory, even if we are
     // not running as the "chronos" user.
@@ -274,6 +276,7 @@ class CrashCollector {
               RunAsRoot_CreateDirectoryWithSettings_FixOwners);
   FRIEND_TEST(CrashCollectorTest,
               CreateDirectoryWithSettings_FixSubdirPermissions);
+  FRIEND_TEST(CrashCollectorTest, EventLogCollection);
   FRIEND_TEST(CrashCollectorTest, FormatDumpBasename);
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfoOld);
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfoOldLoggedOut);
@@ -674,6 +677,13 @@ class CrashCollector {
     CrashCollectionStatus status;
     bool out_of_capacity;
   };
+
+  // Helper to create a log file for |exec_name| and add it to the crash report
+  // metadata. |key| is used as a metadata key and an extension of a log file.
+  // Returns false if reading a log file fails.
+  bool GetLogAndAddCrashMetaUploadFile(const base::FilePath& meta_path,
+                                       const std::string& exec_name,
+                                       const std::string& key);
 
   static bool ParseProcessTicksFromStat(std::string_view stat, uint64_t* ticks);
 

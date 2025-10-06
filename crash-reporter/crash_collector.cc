@@ -74,7 +74,6 @@ namespace {
 
 const char kCollectChromeFile[] =
     "/mnt/stateful_partition/etc/collect_chrome_crashes";
-const char kDefaultLogConfig[] = "/etc/crash_reporter_logs.conf";
 const char kDefaultUserName[] = "chronos";
 const char kShellPath[] = "/bin/sh";
 const char kDaemonStoreKey[] = "using_daemon_store";
@@ -86,6 +85,9 @@ const char kVariationsKey[] = "variations";
 const char kNumExperimentsKey[] = "num-experiments";
 // Arbitrarily say we won't accept more than 1MiB for the variations file
 const int64_t kArbitraryMaxVariationsSize = 1 << 20;
+
+// Name for eventlog attached to report. Also used as metadata key.
+constexpr char kEventLogName[] = "eventlog";
 
 // Key of the lsb-release entry containing the OS version.
 const char kLsbOsVersionKey[] = "CHROMEOS_RELEASE_VERSION";
@@ -206,6 +208,9 @@ const char* const CrashCollector::kUnknownValue = "unknown";
 // be left on the file system, we stop adding crashes when either the
 // number of core files or minidumps reaches this number.
 const int CrashCollector::kMaxCrashDirectorySize = 32;
+
+const char CrashCollector::kDefaultLogConfig[] =
+    "/etc/crash_reporter_logs.conf";
 
 // metrics user for creating /run/metrics/external/crash-reporter.
 constexpr char kMetricsUserName[] = "metrics";
@@ -1823,6 +1828,22 @@ static void IgnoreResponseOrErrorPointer(base::OnceCallback<void()> callback,
   std::move(callback).Run();
 }
 
+bool CrashCollector::GetLogAndAddCrashMetaUploadFile(
+    const base::FilePath& meta_path,
+    const std::string& exec_name,
+    const std::string& key) {
+  std::string dump_basename =
+      meta_path.RemoveFinalExtension().BaseName().value();
+  FilePath log_path = meta_path.DirName().Append(
+      StringPrintf("%s.%s", dump_basename.c_str(), key.c_str()));
+  if (!IsSuccessCode(GetLogContents(log_config_path_, exec_name, log_path))) {
+    LOG(ERROR) << "Failed to read log for " << exec_name;
+    return false;
+  }
+  AddCrashMetaUploadFile(key, log_path.BaseName().value());
+  return true;
+}
+
 CrashCollector::ComputedCrashSeverity CrashCollector::ComputeSeverity(
     const std::string& exec_name) {
   return CrashCollector::ComputedCrashSeverity{
@@ -1851,6 +1872,9 @@ CrashCollectionStatus CrashCollector::FinishCrash(
                      kNumExperimentsKey)) {
     LOG(ERROR) << "Failed to add variations to report";
   }
+
+  // Attach eventlog into uploaded log files.
+  GetLogAndAddCrashMetaUploadFile(meta_path, kEventLogName, kEventLogName);
 
   const std::string product_version = GetProductVersion();
   std::string product_version_info =
