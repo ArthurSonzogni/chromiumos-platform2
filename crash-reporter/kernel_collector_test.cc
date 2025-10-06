@@ -820,6 +820,10 @@ TEST_F(KernelCollectorTest, CollectOK) {
               testing::HasSubstr(
                   "upload_file_ec_log=" +
                   path.ReplaceExtension("ec_log").BaseName().value() + "\n"));
+  EXPECT_THAT(contents,
+              testing::HasSubstr(
+                  "upload_file_eventlog=" +
+                  path.ReplaceExtension("eventlog").BaseName().value() + "\n"));
 }
 
 TEST_F(KernelCollectorTest, LastRebootWasNoCError) {

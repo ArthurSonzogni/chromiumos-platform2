@@ -40,6 +40,8 @@ namespace {
 
 // Name for extra BIOS dump attached to report. Also used as metadata key.
 constexpr char kBiosDumpName[] = "bios_log";
+// Name for eventlog attached to report. Also used as metadata key.
+constexpr char kEventLogName[] = "eventlog";
 // Name for extra corrupted dump attached to report. Also used as the metadata
 // key.
 constexpr char kCorruptedDumpName[] = "kcrash.corrupted";
@@ -770,6 +772,8 @@ CrashCollectionStatus KernelCollector::HandleCrash(
       StringPrintf("%s.log", dump_basename.c_str()));
   FilePath ec_log_path = root_crash_directory.Append(
       StringPrintf("%s.%s", dump_basename.c_str(), kECDumpName));
+  FilePath eventlog_path = root_crash_directory.Append(
+      StringPrintf("%s.%s", dump_basename.c_str(), kEventLogName));
 
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
@@ -793,6 +797,12 @@ CrashCollectionStatus KernelCollector::HandleCrash(
   if (IsSuccessCode(
           GetLogContents(log_config_path_, kECExecName, ec_log_path))) {
     AddCrashMetaUploadFile("ec_log", ec_log_path.BaseName().value());
+  }
+
+  // Attach eventlog into uploaded log files.
+  if (IsSuccessCode(
+          GetLogContents(log_config_path_, kEventLogName, eventlog_path))) {
+    AddCrashMetaUploadFile(kEventLogName, eventlog_path.BaseName().value());
   }
 
   if (!corrupted_dump.empty()) {
