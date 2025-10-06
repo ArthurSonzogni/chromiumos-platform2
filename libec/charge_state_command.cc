@@ -12,6 +12,7 @@ ChargeStateGetParamCommand::ChargeStateGetParamCommand(
     enum charge_state_params param) {
   Req()->cmd = CHARGE_STATE_CMD_GET_PARAM;
   Req()->get_param.param = param;
+  SetRespSize(sizeof(ec_response_charge_state::get_param));
 }
 
 std::optional<uint32_t> ChargeStateGetParamCommand::Get() const {
