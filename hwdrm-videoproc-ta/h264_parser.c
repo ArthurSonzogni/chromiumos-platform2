@@ -186,21 +186,22 @@ static bool SkipRefPicListModification(struct H264Bitstream* br,
   }
 
   for (int i = 0; i < 32; ++i) {
-    int modification_of_pic_nums_idc;
-    int data;
+    uint32_t modification_of_pic_nums_idc;
+    uint32_t data;
     READ_UE_OR_RETURN(&modification_of_pic_nums_idc);
     TRUE_OR_RETURN(modification_of_pic_nums_idc < 4);
-
     switch (modification_of_pic_nums_idc) {
       case 0:
       case 1:
-        READ_UE_OR_RETURN(&data);  // abs_diff_pic_num_minus1
+        READ_UE_OR_RETURN(&data);
         break;
-
       case 2:
-        READ_UE_OR_RETURN(&data);  // long_term_pic_num
+        READ_UE_OR_RETURN(&data);
         break;
-
+      case 4:
+      case 5:
+        READ_UE_OR_RETURN(&data);
+        break;
       case 3:
         // Per spec, list cannot be empty.
         if (i == 0) {
@@ -278,20 +279,29 @@ bool ParseSliceHeader(const uint8_t* slice_header,
   hdr_out->nal_ref_idc = (uint8_t)data;
   READ_BITS_OR_RETURN(5, &data);
   uint8_t nal_unit_type = (uint8_t)data;
+  hdr_out->idr_pic_flag = (nal_unit_type == 5);
 
   // It should only be a slice header NALU, nothing else is allowed here.
   if (nal_unit_type != 1 && nal_unit_type != 5) {
     return false;
   }
 
-  hdr_out->idr_pic_flag = (nal_unit_type == 5);
-
   READ_UE_OR_RETURN(&data);  // first_mb_in_slice
+  hdr_out->first_mb_in_slice = data;
+
   READ_UE_OR_RETURN(&data);
   hdr_out->slice_type = (uint8_t)data;
   TRUE_OR_RETURN(hdr_out->slice_type < 10);
 
   READ_UE_OR_RETURN(&data);  // pic_parameter_set_id
+  hdr_out->pic_parameter_set_id = data;
+#if 0  // TODO(hiroh): Enable this check after chrome is upreved.
+  if (stream_data->pic_parameter_set_id != hdr_out->pic_parameter_set_id) {
+    return false;
+  }
+#endif
+  // Interlaced video is not supported, so we assume that
+  // `separate_colour_plane_flag` is false.
 
   TRUE_OR_RETURN(stream_data->log2_max_frame_num_minus4 < 13);
   READ_BITS_OR_RETURN(stream_data->log2_max_frame_num_minus4 + 4,
@@ -299,6 +309,10 @@ bool ParseSliceHeader(const uint8_t* slice_header,
   if (!stream_data->frame_mbs_only_flag) {
     READ_BITS_OR_RETURN(1, &data);
     hdr_out->field_pic_flag = (uint8_t)data;
+    if (hdr_out->field_pic_flag) {
+      READ_BITS_OR_RETURN(1, &data);
+      hdr_out->bottom_field_flag = (uint8_t)data;
+    }
   }
 
   if (hdr_out->idr_pic_flag) {
@@ -337,33 +351,36 @@ bool ParseSliceHeader(const uint8_t* slice_header,
     READ_BITS_OR_RETURN(1, &data);  // direct_spatial_mv_pred_flag
   }
 
-  int num_ref_idx_l0_active_minus1 = 0;
-  int num_ref_idx_l1_active_minus1 = 0;
+  hdr_out->num_ref_idx_l0_active_minus1 = 0;
+  hdr_out->num_ref_idx_l1_active_minus1 = 0;
   if (IsPSlice(hdr_out) || IsSPSlice(hdr_out) || IsBSlice(hdr_out)) {
     uint32_t num_ref_idx_active_override_flag;
     READ_BITS_OR_RETURN(1, &num_ref_idx_active_override_flag);
     if (num_ref_idx_active_override_flag) {
-      READ_UE_OR_RETURN(&num_ref_idx_l0_active_minus1);
+      READ_UE_OR_RETURN(&data);
+      hdr_out->num_ref_idx_l0_active_minus1 = (uint8_t)data;
       if (IsBSlice(hdr_out)) {
-        READ_UE_OR_RETURN(&num_ref_idx_l1_active_minus1);
+        READ_UE_OR_RETURN(&data);
+        hdr_out->num_ref_idx_l1_active_minus1 = (uint8_t)data;
       }
     } else {
-      num_ref_idx_l0_active_minus1 =
+      hdr_out->num_ref_idx_l0_active_minus1 =
           stream_data->num_ref_idx_l0_default_active_minus1;
       if (IsBSlice(hdr_out)) {
-        num_ref_idx_l1_active_minus1 =
+        hdr_out->num_ref_idx_l1_active_minus1 =
             stream_data->num_ref_idx_l1_default_active_minus1;
       }
     }
   }
-  IN_RANGE_OR_RETURN(num_ref_idx_l0_active_minus1, 0, 31);
-  IN_RANGE_OR_RETURN(num_ref_idx_l1_active_minus1, 0, 31);
+  IN_RANGE_OR_RETURN(hdr_out->num_ref_idx_l0_active_minus1, 0, 31);
+  IN_RANGE_OR_RETURN(hdr_out->num_ref_idx_l1_active_minus1, 0, 31);
 
   if (!IsISlice(hdr_out) && !IsSISlice(hdr_out)) {
     uint32_t ref_pic_list_modification_flag_l0;
     READ_BITS_OR_RETURN(1, &ref_pic_list_modification_flag_l0);
     if (ref_pic_list_modification_flag_l0) {
-      if (!SkipRefPicListModification(br, num_ref_idx_l0_active_minus1)) {
+      if (!SkipRefPicListModification(br,
+                                      hdr_out->num_ref_idx_l0_active_minus1)) {
         return false;
       }
     }
@@ -373,7 +390,8 @@ bool ParseSliceHeader(const uint8_t* slice_header,
     uint32_t ref_pic_list_modification_flag_l1;
     READ_BITS_OR_RETURN(1, &ref_pic_list_modification_flag_l1);
     if (ref_pic_list_modification_flag_l1) {
-      if (!SkipRefPicListModification(br, num_ref_idx_l1_active_minus1)) {
+      if (!SkipRefPicListModification(br,
+                                      hdr_out->num_ref_idx_l1_active_minus1)) {
         return false;
       }
     }
@@ -388,13 +406,13 @@ bool ParseSliceHeader(const uint8_t* slice_header,
       READ_UE_OR_RETURN(&data);  // chroma_log2_weight_denom
     }
 
-    if (!SkipWeightingFactors(br, num_ref_idx_l0_active_minus1,
+    if (!SkipWeightingFactors(br, hdr_out->num_ref_idx_l0_active_minus1,
                               stream_data->chroma_array_type)) {
       return false;
     }
 
     if (IsBSlice(hdr_out)) {
-      if (!SkipWeightingFactors(br, num_ref_idx_l1_active_minus1,
+      if (!SkipWeightingFactors(br, hdr_out->num_ref_idx_l1_active_minus1,
                                 stream_data->chroma_array_type)) {
         return false;
       }
@@ -406,41 +424,48 @@ bool ParseSliceHeader(const uint8_t* slice_header,
 
     if (hdr_out->idr_pic_flag) {
       READ_BITS_OR_RETURN(1, &data);
-      hdr_out->ref_pic_fields.bits.no_output_of_prior_pics_flag = data;
+      hdr_out->no_output_of_prior_pics_flag = (uint8_t)data;
       READ_BITS_OR_RETURN(1, &data);
-      hdr_out->ref_pic_fields.bits.long_term_reference_flag = data;
+      hdr_out->long_term_reference_flag = (uint8_t)data;
     } else {
       READ_BITS_OR_RETURN(1, &data);
-      hdr_out->ref_pic_fields.bits.adaptive_ref_pic_marking_mode_flag = data;
-
-      if (hdr_out->ref_pic_fields.bits.adaptive_ref_pic_marking_mode_flag) {
+      hdr_out->adaptive_ref_pic_marking_mode_flag = (uint8_t)data;
+      hdr_out->dec_ref_pic_marking_size = 0;
+      if (hdr_out->adaptive_ref_pic_marking_mode_flag) {
         size_t i;
         for (i = 0; i < 32; ++i) {
-          READ_UE_OR_RETURN(&hdr_out->memory_management_control_operation[i]);
-          if (hdr_out->memory_management_control_operation[i] == 0) {
+          uint32_t memory_management_control_operation;
+          READ_UE_OR_RETURN(&memory_management_control_operation);
+          hdr_out->dec_ref_pic_marking[i].memory_management_control_operation =
+              (uint8_t)memory_management_control_operation;
+          if (memory_management_control_operation == 0) {
             break;
           }
-          hdr_out->ref_pic_fields.bits.dec_ref_pic_marking_count++;
+          hdr_out->dec_ref_pic_marking_size++;
 
-          if (hdr_out->memory_management_control_operation[i] == 1 ||
-              hdr_out->memory_management_control_operation[i] == 3) {
-            READ_UE_OR_RETURN(&hdr_out->difference_of_pic_nums_minus1[i]);
+          if (memory_management_control_operation == 1 ||
+              memory_management_control_operation == 3) {
+            READ_UE_OR_RETURN(
+                &hdr_out->dec_ref_pic_marking[i].difference_of_pic_nums_minus1);
           }
 
-          if (hdr_out->memory_management_control_operation[i] == 2) {
-            READ_UE_OR_RETURN(&hdr_out->long_term_pic_num[i]);
+          if (memory_management_control_operation == 2) {
+            READ_UE_OR_RETURN(
+                &hdr_out->dec_ref_pic_marking[i].long_term_pic_num);
           }
 
-          if (hdr_out->memory_management_control_operation[i] == 3 ||
-              hdr_out->memory_management_control_operation[i] == 6) {
-            READ_UE_OR_RETURN(&hdr_out->long_term_frame_idx[i]);
+          if (memory_management_control_operation == 3 ||
+              memory_management_control_operation == 6) {
+            READ_UE_OR_RETURN(
+                &hdr_out->dec_ref_pic_marking[i].long_term_frame_idx);
           }
 
-          if (hdr_out->memory_management_control_operation[i] == 4) {
-            READ_UE_OR_RETURN(&hdr_out->max_long_term_frame_idx_plus1[i]);
+          if (memory_management_control_operation == 4) {
+            READ_UE_OR_RETURN(
+                &hdr_out->dec_ref_pic_marking[i].max_long_term_frame_idx_plus1);
           }
 
-          if (hdr_out->memory_management_control_operation[i] > 6) {
+          if (memory_management_control_operation > 6) {
             return false;
           }
         }
