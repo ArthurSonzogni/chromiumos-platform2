@@ -26,6 +26,7 @@ namespace {
 const char kGenericWarningExecName[] = "kernel-warning";
 const char kWifiWarningExecName[] = "kernel-wifi-warning";
 const char kKfenceExecName[] = "kernel-kfence";
+const char kLockdebugExecName[] = "kernel-lockdebug";
 const char kSMMUFaultExecName[] = "kernel-smmu-fault";
 const char kSuspendWarningExecName[] = "kernel-suspend-warning";
 const char kKernelIwlwifiErrorExecName[] = "kernel-iwlwifi-error";
@@ -67,6 +68,12 @@ bool KernelWarningCollector::LoadKernelWarning(std::string* content,
     if (!ExtractKfenceSignature(*content, signature, func_name)) {
       return false;
     } else if (!signature->empty()) {
+      return true;
+    }
+  } else if (type == kLockdebug) {
+    if (!ExtractLockdebugSignature(*content, signature, func_name)) {
+      return false;
+    } else if (signature->length() > 0) {
       return true;
     }
   } else if (type == kSMMUFault) {
@@ -287,6 +294,82 @@ bool KernelWarningCollector::ExtractKfenceSignature(const std::string& content,
   return false;
 }
 
+// Locking debug warning starts with at least 25 characters.
+// $ grep -R '===' kernel/locking/lockdep.c | \
+//       tr -d -c '=\n' | awk '{print length($1), $1}' | sort
+constexpr LazyRE2 lockdebug_header_re = {R"(={25})"};
+constexpr LazyRE2 lockdebug_sig_re = {
+    R"(is trying to acquire lock:\n.*at: (([0-9A-Za-z_]+)\+0x[0-9A-Fa-f]+/0x[0-9A-Fa-f]+))"};
+constexpr LazyRE2 lockdebug_sig2_re = {R"(WARNING: (.*))"};
+
+// Extract the function name and signature from the logs.
+//
+// Circular locking dependency example:
+//  ======================================================
+//  WARNING: possible circular locking dependency detected
+//  5.15.180-kasan-lockdep-24494-gc7c1b8d2fd39 #1 Not tainted
+//  ------------------------------------------------------
+//  chrome/1993 is trying to acquire lock:
+//  ffffffc0132e22a0 (&kctx->reg_lock){+.+.}-{3:3}, at:
+//  kbase_gpu_vm_lock+0x30/0x40
+//
+// func_name=kbase_gpu_vm_lock
+// signature=kbase_gpu_vm_lock+0x30/0x40
+//
+// Recursive locking example:
+//  ============================================
+//  WARNING: possible recursive locking detected
+//  6.1.145-kasan-lockdep-17509-g3e49662a061f #1 Not tainted
+//  --------------------------------------------
+//  swapper/0/1 is trying to acquire lock:
+//  ffffff80c8102718 (&tz->lock){+.+.}-{3:3}, at:
+//  thermal_zone_get_temp+0x40/0x1e4
+//
+// func_name=thermal_zone_get_temp
+// signature=thermal_zone_get_temp+0x40/0x1e4
+//
+// Suspicious RCU example:
+//  =============================
+//  WARNING: suspicious RCU usage
+//  5.4.293-kasan-kasan_outline-lockdep-23841-g4a79117cd6ea #1 Tainted: G     U
+//  W
+//  -----------------------------
+//  kernel/sched/core.c:5119 suspicious rcu_dereference_check() usage!
+//
+// func_name=lockdebug warning
+// signature=suspicious RCU usage
+
+bool KernelWarningCollector::ExtractLockdebugSignature(
+    const std::string& content,
+    std::string* signature,
+    std::string* func_name) {
+  std::string line;
+  std::string::size_type end_position = content.find('\n');
+  if (end_position == std::string::npos) {
+    LOG(ERROR) << "unexpected lockdebug crash format";
+    return false;
+  }
+  line = content.substr(0, end_position);
+  if (!RE2::PartialMatch(line, *lockdebug_header_re)) {
+    LOG(ERROR) << "unexpected lockdebug crash format";
+    return false;
+  }
+
+  // Try to parse the signature.  Starts from specific ones to general ones.
+  if (RE2::PartialMatch(content, *lockdebug_sig_re, signature, func_name)) {
+    return true;
+  }
+  if (RE2::PartialMatch(content, *lockdebug_sig2_re, signature)) {
+    *func_name = "warning";
+    return true;
+  }
+
+  LOG(INFO) << line << " does not match regex";
+  signature->clear();
+  func_name->clear();
+  return false;
+}
+
 constexpr LazyRE2 smmu_sig_re = {R"((\S+): Unhandled context fault: (.*))"};
 
 bool KernelWarningCollector::ExtractSMMUFaultSignature(
@@ -383,6 +466,8 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
     exec_name = kWifiWarningExecName;
   } else if (type == kKfence) {
     exec_name = kKfenceExecName;
+  } else if (type == kLockdebug) {
+    exec_name = kLockdebugExecName;
   } else if (type == kSMMUFault) {
     exec_name = kSMMUFaultExecName;
   } else if (type == kSuspend) {
@@ -446,7 +531,8 @@ CrashCollector::ComputedCrashSeverity KernelWarningCollector::ComputeSeverity(
   // Note that kKernelAth10kErrorExecName is not covered yet.
   // TODO(b/288895335): Add logic to set crash severity of
   // kKernelAth10kErrorExecName to kWarning.
-  if (exec_name == kSMMUFaultExecName || exec_name == kKfenceExecName) {
+  if (exec_name == kSMMUFaultExecName || exec_name == kKfenceExecName ||
+      exec_name == kLockdebugExecName) {
     computed_severity.crash_severity = CrashSeverity::kError;
   } else if ((exec_name == kKernelIwlwifiErrorExecName) ||
              (exec_name == kWifiWarningExecName) ||
@@ -464,6 +550,7 @@ CollectorInfo KernelWarningCollector::GetHandlerInfo(
     bool kernel_warning,
     bool kernel_wifi_warning,
     bool kernel_kfence,
+    bool kernel_lockdebug,
     bool kernel_smmu_fault,
     bool kernel_suspend_warning,
     bool kernel_iwlwifi_error,
@@ -490,6 +577,11 @@ CollectorInfo KernelWarningCollector::GetHandlerInfo(
            {
                .should_handle = kernel_kfence,
                .cb = base::BindRepeating(kernel_warn_cb, WarningType::kKfence),
+           },
+           {
+               .should_handle = kernel_lockdebug,
+               .cb =
+                   base::BindRepeating(kernel_warn_cb, WarningType::kLockdebug),
            },
            {
                .should_handle = kernel_smmu_fault,

@@ -332,6 +332,77 @@ TEST_F(KernelWarningCollectorTest, CollectKfenceBad) {
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }
 
+TEST_F(KernelWarningCollectorTest, CollectLockdebugCircular) {
+  ASSERT_TRUE(test_util::CreateFile(
+      test_path_,
+      "[  210.911351] ======================================================\n"
+      "[  210.911352] WARNING: possible circular locking dependency detected\n"
+      "[  210.911353] 5.15.180-kasan-lockdep-24494-gc7c1b8d2fd39 #1 Not "
+      "tainted\n"
+      "[  210.911354] ------------------------------------------------------\n"
+      "[  210.911355] chrome/1993 is trying to acquire lock:\n"
+      "[  210.911356] ffffffc0132e22a0 (&kctx->reg_lock){+.+.}-{3:3}, at: "
+      "kbase_gpu_vm_lock+0x30/0x40\n"
+      "[  210.911357]\n"
+      "<remaining log contents>"));
+  EXPECT_TRUE(
+      collector_.Collect(1, KernelWarningCollector::WarningType::kLockdebug));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_lockdebug_kbase_gpu_vm_lock.*.meta",
+      "sig=kbase_gpu_vm_lock+0x30/0x40"));
+  // Should *not* have a weight
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_lockdebug_kbase_gpu_vm_lock.*.meta",
+      "upload_var_weight="));
+}
+
+TEST_F(KernelWarningCollectorTest, CollectLockdebugRecursive) {
+  ASSERT_TRUE(test_util::CreateFile(
+      test_path_,
+      "[  210.911351] ============================================\n"
+      "[  210.911352] WARNING: possible recursive locking detected\n"
+      "[  210.911353] 6.1.145-kasan-lockdep-17509-g3e49662a061f #1 Not "
+      "tainted\n"
+      "[  210.911354] --------------------------------------------\n"
+      "[  210.911355] swapper/0/1 is trying to acquire lock:\n"
+      "[  210.911356] ffffff80c8102718 (&tz->lock){+.+.}-{3:3}, at: "
+      "thermal_zone_get_temp+0x40/0x1e4\n"
+      "[  210.911357]\n"
+      "<remaining log contents>"));
+  EXPECT_TRUE(
+      collector_.Collect(1, KernelWarningCollector::WarningType::kLockdebug));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_lockdebug_thermal_zone_get_temp.*.meta",
+      "sig=thermal_zone_get_temp+0x40/0x1e4"));
+  // Should *not* have a weight
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_lockdebug_thermal_zone_get_temp.*.meta",
+      "upload_var_weight="));
+}
+
+TEST_F(KernelWarningCollectorTest, CollectLockdebugSuspiciousRCU) {
+  ASSERT_TRUE(test_util::CreateFile(
+      test_path_,
+      "[  210.911351] =============================\n"
+      "[  210.911352] WARNING: suspicious RCU usage\n"
+      "[  210.911353] 5.4.293-kasan-kasan_outline-lockdep-23841-g4a79117cd6ea "
+      "#1 Tainted: G     U  W\n"
+      "[  210.911354] -----------------------------\n"
+      "[  210.911355] kernel/sched/core.c:5119 suspicious "
+      "rcu_dereference_check() usage!\n"
+      "[  210.911356]\n"
+      "<remaining log contents>"));
+  EXPECT_TRUE(
+      collector_.Collect(1, KernelWarningCollector::WarningType::kLockdebug));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_lockdebug_warning.*.meta",
+      "sig=suspicious RCU usage"));
+  // Should *not* have a weight
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_lockdebug_warning.*.meta",
+      "upload_var_weight="));
+}
+
 TEST_F(KernelWarningCollectorTest, CollectSMMUFaultOk) {
   ASSERT_TRUE(test_util::CreateFile(
       test_path_,

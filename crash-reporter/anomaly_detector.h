@@ -128,6 +128,15 @@ class KernelParser : public Parser {
     None,
     Start,
   };
+  enum class LockdebugLineType {
+    // The following enum values are used to parse the lockdebug error. The None
+    // value means that there is no error detected in the log. The Start value
+    // means that the first line of the dump was found. The Trace value means
+    // that the last section (backtrace) of the dump was found.
+    None,
+    Start,
+    Trace,
+  };
   const bool testonly_send_all_;
 
   LineType last_line_ = LineType::None;
@@ -139,6 +148,8 @@ class KernelParser : public Parser {
   std::string ath11k_text_;
   KfenceLineType kfence_last_line_ = KfenceLineType::None;
   std::string kfence_text_;
+  LockdebugLineType lockdebug_last_line_ = LockdebugLineType::None;
+  std::string lockdebug_text_;
   std::string text_;
   std::string flag_;
   int ah11k_line_counter_ = 0;

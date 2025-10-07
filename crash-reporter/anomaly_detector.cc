@@ -291,6 +291,17 @@ constexpr LazyRE2 start_kfence_dump = {R"(^\[\s*\S+\] BUG: KFENCE: )"};
 // The kernel uses 66 = characters to mark the end of the report.
 constexpr LazyRE2 end_kfence_dump = {R"(^\[\s*\S+\] ={66})"};
 
+// Locking debug warning starts with at least 25 characters.
+// $ grep -R '===' kernel/locking/lockdep.c | \
+//       tr -d -c '=\n' | awk '{print length($1), $1}' | sort
+constexpr LazyRE2 start_lockdebug = {R"(={25})"};
+// Lockdebug warning ends with a stack backtrace.
+// In some architectures, they use 'Call trace'; while in the rest
+// architectures, they use 'Call Trace'
+constexpr LazyRE2 calltrace_lockdebug = {R"(Call [Tt]race:)"};
+constexpr LazyRE2 backtrace_lockdebug = {
+    R"([0-9A-Za-z_]+\+0x[0-9A-Fa-f]+/0x[0-9A-Fa-f]+)"};
+
 constexpr LazyRE2 smmu_fault = {R"(Unhandled context fault: fsr=0x)"};
 
 static constexpr LazyRE2 kernel_lc_suspend_warning = {
@@ -512,6 +523,32 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
     }
 
     kfence_text_ += line + "\n";
+  }
+
+  if (lockdebug_last_line_ == LockdebugLineType::None) {
+    if (RE2::PartialMatch(line, *start_lockdebug)) {
+      lockdebug_last_line_ = LockdebugLineType::Start;
+      lockdebug_text_ += line + "\n";
+    }
+  } else if (lockdebug_last_line_ == LockdebugLineType::Start) {
+    if (RE2::PartialMatch(line, *calltrace_lockdebug)) {
+      lockdebug_last_line_ = LockdebugLineType::Trace;
+    }
+    lockdebug_text_ += line + "\n";
+  } else if (lockdebug_last_line_ == LockdebugLineType::Trace) {
+    // It depends on seeing a non-backtrace line to collect the report.
+    // Ignore the case if there is no follow-up output lines (unlikely).
+    if (!RE2::PartialMatch(line, *backtrace_lockdebug)) {
+      lockdebug_last_line_ = LockdebugLineType::None;
+
+      std::string lockdebug_text_tmp;
+      lockdebug_text_tmp.swap(lockdebug_text_);
+      // Note: there is no sampling weight for lockdebug warning as we
+      // consider it as a critical report.
+      return CrashReport(std::move(lockdebug_text_tmp),
+                         {std::move("--kernel_lockdebug")});
+    }
+    lockdebug_text_ += line + "\n";
   }
 
   if (RE2::PartialMatch(line, *smmu_fault)) {

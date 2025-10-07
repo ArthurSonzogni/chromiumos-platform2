@@ -1,0 +1,68 @@
+[    4.626697] ============================================
+[    4.626725] WARNING: possible recursive locking detected
+[    4.626749] 6.1.145-kasan-lockdep-17509-g3e49662a061f #1 Not tainted
+[    4.626780] --------------------------------------------
+[    4.626802] swapper/0/1 is trying to acquire lock:
+[    4.626829] ffffff80c8102718 (&tz->lock){+.+.}-{3:3}, at: thermal_zone_get_temp+0x40/0x1e4
+[    4.626931] 
+[    4.626931] but task is already holding lock:
+[    4.626952] ffffff80c8294718 (&tz->lock){+.+.}-{3:3}, at: thermal_zone_device_update+0xc4/0xed0
+[    4.627038] 
+[    4.627038] other info that might help us debug this:
+[    4.627060]  Possible unsafe locking scenario:
+[    4.627060] 
+[    4.627080]        CPU0
+[    4.627099]        ----
+[    4.627117]   lock(&tz->lock);
+[    4.627154]   lock(&tz->lock);
+[    4.627189] 
+[    4.627189]  *** DEADLOCK ***
+[    4.627189] 
+[    4.627209]  May be due to missing lock nesting notation
+[    4.627209] 
+[    4.627229] 2 locks held by swapper/0/1:
+[    4.627257]  #0: ffffff80c1fa01c0 (&dev->mutex){....}-{3:3}, at: __driver_attach+0x3b8/0x5ec
+[    4.627355]  #1: ffffff80c8294718 (&tz->lock){+.+.}-{3:3}, at: thermal_zone_device_update+0xc4/0xed0
+[    4.627444] 
+[    4.627444] stack backtrace:
+[    4.627467] CPU: 6 PID: 1 Comm: swapper/0 Not tainted 6.1.145-kasan-lockdep-17509-g3e49662a061f #1 5f12191c255525f6bb3c0b71731126913aac0dda
+[    4.627512] Hardware name: Google Ciri sku0/unprovisioned board (DT)
+[    4.627539] Call trace:
+[    4.627559]  dump_backtrace+0x1c8/0x1f4
+[    4.627599]  show_stack+0x34/0x44
+[    4.627634]  __dump_stack+0x30/0x40
+[    4.627672]  dump_stack_lvl+0xe0/0x134
+[    4.627709]  dump_stack+0x1c/0x4c
+[    4.627745]  __lock_acquire+0x1718/0x635c
+[    4.627783]  lock_acquire+0x204/0x67c
+[    4.627819]  __mutex_lock_common+0x108/0x10ac
+[    4.627861]  mutex_lock_nested+0x40/0x4c
+[    4.627899]  thermal_zone_get_temp+0x40/0x1e4
+[    4.627933]  vtemp_get_temp+0xac/0x204
+[    4.627973]  __thermal_zone_get_temp+0x114/0x188
+[    4.628010]  thermal_zone_device_update+0x170/0xed0
+[    4.628044]  thermal_zone_device_enable+0x118/0x16c
+[    4.628078]  thermal_of_zone_register+0x8f0/0xbc4
+[    4.628116]  devm_thermal_of_zone_register+0x94/0x104
+[    4.628155]  vtemp_probe+0x184/0x250
+[    4.628194]  platform_probe+0x144/0x1bc
+[    4.628226]  really_probe+0x3a0/0xb8c
+[    4.628265]  __driver_probe_device+0x188/0x318
+[    4.628305]  driver_probe_device+0x80/0x32c
+[    4.628346]  __driver_attach+0x3c4/0x5ec
+[    4.628385]  bus_for_each_dev+0x10c/0x178
+[    4.628422]  driver_attach+0x54/0x64
+[    4.628461]  bus_add_driver+0x2e0/0x55c
+[    4.628498]  driver_register+0x208/0x380
+[    4.628540]  __platform_driver_register+0x74/0x88
+[    4.628585]  vtemp_driver_init+0x28/0x34
+[    4.628629]  do_one_initcall+0x204/0x958
+[    4.628673]  do_initcall_level+0x11c/0x164
+[    4.628717]  do_initcalls+0x60/0xb4
+[    4.628759]  do_basic_setup+0x94/0xa8
+[    4.628801]  kernel_init_freeable+0x34c/0x4e0
+[    4.628845]  kernel_init+0x2c/0x1e4
+[    4.628888]  ret_from_fork+0x10/0x20
+[    4.637318] mtk-wdt 10007000.watchdog: Watchdog enabled (timeout=31 sec, nowayout=0)
+[    4.645333] device-mapper: ioctl: 4.47.0-ioctl (2022-07-28) initialised: dm-devel@redhat.com
+[    4.647867] device-mapper: verity-chromeos: dm-verity-chromeos registered

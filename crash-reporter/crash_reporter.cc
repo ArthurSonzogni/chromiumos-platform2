@@ -364,6 +364,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(kernel_smmu_fault, false, "Report collected kernel smmu faults");
   DEFINE_bool(kernel_suspend_warning, false,
               "Report collected kernel suspend warning");
+  DEFINE_bool(kernel_lockdebug, false,
+              "Report collected kernel lockdebug warning");
   DEFINE_bool(missed_chrome_crash, false,
               "Report that we missed a Chrome crash");
   DEFINE_int32(recent_miss_count, -1,
@@ -729,7 +731,7 @@ int main(int argc, char* argv[]) {
 
   collectors.push_back(KernelWarningCollector::GetHandlerInfo(
       FLAGS_weight, FLAGS_kernel_warning, FLAGS_kernel_wifi_warning,
-      FLAGS_kernel_kfence, FLAGS_kernel_smmu_fault,
+      FLAGS_kernel_kfence, FLAGS_kernel_lockdebug, FLAGS_kernel_smmu_fault,
       FLAGS_kernel_suspend_warning, FLAGS_kernel_iwlwifi_error,
       FLAGS_kernel_ath10k_error, FLAGS_kernel_ath11k_error, metrics_lib));
 
