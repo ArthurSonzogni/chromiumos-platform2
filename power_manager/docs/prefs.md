@@ -55,11 +55,12 @@ by placing files and values into `/var/lib/power_manager`. See [Overriding Pref 
 
 ### The Embedded Controller aka CrosEcPrefsSource
 
-The [CrosEcPrefsSource] sources values from the embedded controller. Only two
+The [CrosEcPrefsSource] sources values from the embedded controller. Only three
 keys are served by the EC:
 
-- `low_battery_shutdown_percent` and
-- `power_supply_full_factor`.
+- `low_battery_shutdown_percent`
+- `power_supply_full_factor`
+- `min_charging_volt`
 
 It is convenient to read these values via the prefs mechanism because they can
 be overridden as needed via [FilePrefsStore]  and the `/var/lib/power_manager`

@@ -23,6 +23,8 @@ is available:
     in powerd.
 -   [Battery Notifications](docs/battery_notifications.md) describes when
     low-battery notifications are shown by the UI.
+-   [Chargers](docs/chargers.md) describes how powerd supports Hybrid Power Boost
+    chargers.
 -   [Inactivity Delays](docs/inactivity_delays.md) describes powerd's logic for
     taking action (e.g. dimming the backlight or suspending) when the user is
     inactive.
