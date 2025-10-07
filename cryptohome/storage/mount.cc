@@ -217,8 +217,6 @@ StorageStatus Mount::MountCryptohome(
   }
   ReportTimerStop(kSELinuxRelabelTimer);
 
-  ReportRestoreSELinuxContextResultForHomeDir(result);
-
   return StorageStatus::Ok();
 }
 

@@ -299,10 +299,7 @@ bool InitializeFilesystemLayout(libstorage::Platform* platform,
   const base::FilePath shadow_root = ShadowRoot();
   if (!platform->DirectoryExists(shadow_root)) {
     platform->CreateDirectory(shadow_root);
-    if (platform->RestoreSELinuxContexts(shadow_root, true /*recursive*/)) {
-      ReportRestoreSELinuxContextResultForShadowDir(true);
-    } else {
-      ReportRestoreSELinuxContextResultForShadowDir(false);
+    if (!platform->RestoreSELinuxContexts(shadow_root, true /*recursive*/)) {
       LOG(ERROR) << "RestoreSELinuxContexts(" << shadow_root << ") failed.";
     }
   }

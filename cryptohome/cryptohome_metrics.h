@@ -485,13 +485,6 @@ void ReportOOPMountCleanupResult(OOPMountCleanupResult result);
 void ReportPrepareForRemovalResult(AuthBlockType auth_block_type,
                                    CryptoError result);
 
-// Reports the result of a RestoreSELinuxContexts operation for /home/.shadow.
-void ReportRestoreSELinuxContextResultForShadowDir(bool success);
-
-// Reports the result of a RestoreSELinuxContexts operation for the bind mounted
-// directories under user home directory.
-void ReportRestoreSELinuxContextResultForHomeDir(bool success);
-
 // Reports which kinds of auth block we are used to derive.
 void ReportCreateAuthBlock(AuthBlockType type);
 

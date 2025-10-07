@@ -72,10 +72,6 @@ constexpr char kOOPMountCleanupResultHistogram[] =
     "Cryptohome.OOPMountCleanupResult";
 constexpr char kRecoveryPrepareForRemovalResultHistogram[] =
     "Cryptohome.%s.PrepareForRemovalResult";
-constexpr char kRestoreSELinuxContextResultForHome[] =
-    "Cryptohome.RestoreSELinuxContextResultForHome";
-constexpr char kRestoreSELinuxContextResultForShadow[] =
-    "Cryptohome.RestoreSELinuxContextResultForShadow";
 constexpr char kCreateAuthBlockTypeHistogram[] =
     "Cryptohome.CreateAuthBlockType";
 constexpr char kDeriveAuthBlockTypeHistogram[] =
@@ -571,22 +567,6 @@ void ReportPrepareForRemovalResult(AuthBlockType auth_block_type,
       base::StringPrintf(kRecoveryPrepareForRemovalResultHistogram,
                          GetAuthBlockTypeStringVariant(auth_block_type)),
       static_cast<int>(result), static_cast<int>(CryptoError::CE_MAX_VALUE));
-}
-
-void ReportRestoreSELinuxContextResultForHomeDir(bool success) {
-  if (!g_metrics) {
-    return;
-  }
-
-  g_metrics->SendBoolToUMA(kRestoreSELinuxContextResultForHome, success);
-}
-
-void ReportRestoreSELinuxContextResultForShadowDir(bool success) {
-  if (!g_metrics) {
-    return;
-  }
-
-  g_metrics->SendBoolToUMA(kRestoreSELinuxContextResultForShadow, success);
 }
 
 void ReportCreateAuthBlock(AuthBlockType type) {
