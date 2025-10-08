@@ -136,6 +136,7 @@ setresgid: 1
 setresuid: 1
 setsid: 1
 setsockopt: 1
+setxattr: 1
 shutdown: 1
 sigaltstack: 1
 signalfd4: 1
