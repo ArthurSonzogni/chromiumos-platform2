@@ -9,8 +9,8 @@
 #include <optional>
 
 struct SensorImage {
-  int width = 0;
-  int height = 0;
+  uint32_t width = 0;
+  uint32_t height = 0;
   uint32_t frame_size = 0;
   uint32_t pixel_format = 0;
   uint16_t bpp = 0;
