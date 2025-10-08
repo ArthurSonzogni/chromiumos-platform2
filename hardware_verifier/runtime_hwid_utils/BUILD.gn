@@ -1,0 +1,64 @@
+# Copyright 2025 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":install_headers",
+    ":libruntimehwid_utils",
+    ":libruntimehwid_utils-pc",
+  ]
+  if (use.test) {
+    deps += [ ":unittest_runner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libcrossystem",
+  ]
+}
+
+shared_library("libruntimehwid_utils") {
+  output_name = "libruntimehwid_utils"
+  sources = [ "runtime_hwid_utils_impl.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "lib"
+}
+
+install_config("install_headers") {
+  sources = [
+    "runtime_hwid_utils.h",
+    "runtime_hwid_utils_impl.h",
+    "runtime_hwid_utils_mock.h",
+  ]
+  install_path = "/usr/include/chromeos/hardware_verifier/runtime_hwid_utils"
+}
+
+generate_pkg_config("libruntimehwid_utils-pc") {
+  name = "libruntimehwid_utils"
+  description = "Runtime HWID Utility library"
+  version = getenv("PV")
+  libs = [ "-lruntimehwid_utils" ]
+  install = true
+}
+
+if (use.test) {
+  executable("unittest_runner") {
+    sources = [ "runtime_hwid_utils_impl_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    run_test = true
+    pkg_deps = [ "libcrossystem-test" ]
+    deps = [
+      ":libruntimehwid_utils",
+      "//common-mk/testrunner",
+    ]
+  }
+}

@@ -7,6 +7,7 @@
 
 namespace hardware_verifier {
 
+// TODO(b/445568895): Migrate to runtime_hwid_utils package.
 // Deletes the `/var/cache/runtime_hwid` file if it is present on the device.
 bool DeleteRuntimeHWIDFromDevice();
 
