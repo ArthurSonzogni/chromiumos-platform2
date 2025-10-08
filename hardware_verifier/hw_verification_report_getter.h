@@ -10,7 +10,7 @@
 #include <string_view>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
-#include "hardware_verifier/runtime_hwid_utils.h"
+#include "hardware_verifier/runtime_hwid_generator.h"
 
 namespace hardware_verifier {
 

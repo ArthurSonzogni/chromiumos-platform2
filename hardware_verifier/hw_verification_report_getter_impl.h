@@ -15,7 +15,7 @@
 #include "hardware_verifier/hw_verification_report_getter.h"
 #include "hardware_verifier/hw_verification_spec_getter.h"
 #include "hardware_verifier/probe_result_getter.h"
-#include "hardware_verifier/runtime_hwid_utils.h"
+#include "hardware_verifier/runtime_hwid_generator.h"
 #include "hardware_verifier/verifier.h"
 
 namespace hardware_verifier {

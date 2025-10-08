@@ -18,7 +18,7 @@
 #include "hardware_verifier/cli.h"
 #include "hardware_verifier/daemon.h"
 #include "hardware_verifier/observer.h"
-#include "hardware_verifier/runtime_hwid_utils.h"
+#include "hardware_verifier/runtime_hwid_generator.h"
 #include "hardware_verifier/system/context_impl.h"
 
 namespace {

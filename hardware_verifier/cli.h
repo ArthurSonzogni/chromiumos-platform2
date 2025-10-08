@@ -12,7 +12,7 @@
 #include <utility>
 
 #include "hardware_verifier/hw_verification_report_getter.h"
-#include "hardware_verifier/runtime_hwid_utils.h"
+#include "hardware_verifier/runtime_hwid_generator.h"
 
 namespace hardware_verifier {
 

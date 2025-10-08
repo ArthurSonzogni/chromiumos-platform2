@@ -20,7 +20,9 @@
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
+#include "hardware_verifier/runtime_hwid_generator.h"
 #include "hardware_verifier/runtime_hwid_generator_impl.h"
+#include "hardware_verifier/runtime_hwid_utils.h"
 
 namespace hardware_verifier {
 

@@ -22,7 +22,6 @@
 #include "hardware_verifier/hw_verification_spec_getter_impl.h"
 #include "hardware_verifier/probe_result_getter_impl.h"
 #include "hardware_verifier/runtime_hwid_generator.h"
-#include "hardware_verifier/runtime_hwid_utils.h"
 #include "hardware_verifier/test_utils.h"
 
 namespace hardware_verifier {

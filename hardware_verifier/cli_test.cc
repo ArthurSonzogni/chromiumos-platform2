@@ -20,6 +20,7 @@
 #include "hardware_verifier/hw_verification_report_getter.h"
 #include "hardware_verifier/mock_hw_verification_report_getter.h"
 #include "hardware_verifier/observer.h"
+#include "hardware_verifier/runtime_hwid_generator.h"
 #include "hardware_verifier/test_utils.h"
 
 namespace hardware_verifier {

@@ -17,7 +17,6 @@
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/runtime_hwid_generator.h"
-#include "hardware_verifier/runtime_hwid_utils.h"
 #include "hardware_verifier/verifier.h"
 
 namespace hardware_verifier {
