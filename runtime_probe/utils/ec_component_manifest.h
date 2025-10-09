@@ -24,13 +24,6 @@ inline constexpr char kEcComponentManifestName[] = "component_manifest.json";
 
 // This class handles the component manifest.
 struct EcComponentManifest {
-  enum class ProbeStrategy {
-    DEFAULT = 0,
-    // Executes the first i2c command twice, with the return value of the first
-    // execution being ignored, to wake up the component from low-power mode.
-    WAKE_UP = 1,
-  };
-
   struct Component {
     struct I2c {
       struct Expect {
@@ -52,7 +45,6 @@ struct EcComponentManifest {
     std::string component_type;
     std::string component_name;
     I2c i2c;
-    ProbeStrategy probe_strategy;
 
     static std::optional<Component> Create(const base::Value::Dict&);
   };

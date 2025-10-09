@@ -155,7 +155,6 @@ TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
     const EcComponentManifest::Component& comp = manifest->component_list[0];
     EXPECT_EQ(comp.component_type, "base_sensor");
     EXPECT_EQ(comp.component_name, "base_sensor_1");
-    EXPECT_EQ(comp.probe_strategy, EcComponentManifest::ProbeStrategy::WAKE_UP);
     EXPECT_EQ(comp.i2c.port, 3);
     EXPECT_EQ(comp.i2c.addr, 0x1);
     EXPECT_EQ(comp.i2c.expect.size(), 4);
@@ -191,7 +190,6 @@ TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
     const EcComponentManifest::Component& comp = manifest->component_list[1];
     EXPECT_EQ(comp.component_type, "base_sensor");
     EXPECT_EQ(comp.component_name, "base_sensor_2");
-    EXPECT_EQ(comp.probe_strategy, EcComponentManifest::ProbeStrategy::DEFAULT);
     EXPECT_EQ(comp.i2c.port, 3);
     EXPECT_EQ(comp.i2c.addr, 0x2);
     EXPECT_EQ(comp.i2c.expect.size(), 0);

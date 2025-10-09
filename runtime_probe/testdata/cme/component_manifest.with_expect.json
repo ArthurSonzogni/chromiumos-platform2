@@ -82,27 +82,6 @@
           }
         ]
       }
-    },
-    {
-      "component_type": "base_sensor",
-      "component_name": "base_sensor_5",
-      "i2c": {
-        "port": 3,
-        "addr": "0x01",
-        "expect": [
-          {
-            "reg": "0x00",
-            "mask": "0xff",
-            "value": "0x00"
-          },
-          {
-            "reg": "0x01",
-            "mask": "0x0f",
-            "value": "0x01"
-          }
-        ]
-      },
-      "probe": "low_power_probe_once"
     }
   ]
 }

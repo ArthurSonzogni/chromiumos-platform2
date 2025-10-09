@@ -45,12 +45,6 @@ class EcComponentFunction : public PrivilegedProbeFunction {
       uint8_t read_len) const;
   virtual std::unique_ptr<ec::GetVersionCommand> GetGetVersionCommand() const;
 
-  std::unique_ptr<ec::I2cPassthruCommand> GetI2cReadCommand(
-      const EcComponentManifest::Component& comp) const;
-  std::unique_ptr<ec::I2cPassthruCommand> GetI2cReadCommand(
-      const EcComponentManifest::Component& comp,
-      const EcComponentManifest::Component::I2c::Expect& expect) const;
-
   std::optional<std::string> GetCurrentECVersion(
       const base::ScopedFD& ec_dev_fd) const;
 
@@ -58,9 +52,6 @@ class EcComponentFunction : public PrivilegedProbeFunction {
                         const base::ScopedFD& ec_dev_fd,
                         CommandSequenceHistoryTracker* tracker,
                         bool use_cached_invocations) const;
-
-  bool WakeUpComponent(const EcComponentManifest::Component& comp,
-                       const base::ScopedFD& ec_dev_fd) const;
 
   template <typename ManifestReader>
   DataType ProbeWithManifest(const std::optional<std::string>& manifest_path,
