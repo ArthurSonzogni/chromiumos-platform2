@@ -6,6 +6,8 @@
 #define HARDWARE_VERIFIER_RUNTIME_HWID_UTILS_RUNTIME_HWID_UTILS_IMPL_H_
 
 #include <memory>
+#include <optional>
+#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -24,6 +26,8 @@ class BRILLO_EXPORT RuntimeHWIDUtilsImpl : public RuntimeHWIDUtils {
   RuntimeHWIDUtilsImpl& operator=(const RuntimeHWIDUtilsImpl&) = delete;
 
   bool DeleteRuntimeHWIDFromDevice() const override;
+
+  std::optional<std::string> GetRuntimeHWID() const override;
 
  protected:
   explicit RuntimeHWIDUtilsImpl(

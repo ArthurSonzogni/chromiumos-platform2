@@ -5,9 +5,11 @@
 #include "hardware_verifier/runtime_hwid_utils/runtime_hwid_utils_impl.h"
 
 #include <memory>
+#include <optional>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/file_utils.h>
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem_fake.h>
@@ -16,8 +18,15 @@ namespace hardware_verifier {
 
 namespace {
 
+constexpr char kCrosSystemHWIDKey[] = "hwid";
 constexpr char kRuntimeHWIDFilePath[] =
     "var/cache/hardware_verifier/runtime_hwid";
+
+constexpr char kFactoryHWID[] = "REDRIX-ZZCR D3A-39F-27K-E2A";
+constexpr char kRuntimeHWID[] =
+    "REDRIX-ZZCR D3A-39E-K6C-E9Z R:1-1-2-6-11-4-5-3-7-8-10-9-1";
+constexpr char kRuntimeHWIDChecksum[] =
+    "F897B1AD02B472632DB714083BFC70D511B12C0A";
 
 class RuntimeHWIDUtilsImplForTesting : public RuntimeHWIDUtilsImpl {
  public:
@@ -40,6 +49,12 @@ class RuntimeHWIDUtilsImplTest : public ::testing::Test {
 
     runtime_hwid_utils_impl_ = std::make_unique<RuntimeHWIDUtilsImplForTesting>(
         fake_root_, std::move(crossystem));
+  }
+
+  void CreateRuntimeHWIDFile(const std::string& content) {
+    const auto runtime_hwid_path = fake_root_.Append(kRuntimeHWIDFilePath);
+    ASSERT_TRUE(brillo::WriteStringToFile(runtime_hwid_path, content));
+    ASSERT_TRUE(base::PathExists(runtime_hwid_path));
   }
 
   base::FilePath fake_root_;
@@ -76,6 +91,80 @@ TEST_F(RuntimeHWIDUtilsImplTest,
 
   EXPECT_FALSE(runtime_hwid_utils_impl_->DeleteRuntimeHWIDFromDevice());
   EXPECT_TRUE(base::PathExists(runtime_hwid_path));
+}
+
+TEST_F(RuntimeHWIDUtilsImplTest, GetRuntimeHWID) {
+  fake_crossystem_->VbSetSystemPropertyString(kCrosSystemHWIDKey, kFactoryHWID);
+  const std::string runtime_hwid_file_content =
+      base::StringPrintf(R"(%s
+%s)",
+                         kRuntimeHWID, kRuntimeHWIDChecksum);
+  CreateRuntimeHWIDFile(runtime_hwid_file_content);
+
+  const auto runtime_hwid = runtime_hwid_utils_impl_->GetRuntimeHWID();
+
+  EXPECT_EQ(runtime_hwid, kRuntimeHWID);
+}
+
+TEST_F(RuntimeHWIDUtilsImplTest, GetRuntimeHWID_EmptyRuntimeHWIDFile) {
+  fake_crossystem_->VbSetSystemPropertyString(kCrosSystemHWIDKey, kFactoryHWID);
+  CreateRuntimeHWIDFile("");
+
+  const auto runtime_hwid = runtime_hwid_utils_impl_->GetRuntimeHWID();
+
+  EXPECT_EQ(runtime_hwid, kFactoryHWID);
+}
+
+TEST_F(RuntimeHWIDUtilsImplTest, GetRuntimeHWID_MalformedRuntimeHWIDFile) {
+  fake_crossystem_->VbSetSystemPropertyString(kCrosSystemHWIDKey, kFactoryHWID);
+  // File has only one line.
+  const std::string runtime_hwid_file_content =
+      base::StringPrintf(R"(%s
+%s
+invalid-line)",
+                         kRuntimeHWID, kRuntimeHWIDChecksum);
+  CreateRuntimeHWIDFile(runtime_hwid_file_content);
+
+  const auto runtime_hwid = runtime_hwid_utils_impl_->GetRuntimeHWID();
+
+  EXPECT_EQ(runtime_hwid, kFactoryHWID);
+}
+
+TEST_F(RuntimeHWIDUtilsImplTest, GetRuntimeHWID_InvalidChecksum) {
+  fake_crossystem_->VbSetSystemPropertyString(kCrosSystemHWIDKey, kFactoryHWID);
+  const std::string runtime_hwid_file_content =
+      base::StringPrintf(R"(%s
+invalid-checksum)",
+                         kRuntimeHWID);
+  CreateRuntimeHWIDFile(runtime_hwid_file_content);
+
+  const auto runtime_hwid = runtime_hwid_utils_impl_->GetRuntimeHWID();
+
+  EXPECT_EQ(runtime_hwid, kFactoryHWID);
+}
+
+TEST_F(RuntimeHWIDUtilsImplTest, GetRuntimeHWID_MismatchedModelRLZ) {
+  fake_crossystem_->VbSetSystemPropertyString(kCrosSystemHWIDKey, kFactoryHWID);
+  const std::string runtime_hwid_file_content =
+      R"(MODEL-CODE A1B-C2D-E2J R:1-1-2-6-11-4-5-3-7-8-10-9-1
+1B2927AE670B279CE1096C21AD05C27CE60A03E5)";
+  CreateRuntimeHWIDFile(runtime_hwid_file_content);
+
+  const auto runtime_hwid = runtime_hwid_utils_impl_->GetRuntimeHWID();
+
+  EXPECT_EQ(runtime_hwid, kFactoryHWID);
+}
+
+TEST_F(RuntimeHWIDUtilsImplTest, GetRuntimeHWID_NoFactoryHWID) {
+  EXPECT_EQ(runtime_hwid_utils_impl_->GetRuntimeHWID(), std::nullopt);
+}
+
+TEST_F(RuntimeHWIDUtilsImplTest, GetRuntimeHWID_NoRuntimeHWIDFile) {
+  fake_crossystem_->VbSetSystemPropertyString(kCrosSystemHWIDKey, kFactoryHWID);
+
+  const auto runtime_hwid = runtime_hwid_utils_impl_->GetRuntimeHWID();
+
+  EXPECT_EQ(runtime_hwid, kFactoryHWID);
 }
 
 }  // namespace
