@@ -28,8 +28,7 @@ namespace ec {
 inline constexpr char kCrosEcPath[] = "/dev/cros_ec";
 
 // Map from |enum ec_status| to the pretty string.
-#define EC_MAP_ITEM(k, v) \
-  { k, #v }
+#define EC_MAP_ITEM(k, v) {k, #v}
 inline const std::unordered_map<enum ec_status, const char*> kECStatusText =
     EC_STATUS_TEXT;
 #undef EC_MAP_ITEM
@@ -165,7 +164,7 @@ class EcCommand : public EcCommandInterface {
 
   Params request_{};
   Response response_{};
-  struct cros_ec_command_v2 cmd_ {};
+  struct cros_ec_command_v2 cmd_{};
 };
 
 /**
