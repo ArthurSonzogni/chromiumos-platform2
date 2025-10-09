@@ -9,6 +9,7 @@ group("all") {
     ":install_headers",
     ":libruntimehwid_utils",
     ":libruntimehwid_utils-pc",
+    ":runtime_hwid_tool",
   ]
   if (use.test) {
     deps += [ ":unittest_runner" ]
@@ -45,6 +46,13 @@ generate_pkg_config("libruntimehwid_utils-pc") {
   version = getenv("PV")
   libs = [ "-lruntimehwid_utils" ]
   install = true
+}
+
+executable("runtime_hwid_tool") {
+  sources = [ "runtime_hwid_tool.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+  deps = [ ":libruntimehwid_utils" ]
 }
 
 if (use.test) {
