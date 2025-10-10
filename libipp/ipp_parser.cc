@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "libipp/ipp_parser.h"
+
 #include <set>
 
 #include "libipp/frame.h"
@@ -175,6 +176,8 @@ void Parser::LogParserErrors(const std::vector<ParserCode>& error_codes) {
   }
 }
 
+struct RawCollection;
+
 // Temporary representation of an attribute's value parsed from TNVs.
 struct RawValue {
   // original tag (IsValid(tag))
@@ -184,14 +187,10 @@ struct RawValue {
   // (not nullptr) <=> (tag == collection)
   std::unique_ptr<RawCollection> collection;
   // create as standard value
-  RawValue(ValueTag tag, const std::vector<uint8_t>& data)
-      : tag(tag), data(data) {}
+  RawValue(ValueTag tag, const std::vector<uint8_t>& data);
   // create as collection
-  explicit RawValue(RawCollection* coll)
-      : tag(ValueTag::collection), collection(coll) {}
+  explicit RawValue(RawCollection* coll);
 };
-
-struct RawCollection;
 
 // Temporary representation of an attribute parsed from TNVs.
 struct RawAttribute {
@@ -199,7 +198,7 @@ struct RawAttribute {
   std::string name;
   // parsed values (see RawValue)
   std::vector<RawValue> values;
-  explicit RawAttribute(const std::string& name) : name(name) {}
+  explicit RawAttribute(const std::string& name);
 };
 
 // Temporary representation of a collection parsed from TNVs.
@@ -207,6 +206,14 @@ struct RawCollection {
   // parsed attributes (may have duplicate names)
   std::vector<RawAttribute> attributes;
 };
+
+RawValue::RawValue(ValueTag tag, const std::vector<uint8_t>& data)
+    : tag(tag), data(data) {}
+
+RawValue::RawValue(RawCollection* coll)
+    : tag(ValueTag::collection), collection(coll) {}
+
+RawAttribute::RawAttribute(const std::string& name) : name(name) {}
 
 // Parse a value of type `attr_type` from `raw_value` to `output` when possible.
 // Returns true <=> parsing was successful. All spotted errors are added to
