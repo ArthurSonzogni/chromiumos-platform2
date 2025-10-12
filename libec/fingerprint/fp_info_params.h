@@ -19,14 +19,14 @@ namespace ec::fp_info {
 
 struct Header_v2 {
   /* Sensor identification */
-  struct fp_sensor_info sensor_info {};
+  struct fp_sensor_info sensor_info{};
   /* Template/finger current information */
-  struct fp_template_info template_info {};
+  struct fp_template_info template_info{};
 };
 
 // Allocates space for the flash bank response.
 struct Params_v2 {
-  struct Header_v2 info {};
+  struct Header_v2 info{};
   ArrayData<struct fp_image_frame_params, struct Header_v2>
       image_frame_params{};
 };
