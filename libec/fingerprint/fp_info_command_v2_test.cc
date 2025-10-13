@@ -22,6 +22,9 @@ TEST(FpInfoCommand_v2, FpInfoCommand_v2) {
   EXPECT_TRUE(cmd);
   EXPECT_EQ(cmd->Version(), 2);
   EXPECT_EQ(cmd->Command(), EC_CMD_FP_INFO);
+  EXPECT_EQ(cmd->RespSize(),
+            sizeof(struct fp_info::Header_v2) +
+                FP_MAX_CAPTURE_TYPES * sizeof(struct fp_image_frame_params));
 }
 
 /**
