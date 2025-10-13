@@ -46,7 +46,7 @@ static bool check_usb_path(const std::string& path) {
 }
 
 static bool check_i2c_path(const std::string& path) {
-  RE2 pattern("[1-9][0-9]*-[[:xdigit:]]{4}");
+  RE2 pattern("[0-9]+-[[:xdigit:]]{4}");
   return RE2::FullMatch(path, pattern);
 }
 
