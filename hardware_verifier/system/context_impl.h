@@ -6,6 +6,8 @@
 #define HARDWARE_VERIFIER_SYSTEM_CONTEXT_IMPL_H_
 
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <chromeos/hardware_verifier/runtime_hwid_utils/runtime_hwid_utils.h>
+#include <chromeos/hardware_verifier/runtime_hwid_utils/runtime_hwid_utils_impl.h>
 #include <libcrossystem/crossystem.h>
 #include <libsegmentation/feature_management.h>
 
@@ -26,6 +28,10 @@ class ContextImpl : public Context {
     return &feature_management_;
   }
 
+  RuntimeHWIDUtils* runtime_hwid_utils() override {
+    return &runtime_hwid_utils_;
+  }
+
  private:
   // The object to access the ChromeOS model configuration.
   brillo::CrosConfig cros_config_;
@@ -35,6 +41,9 @@ class ContextImpl : public Context {
 
   // The object to access feature_management system properties.
   segmentation::FeatureManagement feature_management_;
+
+  // The object to access Runtime HWID.
+  RuntimeHWIDUtilsImpl runtime_hwid_utils_;
 };
 
 }  // namespace hardware_verifier

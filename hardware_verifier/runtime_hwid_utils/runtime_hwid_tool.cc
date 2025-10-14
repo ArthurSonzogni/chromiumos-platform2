@@ -36,7 +36,8 @@ int main(int argc, char* argv[]) {
   const auto* cl = base::CommandLine::ForCurrentProcess();
   const auto args = cl->GetArgs();
   if (args.size() != 1) {
-    LOG(ERROR) << "Too many command line arguments. Use --help for the usage.";
+    LOG(ERROR) << "Invalid number of command line arguments. Use --help for "
+                  "the usage.";
     return EXIT_FAILURE;
   }
   if (args[0] != kGetAction) {

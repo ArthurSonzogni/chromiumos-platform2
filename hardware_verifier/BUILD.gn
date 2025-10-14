@@ -32,6 +32,7 @@ pkg_config("target_defaults") {
     "libcros_config",
     "libmetrics",
     "libruntime_probe-client",
+    "libruntimehwid_utils",
     "re2",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -55,7 +56,6 @@ static_library("libhardware_verifier") {
     "observer.cc",
     "probe_result_getter_impl.cc",
     "runtime_hwid_generator_impl.cc",
-    "runtime_hwid_utils.cc",
     "verifier_impl.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -122,7 +122,6 @@ if (use.test) {
       "hw_verification_spec_getter_impl_test.cc",
       "probe_result_getter_impl_test.cc",
       "runtime_hwid_generator_impl_test.cc",
-      "runtime_hwid_utils_test.cc",
       "verifier_impl_test.cc",
     ]
     configs += [

@@ -234,31 +234,28 @@ TEST_F(VerifierImplRuntimeHWIDTest, TestDefaultPolicy) {
   EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
       .Times(0);
   EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(0);
+  EXPECT_CALL(*mock_context()->fake_runtime_hwid_utils(),
+              DeleteRuntimeHWIDFromDevice)
+      .Times(0);
   SetFile(kRuntimeHWIDFilePath, "fake-file");
 
   auto res = verifier_->Verify(probe_result_, hw_verification_spec_);
 
   EXPECT_TRUE(res.has_value());
-  std::string file_content;
-  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
-  EXPECT_TRUE(base::ReadFileToString(runtime_hwid_path, &file_content));
-  EXPECT_EQ(file_content, "fake-file");
 }
 
 TEST_F(VerifierImplRuntimeHWIDTest, TestSkipPolicy) {
   EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
       .Times(0);
   EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(0);
-  SetFile(kRuntimeHWIDFilePath, "fake-file");
+  EXPECT_CALL(*mock_context()->fake_runtime_hwid_utils(),
+              DeleteRuntimeHWIDFromDevice)
+      .Times(0);
 
   auto res = verifier_->Verify(probe_result_, hw_verification_spec_,
                                RuntimeHWIDRefreshPolicy::kSkip);
 
   EXPECT_TRUE(res.has_value());
-  std::string file_content;
-  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
-  EXPECT_TRUE(base::ReadFileToString(runtime_hwid_path, &file_content));
-  EXPECT_EQ(file_content, "fake-file");
 }
 
 TEST_F(VerifierImplRuntimeHWIDTest, TestRefreshPolicy_ShouldGenerate) {
@@ -270,16 +267,14 @@ TEST_F(VerifierImplRuntimeHWIDTest, TestRefreshPolicy_ShouldGenerate) {
               ShouldGenerateRuntimeHWID(_, verification_spec_categories))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(1);
-  SetFile(kRuntimeHWIDFilePath, "fake-file");
+  EXPECT_CALL(*mock_context()->fake_runtime_hwid_utils(),
+              DeleteRuntimeHWIDFromDevice)
+      .Times(0);
 
   auto res = verifier_->Verify(probe_result_, hw_verification_spec_,
                                RuntimeHWIDRefreshPolicy::kRefresh);
 
   EXPECT_TRUE(res.has_value());
-  std::string file_content;
-  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
-  EXPECT_TRUE(base::ReadFileToString(runtime_hwid_path, &file_content));
-  EXPECT_EQ(file_content, "fake-file");
 }
 
 TEST_F(VerifierImplRuntimeHWIDTest, TestRefreshPolicy_ShouldNotGenerate) {
@@ -291,21 +286,23 @@ TEST_F(VerifierImplRuntimeHWIDTest, TestRefreshPolicy_ShouldNotGenerate) {
               ShouldGenerateRuntimeHWID(_, verification_spec_categories))
       .WillOnce(Return(false));
   EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(0);
-  SetFile(kRuntimeHWIDFilePath, "fake-file");
+  EXPECT_CALL(*mock_context()->fake_runtime_hwid_utils(),
+              DeleteRuntimeHWIDFromDevice)
+      .Times(1);
 
   auto res = verifier_->Verify(probe_result_, hw_verification_spec_,
                                RuntimeHWIDRefreshPolicy::kRefresh);
 
   EXPECT_TRUE(res.has_value());
-  std::string file_content;
-  const auto runtime_hwid_path = GetPathUnderRoot(kRuntimeHWIDFilePath);
-  EXPECT_FALSE(base::PathExists(runtime_hwid_path));
 }
 
 TEST_F(VerifierImplRuntimeHWIDTest, TestForceGeneratePolicy) {
   EXPECT_CALL(*mock_runtime_hwid_generator_, ShouldGenerateRuntimeHWID)
       .Times(0);
   EXPECT_CALL(*mock_runtime_hwid_generator_, GenerateToDevice).Times(1);
+  EXPECT_CALL(*mock_context()->fake_runtime_hwid_utils(),
+              DeleteRuntimeHWIDFromDevice)
+      .Times(0);
 
   auto res = verifier_->Verify(probe_result_, hw_verification_spec_,
                                RuntimeHWIDRefreshPolicy::kForceGenerate);

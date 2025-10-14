@@ -21,6 +21,8 @@ class FeatureManagement;
 
 namespace hardware_verifier {
 
+class RuntimeHWIDUtils;
+
 // A context class for holding the helper objects used in Hardware Verifier,
 // which simplifies the passing of the helper objects to other objects. For
 // instance, instead of passing various helper objects to an object via its
@@ -43,6 +45,9 @@ class Context {
 
   // The object to access feature_management system properties.
   virtual segmentation::FeatureManagement* feature_management() = 0;
+
+  // The object to access Runtime HWID.
+  virtual RuntimeHWIDUtils* runtime_hwid_utils() = 0;
 
   // Returns the root directory. This can be overridden during test.
   virtual const base::FilePath& root_dir();

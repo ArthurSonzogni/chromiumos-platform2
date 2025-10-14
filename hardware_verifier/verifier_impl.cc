@@ -18,11 +18,12 @@
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <chromeos/hardware_verifier/runtime_hwid_utils/runtime_hwid_utils.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/runtime_hwid_generator.h"
 #include "hardware_verifier/runtime_hwid_generator_impl.h"
-#include "hardware_verifier/runtime_hwid_utils.h"
+#include "hardware_verifier/system/context.h"
 
 namespace hardware_verifier {
 
@@ -316,7 +317,7 @@ void VerifierImpl::RefreshRuntimeHWID(
   if (runtime_hwid_generator_ == nullptr) {
     LOG(ERROR) << "Runtime HWID generator initialization failed. Clean up "
                   "Runtime HWID.";
-    DeleteRuntimeHWIDFromDevice();
+    Context::Get()->runtime_hwid_utils()->DeleteRuntimeHWIDFromDevice();
     return;
   }
 
@@ -334,7 +335,7 @@ void VerifierImpl::RefreshRuntimeHWID(
       } else {
         LOG(INFO) << "Runtime HWID should not be generated. Deleting from the "
                      "device.";
-        DeleteRuntimeHWIDFromDevice();
+        Context::Get()->runtime_hwid_utils()->DeleteRuntimeHWIDFromDevice();
       }
       break;
     case RuntimeHWIDRefreshPolicy::kForceGenerate:

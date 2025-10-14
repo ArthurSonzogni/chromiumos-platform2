@@ -10,6 +10,9 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
+#include <chromeos/hardware_verifier/runtime_hwid_utils/runtime_hwid_utils.h>
+#include <chromeos/hardware_verifier/runtime_hwid_utils/runtime_hwid_utils_mock.h>
+#include <gmock/gmock.h>
 #include <libcrossystem/crossystem.h>
 #include <libsegmentation/feature_management.h>
 #include <libsegmentation/feature_management_interface.h>
@@ -33,12 +36,20 @@ class ContextMockImpl : public Context {
     return &fake_feature_management_;
   }
 
+  RuntimeHWIDUtils* runtime_hwid_utils() override {
+    return &fake_runtime_hwid_utils_;
+  }
+
   const base::FilePath& root_dir() override { return root_dir_; }
 
   // Interfaces to access fake/mock objects.
   brillo::FakeCrosConfig* fake_cros_config() { return &fake_cros_config_; }
 
   crossystem::Crossystem* fake_crossystem() { return &fake_crossystem_; }
+
+  MockRuntimeHWIDUtils* fake_runtime_hwid_utils() {
+    return &fake_runtime_hwid_utils_;
+  }
 
   void InitializeFeatureManagementForTest(
       std::unique_ptr<segmentation::FeatureManagementInterface> impl) {
@@ -51,6 +62,7 @@ class ContextMockImpl : public Context {
   brillo::FakeCrosConfig fake_cros_config_;
   crossystem::Crossystem fake_crossystem_;
   segmentation::FeatureManagement fake_feature_management_;
+  ::testing::NiceMock<MockRuntimeHWIDUtils> fake_runtime_hwid_utils_;
 
   // Used to create a temporary root directory.
   base::ScopedTempDir temp_dir_;
