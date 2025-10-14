@@ -787,7 +787,7 @@ void PowerSupply::Init(
 
   // The Chrome device uses a Hybrid Power Boost charger.
   if (min_charging_voltage_ > kEpsilon) {
-    LOG(INFO) << "Devices only charges if line power voltage is at least "
+    LOG(INFO) << "Device only charges if line power voltage is at least "
               << min_charging_voltage_ << "V";
   }
 
