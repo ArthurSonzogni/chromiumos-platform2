@@ -62,6 +62,10 @@ const QuirksMap& GetQuirksMap() {
       {{"0408", "548f"}, kQuirkUserSpaceTimestamp},
       // Shinetech ASUS FHD webcam (b/381010970)
       {{"3277", "0094"}, kQuirkUserSpaceTimestamp},
+      // Luxvisons CSF105N3 (b/451072148)
+      {{"30c9", "0128"}, kQuirkUserSpaceTimestamp},
+      // BNNL19KEL-00A (b/451072148)
+      {{"5986", "2189"}, kQuirkUserSpaceTimestamp},
   });
   return *kQuirksMap;
 }
