@@ -518,8 +518,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       std::string kfence_text_tmp;
       kfence_text_tmp.swap(kfence_text_);
 
-      return CrashReport(std::move(kfence_text_tmp),
-                         {std::move("--kernel_kfence")});
+      return CrashReport(std::move(kfence_text_tmp), {"--kernel_kfence"});
     }
 
     kfence_text_ += line + "\n";
@@ -545,16 +544,14 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       lockdebug_text_tmp.swap(lockdebug_text_);
       // Note: there is no sampling weight for lockdebug warning as we
       // consider it as a critical report.
-      return CrashReport(std::move(lockdebug_text_tmp),
-                         {std::move("--kernel_lockdebug")});
+      return CrashReport(std::move(lockdebug_text_tmp), {"--kernel_lockdebug"});
     }
     lockdebug_text_ += line + "\n";
   }
 
   if (RE2::PartialMatch(line, *smmu_fault)) {
     std::string smmu_text_tmp = line + "\n";
-    return CrashReport(std::move(smmu_text_tmp),
-                       {std::move("--kernel_smmu_fault")});
+    return CrashReport(std::move(smmu_text_tmp), {"--kernel_smmu_fault"});
   }
 
   for (const auto& crash_report_rlimit_str : crash_report_rlimit) {
@@ -565,7 +562,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
           (base::TimeTicks::Now() - crash_reporter_last_crashed_) >
               base::Hours(1)) {
         crash_reporter_last_crashed_ = base::TimeTicks::Now();
-        return CrashReport("", {std::move("--crash_reporter_crashed")});
+        return CrashReport("", {"--crash_reporter_crashed"});
       }
     }
   }
@@ -705,7 +702,7 @@ MaybeCrashReport TerminaParser::ParseLogEntryForOom(int cid,
   RE2::GlobalReplace(&app_name, "[^a-zA-Z0-9_-]", "_");
   std::string text = "guest-oom-event-" + app_name + "\n" + line + '\n';
 
-  return CrashReport(std::move(text), {std::move("--guest_oom_event")});
+  return CrashReport(std::move(text), {"--guest_oom_event"});
 }
 
 constexpr LazyRE2 cryptohome_mount_failure = {
@@ -727,8 +724,7 @@ MaybeCrashReport CryptohomeParser::ParseLogEntry(const std::string& line) {
       return std::nullopt;
     }
 
-    return CrashReport("", {std::move("--mount_failure"),
-                            std::move("--mount_device=cryptohome")});
+    return CrashReport("", {"--mount_failure", "--mount_device=cryptohome"});
   }
 
   std::string recovery_error_source, recovery_error;
@@ -741,7 +737,7 @@ MaybeCrashReport CryptohomeParser::ParseLogEntry(const std::string& line) {
     std::string signature = base::StringPrintf("%s-%s-recovery-failure\n",
                                                recovery_error_source.c_str(),
                                                recovery_error.c_str());
-    return CrashReport(signature, {std::move("--cryptohome_recovery_failure")});
+    return CrashReport(signature, {"--cryptohome_recovery_failure"});
   }
 
   // The line didn't match anything.
@@ -766,7 +762,7 @@ MaybeCrashReport TcsdParser::ParseLogEntry(const std::string& line) {
   }
   std::string text = base::StringPrintf("%08x-auth failure\n", hash);
 
-  return CrashReport(std::move(text), {std::move("--auth_failure")});
+  return CrashReport(std::move(text), {"--auth_failure"});
 }
 
 HermesParser::HermesParser(bool testonly_send_all)
@@ -806,9 +802,9 @@ MaybeCrashReport HermesParser::ParseLogEntry(const std::string& line) {
 
   std::string text = base::StringPrintf("%08x-%s\n", hash, error_code.c_str());
   const std::string kFlag = "--hermes_failure";
-  return CrashReport(std::move(text),
-                     {std::move("--hermes_failure"),
-                      base::StringPrintf("--weight=%d", weight)});
+  return CrashReport(
+      std::move(text),
+      {"--hermes_failure", base::StringPrintf("--weight=%d", weight)});
 }
 
 ShillParser::ShillParser(bool testonly_send_all)
