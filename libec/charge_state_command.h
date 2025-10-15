@@ -30,6 +30,12 @@ class BRILLO_EXPORT ChargeStateGetParamCommand : public ChargeStateCommand {
   ~ChargeStateGetParamCommand() override = default;
 
   std::optional<uint32_t> Get() const;
+
+  // For testing.
+  enum charge_state_params GetParam() const;
+
+ private:
+  void SetParam(enum charge_state_params param);
 };
 
 class BRILLO_EXPORT GetMinChargingVoltCommand

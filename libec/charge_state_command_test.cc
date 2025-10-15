@@ -4,6 +4,8 @@
 
 #include "libec/charge_state_command.h"
 
+#include <cstring>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -17,7 +19,7 @@ TEST(ChargeStateGetParamCommand, ChargeStateGetParamCommand) {
   EXPECT_EQ(cmd.Version(), 0);
   EXPECT_EQ(cmd.Command(), EC_CMD_CHARGE_STATE);
   EXPECT_EQ(cmd.Req()->cmd, CHARGE_STATE_CMD_GET_PARAM);
-  EXPECT_EQ(cmd.Req()->get_param.param, CS_PARAM_CHG_CURRENT);
+  EXPECT_EQ(cmd.GetParam(), CS_PARAM_CHG_CURRENT);
 }
 
 TEST(GetMinChargingVoltCommand, GetMinChargingVoltCommand) {
@@ -25,7 +27,7 @@ TEST(GetMinChargingVoltCommand, GetMinChargingVoltCommand) {
   EXPECT_EQ(cmd.Version(), 0);
   EXPECT_EQ(cmd.Command(), EC_CMD_CHARGE_STATE);
   EXPECT_EQ(cmd.Req()->cmd, CHARGE_STATE_CMD_GET_PARAM);
-  EXPECT_EQ(cmd.Req()->get_param.param, CS_PARAM_CHG_MIN_REQUIRED_MV);
+  EXPECT_EQ(cmd.GetParam(), CS_PARAM_CHG_MIN_REQUIRED_MV);
 }
 
 // Mock the underlying EcCommand to test.
