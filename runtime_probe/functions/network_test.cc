@@ -43,7 +43,8 @@ class MockNetworkFunction : public NetworkFunction {
 class NetworkFunctionTest : public BaseFunctionTest {
  protected:
   void SetNetworkDevice(const std::string& dev_name,
-                        const std::string& network_type) {
+                        const std::string& network_type,
+                        const std::string& interface_name = "") {
     const std::string bus_dev =
         "/sys/devices/pci0000:00/0000:00:08.1" + dev_name;
     const std::string bus_dev_relative_to_sys = "../../../";
@@ -55,8 +56,14 @@ class NetworkFunctionTest : public BaseFunctionTest {
     SetFile({bus_dev, "vendor"}, "0x2222");
     SetFile({bus_dev, "class"}, "0x010203");
 
-    shill_devices_["/dev/" + dev_name] = {{shill::kInterfaceProperty, dev_name},
-                                          {shill::kTypeProperty, network_type}};
+    std::string interface = interface_name;
+    if (interface.empty()) {
+      interface = dev_name;
+    }
+
+    shill_devices_["/dev/" + dev_name] = {
+        {shill::kInterfaceProperty, interface},
+        {shill::kTypeProperty, network_type}};
     mock_context()->SetShillProxies(shill_devices_);
   }
 
@@ -169,6 +176,39 @@ TEST_F(NetworkFunctionTest, ProbeAllFilterExternalEthernet) {
 
   auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result.size(), 2);
+}
+
+TEST_F(NetworkFunctionTest, ProbeAll_ShillReportsDefaultCellularInterface) {
+  SetNetworkDevice("wwan0", shill::kTypeCellular,
+                   shill::kCellularDefaultInterfaceName);
+  SetNetworkDevice("eth0", shill::kTypeEthernet);
+
+  auto probe_function = CreateProbeFunction<NetworkFunction>();
+
+  auto result = EvalProbeFunction(probe_function.get());
+  auto ans = CreateProbeResultFromJson(base::StringPrintf(
+      R"JSON(
+    [
+      {
+        "bus_type": "pci",
+        "path": "%s",
+        "pci_class": "0x010203",
+        "pci_device_id": "0x1111",
+        "pci_vendor_id": "0x2222",
+        "type": "cellular"
+      }, {
+        "bus_type": "pci",
+        "path": "%s",
+        "pci_class": "0x010203",
+        "pci_device_id": "0x1111",
+        "pci_vendor_id": "0x2222",
+        "type": "ethernet"
+      }
+    ]
+  )JSON",
+      GetPathUnderRoot("/sys/class/net/wwan0").value().c_str(),
+      GetPathUnderRoot("/sys/class/net/eth0").value().c_str()));
+  ExpectUnorderedListEqual(result, ans);
 }
 
 }  // namespace

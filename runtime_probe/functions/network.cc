@@ -33,6 +33,7 @@ constexpr const char* kValidNetworkTypes[] = {
     shill::kTypeCellular,
     shill::kTypeEthernet,
 };
+constexpr const char kDefaultRealCellularInterface[] = "wwan0";
 
 std::map<std::string, std::string> GetDevicesType() {
   std::map<std::string, std::string> result;
@@ -59,6 +60,14 @@ std::map<std::string, std::string> GetDevicesType() {
     }
     std::string interface =
         device_props.at(shill::kInterfaceProperty).TryGet<std::string>();
+    // (b/414308737) Sometimes, shill might temporarily report the default
+    // cellular interface. When this happens, we simply treat it as "wwan0" so
+    // that the probe function can identify /sys/class/net/wwan0 as a cellular
+    // device.
+    if (interface == shill::kCellularDefaultInterfaceName) {
+      interface = kDefaultRealCellularInterface;
+    }
+
     std::string type =
         device_props.at(shill::kTypeProperty).TryGet<std::string>();
     result[interface] = type;
