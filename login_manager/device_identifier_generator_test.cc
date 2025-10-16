@@ -434,6 +434,26 @@ INSTANTIATE_TEST_SUITE_P(
             LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_RE_ENROLLMENT_KEY,
             1),
         GeneratorParams(
+            {
+                // Stable secret takes precedence over re-enrollment key and
+                // serial numbers.
+                {kReEnrollmentKeyName, kReEnrollmentKey},
+                {kStableDeviceSecretKeyName, kStableDeviceSecret},
+                {kSerialNumberKeyName, "fake-machine-serial-number"},
+                {kDiskSerialNumberKeyName, "fake-disk-serial-number"},
+            },
+            LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
+            DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta),
+        GeneratorParams(
+            {
+                // Serial number takes precedence over re-enrollment key.
+                {kReEnrollmentKeyName, kReEnrollmentKey},
+                {kSerialNumberKeyName, "fake-machine-serial-number"},
+                {kDiskSerialNumberKeyName, "fake-disk-serial-number"},
+            },
+            LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_IDENTIFIER_HASH,
+            DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta),
+        GeneratorParams(
             {{kStableDeviceSecretKeyName, kStableDeviceSecret}},
             LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
             DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta),
