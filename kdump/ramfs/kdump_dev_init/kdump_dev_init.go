@@ -156,7 +156,7 @@ func makeKdumpNode() error {
 		return nil
 	}
 
-	c = exec.Command("mkfs.ext4", "/dev/kdump")
+	c = exec.Command("mke2fs", "-t", "ext4", "/dev/kdump")
 	c.Stdout, c.Stderr = os.Stdout, os.Stderr
 	return c.Run()
 }
