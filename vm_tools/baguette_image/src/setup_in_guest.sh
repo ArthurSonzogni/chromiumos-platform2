@@ -9,6 +9,7 @@
 set -eux -o pipefail
 
 CROS_PACKAGES=(
+  baguette-motd
   cros-garcon
   cros-port-listener
   cros-sommelier
