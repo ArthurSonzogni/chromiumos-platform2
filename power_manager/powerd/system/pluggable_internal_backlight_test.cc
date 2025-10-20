@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/power_constants.h"
@@ -120,7 +121,7 @@ TEST_F(PluggableInternalBacklightTest, ChangeDevice) {
   EXPECT_EQ(1, observer.num_changes());
 
   // Remove the device.
-  ASSERT_TRUE(base::DeletePathRecursively(dir));
+  ASSERT_TRUE(brillo::DeletePathRecursively(dir));
   udev_.NotifySubsystemObservers(
       {{kSubsystem, "", kDevice, ""}, UdevEvent::Action::REMOVE});
   EXPECT_FALSE(backlight_.DeviceExists());

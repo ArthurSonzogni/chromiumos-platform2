@@ -14,6 +14,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/power_constants.h"
@@ -126,7 +127,7 @@ TEST_F(WakeupDeviceTest, TestWakeupCountReadFailAfterResume) {
   CreateDirectoryAndWriteFile(event_count_attr_path_,
                               kEventCountBeforeSuspendStr);
   wakeup_device_->PrepareForSuspend();
-  ASSERT_TRUE(base::DeleteFile(event_count_attr_path_));
+  ASSERT_TRUE(brillo::DeleteFile(event_count_attr_path_));
   wakeup_device_->HandleResume();
   EXPECT_FALSE(wakeup_device_->CausedLastWake());
 }

@@ -26,6 +26,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/file_utils.h>
+#include <brillo/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
@@ -109,7 +110,7 @@ class DarkResumeConfigurator {
   ~DarkResumeConfigurator() {
     // Restore dark resume state.
     if (!dark_resume_pref_exist_before_) {
-      if (!base::DeleteFile(base::FilePath(kDisableDarkResumePath))) {
+      if (!brillo::DeleteFile(base::FilePath(kDisableDarkResumePath))) {
         PLOG(ERROR) << "Failed to restore dark resume state.";
       }
     } else if (!SetDarkResumeState(prev_dark_resume_pref_state_)) {

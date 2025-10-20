@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 
@@ -105,7 +106,7 @@ void AudioClient::SetSuspended(bool suspended) {
       PLOG(ERROR) << "Couldn't create " << audio_suspended_path_.value();
     }
   } else {
-    if (!base::DeleteFile(audio_suspended_path_)) {
+    if (!brillo::DeleteFile(audio_suspended_path_)) {
       PLOG(ERROR) << "Couldn't delete " << audio_suspended_path_.value();
     }
   }

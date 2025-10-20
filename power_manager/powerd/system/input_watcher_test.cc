@@ -16,6 +16,7 @@
 #include <base/notreached.h>
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/action_recorder.h"
@@ -223,7 +224,7 @@ TEST_F(InputWatcherTest, DetectUSBDevices) {
   EXPECT_TRUE(input_watcher_->IsUSBInputDeviceConnected());
 
   // Clear directory and create a USB path.
-  ASSERT_TRUE(base::DeletePathRecursively(sys_class_input_path_));
+  ASSERT_TRUE(brillo::DeletePathRecursively(sys_class_input_path_));
   ASSERT_TRUE(base::CreateDirectory(sys_class_input_path_));
   ASSERT_TRUE(base::CreateSymbolicLink(
       sys_class_input_path_.Append("../../usb/dev:5/00:00"),
@@ -232,7 +233,7 @@ TEST_F(InputWatcherTest, DetectUSBDevices) {
 
   // Clear directory and create a non-symlink USB path. It should not counted
   // because all the input paths should be symlinks.
-  ASSERT_TRUE(base::DeletePathRecursively(sys_class_input_path_));
+  ASSERT_TRUE(brillo::DeletePathRecursively(sys_class_input_path_));
   ASSERT_TRUE(base::CreateDirectory(sys_class_input_path_));
   ASSERT_TRUE(base::CreateDirectory(sys_class_input_path_.Append("usb12")));
   EXPECT_FALSE(input_watcher_->IsUSBInputDeviceConnected());

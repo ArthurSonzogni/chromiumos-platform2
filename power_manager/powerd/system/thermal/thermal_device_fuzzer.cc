@@ -16,6 +16,7 @@
 #include <base/task/single_thread_task_executor.h>
 #include <base/test/test_mock_time_task_runner.h>
 #include <brillo/file_utils.h>
+#include <brillo/files/file_util.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
@@ -55,7 +56,7 @@ class ThermalDeviceFuzzer {
   ThermalDeviceFuzzer& operator=(const ThermalDeviceFuzzer&) = delete;
 
   ~ThermalDeviceFuzzer() {
-    CHECK(base::DeletePathRecursively(scoped_temp_dir_.GetPath()));
+    CHECK(brillo::DeletePathRecursively(scoped_temp_dir_.GetPath()));
   }
 
   // Setup sysfs and create cooling device using ThermalDeviceFactory.

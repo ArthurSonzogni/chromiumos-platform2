@@ -814,7 +814,7 @@ void ChargeHistory::DeleteChargeFile(const base::FilePath& dir,
     return;
   }
 
-  CHECK(base::DeleteFile(dir.Append(path)));
+  CHECK(brillo::DeleteFile(dir.Append(path)));
 }
 
 AdaptiveChargingController::AdaptiveChargingController()

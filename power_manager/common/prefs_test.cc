@@ -14,6 +14,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 #include <cros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -321,7 +322,7 @@ TEST_F(PrefsTest, WatchPrefs) {
   EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());
 
   // Remove the file.
-  EXPECT_TRUE(base::DeleteFile(kFilePath));
+  EXPECT_TRUE(brillo::DeleteFile(kFilePath));
   EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());
 }
 
