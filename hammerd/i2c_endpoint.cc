@@ -6,8 +6,8 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <linux/i2c.h>
 #include <linux/i2c-dev.h>
+#include <linux/i2c.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -16,10 +16,10 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/time/time.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 #include <re2/re2.h>
 
 #include "hammerd/update_fw.h"
@@ -38,7 +38,7 @@ bool I2CEndpoint::UsbSysfsExists() {
 }
 
 UsbConnectStatus I2CEndpoint::Connect(bool check_id) {
-  RE2 pattern("([1-9][0-9]*)-([[:xdigit:]]{4})");
+  RE2 pattern("([0-9]+)-([[:xdigit:]]{4})");
   int bus;
   std::string addr;
 
