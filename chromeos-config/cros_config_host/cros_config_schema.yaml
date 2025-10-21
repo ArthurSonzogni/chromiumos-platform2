@@ -884,6 +884,7 @@ properties:
                   - left-side
                   - left-of-power-button-top-right
                   - power-button-top-right-key
+                  - power-button-left-edge-top
                 fingerprint-sensor-type:
                   description: Type of FP sensor. Currently describes whether FP
                     is overlapped on the power button or not.
