@@ -79,6 +79,7 @@ constexpr DeviceFamily kTpm2FamiliesAllowlist[] = {
     DeviceFamily{"LENOVO", "ThinkCentre M70q Gen 3", kVendorIdIfx},
     DeviceFamily{"LENOVO", "ThinkCentre M75q Gen 2", kVendorIdNtc},
     DeviceFamily{"LENOVO", "ThinkCentre M70q", kVendorIdIfx},
+    DeviceFamily{"LENOVO", "ThinkCentre M920q", kVendorIdIfx},
 };
 
 constexpr DeviceName kTpm2DeviceNameAllowlist[] = {
