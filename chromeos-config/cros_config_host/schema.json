@@ -891,7 +891,8 @@
                       "keyboard-top-right",
                       "right-side",
                       "left-side",
-                      "left-of-power-button-top-right"
+                      "left-of-power-button-top-right",
+                      "power-button-top-right-key"
                     ],
                     "type": "string"
                   }
