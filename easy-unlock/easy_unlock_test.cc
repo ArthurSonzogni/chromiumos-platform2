@@ -10,6 +10,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
+#include <base/strings/string_view_util.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
@@ -155,16 +156,13 @@ class EasyUnlockTest : public ::testing::Test {
 
     dbus::MessageReader reader(response.get());
 
-    const uint8_t* bytes = nullptr;
-    size_t length = 0;
+    base::span<const uint8_t> bytes;
 
-    ASSERT_TRUE(reader.PopArrayOfBytes(&bytes, &length));
-    ASSERT_EQ("private_key_1",
-              std::string(reinterpret_cast<const char*>(bytes), length));
+    ASSERT_TRUE(reader.PopArrayOfBytes(&bytes));
+    ASSERT_EQ("private_key_1", std::string(base::as_string_view(bytes)));
 
-    ASSERT_TRUE(reader.PopArrayOfBytes(&bytes, &length));
-    ASSERT_EQ("public_key_1",
-              std::string(reinterpret_cast<const char*>(bytes), length));
+    ASSERT_TRUE(reader.PopArrayOfBytes(&bytes));
+    ASSERT_EQ("public_key_1", std::string(base::as_string_view(bytes)));
   }
 
   void VerifyDataResponse(const std::string& expected_content,
@@ -173,25 +171,22 @@ class EasyUnlockTest : public ::testing::Test {
 
     dbus::MessageReader reader(response.get());
 
-    const uint8_t* bytes = nullptr;
-    size_t length = 0;
+    base::span<const uint8_t> bytes;
 
-    ASSERT_TRUE(reader.PopArrayOfBytes(&bytes, &length));
-    ASSERT_EQ(expected_content,
-              std::string(reinterpret_cast<const char*>(bytes), length));
+    ASSERT_TRUE(reader.PopArrayOfBytes(&bytes));
+    ASSERT_EQ(expected_content, std::string(base::as_string_view(bytes)));
   }
 
   void VerifyNoDataResponse(std::unique_ptr<dbus::Response> response) {
     ASSERT_TRUE(response.get());
     dbus::MessageReader reader(response.get());
-    const uint8_t* bytes = nullptr;
-    size_t length = 0;
+    base::span<const uint8_t> bytes;
 
     // Client handles both of these cases the same (response not being set to
     // a byte array, and response being empty byte array).
-    bool hasData = reader.PopArrayOfBytes(&bytes, &length);
+    bool hasData = reader.PopArrayOfBytes(&bytes);
     if (hasData) {
-      EXPECT_EQ(0u, length);
+      EXPECT_EQ(0u, bytes.size());
     }
   }
 
