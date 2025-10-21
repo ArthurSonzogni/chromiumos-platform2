@@ -2,20 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/dbus/exported_property_set.h>
-
 #include <string>
 #include <vector>
 
 #include <base/functional/bind.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
+#include <brillo/dbus/exported_property_set.h>
 #include <brillo/errors/error_codes.h>
 #include <dbus/message.h>
-#include <dbus/property.h>
-#include <dbus/object_path.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
+#include <dbus/object_path.h>
+#include <dbus/property.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -461,11 +460,10 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint8List) {
   auto response = GetPropertyOnInterface(kTestInterface3, kPathListPropName);
   dbus::MessageReader reader(response.get());
   dbus::MessageReader variant_reader(nullptr);
-  const uint8_t* buffer;
-  size_t buffer_len;
+  base::span<const uint8_t> buffer;
   ASSERT_TRUE(reader.PopVariant(&variant_reader));
   // |buffer| remains under the control of the MessageReader.
-  ASSERT_TRUE(variant_reader.PopArrayOfBytes(&buffer, &buffer_len));
+  ASSERT_TRUE(variant_reader.PopArrayOfBytes(&buffer));
   ASSERT_FALSE(variant_reader.HasMoreData());
   ASSERT_FALSE(reader.HasMoreData());
 }
