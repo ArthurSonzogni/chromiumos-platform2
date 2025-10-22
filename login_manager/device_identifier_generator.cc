@@ -253,9 +253,10 @@ DeviceIdentifierGenerator::ComputeKeys() {
   } else if (!re_enrollment_key_.empty()) {
     // On ChromeOS Flex, if we have a re-enrollment key, return its value if
     // it's valid, as is.
+    // TODO(b/454333153) refactor condition checks and error handling.
     std::vector<uint8_t> key_bytes;
     if (!base::HexStringToBytes(re_enrollment_key_, &key_bytes) ||
-        key_bytes.size() < 32) {
+        (key_bytes.size() < 32 || key_bytes.size() > 256)) {
       metrics_->SendStateKeyGenerationStatus(
           LoginMetrics::STATE_KEY_STATUS_BAD_RE_ENROLLMENT_KEY);
       LOG(ERROR) << "Malformed re-enrollment key, length: "

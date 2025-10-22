@@ -239,7 +239,8 @@ TEST_F(DeviceIdentifierGeneratorTest, MalformedDeviceSecret) {
 
 TEST_F(DeviceIdentifierGeneratorTest, MalformedReEnrollmentKey) {
   const std::map<std::string, std::string> params{
-      {kReEnrollmentKeyName, "not a hex number"}};
+      // Not a hex encoded string: length not a multiple of 2.
+      {kReEnrollmentKeyName, std::string(127, 'a')}};
   ASSERT_TRUE(generator_.InitMachineInfo(params));
 
   base::test::TestFuture<const StateKeysResult&> state_keys_future;
@@ -257,7 +258,27 @@ TEST_F(DeviceIdentifierGeneratorTest, MalformedReEnrollmentKey) {
 
 TEST_F(DeviceIdentifierGeneratorTest, MalformedReEnrollmentKeyTooShort) {
   const std::map<std::string, std::string> params{
-      {kReEnrollmentKeyName, std::string(kReEnrollmentKey).substr(0, 127)}};
+      {// Min length of hex-encoded key: 64
+       kReEnrollmentKeyName, std::string(62, 'a')}};
+  ASSERT_TRUE(generator_.InitMachineInfo(params));
+
+  base::test::TestFuture<const StateKeysResult&> state_keys_future;
+  generator_.RequestStateKeys(state_keys_future.GetCallback());
+  ASSERT_TRUE(state_keys_future.IsReady());
+  StateKeysResult state_keys = state_keys_future.Get();
+
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_BAD_RE_ENROLLMENT_KEY,
+            last_state_key_generation_status_);
+  EXPECT_EQ(
+      state_keys,
+      base::unexpected(DeviceIdentifierGenerator::StateKeysComputationError::
+                           kMalformedReEnrollmentKey));
+}
+
+TEST_F(DeviceIdentifierGeneratorTest, MalformedReEnrollmentKeyTooLong) {
+  const std::map<std::string, std::string> params{
+      {// Max length of hex-encoded key: 512
+       kReEnrollmentKeyName, std::string(514, 'a')}};
   ASSERT_TRUE(generator_.InitMachineInfo(params));
 
   base::test::TestFuture<const StateKeysResult&> state_keys_future;
@@ -430,7 +451,13 @@ INSTANTIATE_TEST_SUITE_P(
     DeviceIdentifierGeneratorTestP,
     testing::Values(
         GeneratorParams(
-            {{kReEnrollmentKeyName, kReEnrollmentKey}},
+            {// Min length of hex-encoded key: 64
+             {kReEnrollmentKeyName, std::string(64, 'a')}},
+            LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_RE_ENROLLMENT_KEY,
+            1),
+        GeneratorParams(
+            {// Max length of hex-encoded key: 512
+             {kReEnrollmentKeyName, std::string(512, 'a')}},
             LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_RE_ENROLLMENT_KEY,
             1),
         GeneratorParams(
