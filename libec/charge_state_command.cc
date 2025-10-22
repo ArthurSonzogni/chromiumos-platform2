@@ -50,6 +50,9 @@ GetMinChargingVoltCommand::GetMinChargingVoltCommand()
 std::optional<double> GetMinChargingVoltCommand::Get() const {
   std::optional<uint32_t> mv = ChargeStateGetParamCommand::Get();
   if (!mv.has_value()) {
+    VLOG(1) << "Device does not have min charging voltage. This is normal for "
+               "most devices. Only very few models with a hybrid power boost "
+               "charger support this value.";
     return std::nullopt;
   }
   return static_cast<double>(*mv) / 1000.0;
