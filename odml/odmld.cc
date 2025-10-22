@@ -29,6 +29,7 @@
 
 #include "odml/coral/service.h"
 #include "odml/cros_safety/safety_service_manager.h"
+#include "odml/cros_safety/safety_service_manager_block.h"
 #include "odml/cros_safety/safety_service_manager_impl.h"
 #include "odml/embedding_model/embedding_model_service.h"
 #include "odml/embedding_model/model_factory.h"
@@ -243,9 +244,14 @@ class Daemon : public brillo::DBusDaemon {
                     << ". Shutdown and wait for respawn.";
         }));
 
-    safety_service_manager_impl_ =
-        std::make_unique<cros_safety::SafetyServiceManagerImpl>(
-            service_manager_, raw_ref(metrics_));
+    if (USE_MANTIS) {
+      safety_service_manager_ =
+          std::make_unique<cros_safety::SafetyServiceManagerImpl>(
+              service_manager_, raw_ref(metrics_));
+    } else {
+      safety_service_manager_ =
+          std::make_unique<cros_safety::SafetyServiceManagerBlock>();
+    }
 
     on_device_model_service_provider_impl_ =
         std::make_unique<OnDeviceModelServiceProviderImpl>(
@@ -258,12 +264,12 @@ class Daemon : public brillo::DBusDaemon {
         raw_ref(metrics_), service_manager_,
         on_device_model_service_provider_impl_->service(),
         embedding_model_service_provider_impl_->service(),
-        session_state_manager_.get(),
-        raw_ref(*safety_service_manager_impl_.get()), raw_ref(translator_));
+        session_state_manager_.get(), raw_ref(*safety_service_manager_.get()),
+        raw_ref(translator_));
 
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
         raw_ref(metrics_), raw_ref(periodic_metrics_), raw_ref(shim_loader_),
-        service_manager_, raw_ref(*safety_service_manager_impl_.get()),
+        service_manager_, raw_ref(*safety_service_manager_.get()),
         raw_ref(translator_));
 
     session_state_manager_->RefreshPrimaryUser();
@@ -289,8 +295,7 @@ class Daemon : public brillo::DBusDaemon {
 
   i18n::TranslatorImpl translator_{raw_ref(shim_loader_)};
 
-  std::unique_ptr<cros_safety::SafetyServiceManagerImpl>
-      safety_service_manager_impl_;
+  std::unique_ptr<cros_safety::SafetyServiceManager> safety_service_manager_;
 
   std::unique_ptr<OnDeviceModelServiceProviderImpl>
       on_device_model_service_provider_impl_;
