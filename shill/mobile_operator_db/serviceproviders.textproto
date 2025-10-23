@@ -14829,6 +14829,22 @@ mno {
   }
 }
 
+# Test MVNO for roaming.
+mvno {
+  mvno_filter {
+    type: OPERATOR_NAME
+    regex: "Cros-RoamSim-Lab"
+  }
+  data {
+    uuid: "6ce39f6c-b8a9-462c-8c9a-ac9890430cfb"
+    mobile_apn {
+      apn: "internet"
+      ip_type: IPV4V6
+      type: DEFAULT
+      type: IA
+    }
+  }
+}
 # ##############################################################################
 # International MVNOs.
 
