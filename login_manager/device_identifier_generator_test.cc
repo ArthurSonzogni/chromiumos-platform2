@@ -79,11 +79,10 @@ TEST(DeviceIdentifierGeneratorStaticTest,
       "\"%s\"=\"sn_2\"\n",
       kDiskSerialNumberKeyName, kDiskSerialNumberKeyName);
   std::map<std::string, std::string> map;
-  const std::map<std::string, std::string> ro_vpd;
-  const std::map<std::string, std::string> rw_vpd = {
+  const std::map<std::string, std::string> ro_vpd = {
       {kDiskSerialNumberKeyName, "sn_3"}};
   DeviceIdentifierGenerator::ParseMachineInfo(machine_info_file_contents,
-                                              ro_vpd, rw_vpd, &map);
+                                              ro_vpd, &map);
   EXPECT_EQ("sn_1", map[kDiskSerialNumberKeyName]);
 }
 
@@ -94,15 +93,12 @@ TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoSuccess) {
       {kDiskSerialNumberKeyName, "IGNORE THIS ONE - IT'S NOT FROM UDEV"},
       {kStableDeviceSecretKeyName, kStableDeviceSecret},
   };
-  const std::map<std::string, std::string> rw_vpd = {
-      {kSerialNumberKeyName, "key collision"},
-  };
   EXPECT_TRUE(DeviceIdentifierGenerator::ParseMachineInfo(
       base::StringPrintf("\"%s\"=\"fake disk-serial-number\"\n"
                          "%s=\"%s\"\n",  // No quoting of the key name.
                          kDiskSerialNumberKeyName, kReEnrollmentKeyName,
                          kReEnrollmentKey),
-      ro_vpd, rw_vpd, &params));
+      ro_vpd, &params));
   EXPECT_EQ(4, params.size());
   EXPECT_EQ("fake-machine-serial-number", params[kSerialNumberKeyName]);
   EXPECT_EQ("fake disk-serial-number", params[kDiskSerialNumberKeyName]);
@@ -112,9 +108,8 @@ TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoSuccess) {
 TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoFailure) {
   std::map<std::string, std::string> params;
   const std::map<std::string, std::string> ro_vpd;
-  const std::map<std::string, std::string> rw_vpd;
-  EXPECT_FALSE(DeviceIdentifierGenerator::ParseMachineInfo("bad!", ro_vpd,
-                                                           rw_vpd, &params));
+  EXPECT_FALSE(
+      DeviceIdentifierGenerator::ParseMachineInfo("bad!", ro_vpd, &params));
 }
 
 class DeviceIdentifierGeneratorTest : public testing::Test {

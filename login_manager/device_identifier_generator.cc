@@ -85,7 +85,6 @@ DeviceIdentifierGenerator::~DeviceIdentifierGenerator() {}
 bool DeviceIdentifierGenerator::ParseMachineInfo(
     const std::string& data,
     const std::map<std::string, std::string>& ro_vpd,
-    const std::map<std::string, std::string>& rw_vpd,
     std::map<std::string, std::string>* params) {
   params->clear();
 
@@ -113,14 +112,11 @@ bool DeviceIdentifierGenerator::ParseMachineInfo(
     (*params)[name] = value;
   }
 
-  // Process RO first, then RW. Earlier contents override later, as we don't
-  // want RW (modifiable) to override RO, and we don't want RO or RW to
+  // Earlier contents override later, as we don't want VPD to
   // override udev data that's passed in |data|.
-  for (const auto& dict : std::array{ro_vpd, rw_vpd}) {
-    for (const auto& [name, value] : dict) {
-      // Use the first pair present in the input.
-      params->try_emplace(name, value);
-    }
+  for (const auto& [name, value] : ro_vpd) {
+    // Use the first pair present in the input.
+    params->try_emplace(name, value);
   }
 
   return !params->empty();

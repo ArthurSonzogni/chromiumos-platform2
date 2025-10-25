@@ -1303,10 +1303,8 @@ bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
 
   vpd::Vpd vpd;
   const auto ro_vpd = vpd.GetValues(vpd::VpdRo);
-  const auto rw_vpd = vpd.GetValues(vpd::VpdRw);
 
-  if (!DeviceIdentifierGenerator::ParseMachineInfo(in_data, ro_vpd, rw_vpd,
-                                                   &params)) {
+  if (!DeviceIdentifierGenerator::ParseMachineInfo(in_data, ro_vpd, &params)) {
     *error = CreateError(dbus_error::kInitMachineInfoFail, "Parse failure.");
     return false;
   }
