@@ -39,6 +39,7 @@
 #include "patchpanel/bpf/constants.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/net_util.h"
+#include "patchpanel/proto_utils.h"
 #include "patchpanel/routing_service.h"
 
 namespace patchpanel {
@@ -253,6 +254,16 @@ bool IsDownstreamNetworkForwardFirewallRule(ForwardFirewallRuleType rule) {
 }
 
 }  // namespace
+
+void ConnectedNamespace::ConvertToProto(NetworkDevice* output) const {
+  output->set_ifname(host_ifname);
+  output->set_phys_ifname("");
+  output->set_guest_ifname(peer_ifname);
+  output->set_ipv4_addr(peer_ipv4_cidr.address().ToInAddr().s_addr);
+  output->set_host_ipv4_addr(host_ipv4_cidr.address().ToInAddr().s_addr);
+  output->set_guest_type(NetworkDevice::CONNECTED_NS);
+  FillSubnetProto(*peer_ipv4_subnet.get(), output->mutable_ipv4_subnet());
+}
 
 Datapath::Datapath(System* system)
     : Datapath(MinijailedProcessRunner::GetInstance(), new Firewall(), system) {

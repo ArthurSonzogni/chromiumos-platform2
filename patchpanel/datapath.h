@@ -56,6 +56,11 @@ struct StaticIPv6Config {
 
 // Struct holding parameters for Datapath::StartRoutingNamespace requests.
 struct ConnectedNamespace {
+  // Converts this ConnectedNamespace to a patchpanel proto NetworkDevice object
+  // passed as a pointer. It is necessary to support externally allocated
+  // objects to work well with probotuf repeated embedded message fields.
+  void ConvertToProto(NetworkDevice* output) const;
+
   // The special pid which indicates this namespace is not attached to an
   // associated process but should be/was created by `ip netns add`.
   static constexpr pid_t kNewNetnsPid = -1;

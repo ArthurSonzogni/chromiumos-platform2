@@ -552,6 +552,10 @@ GetDevicesResponse Manager::GetDevices() const {
     crostini_device->ConvertToProto(response.add_devices());
   }
 
+  for (auto& [_, nsinfo] : connected_namespaces_) {
+    nsinfo.ConvertToProto(response.add_devices());
+  }
+
   return response;
 }
 
@@ -825,6 +829,16 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
         base::Milliseconds(kIPv6RestartDelayMs));
   }
 
+  // Notify clients of ConnectNamespace following the default logical network.
+  // The current use cases are for system-proxy and testing. Other types are
+  // ConnectNamespace is not expected to be used.
+  if (nsinfo.route_on_vpn) {
+    auto signal_device = std::make_unique<NetworkDevice>();
+    nsinfo.ConvertToProto(signal_device.get());
+    dbus_client_notifier_->OnNetworkDeviceChanged(
+        std::move(signal_device), NetworkDeviceChangedSignal::DEVICE_ADDED);
+  }
+
   // Store ConnectedNamespace
   nsinfo.cancel_lifeline_fd = std::move(cancel_lifeline_fd);
   connected_namespaces_.emplace(connected_namespaces_next_id_,
@@ -853,6 +867,12 @@ void Manager::OnConnectedNamespaceAutoclose(int connected_namespace_id) {
     addr_mgr_.ReleaseIPv6Subnet(
         connected_namespace_it->second.static_ipv6_config->host_cidr
             .GetPrefixCIDR());
+  }
+  if (connected_namespace_it->second.route_on_vpn) {
+    auto signal_device = std::make_unique<NetworkDevice>();
+    connected_namespace_it->second.ConvertToProto(signal_device.get());
+    dbus_client_notifier_->OnNetworkDeviceChanged(
+        std::move(signal_device), NetworkDeviceChangedSignal::DEVICE_REMOVED);
   }
   // This release the allocated IPv4 subnet.
   connected_namespaces_.erase(connected_namespace_it);

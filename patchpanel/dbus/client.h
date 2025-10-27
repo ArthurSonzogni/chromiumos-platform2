@@ -117,6 +117,7 @@ class BRILLO_EXPORT Client {
     kArcVm,
     kTerminaVm,
     kParallelsVm,
+    kConnectedNs,
   };
 
   // See NetworkDeviceChangedSignal in patchpanel_service.proto.

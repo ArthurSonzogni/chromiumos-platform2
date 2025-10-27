@@ -258,6 +258,9 @@ std::optional<Client::VirtualDevice> ConvertVirtualDevice(
     case patchpanel::NetworkDevice::PARALLELS_VM:
       out->guest_type = Client::GuestType::kParallelsVm;
       break;
+    case patchpanel::NetworkDevice::CONNECTED_NS:
+      out->guest_type = Client::GuestType::kConnectedNs;
+      break;
     default:
       LOG(ERROR) << __func__ << ": Unknown GuestType "
                  << patchpanel::NetworkDevice::GuestType_Name(in.guest_type());
