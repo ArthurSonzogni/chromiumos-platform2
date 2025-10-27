@@ -4204,25 +4204,17 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
         vault_keyset_ = std::move(vk_status).value();
         if (MigrateResetSecretToUss()) {
           should_cleanup_backup_keyset = true;
-        } else {
-          ReportBackupKeysetCleanupResult(
-              BackupKeysetCleanupResult::kAddResetSecretFailed);
         }
-      } else {
-        ReportBackupKeysetCleanupResult(
-            BackupKeysetCleanupResult::kGetValidKeysetFailed);
       }
     }
 
     // Cleanup backup VaultKeyset of the authenticated factor.
     if (should_cleanup_backup_keyset) {
-      if (CleanUpBackupKeyset(*keyset_management_, obfuscated_username_,
-                              auth_factor_label)
-              .ok()) {
-        ReportBackupKeysetCleanupSucessWithType(auth_factor_type);
-
-      } else {
-        ReportBackupKeysetCleanupFileFailureWithType(auth_factor_type);
+      if (CryptohomeStatus status = CleanUpBackupKeyset(
+              *keyset_management_, obfuscated_username_, auth_factor_label);
+          !status.ok()) {
+        LOG(WARNING) << "Failure occured when cleaning up backup keyset: "
+                     << status;
       }
     }
   }

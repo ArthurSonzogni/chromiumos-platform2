@@ -306,22 +306,6 @@ enum class AuthFactorBackingStoreConfig {
   kMaxValue = kMixed,
 };
 
-// List of possible results of attempting to cleanup a backup keyset for a user
-// with mixed USS-VaultKeyset(VK) configuration. Mixed configuration is expected
-// to happen with PIN and password factors and enum values are defined based on
-// this.
-enum class BackupKeysetCleanupResult {
-  kRemovedBackupPassword = 0,      // Removal of password backup VK succeeded.
-  kRemovedBackupPin = 1,           // Removal of PIN backup VK succeeded.
-  kRemovedBackupOtherType = 2,     // Removal of other type backup VK succeeded.
-  kAddResetSecretFailed = 3,       // Adding reset_secret to USS failed.
-  kGetValidKeysetFailed = 4,       // Decrypt or load of backup VK failed.
-  kRemoveFileFailedPin = 5,        // Remove file failed for password type.
-  kRemoveFileFailedPassword = 6,   // Remove file failed for PIN type.
-  kRemoveFileFailedOtherType = 7,  // Remove file failed for other factor type.
-  kMaxValue = kRemoveFileFailedOtherType,
-};
-
 // List of possible results of recoverable key store certificate list update
 // attempts. Recorded whenever a certificate list is fetched and given to the
 // provider. Entries should not be renumbered and numeric values should never be
@@ -541,13 +525,6 @@ void DisableErrorMetricsReporting();
 
 // Reports the current state of the auth factor backing stores.
 void ReportAuthFactorBackingStoreConfig(AuthFactorBackingStoreConfig config);
-
-// Reports the result of the backup VaultKeyset cleanup for users with
-// semi-migrated users, i.e users with mixed USS-VaultKeyset configuration.
-void ReportBackupKeysetCleanupResult(BackupKeysetCleanupResult status);
-void ReportBackupKeysetCleanupSucessWithType(AuthFactorType auth_factor_type);
-void ReportBackupKeysetCleanupFileFailureWithType(
-    AuthFactorType auth_factor_type);
 
 // Reports the emitted fingerprint enroll signal.
 void ReportFingerprintEnrollSignal(

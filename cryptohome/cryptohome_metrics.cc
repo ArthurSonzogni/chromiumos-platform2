@@ -85,8 +85,6 @@ constexpr char kAuthFactorBackingStoreConfig[] =
 constexpr char kMaskedDownloadsItems[] = "Cryptohome.MaskedDownloadsItems";
 constexpr char kDownloadsMigrationStatus[] =
     "Cryptohome.DownloadsBindMountMigrationStatus";
-constexpr char kBackupKeysetCleanupResult[] =
-    "Cryptohome.BackupKeysetCleanupResult";
 constexpr char kFingerprintEnrollSignal[] =
     "Cryptohome.Fingerprint.EnrollSignal";
 constexpr char kFingerprintAuthSignal[] = "Cryptohome.Fingerprint.AuthSignal";
@@ -696,51 +694,6 @@ void ReportAuthFactorBackingStoreConfig(AuthFactorBackingStoreConfig config) {
   g_metrics->SendEnumToUMA(
       kAuthFactorBackingStoreConfig, static_cast<int>(config),
       static_cast<int>(AuthFactorBackingStoreConfig::kMaxValue) + 1);
-}
-
-void ReportBackupKeysetCleanupSucessWithType(AuthFactorType auth_factor_type) {
-  if (auth_factor_type == AuthFactorType::kPassword) {
-    ReportBackupKeysetCleanupResult(
-        BackupKeysetCleanupResult::kRemovedBackupPassword);
-    return;
-  }
-
-  if (auth_factor_type == AuthFactorType::kPin) {
-    ReportBackupKeysetCleanupResult(
-        BackupKeysetCleanupResult::kRemovedBackupPin);
-    return;
-  }
-
-  ReportBackupKeysetCleanupResult(
-      BackupKeysetCleanupResult::kRemovedBackupOtherType);
-}
-
-void ReportBackupKeysetCleanupFileFailureWithType(
-    AuthFactorType auth_factor_type) {
-  if (auth_factor_type == AuthFactorType::kPassword) {
-    ReportBackupKeysetCleanupResult(
-        BackupKeysetCleanupResult::kRemoveFileFailedPassword);
-    return;
-  }
-
-  if (auth_factor_type == AuthFactorType::kPin) {
-    ReportBackupKeysetCleanupResult(
-        BackupKeysetCleanupResult::kRemoveFileFailedPin);
-    return;
-  }
-
-  ReportBackupKeysetCleanupResult(
-      BackupKeysetCleanupResult::kRemoveFileFailedOtherType);
-}
-
-void ReportBackupKeysetCleanupResult(BackupKeysetCleanupResult status) {
-  if (!g_metrics) {
-    return;
-  }
-
-  g_metrics->SendEnumToUMA(
-      kBackupKeysetCleanupResult, static_cast<int>(status),
-      static_cast<int>(BackupKeysetCleanupResult::kMaxValue) + 1);
 }
 
 void ReportFingerprintEnrollSignal(
