@@ -1252,6 +1252,11 @@ bool Proxy::IsValidVirtualDevice(
     case patchpanel::Client::GuestType::kArcContainer:
     case patchpanel::Client::GuestType::kArcVm:
       return opts_.type == Type::kARC && opts_.ifname == device.phys_ifname;
+    case patchpanel::Client::GuestType::kConnectedNs:
+      // Only listen on ConnectedNamespace interface when root namespace feature
+      // is enabled. We expect ConnectNamespace API to only be called for
+      // tracking the default logical network (i.e. for system-proxy).
+      return root_ns_enabled_ && opts_.type == Type::kDefault;
     default:
       return false;
   }
