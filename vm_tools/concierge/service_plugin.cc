@@ -124,11 +124,6 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
 
   VmId vm_id(request.owner_id(), request.name());
 
-  // Log how long it takes to start the VM.
-  metrics::DurationRecorder duration_recorder(
-      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
-      apps::VmType::PLUGIN_VM, metrics::DurationRecorder::Event::kVmStart);
-
   // Get the stateful directory.
   base::FilePath stateful_dir;
   if (!GetPluginStatefulDirectory(vm_id, true /* create */, &stateful_dir)) {

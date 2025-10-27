@@ -2123,7 +2123,7 @@ bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
   // Notify that we are about to stop a VM.
   NotifyVmStopping(vm_id, info.cid);
 
-  {
+  if (info.type != apps::VmType::PLUGIN_VM) {
     metrics::DurationRecorder duration_recorder(
         raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()), info.type,
         metrics::DurationRecorder::Event::kVmStop);
