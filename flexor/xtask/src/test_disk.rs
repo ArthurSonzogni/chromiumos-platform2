@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 use crate::file_view::FileView;
-use crate::{CreateTestDisk, TestDiskArgs};
+use crate::CreateArgs;
 use anyhow::{anyhow, bail, Context, Result};
 use fatfs::{FileSystem, FormatVolumeOptions, FsOptions, ReadWriteSeek};
 use fs_err::{File, OpenOptions};
@@ -11,9 +11,10 @@ use gpt_disk_types::{BlockSize, GptPartitionType, Lba, LbaRangeInclusive};
 use gptman::{GPTPartitionEntry, GPT};
 use std::io::Write;
 use std::ops::RangeInclusive;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
+const FLEX_CONFIG_FILENAME: &str = "flex_config.json";
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEXOR_VMLINUZ_FILENAME: &str = "flexor_vmlinuz";
 const FRD_BUNDLE_INSTALL_DIR: &str = "install";
@@ -101,7 +102,7 @@ fn write_to_fatfs<T: ReadWriteSeek>(
 /// Create the ESP filesystem in a flexor test disk.
 ///
 /// Bootloader executables and signature are copied to the filesystem.
-fn create_esp(args: &CreateTestDisk, disk_file: &mut File) -> Result<()> {
+fn create_esp(args: &CreateArgs, disk_file: &mut File) -> Result<()> {
     // Create empty filesystem.
     let partition_range = find_partition_range(disk_file, GptPartitionType::EFI_SYSTEM)
         .context("failed to get esp partition range")?;
@@ -131,36 +132,45 @@ fn create_esp(args: &CreateTestDisk, disk_file: &mut File) -> Result<()> {
 /// Create the data partition in a flexor test disk.
 ///
 /// The flexor kernel, installation image, and optional flex_config, are copied to the filesystem.
-fn create_flexor_data_partition(args: &CreateTestDisk, disk_file: &mut File) -> Result<()> {
+fn create_flexor_data_partition(
+    disk_file: &mut File,
+    frd_bundle: &Path,
+    flexor_vmlinuz: &Option<PathBuf>,
+    install_image: &Option<PathBuf>,
+) -> Result<()> {
     // Create the flexor data partition
     let partition_range = find_partition_range(disk_file, GptPartitionType::BASIC_DATA)
         .context("failed to get flexor data partition range")?;
     let mut view = FileView::new(disk_file, partition_range.to_byte_range())?;
     fatfs::format_volume(&mut view, FormatVolumeOptions::new())?;
 
-    // Add files to the filesystem.
-    let frd_bundle_install_dir = args.frd_bundle.join(FRD_BUNDLE_INSTALL_DIR);
-    let mut files_to_copy = vec!["flex_image.tar.xz", "flexor_vmlinuz"];
+    let frd_bundle_install_dir = frd_bundle.join(FRD_BUNDLE_INSTALL_DIR);
+
+    let fs = FileSystem::new(view, FsOptions::new())?;
+    let root = fs.root_dir();
+
+    let flexor_vmlinuz = flexor_vmlinuz
+        .clone()
+        .unwrap_or_else(|| frd_bundle_install_dir.join(FLEXOR_VMLINUZ_FILENAME));
+    write_to_fatfs(&root, FLEXOR_VMLINUZ_FILENAME, &flexor_vmlinuz)?;
+    let install_image = install_image
+        .clone()
+        .unwrap_or_else(|| frd_bundle_install_dir.join(FLEX_IMAGE_FILENAME));
+    write_to_fatfs(&root, FLEX_IMAGE_FILENAME, &install_image)?;
 
     // Also grab flex_config.json if it's there.
     // This is a little different from running under the agent, which would create the config rather
     // than grabbing it from the install dir.
-    let flex_config = frd_bundle_install_dir.join("flex_config.json");
+    let flex_config = frd_bundle_install_dir.join(FLEX_CONFIG_FILENAME);
     if flex_config.exists() {
-        files_to_copy.push("flex_config.json");
-    }
-
-    let fs = FileSystem::new(view, FsOptions::new())?;
-    let root = fs.root_dir();
-    for file_name in files_to_copy {
-        write_to_fatfs(&root, file_name, &frd_bundle_install_dir.join(file_name))?;
+        write_to_fatfs(&root, FLEX_CONFIG_FILENAME, &flex_config)?;
     }
 
     Ok(())
 }
 
 /// Create a flexor test disk from scratch.
-pub fn create(args: &CreateTestDisk) -> Result<()> {
+pub fn create(args: &CreateArgs) -> Result<()> {
     // Delete the output file if it already exists.
     let _ = fs_err::remove_file(&args.output);
 
@@ -193,44 +203,13 @@ pub fn create(args: &CreateTestDisk) -> Result<()> {
         .open(&args.output)?;
 
     create_esp(args, &mut disk_file).context("failed to create esp")?;
-    create_flexor_data_partition(args, &mut disk_file)
-        .context("failed to create flexor data partition")?;
-
-    Ok(())
-}
-
-/// Updates a flexor test disk image, inserting a new flexor_vmlinuz and/or install_image
-/// if either is passed.
-pub fn update(args: &TestDiskArgs) -> Result<()> {
-    if args.flexor_vmlinuz.is_none() && args.install_image.is_none() {
-        // Nothing to do.
-        println!("No files passed, not updating disk...");
-        return Ok(());
-    } else {
-        println!("Updating disk...");
-    }
-
-    let mut disk_file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .truncate(false)
-        .open(&args.flexor_disk)?;
-
-    let data_partition_range = find_partition_range(&mut disk_file, GptPartitionType::BASIC_DATA)?;
-
-    let view = FileView::new(&mut disk_file, data_partition_range.to_byte_range())?;
-
-    // Load the data as a FAT filesystem, and grab the root dir.
-    let data_fs = FileSystem::new(view, FsOptions::new())?;
-    let root_dir = data_fs.root_dir();
-
-    if let Some(vmlinuz_path) = &args.flexor_vmlinuz {
-        write_to_fatfs(&root_dir, FLEXOR_VMLINUZ_FILENAME, vmlinuz_path)?;
-    }
-
-    if let Some(image_path) = &args.install_image {
-        write_to_fatfs(&root_dir, FLEX_IMAGE_FILENAME, image_path)?;
-    }
+    create_flexor_data_partition(
+        &mut disk_file,
+        &args.frd_bundle,
+        &args.flexor_vmlinuz,
+        &args.install_image,
+    )
+    .context("failed to create flexor data partition")?;
 
     Ok(())
 }

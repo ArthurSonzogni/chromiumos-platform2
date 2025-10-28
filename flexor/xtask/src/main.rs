@@ -16,23 +16,17 @@ struct Opt {
 }
 
 #[derive(Subcommand)]
-#[expect(clippy::enum_variant_names)]
 enum Action {
-    /// Create a flexor test image.
-    CreateTestDisk(CreateTestDisk),
+    /// Create a flexor test image that will boot and install Flex.
+    CreateTestDisk(CreateArgs),
 
-    /// Takes a flexor image (like what the create-test-disk action produces) and runs it in a VM
-    /// to test installation, optionally updating some of the contained files before running.
-    /// Ctrl+C to exit.
-    RunTestDisk(TestDiskArgs),
-
-    /// Takes a flexor image (like what the create-test-disk action produces) and updates some of
-    /// the contained files.
-    UpdateTestDisk(TestDiskArgs),
+    /// Run a flexor image (like what create-test-disk produces) in a VM to test installation.
+    /// Ctrl+C or quit vm to exit.
+    RunTestDisk(RunArgs),
 }
 
 #[derive(Args)]
-struct CreateTestDisk {
+struct CreateArgs {
     /// Path of the disk image to create.
     ///
     /// This will overwrite the file if it already exists.
@@ -42,23 +36,21 @@ struct CreateTestDisk {
     /// Path of an unpacked FRD bundle from go/cros-frd-releases.
     #[arg(long)]
     frd_bundle: PathBuf,
-}
 
-#[derive(Args)]
-struct TestDiskArgs {
-    /// The disk image for testing (e.g. flexor_disk.img).
-    flexor_disk: PathBuf,
-
-    /// Optionally update the flexor_vmlinuz.
-    /// This contains the install script that will be run.
+    /// Use a different flexor. flexor_vmlinuz contains the flexor binary, install script, etc.
     #[arg(long)]
     flexor_vmlinuz: Option<PathBuf>,
 
-    /// Optionally update the flex_image.tar.xz.
-    /// This is the image that will be installed by flexor.
+    /// Install a different flex image (must be a flex_image.tar.xz).
     // TODO(tbrandston): Optional improvement: detect non-xz input and use tar+flate2 to compress.
     #[arg(long)]
     install_image: Option<PathBuf>,
+}
+
+#[derive(Args)]
+struct RunArgs {
+    /// The disk image for testing (e.g. flexor_disk.img).
+    flexor_disk: PathBuf,
 }
 
 fn main() -> Result<()> {
@@ -66,10 +58,6 @@ fn main() -> Result<()> {
 
     match &opt.action {
         Action::CreateTestDisk(args) => test_disk::create(args),
-        Action::RunTestDisk(args) => {
-            test_disk::update(args)?;
-            test_disk::run(&args.flexor_disk)
-        }
-        Action::UpdateTestDisk(args) => test_disk::update(args),
+        Action::RunTestDisk(args) => test_disk::run(&args.flexor_disk),
     }
 }
