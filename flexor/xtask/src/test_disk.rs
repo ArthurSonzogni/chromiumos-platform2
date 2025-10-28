@@ -117,21 +117,32 @@ struct Partition {
 /// Plan out what's going to be on the esp.
 ///
 /// Includes crdyshim, crdyboot + signature, and an optional crdyboot_verbose file.
-fn plan_esp_partition(frd_bundle: &Path) -> Partition {
+fn plan_esp_partition(
+    frd_bundle: &Path,
+    crdyshim: &Option<PathBuf>,
+    crdyboot: &Option<PathBuf>,
+    crdyboot_verbose: bool,
+) -> Partition {
     let frd_bundle_install_dir = frd_bundle.join(FRD_BUNDLE_INSTALL_DIR);
 
-    let mut esp_files: BTreeMap<_, _> =
-        [CRDYSHIM_FILENAME, CRDYBOOT_FILENAME, CRDYBOOT_SIG_FILENAME]
-            .iter()
-            .map(|name| (*name, frd_bundle_install_dir.join(name)))
-            .collect();
+    let crdyshim = crdyshim
+        .clone()
+        .unwrap_or_else(|| frd_bundle_install_dir.join(CRDYSHIM_FILENAME));
+    let crdyboot = crdyboot
+        .clone()
+        .unwrap_or_else(|| frd_bundle_install_dir.join(CRDYBOOT_FILENAME));
+    let crdyboot_sig = crdyboot.with_extension("sig");
+    let mut esp_files = BTreeMap::from([
+        (CRDYSHIM_FILENAME, crdyshim),
+        (CRDYBOOT_FILENAME, crdyboot),
+        (CRDYBOOT_SIG_FILENAME, crdyboot_sig),
+    ]);
 
-    // Also grab crdyboot_verbose if it's there.
-    let crdyboot_verbose = frd_bundle_install_dir.join(CRDYBOOT_VERBOSE_FILENAME);
-    if crdyboot_verbose.exists() {
+    if crdyboot_verbose {
         esp_files.insert(
             CRDYBOOT_VERBOSE_FILENAME,
-            frd_bundle_install_dir.join(CRDYBOOT_VERBOSE_FILENAME),
+            // Will produce a 0-length file, which is all we need for crdyboot_verbose.
+            PathBuf::from("/dev/null"),
         );
     }
 
@@ -233,7 +244,12 @@ pub fn create(args: &CreateArgs) -> Result<()> {
         .truncate(false)
         .open(&args.output)?;
 
-    let esp_part = plan_esp_partition(&args.frd_bundle);
+    let esp_part = plan_esp_partition(
+        &args.frd_bundle,
+        &args.crdyshim,
+        &args.crdyboot,
+        args.crdyboot_verbose,
+    );
     let data_part =
         plan_data_partition(&args.frd_bundle, &args.flexor_vmlinuz, &args.install_image);
 
@@ -357,7 +373,8 @@ mod tests {
 
     #[test]
     fn test_plan_esp() {
-        let partition = plan_esp_partition(Path::new("fake"));
+        // Test 'defaults'.
+        let partition = plan_esp_partition(Path::new("fake"), &None, &None, false);
 
         assert_eq!(partition.gpt_type, GptPartitionType::EFI_SYSTEM);
         assert_eq!(partition.subdir, PathBuf::from("EFI/BOOT"));
@@ -376,6 +393,43 @@ mod tests {
                     CRDYBOOT_SIG_FILENAME,
                     Path::new("fake/install/").join(CRDYBOOT_SIG_FILENAME),
                 ),
+            ]),
+        );
+
+        // Check turning on crdyboot_verbose.
+        let partition = plan_esp_partition(Path::new("fake"), &None, &None, true);
+        assert_eq!(
+            partition.name_to_src_path,
+            BTreeMap::from([
+                (
+                    CRDYSHIM_FILENAME,
+                    Path::new("fake/install/").join(CRDYSHIM_FILENAME),
+                ),
+                (
+                    CRDYBOOT_FILENAME,
+                    Path::new("fake/install/").join(CRDYBOOT_FILENAME),
+                ),
+                (
+                    CRDYBOOT_SIG_FILENAME,
+                    Path::new("fake/install/").join(CRDYBOOT_SIG_FILENAME),
+                ),
+                (CRDYBOOT_VERBOSE_FILENAME, PathBuf::from("/dev/null")),
+            ]),
+        );
+
+        // Check overriding.
+        let partition = plan_esp_partition(
+            Path::new("fake"),
+            &Some(PathBuf::from("shim.efi")),
+            &Some(PathBuf::from("boot.efi")),
+            false,
+        );
+        assert_eq!(
+            partition.name_to_src_path,
+            BTreeMap::from([
+                (CRDYSHIM_FILENAME, PathBuf::from("shim.efi")),
+                (CRDYBOOT_FILENAME, PathBuf::from("boot.efi")),
+                (CRDYBOOT_SIG_FILENAME, PathBuf::from("boot.sig")),
             ]),
         );
     }

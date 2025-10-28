@@ -45,6 +45,18 @@ struct CreateArgs {
     // TODO(tbrandston): Optional improvement: detect non-xz input and use tar+flate2 to compress.
     #[arg(long)]
     install_image: Option<PathBuf>,
+
+    /// Use a different crdyshim.
+    #[arg(long)]
+    crdyshim: Option<PathBuf>,
+
+    /// Use a different crdyboot (automatically grabs .sig file, too).
+    #[arg(long)]
+    crdyboot: Option<PathBuf>,
+
+    /// Turn on crdyboot_verbose logging (also makes flexor log visibly).
+    #[arg(long)]
+    crdyboot_verbose: bool,
 }
 
 #[derive(Args)]
