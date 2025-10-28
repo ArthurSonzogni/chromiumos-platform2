@@ -193,6 +193,16 @@ void FaceDetector::DetectOnThread(const uint8_t* buffer_addr,
 
   PrepareBuffer(scaled_size);
 
+  if (!scaled_size.is_valid()) {
+    LOG(ERROR) << "FaceDetector: Invalid scaled size " << scaled_size.width
+               << "x" << scaled_size.height << " calculated from input "
+               << input_size.width << "x" << input_size.height
+               << ". Aborting detection.";
+    std::move(buffer_release_callback).Run();
+    std::move(result_callback).Run(FaceDetectResult::kDetectError, {});
+    return;
+  }
+
   libyuv::ScalePlane(buffer_addr, input_stride, input_size.width,
                      input_size.height, scaled_buffer_.data(),
                      scaled_size.width, scaled_size.width, scaled_size.height,
