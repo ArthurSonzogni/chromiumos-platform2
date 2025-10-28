@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 use fs_err::File;
-use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::num::TryFromIntError;
 use std::ops::RangeInclusive;
 
@@ -57,7 +57,7 @@ impl<'a> FileView<'a> {
     /// from the start of the underlying file.
     fn seek_from_to_absolute(&mut self, seek_from: SeekFrom) -> io::Result<u64> {
         fn to_io_err(err: TryFromIntError) -> io::Error {
-            io::Error::new(ErrorKind::Other, err)
+            io::Error::other(err)
         }
 
         match seek_from {
@@ -115,10 +115,7 @@ impl Seek for FileView<'_> {
         // Note that seeking past the end is allowed under file
         // semantics.
         if position < *self.range.start() {
-            return Err(io::Error::new(
-                ErrorKind::Other,
-                "seek before start of file view",
-            ));
+            return Err(io::Error::other("seek before start of file view"));
         }
 
         // Seek in the underlying file to the new position.
