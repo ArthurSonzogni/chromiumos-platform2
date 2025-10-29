@@ -500,9 +500,9 @@ while true; do
   fi
   # If we haven't exceeded the premature wake waived failure limit, we
   # can waive this suspend failure.
-  if is_waived_premature_wake_failure && \
-     [ "${waived_premature_wake_failure_count}" -lt \
-       "${FLAGS_waived_premature_wake_failure_limit}" ]; then
+  if [ "${waived_premature_wake_failure_count}" -lt \
+       "${FLAGS_waived_premature_wake_failure_limit}" ] && \
+     is_waived_premature_wake_failure; then
     : $(( waived_premature_wake_failure_count += 1 ))
     ignore_failure=1
     echo "Waiving premature wake failure, keep testing."
