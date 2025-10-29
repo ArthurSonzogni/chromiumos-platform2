@@ -6,10 +6,11 @@ use crate::file_view::FileView;
 use crate::CreateArgs;
 use anyhow::{anyhow, bail, Context, Result};
 use fatfs::{FileSystem, FormatVolumeOptions, FsOptions, ReadWriteSeek};
-use fs_err::{File, OpenOptions};
+use fs_err::{self as fs, File, OpenOptions};
 use gpt_disk_types::{BlockSize, GptPartitionType, Lba, LbaRangeInclusive};
 use gptman::{GPTPartitionEntry, GPT};
 use std::collections::BTreeMap;
+use std::fs::Metadata;
 use std::io::Write;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
@@ -31,6 +32,35 @@ const SECTOR_SIZE: BlockSize = BlockSize::BS_512;
 /// This is not a precise conversion, but sufficient for logging.
 fn cmd_to_string(cmd: &Command) -> String {
     format!("{cmd:?}").replace('"', "")
+}
+
+/// Convert MiB to bytes.
+///
+/// Panics if |mib| is too big.
+fn mib_to_bytes(mib: u64) -> u64 {
+    mib * 1024 * 1024
+}
+
+/// Convert GiB to bytes.
+///
+/// Panics if |gib| is too big.
+fn gib_to_bytes(gib: u64) -> u64 {
+    gib * 1024 * 1024 * 1024
+}
+
+/// Returns the smallest number of sectors that can contain the given number of bytes (rounds up).
+///
+/// We can safely assume a sector size of 512 when modifying these images. The 4k sector size issues
+/// only arise when writing to an actual disk with a different sector size.
+fn bytes_to_sectors(bytes: u64) -> u64 {
+    bytes.div_ceil(SECTOR_SIZE.to_u64())
+}
+
+/// Round |bytes| up to the nearest sector boundary.
+///
+/// Like |bytes_to_sectors| but returns a number of bytes, not number of sectors.
+fn round_bytes_to_nearest_sector(bytes: u64) -> u64 {
+    bytes.div_ceil(SECTOR_SIZE.to_u64()) * SECTOR_SIZE.to_u64()
 }
 
 /// Run a command.
@@ -104,6 +134,22 @@ fn write_to_fatfs<T: ReadWriteSeek>(
     output_file.write_all(&data)
 }
 
+type FileNameToSrcPathMap = BTreeMap<&'static str, PathBuf>;
+
+/// Add up the sizes of all the files (values in the passed map).
+fn sum_sizes(files: &FileNameToSrcPathMap) -> Result<u64> {
+    let size = files
+        .values()
+        .map(fs::metadata)
+        // collapse to handle errors, then iterate on the metadata again.
+        .collect::<Result<Vec<Metadata>, std::io::Error>>()?
+        .iter()
+        .map(Metadata::len)
+        .sum();
+
+    Ok(size)
+}
+
 /// Represents one of the partitions we'd like to make.
 struct Partition {
     gpt_type: GptPartitionType,
@@ -111,7 +157,18 @@ struct Partition {
     subdir: PathBuf,
     /// Files will be named for the keys in the |name_to_src_path|, and their contents will be
     /// pulled from the files pointed to by the values.
-    name_to_src_path: BTreeMap<&'static str, PathBuf>,
+    name_to_src_path: FileNameToSrcPathMap,
+    /// When producing minimal-sized partitions this is a "fudge factor" for sizing the partition.
+    /// This covers space reserved for optional files and filesystem overhead. FAT filesystem
+    /// overhead is tricky to calculate, and depends on the initial settings, number of files,
+    /// file alignment, and fragmentation.
+    extra_space: u64,
+}
+
+impl Partition {
+    fn required_size_in_bytes(&self) -> Result<u64> {
+        Ok(sum_sizes(&self.name_to_src_path)? + self.extra_space)
+    }
 }
 
 /// Plan out what's going to be on the esp.
@@ -132,7 +189,7 @@ fn plan_esp_partition(
         .clone()
         .unwrap_or_else(|| frd_bundle_install_dir.join(CRDYBOOT_FILENAME));
     let crdyboot_sig = crdyboot.with_extension("sig");
-    let mut esp_files = BTreeMap::from([
+    let mut esp_files = FileNameToSrcPathMap::from([
         (CRDYSHIM_FILENAME, crdyshim),
         (CRDYBOOT_FILENAME, crdyboot),
         (CRDYBOOT_SIG_FILENAME, crdyboot_sig),
@@ -150,6 +207,8 @@ fn plan_esp_partition(
         gpt_type: GptPartitionType::EFI_SYSTEM,
         subdir: PathBuf::from("EFI/BOOT"),
         name_to_src_path: esp_files,
+        // This seems to be more than enough to cover FAT overhead on both base and test images.
+        extra_space: mib_to_bytes(1),
     }
 }
 
@@ -170,7 +229,7 @@ fn plan_data_partition(
     let install_image = install_image
         .clone()
         .unwrap_or_else(|| frd_bundle_install_dir.join(FLEX_IMAGE_FILENAME));
-    let mut install_files = BTreeMap::from([
+    let mut install_files = FileNameToSrcPathMap::from([
         (FLEXOR_VMLINUZ_FILENAME, flexor_vmlinuz),
         (FLEX_IMAGE_FILENAME, install_image),
     ]);
@@ -187,6 +246,10 @@ fn plan_data_partition(
         gpt_type: GptPartitionType::BASIC_DATA,
         subdir: PathBuf::new(),
         name_to_src_path: install_files,
+        // With a test image we seem to need close to 8MiB for FAT overhead. Plus leave space for
+        // the optional config.json, in case `package_flex_image` uses that file to pass the
+        // enrollment token.
+        extra_space: mib_to_bytes(10),
     }
 }
 
@@ -211,39 +274,48 @@ fn create_partition(disk_file: &mut File, partition: &Partition) -> Result<()> {
     Ok(())
 }
 
-/// Create a flexor test disk from scratch.
-pub fn create(args: &CreateArgs) -> Result<()> {
+/// Create a correctly partitioned disk image.
+fn create_image(path: &Path, esp_size: u64, data_size: u64) -> Result<()> {
     // Delete the output file if it already exists.
-    let _ = fs_err::remove_file(&args.output);
+    let _ = fs_err::remove_file(path);
+
+    // Don't pass exabyte-large files: this might overflow.
+    let total_size_bytes = esp_size + data_size;
+    // `sgdisk` complains if the file isn't a multiple of the sector size, so round up.
+    let total_size_bytes = round_bytes_to_nearest_sector(total_size_bytes);
+    // `sgdisk` doesn't seem to accept bytes, convert to sectors.
+    let esp_size_sectors = bytes_to_sectors(esp_size);
 
     // Create empty file to hold the disk.
     run_cmd(
         Command::new("truncate")
-            .arg("--size=32GiB")
-            .arg(&args.output),
+            .arg(format!("--size={total_size_bytes}"))
+            .arg(path),
     )?;
 
     run_cmd(
         Command::new("sgdisk")
+            // Specify explicitly, because we've run into issues before when assuming.
+            .arg(format!("--set-alignment={SECTOR_SIZE}"))
             // Create ESP partition.
             .args([
-                "--new=1::+90MB",
+                &format!("--new=1::+{esp_size_sectors}"),
                 &format!("--typecode=1:{}", GptPartitionType::EFI_SYSTEM),
             ])
             // Create flexor data partition.
             .args([
+                // No need to specify size, this will use the remainder.
                 "--new=2",
                 &format!("--typecode=2:{}", GptPartitionType::BASIC_DATA),
             ])
-            .arg(&args.output),
+            .arg(path),
     )?;
 
-    let mut disk_file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .truncate(false)
-        .open(&args.output)?;
+    Ok(())
+}
 
+/// Create a flexor disk from scratch.
+pub fn create(args: &CreateArgs) -> Result<()> {
     let esp_part = plan_esp_partition(
         &args.frd_bundle,
         &args.crdyshim,
@@ -253,13 +325,31 @@ pub fn create(args: &CreateArgs) -> Result<()> {
     let data_part =
         plan_data_partition(&args.frd_bundle, &args.flexor_vmlinuz, &args.install_image);
 
+    if args.mass_deployable {
+        let esp_size = esp_part.required_size_in_bytes()?;
+        let data_size = data_part.required_size_in_bytes()?;
+
+        create_image(&args.output, esp_size, data_size)?;
+    } else {
+        let esp_size = mib_to_bytes(90);
+        let data_size = gib_to_bytes(30); // 30GiB (FRD claims to require 24GiB)
+
+        create_image(&args.output, esp_size, data_size)?;
+    }
+
+    let mut disk_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .truncate(false)
+        .open(&args.output)?;
+
     create_partition(&mut disk_file, &esp_part).context("failed to create esp")?;
     create_partition(&mut disk_file, &data_part).context("failed to create data partition")?;
 
     Ok(())
 }
 
-/// Runs a flexor test disk image.
+/// Run a flexor disk image.
 pub fn run(flexor_disk: &Path) -> Result<()> {
     let mut cmd = Command::new("qemu-system-x86_64");
     cmd.args(["-enable-kvm"]);
@@ -316,6 +406,77 @@ mod tests {
     }
 
     #[test]
+    fn test_sum_sizes() -> Result<()> {
+        let tmp_dir = tempfile::tempdir()?;
+
+        // Make some files with a clear size.
+        let file_a = tmp_dir.path().join("file_a");
+        fs_err::write(&file_a, "aaa")?;
+        let file_b = tmp_dir.path().join("file_b");
+        fs_err::write(&file_b, "bbb")?;
+
+        // An empty set of files should take up no space.
+        assert_eq!(sum_sizes(&FileNameToSrcPathMap::new())?, 0);
+        // One file is counted right.
+        assert_eq!(
+            sum_sizes(&FileNameToSrcPathMap::from([("a", file_a.clone())]))?,
+            3
+        );
+        // Two files are correctly added.
+        assert_eq!(
+            sum_sizes(&FileNameToSrcPathMap::from([
+                ("a", file_a.clone()),
+                ("b", file_b.clone())
+            ]))?,
+            6
+        );
+        // Reusing the same path still counts twice.
+        assert_eq!(
+            sum_sizes(&FileNameToSrcPathMap::from([
+                ("a", file_a.clone()),
+                ("b", file_b.clone()),
+                ("x", file_b.clone())
+            ]))?,
+            9
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_bytes_to_sectors() {
+        for (input, expected_result) in [
+            (0, 0),
+            (1, 1),
+            (512, 1),
+            (513, 2),
+            (2048, 4),
+            (51200, 100),
+            (51201, 101),
+            // 100 GiB. Likely larger than what we're going to use it for here.
+            (107374182400, 209715200),
+        ] {
+            assert_eq!(bytes_to_sectors(input), expected_result);
+        }
+    }
+
+    #[test]
+    fn test_round_bytes_to_nearest_sector() {
+        for (input, expected_result) in [
+            (0, 0),
+            (1, 512),
+            (512, 512),
+            (513, 1024),
+            (2048, 2048),
+            (51200, 51200),
+            (51201, 51712),
+            (gib_to_bytes(100), gib_to_bytes(100)),
+        ] {
+            assert_eq!(round_bytes_to_nearest_sector(input), expected_result);
+        }
+    }
+
+    #[test]
     fn test_create_partition() -> Result<()> {
         let tmp_dir = tempfile::tempdir()?;
 
@@ -349,7 +510,11 @@ mod tests {
         let partition = Partition {
             gpt_type: GptPartitionType::BASIC_DATA,
             subdir: PathBuf::from("one/two"),
-            name_to_src_path: BTreeMap::from([("file_a", file_a), ("different_name", file_b)]),
+            name_to_src_path: FileNameToSrcPathMap::from([
+                ("file_a", file_a),
+                ("different_name", file_b),
+            ]),
+            extra_space: mib_to_bytes(1),
         };
         create_partition(&mut disk_file, &partition)?;
 
@@ -380,7 +545,7 @@ mod tests {
         assert_eq!(partition.subdir, PathBuf::from("EFI/BOOT"));
         assert_eq!(
             partition.name_to_src_path,
-            BTreeMap::from([
+            FileNameToSrcPathMap::from([
                 (
                     CRDYSHIM_FILENAME,
                     Path::new("fake/install/").join(CRDYSHIM_FILENAME),
@@ -400,7 +565,7 @@ mod tests {
         let partition = plan_esp_partition(Path::new("fake"), &None, &None, true);
         assert_eq!(
             partition.name_to_src_path,
-            BTreeMap::from([
+            FileNameToSrcPathMap::from([
                 (
                     CRDYSHIM_FILENAME,
                     Path::new("fake/install/").join(CRDYSHIM_FILENAME),
@@ -426,7 +591,7 @@ mod tests {
         );
         assert_eq!(
             partition.name_to_src_path,
-            BTreeMap::from([
+            FileNameToSrcPathMap::from([
                 (CRDYSHIM_FILENAME, PathBuf::from("shim.efi")),
                 (CRDYBOOT_FILENAME, PathBuf::from("boot.efi")),
                 (CRDYBOOT_SIG_FILENAME, PathBuf::from("boot.sig")),
@@ -443,7 +608,7 @@ mod tests {
         assert_eq!(partition.subdir, PathBuf::new());
         assert_eq!(
             partition.name_to_src_path,
-            BTreeMap::from([
+            FileNameToSrcPathMap::from([
                 (
                     FLEXOR_VMLINUZ_FILENAME,
                     Path::new("fake/install/").join(FLEXOR_VMLINUZ_FILENAME),
@@ -463,7 +628,7 @@ mod tests {
         );
         assert_eq!(
             partition.name_to_src_path,
-            BTreeMap::from([
+            FileNameToSrcPathMap::from([
                 (FLEXOR_VMLINUZ_FILENAME, PathBuf::from("different_name"),),
                 (
                     FLEX_IMAGE_FILENAME,
@@ -480,7 +645,7 @@ mod tests {
         );
         assert_eq!(
             partition.name_to_src_path,
-            BTreeMap::from([
+            FileNameToSrcPathMap::from([
                 (FLEXOR_VMLINUZ_FILENAME, PathBuf::from("vmlinuz")),
                 (FLEX_IMAGE_FILENAME, PathBuf::from("image")),
             ]),

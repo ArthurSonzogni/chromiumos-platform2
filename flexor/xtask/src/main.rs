@@ -17,12 +17,12 @@ struct Opt {
 
 #[derive(Subcommand)]
 enum Action {
-    /// Create a flexor test image that will boot and install Flex.
-    CreateTestDisk(CreateArgs),
+    /// Create a flexor disk image that will boot and install Flex.
+    CreateFlexorDisk(CreateArgs),
 
-    /// Run a flexor image (like what create-test-disk produces) in a VM to test installation.
+    /// Run a flexor image (like what create-flexor-disk produces) in a VM to test installation.
     /// Ctrl+C or quit vm to exit.
-    RunTestDisk(RunArgs),
+    RunFlexorDisk(RunArgs),
 }
 
 #[derive(Args)]
@@ -57,6 +57,13 @@ struct CreateArgs {
     /// Turn on crdyboot_verbose logging (also makes flexor log visibly).
     #[arg(long)]
     crdyboot_verbose: bool,
+
+    /// Create an image suitable for mass deployment.
+    ///
+    /// For mass deploy, we want to make the image as small as we reasonably can.
+    /// run-flexor-disk won't work with this image unless you enlarge it after creation.
+    #[arg(long)]
+    mass_deployable: bool,
 }
 
 #[derive(Args)]
@@ -69,7 +76,7 @@ fn main() -> Result<()> {
     let opt = Opt::parse();
 
     match &opt.action {
-        Action::CreateTestDisk(args) => test_disk::create(args),
-        Action::RunTestDisk(args) => test_disk::run(&args.flexor_disk),
+        Action::CreateFlexorDisk(args) => test_disk::create(args),
+        Action::RunFlexorDisk(args) => test_disk::run(&args.flexor_disk),
     }
 }
