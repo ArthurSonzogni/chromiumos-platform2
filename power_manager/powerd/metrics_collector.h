@@ -427,6 +427,12 @@ class MetricsCollector {
   // For calculating battery life rolling averages.
   std::deque<double> rolling_average_actual_{};
   std::deque<double> rolling_average_design_{};
+
+  // Maximum voltage in volts supported by an external power supply must be
+  // above this value for the Chrome device to be able to draw power from this
+  // power supply. This value is relevant only for Chrome devices with a Hybrid
+  // Power Boost charger. Read from kMinChargingVoltPref.
+  double min_charging_voltage_ = 0.0;
 };
 
 }  // namespace metrics

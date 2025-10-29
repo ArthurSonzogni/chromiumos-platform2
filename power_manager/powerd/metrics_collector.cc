@@ -264,6 +264,8 @@ void MetricsCollector::Init(
     residency_trackers_[IdleState::PC10] = IdleResidencyTracker(
         std::make_shared<SingleValueResidencyReader>(pc10_residency_path));
   }
+
+  prefs_->GetDouble(kMinChargingVoltPref, &min_charging_voltage_);
 }
 
 base::TimeTicks MetricsCollector::GetLastKernelResumedTime() {
@@ -457,6 +459,17 @@ void MetricsCollector::HandlePowerStatusUpdate(const PowerStatus& status) {
                    static_cast<int>(round(status.line_power_max_voltage *
                                           status.line_power_max_current)),
                    kPowerSupplyMaxPowerMax);
+  }
+
+  const bool uses_hpb_charger = min_charging_voltage_ > kEpsilon;
+  const bool connected_to_external_power =
+      status.line_power_on ||
+      status.external_power ==
+          PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE;
+  if (uses_hpb_charger && connected_to_external_power) {
+    SendEnumMetric(kPowerSupplyMaxVoltageHPBChargerName,
+                   static_cast<int>(round(status.line_power_max_voltage)),
+                   kPowerSupplyMaxVoltageMax);
   }
 
   SendEnumMetric(kConnectedChargingPortsName,

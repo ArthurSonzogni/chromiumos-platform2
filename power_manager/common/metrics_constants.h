@@ -157,6 +157,8 @@ extern const int kPowerButtonAcknowledgmentDelayMax;
 extern const char kPowerSupplyMaxVoltageName[];
 extern const int kPowerSupplyMaxVoltageMax;
 
+extern const char kPowerSupplyMaxVoltageHPBChargerName[];
+
 extern const char kPowerSupplyMaxPowerName[];
 extern const int kPowerSupplyMaxPowerMax;
 

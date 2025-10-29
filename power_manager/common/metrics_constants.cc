@@ -198,6 +198,9 @@ const int kPowerButtonAcknowledgmentDelayMax = 8 * 1000;
 const char kPowerSupplyMaxVoltageName[] = "Power.PowerSupplyMaxVoltage";
 const int kPowerSupplyMaxVoltageMax = 21;
 
+const char kPowerSupplyMaxVoltageHPBChargerName[] =
+    "Power.PowerSupplyMaxVoltageHPBCharger";
+
 const char kPowerSupplyMaxPowerName[] = "Power.PowerSupplyMaxPower";
 const int kPowerSupplyMaxPowerMax = 101;
 

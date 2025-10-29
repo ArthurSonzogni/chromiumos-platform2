@@ -88,6 +88,13 @@ namespace power_manager::metrics {
     }                              \
   } while (0)
 
+// Set an expectation that a given enum metric must not be reported in
+// a test.
+#define DONT_EXPECT_ENUM_METRIC(name)                              \
+  do {                                                             \
+    EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, _, _)).Times(0); \
+  } while (0)
+
 // Adds a metrics library mock expectation that the specified metric
 // must be generated.
 #define EXPECT_METRIC(name, sample, min, max, buckets)                    \
@@ -834,6 +841,48 @@ TEST_F(MetricsCollectorTest, PowerSupplyMaxVoltageAndPower) {
 
   // Nothing should be reported when line power is off.
   power_status_.line_power_on = false;
+  collector_.HandlePowerStatusUpdate(power_status_);
+}
+
+TEST_F(MetricsCollectorTest, PowerSupplyMaxVoltageForHybridPowerBoostCharger) {
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+  power_status_.line_power_on = false;
+  Init();
+
+  power_status_.external_power =
+      PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE;
+  power_status_.line_power_max_voltage = 5.0;
+  power_status_.line_power_max_current = 3.0;
+
+  EXPECT_ENUM_METRIC(
+      kPowerSupplyMaxVoltageHPBChargerName,
+      static_cast<int>(round(power_status_.line_power_max_voltage)),
+      kPowerSupplyMaxVoltageMax);
+  DONT_EXPECT_ENUM_METRIC(kPowerSupplyMaxVoltageName);
+
+  collector_.HandlePowerStatusUpdate(power_status_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  ALLOWLIST_ALL_METRICS();
+
+  power_status_.external_power = PowerSupplyProperties_ExternalPower_AC;
+  power_status_.line_power_on = true;
+  power_status_.line_power_max_voltage = 20.0;
+  power_status_.line_power_max_current = 3.25;
+
+  EXPECT_ENUM_METRIC(
+      kPowerSupplyMaxVoltageHPBChargerName,
+      static_cast<int>(round(power_status_.line_power_max_voltage)),
+      kPowerSupplyMaxVoltageMax);
+  EXPECT_ENUM_METRIC(
+      kPowerSupplyMaxVoltageName,
+      static_cast<int>(round(power_status_.line_power_max_voltage)),
+      kPowerSupplyMaxVoltageMax);
+  EXPECT_ENUM_METRIC(
+      kPowerSupplyMaxPowerName,
+      static_cast<int>(round(power_status_.line_power_max_voltage *
+                             power_status_.line_power_max_current)),
+      kPowerSupplyMaxPowerMax);
+
   collector_.HandlePowerStatusUpdate(power_status_);
 }
 
