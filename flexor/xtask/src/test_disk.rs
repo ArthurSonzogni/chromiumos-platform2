@@ -9,11 +9,16 @@ use fatfs::{FileSystem, FormatVolumeOptions, FsOptions, ReadWriteSeek};
 use fs_err::{File, OpenOptions};
 use gpt_disk_types::{BlockSize, GptPartitionType, Lba, LbaRangeInclusive};
 use gptman::{GPTPartitionEntry, GPT};
+use std::collections::BTreeMap;
 use std::io::Write;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+const CRDYBOOT_FILENAME: &str = "crdybootx64.efi";
+const CRDYBOOT_SIG_FILENAME: &str = "crdybootx64.sig";
+const CRDYBOOT_VERBOSE_FILENAME: &str = "crdyboot_verbose";
+const CRDYSHIM_FILENAME: &str = "bootx64.efi";
 const FLEX_CONFIG_FILENAME: &str = "flex_config.json";
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEXOR_VMLINUZ_FILENAME: &str = "flexor_vmlinuz";
@@ -99,73 +104,99 @@ fn write_to_fatfs<T: ReadWriteSeek>(
     output_file.write_all(&data)
 }
 
-/// Create the ESP filesystem in a flexor test disk.
-///
-/// Bootloader executables and signature are copied to the filesystem.
-fn create_esp(args: &CreateArgs, disk_file: &mut File) -> Result<()> {
-    // Create empty filesystem.
-    let partition_range = find_partition_range(disk_file, GptPartitionType::EFI_SYSTEM)
-        .context("failed to get esp partition range")?;
-    let mut view = FileView::new(disk_file, partition_range.to_byte_range())?;
-    fatfs::format_volume(&mut view, FormatVolumeOptions::new())?;
-
-    // Add files to the filesystem.
-    let frd_bundle_install_dir = args.frd_bundle.join(FRD_BUNDLE_INSTALL_DIR);
-    let mut files_to_copy = vec!["bootx64.efi", "crdybootx64.efi", "crdybootx64.sig"];
-
-    // Also grab crdyboot_verbose if it's there.
-    let crdyboot_verbose = frd_bundle_install_dir.join("crdyboot_verbose");
-    if crdyboot_verbose.exists() {
-        files_to_copy.push("crdyboot_verbose");
-    }
-
-    let fs = FileSystem::new(view, FsOptions::new())?;
-    let root = fs.root_dir();
-    let boot = root.create_dir("EFI")?.create_dir("BOOT")?;
-    for file_name in files_to_copy {
-        write_to_fatfs(&boot, file_name, &frd_bundle_install_dir.join(file_name))?;
-    }
-
-    Ok(())
+/// Represents one of the partitions we'd like to make.
+struct Partition {
+    gpt_type: GptPartitionType,
+    /// All the files go in the same subdir, because that's all we need right now.
+    subdir: PathBuf,
+    /// Files will be named for the keys in the |name_to_src_path|, and their contents will be
+    /// pulled from the files pointed to by the values.
+    name_to_src_path: BTreeMap<&'static str, PathBuf>,
 }
 
-/// Create the data partition in a flexor test disk.
+/// Plan out what's going to be on the esp.
 ///
-/// The flexor kernel, installation image, and optional flex_config, are copied to the filesystem.
-fn create_flexor_data_partition(
-    disk_file: &mut File,
+/// Includes crdyshim, crdyboot + signature, and an optional crdyboot_verbose file.
+fn plan_esp_partition(frd_bundle: &Path) -> Partition {
+    let frd_bundle_install_dir = frd_bundle.join(FRD_BUNDLE_INSTALL_DIR);
+
+    let mut esp_files: BTreeMap<_, _> =
+        [CRDYSHIM_FILENAME, CRDYBOOT_FILENAME, CRDYBOOT_SIG_FILENAME]
+            .iter()
+            .map(|name| (*name, frd_bundle_install_dir.join(name)))
+            .collect();
+
+    // Also grab crdyboot_verbose if it's there.
+    let crdyboot_verbose = frd_bundle_install_dir.join(CRDYBOOT_VERBOSE_FILENAME);
+    if crdyboot_verbose.exists() {
+        esp_files.insert(
+            CRDYBOOT_VERBOSE_FILENAME,
+            frd_bundle_install_dir.join(CRDYBOOT_VERBOSE_FILENAME),
+        );
+    }
+
+    Partition {
+        gpt_type: GptPartitionType::EFI_SYSTEM,
+        subdir: PathBuf::from("EFI/BOOT"),
+        name_to_src_path: esp_files,
+    }
+}
+
+/// Plan out what's going to be on the data partition.
+///
+/// Includes the flexor kernel+initramfs (flexor_vmlinuz), the compressed flex image to be installed
+/// (flex_image.tar.xz), and an optional enrollment/onc/oobe config (flex_config.json).
+fn plan_data_partition(
     frd_bundle: &Path,
     flexor_vmlinuz: &Option<PathBuf>,
     install_image: &Option<PathBuf>,
-) -> Result<()> {
-    // Create the flexor data partition
-    let partition_range = find_partition_range(disk_file, GptPartitionType::BASIC_DATA)
-        .context("failed to get flexor data partition range")?;
-    let mut view = FileView::new(disk_file, partition_range.to_byte_range())?;
-    fatfs::format_volume(&mut view, FormatVolumeOptions::new())?;
-
+) -> Partition {
     let frd_bundle_install_dir = frd_bundle.join(FRD_BUNDLE_INSTALL_DIR);
-
-    let fs = FileSystem::new(view, FsOptions::new())?;
-    let root = fs.root_dir();
 
     let flexor_vmlinuz = flexor_vmlinuz
         .clone()
         .unwrap_or_else(|| frd_bundle_install_dir.join(FLEXOR_VMLINUZ_FILENAME));
-    write_to_fatfs(&root, FLEXOR_VMLINUZ_FILENAME, &flexor_vmlinuz)?;
     let install_image = install_image
         .clone()
         .unwrap_or_else(|| frd_bundle_install_dir.join(FLEX_IMAGE_FILENAME));
-    write_to_fatfs(&root, FLEX_IMAGE_FILENAME, &install_image)?;
+    let mut install_files = BTreeMap::from([
+        (FLEXOR_VMLINUZ_FILENAME, flexor_vmlinuz),
+        (FLEX_IMAGE_FILENAME, install_image),
+    ]);
 
     // Also grab flex_config.json if it's there.
     // This is a little different from running under the agent, which would create the config rather
     // than grabbing it from the install dir.
     let flex_config = frd_bundle_install_dir.join(FLEX_CONFIG_FILENAME);
     if flex_config.exists() {
-        write_to_fatfs(&root, FLEX_CONFIG_FILENAME, &flex_config)?;
+        install_files.insert(FLEX_CONFIG_FILENAME, flex_config);
     }
 
+    Partition {
+        gpt_type: GptPartitionType::BASIC_DATA,
+        subdir: PathBuf::new(),
+        name_to_src_path: install_files,
+    }
+}
+
+/// Create a partition on the given |disk_file| based on the details in |partition|.
+fn create_partition(disk_file: &mut File, partition: &Partition) -> Result<()> {
+    // Create empty filesystem.
+    let partition_range = find_partition_range(disk_file, partition.gpt_type)
+        .context("failed to get partition range")?;
+    let mut view = FileView::new(disk_file, partition_range.to_byte_range())?;
+    fatfs::format_volume(&mut view, FormatVolumeOptions::new())?;
+
+    let fs = FileSystem::new(view, FsOptions::new())?;
+    let mut root = fs.root_dir();
+    for dir in &partition.subdir {
+        // OK to unwrap: We control the path that is passed in, and it doesn't contain unicode.
+        let dir = dir.to_str().unwrap();
+        root = root.create_dir(dir)?;
+    }
+    for (file_name, path) in &partition.name_to_src_path {
+        write_to_fatfs(&root, file_name, path)?;
+    }
     Ok(())
 }
 
@@ -202,14 +233,12 @@ pub fn create(args: &CreateArgs) -> Result<()> {
         .truncate(false)
         .open(&args.output)?;
 
-    create_esp(args, &mut disk_file).context("failed to create esp")?;
-    create_flexor_data_partition(
-        &mut disk_file,
-        &args.frd_bundle,
-        &args.flexor_vmlinuz,
-        &args.install_image,
-    )
-    .context("failed to create flexor data partition")?;
+    let esp_part = plan_esp_partition(&args.frd_bundle);
+    let data_part =
+        plan_data_partition(&args.frd_bundle, &args.flexor_vmlinuz, &args.install_image);
+
+    create_partition(&mut disk_file, &esp_part).context("failed to create esp")?;
+    create_partition(&mut disk_file, &data_part).context("failed to create data partition")?;
 
     Ok(())
 }
@@ -248,6 +277,7 @@ pub fn run(flexor_disk: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io;
 
     #[test]
     fn test_cmd_to_string() {
@@ -267,5 +297,139 @@ mod tests {
 
         // Success.
         assert!(run_cmd(&mut Command::new("true")).is_ok());
+    }
+
+    #[test]
+    fn test_create_partition() -> Result<()> {
+        let tmp_dir = tempfile::tempdir()?;
+
+        let disk = tmp_dir.path().join("disk");
+
+        // Create empty disk.
+        run_cmd(Command::new("truncate").arg("--size=1GiB").arg(&disk))?;
+        run_cmd(
+            Command::new("sgdisk")
+                .args([
+                    "--new=1",
+                    &format!("--typecode=1:{}", GptPartitionType::BASIC_DATA),
+                ])
+                .arg(&disk),
+        )?;
+
+        // Make some files to put on disk.
+        let file_a = tmp_dir.path().join("file_a");
+        fs_err::write(&file_a, "aaa")?;
+        let file_b = tmp_dir.path().join("file_b");
+        fs_err::write(&file_b, "bbb")?;
+
+        // We'll use this for both writing and then reading back to check if it worked.
+        let mut disk_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .truncate(false)
+            .open(&disk)?;
+
+        // Put a couple of files two dirs down.
+        let partition = Partition {
+            gpt_type: GptPartitionType::BASIC_DATA,
+            subdir: PathBuf::from("one/two"),
+            name_to_src_path: BTreeMap::from([("file_a", file_a), ("different_name", file_b)]),
+        };
+        create_partition(&mut disk_file, &partition)?;
+
+        // Now we read it back.
+        let partition_range = find_partition_range(&mut disk_file, GptPartitionType::BASIC_DATA)?;
+        let view = FileView::new(&mut disk_file, partition_range.to_byte_range())?;
+        let fs = FileSystem::new(view, FsOptions::new())?;
+        let root = fs.root_dir();
+
+        assert_eq!(
+            io::read_to_string(root.open_file("one/two/file_a")?)?,
+            "aaa"
+        );
+        assert_eq!(
+            io::read_to_string(root.open_file("one/two/different_name")?)?,
+            "bbb"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_plan_esp() {
+        let partition = plan_esp_partition(Path::new("fake"));
+
+        assert_eq!(partition.gpt_type, GptPartitionType::EFI_SYSTEM);
+        assert_eq!(partition.subdir, PathBuf::from("EFI/BOOT"));
+        assert_eq!(
+            partition.name_to_src_path,
+            BTreeMap::from([
+                (
+                    CRDYSHIM_FILENAME,
+                    Path::new("fake/install/").join(CRDYSHIM_FILENAME),
+                ),
+                (
+                    CRDYBOOT_FILENAME,
+                    Path::new("fake/install/").join(CRDYBOOT_FILENAME),
+                ),
+                (
+                    CRDYBOOT_SIG_FILENAME,
+                    Path::new("fake/install/").join(CRDYBOOT_SIG_FILENAME),
+                ),
+            ]),
+        );
+    }
+
+    #[test]
+    fn test_plan_data() {
+        // Test 'defaults'.
+        let partition = plan_data_partition(Path::new("fake"), &None, &None);
+
+        assert_eq!(partition.gpt_type, GptPartitionType::BASIC_DATA);
+        assert_eq!(partition.subdir, PathBuf::new());
+        assert_eq!(
+            partition.name_to_src_path,
+            BTreeMap::from([
+                (
+                    FLEXOR_VMLINUZ_FILENAME,
+                    Path::new("fake/install/").join(FLEXOR_VMLINUZ_FILENAME),
+                ),
+                (
+                    FLEX_IMAGE_FILENAME,
+                    Path::new("fake/install/").join(FLEX_IMAGE_FILENAME),
+                )
+            ]),
+        );
+
+        // Test with only one overridden.
+        let partition = plan_data_partition(
+            Path::new("fake"),
+            &Some(PathBuf::from("different_name")),
+            &None,
+        );
+        assert_eq!(
+            partition.name_to_src_path,
+            BTreeMap::from([
+                (FLEXOR_VMLINUZ_FILENAME, PathBuf::from("different_name"),),
+                (
+                    FLEX_IMAGE_FILENAME,
+                    Path::new("fake/install/").join(FLEX_IMAGE_FILENAME),
+                ),
+            ]),
+        );
+
+        // Test with both overridden.
+        let partition = plan_data_partition(
+            Path::new("fake"),
+            &Some(PathBuf::from("vmlinuz")),
+            &Some(PathBuf::from("image")),
+        );
+        assert_eq!(
+            partition.name_to_src_path,
+            BTreeMap::from([
+                (FLEXOR_VMLINUZ_FILENAME, PathBuf::from("vmlinuz")),
+                (FLEX_IMAGE_FILENAME, PathBuf::from("image")),
+            ]),
+        );
     }
 }
