@@ -913,6 +913,7 @@ In the tables below,
 | backlight | boolean |  | False |  | False | Specifies the existence of backlight. |
 | bottom-left-layout | string |  | False |  | False | Specifies type of layout of bottom left function keys. |
 | bottom-right-layout | string |  | False |  | False | Specifies type of layout of bottom right function keys. |
+| disable-power-button-in-tablet-mode | boolean |  | False |  | False | True when the power button needs to be disabled when the device is in tablet mode. |
 | mcutype | string |  | False |  | False | Type of MCU firmware, if present. |
 | numpad | boolean |  | False |  | False | Specifies the existence of numpad. |
 | numpad-layout | string |  | False |  | False | Specifies the layout of the numpad, if present. |

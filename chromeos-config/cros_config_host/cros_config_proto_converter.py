@@ -1136,6 +1136,13 @@ def _build_ash_flags(config: Config) -> dict:
         )
 
     form_factor = hw_features.form_factor.form_factor
+    if (
+        hw_features.keyboard.power_button
+        == topology_pb2.HardwareFeatures.PRESENT
+        and form_factor == topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE
+    ):
+        _add_flag("disable-power-button-in-tablet-mode")
+
     lid_accel = hw_features.accelerometer.lid_accelerometer
     if form_factor == topology_pb2.HardwareFeatures.FormFactor.CHROMEBASE:
         _add_flag("touchscreen-usable-while-screen-off")
@@ -1238,9 +1245,15 @@ def _build_keyboard(hw_features):
         if keyboard.power_button != topology_pb2.HardwareFeatures.PRESENT:
             raise Exception("Power button not defined at all")
 
+    form_factor = hw_features.form_factor.form_factor
     result = {}
     if keyboard.backlight == topology_pb2.HardwareFeatures.PRESENT:
         result["backlight"] = True
+    if (
+        keyboard.power_button == topology_pb2.HardwareFeatures.PRESENT
+        and form_factor == topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE
+    ):
+        result["disable-power-button-in-tablet-mode"] = True
     if keyboard.numeric_pad == topology_pb2.HardwareFeatures.PRESENT:
         result["numpad"] = True
     if (

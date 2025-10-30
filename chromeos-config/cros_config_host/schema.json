@@ -1331,6 +1331,10 @@
                     ],
                     "type": "string"
                   },
+                  "disable-power-button-in-tablet-mode": {
+                    "description": "True when the power button needs to be disabled when the device is in tablet mode.",
+                    "type": "boolean"
+                  },
                   "mcutype": {
                     "description": "Type of MCU firmware, if present.",
                     "enum": [
