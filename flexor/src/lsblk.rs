@@ -75,7 +75,7 @@ pub fn get_lsblk_devices() -> Result<Vec<LsBlkDevice>> {
 /// Run a command and get its stdout as raw bytes. An error is
 /// returned if the process fails to launch, or if it exits non-zero.
 fn get_command_output(mut command: Command) -> Result<Vec<u8>> {
-    info!("running command: {:?}", command);
+    info!("running command: {command:?}");
     let output = match command.output() {
         Ok(output) => output,
         Err(err) => {

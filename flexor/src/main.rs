@@ -298,7 +298,7 @@ fn try_save_logs(config: &InstallConfig) -> Result<()> {
     fn copy_log(out_dir: &Path, decription: &str) -> Result<()> {
         let logfile = out_dir.join("install_log");
         std::fs::copy(FLEXOR_LOG_FILE, logfile)
-            .with_context(|| format!("Unable to copy the logfile to the {}", decription))?;
+            .with_context(|| format!("Unable to copy the logfile to the {decription}"))?;
         Ok(())
     }
 

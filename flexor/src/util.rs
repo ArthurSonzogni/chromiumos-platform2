@@ -18,9 +18,9 @@ use xz2::bufread::XzDecoder;
 /// info level. An error is returned if the process fails to launch,
 /// or if it exits non-zero.
 pub fn execute_command(command: Command) -> Result<()> {
-    info!("Executing command: {:?}", command);
+    info!("Executing command: {command:?}");
 
-    execute_command_impl(command, |msg| info!("{}", msg))
+    execute_command_impl(command, |msg| info!("{msg}"))
 }
 
 /// Implementation for `execute_command`.
@@ -74,7 +74,7 @@ where
     reader
         .lines()
         .map_while(Result::ok)
-        .for_each(|line| log(format!(">>> {}", line)));
+        .for_each(|line| log(format!(">>> {line}")));
 }
 
 /// Uncompresses a tar from `src` to `dst`. In this case `src` needs to point to
