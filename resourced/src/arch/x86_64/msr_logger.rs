@@ -133,7 +133,7 @@ pub fn init() {
     }
 
     // Replace false with true for local test.
-    feature::register_feature(MSR_LOGGER_FEATURE_NAME, false, None);
+    feature::register_feature(MSR_LOGGER_FEATURE_NAME, true, None);
 
     tokio::spawn(async move {
         if let Err(e) = msr_logger_main().await {
