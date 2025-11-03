@@ -1236,15 +1236,6 @@ def _build_keyboard(hw_features):
         return None
 
     keyboard = hw_features.keyboard
-
-    # Check power button consistency.
-    if hw_features.power_button.edge:
-        if keyboard.power_button == topology_pb2.HardwareFeatures.PRESENT:
-            raise Exception("Power button defined at 2 different places")
-    else:
-        if keyboard.power_button != topology_pb2.HardwareFeatures.PRESENT:
-            raise Exception("Power button not defined at all")
-
     form_factor = hw_features.form_factor.form_factor
     result = {}
     if keyboard.backlight == topology_pb2.HardwareFeatures.PRESENT:
