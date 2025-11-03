@@ -12,11 +12,11 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <metrics/cumulative_metrics.h>
 #include <metrics/metrics_library.h>
-#include <base/time/time.h>
 
 namespace vm_tools::cicerone {
 
@@ -55,8 +55,8 @@ class GuestMetrics {
    public:
     SysinfoProvider() = default;
     virtual ~SysinfoProvider() = default;
-    virtual int64_t AmountOfTotalDiskSpace(base::FilePath path);
-    virtual int64_t AmountOfFreeDiskSpace(base::FilePath path);
+    virtual std::optional<int64_t> AmountOfTotalDiskSpace(base::FilePath path);
+    virtual std::optional<int64_t> AmountOfFreeDiskSpace(base::FilePath path);
   };
 
   explicit GuestMetrics(scoped_refptr<dbus::Bus> bus);

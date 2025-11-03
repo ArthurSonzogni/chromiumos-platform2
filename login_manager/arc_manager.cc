@@ -383,8 +383,10 @@ bool ArcManager::UpgradeArcContainer(brillo::ErrorPtr* error,
 
   // To upgrade the ARC mini-container, a certain amount of disk space is
   // needed under /home. We first check it.
-  if (system_utils_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
-      kArcCriticalDiskFreeBytes) {
+  auto free_disk_space_optional =
+      system_utils_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath));
+  if (!free_disk_space_optional.has_value() ||
+      free_disk_space_optional.value() < kArcCriticalDiskFreeBytes) {
     *error = CREATE_ERROR_AND_LOG(dbus_error::kLowFreeDisk,
                                   "Low free disk under /home");
     StopArcInstanceInternal(ArcContainerStopReason::LOW_DISK_SPACE);

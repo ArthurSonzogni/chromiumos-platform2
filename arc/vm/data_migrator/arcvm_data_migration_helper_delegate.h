@@ -6,6 +6,7 @@
 #define ARC_VM_DATA_MIGRATOR_ARCVM_DATA_MIGRATION_HELPER_DELEGATE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file.h>
@@ -42,7 +43,7 @@ class ArcVmDataMigrationHelperDelegate
   std::string GetAtimeXattrName() override;
   bool ConvertFileMetadata(base::stat_wrapper_t* stat) override;
   std::string ConvertXattrName(const std::string& name) override;
-  int64_t FreeSpaceForMigrator() override;
+  std::optional<int64_t> FreeSpaceForMigrator() override;
   void ReportStartTime() override;
   void ReportEndTime() override;
   void ReportStartStatus(

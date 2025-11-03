@@ -554,17 +554,26 @@ bool CheckVmExists(const VmId& vm_id,
 
 // Returns the desired size of VM disks, which is 90% of the available space
 // (excluding the space already taken up by the disk). If storage ballooning
-// is being used, we instead return 95% of the total disk space.
-uint64_t CalculateDesiredDiskSize(base::FilePath disk_location,
-                                  uint64_t current_usage,
-                                  bool storage_ballooning = false) {
+// is being used, we instead return 95% of the total disk space.  If there is an
+// error retrieving the disk size, return nullopt.
+std::optional<uint64_t> CalculateDesiredDiskSize(
+    base::FilePath disk_location,
+    uint64_t current_usage,
+    bool storage_ballooning = false) {
   if (storage_ballooning) {
     auto total_space =
         base::SysInfo::AmountOfTotalDiskSpace(disk_location.DirName());
-    return ((total_space * 95) / 100) & kDiskSizeMask;
+    if (!total_space.has_value()) {
+      return std::nullopt;
+    }
+    return ((total_space.value() * 95) / 100) & kDiskSizeMask;
   }
-  uint64_t free_space =
+  std::optional<uint64_t> maybe_free_space =
       base::SysInfo::AmountOfFreeDiskSpace(disk_location.DirName());
+  if (!maybe_free_space.has_value()) {
+    return std::nullopt;
+  }
+  uint64_t free_space = maybe_free_space.value();
   free_space += current_usage;
   uint64_t disk_size = ((free_space * 9) / 10) & kDiskSizeMask;
 
@@ -2797,10 +2806,19 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
     return response;
   }
 
-  uint64_t disk_size = request.disk_size()
-                           ? request.disk_size()
-                           : CalculateDesiredDiskSize(
-                                 disk_path, 0, request.storage_ballooning());
+  uint64_t disk_size = request.disk_size();
+  if (!disk_size) {
+    std::optional<uint64_t> desired_size =
+        CalculateDesiredDiskSize(disk_path, 0, request.storage_ballooning());
+    if (!desired_size.has_value()) {
+      LOG(ERROR) << "Unable to calculate desired disk size";
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("Unable to calculate desired disk size");
+
+      return response;
+    }
+    disk_size = desired_size.value();
+  }
 
   if (request.image_type() == DISK_IMAGE_QCOW2) {
     LOG(ERROR) << "Creating qcow2 disk images is unsupported";

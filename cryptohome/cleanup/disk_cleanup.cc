@@ -35,13 +35,7 @@ DiskCleanup::DiskCleanup(libstorage::Platform* platform,
       routines_(std::make_unique<DiskCleanupRoutines>(homedirs_, platform_)) {}
 
 std::optional<int64_t> DiskCleanup::AmountOfFreeDiskSpace() const {
-  int64_t free_space = platform_->AmountOfFreeDiskSpace(ShadowRoot());
-
-  if (free_space < 0) {
-    return std::nullopt;
-  } else {
-    return free_space;
-  }
+  return platform_->AmountOfFreeDiskSpace(ShadowRoot());
 }
 
 DiskCleanup::FreeSpaceState DiskCleanup::GetFreeDiskSpaceState() const {

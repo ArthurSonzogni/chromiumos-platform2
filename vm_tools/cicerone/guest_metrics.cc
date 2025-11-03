@@ -157,12 +157,12 @@ BorealisFsckResult MapFsckResultToEnum(int fsck_result) {
   }
 }
 
-int64_t GuestMetrics::SysinfoProvider::AmountOfTotalDiskSpace(
+std::optional<int64_t> GuestMetrics::SysinfoProvider::AmountOfTotalDiskSpace(
     base::FilePath path) {
   return base::SysInfo::AmountOfTotalDiskSpace(path);
 }
 
-int64_t GuestMetrics::SysinfoProvider::AmountOfFreeDiskSpace(
+std::optional<int64_t> GuestMetrics::SysinfoProvider::AmountOfFreeDiskSpace(
     base::FilePath path) {
   return base::SysInfo::AmountOfFreeDiskSpace(path);
 }
@@ -243,9 +243,10 @@ void GuestMetrics::HandleListVmDisksDbusResponse(
                        1024),
       0, 10240, 50);
 
-  int64_t total_space = sysinfo_provider_->AmountOfTotalDiskSpace(
-      base::FilePath(image->path()).DirName());
-  if (total_space <= 0) {
+  std::optional<int64_t> total_space =
+      sysinfo_provider_->AmountOfTotalDiskSpace(
+          base::FilePath(image->path()).DirName());
+  if (!total_space.has_value() || total_space.value() <= 0) {
     LOG(ERROR) << "Failed to get total disk space for "
                << base::FilePath(image->path()).DirName();
     return;
@@ -253,17 +254,17 @@ void GuestMetrics::HandleListVmDisksDbusResponse(
   metrics_lib_->SendPercentageToUMA(
       kBorealisDiskVMUsageToTotalSpacePercentageAtStartup,
       static_cast<int>(static_cast<float>(image->size()) /
-                       static_cast<float>(total_space) * 100));
+                       static_cast<float>(total_space.value()) * 100));
 
-  int64_t free_space = sysinfo_provider_->AmountOfFreeDiskSpace(
+  std::optional<int64_t> free_space = sysinfo_provider_->AmountOfFreeDiskSpace(
       base::FilePath(image->path()).DirName());
-  if (free_space <= 0) {
+  if (!free_space.has_value() || free_space.value() <= 0) {
     LOG(ERROR) << "Failed to get free disk space for "
                << base::FilePath(image->path()).DirName();
     return;
   }
 
-  int64_t total_used_space = total_space - free_space;
+  int64_t total_used_space = total_space.value() - free_space.value();
   if (total_used_space <= 0) {
     LOG(ERROR) << "Free space greater than total space";
     return;

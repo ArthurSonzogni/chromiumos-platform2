@@ -100,7 +100,8 @@ class BRILLO_EXPORT FuzzedPlatform : public Platform {
                     bool follow_links) override;
   bool GetPermissions(const base::FilePath& path, mode_t* mode) const override;
   bool SetPermissions(const base::FilePath& path, mode_t mode) override;
-  int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const override;
+  std::optional<int64_t> AmountOfFreeDiskSpace(
+      const base::FilePath& path) const override;
   bool GetQuotaProjectId(const base::FilePath& path,
                          int* project_id) const override;
   bool SetQuotaProjectId(const base::FilePath& path, int project_id) override;

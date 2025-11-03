@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_DELEGATE_H_
 #define CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_DELEGATE_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file.h>
@@ -82,7 +83,7 @@ class BRILLO_EXPORT MigrationHelperDelegate {
   virtual void RecordSkippedFile(const base::FilePath& path) {}
 
   // Returns the amount of free space in bytes that MigrationHelper can use.
-  virtual int64_t FreeSpaceForMigrator() = 0;
+  virtual std::optional<int64_t> FreeSpaceForMigrator() = 0;
 
   // Reports the current time as the migration start time.
   virtual void ReportStartTime() {}

@@ -171,10 +171,8 @@ TEST_F(DiskCleanupTest, AmountOfFreeDiskSpace) {
 
 TEST_F(DiskCleanupTest, AmountOfFreeDiskSpaceError) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
-      .WillOnce(Return(-1));
-
+      .WillOnce(Return(std::nullopt));
   auto val = cleanup_->AmountOfFreeDiskSpace();
-
   EXPECT_FALSE(val);
 }
 
@@ -215,7 +213,7 @@ TEST_F(DiskCleanupTest, GetFreeDiskSpaceStatePlatform) {
   cleanup_->set_critical_cleanup_threshold(2);
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
-      .WillOnce(Return(-1))
+      .WillOnce(Return(std::nullopt))
       .WillOnce(Return(0))
       .WillOnce(Return(1))
       .WillOnce(Return(4))
@@ -252,7 +250,7 @@ TEST_F(DiskCleanupTest, HasTargetFreeSpace) {
   cleanup_->set_target_free_space(10);
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
-      .WillOnce(Return(-1))
+      .WillOnce(Return(std::nullopt))
       .WillOnce(Return(0))
       .WillOnce(Return(9))
       .WillOnce(Return(10))

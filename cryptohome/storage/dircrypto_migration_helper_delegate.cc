@@ -183,7 +183,8 @@ void DircryptoMigrationHelperDelegate::RecordSkippedFile(
   }
 }
 
-int64_t DircryptoMigrationHelperDelegate::FreeSpaceForMigrator() {
+std::optional<int64_t>
+DircryptoMigrationHelperDelegate::FreeSpaceForMigrator() {
   return platform_->AmountOfFreeDiskSpace(to_dir_);
 }
 

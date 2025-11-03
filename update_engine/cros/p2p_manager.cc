@@ -508,13 +508,14 @@ bool P2PManagerImpl::FileShare(const string& file_id, size_t expected_size) {
   // Before creating the file, bail if statvfs(3) indicates that at
   // least twice the size is not available in P2P_DIR.
   FilePath p2p_dir = configuration_->GetP2PDir();
-  int64_t free_bytes =
+  auto free_bytes_optional =
       SystemState::Get()->call_wrapper()->AmountOfFreeDiskSpace(p2p_dir);
-  if (free_bytes < 0) {
+  if (!free_bytes_optional.has_value()) {
     PLOG(ERROR) << "Error getting amount of free disk space from "
                 << p2p_dir.value();
     return false;
   }
+  int64_t free_bytes = free_bytes_optional.value();
   // Compare sizes this way to handle overflows.
   if (free_bytes / 2 < expected_size) {
     // This can easily happen and is worth reporting.

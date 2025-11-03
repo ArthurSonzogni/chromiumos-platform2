@@ -322,7 +322,8 @@ bool SystemUtilsImpl::EnumerateFiles(const base::FilePath& root_path,
   return true;
 }
 
-int64_t SystemUtilsImpl::AmountOfFreeDiskSpace(const base::FilePath& path) {
+std::optional<int64_t> SystemUtilsImpl::AmountOfFreeDiskSpace(
+    const base::FilePath& path) {
   return base::SysInfo::AmountOfFreeDiskSpace(path);
 }
 

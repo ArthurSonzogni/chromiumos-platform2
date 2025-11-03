@@ -309,20 +309,20 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     return false;
   }
 
-  int64_t initial_dest_free_space_bytes =
+  const std::optional<int64_t> initial_dest_free_space_bytes =
       platform_->AmountOfFreeDiskSpace(to_base_path_);
-  if (initial_dest_free_space_bytes < 0) {
+  if (!initial_dest_free_space_bytes.has_value()) {
     LOG(ERROR) << "Failed to determine free disk space on destination";
     return false;
   }
-  const int64_t free_space_for_migrator_signed =
+  const std::optional<int64_t> free_space_for_migrator_signed =
       delegate_->FreeSpaceForMigrator();
-  if (free_space_for_migrator_signed < 0) {
+  if (!free_space_for_migrator_signed.has_value()) {
     LOG(ERROR) << "Failed to determine free disk space for migrator";
     return false;
   }
   const uint64_t free_space_for_migrator =
-      static_cast<uint64_t>(free_space_for_migrator_signed);
+      static_cast<uint64_t>(free_space_for_migrator_signed.value());
   const uint64_t kRequiredFreeSpaceForMainThread =
       kFreeSpaceBuffer + total_directory_byte_count_;
   // Calculate required space used by the number of job threads (or a minimum of
@@ -393,9 +393,12 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     status_reporter.SetFileErrorFailure(failed_operation_type_,
                                         failed_error_type_);
     if (failed_error_type_ == base::File::FILE_ERROR_NO_SPACE) {
+      if (!no_space_failure_free_space_bytes_.has_value()) {
+        LOG(ERROR) << "Error retrieving free space.";
+      }
       delegate_->ReportFailedNoSpace(
-          initial_dest_free_space_bytes / (1024 * 1024),
-          no_space_failure_free_space_bytes_ / (1024 * 1024));
+          initial_dest_free_space_bytes.value() / (1024 * 1024),
+          no_space_failure_free_space_bytes_.value_or(-1) / (1024 * 1024));
     }
     return false;
   }

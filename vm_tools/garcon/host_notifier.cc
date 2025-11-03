@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/garcon/host_notifier.h"
+
 #include <arpa/inet.h>
+#include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 #include <signal.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
-
-#include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
 #include <algorithm>
 #include <cstdint>
@@ -36,7 +37,6 @@
 #include <vm_protos/proto_bindings/container_host.pb.h>
 
 #include "vm_tools/garcon/desktop_file.h"
-#include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/mime_types_parser.h"
 
 namespace {
@@ -542,12 +542,13 @@ void HostNotifier::CheckDiskSpace() {
   grpc::ClientContext ctx;
   vm_tools::container::LowDiskSpaceTriggeredInfo info;
   auto free_bytes = base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/"));
-  if (free_bytes >= kDiskSpaceCheckThreshold) {
+  if (free_bytes.has_value() &&
+      free_bytes.value() >= kDiskSpaceCheckThreshold) {
     // Plenty of free space, nothing more to do.
     return;
   }
   info.set_token(token_);
-  info.set_free_bytes(free_bytes);
+  info.set_free_bytes(free_bytes.value_or(-1));
   vm_tools::EmptyMessage empty;
   grpc::Status status = stub_->LowDiskSpaceTriggered(&ctx, info, &empty);
   if (!status.ok()) {

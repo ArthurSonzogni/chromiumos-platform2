@@ -5,9 +5,9 @@
 #ifndef UPDATE_ENGINE_COMMON_CALL_WRAPPER_H_
 #define UPDATE_ENGINE_COMMON_CALL_WRAPPER_H_
 
-#include "update_engine/common/call_wrapper_interface.h"
-
 #include <base/files/file_path.h>
+
+#include "update_engine/common/call_wrapper_interface.h"
 
 namespace chromeos_update_engine {
 
@@ -20,7 +20,8 @@ class CallWrapper : public CallWrapperInterface {
   ~CallWrapper() = default;
 
   // CallWrapperInterface overrides.
-  int64_t AmountOfFreeDiskSpace(const base::FilePath& path) override;
+  std::optional<int64_t> AmountOfFreeDiskSpace(
+      const base::FilePath& path) override;
 };
 
 }  // namespace chromeos_update_engine

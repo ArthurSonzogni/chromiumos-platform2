@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_STORAGE_DIRCRYPTO_MIGRATION_HELPER_DELEGATE_H_
 #define CRYPTOHOME_STORAGE_DIRCRYPTO_MIGRATION_HELPER_DELEGATE_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -40,7 +41,7 @@ class DircryptoMigrationHelperDelegate
   std::string GetMtimeXattrName() override;
   std::string GetAtimeXattrName() override;
   void RecordSkippedFile(const base::FilePath& path) override;
-  int64_t FreeSpaceForMigrator() override;
+  std::optional<int64_t> FreeSpaceForMigrator() override;
 
  private:
   libstorage::Platform* const platform_;

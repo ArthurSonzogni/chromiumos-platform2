@@ -198,7 +198,8 @@ bool FakeSystemUtils::RemoveFile(const base::FilePath& filename) {
   return brillo::DeleteFile(rebased);
 }
 
-int64_t FakeSystemUtils::AmountOfFreeDiskSpace(const base::FilePath& path) {
+std::optional<int64_t> FakeSystemUtils::AmountOfFreeDiskSpace(
+    const base::FilePath& path) {
   return free_disk_space_;
 }
 

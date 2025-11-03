@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/cicerone/container_listener_impl.h"
+
 #include <memory>
 #include <set>
 #include <string>
@@ -9,17 +11,16 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <gmock/gmock.h>
-#include <grpcpp/impl/call.h>
 #include <grpcpp/grpcpp.h>
+#include <grpcpp/impl/call.h>
 #include <gtest/gtest.h>
-#include <chromeos/dbus/service_constants.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
 #include <vm_protos/proto_bindings/container_host.pb.h>
 
-#include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/dbus_message_testing_helper.h"
 #include "vm_tools/cicerone/service.h"
 #include "vm_tools/cicerone/service_testing_helper.h"
@@ -40,8 +41,14 @@ constexpr char kDefaultPluginVmContainerName[] = "penguin";
 
 class SysinfoProviderMock : public GuestMetrics::SysinfoProvider {
  public:
-  MOCK_METHOD(int64_t, AmountOfTotalDiskSpace, (base::FilePath), ());
-  MOCK_METHOD(int64_t, AmountOfFreeDiskSpace, (base::FilePath), ());
+  MOCK_METHOD(std::optional<int64_t>,
+              AmountOfTotalDiskSpace,
+              (base::FilePath),
+              ());
+  MOCK_METHOD(std::optional<int64_t>,
+              AmountOfFreeDiskSpace,
+              (base::FilePath),
+              ());
 };
 
 // Helper for testing proto-based MethodCalls sent to the dbus. Extracts the
@@ -1011,11 +1018,11 @@ TEST(ContainerListenerImplTest,
   // Set the response to AmountOfTotalDiskSpace.
   EXPECT_CALL(*sysinfo_provider_reference,
               AmountOfTotalDiskSpace(base::FilePath("/mnt/stateful")))
-      .WillOnce(testing::Return(2000000));
+      .WillOnce(testing::Return(std::make_optional(2000000)));
   // Set the response to AmountOfFreeDiskSpace.
   EXPECT_CALL(*sysinfo_provider_reference,
               AmountOfFreeDiskSpace(base::FilePath("/mnt/stateful")))
-      .WillOnce(testing::Return(500000));
+      .WillOnce(testing::Return(std::make_optional(500000)));
 
   // InodeRatioAtStartup [KiB] =
   // (1000000[image_size]/100[inode_count])/1024 = 9

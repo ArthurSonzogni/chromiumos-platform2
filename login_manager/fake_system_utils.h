@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -88,7 +89,8 @@ class FakeSystemUtils : public SystemUtils {
   bool GetUniqueFilenameInWriteOnlyTempDir(
       base::FilePath* temp_file_path) override;
   bool RemoveFile(const base::FilePath& filename) override;
-  int64_t AmountOfFreeDiskSpace(const base::FilePath& path) override;
+  std::optional<int64_t> AmountOfFreeDiskSpace(
+      const base::FilePath& path) override;
   bool GetGidAndGroups(uid_t uid,
                        gid_t* out_gid,
                        std::vector<gid_t>* out_groups) override;

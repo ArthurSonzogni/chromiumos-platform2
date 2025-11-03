@@ -488,7 +488,7 @@ bool FuzzedPlatform::SetPermissions(const base::FilePath& path, mode_t mode) {
                      /*new_group_id=*/std::nullopt);
 }
 
-int64_t FuzzedPlatform::AmountOfFreeDiskSpace(
+std::optional<int64_t> FuzzedPlatform::AmountOfFreeDiskSpace(
     const base::FilePath& path) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   AssertIsValidAbsolutePath(path);

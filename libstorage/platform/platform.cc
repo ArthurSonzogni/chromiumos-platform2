@@ -483,7 +483,8 @@ bool Platform::SetPermissions(const FilePath& path, mode_t mode) {
   return true;
 }
 
-int64_t Platform::AmountOfFreeDiskSpace(const FilePath& path) const {
+std::optional<int64_t> Platform::AmountOfFreeDiskSpace(
+    const FilePath& path) const {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
   return base::SysInfo::AmountOfFreeDiskSpace(path);

@@ -13,6 +13,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -152,7 +153,8 @@ class SystemUtils {
 
   // Returns the amount of free disk space in bytes for the filesystem
   // containing |path|.
-  virtual int64_t AmountOfFreeDiskSpace(const base::FilePath& path) = 0;
+  virtual std::optional<int64_t> AmountOfFreeDiskSpace(
+      const base::FilePath& path) = 0;
 
   // Gets the matching group ID for a user ID, as well as supplementary groups.
   virtual bool GetGidAndGroups(uid_t uid,

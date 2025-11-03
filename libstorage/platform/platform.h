@@ -373,7 +373,8 @@ class BRILLO_EXPORT Platform {
   //
   // Parameters
   //   path - the pathname of any file within the mounted file system
-  virtual int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const;
+  virtual std::optional<int64_t> AmountOfFreeDiskSpace(
+      const base::FilePath& path) const;
 
   // Gets the project ID of a file or directory at |path|.
   // Returns true if ioctl syscall succeeds.

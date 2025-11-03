@@ -354,7 +354,7 @@ static bool CreateP2PFile(string p2p_dir,
 TEST_F(P2PManagerTest, ShareFile) {
   const int kP2PTestFileSize = 1000 * 8;  // 8 KB
   EXPECT_CALL(*mock_call_wrapper_, AmountOfFreeDiskSpace(_))
-      .WillOnce(Return(kP2PTestFileSize * 2));
+      .WillOnce(Return(std::make_optional(kP2PTestFileSize * 2)));
 
   EXPECT_TRUE(manager_->FileShare("foo", kP2PTestFileSize));
   EXPECT_EQ(manager_->FileGetPath("foo"),
@@ -373,7 +373,7 @@ TEST_F(P2PManagerTest, ShareFile) {
 TEST_F(P2PManagerTest, MakeFileVisible) {
   const int kP2PTestFileSize = 1000 * 8;  // 8 KB
   EXPECT_CALL(*mock_call_wrapper_, AmountOfFreeDiskSpace(_))
-      .WillOnce(Return(kP2PTestFileSize * 2));
+      .WillOnce(Return(std::make_optional(kP2PTestFileSize * 2)));
 
   // First, check that it's not visible.
   manager_->FileShare("foo", kP2PTestFileSize);
@@ -395,14 +395,14 @@ TEST_F(P2PManagerTest, MakeFileVisible) {
 TEST_F(P2PManagerTest, SharingFileBytesMoreThanNecessaryStorageSpace) {
   const int kP2PTestFileSize = 16 * (1 << 10);  // 16 KB
   EXPECT_CALL(*mock_call_wrapper_, AmountOfFreeDiskSpace(_))
-      .WillOnce(Return(kP2PTestFileSize + 1));
+      .WillOnce(Return(std::make_optional(kP2PTestFileSize + 1)));
   EXPECT_FALSE(manager_->FileShare("foo", kP2PTestFileSize));
 }
 
 TEST_F(P2PManagerTest, SharingFileBytesLessThanNecessaryStorageSpace) {
   const int kP2PTestFileSize = 16 * (1 << 10);  // 16 KB
   EXPECT_CALL(*mock_call_wrapper_, AmountOfFreeDiskSpace(_))
-      .WillOnce(Return(kP2PTestFileSize * 2));
+      .WillOnce(Return(std::make_optional(kP2PTestFileSize * 2)));
   EXPECT_TRUE(manager_->FileShare("foo", kP2PTestFileSize));
 }
 

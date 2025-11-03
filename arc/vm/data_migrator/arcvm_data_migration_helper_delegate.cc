@@ -175,7 +175,8 @@ std::string ArcVmDataMigrationHelperDelegate::ConvertXattrName(
   return name;
 }
 
-int64_t ArcVmDataMigrationHelperDelegate::FreeSpaceForMigrator() {
+std::optional<int64_t>
+ArcVmDataMigrationHelperDelegate::FreeSpaceForMigrator() {
   return base::SysInfo::AmountOfFreeDiskSpace(
       base::FilePath(kPathToCheckFreeDiskSpaceForMigrator));
 }

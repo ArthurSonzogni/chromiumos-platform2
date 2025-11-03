@@ -41,7 +41,7 @@ void FakeMigrationHelperDelegate::AddUidMapping(
 }
 
 void FakeMigrationHelperDelegate::SetFreeDiskSpaceForMigrator(
-    int64_t free_disk_space_for_migrator) {
+    std::optional<int64_t> free_disk_space_for_migrator) {
   free_disk_space_for_migrator_ = free_disk_space_for_migrator;
 }
 
@@ -92,7 +92,7 @@ std::string FakeMigrationHelperDelegate::ConvertXattrName(
   return name;
 }
 
-int64_t FakeMigrationHelperDelegate::FreeSpaceForMigrator() {
+std::optional<int64_t> FakeMigrationHelperDelegate::FreeSpaceForMigrator() {
   if (free_disk_space_for_migrator_.has_value()) {
     return free_disk_space_for_migrator_.value();
   }

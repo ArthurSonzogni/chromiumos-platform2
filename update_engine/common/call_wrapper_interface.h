@@ -6,6 +6,7 @@
 #define UPDATE_ENGINE_COMMON_CALL_WRAPPER_INTERFACE_H_
 
 #include <memory>
+#include <optional>
 
 #include <base/files/file_path.h>
 
@@ -20,7 +21,8 @@ class CallWrapperInterface {
 
   virtual ~CallWrapperInterface() = default;
 
-  virtual int64_t AmountOfFreeDiskSpace(const base::FilePath& path) = 0;
+  virtual std::optional<int64_t> AmountOfFreeDiskSpace(
+      const base::FilePath& path) = 0;
 
  protected:
   CallWrapperInterface() = default;

@@ -201,7 +201,7 @@ class BRILLO_EXPORT MigrationHelper final {
   MigrationFailedOperationType failed_operation_type_ =
       kMigrationFailedAtOtherOperation;
   base::File::Error failed_error_type_ = base::File::FILE_OK;
-  int64_t no_space_failure_free_space_bytes_ = 0;
+  std::optional<int64_t> no_space_failure_free_space_bytes_ = 0;
   // Lock for |failed_operation_type_|, |failed_error_type_| and
   // |no_space_failure_free_space_bytes_|.
   base::Lock failure_info_lock_;

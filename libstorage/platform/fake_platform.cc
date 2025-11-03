@@ -756,7 +756,8 @@ bool FakePlatform::SafeCreateDirAndSetOwnershipAndPermissions(
   return true;
 }
 
-int64_t FakePlatform::AmountOfFreeDiskSpace(const base::FilePath& path) const {
+std::optional<int64_t> FakePlatform::AmountOfFreeDiskSpace(
+    const base::FilePath& path) const {
   return real_platform_.AmountOfFreeDiskSpace(TestFilePath(path));
 }
 

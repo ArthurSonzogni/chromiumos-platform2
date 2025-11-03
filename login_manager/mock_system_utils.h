@@ -64,7 +64,7 @@ class MockSystemUtils : public SystemUtils {
               (base::FilePath*),
               (override));
   MOCK_METHOD(bool, RemoveFile, (const base::FilePath&), (override));
-  MOCK_METHOD(int64_t,
+  MOCK_METHOD(std::optional<int64_t>,
               AmountOfFreeDiskSpace,
               (const base::FilePath&),
               (override));

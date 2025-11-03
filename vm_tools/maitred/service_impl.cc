@@ -721,9 +721,10 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
     PLOG(ERROR) << "btrfs resize returned non-zero";
   }
 
-  int64_t free_bytes = base::SysInfo::AmountOfFreeDiskSpace(stateful_mount_);
-  if (free_bytes >= 0) {
-    response->set_free_bytes(free_bytes);
+  std::optional<int64_t> free_bytes =
+      base::SysInfo::AmountOfFreeDiskSpace(stateful_mount_);
+  if (free_bytes.has_value() && free_bytes.value() >= 0) {
+    response->set_free_bytes(free_bytes.value());
     response->set_free_bytes_has_value(true);
   }
 
@@ -806,7 +807,8 @@ grpc::Status ServiceImpl::ResizeFilesystem(
   stateful_device_ = "/dev/vda";
 #else
   if (stateful_device_.empty()) {
-    // Fall back to /dev/vdb mounted at / if StartTermina did not run (Baguette).
+    // Fall back to /dev/vdb mounted at / if StartTermina did not run
+    // (Baguette).
     stateful_device_ = "/dev/vdb";
     stateful_mount_ = base::FilePath("/");
   }
@@ -914,8 +916,14 @@ grpc::Status ServiceImpl::GetAvailableSpace(
     grpc::ServerContext* ctx,
     const EmptyMessage* request,
     vm_tools::GetAvailableSpaceResponse* response) {
-  response->set_available_space(
-      base::SysInfo::AmountOfFreeDiskSpace(stateful_mount_));
+  std::optional<int64_t> free_disk_space =
+      base::SysInfo::AmountOfFreeDiskSpace(stateful_mount_);
+  if (!free_disk_space.has_value()) {
+    LOG(ERROR) << "failed to retrieve amount of free disk space";
+    return grpc::Status(grpc::INTERNAL,
+                        "failed to retrieve amount of free disk space");
+  }
+  response->set_available_space(free_disk_space.value());
   return grpc::Status::OK;
 }
 

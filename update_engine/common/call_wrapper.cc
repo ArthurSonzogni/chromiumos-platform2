@@ -15,7 +15,8 @@ std::unique_ptr<CallWrapperInterface> CreateCallWrapper() {
   return std::make_unique<CallWrapper>();
 }
 
-int64_t CallWrapper::AmountOfFreeDiskSpace(const base::FilePath& path) {
+std::optional<int64_t> CallWrapper::AmountOfFreeDiskSpace(
+    const base::FilePath& path) {
   return base::SysInfo::AmountOfFreeDiskSpace(path);
 }
 

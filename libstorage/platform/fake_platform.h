@@ -195,7 +195,8 @@ class BRILLO_EXPORT FakePlatform : public Platform {
                                                   mode_t mode,
                                                   uid_t user_id,
                                                   gid_t gid) override;
-  int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const override;
+  std::optional<int64_t> AmountOfFreeDiskSpace(
+      const base::FilePath& path) const override;
 
   bool Mount(const base::FilePath& from,
              const base::FilePath& to,

@@ -273,7 +273,7 @@ class BRILLO_EXPORT MockPlatform : public Platform {
               SafeCreateDirAndSetOwnershipAndPermissions,
               (const base::FilePath&, mode_t, uid_t, gid_t),
               (override));
-  MOCK_METHOD(int64_t,
+  MOCK_METHOD(std::optional<int64_t>,
               AmountOfFreeDiskSpace,
               (const base::FilePath&),
               (const, override));
