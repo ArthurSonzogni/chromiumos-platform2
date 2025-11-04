@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  std::cout << *runtime_hwid << std::endl;
+  std::cout << *runtime_hwid;
 
   return EXIT_SUCCESS;
 }
