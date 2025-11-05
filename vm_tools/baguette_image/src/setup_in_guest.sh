@@ -126,7 +126,7 @@ main() {
   if [ -n "${guest_user}" ]; then
     # test user for debugging
     useradd -m -s /bin/bash -G \
-      audio,cdrom,dialout,floppy,kvm,netdev,sudo,tss,video "${guest_user}"
+      audio,cdrom,dialout,disk,floppy,kvm,netdev,sudo,tss,video "${guest_user}"
     chpasswd <<< "${guest_user}:test0000"
     mkdir -p /var/lib/systemd/linger
     touch "/var/lib/systemd/linger/${guest_user}"

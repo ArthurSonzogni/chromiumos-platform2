@@ -358,7 +358,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         let group_names = match (vm_type, matches.opt_str("user-groups")) {
             (Some(VmType::BAGUETTE), None) => {
-                Some("audio,cdrom,dialout,floppy,kvm,netdev,sudo,tss,video".into())
+                Some("audio,cdrom,dialout,disk,floppy,kvm,netdev,sudo,tss,video".into())
             }
             (_, group_names) => group_names,
         };
