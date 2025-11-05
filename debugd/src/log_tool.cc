@@ -296,7 +296,7 @@ const std::array kCommandLogs {
     "-e '/\"Version\" :/s/\\./:/g'",
     kRoot, kRoot},
   Log{kCommand, "fwupd_version", "/usr/bin/fwupdmgr --version", kRoot, kRoot},
-  Log{kCommand, "hardware_class", "/usr/bin/crossystem hwid"},
+  Log{kCommand, "hardware_class", "/usr/bin/runtime_hwid_tool get"},
   Log{kFile, "hardware_verification_report",
     "/var/cache/hardware_verifier.result"},
   Log{kCommand, "hostname", "/bin/hostname"},
