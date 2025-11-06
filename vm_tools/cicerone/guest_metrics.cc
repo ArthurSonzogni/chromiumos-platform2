@@ -246,9 +246,14 @@ void GuestMetrics::HandleListVmDisksDbusResponse(
   std::optional<int64_t> total_space =
       sysinfo_provider_->AmountOfTotalDiskSpace(
           base::FilePath(image->path()).DirName());
-  if (!total_space.has_value() || total_space.value() <= 0) {
+  if (!total_space.has_value()) {
     LOG(ERROR) << "Failed to get total disk space for "
                << base::FilePath(image->path()).DirName();
+    return;
+  }
+  if (total_space.value() == 0) {
+    LOG(ERROR) << "Total disk space for "
+               << base::FilePath(image->path()).DirName() << " is 0";
     return;
   }
   metrics_lib_->SendPercentageToUMA(
@@ -258,7 +263,7 @@ void GuestMetrics::HandleListVmDisksDbusResponse(
 
   std::optional<int64_t> free_space = sysinfo_provider_->AmountOfFreeDiskSpace(
       base::FilePath(image->path()).DirName());
-  if (!free_space.has_value() || free_space.value() <= 0) {
+  if (!free_space.has_value()) {
     LOG(ERROR) << "Failed to get free disk space for "
                << base::FilePath(image->path()).DirName();
     return;

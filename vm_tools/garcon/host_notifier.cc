@@ -547,8 +547,12 @@ void HostNotifier::CheckDiskSpace() {
     // Plenty of free space, nothing more to do.
     return;
   }
+  if (!free_bytes.has_value()) {
+    LOG(WARNING)
+        << "Unable to retrieve amount of free disk sapce - using value of 0.";
+  }
   info.set_token(token_);
-  info.set_free_bytes(free_bytes.value_or(-1));
+  info.set_free_bytes(free_bytes.value_or(0));
   vm_tools::EmptyMessage empty;
   grpc::Status status = stub_->LowDiskSpaceTriggered(&ctx, info, &empty);
   if (!status.ok()) {
