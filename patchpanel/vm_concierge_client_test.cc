@@ -65,7 +65,7 @@ class VmConciergeClientTest : public ::testing::Test {
   void SetUp() override {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    mock_bus_ = new dbus::MockBus(options);
+    mock_bus_ = new dbus::MockBus(std::move(options));
     concierge_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), vm_tools::concierge::kVmConciergeServiceName,
         dbus::ObjectPath(vm_tools::concierge::kVmConciergeServicePath));

@@ -52,8 +52,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   base::test::TaskEnvironment task_environment{
       base::test::TaskEnvironment::MainThreadType::IO};
 
-  dbus::Bus::Options options;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(dbus::Bus::Options());
   auto client = Client::NewForTesting(
       bus,
       std::unique_ptr<org::chromium::PatchPanelProxyInterface>(
