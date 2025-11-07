@@ -16,7 +16,7 @@
 DBusFeedbackServiceInterface::DBusFeedbackServiceInterface() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
+  bus_ = new dbus::Bus(std::move(options));
 }
 
 bool DBusFeedbackServiceInterface::SendFeedback(

@@ -6,6 +6,8 @@
 
 #include <unistd.h>
 
+#include <utility>
+
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/command_line.h>
@@ -52,7 +54,7 @@ void Daemon::Run() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
   scoped_refptr<DBusFeedbackServiceImpl> impl =
       new DBusFeedbackServiceImpl(uploader_.get());
 
