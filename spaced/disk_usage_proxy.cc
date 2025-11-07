@@ -35,7 +35,7 @@ DiskUsageProxy::DiskUsageProxy(
 std::unique_ptr<DiskUsageProxy> DiskUsageProxy::Generate() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
   if (!bus->Connect()) {
     LOG(ERROR) << "D-Bus system bus is not ready";
     return nullptr;
