@@ -9,6 +9,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -322,7 +323,7 @@ class DlcServiceUtil : public brillo::Daemon {
   bool Init(int* error_ptr) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    scoped_refptr<dbus::Bus> bus{new dbus::Bus{options}};
+    scoped_refptr<dbus::Bus> bus{new dbus::Bus{std::move(options)}};
     if (!bus->Connect()) {
       LOG(ERROR) << "Failed to connect to DBus.";
       *error_ptr = EX_UNAVAILABLE;
