@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <utility>
 
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
@@ -137,7 +138,7 @@ class EasyUnlockTest : public ::testing::Test {
   virtual void SetUp() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
 
     SetUpExportedObject();
 
