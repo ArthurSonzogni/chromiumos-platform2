@@ -12,12 +12,13 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus/dbus.h>
 
+// clang-format off
 // Note that boot_lockbox_rpc.pb.h have to be included before
 // dbus_adaptors/org.chromium.BootLockboxInterface.h because it is used in
 // there.
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
-
 #include "bootlockbox/dbus-proxies.h"
+// clang-format on
 
 namespace bootlockbox {
 
@@ -25,7 +26,7 @@ std::unique_ptr<BootLockboxClient>
 BootLockboxClient::CreateBootLockboxClient() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
   if (!bus->Connect()) {
     LOG(ERROR) << "D-Bus system bus is not ready";
     return nullptr;
