@@ -7,6 +7,7 @@
 #include <map>
 #include <optional>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/containers/map_util.h>
@@ -214,7 +215,7 @@ std::optional<std::vector<FwupdDeviceHistory>> CallFwupdGetHistory(
 std::optional<std::vector<FwupdDeviceHistory>> GetUpdateHistoryFromFwupd() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   CHECK(bus->Connect());
   dbus::ObjectProxy* fwupd_proxy = bus->GetObjectProxy(
       kFwupdServiceName, dbus::ObjectPath(kFwupdServicePath));
