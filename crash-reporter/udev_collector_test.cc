@@ -195,8 +195,7 @@ class UdevCollectorTest : public ::testing::Test {
     collector->dev_coredump_directory_ = dev_coredump_path.value();
     SetupFirmwareDumpsFinchFlag("1");
     collector->EnableConnectivityFwdumpForTest(true);
-    dbus::Bus::Options bus_options;
-    mock_bus_ = base::MakeRefCounted<dbus::MockBus>(bus_options);
+    mock_bus_ = base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options());
   }
 
   // This function creates input request blob required to call

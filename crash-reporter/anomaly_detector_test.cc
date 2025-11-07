@@ -1076,7 +1076,7 @@ MATCHER_P2(SignalEq, interface, member, "") {
 TEST(AnomalyDetectorTest, BTRFSExtentCorruption) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(options);
+  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(std::move(options));
 
   auto obj_path = dbus::ObjectPath(anomaly_detector::kAnomalyEventServicePath);
   scoped_refptr<dbus::MockExportedObject> exported_object =
@@ -1104,7 +1104,7 @@ TEST(AnomalyDetectorTest, BTRFSExtentCorruption) {
 TEST(AnomalyDetectorTest, BTRFSTreeCorruption) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(options);
+  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(std::move(options));
 
   auto obj_path = dbus::ObjectPath(anomaly_detector::kAnomalyEventServicePath);
   scoped_refptr<dbus::MockExportedObject> exported_object =
@@ -1147,7 +1147,7 @@ TEST(AnomalyDetectorTest, BTRFSTreeCorruption) {
 TEST(AnomalyDetectorTest, OomEvent) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(options);
+  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(std::move(options));
 
   auto obj_path = dbus::ObjectPath(anomaly_detector::kAnomalyEventServicePath);
   scoped_refptr<dbus::MockExportedObject> exported_object =

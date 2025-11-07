@@ -107,7 +107,7 @@ bool Service::Init() {
   // Connect to DBus.
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  dbus_ = base::MakeRefCounted<dbus::Bus>(options);
+  dbus_ = base::MakeRefCounted<dbus::Bus>(std::move(options));
 
   if (!dbus_->Connect()) {
     LOG(ERROR) << "Failed to connect to D-Bus";

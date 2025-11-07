@@ -2870,8 +2870,7 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
       CrashSendingMode::kCrashLoop);
-  dbus::Bus::Options bus_options;
-  auto mock_bus = base::MakeRefCounted<dbus::MockBus>(bus_options);
+  auto mock_bus = base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options());
   auto mock_object_proxy = base::MakeRefCounted<dbus::MockObjectProxy>(
       mock_bus.get(), "org.chromium.debugd",
       dbus::ObjectPath("/org/chromium/debugd"));

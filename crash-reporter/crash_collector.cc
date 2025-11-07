@@ -592,7 +592,7 @@ bool CrashCollector::TrySetUpDBus() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 
-  bus_ = new dbus::Bus(options);
+  bus_ = new dbus::Bus(std::move(options));
   if (!bus_->Connect()) {
     return false;
   }
