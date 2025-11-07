@@ -2,20 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "metrics/debugd_reader.h"
+
 #include <stdint.h>
 
 #include <memory>
 #include <utility>
 
-#include <chromeos/dbus/service_constants.h>
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_proxy.h>
 #include <gtest/gtest.h>
-
-#include "metrics/debugd_reader.h"
 
 using ::testing::_;
 using ::testing::Optional;
@@ -32,7 +32,7 @@ class DebugdReaderTest : public testing::Test {
     dbus::Bus::Options options;
 
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
 
     proxy_ =
         new dbus::MockObjectProxy(bus_.get(), debugd::kDebugdServiceName,

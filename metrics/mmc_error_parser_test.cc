@@ -2,19 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "metrics/mmc_error_parser.h"
+
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-
 #include <dbus/mock_bus.h>
-
 #include <gtest/gtest.h>
 
 #include "metrics/debugd_reader_mock.h"
-#include "metrics/mmc_error_parser.h"
 
 namespace chromeos_metrics {
 
@@ -29,7 +28,7 @@ class MmcErrorParserTest : public testing::Test {
     dbus::Bus::Options options;
 
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
     CHECK(dir_.CreateUniqueTempDir());
     SetUpParser(kParserName);
   }
