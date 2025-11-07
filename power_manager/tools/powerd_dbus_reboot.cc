@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <utility>
 
 #include <base/at_exit.h>
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -37,7 +38,7 @@ int main(int argc, char* argv[]) {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   CHECK(bus->Connect());
   dbus::ObjectProxy* powerd_proxy = bus->GetObjectProxy(
       power_manager::kPowerManagerServiceName,

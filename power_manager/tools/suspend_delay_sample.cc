@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <optional>
+#include <utility>
 
 #include <base/at_exit.h>
 #include <base/check.h>
@@ -69,7 +70,7 @@ class SuspendDelayRegisterer {
         weak_ptr_factory_(this) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::Bus(options);
+    bus_ = new dbus::Bus(std::move(options));
     CHECK(bus_->Connect());
     powerd_proxy_ = bus_->GetObjectProxy(
         power_manager::kPowerManagerServiceName,

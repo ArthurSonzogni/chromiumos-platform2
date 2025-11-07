@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/check_op.h>
@@ -30,7 +32,7 @@ void EmitSignal(const PowerSupplyProperties& proto) {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   CHECK(bus->Connect());
   CHECK(bus->RequestOwnershipAndBlock(kPowerManagerServiceName,
                                       dbus::Bus::REQUIRE_PRIMARY))

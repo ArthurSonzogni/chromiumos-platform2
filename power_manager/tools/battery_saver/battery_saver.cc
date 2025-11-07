@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <absl/status/status.h>
@@ -28,8 +29,8 @@
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>
 #include <dbus/bus.h>
-#include <power_manager/proto_bindings/battery_saver.pb.h>
 #include <power_manager-client/power_manager/dbus-proxies.h>
+#include <power_manager/proto_bindings/battery_saver.pb.h>
 
 #include "power_manager/tools/battery_saver/battery_saver_mode_watcher.h"
 #include "power_manager/tools/battery_saver/proto_util.h"
@@ -106,7 +107,7 @@ absl::Status RunCommand(BsmCommand command) {
   // Connect to D-Bus.
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  auto bus = base::MakeRefCounted<dbus::Bus>(options);
+  auto bus = base::MakeRefCounted<dbus::Bus>(std::move(options));
   if (!bus->Connect()) {
     return absl::UnknownError("Failed to connect to system D-Bus.");
   }

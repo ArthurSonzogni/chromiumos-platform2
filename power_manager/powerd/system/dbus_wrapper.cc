@@ -56,7 +56,7 @@ DBusWrapper::~DBusWrapper() = default;
 std::unique_ptr<DBusWrapper> DBusWrapper::Create() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   if (!bus->Connect()) {
     LOG(ERROR) << "Failed to connect to system bus";
     return nullptr;

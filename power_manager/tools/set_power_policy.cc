@@ -8,6 +8,7 @@
 // default policy, run it without any arguments.
 
 #include <memory>
+#include <utility>
 
 #include <base/at_exit.h>
 #include <base/check.h>
@@ -33,7 +34,7 @@ const int kMsInSec = 1000;
 // 0.
 #define SET_DELAY_FIELD(flag, submessage, field) \
   if (flag >= 0) {                               \
-    submessage->set_##field(flag* kMsInSec);     \
+    submessage->set_##field(flag * kMsInSec);    \
   }
 
 // Given |name| (a string) and |proto| (a PowerManagementPolicy), sets |proto|'s
@@ -181,7 +182,7 @@ int main(int argc, char* argv[]) {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   CHECK(bus->Connect());
   dbus::ObjectProxy* proxy = bus->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
