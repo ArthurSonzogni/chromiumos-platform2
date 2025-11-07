@@ -103,7 +103,7 @@ void ChapsProxyImpl::InitializationTask(base::OnceClosure callback,
                                         bool* connected) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = base::MakeRefCounted<dbus::Bus>(options);
+  bus_ = base::MakeRefCounted<dbus::Bus>(std::move(options));
 
   *connected = bus_->Connect();
 
