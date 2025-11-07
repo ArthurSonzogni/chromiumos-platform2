@@ -6,6 +6,7 @@
 #include <cstring>
 #include <memory>
 #include <optional>
+#include <utility>
 
 #include "secagentd/plugins.h"
 
@@ -81,7 +82,7 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
     plugin_factory_ = std::make_unique<PluginFactory>();
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
     // Setup root directory.
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
 #ifdef HAVE_BOOTPARAM
