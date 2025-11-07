@@ -5,6 +5,7 @@
 #include "update_engine/client_library/client_dbus.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/logging.h>
 #include <base/task/current_thread.h>
@@ -57,7 +58,7 @@ void ConvertToUpdateEngineStatus(const StatusResult& status,
 bool DBusUpdateEngineClient::Init() {
   Bus::Options options;
   options.bus_type = Bus::SYSTEM;
-  scoped_refptr<Bus> bus{new Bus{options}};
+  scoped_refptr<Bus> bus{new Bus{std::move(options)}};
 
   if (!bus->Connect()) {
     return false;
