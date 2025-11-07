@@ -10,6 +10,7 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <libec/get_features_command.h>
 
 #include "power_manager/common/power_constants.h"
 
@@ -30,11 +31,16 @@ CrosEcPrefsSource::EcPrefCommands CreateEcCommands() {
     ec_commands.display_soc_command = std::move(display_soc_cmd);
   }
 
-  auto get_min_charging_volt_cmd =
-      std::make_unique<ec::GetMinChargingVoltCommand>();
-  if (get_min_charging_volt_cmd->Run(ec_fd.get())) {
-    ec_commands.get_min_charging_volt_command =
-        std::move(get_min_charging_volt_cmd);
+  ec::GetFeaturesCommand get_features_cmd;
+  if (get_features_cmd.Run(ec_fd.get()) &&
+      get_features_cmd.IsFeatureSupported(
+          ec_feature_code::EC_FEATURE_CHARGER_HYBRID_POWER_BOOST)) {
+    auto get_min_charging_volt_cmd =
+        std::make_unique<ec::GetMinChargingVoltCommand>();
+    if (get_min_charging_volt_cmd->Run(ec_fd.get())) {
+      ec_commands.get_min_charging_volt_command =
+          std::move(get_min_charging_volt_cmd);
+    }
   }
 
   return ec_commands;
