@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include <base/logging.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>
@@ -43,7 +45,7 @@ int main(int argc, char** argv) {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   if (!bus->Connect()) {
     LOG(ERROR) << "mems_remove: Cannot connect to D-Bus.";
     return 1;

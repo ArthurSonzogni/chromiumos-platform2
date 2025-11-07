@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
@@ -97,7 +99,7 @@ int main(int argc, char** argv) {
 
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+    scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
     if (!bus->Connect()) {
       LOG(ERROR) << "mems_setup: Cannot connect to D-Bus.";
       return 1;
