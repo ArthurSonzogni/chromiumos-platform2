@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstdlib>
+#include <utility>
 
 #include <base/at_exit.h>
 #include <base/check.h>
@@ -22,7 +23,7 @@ int main() {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
   CHECK(bus->Connect());
   auto proxy = org::chromium::flimflam::ManagerProxy(bus);
 

@@ -49,9 +49,12 @@ DBusControl::DBusControl(EventDispatcher* dispatcher)
     : dispatcher_(dispatcher) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
+  adaptor_bus_ = new dbus::Bus(std::move(options));
 
-  adaptor_bus_ = new dbus::Bus(options);
-  proxy_bus_ = new dbus::Bus(options);
+  options = dbus::Bus::Options();
+  options.bus_type = dbus::Bus::SYSTEM;
+  proxy_bus_ = new dbus::Bus(std::move(options));
+
   CHECK(adaptor_bus_->Connect());
   CHECK(proxy_bus_->Connect());
 }

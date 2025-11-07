@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <map>
 #include <string>
+#include <utility>
 
 #include <base/at_exit.h>
 #include <base/check.h>
@@ -35,7 +36,7 @@ int main(int argc, char** argv) {
   scoped_refptr<dbus::Bus> bus;
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  bus = new dbus::Bus(options);
+  bus = new dbus::Bus(std::move(options));
   CHECK(bus->Connect());
 
   shill::shims::TaskProxy proxy(bus, path, service);

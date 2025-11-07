@@ -24,12 +24,11 @@ extern "C" {
 #include <pppd/lcp.h>
 }
 
-#include "shill/shims/ppp.h"
-
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
 #include <map>
+#include <utility>
 
 #include <base/command_line.h>
 #include <base/logging.h>
@@ -39,6 +38,7 @@ extern "C" {
 #include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"
 #include "shill/shims/environment.h"
+#include "shill/shims/ppp.h"
 #include "shill/shims/task_proxy.h"
 
 namespace shill {
@@ -154,7 +154,7 @@ bool PPP::CreateProxy() {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
+  bus_ = new dbus::Bus(std::move(options));
   CHECK(bus_->Connect());
 
   proxy_.reset(new TaskProxy(bus_, path, service));
