@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 #include "featured/c_fake_feature_library.h"
 
+#include <utility>
+
 #include <dbus/bus.h>
 
 #include "featured/c_feature_library.h"
@@ -11,7 +13,7 @@
 extern "C" CFeatureLibrary FakeCFeatureLibraryNew() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
 
   return reinterpret_cast<CFeatureLibrary>(
       new feature::FakePlatformFeatures(bus));

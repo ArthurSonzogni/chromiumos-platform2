@@ -34,7 +34,7 @@ Here is an example of how to initialize and obtain an instance:
 ```
 dbus::Bus::Options options;
 options.bus_type = dbus::Bus::SYSTEM;
-scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
 
 // |Initialize| must be called before calling |Get| and the return value must
 // be used since it has the [[nodiscard]] attribute.

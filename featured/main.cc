@@ -7,6 +7,7 @@
 #include <sysexits.h>
 
 #include <memory>
+#include <utility>
 
 #include <brillo/compression/compressor_interface.h>
 #include <brillo/compression/zlib_compressor.h>
@@ -47,7 +48,7 @@ int main(int argc, char** argv) {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
   std::unique_ptr<featured::StoreInterface> store =
       featured::StoreImpl::Create();
   if (!store) {

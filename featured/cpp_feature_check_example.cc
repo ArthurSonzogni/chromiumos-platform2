@@ -1,6 +1,8 @@
 // Copyright 2021 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#include <utility>
+
 #include <base/barrier_closure.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
@@ -71,7 +73,7 @@ int main(int argc, char* argv[]) {
   options.bus_type = dbus::Bus::SYSTEM;
   options.dbus_task_runner =
       base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
 
   base::RunLoop loop;
 

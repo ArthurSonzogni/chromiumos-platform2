@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <strings.h>
 
+#include <utility>
 #include <vector>
 
 #include <dbus/bus.h>
@@ -15,7 +16,7 @@
 extern "C" bool CFeatureLibraryInitialize() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
 
   return feature::PlatformFeatures::Initialize(bus);
 }
