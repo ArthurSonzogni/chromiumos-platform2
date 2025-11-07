@@ -10,6 +10,8 @@
 #include <sys/fanotify.h>
 #include <sys/mount.h>
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -34,7 +36,7 @@ bool RetrieveSanitizedPrimaryUsername(std::string* out_sanitized_username) {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
   CHECK(bus->Connect()) << "Failed to connect to system D-Bus";
 
   dbus::ObjectProxy* session_manager_proxy = bus->GetObjectProxy(
