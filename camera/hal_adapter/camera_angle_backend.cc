@@ -3,14 +3,16 @@
  * found in the LICENSE file.
  */
 
+#include "hal_adapter/camera_angle_backend.h"
+
+#include <utility>
+
 #include <base/task/thread_pool.h>
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 
 #include "cros-camera/angle_state.h"
 #include "cros-camera/common.h"
-
-#include "hal_adapter/camera_angle_backend.h"
 
 namespace {
 
@@ -50,7 +52,7 @@ void cros::FetchAngleStateAndSetupListener() {
   options.bus_type = dbus::Bus::SYSTEM;
   options.dbus_task_runner =
       base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
 
   if (!feature::PlatformFeatures::Initialize(bus)) {
     LOGF(ERROR) << "Failed to Initialize platform features";
