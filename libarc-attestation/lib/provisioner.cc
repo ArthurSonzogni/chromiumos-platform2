@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/strings/string_split.h>
@@ -221,7 +222,7 @@ bool Provisioner::EnsureDbus() {
 bool Provisioner::EnsureDbusInternal() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = base::MakeRefCounted<dbus::Bus>(options);
+  bus_ = base::MakeRefCounted<dbus::Bus>(std::move(options));
   if (!bus_->Connect()) {
     LOG(ERROR) << "Failed to connect to the system D-Bus in arc_attestation";
     bus_.reset();
