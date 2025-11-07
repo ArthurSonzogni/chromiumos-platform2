@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <numeric>
+#include <utility>
 #include <vector>
 
 #include <base/logging.h>
@@ -16,8 +17,8 @@
 #include <brillo/syslog_logging.h>
 #include <dbus/bus.h>
 #include <dbus/minios/dbus-constants.h>
-#include <minios/proto_bindings/minios.pb.h>
 #include <minios/client/dbus-proxies.h>
+#include <minios/proto_bindings/minios.pb.h>
 
 using dbus::Bus;
 using org::chromium::MiniOsInterfaceProxy;
@@ -56,7 +57,7 @@ class MiniOsClient : public brillo::Daemon {
     }
     Bus::Options options;
     options.bus_type = Bus::SYSTEM;
-    scoped_refptr<Bus> bus{new Bus{options}};
+    scoped_refptr<Bus> bus{new Bus{std::move(options)}};
 
     if (!bus->Connect()) {
       LOG(ERROR) << "DBus Service not available.";
