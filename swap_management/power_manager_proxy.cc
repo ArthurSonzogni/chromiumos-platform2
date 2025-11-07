@@ -5,6 +5,7 @@
 #include "swap_management/power_manager_proxy.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <power_manager/proto_bindings/suspend.pb.h>
@@ -49,7 +50,8 @@ PowerManagerProxy* PowerManagerProxy::Get() {
 PowerManagerProxy::PowerManagerProxy() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> power_management_proxy_bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> power_management_proxy_bus =
+      new dbus::Bus(std::move(options));
   power_manager_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(
       power_management_proxy_bus);
 }
