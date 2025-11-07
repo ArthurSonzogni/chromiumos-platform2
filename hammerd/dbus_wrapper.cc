@@ -4,6 +4,8 @@
 
 #include "hammerd/dbus_wrapper.h"
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/containers/span.h>
 #include <base/logging.h>
@@ -15,7 +17,7 @@ namespace hammerd {
 DBusWrapper::DBusWrapper() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
+  bus_ = new dbus::Bus(std::move(options));
   CHECK(bus_->Connect()) << "Failed to connect to system bus.";
   CHECK(bus_->RequestOwnershipAndBlock(kHammerdServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY))
