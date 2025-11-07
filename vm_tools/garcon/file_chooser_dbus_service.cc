@@ -12,6 +12,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+
 #include "vm_tools/garcon/host_notifier.h"
 
 namespace {
@@ -55,8 +56,7 @@ std::unique_ptr<FileChooserDBusService> FileChooserDBusService::Create(
 }
 
 bool FileChooserDBusService::Init() {
-  dbus::Bus::Options options;
-  bus_ = new dbus::Bus(options);
+  bus_ = new dbus::Bus(dbus::Bus::Options());
 
   if (!bus_->Connect()) {
     LOG(ERROR) << "Failed to connect to session bus";

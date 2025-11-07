@@ -609,10 +609,9 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
   CHECK(dbus_thread_.StartWithOptions(
       base::Thread::Options(base::MessagePumpType::IO, 0)));
 
-  dbus::Bus::Options opts;
   static constexpr char kFakeServicePath[] = "/fake/path";
   if (mock_type == NORMAL_MOCKS) {
-    mock_bus_ = new dbus::MockBus(opts);
+    mock_bus_ = new dbus::MockBus(dbus::Bus::Options());
 
     mock_exported_object_ = new dbus::MockExportedObject(
         mock_bus_.get(), dbus::ObjectPath(kFakeServicePath));
@@ -642,7 +641,7 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
         mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
   } else {
     DCHECK_EQ(mock_type, NICE_MOCKS);
-    mock_bus_ = new NiceMock<dbus::MockBus>(opts);
+    mock_bus_ = new NiceMock<dbus::MockBus>(dbus::Bus::Options());
 
     mock_exported_object_ = new NiceMock<dbus::MockExportedObject>(
         mock_bus_.get(), dbus::ObjectPath(kFakeServicePath));

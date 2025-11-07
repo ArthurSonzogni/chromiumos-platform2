@@ -9,10 +9,11 @@
 #include <utility>
 #include <vector>
 
-#include "base/process/launch.h"
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+
+#include "base/process/launch.h"
 #include "vm_tools/garcon/host_notifier.h"
 
 namespace {
@@ -118,8 +119,7 @@ std::unique_ptr<dbus::Response> ScreenSaverDBusService::Uninhibit(
 }
 
 bool ScreenSaverDBusService::Init() {
-  dbus::Bus::Options options;
-  bus_ = new dbus::Bus(options);
+  bus_ = new dbus::Bus(dbus::Bus::Options());
 
   if (!bus_->Connect()) {
     LOG(ERROR) << "Failed to connect to session bus";
