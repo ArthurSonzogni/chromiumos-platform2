@@ -8,9 +8,10 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <utility>
 
-#include <base/logging.h>
 #include <base/json/json_writer.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -167,7 +168,7 @@ class LvmdClient : public brillo::Daemon {
 int LvmdClient::Init() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus{new dbus::Bus{options}};
+  scoped_refptr<dbus::Bus> bus{new dbus::Bus{std::move(options)}};
 
   if (!bus->Connect()) {
     LOG(ERROR) << "Failed to connect to DBus.";
