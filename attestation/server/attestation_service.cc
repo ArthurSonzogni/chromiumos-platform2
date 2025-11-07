@@ -481,7 +481,7 @@ bool AttestationService::InitializeWithCallback(
       dbus::Bus::Options options;
       options.bus_type = dbus::Bus::SYSTEM;
       options.dbus_task_runner = worker_thread_->task_runner();
-      bus_ = base::MakeRefCounted<dbus::Bus>(options);
+      bus_ = base::MakeRefCounted<dbus::Bus>(std::move(options));
     }
     default_pca_agent_proxy_ =
         std::make_unique<org::chromium::PcaAgentProxy>(bus_);

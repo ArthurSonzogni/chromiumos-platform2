@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "attestation/server/dbus_service.h"
+
 #include <string>
 #include <utility>
 
@@ -14,7 +16,6 @@
 #include <gtest/gtest.h>
 
 #include "attestation/common/mock_attestation_interface.h"
-#include "attestation/server/dbus_service.h"
 
 using testing::_;
 using testing::Invoke;
@@ -30,7 +31,7 @@ class DBusServiceTest : public testing::Test {
   ~DBusServiceTest() override = default;
   void SetUp() override {
     dbus::Bus::Options options;
-    mock_bus_ = new NiceMock<dbus::MockBus>(options);
+    mock_bus_ = new NiceMock<dbus::MockBus>(std::move(options));
     dbus::ObjectPath path(kAttestationServicePath);
     mock_exported_object_ =
         new NiceMock<dbus::MockExportedObject>(mock_bus_.get(), path);
