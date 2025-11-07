@@ -4,6 +4,8 @@
 
 #include <sysexits.h>
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/logging.h>
@@ -306,7 +308,7 @@ int main(int argc, char* argv[]) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
 
   if (!bus->Connect()) {
     LOG(ERROR) << "Cannot connect to D-Bus.";

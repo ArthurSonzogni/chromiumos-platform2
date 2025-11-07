@@ -165,7 +165,7 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
   void PrepareMockBus() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    mock_bus_ = new dbus::MockBus(options);
+    mock_bus_ = new dbus::MockBus(std::move(options));
 
     mock_auth_dialog_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), chromeos::kUserAuthenticationServiceName,

@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <sysexits.h>
+
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -18,6 +19,7 @@
 #include <brillo/errors/error.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
@@ -157,7 +159,7 @@ class WebAuthnFuzzer : public brillo::Daemon {
   void PrepareMockBus() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    mock_bus_ = new testing::StrictMock<dbus::MockBus>(options);
+    mock_bus_ = new testing::StrictMock<dbus::MockBus>(std::move(options));
 
     mock_auth_dialog_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), chromeos::kUserAuthenticationServiceName,
