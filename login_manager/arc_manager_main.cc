@@ -4,6 +4,8 @@
 
 #include <sys/prctl.h>
 
+#include <utility>
+
 #include <base/at_exit.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -42,7 +44,7 @@ int main(int argc, char** argv) {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
   CHECK(bus->Connect());
   CHECK(bus->SetUpAsyncOperations());
 

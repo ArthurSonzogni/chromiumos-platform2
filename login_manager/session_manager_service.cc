@@ -599,7 +599,7 @@ bool SessionManagerService::InitializeImpl() {
 void SessionManagerService::InitializeDBus() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
+  bus_ = new dbus::Bus(std::move(options));
   CHECK(bus_->Connect());
   CHECK(bus_->SetUpAsyncOperations());
 
