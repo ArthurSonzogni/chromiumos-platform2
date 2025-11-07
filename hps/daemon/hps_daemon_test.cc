@@ -48,8 +48,8 @@ class MockHps : public HPS {
 class HpsDaemonTest : public testing::Test {
  public:
   HpsDaemonTest() {
-    dbus::Bus::Options options;
-    mock_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
+    mock_bus_ =
+        base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
     dbus::ObjectPath path(::hps::kHpsServicePath);
 
     mock_object_proxy_ = base::MakeRefCounted<NiceMock<dbus::MockObjectProxy>>(
