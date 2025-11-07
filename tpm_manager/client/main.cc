@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/check.h>
 #include <base/command_line.h>
@@ -180,7 +181,7 @@ class ClientLoop : public ClientLoopBase {
 
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = base::MakeRefCounted<dbus::Bus>(options);
+    bus_ = base::MakeRefCounted<dbus::Bus>(std::move(options));
     CHECK(bus_->Connect()) << "Failed to connect to system D-Bus";
 
     std::unique_ptr<org::chromium::TpmNvramProxy> nvram_proxy =

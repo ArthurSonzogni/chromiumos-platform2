@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "tpm_manager/server/dbus_service.h"
+
 #include <iterator>
 #include <string>
 #include <utility>
@@ -14,7 +16,6 @@
 #include <gtest/gtest.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
-#include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/mock_local_data_store.h"
 #include "tpm_manager/server/mock_tpm_nvram_interface.h"
 #include "tpm_manager/server/mock_tpm_ownership_interface.h"
@@ -35,8 +36,7 @@ class DBusServiceTest : public testing::Test {
  public:
   ~DBusServiceTest() override = default;
   void SetUp() override {
-    dbus::Bus::Options options;
-    mock_bus_ = new NiceMock<dbus::MockBus>(options);
+    mock_bus_ = new NiceMock<dbus::MockBus>(dbus::Bus::Options());
     dbus::ObjectPath path(kTpmManagerServicePath);
     mock_exported_object_ =
         new NiceMock<dbus::MockExportedObject>(mock_bus_.get(), path);
