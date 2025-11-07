@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include <memory>
+#include <utility>
 
 #include <base/check.h>
 #include <base/command_line.h>
@@ -82,7 +83,7 @@ int main(int argc, char* argv[]) {
   // Set up dbus proxy for talking to debugd.
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   CHECK(bus->Connect());
   dbus::ObjectProxy* debugd_proxy = bus->GetObjectProxy(
       debugd::kDebugdServiceName, dbus::ObjectPath(debugd::kDebugdServicePath));

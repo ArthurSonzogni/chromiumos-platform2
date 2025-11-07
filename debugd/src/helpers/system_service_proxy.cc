@@ -41,7 +41,7 @@ SystemServiceProxy::SystemServiceProxy(scoped_refptr<dbus::Bus> bus,
 scoped_refptr<dbus::Bus> SystemServiceProxy::ConnectToSystemBus() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   if (!bus->Connect()) {
     return nullptr;
   }
