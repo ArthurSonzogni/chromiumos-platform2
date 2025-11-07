@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -43,7 +44,7 @@ bool Service::Initialize() {
   // Connect the bus.
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
+  bus_ = new dbus::Bus(std::move(options));
   if (!bus_->Connect()) {
     LOG(ERROR) << "Failed to initialize D-Bus connection.";
     return false;
