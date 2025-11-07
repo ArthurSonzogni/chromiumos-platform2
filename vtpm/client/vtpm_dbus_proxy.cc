@@ -41,7 +41,7 @@ bool VtpmDBusProxy::Init() {
   if (!bus_) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = base::MakeRefCounted<dbus::Bus>(options);
+    bus_ = base::MakeRefCounted<dbus::Bus>(std::move(options));
   }
   if (!bus_->Connect()) {
     return false;
