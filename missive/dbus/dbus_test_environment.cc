@@ -77,7 +77,7 @@ void DBusTestEnvironment::CreateMockDBus(
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   std::move(ready_cb).Run(base::WrapRefCounted<NiceMock<dbus::MockBus>>(
-      new NiceMock<dbus::MockBus>(options)));
+      new NiceMock<dbus::MockBus>(std::move(options))));
 }
 
 void DBusTestEnvironment::AssertOnDBusThread() const {

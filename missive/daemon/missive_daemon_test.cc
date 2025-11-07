@@ -114,8 +114,8 @@ class MissiveDaemonTest : public ::testing::Test {
     auto mock_missive = std::make_unique<StrictMock<MockMissive>>();
     mock_missive_ = mock_missive.get();
 
-    dbus::Bus::Options options;
-    mock_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
+    mock_bus_ =
+        base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
     dbus::ObjectPath path(missive::kMissiveServicePath);
 
     mock_exported_object_ =
