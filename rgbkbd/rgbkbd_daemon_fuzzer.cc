@@ -38,8 +38,7 @@ class Environment {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
-  dbus::Bus::Options options;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(dbus::Bus::Options());
   auto adaptor_ = std::make_unique<DBusAdaptor>(bus, /*cros_config=*/nullptr,
                                                 /*daemon=*/nullptr);
   FuzzedDataProvider provider(data, size);

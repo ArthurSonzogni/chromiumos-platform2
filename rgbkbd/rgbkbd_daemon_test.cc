@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rgbkbd/rgbkbd_daemon.h"
+
 #include <stdint.h>
+
 #include <memory>
 #include <utility>
 
@@ -16,8 +19,6 @@
 #include <dbus/rgbkbd/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "rgbkbd/rgbkbd_daemon.h"
 
 using dbus::Response;
 using testing::_;
@@ -39,8 +40,8 @@ class RgbkbdDaemonTest : public testing::Test {
   RgbkbdDaemonTest() {
     cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
 
-    dbus::Bus::Options options;
-    mock_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
+    mock_bus_ =
+        base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
     dbus::ObjectPath path(rgbkbd::kRgbkbdServicePath);
 
     mock_object_proxy_ = base::MakeRefCounted<NiceMock<dbus::MockObjectProxy>>(
