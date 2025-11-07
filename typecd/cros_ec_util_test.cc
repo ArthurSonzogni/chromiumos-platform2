@@ -5,6 +5,7 @@
 #include "typecd/cros_ec_util.h"
 
 #include <string>
+#include <utility>
 
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
@@ -67,7 +68,7 @@ class CrosECUtilTest : public ::testing::Test {};
 TEST_F(CrosECUtilTest, ModeEntrySupported) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(options);
+  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(std::move(options));
   scoped_refptr<dbus::MockObjectProxy> mock_object_proxy =
       new dbus::MockObjectProxy(bus.get(), kDebugdServiceName,
                                 dbus::ObjectPath(kDebugdServicePath));

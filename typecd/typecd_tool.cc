@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iostream>
+#include <utility>
+
 #include <brillo/flag_helper.h>
 #include <dbus/typecd/dbus-constants.h>
-
-#include <iostream>
 
 #include "typecd/dbus_utils.h"
 #include "typecd/port.h"
@@ -23,7 +24,7 @@ int main(int argc, char* argv[]) {
   // Setup D-Bus Proxy.
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   CHECK(bus->Connect());
   dbus::ObjectProxy* typecd_proxy = bus->GetObjectProxy(
       typecd::kTypecdServiceName, dbus::ObjectPath(typecd::kTypecdServicePath));

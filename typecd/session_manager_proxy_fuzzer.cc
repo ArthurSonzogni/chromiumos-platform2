@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "typecd/session_manager_proxy.h"
+#include <utility>
 
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <dbus/error.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
-#include "fuzzer/FuzzedDataProvider.h"
 #include <gmock/gmock.h>
 
 #include "chromeos/dbus/service_constants.h"
+#include "fuzzer/FuzzedDataProvider.h"
+#include "typecd/session_manager_proxy.h"
 
 using testing::A;
 using testing::Invoke;
@@ -59,7 +60,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Set up a fake debugd D-Bus proxy.
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(options);
+  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(std::move(options));
   scoped_refptr<dbus::MockObjectProxy> mock_object_proxy =
       new dbus::MockObjectProxy(
           bus.get(), login_manager::kSessionManagerServiceName,
