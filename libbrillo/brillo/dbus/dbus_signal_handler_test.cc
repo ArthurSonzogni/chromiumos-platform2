@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/dbus/dbus_signal_handler.h>
-
 #include <string>
+#include <utility>
 
 #include <base/functional/bind.h>
 #include <brillo/dbus/data_serialization.h>
+#include <brillo/dbus/dbus_signal_handler.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
@@ -31,7 +31,7 @@ class DBusSignalHandlerTest : public testing::Test {
   void SetUp() override {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
     // By default, don't worry about threading assertions.
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());

@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <utility>
 
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
@@ -76,7 +77,7 @@ class DBusMethodInvokerTest : public testing::Test {
   void SetUp() override {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
     // By default, don't worry about threading assertions.
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
@@ -226,7 +227,7 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
   void SetUp() override {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
     // By default, don't worry about threading assertions.
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());

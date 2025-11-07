@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/dbus/dbus_connection.h>
+#include <utility>
 
 #include <base/logging.h>
+#include <brillo/dbus/dbus_connection.h>
 
 namespace {
 constexpr base::TimeDelta kDbusConnectWaitTime = base::Milliseconds(100);
@@ -35,7 +36,7 @@ scoped_refptr<dbus::Bus> DBusConnection::ConnectWithTimeout(
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
 
   do {
     if (bus->Connect()) {

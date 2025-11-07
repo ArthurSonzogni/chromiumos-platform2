@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/dbus/dbus_object.h>
-
 #include <memory>
+#include <utility>
 
 #include <base/functional/bind.h>
+#include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/dbus/mock_exported_object_manager.h>
 #include <dbus/message.h>
-#include <dbus/property.h>
-#include <dbus/object_path.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
+#include <dbus/object_path.h>
+#include <dbus/property.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -104,7 +104,7 @@ class DBusObjectTest : public ::testing::Test {
   virtual void SetUp() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
     // By default, don't worry about threading assertions.
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());

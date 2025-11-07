@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/http/http_proxy.h>
-
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/functional/bind.h>
+#include <brillo/http/http_proxy.h>
 #include <brillo/http/http_transport.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
@@ -56,7 +55,7 @@ class HttpProxyTest : public testing::Test {
   HttpProxyTest() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
     object_proxy_ = new dbus::MockObjectProxy(
         bus_.get(), chromeos::kNetworkProxyServiceName,
         dbus::ObjectPath(chromeos::kNetworkProxyServicePath));
