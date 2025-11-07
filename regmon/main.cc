@@ -4,9 +4,10 @@
 
 #include <sysexits.h>
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/logging.h>
-
 #include <brillo/syslog_logging.h>
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
@@ -42,7 +43,7 @@ int main(int argc, char* argv[]) {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
 
   CHECK(feature::PlatformFeatures::Initialize(bus));
   ::regmon::features::RegmonFeaturesImpl regmon_features(
