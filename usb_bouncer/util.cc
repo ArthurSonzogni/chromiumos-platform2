@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "usb_bouncer/util.h"
-#include "usb_bouncer/util_internal.h"
 
 #include <fcntl.h>
 #include <sys/capability.h>
@@ -47,6 +46,7 @@
 #include <usbguard/DeviceManagerHooks.hpp>
 
 #include "usb_bouncer/metrics_allowlist.h"
+#include "usb_bouncer/util_internal.h"
 
 using brillo::GetFDPath;
 using brillo::SafeFD;
@@ -92,7 +92,7 @@ std::unique_ptr<SessionManagerInterfaceProxy> SetUpDBus(
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
 
-    bus = new dbus::Bus(options);
+    bus = new dbus::Bus(std::move(options));
     CHECK(bus->Connect());
   }
   return std::make_unique<SessionManagerInterfaceProxy>(bus);
@@ -1549,7 +1549,7 @@ std::vector<UMADeviceError> GetDeviceErrors(UdevMetric* udev_metric) {
   if (!bus) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus = new dbus::Bus(options);
+    bus = new dbus::Bus(std::move(options));
     if (!bus->Connect()) {
       return {};
     }
