@@ -46,7 +46,7 @@ int Daemon::OnInit() {
 void Daemon::InitDBus() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   CHECK(bus->Connect());
   dbus::ExportedObject* exported_object =
       bus->GetExportedObject(dbus::ObjectPath(kMidisServicePath));
