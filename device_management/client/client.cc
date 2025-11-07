@@ -3,11 +3,12 @@
 // found in the LICENSE file.
 
 #include "device_management/client/client.h"
-#include "device_management/common/print_device_management_interface_proto.h"
-#include "device_management/proto_bindings/device_management_interface.pb.h"
-#include "device_management-client/device_management/dbus-proxies.h"
 
 #include <utility>
+
+#include "device_management-client/device_management/dbus-proxies.h"
+#include "device_management/common/print_device_management_interface_proto.h"
+#include "device_management/proto_bindings/device_management_interface.pb.h"
 
 namespace device_management {
 namespace switches {
@@ -77,7 +78,7 @@ std::unique_ptr<DeviceManagementClient>
 DeviceManagementClient::CreateDeviceManagementClient() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
   if (!bus->Connect()) {
     LOG(ERROR) << "D-Bus system bus is not ready";
     return nullptr;
