@@ -4,6 +4,8 @@
 
 #include "oobe_config/features/features.h"
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/logging.h>
 #include <dbus/bus.h>
@@ -21,7 +23,7 @@ const struct VariationsFeature kEnterpriseRollbackUseTpmEncryption = {
 bool TpmEncryptionFeatureEnabled() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
 
   // TODO(b:263065223) Make this a CHECK once we have sufficient integration
   // test signal that it doesn't fail.
