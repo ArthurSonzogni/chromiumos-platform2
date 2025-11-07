@@ -618,7 +618,7 @@ int main(int argc, char** argv) {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   auto manager =
       std::make_unique<ManagerProxy>(bus, lorgnette::kManagerServiceName);
 
