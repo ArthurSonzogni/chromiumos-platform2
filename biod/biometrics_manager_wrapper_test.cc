@@ -51,7 +51,7 @@ class BiometricsManagerWrapperTest : public ::testing::Test {
   BiometricsManagerWrapperTest() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
     ON_CALL(*bus_, GetExportedObject)
         .WillByDefault(
             Invoke(this, &BiometricsManagerWrapperTest::GetExportedObject));

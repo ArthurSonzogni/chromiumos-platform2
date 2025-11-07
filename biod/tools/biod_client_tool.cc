@@ -5,6 +5,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -571,7 +572,7 @@ int main(int argc, char* argv[]) {
   base::FileDescriptorWatcher watcher(task_executor.task_runner());
   dbus::Bus::Options bus_options;
   bus_options.bus_type = dbus::Bus::SYSTEM;
-  auto bus = base::MakeRefCounted<dbus::Bus>(bus_options);
+  auto bus = base::MakeRefCounted<dbus::Bus>(std::move(bus_options));
   CHECK(bus->Connect()) << "Failed to connect to system D-Bus.";
 
   BiodProxy biod(bus.get());

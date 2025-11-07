@@ -41,7 +41,8 @@ class BiometricsManagerRecordMockTest : public ::testing::Test {
   BiometricsManagerRecordMockTest() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    const auto mock_bus = base::MakeRefCounted<dbus::MockBus>(options);
+    const auto mock_bus =
+        base::MakeRefCounted<dbus::MockBus>(std::move(options));
 
     power_manager_proxy_ = base::MakeRefCounted<dbus::MockObjectProxy>(
         mock_bus.get(), power_manager::kPowerManagerServiceName,

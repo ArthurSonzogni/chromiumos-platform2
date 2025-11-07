@@ -98,7 +98,8 @@ class CrosFpBiometricsManagerTest : public ::testing::Test {
   CrosFpBiometricsManagerTest() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    const auto mock_bus = base::MakeRefCounted<dbus::MockBus>(options);
+    const auto mock_bus =
+        base::MakeRefCounted<dbus::MockBus>(std::move(options));
 
     // Set EXPECT_CALL, otherwise gmock forces an failure due to "uninteresting
     // call" because we use StrictMock.
@@ -903,7 +904,8 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
   CrosFpBiometricsManagerMockTest() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    const auto mock_bus = base::MakeRefCounted<dbus::MockBus>(options);
+    const auto mock_bus =
+        base::MakeRefCounted<dbus::MockBus>(std::move(options));
 
     // Set EXPECT_CALL, otherwise gmock forces an failure due to "uninteresting
     // call" because we use StrictMock.

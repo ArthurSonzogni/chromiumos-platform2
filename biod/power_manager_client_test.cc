@@ -4,6 +4,8 @@
 
 #include "biod/power_manager_client.h"
 
+#include <utility>
+
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -23,7 +25,7 @@ class PowerManagerClientTest : public testing::Test, public PowerEventObserver {
   PowerManagerClientTest() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    mock_bus_ = base::MakeRefCounted<dbus::MockBus>(options);
+    mock_bus_ = base::MakeRefCounted<dbus::MockBus>(std::move(options));
 
     power_manager_proxy_ = base::MakeRefCounted<dbus::MockObjectProxy>(
         mock_bus_.get(), power_manager::kPowerManagerServiceName,

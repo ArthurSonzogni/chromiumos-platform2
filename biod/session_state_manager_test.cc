@@ -60,7 +60,7 @@ class SessionStateManagerTest : public ::testing::Test {
   SessionStateManagerTest() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
 
     proxy_ = new dbus::MockObjectProxy(
         bus_.get(), login_manager::kSessionManagerServiceName,

@@ -28,7 +28,7 @@ class AuthStackManagerProxyBaseTest : public testing::Test {
   void SetUp() override {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    mock_bus_ = base::MakeRefCounted<dbus::MockBus>(options);
+    mock_bus_ = base::MakeRefCounted<dbus::MockBus>(std::move(options));
 
     mock_object_proxy_ = base::MakeRefCounted<dbus::MockObjectProxy>(
         mock_bus_.get(), kBiodServiceName, dbus::ObjectPath(kBiodServicePath));

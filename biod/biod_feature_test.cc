@@ -50,7 +50,7 @@ class BiodFeatureTest : public testing::Test {
   BiodFeatureTest() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
 
     proxy_ = new dbus::MockObjectProxy(
         bus_.get(), power_manager::kPowerManagerServiceName,
