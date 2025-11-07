@@ -646,7 +646,7 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   // Check that SetBrowserTestArgs() is called with a randomly chosen
   // --testing-channel path name.
   const std::string expected_testing_path_prefix =
-      base::FormatTemporaryFileName("").value();
+      base::FormatTemporaryFileName("", /*hidden=*/true).value();
 
   {
     ::testing::InSequence sequence;
