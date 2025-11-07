@@ -69,7 +69,7 @@ class ClientLoop : public brillo::Daemon {
 
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = base::MakeRefCounted<dbus::Bus>(options);
+    bus_ = base::MakeRefCounted<dbus::Bus>(std::move(options));
     CHECK(bus_->Connect()) << "Failed to connect to system D-Bus";
 
     tpm_manager_ = std::make_unique<org::chromium::TpmManagerProxy>(bus_);

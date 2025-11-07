@@ -21,7 +21,8 @@ std::unique_ptr<org::chromium::TpmManagerProxyInterface>
 CreateTpmManagerProxy() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = base::MakeRefCounted<dbus::Bus>(options);
+  scoped_refptr<dbus::Bus> bus =
+      base::MakeRefCounted<dbus::Bus>(std::move(options));
   CHECK(bus->Connect()) << __func__ << "Failed to connect to system D-Bus";
   return std::unique_ptr<org::chromium::TpmManagerProxyInterface>(
       new org::chromium::TpmManagerProxy(bus));
