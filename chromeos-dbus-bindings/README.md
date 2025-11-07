@@ -299,7 +299,7 @@ to interact with it:
 ```c++
 dbus::Bus::Options options;
 options.bus_type = dbus::Bus::SYSTEM;
-scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
 
 auto frobinator = std::make_unique<org::chromium::FrobinatorProxy>(bus);
 brillo::ErrorPtr error;
