@@ -3,19 +3,20 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <utility>
 
 #include <base/at_exit.h>
-#include <base/task/single_thread_task_executor.h>
+#include <base/check.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/bind.h>
-#include <base/check.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
+#include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>
 #include <dbus/bus.h>
 
-#include "modemloggerd/dbus_bindings/modemloggerd-proxies.h"
 #include "modemloggerd/dbus-constants.h"
+#include "modemloggerd/dbus_bindings/modemloggerd-proxies.h"
 
 void RunAction(const scoped_refptr<dbus::Bus>& bus,
                const dbus::ObjectPath& modem_path,
@@ -78,7 +79,7 @@ int main(int argc, char* argv[]) {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
   CHECK(bus->Connect());
 
   org::chromium::Modemloggerd::ManagerProxy manager_proxy(
