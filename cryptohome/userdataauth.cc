@@ -1046,7 +1046,7 @@ void UserDataAuth::CreateMountThreadDBus() {
     // Setup the D-Bus.
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    mount_thread_bus_ = base::MakeRefCounted<dbus::Bus>(options);
+    mount_thread_bus_ = base::MakeRefCounted<dbus::Bus>(std::move(options));
     CHECK(mount_thread_bus_->Connect())
         << "Failed to connect to system D-Bus on mount thread";
   }

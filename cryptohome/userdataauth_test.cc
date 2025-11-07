@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <utility>
 
 #include <absl/container/flat_hash_set.h>
 #include <base/check.h>
@@ -245,7 +246,8 @@ class UserDataAuthTestBase : public ::testing::Test {
     SET_DEFAULT_TPM_FOR_TESTING;
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
+    mount_bus_ =
+        base::MakeRefCounted<NiceMock<dbus::MockBus>>(std::move(options));
     ON_CALL(system_apis_.hwsec, IsEnabled()).WillByDefault(ReturnValue(true));
     ON_CALL(system_apis_.hwsec, IsReady()).WillByDefault(ReturnValue(true));
     ON_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
