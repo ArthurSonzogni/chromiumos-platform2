@@ -4,6 +4,8 @@
 
 #include "bootsplash/session_manager_client.h"
 
+#include <utility>
+
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -23,7 +25,7 @@ class SessionManagerClientTest : public testing::Test,
   SessionManagerClientTest() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    mock_bus_ = base::MakeRefCounted<dbus::MockBus>(options);
+    mock_bus_ = base::MakeRefCounted<dbus::MockBus>(std::move(options));
 
     session_manager_proxy_ = base::MakeRefCounted<dbus::MockObjectProxy>(
         mock_bus_.get(), login_manager::kSessionManagerServiceName,
