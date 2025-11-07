@@ -900,7 +900,7 @@ void ArcKeyMintContext::GetAndSetBootKeyFromLogs(const bool is_dev_mode) {
   if (bus_ == nullptr) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::Bus(options);
+    bus_ = new dbus::Bus(std::move(options));
   }
   if (!bus_->Connect()) {
     LOG(ERROR) << "Unable to connect to DBUS. Cannot get verified boot key.";

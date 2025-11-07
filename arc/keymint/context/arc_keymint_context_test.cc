@@ -435,7 +435,7 @@ class ArcKeyMintContextTest : public ::testing::Test {
   void SetUpDBus() {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
     mock_debug_proxy_ =
         new dbus::MockObjectProxy(bus_.get(), debugd::kDebugdServiceName,
                                   dbus::ObjectPath(debugd::kDebugdServicePath));

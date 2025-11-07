@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <optional>
+#include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -21,7 +22,7 @@ namespace {
 scoped_refptr<::dbus::Bus> InitDBusInCurrentTaskRunner() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<::dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<::dbus::Bus> bus = new dbus::Bus(std::move(options));
   CHECK(bus->Connect()) << "Failed to initialize adaptor DBus connection";
   return bus;
 }

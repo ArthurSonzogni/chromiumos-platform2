@@ -48,7 +48,7 @@ class ArcPropertyUtilTest : public testing::Test {
     ASSERT_TRUE(dir_.CreateUniqueTempDir());
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
+    bus_ = new dbus::MockBus(std::move(options));
     cdm_factory_daemon_object_proxy_ = new dbus::MockObjectProxy(
         bus_.get(), cdm_oemcrypto::kCdmFactoryDaemonServiceName,
         dbus::ObjectPath(cdm_oemcrypto::kCdmFactoryDaemonServicePath));

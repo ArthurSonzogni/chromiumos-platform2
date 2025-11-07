@@ -7,6 +7,7 @@
 #include <sys/prctl.h>
 
 #include <iterator>
+#include <utility>
 
 #include <base/at_exit.h>
 #include <base/check.h>
@@ -94,7 +95,7 @@ int main(int argc, char** argv) {
   // Connect the bus.
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(options));
   CHECK(bus->Connect());
 
   // Initialize the service.

@@ -3,19 +3,20 @@
 // found in the LICENSE file.
 
 #include <iostream>
+#include <utility>
 #include <vector>
 
-#include "featured/c_feature_library.h"
-
-#include <featured/feature_library.h>
 #include <base/logging.h>
+#include <featured/feature_library.h>
+
+#include "featured/c_feature_library.h"
 
 constexpr char kFeatureName[] = "CrOSLateBootArcSwitchToKeyMintDaemon";
 
 int main(int argc, char** argv) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(options)));
 
   CHECK(feature::PlatformFeatures::Initialize(bus))
       << "Failed to initialize lib";
