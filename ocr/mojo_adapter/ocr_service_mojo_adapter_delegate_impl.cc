@@ -46,7 +46,7 @@ void DoDBusBootstrap(base::ScopedFD fd,
   *success = false;
   dbus::Bus::Options bus_options;
   bus_options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(bus_options);
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(bus_options));
 
   CHECK(bus->Connect());
 
