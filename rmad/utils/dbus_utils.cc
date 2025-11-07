@@ -4,6 +4,8 @@
 
 #include "rmad/utils/dbus_utils.h"
 
+#include <utility>
+
 #include <base/memory/scoped_refptr.h>
 #include <base/no_destructor.h>
 #include <base/task/sequenced_task_runner.h>
@@ -27,7 +29,7 @@ DBus::DBus() {
   CHECK(base::SequencedTaskRunner::HasCurrentDefault());
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = base::MakeRefCounted<dbus::Bus>(options);
+  bus_ = base::MakeRefCounted<dbus::Bus>(std::move(options));
 }
 
 }  // namespace rmad

@@ -56,8 +56,8 @@ class DBusServiceTestBase : public testing::Test {
   };
 
   DBusServiceTestBase() {
-    dbus::Bus::Options options;
-    mock_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
+    mock_bus_ =
+        base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
     dbus::ObjectPath path(kRmadServicePath);
     mock_exported_object_ =
         base::MakeRefCounted<StrictMock<dbus::MockExportedObject>>(
