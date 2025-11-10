@@ -16,6 +16,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/task_environment.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -130,7 +131,8 @@ class MockDisplayStateOfChargeCommand : public ec::DisplayStateOfChargeCommand {
 
 class PowerSupplyTest : public TestEnvironment {
  public:
-  PowerSupplyTest() = default;
+  PowerSupplyTest()
+      : TestEnvironment(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -3170,6 +3172,180 @@ TEST_F(PowerSupplyTest, HybridPowerBoostChargerWithCompatibleLinePowerSource) {
   EXPECT_TRUE(status.supports_dual_role_devices);
   EXPECT_EQ(kCurrentMax, status.line_power_max_current);
   EXPECT_EQ(kVoltageMax, status.line_power_max_voltage);
+}
+
+TEST_F(PowerSupplyTest,
+       HybridPowerBoostChargerWithIncompatibleLinePowerSourceDBusSignal) {
+  // If the line power source is low voltage, only send |kPowerSupplyPollSignal|
+  // when the low voltage task runs. This is to avoid sending
+  // |kPowerSupplyPollSignal| for the transient low voltage state during USB-C
+  // negotiation for compatible line power sources.
+  WriteDefaultValues(PowerSource::BATTERY);
+  brillo::DeletePathRecursively(ac_dir_);
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+  Init();
+
+  // Device runs on battery.
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            status.external_power);
+  PowerSupplyProperties proto;
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            proto.external_power());
+  ASSERT_TRUE(dbus_wrapper_.GetSentSignal(1, kBatteryStatePollSignal, nullptr,
+                                          nullptr));
+  dbus_wrapper_.ClearSentSignals();
+
+  // The incompatible line power source shows up, and do not send
+  // |kPowerSupplyPollSignal|.
+  const char kLine1Id[] = "line1";
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUsbType);
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kNotCharging);
+  WriteDoubleValue(line1_dir, "current_max", 3);
+  WriteDoubleValue(line1_dir, "voltage_max", 5);
+
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE,
+            status.external_power);
+  ASSERT_TRUE(dbus_wrapper_.GetSentSignal(0, kBatteryStatePollSignal, nullptr,
+                                          nullptr));
+  dbus_wrapper_.ClearSentSignals();
+
+  // While the low voltage task is scheduled, do not send
+  // |kPowerSupplyPollSignal|.
+  task_env()->FastForwardBy(base::Seconds(1));
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE,
+            status.external_power);
+  ASSERT_TRUE(dbus_wrapper_.GetSentSignal(0, kBatteryStatePollSignal, nullptr,
+                                          nullptr));
+  dbus_wrapper_.ClearSentSignals();
+
+  // When the low voltage task runs, send |kPowerSupplyPollSignal|.
+  task_env()->FastForwardBy(base::Seconds(0.5));
+  task_env()->RunUntilIdle();
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE,
+            proto.external_power());
+  ASSERT_FALSE(dbus_wrapper_.GetSentSignal(1, kBatteryStatePollSignal, nullptr,
+                                           nullptr));
+}
+
+TEST_F(PowerSupplyTest,
+       HybridPowerBoostChargerWithCompatibleLinePowerSourceDBusSignal) {
+  // Even though the line power source is compatible, when it is first connected
+  // to the device, it shows up as a line power source at 5V 3A due to the USB-C
+  // negotiation. Do not send |kPowerSupplyPollSignal| for this transient 5V 3A
+  // state.
+  WriteDefaultValues(PowerSource::BATTERY);
+  brillo::DeletePathRecursively(ac_dir_);
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+  Init();
+
+  // Device runs on battery.
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            status.external_power);
+  PowerSupplyProperties proto;
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            proto.external_power());
+  ASSERT_TRUE(dbus_wrapper_.GetSentSignal(1, kBatteryStatePollSignal, nullptr,
+                                          nullptr));
+  dbus_wrapper_.ClearSentSignals();
+
+  // The line power first shows up as 5V 3A and not charging.
+  const char kLine1Id[] = "line1";
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUsbType);
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kNotCharging);
+  WriteDoubleValue(line1_dir, "current_max", 3);
+  WriteDoubleValue(line1_dir, "voltage_max", 5);
+
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE,
+            status.external_power);
+  ASSERT_TRUE(dbus_wrapper_.GetSentSignal(0, kBatteryStatePollSignal, nullptr,
+                                          nullptr));
+  dbus_wrapper_.ClearSentSignals();
+
+  // PD negotiation finishes.
+  WriteValue(line1_dir, "status", kCharging);
+  WriteDoubleValue(line1_dir, "current_max", 3.25);
+  WriteDoubleValue(line1_dir, "voltage_max", 20);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, proto.external_power());
+  ASSERT_TRUE(dbus_wrapper_.GetSentSignal(1, kBatteryStatePollSignal, nullptr,
+                                          nullptr));
+}
+
+TEST_F(PowerSupplyTest,
+       HybridPowerBoostChargerConnectAndDisconnectLinePowerSourceDBusSignal) {
+  // Whether the line power source is compatible, when it is first connected
+  // to the device, it shows up as a line power source at 5V 3A due to the USB-C
+  // negotiation. Do not send |kPowerSupplyPollSignal| for this transient 5V 3A
+  // state. Then, the line power source is disconnected immediately.
+  WriteDefaultValues(PowerSource::BATTERY);
+  brillo::DeletePathRecursively(ac_dir_);
+  prefs_.SetDouble(kMinChargingVoltPref, 15.0);
+  Init();
+
+  // Device runs on battery.
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            status.external_power);
+  PowerSupplyProperties proto;
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            proto.external_power());
+  ASSERT_TRUE(dbus_wrapper_.GetSentSignal(1, kBatteryStatePollSignal, nullptr,
+                                          nullptr));
+  dbus_wrapper_.ClearSentSignals();
+
+  // The line power first shows up as 5V 3A and not charging.
+  const char kLine1Id[] = "line1";
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUsbType);
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kNotCharging);
+  WriteDoubleValue(line1_dir, "current_max", 3);
+  WriteDoubleValue(line1_dir, "voltage_max", 5);
+
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE,
+            status.external_power);
+  ASSERT_TRUE(dbus_wrapper_.GetSentSignal(0, kBatteryStatePollSignal, nullptr,
+                                          nullptr));
+  dbus_wrapper_.ClearSentSignals();
+
+  // The line power source is disconnected immediately.
+  brillo::DeletePathRecursively(line1_dir);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            status.external_power);
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            proto.external_power());
+  ASSERT_TRUE(dbus_wrapper_.GetSentSignal(1, kBatteryStatePollSignal, nullptr,
+                                          nullptr));
 }
 
 }  // namespace power_manager::system

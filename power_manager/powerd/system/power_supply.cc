@@ -84,6 +84,13 @@ constexpr int kPowerRefreshDelays[] = {1, 10, 100, 1000, 1000};
 constexpr char kCrosUsbPdCharger[] = "CROS_USBPD_CHARGER";
 constexpr char kUcsiPsy[] = "ucsi-source-psy";
 
+// Delay before sending |kPowerSupplyPollSignal| that contains field
+// |PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE|.
+// This is only used on Chrome devices that use a Hybrid Power Boost
+// charger, to avoid showing UI notification for the transient low voltage
+// state during the USB-C negotiation for compatible line power sources.
+constexpr base::TimeDelta kLowVoltageDelay = base::Seconds(1.5);
+
 // Reads the contents of |filename| within |directory| into |out|, trimming
 // trailing whitespace.  Returns true on success.
 bool ReadAndTrimString(const base::FilePath& directory,
@@ -1178,6 +1185,33 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
         adaptive_charging_heuristic_enabled_;
   }
 
+  // Schedule the low voltage task when the device goes into a low voltage
+  // state, and cancel the task when the device goes into a stable state
+  // (disconnected, USB, AC). This only happens on Chrome devices that use a
+  // Hybrid Power Boost charger, to avoid showing UI notification for the
+  // transient low voltage state during the USB-C negotiation for compatible
+  // line power sources.
+  if (min_charging_voltage_ > kEpsilon) {
+    if (power_status_.external_power ==
+            PowerSupplyProperties_ExternalPower_DISCONNECTED &&
+        status.external_power ==
+            PowerSupplyProperties_ExternalPower_LOW_VOLTAGE_NO_CHARGE &&
+        low_voltage_task_.IsCancelled()) {
+      low_voltage_task_.Reset(base::BindOnce(&PowerSupply::OnLowVoltageTimeout,
+                                             weak_ptr_factory_.GetWeakPtr()));
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE, low_voltage_task_.callback(), kLowVoltageDelay);
+    } else if ((status.external_power ==
+                    PowerSupplyProperties_ExternalPower_DISCONNECTED ||
+                status.external_power ==
+                    PowerSupplyProperties_ExternalPower_USB ||
+                status.external_power ==
+                    PowerSupplyProperties_ExternalPower_AC) &&
+               !low_voltage_task_.IsCancelled()) {
+      low_voltage_task_.Cancel();
+    }
+  }
+
   power_status_ = status;
   power_status_initialized_ = true;
 
@@ -1817,9 +1851,16 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
         FROM_HERE, notify_observers_task_.callback());
   }
 
-  PowerSupplyProperties protobuf;
-  CopyPowerStatusToProtocolBuffer(power_status_, &protobuf);
-  dbus_wrapper_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
+  // When the low voltage task is scheduled, do not send power supply poll
+  // signal. This only happens on Chrome devices that use a Hybrid Power Boost
+  // charger, to avoid showing UI notification for the transient low voltage
+  // state during the USB-C negotiation for compatible line power sources.
+  if (low_voltage_task_.IsCancelled()) {
+    PowerSupplyProperties protobuf;
+    CopyPowerStatusToProtocolBuffer(power_status_, &protobuf);
+    dbus_wrapper_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal,
+                                                protobuf);
+  }
 
   dbus::Signal signal(kPowerManagerInterface, kBatteryStatePollSignal);
   dbus::MessageWriter writer(&signal);
@@ -1966,6 +2007,12 @@ void PowerSupply::SetLowBatteryShutdownEnabled() {
   // After enabling low battery shutdown, notify observers to check for a low
   // battery shutdown case.
   NotifyObservers();
+}
+
+void PowerSupply::OnLowVoltageTimeout() {
+  PowerSupplyProperties protobuf;
+  CopyPowerStatusToProtocolBuffer(power_status_, &protobuf);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
 }
 
 }  // namespace power_manager::system

@@ -4,9 +4,8 @@
 
 #include "power_manager/powerd/testing/test_environment.h"
 
-#include <gtest/gtest.h>
-
 #include <base/test/task_environment.h>
+#include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
 
 namespace power_manager {
@@ -34,6 +33,11 @@ void InitMojo() {
 TestEnvironment::TestEnvironment()
     : task_environment_(base::test::TaskEnvironment::MainThreadType::IO,
                         base::test::TaskEnvironment::TimeSource::SYSTEM_TIME) {}
+
+TestEnvironment::TestEnvironment(
+    base::test::TaskEnvironment::TimeSource time_source)
+    : task_environment_(base::test::TaskEnvironment::MainThreadType::IO,
+                        time_source) {}
 
 MojoTestEnvironment::MojoTestEnvironment() {
   InitMojo();

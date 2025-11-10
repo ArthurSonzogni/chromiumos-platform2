@@ -6,9 +6,8 @@
 #define POWER_MANAGER_POWERD_TESTING_TEST_ENVIRONMENT_H_
 
 #include <base/test/task_environment.h>
-#include <mojo/core/embedder/scoped_ipc_support.h>
-
 #include <gtest/gtest.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 namespace power_manager {
 
@@ -17,6 +16,7 @@ namespace power_manager {
 class TestEnvironment : public ::testing::Test {
  public:
   TestEnvironment();
+  explicit TestEnvironment(base::test::TaskEnvironment::TimeSource time_source);
 
   // Return the task environment.
   //

@@ -577,6 +577,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // Sets the |low_battery_shutdown_enabled_| variable and notifies observers.
   void SetLowBatteryShutdownEnabled();
 
+  // Handles |low_voltage_task_| firing. Send |kPowerSupplyPollSignal|.
+  void OnLowVoltageTimeout();
+
   ec::EcCommandFactoryInterface* ec_command_factory_ = nullptr;  // non-owned
   PrefsInterface* prefs_ = nullptr;                              // non-owned
   UdevInterface* udev_ = nullptr;                                // non-owned
@@ -728,6 +731,11 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // "CROS_USB_PD_CHARGER0") to enum values describing the corresponding
   // charging ports' locations. Loaded from kChargingPortsPref.
   std::map<std::string, PowerSupplyProperties::PowerSource::Port> port_names_;
+
+  // This only gets scheduled on Chrome devices that use a Hybrid Power Boost
+  // charger, to avoid showing UI notification for the transient low voltage
+  // state during the USB-C negotiation for compatible line power sources.
+  base::CancelableOnceClosure low_voltage_task_;
 
   base::WeakPtrFactory<PowerSupply> weak_ptr_factory_;
 };
