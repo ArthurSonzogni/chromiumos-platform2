@@ -109,9 +109,9 @@ class PowerManagerTest : public testing::Test {
           dark_suspend_imminent_.on_signal = signal;
           dark_suspend_imminent_.on_connected = std::move(*connected);
         }));
-    ON_CALL(*object_proxy_, DoWaitForServiceToBeAvailable(_))
-        .WillByDefault(Invoke([this](ServiceAvailableCallback* cb) {
-          service_available_ = std::move(*cb);
+    ON_CALL(*object_proxy_, WaitForServiceToBeAvailable(_))
+        .WillByDefault(Invoke([this](ServiceAvailableCallback cb) {
+          service_available_ = std::move(cb);
         }));
     ON_CALL(*object_proxy_, SetNameOwnerChangedCallback(_))
         .WillByDefault(Invoke([this](const NameOwnerChangedCallback& cb) {
@@ -227,7 +227,7 @@ class PowerManagerTest : public testing::Test {
     EXPECT_CALL(proxy_, DoRegisterSuspendImminentSignalHandler(_, _)).Times(1);
     EXPECT_CALL(proxy_, DoRegisterDarkSuspendImminentSignalHandler(_, _))
         .Times(1);
-    EXPECT_CALL(*object_proxy_, DoWaitForServiceToBeAvailable(_)).Times(1);
+    EXPECT_CALL(*object_proxy_, WaitForServiceToBeAvailable(_)).Times(1);
     power_manager_.Init(ignored_bus_);
   }
 
