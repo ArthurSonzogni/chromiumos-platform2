@@ -1,6 +1,8 @@
 // Copyright 2021 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#include "featured/feature_library.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -19,12 +21,10 @@
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#include <featured/early_boot_state_checks.h>
 #include <featured/proto_bindings/featured.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "featured/feature_library.h"
-#include <featured/early_boot_state_checks.h>
 
 namespace {
 
@@ -174,19 +174,19 @@ INSTANTIATE_TEST_SUITE_P(FeatureLibraryParameterizedTest,
 TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Success) {
   bool enabled = GetParam();
 
-  EXPECT_CALL(*mock_chrome_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_chrome_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
-          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
-                        callback) { std::move(*callback).Run(true); }));
+          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback
+                        callback) { std::move(callback).Run(true); }));
 
   EXPECT_CALL(*mock_chrome_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .WillOnce(Invoke(
           [this, enabled](dbus::MethodCall* call, int timeout_ms,
-                          dbus::MockObjectProxy::ResponseCallback* callback) {
+                          dbus::MockObjectProxy::ResponseCallback callback) {
             std::unique_ptr<dbus::Response> resp =
                 CreateIsEnabledResponse(call, enabled).value_or(nullptr);
-            std::move(*callback).Run(resp.get());
+            std::move(callback).Run(resp.get());
           }));
 
   run_loop_ = std::make_unique<base::RunLoop>();
@@ -202,13 +202,13 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Success) {
 }
 
 TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Failure_WaitForService) {
-  EXPECT_CALL(*mock_chrome_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_chrome_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
-          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
-                        callback) { std::move(*callback).Run(false); }));
+          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback
+                        callback) { std::move(callback).Run(false); }));
 
   EXPECT_CALL(*mock_chrome_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .Times(0);
 
   run_loop_ = std::make_unique<base::RunLoop>();
@@ -227,16 +227,16 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Failure_WaitForService) {
 }
 
 TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Failure_NullResponse) {
-  EXPECT_CALL(*mock_chrome_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_chrome_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
-          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
-                        callback) { std::move(*callback).Run(true); }));
+          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback
+                        callback) { std::move(callback).Run(true); }));
 
   EXPECT_CALL(*mock_chrome_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .WillOnce(Invoke([](dbus::MethodCall* call, int timeout_ms,
-                          dbus::MockObjectProxy::ResponseCallback* callback) {
-        std::move(*callback).Run(nullptr);
+                          dbus::MockObjectProxy::ResponseCallback callback) {
+        std::move(callback).Run(nullptr);
       }));
 
   run_loop_ = std::make_unique<base::RunLoop>();
@@ -255,18 +255,18 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Failure_NullResponse) {
 }
 
 TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Failure_EmptyResponse) {
-  EXPECT_CALL(*mock_chrome_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_chrome_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
-          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
-                        callback) { std::move(*callback).Run(true); }));
+          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback
+                        callback) { std::move(callback).Run(true); }));
 
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
   EXPECT_CALL(*mock_chrome_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
-      .WillOnce(Invoke(
-          [&response](dbus::MethodCall* call, int timeout_ms,
-                      dbus::MockObjectProxy::ResponseCallback* callback) {
-            std::move(*callback).Run(response.get());
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+      .WillOnce(
+          Invoke([&response](dbus::MethodCall* call, int timeout_ms,
+                             dbus::MockObjectProxy::ResponseCallback callback) {
+            std::move(callback).Run(response.get());
           }));
 
   run_loop_ = std::make_unique<base::RunLoop>();
@@ -399,20 +399,20 @@ TEST_F(FeatureLibraryTest, GetParamsAndEnabled_Success) {
       // f6 is default
   };
 
-  EXPECT_CALL(*mock_chrome_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_chrome_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
-          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
-                        callback) { std::move(*callback).Run(true); }));
+          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback
+                        callback) { std::move(callback).Run(true); }));
 
   EXPECT_CALL(*mock_chrome_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .WillOnce(Invoke([this, enabled_map, params_map](
                            dbus::MethodCall* call, int timeout_ms,
-                           dbus::MockObjectProxy::ResponseCallback* callback) {
+                           dbus::MockObjectProxy::ResponseCallback callback) {
         std::unique_ptr<dbus::Response> resp =
             CreateGetParamsResponse(call, params_map, enabled_map)
                 .value_or(nullptr);
-        std::move(*callback).Run(resp.get());
+        std::move(callback).Run(resp.get());
       }));
 
   run_loop_ = std::make_unique<base::RunLoop>();
@@ -474,13 +474,13 @@ TEST_F(FeatureLibraryTest, GetParamsAndEnabled_Success) {
 }
 
 TEST_F(FeatureLibraryTest, GetParamsAndEnabled_Failure_WaitForService) {
-  EXPECT_CALL(*mock_chrome_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_chrome_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
-          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
-                        callback) { std::move(*callback).Run(false); }));
+          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback
+                        callback) { std::move(callback).Run(false); }));
 
   EXPECT_CALL(*mock_chrome_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .Times(0);
 
   run_loop_ = std::make_unique<base::RunLoop>();
@@ -518,16 +518,16 @@ TEST_F(FeatureLibraryTest, GetParamsAndEnabled_Failure_WaitForService) {
 }
 
 TEST_F(FeatureLibraryTest, GetParamsAndEnabled_Failure_Null) {
-  EXPECT_CALL(*mock_chrome_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_chrome_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
-          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
-                        callback) { std::move(*callback).Run(true); }));
+          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback
+                        callback) { std::move(callback).Run(true); }));
 
   EXPECT_CALL(*mock_chrome_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .WillOnce(Invoke([](dbus::MethodCall* call, int timeout_ms,
-                          dbus::MockObjectProxy::ResponseCallback* callback) {
-        std::move(*callback).Run(nullptr);
+                          dbus::MockObjectProxy::ResponseCallback callback) {
+        std::move(callback).Run(nullptr);
       }));
 
   run_loop_ = std::make_unique<base::RunLoop>();
@@ -565,18 +565,18 @@ TEST_F(FeatureLibraryTest, GetParamsAndEnabled_Failure_Null) {
 }
 
 TEST_F(FeatureLibraryTest, GetParamsAndEnabled_Failure_Empty) {
-  EXPECT_CALL(*mock_chrome_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_chrome_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
-          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
-                        callback) { std::move(*callback).Run(true); }));
+          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback
+                        callback) { std::move(callback).Run(true); }));
 
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
   EXPECT_CALL(*mock_chrome_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
-      .WillOnce(Invoke(
-          [&response](dbus::MethodCall* call, int timeout_ms,
-                      dbus::MockObjectProxy::ResponseCallback* callback) {
-            std::move(*callback).Run(response.get());
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+      .WillOnce(
+          Invoke([&response](dbus::MethodCall* call, int timeout_ms,
+                             dbus::MockObjectProxy::ResponseCallback callback) {
+            std::move(callback).Run(response.get());
           }));
 
   run_loop_ = std::make_unique<base::RunLoop>();
@@ -615,21 +615,21 @@ TEST_F(FeatureLibraryTest, GetParamsAndEnabled_Failure_Empty) {
 
 // Invalid response should result in default values.
 TEST_F(FeatureLibraryTest, GetParamsAndEnabled_Failure_Invalid) {
-  EXPECT_CALL(*mock_chrome_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_chrome_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
-          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
-                        callback) { std::move(*callback).Run(true); }));
+          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback
+                        callback) { std::move(callback).Run(true); }));
 
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
   dbus::MessageWriter writer(response.get());
   writer.AppendBool(true);
   writer.AppendBool(true);
   EXPECT_CALL(*mock_chrome_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
-      .WillOnce(Invoke(
-          [&response](dbus::MethodCall* call, int timeout_ms,
-                      dbus::MockObjectProxy::ResponseCallback* callback) {
-            std::move(*callback).Run(response.get());
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+      .WillOnce(
+          Invoke([&response](dbus::MethodCall* call, int timeout_ms,
+                             dbus::MockObjectProxy::ResponseCallback callback) {
+            std::move(callback).Run(response.get());
           }));
 
   run_loop_ = std::make_unique<base::RunLoop>();
@@ -875,11 +875,11 @@ TEST_F(FeatureLibraryTest, CheckFeatureIdentity) {
 // and that success is appropriately reported.
 TEST_F(FeatureLibraryTest, RegisterSignalHandler_Success) {
   EXPECT_CALL(*mock_feature_proxy_,
-              DoConnectToSignal(kFeatureLibInterface, kRefetchSignal, _, _))
+              ConnectToSignal(kFeatureLibInterface, kRefetchSignal, _, _))
       .WillOnce([](const std::string& interface, const std::string& signal,
                    dbus::ObjectProxy::SignalCallback signal_cb,
-                   dbus::ObjectProxy::OnConnectedCallback* on_connected) {
-        std::move(*on_connected).Run(interface, signal, true);
+                   dbus::ObjectProxy::OnConnectedCallback on_connected) {
+        std::move(on_connected).Run(interface, signal, true);
       });
 
   bool ran = false;
@@ -898,11 +898,11 @@ TEST_F(FeatureLibraryTest, RegisterSignalHandler_Success) {
 // and that failure is appropriately reported.
 TEST_F(FeatureLibraryTest, RegisterSignalHandler_Failure) {
   EXPECT_CALL(*mock_feature_proxy_,
-              DoConnectToSignal(kFeatureLibInterface, kRefetchSignal, _, _))
+              ConnectToSignal(kFeatureLibInterface, kRefetchSignal, _, _))
       .WillOnce([](const std::string& interface, const std::string& signal,
                    dbus::ObjectProxy::SignalCallback signal_cb,
-                   dbus::ObjectProxy::OnConnectedCallback* on_connected) {
-        std::move(*on_connected).Run(interface, signal, false);
+                   dbus::ObjectProxy::OnConnectedCallback on_connected) {
+        std::move(on_connected).Run(interface, signal, false);
       });
 
   bool ran = false;
@@ -1043,13 +1043,13 @@ TEST_F(FeatureLibraryTest, EarlyBootStateChecks_NoParams) {
 #if DCHECK_IS_ON()
 using FeatureLibraryDeathTest = FeatureLibraryTest;
 TEST_F(FeatureLibraryDeathTest, IsEnabledDistinctFeatureDefs) {
-  EXPECT_CALL(*mock_chrome_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_chrome_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
-          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
-                        callback) { std::move(*callback).Run(false); }));
+          Invoke([](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback
+                        callback) { std::move(callback).Run(false); }));
 
   EXPECT_CALL(*mock_chrome_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .Times(0);
 
   run_loop_ = std::make_unique<base::RunLoop>();
