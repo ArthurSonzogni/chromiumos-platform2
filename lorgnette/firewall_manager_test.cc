@@ -64,11 +64,11 @@ class FirewallManagerTest : public testing::Test {
         .Times(2)
         .WillRepeatedly(Return(mock_proxy_.get()));
     // Save the callbacks so they can be run later if a test requires it.
-    EXPECT_CALL(*mock_proxy_, DoWaitForServiceToBeAvailable(_))
-        .WillOnce(WithArg<0>(Invoke(
-            [this](dbus::ObjectProxy::WaitForServiceToBeAvailableCallback*
-                       callback) {
-              wait_for_service_to_be_available_callback_ = std::move(*callback);
+    EXPECT_CALL(*mock_proxy_, WaitForServiceToBeAvailable(_))
+        .WillOnce(WithArg<0>(
+            Invoke([this](dbus::ObjectProxy::WaitForServiceToBeAvailableCallback
+                              callback) {
+              wait_for_service_to_be_available_callback_ = std::move(callback);
             })));
     EXPECT_CALL(*mock_proxy_, SetNameOwnerChangedCallback(_))
         .WillOnce(WithArg<0>(Invoke(
