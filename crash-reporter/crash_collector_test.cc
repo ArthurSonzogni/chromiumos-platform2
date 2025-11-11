@@ -2923,10 +2923,10 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
       .WillRepeatedly(Return(mock_object_proxy.get()));
   std::unique_ptr<dbus::Response> empty_response;
   std::unique_ptr<dbus::ErrorResponse> empty_error_response;
-  EXPECT_CALL(*mock_object_proxy, DoCallMethodWithErrorResponse(_, 0, _))
+  EXPECT_CALL(*mock_object_proxy, CallMethodWithErrorResponse(_, 0, _))
       .WillOnce(
           Invoke([&](dbus::MethodCall* method_call, int timeout_ms,
-                     dbus::ObjectProxy::ResponseOrErrorCallback* callback) {
+                     dbus::ObjectProxy::ResponseOrErrorCallback callback) {
             // We can't copy or move the method_call object, and it will be
             // destroyed shortly after this lambda ends, so we must validate its
             // contents inside the lambda.
@@ -2991,14 +2991,14 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
             if (give_success_response) {
               empty_response = dbus::Response::FromMethodCall(method_call);
               base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-                  FROM_HERE, base::BindOnce(std::move(*callback),
+                  FROM_HERE, base::BindOnce(std::move(callback),
                                             empty_response.get(), nullptr));
             } else {
               empty_error_response = dbus::ErrorResponse::FromMethodCall(
                   method_call, "org.freedesktop.DBus.Error.Failed",
                   "Things didn't work");
               base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-                  FROM_HERE, base::BindOnce(std::move(*callback), nullptr,
+                  FROM_HERE, base::BindOnce(std::move(callback), nullptr,
                                             empty_error_response.get()));
             }
           }));
