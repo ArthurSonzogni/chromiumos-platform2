@@ -40,9 +40,9 @@ class SessionManagerClientTest : public testing::Test,
         .WillOnce(testing::Return(session_manager_proxy_.get()));
 
     EXPECT_CALL(*session_manager_proxy_,
-                DoConnectToSignal(login_manager::kSessionManagerInterface,
-                                  login_manager::kLoginPromptVisibleSignal,
-                                  testing::_, testing::_))
+                ConnectToSignal(login_manager::kSessionManagerInterface,
+                                login_manager::kLoginPromptVisibleSignal,
+                                testing::_, testing::_))
         .WillOnce(testing::SaveArg<2>(&login_prompt_visible_callback_));
   }
 
