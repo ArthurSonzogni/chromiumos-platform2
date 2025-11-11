@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
 #include <sys/mman.h>
+
+#include <gtest/gtest.h>
 
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
@@ -83,7 +84,7 @@ class NetworkBpfTestFixture : public ::testing::Test {
     EXPECT_CALL(*mock_bus_, GetObjectProxy(_, _))
         .WillRepeatedly(Return(mock_proxy_.get()));
     EXPECT_CALL(*mock_proxy_, SetNameOwnerChangedCallback(_));
-    EXPECT_CALL(*mock_proxy_, DoConnectToSignal(_, _, _, _));
+    EXPECT_CALL(*mock_proxy_, ConnectToSignal(_, _, _, _));
 
     SetPlatform(std::make_unique<StrictMock<MockPlatform>>());
     platform_ = static_cast<StrictMock<MockPlatform>*>(GetPlatform().get());

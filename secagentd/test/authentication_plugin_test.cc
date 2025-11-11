@@ -98,10 +98,10 @@ class AuthenticationPluginTestFixture : public ::testing::Test {
 
     EXPECT_CALL(*cryptohome_proxy_, GetObjectProxy)
         .WillRepeatedly(Return(cryptohome_object_proxy_.get()));
-    EXPECT_CALL(*cryptohome_object_proxy_, DoWaitForServiceToBeAvailable(_))
+    EXPECT_CALL(*cryptohome_object_proxy_, WaitForServiceToBeAvailable(_))
         .WillRepeatedly(
-            WithArg<0>(Invoke([](base::OnceCallback<void(bool)>* cb) mutable {
-              std::move(*cb).Run(true);
+            WithArg<0>(Invoke([](base::OnceCallback<void(bool)> cb) mutable {
+              std::move(cb).Run(true);
             })));
     EXPECT_CALL(*cryptohome_proxy_,
                 DoRegisterAuthenticateAuthFactorCompletedSignalHandler)

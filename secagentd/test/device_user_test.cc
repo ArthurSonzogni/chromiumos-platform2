@@ -64,10 +64,10 @@ class DeviceUserTestFixture : public ::testing::Test {
         dbus::ObjectPath(user_data_auth::kUserDataAuthServicePath));
     EXPECT_CALL(*cryptohome_proxy_, GetObjectProxy)
         .WillRepeatedly(Return(cryptohome_object_proxy_.get()));
-    EXPECT_CALL(*cryptohome_object_proxy_, DoWaitForServiceToBeAvailable(_))
+    EXPECT_CALL(*cryptohome_object_proxy_, WaitForServiceToBeAvailable(_))
         .WillRepeatedly(
-            WithArg<0>(Invoke([](base::OnceCallback<void(bool)>* cb) mutable {
-              std::move(*cb).Run(true);
+            WithArg<0>(Invoke([](base::OnceCallback<void(bool)> cb) mutable {
+              std::move(cb).Run(true);
             })));
     EXPECT_CALL(*cryptohome_proxy_, DoRegisterRemoveCompletedSignalHandler)
         .WillOnce(WithArgs<0, 1>(Invoke(
@@ -142,10 +142,10 @@ class DeviceUserTestFixture : public ::testing::Test {
     EXPECT_CALL(*session_manager_ref_, GetObjectProxy)
         .Times(2)
         .WillRepeatedly(Return(session_manager_object_proxy_.get()));
-    EXPECT_CALL(*session_manager_object_proxy_, DoWaitForServiceToBeAvailable)
+    EXPECT_CALL(*session_manager_object_proxy_, WaitForServiceToBeAvailable)
         .WillOnce(
-            WithArg<0>(Invoke([](base::OnceCallback<void(bool)>* cb) mutable {
-              std::move(*cb).Run(true);
+            WithArg<0>(Invoke([](base::OnceCallback<void(bool)> cb) mutable {
+              std::move(cb).Run(true);
             })));
     EXPECT_CALL(*session_manager_object_proxy_, SetNameOwnerChangedCallback)
         .WillOnce(WithArg<0>(
@@ -475,10 +475,10 @@ TEST_F(DeviceUserTestFixture, TestFailedRegistration) {
   EXPECT_CALL(*session_manager_ref_, GetObjectProxy)
       .Times(2)
       .WillRepeatedly(Return(session_manager_object_proxy_.get()));
-  EXPECT_CALL(*session_manager_object_proxy_, DoWaitForServiceToBeAvailable)
+  EXPECT_CALL(*session_manager_object_proxy_, WaitForServiceToBeAvailable)
       .WillRepeatedly(
-          WithArg<0>(Invoke([](base::OnceCallback<void(bool)>* cb) mutable {
-            std::move(*cb).Run(true);
+          WithArg<0>(Invoke([](base::OnceCallback<void(bool)> cb) mutable {
+            std::move(cb).Run(true);
           })));
   EXPECT_CALL(*session_manager_ref_, DoRegisterSessionStateChangedSignalHandler)
       .WillOnce(WithArg<1>(

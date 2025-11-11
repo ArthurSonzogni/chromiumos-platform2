@@ -48,9 +48,8 @@ ACTION_TEMPLATE(InvokeCallbackArgument,
                 HAS_1_TEMPLATE_PARAMS(int, k),
                 AND_1_VALUE_PARAMS(p0)) {
   // Runs it as base::OnceCallback anyway.
-  std::move(
-      const_cast<typename std::remove_cv<typename std::remove_reference<
-          decltype(*std::get<k>(args))>::type>::type&>(*std::get<k>(args)))
+  std::move(const_cast<typename std::remove_cv<typename std::remove_reference<
+                decltype(std::get<k>(args))>::type>::type&>(std::get<k>(args)))
       .Run(p0);
 }
 }  // namespace
@@ -152,9 +151,9 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
         .WillRepeatedly(Return(attestation_object_proxy_.get()));
     EXPECT_CALL(*tpm_manager_proxy_, GetObjectProxy)
         .WillRepeatedly(Return(tpm_manager_object_proxy_.get()));
-    EXPECT_CALL(*attestation_object_proxy_, DoWaitForServiceToBeAvailable(_))
+    EXPECT_CALL(*attestation_object_proxy_, WaitForServiceToBeAvailable(_))
         .WillRepeatedly(InvokeCallbackArgument<0>(available));
-    EXPECT_CALL(*tpm_manager_object_proxy_, DoWaitForServiceToBeAvailable(_))
+    EXPECT_CALL(*tpm_manager_object_proxy_, WaitForServiceToBeAvailable(_))
         .WillRepeatedly(InvokeCallbackArgument<0>(available));
   }
 
