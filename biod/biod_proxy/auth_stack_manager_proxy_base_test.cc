@@ -64,12 +64,12 @@ TEST_F(AuthStackManagerProxyBaseTest, StartEnrollSessionNoResponse) {
   // this case OnStartEnrollSessionResponse) with an empty response.
   auto ExecuteCallbackWithEmptyResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
-         base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+         base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
   status_ = true;
   StartEnrollSessionRequest request;
@@ -93,14 +93,14 @@ TEST_F(AuthStackManagerProxyBaseTest, StartEnrollSessionGetSessionProxy) {
   auto ExecuteCallbackWithFakeResponse =
       [enroll_session_path](
           dbus::MethodCall* unused_method, int unused_ms,
-          base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+          base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter writer(fake_response.get());
         writer.AppendObjectPath(enroll_session_path);
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
   // Once OnStartEnrollSessionResponse is invoked with the fake response, it
   // extracts |enroll_session_path| from the fake response and asks |mock_bus_|
@@ -131,14 +131,14 @@ TEST_F(AuthStackManagerProxyBaseTest, CreateCredential) {
   // |reply|.
   auto ExecuteCallbackWithFakeResponse =
       [reply](dbus::MethodCall* unused_method, int unused_ms,
-              base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+              base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter writer(fake_response.get());
         writer.AppendProtoAsArrayOfBytes(reply);
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
 
   CreateCredentialRequest request;
@@ -160,12 +160,12 @@ TEST_F(AuthStackManagerProxyBaseTest, CreateCredentialInvalidResponse) {
   // this case OnProtoResponse) with an empty response.
   auto ExecuteCallbackWithEmptyResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
-         base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+         base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
 
   CreateCredentialRequest request;
@@ -185,12 +185,12 @@ TEST_F(AuthStackManagerProxyBaseTest, StartAuthSessionNoResponse) {
   // this case OnStartAuthSessionResponse) with an empty response.
   auto ExecuteCallbackWithEmptyResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
-         base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+         base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
   status_ = true;
   StartAuthSessionRequest request;
@@ -213,14 +213,14 @@ TEST_F(AuthStackManagerProxyBaseTest, StartAuthSessionGetSessionProxy) {
   auto ExecuteCallbackWithFakeResponse =
       [auth_session_path](
           dbus::MethodCall* call, int unused_ms,
-          base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+          base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter writer(fake_response.get());
         writer.AppendObjectPath(auth_session_path);
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
   // Once OnStartAuthSessionResponse is invoked with the fake response, it
   // extracts |auth_session_path| from the fake response and asks |mock_bus_|
@@ -250,14 +250,14 @@ TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredential) {
   // |reply|.
   auto ExecuteCallbackWithFakeResponse =
       [reply](dbus::MethodCall* unused_method, int unused_ms,
-              base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+              base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter writer(fake_response.get());
         writer.AppendProtoAsArrayOfBytes(reply);
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
 
   AuthenticateCredentialRequest request;
@@ -280,12 +280,12 @@ TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredentialInvalidResponse) {
   // this case OnProtoResponse) with an empty response.
   auto ExecuteCallbackWithEmptyResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
-         base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+         base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
 
   AuthenticateCredentialRequest request;
@@ -310,14 +310,14 @@ TEST_F(AuthStackManagerProxyBaseTest, DeleteCredential) {
   // |reply|.
   auto ExecuteCallbackWithFakeResponse =
       [reply](dbus::MethodCall* unused_method, int unused_ms,
-              base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+              base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter writer(fake_response.get());
         writer.AppendProtoAsArrayOfBytes(reply);
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
 
   DeleteCredentialRequest request;
@@ -339,12 +339,12 @@ TEST_F(AuthStackManagerProxyBaseTest, DeleteCredentialInvalidResponse) {
   // this case OnProtoResponse) with an empty response.
   auto ExecuteCallbackWithEmptyResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
-         base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+         base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
 
   DeleteCredentialRequest request;
@@ -364,12 +364,12 @@ TEST_F(AuthStackManagerProxyBaseTest, EnrollLegacyTemplateNoResponse) {
   // this case OnEnrollLegacyTemplateResponse) with an empty response.
   auto ExecuteCallbackWithEmptyResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
-         base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+         base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
   status_ = true;
   EnrollLegacyTemplateRequest request;
@@ -387,14 +387,14 @@ TEST_F(AuthStackManagerProxyBaseTest, EnrollLegacyTemplateGetSessionProxy) {
   // |enroll_session_path|.
   auto ExecuteCallbackWithFakeResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
-         base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+         base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter writer(fake_response.get());
         writer.AppendBool(true);
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
 
   status_ = false;
@@ -412,12 +412,12 @@ TEST_F(AuthStackManagerProxyBaseTest, ListLegacyRecordsNoResponse) {
   // with an empty response.
   auto ExecuteCallbackWithEmptyResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
-         base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+         base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
   std::optional<ListLegacyRecordsReply> reply;
   status_ = false;
@@ -442,14 +442,14 @@ TEST_F(AuthStackManagerProxyBaseTest, ListLegacyRecords) {
   // return the fake reply.
   auto ExecuteCallbackWithFakeResponse =
       [reply](dbus::MethodCall* unused_method, int unused_ms,
-              base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+              base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter writer(fake_response.get());
         writer.AppendProtoAsArrayOfBytes(reply);
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
   std::optional<ListLegacyRecordsReply> reply_ret;
   status_ = false;

@@ -125,14 +125,14 @@ TEST_F(BiometricsManagerProxyBaseTest, StartAuthSessionGetSessionProxyAsync) {
   auto ExecuteCallbackWithFakeResponse =
       [auth_session_path](
           dbus::MethodCall* unused_method, int unused_ms,
-          base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+          base::OnceCallback<void(dbus::Response*)> dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter writer(fake_response.get());
         writer.AppendObjectPath(auth_session_path);
-        std::move(*dbus_callback).Run(fake_response.get());
+        std::move(dbus_callback).Run(fake_response.get());
       };
-  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
   // Once OnStartAuthSessionResp is invoked with the fake response, it extracts
   // |auth_session_path| from the fake response and asks |mock_bus_| for the

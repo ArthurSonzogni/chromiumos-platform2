@@ -74,13 +74,13 @@ class SessionStateManagerTest : public ::testing::Test {
                 GetObjectProxy(power_manager::kPowerManagerServiceName, _))
         .WillRepeatedly(Return(proxy_.get()));
 
-    EXPECT_CALL(*proxy_, DoConnectToSignal(
+    EXPECT_CALL(*proxy_, ConnectToSignal(
                              login_manager::kSessionManagerInterface, _, _, _))
         .WillRepeatedly(
             Invoke(this, &SessionStateManagerTest::ConnectToSignal));
 
-    EXPECT_CALL(*proxy_, DoConnectToSignal(
-                             power_manager::kPowerManagerInterface, _, _, _))
+    EXPECT_CALL(*proxy_,
+                ConnectToSignal(power_manager::kPowerManagerInterface, _, _, _))
         .WillRepeatedly(
             Invoke(this, &SessionStateManagerTest::ConnectToSignal));
 
@@ -114,7 +114,7 @@ class SessionStateManagerTest : public ::testing::Test {
       const std::string& interface_name,
       const std::string& signal_name,
       dbus::ObjectProxy::SignalCallback signal_callback,
-      dbus::ObjectProxy::OnConnectedCallback* on_connected_callback);
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback);
 
   std::map<std::string, dbus::ObjectProxy::SignalCallback> signal_callbacks_;
 };
@@ -123,13 +123,13 @@ void SessionStateManagerTest::ConnectToSignal(
     const std::string& interface_name,
     const std::string& signal_name,
     dbus::ObjectProxy::SignalCallback signal_callback,
-    dbus::ObjectProxy::OnConnectedCallback* on_connected_callback) {
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
   EXPECT_TRUE(interface_name == login_manager::kSessionManagerInterface ||
               interface_name == power_manager::kPowerManagerInterface);
   signal_callbacks_[signal_name] = std::move(signal_callback);
   task_environment_.GetMainThreadTaskRunner()->PostTask(
       FROM_HERE,
-      base::BindOnce(std::move(*on_connected_callback), interface_name,
+      base::BindOnce(std::move(on_connected_callback), interface_name,
                      signal_name, true /* success */));
 }
 

@@ -63,7 +63,7 @@ class BiometricsManagerWrapperTest : public ::testing::Test {
     ON_CALL(*bus_, GetObjectProxy(dbus::kDBusServiceName, _))
         .WillByDefault(Return(proxy_.get()));
 
-    EXPECT_CALL(*proxy_, DoConnectToSignal(dbus::kDBusInterface, _, _, _))
+    EXPECT_CALL(*proxy_, ConnectToSignal(dbus::kDBusInterface, _, _, _))
         .WillRepeatedly(
             Invoke(this, &BiometricsManagerWrapperTest::ConnectToSignal));
 
@@ -145,7 +145,7 @@ class BiometricsManagerWrapperTest : public ::testing::Test {
       const std::string& interface_name,
       const std::string& signal_name,
       dbus::ObjectProxy::SignalCallback signal_callback,
-      dbus::ObjectProxy::OnConnectedCallback* on_connected_callback);
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback);
   dbus::ExportedObject* GetExportedObject(const dbus::ObjectPath& object_path);
   void ExportMethod(
       const std::string& interface_name,
@@ -162,12 +162,12 @@ void BiometricsManagerWrapperTest::ConnectToSignal(
     const std::string& interface_name,
     const std::string& signal_name,
     dbus::ObjectProxy::SignalCallback signal_callback,
-    dbus::ObjectProxy::OnConnectedCallback* on_connected_callback) {
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
   EXPECT_EQ(interface_name, dbus::kDBusInterface);
   signal_callbacks_[signal_name] = std::move(signal_callback);
   task_environment_.GetMainThreadTaskRunner()->PostTask(
       FROM_HERE,
-      base::BindOnce(std::move(*on_connected_callback), interface_name,
+      base::BindOnce(std::move(on_connected_callback), interface_name,
                      signal_name, true /* success */));
 }
 
