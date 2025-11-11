@@ -81,13 +81,13 @@ class DlcManagerTest : public ::testing::Test {
   void AddWaitForServiceExpects() {
     EXPECT_CALL(*mock_dlcservice_proxy_ptr_, GetObjectProxy())
         .WillOnce(Return(object_proxy_.get()));
-    EXPECT_CALL(*object_proxy_, DoWaitForServiceToBeAvailable(_))
+    EXPECT_CALL(*object_proxy_, WaitForServiceToBeAvailable(_))
         .WillOnce(
-            Invoke(this, &DlcManagerTest::StoreDoWaitForServiceToBeAvailable));
+            Invoke(this, &DlcManagerTest::StoreWaitForServiceToBeAvailable));
   }
 
-  void StoreDoWaitForServiceToBeAvailable(ServiceAvailableCallback* cb) {
-    service_available_ = std::move(*cb);
+  void StoreWaitForServiceToBeAvailable(ServiceAvailableCallback cb) {
+    service_available_ = std::move(cb);
   }
 
   void InvokeServiceAvailableFromStored(bool available = true) {
