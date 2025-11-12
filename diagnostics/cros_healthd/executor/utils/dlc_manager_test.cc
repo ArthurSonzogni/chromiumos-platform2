@@ -53,10 +53,10 @@ class DlcManagerTest : public testing::Test {
 
   void SetDlcServiceAvailability(bool available) {
     EXPECT_CALL(*dlc_service_object_proxy_.get(),
-                DoWaitForServiceToBeAvailable(_))
+                WaitForServiceToBeAvailable(_))
         .WillOnce(WithArg<0>(
-            [=](dbus::ObjectProxy::WaitForServiceToBeAvailableCallback*
-                    callback) { std::move(*callback).Run(available); }));
+            [=](dbus::ObjectProxy::WaitForServiceToBeAvailableCallback
+                    callback) { std::move(callback).Run(available); }));
   }
 
   void SetRegisterDlcStateChangedCall(bool is_success) {

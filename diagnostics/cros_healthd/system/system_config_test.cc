@@ -61,12 +61,10 @@ class SystemConfigTest : public BaseFileTest {
   }
 
   void SetDebugdAvailability(bool available) {
-    EXPECT_CALL(*debugd_object_proxy_.get(), DoWaitForServiceToBeAvailable(_))
+    EXPECT_CALL(*debugd_object_proxy_.get(), WaitForServiceToBeAvailable(_))
         .WillOnce(WithArg<0>(
-            [available](dbus::ObjectProxy::WaitForServiceToBeAvailableCallback*
-                            callback) {
-              std::move(*callback).Run(available);
-            }));
+            [available](dbus::ObjectProxy::WaitForServiceToBeAvailableCallback
+                            callback) { std::move(callback).Run(available); }));
   }
 
   SystemConfig* system_config() { return system_config_.get(); }
