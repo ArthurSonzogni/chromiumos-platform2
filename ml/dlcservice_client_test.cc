@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "ml/dlcservice_client.h"
+
 #include <memory>
 #include <utility>
 
@@ -15,8 +17,6 @@
 #include <dbus/object_proxy.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <gtest/gtest.h>
-
-#include "ml/dlcservice_client.h"
 
 namespace ml {
 
@@ -108,7 +108,7 @@ TEST_F(DlcserviceClientTest, ShouldInitializeAndCallWithCorrectDbusInterface) {
 
   // Mock the CallMethodWithErrorResponse for the `mock_object_proxy_`.
   EXPECT_CALL(*mock_object_proxy,
-              DoCallMethodWithErrorResponse(testing::_, testing::_, testing::_))
+              CallMethodWithErrorResponse(testing::_, testing::_, testing::_))
       .WillOnce(testing::WithArgs<0>(
           testing::Invoke([](dbus::MethodCall* method_call) {
             EXPECT_EQ(method_call->GetInterface(),
