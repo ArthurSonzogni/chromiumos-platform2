@@ -49,7 +49,7 @@ namespace cros {
 //  camera device immediately and stop using CameraClientOps.
 class CameraClientOps : public mojom::Camera3CallbackOps {
  public:
-  static const int kStreamId = 0;
+  static inline constexpr int kStreamId = 0;
 
   using CaptureResultCallback =
       base::RepeatingCallback<void(const cros_cam_capture_result_t&)>;
