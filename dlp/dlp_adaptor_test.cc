@@ -213,7 +213,7 @@ class DlpAdaptorTest : public ::testing::Test {
   void StubIsDlpPolicyMatched(
       dbus::MethodCall* method_call,
       int /* timeout_ms */,
-      dbus::MockObjectProxy::ResponseOrErrorCallback* callback) {
+      dbus::MockObjectProxy::ResponseOrErrorCallback callback) {
     method_call->SetSerial(kDBusSerial);
     auto response = dbus::Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());
@@ -222,35 +222,35 @@ class DlpAdaptorTest : public ::testing::Test {
     response_proto.set_restricted(is_file_policy_restricted_);
 
     writer.AppendProtoAsArrayOfBytes(response_proto);
-    std::move(*callback).Run(response.get(), nullptr);
+    std::move(callback).Run(response.get(), nullptr);
   }
 
   void StubReplyWithError(
       dbus::MethodCall* method_call,
       int /* timeout_ms */,
-      dbus::MockObjectProxy::ResponseOrErrorCallback* callback) {
+      dbus::MockObjectProxy::ResponseOrErrorCallback callback) {
     method_call->SetSerial(kDBusSerial);
     auto error_response = dbus::ErrorResponse::FromMethodCall(
         method_call, "dlp.Error", "error message");
-    std::move(*callback).Run(nullptr, error_response.get());
+    std::move(callback).Run(nullptr, error_response.get());
   }
 
   void StubReplyBadProto(
       dbus::MethodCall* method_call,
       int /* timeout_ms */,
-      dbus::MockObjectProxy::ResponseOrErrorCallback* callback) {
+      dbus::MockObjectProxy::ResponseOrErrorCallback callback) {
     method_call->SetSerial(kDBusSerial);
     auto response = dbus::Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());
 
     writer.AppendArrayOfBytes(RandomProtoBlob());
-    std::move(*callback).Run(response.get(), nullptr);
+    std::move(callback).Run(response.get(), nullptr);
   }
 
   void StubIsFilesTransferRestricted(
       dbus::MethodCall* method_call,
       int /* timeout_ms */,
-      dbus::MockObjectProxy::ResponseOrErrorCallback* callback) {
+      dbus::MockObjectProxy::ResponseOrErrorCallback callback) {
     dbus::MessageReader reader(method_call);
     IsFilesTransferRestrictedRequest request;
     EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request));
@@ -274,7 +274,7 @@ class DlpAdaptorTest : public ::testing::Test {
     }
 
     writer.AppendProtoAsArrayOfBytes(response_proto);
-    std::move(*callback).Run(response.get(), nullptr);
+    std::move(callback).Run(response.get(), nullptr);
   }
 
   void AddFilesAndCheck(const std::vector<AddFileRequest>& add_file_requests,
@@ -417,7 +417,7 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
 
   is_file_policy_restricted_ = false;
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
   FileOpenRequestResultWaiter waiter;
@@ -439,7 +439,7 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndDlpPolicyMatched_BadProto) {
 
   is_file_policy_restricted_ = false;
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyBadProto));
 
   FileOpenRequestResultWaiter waiter;
@@ -463,7 +463,7 @@ TEST_F(DlpAdaptorTest,
 
   is_file_policy_restricted_ = false;
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyWithError));
 
   FileOpenRequestResultWaiter waiter;
@@ -487,7 +487,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed) {
 
   is_file_policy_restricted_ = true;
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
   FileOpenRequestResultWaiter waiter;
@@ -540,7 +540,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
@@ -611,13 +611,13 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
   files_restrictions_.push_back(
       {std::move(file_metadata), RestrictionLevel::LEVEL_ALLOW});
   ON_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-          DoCallMethodWithErrorResponse(_, _, _))
+          CallMethodWithErrorResponse(_, _, _))
       .WillByDefault(
           Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
   // Called for the first RequestFileAccess and both ProcessFileOpen after the
   // closed ScopedFD. The second RequestFileAccess is cached.
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .Times(3);
 
   // Second loop run with cached results
@@ -684,13 +684,12 @@ TEST_F(DlpAdaptorTest, RestrictedFileSystemRequestedAllowed) {
   file_metadata.set_path(file_path.value());
   files_restrictions_.push_back(
       {std::move(file_metadata), RestrictionLevel::LEVEL_BLOCK});
-  ON_CALL(*GetMockDlpFilesPolicyServiceProxy(), DoCallMethodWithErrorResponse)
+  ON_CALL(*GetMockDlpFilesPolicyServiceProxy(), CallMethodWithErrorResponse)
       .WillByDefault(
           Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
   // Called for both ProcessFileOpen after the closed ScopedFD.
   // RequestFileAccess is allowed with only checking component.
-  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse)
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(), CallMethodWithErrorResponse)
       .Times(2);
 
   // Both runs should be answered without getting the cache involved.
@@ -752,7 +751,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedButBadProto) {
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyBadProto));
 
   // Request access to the file.
@@ -795,7 +794,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedButErrorResponse) {
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyWithError));
 
   // Request access to the file.
@@ -868,7 +867,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
     // answered from the cache
     if (i == 0 || i == 2) {
       EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-                  DoCallMethodWithErrorResponse(_, _, _))
+                  CallMethodWithErrorResponse(_, _, _))
           .WillOnce(
               Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
     }
@@ -883,7 +882,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
 
     is_file_policy_restricted_ = true;
     EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-                DoCallMethodWithErrorResponse(_, _, _))
+                CallMethodWithErrorResponse(_, _, _))
         .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
     // Access the file.
@@ -911,7 +910,7 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
@@ -968,7 +967,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .Times(0);
 
   // Request access to the file.
@@ -1022,7 +1021,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
   files_restrictions_.push_back(
       {std::move(file_metadata), RestrictionLevel::LEVEL_BLOCK});
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
@@ -1052,7 +1051,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
   // Setup callback for DlpFilesPolicyService::IsDlpPolicyMatched()
   is_file_policy_restricted_ = true;
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
   // Request access to the file.
@@ -1077,7 +1076,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
@@ -1113,7 +1112,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
   // Setup callback for DlpFilesPolicyService::IsDlpPolicyMatched()
   is_file_policy_restricted_ = true;
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
   // Request access to the file.
@@ -1876,7 +1875,7 @@ TEST_F(DlpAdaptorTest, CheckFilesTransfer_IsFilesTransferRestrictedBadProto) {
                    /*expected_result=*/true);
 
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyBadProto));
 
   auto response = std::make_unique<
@@ -1919,7 +1918,7 @@ TEST_F(DlpAdaptorTest,
                    /*expected_result=*/true);
 
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyWithError));
 
   auto response = std::make_unique<
@@ -2048,7 +2047,7 @@ TEST_P(DlpAdaptorCheckFilesTransferTest, Run) {
       (GetParam() == LEVEL_UNSPECIFIED || GetParam() == LEVEL_WARN_CANCEL) ? 2
                                                                            : 1;
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
-              DoCallMethodWithErrorResponse(_, _, _))
+              CallMethodWithErrorResponse(_, _, _))
       .Times(is_files_transfer_restricted_calls)
       .WillRepeatedly(
           Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
