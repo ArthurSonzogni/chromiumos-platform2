@@ -211,11 +211,11 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
     dbus::Response* response = mock_auth_dialog_response_.get();
     dbus::MessageWriter writer(response);
     writer.AppendBool(true);
-    EXPECT_CALL(*mock_auth_dialog_proxy_, DoCallMethod(_, _, _))
+    EXPECT_CALL(*mock_auth_dialog_proxy_, CallMethod(_, _, _))
         .WillOnce(
             [response](Unused, Unused,
-                       base::OnceCallback<void(dbus::Response*)>* callback) {
-              std::move(*callback).Run(response);
+                       base::OnceCallback<void(dbus::Response*)> callback) {
+              std::move(callback).Run(response);
             });
   }
 

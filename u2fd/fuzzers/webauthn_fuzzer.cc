@@ -171,12 +171,12 @@ class WebAuthnFuzzer : public brillo::Daemon {
                     dbus::ObjectPath(chromeos::kUserAuthenticationServicePath)))
         .WillRepeatedly(Return(mock_auth_dialog_proxy_.get()));
 
-    EXPECT_CALL(*mock_auth_dialog_proxy_, DoCallMethod(_, _, _))
+    EXPECT_CALL(*mock_auth_dialog_proxy_, CallMethod(_, _, _))
         .WillRepeatedly(
             [this](Unused, Unused,
-                   base::OnceCallback<void(dbus::Response*)>* callback) {
+                   base::OnceCallback<void(dbus::Response*)> callback) {
               this->GenerateMockAuthDialogResponse();
-              std::move(*callback).Run(mock_auth_dialog_response_.get());
+              std::move(callback).Run(mock_auth_dialog_response_.get());
             });
 
     EXPECT_CALL(*mock_auth_dialog_proxy_, CallMethodAndBlock(_, _))
