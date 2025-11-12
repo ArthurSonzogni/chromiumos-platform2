@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "dlcservice/installer.h"
+
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -12,7 +14,6 @@
 #include <gtest/gtest.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 
-#include "dlcservice/installer.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/test_utils.h"
 
@@ -94,8 +95,7 @@ TEST_F(UpdateEngineInstallerTest, InitTest) {
       .Times(1);
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetObjectProxy())
       .WillOnce(Return(mock_update_engine_object_proxy_.get()));
-  EXPECT_CALL(*mock_update_engine_object_proxy_,
-              DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_update_engine_object_proxy_, WaitForServiceToBeAvailable(_))
       .Times(1);
 
   EXPECT_TRUE(ue_installer_.Init());
