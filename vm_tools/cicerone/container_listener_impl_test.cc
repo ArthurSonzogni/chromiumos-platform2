@@ -993,12 +993,12 @@ TEST(ContainerListenerImplTest,
   // Replace the ListVmDisks request to concierge.
   EXPECT_CALL(
       test_framework.get_mock_concierge_service_proxy(),
-      DoCallMethod(
+      CallMethod(
           AllOf(HasInterfaceName(vm_tools::concierge::kVmConciergeInterface),
                 HasMethodName(vm_tools::concierge::kListVmDisksMethod)),
           _, _))
       .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout,
-                          base::OnceCallback<void(dbus::Response*)>* callback) {
+                          base::OnceCallback<void(dbus::Response*)> callback) {
         method_call->SetSerial(123);
         std::unique_ptr<dbus::Response> dbus_response(
             dbus::Response::FromMethodCall(method_call));
@@ -1012,7 +1012,7 @@ TEST(ContainerListenerImplTest,
         image->set_path("/mnt/stateful/borealis.img");
 
         writer.AppendProtoAsArrayOfBytes(response);
-        std::move(*callback).Run(std::move(dbus_response.get()));
+        std::move(callback).Run(std::move(dbus_response.get()));
       }));
 
   // Set the response to AmountOfTotalDiskSpace.

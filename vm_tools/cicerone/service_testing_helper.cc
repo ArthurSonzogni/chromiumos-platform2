@@ -201,13 +201,13 @@ void ServiceTestingHelper::ExpectNoDBusMessages() {
                 CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
         .Times(0);
     EXPECT_CALL(*object_proxy,
-                DoCallMethod(A<dbus::MethodCall*>(), A<int>(),
-                             A<dbus::ObjectProxy::ResponseCallback*>()))
+                CallMethod(A<dbus::MethodCall*>(), A<int>(),
+                           A<dbus::ObjectProxy::ResponseCallback>()))
         .Times(0);
     EXPECT_CALL(*object_proxy,
-                DoCallMethodWithErrorResponse(
+                CallMethodWithErrorResponse(
                     A<dbus::MethodCall*>(), A<int>(),
-                    A<dbus::ObjectProxy::ResponseOrErrorCallback*>()))
+                    A<dbus::ObjectProxy::ResponseOrErrorCallback>()))
         .Times(0);
   }
 }
@@ -596,9 +596,9 @@ bool ServiceTestingHelper::StoreDBusCallback(
 }
 
 void ServiceTestingHelper::CallServiceAvailableCallback(
-    dbus::ObjectProxy::WaitForServiceToBeAvailableCallback* callback) {
+    dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback) {
   CHECK(dbus_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(*callback), true)));
+      FROM_HERE, base::BindOnce(std::move(callback), true)));
 }
 
 void ServiceTestingHelper::SetupDBus(MockType mock_type) {
@@ -718,7 +718,7 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
                                          A<const dbus::ObjectPath&>()))
       .WillRepeatedly(Return(mock_shill_manager_proxy_.get()));
 
-  EXPECT_CALL(*mock_crosdns_service_proxy_, DoWaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_crosdns_service_proxy_, WaitForServiceToBeAvailable(_))
       .WillOnce(
           Invoke(this, &ServiceTestingHelper::CallServiceAvailableCallback));
 
