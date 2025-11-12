@@ -51,8 +51,8 @@ class RksCertificateFetcherTest : public ::testing::Test {
 
     object_proxy_ =
         new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("/"));
-    ON_CALL(*object_proxy_, DoWaitForServiceToBeAvailable)
-        .WillByDefault([](auto* callback) { std::move(*callback).Run(true); });
+    ON_CALL(*object_proxy_, WaitForServiceToBeAvailable)
+        .WillByDefault([](auto callback) { std::move(callback).Run(true); });
 
     ON_CALL(*manager_proxy_, GetObjectProxy())
         .WillByDefault(Return(object_proxy_.get()));
