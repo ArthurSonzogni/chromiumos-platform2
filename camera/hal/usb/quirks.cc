@@ -66,6 +66,8 @@ const QuirksMap& GetQuirksMap() {
       {{"30c9", "0128"}, kQuirkUserSpaceTimestamp},
       // BNNL19KEL-00A (b/451072148)
       {{"5986", "2189"}, kQuirkUserSpaceTimestamp},
+      // LCE-Optics LSN131BF (b/450396233)
+      {{"5959", "0131"}, kQuirkUserSpaceTimestamp},
   });
   return *kQuirksMap;
 }
