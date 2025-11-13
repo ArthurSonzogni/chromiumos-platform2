@@ -80,6 +80,7 @@ pkg_config("libcrash_config") {
   pkg_deps = [
     "libchrome",
     "libcrossystem",
+    "libruntimehwid_utils",
     "libsession_manager-client",
     "re2",
     "system_api",
@@ -94,6 +95,7 @@ static_library("libcrash") {
     "crash_collector_names.cc",
     "crossystem.cc",
     "paths.cc",
+    "runtime_hwid_utils.cc",
     "util.cc",
     "vm_support.cc",
   ]

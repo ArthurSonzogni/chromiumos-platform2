@@ -41,6 +41,7 @@
 
 #include "crash-reporter/crossystem.h"
 #include "crash-reporter/paths.h"
+#include "crash-reporter/runtime_hwid_utils.h"
 #include "crash-reporter/vm_support.h"
 
 namespace util {
@@ -355,6 +356,11 @@ bool IsBuildTimestampTooOldForUploads(int64_t build_time_millis,
 }
 
 std::string GetHardwareClass() {
+  auto runtime_hwid = crash_runtime_hwid_utils::GetInstance()->GetRuntimeHWID();
+  if (runtime_hwid.has_value()) {
+    return *runtime_hwid;
+  }
+
   std::string hw_class;
   for (const auto& path : kHwClassPaths) {
     if (base::ReadFileToString(paths::Get(path), &hw_class)) {
@@ -362,13 +368,7 @@ std::string GetHardwareClass() {
       return hw_class;
     }
   }
-  auto vb_value =
-      crash_crossystem::GetInstance()->VbGetSystemPropertyString("hwid");
-  if (vb_value.has_value()) {
-    std::string out;
-    base::TrimWhitespaceASCII(vb_value.value(), base::TRIM_TRAILING, &out);
-    return out;
-  }
+
   return "undefined";
 }
 

@@ -26,6 +26,7 @@
 #include <brillo/process/process.h>
 #include <brillo/streams/memory_stream.h>
 #include <brillo/syslog_logging.h>
+#include <chromeos/hardware_verifier/runtime_hwid_utils/runtime_hwid_utils_mock.h>
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem_fake.h>
 #include <metrics/metrics_library_mock.h>
@@ -33,6 +34,7 @@
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/crossystem.h"
 #include "crash-reporter/paths.h"
+#include "crash-reporter/runtime_hwid_utils.h"
 #include "crash-reporter/test_util.h"
 
 // The QEMU emulator we use to run unit tests on simulated ARM boards does not
@@ -50,6 +52,7 @@ namespace {
 using ::testing::AllOf;
 using ::testing::Eq;
 using ::testing::HasSubstr;
+using ::testing::NiceMock;
 using ::testing::Optional;
 using ::testing::StrEq;
 
@@ -292,19 +295,14 @@ TEST_F(CrashCommonUtilTest, IsBuildTimestampTooOldForUploads) {
 }
 
 TEST_F(CrashCommonUtilTest, GetHardwareClass) {
-  crossystem::Crossystem stub_crossystem(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  auto old_instance =
-      crash_crossystem::ReplaceInstanceForTest(&stub_crossystem);
+  NiceMock<hardware_verifier::MockRuntimeHWIDUtils> stub_runtime_hwid_utils;
+  auto old_instance = crash_runtime_hwid_utils::ReplaceInstanceForTest(
+      &stub_runtime_hwid_utils);
 
-  // HWID file not found and failed to get the "hwid" system property.
+  // Failed to get (Runtime) HWID and HWID file does not exist.
   EXPECT_EQ("undefined", GetHardwareClass());
 
-  // HWID file not found and but manage to get the "hwid" system property.
-  stub_crossystem.VbSetSystemPropertyString("hwid", "TEST_HWID_123\n");
-  EXPECT_EQ("TEST_HWID_123", GetHardwareClass());
-
-  // When the HWID file exists, it should prioritize to return the file content.
+  // Failed to get (Runtime) HWID but HWID file exists.
   // .../GGL0001:00/HWID is prior to .../GOOG0016:00/HWID for backward
   // compatible.
   ASSERT_TRUE(test_util::CreateFile(
@@ -316,7 +314,13 @@ TEST_F(CrashCommonUtilTest, GetHardwareClass) {
                             std::string(kHwClassContents) + "\n"));
   EXPECT_EQ(kHwClassContents, GetHardwareClass());
 
-  crash_crossystem::ReplaceInstanceForTest(old_instance);
+  // When getting (Runtime) HWID successfully, it should prioritize to return
+  // the (Runtime) HWID.
+  EXPECT_CALL(stub_runtime_hwid_utils, GetRuntimeHWID())
+      .WillOnce(::testing::Return("RUNTIME-HWID"));
+  EXPECT_EQ("RUNTIME-HWID", GetHardwareClass());
+
+  crash_runtime_hwid_utils::ReplaceInstanceForTest(old_instance);
 }
 
 TEST_F(CrashCommonUtilTest, GetBootModeString) {
