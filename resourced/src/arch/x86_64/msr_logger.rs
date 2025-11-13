@@ -19,9 +19,6 @@ use log::error;
 use log::info;
 
 use super::platform;
-use crate::feature;
-
-const MSR_LOGGER_FEATURE_NAME: &str = "CrOSLateBootResourcedMsrLogger";
 
 const MSR_CORE_PERF_LIMIT_REASONS_ADDR: u64 = 0x64f;
 
@@ -109,20 +106,13 @@ async fn log_perf_limit_reasons() -> Result<()> {
     Ok(())
 }
 
-// Checks the feature flag every 1 hour. When the feature is on, check msr values every 1 minute.
+// Check msr values every 1 minute.
 async fn msr_logger_main() -> Result<()> {
-    const BATCH_LOG_COUNT: u32 = 60;
     const WAIT_BETWEEN_LOG: Duration = Duration::from_secs(60);
 
     loop {
-        if feature::is_feature_enabled(MSR_LOGGER_FEATURE_NAME)? {
-            for _ in 0..BATCH_LOG_COUNT {
-                log_perf_limit_reasons().await?;
-                tokio::time::sleep(WAIT_BETWEEN_LOG).await;
-            }
-        } else {
-            tokio::time::sleep(BATCH_LOG_COUNT * WAIT_BETWEEN_LOG).await;
-        }
+        log_perf_limit_reasons().await?;
+        tokio::time::sleep(WAIT_BETWEEN_LOG).await;
     }
 }
 
@@ -131,9 +121,6 @@ pub fn init() {
     if !platform::is_intel_platform().unwrap_or(false) {
         return;
     }
-
-    // Replace false with true for local test.
-    feature::register_feature(MSR_LOGGER_FEATURE_NAME, true, None);
 
     tokio::spawn(async move {
         if let Err(e) = msr_logger_main().await {
