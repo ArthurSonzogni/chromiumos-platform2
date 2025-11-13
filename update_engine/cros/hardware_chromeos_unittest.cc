@@ -12,8 +12,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/json/json_string_value_serializer.h>
 #include <brillo/file_utils.h>
-#include <chromeos/hardware_verifier/runtime_hwid_utils/runtime_hwid_utils_mock.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem.h>
 #include <libcrossystem/crossystem_fake.h>
@@ -75,11 +73,6 @@ class HardwareChromeOSTest : public ::testing::Test {
     auto crossystem = std::make_unique<crossystem::Crossystem>(
         std::move(fake_crossystem_impl));
     hardware_.crossystem_ = std::move(crossystem);
-
-    auto runtime_hwid_utils = std::make_unique<
-        ::testing::NiceMock<hardware_verifier::MockRuntimeHWIDUtils>>();
-    mock_runtime_hwid_utils_ = runtime_hwid_utils.get();
-    hardware_.runtime_hwid_utils_ = std::move(runtime_hwid_utils);
   }
 
   void WriteStatefulConfig(const string& config) {
@@ -112,7 +105,6 @@ class HardwareChromeOSTest : public ::testing::Test {
 
   HardwareChromeOS hardware_;
   base::ScopedTempDir root_dir_;
-  hardware_verifier::MockRuntimeHWIDUtils* mock_runtime_hwid_utils_;
 };
 
 TEST_F(HardwareChromeOSTest, NoLocalFile) {
@@ -515,20 +507,6 @@ TEST_F(HardwareChromeOSTest, IsPowerwashScheduledByUpdateEngineEmptyReason) {
 
   EXPECT_TRUE(result);
   EXPECT_FALSE(result.value());
-}
-
-TEST_F(HardwareChromeOSTest, GetHardwareClassSuccess) {
-  EXPECT_CALL(*mock_runtime_hwid_utils_, GetRuntimeHWID())
-      .WillOnce(::testing::Return("RUNTIME-HWID"));
-
-  EXPECT_EQ(hardware_.GetHardwareClass(), "RUNTIME-HWID");
-}
-
-TEST_F(HardwareChromeOSTest, GetHardwareClassFailure) {
-  EXPECT_CALL(*mock_runtime_hwid_utils_, GetRuntimeHWID())
-      .WillOnce(::testing::Return(std::nullopt));
-
-  EXPECT_EQ(hardware_.GetHardwareClass(), "");
 }
 
 }  // namespace chromeos_update_engine

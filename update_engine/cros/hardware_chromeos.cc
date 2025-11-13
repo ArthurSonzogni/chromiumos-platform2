@@ -15,8 +15,6 @@
 #include <base/strings/string_util.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/key_value_store.h>
-#include <chromeos/hardware_verifier/runtime_hwid_utils/runtime_hwid_utils.h>
-#include <chromeos/hardware_verifier/runtime_hwid_utils/runtime_hwid_utils_impl.h>
 #include <debugd/dbus-constants.h>
 #include <libcrossystem/crossystem.h>
 #include <vboot/crossystem.h>
@@ -148,7 +146,6 @@ void HardwareChromeOS::Init() {
   debugd_proxy_.reset(
       new org::chromium::debugdProxy(DBusConnection::Get()->GetDBus()));
   crossystem_.reset(new crossystem::Crossystem());
-  runtime_hwid_utils_.reset(new hardware_verifier::RuntimeHWIDUtilsImpl());
 }
 
 bool HardwareChromeOS::IsOfficialBuild() const {
@@ -226,12 +223,25 @@ bool HardwareChromeOS::IsOOBEComplete(base::Time* out_time_of_oobe) const {
   return true;
 }
 
+static string ReadValueFromCrosSystem(const string& key) {
+  char value_buffer[VB_MAX_STRING_PROPERTY];
+
+  if (VbGetSystemPropertyString(key.c_str(), value_buffer,
+                                sizeof(value_buffer)) != -1) {
+    string return_value(value_buffer);
+    base::TrimWhitespaceASCII(return_value, base::TRIM_ALL, &return_value);
+    return return_value;
+  }
+
+  LOG(ERROR) << "Unable to read crossystem key " << key;
+  return "";
+}
+
 string HardwareChromeOS::GetHardwareClass() const {
   if (USE_HWID_OVERRIDE) {
     return HwidOverride::Read(base::FilePath("/"));
   }
-
-  return runtime_hwid_utils_->GetRuntimeHWID().value_or("");
+  return ReadValueFromCrosSystem("hwid");
 }
 
 int HardwareChromeOS::GetMinKernelKeyVersion() const {

@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/time/time.h>
-#include <chromeos/hardware_verifier/runtime_hwid_utils/runtime_hwid_utils.h>
 #include <debugd/dbus-proxies.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <libcrossystem/crossystem.h>
@@ -132,7 +131,6 @@ class HardwareChromeOS final : public HardwareInterface {
 
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<crossystem::Crossystem> crossystem_;
-  std::unique_ptr<hardware_verifier::RuntimeHWIDUtils> runtime_hwid_utils_;
 };
 
 }  // namespace chromeos_update_engine
