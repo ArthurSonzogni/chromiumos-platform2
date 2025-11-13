@@ -255,12 +255,21 @@ TEST(FpFrameCommand, FrameToPgmWrongFrameSize_16bpp) {
 }
 
 TEST(FpFrameCommand, FrameToPgmSuccess_2bpp) {
-  const std::vector<uint8_t> frame = {0, 100, 200, 255};
+  const std::vector<uint8_t> frame = {0, 1, 3, 2};
 
   EXPECT_EQ(
       FpFrameCommand::FrameToPgm(frame, {.bpp = 2, .width = 2, .height = 2})
           .value(),
-      "P2\n2 2\n255\n0 100 \n200 255 \n# END OF FILE\n");
+      "P2\n2 2\n3\n0 1 \n3 2 \n# END OF FILE\n");
+}
+
+TEST(FpFrameCommand, FrameToPgmSuccess_14bpp) {
+  const std::vector<uint16_t> frame = {0, 1000, 2000, 15434};
+
+  EXPECT_EQ(FpFrameCommand::FrameToPgm(base::as_byte_span(frame),
+                                       {.bpp = 14, .width = 2, .height = 2})
+                .value(),
+            "P2\n2 2\n16383\n0 1000 \n2000 15434 \n# END OF FILE\n");
 }
 
 TEST(FpFrameCommand, FrameToPgmSuccess_8bpp) {

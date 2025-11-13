@@ -82,7 +82,7 @@ std::optional<std::string> FpFrameCommand::FrameToPgm(
   std::stringstream stream;
   stream << "P2\n"
          << options.width << " " << options.height << "\n"
-         << ((bytes_per_pixel == 2) ? 65535 : 255) << "\n";
+         << (1u << options.bpp) - 1 << "\n";
 
   for (int y = 0; y < options.height; y++) {
     for (int x = 0; x < options.width; x++, ptr += bytes_per_pixel) {
