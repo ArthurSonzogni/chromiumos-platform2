@@ -208,7 +208,10 @@ Process::SendMojoInvitationAndGetRemote(pid_t worker_pid,
   // IPCz requires an application to explicitly opt in to broker sharing
   // and inheritance when establishing a direct connection between two
   // non-broker nodes.
-  invitation.set_extra_flags(MOJO_SEND_INVITATION_FLAG_SHARE_BROKER);
+  if (process_type_ != Type::kControlForTest) {
+    // Only share broker if we are not the broker. In tests we are the broker.
+    invitation.set_extra_flags(MOJO_SEND_INVITATION_FLAG_SHARE_BROKER);
+  }
 #endif
 
   mojo::Remote<chromeos::machine_learning::mojom::MachineLearningService>
@@ -283,11 +286,13 @@ void Process::WorkerProcessRun() {
 #if defined(ENABLE_IPCZ_ON_CHROMEOS)
     // IPCz requires an application to explicitly opt in to broker sharing
     // and inheritance when establishing a direct connection between two
-    // non-broker nodes.
+    // non-broker nodes. NOTE: Do not inherit broker if the parent didn't share
+    // it (i.e. in tests).
     invitation = mojo::IncomingInvitation::Accept(
         mojo::PlatformChannelEndpoint(
             mojo::PlatformHandle(base::ScopedFD(mojo_bootstrap_fd_))),
-        MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+        disable_seccomp_for_test_ ? MOJO_ACCEPT_INVITATION_FLAG_NONE
+                                  : MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
 #else
     invitation = mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
         mojo::PlatformHandle(base::ScopedFD(mojo_bootstrap_fd_))));
