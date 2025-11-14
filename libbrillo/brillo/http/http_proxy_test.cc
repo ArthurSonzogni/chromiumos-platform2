@@ -31,12 +31,12 @@ class HttpProxyTest : public testing::Test {
  public:
   void ResolveProxyHandlerAsync(dbus::MethodCall* method_call,
                                 int timeout_msec,
-                                dbus::ObjectProxy::ResponseCallback* callback) {
+                                dbus::ObjectProxy::ResponseCallback callback) {
     if (null_dbus_response_) {
-      std::move(*callback).Run(nullptr);
+      std::move(callback).Run(nullptr);
       return;
     }
-    std::move(*callback).Run(CreateDBusResponse(method_call).get());
+    std::move(callback).Run(CreateDBusResponse(method_call).get());
   }
 
   base::expected<std::unique_ptr<dbus::Response>, dbus::Error>
@@ -144,7 +144,7 @@ TEST_F(HttpProxyTest, MultipleProxiesWithDirect) {
 
 TEST_F(HttpProxyTest, DBusNullResponseFailsAsync) {
   null_dbus_response_ = true;
-  EXPECT_CALL(*object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*object_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandlerAsync));
   EXPECT_CALL(*this, GetProxiesCallback(false, _));
   GetChromeProxyServersAsync(bus_, kTestUrl,
@@ -154,7 +154,7 @@ TEST_F(HttpProxyTest, DBusNullResponseFailsAsync) {
 
 TEST_F(HttpProxyTest, DBusInvalidResponseFailsAsync) {
   invalid_dbus_response_ = true;
-  EXPECT_CALL(*object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*object_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandlerAsync));
   EXPECT_CALL(*this, GetProxiesCallback(false, _));
   GetChromeProxyServersAsync(bus_, kTestUrl,
@@ -171,7 +171,7 @@ TEST_F(HttpProxyTest, MultipleProxiesWithDirectAsync) {
   std::vector<std::string> expected = {
       "socks4://foo.com", "https://example.com", "socks5://test.com",
       "http://foobar.com", kDirectProxy};
-  EXPECT_CALL(*object_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*object_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandlerAsync));
   EXPECT_CALL(*this, GetProxiesCallback(true, expected));
   GetChromeProxyServersAsync(bus_, kTestUrl,
