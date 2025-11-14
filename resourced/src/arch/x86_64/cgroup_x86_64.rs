@@ -86,7 +86,7 @@ fn write_default_nonurgent_cpusets(root: &Path) -> Result<()> {
         Ok(Some(cpuset_str)) => cpuset_str,
         Ok(None) => Cpuset::little_cores(root)?.to_string(),
         Err(e) => {
-            info!("Failed to get scheduler-tune cpuset-nonurgent, {}", e);
+            info!("Failed to get scheduler-tune cpuset-nonurgent, {e}");
             Cpuset::all_cores(root)?.to_string()
         }
     };
@@ -126,8 +126,7 @@ fn get_intel_hybrid_core_num(root: &Path) -> Result<(u32, u32)> {
         .iter()
         .map(|cpu| {
             read_from_file(&root.join(format!(
-                "sys/devices/system/cpu/cpufreq/policy{}/cpuinfo_max_freq",
-                cpu
+                "sys/devices/system/cpu/cpufreq/policy{cpu}/cpuinfo_max_freq"
             )))
         })
         .collect::<Result<Vec<u32>>>()?;
@@ -172,7 +171,7 @@ fn platform_feature_media_dynamic_cgroup_enabled(root: &Path) -> Result<bool> {
 fn parse_loadavg_1min<R: BufRead>(reader: R) -> Result<f64> {
     let first_line = reader.lines().next().context("No content in buffer")??;
     let error_context =
-        || -> String { format!("Couldn't parse /proc/loadavg content: \"{}\"", first_line) };
+        || -> String { format!("Couldn't parse /proc/loadavg content: \"{first_line}\"") };
     first_line
         .split_ascii_whitespace()
         .next()
@@ -200,20 +199,14 @@ fn media_dynamic_cgroup_impl(action: MediaDynamicCgroupAction, root: &Path) -> R
     let mut active = MEDIA_DYNAMIC_CGROUP_ACTIVE.do_lock();
     if *active != new_active {
         if new_active {
-            info!(
-                "system load is reasonable: {}, so start media dynamic cgroup",
-                recent_system_load
-            );
+            info!("system load is reasonable: {recent_system_load}, so start media dynamic cgroup");
 
             // Write platform cpuset to media dynamic cgroup cpuset.
             let media_cpus = get_media_dynamic_cgroup_cpuset_cpus(root)?;
             write_cpusets(root, &media_cpus).context("Failed to update dynamic cgropu cpus")?;
         } else {
             if !recent_system_load.is_nan() {
-                info!(
-                    "system load is high: {}, stop media dynamic cgroup",
-                    recent_system_load
-                );
+                info!("system load is high: {recent_system_load}, stop media dynamic cgroup");
             } else {
                 info!("stop media dynamic cgroup");
             }
@@ -274,8 +267,7 @@ mod tests {
         for cpu in 0..4 {
             // Create fake sysfs ../cpufreq/policy*/cpufino_max_freq.
             let max_freq_path = root.path().join(format!(
-                "sys/devices/system/cpu/cpufreq/policy{}/cpuinfo_max_freq",
-                cpu
+                "sys/devices/system/cpu/cpufreq/policy{cpu}/cpuinfo_max_freq"
             ));
             test_create_parent_dir(&max_freq_path);
             std::fs::write(max_freq_path, "6000").unwrap();
@@ -290,8 +282,7 @@ mod tests {
         for cpu in 4..12 {
             // Create fake sysfs ../cpufreq/policy*/cpufino_max_freq.
             let max_freq_path = root.path().join(format!(
-                "sys/devices/system/cpu/cpufreq/policy{}/cpuinfo_max_freq",
-                cpu
+                "sys/devices/system/cpu/cpufreq/policy{cpu}/cpuinfo_max_freq"
             ));
             test_create_parent_dir(&max_freq_path);
             std::fs::write(max_freq_path, "4000").unwrap();
@@ -328,7 +319,7 @@ mod tests {
     }
 
     fn test_write_cpu_capacity(root: &Path, cpu_num: u32, capacity: u32) {
-        let cpu_cap_path = root.join(format!("sys/bus/cpu/devices/cpu{}/cpu_capacity", cpu_num));
+        let cpu_cap_path = root.join(format!("sys/bus/cpu/devices/cpu{cpu_num}/cpu_capacity"));
         test_create_parent_dir(&cpu_cap_path);
         std::fs::write(cpu_cap_path, capacity.to_string()).unwrap();
     }

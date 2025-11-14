@@ -65,7 +65,7 @@ impl FromStr for PowerSupplyStatus {
             "Discharging" => Ok(PowerSupplyStatus::Discharging),
             "Not charging" => Ok(PowerSupplyStatus::NotCharging),
             "Full" => Ok(PowerSupplyStatus::Full),
-            _ => anyhow::bail!("Unknown Power Supply Status: '{}'", s),
+            _ => anyhow::bail!("Unknown Power Supply Status: '{s}'"),
         }
     }
 }
@@ -226,7 +226,7 @@ impl<P: PowerSourceProvider> DirectoryPowerPreferencesManager<P> {
                 format!("Error writing {} {} to {}", attr, value, path.display())
             })?;
 
-            info!("Updating ondemand {} to {}", attr, value);
+            info!("Updating ondemand {attr} to {value}");
         }
 
         Ok(())
@@ -352,7 +352,7 @@ impl<P: PowerSourceProvider> DirectoryPowerPreferencesManager<P> {
                     )
                 })?;
 
-                info!("Updating cpufreq boost {}", boost_value);
+                info!("Updating cpufreq boost {boost_value}");
             }
         }
 
@@ -374,8 +374,8 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
 
         let power_source = self.power_source_provider.get_power_source()?;
 
-        info!("Power source {:?}", power_source);
-        info!("Thermal state {:?}", thermalstate);
+        info!("Power source {power_source:?}");
+        info!("Thermal state {thermalstate:?}");
 
         if batterysaver == BatterySaverMode::Active {
             preferences = self

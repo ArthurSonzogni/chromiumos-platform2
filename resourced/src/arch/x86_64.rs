@@ -158,7 +158,7 @@ pub fn apply_platform_power_settings(
     } else if bsm == BatterySaverMode::Inactive {
         if fullscreen_video_efficiency_mode {
             if let Err(err) = set_epp(root_path, EnergyPerformancePreference::BalancePower) {
-                error!("Failed to set energy performance preference: {:#}", err);
+                error!("Failed to set energy performance preference: {err:#}");
             }
         } else if need_default_epp {
             set_default_epp(root_path)?;
@@ -173,7 +173,7 @@ pub fn apply_platform_power_settings(
     }
 
     if let Err(err) = set_gt_boost_freq_mhz(rtc) {
-        error!("Set boost freq not supported: {:#}", err)
+        error!("Set boost freq not supported: {err:#}")
     }
 
     Ok(())

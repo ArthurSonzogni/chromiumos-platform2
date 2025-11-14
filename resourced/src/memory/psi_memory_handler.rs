@@ -72,11 +72,11 @@ impl Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::MemInfo(e) => write!(f, "load meminfo: {}", e),
-            Error::Vmstat(e) => write!(f, "load vmstat: {}", e),
-            Error::Cpuset(e) => write!(f, "load cpuset: {}", e),
-            Error::CreatePsiMonitor(e) => write!(f, "create psi monitor: {}", e),
-            Error::MonitorPsi(e) => write!(f, "wait psi: {}", e),
+            Error::MemInfo(e) => write!(f, "load meminfo: {e}"),
+            Error::Vmstat(e) => write!(f, "load vmstat: {e}"),
+            Error::Cpuset(e) => write!(f, "load cpuset: {e}"),
+            Error::CreatePsiMonitor(e) => write!(f, "create psi monitor: {e}"),
+            Error::MonitorPsi(e) => write!(f, "wait psi: {e}"),
         }
     }
 }
@@ -193,14 +193,14 @@ impl PsiMemoryHandler {
         let monitor_config = match PsiMonitorConfig::load_from_feature() {
             Ok(config) => config,
             Err(e) => {
-                error!("Failed to load PsiMonitorConfig: {}", e);
+                error!("Failed to load PsiMonitorConfig: {e}");
                 PsiMonitorConfig::default()
             }
         };
         let policy_config = match PsiPolicyConfig::load_from_feature() {
             Ok(config) => config,
             Err(e) => {
-                error!("Failed to load PsiPolicyConfig: {}", e);
+                error!("Failed to load PsiPolicyConfig: {e}");
                 PsiPolicyConfig::default()
             }
         };
@@ -221,14 +221,14 @@ impl PsiMemoryHandler {
                 let current_level = self.psi_monitor.current_level();
                 match PsiMemoryPressureMonitor::new_with_initial_level(config, current_level) {
                     Ok(monitor) => self.psi_monitor = monitor,
-                    Err(e) => error!("Failed to reload PsiMemoryPressureMonitor: {}", e),
+                    Err(e) => error!("Failed to reload PsiMemoryPressureMonitor: {e}"),
                 };
             }
-            Err(e) => error!("Failed to reload PsiMonitorConfig: {}", e),
+            Err(e) => error!("Failed to reload PsiMonitorConfig: {e}"),
         }
         match PsiPolicyConfig::load_from_feature() {
             Ok(config) => self.psi_memory_policy.update_config(config),
-            Err(e) => error!("Failed to reload PsiPolicyConfig: {}", e),
+            Err(e) => error!("Failed to reload PsiPolicyConfig: {e}"),
         }
     }
 
@@ -284,13 +284,13 @@ impl PsiMemoryHandler {
             .calculate_reclaim(now, &meminfo, vmstat, game_mode, &margins, psi_level);
 
         if let MemoryReclaim::Critical(target_kb) = &reclaim {
-            info!("PSI Memory Reclaim: {} KB, reason: {:?}", target_kb, reason);
+            info!("PSI Memory Reclaim: {target_kb} KB, reason: {reason:?}");
             if let Err(e) = metrics::send_enum_to_uma(
                 UMA_NAME_RECLAIM_REASON,
                 reason as i32,
                 MAX_MEMORY_RECLAIM_REASON + 1,
             ) {
-                error!("Failed to send memory reclaim reason to UMA: {}", e);
+                error!("Failed to send memory reclaim reason to UMA: {e}");
             }
         }
 

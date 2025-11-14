@@ -26,7 +26,7 @@ pub fn init_cpu_config() -> Result<()> {
     if base_slice_ns < base_slice_min {
         if let Err(e) = std::fs::write(SCHED_BASE_SLICE_PATH, base_slice_min.to_string().as_bytes())
         {
-            error!("Failed to write {} {}\n", SCHED_BASE_SLICE_PATH, e);
+            error!("Failed to write {SCHED_BASE_SLICE_PATH} {e}\n");
         };
     }
 

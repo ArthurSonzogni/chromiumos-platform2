@@ -45,7 +45,7 @@ impl From<usize> for ProcessGroupKind {
             3 => Self::ARC,
             4 => Self::VMs,
             5 => Self::Daemons,
-            _ => panic!("Tried to convert {} to ProcessGroupKind", val),
+            _ => panic!("Tried to convert {val} to ProcessGroupKind"),
         }
     }
 }
@@ -82,7 +82,7 @@ impl From<usize> for MemKind {
             2 => Self::File,
             3 => Self::Shmem,
             4 => Self::Swap,
-            _ => panic!("Tried to convert {} to MemKind", val),
+            _ => panic!("Tried to convert {val} to MemKind"),
         }
     }
 }
@@ -91,7 +91,7 @@ impl From<usize> for MemKind {
 pub fn get_metric_name(process_kind: usize, mem_kind: usize) -> String {
     let process_kind = ProcessGroupKind::from(process_kind);
     let mem_kind = MemKind::from(mem_kind);
-    format!("Platform.Memory.{:?}.{:?}", process_kind, mem_kind)
+    format!("Platform.Memory.{process_kind:?}.{mem_kind:?}")
 }
 
 // Parses comm and ppid from the stats file content.
@@ -149,12 +149,12 @@ fn build_pid_map(procfs_path: &str) -> Result<HashMap<u32, Vec<u32>>> {
         let ppid = match parse_stats_file(bytes) {
             Ok(res) => res,
             Err(e) => {
-                warn!("failed to parse stats file {:?}", e);
+                warn!("failed to parse stats file {e:?}");
                 continue;
             }
         };
         if !found_processes.insert(pid) {
-            warn!("duplicate process {}", pid);
+            warn!("duplicate process {pid}");
         }
         if ppid != 0 {
             pid_map.entry(ppid).or_default().push(pid);
@@ -171,7 +171,7 @@ fn build_pid_map(procfs_path: &str) -> Result<HashMap<u32, Vec<u32>>> {
     pid_map.retain(|pid, children| {
         let is_found = found_processes.contains(pid);
         if !is_found {
-            info!("Parent {} for children {:?} not found", pid, children);
+            info!("Parent {pid} for children {children:?} not found");
             need_reparenting.append(children);
         }
         is_found
@@ -184,7 +184,7 @@ fn build_pid_map(procfs_path: &str) -> Result<HashMap<u32, Vec<u32>>> {
 }
 
 fn read_cmdline(procfs_path: &str, pid: u32) -> Option<Vec<u8>> {
-    match std::fs::read(Path::new(&format!("{}/{}/cmdline", procfs_path, pid))) {
+    match std::fs::read(Path::new(&format!("{procfs_path}/{pid}/cmdline"))) {
         Ok(bytes) => Some(bytes),
         Err(err) => {
             let os_err = err.raw_os_error();
@@ -192,7 +192,7 @@ fn read_cmdline(procfs_path: &str, pid: u32) -> Option<Vec<u8>> {
             // with the process dying. Otherwise something unexpected happened, so
             // log an error.
             if os_err != Some(libc::ENOENT) && os_err != Some(libc::ESRCH) {
-                warn!("Failed to read {}'s cmdline: {:?}", pid, err);
+                warn!("Failed to read {pid}'s cmdline: {err:?}");
             }
             None
         }
@@ -269,14 +269,14 @@ fn classify_chrome(procfs_path: &str, pid: u32) -> Option<ProcessGroupKind> {
     };
 
     let Some(exe) = strip_chrome_directory(&exe) else {
-        warn!("Unknown chrome process {} running {:?}", pid, exe);
+        warn!("Unknown chrome process {pid} running {exe:?}");
         return Some(ProcessGroupKind::Browser);
     };
 
     if exe == Path::new("nacl_helper") {
         return Some(ProcessGroupKind::Browser);
     } else if exe != Path::new("chrome") {
-        warn!("Unknown chrome process {} running {:?}", pid, exe);
+        warn!("Unknown chrome process {pid} running {exe:?}");
         return Some(ProcessGroupKind::Browser);
     }
 
@@ -295,7 +295,7 @@ fn classify_chrome(procfs_path: &str, pid: u32) -> Option<ProcessGroupKind> {
         "--type=utility" => ProcessGroupKind::Renderers,
         "--type=gpu-process" => ProcessGroupKind::Gpu,
         _ => {
-            warn!("Unknown chrome process {} with type {}", pid, type_switch);
+            warn!("Unknown chrome process {pid} with type {type_switch}");
             ProcessGroupKind::Browser
         }
     })
@@ -360,13 +360,13 @@ fn find_cmdline_arg_by_prefix(cmdline: &[u8], prefix: &[u8]) -> Option<String> {
 
 // Read the exe path from /proc/pid/exe.
 fn get_exe(procfs_path: &str, pid: u32) -> Option<PathBuf> {
-    match std::fs::read_link(Path::new(&format!("{}/{}/exe", procfs_path, pid))) {
+    match std::fs::read_link(Path::new(&format!("{procfs_path}/{pid}/exe"))) {
         Ok(path) => Some(path.to_path_buf()),
         Err(err) => {
             let os_err = err.raw_os_error();
             // ENOENT just means we raced with the process dying. Otherwise log the error.
             if os_err != Some(libc::ENOENT) {
-                warn!("Failed to read {}'s cmdline: {:?}", pid, err);
+                warn!("Failed to read {pid}'s cmdline: {err:?}");
             }
             None
         }
@@ -461,7 +461,7 @@ fn classify_processes(
     let arc_container_pid = match get_arc_container_init_pid(run_path) {
         Ok(pid) => pid,
         Err(e) => {
-            error!("Failed to read ARC pid {:?}", e);
+            error!("Failed to read ARC pid {e:?}");
             None
         }
     };
@@ -495,7 +495,7 @@ fn parse_memfd_dev_id(addr: *const libc::c_void) -> Result<String> {
                     if let Some(id) = parse_dev_id_from_vma_header(line) {
                         return Ok(id.to_string());
                     } else {
-                        bail!("Failed to parse smaps header {}", line);
+                        bail!("Failed to parse smaps header {line}");
                     }
                 }
             }
@@ -555,7 +555,7 @@ fn get_memfd_dev_id() -> Option<String> {
         .get_or_init(|| match get_memfd_dev_id_from_smaps() {
             Ok(dev_id) => Some(dev_id),
             Err(err) => {
-                error!("Failed to parse memfd dev_id: {:?}", err);
+                error!("Failed to parse memfd dev_id: {err:?}");
                 None
             }
         })
@@ -572,7 +572,7 @@ fn parse_smaps_line(line: &str) -> Option<u64> {
 
 // Parse shmem swap from full smaps for the given pid.
 fn parse_shmem_swap_from_smaps(procfs_path: &str, pid: u32) -> Option<u64> {
-    let smaps_bytes = std::fs::read(format!("{}/{}/smaps", procfs_path, pid)).ok()?;
+    let smaps_bytes = std::fs::read(format!("{procfs_path}/{pid}/smaps")).ok()?;
     // smaps contains file names, so we may not necessarily be able to convert it
     // to a utf8 string. However, we only care about the ASCII parts of the string
     // returned by the kernel, so a lossy conversion is fine.
@@ -623,7 +623,7 @@ fn get_memory_stats(
         if !line.starts_with(kind.smaps_prefix()) {
             continue;
         }
-        let bytes = parse_smaps_line(line).unwrap_or_else(|| panic!("bad line in rollup {}", line));
+        let bytes = parse_smaps_line(line).unwrap_or_else(|| panic!("bad line in rollup {line}"));
         res[mem_kind_idx] += bytes;
         mem_kind_idx += 1;
         if mem_kind_idx == MemKind::Count as usize {
@@ -695,7 +695,7 @@ mod tests {
             .as_ref()
             .unwrap();
 
-        let pid_path = procfs_path.join(format!("{}", pid));
+        let pid_path = procfs_path.join(format!("{pid}"));
         std::fs::create_dir(&pid_path).unwrap();
         if let Some(cmdline) = cmdline {
             std::os::unix::fs::symlink(Path::new(cmdline.0), pid_path.join("exe")).unwrap();
@@ -708,9 +708,9 @@ mod tests {
             std::fs::File::create(pid_path.join("cmdline")).unwrap();
         }
         let stats_bytes = [
-            format!("{} (", pid).as_bytes(),
+            format!("{pid} (").as_bytes(),
             name,
-            format!(") R {} 33 44 a b c \n", ppid).as_bytes(),
+            format!(") R {ppid} 33 44 a b c \n").as_bytes(),
         ]
         .concat();
         std::fs::write(pid_path.join("stat"), stats_bytes).unwrap();
@@ -769,7 +769,7 @@ mod tests {
         std::fs::create_dir_all(&arc_pid_path).unwrap();
         std::fs::write(
             arc_pid_path.join("container.pid"),
-            format!("{}", arc_init_pid),
+            format!("{arc_init_pid}"),
         )
         .unwrap();
 

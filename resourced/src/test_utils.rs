@@ -63,13 +63,13 @@ pub fn test_create_parent_dir(path: &Path) {
 }
 
 pub fn test_write_online_cpu(root: &Path, cpu: u32, value: &str) {
-    let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{}/online", cpu));
+    let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{cpu}/online"));
     test_create_parent_dir(&root_online_cpu);
     fs::write(root_online_cpu, value).unwrap();
 }
 
 pub fn test_check_online_cpu(root: &Path, cpu: u32, expected: &str) {
-    let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{}/online", cpu));
+    let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{cpu}/online"));
     test_create_parent_dir(&root_online_cpu);
     let value = fs::read_to_string(root_online_cpu).unwrap();
     assert_eq!(value, expected);
@@ -77,8 +77,7 @@ pub fn test_check_online_cpu(root: &Path, cpu: u32, expected: &str) {
 
 pub fn test_write_core_cpus_list(root: &Path, cpu: u32, value: &str) {
     let core_cpus_list = root.join(format!(
-        "sys/devices/system/cpu/cpu{}/topology/core_cpus_list",
-        cpu
+        "sys/devices/system/cpu/cpu{cpu}/topology/core_cpus_list"
     ));
     test_create_parent_dir(&core_cpus_list);
     fs::write(core_cpus_list, value).unwrap();
@@ -105,8 +104,7 @@ pub fn test_write_cpuset_root_cpus(root: &Path, cpus: &str) {
 
 pub fn test_write_cpu_max_freq(root: &Path, cpu_num: u32, max_freq: u32) {
     let cpu_max_path = root.join(format!(
-        "sys/bus/cpu/devices/cpu{}/cpufreq/cpuinfo_max_freq",
-        cpu_num
+        "sys/bus/cpu/devices/cpu{cpu_num}/cpufreq/cpuinfo_max_freq"
     ));
     test_create_parent_dir(&cpu_max_path);
     fs::write(cpu_max_path, max_freq.to_string()).unwrap();

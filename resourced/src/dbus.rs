@@ -193,8 +193,8 @@ fn override_critical_if_necessary(original_critical_margin: u32) -> u32 {
 
     if overridden_critical_margin != original_critical_margin {
         warn!(
-            "Overriding critical margin by: Original: {} Overridden to: {}",
-            original_critical_margin, overridden_critical_margin
+            "Overriding critical margin by: Original: {original_critical_margin} \
+            Overridden to: {overridden_critical_margin}"
         );
     }
 
@@ -270,7 +270,7 @@ fn register_interface(
                     match protobuf::Message::parse_from_bytes(&raw_bytes) {
                         Ok(result) => result,
                         Err(e) => {
-                            error!("Failed to parse MemoryMargins protobuf: {:#}", e);
+                            error!("Failed to parse MemoryMargins protobuf: {e:#}");
                             return Err(MethodErr::failed(
                                 "Failed to parse MemoryMargins protobuf",
                             ));
@@ -320,7 +320,7 @@ fn register_interface(
                     swappiness_config_clone.clone(),
                 )
                 .map_err(|e| {
-                    error!("set_game_mode failed: {:#}", e);
+                    error!("set_game_mode failed: {e:#}");
 
                     MethodErr::failed("Failed to set game mode")
                 })?;
@@ -346,7 +346,7 @@ fn register_interface(
                     swappiness_config_clone.clone(),
                 )
                 .map_err(|e| {
-                    error!("set_game_mode failed: {:#}", e);
+                    error!("set_game_mode failed: {e:#}");
 
                     MethodErr::failed("Failed to set game mode")
                 })?;
@@ -395,7 +395,7 @@ fn register_interface(
                 ) {
                     Ok(()) => Ok(()),
                     Err(e) => {
-                        error!("set_rtc_audio_active failed: {:#}", e);
+                        error!("set_rtc_audio_active failed: {e:#}");
                         Err(MethodErr::failed("Failed to set RTC audio activity"))
                     }
                 }
@@ -415,7 +415,7 @@ fn register_interface(
 
                 common::set_fullscreen_video(context.power_preferences_manager.as_ref(), mode)
                     .map_err(|e| {
-                        error!("set_fullscreen_video failed: {:#}", e);
+                        error!("set_fullscreen_video failed: {e:#}");
 
                         MethodErr::failed("Failed to set full screen video mode")
                     })?;
@@ -449,7 +449,7 @@ fn register_interface(
             match common::update_power_preferences(context.power_preferences_manager.as_ref()) {
                 Ok(()) => Ok(()),
                 Err(e) => {
-                    error!("update_power_preferences failed: {:#}", e);
+                    error!("update_power_preferences failed: {e:#}");
                     Err(MethodErr::failed("Failed to update power preferences"))
                 }
             }
@@ -521,7 +521,7 @@ fn register_interface(
                     let sender_euid = match sender_euid.await {
                         Ok(euid) => euid,
                         Err(e) => {
-                            error!("failed to get sender euid: {:#}", e);
+                            error!("failed to get sender euid: {e:#}");
                             send_set_process_state_failure_to_uma(QOS_ERROR_NO_SENDER);
                             return sender_context
                                 .reply(Err(MethodErr::failed("failed to get sender info")));
@@ -531,7 +531,7 @@ fn register_interface(
                     match set_process_state(sched_ctx, process_id, process_state, sender_euid) {
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
-                            error!("change_process_state failed: {:#}, pid={}", e, process_id);
+                            error!("change_process_state failed: {e:#}, pid={process_id}");
                             send_set_process_state_failure_to_uma(e.to_uma_enum_sample());
                             sender_context.reply(Err(e.to_dbus_error()))
                         }
@@ -558,7 +558,7 @@ fn register_interface(
                     let sender_euid = match sender_euid.await {
                         Ok(euid) => euid,
                         Err(e) => {
-                            error!("failed to get sender euid: {:#}", e);
+                            error!("failed to get sender euid: {e:#}");
                             send_set_thread_state_failure_to_uma(QOS_ERROR_NO_SENDER);
                             return sender_context
                                 .reply(Err(MethodErr::failed("failed to get sender info")));
@@ -574,7 +574,7 @@ fn register_interface(
                     ) {
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
-                            error!("change_thread_state failed: {:#}, pid={}", e, process_id);
+                            error!("change_thread_state failed: {e:#}, pid={process_id}");
                             send_set_thread_state_failure_to_uma(e.to_uma_enum_sample());
                             sender_context.reply(Err(e.to_dbus_error()))
                         }
@@ -593,7 +593,7 @@ fn register_interface(
                     match protobuf::Message::parse_from_bytes(&raw_bytes) {
                         Ok(result) => result,
                         Err(e) => {
-                            error!("Failed to parse ReportBrowserProcesses protobuf: {:#}", e);
+                            error!("Failed to parse ReportBrowserProcesses protobuf: {e:#}");
                             return Err(MethodErr::failed(
                                 "Failed to parse ReportBrowserProcesses protobuf",
                             ));
@@ -605,9 +605,8 @@ fn register_interface(
                         Ok(BrowserType::LACROS) => memory::BrowserType::Lacros,
                         Err(enum_raw) => {
                             error!(
-                                "ReportBrowserProcesses browser type is unknown, enum_raw: {}",
-                                enum_raw
-                            );
+                            "ReportBrowserProcesses browser type is unknown, enum_raw: {enum_raw}"
+                        );
                             return Err(MethodErr::failed(
                                 "ReportBrowserProcesses browser type is unknown",
                             ));
@@ -679,7 +678,7 @@ fn set_vm_boot_mode(context: DbusContext, mode: common::VmBootMode) -> Result<()
         bail!("VM boot mode is not enabled");
     }
     common::set_vm_boot_mode(context.power_preferences_manager.as_ref(), mode).map_err(|e| {
-        error!("set_vm_boot_mode failed: {:#}", e);
+        error!("set_vm_boot_mode failed: {e:#}");
         MethodErr::failed("Failed to set VM boot mode")
     })?;
 
@@ -717,7 +716,7 @@ fn on_battery_saver_mode_change(context: DbusContext, raw_bytes: Vec<u8>) -> Res
 
     common::on_battery_saver_mode_change(context.power_preferences_manager.as_ref(), mode)
         .map_err(|e| {
-            error!("on_battery_saver_mode_change failed: {:#}", e);
+            error!("on_battery_saver_mode_change failed: {e:#}");
             MethodErr::failed("Failed to set battery saver mode")
         })?;
 
@@ -763,7 +762,7 @@ async fn memory_checker_wait(
             | memory::PressureLevelChrome::Critical => MAX_WAITING_CRITICAL_PRESSURE,
         },
         Err(e) => {
-            error!("get_memory_pressure_status() failed: {}", e);
+            error!("get_memory_pressure_status() failed: {e}");
             MAX_WAITING_NO_PRESSURE
         }
     };
@@ -771,7 +770,7 @@ async fn memory_checker_wait(
     // Waiting for certain range of duration. Interrupt if PSI memory stall exceeds the
     // threshold.
     if let Ok(Err(e)) = tokio::time::timeout(max_waiting, psi_watcher.wait()).await {
-        error!("wait_psi_monitor_memory_event returns error: {:?}", e);
+        error!("wait_psi_monitor_memory_event returns error: {e:?}");
         tokio::time::sleep(MEMORY_USAGE_POLL_INTERVAL_DEFAULT).await;
     }
 }
@@ -863,7 +862,7 @@ async fn margin_memory_handler_loop(
         match PsiWatcher::new_memory_pressure(Target::Some, STALL_DURATION, WINDOW_DURATION) {
             Ok(psi_watcher) => Some(psi_watcher),
             Err(e) => {
-                error!("failed to create psi watcher: {:?}", e);
+                error!("failed to create psi watcher: {e:?}");
                 None
             }
         };
@@ -949,7 +948,7 @@ pub async fn service_main() -> Result<()> {
     // io_resource must be awaited to start receiving D-Bus message.
     let _handle = tokio::spawn(async {
         let err = io_resource.await;
-        panic!("Lost connection to D-Bus: {}", err);
+        panic!("Lost connection to D-Bus: {err}");
     });
 
     arch::init();
@@ -962,7 +961,7 @@ pub async fn service_main() -> Result<()> {
     let conn_clone = conn.clone();
     tokio::spawn(async move {
         if let Err(err) = swappiness_proxy.run_proxy(conn_clone).await {
-            error!("Error with swappiness proxy {:?}", err);
+            error!("Error with swappiness proxy {err:?}");
         }
     });
 
@@ -977,7 +976,7 @@ pub async fn service_main() -> Result<()> {
                         if let Err(e) =
                             common::update_power_preferences(power_preferences_manager.as_ref())
                         {
-                            error!("update_power_preferences failed: {:#}", e);
+                            error!("update_power_preferences failed: {e:#}");
                         }
                     }
                     tokio::time::sleep(THERMAL_POLLING_PERIOD).await;
@@ -1029,7 +1028,7 @@ pub async fn service_main() -> Result<()> {
             vm_starting_up_rule,
             Box::new(move |_, _| {
                 if let Err(e) = set_vm_boot_mode(context2.clone(), common::VmBootMode::Active) {
-                    error!("Failed to initalize VM boot boosting. {}", e);
+                    error!("Failed to initalize VM boot boosting. {e}");
                 }
                 true
             }),
@@ -1043,7 +1042,7 @@ pub async fn service_main() -> Result<()> {
             vm_complete_boot_rule,
             Box::new(move |_, _| {
                 if let Err(e) = set_vm_boot_mode(cb_context.clone(), common::VmBootMode::Inactive) {
-                    error!("Failed to stop VM boot boosting. {}", e);
+                    error!("Failed to stop VM boot boosting. {e}");
                 }
                 true
             }),
@@ -1069,15 +1068,12 @@ pub async fn service_main() -> Result<()> {
         Box::new(move |msg, _| match msg.read1() {
             Ok(bytes) => {
                 if let Err(e) = on_battery_saver_mode_change(context.clone(), bytes) {
-                    error!("error handling Battery Saver Mode change. {}", e);
+                    error!("error handling Battery Saver Mode change. {e}");
                 }
                 true
             }
             Err(e) => {
-                error!(
-                    "error reading D-Bus message {}. {}",
-                    BATTERY_SAVER_MODE_EVENT, e
-                );
+                error!("error reading D-Bus message {BATTERY_SAVER_MODE_EVENT}. {e}");
                 true
             }
         }),
@@ -1108,7 +1104,7 @@ pub async fn service_main() -> Result<()> {
             let count = notification_count_clone.load(Ordering::Relaxed);
 
             if let Err(err) = report_notification_count(count) {
-                error!("Failed to report notification count: {}", err);
+                error!("Failed to report notification count: {err}");
             }
             notification_count_clone.store(0, Ordering::Relaxed);
 
@@ -1118,15 +1114,15 @@ pub async fn service_main() -> Result<()> {
                 match process_stats::get_all_memory_stats("/proc", "/run") {
                     Ok(stats) => {
                         if let Err(err) = report_memory_stats(stats) {
-                            error!("Failed to report memory stats: {}", err);
+                            error!("Failed to report memory stats: {err}");
                         }
                     }
-                    Err(e) => error!("Failed to gather memory stats {:?}", e),
+                    Err(e) => error!("Failed to gather memory stats {e:?}"),
                 }
             })
             .await;
             if let Err(e) = res {
-                error!("Error gathering memory stats {:?}", e);
+                error!("Error gathering memory stats {e:?}");
             };
         }
     });
@@ -1154,13 +1150,13 @@ pub async fn service_main() -> Result<()> {
             )
             .await
             {
-                error!("Failed to run psi memory checker loop: {}", e);
+                error!("Failed to run psi memory checker loop: {e}");
                 if let Err(e) = metrics::send_enum_to_uma(
                     UMA_NAME_PSI_POLICY_ERROR,
                     e.as_i32(),
                     MAX_PSI_ERROR_TYPE + 1,
                 ) {
-                    error!("Failed to send psi memory checker error to UMA: {}", e);
+                    error!("Failed to send psi memory checker error to UMA: {e}");
                 }
 
                 // wait 1 second to retry to avoid logging the error in a busy loop.

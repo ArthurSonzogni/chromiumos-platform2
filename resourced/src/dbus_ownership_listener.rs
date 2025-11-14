@@ -47,7 +47,7 @@ async fn handle_name_owner_changes<T: DbusOwnershipChangeCallback>(
         has_received_message = true;
         let res = cb.on_ownership_change(msg.old, msg.new);
         if let Err(e) = res.await {
-            error!("Error handling name owner change: {:?}", e);
+            error!("Error handling name owner change: {e:?}");
         }
     }
 }
@@ -90,7 +90,7 @@ pub async fn monitor_dbus_service<T: DbusOwnershipChangeCallback + 'static>(
             let (name, old, new): (String, String, String) = match msg.read3() {
                 Ok(res) => res,
                 Err(e) => {
-                    error!("Malformed signal: {:?}", e);
+                    error!("Malformed signal: {e:?}");
                     return true;
                 }
             };
@@ -102,7 +102,7 @@ pub async fn monitor_dbus_service<T: DbusOwnershipChangeCallback + 'static>(
                     from_signal: true,
                 };
                 if let Err(e) = cb_sender.send(msg) {
-                    error!("error dispatching name owner change: {:?}", e)
+                    error!("error dispatching name owner change: {e:?}")
                 }
             }
             true
@@ -132,7 +132,7 @@ pub async fn monitor_dbus_service<T: DbusOwnershipChangeCallback + 'static>(
             from_signal: false,
         };
         if let Err(e) = sender.send(msg) {
-            error!("error dispatching name owner change: {:?}", e)
+            error!("error dispatching name owner change: {e:?}")
         }
     }
 

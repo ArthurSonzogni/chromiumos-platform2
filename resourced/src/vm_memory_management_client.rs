@@ -132,7 +132,7 @@ impl DbusOwnershipChangeCallback for VmConciergeMonitor {
                     *self.state.do_lock() = VmMMConnectionState::Connected(conn)
                 }
                 Err(e) => {
-                    info!("VmMemoryManagementClient not activating: {}", e);
+                    info!("VmMemoryManagementClient not activating: {e}");
                 }
             }
         }
@@ -235,7 +235,7 @@ impl VmMMConnection {
         packet.mut_kill_decision_request().priority = priority.into();
 
         if let Err(e) = self.write_message(packet).await {
-            error!("error writing kill decision request {:?}", e);
+            error!("error writing kill decision request {e:?}");
             return 0;
         }
 
@@ -246,7 +246,7 @@ impl VmMMConnection {
                 match size_freed_kb {
                     Ok(size_freed_kb) => Some(size_freed_kb),
                     Err(e) => {
-                        error!("error reading reclaim response {:?}", e);
+                        error!("error reading reclaim response {e:?}");
                         return 0;
                     }
                 }
@@ -267,7 +267,7 @@ impl VmMMConnection {
         };
 
         if let Err(e) = self.write_message(packet).await {
-            warn!("error writing decision latency {:?}", e);
+            warn!("error writing decision latency {e:?}");
         }
 
         balloon_reclaim_kb.unwrap_or(0)
@@ -278,7 +278,7 @@ impl VmMMConnection {
         packet.type_ = PacketType::PACKET_TYPE_NO_KILL_CANDIDATES.into();
 
         if let Err(e) = self.write_message(packet).await {
-            warn!("Failed to send no kill candidates packet {:?}", e);
+            warn!("Failed to send no kill candidates packet {e:?}");
         }
     }
 

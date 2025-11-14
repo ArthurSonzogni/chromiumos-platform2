@@ -129,7 +129,7 @@ fn update_mglru_sysfs(mask: u64, enable: bool) -> Result<()> {
     };
 
     let mut bytes = Vec::new();
-    write!(&mut bytes, "0x{:x}", enabled_setting).expect("Failed to format string");
+    write!(&mut bytes, "0x{enabled_setting:x}").expect("Failed to format string");
     std::fs::write(MGLRU_ENABLE_PATH, bytes).context("Failed to update MGLRU enable state")?;
     Ok(())
 }
@@ -171,7 +171,7 @@ pub fn register_features(swappiness: SwappinessConfig) {
             false,
             Some(Box::new(move |enabled| {
                 if let Err(e) = update_mglru_split_settings(enabled, &swappiness) {
-                    error!("Failed to update MGLRU split settings {:?}", e);
+                    error!("Failed to update MGLRU split settings {e:?}");
                 }
             })),
         );
@@ -183,7 +183,7 @@ pub fn register_features(swappiness: SwappinessConfig) {
                 // Set the aggressive mm bit to the inverse of the split gen experiment state.
                 const MGLRU_AGGRESSIVE_MM_BIT: u64 = 0x30;
                 if let Err(e) = update_mglru_sysfs(MGLRU_AGGRESSIVE_MM_BIT, !enabled) {
-                    error!("Failed to update MGLRU conservative mm {:?}", e);
+                    error!("Failed to update MGLRU conservative mm {e:?}");
                 }
             })),
         )
@@ -226,7 +226,7 @@ fn calculate_reserved_free_kb<R: BufRead>(reader: R) -> Result<u64> {
         if key == "high" {
             num_reserved_pages += if let Some(v) = tokens.next() {
                 v.parse::<u64>()
-                    .with_context(|| format!("Couldn't parse the high field: {}", line))?
+                    .with_context(|| format!("Couldn't parse the high field: {line}"))?
             } else {
                 0
             };
@@ -236,7 +236,7 @@ fn calculate_reserved_free_kb<R: BufRead>(reader: R) -> Result<u64> {
                 let num = token
                     .trim_matches(pattern)
                     .parse::<u64>()
-                    .with_context(|| format!("Couldn't parse protection field: {}", line))?;
+                    .with_context(|| format!("Couldn't parse protection field: {line}"))?;
                 Ok(std::cmp::max(maximal, num))
             })?;
         }
@@ -262,7 +262,7 @@ fn psi_adjust_memory_kb(memory_component_kb: u64) -> u64 {
     let psi = match procfs::MemoryPressure::new() {
         Ok(psi) => psi,
         Err(e) => {
-            error!("procfs::MemoryPressure::new() failed: {}", e);
+            error!("procfs::MemoryPressure::new() failed: {e}");
             return memory_component_kb;
         }
     };
@@ -351,7 +351,7 @@ fn get_memory_parameters() -> MemoryParameters {
     static RESERVED_FREE: Lazy<u64> = Lazy::new(|| match get_reserved_memory_kb() {
         Ok(reserved) => reserved,
         Err(e) => {
-            error!("get_reserved_memory_kb failed: {}", e);
+            error!("get_reserved_memory_kb failed: {e}");
             0
         }
     });
@@ -432,7 +432,7 @@ fn get_memory_margins_kb_from_bps(margins_bps: MemoryMarginsBps) -> MemoryMargin
     let total_memory_kb = match MemInfo::load() {
         Ok(meminfo) => meminfo.total,
         Err(e) => {
-            error!("Assume 2 GiB total memory if get_meminfo failed: {}", e);
+            error!("Assume 2 GiB total memory if get_meminfo failed: {e}");
             2 * 1024
         }
     };
@@ -801,7 +801,7 @@ async fn try_vmms_reclaim_memory(
     };
 
     if let Err(e) = report_vmms_reclaim_memory_duration(chrome_level, now.elapsed()) {
-        error!("Failed to report try_vmms_reclaim_memory duration {:?}", e);
+        error!("Failed to report try_vmms_reclaim_memory duration {e:?}");
     }
 
     vmms_reclaim_actual
@@ -1161,10 +1161,7 @@ fn get_chrome_memory_kb(
             match get_chrome_tab_processes(browser_type, process_type, min_last_visible_age) {
                 Ok(tab_processes) => tab_processes,
                 Err(e) => {
-                    error!(
-                        "Failed to get chrome {} {} tabs: {}",
-                        browser_type, process_type, e
-                    );
+                    error!("Failed to get chrome {browser_type} {process_type} tabs: {e}");
                     continue;
                 }
             };
@@ -1209,10 +1206,10 @@ fn get_chrome_process_memory_usage(pid: i32) -> Result<u64> {
     }
     let rssanon = status
         .rssanon
-        .with_context(|| format!("Couldn't get the RssAnon field in /proc/{}/status", pid))?;
+        .with_context(|| format!("Couldn't get the RssAnon field in /proc/{pid}/status"))?;
     let vmswap = status
         .vmswap
-        .with_context(|| format!("Couldn't get the VmSwap field in /proc/{}/status", pid))?;
+        .with_context(|| format!("Couldn't get the VmSwap field in /proc/{pid}/status"))?;
     Ok(rssanon + vmswap)
 }
 

@@ -20,23 +20,23 @@ fn main() -> Result<()> {
 
     // Initialize syslog. The default log level is info (debug! and trace! are ignored).
     // You can change the log level with log::set_max_level().
-    if let Err(e) = syslog::init(IDENT.to_string(), false /* log_to_stderr */) {
-        bail!("Failed to initiailize syslog: {}", e);
+    if let Err(err) = syslog::init(IDENT.to_string(), false /* log_to_stderr */) {
+        bail!("Failed to initiailize syslog: {err}");
     }
 
     info!("Starting resourced");
 
     if let Err(err) = memory::init_memory_configs() {
-        error!("Failed to initialize memory configs: {}", err);
+        error!("Failed to initialize memory configs: {err}");
     }
 
     if let Err(err) = cpu_config::init_cpu_config() {
-        error!("Failed to initialize cpu configs: {}", err);
+        error!("Failed to initialize cpu configs: {err}");
     }
 
     let rt = Builder::new_current_thread().enable_all().build()?;
     if let Err(err) = rt.block_on(dbus::service_main()) {
-        error!("The D-Bus service main returns error: {:?}", err);
+        error!("The D-Bus service main returns error: {err:?}");
     }
 
     Ok(())

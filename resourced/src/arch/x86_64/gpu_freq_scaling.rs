@@ -135,7 +135,7 @@ pub mod intel_device {
                 match gpu_dev.adjust_gpu_frequency(&cpu_dev) {
                     Ok(_) => info!("GPU tuning thread ended successfully"),
                     Err(e) => {
-                        warn!("GPU tuning thread ended prematurely: {:?}", e);
+                        warn!("GPU tuning thread ended prematurely: {e:?}");
                     }
                 }
 
@@ -299,11 +299,8 @@ pub mod intel_device {
 
                 // Only change GPU freq if PL0 changed and we moved to a new bucket.
                 if current_bucket_index != prev_bucket_index {
-                    info!("power_limit_0 changed: {} -> {}", last_pl_val, current_pl);
-                    info!(
-                        "pl0 bucket changed {} -> {}",
-                        prev_bucket_index, current_bucket_index
-                    );
+                    info!("power_limit_0 changed: {last_pl_val} -> {current_pl}");
+                    info!("pl0 bucket changed {prev_bucket_index} -> {current_bucket_index}");
                     if let Some(requested_bucket) = self.power_limit_thr.get(current_bucket_index) {
                         let gpu_stats = self.get_gpu_stats()?;
                         let requested_gpu_freq = requested_bucket.1;
@@ -313,7 +310,7 @@ pub mod intel_device {
                             > (gpu_stats.min_freq + GPU_FREQUENCY_GUARD_BUFFER_MHZ)
                             && requested_gpu_freq != gpu_stats.max_freq
                         {
-                            info!("Setting GPU max to {}", requested_gpu_freq);
+                            info!("Setting GPU max to {requested_gpu_freq}");
                             // For the initial version, gpu_max = turbo.
                             self.set_gpu_max_freq(requested_gpu_freq)?;
                             self.set_gpu_turbo_freq(requested_gpu_freq)?;
@@ -526,8 +523,8 @@ pub mod amd_device {
         }
 
         fn set_clk_voltage_mode(&self, min: u32, max: u32) -> Result<()> {
-            let min_str = format!("s 0 {}\n", min);
-            let max_str = format!("s 1 {}\n", max);
+            let min_str = format!("s 0 {min}\n");
+            let max_str = format!("s 1 {max}\n");
             // setting the minimum frequency
             fs::write(&self.clk_voltage_path, min_str)?;
             // setting the maximum frequency

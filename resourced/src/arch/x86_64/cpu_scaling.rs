@@ -183,7 +183,7 @@ impl DeviceCpuStatus {
     pub fn set_all_max_cpu_freq(&self, val_max: u64) -> Result<()> {
         let threshold = (self.cpu_max_freq_default - self.cpu_min_freq_default)
             / (CPU_DIFF_THRESHOLD_DIVISOR as u64);
-        info!("Setting All CPU max freq to {:?}", val_max);
+        info!("Setting All CPU max freq to {val_max:?}");
         let cpus: Result<Vec<_>, _> = glob(&self.cpu_max_freq_path_pattern)?.collect();
         let cpus = cpus?;
         for curr_cpu in cpus {
@@ -218,7 +218,7 @@ impl DeviceCpuStatus {
     pub fn set_all_min_cpu_freq(&self, val_min: u64) -> Result<()> {
         let threshold = (self.cpu_max_freq_default - self.cpu_min_freq_default)
             / (CPU_DIFF_THRESHOLD_DIVISOR as u64);
-        info!("Setting All CPU min freq to {:?}", val_min);
+        info!("Setting All CPU min freq to {val_min:?}");
         let cpus: Result<Vec<_>, _> = glob(&self.cpu_min_freq_path_pattern)?.collect();
         let cpus = cpus?;
 
@@ -479,7 +479,7 @@ pub fn write_msr_on_all_cpus(root: &Path, msr_value: u64, msr_addr: u64) -> Resu
             let msr_path = Path::new(&msr_pathbuf);
 
             if !msr_path.exists() {
-                bail!("MSR file not Found {:?}", msr_path);
+                bail!("MSR file not Found {msr_path:?}");
             }
 
             let mut file = File::options().write(true).open(msr_path).context(format!(
@@ -489,13 +489,9 @@ pub fn write_msr_on_all_cpus(root: &Path, msr_value: u64, msr_addr: u64) -> Resu
 
             let bytes_written = file.write_at(&data, msr_addr)?;
             if bytes_written == 8 {
-                info!("Updated MSR {:02X} with value {:02X}", msr_addr, msr_value);
+                info!("Updated MSR {msr_addr:02X} with value {msr_value:02X}");
             } else {
-                bail!(
-                    "Failed to update MSR {:02X} with value {:02X}",
-                    msr_addr,
-                    msr_value
-                );
+                bail!("Failed to update MSR {msr_addr:02X} with value {msr_value:02X}");
             }
             file.flush()?;
         }
@@ -530,9 +526,9 @@ pub fn intel_cache_allocation_supported(root: &Path) -> Result<bool> {
             let supported: bool = llc_sharing_supported_cpu_models.contains(&model_id);
 
             if supported {
-                info!("CPU Model {} supports cache allocation", model_id);
+                info!("CPU Model {model_id} supports cache allocation");
             } else {
-                info!("CPU Model {} does not support cache allocation", model_id);
+                info!("CPU Model {model_id} does not support cache allocation");
             }
             return Ok(supported);
         }

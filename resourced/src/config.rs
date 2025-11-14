@@ -352,7 +352,7 @@ impl SchedqosThreadConfig {
             let uclamp_min =
                 read_from_file(&uclamp_min_path).context("failed to read uclamp-min")?;
             if !(0..=100).contains(&uclamp_min) {
-                bail!("uclamp-min {} is out of range", uclamp_min);
+                bail!("uclamp-min {uclamp_min} is out of range");
             }
             config.uclamp_min = Some(uclamp_min);
         }
@@ -364,7 +364,7 @@ impl SchedqosThreadConfig {
             let cpuset_cgroup = match cpuset_cgroup.as_str() {
                 "all" => CpusetCgroup::All,
                 "efficient" => CpusetCgroup::Efficient,
-                other => bail!("invalid cpuset-cgroup: {}", other),
+                other => bail!("invalid cpuset-cgroup: {other}"),
             };
             config.cpuset_cgroup = Some(cpuset_cgroup);
         }
@@ -376,7 +376,7 @@ impl SchedqosThreadConfig {
             let latency_sensitive = match latency_sensitive.as_str() {
                 "true" => true,
                 "false" => false,
-                other => bail!("invalid latency-sensitive: {}", other),
+                other => bail!("invalid latency-sensitive: {other}"),
             };
             config.latency_sensitive = Some(latency_sensitive);
         }
@@ -479,7 +479,7 @@ impl SchedqosConfig {
             let config_path = path.join(dir_name);
             if config_path.exists() {
                 *config = Some(SchedqosThreadConfig::parse(&config_path).with_context(|| {
-                    format!("failed to parse schedqos thread config for {}", dir_name)
+                    format!("failed to parse schedqos thread config for {dir_name}")
                 })?);
             }
         }
@@ -558,7 +558,7 @@ impl ConfigProvider {
             let cpufreq_disable_boost = match cpufreq_disable_boost.as_str() {
                 "true" => true,
                 "false" => false,
-                other => bail!("invalid cpufreq-disable-boost: {}", other),
+                other => bail!("invalid cpufreq-disable-boost: {other}"),
             };
             preferences.cpufreq_disable_boost = cpufreq_disable_boost;
         }

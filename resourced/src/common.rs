@@ -84,10 +84,7 @@ pub fn set_game_mode(
 
     // Don't fail game mode settings if EPP can't be changed.
     if let Err(e) = update_power_preferences(power_preference_manager) {
-        warn!(
-            "Unable to set EPP {:?}.  Continue setting other game mode options.",
-            e
-        );
+        warn!("Unable to set EPP {e:?}.  Continue setting other game mode options.");
     }
 
     if old_mode != GameMode::Borealis && mode == GameMode::Borealis {
@@ -253,7 +250,7 @@ pub fn thermal_state_callback(
 ) -> Option<impl Fn(ThermalState) -> Result<ThermalState>> {
     let thermal_path =
         find_thermal_zone(root, thermal_config_mutex.as_ref()).unwrap_or_else(|e| {
-            warn!("Error finding thermal zone, error: {}", e);
+            warn!("Error finding thermal zone, error: {e}");
             None
         })?;
 

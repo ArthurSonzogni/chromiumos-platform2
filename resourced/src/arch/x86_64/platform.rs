@@ -150,7 +150,7 @@ mod tests {
                 ecx: CPUID_GENUINE_INTEL_ECX,
                 edx: CPUID_GENUINE_INTEL_EDX,
             } => {
-                println!("Intel platform with highest function: {}", eax);
+                println!("Intel platform with highest function: {eax}");
                 (true, eax)
             }
             _ => (false, 0),
@@ -169,10 +169,7 @@ mod tests {
             assert!(!intel_hybrid_platform);
         }
 
-        println!(
-            "Does platform support Intel hybrid feature? {}",
-            intel_hybrid_platform
-        );
+        println!("Does platform support Intel hybrid feature? {intel_hybrid_platform}");
     }
 
     #[test]

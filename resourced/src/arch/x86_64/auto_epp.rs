@@ -79,9 +79,9 @@ fn dynamic_epp_cb(new_state: bool) {
 
 fn set_epp_for_all_cores(epp_value: u32) {
     if let Err(err) = write_to_cpu_policy_patterns(EPP_PATH, &epp_value.to_string()) {
-        error!("Failed to set EPP for all cores: {}", err);
+        error!("Failed to set EPP for all cores: {err}");
     } else {
-        debug!("EPP set successfully for all cores: {}", epp_value);
+        debug!("EPP set successfully for all cores: {epp_value}");
     }
 }
 
@@ -93,7 +93,7 @@ fn calculate_ema(prev_ema: f64, current_value: f64) -> f64 {
 // Calculate GPU RC6 residency
 async fn calculate_rc6_residency(file_path: &str, max_residency_ms: Duration) -> Result<f64> {
     let file_cur =
-        File::open(file_path).with_context(|| format!("Failed to open file: {}", file_path))?;
+        File::open(file_path).with_context(|| format!("Failed to open file: {file_path}"))?;
     let reader_cur = BufReader::new(file_cur);
 
     // Read current residency
@@ -109,7 +109,7 @@ async fn calculate_rc6_residency(file_path: &str, max_residency_ms: Duration) ->
 
     // Read new residency
     let file_new =
-        File::open(file_path).with_context(|| format!("Failed to open file: {}", file_path))?;
+        File::open(file_path).with_context(|| format!("Failed to open file: {file_path}"))?;
     let reader_new = BufReader::new(file_new);
     let new_residency: u64 = if let Some(Ok(line)) = reader_new.lines().next() {
         line.trim()
@@ -199,7 +199,7 @@ fn read_and_parse_cpu_stats(
 
         // Check if the context vectors need resizing
         if cpu_index >= context.prev_cpu_stats.len() {
-            debug!("Resizing vectors for CPU Index: {}", cpu_index);
+            debug!("Resizing vectors for CPU Index: {cpu_index}");
             context
                 .prev_cpu_stats
                 .resize(cpu_index + 1, CpuStats::default());
@@ -217,7 +217,7 @@ fn read_and_parse_cpu_stats(
             let cpu_usage =
                 (1.0 - (idle_delta as f64) / (total_delta as f64)).clamp(0.0, 1.0) * 100.0;
 
-            debug!("Core {}: CPU Usage: {:.2}%", cpu_index, cpu_usage);
+            debug!("Core {cpu_index}: CPU Usage: {cpu_usage:.2}%");
 
             // Ensure the vector is large enough to accommodate the CPU index
             if cpu_index >= context.cpu_usages.len() {
@@ -308,7 +308,7 @@ fn calculate_epp_duration(args: EppCalculationArgs) -> (Option<u32>, Duration) {
         } else if cpu_usages.iter().all(|&usage| usage < threshold_moderate) {
             let start = all_below_threshold_moderate_start.get_or_insert_with(Instant::now);
             let elapsed_time = start.elapsed();
-            debug!("elapsed_time:{:?}", elapsed_time);
+            debug!("elapsed_time:{elapsed_time:?}");
             if elapsed_time.as_nanos() >= TimeConstantsIntel::low_threshold_time().as_nanos()
                 && !gpu_util_high
             {
@@ -418,7 +418,7 @@ pub async fn auto_epp_main() {
             STAT_FILE_PATH,
         ) {
             parse_errors += 1;
-            warn!("Error in reading and parsing CPU stats: {}", err);
+            warn!("Error in reading and parsing CPU stats: {err}");
             if parse_errors >= MAX_CONSECUTIVE_ERRORS {
                 warn!("Consecutive errors in parsing CPU stats. Terminating Auto EPP");
                 return;
@@ -434,11 +434,11 @@ pub async fn auto_epp_main() {
 
         let gpu_util_high = match gpu_residency_percentage_result {
             Ok(residency_percentage) => {
-                debug!("RC6 residency: {:.2}%", residency_percentage);
+                debug!("RC6 residency: {residency_percentage:.2}%");
                 residency_percentage < ThresholdsIntel::gpu_rc6()
             }
             Err(err) => {
-                warn!("Error calculating RC6 residency: {}", err);
+                warn!("Error calculating RC6 residency: {err}");
                 let new_epp = Epp::epp_default();
                 if new_epp != epp_tracking {
                     set_epp_for_all_cores(new_epp);
@@ -448,7 +448,7 @@ pub async fn auto_epp_main() {
                 continue;
             }
         };
-        debug!("gpu_util_high: {}", gpu_util_high);
+        debug!("gpu_util_high: {gpu_util_high}");
 
         let (new_epp, epp_duration) = calculate_epp_duration(EppCalculationArgs {
             cpu_usages: &cpu_usages,
@@ -535,7 +535,7 @@ mod tests {
             assert_eq!(cpu_stats.idle, 40);
             assert_eq!(cpu_stats.cpu_index, 0);
         } else {
-            panic!("Failed to parse CPU stats for line: {}", line);
+            panic!("Failed to parse CPU stats for line: {line}");
         }
     }
 

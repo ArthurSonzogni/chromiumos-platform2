@@ -64,10 +64,10 @@ fn config_dlserver_params(runtime: &str, period: &str) {
     if !params_path.exists() {
         return;
     }
-    if let Err(e) = fs::write(params_path, format!("{},{}\0", period, runtime)) {
+    if let Err(e) = fs::write(params_path, format!("{period},{runtime}\0")) {
         info!(
-            "Could not write to to params, {:?}, (period: {}, runtime: {}) {:?}",
-            params_path, period, runtime, e
+            "Could not write to to params, {params_path:?}, \
+            (period: {period}, runtime: {runtime}) {e:?}"
         );
     }
 }

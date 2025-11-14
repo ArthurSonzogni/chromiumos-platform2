@@ -75,7 +75,7 @@ pub fn read_number(file: &mut File) -> Option<u32> {
                 .unwrap(),
         ),
         Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => None,
-        Err(e) => panic!("failed to read file: {:#}", e),
+        Err(e) => panic!("failed to read file: {e:#}"),
     }
 }
 

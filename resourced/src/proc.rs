@@ -31,7 +31,7 @@ impl From<procfs::ProcError> for Error {
             procfs::ProcError::Io(e, _) => Error::Io(e),
             procfs::ProcError::Other(_) => Error::FileCorrupt,
             procfs::ProcError::InternalError(e) => {
-                error!("unexpected internal error from procfs: {:?}", e);
+                error!("unexpected internal error from procfs: {e:?}");
                 Error::FileCorrupt
             }
         }
@@ -88,7 +88,7 @@ pub fn is_alive(pid: u32) -> Result<bool> {
 }
 
 fn open_status_file(pid: u32) -> Result<File> {
-    File::open(format!("/proc/{}/status", pid)).map_err(|e| {
+    File::open(format!("/proc/{pid}/status")).map_err(|e| {
         if e.kind() == io::ErrorKind::NotFound {
             Error::NotFound
         } else {
@@ -98,7 +98,7 @@ fn open_status_file(pid: u32) -> Result<File> {
 }
 
 fn open_stat_file(pid: u32) -> Result<File> {
-    File::open(format!("/proc/{}/stat", pid)).map_err(|e| {
+    File::open(format!("/proc/{pid}/stat")).map_err(|e| {
         if e.kind() == io::ErrorKind::NotFound {
             Error::NotFound
         } else {

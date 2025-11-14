@@ -33,8 +33,7 @@ fn clear_perf_limit_reasons() -> Result<()> {
         .write(true)
         .open(CPU_0_MSR_PATH)
         .context(format!(
-            "Failed to open MSR file {} in rw mode",
-            CPU_0_MSR_PATH
+            "Failed to open MSR file {CPU_0_MSR_PATH} in rw mode"
         ))?;
 
     let bytes_written = file.write_at(&zeros, MSR_CORE_PERF_LIMIT_REASONS_ADDR)?;
@@ -52,7 +51,7 @@ fn get_perf_limit_reasons() -> Result<u64> {
     let file = File::open(CPU_0_MSR_PATH)?;
     let num_bytes_read = file.read_at(&mut read_data, MSR_CORE_PERF_LIMIT_REASONS_ADDR)?;
     if num_bytes_read != 8 {
-        bail!("unexpected bytes read: {}", num_bytes_read);
+        bail!("unexpected bytes read: {num_bytes_read}");
     }
 
     Ok(u64::from_le_bytes(read_data))
@@ -124,7 +123,7 @@ pub fn init() {
 
     tokio::spawn(async move {
         if let Err(e) = msr_logger_main().await {
-            error!("msr logger main failed: {}", e);
+            error!("msr logger main failed: {e}");
         }
     });
 }

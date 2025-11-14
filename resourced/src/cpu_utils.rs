@@ -61,7 +61,7 @@ impl Cpuset {
                 let lower = m[1].parse::<usize>().expect("parse/RE mismatch 1");
                 let upper = m[2].parse::<usize>().expect("parse/RE mismatch 2");
                 if lower > upper {
-                    bail!("bad range '{}' in cpuset '{}'", range, cpuset_str);
+                    bail!("bad range '{range}' in cpuset '{cpuset_str}'");
                 }
                 for x in lower..=upper {
                     cores.push(x);
@@ -70,17 +70,14 @@ impl Cpuset {
                 cores.push(
                     range
                         .parse::<usize>()
-                        .with_context(|| format!("malformed cpuset: '{}'", cpuset_str))?,
+                        .with_context(|| format!("malformed cpuset: '{cpuset_str}'"))?,
                 )
             }
         }
         // Sanity check.
         for i in 0..cores.len() - 1 {
             if cores[i] >= cores[i + 1] {
-                bail!(
-                    "cpuset '{}' has overlapping or out-of-order CPUs",
-                    cpuset_str
-                );
+                bail!("cpuset '{cpuset_str}' has overlapping or out-of-order CPUs");
             }
         }
         Ok(Cpuset(cores))
@@ -315,7 +312,7 @@ pub fn write_to_cpu_policy_patterns(pattern: &str, new_value: &str) -> Result<()
 
     // Fail if there are entries in the pattern but nothing is applied
     if !applied {
-        bail!("Failed to read any of the pattern {}", pattern);
+        bail!("Failed to read any of the pattern {pattern}");
     }
 
     Ok(())
@@ -330,7 +327,7 @@ fn update_cpu_online_status(root: &Path, cpuset: &Cpuset, online: bool) -> Resul
     let online_value = if online { "1" } else { "0" };
 
     for cpu in cpuset.iter() {
-        let pattern = format!("sys/devices/system/cpu/cpu{}/online", cpu);
+        let pattern = format!("sys/devices/system/cpu/cpu{cpu}/online");
         let cpu_path = root.join(pattern);
 
         if cpu_path.exists() {
@@ -366,7 +363,7 @@ impl FromStr for SmtControlStatus {
             "forceoff" => Ok(SmtControlStatus::ForceOff),
             "notsupported" => Ok(SmtControlStatus::NotSupported),
             "notimplemented" => Ok(SmtControlStatus::NotImplemented),
-            _ => bail!("Unknown Smt Control Status: '{}'", s),
+            _ => bail!("Unknown Smt Control Status: '{s}'"),
         }
     }
 }

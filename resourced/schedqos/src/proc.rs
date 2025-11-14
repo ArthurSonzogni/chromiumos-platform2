@@ -239,8 +239,7 @@ mod tests {
             assert_eq!(
                 load_starttime(file.path()).unwrap(),
                 starttime,
-                "{}",
-                stat_file_content
+                "{stat_file_content}"
             );
         }
     }
@@ -262,8 +261,7 @@ mod tests {
                     load_starttime(file.path()).err().unwrap(),
                     Error::FormatCorrupt
                 ),
-                "{}",
-                stat_file_content
+                "{stat_file_content}"
             );
         }
 

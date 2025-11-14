@@ -117,7 +117,7 @@ impl FeatureManager {
             let state = feature.state.do_lock();
             if let Some(value) = state.params.get(param_name) {
                 return Ok(Some(value.parse::<T>().with_context(|| {
-                    format!("Failed to parse param {}={}", param_name, value)
+                    format!("Failed to parse param {param_name}={value}")
                 })?));
             }
         }
@@ -178,8 +178,8 @@ static PENDING_FEATURES: OnceCell<Mutex<Vec<FeatureRegisterInfo>>> = OnceCell::n
 /// * `feature_name` - The name of the feature flag.
 /// * `enabled_by_default` - The default value of the flag.
 /// * `cb` - An optional callback to be invoked when the feature flag changes. Note
-///          that if the initial state of the flag matches `enabled_by_default`, this
-///          callback will not be invoked.
+///   that if the initial state of the flag matches `enabled_by_default`, this
+///   callback will not be invoked.
 pub fn register_feature(
     feature_name: &'static str,
     enabled_by_default: bool,
@@ -220,7 +220,7 @@ pub async fn init(conn: &SyncConnection) -> Result<()> {
             .get()
             .expect("FEATURE_MANAGER singleton disappeared");
         if let Err(e) = feature_manager.reload_cache() {
-            log::error!("Error reloading feature cache: {:?}", e);
+            log::error!("Error reloading feature cache: {e:?}");
         }
     })
     .await

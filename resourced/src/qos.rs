@@ -53,7 +53,7 @@ pub fn send_set_process_state_failure_to_uma(sample: i32) {
         sample,
         MAX_QOS_ERROR_TYPE + 1,
     ) {
-        error!("Failed to send set process state error to UMA: {}", e);
+        error!("Failed to send set process state error to UMA: {e}");
     }
 }
 
@@ -63,7 +63,7 @@ pub fn send_set_thread_state_failure_to_uma(sample: i32) {
         sample,
         MAX_QOS_ERROR_TYPE + 1,
     ) {
-        error!("Failed to send set thread state error to UMA: {}", e);
+        error!("Failed to send set thread state error to UMA: {e}");
     }
 }
 
@@ -161,9 +161,9 @@ impl Display for Error {
             Self::ProcessForbidden => write!(f, "process forbidden"),
             Self::ProcessNotFound => write!(f, "process not found"),
             Self::InvalidState => write!(f, "invalid state"),
-            Self::SchedQoS(e) => write!(f, "failed to set qos state: {:#}", e),
-            Self::Pidfd(e) => write!(f, "failed to create pidfd: {:#}", e),
-            Self::Proc(e) => write!(f, "failed to read /proc/pid/status: {:#}", e),
+            Self::SchedQoS(e) => write!(f, "failed to set qos state: {e:#}"),
+            Self::Pidfd(e) => write!(f, "failed to create pidfd: {e:#}"),
+            Self::Proc(e) => write!(f, "failed to read /proc/pid/status: {e:#}"),
         }
     }
 }
@@ -188,14 +188,14 @@ pub fn register_features(root: &Path, sched_ctx: Arc<Mutex<SchedQosContext>>) {
             let config = match load_config(&root) {
                 Ok(config) => config,
                 Err(e) => {
-                    error!("failed to load schedqos config on finch reload: {:?}", e);
+                    error!("failed to load schedqos config on finch reload: {e:?}");
                     return;
                 }
             };
             let mut ctx = sched_ctx.do_lock();
 
             if let Err(e) = ctx.update_config(config) {
-                error!("failed to update schedqos config: {:?}", e);
+                error!("failed to update schedqos config: {e:?}");
             }
         })),
     );
@@ -220,7 +220,7 @@ fn load_config(root: &Path) -> anyhow::Result<Config> {
             info!("no schedqos config to override.");
         }
         Err(e) => {
-            error!("Failed to read sched qos config: {:?}", e);
+            error!("Failed to read sched qos config: {e:?}");
         }
     }
 
@@ -258,10 +258,10 @@ pub fn create_schedqos_context(root: &Path) -> anyhow::Result<SchedQosContext> {
     let config = load_config(root)?;
     let file_path = Path::new(STATE_FILE_PATH);
     let ctx = if file_path.exists() {
-        info!("Loading schedqos state from {:?}", file_path);
+        info!("Loading schedqos state from {file_path:?}");
         SchedQosContext::load_from_file(config, file_path)?
     } else {
-        info!("Initialize schedqos state at {:?}", file_path);
+        info!("Initialize schedqos state at {file_path:?}");
         SchedQosContext::new_file(config, file_path)?
     };
     Ok(ctx)
@@ -360,7 +360,7 @@ fn monitor_process(
         match pidfd.readable().await {
             Ok(_guard) => {}
             Err(e) => {
-                error!("pidfd readable fails: {:?}", e);
+                error!("pidfd readable fails: {e:?}");
             }
         };
         sched_ctx.do_lock().remove_process(process);

@@ -63,7 +63,7 @@ impl SwappinessConfig {
 
     fn do_send(&self, msg: Message) {
         if let Err(err) = self.sender.send(msg) {
-            error!("Error adjusting swappiness {:?}", err);
+            error!("Error adjusting swappiness {err:?}");
         }
     }
 }
@@ -80,7 +80,7 @@ impl DbusOwnershipChangeCallback for SwapManagementMonitor {
         *connected = !new.is_empty();
         if *connected {
             if let Err(err) = self.sender.send(Message::Connected) {
-                error!("Failed to handle connection {:?}", err);
+                error!("Failed to handle connection {err:?}");
             }
         }
         Ok(())
@@ -125,7 +125,7 @@ impl SwappinessConfigProxy {
             let system_swappiness = match read_from_file(&SWAPPINESS_PATH) {
                 Ok(val) => val,
                 Err(e) => {
-                    error!("Failed to read swappiness {:?}", e);
+                    error!("Failed to read swappiness {e:?}");
                     continue;
                 }
             };
@@ -143,7 +143,7 @@ impl SwappinessConfigProxy {
                     )
                     .await;
                 if let Err(e) = res {
-                    error!("Calling SwapSetSwappiness failed: {:#}", e);
+                    error!("Calling SwapSetSwappiness failed: {e:#}");
                 }
             }
         }
