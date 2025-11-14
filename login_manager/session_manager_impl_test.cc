@@ -114,18 +114,13 @@ using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
+using ::testing::Unused;
 using ::testing::WithArg;
 
 using brillo::cryptohome::home::GetGuestUsername;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SetSystemSalt;
 using brillo::cryptohome::home::Username;
-
-ACTION_TEMPLATE(MovePointee,
-                HAS_1_TEMPLATE_PARAMS(int, k),
-                AND_1_VALUE_PARAMS(pointer)) {
-  *pointer = std::move(*(::std::get<k>(args)));
-}
 
 using std::map;
 using std::string;
@@ -343,16 +338,16 @@ class SessionManagerImplTest : public ::testing::Test,
         std::move(shared_memory_util)));
 
     EXPECT_CALL(*powerd_proxy_,
-                DoConnectToSignal(power_manager::kPowerManagerInterface,
-                                  power_manager::kSuspendImminentSignal, _, _))
+                ConnectToSignal(power_manager::kPowerManagerInterface,
+                                power_manager::kSuspendImminentSignal, _, _))
         .WillOnce(SaveArg<2>(&suspend_imminent_callback_));
     EXPECT_CALL(*powerd_proxy_,
-                DoConnectToSignal(power_manager::kPowerManagerInterface,
-                                  power_manager::kSuspendDoneSignal, _, _))
+                ConnectToSignal(power_manager::kPowerManagerInterface,
+                                power_manager::kSuspendDoneSignal, _, _))
         .WillOnce(SaveArg<2>(&suspend_done_callback_));
 
-    EXPECT_CALL(*system_clock_proxy_, DoWaitForServiceToBeAvailable(_))
-        .WillOnce(MovePointee<0>(&available_callback_));
+    EXPECT_CALL(*system_clock_proxy_, WaitForServiceToBeAvailable(_))
+        .WillOnce([this](auto cb) { available_callback_ = std::move(cb); });
 
     impl_->Initialize();
 
@@ -513,8 +508,10 @@ class SessionManagerImplTest : public ::testing::Test,
 
     dbus::ObjectProxy::ResponseCallback time_sync_callback;
     EXPECT_CALL(*system_clock_proxy_,
-                DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
-        .WillOnce(MovePointee<2>(&time_sync_callback));
+                CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+        .WillOnce([&](Unused, Unused, auto cb) {
+          time_sync_callback = std::move(cb);
+        });
     std::move(available_callback_).Run(true);
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
 
@@ -957,7 +954,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_FailedTimeSync) {
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
 
   EXPECT_CALL(*system_clock_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .Times(1);
   base::RunLoop().RunUntilIdle();
 }
@@ -971,8 +968,9 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncAfterFail) {
 
   dbus::ObjectProxy::ResponseCallback time_sync_callback;
   EXPECT_CALL(*system_clock_proxy_,
-              DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
-      .WillOnce(MovePointee<2>(&time_sync_callback));
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+      .WillOnce(
+          [&](Unused, Unused, auto cb) { time_sync_callback = std::move(cb); });
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
   ASSERT_FALSE(time_sync_callback.is_null());

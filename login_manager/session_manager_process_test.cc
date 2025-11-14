@@ -440,7 +440,7 @@ TEST_F(SessionManagerProcessTest, StopAllVms) {
   manager_->test_api().set_vm_concierge_proxy(vm_concierge_proxy.get());
   manager_->test_api().set_vm_concierge_available(true);
 
-  EXPECT_CALL(*vm_concierge_proxy.get(), DoCallMethod(StopAllVmsMethod(), _, _))
+  EXPECT_CALL(*vm_concierge_proxy.get(), CallMethod(StopAllVmsMethod(), _, _))
       .Times(AtLeast(1));
 
   ExpectLivenessChecking();
