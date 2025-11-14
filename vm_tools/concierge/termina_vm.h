@@ -244,11 +244,12 @@ class TerminaVm final : public VmBaseImpl {
   void StopMaitredForTesting(base::OnceClosure stop_callback);
 
   // Sets up a new non-root user in the VM.
-  bool SetUpUser(std::optional<uid_t> uid,
-                 const std::string& username,
-                 const std::vector<std::string>& group_names,
-                 std::string* out_username,
-                 std::string* out_error) override;
+  bool SetUpUser(
+      std::optional<uid_t> uid,
+      const std::string& username,
+      const google::protobuf::RepeatedPtrField<std::string>& group_names,
+      std::string* out_username,
+      std::string* out_error) override;
 
  private:
   // Helper class for asynchronously cleaning up the GRPC client.

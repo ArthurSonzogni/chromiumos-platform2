@@ -219,11 +219,12 @@ class VmBaseImpl {
   const std::optional<int64_t> GetGuestMemorySize() const;
 
   // Sets up a new non-root user in the VM.
-  virtual bool SetUpUser(std::optional<uid_t> uid,
-                         const std::string& username,
-                         const std::vector<std::string>& group_names,
-                         std::string* out_username,
-                         std::string* out_error);
+  virtual bool SetUpUser(
+      std::optional<uid_t> uid,
+      const std::string& username,
+      const google::protobuf::RepeatedPtrField<std::string>& group_names,
+      std::string* out_username,
+      std::string* out_error);
 
   // Sets fake power configuration for battery device
   virtual bool SetFakePowerConfig(const std::string& battery_type,

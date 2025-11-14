@@ -4872,14 +4872,12 @@ void Service::SetUpVmUser(
   }
   auto& vm = iter->second;
 
-  std::vector<std::string> group_names(request.group_names().begin(),
-                                       request.group_names().end());
   std::optional<uid_t> uid;
   if (request.has_uid()) {
     uid = request.uid();
   }
 
-  auto success = vm->SetUpUser(uid, request.username(), group_names,
+  auto success = vm->SetUpUser(uid, request.username(), request.group_names(),
                                response.mutable_username(),
                                response.mutable_failure_reason());
 

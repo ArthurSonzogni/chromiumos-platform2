@@ -1133,11 +1133,12 @@ void TerminaVm::StopMaitredForTesting(base::OnceClosure stop_callback) {
       maitred, std::move(stop_callback)));
 }
 
-bool TerminaVm::SetUpUser(std::optional<uid_t> uid,
-                          const std::string& username,
-                          const std::vector<std::string>& group_names,
-                          std::string* out_username,
-                          std::string* out_error) {
+bool TerminaVm::SetUpUser(
+    std::optional<uid_t> uid,
+    const std::string& username,
+    const google::protobuf::RepeatedPtrField<std::string>& group_names,
+    std::string* out_username,
+    std::string* out_error) {
   DCHECK(out_error);
   DCHECK(out_username);
 
