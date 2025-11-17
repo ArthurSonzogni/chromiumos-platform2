@@ -7,7 +7,7 @@ use crate::CreateArgs;
 use anyhow::{anyhow, bail, Context, Result};
 use fatfs::{FileSystem, FormatVolumeOptions, FsOptions, ReadWriteSeek};
 use fs_err::{self as fs, File, OpenOptions};
-use gpt_disk_types::{BlockSize, GptPartitionType, Lba, LbaRangeInclusive};
+use gpt_disk_types::{BlockSize, GptPartitionType, Guid, Lba, LbaRangeInclusive};
 use gptman::{GPTPartitionEntry, GPT};
 use std::collections::BTreeMap;
 use std::fs::Metadata;
@@ -26,6 +26,9 @@ const FLEXOR_VMLINUZ_FILENAME: &str = "flexor_vmlinuz";
 const FRD_BUNDLE_INSTALL_DIR: &str = "install";
 
 const SECTOR_SIZE: BlockSize = BlockSize::BS_512;
+/// The docs for sgdisk, fdisk, and gdisk all talk about the importance of alignment for speed of
+/// reads and writes. This seems to be the default they use in the absence of info about the disk.
+const PARTITION_ALIGNMENT_SECTORS: u64 = 2048;
 
 /// Convert a `Command` to a `String` for display.
 ///
@@ -56,11 +59,11 @@ fn bytes_to_sectors(bytes: u64) -> u64 {
     bytes.div_ceil(SECTOR_SIZE.to_u64())
 }
 
-/// Round |bytes| up to the nearest sector boundary.
+/// Round |value| up to the nearest multiple of |multiple|.
 ///
-/// Like |bytes_to_sectors| but returns a number of bytes, not number of sectors.
-fn round_bytes_to_nearest_sector(bytes: u64) -> u64 {
-    bytes.div_ceil(SECTOR_SIZE.to_u64()) * SECTOR_SIZE.to_u64()
+/// Useful for finding sector or partition boundaries.
+fn round_up_to_multiple_of(value: u64, multiple: u64) -> u64 {
+    value.div_ceil(multiple) * multiple
 }
 
 /// Run a command.
@@ -166,6 +169,7 @@ struct Partition {
 }
 
 impl Partition {
+    /// Minimum size of the partition in bytes.
     fn required_size_in_bytes(&self) -> Result<u64> {
         Ok(sum_sizes(&self.name_to_src_path)? + self.extra_space)
     }
@@ -274,17 +278,38 @@ fn create_partition(disk_file: &mut File, partition: &Partition) -> Result<()> {
     Ok(())
 }
 
+/// Create an array of bytes usable as a GUID.
+fn new_guid() -> [u8; 16] {
+    let guid: [u8; 16] = rand::random();
+    // Make sure all those special GUID bits get set right.
+    let guid = Guid::from_random_bytes(guid);
+
+    guid.to_bytes()
+}
+
+/// The range of LBAs for a partition, given our partition alignment, size in sectors, and start.
+///
+/// The start of the range will be aligned to the lowest aligned value after |after_sector|.
+/// The end of the range will be aligned just before a partition alignment boundary.
+fn aligned_range(after_sector: u64, size_sectors: u64) -> Result<LbaRangeInclusive> {
+    let start = round_up_to_multiple_of(after_sector, PARTITION_ALIGNMENT_SECTORS);
+    let end = round_up_to_multiple_of(start + size_sectors, PARTITION_ALIGNMENT_SECTORS) - 1;
+    LbaRangeInclusive::new(Lba(start), Lba(end)).context("Bad partition size calculation")
+}
+
 /// Create a correctly partitioned disk image.
 fn create_image(path: &Path, esp_size: u64, data_size: u64) -> Result<()> {
     // Delete the output file if it already exists.
     let _ = fs_err::remove_file(path);
 
-    // Don't pass exabyte-large files: this might overflow.
-    let total_size_bytes = esp_size + data_size;
-    // `sgdisk` complains if the file isn't a multiple of the sector size, so round up.
-    let total_size_bytes = round_bytes_to_nearest_sector(total_size_bytes);
-    // `sgdisk` doesn't seem to accept bytes, convert to sectors.
     let esp_size_sectors = bytes_to_sectors(esp_size);
+    let data_size_sectors = bytes_to_sectors(data_size);
+    // The GPT header takes 34 sectors.
+    let gpt_size = 34;
+    let esp_range = aligned_range(gpt_size, esp_size_sectors)?;
+    let data_range = aligned_range(esp_range.end().to_u64(), data_size_sectors)?;
+    let total_size_sectors = data_range.end().to_u64() + gpt_size;
+    let total_size_bytes = total_size_sectors * SECTOR_SIZE.to_u64();
 
     // Create empty file to hold the disk.
     run_cmd(
@@ -293,23 +318,31 @@ fn create_image(path: &Path, esp_size: u64, data_size: u64) -> Result<()> {
             .arg(path),
     )?;
 
-    run_cmd(
-        Command::new("sgdisk")
-            // Specify explicitly, because we've run into issues before when assuming.
-            .arg(format!("--set-alignment={SECTOR_SIZE}"))
-            // Create ESP partition.
-            .args([
-                &format!("--new=1::+{esp_size_sectors}"),
-                &format!("--typecode=1:{}", GptPartitionType::EFI_SYSTEM),
-            ])
-            // Create flexor data partition.
-            .args([
-                // No need to specify size, this will use the remainder.
-                "--new=2",
-                &format!("--typecode=2:{}", GptPartitionType::BASIC_DATA),
-            ])
-            .arg(path),
-    )?;
+    let mut disk_file = OpenOptions::new().read(true).write(true).open(path)?;
+    let mut gpt = GPT::new_from(&mut disk_file, SECTOR_SIZE.to_u64(), new_guid())?;
+
+    gpt[1] = gptman::GPTPartitionEntry {
+        partition_type_guid: GptPartitionType::EFI_SYSTEM.0.to_bytes(),
+        unique_partition_guid: new_guid(),
+        starting_lba: esp_range.start().to_u64(),
+        ending_lba: esp_range.end().to_u64(),
+        attribute_bits: 0,
+        partition_name: "ESP".into(),
+    };
+
+    gpt[2] = gptman::GPTPartitionEntry {
+        partition_type_guid: GptPartitionType::BASIC_DATA.0.to_bytes(),
+        unique_partition_guid: new_guid(),
+        starting_lba: data_range.start().to_u64(),
+        ending_lba: data_range.end().to_u64(),
+        attribute_bits: 0,
+        partition_name: "Data".into(),
+    };
+
+    gpt.write_into(&mut disk_file)?;
+
+    // Writes over specific bits, so no need to worry about where |disk_file| is 'seek'ed to.
+    GPT::write_protective_mbr_into(&mut disk_file, SECTOR_SIZE.to_u64())?;
 
     Ok(())
 }
@@ -461,19 +494,44 @@ mod tests {
     }
 
     #[test]
-    fn test_round_bytes_to_nearest_sector() {
-        for (input, expected_result) in [
-            (0, 0),
-            (1, 512),
-            (512, 512),
-            (513, 1024),
-            (2048, 2048),
-            (51200, 51200),
-            (51201, 51712),
-            (gib_to_bytes(100), gib_to_bytes(100)),
+    fn test_round_up_to_multiple_of() {
+        for (value, multiple, expected_result) in [
+            (0, 512, 0),
+            (1, 512, 512),
+            (512, 512, 512),
+            (513, 512, 1024),
+            (2048, 512, 2048),
+            (51200, 512, 51200),
+            (51201, 512, 51712),
+            (gib_to_bytes(100), 512, gib_to_bytes(100)),
+            (0, 2048, 0),
+            (1, 2048, 2048),
+            (512, 2048, 2048),
+            (513, 2048, 2048),
+            (2048, 2048, 2048),
+            (51200, 2048, 51200),
+            (51201, 2048, 53248),
+            (gib_to_bytes(100), 2048, gib_to_bytes(100)),
         ] {
-            assert_eq!(round_bytes_to_nearest_sector(input), expected_result);
+            assert_eq!(round_up_to_multiple_of(value, multiple), expected_result);
         }
+    }
+
+    #[test]
+    fn test_aligned_range() -> Result<()> {
+        for (after, size, expected_start, expected_end) in [
+            (0, 10, 0, 2047),
+            (1, 10, 2048, 4095),
+            (1, 2048, 2048, 4095),
+            (1, 2049, 2048, 6143),
+            (2047, 1, 2048, 4095),
+        ] {
+            let actual = aligned_range(after, size)?;
+            assert_eq!(actual.start().to_u64(), expected_start);
+            assert_eq!(actual.end().to_u64(), expected_end);
+        }
+
+        Ok(())
     }
 
     #[test]
