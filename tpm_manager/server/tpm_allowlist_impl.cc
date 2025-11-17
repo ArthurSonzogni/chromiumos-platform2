@@ -44,8 +44,6 @@ constexpr uint32_t kVendorIdAtmel = 0x41544D4C;
 constexpr uint32_t kVendorIdIbm = 0x49424d00;
 // Infineon Vendor ID ("IFX  ").
 constexpr uint32_t kVendorIdIfx = 0x49465800;
-// Intel Vendor ID ("INTC").
-constexpr uint32_t kVendorIdIntel = 0x494e5443;
 
 // The location of system vendor information.
 constexpr char kSysVendorPath[] = "/sys/class/dmi/id/sys_vendor";
@@ -104,7 +102,6 @@ constexpr DeviceName kTpm2DeviceNameAllowlist[] = {
     DeviceName{"HP", "HP ZBook Firefly 14 inch G8 Mobile Workstation PC",
                kVendorIdIfx},
     DeviceName{"Dell Inc.", "OptiPlex 7060", kVendorIdNtc},
-    DeviceName{"ASUSTeK COMPUTER INC.", "NUC14RVH-B", kVendorIdIntel},
 };
 
 std::optional<bool> IsTpmFileEnabled() {
