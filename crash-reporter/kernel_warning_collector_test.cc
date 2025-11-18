@@ -346,14 +346,13 @@ TEST_F(KernelWarningCollectorTest, CollectLockdebugCircular) {
       "[  210.911357]\n"
       "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(1, KernelWarningCollector::WarningType::kLockdebug));
+      collector_.Collect(1, KernelWarningCollector::WarningType::kDebug));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
-      test_crash_directory_, "kernel_lockdebug_kbase_gpu_vm_lock.*.meta",
-      "sig=kbase_gpu_vm_lock+0x30/0x40"));
+      test_crash_directory_, "kernel_debug_*.meta",
+      "sig=possible circular locking dependency detected"));
   // Should *not* have a weight
   EXPECT_FALSE(test_util::DirectoryHasFileWithPatternAndContents(
-      test_crash_directory_, "kernel_lockdebug_kbase_gpu_vm_lock.*.meta",
-      "upload_var_weight="));
+      test_crash_directory_, "kernel_debug_*.meta", "upload_var_weight="));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectLockdebugRecursive) {
@@ -370,14 +369,13 @@ TEST_F(KernelWarningCollectorTest, CollectLockdebugRecursive) {
       "[  210.911357]\n"
       "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(1, KernelWarningCollector::WarningType::kLockdebug));
+      collector_.Collect(1, KernelWarningCollector::WarningType::kDebug));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
-      test_crash_directory_, "kernel_lockdebug_thermal_zone_get_temp.*.meta",
-      "sig=thermal_zone_get_temp+0x40/0x1e4"));
+      test_crash_directory_, "kernel_debug_*.meta",
+      "sig=possible recursive locking detected"));
   // Should *not* have a weight
   EXPECT_FALSE(test_util::DirectoryHasFileWithPatternAndContents(
-      test_crash_directory_, "kernel_lockdebug_thermal_zone_get_temp.*.meta",
-      "upload_var_weight="));
+      test_crash_directory_, "kernel_debug_*.meta", "upload_var_weight="));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectLockdebugSuspiciousRCU) {
@@ -393,14 +391,13 @@ TEST_F(KernelWarningCollectorTest, CollectLockdebugSuspiciousRCU) {
       "[  210.911356]\n"
       "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(1, KernelWarningCollector::WarningType::kLockdebug));
+      collector_.Collect(1, KernelWarningCollector::WarningType::kDebug));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
-      test_crash_directory_, "kernel_lockdebug_warning.*.meta",
+      test_crash_directory_, "kernel_debug_*.meta",
       "sig=suspicious RCU usage"));
   // Should *not* have a weight
   EXPECT_FALSE(test_util::DirectoryHasFileWithPatternAndContents(
-      test_crash_directory_, "kernel_lockdebug_warning.*.meta",
-      "upload_var_weight="));
+      test_crash_directory_, "kernel_debug_*.meta", "upload_var_weight="));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectSMMUFaultOk) {

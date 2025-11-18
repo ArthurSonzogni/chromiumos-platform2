@@ -20,7 +20,7 @@
 [ 3955.309298]  [<ffffffff87c621ba>] SyS_clone+0x16/0x18
 [ 3955.309298]  [<ffffffff882a0869>] stub_clone+0x69/0x90
 [ 3955.309298]  [<ffffffff882a055c>] ? system_call_fastpath+0x1c/0x21
-[ 3955.309298] ---[ end trace 3a3ab835b30b8933 ]---
+[ 3955.309298] ------------[ cut here ]------------
 [ 3955.309298] BARNING: CPU: 2 PID: 750 at /mnt/host/source/src/third_party/kernel/v3.18/drivers/gpu/drm/ttm/ttm_bo_vm.c:265 ttm_bo_mmap+0x19e/0x1ab [ttm]()
 [ 3955.309298] ("BARNING" above is intentional)
 [ 3955.309298] Modules linked in: cfg80211 snd_seq_midi snd_seq_midi_event snd_rawmidi snd_seq ip6table_filter snd_seq_device cirrus ttm
@@ -33,3 +33,5 @@
 [ 3955.309298]  [<ffffffff8829b327>] dump_stack+0x4e/0x71
 [ 3955.309298]  [<ffffffff87c62c3c>] warn_slowpath_common+0x81/0x9b
 [ 3955.309298]  [<ffffffffc010ccc0>] ? ttm_bo_mmap+0x19e/0x1ab [ttm]
+[ 3955.309298] ---[ end trace 3a3ab835b30b8933 ]---
+[ 3955.309298] ---[ end trace 3a3ab835b30b8933 ]---

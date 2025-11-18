@@ -1,3 +1,4 @@
+[   44.421049] ------------[ cut here ]------------
 [   44.421050] ======================================================
 [   44.421081] WARNING: possible circular locking dependency detected
 [   44.421113] 5.15.180-kasan-lockdep-24494-gc7c1b8d2fd39 #1 Not tainted
@@ -226,6 +227,7 @@
 [   44.431331]  el0_svc+0x5c/0xbc
 [   44.431376]  el0t_64_sync_handler+0x98/0xac
 [   44.431423]  el0t_64_sync+0x1a4/0x1a8
+[   44.431424] ---[ end trace 0000000000000000 ]---
 [   44.735651] kobject: 'rx-0' (000000009cdbc158): kobject_release, parent 0000000057da7ac8 (delayed 3000)
 [   44.736245] kobject: 'tx-0' (00000000d3eeb0eb): kobject_release, parent 0000000057da7ac8 (delayed 3000)
 [   45.989042] loop3: detected capacity change from 0 to 10376

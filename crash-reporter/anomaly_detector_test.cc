@@ -756,7 +756,7 @@ TEST(AnomalyDetectorTest, KernelLockdebugCircular) {
           "[   44.431331]  el0_svc+0x5c/0xbc\n"
           "[   44.431376]  el0t_64_sync_handler+0x98/0xac\n"
           "[   44.431423]  el0t_64_sync+0x1a4/0x1a8\n",
-      .expected_flags = {{"--kernel_lockdebug"}}};
+      .expected_flags = {{"--kernel_debug"}}};
   KernelParser parser(true);
   ParserTest("TEST_LOCKDEBUG_CIRCULAR", {lockdebug_error}, &parser);
 }
@@ -837,7 +837,7 @@ TEST(AnomalyDetectorTest, KernelLockdebugRecursive) {
           "[    4.628801]  kernel_init_freeable+0x34c/0x4e0\n"
           "[    4.628845]  kernel_init+0x2c/0x1e4\n"
           "[    4.628888]  ret_from_fork+0x10/0x20\n",
-      .expected_flags = {{"--kernel_lockdebug"}}};
+      .expected_flags = {{"--kernel_debug"}}};
   KernelParser parser(true);
   ParserTest("TEST_LOCKDEBUG_RECURSIVE", {lockdebug_error}, &parser);
 }
@@ -883,7 +883,7 @@ TEST(AnomalyDetectorTest, KernelLockdebugSuspiciousRCU) {
           "[   50.716778]  cpu_startup_entry+0x53/0x3f0\n"
           "[   50.717269]  start_kernel+0x50d/0x58a\n"
           "[   50.717550]  secondary_startup_64+0xa5/0xb0\n",
-      .expected_flags = {{"--kernel_lockdebug"}}};
+      .expected_flags = {{"--kernel_debug"}}};
   KernelParser parser(true);
   ParserTest("TEST_LOCKDEBUG_SUSPICIOUS_RCU", {lockdebug_error}, &parser);
 }
@@ -964,6 +964,74 @@ TEST(AnomalyDetectorTest, KernelWarningSuspend_EC) {
       .expected_flags = {{"--kernel_suspend_warning", "--weight=10"}}};
   KernelParser parser(true);
   ParserTest("TEST_WARNING", {suspend_warning}, &parser);
+}
+
+TEST(AnomalyDetectorTest, KernelWarningNested) {
+  ParserRun nested_warning = {
+      .expected_text =
+          "fd6f0171-ttm_bo_mmap+0x19e/0x1ab [ttm]()\n"
+          "/mnt/host/source/src/third_party/kernel/v3.18/drivers/gpu/drm/ttm/"
+          "ttm_bo_vm.c:265 ttm_bo_mmap+0x19e/0x1ab [ttm]()\n"
+          "[ 3955.309298] Modules linked in: cfg80211 snd_seq_midi "
+          "snd_seq_midi_event snd_rawmidi snd_seq ip6table_filter "
+          "snd_seq_device cirrus ttm\n"
+          "[ 3955.309298] CPU: 2 PID: 750 Comm: Chrome_ProcessL Not tainted "
+          "3.18.0 #55\n"
+          "[ 3955.309298] Hardware name: QEMU Standard PC (i440FX + PIIX, "
+          "1996), BIOS Bochs 01/01/2011\n"
+          "[ 3955.309298]  0000000000000000 0000000000be519d ffff8800afed7d50 "
+          "ffffffff8829b327\n"
+          "[ 3955.309298]  0000000000000000 0000000000000000 ffff8800afed7d90 "
+          "ffffffff87c62c3c\n"
+          "[ 3955.309298]  00007f8198b3d000 ffffffffc010ccc0 ffff8800a93e9c00 "
+          "ffff8800bb139a40\n"
+          "[ 3955.309298] Call Trace:\n"
+          "[ 3955.309298]  [<ffffffff8829b327>] dump_stack+0x4e/0x71\n"
+          "[ 3955.309298]  [<ffffffff87c62c3c>] "
+          "warn_slowpath_common+0x81/0x9b\n"
+          "[ 3955.309298]  [<ffffffffc010ccc0>] ? ttm_bo_mmap+0x19e/0x1ab "
+          "[ttm]\n"
+          "[ 3955.309298]  [<ffffffff87c62d3f>] warn_slowpath_null+0x1a/0x1c\n"
+          "[ 3955.309298]  [<ffffffffc010ccc0>] ttm_bo_mmap+0x19e/0x1ab [ttm]\n"
+          "[ 3955.309298]  [<ffffffff87c61534>] "
+          "copy_process.part.41+0xf2b/0x179a\n"
+          "[ 3955.309298]  [<ffffffff87c61f49>] do_fork+0xc9/0x2c0\n"
+          "[ 3955.309298]  [<ffffffff8829feb3>] ? "
+          "_raw_spin_unlock_irq+0xe/0x22\n"
+          "[ 3955.309298]  [<ffffffff87c6f978>] ? "
+          "__set_current_blocked+0x49/0x4e\n"
+          "[ 3955.309298]  [<ffffffff87c621ba>] SyS_clone+0x16/0x18\n"
+          "[ 3955.309298]  [<ffffffff882a0869>] stub_clone+0x69/0x90\n"
+          "[ 3955.309298]  [<ffffffff882a055c>] ? "
+          "system_call_fastpath+0x1c/0x21\n"
+          "[ 3955.309298] ------------[ cut here ]------------\n"
+          "[ 3955.309298] BARNING: CPU: 2 PID: 750 at "
+          "/mnt/host/source/src/third_party/kernel/v3.18/drivers/gpu/drm/ttm/"
+          "ttm_bo_vm.c:265 ttm_bo_mmap+0x19e/0x1ab [ttm]()\n"
+          "[ 3955.309298] (\"BARNING\" above is intentional)\n"
+          "[ 3955.309298] Modules linked in: cfg80211 snd_seq_midi "
+          "snd_seq_midi_event snd_rawmidi snd_seq ip6table_filter "
+          "snd_seq_device cirrus ttm\n"
+          "[ 3955.309298] CPU: 2 PID: 750 Comm: Chrome_ProcessL Not tainted "
+          "3.18.0 #55\n"
+          "[ 3955.309298] Hardware name: QEMU Standard PC (i440FX + PIIX, "
+          "1996), BIOS Bochs 01/01/2011\n"
+          "[ 3955.309298]  0000000000000000 0000000000be519d ffff8800afed7d50 "
+          "ffffffff8829b327\n"
+          "[ 3955.309298]  0000000000000000 0000000000000000 ffff8800afed7d90 "
+          "ffffffff87c62c3c\n"
+          "[ 3955.309298]  00007f8198b3d000 ffffffffc010ccc0 ffff8800a93e9c00 "
+          "ffff8800bb139a40\n"
+          "[ 3955.309298] Call Trace:\n"
+          "[ 3955.309298]  [<ffffffff8829b327>] dump_stack+0x4e/0x71\n"
+          "[ 3955.309298]  [<ffffffff87c62c3c>] "
+          "warn_slowpath_common+0x81/0x9b\n"
+          "[ 3955.309298]  [<ffffffffc010ccc0>] ? ttm_bo_mmap+0x19e/0x1ab "
+          "[ttm]\n"
+          "[ 3955.309298] ---[ end trace 3a3ab835b30b8933 ]---\n",
+      .expected_flags = {{"--kernel_warning", "--weight=10"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_WARNING_NESTED", {nested_warning}, &parser);
 }
 
 TEST(AnomalyDetectorTest, CrashReporterCrash_LessThanOrEqual_v6_6) {

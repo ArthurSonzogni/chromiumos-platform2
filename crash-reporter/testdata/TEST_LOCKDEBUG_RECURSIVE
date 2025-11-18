@@ -1,3 +1,4 @@
+[    4.626696] ------------[ cut here ]------------
 [    4.626697] ============================================
 [    4.626725] WARNING: possible recursive locking detected
 [    4.626749] 6.1.145-kasan-lockdep-17509-g3e49662a061f #1 Not tainted
@@ -63,6 +64,7 @@
 [    4.628801]  kernel_init_freeable+0x34c/0x4e0
 [    4.628845]  kernel_init+0x2c/0x1e4
 [    4.628888]  ret_from_fork+0x10/0x20
+[    4.628889] ---[ end trace 0000000000000000 ]---
 [    4.637318] mtk-wdt 10007000.watchdog: Watchdog enabled (timeout=31 sec, nowayout=0)
 [    4.645333] device-mapper: ioctl: 4.47.0-ioctl (2022-07-28) initialised: dm-devel@redhat.com
 [    4.647867] device-mapper: verity-chromeos: dm-verity-chromeos registered

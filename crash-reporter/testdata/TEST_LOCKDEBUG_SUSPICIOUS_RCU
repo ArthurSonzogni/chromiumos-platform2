@@ -1,3 +1,4 @@
+[   50.707950] ------------[ cut here ]------------
 [   50.707951] =============================
 [   50.708590] WARNING: suspicious RCU usage
 [   50.708844] 5.4.293-kasan-kasan_outline-lockdep-23841-g4a79117cd6ea #1 Tainted: G     U  W        
@@ -30,6 +31,7 @@
 [   50.716778]  cpu_startup_entry+0x53/0x3f0
 [   50.717269]  start_kernel+0x50d/0x58a
 [   50.717550]  secondary_startup_64+0xa5/0xb0
+[   50.717551] ---[ end trace 0000000000000000 ]---
 [   50.831012] NOHZ: local_softirq_pending 280
 [   50.832039] NOHZ: local_softirq_pending 282
 [   50.833007] NOHZ: local_softirq_pending 282
