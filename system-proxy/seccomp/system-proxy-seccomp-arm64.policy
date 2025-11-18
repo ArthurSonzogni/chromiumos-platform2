@@ -81,7 +81,9 @@ wait4: 1
 futex: 1
 tgkill: 1
 # For stopping minijailed worker proxy server instances.
-kill: arg1 == SIGTERM || arg1 == SIGSYS
+# `kill` is sent with SIGPIPE only on ARM64.
+# See b/461319239 for more information.
+kill: arg1 == SIGTERM || arg1 == SIGSYS || arg1 == SIGPIPE
 bind: 1
 listen: 1
 accept: 1
