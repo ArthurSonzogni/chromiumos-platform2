@@ -169,11 +169,11 @@ class FakeShillClientHelper {
     // property changes.
     EXPECT_CALL(*mock_bus_, GetObjectProxy("org.chromium.flimflam", _))
         .WillRepeatedly(Return(mock_proxy_.get()));
-    EXPECT_CALL(*mock_proxy_, DoConnectToSignal("org.chromium.flimflam.Manager",
-                                                "PropertyChanged", _, _))
+    EXPECT_CALL(*mock_proxy_, ConnectToSignal("org.chromium.flimflam.Manager",
+                                              "PropertyChanged", _, _))
         .Times(AnyNumber());
-    EXPECT_CALL(*mock_proxy_, DoConnectToSignal("org.chromium.flimflam.Device",
-                                                "PropertyChanged", _, _))
+    EXPECT_CALL(*mock_proxy_, ConnectToSignal("org.chromium.flimflam.Device",
+                                              "PropertyChanged", _, _))
         .Times(AnyNumber());
 
     client_ = std::make_unique<FakeShillClient>(mock_bus_, nullptr);

@@ -321,17 +321,17 @@ TEST_F(ShillClientTest, ListenToDeviceChangeSignalOnNewDevices) {
   std::vector<dbus::ObjectPath> devices = {wlan0_path};
   auto value = brillo::Any(devices);
   EXPECT_CALL(*helper_->mock_proxy(),
-              DoConnectToSignal(shill::kFlimflamDeviceInterface,
-                                shill::kMonitorPropertyChanged, _, _))
+              ConnectToSignal(shill::kFlimflamDeviceInterface,
+                              shill::kMonitorPropertyChanged, _, _))
       .Times(1);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
 
-  // Adds another device. DoConnectToSignal() called only for the new added one.
+  // Adds another device. ConnectToSignal() called only for the new added one.
   devices = {wlan0_path, eth0_path};
   value = brillo::Any(devices);
   EXPECT_CALL(*helper_->mock_proxy(),
-              DoConnectToSignal(shill::kFlimflamDeviceInterface,
-                                shill::kMonitorPropertyChanged, _, _))
+              ConnectToSignal(shill::kFlimflamDeviceInterface,
+                              shill::kMonitorPropertyChanged, _, _))
       .Times(1);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
 }

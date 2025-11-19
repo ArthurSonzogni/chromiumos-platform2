@@ -80,12 +80,12 @@ class VmConciergeClientTest : public ::testing::Test {
     // Sets an expectation that mock proxy will register to listen to
     // kVmStartedSignal and kVmStoppingSignal from concierge_proxy_.
     EXPECT_CALL(*concierge_proxy_.get(),
-                DoConnectToSignal(vm_tools::concierge::kVmConciergeInterface,
-                                  vm_tools::concierge::kVmStartedSignal, _, _))
+                ConnectToSignal(vm_tools::concierge::kVmConciergeInterface,
+                                vm_tools::concierge::kVmStartedSignal, _, _))
         .WillRepeatedly(Invoke(this, &VmConciergeClientTest::ConnectToSignal));
     EXPECT_CALL(*concierge_proxy_.get(),
-                DoConnectToSignal(vm_tools::concierge::kVmConciergeInterface,
-                                  vm_tools::concierge::kVmStoppingSignal, _, _))
+                ConnectToSignal(vm_tools::concierge::kVmConciergeInterface,
+                                vm_tools::concierge::kVmStoppingSignal, _, _))
         .WillRepeatedly(Invoke(this, &VmConciergeClientTest::ConnectToSignal));
     EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
         .WillRepeatedly(
@@ -95,7 +95,7 @@ class VmConciergeClientTest : public ::testing::Test {
 
   void ResolveAttachAsSuccess(testing::Unused,
                               testing::Unused,
-                              dbus::ObjectProxy::ResponseCallback* callback) {
+                              dbus::ObjectProxy::ResponseCallback callback) {
     vm_tools::concierge::AttachNetDeviceResponse attach_response;
     attach_response.set_success(true);
     attach_response.set_guest_bus(kSlotNum);
@@ -103,12 +103,12 @@ class VmConciergeClientTest : public ::testing::Test {
         dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(dbus_response.get());
     writer.AppendProtoAsArrayOfBytes(attach_response);
-    std::move(*callback).Run(dbus_response.get());
+    std::move(callback).Run(dbus_response.get());
   }
 
   void ResolveDetachAsFail(testing::Unused,
                            testing::Unused,
-                           dbus::ObjectProxy::ResponseCallback* callback) {
+                           dbus::ObjectProxy::ResponseCallback callback) {
     vm_tools::concierge::SuccessFailureResponse detach_response;
     detach_response.set_success(false);
     detach_response.set_failure_reason(kMockFailReason);
@@ -116,7 +116,7 @@ class VmConciergeClientTest : public ::testing::Test {
         dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(dbus_response.get());
     writer.AppendProtoAsArrayOfBytes(detach_response);
-    std::move(*callback).Run(dbus_response.get());
+    std::move(callback).Run(dbus_response.get());
   }
 
  protected:
@@ -156,7 +156,7 @@ class VmConciergeClientTest : public ::testing::Test {
       const std::string& interface_name,
       const std::string& signal_name,
       dbus::ObjectProxy::SignalCallback signal_callback,
-      dbus::ObjectProxy::OnConnectedCallback* on_connected_callback);
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback);
 
   base::test::TaskEnvironment task_environment_;
   scoped_refptr<dbus::MockBus> mock_bus_;
@@ -171,12 +171,12 @@ void VmConciergeClientTest::ConnectToSignal(
     const std::string& interface_name,
     const std::string& signal_name,
     dbus::ObjectProxy::SignalCallback signal_callback,
-    dbus::ObjectProxy::OnConnectedCallback* on_connected_callback) {
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
   EXPECT_EQ(interface_name, vm_tools::concierge::kVmConciergeInterface);
   signal_callbacks_[signal_name] = std::move(signal_callback);
   task_environment_.GetMainThreadTaskRunner()->PostTask(
       FROM_HERE,
-      base::BindOnce(std::move(*on_connected_callback), interface_name,
+      base::BindOnce(std::move(on_connected_callback), interface_name,
                      signal_name, true /* success */));
 }
 }  // namespace
@@ -194,7 +194,7 @@ TEST_F(VmConciergeClientTest, RejectUnregisteredVm) {
 // VmStartedSignal is emitted.
 TEST_F(VmConciergeClientTest, DetachAfterVmStartedSignal) {
   client_->RegisterVm(kMockVmCid);
-  EXPECT_CALL(*concierge_proxy_.get(), DoCallMethod)
+  EXPECT_CALL(*concierge_proxy_.get(), CallMethod)
       .WillOnce(Invoke(this, &VmConciergeClientTest::ResolveDetachAsFail));
   SendVmStartedSignal();
   EXPECT_CALL(monitor_, OnDetachCallback(false)).Times(1);
@@ -207,7 +207,7 @@ TEST_F(VmConciergeClientTest, DetachAfterVmStartedSignal) {
 // VmStartedSignal.
 TEST_F(VmConciergeClientTest, AttachBeforeVmStartedSignal) {
   client_->RegisterVm(kMockVmCid);
-  EXPECT_CALL(*concierge_proxy_.get(), DoCallMethod)
+  EXPECT_CALL(*concierge_proxy_.get(), CallMethod)
       .WillOnce(Invoke(this, &VmConciergeClientTest::ResolveAttachAsSuccess));
   // expect attach requests are accepted since the VM is registered.
   EXPECT_TRUE(client_->AttachTapDevice(kMockVmCid, "test-tap",
