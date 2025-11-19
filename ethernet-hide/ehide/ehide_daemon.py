@@ -69,7 +69,7 @@ GRACEFUL_EXIT_TIMEOUT = datetime.timedelta(seconds=5)
 # The maximum time to wait for an interface to appear in the root netns.
 INTERFACE_APPEARANCE_TIMEOUT = datetime.timedelta(seconds=15)
 # The maximum time to wait for an IP address to be set.
-IP_SET_TIMEOUT = datetime.timedelta(seconds=10)
+IP_SET_TIMEOUT = datetime.timedelta(seconds=30)
 # The maximum time to wait for socat to start listening on port:22 (only in the
 # forwarding approach).
 SOCAT_STARTUP_TIMEOUT = datetime.timedelta(seconds=5)
