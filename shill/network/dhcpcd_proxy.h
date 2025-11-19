@@ -29,6 +29,7 @@ class DHCPCDProxy : public DHCPClientProxy {
  public:
   DHCPCDProxy(net_base::ProcessManager* process_manager,
               std::string_view interface,
+              int pid,
               DHCPClientProxy::EventHandler* handler,
               base::ScopedClosureRunner destroy_cb,
               std::string_view logging_tag);
@@ -58,6 +59,8 @@ class DHCPCDProxy : public DHCPClientProxy {
   bool RunDHCPCDWithArgs(const std::vector<std::string>& args);
 
   net_base::ProcessManager* process_manager_;
+
+  int pid_;
 
   // The callback that will be executed when the instance is destroyed.
   base::ScopedClosureRunner destroy_cb_;

@@ -179,11 +179,13 @@ std::optional<DHCPClientProxy::EventReason> GetEventReason(
 
 DHCPCDProxy::DHCPCDProxy(net_base::ProcessManager* process_manager,
                          std::string_view interface,
+                         int pid,
                          DHCPClientProxy::EventHandler* handler,
                          base::ScopedClosureRunner destroy_cb,
                          std::string_view logging_tag)
     : DHCPClientProxy(interface, handler),
       process_manager_(process_manager),
+      pid_(pid),
       destroy_cb_(std::move(destroy_cb)),
       logging_tag_(logging_tag) {}
 
@@ -194,13 +196,17 @@ bool DHCPCDProxy::IsReady() const {
 }
 
 bool DHCPCDProxy::Rebind() {
-  return RunDHCPCDWithArgs(
-      std::vector<std::string>{"-4", "--noconfigure", "--rebind", interface_});
+  bool unused_killed = false;
+  // Send SIGHUP to dhcpcd to rebind the interface. Ref:
+  // https://github.com/NetworkConfiguration/dhcpcd/blob/9c48f4c7dd893228ad1493ea5347c28ced2a4190/src/dhcpcd.c#L1527
+  return process_manager_->KillProcess(pid_, SIGHUP, &unused_killed);
 }
 
 bool DHCPCDProxy::Release() {
-  return RunDHCPCDWithArgs(
-      std::vector<std::string>{"-4", "--noconfigure", "--release", interface_});
+  bool unused_killed = false;
+  // Send SIGALRM to dhcpcd to release the interface. Ref:
+  // https://github.com/NetworkConfiguration/dhcpcd/blob/9c48f4c7dd893228ad1493ea5347c28ced2a4190/src/dhcpcd.c#L1522
+  return process_manager_->KillProcess(pid_, SIGALRM, &unused_killed);
 }
 
 bool DHCPCDProxy::RunDHCPCDWithArgs(const std::vector<std::string>& args) {
@@ -397,7 +403,7 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
 
   // Register the proxy and return it.
   auto proxy =
-      std::make_unique<DHCPCDProxy>(process_manager_, interface, handler,
+      std::make_unique<DHCPCDProxy>(process_manager_, interface, pid, handler,
                                     base::ScopedClosureRunner(base::BindOnce(
                                         &DHCPCDProxyFactory::OnProxyDestroyed,
                                         weak_ptr_factory_.GetWeakPtr(), pid)),
