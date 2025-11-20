@@ -120,6 +120,7 @@ pub enum ChromeOSError {
     InvalidEmail,
     InvalidPath(String),
     MissingActiveSession,
+    MissingVmTypeOnDisk,
     NoSuchVm,
     NoSuchVmType,
     NoVmTechnologyEnabled,
@@ -237,6 +238,7 @@ impl fmt::Display for ChromeOSError {
                 f,
                 "missing active session corresponding to $CROS_USER_ID_HASH"
             ),
+            MissingVmTypeOnDisk => write!(f, "VM does not have an on-disk vm type set."),
             NoSuchVm => write!(f, "VM with such name does not exist"),
             NoSuchVmType => write!(f, "Invalid VM type"),
             NoVmTechnologyEnabled => write!(f, "neither Crostini nor Parallels VMs are enabled"),
@@ -592,7 +594,7 @@ fn open_user_path(
 pub struct UserInfo {
     pub username: String,
     pub uid: Option<u32>,
-    pub group_names: Vec<String>,
+    pub group_names: Option<Vec<String>>,
 }
 
 #[derive(Default)]
@@ -1934,8 +1936,10 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.username = user_info.username;
         request.uid = user_info.uid;
-        for gname in user_info.group_names {
-            request.group_names.push(gname);
+        if let Some(group_names) = user_info.group_names {
+            for group_name in group_names {
+                request.group_names.push(group_name);
+            }
         }
 
         let response: SetUpVmUserResponse = ProtoMessage::parse_from_bytes(
@@ -2343,41 +2347,84 @@ impl Methods {
         name: &str,
         user_id_hash: &str,
         username: &str,
-        features: VmFeatures,
+        mut features: VmFeatures,
         user_disks: UserDisks,
         start_lxd: bool,
-        user_info: Option<UserInfo>,
-        vm_type: Option<VmType>,
+        mut user_info: Option<UserInfo>,
+        mut vm_type: Option<VmType>,
+        start_shell: bool,
     ) -> Result<(), Box<dyn Error>> {
         if self.is_plugin_vm(name, user_id_hash)? {
-            self.ensure_plugin_vm_available(user_id_hash)?;
-            self.notify_vm_starting()?;
-            self.start_plugin_vm(name, user_id_hash)
-        } else {
-            self.ensure_crostini_available(user_id_hash)?;
-
-            let disk_image_path = self.create_disk_image(name, user_id_hash)?;
-            self.notify_vm_starting()?;
-            self.start_vm_with_disk(
-                name,
-                user_id_hash,
-                username,
-                features,
-                disk_image_path,
-                user_disks,
-                start_lxd,
-            )?;
-            if start_lxd {
-                self.start_lxd(name, user_id_hash)?;
-            }
-            if vm_type == Some(VmType::BAGUETTE) {
-                self.wait_for_baguette_start(name, user_id_hash)?;
-            }
-            if let Some(info) = user_info {
-                self.setup_vm_user(name, user_id_hash, info)?;
-            }
-            Ok(())
+            return Err(PluginVmDisabledReason("Plugin VM support is deprecated.".into()).into());
         }
+        self.ensure_crostini_available(user_id_hash)?;
+
+        let disk_image_path = self.create_disk_image(name, user_id_hash)?;
+        if vm_type.is_none() {
+            let (images, _) = self.list_disk_images(user_id_hash, None, Some(name))?;
+            let image = images
+                .into_iter()
+                .find(|i| i.name == name)
+                .ok_or(MissingVmTypeOnDisk)?;
+
+            let parsed_type = image.vm_type.enum_value_or_default();
+            if parsed_type == VmType::UNKNOWN {
+                return Err(MissingVmTypeOnDisk.into());
+            }
+            vm_type = Some(parsed_type);
+            features.vm_type = Some(parsed_type);
+        }
+
+        self.notify_vm_starting()?;
+
+        let is_baguette = vm_type == Some(VmType::BAGUETTE);
+
+        if is_baguette {
+            if features.tools_dlc_id.is_none() {
+                features.tools_dlc_id = Some("termina-tools-dlc".to_string());
+            }
+            if let Some(ref mut info) = user_info {
+                if info.group_names.is_none() {
+                    info.group_names = Some(
+                        "audio,cdrom,dialout,disk,floppy,kvm,netdev,sudo,tss,video"
+                            .split(',')
+                            .map(|s| s.to_string())
+                            .collect(),
+                    );
+                }
+            }
+        }
+
+        self.start_vm_with_disk(
+            name,
+            user_id_hash,
+            username,
+            features,
+            disk_image_path,
+            user_disks,
+            start_lxd && !is_baguette,
+        )?;
+        if is_baguette {
+            self.wait_for_baguette_start(name, user_id_hash)?;
+        }
+        // Baguette can never have LXD
+        else if start_lxd {
+            self.start_lxd(name, user_id_hash)?;
+        }
+        if let Some(info) = user_info {
+            self.setup_vm_user(name, user_id_hash, info)?;
+        }
+
+        let _ = self.metrics_send_sample("Vm.VmcStartSuccess");
+
+        if start_shell {
+            if is_baguette {
+                self.vsh_exec_container(name, user_id_hash, "penguin")?;
+            } else {
+                self.vsh_exec(name, user_id_hash)?;
+            }
+        }
+        Ok(())
     }
 
     pub fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {

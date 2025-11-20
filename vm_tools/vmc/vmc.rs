@@ -321,14 +321,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
                 _ => return Err(ChromeOSError::NoSuchVmType.into()),
             }),
         };
-        let start_lxd = match vm_type {
-            Some(VmType::BAGUETTE) => false,
-            _ => !matches.opt_present("no-start-lxd"),
-        };
-        let tools_dlc_id = match (vm_type, matches.opt_str("tools-dlc")) {
-            (Some(VmType::BAGUETTE), None) => Some("termina-tools-dlc".into()),
-            (_, opt_tools_dlc) => opt_tools_dlc,
-        };
+        let tools_dlc_id = matches.opt_str("tools-dlc");
 
         let features = VmFeatures {
             gpu,
@@ -356,15 +349,10 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             pflash: matches.opt_str("pflash"),
         };
 
-        let group_names = match (vm_type, matches.opt_str("user-groups")) {
-            (Some(VmType::BAGUETTE), None) => {
-                Some("audio,cdrom,dialout,disk,floppy,kvm,netdev,sudo,tss,video".into())
-            }
-            (_, group_names) => group_names,
-        };
+        let group_names = matches.opt_str("user-groups");
         let group_names = match group_names {
-            Some(groups) => groups.split(',').map(|v| v.to_string()).collect(),
-            None => vec![],
+            Some(groups) => Some(groups.split(',').map(|v| v.to_string()).collect()),
+            None => None,
         };
 
         let user_info = match matches.opt_str("user") {
@@ -383,23 +371,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             &username,
             features,
             user_disks,
-            start_lxd,
+            !matches.opt_present("no-start-lxd"),
             user_info,
             vm_type,
+            !matches.opt_present("no-shell"),
         ));
-        self.metrics_send_sample("Vm.VmcStartSuccess");
-
-        if !matches.opt_present("no-shell") {
-            match vm_type {
-                // Baguette is containerless but we pretend it has penguin.
-                Some(VmType::BAGUETTE) => try_command!(self.methods.vsh_exec_container(
-                    vm_name,
-                    self.user_id_hash,
-                    "penguin"
-                )),
-                _ => try_command!(self.methods.vsh_exec(vm_name, self.user_id_hash)),
-            };
-        }
 
         Ok(())
     }
