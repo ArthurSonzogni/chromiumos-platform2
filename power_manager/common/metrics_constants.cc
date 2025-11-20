@@ -17,6 +17,7 @@ extern const char kPrivacyScreenEnabled[] = "PrivacyScreenEnabled";
 const int kMaxPercent = 101;
 const int kDefaultBuckets = 50;
 const int kDefaultDischargeBuckets = 100;
+const int kDefaultExclusiveMax = 100;
 
 const char kSuspendAttemptsBeforeSuccessName[] =
     "Power.SuspendAttemptsBeforeSuccess";
@@ -253,5 +254,9 @@ const char kDisplayAfterResumeDurationMsName[] =
     "Power.DisplayAfterResumeDurationMs";
 const int kDisplayAfterResumeDurationMsMin = 0;
 const int kDisplayAfterResumeDurationMsMax = 60 * 1000;
+
+const int kFanSpeedRpmMax = 10 * 1000;
+const char kHighestFanSpeedName[] = "Power.HighestFanSpeed";
+const base::TimeDelta kFanTimerInterval = base::Seconds(30);
 
 }  // namespace power_manager::metrics

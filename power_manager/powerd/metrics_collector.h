@@ -22,6 +22,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/thermal/ec_fan_reader.h"
 #include "privacy_screen/proto_bindings/privacy_screen.pb.h"
 
 namespace power_manager {
@@ -183,6 +184,7 @@ class MetricsCollector {
   void Init(PrefsInterface* prefs,
             policy::BacklightController* display_backlight_controller,
             policy::BacklightController* keyboard_backlight_controller,
+            system::EcFanReaderInterface* ec_fan_reader,
             const system::PowerStatus& power_status,
             bool first_run_after_boot);
 
@@ -224,6 +226,15 @@ class MetricsCollector {
 
   // Generates UMA metrics about the current backlight level.
   void GenerateBacklightLevelMetrics();
+
+  // Converts a given sample value to a a value that can be sent as part of UMA
+  // metrics by MetricsCollector.
+  static int GetRescaledSample(const uint16_t sample,
+                               const uint16_t max,
+                               const int new_max);
+
+  // Generates a UMA metric about the current Fan speed.
+  void GenerateFanMetrics();
 
   // Generates UMA metrics about dimming events.
   void GenerateDimEventMetrics(DimEvent sample);
@@ -351,6 +362,7 @@ class MetricsCollector {
   PrefsInterface* prefs_ = nullptr;
   policy::BacklightController* display_backlight_controller_ = nullptr;
   policy::BacklightController* keyboard_backlight_controller_ = nullptr;
+  system::EcFanReaderInterface* ec_fan_reader_ = nullptr;
 
   Clock clock_;
 
@@ -365,6 +377,9 @@ class MetricsCollector {
 
   // Runs GenerateBacklightLevelMetric().
   base::RepeatingTimer generate_backlight_metrics_timer_;
+
+  // Runs GenerateFanMetrics().
+  base::RepeatingTimer generate_fan_metrics_timer_;
 
   // Last privacy screen state that we have been informed of.
   privacy_screen::PrivacyScreenSetting_PrivacyScreenState

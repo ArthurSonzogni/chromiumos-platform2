@@ -28,6 +28,9 @@ extern const int kDefaultBuckets;
 // discharge.
 extern const int kDefaultDischargeBuckets;
 
+// Default exclusive max value for linear histogram metrics.
+extern const int kDefaultExclusiveMax;
+
 // Default number of buckets to use for numeric histogram metrics for
 // power.BatteryLife.Clamp.*
 extern const int kBatteryLifeDetailBuckets;
@@ -202,6 +205,10 @@ extern const char kBatterySaverUserBrightenedSec[];
 extern const char kDisplayAfterResumeDurationMsName[];
 extern const int kDisplayAfterResumeDurationMsMin;
 extern const int kDisplayAfterResumeDurationMsMax;
+
+extern const int kFanSpeedRpmMax;
+extern const char kHighestFanSpeedName[];
+extern const base::TimeDelta kFanTimerInterval;
 
 // Values for kPowerSupplyTypeName. Do not renumber.
 enum class PowerSupplyType {

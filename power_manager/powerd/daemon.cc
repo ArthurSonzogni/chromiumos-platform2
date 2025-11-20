@@ -531,8 +531,12 @@ void Daemon::Init() {
   }
   const system::PowerStatus power_status = power_supply_->GetPowerStatus();
 
+  ec_fan_reader_ =
+      delegate_->CreateEcFanReader(cros_ec_path_, ec_command_factory_.get());
+
   metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
-                           keyboard_backlight_controller_.get(), power_status,
+                           keyboard_backlight_controller_.get(),
+                           ec_fan_reader_.get(), power_status,
                            first_run_after_boot_);
 
   // If the suspend_reboot file exists at startup, it means that powerd must

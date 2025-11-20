@@ -56,6 +56,7 @@
 #include "power_manager/powerd/system/sensor_service_handler.h"
 #include "power_manager/powerd/system/suspend_configurator_stub.h"
 #include "power_manager/powerd/system/suspend_freezer_stub.h"
+#include "power_manager/powerd/system/thermal/ec_fan_reader_stub.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/powerd/system/user_proximity_watcher_stub.h"
@@ -423,6 +424,14 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_audio_client_);
   }
+  std::unique_ptr<system::EcFanReaderInterface> CreateEcFanReader(
+      const base::FilePath& cros_ec_path,
+      ec::EcCommandFactoryInterface* ec_command_factory) override {
+    EXPECT_EQ(cros_ec_path_, cros_ec_path);
+    EXPECT_EQ(ec_command_factory_, ec_command_factory);
+    return std::move(passed_ec_fan_reader_);
+  }
+
   std::unique_ptr<system::LockfileCheckerInterface> CreateLockfileChecker(
       const base::FilePath& dir,
       const std::vector<base::FilePath>& files) override {
@@ -586,6 +595,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
       passed_user_proximity_watcher_;
   std::unique_ptr<system::DarkResumeStub> passed_dark_resume_;
   std::unique_ptr<system::AudioClientStub> passed_audio_client_;
+  std::unique_ptr<system::EcFanReaderStub> passed_ec_fan_reader_;
   std::unique_ptr<system::LockfileCheckerStub> passed_lockfile_checker_;
   std::unique_ptr<system::MachineQuirksStub> passed_machine_quirks_;
   std::unique_ptr<MetricsSenderStub> passed_metrics_sender_;

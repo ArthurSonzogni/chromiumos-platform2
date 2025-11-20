@@ -189,11 +189,13 @@ void MetricsCollector::Init(
     PrefsInterface* prefs,
     policy::BacklightController* display_backlight_controller,
     policy::BacklightController* keyboard_backlight_controller,
+    system::EcFanReaderInterface* ec_fan_reader,
     const PowerStatus& power_status,
     bool first_run_after_boot) {
   prefs_ = prefs;
   display_backlight_controller_ = display_backlight_controller;
   keyboard_backlight_controller_ = keyboard_backlight_controller;
+  ec_fan_reader_ = ec_fan_reader;
   last_power_status_ = power_status;
 
   if (first_run_after_boot) {
@@ -215,6 +217,11 @@ void MetricsCollector::Init(
         base::BindRepeating(
             &MetricsCollector::GenerateAmbientLightResumeMetrics,
             base::Unretained(this)));
+  }
+
+  if (ec_fan_reader_) {
+    generate_fan_metrics_timer_.Start(FROM_HERE, kFanTimerInterval, this,
+                                      &MetricsCollector::GenerateFanMetrics);
   }
 
   bool pref_val = false;
@@ -615,6 +622,36 @@ void MetricsCollector::GenerateBacklightLevelMetrics() {
     // Enum to avoid exponential histogram's varyingly-sized buckets.
     SendEnumMetric(kKeyboardBacklightLevelName, lround(percent), kMaxPercent);
   }
+}
+
+// static
+int MetricsCollector::GetRescaledSample(const uint16_t sample,
+                                        const uint16_t max,
+                                        const int new_max) {
+  // Check to prevent divide by zero undefined behavior below.
+  if (max == 0) {
+    return 0;
+  }
+  int rescaled_sample = static_cast<int>(round((sample * new_max) / max));
+  // Guard against > `new_max` case when `sample` goes over the predicted
+  // `max`.
+  return std::min(new_max, rescaled_sample);
+}
+
+void MetricsCollector::GenerateFanMetrics() {
+  TRACE_EVENT("power", "MetricsCollector::GenerateFanMetrics");
+
+  if (!ec_fan_reader_) {
+    return;
+  }
+  std::optional<uint16_t> highest_fan_speed =
+      ec_fan_reader_->GetCurrentHighestFanSpeed();
+  if (!highest_fan_speed.has_value()) {
+    return;
+  }
+  int rescaled_sample = GetRescaledSample(
+      highest_fan_speed.value(), kFanSpeedRpmMax, kDefaultExclusiveMax);
+  SendLinearMetric(kHighestFanSpeedName, rescaled_sample, kDefaultExclusiveMax);
 }
 
 void MetricsCollector::GenerateDimEventMetrics(const DimEvent sample) {

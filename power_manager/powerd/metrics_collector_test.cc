@@ -9,6 +9,7 @@
 #include <cmath>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -35,6 +36,7 @@
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/thermal/ec_fan_reader_stub.h"
 #include "power_manager/powerd/testing/test_environment.h"
 
 using ::testing::_;
@@ -58,6 +60,9 @@ namespace power_manager::metrics {
     EXPECT_CALL(metrics_lib_, SendToUMA(_, _, _, _, _)) \
         .Times(AnyNumber())                             \
         .WillRepeatedly(Return(true));                  \
+    EXPECT_CALL(metrics_lib_, SendLinearToUMA(_, _, _)) \
+        .Times(AnyNumber())                             \
+        .WillRepeatedly(Return(true));                  \
   } while (0)
 
 // Denylist all metrics calls. This would be used if you expect that
@@ -68,6 +73,9 @@ namespace power_manager::metrics {
         .Times(0)                                       \
         .WillRepeatedly(Return(true));                  \
     EXPECT_CALL(metrics_lib_, SendToUMA(_, _, _, _, _)) \
+        .Times(0)                                       \
+        .WillRepeatedly(Return(true));                  \
+    EXPECT_CALL(metrics_lib_, SendLinearToUMA(_, _, _)) \
         .Times(0)                                       \
         .WillRepeatedly(Return(true));                  \
   } while (0)
@@ -115,6 +123,16 @@ namespace power_manager::metrics {
         .RetiresOnSaturation();                                 \
   } while (0)
 
+// Adds a metrics library mock expectation that the specified linear
+// metric must be generated.
+#define EXPECT_LINEAR_METRIC(name, sample, exclusive_max)                   \
+  do {                                                                      \
+    EXPECT_CALL(metrics_lib_, SendLinearToUMA(name, sample, exclusive_max)) \
+        .Times(1)                                                           \
+        .WillOnce(Return(true))                                             \
+        .RetiresOnSaturation();                                             \
+  } while (0)
+
 class MetricsCollectorTest : public TestEnvironment {
  public:
   MetricsCollectorTest() : metrics_sender_(metrics_lib_) {
@@ -138,8 +156,8 @@ class MetricsCollectorTest : public TestEnvironment {
   // Initializes |collector_|.
   void Init() {
     collector_.Init(&prefs_, &display_backlight_controller_,
-                    &keyboard_backlight_controller_, power_status_,
-                    first_run_after_boot_);
+                    &keyboard_backlight_controller_, &ec_fan_reader_,
+                    power_status_, first_run_after_boot_);
   }
 
   // Advances both the monotonically-increasing time and wall time by
@@ -222,6 +240,7 @@ class MetricsCollectorTest : public TestEnvironment {
   FakePrefs prefs_;
   policy::BacklightControllerStub display_backlight_controller_;
   policy::BacklightControllerStub keyboard_backlight_controller_;
+  system::EcFanReaderStub ec_fan_reader_;
   system::PowerStatus power_status_;
   bool first_run_after_boot_ = false;
 
@@ -984,6 +1003,41 @@ TEST_F(MetricsCollectorTest, TestBatteryMetricsAtBootOnAC) {
   Init();
 }
 
+// Test rescaled sample calculation for valid values.
+TEST_F(MetricsCollectorTest, GetRescaledSample) {
+  // Check under 100% case
+  int sample_percent =
+      collector_.GetRescaledSample(656, 1300, kDefaultExclusiveMax);
+  ASSERT_EQ(sample_percent, 50);
+  // Check > 100% case
+  sample_percent =
+      collector_.GetRescaledSample(7892, 1000, kDefaultExclusiveMax);
+  ASSERT_EQ(sample_percent, 100);
+}
+
+// Test rescaled sample calculation returns 0 on max == 0.
+TEST_F(MetricsCollectorTest, GetRescaledSampleInvalid) {
+  // Check max == 0.
+  int sample_percent = collector_.GetRescaledSample(5, 0, kDefaultExclusiveMax);
+  ASSERT_EQ(sample_percent, 0);
+}
+
+TEST_F(MetricsCollectorTest, GenerateFanMetrics) {
+  Init();
+  ec_fan_reader_.SetCurrentHighestFanSpeed(1000);
+  EXPECT_LINEAR_METRIC(kHighestFanSpeedName, 10, kDefaultDischargeBuckets);
+  collector_.GenerateFanMetrics();
+}
+
+TEST_F(MetricsCollectorTest, GenerateNoFanMetrics) {
+  DENYLIST_ALL_METRICS();
+  Init();
+  ec_fan_reader_.SetCurrentHighestFanSpeed(std::nullopt);
+  collector_.GenerateFanMetrics();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+}
+
 TEST_F(MetricsCollectorTest, DimEventMetricsAC) {
   power_status_.line_power_on = true;
   Init();
@@ -1116,7 +1170,7 @@ class AdaptiveChargingMetricsTest : public TestEnvironment {
     collector_.clock_.set_current_boot_time_for_testing(
         base::TimeTicks() + base::Microseconds(2000));
     collector_.Init(&prefs_, &display_backlight_controller_,
-                    &keyboard_backlight_controller_, {},
+                    &keyboard_backlight_controller_, &ec_fan_reader_, {},
                     /*first_run_after_boot=*/false);
   }
 
@@ -1127,6 +1181,7 @@ class AdaptiveChargingMetricsTest : public TestEnvironment {
   FakePrefs prefs_;
   policy::BacklightControllerStub display_backlight_controller_;
   policy::BacklightControllerStub keyboard_backlight_controller_;
+  system::EcFanReader ec_fan_reader_;
 
   FakeMetricsLibrary metrics_;
   MetricsSender metrics_sender_;

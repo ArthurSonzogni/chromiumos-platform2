@@ -373,6 +373,14 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return system::ThermalDeviceFactory::CreateThermalDevices();
   }
 
+  std::unique_ptr<system::EcFanReaderInterface> CreateEcFanReader(
+      const base::FilePath& cros_ec_path,
+      ec::EcCommandFactoryInterface* ec_command_factory) override {
+    auto fan_reader = std::make_unique<system::EcFanReader>();
+    fan_reader->Init(cros_ec_path, ec_command_factory);
+    return fan_reader;
+  }
+
   pid_t GetPid() override { return getpid(); }
 
   void Launch(const std::string& command) override {

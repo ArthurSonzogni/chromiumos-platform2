@@ -23,6 +23,7 @@
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
 #include "power_manager/powerd/system/cros_ec_helper_interface.h"
 #include "power_manager/powerd/system/suspend_freezer.h"
+#include "power_manager/powerd/system/thermal/ec_fan_reader.h"
 
 namespace power_manager {
 
@@ -222,6 +223,10 @@ class DaemonDelegate {
 
   virtual std::vector<std::unique_ptr<system::ThermalDeviceInterface>>
   CreateThermalDevices() = 0;
+
+  virtual std::unique_ptr<system::EcFanReaderInterface> CreateEcFanReader(
+      const base::FilePath& cros_ec_path,
+      ec::EcCommandFactoryInterface* ec_command_factory) = 0;
 
   // Returns the process's PID.
   virtual pid_t GetPid() = 0;

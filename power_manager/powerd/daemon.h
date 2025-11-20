@@ -42,6 +42,7 @@
 #include "power_manager/powerd/system/machine_quirks.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
+#include "power_manager/powerd/system/thermal/ec_fan_reader.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 #include "privacy_screen/proto_bindings/privacy_screen.pb.h"
 
@@ -438,6 +439,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
       wakeup_source_identifier_;
   std::vector<std::unique_ptr<system::ThermalDeviceInterface>> thermal_devices_;
   std::unique_ptr<policy::ThermalEventHandler> thermal_event_handler_;
+  std::unique_ptr<system::EcFanReaderInterface> ec_fan_reader_;
 
   std::unique_ptr<metrics::MetricsCollector> metrics_collector_;
 
