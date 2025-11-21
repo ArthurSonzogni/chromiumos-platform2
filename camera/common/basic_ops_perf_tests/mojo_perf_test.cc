@@ -111,7 +111,16 @@ int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   base::SingleThreadTaskExecutor main_task_executor;
 
-  mojo::core::Init();
+  // Initialize MojoIpcz with the correct broker configuration.
+  // If we are not the child, we are the parent (broker).
+  bool is_child = mojo::PlatformChannel::CommandLineHasPassedEndpoint(
+      *base::CommandLine::ForCurrentProcess());
+  mojo::core::Init(
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+      mojo::core::Configuration{.is_broker_process = !is_child}
+#endif
+  );
+
   base::Thread ipc_thread("ipc_thread");
   ipc_thread.StartWithOptions(
       base::Thread::Options(base::MessagePumpType::IO, 0));
@@ -120,8 +129,7 @@ int main(int argc, char** argv) {
       ipc_thread.task_runner(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
-  if (mojo::PlatformChannel::CommandLineHasPassedEndpoint(
-          *base::CommandLine::ForCurrentProcess())) {
+  if (is_child) {
     auto receiver = GetPendingReceiver();
     LOG(INFO) << "Child - Got receiver";
 
