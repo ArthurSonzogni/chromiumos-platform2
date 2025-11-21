@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
-#include <brillo/backoff_entry.h>
+#include "brillo/backoff_entry.h"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/numerics/safe_math.h>
 #include <base/rand_util.h>
@@ -145,13 +145,12 @@ base::TimeTicks BackoffEntry::CalculateReleaseTime() const {
   // Do overflow checking in microseconds, the internal unit of TimeTicks.
   const int64_t kTimeTicksNowUs =
       (ImplGetTimeNow() - base::TimeTicks()).InMicroseconds();
-  base::internal::CheckedNumeric<int64_t> calculated_release_time_us =
-      delay_ms + 0.5;
+  base::CheckedNumeric<int64_t> calculated_release_time_us = delay_ms + 0.5;
   calculated_release_time_us *= base::Time::kMicrosecondsPerMillisecond;
   calculated_release_time_us += kTimeTicksNowUs;
 
   const int64_t kMaxTime = std::numeric_limits<int64_t>::max();
-  base::internal::CheckedNumeric<int64_t> maximum_release_time_us = kMaxTime;
+  base::CheckedNumeric<int64_t> maximum_release_time_us = kMaxTime;
   if (policy_->maximum_backoff_ms >= 0) {
     maximum_release_time_us = policy_->maximum_backoff_ms;
     maximum_release_time_us *= base::Time::kMicrosecondsPerMillisecond;
