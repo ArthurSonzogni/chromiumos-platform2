@@ -109,3 +109,4 @@ uname: 1
 write: 1
 exit_group: 1
 futex: 1
+munmap: 1
