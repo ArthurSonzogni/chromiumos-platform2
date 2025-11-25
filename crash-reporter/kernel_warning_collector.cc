@@ -27,6 +27,7 @@ const char kGenericWarningExecName[] = "kernel-warning";
 const char kGenericDebugExecName[] = "kernel-debug";
 const char kWifiWarningExecName[] = "kernel-wifi-warning";
 const char kKfenceExecName[] = "kernel-kfence";
+const char kKasanExecName[] = "kernel-kasan";
 const char kSMMUFaultExecName[] = "kernel-smmu-fault";
 const char kSuspendWarningExecName[] = "kernel-suspend-warning";
 const char kKernelIwlwifiErrorExecName[] = "kernel-iwlwifi-error";
@@ -64,8 +65,8 @@ bool KernelWarningCollector::LoadKernelWarning(std::string* content,
     } else if (signature->length() > 0) {
       return true;
     }
-  } else if (type == kKfence) {
-    if (!ExtractKfenceSignature(*content, signature, func_name)) {
+  } else if (type == kKfence || type == kKasan) {
+    if (!ExtractKfenceOrKasanSignature(*content, signature, func_name)) {
       return false;
     } else if (!signature->empty()) {
       return true;
@@ -267,30 +268,35 @@ bool KernelWarningCollector::ExtractIwlwifiSignature(const std::string& content,
   return true;
 }
 
-constexpr LazyRE2 kfence_sig_re = {
-    R"(BUG: KFENCE: (.+ ([0-9a-zA-Z_]+)\+0x[0-9a-fA-F]+/0x[0-9a-fA-F]+)$)"};
+constexpr LazyRE2 kfence_or_kasan_sig_re = {
+    R"(BUG: (?:KFENCE|KASAN): (.+ ([0-9a-zA-Z_]+)\+0x[0-9a-fA-F]+/0x[0-9a-fA-F]+)$)"};
 
 // Extract the function name and signature from the first line
 // Example:
 //  BUG: KFENCE: use-after-free read in buggy_function_name+0xac/0x13c
 //  func_name=buggy_function_name
 //  signature=use-after-free read in buggy_function_name+0xac/0x13c
-bool KernelWarningCollector::ExtractKfenceSignature(const std::string& content,
-                                                    std::string* signature,
-                                                    std::string* func_name) {
+// Another example:
+//  BUG: KASAN: slab-use-after-free in lkdtm_READ_AFTER_FREE+0x214/0x220
+//  func_name=lkdtm_READ_AFTER_FREE
+//  signature=slab-use-after-free in lkdtm_READ_AFTER_FREE+0x214/0x220
+bool KernelWarningCollector::ExtractKfenceOrKasanSignature(
+    const std::string& content,
+    std::string* signature,
+    std::string* func_name) {
   std::string line;
   std::string::size_type end_position = content.find('\n');
   if (end_position == std::string::npos) {
-    LOG(ERROR) << "unexpected kfence format";
+    LOG(ERROR) << "unexpected kfence or kasan format";
     return false;
   }
 
   line = content.substr(0, end_position);
-  if (RE2::PartialMatch(line, *kfence_sig_re, signature, func_name)) {
+  if (RE2::PartialMatch(line, *kfence_or_kasan_sig_re, signature, func_name)) {
     return true;
   }
 
-  LOG(ERROR) << line << " does not match kfence regex";
+  LOG(ERROR) << line << " does not match kfence or kasan regex";
   signature->clear();
   func_name->clear();
 
@@ -393,6 +399,8 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
     exec_name = kWifiWarningExecName;
   } else if (type == kKfence) {
     exec_name = kKfenceExecName;
+  } else if (type == kKasan) {
+    exec_name = kKasanExecName;
   } else if (type == kSMMUFault) {
     exec_name = kSMMUFaultExecName;
   } else if (type == kSuspend) {
@@ -464,7 +472,8 @@ CrashCollector::ComputedCrashSeverity KernelWarningCollector::ComputeSeverity(
              (exec_name == kWifiWarningExecName) ||
              (exec_name == kGenericWarningExecName) ||
              (exec_name == kGenericDebugExecName) ||
-             (exec_name == kSuspendWarningExecName)) {
+             (exec_name == kSuspendWarningExecName) ||
+             (exec_name == kKasanExecName)) {
     computed_severity.crash_severity = CrashSeverity::kWarning;
   }
 
@@ -478,6 +487,7 @@ CollectorInfo KernelWarningCollector::GetHandlerInfo(
     bool kernel_debug,
     bool kernel_wifi_warning,
     bool kernel_kfence,
+    bool kernel_kasan,
     bool kernel_smmu_fault,
     bool kernel_suspend_warning,
     bool kernel_iwlwifi_error,
@@ -508,6 +518,10 @@ CollectorInfo KernelWarningCollector::GetHandlerInfo(
            {
                .should_handle = kernel_kfence,
                .cb = base::BindRepeating(kernel_warn_cb, WarningType::kKfence),
+           },
+           {
+               .should_handle = kernel_kasan,
+               .cb = base::BindRepeating(kernel_warn_cb, WarningType::kKasan),
            },
            {
                .should_handle = kernel_smmu_fault,

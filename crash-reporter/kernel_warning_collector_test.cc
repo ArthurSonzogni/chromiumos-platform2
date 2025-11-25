@@ -321,15 +321,21 @@ TEST_F(KernelWarningCollectorTest, CollectKfenceOK) {
       "upload_var_weight="));
 }
 
-TEST_F(KernelWarningCollectorTest, CollectKfenceBad) {
+TEST_F(KernelWarningCollectorTest, CollectKasanOK) {
   ASSERT_TRUE(test_util::CreateFile(
       test_path_,
       "[    1.566661] BUG: KASAN: use-after-free in kmemleak_test+0xad/0x37\n"
       "\n"
       "<remaining log contents>"));
-  EXPECT_FALSE(
-      collector_.Collect(1, KernelWarningCollector::WarningType::kKfence));
-  EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
+  EXPECT_TRUE(
+      collector_.Collect(1, KernelWarningCollector::WarningType::kKasan));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_kasan_kmemleak_test.*.meta",
+      "sig=use-after-free in kmemleak_test+0xad/0x37"));
+  // Should *not* have a weight
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_kasan_kmemleak_test.*.meta",
+      "upload_var_weight="));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectLockdebugCircular) {
@@ -749,6 +755,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn<test_util::ComputeCrashSeverityTestParams>({
         {"kernel-smmu-fault", CrashCollector::CrashSeverity::kError},
         {"kernel-kfence", CrashCollector::CrashSeverity::kError},
+        {"kernel-kasan", CrashCollector::CrashSeverity::kWarning},
         {"kernel-iwlwifi-error", CrashCollector::CrashSeverity::kWarning},
         {"kernel-wifi-warning", CrashCollector::CrashSeverity::kWarning},
         {"kernel-warning", CrashCollector::CrashSeverity::kWarning},

@@ -288,8 +288,9 @@ constexpr LazyRE2 header = {
     R"(^\[\s*\S+\] WARNING:(?: CPU: \d+ PID: \d+)? at (.+))"};
 
 constexpr LazyRE2 start_kfence_dump = {R"(^\[\s*\S+\] BUG: KFENCE: )"};
+constexpr LazyRE2 start_kasan_dump = {R"(^\[\s*\S+\] BUG: KASAN: )"};
 // The kernel uses 66 = characters to mark the end of the report.
-constexpr LazyRE2 end_kfence_dump = {R"(^\[\s*\S+\] ={66})"};
+constexpr LazyRE2 end_kfence_or_kasan_dump = {R"(^\[\s*\S+\] ={66})"};
 
 constexpr LazyRE2 smmu_fault = {R"(Unhandled context fault: fsr=0x)"};
 
@@ -509,23 +510,35 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
     }
   }
 
-  if (kfence_last_line_ == KfenceLineType::None) {
+  if (kfence_or_kasan_last_line_ == KfenceOrKasanLineType::None) {
     if (RE2::PartialMatch(line, *start_kfence_dump)) {
-      kfence_last_line_ = KfenceLineType::Start;
-      kfence_text_ += line + "\n";
+      kfence_or_kasan_last_line_ = KfenceOrKasanLineType::KfenceStart;
+      kfence_or_kasan_text_ += line + "\n";
+    } else if (RE2::PartialMatch(line, *start_kasan_dump)) {
+      kfence_or_kasan_last_line_ = KfenceOrKasanLineType::KasanStart;
+      kfence_or_kasan_text_ += line + "\n";
     }
-  } else if (kfence_last_line_ == KfenceLineType::Start) {
-    // Return if the end_kfence_dump is reached
-    if (RE2::PartialMatch(line, *end_kfence_dump)) {
-      kfence_last_line_ = KfenceLineType::None;
+  } else if (kfence_or_kasan_last_line_ == KfenceOrKasanLineType::KfenceStart ||
+             kfence_or_kasan_last_line_ == KfenceOrKasanLineType::KasanStart) {
+    // Return if the end_kfence_or_kasan_dump is reached
+    if (RE2::PartialMatch(line, *end_kfence_or_kasan_dump)) {
+      std::string kFlag;
+      if (kfence_or_kasan_last_line_ == KfenceOrKasanLineType::KfenceStart) {
+        kFlag = "--kernel_kfence";
+      } else {
+        kFlag = "--kernel_kasan";
+      }
 
-      std::string kfence_text_tmp;
-      kfence_text_tmp.swap(kfence_text_);
+      kfence_or_kasan_last_line_ = KfenceOrKasanLineType::None;
 
-      return CrashReport(std::move(kfence_text_tmp), {"--kernel_kfence"});
+      std::string kfence_or_kasan_text_tmp;
+      kfence_or_kasan_text_tmp.swap(kfence_or_kasan_text_);
+
+      return CrashReport(std::move(kfence_or_kasan_text_tmp),
+                         {std::move(kFlag)});
     }
 
-    kfence_text_ += line + "\n";
+    kfence_or_kasan_text_ += line + "\n";
   }
 
   if (RE2::PartialMatch(line, *smmu_fault)) {
