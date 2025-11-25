@@ -440,11 +440,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("ShelfHotseat");
   }
 
-  if (builder->UseFlagIsSet("webui-tab-strip")) {
-    builder->AddFeatureEnableOverride("WebUITabStrip");
-    builder->AddFeatureEnableOverride("WebUITabStripTabDragIntegration");
-  }
-
   if (builder->UseFlagIsSet("ambient_eq_default_off")) {
     builder->AddFeatureEnableOverride("AmbientEQDefaultOff");
   }
