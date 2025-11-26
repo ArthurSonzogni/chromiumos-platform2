@@ -203,6 +203,10 @@ bool SendBootMethodMetric(MetricsLibraryInterface& metrics,
 InstallMethod InstallMethodFromString(std::string_view method) {
   if (method == "flexor") {
     return InstallMethod::kFlexor;
+  } else if (method == "mass-deploy") {
+    return InstallMethod::kMassDeploy;
+  } else if (method == "remote-deploy") {
+    return InstallMethod::kRemoteDeploy;
   }
 
   return InstallMethod::kUnknown;

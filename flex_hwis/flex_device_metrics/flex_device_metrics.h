@@ -166,7 +166,13 @@ bool SendBootMethodMetric(MetricsLibraryInterface& metrics,
 //
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
-enum class InstallMethod { kUnknown = 0, kFlexor = 1, kMaxValue = kFlexor };
+enum class InstallMethod {
+  kUnknown = 0,
+  kFlexor = 1,
+  kMassDeploy = 2,
+  kRemoteDeploy = 3,
+  kMaxValue = kRemoteDeploy
+};
 
 InstallMethod InstallMethodFromString(std::string_view method);
 

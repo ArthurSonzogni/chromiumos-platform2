@@ -282,6 +282,9 @@ TEST(FlexBootMethodMetrics, SendBootMethodMetric) {
 // Test converting string to `InstallMethod`.
 TEST(FlexInstallMethodMetrics, InstallMethodFromString) {
   ASSERT_EQ(InstallMethodFromString("flexor"), InstallMethod::kFlexor);
+  ASSERT_EQ(InstallMethodFromString("mass-deploy"), InstallMethod::kMassDeploy);
+  ASSERT_EQ(InstallMethodFromString("remote-deploy"),
+            InstallMethod::kRemoteDeploy);
 
   ASSERT_EQ(InstallMethodFromString(""), InstallMethod::kUnknown);
   ASSERT_EQ(InstallMethodFromString("Flexor"), InstallMethod::kUnknown);
@@ -289,9 +292,6 @@ TEST(FlexInstallMethodMetrics, InstallMethodFromString) {
   ASSERT_EQ(InstallMethodFromString("aflexor"), InstallMethod::kUnknown);
   ASSERT_EQ(InstallMethodFromString(" flexor"), InstallMethod::kUnknown);
   ASSERT_EQ(InstallMethodFromString("flexor "), InstallMethod::kUnknown);
-
-  ASSERT_EQ(InstallMethodFromString("remote deploy"), InstallMethod::kUnknown);
-  ASSERT_EQ(InstallMethodFromString("mass deploy"), InstallMethod::kUnknown);
 }
 
 // Test reading `InstallState` based on the file.
@@ -319,6 +319,16 @@ TEST(FlexInstallMethodMetrics, GetInstallState) {
   got = GetInstallState(root_path);
   EXPECT_EQ(got.just_installed, true);
   EXPECT_EQ(got.method, InstallMethod::kFlexor);
+
+  ASSERT_TRUE(base::WriteFile(install_type_path, "mass-deploy"));
+  got = GetInstallState(root_path);
+  EXPECT_EQ(got.just_installed, true);
+  EXPECT_EQ(got.method, InstallMethod::kMassDeploy);
+
+  ASSERT_TRUE(base::WriteFile(install_type_path, "remote-deploy"));
+  got = GetInstallState(root_path);
+  EXPECT_EQ(got.just_installed, true);
+  EXPECT_EQ(got.method, InstallMethod::kRemoteDeploy);
 }
 
 // Test successful sends of the FRD install metric.
@@ -329,7 +339,7 @@ TEST(FlexFlexorInstallMetrics, SendFlexorInstallMetric_Success) {
 
   StrictMock<MetricsLibraryMock> metrics;
 
-  EXPECT_CALL(metrics, SendEnumToUMA("Platform.FlexInstallMethod", _, 2))
+  EXPECT_CALL(metrics, SendEnumToUMA("Platform.FlexInstallMethod", _, 4))
       .WillRepeatedly(Return(true));
 
   // These pass without checking the existence of the file.
@@ -360,7 +370,7 @@ TEST(FlexFlexorInstallMetrics, SendFlexorInstallMetric_Failure) {
 
   StrictMock<MetricsLibraryMock> metrics;
 
-  EXPECT_CALL(metrics, SendEnumToUMA("Platform.FlexInstallMethod", _, 2))
+  EXPECT_CALL(metrics, SendEnumToUMA("Platform.FlexInstallMethod", _, 4))
       .WillRepeatedly(Return(false));
 
   InstallState expected =
