@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 mod file_view;
-mod test_disk;
+mod flexor_disk;
 
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
@@ -76,7 +76,7 @@ fn main() -> Result<()> {
     let opt = Opt::parse();
 
     match &opt.action {
-        Action::CreateFlexorDisk(args) => test_disk::create(args),
-        Action::RunFlexorDisk(args) => test_disk::run(&args.flexor_disk),
+        Action::CreateFlexorDisk(args) => flexor_disk::create(args),
+        Action::RunFlexorDisk(args) => flexor_disk::run(&args.flexor_disk),
     }
 }
