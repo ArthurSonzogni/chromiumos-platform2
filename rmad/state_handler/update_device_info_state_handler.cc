@@ -324,6 +324,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   update_dev_info->set_mlb_repair(mlb_repair);
 
   SetFieldModifiabilities(update_dev_info.get());
+  SetCustomizedSnName(update_dev_info.get());
 
   state_.set_allocated_update_device_info(update_dev_info.release());
   return RMAD_ERROR_OK;
@@ -728,6 +729,19 @@ void UpdateDeviceInfoStateHandler::SetFieldModifiabilities(
     update_dev_info->set_sku_modifiable(false);
     update_dev_info->set_feature_level_modifiable(false);
   }
+}
+
+void UpdateDeviceInfoStateHandler::SetCustomizedSnName(
+    UpdateDeviceInfoState* update_dev_info) {
+  update_dev_info->set_customized_serial_number_naming("");
+  auto rmad_config = rmad_config_utils_->GetConfig();
+  if (!rmad_config.has_value() ||
+      !rmad_config->has_customized_serial_number_naming()) {
+    return;
+  }
+
+  update_dev_info->set_customized_serial_number_naming(
+      rmad_config->customized_serial_number_naming());
 }
 
 }  // namespace rmad

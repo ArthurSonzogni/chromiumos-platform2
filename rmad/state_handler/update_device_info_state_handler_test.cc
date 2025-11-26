@@ -712,6 +712,33 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   EXPECT_TRUE(update_device_info.region_modifiable());
 }
 
+TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_Customized_SN_Name) {
+  std::string textproto = R"(
+     customized_serial_number_naming: "TEST SN NAME"
+   )";
+  auto handler = CreateStateHandler({.rmad_config_text = textproto});
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto update_device_info = handler->GetState().update_device_info();
+
+  // Fields to be greyed out.
+  EXPECT_EQ(update_device_info.customized_serial_number_naming(),
+            "TEST SN NAME");
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_Customized_SN_Name_Empty) {
+  auto handler = CreateStateHandler({});
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto update_device_info = handler->GetState().update_device_info();
+
+  // Fields to be greyed out.
+  EXPECT_EQ(update_device_info.customized_serial_number_naming(), "");
+}
+
 // Sku filter and description override.
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_SkuFilterSingleSku_Success) {

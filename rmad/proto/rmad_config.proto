@@ -15,4 +15,6 @@ message RmadConfig {
   // received explicit approval (e.g., b/184904870#comment19) from the sensor
   // team to utilize a pre-defined 'golden value'.
   optional bool skip_calibration_with_golden_value = 4;
+
+  optional string customized_serial_number_naming = 5;
 }
