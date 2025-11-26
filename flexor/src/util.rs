@@ -7,6 +7,7 @@ use log::info;
 use std::{
     fs::File,
     io::{BufRead, BufReader, Read},
+    os::unix::fs::chown,
     path::{Path, PathBuf},
     process::{Command, Stdio},
     thread,
@@ -105,6 +106,14 @@ pub fn uncompress_tar_xz(src: &Path, dst: &Path) -> Result<Vec<PathBuf>> {
     }
 
     Ok(result)
+}
+
+// Set User and Group Ids on the given path.
+pub fn set_owner(path: &Path, uid: u32, gid: u32) -> Result<()> {
+    chown(path, Some(uid), Some(gid)).context(format!(
+        "Unable to set correct owner for {}",
+        path.display()
+    ))
 }
 
 #[cfg(test)]

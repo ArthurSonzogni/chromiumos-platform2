@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 use std::{
-    os::unix::fs::{chown, PermissionsExt},
+    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::ExitCode,
 };
@@ -20,13 +20,12 @@ mod disk;
 mod gpt;
 mod logger;
 mod lsblk;
+mod metrics;
 mod util;
 
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEX_CONFIG_SRC_FILENAME: &str = "flex_config.json";
 const FLEX_CONFIG_TARGET_FILEPATH: &str = "unencrypted/flex_config/config.json";
-const FLEX_INSTALL_METRICS_FILEPATH: &str = "unencrypted/install_metrics";
-const FLEXOR_INSTALL_TYPE: &str = "flexor";
 const FLEXOR_LOG_FILE: &str = "/var/log/messages";
 
 // User ID and Group ID for the oobe_config_restore user in ChromeOS.
@@ -36,14 +35,6 @@ const OOBE_CFG_RESTORE_GID: u32 = 20121;
 // File and folder permissions for the Flex config.
 const FLEX_CONFIG_DIR_PERM: u32 = 0o740;
 const FLEX_CONFIG_FILE_PERM: u32 = 0o640;
-
-// User ID and Group ID for the flex_hwis user in ChromeOS, which sends an install type metric.
-const FLEX_HWIS_UID: u32 = 20207;
-const FLEX_HWIS_GID: u32 = 20207;
-
-// File and folder permissions for the install type metric.
-const INSTALL_METRICS_DIR_PERM: u32 = 0o755;
-const INSTALL_TYPE_FILE_PERM: u32 = 0o644;
 
 // This struct contains all of the information commonly passed around
 // during an installation.
@@ -161,39 +152,6 @@ fn mount_stateful(device: &Path) -> Result<Mount> {
         .temp_backed_mount()?)
 }
 
-// Set User and Group Ids on the given path.
-fn set_owner(path: &Path, uid: u32, gid: u32) -> Result<()> {
-    chown(path, Some(uid), Some(gid)).context(format!(
-        "Unable to set correct owner for {}",
-        path.display()
-    ))
-}
-
-/// Writes a file indicating that we installed using flexor. This will be used for metrics.
-///
-/// Returns `Err` if the file couldn't be written.
-fn write_install_method_to_stateful(stateful: &Path) -> Result<()> {
-    let install_metrics_path = stateful.join(FLEX_INSTALL_METRICS_FILEPATH);
-    nix::unistd::mkdir(
-        &install_metrics_path,
-        Mode::from_bits(INSTALL_METRICS_DIR_PERM).unwrap(),
-    )?;
-
-    let install_type_path = install_metrics_path.join("install_type");
-    std::fs::write(&install_type_path, FLEXOR_INSTALL_TYPE)?;
-
-    // Set correct owner for both the new `install_metrics` folder and `install_type` file.
-    set_owner(&install_metrics_path, FLEX_HWIS_UID, FLEX_HWIS_GID)?;
-    set_owner(&install_type_path, FLEX_HWIS_UID, FLEX_HWIS_GID)?;
-
-    // Set perms on the file itself.
-    let mut perm = std::fs::metadata(&install_type_path)?.permissions();
-    perm.set_mode(INSTALL_TYPE_FILE_PERM);
-    std::fs::set_permissions(install_type_path, perm)?;
-
-    Ok(())
-}
-
 /// Copies the flex config to stateful partition.
 fn copy_flex_config_to_stateful(stateful: &Path) -> Result<()> {
     let config_path = stateful.join(FLEX_CONFIG_TARGET_FILEPATH);
@@ -210,12 +168,12 @@ fn copy_flex_config_to_stateful(stateful: &Path) -> Result<()> {
     .context("Unable to copy config")?;
 
     // Set correct owner for both the new `flex_config` folder and `config.json` file.
-    set_owner(
+    util::set_owner(
         config_path.parent().unwrap(),
         OOBE_CFG_RESTORE_UID,
         OOBE_CFG_RESTORE_GID,
     )?;
-    set_owner(&config_path, OOBE_CFG_RESTORE_UID, OOBE_CFG_RESTORE_GID)?;
+    util::set_owner(&config_path, OOBE_CFG_RESTORE_UID, OOBE_CFG_RESTORE_GID)?;
 
     // Set the correct file permissions for the config.
     let mut perm = std::fs::metadata(&config_path)?.permissions();
@@ -238,7 +196,7 @@ fn perform_installation(config: &InstallConfig) -> Result<()> {
 
     let stateful = mount_stateful(&config.target_device)?;
 
-    if write_install_method_to_stateful(stateful.mount_path()).is_err() {
+    if metrics::write_install_method_to_stateful(stateful.mount_path()).is_err() {
         info!("Couldn't indicate install method. Install metric won't be sent from Flex.")
     }
 
