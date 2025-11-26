@@ -15,6 +15,7 @@ use std::io::Write;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use tempfile::NamedTempFile;
 
 const CRDYBOOT_FILENAME: &str = "crdybootx64.efi";
 const CRDYBOOT_SIG_FILENAME: &str = "crdybootx64.sig";
@@ -23,6 +24,7 @@ const CRDYSHIM_FILENAME: &str = "bootx64.efi";
 const FLEX_CONFIG_FILENAME: &str = "flex_config.json";
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEXOR_VMLINUZ_FILENAME: &str = "flexor_vmlinuz";
+const FLEXOR_INSTALL_METRIC_FILE: &str = "install_type";
 const FRD_BUNDLE_INSTALL_DIR: &str = "install";
 
 const SECTOR_SIZE: BlockSize = BlockSize::BS_512;
@@ -224,6 +226,7 @@ fn plan_data_partition(
     frd_bundle: &Path,
     flexor_vmlinuz: &Option<PathBuf>,
     install_image: &Option<PathBuf>,
+    install_metric_file: &Path,
 ) -> Partition {
     let frd_bundle_install_dir = frd_bundle.join(FRD_BUNDLE_INSTALL_DIR);
 
@@ -236,6 +239,7 @@ fn plan_data_partition(
     let mut install_files = FileNameToSrcPathMap::from([
         (FLEXOR_VMLINUZ_FILENAME, flexor_vmlinuz),
         (FLEX_IMAGE_FILENAME, install_image),
+        (FLEXOR_INSTALL_METRIC_FILE, install_metric_file.to_owned()),
     ]);
 
     // Also grab flex_config.json if it's there.
@@ -347,16 +351,39 @@ fn create_image(path: &Path, esp_size: u64, data_size: u64) -> Result<()> {
     Ok(())
 }
 
+// Create the file that indicates to flex_device_metrics what method was used to install.
+//
+// The file indicates Mass Deploy if |mass_deployable| is true, otherwise indicates Remote Deploy.
+fn create_install_metric_file(mass_deployable: bool) -> Result<NamedTempFile> {
+    let file = tempfile::NamedTempFile::new()?;
+    let contents = if mass_deployable {
+        "mass-deploy"
+    } else {
+        "remote-deploy"
+    };
+
+    std::fs::write(file.path(), contents)?;
+
+    Ok(file)
+}
+
 /// Create a flexor disk from scratch.
 pub fn create(args: &CreateArgs) -> Result<()> {
+    // A temporary file to support install metrics.
+    let install_metric_file = create_install_metric_file(args.mass_deployable)?;
+
     let esp_part = plan_esp_partition(
         &args.frd_bundle,
         &args.crdyshim,
         &args.crdyboot,
         args.crdyboot_verbose,
     );
-    let data_part =
-        plan_data_partition(&args.frd_bundle, &args.flexor_vmlinuz, &args.install_image);
+    let data_part = plan_data_partition(
+        &args.frd_bundle,
+        &args.flexor_vmlinuz,
+        &args.install_image,
+        install_metric_file.path(),
+    );
 
     if args.mass_deployable {
         let esp_size = esp_part.required_size_in_bytes()?;
@@ -660,7 +687,8 @@ mod tests {
     #[test]
     fn test_plan_data() {
         // Test 'defaults'.
-        let partition = plan_data_partition(Path::new("fake"), &None, &None);
+        let partition =
+            plan_data_partition(Path::new("fake"), &None, &None, Path::new("install_type"));
 
         assert_eq!(partition.gpt_type, GptPartitionType::BASIC_DATA);
         assert_eq!(partition.subdir, PathBuf::new());
@@ -674,7 +702,8 @@ mod tests {
                 (
                     FLEX_IMAGE_FILENAME,
                     Path::new("fake/install/").join(FLEX_IMAGE_FILENAME),
-                )
+                ),
+                (FLEXOR_INSTALL_METRIC_FILE, PathBuf::from("install_type"))
             ]),
         );
 
@@ -683,15 +712,17 @@ mod tests {
             Path::new("fake"),
             &Some(PathBuf::from("different_name")),
             &None,
+            Path::new("install_type"),
         );
         assert_eq!(
             partition.name_to_src_path,
             FileNameToSrcPathMap::from([
-                (FLEXOR_VMLINUZ_FILENAME, PathBuf::from("different_name"),),
+                (FLEXOR_VMLINUZ_FILENAME, PathBuf::from("different_name")),
                 (
                     FLEX_IMAGE_FILENAME,
                     Path::new("fake/install/").join(FLEX_IMAGE_FILENAME),
                 ),
+                (FLEXOR_INSTALL_METRIC_FILE, PathBuf::from("install_type"))
             ]),
         );
 
@@ -700,12 +731,14 @@ mod tests {
             Path::new("fake"),
             &Some(PathBuf::from("vmlinuz")),
             &Some(PathBuf::from("image")),
+            Path::new("install_type"),
         );
         assert_eq!(
             partition.name_to_src_path,
             FileNameToSrcPathMap::from([
                 (FLEXOR_VMLINUZ_FILENAME, PathBuf::from("vmlinuz")),
                 (FLEX_IMAGE_FILENAME, PathBuf::from("image")),
+                (FLEXOR_INSTALL_METRIC_FILE, PathBuf::from("install_type"))
             ]),
         );
     }
