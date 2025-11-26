@@ -27,6 +27,7 @@ const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEX_CONFIG_SRC_FILENAME: &str = "flex_config.json";
 const FLEX_CONFIG_TARGET_FILEPATH: &str = "unencrypted/flex_config/config.json";
 const FLEXOR_LOG_FILE: &str = "/var/log/messages";
+const ROOTFS_DIR: &str = "/root";
 
 // User ID and Group ID for the oobe_config_restore user in ChromeOS.
 const OOBE_CFG_RESTORE_UID: u32 = 20121;
@@ -56,29 +57,27 @@ impl InstallConfig {
 
 /// Copies the ChromeOS Flex image and other install files (e.g. config) to
 /// rootfs (residing in RAM). This is done since we are about to repartition the
-/// disk and can't loose the image. Since the image size is about 2.5GB, we
+/// disk and can't lose the image. Since the image size is about 2.5GB, we
 /// assume that much free space in RAM.
 fn copy_installation_files_to_rootfs(config: &InstallConfig) -> Result<()> {
     let mount = mount::Builder::new(&config.install_partition)
         .fs_type(FsType::Vfat)
         .temp_backed_mount()
         .context("Unable to mount the install partition")?;
+    let root = Path::new(ROOTFS_DIR);
 
     // Copy the image to rootfs.
     std::fs::copy(
         mount.mount_path().join(FLEX_IMAGE_FILENAME),
-        Path::new("/root").join(FLEX_IMAGE_FILENAME),
+        root.join(FLEX_IMAGE_FILENAME),
     )
     .context("Unable to copy image to rootfs")?;
 
-    // Copy the config to rootfs.
-    if std::fs::copy(
-        mount.mount_path().join(FLEX_CONFIG_SRC_FILENAME),
-        Path::new("root").join(FLEX_CONFIG_SRC_FILENAME),
-    )
-    .is_err()
-    {
-        info!("Unable to copy flex config to rootfs, proceeding since it is optional");
+    // Copy optional files to the rootfs.
+    for file in [FLEX_CONFIG_SRC_FILENAME, metrics::FLEXOR_INSTALL_TYPE_FILE] {
+        if std::fs::copy(mount.mount_path().join(file), root.join(file)).is_err() {
+            info!("Unable to copy {file} to rootfs, proceeding since it is optional");
+        }
     }
 
     Ok(())
@@ -116,7 +115,7 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
 
     // Then uncompress the image on disk.
     let entries = util::uncompress_tar_xz(
-        &Path::new("/root").join(FLEX_IMAGE_FILENAME),
+        &Path::new(ROOTFS_DIR).join(FLEX_IMAGE_FILENAME),
         new_part_mount.mount_path(),
     )
     .context("Unable to uncompress the image")?;
@@ -162,7 +161,7 @@ fn copy_flex_config_to_stateful(stateful: &Path) -> Result<()> {
         Mode::from_bits(FLEX_CONFIG_DIR_PERM).unwrap(),
     )?;
     std::fs::copy(
-        Path::new("root").join(FLEX_CONFIG_SRC_FILENAME),
+        Path::new(ROOTFS_DIR).join(FLEX_CONFIG_SRC_FILENAME),
         &config_path,
     )
     .context("Unable to copy config")?;
@@ -195,12 +194,13 @@ fn perform_installation(config: &InstallConfig) -> Result<()> {
     disk::try_remove_thirteenth_partition(&config.target_device)?;
 
     let stateful = mount_stateful(&config.target_device)?;
+    let root_dir = Path::new(ROOTFS_DIR);
 
-    if metrics::write_install_method_to_stateful(stateful.mount_path()).is_err() {
+    if metrics::write_install_method_to_stateful(root_dir, stateful.mount_path()).is_err() {
         info!("Couldn't indicate install method. Install metric won't be sent from Flex.")
     }
 
-    if Path::new("root").join(FLEX_CONFIG_SRC_FILENAME).exists() {
+    if root_dir.join(FLEX_CONFIG_SRC_FILENAME).exists() {
         if let Err(err) = copy_flex_config_to_stateful(stateful.mount_path()) {
             error!("Unable to copy Flex config due to: {err}");
             // If this fails, we can't do anything about it, so just log the error.
