@@ -31,6 +31,7 @@ recvmsg: 1
 restart_syscall: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
+sendmsg: 1
 socketpair: arg0 == AF_UNIX
 tgkill: 1
 uname: 1
