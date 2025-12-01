@@ -833,12 +833,13 @@ async fn psi_memory_handler_loop(
     notification_count: &Arc<AtomicI32>,
 ) -> PsiPolicyResult<()> {
     let mut handler = PsiMemoryHandler::new(root)?;
+    let mut pressure_logger = MemoryPressureLogger::new();
     loop {
         if let Some(pressure_status) = handler
             .monitor_memory_pressure(vmms_client, feature_notify)
             .await?
         {
-            send_pressure_signals(conn, &pressure_status);
+            send_pressure_signals(&mut pressure_logger, conn, &pressure_status);
             notification_count.fetch_add(1, Ordering::Relaxed);
         } else {
             // reclaim_on_memory_pressure() returns `None` if the feature flag or params is changed.
@@ -866,13 +867,14 @@ async fn margin_memory_handler_loop(
                 None
             }
         };
+    let mut pressure_logger = MemoryPressureLogger::new();
 
     loop {
         let pressure_result = memory::get_memory_pressure_status(vmms_client).await;
 
         // Send memory pressure notification.
         if let Ok(pressure_status) = pressure_result {
-            send_pressure_signals(conn, &pressure_status);
+            send_pressure_signals(&mut pressure_logger, conn, &pressure_status);
         }
 
         notification_count.fetch_add(1, Ordering::Relaxed);
@@ -887,7 +889,51 @@ async fn margin_memory_handler_loop(
     }
 }
 
-fn send_pressure_signals(conn: &Arc<SyncConnection>, pressure_status: &memory::PressureStatus) {
+struct MemoryPressureLogger {
+    last_level: memory::PressureLevelChrome,
+}
+
+impl MemoryPressureLogger {
+    fn new() -> Self {
+        Self {
+            last_level: memory::PressureLevelChrome::None,
+        }
+    }
+
+    fn on_pressure_signal(&mut self, pressure_status: &memory::PressureStatus) {
+        // Log the new level only when the level is changed for moderate or lower levels to avoid
+        // spamming logs. Logging every discard level signals is acceptable because Chrome already
+        // logs each critical signal.
+        if pressure_status.chrome_level != self.last_level
+            || pressure_status.chrome_level >= memory::PressureLevelChrome::DiscardUnprotected
+        {
+            let (level_label, target) = match pressure_status.chrome_level {
+                memory::PressureLevelChrome::None => ("None", None),
+                memory::PressureLevelChrome::Moderate => ("Moderate", None),
+                memory::PressureLevelChrome::DiscardUnprotected => (
+                    "DiscardUnprotected",
+                    Some(pressure_status.chrome_reclaim_target_kb),
+                ),
+                memory::PressureLevelChrome::Critical => {
+                    ("Critical", Some(pressure_status.chrome_reclaim_target_kb))
+                }
+            };
+            info!(
+                "New memory pressure signal to Chrome: {}, {} KB",
+                level_label,
+                target.unwrap_or(0) / 1024
+            );
+        }
+        self.last_level = pressure_status.chrome_level;
+    }
+}
+
+fn send_pressure_signals(
+    pressure_logger: &mut MemoryPressureLogger,
+    conn: &Arc<SyncConnection>,
+    pressure_status: &memory::PressureStatus,
+) {
+    pressure_logger.on_pressure_signal(pressure_status);
     let (chrome_level, discard_type) = pressure_status.chrome_level.to_dbus_params();
     send_pressure_signal(
         conn,
