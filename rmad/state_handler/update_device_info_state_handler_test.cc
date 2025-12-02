@@ -735,8 +735,31 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto update_device_info = handler->GetState().update_device_info();
 
-  // Fields to be greyed out.
   EXPECT_EQ(update_device_info.customized_serial_number_naming(), "");
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_Hide_Google_Sku) {
+  std::string textproto = R"(
+     hide_google_sku: true
+   )";
+  auto handler = CreateStateHandler({.rmad_config_text = textproto});
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto update_device_info = handler->GetState().update_device_info();
+
+  EXPECT_TRUE(update_device_info.hide_google_sku());
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_Hide_Google_Sku_Unset) {
+  auto handler = CreateStateHandler({});
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto update_device_info = handler->GetState().update_device_info();
+
+  EXPECT_FALSE(update_device_info.hide_google_sku());
 }
 
 // Sku filter and description override.

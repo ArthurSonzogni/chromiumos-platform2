@@ -17,4 +17,6 @@ message RmadConfig {
   optional bool skip_calibration_with_golden_value = 4;
 
   optional string customized_serial_number_naming = 5;
+
+  optional bool hide_google_sku = 6;
 }

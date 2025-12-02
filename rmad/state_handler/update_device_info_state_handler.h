@@ -74,6 +74,7 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
   bool IsSpareMlb() const;
   void SetFieldModifiabilities(UpdateDeviceInfoState* update_dev_info);
   void SetCustomizedSnName(UpdateDeviceInfoState* update_dev_info);
+  void SetGoogleSkuVisibility(UpdateDeviceInfoState* update_dev_info);
 
   RmadCrosConfig rmad_cros_config_;
 

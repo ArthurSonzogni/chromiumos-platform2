@@ -325,6 +325,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
 
   SetFieldModifiabilities(update_dev_info.get());
   SetCustomizedSnName(update_dev_info.get());
+  SetGoogleSkuVisibility(update_dev_info.get());
 
   state_.set_allocated_update_device_info(update_dev_info.release());
   return RMAD_ERROR_OK;
@@ -742,6 +743,15 @@ void UpdateDeviceInfoStateHandler::SetCustomizedSnName(
 
   update_dev_info->set_customized_serial_number_naming(
       rmad_config->customized_serial_number_naming());
+}
+
+void UpdateDeviceInfoStateHandler::SetGoogleSkuVisibility(
+    UpdateDeviceInfoState* update_dev_info) {
+  auto rmad_config = rmad_config_utils_->GetConfig();
+
+  // The Google SKU in SKU dropdown is by default visible.
+  update_dev_info->set_hide_google_sku(rmad_config.has_value() &&
+                                       rmad_config->hide_google_sku());
 }
 
 }  // namespace rmad
