@@ -86,6 +86,7 @@ pkg_config("target_defaults") {
     "libdlcservice-utils",
     "libimageloader-manifest",
     "libmetrics",
+    "libsegmentation",
     "libselinux",
     "libstorage_platform",
     "libstorage_storage_container",

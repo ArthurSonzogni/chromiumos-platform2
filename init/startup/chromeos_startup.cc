@@ -34,6 +34,7 @@
 #include <brillo/userdb_utils.h>
 #include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
+#include <libsegmentation/feature_management.h>
 #include <libstorage/platform/platform.h>
 #include <openssl/sha.h>
 #include <vpd/vpd.h>
@@ -386,6 +387,7 @@ ChromeosStartup::ChromeosStartup(
     std::unique_ptr<libstorage::StorageContainerFactory>
         storage_container_factory,
     std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl,
+    std::unique_ptr<segmentation::FeatureManagement> feature_management,
     init_metrics::InitMetrics* metrics)
     : platform_(platform),
       vpd_(std::move(vpd)),
@@ -397,6 +399,7 @@ ChromeosStartup::ChromeosStartup(
       mount_helper_factory_(std::move(mount_helper_factory)),
       storage_container_factory_(std::move(storage_container_factory)),
       tlcl_(std::move(tlcl)),
+      feature_management_(std::move(feature_management)),
       metrics_(metrics) {
   stateful_mount_ = std::make_unique<StatefulMount>(root_, stateful_, platform_,
                                                     startup_dep_);
@@ -1233,6 +1236,11 @@ int ChromeosStartup::Run() {
                         MS_REMOUNT | MS_RDONLY | kCommonMountFlags, "")) {
     PLOG(WARNING) << "Failed to remount " << kernel_sec << " as readonly.";
   }
+
+  // Check feature management level: if it has already been done (not the first
+  // boot, or done by the splash screen, this is a noop. Otherwise, it sets /run
+  // up for future use. Saving in VPD is done after login.
+  feature_management_->GetFeatureLevel();
 
   bootstat_.LogEvent("post-startup");
 

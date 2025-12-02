@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 #include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
+#include <libsegmentation/feature_management.h>
 #include <libstorage/platform/platform.h>
 #include <metrics/bootstat.h>
 #include <vpd/vpd.h>
@@ -39,18 +40,20 @@ class ChromeosStartup {
   static bool ParseFlags(Flags* flags, int argc, const char* argv[]);
 
   // Constructor for the class
-  ChromeosStartup(std::unique_ptr<vpd::Vpd> vpd,
-                  std::unique_ptr<Flags> flags,
-                  const base::FilePath& root,
-                  const base::FilePath& stateful,
-                  const base::FilePath& metadata,
-                  libstorage::Platform* platform,
-                  StartupDep* startup_dep,
-                  std::unique_ptr<MountHelperFactory> mount_helper_factory,
-                  std::unique_ptr<libstorage::StorageContainerFactory>
-                      storage_container_factory,
-                  std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl,
-                  init_metrics::InitMetrics* metrics);
+  ChromeosStartup(
+      std::unique_ptr<vpd::Vpd> vpd,
+      std::unique_ptr<Flags> flags,
+      const base::FilePath& root,
+      const base::FilePath& stateful,
+      const base::FilePath& metadata,
+      libstorage::Platform* platform,
+      StartupDep* startup_dep,
+      std::unique_ptr<MountHelperFactory> mount_helper_factory,
+      std::unique_ptr<libstorage::StorageContainerFactory>
+          storage_container_factory,
+      std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl,
+      std::unique_ptr<segmentation::FeatureManagement> feature_management,
+      init_metrics::InitMetrics* metrics);
 
   virtual ~ChromeosStartup() = default;
 
@@ -191,6 +194,7 @@ class ChromeosStartup {
   bool dev_mode_;
   base::FilePath state_dev_;
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl_;
+  std::unique_ptr<segmentation::FeatureManagement> feature_management_;
   init_metrics::InitMetrics* metrics_;
 };
 

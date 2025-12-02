@@ -15,6 +15,7 @@
 #include <brillo/syslog_logging.h>
 #include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper_impl.h>
+#include <libsegmentation/feature_management.h>
 #include <libstorage/platform/platform.h>
 #include <vpd/vpd.h>
 
@@ -84,6 +85,9 @@ int main(int argc, const char* argv[]) {
   init_metrics::ScopedInitMetricsSingleton scoped_metrics(
       kChromeosStartupMetricsPath);
 
+  std::unique_ptr<segmentation::FeatureManagement> feature_management =
+      std::make_unique<segmentation::FeatureManagement>();
+
   std::unique_ptr<libstorage::StorageContainerFactory>
       storage_container_factory =
           std::make_unique<libstorage::StorageContainerFactory>(
@@ -95,15 +99,17 @@ int main(int argc, const char* argv[]) {
   std::unique_ptr<startup::MountHelperFactory> mount_helper_factory =
       std::make_unique<startup::MountHelperFactory>(
           platform.get(), startup_dep.get(), base::FilePath("/"),
-          base::FilePath(kStatefulPartition), base::FilePath(kMetadataPartition), base::FilePath(kLsbRelease));
+          base::FilePath(kStatefulPartition),
+          base::FilePath(kMetadataPartition), base::FilePath(kLsbRelease));
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl =
       std::make_unique<hwsec_foundation::TlclWrapperImpl>();
   std::unique_ptr<startup::ChromeosStartup> startup =
       std::make_unique<startup::ChromeosStartup>(
           std::make_unique<vpd::Vpd>(), std::move(flags), base::FilePath("/"),
-          base::FilePath(kStatefulPartition), base::FilePath(kMetadataPartition),
-          platform.get(), startup_dep.get(), std::move(mount_helper_factory),
-          std::move(storage_container_factory), std::move(tlcl),
+          base::FilePath(kStatefulPartition),
+          base::FilePath(kMetadataPartition), platform.get(), startup_dep.get(),
+          std::move(mount_helper_factory), std::move(storage_container_factory),
+          std::move(tlcl), std::move(feature_management),
           init_metrics::InitMetrics::Get());
 
   return startup->Run();
