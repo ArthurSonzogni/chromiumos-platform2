@@ -130,6 +130,11 @@ def ParseArgs(argv):
         type=argparse.FileType("wb"),
         help="Output path for identity table",
     )
+    parser.add_argument(
+        "--minify",
+        action="store_true",
+        help="Output minified JSON",
+    )
     return parser.parse_args(argv)
 
 
@@ -1023,6 +1028,7 @@ def Main(
     configfs_output=None,
     configs=None,
     identity_table_out=None,
+    minify=False,
 ):
     """Transforms and validates a cros config file for use on the system
 
@@ -1041,6 +1047,7 @@ def Main(
         configfs_output: Output path to generated SquashFS for ConfigFS.
         configs: List of source config files that will be transformed/verified.
         identity_table_out: Output file for crosid identity table.
+        minify: Whether to output minified JSON.
     """
     schema = schema or ReadSchema()
 
@@ -1066,11 +1073,13 @@ def Main(
         )
     if output:
         Path(output).write_text(
-            libcros_schema.FormatJson(json_transform),
+            libcros_schema.FormatJson(json_transform, minify=minify),
             encoding="utf-8",
         )
     else:
-        sys.stdout.write(libcros_schema.FormatJson(json_transform))
+        sys.stdout.write(
+            libcros_schema.FormatJson(json_transform, minify=minify)
+        )
     if configfs_output:
         configfs.GenerateConfigFSData(json_transform, configfs_output)
     if identity_table_out:
@@ -1094,6 +1103,7 @@ def main(argv=None):
         configfs_output=opts.configfs_output,
         configs=opts.configs,
         identity_table_out=opts.identity_table_out,
+        minify=opts.minify,
     )
 
 

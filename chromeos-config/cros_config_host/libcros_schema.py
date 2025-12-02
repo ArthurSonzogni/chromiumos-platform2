@@ -17,16 +17,22 @@ import re
 import yaml  # pylint: disable=import-error
 
 
-def FormatJson(config):
+def FormatJson(config, minify=False):
     """Formats JSON for output or printing.
 
     Args:
         config: Dictionary to be output
+        minify: Whether to output minified JSON
     """
-    return (
-        json.dumps(config, sort_keys=True, indent=2, separators=(",", ": "))
-        + "\n"
+    ret = json.dumps(
+        config,
+        sort_keys=True,
+        indent=None if minify else 2,
+        separators=(",", ":" if minify else ": "),
     )
+    if not minify:
+        ret += "\n"
+    return ret
 
 
 def LoadYaml(stream):
