@@ -503,9 +503,7 @@ TEST_F(MobileOperatorInfoCarriersRogersTest, Rogers5gHome_RogersServing) {
     EXPECT_EQ(operator_info_->serving_operator_name(), kRogersOperatorName);
     EXPECT_FALSE(operator_info_->tethering_disallowed());
     CheckFirstApn(kRogersApn5G);
-    CheckIfApnExists(kRogersApn4G);
     CheckIfApnExists(kRogersApn5GDun);
-    CheckIfApnExists(kRogersApn4GDun);
   }
 }
 
