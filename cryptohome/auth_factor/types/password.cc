@@ -11,23 +11,9 @@
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/verifiers/scrypt.h"
 #include "cryptohome/auth_session/intent.h"
-#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
-
-AfDriverWithPasswordBlockTypes::AfDriverWithPasswordBlockTypes(
-    AsyncInitFeatures* features)
-    : features_(features) {}
-
-base::span<const AuthBlockType> AfDriverWithPasswordBlockTypes::block_types()
-    const {
-  base::span<const AuthBlockType> types = kBlockTypes;
-  if (!features_->IsFeatureEnabled(Features::kPinweaverForPassword)) {
-    return types.subspan<1>();
-  }
-  return types;
-}
 
 bool AfDriverWithPasswordBlockTypes::NeedsResetSecret() const {
   // Reset secrets are only used for pinweaver based passwords but since we
@@ -39,9 +25,6 @@ bool AfDriverWithPasswordBlockTypes::NeedsResetSecret() const {
       types.end();
   return is_pinweaver_enabled;
 }
-
-PasswordAuthFactorDriver::PasswordAuthFactorDriver(AsyncInitFeatures* features)
-    : AfDriverWithPasswordBlockTypes(features) {}
 
 bool PasswordAuthFactorDriver::IsSupportedByHardware() const {
   return true;

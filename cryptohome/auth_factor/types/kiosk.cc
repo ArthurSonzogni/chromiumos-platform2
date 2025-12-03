@@ -5,13 +5,9 @@
 #include "cryptohome/auth_factor/types/kiosk.h"
 
 #include "cryptohome/auth_factor/label_arity.h"
-#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
-
-KioskAuthFactorDriver::KioskAuthFactorDriver(AsyncInitFeatures* features)
-    : AfDriverWithPasswordBlockTypes(features) {}
 
 bool KioskAuthFactorDriver::IsSupportedByHardware() const {
   return true;

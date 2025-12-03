@@ -837,7 +837,6 @@ class NonPinweaverPasswordAuthBlockTest : public ::testing::Test {
 };
 
 TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsRecreate) {
-  features_.SetDefaultForFeature(Features::kPinweaverForPassword, true);
   KeyBlobs* key_blobs_ptr = nullptr;
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
@@ -859,29 +858,7 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsRecreate) {
   EXPECT_THAT(suggested_action, Eq(AuthBlock::SuggestedAction::kRecreate));
 }
 
-TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoFeature) {
-  features_.SetDefaultForFeature(Features::kPinweaverForPassword, false);
-  KeyBlobs* key_blobs_ptr = nullptr;
-  EXPECT_CALL(auth_block_, DerivePassword(_, _, _, _))
-      .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
-        auto key_blobs = std::make_unique<KeyBlobs>();
-        key_blobs_ptr = key_blobs.get();
-        std::move(callback).Run(OkStatus<CryptohomeError>(),
-                                std::move(key_blobs), std::nullopt);
-      });
-
-  DeriveTestFuture result;
-  auth_block_.Derive({}, {}, {}, result.GetCallback());
-
-  ASSERT_THAT(result.IsReady(), IsTrue());
-  auto [status, key_blobs, suggested_action] = result.Take();
-  EXPECT_THAT(status, IsOk());
-  EXPECT_THAT(key_blobs.get(), Eq(key_blobs_ptr));
-  EXPECT_THAT(suggested_action, Eq(std::nullopt));
-}
-
 TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoPinweaver) {
-  features_.SetDefaultForFeature(Features::kPinweaverForPassword, true);
   KeyBlobs* key_blobs_ptr = nullptr;
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(false));
@@ -904,7 +881,6 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoPinweaver) {
 }
 
 TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingOnError) {
-  features_.SetDefaultForFeature(Features::kPinweaverForPassword, true);
   EXPECT_CALL(auth_block_, DerivePassword(_, _, _, _))
       .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
         std::move(callback).Run(MakeStatus<CryptohomeError>(

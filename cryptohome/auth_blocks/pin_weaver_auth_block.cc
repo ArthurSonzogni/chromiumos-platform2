@@ -597,7 +597,6 @@ void NonPinweaverPasswordAuthBlock::Derive(
             // block to a pinweaver one. Don't do this if the Derive failed, or
             // if there's already a competing suggested action.
             if (error.ok() && !suggested_action.has_value() &&
-                features->IsFeatureEnabled(Features::kPinweaverForPassword) &&
                 PinWeaverAuthBlock::IsSupported(*hwsec).ok()) {
               suggested_action = SuggestedAction::kRecreate;
             }

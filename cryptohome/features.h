@@ -28,12 +28,6 @@ inline constexpr struct VariationsFeature kCrOSMigrateLegacyFingerprint = {
     .default_state = FEATURE_DISABLED_BY_DEFAULT,
 };
 
-// Control switch value using pinweaver to back password credentials.
-inline constexpr struct VariationsFeature kCrOSPinweaverForPassword = {
-    .name = "CrOSLateBootPinweaverForPassword",
-    .default_state = FEATURE_ENABLED_BY_DEFAULT,
-};
-
 // Features is a class which is a wrapper around PlatformFeatureInterface, which
 // can also be configured for testing.
 class Features {
@@ -43,7 +37,6 @@ class Features {
   enum ActiveFeature {
     kGenerateRecoverableKeyStore,
     kMigrateLegacyFingerprint,
-    kPinweaverForPassword,
   };
 
   // Platform feature library can only initialized with a bus instance.

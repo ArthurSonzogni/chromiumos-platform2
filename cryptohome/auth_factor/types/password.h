@@ -17,7 +17,6 @@
 #include "cryptohome/auth_factor/types/common.h"
 #include "cryptohome/auth_session/intent.h"
 #include "cryptohome/credential_verifier.h"
-#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 
@@ -27,8 +26,7 @@ namespace cryptohome {
 // separate class so that it can be reused by the kiosk factor driver as well.
 //
 // The priority is defined based on the following:
-//   1. Prefer pinweaver as the best choice, if it is both available and the
-//      feature to use it is enabled.
+//   1. Prefer pinweaver as the best choice if it available.
 // If pinweaver is not available then we fall back to more raw TPM options:
 //   2. Favor TPM ECC as the fastest and best choice.
 //   3. If ECC isn't available, prefer binding to PCR.
@@ -45,9 +43,11 @@ namespace cryptohome {
 // block types that are supported.
 class AfDriverWithPasswordBlockTypes : public virtual AuthFactorDriver {
  protected:
-  explicit AfDriverWithPasswordBlockTypes(AsyncInitFeatures* features);
+  AfDriverWithPasswordBlockTypes() = default;
 
-  base::span<const AuthBlockType> block_types() const final;
+  base::span<const AuthBlockType> block_types() const final {
+    return kBlockTypes;
+  }
   bool NeedsResetSecret() const final;
 
  private:
@@ -58,8 +58,6 @@ class AfDriverWithPasswordBlockTypes : public virtual AuthFactorDriver {
       AuthBlockType::kScrypt,
 #endif
   };
-
-  AsyncInitFeatures* features_;
 };
 
 class PasswordAuthFactorDriver final
@@ -79,7 +77,7 @@ class PasswordAuthFactorDriver final
       public AfDriverWithKnowledgeFactorType<
           KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PASSWORD> {
  public:
-  explicit PasswordAuthFactorDriver(AsyncInitFeatures* features);
+  PasswordAuthFactorDriver() = default;
 
  private:
   bool IsSupportedByHardware() const override;

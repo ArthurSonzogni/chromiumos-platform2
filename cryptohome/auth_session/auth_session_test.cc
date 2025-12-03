@@ -379,8 +379,7 @@ class AuthSessionTest : public ::testing::Test {
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           [](AuthSessionTest* test) { return test->bio_service_.get(); },
-          base::Unretained(this))),
-      &fake_features_.async};
+          base::Unretained(this)))};
   AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
                                          &uss_manager_};
   FpMigrationUtility fp_migration_utility_{

@@ -15,7 +15,6 @@
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
-#include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
@@ -31,14 +30,11 @@ using ::testing::IsNull;
 using ::testing::IsTrue;
 using ::testing::Optional;
 
-class KioskDriverTest : public AuthFactorDriverGenericTest {
- protected:
-  FakeFeaturesForTesting features_;
-};
+class KioskDriverTest : public AuthFactorDriverGenericTest {};
 
 TEST_F(KioskDriverTest, KioskConvertToProto) {
   // Setup
-  KioskAuthFactorDriver kiosk_driver{&features_.async};
+  KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
   AuthFactorMetadata metadata = CreateMetadataWithType<KioskMetadata>();
 
@@ -61,7 +57,7 @@ TEST_F(KioskDriverTest, KioskConvertToProto) {
 
 TEST_F(KioskDriverTest, KioskConvertToProtoNullOpt) {
   // Setup
-  KioskAuthFactorDriver kiosk_driver{&features_.async};
+  KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
   AuthFactorMetadata metadata;
 
@@ -75,7 +71,7 @@ TEST_F(KioskDriverTest, KioskConvertToProtoNullOpt) {
 
 TEST_F(KioskDriverTest, SupportedWithNoOtherFactors) {
   // Setup
-  KioskAuthFactorDriver kiosk_driver{&features_.async};
+  KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
   // Test, Verify
@@ -96,7 +92,7 @@ TEST_F(KioskDriverTest, SupportedWithNoOtherFactors) {
 
 TEST_F(KioskDriverTest, UnsupportedWithOtherFactors) {
   // Setup
-  KioskAuthFactorDriver kiosk_driver{&features_.async};
+  KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
   // Test, Verify
@@ -111,7 +107,7 @@ TEST_F(KioskDriverTest, UnsupportedWithOtherFactors) {
 
 TEST_F(KioskDriverTest, AlwaysSupportedByHardare) {
   // Setup
-  KioskAuthFactorDriver kiosk_driver{&features_.async};
+  KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
   // Test, Verify
@@ -119,7 +115,7 @@ TEST_F(KioskDriverTest, AlwaysSupportedByHardare) {
 }
 
 TEST_F(KioskDriverTest, PrepareForAddFails) {
-  KioskAuthFactorDriver kiosk_driver{&features_.async};
+  KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
@@ -131,7 +127,7 @@ TEST_F(KioskDriverTest, PrepareForAddFails) {
 }
 
 TEST_F(KioskDriverTest, PrepareForAuthFails) {
-  KioskAuthFactorDriver kiosk_driver{&features_.async};
+  KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
@@ -143,7 +139,7 @@ TEST_F(KioskDriverTest, PrepareForAuthFails) {
 }
 
 TEST_F(KioskDriverTest, GetDelayFails) {
-  KioskAuthFactorDriver kiosk_driver{&features_.async};
+  KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
   AuthFactor factor(AuthFactorType::kKiosk, kLabel,
@@ -157,7 +153,7 @@ TEST_F(KioskDriverTest, GetDelayFails) {
 }
 
 TEST_F(KioskDriverTest, GetExpirationFails) {
-  KioskAuthFactorDriver kiosk_driver{&features_.async};
+  KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
   AuthFactor factor(AuthFactorType::kKiosk, kLabel,
@@ -171,7 +167,7 @@ TEST_F(KioskDriverTest, GetExpirationFails) {
 }
 
 TEST_F(KioskDriverTest, CreateCredentialVerifierFails) {
-  KioskAuthFactorDriver kiosk_driver{&features_.async};
+  KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
   auto verifier = driver.CreateCredentialVerifier(kLabel, {}, {});

@@ -50,8 +50,6 @@ const VariationsFeature& GetVariationFeatureFor(
       return kCrOSLateBootGenerateRecoverableKeyStore;
     case Features::kMigrateLegacyFingerprint:
       return kCrOSMigrateLegacyFingerprint;
-    case Features::kPinweaverForPassword:
-      return kCrOSPinweaverForPassword;
   }
 }
 
