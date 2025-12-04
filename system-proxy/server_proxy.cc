@@ -18,6 +18,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
@@ -216,11 +217,22 @@ void ServerProxy::HandleStdinReadable() {
     const auto& addr = config.listening_address().addr();
     listening_addr_ = net_base::IPv4Address::CreateFromBytes(addr);
     if (!listening_addr_) {
-      LOG(ERROR) << "Invalid listening address: " << addr;
+      LOG(ERROR) << "Invalid listening address: "
+                 << base::HexEncode(addr.data(), addr.size());
       return;
     }
     listening_port_ = config.listening_address().port();
     CreateListeningSocket();
+  }
+
+  if (config.has_connected_namespace()) {
+    const auto& addr = config.connected_namespace().host_ipv4_addr();
+    connect_ns_host_ipv4_addr_ = net_base::IPv4Address::CreateFromBytes(addr);
+    if (!connect_ns_host_ipv4_addr_) {
+      LOG(ERROR) << "Invalid ConnectNamespace address: "
+                 << base::HexEncode(addr.data(), addr.size());
+      return;
+    }
   }
 
   if (config.has_proxy_resolution_reply()) {
@@ -307,7 +319,7 @@ void ServerProxy::OnConnectionAccept() {
           listening_fd_->Accept((struct sockaddr*)&client_src, &sockaddr_len)) {
     auto connect_job = std::make_unique<ProxyConnectJob>(
         std::move(client_conn), system_credentials_,
-        system_credentials_auth_schemes_,
+        system_credentials_auth_schemes_, connect_ns_host_ipv4_addr_,
         base::BindOnce(&ServerProxy::ResolveProxy, base::Unretained(this)),
         base::BindRepeating(&ServerProxy::AuthenticationRequired,
                             base::Unretained(this)),

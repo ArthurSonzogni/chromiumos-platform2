@@ -76,6 +76,12 @@ message KerberosConfig {
 
 message ClearUserCredentials {}
 
+message ConnectedNamespace {
+  // The IPv4 address in network order assigned to the interface in the host
+  // namespace, from patchpanel.
+  optional bytes host_ipv4_addr = 1;
+}
+
 message WorkerConfigs {
   oneof params {
     Credentials credentials = 1;
@@ -84,5 +90,6 @@ message WorkerConfigs {
     ProxyResolutionReply proxy_resolution_reply = 3;
     KerberosConfig kerberos_config = 4;
     ClearUserCredentials clear_user_credentials = 5;
+    ConnectedNamespace connected_namespace = 6;
   }
 }

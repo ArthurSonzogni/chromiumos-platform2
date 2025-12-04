@@ -73,7 +73,7 @@ class ProxyConnectJobTest : public ::testing::Test {
 
     connect_job_ = std::make_unique<ProxyConnectJob>(
         net_base::Socket::CreateFromFd(base::ScopedFD(fds[0])), "",
-        CURLAUTH_ANY,
+        CURLAUTH_ANY, std::nullopt,
         base::BindOnce(&ProxyConnectJobTest::ResolveProxy,
                        base::Unretained(this)),
         base::BindRepeating(&ProxyConnectJobTest::OnAuthCredentialsRequired,
@@ -200,7 +200,7 @@ TEST_F(ProxyConnectJobTest, ClientConnectTimeoutJobCanceled) {
 
     auto connect_job = std::make_unique<ProxyConnectJob>(
         net_base::Socket::CreateFromFd(base::ScopedFD(fds[0])), "",
-        CURLAUTH_ANY,
+        CURLAUTH_ANY, std::nullopt,
         base::BindOnce(&ProxyConnectJobTest::ResolveProxy,
                        base::Unretained(this)),
         base::BindRepeating(&ProxyConnectJobTest::OnAuthCredentialsRequired,

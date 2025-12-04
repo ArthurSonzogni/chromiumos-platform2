@@ -83,6 +83,7 @@ class MockProxyConnectJob : public ProxyConnectJob {
       : ProxyConnectJob(std::move(socket),
                         credentials,
                         CURLAUTH_ANY,
+                        std::nullopt,
                         std::move(resolve_proxy_callback),
                         std::move(auth_required_callback),
                         std::move(setup_finished_callback)) {}
@@ -170,6 +171,21 @@ TEST_F(ServerProxyTest, FetchListeningAddress) {
 
   EXPECT_EQ(server_proxy_->listening_addr_, net_base::IPv4Address(0, 0, 0, 0));
   EXPECT_EQ(server_proxy_->listening_port_, kTestPort);
+}
+
+TEST_F(ServerProxyTest, FetchConnectedNamespace) {
+  worker::ConnectedNamespace connect_ns;
+  connect_ns.set_host_ipv4_addr(std::vector<uint8_t>{0, 0, 0, 0}.data(), 4);
+  worker::WorkerConfigs configs;
+  *configs.mutable_connected_namespace() = connect_ns;
+  // Redirect the worker stdin and stdout pipes.
+  RedirectStdPipes();
+  // Send the config to the worker's stdin input.
+  EXPECT_TRUE(WriteProtobuf(stdin_write_fd_.get(), configs));
+  brillo_loop_.RunOnce(false);
+
+  EXPECT_EQ(server_proxy_->connect_ns_host_ipv4_addr_,
+            net_base::IPv4Address(0, 0, 0, 0));
 }
 
 // Tests that ServerProxy handles the basic flow of a connect request:

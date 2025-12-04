@@ -6,6 +6,7 @@
 
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -15,6 +16,7 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback_forward.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/socket.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -67,12 +69,14 @@ class ProxyConnectJob {
       base::RepeatingCallback<void(const std::string& credentials)>
           on_auth_acquired_callback)>;
 
-  ProxyConnectJob(std::unique_ptr<net_base::Socket> socket,
-                  const std::string& credentials,
-                  int64_t curl_auth_schemes,
-                  ResolveProxyCallback resolve_proxy_callback,
-                  AuthenticationRequiredCallback auth_required_callback,
-                  OnConnectionSetupFinishedCallback setup_finished_callback);
+  ProxyConnectJob(
+      std::unique_ptr<net_base::Socket> socket,
+      const std::string& credentials,
+      int64_t curl_auth_schemes,
+      const std::optional<net_base::IPv4Address>& connect_ns_host_ipv4_addr,
+      ResolveProxyCallback resolve_proxy_callback,
+      AuthenticationRequiredCallback auth_required_callback,
+      OnConnectionSetupFinishedCallback setup_finished_callback);
   ProxyConnectJob(const ProxyConnectJob&) = delete;
   ProxyConnectJob& operator=(const ProxyConnectJob&) = delete;
   virtual ~ProxyConnectJob();
@@ -160,6 +164,9 @@ class ProxyConnectJob {
   // Bitmask to tell curl which authentication methods are allowed to be used
   // with `credentials_`. This value is set with the `CURLOPT_PROXYAUTH` option.
   int64_t curl_auth_schemes_;
+  // IPv4 address of the host-side interface of ConnectNamespace created by
+  // patchpanel.
+  std::optional<net_base::IPv4Address> connect_ns_host_ipv4_addr_;
   // CONNECT request and playload data read from the client socket. The client
   // may send the HTTP CONNECT request across multiple socket writes.
   // |connect_data_| will cache the partial messages until we receive the end of

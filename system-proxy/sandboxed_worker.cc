@@ -121,6 +121,20 @@ bool SandboxedWorker::SetListeningAddress(const net_base::IPv4Address& addr,
   return true;
 }
 
+void SandboxedWorker::SetDNSIPv4Addr(const net_base::IPv4Address& addr) {
+  worker::ConnectedNamespace connected_namespace;
+  connected_namespace.set_host_ipv4_addr(addr.ToByteString());
+  worker::WorkerConfigs configs;
+  *configs.mutable_connected_namespace() = connected_namespace;
+
+  if (!WriteProtobuf(stdin_pipe_.get(), configs)) {
+    LOG(ERROR) << "Failed to set connected namespace for worker " << pid_;
+    return;
+  }
+  LOG(INFO) << "Set connected namespace address " << addr.ToString()
+            << " for worker " << pid_;
+}
+
 bool SandboxedWorker::SetKerberosEnabled(bool enabled,
                                          const std::string& krb5_conf_path,
                                          const std::string& krb5_ccache_path) {

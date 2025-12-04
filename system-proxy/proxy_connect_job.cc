@@ -4,6 +4,7 @@
 
 #include "system-proxy/proxy_connect_job.h"
 
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -21,6 +22,7 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/socket.h>
 #include <chromeos/net-base/socket_forwarder.h>
 
@@ -139,11 +141,13 @@ ProxyConnectJob::ProxyConnectJob(
     std::unique_ptr<net_base::Socket> socket,
     const std::string& credentials,
     int64_t curl_auth_schemes,
+    const std::optional<net_base::IPv4Address>& connect_ns_host_ipv4_addr,
     ResolveProxyCallback resolve_proxy_callback,
     AuthenticationRequiredCallback auth_required_callback,
     OnConnectionSetupFinishedCallback setup_finished_callback)
     : credentials_(credentials),
       curl_auth_schemes_(curl_auth_schemes),
+      connect_ns_host_ipv4_addr_(connect_ns_host_ipv4_addr),
       resolve_proxy_callback_(std::move(resolve_proxy_callback)),
       auth_required_callback_(std::move(auth_required_callback)),
       setup_finished_callback_(std::move(setup_finished_callback)),

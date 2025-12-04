@@ -364,6 +364,7 @@ void SystemProxyAdaptor::ConnectNamespaceTask(SandboxedWorker* worker,
                                    kProxyPort)) {
     return;
   }
+  worker->SetDNSIPv4Addr(result.second.host_ipv4_address);
   OnNamespaceConnected(worker, user_traffic);
 }
 

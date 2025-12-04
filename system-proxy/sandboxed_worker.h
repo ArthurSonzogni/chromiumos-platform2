@@ -49,6 +49,11 @@ class SandboxedWorker {
   // pipes and sets |local_proxy_host_and_port_|.
   bool SetListeningAddress(const net_base::IPv4Address& addr, int port);
 
+  // Sends the host side address of system-proxy ConnectedNamespace via
+  // communication pipes. This is being used as system-proxy DNS address when
+  // DNS proxy is running the root namespace feature.
+  void SetDNSIPv4Addr(const net_base::IPv4Address& addr);
+
   // Sends a request to clear the user credentials to the worker via
   // communication pipes.
   bool ClearUserCredentials();

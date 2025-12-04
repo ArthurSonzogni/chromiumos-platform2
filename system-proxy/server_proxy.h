@@ -7,6 +7,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -73,6 +74,7 @@ class ServerProxy {
   friend class ServerProxyTest;
   FRIEND_TEST(ServerProxyTest, FetchCredentials);
   FRIEND_TEST(ServerProxyTest, FetchListeningAddress);
+  FRIEND_TEST(ServerProxyTest, FetchConnectedNamespace);
   FRIEND_TEST(ServerProxyTest, HandleConnectRequest);
   FRIEND_TEST(ServerProxyTest, HandlePendingJobs);
   FRIEND_TEST(ServerProxyTest, SetupConnection);
@@ -126,6 +128,10 @@ class ServerProxy {
   // Curl compatible bit-mask list of proxy authenticated schemes that can be
   // used with the policy set credentials.
   int64_t system_credentials_auth_schemes_ = 0;
+
+  // Patchpanel connected namespace host IPv4 address for directly addressed DNS
+  // queries.
+  std::optional<net_base::IPv4Address> connect_ns_host_ipv4_addr_;
 
   std::unique_ptr<net_base::Socket> listening_fd_;
 
