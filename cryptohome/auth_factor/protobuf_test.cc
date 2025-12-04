@@ -188,7 +188,7 @@ TEST(AuthFactorPropertiesFromProtoTest, AuthFactorMetaDataCheck) {
 }
 
 TEST(AuthFactorPropertiesFromProtoTest,
-     AuthFactorMetaDataCheckKnowledgeFactorHashInfo) {
+     AuthFactorMetaDataCheckPasswordWithHashInfo) {
   const std::string kSalt(16, 0xAA);
   // Setup
   user_data_auth::AuthFactor auth_factor_proto;
@@ -221,7 +221,7 @@ TEST(AuthFactorPropertiesFromProtoTest,
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Optional(SerializedLockoutPolicy::NO_LOCKOUT));
+              Optional(SerializedLockoutPolicy::TIME_LIMITED));
   const auto* password_metadata =
       std::get_if<PasswordMetadata>(&auth_factor_metadata.metadata);
   ASSERT_NE(password_metadata, nullptr);

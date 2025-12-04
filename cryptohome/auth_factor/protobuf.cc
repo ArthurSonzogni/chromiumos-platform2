@@ -248,9 +248,6 @@ bool AuthFactorPropertiesFromProto(
       }
       GetPinMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kPin;
-      // All new PINs use modern time-limited lockouts.
-      out_auth_factor_metadata.common.lockout_policy =
-          SerializedLockoutPolicy::TIME_LIMITED;
       break;
     case user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY:
       if (!auth_factor.has_cryptohome_recovery_metadata()) {
@@ -294,6 +291,21 @@ bool AuthFactorPropertiesFromProto(
     default:
       LOG(ERROR) << "Unknown auth factor type " << auth_factor.type();
       return false;
+  }
+
+  switch (auth_factor.type()) {
+      // These types of factors use time-limited lockouts by default. It's
+      // possible that they're not actually enabled due to a old factor or a
+      // hardware limitation, but unfortunately that's not identifiable purely
+      // from just the proto and so we have to assume the preferred policy here.
+    case user_data_auth::AUTH_FACTOR_TYPE_PASSWORD:
+    case user_data_auth::AUTH_FACTOR_TYPE_PIN:
+    case user_data_auth::AUTH_FACTOR_TYPE_KIOSK:
+      out_auth_factor_metadata.common.lockout_policy =
+          SerializedLockoutPolicy::TIME_LIMITED;
+      break;
+    default:
+      break;
   }
 
   // Extract the label. Returns false if it isn't formatted correctly.
