@@ -77,6 +77,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   auto connect_job = std::make_unique<system_proxy::ProxyConnectJob>(
       net_base::Socket::CreateFromFd(base::ScopedFD(fds[0])), "", CURLAUTH_ANY,
+      std::nullopt,
       base::BindOnce(&ResolveProxyCallback, run_loop.QuitClosure()),
       base::BindRepeating(&NullAuthenticationRequiredCallback),
       base::BindOnce(&OnConnectionSetupFinished, run_loop.QuitClosure()));

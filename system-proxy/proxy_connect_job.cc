@@ -4,6 +4,9 @@
 
 #include "system-proxy/proxy_connect_job.h"
 
+#include <resolv.h>
+
+#include <cstring>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -25,6 +28,7 @@
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/socket.h>
 #include <chromeos/net-base/socket_forwarder.h>
+#include <chromeos/patchpanel/address_manager.h>
 
 #include "system-proxy/curl_scopers.h"
 #include "system-proxy/http_util.h"
@@ -59,6 +63,33 @@ const std::string_view kHttpProxyAuthRequired =
     "HTTP/1.1 407 Credentials required - Origin: local proxy\r\n\r\n";
 constexpr char kHttpErrorTunnelFailed[] =
     "HTTP/1.1 %s Error creating tunnel - Origin: local proxy\r\n\r\n";
+
+// When DNS proxy is running on root namespace, /etc/resolv.conf contains the
+// fixed localhost address used by the system instance of DNS proxy.
+bool IsDnsProxyRootNsEnabled() {
+  struct __res_state state;
+  std::memset(&state, 0, sizeof(state));
+
+  if (res_ninit(&state) != 0) {
+    return false;
+  }
+
+  bool root_ns_enabled = false;
+  for (int i = 0; i < state.nscount; ++i) {
+    // glibc stores IPv6 in |_ext.nsaddrs| and IPv4 in |nsaddr_list|.
+    // We are only fetching IPv4 nameservers.
+    if (!state.nsaddr_list[i].sin_family) {
+      continue;
+    }
+    if (patchpanel::kDnsProxySystemIPv4Address.ToInAddr().s_addr ==
+        state.nsaddr_list[i].sin_addr.s_addr) {
+      root_ns_enabled = true;
+      break;
+    }
+  }
+  res_nclose(&state);
+  return root_ns_enabled;
+}
 
 // Creates a new scoped socket from a curl handle. Note that curl still
 // keeps track of a socket FD itself (stored in the handle), so that
@@ -319,6 +350,16 @@ void ProxyConnectJob::DoCurlServerConnection() {
     // secure one the remote site claims to support.
     curl_easy_setopt(easyhandle, CURLOPT_PROXYAUTH, curl_auth_schemes_);
     curl_easy_setopt(easyhandle, CURLOPT_PROXYUSERPWD, credentials_.c_str());
+  }
+
+  // System-proxy is not able to reach the dns-proxy address in /etc/resolv.conf
+  // when the root namespace feature is enabled. This is because dns-proxy
+  // listens on localhost of the root namespace, while nothing is listening on
+  // the localhost of system-proxy network namesspace. Curl should query the
+  // dns-proxy address directly on the host-side of ConnectNamespace directly.
+  if (IsDnsProxyRootNsEnabled()) {
+    curl_easy_setopt(easyhandle, CURLOPT_DNS_SERVERS,
+                     connect_ns_host_ipv4_addr_->ToString().c_str());
   }
 
   curl_easy_setopt(easyhandle, CURLOPT_CONNECTTIMEOUT_MS,
