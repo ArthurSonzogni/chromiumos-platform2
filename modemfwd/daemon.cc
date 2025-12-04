@@ -535,7 +535,10 @@ void Daemon::RegisterDBusObjectsAsync(
 }
 
 void Daemon::ForceFlash(const std::string& device_id) {
-  ForceFlashForTesting(device_id, "", "", false, base::DoNothing());
+  // When force-flashing, we should include a carrier value to ensure all
+  // partitions are applied in the event of corruption.
+  ForceFlashForTesting(device_id, FirmwareDirectory::kGenericCarrierId, "",
+                       false, base::DoNothing());
 }
 
 void Daemon::ForceFlashForTesting(
