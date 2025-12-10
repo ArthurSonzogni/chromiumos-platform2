@@ -13939,10 +13939,6 @@ mno {
         start: 310240200000000
         end: 310240209999999
       }
-      range {
-        start: 311882030000000
-        end: 311882039999999
-      }
     }
     data {
       uuid: "ea77b4fc-befa-4cd7-980f-710c6c32a991"
@@ -13950,7 +13946,6 @@ mno {
       localized_name {
         name: "T-Mobile"
       }
-      mccmnc: "311882"
       mccmnc: "310240"
       mobile_apn {
         apn: "iot.tmowholesale"
@@ -14116,6 +14111,33 @@ mno {
         apn: "h2g2"
         ip_type: IPV6
         type: DEFAULT
+      }
+    }
+  }
+  # IoT APN
+  mvno {
+    # We should add exclude_regex GID1=6136 when b/469431553 is fixed, so the
+    # filtering doesn't depend on the order of the MVNOs.
+    mvno_filter {
+      type: MCCMNC
+      regex: "311882"
+    }
+    data {
+      uuid: "45971c3a-4573-49cc-bc1c-5b660d8f958b"
+      mccmnc: "311882"
+      mobile_apn {
+        apn: "iot.t-mobile.com"
+        localized_name {
+          name: "T-Mobile IoT"
+        }
+        ip_type: IPV4V6
+        type: DEFAULT
+      }
+      mobile_apn {
+        apn: "teth.iot.t-mobile.com"
+        is_required_by_carrier_spec: true
+        ip_type: IPV6
+        type: DUN
       }
     }
   }
