@@ -705,11 +705,27 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   EXPECT_FALSE(update_device_info.whitelabel_modifiable());
   EXPECT_FALSE(update_device_info.custom_label_modifiable());
   EXPECT_FALSE(update_device_info.serial_number_modifiable());
-  EXPECT_FALSE(update_device_info.sku_modifiable());
   EXPECT_FALSE(update_device_info.feature_level_modifiable());
 
   // Other fields should remain modifiable.
   EXPECT_TRUE(update_device_info.region_modifiable());
+  EXPECT_TRUE(update_device_info.sku_modifiable());
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_DynamicInputsEnabled_NonSpareMlb_EmptySerialNumber) {
+  std::string textproto = R"(
+     dynamic_device_info_inputs: true
+   )";
+  auto handler = CreateStateHandler(
+      {.has_serial_number = false, .rmad_config_text = textproto});
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto update_device_info = handler->GetState().update_device_info();
+
+  // Serial number should be modifiable when it's empty.
+  EXPECT_TRUE(update_device_info.serial_number_modifiable());
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_Customized_SN_Name) {

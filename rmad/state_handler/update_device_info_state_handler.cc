@@ -723,11 +723,10 @@ void UpdateDeviceInfoStateHandler::SetFieldModifiabilities(
 
   if (!IsSpareMlb()) {
     // If it is not a spare MLB case, further grey out the followings:
-    // 1. Serial Number
-    // 2. SKU
-    // 3. Feature Level
-    update_dev_info->set_serial_number_modifiable(false);
-    update_dev_info->set_sku_modifiable(false);
+    // 1. Serial Number (if not empty)
+    // 2. Feature Level
+    update_dev_info->set_serial_number_modifiable(
+        update_dev_info->original_serial_number().empty());
     update_dev_info->set_feature_level_modifiable(false);
   }
 }
