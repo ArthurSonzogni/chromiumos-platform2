@@ -39,16 +39,17 @@ SOME_BUCKET = (
     "overlay-some-private/chromeos-base/chromeos-firmware-some/"
 )
 SOME_FIRMWARE_FILES = [
-    "Some_EC.1111.11.1.tbz2",
-    "Some_EC_RW.1111.11.1.tbz2",
-    "Some.1111.11.1.tbz2",
-    "Some_RW.1111.11.1.tbz2",
-    "Some_ISH.1111.11.1.tbz2",
+    SOME_BUCKET + "Some_EC.1111.11.1.tbz2",
+    SOME_BUCKET + "Some_EC_RW.1111.11.1.tbz2",
+    SOME_BUCKET + "Some.1111.11.1.tbz2",
+    SOME_BUCKET + "Some_RW.1111.11.1.tbz2",
+    SOME_BUCKET + "Some_ISH.1111.11.1.tbz2",
 ]
 ANOTHER_FIRMWARE_FILES = [
-    "Another_EC.1111.11.1.tbz2",
-    "Another.1111.11.1.tbz2",
-    "Another_RW.1111.11.1.tbz2",
+    ANOTHER_BUCKET + "Another_EC.1111.11.1.tbz2",
+    ANOTHER_BUCKET + "Another.1111.11.1.tbz2",
+    "gs://firmware-image-archive/firmware-some-1111.B/1111.12.0/"
+    + "another.1111.12.0.tar.bz2",
 ]
 
 LIB_FIRMWARE = "/lib/firmware/"
@@ -95,18 +96,13 @@ class CrosConfigHostTest(unittest.TestCase):
         firmware_uris = config.GetConfig("another").GetFirmwareUris()
         self.assertSequenceEqual(
             firmware_uris,
-            sorted(
-                [ANOTHER_BUCKET + fname for fname in ANOTHER_FIRMWARE_FILES]
-            ),
+            sorted(ANOTHER_FIRMWARE_FILES),
         )
 
     def testGetSharedFirmwareUris(self):
         config = CrosConfig(self.filepath)
         firmware_uris = config.GetFirmwareUris()
-        expected = sorted(
-            [ANOTHER_BUCKET + fname for fname in ANOTHER_FIRMWARE_FILES]
-            + [SOME_BUCKET + fname for fname in SOME_FIRMWARE_FILES]
-        )
+        expected = sorted(ANOTHER_FIRMWARE_FILES + SOME_FIRMWARE_FILES)
         self.assertSequenceEqual(firmware_uris, expected)
 
     def testGetArcFiles(self):
@@ -542,7 +538,9 @@ class CrosConfigHostTest(unittest.TestCase):
                         ec_build_target="another",
                         is_zephyr_ec=False,
                         main_image_uri="bcs://Another.1111.11.1.tbz2",
-                        main_rw_image_uri="bcs://Another_RW.1111.11.1.tbz2",
+                        main_rw_image_uri="gs://firmware-image-archive"
+                        "/firmware-some-1111.B/1111.12.0/"
+                        "another.1111.12.0.tar.bz2",
                         ec_image_uri="bcs://Another_EC.1111.11.1.tbz2",
                         ec_rw_image_uri="",
                         has_ec_component_manifest=False,
@@ -890,7 +888,8 @@ class CrosConfigHostTest(unittest.TestCase):
                 FirmwareImage(
                     type="ap_rw",
                     build_target="another",
-                    image_uri="bcs://Another_RW.1111.11.1.tbz2",
+                    image_uri="gs://firmware-image-archive/"
+                    "firmware-some-1111.B/1111.12.0/another.1111.12.0.tar.bz2",
                 ),
                 FirmwareImage(
                     type="ec",

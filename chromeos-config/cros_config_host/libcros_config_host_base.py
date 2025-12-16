@@ -211,7 +211,7 @@ class DeviceConfig:
     def GetFirmwareUris(self):
         """Returns a list of (string) firmware URIs.
 
-        Generates and returns a list of firmeware URIs for this device. These
+        Generates and returns a list of firmware URIs for this device. These
         URIs can be used to pull down remote firmware packages.
 
         Returns:
@@ -226,26 +226,25 @@ class DeviceConfig:
         # Strip "overlay-" from bcs_overlay
         bcs_overlay = firmware["bcs-overlay"][8:]
         ebuild_name = bcs_overlay.split("-")[0]
-        valid_images = [
-            p
-            for n, p in firmware.items()
-            if n.endswith("-image") and p.startswith("bcs://")
-        ]
-        # Strip "bcs://" from bcs_from images (to get the file names only)
-        file_names = [p[6:] for p in valid_images]
+        valid_images = [p for n, p in firmware.items() if n.endswith("-image")]
+        uris = []
         uri_format = (
             "gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/"
             "chromeos-base/chromeos-firmware-{ebuild_name}/{fname}"
         )
-        uris = [
-            uri_format.format(
-                bcs=bcs_overlay,
-                model=self.GetName(),
-                fname=fname,
-                ebuild_name=ebuild_name,
-            )
-            for fname in file_names
-        ]
+        # Strip "bcs://" from bcs_from images (to get the file names only)
+        for uri in valid_images:
+            if uri.startswith("bcs://"):
+                uris.append(
+                    uri_format.format(
+                        bcs=bcs_overlay,
+                        model=self.GetName(),
+                        fname=uri[6:],
+                        ebuild_name=ebuild_name,
+                    )
+                )
+            else:
+                uris.append(uri)
         return sorted(uris)
 
     def GetTouchFirmwareFiles(self):
@@ -419,9 +418,9 @@ class CrosConfigBaseImpl:
         result["ListModels"] = self.GetModelList()
         result["GetFirmwareUris"] = self.GetFirmwareUris()
         result["GetTouchFirmwareFiles"] = self.GetTouchFirmwareFiles()
-        result[
-            "GetDetachableBaseFirmwareFiles"
-        ] = self.GetDetachableBaseFirmwareFiles()
+        result["GetDetachableBaseFirmwareFiles"] = (
+            self.GetDetachableBaseFirmwareFiles()
+        )
         result["GetArcFiles"] = self.GetArcFiles()
         result["GetArcCodecFiles"] = self.GetArcCodecFiles()
         result["GetArcAudioCodecsFiles"] = self.GetArcAudioCodecsFiles()
@@ -436,12 +435,12 @@ class CrosConfigBaseImpl:
         result["GetProximitySensorFiles"] = self.GetProximitySensorFiles()
         result["GetFirmwareInfo"] = self.GetFirmwareInfo()
         for target in ["coreboot", "ec"]:
-            result[
-                "GetFirmwareBuildTargets_%s" % target
-            ] = self.GetFirmwareBuildTargets(target)
-        result[
-            "GetFirmwareBuildCombinations"
-        ] = self.GetFirmwareBuildCombinations(["coreboot", "ec"])
+            result["GetFirmwareBuildTargets_%s" % target] = (
+                self.GetFirmwareBuildTargets(target)
+            )
+        result["GetFirmwareBuildCombinations"] = (
+            self.GetFirmwareBuildCombinations(["coreboot", "ec"])
+        )
         for target_name in ["depthcharge", "bmpblk"]:
             for target_value in self.GetFirmwareBuildTargets(target_name):
                 result[
@@ -461,9 +460,9 @@ class CrosConfigBaseImpl:
                     # dumps # don't need to be updated when new schema
                     # attributes are added.
                     if prop_value:
-                        value_map[
-                            "%s::%s" % (path, schema_property)
-                        ] = prop_value
+                        value_map["%s::%s" % (path, schema_property)] = (
+                            prop_value
+                        )
             result["GetProperty_%s" % device.GetName()] = value_map
         return result
 

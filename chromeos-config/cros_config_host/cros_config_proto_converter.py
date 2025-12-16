@@ -2287,7 +2287,9 @@ def _build_stylus(hw_features):
     return result
 
 
-def _fw_bcs_path(payload, ap_fw_suffix=""):
+def _fw_image_uri(payload, ap_fw_suffix=""):
+    if payload and payload.firmware_image_path.path:
+        return payload.firmware_image_path.path
     if payload and payload.firmware_image_name:
         return "bcs://%s%s.%d.%d.%d.tbz2" % (
             payload.firmware_image_name,
@@ -2437,15 +2439,15 @@ def _build_firmware(config):
             ),
         )
 
-    _upsert(_fw_bcs_path(main_ro, ap_fw_suffix), result, "main-ro-image")
-    _upsert(_fw_bcs_path(main_rw, ap_fw_suffix), result, "main-rw-image")
+    _upsert(_fw_image_uri(main_ro, ap_fw_suffix), result, "main-ro-image")
+    _upsert(_fw_image_uri(main_rw, ap_fw_suffix), result, "main-rw-image")
     if not ap_fw_suffix:
         _upsert(main_rw_a_digest, result, "main-rw-a-hash")
         _upsert(main_rw_a_digest_algorithm, result, "main-rw-a-hash-algorithm")
-    _upsert(_fw_bcs_path(ec_ro), result, "ec-ro-image")
-    _upsert(_fw_bcs_path(ec_rw), result, "ec-rw-image")
-    _upsert(_fw_bcs_path(ish), result, "ish-image")
-    _upsert(_fw_bcs_path(pd_ro), result, "pd-ro-image")
+    _upsert(_fw_image_uri(ec_ro), result, "ec-ro-image")
+    _upsert(_fw_image_uri(ec_rw), result, "ec-rw-image")
+    _upsert(_fw_image_uri(ish), result, "ish-image")
+    _upsert(_fw_image_uri(pd_ro), result, "pd-ro-image")
     if has_ec_component_manifest:
         _upsert(has_ec_component_manifest, result, "has-ec-component-manifest")
 
