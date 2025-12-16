@@ -20,6 +20,13 @@ const char kAttributeIdVendor[] = "idVendor";
 // https://www.usb.org/defined-class-codes
 const char kBluetoothDeviceClass[] = "e0";
 const char kBluetoothDeviceSubClass[] = "01";
+// On older computers it takes some time for the USB devices to get enumerated.
+// These variables control how often to re-read the udevs
+// Increase to support slower devices
+// Don't increase too much as this process blocks the BT stack from starting
+// Note: if number_of_retries is set to zero there will still be 1 attempt
+const unsigned int number_of_retries = 10;
+const unsigned int seconds_between_retries = 5;
 
 const base::FilePath kSyspropOverridePath = base::FilePath(
     "/var/lib/bluetooth/sysprops.conf.d/floss_reven_overrides.conf");
@@ -134,33 +141,18 @@ const std::map<flex_bluetooth::BluetoothAdapter,
 };
 }  // namespace
 
-int main() {
-  brillo::InitLog(brillo::kLogToSyslog);
-  LOG(INFO) << "Started process_flex_bluetooth_overrides.";
-
-  const auto udev = brillo::Udev::Create();
-  const auto enumerate = udev->CreateEnumerate();
-  if (!enumerate->AddMatchSysAttribute(kAttributeDeviceClass,
-                                       kBluetoothDeviceClass) ||
-      !enumerate->AddMatchSysAttribute(kAttributeDeviceSubClass,
-                                       kBluetoothDeviceSubClass) ||
-      !enumerate->ScanDevices()) {
-    LOG(INFO) << "No Bluetooth adapter found. Exiting.";
-    return 0;
-  }
-
-  const flex_bluetooth::FlexBluetoothOverrides bt(kSyspropOverridePath,
-                                                  kAdapterSyspropOverrides);
-  bool found_bt_adapter = false;
+bool apply_overrides(const flex_bluetooth::FlexBluetoothOverrides& bt,
+                     const std::unique_ptr<brillo::Udev>& udev,
+                     std::unique_ptr<brillo::UdevListEntry> list_entry) {
   uint16_t id_vendor;
   uint16_t id_product;
-  for (std::unique_ptr<brillo::UdevListEntry> list_entry =
-           enumerate->GetListEntry();
-       list_entry; list_entry = list_entry->GetNext()) {
+
+  for (; list_entry; list_entry = list_entry->GetNext()) {
     const std::string sys_path = list_entry->GetName() ?: "";
     const std::unique_ptr<brillo::UdevDevice> device =
         udev->CreateDeviceFromSysPath(sys_path.c_str());
     if (!device) {
+      LOG(INFO) << "Device Syspath " << sys_path << " not found.";
       continue;
     }
 
@@ -183,7 +175,6 @@ int main() {
       continue;
     }
 
-    found_bt_adapter = true;
     bt.ProcessOverridesForVidPid(id_vendor, id_product);
 
     // TODO(b/277581437): Handle the case when there are multiple Bluetooth
@@ -193,14 +184,48 @@ int main() {
     // (To clarify, if a device has no internal Bluetooth adapter, a user can
     // still currently use an external Bluetooth adapter since there is only
     // one Bluetooth adapter to choose from).
-    break;
+    return true;
   }
 
-  if (!found_bt_adapter) {
-    LOG(INFO) << "Didn't find a Bluetooth adapter. Removing overrides.";
-    bt.RemoveOverrides();
+  return false;
+}
+
+int main() {
+  brillo::InitLog(brillo::kLogToSyslog);
+  LOG(INFO) << "Started process_flex_bluetooth_overrides.";
+
+  const flex_bluetooth::FlexBluetoothOverrides bt(kSyspropOverridePath,
+                                                  kAdapterSyspropOverrides);
+
+  const auto udev = brillo::Udev::Create();
+
+  for (unsigned int attempt = 0; attempt <= number_of_retries; attempt++) {
+    const auto enumerate = udev->CreateEnumerate();
+    if (!enumerate->AddMatchSysAttribute(kAttributeDeviceClass,
+                                         kBluetoothDeviceClass) ||
+        !enumerate->AddMatchSysAttribute(kAttributeDeviceSubClass,
+                                         kBluetoothDeviceSubClass) ||
+        !enumerate->ScanDevices()) {
+      LOG(INFO) << "Failed to confirm enumerator properties. Exiting.";
+      return 0;
+    }
+
+    if (apply_overrides(bt, udev, enumerate->GetListEntry())) {
+      LOG(INFO) << "Override(s) was found and applied. Exiting.";
+      return 0;
+    }
+
+    if (attempt == number_of_retries) {
+      LOG(WARNING) << "Didn't find a Bluetooth adapter. Removing overrides.";
+      bt.RemoveOverrides();
+    } else {
+      LOG(INFO) << "Device not found. Attempt #" << attempt << ". Retry in "
+                << seconds_between_retries << "s";
+      sleep(seconds_between_retries);
+    }
   }
 
+  // Too many retries. Bail out.
   LOG(INFO) << "Exiting process_flex_bluetooth_overrides.";
   return 0;
 }
