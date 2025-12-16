@@ -5,7 +5,6 @@
 declare_args() {
   # Location of the Pigweed repository.
   dir_pigweed = "//third_party/pigweed"
-  pw_build_TEST_TRANSITIVE_PYTHON_DEPS_FILTER_EXCLUDES = []
 }
 
 # Import modules.gni, which generates the modules list.
