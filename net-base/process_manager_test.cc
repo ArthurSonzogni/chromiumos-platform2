@@ -14,6 +14,7 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/rand_util.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
@@ -193,9 +194,7 @@ TEST_F(ProcessManagerTest,
                             &stdin_fd, &stdout_fd, &stderr_fd))
       .WillOnce(DoAll(SetArgPointee<3>(kPid), Return(true)));
 
-  struct std_file_descriptors std_fds {
-    &stdin_fd, &stdout_fd, &stderr_fd
-  };
+  struct std_file_descriptors std_fds{&stdin_fd, &stdout_fd, &stderr_fd};
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
       base::DoNothing(), std_fds);
@@ -411,9 +410,7 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithPreservedNonstdFds) {
                             &stdin_fd, &stdout_fd, &stderr_fd))
       .WillOnce(DoAll(SetArgPointee<3>(kPid), Return(true)));
 
-  struct std_file_descriptors std_fds {
-    &stdin_fd, &stdout_fd, &stderr_fd
-  };
+  struct std_file_descriptors std_fds{&stdin_fd, &stdout_fd, &stderr_fd};
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
       base::DoNothing(), std_fds);
