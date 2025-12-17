@@ -10,7 +10,7 @@
 
 #include <absl/status/status.h>
 #include <absl/strings/str_cat.h>
-#include <base/byte_count.h>
+#include <base/byte_size.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <cros_config/fake_cros_config.h>
 #include <gtest/gtest.h>
@@ -35,7 +35,7 @@ const char kSwapsNoZram[] =
 const char kZramDisksize8G[] = "16679780352";
 const char kZramDisksize8G1x[] = "8339890176";
 // 8144424 is not exactly 8GiB, but the real meminfo value on an 8 GiB device.
-const int64_t kZramMemTotal8G = 8144424LL * 1024;
+const uint64_t kZramMemTotal8G = 8144424LL * 1024;
 }  // namespace
 
 class SwapToolTest : public ::testing::Test {
@@ -88,7 +88,7 @@ TEST_F(SwapToolTest, SwapStart) {
       .WillOnce(Return(
           absl::NotFoundError("Failed to read /var/lib/swap/swap_size")));
   base::SystemMemoryInfo mock_meminfo;
-  mock_meminfo.total = base::ByteCount(kZramMemTotal8G);
+  mock_meminfo.total = base::ByteSize(kZramMemTotal8G);
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/usr/bin/modprobe", "zram")))
@@ -129,7 +129,7 @@ TEST_F(SwapToolTest, SwapStartCrosConfig) {
       .WillOnce(Return(
           absl::NotFoundError("Failed to read /var/lib/swap/swap_size")));
   base::SystemMemoryInfo mock_meminfo;
-  mock_meminfo.total = base::ByteCount(kZramMemTotal8G);
+  mock_meminfo.total = base::ByteSize(kZramMemTotal8G);
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/usr/bin/modprobe", "zram")))

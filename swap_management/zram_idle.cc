@@ -26,8 +26,7 @@ uint64_t GetCurrentIdleTimeSec(uint64_t min_sec, uint64_t max_sec) {
 
   // Stay between idle_(min|max)_time.
   double mem_utilization =
-      (1.0 - (static_cast<double>((*meminfo).available.InKiB()) /
-              (*meminfo).total.InKiB()));
+      1.0 - (*meminfo).available.InKiBF() / (*meminfo).total.InKiBF();
 
   // Exponentially decay the age vs. memory utilization. The reason
   // we choose exponential decay is because we want to do as little work as
