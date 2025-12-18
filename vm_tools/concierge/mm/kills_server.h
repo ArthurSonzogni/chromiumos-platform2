@@ -8,6 +8,8 @@
 #include <memory>
 #include <vector>
 
+#include <base/functional/callback_helpers.h>
+
 #include "vm_tools/concierge/mm/resize_priority.h"
 #include "vm_tools/concierge/mm/server.h"
 

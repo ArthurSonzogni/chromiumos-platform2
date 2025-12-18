@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gtest/gtest.h>

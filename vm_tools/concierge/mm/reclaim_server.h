@@ -8,6 +8,8 @@
 #include <memory>
 #include <vector>
 
+#include <base/functional/callback_helpers.h>
+
 #include "vm_tools/concierge/mm/server.h"
 
 namespace vm_tools::concierge::mm {

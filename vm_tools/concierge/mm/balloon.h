@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
