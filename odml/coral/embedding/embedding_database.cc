@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/time/time.h>
