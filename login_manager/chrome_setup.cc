@@ -449,6 +449,10 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
         "MaxExternalDisplaySupportedNotification:display_limit/2");
   }
 
+  if (builder->UseFlagIsSet("default_color_space_rec709")) {
+    builder->AddFeatureEnableOverride("DrmColorSpaceDefaultIsRec709");
+  }
+
   // TODO(b/180138001): Remove the following flag when a proper fix for
   // the freeze issue is found.
   if (builder->UseFlagIsSet("set_hw_overlay_strategy_none")) {
