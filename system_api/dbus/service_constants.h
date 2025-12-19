@@ -330,6 +330,10 @@ constexpr char kFjordOobeServicePath[] = "/org/chromium/FjordOobeService";
 constexpr char kFjordOobeServiceInterface[] =
     "org.chromium.FjordOobeServiceInterface";
 constexpr char kFjordOobeServiceExitTcSetupMethod[] = "ExitTcSetup";
+constexpr char kFjordOobeServiceGetFjordOobeStateMethod[] = "GetFjordOobeState";
+constexpr char kFjordOobeServiceSetFjordOobeStateMethod[] = "SetFjordOobeState";
+constexpr char kFjordOobeServiceFjordOobeStateChangedSignal[] =
+    "FjordOobeStateChanged";
 }  // namespace chromeos
 
 namespace media_perception {
