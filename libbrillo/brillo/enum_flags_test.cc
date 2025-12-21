@@ -10,14 +10,14 @@ namespace brillo {
 
 class EnumFlagsTest : public testing::Test {};
 
-enum SomeFlagsEnum /* : int */ {
+enum SomeFlagsEnum : int {
   FLAG_NONE = 0,
   FLAG_ONE = 1,
   FLAG_TWO = 2,
   FLAG_THREE = 4,
 };
 
-enum class SomeFlagsEnumClass /* : int */ {
+enum class SomeFlagsEnumClass : int {
   NONE = 0,
   ONE = 1,
   TWO = 2,
