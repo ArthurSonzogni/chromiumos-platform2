@@ -6,9 +6,10 @@
 
 #include "features/auto_framing/tests/auto_framing_test_fixture.h"
 
-#include <sync/sync.h>
-
 #include <utility>
+
+#include <base/functional/callback_helpers.h>
+#include <sync/sync.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "common/framing_stream_manipulator.h"

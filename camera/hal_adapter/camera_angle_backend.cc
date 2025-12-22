@@ -7,6 +7,7 @@
 
 #include <utility>
 
+#include <base/functional/callback_helpers.h>
 #include <base/task/thread_pool.h>
 #include <dbus/bus.h>
 #include <featured/feature_library.h>

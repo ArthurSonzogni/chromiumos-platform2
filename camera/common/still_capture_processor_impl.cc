@@ -12,6 +12,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/functional/callback_helpers.h>
 #include <libyuv/scale.h>
 #include <sync/sync.h>
 

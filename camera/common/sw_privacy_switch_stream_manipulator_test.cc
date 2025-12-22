@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
 // gtest's internal typedef of None and Bool conflicts with the None and Bool
 // macros in X11/X.h (https://github.com/google/googletest/issues/371).
@@ -21,8 +22,9 @@
 #include <gtest/gtest.h>
 #pragma pop_macro("None")
 #pragma pop_macro("Bool")
-#include <hardware/camera3.h>
 #include <libyuv.h>
+
+#include <hardware/camera3.h>
 #include <sync/sync.h>
 #include <system/graphics.h>
 

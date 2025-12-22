@@ -7,19 +7,18 @@
 #ifndef CAMERA_FEATURES_HDRNET_HDRNET_STREAM_MANIPULATOR_H_
 #define CAMERA_FEATURES_HDRNET_HDRNET_STREAM_MANIPULATOR_H_
 
-#include "common/stream_manipulator.h"
-
-#include <camera/camera_metadata.h>
-
 #include <map>
 #include <memory>
 #include <string>
 
 #include <base/files/scoped_file.h>
+#include <base/functional/callback_helpers.h>
+#include <camera/camera_metadata.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "common/reloadable_config_file.h"
 #include "common/still_capture_processor.h"
+#include "common/stream_manipulator.h"
 #include "common/stream_manipulator_helper.h"
 #include "cros-camera/spatiotemporal_denoiser.h"
 #include "features/hdrnet/hdrnet_config.h"
