@@ -16,6 +16,7 @@
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_executor.h>

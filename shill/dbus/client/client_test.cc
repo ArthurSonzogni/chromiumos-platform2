@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/containers/contains.h>
+#include <base/functional/callback_helpers.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>

@@ -16,6 +16,7 @@
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/files/file_util.h>

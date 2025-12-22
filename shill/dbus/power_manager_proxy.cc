@@ -9,6 +9,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <google/protobuf/message_lite.h>
 

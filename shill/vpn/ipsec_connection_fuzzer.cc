@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <chromeos/net-base/process_manager.h>
 

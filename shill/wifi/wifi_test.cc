@@ -19,6 +19,7 @@
 #include <base/check.h>
 #include <base/containers/fixed_flat_set.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/ref_counted.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>

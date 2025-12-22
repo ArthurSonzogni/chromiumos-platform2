@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/callback_helpers.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/mock_process_manager.h>
 #include <gmock/gmock.h>

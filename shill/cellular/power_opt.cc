@@ -4,6 +4,7 @@
 
 #include "shill/cellular/power_opt.h"
 
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 
