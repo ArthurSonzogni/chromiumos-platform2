@@ -46,7 +46,9 @@ class ConnectionDiagnostics {
   // Describes the type of a diagnostic test.
   enum class Type {
     kPingDNSServers,
+    kPingGoogleDNSServers,
     kResolveTargetServerIP,
+    kResolveTargetServerIPWithGoogleDNS,
     kPingTargetServer,
     kPingGateway,
   };
@@ -136,13 +138,12 @@ class ConnectionDiagnostics {
   // Called after the DNS IP address resolution on started in
   // ConnectionDiagnostics::ResolveHostIPAddress completes.
   void OnHostResolutionComplete(int diagnostic_id,
+                                Type event_type,
                                 const net_base::IPAddress& dns,
                                 const net_base::DNSClient::Result& result);
   // Called after the IcmpSession started in
   // ConnectionDiagnostics::OnHostResolutionComplete on |address_pinged|
-  // finishes or times out. |ping_event_type| indicates the type of ping that
-  // was started (gateway or target web server), and |result| is the result of
-  // the IcmpSession.
+  // finishes or times out. |result| is the result of the IcmpSession.
   void OnPingHostComplete(int diagnostic_id,
                           const net_base::IPAddress& address_pinged,
                           const std::vector<base::TimeDelta>& result);

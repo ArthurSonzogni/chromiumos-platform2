@@ -30,6 +30,59 @@ namespace {
 constexpr int kDNSNumberOfQueries = 2;
 // Timeout of a single query to a single name server.
 constexpr base::TimeDelta kDNSTimeoutOfQueries = base::Seconds(2);
+
+constexpr net_base::IPAddress kGoogleIPv4DNS0(
+    net_base::IPv4Address(8, 8, 8, 8));
+constexpr net_base::IPAddress kGoogleIPv4DNS1(
+    net_base::IPv4Address(8, 8, 4, 4));
+constexpr net_base::IPAddress kGoogleIPv6DNS0(net_base::IPv6Address(0x20,
+                                                                    0x01,
+                                                                    0x48,
+                                                                    0x60,
+                                                                    0x48,
+                                                                    0x60,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x88,
+                                                                    0x88));
+constexpr net_base::IPAddress kGoogleIPv6DNS1(net_base::IPv6Address(0x20,
+                                                                    0x01,
+                                                                    0x48,
+                                                                    0x60,
+                                                                    0x48,
+                                                                    0x60,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x00,
+                                                                    0x88,
+                                                                    0x44));
+
+void PushBackIfAbsent(std::vector<net_base::IPAddress>* addr_list,
+                      const net_base::IPAddress& addr) {
+  if (std::ranges::find(*addr_list, addr) != addr_list->end()) {
+    return;
+  }
+  addr_list->push_back(addr);
+}
+
+bool IsGoogleDNS(const net_base::IPAddress& addr) {
+  if (addr.GetFamily() == net_base::IPFamily::kIPv4) {
+    return addr == kGoogleIPv4DNS0 || addr == kGoogleIPv4DNS1;
+  } else {
+    return addr == kGoogleIPv6DNS0 || addr == kGoogleIPv6DNS1;
+  }
+}
 }  // namespace
 
 namespace shill {
@@ -43,8 +96,12 @@ std::string ConnectionDiagnostics::TypeName(Type type) {
   switch (type) {
     case Type::kPingDNSServers:
       return "Ping DNS servers";
+    case Type::kPingGoogleDNSServers:
+      return "Ping Google DNS servers";
     case Type::kResolveTargetServerIP:
       return "DNS resolution";
+    case Type::kResolveTargetServerIPWithGoogleDNS:
+      return "Google DNS resolution";
     case Type::kPingTargetServer:
       return "Ping (target web server)";
     case Type::kPingGateway:
@@ -90,6 +147,18 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     if (dns.GetFamily() == ip_family) {
       dns_list_.push_back(dns);
     }
+  }
+  // Always add Google DNS servers to the list of DNS servers if they are not
+  // already present.
+  switch (ip_family) {
+    case net_base::IPFamily::kIPv4:
+      PushBackIfAbsent(&dns_list_, kGoogleIPv4DNS0);
+      PushBackIfAbsent(&dns_list_, kGoogleIPv4DNS1);
+      break;
+    case net_base::IPFamily::kIPv6:
+      PushBackIfAbsent(&dns_list_, kGoogleIPv6DNS0);
+      PushBackIfAbsent(&dns_list_, kGoogleIPv6DNS1);
+      break;
   }
 }
 
@@ -199,13 +268,16 @@ void ConnectionDiagnostics::ResolveHostIPAddress(
         .interface = iface_name_,
         .name_server = dns,
     };
+    auto event_type = IsGoogleDNS(dns)
+                          ? Type::kResolveTargetServerIPWithGoogleDNS
+                          : Type::kResolveTargetServerIP;
     int diagnostic_id = AssignDiagnosticId(
-        Type::kResolveTargetServerIP,
-        "Resolving " + url.host() + " with DNS " + dns.ToString());
+        event_type, "Resolving " + url.host() + " with DNS " + dns.ToString());
     dns_queries_[dns] = dns_client_factory_->Resolve(
         ip_family_, url.host(),
         base::BindOnce(&ConnectionDiagnostics::OnHostResolutionComplete,
-                       weak_ptr_factory_.GetWeakPtr(), diagnostic_id, dns),
+                       weak_ptr_factory_.GetWeakPtr(), diagnostic_id,
+                       event_type, dns),
         opts);
   }
 }
@@ -230,8 +302,11 @@ void ConnectionDiagnostics::PingDNSServers(int dns_diag_id) {
 
   for (size_t i = 0; i < dns_list_.size(); ++i) {
     const auto& dns_server_ip_addr = dns_list_[i];
+    auto event_type = IsGoogleDNS(dns_server_ip_addr)
+                          ? Type::kPingGoogleDNSServers
+                          : Type::kPingDNSServers;
     int diag_id = AssignDiagnosticId(
-        Type::kPingDNSServers, "Pinging " + dns_server_ip_addr.ToString());
+        event_type, "Pinging " + dns_server_ip_addr.ToString());
     auto icmp_session = icmp_session_factory_->SendPingRequest(
         dns_server_ip_addr, iface_index_, iface_name_, logging_tag_,
         base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
@@ -240,7 +315,7 @@ void ConnectionDiagnostics::PingDNSServers(int dns_diag_id) {
     if (!icmp_session) {
       // If we encounter any errors starting ping for any DNS server, carry on
       // attempting to ping the other DNS servers rather than failing.
-      LogEvent(diag_id, Type::kPingDNSServers, Result::kFailure,
+      LogEvent(diag_id, event_type, Result::kFailure,
                "Failed to initiate ping to DNS server " +
                    dns_server_ip_addr.ToString());
       continue;
@@ -271,12 +346,16 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
              "No matching pending DNS server ICMP session found");
     return;
   }
-  OnPingResult(diagnostic_id, Type::kPingDNSServers,
-               dns_list_[dns_server_index], result);
+  const auto& dns_server_ip_addr = dns_list_[dns_server_index];
+  auto event_type = IsGoogleDNS(dns_server_ip_addr)
+                        ? Type::kPingGoogleDNSServers
+                        : Type::kPingDNSServers;
+  OnPingResult(diagnostic_id, event_type, dns_server_ip_addr, result);
 }
 
 void ConnectionDiagnostics::OnHostResolutionComplete(
     int diagnostic_id,
+    Type event_type,
     const net_base::IPAddress& dns,
     const net_base::DNSClient::Result& result) {
   dns_queries_.erase(dns);
@@ -288,15 +367,13 @@ void ConnectionDiagnostics::OnHostResolutionComplete(
       message += addr.ToString();
       sep = ", ";
     }
-    LogEvent(diagnostic_id, Type::kResolveTargetServerIP, Result::kSuccess,
-             message);
+    LogEvent(diagnostic_id, event_type, Result::kSuccess, message);
     target_url_addresses_.insert(result->begin(), result->end());
   } else {
     std::string message =
         base::StrCat({"DNS ", dns.ToString(), ": ",
                       net_base::DNSClient::ErrorName(result.error())});
-    LogEvent(diagnostic_id, Type::kResolveTargetServerIP, Result::kFailure,
-             message);
+    LogEvent(diagnostic_id, event_type, Result::kFailure, message);
   }
 
   // Wait for all DNS queries to complete first.

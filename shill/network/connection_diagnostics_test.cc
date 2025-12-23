@@ -242,15 +242,16 @@ class ConnectionDiagnosticsTest : public Test {
         icmp_session_factory_->SetIcmpSession(addr);
       }
     }
-    connection_diagnostics_.OnHostResolutionComplete(kDiagnosticId, dns_server,
-                                                     resolved_addresses);
+    connection_diagnostics_.OnHostResolutionComplete(
+        kDiagnosticId, ConnectionDiagnostics::Type::kResolveTargetServerIP,
+        dns_server, resolved_addresses);
   }
 
   void TriggerResolveTargetServerIPAddressEndFailure(
       const net_base::IPAddress& dns_server) {
     connection_diagnostics_.OnHostResolutionComplete(
-        kDiagnosticId, dns_server,
-        base::unexpected(net_base::DNSClient::Error::kTimedOut));
+        kDiagnosticId, ConnectionDiagnostics::Type::kResolveTargetServerIP,
+        dns_server, base::unexpected(net_base::DNSClient::Error::kTimedOut));
   }
 
   void TriggerPingHostEndSuccess(const net_base::IPAddress& address) {
