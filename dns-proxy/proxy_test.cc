@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <chromeos/net-base/byte_utils.h>
 #include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/rtnl_message.h>
