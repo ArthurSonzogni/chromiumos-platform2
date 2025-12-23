@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/test/task_environment.h>

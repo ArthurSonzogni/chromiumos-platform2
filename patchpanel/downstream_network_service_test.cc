@@ -12,6 +12,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/ipv6_address.h>

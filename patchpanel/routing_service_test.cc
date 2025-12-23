@@ -14,6 +14,7 @@
 #include <utility>
 
 #include <base/files/scoped_file.h>
+#include <base/functional/callback_helpers.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/cxx23_to_underlying.h>
 #include <gtest/gtest.h>

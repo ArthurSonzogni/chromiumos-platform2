@@ -11,6 +11,7 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/run_loop.h>
