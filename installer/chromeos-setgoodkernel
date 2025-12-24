@@ -105,4 +105,4 @@ fi
 # Run the verified boot debugging tool now, because we won't be able to run it
 # manually if there's a problem (no root shell). It leaves a log file that we
 # can look at.
-dev_debug_vboot --cleanup > /dev/null 2>&1 &
+nice -n 10 dev_debug_vboot --cleanup > /dev/null 2>&1 &
