@@ -47,6 +47,10 @@ generate_mojom_bindings("keymaster_mojo_bindings") {
     "mojo/cert_store.mojom",
     "mojo/keymaster.mojom",
   ]
+
+  # `is_chromeos` is needed to bypass the enforcement that every extensible enum
+  # has a default value. See b/459639619.
+  enabled_features = [ "is_chromeos" ]
 }
 
 # BoringSSL
