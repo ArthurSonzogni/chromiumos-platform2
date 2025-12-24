@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <utility>
 
+#include <base/functional/callback_helpers.h>
 #include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 

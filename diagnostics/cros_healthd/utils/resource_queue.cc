@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/check_op.h>
+#include <base/functional/callback_helpers.h>
 
 namespace diagnostics {
 

@@ -11,6 +11,7 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/tick_clock.h>
 #include <base/types/expected.h>

@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <base/types/expected.h>
 #include <brillo/variant_dictionary.h>

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/hash/hash.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>

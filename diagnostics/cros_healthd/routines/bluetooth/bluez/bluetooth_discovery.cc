@@ -10,6 +10,7 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>

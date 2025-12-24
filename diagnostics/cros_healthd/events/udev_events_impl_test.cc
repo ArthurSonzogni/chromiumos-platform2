@@ -9,6 +9,7 @@
 
 #include <base/containers/flat_map.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback_helpers.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
 #include <base/strings/string_split.h>

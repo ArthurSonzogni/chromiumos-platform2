@@ -12,6 +12,7 @@
 #include <base/check.h>
 #include <base/files/file.h>
 #include <base/files/platform_file.h>
+#include <base/functional/callback_helpers.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>

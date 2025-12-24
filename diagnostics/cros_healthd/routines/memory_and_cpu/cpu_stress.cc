@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <utility>
 
+#include <base/functional/callback_helpers.h>
 #include <base/task/single_thread_task_runner.h>
 
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"

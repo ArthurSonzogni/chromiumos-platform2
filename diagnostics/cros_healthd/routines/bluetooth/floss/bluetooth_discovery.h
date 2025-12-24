@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 
+#include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <base/types/expected.h>
 #include <dbus/object_path.h>

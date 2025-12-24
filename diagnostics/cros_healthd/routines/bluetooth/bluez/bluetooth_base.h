@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/callback_list.h>
+#include <base/functional/callback_helpers.h>
 #include <base/time/tick_clock.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom-forward.h"

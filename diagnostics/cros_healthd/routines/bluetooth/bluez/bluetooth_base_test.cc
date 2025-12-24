@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/functional/callback_helpers.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>

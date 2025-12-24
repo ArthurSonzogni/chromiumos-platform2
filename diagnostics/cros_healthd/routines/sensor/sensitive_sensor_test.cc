@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gtest/gtest.h>

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/task/single_thread_task_runner.h>

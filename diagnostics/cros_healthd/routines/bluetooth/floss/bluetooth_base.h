@@ -12,6 +12,7 @@
 #include <base/callback_list.h>
 #include <base/cancelable_callback.h>
 #include <base/functional/callback_forward.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/tick_clock.h>
 #include <brillo/errors/error.h>

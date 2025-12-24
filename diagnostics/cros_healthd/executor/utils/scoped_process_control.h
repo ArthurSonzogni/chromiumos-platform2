@@ -9,6 +9,10 @@
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
+namespace base {
+class ScopedClosureRunner;
+};  // namespace base
+
 namespace diagnostics {
 
 // Used for running callbacks after the process wrapped by ProcessControl has
