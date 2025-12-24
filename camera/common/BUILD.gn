@@ -97,7 +97,13 @@ generate_mojom_bindings("libcros_camera_mojom") {
   mojo_root = "${platform2_root}"
   use_pic = true
   install_package = "cros-camera/mojo"
-  enabled_features = [ "file_path_is_string" ]
+
+  # `is_chromeos` is needed to bypass the enforcement that every extensible enum
+  # has a default value. See b/459639619.
+  enabled_features = [
+    "file_path_is_string",
+    "is_chromeos",
+  ]
 }
 
 pkg_config("pkg_config_base") {
