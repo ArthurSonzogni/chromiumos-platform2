@@ -5,14 +5,15 @@
 #include "metrics/metrics_daemon.h"
 
 #include <fcntl.h>
-#include <cstdint>
-#include <fstream>
 #include <inttypes.h>
 #include <math.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sysexits.h>
 #include <time.h>
+
+#include <cstdint>
+#include <fstream>
 #include <utility>
 
 #include <base/check.h>
@@ -840,15 +841,9 @@ void MetricsDaemon::StatsCallback() {
   int write_sectors_per_second = delta_write / delta_time;
   bool vmstats_success = VmStatsReadStats(&vmstats_now);
   uint64_t delta_faults = vmstats_now.page_faults_ - vmstats_.page_faults_;
-  uint64_t delta_file_faults =
-      vmstats_now.file_page_faults_ - vmstats_.file_page_faults_;
-  uint64_t delta_anon_faults =
-      vmstats_now.anon_page_faults_ - vmstats_.anon_page_faults_;
   uint64_t delta_swap_in = vmstats_now.swap_in_ - vmstats_.swap_in_;
   uint64_t delta_swap_out = vmstats_now.swap_out_ - vmstats_.swap_out_;
   uint64_t page_faults_per_second = delta_faults / delta_time;
-  uint64_t file_page_faults_per_second = delta_file_faults / delta_time;
-  uint64_t anon_page_faults_per_second = delta_anon_faults / delta_time;
   uint64_t swap_in_per_second = delta_swap_in / delta_time;
   uint64_t swap_out_per_second = delta_swap_out / delta_time;
 
@@ -863,10 +858,6 @@ void MetricsDaemon::StatsCallback() {
       if (vmstats_success) {
         SendSample(kMetricPageFaultsShortName, page_faults_per_second, 1,
                    kMetricPageFaultsMax, kMetricPageFaultsBuckets);
-        SendSample(kMetricFilePageFaultsShortName, file_page_faults_per_second,
-                   1, kMetricPageFaultsMax, kMetricPageFaultsBuckets);
-        SendSample(kMetricAnonPageFaultsShortName, anon_page_faults_per_second,
-                   1, kMetricPageFaultsMax, kMetricPageFaultsBuckets);
         SendSample(kMetricSwapInShortName, swap_in_per_second, 1,
                    kMetricPageFaultsMax, kMetricPageFaultsBuckets);
         SendSample(kMetricSwapOutShortName, swap_out_per_second, 1,
@@ -890,10 +881,6 @@ void MetricsDaemon::StatsCallback() {
       if (vmstats_success) {
         SendSample(kMetricPageFaultsLongName, page_faults_per_second, 1,
                    kMetricPageFaultsMax, kMetricPageFaultsBuckets);
-        SendSample(kMetricFilePageFaultsLongName, file_page_faults_per_second,
-                   1, kMetricPageFaultsMax, kMetricPageFaultsBuckets);
-        SendSample(kMetricAnonPageFaultsLongName, anon_page_faults_per_second,
-                   1, kMetricPageFaultsMax, kMetricPageFaultsBuckets);
         SendSample(kMetricSwapInLongName, swap_in_per_second, 1,
                    kMetricPageFaultsMax, kMetricPageFaultsBuckets);
         SendSample(kMetricSwapOutLongName, swap_out_per_second, 1,

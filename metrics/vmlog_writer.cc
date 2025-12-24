@@ -4,15 +4,15 @@
 
 #include "metrics/vmlog_writer.h"
 
-#include <algorithm>
 #include <fcntl.h>
 #include <inttypes.h>
-#include <optional>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -38,8 +38,7 @@
 namespace chromeos_metrics {
 namespace {
 
-constexpr char kVmlogHeader[] =
-    "time pgmajfault pgmajfault_f pgmajfault_a pswpin pswpout cpuusage";
+constexpr char kVmlogHeader[] = "time pgmajfault pswpin pswpout cpuusage";
 
 // We limit the size of vmlog log files to keep frequent logging from wasting
 // disk space.
@@ -54,33 +53,22 @@ bool VmStatsParseStats(std::istream* input_stream,
     const std::string name;
     uint64_t* value_p;
     bool found;
-    bool optional;
   } map[] = {
-      {.name = "pgmajfault",
-       .value_p = &record->page_faults_,
-       .found = false,
-       .optional = false},
-      // pgmajfault_f and pgmajfault_a may not be present in all kernels.
-      // Don't fuss if they are not.
-      //
-      // Only available on kernels up to 4.19.
-      // TODO(b/288959865): Remove if we remove the last kernel 4.19 device.
-      {.name = "pgmajfault_f",
-       .value_p = &record->file_page_faults_,
-       .found = false,
-       .optional = true},
-      {.name = "pgmajfault_a",
-       .value_p = &record->anon_page_faults_,
-       .found = false,
-       .optional = true},
-      {.name = "pswpin",
-       .value_p = &record->swap_in_,
-       .found = false,
-       .optional = false},
-      {.name = "pswpout",
-       .value_p = &record->swap_out_,
-       .found = false,
-       .optional = false},
+      {
+          .name = "pgmajfault",
+          .value_p = &record->page_faults_,
+          .found = false,
+      },
+      {
+          .name = "pswpin",
+          .value_p = &record->swap_in_,
+          .found = false,
+      },
+      {
+          .name = "pswpout",
+          .value_p = &record->swap_out_,
+          .found = false,
+      },
   };
 
   // Each line in the file has the form
@@ -104,15 +92,11 @@ bool VmStatsParseStats(std::istream* input_stream,
       }
     }
   }
-  // Make sure we got all the stats, except the optional ones.
+  // Make sure we got all the stats.
   for (const auto& mapping : map) {
     if (!mapping.found) {
-      if (mapping.optional) {
-        *mapping.value_p = 0;
-      } else {
-        LOG(WARNING) << "vmstat missing " << mapping.name;
-        return false;
-      }
+      LOG(WARNING) << "vmstat missing " << mapping.name;
+      return false;
     }
   }
   return true;
@@ -540,10 +524,6 @@ bool VmlogWriter::GetDeltaVmStat(VmstatRecord* delta_out) {
   }
 
   delta_out->page_faults_ = r.page_faults_ - prev_vmstat_record_.page_faults_;
-  delta_out->file_page_faults_ =
-      r.file_page_faults_ - prev_vmstat_record_.file_page_faults_;
-  delta_out->anon_page_faults_ =
-      r.anon_page_faults_ - prev_vmstat_record_.anon_page_faults_;
   delta_out->swap_in_ = r.swap_in_ - prev_vmstat_record_.swap_in_;
   delta_out->swap_out_ = r.swap_out_ - prev_vmstat_record_.swap_out_;
   prev_vmstat_record_ = r;
@@ -598,12 +578,11 @@ void VmlogWriter::WriteCallback() {
   std::ostringstream out_line;
   out_line << base::StringPrintf(
       "[%02d%02d/%02d%02d%02d]"
-      " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %.2f",
+      " %" PRIu64 " %" PRIu64 " %" PRIu64 " %.2f",
       tm_time.tm_mon + 1, tm_time.tm_mday,              //
       tm_time.tm_hour, tm_time.tm_min, tm_time.tm_sec,  //
-      delta_vmstat.page_faults_, delta_vmstat.file_page_faults_,
-      delta_vmstat.anon_page_faults_, delta_vmstat.swap_in_,
-      delta_vmstat.swap_out_, cpu_usage);
+      delta_vmstat.page_faults_, delta_vmstat.swap_in_, delta_vmstat.swap_out_,
+      cpu_usage);
 
   if (!GetGpuFrequency(out_line) || !GetCpuFrequencies(out_line) ||
       !GetRAPL(out_line)) {

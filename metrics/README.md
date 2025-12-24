@@ -177,8 +177,6 @@ list of items, because the number of columns depends on number of CPU cores.
 -   time: current time
 -   From /proc/vmstat
     -   pgmajfault: major faults
-    -   pgmajfault_f: major faults served from disk
-    -   pgmajfault_a: major faults served from zram
     -   pswpin: number of swap in (pages).
     -   pswpout: number of swap out (pages).
 -   From /proc/stat

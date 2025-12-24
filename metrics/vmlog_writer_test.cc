@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "metrics/vmlog_writer.h"
+
 #include <inttypes.h>
 #include <utime.h>
 
@@ -20,7 +22,6 @@
 #include "metrics/metrics_daemon.h"
 #include "metrics/metrics_library_mock.h"
 #include "metrics/persistent_integer_mock.h"
-#include "metrics/vmlog_writer.h"
 
 using base::FilePath;
 using base::StringPrintf;
@@ -44,36 +45,13 @@ TEST(VmlogWriterTest, ParseVmStats) {
       "foo 100\n"
       "bar 200\n"
       "pgmajfault 42\n"
-      "pgmajfault_a 3838\n"
-      "pgmajfault_f 66\n"
       "etcetc 300\n";
   std::istringstream input_stream(kVmStats);
   struct VmstatRecord stats;
   EXPECT_TRUE(VmStatsParseStats(&input_stream, &stats));
   EXPECT_EQ(stats.page_faults_, 42);
-  EXPECT_EQ(stats.anon_page_faults_, 3838);
-  EXPECT_EQ(stats.file_page_faults_, 66);
   EXPECT_EQ(stats.swap_in_, 1345);
   EXPECT_EQ(stats.swap_out_, 8896);
-}
-
-TEST(VmlogWriterTest, ParseVmStatsOptionalMissing) {
-  const char kVmStats[] =
-      "pswpin 1345\n"
-      "pswpout 8896\n"
-      "foo 100\n"
-      "bar 200\n"
-      "pgmajfault 42\n"
-      // pgmajfault_a and pgmajfault_f are optional.
-      // The default value when missing is 0.
-      // "pgmajfault_a 3838\n"
-      // "pgmajfault_f 66\n"
-      "etcetc 300\n";
-  std::istringstream input_stream(kVmStats);
-  struct VmstatRecord stats;
-  EXPECT_TRUE(VmStatsParseStats(&input_stream, &stats));
-  EXPECT_EQ(stats.anon_page_faults_, 0);
-  EXPECT_EQ(stats.file_page_faults_, 0);
 }
 
 // For mocking sysfs info.
