@@ -33,6 +33,10 @@ pkg_config("target_defaults") {
 
 generate_mojom_bindings("video_mojo_bindings") {
   mojo_root = "${platform2_root}"
+
+  # `is_chromeos` is needed to bypass the enforcement that every extensible enum
+  # has a default value. See b/459639619.
+  enabled_features = [ "is_chromeos" ]
   use_pic = true
   pkg_deps = [
     "libchrome",
