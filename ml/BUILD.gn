@@ -49,7 +49,13 @@ generate_mojom_bindings("ml_mojo_bindings") {
     "--typemap",
     rebase_path("mojom/type_mappings.json"),
   ]
-  enabled_features = [ "file_path_is_string" ]
+
+  # `is_chromeos` is needed to bypass the enforcement that every extensible enum
+  # has a default value. See b/459639619.
+  enabled_features = [
+    "file_path_is_string",
+    "is_chromeos",
+  ]
 }
 
 source_set("ml_mojo_bindings_lib") {
