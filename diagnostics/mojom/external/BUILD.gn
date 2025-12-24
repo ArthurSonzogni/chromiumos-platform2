@@ -39,6 +39,10 @@ generate_mojom_bindings("libnetwork_health_mojo_bindings") {
     "network_health_types.mojom",
     "network_types.mojom",
   ]
+
+  # `is_chromeos` is needed to bypass the enforcement that every extensible enum
+  # has a default value. See b/459639619.
+  enabled_features = [ "is_chromeos" ]
 }
 
 generate_mojom_bindings("libmojo_base") {
