@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "rmad/udev/udev_device.h"
 #include "rmad/udev/udev_utils.h"
 
 namespace rmad {
