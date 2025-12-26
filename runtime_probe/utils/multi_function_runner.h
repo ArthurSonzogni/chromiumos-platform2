@@ -19,10 +19,11 @@ class ProbeFunction;
 // A collection of probe functions that merge the results into one probe result.
 class MultiFunctionRunner {
  public:
+  MultiFunctionRunner();
+  ~MultiFunctionRunner();
+
   // Append a probe function to the runner.
-  void AddFunction(std::unique_ptr<ProbeFunction> probe_function) {
-    functions_.push_back(std::move(probe_function));
-  }
+  void AddFunction(std::unique_ptr<ProbeFunction> probe_function);
 
   // Run all probe functions in the runner, and the callback will receive the
   // collected results.

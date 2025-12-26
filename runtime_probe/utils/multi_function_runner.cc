@@ -30,6 +30,14 @@ void CollectProbeResults(base::OnceCallback<void(base::Value::List)> callback,
 
 }  // namespace
 
+MultiFunctionRunner::MultiFunctionRunner() = default;
+MultiFunctionRunner::~MultiFunctionRunner() = default;
+
+void MultiFunctionRunner::AddFunction(
+    std::unique_ptr<ProbeFunction> probe_function) {
+  functions_.push_back(std::move(probe_function));
+}
+
 void MultiFunctionRunner::Run(
     base::OnceCallback<void(base::Value::List)> callback) const {
   if (!IsValid()) {
