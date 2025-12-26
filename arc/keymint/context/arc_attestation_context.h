@@ -6,6 +6,7 @@
 #define ARC_KEYMINT_CONTEXT_ARC_ATTESTATION_CONTEXT_H_
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <vector>
 
