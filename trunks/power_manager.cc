@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "trunks/power_manager.h"
+
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/task/sequenced_task_runner.h>
 #include <google/protobuf/message_lite.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
-
-#include "trunks/power_manager.h"
 
 namespace {
 
