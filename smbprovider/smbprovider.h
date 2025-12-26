@@ -57,6 +57,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
               const base::FilePath& daemon_store_directory);
   SmbProvider(const SmbProvider&) = delete;
   SmbProvider& operator=(const SmbProvider&) = delete;
+  ~SmbProvider() override;
 
   void GetShares(const ProtoBlob& options_blob,
                  int32_t* error_code,

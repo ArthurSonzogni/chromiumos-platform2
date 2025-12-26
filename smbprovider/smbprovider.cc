@@ -75,6 +75,8 @@ SmbProvider::SmbProvider(
       kerberos_artifact_synchronizer_(
           std::move(kerberos_artifact_synchronizer)) {}
 
+SmbProvider::~SmbProvider() = default;
+
 void SmbProvider::RegisterAsync(
     AsyncEventSequencer::CompletionAction completion_callback) {
   RegisterWithDBusObject(dbus_object_.get());

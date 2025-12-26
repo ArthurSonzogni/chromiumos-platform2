@@ -5,10 +5,10 @@
 #ifndef SMBPROVIDER_FAKE_SAMBA_INTERFACE_H_
 #define SMBPROVIDER_FAKE_SAMBA_INTERFACE_H_
 
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -414,7 +414,9 @@ class FakeSambaInterface : public SambaInterface {
   // GetDirectoryEntryWithMetadata. Subsequent calls overwrite the values
   // in these structs.
   libsmb_file_info file_info_;
-  std::aligned_union_t<kDirEntBufSize, smbc_dirent> dirent_buf_;
+
+  static_assert(sizeof(smbc_dirent) <= kDirEntBufSize);
+  alignas(smbc_dirent) std::byte dirent_buf_[kDirEntBufSize];
 
   // Weak pointer factory. Should be the last member.
   base::WeakPtrFactory<FakeSambaInterface> weak_factory_{this};
