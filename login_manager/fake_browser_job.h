@@ -29,10 +29,8 @@ class FakeBrowserJob : public BrowserJobInterface {
 
   ~FakeBrowserJob() override;
 
-  void set_fake_child_process(std::unique_ptr<FakeChildProcess> fake) {
-    fake_process_ = std::move(fake);
-  }
-  void set_schedule_exit(bool value) { schedule_exit_ = value; }
+  void set_fake_child_process(std::unique_ptr<FakeChildProcess> fake);
+  void set_schedule_exit(bool value);
 
   // Overridden from BrowserJobInterface
   bool IsGuestSession() override;

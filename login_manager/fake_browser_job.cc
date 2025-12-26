@@ -14,6 +14,15 @@ FakeBrowserJob::FakeBrowserJob(const std::string& name) : name_(name) {}
 
 FakeBrowserJob::~FakeBrowserJob() = default;
 
+void FakeBrowserJob::set_fake_child_process(
+    std::unique_ptr<FakeChildProcess> fake) {
+  fake_process_ = std::move(fake);
+}
+
+void FakeBrowserJob::set_schedule_exit(bool value) {
+  schedule_exit_ = value;
+}
+
 bool FakeBrowserJob::IsGuestSession() {
   return false;
 }
