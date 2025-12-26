@@ -4,6 +4,8 @@
 #ifndef DLP_FILE_ID_H_
 #define DLP_FILE_ID_H_
 
+#include <sys/types.h>
+
 #include <string>
 #include <utility>
 
@@ -11,7 +13,7 @@ namespace dlp {
 
 // Files are identified in the daemon by a pair of inode number and crtime
 // (creation time).
-typedef std::pair<ino64_t, int64_t> FileId;
+using FileId = std::pair<ino64_t, int64_t>;
 
 FileId GetFileId(const std::string& path);
 
