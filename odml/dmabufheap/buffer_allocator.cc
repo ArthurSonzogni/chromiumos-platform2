@@ -22,6 +22,7 @@
 
 #include "odml/dmabufheap/buffer_allocator.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <linux/dma-buf.h>
 #include <linux/dma-heap.h>
@@ -43,11 +44,11 @@ int BufferAllocator::DmabufAlloc(const std::string& heap_name,
     return dev_fd;
   }
 
-  struct dma_heap_allocation_data heap_data {
-    // length of data to be allocated in bytes
-    .len = len,
-    // permissions for the memory to be allocated
-    .fd_flags = O_RDWR | O_CLOEXEC,
+  struct dma_heap_allocation_data heap_data{
+      // length of data to be allocated in bytes
+      .len = len,
+      // permissions for the memory to be allocated
+      .fd_flags = O_RDWR | O_CLOEXEC,
   };
 
   auto ret =

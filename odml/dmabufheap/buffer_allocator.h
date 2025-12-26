@@ -22,6 +22,7 @@
 #ifndef ODML_DMABUFHEAP_BUFFER_ALLOCATOR_H_
 #define ODML_DMABUFHEAP_BUFFER_ALLOCATOR_H_
 
+#include <optional>
 #include <string>
 
 class BufferAllocator {
