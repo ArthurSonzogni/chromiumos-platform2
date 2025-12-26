@@ -19,6 +19,7 @@
 #include <base/strings/strcat.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/task/sequenced_task_runner.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/errors/error.h>
