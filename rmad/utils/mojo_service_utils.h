@@ -7,6 +7,7 @@
 
 #include <map>
 
+#include <base/functional/callback_helpers.h>
 #include <base/memory/ref_counted.h>
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/remote.h>
