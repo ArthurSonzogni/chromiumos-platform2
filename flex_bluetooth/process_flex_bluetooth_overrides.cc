@@ -2,7 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/udev/udev.h>
 #include <brillo/udev/udev_device.h>
@@ -11,6 +15,19 @@
 #include "flex_bluetooth/flex_bluetooth_overrides.h"
 
 namespace {
+
+// The below defines and structs are copied from Linux's
+// net/bluetooth/hci_sock.h and net/bluetooth/bluetooth.h
+#define BTPROTO_HCI 1
+#define HCIGETDEVLIST _IOR('H', 210, int)
+struct hci_dev_req {
+  uint16_t dev_id;
+  uint32_t dev_opt;
+};
+struct hci_dev_list_req {
+  uint16_t dev_num;
+  struct hci_dev_req dev_req[1];  // we only want the first device
+};
 
 const char kAttributeDeviceClass[] = "bDeviceClass";
 const char kAttributeDeviceSubClass[] = "bDeviceSubClass";
@@ -217,44 +234,101 @@ bool get_devices(const std::unique_ptr<brillo::Udev>& udev,
   return true;
 }
 
+std::optional<int> get_hci_index() {
+  int sock = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
+  if (sock < 0) {
+    LOG(INFO) << "Fail to create socket";
+    return std::nullopt;
+  }
+
+  struct hci_dev_list_req dev_list = {};
+  dev_list.dev_num = 1;
+  if (ioctl(sock, HCIGETDEVLIST, &dev_list) < 0) {
+    LOG(INFO) << "Fail to ioctl HCIGETDEVLIST";
+    close(sock);
+    return std::nullopt;
+  }
+
+  int hci_index = dev_list.dev_req[0].dev_id;
+  LOG(INFO) << "Received bluetooth hci index " << hci_index;
+  return hci_index;
+}
+
+std::optional<std::string> get_driver_name() {
+  auto hci_index = get_hci_index();
+  if (!hci_index) {
+    return std::nullopt;
+  }
+
+  base::FilePath module_path = base::FilePath(std::format(
+      "/sys/class/bluetooth/hci{}/device/driver/module", *hci_index));
+  base::FilePath real_path;
+
+  if (!base::NormalizeFilePath(module_path, &real_path)) {
+    LOG(INFO) << "Module symlink can't be followed";
+    return std::nullopt;
+  }
+
+  std::string name = real_path.BaseName().value();
+  LOG(INFO) << "Received module name " << name;
+  return name;
+}
+
 bool attempt_apply_override(const flex_bluetooth::FlexBluetoothOverrides& bt) {
   const auto udev = brillo::Udev::Create();
+  std::string module_name;
 
   for (unsigned int attempt = 1; attempt <= number_of_tries; attempt++) {
-    std::vector<std::unique_ptr<brillo::UdevDevice>> devices;
-
-    // Check if a BT device is found on udev
-    if (!get_devices(udev, kAttributeDeviceClass, kAttributeDeviceSubClass,
-                     &devices)) {
-      return false;
-    }
-    if (apply_overrides(bt, devices)) {
-      return true;
+    if (auto name = get_driver_name()) {
+      // BT is ready. Future failures don't need to be retried.
+      module_name = *name;
+      break;
     }
 
-    // No device is recognized as BT...
-    // Now check if a device's interface is recognized as BT.
-    if (!get_devices(udev, kAttributeInterfaceClass,
-                     kAttributeInterfaceSubClass, &devices)) {
-      return false;
-    }
-    std::transform(devices.begin(), devices.end(), devices.begin(),
-                   [](std::unique_ptr<brillo::UdevDevice>& device) {
-                     return device->GetParent();
-                   });
-    if (apply_overrides(bt, devices)) {
-      return true;
-    }
-
-    // BT is not found, give up and maybe retry later.
+    // BT is not ready, sleep and maybe retry later.
     if (attempt < number_of_tries) {
       LOG(INFO) << "Device not found. Attempt #" << attempt << ". Retry in "
                 << seconds_between_retries << "s";
       sleep(seconds_between_retries);
+    } else {
+      LOG(WARNING) << "Didn't find a Bluetooth adapter.";
+      return false;
     }
   }
 
-  LOG(WARNING) << "Didn't find a Bluetooth adapter.";
+  // It's difficult to get VID:PID for non-USB transport, so for now only
+  // apply override if BT is on USB transport.
+  if (module_name != "btusb") {
+    LOG(INFO) << "Override(s) don't apply to module " << module_name << ".";
+    return false;
+  }
+
+  std::vector<std::unique_ptr<brillo::UdevDevice>> devices;
+
+  // Check if a BT device is found on udev
+  if (!get_devices(udev, kAttributeDeviceClass, kAttributeDeviceSubClass,
+                   &devices)) {
+    return false;
+  }
+  if (apply_overrides(bt, devices)) {
+    return true;
+  }
+
+  // No device is recognized as BT...
+  // Now check if a device's interface is recognized as BT.
+  if (!get_devices(udev, kAttributeInterfaceClass, kAttributeInterfaceSubClass,
+                   &devices)) {
+    return false;
+  }
+  std::transform(devices.begin(), devices.end(), devices.begin(),
+                 [](std::unique_ptr<brillo::UdevDevice>& device) {
+                   return device->GetParent();
+                 });
+  if (apply_overrides(bt, devices)) {
+    return true;
+  }
+
+  LOG(INFO) << "btusb device but not found on USB tree.";
   return false;
 }
 
