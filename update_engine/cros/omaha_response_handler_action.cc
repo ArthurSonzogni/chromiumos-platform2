@@ -73,11 +73,6 @@ void OmahaResponseHandlerAction::PerformAction() {
     if (response.no_update_reason == kNoUpdateReasonFSI &&
         response.is_rollback) {
       LOG(INFO) << "Enterprise Rollback was blocked by FSI.";
-      OmahaRequestParams* const request_params =
-          SystemState::Get()->request_params();
-      SystemState::Get()->metrics_reporter()->ReportEnterpriseRollbackMetrics(
-          metrics::kMetricEnterpriseRollbackBlockedByFSI,
-          request_params->target_version_prefix());
     }
 
     if (response.invalidate_last_update) {

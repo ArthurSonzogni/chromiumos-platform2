@@ -71,7 +71,6 @@ extern const char kMetricRollbackResult[];
 // UpdateEngine.EnterpriseRollback.* metrics.
 extern const char kMetricEnterpriseRollbackFailure[];
 extern const char kMetricEnterpriseRollbackSuccess[];
-extern const char kMetricEnterpriseRollbackBlockedByFSI[];
 
 // UpdateEngine.CertificateCheck.* metrics.
 extern const char kMetricCertificateCheckUpdateCheck[];

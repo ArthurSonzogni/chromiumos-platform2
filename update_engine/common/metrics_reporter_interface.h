@@ -34,7 +34,6 @@ class MetricsReporterInterface {
   //
   //  |kMetricEnterpriseRollbackSuccess|
   //  |kMetricEnterpriseRollbackFailure|
-  //  |kMetricEnterpriseRollbackBlockedByFSI|
   virtual void ReportEnterpriseRollbackMetrics(
       const std::string& metric, const std::string& rollback_version) = 0;
 

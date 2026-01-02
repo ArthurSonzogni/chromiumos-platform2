@@ -99,8 +99,6 @@ const char kMetricEnterpriseRollbackFailure[] =
     "UpdateEngine.EnterpriseRollback.Failure";
 const char kMetricEnterpriseRollbackSuccess[] =
     "UpdateEngine.EnterpriseRollback.Success";
-extern const char kMetricEnterpriseRollbackBlockedByFSI[] =
-    "UpdateEngine.EnterpriseRollback.BlockedByFSI";
 
 // UpdateEngine.CertificateCheck.* metrics.
 const char kMetricCertificateCheckUpdateCheck[] =

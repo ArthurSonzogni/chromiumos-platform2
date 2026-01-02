@@ -1022,26 +1022,6 @@ TEST_F(OmahaResponseHandlerActionTest, DISABLED_TestDeferredByPolicy) {
   EXPECT_EQ(in.version, install_plan.version);
 }
 
-TEST_F(OmahaResponseHandlerActionTest, FSIBlockedEnterpriseRollbackIsReported) {
-  OmahaResponse omaha_response;
-  omaha_response.is_rollback = true;
-  omaha_response.no_update_reason = "FSI";
-  omaha_response.update_exists = false;
-  OmahaRequestParams params;
-  params.set_target_version_prefix("12345.6.7");
-  FakeSystemState::Get()->set_request_params(&params);
-
-  EXPECT_CALL(*FakeSystemState::Get()->mock_metrics_reporter(),
-              ReportEnterpriseRollbackMetrics(
-                  metrics::kMetricEnterpriseRollbackBlockedByFSI, "12345.6.7"))
-      .Times(1);
-  InstallPlan install_plan;
-  // No update. The action will abort.
-  ASSERT_FALSE(DoTest(omaha_response, &install_plan));
-  testing::Mock::VerifyAndClearExpectations(
-      FakeSystemState::Get()->mock_metrics_reporter());
-}
-
 TEST_F(OmahaResponseHandlerActionTest,
        FSIBlockedEnterpriseRollbackIsOnlyReportedForRollback) {
   OmahaResponse omaha_response;
