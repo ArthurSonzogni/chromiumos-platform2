@@ -251,20 +251,27 @@ ssize_t NDProxy::TranslateNDPacket(
     int8_t cur_hop_limit_diff,
     uint8_t* out_packet) {
   if (packet_len < sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
+    LOG(ERROR) << __func__ << ": packet length = " << packet_len
+               << " is too small";
     return kTranslateErrorInsufficientLength;
   }
-  if (reinterpret_cast<const ip6_hdr*>(in_packet)->ip6_nxt != IPPROTO_ICMPV6) {
+  const uint8_t ip6_next = reinterpret_cast<const ip6_hdr*>(in_packet)->ip6_nxt;
+  if (ip6_next != IPPROTO_ICMPV6) {
+    LOG(ERROR) << __func__ << ": non-ICMPv6 packet ip6_nxt = " << ip6_next;
     return kTranslateErrorNotICMPv6Packet;
   }
-  if (ntohs(reinterpret_cast<const ip6_hdr*>(in_packet)->ip6_plen) !=
-      (packet_len - sizeof(struct ip6_hdr))) {
+  const uint16_t ip6_packet_len =
+      ntohs(reinterpret_cast<const ip6_hdr*>(in_packet)->ip6_plen);
+  const size_t icmp6_len = packet_len - sizeof(ip6_hdr);
+  if (ip6_packet_len != icmp6_len) {
+    LOG(ERROR) << __func__ << ": expected ip6_plen = " << ip6_packet_len
+               << ", received length = " << icmp6_len;
     return kTranslateErrorMismatchedIp6Length;
   }
 
   memcpy(out_packet, in_packet, packet_len);
   ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(out_packet);
   icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(out_packet + sizeof(ip6_hdr));
-  const size_t icmp6_len = packet_len - sizeof(ip6_hdr);
 
   switch (icmp6->icmp6_type) {
     case ND_ROUTER_SOLICIT:
@@ -305,6 +312,8 @@ ssize_t NDProxy::TranslateNDPacket(
                              local_mac_addr);
       break;
     default:
+      LOG(ERROR) << __func__
+                 << ": non-NDP packet, icmpv6 type = " << icmp6->icmp6_type;
       return kTranslateErrorNotNDPacket;
   }
 
@@ -463,28 +472,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
         TranslateNDPacket(in_packet, len, *local_mac, new_src_ip, new_dst_ip,
                           (kIncreaseCurHopLimit ? 1 : 0), out_packet);
     if (result < 0) {
-      switch (result) {
-        case kTranslateErrorNotICMPv6Packet:
-          LOG(DFATAL) << "Attempt to TranslateNDPacket on a non-ICMPv6 packet";
-          return;
-        case kTranslateErrorNotNDPacket:
-          LOG(DFATAL) << "Attempt to TranslateNDPacket on a non-NDP packet, "
-                         "icmpv6 type = "
-                      << static_cast<int>(icmp6->icmp6_type);
-          return;
-        case kTranslateErrorInsufficientLength:
-          LOG(DFATAL) << "TranslateNDPacket failed: packet length = " << len
-                      << " is too small";
-          return;
-        case kTranslateErrorMismatchedIp6Length:
-          LOG(DFATAL) << "TranslateNDPacket failed: expected ip6_plen = "
-                      << ntohs(ip6->ip6_plen) << ", received length = "
-                      << (len - sizeof(struct ip6_hdr));
-          return;
-        default:
-          LOG(DFATAL) << "Unknown error in TranslateNDPacket";
-          return;
-      }
+      return;
     }
 
     sockaddr_ll send_ll_addr = {
