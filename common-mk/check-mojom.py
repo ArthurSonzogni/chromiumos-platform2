@@ -113,7 +113,7 @@ def GetParser():
 def main(argv):
     parser = GetParser()
     opts = parser.parse_args(argv)
-    opts.Freeze()
+    opts.freeze()
 
     # If we are running a pre-submit check, check the HEAD.
     commit = opts.commit if opts.commit != "pre-submit" else "HEAD"

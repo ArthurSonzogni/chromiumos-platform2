@@ -166,7 +166,7 @@ def GetParser():
 def main(argv):
     parser = GetParser()
     opts = parser.parse_args(argv)
-    opts.Freeze()
+    opts.freeze()
 
     return CheckTopLevel() | CheckSubdirs()
 

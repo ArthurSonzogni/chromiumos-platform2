@@ -92,7 +92,7 @@ def main(argv):
     """The main func!"""
     parser = GetParser()
     opts = parser.parse_args(argv)
-    opts.Freeze()
+    opts.freeze()
 
     return CheckSubdirs()
 

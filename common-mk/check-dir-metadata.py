@@ -209,7 +209,7 @@ def main(argv: List[str]) -> Optional[int]:
     """The main func!"""
     parser = GetParser()
     opts = parser.parse_args(argv)
-    opts.Freeze()
+    opts.freeze()
 
     return CheckSubdirs()
 
