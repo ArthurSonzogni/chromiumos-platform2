@@ -176,9 +176,9 @@ class ProjectLiterals:
         try:
             ast = gnlint.ParseAst(gn_data)
         except cros_build_lib.RunCommandError as e:
-            cros_build_lib.Die("Failed to run gn format: %s", e)
+            cros_build_lib.die("Failed to run gn format: %s", e)
         except Exception as e:
-            cros_build_lib.Die("Invalid format: %s", e)
+            cros_build_lib.die("Invalid format: %s", e)
 
         return gnlint.FindAllLiteralAssignments(
             ast, ["sources"], operators=["=", "+="]

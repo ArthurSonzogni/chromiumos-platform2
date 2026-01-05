@@ -574,7 +574,7 @@ class Platform2:
                 cwd=self.get_platform2_root(),
             )
         except cros_build_lib.RunCommandError:
-            cros_build_lib.Die(
+            cros_build_lib.die(
                 "Unable to configure GN. Please check if USE "
                 "flags have been added to _IUSE. See "
                 "http://go/chromeos-gn for more details."
@@ -631,7 +631,7 @@ class Platform2:
         try:
             cros_build_lib.run(ninja_args)
         except cros_build_lib.RunCommandError:
-            cros_build_lib.Die("Ninja failed")
+            cros_build_lib.die("Ninja failed")
 
     def deviterate(self, args):
         """Runs the configure and compile steps of the Platform2 build.

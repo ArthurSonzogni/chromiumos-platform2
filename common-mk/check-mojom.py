@@ -95,7 +95,7 @@ def CheckMojoStable(commit):
     cmd = [CHECK_STABLE_MOJOM_COMPATIBILITY, "--src-root", TOP_DIR]
     res = cros_build_lib.run(cmd, input=json.dumps(delta), check=False)
     if res.returncode:
-        cros_build_lib.Die("Please fix the mojom error.")
+        cros_build_lib.die("Please fix the mojom error.")
 
 
 def GetParser():
