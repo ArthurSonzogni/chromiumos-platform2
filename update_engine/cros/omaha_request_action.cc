@@ -1429,11 +1429,11 @@ bool OmahaRequestAction::IsUpdateAllowedOverCellularByPrefs() const {
   }
   if (target_version == response_.version &&
       static_cast<uint64_t>(target_size) == total_packages_size) {
-    LOG(INFO) << "Allowing updates over cellular as the target matches the"
+    LOG(INFO) << "Allowing updates over cellular as the target matches the "
                  "omaha response.";
     return true;
   } else {
-    LOG(INFO) << "Disabling updates over cellular as the target does not"
+    LOG(INFO) << "Disabling updates over cellular as the target does not "
                  "match the omaha response.";
     return false;
   }
