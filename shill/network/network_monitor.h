@@ -255,17 +255,23 @@ class NetworkMonitor {
   // Initiates connection diagnostics on this Network for IPv4 or IPv6 if
   // |network_config| has a configuration for the corresponding IP family.
   void StartIPv4ConnectionDiagnostics(
-      const net_base::NetworkConfig& network_config);
+      const net_base::NetworkConfig& network_config,
+      std::string_view extra_tag);
   void StartIPv6ConnectionDiagnostics(
-      const net_base::NetworkConfig& network_config);
+      const net_base::NetworkConfig& network_config,
+      std::string_view extra_tag);
   // Initiates portal detection tests on this Network for IPv4 or IPv6 if
   // |network_config| has a configuration for the corresponding IP family.
   void StartIPv4PortalDetectorTest(
-      const net_base::NetworkConfig& network_config);
-  void IPv4PortalDetectorTestCallback(const PortalDetector::Result& result);
+      const net_base::NetworkConfig& network_config,
+      std::string_view extra_tag);
+  void IPv4PortalDetectorTestCallback(const std::string& logging_tag,
+                                      const PortalDetector::Result& result);
   void StartIPv6PortalDetectorTest(
-      const net_base::NetworkConfig& network_config);
-  void IPv6PortalDetectorTestCallback(const PortalDetector::Result& result);
+      const net_base::NetworkConfig& network_config,
+      std::string_view extra_tag);
+  void IPv6PortalDetectorTestCallback(const std::string& logging_tag,
+                                      const PortalDetector::Result& result);
 
   // These instances outlive this NetworkMonitor instance.
   EventDispatcher* dispatcher_;

@@ -108,7 +108,7 @@ NetworkMonitor::NetworkMonitor(
           std::move(connection_diagnostics_factory)) {
   portal_detector_ = std::make_unique<PortalDetector>(
       dispatcher_, patchpanel_client_, interface_, probing_configuration_,
-      logging_tag_);
+      base::StrCat({logging_tag_, " ", "detection"}));
 }
 
 NetworkMonitor::~NetworkMonitor() {
@@ -234,8 +234,8 @@ void NetworkMonitor::OnPortalDetectorResult(
       // additional connection diagnostics for the current network connection.
       const net_base::NetworkConfig& network_config =
           client_->GetCurrentConfig();
-      StartIPv4ConnectionDiagnostics(network_config);
-      StartIPv6ConnectionDiagnostics(network_config);
+      StartIPv4ConnectionDiagnostics(network_config, "no_connectivity");
+      StartIPv6ConnectionDiagnostics(network_config, "no_connectivity");
       break;
     }
     case PortalDetector::ValidationState::kInternetConnectivity:
@@ -336,17 +336,18 @@ void NetworkMonitor::StopNetworkValidationLog() {
 
 void NetworkMonitor::StartConnectivityTest() {
   const net_base::NetworkConfig& network_config = client_->GetCurrentConfig();
-  StartIPv4ConnectionDiagnostics(network_config);
-  StartIPv4PortalDetectorTest(network_config);
-  StartIPv6ConnectionDiagnostics(network_config);
-  StartIPv6PortalDetectorTest(network_config);
+  StartIPv4ConnectionDiagnostics(network_config, "connectivity_report");
+  StartIPv4PortalDetectorTest(network_config, "connectivity_report");
+  StartIPv6ConnectionDiagnostics(network_config, "connectivity_report");
+  StartIPv6PortalDetectorTest(network_config, "connectivity_report");
 }
 
 void NetworkMonitor::StartIPv4ConnectionDiagnostics(
-    const net_base::NetworkConfig& network_config) {
+    const net_base::NetworkConfig& network_config, std::string_view extra_tag) {
+  std::string logging_tag = base::StrCat({logging_tag_, " ", extra_tag});
   if (ipv4_connection_diagnostics_ &&
       ipv4_connection_diagnostics_->IsRunning()) {
-    LOG(INFO) << logging_tag_ << " " << __func__
+    LOG(INFO) << logging_tag << " " << __func__
               << ": IPv4 ConnectionDiagnostics already running";
     return;
   }
@@ -354,14 +355,15 @@ void NetworkMonitor::StartIPv4ConnectionDiagnostics(
       interface_, interface_index_, net_base::IPFamily::kIPv4, network_config,
       probing_configuration_.portal_http_url,
       std::make_unique<net_base::DNSClientFactory>(),
-      std::make_unique<IcmpSessionFactory>(), logging_tag_, dispatcher_);
+      std::make_unique<IcmpSessionFactory>(), logging_tag, dispatcher_);
 }
 
 void NetworkMonitor::StartIPv6ConnectionDiagnostics(
-    const net_base::NetworkConfig& network_config) {
+    const net_base::NetworkConfig& network_config, std::string_view extra_tag) {
+  std::string logging_tag = base::StrCat({logging_tag_, " ", extra_tag});
   if (ipv6_connection_diagnostics_ &&
       ipv6_connection_diagnostics_->IsRunning()) {
-    LOG(INFO) << logging_tag_ << " " << __func__
+    LOG(INFO) << logging_tag << " " << __func__
               << ": IPv6 ConnectionDiagnostics already running";
     return;
   }
@@ -373,13 +375,14 @@ void NetworkMonitor::StartIPv6ConnectionDiagnostics(
 }
 
 void NetworkMonitor::StartIPv4PortalDetectorTest(
-    const net_base::NetworkConfig& network_config) {
+    const net_base::NetworkConfig& network_config, std::string_view extra_tag) {
+  std::string logging_tag = base::StrCat({logging_tag_, " ", extra_tag});
   if (ipv4_connectivity_test_portal_detector_) {
-    LOG(INFO) << logging_tag_ << " " << __func__ << ": Already running";
+    LOG(INFO) << logging_tag << " " << __func__ << ": Already running";
     return;
   }
   if (!network_config.ipv4_address) {
-    LOG(INFO) << logging_tag_ << " " << __func__
+    LOG(INFO) << logging_tag << " " << __func__
               << ": Skipping because no IPv4 address is configured";
     return;
   }
@@ -390,37 +393,38 @@ void NetworkMonitor::StartIPv4PortalDetectorTest(
     }
   }
   if (dns_list.empty()) {
-    LOG(INFO) << logging_tag_ << " " << __func__
+    LOG(INFO) << logging_tag << " " << __func__
               << ": Skipping because no IPv4 DNS servers are configured";
     return;
   }
-  LOG(INFO) << logging_tag_ << " " << __func__;
+  LOG(INFO) << logging_tag << " " << __func__;
   ipv4_connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
       dispatcher_, patchpanel_client_, interface_, probing_configuration_,
-      logging_tag_);
+      logging_tag);
   // base::Unretained() is safe because
   // |ipv4_connectivity_test_portal_detector_| is owned by |*this|. When the
   // task is executed, |*this| is guaranteed alive.
   ipv4_connectivity_test_portal_detector_->Start(
       /*http_only=*/false, net_base::IPFamily::kIPv4, dns_list,
       base::BindOnce(&NetworkMonitor::IPv4PortalDetectorTestCallback,
-                     base::Unretained(this)));
+                     base::Unretained(this), logging_tag));
 }
 
 void NetworkMonitor::IPv4PortalDetectorTestCallback(
-    const PortalDetector::Result& result) {
-  LOG(INFO) << logging_tag_ << " " << __func__ << ": " << result;
+    const std::string& logging_tag, const PortalDetector::Result& result) {
+  LOG(INFO) << logging_tag << " " << __func__ << ": " << result;
   ipv4_connectivity_test_portal_detector_.reset();
 }
 
 void NetworkMonitor::StartIPv6PortalDetectorTest(
-    const net_base::NetworkConfig& network_config) {
+    const net_base::NetworkConfig& network_config, std::string_view extra_tag) {
+  std::string logging_tag = base::StrCat({logging_tag_, " ", extra_tag});
   if (ipv6_connectivity_test_portal_detector_) {
-    LOG(INFO) << logging_tag_ << " " << __func__ << ": Already running";
+    LOG(INFO) << logging_tag << " " << __func__ << ": Already running";
     return;
   }
   if (network_config.ipv6_addresses.empty()) {
-    LOG(INFO) << logging_tag_ << " " << __func__
+    LOG(INFO) << logging_tag << " " << __func__
               << ": Skipping because no IPv6 address is configured";
     return;
   }
@@ -431,26 +435,26 @@ void NetworkMonitor::StartIPv6PortalDetectorTest(
     }
   }
   if (dns_list.empty()) {
-    LOG(INFO) << logging_tag_ << " " << __func__
+    LOG(INFO) << logging_tag << " " << __func__
               << ": Skipping because no IPv6 DNS servers are configured";
     return;
   }
-  LOG(INFO) << logging_tag_ << " " << __func__;
+  LOG(INFO) << logging_tag << " " << __func__;
   ipv6_connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
       dispatcher_, patchpanel_client_, interface_, probing_configuration_,
-      logging_tag_);
+      logging_tag);
   // base::Unretained() is safe because
   // |ipv6_connectivity_test_portal_detector_| is owned by |*this|. When the
   // task is executed, |*this| is guaranteed alive.
   ipv6_connectivity_test_portal_detector_->Start(
       /*http_only=*/false, net_base::IPFamily::kIPv6, dns_list,
       base::BindOnce(&NetworkMonitor::IPv6PortalDetectorTestCallback,
-                     base::Unretained(this)));
+                     base::Unretained(this), logging_tag));
 }
 
 void NetworkMonitor::IPv6PortalDetectorTestCallback(
-    const PortalDetector::Result& result) {
-  LOG(INFO) << logging_tag_ << " " << __func__ << ": " << result;
+    const std::string& logging_tag, const PortalDetector::Result& result) {
+  LOG(INFO) << logging_tag << " " << __func__ << ": " << result;
   ipv6_connectivity_test_portal_detector_.reset();
 }
 

@@ -60,6 +60,7 @@ const int kNumAttempts = 3;
 using ::testing::_;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
+using ::testing::HasSubstr;
 using ::testing::Return;
 using ::testing::WithArg;
 
@@ -180,7 +181,7 @@ class NetworkMonitorTest : public ::testing::Test {
                   Start(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv4,
                         config_, /*url=*/_,
                         /*dns_client_factory=*/_, /*icmp_session_factory=*/_,
-                        kLoggingTag,
+                        HasSubstr(kLoggingTag),
                         /*dispatcher=*/_))
           .WillOnce([]() {
             auto mock_connection_diagnostics =
@@ -193,7 +194,7 @@ class NetworkMonitorTest : public ::testing::Test {
                   Start(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv6,
                         config_, /*url=*/_,
                         /*dns_client_factory=*/_, /*icmp_session_factory=*/_,
-                        kLoggingTag,
+                        HasSubstr(kLoggingTag),
                         /*dispatcher=*/_))
           .WillOnce([]() {
             auto mock_connection_diagnostics =
