@@ -8,6 +8,7 @@
 
 #include <vector>
 
+#include <base/functional/callback_helpers.h>
 #include <base/task/single_thread_task_executor.h>
 #include <gtest/gtest.h>
 
