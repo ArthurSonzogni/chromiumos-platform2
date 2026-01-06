@@ -177,7 +177,7 @@ fn override_critical_if_necessary(original_critical_margin: u32) -> u32 {
     // found for the xol and lotso/jubilant performance issues.
     let critical_offset = match fs::read_to_string(Path::new("/run/chromeos-config/v1/name")) {
         Ok(device_name) => match device_name.as_str() {
-            "xol" | "lotso" | "jubilant" | "marasov" | "ciri" | "rull" => 700,
+            "xol" | "lotso" | "jubilant" | "marasov" | "ciri" | "rull" | "yoda" => 700,
             _ => 0,
         },
         _ => 0,
