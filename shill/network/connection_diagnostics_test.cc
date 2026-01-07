@@ -187,10 +187,12 @@ class ConnectionDiagnosticsTest : public Test {
         connection_diagnostics_.id_to_pending_dns_server_icmp_session_.empty());
   }
 
-  void ExpectSuccessfulStart() {
+  // Starts the ConnectionDiagnostics instance under test. If the given URL is
+  // a valid URL string, is is passed to the ConnectionDiagnostics instance when
+  // started.
+  void ExpectSuccessfulStart(std::string url = kHttpUrl) {
     EXPECT_FALSE(connection_diagnostics_.IsRunning());
-    connection_diagnostics_.Start(
-        *net_base::HttpUrl::CreateFromString(kHttpUrl));
+    connection_diagnostics_.Start(net_base::HttpUrl::CreateFromString(url));
     EXPECT_TRUE(connection_diagnostics_.IsRunning());
   }
 
@@ -509,4 +511,14 @@ TEST_F(ConnectionDiagnosticsTest, DualStackDNSPingFiltersIPFamily) {
   ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess(kIPv4DNSList);
 }
+
+TEST_F(ConnectionDiagnosticsTest, NoURLAndEndWithSuccess) {
+  ExpectSuccessfulStart(/*url=*/"");
+  TriggerPingGatewayStartSuccess(kIPv4GatewayAddress);
+  TriggerPingGatewayEndSuccess();
+  ExpectPingDNSServersStartSuccess();
+  TriggerPingDNSServersEndSuccess();
+  VerifyStopped();
+}
+
 }  // namespace shill

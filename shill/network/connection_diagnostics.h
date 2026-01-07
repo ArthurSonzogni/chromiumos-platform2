@@ -86,8 +86,10 @@ class ConnectionDiagnostics {
 
   virtual ~ConnectionDiagnostics();
 
-  // Performs connectivity diagnostics for the hostname of the URL |url|.
-  mockable void Start(const net_base::HttpUrl& url);
+  // Performs reachability diagnostics to the gateway and DNS servers and
+  // connectivity diagnostics for the hostname of the URL |url| if it is
+  // defined.
+  mockable void Start(std::optional<net_base::HttpUrl> url);
   mockable bool IsRunning() const;
 
   const std::string& interface_name() const { return iface_name_; }

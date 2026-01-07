@@ -168,7 +168,7 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
   }
 }
 
-void ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
+void ConnectionDiagnostics::Start(std::optional<net_base::HttpUrl> url) {
   if (IsRunning()) {
     LOG(ERROR) << logging_tag_ << " " << __func__ << ": " << ip_family_
                << " Diagnostics already started";
@@ -176,11 +176,13 @@ void ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
   }
 
   LOG(INFO) << logging_tag_ << " " << __func__ << ": Starting " << ip_family_
-            << " diagnostics for " << url.ToString();
+            << " diagnostics, url=" << (url ? url->ToString() : "none");
 
   StartGatewayPingDiagnostic();
   StartDNSServerPingDiagnostic();
-  StartHostDiagnostic(url);
+  if (url) {
+    StartHostDiagnostic(*url);
+  }
 }
 
 void ConnectionDiagnostics::Stop() {
