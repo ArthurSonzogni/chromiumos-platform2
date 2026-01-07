@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cecservice/cec_device.h"
+
 #include <linux/cec-funcs.h>
 
 #include <utility>
@@ -9,9 +11,9 @@
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <gmock/gmock.h>
 
-#include "cecservice/cec_device.h"
 #include "cecservice/cec_fd_mock.h"
 
 using ::testing::_;
