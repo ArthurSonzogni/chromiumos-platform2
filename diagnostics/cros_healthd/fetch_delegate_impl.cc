@@ -106,7 +106,7 @@ void FetchDelegateImpl::FetchInputResult(
 
 void FetchDelegateImpl::FetchMemoryResult(
     base::OnceCallback<void(mojom::MemoryResultPtr)> callback) {
-  FetchMemoryInfo(context_, std::move(callback));
+  context_->memory_fetcher()->FetchMemoryInfo(std::move(callback));
 }
 
 void FetchDelegateImpl::FetchNetworkResult(

@@ -29,6 +29,7 @@
 // NOLINT(build/include_alpha) dbus-proxies.h needs tpm_manager.pb.h
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
+#include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/system/bluez_controller.h"
 #include "diagnostics/cros_healthd/system/bluez_event_hub.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
@@ -146,7 +147,8 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
       bluetooth_manager_proxy_.get(), bluetooth_proxy_.get());
   floss_event_hub_ = std::make_unique<FlossEventHub>(
       dbus_bus, bluetooth_manager_proxy_.get(), bluetooth_proxy_.get());
-  meminfo_reader_ = std::make_unique<MeminfoReader>();
+  memory_fetcher_ = std::make_unique<MemoryFetcherImpl>(
+      this, std::make_unique<MeminfoReader>());
   udev_ = brillo::Udev::Create();
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
 }

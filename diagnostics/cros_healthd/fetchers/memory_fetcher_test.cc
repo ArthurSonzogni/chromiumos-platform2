@@ -160,6 +160,11 @@ class MemoryFetcherTest : public BaseFileTest {
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         GetRootDir().Append(kRelativeProcCpuInfoPath),
         kFakeCpuInfoNoTmeContent));
+
+    auto fake_meminfo_reader = std::make_unique<FakeMeminfoReader>();
+    fake_meminfo_reader_ = fake_meminfo_reader.get();
+    memory_fetcher_ = std::make_unique<MemoryFetcherImpl>(
+        &mock_context_, std::move(fake_meminfo_reader));
   }
 
   void CreateMkmteEnviroment() {
@@ -189,22 +194,19 @@ class MemoryFetcherTest : public BaseFileTest {
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
   MockContext& mock_context() { return mock_context_; }
 
-  FakeMeminfoReader* fake_meminfo_reader() {
-    return mock_context_.fake_meminfo_reader();
-  }
+  FakeMeminfoReader* fake_meminfo_reader() { return fake_meminfo_reader_; }
 
   mojom::MemoryResultPtr FetchMemoryInfoSync() {
     base::test::TestFuture<mojom::MemoryResultPtr> future;
-    FetchMemoryInfo(&mock_context_, future.GetCallback());
+    memory_fetcher_->FetchMemoryInfo(future.GetCallback());
     return future.Take();
   }
 
   base::FilePath crosvm_proc_;
-
- private:
-  base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
+  base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
+  FakeMeminfoReader* fake_meminfo_reader_;
+  std::unique_ptr<MemoryFetcherImpl> memory_fetcher_;
 };
 
 // Test that memory info can be read when it exists.

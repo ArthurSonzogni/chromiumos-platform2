@@ -23,6 +23,7 @@
 #include <base/json/json_writer.h>
 #include <base/strings/string_util.h>
 #include <base/test/bind.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/values.h>
@@ -34,6 +35,7 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
+#include "diagnostics/cros_healthd/fetchers/mock_memory_fetcher.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/routines/routine_adapter.h"
@@ -41,7 +43,6 @@
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
-#include "diagnostics/cros_healthd/system/fake_meminfo_reader.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -50,14 +51,13 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ash::cros_healthd::mojom;
+
 using ::testing::_;
-using ::testing::WithArg;
 using ::testing::WithArgs;
 
-// Location of files containing test data (fake memtester output).
-constexpr char kTestDataRoot[] =
-    "cros_healthd/routines/memory_and_cpu/testdata";
+const char kTestDataRoot[] = "cros_healthd/routines/memory_and_cpu/testdata";
 
+// Based on memtester 4.3.0 source code.
 #if ULONG_MAX == 4294967295UL
 constexpr int kBitFlipPercentage = 57;
 #elif ULONG_MAX == 18446744073709551615ULL
@@ -74,8 +74,11 @@ class MemoryRoutineTestBase : public BaseFileTest {
 
   void SetUp() override {
     // MemAvailable more than 500 MiB.
-    mock_context_.fake_meminfo_reader()->SetError(false);
-    mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(2878980);
+    auto info = mojom::MemoryInfo::New();
+    info->available_memory_kib = 2878980;
+    EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+        .WillRepeatedly(base::test::RunOnceCallback<0>(
+            mojom::MemoryResult::NewMemoryInfo(std::move(info))));
 
     SetExecutorResponse();
   }
@@ -152,6 +155,7 @@ class MemoryRoutineAdapterTest : public MemoryRoutineTestBase {
     // Flush the routine for all request to executor through process
     // control.
     routine_adapter_->FlushRoutineControlForTesting();
+    task_environment_.RunUntilIdle();
     // No need to continue if there is an error and the receiver has
     // disconnected already.
     if (fake_process_control_.IsConnected()) {
@@ -160,6 +164,7 @@ class MemoryRoutineAdapterTest : public MemoryRoutineTestBase {
       // Flush the routine control once more to run any callbacks called by
       // fake_process_control.
       routine_adapter_->FlushRoutineControlForTesting();
+      task_environment_.RunUntilIdle();
     }
   }
 
@@ -321,14 +326,18 @@ TEST_F(MemoryRoutineAdapterTest, RoutineSuccess) {
 
 // Test that the memory routine handles the parsing error.
 TEST_F(MemoryRoutineTest, RoutineParseError) {
-  mock_context_.fake_meminfo_reader()->SetError(true);
+  EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+      .WillOnce(base::test::RunOnceCallback<0>(mojom::MemoryResult::NewError(
+          mojom::ProbeError::New(mojom::ErrorType::kParseError, ""))));
   RunRoutineAndWaitForException();
 }
 
 // Test that the memory routine handles the parsing error.
 TEST_F(MemoryRoutineAdapterTest, RoutineParseError) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
-  mock_context_.fake_meminfo_reader()->SetError(true);
+  EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+      .WillOnce(base::test::RunOnceCallback<0>(mojom::MemoryResult::NewError(
+          mojom::ProbeError::New(mojom::ErrorType::kParseError, ""))));
 
   routine_adapter_->Start();
   FlushAdapter();
@@ -341,8 +350,11 @@ TEST_F(MemoryRoutineAdapterTest, RoutineParseError) {
 // Test that the memory routine handles when there is not much memory left.
 TEST_F(MemoryRoutineTest, RoutineLessThan500MBMemory) {
   // MemAvailable less than 500 MiB.
-  mock_context_.fake_meminfo_reader()->SetError(false);
-  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(278980);
+  auto info = mojom::MemoryInfo::New();
+  info->available_memory_kib = 278980;
+  EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          mojom::MemoryResult::NewMemoryInfo(std::move(info))));
   SetExecutorOutputFromTestFile("all_test_passed_output");
   SetExecutorReturnCode(EXIT_SUCCESS);
 
@@ -359,8 +371,11 @@ TEST_F(MemoryRoutineTest, RoutineLessThan500MBMemory) {
 TEST_F(MemoryRoutineAdapterTest, RoutineLessThan500MBMemory) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   // MemAvailable less than 500 MiB.
-  mock_context_.fake_meminfo_reader()->SetError(false);
-  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(278980);
+  auto info = mojom::MemoryInfo::New();
+  info->available_memory_kib = 278980;
+  EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          mojom::MemoryResult::NewMemoryInfo(std::move(info))));
   SetExecutorOutputFromTestFile("all_test_passed_output");
   SetExecutorReturnCode(EXIT_SUCCESS);
 
@@ -376,20 +391,26 @@ TEST_F(MemoryRoutineAdapterTest, RoutineLessThan500MBMemory) {
   EXPECT_EQ(received_testing_mem_kib_, 4);
 }
 
-// Test that the memory routine handles when there is less than 4KB memory
+// Test that the memory routine handles when there is less than 500MB memory
 TEST_F(MemoryRoutineTest, RoutineNotEnoughMemory) {
-  // MemAvailable less than 4 MiB.
-  mock_context_.fake_meminfo_reader()->SetError(false);
-  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(3);
+  // MemAvailable less than 4 KiB.
+  auto info = mojom::MemoryInfo::New();
+  info->available_memory_kib = 3;
+  EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          mojom::MemoryResult::NewMemoryInfo(std::move(info))));
   RunRoutineAndWaitForException();
 }
 
-// Test that the memory routine handles when there is less than 4KB memory
+// Test that the memory routine handles when there is less than 500MB memory
 TEST_F(MemoryRoutineAdapterTest, RoutineNotEnoughMemory) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
-  // MemAvailable less than 4 MiB.
-  mock_context_.fake_meminfo_reader()->SetError(false);
-  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(3);
+  // MemAvailable less than 4 KiB.
+  auto info = mojom::MemoryInfo::New();
+  info->available_memory_kib = 3;
+  EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          mojom::MemoryResult::NewMemoryInfo(std::move(info))));
 
   routine_adapter_->Start();
   FlushAdapter();

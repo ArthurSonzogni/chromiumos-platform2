@@ -21,6 +21,7 @@
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
 class Context;
@@ -45,6 +46,11 @@ class MemoryRoutine final : public NoninteractiveRoutineControl {
   // The |Run| function is added to the memory resource queue as a callback and
   // will be called when memory resource is available.
   void Run(base::ScopedClosureRunner notify_resource_queue_finished);
+
+  // Callback for when memory info is fetched.
+  void OnMemoryInfoFetched(
+      base::ScopedClosureRunner notify_resource_queue_finished,
+      ash::cros_healthd::mojom::MemoryResultPtr result);
 
   // Initialize variables needed to read stdout.
   void SetUpStdout(mojo::ScopedHandle handle);

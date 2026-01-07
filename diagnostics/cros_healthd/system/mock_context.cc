@@ -25,6 +25,7 @@
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxy-mocks.h needs tpm_manager.pb.h
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
+#include "diagnostics/cros_healthd/fetchers/mock_memory_fetcher.h"
 #include "diagnostics/cros_healthd/service_config.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/fake_bluez_event_hub.h"
@@ -52,7 +53,7 @@ MockContext::MockContext() {
   fwupd_proxy_ =
       std::make_unique<testing::StrictMock<org::freedesktop::fwupdProxyMock>>();
   ground_truth_ = std::make_unique<GroundTruth>(this);
-  meminfo_reader_ = std::make_unique<FakeMeminfoReader>();
+  memory_fetcher_ = std::make_unique<testing::StrictMock<MockMemoryFetcher>>();
   mojo_service_ = std::make_unique<FakeMojoService>();
   power_manager_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::PowerManagerProxyMock>>();
@@ -176,8 +177,8 @@ org::chromium::VmConciergeProxyMock* MockContext::mock_concierge_proxy() const {
       concierge_proxy_.get());
 }
 
-FakeMeminfoReader* MockContext::fake_meminfo_reader() const {
-  return static_cast<FakeMeminfoReader*>(meminfo_reader_.get());
+MockMemoryFetcher* MockContext::mock_memory_fetcher() const {
+  return static_cast<MockMemoryFetcher*>(memory_fetcher_.get());
 }
 
 }  // namespace diagnostics

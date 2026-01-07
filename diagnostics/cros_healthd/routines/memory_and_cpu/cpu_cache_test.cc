@@ -10,6 +10,7 @@
 
 #include <base/functional/callback_helpers.h>
 #include <base/test/bind.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
@@ -21,7 +22,6 @@
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
-#include "diagnostics/cros_healthd/system/fake_meminfo_reader.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -34,6 +34,8 @@ namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::WithArgs;
 
+#include "diagnostics/cros_healthd/fetchers/mock_memory_fetcher.h"
+
 class CpuCacheRoutineTestBase : public BaseFileTest {
  public:
   CpuCacheRoutineTestBase(const CpuCacheRoutineTestBase&) = delete;
@@ -44,8 +46,11 @@ class CpuCacheRoutineTestBase : public BaseFileTest {
 
   void SetUp() override {
     // MemAvailable more than 628 MiB.
-    mock_context_.fake_meminfo_reader()->SetError(false);
-    mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(2878980);
+    auto info = mojom::MemoryInfo::New();
+    info->available_memory_kib = 2878980;
+    EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+        .WillRepeatedly(base::test::RunOnceCallback<0>(
+            mojom::MemoryResult::NewMemoryInfo(std::move(info))));
 
     SetExecutorResponse();
   }
@@ -132,6 +137,7 @@ class CpuCacheRoutineAdapterTest : public CpuCacheRoutineTestBase {
     // Flush the routine for all request to executor through process
     // control.
     routine_adapter_->FlushRoutineControlForTesting();
+    task_environment_.RunUntilIdle();
     // No need to continue if there is an error and the receiver has
     // disconnected already.
     if (fake_process_control_.IsConnected()) {
@@ -140,6 +146,7 @@ class CpuCacheRoutineAdapterTest : public CpuCacheRoutineTestBase {
       // Flush the routine control once more to run any callbacks called by
       // fake_process_control.
       routine_adapter_->FlushRoutineControlForTesting();
+      task_environment_.RunUntilIdle();
     }
   }
 
@@ -179,14 +186,18 @@ TEST_F(CpuCacheRoutineAdapterTest, RoutineSuccess) {
 
 // Test that the CPU cache routine handles the parsing error.
 TEST_F(CpuCacheRoutineTest, RoutineParseError) {
-  mock_context_.fake_meminfo_reader()->SetError(true);
+  EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+      .WillOnce(base::test::RunOnceCallback<0>(mojom::MemoryResult::NewError(
+          mojom::ProbeError::New(mojom::ErrorType::kParseError, ""))));
   RunRoutineAndWaitForException();
 }
 
 // Test that the CPU cache routine handles the parsing error.
 TEST_F(CpuCacheRoutineAdapterTest, RoutineParseError) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
-  mock_context_.fake_meminfo_reader()->SetError(true);
+  EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+      .WillOnce(base::test::RunOnceCallback<0>(mojom::MemoryResult::NewError(
+          mojom::ProbeError::New(mojom::ErrorType::kParseError, ""))));
 
   routine_adapter_->Start();
   FlushAdapter();
@@ -199,8 +210,11 @@ TEST_F(CpuCacheRoutineAdapterTest, RoutineParseError) {
 // Test that the CPU cache routine handles when there is less than 628MB memory
 TEST_F(CpuCacheRoutineTest, RoutineNotEnoughMemory) {
   // MemAvailable less than 628 MB.
-  mock_context_.fake_meminfo_reader()->SetError(false);
-  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(500000);
+  auto info = mojom::MemoryInfo::New();
+  info->available_memory_kib = 500000;
+  EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          mojom::MemoryResult::NewMemoryInfo(std::move(info))));
   RunRoutineAndWaitForException();
 }
 
@@ -208,8 +222,11 @@ TEST_F(CpuCacheRoutineTest, RoutineNotEnoughMemory) {
 TEST_F(CpuCacheRoutineAdapterTest, RoutineNotEnoughMemory) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   // MemAvailable less than 628 MB.
-  mock_context_.fake_meminfo_reader()->SetError(false);
-  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(500000);
+  auto info = mojom::MemoryInfo::New();
+  info->available_memory_kib = 500000;
+  EXPECT_CALL(*mock_context_.mock_memory_fetcher(), FetchMemoryInfo(_))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          mojom::MemoryResult::NewMemoryInfo(std::move(info))));
 
   routine_adapter_->Start();
   FlushAdapter();

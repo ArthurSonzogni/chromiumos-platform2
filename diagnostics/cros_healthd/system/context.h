@@ -59,6 +59,7 @@ class FlossController;
 class FlossEventHub;
 class GroundTruth;
 class MeminfoReader;
+class MemoryFetcher;
 class MojoService;
 class PciUtil;
 class PowerdAdapter;
@@ -173,7 +174,7 @@ class Context {
   org::chromium::SpacedProxyInterface* spaced_proxy() const {
     return spaced_proxy_.get();
   }
-  MeminfoReader* meminfo_reader() const { return meminfo_reader_.get(); }
+  MemoryFetcher* memory_fetcher() const { return memory_fetcher_.get(); }
 
  protected:
   Context();
@@ -206,7 +207,7 @@ class Context {
       session_manager_proxy_;
   std::unique_ptr<org::chromium::VmConciergeProxyInterface> concierge_proxy_;
   std::unique_ptr<GroundTruth> ground_truth_;
-  std::unique_ptr<MeminfoReader> meminfo_reader_;
+  std::unique_ptr<MemoryFetcher> memory_fetcher_;
   std::unique_ptr<MojoService> mojo_service_;
   std::unique_ptr<org::chromium::PowerManagerProxyInterface>
       power_manager_proxy_;

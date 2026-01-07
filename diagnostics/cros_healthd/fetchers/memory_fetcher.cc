@@ -61,8 +61,8 @@ constexpr int64_t kEstimatedSwapCompressionFactor = 3;
 // Returns `MemoryInfo` from reading `/proc/meminfo`. Returns unexpected error
 // if error occurs.
 base::expected<MemoryInfo, mojom::ProbeErrorPtr> ParseProcMemInfo(
-    Context* context) {
-  auto memory_info = context->meminfo_reader()->GetInfo();
+    MeminfoReader* meminfo_reader) {
+  auto memory_info = meminfo_reader->GetInfo();
   if (!memory_info.has_value()) {
     return base::unexpected(CreateAndLogProbeError(
         mojom::ErrorType::kParseError, "Error parsing /proc/meminfo"));
@@ -517,11 +517,20 @@ int64_t ComputeAdjustedAvailable(const GuestMemoryInfo& guest) {
   return adjusted_available;
 }
 
-void FetchMemoryInfo(Context* context, FetchMemoryInfoCallback callback) {
+MemoryFetcherImpl::MemoryFetcherImpl(
+    Context* context, std::unique_ptr<MeminfoReader> meminfo_reader)
+    : context_(context), meminfo_reader_(std::move(meminfo_reader)) {
+  CHECK(context_);
+  CHECK(meminfo_reader_);
+}
+
+MemoryFetcherImpl::~MemoryFetcherImpl() = default;
+
+void MemoryFetcherImpl::FetchMemoryInfo(FetchMemoryInfoCallback callback) {
   const auto& root_dir = GetRootDir();
   auto info = mojom::MemoryInfo::New();
 
-  auto meminfo_result = ParseProcMemInfo(context);
+  auto meminfo_result = ParseProcMemInfo(meminfo_reader_.get());
   if (!meminfo_result.has_value()) {
     std::move(callback).Run(
         mojom::MemoryResult::NewError(std::move(meminfo_result.error())));
@@ -561,9 +570,9 @@ void FetchMemoryInfo(Context* context, FetchMemoryInfoCallback callback) {
   // MemTotal in /proc/meminfo lacks some memory reserved by the kernel.
   // Read /proc/iomem to get the more accurate information via the executor
   // as the root permissions are needed.
-  context->executor()->ReadFile(
+  context_->executor()->ReadFile(
       mojom::Executor::File::kProcIomem,
-      base::BindOnce(&HandleReadProcIomem, context, std::move(callback),
+      base::BindOnce(&HandleReadProcIomem, context_, std::move(callback),
                      std::move(info), root_dir));
 }
 

@@ -11,10 +11,11 @@
 #include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 
+#include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/cros_healthd/system/meminfo_reader.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -48,13 +49,21 @@ void CpuCacheRoutine::OnStart() {
 
 void CpuCacheRoutine::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
-  auto memory_info = context_->meminfo_reader()->GetInfo();
-  if (!memory_info.has_value()) {
-    RaiseException("Memory info not found");
+  context_->memory_fetcher()->FetchMemoryInfo(base::BindOnce(
+      &CpuCacheRoutine::OnMemoryInfoFetched, weak_ptr_factory_.GetWeakPtr(),
+      std::move(notify_resource_queue_finished)));
+}
+
+void CpuCacheRoutine::OnMemoryInfoFetched(
+    base::ScopedClosureRunner notify_resource_queue_finished,
+    ash::cros_healthd::mojom::MemoryResultPtr result) {
+  if (result->is_error()) {
+    RaiseException("Memory info not found: " + result->get_error()->msg);
     return;
   }
 
-  uint32_t available_mem_kib = memory_info.value().available_memory_kib;
+  const auto& memory_info = result->get_memory_info();
+  uint32_t available_mem_kib = memory_info->available_memory_kib;
 
   // Early check and raise exception if system doesn't have enough memory to
   // run a basic stressapptest test.

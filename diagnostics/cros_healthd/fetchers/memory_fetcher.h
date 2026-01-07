@@ -5,12 +5,15 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_MEMORY_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_MEMORY_FETCHER_H_
 
+#include <memory>
+
 #include <base/functional/callback_forward.h>
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
 class Context;
+class MeminfoReader;
 
 // Guest VM memory information used for computing the adjusted available
 // memory of the VM.
@@ -27,7 +30,30 @@ struct GuestMemoryInfo {
 // occurred fetching the information.
 using FetchMemoryInfoCallback =
     base::OnceCallback<void(ash::cros_healthd::mojom::MemoryResultPtr)>;
-void FetchMemoryInfo(Context* context, FetchMemoryInfoCallback callback);
+
+// Interface for fetching memory information.
+class MemoryFetcher {
+ public:
+  virtual ~MemoryFetcher() = default;
+  virtual void FetchMemoryInfo(FetchMemoryInfoCallback callback) = 0;
+};
+
+// Production implementation of the MemoryFetcher interface.
+class MemoryFetcherImpl : public MemoryFetcher {
+ public:
+  MemoryFetcherImpl(Context* context,
+                    std::unique_ptr<MeminfoReader> meminfo_reader);
+  MemoryFetcherImpl(const MemoryFetcherImpl&) = delete;
+  MemoryFetcherImpl& operator=(const MemoryFetcherImpl&) = delete;
+  ~MemoryFetcherImpl() override;
+
+  // MemoryFetcher overrides:
+  void FetchMemoryInfo(FetchMemoryInfoCallback callback) override;
+
+ private:
+  Context* const context_;
+  std::unique_ptr<MeminfoReader> meminfo_reader_;
+};
 
 // Computes the adjusted available memory of the guest VM.
 int64_t ComputeAdjustedAvailable(const GuestMemoryInfo& guest);

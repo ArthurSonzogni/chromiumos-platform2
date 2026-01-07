@@ -26,6 +26,7 @@ source_set("events") {
   public_configs = [ ":events_public_pkg_deps" ]
   deps = [
     "//diagnostics/base",
+    "//diagnostics/cros_healthd/fetchers",
     "//diagnostics/cros_healthd/system",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
