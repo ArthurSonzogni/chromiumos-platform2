@@ -44,6 +44,7 @@ shared_library("libpmt") {
     "pmt_decoder.cc",
     "pmt_impl.cc",
     "pmt_metadata.cc",
+    "sample_filter.cc",
     "xml_helper.cc",
   ]
   configs += [ ":target_defaults_pkg_deps" ]

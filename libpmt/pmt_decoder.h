@@ -6,6 +6,7 @@
 #define LIBPMT_PMT_DECODER_H_
 
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -55,7 +56,8 @@ class BRILLO_EXPORT PmtDecoder {
   // @retval -EINVAL One of the GUIDs is missing metadata.
   // @retval -EBUSY Decoding was initialized already.
   // @retval -EBADF There was an issue parsing metadata.
-  int SetUpDecoding(const std::vector<Guid> guids);
+  int SetUpDecoding(const std::vector<Guid> guids,
+                    const std::vector<std::string>& filters);
 
   // Terminate any device that was set up and clean up associated data.
   //

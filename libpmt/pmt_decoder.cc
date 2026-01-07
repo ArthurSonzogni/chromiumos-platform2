@@ -8,6 +8,7 @@
 #include <cstring>
 #include <ios>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -25,6 +26,7 @@
 #include "bits/pmt_metadata.h"
 #include "libpmt/bits/pmt_data.pb.h"
 #include "libpmt/pmt_impl.h"
+#include "libpmt/sample_filter.h"
 #include "libpmt/xml_helper.h"
 
 namespace pmt {
@@ -209,7 +211,8 @@ vector<Guid> PmtDecoder::DetectMetadata() {
   return result;
 }
 
-int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
+int PmtDecoder::SetUpDecoding(const vector<Guid> guids,
+                              const vector<string>& filters) {
   // Sort by GUIDs. GUIDs need to be sorted because some transformations
   // are relying on data from other devices (see the 'pkgc_block_cause'
   // transformation).
@@ -225,6 +228,7 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
   auto sorted_guids = guids;
   std::sort(sorted_guids.begin(), sorted_guids.end());
   auto supported_guids = FindMetadata();
+  auto parsed_filters = ParseFilters(filters);
 
   // 1st pass through guids to check if metadata is available for all.
   for (const auto& guid : guids) {
@@ -479,6 +483,13 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
       // Set the offset to the beginning of the current 64bit word.
       info.offset_ = data_offset;
 
+      auto sample_group =
+          agg_parser.GetXPathNodeTextValue(sample, kXPathSubgroup).value_or("");
+
+      if (!IsSampleSelected(parsed_filters, guid, sample_group, *sample_id)) {
+        continue;
+      }
+
       // If this sample should be skipped, do so. The offset was updated
       // already.
       if (RE2::PartialMatch(*sample_id, samples_to_skip)) {
@@ -627,8 +638,7 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids) {
       // Fill in the metadata.
       SampleMetadata metadata{
           .name_ = string(*sample_id),
-          .group_ = agg_parser.GetXPathNodeTextValue(sample, kXPathSubgroup)
-                        .value_or(""),
+          .group_ = sample_group,
           .description_ =
               agg_parser.GetXPathNodeTextValue(sample, kXPathDescription)
                   .value_or(""),

@@ -297,10 +297,10 @@ TEST_F(pmtTest, DecodingSetupMetadata) {
   auto result = pmt_dec_->DetectMetadata();
   ASSERT_EQ(result.size(), 1);
   ASSERT_EQ(result[0], 0x130670b2);
-  auto setup_done = pmt_dec_->SetUpDecoding({0x130670b2});
+  auto setup_done = pmt_dec_->SetUpDecoding({0x130670b2}, {});
   ASSERT_EQ(setup_done, 0);
 
-  setup_done = pmt_dec_->SetUpDecoding({0x130670b2});
+  setup_done = pmt_dec_->SetUpDecoding({0x130670b2}, {});
   ASSERT_EQ(setup_done, -EBUSY);
 }
 
@@ -311,11 +311,11 @@ TEST_F(pmtTest, DecodingSetupMetadataUnsupportedGuid) {
   auto result = pmt_dec_->DetectMetadata();
   ASSERT_EQ(result.size(), 1);
   ASSERT_EQ(result[0], 0x130670b2);
-  auto setup_done = pmt_dec_->SetUpDecoding({0xcafebabe});
+  auto setup_done = pmt_dec_->SetUpDecoding({0xcafebabe}, {});
   ASSERT_EQ(setup_done, -EINVAL);
 
   // Next setup with a proper GUID should succeed.
-  setup_done = pmt_dec_->SetUpDecoding({0x130670b2});
+  setup_done = pmt_dec_->SetUpDecoding({0x130670b2}, {});
   ASSERT_EQ(setup_done, 0);
 }
 
@@ -334,11 +334,86 @@ TEST_F(pmtTest, DecodingCleanup) {
   setup_done = pmt_dec_->CleanUpDecoding();
   ASSERT_EQ(setup_done, -ENOENT);
 
-  setup_done = pmt_dec_->SetUpDecoding({0x130670b2});
+  setup_done = pmt_dec_->SetUpDecoding({0x130670b2}, {});
   ASSERT_EQ(setup_done, 0);
 
   setup_done = pmt_dec_->CleanUpDecoding();
   ASSERT_EQ(setup_done, 0);
+}
+
+TEST_F(pmtTest, DecodingWithFilters) {
+  base::FilePath pmt_xml_path(kTelemDataDir);
+  EXPECT_CALL(*dec_data_mock_, GetMetadataMappingsFile())
+      .WillRepeatedly(Return(pmt_xml_path));
+
+  // Create a dummy snapshot to verify decoding result size.
+  Snapshot snapshot;
+  auto* device = snapshot.add_devices();
+  device->set_guid(0x130670b2);
+  std::string dummy_data(1024, 0);
+  device->set_data(dummy_data);
+
+  // 1. Filter by specific sample name "PCH_TEMP".
+  std::vector<std::string> filters = {"PCH_TEMP"};
+  ASSERT_EQ(pmt_dec_->SetUpDecoding({0x130670b2}, filters), 0);
+
+  // Dummy decoding to access DecodingResult within DecodingContext.
+  auto result = pmt_dec_->Decode(&snapshot);
+  ASSERT_NE(result, nullptr);
+  ASSERT_EQ(result->meta_.size(), 1);
+  EXPECT_EQ(result->meta_[0].name_, "PCH_TEMP");
+
+  pmt_dec_->CleanUpDecoding();
+
+  // 2. Filter by Group.
+  filters = {"/0x130670b2/SOC_TEMPERATURES/"};
+  ASSERT_EQ(pmt_dec_->SetUpDecoding({0x130670b2}, filters), 0);
+
+  result = pmt_dec_->Decode(&snapshot);
+  ASSERT_NE(result, nullptr);
+  ASSERT_EQ(result->meta_.size(), 1);
+  EXPECT_EQ(result->meta_[0].name_, "PCH_TEMP");
+  EXPECT_EQ(result->meta_[0].group_, "SOC_TEMPERATURES");
+
+  pmt_dec_->CleanUpDecoding();
+
+  // 3. Filter by GUID (all samples).
+  filters = {"/0x130670b2/"};
+  ASSERT_EQ(pmt_dec_->SetUpDecoding({0x130670b2}, filters), 0);
+
+  result = pmt_dec_->Decode(&snapshot);
+  ASSERT_NE(result, nullptr);
+  // Total samples in tst_aggregator.xml is 7.
+  EXPECT_EQ(result->meta_.size(), 7);
+
+  pmt_dec_->CleanUpDecoding();
+
+  // 4. Multiple filters.
+  filters = {"PCH_TEMP", "VPU_MEMORY_BW"};
+  ASSERT_EQ(pmt_dec_->SetUpDecoding({0x130670b2}, filters), 0);
+
+  result = pmt_dec_->Decode(&snapshot);
+  ASSERT_NE(result, nullptr);
+  EXPECT_EQ(result->meta_.size(), 2);
+  std::vector<std::string> names;
+  for (const auto& m : result->meta_) {
+    names.push_back(m.name_);
+  }
+  EXPECT_THAT(names,
+              testing::UnorderedElementsAre("PCH_TEMP", "VPU_MEMORY_BW"));
+
+  pmt_dec_->CleanUpDecoding();
+
+  // 5. Wildcard filter.
+  filters = {"/0x130670b2/*/PCH_TEMP"};
+  ASSERT_EQ(pmt_dec_->SetUpDecoding({0x130670b2}, filters), 0);
+
+  result = pmt_dec_->Decode(&snapshot);
+  ASSERT_NE(result, nullptr);
+  ASSERT_EQ(result->meta_.size(), 1);
+  EXPECT_EQ(result->meta_[0].name_, "PCH_TEMP");
+
+  pmt_dec_->CleanUpDecoding();
 }
 
 }  // namespace
