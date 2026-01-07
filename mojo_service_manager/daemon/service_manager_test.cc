@@ -2,15 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "mojo_service_manager/daemon/service_manager.h"
+
 #include <string>
 #include <utility>
 
+#include <base/functional/callback_helpers.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "mojo_service_manager/daemon/service_manager.h"
 #include "mojo_service_manager/daemon/service_policy_test_util.h"
 #include "mojo_service_manager/testing/mojo_test_environment.h"
 #include "mojo_service_manager/testing/test.mojom.h"
