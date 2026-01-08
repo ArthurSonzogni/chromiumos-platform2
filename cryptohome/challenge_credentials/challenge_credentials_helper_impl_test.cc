@@ -13,6 +13,7 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
