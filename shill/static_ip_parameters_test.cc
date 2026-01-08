@@ -18,6 +18,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/network/mock_network_monitor.h"
 #include "shill/network/network.h"
 #include "shill/service.h"
 #include "shill/service_under_test.h"
@@ -78,6 +79,8 @@ class StaticIPParametersTest : public Test {
         &dispatcher_, &metrics_, &patchpanel_client_);
     network_->set_primary_family_for_testing(net_base::IPFamily::kIPv4);
     network_->set_state_for_testing(Network::State::kConnected);
+    network_->set_network_monitor_for_testing(
+        std::make_unique<MockNetworkMonitor>());
   }
 
   ~StaticIPParametersTest() override {

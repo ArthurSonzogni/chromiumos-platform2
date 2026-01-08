@@ -617,6 +617,11 @@ class Network : public NetworkMonitor::ClientNetwork {
       const Network::TrafficCounterMap& initial_raw_traffic_counters,
       const Network::TrafficCounterMap& final_raw_traffic_counters);
 
+  // Initiates reachability diagnostics on this Network for IPv4 or IPv6. Some
+  // optional delay can be configured to allow the IP configuration to settle.
+  void StartReachabilityDiagnostic(net_base::IPFamily family,
+                                   base::TimeDelta delay = base::TimeDelta());
+
   // The network_id of the next constructed Network instance.
   // TODO(b/273743901): Centralize the the network id allocation at patchpanel.
   static int next_network_id_;

@@ -37,7 +37,7 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 }  // namespace Logging
 
-uint16_t IcmpSession::kNextUniqueEchoId = 0;
+uint16_t IcmpSession::kNextUniqueEchoId = 1000;
 
 std::unique_ptr<IcmpSession> IcmpSession::CreateForTesting(
     EventDispatcher* dispatcher,

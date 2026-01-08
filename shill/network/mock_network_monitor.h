@@ -9,6 +9,7 @@
 
 #include <chromeos/net-base/http_url.h>
 #include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <gmock/gmock.h>
 
 #include "shill/metrics.h"
@@ -31,6 +32,14 @@ class MockNetworkMonitor : public NetworkMonitor {
   MOCK_METHOD(void, Start, (ValidationReason), (override));
   MOCK_METHOD(bool, Stop, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));
+  MOCK_METHOD(void,
+              StartReachabilityDiagnostic,
+              (const net_base::NetworkConfig&, net_base::IPFamily family),
+              (override));
+  MOCK_METHOD(bool,
+              IsReachabilityDiagnosticsRunning,
+              (net_base::IPFamily family),
+              (const, override));
 };
 
 class MockNetworkMonitorFactory : public NetworkMonitorFactory {

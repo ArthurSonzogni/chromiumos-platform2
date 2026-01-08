@@ -194,6 +194,11 @@ class NetworkMonitor {
   // Returns true if network validation is currently running.
   mockable bool IsRunning() const;
 
+  // Returns true if reqchability diagnostics is currently running for the given
+  // IP family.
+  mockable bool IsReachabilityDiagnosticsRunning(
+      net_base::IPFamily family) const;
+
   // Sets the CAPPORT server URL |capport_url| and records the source of the
   // URL. The URL should be resolved with |dns_list| specified from the same
   // source as the URL.
@@ -231,6 +236,11 @@ class NetworkMonitor {
   void OnPortalDetectorResultForTesting(const PortalDetector::Result& result);
   void OnCapportStatusReceivedForTesting(
       const std::optional<CapportStatus>& status);
+
+  // Initiates reachability diagnostics on this Network for IPv4 or IPv6.
+  // once exactly per IP family.
+  mockable void StartReachabilityDiagnostic(
+      const net_base::NetworkConfig& network_config, net_base::IPFamily family);
 
  private:
   // Starts the validation. Returns true is the validation has been successfully
@@ -308,6 +318,8 @@ class NetworkMonitor {
   std::unique_ptr<ConnectionDiagnosticsFactory> connection_diagnostics_factory_;
   std::unique_ptr<ConnectionDiagnostics> ipv4_connection_diagnostics_;
   std::unique_ptr<ConnectionDiagnostics> ipv6_connection_diagnostics_;
+  std::unique_ptr<ConnectionDiagnostics> ipv4_reachability_diagnostics_;
+  std::unique_ptr<ConnectionDiagnostics> ipv6_reachability_diagnostics_;
   // Other instances of PortalDetector used to evaluate IPv4 and IPv6 Internet
   // connectivity when Manager.CreateConnectivityReport is called.
   std::unique_ptr<PortalDetector> ipv4_connectivity_test_portal_detector_;

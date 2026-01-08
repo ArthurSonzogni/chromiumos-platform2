@@ -74,6 +74,9 @@ std::vector<net_base::IPAddress> GetNetworkValidationDNSServers(
   return dns_list;
 }
 
+bool IsDiagnosticsRunning(const ConnectionDiagnostics* conndiag) {
+  return conndiag && conndiag->IsRunning();
+}
 }  // namespace
 
 NetworkMonitor::NetworkMonitor(
@@ -345,8 +348,7 @@ void NetworkMonitor::StartConnectivityTest() {
 void NetworkMonitor::StartIPv4ConnectionDiagnostics(
     const net_base::NetworkConfig& network_config, std::string_view extra_tag) {
   std::string logging_tag = base::StrCat({logging_tag_, " ", extra_tag});
-  if (ipv4_connection_diagnostics_ &&
-      ipv4_connection_diagnostics_->IsRunning()) {
+  if (IsDiagnosticsRunning(ipv4_connection_diagnostics_.get())) {
     LOG(INFO) << logging_tag << " " << __func__
               << ": IPv4 ConnectionDiagnostics already running";
     return;
@@ -361,8 +363,7 @@ void NetworkMonitor::StartIPv4ConnectionDiagnostics(
 void NetworkMonitor::StartIPv6ConnectionDiagnostics(
     const net_base::NetworkConfig& network_config, std::string_view extra_tag) {
   std::string logging_tag = base::StrCat({logging_tag_, " ", extra_tag});
-  if (ipv6_connection_diagnostics_ &&
-      ipv6_connection_diagnostics_->IsRunning()) {
+  if (IsDiagnosticsRunning(ipv6_connection_diagnostics_.get())) {
     LOG(INFO) << logging_tag << " " << __func__
               << ": IPv6 ConnectionDiagnostics already running";
     return;
@@ -372,6 +373,36 @@ void NetworkMonitor::StartIPv6ConnectionDiagnostics(
       probing_configuration_.portal_http_url,
       std::make_unique<net_base::DNSClientFactory>(),
       std::make_unique<IcmpSessionFactory>(), logging_tag_, dispatcher_);
+}
+
+bool NetworkMonitor::IsReachabilityDiagnosticsRunning(
+    net_base::IPFamily family) const {
+  switch (family) {
+    case net_base::IPFamily::kIPv4:
+      return IsDiagnosticsRunning(ipv4_reachability_diagnostics_.get());
+    case net_base::IPFamily::kIPv6:
+      return IsDiagnosticsRunning(ipv6_reachability_diagnostics_.get());
+  }
+}
+
+void NetworkMonitor::StartReachabilityDiagnostic(
+    const net_base::NetworkConfig& network_config, net_base::IPFamily family) {
+  if (IsReachabilityDiagnosticsRunning(family)) {
+    return;
+  }
+  auto conndiag = connection_diagnostics_factory_->Start(
+      interface_, interface_index_, family, network_config,
+      /*url=*/std::nullopt, std::make_unique<net_base::DNSClientFactory>(),
+      std::make_unique<IcmpSessionFactory>(),
+      base::StrCat({logging_tag_, " ", "reachability"}), dispatcher_);
+  if (!conndiag) {
+    return;
+  }
+  if (family == net_base::IPFamily::kIPv4) {
+    ipv4_reachability_diagnostics_ = std::move(conndiag);
+  } else {
+    ipv6_reachability_diagnostics_ = std::move(conndiag);
+  }
 }
 
 void NetworkMonitor::StartIPv4PortalDetectorTest(

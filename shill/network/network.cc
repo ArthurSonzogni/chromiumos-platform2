@@ -62,6 +62,8 @@ namespace {
 // over a WiFi hotspot or a USB ethernet connection.
 constexpr char kAndroidMeteredHotspotVendorOption[] = "ANDROID_METERED";
 
+constexpr base::TimeDelta kReachabilityDiagnosticDelay = base::Seconds(3);
+
 patchpanel::Client::NetworkTechnology
 ShillTechnologyToPatchpanelClientTechnology(Technology technology) {
   switch (technology) {
@@ -519,6 +521,8 @@ void Network::OnIPv4ConfigUpdated() {
   }
   if (config_.Get().ipv4_address) {
     SetupConnection(net_base::IPFamily::kIPv4, /*is_slaac=*/false);
+    StartReachabilityDiagnostic(net_base::IPFamily::kIPv4,
+                                kReachabilityDiagnosticDelay);
   }
 }
 
@@ -825,6 +829,8 @@ void Network::OnIPv6ConfigUpdated() {
       // Still apply IPv6 DNS even if the Connection is setup with IPv4.
       ApplyNetworkConfig(NetworkConfigArea::kDNS);
     }
+    StartReachabilityDiagnostic(net_base::IPFamily::kIPv6,
+                                kReachabilityDiagnosticDelay);
   }
 }
 
@@ -1401,6 +1407,28 @@ void Network::LogTrafficCounter(
               << ": rx=" << ByteCountToString(vec.rx_bytes)
               << ", tx=" << ByteCountToString(vec.tx_bytes);
   }
+}
+
+void Network::StartReachabilityDiagnostic(net_base::IPFamily family,
+                                          base::TimeDelta delay) {
+  // crrev/c/7376030: Do not schedule reachability diagnostic on VPN.
+  if (technology_ == Technology::kVPN) {
+    return;
+  }
+  // Avoid scheduling a reachability diagnostics if one is already running.
+  if (network_monitor_->IsReachabilityDiagnosticsRunning(family)) {
+    return;
+  }
+  if (!delay.is_zero()) {
+    dispatcher_->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Network::StartReachabilityDiagnostic,
+                       weak_factory_for_connection_.GetWeakPtr(), family,
+                       base::TimeDelta()),
+        delay);
+    return;
+  }
+  network_monitor_->StartReachabilityDiagnostic(config_.Get(), family);
 }
 
 // static
