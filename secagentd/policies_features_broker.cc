@@ -13,6 +13,7 @@
 #include "base/functional/callback_forward.h"
 #include "base/logging.h"
 #include "base/synchronization/lock.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "featured/c_feature_library.h"
