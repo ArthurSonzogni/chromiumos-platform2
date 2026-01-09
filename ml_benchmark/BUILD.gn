@@ -74,7 +74,6 @@ if (use.test) {
   executable("ml_benchmark_test") {
     sources = [
       "json_serializer_test.cc",
-      "memory_sampler_test.cc",
       "shared_library_benchmark_test.cc",
       "sysmetrics_test.cc",
     ]
