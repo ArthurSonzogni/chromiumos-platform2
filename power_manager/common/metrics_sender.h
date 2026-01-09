@@ -49,6 +49,10 @@ class MetricsSenderInterface {
 
   // Sends an enumeration (linear) histogram sample.
   virtual bool SendEnumMetric(const std::string& name, int sample, int max) = 0;
+  // Sends a regular (linear) histogram sample.
+  virtual bool SendLinearMetric(const std::string& name,
+                                int sample,
+                                int exclusive_max) = 0;
 };
 
 // MetricsSenderInterface implementation that wraps the metrics library and
@@ -75,6 +79,9 @@ class MetricsSender : public MetricsSenderInterface {
                   int max,
                   int num_buckets) override;
   bool SendEnumMetric(const std::string& name, int sample, int max) override;
+  bool SendLinearMetric(const std::string& name,
+                        int sample,
+                        int exclusive_max) override;
 
  private:
   MetricsLibraryInterface* metrics_lib_;  // Owned elsewhere.
@@ -91,6 +98,10 @@ bool SendMetric(
 // singleton is currently registered (e.g. for testing).
 bool SendEnumMetric(const std::string& name, int sample, int max);
 
+// Convenience wrapper for calling SendLinearMetric() on the
+// currently-registered MetricsSenderInterface singleton. Returns true without
+// doing anything if no singleton is currently registered (e.g. for testing).
+bool SendLinearMetric(const std::string& name, int sample, int exclusive_max);
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_COMMON_METRICS_SENDER_H_

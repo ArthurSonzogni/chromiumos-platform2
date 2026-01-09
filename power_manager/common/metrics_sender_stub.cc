@@ -39,6 +39,16 @@ MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateEnum(
   return metric;
 }
 
+MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateLinear(
+    const std::string& name, int sample, int exclusive_max) {
+  Metric metric;
+  metric.name = name;
+  metric.type = Type::LINEAR;
+  metric.sample = sample;
+  metric.max = exclusive_max;
+  return metric;
+}
+
 std::string MetricsSenderStub::Metric::ToString() const {
   return base::StringPrintf(
       "name=%s,type=%d,sample=%d,min=%d,max=%d,num_buckets=%d", name.c_str(),
@@ -71,6 +81,13 @@ bool MetricsSenderStub::SendEnumMetric(const std::string& name,
                                        int sample,
                                        int max) {
   metrics_.push_back(Metric::CreateEnum(name, sample, max));
+  return true;
+}
+
+bool MetricsSenderStub::SendLinearMetric(const std::string& name,
+                                         int sample,
+                                         int exclusive_max) {
+  metrics_.push_back(Metric::CreateLinear(name, sample, exclusive_max));
   return true;
 }
 

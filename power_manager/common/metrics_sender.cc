@@ -4,6 +4,7 @@
 
 #include "power_manager/common/metrics_sender.h"
 
+#include <cmath>
 #include <utility>
 
 #include <base/check.h>
@@ -82,6 +83,24 @@ bool MetricsSender::SendEnumMetric(const std::string& name,
   return true;
 }
 
+bool MetricsSender::SendLinearMetric(const std::string& name,
+                                     int sample,
+                                     int exclusive_max) {
+  VLOG(1) << "Sending linear metric " << name << " (sample=" << sample
+          << " exclusive_max=" << exclusive_max << ")";
+
+  if (sample > exclusive_max) {
+    LOG(WARNING) << name << " sample " << sample << " is greater than "
+                 << exclusive_max;
+    sample = exclusive_max;
+  }
+  if (!metrics_lib_->SendLinearToUMA(name, sample, exclusive_max)) {
+    LOG(ERROR) << "Failed to send linear metric " << name;
+    return false;
+  }
+  return true;
+}
+
 bool SendMetric(
     const std::string& name, int sample, int min, int max, int num_buckets) {
   MetricsSenderInterface* sender = MetricsSenderInterface::GetInstance();
@@ -103,4 +122,13 @@ bool SendEnumMetric(const std::string& name, int sample, int max) {
   return sender->SendEnumMetric(name, sample, max);
 }
 
+bool SendLinearMetric(const std::string& name, int sample, int exclusive_max) {
+  MetricsSenderInterface* sender = MetricsSenderInterface::GetInstance();
+  if (!sender) {
+    LOG(WARNING) << "SendLinearMetric '" << name
+                 << "' called before MetricsSender initialization.";
+    return true;
+  }
+  return sender->SendLinearMetric(name, sample, exclusive_max);
+}
 }  // namespace power_manager

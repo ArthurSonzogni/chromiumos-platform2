@@ -20,6 +20,7 @@ class MetricsSenderStub : public MetricsSenderInterface {
     enum class Type {
       EXPONENTIAL,
       ENUMERATION,
+      LINEAR,
     };
 
     Metric();
@@ -33,6 +34,11 @@ class MetricsSenderStub : public MetricsSenderInterface {
 
     // Returns a new enumerated metric initialized to the passed-in values.
     static Metric CreateEnum(const std::string& name, int sample, int max);
+
+    // Returns a new linear metric initialized to the passed-in values.
+    static Metric CreateLinear(const std::string& name,
+                               int sample,
+                               int exclusive_max);
 
     // Returns a string describing the metric. Useful for comparisons in tests.
     std::string ToString() const;
@@ -71,6 +77,9 @@ class MetricsSenderStub : public MetricsSenderInterface {
                   int max,
                   int num_buckets) override;
   bool SendEnumMetric(const std::string& name, int sample, int max) override;
+  bool SendLinearMetric(const std::string& name,
+                        int sample,
+                        int exclusive_max) override;
 
  private:
   // Sent metrics.
