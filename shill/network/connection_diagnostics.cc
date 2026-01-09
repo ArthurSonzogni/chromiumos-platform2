@@ -17,6 +17,7 @@
 #include <base/time/time.h>
 #include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -156,6 +157,9 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       PushBackIfAbsent(&dns_list_, kGoogleIPv4DNS1);
       break;
     case net_base::IPFamily::kIPv6:
+      // TODO(b/471628274): Adding Google IPv6 DNS must check if there is a
+      // non-local address. Migrate users to the new factory method and enable
+      // IPv6ValidConfiguration4 and IPv6InvalidConfiguration2 test cases.
       PushBackIfAbsent(&dns_list_, kGoogleIPv6DNS0);
       PushBackIfAbsent(&dns_list_, kGoogleIPv6DNS1);
       break;
@@ -468,6 +472,68 @@ std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
       iface_name, iface_index, ip_family, gateway, dns_list,
       std::move(dns_client_factory), std::move(icmp_session_factory),
       logging_tag, dispatcher);
+}
+
+std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Start(
+    std::string_view iface_name,
+    int iface_index,
+    net_base::IPFamily ip_family,
+    const net_base::NetworkConfig& config,
+    std::optional<net_base::HttpUrl> url,
+    std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
+    std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
+    std::string_view logging_tag,
+    EventDispatcher* dispatcher) {
+  std::vector<net_base::IPAddress> dns_list;
+  for (const auto& dns : config.dns_servers) {
+    if (dns.GetFamily() == ip_family) {
+      dns_list.push_back(dns);
+    }
+  }
+  std::optional<net_base::IPAddress> gateway = std::nullopt;
+  switch (ip_family) {
+    case net_base::IPFamily::kIPv4:
+      // For IPv4, all diagnostic probes require an interface address.
+      if (!config.ipv4_address) {
+        LOG(INFO) << logging_tag << " " << __func__
+                  << ": Skipping IPv4 diagnostics because no IPv4 address is "
+                     "configured";
+        return nullptr;
+      }
+      if (config.ipv4_gateway) {
+        gateway = net_base::IPAddress(*config.ipv4_gateway);
+      }
+      PushBackIfAbsent(&dns_list, kGoogleIPv4DNS0);
+      PushBackIfAbsent(&dns_list, kGoogleIPv4DNS1);
+      break;
+    case net_base::IPFamily::kIPv6:
+      // For IPv6, it is possible to reach the gateway and link local DNS
+      // servers with the link local address only and without any global or ULA
+      // address.
+      if (config.ipv6_gateway) {
+        gateway = net_base::IPAddress(*config.ipv6_gateway);
+      }
+      if (config.ipv6_addresses.empty()) {
+        std::erase_if(dns_list,
+                      [](const auto& addr) { return !addr.IsIPv6LinkLocal(); });
+      } else {
+        PushBackIfAbsent(&dns_list, kGoogleIPv6DNS0);
+        PushBackIfAbsent(&dns_list, kGoogleIPv6DNS1);
+      }
+      if (!gateway && dns_list.empty()) {
+        LOG(INFO) << logging_tag << " " << __func__
+                  << ": Skipping IPv6 diagnostics because no gateway and no "
+                     "name servers are configured";
+        return nullptr;
+      }
+      break;
+  }
+  auto conndiag = std::make_unique<ConnectionDiagnostics>(
+      iface_name, iface_index, ip_family, gateway, dns_list,
+      std::move(dns_client_factory), std::move(icmp_session_factory),
+      logging_tag, dispatcher);
+  conndiag->Start(url);
+  return conndiag;
 }
 
 int ConnectionDiagnostics::AssignDiagnosticId(

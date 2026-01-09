@@ -13,6 +13,7 @@
 #include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/http_url.h>
 #include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <gmock/gmock.h>
 
 #include "shill/event_dispatcher.h"
@@ -42,6 +43,18 @@ class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
                net_base::IPFamily ip_family,
                std::optional<net_base::IPAddress> gateway,
                const std::vector<net_base::IPAddress>& dns_list,
+               std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
+               std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
+               std::string_view logging_tag,
+               EventDispatcher* dispatcher),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ConnectionDiagnostics>,
+              Start,
+              (std::string_view iface_name,
+               int iface_index,
+               net_base::IPFamily ip_family,
+               const net_base::NetworkConfig& config,
+               std::optional<net_base::HttpUrl> url,
                std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
                std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
                std::string_view logging_tag,

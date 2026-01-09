@@ -14,6 +14,8 @@
 #include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/http_url.h>
 #include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
 #include <gtest/gtest.h>
 
 #include "shill/manager.h"
@@ -30,6 +32,7 @@ using testing::ReturnRef;
 using testing::ReturnRefOfCopy;
 using testing::SetArgPointee;
 using testing::Test;
+using testing::UnorderedElementsAreArray;
 
 namespace shill {
 
@@ -52,6 +55,23 @@ const std::vector<net_base::IPAddress> kIPv4DNSList{
 const std::vector<net_base::IPAddress> kIPv6DNSList{
     net_base::IPAddress(kIPv6DNSServer0),
     net_base::IPAddress(kIPv6DNSServer1),
+};
+// DNS server addresses not automatically added by ConnectionDiagnostics
+constexpr net_base::IPAddress kIPv4DNSServer2(
+    net_base::IPv4Address(1, 1, 1, 1));
+constexpr net_base::IPAddress kIPv6DNSServer2(net_base::IPv6Address(
+    0x26, 0x06, 0x47, 0x00, 0x47, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0x11, 0x11));
+// Link local DNS server address
+constexpr net_base::IPAddress kIPv6LinkLocalDNSServer0(net_base::IPv6Address(
+    0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xaa, 0xbb));
+const std::vector<net_base::IPAddress> kAllDNSList{
+    net_base::IPAddress(kIPv4DNSServer0),
+    net_base::IPAddress(kIPv4DNSServer1),
+    net_base::IPAddress(kIPv4DNSServer2),
+    net_base::IPAddress(kIPv6DNSServer0),
+    net_base::IPAddress(kIPv6DNSServer1),
+    net_base::IPAddress(kIPv6DNSServer2),
+    kIPv6LinkLocalDNSServer0,
 };
 constexpr const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
 const auto kIPv6DeviceAddress =
@@ -519,6 +539,198 @@ TEST_F(ConnectionDiagnosticsTest, NoURLAndEndWithSuccess) {
   ExpectPingDNSServersStartSuccess();
   TriggerPingDNSServersEndSuccess();
   VerifyStopped();
+}
+
+class ConnectionDiagnosticsFactoryTest : public Test {
+ public:
+  ConnectionDiagnosticsFactoryTest()
+      : dns_client_factory_(new FakeDNSClientFactory()),
+        icmp_session_factory_(new FakeIcmpSessionFactory()),
+        factory_() {}
+
+  ~ConnectionDiagnosticsFactoryTest() override = default;
+
+  void SetUp() override {}
+  void TearDown() override {}
+
+ protected:
+  std::unique_ptr<ConnectionDiagnostics> StartIPv4(
+      std::optional<net_base::IPv4CIDR> addr,
+      std::optional<net_base::IPv4Address> gateway,
+      const std::vector<net_base::IPAddress>& dns_list,
+      const std::string& url) {
+    net_base::NetworkConfig config;
+    config.ipv4_address = addr;
+    config.ipv4_gateway = gateway;
+    config.dns_servers = dns_list;
+
+    return factory_.Start(kInterfaceName, kInterfaceIndex,
+                          net_base::IPFamily::kIPv4, config,
+                          net_base::HttpUrl::CreateFromString(url),
+                          base::WrapUnique(dns_client_factory_),
+                          base::WrapUnique(icmp_session_factory_),
+                          "int0 mock_service sid=0", &dispatcher_);
+  }
+
+  std::unique_ptr<ConnectionDiagnostics> StartIPv6(
+      std::vector<net_base::IPv6CIDR> addresses,
+      std::optional<net_base::IPv6Address> gateway,
+      const std::vector<net_base::IPAddress>& dns_list,
+      const std::string& url) {
+    net_base::NetworkConfig config;
+    config.ipv6_addresses = addresses;
+    config.ipv6_gateway = gateway;
+    config.dns_servers = dns_list;
+    return factory_.Start(kInterfaceName, kInterfaceIndex,
+                          net_base::IPFamily::kIPv6, config,
+                          net_base::HttpUrl::CreateFromString(url),
+                          base::WrapUnique(dns_client_factory_),
+                          base::WrapUnique(icmp_session_factory_),
+                          "int0 mock_service sid=0", &dispatcher_);
+  }
+
+ private:
+  FakeDNSClientFactory* dns_client_factory_;
+  FakeIcmpSessionFactory* icmp_session_factory_;
+  ConnectionDiagnosticsFactory factory_;
+  NiceMock<MockEventDispatcher> dispatcher_;
+};
+
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv4ValidConfiguration1) {
+  const auto input_dns = std::vector<net_base::IPAddress>{
+      kIPv4DNSServer0, kIPv4DNSServer1, kIPv4DNSServer2};
+  const auto filtered_dns = std::vector<net_base::IPAddress>{
+      kIPv4DNSServer0, kIPv4DNSServer1, kIPv4DNSServer2};
+  auto conndiag =
+      StartIPv4(net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.35/24"),
+                net_base::IPv4Address::CreateFromString("192.168.1.1"),
+                input_dns, kHttpUrl);
+  ASSERT_NE(nullptr, conndiag);
+  EXPECT_TRUE(conndiag->IsRunning());
+  EXPECT_THAT(conndiag->dns_list(), UnorderedElementsAreArray(filtered_dns));
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv4ValidConfiguration2) {
+  const auto input_dns = kAllDNSList;
+  const auto filtered_dns = std::vector<net_base::IPAddress>{
+      kIPv4DNSServer0, kIPv4DNSServer1, kIPv4DNSServer2};
+  auto conndiag =
+      StartIPv4(net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.35/24"),
+                net_base::IPv4Address::CreateFromString("192.168.1.1"),
+                input_dns, "no-url");
+  ASSERT_NE(nullptr, conndiag);
+  EXPECT_TRUE(conndiag->IsRunning());
+  EXPECT_THAT(conndiag->dns_list(), UnorderedElementsAreArray(filtered_dns));
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv4ValidConfiguration3) {
+  const auto input_dns = kAllDNSList;
+  const auto filtered_dns = std::vector<net_base::IPAddress>{
+      kIPv4DNSServer0, kIPv4DNSServer1, kIPv4DNSServer2};
+  auto conndiag =
+      StartIPv4(net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.35/24"),
+                std::nullopt, input_dns, kHttpUrl);
+  ASSERT_NE(nullptr, conndiag);
+  EXPECT_TRUE(conndiag->IsRunning());
+  EXPECT_THAT(conndiag->dns_list(), UnorderedElementsAreArray(filtered_dns));
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv4ValidConfiguration4) {
+  const auto input_dns = std::vector<net_base::IPAddress>{kIPv4DNSServer2};
+  const auto filtered_dns = std::vector<net_base::IPAddress>{
+      kIPv4DNSServer0, kIPv4DNSServer1, kIPv4DNSServer2};
+  auto conndiag =
+      StartIPv4(net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.35/24"),
+                std::nullopt, input_dns, kHttpUrl);
+  ASSERT_NE(nullptr, conndiag);
+  EXPECT_TRUE(conndiag->IsRunning());
+  EXPECT_THAT(conndiag->dns_list(), UnorderedElementsAreArray(filtered_dns));
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv4ValidConfiguration5) {
+  const auto input_dns = std::vector<net_base::IPAddress>{};
+  const auto filtered_dns =
+      std::vector<net_base::IPAddress>{kIPv4DNSServer0, kIPv4DNSServer1};
+  auto conndiag =
+      StartIPv4(net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.35/24"),
+                std::nullopt, input_dns, kHttpUrl);
+  ASSERT_NE(nullptr, conndiag);
+  EXPECT_TRUE(conndiag->IsRunning());
+  EXPECT_THAT(conndiag->dns_list(), UnorderedElementsAreArray(filtered_dns));
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv4InvalidConfiguration) {
+  const auto input_dns = kAllDNSList;
+  auto conndiag = StartIPv4(
+      std::nullopt, net_base::IPv4Address::CreateFromString("192.168.1.1"),
+      input_dns, kHttpUrl);
+  EXPECT_EQ(nullptr, conndiag);
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv6ValidConfiguration1) {
+  const auto input_dns = kAllDNSList;
+  const auto filtered_dns = std::vector<net_base::IPAddress>{
+      kIPv6DNSServer0, kIPv6DNSServer1, kIPv6DNSServer2,
+      kIPv6LinkLocalDNSServer0};
+  auto conndiag = StartIPv6(
+      {*net_base::IPv6CIDR::CreateFromCIDRString("2001:db8::3333:4444:5555")},
+      net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:7ebf:14c5"),
+      input_dns, kHttpUrl);
+  ASSERT_NE(nullptr, conndiag);
+  EXPECT_TRUE(conndiag->IsRunning());
+  EXPECT_THAT(conndiag->dns_list(), UnorderedElementsAreArray(filtered_dns));
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv6ValidConfiguration2) {
+  const auto input_dns = std::vector<net_base::IPAddress>{
+      net_base::IPAddress(kIPv6DNSServer0),
+      net_base::IPAddress(kIPv6DNSServer1),
+  };
+  const auto filtered_dns = input_dns;
+  auto conndiag = StartIPv6(
+      {}, net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:7ebf:14c5"),
+      input_dns, kHttpUrl);
+  ASSERT_NE(nullptr, conndiag);
+  EXPECT_TRUE(conndiag->IsRunning());
+  EXPECT_THAT(conndiag->dns_list(), UnorderedElementsAreArray(filtered_dns));
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv6ValidConfiguration3) {
+  const auto input_dns = std::vector<net_base::IPAddress>{
+      net_base::IPAddress(kIPv6DNSServer2),
+  };
+  const auto filtered_dns = std::vector<net_base::IPAddress>{
+      kIPv6DNSServer0, kIPv6DNSServer1, kIPv6DNSServer2};
+  auto conndiag = StartIPv6(
+      {*net_base::IPv6CIDR::CreateFromCIDRString("2001:db8::3333:4444:5555")},
+      net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:7ebf:14c5"),
+      input_dns, "no-url");
+  ASSERT_NE(nullptr, conndiag);
+  EXPECT_TRUE(conndiag->IsRunning());
+  EXPECT_THAT(conndiag->dns_list(), UnorderedElementsAreArray(filtered_dns));
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, DISABLED_IPv6ValidConfiguration4) {
+  const auto input_dns = std::vector<net_base::IPAddress>{
+      net_base::IPAddress(kIPv6LinkLocalDNSServer0),
+  };
+  const auto filtered_dns = input_dns;
+  auto conndiag = StartIPv6(
+      {}, net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:7ebf:14c5"),
+      input_dns, "no-url");
+  ASSERT_NE(nullptr, conndiag);
+  EXPECT_TRUE(conndiag->IsRunning());
+  EXPECT_THAT(conndiag->dns_list(), UnorderedElementsAreArray(filtered_dns));
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv6InvalidConfiguration1) {
+  auto conndiag = StartIPv6({}, std::nullopt, {}, kHttpUrl);
+  EXPECT_EQ(nullptr, conndiag);
+}
+
+TEST_F(ConnectionDiagnosticsFactoryTest, DISABLED_IPv6InvalidConfiguration2) {
+  auto conndiag = StartIPv6({}, std::nullopt, kIPv6DNSList, kHttpUrl);
+  EXPECT_EQ(nullptr, conndiag);
 }
 
 }  // namespace shill
