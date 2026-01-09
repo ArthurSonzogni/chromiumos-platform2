@@ -91,7 +91,7 @@ config("compiler_defaults") {
     "-Wimplicit-fallthrough",
   ]
   cflags_c = [ "-std=gnu17" ] + external_cppflags + external_cxxflags
-  cc_version = "-std=gnu++20"
+  cc_version = "-std=gnu++23"
 
   cflags_cc = [ cc_version ] + external_cppflags + external_cxxflags
   ldflags = external_ldflags + [
