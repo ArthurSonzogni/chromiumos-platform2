@@ -56,14 +56,6 @@ std::string NUDStateToString(uint16_t state) {
   }
 }
 
-bool IsIPv6LinkLocalAddress(const net_base::IPAddress& addr) {
-  static const net_base::IPv6CIDR kIPv6LockLocalCIDR =
-      *net_base::IPv6CIDR::CreateFromStringAndPrefix("fe80::", 64);
-
-  const auto ipv6_addr = addr.ToIPv6Address();
-  return ipv6_addr && kIPv6LockLocalCIDR.InSameSubnetWith(*ipv6_addr);
-}
-
 // We cannot set the state of an address to NUD_PROBE when the kernel doesn't
 // know its MAC address, and thus the state should be in NUD_VALID. We don't
 // probe for the other states in NUD_VALID because:
@@ -126,7 +118,7 @@ void NeighborLinkMonitor::AddWatchingEntries(
       return;
     }
     if (!local_cidr.InSameSubnetWith(*dns_addr) &&
-        !IsIPv6LinkLocalAddress(*dns_addr)) {
+        !dns_addr->IsIPv6LinkLocal()) {
       skipped_dns_num++;
       continue;
     }

@@ -176,6 +176,31 @@ TEST(IPCIDRTest, GetMaxPrefixLength) {
   EXPECT_EQ(IPCIDR::GetMaxPrefixLength(IPFamily::kIPv6), 128);
 }
 
+TEST(IPAddressTest, IsIPv6LinkLocal) {
+  EXPECT_FALSE(IPAddress::CreateFromString("0.0.0.0")->IsIPv6LinkLocal());
+  EXPECT_FALSE(IPAddress::CreateFromString("127.0.0.1")->IsIPv6LinkLocal());
+  EXPECT_FALSE(IPAddress::CreateFromString("192.168.1.1")->IsIPv6LinkLocal());
+  EXPECT_FALSE(IPAddress::CreateFromString("192.168.1.32")->IsIPv6LinkLocal());
+  EXPECT_FALSE(IPAddress::CreateFromString("169.254.0.12")->IsIPv6LinkLocal());
+  EXPECT_FALSE(
+      IPAddress::CreateFromString("255.255.255.255")->IsIPv6LinkLocal());
+
+  EXPECT_FALSE(
+      IPAddress::CreateFromString("2401:fa00:480:c6::1:10")->IsIPv6LinkLocal());
+  EXPECT_FALSE(
+      IPAddress::CreateFromString("2401:fa00:480:f6::6")->IsIPv6LinkLocal());
+  EXPECT_FALSE(
+      IPAddress::CreateFromString("2401:fa01:480:f6::1")->IsIPv6LinkLocal());
+  EXPECT_FALSE(IPAddress::CreateFromString("fe80:1000::")->IsIPv6LinkLocal());
+  EXPECT_FALSE(IPAddress::CreateFromString("ff02::1")->IsIPv6LinkLocal());
+
+  EXPECT_TRUE(IPAddress::CreateFromString("fe80::1")->IsIPv6LinkLocal());
+  EXPECT_TRUE(
+      IPAddress::CreateFromString("fe80::23a1:b152")->IsIPv6LinkLocal());
+  EXPECT_TRUE(IPAddress::CreateFromString("fe80::abcd:1234:5678:9abc")
+                  ->IsIPv6LinkLocal());
+}
+
 TEST(IPCIDRTest, CreateFromCIDRString) {
   const auto cidr1 = IPCIDR::CreateFromCIDRString("192.168.10.1/25");
   ASSERT_TRUE(cidr1);

@@ -4,9 +4,9 @@
 
 #include "net-base/ipv6_address.h"
 
-#include <algorithm>
-
 #include <arpa/inet.h>
+
+#include <algorithm>
 
 #include <base/check.h>
 
@@ -42,6 +42,12 @@ IPv6Address::IPv6Address(const struct in6_addr& addr) {
 bool IPv6Address::IsZero() const {
   return std::all_of(data_.begin(), data_.end(),
                      [](uint8_t byte) { return byte == 0; });
+}
+
+bool IPv6Address::IsLinkLocal() const {
+  return data_[0] == 0xfe && data_[1] == 0x80 && data_[2] == 0 &&
+         data_[3] == 0 && data_[4] == 0 && data_[5] == 0 && data_[6] == 0 &&
+         data_[7] == 0;
 }
 
 bool IPv6Address::operator==(const IPv6Address& rhs) const {

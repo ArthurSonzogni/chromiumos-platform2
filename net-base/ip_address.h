@@ -95,6 +95,10 @@ class BRILLO_EXPORT IPAddress {
   // Returns the length in bytes of this address object.
   size_t GetAddressLength() const;
 
+  // Returns true if this address is an IPv6 link local address in the fe80::/64
+  // range.
+  bool IsIPv6LinkLocal() const;
+
   // Converts to the family-specific classes. Returns std::nullopt if the IP
   // family is not the same.
   std::optional<IPv4Address> ToIPv4Address() const;

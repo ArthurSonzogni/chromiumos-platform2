@@ -85,6 +85,25 @@ TEST(IPv6AddressTest, ToByteString) {
   EXPECT_EQ(address.ToByteString(), expected);
 }
 
+TEST(IPv6AddressTest, IsLinkLocal) {
+  EXPECT_FALSE(IPv6Address::CreateFromString("::")->IsLinkLocal());
+  EXPECT_FALSE(IPv6Address::CreateFromString("::1")->IsLinkLocal());
+  EXPECT_FALSE(
+      IPv6Address::CreateFromString("2401:fa00:480:c6::1:10")->IsLinkLocal());
+  EXPECT_FALSE(
+      IPv6Address::CreateFromString("2401:fa00:480:f6::6")->IsLinkLocal());
+  EXPECT_FALSE(
+      IPv6Address::CreateFromString("2401:fa01:480:f6::1")->IsLinkLocal());
+  EXPECT_FALSE(IPv6Address::CreateFromString("fe80:1000::")->IsLinkLocal());
+  EXPECT_FALSE(IPv6Address::CreateFromString("fe80:0:0:1::")->IsLinkLocal());
+  EXPECT_FALSE(IPv6Address::CreateFromString("ff02::1")->IsLinkLocal());
+
+  EXPECT_TRUE(IPv6Address::CreateFromString("fe80::1")->IsLinkLocal());
+  EXPECT_TRUE(IPv6Address::CreateFromString("fe80::23a1:b152")->IsLinkLocal());
+  EXPECT_TRUE(IPv6Address::CreateFromString("fe80::abcd:1234:5678:9abc")
+                  ->IsLinkLocal());
+}
+
 TEST(IPv4Address, In6Addr) {
   const struct in6_addr expected_addr = {
       {{0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1a, 0xa9, 0x05, 0xff,

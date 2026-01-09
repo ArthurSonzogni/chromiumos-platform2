@@ -73,6 +73,10 @@ class BRILLO_EXPORT IPv6Address {
   // Returns true if the address is "::".
   bool IsZero() const;
 
+  // Returns true if this address is an IPv6 link local address in the fe80::/64
+  // range.
+  bool IsLinkLocal() const;
+
   // Compares the byte value of |data_| with |rhs|.
   bool operator==(const IPv6Address& rhs) const;
   bool operator!=(const IPv6Address& rhs) const;

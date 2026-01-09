@@ -124,6 +124,13 @@ size_t IPAddress::GetAddressLength() const {
   return GetAddressLength(GetFamily());
 }
 
+bool IPAddress::IsIPv6LinkLocal() const {
+  if (const auto ipv6 = std::get_if<IPv6Address>(&address_)) {
+    return ipv6->IsLinkLocal();
+  }
+  return false;
+}
+
 std::optional<IPv4Address> IPAddress::ToIPv4Address() const {
   if (const auto ipv4 = std::get_if<IPv4Address>(&address_)) {
     return *ipv4;
