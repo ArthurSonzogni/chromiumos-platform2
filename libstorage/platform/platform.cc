@@ -592,7 +592,7 @@ int64_t Platform::ComputeDirectoryDiskUsage(const FilePath& path) {
 FILE* Platform::OpenFile(const FilePath& path, const char* mode) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
-  return base::OpenFile(path, mode);
+  return base::OpenFile(path, base::cstring_view(mode));
 }
 
 bool Platform::CloseFile(FILE* fp) {
