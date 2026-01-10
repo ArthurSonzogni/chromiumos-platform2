@@ -37,8 +37,9 @@ bool ParseCommandLineAndInitLogging(int argc,
       m, "",
       "Optional path to the PMT metadata directory where pmt.xml is located");
   DEFINE_string(x, "",
-          "Optional list of filters to apply. Format: "
-          "[/guid[/group/]][sample]");
+                "Optional list of filters to apply. Format: "
+                "[/guid[/group/]][sample]");
+  DEFINE_string(filter_path, "", "Optional path to a file containing filters");
 
   auto help_usage = std::string(argv[0]);
   help_usage.append(
@@ -95,6 +96,22 @@ bool ParseCommandLineAndInitLogging(int argc,
   new_opts.decoding.metadata_path = metadata_path;
   new_opts.decoding.filters = base::SplitString(
       FLAGS_x, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  if (!FLAGS_filter_path.empty()) {
+    std::string file_contents;
+    if (base::ReadFileToString(base::FilePath(FLAGS_filter_path),
+                               &file_contents)) {
+      auto file_filters =
+          base::SplitString(file_contents, "\n,", base::TRIM_WHITESPACE,
+                            base::SPLIT_WANT_NONEMPTY);
+      new_opts.decoding.filters.insert(new_opts.decoding.filters.end(),
+                                       file_filters.begin(),
+                                       file_filters.end());
+    } else {
+      // Invalid filter file, continue without it.
+      LOG(ERROR) << "Failed to read filter file: " << FLAGS_filter_path;
+    }
+  }
 
   // Out of the rest of arguments treat the fist one as a path to the pmt.log.
   auto cl = base::CommandLine::ForCurrentProcess();

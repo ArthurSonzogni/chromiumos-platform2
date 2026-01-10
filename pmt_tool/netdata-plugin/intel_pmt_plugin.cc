@@ -67,6 +67,32 @@ inline SourceFormat GetSourceFormat(const base::CommandLine* cl) {
   return SourceFormat::UNKNOWN;
 }
 
+// Parses the "filters" and "filter_path" command line switches and returns the
+// filters.
+std::vector<std::string> GetFilters(const base::CommandLine* cl) {
+  std::vector<std::string> filters;
+  std::string filters_str = cl->GetSwitchValueASCII("filters");
+  if (!filters_str.empty()) {
+    filters = base::SplitString(filters_str, ",", base::TRIM_WHITESPACE,
+                                base::SPLIT_WANT_NONEMPTY);
+  }
+
+  std::string filter_path = cl->GetSwitchValueASCII("filter_path");
+  if (!filter_path.empty()) {
+    std::string file_contents;
+    if (base::ReadFileToString(base::FilePath(filter_path), &file_contents)) {
+      auto file_filters =
+          base::SplitString(file_contents, "\n,", base::TRIM_WHITESPACE,
+                            base::SPLIT_WANT_NONEMPTY);
+      filters.insert(filters.end(), file_filters.begin(), file_filters.end());
+    } else {
+      // Invalid filter file, continue without it.
+      LOG(ERROR) << "PMT ERROR: Failed to read filter file: " << filter_path;
+    }
+  }
+  return filters;
+}
+
 // Helper to remove quotes from a string.
 inline void TrimQuotes(std::string& s) {
   base::TrimString(s, "\"", &s);
@@ -147,7 +173,7 @@ bool DecodeSnapshot(int fd,
   return true;
 }
 
-int ParseHeartdData(const std::string& filters_str) {
+int ParseHeartdData(const std::vector<std::string>& filters) {
   base::FilePath heartd_pmt_path(kHeartdPmtPath);
   base::FilePath pmt_log_path = heartd_pmt_path.Append("intel_pmt.log");
 
@@ -184,9 +210,6 @@ int ParseHeartdData(const std::string& filters_str) {
     LOG(ERROR) << "PMT ERROR: No PMT metadata found for decoding.";
     return 1;
   }
-  // Parse sample filters for the decoder.
-  std::vector<std::string> filters = base::SplitString(
-  filters_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (decoder.SetUpDecoding(guids, filters) != 0) {
     LOG(ERROR) << "PMT ERROR: Failed to set up PMT decoder.";
     return 1;
@@ -299,16 +322,16 @@ int main(int argc, char* argv[]) {
   // The first argument from netdata is 'update_every', which is ignored,
   // base::CommandLine handles this for us.
   SourceFormat source_type = GetSourceFormat(cl);
-  // Read optional sample filters.
-  std::string filters_str = cl->GetSwitchValueASCII("filters");
 
   if (source_type == SourceFormat::UNKNOWN) {
     LOG(ERROR) << "PMT ERROR: Unknown source type: "
                << cl->GetSwitchValueASCII("source");
     return 1;
   } else if (source_type == SourceFormat::HEARTD) {
+    // Read optional sample filters.
+    std::vector<std::string> filters = GetFilters(cl);
     // If source is from heartd, decode it and process it periodically.
-    return ParseHeartdData(filters_str);
+    return ParseHeartdData(filters);
   }
 
   // Else, source_type is a file at "path".
@@ -334,8 +357,13 @@ int main(int argc, char* argv[]) {
   pmt_cmd.AppendSwitchASCII("i", base::NumberToString(seconds));
   pmt_cmd.AppendSwitchASCII("n", base::NumberToString(records));
   pmt_cmd.AppendSwitchASCII("f", "csv");
+  std::string filters_str = cl->GetSwitchValueASCII("filters");
   if (!filters_str.empty()) {
     pmt_cmd.AppendSwitchASCII("x", filters_str);
+  }
+  std::string filter_path = cl->GetSwitchValueASCII("filter_path");
+  if (!filter_path.empty()) {
+    pmt_cmd.AppendSwitchPath("filter_path", base::FilePath(filter_path));
   }
 
   while (true) {

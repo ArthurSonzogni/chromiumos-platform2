@@ -6,8 +6,12 @@
 
 #include <unistd.h>
 
+#include <string>
+
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <gmock/gmock.h>
@@ -364,6 +368,75 @@ TEST_F(pmtToolTest, ParseCmdlineFiltersWhitespace) {
   ASSERT_EQ(opts.decoding.filters.size(), 2);
   EXPECT_EQ(opts.decoding.filters[0], "filter1");
   EXPECT_EQ(opts.decoding.filters[1], "filter2");
+}
+
+TEST_F(pmtToolTest, ParseCmdlineFilterPath) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath filter_file = temp_dir.GetPath().Append("filters.txt");
+  std::string content = "filter1\nfilter2, filter3 ";
+  ASSERT_TRUE(base::WriteFile(filter_file, content));
+
+  Options opts;
+  std::string filter_path_arg = "--filter_path=" + filter_file.value();
+  const char* argv[] = {
+      "pmt_tool",
+      filter_path_arg.c_str(),
+  };
+  bool cl_initialized = base::CommandLine::Init(std::size(argv), argv);
+  ASSERT_TRUE(cl_initialized);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      base::CommandLine::ForCurrentProcess());
+  auto result = ParseCommandLineAndInitLogging(std::size(argv), argv, opts);
+
+  EXPECT_TRUE(result);
+  ASSERT_EQ(opts.decoding.filters.size(), 3);
+  EXPECT_EQ(opts.decoding.filters[0], "filter1");
+  EXPECT_EQ(opts.decoding.filters[1], "filter2");
+  EXPECT_EQ(opts.decoding.filters[2], "filter3");
+}
+
+TEST_F(pmtToolTest, ParseCmdlineFilterPathAndFlag) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath filter_file = temp_dir.GetPath().Append("filters.txt");
+  std::string content = "filter_file";
+  ASSERT_TRUE(base::WriteFile(filter_file, content));
+
+  Options opts;
+  std::string filter_path_arg = "--filter_path=" + filter_file.value();
+  const char* argv[] = {
+      "pmt_tool",
+      "-x=filter_flag",
+      filter_path_arg.c_str(),
+  };
+  bool cl_initialized = base::CommandLine::Init(std::size(argv), argv);
+  ASSERT_TRUE(cl_initialized);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      base::CommandLine::ForCurrentProcess());
+  auto result = ParseCommandLineAndInitLogging(std::size(argv), argv, opts);
+
+  EXPECT_TRUE(result);
+  ASSERT_EQ(opts.decoding.filters.size(), 2);
+  EXPECT_EQ(opts.decoding.filters[0], "filter_flag");
+  EXPECT_EQ(opts.decoding.filters[1], "filter_file");
+}
+
+TEST_F(pmtToolTest, ParseCmdlineFilterPathInvalid) {
+  Options opts;
+  const char* argv[] = {
+      "pmt_tool",
+      "--filter_path=/nonexistent/path",
+  };
+  bool cl_initialized = base::CommandLine::Init(std::size(argv), argv);
+  ASSERT_TRUE(cl_initialized);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      base::CommandLine::ForCurrentProcess());
+  auto result = ParseCommandLineAndInitLogging(std::size(argv), argv, opts);
+
+  // The code logs error but returns true (unless other flags fail).
+  EXPECT_TRUE(result);
+  EXPECT_TRUE(opts.decoding.filters.empty());
 }
 
 TEST_F(pmtToolTest, ParseCmdlineVerbose) {
