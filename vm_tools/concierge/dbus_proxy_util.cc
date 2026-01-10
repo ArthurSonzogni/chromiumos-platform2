@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/task/sequenced_task_runner.h>
 #include <dbus/error.h>
 
 namespace vm_tools::concierge {

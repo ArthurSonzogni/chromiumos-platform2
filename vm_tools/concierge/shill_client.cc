@@ -12,6 +12,7 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/task/sequenced_task_runner.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 
