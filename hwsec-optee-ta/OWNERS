@@ -1,2 +1,3 @@
 chenyian@google.com
 yich@google.com
+include chromiumos/owners:v1:/firmware/OWNERS.cros_ap

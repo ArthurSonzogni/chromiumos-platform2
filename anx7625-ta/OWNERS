@@ -1,2 +1,3 @@
-hiroh@google.com
-nhebert@google.com
+hiroh@chromium.org
+nhebert@chromium.org
+include chromiumos/owners:v1:/firmware/OWNERS.cros_ap
