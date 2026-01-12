@@ -1,1 +1,2 @@
 include chromiumos/owners:v1:/device/OWNERS.reven
+include chromiumos/owners:v1:/bluetooth/OWNERS.floss
