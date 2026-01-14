@@ -4,8 +4,7 @@
 
 #include "libhwsec-foundation/crypto/libscrypt_compat.h"
 
-#include <openssl/aes.h>
-#include <openssl/evp.h>
+#include <bit>
 
 #include <base/bits.h>
 #include <base/check_op.h>
@@ -13,6 +12,8 @@
 #include <base/sys_byteorder.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <openssl/aes.h>
+#include <openssl/evp.h>
 
 #include "libhwsec-foundation/crypto/aes.h"
 #include "libhwsec-foundation/crypto/hmac.h"
@@ -83,8 +84,8 @@ void GenerateHeader(const brillo::Blob& salt,
       {'s', 'c', 'r', 'y', 'p', 't'},
       0,
       static_cast<uint8_t>(base::bits::Log2Ceiling(params.n_factor)),
-      base::ByteSwap(params.r_factor),
-      base::ByteSwap(params.p_factor)};
+      std::byteswap(params.r_factor),
+      std::byteswap(params.p_factor)};
 
   memcpy(&header_struct->salt, salt.data(), sizeof(header_struct->salt));
 
@@ -213,8 +214,8 @@ bool LibScryptCompat::ParseHeader(const brillo::Blob& encrypted_blob,
   }
 
   out_params->n_factor = static_cast<uint64_t>(1) << header->log_n;
-  out_params->r_factor = base::ByteSwap(header->r_factor);
-  out_params->p_factor = base::ByteSwap(header->p_factor);
+  out_params->r_factor = std::byteswap(header->r_factor);
+  out_params->p_factor = std::byteswap(header->p_factor);
   salt->assign(header->salt, header->salt + kLibScryptSaltSize);
 
   return true;

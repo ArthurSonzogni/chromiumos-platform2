@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include <algorithm>
+#include <bit>
 #include <string>
 #include <utility>
 #include <vector>
@@ -107,7 +108,7 @@ bool LockboxContents::Decode(const brillo::SecureBlob& nvram_data) {
   uint8_t* reversed_size_ptr = reinterpret_cast<uint8_t*>(&reversed_size);
   std::copy(cursor, cursor + sizeof(reversed_size), reversed_size_ptr);
   cursor += sizeof(reversed_size);
-  size_ = base::ByteSwap(reversed_size);
+  size_ = std::byteswap(reversed_size);
 
   // Grab the flags.
   flags_ = *cursor++;
@@ -129,7 +130,7 @@ bool LockboxContents::Decode(const brillo::SecureBlob& nvram_data) {
 bool LockboxContents::Encode(brillo::SecureBlob* blob) {
   // Encode the data size. For historic reasons, this is encoded in reverse host
   // byte order (!).
-  uint32_t reversed_size = base::ByteSwap(size_);
+  uint32_t reversed_size = std::byteswap(size_);
   uint8_t* reversed_size_ptr = reinterpret_cast<uint8_t*>(&reversed_size);
   blob->insert(blob->end(), reversed_size_ptr,
                reversed_size_ptr + sizeof(reversed_size));
