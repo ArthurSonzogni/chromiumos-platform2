@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -212,8 +213,10 @@ void TimberSlide::OnEventReadable() {
   char buffer[4096];
   int ret;
 
-  ret = TEMP_FAILURE_RETRY(
-      device_file_.ReadAtCurrentPosNoBestEffort(buffer, sizeof(buffer)));
+  ret = TEMP_FAILURE_RETRY(device_file_
+                               .ReadAtCurrentPosNoBestEffort(
+                                   base::as_writable_bytes(base::span(buffer)))
+                               .value_or(-1));
   if (ret == 0) {
     return;
   }

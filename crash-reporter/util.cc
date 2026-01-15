@@ -15,6 +15,7 @@
 #include <memory>
 
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
@@ -685,16 +686,17 @@ bool ReadFdToStream(unsigned int fd, std::stringstream* stream) {
   char buffer[kBufferSize];
 
   while (true) {
-    const int count = src.ReadAtCurrentPosNoBestEffort(buffer, kBufferSize);
-    if (count < 0) {
+    std::optional<size_t> count = src.ReadAtCurrentPosNoBestEffort(
+        base::as_writable_bytes(base::span(buffer)));
+    if (!count.has_value()) {
       return false;
     }
 
-    if (count == 0) {
+    if (*count == 0) {
       return stream->tellp() > 0;  // Crash log should not be empty.
     }
 
-    stream->write(buffer, count);
+    stream->write(buffer, *count);
   }
 }
 
