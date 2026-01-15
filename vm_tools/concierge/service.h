@@ -342,6 +342,11 @@ class Service final : public org::chromium::VmConciergeInterface,
           SetVmCpuRestrictionResponse>> response_cb,
       const SetVmCpuRestrictionRequest& request) override;
 
+  // Handles a request to set a VM's type.
+  void SetCrostiniVmType(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                             SetCrostiniVmTypeResponse>> response_cb,
+                         const SetCrostiniVmTypeRequest& request) override;
+
   // Handles a request to adjust parameters of a given VM.
   void AdjustVm(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                     SuccessFailureResponse>> response_cb,
@@ -630,6 +635,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   dbus::ObjectProxy* vmplugin_service_proxy_;          // Owned by |bus_|.
   dbus::ObjectProxy* resource_manager_service_proxy_;  // Owned by |bus_|.
   dbus::ObjectProxy* chrome_features_service_proxy_;   // Owned by |bus_|.
+  dbus::ObjectProxy* vm_management_service_proxy_;     // Owned by |bus_|.
   dbus::ObjectProxy* shadercached_proxy_;              // Owned by |bus_|.
 
   std::unique_ptr<org::chromium::VmCiceroneProxy> cicerone_service_proxy_;

@@ -114,6 +114,7 @@ pub enum ChromeOSError {
         reason: String,
     },
     FailedUpdateContainerDevices(String),
+    FailedSetCrostiniVmType(String),
     FakeConnectionProxy,
     GetIoDevices,
     InvalidDiskSize(u64),
@@ -226,6 +227,9 @@ impl fmt::Display for ChromeOSError {
             }
             FailedUpdateContainerDevices(reason) => {
                 write!(f, "Failed to update container devices: {}", reason)
+            }
+            FailedSetCrostiniVmType(reason) => {
+                write!(f, "failed to set crostini vm type: {}", reason)
             }
             FakeConnectionProxy => {
                 write!(f, "fake connection proxy for test")
@@ -1297,6 +1301,24 @@ impl Methods {
             if response.command_uuid == uuid {
                 return self.parse_disk_op_status(response, op_type);
             }
+        }
+    }
+
+    fn set_vm_type(&mut self, vm_type: VmType, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
+        let mut request = SetCrostiniVmTypeRequest::new();
+        request.cryptohome_id = user_id_hash.to_owned();
+        request.vm_type = vm_type.into();
+
+        let response: SetCrostiniVmTypeResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .set_crostini_vm_type(request.write_to_bytes()?)?,
+        )?;
+
+        if response.success {
+            Ok(())
+        } else {
+            Err(FailedSetCrostiniVmType(response.reason).into())
         }
     }
 
@@ -2689,6 +2711,15 @@ impl Methods {
         }
         output_file.commit();
         Ok(output_file.path.clone())
+    }
+
+    pub fn set_crostini_vm_type(
+        &mut self,
+        user_id_hash: &str,
+        vm_type: VmType,
+    ) -> Result<(), Box<dyn Error>> {
+        self.start_vm_infrastructure(user_id_hash)?;
+        self.set_vm_type(vm_type, user_id_hash)
     }
 
     pub fn container_create(

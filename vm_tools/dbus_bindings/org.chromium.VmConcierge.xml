@@ -603,6 +603,23 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="SetCrostiniVmType">
+      <tp:docstring>
+        Set VM's type to on-disk xattr and to chrome pref.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SetCrostiniVmTypeRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SetCrostiniVmTypeResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, optionally existing type.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="SetUpVmUser">
       <tp:docstring>
         Sets up a new user within a VM, creating it if it doesn't exist.

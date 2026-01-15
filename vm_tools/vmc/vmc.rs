@@ -754,6 +754,26 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         Ok(())
     }
 
+    fn set_crostini_vm_type(&mut self) -> VmcResult {
+        if self.args.len() != 1 {
+            return Err(ExpectedVmType.into());
+        }
+
+        let vm_type = match self.args[0].to_uppercase().as_ref() {
+            // User-managed linux vm has default vm name of "termina", but this does not imply
+            // a specific vm type.
+            "CROSTINI" | "TERMINA" => VmType::TERMINA,
+            "BAGUETTE" => VmType::BAGUETTE,
+            _ => return Err(ChromeOSError::NoSuchVmType.into()),
+        };
+
+        try_command!(self
+            .methods
+            .set_crostini_vm_type(self.user_id_hash, vm_type));
+
+        Ok(())
+    }
+
     fn list(&mut self) -> VmcResult {
         if !self.args.is_empty() {
             return Err(ExpectedNoArgs.into());
@@ -1163,6 +1183,7 @@ const USAGE: &str = " [
   |  resize <vm name> <size>
   |  list
   |  logs <vm name>
+  |  set-crostini-vm-type <vm type>
   |  share <vm name> <path>
   |  unshare <vm name> <path>
   |  container <vm name> <container name> [ (<image server> <image alias>) | \
@@ -1267,6 +1288,7 @@ impl Vmc<'_> {
             "unset-primary-keyboard" => {
                 self.try_chromebox_command(|| command.unset_primary_keyboard(), command_name)
             }
+            "set-crostini-vm-type" => command.set_crostini_vm_type(),
             _ => {
                 if command_name == "--help" || command_name == "-h" {
                     self.print_usage("vmc");

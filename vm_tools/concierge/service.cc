@@ -100,6 +100,7 @@
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
 #include <vm_protos/proto_bindings/vm_host.pb.h>
 
+#include "base/strings/to_string.h"
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
@@ -159,6 +160,9 @@ constexpr char kCrosvmLogSocketExt[] = "lsock";
 
 // crosvm gpu cache directory name.
 constexpr char kCrosvmGpuCacheDir[] = "gpucache";
+
+// default termina image name.
+constexpr char kDefaultTerminaImageName[] = "termina";
 
 // Path to system boot_id file.
 constexpr char kBootIdFile[] = "/proc/sys/kernel/random/boot_id";
@@ -1285,6 +1289,11 @@ bool Service::Init(MmServiceFactory mm_service_factory) {
   chrome_features_service_proxy_ = bus_->GetObjectProxy(
       chromeos::kChromeFeaturesServiceName,
       dbus::ObjectPath(chromeos::kChromeFeaturesServicePath));
+
+  // Get the D-Bus proxy for communicating with VM Crostini Service.
+  vm_management_service_proxy_ = bus_->GetObjectProxy(
+      chromeos::kVmManagementServiceName,
+      dbus::ObjectPath(chromeos::kVmManagementServicePath));
 
   shadercached_proxy_ = bus_->GetObjectProxy(
       shadercached::kShaderCacheServiceName,
@@ -3809,6 +3818,112 @@ void Service::SetVmCpuRestriction(
   }
 
   response.set_success(success);
+  response_cb->Return(response);
+}
+
+void Service::SetCrostiniVmType(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        SetCrostiniVmTypeResponse>> response_cb,
+    const SetCrostiniVmTypeRequest& request) {
+  ASYNC_SERVICE_METHOD();
+
+  SetCrostiniVmTypeResponse response;
+
+  if (!CheckVmNameAndOwner(request, response)) {
+    response_cb->Return(response);
+    return;
+  }
+
+  base::FilePath image_dir;
+  base::FileEnumerator::FileType file_type = base::FileEnumerator::FILES;
+
+  image_dir = base::FilePath(kCryptohomeRoot)
+                  .Append(kCrosvmDir)
+                  .Append(request.cryptohome_id());
+
+  if (!base::DirectoryExists(image_dir)) {
+    response.set_reason("No guest images exist.");
+    response.set_success(false);
+    response_cb->Return(response);
+    return;
+  }
+
+  bool termina_found = false;
+  base::FileEnumerator dir_enum(image_dir, false, file_type);
+  for (base::FilePath path = dir_enum.Next(); !path.empty();
+       path = dir_enum.Next()) {
+    base::FilePath bare_name = path.BaseName().RemoveExtension();
+    if (bare_name.empty()) {
+      continue;
+    }
+    std::string image_name = GetDecodedName(bare_name.value());
+    if (image_name.empty()) {
+      continue;
+    }
+    if (image_name != kDefaultTerminaImageName) {
+      continue;
+    }
+    termina_found = true;
+
+    VmId vm_id(request.cryptohome_id(), image_name);
+    auto iter = FindVm(vm_id);
+    if (iter != vms_.end()) {
+      response.set_reason(
+          "Linux development environment is running, cannot change vm type");
+      response.set_success(false);
+      response_cb->Return(response);
+      return;
+    }
+
+    auto vm_type = GetDiskImageVmType(path.value());
+    if (vm_type.has_value() && vm_type != request.vm_type()) {
+      LOG(WARNING) << "Changing vm_type from " << vm_type.value() << " to "
+                   << request.vm_type();
+    }
+    base::ScopedFD fd(HANDLE_EINTR(
+        open(path.value().c_str(), O_WRONLY | O_CLOEXEC | O_NOFOLLOW)));
+    if (!SetDiskImageVmType(fd, ToAppsVmType(request.vm_type()))) {
+      response.set_reason("Unable to set xattr for disk image.");
+      response.set_success(false);
+      response_cb->Return(response);
+      return;
+    }
+  }
+  if (!termina_found) {
+    response.set_reason("Linux developemnt environment does not exist.");
+    response.set_success(false);
+    response_cb->Return(response);
+    return;
+  }
+  dbus::MethodCall method_call(
+      chromeos::kVmManagementServiceInterface,
+      chromeos::kVmManagementServiceSetCrostiniVmTypeMethod);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(request.cryptohome_id());
+  writer.AppendInt32(static_cast<int>(ToAppsVmType(request.vm_type())));
+
+  dbus::Error error;
+  auto dbus_response = CallDBusMethodWithErrorResponse(
+      bus_, vm_management_service_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
+  if (error.IsValid()) {
+    response.set_reason(error.message());
+    response.set_success(false);
+    response_cb->Return(response);
+    return;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  bool result;
+  if (!reader.PopBool(&result)) {
+    response.set_reason("Failed to read bool from D-Bus response");
+    response.set_success(false);
+    response_cb->Return(response);
+    return;
+  }
+
+  // Currently this API only returns true.
+  response.set_success(result);
   response_cb->Return(response);
 }
 
