@@ -267,6 +267,8 @@ const char kChromeFeaturesServiceIsRootNsDnsProxyEnabledMethod[] =
     "IsRootNsDnsProxyEnabled";
 const char kChromeFeaturesServiceIsSuspendToDiskEnabledMethod[] =
     "IsSuspendToDiskEnabled";
+const char kChromeFeaturesServiceSetCrostiniVmTypeMethod[] =
+    "SetCrostiniVmType";
 
 const char kUrlHandlerServiceName[] = "org.chromium.UrlHandlerService";
 const char kUrlHandlerServicePath[] = "/org/chromium/UrlHandlerService";
