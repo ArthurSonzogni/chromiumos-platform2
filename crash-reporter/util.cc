@@ -197,6 +197,11 @@ bool IsBootFeedbackAllowed(
     const scoped_refptr<base::RefCountedData<
         std::unique_ptr<MetricsLibraryInterface>>>& metrics_lib,
     bool oobe_pre_consent_crashes) {
+  if (HasMockConsent()) {
+    LOG(INFO) << "mock-consent file present; assuming consent for boot";
+    return true;
+  }
+
   std::string contents;
   if (base::ReadFileToString(paths::Get(paths::kBootConsentFile), &contents)) {
     if (contents != "1") {

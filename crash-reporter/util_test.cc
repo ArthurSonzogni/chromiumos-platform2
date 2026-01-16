@@ -677,6 +677,32 @@ TEST_F(CrashCommonUtilTest, IsBootFeedbackAllowedRespectsFile) {
   mock_metrics_ptr->set_metrics_enabled(false);
   EXPECT_FALSE(IsBootFeedbackAllowed(mock_metrics_refptr));
 }
+
+TEST_F(CrashCommonUtilTest, IsBootFeedbackAllowedRespectsMock) {
+  SetPreConsentCompleted();
+  std::unique_ptr<MetricsLibraryMock> mock_metrics =
+      std::make_unique<MetricsLibraryMock>();
+  scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
+      mock_metrics_refptr = base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::move(mock_metrics));
+
+  // Last user opted out.
+  ASSERT_TRUE(test_util::CreateFile(paths::Get(paths::kBootConsentFile), "0"));
+
+  // Mock consent available.
+  ASSERT_TRUE(test_util::CreateFile(paths::Get("/etc/lsb-release"),
+                                    "CHROMEOS_RELEASE_TRACK=testimage-channel\n"
+                                    "CHROMEOS_RELEASE_DESCRIPTION=12985.0.0 "
+                                    "(Official Build) dev-channel asuka test"));
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockConsent), ""));
+  ASSERT_TRUE(HasMockConsent());
+
+  // Mock consent should win.
+  EXPECT_TRUE(IsBootFeedbackAllowed(mock_metrics_refptr));
+}
+
 #endif  // USE_KVM_GUEST
 
 // Verify that SkipCrashCollection behaves as expected for filter-in.
