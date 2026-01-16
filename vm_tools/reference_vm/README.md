@@ -58,16 +58,10 @@ To enable networking, refer to the
 [crosvm guide](https://crosvm.dev/book/running_crosvm/example_usage.html#add-networking-support)
 .
 
-## Booting on chromeOS
+## Booting on ChromeOS
 
-Place `CROSVM_CODE.fd` and `refvm_VARS.fd` in Downloads. Place `refvm.img` into
-`/run/daemon-store/crosvm/<user ID>/cmVmdm0=.img`.
-
-```
-vmc start refvm --bios /home/chronos/user/MyFiles/Downloads/CROSVM_CODE.fd \
-  --pflash /home/chronos/user/MyFiles/Downloads/refvm_VARS.fd \
-  --tools-dlc termina-dlc --no-start-lxd
-```
+Refer to [go/bruschetta-installer](https://goto.google.com/bruschetta-installer) on how to boot on
+ChromeOS.
 
 ## Uprev
 
