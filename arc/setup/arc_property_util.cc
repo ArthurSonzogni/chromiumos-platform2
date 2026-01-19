@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/command_line.h>
-#include <base/containers/contains.h>
 #include <base/containers/fixed_flat_set.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -461,7 +460,7 @@ static std::string FixUpMediaTekInfo(std::string soc_id,
         base::MakeFixedFlatSet<std::string_view>(
             {"Chinchou", "Chinchou360", "Magneton", "Ponyta", "Rusty",
              "Starmie", "Steelix", "Tentacool", "Tentacruel", "Voltorb"});
-    if (base::Contains(kLaunchedDevices, device)) {
+    if (kLaunchedDevices.contains(device)) {
       return "MT8186";
     }
   }
