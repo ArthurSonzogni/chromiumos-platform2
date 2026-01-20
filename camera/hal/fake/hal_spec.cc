@@ -3,15 +3,16 @@
  * found in the LICENSE file.
  */
 
+#include "hal/fake/hal_spec.h"
+
+#include <algorithm>
 #include <string>
 #include <vector>
 
-#include <base/containers/contains.h>
-#include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 
 #include "cros-camera/common.h"
-#include "hal/fake/hal_spec.h"
 #include "hal/fake/value_util.h"
 
 namespace cros {
@@ -189,8 +190,9 @@ std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
     CameraSpec camera_spec;
 
     if (auto id = GetRequiredValue<int>(*spec_value, kIdKey)) {
-      if (base::Contains(camera_specs, *id,
-                         [](const CameraSpec& spec) { return spec.id; })) {
+      if (std::ranges::contains(camera_specs, *id, [](const CameraSpec& spec) {
+            return spec.id;
+          })) {
         LOGF(WARNING) << "duplicated id " << *id << " at " << spec_value->path
                       << ".id, ignore";
         continue;

@@ -5,16 +5,16 @@
 
 #include "hal/fake/camera_client.h"
 
+#include <linux/videodev2.h>
+
+#include <algorithm>
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
-#include <linux/videodev2.h>
 #include <sync/sync.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
-
 #include "hal/fake/camera_hal.h"
 #include "hal/fake/camera_hal_device_ops.h"
 #include "hal/fake/metadata_handler.h"
@@ -98,7 +98,7 @@ int CameraClient::ConfigureStreams(
       LOGFID(ERROR, id_) << "Rotations are not supported yet";
       return -EINVAL;
     }
-    if (!base::Contains(kSupportedHalFormats, stream->format)) {
+    if (!std::ranges::contains(kSupportedHalFormats, stream->format)) {
       LOGFID(ERROR, id_) << "Stream format " << stream->format
                          << " is not supported";
       return -EINVAL;

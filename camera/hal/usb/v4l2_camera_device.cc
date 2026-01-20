@@ -20,7 +20,6 @@
 #include <optional>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -397,11 +396,11 @@ int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
           LOGF(INFO) << "Current exposure type is Auto";
           auto_exposure_time_type_ = V4L2_EXPOSURE_AUTO;
           // Prefer switching between AUTO<->SHUTTER_PRIORITY
-          if (base::Contains(info.menu_items,
-                             kExposureTypeMenuStringShutterPriority)) {
+          if (std::ranges::contains(info.menu_items,
+                                    kExposureTypeMenuStringShutterPriority)) {
             manual_exposure_time_type_ = V4L2_EXPOSURE_SHUTTER_PRIORITY;
-          } else if (base::Contains(info.menu_items,
-                                    kExposureTypeMenuStringManual)) {
+          } else if (std::ranges::contains(info.menu_items,
+                                           kExposureTypeMenuStringManual)) {
             manual_exposure_time_type_ = V4L2_EXPOSURE_MANUAL;
           } else {
             NOTREACHED_IN_MIGRATION()
@@ -413,11 +412,11 @@ int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
           LOGF(INFO) << "Current exposure type is Manual";
           manual_exposure_time_type_ = V4L2_EXPOSURE_MANUAL;
           // Prefer switching between APERTURE_PRIORITY<->MANUAL
-          if (base::Contains(info.menu_items,
-                             kExposureTypeMenuStringAperturePriority)) {
+          if (std::ranges::contains(info.menu_items,
+                                    kExposureTypeMenuStringAperturePriority)) {
             auto_exposure_time_type_ = V4L2_EXPOSURE_APERTURE_PRIORITY;
-          } else if (base::Contains(info.menu_items,
-                                    kExposureTypeMenuStringAuto)) {
+          } else if (std::ranges::contains(info.menu_items,
+                                           kExposureTypeMenuStringAuto)) {
             auto_exposure_time_type_ = V4L2_EXPOSURE_AUTO;
           } else {
             NOTREACHED_IN_MIGRATION() << "No auto exposure time type supported";
@@ -428,10 +427,12 @@ int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
           LOGF(INFO) << "Current exposure type is Shutter Priority";
           manual_exposure_time_type_ = V4L2_EXPOSURE_SHUTTER_PRIORITY;
           // Prefer switching between AUTO<->SHUTTER_PRIORITY
-          if (base::Contains(info.menu_items, kExposureTypeMenuStringAuto)) {
+          if (std::ranges::contains(info.menu_items,
+                                    kExposureTypeMenuStringAuto)) {
             auto_exposure_time_type_ = V4L2_EXPOSURE_AUTO;
-          } else if (base::Contains(info.menu_items,
-                                    kExposureTypeMenuStringAperturePriority)) {
+          } else if (std::ranges::contains(
+                         info.menu_items,
+                         kExposureTypeMenuStringAperturePriority)) {
             auto_exposure_time_type_ = V4L2_EXPOSURE_APERTURE_PRIORITY;
           } else {
             NOTREACHED_IN_MIGRATION() << "No auto exposure time type supported";
@@ -442,10 +443,12 @@ int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
           LOGF(INFO) << "Current exposure type is Aperture Priority";
           auto_exposure_time_type_ = V4L2_EXPOSURE_APERTURE_PRIORITY;
           // Prefer switching between APERTURE_PRIORITY<->MANUAL
-          if (base::Contains(info.menu_items, kExposureTypeMenuStringManual)) {
+          if (std::ranges::contains(info.menu_items,
+                                    kExposureTypeMenuStringManual)) {
             manual_exposure_time_type_ = V4L2_EXPOSURE_MANUAL;
-          } else if (base::Contains(info.menu_items,
-                                    kExposureTypeMenuStringShutterPriority)) {
+          } else if (std::ranges::contains(
+                         info.menu_items,
+                         kExposureTypeMenuStringShutterPriority)) {
             manual_exposure_time_type_ = V4L2_EXPOSURE_SHUTTER_PRIORITY;
           } else {
             NOTREACHED_IN_MIGRATION()
@@ -1167,7 +1170,7 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
     }
 
     for (const Size& size : supported_frame_sizes) {
-      if (base::Contains(filter_out_resolutions, size)) {
+      if (std::ranges::contains(filter_out_resolutions, size)) {
         LOGF(INFO) << "Filter out " << size.ToString() << " by config";
         continue;
       }

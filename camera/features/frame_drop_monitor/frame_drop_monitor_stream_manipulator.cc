@@ -9,8 +9,6 @@
 #include <optional>
 #include <utility>
 
-#include <base/containers/contains.h>
-
 namespace cros {
 
 namespace {
@@ -375,7 +373,7 @@ void FrameDropMonitorStreamManipulator::UploadMetricsOnThread() {
 
 FrameDropMonitorStreamManipulator::CaptureContext*
 FrameDropMonitorStreamManipulator::CreateCaptureContext(uint32_t frame_number) {
-  DCHECK(!base::Contains(capture_contexts_, frame_number));
+  DCHECK(!capture_contexts_.contains(frame_number));
   auto [it, is_inserted] = capture_contexts_.insert(
       std::make_pair(frame_number, std::make_unique<CaptureContext>()));
   if (!is_inserted) {

@@ -12,7 +12,6 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -389,8 +388,7 @@ void CameraMetadataInspector::InspectResult(
 }
 
 bool CameraMetadataInspector::IsPositionInspected(size_t position) const {
-  return inspect_positions_.empty() ||
-         base::Contains(inspect_positions_, position);
+  return inspect_positions_.empty() || inspect_positions_.contains(position);
 }
 
 }  // namespace cros

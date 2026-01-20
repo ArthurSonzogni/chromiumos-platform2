@@ -11,14 +11,13 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/no_destructor.h>
 #include <base/unguessable_token.h>
 #include <chromeos/mojo/service_constants.h>
+#include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
-#include <gtest/gtest.h>
 #include <system/camera_metadata_hidden.h>
 
 #include "camera/mojo/unguessable_token.mojom.h"
@@ -343,7 +342,7 @@ void CameraHalClient::OnGotCameraInfo(int cam_id,
     info->facing = static_cast<int>(info_ptr->facing);
     info->orientation = info_ptr->orientation;
     info->device_version = info_ptr->device_version;
-    if (!base::Contains(static_characteristics_map_, cam_id)) {
+    if (!static_characteristics_map_.contains(cam_id)) {
       static_characteristics_map_[cam_id] =
           cros::internal::DeserializeCameraMetadata(
               info_ptr->static_camera_characteristics);
@@ -351,7 +350,7 @@ void CameraHalClient::OnGotCameraInfo(int cam_id,
     info->static_camera_characteristics =
         static_characteristics_map_[cam_id].get();
     info->resource_cost = info_ptr->resource_cost->resource_cost;
-    if (!base::Contains(conflicting_devices_map_, cam_id)) {
+    if (!conflicting_devices_map_.contains(cam_id)) {
       for (const auto& it : *info_ptr->conflicting_devices) {
         conflicting_devices_char_map_[cam_id].emplace_back(it.begin(),
                                                            it.end());

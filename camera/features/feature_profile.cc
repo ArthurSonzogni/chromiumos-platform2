@@ -12,7 +12,6 @@
 #include <string>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/system/sys_info.h>
 

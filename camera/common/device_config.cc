@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <optional>
 
-#include <base/containers/contains.h>
 #include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -397,7 +396,7 @@ std::vector<PlatformCameraInfo> DeviceConfig::ReadPlatformCameraInfo() {
     platform_cameras.push_back(std::move(info));
   }
   for (const V4L2SensorInfo& sensor : v4l2_sensors_) {
-    if (!base::Contains(associated_sensors, &sensor)) {
+    if (!associated_sensors.contains(&sensor)) {
       platform_cameras.push_back(PlatformCameraInfo{
           .v4l2_sensor = sensor,
       });

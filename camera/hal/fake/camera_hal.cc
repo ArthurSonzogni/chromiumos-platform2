@@ -9,14 +9,12 @@
 #include <memory>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/sequenced_task_runner.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/cros_camera_hal.h"
-
 #include "hal/fake/metadata_handler.h"
 
 namespace cros {
@@ -186,8 +184,8 @@ int CameraHal::OpenDevice(int id,
 }
 
 bool CameraHal::IsCameraIdValid(int id) {
-  return base::Contains(hal_spec_.cameras, id,
-                        [](const auto& spec) { return spec.id; });
+  return std::ranges::contains(hal_spec_.cameras, id,
+                               [](const auto& spec) { return spec.id; });
 }
 
 int CameraHal::GetCameraInfo(int id,

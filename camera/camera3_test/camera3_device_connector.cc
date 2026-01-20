@@ -4,17 +4,17 @@
 
 #include "camera3_test/camera3_device_connector.h"
 
+#include <drm_fourcc.h>
 #include <linux/videodev2.h>
+
 #include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/posix/eintr_wrapper.h>
-#include <drm_fourcc.h>
+#include <base/strings/string_number_conversions.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <system/camera_metadata_hidden.h>
 
@@ -323,7 +323,7 @@ const camera_metadata_t* ClientDeviceConnector::ConstructDefaultRequestSettings(
 
 void ClientDeviceConnector::ConstructDefaultRequestSettingsOnThread(
     int type, base::OnceCallback<void(const camera_metadata_t*)> cb) {
-  if (base::Contains(default_req_settings_map_, type)) {
+  if (default_req_settings_map_.contains(type)) {
     std::move(cb).Run(default_req_settings_map_.at(type).get());
     return;
   }
@@ -338,7 +338,7 @@ void ClientDeviceConnector::OnConstructedDefaultRequestSettings(
     int type,
     base::OnceCallback<void(const camera_metadata_t*)> cb,
     cros::mojom::CameraMetadataPtr settings) {
-  if (!base::Contains(default_req_settings_map_, type)) {
+  if (!default_req_settings_map_.contains(type)) {
     default_req_settings_map_[type] =
         cros::internal::DeserializeCameraMetadata(settings);
   }

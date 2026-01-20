@@ -10,7 +10,6 @@
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -1473,8 +1472,8 @@ bool InitializeTest(int* argc,
   if (board.ends_with("-kernelnext")) {
     board = board.substr(0, board.size() - 11);
   }
-  if (base::Contains(kIgnoreSensorOrientationTestBoards, board) ||
-      base::Contains(kIgnoreSensorOrientationTestModels, model)) {
+  if (std::ranges::contains(kIgnoreSensorOrientationTestBoards, board) ||
+      std::ranges::contains(kIgnoreSensorOrientationTestModels, model)) {
     LOGF(INFO) << "Ignore SensorOrientationTest on " << board << "/" << model;
     AddGtestFilterNegativePattern("*SensorOrientationTest/*");
   }

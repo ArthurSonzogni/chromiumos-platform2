@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -237,7 +236,7 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Decode(int32_t buffer_id,
                                                   buffer_handle_t output_buffer,
                                                   DecodeCallback callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  DCHECK(!base::Contains(inflight_buffer_ids_, buffer_id));
+  DCHECK(!inflight_buffer_ids_.contains(buffer_id));
 
   CameraBufferManager* buffer_manager = CameraBufferManager::GetInstance();
   TRACE_JPEG_DEBUG("width", buffer_manager->GetWidth(output_buffer), "height",
@@ -330,7 +329,7 @@ void JpegDecodeAcceleratorImpl::IPCBridge::OnDecodeAck(
     int32_t buffer_id,
     cros::mojom::DecodeError error) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  DCHECK(base::Contains(inflight_buffer_ids_, buffer_id));
+  DCHECK(inflight_buffer_ids_.contains(buffer_id));
   TRACE_JPEG_DEBUG();
 
   inflight_buffer_ids_.erase(buffer_id);

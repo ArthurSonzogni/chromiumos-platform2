@@ -16,7 +16,6 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -1882,7 +1881,7 @@ FramingStreamManipulator::StateTransitionOnThread(bool manual_zoom_enabled) {
 
 FramingStreamManipulator::CaptureContext*
 FramingStreamManipulator::CreateCaptureContext(uint32_t frame_number) {
-  CHECK(!base::Contains(capture_contexts_, frame_number));
+  CHECK(!capture_contexts_.contains(frame_number));
   auto [it, is_inserted] = capture_contexts_.insert(
       std::make_pair(frame_number, std::make_unique<CaptureContext>()));
   if (!is_inserted) {

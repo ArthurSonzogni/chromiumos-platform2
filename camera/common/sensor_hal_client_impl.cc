@@ -6,11 +6,11 @@
 
 #include "common/sensor_hal_client_impl.h"
 
+#include <algorithm>
 #include <iterator>
 #include <optional>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
@@ -234,7 +234,7 @@ void SensorHalClientImpl::IPCBridge::RegisterSamplesObserver(
   DCHECK_GT(frequency, 0.0);
   DCHECK(samples_observer);
 
-  if (base::Contains(readers_, samples_observer)) {
+  if (readers_.contains(samples_observer)) {
     LOGF(ERROR) << "This SamplesObserver is already registered to a device";
     std::move(callback).Run(false);
     return;
@@ -315,7 +315,7 @@ void SensorHalClientImpl::IPCBridge::SetUpChannel(
 
 void SensorHalClientImpl::IPCBridge::OnNewDeviceAdded(
     int32_t iio_device_id, const std::vector<mojom::DeviceType>& types) {
-  if (base::Contains(devices_, iio_device_id)) {
+  if (devices_.contains(iio_device_id)) {
     return;
   }
 
@@ -350,7 +350,7 @@ void SensorHalClientImpl::IPCBridge::OnDeviceRemoved(int32_t iio_device_id) {
       // Currently we couldn't differentiate devices with the same type and
       // location.
       for (auto& device : devices_) {
-        if (base::Contains(device.second.types, type) &&
+        if (std::ranges::contains(device.second.types, type) &&
             device.second.location == location) {
           map_type[location] = device.first;
           RunDeviceQueriesForType(type);
@@ -517,7 +517,7 @@ bool SensorHalClientImpl::IPCBridge::AreAllDevicesOfTypeInitialized(
   }
 
   for (auto& [iio_device_id, device] : devices_) {
-    if (device.ignored || !base::Contains(device.types, type)) {
+    if (device.ignored || !std::ranges::contains(device.types, type)) {
       continue;
     }
 
@@ -556,8 +556,7 @@ void SensorHalClientImpl::IPCBridge::RunDeviceQueriesForType(
 
 bool SensorHalClientImpl::IPCBridge::HasDeviceInternal(mojom::DeviceType type,
                                                        Location location) {
-  return base::Contains(device_maps_, type) &&
-         base::Contains(device_maps_[type], location);
+  return device_maps_.contains(type) && device_maps_[type].contains(location);
 }
 
 void SensorHalClientImpl::IPCBridge::ResetSensorService() {

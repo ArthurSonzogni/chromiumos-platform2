@@ -8,7 +8,6 @@
 #include <iterator>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/task/bind_post_task.h>
 
 #include "common/camera_buffer_handle.h"
@@ -609,7 +608,7 @@ bool PortraitModeStreamManipulator::IsPortraitModeRequest(
 
 PortraitModeStreamManipulator::CaptureContext*
 PortraitModeStreamManipulator::CreateCaptureContext(uint32_t frame_number) {
-  DCHECK(!base::Contains(capture_contexts_, frame_number));
+  DCHECK(!capture_contexts_.contains(frame_number));
   auto [it, is_inserted] = capture_contexts_.insert(
       std::make_pair(frame_number, std::make_unique<CaptureContext>()));
   if (!is_inserted) {

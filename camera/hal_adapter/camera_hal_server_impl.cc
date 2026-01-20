@@ -23,7 +23,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -324,7 +323,7 @@ int CameraHalServerImpl::LoadCameraHal() {
 
     if (enabled_hal_names.has_value()) {
       auto filename = dll.BaseName().value();
-      if (!base::Contains(*enabled_hal_names, filename)) {
+      if (!enabled_hal_names->contains(filename)) {
         LOGF(INFO) << "Skipping " << dll.value() << " not in enabled_hals";
         continue;
       }
