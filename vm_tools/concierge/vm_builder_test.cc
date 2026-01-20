@@ -7,7 +7,6 @@
 #include <optional>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/scoped_file.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -219,7 +218,7 @@ TEST(VmBuilderTest, PmemDevice) {
 
   std::vector<std::string> pmem_params;
   for (auto& p : result) {
-    if (base::Contains(p.first, "pmem")) {
+    if (p.first.contains("pmem")) {
       pmem_params.push_back(p.first + " " + p.second);
     }
   }
@@ -330,27 +329,24 @@ TEST(VmBuilderTest, VmCpuArgs) {
 TEST(VmBuilderTest, BlockMultipleWorkers) {
   // multiple_workers option is not enabled by default
   VmBuilder::Disk disk{.path = base::FilePath("/path/to/image.img")};
-  EXPECT_FALSE(base::Contains(JoinStringPairs(disk.GetCrosvmArgs()),
-                              "multiple-workers=true"));
+  EXPECT_FALSE(
+      JoinStringPairs(disk.GetCrosvmArgs()).contains("multiple-workers=true"));
 
   // Test that a disk config with multiple workers builds the correct arguments.
   VmBuilder::Disk disk_multiple_workers{
       .path = base::FilePath("/path/to/image.img"), .multiple_workers = true};
-  EXPECT_TRUE(
-      base::Contains(JoinStringPairs(disk_multiple_workers.GetCrosvmArgs()),
-                     "multiple-workers=true"));
+  EXPECT_TRUE(JoinStringPairs(disk_multiple_workers.GetCrosvmArgs())
+                  .contains("multiple-workers=true"));
 }
 
 TEST(VmBuilderTest, BlockSize) {
   VmBuilder::Disk disk{.path = base::FilePath("/path/to/image.img")};
-  EXPECT_FALSE(
-      base::Contains(JoinStringPairs(disk.GetCrosvmArgs()), "block_size"));
+  EXPECT_FALSE(JoinStringPairs(disk.GetCrosvmArgs()).contains("block_size"));
 
   VmBuilder::Disk disk_with_block_size{
       .path = base::FilePath("/path/to/image.img"), .block_size = 4096};
-  EXPECT_TRUE(
-      base::Contains(JoinStringPairs(disk_with_block_size.GetCrosvmArgs()),
-                     "block_size=4096"));
+  EXPECT_TRUE(JoinStringPairs(disk_with_block_size.GetCrosvmArgs())
+                  .contains("block_size=4096"));
 }
 
 TEST(VmBuilderTest, BlockAsyncExecutor) {
@@ -358,15 +354,15 @@ TEST(VmBuilderTest, BlockAsyncExecutor) {
   VmBuilder::Disk disk_uring{
       .path = base::FilePath("/path/to/image.img"),
       .async_executor = VmBuilder::AsyncExecutor::kUring};
-  EXPECT_TRUE(base::Contains(JoinStringPairs(disk_uring.GetCrosvmArgs()),
-                             "async_executor=uring"));
+  EXPECT_TRUE(JoinStringPairs(disk_uring.GetCrosvmArgs())
+                  .contains("async_executor=uring"));
 
   // Test that a disk config with epoll executor builds the correct arguments.
   VmBuilder::Disk disk_epoll{
       .path = base::FilePath("/path/to/image.img"),
       .async_executor = VmBuilder::AsyncExecutor::kEpoll};
-  EXPECT_TRUE(base::Contains(JoinStringPairs(disk_epoll.GetCrosvmArgs()),
-                             "async_executor=epoll"));
+  EXPECT_TRUE(JoinStringPairs(disk_epoll.GetCrosvmArgs())
+                  .contains("async_executor=epoll"));
 }
 
 TEST(VmBuilderTest, StringToAsyncExecutor) {

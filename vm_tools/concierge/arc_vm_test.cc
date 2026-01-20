@@ -4,12 +4,12 @@
 
 #include "vm_tools/concierge/arc_vm.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
@@ -87,8 +87,8 @@ TEST(ArcVmParamsTest, NonDevModeKernelParams) {
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.dev_mode=0"));
-  EXPECT_TRUE(base::Contains(params, "androidboot.disable_runas=1"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.dev_mode=0"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.disable_runas=1"));
 }
 
 TEST(ArcVmParamsTest, DevModeKernelParams) {
@@ -98,7 +98,7 @@ TEST(ArcVmParamsTest, DevModeKernelParams) {
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.dev_mode=1"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.dev_mode=1"));
   EXPECT_FALSE(is_parameter_set(params, "androidboot.disable_runas"));
 }
 
@@ -108,7 +108,7 @@ TEST(ArcVmParamsTest, SeneschalServerPortParam) {
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params, base::StringPrintf("androidboot.seneschal_server_port=%d",
                                  kSeneschalServerPort)));
 }
@@ -121,7 +121,7 @@ TEST(ArcVmParamsTest, EnableConsumerAutoUpdateToggleParamTrue) {
   mini_instance_request->set_enable_consumer_auto_update_toggle(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params, "androidboot.enable_consumer_auto_update_toggle=1"));
 }
 
@@ -133,7 +133,7 @@ TEST(ArcVmParamsTest, EnableConsumerAutoUpdateToggleParamFalse) {
   mini_instance_request->set_enable_consumer_auto_update_toggle(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params, "androidboot.enable_consumer_auto_update_toggle=0"));
 }
 
@@ -145,7 +145,7 @@ TEST(ArcVmParamsTest, EnableTtsCachingParamTrue) {
   mini_instance_request->set_enable_tts_caching(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc.tts.caching=1"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.arc.tts.caching=1"));
 }
 
 TEST(ArcVmParamsTest, EnableTtsCachingParamFalse) {
@@ -156,7 +156,7 @@ TEST(ArcVmParamsTest, EnableTtsCachingParamFalse) {
   mini_instance_request->set_enable_tts_caching(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(base::Contains(params, "androidboot.arc.tts.caching=1"));
+  EXPECT_FALSE(std::ranges::contains(params, "androidboot.arc.tts.caching=1"));
 }
 
 TEST(ArcVmParamsTest, EnableVirtioBlockDataParamTrue) {
@@ -166,7 +166,8 @@ TEST(ArcVmParamsTest, EnableVirtioBlockDataParamTrue) {
   request.set_enable_virtio_blk_data(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arcvm_virtio_blk_data=1"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.arcvm_virtio_blk_data=1"));
 }
 
 TEST(ArcVmParamsTest, EnableVirtioBlockDataParamFalse) {
@@ -176,7 +177,8 @@ TEST(ArcVmParamsTest, EnableVirtioBlockDataParamFalse) {
   request.set_enable_virtio_blk_data(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arcvm_virtio_blk_data=0"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.arcvm_virtio_blk_data=0"));
 }
 
 TEST(ArcVmParamsTest, ArcDataBlockIoSchedulerTrue) {
@@ -186,8 +188,8 @@ TEST(ArcVmParamsTest, ArcDataBlockIoSchedulerTrue) {
   request.set_enable_data_block_io_scheduler(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arcvm.data_block_io_scheduler=1"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arcvm.data_block_io_scheduler=1"));
 }
 
 TEST(ArcVmParamsTest, ArcDataBlockIoSchedulerFalse) {
@@ -197,8 +199,8 @@ TEST(ArcVmParamsTest, ArcDataBlockIoSchedulerFalse) {
   request.set_enable_data_block_io_scheduler(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arcvm.data_block_io_scheduler=0"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arcvm.data_block_io_scheduler=0"));
 }
 
 TEST(ArcVmParamsTest, EnableBroadcastAnrPrenotify) {
@@ -207,8 +209,8 @@ TEST(ArcVmParamsTest, EnableBroadcastAnrPrenotify) {
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arc.broadcast_anr_prenotify=1"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arc.broadcast_anr_prenotify=1"));
 }
 TEST(ArcVmParamsTest, VmMemoryPSIReports) {
   crossystem::Crossystem cros_system(
@@ -217,8 +219,8 @@ TEST(ArcVmParamsTest, VmMemoryPSIReports) {
   request.set_vm_memory_psi_period(300);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arcvm_metrics_mem_psi_period=300"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arcvm_metrics_mem_psi_period=300"));
 }
 
 TEST(ArcVmParamsTest, VmMemoryPSIReportsDefault) {
@@ -242,8 +244,8 @@ TEST(ArcVmParamsTest, DisableMediaStoreMaintenanceTrue) {
   mini_instance_request->set_disable_media_store_maintenance(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.disable_media_store_maintenance=1"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.disable_media_store_maintenance=1"));
 }
 
 TEST(ArcVmParamsTest, DisableMediaStoreMaintenanceFalse) {
@@ -254,8 +256,8 @@ TEST(ArcVmParamsTest, DisableMediaStoreMaintenanceFalse) {
   mini_instance_request->set_disable_media_store_maintenance(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(
-      base::Contains(params, "androidboot.disable_media_store_maintenance=1"));
+  EXPECT_FALSE(std::ranges::contains(
+      params, "androidboot.disable_media_store_maintenance=1"));
 }
 
 TEST(ArcVmParamsTest, ArcGeneratePlayAutoInstallTrue) {
@@ -266,7 +268,7 @@ TEST(ArcVmParamsTest, ArcGeneratePlayAutoInstallTrue) {
   mini_instance_request->set_arc_generate_pai(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc_generate_pai=1"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.arc_generate_pai=1"));
 }
 
 TEST(ArcVmParamsTest, ArcGeneratePlayAutoInstallFalse) {
@@ -277,7 +279,7 @@ TEST(ArcVmParamsTest, ArcGeneratePlayAutoInstallFalse) {
   mini_instance_request->set_arc_generate_pai(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(base::Contains(params, "androidboot.arc_generate_pai=1"));
+  EXPECT_FALSE(std::ranges::contains(params, "androidboot.arc_generate_pai=1"));
 }
 
 TEST(ArcVmParamsTest, DisableDownloadProviderTrue) {
@@ -289,7 +291,7 @@ TEST(ArcVmParamsTest, DisableDownloadProviderTrue) {
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_TRUE(
-      base::Contains(params, "androidboot.disable_download_provider=1"));
+      std::ranges::contains(params, "androidboot.disable_download_provider=1"));
 }
 
 TEST(ArcVmParamsTest, DisableDownloadProviderFalse) {
@@ -301,7 +303,7 @@ TEST(ArcVmParamsTest, DisableDownloadProviderFalse) {
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_FALSE(
-      base::Contains(params, "androidboot.disable_download_provider=1"));
+      std::ranges::contains(params, "androidboot.disable_download_provider=1"));
 }
 
 TEST(ArcVmParamsTest, GuestZramMiB0) {
@@ -321,7 +323,7 @@ TEST(ArcVmParamsTest, GuestZramMiB) {
   request.set_guest_zram_mib(100);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.zram_size=104857600"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.zram_size=104857600"));
 }
 
 TEST(ArcVmParamsTest, ArcSignedInTrue) {
@@ -332,7 +334,7 @@ TEST(ArcVmParamsTest, ArcSignedInTrue) {
   mini_instance_request->set_arc_signed_in(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc.signed_in=1"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.arc.signed_in=1"));
 }
 
 TEST(ArcVmParamsTest, ArcSignedInFalse) {
@@ -343,7 +345,7 @@ TEST(ArcVmParamsTest, ArcSignedInFalse) {
   mini_instance_request->set_arc_signed_in(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc.signed_in=0"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.arc.signed_in=0"));
 }
 
 TEST(ArcVmParamsTest, ChromeOsChannelStable) {
@@ -354,7 +356,8 @@ TEST(ArcVmParamsTest, ChromeOsChannelStable) {
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.chromeos_channel=stable"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.chromeos_channel=stable"));
 }
 
 TEST(ArcVmParamsTest, ChromeOsChannelTestImage) {
@@ -365,7 +368,7 @@ TEST(ArcVmParamsTest, ChromeOsChannelTestImage) {
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params, "androidboot.vshd_service_override=vshd_for_test"));
 }
 
@@ -377,7 +380,8 @@ TEST(ArcVmParamsTest, ChromeOsChannelUnknown) {
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.chromeos_channel=unknown"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.chromeos_channel=unknown"));
 }
 
 TEST(ArcVmParamsTest, PanelOrientation) {
@@ -387,7 +391,7 @@ TEST(ArcVmParamsTest, PanelOrientation) {
   request.set_panel_orientation(StartArcVmRequest::ORIENTATION_180);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params, "androidboot.arc.primary_display_rotation=ORIENTATION_180"));
 }
 
@@ -409,7 +413,7 @@ TEST(ArcVmParamsTest, SwappinessPresentParam) {
   request.set_guest_swappiness(55);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params, base::StringPrintf("sysctl.vm.swappiness=%d", 55)));
 }
 
@@ -433,10 +437,10 @@ TEST(ArcVmParamsTest, MglruReclaimWithoutSwappiness) {
   request.set_mglru_reclaim_interval(30000);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params,
       base::StringPrintf("androidboot.arcvm_mglru_reclaim_interval=30000")));
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params,
       base::StringPrintf("androidboot.arcvm_mglru_reclaim_swappiness=0")));
 }
@@ -449,10 +453,10 @@ TEST(ArcVmParamsTest, MglruReclaimWithSwappiness) {
   request.set_mglru_reclaim_swappiness(100);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params,
       base::StringPrintf("androidboot.arcvm_mglru_reclaim_interval=30000")));
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params,
       base::StringPrintf("androidboot.arcvm_mglru_reclaim_swappiness=100")));
 }
@@ -465,7 +469,7 @@ TEST(ArcVmParamsTest, NativeBridgeExperimentNone) {
       vm_tools::concierge::StartArcVmRequest::BINARY_TRANSLATION_TYPE_NONE);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.native_bridge=0"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.native_bridge=0"));
 }
 
 TEST(ArcVmParamsTest, NativeBridgeExperimentHoudini) {
@@ -477,7 +481,7 @@ TEST(ArcVmParamsTest, NativeBridgeExperimentHoudini) {
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_TRUE(
-      base::Contains(params, "androidboot.native_bridge=libhoudini.so"));
+      std::ranges::contains(params, "androidboot.native_bridge=libhoudini.so"));
 }
 
 TEST(ArcVmParamsTest, NativeBridgeExperimentNdkTranslation) {
@@ -489,7 +493,7 @@ TEST(ArcVmParamsTest, NativeBridgeExperimentNdkTranslation) {
           BINARY_TRANSLATION_TYPE_NDK_TRANSLATION);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params, "androidboot.native_bridge=libndk_translation.so"));
 }
 
@@ -514,7 +518,7 @@ TEST(ArcVmParamsTest, UsapProfile4G) {
       vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_4G);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.usap_profile=4G"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.usap_profile=4G"));
 }
 
 TEST(ArcVmParamsTest, UsapProfile8G) {
@@ -525,7 +529,7 @@ TEST(ArcVmParamsTest, UsapProfile8G) {
       vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_8G);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.usap_profile=8G"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.usap_profile=8G"));
 }
 
 TEST(ArcVmParamsTest, UsapProfile16G) {
@@ -536,7 +540,7 @@ TEST(ArcVmParamsTest, UsapProfile16G) {
       vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_16G);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.usap_profile=16G"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.usap_profile=16G"));
 }
 
 TEST(ArcVmParamsTest, PlayStoreAutoUpdateDefault) {
@@ -563,7 +567,8 @@ TEST(ArcVmParamsTest, PlayStoreAutoUpdateON) {
       arc::StartArcMiniInstanceRequest::AUTO_UPDATE_ON);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.play_store_auto_update=1"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.play_store_auto_update=1"));
 }
 
 TEST(ArcVmParamsTest, PlayStoreAutoUpdateOFF) {
@@ -575,7 +580,8 @@ TEST(ArcVmParamsTest, PlayStoreAutoUpdateOFF) {
       arc::StartArcMiniInstanceRequest::AUTO_UPDATE_OFF);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.play_store_auto_update=0"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.play_store_auto_update=0"));
 }
 
 TEST(ArcVmParamsTest, DalvikMemoryProfileDefault) {
@@ -587,8 +593,8 @@ TEST(ArcVmParamsTest, DalvikMemoryProfileDefault) {
       arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_DEFAULT);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arc_dalvik_memory_profile=4G"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arc_dalvik_memory_profile=4G"));
 }
 
 TEST(ArcVmParamsTest, DalvikMemoryProfile4G) {
@@ -600,8 +606,8 @@ TEST(ArcVmParamsTest, DalvikMemoryProfile4G) {
       arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_4G);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arc_dalvik_memory_profile=4G"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arc_dalvik_memory_profile=4G"));
 }
 
 TEST(ArcVmParamsTest, DalvikMemoryProfile8G) {
@@ -613,8 +619,8 @@ TEST(ArcVmParamsTest, DalvikMemoryProfile8G) {
       arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_8G);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arc_dalvik_memory_profile=8G"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arc_dalvik_memory_profile=8G"));
 }
 
 TEST(ArcVmParamsTest, DalvikMemoryProfile16G) {
@@ -626,8 +632,8 @@ TEST(ArcVmParamsTest, DalvikMemoryProfile16G) {
       arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_16G);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arc_dalvik_memory_profile=16G"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arc_dalvik_memory_profile=16G"));
 }
 
 TEST(ArcVmParamsTest, LcdDensity) {
@@ -638,7 +644,7 @@ TEST(ArcVmParamsTest, LcdDensity) {
   mini_instance_request->set_lcd_density(kLcdDensity);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
+  EXPECT_TRUE(std::ranges::contains(
       params, base::StringPrintf("androidboot.lcd_density=%d", kLcdDensity)));
 }
 
@@ -649,7 +655,7 @@ TEST(ArcVmParamsTest, HostOnVmTrue) {
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.host_is_in_vm=1"));
+  EXPECT_TRUE(std::ranges::contains(params, "androidboot.host_is_in_vm=1"));
 }
 
 TEST(ArcVmParamsTest, HostOnVmFalse) {
@@ -670,8 +676,8 @@ TEST(ArcVmParamsTest, UreadaheadModeReadahead) {
       vm_tools::concierge::StartArcVmRequest::UREADAHEAD_MODE_READAHEAD);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arcvm_ureadahead_mode=readahead"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arcvm_ureadahead_mode=readahead"));
 }
 
 TEST(ArcVmParamsTest, UreadaheadModeGenerate) {
@@ -682,8 +688,8 @@ TEST(ArcVmParamsTest, UreadaheadModeGenerate) {
       vm_tools::concierge::StartArcVmRequest::UREADAHEAD_MODE_GENERATE);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arcvm_ureadahead_mode=generate"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arcvm_ureadahead_mode=generate"));
 }
 
 TEST(ArcVmParamsTest, UreadaheadModeDisabled) {
@@ -707,7 +713,7 @@ TEST(ArcVmParamsTest, ReadWriteEnabled) {
   request.set_rootfs_writable(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "rw"));
+  EXPECT_TRUE(std::ranges::contains(params, "rw"));
 }
 
 TEST(ArcVmParamsTest, ReadWriteDisabled) {
@@ -717,7 +723,7 @@ TEST(ArcVmParamsTest, ReadWriteDisabled) {
   request.set_rootfs_writable(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(base::Contains(params, "rw"));
+  EXPECT_FALSE(std::ranges::contains(params, "rw"));
 }
 
 TEST(ArcVmParamsTest, WebViewZygoteLazyInitEnabled) {
@@ -727,8 +733,8 @@ TEST(ArcVmParamsTest, WebViewZygoteLazyInitEnabled) {
   request.set_enable_web_view_zygote_lazy_init(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.arc.web_view_zygote.lazy_init=1"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.arc.web_view_zygote.lazy_init=1"));
 }
 
 TEST(ArcVmParamsTest, WebViewZygoteLazyInitDisabled) {
@@ -738,8 +744,8 @@ TEST(ArcVmParamsTest, WebViewZygoteLazyInitDisabled) {
   request.set_enable_web_view_zygote_lazy_init(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(
-      base::Contains(params, "androidboot.arc.web_view_zygote.lazy_init=1"));
+  EXPECT_FALSE(std::ranges::contains(
+      params, "androidboot.arc.web_view_zygote.lazy_init=1"));
 }
 
 TEST(ArcVmParamsTest, PrivacyHubForChromeEnabled) {
@@ -750,8 +756,8 @@ TEST(ArcVmParamsTest, PrivacyHubForChromeEnabled) {
   mini_instance_request->set_enable_privacy_hub_for_chrome(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.enable_privacy_hub_for_chrome=1"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.enable_privacy_hub_for_chrome=1"));
 }
 
 TEST(ArcVmParamsTest, PrivacyHubForChromeDisabled) {
@@ -762,8 +768,8 @@ TEST(ArcVmParamsTest, PrivacyHubForChromeDisabled) {
   mini_instance_request->set_enable_privacy_hub_for_chrome(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.enable_privacy_hub_for_chrome=0"));
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.enable_privacy_hub_for_chrome=0"));
 }
 
 TEST(ArcVmParamsTest, GetOemEtcSharedDirParam) {
@@ -787,7 +793,8 @@ TEST(ArcVmParamsTest, ArcSwitchToKeymintTrue) {
   mini_instance_request->set_arc_switch_to_keymint(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc_switch_to_keymint=1"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.arc_switch_to_keymint=1"));
 }
 
 TEST(ArcVmParamsTest, ArcSwitchToKeymintFalse) {
@@ -798,7 +805,8 @@ TEST(ArcVmParamsTest, ArcSwitchToKeymintFalse) {
   mini_instance_request->set_arc_switch_to_keymint(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc_switch_to_keymint=0"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.arc_switch_to_keymint=0"));
 }
 
 TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentDefault) {
@@ -807,7 +815,8 @@ TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentDefault) {
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(base::Contains(params, "androidboot.vendor.arc.sf.maxacquired"));
+  EXPECT_FALSE(
+      std::ranges::contains(params, "androidboot.vendor.arc.sf.maxacquired"));
 }
 
 TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentOne) {
@@ -819,7 +828,7 @@ TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentOne) {
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_TRUE(
-      base::Contains(params, "androidboot.vendor.arc.sf.maxacquired=1"));
+      std::ranges::contains(params, "androidboot.vendor.arc.sf.maxacquired=1"));
 }
 
 TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentTwo) {
@@ -831,7 +840,7 @@ TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentTwo) {
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_TRUE(
-      base::Contains(params, "androidboot.vendor.arc.sf.maxacquired=2"));
+      std::ranges::contains(params, "androidboot.vendor.arc.sf.maxacquired=2"));
 }
 
 TEST(ArcVmParamsTest, NonDebugModeVerifiedBootParams) {
@@ -843,8 +852,10 @@ TEST(ArcVmParamsTest, NonDebugModeVerifiedBootParams) {
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
 
-  EXPECT_TRUE(base::Contains(params, "androidboot.vbmeta.device_state=locked"));
-  EXPECT_TRUE(base::Contains(params, "androidboot.verifiedbootstate=green"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.vbmeta.device_state=locked"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.verifiedbootstate=green"));
 }
 
 TEST(ArcVmParamsTest, DebugModeVerifiedBootParams) {
@@ -856,9 +867,10 @@ TEST(ArcVmParamsTest, DebugModeVerifiedBootParams) {
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
 
+  EXPECT_TRUE(std::ranges::contains(
+      params, "androidboot.vbmeta.device_state=unlocked"));
   EXPECT_TRUE(
-      base::Contains(params, "androidboot.vbmeta.device_state=unlocked"));
-  EXPECT_TRUE(base::Contains(params, "androidboot.verifiedbootstate=orange"));
+      std::ranges::contains(params, "androidboot.verifiedbootstate=orange"));
 }
 
 TEST(ArcVmParamsTest, NoCrosDebugVerifiedBootParams) {
@@ -869,8 +881,10 @@ TEST(ArcVmParamsTest, NoCrosDebugVerifiedBootParams) {
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
 
-  EXPECT_TRUE(base::Contains(params, "androidboot.vbmeta.device_state=locked"));
-  EXPECT_TRUE(base::Contains(params, "androidboot.verifiedbootstate=green"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.vbmeta.device_state=locked"));
+  EXPECT_TRUE(
+      std::ranges::contains(params, "androidboot.verifiedbootstate=green"));
 }
 
 class FakeSwapVmCallback {
