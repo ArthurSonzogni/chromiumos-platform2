@@ -8,7 +8,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/logging.h>
 
 #include "smbprovider/constants.h"
@@ -209,7 +208,7 @@ void BaseDirectoryIterator::AddEntryIfValid(const smbc_dirent& dirent) {
   // Ignore "." and ".." entries.
   // TODO(allenvic): Handle SMBC_LINK
   if (IsSelfOrParentDir(name) || !ShouldIncludeEntryType(dirent.smbc_type) ||
-      base::Contains(name, '/') || base::Contains(name, '\\')) {
+      name.contains('/') || name.contains('\\')) {
     return;
   }
 
@@ -226,7 +225,7 @@ void BaseDirectoryIterator::AddEntryIfValid(
   // TODO(zentaro): Investigate how this API deals with directories that are
   // file shares.
   if (IsSelfOrParentDir(name) || IsSymlink(file_info.attrs) ||
-      base::Contains(name, '/') || base::Contains(name, '\\')) {
+      name.contains('/') || name.contains('\\')) {
     return;
   }
 
