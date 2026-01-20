@@ -5,6 +5,8 @@
 #ifndef SHILL_FILE_IO_H_
 #define SHILL_FILE_IO_H_
 
+#include <sys/types.h>
+
 #include <base/no_destructor.h>
 
 namespace shill {

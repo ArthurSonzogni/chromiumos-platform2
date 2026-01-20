@@ -5,6 +5,7 @@
 #include "shill/vpn/third_party_vpn_driver.h"
 
 #include <fcntl.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <cstdint>
