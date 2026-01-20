@@ -4,13 +4,13 @@
 
 #include "tpm_manager/server/tpm2_nvram_impl.h"
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <trunks/authorization_delegate.h>
 #include <trunks/error_codes.h>
@@ -525,7 +525,7 @@ void Tpm2NvramImpl::PrunePolicies() {
   // owned.
   LocalData new_local_data;
   for (const auto& policy : local_data.nvram_policy()) {
-    if (base::Contains(nv_indices, policy.index())) {
+    if (std::ranges::contains(nv_indices, policy.index())) {
       *new_local_data.add_nvram_policy() = policy;
     }
   }
