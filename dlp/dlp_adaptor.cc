@@ -7,6 +7,7 @@
 #include <sqlite3.h>
 #include <sys/types.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <set>
 #include <string>
@@ -15,7 +16,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -731,7 +731,8 @@ void DlpAdaptor::ProcessFileOpenRequestWithData(
 
   int lifeline_fd = -1;
   for (const auto& [key, value] : approved_requests_) {
-    if (base::Contains(value.first, file_entry.id) && value.second == pid) {
+    if (std::ranges::contains(value.first, file_entry.id) &&
+        value.second == pid) {
       lifeline_fd = key;
       break;
     }
@@ -995,7 +996,7 @@ void DlpAdaptor::OnIsFilesTransferRestricted(
   // Cache the response.
   std::move(cache_callback).Run(response);
   for (const auto& file : response.files_restrictions()) {
-    DCHECK(base::Contains(checked_files, file.file_metadata().path()));
+    DCHECK(checked_files.contains(file.file_metadata().path()));
     if (file.restriction_level() == ::dlp::RestrictionLevel::LEVEL_BLOCK ||
         file.restriction_level() ==
             ::dlp::RestrictionLevel::LEVEL_WARN_CANCEL) {

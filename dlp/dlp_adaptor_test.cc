@@ -11,7 +11,6 @@
 #include <string>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
@@ -1974,11 +1973,11 @@ TEST_F(DlpAdaptorTest, GetDatabaseEntries) {
         file_entry;
   }
 
-  ASSERT_TRUE(base::Contains(files_entries_map, id1));
+  ASSERT_TRUE(files_entries_map.contains(id1));
   EXPECT_EQ(files_entries_map.at(id1).source_url(), source1);
   EXPECT_EQ(files_entries_map.at(id1).referrer_url(), referrer1);
 
-  ASSERT_TRUE(base::Contains(files_entries_map, id2));
+  ASSERT_TRUE(files_entries_map.contains(id2));
   EXPECT_EQ(files_entries_map.at(id2).source_url(), source2);
   EXPECT_EQ(files_entries_map.at(id2).referrer_url(), referrer2);
 }

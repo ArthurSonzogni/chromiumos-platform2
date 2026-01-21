@@ -9,7 +9,6 @@
 #include <cinttypes>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
@@ -443,9 +442,8 @@ bool DlpDatabase::Core::DeleteFileEntriesWithIdsNotInSet(
     return false;
   }
 
-  std::erase_if(ids, [&ids_to_keep](FileId id) {
-    return base::Contains(ids_to_keep, id);
-  });
+  std::erase_if(ids,
+                [&ids_to_keep](FileId id) { return ids_to_keep.contains(id); });
   if (ids.size() == 0) {
     return true;
   }
