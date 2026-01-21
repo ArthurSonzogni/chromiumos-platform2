@@ -4,10 +4,10 @@
 
 #include "cros-disks/mount_point.h"
 
+#include <algorithm>
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -108,7 +108,7 @@ MountError MountPoint::ConvertLauncherExitCodeToMountError(
     return MountError::kSuccess;
   }
 
-  if (base::Contains(password_needed_exit_codes_, exit_code)) {
+  if (std::ranges::contains(password_needed_exit_codes_, exit_code)) {
     return MountError::kNeedPassword;
   }
 

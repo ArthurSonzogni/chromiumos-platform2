@@ -7,9 +7,8 @@
 #include <algorithm>
 
 #include <base/containers/adapters.h>
-#include <base/containers/contains.h>
-#include <base/strings/string_util.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_util.h>
 
 namespace cros_disks {
 
@@ -57,7 +56,7 @@ void SetParamValue(std::vector<std::string>* params,
 
 bool HasExactParam(const std::vector<std::string>& params,
                    std::string_view param) {
-  return base::Contains(params, param);
+  return std::ranges::contains(params, param);
 }
 
 size_t RemoveParamsEqualTo(std::vector<std::string>* params,

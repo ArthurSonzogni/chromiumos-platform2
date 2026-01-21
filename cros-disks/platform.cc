@@ -19,7 +19,6 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -172,14 +171,13 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
   DCHECK(path);
   DCHECK(!path->empty());
 
-  if (!base::Contains(reserved_paths, *path) &&
-      CreateOrReuseEmptyDirectory(*path)) {
+  if (!reserved_paths.contains(*path) && CreateOrReuseEmptyDirectory(*path)) {
     return true;
   }
 
   for (unsigned suffix = 1; suffix <= max_suffix_to_retry; ++suffix) {
     std::string fallback_path = GetDirectoryFallbackName(*path, suffix);
-    if (!base::Contains(reserved_paths, fallback_path) &&
+    if (!reserved_paths.contains(fallback_path) &&
         CreateOrReuseEmptyDirectory(fallback_path)) {
       *path = fallback_path;
       return true;

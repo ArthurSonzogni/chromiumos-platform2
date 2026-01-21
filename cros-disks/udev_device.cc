@@ -10,11 +10,11 @@
 #include <sys/statvfs.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <string_view>
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
@@ -444,8 +444,8 @@ std::string UdevDevice::StorageDevicePath() const {
         const char* const subsystem = device.GetSubsystem();
         const std::string_view allowed_subsystems[] = {
             kSubsystemMmc, kSubsystemNvme, kSubsystemScsi};
-        if (!subsystem ||
-            !base::Contains(allowed_subsystems, std::string_view(subsystem))) {
+        if (!subsystem || !std::ranges::contains(allowed_subsystems,
+                                                 std::string_view(subsystem))) {
           return false;
         }
 

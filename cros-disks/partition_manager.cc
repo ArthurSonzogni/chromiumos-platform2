@@ -9,7 +9,6 @@
 
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -102,7 +101,7 @@ void PartitionManager::StartSinglePartitionFormat(
     return;
   }
 
-  if (base::Contains(partition_process_, device_path)) {
+  if (partition_process_.contains(device_path)) {
     LOG(WARNING) << "Device " << quote(device_path)
                  << " is already being partitioned";
     std::move(callback).Run(device_path,

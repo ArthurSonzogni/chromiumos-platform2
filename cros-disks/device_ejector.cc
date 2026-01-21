@@ -7,7 +7,6 @@
 #include <linux/capability.h>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 
@@ -30,7 +29,7 @@ bool DeviceEjector::Eject(const std::string& device_path) {
   CHECK(!device_path.empty()) << "Invalid device path";
 
   LOG(INFO) << "Eject device " << quote(device_path);
-  if (base::Contains(eject_process_, device_path)) {
+  if (eject_process_.contains(device_path)) {
     LOG(WARNING) << "Device " << quote(device_path)
                  << " is already being ejected";
     return false;

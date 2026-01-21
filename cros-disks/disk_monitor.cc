@@ -13,7 +13,6 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -46,7 +45,7 @@ bool IsDeviceAllowed(const UdevDevice& device,
   if (device.IsIgnored()) {
     return false;
   }
-  if (base::Contains(allowlist, device.NativePath())) {
+  if (allowlist.contains(device.NativePath())) {
     return true;
   }
   if (device.IsLoopDevice()) {
@@ -238,7 +237,7 @@ void DiskMonitor::ProcessBlockDeviceEvents(
   std::string device_path = device.NativePath();
   if (disk_added) {
     if (device.IsAutoMountable()) {
-      if (base::Contains(disks_detected_, device_path)) {
+      if (disks_detected_.contains(device_path)) {
         // Disk already exists, so remove it and then add it again.
         LOG(INFO) << "Re-add block device " << quote(device_path);
         events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, device_path));
@@ -251,7 +250,7 @@ void DiskMonitor::ProcessBlockDeviceEvents(
         if (parent) {
           std::string parent_device_path =
               UdevDevice(std::move(parent)).NativePath();
-          if (base::Contains(disks_detected_, parent_device_path)) {
+          if (disks_detected_.contains(parent_device_path)) {
             disks_detected_[parent_device_path].insert(device_path);
           }
         }
@@ -265,7 +264,7 @@ void DiskMonitor::ProcessBlockDeviceEvents(
     events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, device_path));
   } else if (child_disk_removed) {
     bool no_child_disks_found = true;
-    if (base::Contains(disks_detected_, device_path)) {
+    if (disks_detected_.contains(device_path)) {
       auto& child_disks = disks_detected_[device_path];
       no_child_disks_found = child_disks.empty();
       for (const auto& child_disk : child_disks) {
@@ -294,7 +293,7 @@ void DiskMonitor::ProcessMmcOrScsiDeviceEvents(
 
   std::string device_path = device.NativePath();
   if (strcmp(action, kUdevAddAction) == 0) {
-    if (base::Contains(devices_detected_, device_path)) {
+    if (devices_detected_.contains(device_path)) {
       LOG(INFO) << "Re-add device " << quote(device_path);
       events->push_back(DeviceEvent(DeviceEvent::kDeviceScanned, device_path));
     } else {
@@ -303,7 +302,7 @@ void DiskMonitor::ProcessMmcOrScsiDeviceEvents(
       events->push_back(DeviceEvent(DeviceEvent::kDeviceAdded, device_path));
     }
   } else if (strcmp(action, kUdevRemoveAction) == 0) {
-    if (base::Contains(devices_detected_, device_path)) {
+    if (devices_detected_.contains(device_path)) {
       devices_detected_.erase(device_path);
       LOG(INFO) << "Remove device " << quote(device_path);
       events->push_back(DeviceEvent(DeviceEvent::kDeviceRemoved, device_path));
