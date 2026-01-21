@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/containers/contains.h>
 #include <base/containers/fixed_flat_set.h>
 
 namespace coral {
@@ -16,14 +15,14 @@ bool IsLanguageSupported(const std::string& locale) {
       base::MakeFixedFlatSet<std::string_view>({"en", "ja", "de", "fr", "da",
                                                 "es", "it", "pt", "nl", "no",
                                                 "fi", "sv"});
-  return base::Contains(kSupportedLanguages, locale);
+  return kSupportedLanguages.contains(locale);
 }
 
 bool IsLanguageSupportedBySafetyModel(const std::string& locale) {
   static constexpr auto kSupportedLanguagesBySafetyModel =
       base::MakeFixedFlatSet<std::string_view>(
           {"en", "ja", "de", "fr", "da", "es", "it", "nl", "sv"});
-  return base::Contains(kSupportedLanguagesBySafetyModel, locale);
+  return kSupportedLanguagesBySafetyModel.contains(locale);
 }
 
 }  // namespace coral

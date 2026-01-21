@@ -4,14 +4,13 @@
 
 #include "odml/mantis/common.h"
 
+#include <algorithm>
 #include <string_view>
-
-#include "base/containers/contains.h"
 
 namespace mantis {
 
 bool IsLanguageSupported(std::string_view locale) {
-  return base::Contains(kI18nLocale, locale);
+  return std::ranges::contains(kI18nLocale, locale);
 }
 
 }  // namespace mantis
