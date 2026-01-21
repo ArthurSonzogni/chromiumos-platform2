@@ -372,9 +372,9 @@ TEST_F(WireGuardDriverTest, ReadLinkStatus) {
   EXPECT_FALSE(
       provider.Contains<std::string>(kWireGuardLastReadLinkStatusTime));
   for (const auto& peer : driver_test_peer_->peers()) {
-    EXPECT_FALSE(base::Contains(peer, kWireGuardPeerLatestHandshake));
-    EXPECT_FALSE(base::Contains(peer, kWireGuardPeerRxBytes));
-    EXPECT_FALSE(base::Contains(peer, kWireGuardPeerTxBytes));
+    EXPECT_FALSE(peer.contains(kWireGuardPeerLatestHandshake));
+    EXPECT_FALSE(peer.contains(kWireGuardPeerRxBytes));
+    EXPECT_FALSE(peer.contains(kWireGuardPeerTxBytes));
   }
 }
 

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <map>
 #include <set>
 
@@ -12,7 +13,6 @@
 #include <gtest/gtest.h>
 #include <re2/re2.h>
 
-#include "base/containers/contains.h"
 #include "shill/metrics.h"
 #include "shill/mobile_operator_db/mobile_operator_db.pb.h"
 #include "shill/protobuf_lite_streams.h"
@@ -393,8 +393,9 @@ TEST_F(ServiceProvidersTest, CheckThatDunAsDefaultHasRequiredApn) {
     }
     for (int i = 0; i < data.mobile_apn_size(); i++) {
       auto mobile_apn = &data.mobile_apn()[i];
-      if (base::Contains(mobile_apn->type(),
-                         shill::mobile_operator_db::MobileAPN_ApnType_DUN) &&
+      if (std::ranges::contains(
+              mobile_apn->type(),
+              shill::mobile_operator_db::MobileAPN_ApnType_DUN) &&
           mobile_apn->is_required_by_carrier_spec()) {
         return;
       }

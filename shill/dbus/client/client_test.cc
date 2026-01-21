@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/functional/callback_helpers.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
@@ -432,7 +431,7 @@ TEST_F(ClientTest, DeviceWithoutInterfaceName) {
   client_->NotifyDevicePropertyChange(device_path.value(), kInterfaceProperty,
                                       std::string("eth0"));
   ASSERT_EQ(devices_.size(), 1);
-  EXPECT_TRUE(base::Contains(devices_, "eth0"));
+  EXPECT_TRUE(devices_.contains("eth0"));
 
   // Remove the interface name. DeviceRemoved callback should be triggered.
   client_->NotifyDevicePropertyChange(device_path.value(), kInterfaceProperty,
@@ -443,7 +442,7 @@ TEST_F(ClientTest, DeviceWithoutInterfaceName) {
   client_->NotifyDevicePropertyChange(device_path.value(), kInterfaceProperty,
                                       std::string("eth1"));
   ASSERT_EQ(devices_.size(), 1);
-  EXPECT_TRUE(base::Contains(devices_, "eth1"));
+  EXPECT_TRUE(devices_.contains("eth1"));
 
   // Remove the interface name. DeviceRemoved callback should be triggered.
   client_->NotifyDevicePropertyChange(device_path.value(), kInterfaceProperty,

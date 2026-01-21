@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/mac_address.h>
@@ -233,9 +232,8 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAP) {
   std::set<WiFiEndpoint::KeyManagement> parsed_methods;
   WiFiEndpoint::ParseKeyManagementMethods(
       MakeKeyManagementArgs({"something-eap"}), &parsed_methods);
-  EXPECT_TRUE(
-      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
-  EXPECT_FALSE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+  EXPECT_TRUE(parsed_methods.contains(WiFiEndpoint::kKeyManagement802_1x));
+  EXPECT_FALSE(parsed_methods.contains(WiFiEndpoint::kKeyManagementPSK));
 }
 
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsPSK) {
@@ -243,23 +241,20 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsPSK) {
   WiFiEndpoint::ParseKeyManagementMethods(
       MakeKeyManagementArgs({"something-psk", "something-psk-sha256"}),
       &parsed_methods);
-  EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
-  EXPECT_FALSE(
-      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
+  EXPECT_TRUE(parsed_methods.contains(WiFiEndpoint::kKeyManagementPSK));
+  EXPECT_FALSE(parsed_methods.contains(WiFiEndpoint::kKeyManagement802_1x));
 
   parsed_methods.clear();
   WiFiEndpoint::ParseKeyManagementMethods(
       MakeKeyManagementArgs({"something-psk"}), &parsed_methods);
-  EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
-  EXPECT_FALSE(
-      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
+  EXPECT_TRUE(parsed_methods.contains(WiFiEndpoint::kKeyManagementPSK));
+  EXPECT_FALSE(parsed_methods.contains(WiFiEndpoint::kKeyManagement802_1x));
 
   parsed_methods.clear();
   WiFiEndpoint::ParseKeyManagementMethods(
       MakeKeyManagementArgs({"something-psk-sha256"}), &parsed_methods);
-  EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
-  EXPECT_FALSE(
-      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
+  EXPECT_TRUE(parsed_methods.contains(WiFiEndpoint::kKeyManagementPSK));
+  EXPECT_FALSE(parsed_methods.contains(WiFiEndpoint::kKeyManagement802_1x));
 }
 
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
@@ -268,25 +263,22 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
       MakeKeyManagementArgs(
           {"something-eap", "something-psk", "something-psk-sha256"}),
       &parsed_methods);
-  EXPECT_TRUE(
-      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
-  EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+  EXPECT_TRUE(parsed_methods.contains(WiFiEndpoint::kKeyManagement802_1x));
+  EXPECT_TRUE(parsed_methods.contains(WiFiEndpoint::kKeyManagementPSK));
 
   parsed_methods.clear();
   WiFiEndpoint::ParseKeyManagementMethods(
       MakeKeyManagementArgs({"something-eap", "something-psk"}),
       &parsed_methods);
-  EXPECT_TRUE(
-      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
-  EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+  EXPECT_TRUE(parsed_methods.contains(WiFiEndpoint::kKeyManagement802_1x));
+  EXPECT_TRUE(parsed_methods.contains(WiFiEndpoint::kKeyManagementPSK));
 
   parsed_methods.clear();
   WiFiEndpoint::ParseKeyManagementMethods(
       MakeKeyManagementArgs({"something-eap", "something-psk-sha256"}),
       &parsed_methods);
-  EXPECT_TRUE(
-      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
-  EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+  EXPECT_TRUE(parsed_methods.contains(WiFiEndpoint::kKeyManagement802_1x));
+  EXPECT_TRUE(parsed_methods.contains(WiFiEndpoint::kKeyManagementPSK));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSN802_1x) {
@@ -743,25 +735,23 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     EXPECT_EQ("", ep->vendor_information_.wps_model_number);
     EXPECT_EQ("", ep->vendor_information_.wps_device_name);
     EXPECT_EQ(2, ep->vendor_information_.oui_set.size());
-    EXPECT_TRUE(base::Contains(ep->vendor_information_.oui_set, kVendorOUI));
-    EXPECT_TRUE(base::Contains(ep->vendor_information_.oui_set,
-                               IEEE_80211::kOUIVendorCiscoAironet));
+    EXPECT_TRUE(ep->vendor_information_.oui_set.contains(kVendorOUI));
+    EXPECT_TRUE(ep->vendor_information_.oui_set.contains(
+        IEEE_80211::kOUIVendorCiscoAironet));
 
     std::map<std::string, std::string> vendor_stringmap(
         ep->GetVendorInformation());
-    EXPECT_FALSE(
-        base::Contains(vendor_stringmap, kVendorWPSManufacturerProperty));
-    EXPECT_FALSE(base::Contains(vendor_stringmap, kVendorWPSModelNameProperty));
-    EXPECT_FALSE(
-        base::Contains(vendor_stringmap, kVendorWPSModelNumberProperty));
-    EXPECT_FALSE(
-        base::Contains(vendor_stringmap, kVendorWPSDeviceNameProperty));
+    EXPECT_FALSE(vendor_stringmap.contains(kVendorWPSManufacturerProperty));
+    EXPECT_FALSE(vendor_stringmap.contains(kVendorWPSModelNameProperty));
+    EXPECT_FALSE(vendor_stringmap.contains(kVendorWPSModelNumberProperty));
+    EXPECT_FALSE(vendor_stringmap.contains(kVendorWPSDeviceNameProperty));
+
     std::vector<std::string> oui_list = base::SplitString(
         vendor_stringmap[kVendorOUIListProperty], base::kWhitespaceASCII,
         base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     EXPECT_EQ(2, oui_list.size());
-    EXPECT_TRUE(base::Contains(oui_list, "aa-bb-cc"));
-    EXPECT_TRUE(base::Contains(oui_list, "00-40-96"));
+    EXPECT_TRUE(std::ranges::contains(oui_list, "aa-bb-cc"));
+    EXPECT_TRUE(std::ranges::contains(oui_list, "00-40-96"));
   }
   {
     ScopedMockLog log;
@@ -806,7 +796,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     EXPECT_EQ(kModelName, vendor_stringmap[kVendorWPSModelNameProperty]);
     EXPECT_EQ(kModelNumber, vendor_stringmap[kVendorWPSModelNumberProperty]);
     EXPECT_EQ(kDeviceName, vendor_stringmap[kVendorWPSDeviceNameProperty]);
-    EXPECT_FALSE(base::Contains(vendor_stringmap, kVendorOUIListProperty));
+    EXPECT_FALSE(vendor_stringmap.contains(kVendorOUIListProperty));
   }
   {
     std::vector<uint8_t> ies;

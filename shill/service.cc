@@ -20,7 +20,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -1002,7 +1001,7 @@ bool Service::Save(StoreInterface* storage) {
 void Service::Configure(const KeyValueStore& args, Error* error) {
   for (const auto& it : args.properties()) {
     if (it.second.IsTypeCompatible<bool>()) {
-      if (base::Contains(parameters_ignored_for_configure_, it.first)) {
+      if (parameters_ignored_for_configure_.contains(it.first)) {
         SLOG(5) << *this << " " << __func__
                 << ": Ignoring bool property: " << it.first;
         continue;
@@ -1015,7 +1014,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
         *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<int32_t>()) {
-      if (base::Contains(parameters_ignored_for_configure_, it.first)) {
+      if (parameters_ignored_for_configure_.contains(it.first)) {
         SLOG(5) << *this << " " << __func__
                 << ": Ignoring int32_t property: " << it.first;
         continue;
@@ -1028,7 +1027,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
         *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<KeyValueStore>()) {
-      if (base::Contains(parameters_ignored_for_configure_, it.first)) {
+      if (parameters_ignored_for_configure_.contains(it.first)) {
         SLOG(5) << *this << " " << __func__
                 << ": Ignoring key value store property: " << it.first;
         continue;
@@ -1042,7 +1041,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
         *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<std::string>()) {
-      if (base::Contains(parameters_ignored_for_configure_, it.first)) {
+      if (parameters_ignored_for_configure_.contains(it.first)) {
         SLOG(5) << *this << " " << __func__
                 << ": Ignoring string property: " << it.first;
         continue;
@@ -1056,7 +1055,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
         *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<Strings>()) {
-      if (base::Contains(parameters_ignored_for_configure_, it.first)) {
+      if (parameters_ignored_for_configure_.contains(it.first)) {
         SLOG(5) << *this << " " << __func__
                 << ": Ignoring strings property: " << it.first;
         continue;
@@ -1069,7 +1068,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
         *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<Stringmap>()) {
-      if (base::Contains(parameters_ignored_for_configure_, it.first)) {
+      if (parameters_ignored_for_configure_.contains(it.first)) {
         SLOG(5) << *this << " " << __func__
                 << ": Ignoring stringmap property: " << it.first;
         continue;
@@ -1083,7 +1082,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
         *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<Stringmaps>()) {
-      if (base::Contains(parameters_ignored_for_configure_, it.first)) {
+      if (parameters_ignored_for_configure_.contains(it.first)) {
         SLOG(5) << *this << " " << __func__
                 << ": Ignoring stringmaps property: " << it.first;
         continue;

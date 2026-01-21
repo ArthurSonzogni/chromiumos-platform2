@@ -8,7 +8,6 @@
 
 #include <algorithm>
 
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/notimplemented.h>
 #include <base/strings/string_number_conversions.h>
@@ -542,12 +541,11 @@ WiFiSecurity::Mode WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
         properties.Get<KeyValueStore>(WPASupplicant::kPropertyRSN);
     std::set<KeyManagement> key_management;
     ParseKeyManagementMethods(rsn_properties, &key_management);
-    flags->rsn_8021x_wpa3 =
-        base::Contains(key_management, kKeyManagement802_1x_Wpa3);
-    flags->rsn_8021x = base::Contains(key_management, kKeyManagement802_1x);
-    flags->rsn_psk = base::Contains(key_management, kKeyManagementPSK);
-    flags->rsn_sae = base::Contains(key_management, kKeyManagementSAE);
-    flags->rsn_owe = base::Contains(key_management, kKeyManagementOWE);
+    flags->rsn_8021x_wpa3 = key_management.contains(kKeyManagement802_1x_Wpa3);
+    flags->rsn_8021x = key_management.contains(kKeyManagement802_1x);
+    flags->rsn_psk = key_management.contains(kKeyManagementPSK);
+    flags->rsn_sae = key_management.contains(kKeyManagementSAE);
+    flags->rsn_owe = key_management.contains(kKeyManagementOWE);
   }
 
   if (properties.Contains<KeyValueStore>(WPASupplicant::kPropertyWPA)) {
@@ -555,8 +553,8 @@ WiFiSecurity::Mode WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
         properties.Get<KeyValueStore>(WPASupplicant::kPropertyWPA);
     std::set<KeyManagement> key_management;
     ParseKeyManagementMethods(rsn_properties, &key_management);
-    flags->wpa_8021x = base::Contains(key_management, kKeyManagement802_1x);
-    flags->wpa_psk = base::Contains(key_management, kKeyManagementPSK);
+    flags->wpa_8021x = key_management.contains(kKeyManagement802_1x);
+    flags->wpa_psk = key_management.contains(kKeyManagementPSK);
   }
 
   if (properties.Contains<bool>(WPASupplicant::kPropertyPrivacy)) {
@@ -617,8 +615,7 @@ void WiFiEndpoint::ParseKeyManagementMethods(
       key_management_methods->insert(kKeyManagementOWE);
     } else if (base::StartsWith(method,
                                 WPASupplicant::kKeyManagementMethodPrefixEAP) &&
-               (base::Contains(method,
-                               WPASupplicant::kKeyManagementMethodSuiteB) ||
+               (method.contains(WPASupplicant::kKeyManagementMethodSuiteB) ||
                 base::EndsWith(
                     method, WPASupplicant::kKeyManagementMethodSuffixEAPSHA256,
                     base::CompareCase::SENSITIVE))) {

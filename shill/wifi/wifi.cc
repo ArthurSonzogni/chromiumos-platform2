@@ -1897,7 +1897,7 @@ void WiFi::PendingScanResultsHandler() {
   std::set<RpcIdentifier> modified_paths;
   for (const auto& result : pending_scan_results_->results) {
     if (result.is_removal) {
-      if (base::Contains(endpoint_by_rpcid_, result.path)) {
+      if (endpoint_by_rpcid_.contains(result.path)) {
         WiFiEndpointRefPtr endpoint = endpoint_by_rpcid_[result.path];
         remove_results_by_bssid[endpoint->bssid()] = result;
       }
@@ -1907,7 +1907,7 @@ void WiFi::PendingScanResultsHandler() {
               result.properties.Get<std::vector<uint8_t>>(
                   WPASupplicant::kBSSPropertyBSSID))
               .value();
-      if (base::Contains(remove_results_by_bssid, bssid)) {
+      if (remove_results_by_bssid.contains(bssid)) {
         ScanResult remove_result = remove_results_by_bssid[bssid];
         BSSModified(remove_result.path, result.path, result.properties);
         modified_paths.insert(remove_result.path);
@@ -1918,7 +1918,7 @@ void WiFi::PendingScanResultsHandler() {
   }
 
   for (const auto& result : pending_scan_results_->results) {
-    if (base::Contains(modified_paths, result.path)) {
+    if (modified_paths.contains(result.path)) {
       continue;
     }
     if (result.is_removal) {
@@ -4401,8 +4401,8 @@ void WiFi::OnReceivedRtnlLinkStatistics(const rtnl_link_stats64& stats) {
 }
 
 bool WiFi::SupportsWEP() const {
-  return (base::Contains(supported_cipher_suites_, kWEP40CipherCode) &&
-          base::Contains(supported_cipher_suites_, kWEP104CipherCode));
+  return (supported_cipher_suites_.contains(kWEP40CipherCode) &&
+          supported_cipher_suites_.contains(kWEP104CipherCode));
 }
 
 const WiFiPhy* WiFi::GetWiFiPhy() const {

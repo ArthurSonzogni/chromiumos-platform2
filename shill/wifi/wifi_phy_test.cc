@@ -578,7 +578,7 @@ class WiFiPhyTest : public ::testing::Test {
   }
 
   bool HasWiFiDevice(WiFiConstRefPtr device) {
-    return base::Contains(wifi_phy_.wifi_devices_, device);
+    return wifi_phy_.wifi_devices_.contains(device);
   }
 
   void ChangeDeviceState(WiFiConstRefPtr device) {
@@ -1054,8 +1054,8 @@ TEST_F(WiFiPhyTest, SelectFrequency_NoValidHB) {
   EXPECT_TRUE(freq.has_value());
   EXPECT_GE(freq, kLBStartFreq);
   EXPECT_LE(freq, kChan11Freq);  // Should avoid channel greater than channel 11
-  EXPECT_TRUE(base::Contains(frequencies[0], uint32_t(freq.value()),
-                             [](auto& f) { return f.value; }));
+  EXPECT_TRUE(std::ranges::contains(frequencies[0], uint32_t(freq.value()),
+                                    [](auto& f) { return f.value; }));
 }
 
 TEST_F(WiFiPhyTest, SelectFrequency_DualBandsAvailable) {
@@ -1094,18 +1094,18 @@ TEST_F(WiFiPhyTest, SelectFrequency_DualBandsAvailable) {
   EXPECT_TRUE(freq.has_value());
   EXPECT_GE(freq, kLBStartFreq);
   EXPECT_LE(freq, kChan11Freq);  // Should avoid channel greater than channel 11
-  EXPECT_TRUE(base::Contains(frequencies[WiFiBandToNl(band)],
-                             uint32_t(freq.value()),
-                             [](auto& f) { return f.value; }));
+  EXPECT_TRUE(std::ranges::contains(frequencies[WiFiBandToNl(band)],
+                                    uint32_t(freq.value()),
+                                    [](auto& f) { return f.value; }));
 
   band = WiFiBand::kHighBand;
   freq = wifi_phy_.SelectFrequency(band);
   EXPECT_TRUE(freq.has_value());
   EXPECT_GE(freq, kHBStartFreq);
   EXPECT_LE(freq, kHBEndFreq);
-  EXPECT_TRUE(base::Contains(frequencies[WiFiBandToNl(band)],
-                             uint32_t(freq.value()),
-                             [](auto& f) { return f.value; }));
+  EXPECT_TRUE(std::ranges::contains(frequencies[WiFiBandToNl(band)],
+                                    uint32_t(freq.value()),
+                                    [](auto& f) { return f.value; }));
 
   // For other preferences the selected frequency should be in 2.4 or 5GHz,
   // however with a valid 5GHz frequency it should be preferred.
@@ -1114,9 +1114,9 @@ TEST_F(WiFiPhyTest, SelectFrequency_DualBandsAvailable) {
   EXPECT_TRUE(freq.has_value());
   EXPECT_GE(freq, kHBStartFreq);
   EXPECT_LE(freq, kHBEndFreq);
-  EXPECT_TRUE(base::Contains(frequencies[WiFiBandToNl(WiFiBand::kHighBand)],
-                             uint32_t(freq.value()),
-                             [](auto& f) { return f.value; }));
+  EXPECT_TRUE(std::ranges::contains(
+      frequencies[WiFiBandToNl(WiFiBand::kHighBand)], uint32_t(freq.value()),
+      [](auto& f) { return f.value; }));
 }
 
 TEST_F(WiFiPhyTest, GetFrequencies) {
@@ -1142,14 +1142,14 @@ TEST_F(WiFiPhyTest, GetFrequencies) {
   SetFrequencies(frequencies);
   auto freqs = wifi_phy_.GetFrequencies();
   EXPECT_FALSE(freqs.empty());
-  EXPECT_TRUE(base::Contains(freqs, 2412));   // Channel 1
-  EXPECT_TRUE(base::Contains(freqs, 2417));   // Channel 2
-  EXPECT_FALSE(base::Contains(freqs, 2467));  // Channel 12, skip
-  EXPECT_TRUE(base::Contains(freqs, 5180));   // Channel 36
-  EXPECT_FALSE(base::Contains(freqs, 5260));  // Channel 52, RADAR
-  EXPECT_FALSE(base::Contains(freqs, 5300));  // Channel 60, NO_IR
-  EXPECT_FALSE(base::Contains(freqs, 5340));  // Channel 68, DISABLED
-  EXPECT_FALSE(base::Contains(freqs, 5865));  // Channel 173, U-NII-4
+  EXPECT_TRUE(freqs.contains(2412));   // Channel 1
+  EXPECT_TRUE(freqs.contains(2417));   // Channel 2
+  EXPECT_FALSE(freqs.contains(2467));  // Channel 12, skip
+  EXPECT_TRUE(freqs.contains(5180));   // Channel 36
+  EXPECT_FALSE(freqs.contains(5260));  // Channel 52, RADAR
+  EXPECT_FALSE(freqs.contains(5300));  // Channel 60, NO_IR
+  EXPECT_FALSE(freqs.contains(5340));  // Channel 68, DISABLED
+  EXPECT_FALSE(freqs.contains(5865));  // Channel 173, U-NII-4
 }
 
 TEST_F(WiFiPhyTest, ValidPriority) {

@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -45,7 +44,7 @@ bool GetTechnologyVectorFromString(const std::string& technologies_string,
       return false;
     }
 
-    if (base::Contains(seen, technology)) {
+    if (seen.contains(technology)) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             name + " is duplicated in the list");
       return false;

@@ -7,9 +7,10 @@
 #include <memory>
 #include <utility>
 
-#include <ModemManager/ModemManager.h>
+#include <base/check.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <ModemManager/ModemManager.h>
 
 #include "shill/cellular/mock_dbus_objectmanager_proxy.h"
 #include "shill/cellular/modem.h"
@@ -18,9 +19,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/test_event_dispatcher.h"
-
-#include <base/check.h>
-#include <base/containers/contains.h>
 
 using testing::_;
 using testing::Invoke;
@@ -173,7 +171,7 @@ TEST_F(ModemInfoTest, StartStop) {
 TEST_F(ModemInfoTest, Connect) {
   Connect(GetModemWithProperties());
   EXPECT_EQ(1, modem_info_.modems_.size());
-  EXPECT_TRUE(base::Contains(modem_info_.modems_, kModemPath));
+  EXPECT_TRUE(modem_info_.modems_.contains(kModemPath));
 }
 
 TEST_F(ModemInfoTest, AddRemoveInterfaces) {

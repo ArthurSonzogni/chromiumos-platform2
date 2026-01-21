@@ -10,8 +10,10 @@
 #include <ios>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -418,7 +420,7 @@ void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int32_t shill_id) {
     return;
   }
   result_callback_ = std::move(callback);
-  if (!base::Contains(p2p_group_owners_, shill_id)) {
+  if (!p2p_group_owners_.contains(shill_id)) {
     LOG(ERROR) << "There is no P2P group at the requested shill_id: "
                << shill_id;
     PostResult(kDestroyP2PGroupResultNoGroup, std::nullopt,
@@ -602,8 +604,7 @@ void P2PManager::GroupStarted(const KeyValueStore& properties) {
     LOG(WARNING) << "Ignored " << __func__ << " without interface";
     return;
   }
-  if (base::Contains(supplicant_primary_p2pdevice_event_delegates_,
-                     interface_path)) {
+  if (supplicant_primary_p2pdevice_event_delegates_.contains(interface_path)) {
     LOG(WARNING) << "Ignored " << __func__
                  << " with assigned interface: " << interface_path.value();
     return;
@@ -633,8 +634,7 @@ void P2PManager::GroupFinished(const KeyValueStore& properties) {
     return;
   }
   auto delegate =
-      base::Contains(supplicant_primary_p2pdevice_event_delegates_,
-                     interface_path)
+      supplicant_primary_p2pdevice_event_delegates_.contains(interface_path)
           ? supplicant_primary_p2pdevice_event_delegates_[interface_path]
           : nullptr;
   if (!delegate) {

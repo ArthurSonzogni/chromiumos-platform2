@@ -18,7 +18,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/containers/fixed_flat_map.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -302,11 +301,11 @@ std::string Cellular::GetModemStateString(ModemState modem_state) {
 // static
 void Cellular::ValidateApnTryList(std::deque<Stringmap>& apn_try_list) {
   // Entries in the APN try list must have the APN property
-  apn_try_list.erase(
-      std::remove_if(
-          apn_try_list.begin(), apn_try_list.end(),
-          [](const auto& item) { return !base::Contains(item, kApnProperty); }),
-      apn_try_list.end());
+  apn_try_list.erase(std::remove_if(apn_try_list.begin(), apn_try_list.end(),
+                                    [](const auto& item) {
+                                      return !item.contains(kApnProperty);
+                                    }),
+                     apn_try_list.end());
 }
 
 // static
@@ -3805,8 +3804,7 @@ bool Cellular::CompareApns(const Stringmap& apn1, const Stringmap& apn2) const {
     }
 
     DCHECK(allowed_keys.count(pair.first)) << " key: " << pair.first;
-    if (!base::Contains(apn2, pair.first) ||
-        pair.second != apn2.at(pair.first)) {
+    if (!apn2.contains(pair.first) || pair.second != apn2.at(pair.first)) {
       return false;
     }
     // Keys match, ignore them below.
@@ -3851,9 +3849,9 @@ bool Cellular::IsRequiredByCarrierApn(const Stringmap& apn) const {
   // which the UI or user send the property by mistake and the UI cannot
   // update the APN list because there is an existing APN with the property
   // set to true.
-  return base::Contains(apn, kApnSourceProperty) &&
+  return apn.contains(kApnSourceProperty) &&
          apn.at(kApnSourceProperty) == kApnSourceMoDb &&
-         base::Contains(apn, kApnIsRequiredByCarrierSpecProperty) &&
+         apn.contains(kApnIsRequiredByCarrierSpecProperty) &&
          apn.at(kApnIsRequiredByCarrierSpecProperty) ==
              kApnIsRequiredByCarrierSpecTrue;
 }
@@ -3900,7 +3898,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
     last_good_apn_info = service_->GetLastGoodApn();
     for (auto custom_apn : custom_apns_info) {
       apn_try_list.push_back(*custom_apn);
-      if (!base::Contains(apn_try_list.back(), kApnSourceProperty)) {
+      if (!apn_try_list.back().contains(kApnSourceProperty)) {
         apn_try_list.back()[kApnSourceProperty] = kApnSourceUi;
       }
 
@@ -3937,7 +3935,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
     if (!ApnList::IsApnType(apn, apn_type)) {
       continue;
     }
-    DCHECK(base::Contains(apn, kApnSourceProperty));
+    DCHECK(apn.contains(kApnSourceProperty));
     // Verify all APNs are either from the Modem or MODB.
     DCHECK(apn[kApnSourceProperty] == kApnSourceModem ||
            apn[kApnSourceProperty] == kApnSourceMoDb);
@@ -3957,7 +3955,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
     // since the APN UI revamp will include the correct APN source.
     if (!custom_apn_list && custom_apn_info &&
         CompareApns(*custom_apn_info, apn) &&
-        base::Contains(apn, kApnSourceProperty)) {
+        apn.contains(kApnSourceProperty)) {
       // If |custom_apn_info| is not null, it is located at the first position
       // of |apn_try_list|, and we update the APN source for it.
       apn_try_list[0][kApnSourceProperty] = apn.at(kApnSourceProperty);
@@ -3970,7 +3968,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
       add_last_good_apn = false;
     }
 
-    if (base::Contains(apn, kApnSourceProperty) &&
+    if (apn.contains(kApnSourceProperty) &&
         apn.at(kApnSourceProperty) == kApnSourceMoDb) {
       if (is_same_as_last_good_apn) {
         apn_try_list.insert(apn_try_list.begin() + index_of_first_modb_apn,

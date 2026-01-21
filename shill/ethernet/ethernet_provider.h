@@ -5,6 +5,7 @@
 #ifndef SHILL_ETHERNET_ETHERNET_PROVIDER_H_
 #define SHILL_ETHERNET_ETHERNET_PROVIDER_H_
 
+#include <algorithm>
 #include <string>
 #include <vector>
 

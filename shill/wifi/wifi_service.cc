@@ -13,7 +13,6 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/notimplemented.h>
 #include <base/rand_util.h>
@@ -510,7 +509,7 @@ bool WiFiService::SetMACPolicyInternal(const std::string& policy,
     }
     // Some airline providers use aged APs that do not support locally
     // generated bit. Prevent address randomization in such cases.
-    if (base::Contains(SSIDsExcludedFromRandomization, friendly_name_)) {
+    if (std::ranges::contains(SSIDsExcludedFromRandomization, friendly_name_)) {
       Error::PopulateAndLog(
           FROM_HERE, error, Error::kNotSupported,
           "MAC Address randomization not supported for this SSID.");
@@ -1599,8 +1598,8 @@ bool WiFiService::IsAESCapable() const {
   // endpoints is in pure WPA mode.
   if (security_ == WiFiSecurity::kWpaWpa2 ||
       security_ == WiFiSecurity::kWpaAll) {
-    return !base::Contains(endpoints_, WiFiSecurity::kWpa,
-                           [](auto ep) { return ep->security_mode(); });
+    return !std::ranges::contains(endpoints_, WiFiSecurity::kWpa,
+                                  [](auto ep) { return ep->security_mode(); });
   }
   return false;
 }
@@ -2282,7 +2281,7 @@ bool WiFiService::IsBSSIDConnectable(
     case BSSIDAllowlistPolicy::kNoneAllowed:
       return false;
     case BSSIDAllowlistPolicy::kMatchOnlyAllowed:
-      if (!base::Contains(bssid_allowlist_, endpoint->bssid())) {
+      if (!bssid_allowlist_.contains(endpoint->bssid())) {
         return false;
       }
       [[fallthrough]];

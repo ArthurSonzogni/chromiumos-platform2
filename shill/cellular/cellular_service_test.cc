@@ -4,7 +4,6 @@
 
 #include "shill/cellular/cellular_service.h"
 
-#include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/mac_address.h>
 #include <dbus/shill/dbus-constants.h>
@@ -494,7 +493,7 @@ TEST_F(CellularServiceTest, SaveAndLoadApn) {
   EXPECT_EQ(kUsername, resultapn[kApnUsernameProperty]);
   EXPECT_EQ(kPassword, resultapn[kApnPasswordProperty]);
   EXPECT_EQ(kAuthentication, resultapn[kApnAuthenticationProperty]);
-  EXPECT_TRUE(base::Contains(resultapn, kApnAttachProperty));
+  EXPECT_TRUE(resultapn.contains(kApnAttachProperty));
   EXPECT_EQ("DEFAULT,IA", resultapn[kApnTypesProperty]);
 
   // Force storing kApnAttachProperty and reset kApnTypesProperty to verify the
@@ -504,7 +503,7 @@ TEST_F(CellularServiceTest, SaveAndLoadApn) {
   EXPECT_TRUE(service_->Save(&storage_));
   EXPECT_TRUE(service_->Load(&storage_));
   resultapn = service_->GetApn(&error);
-  EXPECT_TRUE(base::Contains(resultapn, kApnAttachProperty));
+  EXPECT_TRUE(resultapn.contains(kApnAttachProperty));
   EXPECT_EQ("DEFAULT,IA", resultapn[kApnTypesProperty]);
 }
 

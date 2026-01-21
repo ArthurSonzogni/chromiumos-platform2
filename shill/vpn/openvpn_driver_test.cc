@@ -4,13 +4,13 @@
 
 #include "shill/vpn/openvpn_driver.h"
 
+#include <algorithm>
 #include <iterator>
 #include <memory>
 #include <optional>
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -237,7 +237,7 @@ void OpenVPNDriverTest::Notify(
 void OpenVPNDriverTest::ExpectInFlags(
     const std::vector<std::vector<std::string>>& options,
     const std::vector<std::string>& option) {
-  EXPECT_TRUE(base::Contains(options, option));
+  EXPECT_TRUE(std::ranges::contains(options, option));
 }
 
 void OpenVPNDriverTest::ExpectNotInFlags(

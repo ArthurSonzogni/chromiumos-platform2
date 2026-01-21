@@ -8,7 +8,6 @@
 #include <map>
 #include <string>
 
-#include <base/containers/contains.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -552,7 +551,7 @@ class StringMapWrapper {
  public:
   void Clear(const std::string& key, Error* /*error*/) { value_.erase(key); }
   std::string Get(const std::string& key, Error* /*error*/) {
-    EXPECT_TRUE(base::Contains(value_, key));
+    EXPECT_TRUE(value_.contains(key));
     return value_[key];
   }
   bool Set(const std::string& key, const std::string& value, Error* /*error*/) {
@@ -606,7 +605,7 @@ TEST(PropertyAccessorTest, CustomMappedAccessor) {
     Error error;
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_FALSE(base::Contains(wrapper.value_, kKey));
+    EXPECT_FALSE(wrapper.value_.contains(kKey));
   }
 }
 

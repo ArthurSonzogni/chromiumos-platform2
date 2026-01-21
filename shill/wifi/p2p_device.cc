@@ -1033,7 +1033,7 @@ void P2PDevice::PeerJoined(const dbus::ObjectPath& peer) {
     return;
   }
 
-  if (base::Contains(group_peers_, peer)) {
+  if (group_peers_.contains(peer)) {
     LOG(WARNING) << "Ignored " << __func__
                  << " while already connected, path: " << peer.value();
     return;
@@ -1053,7 +1053,7 @@ void P2PDevice::PeerDisconnected(const dbus::ObjectPath& peer) {
     return;
   }
 
-  if (!base::Contains(group_peers_, peer)) {
+  if (!group_peers_.contains(peer)) {
     LOG(WARNING) << "Ignored " << __func__
                  << " while not connected, path: " << peer.value();
     return;

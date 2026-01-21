@@ -10,7 +10,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/stl_util.h>
@@ -159,9 +158,9 @@ void LoadApn(const StoreInterface* storage,
   // was an Attach APN. That property was replaced by |kApnTypesProperty| in
   // 2022Q4, but shill needs to migrate the old property into kApnTypesProperty
   // for devices updating from old OS versions.
-  if (!base::Contains(*apn_info, kApnTypesProperty)) {
+  if (!apn_info->contains(kApnTypesProperty)) {
     LoadApnField(storage, storage_group, keytag, kApnAttachProperty, apn_info);
-    if (base::Contains(*apn_info, kApnAttachProperty)) {
+    if (apn_info->contains(kApnAttachProperty)) {
       (*apn_info)[kApnTypesProperty] =
           ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
       apn_info->erase(kApnAttachProperty);
@@ -921,7 +920,7 @@ Stringmap CellularService::ValidateCustomApn(const Stringmap& value,
         new_apn_info[kApnTypesProperty] =
             ApnList::JoinApnTypes({kApnTypeIA, kApnTypeDefault});
         new_apn_info[kApnAttachProperty] = kApnAttachProperty;
-      } else if (!base::Contains(new_apn_info, kApnTypesProperty)) {
+      } else if (!new_apn_info.contains(kApnTypesProperty)) {
         // Skip setting |kApnTypesProperty| if the value was populated from the
         // modb.
         new_apn_info[kApnTypesProperty] =

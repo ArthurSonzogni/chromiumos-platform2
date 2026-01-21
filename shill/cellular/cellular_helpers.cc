@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -21,7 +20,7 @@ namespace shill {
 std::string GetStringmapValue(const Stringmap& string_map,
                               const std::string& key,
                               const std::string& default_value) {
-  if (!base::Contains(string_map, key)) {
+  if (!string_map.contains(key)) {
     return default_value;
   }
 
@@ -38,7 +37,7 @@ std::string GetPrintableApnValue(const Stringmap& apn_info,
   // or empty, or from the modem/MODB/fallback.
   bool print_unmasked =
       SLOG_IS_ON(Cellular, 3) || !sensitive_info || value.empty() ||
-      (base::Contains(apn_info, kApnSourceProperty) &&
+      (apn_info.contains(kApnSourceProperty) &&
        (apn_info.at(kApnSourceProperty) == kApnSourceMoDb ||
         apn_info.at(kApnSourceProperty) == kApnSourceModem ||
         apn_info.at(kApnSourceProperty) == cellular::kApnSourceFallback));

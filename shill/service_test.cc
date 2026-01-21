@@ -11,7 +11,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
@@ -2799,9 +2798,9 @@ TEST_F(ServiceTest, RequestTrafficCountersWithAttachedNetwork) {
   EXPECT_TRUE(successfully_requested_traffic_counters);
   for (const auto& dict : actual_traffic_counters) {
     EXPECT_EQ(3, dict.size());
-    EXPECT_TRUE(base::Contains(dict, "source"));
-    EXPECT_TRUE(base::Contains(dict, "rx_bytes"));
-    EXPECT_TRUE(base::Contains(dict, "tx_bytes"));
+    EXPECT_TRUE(dict.contains("source"));
+    EXPECT_TRUE(dict.contains("rx_bytes"));
+    EXPECT_TRUE(dict.contains("tx_bytes"));
 
     if (dict.at("source").TryGet<std::string>() == "CHROME") {
       EXPECT_EQ(12, dict.at("rx_bytes").TryGet<uint64_t>());
@@ -2878,9 +2877,9 @@ TEST_F(ServiceTest, RequestTrafficCountersWithExtraSource) {
   EXPECT_TRUE(successfully_requested_traffic_counters);
   for (const auto& dict : actual_traffic_counters) {
     EXPECT_EQ(3, dict.size());
-    EXPECT_TRUE(base::Contains(dict, "source"));
-    EXPECT_TRUE(base::Contains(dict, "rx_bytes"));
-    EXPECT_TRUE(base::Contains(dict, "tx_bytes"));
+    EXPECT_TRUE(dict.contains("source"));
+    EXPECT_TRUE(dict.contains("rx_bytes"));
+    EXPECT_TRUE(dict.contains("tx_bytes"));
 
     if (dict.at("source").TryGet<std::string>() == "CHROME") {
       EXPECT_EQ(40, dict.at("rx_bytes").TryGet<uint64_t>());
@@ -2953,9 +2952,9 @@ TEST_F(ServiceTest, RequestTrafficCountersAfterDetachingNetwork) {
   EXPECT_TRUE(successfully_requested_traffic_counters);
   for (const auto& dict : actual_traffic_counters) {
     EXPECT_EQ(3, dict.size());
-    EXPECT_TRUE(base::Contains(dict, "source"));
-    EXPECT_TRUE(base::Contains(dict, "rx_bytes"));
-    EXPECT_TRUE(base::Contains(dict, "tx_bytes"));
+    EXPECT_TRUE(dict.contains("source"));
+    EXPECT_TRUE(dict.contains("rx_bytes"));
+    EXPECT_TRUE(dict.contains("tx_bytes"));
 
     if (dict.at("source").TryGet<std::string>() == "CHROME") {
       EXPECT_EQ(12, dict.at("rx_bytes").TryGet<uint64_t>());
@@ -3015,9 +3014,9 @@ TEST_F(ServiceTest, RequestTrafficCountersWithoutAttachedNetwork) {
   EXPECT_EQ(2, actual_traffic_counters.size());
   for (const auto& dict : actual_traffic_counters) {
     EXPECT_EQ(3, dict.size());
-    EXPECT_TRUE(base::Contains(dict, "source"));
-    EXPECT_TRUE(base::Contains(dict, "rx_bytes"));
-    EXPECT_TRUE(base::Contains(dict, "tx_bytes"));
+    EXPECT_TRUE(dict.contains("source"));
+    EXPECT_TRUE(dict.contains("rx_bytes"));
+    EXPECT_TRUE(dict.contains("tx_bytes"));
 
     if (dict.at("source").TryGet<std::string>() == "CHROME") {
       EXPECT_EQ(48926, dict.at("rx_bytes").TryGet<uint64_t>());

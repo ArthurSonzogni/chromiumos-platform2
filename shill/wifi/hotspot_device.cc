@@ -8,7 +8,6 @@
 #include <optional>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <chromeos/net-base/mac_address.h>
 
@@ -273,7 +272,7 @@ void HotspotDevice::PropertiesChanged(const KeyValueStore& properties) {
 void HotspotDevice::StationAdded(const RpcIdentifier& path,
                                  const KeyValueStore& properties) {
   CHECK(link_name());
-  if (base::Contains(stations_, path)) {
+  if (stations_.contains(path)) {
     LOG(INFO) << "Received StationAdded event for " << path.value()
               << ", which is already in the list. Ignore.";
     return;
@@ -307,7 +306,7 @@ void HotspotDevice::StationAdded(const RpcIdentifier& path,
 
 void HotspotDevice::StationRemoved(const RpcIdentifier& path) {
   CHECK(link_name());
-  if (!base::Contains(stations_, path)) {
+  if (!stations_.contains(path)) {
     LOG(INFO) << "Receive StationRemoved event for " << path.value()
               << ", which is not in the list. Ignore.";
     return;

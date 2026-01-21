@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
@@ -55,23 +54,20 @@ PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed)
 PropertyStore::~PropertyStore() = default;
 
 bool PropertyStore::Contains(std::string_view prop) const {
-  return (base::Contains(bool_properties_, prop) ||
-          base::Contains(int16_properties_, prop) ||
-          base::Contains(int32_properties_, prop) ||
-          base::Contains(key_value_store_properties_, prop) ||
-          base::Contains(key_value_stores_properties_, prop) ||
-          base::Contains(string_properties_, prop) ||
-          base::Contains(stringmap_properties_, prop) ||
-          base::Contains(stringmaps_properties_, prop) ||
-          base::Contains(strings_properties_, prop) ||
-          base::Contains(uint8_properties_, prop) ||
-          base::Contains(bytearray_properties_, prop) ||
-          base::Contains(uint16_properties_, prop) ||
-          base::Contains(uint16s_properties_, prop) ||
-          base::Contains(uint32_properties_, prop) ||
-          base::Contains(uint64_properties_, prop) ||
-          base::Contains(rpc_identifier_properties_, prop) ||
-          base::Contains(rpc_identifiers_properties_, prop));
+  return (
+      bool_properties_.contains(prop) || int16_properties_.contains(prop) ||
+      int32_properties_.contains(prop) ||
+      key_value_store_properties_.contains(prop) ||
+      key_value_stores_properties_.contains(prop) ||
+      string_properties_.contains(prop) ||
+      stringmap_properties_.contains(prop) ||
+      stringmaps_properties_.contains(prop) ||
+      strings_properties_.contains(prop) || uint8_properties_.contains(prop) ||
+      bytearray_properties_.contains(prop) ||
+      uint16_properties_.contains(prop) || uint16s_properties_.contains(prop) ||
+      uint32_properties_.contains(prop) || uint64_properties_.contains(prop) ||
+      rpc_identifier_properties_.contains(prop) ||
+      rpc_identifiers_properties_.contains(prop));
 }
 
 void PropertyStore::SetAnyProperty(std::string_view name,

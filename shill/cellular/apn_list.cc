@@ -9,7 +9,6 @@
 #include <string_view>
 #include <tuple>
 
-#include <base/containers/contains.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -50,7 +49,7 @@ void ApnList::AddApn(const MobileAPN& mobile_apn, ApnSource source) {
   Stringmap* props;
   if (merge_similar_apns_) {
     ApnList::ApnIndexKey index = GetKey(mobile_apn);
-    if (!base::Contains(apn_index_, index)) {
+    if (!apn_index_.contains(index)) {
       apn_dict_list_.emplace_back();
       apn_index_[index] = apn_dict_list_.size() - 1;
     }
@@ -128,7 +127,7 @@ std::string ApnList::GetApnTypeString(enum ApnType apn_type) {
 }
 
 bool ApnList::IsApnType(const Stringmap& apn_info, enum ApnType apn_type) {
-  if (!base::Contains(apn_info, kApnTypesProperty)) {
+  if (!apn_info.contains(kApnTypesProperty)) {
     SLOG(1) << "APN info does not contain the apn_types property. APN:"
             << GetStringmapValue(apn_info, kApnProperty);
     return false;

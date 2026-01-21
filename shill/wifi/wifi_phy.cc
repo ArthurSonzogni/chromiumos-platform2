@@ -9,7 +9,6 @@
 #include <string_view>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/rand_util.h>
 #include <chromeos/net-base/attribute_list.h>
 #include <chromeos/net-base/netlink_attribute.h>
@@ -42,7 +41,7 @@ void WiFiPhy::DeleteWiFiDevice(std::string_view link_name) {
 }
 
 void WiFiPhy::WiFiDeviceStateChanged(WiFiConstRefPtr device) {
-  if (!base::Contains(wifi_devices_, device)) {
+  if (!wifi_devices_.contains(device)) {
     LOG(INFO) << "Phy " << phy_index_
               << " received state change for unregistered device: "
               << device->link_name();
@@ -72,7 +71,7 @@ void WiFiPhy::OnNewWiphy(const Nl80211Message& nl80211_message) {
 }
 
 bool WiFiPhy::SupportsIftype(nl80211_iftype iftype) const {
-  return base::Contains(supported_ifaces_, iftype);
+  return supported_ifaces_.contains(iftype);
 }
 
 void WiFiPhy::ParseInterfaceTypes(const Nl80211Message& nl80211_message) {
@@ -266,7 +265,7 @@ bool WiFiPhy::CombSupportsConcurrency(
     // Step through each limit of |comb|.
     for (uint32_t i = 0; i < comb.limits.size(); i++) {
       auto limit = comb.limits[i];
-      if (base::Contains(limit.iftypes, desired_iface)) {
+      if (std::ranges::contains(limit.iftypes, desired_iface)) {
         iface_found = true;
         // If we find desired iftype within |comb|, increment the count for this
         // limit.
@@ -520,12 +519,8 @@ void WiFiPhy::AddDefaultCombinationForType(nl80211_iftype iftype) {
     }
   }
   // Default combination for iftype not found, so add it.
-  struct IfaceLimit limit {
-    {iftype}, 1
-  };
-  struct ConcurrencyCombination comb {
-    {limit}, 1, 1
-  };
+  struct IfaceLimit limit{{iftype}, 1};
+  struct ConcurrencyCombination comb{{limit}, 1, 1};
   concurrency_combs_.insert(comb);
 }
 

@@ -6,7 +6,6 @@
 
 #include <iterator>
 
-#include <base/containers/contains.h>
 #include <gtest/gtest.h>
 
 namespace shill {
@@ -54,7 +53,7 @@ TEST_F(EnvironmentTest, AsMap) {
   }
   std::map<std::string, std::string> env = environment_->AsMap();
   for (size_t i = 0; i < std::size(kVarNames); i++) {
-    EXPECT_TRUE(base::Contains(env, kVarNames[i])) << kVarNames[i];
+    EXPECT_TRUE(env.contains(kVarNames[i])) << kVarNames[i];
     EXPECT_EQ(kVarValues[i], env[kVarNames[i]]) << kVarNames[i];
     EXPECT_EQ(0, unsetenv(kVarNames[i])) << kVarNames[i];
   }

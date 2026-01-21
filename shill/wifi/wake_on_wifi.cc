@@ -18,7 +18,6 @@
 #include <base/cancelable_callback.h>
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -414,14 +413,14 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
   net_base::AttributeListConstRefPtr unused_list;
   if (triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
                                       &unused_flag) &&
-      !base::Contains(trigs, kWakeTriggerDisconnect)) {
+      !trigs.contains(kWakeTriggerDisconnect)) {
     SLOG(2) << __func__
             << ": Wake on disconnect trigger not expected but found";
     return false;
   }
   if (triggers->ConstGetNestedAttributeList(NL80211_WOWLAN_TRIG_NET_DETECT,
                                             &unused_list) &&
-      !base::Contains(trigs, kWakeTriggerSSID)) {
+      !trigs.contains(kWakeTriggerSSID)) {
     SLOG(2) << __func__ << ": Wake on SSID trigger not expected but found";
     return false;
   }
@@ -497,7 +496,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
                           "NL80211_SCHED_SCAN_MATCH_ATTR_SSID";
             return false;
           }
-          if (!base::Contains(expected_ssids, ssid)) {
+          if (!expected_ssids.contains(ssid)) {
             ssid_mismatch_found = true;
             break;
           } else {
@@ -694,9 +693,8 @@ bool WakeOnWiFi::WakeOnWiFiDarkConnectEnabledAndSupported() {
   if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone) {
     return false;
   }
-  if (!base::Contains(wake_on_wifi_triggers_supported_,
-                      kWakeTriggerDisconnect) ||
-      !base::Contains(wake_on_wifi_triggers_supported_, kWakeTriggerSSID)) {
+  if (!wake_on_wifi_triggers_supported_.contains(kWakeTriggerDisconnect) ||
+      !wake_on_wifi_triggers_supported_.contains(kWakeTriggerSSID)) {
     return false;
   }
   return true;

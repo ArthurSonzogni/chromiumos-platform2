@@ -365,7 +365,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
         .WillByDefault(Return(ByMove(std::move(peer_proxy))));
     go_device_->PeerJoined(peer_path);
 
-    EXPECT_TRUE(base::Contains(go_device_->group_peers_, peer_path));
+    EXPECT_TRUE(go_device_->group_peers_.contains(peer_path));
     EXPECT_EQ(go_device_->group_peers_.size(), peer_id + 1);
   }
   DispatchPendingEvents();
@@ -407,7 +407,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
             num_of_peers);
   auto group_clients = group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty);
   for (auto const& client : group_clients) {
-    EXPECT_TRUE(base::Contains(client, kP2PGroupInfoClientMACAddressProperty));
+    EXPECT_TRUE(client.contains(kP2PGroupInfoClientMACAddressProperty));
   }
 
   // kGOStopping
@@ -685,7 +685,7 @@ TEST_F(P2PDeviceTest, PeerJoinAndDisconnect) {
         .WillByDefault(Return(ByMove(std::move(peer_proxy))));
     go_device_->PeerJoined(peer_path);
 
-    EXPECT_TRUE(base::Contains(go_device_->group_peers_, peer_path));
+    EXPECT_TRUE(go_device_->group_peers_.contains(peer_path));
     EXPECT_EQ(go_device_->group_peers_.size(), peer_id + 1);
   }
   DispatchPendingEvents();
@@ -707,7 +707,7 @@ TEST_F(P2PDeviceTest, PeerJoinAndDisconnect) {
 
     go_device_->PeerDisconnected(peer_path);
 
-    EXPECT_FALSE(base::Contains(go_device_->group_peers_, peer_path));
+    EXPECT_FALSE(go_device_->group_peers_.contains(peer_path));
     EXPECT_EQ(go_device_->group_peers_.size(), num_of_peers - peer_id - 1);
   }
   DispatchPendingEvents();

@@ -22,7 +22,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
@@ -924,7 +923,7 @@ ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
   }
 
   ServiceRefPtr service = nullptr;
-  if (base::Contains(providers_, technology)) {
+  if (providers_.contains(technology)) {
     service = providers_[technology]->CreateTemporaryServiceFromProfile(
         profile, entry_name, error);
   }
@@ -983,7 +982,7 @@ bool Manager::IsTechnologyInList(const std::string& technology_list,
   std::vector<Technology> technologies;
   return GetTechnologyVectorFromString(technology_list, &technologies,
                                        &error) &&
-         base::Contains(technologies, tech);
+         std::ranges::contains(technologies, tech);
 }
 
 bool Manager::IsPortalDetectionEnabled(Technology tech) {
@@ -2070,7 +2069,7 @@ void Manager::TechnologyEnabledCheck() {
   std::vector<std::string> enabled_technologies = EnabledTechnologies(&error);
 
   for (const auto& technology : kProbeTechnologies) {
-    auto enabled = base::Contains(enabled_technologies, technology)
+    auto enabled = std::ranges::contains(enabled_technologies, technology)
                        ? Metrics::kTechnologyEnabledYes
                        : Metrics::kTechnologyEnabledNo;
     metrics_->SendEnumToUMA(Metrics::kMetricTechnologyEnabled,
@@ -2084,7 +2083,7 @@ void Manager::DevicePresenceStatusCheck() {
       AvailableTechnologies(&error);
 
   for (const auto& technology : kProbeTechnologies) {
-    auto presence = base::Contains(available_technologies, technology)
+    auto presence = std::ranges::contains(available_technologies, technology)
                         ? Metrics::kDevicePresenceStatusYes
                         : Metrics::kDevicePresenceStatusNo;
     metrics_->SendEnumToUMA(Metrics::kMetricDevicePresenceStatus,
@@ -2220,7 +2219,7 @@ void Manager::ConnectToBestServicesForTechnologies(bool is_wifi) {
       // Non-primary services need some other service connected first.
       continue;
     }
-    if (base::Contains(connecting_technologies, technology)) {
+    if (connecting_technologies.contains(technology)) {
       // We have already started a connection for this technology.
       continue;
     }
@@ -2506,7 +2505,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
 
   std::string type = args.Get<std::string>(kTypeProperty);
   Technology technology = TechnologyFromName(type);
-  if (!base::Contains(providers_, technology)) {
+  if (!providers_.contains(technology)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kTechnologyNotAvailable,
         "Could not get service for technology: " + TechnologyName(technology));
@@ -2595,7 +2594,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   std::string type = args.Get<std::string>(kTypeProperty);
   Technology technology = TechnologyFromName(type);
 
-  if (!base::Contains(providers_, technology)) {
+  if (!providers_.contains(technology)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kTechnologyNotAvailable,
                           "Failed to configure service for technology: " +
                               TechnologyName(technology));

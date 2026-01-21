@@ -16,7 +16,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/format_macros.h>
 #include <base/functional/bind.h>
 #include <base/strings/string_number_conversions.h>
@@ -665,7 +664,7 @@ ByteArrays WiFiProvider::GetHiddenSSIDList() {
   ByteArrays hidden_ssids;
   for (const auto& service : services_) {
     if (service->hidden_ssid() && service->IsRemembered()) {
-      if (base::Contains(hidden_ssids, service->ssid())) {
+      if (std::ranges::contains(hidden_ssids, service->ssid())) {
         LOG(WARNING) << "Duplicate HiddenSSID: " << service->log_name();
         continue;
       }
@@ -1137,7 +1136,7 @@ void WiFiProvider::PhyDumpComplete(uint32_t phy_index) {
     return;
   }
 
-  if (!base::Contains(wifi_phys_, phy_index)) {
+  if (!wifi_phys_.contains(phy_index)) {
     LOG(ERROR) << "Invalid PHY index: " << phy_index;
     return;
   }
@@ -1177,7 +1176,7 @@ void WiFiProvider::OnNewWiphy(const Nl80211Message& nl80211_message) {
 
   // Get the WiFiPhy object at phy_index, or create a new WiFiPhy if there isn't
   // one.
-  if (!base::Contains(wifi_phys_, phy_index)) {
+  if (!wifi_phys_.contains(phy_index)) {
     SLOG(2) << "Adding a new phy object at index: " << phy_index;
     wifi_phys_[phy_index] = std::make_unique<WiFiPhy>(phy_index);
   }
@@ -1223,7 +1222,7 @@ void WiFiProvider::HandleNetlinkBroadcast(
   // WiFiPhy object. Request the phy at this index to get us back in sync.
   // This is needed because the WiFi driver may not broadcast an
   // NL80211_CMD_NEW_WIPHY when a new phy comes online.
-  if (!base::Contains(wifi_phys_, phy_index)) {
+  if (!wifi_phys_.contains(phy_index)) {
     SLOG(2) << "Recieved command " << nl80211_message.command_string()
             << " for unknown phy at index " << phy_index
             << " requesting phy info";
@@ -1244,7 +1243,7 @@ std::string WiFiProvider::GetPrimaryLinkName() const {
 }
 
 const WiFiPhy* WiFiProvider::GetPhyAtIndex(uint32_t phy_index) {
-  if (!base::Contains(wifi_phys_, phy_index)) {
+  if (!wifi_phys_.contains(phy_index)) {
     return nullptr;
   }
   return wifi_phys_[phy_index].get();
@@ -1261,7 +1260,7 @@ std::vector<const WiFiPhy*> WiFiProvider::GetPhys() const {
 void WiFiProvider::RegisterDeviceToPhy(WiFiConstRefPtr device,
                                        uint32_t phy_index) {
   CHECK(device);
-  CHECK(base::Contains(wifi_phys_, phy_index))
+  CHECK(wifi_phys_.contains(phy_index))
       << "Tried to register WiFi device " << device->link_name()
       << " to phy_index: " << phy_index << " but the phy does not exist";
   SLOG(2) << "Registering WiFi device " << device->link_name()
@@ -1273,14 +1272,13 @@ void WiFiProvider::DeregisterDeviceFromPhy(std::string_view link_name,
                                            uint32_t phy_index) {
   SLOG(2) << "Deregistering WiFi device " << link_name
           << " from phy_index: " << phy_index;
-  if (base::Contains(wifi_phys_, phy_index) &&
-      wifi_phys_[phy_index] != nullptr) {
+  if (wifi_phys_.contains(phy_index) && wifi_phys_[phy_index] != nullptr) {
     wifi_phys_[phy_index]->DeleteWiFiDevice(link_name);
   }
 }
 
 void WiFiProvider::WiFiDeviceStateChanged(WiFiConstRefPtr device) {
-  if (base::Contains(wifi_phys_, device->phy_index())) {
+  if (wifi_phys_.contains(device->phy_index())) {
     wifi_phys_[device->phy_index()]->WiFiDeviceStateChanged(device);
   }
   ProcessDeviceRequests();
@@ -1381,7 +1379,7 @@ std::string WiFiProvider::GetUniqueLocalDeviceName(
   std::string link_name;
   do {
     link_name = iface_prefix + std::to_string(link_name_idx++);
-  } while (base::Contains(local_devices_, link_name));
+  } while (local_devices_.contains(link_name));
 
   return link_name;
 }
@@ -1393,11 +1391,11 @@ void WiFiProvider::RegisterLocalDevice(LocalDeviceRefPtr device) {
   uint32_t phy_index = device->phy_index();
   std::string link_name = *device->link_name();
 
-  if (base::Contains(local_devices_, link_name)) {
+  if (local_devices_.contains(link_name)) {
     return;
   }
 
-  CHECK(base::Contains(wifi_phys_, phy_index))
+  CHECK(wifi_phys_.contains(phy_index))
       << "Tried to register WiFi local device " << link_name
       << " to phy_index: " << phy_index << " but the phy does not exist";
 
@@ -1418,7 +1416,7 @@ void WiFiProvider::DeregisterLocalDevice(LocalDeviceConstRefPtr device) {
 
   SLOG(2) << "Deregistering WiFi local device " << link_name
           << " from phy_index: " << phy_index;
-  if (base::Contains(wifi_phys_, phy_index)) {
+  if (wifi_phys_.contains(phy_index)) {
     wifi_phys_[phy_index]->DeleteWiFiLocalDevice(device);
   }
   local_devices_.erase(link_name);
@@ -1556,7 +1554,7 @@ void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {
   }
   // If the device has a link_name, then we can only deregister it if it is
   // already registered.
-  if (!base::Contains(local_devices_, *device->link_name())) {
+  if (!local_devices_.contains(*device->link_name())) {
     return;
   }
   DeregisterLocalDevice(device);

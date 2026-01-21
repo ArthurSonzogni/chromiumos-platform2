@@ -4,16 +4,17 @@
 
 #include "shill/ethernet/ethernet_provider.h"
 
+#include <algorithm>
+
+#include <base/check.h>
+#include <base/check_op.h>
+#include <base/logging.h>
+
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/ethernet/ethernet_temporary_service.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/store/store_interface.h"
-
-#include <base/check.h>
-#include <base/check_op.h>
-#include <base/containers/contains.h>
-#include <base/logging.h>
 
 namespace shill {
 
@@ -79,7 +80,7 @@ void EthernetProvider::RegisterService(EthernetServiceRefPtr service) {
   // Add the service to the services_ list and register it with the Manager.
   // A service is registered with the Manager if and only if it is also
   // registered with the EthernetProvider.
-  if (base::Contains(services_, service)) {
+  if (std::ranges::contains(services_, service)) {
     LOG(INFO) << "Reusing existing Ethernet service.";
     return;
   }
@@ -94,7 +95,7 @@ void EthernetProvider::DeregisterService(EthernetServiceRefPtr service) {
   // service. Otherwise, turn it into the ethernet_any service. A service is
   // deregistered with the Manager if and only if it is also deregistered with
   // the EthernetProvider.
-  CHECK(base::Contains(services_, service))
+  CHECK(std::ranges::contains(services_, service))
       << "De-registering an unregistered service";
   if (services_.size() == 1 && service->HasEthernet()) {
     service->ResetEthernet();
@@ -136,7 +137,7 @@ void EthernetProvider::RefreshGenericEthernetService() {
   // Device, release the service as there should no longer be any other
   // references to it.
   service_->ResetStorageIdentifier();
-  if (base::Contains(services_, service_)) {
+  if (std::ranges::contains(services_, service_)) {
     if (service_->HasEthernet()) {
       manager_->MatchProfileWithService(service_);
     } else {

@@ -11,7 +11,6 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
@@ -751,17 +750,17 @@ void Metrics::NotifyCellularNetworkValidationResult(
     roaming = kCellularRoamingStateRoaming;
   }
 
-  DCHECK(base::Contains(result.apn_info, kApnSourceProperty));
-  if (base::Contains(result.apn_info, kApnSourceProperty)) {
+  DCHECK(result.apn_info.contains(kApnSourceProperty));
+  if (result.apn_info.contains(kApnSourceProperty)) {
     if (result.apn_info.at(kApnSourceProperty) == kApnSourceMoDb ||
         result.apn_info.at(kApnSourceProperty) == kApnSourceModem) {
-      if (base::Contains(result.apn_info, kApnProperty)) {
+      if (result.apn_info.contains(kApnProperty)) {
         apn_name = result.apn_info.at(kApnProperty);
       }
-      if (base::Contains(result.apn_info, kApnUsernameProperty)) {
+      if (result.apn_info.contains(kApnUsernameProperty)) {
         username = result.apn_info.at(kApnUsernameProperty);
       }
-      if (base::Contains(result.apn_info, kApnPasswordProperty)) {
+      if (result.apn_info.contains(kApnPasswordProperty)) {
         password = result.apn_info.at(kApnPasswordProperty);
       }
     }
@@ -822,8 +821,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
     roaming = kCellularRoamingStateRoaming;
   }
 
-  DCHECK(base::Contains(result.apn_info, kApnSourceProperty));
-  if (base::Contains(result.apn_info, kApnSourceProperty)) {
+  DCHECK(result.apn_info.contains(kApnSourceProperty));
+  if (result.apn_info.contains(kApnSourceProperty)) {
     if (result.apn_info.at(kApnSourceProperty) == kApnSourceMoDb) {
       apn_source = kCellularApnSourceMoDb;
     } else if (result.apn_info.at(kApnSourceProperty) == kApnSourceUi) {
@@ -839,13 +838,13 @@ void Metrics::NotifyDetailedCellularConnectionResult(
 
     if (result.apn_info.at(kApnSourceProperty) == kApnSourceMoDb ||
         result.apn_info.at(kApnSourceProperty) == kApnSourceModem) {
-      if (base::Contains(result.apn_info, kApnProperty)) {
+      if (result.apn_info.contains(kApnProperty)) {
         apn_name = result.apn_info.at(kApnProperty);
       }
-      if (base::Contains(result.apn_info, kApnUsernameProperty)) {
+      if (result.apn_info.contains(kApnUsernameProperty)) {
         username = result.apn_info.at(kApnUsernameProperty);
       }
-      if (base::Contains(result.apn_info, kApnPasswordProperty)) {
+      if (result.apn_info.contains(kApnPasswordProperty)) {
         password = result.apn_info.at(kApnPasswordProperty);
       }
     }

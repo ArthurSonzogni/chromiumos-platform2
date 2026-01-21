@@ -4,7 +4,6 @@
 
 #include "shill/cellular/apn_list.h"
 
-#include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <gtest/gtest.h>
@@ -70,8 +69,8 @@ TEST(ApnListTest, AddApnWithMerge) {
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass2");
   EXPECT_STREQ(apn->at(kApnAuthenticationProperty).c_str(), "CHAP");
   EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), kApnSourceModem);
-  EXPECT_FALSE(base::Contains(*apn, kApnNameProperty));
-  EXPECT_FALSE(base::Contains(*apn, kApnLocalizedNameProperty));
+  EXPECT_FALSE(apn->contains(kApnNameProperty));
+  EXPECT_FALSE(apn->contains(kApnLocalizedNameProperty));
 
   std::vector<MobileAPN> mobile_apns2;
   mobile_apn1.operator_name_list = {{"OPERATOR3", ""}};
@@ -151,8 +150,8 @@ TEST(ApnListTest, AddApnWithoutMerge) {
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass2");
   EXPECT_STREQ(apn->at(kApnAuthenticationProperty).c_str(), "CHAP");
   EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), kApnSourceModem);
-  EXPECT_FALSE(base::Contains(*apn, kApnNameProperty));
-  EXPECT_FALSE(base::Contains(*apn, kApnLocalizedNameProperty));
+  EXPECT_FALSE(apn->contains(kApnNameProperty));
+  EXPECT_FALSE(apn->contains(kApnLocalizedNameProperty));
 
   EXPECT_EQ(apns.at(1), apns.at(2));
 }

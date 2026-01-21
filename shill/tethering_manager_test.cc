@@ -6,6 +6,7 @@
 
 #include <sys/socket.h>
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <set>
@@ -14,7 +15,6 @@
 #include <vector>
 
 #include <base/cancelable_callback.h>
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
@@ -571,16 +571,16 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   auto upstream_technologies =
       caps.Get<std::vector<std::string>>(kTetheringCapUpstreamProperty);
   EXPECT_FALSE(upstream_technologies.empty());
-  EXPECT_TRUE(base::Contains(upstream_technologies, kTypeEthernet));
-  EXPECT_TRUE(base::Contains(upstream_technologies, kTypeCellular));
-  EXPECT_FALSE(base::Contains(upstream_technologies, kTypeWifi));
+  EXPECT_TRUE(std::ranges::contains(upstream_technologies, kTypeEthernet));
+  EXPECT_TRUE(std::ranges::contains(upstream_technologies, kTypeCellular));
+  EXPECT_FALSE(std::ranges::contains(upstream_technologies, kTypeWifi));
 
   auto downstream_technologies =
       caps.Get<std::vector<std::string>>(kTetheringCapDownstreamProperty);
   EXPECT_FALSE(downstream_technologies.empty());
-  EXPECT_FALSE(base::Contains(downstream_technologies, kTypeEthernet));
-  EXPECT_FALSE(base::Contains(downstream_technologies, kTypeCellular));
-  EXPECT_TRUE(base::Contains(downstream_technologies, kTypeWifi));
+  EXPECT_FALSE(std::ranges::contains(downstream_technologies, kTypeEthernet));
+  EXPECT_FALSE(std::ranges::contains(downstream_technologies, kTypeCellular));
+  EXPECT_TRUE(std::ranges::contains(downstream_technologies, kTypeWifi));
 
   std::vector<std::string> wifi_security =
       caps.Get<std::vector<std::string>>(kTetheringCapSecurityProperty);
@@ -600,9 +600,9 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutWiFi) {
   auto upstream_technologies =
       caps.Get<std::vector<std::string>>(kTetheringCapUpstreamProperty);
   EXPECT_FALSE(upstream_technologies.empty());
-  EXPECT_TRUE(base::Contains(upstream_technologies, kTypeEthernet));
-  EXPECT_TRUE(base::Contains(upstream_technologies, kTypeCellular));
-  EXPECT_FALSE(base::Contains(upstream_technologies, kTypeWifi));
+  EXPECT_TRUE(std::ranges::contains(upstream_technologies, kTypeEthernet));
+  EXPECT_TRUE(std::ranges::contains(upstream_technologies, kTypeCellular));
+  EXPECT_FALSE(std::ranges::contains(upstream_technologies, kTypeWifi));
 
   auto downstream_technologies =
       caps.Get<std::vector<std::string>>(kTetheringCapDownstreamProperty);
@@ -628,16 +628,16 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutCellular) {
   auto upstream_technologies =
       caps.Get<std::vector<std::string>>(kTetheringCapUpstreamProperty);
   EXPECT_FALSE(upstream_technologies.empty());
-  EXPECT_TRUE(base::Contains(upstream_technologies, kTypeEthernet));
-  EXPECT_FALSE(base::Contains(upstream_technologies, kTypeCellular));
-  EXPECT_FALSE(base::Contains(upstream_technologies, kTypeWifi));
+  EXPECT_TRUE(std::ranges::contains(upstream_technologies, kTypeEthernet));
+  EXPECT_FALSE(std::ranges::contains(upstream_technologies, kTypeCellular));
+  EXPECT_FALSE(std::ranges::contains(upstream_technologies, kTypeWifi));
 
   auto downstream_technologies =
       caps.Get<std::vector<std::string>>(kTetheringCapDownstreamProperty);
   EXPECT_FALSE(downstream_technologies.empty());
-  EXPECT_FALSE(base::Contains(downstream_technologies, kTypeEthernet));
-  EXPECT_FALSE(base::Contains(downstream_technologies, kTypeCellular));
-  EXPECT_TRUE(base::Contains(downstream_technologies, kTypeWifi));
+  EXPECT_FALSE(std::ranges::contains(downstream_technologies, kTypeEthernet));
+  EXPECT_FALSE(std::ranges::contains(downstream_technologies, kTypeCellular));
+  EXPECT_TRUE(std::ranges::contains(downstream_technologies, kTypeWifi));
 
   std::vector<std::string> wifi_security =
       caps.Get<std::vector<std::string>>(kTetheringCapSecurityProperty);
@@ -1793,7 +1793,7 @@ TEST_F(TetheringManagerTest, MARWithSSIDChange) {
 }
 
 MATCHER_P(IsContained, container, "") {
-  return base::Contains(container, arg);
+  return container.contains(arg);
 }
 
 TEST_F(TetheringManagerTest, MARWithTetheringRestart) {

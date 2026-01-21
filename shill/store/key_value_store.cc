@@ -8,7 +8,6 @@
 #include <string_view>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 
 #include "shill/logging.h"
 
@@ -37,7 +36,7 @@ bool KeyValueStore::operator!=(const KeyValueStore& rhs) const {
 }
 
 bool KeyValueStore::ContainsVariant(std::string_view name) const {
-  return base::Contains(properties_, name);
+  return properties_.contains(name);
 }
 
 const brillo::Any& KeyValueStore::GetVariant(std::string_view name) const {

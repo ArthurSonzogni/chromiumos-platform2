@@ -31,7 +31,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -266,7 +265,7 @@ void DeviceInfo::AllowDevice(const std::string& device_name) {
 }
 
 bool DeviceInfo::IsDeviceBlocked(const std::string& device_name) {
-  return base::Contains(blocked_list_, device_name);
+  return blocked_list_.contains(device_name);
 }
 
 void DeviceInfo::Start() {
@@ -303,7 +302,7 @@ std::vector<std::string> DeviceInfo::GetUninitializedTechnologies() const {
       continue;
     }
     if (IsPrimaryConnectivityTechnology(technology) &&
-        !base::Contains(initialized_technologies, technology)) {
+        !initialized_technologies.contains(technology)) {
       unique_technologies.insert(TechnologyName(technology));
     }
   }
@@ -1249,7 +1248,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
     int dev_index = *it;
     delayed_devices_.erase(it);
 
-    DCHECK(base::Contains(infos_, dev_index));
+    DCHECK(infos_.contains(dev_index));
     DCHECK(!GetDevice(dev_index));
 
     const std::string& link_name = infos_[dev_index].name;

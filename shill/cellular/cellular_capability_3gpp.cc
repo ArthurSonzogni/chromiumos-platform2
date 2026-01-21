@@ -11,7 +11,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
@@ -909,7 +908,7 @@ KeyValueStore CellularCapability3gpp::ConnectionAttemptNextProperties(
 
   // Initialize APN related properties from the first entry in the try list.
   const Stringmap& apn_info = attempt->apn_try_list.front();
-  DCHECK(base::Contains(apn_info, kApnProperty));
+  DCHECK(apn_info.contains(kApnProperty));
   LOG(INFO) << "Next connection attempt ("
             << ApnList::GetApnTypeString(apn_type) << ") will run using APN '"
             << GetPrintableApnStringmap(apn_info) << "'";
@@ -920,7 +919,7 @@ KeyValueStore CellularCapability3gpp::ConnectionAttemptNextProperties(
 
 void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
                                               KeyValueStore* properties) {
-  if (base::Contains(apn_info, kApnProfileIdProperty)) {
+  if (apn_info.contains(kApnProfileIdProperty)) {
     int32_t profile_id;
     if (base::StringToInt(apn_info.at(kApnProfileIdProperty), &profile_id)) {
       properties->Set<int32_t>(CellularBearer::kMMProfileIdProperty,
@@ -935,23 +934,23 @@ void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
                  << "\" in APN details, ignoring";
   }
 
-  DCHECK(base::Contains(apn_info, kApnProperty));
+  DCHECK(apn_info.contains(kApnProperty));
   properties->Set<std::string>(CellularBearer::kMMApnProperty,
                                apn_info.at(kApnProperty));
-  if (base::Contains(apn_info, kApnUsernameProperty)) {
+  if (apn_info.contains(kApnUsernameProperty)) {
     properties->Set<std::string>(CellularBearer::kMMUserProperty,
                                  apn_info.at(kApnUsernameProperty));
   }
-  if (base::Contains(apn_info, kApnPasswordProperty)) {
+  if (apn_info.contains(kApnPasswordProperty)) {
     properties->Set<std::string>(CellularBearer::kMMPasswordProperty,
                                  apn_info.at(kApnPasswordProperty));
   }
   MMBearerAllowedAuth allowed_auth = MM_BEARER_ALLOWED_AUTH_UNKNOWN;
-  if (base::Contains(apn_info, kApnAuthenticationProperty)) {
+  if (apn_info.contains(kApnAuthenticationProperty)) {
     allowed_auth = ApnAuthenticationToMMBearerAllowedAuth(
         apn_info.at(kApnAuthenticationProperty));
-  } else if (base::Contains(apn_info, kApnUsernameProperty) ||
-             base::Contains(apn_info, kApnPasswordProperty)) {
+  } else if (apn_info.contains(kApnUsernameProperty) ||
+             apn_info.contains(kApnPasswordProperty)) {
     // Always fallback to CHAP if there is no authentication set.
     allowed_auth = MM_BEARER_ALLOWED_AUTH_CHAP;
   }
@@ -960,11 +959,11 @@ void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
                               allowed_auth);
   }
   if (registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING &&
-      base::Contains(apn_info, kApnRoamingIpTypeProperty)) {
+      apn_info.contains(kApnRoamingIpTypeProperty)) {
     properties->Set<uint32_t>(
         CellularBearer::kMMIpTypeProperty,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnRoamingIpTypeProperty)));
-  } else if (base::Contains(apn_info, kApnIpTypeProperty)) {
+  } else if (apn_info.contains(kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
         CellularBearer::kMMIpTypeProperty,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
@@ -1114,24 +1113,24 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
   LOG(INFO) << __func__ << ": Using Attach APN '"
             << GetPrintableApnStringmap(apn_info) << "' "
             << "force: " << cellular()->GetForceInitEpsBearerSettings();
-  if (base::Contains(apn_info, kApnProperty)) {
+  if (apn_info.contains(kApnProperty)) {
     properties->Set<std::string>(CellularBearer::kMMApnProperty,
                                  apn_info.at(kApnProperty));
   }
-  if (base::Contains(apn_info, kApnUsernameProperty)) {
+  if (apn_info.contains(kApnUsernameProperty)) {
     properties->Set<std::string>(CellularBearer::kMMUserProperty,
                                  apn_info.at(kApnUsernameProperty));
   }
-  if (base::Contains(apn_info, kApnPasswordProperty)) {
+  if (apn_info.contains(kApnPasswordProperty)) {
     properties->Set<std::string>(CellularBearer::kMMPasswordProperty,
                                  apn_info.at(kApnPasswordProperty));
   }
   MMBearerAllowedAuth allowed_auth = MM_BEARER_ALLOWED_AUTH_UNKNOWN;
-  if (base::Contains(apn_info, kApnAuthenticationProperty)) {
+  if (apn_info.contains(kApnAuthenticationProperty)) {
     allowed_auth = ApnAuthenticationToMMBearerAllowedAuth(
         apn_info.at(kApnAuthenticationProperty));
-  } else if (base::Contains(apn_info, kApnUsernameProperty) ||
-             base::Contains(apn_info, kApnPasswordProperty)) {
+  } else if (apn_info.contains(kApnUsernameProperty) ||
+             apn_info.contains(kApnPasswordProperty)) {
     // Always fallback to CHAP if there is no authentication set.
     allowed_auth = MM_BEARER_ALLOWED_AUTH_CHAP;
   }
@@ -1139,7 +1138,7 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
     properties->Set<uint32_t>(CellularBearer::kMMAllowedAuthProperty,
                               allowed_auth);
   }
-  if (base::Contains(apn_info, kApnIpTypeProperty)) {
+  if (apn_info.contains(kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
         CellularBearer::kMMIpTypeProperty,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
@@ -1546,9 +1545,9 @@ Stringmap CellularCapability3gpp::ParseScanResult(const ScanResult& result) {
 
   // If the long name is not available but the network ID is, look up the long
   // name in the mobile provider database.
-  if ((!base::Contains(parsed, kLongNameProperty) ||
+  if ((!parsed.contains(kLongNameProperty) ||
        parsed[kLongNameProperty].empty()) &&
-      base::Contains(parsed, kNetworkIdProperty)) {
+      parsed.contains(kNetworkIdProperty)) {
     parsed_scan_result_operator_info_->Reset();
     parsed_scan_result_operator_info_->UpdateMCCMNC(parsed[kNetworkIdProperty]);
     if (parsed_scan_result_operator_info_->IsHomeOperatorKnown() &&
@@ -2252,7 +2251,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   for (const auto& profile : profiles) {
     // We only care about non-user profiles, so if we have information about the
     // source of each profile, filter out the unwanted ones.
-    if (base::Contains(profile, CellularBearer::kMMProfileSourceProperty)) {
+    if (profile.contains(CellularBearer::kMMProfileSourceProperty)) {
       MMBearerProfileSource source = static_cast<MMBearerProfileSource>(
           brillo::GetVariantValueOrDefault<uint32_t>(
               profile, CellularBearer::kMMProfileSourceProperty));
@@ -2289,7 +2288,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
     // they are explicitly flagged with a valid APN type. This type of check was
     // originally being done by MM, before it started to list profiles without
     // an explicit APN type.
-    if (!base::Contains(profile, CellularBearer::kMMApnTypeProperty)) {
+    if (!profile.contains(CellularBearer::kMMApnTypeProperty)) {
       SLOG(this, 3) << __func__ << ": ignoring profile with no type.";
       n_no_apn_type++;
       continue;
@@ -2316,12 +2315,12 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
         MMBearerAllowedAuthToApnAuthentication(static_cast<MMBearerAllowedAuth>(
             brillo::GetVariantValueOrDefault<uint32_t>(
                 profile, CellularBearer::kMMAllowedAuthProperty)));
-    if (base::Contains(profile, CellularBearer::kMMIpTypeProperty)) {
+    if (profile.contains(CellularBearer::kMMIpTypeProperty)) {
       apn_info.ip_type = MMBearerIpFamilyToIpType(static_cast<MMBearerIpFamily>(
           brillo::GetVariantValueOrDefault<uint32_t>(
               profile, CellularBearer::kMMIpTypeProperty)));
     }
-    if (base::Contains(profile, CellularBearer::kMMProfileIdProperty)) {
+    if (profile.contains(CellularBearer::kMMProfileIdProperty)) {
       apn_info.profile_id = brillo::GetVariantValueOrDefault<int32_t>(
           profile, CellularBearer::kMMProfileIdProperty);
     }

@@ -26,7 +26,6 @@ extern "C" {
 #undef class
 }
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_number_conversions.h>
@@ -129,7 +128,7 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
 // static
 std::string PPPDaemon::GetInterfaceName(
     const std::map<std::string, std::string>& configuration) {
-  if (base::Contains(configuration, kPPPInterfaceName)) {
+  if (configuration.contains(kPPPInterfaceName)) {
     return configuration.find(kPPPInterfaceName)->second;
   }
   return std::string();

@@ -2,17 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/wifi/wifi_security.h"
+
+#include <algorithm>
 #include <map>
 #include <vector>
 
-#include <base/containers/contains.h>
-
-#include "shill/wifi/wifi_security.h"
-
-#include "shill/dbus-constants.h"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "shill/dbus-constants.h"
 
 using testing::Test;
 
@@ -382,7 +381,7 @@ TEST(WiFiSecurityTest, IsSubsetOf) {
     WiFiSecurity security(mode);
     for (const auto& set_mode : security_modes) {
       WiFiSecurity security_set(set_mode);
-      if (base::Contains(valid_supersets[mode], set_mode)) {
+      if (std::ranges::contains(valid_supersets[mode], set_mode)) {
         EXPECT_TRUE(security.IsSubsetOf(set_mode));
         EXPECT_EQ(security_set.Combine(security.mode()), security_set);
       } else {

@@ -97,8 +97,7 @@ TEST_F(P2PPeerTest, GetPeerProperties) {
       p2p_device_, DefaultPeerObjectPath(kPeerId), &control_interface_);
 
   auto peer_properties = p2p_peer->GetPeerProperties();
-  EXPECT_TRUE(
-      base::Contains(peer_properties, kP2PGroupInfoClientMACAddressProperty));
+  EXPECT_TRUE(peer_properties.contains(kP2PGroupInfoClientMACAddressProperty));
   EXPECT_EQ(peer_properties[kP2PGroupInfoClientMACAddressProperty],
             net_base::MacAddress::CreateFromBytes(DefaultPeerAddress(kPeerId))
                 ->ToString());

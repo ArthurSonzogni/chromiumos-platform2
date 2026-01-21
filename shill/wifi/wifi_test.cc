@@ -1291,7 +1291,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   }
 
   bool CipherSuiteSupported(uint32_t cipher_suite) {
-    return base::Contains(wifi_->supported_cipher_suites_, cipher_suite);
+    return wifi_->supported_cipher_suites_.contains(cipher_suite);
   }
 
   bool GetRandomMacSupported() { return wifi_->random_mac_supported_; }

@@ -13,7 +13,6 @@
 #include <string>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -128,10 +127,10 @@ TEST_F(KeyFileStoreTest, GetGroups) {
   ASSERT_TRUE(store_->Open());
   std::set<std::string> groups = store_->GetGroups();
   EXPECT_EQ(3, groups.size());
-  EXPECT_TRUE(base::Contains(groups, kGroupA));
-  EXPECT_TRUE(base::Contains(groups, kGroupB));
-  EXPECT_TRUE(base::Contains(groups, kGroupC));
-  EXPECT_FALSE(base::Contains(groups, "g-x"));
+  EXPECT_TRUE(groups.contains(kGroupA));
+  EXPECT_TRUE(groups.contains(kGroupB));
+  EXPECT_TRUE(groups.contains(kGroupC));
+  EXPECT_FALSE(groups.contains("g-x"));
   ASSERT_TRUE(store_->Close());
 }
 
@@ -156,12 +155,12 @@ TEST_F(KeyFileStoreTest, GetGroupsWithKey) {
   ASSERT_TRUE(store_->Open());
   std::set<std::string> groups_a = store_->GetGroupsWithKey(kKeyA);
   EXPECT_EQ(2, groups_a.size());
-  EXPECT_TRUE(base::Contains(groups_a, kGroupA));
-  EXPECT_TRUE(base::Contains(groups_a, kGroupB));
+  EXPECT_TRUE(groups_a.contains(kGroupA));
+  EXPECT_TRUE(groups_a.contains(kGroupB));
   std::set<std::string> groups_b = store_->GetGroupsWithKey(kKeyB);
   EXPECT_EQ(2, groups_b.size());
-  EXPECT_TRUE(base::Contains(groups_b, kGroupB));
-  EXPECT_TRUE(base::Contains(groups_b, kGroupC));
+  EXPECT_TRUE(groups_b.contains(kGroupB));
+  EXPECT_TRUE(groups_b.contains(kGroupC));
   ASSERT_TRUE(store_->Close());
 }
 
@@ -1054,10 +1053,10 @@ TEST_F(KeyFileStoreTest, Combo) {
 
   std::set<std::string> groups = store_->GetGroups();
   EXPECT_EQ(3, groups.size());
-  EXPECT_TRUE(base::Contains(groups, kGroupA));
-  EXPECT_TRUE(base::Contains(groups, kGroupB));
-  EXPECT_TRUE(base::Contains(groups, kGroupC));
-  EXPECT_FALSE(base::Contains(groups, kGroupX));
+  EXPECT_TRUE(groups.contains(kGroupA));
+  EXPECT_TRUE(groups.contains(kGroupB));
+  EXPECT_TRUE(groups.contains(kGroupC));
+  EXPECT_FALSE(groups.contains(kGroupX));
 
   {
     std::string value;
@@ -1119,9 +1118,9 @@ TEST_F(KeyFileStoreTest, Combo) {
 
   groups = store_->GetGroups();
   EXPECT_EQ(2, groups.size());
-  EXPECT_FALSE(base::Contains(groups, kGroupA));
-  EXPECT_TRUE(base::Contains(groups, kGroupB));
-  EXPECT_TRUE(base::Contains(groups, kGroupC));
+  EXPECT_FALSE(groups.contains(kGroupA));
+  EXPECT_TRUE(groups.contains(kGroupB));
+  EXPECT_TRUE(groups.contains(kGroupC));
 
   EXPECT_TRUE(store_->SetBool(kGroupB, kKeyBool, false));
   EXPECT_TRUE(store_->SetInt(kGroupB, kKeyInt, kValueIntBNew));

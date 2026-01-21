@@ -4,11 +4,11 @@
 
 #include "shill/cellular/modem_info.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <ModemManager/ModemManager.h>
@@ -103,7 +103,7 @@ void ModemInfo::Disconnect() {
 }
 
 bool ModemInfo::ModemExists(const RpcIdentifier& path) const {
-  return base::Contains(modems_, path);
+  return modems_.contains(path);
 }
 
 void ModemInfo::AddModem(const RpcIdentifier& path,
@@ -138,7 +138,7 @@ void ModemInfo::OnInterfacesAddedSignal(
     LOG(WARNING) << "Interfaces added, but ModemManager is no longer available";
     return;
   }
-  if (!base::Contains(properties, MM_DBUS_INTERFACE_MODEM)) {
+  if (!properties.contains(MM_DBUS_INTERFACE_MODEM)) {
     LOG(ERROR) << "Interfaces added, but not modem interface.";
     return;
   }
@@ -154,7 +154,7 @@ void ModemInfo::OnInterfacesRemovedSignal(
         << "Interfaces removed, but ModemManager is no longer available";
     return;
   }
-  if (!base::Contains(interfaces, MM_DBUS_INTERFACE_MODEM)) {
+  if (!std::ranges::contains(interfaces, MM_DBUS_INTERFACE_MODEM)) {
     // In theory, a modem could drop, say, 3GPP, but not CDMA.  In
     // practice, we don't expect this.
     LOG(ERROR) << "Interfaces removed, but not modem interface";

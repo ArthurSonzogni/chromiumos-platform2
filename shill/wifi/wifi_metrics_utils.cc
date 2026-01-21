@@ -4,9 +4,9 @@
 
 #include "shill/wifi/wifi_metrics_utils.h"
 
+#include <algorithm>
 #include <string>
 
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -145,7 +145,7 @@ int AllowlistedOUIForTesting() {
 }
 
 bool CanReportOUI(int oui) {
-  return base::Contains(OUIAllowList, oui);
+  return std::ranges::contains(OUIAllowList, oui);
 }
 
 bool CanReportAdapterInfo(const Metrics::WiFiAdapterInfo& info) {
