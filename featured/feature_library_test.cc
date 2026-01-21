@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include "featured/feature_library.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -958,7 +959,7 @@ TEST_F(FeatureLibraryTest, RecordMultipleActiveTrials) {
   base::FileEnumerator e(active_trials_dir_, /*recursive=*/false,
                          base::FileEnumerator::FILES);
   for (base::FilePath file = e.Next(); !file.empty(); file = e.Next()) {
-    EXPECT_TRUE(base::Contains(expected_files, file.BaseName()));
+    EXPECT_TRUE(std::ranges::contains(expected_files, file.BaseName()));
     ++num_found_files;
   }
 
