@@ -21,6 +21,7 @@
 
 #include "installer/efi_boot_management.h"
 
+#include <algorithm>
 #include <limits>
 #include <map>
 #include <memory>
@@ -29,7 +30,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -285,7 +285,7 @@ class BootOrder {
   }
 
   bool Contains(const EfiBootNumber& entry) const {
-    return base::Contains(boot_order_, entry.Number());
+    return std::ranges::contains(boot_order_, entry.Number());
   }
 
   // Adds an entry to the beginning of the boot order, making a write necessary.
@@ -526,7 +526,7 @@ class EfiBootManager {
 
     for (free_num = 0; free_num < max; ++free_num) {
       EfiBootNumber entry(free_num);
-      if (!base::Contains(entries_, entry)) {
+      if (!entries_.contains(entry)) {
         return entry;
       }
     }
