@@ -4,13 +4,13 @@
 
 #include "runtime_probe/functions/network.h"
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/values.h>
@@ -78,7 +78,7 @@ std::map<std::string, std::string> GetDevicesType() {
 }  // namespace
 
 bool NetworkFunction::PostParseArguments() {
-  if (!base::Contains(kValidNetworkTypes, device_type_)) {
+  if (!std::ranges::contains(kValidNetworkTypes, device_type_)) {
     LOG(ERROR) << "function " << GetFunctionName()
                << " got an unexpected network type " << device_type_;
     return false;

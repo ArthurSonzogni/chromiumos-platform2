@@ -4,11 +4,11 @@
 
 #include "runtime_probe/functions/audio_codec.h"
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -137,7 +137,8 @@ void AudioCodecFunction::PostHelperEvalImpl(DataType* results) const {
 
   for (auto& helper_result : helper_results) {
     auto* codec = helper_result.GetDict().FindString("name");
-    if (codec == nullptr || base::Contains(kKnownInvalidCodecNames, *codec) ||
+    if (codec == nullptr ||
+        std::ranges::contains(kKnownInvalidCodecNames, *codec) ||
         codec->find("HDMI") != std::string::npos) {
       continue;
     }
