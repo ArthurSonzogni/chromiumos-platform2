@@ -7,7 +7,8 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
-#include <base/containers/contains.h>
+#include <algorithm>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -19,13 +20,13 @@ TEST(LandlockPolicyTest, BasicPathsAllowlisted) {
   auto policy_snapshot = fs_policy.GetPolicySnapshotForTesting();
 
   // Test that we have paths vital to Chrome's operations.
-  EXPECT_TRUE(base::Contains(policy_snapshot, "/home/chronos"));
-  EXPECT_TRUE(base::Contains(policy_snapshot, "/home/user"));
-  EXPECT_TRUE(base::Contains(policy_snapshot, "/tmp"));
+  EXPECT_TRUE(std::ranges::contains(policy_snapshot, "/home/chronos"));
+  EXPECT_TRUE(std::ranges::contains(policy_snapshot, "/home/user"));
+  EXPECT_TRUE(std::ranges::contains(policy_snapshot, "/tmp"));
   // Test that we do not include overly broad paths.
-  EXPECT_FALSE(base::Contains(policy_snapshot, "/"));
-  EXPECT_FALSE(base::Contains(policy_snapshot, "/home"));
-  EXPECT_FALSE(base::Contains(policy_snapshot, "/home/root"));
+  EXPECT_FALSE(std::ranges::contains(policy_snapshot, "/"));
+  EXPECT_FALSE(std::ranges::contains(policy_snapshot, "/home"));
+  EXPECT_FALSE(std::ranges::contains(policy_snapshot, "/home/root"));
 }
 
 TEST(LandlockPolicyTest, MinijailConfigured) {

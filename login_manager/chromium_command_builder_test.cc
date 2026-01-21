@@ -8,13 +8,12 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/util.h"
@@ -423,11 +422,11 @@ TEST_F(ChromiumCommandBuilderTest, UseFlagsToFeatures) {
       ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
   for (const auto& tc : kTestCases) {
-    EXPECT_TRUE(base::Contains(tc.enable ? enable_features : disable_features,
-                               tc.feature))
+    EXPECT_TRUE(std::ranges::contains(
+        tc.enable ? enable_features : disable_features, tc.feature))
         << tc.feature << " is not found.";
-    EXPECT_FALSE(base::Contains(tc.enable ? disable_features : enable_features,
-                                tc.feature));
+    EXPECT_FALSE(std::ranges::contains(
+        tc.enable ? disable_features : enable_features, tc.feature));
   }
 }
 

@@ -20,7 +20,6 @@
 
 #include <base/base64.h>
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -267,7 +266,7 @@ bool IsGuestMode(uint32_t mode) {
 }
 
 bool IsGuestSession(const std::vector<std::string>& argv) {
-  return base::Contains(argv, BrowserJobInterface::kGuestSessionFlag);
+  return std::ranges::contains(argv, BrowserJobInterface::kGuestSessionFlag);
 }
 
 }  // namespace
