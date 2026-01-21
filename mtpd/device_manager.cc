@@ -14,7 +14,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
@@ -515,7 +514,7 @@ bool DeviceManager::AddStorageForTest(const std::string& storage_name,
 
   // And the storage should not already exist.
   MtpStorageMap& existing_mtp_storage_map = existing_mtp_device.storage_map;
-  if (base::Contains(existing_mtp_storage_map, storage_id)) {
+  if (existing_mtp_storage_map.contains(storage_id)) {
     return false;
   }
 
@@ -633,7 +632,7 @@ bool DeviceManager::GetDeviceAndStorageId(const std::string& storage_name,
     return false;
   }
 
-  if (!base::Contains(device_it->second.storage_map, id)) {
+  if (!device_it->second.storage_map.contains(id)) {
     return false;
   }
 
@@ -736,7 +735,7 @@ void DeviceManager::AddOrUpdateDevices(
 
     if (add_update) {
       // Skip devices that have already been opened.
-      if (base::Contains(device_map_, usb_bus_str)) {
+      if (device_map_.contains(usb_bus_str)) {
         continue;
       }
     } else {
@@ -814,7 +813,7 @@ void DeviceManager::AddOrUpdateDevices(
     // Iterate through storages on the device and add any that are missing.
     for (LIBMTP_devicestorage_t* storage = mtp_device->storage; storage;
          storage = storage->next) {
-      if (base::Contains(*storage_map_ptr, storage->id)) {
+      if (storage_map_ptr->contains(storage->id)) {
         continue;
       }
       const std::string storage_name =

@@ -8,7 +8,6 @@
 
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -90,7 +89,7 @@ bool MtpdServer::OpenStorage(brillo::ErrorPtr* error,
   do {
     base::RandBytes(base::byte_span_from_ref(random_data));
     new_id = base::HexEncode(random_data, sizeof(random_data));
-  } while (base::Contains(handle_map_, new_id));
+  } while (handle_map_.contains(new_id));
 
   handle_map_.insert(
       std::make_pair(new_id, std::make_pair(storage_name, mode)));
