@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "hermes/modem_manager_proxy.h"
+
 #include <optional>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <ModemManager/ModemManager.h>
-
-#include "hermes/modem_manager_proxy.h"
 
 namespace {
 
@@ -85,8 +84,8 @@ void ModemManagerProxy::WaitForModemStepLast(
   VLOG(2) << __func__;
   for (const auto& object_properties_pair : dbus_objects_with_properties) {
     VLOG(2) << __func__ << ": " << object_properties_pair.first.value();
-    if (!base::Contains(object_properties_pair.second,
-                        modemmanager::kModemManager1ModemInterface)) {
+    if (!object_properties_pair.second.contains(
+            modemmanager::kModemManager1ModemInterface)) {
       continue;
     }
     LOG(INFO) << __func__ << ": Found " << object_properties_pair.first.value();
@@ -103,7 +102,7 @@ void ModemManagerProxy::OnInterfaceAdded(
     const DBusInterfaceToProperties& properties) {
   brillo::ErrorPtr error;
   VLOG(2) << __func__ << ": " << object_path.value();
-  if (!base::Contains(properties, modemmanager::kModemManager1ModemInterface)) {
+  if (!properties.contains(modemmanager::kModemManager1ModemInterface)) {
     VLOG(2) << __func__ << "Interfaces added, but not modem interface.";
     return;
   }
@@ -115,7 +114,8 @@ void ModemManagerProxy::OnInterfaceRemoved(
     const std::vector<std::string>& iface) {
   brillo::ErrorPtr error;
   VLOG(2) << __func__ << ": " << object_path.value();
-  if (!base::Contains(iface, modemmanager::kModemManager1ModemInterface)) {
+  if (!std::ranges::contains(iface,
+                             modemmanager::kModemManager1ModemInterface)) {
     VLOG(2) << __func__ << "Interfaces removed, but not modem interface.";
     return;
   }
