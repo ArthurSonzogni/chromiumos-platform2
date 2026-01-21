@@ -9,7 +9,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 
@@ -252,7 +251,7 @@ Node* InodeTable::InsertNode(Node* node) {
 
   CHECK_NE(node->parent, node->ino);
   parent_map_[std::to_string(node->parent).append(node->name)] = node;
-  CHECK(!base::Contains(node_map_, node->ino));
+  CHECK(!node_map_.contains(node->ino));
   node_map_[node->ino].reset(node);
 
   return node;
