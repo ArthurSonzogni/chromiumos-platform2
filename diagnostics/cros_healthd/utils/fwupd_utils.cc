@@ -12,7 +12,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -40,7 +39,7 @@ bool MatchInstanceIdPrefix(const DeviceInfo& device_info,
 
 // Returns whether the |device_info| contains a specific |guid|.
 bool MatchGuid(const DeviceInfo& device_info, std::string_view guid) {
-  return base::Contains(device_info.guids, guid);
+  return std::ranges::contains(device_info.guids, guid);
 }
 
 // Returns whether |device_info| contains a vendor id "USB:0x{VID}".
@@ -192,7 +191,7 @@ bool ContainsVendorId(const DeviceInfo& device_info,
   std::vector<std::string_view> ids =
       base::SplitStringPiece(device_info.joined_vendor_id.value(), "|",
                              base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  return base::Contains(ids, vendor_id);
+  return std::ranges::contains(ids, vendor_id);
 }
 
 std::optional<std::string> InstanceIdToGuid(const std::string& instance_id) {
