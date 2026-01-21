@@ -25,7 +25,6 @@
 #include <base/base64.h>
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -686,7 +685,8 @@ const std::array kVarLogFileLogs {
 bool IncludeLogType(const std::vector<int32_t>& requested_logs,
                     FeedbackLogType log_type) {
   // Empty requested_logs means include all log types.
-  return requested_logs.empty() || base::Contains(requested_logs, log_type);
+  return requested_logs.empty() ||
+         std::ranges::contains(requested_logs, log_type);
 }
 
 // Combine all requested logs whose source is a list of Log into one array.
@@ -1307,7 +1307,7 @@ void LogTool::ParallelLogCollector::CollectLogs(
   }
   // Log tasks started but not finished on time.
   for (auto& p : child_processes) {
-    if (base::Contains(running_child_pids_, p->pid())) {
+    if (running_child_pids_.contains(p->pid())) {
       LOG(WARNING) << "CollectLogs: timed out, Log="
                    << running_child_pids_.at(p->pid());
     } else {
@@ -1464,7 +1464,8 @@ void LogTool::GetFeedbackLogs(const base::ScopedFD& fd,
                 base::BindOnce(&GetOsReleaseInfo, &temp_log_map)}};
 
   for (auto& [log_type, func_name, func_callback] : log_sources) {
-    if (requested_logs.empty() || base::Contains(requested_logs, log_type)) {
+    if (requested_logs.empty() ||
+        std::ranges::contains(requested_logs, log_type)) {
       std::move(func_callback).Run();
       sw.Lap(func_name);
     }

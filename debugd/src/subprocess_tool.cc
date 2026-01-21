@@ -9,8 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
-
 #include "debugd/src/error_utils.h"
 
 namespace debugd {
@@ -52,7 +50,7 @@ ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
 }
 
 bool SubprocessTool::RecordProcess(std::unique_ptr<ProcessWithId> process) {
-  if (base::Contains(processes_, process->id())) {
+  if (processes_.contains(process->id())) {
     return false;
   }
 
