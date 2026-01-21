@@ -7,20 +7,20 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <va/va.h>
-#include <va/va_drm.h>
-#include <va/va_str.h>
 
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
+#include <va/va.h>
+#include <va/va_drm.h>
+#include <va/va_str.h>
+
 #include "media_capabilities/common.h"
 
 #define VA_LOG_ASSERT(va_error, function)     \
@@ -228,7 +228,7 @@ std::vector<Capability> GetCapabilitiesInVADisplay(VADisplay va_display) {
         GetSupportedVAEntrypoints(va_display, va_profile);
     for (bool decode : {true, false}) {
       for (VAEntrypoint va_entrypoint : GetVAEntrypoints(profile, decode)) {
-        if (!base::Contains(supported_entrypoints, va_entrypoint)) {
+        if (!supported_entrypoints.contains(va_entrypoint)) {
           continue;
         }
         const uint32_t supported_va_rt_format =

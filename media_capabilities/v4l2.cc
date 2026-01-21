@@ -16,7 +16,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -155,7 +154,7 @@ std::vector<Profile> GetSupportedProfiles(int device_fd, const Codec codec) {
        query_menu.index++) {
     if (Ioctl(device_fd, VIDIOC_QUERYMENU, &query_menu) == 0) {
       const Profile profile = V4L2ProfileToProfile(codec, query_menu.index);
-      if (profile != Profile::kNone && !base::Contains(profiles, profile)) {
+      if (profile != Profile::kNone && !profiles.contains(profile)) {
         profiles.push_back(profile);
       }
     }
@@ -266,7 +265,7 @@ std::vector<Capability> GetCapabilitiesInPaths(
   std::vector<Capability> capabilities;
   for (const base::FilePath& path : paths) {
     for (auto&& c : GetCapabilitiesInPath(path, decode)) {
-      if (!base::Contains(capabilities, c)) {
+      if (!capabilities.contains(c)) {
         capabilities.push_back(std::move(c));
       }
     }
