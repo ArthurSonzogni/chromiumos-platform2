@@ -10,12 +10,12 @@
 
 #include "crash-reporter/connectivity_util.h"
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <bindings/cloud_policy.pb.h>
@@ -59,7 +59,7 @@ bool IsUserInAllowedDomain(std::string_view username) {
 // This function checks if a given user is in connectivity fwdump collection
 // allowlist, returns true if user is in allowlist else false.
 bool IsUserInConnectivityFwdumpAllowlist(const std::string& username) {
-  return base::Contains(kUserAllowlist, username);
+  return std::ranges::contains(kUserAllowlist, username);
 }
 
 // This function internally makes a call to RetrievePolicyEx to

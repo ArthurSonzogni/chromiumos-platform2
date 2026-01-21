@@ -683,16 +683,14 @@ TEST_F(UserCollectorTest, HandleSyscall) {
   const std::string contents = std::to_string(SYS_read) + " col1 col2 col3";
 
   collector_.HandleSyscall(exec, contents);
-  EXPECT_TRUE(
-      base::Contains(collector_.extra_metadata_,
-                     "seccomp_blocked_syscall_nr=" + std::to_string(SYS_read)));
-  EXPECT_TRUE(base::Contains(collector_.extra_metadata_,
-                             "seccomp_proc_pid_syscall=" + contents));
-  EXPECT_TRUE(base::Contains(collector_.extra_metadata_,
-                             std::string("seccomp_blocked_syscall_name=read")));
-  EXPECT_TRUE(
-      base::Contains(collector_.extra_metadata_,
-                     std::string("sig=") + exec + "-seccomp-violation-read"));
+  EXPECT_TRUE(collector_.extra_metadata_.contains(
+      "seccomp_blocked_syscall_nr=" + std::to_string(SYS_read)));
+  EXPECT_TRUE(collector_.extra_metadata_.contains("seccomp_proc_pid_syscall=" +
+                                                  contents));
+  EXPECT_TRUE(collector_.extra_metadata_.contains(
+      std::string("seccomp_blocked_syscall_name=read")));
+  EXPECT_TRUE(collector_.extra_metadata_.contains(std::string("sig=") + exec +
+                                                  "-seccomp-violation-read"));
 }
 
 TEST_F(UserCollectorTest, ComputeSeverity_SessionManagerExecutable) {

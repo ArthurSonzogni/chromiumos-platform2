@@ -16,7 +16,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -726,7 +725,7 @@ bool IsChromeExecName(const std::string& exec) {
     }
   }
 
-  return base::Contains(chrome_names, exec);
+  return chrome_names.contains(exec);
 }
 
 }  // namespace
