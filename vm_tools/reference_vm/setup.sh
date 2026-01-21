@@ -50,6 +50,10 @@ PACKAGES=(
   python3-tk
   # for bruschetta.AppEmacs
   emacs
+  # for vm-tools grpc
+  git
+  golang
+  protobuf-compiler
 )
 DATA_ROOT="/tmp/data"
 
@@ -122,6 +126,24 @@ EOF
     "${DATA_ROOT}/usr/local/bin/install-refvm"
   install -D -m 0644 -t /usr/local/share/refvm \
     "${DATA_ROOT}/usr/local/share/refvm/disk_config.tpl"
+
+  # Build the status reporter
+  export GOPATH=/tmp/go
+  export PATH=${PATH}:${GOPATH}/bin
+  go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+  go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.0
+
+  mkdir -p /tmp/build/vm_rpc
+  cp "${DATA_ROOT}/usr/src/vm_install_reporter/"* /tmp/build/
+  cd /tmp/build
+  protoc --go_out=vm_rpc --go_opt=paths=source_relative \
+         --go-grpc_out=vm_rpc --go-grpc_opt=paths=source_relative \
+         vm_rpc.proto
+
+  go mod init vm_install_reporter
+  go mod tidy
+  go build -o report_install_status report_install_status.go
+  install -m 0755 report_install_status /usr/local/bin/
 
   # Find the installed, not running, kernel version.
   kernel="$(dpkg-query -Wf '${Package}\n' 'linux-image-*-amd64' | tail -n 1 | \
@@ -207,6 +229,7 @@ EOF
   apt-get clean
   rm -rf /var/lib/apt/lists
   rm -rf /opt/google/cros-containers/*
+  rm -rf /tmp/go /tmp/build
 }
 
 main "$@"

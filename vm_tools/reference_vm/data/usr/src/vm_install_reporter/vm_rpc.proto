@@ -1,0 +1,38 @@
+// Copyright 2026 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+package vm_tools;
+
+option go_package = "vm_install_reporter/vm_rpc";
+
+message EmptyMessage {}
+
+message VmInstallState {
+  enum State {
+    UNKNOWN = 0;
+    IN_PROGRESS = 1;
+    FAILED = 2;
+    SUCCEEDED = 3;
+  }
+  State state = 1;
+  enum Step {
+    unknown = 0;
+    launcher_start = 1;
+    core_start = 2;
+    install_fetch_image = 3;
+    install_configure = 4;
+    install_done = 5;
+    install_success = 6;
+    install_failure = 7;
+  }
+  Step in_progress_step = 2;
+  int64 in_progress_percent = 3;
+  string failed_reason = 4;
+}
+
+service StartupListener {
+  rpc VmInstallStatus(VmInstallState) returns (EmptyMessage);
+}
