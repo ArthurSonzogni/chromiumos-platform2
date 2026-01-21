@@ -7,13 +7,14 @@
 #include <pwd.h>
 #include <sys/types.h>
 
+#include <algorithm>
+#include <array>
 #include <optional>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
@@ -35,7 +36,7 @@ constexpr int kJSONOption =
 
 bool ValidateDictKeys(const base::Value::Dict& value) {
   for (const auto& [key, _] : value) {
-    if (!base::Contains(kExpectedKeys, key)) {
+    if (!std::ranges::contains(kExpectedKeys, key)) {
       LOG(ERROR) << "Got an unexpected field: " << key;
       return false;
     }
