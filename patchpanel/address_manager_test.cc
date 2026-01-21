@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/containers/flat_set.h>
 #include <base/rand_util.h>
 #include <gtest/gtest.h>
@@ -149,7 +148,7 @@ TEST(AddressManager, AllocateIPv6Subnet) {
   base::flat_set<net_base::IPv6CIDR> subnets;
   for (int i = 0; i < 100; ++i) {
     auto subnet = mgr.AllocateIPv6Subnet();
-    EXPECT_FALSE(base::Contains(subnets, subnet));
+    EXPECT_FALSE(subnets.contains(subnet));
     subnets.insert(subnet);
   }
 }

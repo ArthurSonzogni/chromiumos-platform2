@@ -9,7 +9,6 @@
 #include <string_view>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/containers/fixed_flat_map.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -232,7 +231,7 @@ void ShillClient::UpdateDefaultDevices() {
   // reboot and only need to be fetched once per service. Most of the time there
   // is no extra Service DBus property fetch.
   for (const auto& service_path : services) {
-    if (!base::Contains(service_logname_cache_, service_path)) {
+    if (!service_logname_cache_.contains(service_path)) {
       GetDevicePathFromServicePath(service_path);
     }
   }
@@ -459,7 +458,7 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
     }
 
     // Populate ShillClient::Device properties for any new active shill Device.
-    if (!base::Contains(devices_, device_path)) {
+    if (!devices_.contains(device_path)) {
       const std::optional<ShillClient::Device> new_device =
           GetDeviceProperties(device_path);
       if (!new_device.has_value()) {
@@ -482,7 +481,7 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
   // inactive and remove them from |devices_|,
   std::vector<Device> removed_devices;
   for (auto it = devices_.begin(); it != devices_.end();) {
-    if (!base::Contains(current, it->first) || !IsActiveDevice(it->second)) {
+    if (!current.contains(it->first) || !IsActiveDevice(it->second)) {
       LOG(INFO) << "Removed shill Device " << it->second;
       removed_devices.push_back(it->second);
       it = devices_.erase(it);

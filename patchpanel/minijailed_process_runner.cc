@@ -16,7 +16,6 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -633,7 +632,7 @@ bool MinijailedProcessRunner::AppendPendingIptablesRule(
   // if it's for `--wait` or not, but it should not appear in our use cases.
   // Having a check here instead of letting the execution of iptables fail to
   // avoid the misuse of this function.
-  if (base::Contains(args, "-w")) {
+  if (std::ranges::contains(args, "-w")) {
     LOG(ERROR) << "iptables rule contains `-w` unexpectedly";
     return false;
   }

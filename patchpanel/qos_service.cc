@@ -339,7 +339,7 @@ void QoSService::OnDoHProvidersChanged() {
 }
 
 void QoSService::OnIPConfigChanged(const ShillClient::Device& shill_device) {
-  if (!base::Contains(interfaces_, shill_device.ifname)) {
+  if (!interfaces_.contains(shill_device.ifname)) {
     // Event from uninterested interface.
     return;
   }

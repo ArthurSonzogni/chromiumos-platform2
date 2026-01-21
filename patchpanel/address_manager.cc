@@ -8,7 +8,6 @@
 #include <optional>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <chromeos/net-base/ipv6_address.h>
@@ -106,7 +105,7 @@ net_base::IPv6CIDR AddressManager::AllocateIPv6Subnet() {
   net_base::IPv6CIDR subnet;
   do {
     subnet = *GenerateIPv6Subnet(kULASubnet, kStaticIPv6PrefixLength);
-  } while (base::Contains(allocated_ipv6_subnets_, subnet));
+  } while (allocated_ipv6_subnets_.contains(subnet));
   allocated_ipv6_subnets_.insert(subnet);
 
   return subnet;

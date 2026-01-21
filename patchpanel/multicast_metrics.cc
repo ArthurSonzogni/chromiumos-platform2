@@ -11,7 +11,6 @@
 #include <string_view>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/containers/fixed_flat_map.h>
 #include <base/containers/fixed_flat_set.h>
 #include <base/containers/flat_map.h>
@@ -335,7 +334,7 @@ MulticastMetrics::Poller::Poller(MulticastMetrics::Type type,
 
 void MulticastMetrics::Poller::Start(std::string_view ifname) {
   // Do nothing if poll is already started.
-  if (base::Contains(ifnames_, ifname)) {
+  if (ifnames_.contains(ifname)) {
     return;
   }
   ifnames_.insert(std::string(ifname));

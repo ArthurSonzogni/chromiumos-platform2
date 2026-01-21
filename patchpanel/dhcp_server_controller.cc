@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
@@ -17,8 +16,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/net-base/process_manager.h>
 #include <chromeos/net-base/log_watcher.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "patchpanel/metrics.h"
 #include "patchpanel/system.h"
@@ -277,7 +276,7 @@ void DHCPServerController::HandleDnsmasqLog(std::string_view log) {
         base::SplitString(log, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
                           base::SPLIT_WANT_NONEMPTY);
     for (auto& token : tokens) {
-      if (base::Contains(hostname_set, token)) {
+      if (hostname_set.contains(token)) {
         token = "<redacted>";
       }
     }
