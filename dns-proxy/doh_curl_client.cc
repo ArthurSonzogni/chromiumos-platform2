@@ -6,7 +6,6 @@
 
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -87,7 +86,7 @@ void DoHCurlClient::HandleResult(CURLMsg* curl_msg) {
   // `HandleResult(...)` may be called even after `CancelRequest(...)` is
   // called. This happens if a query is completed while queries are being
   // cancelled. On such case, do nothing.
-  if (!base::Contains(states_, curl_msg->easy_handle)) {
+  if (!states_.contains(curl_msg->easy_handle)) {
     return;
   }
 
@@ -139,7 +138,7 @@ void DoHCurlClient::OnFileCanWriteWithoutBlocking(curl_socket_t socket_fd) {
 }
 
 void DoHCurlClient::AddReadWatcher(curl_socket_t socket_fd) {
-  if (!base::Contains(read_watchers_, socket_fd)) {
+  if (!read_watchers_.contains(socket_fd)) {
     read_watchers_.emplace(
         socket_fd,
         base::FileDescriptorWatcher::WatchReadable(
@@ -150,7 +149,7 @@ void DoHCurlClient::AddReadWatcher(curl_socket_t socket_fd) {
 }
 
 void DoHCurlClient::AddWriteWatcher(curl_socket_t socket_fd) {
-  if (!base::Contains(write_watchers_, socket_fd)) {
+  if (!write_watchers_.contains(socket_fd)) {
     write_watchers_.emplace(
         socket_fd,
         base::FileDescriptorWatcher::WatchWritable(

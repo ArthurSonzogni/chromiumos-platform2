@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -32,13 +31,13 @@ bool ResolvConf::SetDNSFromLists(
   // Avoid duplicated entry, but keep the order.
   for (const auto& name_server : name_servers) {
     std::string name_server_str = name_server.ToString();
-    if (!base::Contains(name_server_set, name_server_str)) {
+    if (!name_server_set.contains(name_server_str)) {
       name_servers_.push_back(name_server_str);
       name_server_set.insert(name_server_str);
     }
   }
   for (const auto& domain_search : domain_search_list) {
-    if (!base::Contains(domain_search_set, domain_search)) {
+    if (!domain_search_set.contains(domain_search)) {
       domain_search_list_.push_back(domain_search);
       domain_search_set.insert(domain_search);
     }

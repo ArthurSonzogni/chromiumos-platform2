@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -59,7 +58,7 @@ void AresClient::ClearWatchers(ares_channel channel) {
 
 void AresClient::UpdateWatchers(ares_channel channel) {
   // Only update watchers if the channel is still valid.
-  if (!base::Contains(channels_inflight_, channel)) {
+  if (!channels_inflight_.contains(channel)) {
     return;
   }
 
@@ -142,7 +141,7 @@ void AresClient::HandleResult(State* state,
 
 void AresClient::ResetTimeout(ares_channel channel) {
   // Check for timeout if the channel is still available.
-  if (!base::Contains(channels_inflight_, channel)) {
+  if (!channels_inflight_.contains(channel)) {
     return;
   }
   ProcessFd(channel, ARES_SOCKET_BAD, ARES_SOCKET_BAD);

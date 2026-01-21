@@ -1205,7 +1205,7 @@ void Proxy::StartGuestDnsRedirection(
     return;
   }
   if (!device_ ||
-      base::Contains(lifeline_fds_, std::make_pair(device.ifname, sa_family))) {
+      lifeline_fds_.contains(std::make_pair(device.ifname, sa_family))) {
     return;
   }
 

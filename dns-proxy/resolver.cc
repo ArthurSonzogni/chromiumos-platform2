@@ -14,7 +14,6 @@
 #include <string_view>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
@@ -390,7 +389,7 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
   static const std::set<int> query_success_statuses = {
       ARES_SUCCESS, ARES_EFORMERR, ARES_ENODATA, ARES_ENOTIMP};
   if (probe_state && probe_state->validated &&
-      !base::Contains(query_success_statuses, status)) {
+      !query_success_statuses.contains(status)) {
     auto target = probe_state->target;
     // |probe_state| will be invalidated by RestartProbe.
     RestartProbe(probe_state);
@@ -678,7 +677,7 @@ void Resolver::SetServers(const std::vector<std::string>& new_servers,
 
   // Remove any removed servers.
   for (auto it = servers.begin(); it != servers.end();) {
-    if (base::Contains(new_servers_set, it->first)) {
+    if (new_servers_set.contains(it->first)) {
       ++it;
       continue;
     }
@@ -688,7 +687,7 @@ void Resolver::SetServers(const std::vector<std::string>& new_servers,
 
   // Remove any removed servers from validated servers.
   for (auto it = validated_servers.begin(); it != validated_servers.end();) {
-    if (base::Contains(new_servers_set, *it)) {
+    if (new_servers_set.contains(*it)) {
       ++it;
       continue;
     }
@@ -697,7 +696,7 @@ void Resolver::SetServers(const std::vector<std::string>& new_servers,
 
   // Probe the new servers.
   for (const auto& new_server : new_servers_set) {
-    if (base::Contains(servers, new_server)) {
+    if (servers.contains(new_server)) {
       continue;
     }
     const auto& probe_state =
