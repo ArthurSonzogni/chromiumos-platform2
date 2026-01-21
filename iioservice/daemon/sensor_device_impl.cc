@@ -4,11 +4,11 @@
 
 #include "iioservice/daemon/sensor_device_impl.h"
 
+#include <algorithm>
 #include <optional>
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_util.h>
@@ -203,8 +203,8 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
     } else if (attr_name == cros::mojom::kDevlink) {
       auto path_opt = client.device_data->iio_device->GetAbsoluteSysPath();
       if (path_opt.has_value() &&
-          base::Contains(client.device_data->types,
-                         cros::mojom::DeviceType::PROXIMITY)) {
+          std::ranges::contains(client.device_data->types,
+                                cros::mojom::DeviceType::PROXIMITY)) {
         value_opt = libmems::GetIioSarSensorDevlink(path_opt.value().value());
       }
     } else {
@@ -234,7 +234,7 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
       if (attr_name == cros::mojom::kLocation) {
         std::optional<cros::mojom::DeviceType> type;
         for (auto& t : kMotionSensors) {
-          if (base::Contains(client.device_data->types, t)) {
+          if (client.device_data->types.contains(t)) {
             type = t;
             break;
           }
@@ -243,7 +243,7 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
         if (type.has_value()) {
           std::optional<int32_t> only_device_id;
           for (auto& device : devices_) {
-            if (base::Contains(device.second.types, type.value()) &&
+            if (device.second.types.contains(type.value()) &&
                 device.second.on_dut) {
               if (!only_device_id.has_value()) {
                 only_device_id = device.first;
@@ -551,7 +551,7 @@ void SensorDeviceImpl::StartReadingEvents(
     return;
   }
 
-  if (!base::Contains(events_handlers_, client.device_data->iio_device_id)) {
+  if (!events_handlers_.contains(client.device_data->iio_device_id)) {
     EventsHandler::ScopedEventsHandler handler = {
         nullptr, EventsHandler::EventsHandlerDeleter};
 

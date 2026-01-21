@@ -12,7 +12,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -46,7 +45,7 @@ bool IsOnChangeDevice(ClientData* client_data) {
   }
 
   for (auto type : kOnChangeDeviceTypes) {
-    if (base::Contains(client_data->device_data->types, type)) {
+    if (client_data->device_data->types.contains(type)) {
       return true;
     }
   }
@@ -241,7 +240,7 @@ SamplesHandler::SamplesHandler(
   SetNoBatchChannels(channel_ids);
 
   // Set |accel_matrix_|.
-  if (!base::Contains(device_data->types, cros::mojom::DeviceType::ACCEL)) {
+  if (!device_data->types.contains(cros::mojom::DeviceType::ACCEL)) {
     return;
   }
 

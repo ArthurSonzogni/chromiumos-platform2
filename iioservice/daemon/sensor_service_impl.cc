@@ -13,8 +13,8 @@
 #include <base/containers/flat_map.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
-#include <libmems/iio_device.h>
 #include <libmems/iio_channel.h>
+#include <libmems/iio_device.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
@@ -364,7 +364,7 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
 
   // Check fusion devices.
   for (const auto& type : types) {
-    if (base::Contains(device_maps_[type], location)) {
+    if (device_maps_[type].contains(location)) {
       LOGF(WARNING) << "Duplicated pair of type : " << type
                     << ", and location: " << static_cast<int>(location);
       continue;
@@ -404,8 +404,8 @@ void SensorServiceImpl::CheckGravity(int32_t id,
     if (it_accel != device_maps_[cros::mojom::DeviceType::ACCEL].end() &&
         it_gyro != device_maps_[cros::mojom::DeviceType::ANGLVEL].end()) {
       // Create the gravity device on |location|.
-      DCHECK(!base::Contains(device_maps_[cros::mojom::DeviceType::GRAVITY],
-                             location));
+      DCHECK(
+          !device_maps_[cros::mojom::DeviceType::GRAVITY].contains(location));
 
       int32_t id = kFusionDeviceIdDelta + fusion_device_counter_++;
       AddDevice(id, {cros::mojom::DeviceType::GRAVITY}, location);

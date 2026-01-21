@@ -4,10 +4,10 @@
 
 #include "iioservice/daemon/events_handler.h"
 
+#include <algorithm>
 #include <optional>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 
 #include "iioservice/daemon/common_types.h"
@@ -223,7 +223,7 @@ void EventsHandler::OnEventAvailableWithoutBlocking() {
   }
 
   for (auto& [id, indices] : enabled_indices_) {
-    if (!base::Contains(indices, chn_index.value())) {
+    if (!std::ranges::contains(indices, chn_index.value())) {
       continue;
     }
 

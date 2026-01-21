@@ -8,12 +8,11 @@
 #include <iterator>
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <gtest/gtest.h>
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>
-
-#include <base/check.h>
-#include <base/check_op.h>
 
 namespace iioservice {
 
@@ -399,7 +398,7 @@ void FakeEventsObserver::NextEventIndex() {
 
   auto size = device_->GetAllEvents().size();
   while (++event_index_ < libmems::fakes::kEventNumber) {
-    if (base::Contains(event_indices_, event_index_ % size)) {
+    if (event_indices_.contains(event_index_ % size)) {
       break;
     }
   }
