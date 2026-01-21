@@ -160,7 +160,7 @@ class AllowConformingUsbDeviceRuleTest : public RuleTest {
       id.product_id = product_id;
 
       const char* driver = udev_device_get_driver(device.get());
-      if (!base::Contains(partially_claimed_devices_, path)) {
+      if (!partially_claimed_devices_.contains(path)) {
         if (driver) {
           auto it = unclaimed_devices_.find(path);
           if (it == unclaimed_devices_.end()) {

@@ -6,15 +6,13 @@
 
 #include <string>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include <base/containers/contains.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/task_environment.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using ::testing::DoAll;
 using ::testing::Return;
@@ -107,7 +105,7 @@ class UsbDriverTrackerTest : public testing::Test {
 
     const auto& client_id = maybe_client_id.value();
     EXPECT_EQ(client_id.size(), 32);  // hex representation of a 128-bit token.
-    EXPECT_TRUE(base::Contains(usb_driver_tracker_.dev_fds_, client_id));
+    EXPECT_TRUE(usb_driver_tracker_.dev_fds_.contains(client_id));
     EXPECT_EQ(usb_driver_tracker_.dev_fds_[client_id].path, path);
 
     for (auto iface : ifaces) {
@@ -192,7 +190,7 @@ TEST_F(UsbDriverTrackerTest, CleanUpTracking) {
       .WillOnce(Return(true));
   usb_driver_tracker_.CleanUpTracking();
   ASSERT_EQ(usb_driver_tracker_.dev_fds_.size(), 0);
-  ASSERT_FALSE(base::Contains(usb_driver_tracker_.dev_ifaces_, path));
+  ASSERT_FALSE(usb_driver_tracker_.dev_ifaces_.contains(path));
 }
 
 TEST_F(UsbDriverTrackerTest, CleanUpTrackingConnectInterfaceFail) {
@@ -212,7 +210,7 @@ TEST_F(UsbDriverTrackerTest, CleanUpTrackingConnectInterfaceFail) {
   usb_driver_tracker_.CleanUpTracking();
   // Even reattach IOCTL fails, the client's tracking should be cleared.
   ASSERT_EQ(usb_driver_tracker_.dev_fds_.size(), 0);
-  ASSERT_FALSE(base::Contains(usb_driver_tracker_.dev_ifaces_, path));
+  ASSERT_FALSE(usb_driver_tracker_.dev_ifaces_.contains(path));
 }
 
 TEST_F(UsbDriverTrackerTest, HandleClosedFd) {
@@ -238,7 +236,7 @@ TEST_F(UsbDriverTrackerTest, HandleClosedFd) {
   }
   run_loop.Run();
   ASSERT_FALSE(usb_driver_tracker_.IsClientIdTracked(client_0_id));
-  ASSERT_FALSE(base::Contains(usb_driver_tracker_.dev_ifaces_, path));
+  ASSERT_FALSE(usb_driver_tracker_.dev_ifaces_.contains(path));
 }
 
 TEST_F(UsbDriverTrackerTest, HandleClosedFdConnectInterfaceError) {
@@ -264,7 +262,7 @@ TEST_F(UsbDriverTrackerTest, HandleClosedFdConnectInterfaceError) {
   // should be cleared.
   run_loop.Run();
   ASSERT_FALSE(usb_driver_tracker_.IsClientIdTracked(client_0_id));
-  ASSERT_FALSE(base::Contains(usb_driver_tracker_.dev_ifaces_, path));
+  ASSERT_FALSE(usb_driver_tracker_.dev_ifaces_.contains(path));
 }
 
 TEST_F(UsbDriverTrackerTest, HandleClosedFdUnTrackedClientId) {
@@ -312,8 +310,7 @@ TEST_F(UsbDriverTrackerTest, HandleClosedFdTwoClientsOnDifferentPaths) {
   for (auto client = 0; client < kMaxNumClients; client++) {
     run_loop[client].Run();
     ASSERT_FALSE(usb_driver_tracker_.IsClientIdTracked(client_id[client]));
-    ASSERT_FALSE(
-        base::Contains(usb_driver_tracker_.dev_ifaces_, paths[client]));
+    ASSERT_FALSE(usb_driver_tracker_.dev_ifaces_.contains(paths[client]));
   }
   ASSERT_EQ(0, usb_driver_tracker_.dev_fds_.size());
   ASSERT_EQ(0, usb_driver_tracker_.dev_ifaces_.size());
@@ -350,7 +347,7 @@ TEST_F(UsbDriverTrackerTest, HandleClosedFdTwoClientsOnSamePath) {
     run_loop[client].Run();
     ASSERT_FALSE(usb_driver_tracker_.IsClientIdTracked(client_id[client]));
   }
-  ASSERT_FALSE(base::Contains(usb_driver_tracker_.dev_ifaces_, path));
+  ASSERT_FALSE(usb_driver_tracker_.dev_ifaces_.contains(path));
   ASSERT_EQ(0, usb_driver_tracker_.dev_fds_.size());
   ASSERT_EQ(0, usb_driver_tracker_.dev_ifaces_.size());
 }
@@ -358,7 +355,7 @@ TEST_F(UsbDriverTrackerTest, RecordInterfaceDetached) {
   std::vector<uint8_t> client_0_ifaces = {};
   const auto& path = temp_file_path_;
   auto client_0_id = SetupClient(kClient0, path, client_0_ifaces);
-  ASSERT_FALSE(base::Contains(usb_driver_tracker_.dev_ifaces_, path));
+  ASSERT_FALSE(usb_driver_tracker_.dev_ifaces_.contains(path));
   usb_driver_tracker_.RecordInterfaceDetached(client_0_id, path, kIface0);
   ASSERT_EQ(usb_driver_tracker_.dev_ifaces_[path][kIface0], client_0_id);
 }
@@ -369,7 +366,7 @@ TEST_F(UsbDriverTrackerTest, ClearDetachedInterfaceRecord) {
   auto client_0_id = SetupClient(kClient0, path, client_0_ifaces);
   ASSERT_TRUE(usb_driver_tracker_.dev_ifaces_[path][kIface0] == client_0_id);
   usb_driver_tracker_.ClearDetachedInterfaceRecord(client_0_id, path, kIface0);
-  ASSERT_FALSE(base::Contains(usb_driver_tracker_.dev_ifaces_, path));
+  ASSERT_FALSE(usb_driver_tracker_.dev_ifaces_.contains(path));
 }
 
 TEST_F(UsbDriverTrackerDeathTest, RecordInterfaceDetachedUntrackedClient) {

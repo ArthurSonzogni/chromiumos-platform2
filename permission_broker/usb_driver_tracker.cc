@@ -12,10 +12,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -156,7 +156,7 @@ std::optional<std::string> UsbDriverTracker::RegisterClient(
   std::string client_id;
   do {
     client_id = base::UnguessableToken::Create().ToString();
-  } while (base::Contains(dev_fds_, client_id));
+  } while (dev_fds_.contains(client_id));
 
   auto controller = WatchLifelineFd(client_id, dup_lifeline_fd.get());
   if (!controller) {
@@ -216,7 +216,7 @@ void UsbDriverTracker::RecordInterfaceDetached(const std::string& client_id,
                 << " in the tracking record";
     return;
   }
-  if (base::Contains(client_it->second.interfaces, iface_num)) {
+  if (std::ranges::contains(client_it->second.interfaces, iface_num)) {
     LOG(DFATAL) << "Detached interface " << static_cast<int>(iface_num)
                 << " on path " << path
                 << " has already been recorded by client " << client_id;
@@ -256,7 +256,7 @@ void UsbDriverTracker::ClearDetachedInterfaceRecord(
 }
 
 bool UsbDriverTracker::IsClientIdTracked(const std::string& client_id) {
-  return base::Contains(dev_fds_, client_id);
+  return dev_fds_.contains(client_id);
 }
 
 void UsbDriverTracker::CleanUpTracking() {
