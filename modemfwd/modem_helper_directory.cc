@@ -4,12 +4,12 @@
 
 #include "modemfwd/modem_helper_directory.h"
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/proto_file_io.h>
@@ -39,7 +39,8 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
       }
 
       // If the helper is restricted to a set of 'variant', do the filtering.
-      if (entry.variant_size() && !base::Contains(entry.variant(), variant)) {
+      if (entry.variant_size() &&
+          !std::ranges::contains(entry.variant(), variant)) {
         ELOG(INFO) << "Skipping helper " << entry.filename()
                    << ", variant is not matching.";
         continue;

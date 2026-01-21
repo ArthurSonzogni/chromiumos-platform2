@@ -4,9 +4,9 @@
 
 #include "modemfwd/heartbeat_task.h"
 
+#include <algorithm>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/functional/callback.h>
 #include <base/strings/stringprintf.h>
 #include <dbus/modemfwd/dbus-constants.h>
@@ -85,7 +85,7 @@ void HeartbeatTask::Configure() {
   auto modem_state = modem_->GetState();
   std::vector<Modem::State> idle_states{
       Modem::State::REGISTERED, Modem::State::ENABLED, Modem::State::LOCKED};
-  if (base::Contains(idle_states, modem_state) &&
+  if (std::ranges::contains(idle_states, modem_state) &&
       config_.modem_idle_interval > base::Seconds(0)) {
     interval = config_.modem_idle_interval;
   } else {
